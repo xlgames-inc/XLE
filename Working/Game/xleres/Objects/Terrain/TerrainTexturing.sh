@@ -143,7 +143,7 @@ IProceduralTexture ProceduralTextures[PROCEDURAL_TEXTURE_COUNT];
 
         ProceduralTextureOutput result;
         float3 A = StrataDiffuseSample(tc0, strataIndex, 0);
-        float3 B = StrataDiffuseSample(tc0, strataIndex, 1);
+        float3 B = StrataDiffuseSample(tc1, strataIndex, 1);
         result.diffuseAlbedo = lerp(A, B, alpha);
 
         if (UseStrataNormals) {
@@ -156,7 +156,7 @@ IProceduralTexture ProceduralTextures[PROCEDURAL_TEXTURE_COUNT];
 
         if (UseStrataSpecular) {
             float As = StrataSpecularSample(tc0, strataIndex, 0);
-            float Bs = StrataSpecularSample(tc0, strataIndex, 1);
+            float Bs = StrataSpecularSample(tc1, strataIndex, 1);
             result.specularity = lerp(As, Bs, alpha);
         } else {
             result.specularity = 1;

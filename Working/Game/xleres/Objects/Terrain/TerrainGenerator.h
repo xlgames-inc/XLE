@@ -30,19 +30,19 @@ cbuffer TileBuffer : register(b7)
 }
 
 #if defined(COVERAGE_FMT_0)
-	Texture2DArray<COVERAGE_FMT_0> CoverageTileSet0 : register(t0);
+	Texture2DArray<COVERAGE_FMT_0> CoverageTileSet0 : register(t1);
 #endif
 #if defined(COVERAGE_FMT_1)
-	Texture2DArray<COVERAGE_FMT_1> CoverageTileSet1 : register(t1);
+	Texture2DArray<COVERAGE_FMT_1> CoverageTileSet1 : register(t2);
 #endif
 #if defined(COVERAGE_FMT_2)
-	Texture2DArray<COVERAGE_FMT_2> CoverageTileSet2 : register(t2);
+	Texture2DArray<COVERAGE_FMT_2> CoverageTileSet2 : register(t3);
 #endif
 #if defined(COVERAGE_FMT_3)
-	Texture2DArray<COVERAGE_FMT_3> CoverageTileSet3 : register(t3);
+	Texture2DArray<COVERAGE_FMT_3> CoverageTileSet3 : register(t4);
 #endif
 #if defined(COVERAGE_FMT_4)
-	Texture2DArray<COVERAGE_FMT_4> CoverageTileSet4 : register(t4);
+	Texture2DArray<COVERAGE_FMT_4> CoverageTileSet4 : register(t5);
 #endif
 
 Texture2DArray<uint> HeightsTileSet : register(t0);
@@ -50,7 +50,7 @@ Texture2DArray<uint> HeightsTileSet : register(t0);
 float3 AddNoise(float3 worldPosition)
 {
 	#if (DO_ADD_NOISE==1)
-		worldPosition.z += 6.f * fbmNoise2D(worldPosition.xy, 50.f, .5f, 2.1042, 6);
+		worldPosition.z += 5.f * fbmNoise2D(worldPosition.xy, 20.f, .5f, 2.1042, 6);
 	#endif
 	return worldPosition;
 }

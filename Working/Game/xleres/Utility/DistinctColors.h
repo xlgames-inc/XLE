@@ -1,6 +1,15 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
 
 // This is a random but distinct set of colours generated from
 // 		http://phrogz.net/css/distinct-colors.html
+
+#if !defined(DISTINCT_COLORS)
+#define DISTINCT_COLORS
+
 static const uint ColourListCount = 47;
 static const uint3 ColourList[47] =
 {
@@ -24,3 +33,5 @@ float3 GetDistinctFloatColour(uint index)
 {
     return ColourList[index % ColourListCount] * (1.0f/255.f).xxx;
 }
+
+#endif

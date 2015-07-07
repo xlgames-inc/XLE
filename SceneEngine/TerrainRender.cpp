@@ -196,7 +196,8 @@ namespace SceneEngine
             }
 
         const char* ps = isTextured 
-            ? "game/xleres/objects/terrain/TerrainTexturing.sh:ps_main:!ps_*" 
+            // ? "game/xleres/objects/terrain/TerrainTexturing.sh:ps_main:!ps_*" 
+            ? "game/xleres/objects/terrain/TexturingTest.sh:ps_main:!ps_*" 
             : "game/xleres/solidwireframe.psh:main:ps_*";
 
         if (Tweakable("LightingModel", 0) == 1 && isTextured) {
@@ -244,7 +245,8 @@ namespace SceneEngine
 
         if (shaderProgram->DynamicLinkingEnabled()) {
             _dynLinkage = BoundClassInterfaces(*shaderProgram);
-            _dynLinkage.Bind(Hash64("ProceduralTextures"), 0, "StrataMaterial");
+            // _dynLinkage.Bind(Hash64("ProceduralTextures"), 0, "StrataMaterial");
+            _dynLinkage.Bind(Hash64("ProceduralTextures"), 0, "TestMaterial");
         }
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
@@ -972,11 +974,14 @@ namespace SceneEngine
         context->BindVS(MakeResourceList(_heightMapTileSet->GetShaderResource()));
         context->BindDS(MakeResourceList(_heightMapTileSet->GetShaderResource()));
         for (unsigned c=0; c<unsigned(_coverageTileSet.size()); ++c) {
-            context->BindPS(MakeResourceList(c, _coverageTileSet[c]->GetShaderResource()));
+            context->BindPS(MakeResourceList(c+1, _coverageTileSet[c]->GetShaderResource()));
                 //  for instance spawn mode, we also need the coverage resources in the geometry shader. Perhaps
                 //  we could use techniques to make this a little more reliable...?
-            context->BindGS(MakeResourceList(c, _coverageTileSet[c]->GetShaderResource()));
+            context->BindGS(MakeResourceList(c+1, _coverageTileSet[c]->GetShaderResource()));
         }
+
+            // heights required on the pixel shader only for prototype texturing...
+        context->BindPS(MakeResourceList(_heightMapTileSet->GetShaderResource()));
 
             // go through all nodes that were previously queued (with CullNodes) and render them
         TRY {

@@ -387,6 +387,15 @@ namespace GUILayer
             return terr->GetConfig().SunPathAngle();
         }
 
+        static void FlushTerrainToDisk(EditorSceneManager^ sceneMan, IProgress^ progress)
+        {
+            auto terr = sceneMan->GetScene()._terrainManager;
+            if (!terr) return;
+
+            auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
+            terr->FlushToDisk(nativeProgress.get());
+        }
+
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

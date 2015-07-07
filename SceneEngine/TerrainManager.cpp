@@ -26,6 +26,7 @@
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/IProgress.h"
 #include "../Utility/StringFormat.h"
 #include <stack>
 #include <utility>
@@ -407,6 +408,38 @@ namespace SceneEngine
         }
     }
 
+    void TerrainManager::FlushToDisk(ConsoleRig::IProgress* progress)
+    {
+        unsigned stepCount = 0;
+        if (_pimpl->_uberSurfaceInterface) stepCount++;
+        stepCount += (unsigned)_pimpl->_coverageInterfaces.size();
+
+        {
+            auto step = progress ? progress->BeginStep("Commit terrain to disk", stepCount, true) : nullptr;
+
+                //  Unload the renderer (because we'll want to reload 
+                //  everything from disk after this)
+            _pimpl->_renderer.reset();
+
+            if (_pimpl->_uberSurfaceInterface) {
+                _pimpl->_uberSurfaceInterface->FlushGPUCache();
+                if (step) step->Advance();
+            }
+
+            for (auto& i:_pimpl->_coverageInterfaces) {
+                if (step && step->IsCancelled()) break;
+                i._interface->FlushGPUCache();
+                if (step) step->Advance();
+            }
+
+            // make sure we save the cfg file, as well
+            _pimpl->_cfg.Save();
+        }
+
+        auto step = progress ? progress->BeginStep("Reloading terrain", 1, false) : nullptr;
+        Load(_pimpl->_cfg, UInt2(0,0), _pimpl->_cfg._cellCount + UInt2(1,1), true);
+    }
+
     void TerrainManager::Reset()
     {
         _pimpl->_cells.clear();
@@ -464,7 +497,6 @@ namespace SceneEngine
             &&  IsCompatible(rendererCfg, _pimpl->_renderer->GetConfig())
             && _pimpl->_renderer->IsShortCircuitAllowed() == allowModification;
         
-        const bool allowTerrainModification = true;
         if (reuseRenderer) {
             _pimpl->_heightsProvider->SetCoords(_pimpl->_cfg, _pimpl->_coords);
         } else {
@@ -473,7 +505,7 @@ namespace SceneEngine
             _pimpl->_renderer.reset();
             _pimpl->_textures.reset();
 
-            _pimpl->_renderer = CreateRenderer(rendererCfg, _pimpl->_ioFormat, allowTerrainModification);
+            _pimpl->_renderer = CreateRenderer(rendererCfg, _pimpl->_ioFormat, allowModification);
             _pimpl->_heightsProvider = std::make_unique<TerrainSurfaceHeightsProvider>(
                 _pimpl->_renderer, _pimpl->_cfg, _pimpl->_coords);
             MainSurfaceHeightsProvider = _pimpl->_heightsProvider.get();

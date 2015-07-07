@@ -268,14 +268,21 @@ namespace LevelEditorXLE.Terrain
             {
                 using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
                 {
-                    float t = 1.0f / (float)Math.Sqrt(1.0f + .33f * .33f);
-                    GUILayer.Vector2 sunDirectionOfMovement = new GUILayer.Vector2(1.0f * t, .33f * t);
                     GUILayer.EditorInterfaceUtils.GenerateShadowsSurface(CellsDirectory, UberSurfaceDirectory, progress);
                 }
             }
             catch { }
 
             sceneMan.ReloadTerrain();
+        }
+
+        void DoFlushToDisk()
+        {
+            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+            using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
+            {
+                GUILayer.EditorInterfaceUtils.FlushTerrainToDisk(sceneMan, progress);
+            }
         }
 
         #region ICommandClient Members
@@ -290,6 +297,8 @@ namespace LevelEditorXLE.Terrain
                     case Command.Configure:
                         return true;
                     case Command.GenerateShadows:
+                        return true;
+                    case Command.FlushToDisk:
                         return true;
                 }
             }
@@ -324,6 +333,12 @@ namespace LevelEditorXLE.Terrain
                         DoGenerateShadows();
                         break;
                     }
+
+                case Command.FlushToDisk:
+                    {
+                        DoFlushToDisk();
+                        break;
+                    }
             }
         }
 
@@ -338,7 +353,9 @@ namespace LevelEditorXLE.Terrain
             [Description("Configure Terrain...")]
             Configure,
             [Description("Generate Shadows")]
-            GenerateShadows
+            GenerateShadows,
+            [Description("Commit to disk")]
+            FlushToDisk
         }
 
         IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)

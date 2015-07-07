@@ -14,6 +14,7 @@
 
 namespace RenderCore { namespace Techniques { class CameraDesc; } }
 namespace Utility { class OutputStream; }
+namespace ConsoleRig { class IProgress; }
 
 namespace SceneEngine
 {
@@ -89,6 +90,10 @@ namespace SceneEngine
         /// any cached textures or data can be retained, they will be.
         void Load(const TerrainConfig& cfg, UInt2 cellMin, UInt2 cellMax, bool allowModification);
         void LoadUberSurface(const ::Assets::ResChar uberSurfaceDir[]);
+
+        /// <summary>Write all changes to disk</summary>
+        /// Also unloads and reloads the terrain, in the process
+        void FlushToDisk(ConsoleRig::IProgress* progress = nullptr);
 
         /// <summary>Unloads all terrain</summary>
         /// Removes all cells and removes the terrain from the world.

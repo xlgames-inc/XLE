@@ -123,6 +123,8 @@ namespace SceneEngine
                     std::function<void(const ShortCircuitUpdate&)> shortCircuitUpdate);
         void    RenderDebugging(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& context);
 
+        void    FlushGPUCache();
+
         GenericUberSurfaceInterface(
             ITerrainUberSurface& uberSurface, 
             std::shared_ptr<ITerrainFormat> ioFormat = nullptr);
@@ -130,8 +132,7 @@ namespace SceneEngine
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
-
-        void    FlushGPUCache();
+        
         void    BuildGPUCache(UInt2 mins, UInt2 maxs);
         void    PrepareCache(UInt2 adjMin, UInt2 adjMax);
         void    ApplyTool(  UInt2 adjMins, UInt2 adjMaxs, const char shaderName[],

@@ -4,8 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#if !defined(SHARR_FILTER_H)
-#define SHARR_FILTER_H
+#if !defined(EDGE_DETECTION_H)
+#define EDGE_DETECTION_H
 
 static const float SharrConstant = 1.f/60.f;
 
@@ -26,5 +26,22 @@ static const float SharrVert5x5[5][5] =
     {  1.f * SharrConstant,  2.f * SharrConstant,  6.f * SharrConstant,  2.f * SharrConstant,  1.f * SharrConstant },
     {  1.f * SharrConstant,  2.f * SharrConstant,  3.f * SharrConstant,  2.f * SharrConstant,  1.f * SharrConstant }
 };
+
+static const float SharrConstant3x3 = 1.f/32.f;
+
+static const float SharrHoriz3x3[3][3] =
+{
+    {  -3.f * SharrConstant3x3, 0.f,  3.f * SharrConstant3x3 },
+    { -10.f * SharrConstant3x3, 0.f, 10.f * SharrConstant3x3 },
+    {  -3.f * SharrConstant3x3, 0.f,  3.f * SharrConstant3x3 },
+};
+
+static const float SharrVert3x3[3][3] =
+{
+    {  -3.f * SharrConstant3x3, -10.f * SharrConstant3x3,  -3.f * SharrConstant3x3 },
+    { 0.f, 0.f, 0.f },
+    {   3.f * SharrConstant3x3,  10.f * SharrConstant3x3,   3.f * SharrConstant3x3 },
+};
+
 
 #endif

@@ -8,31 +8,12 @@
 #define DEBUGGING_SHAPES_H
 
 #include "../CommonResources.h"
+#include "EdgeDetection.h"
 
 Texture2D				RefractionsBuffer : register(t12);
 
 static const float SqrtHalf = 0.70710678f;
 static const float3 BasicShapesLightDirection = normalize(float3(SqrtHalf, SqrtHalf, -0.25f));
-
-static const float SharrConstant = 1.f/60.f;
-
-static const float SharrHoriz5x5[5][5] = 
-{
-	{ -1.f * SharrConstant, -1.f * SharrConstant,  0.f,  1.f * SharrConstant,  1.f * SharrConstant },
-	{ -2.f * SharrConstant, -2.f * SharrConstant,  0.f,  2.f * SharrConstant,  2.f * SharrConstant },
-	{ -3.f * SharrConstant, -6.f * SharrConstant,  0.f,  6.f * SharrConstant,  3.f * SharrConstant },
-	{ -2.f * SharrConstant, -2.f * SharrConstant,  0.f,  2.f * SharrConstant,  2.f * SharrConstant },
-	{ -1.f * SharrConstant, -1.f * SharrConstant,  0.f,  1.f * SharrConstant,  1.f * SharrConstant }
-};
-
-static const float SharrVert5x5[5][5] = 
-{
-	{ -1.f * SharrConstant, -2.f * SharrConstant, -3.f * SharrConstant, -2.f * SharrConstant, -1.f * SharrConstant },
-	{ -1.f * SharrConstant, -2.f * SharrConstant, -6.f * SharrConstant, -2.f * SharrConstant, -1.f * SharrConstant },
-	{  0.f * SharrConstant,  0.f * SharrConstant,  0.f * SharrConstant,  0.f * SharrConstant,  0.f * SharrConstant },
-	{  1.f * SharrConstant,  2.f * SharrConstant,  6.f * SharrConstant,  2.f * SharrConstant,  1.f * SharrConstant },
-	{  1.f * SharrConstant,  2.f * SharrConstant,  3.f * SharrConstant,  2.f * SharrConstant,  1.f * SharrConstant }
-};
 
 struct DebuggingShapesCoords
 {
@@ -76,7 +57,7 @@ float TagShape(float2 minCoords, float2 maxCoords, float2 texCoord, float aspect
 
 	float2 r = texCoord - minCoords;
 	if (r.x < roundedWidth) {
-		
+
 		if (r.y < roundedHeight) {
 			float2 centre = float2(roundedWidth, roundedHeight);
 			float2 o = r - centre; o.x /= aspectRatio;
@@ -154,7 +135,7 @@ void RenderTag(float2 minCoords, float2 maxCoords, DebuggingShapesCoords coords,
 }
 
 float RoundedRectShape(
-    float2 minCoords, float2 maxCoords, float2 texCoord, 
+    float2 minCoords, float2 maxCoords, float2 texCoord,
     float aspectRatio, float roundedProportion)
 {
 	if (	texCoord.x < minCoords.x || texCoord.x > maxCoords.x
@@ -179,7 +160,7 @@ float RoundedRectShape(
 }
 
 float2 RoundedRectShape2(
-    float2 minCoords, float2 maxCoords, 
+    float2 minCoords, float2 maxCoords,
     DebuggingShapesCoords coords, float borderSizePix, float roundedProportion)
 {
     float2 texCoord = coords.texCoord;
@@ -203,10 +184,10 @@ float2 RoundedRectShape2(
 		float2 centre = float2(roundedWidth, roundedHeight);
 
         ////////////////
-            //  To get a anti-aliased look to the edges, we need to make 
-            //  several samples. Lets just use a simple pattern aligned 
+            //  To get a anti-aliased look to the edges, we need to make
+            //  several samples. Lets just use a simple pattern aligned
             //  to the pixel edges...
-        float2 samplePts[4] = 
+        float2 samplePts[4] =
         {
             float2(.5f, .2f), float2(.5f, .8f),
             float2(.2f, .5f), float2(.8f, .5f),
@@ -214,7 +195,7 @@ float2 RoundedRectShape2(
 
         float2 result = 0.0.xx;
         for (uint c=0; c<4; ++c) {
-		    float2 o = r - centre + samplePts[c] * pixelSize; 
+		    float2 o = r - centre + samplePts[c] * pixelSize;
             o.x /= coords.aspectRatio;
             float dist = roundedHeight - length(o);
             result.x += .25f * (dist >= 0.f && dist < borderSize.y);
@@ -269,7 +250,7 @@ float ScrollBarShape(float2 minCoords, float2 maxCoords, float thumbPosition, fl
 void RenderScrollBar(   float2 minCoords, float2 maxCoords, float thumbPosition,
                         DebuggingShapesCoords coords, inout float4 result)
 {
-    
+
 
 	float2 dhdp = 0.0.xx;
 	for (uint y=0; y<5; ++y) {
@@ -301,7 +282,7 @@ void RenderScrollBar(   float2 minCoords, float2 maxCoords, float thumbPosition,
             result = float4(A * float3(1.1f, .9f, .5f) + 0.1.xxx, 1.f);
             result.rgb += 0.5f * RefractionsBuffer.SampleLevel(ClampingSampler, coords.refractionCoords, 0).rgb;
 		}
-        
+
 
 	} else {
         float b = max(abs(dhdp.x), abs(dhdp.y));
@@ -313,4 +294,3 @@ void RenderScrollBar(   float2 minCoords, float2 maxCoords, float thumbPosition,
 }
 
 #endif
-

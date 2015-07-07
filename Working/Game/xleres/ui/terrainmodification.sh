@@ -6,6 +6,7 @@
 
 
 #include "../Utility/perlinnoise.h"
+#include "../Utility/EdgeDetection.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -83,26 +84,6 @@ float CalculateSmoothedHeight(uint2 surfaceSpaceCoord)
 	}
 	return accum;
 }
-
-static const float SharrConstant = 1.f/60.f;
-
-static const float SharrHoriz5x5[5][5] =
-{
-	{ -1.f * SharrConstant, -1.f * SharrConstant,  0.f,  1.f * SharrConstant,  1.f * SharrConstant },
-	{ -2.f * SharrConstant, -2.f * SharrConstant,  0.f,  2.f * SharrConstant,  2.f * SharrConstant },
-	{ -3.f * SharrConstant, -6.f * SharrConstant,  0.f,  6.f * SharrConstant,  3.f * SharrConstant },
-	{ -2.f * SharrConstant, -2.f * SharrConstant,  0.f,  2.f * SharrConstant,  2.f * SharrConstant },
-	{ -1.f * SharrConstant, -1.f * SharrConstant,  0.f,  1.f * SharrConstant,  1.f * SharrConstant }
-};
-
-static const float SharrVert5x5[5][5] =
-{
-	{ -1.f * SharrConstant, -2.f * SharrConstant, -3.f * SharrConstant, -2.f * SharrConstant, -1.f * SharrConstant },
-	{ -1.f * SharrConstant, -2.f * SharrConstant, -6.f * SharrConstant, -2.f * SharrConstant, -1.f * SharrConstant },
-	{  0.f * SharrConstant,  0.f * SharrConstant,  0.f * SharrConstant,  0.f * SharrConstant,  0.f * SharrConstant },
-	{  1.f * SharrConstant,  2.f * SharrConstant,  6.f * SharrConstant,  2.f * SharrConstant,  1.f * SharrConstant },
-	{  1.f * SharrConstant,  2.f * SharrConstant,  3.f * SharrConstant,  2.f * SharrConstant,  1.f * SharrConstant }
-};
 
 float2 CalculateDHDXY(uint2 surfaceSpaceCoord)
 {
@@ -414,8 +395,6 @@ float3x3 RotationMatrix(float3 axis, float angle)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if 0
-
 #include "../Utility/DebuggingShapes.h"
 #include "../Utility/DebuggingPanels.h"
 
@@ -432,5 +411,3 @@ float4 GpuCacheDebugging(float4 position : SV_Position, float2 texCoord : TEXCOO
 
 	return result;
 }
-
-#endif
