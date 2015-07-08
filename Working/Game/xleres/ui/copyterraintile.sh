@@ -21,6 +21,8 @@ struct TileCoords
 	float HeightScale;
 	uint WorkingMinHeight;
 	uint WorkingMaxHeight;
+	float ElementSpacing;
+	float HeightOffsetValue;
 };
 
 #if VALUE_FORMAT == 62
@@ -30,12 +32,11 @@ struct TileCoords
 	#define QUANTIZE_HEIGHTS
 #endif
 
-
 Texture2D<ValueType>	Input : register(t0);
 RWTexture2D<ValueType>	MidwayOutput : register(u1);
 RWTexture2D<uint> 		MidwayMaterialFlags : register(u2);
 
-#if defined(ENCODED_GRADIENT_FLAGS)
+#if (ENCODED_GRADIENT_FLAGS!=0)
 	static const uint 		RawHeightMask = 0x3fff;
 	static const uint		MaterialFlagsShift = 14;
 #else
@@ -95,9 +96,9 @@ ValueType CalculateNewValue(uint3 dispatchThreadId)
 	#endif
 }
 
-uint CalculateMaterialFlags_TopLOD(int2 baseCoord);
+uint CalculateGradientFlags_TopLOD(int2 baseCoord, float spacing);
 
-uint CalculateMaterialFlags(uint2 dispatchThreadId)
+uint CalculateGradientFlags(uint2 dispatchThreadId)
 {
 	int2 origin = SampleArea * dispatchThreadId.xy;
 
@@ -115,7 +116,7 @@ uint CalculateMaterialFlags(uint2 dispatchThreadId)
 		uint sampleTotal = 0;
 		for (int y=0; y<SampleArea; ++y)
 			for (int x=0; x<SampleArea; ++x)
-				sampleTotal += CalculateMaterialFlags_TopLOD(origin + int2(x,y));
+				sampleTotal += CalculateGradientFlags_TopLOD(origin + int2(x,y), TileCoordsBuffer[0].ElementSpacing);
 		sampleTotal /= SampleArea * SampleArea;
 
 		return sampleTotal;
@@ -136,12 +137,12 @@ uint HeightValueToUInt(float height)
 		//			point numbers (actually the IEEE standards ensure it
 		//			will work)... But there are problems with negative numbers
 		//			So, make sure the result is always positive
-	return asuint(max(0.f, height + 5000.f));
+	return asuint(max(0.f, height + TileCoordsBuffer[0].HeightOffsetValue));
 }
 
 float UIntToHeightValue(uint input)
 {
-	return asfloat(input) - 5000.f;
+	return asfloat(input) - TileCoordsBuffer[0].HeightOffsetValue;
 }
 
 [numthreads(6, 6, 1)]
@@ -166,7 +167,7 @@ float UIntToHeightValue(uint input)
 		MidwayOutput[dispatchThreadId.xy] = newHeight;
 
 		#if defined(QUANTIZE_HEIGHTS)
-			MidwayMaterialFlags[dispatchThreadId.xy] = CalculateMaterialFlags(dispatchThreadId.xy);
+			MidwayMaterialFlags[dispatchThreadId.xy] = CalculateGradientFlags(dispatchThreadId.xy);
 		#endif
 	}
 }
@@ -194,7 +195,7 @@ RWTexture2DArray<uint> Destination : register(u0);
 				clamp((newHeight - minHeight) * float(RawHeightMask) / (maxHeight - minHeight),
 				0, float(RawHeightMask)));
 
-			#if defined(ENCODED_GRADIENT_FLAGS)
+			#if (ENCODED_GRADIENT_FLAGS!=0)
 				finalCompressedHeight |= (MidwayMaterialFlags[dispatchThreadId.xy] & 3) << MaterialFlagsShift;
 			#endif
 
@@ -225,8 +226,7 @@ RWTexture2DArray<uint> Destination : register(u0);
 	}
 }
 
-
-#include "../Utility/EdgeDetection.h"
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool CoordIsValid(int2 coord)
 {
@@ -241,76 +241,4 @@ float GetHeight(int2 coord)
 	return 0.f;
 }
 
-float2 CalculateDHDXY(int2 coord)
-{
-	float centerHeight = GetHeight(coord);
-	float2 dhdp = 0.0.xx;
-	#if 0
-		for (uint y=0; y<5; ++y) {
-			for (uint x=0; x<5; ++x) {
-				int2 c = coord + int2(x,y) - int2(2,2);
-				if (CoordIsValid(c)) {
-					float heightDiff = GetHeight(c) - centerHeight;
-					dhdp.x += SharrHoriz5x5[x][y] * heightDiff;
-					dhdp.y += SharrVert5x5[x][y] * heightDiff;
-				}
-			}
-		}
-	#else
-		for (uint y=0; y<3; ++y) {
-			for (uint x=0; x<3; ++x) {
-				int2 c = coord + int2(x,y) - int2(1,1);
-				if (CoordIsValid(c)) {
-					float heightDiff = GetHeight(c) - centerHeight;
-					dhdp.x += SharrHoriz3x3[x][y] * heightDiff;
-					dhdp.y += SharrVert3x3[x][y] * heightDiff;
-				}
-			}
-		}
-	#endif
-	return dhdp;
-}
-
-uint CalculateMaterialFlags_TopLOD(int2 baseCoord)
-{
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-		//  0  1  2
-		//  3  4  5
-		//  6  7  8
-	const int2 Offsets[9] =
-	{
-		int2(-1, -1), int2( 0, -1), int2( 1, -1),
-		int2(-1,  0), int2( 0,  0), int2( 1,  0),
-		int2(-1,  1), int2( 0,  1), int2( 1,  1)
-	};
-
-	float heights[9];
-	float2 dhdxy[9];
-	float heightDiff[9];
-	for (uint c=0; c<9; c++) {
-		heights[c] = GetHeight(baseCoord + Offsets[c]);
-		dhdxy[c] = CalculateDHDXY(baseCoord + Offsets[c]);
-	}
-	for (uint c2=0; c2<9; c2++) {
-		heightDiff[c2] = heights[c2] - heights[4];
-	}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	float slopeThreshold = 1.5f;
-	bool centerIsSlope = max(abs(dhdxy[4].x), abs(dhdxy[4].y)) > slopeThreshold;
-	float3 b = float3( 0.f, -2.f, heightDiff[1]);
-	float3 t = float3( 0.f,  2.f, heightDiff[8]);
-	float3 l = float3(-2.f,  0.f, heightDiff[3]);
-	float3 r = float3( 2.f,  0.f, heightDiff[5]);
-	bool topBottomTrans = dot(normalize(b), -normalize(t)) < .4f;
-	bool leftRightTrans = dot(normalize(l), -normalize(r)) < .4f;
-
-	// good for finding flat places:
-	// dot(dhdxy[1], dhdxy[8]) >= 1.f;
-	// dot(dhdxy[3], dhdxy[5]) >= 1.f;
-
-	if (topBottomTrans || leftRightTrans) return 2;
-	return int(centerIsSlope);
-}
+#include "../Objects/Terrain/GradientFlags.h"

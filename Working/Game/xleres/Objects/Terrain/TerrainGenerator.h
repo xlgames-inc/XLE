@@ -45,8 +45,6 @@ cbuffer TileBuffer : register(b7)
 	Texture2DArray<COVERAGE_FMT_4> CoverageTileSet4 : register(t5);
 #endif
 
-Texture2DArray<uint> HeightsTileSet : register(t0);
-
 float3 AddNoise(float3 worldPosition)
 {
 	#if (DO_ADD_NOISE==1)

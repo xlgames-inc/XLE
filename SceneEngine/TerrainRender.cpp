@@ -192,7 +192,7 @@ namespace SceneEngine
         definesBuffer << ";DRAW_WIREFRAME=" << int(desc._drawWireframe);
         definesBuffer << ";STRATA_COUNT=" << desc._strataCount;
         if (desc._encodedGradientFlags)
-            definesBuffer << ";ENCODED_GRADIENT_FLAGS";
+            definesBuffer << ";ENCODED_GRADIENT_FLAGS=1";
 
         for (unsigned c=0; c<dimof(desc._coverageIds); ++c)
             if (desc._coverageIds[c]) {

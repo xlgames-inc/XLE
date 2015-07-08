@@ -78,7 +78,7 @@ namespace SceneEngine
             const ::Assets::ResChar secondPassShader[] = "game/xleres/ui/copyterraintile.sh:CommitToFinal:cs_*";
             StringMeld<64, char> defines; 
             defines << "VALUE_FORMAT=" << format << ";FILTER_TYPE=" << filterType;
-            if (encodedGradientFlags) defines << ";ENCODED_GRADIENT_FLAGS";
+            if (encodedGradientFlags) defines << ";ENCODED_GRADIENT_FLAGS=1";
             const auto compressedHeightMask = CompressedHeightMask(encodedGradientFlags);
 
             auto& byteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(firstPassShader, defines.get());
@@ -87,11 +87,20 @@ namespace SceneEngine
             auto& cs2 = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/ui/copyterraintile.sh:DirectToFinal:cs_*", defines.get());
 
             float temp = FLT_MAX;
+            const float heightOffsetValue = 5000.f; // (height values are shifted by this constant in the shader to get around issues with negative heights
+            const float elementSpacing = 2.f;       // used when calculating the gradient flags; represents the distance between grid elements in world space units
             struct TileCoords
             {
                 float minHeight, heightScale;
                 unsigned workingMinHeight, workingMaxHeight;
-            } tileCoords = { localToCell(2, 3), localToCell(2, 2), *reinterpret_cast<unsigned*>(&temp), 0x0u };
+                float elementSpacing; float heightOffsetValue;
+                unsigned dummy[2];
+            } tileCoords = { 
+                localToCell(2, 3), localToCell(2, 2), 
+                *reinterpret_cast<unsigned*>(&temp), 0x0u,
+                elementSpacing, heightOffsetValue,
+                0, 0
+            };
 
             auto& uploads = tileSet->GetBufferUploads();
             auto tileCoordsBuffer = uploads.Transaction_Immediate(
@@ -153,8 +162,7 @@ namespace SceneEngine
                 auto readback = uploads.Resource_ReadBack(BufferUploads::ResourceLocator(tileCoordsBuffer.get()));
                 float* readbackData = (float*)readback->GetData();
                 if (readbackData) {
-                    const float hackConstant = 5000.f;      // (height values are shifted by this constant in the shader to get around issues with negative heights
-                    float newHeightOffset = readbackData[2] - hackConstant;
+                    float newHeightOffset = readbackData[2] - heightOffsetValue;
                     float newHeightScale = (readbackData[3] - readbackData[2]) / float(compressedHeightMask);
                     localToCell(2,2) = newHeightScale;
                     localToCell(2,3) = newHeightOffset;

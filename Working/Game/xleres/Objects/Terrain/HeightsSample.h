@@ -9,7 +9,7 @@
 
 static const uint HeightsOverlap = 2;
 
-#if defined(ENCODED_GRADIENT_FLAGS)
+#if (ENCODED_GRADIENT_FLAGS!=0)
     static const uint RawHeightMask = 0x3fff;
 #else
     static const uint RawHeightMask = 0xffff;
@@ -46,6 +46,8 @@ float EvaluateCubicCurve(float pm0, float p0, float p1, float p2, float t)
         + m1 * (-t2 + t3);
 }
 
+Texture2DArray<uint> HeightsTileSet : register(t0);
+
 uint LoadRawHeightValue(int3 coord)
 {
     uint result = HeightsTileSet.Load(int4(coord, 0));
@@ -56,7 +58,7 @@ uint LoadRawHeightValue(int3 coord)
 
 uint LoadEncodedGradientFlags(int3 coord)
 {
-    #if defined(ENCODED_GRADIENT_FLAGS)
+    #if (ENCODED_GRADIENT_FLAGS!=0)
         uint result = HeightsTileSet.Load(int4(coord, 0));
         return result >> 14;
     #else

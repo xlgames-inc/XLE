@@ -331,6 +331,86 @@ namespace SceneEngine
             , _rawDataSize(rawDataSize) {}
         };
 
+        namespace Internal
+        {
+            static const float SharrConstant3x3 = 1.f/32.f;
+            static const float SharrHoriz3x3[3][3] =
+            {
+                {  -3.f * SharrConstant3x3, 0.f,  3.f * SharrConstant3x3 },
+                { -10.f * SharrConstant3x3, 0.f, 10.f * SharrConstant3x3 },
+                {  -3.f * SharrConstant3x3, 0.f,  3.f * SharrConstant3x3 },
+            };
+            static const float SharrVert3x3[3][3] =
+            {
+                {  -3.f * SharrConstant3x3, -10.f * SharrConstant3x3,  -3.f * SharrConstant3x3 },
+                { 0.f, 0.f, 0.f },
+                {   3.f * SharrConstant3x3,  10.f * SharrConstant3x3,   3.f * SharrConstant3x3 },
+            };
+        }
+
+        template<typename Element>
+            static Float2 CalculateDHDXY(TerrainUberSurface<Element>& surface, UInt2 coord)
+        {
+            auto centerHeight = surface.GetValue(coord[0], coord[1]);
+            Float2 dhdxy(0.f, 0.f);
+            for (int y=0; y<3; ++y) {
+                for (int x=0; x<3; ++x) {
+                    Int2 c = Int2(coord) + Int2(x-1, y-1);
+                    if (c[0] >= 0 && c[1] >= 0 && c[0] < (int)surface.GetWidth() && c[1] < (int)surface.GetHeight()) {
+                        float heightDiff = surface.GetValueFast(c[0], c[1]) - centerHeight;
+                        dhdxy[0] += Internal::SharrHoriz3x3[x][y] * heightDiff;
+                        dhdxy[1] +=  Internal::SharrVert3x3[x][y] * heightDiff;
+                    }
+                }
+            }
+            return dhdxy;
+        }
+
+        template<typename Element>
+            static unsigned CalculateGradientFlag(TerrainUberSurface<Element>& surface, UInt2 coord, float spacing)
+            {
+                return 0;
+            }
+
+        template<>
+            static unsigned CalculateGradientFlag<float>(TerrainUberSurface<float>& surface, UInt2 coord, float spacing)
+            {
+                    // Calculate the gradient flags for the element at the given coordinate
+
+                const float slopeThreshold = 1.5f;
+                const float transThreshold = 0.4f;
+
+                const Int2 offsets[] =
+                {
+                    Int2( 0, -1), Int2( 0,  1), 
+                    Int2(-1,  0), Int2( 1,  0)
+                };
+                float heightDiff[dimof(offsets)];
+
+                float centerHeight = surface.GetValue(coord[0], coord[1]);
+                for (uint c2=0; c2<dimof(offsets); c2++) {
+                    Int2 c = Int2(coord) + offsets[c2];
+                    if (c[0] >= 0 && c[1] >= 0 && c[0] < (int)surface.GetWidth() && c[1] < (int)surface.GetHeight()) {
+                        heightDiff[c2] = surface.GetValueFast(c[0], c[1]) - centerHeight;
+                    } else {
+                        heightDiff[c2] = 0.f;
+                    }
+                }
+
+                Float3 b( 0.f, -spacing, heightDiff[0]);
+                Float3 t( 0.f,  spacing, heightDiff[1]);
+                Float3 l(-spacing,  0.f, heightDiff[2]);
+                Float3 r( spacing,  0.f, heightDiff[3]);
+
+                bool topBottomTrans = dot(normalize(b), -normalize(t)) < transThreshold;
+                bool leftRightTrans = dot(normalize(l), -normalize(r)) < transThreshold;
+                if (topBottomTrans || leftRightTrans) return 2;
+
+                Float2 dhdxy = CalculateDHDXY(surface, coord);
+                bool centerIsSlope = std::max(XlAbs(dhdxy[0]), XlAbs(dhdxy[1])) > slopeThreshold;
+                return int(centerIsSlope);
+            }
+
         template<typename Element>
             static CoverageDataResult WriteCoverageData(
                 BasicFile& destinationFile, TerrainUberSurface<Element>& surface,
@@ -378,14 +458,46 @@ namespace SceneEngine
 
             if (compression == Compression::QuantRange) {
 
-                const unsigned compressedHeightMask = encodedGradientFlags ? 0x3fffu : 0xffffu;
+                const auto compressedHeightMask = encodedGradientFlags ? 0x3fffu : 0xffffu;
+                auto sampledGradientFlags = std::make_unique<uint16[]>(dimensionsInElements*dimensionsInElements);
+
+                if (encodedGradientFlags) {
+
+                    const float elementSpacing = 2.f;
+                    const unsigned kw = 1<<downsample;
+                    for (unsigned y=0; y<dimensionsInElements; ++y)
+                        for (unsigned x=0; x<dimensionsInElements; ++x) {
+                            unsigned counts[4] = { 0u, 0u, 0u, 0u };
+                            
+                            for (unsigned ky=0; ky<kw; ++ky)
+                                for (unsigned kx=0; kx<kw; ++kx) {
+                                    unsigned flag = CalculateGradientFlag(surface, UInt2(startx + kw*x + kx, starty + kw*y + ky), elementSpacing);
+                                    if (flag < dimof(counts)) ++counts[flag];
+                                }
+                            
+                                // We choose the value that is most common
+                                // average isn't actually right, because it runs
+                                // the risk of producing a result that doesn't exist
+                                // in the top-LOD data at all!
+                            unsigned result = 0;
+                            for (unsigned c=1; c<4; ++c)
+                                if (counts[c] > counts[result]) result = c;
+                            sampledGradientFlags[y*dimensionsInElements+x] = (uint16)(result<<14);
+                        }
+
+                } else {
+                    XlSetMemory(sampledGradientFlags.get(), 0, sizeof(uint16)*dimensionsInElements*dimensionsInElements);
+                }
 
                 auto compressedHeightData = std::make_unique<uint16[]>(dimensionsInElements*dimensionsInElements);
                 for (unsigned y=0; y<dimensionsInElements; ++y)
                     for (unsigned x=0; x<dimensionsInElements; ++x) {
                         auto s = AsScalar(sampledValues[y*dimensionsInElements+x]);
                         float ch = (s - minValue) * float(compressedHeightMask) / (maxValue - minValue);
-                        compressedHeightData[y*dimensionsInElements+x] = (uint16)std::min(float(compressedHeightMask), std::max(0.f, ch));
+
+                        uint16 compressedValue = (uint16)std::min(float(compressedHeightMask), std::max(0.f, ch));
+                        compressedValue |= sampledGradientFlags[y*dimensionsInElements+x];
+                        compressedHeightData[y*dimensionsInElements+x] = compressedValue;
                     }
 
                     // write all these results to the file...
