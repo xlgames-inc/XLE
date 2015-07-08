@@ -31,13 +31,6 @@ namespace ToolsRig
 {
     using namespace SceneEngine;
 
-#if 0
-    static bool BuildUberSurfaceFile(
-        const char filename[], const TerrainConfig& config, 
-        ITerrainFormat* ioFormat,
-        unsigned xStart, unsigned yStart, unsigned xDims, unsigned yDims);
-#endif
-
     //////////////////////////////////////////////////////////////////////////////////////////
     template<typename Sample>
         static void WriteCellCoverageData(
@@ -85,9 +78,10 @@ namespace ToolsRig
         const TerrainConfig& outputConfig, 
         const ::Assets::ResChar uberSurfaceDir[],
         bool overwriteExisting,
+        const GradientFlagsSettings& gradFlagSettings,
         ConsoleRig::IProgress* progress)
     {
-        auto outputIOFormat = std::make_shared<TerrainFormat>(outputConfig.EncodedGradientFlags());
+        auto outputIOFormat = std::make_shared<TerrainFormat>(gradFlagSettings);
         assert(outputIOFormat);
 
         //////////////////////////////////////////////////////////////////////////////////////
@@ -195,8 +189,9 @@ namespace ToolsRig
 
         //////////////////////////////////////////////////////////////////////////////////////
             // write cell files
-        auto fmt = std::make_shared<TerrainFormat>(cfg.EncodedGradientFlags());
-        WriteCellCoverageData<ShadowSample>(cfg, *fmt, shadowUberFn, shadowLayerIndex, overwriteExisting, progress);
+        auto fmt = std::make_shared<TerrainFormat>();
+        WriteCellCoverageData<ShadowSample>(
+            cfg, *fmt, shadowUberFn, shadowLayerIndex, overwriteExisting, progress);
     }
 
     void GenerateMissingUberSurfaceFiles(
@@ -524,41 +519,6 @@ namespace ToolsRig
             eleCount[0], eleCount[1], cellDimsInEles[0]));
 
         return UInt2(eleCount[0] / cellDimsInEles[0], eleCount[1] / cellDimsInEles[1]);
-    }
-
-#if 0
-        UInt2 cellCount = GetCellCountFromUberSurface(
-            inputUberSurfaceDirectory, destNodeDims, destCellTreeDepth);
-
-        TerrainConfig cfg(
-            outputDir, cellCount, 
-            TerrainConfig::XLE, 
-            destNodeDims, destCellTreeDepth, overlap, spacing, sunPathAngle, hasEncodedGradientFlags);
-
-        for (unsigned l=0; l<layerCount; ++l) {
-            ::Assets::ResChar uberSurfaceFN[MaxPath]; 
-            TerrainConfig::GetUberSurfaceFilename(
-                uberSurfaceFN, dimof(uberSurfaceFN),
-                inputUberSurfaceDirectory, layers[l].first);
-
-            const auto layerRes = GetResolutionForLayer(layers[l].first);
-            const auto overlap = GetOverlapForLayer(layers[l].first);
-            cfg.AddCoverageLayer(TerrainConfig::CoverageLayer
-                {
-                    (const utf8*)uberSurfaceFN, layers[l].first,
-                    UInt2(layerRes*destNodeDims, layerRes*destNodeDims), overlap, layers[l].second
-                });
-        }
-#endif
-
-    void GenerateStarterCells(
-        const SceneEngine::TerrainConfig& cfg,
-        const ::Assets::ResChar uberSurfaceDirectory[],
-        ConsoleRig::IProgress* progress)
-    {
-        using namespace SceneEngine;
-        GenerateMissingUberSurfaceFiles(cfg, uberSurfaceDirectory, progress);
-        GenerateCellFiles(cfg, uberSurfaceDirectory, false, progress);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

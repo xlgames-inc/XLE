@@ -346,18 +346,6 @@ namespace GUILayer
                 nodeDimensions, cellTreeDepth, nativeProgress.get());
         }
 
-        static void GenerateStarterCells(
-            TerrainConfig^ cfg,
-            String^ uberSurfaceDirectory,
-            IProgress^ progress)
-        {
-            auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
-            ToolsRig::GenerateStarterCells(
-                cfg->GetNative(),
-                clix::marshalString<clix::E_UTF8>(uberSurfaceDirectory).c_str(),
-                nativeProgress.get());
-        }
-
         static unsigned DefaultResolutionForLayer(SceneEngine::TerrainCoverageId layerId)
         {
             switch (layerId) {
@@ -431,14 +419,30 @@ namespace GUILayer
             terr->FlushToDisk(nativeProgress.get());
         }
 
-        static void RebuildCellFiles(
-            TerrainConfig^ cfg, String^ uberSurfaceDir, bool overwriteExisting, IProgress^ progress)
+        static void GenerateCellFiles(
+            TerrainConfig^ cfg, String^ uberSurfaceDir, 
+            bool overwriteExisting, 
+            float slopeThreshold, float transThreshold,
+            IProgress^ progress)
         {
             auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
+            SceneEngine::GradientFlagsSettings gradFlagSettings(
+                cfg->EncodedGradientFlags, cfg->ElementSpacing, slopeThreshold, transThreshold);
             ToolsRig::GenerateCellFiles(
                 cfg->GetNative(), 
                 clix::marshalString<clix::E_UTF8>(uberSurfaceDir).c_str(), 
-                overwriteExisting, nativeProgress.get());
+                overwriteExisting, gradFlagSettings, nativeProgress.get());
+        }
+
+        static void GenerateMissingUberSurfaceFiles(
+            TerrainConfig^ cfg, String^ uberSurfaceDir, 
+            IProgress^ progress)
+        {
+            auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
+            ToolsRig::GenerateMissingUberSurfaceFiles(
+                cfg->GetNative(), 
+                clix::marshalString<clix::E_UTF8>(uberSurfaceDir).c_str(), 
+                nativeProgress.get());
         }
 
     };

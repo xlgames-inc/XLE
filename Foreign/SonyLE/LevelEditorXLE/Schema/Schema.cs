@@ -334,6 +334,8 @@ namespace LevelEditorXLE
             terrainType.HasShadowsConverageAttribute = terrainType.Type.GetAttributeInfo("HasShadowsConverage");
             terrainType.HasEncodedGradientFlagsAttribute = terrainType.Type.GetAttributeInfo("HasEncodedGradientFlags");
             terrainType.CellCountAttribute = terrainType.Type.GetAttributeInfo("CellCount");
+            terrainType.GradFlagSlopeThresholdAttribute = terrainType.Type.GetAttributeInfo("GradFlagSlopeThreshold");
+            terrainType.GradFlagRoughThresholdAttribute = terrainType.Type.GetAttributeInfo("GradFlagRoughThreshold");
             terrainType.baseTextureChild = terrainType.Type.GetChildInfo("baseTexture");
             terrainType.VegetationSpawnChild = terrainType.Type.GetChildInfo("VegetationSpawn");
 
@@ -807,6 +809,8 @@ namespace LevelEditorXLE
             public static AttributeInfo HasShadowsConverageAttribute;
             public static AttributeInfo HasEncodedGradientFlagsAttribute;
             public static AttributeInfo CellCountAttribute;
+            public static AttributeInfo GradFlagSlopeThresholdAttribute;
+            public static AttributeInfo GradFlagRoughThresholdAttribute;
             public static ChildInfo baseTextureChild;
             public static ChildInfo VegetationSpawnChild;
         }

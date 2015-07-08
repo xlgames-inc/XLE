@@ -124,6 +124,18 @@ namespace LevelEditorXLE.Terrain
             set { SetAttribute(TerrainST.CellCountAttribute, value); }
         }
 
+        public float GradFlagSlopeThreshold
+        {
+            get { return GetAttribute<float>(TerrainST.GradFlagSlopeThresholdAttribute); }
+            set { SetAttribute(TerrainST.GradFlagSlopeThresholdAttribute, value); }
+        }
+
+        public float GradFlagRoughThreshold
+        {
+            get { return GetAttribute<float>(TerrainST.GradFlagRoughThresholdAttribute); }
+            set { SetAttribute(TerrainST.GradFlagRoughThresholdAttribute, value); }
+        }
+
         private static uint ClampNodeDimensions(uint input)
         {
             return input.Clamp(1u, 1024u);
@@ -194,6 +206,8 @@ namespace LevelEditorXLE.Terrain
             cfg.HasShadowsCoverage = HasShadowsCoverage;
             cfg.HasEncodedGradientFlags = HasEncodedGradientFlags;
             cfg.SunPathAngle = SunPathAngle;
+            cfg.SlopeThreshold = GradFlagSlopeThreshold;
+            cfg.RoughThreshold = GradFlagRoughThreshold;
             return cfg;
         }
 
@@ -210,6 +224,8 @@ namespace LevelEditorXLE.Terrain
             HasShadowsCoverage = cfg.HasShadowsCoverage;
             HasEncodedGradientFlags = cfg.HasEncodedGradientFlags;
             SunPathAngle = cfg.SunPathAngle;
+            GradFlagSlopeThreshold = cfg.SlopeThreshold;
+            GradFlagRoughThreshold = cfg.RoughThreshold;
         }
 
         internal GUILayer.TerrainConfig BuildEngineConfig(TerrainConfig.Config cfg)
@@ -274,8 +290,13 @@ namespace LevelEditorXLE.Terrain
                     newCellCount = engineCfg.CellCount;
 
                         // fill in the cells directory with starter cells (if they don't already exist)
-                    GUILayer.EditorInterfaceUtils.GenerateStarterCells(
-                        engineCfg, cfg.UberSurfaceDirectory, progress);
+                        // (and build empty uber surface files for any that are missing)
+                    GUILayer.EditorInterfaceUtils.GenerateMissingUberSurfaceFiles(
+                        BuildEngineConfig(), UberSurfaceDirectory, progress); 
+                    GUILayer.EditorInterfaceUtils.GenerateCellFiles(
+                        BuildEngineConfig(), UberSurfaceDirectory, false,
+                        cfg.SlopeThreshold, cfg.RoughThreshold,
+                        progress);
 
                         // native side reads the config from disk atm.
                         // so we need to commit to disk
@@ -318,7 +339,8 @@ namespace LevelEditorXLE.Terrain
                 using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
                 {
                     GUILayer.EditorInterfaceUtils.GenerateShadowsSurface(
-                        BuildEngineConfig(), UberSurfaceDirectory, progress);
+                        BuildEngineConfig(), UberSurfaceDirectory,
+                        progress);
                 }
             }
             catch { }
@@ -344,8 +366,9 @@ namespace LevelEditorXLE.Terrain
             {
                 using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
                 {
-                    GUILayer.EditorInterfaceUtils.RebuildCellFiles(
-                        BuildEngineConfig(), UberSurfaceDirectory, true, progress);
+                    GUILayer.EditorInterfaceUtils.GenerateCellFiles(
+                        BuildEngineConfig(), UberSurfaceDirectory, true,
+                        GradFlagSlopeThreshold, GradFlagRoughThreshold, progress);
                 }
             }
             catch { }

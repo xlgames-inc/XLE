@@ -10,6 +10,21 @@
 
 namespace SceneEngine
 {
+    class GradientFlagsSettings
+    {
+    public:
+        bool    _enable;
+        float   _elementSpacing;
+        float   _slopeThreshold;
+        float   _transThreshold;
+
+        explicit GradientFlagsSettings(
+            bool enable = false,
+            float elementSpacing = 2.f,
+            float slopeThreshold = 1.5f,
+            float transThreshold = .4f);
+    };
+
     /// <summary>Native XLE file format for terrain</summary>
     /// XLE allows for support for multiple formats for storing
     /// terrain data using the ITerrainFormat interface. This
@@ -30,11 +45,11 @@ namespace SceneEngine
             const char destinationFile[], TerrainUberSurface<uint8>& surface, 
             UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const;
 
-        TerrainFormat(bool encodedGradientFlags = true);
+        TerrainFormat(const GradientFlagsSettings& gradFlagsSettings = GradientFlagsSettings());
         ~TerrainFormat();
 
     protected:
-        bool _encodedGradientFlags;
+        GradientFlagsSettings _gradFlagsSettings;
     };
 }
 

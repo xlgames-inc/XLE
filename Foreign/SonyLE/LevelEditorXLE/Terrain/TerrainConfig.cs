@@ -77,11 +77,17 @@ namespace LevelEditorXLE.Terrain
             [Category("Coverage")] [Description("Has a layer for precalculated terrain shadows")]
             public bool HasShadowsCoverage { get; set; }
 
-            [Category("Coverage")] [Description("Has encoded gradient flags")]
-            public bool HasEncodedGradientFlags { get; set; }
-
             [Category("Coverage")] [Description("Sun Path Angle (in degrees)")]
             public float SunPathAngle { get; set; }
+
+            [Category("Gradient Flags")] [Description("Has encoded gradient flags")]
+            public bool HasEncodedGradientFlags { get; set; }
+
+            [Category("Gradient Flags")] [Description("Threshold for flat texturing")]
+            public float SlopeThreshold { get; set; }
+
+            [Category("Gradient Flags")] [Description("Threshold for rough texturing")]
+            public float RoughThreshold { get; set; }
 
             [Browsable(false)] public string SourceDEMFile { get; set; }
             [Browsable(false)] public uint NewCellCountX { get; set; }

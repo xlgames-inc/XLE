@@ -116,7 +116,8 @@ uint CalculateGradientFlags(uint2 dispatchThreadId)
 		uint sampleTotal = 0;
 		for (int y=0; y<SampleArea; ++y)
 			for (int x=0; x<SampleArea; ++x)
-				sampleTotal += CalculateGradientFlags_TopLOD(origin + int2(x,y), TileCoordsBuffer[0].ElementSpacing);
+				sampleTotal += CalculateGradientFlags_TopLOD(
+					origin + int2(x,y), TileCoordsBuffer[0].ElementSpacing);
 		sampleTotal /= SampleArea * SampleArea;
 
 		return sampleTotal;
@@ -242,3 +243,8 @@ float GetHeight(int2 coord)
 }
 
 #include "../Objects/Terrain/GradientFlags.h"
+
+uint CalculateGradientFlags_TopLOD(int2 baseCoord, float spacing)
+{
+	return CalculateRawGradientFlags(baseCoord, spacing, SlopeThresholdDefault, TransThresholdDefault);
+}

@@ -53,7 +53,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     SceneEngine::TerrainConfig cfg("game/centralcal");
     ToolsRig::GenerateMissingUberSurfaceFiles(cfg, "game/centralcal");
-    ToolsRig::GenerateCellFiles(cfg, "game/centralcal", false);
+    ToolsRig::GenerateCellFiles(cfg, "game/centralcal", false, SceneEngine::GradientFlagsSettings());
 
     // const unsigned nodeDims = 32;
     // const unsigned cellTreeDepth = 5;

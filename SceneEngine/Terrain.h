@@ -7,10 +7,9 @@
 #pragma once
 
 #include "TerrainCoverageId.h"
-#include "../RenderCore/Metal/Forward.h"
+#include "../RenderCore/Metal/Forward.h"    // (for RenderCore::Metal::DeviceContext)
 #include "../Math/Vector.h"
-#include "../Math/Matrix.h"
-#include "../Assets/Assets.h"
+#include "../Assets/AssetsCore.h"
 
 namespace RenderCore { namespace Techniques { class CameraDesc; } }
 namespace Utility { class OutputStream; }

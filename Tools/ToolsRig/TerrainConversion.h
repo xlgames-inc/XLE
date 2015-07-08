@@ -7,22 +7,18 @@
 #pragma once
 
 #include "../../SceneEngine/TerrainCoverageId.h"
+#include "../../SceneEngine/TerrainFormat.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
 
 namespace ConsoleRig { class IProgress; }
-namespace SceneEngine { class TerrainConfig; class ITerrainFormat; }
+namespace SceneEngine { class TerrainConfig; class ITerrainFormat; class GradientFlagsSettings; }
 
 namespace ToolsRig
 {
     UInt2 ConvertDEMData(
         const ::Assets::ResChar outputDir[], const ::Assets::ResChar input[], 
         unsigned destNodeDims, unsigned destCellTreeDepth,
-        ConsoleRig::IProgress* progress);
-
-    void GenerateStarterCells(
-        const SceneEngine::TerrainConfig& cfg, 
-        const ::Assets::ResChar uberSurfaceDirectory[], 
         ConsoleRig::IProgress* progress);
 
     void GenerateMissingUberSurfaceFiles(
@@ -34,6 +30,7 @@ namespace ToolsRig
         const SceneEngine::TerrainConfig& outputConfig, 
         const ::Assets::ResChar uberSurfaceDir[],
         bool overwriteExisting,
+        const SceneEngine::GradientFlagsSettings& gradFlagSettings,
         ConsoleRig::IProgress* progress = nullptr);
 
     void GenerateBlankUberSurface(

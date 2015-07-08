@@ -39,7 +39,7 @@ float2 CalculateDHDXY(int2 coord)
     return dhdp;
 }
 
-uint CalculateGradientFlags_TopLOD(int2 baseCoord, float spacing)
+uint CalculateRawGradientFlags(int2 baseCoord, float spacing, float slopeThreshold, float transThreshold)
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -66,14 +66,13 @@ uint CalculateGradientFlags_TopLOD(int2 baseCoord, float spacing)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    float slopeThreshold = 1.5f;
     bool centerIsSlope = max(abs(dhdxy[4].x), abs(dhdxy[4].y)) > slopeThreshold;
     float3 b = float3( 0.f, -spacing, heightDiff[1]);
     float3 t = float3( 0.f,  spacing, heightDiff[8]);
     float3 l = float3(-spacing,  0.f, heightDiff[3]);
     float3 r = float3( spacing,  0.f, heightDiff[5]);
-    bool topBottomTrans = dot(normalize(b), -normalize(t)) < .4f;
-    bool leftRightTrans = dot(normalize(l), -normalize(r)) < .4f;
+    bool topBottomTrans = dot(normalize(b), -normalize(t)) < transThreshold;
+    bool leftRightTrans = dot(normalize(l), -normalize(r)) < transThreshold;
 
     // good for finding flat places:
     // dot(dhdxy[1], dhdxy[8]) >= 1.f;
@@ -82,5 +81,8 @@ uint CalculateGradientFlags_TopLOD(int2 baseCoord, float spacing)
     if (topBottomTrans || leftRightTrans) return 2;
     return int(centerIsSlope);
 }
+
+static const float SlopeThresholdDefault = 1.5f;
+static const float TransThresholdDefault = .4f;
 
 #endif
