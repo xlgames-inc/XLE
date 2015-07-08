@@ -51,11 +51,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     auto compileAndAsync = std::make_unique<::Assets::CompileAndAsyncManager>();
 
-    auto fmt = std::make_shared<SceneEngine::TerrainFormat>();
     SceneEngine::TerrainConfig cfg("game/centralcal");
-
-    ToolsRig::GenerateMissingUberSurfaceFiles(cfg, fmt, "game/centralcal");
-    ToolsRig::GenerateMissingCellFiles(cfg, fmt, "game/centralcal");
+    ToolsRig::GenerateMissingUberSurfaceFiles(cfg, "game/centralcal");
+    ToolsRig::GenerateCellFiles(cfg, "game/centralcal", false);
 
     // const unsigned nodeDims = 32;
     // const unsigned cellTreeDepth = 5;

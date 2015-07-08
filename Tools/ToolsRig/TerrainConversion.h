@@ -27,14 +27,13 @@ namespace ToolsRig
 
     void GenerateMissingUberSurfaceFiles(
         const SceneEngine::TerrainConfig& outputConfig, 
-        std::shared_ptr<SceneEngine::ITerrainFormat> outputIOFormat,
         const ::Assets::ResChar uberSurfaceDir[],
         ConsoleRig::IProgress* progress = nullptr);
 
-    void GenerateMissingCellFiles(
+    void GenerateCellFiles(
         const SceneEngine::TerrainConfig& outputConfig, 
-        std::shared_ptr<SceneEngine::ITerrainFormat> outputIOFormat,
         const ::Assets::ResChar uberSurfaceDir[],
+        bool overwriteExisting,
         ConsoleRig::IProgress* progress = nullptr);
 
     void GenerateBlankUberSurface(
@@ -46,6 +45,7 @@ namespace ToolsRig
     void GenerateShadowsSurface(
         const SceneEngine::TerrainConfig& cfg, 
         const ::Assets::ResChar uberSurfaceDir[],
+        bool overwriteExisting,
         ConsoleRig::IProgress* progress = nullptr);
 
     UInt2 GetCellCountFromUberSurface(

@@ -97,6 +97,8 @@ namespace SceneEngine
         void ShortCircuit(uint64 cellHash, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd);
         const bool IsShortCircuitAllowed() const { return _shortCircuitAllowed; }
 
+        void UnloadCachedData();
+
         TerrainCellRenderer(
             const TerrainRendererConfig& cfg,
             std::shared_ptr<ITerrainFormat> ioFormat,

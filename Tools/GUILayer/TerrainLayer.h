@@ -56,6 +56,7 @@ namespace GUILayer
         void Add(CoverageLayerDesc^ layer);
 
         void InitCellCountFromUberSurface(String^ uberSurfaceDir);
+        void Save();
 
         const NativeConfig& GetNative() { return *_native; }
         TerrainConfig(

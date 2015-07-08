@@ -405,15 +405,13 @@ namespace GUILayer
         }
 
         static void GenerateShadowsSurface(
-            String^ cellsDirectory, String^ uberSurfaceDir,
+            TerrainConfig^ cfg, String^ uberSurfaceDir,
             IProgress^ progress)
         {
-            SceneEngine::TerrainConfig cfg(
-                clix::marshalString<clix::E_UTF8>(cellsDirectory).c_str());
             auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
             ToolsRig::GenerateShadowsSurface(
-                cfg, clix::marshalString<clix::E_UTF8>(uberSurfaceDir).c_str(),
-                nativeProgress.get());
+                cfg->GetNative(), clix::marshalString<clix::E_UTF8>(uberSurfaceDir).c_str(),
+                true, nativeProgress.get());
         }
 
         static float GetSunPathAngle(EditorSceneManager^ sceneMan)
@@ -431,6 +429,16 @@ namespace GUILayer
 
             auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
             terr->FlushToDisk(nativeProgress.get());
+        }
+
+        static void RebuildCellFiles(
+            TerrainConfig^ cfg, String^ uberSurfaceDir, bool overwriteExisting, IProgress^ progress)
+        {
+            auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
+            ToolsRig::GenerateCellFiles(
+                cfg->GetNative(), 
+                clix::marshalString<clix::E_UTF8>(uberSurfaceDir).c_str(), 
+                overwriteExisting, nativeProgress.get());
         }
 
     };

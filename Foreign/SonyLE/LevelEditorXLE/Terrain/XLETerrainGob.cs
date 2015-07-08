@@ -118,6 +118,12 @@ namespace LevelEditorXLE.Terrain
             set { SetAttribute(TerrainST.SunPathAngleAttribute, value); }
         }
 
+        public uint[] CellCount
+        {
+            get { return GetAttribute<uint[]>(TerrainST.CellCountAttribute); }
+            set { SetAttribute(TerrainST.CellCountAttribute, value); }
+        }
+
         private static uint ClampNodeDimensions(uint input)
         {
             return input.Clamp(1u, 1024u);
@@ -174,77 +180,8 @@ namespace LevelEditorXLE.Terrain
         #endregion
 
         #region Configure Steps
-        internal void Reconfigure(TerrainConfig.Config cfg)
+        internal TerrainConfig.Config BuildDialogConfig()
         {
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-
-            var nodeDimensions = ClampNodeDimensions(cfg.NodeDimensions);
-            var overlap = cfg.Overlap;
-            var cellTreeDepth = ClampCellTreeDepth(cfg.CellTreeDepth);
-
-            sceneMan.UnloadTerrain();
-
-            try
-            {
-                using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
-                {
-                    // if there is a source DEM file specified then we should
-                    // attempt to build the starter uber surface.
-                    if (cfg.Import == TerrainConfig.Config.ImportType.DEMFile
-                        && cfg.SourceDEMFile != null && cfg.SourceDEMFile.Length > 0)
-                    {
-                        GUILayer.EditorInterfaceUtils.GenerateUberSurfaceFromDEM(
-                            cfg.UberSurfaceDirectory, cfg.SourceDEMFile,
-                            nodeDimensions, cellTreeDepth,
-                            progress);
-                    } else if (cfg.Import == TerrainConfig.Config.ImportType.NewBlankTerrain
-                        && cfg.NewCellCountX != 0 && cfg.NewCellCountY != 0)
-                    {
-                        GUILayer.EditorInterfaceUtils.GenerateBlankUberSurface(
-                            cfg.UberSurfaceDirectory, cfg.NewCellCountX, cfg.NewCellCountY,
-                            nodeDimensions, cellTreeDepth,
-                            progress);
-                    }
-
-                    var terrainCfg = new GUILayer.TerrainConfig(
-                        cfg.CellsDirectory,
-                        nodeDimensions, cellTreeDepth, overlap,
-                        cfg.Spacing, (float)(cfg.SunPathAngle * Math.PI / 180.0f),
-                        cfg.HasEncodedGradientFlags);
-
-                    if (cfg.HasBaseMaterialCoverage)
-                        terrainCfg.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(terrainCfg, cfg.UberSurfaceDirectory, 1000));
-                    if (cfg.HasDecorationCoverage)
-                        terrainCfg.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(terrainCfg, cfg.UberSurfaceDirectory, 1001)); 
-                    if (cfg.HasShadowsCoverage)
-                        terrainCfg.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(terrainCfg, cfg.UberSurfaceDirectory, 2)); 
-
-                    // fill in the cells directory with starter cells (if they don't already exist)
-                    GUILayer.EditorInterfaceUtils.GenerateStarterCells(
-                        terrainCfg, cfg.UberSurfaceDirectory, progress);
-                }
-            }
-            catch { }
-
-                // if the above completed without throwing an exception, we can commit the values
-            NodeDimensions = nodeDimensions;
-            Overlap = overlap;
-            CellTreeDepth = cellTreeDepth;
-            Spacing = cfg.Spacing;
-            UberSurfaceDirectory = cfg.UberSurfaceDirectory;
-            CellsDirectory = cfg.CellsDirectory;
-            HasDecorationCoverage = cfg.HasDecorationCoverage;
-            HasBaseMaterialCoverage = cfg.HasBaseMaterialCoverage;
-            HasShadowsCoverage = cfg.HasShadowsCoverage;
-            HasEncodedGradientFlags = cfg.HasEncodedGradientFlags; 
-            SunPathAngle = cfg.SunPathAngle;
-
-            sceneMan.ReloadTerrain();
-        }
-
-        internal bool DoModalConfigure()
-        {
-            // open the configuration dialog
             var cfg = new TerrainConfig.Config();
             cfg.NodeDimensions = NodeDimensions;
             cfg.Overlap = Overlap;
@@ -257,14 +194,113 @@ namespace LevelEditorXLE.Terrain
             cfg.HasShadowsCoverage = HasShadowsCoverage;
             cfg.HasEncodedGradientFlags = HasEncodedGradientFlags;
             cfg.SunPathAngle = SunPathAngle;
+            return cfg;
+        }
 
+        internal void CommitDialogConfig(TerrainConfig.Config cfg)
+        {
+            NodeDimensions = cfg.NodeDimensions;
+            Overlap = cfg.Overlap;
+            CellTreeDepth = cfg.CellTreeDepth;
+            Spacing = cfg.Spacing;
+            UberSurfaceDirectory = cfg.UberSurfaceDirectory;
+            CellsDirectory = cfg.CellsDirectory;
+            HasDecorationCoverage = cfg.HasDecorationCoverage;
+            HasBaseMaterialCoverage = cfg.HasBaseMaterialCoverage;
+            HasShadowsCoverage = cfg.HasShadowsCoverage;
+            HasEncodedGradientFlags = cfg.HasEncodedGradientFlags;
+            SunPathAngle = cfg.SunPathAngle;
+        }
+
+        internal GUILayer.TerrainConfig BuildEngineConfig(TerrainConfig.Config cfg)
+        {
+            var result = new GUILayer.TerrainConfig(
+                cfg.CellsDirectory,
+                cfg.NodeDimensions, cfg.CellTreeDepth, cfg.Overlap,
+                cfg.Spacing, (float)(cfg.SunPathAngle * Math.PI / 180.0f),
+                cfg.HasEncodedGradientFlags);
+
+            result.CellCount = new GUILayer.VectorUInt2(CellCount[0], CellCount[1]);
+
+            if (cfg.HasBaseMaterialCoverage)
+                result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 1000));
+            if (cfg.HasDecorationCoverage)
+                result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 1001));
+            if (cfg.HasShadowsCoverage)
+                result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 2));
+
+            return result;
+        }
+
+        internal GUILayer.TerrainConfig BuildEngineConfig()
+        {
+            return BuildEngineConfig(BuildDialogConfig());
+        }
+
+        internal void Reconfigure(TerrainConfig.Config cfg)
+        {
+            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+
+            cfg.NodeDimensions = ClampNodeDimensions(cfg.NodeDimensions);
+            cfg.CellTreeDepth = ClampCellTreeDepth(cfg.CellTreeDepth);
+
+            sceneMan.UnloadTerrain();
+
+            try
+            {
+                var newCellCount = new GUILayer.VectorUInt2(0, 0);
+                using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
+                {
+                    // if there is a source DEM file specified then we should
+                    // attempt to build the starter uber surface.
+                    if (cfg.Import == TerrainConfig.Config.ImportType.DEMFile
+                        && cfg.SourceDEMFile != null && cfg.SourceDEMFile.Length > 0)
+                    {
+                        GUILayer.EditorInterfaceUtils.GenerateUberSurfaceFromDEM(
+                            cfg.UberSurfaceDirectory, cfg.SourceDEMFile,
+                            cfg.NodeDimensions, cfg.CellTreeDepth,
+                            progress);
+                    } else if (cfg.Import == TerrainConfig.Config.ImportType.NewBlankTerrain
+                        && cfg.NewCellCountX != 0 && cfg.NewCellCountY != 0)
+                    {
+                        GUILayer.EditorInterfaceUtils.GenerateBlankUberSurface(
+                            cfg.UberSurfaceDirectory, cfg.NewCellCountX, cfg.NewCellCountY,
+                            cfg.NodeDimensions, cfg.CellTreeDepth,
+                            progress);
+                    }
+
+                    var engineCfg = BuildEngineConfig(cfg);
+                    engineCfg.InitCellCountFromUberSurface(cfg.UberSurfaceDirectory);
+                    newCellCount = engineCfg.CellCount;
+
+                        // fill in the cells directory with starter cells (if they don't already exist)
+                    GUILayer.EditorInterfaceUtils.GenerateStarterCells(
+                        engineCfg, cfg.UberSurfaceDirectory, progress);
+
+                        // native side reads the config from disk atm.
+                        // so we need to commit to disk
+                    engineCfg.Save();
+                }
+
+                    // if the above completed without throwing an exception, we can commit the values
+                CommitDialogConfig(cfg);
+                CellCount = new uint[2] { newCellCount.X, newCellCount.Y };
+            }
+            catch { }
+
+            sceneMan.ReloadTerrain();
+        }
+
+        internal bool DoModalConfigure()
+        {
+                // open the configuration dialog
             using (var dlg = new TerrainConfig())
             {
-                dlg.Value = cfg;
+                dlg.Value = BuildDialogConfig();
                 var result = dlg.ShowDialog();
                 if (result == System.Windows.Forms.DialogResult.OK)
                 {
-                    Reconfigure(cfg);
+                    Reconfigure(dlg.Value);
                     return true;
                 }
             }
@@ -281,7 +317,8 @@ namespace LevelEditorXLE.Terrain
             {
                 using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
                 {
-                    GUILayer.EditorInterfaceUtils.GenerateShadowsSurface(CellsDirectory, UberSurfaceDirectory, progress);
+                    GUILayer.EditorInterfaceUtils.GenerateShadowsSurface(
+                        BuildEngineConfig(), UberSurfaceDirectory, progress);
                 }
             }
             catch { }
@@ -298,6 +335,24 @@ namespace LevelEditorXLE.Terrain
             }
         }
 
+        void DoRebuildCellFiles()
+        {
+            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+            sceneMan.UnloadTerrain();
+
+            try
+            {
+                using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
+                {
+                    GUILayer.EditorInterfaceUtils.RebuildCellFiles(
+                        BuildEngineConfig(), UberSurfaceDirectory, true, progress);
+                }
+            }
+            catch { }
+
+            sceneMan.ReloadTerrain();
+        }
+
         #region ICommandClient Members
         bool ICommandClient.CanDoCommand(object commandTag)
         {
@@ -307,11 +362,11 @@ namespace LevelEditorXLE.Terrain
                 {
                     case Command.CreateBaseTexture:
                         return DomNode.GetChild(TerrainST.baseTextureChild) == null;
+
                     case Command.Configure:
-                        return true;
                     case Command.GenerateShadows:
-                        return true;
                     case Command.FlushToDisk:
+                    case Command.RebuildCellFiles:
                         return true;
                 }
             }
@@ -352,6 +407,12 @@ namespace LevelEditorXLE.Terrain
                         DoFlushToDisk();
                         break;
                     }
+
+                case Command.RebuildCellFiles:
+                    {
+                        DoRebuildCellFiles();
+                        break;
+                    }
             }
         }
 
@@ -368,7 +429,9 @@ namespace LevelEditorXLE.Terrain
             [Description("Generate Shadows")]
             GenerateShadows,
             [Description("Commit to disk")]
-            FlushToDisk
+            FlushToDisk,
+            [Description("Rebuild cell files")]
+            RebuildCellFiles
         }
 
         IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)

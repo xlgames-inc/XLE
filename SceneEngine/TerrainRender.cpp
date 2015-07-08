@@ -382,7 +382,9 @@ namespace SceneEngine
     {
             // Cull on a cell level (prevent loading of distance cell resources)
             //      todo -- if we knew the cell min/max height, we could do this more accurately
-        if (CullAABB_Aligned(AsFloatArray(parserContext.GetProjectionDesc()._worldToProjection), cell._aabbMin, cell._aabbMax))
+        if (CullAABB_Aligned(
+            AsFloatArray(parserContext.GetProjectionDesc()._worldToProjection), 
+            cell._aabbMin, cell._aabbMax))
             return;
 
             // look for a valid "CellRenderInfo" already in our cache
@@ -407,7 +409,9 @@ namespace SceneEngine
             if (invalidation) {
                     // before we delete it, we need to erase it from the pending uploads
                 _pendingUploads.erase(
-                    std::remove_if(_pendingUploads.begin(), _pendingUploads.end(), [=](const UploadPair& p) { return p.first == i->second.get(); }),
+                    std::remove_if(
+                        _pendingUploads.begin(), _pendingUploads.end(), 
+                        [=](const UploadPair& p) { return p.first == i->second.get(); }),
                     _pendingUploads.end());
                 i->second.reset();
 
@@ -422,7 +426,9 @@ namespace SceneEngine
         } else {
 
             auto tex = BuildMappedCoverageTextures(parserContext, cell, _coverageIds, *_ioFormat);
-            auto newRenderInfo = std::make_unique<CellRenderInfo>(std::ref(_ioFormat->LoadHeights(cell._heightMapFilename)), AsPointer(tex.cbegin()), AsPointer(tex.cend()));
+            auto newRenderInfo = std::make_unique<CellRenderInfo>(
+                std::ref(_ioFormat->LoadHeights(cell._heightMapFilename)), 
+                AsPointer(tex.cbegin()), AsPointer(tex.cend()));
             auto newIterator = _renderInfos.insert(i, CRIPair(hash, std::move(newRenderInfo)));
             assert(newIterator->first == hash);
             renderInfo = newIterator->second.get();
@@ -1113,6 +1119,16 @@ namespace SceneEngine
         assert(_pendingUploads.empty());
     }
 
+    void TerrainCellRenderer::UnloadCachedData()
+    {
+        // we want to clear out the "_renderInfos" array
+        //  --  so we can release handles to source data files
+        //      and avoid dangling pointers to cells that are about
+        //      to change.
+        // First we have to complete any pending uploads!
+        CompletePendingUploads();
+        _renderInfos.clear();
+    }
 
     //////////////////////////////////////////////////////////////////////////////////////////
     bool TerrainCellRenderer::CellRenderInfo::CompleteUpload(uint32 uploadId, BufferUploads::IManager& bufferUploads)

@@ -449,6 +449,9 @@ namespace SceneEngine
         _pimpl->_uberSurfaceInterface.reset();
         _pimpl->_uberSurface.reset();
         _pimpl->_coverageInterfaces.clear();
+
+        if (_pimpl->_renderer)
+            _pimpl->_renderer->UnloadCachedData();
     }
 
     static float CellSizeWorldSpace(const TerrainConfig& cfg)

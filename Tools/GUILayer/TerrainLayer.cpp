@@ -55,6 +55,11 @@ namespace GUILayer
             _native->NodeDimensionsInElements(), _native->CellTreeDepth());
     }
 
+    void TerrainConfig::Save()
+    {
+        _native->Save();
+    }
+
     TerrainConfig::TerrainConfig(
         String^ baseDir,
         unsigned nodeDimsInElements, unsigned cellTreeDepth, unsigned nodeOverlap,
