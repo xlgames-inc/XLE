@@ -27,6 +27,7 @@ namespace SceneEngine
         const std::string & SourceFile() const          { return _sourceFileName; }
         const std::string & SecondaryCacheFile() const  { return _secondaryCacheName; }
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+        bool EncodedGradientFlags() const               { return _encodedGradientFlags; }
 
         //////////////////////////////////////////////////////////////////
         class Node
@@ -63,8 +64,9 @@ namespace SceneEngine
         std::vector<std::unique_ptr<Node>>  _nodes;
 
     protected:
-        std::string                         _sourceFileName;
-        std::string                         _secondaryCacheName;
+        std::string         _sourceFileName;
+        std::string         _secondaryCacheName;
+        bool                _encodedGradientFlags;
 
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
         std::vector<uint8>      BuildHeightMapData(unsigned nodeIndex, Utility::BasicFile& sourceFile, Utility::BasicFile& secondaryCache);
@@ -94,5 +96,7 @@ namespace SceneEngine
 
         friend class TerrainCellRenderer;
     };
+
+    unsigned CompressedHeightMask(bool encodedGradientFlags);
 }
 

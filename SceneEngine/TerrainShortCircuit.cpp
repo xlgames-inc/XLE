@@ -54,7 +54,7 @@ namespace SceneEngine
 
     void TerrainCellRenderer::ShortCircuitTileUpdate(
         const TextureTile& tile, unsigned coverageLayerIndex, 
-        UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, 
+        UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, bool encodedGradientFlags,
         Float4x4& localToCell, const ShortCircuitUpdate& upd)
     {
         auto& context = *upd._context;
@@ -78,8 +78,8 @@ namespace SceneEngine
             const ::Assets::ResChar secondPassShader[] = "game/xleres/ui/copyterraintile.sh:CommitToFinal:cs_*";
             StringMeld<64, char> defines; 
             defines << "VALUE_FORMAT=" << format << ";FILTER_TYPE=" << filterType;
-            if (_cfg._encodedGradientFlags) defines << ";ENCODED_GRADIENT_FLAGS";
-            const unsigned compressedHeightMask = _cfg._encodedGradientFlags ? 0x3fffu : 0xffffu;
+            if (encodedGradientFlags) defines << ";ENCODED_GRADIENT_FLAGS";
+            const auto compressedHeightMask = CompressedHeightMask(encodedGradientFlags);
 
             auto& byteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(firstPassShader, defines.get());
             auto& cs0 = ::Assets::GetAssetDep<Metal::ComputeShader>(firstPassShader, defines.get());
@@ -218,7 +218,7 @@ namespace SceneEngine
                     //  the uber-surface coordinate system. If there's an overlap
                     //  between the node coords and the update box, we need to do
                     //  a copy.
-                const unsigned compressedHeightMask = _cfg._encodedGradientFlags ? 0x3fffu : 0xffffu;
+                const unsigned compressedHeightMask = CompressedHeightMask(sourceCell.EncodedGradientFlags());
 
                 Float3 nodeMinInCell = TransformPoint(sourceNode->_localToCell, Float3(0.f, 0.f, 0.f));
                 Float3 nodeMaxInCell = TransformPoint(sourceNode->_localToCell, Float3(1.f, 1.f, float(compressedHeightMask)));
@@ -240,7 +240,7 @@ namespace SceneEngine
                     size_t fieldIndex = std::distance(sourceCell._nodeFields.cbegin(), fi);
                     unsigned downsample = unsigned(4-fieldIndex);
 
-                    ShortCircuitTileUpdate(ni->_tile, coverageLayerIndex, nodeMin, nodeMax, downsample, sourceNode->_localToCell, upd);
+                    ShortCircuitTileUpdate(ni->_tile, coverageLayerIndex, nodeMin, nodeMax, downsample, sourceCell.EncodedGradientFlags(), sourceNode->_localToCell, upd);
 
                 }
             }

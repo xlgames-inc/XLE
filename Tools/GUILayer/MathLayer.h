@@ -37,6 +37,14 @@ namespace GUILayer
         Vector4(float x, float y, float z, float w) { X = x; Y = y; Z = z; W = w; }
     };
 
+    public value struct VectorUInt2 sealed
+    {
+        property unsigned X;
+        property unsigned Y;
+
+        VectorUInt2(unsigned x, unsigned y) { X = x; Y = y; }
+    };
+
     inline Float2 AsFloat2(Vector2 input) { return Float2(input.X, input.Y); }
     inline Vector2 AsVector2(Float2 input) { return Vector2(input[0], input[1]); }
     
@@ -45,5 +53,8 @@ namespace GUILayer
 
     inline Float4 AsFloat4(Vector4 input) { return Float4(input.X, input.Y, input.Z, input.W); }
     inline Vector4 AsVector4(Float4 input) { return Vector4(input[0], input[1], input[2], input[3]); }
+
+    inline UInt2 AsUInt2(VectorUInt2 input) { return UInt2(input.X, input.Y); }
+    inline VectorUInt2 AsVectorUInt2(UInt2 input) { return VectorUInt2(input[0], input[1]); }
 }
 

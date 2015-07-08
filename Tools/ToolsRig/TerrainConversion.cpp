@@ -31,10 +31,12 @@ namespace ToolsRig
 {
     using namespace SceneEngine;
 
+#if 0
     static bool BuildUberSurfaceFile(
         const char filename[], const TerrainConfig& config, 
         ITerrainFormat* ioFormat,
         unsigned xStart, unsigned yStart, unsigned xDims, unsigned yDims);
+#endif
 
     //////////////////////////////////////////////////////////////////////////////////////////
     template<typename Sample>
@@ -79,25 +81,6 @@ namespace ToolsRig
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
-    void ExecuteTerrainConversion(
-        const ::Assets::ResChar destinationUberSurfaceDirectory[],
-        const TerrainConfig& outputConfig, 
-        const TerrainConfig& inputConfig, 
-        std::shared_ptr<ITerrainFormat> inputIOFormat)
-    {
-        CreateDirectoryRecursive(destinationUberSurfaceDirectory);
-
-        //////////////////////////////////////////////////////////////////////////////////////
-            // If we don't have an uber surface file, then we should create it
-        ::Assets::ResChar heightsFile[MaxPath];
-        TerrainConfig::GetUberSurfaceFilename(heightsFile, dimof(heightsFile), destinationUberSurfaceDirectory, CoverageId_Heights);
-        if (!DoesFileExist(heightsFile) && inputIOFormat) {
-            BuildUberSurfaceFile(
-                heightsFile, inputConfig, inputIOFormat.get(), 
-                0, 0, inputConfig._cellCount[0], inputConfig._cellCount[1]);
-        }
-    }
-
     void GenerateMissingCellFiles(
         const TerrainConfig& outputConfig, 
         std::shared_ptr<ITerrainFormat> outputIOFormat,
@@ -208,7 +191,7 @@ namespace ToolsRig
 
         //////////////////////////////////////////////////////////////////////////////////////
             // write cell files
-        auto fmt = std::make_shared<TerrainFormat>();
+        auto fmt = std::make_shared<TerrainFormat>(cfg.EncodedGradientFlags());
         WriteCellCoverageData<ShadowSample>(cfg, *fmt, shadowUberFn, shadowLayerIndex, true, progress);
     }
 
@@ -218,6 +201,8 @@ namespace ToolsRig
         const ::Assets::ResChar uberSurfaceDir[],
         ConsoleRig::IProgress* progress)
     {
+        CreateDirectoryRecursive(uberSurfaceDir);
+
         auto step = progress ? progress->BeginStep("Generate UberSurface Files", (unsigned)cfg.GetCoverageLayerCount(), true) : nullptr;
         for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l) {
             const auto& layer = cfg.GetCoverageLayer(l);
@@ -254,7 +239,7 @@ namespace ToolsRig
         GenerateShadowsSurface(cfg, uberSurfaceDir, progress);
     }
     
-    //////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
     class DEMConfig
     {
     public:
@@ -315,6 +300,7 @@ namespace ToolsRig
         }
     }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
     class TerrainUberHeader
     {
     public:
@@ -507,6 +493,7 @@ namespace ToolsRig
             0.f);
     }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
     static UInt2 GetUberSurfaceDimensions(const ::Assets::ResChar fn[])
     {
         BasicFile file(fn, "rb", BasicFile::ShareMode::Read|BasicFile::ShareMode::Write);
@@ -516,29 +503,9 @@ namespace ToolsRig
         return UInt2(hdr._width, hdr._height);
     }
 
-
-    static unsigned GetResolutionForLayer(SceneEngine::TerrainCoverageId layerId)
-    {
-        switch (layerId) {
-        case CoverageId_AngleBasedShadows: return 1;
-        default: return 4;
-        }
-    }
-
-    static unsigned GetOverlapForLayer(SceneEngine::TerrainCoverageId layerId)
-    {
-        switch (layerId) {
-        case CoverageId_AngleBasedShadows: return 1;
-        default: return 1;
-        }
-    }
-
-    void GenerateStarterCells(
-        const ::Assets::ResChar outputDir[], const ::Assets::ResChar inputUberSurfaceDirectory[],
-        unsigned destNodeDims, unsigned destCellTreeDepth, unsigned overlap, float spacing, float sunPathAngle,
-        bool hasEncodedGradientFlags,
-        const std::pair<SceneEngine::TerrainCoverageId, unsigned> layers[], unsigned layerCount,
-        ConsoleRig::IProgress* progress)
+    UInt2 GetCellCountFromUberSurface(
+        const ::Assets::ResChar inputUberSurfaceDirectory[],
+        UInt2 destNodeDims, unsigned destCellTreeDepth)
     {
         using namespace SceneEngine;
 
@@ -549,15 +516,21 @@ namespace ToolsRig
         auto eleCount = GetUberSurfaceDimensions(uberSurfaceHeights);
 
         auto cellDimsInEles = (1 << (destCellTreeDepth - 1)) * destNodeDims;
-        if ((eleCount[0] % cellDimsInEles)!=0 || (eleCount[1] % cellDimsInEles)!=0)
+        if ((eleCount[0] % cellDimsInEles[0])!=0 || (eleCount[1] % cellDimsInEles[1])!=0)
             ThrowException(::Exceptions::BasicLabel("Uber surface size is not divisable by cell size (uber surface size:(%ix%i), cell size:(%i))", 
-            eleCount[0], eleCount[1], cellDimsInEles));
+            eleCount[0], eleCount[1], cellDimsInEles[0]));
 
-        CreateDirectoryRecursive(outputDir);
+        return UInt2(eleCount[0] / cellDimsInEles[0], eleCount[1] / cellDimsInEles[1]);
+    }
+
+#if 0
+        UInt2 cellCount = GetCellCountFromUberSurface(
+            inputUberSurfaceDirectory, destNodeDims, destCellTreeDepth);
 
         TerrainConfig cfg(
-            outputDir, eleCount / cellDimsInEles, 
-            TerrainConfig::XLE, destNodeDims, destCellTreeDepth, overlap, spacing, sunPathAngle, hasEncodedGradientFlags);
+            outputDir, cellCount, 
+            TerrainConfig::XLE, 
+            destNodeDims, destCellTreeDepth, overlap, spacing, sunPathAngle, hasEncodedGradientFlags);
 
         for (unsigned l=0; l<layerCount; ++l) {
             ::Assets::ResChar uberSurfaceFN[MaxPath]; 
@@ -573,16 +546,22 @@ namespace ToolsRig
                     UInt2(layerRes*destNodeDims, layerRes*destNodeDims), overlap, layers[l].second
                 });
         }
+#endif
 
-        cfg.Save();
-        
-        auto fmt = std::make_shared<TerrainFormat>();
-        GenerateMissingUberSurfaceFiles(cfg, fmt, inputUberSurfaceDirectory, progress);
-        GenerateMissingCellFiles(cfg, fmt, inputUberSurfaceDirectory, progress);
+    void GenerateStarterCells(
+        const SceneEngine::TerrainConfig& cfg,
+        const ::Assets::ResChar uberSurfaceDirectory[],
+        ConsoleRig::IProgress* progress)
+    {
+        using namespace SceneEngine;
+        auto fmt = std::make_shared<TerrainFormat>(cfg.EncodedGradientFlags());
+        GenerateMissingUberSurfaceFiles(cfg, fmt, uberSurfaceDirectory, progress);
+        GenerateMissingCellFiles(cfg, fmt, uberSurfaceDirectory, progress);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0
     static void WriteNode(  
         float destination[], TerrainCell::Node& node, 
         const char sourceFileName[], const char secondaryCacheName[], 
@@ -728,4 +707,6 @@ namespace ToolsRig
 
         return true;
     }
+#endif
+
 }

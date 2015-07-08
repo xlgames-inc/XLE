@@ -206,17 +206,22 @@ namespace LevelEditorXLE.Terrain
                             progress);
                     }
 
-                    var coverageLayers = new List<uint>();
-                    if (cfg.HasBaseMaterialCoverage) coverageLayers.Add(1000);
-                    if (cfg.HasDecorationCoverage) coverageLayers.Add(1001);
-                    if (cfg.HasShadowsCoverage) coverageLayers.Add(2);
+                    var terrainCfg = new GUILayer.TerrainConfig(
+                        cfg.CellsDirectory,
+                        nodeDimensions, cellTreeDepth, overlap,
+                        cfg.Spacing, (float)(cfg.SunPathAngle * Math.PI / 180.0f),
+                        cfg.HasEncodedGradientFlags);
+
+                    if (cfg.HasBaseMaterialCoverage)
+                        terrainCfg.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(terrainCfg, cfg.UberSurfaceDirectory, 1000));
+                    if (cfg.HasDecorationCoverage)
+                        terrainCfg.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(terrainCfg, cfg.UberSurfaceDirectory, 1001)); 
+                    if (cfg.HasShadowsCoverage)
+                        terrainCfg.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(terrainCfg, cfg.UberSurfaceDirectory, 2)); 
 
                     // fill in the cells directory with starter cells (if they don't already exist)
                     GUILayer.EditorInterfaceUtils.GenerateStarterCells(
-                        cfg.CellsDirectory, cfg.UberSurfaceDirectory,
-                        nodeDimensions, cellTreeDepth, overlap,
-                        cfg.Spacing, (float)(cfg.SunPathAngle * Math.PI / 180.0f),
-                        cfg.HasEncodedGradientFlags, coverageLayers, progress);
+                        terrainCfg, cfg.UberSurfaceDirectory, progress);
                 }
             }
             catch { }

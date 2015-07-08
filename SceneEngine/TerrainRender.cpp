@@ -26,6 +26,7 @@
 
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/Log.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Math/ProjectionMath.h"
@@ -95,17 +96,17 @@ namespace SceneEngine
     std::vector<TerrainRenderingContext::QueuedNode> TerrainRenderingContext::_queuedNodes;        // HACK -- static to avoid allocation!
 
     TerrainRenderingContext::TerrainRenderingContext(
-        const TerrainRendererConfig& cfg,
         const TerrainCoverageId* coverageLayers, 
         const CoverageFormat* coverageFmts, 
-        unsigned coverageLayerCount)
+        unsigned coverageLayerCount,
+        bool encodedGradientFlags)
     : _currentViewport(0.f, 0.f, 0.f, 0.f, 0.f, 0.f)
     {
         _indexDrawCount = 0;
         // _isTextured = isTextured;
         // _elementSize = elementSize;
         _dynamicTessellation = false;
-        _encodedGradientFlags = cfg._encodedGradientFlags;
+        _encodedGradientFlags = encodedGradientFlags;
 
         _coverageLayerCount = std::min(coverageLayerCount, TerrainCellId::MaxCoverageCount);
         for (unsigned c=0; c<_coverageLayerCount; ++c) {
@@ -560,8 +561,7 @@ namespace SceneEngine
             //  Every time we shift nodes, we have to update the neighbour
             //  references.
 
-        const unsigned compressedHeightMask = 
-            renderingContext._encodedGradientFlags ? 0x3fffu : 0xffffu;
+        const auto compressedHeightMask = CompressedHeightMask(renderingContext._encodedGradientFlags);
 
         std::vector<Node> collapsedField;
         for (auto n=_activeNodes[startLod].begin(); n!=_activeNodes[startLod].end(); ++n) {
@@ -831,7 +831,7 @@ namespace SceneEngine
         cullResults.resize(field._nodeEnd - field._nodeBegin);
         screenSpaceEdgeLengths.resize(field._nodeEnd - field._nodeBegin, FLT_MAX);
 
-        const unsigned compressedHeightMask = _cfg._encodedGradientFlags ? 0x3fffu : 0xffffu;
+        const unsigned compressedHeightMask = CompressedHeightMask(terrainContext._encodedGradientFlags);
 
         for (unsigned n=field._nodeBegin; n<field._nodeEnd; ++n) {
             auto& sourceNode = sourceCell._nodes[n];
@@ -918,7 +918,7 @@ namespace SceneEngine
         for (unsigned n=0; n<field._nodeEnd - field._nodeBegin; ++n)
             pendingNodes.push(std::make_pair(startLod, n));
 
-        const unsigned compressedHeightMask = _cfg._encodedGradientFlags ? 0x3fffu : 0xffffu;
+        const auto compressedHeightMask = CompressedHeightMask(terrainContext._encodedGradientFlags);
 
         while (!pendingNodes.empty()) {
             auto nodeRef = pendingNodes.top(); pendingNodes.pop();
@@ -1012,6 +1012,16 @@ namespace SceneEngine
                         terrainContext._localTransformConstantsBuffer.Update(*context, &localTransform, sizeof(localTransform));
                         currentCell = i->_cell;
                     }
+
+                    #if defined(_DEBUG)
+                            // if the cell source data format doesn't match the format expected by the current
+                            // rendering context, then we can't render this cell. We use the same shaders for
+                            // all cells, so all cells must agree on those settings that affect shader selection.
+                        if (i->_cell->_sourceCell->EncodedGradientFlags() != terrainContext._encodedGradientFlags) {
+                            LogWarning << "Encoded gradient flags setting in cell doesn't match renderer. Rebuild cells so that the renderer settings match the cell data.";
+                            continue;
+                        }
+                    #endif
 
                     RenderNode(context, parserContext, terrainContext, *i->_cell, i->_absNodeIndex, i->_neighbourLODDiff);
                 }
@@ -1227,7 +1237,6 @@ namespace SceneEngine
     {
         if (lhs._coverageLayers.size() != rhs._coverageLayers.size()) return false;
         if (!IsCompatible(lhs._heights, rhs._heights)) return false;
-        if (lhs._encodedGradientFlags != rhs._encodedGradientFlags) return false;
         for (unsigned c=0; c<lhs._coverageLayers.size(); ++c)
             if (    lhs._coverageLayers[c].first != rhs._coverageLayers[c].first
                 || !IsCompatible(lhs._coverageLayers[c].second, rhs._coverageLayers[c].second)) return false;

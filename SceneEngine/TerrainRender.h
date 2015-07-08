@@ -71,7 +71,6 @@ namespace SceneEngine
         };
         Layer _heights;
         std::vector<std::pair<TerrainCoverageId, Layer>> _coverageLayers;
-        bool _encodedGradientFlags;
     };
 
     bool IsCompatible(const TerrainRendererConfig& lhs, const TerrainRendererConfig& rhs);
@@ -179,7 +178,7 @@ namespace SceneEngine
             const Float4x4& worldToProjection, const Float3& viewPositionWorld,
             CellRenderInfo& cellRenderInfo, const Float4x4& cellToWorld);
 
-        void    ShortCircuitTileUpdate(const TextureTile& tile, unsigned layerIndex, UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, Float4x4& localToCell, const ShortCircuitUpdate& upd);
+        void    ShortCircuitTileUpdate(const TextureTile& tile, unsigned layerIndex, UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, bool encodedGradientFlags, Float4x4& localToCell, const ShortCircuitUpdate& upd);
 
         auto    BuildQueuedNodeFlags(const CellRenderInfo& cellRenderInfo, unsigned nodeIndex, unsigned lodField) const -> unsigned;
 
@@ -295,10 +294,10 @@ namespace SceneEngine
         static std::vector<QueuedNode> _queuedNodes;        // HACK -- static to avoid allocation!
 
         TerrainRenderingContext(
-            const TerrainRendererConfig& cfg,
             const TerrainCoverageId* coverageLayers, 
             const CoverageFormat* coverageFmts, 
-            unsigned coverageLayerCount);
+            unsigned coverageLayerCount,
+            bool encodedGradientFlags);
 
         enum Mode { Mode_Normal, Mode_RayTest, Mode_VegetationPrepare };
 

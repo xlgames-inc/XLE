@@ -8,6 +8,7 @@
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "LevelEditorScene.h"
+#include "TerrainLayer.h"
 #include "GUILayerUtil.h"
 #include "MathLayer.h"
 #include "MarshalString.h"
@@ -346,25 +347,61 @@ namespace GUILayer
         }
 
         static void GenerateStarterCells(
-            String^ cellsDirectory, String^ uberSurfaceDirectory,
-            unsigned nodeDimensions, unsigned cellTreeDepth, unsigned overlap,
-            float spacing, float sunPathAngle, bool hasEncodedGradientFlags,
-            IEnumerable<unsigned>^ layers, IProgress^ progress)
+            TerrainConfig^ cfg,
+            String^ uberSurfaceDirectory,
+            IProgress^ progress)
         {
             auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
-            std::vector<std::pair<SceneEngine::TerrainCoverageId, unsigned>> nativeLayers;
-            for each(auto l in layers) {
-                unsigned fmt = 62;
-                if (l == 2) fmt = 35;
-                nativeLayers.push_back(std::make_pair(l, 35));
-            }
-
             ToolsRig::GenerateStarterCells(
-                clix::marshalString<clix::E_UTF8>(cellsDirectory).c_str(),
+                cfg->GetNative(),
                 clix::marshalString<clix::E_UTF8>(uberSurfaceDirectory).c_str(),
-                nodeDimensions, cellTreeDepth, overlap, spacing, sunPathAngle, hasEncodedGradientFlags,
-                AsPointer(nativeLayers.cbegin()), (unsigned)nativeLayers.size(),
                 nativeProgress.get());
+        }
+
+        static unsigned DefaultResolutionForLayer(SceneEngine::TerrainCoverageId layerId)
+        {
+            switch (layerId) {
+            case SceneEngine::CoverageId_AngleBasedShadows: return 1;
+            default: return 4;
+            }
+        }
+
+        static unsigned DefaultOverlapForLayer(SceneEngine::TerrainCoverageId layerId)
+        {
+            switch (layerId) {
+            case SceneEngine::CoverageId_AngleBasedShadows: return 1;
+            default: return 1;
+            }
+        }
+
+        static unsigned DefaultFormatForLayer(SceneEngine::TerrainCoverageId layerId)
+        {
+            switch (layerId) {
+            case SceneEngine::CoverageId_AngleBasedShadows: 
+                return RenderCore::Metal::NativeFormat::R16G16_UNORM;
+            default: return RenderCore::Metal::NativeFormat::R8_UINT;
+            }
+        }
+
+        static TerrainConfig::CoverageLayerDesc^ DefaultCoverageLayer(
+            TerrainConfig^ cfg, String^ baseDirectory, unsigned coverageLayerId) 
+        {
+            ::Assets::ResChar uberSurfaceFN[MaxPath]; 
+            SceneEngine::TerrainConfig::GetUberSurfaceFilename(
+                uberSurfaceFN, dimof(uberSurfaceFN),
+                clix::marshalString<clix::E_UTF8>(baseDirectory).c_str(),
+                coverageLayerId);
+
+            auto result = gcnew TerrainConfig::CoverageLayerDesc(
+                clix::marshalString<clix::E_UTF8>(uberSurfaceFN), coverageLayerId);
+            
+            const auto layerRes = DefaultResolutionForLayer(coverageLayerId);
+            const auto overlap = DefaultOverlapForLayer(coverageLayerId);
+            result->NodeDims = AsVectorUInt2(layerRes * AsUInt2(cfg->NodeDims));
+            result->Overlap = overlap;
+            result->Format = DefaultFormatForLayer(coverageLayerId);
+
+            return result;
         }
 
         static void GenerateShadowsSurface(

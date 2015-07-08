@@ -30,7 +30,7 @@ namespace SceneEngine
             const char destinationFile[], TerrainUberSurface<uint8>& surface, 
             UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const;
 
-        TerrainFormat(bool encodedGradientFlags);
+        TerrainFormat(bool encodedGradientFlags = true);
         ~TerrainFormat();
 
     protected:

@@ -21,10 +21,8 @@ namespace ToolsRig
         ConsoleRig::IProgress* progress);
 
     void GenerateStarterCells(
-        const ::Assets::ResChar outputDir[], const ::Assets::ResChar input[], 
-        unsigned destNodeDims, unsigned destCellTreeDepth, unsigned overlap, float spacing, float sunPathAngle,
-        bool hasEncodedGradientFlags,
-        const std::pair<SceneEngine::TerrainCoverageId, unsigned> layers[], unsigned layerCount,
+        const SceneEngine::TerrainConfig& cfg, 
+        const ::Assets::ResChar uberSurfaceDirectory[], 
         ConsoleRig::IProgress* progress);
 
     void GenerateMissingUberSurfaceFiles(
@@ -49,4 +47,8 @@ namespace ToolsRig
         const SceneEngine::TerrainConfig& cfg, 
         const ::Assets::ResChar uberSurfaceDir[],
         ConsoleRig::IProgress* progress = nullptr);
+
+    UInt2 GetCellCountFromUberSurface(
+        const ::Assets::ResChar inputUberSurfaceDirectory[],
+        UInt2 destNodeDims, unsigned destCellTreeDepth);
 }

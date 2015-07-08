@@ -47,6 +47,9 @@
     <ClCompile Include="..\EntityLayer.cpp">
       <Filter>LevelEditor</Filter>
     </ClCompile>
+    <ClCompile Include="..\TerrainLayer.cpp">
+      <Filter>LevelEditor</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -102,6 +105,9 @@
       <Filter>LevelEditor</Filter>
     </ClInclude>
     <ClInclude Include="..\EntityLayer.h">
+      <Filter>LevelEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainLayer.h">
       <Filter>LevelEditor</Filter>
     </ClInclude>
   </ItemGroup>

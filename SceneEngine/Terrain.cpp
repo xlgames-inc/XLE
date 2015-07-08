@@ -12,11 +12,15 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/MemoryUtils.h"
 
-
 namespace SceneEngine
 {
-    TerrainCell::TerrainCell() {}
+    TerrainCell::TerrainCell() : _encodedGradientFlags(false) {}
     TerrainCell::~TerrainCell() {}
+
+    unsigned CompressedHeightMask(bool encodedGradientFlags)
+    {
+        return encodedGradientFlags ? 0x3fff : 0xffff;
+    }
 
     std::vector<uint8> TerrainCell::BuildHeightMapData(unsigned nodeIndex, BasicFile& sourceFile, BasicFile& secondaryCache)
     {
@@ -113,13 +117,14 @@ namespace SceneEngine
 
         std::vector<uint8> result;
         result.resize(sizeof(uint16) * nodeDim * nodeDim, 0);
+        auto maxRawHeight = (float)CompressedHeightMask(_encodedGradientFlags);
         for (unsigned y=0; y<nodeDim; ++y)
             for (unsigned x=0; x<nodeDim; ++x) {
                 float a = (finalHeights[y*nodeDim + x] - finalMin) / (finalMax - finalMin);
-                ((uint16*)AsPointer(result.begin()))[y*nodeDim + x] = uint16(a * float(CompressedHeightMask));
+                ((uint16*)AsPointer(result.begin()))[y*nodeDim + x] = uint16(a * maxRawHeight);
             }
 
-        _nodes[nodeIndex]->_localToCell(2,2) = (finalMax - finalMin) / float(CompressedHeightMask);
+        _nodes[nodeIndex]->_localToCell(2,2) = (finalMax - finalMin) / maxRawHeight;
         _nodes[nodeIndex]->_localToCell(2,3) = finalMin;
         return std::move(result);
     }

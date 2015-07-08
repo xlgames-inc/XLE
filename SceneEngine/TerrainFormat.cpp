@@ -65,9 +65,15 @@ namespace SceneEngine
             class Header
             {
             public:
-                unsigned    _treeDepth;
-                unsigned    _overlapCount;
-                unsigned    _dummy[2];
+                struct Flags
+                {
+                    enum { EncodedGradientFlags = 1<<0 };
+                    typedef unsigned BitField;
+                };
+                unsigned            _treeDepth;
+                unsigned            _overlapCount;
+                Flags::BitField     _flags;
+                unsigned            _dummy[1];
             };
             Header _hdr;
         };
@@ -144,6 +150,8 @@ namespace SceneEngine
             CellDesc cellDesc;
             file.Seek(scaffoldChunk._fileOffset, SEEK_SET);
             file.Read(&cellDesc._hdr, sizeof(cellDesc._hdr), 1);
+
+            _encodedGradientFlags = !!(cellDesc._hdr._flags & CellDesc::Header::Flags::EncodedGradientFlags);
 
             {
                 //  nodes are stored as a breadth-first quad tree, starting with
@@ -431,6 +439,8 @@ namespace SceneEngine
             CellDesc::Header cellDescHeader;
             cellDescHeader._treeDepth = treeDepth;
             cellDescHeader._overlapCount = overlapElements;
+            cellDescHeader._flags = 0;
+            if (encodedGradientFlags) cellDescHeader._flags |= CellDesc::Header::Flags::EncodedGradientFlags;
             XlZeroMemory(cellDescHeader._dummy);
             outputFile.Write(&cellDescHeader, sizeof(cellDescHeader), 1);
 

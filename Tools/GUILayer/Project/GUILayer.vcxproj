@@ -94,6 +94,7 @@
     <ClCompile Include="..\ObjectPlaceholders.cpp" />
     <ClCompile Include="..\SimpleRenderingContext.cpp" />
     <ClCompile Include="..\ManipulatorsLayer.cpp" />
+    <ClCompile Include="..\TerrainLayer.cpp" />
     <ClCompile Include="..\TestControl.cpp" />
     <ClCompile Include="..\TweakableBridge.cpp" />
     <ClCompile Include="..\UITypesBinding.cpp" />
@@ -117,6 +118,7 @@
     <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\ManipulatorsLayer.h" />
     <ClInclude Include="..\ObjectPlaceholders.h" />
+    <ClInclude Include="..\TerrainLayer.h" />
     <ClInclude Include="..\TestControl.h" />
     <ClInclude Include="..\UITypesBinding.h" />
     <ClInclude Include="..\MathLayer.h" />

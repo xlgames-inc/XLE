@@ -136,7 +136,7 @@ namespace SceneEngine
                 pendingNodes.push(std::make_pair(startLod, n));
 
             const unsigned compressedHeightMask = 
-                _terrainRenderer->GetConfig()._encodedGradientFlags ? 0x3fffu : 0xffffu;
+                CompressedHeightMask(sourceCell.EncodedGradientFlags());
 
             while (!pendingNodes.empty()) {
                 auto nodeRef = pendingNodes.top(); pendingNodes.pop();
@@ -283,7 +283,6 @@ namespace SceneEngine
 
         TerrainRendererConfig rendererCfg;
         rendererCfg._heights = TerrainRendererConfig::Layer { heightMapElementSize, cachedTileCount, Metal::NativeFormat::R16_UINT };
-        rendererCfg._encodedGradientFlags = cfg.EncodedGradientFlags();
 
         for (unsigned c=0; c<cfg.GetCoverageLayerCount(); ++c) {
             const auto& l = cfg.GetCoverageLayer(c);
@@ -558,7 +557,10 @@ namespace SceneEngine
 
             //  we need to enable the rendering state once, for all cells. The state should be
             //  more or less the same for every cell, so we don't need to do it every time
-        TerrainRenderingContext state(renderer->GetConfig(), renderer->GetCoverageIds(), renderer->GetCoverageFmts(), renderer->GetCoverageLayersCount());
+        TerrainRenderingContext state(
+            renderer->GetCoverageIds(), 
+            renderer->GetCoverageFmts(), renderer->GetCoverageLayersCount(), 
+            _pimpl->_cfg.EncodedGradientFlags());
         state._queuedNodes.erase(state._queuedNodes.begin(), state._queuedNodes.end());
         state._queuedNodes.reserve(2048);
         state._currentViewport = Metal::ViewportDesc(*context);
@@ -642,17 +644,17 @@ namespace SceneEngine
             //  that are outside of the camera frustum, or that don't intersect the ray
             //      first pass -- normal culling
         TerrainRenderingContext state(
-            _pimpl->_renderer->GetConfig(),
             _pimpl->_renderer->GetCoverageIds(), 
             _pimpl->_renderer->GetCoverageFmts(),
-            _pimpl->_renderer->GetCoverageLayersCount());
+            _pimpl->_renderer->GetCoverageLayersCount(),
+            _pimpl->_cfg.EncodedGradientFlags());
         state._queuedNodes.erase(state._queuedNodes.begin(), state._queuedNodes.end());
         state._queuedNodes.reserve(2048);
         state._currentViewport = Metal::ViewportDesc(*context);        // (accurate viewport is required to get the lodding right)
         _pimpl->CullNodes(context, parserContext, state);
 
         const unsigned compressedHeightMask = 
-            _pimpl->_renderer->GetConfig()._encodedGradientFlags ? 0x3fffu : 0xffffu;
+            CompressedHeightMask(state._encodedGradientFlags);
 
             //  second pass -- remove nodes that don't intersect the ray
         for (auto i=state._queuedNodes.begin(); i!=state._queuedNodes.end();) {
