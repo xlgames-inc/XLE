@@ -16,12 +16,9 @@
 #include "ITerrainTexturing.h"
 
 #include "../../gbuffer.h"
+#include "../../Utility/DistinctColors.h"
 
 #define DO_DEFORM_NORMAL 1
-
-#if DRAW_WIREFRAME==1
-    float3 BlendWireframe(PSInput geo, float3 baseColour);
-#endif
 
 struct PSInput
 {
@@ -38,6 +35,10 @@ struct PSInput
         float3 worldPosition : WORLDPOSITION;
     #endif
 };
+
+#if DRAW_WIREFRAME==1
+    float3 BlendWireframe(PSInput geo, float3 baseColour);
+#endif
 
 struct TerrainPixel
 {

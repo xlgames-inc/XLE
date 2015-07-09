@@ -184,7 +184,7 @@ namespace SceneEngine
     {
         const bool isTextured = true;
 
-        StringMeld<256, char> definesBuffer;
+        StringMeld<1024, char> definesBuffer;
         definesBuffer << "DO_EXTRA_SMOOTHING=" << int(desc._doExtraSmoothing);
         definesBuffer << ";SOLIDWIREFRAME_TEXCOORD=" << int(isTextured);
         definesBuffer << ";DO_ADD_NOISE=" << int(desc._noisyTerrain);
@@ -963,9 +963,8 @@ namespace SceneEngine
             }
             
             const unsigned expectedDataSize = sourceNode->_widthInElements*sourceNode->_widthInElements*2;
-            if (std::max(sourceNode->_heightMapFileSize, sourceNode->_secondaryCacheSize) < expectedDataSize) {
+            if (std::max(sourceNode->_heightMapFileSize, sourceNode->_secondaryCacheSize) < expectedDataSize)
                 continue;   // some nodes have "holes". We have to ignore them.
-            }
 
                 //  we should check for valid data & required uploads. Mark the flags now, and we'll 
                 //  do the processing later.

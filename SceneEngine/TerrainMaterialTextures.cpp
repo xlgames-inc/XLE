@@ -192,16 +192,83 @@ namespace SceneEngine
 
     TerrainMaterialTextures::TerrainMaterialTextures(const TerrainMaterialScaffold& scaffold)
     {
-        auto strataCount = 0u;
-        for (auto& mat:scaffold._strataMaterials)
-            strataCount += (unsigned)mat._strata.size();
-
-        auto texturingConstants = std::make_unique<Float4[]>(strataCount*2);
-        std::fill(texturingConstants.get(), &texturingConstants[strataCount*2], Float4(1.f, 1.f, 1.f, 1.f));
+        _strataCount = 0;
 
             //  Each texture is stored as a separate file on disk. But we need to copy them
             //  all into a texture array.
 
+        std::vector<::Assets::rstring> atlasTextureNames;
+        std::vector<uint8> texturingConstants;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        const bool usingGradFlagMaterials = true;
+        if (constant_expression<usingGradFlagMaterials>::result()) {
+
+            const auto texturesPerMaterial = dimof(((TerrainMaterialScaffold::GradFlagMaterial*)nullptr)->_texture);
+            auto highestMaterialId = 0u;
+            for (auto& mat:scaffold._gradFlagMaterials)
+                highestMaterialId = std::max(highestMaterialId, mat._id);
+
+            texturingConstants.resize(sizeof(Float4) * (highestMaterialId+1) * texturesPerMaterial);
+            auto* tcStart = (Float4*)AsPointer(texturingConstants.begin());
+            std::fill(tcStart, &tcStart[(highestMaterialId+1) * texturesPerMaterial], Float4(1.f, 1.f, 1.f, 1.f));
+
+            for (auto m=scaffold._gradFlagMaterials.cbegin(); m!=scaffold._gradFlagMaterials.cend(); ++m) {
+                for (unsigned t=0; t<texturesPerMaterial; ++t) {
+                    unsigned atlasIndex = ~0u;
+                    auto e = std::find(atlasTextureNames.cbegin(), atlasTextureNames.cend(), m->_texture[t]);
+                    if (e == atlasTextureNames.cend()) {
+                        atlasTextureNames.push_back(m->_texture[t]);
+                        atlasIndex = unsigned(atlasTextureNames.size()-1);
+                    } else {
+                        atlasIndex = (unsigned)std::distance(atlasTextureNames.cbegin(), e);
+                    }
+
+                    tcStart[m->_id * texturesPerMaterial + t] = Float4(
+                        m->_mappingConstant[t], m->_mappingConstant[t],
+                        m->_mappingConstant[t], *reinterpret_cast<float*>(&atlasIndex));
+                }
+            }
+
+        } else {
+
+            auto strataCount = 0u;
+            for (auto& mat:scaffold._strataMaterials)
+                strataCount += (unsigned)mat._strata.size();
+
+            texturingConstants.resize(sizeof(Float4) * strataCount * 2);
+            auto* tcStart = (Float4*)AsPointer(texturingConstants.begin());
+            std::fill(tcStart, &tcStart[strataCount*2], Float4(1.f, 1.f, 1.f, 1.f));
+
+            const auto texturesPerStrata = dimof(((TerrainMaterialScaffold::StrataMaterial::Strata*)nullptr)->_texture);
+            unsigned strataIndex = 0;
+            for (auto m=scaffold._strataMaterials.cbegin(); m!=scaffold._strataMaterials.cend(); ++m) {
+                for (auto s=m->_strata.cbegin(); s!=m->_strata.cend(); ++s, ++strataIndex) {
+
+                    for (unsigned t=0; t<texturesPerStrata; ++t) {
+                            //  This is a input texture. We need to build the 
+                            //  diffuse, specularity and normal map names from this texture name
+                        atlasTextureNames.push_back(s->_texture[t]);
+                    }
+
+                    tcStart[strataIndex] = Float4(s->_endHeight, s->_endHeight, s->_endHeight, s->_endHeight);
+
+                    Float4 mappingConstant = Float4(1.f, 1.f, 1.f, 1.f);
+                    for (unsigned c=0; c<texturesPerStrata; ++c) {
+                        tcStart[strataCount + strataIndex][c] = 1.f / s->_mappingConstant[c];
+                    }
+
+                }
+            }
+
+            _strataCount = strataCount;
+
+        }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            // build the atlas textures
         using namespace BufferUploads;
         BufferDesc desc;
         desc._type = BufferDesc::Type::Texture;
@@ -211,23 +278,19 @@ namespace SceneEngine
         desc._allocationRules = 0;
         XlCopyString(desc._name, "TerrainMaterialTextures");
 
-        const auto texturesPerStrata = dimof(((TerrainMaterialScaffold::StrataMaterial::Strata*)nullptr)->_texture);
-
-            // todo -- there are some SRGB problems here!
-            //          should we be using SRGB input texture format?
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
-            scaffold._diffuseDims[0], scaffold._diffuseDims[1], Metal::NativeFormat::BC1_UNORM, 
-            (uint8)IntegerLog2(std::max(scaffold._diffuseDims[0], scaffold._diffuseDims[1]))-1, uint8(texturesPerStrata * strataCount));
+            scaffold._diffuseDims[0], scaffold._diffuseDims[1], Metal::NativeFormat::BC1_UNORM_SRGB, 
+            (uint8)IntegerLog2(std::max(scaffold._diffuseDims[0], scaffold._diffuseDims[1]))-1, uint8(atlasTextureNames.size()));
         auto diffuseTextureArray = GetBufferUploads().Transaction_Immediate(desc)->AdoptUnderlying();
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._normalDims[0], scaffold._normalDims[1], Metal::NativeFormat::BC5_UNORM, 
-            (uint8)IntegerLog2(std::max(scaffold._normalDims[0], scaffold._normalDims[1]))-1, uint8(texturesPerStrata * strataCount));
+            (uint8)IntegerLog2(std::max(scaffold._normalDims[0], scaffold._normalDims[1]))-1, uint8(atlasTextureNames.size()));
         auto normalTextureArray = GetBufferUploads().Transaction_Immediate(desc)->AdoptUnderlying();
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._paramDims[0], scaffold._paramDims[1], Metal::NativeFormat::BC1_UNORM, 
-            (uint8)IntegerLog2(std::max(scaffold._paramDims[0], scaffold._paramDims[1]))-1, uint8(texturesPerStrata * strataCount));
+            (uint8)IntegerLog2(std::max(scaffold._paramDims[0], scaffold._paramDims[1]))-1, uint8(atlasTextureNames.size()));
         auto specularityTextureArray = GetBufferUploads().Transaction_Immediate(desc)->AdoptUnderlying();
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
@@ -245,65 +308,66 @@ namespace SceneEngine
         }
         auto dummyWhiteBuffer = GetBufferUploads().Transaction_Immediate(desc, tempBuffer.get())->AdoptUnderlying();
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(_validationCallback, scaffold.GetDependencyValidation());
 
-        unsigned strataIndex = 0;
-        for (auto m=scaffold._strataMaterials.cbegin(); m!=scaffold._strataMaterials.cend(); ++m) {
-            for (auto s=m->_strata.cbegin(); s!=m->_strata.cend(); ++s, ++strataIndex) {
-
-                for (unsigned t=0; t<texturesPerStrata; ++t) {
-                        //  This is a input texture. We need to build the 
-                        //  diffuse, specularity and normal map names from this texture name
-                    TRY { 
-                        ::Assets::ResChar resolvedFile[MaxPath];
-                        scaffold._searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), StringMeld<MaxPath, ::Assets::ResChar>() << s->_texture[t] << "_df.dds");
-                        if (resolvedFile[0]) {
-                            LoadTextureIntoArray(diffuseTextureArray.get(), resolvedFile, (strataIndex * texturesPerStrata) + t);
-                            RegisterFileDependency(_validationCallback, resolvedFile);
-                        }
-                    } CATCH (const ::Assets::Exceptions::InvalidResource&) {}
-                    CATCH_END
-                            
-                    TRY { 
-                        ::Assets::ResChar resolvedFile[MaxPath];
-                        scaffold._searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), StringMeld<MaxPath, ::Assets::ResChar>() << s->_texture[t] << "_ddn.dds");
-                        if (resolvedFile[0]) {
-                            LoadTextureIntoArray(normalTextureArray.get(), resolvedFile, (strataIndex * texturesPerStrata) + t);
-                            RegisterFileDependency(_validationCallback, resolvedFile);
-                        }
-                    } CATCH (const ::Assets::Exceptions::InvalidResource&) {}
-                    CATCH_END
-                                
-                    bool fillInWhiteSpecular = false;
-                    TRY { 
-                        ::Assets::ResChar resolvedFile[MaxPath];
-                        scaffold._searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), StringMeld<MaxPath, ::Assets::ResChar>() << s->_texture[t] << "_sp.dds");
-                        if (resolvedFile[0]) {
-                            LoadTextureIntoArray(specularityTextureArray.get(), resolvedFile, (strataIndex * texturesPerStrata) + t);
-                            RegisterFileDependency(_validationCallback, resolvedFile);
-                        }
-                    } CATCH (const ::Assets::Exceptions::InvalidResource&) {
-                        fillInWhiteSpecular = true;
-                    } CATCH_END
-
-                    if (fillInWhiteSpecular)
-                        FillWhite(specularityTextureArray.get(), dummyWhiteBuffer.get(), (strataIndex * texturesPerStrata) + t);
+        for (auto i=atlasTextureNames.cbegin(); i!=atlasTextureNames.cend(); ++i) {
+            TRY {
+                ::Assets::ResChar resolvedFile[MaxPath];
+                scaffold._searchRules.ResolveFile(
+                    resolvedFile, dimof(resolvedFile), 
+                    StringMeld<MaxPath, ::Assets::ResChar>() << *i << "_df.dds");
+                if (resolvedFile[0]) {
+                    LoadTextureIntoArray(diffuseTextureArray.get(), resolvedFile, (unsigned)std::distance(atlasTextureNames.cbegin(), i));
+                    RegisterFileDependency(_validationCallback, resolvedFile);
                 }
-
-                texturingConstants[strataIndex] = Float4(s->_endHeight, s->_endHeight, s->_endHeight, s->_endHeight);
-
-                Float4 mappingConstant = Float4(1.f, 1.f, 1.f, 1.f);
-                for (unsigned c=0; c<texturesPerStrata; ++c) {
-                    texturingConstants[strataCount + strataIndex][c] = 1.f / s->_mappingConstant[c];
-                }
-            }
+            } CATCH (const ::Assets::Exceptions::InvalidResource&) {}
+            CATCH_END
         }
+
+        for (auto i=atlasTextureNames.cbegin(); i!=atlasTextureNames.cend(); ++i) {
+            TRY {
+                ::Assets::ResChar resolvedFile[MaxPath];
+                scaffold._searchRules.ResolveFile(
+                    resolvedFile, dimof(resolvedFile), 
+                    StringMeld<MaxPath, ::Assets::ResChar>() << *i << "_ddn.dds");
+                if (resolvedFile[0]) {
+                    LoadTextureIntoArray(normalTextureArray.get(), resolvedFile, (unsigned)std::distance(atlasTextureNames.cbegin(), i));
+                    RegisterFileDependency(_validationCallback, resolvedFile);
+                }
+            } CATCH (const ::Assets::Exceptions::InvalidResource&) {}
+            CATCH_END
+        }
+
+        for (auto i=atlasTextureNames.cbegin(); i!=atlasTextureNames.cend(); ++i) {
+            bool fillInWhiteSpecular = true;
+            auto index = (unsigned)std::distance(atlasTextureNames.cbegin(), i);
+            TRY {
+                ::Assets::ResChar resolvedFile[MaxPath];
+                scaffold._searchRules.ResolveFile(
+                    resolvedFile, dimof(resolvedFile), 
+                    StringMeld<MaxPath, ::Assets::ResChar>() << *i << "_sp.dds");
+                if (resolvedFile[0]) {
+                    LoadTextureIntoArray(normalTextureArray.get(), resolvedFile, index);
+                    RegisterFileDependency(_validationCallback, resolvedFile);
+                    fillInWhiteSpecular = true;
+                }
+            } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+            } CATCH_END
+
+                // on exception or missing files, we should fill int specularlity with whiteness
+            if (fillInWhiteSpecular)
+                FillWhite(specularityTextureArray.get(), dummyWhiteBuffer.get(), index);
+        }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         RenderCore::Metal::ShaderResourceView diffuseSrv(diffuseTextureArray.get());
         RenderCore::Metal::ShaderResourceView normalSrv(normalTextureArray.get());
         RenderCore::Metal::ShaderResourceView specularitySrv(specularityTextureArray.get());
-        RenderCore::Metal::ConstantBuffer texContBuffer(texturingConstants.get(), sizeof(Float4)*strataCount*2);
+        RenderCore::Metal::ConstantBuffer texContBuffer(AsPointer(texturingConstants.cbegin()), texturingConstants.size());
 
         _textureArray[Diffuse] = std::move(diffuseTextureArray);
         _textureArray[Normal] = std::move(normalTextureArray);
@@ -312,7 +376,6 @@ namespace SceneEngine
         _srv[Normal] = std::move(normalSrv);
         _srv[Specularity] = std::move(specularitySrv);
         _texturingConstants = std::move(texContBuffer);
-        _strataCount = strataCount;
     }
 
     TerrainMaterialTextures::~TerrainMaterialTextures() {}

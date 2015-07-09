@@ -32,7 +32,7 @@
         TerrainTextureOutput result;
         result.diffuseAlbedo = 1.0.xxx;
         result.tangentSpaceNormal = float3(0.5,0.5,1);
-        result.specularity = 1.0.xxx;
+        result.specularity = 1.0f;
         return result;
     }
 #else
@@ -51,12 +51,7 @@
 
     float3 DiffuseAtlasSample(float2 tc, uint strata, uint textureType)
     {
-        float3 result = DiffuseAtlas.Sample(MaybeAnisotropicSampler, AsAtlasCoord(tc, strata, textureType)).rgb;
-            // Compenstate for wierd SRGB behaviour in archeage assets
-            // ideally we should configure the texture samplers to do this automatically,
-            // rather than with an explicit call here
-        result = SRGBToLinear(result);
-        return result;
+        return DiffuseAtlas.Sample(MaybeAnisotropicSampler, AsAtlasCoord(tc, strata, textureType)).rgb;
     }
 
     float StrataSpecularSample(float2 tc, uint strata, uint textureType)

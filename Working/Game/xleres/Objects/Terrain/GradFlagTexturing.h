@@ -21,13 +21,42 @@ int CalculateCenterType(int2 baseTC)
     // return DynamicGradientFlag(baseTC);
 }
 
-float3 LoadTexSample(float3 worldPosition, uint index)
+static const uint MaxMaterialIds = 64;
+cbuffer TexturingParameters : register(b5)
+{
+    float4 MappingParameters[MaxMaterialIds * 5];
+}
+
+TerrainTextureOutput LoadTexSample(float3 worldPosition, uint materialId, uint texType)
 {
     const uint strataIndex = 0;
-    float2 tc = worldPosition.xy * TextureFrequency[strataIndex][index];
+    float2 tc = worldPosition.xy * MappingParameters[materialId*5+texType][0];
+    uint remappedIndex = asuint(MappingParameters[materialId*5+texType][3]);
 
-    float3 coord = float3(tc, index);
-    return DiffuseAtlas.Sample(MaybeAnisotropicSampler, coord).rgb;
+    float3 coord = float3(tc, remappedIndex);
+    TerrainTextureOutput result;
+    result.diffuseAlbedo = DiffuseAtlas.Sample(MaybeAnisotropicSampler, coord).rgb;
+    result.tangentSpaceNormal = float3(0,0,1);
+    result.specularity = 1.f;
+    return result;
+}
+
+TerrainTextureOutput Blend(TerrainTextureOutput zero, TerrainTextureOutput one, float alpha)
+{
+    TerrainTextureOutput result;
+    result.diffuseAlbedo = lerp(zero.diffuseAlbedo, one.diffuseAlbedo, alpha);
+    result.tangentSpaceNormal = float3(0,0,1);
+    result.specularity = 1.f;
+    return result;
+}
+
+TerrainTextureOutput AddWeighted(TerrainTextureOutput zero, TerrainTextureOutput one, float weight)
+{
+    TerrainTextureOutput result;
+    result.diffuseAlbedo = zero.diffuseAlbedo + one.diffuseAlbedo * weight;
+    result.tangentSpaceNormal = float3(0,0,1);
+    result.specularity = 1.f;
+    return result;
 }
 
 TerrainTextureOutput GradFlagTexturing::Calculate(
@@ -40,11 +69,17 @@ TerrainTextureOutput GradFlagTexturing::Calculate(
 
     float3 debugColors[4] =
     {
-        float3(0,0,1),
-        float3(1,1,1),
-        float3(1,0,0),
-        float3(0,1,1)
+        float3(0, 0, 1),
+        float3(1, 1, 1),
+        float3(1, 0, 0),
+        float3(0, 1, 1)
     };
+
+    const uint TexType_Flat = 0;
+    const uint TexType_Slope = 1;
+    const uint TexType_RoughFlat = 2;
+    const uint TexType_SlopeFlat = 3;
+    const uint TexType_Blending = 4;
 
     const float A = 0.15f;  // grace area
 
@@ -77,27 +112,34 @@ TerrainTextureOutput GradFlagTexturing::Calculate(
 
         [unroll] for (uint c=0; c<4; ++c) {
             if (useDebugColors) result.diffuseAlbedo += debugColors[s[c]&1] * w[c];
-            else                result.diffuseAlbedo += LoadTexSample(worldPosition, s[c]&1) * w[c];
+            else {
+                result = AddWeighted(
+                    result,
+                    LoadTexSample(worldPosition, materialId, s[c]&1),
+                    w[c]);
+            }
 
             typeWeights[s[c]&1] += w[c];
         }
 
+        float2 B = explodedTC - baseTC;
         float roughAlpha = 0.f;
-        roughAlpha += (s[0] & 2) * (1.f - C.x) * (1.f - C.y);
-        roughAlpha += (s[1] & 2) * (C.x) * (1.f - C.y);
-        roughAlpha += (s[2] & 2) * (1.f - C.x) * (C.y);
-        roughAlpha += (s[3] & 2) * (C.x) * (C.y);
-        roughAlpha = saturate(roughAlpha - 0.5f);
-        roughAlpha *= roughAlpha;
-        roughAlpha *= roughAlpha;
-        result.diffuseAlbedo = lerp(result.diffuseAlbedo, float3(0,1,1), roughAlpha);
+        roughAlpha += ((s[0] & 2)!=0) * (1.f - B.x) * (1.f - B.y);
+        roughAlpha += ((s[1] & 2)!=0) * (B.x) * (1.f - B.y);
+        roughAlpha += ((s[2] & 2)!=0) * (1.f - B.x) * (B.y);
+        roughAlpha += ((s[3] & 2)!=0) * (B.x) * (B.y);
+        roughAlpha = 4.f * saturate(roughAlpha - 0.8f);
+        // roughAlpha *= roughAlpha; roughAlpha *= roughAlpha;
+        // roughAlpha *= roughAlpha; roughAlpha *= roughAlpha;
+        result = Blend(result, LoadTexSample(worldPosition, materialId, TexType_RoughFlat), roughAlpha);
 
             // we can find the edging like this --
             //      This allows blending in a transition texture between the repeating textures
         float trans = 0.0f;
         [unroll] for (uint c2=0; c2<2; ++c2)
-            trans += 1.0f - 2.f * abs(0.5f - typeWeights[c2]);
-        result.diffuseAlbedo = lerp(result.diffuseAlbedo, float3(0,1,0), trans);
+            trans += .5f - abs(0.5f - typeWeights[c2]);
+        trans *= trans;
+        result = Blend(result, LoadTexSample(worldPosition, materialId, TexType_Blending), trans);
 
     } else {
 
@@ -166,7 +208,9 @@ TerrainTextureOutput GradFlagTexturing::Calculate(
 
         [unroll] for (uint c=0; c<2; ++c) {
             if (useDebugColors) result.diffuseAlbedo += debugColors[s[c]] * w[c];
-            else                result.diffuseAlbedo += LoadTexSample(worldPosition, s[c]) * w[c];
+            else {
+                result = AddWeighted(result, LoadTexSample(worldPosition, materialId, s[c]), w[c]);
+            }
         }
     }
 

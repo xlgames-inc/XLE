@@ -48,6 +48,12 @@ RWTexture2D<uint> 		MidwayMaterialFlags : register(u2);
 		// (used for height map updates)
 	Texture2DArray<uint>			OldHeights : register(t1);
 	RWStructuredBuffer<TileCoords>	TileCoordsBuffer : register(u3);
+
+	float GetElementSpacing() { return TileCoordsBuffer[0].ElementSpacing; }
+	float GetHeightOffsetValue() { return TileCoordsBuffer[0].HeightOffsetValue; }
+#else
+	float GetElementSpacing() { return 2.f; }
+	float GetHeightOffsetValue() { return 0.f; }
 #endif
 
 #if !defined(FILTER_TYPE)
@@ -117,7 +123,7 @@ uint CalculateGradientFlags(uint2 dispatchThreadId)
 		for (int y=0; y<SampleArea; ++y)
 			for (int x=0; x<SampleArea; ++x)
 				sampleTotal += CalculateGradientFlags_TopLOD(
-					origin + int2(x,y), TileCoordsBuffer[0].ElementSpacing);
+					origin + int2(x,y), GetElementSpacing());
 		sampleTotal /= SampleArea * SampleArea;
 
 		return sampleTotal;
@@ -138,12 +144,12 @@ uint HeightValueToUInt(float height)
 		//			point numbers (actually the IEEE standards ensure it
 		//			will work)... But there are problems with negative numbers
 		//			So, make sure the result is always positive
-	return asuint(max(0.f, height + TileCoordsBuffer[0].HeightOffsetValue));
+	return asuint(max(0.f, height + GetHeightOffsetValue()));
 }
 
 float UIntToHeightValue(uint input)
 {
-	return asfloat(input) - TileCoordsBuffer[0].HeightOffsetValue;
+	return asfloat(input) - GetHeightOffsetValue();
 }
 
 [numthreads(6, 6, 1)]

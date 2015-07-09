@@ -405,13 +405,14 @@ namespace SceneEngine
                 Float3 l(-spacing,  0.f, heightDiff[2]);
                 Float3 r( spacing,  0.f, heightDiff[3]);
 
-                bool topBottomTrans = dot(normalize(b), -normalize(t)) < transThreshold;
-                bool leftRightTrans = dot(normalize(l), -normalize(r)) < transThreshold;
-                if (topBottomTrans || leftRightTrans) return 2;
-
                 Float2 dhdxy = CalculateDHDXY(surface, coord);
                 bool centerIsSlope = std::max(XlAbs(dhdxy[0]), XlAbs(dhdxy[1])) > slopeThreshold;
-                return int(centerIsSlope);
+                auto result = int(centerIsSlope);
+
+                bool topBottomTrans = dot(normalize(b), -normalize(t)) < transThreshold;
+                bool leftRightTrans = dot(normalize(l), -normalize(r)) < transThreshold;
+                if (leftRightTrans || topBottomTrans) result |= 2;
+                return result;
             }
 
         template<typename Element>
