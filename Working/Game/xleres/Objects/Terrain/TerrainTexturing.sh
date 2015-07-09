@@ -351,7 +351,9 @@ TerrainPixel CalculateTexturing(PSInput geo)
         float patchEdge = 1.0f - edgeFactor2(frac(geo.texCoord), 5.f);
         uint edgeIndex = GetEdgeIndex(geo.texCoord);
         float3 lineColour = lerp(1.0.xxx, (NeighbourLodDiffs[edgeIndex]==0?float3(0,1,0):float3(1,0,0)), patchEdge);
-        result.rgb = lerp(lineColour, result.rgb, edgeFactor(geo.barycentricCoords));
+        float ef = 1.f - edgeFactor(geo.barycentricCoords);
+        ef *= int(512.0f * (geo.texCoord.x + geo.texCoord.y)) & 1;      // dotted line (causes horrible aliasing in the distance)
+        result.rgb = lerp(result.rgb, lineColour, ef);
     #endif
 
         //	calculate the normal from the input derivatives

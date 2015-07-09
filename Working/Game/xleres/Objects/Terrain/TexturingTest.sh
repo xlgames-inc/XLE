@@ -38,11 +38,12 @@ ProceduralTextureOutput TestMaterial::Calculate(
     result.tangentSpaceNormal = float3(0,0,1);
     result.specularity = 1.f;
 
-    float3 debugColors[3] =
+    float3 debugColors[4] =
     {
         float3(0,0,1),
         float3(1,1,1),
         float3(1,0,0),
+        float3(0,1,1)
     };
 
     const float A = 0.15f;  // grace area
@@ -71,10 +72,32 @@ ProceduralTextureOutput TestMaterial::Calculate(
         w[2] = (1.f - C.x) * (C.y);
         w[3] = (C.x) * (C.y);
 
+        float typeWeights[2];
+        typeWeights[0] = typeWeights[1] = 0;
+
         [unroll] for (uint c=0; c<4; ++c) {
-            if (useDebugColors) result.diffuseAlbedo += debugColors[s[c]] * w[c];
-            else                result.diffuseAlbedo += LoadTexSample(worldPosition, s[c]) * w[c];
+            if (useDebugColors) result.diffuseAlbedo += debugColors[s[c]&1] * w[c];
+            else                result.diffuseAlbedo += LoadTexSample(worldPosition, s[c]&1) * w[c];
+
+            typeWeights[s[c]&1] += w[c];
         }
+
+        float roughAlpha = 0.f;
+        roughAlpha += (s[0] & 2) * (1.f - C.x) * (1.f - C.y);
+        roughAlpha += (s[1] & 2) * (C.x) * (1.f - C.y);
+        roughAlpha += (s[2] & 2) * (1.f - C.x) * (C.y);
+        roughAlpha += (s[3] & 2) * (C.x) * (C.y);
+        roughAlpha = saturate(roughAlpha - 0.5f);
+        roughAlpha *= roughAlpha;
+        roughAlpha *= roughAlpha;
+        result.diffuseAlbedo = lerp(result.diffuseAlbedo, float3(0,1,1), roughAlpha);
+
+            // we can find the edging like this --
+            //      This allows blending in a transition texture between the repeating textures
+        float trans = 0.0f;
+        [unroll] for (uint c2=0; c2<2; ++c2)
+            trans += 1.0f - 2.f * abs(0.5f - typeWeights[c2]);
+        result.diffuseAlbedo = lerp(result.diffuseAlbedo, float3(0,1,0), trans);
 
     } else {
 

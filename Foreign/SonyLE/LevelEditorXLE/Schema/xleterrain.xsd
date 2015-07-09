@@ -207,7 +207,7 @@
     <xs:attribute name="HasEncodedGradientFlags" type="xs:boolean" default="true" />
     <xs:attribute name="CellCount" type="int2Type" default="0 0" />
     <xs:attribute name="GradFlagSlopeThreshold" type="xs:float" default="1.5" />
-    <xs:attribute name="GradFlagRoughThreshold" type="xs:float" default="0.4" />
+    <xs:attribute name="GradFlagRoughThreshold" type="xs:float" default="0.6" />
   </xs:complexType>
   
 </xs:schema>

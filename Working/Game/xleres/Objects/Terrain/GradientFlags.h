@@ -68,7 +68,7 @@ uint CalculateRawGradientFlags(int2 baseCoord, float spacing, float slopeThresho
 
     bool centerIsSlope = max(abs(dhdxy[4].x), abs(dhdxy[4].y)) > slopeThreshold;
     float3 b = float3( 0.f, -spacing, heightDiff[1]);
-    float3 t = float3( 0.f,  spacing, heightDiff[8]);
+    float3 t = float3( 0.f,  spacing, heightDiff[7]);
     float3 l = float3(-spacing,  0.f, heightDiff[3]);
     float3 r = float3( spacing,  0.f, heightDiff[5]);
     bool topBottomTrans = dot(normalize(b), -normalize(t)) < transThreshold;
@@ -78,11 +78,12 @@ uint CalculateRawGradientFlags(int2 baseCoord, float spacing, float slopeThresho
     // dot(dhdxy[1], dhdxy[8]) >= 1.f;
     // dot(dhdxy[3], dhdxy[5]) >= 1.f;
 
-    if (topBottomTrans || leftRightTrans) return 2;
-    return int(centerIsSlope);
+    int result = int(centerIsSlope);
+    if (leftRightTrans || topBottomTrans) result |= 2;
+    return result;
 }
 
 static const float SlopeThresholdDefault = 1.5f;
-static const float TransThresholdDefault = .4f;
+static const float TransThresholdDefault = .6f;
 
 #endif
