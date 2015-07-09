@@ -96,6 +96,66 @@
 
   <!-- ......................................................................... -->
 
+  <xs:complexType name="terrainMaterialType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="TerrainGradFlagMaterial"/>
+        <LeGe.OpaqueListable label="Material"/>
+
+        <LeGe.NativeProperty name="FlatTexture" nativeName="Texture0"/>
+        <LeGe.NativeProperty name="SlopeTexture" nativeName="Texture1"/>
+        <LeGe.NativeProperty name="RoughFlatTexture" nativeName="Texture2"/>
+        <LeGe.NativeProperty name="RoughSlopeTexture" nativeName="Texture3"/>
+        <LeGe.NativeProperty name="BlendingTexture" nativeName="Texture4"/>
+
+        <LeGe.NativeProperty name="FlatTextureMapping" nativeName="TextureMapping0"/>
+        <LeGe.NativeProperty name="SlopeTextureMapping" nativeName="TextureMapping1"/>
+        <LeGe.NativeProperty name="RoughFlatTextureMapping" nativeName="TextureMapping2"/>
+        <LeGe.NativeProperty name="RoughSlopeTextureMapping" nativeName="TextureMapping3"/>
+        <LeGe.NativeProperty name="BlendingTextureMapping" nativeName="TextureMapping4"/>
+
+        <scea.dom.editors.attribute name="FlatTexture" displayName="FlatTexture" description="FlatTexture" category="General" 
+          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
+        <scea.dom.editors.attribute name="SlopeTexture" displayName="SlopeTexture" description="SlopeTexture" category="General" 
+          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
+        
+        <scea.dom.editors.attribute name="RoughFlatTexture" displayName="RoughFlatTexture" description="RoughFlatTexture" category="General" 
+          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
+        <scea.dom.editors.attribute name="RoughSlopeTexture" displayName="RoughSlopeTexture" description="RoughSlopeTexture" category="General"
+          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
+        
+        <scea.dom.editors.attribute name="BlendingTexture" displayName="BlendingTexture" description="BlendingTexture" category="General"
+          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
+        
+        <scea.dom.editors.attribute name="FlatTextureMapping" displayName="FlatTextureMapping" description="FlatTextureMapping" category="General"/>
+        <scea.dom.editors.attribute name="SlopeTextureMapping" displayName="SlopeTextureMapping" description="SlopeTextureMapping" category="General"/>
+        <scea.dom.editors.attribute name="RoughFlatTextureMapping" displayName="RoughFlatTextureMapping" description="RoughFlatTextureMapping" category="General"/>
+        <scea.dom.editors.attribute name="RoughSlopeTextureMapping" displayName="RoughSlopeTextureMapping" description="RoughSlopeTextureMapping" category="General"/>
+        <scea.dom.editors.attribute name="BlendingTextureMapping" displayName="BlendingTextureMapping" description="BlendingTextureMapping" category="General"/>
+
+        <scea.dom.editors name="TerrainMaterial" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="TerrainMaterial" description="TerrainMaterial"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:complexContent>
+      <xs:extension base="abstractTerrainMaterialDescType">
+        <xs:attribute name="FlatTexture" type="xs:string" default=""/>
+        <xs:attribute name="SlopeTexture" type="xs:string" default=""/>
+        <xs:attribute name="RoughFlatTexture" type="xs:string" default=""/>
+        <xs:attribute name="RoughSlopeTexture" type="xs:string" default=""/>
+        <xs:attribute name="BlendingTexture" type="xs:string" default=""/>
+        
+        <xs:attribute name="FlatTextureMapping" type="xs:float" default="1.0"/>
+        <xs:attribute name="SlopeTextureMapping" type="xs:float" default="1.0"/>
+        <xs:attribute name="RoughFlatTextureMapping" type="xs:float" default="1.0"/>
+        <xs:attribute name="RoughSlopeTextureMapping" type="xs:float" default="1.0"/>
+        <xs:attribute name="BlendingTextureMapping" type="xs:float" default="1.0"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- ......................................................................... -->
+
   <xs:complexType name="vegetationSpawnObjectType">
     <xs:annotation>
       <xs:appinfo>

@@ -203,8 +203,7 @@ namespace SceneEngine
             }
 
         const char* ps = isTextured 
-            // ? "game/xleres/objects/terrain/TerrainTexturing.sh:ps_main:!ps_*" 
-            ? "game/xleres/objects/terrain/TexturingTest.sh:ps_main:!ps_*" 
+            ? "game/xleres/objects/terrain/TerrainBasePS.sh:ps_main:!ps_*" 
             : "game/xleres/solidwireframe.psh:main:ps_*";
 
         if (Tweakable("LightingModel", 0) == 1 && isTextured) {
@@ -252,8 +251,7 @@ namespace SceneEngine
 
         if (shaderProgram->DynamicLinkingEnabled()) {
             _dynLinkage = BoundClassInterfaces(*shaderProgram);
-            // _dynLinkage.Bind(Hash64("ProceduralTextures"), 0, "StrataMaterial");
-            _dynLinkage.Bind(Hash64("ProceduralTextures"), 0, "TestMaterial");
+            _dynLinkage.Bind(Hash64("MainTexturing"), 0, "GradFlagTexturing");
         }
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();

@@ -11,6 +11,7 @@
 #include "../../SceneEngine/TerrainMaterial.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/TerrainFormat.h"
+#include "../../Utility/StringFormat.h"
 
 namespace EntityInterface
 {
@@ -201,33 +202,54 @@ namespace EntityInterface
             static auto endheight = ParameterBox::MakeParameterNameHash("endheight");
 
                 // rebuild all of the material binding information as well
-            asset._materials.clear();
+            {
+                asset._strataMaterials.clear();
+                auto matType = sys.GetTypeId((const utf8*)"TerrainStrataMaterial");
+                for (auto c=obj._children.cbegin(); c!=obj._children.end(); ++c) {
+                    auto* mat = sys.GetEntity(obj._doc, *c);
+                    if (!mat || mat->_type != matType) continue;
 
-            auto matType = sys.GetTypeId((const utf8*)"TerrainStrataMaterial");
-            
-            for (auto c=obj._children.cbegin(); c!=obj._children.end(); ++c) {
-                auto* mat = sys.GetEntity(obj._doc, *c);
-                if (!mat || mat->_type != matType) continue;
+                    TerrainMaterialScaffold::StrataMaterial nativeMat;
+                    nativeMat._id = mat->_properties.GetParameter<unsigned>(materialId, 0);
 
-                TerrainMaterialScaffold::StrataMaterial nativeMat;
-                nativeMat._id = mat->_properties.GetParameter<unsigned>(materialId, 0);
+                    for (auto c=mat->_children.begin(); c!=mat->_children.end(); ++c) {
+                        auto* strataObj = sys.GetEntity(mat->_doc, *c);
+                        if (!strataObj) continue;
 
-                for (auto c=mat->_children.begin(); c!=mat->_children.end(); ++c) {
-                    auto* strataObj = sys.GetEntity(mat->_doc, *c);
-                    if (!strataObj) continue;
+                        TerrainMaterialScaffold::StrataMaterial::Strata newStrata;
+                        newStrata._texture[0] = strataObj->_properties.GetString<::Assets::ResChar>(texture0);
+                        newStrata._texture[1] = strataObj->_properties.GetString<::Assets::ResChar>(texture1);
+                        newStrata._texture[2] = strataObj->_properties.GetString<::Assets::ResChar>(texture2);
+                        newStrata._mappingConstant[0] = strataObj->_properties.GetParameter<float>(mapping0, 10.f);
+                        newStrata._mappingConstant[1] = strataObj->_properties.GetParameter<float>(mapping1, 10.f);
+                        newStrata._mappingConstant[2] = strataObj->_properties.GetParameter<float>(mapping2, 10.f);
+                        newStrata._endHeight = strataObj->_properties.GetParameter<float>(endheight, 1000.f);
+                        nativeMat._strata.push_back(newStrata);
+                    }
 
-                    TerrainMaterialScaffold::StrataMaterial::Strata newStrata;
-                    newStrata._texture[0] = strataObj->_properties.GetString<::Assets::ResChar>(texture0);
-                    newStrata._texture[1] = strataObj->_properties.GetString<::Assets::ResChar>(texture1);
-                    newStrata._texture[2] = strataObj->_properties.GetString<::Assets::ResChar>(texture2);
-                    newStrata._mappingConstant[0] = strataObj->_properties.GetParameter<float>(mapping0, 10.f);
-                    newStrata._mappingConstant[1] = strataObj->_properties.GetParameter<float>(mapping1, 10.f);
-                    newStrata._mappingConstant[2] = strataObj->_properties.GetParameter<float>(mapping2, 10.f);
-                    newStrata._endHeight = strataObj->_properties.GetParameter<float>(endheight, 1000.f);
-                    nativeMat._strata.push_back(newStrata);
+                    asset._strataMaterials.push_back(std::move(nativeMat));
                 }
+            }
 
-                asset._materials.push_back(std::move(nativeMat));
+            {
+                asset._gradFlagMaterials.clear();
+                auto matType = sys.GetTypeId((const utf8*)"TerrainGradFlagMaterial");
+                for (auto c=obj._children.cbegin(); c!=obj._children.end(); ++c) {
+                    auto* mat = sys.GetEntity(obj._doc, *c);
+                    if (!mat || mat->_type != matType) continue;
+
+                    TerrainMaterialScaffold::GradFlagMaterial nativeMat;
+                    nativeMat._id = mat->_properties.GetParameter<unsigned>(materialId, 0);
+
+                    for (unsigned c=0; c<dimof(nativeMat._texture); ++c) {
+                        auto textureHash = ParameterBox::MakeParameterNameHash(StringMeld<128>() << "Texture" << c);
+                        auto mappingHash = ParameterBox::MakeParameterNameHash(StringMeld<128>() << "TextureMapping" << c);
+                        nativeMat._texture[c] = mat->_properties.GetString<::Assets::ResChar>(textureHash);
+                        nativeMat._mappingConstant[c] = mat->_properties.GetParameter(mappingHash, 1.f);
+                    }
+
+                    asset._gradFlagMaterials.push_back(std::move(nativeMat));
+                }
             }
 
             trans->Commit();
@@ -248,6 +270,19 @@ namespace EntityInterface
 
         flexSys.RegisterCallback(
             flexSys.GetTypeId((const utf8*)"TerrainStrataMaterial"),
+            [](const RetainedEntities& flexSys, const Identifier& obj)
+            {
+                auto* object = flexSys.GetEntity(obj);
+                if (object) {
+                    auto* parent = flexSys.GetEntity(object->_doc, object->_parent);
+                    if (parent && parent->_type == flexSys.GetTypeId((const utf8*)"TerrainBaseTexture"))
+                        UpdateTerrainBaseTexture(flexSys, *parent);
+                }
+            }
+        );
+
+        flexSys.RegisterCallback(
+            flexSys.GetTypeId((const utf8*)"TerrainGradFlagMaterial"),
             [](const RetainedEntities& flexSys, const Identifier& obj)
             {
                 auto* object = flexSys.GetEntity(obj);

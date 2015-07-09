@@ -4,14 +4,13 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "TerrainTexturing.sh"
-#include "../Utility/DistinctColors.h"
+#include "ITerrainTexturing.h"
 #include "../Utility/MathConstants.h"
 #include "HeightsSample.h"
 
-class TestMaterial : IProceduralTexture
+class GradFlagTexturing : ITerrainTexturing
 {
-    ProceduralTextureOutput Calculate(float3 worldPosition, float slopeFactor, float2 textureCoord);
+    TerrainTextureOutput Calculate(float3 worldPosition, float2 dhdxy, uint materialId, float2 texCoord);
 };
 
 uint DynamicGradientFlag(int2 coord);
@@ -25,15 +24,16 @@ int CalculateCenterType(int2 baseTC)
 float3 LoadTexSample(float3 worldPosition, uint index)
 {
     const uint strataIndex = 0;
-    float2 tcTex0 = worldPosition.xy * TextureFrequency[strataIndex][index];
-    return StrataDiffuseSample(tcTex0, strataIndex, index);
+    float2 tc = worldPosition.xy * TextureFrequency[strataIndex][index];
+
+    float3 coord = float3(tc, index);
+    return DiffuseAtlas.Sample(MaybeAnisotropicSampler, coord).rgb;
 }
 
-ProceduralTextureOutput TestMaterial::Calculate(
-    float3 worldPosition, float slopeFactor,
-    float2 textureCoord)
+TerrainTextureOutput GradFlagTexturing::Calculate(
+    float3 worldPosition, float2 dhdxy, uint materialId, float2 textureCoord)
 {
-    ProceduralTextureOutput result;
+    TerrainTextureOutput result;
     result.diffuseAlbedo = 0.0.xxx;
     result.tangentSpaceNormal = float3(0,0,1);
     result.specularity = 1.f;

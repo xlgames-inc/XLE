@@ -29,7 +29,7 @@ namespace SceneEngine
         Serialize(formatter, u("NormalDims"), _normalDims);
         Serialize(formatter, u("ParamDims"), _paramDims);
 
-        for (auto mat = _materials.cbegin(); mat != _materials.cend(); ++mat) {
+        for (auto mat = _strataMaterials.cbegin(); mat != _strataMaterials.cend(); ++mat) {
             formatter.BeginElement(u("StrataMaterial"));
             Serialize(formatter, "MaterialId", mat->_id);
 
@@ -103,7 +103,7 @@ namespace SceneEngine
                     mat._strata.push_back(newStrata);
                 }
 
-                _materials.push_back(std::move(mat));
+                _strataMaterials.push_back(std::move(mat));
             }
 
             ::Assets::Services::GetInvalidAssetMan().MarkValid(definitionFile);

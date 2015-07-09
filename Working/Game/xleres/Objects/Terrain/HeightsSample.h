@@ -7,6 +7,8 @@
 #if !defined(HEIGHTS_SAMPLE_H)
 #define HEIGHTS_SAMPLE_H
 
+#include "TerrainGenerator.h"
+
 static const uint HeightsOverlap = 2;
 
 #if (ENCODED_GRADIENT_FLAGS!=0)

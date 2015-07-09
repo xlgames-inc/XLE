@@ -33,10 +33,19 @@ namespace SceneEngine
             unsigned _id;
         };
 
+        class GradFlagMaterial
+        {
+        public:
+            ::Assets::rstring _texture[5];
+            float _mappingConstant[5];
+            unsigned _id;
+        };
+
         UInt2 _diffuseDims;
         UInt2 _normalDims;
         UInt2 _paramDims;
-        std::vector<StrataMaterial> _materials;
+        std::vector<StrataMaterial> _strataMaterials;
+        std::vector<GradFlagMaterial> _gradFlagMaterials;
 
         ::Assets::DirectorySearchRules _searchRules;
 

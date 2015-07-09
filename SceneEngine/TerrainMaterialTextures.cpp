@@ -193,7 +193,7 @@ namespace SceneEngine
     TerrainMaterialTextures::TerrainMaterialTextures(const TerrainMaterialScaffold& scaffold)
     {
         auto strataCount = 0u;
-        for (auto& mat:scaffold._materials)
+        for (auto& mat:scaffold._strataMaterials)
             strataCount += (unsigned)mat._strata.size();
 
         auto texturingConstants = std::make_unique<Float4[]>(strataCount*2);
@@ -249,7 +249,7 @@ namespace SceneEngine
         ::Assets::RegisterAssetDependency(_validationCallback, scaffold.GetDependencyValidation());
 
         unsigned strataIndex = 0;
-        for (auto m=scaffold._materials.cbegin(); m!=scaffold._materials.cend(); ++m) {
+        for (auto m=scaffold._strataMaterials.cbegin(); m!=scaffold._strataMaterials.cend(); ++m) {
             for (auto s=m->_strata.cbegin(); s!=m->_strata.cend(); ++s, ++strataIndex) {
 
                 for (unsigned t=0; t<texturesPerStrata; ++t) {
