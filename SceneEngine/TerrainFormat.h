@@ -15,14 +15,14 @@ namespace SceneEngine
     public:
         bool    _enable;
         float   _elementSpacing;
-        float   _slopeThreshold;
-        float   _transThreshold;
+        float   _slopeThresholds[3];
 
         explicit GradientFlagsSettings(
             bool enable = false,
             float elementSpacing = 2.f,
-            float slopeThreshold = 1.5f,
-            float transThreshold = .4f);
+            float slope0Threshold = .5f,
+            float slope1Threshold = 1.125f,
+            float slope2Threshold = 1.75f);
     };
 
     /// <summary>Native XLE file format for terrain</summary>

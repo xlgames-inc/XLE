@@ -300,6 +300,19 @@ namespace LevelEditorXLE
             terrainStrataMaterialType.MaterialIdAttribute = terrainStrataMaterialType.Type.GetAttributeInfo("MaterialId");
             terrainStrataMaterialType.strataChild = terrainStrataMaterialType.Type.GetChildInfo("strata");
 
+            terrainMaterialType.Type = getNodeType("gap", "terrainMaterialType");
+            terrainMaterialType.MaterialIdAttribute = terrainMaterialType.Type.GetAttributeInfo("MaterialId");
+            terrainMaterialType.FlatTextureAttribute = terrainMaterialType.Type.GetAttributeInfo("FlatTexture");
+            terrainMaterialType.SlopeTexture0Attribute = terrainMaterialType.Type.GetAttributeInfo("SlopeTexture0");
+            terrainMaterialType.SlopeTexture1Attribute = terrainMaterialType.Type.GetAttributeInfo("SlopeTexture1");
+            terrainMaterialType.SlopeTexture2Attribute = terrainMaterialType.Type.GetAttributeInfo("SlopeTexture2");
+            terrainMaterialType.BlendingTextureAttribute = terrainMaterialType.Type.GetAttributeInfo("BlendingTexture");
+            terrainMaterialType.FlatTextureMappingAttribute = terrainMaterialType.Type.GetAttributeInfo("FlatTextureMapping");
+            terrainMaterialType.SlopeTexture0MappingAttribute = terrainMaterialType.Type.GetAttributeInfo("SlopeTexture0Mapping");
+            terrainMaterialType.SlopeTexture1MappingAttribute = terrainMaterialType.Type.GetAttributeInfo("SlopeTexture1Mapping");
+            terrainMaterialType.SlopeTexture2MappingAttribute = terrainMaterialType.Type.GetAttributeInfo("SlopeTexture2Mapping");
+            terrainMaterialType.BlendingTextureMappingAttribute = terrainMaterialType.Type.GetAttributeInfo("BlendingTextureMapping");
+
             vegetationSpawnObjectType.Type = getNodeType("gap", "vegetationSpawnObjectType");
             vegetationSpawnObjectType.JitterAmountAttribute = vegetationSpawnObjectType.Type.GetAttributeInfo("JitterAmount");
             vegetationSpawnObjectType.MaxDrawDistanceAttribute = vegetationSpawnObjectType.Type.GetAttributeInfo("MaxDrawDistance");
@@ -334,8 +347,9 @@ namespace LevelEditorXLE
             terrainType.HasShadowsConverageAttribute = terrainType.Type.GetAttributeInfo("HasShadowsConverage");
             terrainType.HasEncodedGradientFlagsAttribute = terrainType.Type.GetAttributeInfo("HasEncodedGradientFlags");
             terrainType.CellCountAttribute = terrainType.Type.GetAttributeInfo("CellCount");
-            terrainType.GradFlagSlopeThresholdAttribute = terrainType.Type.GetAttributeInfo("GradFlagSlopeThreshold");
-            terrainType.GradFlagRoughThresholdAttribute = terrainType.Type.GetAttributeInfo("GradFlagRoughThreshold");
+            terrainType.GradFlagSlopeThreshold0Attribute = terrainType.Type.GetAttributeInfo("GradFlagSlopeThreshold0");
+            terrainType.GradFlagSlopeThreshold1Attribute = terrainType.Type.GetAttributeInfo("GradFlagSlopeThreshold1");
+            terrainType.GradFlagSlopeThreshold2Attribute = terrainType.Type.GetAttributeInfo("GradFlagSlopeThreshold2");
             terrainType.baseTextureChild = terrainType.Type.GetChildInfo("baseTexture");
             terrainType.VegetationSpawnChild = terrainType.Type.GetChildInfo("VegetationSpawn");
 
@@ -764,6 +778,22 @@ namespace LevelEditorXLE
             public static ChildInfo strataChild;
         }
 
+        public static class terrainMaterialType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo MaterialIdAttribute;
+            public static AttributeInfo FlatTextureAttribute;
+            public static AttributeInfo SlopeTexture0Attribute;
+            public static AttributeInfo SlopeTexture1Attribute;
+            public static AttributeInfo SlopeTexture2Attribute;
+            public static AttributeInfo BlendingTextureAttribute;
+            public static AttributeInfo FlatTextureMappingAttribute;
+            public static AttributeInfo SlopeTexture0MappingAttribute;
+            public static AttributeInfo SlopeTexture1MappingAttribute;
+            public static AttributeInfo SlopeTexture2MappingAttribute;
+            public static AttributeInfo BlendingTextureMappingAttribute;
+        }
+
         public static class vegetationSpawnObjectType
         {
             public static DomNodeType Type;
@@ -809,8 +839,9 @@ namespace LevelEditorXLE
             public static AttributeInfo HasShadowsConverageAttribute;
             public static AttributeInfo HasEncodedGradientFlagsAttribute;
             public static AttributeInfo CellCountAttribute;
-            public static AttributeInfo GradFlagSlopeThresholdAttribute;
-            public static AttributeInfo GradFlagRoughThresholdAttribute;
+            public static AttributeInfo GradFlagSlopeThreshold0Attribute;
+            public static AttributeInfo GradFlagSlopeThreshold1Attribute;
+            public static AttributeInfo GradFlagSlopeThreshold2Attribute;
             public static ChildInfo baseTextureChild;
             public static ChildInfo VegetationSpawnChild;
         }

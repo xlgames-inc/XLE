@@ -59,7 +59,7 @@
         return SRGBLuminance(SpecularityAtlas.Sample(MaybeAnisotropicSampler, AsAtlasCoord(tc, strata, textureType)).rgb);
     }
 
-    static const bool UseNoramlsAtlas = false;
+    static const bool UseNormalsAtlas = false;
     static const bool UseStrataSpecular = false;
 
     TerrainTextureOutput GetTextureForStrata(
@@ -78,9 +78,9 @@
         float3 B = DiffuseAtlasSample(tc1, strataIndex, 1);
         result.diffuseAlbedo = lerp(A, B, alpha);
 
-        if (UseNoramlsAtlas) {
-            float3 An = NoramlsAtlas.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb;
-            float3 Bn = NoramlsAtlas.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb;
+        if (UseNormalsAtlas) {
+            float3 An = NormalsAtlas.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb;
+            float3 Bn = NormalsAtlas.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb;
             result.tangentSpaceNormal = lerp(An, Bn, alpha);
         } else {
             result.tangentSpaceNormal = float3(0.5,0.5,1);
@@ -113,12 +113,12 @@
                 // soft darkening based on slope give a curiously effective approximation of ambient occlusion
             float arrayIdx = strataIndex*3+2;
             float3 S = DiffuseAtlasSample(tcS0, strataIndex, 2);
-            float3 Sn = NoramlsAtlas.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
+            float3 Sn = NormalsAtlas.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
             float Ss = StrataSpecularSample(tcS0, strataIndex, 2);
 
             tcS0.x = worldPosition.y * TextureFrequency[strataIndex].z;
             float3 S2 = DiffuseAtlasSample(tcS0, strataIndex, 2);
-            float3 Sn2 = NoramlsAtlas.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
+            float3 Sn2 = NormalsAtlas.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
             float Ss2 = StrataSpecularSample(tcS0, strataIndex, 2);
 
             float A = a / (a+b);
@@ -128,7 +128,7 @@
             Ss = Ss * A + Ss2 * B;
 
             result.diffuseAlbedo = lerp(result.diffuseAlbedo, slopeDarkness * S, slopeAlpha);
-            if (UseNoramlsAtlas)
+            if (UseNormalsAtlas)
                 result.tangentSpaceNormal = lerp(result.tangentSpaceNormal, Sn, slopeAlpha);
 
             if (UseStrataSpecular)

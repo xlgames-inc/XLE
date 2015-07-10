@@ -41,38 +41,19 @@ TerrainTextureOutput LoadTexSample(float3 worldPosition, uint materialId, uint t
     return result;
 }
 
-TerrainTextureOutput Blend(TerrainTextureOutput zero, TerrainTextureOutput one, float alpha)
-{
-    TerrainTextureOutput result;
-    result.diffuseAlbedo = lerp(zero.diffuseAlbedo, one.diffuseAlbedo, alpha);
-    result.tangentSpaceNormal = float3(0,0,1);
-    result.specularity = 1.f;
-    return result;
-}
-
-TerrainTextureOutput AddWeighted(TerrainTextureOutput zero, TerrainTextureOutput one, float weight)
-{
-    TerrainTextureOutput result;
-    result.diffuseAlbedo = zero.diffuseAlbedo + one.diffuseAlbedo * weight;
-    result.tangentSpaceNormal = float3(0,0,1);
-    result.specularity = 1.f;
-    return result;
-}
-
 TerrainTextureOutput GradFlagTexturing::Calculate(
     float3 worldPosition, float2 dhdxy, uint materialId, float2 textureCoord)
 {
-    TerrainTextureOutput result;
-    result.diffuseAlbedo = 0.0.xxx;
+    TerrainTextureOutput result = TerrainTextureOutput_Blank();
     result.tangentSpaceNormal = float3(0,0,1);
     result.specularity = 1.f;
 
     float3 debugColors[4] =
     {
-        float3(0, 0, 1),
         float3(1, 1, 1),
-        float3(1, 0, 0),
-        float3(0, 1, 1)
+        float3(0, 0, 1),
+        float3(0, 1, 0),
+        float3(1, 0, 0)
     };
 
     const uint TexType_Flat = 0;
@@ -107,31 +88,20 @@ TerrainTextureOutput GradFlagTexturing::Calculate(
         w[2] = (1.f - C.x) * (C.y);
         w[3] = (C.x) * (C.y);
 
-        float typeWeights[2];
-        typeWeights[0] = typeWeights[1] = 0;
+        float typeWeights[4];
+        typeWeights[0] = typeWeights[1] = typeWeights[2] = typeWeights[3] = 0;
 
         [unroll] for (uint c=0; c<4; ++c) {
-            if (useDebugColors) result.diffuseAlbedo += debugColors[s[c]&1] * w[c];
+            if (useDebugColors) result.diffuseAlbedo += debugColors[s[c]] * w[c];
             else {
                 result = AddWeighted(
                     result,
-                    LoadTexSample(worldPosition, materialId, s[c]&1),
+                    LoadTexSample(worldPosition, materialId, s[c]),
                     w[c]);
             }
 
-            typeWeights[s[c]&1] += w[c];
+            typeWeights[s[c]] += w[c];
         }
-
-        float2 B = explodedTC - baseTC;
-        float roughAlpha = 0.f;
-        roughAlpha += ((s[0] & 2)!=0) * (1.f - B.x) * (1.f - B.y);
-        roughAlpha += ((s[1] & 2)!=0) * (B.x) * (1.f - B.y);
-        roughAlpha += ((s[2] & 2)!=0) * (1.f - B.x) * (B.y);
-        roughAlpha += ((s[3] & 2)!=0) * (B.x) * (B.y);
-        roughAlpha = 4.f * saturate(roughAlpha - 0.8f);
-        // roughAlpha *= roughAlpha; roughAlpha *= roughAlpha;
-        // roughAlpha *= roughAlpha; roughAlpha *= roughAlpha;
-        result = Blend(result, LoadTexSample(worldPosition, materialId, TexType_RoughFlat), roughAlpha);
 
             // we can find the edging like this --
             //      This allows blending in a transition texture between the repeating textures

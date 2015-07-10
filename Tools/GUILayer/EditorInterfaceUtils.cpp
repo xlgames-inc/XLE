@@ -422,12 +422,13 @@ namespace GUILayer
         static void GenerateCellFiles(
             TerrainConfig^ cfg, String^ uberSurfaceDir, 
             bool overwriteExisting, 
-            float slopeThreshold, float transThreshold,
+            float slopeThreshold0, float slopeThreshold1, float slopeThreshold2,
             IProgress^ progress)
         {
             auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
             SceneEngine::GradientFlagsSettings gradFlagSettings(
-                cfg->EncodedGradientFlags, cfg->ElementSpacing, slopeThreshold, transThreshold);
+                cfg->EncodedGradientFlags, cfg->ElementSpacing, 
+                slopeThreshold0, slopeThreshold1, slopeThreshold2);
             ToolsRig::GenerateCellFiles(
                 cfg->GetNative(), 
                 clix::marshalString<clix::E_UTF8>(uberSurfaceDir).c_str(), 

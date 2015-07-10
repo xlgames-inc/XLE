@@ -124,16 +124,22 @@ namespace LevelEditorXLE.Terrain
             set { SetAttribute(TerrainST.CellCountAttribute, value); }
         }
 
-        public float GradFlagSlopeThreshold
+        public float GradFlagSlopeThreshold0
         {
-            get { return GetAttribute<float>(TerrainST.GradFlagSlopeThresholdAttribute); }
-            set { SetAttribute(TerrainST.GradFlagSlopeThresholdAttribute, value); }
+            get { return GetAttribute<float>(TerrainST.GradFlagSlopeThreshold0Attribute); }
+            set { SetAttribute(TerrainST.GradFlagSlopeThreshold0Attribute, value); }
         }
 
-        public float GradFlagRoughThreshold
+        public float GradFlagSlopeThreshold1
         {
-            get { return GetAttribute<float>(TerrainST.GradFlagRoughThresholdAttribute); }
-            set { SetAttribute(TerrainST.GradFlagRoughThresholdAttribute, value); }
+            get { return GetAttribute<float>(TerrainST.GradFlagSlopeThreshold1Attribute); }
+            set { SetAttribute(TerrainST.GradFlagSlopeThreshold1Attribute, value); }
+        }
+
+        public float GradFlagSlopeThreshold2
+        {
+            get { return GetAttribute<float>(TerrainST.GradFlagSlopeThreshold2Attribute); }
+            set { SetAttribute(TerrainST.GradFlagSlopeThreshold2Attribute, value); }
         }
 
         private static uint ClampNodeDimensions(uint input)
@@ -206,8 +212,9 @@ namespace LevelEditorXLE.Terrain
             cfg.HasShadowsCoverage = HasShadowsCoverage;
             cfg.HasEncodedGradientFlags = HasEncodedGradientFlags;
             cfg.SunPathAngle = SunPathAngle;
-            cfg.SlopeThreshold = GradFlagSlopeThreshold;
-            cfg.RoughThreshold = GradFlagRoughThreshold;
+            cfg.SlopeThreshold0 = GradFlagSlopeThreshold0;
+            cfg.SlopeThreshold1 = GradFlagSlopeThreshold1;
+            cfg.SlopeThreshold2 = GradFlagSlopeThreshold2;
             return cfg;
         }
 
@@ -224,8 +231,9 @@ namespace LevelEditorXLE.Terrain
             HasShadowsCoverage = cfg.HasShadowsCoverage;
             HasEncodedGradientFlags = cfg.HasEncodedGradientFlags;
             SunPathAngle = cfg.SunPathAngle;
-            GradFlagSlopeThreshold = cfg.SlopeThreshold;
-            GradFlagRoughThreshold = cfg.RoughThreshold;
+            GradFlagSlopeThreshold0 = cfg.SlopeThreshold0;
+            GradFlagSlopeThreshold1 = cfg.SlopeThreshold1;
+            GradFlagSlopeThreshold2 = cfg.SlopeThreshold2;
         }
 
         internal GUILayer.TerrainConfig BuildEngineConfig(TerrainConfig.Config cfg)
@@ -295,7 +303,7 @@ namespace LevelEditorXLE.Terrain
                         engineCfg, UberSurfaceDirectory, progress); 
                     GUILayer.EditorInterfaceUtils.GenerateCellFiles(
                         engineCfg, UberSurfaceDirectory, false,
-                        cfg.SlopeThreshold, cfg.RoughThreshold,
+                        cfg.SlopeThreshold0, cfg.SlopeThreshold1, cfg.SlopeThreshold2,
                         progress);
 
                         // native side reads the config from disk atm.
@@ -368,7 +376,7 @@ namespace LevelEditorXLE.Terrain
                 {
                     GUILayer.EditorInterfaceUtils.GenerateCellFiles(
                         BuildEngineConfig(), UberSurfaceDirectory, true,
-                        GradFlagSlopeThreshold, GradFlagRoughThreshold, progress);
+                        GradFlagSlopeThreshold0, GradFlagSlopeThreshold1, GradFlagSlopeThreshold2, progress);
                 }
             }
             catch { }

@@ -58,7 +58,7 @@ uint CalculateRawGradientFlags(int2 baseCoord, float spacing, float slopeThresho
     float heightDiff[9];
     for (uint c=0; c<9; c++) {
         heights[c] = GetHeight(baseCoord + Offsets[c]);
-        dhdxy[c] = CalculateDHDXY(baseCoord + Offsets[c]);
+        dhdxy[c] = CalculateDHDXY(baseCoord + Offsets[c]) / spacing;
     }
     for (uint c2=0; c2<9; c2++) {
         heightDiff[c2] = heights[c2] - heights[4];
@@ -70,6 +70,13 @@ uint CalculateRawGradientFlags(int2 baseCoord, float spacing, float slopeThresho
     // dot(dhdxy[1], dhdxy[8]) >= 1.f;
     // dot(dhdxy[3], dhdxy[5]) >= 1.f;
 
+    float slope = max(abs(dhdxy[4].x), abs(dhdxy[4].y));
+    if (slope < .5f*1.f)    return 0;
+    if (slope < .5f*2.25f)  return 1;
+    if (slope < .5f*3.5f)   return 2;
+    return 3;
+
+#if 0
     bool centerIsSlope = max(abs(dhdxy[4].x), abs(dhdxy[4].y)) > slopeThreshold;
     int result = int(centerIsSlope);
 
@@ -82,9 +89,7 @@ uint CalculateRawGradientFlags(int2 baseCoord, float spacing, float slopeThresho
     if (leftRightTrans || topBottomTrans) result |= 2;
 
     return result;
+#endif
 }
-
-static const float SlopeThresholdDefault = 1.5f;
-static const float TransThresholdDefault = .8f;
 
 #endif

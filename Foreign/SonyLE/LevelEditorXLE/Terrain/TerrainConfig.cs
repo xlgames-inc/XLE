@@ -84,10 +84,13 @@ namespace LevelEditorXLE.Terrain
             public bool HasEncodedGradientFlags { get; set; }
 
             [Category("Gradient Flags")] [Description("Threshold for flat texturing")]
-            public float SlopeThreshold { get; set; }
+            public float SlopeThreshold0 { get; set; }
 
-            [Category("Gradient Flags")] [Description("Threshold for rough texturing")]
-            public float RoughThreshold { get; set; }
+            [Category("Gradient Flags")] [Description("Threshold for first slope texturing")]
+            public float SlopeThreshold1 { get; set; }
+
+            [Category("Gradient Flags")] [Description("Threshold for second slope texturing")]
+            public float SlopeThreshold2 { get; set; }
 
             [Browsable(false)] public string SourceDEMFile { get; set; }
             [Browsable(false)] public uint NewCellCountX { get; set; }

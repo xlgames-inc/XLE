@@ -36,7 +36,34 @@ TerrainTextureOutput DummyMaterial::Calculate(float3 worldPosition, float2 dhdxy
 }
 
 Texture2DArray DiffuseAtlas		: register( t8);
-Texture2DArray NoramlsAtlas		: register( t9);
+Texture2DArray NormalsAtlas		: register( t9);
 Texture2DArray SpecularityAtlas	: register(t10);
+
+TerrainTextureOutput Blend(TerrainTextureOutput zero, TerrainTextureOutput one, float alpha)
+{
+    TerrainTextureOutput result;
+    result.diffuseAlbedo = lerp(zero.diffuseAlbedo, one.diffuseAlbedo, alpha);
+    result.tangentSpaceNormal = float3(0,0,1);
+    result.specularity = 1.f;
+    return result;
+}
+
+TerrainTextureOutput AddWeighted(TerrainTextureOutput zero, TerrainTextureOutput one, float weight)
+{
+    TerrainTextureOutput result;
+    result.diffuseAlbedo = zero.diffuseAlbedo + one.diffuseAlbedo * weight;
+    result.tangentSpaceNormal = float3(0,0,1);
+    result.specularity = 1.f;
+    return result;
+}
+
+TerrainTextureOutput TerrainTextureOutput_Blank()
+{
+    TerrainTextureOutput result;
+    result.diffuseAlbedo = 0.0.xxx;
+    result.tangentSpaceNormal = float3(0,0,0);
+    result.specularity = 0.f;
+    return result;
+}
 
 #endif

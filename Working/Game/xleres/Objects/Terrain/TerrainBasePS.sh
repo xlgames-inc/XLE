@@ -92,21 +92,39 @@ TerrainPixel CalculateTexturing(PSInput geo)
         worldPosition = geo.worldPosition;
     #endif
 
-    uint materialId = 0;
+    TerrainTextureOutput procTexture;
 
     #if defined(COVERAGE_1000)
         {
-            uint2 finalTexCoord = lerp(
+            float2 matIdTC = lerp(
                 CoverageCoordMins[COVERAGE_1000].xy,
                 CoverageCoordMaxs[COVERAGE_1000].xy, geo.texCoord.xy);
+            float2 matIdTCB = floor(matIdTC);
+            float2 A = matIdTC - matIdTCB;
+            float w[4];
+            w[0] = (1.f - A.x) * (1.f - A.y);
+            w[1] = (1.f - A.x) * A.y;
+            w[2] = A.x * (1.f - A.y);
+            w[3] = A.x * A.y;
 
-            materialId = MakeCoverageTileSet(COVERAGE_1000).Load(
-                uint4(finalTexCoord, CoverageOrigin[COVERAGE_1000].z, 0)).r;
+            uint materialId[4];
+            materialId[0] = MakeCoverageTileSet(COVERAGE_1000).Load(
+                uint4(matIdTCB, CoverageOrigin[COVERAGE_1000].z, 0));
+            materialId[1] = MakeCoverageTileSet(COVERAGE_1000).Load(
+                uint4(uint2(matIdTCB) + uint2(0,1), CoverageOrigin[COVERAGE_1000].z, 0));
+            materialId[2] = MakeCoverageTileSet(COVERAGE_1000).Load(
+                uint4(uint2(matIdTCB) + uint2(1,0), CoverageOrigin[COVERAGE_1000].z, 0));
+            materialId[3] = MakeCoverageTileSet(COVERAGE_1000).Load(
+                uint4(uint2(matIdTCB) + uint2(1,1), CoverageOrigin[COVERAGE_1000].z, 0));
+
+            procTexture = TerrainTextureOutput_Blank();
+            [unroll] for (uint c=0; c<4; c++)
+                procTexture = AddWeighted(procTexture, MainTexturing.Calculate(worldPosition, geo.dhdxy, materialId[c], geo.texCoord), w[c]);
         }
+    #else
+        procTexture = MainTexturing.Calculate(worldPosition, geo.dhdxy, 0, geo.texCoord);
     #endif
 
-    TerrainTextureOutput procTexture;
-    procTexture = MainTexturing.Calculate(worldPosition, geo.dhdxy, materialId, geo.texCoord);
     result.rgb = procTexture.diffuseAlbedo.rgb;
 
     #if DRAW_WIREFRAME==1
@@ -136,9 +154,11 @@ TerrainPixel CalculateTexturing(PSInput geo)
     output.cookedAmbientOcclusion = shadowing;
 
     #if (OUTPUT_TEXCOORD==1) && defined(VISUALIZE_COVERAGE)
-        float2 coverageTC = lerp(CoverageCoordMins[VISUALIZE_COVERAGE].xy, CoverageCoordMaxs[VISUALIZE_COVERAGE].xy, geo.texCoord.xy);
-        uint sample = MakeCoverageTileSet(VISUALIZE_COVERAGE).Load(uint4(uint2(coverageTC.xy), CoverageOrigin[VISUALIZE_COVERAGE].z, 0));
-        output.diffuseAlbedo = GetDistinctFloatColour(sample);
+        if ((dot(uint2(geo.position.xy), uint2(1,1))/4)%4 == 0) {
+            float2 coverageTC = lerp(CoverageCoordMins[VISUALIZE_COVERAGE].xy, CoverageCoordMaxs[VISUALIZE_COVERAGE].xy, geo.texCoord.xy);
+            uint sample = MakeCoverageTileSet(VISUALIZE_COVERAGE).Load(uint4(uint2(coverageTC.xy), CoverageOrigin[VISUALIZE_COVERAGE].z, 0));
+            output.diffuseAlbedo = GetDistinctFloatColour(sample);
+        }
     #endif
 
     return output;

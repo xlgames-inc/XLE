@@ -379,40 +379,46 @@ namespace SceneEngine
             {
                     // Calculate the gradient flags for the element at the given coordinate
 
-                const float slopeThreshold = settings._slopeThreshold;
-                const float transThreshold = settings._transThreshold;
                 const float spacing = settings._elementSpacing;
 
-                const Int2 offsets[] =
-                {
-                    Int2( 0, -1), Int2( 0,  1), 
-                    Int2(-1,  0), Int2( 1,  0)
-                };
-                float heightDiff[dimof(offsets)];
+                #if 0
+                    const Int2 offsets[] =
+                    {
+                        Int2( 0, -1), Int2( 0,  1), 
+                        Int2(-1,  0), Int2( 1,  0)
+                    };
+                    float heightDiff[dimof(offsets)];
 
-                float centerHeight = surface.GetValue(coord[0], coord[1]);
-                for (uint c2=0; c2<dimof(offsets); c2++) {
-                    Int2 c = Int2(coord) + offsets[c2];
-                    if (c[0] >= 0 && c[1] >= 0 && c[0] < (int)surface.GetWidth() && c[1] < (int)surface.GetHeight()) {
-                        heightDiff[c2] = surface.GetValueFast(c[0], c[1]) - centerHeight;
-                    } else {
-                        heightDiff[c2] = 0.f;
+                    float centerHeight = surface.GetValue(coord[0], coord[1]);
+                    for (uint c2=0; c2<dimof(offsets); c2++) {
+                        Int2 c = Int2(coord) + offsets[c2];
+                        if (c[0] >= 0 && c[1] >= 0 && c[0] < (int)surface.GetWidth() && c[1] < (int)surface.GetHeight()) {
+                            heightDiff[c2] = surface.GetValueFast(c[0], c[1]) - centerHeight;
+                        } else {
+                            heightDiff[c2] = 0.f;
+                        }
                     }
-                }
 
-                Float3 b( 0.f, -spacing, heightDiff[0]);
-                Float3 t( 0.f,  spacing, heightDiff[1]);
-                Float3 l(-spacing,  0.f, heightDiff[2]);
-                Float3 r( spacing,  0.f, heightDiff[3]);
+                    Float3 b( 0.f, -spacing, heightDiff[0]);
+                    Float3 t( 0.f,  spacing, heightDiff[1]);
+                    Float3 l(-spacing,  0.f, heightDiff[2]);
+                    Float3 r( spacing,  0.f, heightDiff[3]);
 
-                Float2 dhdxy = CalculateDHDXY(surface, coord);
-                bool centerIsSlope = std::max(XlAbs(dhdxy[0]), XlAbs(dhdxy[1])) > slopeThreshold;
-                auto result = int(centerIsSlope);
+                    bool centerIsSlope = std::max(XlAbs(dhdxy[0]), XlAbs(dhdxy[1])) > slopeThreshold;
+                    auto result = int(centerIsSlope);
 
-                bool topBottomTrans = dot(normalize(b), -normalize(t)) < transThreshold;
-                bool leftRightTrans = dot(normalize(l), -normalize(r)) < transThreshold;
-                if (leftRightTrans || topBottomTrans) result |= 2;
-                return result;
+                    bool topBottomTrans = dot(normalize(b), -normalize(t)) < transThreshold;
+                    bool leftRightTrans = dot(normalize(l), -normalize(r)) < transThreshold;
+                    if (leftRightTrans || topBottomTrans) result |= 2;
+                    return result;
+                #endif
+
+                Float2 dhdxy = CalculateDHDXY(surface, coord) / spacing;
+                float slope = std::max(XlAbs(dhdxy[0]), XlAbs(dhdxy[1]));
+                if (slope < settings._slopeThresholds[0]) return 0;
+                if (slope < settings._slopeThresholds[1]) return 1;
+                if (slope < settings._slopeThresholds[2]) return 2;
+                return 3;
             }
 
         template<typename Element>
@@ -665,12 +671,13 @@ namespace SceneEngine
 
     GradientFlagsSettings::GradientFlagsSettings(
         bool enable, float elementSpacing,
-        float slopeThreshold, float transThreshold)
+        float slope0Threshold, float slope1Threshold, float slope2Threshold)
     {
         _enable = enable;
         _elementSpacing = elementSpacing;
-        _slopeThreshold = slopeThreshold;
-        _transThreshold = transThreshold;
+        _slopeThresholds[0] = slope0Threshold;
+        _slopeThresholds[1] = slope1Threshold;
+        _slopeThresholds[2] = slope2Threshold;
     }
 
 }
