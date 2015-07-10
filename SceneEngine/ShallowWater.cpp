@@ -66,6 +66,7 @@ namespace SceneEngine
         RenderCore::Metal::ShaderResourceView   _foamQuantitySRV2[2];
 
         unsigned    _rotatingBufferCount;
+        bool        _pendingInitialClear;
 
         ShallowWaterGrid();
         ShallowWaterGrid(unsigned width, unsigned height, unsigned maxSimulationGrids, bool pipeModel, bool calculateVelocities);
@@ -119,10 +120,8 @@ namespace SceneEngine
 
         if (pipeModel || calculateVelocities) {
             targetDesc._textureDesc._nativePixelFormat = NativeFormat::R32_TYPELESS;
-            auto velBuffer = BufferUploads::CreateBasicPacket(sizeof(float)*width*height, nullptr, BufferUploads::TexturePitches(width*4, width*height*4));
-            std::fill((float*)velBuffer->GetData(), (float*)PtrAdd(velBuffer->GetData(), width*height*sizeof(float)), 0.f);
             for (unsigned c=0; c<VelTextures; ++c) {
-                waterVelocitiesTexture[c] = uploads.Transaction_Immediate(targetDesc, velBuffer.get())->AdoptUnderlying();
+                waterVelocitiesTexture[c] = uploads.Transaction_Immediate(targetDesc)->AdoptUnderlying();
                 waterVelocitiesUAV[c] = UnorderedAccessView(waterVelocitiesTexture[c].get(), NativeFormat::R32_FLOAT, 0, false, true);
                 waterVelocitiesSRV[c] = ShaderResourceView(waterVelocitiesTexture[c].get(), NativeFormat::R32_FLOAT, maxSimulationGrids);
             }
@@ -189,6 +188,7 @@ namespace SceneEngine
         }
 
         _rotatingBufferCount = heightsTextureCount;
+        _pendingInitialClear = true;
 
                 ////
         _normalsTexture = std::move(normalsTexture);
@@ -209,12 +209,27 @@ namespace SceneEngine
 
     ShallowWaterGrid::~ShallowWaterGrid() {}
     
+    void CheckInitialClear(RenderCore::Metal::DeviceContext* context, ShallowWaterGrid& grid)
+    {
+        // When we create the resources initially, we don't have a device context, so we can't do
+        // a clear... We have to deferred until we have a device context
+        if (grid._pendingInitialClear) {
+            float clearValues[4] = {0,0,0,0};
+            for (unsigned c=0; c<ShallowWaterGrid::VelTextures; ++c)
+                context->Clear(grid._waterVelocitiesUAV[c], clearValues);
+            grid._pendingInitialClear = false;
+        }
+    }
+
     ShallowWaterSim::ShallowWaterSim(const Desc& desc)
     {
         using namespace BufferUploads;
         auto& uploads = GetBufferUploads();
 
-        auto simulationGrid = std::make_unique<ShallowWaterGrid>(desc._gridDimension, desc._gridDimension, desc._maxSimulationGrid, desc._usePipeModel, desc._buildVelocities);
+        auto simulationGrid = std::make_unique<ShallowWaterGrid>(
+            desc._gridDimension, desc._gridDimension, 
+            desc._maxSimulationGrid, desc._usePipeModel, 
+            desc._buildVelocities);
 
             //
             //      Build a lookup table that will provide the indices into
@@ -268,7 +283,9 @@ namespace SceneEngine
         return (lhs._gridX + lhs._gridY) < (rhs._gridX + rhs._gridY);
     }
 
-    static bool GridIsVisible(LightingParserContext& parserContext, int gridX, int gridY, float gridPhysicalDimension, float baseWaterHeight)
+    static bool GridIsVisible(
+        LightingParserContext& parserContext, int gridX, int gridY, 
+        float gridPhysicalDimension, float baseWaterHeight)
     {
         Float3 mins( gridX    * gridPhysicalDimension,  gridY    * gridPhysicalDimension, baseWaterHeight - 3.f);
         Float3 maxs((gridX+1) * gridPhysicalDimension, (gridY+1) * gridPhysicalDimension, baseWaterHeight + 3.f);
@@ -359,21 +376,38 @@ namespace SceneEngine
         return true;
     }
 
+    ShallowWaterSettings::ShallowWaterSettings()
+    {
+        _rainQuantityPerFrame = 0.f;
+        _evaporationConstant = 0.f; // 0.985f;
+        _pressureConstant = 150.f;
+        _compressionConstants = Float4(0.f, 0.f, 1000.f, 1.f);
+    }
+
     struct SimulatingConstants
     {
         Int2	    _simulatingIndex; 
 	    unsigned    _arrayIndex;
-	    float       _rainQuantityPerFrame;
+        unsigned    _dummy0;
         Float2      _worldSpaceOffset;
-        unsigned    _dummy[2];
+        float       _rainQuantityPerFrame;
+        float       _evaporationConstant;
+        float       _pressureConstant;
+        unsigned    _dummy1[3];
     };
 
-    static void SetSimulatingConstants(RenderCore::Metal::DeviceContext* context, ConstantBuffer& cb, const ShallowWaterSim::ActiveElement& ele, float rainQuantityPerFrame = 0.f, Float2 offset = Float2(0,0))
+    static void SetSimulatingConstants(
+        RenderCore::Metal::DeviceContext* context, 
+        ConstantBuffer& cb, 
+        const ShallowWaterSim::ActiveElement& ele, const ShallowWaterSettings & settings, Float2 offset = Float2(0,0))
     {
         SimulatingConstants constants = { 
-            Int2(ele._gridX, ele._gridY), ele._arrayIndex, 
-            rainQuantityPerFrame, 
-            offset, {0,0} 
+            Int2(ele._gridX, ele._gridY), ele._arrayIndex, 0,
+            offset, 
+            settings._rainQuantityPerFrame, 
+            settings._evaporationConstant,
+            settings._pressureConstant,
+            {0,0,0}
         };
 
         cb.Update(*context, &constants, sizeof(SimulatingConstants));
@@ -384,14 +418,14 @@ namespace SceneEngine
         const std::vector<ShallowWaterSim::ActiveElement>& elements,
         ConstantBuffer& basicConstantsBuffer, ConstantBuffer& surfaceHeightsConstantsBuffer,
         ISurfaceHeightsProvider* surfaceHeightsProvider, 
-        float gridPhysicalDimension, float rainQuantityPerFrame, 
+        float gridPhysicalDimension, const ShallowWaterSettings& settings, 
         unsigned elementDimension)
     {
         for (auto i=elements.cbegin(); i!=elements.cend(); ++i) {
             if (i->_arrayIndex < 128) {
                 if (!SetAddressingConstants(context, surfaceHeightsConstantsBuffer, *i, surfaceHeightsProvider, gridPhysicalDimension))
                     continue;
-                SetSimulatingConstants(context, basicConstantsBuffer, *i, rainQuantityPerFrame);
+                SetSimulatingConstants(context, basicConstantsBuffer, *i, settings);
                 context->Dispatch(1, elementDimension, 1);
             }
         }
@@ -413,12 +447,13 @@ namespace SceneEngine
         const OceanSettings& oceanSettings, float gridPhysicalDimension,
         RenderCore::Metal::ShaderResourceView* globalOceanWorkingHeights,
         ISurfaceHeightsProvider* surfaceHeightsProvider, ShallowWaterSim& shallowBox, 
-        unsigned bufferCounter, const float compressionConstants[4], 
-        float rainQuantityPerFrame, ShallowBorderMode::Enum borderMode)
+        unsigned bufferCounter, const ShallowWaterSettings& settings, ShallowBorderMode::Enum borderMode)
     {
         unsigned thisFrameBuffer     = (bufferCounter+0) % shallowBox._simulationGrid->_rotatingBufferCount;
         unsigned prevFrameBuffer     = (bufferCounter+2) % shallowBox._simulationGrid->_rotatingBufferCount;     // (ie, -1 then +3)
         unsigned prevPrevFrameBuffer = (bufferCounter+1) % shallowBox._simulationGrid->_rotatingBufferCount;
+
+        CheckInitialClear(context, *shallowBox._simulationGrid);
 
         auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
         ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
@@ -447,7 +482,8 @@ namespace SceneEngine
 
         ConstantBuffer surfaceHeightsConstantsBuffer(nullptr, sizeof(ShallowWaterSim::SurfaceHeightsAddressingConstants));
         ConstantBuffer basicConstantsBuffer(nullptr, sizeof(SimulatingConstants));
-        context->BindCS(MakeResourceList(1, surfaceHeightsConstantsBuffer, basicConstantsBuffer, ConstantBuffer(compressionConstants, 4*sizeof(float))));
+        context->BindCS(MakeResourceList(1, surfaceHeightsConstantsBuffer, basicConstantsBuffer, 
+            ConstantBuffer(&settings._compressionConstants, 4*sizeof(float))));
 
         if (!shallowBox._usePipeModel) {
 
@@ -466,7 +502,7 @@ namespace SceneEngine
                     //  (and every pass)
                 for (auto i = shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
                     if (i->_arrayIndex < 128) {
-                        SetSimulatingConstants(context, basicConstantsBuffer, *i, rainQuantityPerFrame);
+                        SetSimulatingConstants(context, basicConstantsBuffer, *i, settings);
                         if (!SetAddressingConstants(context, surfaceHeightsConstantsBuffer, *i, surfaceHeightsProvider, gridPhysicalDimension))
                             continue;
 
@@ -485,7 +521,7 @@ namespace SceneEngine
                 context->Bind(cshaderVel);
                 DispatchEachElement(
                     context, shallowBox._activeSimulationElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
-                    surfaceHeightsProvider, gridPhysicalDimension, rainQuantityPerFrame, shallowBox._gridDimension);
+                    surfaceHeightsProvider, gridPhysicalDimension, settings, shallowBox._gridDimension);
             } else {
 
                     //      Second method for calculating velocity
@@ -498,13 +534,13 @@ namespace SceneEngine
                 context->Bind(Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/ShallowWaterSim.csh:UpdateVelocities0:cs_*", shaderDefines));
                 DispatchEachElement(
                     context, shallowBox._activeSimulationElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
-                    surfaceHeightsProvider, gridPhysicalDimension, rainQuantityPerFrame, shallowBox._gridDimension);
+                    surfaceHeightsProvider, gridPhysicalDimension, settings, shallowBox._gridDimension);
 
 
                 context->Bind(Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/ShallowWaterSim.csh:UpdateVelocities1:cs_*", shaderDefines));
                 DispatchEachElement(
                     context, shallowBox._activeSimulationElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
-                    surfaceHeightsProvider, gridPhysicalDimension, rainQuantityPerFrame, shallowBox._gridDimension);
+                    surfaceHeightsProvider, gridPhysicalDimension, settings, shallowBox._gridDimension);
             }
 
         } else {
@@ -559,7 +595,7 @@ namespace SceneEngine
 
                 DispatchEachElement(
                     context, sortedElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
-                    surfaceHeightsProvider, gridPhysicalDimension, rainQuantityPerFrame, shallowBox._gridDimension);
+                    surfaceHeightsProvider, gridPhysicalDimension, settings, shallowBox._gridDimension);
 
                 context->UnbindCS<RenderCore::Metal::UnorderedAccessView>(0, 8);
             }
@@ -583,6 +619,8 @@ namespace SceneEngine
     {
         const bool usePipeModel = shallowBox._usePipeModel;
         std::vector<ShallowWaterSim::ActiveElement> newElements;
+
+        CheckInitialClear(context, *shallowBox._simulationGrid);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -652,7 +690,7 @@ namespace SceneEngine
 
                 gridsForSecondInitPhase.push_back(newElement);
 
-                SetSimulatingConstants(context, initCellConstantsBuffer, newElement);
+                SetSimulatingConstants(context, initCellConstantsBuffer, newElement, ShallowWaterSettings());
                 context->Dispatch(1, shallowBox._gridDimension, 1);
 
             } else {
@@ -669,7 +707,7 @@ namespace SceneEngine
             context->Bind(cshader);
             for (auto i = gridsForSecondInitPhase.cbegin(); i!=gridsForSecondInitPhase.cend(); ++i) {
                 if (i->_arrayIndex == ~unsigned(0x0)) {
-                    SetSimulatingConstants(context, initCellConstantsBuffer, *i);
+                    SetSimulatingConstants(context, initCellConstantsBuffer, *i, ShallowWaterSettings());
                     context->Dispatch(1, shallowBox._gridDimension, 1);
                 }
             }
@@ -688,7 +726,6 @@ namespace SceneEngine
     {
             // run a simulation of shallow water (for some interesting wave dynamics near the shore...)
         auto& oceanReset = Tweakable("OceanReset", false);
-        const float rainQuantity = Tweakable("OceanRainQuantity", 0.f);
         const auto shallowWaterBorderMode = (ShallowBorderMode::Enum)Tweakable("OceanShallowBorder", 1);
         const float baseHeight = oceanSettings._baseHeight;
 
@@ -829,7 +866,9 @@ namespace SceneEngine
 
             auto cursorPos = GetCursorPos();
             ViewportDesc vpd(*context);
-            float compressionConstants[4] = { 0.f, 0.f, 1000.f, 1.f };
+
+            ShallowWaterSettings settings;
+            settings._rainQuantityPerFrame = Tweakable("OceanRainQuantity", 0.f);
 
             static unsigned framesMouseDown = 0;
             if (GetKeyState(VK_MBUTTON)<0) {
@@ -841,10 +880,10 @@ namespace SceneEngine
                 float alpha = -a / b;
                 Float3 intersectionPoint = LinearInterpolate(mouseOverRay.first, mouseOverRay.second, alpha);
             
-                compressionConstants[0] = intersectionPoint[0];
-                compressionConstants[1] = intersectionPoint[1];
-                compressionConstants[2] = baseHeight-.2f;
-                compressionConstants[3] = 6.f;
+                settings._compressionConstants[0] = intersectionPoint[0];
+                settings._compressionConstants[1] = intersectionPoint[1];
+                settings._compressionConstants[2] = baseHeight-.2f;
+                settings._compressionConstants[3] = 6.f;
 
                 ++framesMouseDown;
             } else {
@@ -854,8 +893,7 @@ namespace SceneEngine
             ShallowWater_ExecuteInternalSimulation(
                 context, oceanSettings, gridPhysicalDimension,
                 globalOceanWorkingHeights, surfaceHeightsProvider, 
-                shallowBox, bufferCounter, compressionConstants,
-                rainQuantity, shallowWaterBorderMode);
+                shallowBox, bufferCounter, settings, shallowWaterBorderMode);
 
         }
 
@@ -977,7 +1015,7 @@ namespace SceneEngine
 
         for (auto i=shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
             if (i->_arrayIndex < 128) {
-                SetSimulatingConstants(context, simulatingCB, *i, 0.f, offset);
+                SetSimulatingConstants(context, simulatingCB, *i, ShallowWaterSettings(), offset);
                 context->DrawIndexed(simplePatchBox._simplePatchIndexCount);
             }
         }
@@ -1041,7 +1079,7 @@ namespace SceneEngine
 
         for (auto i=shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
             if (i->_arrayIndex < 128) {
-                SetSimulatingConstants(context, simulatingCB, *i, 0.f, offset);
+                SetSimulatingConstants(context, simulatingCB, *i, ShallowWaterSettings(), offset);
                 context->DrawIndexed(simplePatchBox._simplePatchIndexCount);
             }
         }

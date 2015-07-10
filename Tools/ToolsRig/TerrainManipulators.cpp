@@ -385,9 +385,10 @@ namespace ToolsRig
     private:
         Float2  _activeMins;
         Float2  _activeMaxs;
-        float _rainQuantityPerFrame, _changeToSoftConstant;
-        float _softFlowConstant, _softChangeBackConstant;
+        SceneEngine::HeightsUberSurfaceInterface::ErosionParameters _params;
         unsigned _flags;
+
+        size_t OffsetOf(const void* member) const;
     };
 
     void    ErosionManipulator::PerformAction(const Float3& anchor0, const Float3& anchor1)
@@ -415,9 +416,7 @@ namespace ToolsRig
                         i->Erosion_Begin(context, _activeMins, _activeMaxs, _terrainManager->GetConfig());
                     }
 
-                    SceneEngine::HeightsUberSurfaceInterface::ErosionParameters params(
-                        _rainQuantityPerFrame, _changeToSoftConstant, _softFlowConstant, _softChangeBackConstant);
-                    i->Erosion_Tick(context, params);
+                    i->Erosion_Tick(context, _params);
                 }
             }
         }
@@ -430,14 +429,30 @@ namespace ToolsRig
         }
     }
 
+    size_t ErosionManipulator::OffsetOf(const void* member) const
+    {
+        auto offset = size_t(member) - size_t((const IManipulator*)this);
+        assert(offset < sizeof(*this));
+        return offset;
+    }
+
     auto ErosionManipulator::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>
     {
         static FloatParameter parameters[] = 
         {
-            FloatParameter(ManipulatorParameterOffset(&ErosionManipulator::_rainQuantityPerFrame), 0.00001f, .1f, FloatParameter::Logarithmic, "Rain Quantity"),
-            FloatParameter(ManipulatorParameterOffset(&ErosionManipulator::_changeToSoftConstant), 1e-5f, 1e-2f, FloatParameter::Logarithmic, "Change To Soft"),
-            FloatParameter(ManipulatorParameterOffset(&ErosionManipulator::_softFlowConstant), 1e-3f, 1.f, FloatParameter::Logarithmic, "Soft Flow"),
-            FloatParameter(ManipulatorParameterOffset(&ErosionManipulator::_softChangeBackConstant), 0.75f, 1.f, FloatParameter::Linear, "Soft Change Back")
+            FloatParameter(OffsetOf(&_params._rainQuantityPerFrame), 0.f, 1.f, FloatParameter::Linear, "Rain quantity per frame"),
+            FloatParameter(OffsetOf(&_params._evaporationConstant), 0.f, 1.f, FloatParameter::Linear, "Evaporation constant"),
+            FloatParameter(OffsetOf(&_params._pressureConstant), 0.f, 1.f, FloatParameter::Linear, "Pressure constant"),
+
+            FloatParameter(OffsetOf(&_params._kConstant), 0.f, 1.f, FloatParameter::Linear, "K constant"),
+            FloatParameter(OffsetOf(&_params._erosionRate), 0.f, 1.f, FloatParameter::Linear, "Erosion rate"),
+            FloatParameter(OffsetOf(&_params._settlingRate), 0.f, 1.f, FloatParameter::Linear, "Settling rate"),
+            FloatParameter(OffsetOf(&_params._maxSediment), 0.f, 1.f, FloatParameter::Linear, "Max sediment"),
+            FloatParameter(OffsetOf(&_params._depthMax), 0.f, 1.f, FloatParameter::Linear, "Depth max"),
+            FloatParameter(OffsetOf(&_params._sedimentShiftScalar), 0.f, 1.f, FloatParameter::Linear, "Sediment shift scalar"),
+
+            FloatParameter(OffsetOf(&_params._thermalSlopeAngle), 0.f, 1.f, FloatParameter::Linear, "Thermal slope angle"),
+            FloatParameter(OffsetOf(&_params._thermalErosionRate), 0.f, 1.f, FloatParameter::Linear, "Thermal erosion rate")
         };
         return std::make_pair(parameters, dimof(parameters));
     }
@@ -455,10 +470,6 @@ namespace ToolsRig
     ErosionManipulator::ErosionManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
         : RectangleManipulator(terrainManager)
     {
-        _rainQuantityPerFrame = 0.0001f;
-        _changeToSoftConstant = 0.0001f;
-        _softFlowConstant = 0.05f;
-        _softChangeBackConstant = 0.9f;
         _flags = 0;
         _activeMins = _activeMaxs = Float2(0.f, 0.f);
     }

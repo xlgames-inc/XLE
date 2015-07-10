@@ -25,10 +25,9 @@ static const float VelResistance = .99f; // .97f;
 static const float4 EdgeVelocity = 0.0.xxxx;
 static const float EdgeHeight 	 = -10000.f;	// WaterBaseHeight
 
-	//		Here, "PressureScalar" is particularly important for this model
+	//		Here, "PressureConstant" is particularly important for this model
 	//		it determines the rate of movement of the water. The size of
 	//		the water grid can be factored in by scaling this value.
-static const float PressureScalar = 150.f;		// high pressure values add a lot of noise to the simulation! We get ripples that are too small to be simulated well
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 	//   m a i n   s i m u l a t i o n   //
@@ -44,7 +43,7 @@ float AccelerationFromPressure(float h0, float h1, float waterDepth, float ep0, 
 	const float externalPressure0 = ep0, externalPressure1 = ep1;
 
 		// we can factor out "WaterDensity" if there is no external pressure
-	return max(0, ((g * PressureScalar * (h0 - h1)) / waterDepth + (externalPressure1 - externalPressure0) / (WaterDensity * waterDepth)));
+	return max(0, ((g * PressureConstant * (h0 - h1)) / waterDepth + (externalPressure1 - externalPressure0) / (WaterDensity * waterDepth)));
 	// return max(0, h0 - h1);
 }
 
@@ -426,7 +425,7 @@ float4 GetBottomRightVelocity(int2 address)
 	#if !defined(WRITING_VELOCITIES)
 		float centerSurfaceHeight = LoadSurfaceHeight(baseCoord.xy);
 		float depth = max(0, LoadWaterHeight(baseCoord) + deltaHeight - centerSurfaceHeight);
-		depth *= 0.985f; // evaporation
+		depth *= EvaporationConstant;
 		WaterHeights[baseCoord] = centerSurfaceHeight + depth;
 	#endif
 }

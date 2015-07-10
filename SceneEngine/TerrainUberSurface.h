@@ -156,12 +156,24 @@ namespace SceneEngine
 
         struct ErosionParameters
         {
-            float _rainQuantityPerFrame, _changeToSoftConstant;
-            float _softFlowConstant, _softChangeBackConstant;
+                // water movement
+            float _rainQuantityPerFrame;
+            float _evaporationConstant;
+            float _pressureConstant;
 
-            ErosionParameters(float rainQuantityPerFrame, float changeToSoftConstant, float softFlowConstant, float softChangeBackConstant)
-            : _rainQuantityPerFrame(rainQuantityPerFrame), _changeToSoftConstant(changeToSoftConstant)
-            , _softFlowConstant(softFlowConstant), _softChangeBackConstant(softChangeBackConstant) {}
+                // rainfall erosion
+            float _kConstant;
+            float _erosionRate;
+            float _settlingRate;
+            float _maxSediment;
+            float _depthMax;
+            float _sedimentShiftScalar;
+
+                // thermal erosion
+            float _thermalSlopeAngle;
+            float _thermalErosionRate;
+
+            ErosionParameters();
         };
 
         void    Erosion_Begin(RenderCore::IThreadContext* context, Float2 mins, Float2 maxs, const TerrainConfig& cfg);

@@ -25,8 +25,10 @@ cbuffer ShallowWaterUpdateConstants : register(b2)
 {
     int2	SimulatingIndex;
     uint	ArrayIndex;
-    float	RainQuantityPerFrame;		// 0.001f
     float2  WorldSpaceOffset;
+    float	RainQuantityPerFrame;		// 0.001f
+    float   EvaporationConstant;
+    float   PressureConstant;           // 150.f (for pipe model)
 }
 
 uint CalculateShallowWaterArrayIndex(Texture2D<uint> CellIndexLookupTable, int2 gridCoord)

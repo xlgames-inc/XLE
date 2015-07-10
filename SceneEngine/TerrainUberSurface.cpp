@@ -904,12 +904,16 @@ namespace SceneEngine
         float terrainScale = _pimpl->_erosionSim._elementSpacing;
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
-        float compressionConstants[4] = { 0.f, 0.f, 1000.f, 1.f };
+        ShallowWaterSettings settings;
+        settings._rainQuantityPerFrame = params._rainQuantityPerFrame;
+        settings._evaporationConstant = params._evaporationConstant;
+        settings._pressureConstant = params._pressureConstant;
+
         ShallowWater_ExecuteInternalSimulation(
             metalContext.get(), OceanSettings(), terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, 
             nullptr, _pimpl->_erosionSim._surfaceHeightsProvider.get(),
-            *_pimpl->_erosionSim._waterSim.get(), _pimpl->_erosionSim._bufferCount, compressionConstants,
-            params._rainQuantityPerFrame, ShallowBorderMode::Surface);
+            *_pimpl->_erosionSim._waterSim.get(), _pimpl->_erosionSim._bufferCount, 
+            settings, ShallowBorderMode::Surface);
 
             //      We need to use the water movement information to change rock to dirt,
             //      and then move dirt along with the water movement
@@ -933,14 +937,30 @@ namespace SceneEngine
         struct TickErosionSimConstats
         { 
             Int2 gpuCacheOffset, simulationSize;
-            float changeToSoftConstant;
-            float softFlowConstant;
-            float softChangeBackConstant;
-            unsigned _pad0;
+            
+            float KConstant;			// = 2.f		(effectively, max sediment that can be moved in one second)
+	        float ErosionRate;			// = 0.03f;		hard to soft rate
+	        float SettlingRate;			// = 0.05f;		soft to hard rate (deposition / settling)
+	        float MaxSediment;			// = 2.f;		max sediment per cell (ie, max value in the soft materials array)
+	        float DepthMax;				// = 25.f		Shallow water erodes more quickly, up to this depth
+	        float SedimentShiftScalar; 	// = 1.f;		Amount of sediment that moves per frame
+
+	        float ElementSpacing;
+	        float TanSlopeAngle;
+	        float ThermalErosionRate;	// = 0.05;		Speed of material shifting due to thermal erosion
+            unsigned dummy[3];
+
         } constants = {
             erosionSim._gpuCacheOffset, erosionSim._simSize,
-            params._changeToSoftConstant, params._softFlowConstant,
-            params._softChangeBackConstant
+            params._kConstant, 
+            params._erosionRate,
+            params._settlingRate,
+            params._maxSediment,
+            params._depthMax,
+            params._sedimentShiftScalar,
+            _pimpl->_erosionSim._elementSpacing,
+            XlTan(params._thermalSlopeAngle * gPI / 180.f),
+            params._thermalErosionRate
         };
         metalContext->BindCS(RenderCore::MakeResourceList(5, ConstantBuffer(&constants, sizeof(constants))));
         metalContext->BindCS(RenderCore::MakeResourceList(Techniques::CommonResources()._linearClampSampler));
@@ -1033,6 +1053,21 @@ namespace SceneEngine
         CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
         CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
         CATCH_END
+    }
+
+    HeightsUberSurfaceInterface::ErosionParameters::ErosionParameters()
+    {
+        _rainQuantityPerFrame = 0.001f;
+        _evaporationConstant = 0.99f;
+        _pressureConstant = 200.f;
+        _kConstant = 3.f;
+        _erosionRate = 0.15f;
+        _settlingRate = 0.25f;
+        _maxSediment = 1.f;
+        _depthMax = 25.f;
+        _sedimentShiftScalar = 1.f;
+        _thermalSlopeAngle = 40.f;
+        _thermalErosionRate = 0.05f;
     }
 
     class ShadowingAngleOperator

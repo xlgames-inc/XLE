@@ -22,9 +22,16 @@ cbuffer TickErosionSimConstants : register(b5)
 	int2 gpuCacheOffset;
 	int2 simulationSize;
 
-	float ChangeToSoftConstant;		// = 0.0001f;
-	float SoftFlowConstant;			// = 0.05f;
-	float SoftChangeBackConstant;	// = 0.9f;
+	float KConstant;			// = 2.f		(effectively, max sediment that can be moved in one second)
+	float ErosionRate;			// = 0.03f;		hard to soft rate
+	float SettlingRate;			// = 0.05f;		soft to hard rate (deposition / settling)
+	float MaxSediment;			// = 2.f;		max sediment per cell (ie, max value in the soft materials array)
+	float DepthMax;				// = 25.f		Shallow water erodes more quickly, up to this depth
+	float SedimentShiftScalar; 	// = 1.f;		Amount of sediment that moves per frame
+
+	float ElementSpacing;
+	float TanSlopeAngle;
+	float ThermalErosionRate;	// = 0.05;		Speed of material shifting due to thermal erosion
 }
 
 static const int CoordRatio = 1;		// ratio of surface coordinate grid elements to water sim grid elements (in 1 dimension)
@@ -194,21 +201,19 @@ float2 CalculateVel2D(int2 baseCoord)
 		//		Fast Hydraulic and Thermal Erosion on the GPU, Bal´azs J´ak´o
 		//
 
-	const float Kc = 2.f; 		// 1e-1f;		(effectively, max sediment that can be moved in one second)
+	const float Kc = KConstant;
 	const float R = 1.f;		// (variable hardness)
-	const float Ks = 0.03f;		// hard to soft rate
-	const float Kd = 0.05f; 		// soft to hard rate (deposition / settling)
-	const float maxSediment = 2.f;	// max sediment per cell (ie, max value in the soft materials array)
+	const float Ks = ErosionRate;
+	const float Kd = SettlingRate;
 
-	const float depthMax = 25.f;
 	float depth = centerWaterHeight - centerTerrainHeight;
-	float C = Kc * max(0, dot(-terrainNormal, Vdir)) * magv * saturate(1.f - (depth / depthMax));
+	float C = Kc * max(0, dot(-terrainNormal, Vdir)) * magv * saturate(1.f - (depth / DepthMax));
 
 	const float deltaTime = 1.f / 30.f;
 	float hardToSoft;
 	if (initialSediment < C) {
 		hardToSoft = R * Ks * (C - initialSediment) * deltaTime;
-		hardToSoft = min(hardToSoft, maxSediment-initialSediment);
+		hardToSoft = min(hardToSoft, MaxSediment-initialSediment);
 	} else {
 		hardToSoft = max(-initialSediment, Kd * (C - initialSediment) * deltaTime);
 	}
@@ -240,7 +245,7 @@ float CalculateFlowIn(int2 baseCoord)
 		for (uint c2=0; c2<AdjCellCount; ++c2) flowTotal += temp[c2];
 
 		float otherSoft = SoftMaterials[baseCoord.xy + AdjCellDir[c]];
-		result += otherSoft * intoThis / flowTotal;
+		result += otherSoft * intoThis / flowTotal * SedimentShiftScalar;
 	}
 
 	return result;
@@ -282,11 +287,15 @@ float CalculateFlowIn(int2 baseCoord)
 		newSediment = CalculateFlowIn(baseCoord.xy);
 	}
 
-	newSediment = max(0.f, newSediment);  // (if the sediment level becomes negative, it will cause the simulation to explode)
+	float initialSediment = SoftMaterials[baseCoord.xy];
+		// If the sediment level becomes negative, it will cause the simulation to explode...
+		// That shouldn't happen, but let's add a clamp to protect against this case, anyway.
+	newSediment = max(
+		0.f, initialSediment * (1.0f - SedimentShiftScalar) + newSediment);
 
 	float initialHard = HardMaterials[baseCoord.xy];
 	SoftMaterials[baseCoord.xy] = newSediment;
-	OutputSurface[gpuCacheOffset + baseCoord.xy] = initialHard; // + newSediment;
+	OutputSurface[gpuCacheOffset + baseCoord.xy] = initialHard;
 }
 
 
@@ -299,22 +308,24 @@ float CalculateFlowIn(int2 baseCoord)
 		return;
 	}
 
-	// This simulates the movement of material that is knocked loose from other means
-	// (often just called "thermal erosion"). Material will fall down a slope until the
-	// slope reaches a certain angle, called the "talus" angle, which differs from material
-	// to material. We shift a small amount of material for every neighbour that exceeds this
-	// angle.
-	//
-	// Note that "InputSoftMaterials" is actually hard materials here!
-	//
-	// We should not move material out of an area that is under water using this method.
+		// This simulates the movement of material that is knocked loose from other means
+		// (often just called "thermal erosion"). Material will fall down a slope until the
+		// slope reaches a certain angle, called the "talus" angle, which differs from material
+		// to material. We shift a small amount of material for every neighbour that exceeds this
+		// angle.
+		//
+		// Note that "InputSoftMaterials" is actually hard materials here!
+		//
+		// We should not move material out of an area that is under water using this method.
 
 	float localInitial = InputSoftMaterials[baseCoord.xy];
 	float localWaterHeight = LoadWaterHeight(baseCoord);
 
-	const float slopeAngle = 50.f * pi / 180.f;
-	const float tanSlopeAngle = tan(slopeAngle);
-	const float elementSpacing = 10.f;
+	// const float slopeAngle = 50.f * pi / 180.f;
+	// const float tanSlopeAngle = tan(slopeAngle);
+	// const float elementSpacing = 10.f;
+	const float tanSlopeAngle = TanSlopeAngle;
+	const float elementSpacing = ElementSpacing;
 	float spacingMul[AdjCellCount] =
 	{
 		sqrt2, 1, sqrt2,
@@ -322,10 +333,11 @@ float CalculateFlowIn(int2 baseCoord)
 		sqrt2, 1, sqrt2
 	};
 
-	const float waterThreshold = 1e-2f;
-	const float flowAmount = 0.05f;
-	float flowAmountOut = flowAmount;
-	if (localInitial < (localWaterHeight - waterThreshold)) flowAmountOut = 0.f;
+	float flowAmountOut = ThermalErosionRate;
+
+		// no termal erosion under water?
+	//const float waterThreshold = 1e-2f;
+	//if ((localWaterHeight - localInitial) > waterThreshold) flowAmountOut = 0.f;
 
 	float flow = 0.f;
 	[unroll] for (uint c=0; c<AdjCellCount; ++c) {
@@ -335,8 +347,8 @@ float CalculateFlowIn(int2 baseCoord)
 		float flowThreshold = elementSpacing * spacingMul[c] * tanSlopeAngle;
 		if (diff > flowThreshold) {
 			float neighbourWaterHeight = LoadWaterHeight(baseCoord.xy + AdjCellDir[c]);
-			if (neighbour >= (neighbourWaterHeight - waterThreshold))
-				flow += flowAmount;
+			//if ((neighbourWaterHeight - neighbour) > waterThreshold)
+				flow += ThermalErosionRate;
 		} else if (diff < -flowThreshold) {
 			flow -= flowAmountOut;
 		}

@@ -39,7 +39,7 @@ namespace SceneEngine
 
         std::unique_ptr<ShallowWaterGrid>       _simulationGrid;
 
-        intrusive_ptr<ID3D::Resource>              _lookupTable;
+        intrusive_ptr<ID3D::Resource>           _lookupTable;
         RenderCore::Metal::ShaderResourceView   _lookupTableSRV;
         RenderCore::Metal::UnorderedAccessView  _lookupTableUAV;
 
@@ -91,6 +91,16 @@ namespace SceneEngine
         enum Enum { GlobalWaves = 1, Surface = 2, BaseHeight = 3 };
     }
 
+    class ShallowWaterSettings
+    {
+    public:
+        float _rainQuantityPerFrame;
+        float _evaporationConstant;
+        float _pressureConstant;
+        Float4 _compressionConstants;
+
+        ShallowWaterSettings();
+    };
 
     void ShallowWater_DoSim(
         RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
@@ -106,8 +116,8 @@ namespace SceneEngine
         const OceanSettings& oceanSettings, float gridPhysicalDimension,
         RenderCore::Metal::ShaderResourceView* globalOceanWorkingHeights,
         ISurfaceHeightsProvider* surfaceHeightsProvider, ShallowWaterSim& shallowBox, 
-        unsigned bufferCounter, const float compressionConstants[4],
-        float rainQuantityPerFrame = 0.f, ShallowBorderMode::Enum borderMode = ShallowBorderMode::GlobalWaves);
+        unsigned bufferCounter, const ShallowWaterSettings& settings,
+        ShallowBorderMode::Enum borderMode = ShallowBorderMode::GlobalWaves);
     void ShallowWater_NewElements(
         RenderCore::Metal::DeviceContext* context, 
         ShallowWaterSim& shallowBox, ISurfaceHeightsProvider& surfaceHeightsProvider,
