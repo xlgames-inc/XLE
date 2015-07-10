@@ -28,7 +28,7 @@ static const float EdgeHeight 	 = -10000.f;	// WaterBaseHeight
 	//		Here, "PressureScalar" is particularly important for this model
 	//		it determines the rate of movement of the water. The size of
 	//		the water grid can be factored in by scaling this value.
-static const float PressureScalar = 500.f;		// high pressure values add a lot of noise to the simulation! We get ripples that are too small to be simulated well
+static const float PressureScalar = 150.f;		// high pressure values add a lot of noise to the simulation! We get ripples that are too small to be simulated well
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 	//   m a i n   s i m u l a t i o n   //

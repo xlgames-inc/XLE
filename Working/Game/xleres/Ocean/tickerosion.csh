@@ -197,10 +197,10 @@ float2 CalculateVel2D(int2 baseCoord)
 	const float Kc = 2.f; 		// 1e-1f;		(effectively, max sediment that can be moved in one second)
 	const float R = 1.f;		// (variable hardness)
 	const float Ks = 0.03f;		// hard to soft rate
-	const float Kd = 0.1f; 		// soft to hard rate (deposition / settling)
+	const float Kd = 0.05f; 		// soft to hard rate (deposition / settling)
 	const float maxSediment = 2.f;	// max sediment per cell (ie, max value in the soft materials array)
 
-	const float depthMax = 50.f;
+	const float depthMax = 25.f;
 	float depth = centerWaterHeight - centerTerrainHeight;
 	float C = Kc * max(0, dot(-terrainNormal, Vdir)) * magv * saturate(1.f - (depth / depthMax));
 

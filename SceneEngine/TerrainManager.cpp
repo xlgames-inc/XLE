@@ -613,7 +613,7 @@ namespace SceneEngine
         const float expansionConstant = 1.5f;
         float terrainLightingConstants[] = { sunDirectionAngle / float(.5f * expansionConstant * M_PI), shadowSoftness, 0.f, 0.f };
         Metal::ConstantBuffer lightingConstantsBuffer(terrainLightingConstants, sizeof(terrainLightingConstants));
-        context->BindPS(MakeResourceList(5, _pimpl->_textures->_texturingConstants, lightingConstantsBuffer));
+        context->BindPS(MakeResourceList(5, _pimpl->_textures->_texturingConstants, lightingConstantsBuffer, _pimpl->_textures->_procTexContsBuffer));
         if (mode == TerrainRenderingContext::Mode_VegetationPrepare) {
                 // this cb required in the geometry shader for vegetation prepare mode!
             context->BindGS(MakeResourceList(6, lightingConstantsBuffer));  

@@ -190,6 +190,19 @@ namespace SceneEngine
         _strataCount = 0;
     }
 
+    static unsigned AddName(std::vector<::Assets::rstring>& atlas, const ::Assets::rstring& name)
+    {
+        unsigned atlasIndex = ~0u;
+        auto e = std::find(atlas.cbegin(), atlas.cend(), name);
+        if (e == atlas.cend()) {
+            atlas.push_back(name);
+            atlasIndex = unsigned(atlas.size()-1);
+        } else {
+            atlasIndex = (unsigned)std::distance(atlas.cbegin(), e);
+        }
+        return atlasIndex;
+    }
+
     TerrainMaterialTextures::TerrainMaterialTextures(const TerrainMaterialScaffold& scaffold)
     {
         _strataCount = 0;
@@ -198,7 +211,9 @@ namespace SceneEngine
             //  all into a texture array.
 
         std::vector<::Assets::rstring> atlasTextureNames;
+        std::vector<::Assets::rstring> procTextureNames;
         std::vector<uint8> texturingConstants;
+        std::vector<uint8> procTextureConstants;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -210,24 +225,38 @@ namespace SceneEngine
             for (auto& mat:scaffold._gradFlagMaterials)
                 highestMaterialId = std::max(highestMaterialId, mat._id);
 
+            if ((highestMaterialId+1) > 32)
+                Throw(::Exceptions::BasicLabel("Too many material ids in terrain texturing"));
+
             texturingConstants.resize(sizeof(Float4) * (highestMaterialId+1) * texturesPerMaterial);
             auto* tcStart = (Float4*)AsPointer(texturingConstants.begin());
             std::fill(tcStart, &tcStart[(highestMaterialId+1) * texturesPerMaterial], Float4(1.f, 1.f, 1.f, 1.f));
 
             for (auto m=scaffold._gradFlagMaterials.cbegin(); m!=scaffold._gradFlagMaterials.cend(); ++m) {
                 for (unsigned t=0; t<texturesPerMaterial; ++t) {
-                    unsigned atlasIndex = ~0u;
-                    auto e = std::find(atlasTextureNames.cbegin(), atlasTextureNames.cend(), m->_texture[t]);
-                    if (e == atlasTextureNames.cend()) {
-                        atlasTextureNames.push_back(m->_texture[t]);
-                        atlasIndex = unsigned(atlasTextureNames.size()-1);
+
+                    auto p = std::find_if(
+                        scaffold._procTextures.cbegin(), scaffold._procTextures.cend(),
+                        [m, t](const TerrainMaterialScaffold::ProcTextureSetting& s)
+                        { return s._name == m->_texture[t]; });
+                    if (p != scaffold._procTextures.cend()) {
+
+                        auto procTextureId = AddName(procTextureNames, m->_texture[t]);
+                        unsigned type = 1;
+                        tcStart[m->_id * texturesPerMaterial + t] = Float4(
+                            m->_mappingConstant[t], m->_mappingConstant[t],
+                            *reinterpret_cast<float*>(&type), *reinterpret_cast<float*>(&procTextureId));
+
                     } else {
-                        atlasIndex = (unsigned)std::distance(atlasTextureNames.cbegin(), e);
+
+                        auto atlasIndex = AddName(atlasTextureNames, m->_texture[t]);
+                        unsigned type = 0;
+                        tcStart[m->_id * texturesPerMaterial + t] = Float4(
+                            m->_mappingConstant[t], m->_mappingConstant[t],
+                            *reinterpret_cast<float*>(&type), *reinterpret_cast<float*>(&atlasIndex));
+
                     }
 
-                    tcStart[m->_id * texturesPerMaterial + t] = Float4(
-                        m->_mappingConstant[t], m->_mappingConstant[t],
-                        m->_mappingConstant[t], *reinterpret_cast<float*>(&atlasIndex));
                 }
             }
 
@@ -264,6 +293,27 @@ namespace SceneEngine
 
             _strataCount = strataCount;
 
+        }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            // add the textures for the procedural textures to the atlas, as well
+        if (procTextureNames.size() > 8)
+            Throw(::Exceptions::BasicLabel("Too many different procedural textures used in terrain texturing"));
+
+        procTextureConstants.resize(sizeof(unsigned)*4*procTextureNames.size(), 0);
+        for (auto p=procTextureNames.cbegin(); p!=procTextureNames.cend(); ++p) {
+            auto i = std::find_if(
+                scaffold._procTextures.cbegin(), scaffold._procTextures.cend(),
+                [p](const TerrainMaterialScaffold::ProcTextureSetting& s)
+                { return s._name == *p; });
+            if (i == scaffold._procTextures.cend()) continue;
+
+            auto* a = (UInt4*)AsPointer(procTextureConstants.cbegin());
+            auto index = (unsigned)std::distance(procTextureNames.cbegin(), p);
+            a[index][0] = AddName(atlasTextureNames, i->_texture[0]);
+            a[index][1] = AddName(atlasTextureNames, i->_texture[1]);
+            a[index][2] = *reinterpret_cast<const unsigned*>(&i->_hgrid);
+            a[index][3] = *reinterpret_cast<const unsigned*>(&i->_gain);
         }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -368,6 +418,7 @@ namespace SceneEngine
         RenderCore::Metal::ShaderResourceView normalSrv(normalTextureArray.get());
         RenderCore::Metal::ShaderResourceView specularitySrv(specularityTextureArray.get());
         RenderCore::Metal::ConstantBuffer texContBuffer(AsPointer(texturingConstants.cbegin()), texturingConstants.size());
+        RenderCore::Metal::ConstantBuffer procTexContsBuffer(AsPointer(procTextureConstants.cbegin()), procTextureConstants.size());
 
         _textureArray[Diffuse] = std::move(diffuseTextureArray);
         _textureArray[Normal] = std::move(normalTextureArray);
@@ -376,6 +427,7 @@ namespace SceneEngine
         _srv[Normal] = std::move(normalSrv);
         _srv[Specularity] = std::move(specularitySrv);
         _texturingConstants = std::move(texContBuffer);
+        _procTexContsBuffer = std::move(procTexContsBuffer);
     }
 
     TerrainMaterialTextures::~TerrainMaterialTextures() {}

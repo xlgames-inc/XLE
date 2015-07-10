@@ -252,6 +252,29 @@ namespace EntityInterface
                 }
             }
 
+            {
+                asset._procTextures.clear();
+                auto matType = sys.GetTypeId((const utf8*)"TerrainProcTexture");
+                for (auto c=obj._children.cbegin(); c!=obj._children.end(); ++c) {
+                    auto* mat = sys.GetEntity(obj._doc, *c);
+                    if (!mat || mat->_type != matType) continue;
+
+                    static auto nameHash = ParameterBox::MakeParameterNameHash("Name");
+                    static auto textureHash0 = ParameterBox::MakeParameterNameHash("Texture0");
+                    static auto textureHash1 = ParameterBox::MakeParameterNameHash("Texture1");
+                    static auto hgridHash = ParameterBox::MakeParameterNameHash("HGrid");
+                    static auto gainHash = ParameterBox::MakeParameterNameHash("Gain");
+                    
+                    TerrainMaterialScaffold::ProcTextureSetting procTexture;
+                    procTexture._name = mat->_properties.GetString<::Assets::ResChar>(nameHash);
+                    procTexture._texture[0] = mat->_properties.GetString<::Assets::ResChar>(textureHash0);
+                    procTexture._texture[1] = mat->_properties.GetString<::Assets::ResChar>(textureHash1);
+                    procTexture._hgrid = mat->_properties.GetParameter(hgridHash, procTexture._hgrid);
+                    procTexture._gain = mat->_properties.GetParameter(gainHash, procTexture._gain);
+                    asset._procTextures.push_back(std::move(procTexture));
+                }
+            }
+
             trans->Commit();
         }
     }
@@ -268,31 +291,27 @@ namespace EntityInterface
             }
         );
 
-        flexSys.RegisterCallback(
-            flexSys.GetTypeId((const utf8*)"TerrainStrataMaterial"),
-            [](const RetainedEntities& flexSys, const Identifier& obj)
-            {
-                auto* object = flexSys.GetEntity(obj);
-                if (object) {
-                    auto* parent = flexSys.GetEntity(object->_doc, object->_parent);
-                    if (parent && parent->_type == flexSys.GetTypeId((const utf8*)"TerrainBaseTexture"))
-                        UpdateTerrainBaseTexture(flexSys, *parent);
-                }
-            }
-        );
+        const utf8* materialObjects[] = 
+        {
+            (const utf8*)"TerrainStrataMaterial",
+            (const utf8*)"TerrainGradFlagMaterial",
+            (const utf8*)"TerrainProcTexture"
+        };
 
-        flexSys.RegisterCallback(
-            flexSys.GetTypeId((const utf8*)"TerrainGradFlagMaterial"),
-            [](const RetainedEntities& flexSys, const Identifier& obj)
-            {
-                auto* object = flexSys.GetEntity(obj);
-                if (object) {
-                    auto* parent = flexSys.GetEntity(object->_doc, object->_parent);
-                    if (parent && parent->_type == flexSys.GetTypeId((const utf8*)"TerrainBaseTexture"))
-                        UpdateTerrainBaseTexture(flexSys, *parent);
+        for (unsigned c=0; c<dimof(materialObjects); ++c) {
+            flexSys.RegisterCallback(
+                flexSys.GetTypeId(materialObjects[c]),
+                [](const RetainedEntities& flexSys, const Identifier& obj)
+                {
+                    auto* object = flexSys.GetEntity(obj);
+                    if (object) {
+                        auto* parent = flexSys.GetEntity(object->_doc, object->_parent);
+                        if (parent && parent->_type == flexSys.GetTypeId((const utf8*)"TerrainBaseTexture"))
+                            UpdateTerrainBaseTexture(flexSys, *parent);
+                    }
                 }
-            }
-        );
+            );
+        }
     }
 
     void ReloadTerrainFlexObjects(RetainedEntities& flexSys)

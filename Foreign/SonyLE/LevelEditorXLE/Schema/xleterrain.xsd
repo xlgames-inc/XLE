@@ -154,6 +154,44 @@
     </xs:complexContent>
   </xs:complexType>
 
+  <xs:complexType name="terrainProcTextureType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="TerrainProcTexture"/>
+        <LeGe.OpaqueListable label="ProcTexture"/>
+
+        <LeGe.NativeProperty name="Name" nativeName="Name"/>
+        <LeGe.NativeProperty name="Texture0" nativeName="Texture0"/>
+        <LeGe.NativeProperty name="Texture1" nativeName="Texture1"/>
+        <LeGe.NativeProperty name="HGrid" nativeName="HGrid"/>
+        <LeGe.NativeProperty name="Gain" nativeName="Gain"/>
+
+        <scea.dom.editors.attribute name="Texture0" displayName="Texture0" description="Texture0" category="General"
+          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
+        <scea.dom.editors.attribute name="Texture1" displayName="Texture1" description="Texture1" category="General"
+          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
+
+        <scea.dom.editors.attribute name="HGrid" displayName="HGrid" description="HGrid" category="General"/>
+        <scea.dom.editors.attribute name="Gain" displayName="Gain" description="Gain" category="General"/>
+        <scea.dom.editors.attribute name="Name" displayName="Name" description="Name" category="General"/>
+
+        <scea.dom.editors name="ProcTextureMaterial" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="ProcTextureMaterial" description="ProcTextureMaterial"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:complexContent>
+      <xs:extension base="abstractTerrainMaterialDescType">
+        <xs:attribute name="Name" type="xs:string" default=""/>
+        
+        <xs:attribute name="Texture0" type="xs:string" default=""/>
+        <xs:attribute name="Texture1" type="xs:string" default=""/>
+
+        <xs:attribute name="HGrid" type="xs:float" default="100.0"/>
+        <xs:attribute name="Gain" type="xs:float" default=".5"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
   <!-- ......................................................................... -->
 
   <xs:complexType name="vegetationSpawnObjectType">

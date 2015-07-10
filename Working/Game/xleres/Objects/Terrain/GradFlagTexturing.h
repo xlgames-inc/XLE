@@ -6,6 +6,7 @@
 
 #include "ITerrainTexturing.h"
 #include "../Utility/MathConstants.h"
+#include "../Utility/perlinnoise.h"
 #include "HeightsSample.h"
 
 class GradFlagTexturing : ITerrainTexturing
@@ -21,24 +22,66 @@ int CalculateCenterType(int2 baseTC)
     // return DynamicGradientFlag(baseTC);
 }
 
-static const uint MaxMaterialIds = 64;
+static const uint MaxMaterialIds = 32;
+static const uint MaxProcTextures = 8;
 cbuffer TexturingParameters : register(b5)
 {
     float4 MappingParameters[MaxMaterialIds * 5];
 }
 
-TerrainTextureOutput LoadTexSample(float3 worldPosition, uint materialId, uint texType)
+cbuffer ProcTextureParameters : register(b7)
 {
-    const uint strataIndex = 0;
-    float2 tc = worldPosition.xy * MappingParameters[materialId*5+texType][0];
-    uint remappedIndex = asuint(MappingParameters[materialId*5+texType][3]);
+    uint4 ProcTextureInputs[MaxProcTextures];
+}
 
-    float3 coord = float3(tc, remappedIndex);
+TerrainTextureOutput LoadRawTexSample(uint remappedTexIndex, float2 coord, float2 duvdx, float2 duvdy)
+{
     TerrainTextureOutput result;
-    result.diffuseAlbedo = DiffuseAtlas.Sample(MaybeAnisotropicSampler, coord).rgb;
+    result.diffuseAlbedo = DiffuseAtlas.SampleGrad(MaybeAnisotropicSampler, float3(coord, remappedTexIndex), duvdx, duvdy).rgb;
     result.tangentSpaceNormal = float3(0,0,1);
     result.specularity = 1.f;
     return result;
+}
+
+TerrainTextureOutput SampleProceduralTexture(float3 worldPosition, float2 coord, float2 duvdx, float2 duvdy, uint procTextureType)
+{
+    TerrainTextureOutput A = LoadRawTexSample(ProcTextureInputs[procTextureType][0], coord, duvdx, duvdy);
+    TerrainTextureOutput B = LoadRawTexSample(ProcTextureInputs[procTextureType][1], coord, duvdx, duvdy);
+
+    float hgrid = asfloat(ProcTextureInputs[procTextureType][2]);
+    float gain = asfloat(ProcTextureInputs[procTextureType][3]);
+
+        // the noise calculation here is very expensive! it should really be replaced
+        // with a precalculated texture (or maybe even just cache a noise field around the camera?)
+    float noiseValue0 = fbmNoise2D(worldPosition.xy, hgrid, gain, 2.1042, 4);
+#if 1
+    return Blend(A, B, saturate(0.5f + noiseValue0));
+#else
+    TerrainTextureOutput result = TerrainTextureOutput_Blank();
+    result.tangentSpaceNormal = float3(0,0,1);
+    result.specularity = 1.f;
+    result.diffuseAlbedo = saturate(0.5f + 0.9f * noiseValue0).xxx;
+    return result;
+#endif
+}
+
+TerrainTextureOutput LoadTexSample(float3 worldPosition, uint materialId, uint texType)
+{
+    const uint strataIndex = 0;
+    float4 param = MappingParameters[materialId*5+texType];
+    float2 tc = worldPosition.xy * param[0];
+    uint remappedIndex = asuint(param[3]);
+    uint textureType = asuint(param[2]);
+
+        // note --  Potentially expensive branch here, were we must choose
+        //          whether or not to use procedural texturing path. We should
+        //          get a lot of coherency though.
+    float2 duvdx = ddx(tc), duvdy = ddy(tc);
+    [branch] if (textureType > 0) {
+        return SampleProceduralTexture(worldPosition, tc, duvdx, duvdy, remappedIndex);
+    } else {
+        return LoadRawTexSample(remappedIndex, tc, duvdx, duvdy);
+    }
 }
 
 TerrainTextureOutput GradFlagTexturing::Calculate(
@@ -201,5 +244,5 @@ bool CoordIsValid(int2 coord) { return true; }
 
 uint DynamicGradientFlag(int2 coord)
 {
-    return CalculateRawGradientFlags(coord, 2.f, SlopeThresholdDefault, TransThresholdDefault);
+    return CalculateRawGradientFlags(coord, 2.f);
 }

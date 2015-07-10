@@ -41,16 +41,24 @@ namespace SceneEngine
             unsigned _id;
         };
 
+        class ProcTextureSetting
+        {
+        public:
+            ::Assets::rstring _name;
+            ::Assets::rstring _texture[2];
+            float _hgrid, _gain;
+
+            ProcTextureSetting() : _hgrid(100.f), _gain(.5f) {}
+        };
+
         UInt2 _diffuseDims;
         UInt2 _normalDims;
         UInt2 _paramDims;
         std::vector<StrataMaterial> _strataMaterials;
         std::vector<GradFlagMaterial> _gradFlagMaterials;
+        std::vector<ProcTextureSetting> _procTextures;
 
         ::Assets::DirectorySearchRules _searchRules;
-
-        mutable uint64 _cachedHashValue;
-        uint64 GetHash() const;
 
         void Write(Utility::OutputStream& stream) const;
 

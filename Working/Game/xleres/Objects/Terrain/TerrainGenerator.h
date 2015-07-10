@@ -17,7 +17,7 @@ cbuffer TerrainLighting : register(b6)
 
 static const uint MaxCoverageLayers = 5;
 
-cbuffer TileBuffer : register(b7)
+cbuffer TileBuffer : register(b8)
 {
 	row_major float4x4 LocalToCell;
 	int3	HeightMapOrigin;

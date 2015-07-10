@@ -252,5 +252,5 @@ float GetHeight(int2 coord)
 
 uint CalculateGradientFlags_TopLOD(int2 baseCoord, float spacing)
 {
-	return CalculateRawGradientFlags(baseCoord, spacing, SlopeThresholdDefault, TransThresholdDefault);
+	return CalculateRawGradientFlags(baseCoord, spacing);
 }

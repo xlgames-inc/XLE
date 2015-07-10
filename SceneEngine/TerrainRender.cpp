@@ -328,17 +328,17 @@ namespace SceneEngine
         auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
         context->BindVS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
         context->BindDS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
-        context->BindVS(MakeResourceList(7, _tileConstantsBuffer));
-        context->BindDS(MakeResourceList(7, _tileConstantsBuffer));
-        context->BindHS(MakeResourceList(7, _tileConstantsBuffer));
-        context->BindPS(MakeResourceList(7, _tileConstantsBuffer));
+        context->BindVS(MakeResourceList(8, _tileConstantsBuffer));
+        context->BindDS(MakeResourceList(8, _tileConstantsBuffer));
+        context->BindHS(MakeResourceList(8, _tileConstantsBuffer));
+        context->BindPS(MakeResourceList(8, _tileConstantsBuffer));
         context->BindVS(MakeResourceList(1, _localTransformConstantsBuffer));
         context->BindDS(MakeResourceList(1, _localTransformConstantsBuffer));
 
         context->Bind(Techniques::CommonResources()._dssReadWrite);
 
         if (mode == Mode_VegetationPrepare) {
-            context->BindGS(MakeResourceList(7, _tileConstantsBuffer));
+            context->BindGS(MakeResourceList(8, _tileConstantsBuffer));
         }
     }
 

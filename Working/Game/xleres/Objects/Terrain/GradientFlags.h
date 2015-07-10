@@ -39,7 +39,7 @@ float2 CalculateDHDXY(int2 coord)
     return dhdp;
 }
 
-uint CalculateRawGradientFlags(int2 baseCoord, float spacing, float slopeThreshold, float transThreshold)
+uint CalculateRawGradientFlags(int2 baseCoord, float spacing)
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

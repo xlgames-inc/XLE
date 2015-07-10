@@ -54,7 +54,6 @@ namespace SceneEngine
     {
         _diffuseDims = _normalDims = _paramDims = UInt2(32, 32);
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        _cachedHashValue = ~0x0ull;
     }
 
     TerrainMaterialScaffold::TerrainMaterialScaffold(const char definitionFile[])
@@ -116,7 +115,6 @@ namespace SceneEngine
         } CATCH_END
 
         _searchRules = ::Assets::DefaultDirectorySearchRules(definitionFile);
-        _cachedHashValue = 0ull;
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterFileDependency(_validationCallback, definitionFile);

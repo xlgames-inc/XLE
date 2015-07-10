@@ -21,6 +21,7 @@ namespace SceneEngine
         intrusive_ptr<ID3D::Resource> _textureArray[ResourceCount];
         RenderCore::Metal::ShaderResourceView _srv[ResourceCount];
         RenderCore::Metal::ConstantBuffer _texturingConstants;
+        RenderCore::Metal::ConstantBuffer _procTexContsBuffer;
         unsigned _strataCount;
 
         TerrainMaterialTextures();
