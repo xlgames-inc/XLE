@@ -84,6 +84,17 @@ TerrainTextureOutput LoadTexSample(float3 worldPosition, uint materialId, uint t
     }
 }
 
+float GetBlendingWeightBias(TerrainTextureOutput texSample)
+{
+        // Bias blending based on brightness.
+        //  Gives a slighly nicer edge to blending
+        //  But this would ideally be using values in the alpha channel of the texture
+    // float weight = 2.f * (SRGBLuminance(texSample.diffuseAlbedo.rgb) - 0.5f);
+    // weight *= weight;
+    // return 5.f + 5.f * weight;
+    return 10.f * SRGBLuminance(texSample.diffuseAlbedo.rgb);
+}
+
 TerrainTextureOutput GradFlagTexturing::Calculate(
     float3 worldPosition, float2 dhdxy, uint materialId, float2 textureCoord)
 {
@@ -134,25 +145,33 @@ TerrainTextureOutput GradFlagTexturing::Calculate(
         float typeWeights[4];
         typeWeights[0] = typeWeights[1] = typeWeights[2] = typeWeights[3] = 0;
 
+        float weightTotal = 0.f;
         [unroll] for (uint c=0; c<4; ++c) {
-            if (useDebugColors) result.diffuseAlbedo += debugColors[s[c]] * w[c];
-            else {
-                result = AddWeighted(
-                    result,
-                    LoadTexSample(worldPosition, materialId, s[c]),
-                    w[c]);
+            if (useDebugColors) {
+                result.diffuseAlbedo += debugColors[s[c]] * w[c];
+                weightTotal += .25f;
+            } else {
+                TerrainTextureOutput texSample = LoadTexSample(worldPosition, materialId, s[c]);
+                float weightBias = GetBlendingWeightBias(texSample);
+                float weight = weightBias * w[c] + w[c];
+                result = AddWeighted(result, texSample, weight);
+                weightTotal += weight;
             }
 
             typeWeights[s[c]] += w[c];
         }
+        result.diffuseAlbedo /= max(1e-5f, weightTotal);
 
             // we can find the edging like this --
             //      This allows blending in a transition texture between the repeating textures
-        float trans = 0.0f;
-        [unroll] for (uint c2=0; c2<2; ++c2)
-            trans += .5f - abs(0.5f - typeWeights[c2]);
-        trans *= trans;
-        result = Blend(result, LoadTexSample(worldPosition, materialId, TexType_Blending), trans);
+        const bool blendingTexture = false;
+        if (blendingTexture) {
+            float trans = 0.0f;
+            [unroll] for (uint c2=0; c2<2; ++c2)
+                trans += .5f - abs(0.5f - typeWeights[c2]);
+            trans *= trans;
+            result = Blend(result, LoadTexSample(worldPosition, materialId, TexType_Blending), trans);
+        }
 
     } else {
 

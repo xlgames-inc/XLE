@@ -34,6 +34,7 @@ namespace LevelEditorXLE
             Schema.envSettingsType.Type.Define(new ExtensionInfo<XLEEnvSettings>());
             Schema.xleGameType.Type.Define(new ExtensionInfo<GameExtensions>());
             Schema.envUtilityType.Type.Define(new ExtensionInfo<EnvUtility>());
+            Schema.vegetationSpawnConfigType.Type.Define(new ExtensionInfo<VegetationSpawnConfigGob>());
         }
 
         public static TypeCatalog CreateTypeCatalog()

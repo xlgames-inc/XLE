@@ -1041,7 +1041,7 @@ namespace SceneEngine
         const ResChar* GetCellName(uint64 cellGuid);
 
         ::Assets::AssetState TryGetBoundingBox(
-            Placements::BoundingBox& result, const ResChar modelFilename[], unsigned LOD = 0) const;
+            Placements::BoundingBox& result, const ResChar modelFilename[], unsigned LOD = 0, bool stallWhilePending = false) const;
     };
 
     const ResChar* PlacementsEditor::Pimpl::GetCellName(uint64 cellGuid)
@@ -1119,12 +1119,14 @@ namespace SceneEngine
     }
 
     ::Assets::AssetState PlacementsEditor::Pimpl::TryGetBoundingBox(
-        Placements::BoundingBox& result, const ResChar modelFilename[], unsigned LOD) const
+        Placements::BoundingBox& result, const ResChar modelFilename[], unsigned LOD, bool stallWhilePending) const
     {
         auto model = _modelCache->GetModelScaffold(modelFilename);
         if (!model) return ::Assets::AssetState::Invalid;
 
-        auto state = model->TryResolve();
+        ::Assets::AssetState state;
+        if (stallWhilePending)  { state = model->StallAndResolve(); } 
+        else                    { state = model->TryResolve(); }
         if (state != ::Assets::AssetState::Ready) return state;
 
         result = model->GetStaticBoundingBox(LOD);
@@ -1771,12 +1773,13 @@ namespace SceneEngine
 
             cellIterator = std::lower_bound(cellIterator, editorPimpl->_cells.end(), i->first, PlacementsEditor::Pimpl::RegisteredCell::CompareHash());
             if (cellIterator == editorPimpl->_cells.end() || cellIterator->_filenameHash != i->first) {
+                i = iend;
                 continue;
             }
 
             auto cellToWorld = cellIterator->_cellToWorld;
             auto* placements = editorPimpl->GetPlacements(cellIterator->_filenameHash);
-            if (!placements) continue;
+            if (!placements) { i = iend; continue; }
 
             if (transactionFlags & PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits) {
                     //  Sometimes we want to ignore the top 32 bits of the id. It works, but it's
@@ -2098,7 +2101,7 @@ namespace SceneEngine
     std::pair<Float3, Float3> PlacementsEditor::GetModelBoundingBox(const ResChar modelName[]) const
     {
         Placements::BoundingBox boundingBox;
-        auto assetState = _pimpl->TryGetBoundingBox(boundingBox, modelName);
+        auto assetState = _pimpl->TryGetBoundingBox(boundingBox, modelName, 0, true);
         if (assetState != ::Assets::AssetState::Ready)
             return std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
 

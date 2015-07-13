@@ -1101,6 +1101,11 @@ namespace ToolsRig
             //  the bottom range.
 
         auto modelBoundingBox = editor.GetModelBoundingBox(modelName);
+        if (    modelBoundingBox.second[0] <= modelBoundingBox.first[0]
+            ||  modelBoundingBox.second[1] <= modelBoundingBox.first[1]
+            ||  modelBoundingBox.second[2] <= modelBoundingBox.first[2])
+            return;
+
         auto crossSectionArea = 
               (modelBoundingBox.second[0] - modelBoundingBox.first[0]) 
             * (modelBoundingBox.second[1] - modelBoundingBox.first[1]);

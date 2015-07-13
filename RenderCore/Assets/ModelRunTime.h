@@ -79,7 +79,7 @@ namespace RenderCore { namespace Assets
         const ModelImmutableData&   ImmutableData() const;
         const TransformationMachine& EmbeddedSkeleton() const;
         std::pair<Float3, Float3>   GetStaticBoundingBox(unsigned lodIndex = 0) const;
-        unsigned                    GetMaxLOD() const { return 1; }
+        unsigned                    GetMaxLOD() const { return 0; }
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
 

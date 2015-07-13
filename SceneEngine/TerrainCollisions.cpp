@@ -29,6 +29,7 @@ namespace SceneEngine
         TerrainCell::Node			_scaffoldData;
         std::unique_ptr<uint16[]>	_heightData;
         std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        bool _encodedGradientFlags;
 
         float GetHeightSample(Int2 coord) const;
     };
@@ -36,7 +37,8 @@ namespace SceneEngine
     inline float TerrainNodeHeightCollision::GetHeightSample(Int2 coord) const
     {
         assert(coord[1] < int(_scaffoldData._widthInElements) && coord[0] < int(_scaffoldData._widthInElements));
-        auto rawSample = _heightData.get()[coord[1] * _scaffoldData._widthInElements + coord[0]];
+        const auto mask = CompressedHeightMask(_encodedGradientFlags);
+        auto rawSample = _heightData.get()[coord[1] * _scaffoldData._widthInElements + coord[0]] & mask;
         return float(rawSample) * _scaffoldData._localToCell(2, 2) + _scaffoldData._localToCell(2, 3);
     }
 
@@ -102,6 +104,7 @@ namespace SceneEngine
         _heightData = std::move(heightData);
         _validationCallback = std::move(validCallback);
         _scaffoldData = node;
+        _encodedGradientFlags = cell.EncodedGradientFlags();
     }
 
     TerrainNodeHeightCollision::~TerrainNodeHeightCollision()
