@@ -7,25 +7,41 @@
 #if !defined(RESOLVE_AMBIENT_PSH)
 #define RESOLVE_AMBIENT_PSH
 
+#if (RESOLVE_RANGE_FOG==1)
+	#include "ResolveUtil.h"
+#endif
 #include "../Lighting/AmbientResolve.h"
+#include "../Lighting/RangeFogResolve.h"
 #include "../System/LoadGBuffer.h"
 #include "../Colour.h"	// for LightingScale
 
 cbuffer AmbientLightBuffer
 {
 	AmbientDesc Ambient;
+	RangeFogDesc RangeFog;
 }
 
-float4 ResolveAmbient(	float4 position : SV_Position,
-						float2 texCoord : TEXCOORD0,
-						float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
-						SystemInputs sys) : SV_Target0
+float4 ResolveAmbient(
+	float4 position : SV_Position,
+	float2 texCoord : TEXCOORD0,
+	float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
+	SystemInputs sys) : SV_Target0
 {
 	int2 pixelCoords = position.xy;
 	GBufferValues sample = LoadGBuffer(position, sys);
 	float3 viewDirection = -normalize(viewFrustumVector);
 	float3 result = LightResolve_Ambient(sample, viewDirection, Ambient, pixelCoords, GetSampleIndex(sys));
-	return float4(LightingScale * result, 1.f);
+
+	float outscatterScale = 1.f;
+	#if (RESOLVE_RANGE_FOG==1)
+		float screenSpaceDepth = GetWorldSpaceDepth(position, GetSampleIndex(sys));
+
+		float3 inscatter;
+		LightResolve_RangeFog(RangeFog, screenSpaceDepth, outscatterScale, inscatter);
+		result = result * outscatterScale + inscatter;
+	#endif
+
+	return float4(LightingScale * result, outscatterScale);
 }
 
 #endif

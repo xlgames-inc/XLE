@@ -261,8 +261,15 @@ namespace SceneEngine
             Sky_RenderPostFog(context, parserContext);
         }
 
-        if (Tweakable("DoAtmosBlur", true) && parserContext.GetSceneParser()->GetGlobalLightingDesc()._doAtmosphereBlur) {
-            AtmosphereBlur_Execute(context, parserContext);
+        auto gblLighting = parserContext.GetSceneParser()->GetGlobalLightingDesc();
+        if (Tweakable("DoAtmosBlur", true) && gblLighting._doAtmosphereBlur) {
+            float farClip = parserContext.GetProjectionDesc()._farClip;
+            AtmosphereBlur_Execute(
+                context, parserContext,
+                AtmosphereBlurSettings {
+                    gblLighting._atmosBlurStdDev, 
+                    gblLighting._atmosBlurStart / farClip, gblLighting._atmosBlurEnd / farClip
+                });
         }
 
         if (Tweakable("DoRain", false)) {

@@ -203,7 +203,7 @@ namespace SceneEngine
         return atlasIndex;
     }
 
-    TerrainMaterialTextures::TerrainMaterialTextures(const TerrainMaterialScaffold& scaffold)
+    TerrainMaterialTextures::TerrainMaterialTextures(const TerrainMaterialScaffold& scaffold, bool useGradFlagMaterials)
     {
         _strataCount = 0;
 
@@ -217,8 +217,7 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        const bool usingGradFlagMaterials = true;
-        if (constant_expression<usingGradFlagMaterials>::result()) {
+        if (useGradFlagMaterials) {
 
             const auto texturesPerMaterial = dimof(((TerrainMaterialScaffold::GradFlagMaterial*)nullptr)->_texture);
             auto highestMaterialId = 0u;

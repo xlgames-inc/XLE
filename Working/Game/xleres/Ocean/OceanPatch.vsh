@@ -62,7 +62,7 @@ void CalculateWorldPosition(uint2 gridCoords, out float2 texCoords, out float3 o
 		float topRightWeight	= frustumCoords.x * frustumCoords.y;
 		float bottomRightWeight = frustumCoords.x * (1.f - frustumCoords.y);
 
-		float3 viewFrustumVector = 
+		float3 viewFrustumVector =
 			  topLeftWeight		* GridFrustumCorners[0].xyz
 			+ bottomLeftWeight	* GridFrustumCorners[1].xyz
 			+ topRightWeight	* GridFrustumCorners[2].xyz
@@ -136,7 +136,7 @@ float CalcShallowWaterHeight(float2 worldCoords, out float3 shallowWaterTexCoord
 	shallowWaterTexCoord = 0.0.xxx;
 	shallowWaterWeight = 0.f;
 	float result = WaterBaseHeight;
-	
+
 	int2 tileCoord = int2(floor(worldCoords / ShallowGridPhysicalDimension));
 	uint arrayIndex = CalculateShallowWaterArrayIndex(ShallowGridsLookupTable, tileCoord);
 	[branch] if (arrayIndex < 128) {
@@ -193,17 +193,10 @@ VSOutput main(uint vertexId : SV_VertexId)
 
 	float specularityOffsetX = PerlinNoise3D(float3(15.f * output.texCoord,				0.47f * Time));
 	float specularityOffsetY = PerlinNoise3D(float3(15.f * (1.0f - output.texCoord),	0.53f * Time));
-	output.specularityTC	 =	output.texCoord * SpecularityFrequency 
+	output.specularityTC	 =	output.texCoord * SpecularityFrequency
 								+	0.15f * float2(specularityOffsetX, specularityOffsetY);
 
 	return output;
-}
-
-cbuffer ShallowWaterGridConstants
-{
-	int2	GridIndex;
-	uint	ArrayIndex;
-	float2	Offset;
 }
 
 VSOutput ShallowWater(uint vertexId : SV_VertexId)
@@ -213,12 +206,10 @@ VSOutput ShallowWater(uint vertexId : SV_VertexId)
 	float waterHeight	 = ShallowWaterHeights.Load(uint4(gridCoords, ArrayIndex, 0));
 
 	float3 worldPosition = float3(
-		Offset.x + (GridIndex.x + gridCoords.x / float(TileDimension)) * ShallowGridPhysicalDimension,
-		Offset.y + (GridIndex.y + gridCoords.y / float(TileDimension)) * ShallowGridPhysicalDimension,
+		WorldSpaceOffset.x + (SimulatingIndex.x + gridCoords.x / float(TileDimension)) * ShallowGridPhysicalDimension,
+		WorldSpaceOffset.y + (SimulatingIndex.y + gridCoords.y / float(TileDimension)) * ShallowGridPhysicalDimension,
 		waterHeight);
 	VSOutput output;
 	output.position = mul(WorldToClip, float4(worldPosition,1));
 	return output;
 }
-
-

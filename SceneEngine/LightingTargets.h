@@ -200,12 +200,13 @@ namespace SceneEngine
             bool _msaaSamplers;
             bool _flipDirection;
             bool _hasAO, _hasTiledLighting, _hasSRR;
+            bool _rangeFog;
             unsigned _skyProjectionType;
             unsigned _gbufferType;
 
             Desc(   unsigned gbufferType,
                     unsigned msaaSampleCount, bool msaaSamplers, bool flipDirection,
-                    bool hasAO, bool hasTiledLighting, bool hasSSR, unsigned skyProjectionType)
+                    bool hasAO, bool hasTiledLighting, bool hasSSR, unsigned skyProjectionType, bool rangeFog)
             {
                     //  we have to "memset" this -- because padding adds random values in 
                     //  profile mode
@@ -216,10 +217,12 @@ namespace SceneEngine
                 _flipDirection = flipDirection;
                 _hasAO = hasAO; _hasSRR = hasSSR; _hasTiledLighting = hasTiledLighting;
                 _skyProjectionType = skyProjectionType;
+                _rangeFog = rangeFog;
             }
         };
 
-        const RenderCore::Metal::ShaderProgram*   _ambientLight;
+        const RenderCore::Metal::ShaderProgram*             _ambientLight;
+        const RenderCore::Metal::ShaderProgram*             _ambientLightRangeFog;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _ambientLightUniforms;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }

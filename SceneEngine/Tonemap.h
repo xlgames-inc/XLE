@@ -23,8 +23,17 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
         RenderCore::Metal::ShaderResourceView& inputResource, int sampleCount);
 
+    class AtmosphereBlurSettings
+    {
+    public:
+        float _blurStdDev;
+        float _startDistance;
+        float _endDistance;
+    };
+
     void AtmosphereBlur_Execute(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext);
+        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext,
+        const AtmosphereBlurSettings& settings);
 
     class ToneMapSettings 
     { 

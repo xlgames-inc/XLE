@@ -659,7 +659,7 @@ namespace SceneEngine
         AtmosphereBlurResources(const Desc&);
         ~AtmosphereBlurResources();
 
-        intrusive_ptr<ID3D::Resource>              _blurBuffer[2];
+        intrusive_ptr<ID3D::Resource>           _blurBuffer[2];
         RenderCore::Metal::RenderTargetView     _blurBufferRTV[2];
         RenderCore::Metal::ShaderResourceView   _blurBufferSRV[2];
 
@@ -669,6 +669,7 @@ namespace SceneEngine
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _verticalFilterBinding;
 
         RenderCore::Metal::BlendState           _integrateBlend;
+        RenderCore::Metal::BlendState           _noBlending;
 
         const RenderCore::Metal::ShaderProgram*       _integrateDistantBlur;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _integrateDistantBlurBinding;
@@ -704,24 +705,27 @@ namespace SceneEngine
 
         auto* horizontalFilter = &::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-            "game/xleres/Effects/separablefilter.psh:HorizontalBlur:ps_*");
+            "game/xleres/Effects/distantblur.psh:HorizontalBlur_DistanceWeighted:ps_*");
         auto* verticalFilter = &::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-            "game/xleres/Effects/separablefilter.psh:VerticalBlur:ps_*");
+            "game/xleres/Effects/distantblur.psh:VerticalBlur_DistanceWeighted:ps_*");
 
         auto horizontalFilterBinding = std::make_unique<BoundUniforms>(std::ref(*horizontalFilter));
-        horizontalFilterBinding->BindConstantBuffer(Hash64("Constants"), 0, 1);
+        horizontalFilterBinding->BindConstantBuffers(1, {"Constants", "BlurConstants"});
+        horizontalFilterBinding->BindShaderResources(1, {"DepthsInput", "InputTexture"});
 
         auto verticalFilterBinding = std::make_unique<BoundUniforms>(std::ref(*verticalFilter));
-        verticalFilterBinding->BindConstantBuffer(Hash64("Constants"), 0, 1);
+        verticalFilterBinding->BindConstantBuffers(1, {"Constants", "BlurConstants"});
+        verticalFilterBinding->BindShaderResources(1, {"DepthsInput", "InputTexture"});
 
         auto* integrateDistantBlur = &::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", 
             "game/xleres/Effects/distantblur.psh:integrate:ps_*");
         auto integrateDistantBlurBinding = std::make_unique<BoundUniforms>(std::ref(*integrateDistantBlur));
         Techniques::TechniqueContext::BindGlobalUniforms(*integrateDistantBlurBinding.get());
-        integrateDistantBlurBinding->BindShaderResource(Hash64("BlurredBufferInput"), 0, 1);
-        integrateDistantBlurBinding->BindShaderResource(Hash64("DepthsInput"), 1, 1);
+        integrateDistantBlurBinding->BindConstantBuffers(1, {"Constants", "BlurConstants"});
+        integrateDistantBlurBinding->BindShaderResource(Hash64("DepthsInput"), 0, 1);
+        integrateDistantBlurBinding->BindShaderResource(Hash64("BlurredBufferInput"), 1, 1);
 
         RenderCore::Metal::BlendState integrateBlend;
         RenderCore::Metal::BlendState noBlending = RenderCore::Metal::BlendOp::NoBlending;
@@ -744,13 +748,15 @@ namespace SceneEngine
         _validationCallback             = std::move(validationCallback);
         _integrateDistantBlur           = std::move(integrateDistantBlur);
         _integrateBlend                 = std::move(integrateBlend);
+        _noBlending                     = std::move(noBlending);
         _integrateDistantBlurBinding    = std::move(integrateDistantBlurBinding);
     }
 
     AtmosphereBlurResources::~AtmosphereBlurResources() {}
 
     void AtmosphereBlur_Execute(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext)
+        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext,
+        const AtmosphereBlurSettings& settings)
     {
             //  simple distance blur for the main camera
             //  sometimes called depth-of-field; but really it's blurring of distant objects
@@ -762,40 +768,54 @@ namespace SceneEngine
 
         TRY {
 
-                //  we can actually drop down to 1/3 resolution here, fine... but then
+                //  We can actually drop down to 1/3 resolution here, fine... but then
                 //  the blurring becomes too much
+                //  We need to use a format with an alpha channel for the weighted blur.
+                //  
             unsigned blurBufferWidth = unsigned(viewport.Width/2);
             unsigned blurBufferHeight = unsigned(viewport.Height/2);
             auto& resources = Techniques::FindCachedBoxDep<AtmosphereBlurResources>(
-                AtmosphereBlurResources::Desc(blurBufferWidth, blurBufferHeight, NativeFormat::R11G11B10_FLOAT));
+                AtmosphereBlurResources::Desc(blurBufferWidth, blurBufferHeight, NativeFormat::R16G16B16A16_FLOAT));
 
-            ViewportDesc newViewport( 0, 0, float(blurBufferWidth), float(blurBufferHeight), 0.f, 1.f );
+            ViewportDesc newViewport(0, 0, float(blurBufferWidth), float(blurBufferHeight), 0.f, 1.f);
             context->Bind(newViewport);
             context->Bind(MakeResourceList(resources._blurBufferRTV[1]), nullptr);
-            context->Bind(Techniques::CommonResources()._blendOpaque);
+            context->Bind(resources._noBlending);
             SetupVertexGeneratorShader(context);
 
-            float standardDeviation = Tweakable("AtmosBlur_Dev", 1.3f);
-            float filteringWeights[8];
-            BuildGaussianFilteringWeights(filteringWeights, standardDeviation, dimof(filteringWeights));
-            ConstantBufferPacket constantBufferPackets[1] = { MakeSharedPkt(filteringWeights) };
-
+            auto depths = ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView());
+            ShaderResourceView depthsSRV(depths.get(), (RenderCore::Metal::NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
             auto res = ExtractResource<ID3D::Resource>(savedTargets.GetRenderTargets()[0]);
             ShaderResourceView inputSRV(res.get());
 
-                // blur once horizontally, and once vertically
-            context->BindPS(MakeResourceList(inputSRV));
-            resources._horizontalFilterBinding->Apply(
-                *context, 
-                parserContext.GetGlobalUniformsStream(), 
-                UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
-            context->Bind(*resources._horizontalFilter);
-            context->Draw(4);
+            const ShaderResourceView* blurSrvs[] = { &depthsSRV, &inputSRV };
+            float blurConstants[4] = { settings._startDistance, settings._endDistance, 0.f, 0.f };
+            float filteringWeights[8];
+            BuildGaussianFilteringWeights(filteringWeights, settings._blurStdDev, dimof(filteringWeights));
+            ConstantBufferPacket constantBufferPackets[] = { MakeSharedPkt(filteringWeights), MakeSharedPkt(blurConstants) };
 
-            context->Bind(MakeResourceList(resources._blurBufferRTV[0]), nullptr);
-            context->BindPS(MakeResourceList(resources._blurBufferSRV[1]));
-            context->Bind(*resources._verticalFilter);
-            context->Draw(4);
+                //          blur once horizontally, and once vertically
+            ///////////////////////////////////////////////////////////////////////////////////////
+            {
+                resources._horizontalFilterBinding->Apply(
+                    *context, 
+                    parserContext.GetGlobalUniformsStream(), 
+                    UniformsStream(constantBufferPackets, blurSrvs));
+                context->Bind(*resources._horizontalFilter);
+                context->Draw(4);
+            }
+            ///////////////////////////////////////////////////////////////////////////////////////
+            {
+                context->Bind(MakeResourceList(resources._blurBufferRTV[0]), nullptr);
+                const ShaderResourceView* blurSrvs2[] = { &depthsSRV, &resources._blurBufferSRV[1] };
+                resources._verticalFilterBinding->Apply(
+                    *context, 
+                    parserContext.GetGlobalUniformsStream(), 
+                    UniformsStream(constantBufferPackets, blurSrvs2));
+                context->Bind(*resources._verticalFilter);
+                context->Draw(4);
+            }
+            ///////////////////////////////////////////////////////////////////////////////////////
 
                 // copied blurred buffer back into main target
                 //  bind output rendertarget (but not depth buffer)
@@ -807,14 +827,12 @@ namespace SceneEngine
                 ThrowException(::Exceptions::BasicLabel("No depth stencil buffer bound using atmospheric blur render"));
             }
 
-            auto depths = ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView());
-            ShaderResourceView depthsSRV(depths.get(), (RenderCore::Metal::NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
-
             context->Bind(*resources._integrateDistantBlur);
-            const ShaderResourceView* srvs[] = { &resources._blurBufferSRV[0], &depthsSRV };
+            const ShaderResourceView* srvs[] = { &depthsSRV, &resources._blurBufferSRV[0] };
             resources._integrateDistantBlurBinding->Apply(
-                *context, parserContext.GetGlobalUniformsStream(), 
-                UniformsStream(nullptr, nullptr, 0, srvs, dimof(srvs)));
+                *context, 
+                parserContext.GetGlobalUniformsStream(), 
+                UniformsStream(constantBufferPackets, srvs));
             context->Bind(resources._integrateBlend);
             context->Draw(4);
             context->UnbindPS<ShaderResourceView>(3, 3);

@@ -147,6 +147,10 @@ namespace SceneEngine
     GlobalLightingDesc::GlobalLightingDesc() 
     : _ambientLight(0.f, 0.f, 0.f), _skyReflectionScale(1.0f), _skyReflectionBlurriness(2.f), _skyBrightness(1.f)
     , _doAtmosphereBlur(false)
+    , _rangeFogInscatter(0.f, 0.f, 0.f)
+    , _rangeFogThickness(0.f, 0.f, 0.f)
+    , _doRangeFog(false)
+    , _atmosBlurStdDev(1.3f), _atmosBlurStart(1000.f), _atmosBlurEnd(1500.f)
     {
         _skyTexture[0] = '\0';
     }
@@ -159,20 +163,53 @@ namespace SceneEngine
             (float)(packedColor & 0xff) / 255.f);
     }
 
+    static ParameterBox::ParameterNameHash ParamHash(const char name[])
+    {
+        return ParameterBox::MakeParameterNameHash(name);
+    }
+
     GlobalLightingDesc::GlobalLightingDesc(const ParameterBox& props)
     : GlobalLightingDesc()
     {
-        static const auto ambientHash = ParameterBox::MakeParameterNameHash("AmbientLight");
-        static const auto ambientBrightnessHash = ParameterBox::MakeParameterNameHash("AmbientBrightness");
-        static const auto skyTextureHash = ParameterBox::MakeParameterNameHash("SkyTexture");
-        static const auto skyReflectionScaleHash = ParameterBox::MakeParameterNameHash("SkyReflectionScale");
-        static const auto skyReflectionBlurriness = ParameterBox::MakeParameterNameHash("SkyReflectionBlurriness");
-        static const auto skyBrightness = ParameterBox::MakeParameterNameHash("SkyBrightness");
+        static const auto ambientHash = ParamHash("AmbientLight");
+        static const auto ambientBrightnessHash = ParamHash("AmbientBrightness");
+
+        static const auto skyTextureHash = ParamHash("SkyTexture");
+        static const auto skyReflectionScaleHash = ParamHash("SkyReflectionScale");
+        static const auto skyReflectionBlurriness = ParamHash("SkyReflectionBlurriness");
+        static const auto skyBrightness = ParamHash("SkyBrightness");
+
+        static const auto rangeFogInscatterHash = ParamHash("RangeFogInscatter");
+        static const auto rangeFogInscatterScaleHash = ParamHash("RangeFogInscatterScale");
+        static const auto rangeFogThicknessHash = ParamHash("RangeFogThickness");
+        static const auto rangeFogThicknessScaleHash = ParamHash("RangeFogThicknessScale");
+
+        static const auto atmosBlurStdDevHash = ParamHash("AtmosBlurStdDev");
+        static const auto atmosBlurStartHash = ParamHash("AtmosBlurStart");
+        static const auto atmosBlurEndHash = ParamHash("AtmosBlurEnd");
+
+        static const auto flagsHash = ParamHash("Flags");
+
+            ////////////////////////////////////////////////////////////
 
         _ambientLight = props.GetParameter(ambientBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(ambientHash, ~0x0u));
         _skyReflectionScale = props.GetParameter(skyReflectionScaleHash, _skyReflectionScale);
         _skyReflectionBlurriness = props.GetParameter(skyReflectionBlurriness, _skyReflectionBlurriness);
         _skyBrightness = props.GetParameter(skyBrightness, _skyBrightness);
+
+        _rangeFogInscatter = 1.f / std::max(1.f, props.GetParameter(rangeFogInscatterScaleHash, 1.f)) * AsFloat3Color(props.GetParameter(rangeFogInscatterHash, 0));
+        _rangeFogThickness = 1.f / std::max(1.f, props.GetParameter(rangeFogThicknessScaleHash, 1.f)) * AsFloat3Color(props.GetParameter(rangeFogThicknessHash, 0));
+
+        _atmosBlurStdDev = props.GetParameter(atmosBlurStdDevHash, _atmosBlurStdDev);
+        _atmosBlurStart = props.GetParameter(atmosBlurStartHash, _atmosBlurStart);
+        _atmosBlurEnd = std::max(_atmosBlurStart, props.GetParameter(atmosBlurEndHash, _atmosBlurEnd));
+
+        auto flags = props.GetParameter<unsigned>(flagsHash);
+        if (flags.first) {
+            _doAtmosphereBlur = !!(flags.second & (1<<0));
+            _doRangeFog = !!(flags.second & (1<<1));
+        }
+
         props.GetString(skyTextureHash, _skyTexture, dimof(_skyTexture));
     }
 

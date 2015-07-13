@@ -154,7 +154,14 @@ namespace SceneEngine
         float   _skyReflectionScale;
         float   _skyReflectionBlurriness;
 
+        bool    _doRangeFog;
+        Float3  _rangeFogInscatter;
+        Float3  _rangeFogThickness;     // optical thickness for range based fog
+
         bool    _doAtmosphereBlur;
+        float   _atmosBlurStdDev;
+        float   _atmosBlurStart;
+        float   _atmosBlurEnd;
 
         GlobalLightingDesc();
         GlobalLightingDesc(const Utility::ParameterBox& paramBox);

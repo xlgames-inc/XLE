@@ -15,11 +15,17 @@ struct AmbientDesc
 	float	Dummy0, Dummy1, Dummy2;
 };
 
+struct RangeFogDesc
+{
+	float3 	Inscatter;
+	float3	OpticalThickness;
+};
+
 struct LightColors
 {
-	float3 diffuse;
-	float3 specular;
-	float nonMetalSpecularBrightness;
+	float3 	diffuse;
+	float3 	specular;
+	float 	nonMetalSpecularBrightness;
 };
 
 struct LightDesc

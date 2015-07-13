@@ -326,15 +326,20 @@ namespace SceneEngine
     AmbientResolveShaders::AmbientResolveShaders(const Desc& desc)
     {
         using namespace RenderCore;
-        char definesTable[256];
-        Utility::XlFormatString(
-            definesTable, dimof(definesTable), 
-            "GBUFFER_TYPE=%i;MSAA_SAMPLES=%i;SKY_PROJECTION=%i;CALCULATE_AMBIENT_OCCLUSION=%i;CALCULATE_TILED_LIGHTS=%i;CALCULATE_SCREENSPACE_REFLECTIONS=%i", 
-            desc._gbufferType, (desc._msaaSampleCount<=1)?0:desc._msaaSampleCount,
-            desc._skyProjectionType, desc._hasAO, desc._hasTiledLighting,desc._hasSRR);
+        StringMeld<256> definesTable;
+
+        definesTable 
+            << "GBUFFER_TYPE=" << desc._gbufferType
+            << ";MSAA_SAMPLES=" << ((desc._msaaSampleCount<=1)?0:desc._msaaSampleCount)
+            << ";SKY_PROJECTION=" << desc._skyProjectionType
+            << ";CALCULATE_AMBIENT_OCCLUSION=" << desc._hasAO
+            << ";CALCULATE_TILED_LIGHTS=" << desc._hasTiledLighting
+            << ";CALCULATE_SCREENSPACE_REFLECTIONS=" << desc._hasSRR
+            << ";RESOLVE_RANGE_FOG=" << desc._rangeFog
+            ;
 
         if (desc._msaaSamplers) {
-            XlCatString(definesTable, dimof(definesTable), ";MSAA_SAMPLERS=1");
+            definesTable << ";MSAA_SAMPLERS=1";
         }
 
         const char* vertexShader_viewFrustumVector = 
@@ -346,9 +351,10 @@ namespace SceneEngine
         auto* ambientLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             vertexShader_viewFrustumVector, 
             "game/xleres/deferred/resolveambient.psh:ResolveAmbient:ps_*",
-            definesTable);
+            definesTable.get());
 
         auto ambientLightUniforms = std::make_unique<Metal::BoundUniforms>(std::ref(*ambientLight));
+        Techniques::TechniqueContext::BindGlobalUniforms(*ambientLightUniforms);
         ambientLightUniforms->BindConstantBuffer(Hash64("AmbientLightBuffer"), 0, 1);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();

@@ -70,7 +70,10 @@ namespace SceneEngine
             Float3      _ambientColour; 
             float       _skyReflectionScale; 
             float       _skyReflectionBlurriness; 
-            unsigned    _dummy[3]; 
+            unsigned    _dummy[3];
+
+            Float3      _rangeFloatInscatter; unsigned _dummy1;
+            Float3      _rangeFloatOpticalThickness; unsigned _dummy2;
         };
 
         class Light
@@ -87,7 +90,11 @@ namespace SceneEngine
 
     static ShaderLightDesc::Ambient AsShaderDesc(const GlobalLightingDesc& desc)
     {
-        return ShaderLightDesc::Ambient { desc._ambientLight, desc._skyReflectionScale, desc._skyReflectionBlurriness };
+        return ShaderLightDesc::Ambient 
+            { 
+                desc._ambientLight, desc._skyReflectionScale, desc._skyReflectionBlurriness, {0,0,0},
+                desc._rangeFogInscatter, 0, desc._rangeFogThickness, 0
+            };
     }
 
     static ShaderLightDesc::Light AsShaderDesc(const LightDesc& light)
@@ -174,10 +181,9 @@ namespace SceneEngine
         return skyTextureProjection;
     }
 
-    void LightingParser_ResolveGBuffer( DeviceContext* context,
-                                        LightingParserContext& parserContext,
-                                        MainTargetsBox& mainTargets,
-                                        LightingResolveTextureBox& lightingResTargets)
+    void LightingParser_ResolveGBuffer(
+        DeviceContext* context, LightingParserContext& parserContext,
+        MainTargetsBox& mainTargets, LightingResolveTextureBox& lightingResTargets)
     {
         GPUProfiler::DebugAnnotation anno(*context, L"ResolveGBuffer");
 
@@ -188,7 +194,7 @@ namespace SceneEngine
         const unsigned samplingCount = lightingResolveContext.GetSamplingCount();
         const bool useMsaaSamplers = lightingResolveContext.UseMsaaSamplers();
 
-        auto& resolveRes = Techniques::FindCachedBoxDep<LightingResolveResources>(LightingResolveResources::Desc(samplingCount));
+        auto& resolveRes = Techniques::FindCachedBoxDep2<LightingResolveResources>(samplingCount);
 
             //
             //    Our inputs is the prepared gbuffer 
@@ -268,7 +274,6 @@ namespace SceneEngine
                 // note -- if we do ambient first, we can avoid this clear (by rendering the ambient opaque)
             float clearColour[] = { 0.f, 0.f, 0.f, 1.f };
             context->Clear(lightingResTargets._lightingResolveRTV, clearColour);
-            auto ambientLightPacket = MakeSharedPkt(AsShaderDesc(parserContext.GetSceneParser()->GetGlobalLightingDesc()));
                        
             const unsigned passCount = (doSampleFrequencyOptimisation && samplingCount > 1)?2:1;
             for (unsigned c=0; c<passCount; ++c) {
@@ -287,6 +292,8 @@ namespace SceneEngine
                 TRY {
                     GPUProfiler::DebugAnnotation anno(*context, L"Ambient");
 
+                    auto globalLightDesc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
+
                         //-------- ambient light shader --------
                     auto& ambientResolveShaders = 
                         Techniques::FindCachedBoxDep2<AmbientResolveShaders>(
@@ -295,17 +302,19 @@ namespace SceneEngine
                             lightingResolveContext._ambientOcclusionResult.IsGood(),
                             lightingResolveContext._tiledLightingResult.IsGood(),
                             lightingResolveContext._screenSpaceReflectionsResult.IsGood(),
-                            skyTextureProjection);
+                            skyTextureProjection, globalLightDesc._doRangeFog);
 
+                    auto ambientLightPacket = MakeSharedPkt(AsShaderDesc(globalLightDesc));
                     ambientResolveShaders._ambientLightUniforms->Apply(
                         *context, parserContext.GetGlobalUniformsStream(),
                         UniformsStream(&ambientLightPacket, nullptr, 1));
 
                         //  When screen space reflections are enabled, we need to take a copy of the lighting
                         //  resolve target. This is because we want to reflect the post-lighting resolve pixels.
-                    if (lightingResolveContext._screenSpaceReflectionsResult.IsGood()) {
-                        context->GetUnderlying()->CopyResource(lightingResTargets._lightingResolveCopy.get(), lightingResTargets._lightingResolveTexture.get());
-                    }
+                    if (lightingResolveContext._screenSpaceReflectionsResult.IsGood())
+                        context->GetUnderlying()->CopyResource(
+                            lightingResTargets._lightingResolveCopy.get(), 
+                            lightingResTargets._lightingResolveTexture.get());
 
                     context->BindPS(MakeResourceList(5, 
                         lightingResolveContext._tiledLightingResult, 
@@ -334,7 +343,8 @@ namespace SceneEngine
                     Sky_Render(context, parserContext, false);     // we do a first pass of the sky here, and then follow up with a second pass after lighting resolve
 
                         // have to reset our state (because Sky_Render changed everything)
-                    SetupStateForDeferredLightingResolve(context, mainTargets, lightingResTargets, resolveRes, doSampleFrequencyOptimisation);
+                    SetupStateForDeferredLightingResolve(
+                        context, mainTargets, lightingResTargets, resolveRes, doSampleFrequencyOptimisation);
                 }
 
                     //-------- do volumetric fog --------
@@ -404,7 +414,10 @@ namespace SceneEngine
 
             TRY {
                 LightingResolveShaders::LightShaderType shaderType;
-                shaderType._projection = (i._type == LightDesc::Directional) ? LightingResolveShaders::Directional : LightingResolveShaders::Point;
+                shaderType._projection = 
+                    (i._type == LightDesc::Directional) 
+                    ? LightingResolveShaders::Directional 
+                    : LightingResolveShaders::Point;
 
                     //  We only support a limited set of different light types so far.
                     //  Perhaps this will be extended to support more lights with custom
@@ -447,7 +460,9 @@ namespace SceneEngine
                 const auto* shader = lightingResolveShaders.GetShader(shaderType);
                 assert(shader && shader->_shader);
 
-                shader->_uniforms.Apply(*context, parserContext.GetGlobalUniformsStream(), UniformsStream(constantBufferPackets, prebuiltConstantBuffers));
+                shader->_uniforms.Apply(
+                    *context, parserContext.GetGlobalUniformsStream(), 
+                    UniformsStream(constantBufferPackets, prebuiltConstantBuffers));
                 context->Bind(*shader->_shader);
                 context->Draw(4);
             } 

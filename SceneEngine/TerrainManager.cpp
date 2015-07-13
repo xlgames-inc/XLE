@@ -577,10 +577,10 @@ namespace SceneEngine
 
             if (!_pimpl->_cfg._textureCfgName.empty()) {
                 auto& scaffold = ::Assets::GetAssetDep<TerrainMaterialScaffold>(_pimpl->_cfg._textureCfgName.c_str());
-                _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(scaffold);
+                _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(scaffold, _pimpl->_cfg.EncodedGradientFlags());
             } else {
                 auto& scaffold = ::Assets::GetAssetDep<TerrainMaterialScaffold>();
-                _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(scaffold);
+                _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(scaffold, _pimpl->_cfg.EncodedGradientFlags());
             }
         }
 
