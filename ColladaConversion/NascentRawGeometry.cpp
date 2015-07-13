@@ -9,19 +9,16 @@
 #include "../Utility/StringUtils.h"
 #include "../Utility/MemoryUtils.h"
 
-namespace Serialization
+void Serialize( Serialization::NascentBlockSerializer& serializer, 
+                const RenderCore::Metal::InputElementDesc&  object)
 {
-    void Serialize( NascentBlockSerializer& serializer, 
-                    const RenderCore::Metal::InputElementDesc&  object)
-    {
-        Serialize(serializer, object._semanticName);
-        Serialize(serializer, object._semanticIndex);
-        Serialize(serializer, unsigned(object._nativeFormat));
-        Serialize(serializer, object._inputSlot);
-        Serialize(serializer, object._alignedByteOffset);
-        Serialize(serializer, unsigned(object._inputSlotClass));
-        Serialize(serializer, object._instanceDataStepRate);
-    }
+    ::Serialize(serializer, object._semanticName);
+    ::Serialize(serializer, object._semanticIndex);
+    ::Serialize(serializer, unsigned(object._nativeFormat));
+    ::Serialize(serializer, object._inputSlot);
+    ::Serialize(serializer, object._alignedByteOffset);
+    ::Serialize(serializer, unsigned(object._inputSlotClass));
+    ::Serialize(serializer, object._instanceDataStepRate);
 }
 
 namespace RenderCore { namespace ColladaConversion

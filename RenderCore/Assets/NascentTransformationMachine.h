@@ -44,7 +44,8 @@ namespace RenderCore { namespace Assets
         std::string                 HashedIdToStringId     (AnimationParameterId colladaId) const;
         AnimationParameterId        StringIdToHashedId     (const std::string& stringId) const;
 
-        void    Serialize(Serialization::NascentBlockSerializer& outputSerializer) const;
+        template<typename Serializer>
+            void    Serialize(Serializer& outputSerializer) const;
 
         std::unique_ptr<Float4x4[]>
             GenerateOutputTransforms(const Assets::TransformationParameterSet&   parameterSet) const;
@@ -88,7 +89,7 @@ namespace RenderCore { namespace Assets
         template<typename Type>
             std::pair<
                 std::vector<std::pair<AnimationParameterId, uint32>>&,
-                std::vector<Type, Serialization::BlockSerializerAllocator<Type>>& >    
+                SerializableVector<Type>& >
                 GetTables();
     };
 

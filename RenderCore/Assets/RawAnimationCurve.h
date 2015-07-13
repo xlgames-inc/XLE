@@ -6,10 +6,10 @@
 
 #pragma once
 
-#include "../../Utility/PtrUtils.h"
 #include "../Metal/Format.h"
+#include "../../Utility/PtrUtils.h"
+#include "../../Utility/Streams/Serialization.h"
 #include "../../Core/Types.h"
-#include "../../Assets/BlockSerializer.h"
 #include <memory>
 
 namespace RenderCore { namespace Assets
@@ -20,8 +20,8 @@ namespace RenderCore { namespace Assets
         enum InterpolationType { Linear, Bezier, Hermite };
 
         RawAnimationCurve(  size_t keyCount, 
-                            std::unique_ptr<float[], Serialization::BlockSerializerDeleter<float[]>>&&  timeMarkers, 
-                            DynamicArray<uint8, Serialization::BlockSerializerDeleter<uint8[]>>&&       keyPositions,
+                            std::unique_ptr<float[], BlockSerializerDeleter<float[]>>&&  timeMarkers, 
+                            DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>&&       keyPositions,
                             size_t elementSize, InterpolationType interpolationType,
                             Metal::NativeFormat::Enum positionFormat, Metal::NativeFormat::Enum inTangentFormat, 
                             Metal::NativeFormat::Enum outTangentFormat);
@@ -29,7 +29,8 @@ namespace RenderCore { namespace Assets
         RawAnimationCurve(const RawAnimationCurve& copyFrom);
         RawAnimationCurve& operator=(RawAnimationCurve&& curve);
 
-        void        Serialize(Serialization::NascentBlockSerializer& outputSerializer) const;
+        template<typename Serializer>
+            void        Serialize(Serializer& outputSerializer) const;
 
         float       StartTime() const;
         float       EndTime() const;
@@ -39,8 +40,8 @@ namespace RenderCore { namespace Assets
 
     protected:
         size_t                          _keyCount;
-        std::unique_ptr<float[], Serialization::BlockSerializerDeleter<float[]>>    _timeMarkers;
-        DynamicArray<uint8, Serialization::BlockSerializerDeleter<uint8[]>>         _parameterData;
+        std::unique_ptr<float[], BlockSerializerDeleter<float[]>>    _timeMarkers;
+        DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>         _parameterData;
         size_t                          _elementSize;
         InterpolationType               _interpolationType;
 
@@ -51,6 +52,19 @@ namespace RenderCore { namespace Assets
         template<typename OutType>
             static Metal::NativeFormat::Enum   ExpectedFormat();
     };
+
+    template<typename Serializer>
+        void        RawAnimationCurve::Serialize(Serializer& outputSerializer) const
+    {
+        ::Serialize(outputSerializer, _keyCount);
+        ::Serialize(outputSerializer, _timeMarkers, _keyCount);
+        ::Serialize(outputSerializer, _parameterData);
+        ::Serialize(outputSerializer, _elementSize);
+        ::Serialize(outputSerializer, unsigned(_interpolationType));
+        ::Serialize(outputSerializer, unsigned(_positionFormat));
+        ::Serialize(outputSerializer, unsigned(_inTangentFormat));
+        ::Serialize(outputSerializer, unsigned(_outTangentFormat));
+    }
 
 }}
 

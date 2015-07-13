@@ -101,27 +101,15 @@ namespace RenderCore { namespace Assets
     template Float4     RawAnimationCurve::Calculate(float inputTime) const never_throws;
     template Float4x4   RawAnimationCurve::Calculate(float inputTime) const never_throws;
 
-    void        RawAnimationCurve::Serialize(Serialization::NascentBlockSerializer& outputSerializer) const
-    {
-        Serialization::Serialize(outputSerializer, _keyCount);
-        Serialization::Serialize(outputSerializer, _timeMarkers, _keyCount);
-        Serialization::Serialize(outputSerializer, _parameterData);
-        Serialization::Serialize(outputSerializer, _elementSize);
-        Serialization::Serialize(outputSerializer, unsigned(_interpolationType));
-        Serialization::Serialize(outputSerializer, unsigned(_positionFormat));
-        Serialization::Serialize(outputSerializer, unsigned(_inTangentFormat));
-        Serialization::Serialize(outputSerializer, unsigned(_outTangentFormat));
-    }
-
     RawAnimationCurve::RawAnimationCurve(   size_t keyCount, 
-                                            std::unique_ptr<float[], Serialization::BlockSerializerDeleter<float[]>>&&  timeMarkers, 
-                                            DynamicArray<uint8, Serialization::BlockSerializerDeleter<uint8[]>>&&       keyPositions,
+                                            std::unique_ptr<float[], BlockSerializerDeleter<float[]>>&&  timeMarkers, 
+                                            DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>&&       keyPositions,
                                             size_t elementSize, InterpolationType interpolationType,
                                             Metal::NativeFormat::Enum positionFormat, Metal::NativeFormat::Enum inTangentFormat, 
                                             Metal::NativeFormat::Enum outTangentFormat)
     :       _keyCount(keyCount)
-    ,       _timeMarkers(std::forward<std::unique_ptr<float[], Serialization::BlockSerializerDeleter<float[]>>>(timeMarkers))
-    ,       _parameterData(std::forward<DynamicArray<uint8, Serialization::BlockSerializerDeleter<uint8[]>>>(keyPositions))
+    ,       _timeMarkers(std::forward<std::unique_ptr<float[], BlockSerializerDeleter<float[]>>>(timeMarkers))
+    ,       _parameterData(std::forward<DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>>(keyPositions))
     ,       _elementSize(elementSize)
     ,       _interpolationType(interpolationType)
     ,       _positionFormat(positionFormat)
@@ -142,7 +130,7 @@ namespace RenderCore { namespace Assets
 
     RawAnimationCurve::RawAnimationCurve(const RawAnimationCurve& copyFrom)
     :       _keyCount(copyFrom._keyCount)
-    ,       _parameterData(DynamicArray<uint8, Serialization::BlockSerializerDeleter<uint8[]>>::Copy(copyFrom._parameterData))
+    ,       _parameterData(DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>::Copy(copyFrom._parameterData))
     ,       _elementSize(copyFrom._elementSize)
     ,       _interpolationType(copyFrom._interpolationType)
     ,       _positionFormat(copyFrom._positionFormat)

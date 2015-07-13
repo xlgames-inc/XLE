@@ -6,10 +6,11 @@
 
 #include "NascentTransformationMachine.h"
 #include "../RenderUtils.h"
-#include "../../Assets/BlockSerializer.h"
 #include "../../Assets/Assets.h"
+#include "../../Assets/BlockSerializer.h"
 #include "../../ConsoleRig/OutputStream.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/Streams/Serialization.h"
 
 namespace RenderCore { namespace Assets
 {
@@ -41,7 +42,8 @@ namespace RenderCore { namespace Assets
         return "<<unknown>>";
     }
 
-    void    NascentTransformationMachine::Serialize(Serialization::NascentBlockSerializer& outputSerializer) const
+    template <>
+        void    NascentTransformationMachine::Serialize(Serialization::NascentBlockSerializer& outputSerializer) const
     {
         outputSerializer.SerializeSubBlock(AsPointer(_commandStream.begin()), AsPointer(_commandStream.end()));
         outputSerializer.SerializeValue(_commandStream.size());
@@ -62,9 +64,9 @@ namespace RenderCore { namespace Assets
 
                 void    Serialize(Serialization::NascentBlockSerializer& outputSerializer) const
                 {
-                    Serialization::Serialize(outputSerializer, _name);
-                    Serialization::Serialize(outputSerializer, _index);
-                    Serialization::Serialize(outputSerializer, unsigned(_type));
+                    ::Serialize(outputSerializer, _name);
+                    ::Serialize(outputSerializer, _index);
+                    ::Serialize(outputSerializer, unsigned(_type));
                 }
             };
         #pragma pack(pop)
@@ -174,22 +176,22 @@ namespace RenderCore { namespace Assets
         return *this;
     }
 
-    template<> auto NascentTransformationMachine::GetTables<float>() -> std::pair<std::vector<std::pair<AnimationParameterId, uint32>>&,std::vector<float, Serialization::BlockSerializerAllocator<float>>&>
+    template<> auto NascentTransformationMachine::GetTables<float>() -> std::pair<std::vector<std::pair<AnimationParameterId, uint32>>&,SerializableVector<float>&>
     {
         return std::make_pair(std::ref(_float1ParameterNames), std::ref(_defaultParameters.GetFloat1ParametersVector()));
     }
 
-    template<> auto NascentTransformationMachine::GetTables<Float3>() -> std::pair<std::vector<std::pair<AnimationParameterId, uint32>>&,std::vector<Float3, Serialization::BlockSerializerAllocator<Float3>>&>
+    template<> auto NascentTransformationMachine::GetTables<Float3>() -> std::pair<std::vector<std::pair<AnimationParameterId, uint32>>&,SerializableVector<Float3>&>
     {
         return std::make_pair(std::ref(_float3ParameterNames), std::ref(_defaultParameters.GetFloat3ParametersVector()));
     }
 
-    template<> auto NascentTransformationMachine::GetTables<Float4>() -> std::pair<std::vector<std::pair<AnimationParameterId, uint32>>&,std::vector<Float4, Serialization::BlockSerializerAllocator<Float4>>&>
+    template<> auto NascentTransformationMachine::GetTables<Float4>() -> std::pair<std::vector<std::pair<AnimationParameterId, uint32>>&,SerializableVector<Float4>&>
     {
         return std::make_pair(std::ref(_float4ParameterNames), std::ref(_defaultParameters.GetFloat4ParametersVector()));
     }
 
-    template<> auto NascentTransformationMachine::GetTables<Float4x4>() -> std::pair<std::vector<std::pair<AnimationParameterId, uint32>>&,std::vector<Float4x4, Serialization::BlockSerializerAllocator<Float4x4>>&>
+    template<> auto NascentTransformationMachine::GetTables<Float4x4>() -> std::pair<std::vector<std::pair<AnimationParameterId, uint32>>&,SerializableVector<Float4x4>&>
     {
         return std::make_pair(std::ref(_float4x4ParameterNames), std::ref(_defaultParameters.GetFloat4x4ParametersVector())); //(note, ref is needed to make sure we get the right type of pair)
     }

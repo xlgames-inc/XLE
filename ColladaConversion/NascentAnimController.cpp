@@ -434,13 +434,13 @@ namespace RenderCore { namespace ColladaConversion
         outputSerializer.SerializeSubBlock(_jointMatrices.begin(), _jointMatrices.end());
         outputSerializer.SerializeValue(_jointMatrices.size());
         
-        Serialization::Serialize(outputSerializer, _bindShapeMatrix);
+        ::Serialize(outputSerializer, _bindShapeMatrix);
 
         outputSerializer.SerializeSubBlock(AsPointer(_preskinningDrawCalls.cbegin()), AsPointer(_preskinningDrawCalls.cend()));
         outputSerializer.SerializeValue(_preskinningDrawCalls.size());
 
-        Serialization::Serialize(outputSerializer, _localBoundingBox.first);
-        Serialization::Serialize(outputSerializer, _localBoundingBox.second);
+        ::Serialize(outputSerializer, _localBoundingBox.first);
+        ::Serialize(outputSerializer, _localBoundingBox.second);
     }
 
     NascentBoundSkinnedGeometry::NascentBoundSkinnedGeometry(     DynamicArray<uint8>&& unanimatedVertexElements,

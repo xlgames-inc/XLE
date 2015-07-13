@@ -9,6 +9,7 @@
 #include "ModelRunTime.h"
 #include "AnimationRunTime.h"
 #include "Material.h"
+#include "../../Utility/Streams/Serialization.h"
 
 namespace RenderCore { namespace Assets 
 {
@@ -255,8 +256,8 @@ namespace RenderCore { namespace Assets
     class MaterialImmutableData
     {
     public:
-        Serialization::Vector<std::pair<MaterialGuid, ResolvedMaterial>> _materials;
-        Serialization::Vector<std::pair<MaterialGuid, std::string>> _materialNames;
+        SerializableVector<std::pair<MaterialGuid, ResolvedMaterial>> _materials;
+        SerializableVector<std::pair<MaterialGuid, std::string>> _materialNames;
     };
 
     #pragma pack(pop)

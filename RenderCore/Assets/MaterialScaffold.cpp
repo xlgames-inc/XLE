@@ -30,7 +30,7 @@ namespace RenderCore { namespace Assets
     class RawMatConfigurations
     {
     public:
-        Serialization::Vector<std::string> _configurations;
+        SerializableVector<std::string> _configurations;
         ::Assets::ResChar _rawModelMaterial[MaxPath];
 
         RawMatConfigurations(const char sourceModel[]);
@@ -95,8 +95,8 @@ namespace RenderCore { namespace Assets
             //  for each configuration, we want to build a resolved material
             //  Note that this is a bit crazy, because we're going to be loading
             //  and re-parsing the same files over and over again!
-        Serialization::Vector<std::pair<MaterialGuid, ResolvedMaterial>> resolved;
-        Serialization::Vector<std::pair<MaterialGuid, std::string>> resolvedNames;
+        SerializableVector<std::pair<MaterialGuid, ResolvedMaterial>> resolved;
+        SerializableVector<std::pair<MaterialGuid, std::string>> resolvedNames;
         resolved.reserve(modelMat._configurations.size());
 
         auto searchRules = ::Assets::DefaultDirectorySearchRules(sourceModel);
@@ -170,8 +170,8 @@ namespace RenderCore { namespace Assets
             // "resolved" is now actually the data we want to write out
         {
             Serialization::NascentBlockSerializer blockSerializer;
-            Serialization::Serialize(blockSerializer, resolved);
-            Serialization::Serialize(blockSerializer, resolvedNames);
+            ::Serialize(blockSerializer, resolved);
+            ::Serialize(blockSerializer, resolvedNames);
 
             auto blockSize = blockSerializer.Size();
             auto block = blockSerializer.AsMemoryBlock();

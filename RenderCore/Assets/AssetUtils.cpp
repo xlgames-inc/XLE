@@ -230,10 +230,10 @@ namespace RenderCore { namespace Assets
 
     void    TransformationParameterSet::Serialize(Serialization::NascentBlockSerializer& outputSerializer) const
     {
-        Serialization::Serialize(outputSerializer, _float4x4Parameters);
-        Serialization::Serialize(outputSerializer, _float4Parameters);
-        Serialization::Serialize(outputSerializer, _float3Parameters);
-        Serialization::Serialize(outputSerializer, _float1Parameters);
+        ::Serialize(outputSerializer, _float4x4Parameters);
+        ::Serialize(outputSerializer, _float4Parameters);
+        ::Serialize(outputSerializer, _float3Parameters);
+        ::Serialize(outputSerializer, _float1Parameters);
     }
 
         ////////////////////////////////////////////////////////////

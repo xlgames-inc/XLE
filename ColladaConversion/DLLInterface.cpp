@@ -156,7 +156,7 @@ namespace RenderCore { namespace ColladaConversion
                 i->second.Serialize(tempBlock, largeResourcesBlock);
             }
             serializer.SerializeSubBlock(tempBlock);
-            Serialization::Serialize(serializer, objs._rawGeos.size());
+            ::Serialize(serializer, objs._rawGeos.size());
         }
 
         {
@@ -165,7 +165,7 @@ namespace RenderCore { namespace ColladaConversion
                 i->second.Serialize(tempBlock, largeResourcesBlock);
             }
             serializer.SerializeSubBlock(tempBlock);
-            Serialization::Serialize(serializer, objs._skinnedGeos.size());
+            ::Serialize(serializer, objs._skinnedGeos.size());
         }
     }
   
@@ -182,10 +182,10 @@ namespace RenderCore { namespace ColladaConversion
             AsPointer(i.begin()), AsPointer(i.end()));
         ConsoleRig::GetWarningStream().Flush();
 
-        Serialization::Serialize(serializer, skinFile._cmdStream);
+        ::Serialize(serializer, skinFile._cmdStream);
         SerializeSkin(serializer, largeResourcesBlock, skinFile._geoObjects);
 
-        Serialization::Serialize(serializer, skinFile._skeleton);
+        ::Serialize(serializer, skinFile._skeleton);
 
             // Generate the default transforms and serialize them out
             // unfortunately this requires we use the run-time types to
@@ -233,8 +233,8 @@ namespace RenderCore { namespace ColladaConversion
 
             auto boundingBox = skinFile._geoObjects.CalculateBoundingBox(
                 skinFile._cmdStream, reordered.get(), &reordered[finalMatrixCount]);
-            Serialization::Serialize(serializer, boundingBox.first);
-            Serialization::Serialize(serializer, boundingBox.second);
+            ::Serialize(serializer, boundingBox.first);
+            ::Serialize(serializer, boundingBox.second);
             
             // immData->~ModelImmutableData();
         }
@@ -286,7 +286,7 @@ namespace RenderCore { namespace ColladaConversion
 
         PreparedSkeletonFile skeleFile(model);
 
-        Serialization::Serialize(serializer, skeleFile._skeleton);
+        ::Serialize(serializer, skeleFile._skeleton);
         ConsoleRig::GetWarningStream().Flush();
 
         auto block = serializer.AsMemoryBlock();
@@ -429,7 +429,7 @@ namespace RenderCore { namespace ColladaConversion
     {
         Serialization::NascentBlockSerializer serializer;
 
-        Serialization::Serialize(serializer, animSet._animationSet);
+        ::Serialize(serializer, animSet._animationSet);
         serializer.SerializeSubBlock(AsPointer(animSet._curves.begin()), AsPointer(animSet._curves.end()));
         serializer.SerializeValue(animSet._curves.size());
 

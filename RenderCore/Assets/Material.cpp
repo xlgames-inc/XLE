@@ -24,14 +24,6 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     
-    void ResolvedMaterial::Serialize(Serialization::NascentBlockSerializer& serializer) const
-    {
-        Serialization::Serialize(serializer, _bindings);
-        Serialization::Serialize(serializer, _matParams);
-        Serialization::Serialize(serializer, _stateSet.GetHash());
-        Serialization::Serialize(serializer, _constants);
-    }
-
     RenderStateSet::RenderStateSet()
     {
         _doubleSided = false;

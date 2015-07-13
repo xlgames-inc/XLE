@@ -7,12 +7,10 @@
 #pragma once
 
 #include "UTFUtils.h"
-#include "../Assets/BlockSerializer.h"
+#include "Streams/Serialization.h"
 #include "../Core/Types.h"
 #include <string>
 #include <vector>
-
-namespace Serialization { class NascentBlockSerializer; }
 
 namespace Utility
 {
@@ -27,9 +25,10 @@ namespace Utility
             TypeHint    _typeHint;
             uint16      _arrayCount;
 
-            void    Serialize(Serialization::NascentBlockSerializer& serializer) const;
             TypeDesc(TypeCat cat = TypeCat::UInt32, uint16 arrayCount = 1, TypeHint hint = TypeHint::None);
             uint32 GetSize() const;
+
+            template<typename Stream> void Serialize(Stream& serializer) const;
             friend bool operator==(const TypeDesc& lhs, const TypeDesc& rhs);
         };
 
@@ -142,10 +141,10 @@ namespace Utility
 
         bool    ParameterNamesAreEqual(const ParameterBox& other) const;
 
-        void    Serialize(Serialization::NascentBlockSerializer& serializer) const;
-        
         template<typename CharType>
             void    Serialize(OutputStreamFormatter& stream) const;
+
+        template<typename Stream> void Serialize(Stream& serializer) const;
 
         ParameterBox();
         ParameterBox(std::initializer_list<std::pair<const utf8*, const char*>>);
@@ -158,11 +157,11 @@ namespace Utility
         mutable uint64      _cachedHash;
         mutable uint64      _cachedParameterNameHash;
 
-        Serialization::Vector<ParameterNameHash>            _parameterHashValues;
-        Serialization::Vector<std::pair<uint32, uint32>>    _offsets;
-        Serialization::Vector<utf8>     _names;
-        Serialization::Vector<uint8>    _values;
-        Serialization::Vector<TypeDesc> _types;
+        SerializableVector<ParameterNameHash>            _parameterHashValues;
+        SerializableVector<std::pair<uint32, uint32>>    _offsets;
+        SerializableVector<utf8>         _names;
+        SerializableVector<uint8>        _values;
+        SerializableVector<TypeDesc>     _types;
 
         const void* GetValue(size_t index) const;
         uint64      CalculateHash() const;
@@ -187,6 +186,26 @@ namespace Utility
         return def;
     }
 
+    namespace ImpliedTyping
+    {
+        template<typename Stream>
+            void TypeDesc::Serialize(Stream& serializer) const
+        {
+            ::Serialize(serializer, *(uint32*)this);
+        }
+    }
+
+    template<typename Stream>
+        void ParameterBox::Serialize(Stream& serializer) const
+    {
+        ::Serialize(serializer, _cachedHash);
+        ::Serialize(serializer, _cachedParameterNameHash);
+        ::Serialize(serializer, _parameterHashValues);
+        ::Serialize(serializer, _offsets);
+        ::Serialize(serializer, _names);
+        ::Serialize(serializer, _values);
+        ::Serialize(serializer, _types);
+    }
 }
 
 using namespace Utility;

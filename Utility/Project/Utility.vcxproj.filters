@@ -94,6 +94,9 @@
     <ClInclude Include="..\Streams\XmlStreamFormatter.h">
       <Filter>Streams</Filter>
     </ClInclude>
+    <ClInclude Include="..\Streams\Serialization.h">
+      <Filter>Streams</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\StringFormat.cpp" />

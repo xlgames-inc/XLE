@@ -6,6 +6,7 @@
 
 #include "RetainedEntities.h"
 #include "../../Utility/StringUtils.h"
+#include "../../Utility/PtrUtils.h"
 
 namespace EntityInterface
 {

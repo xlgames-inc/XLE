@@ -162,18 +162,18 @@ namespace RenderCore { namespace ColladaConversion
 
     void NascentAnimationSet::AnimationDriver::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
-        Serialization::Serialize(serializer, unsigned(_curveIndex));
-        Serialization::Serialize(serializer, _parameterIndex);
-        Serialization::Serialize(serializer, _samplerOffset);
-        Serialization::Serialize(serializer, unsigned(_samplerType));
+        ::Serialize(serializer, unsigned(_curveIndex));
+        ::Serialize(serializer, _parameterIndex);
+        ::Serialize(serializer, _samplerOffset);
+        ::Serialize(serializer, unsigned(_samplerType));
     }
 
     void NascentAnimationSet::ConstantDriver::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
-        Serialization::Serialize(serializer, _dataOffset);
-        Serialization::Serialize(serializer, _parameterIndex);
-        Serialization::Serialize(serializer, _samplerOffset);
-        Serialization::Serialize(serializer, unsigned(_samplerType));
+        ::Serialize(serializer, _dataOffset);
+        ::Serialize(serializer, _parameterIndex);
+        ::Serialize(serializer, _samplerOffset);
+        ::Serialize(serializer, unsigned(_samplerType));
     }
 
     struct AnimationDesc        // matches AnimationSet::Animation
@@ -186,13 +186,13 @@ namespace RenderCore { namespace ColladaConversion
         AnimationDesc() {}
         void Serialize(Serialization::NascentBlockSerializer& serializer) const
         {
-            Serialization::Serialize(serializer, _name);
-            Serialization::Serialize(serializer, _beginDriver);
-            Serialization::Serialize(serializer, _endDriver);
-            Serialization::Serialize(serializer, _beginConstantDriver);
-            Serialization::Serialize(serializer, _endConstantDriver);
-            Serialization::Serialize(serializer, _beginTime);
-            Serialization::Serialize(serializer, _endTime);
+            ::Serialize(serializer, _name);
+            ::Serialize(serializer, _beginDriver);
+            ::Serialize(serializer, _endDriver);
+            ::Serialize(serializer, _beginConstantDriver);
+            ::Serialize(serializer, _endConstantDriver);
+            ::Serialize(serializer, _beginTime);
+            ::Serialize(serializer, _endTime);
         }
     };
 
@@ -263,7 +263,7 @@ namespace RenderCore { namespace ColladaConversion
 
     void NascentSkeleton::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
-        Serialization::Serialize(serializer, _transformationMachine);
+        ::Serialize(serializer, _transformationMachine);
     }
 
     NascentSkeleton::NascentSkeleton() {}
@@ -357,20 +357,20 @@ namespace RenderCore { namespace ColladaConversion
 
     void NascentModelCommandStream::GeometryInstance::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
-        Serialization::Serialize(serializer, _id);
-        Serialization::Serialize(serializer, _localToWorldId);
+        ::Serialize(serializer, _id);
+        ::Serialize(serializer, _localToWorldId);
         serializer.SerializeSubBlock(AsPointer(_materials.begin()), AsPointer(_materials.end()));
-        Serialization::Serialize(serializer, _materials.size());
-        Serialization::Serialize(serializer, _levelOfDetail);
+        ::Serialize(serializer, _materials.size());
+        ::Serialize(serializer, _levelOfDetail);
     }
 
     void NascentModelCommandStream::SkinControllerInstance::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
-        Serialization::Serialize(serializer, _id);
-        Serialization::Serialize(serializer, _localToWorldId);
+        ::Serialize(serializer, _id);
+        ::Serialize(serializer, _localToWorldId);
         serializer.SerializeSubBlock(AsPointer(_materials.begin()), AsPointer(_materials.end()));
-        Serialization::Serialize(serializer, _materials.size());
-        Serialization::Serialize(serializer, _levelOfDetail);
+        ::Serialize(serializer, _materials.size());
+        ::Serialize(serializer, _levelOfDetail);
     }
 
     void NascentModelCommandStream::Serialize(Serialization::NascentBlockSerializer& serializer) const

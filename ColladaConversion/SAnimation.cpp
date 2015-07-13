@@ -367,7 +367,7 @@ namespace RenderCore { namespace ColladaConversion
             const auto inTangentBytes = Metal::BitsPerPixel(inTangentFormat)/8;
             const auto elementBytes = positionBytes + inTangentBytes+ Metal::BitsPerPixel(outTangentFormat)/8;
 
-            auto keyBlock = std::unique_ptr<uint8[], Serialization::BlockSerializerDeleter<uint8[]>>(
+            auto keyBlock = std::unique_ptr<uint8[], BlockSerializerDeleter<uint8[]>>(
                 new uint8[elementBytes * keyCount]);
             auto inTangentsOffsetBytes = positionBytes;
             auto outTangentsOffsetBytes = inTangentsOffsetBytes + inTangentBytes;
@@ -436,7 +436,7 @@ namespace RenderCore { namespace ColladaConversion
                 //          array. If they are not the same, it means the key frames for
                 //          different fields are in different places. That would cause a lot
                 //          of problems.
-            auto inputTimeBlock = std::unique_ptr<float[], Serialization::BlockSerializerDeleter<float[]>>(new float[keyCount]);
+            auto inputTimeBlock = std::unique_ptr<float[], BlockSerializerDeleter<float[]>>(new float[keyCount]);
             LoadSource(
                 inputTimeBlock.get(),
                 1, keyCount, 1, 
@@ -450,7 +450,7 @@ namespace RenderCore { namespace ColladaConversion
 
             Assets::RawAnimationCurve curve(
                 (size_t)keyCount, std::move(inputTimeBlock),
-                DynamicArray<uint8, Serialization::BlockSerializerDeleter<uint8[]>>(
+                DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>(
                     std::move(keyBlock), elementBytes * keyCount),
                 elementBytes, interpolationType,
                 positionFormat, inTangentFormat, outTangentFormat);

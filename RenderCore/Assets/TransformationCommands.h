@@ -10,6 +10,7 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/Mixins.h"
+#include "../../Utility/Streams/Serialization.h"
 
 namespace Utility { class OutputStream; }
 
@@ -64,25 +65,25 @@ namespace RenderCore { namespace Assets
     public:
         struct Type { enum Enum { Float1, Float3, Float4, Float4x4 }; };
 
-        float*              GetFloat1Parameters()               { return AsPointer(_float1Parameters.begin());         }
-        Float3*             GetFloat3Parameters()               { return AsPointer(_float3Parameters.begin());         }
-        Float4*             GetFloat4Parameters()               { return AsPointer(_float4Parameters.begin());         }
-        Float4x4*           GetFloat4x4Parameters()             { return AsPointer(_float4x4Parameters.begin());       }
+        float*              GetFloat1Parameters()                       { return AsPointer(_float1Parameters.begin());         }
+        Float3*             GetFloat3Parameters()                       { return AsPointer(_float3Parameters.begin());         }
+        Float4*             GetFloat4Parameters()                       { return AsPointer(_float4Parameters.begin());         }
+        Float4x4*           GetFloat4x4Parameters()                     { return AsPointer(_float4x4Parameters.begin());       }
 
-        const float*        GetFloat1Parameters() const         { return AsPointer(_float1Parameters.begin());         }
-        const Float3*       GetFloat3Parameters() const         { return AsPointer(_float3Parameters.begin());         }
-        const Float4*       GetFloat4Parameters() const         { return AsPointer(_float4Parameters.begin());         }
-        const Float4x4*     GetFloat4x4Parameters() const       { return AsPointer(_float4x4Parameters.begin());       }
+        const float*        GetFloat1Parameters() const                 { return AsPointer(_float1Parameters.begin());         }
+        const Float3*       GetFloat3Parameters() const                 { return AsPointer(_float3Parameters.begin());         }
+        const Float4*       GetFloat4Parameters() const                 { return AsPointer(_float4Parameters.begin());         }
+        const Float4x4*     GetFloat4x4Parameters() const               { return AsPointer(_float4x4Parameters.begin());       }
 
-        size_t              GetFloat1ParametersCount() const    { return _float1Parameters.size();    }
-        size_t              GetFloat3ParametersCount() const    { return _float3Parameters.size();    }
-        size_t              GetFloat4ParametersCount() const    { return _float4Parameters.size();    }
-        size_t              GetFloat4x4ParametersCount() const  { return _float4x4Parameters.size();  }
+        size_t              GetFloat1ParametersCount() const            { return _float1Parameters.size();    }
+        size_t              GetFloat3ParametersCount() const            { return _float3Parameters.size();    }
+        size_t              GetFloat4ParametersCount() const            { return _float4Parameters.size();    }
+        size_t              GetFloat4x4ParametersCount() const          { return _float4x4Parameters.size();  }
 
-        std::vector<Float4x4, Serialization::BlockSerializerAllocator<Float4x4>>&   GetFloat4x4ParametersVector()   { return _float4x4Parameters; }
-        std::vector<Float4, Serialization::BlockSerializerAllocator<Float4>>&       GetFloat4ParametersVector()     { return _float4Parameters; }
-        std::vector<Float3, Serialization::BlockSerializerAllocator<Float3>>&       GetFloat3ParametersVector()     { return _float3Parameters; }
-        std::vector<float, Serialization::BlockSerializerAllocator<float>>&         GetFloat1ParametersVector()     { return _float1Parameters; }
+        SerializableVector<Float4x4>&   GetFloat4x4ParametersVector()   { return _float4x4Parameters; }
+        SerializableVector<Float4>&     GetFloat4ParametersVector()     { return _float4Parameters; }
+        SerializableVector<Float3>&     GetFloat3ParametersVector()     { return _float3Parameters; }
+        SerializableVector<float>&      GetFloat1ParametersVector()     { return _float1Parameters; }
             
         TransformationParameterSet();
         TransformationParameterSet(TransformationParameterSet&& moveFrom);
@@ -93,10 +94,10 @@ namespace RenderCore { namespace Assets
         void    Serialize(Serialization::NascentBlockSerializer& outputSerializer) const;
 
     private:
-        std::vector<Float4x4, Serialization::BlockSerializerAllocator<Float4x4>>    _float4x4Parameters;
-        std::vector<Float4, Serialization::BlockSerializerAllocator<Float4>>        _float4Parameters;
-        std::vector<Float3, Serialization::BlockSerializerAllocator<Float3>>        _float3Parameters;
-        std::vector<float, Serialization::BlockSerializerAllocator<float>>          _float1Parameters;
+        SerializableVector<Float4x4>    _float4x4Parameters;
+        SerializableVector<Float4>      _float4Parameters;
+        SerializableVector<Float3>      _float3Parameters;
+        SerializableVector<float>       _float1Parameters;
     };
 
         //////////////////////////////////////////////////////////

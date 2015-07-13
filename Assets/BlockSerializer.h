@@ -17,8 +17,6 @@
 
 namespace Serialization
 {
-    template<typename Type> class BlockSerializerAllocator;
-    template<typename Type> class BlockSerializerDeleter;
 
         ////////////////////////////////////////////////////
 
@@ -152,160 +150,69 @@ namespace Serialization
 
         ////////////////////////////////////////////////////
 
-    #pragma warning(push)
-    #pragma warning(disable:4702)
-
-    template<typename Type>
-        class BlockSerializerAllocator : public std::allocator<Type>
+    namespace Internal
     {
-    public:
-        pointer allocate(size_type n, std::allocator<void>::const_pointer ptr= 0)
+        template<typename T> struct HasSerialize
         {
-            if (_fromFixedStorage) {
-                ThrowException(std::invalid_argument("Cannot allocate from a BlockSerializerAllocator than has been serialized in from a fixed block"));
-                return nullptr;
-            }
-            return std::allocator<Type>::allocate(n, ptr);
-        }
+            template<typename U, void (U::*)(NascentBlockSerializer&) const> struct FunctionSignature {};
+            template<typename U> static std::true_type Test1(FunctionSignature<U, &U::Serialize>*);
+            template<typename U> static std::false_type Test1(...);
+            static const bool Result = decltype(Test1<T>(0))::value;
+        };
 
-        void deallocate(pointer p, size_type n)
+        template<typename T> struct IsValueType
         {
-            if (!_fromFixedStorage) {
-                std::allocator<Type>::deallocate(p, n);
-            }
-        }
-
-        template<class _Other>
-		    struct rebind
-		    {
-		        typedef BlockSerializerAllocator<_Other> other;
-		    };
-
-        BlockSerializerAllocator()                                                  : _fromFixedStorage(0) {}
-        explicit BlockSerializerAllocator(unsigned fromFixedStorage)                : _fromFixedStorage(fromFixedStorage) {}
-        BlockSerializerAllocator(const std::allocator<Type>& copyFrom)              : _fromFixedStorage(0) {}
-        BlockSerializerAllocator(std::allocator<Type>&& moveFrom)                   : _fromFixedStorage(0) {}
-        BlockSerializerAllocator(const BlockSerializerAllocator<Type>& copyFrom)    : _fromFixedStorage(0) {}
-        BlockSerializerAllocator(BlockSerializerAllocator<Type>&& moveFrom)         : _fromFixedStorage(moveFrom._fromFixedStorage) {}
-    private:
-        unsigned    _fromFixedStorage;
-    };
-
-    #pragma warning(pop)
-
-        ////////////////////////////////////////////////////
-
-    template<typename Type>
-        class BlockSerializerDeleter : public std::default_delete<Type>
-    {
-    public:
-        void operator()(Type *_Ptr) const
-        {
-            if (!_fromFixedStorage) {
-                std::default_delete<Type>::operator()(_Ptr);
-            }
-        }
-
-        BlockSerializerDeleter()                                                : _fromFixedStorage(0) {}
-        explicit BlockSerializerDeleter(unsigned fromFixedStorage)              : _fromFixedStorage(fromFixedStorage) {}
-        BlockSerializerDeleter(const std::default_delete<Type>& copyFrom)       : _fromFixedStorage(0) {}
-        BlockSerializerDeleter(std::default_delete<Type>&& moveFrom)            : _fromFixedStorage(0) {}
-        BlockSerializerDeleter(const BlockSerializerDeleter<Type>& copyFrom)    : _fromFixedStorage(copyFrom._fromFixedStorage) {}
-        BlockSerializerDeleter(BlockSerializerDeleter<Type>&& moveFrom)         : _fromFixedStorage(moveFrom._fromFixedStorage) {}
-    private:
-        unsigned    _fromFixedStorage;
-    };
-
-        ////////////////////////////////////////////////////
-
-    template<typename Type>
-        class BlockSerializerDeleter<Type[]> : public std::default_delete<Type[]>
-    {
-    public:
-        void operator()(Type *_Ptr) const
-        {
-            if (!_fromFixedStorage) {
-                std::default_delete<Type[]>::operator()(_Ptr);
-            }
-        }
-
-        BlockSerializerDeleter()                                                : _fromFixedStorage(0) {}
-        explicit BlockSerializerDeleter(unsigned fromFixedStorage)              : _fromFixedStorage(fromFixedStorage) {}
-        BlockSerializerDeleter(const std::default_delete<Type[]>& copyFrom)     : _fromFixedStorage(0) {}
-        BlockSerializerDeleter(std::default_delete<Type[]>&& moveFrom)          : _fromFixedStorage(0) {}
-        BlockSerializerDeleter(const BlockSerializerDeleter<Type[]>& copyFrom)  : _fromFixedStorage(copyFrom._fromFixedStorage) {}
-        BlockSerializerDeleter(BlockSerializerDeleter<Type[]>&& moveFrom)       : _fromFixedStorage(moveFrom._fromFixedStorage) {}
-    private:
-        unsigned    _fromFixedStorage;
-    };
-
-        ////////////////////////////////////////////////////
-
-    template<typename Type>
-        using Vector = std::vector<Type, BlockSerializerAllocator<Type>>;
-
-        ////////////////////////////////////////////////////
-        
-    template<typename T> struct HasSerialize
-    {
-        template<typename U, void (U::*)(NascentBlockSerializer&) const> struct FunctionSignature {};
-        template<typename U> static std::true_type Test1(FunctionSignature<U, &U::Serialize>*);
-        template<typename U> static std::false_type Test1(...);
-        static const bool Result = decltype(Test1<T>(0))::value;
-    };
-
-    template<typename T> struct IsValueType
-    {
-        template<typename U, void (NascentBlockSerializer::*)(U)> struct FunctionSignature {};
-        template<typename U> static std::true_type Test1(FunctionSignature<U, &NascentBlockSerializer::SerializeValue>*);
-        template<typename U> static std::false_type Test1(...);
-        static const bool Result = decltype(Test1<T>(0))::value | decltype(Test1<const T&>(0))::value;
-    };
-
-    template<typename Type, typename std::enable_if<HasSerialize<Type>::Result>::type* = nullptr>
-        void Serialize(NascentBlockSerializer& serializer, const Type& value)
-            { value.Serialize(serializer); }
-
-    template <typename Type, typename std::enable_if<IsValueType<Type>::Result>::type* = nullptr>
-        void Serialize(NascentBlockSerializer& serializer, const Type& value)
-            { serializer.SerializeValue(value); }
-
-    template<typename TypeLHS, typename TypeRHS>
-        void Serialize(NascentBlockSerializer& serializer, const std::pair<TypeLHS, TypeRHS>& value)
-            { 
-                Serialize(serializer, value.first);
-                Serialize(serializer, value.second);
-                const auto padding = sizeof(typename std::pair<TypeLHS, TypeRHS>) - sizeof(TypeLHS) - sizeof(TypeRHS);
-                if (constant_expression<(padding > 0)>::result()) {
-                    serializer.AddPadding(padding);
-                }
-            }
-
-    template<typename Type, typename Deletor>
-        void Serialize(NascentBlockSerializer& serializer, const std::unique_ptr<Type, Deletor>& value, size_t count)
-            { serializer.SerializeValue(value, count); }
-
-    template<int Dimen, typename Primitive>
-        inline void Serialize(  NascentBlockSerializer& serializer,
-                                const cml::vector< Primitive, cml::fixed<Dimen> >& vec)
-    {
-        for (unsigned j=0; j<Dimen; ++j) {
-            Serialize(serializer, vec[j]);
-        }
+            template<typename U, void (NascentBlockSerializer::*)(U)> struct FunctionSignature {};
+            template<typename U> static std::true_type Test1(FunctionSignature<U, &NascentBlockSerializer::SerializeValue>*);
+            template<typename U> static std::false_type Test1(...);
+            static const bool Result = decltype(Test1<T>(0))::value | decltype(Test1<const T&>(0))::value;
+        };
     }
-    
-    inline void Serialize(   NascentBlockSerializer&     serializer, 
-                             const ::XLEMath::Float4x4&       float4x4)
-    {
-        for (unsigned i=0; i<4; ++i)
-            for (unsigned j=0; j<4; ++j) {
-                Serialize(serializer, float4x4(i,j));
-            }
-    }
-
-        // the following has no implementation. Objects that don't match will attempt to use this implementation
-    void Serialize(NascentBlockSerializer& serializer, ...) = delete;
-
-
 }
+
+template<typename Type, typename std::enable_if<Serialization::Internal::HasSerialize<Type>::Result>::type* = nullptr>
+    void Serialize(Serialization::NascentBlockSerializer& serializer, const Type& value)
+        { value.Serialize(serializer); }
+
+template <typename Type, typename std::enable_if<Serialization::Internal::IsValueType<Type>::Result>::type* = nullptr>
+    void Serialize(Serialization::NascentBlockSerializer& serializer, const Type& value)
+        { serializer.SerializeValue(value); }
+
+template<typename TypeLHS, typename TypeRHS>
+    void Serialize(Serialization::NascentBlockSerializer& serializer, const std::pair<TypeLHS, TypeRHS>& value)
+        { 
+            Serialize(serializer, value.first);
+            Serialize(serializer, value.second);
+            const auto padding = sizeof(typename std::pair<TypeLHS, TypeRHS>) - sizeof(TypeLHS) - sizeof(TypeRHS);
+            if (constant_expression<(padding > 0)>::result()) {
+                serializer.AddPadding(padding);
+            }
+        }
+
+template<typename Type, typename Deletor>
+    void Serialize(Serialization::NascentBlockSerializer& serializer, const std::unique_ptr<Type, Deletor>& value, size_t count)
+        { serializer.SerializeValue(value, count); }
+
+template<int Dimen, typename Primitive>
+    inline void Serialize(  Serialization::NascentBlockSerializer& serializer,
+                            const cml::vector< Primitive, cml::fixed<Dimen> >& vec)
+{
+    for (unsigned j=0; j<Dimen; ++j) {
+        Serialize(serializer, vec[j]);
+    }
+}
+    
+inline void Serialize(  Serialization::NascentBlockSerializer&  serializer, 
+                        const ::XLEMath::Float4x4&              float4x4)
+{
+    for (unsigned i=0; i<4; ++i)
+        for (unsigned j=0; j<4; ++j) {
+            Serialize(serializer, float4x4(i,j));
+        }
+}
+
+    // the following has no implementation. Objects that don't match will attempt to use this implementation
+void Serialize(Serialization::NascentBlockSerializer& serializer, ...) = delete;
+
+
 

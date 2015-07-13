@@ -9,6 +9,7 @@
 #include "../Metal/Forward.h"       // for Metal::Blend
 #include "../../Assets/Assets.h"
 #include "../../Utility/ParameterBox.h"
+#include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/Mixins.h"
 
 
@@ -154,7 +155,8 @@ namespace RenderCore { namespace Assets
         RenderStateSet _stateSet;
         ParameterBox _constants;
 
-        void Serialize(Serialization::NascentBlockSerializer& serializer) const;
+        template<typename Serializer>
+            void Serialize(Serializer& serializer) const;
 
         ResolvedMaterial();
         ResolvedMaterial(ResolvedMaterial&& moveFrom);
@@ -230,6 +232,16 @@ namespace RenderCore { namespace Assets
         ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
         const ::Assets::DirectorySearchRules& searchRules, const char baseMatName[]);
     uint64 MakeMaterialGuid(const char* nameStart, const char* nameEnd);
+
+
+    template<typename Serializer>
+        void ResolvedMaterial::Serialize(Serializer& serializer) const
+    {
+        ::Serialize(serializer, _bindings);
+        ::Serialize(serializer, _matParams);
+        ::Serialize(serializer, _stateSet.GetHash());
+        ::Serialize(serializer, _constants);
+    }
 
 }}
 

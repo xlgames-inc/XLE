@@ -13,6 +13,8 @@
 #include "Conversion.h"
 #include "Streams/StreamFormatter.h"
 #include "../ConsoleRig/Log.h"
+#include "../Math/Vector.h"
+#include "../Math/Matrix.h"
 #include <algorithm>
 #include <utility>
 #include <regex>
@@ -42,18 +44,12 @@ namespace Utility
             }
         }
 
-        void TypeDesc::Serialize(Serialization::NascentBlockSerializer& serializer) const
-        {
-            Serialization::Serialize(serializer, *(uint32*)this);
-        }
-
         bool operator==(const TypeDesc& lhs, const TypeDesc& rhs)
         {
                 // (note -- ignoring type hint for this comparison (because the hint isn't actually related to the structure of the data)
             return lhs._type == rhs._type
                 && lhs._arrayCount == rhs._arrayCount;
         }
-
 
         TypeDesc::TypeDesc(TypeCat cat, uint16 arrayCount, TypeHint hint)
         : _type(cat)
@@ -1047,17 +1043,6 @@ namespace Utility
                 &source._values[i->second],
                 source._types[std::distance(source._offsets.cbegin(), i)]);
         }
-    }
-
-    void ParameterBox::Serialize(Serialization::NascentBlockSerializer& serializer) const
-    {
-        Serialization::Serialize(serializer, _cachedHash);
-        Serialization::Serialize(serializer, _cachedParameterNameHash);
-        Serialization::Serialize(serializer, _parameterHashValues);
-        Serialization::Serialize(serializer, _offsets);
-        Serialization::Serialize(serializer, _names);
-        Serialization::Serialize(serializer, _values);
-        Serialization::Serialize(serializer, _types);
     }
 
     template<typename CharType>
