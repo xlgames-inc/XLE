@@ -7,6 +7,7 @@
 #pragma once
 
 #include "LightingParserContext.h"
+#include "LightingParser.h"
 #include "LightDesc.h"
 
 namespace SceneEngine
@@ -21,6 +22,22 @@ namespace SceneEngine
                                     unsigned samplingCount, bool useMsaaSamplers, bool flipDirection,
                                     PreparedShadowFrustum& shadowFrustum);
 
+    class VolumeFogPlugin : public ILightingParserPlugin
+    {
+    public:
+        virtual void OnPreScenePrepare(
+            MetalContext*, LightingParserContext&) const;
+
+        virtual void OnLightingResolvePrepare(
+            MetalContext*, LightingParserContext&, LightingResolveContext&) const;
+
+        virtual void OnPostSceneRender(
+            MetalContext*, LightingParserContext&, 
+            const SceneParseSettings&, unsigned techniqueIndex) const;
+
+        VolumeFogPlugin();
+        ~VolumeFogPlugin();
+    };
 
     class VolumetricFogMaterial
     {

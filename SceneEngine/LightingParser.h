@@ -17,6 +17,8 @@ namespace RenderCore { namespace Techniques { class CameraDesc; } }
 
 namespace SceneEngine
 {
+    using MetalContext = RenderCore::Metal::DeviceContext;
+
     class RenderingQualitySettings
     {
     public:
@@ -93,7 +95,7 @@ namespace SceneEngine
     /// Note -- don't call this if you're using LightingParser_Execute.
     /// <seealso cref="LightingParser_Execute"/>
     void LightingParser_SetupScene(
-        RenderCore::Metal::DeviceContext* context,
+        MetalContext* context,
         LightingParserContext& parserContext,
         ISceneParser* sceneParser,
         const RenderCore::Techniques::CameraDesc& camera,
@@ -108,7 +110,7 @@ namespace SceneEngine
     /// far clip distance)
     /// <seealso cref="LightingParser_SetupScene"/>
     void LightingParser_SetGlobalTransform( 
-        RenderCore::Metal::DeviceContext* context, 
+        MetalContext* context, 
         LightingParserContext& parserContext, 
         const RenderCore::Techniques::CameraDesc& sceneCamera,
         unsigned viewportWidth, unsigned viewportHeight,
@@ -134,7 +136,7 @@ namespace SceneEngine
         unsigned    GetSamplingCount() const;
         MainTargetsBox& GetMainTargets() const;
 
-        typedef void ResolveFn(RenderCore::Metal::DeviceContext*, LightingParserContext&, LightingResolveContext&);
+        typedef void ResolveFn(MetalContext*, LightingParserContext&, LightingResolveContext&, unsigned resolvePass);
         void        AppendResolve(std::function<ResolveFn>&& fn);
         void        SetPass(Pass::Enum newPass);
 
@@ -173,13 +175,13 @@ namespace SceneEngine
     {
     public:
         virtual void OnPreScenePrepare(
-            RenderCore::Metal::DeviceContext*, LightingParserContext&) const = 0;
+            MetalContext*, LightingParserContext&) const = 0;
 
         virtual void OnLightingResolvePrepare(
-            RenderCore::Metal::DeviceContext*, LightingParserContext&, LightingResolveContext&) const = 0;
+            MetalContext*, LightingParserContext&, LightingResolveContext&) const = 0;
 
         virtual void OnPostSceneRender(
-            RenderCore::Metal::DeviceContext*, LightingParserContext&, 
+            MetalContext*, LightingParserContext&, 
             const SceneParseSettings&, unsigned techniqueIndex) const = 0;
     };
 }

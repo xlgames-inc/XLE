@@ -188,7 +188,6 @@ namespace SceneEngine
         GPUProfiler::DebugAnnotation anno(*context, L"ResolveGBuffer");
 
         const bool doSampleFrequencyOptimisation = Tweakable("SampleFrequencyOptimisation", true);
-        const bool doVolumetricFog = Tweakable("DoVolumetricFog", false);
 
         LightingResolveContext lightingResolveContext(mainTargets);
         const unsigned samplingCount = lightingResolveContext.GetSamplingCount();
@@ -347,19 +346,9 @@ namespace SceneEngine
                         context, mainTargets, lightingResTargets, resolveRes, doSampleFrequencyOptimisation);
                 }
 
-                    //-------- do volumetric fog --------
-                if (!parserContext._preparedShadows.empty() && parserContext._preparedShadows[0].IsReady() && doVolumetricFog) {
-                    GPUProfiler::DebugAnnotation anno(*context, L"VolFog");
-
-                    VolumetricFog_Resolve(
-                        context, parserContext, 
-                        (c==0)?samplingCount:1, useMsaaSamplers, c==1,
-                        parserContext._preparedShadows[0]);
-                }
-
                 for (auto i=lightingResolveContext._queuedResolveFunctions.cbegin();
                     i!=lightingResolveContext._queuedResolveFunctions.cend(); ++i) {
-                    (*i)(context, parserContext, lightingResolveContext);
+                    (*i)(context, parserContext, lightingResolveContext, c);
                 }
 
                     // -------- -------- -------- -------- -------- --------
@@ -426,7 +415,7 @@ namespace SceneEngine
                     &&  parserContext._preparedShadows[i._shadowFrustumIndex].IsReady()) {
 
                     const auto& preparedShadows = parserContext._preparedShadows[i._shadowFrustumIndex];
-                    context->BindPS(MakeResourceList(3, preparedShadows._shadowTextureResource));
+                    context->BindPS(MakeResourceList(3, preparedShadows._shadowTextureSRV));
                     prebuiltConstantBuffers[0] = &preparedShadows._arbitraryCB;
                     prebuiltConstantBuffers[4] = &preparedShadows._orthoCB;
                     constantBufferPackets[5] = MakeSharedPkt(preparedShadows._resolveParameters);

@@ -6,6 +6,8 @@
 
 #include "../TransformAlgorithm.h"
 #include "../CommonResources.h"
+#include "../ShadowProjection.h"
+#include "../Lighting/BasicLightingEnvironment.h"
 #include "../Utility/perlinnoise.h"
 #include "../Utility/MathConstants.h"
 #include "../Colour.h"
@@ -22,13 +24,6 @@ Texture3D<float>			InputInscatterShadowingValues	: register(t3);
 Texture3D<float4>			InputInscatterPointLightSources : register(t4);
 Texture2D<float>			NoiseValues						: register(t9);
 
-cbuffer ShadowProjection : register(b3)
-{
-	int ProjectionCount;
-	float4 ShadowProjRatio[6];
-	row_major float4x4 ShadowProjection[6];
-}
-
 static const float WorldSpaceGridDepth = 150.f;
 static const int3 GridDimensions = int3(160, 90, 128);
 
@@ -43,20 +38,25 @@ float ResolveShadows(float3 worldPosition)
 	const bool shadowsPerspectiveProj = ShadowsPerspectiveProjection;
 
 	float result = 1.f;
-	for (int c=0; c<ProjectionCount; ++c) {	// note -- we might not really need every shadow projection here. Just the first 2 or 3 cascades might be enough
-		float4 frustumCoordinates = mul(ShadowProjection[c], float4(worldPosition, 1));
+		// note -- we might not really need every shadow projection here. Just the first 2 or 3 cascades might be enough
+	int projectionCount = GetShadowSubProjectionCount();
+	for (int c=0; c<projectionCount; ++c) {
+		float4 frustumCoordinates = ShadowProjection_GetOutput(worldPosition, c);
+
 		float d = frustumCoordinates.z / frustumCoordinates.w;
 		float2 texCoords = frustumCoordinates.xy / frustumCoordinates.w;
+
 		if (	(max(abs(texCoords.x), abs(texCoords.y)) < 1.f)
 			&&	(max(d, 1.f-d) < 1.f)) {
 			texCoords = float2(0.5f + 0.5f * texCoords.x, 0.5f - 0.5f * texCoords.y);
 
 			float esmSample = ShadowTextures.SampleLevel(DefaultSampler, float3(texCoords, float(c)), 0);
 			float linearComparisonDistance;
+			float4 miniProj = ShadowProjection_GetMiniProj(c);
 			if (shadowsPerspectiveProj) {
-				linearComparisonDistance = NDCDepthToLinearDepth(d, ShadowProjRatio[c].xy);
+				linearComparisonDistance = NDCDepthToWorldSpace_Perspective(d, AsMiniProjZW(miniProj));
 			} else {
-				linearComparisonDistance = (NDCDepthToLinearDepth_Ortho(d, ShadowProjRatio[c].xy) - 1.f) / 1000.f;
+				linearComparisonDistance = NDCDepthToWorldSpace_Ortho(d, AsMiniProjZW(miniProj));
 			}
 
 			#if ESM_SHADOW_MAPS==1
@@ -66,8 +66,9 @@ float ResolveShadows(float3 worldPosition)
 				return linearComparisonDistance < esmSample;
 			#endif
 		}
+
 	}
-	
+
 	return result;
 }
 
@@ -108,7 +109,7 @@ float3 CalculateSamplePoint(uint3 cellIndex)
 	float topRightWeight	= centralNearPlaneXYCoords.x * centralNearPlaneXYCoords.y;
 	float bottomRightWeight = centralNearPlaneXYCoords.x * (1.f - centralNearPlaneXYCoords.y);
 
-	float3 viewFrustumVectorToCentre = 
+	float3 viewFrustumVectorToCentre =
 		  topLeftWeight		* FrustumCorners[0].xyz
 		+ bottomLeftWeight	* FrustumCorners[1].xyz
 		+ topRightWeight	* FrustumCorners[2].xyz
@@ -160,7 +161,7 @@ float MonochromeRaleighScattering(float cosTheta)
 		//	Write final result to the volume texture
 
 	int3 outputTexel = dispatchThreadId;
-	const float convenienceScalar = 0.1f;	// scalar just to make "Density" valid between 0 and 1 
+	const float convenienceScalar = 0.1f;	// scalar just to make "Density" valid between 0 and 1
 	float density = max(0, convenienceScalar * (Density + NoiseDensityScale * noiseSample1));
 
 		// just linear with height currently...
@@ -171,10 +172,15 @@ float MonochromeRaleighScattering(float cosTheta)
 	DensityValues[outputTexel] = density;
 }
 
+static float3 GetDirectionToSun()
+{
+	return -normalize(BasicLight[0].NegativeDirection);
+}
+
 float3 CalculateInscatter(int3 dispatchThreadId, float density)
 {
 	float3 centrePoint = CalculateSamplePoint(dispatchThreadId);
-	float3 directionToSun = -normalize(NegativeDominantLightDirection);
+	float3 directionToSun = GetDirectionToSun();
 	float3 directionToSample = centrePoint - WorldSpaceView;
 	float directionToSampleRLength = rsqrt(dot(directionToSample, directionToSample));
 	float cosTheta = dot(directionToSun, directionToSample) * directionToSampleRLength;
@@ -211,7 +217,7 @@ float3 CalculateInscatter(int3 dispatchThreadId, float density)
 [numthreads(10, 10, 1)]
 	void PropagateLighting(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
-		// \todo -- Use a shader resource and write to a second uva or read 
+		// \todo -- Use a shader resource and write to a second uva or read
 		//			and write to the same UVA? We can only read from single
 		//			element UVAs.
 		//			We could use an int type that is packed RGBA?
@@ -239,7 +245,7 @@ float3 CalculateInscatter(int3 dispatchThreadId, float density)
 		float integralSolution	 = (backDensity + frontDensity) * .5f * transmissionDistance;
 		float transmissionScalar = exp(-integralSolution);
 
-		accumulatedInscatter	 = accumulatedInscatter + newInscatter * accumulatedTransmission; 
+		accumulatedInscatter	 = accumulatedInscatter + newInscatter * accumulatedTransmission;
 		accumulatedTransmission *= transmissionScalar;
 
 			// accumulatedValue = min(accumulatedValue, newSample);
@@ -351,4 +357,3 @@ float RadiusAttenuation(float distanceSq, float radius)
 
 	InscatterOutput[dispatchThreadId] = accumulatedLight;
 }
-

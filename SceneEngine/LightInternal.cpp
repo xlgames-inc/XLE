@@ -112,7 +112,7 @@ namespace SceneEngine
 
     bool PreparedShadowFrustum::IsReady() const
     {
-        return _shadowTextureResource.GetUnderlying() && (_arbitraryCB.GetUnderlying() || _orthoCB.GetUnderlying());
+        return _shadowTextureSRV.GetUnderlying() && (_arbitraryCB.GetUnderlying() || _orthoCB.GetUnderlying());
     }
 
     PreparedShadowFrustum::PreparedShadowFrustum()
@@ -121,7 +121,7 @@ namespace SceneEngine
     {}
 
     PreparedShadowFrustum::PreparedShadowFrustum(PreparedShadowFrustum&& moveFrom)
-    : _shadowTextureResource(std::move(moveFrom._shadowTextureResource))
+    : _shadowTextureSRV(std::move(moveFrom._shadowTextureSRV))
     , _arbitraryCBSource(std::move(moveFrom._arbitraryCBSource))
     , _orthoCBSource(std::move(moveFrom._orthoCBSource))
     , _arbitraryCB(std::move(moveFrom._arbitraryCB))
@@ -133,7 +133,7 @@ namespace SceneEngine
 
     PreparedShadowFrustum& PreparedShadowFrustum::operator=(PreparedShadowFrustum&& moveFrom)
     {
-        _shadowTextureResource = std::move(moveFrom._shadowTextureResource);
+        _shadowTextureSRV = std::move(moveFrom._shadowTextureSRV);
         _arbitraryCBSource = std::move(moveFrom._arbitraryCBSource);
         _orthoCBSource = std::move(moveFrom._orthoCBSource);
         _arbitraryCB = std::move(moveFrom._arbitraryCB);

@@ -21,6 +21,7 @@
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
+#include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -34,7 +35,6 @@
 namespace SceneEngine
 {
     using namespace RenderCore;
-    using namespace RenderCore::Metal;
 
     VolumetricFogMaterial VolumetricFogMaterial_Default();
     VolumetricFogMaterial GlobalVolumetricFogMaterial = VolumetricFogMaterial_Default();
@@ -52,23 +52,34 @@ namespace SceneEngine
             bool        _flipDirection;
             bool        _esmShadowMaps;
             bool        _doNoiseOffset;
-            Desc(unsigned msaaSampleCount, bool useMsaaSamplers, bool flipDirection, bool esmShadowMaps, bool doNoiseOffset)
-                : _msaaSampleCount(msaaSampleCount), _useMsaaSamplers(useMsaaSamplers), _flipDirection(flipDirection)
-                , _esmShadowMaps(esmShadowMaps), _doNoiseOffset(doNoiseOffset) {}
+            unsigned    _shadowCascadeMode;
+
+            Desc(unsigned msaaSampleCount, bool useMsaaSamplers, 
+                bool flipDirection, bool esmShadowMaps, bool doNoiseOffset,
+                unsigned shadowCascadeMode)
+            {
+                XlZeroMemory(*this);
+                _msaaSampleCount = msaaSampleCount;
+                _useMsaaSamplers = useMsaaSamplers;
+                _flipDirection = flipDirection;
+                _esmShadowMaps = esmShadowMaps;
+                _doNoiseOffset = doNoiseOffset;
+                _shadowCascadeMode = shadowCascadeMode;
+            }
         };
 
-        const RenderCore::Metal::ShaderProgram*             _buildExponentialShadowMap;
-        std::unique_ptr<RenderCore::Metal::BoundUniforms>   _buildExponentialShadowMapBinding;
-        const RenderCore::Metal::ShaderProgram*             _horizontalFilter;
-        const RenderCore::Metal::ShaderProgram*             _verticalFilter;
-        std::unique_ptr<RenderCore::Metal::BoundUniforms>   _horizontalFilterBinding, _verticalFilterBinding;
+        const Metal::ShaderProgram*             _buildExponentialShadowMap;
+        std::unique_ptr<Metal::BoundUniforms>   _buildExponentialShadowMapBinding;
+        const Metal::ShaderProgram*             _horizontalFilter;
+        const Metal::ShaderProgram*             _verticalFilter;
+        std::unique_ptr<Metal::BoundUniforms>   _horizontalFilterBinding, _verticalFilterBinding;
 
-        const RenderCore::Metal::ComputeShader*             _injectLight;
-        std::unique_ptr<RenderCore::Metal::BoundUniforms>   _injectLightBinding;
-        const RenderCore::Metal::ComputeShader*             _propagateLight;
-        std::unique_ptr<RenderCore::Metal::BoundUniforms>   _propagateLightBinding;
-        const RenderCore::Metal::ShaderProgram*             _resolveLight;
-        std::unique_ptr<RenderCore::Metal::BoundUniforms>   _resolveLightBinding;
+        const Metal::ComputeShader*             _injectLight;
+        std::unique_ptr<Metal::BoundUniforms>   _injectLightBinding;
+        const Metal::ComputeShader*             _propagateLight;
+        std::unique_ptr<Metal::BoundUniforms>   _propagateLightBinding;
+        const Metal::ShaderProgram*             _resolveLight;
+        std::unique_ptr<Metal::BoundUniforms>   _resolveLightBinding;
 
         VolumetricFogShaders(const Desc& desc);
         ~VolumetricFogShaders();
@@ -82,35 +93,37 @@ namespace SceneEngine
     {
         char defines[256];
         _snprintf_s(defines, _TRUNCATE, "ESM_SHADOW_MAPS=%i;DO_NOISE_OFFSET=%i", int(desc._esmShadowMaps), int(desc._doNoiseOffset));
-        auto* buildExponentialShadowMap = &::Assets::GetAssetDep<ShaderProgram>(
+        auto* buildExponentialShadowMap = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/VolumetricEffect/shadowsfilter.psh:BuildExponentialShadowMap:ps_*", defines);
-        auto* horizontalFilter = &::Assets::GetAssetDep<ShaderProgram>(
+        auto* horizontalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/VolumetricEffect/shadowsfilter.psh:HorizontalBoxFilter11:ps_*");
-        auto* verticalFilter = &::Assets::GetAssetDep<ShaderProgram>(
+        auto* verticalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/VolumetricEffect/shadowsfilter.psh:VerticalBoxFilter11:ps_*");
 
-        auto buildExponentialShadowMapBinding = std::make_unique<BoundUniforms>(std::ref(*buildExponentialShadowMap));
+        auto buildExponentialShadowMapBinding = std::make_unique<Metal::BoundUniforms>(std::ref(*buildExponentialShadowMap));
         Techniques::TechniqueContext::BindGlobalUniforms(*buildExponentialShadowMapBinding);
         buildExponentialShadowMapBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
         buildExponentialShadowMapBinding->BindConstantBuffer(Hash64("$Globals"), 1, 1);
 
-        auto horizontalFilterBinding = std::make_unique<BoundUniforms>(std::ref(*horizontalFilter));
+        auto horizontalFilterBinding = std::make_unique<Metal::BoundUniforms>(std::ref(*horizontalFilter));
         horizontalFilterBinding->BindConstantBuffer(Hash64("$Globals"), 0, 1);
         horizontalFilterBinding->BindConstantBuffer(Hash64("Filtering"), 1, 1);
 
-        auto verticalFilterBinding = std::make_unique<BoundUniforms>(std::ref(*verticalFilter));
+        auto verticalFilterBinding = std::make_unique<Metal::BoundUniforms>(std::ref(*verticalFilter));
         verticalFilterBinding->BindConstantBuffer(Hash64("$Globals"), 0, 1);
         verticalFilterBinding->BindConstantBuffer(Hash64("Filtering"), 1, 1);
 
-        auto* injectLight = &::Assets::GetAssetDep<ComputeShader>("game/xleres/volumetriceffect/injectlight.csh:InjectLighting:cs_*", defines);
-        auto* propagateLight = &::Assets::GetAssetDep<ComputeShader>("game/xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines);
+        auto* injectLight = &::Assets::GetAssetDep<Metal::ComputeShader>(
+            "game/xleres/volumetriceffect/injectlight.csh:InjectLighting:cs_*", defines);
+        auto* propagateLight = &::Assets::GetAssetDep<Metal::ComputeShader>(
+            "game/xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines);
 
-        auto injectLightBinding = std::make_unique<BoundUniforms>(std::ref(::Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/volumetriceffect/injectlight.csh:InjectLighting:cs_*", defines)));
+        auto injectLightBinding = std::make_unique<Metal::BoundUniforms>(std::ref(::Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/volumetriceffect/injectlight.csh:InjectLighting:cs_*", defines)));
         Techniques::TechniqueContext::BindGlobalUniforms(*injectLightBinding);
         injectLightBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
         injectLightBinding->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 2, 1);
 
-        auto propagateLightBinding = std::make_unique<BoundUniforms>(std::ref(::Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines)));
+        auto propagateLightBinding = std::make_unique<Metal::BoundUniforms>(std::ref(::Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines)));
         Techniques::TechniqueContext::BindGlobalUniforms(*propagateLightBinding);
         propagateLightBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
         injectLightBinding->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 2, 1);
@@ -128,10 +141,10 @@ namespace SceneEngine
         if (desc._useMsaaSamplers) {
             XlCatString(definesTable, dimof(definesTable), ";MSAA_SAMPLERS=1");
         }
-        auto* resolveLight = &::Assets::GetAssetDep<ShaderProgram>(
+        auto* resolveLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             vertexShader, "game/xleres/VolumetricEffect/resolvefog.psh:ResolveFog:ps_*", definesTable);
 
-        auto resolveLightBinding = std::make_unique<BoundUniforms>(std::ref(*resolveLight));
+        auto resolveLightBinding = std::make_unique<Metal::BoundUniforms>(std::ref(*resolveLight));
         resolveLightBinding->BindConstantBuffer(Hash64("GlobalTransform"), 0, 0);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
@@ -176,33 +189,33 @@ namespace SceneEngine
             Desc(int frustumCount, bool esmShadowMaps) : _frustumCount(frustumCount), _esmShadowMaps(esmShadowMaps) {}
         };
 
-        intrusive_ptr<ID3D::Resource>                          _shadowMapTexture;
-        std::vector<RenderCore::Metal::RenderTargetView>    _shadowMapRenderTargets;
-        RenderCore::Metal::ShaderResourceView               _shadowMapShaderResource;
+        intrusive_ptr<ID3D::Resource>           _shadowMapTexture;
+        std::vector<Metal::RenderTargetView>    _shadowMapRenderTargets;
+        Metal::ShaderResourceView               _shadowMapShaderSRV;
 
-        intrusive_ptr<ID3D::Resource>                          _shadowMapTextureTemp;
-        std::vector<RenderCore::Metal::RenderTargetView>    _shadowMapRenderTargetsTemp;
-        RenderCore::Metal::ShaderResourceView               _shadowMapShaderResourceTemp;
+        intrusive_ptr<ID3D::Resource>           _shadowMapTextureTemp;
+        std::vector<Metal::RenderTargetView>    _shadowMapRenderTargetsTemp;
+        Metal::ShaderResourceView               _shadowMapShaderResourceTemp;
 
-        intrusive_ptr<ID3D::Resource>                          _densityValuesTexture;
-        RenderCore::Metal::UnorderedAccessView              _densityValuesUnorderedAccess;
-        RenderCore::Metal::ShaderResourceView               _densityValuesShaderResource;
+        intrusive_ptr<ID3D::Resource>   _densityValuesTexture;
+        Metal::UnorderedAccessView      _densityValuesUAV;
+        Metal::ShaderResourceView       _densityValuesSRV;
 
-        intrusive_ptr<ID3D::Resource>                          _inscatterShadowingValuesTexture;
-        RenderCore::Metal::UnorderedAccessView              _inscatterShadowingValuesUnorderedAccess;
-        RenderCore::Metal::ShaderResourceView               _inscatterShadowingValuesShaderResource;
+        intrusive_ptr<ID3D::Resource>   _inscatterShadowingValuesTexture;
+        Metal::UnorderedAccessView      _inscatterShadowingValuesUAV;
+        Metal::ShaderResourceView       _inscatterShadowingValuesSRV;
 
-        intrusive_ptr<ID3D::Resource>                          _inscatterPointLightsValuesTexture;
-        RenderCore::Metal::UnorderedAccessView              _inscatterPointLightsValuesUnorderedAccess;
-        RenderCore::Metal::ShaderResourceView               _inscatterPointLightsValuesShaderResource;
+        intrusive_ptr<ID3D::Resource>   _inscatterPointLightsValuesTexture;
+        Metal::UnorderedAccessView      _inscatterPointLightsValuesUAV;
+        Metal::ShaderResourceView       _inscatterPointLightsValuesSRV;
 
-        intrusive_ptr<ID3D::Resource>                          _inscatterFinalsValuesTexture;
-        RenderCore::Metal::UnorderedAccessView              _inscatterFinalsValuesUnorderedAccess;
-        RenderCore::Metal::ShaderResourceView               _inscatterFinalsValuesShaderResource;
+        intrusive_ptr<ID3D::Resource>   _inscatterFinalsValuesTexture;
+        Metal::UnorderedAccessView      _inscatterFinalsValuesUAV;
+        Metal::ShaderResourceView       _inscatterFinalsValuesSRV;
 
-        intrusive_ptr<ID3D::Resource>                          _transmissionValuesTexture;
-        RenderCore::Metal::UnorderedAccessView              _transmissionValuesUnorderedAccess;
-        RenderCore::Metal::ShaderResourceView               _transmissionValuesShaderResource;
+        intrusive_ptr<ID3D::Resource>   _transmissionValuesTexture;
+        Metal::UnorderedAccessView      _transmissionValuesUAV;
+        Metal::ShaderResourceView       _transmissionValuesSRV;
 
         VolumetricFogResources(const Desc& desc);
         ~VolumetricFogResources();
@@ -210,75 +223,75 @@ namespace SceneEngine
 
     VolumetricFogResources::VolumetricFogResources(const Desc& desc)
     {
-        auto shadowMapFormat = desc._esmShadowMaps?NativeFormat::R32_FLOAT:NativeFormat::R16_UNORM;
+        auto shadowMapFormat = desc._esmShadowMaps?Metal::NativeFormat::R32_FLOAT:Metal::NativeFormat::R16_UNORM;
         auto renderTargetDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::RenderTarget|BufferUploads::BindFlag::ShaderResource,
             BufferUploads::TextureDesc::Plain2D(256, 256, shadowMapFormat, 0, uint8(desc._frustumCount)), "VolFog");
         auto& uploads = GetBufferUploads();
 
         auto shadowMapTexture = uploads.Transaction_Immediate(renderTargetDesc)->AdoptUnderlying();
-        auto shadowMapShaderResource = ShaderResourceView(shadowMapTexture.get(), shadowMapFormat, desc._frustumCount);
-        std::vector<RenderTargetView> shadowMapRenderTargets;
+        auto shadowMapShaderResource = Metal::ShaderResourceView(shadowMapTexture.get(), shadowMapFormat, desc._frustumCount);
+        std::vector<Metal::RenderTargetView> shadowMapRenderTargets;
         for (int c=0; c<desc._frustumCount; ++c) {
             shadowMapRenderTargets.emplace_back(
-                RenderTargetView(shadowMapTexture.get(), shadowMapFormat, ArraySlice(1, c)));
+                Metal::RenderTargetView(shadowMapTexture.get(), shadowMapFormat, Metal::ArraySlice(1, c)));
         }
 
         auto shadowMapTextureTemp = uploads.Transaction_Immediate(renderTargetDesc)->AdoptUnderlying();
-        auto shadowMapShaderResourceTemp = ShaderResourceView(shadowMapTextureTemp.get(), shadowMapFormat, desc._frustumCount);
-        std::vector<RenderTargetView> shadowMapRenderTargetsTemp;
+        auto shadowMapShaderResourceTemp = Metal::ShaderResourceView(shadowMapTextureTemp.get(), shadowMapFormat, desc._frustumCount);
+        std::vector<Metal::RenderTargetView> shadowMapRenderTargetsTemp;
         for (int c=0; c<desc._frustumCount; ++c) {
             shadowMapRenderTargetsTemp.emplace_back(
-                RenderTargetView(shadowMapTextureTemp.get(), shadowMapFormat, ArraySlice(1, c)));
+                Metal::RenderTargetView(shadowMapTextureTemp.get(), shadowMapFormat, Metal::ArraySlice(1, c)));
         }
 
         auto densityTextureDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::UnorderedAccess|BufferUploads::BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain3D(160, 90, 128, NativeFormat::R32_TYPELESS), "VolFog");
+            BufferUploads::TextureDesc::Plain3D(160, 90, 128, Metal::NativeFormat::R32_TYPELESS), "VolFog");
         auto densityTexture = uploads.Transaction_Immediate(densityTextureDesc)->AdoptUnderlying();
-        UnorderedAccessView densityUnorderedAccess(densityTexture.get(), NativeFormat::R32_FLOAT);
-        ShaderResourceView densityShaderResource(densityTexture.get(), NativeFormat::R32_FLOAT);
+        Metal::UnorderedAccessView densityUnorderedAccess(densityTexture.get(), Metal::NativeFormat::R32_FLOAT);
+        Metal::ShaderResourceView densityShaderResource(densityTexture.get(), Metal::NativeFormat::R32_FLOAT);
 
         auto inscatterShadowingTexture = uploads.Transaction_Immediate(densityTextureDesc)->AdoptUnderlying();
-        UnorderedAccessView inscatterShadowingUnorderedAccess(inscatterShadowingTexture.get(), NativeFormat::R32_FLOAT);
-        ShaderResourceView inscatterShadowingShaderResource(inscatterShadowingTexture.get(), NativeFormat::R32_FLOAT);
+        Metal::UnorderedAccessView inscatterShadowingUnorderedAccess(inscatterShadowingTexture.get(), Metal::NativeFormat::R32_FLOAT);
+        Metal::ShaderResourceView inscatterShadowingShaderResource(inscatterShadowingTexture.get(), Metal::NativeFormat::R32_FLOAT);
     
         auto transmissionTexture = uploads.Transaction_Immediate(densityTextureDesc)->AdoptUnderlying();
-        UnorderedAccessView transmissionUnorderedAccess(transmissionTexture.get(), NativeFormat::R32_FLOAT);
-        ShaderResourceView transmissionShaderResource(transmissionTexture.get(), NativeFormat::R32_FLOAT);
+        Metal::UnorderedAccessView transmissionUnorderedAccess(transmissionTexture.get(), Metal::NativeFormat::R32_FLOAT);
+        Metal::ShaderResourceView transmissionShaderResource(transmissionTexture.get(), Metal::NativeFormat::R32_FLOAT);
 
         auto scatteringTextureDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::UnorderedAccess|BufferUploads::BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain3D(160, 90, 128, NativeFormat::R32G32B32A32_TYPELESS), "VolFog");
+            BufferUploads::TextureDesc::Plain3D(160, 90, 128, Metal::NativeFormat::R32G32B32A32_TYPELESS), "VolFog");
         auto inscatterFinalsTexture = uploads.Transaction_Immediate(scatteringTextureDesc)->AdoptUnderlying();
-        UnorderedAccessView inscatterFinalsUnorderedAccess(inscatterFinalsTexture.get(), NativeFormat::R32G32B32A32_FLOAT);
-        ShaderResourceView inscatterFinalsShaderResource(inscatterFinalsTexture.get(), NativeFormat::R32G32B32A32_FLOAT);
+        Metal::UnorderedAccessView inscatterFinalsUnorderedAccess(inscatterFinalsTexture.get(), Metal::NativeFormat::R32G32B32A32_FLOAT);
+        Metal::ShaderResourceView inscatterFinalsShaderResource(inscatterFinalsTexture.get(), Metal::NativeFormat::R32G32B32A32_FLOAT);
 
         auto inscatterPointLightsTexture = uploads.Transaction_Immediate(scatteringTextureDesc)->AdoptUnderlying();
-        UnorderedAccessView inscatterPointLightsUnorderedAccess(inscatterPointLightsTexture.get(), NativeFormat::R32G32B32A32_FLOAT);
-        ShaderResourceView inscatterPointLightsShaderResource(inscatterPointLightsTexture.get(), NativeFormat::R32G32B32A32_FLOAT);
+        Metal::UnorderedAccessView inscatterPointLightsUnorderedAccess(inscatterPointLightsTexture.get(), Metal::NativeFormat::R32G32B32A32_FLOAT);
+        Metal::ShaderResourceView inscatterPointLightsShaderResource(inscatterPointLightsTexture.get(), Metal::NativeFormat::R32G32B32A32_FLOAT);
 
             //  Commit pointers
         _densityValuesTexture = std::move(densityTexture);
-        _densityValuesUnorderedAccess = std::move(densityUnorderedAccess);
-        _densityValuesShaderResource = std::move(densityShaderResource);
+        _densityValuesUAV = std::move(densityUnorderedAccess);
+        _densityValuesSRV = std::move(densityShaderResource);
 
         _inscatterShadowingValuesTexture = std::move(inscatterShadowingTexture);
-        _inscatterShadowingValuesUnorderedAccess = std::move(inscatterShadowingUnorderedAccess);
-        _inscatterShadowingValuesShaderResource = std::move(inscatterShadowingShaderResource);
+        _inscatterShadowingValuesUAV = std::move(inscatterShadowingUnorderedAccess);
+        _inscatterShadowingValuesSRV = std::move(inscatterShadowingShaderResource);
 
         _inscatterPointLightsValuesTexture = std::move(inscatterPointLightsTexture);
-        _inscatterPointLightsValuesUnorderedAccess = std::move(inscatterPointLightsUnorderedAccess);
-        _inscatterPointLightsValuesShaderResource = std::move(inscatterPointLightsShaderResource);
+        _inscatterPointLightsValuesUAV = std::move(inscatterPointLightsUnorderedAccess);
+        _inscatterPointLightsValuesSRV = std::move(inscatterPointLightsShaderResource);
 
         _inscatterFinalsValuesTexture = std::move(inscatterFinalsTexture);
-        _inscatterFinalsValuesUnorderedAccess = std::move(inscatterFinalsUnorderedAccess);
-        _inscatterFinalsValuesShaderResource = std::move(inscatterFinalsShaderResource);
+        _inscatterFinalsValuesUAV = std::move(inscatterFinalsUnorderedAccess);
+        _inscatterFinalsValuesSRV = std::move(inscatterFinalsShaderResource);
 
         _transmissionValuesTexture = std::move(transmissionTexture);
-        _transmissionValuesUnorderedAccess = std::move(transmissionUnorderedAccess);
-        _transmissionValuesShaderResource = std::move(transmissionShaderResource);
+        _transmissionValuesUAV = std::move(transmissionUnorderedAccess);
+        _transmissionValuesSRV = std::move(transmissionShaderResource);
 
         _shadowMapTexture = std::move(_shadowMapTexture);
         _shadowMapRenderTargets = std::move(shadowMapRenderTargets);
-        _shadowMapShaderResource = std::move(shadowMapShaderResource);
+        _shadowMapShaderSRV = std::move(shadowMapShaderResource);
         _shadowMapTextureTemp = std::move(_shadowMapTextureTemp);
         _shadowMapRenderTargetsTemp = std::move(shadowMapRenderTargetsTemp);
         _shadowMapShaderResourceTemp = std::move(shadowMapShaderResourceTemp);
@@ -316,26 +329,33 @@ namespace SceneEngine
         return RenderCore::MakeSharedPkt(constants);
     }
 
+    static unsigned GetShadowCascadeMode(PreparedShadowFrustum& shadowFrustum)
+    {
+        return (shadowFrustum._mode == ShadowProjectionDesc::Projections::Mode::Ortho) ? 2u : 1u;
+    }
+
     void VolumetricFog_Build(   RenderCore::Metal::DeviceContext* context, 
                                 LightingParserContext& lightingParserContext,
                                 bool useMsaaSamplers, 
                                 PreparedShadowFrustum& shadowFrustum)
     {
         TRY {
-            auto& fogRes = Techniques::FindCachedBox<VolumetricFogResources>(VolumetricFogResources::Desc(shadowFrustum._frustumCount, UseESMShadowMaps()));
-            auto& fogShaders = Techniques::FindCachedBoxDep<VolumetricFogShaders>(VolumetricFogShaders::Desc(1, useMsaaSamplers, false, UseESMShadowMaps(), 
-                GlobalVolumetricFogMaterial._noiseDensityScale > 0.f));
+            auto& fogRes = Techniques::FindCachedBox2<VolumetricFogResources>(shadowFrustum._frustumCount, UseESMShadowMaps());
+            auto& fogShaders = Techniques::FindCachedBoxDep2<VolumetricFogShaders>(
+                1, useMsaaSamplers, false, UseESMShadowMaps(), 
+                GlobalVolumetricFogMaterial._noiseDensityScale > 0.f,
+                GetShadowCascadeMode(shadowFrustum));
 
             RenderCore::Metal::ConstantBufferPacket constantBufferPackets[3];
             constantBufferPackets[0] = MakeVolFogConstants();
 
             SavedTargets savedTargets(context);
-            ViewportDesc newViewport(0, 0, 256, 256, 0.f, 1.f);
+            Metal::ViewportDesc newViewport(0, 0, 256, 256, 0.f, 1.f);
             context->Bind(newViewport);
             context->Bind(Techniques::CommonResources()._blendOpaque);
             context->Bind(*fogShaders._buildExponentialShadowMap);
             SetupVertexGeneratorShader(context);
-            context->BindPS(MakeResourceList(2, shadowFrustum._shadowTextureResource));
+            context->BindPS(MakeResourceList(2, shadowFrustum._shadowTextureSRV));
 
             int c=0; 
             for (auto i=fogRes._shadowMapRenderTargets.begin(); i!=fogRes._shadowMapRenderTargets.end(); ++i, ++c) {
@@ -347,7 +367,7 @@ namespace SceneEngine
 
                 fogShaders._buildExponentialShadowMapBinding->Apply(
                     *context, lightingParserContext.GetGlobalUniformsStream(),
-                    UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
+                    Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
 
                 context->Bind(MakeResourceList(*i), nullptr);
                 context->Draw(4);
@@ -368,15 +388,15 @@ namespace SceneEngine
                 constantBufferPackets[1] = filteringWeightsConstants;
                 fogShaders._horizontalFilterBinding->Apply(
                     *context, lightingParserContext.GetGlobalUniformsStream(),
-                    UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
+                    Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
 
-                context->UnbindPS<ShaderResourceView>(0, 1);
+                context->UnbindPS<Metal::ShaderResourceView>(0, 1);
                 context->Bind(MakeResourceList(*i2), nullptr);
-                context->BindPS(MakeResourceList(fogRes._shadowMapShaderResource));
+                context->BindPS(MakeResourceList(fogRes._shadowMapShaderSRV));
                 context->Bind(*fogShaders._horizontalFilter);
                 context->Draw(4);
 
-                context->UnbindPS<ShaderResourceView>(0, 1);
+                context->UnbindPS<Metal::ShaderResourceView>(0, 1);
                 context->Bind(MakeResourceList(*i), nullptr);
                 context->BindPS(MakeResourceList(fogRes._shadowMapShaderResourceTemp));
                 context->Bind(*fogShaders._verticalFilter);
@@ -391,9 +411,9 @@ namespace SceneEngine
 
                 //  Inject the starting light into the volume texture (using compute shader)
             context->BindCS(MakeResourceList(
-                fogRes._inscatterShadowingValuesUnorderedAccess, fogRes._transmissionValuesUnorderedAccess,
-                fogRes._densityValuesUnorderedAccess, fogRes._inscatterFinalsValuesUnorderedAccess));
-            context->BindCS(MakeResourceList(2, fogRes._shadowMapShaderResource));
+                fogRes._inscatterShadowingValuesUAV, fogRes._transmissionValuesUAV,
+                fogRes._densityValuesUAV, fogRes._inscatterFinalsValuesUAV));
+            context->BindCS(MakeResourceList(2, fogRes._shadowMapShaderSRV));
             context->BindCS(MakeResourceList(9, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
             // context->BindCS(MakeResourceList(
             //     lightingParserContext.GetGlobalTransformCB(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), 
@@ -402,26 +422,26 @@ namespace SceneEngine
             const Metal::ConstantBuffer* prebuiltCBs[3] = { nullptr, nullptr, &shadowFrustum._arbitraryCB };
             fogShaders._injectLightBinding->Apply(
                 *context, lightingParserContext.GetGlobalUniformsStream(),
-                UniformsStream(constantBufferPackets, prebuiltCBs, dimof(constantBufferPackets)));
+                Metal::UniformsStream(constantBufferPackets, prebuiltCBs, dimof(constantBufferPackets)));
 
             context->BindCS(MakeResourceList(Metal::SamplerState()));
             context->Bind(*fogShaders._injectLight);
             context->Dispatch(160/10, 90/10, 128/8);
 
-            context->UnbindCS<UnorderedAccessView>(0, 1);
+            context->UnbindCS<Metal::UnorderedAccessView>(0, 1);
 
             fogShaders._propagateLightBinding->Apply(
                 *context, lightingParserContext.GetGlobalUniformsStream(),
-                UniformsStream(constantBufferPackets, prebuiltCBs, dimof(constantBufferPackets)));
+                Metal::UniformsStream(constantBufferPackets, prebuiltCBs, dimof(constantBufferPackets)));
 
-            context->BindCS(MakeResourceList(3, fogRes._inscatterShadowingValuesShaderResource, fogRes._inscatterPointLightsValuesShaderResource));
+            context->BindCS(MakeResourceList(3, fogRes._inscatterShadowingValuesSRV, fogRes._inscatterPointLightsValuesSRV));
             context->Bind(*fogShaders._propagateLight);
             context->Dispatch(160/10, 90/10, 1);
 
-            context->UnbindCS<UnorderedAccessView>(0, 4);
-            context->UnbindCS<ShaderResourceView>(2, 3);
-            context->UnbindCS<ShaderResourceView>(13, 3);
-            context->Unbind<ComputeShader>();
+            context->UnbindCS<Metal::UnorderedAccessView>(0, 4);
+            context->UnbindCS<Metal::ShaderResourceView>(2, 3);
+            context->UnbindCS<Metal::ShaderResourceView>(13, 3);
+            context->Unbind<Metal::ComputeShader>();
         } 
         CATCH(const ::Assets::Exceptions::InvalidResource& e) { lightingParserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingResource& e) { lightingParserContext.Process(e); }
@@ -433,12 +453,14 @@ namespace SceneEngine
                                 unsigned samplingCount, bool useMsaaSamplers, bool flipDirection,
                                 PreparedShadowFrustum& shadowFrustum)
     {
-        auto& fogRes = Techniques::FindCachedBox<VolumetricFogResources>(VolumetricFogResources::Desc(shadowFrustum._frustumCount, UseESMShadowMaps()));
-        auto& fogShaders = Techniques::FindCachedBoxDep<VolumetricFogShaders>(VolumetricFogShaders::Desc(samplingCount, useMsaaSamplers, flipDirection, UseESMShadowMaps(), 
-            GlobalVolumetricFogMaterial._noiseDensityScale > 0.f));
+        auto& fogRes = Techniques::FindCachedBox2<VolumetricFogResources>(shadowFrustum._frustumCount, UseESMShadowMaps());
+        auto& fogShaders = Techniques::FindCachedBoxDep2<VolumetricFogShaders>(
+            samplingCount, useMsaaSamplers, flipDirection, UseESMShadowMaps(), 
+            GlobalVolumetricFogMaterial._noiseDensityScale > 0.f,
+            GetShadowCascadeMode(shadowFrustum));
 
-        context->BindPS(MakeResourceList(7, fogRes._inscatterFinalsValuesShaderResource, fogRes._transmissionValuesShaderResource));
-        fogShaders._resolveLightBinding->Apply(*context, lightingParserContext.GetGlobalUniformsStream(), UniformsStream());
+        context->BindPS(MakeResourceList(7, fogRes._inscatterFinalsValuesSRV, fogRes._transmissionValuesSRV));
+        fogShaders._resolveLightBinding->Apply(*context, lightingParserContext.GetGlobalUniformsStream(), Metal::UniformsStream());
         context->Bind(*fogShaders._resolveLight);
         context->Draw(4);
     }
@@ -462,6 +484,42 @@ namespace SceneEngine
         result._jitteringAmount = 0.5f;
         return result;
     }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    static void DoVolumetricFogResolve(
+        MetalContext* metalContext, LightingParserContext& parserContext, 
+        LightingResolveContext& resolveContext, unsigned resolvePass)
+    {
+        Metal::GPUProfiler::DebugAnnotation anno(*metalContext, L"VolFog");
+
+        const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();
+        const auto samplingCount = resolveContext.GetSamplingCount();
+        VolumetricFog_Resolve(
+            metalContext, parserContext, 
+            (resolvePass==0)?samplingCount:1, useMsaaSamplers, resolvePass==1,
+            parserContext._preparedShadows[0]);
+    }
+
+    void VolumeFogPlugin::OnLightingResolvePrepare(
+        MetalContext* metalContext, LightingParserContext& parserContext, 
+        LightingResolveContext& resolveContext) const 
+    {
+        const bool doVolumetricFog = Tweakable("DoVolumetricFog", false);
+        if (    !parserContext._preparedShadows.empty() && parserContext._preparedShadows[0].IsReady()             &&  doVolumetricFog) {            const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();            VolumetricFog_Build(                metalContext, parserContext,                 useMsaaSamplers, parserContext._preparedShadows[0]);
+            resolveContext.AppendResolve(&DoVolumetricFogResolve);
+        }
+    }
+
+    void VolumeFogPlugin::OnPreScenePrepare(
+        MetalContext*, LightingParserContext&) const {}
+    
+    void VolumeFogPlugin::OnPostSceneRender(
+        MetalContext*, LightingParserContext&, 
+        const SceneParseSettings&, unsigned techniqueIndex) const {}
+
+    VolumeFogPlugin::VolumeFogPlugin() {}
+    VolumeFogPlugin::~VolumeFogPlugin() {}
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -60,7 +60,7 @@ namespace SceneEngine
         typedef RenderCore::Metal::ShaderResourceView SRV;
         typedef RenderCore::Metal::ConstantBuffer CB;
 
-        SRV         _shadowTextureResource;
+        SRV         _shadowTextureSRV;
         CB          _arbitraryCB;
         CB          _orthoCB;
         unsigned    _frustumCount;

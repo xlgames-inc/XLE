@@ -6,17 +6,27 @@
 
 #include "../TransformAlgorithm.h"
 #include "../Colour.h"
+#include "../ShadowProjection.h"
 #include "VolumetricFog.h"
 
 Texture2DArray<float> InputShadowTextures : register(t2);
 
-int		WorkingSlice;
-float4	ShadowMinimalProjection;
-
+int WorkingSlice;
 cbuffer Filtering
 {
 	float4	FilteringWeights0;		// weights for gaussian filter
 	float3	FilteringWeights1;
+}
+
+float LoadDepth(int2 coords)
+{
+	float shadowBufferDepth = InputShadowTextures.Load(int4(coords.xy, WorkingSlice, 0));
+	float4 miniProj = ShadowProjection_GetMiniProj(WorkingSlice);
+	if (ShadowsPerspectiveProjection) {
+		return NDCDepthToWorldSpace_Perspective(shadowBufferDepth, AsMiniProjZW(miniProj));
+	} else {
+		return NDCDepthToWorldSpace_Ortho(shadowBufferDepth, AsMiniProjZW(miniProj));
+	}
 }
 
 float BuildExponentialShadowMap(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
@@ -30,7 +40,6 @@ float BuildExponentialShadowMap(float4 position : SV_Position, float2 texCoord :
 
 		//		todo -- use "GatherRed" to improve performance
 
-	const bool shadowsPerspectiveProj = ShadowsPerspectiveProjection;
 	const bool useAverage = false;
 	if (useAverage) {
 		int c=0;
@@ -38,13 +47,7 @@ float BuildExponentialShadowMap(float4 position : SV_Position, float2 texCoord :
 		[unroll] for (int y=0; y<DownsampleCount; ++y) {
 			[unroll] for (int x=0; x<DownsampleCount; ++x) {
 				int2 coords = int2(position.xy)*DownsampleCount + int2(x, y);
-				float shadowBufferDepth  = InputShadowTextures.Load(int4(coords.xy, WorkingSlice, 0));
-
-				if (shadowsPerspectiveProj) {
-					accumulativeLinearDepth += NDCDepthToWorldSpace_Perspective(shadowBufferDepth, AsMiniProjZW(ShadowMinimalProjection));
-				} else {
-					accumulativeLinearDepth += NDCDepthToWorldSpace_Ortho(shadowBufferDepth, AsMiniProjZW(ShadowMinimalProjection));
-				}
+				accumulativeLinearDepth += LoadDepth(coords.xy);
 			}
 		}
 
@@ -62,13 +65,7 @@ float BuildExponentialShadowMap(float4 position : SV_Position, float2 texCoord :
 		[unroll] for (int y=0; y<DownsampleCount; ++y) {
 			[unroll] for (int x=0; x<DownsampleCount; ++x) {
 				int2 coords = int2(position.xy)*DownsampleCount + int2(x, y);
-				float shadowBufferDepth  = InputShadowTextures.Load(int4(coords.xy, WorkingSlice, 0));
-
-				if (shadowsPerspectiveProj) {
-					maxDepth = max(maxDepth, NDCDepthToWorldSpace_Perspective(shadowBufferDepth, AsMiniProjZW(ShadowMinimalProjection)));
-				} else {
-					maxDepth = max(maxDepth, NDCDepthToWorldSpace_Ortho(shadowBufferDepth, AsMiniProjZW(ShadowMinimalProjection)));
-				}
+				maxDepth = max(maxDepth, LoadDepth(coords.xy));
 			}
 		}
 
@@ -83,7 +80,7 @@ float BuildExponentialShadowMap(float4 position : SV_Position, float2 texCoord :
 Texture2DArray<float> FilteringSource : register(t0);
 
 		//
-		//		Separable gaussian filter 
+		//		Separable gaussian filter
 		//			(quick blurring of the shadow values)
 		//
 
@@ -218,10 +215,9 @@ float VerticalBoxFilter11(float4 position : SV_Position, float2 texCoord : TEXCO
 		}
 		if (!accWeight) {
 			accumulatedValue = maxV;
-		} else 
+		} else
 			accumulatedValue /= accWeight;
 	}
 
 	return accumulatedValue;
 }
-

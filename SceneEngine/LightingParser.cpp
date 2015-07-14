@@ -162,15 +162,6 @@ namespace SceneEngine
     {
         GPUProfiler::DebugAnnotation anno(*context, L"LateGBuffer");
 
-            //  Prepare exponential shadow maps for doing volume 
-        const bool doVolumetricFog = Tweakable("DoVolumetricFog", false);
-        if (!parserContext._preparedShadows.empty() && parserContext._preparedShadows[0].IsReady() && doVolumetricFog) {
-            const bool useMsaaSamplers = mainTargets._desc._sampling._sampleCount > 1;
-            VolumetricFog_Build(
-                context, parserContext, 
-                useMsaaSamplers, parserContext._preparedShadows[0]);
-        }
-
         #if defined(_DEBUG)
             auto& saveGBuffer = Tweakable("SaveGBuffer", false);
             if (saveGBuffer) {
@@ -730,7 +721,7 @@ namespace SceneEngine
             ShadowWriteResources::Desc(
                 frustum._shadowSlopeScaledBias, frustum._shadowDepthBiasClamp, frustum._shadowRasterDepthBias));
 
-        preparedResult._shadowTextureResource = targetsBox._shaderResource;
+        preparedResult._shadowTextureSRV = targetsBox._shaderResource;
 
             /////////////////////////////////////////////
 
