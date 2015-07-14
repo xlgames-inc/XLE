@@ -27,6 +27,7 @@ namespace RenderCore { namespace Techniques
         _blendStraightAlpha = BlendState(BlendOp::Add, Blend::SrcAlpha, Blend::InvSrcAlpha);
         _blendAlphaPremultiplied = BlendState(BlendOp::Add, Blend::One, Blend::InvSrcAlpha);
         _blendOneSrcAlpha = BlendState(BlendOp::Add, Blend::One, Blend::SrcAlpha);
+        _blendAdditive = BlendState(BlendOp::Add, Blend::One, Blend::One);
         _blendOpaque = BlendOp::NoBlending;
 
         _defaultRasterizer = CullMode::Back;

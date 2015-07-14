@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<xs:schema
+  elementFormDefault="qualified"
+  targetNamespace="gap"
+  xmlns="gap"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:include schemaLocation="gameobject.xsd"/>
+  <xs:include schemaLocation="basictypes.xsd"/>
+
+  <!-- ......................................................................... -->
+  
+  <xs:complexType name="markerPointType">
+
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="MarkerPoint"/>
+        <LeGe.NativeVis geo="sphere"/>
+        <LeGe.NativeProperty name="translate" nativeName="Translation"/>
+        <scea.dom.editors.attribute name="indexlist" displayName="Index List" category="General"/>
+        <scea.dom.editors.attribute name="translate" displayName="Translation" category="General"
+                                    editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+        <scea.dom.editors name="MarkerPoint" category="Markers" image="LevelEditorCore.Resources.gameObject.png" menuText="MarkerPoint" description="MarkerPoint"/>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:attribute name="translate" type="vector3Type" default="0 0 0"/>
+  </xs:complexType>
+
+  <!-- ......................................................................... -->
+  
+  <xs:complexType name="triMeshMarkerType">
+
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="TriMeshMarker"/>
+        <LeGe.NativeVis geo="TriMeshMarker"/>
+        <LeGe.NativeProperty name="indexlist" nativeName="IndexList"/>
+        
+        <scea.dom.editors.attribute name="indexlist" displayName="Index List" category="General"/>
+        <scea.dom.editors name="TriMeshMarker" category="Markers" image="LevelEditorCore.Resources.gameObject.png" menuText="TriMeshMarker" description="TriMeshMarker"/>
+      </xs:appinfo>
+    </xs:annotation>
+    
+    <xs:complexContent>
+      <xs:extension base="gameObjectType">
+        <xs:sequence>
+          <xs:element name="points" type="markerPointType" minOccurs="0" maxOccurs="unbounded" />
+        </xs:sequence>
+        <xs:attribute name="indexlist" type="intListType" default=""/>
+      </xs:extension>
+    </xs:complexContent>
+    
+  </xs:complexType>
+
+  <!-- ......................................................................... -->
+
+</xs:schema>

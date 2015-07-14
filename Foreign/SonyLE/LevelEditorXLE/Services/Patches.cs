@@ -160,6 +160,18 @@ namespace LevelEditorXLE
                             false,
                             SetupEmbeddedCollectionEditor(Schema.vegetationSpawnObjectType.Type, "Object Type"))
                             }));
+
+            Schema.triMeshMarkerType.Type.SetTag(
+                new PropertyDescriptorCollection(
+                    new System.ComponentModel.PropertyDescriptor[] {
+                        new ChildPropertyDescriptor(
+                            "Vertex".Localize(),
+                            Schema.triMeshMarkerType.pointsChild,
+                            null,
+                            "List of mesh vertices".Localize(),
+                            false,
+                            SetupEmbeddedCollectionEditor(Schema.markerPointType.Type, "Vertex"))
+                            }));
         }
 
         public static DomNodeType GetGameType() { return Schema.xleGameType.Type; }

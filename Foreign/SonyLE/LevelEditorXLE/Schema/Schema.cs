@@ -129,6 +129,13 @@ namespace LevelEditorXLE
             ambientSettingsType.SkyReflectionScaleAttribute = ambientSettingsType.Type.GetAttributeInfo("SkyReflectionScale");
             ambientSettingsType.SkyReflectionBlurrinessAttribute = ambientSettingsType.Type.GetAttributeInfo("SkyReflectionBlurriness");
             ambientSettingsType.SkyBrightnessAttribute = ambientSettingsType.Type.GetAttributeInfo("SkyBrightness");
+            ambientSettingsType.RangeFogInscatterAttribute = ambientSettingsType.Type.GetAttributeInfo("RangeFogInscatter");
+            ambientSettingsType.RangeFogInscatterScaleAttribute = ambientSettingsType.Type.GetAttributeInfo("RangeFogInscatterScale");
+            ambientSettingsType.RangeFogThicknessAttribute = ambientSettingsType.Type.GetAttributeInfo("RangeFogThickness");
+            ambientSettingsType.RangeFogThicknessScaleAttribute = ambientSettingsType.Type.GetAttributeInfo("RangeFogThicknessScale");
+            ambientSettingsType.AtmosBlurStdDevAttribute = ambientSettingsType.Type.GetAttributeInfo("AtmosBlurStdDev");
+            ambientSettingsType.AtmosBlurStartAttribute = ambientSettingsType.Type.GetAttributeInfo("AtmosBlurStart");
+            ambientSettingsType.AtmosBlurEndAttribute = ambientSettingsType.Type.GetAttributeInfo("AtmosBlurEnd");
             ambientSettingsType.FlagsAttribute = ambientSettingsType.Type.GetAttributeInfo("Flags");
 
             toneMapSettingsType.Type = getNodeType("gap", "toneMapSettingsType");
@@ -313,8 +320,15 @@ namespace LevelEditorXLE
             terrainMaterialType.SlopeTexture2MappingAttribute = terrainMaterialType.Type.GetAttributeInfo("SlopeTexture2Mapping");
             terrainMaterialType.BlendingTextureMappingAttribute = terrainMaterialType.Type.GetAttributeInfo("BlendingTextureMapping");
 
+            terrainProcTextureType.Type = getNodeType("gap", "terrainProcTextureType");
+            terrainProcTextureType.MaterialIdAttribute = terrainProcTextureType.Type.GetAttributeInfo("MaterialId");
+            terrainProcTextureType.NameAttribute = terrainProcTextureType.Type.GetAttributeInfo("Name");
+            terrainProcTextureType.Texture0Attribute = terrainProcTextureType.Type.GetAttributeInfo("Texture0");
+            terrainProcTextureType.Texture1Attribute = terrainProcTextureType.Type.GetAttributeInfo("Texture1");
+            terrainProcTextureType.HGridAttribute = terrainProcTextureType.Type.GetAttributeInfo("HGrid");
+            terrainProcTextureType.GainAttribute = terrainProcTextureType.Type.GetAttributeInfo("Gain");
+
             vegetationSpawnObjectType.Type = getNodeType("gap", "vegetationSpawnObjectType");
-            vegetationSpawnObjectType.JitterAmountAttribute = vegetationSpawnObjectType.Type.GetAttributeInfo("JitterAmount");
             vegetationSpawnObjectType.MaxDrawDistanceAttribute = vegetationSpawnObjectType.Type.GetAttributeInfo("MaxDrawDistance");
             vegetationSpawnObjectType.FrequencyWeightAttribute = vegetationSpawnObjectType.Type.GetAttributeInfo("FrequencyWeight");
             vegetationSpawnObjectType.ModelAttribute = vegetationSpawnObjectType.Type.GetAttributeInfo("Model");
@@ -331,6 +345,7 @@ namespace LevelEditorXLE
 
             vegetationSpawnConfigType.Type = getNodeType("gap", "vegetationSpawnConfigType");
             vegetationSpawnConfigType.BaseGridSpacingAttribute = vegetationSpawnConfigType.Type.GetAttributeInfo("BaseGridSpacing");
+            vegetationSpawnConfigType.JitterAmountAttribute = vegetationSpawnConfigType.Type.GetAttributeInfo("JitterAmount");
             vegetationSpawnConfigType.materialChild = vegetationSpawnConfigType.Type.GetChildInfo("material");
 
             terrainType.Type = getNodeType("gap", "terrainType");
@@ -390,6 +405,22 @@ namespace LevelEditorXLE
             gameObjectGroupType.visibleAttribute = gameObjectGroupType.Type.GetAttributeInfo("visible");
             gameObjectGroupType.lockedAttribute = gameObjectGroupType.Type.GetAttributeInfo("locked");
             gameObjectGroupType.gameObjectChild = gameObjectGroupType.Type.GetChildInfo("gameObject");
+
+            markerPointType.Type = getNodeType("gap", "markerPointType");
+            markerPointType.translateAttribute = markerPointType.Type.GetAttributeInfo("translate");
+
+            triMeshMarkerType.Type = getNodeType("gap", "triMeshMarkerType");
+            triMeshMarkerType.transformAttribute = triMeshMarkerType.Type.GetAttributeInfo("transform");
+            triMeshMarkerType.translateAttribute = triMeshMarkerType.Type.GetAttributeInfo("translate");
+            triMeshMarkerType.rotateAttribute = triMeshMarkerType.Type.GetAttributeInfo("rotate");
+            triMeshMarkerType.scaleAttribute = triMeshMarkerType.Type.GetAttributeInfo("scale");
+            triMeshMarkerType.pivotAttribute = triMeshMarkerType.Type.GetAttributeInfo("pivot");
+            triMeshMarkerType.transformationTypeAttribute = triMeshMarkerType.Type.GetAttributeInfo("transformationType");
+            triMeshMarkerType.nameAttribute = triMeshMarkerType.Type.GetAttributeInfo("name");
+            triMeshMarkerType.visibleAttribute = triMeshMarkerType.Type.GetAttributeInfo("visible");
+            triMeshMarkerType.lockedAttribute = triMeshMarkerType.Type.GetAttributeInfo("locked");
+            triMeshMarkerType.indexlistAttribute = triMeshMarkerType.Type.GetAttributeInfo("indexlist");
+            triMeshMarkerType.pointsChild = triMeshMarkerType.Type.GetChildInfo("points");
 
             xleGameType.Type = getNodeType("gap", "xleGameType");
             xleGameType.nameAttribute = xleGameType.Type.GetAttributeInfo("name");
@@ -555,6 +586,13 @@ namespace LevelEditorXLE
             public static AttributeInfo SkyReflectionScaleAttribute;
             public static AttributeInfo SkyReflectionBlurrinessAttribute;
             public static AttributeInfo SkyBrightnessAttribute;
+            public static AttributeInfo RangeFogInscatterAttribute;
+            public static AttributeInfo RangeFogInscatterScaleAttribute;
+            public static AttributeInfo RangeFogThicknessAttribute;
+            public static AttributeInfo RangeFogThicknessScaleAttribute;
+            public static AttributeInfo AtmosBlurStdDevAttribute;
+            public static AttributeInfo AtmosBlurStartAttribute;
+            public static AttributeInfo AtmosBlurEndAttribute;
             public static AttributeInfo FlagsAttribute;
         }
 
@@ -794,10 +832,20 @@ namespace LevelEditorXLE
             public static AttributeInfo BlendingTextureMappingAttribute;
         }
 
+        public static class terrainProcTextureType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo MaterialIdAttribute;
+            public static AttributeInfo NameAttribute;
+            public static AttributeInfo Texture0Attribute;
+            public static AttributeInfo Texture1Attribute;
+            public static AttributeInfo HGridAttribute;
+            public static AttributeInfo GainAttribute;
+        }
+
         public static class vegetationSpawnObjectType
         {
             public static DomNodeType Type;
-            public static AttributeInfo JitterAmountAttribute;
             public static AttributeInfo MaxDrawDistanceAttribute;
             public static AttributeInfo FrequencyWeightAttribute;
             public static AttributeInfo ModelAttribute;
@@ -820,6 +868,7 @@ namespace LevelEditorXLE
         {
             public static DomNodeType Type;
             public static AttributeInfo BaseGridSpacingAttribute;
+            public static AttributeInfo JitterAmountAttribute;
             public static ChildInfo materialChild;
         }
 
@@ -897,6 +946,28 @@ namespace LevelEditorXLE
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
             public static ChildInfo gameObjectChild;
+        }
+
+        public static class markerPointType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo translateAttribute;
+        }
+
+        public static class triMeshMarkerType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo nameAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
+            public static AttributeInfo indexlistAttribute;
+            public static ChildInfo pointsChild;
         }
 
         public static class xleGameType

@@ -194,31 +194,6 @@ namespace Utility
     XL_UTILITY_API size_t   XlGetOffset(const char* str, size_t index);              // return byte offset for index's character.
     inline int              XlCountUtfSequence(uint8 c);
 
-        ////////////   H E L P E R S   ////////////
-    template <int Count, typename CharType>
-        void XlCopyString(CharType (&destination)[Count], const CharType source[])
-        {
-            XlCopyString(destination, Count, source);
-        }
-
-    template <int Count, typename CharType>
-        void XlCopyNString(CharType (&destination)[Count], const CharType source[], size_t length)
-        {
-            XlCopyNString(destination, Count, source, length);
-        }
-
-    template<typename T>
-        bool XlEqString(const T* a, const T* b)
-        {
-            return XlCompareString(a, b) == 0;
-        }
-
-    template<typename T>
-        bool XlEqStringI(const T* a, const T* b)
-        {
-            return XlCompareStringI(a, b) == 0;
-        }
-
         ////////////   C H A R A C T E R   C L A S S I F I C A T I O N   A N D   C O N V E R S I O N   ////////////
     XL_UTILITY_API bool     XlIsAlnum(char c);
     XL_UTILITY_API bool     XlIsEngAlpha(char c);
@@ -286,6 +261,53 @@ namespace Utility
 
     XL_UTILITY_API bool     XlToHexStr(const char* x, size_t xlen, char* y, size_t ylen);
     XL_UTILITY_API bool     XlHexStrToBin(const char* x, char* y);
+
+        ////////////   H E L P E R S   ////////////
+    template <int Count, typename CharType>
+        void XlCopyString(CharType (&destination)[Count], const CharType source[])
+        {
+            XlCopyString(destination, Count, source);
+        }
+
+    template <int Count, typename CharType>
+        void XlCopyNString(CharType (&destination)[Count], const CharType source[], size_t length)
+        {
+            XlCopyNString(destination, Count, source, length);
+        }
+
+    template<typename T>
+        bool XlEqString(const T* a, const T* b)
+        {
+            return XlCompareString(a, b) == 0;
+        }
+
+    template<typename T>
+        bool XlEqStringI(const T* a, const T* b)
+        {
+            return XlCompareStringI(a, b) == 0;
+        }
+
+    template<typename T>
+        bool XlEqStringI(const std::basic_string<T>& a, const std::basic_string<T>& b)
+        {
+            unsigned int sz = a.size();
+            if (b.size() != sz) return false;
+            for (unsigned int i = 0; i < sz; ++i)
+                if (XlToLower(a[i]) != XlToLower(b[i]))
+                    return false;
+            return true;
+        }
+
+    template<typename T>
+        bool XlEqStringI(const std::basic_string<T>& a, const T* b)
+        {
+            auto sz = a.size();
+            size_t i = 0;
+            for (; i < sz; ++i)
+                if (!b[i] || XlToLower(a[i]) != XlToLower(b[i]))
+                    return false;
+            return b[i] == 0;
+        }
 
     #if REDIRECT_CLIB_WITH_PREPROCESSOR
 

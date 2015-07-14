@@ -126,6 +126,8 @@ namespace LevelEditorXLE.Game
                         return DomNode.GetChild(Schema.xleGameType.placementsChild) == null;
                     case Command.CreateEnvironmentSetting:
                         return true;
+                    case Command.CreateTriMeshMarker:
+                        return true;
                 }
             }
             return false;
@@ -166,6 +168,12 @@ namespace LevelEditorXLE.Game
                             XLEEnvSettings.Create(envFolder.GetNameForNewChild()));
                         break;
                     }
+
+                case Command.CreateTriMeshMarker:
+                    {
+                        this.As<IGame>().RootGameObjectFolder.AddChild(Markers.TriMeshMarker.Create());
+                        break;
+                    }
             }
         }
 
@@ -179,7 +187,9 @@ namespace LevelEditorXLE.Game
             [Description("Add Placements...")]
             CreatePlacementsFolder,
             [Description("Add New Environment Settings")]
-            CreateEnvironmentSetting
+            CreateEnvironmentSetting,
+            [Description("Add tri mesh marker")]
+            CreateTriMeshMarker
         }
 
         IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)

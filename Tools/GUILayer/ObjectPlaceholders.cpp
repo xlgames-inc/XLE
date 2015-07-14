@@ -14,12 +14,15 @@
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Buffer.h"
+#include "../../RenderCore/Metal/InputLayout.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/Geometry.h"
+#include "../../Utility/StringUtils.h"
 
 namespace GUILayer
 {
@@ -29,6 +32,7 @@ namespace GUILayer
     namespace Parameters
     {
         static const auto Transform = ParameterBox::MakeParameterNameHash("Transform");
+        static const auto Translation = ParameterBox::MakeParameterNameHash("Translation");
         static const auto Visible = ParameterBox::MakeParameterNameHash("Visible");
     }
 
@@ -46,6 +50,7 @@ namespace GUILayer
         unsigned                _cubeVBCount;
         unsigned                _cubeVBStride;
         TechniqueMaterial       _material;
+        TechniqueMaterial       _materialP;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _depVal; }
         VisGeoBox(const Desc&);
@@ -59,6 +64,10 @@ namespace GUILayer
         ToolsRig::Vertex3D_InputLayout, 
         { ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants },
         ParameterBox())
+    , _materialP(
+        Metal::GlobalInputLayouts::P,
+        { ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants },
+        ParameterBox())
     {
         auto cubeVertices = ToolsRig::BuildCube();
         _cubeVBCount = (unsigned)cubeVertices.size();
@@ -68,6 +77,18 @@ namespace GUILayer
     }
 
     VisGeoBox::~VisGeoBox() {}
+
+    static Float4x4 GetTransform(const RetainedEntity& obj)
+    {
+        auto xform = obj._properties.GetParameter<Float4x4>(Parameters::Transform);
+        if (xform.first) return Transpose(xform.second);
+
+        auto transl = obj._properties.GetParameter<Float3>(Parameters::Translation);
+        if (transl.first) {
+            return AsFloat4x4(transl.second);
+        }
+        return Identity<Float4x4>();
+    }
 
     static void DrawObject(
         Metal::DeviceContext& devContext,
@@ -83,7 +104,7 @@ namespace GUILayer
         shader.Apply(devContext, parserContext,
             {
                 MakeLocalTransformPacket(
-                    Transpose(obj._properties.GetParameter(Parameters::Transform, Identity<Float4x4>())),
+                    GetTransform(obj),
                     ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
                 cbLayout.BuildCBDataAsPkt(ParameterBox())
             });
@@ -92,28 +113,103 @@ namespace GUILayer
         devContext.Draw(visBox._cubeVBCount);
     }
 
+    static void DrawTriMeshMarker(
+        Metal::DeviceContext& devContext,
+        ParsingContext& parserContext,
+        const VisGeoBox& visBox,
+        const ResolvedShader& shader, const RetainedEntity& obj,
+        EntityInterface::RetainedEntities& objs)
+    {
+        static auto IndexListHash = ParameterBox::MakeParameterNameHash("IndexList");
+        static auto TransformHash = ParameterBox::MakeParameterNameHash("Transform");
+
+        if (!obj._properties.GetParameter(Parameters::Visible, true)) return;
+
+        // we need an index list with at least 3 indices (to make at least one triangle)
+        auto indexListType = obj._properties.GetParameterType(IndexListHash);
+        if (indexListType._type == ImpliedTyping::TypeCat::Void || indexListType._arrayCount < 3)
+            return;
+
+        auto ibData = std::make_unique<unsigned[]>(indexListType._arrayCount);
+        bool success = obj._properties.GetParameter(
+            IndexListHash, ibData.get(), 
+            ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::UInt32, indexListType._arrayCount));
+        if (!success) return;
+
+        const auto& chld = obj._children;
+        if (!chld.size()) return;
+
+        auto vbData = std::make_unique<Float3[]>(chld.size());
+        for (size_t c=0; c<chld.size(); ++c) {
+            const auto* e = objs.GetEntity(obj._doc, chld[c]);
+            if (e) {
+                vbData[c] = ExtractTranslation(GetTransform(*e));
+            } else {
+                vbData[c] = Zero<Float3>();
+            }
+        }
+        
+        const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
+            "game/xleres/BasicMaterialConstants.txt");
+
+        shader.Apply(devContext, parserContext,
+            {
+                MakeLocalTransformPacket(
+                    GetTransform(obj),
+                    ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
+                cbLayout.BuildCBDataAsPkt(ParameterBox())
+            });
+
+        devContext.Bind(Techniques::CommonResources()._blendAdditive);
+        devContext.Bind(Techniques::CommonResources()._dssReadOnly);
+        devContext.Bind(Techniques::CommonResources()._cullDisable);
+        
+        Metal::VertexBuffer vb(vbData.get(), sizeof(Float3)*chld.size());
+        Metal::IndexBuffer ib(ibData.get(), sizeof(unsigned)*indexListType._arrayCount);
+
+        devContext.Bind(MakeResourceList(vb), sizeof(Float3), 0);
+        devContext.Bind(ib, Metal::NativeFormat::R32_UINT);
+        devContext.Bind(Metal::Topology::TriangleList);
+        devContext.DrawIndexed(indexListType._arrayCount);
+    }
+
     void ObjectPlaceholders::Render(
         Metal::DeviceContext& metalContext, 
-       ParsingContext& parserContext,
+        ParsingContext& parserContext,
         unsigned techniqueIndex)
     {
         auto& visBox = FindCachedBoxDep<VisGeoBox>(VisGeoBox::Desc());
         auto shader = visBox._material.FindVariation(parserContext, techniqueIndex, "game/xleres/illum.txt");
-        if (!shader._shaderProgram) return;
+        if (shader._shaderProgram) {
+            for (auto a=_cubeAnnotations.cbegin(); a!=_cubeAnnotations.cend(); ++a) {
+                auto objects = _objects->FindEntitiesOfType(a->_typeId);
+                for (auto o=objects.cbegin(); o!=objects.cend(); ++o) {
+                    DrawObject(metalContext, parserContext, visBox, shader, **o);
+                }
+            }
+        }
 
-        for (auto a=_annotations.cbegin(); a!=_annotations.cend(); ++a) {
-            auto objects = _objects->FindEntitiesOfType(a->_typeId);
-            for (auto o=objects.cbegin(); o!=objects.cend(); ++o) {
-                DrawObject(metalContext, parserContext, visBox, shader, **o);
+        auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, "game/xleres/techniques/meshmarker.txt");
+        if (shaderP._shaderProgram) {
+            for (const auto&a:_triMeshAnnotations) {
+                auto objects = _objects->FindEntitiesOfType(a._typeId);
+                for (auto o=objects.cbegin(); o!=objects.cend(); ++o) {
+                    DrawTriMeshMarker(metalContext, parserContext, visBox, shaderP, **o, *_objects);
+                }
             }
         }
     }
 
-    void ObjectPlaceholders::AddAnnotation(EntityInterface::ObjectTypeId typeId)
+    void ObjectPlaceholders::AddAnnotation(EntityInterface::ObjectTypeId typeId, const std::string& geoType)
     {
         Annotation newAnnotation;
         newAnnotation._typeId = typeId;
-        _annotations.push_back(newAnnotation);
+
+        if (XlEqStringI(geoType, "TriMeshMarker")) {
+            _triMeshAnnotations.push_back(newAnnotation);
+        } else {
+            _cubeAnnotations.push_back(newAnnotation);
+        }
     }
 
     class ObjectPlaceholders::IntersectionTester : public SceneEngine::IIntersectionTester
@@ -140,11 +236,11 @@ namespace GUILayer
     {
         using namespace SceneEngine;
 
-        for (auto a=_placeHolders->_annotations.cbegin(); a!=_placeHolders->_annotations.cend(); ++a) {
+        for (auto a=_placeHolders->_cubeAnnotations.cbegin(); a!=_placeHolders->_cubeAnnotations.cend(); ++a) {
             auto objects = _placeHolders->_objects->FindEntitiesOfType(a->_typeId);
             for (auto o=objects.cbegin(); o!=objects.cend(); ++o) {
 
-                auto transform = Transpose((*o)->_properties.GetParameter(Parameters::Transform, Identity<Float4x4>()));
+                auto transform = GetTransform(**o);
                 if (RayVsAABB(worldSpaceRay, transform, Float3(-1.f, -1.f, -1.f), Float3(1.f, 1.f, 1.f))) {
                     Result result;
                     result._type = IntersectionTestScene::Type::Extra;

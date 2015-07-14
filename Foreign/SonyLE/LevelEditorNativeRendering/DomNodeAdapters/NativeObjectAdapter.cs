@@ -293,7 +293,7 @@ namespace RenderingInterop
             {
                 if (elmentType == typeof(float))
                 {
-                    var count = arrayLength;
+                    var count = Math.Min(arrayLength, ((float[])data).Length);
                     properties.Add(GameEngine.CreateInitializer(
                         propertyId, stream.PositionPointer,
                         elmentType, (uint)count));
@@ -305,7 +305,7 @@ namespace RenderingInterop
                 }
                 else if (elmentType == typeof(int))
                 {
-                    var count = arrayLength;
+                    var count = Math.Min(arrayLength, ((int[])data).Length);
                     properties.Add(GameEngine.CreateInitializer(
                         propertyId, stream.PositionPointer,
                         elmentType, (uint)count));
@@ -318,7 +318,7 @@ namespace RenderingInterop
 
                 else if (elmentType == typeof(uint))
                 {
-                    var count = arrayLength;
+                    var count = Math.Min(arrayLength, ((uint[])data).Length);
                     properties.Add(GameEngine.CreateInitializer(
                         propertyId, stream.PositionPointer,
                         elmentType, (uint)count));

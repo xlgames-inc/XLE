@@ -30,6 +30,7 @@
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Conversion.h"
 #include <memory>
 
 namespace GUILayer
@@ -79,6 +80,15 @@ namespace GUILayer
 	EditorScene::~EditorScene()
 	{}
 
+    template <typename Type>
+        Type GetFirst(IEnumerable<Type>^ input)
+        {
+            if (!input) return Type();
+            auto e = input->GetEnumerator();
+            if (!e || !e->MoveNext()) return Type();
+            return e->Current;
+        }
+
     void EditorSceneManager::SetTypeAnnotation(
         uint typeId, String^ annotationName, 
         IEnumerable<EntityLayer::PropertyInitializer>^ initializers)
@@ -87,8 +97,15 @@ namespace GUILayer
 
         if (annotationName == "vis") {
             auto mappedId = _entities->GetSwitch().MapTypeId(typeId, *_flexGobInterface.get());
-            if (mappedId != 0)
-                _scene->_placeholders->AddAnnotation(mappedId);
+            if (mappedId != 0) {
+                std::string geoType;
+                auto p = GetFirst(initializers);
+                if (p._src)
+                    geoType = Conversion::Convert<std::string>(
+                        std::wstring((const wchar_t*)p._src, &((const wchar_t*)p._src)[p._arrayCount]));
+                
+                _scene->_placeholders->AddAnnotation(mappedId, geoType);
+            }
         }
     }
 

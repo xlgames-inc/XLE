@@ -71,7 +71,7 @@ namespace GUILayer
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void EditorSceneParser::ExecuteScene(  
-        DeviceContext* context, 
+        DeviceContext* metalContext, 
         LightingParserContext& parserContext, 
         const SceneParseSettings& parseSettings,
         unsigned techniqueIndex) const
@@ -81,7 +81,7 @@ namespace GUILayer
 
 			if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && _editorScene->_terrainManager) {
 				TRY {
-                    _editorScene->_terrainManager->Render(context, parserContext, techniqueIndex);
+                    _editorScene->_terrainManager->Render(metalContext, parserContext, techniqueIndex);
                 }
                 CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
                 CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
@@ -89,25 +89,23 @@ namespace GUILayer
 			}
 
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
-                _editorScene->_placementsManager->Render(
-                    context, parserContext, techniqueIndex);
-
-                TRY {
-                    _editorScene->_placeholders->Render(
-                        *context, parserContext, techniqueIndex);
-                }
-                CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-                CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-                CATCH_END
-
-                _editorScene->_vegetationSpawnManager->Render(context, parserContext, techniqueIndex);
+                _editorScene->_placementsManager->Render(metalContext, parserContext, techniqueIndex);
+                _editorScene->_vegetationSpawnManager->Render(metalContext, parserContext, techniqueIndex);
             }
         }
         else 
         if (parseSettings._batchFilter == SceneParseSettings::BatchFilter::Transparent)
         {
-            _editorScene->_placementsManager->RenderTransparent(
-                context, parserContext, techniqueIndex);
+            _editorScene->_placementsManager->RenderTransparent(metalContext, parserContext, techniqueIndex);
+
+            if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
+                TRY {
+                    _editorScene->_placeholders->Render(*metalContext, parserContext, techniqueIndex);
+                }
+                CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+                CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+                CATCH_END
+            }
         }
     }
 

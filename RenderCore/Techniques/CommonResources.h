@@ -26,6 +26,7 @@ namespace RenderCore { namespace Techniques
         Metal::BlendState _blendAlphaPremultiplied;
         Metal::BlendState _blendOpaque;
         Metal::BlendState _blendOneSrcAlpha;
+        Metal::BlendState _blendAdditive;
 
         Metal::RasterizerState _defaultRasterizer;
         Metal::RasterizerState _cullDisable;

@@ -9,6 +9,7 @@
 #include "../EntityInterface/EntityInterface.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include <memory>
+#include <string>
 
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
 namespace SceneEngine { class IIntersectionTester; }
@@ -25,7 +26,7 @@ namespace GUILayer
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex);
 
-        void AddAnnotation(EntityInterface::ObjectTypeId typeId);
+        void AddAnnotation(EntityInterface::ObjectTypeId typeId, const std::string& geoType);
 
         std::shared_ptr<SceneEngine::IIntersectionTester> CreateIntersectionTester();
 
@@ -39,7 +40,8 @@ namespace GUILayer
         public:
             EntityInterface::ObjectTypeId _typeId;
         };
-        std::vector<Annotation> _annotations;
+        std::vector<Annotation> _cubeAnnotations;
+        std::vector<Annotation> _triMeshAnnotations;
 
         class IntersectionTester;
     };

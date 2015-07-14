@@ -9,6 +9,7 @@
   <xs:include schemaLocation="xleplacements.xsd"/>
   <xs:include schemaLocation="xleterrain.xsd"/>
   <xs:include schemaLocation="xleenv.xsd"/>
+  <xs:include schemaLocation="xlemarkers.xsd"/>
   <xs:include schemaLocation="gameobject.xsd"/>
 
   <xs:complexType name="xleGameType">

@@ -56,23 +56,35 @@ namespace RenderingInterop
             var typeId = (tag != null) ? (uint)tag : 0;
             GameEngine.DeleteDocument(m_nativeDocId, typeId);
         }
-        
+
         void node_ChildInserted(object sender, ChildEventArgs e)
         {
-            NativeObjectAdapter childObject = e.Child.As<NativeObjectAdapter>();
+            node_ChildInserted_Internal(e.Child, e.Parent, e.Index);
+        }
+
+        private void node_ChildInserted_Internal(object child, object parent, int insertionPoint)
+        {
+            NativeObjectAdapter childObject = child.As<NativeObjectAdapter>();
             if (childObject != null)
             {
                 childObject.OnAddToDocument(this);
 
-                NativeObjectAdapter parentObject = e.Parent.As<NativeObjectAdapter>();
+                NativeObjectAdapter parentObject = parent.As<NativeObjectAdapter>();
                 if (parentObject != null)
                 {
-                    childObject.OnSetParent(parentObject, e.Index);
+                    childObject.OnSetParent(parentObject, insertionPoint);
                 }
                 else
                 {
                     childObject.OnSetParent(null, -1);
                 }
+            }
+
+            var children = child.As<DomNode>().Children;
+            int index = 0;
+            foreach (var c in children) {
+                node_ChildInserted_Internal(c, child, index);
+                ++index;
             }
         }
 
