@@ -35,8 +35,10 @@
         <LeGe.NativeType nativeName="TriMeshMarker"/>
         <LeGe.NativeVis geo="TriMeshMarker"/>
         <LeGe.NativeProperty name="indexlist" nativeName="IndexList"/>
+        <LeGe.NativeProperty name="ShowMarker" nativeName="ShowMarker"/>
         
         <scea.dom.editors.attribute name="indexlist" displayName="Index List" category="General"/>
+        <scea.dom.editors.attribute name="ShowMarker" displayName="Show Marker" category="General"/>
         <scea.dom.editors name="TriMeshMarker" category="Markers" image="LevelEditorCore.Resources.gameObject.png" menuText="TriMeshMarker" description="TriMeshMarker"/>
       </xs:appinfo>
     </xs:annotation>
@@ -47,6 +49,7 @@
           <xs:element name="points" type="markerPointType" minOccurs="0" maxOccurs="unbounded" />
         </xs:sequence>
         <xs:attribute name="indexlist" type="intListType" default=""/>
+        <xs:attribute name="ShowMarker" type="xs:boolean" default="true"/>
       </xs:extension>
     </xs:complexContent>
     

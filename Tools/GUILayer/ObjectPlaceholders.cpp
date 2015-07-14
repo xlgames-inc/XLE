@@ -34,6 +34,7 @@ namespace GUILayer
         static const auto Transform = ParameterBox::MakeParameterNameHash("Transform");
         static const auto Translation = ParameterBox::MakeParameterNameHash("Translation");
         static const auto Visible = ParameterBox::MakeParameterNameHash("Visible");
+        static const auto ShowMarker = ParameterBox::MakeParameterNameHash("ShowMarker");
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -90,13 +91,18 @@ namespace GUILayer
         return Identity<Float4x4>();
     }
 
+    static bool GetShowMarker(const RetainedEntity& obj)
+    {
+        return obj._properties.GetParameter(Parameters::ShowMarker, true);
+    }
+
     static void DrawObject(
         Metal::DeviceContext& devContext,
         ParsingContext& parserContext,
         const VisGeoBox& visBox,
         const ResolvedShader& shader, const RetainedEntity& obj)
     {
-        if (!obj._properties.GetParameter(Parameters::Visible, true)) return;
+        if (!obj._properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(obj)) return;
 
         const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
             "game/xleres/BasicMaterialConstants.txt");
@@ -123,7 +129,7 @@ namespace GUILayer
         static auto IndexListHash = ParameterBox::MakeParameterNameHash("IndexList");
         static auto TransformHash = ParameterBox::MakeParameterNameHash("Transform");
 
-        if (!obj._properties.GetParameter(Parameters::Visible, true)) return;
+        if (!obj._properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(obj)) return;
 
         // we need an index list with at least 3 indices (to make at least one triangle)
         auto indexListType = obj._properties.GetParameterType(IndexListHash);
