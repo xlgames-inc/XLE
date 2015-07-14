@@ -52,7 +52,7 @@ float BuildExponentialShadowMap(float4 position : SV_Position, float2 texCoord :
 		}
 
 		#if ESM_SHADOW_MAPS==1
-			return exp((ESM_C / float(DownsampleCount*DownsampleCount)) * accumulativeLinearDepth);
+			return exp((-ESM_C / float(DownsampleCount*DownsampleCount)) * accumulativeLinearDepth);
 		#else
 			return accumulativeLinearDepth / float(DownsampleCount*DownsampleCount);
 		#endif
@@ -70,7 +70,7 @@ float BuildExponentialShadowMap(float4 position : SV_Position, float2 texCoord :
 		}
 
 		#if ESM_SHADOW_MAPS==1
-			return exp(ESM_C * maxDepth);
+			return exp(-ESM_C * maxDepth);
 		#else
 			return maxDepth;
 		#endif

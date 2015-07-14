@@ -47,9 +47,13 @@ float ResolveShadows(float3 worldPosition)
 
 		[branch] if (max(max(abs(tc.x), abs(tc.y)), max(d, 1.f-d)) < 1.f) {
 
+				// getting severe problems towards the back of the projection
+				// the only way to prevent it is to skip the back half of the projection
+			if (d > 0.5f) continue;
+
 			tc = float2(0.5f + 0.5f * tc.x, 0.5f - 0.5f * tc.y);
 
-			float esmSample = ShadowTextures.SampleLevel(DefaultSampler, float3(tc, float(c)), 0);
+			float texSample = ShadowTextures.SampleLevel(DefaultSampler, float3(tc, float(c)), 0);
 			float linearComparisonDistance;
 			float4 miniProj = ShadowProjection_GetMiniProj(c);
 			if (shadowsPerspectiveProj) {
@@ -60,9 +64,9 @@ float ResolveShadows(float3 worldPosition)
 
 			#if ESM_SHADOW_MAPS==1
 						//	As per esm resolve equations...
-				return saturate(exp(-ESM_C*(linearComparisonDistance + ShadowsBias)) * esmSample);
+				return saturate(exp(ESM_C*(linearComparisonDistance + ShadowsBias)) * texSample);
 			#else
-				return linearComparisonDistance < esmSample;
+				return linearComparisonDistance > texSample;
 			#endif
 		}
 
