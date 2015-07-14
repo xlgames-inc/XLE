@@ -37,21 +37,19 @@ float ResolveShadows(float3 worldPosition)
 {
 	const bool shadowsPerspectiveProj = ShadowsPerspectiveProjection;
 
-	float result = 1.f;
 		// note -- we might not really need every shadow projection here. Just the first 2 or 3 cascades might be enough
 	int projectionCount = GetShadowSubProjectionCount();
 	for (int c=0; c<projectionCount; ++c) {
 		float4 frustumCoordinates = ShadowProjection_GetOutput(worldPosition, c);
 
 		float d = frustumCoordinates.z / frustumCoordinates.w;
-		float2 texCoords = frustumCoordinates.xy / frustumCoordinates.w;
+		float2 tc = frustumCoordinates.xy / frustumCoordinates.w;
 
-		if (	(max(abs(texCoords.x), abs(texCoords.y)) < 1.f)
-			&&	(max(d, 1.f-d) < 1.f)) {
+		[branch] if (max(max(abs(tc.x), abs(tc.y)), max(d, 1.f-d)) < 1.f) {
 
-			texCoords = float2(0.5f + 0.5f * texCoords.x, 0.5f - 0.5f * texCoords.y);
+			tc = float2(0.5f + 0.5f * tc.x, 0.5f - 0.5f * tc.y);
 
-			float esmSample = ShadowTextures.SampleLevel(DefaultSampler, float3(texCoords, float(c)), 0);
+			float esmSample = ShadowTextures.SampleLevel(DefaultSampler, float3(tc, float(c)), 0);
 			float linearComparisonDistance;
 			float4 miniProj = ShadowProjection_GetMiniProj(c);
 			if (shadowsPerspectiveProj) {
@@ -70,7 +68,7 @@ float ResolveShadows(float3 worldPosition)
 
 	}
 
-	return result;
+	return 1.f;
 }
 
 float3 CalculateSamplePoint(uint3 cellIndex)
@@ -162,8 +160,7 @@ float MonochromeRaleighScattering(float cosTheta)
 		//	Write final result to the volume texture
 
 	int3 outputTexel = dispatchThreadId;
-	const float convenienceScalar = 0.1f;	// scalar just to make "Density" valid between 0 and 1
-	float density = max(0, convenienceScalar * (Density + NoiseDensityScale * noiseSample1));
+	float density = max(0, Density + NoiseDensityScale * noiseSample1);
 
 		// just linear with height currently...
 	float heightDensityScale = saturate((centrePoint.z - HeightStart) / (HeightEnd - HeightStart));
@@ -175,7 +172,9 @@ float MonochromeRaleighScattering(float cosTheta)
 
 static float3 GetDirectionToSun()
 {
-	return -normalize(BasicLight[0].NegativeDirection);
+		// hack -- not currently working on intel chip? Maybe this constant buffer isn't being set correctly?
+	return normalize(float3(1,1,.1));
+	// return -normalize(BasicLight[0].NegativeDirection);
 }
 
 float3 CalculateInscatter(int3 dispatchThreadId, float density)
@@ -207,9 +206,6 @@ float3 CalculateInscatter(int3 dispatchThreadId, float density)
 	float4 inscatterPointLightSources = InputInscatterPointLightSources[dispatchThreadId];
 	float raleighScattering	 = MonochromeRaleighScattering(cosTheta);
 	float inscatterScalar = shadowing * raleighScattering * density;		// inscatter quantity must be scale with the volume of the cell
-
-	// const float3 forwardColour = 17.f * float3(.7, .6f, 1.f);
-	// const float3 backColour = 17.f * float3(0.5f, 0.5f, .65f);
 
 	float3 colour = lerp(ForwardColour, BackColour, 0.5f + 0.5f * cosTheta);
 	return (inscatterScalar * colour) + inscatterPointLightSources.rgb;

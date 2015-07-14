@@ -1,0 +1,19 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#include "../Utility/DebuggingPanels.h"
+
+Texture2DArray<float>		ShadowTextures	 	: register(t0);
+
+float4 VolumeShadows(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	float4 result = float4(0.0.xxx, 0.f);
+	RenderTile(float2(.5f, 0.f), float2(1.f, .5f), texCoord, ShadowTextures, 0, result);
+	RenderTile(float2(.8f, .05f), float2(.95f, .2f), texCoord, ShadowTextures, 1, result);
+	RenderTile(float2(.8f, .3f), float2(.95f, .45f), texCoord, ShadowTextures, 2, result);
+    RenderTile(float2(.8f, .3f), float2(.95f, .45f), texCoord, ShadowTextures, 3, result);
+	return result;
+}

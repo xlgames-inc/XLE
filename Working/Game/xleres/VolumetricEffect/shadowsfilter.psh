@@ -157,14 +157,14 @@ float HorizontalBoxFilter11(float4 position : SV_Position, float2 texCoord : TEX
 		accumulatedValue += FilteringSource.Load(int4(max(midpointCoords.x - 4, 0), midpointCoords.y, WorkingSlice, 0));
 		accumulatedValue += FilteringSource.Load(int4(max(midpointCoords.x - 3, 0), midpointCoords.y, WorkingSlice, 0));
 		accumulatedValue += FilteringSource.Load(int4(max(midpointCoords.x - 2, 0), midpointCoords.y, WorkingSlice, 0));
-		accumulatedValue += FilteringSource.Load(int4(max(midpointCoords.x - 1, 0), midpointCoords.y, WorkingSlice, 0));
-		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, midpointCoords.y, WorkingSlice, 0));
-		accumulatedValue += FilteringSource.Load(int4(min(midpointCoords.x + 1, 255), midpointCoords.y, WorkingSlice, 0));
+		accumulatedValue += 2.f * FilteringSource.Load(int4(max(midpointCoords.x - 1, 0), midpointCoords.y, WorkingSlice, 0));
+		accumulatedValue += 5.f * FilteringSource.Load(int4(midpointCoords.x, midpointCoords.y, WorkingSlice, 0));
+		accumulatedValue += 2.f * FilteringSource.Load(int4(min(midpointCoords.x + 1, 255), midpointCoords.y, WorkingSlice, 0));
 		accumulatedValue += FilteringSource.Load(int4(min(midpointCoords.x + 2, 255), midpointCoords.y, WorkingSlice, 0));
 		accumulatedValue += FilteringSource.Load(int4(min(midpointCoords.x + 3, 255), midpointCoords.y, WorkingSlice, 0));
 		accumulatedValue += FilteringSource.Load(int4(min(midpointCoords.x + 4, 255), midpointCoords.y, WorkingSlice, 0));
 		accumulatedValue += FilteringSource.Load(int4(min(midpointCoords.x + 5, 255), midpointCoords.y, WorkingSlice, 0));
-		accumulatedValue /= float(11.f);
+		accumulatedValue /= float(11.f + 6.f);
 	} else {
 		float maxV = exp(.95f * ESM_C);
 		float accWeight = 0.f;
@@ -194,14 +194,14 @@ float VerticalBoxFilter11(float4 position : SV_Position, float2 texCoord : TEXCO
 		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y - 4, 0), WorkingSlice, 0));
 		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y - 3, 0), WorkingSlice, 0));
 		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y - 2, 0), WorkingSlice, 0));
-		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y - 1, 0), WorkingSlice, 0));
-		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, midpointCoords.y, WorkingSlice, 0));
-		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 1, 255), WorkingSlice, 0));
+		accumulatedValue += 2.f * FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y - 1, 0), WorkingSlice, 0));
+		accumulatedValue += 5.f * FilteringSource.Load(int4(midpointCoords.x, midpointCoords.y, WorkingSlice, 0));
+		accumulatedValue += 2.f * FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 1, 255), WorkingSlice, 0));
 		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 2, 255), WorkingSlice, 0));
 		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 3, 255), WorkingSlice, 0));
 		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 4, 255), WorkingSlice, 0));
 		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 5, 255), WorkingSlice, 0));
-		accumulatedValue /= float(11.f);
+		accumulatedValue /= float(11.f + 6.f);
 	} else {
 		float maxV = exp(.95f * ESM_C);
 		float accWeight = 0.f;

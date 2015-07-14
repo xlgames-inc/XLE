@@ -298,6 +298,8 @@ namespace SceneEngine
     VolumetricFogResources::~VolumetricFogResources()
     {}
 
+    static void VolumetricFog_DrawDebugging(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, VolumetricFogResources& res);
+
     static bool UseESMShadowMaps() { return Tweakable("VolFogESM", true); }
 
     static RenderCore::Metal::ConstantBufferPacket MakeVolFogConstants(
@@ -447,6 +449,11 @@ namespace SceneEngine
             context->UnbindCS<Metal::ShaderResourceView>(2, 3);
             context->UnbindCS<Metal::ShaderResourceView>(13, 3);
             context->Unbind<Metal::ComputeShader>();
+
+            if (Tweakable("VolumetricFogDebugging", false)) {
+                lightingParserContext._pendingOverlays.push_back(
+                    std::bind(&VolumetricFog_DrawDebugging, std::placeholders::_1, std::placeholders::_2, std::ref(fogRes)));
+            }
         } 
         CATCH(const ::Assets::Exceptions::InvalidResource& e) { lightingParserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingResource& e) { lightingParserContext.Process(e); }
@@ -627,6 +634,30 @@ namespace SceneEngine
 
     VolumetricFogManager::~VolumetricFogManager()
     {
+    }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    void VolumetricFog_DrawDebugging(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, VolumetricFogResources& res)
+    {
+            // draw debugging for blurred shadows texture
+        using namespace RenderCore;
+        TRY {
+            context->BindPS(MakeResourceList(0, res._shadowMapShaderSRV));
+            auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+                "game/xleres/volumetriceffect/debugging.psh:VolumeShadows:ps_*",
+                "");
+            context->Bind(debuggingShader);
+            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
+            SetupVertexGeneratorShader(context);
+            context->Draw(4);
+        } 
+        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH_END
+
+        context->UnbindPS<RenderCore::Metal::ShaderResourceView>(0, 1);
     }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////

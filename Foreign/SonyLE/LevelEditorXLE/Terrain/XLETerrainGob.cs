@@ -300,9 +300,9 @@ namespace LevelEditorXLE.Terrain
                         // fill in the cells directory with starter cells (if they don't already exist)
                         // (and build empty uber surface files for any that are missing)
                     GUILayer.EditorInterfaceUtils.GenerateMissingUberSurfaceFiles(
-                        engineCfg, UberSurfaceDirectory, progress); 
+                        engineCfg, cfg.UberSurfaceDirectory, progress); 
                     GUILayer.EditorInterfaceUtils.GenerateCellFiles(
-                        engineCfg, UberSurfaceDirectory, false,
+                        engineCfg, cfg.UberSurfaceDirectory, false,
                         cfg.SlopeThreshold0, cfg.SlopeThreshold1, cfg.SlopeThreshold2,
                         progress);
 
