@@ -11,6 +11,7 @@ cbuffer VolumetricFogConstants
 {
     float ESM_C;        //  = .25f * 80.f;
     float ShadowsBias;  // = 0.00000125f
+    float ShadowDepthScale;
 
     float JitteringAmount; // = 0.5f;
 

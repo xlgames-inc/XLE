@@ -9,6 +9,7 @@
 #include "EnvironmentSettings.h"
 #include "RetainedEntities.h"
 #include "../../SceneEngine/Ocean.h"
+#include "../../SceneEngine/VolumetricFog.h"
 #include "../../PlatformRig/BasicSceneParser.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringUtils.h"
@@ -25,6 +26,7 @@ namespace SceneEngine
 
 namespace EntityInterface
 {
+    #define ParamName(x) static auto x = ParameterBox::MakeParameterNameHash(#x);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -315,7 +317,6 @@ namespace EntityInterface
 
     static SceneEngine::OceanSettings BuildOceanSettings(const RetainedEntities& sys, const RetainedEntity& obj)
     {
-        #define ParamName(x) static auto x = ParameterBox::MakeParameterNameHash(#x);
         ParamName(Enable);
         ParamName(WindAngle);
         ParamName(WindVelocity);
@@ -357,7 +358,6 @@ namespace EntityInterface
 
     static SceneEngine::OceanLightingSettings BuildOceanLightingSettings(const RetainedEntities& sys, const RetainedEntity& obj)
     {
-        #define ParamName(x) static auto x = ParameterBox::MakeParameterNameHash(#x);
         ParamName(SpecularReflectionBrightness);
         ParamName(FoamBrightness);
         ParamName(OpticalThicknessScalar);
@@ -415,6 +415,44 @@ namespace EntityInterface
                 auto* object = flexSys.GetEntity(obj);
                 if (object)
                     SceneEngine::GlobalOceanLightingSettings = BuildOceanLightingSettings(flexSys, *object);
+            }
+        );
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static void UpdateVolumetricFog(
+        const RetainedEntities& sys, const RetainedEntity& obj,
+        SceneEngine::VolumetricFogManager& mgr)
+    {
+        using namespace SceneEngine;
+        VolumetricFogConfig cfg;
+
+        const auto volumeType = sys.GetTypeId((const utf8*)"FogVolume");
+        auto volumes = sys.FindEntitiesOfType(volumeType);
+        for (auto v:volumes) {
+            const auto& props = v->_properties;
+            cfg._volumes.push_back(VolumetricFogConfig::FogVolume(props));
+        }
+        
+        mgr.Load(cfg);
+    }
+
+    void RegisterVolumetricFogFlexObjects(
+        RetainedEntities& flexSys, 
+        std::shared_ptr<SceneEngine::VolumetricFogManager> manager)
+    {
+        std::weak_ptr<SceneEngine::VolumetricFogManager> weakPtrToManager = manager;
+        flexSys.RegisterCallback(
+            flexSys.GetTypeId((const utf8*)"FogVolume"),
+            [weakPtrToManager](const RetainedEntities& flexSys, const Identifier& obj)
+            {
+                auto mgr = weakPtrToManager.lock();
+                if (!mgr) return;
+
+                auto* object = flexSys.GetEntity(obj);
+                if (object)
+                    UpdateVolumetricFog(flexSys, *object, *mgr);
             }
         );
     }

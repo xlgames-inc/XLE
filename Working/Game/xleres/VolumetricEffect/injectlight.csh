@@ -48,15 +48,16 @@ float ResolveShadows(float3 worldPosition)
 
 		if (	(max(abs(texCoords.x), abs(texCoords.y)) < 1.f)
 			&&	(max(d, 1.f-d) < 1.f)) {
+
 			texCoords = float2(0.5f + 0.5f * texCoords.x, 0.5f - 0.5f * texCoords.y);
 
 			float esmSample = ShadowTextures.SampleLevel(DefaultSampler, float3(texCoords, float(c)), 0);
 			float linearComparisonDistance;
 			float4 miniProj = ShadowProjection_GetMiniProj(c);
 			if (shadowsPerspectiveProj) {
-				linearComparisonDistance = NDCDepthToWorldSpace_Perspective(d, AsMiniProjZW(miniProj));
+				linearComparisonDistance = NDCDepthToWorldSpace_Perspective(d, AsMiniProjZW(miniProj)) * ShadowDepthScale;
 			} else {
-				linearComparisonDistance = NDCDepthToWorldSpace_Ortho(d, AsMiniProjZW(miniProj));
+				linearComparisonDistance = NDCDepthToWorldSpace_Ortho(d, AsMiniProjZW(miniProj)) * ShadowDepthScale;
 			}
 
 			#if ESM_SHADOW_MAPS==1

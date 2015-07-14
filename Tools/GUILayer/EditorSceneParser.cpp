@@ -64,7 +64,6 @@ namespace GUILayer
     protected:
         std::shared_ptr<EditorScene> _editorScene;
         std::shared_ptr<ToolsRig::VisCameraSettings> _camera;
-        std::shared_ptr<SceneEngine::VolumeFogPlugin> _volumeFogPlugin;
 
         EnvironmentSettings _activeEnvSettings;
         const EnvironmentSettings& GetEnvSettings() const { return _activeEnvSettings; }
@@ -154,7 +153,7 @@ namespace GUILayer
     void EditorSceneParser::AddLightingPlugins(LightingParserContext& parserContext)
     {
         parserContext._plugins.push_back(_editorScene->_vegetationSpawnManager->GetParserPlugin());
-        parserContext._plugins.push_back(_volumeFogPlugin);
+        parserContext._plugins.push_back(_editorScene->_volumeFogManager->GetParserPlugin());
     }
 
     EditorSceneParser::EditorSceneParser(
@@ -164,7 +163,6 @@ namespace GUILayer
         , _camera(std::move(camera))
     {
         _activeEnvSettings = PlatformRig::DefaultEnvironmentSettings();
-        _volumeFogPlugin = std::make_shared<SceneEngine::VolumeFogPlugin>();
     }
     EditorSceneParser::~EditorSceneParser() {}
 

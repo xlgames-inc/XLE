@@ -525,5 +525,69 @@
     </xs:complexContent>
   </xs:complexType>
   
+
+      <!--   F O G   V O L U M E   -->
+  <xs:complexType name="fogVolumeType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="FogVolume"/>
+        <LeGe.NativeProperty name="Density" nativeName="Density"/>
+        <LeGe.NativeProperty name="NoiseDensityScale" nativeName="NoiseDensityScale"/>
+        <LeGe.NativeProperty name="NoiseSpeed" nativeName="NoiseSpeed"/>
+        <LeGe.NativeProperty name="ForwardColor" nativeName="ForwardColor"/>
+        <LeGe.NativeProperty name="ForwardColorScale" nativeName="ForwardColorScale"/>
+        <LeGe.NativeProperty name="BackColor" nativeName="BackColor"/>
+        <LeGe.NativeProperty name="BackColorScale" nativeName="BackColorScale"/>
+        <LeGe.NativeProperty name="ESM_C" nativeName="ESM_C"/>
+        <LeGe.NativeProperty name="ShadowBias" nativeName="ShadowBias"/>
+        <LeGe.NativeProperty name="JitteringAmount" nativeName="JitteringAmount"/>
+        <LeGe.NativeProperty name="HeightStart" nativeName="HeightStart"/>
+        <LeGe.NativeProperty name="HeightEnd" nativeName="HeightEnd"/>
+
+        <scea.dom.editors.attribute category="Density" name="Density" displayName="Density"/>
+        <scea.dom.editors.attribute category="Density" name="NoiseDensityScale" displayName="Noise Density Scale"/>
+        <scea.dom.editors.attribute category="Density" name="NoiseSpeed" displayName="Noise Speed"/>
+
+        <scea.dom.editors.attribute category="Color" name="ForwardColor" displayName="Forward Color"
+          editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
+        <scea.dom.editors.attribute category="Color" name="BackColor" displayName="Backwards Color"
+          editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
+        <scea.dom.editors.attribute category="Color" name="ForwardColorScale" displayName="Forward Color Scale"/>
+        <scea.dom.editors.attribute category="Color" name="BackColorScale" displayName="Backwards Color Scale"/>
+        
+        <scea.dom.editors.attribute category="Shadowing" name="ESM_C" displayName="ESM_C"/>
+        <scea.dom.editors.attribute category="Shadowing" name="ShadowBias" displayName="ShadowBias"/>
+        <scea.dom.editors.attribute category="Shadowing" name="JitteringAmount" displayName="JitteringAmount"/>
+        
+        <scea.dom.editors.attribute category="Range" name="HeightStart" displayName="Height Start"/>
+        <scea.dom.editors.attribute category="Range" name="HeightEnd" displayName="Height End"/>
+        
+        <scea.dom.editors category="Lights" name="FogVolume" menuText="Lights/FogVolume" description="Volumetric fog effect"/>
+        <LeGe.OpaqueListable label="Fog Volume"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:complexContent>
+      <xs:extension base="envObjectType">
+        <xs:attribute name="Density" type="xs:float" default=".5"/>
+        <xs:attribute name="NoiseDensityScale" type="xs:float" default="0"/>
+        <xs:attribute name="NoiseSpeed" type="xs:float" default="1"/>
+
+        <xs:attribute name="ForwardColor" type="xs:int" default="-1"/>
+        <xs:attribute name="ForwardColorScale" type="xs:float" default="1"/>
+        <xs:attribute name="BackColor" type="xs:int" default="-1"/>
+        <xs:attribute name="BackColorScale" type="xs:float" default="1"/>
+
+        <xs:attribute name="ESM_C" type="xs:float" default="20"/>
+        <xs:attribute name="ShadowBias" type="xs:float" default="0.000001"/>
+        <xs:attribute name="JitteringAmount" type="xs:float" default="0.5"/>
+        
+        <xs:attribute name="HeightStart" type="xs:float" default="100"/>
+        <xs:attribute name="HeightEnd" type="xs:float" default="0"/>
+      </xs:extension>
+    </xs:complexContent>
+  
+  </xs:complexType>
+  
 </xs:schema>
 

@@ -20,6 +20,7 @@ namespace SceneEngine
     class TerrainManager;
     class ISceneParser; class IntersectionTestScene; 
     class VegetationSpawnManager;
+    class VolumetricFogManager;
 }
 namespace Tools { class IManipulator; }
 
@@ -42,6 +43,7 @@ namespace GUILayer
         std::shared_ptr<SceneEngine::PlacementsEditor> _placementsEditor;
         std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
         std::shared_ptr<SceneEngine::VegetationSpawnManager> _vegetationSpawnManager;
+        std::shared_ptr<SceneEngine::VolumetricFogManager> _volumeFogManager;
         std::shared_ptr<EntityInterface::RetainedEntities> _flexObjects;
         std::shared_ptr<ObjectPlaceholders> _placeholders;
 

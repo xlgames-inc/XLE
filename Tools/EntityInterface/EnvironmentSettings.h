@@ -18,6 +18,8 @@ namespace Utility
     template<typename CharType> class InputStreamFormatter;
 }
 
+namespace SceneEngine { class VolumetricFogManager; }
+
 namespace EntityInterface
 {
     class RetainedEntities;
@@ -40,5 +42,9 @@ namespace EntityInterface
 
     EnvSettingsVector DeserializeEnvSettings(InputStreamFormatter<utf8>& formatter);
     void RegisterEnvironmentFlexObjects(RetainedEntities& flexSys);
+
+    void RegisterVolumetricFogFlexObjects(
+        RetainedEntities& flexSys, 
+        std::shared_ptr<SceneEngine::VolumetricFogManager> manager);
 }
 

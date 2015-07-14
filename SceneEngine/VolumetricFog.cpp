@@ -92,7 +92,7 @@ namespace SceneEngine
     VolumetricFogShaders::VolumetricFogShaders(const Desc& desc)
     {
         char defines[256];
-        _snprintf_s(defines, _TRUNCATE, "ESM_SHADOW_MAPS=%i;DO_NOISE_OFFSET=%i", int(desc._esmShadowMaps), int(desc._doNoiseOffset));
+        _snprintf_s(defines, _TRUNCATE, "ESM_SHADOW_MAPS=%i;DO_NOISE_OFFSET=%i;SHADOW_CASCADE_MODE=%i", int(desc._esmShadowMaps), int(desc._doNoiseOffset), desc._shadowCascadeMode);
         auto* buildExponentialShadowMap = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/VolumetricEffect/shadowsfilter.psh:BuildExponentialShadowMap:ps_*", defines);
         auto* horizontalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
@@ -121,12 +121,10 @@ namespace SceneEngine
         auto injectLightBinding = std::make_unique<Metal::BoundUniforms>(std::ref(::Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/volumetriceffect/injectlight.csh:InjectLighting:cs_*", defines)));
         Techniques::TechniqueContext::BindGlobalUniforms(*injectLightBinding);
         injectLightBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
-        injectLightBinding->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 2, 1);
 
         auto propagateLightBinding = std::make_unique<Metal::BoundUniforms>(std::ref(::Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines)));
         Techniques::TechniqueContext::BindGlobalUniforms(*propagateLightBinding);
         propagateLightBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
-        injectLightBinding->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 2, 1);
 
         const char* vertexShader = 
             desc._flipDirection
@@ -302,28 +300,34 @@ namespace SceneEngine
 
     static bool UseESMShadowMaps() { return Tweakable("VolFogESM", true); }
 
-    RenderCore::Metal::ConstantBufferPacket MakeVolFogConstants()
+    static RenderCore::Metal::ConstantBufferPacket MakeVolFogConstants(
+        VolumetricFogConfig::FogVolume& volume)
     {
-        auto& mat = GlobalVolumetricFogMaterial;
+        const auto& mat = volume._material;
+        const float shadowDepthScale = 1.0f / 2048.f;   // (should be based on the far clip in the shadow projection)
         struct Constants
         {
             float ESM_C;
             float ShadowsBias;
+            float ShadowDepthScale;
             float JitteringAmount;
             float Density;
             float NoiseDensityScale;
             float NoiseSpeed;
             float HeightStart;
             float HeightEnd;
+            unsigned dummy[3];
 
             Float3 ForwardColour; unsigned _pad1;
             Float3 BackColour; unsigned _pad2;
         } constants = {
-            mat._ESM_C, mat._shadowsBias, mat._jitteringAmount, mat._density, 
+            mat._ESM_C, mat._shadowsBias, shadowDepthScale,
+            mat._jitteringAmount, mat._density, 
             mat._noiseDensityScale, mat._noiseSpeed,
-            mat._heightStart, mat._heightEnd,
-            mat._forwardBrightness * mat._forwardColour, 0,
-            mat._backBrightness * mat._backColour, 0
+            volume._heightStart, volume._heightEnd,
+            {0,0,0},
+            mat._forwardColour, 0,
+            mat._backColour, 0
         };
 
         return RenderCore::MakeSharedPkt(constants);
@@ -337,17 +341,20 @@ namespace SceneEngine
     void VolumetricFog_Build(   RenderCore::Metal::DeviceContext* context, 
                                 LightingParserContext& lightingParserContext,
                                 bool useMsaaSamplers, 
-                                PreparedShadowFrustum& shadowFrustum)
+                                PreparedShadowFrustum& shadowFrustum,
+                                VolumetricFogConfig::FogVolume& cfg)
     {
-        TRY {
-            auto& fogRes = Techniques::FindCachedBox2<VolumetricFogResources>(shadowFrustum._frustumCount, UseESMShadowMaps());
+        TRY 
+        {
+            auto& fogRes = Techniques::FindCachedBox2<VolumetricFogResources>(
+                shadowFrustum._frustumCount, UseESMShadowMaps());
             auto& fogShaders = Techniques::FindCachedBoxDep2<VolumetricFogShaders>(
                 1, useMsaaSamplers, false, UseESMShadowMaps(), 
                 GlobalVolumetricFogMaterial._noiseDensityScale > 0.f,
                 GetShadowCascadeMode(shadowFrustum));
 
-            RenderCore::Metal::ConstantBufferPacket constantBufferPackets[3];
-            constantBufferPackets[0] = MakeVolFogConstants();
+            RenderCore::Metal::ConstantBufferPacket constantBufferPackets[2];
+            constantBufferPackets[0] = MakeVolFogConstants(cfg);
 
             SavedTargets savedTargets(context);
             Metal::ViewportDesc newViewport(0, 0, 256, 256, 0.f, 1.f);
@@ -360,9 +367,8 @@ namespace SceneEngine
             int c=0; 
             for (auto i=fogRes._shadowMapRenderTargets.begin(); i!=fogRes._shadowMapRenderTargets.end(); ++i, ++c) {
 
-                struct WorkingSlice { int _workingSlice; Float4 _miniProj; } globalsBuffer = {
-                    c, shadowFrustum._arbitraryCBSource._minimalProj[c]
-                };
+                struct WorkingSlice { int _workingSlice; unsigned dummy[3]; } 
+                    globalsBuffer = { c, { 0,0,0 } };
                 constantBufferPackets[1] = MakeSharedPkt(globalsBuffer);
 
                 fogShaders._buildExponentialShadowMapBinding->Apply(
@@ -419,10 +425,9 @@ namespace SceneEngine
             //     lightingParserContext.GetGlobalTransformCB(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), 
             //     *shadowFrustum._projectConstantBuffer, lightingParserContext.GetGlobalStateCB()));
 
-            const Metal::ConstantBuffer* prebuiltCBs[3] = { nullptr, nullptr, &shadowFrustum._arbitraryCB };
             fogShaders._injectLightBinding->Apply(
                 *context, lightingParserContext.GetGlobalUniformsStream(),
-                Metal::UniformsStream(constantBufferPackets, prebuiltCBs, dimof(constantBufferPackets)));
+                Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
 
             context->BindCS(MakeResourceList(Metal::SamplerState()));
             context->Bind(*fogShaders._injectLight);
@@ -432,7 +437,7 @@ namespace SceneEngine
 
             fogShaders._propagateLightBinding->Apply(
                 *context, lightingParserContext.GetGlobalUniformsStream(),
-                Metal::UniformsStream(constantBufferPackets, prebuiltCBs, dimof(constantBufferPackets)));
+                Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
 
             context->BindCS(MakeResourceList(3, fogRes._inscatterShadowingValuesSRV, fogRes._inscatterPointLightsValuesSRV));
             context->Bind(*fogShaders._propagateLight);
@@ -460,7 +465,10 @@ namespace SceneEngine
             GetShadowCascadeMode(shadowFrustum));
 
         context->BindPS(MakeResourceList(7, fogRes._inscatterFinalsValuesSRV, fogRes._transmissionValuesSRV));
-        fogShaders._resolveLightBinding->Apply(*context, lightingParserContext.GetGlobalUniformsStream(), Metal::UniformsStream());
+        fogShaders._resolveLightBinding->Apply(
+            *context, 
+            lightingParserContext.GetGlobalUniformsStream(), 
+            Metal::UniformsStream());
         context->Bind(*fogShaders._resolveLight);
         context->Draw(4);
     }
@@ -473,19 +481,96 @@ namespace SceneEngine
         result._density = .5f;
         result._noiseDensityScale = 0.f;
         result._noiseSpeed = 1.f;
-        result._heightStart = 270.f;
-        result._heightEnd = 170.f;
-        result._forwardColour = Float3(.7f, .6f, 1.f);
-        result._backColour = Float3(0.5f, 0.5f, .65f);
-        result._forwardBrightness = 17.f;
-        result._backBrightness = 17.f;
+        result._forwardColour = 17.f * Float3(.7f, .6f, 1.f);
+        result._backColour = 17.f * Float3(0.5f, 0.5f, .65f);
         result._ESM_C = .25f * 80.f;
         result._shadowsBias = 0.00000125f;
         result._jitteringAmount = 0.5f;
         return result;
     }
 
+    VolumetricFogConfig::FogVolume::FogVolume()
+    : _material(VolumetricFogMaterial_Default())
+    {
+        _heightStart = 100.f;
+        _heightEnd = 0.f;
+        _center = Zero<Float3>();
+        _radius = 100.f;
+    }
+
+    #define ParamName(x) static auto x = ParameterBox::MakeParameterNameHash(#x);
+
+    static Float3 AsFloat3Color(unsigned packedColor)
+    {
+        return Float3(
+            (float)((packedColor >> 16) & 0xff) / 255.f,
+            (float)((packedColor >>  8) & 0xff) / 255.f,
+            (float)(packedColor & 0xff) / 255.f);
+    }
+
+    VolumetricFogConfig::FogVolume::FogVolume(const ParameterBox& params)
+    {
+        ParamName(Density);
+        ParamName(NoiseDensityScale);
+        ParamName(NoiseSpeed);
+        ParamName(ForwardColor);
+        ParamName(ForwardColorScale);
+        ParamName(BackColor);
+        ParamName(BackColorScale);
+        ParamName(ESM_C);
+        ParamName(ShadowBias);
+        ParamName(JitteringAmount);
+
+        ParamName(HeightStart);
+        ParamName(HeightEnd);
+
+        _material._density = params.GetParameter(Density, _material._density);
+        _material._noiseDensityScale = params.GetParameter(NoiseDensityScale, _material._noiseDensityScale);
+        _material._noiseSpeed = params.GetParameter(NoiseSpeed, _material._noiseSpeed);
+        _material._forwardColour = 
+            params.GetParameter(ForwardColorScale, 1.f)
+            * AsFloat3Color(params.GetParameter(ForwardColor, int(-1)));
+        _material._backColour = 
+            params.GetParameter(BackColorScale, 1.f)
+            * AsFloat3Color(params.GetParameter(BackColor, int(-1)));
+        _material._ESM_C = params.GetParameter(ESM_C, _material._ESM_C);
+        _material._shadowsBias = params.GetParameter(ShadowBias, _material._shadowsBias);
+        _material._jitteringAmount = params.GetParameter(JitteringAmount, _material._jitteringAmount);
+
+        _heightStart = params.GetParameter(HeightStart, _heightStart);
+        _heightEnd = params.GetParameter(HeightEnd, _heightEnd);
+    }
+
         ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    class VolumetricFogManager::Pimpl
+    {
+    public:
+        std::shared_ptr<ILightingParserPlugin> _parserPlugin;
+        VolumetricFogConfig _cfg;
+    };
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    class VolumetricFogPlugin : public ILightingParserPlugin
+    {
+    public:
+        virtual void OnPreScenePrepare(
+            MetalContext*, LightingParserContext&) const;
+
+        virtual void OnLightingResolvePrepare(
+            MetalContext*, LightingParserContext&, LightingResolveContext&) const;
+
+        virtual void OnPostSceneRender(
+            MetalContext*, LightingParserContext&, 
+            const SceneParseSettings&, unsigned techniqueIndex) const;
+
+        VolumetricFogPlugin(VolumetricFogManager::Pimpl& pimpl);
+        ~VolumetricFogPlugin();
+
+    protected:
+        VolumetricFogManager::Pimpl* _pimpl;    // (unprotected to avoid a cyclic dependency... But could just be a pointer to the VolumetricFogConfig)
+    };
 
     static void DoVolumetricFogResolve(
         MetalContext* metalContext, LightingParserContext& parserContext, 
@@ -501,25 +586,48 @@ namespace SceneEngine
             parserContext._preparedShadows[0]);
     }
 
-    void VolumeFogPlugin::OnLightingResolvePrepare(
+    void VolumetricFogPlugin::OnLightingResolvePrepare(
         MetalContext* metalContext, LightingParserContext& parserContext, 
         LightingResolveContext& resolveContext) const 
     {
-        const bool doVolumetricFog = Tweakable("DoVolumetricFog", false);
-        if (    !parserContext._preparedShadows.empty() && parserContext._preparedShadows[0].IsReady()             &&  doVolumetricFog) {            const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();            VolumetricFog_Build(                metalContext, parserContext,                 useMsaaSamplers, parserContext._preparedShadows[0]);
+        if (_pimpl->_cfg._volumes.empty()) return;
+
+        const bool doVolumetricFog = Tweakable("DoVolumetricFog", true);        if (    !parserContext._preparedShadows.empty() && parserContext._preparedShadows[0].IsReady()             &&  doVolumetricFog) {            const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();            VolumetricFog_Build(                metalContext, parserContext,                 useMsaaSamplers, parserContext._preparedShadows[0],                _pimpl->_cfg._volumes[0]);
             resolveContext.AppendResolve(&DoVolumetricFogResolve);
         }
     }
 
-    void VolumeFogPlugin::OnPreScenePrepare(
+    void VolumetricFogPlugin::OnPreScenePrepare(
         MetalContext*, LightingParserContext&) const {}
     
-    void VolumeFogPlugin::OnPostSceneRender(
+    void VolumetricFogPlugin::OnPostSceneRender(
         MetalContext*, LightingParserContext&, 
         const SceneParseSettings&, unsigned techniqueIndex) const {}
 
-    VolumeFogPlugin::VolumeFogPlugin() {}
-    VolumeFogPlugin::~VolumeFogPlugin() {}
+    VolumetricFogPlugin::VolumetricFogPlugin(VolumetricFogManager::Pimpl& pimpl) : _pimpl(&pimpl) {}
+    VolumetricFogPlugin::~VolumetricFogPlugin() {}
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    std::shared_ptr<ILightingParserPlugin> VolumetricFogManager::GetParserPlugin()
+    {
+        return _pimpl->_parserPlugin;
+    }
+
+    void VolumetricFogManager::Load(const VolumetricFogConfig& cfg)
+    {
+        _pimpl->_cfg = cfg;
+    }
+
+    VolumetricFogManager::VolumetricFogManager()
+    {
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_parserPlugin = std::make_shared<VolumetricFogPlugin>(*_pimpl.get());
+    }
+
+    VolumetricFogManager::~VolumetricFogManager()
+    {
+    }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
 

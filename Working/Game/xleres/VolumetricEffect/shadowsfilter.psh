@@ -23,9 +23,9 @@ float LoadDepth(int2 coords)
 	float shadowBufferDepth = InputShadowTextures.Load(int4(coords.xy, WorkingSlice, 0));
 	float4 miniProj = ShadowProjection_GetMiniProj(WorkingSlice);
 	if (ShadowsPerspectiveProjection) {
-		return NDCDepthToWorldSpace_Perspective(shadowBufferDepth, AsMiniProjZW(miniProj));
+		return NDCDepthToWorldSpace_Perspective(shadowBufferDepth, AsMiniProjZW(miniProj)) * ShadowDepthScale;
 	} else {
-		return NDCDepthToWorldSpace_Ortho(shadowBufferDepth, AsMiniProjZW(miniProj));
+		return NDCDepthToWorldSpace_Ortho(shadowBufferDepth, AsMiniProjZW(miniProj)) * ShadowDepthScale;
 	}
 }
 
@@ -145,7 +145,7 @@ float VerticalFilter7(float4 position : SV_Position, float2 texCoord : TEXCOORD0
 	return accumulatedValue;
 }
 
-static const bool DontBlurDistantSamples = true;
+static const bool DontBlurDistantSamples = false; // true;
 
 float HorizontalBoxFilter11(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {

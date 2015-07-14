@@ -9,6 +9,9 @@
 #include "LightingParserContext.h"
 #include "LightingParser.h"
 #include "LightDesc.h"
+#include "../Math/Vector.h"
+
+namespace Utility { class ParameterBox; }
 
 namespace SceneEngine
 {
@@ -22,23 +25,6 @@ namespace SceneEngine
                                     unsigned samplingCount, bool useMsaaSamplers, bool flipDirection,
                                     PreparedShadowFrustum& shadowFrustum);
 
-    class VolumeFogPlugin : public ILightingParserPlugin
-    {
-    public:
-        virtual void OnPreScenePrepare(
-            MetalContext*, LightingParserContext&) const;
-
-        virtual void OnLightingResolvePrepare(
-            MetalContext*, LightingParserContext&, LightingResolveContext&) const;
-
-        virtual void OnPostSceneRender(
-            MetalContext*, LightingParserContext&, 
-            const SceneParseSettings&, unsigned techniqueIndex) const;
-
-        VolumeFogPlugin();
-        ~VolumeFogPlugin();
-    };
-
     class VolumetricFogMaterial
     {
     public:
@@ -46,18 +32,47 @@ namespace SceneEngine
         float _noiseDensityScale;       // set to 0. to disable this feature
         float _noiseSpeed;
 
-        float _heightStart;
-        float _heightEnd;
-
         Float3 _forwardColour;
         Float3 _backColour;
 
-        float _forwardBrightness;
-        float _backBrightness;
-        
         float _ESM_C;
         float _shadowsBias;
         float _jitteringAmount;
+    };
+
+    class VolumetricFogConfig
+    {
+    public:
+        class FogVolume
+        {
+        public:
+            VolumetricFogMaterial _material;
+
+            float _heightStart;
+            float _heightEnd;
+            Float3 _center;
+            float _radius;
+
+            FogVolume();
+            FogVolume(const ParameterBox& params);
+        };
+
+        std::vector<FogVolume> _volumes;
+    };
+
+    class VolumetricFogManager
+    {
+    public:
+        std::shared_ptr<ILightingParserPlugin> GetParserPlugin();
+
+        void Load(const VolumetricFogConfig& cfg);
+
+        VolumetricFogManager();
+        ~VolumetricFogManager();
+    protected:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+        friend class VolumetricFogPlugin;
     };
 
     extern VolumetricFogMaterial GlobalVolumetricFogMaterial;

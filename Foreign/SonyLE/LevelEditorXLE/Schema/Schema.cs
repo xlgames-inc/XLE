@@ -251,6 +251,29 @@ namespace LevelEditorXLE
             envUtilityType.SunAngleAttribute = envUtilityType.Type.GetAttributeInfo("SunAngle");
             envUtilityType.SunNameAttribute = envUtilityType.Type.GetAttributeInfo("SunName");
 
+            fogVolumeType.Type = getNodeType("gap", "fogVolumeType");
+            fogVolumeType.transformAttribute = fogVolumeType.Type.GetAttributeInfo("transform");
+            fogVolumeType.translateAttribute = fogVolumeType.Type.GetAttributeInfo("translate");
+            fogVolumeType.rotateAttribute = fogVolumeType.Type.GetAttributeInfo("rotate");
+            fogVolumeType.scaleAttribute = fogVolumeType.Type.GetAttributeInfo("scale");
+            fogVolumeType.pivotAttribute = fogVolumeType.Type.GetAttributeInfo("pivot");
+            fogVolumeType.transformationTypeAttribute = fogVolumeType.Type.GetAttributeInfo("transformationType");
+            fogVolumeType.nameAttribute = fogVolumeType.Type.GetAttributeInfo("name");
+            fogVolumeType.visibleAttribute = fogVolumeType.Type.GetAttributeInfo("visible");
+            fogVolumeType.lockedAttribute = fogVolumeType.Type.GetAttributeInfo("locked");
+            fogVolumeType.DensityAttribute = fogVolumeType.Type.GetAttributeInfo("Density");
+            fogVolumeType.NoiseDensityScaleAttribute = fogVolumeType.Type.GetAttributeInfo("NoiseDensityScale");
+            fogVolumeType.NoiseSpeedAttribute = fogVolumeType.Type.GetAttributeInfo("NoiseSpeed");
+            fogVolumeType.ForwardColorAttribute = fogVolumeType.Type.GetAttributeInfo("ForwardColor");
+            fogVolumeType.ForwardColorScaleAttribute = fogVolumeType.Type.GetAttributeInfo("ForwardColorScale");
+            fogVolumeType.BackColorAttribute = fogVolumeType.Type.GetAttributeInfo("BackColor");
+            fogVolumeType.BackColorScaleAttribute = fogVolumeType.Type.GetAttributeInfo("BackColorScale");
+            fogVolumeType.ESM_CAttribute = fogVolumeType.Type.GetAttributeInfo("ESM_C");
+            fogVolumeType.ShadowBiasAttribute = fogVolumeType.Type.GetAttributeInfo("ShadowBias");
+            fogVolumeType.JitteringAmountAttribute = fogVolumeType.Type.GetAttributeInfo("JitteringAmount");
+            fogVolumeType.HeightStartAttribute = fogVolumeType.Type.GetAttributeInfo("HeightStart");
+            fogVolumeType.HeightEndAttribute = fogVolumeType.Type.GetAttributeInfo("HeightEnd");
+
             placementsCellReferenceType.Type = getNodeType("gap", "placementsCellReferenceType");
             placementsCellReferenceType.refAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ref");
             placementsCellReferenceType.ExportTargetAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ExportTarget");
@@ -420,6 +443,7 @@ namespace LevelEditorXLE
             triMeshMarkerType.visibleAttribute = triMeshMarkerType.Type.GetAttributeInfo("visible");
             triMeshMarkerType.lockedAttribute = triMeshMarkerType.Type.GetAttributeInfo("locked");
             triMeshMarkerType.indexlistAttribute = triMeshMarkerType.Type.GetAttributeInfo("indexlist");
+            triMeshMarkerType.ShowMarkerAttribute = triMeshMarkerType.Type.GetAttributeInfo("ShowMarker");
             triMeshMarkerType.pointsChild = triMeshMarkerType.Type.GetChildInfo("points");
 
             xleGameType.Type = getNodeType("gap", "xleGameType");
@@ -739,6 +763,32 @@ namespace LevelEditorXLE
             public static AttributeInfo SunNameAttribute;
         }
 
+        public static class fogVolumeType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo nameAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
+            public static AttributeInfo DensityAttribute;
+            public static AttributeInfo NoiseDensityScaleAttribute;
+            public static AttributeInfo NoiseSpeedAttribute;
+            public static AttributeInfo ForwardColorAttribute;
+            public static AttributeInfo ForwardColorScaleAttribute;
+            public static AttributeInfo BackColorAttribute;
+            public static AttributeInfo BackColorScaleAttribute;
+            public static AttributeInfo ESM_CAttribute;
+            public static AttributeInfo ShadowBiasAttribute;
+            public static AttributeInfo JitteringAmountAttribute;
+            public static AttributeInfo HeightStartAttribute;
+            public static AttributeInfo HeightEndAttribute;
+        }
+
         public static class placementsCellReferenceType
         {
             public static DomNodeType Type;
@@ -967,6 +1017,7 @@ namespace LevelEditorXLE
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
             public static AttributeInfo indexlistAttribute;
+            public static AttributeInfo ShowMarkerAttribute;
             public static ChildInfo pointsChild;
         }
 
