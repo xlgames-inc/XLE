@@ -5,8 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../TransformAlgorithm.h"
-#include "../Colour.h"
-#include "../ShadowProjection.h"
 #include "VolumetricFog.h"
 
 Texture2DArray<float> InputShadowTextures : register(t2);
@@ -21,12 +19,7 @@ cbuffer Filtering
 float LoadDepth(int2 coords)
 {
 	float shadowBufferDepth = InputShadowTextures.Load(int4(coords.xy, WorkingSlice, 0));
-	float4 miniProj = ShadowProjection_GetMiniProj(WorkingSlice);
-	if (ShadowsPerspectiveProjection) {
-		return NDCDepthToWorldSpace_Perspective(shadowBufferDepth, AsMiniProjZW(miniProj)) * ShadowDepthScale;
-	} else {
-		return NDCDepthToWorldSpace_Ortho(shadowBufferDepth, AsMiniProjZW(miniProj)) * ShadowDepthScale;
-	}
+	return MakeComparisonDistance(shadowBufferDepth, WorkingSlice);
 }
 
 float BuildExponentialShadowMap(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
@@ -145,7 +138,7 @@ float VerticalFilter7(float4 position : SV_Position, float2 texCoord : TEXCOORD0
 	return accumulatedValue;
 }
 
-static const bool DontBlurDistantSamples = false; // true;
+static const bool DontBlurDistantSamples = true;
 
 float HorizontalBoxFilter11(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
@@ -170,7 +163,7 @@ float HorizontalBoxFilter11(float4 position : SV_Position, float2 texCoord : TEX
 		float accWeight = 0.f;
 		uint offsets[11] = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
 		[unroll] for (uint c=0; c<11; ++c) {
-			float value = FilteringSource.Load(int4(max(midpointCoords.x + offsets[c], 0), midpointCoords.y, WorkingSlice, 0));
+			float value = FilteringSource.Load(int4(min(max(midpointCoords.x + offsets[c], 0), 255), midpointCoords.y, WorkingSlice, 0));
 			if (value < maxV) {
 				accumulatedValue += value;
 				accWeight += 1.f;
@@ -207,7 +200,7 @@ float VerticalBoxFilter11(float4 position : SV_Position, float2 texCoord : TEXCO
 		float accWeight = 0.f;
 		uint offsets[11] = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
 		[unroll] for (uint c=0; c<11; ++c) {
-			float value = FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y + offsets[c], 0), WorkingSlice, 0));
+			float value = FilteringSource.Load(int4(midpointCoords.x, min(max(midpointCoords.y + offsets[c], 0), 255), WorkingSlice, 0));
 			if (value < maxV) {
 				accumulatedValue += value;
 				accWeight += 1.f;

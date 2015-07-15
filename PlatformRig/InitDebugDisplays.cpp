@@ -32,6 +32,7 @@ namespace SceneEngine
 
 namespace PlatformRig
 {
+    static auto GlobalVolumetricFogMaterial = SceneEngine::VolumetricFogMaterial_Default();
 
     void InitDebugDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSystem)
     {
@@ -43,7 +44,7 @@ namespace PlatformRig
         auto modelBrowser                   = std::make_shared<::Overlays::ModelBrowser>("game\\model");
         auto textureBrowser                 = std::make_shared<::Overlays::TextureBrowser>("game\\textures\\aa_terrain");
         auto gridIteratorDisplay            = std::make_shared<PlatformRig::Overlays::GridIteratorDisplay>();
-        auto volFogDisplay                  = std::make_shared<::Overlays::VolumetricFogSettings>(std::ref(SceneEngine::GlobalVolumetricFogMaterial));
+        auto volFogDisplay                  = std::make_shared<::Overlays::VolumetricFogSettings>(std::ref(GlobalVolumetricFogMaterial));
         auto dualContouringTest             = std::make_shared<PlatformRig::Overlays::DualContouringTest>();
         debugSystem.Register(modelBrowser, "[Browser] Model browser");
         debugSystem.Register(textureBrowser, "[Browser] Texture browser");

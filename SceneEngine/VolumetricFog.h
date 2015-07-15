@@ -15,16 +15,6 @@ namespace Utility { class ParameterBox; }
 
 namespace SceneEngine
 {
-    void VolumetricFog_Build(       RenderCore::Metal::DeviceContext* context, 
-                                    LightingParserContext& lightingParserContext,
-                                    bool useMsaaSamplers, 
-                                    PreparedShadowFrustum& shadowFrustum);
-
-    void VolumetricFog_Resolve(     RenderCore::Metal::DeviceContext* context, 
-                                    LightingParserContext& lightingParserContext,
-                                    unsigned samplingCount, bool useMsaaSamplers, bool flipDirection,
-                                    PreparedShadowFrustum& shadowFrustum);
-
     class VolumetricFogMaterial
     {
     public:
@@ -39,6 +29,8 @@ namespace SceneEngine
         float _shadowsBias;
         float _jitteringAmount;
     };
+
+    VolumetricFogMaterial VolumetricFogMaterial_Default();
 
     class VolumetricFogConfig
     {
@@ -74,7 +66,5 @@ namespace SceneEngine
         std::unique_ptr<Pimpl> _pimpl;
         friend class VolumetricFogPlugin;
     };
-
-    extern VolumetricFogMaterial GlobalVolumetricFogMaterial;
 }
 

@@ -4,14 +4,11 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../TransformAlgorithm.h"
+#include "VolumetricFog.h"
 #include "../CommonResources.h"
-#include "../ShadowProjection.h"
 #include "../Lighting/BasicLightingEnvironment.h"
 #include "../Utility/perlinnoise.h"
 #include "../Utility/MathConstants.h"
-#include "../Colour.h"
-#include "VolumetricFog.h"
 
 Texture2DArray<float>		ShadowTextures	 	: register(t2);
 
@@ -49,24 +46,19 @@ float ResolveShadows(float3 worldPosition)
 
 				// getting severe problems towards the back of the projection
 				// the only way to prevent it is to skip the back half of the projection
-			if (d > 0.5f) continue;
+			// if (d > 0.5f) continue;
 
 			tc = float2(0.5f + 0.5f * tc.x, 0.5f - 0.5f * tc.y);
 
-			float texSample = ShadowTextures.SampleLevel(DefaultSampler, float3(tc, float(c)), 0);
-			float linearComparisonDistance;
-			float4 miniProj = ShadowProjection_GetMiniProj(c);
-			if (shadowsPerspectiveProj) {
-				linearComparisonDistance = NDCDepthToWorldSpace_Perspective(d, AsMiniProjZW(miniProj)) * ShadowDepthScale;
-			} else {
-				linearComparisonDistance = NDCDepthToWorldSpace_Ortho(d, AsMiniProjZW(miniProj)) * ShadowDepthScale;
-			}
+			float texSample = ShadowTextures.SampleLevel(ClampingSampler, float3(tc, float(c)), 0);
+			float comparisonDistance = MakeComparisonDistance(d, c);
 
 			#if ESM_SHADOW_MAPS==1
 						//	As per esm resolve equations...
-				return saturate(exp(ESM_C*(linearComparisonDistance + ShadowsBias)) * texSample);
+				return saturate(exp(ESM_C*(comparisonDistance + ShadowsBias)) * texSample);
 			#else
-				return linearComparisonDistance > texSample;
+				bool isInShadow = comparisonDistance > texSample;
+				return float(!isInShadow);
 			#endif
 		}
 
@@ -78,8 +70,7 @@ float ResolveShadows(float3 worldPosition)
 float3 CalculateSamplePoint(uint3 cellIndex)
 {
 	float3 multiplier = 1.0.xxx / float3(GridDimensions);
-	float2 centralNearPlaneXYCoords = float2(
-		(float2(cellIndex.xy) + 0.5.xx) * multiplier.xy);
+	float2 centralNearPlaneXYCoords = float2((float2(cellIndex.xy) + 0.5.xx) * multiplier.xy);
 	centralNearPlaneXYCoords.y = 1.0f - centralNearPlaneXYCoords.y;
 
 	float gridCellCentreDepth	= (cellIndex.z + 0.5) * multiplier.z;
@@ -177,8 +168,8 @@ float MonochromeRaleighScattering(float cosTheta)
 static float3 GetDirectionToSun()
 {
 		// hack -- not currently working on intel chip? Maybe this constant buffer isn't being set correctly?
-	return normalize(float3(1,1,.1));
-	// return -normalize(BasicLight[0].NegativeDirection);
+	// return normalize(float3(1,1,.1));
+	return -normalize(BasicLight[0].NegativeDirection);
 }
 
 float3 CalculateInscatter(int3 dispatchThreadId, float density)
@@ -229,7 +220,7 @@ float3 CalculateInscatter(int3 dispatchThreadId, float density)
 	TransmissionValues[int3(dispatchThreadId.xy, 0)] = accumulatedTransmission;
 	InscatterOutput[int3(dispatchThreadId.xy, 0)] = 0.0.xxxx;
 
-	for (int d=1; d<=127; d++) {
+	[loop] for (int d=1; d<=127; d++) {
 
 		float backDensity = DensityValues[int3(dispatchThreadId.xy, d)];
 
