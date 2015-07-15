@@ -9,6 +9,12 @@
 
 cbuffer VolumetricFogConstants
 {
+    float3 ForwardColour;
+    float3 BackColour;
+
+    float3 ReciprocalGridDimensions;
+    float WorldSpaceGridDepth;
+
     float ESM_C;        //  = .25f * 80.f;
     float ShadowsBias;  // = 0.00000125f
     float ShadowDepthScale;
@@ -21,12 +27,6 @@ cbuffer VolumetricFogConstants
 
     float HeightStart;
     float HeightEnd;
-
-    float3 ForwardColour;
-    float3 BackColour;
-
-    float3 ReciprocalGridDimensions;
-    float WorldSpaceGridDepth;
 }
 
 #include "../Colour.h"
@@ -35,12 +35,16 @@ cbuffer VolumetricFogConstants
 
 float MakeComparisonDistance(float shadowBufferDepth, int slice)
 {
-    float4 miniProj = ShadowProjection_GetMiniProj(slice);
-    if (ShadowsPerspectiveProjection) {
-        return NDCDepthToWorldSpace_Perspective(shadowBufferDepth, AsMiniProjZW(miniProj)) * ShadowDepthScale;
-    } else {
-        return NDCDepthToWorldSpace_Ortho(shadowBufferDepth, AsMiniProjZW(miniProj)) * ShadowDepthScale;
-    }
+    #if ESM_SHADOW_MAPS==1
+        float4 miniProj = ShadowProjection_GetMiniProj(slice);
+        if (ShadowsPerspectiveProjection) {
+            return NDCDepthToWorldSpace_Perspective(shadowBufferDepth, AsMiniProjZW(miniProj)) * ShadowDepthScale;
+        } else {
+            return NDCDepthToWorldSpace_Ortho(shadowBufferDepth, AsMiniProjZW(miniProj)) * ShadowDepthScale;
+        }
+    #else
+        return shadowBufferDepth;
+    #endif
 }
 
 #endif

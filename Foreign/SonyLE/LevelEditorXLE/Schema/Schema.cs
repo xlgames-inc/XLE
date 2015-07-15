@@ -274,6 +274,13 @@ namespace LevelEditorXLE
             fogVolumeType.HeightStartAttribute = fogVolumeType.Type.GetAttributeInfo("HeightStart");
             fogVolumeType.HeightEndAttribute = fogVolumeType.Type.GetAttributeInfo("HeightEnd");
 
+            fogVolumeRendererType.Type = getNodeType("gap", "fogVolumeRendererType");
+            fogVolumeRendererType.BlurredShadowSizeAttribute = fogVolumeRendererType.Type.GetAttributeInfo("BlurredShadowSize");
+            fogVolumeRendererType.ShadowDownsampleAttribute = fogVolumeRendererType.Type.GetAttributeInfo("ShadowDownsample");
+            fogVolumeRendererType.MaxShadowFrustumsAttribute = fogVolumeRendererType.Type.GetAttributeInfo("MaxShadowFrustums");
+            fogVolumeRendererType.GridDimensionsAttribute = fogVolumeRendererType.Type.GetAttributeInfo("GridDimensions");
+            fogVolumeRendererType.WorldSpaceGridDepthAttribute = fogVolumeRendererType.Type.GetAttributeInfo("WorldSpaceGridDepth");
+
             placementsCellReferenceType.Type = getNodeType("gap", "placementsCellReferenceType");
             placementsCellReferenceType.refAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ref");
             placementsCellReferenceType.ExportTargetAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ExportTarget");
@@ -787,6 +794,16 @@ namespace LevelEditorXLE
             public static AttributeInfo JitteringAmountAttribute;
             public static AttributeInfo HeightStartAttribute;
             public static AttributeInfo HeightEndAttribute;
+        }
+
+        public static class fogVolumeRendererType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo BlurredShadowSizeAttribute;
+            public static AttributeInfo ShadowDownsampleAttribute;
+            public static AttributeInfo MaxShadowFrustumsAttribute;
+            public static AttributeInfo GridDimensionsAttribute;
+            public static AttributeInfo WorldSpaceGridDepthAttribute;
         }
 
         public static class placementsCellReferenceType

@@ -43,6 +43,12 @@
       <xs:length value="2"></xs:length>
     </xs:restriction>
   </xs:simpleType>
+
+  <xs:simpleType name="int3Type">
+    <xs:restriction base="intListType">
+      <xs:length value="3"></xs:length>
+    </xs:restriction>
+  </xs:simpleType>
  
 </xs:schema>
 

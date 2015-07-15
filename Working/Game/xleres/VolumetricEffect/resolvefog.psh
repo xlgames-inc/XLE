@@ -51,6 +51,16 @@ Texture3D<float4>			InscatterTexture	: register(t7);
 Texture3D<float>			TransmissionTexture	: register(t8);
 Texture2D_MaybeMS<float>	DepthTexture	 	: register(t4);
 
+float SampleTransmission(float2 coords, float slice)
+{
+	return TransmissionTexture.SampleLevel(ClampingSampler, float3(coords, slice), 0.f);
+}
+
+float3 SampleInscatter(float2 coords, float slice)
+{
+	return InscatterTexture.SampleLevel(ClampingSampler, float3(coords, slice), 0.f).rgb;
+}
+
 float4 ResolveFog(			float4 position : SV_Position,
 							float2 texCoord : TEXCOORD0,
 							SystemInputs sys) : SV_Target0
@@ -60,18 +70,12 @@ float4 ResolveFog(			float4 position : SV_Position,
 	int2 pixelCoords		= position.xy;
 	float depth				= LoadFloat1(DepthTexture, pixelCoords.xy, GetSampleIndex(sys));
 	float worldSpaceDepth	= NDCDepthToWorldSpace(depth);
-	
-	const float gridDepth		= 150.f;
-	float3 volumeTextureCoord   = float3(texCoord.xy, lerp(1.f/255.f, 254.f/255.f, saturate(worldSpaceDepth / gridDepth)));
-	// volumeTextureCoord.z = sqrt(volumeTextureCoord.z);
-	float transmissionValue		= TransmissionTexture.SampleLevel(DefaultSampler, volumeTextureCoord, 0.f);
-	float3 inscatterAmount		= InscatterTexture.SampleLevel(DefaultSampler, volumeTextureCoord, 0.f).rgb;
 
-	// float alpha = 1.f - inputFog;
-	// float alpha = saturate(0.075f * inputFog);
-	// float alpha = saturate(0.01f * inputFog);
+	float slice 			= worldSpaceDepth / WorldSpaceGridDepth;
+
+	float transmissionValue		= SampleTransmission(texCoord, slice);
+	float3 inscatterAmount		= SampleInscatter(texCoord, slice);
+
+	// return float4(lerp(float3(1,0,0), float3(0,0,1), saturate(slice)), 0.1f);
 	return float4(inscatterAmount, transmissionValue);
 }
-
-
-

@@ -150,7 +150,8 @@ namespace SceneEngine
             vertexShader, "game/xleres/VolumetricEffect/resolvefog.psh:ResolveFog:ps_*", definesTable);
 
         auto resolveLightBinding = std::make_unique<Metal::BoundUniforms>(std::ref(*resolveLight));
-        resolveLightBinding->BindConstantBuffer(Hash64("GlobalTransform"), 0, 0);
+        Techniques::TechniqueContext::BindGlobalUniforms(*resolveLightBinding);
+        resolveLightBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(validationCallback, buildExponentialShadowMap->GetDependencyValidation());
@@ -333,6 +334,11 @@ namespace SceneEngine
         const float shadowDepthScale = 1.0f / 2048.f;   // (should be based on the far clip in the shadow projection)
         struct Constants
         {
+            Float3 ForwardColour; unsigned _pad1;
+            Float3 BackColour; unsigned _pad2;
+            Float3 ReciprocalGridDimensions;
+            float WorldSpaceGridDepth;
+
             float ESM_C;
             float ShadowsBias;
             float ShadowDepthScale;
@@ -343,21 +349,16 @@ namespace SceneEngine
             float HeightStart;
             float HeightEnd;
             unsigned dummy[3];
-
-            Float3 ForwardColour; unsigned _pad1;
-            Float3 BackColour; unsigned _pad2;
-            Float3 ReciprocalGridDimensions;
-            float WorldSpaceGridDepth;
         } constants = {
-            mat._ESM_C, mat._shadowsBias, shadowDepthScale,
-            mat._jitteringAmount, mat._density, 
-            mat._noiseDensityScale, mat._noiseSpeed,
-            volume._heightStart, volume._heightEnd,
-            {0,0,0},
             mat._forwardColour, 0,
             mat._backColour, 0,
             Float3(1.0f / float(rendererCfg._gridDimensions[0]), 1.0f / float(rendererCfg._gridDimensions[1]), 1.0f / float(rendererCfg._gridDimensions[2])),
             rendererCfg._worldSpaceGridDepth,
+            mat._ESM_C, mat._shadowsBias, shadowDepthScale,
+            mat._jitteringAmount, mat._density, 
+            mat._noiseDensityScale, mat._noiseSpeed,
+            volume._heightStart, volume._heightEnd,
+            {0,0,0}
         };
 
         return RenderCore::MakeSharedPkt(constants);
@@ -402,6 +403,8 @@ namespace SceneEngine
             context->Bind(*fogShaders._buildExponentialShadowMap);
             context->BindPS(MakeResourceList(2, shadowFrustum._shadowTextureSRV));
 
+            ///////////////////////////////////////////////////////////////////////////////////////
+
             int c=0; 
             for (auto i=fogRes._shadowMapRTVs.begin(); i!=fogRes._shadowMapRTVs.end(); ++i, ++c) {
                 struct WorkingSlice { int _workingSlice; unsigned downsampleFactor; unsigned dummy[2]; } 
@@ -415,8 +418,6 @@ namespace SceneEngine
                 context->Bind(MakeResourceList(*i), nullptr);
                 context->Draw(4);
             }
-
-#if 0
 
             float filteringWeights[8];
             static float standardDeviation = 1.6f; // 0.809171316279f; // 1.6f;
@@ -447,39 +448,43 @@ namespace SceneEngine
                 context->Bind(*fogShaders._verticalFilter);
                 context->Draw(4);
             }
-#endif
+
+            ///////////////////////////////////////////////////////////////////////////////////////
 
             context->UnbindPS<Metal::ShaderResourceView>(0, 1);
             savedTargets.ResetToOldTargets(context);
             context->Bind(Techniques::CommonResources()._blendStraightAlpha);
 
-#if 0
+            ///////////////////////////////////////////////////////////////////////////////////////
+
             auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
             context->BindCS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
+            context->BindCS(MakeResourceList(9, 
+                ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(
+                    "game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
+            context->BindCS(MakeResourceList(
+                Techniques::CommonResources()._defaultSampler, 
+                Techniques::CommonResources()._linearClampSampler));
 
                 //  Inject the starting light into the volume texture (using compute shader)
             context->BindCS(MakeResourceList(
                 fogRes._inscatterShadowingValuesUAV, fogRes._transmissionValuesUAV,
                 fogRes._densityValuesUAV, fogRes._inscatterFinalsValuesUAV));
             context->BindCS(MakeResourceList(2, fogRes._shadowMapSRV));
-            context->BindCS(MakeResourceList(9, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
 
             fogShaders._injectLightBinding->Apply(
                 *context, lightingParserContext.GetGlobalUniformsStream(),
                 Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
-
-            context->BindCS(MakeResourceList(Techniques::CommonResources()._defaultSampler, Techniques::CommonResources()._linearClampSampler));
             context->Bind(*fogShaders._injectLight);
             context->Dispatch(gridDims[0]/10, gridDims[1]/10, gridDims[2]/8);
 
             context->UnbindCS<Metal::UnorderedAccessView>(0, 1);
 
                 // do light propagation
+            context->BindCS(MakeResourceList(3, fogRes._inscatterShadowingValuesSRV, fogRes._inscatterPointLightsValuesSRV));
             fogShaders._propagateLightBinding->Apply(
                 *context, lightingParserContext.GetGlobalUniformsStream(),
                 Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
-
-            context->BindCS(MakeResourceList(3, fogRes._inscatterShadowingValuesSRV, fogRes._inscatterPointLightsValuesSRV));
             context->Bind(*fogShaders._propagateLight);
             context->Dispatch(gridDims[0]/10, gridDims[1]/10, 1);
 
@@ -487,7 +492,8 @@ namespace SceneEngine
             context->UnbindCS<Metal::ShaderResourceView>(2, 3);
             context->UnbindCS<Metal::ShaderResourceView>(13, 3);
             context->Unbind<Metal::ComputeShader>();
-#endif
+
+            ///////////////////////////////////////////////////////////////////////////////////////
 
             if (Tweakable("VolumetricFogDebugging", false)) {
                 lightingParserContext._pendingOverlays.push_back(
@@ -514,11 +520,14 @@ namespace SceneEngine
             GetShadowCascadeMode(shadowFrustum),
             unsigned(fogRes._shadowMapRTVs.size()));
 
+        RenderCore::Metal::ConstantBufferPacket constantBufferPackets[1];
+        constantBufferPackets[0] = MakeVolFogConstants(cfg, rendererCfg);
+
         context->BindPS(MakeResourceList(7, fogRes._inscatterFinalsValuesSRV, fogRes._transmissionValuesSRV));
         fogShaders._resolveLightBinding->Apply(
             *context, 
             lightingParserContext.GetGlobalUniformsStream(), 
-            Metal::UniformsStream());
+            Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
         context->Bind(*fogShaders._resolveLight);
         context->Draw(4);
     }
@@ -596,7 +605,7 @@ namespace SceneEngine
         _blurredShadowSize = 256;
         _shadowDownsample = 4;
         _maxShadowFrustums = 3;
-        _gridDimensions = UInt3(60, 30, 32); // UInt3(160, 90, 128);
+        _gridDimensions = UInt3(160, 90, 128);
         _worldSpaceGridDepth = 150.f;
     }
 
@@ -651,7 +660,6 @@ namespace SceneEngine
         VolumetricFogManager::Pimpl* _pimpl;    // (unprotected to avoid a cyclic dependency... But could just be a pointer to the VolumetricFogConfig)
     };
 
-#if 0
     static void DoVolumetricFogResolve(
         MetalContext* metalContext, LightingParserContext& parserContext, 
         LightingResolveContext& resolveContext, unsigned resolvePass,
@@ -667,7 +675,6 @@ namespace SceneEngine
             (resolvePass==0)?samplingCount:1, useMsaaSamplers, resolvePass==1,
             parserContext._preparedShadows[0], rendererCfg, volume);
     }
-#endif
 
     void VolumetricFogPlugin::OnLightingResolvePrepare(
         MetalContext* metalContext, LightingParserContext& parserContext, 
@@ -675,13 +682,23 @@ namespace SceneEngine
     {
         if (_pimpl->_cfg._volumes.empty()) return;
 
-        const bool doVolumetricFog = Tweakable("DoVolumetricFog", true);        if (    !parserContext._preparedShadows.empty() && parserContext._preparedShadows[0].IsReady()             &&  doVolumetricFog) {            const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();            VolumetricFog_Build(                metalContext, parserContext,                 useMsaaSamplers, parserContext._preparedShadows[0],                _pimpl->_cfg._renderer, _pimpl->_cfg._volumes[0]);
-            // using namespace std::placeholders;
-            // resolveContext.AppendResolve(
-            //     std::bind(DoVolumetricFogResolve, _1, _2, _3, _4, 
-            //         std::ref(_pimpl->_cfg._renderer),
-            //         std::ref(_pimpl->_cfg._volumes[0])));
-        }
+        const bool doVolumetricFog = Tweakable("DoVolumetricFog", true);
+        if (    !parserContext._preparedShadows.empty() && parserContext._preparedShadows[0].IsReady() 
+            &&  doVolumetricFog) {
+
+            const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();
+            VolumetricFog_Build(
+                metalContext, parserContext, 
+                useMsaaSamplers, parserContext._preparedShadows[0],
+                _pimpl->_cfg._renderer, _pimpl->_cfg._volumes[0]);
+
+            using namespace std::placeholders;
+            resolveContext.AppendResolve(
+                std::bind(DoVolumetricFogResolve, _1, _2, _3, _4, 
+                    std::ref(_pimpl->_cfg._renderer),
+                    std::ref(_pimpl->_cfg._volumes[0])));
+        }
+
     }
 
     void VolumetricFogPlugin::OnPreScenePrepare(
@@ -723,7 +740,7 @@ namespace SceneEngine
             // draw debugging for blurred shadows texture
         using namespace RenderCore;
         TRY {
-            context->BindPS(MakeResourceList(0, res._shadowMapSRV));
+            context->BindPS(MakeResourceList(0, res._shadowMapSRV, res._inscatterFinalsValuesSRV, res._transmissionValuesSRV, res._inscatterShadowingValuesSRV, res._densityValuesSRV));
             auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                 "game/xleres/volumetriceffect/debugging.psh:VolumeShadows:ps_*",

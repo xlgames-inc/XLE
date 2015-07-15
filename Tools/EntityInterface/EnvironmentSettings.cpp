@@ -434,6 +434,11 @@ namespace EntityInterface
             const auto& props = v->_properties;
             cfg._volumes.push_back(VolumetricFogConfig::FogVolume(props));
         }
+
+        const auto rendererConfigType = sys.GetTypeId((const utf8*)"FogVolumeRenderer");
+        auto renderers = sys.FindEntitiesOfType(rendererConfigType);
+        if (!renderers.empty())
+            cfg._renderer = VolumetricFogConfig::Renderer(renderers[0]->_properties);
         
         mgr.Load(cfg);
     }
@@ -443,18 +448,21 @@ namespace EntityInterface
         std::shared_ptr<SceneEngine::VolumetricFogManager> manager)
     {
         std::weak_ptr<SceneEngine::VolumetricFogManager> weakPtrToManager = manager;
-        flexSys.RegisterCallback(
-            flexSys.GetTypeId((const utf8*)"FogVolume"),
-            [weakPtrToManager](const RetainedEntities& flexSys, const Identifier& obj)
-            {
-                auto mgr = weakPtrToManager.lock();
-                if (!mgr) return;
+        const utf8* types[] = { (const utf8*)"FogVolume", (const utf8*)"FogVolumeRenderer" };
+        for (unsigned c=0; c<dimof(types); ++c) {
+            flexSys.RegisterCallback(
+                flexSys.GetTypeId(types[c]),
+                [weakPtrToManager](const RetainedEntities& flexSys, const Identifier& obj)
+                {
+                    auto mgr = weakPtrToManager.lock();
+                    if (!mgr) return;
 
-                auto* object = flexSys.GetEntity(obj);
-                if (object)
-                    UpdateVolumetricFog(flexSys, *object, *mgr);
-            }
-        );
+                    auto* object = flexSys.GetEntity(obj);
+                    if (object)
+                        UpdateVolumetricFog(flexSys, *object, *mgr);
+                }
+            );
+        }
     }
 
 }

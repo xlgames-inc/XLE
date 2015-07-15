@@ -46,10 +46,6 @@ float ResolveShadows(float3 worldPosition)
 	}
 
 	if (cascadeIndex < BLURRED_SHADOW_CASCADE_COUNT) {
-			// getting severe problems towards the back of the projection
-			// the only way to prevent it is to skip the back half of the projection
-		// if (d > 0.5f) continue;
-
 		tc = float2(0.5f + 0.5f * tc.x, 0.5f - 0.5f * tc.y);
 
 		float texSample = ShadowTextures.SampleLevel(ClampingSampler, float3(tc, float(cascadeIndex)), 0);
