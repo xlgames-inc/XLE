@@ -21,9 +21,6 @@ Texture3D<float>			InputInscatterShadowingValues	: register(t3);
 Texture3D<float4>			InputInscatterPointLightSources : register(t4);
 Texture2D<float>			NoiseValues						: register(t9);
 
-static const float WorldSpaceGridDepth = 150.f;
-static const int3 GridDimensions = int3(160, 90, 128);
-
 	//
 	//		 -- todo -- how to rotate the grid? perhaps increase in depth should be
 	//					sequential in memory -- so pushing light forward through the
@@ -32,36 +29,39 @@ static const int3 GridDimensions = int3(160, 90, 128);
 
 float ResolveShadows(float3 worldPosition)
 {
-	const bool shadowsPerspectiveProj = ShadowsPerspectiveProjection;
+	int cascadeIndex = BLURRED_SHADOW_CASCADE_COUNT;
+	float d;
+	float2 tc;
 
-		// note -- we might not really need every shadow projection here. Just the first 2 or 3 cascades might be enough
-	int projectionCount = GetShadowSubProjectionCount();
-	for (int c=0; c<projectionCount; ++c) {
+	for (int c=0; c<BLURRED_SHADOW_CASCADE_COUNT; ++c) {
 		float4 frustumCoordinates = ShadowProjection_GetOutput(worldPosition, c);
 
-		float d = frustumCoordinates.z / frustumCoordinates.w;
-		float2 tc = frustumCoordinates.xy / frustumCoordinates.w;
+		d = frustumCoordinates.z / frustumCoordinates.w;
+		tc = frustumCoordinates.xy / frustumCoordinates.w;
 
-		[branch] if (max(max(abs(tc.x), abs(tc.y)), max(d, 1.f-d)) < 1.f) {
-
-				// getting severe problems towards the back of the projection
-				// the only way to prevent it is to skip the back half of the projection
-			// if (d > 0.5f) continue;
-
-			tc = float2(0.5f + 0.5f * tc.x, 0.5f - 0.5f * tc.y);
-
-			float texSample = ShadowTextures.SampleLevel(ClampingSampler, float3(tc, float(c)), 0);
-			float comparisonDistance = MakeComparisonDistance(d, c);
-
-			#if ESM_SHADOW_MAPS==1
-						//	As per esm resolve equations...
-				return saturate(exp(ESM_C*(comparisonDistance + ShadowsBias)) * texSample);
-			#else
-				bool isInShadow = comparisonDistance > texSample;
-				return float(!isInShadow);
-			#endif
+		if (max(max(abs(tc.x), abs(tc.y)), max(d, 1.f-d)) < 1.f) {
+			cascadeIndex = c;
+			break;
 		}
+	}
 
+	if (cascadeIndex < BLURRED_SHADOW_CASCADE_COUNT) {
+			// getting severe problems towards the back of the projection
+			// the only way to prevent it is to skip the back half of the projection
+		// if (d > 0.5f) continue;
+
+		tc = float2(0.5f + 0.5f * tc.x, 0.5f - 0.5f * tc.y);
+
+		float texSample = ShadowTextures.SampleLevel(ClampingSampler, float3(tc, float(cascadeIndex)), 0);
+		float comparisonDistance = MakeComparisonDistance(d, cascadeIndex);
+
+		#if ESM_SHADOW_MAPS==1
+					//	As per esm resolve equations...
+			return saturate(exp(ESM_C*(comparisonDistance + ShadowsBias)) * texSample);
+		#else
+			bool isInShadow = comparisonDistance > texSample;
+			return float(!isInShadow);
+		#endif
 	}
 
 	return 1.f;
@@ -69,12 +69,11 @@ float ResolveShadows(float3 worldPosition)
 
 float3 CalculateSamplePoint(uint3 cellIndex)
 {
-	float3 multiplier = 1.0.xxx / float3(GridDimensions);
-	float2 centralNearPlaneXYCoords = float2((float2(cellIndex.xy) + 0.5.xx) * multiplier.xy);
+	float3 multiplier = ReciprocalGridDimensions;
+	float2 centralNearPlaneXYCoords = (float2(cellIndex.xy) + 0.5.xx) * multiplier.xy;
 	centralNearPlaneXYCoords.y = 1.0f - centralNearPlaneXYCoords.y;
 
-	float gridCellCentreDepth	= (cellIndex.z + 0.5) * multiplier.z;
-	// gridCellCentreDepth *= gridCellCentreDepth;
+	float gridCellCentreDepth = (cellIndex.z + 0.5) * multiplier.z;
 	gridCellCentreDepth *= WorldSpaceGridDepth;
 
 		//
@@ -228,7 +227,7 @@ float3 CalculateInscatter(int3 dispatchThreadId, float density)
 			//	of the cells are the same.
 			//		-- but should this affect the simulation in any way?
 			//			In effect, we're simulating a single ray... So does the volume really matter?
-		const float transmissionDistance = WorldSpaceGridDepth / float(GridDimensions.z);
+		const float transmissionDistance = WorldSpaceGridDepth * ReciprocalGridDimensions.z;
 
 		float3 inscatter		 = CalculateInscatter(int3(dispatchThreadId.xy, d), backDensity);
 		float4 newInscatter		 = float4(inscatter, 1.f);

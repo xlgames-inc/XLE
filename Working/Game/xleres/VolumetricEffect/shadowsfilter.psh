@@ -10,6 +10,7 @@
 Texture2DArray<float> InputShadowTextures : register(t2);
 
 int WorkingSlice;
+uint DownsampleScaleFactor;
 cbuffer Filtering
 {
 	float4	FilteringWeights0;		// weights for gaussian filter
@@ -18,8 +19,7 @@ cbuffer Filtering
 
 float LoadDepth(int2 coords)
 {
-	float shadowBufferDepth = InputShadowTextures.Load(int4(coords.xy, WorkingSlice, 0));
-	return MakeComparisonDistance(shadowBufferDepth, WorkingSlice);
+	return InputShadowTextures.Load(int4(coords.xy, WorkingSlice, 0));
 }
 
 float BuildExponentialShadowMap(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
@@ -33,14 +33,13 @@ float BuildExponentialShadowMap(float4 position : SV_Position, float2 texCoord :
 
 		//		todo -- use "GatherRed" to improve performance
 
+	const int DownsampleCount = 4;
 	const bool useAverage = false;
 	if (useAverage) {
-		int c=0;
-		const int DownsampleCount = 4;
 		[unroll] for (int y=0; y<DownsampleCount; ++y) {
 			[unroll] for (int x=0; x<DownsampleCount; ++x) {
-				int2 coords = int2(position.xy)*DownsampleCount + int2(x, y);
-				accumulativeLinearDepth += LoadDepth(coords.xy);
+				int2 coords = int2(position.xy)*(DownsampleCount*DownsampleScaleFactor) + int2(x, y);
+				accumulativeLinearDepth += MakeComparisonDistance(LoadDepth(coords.xy), WorkingSlice);
 			}
 		}
 
@@ -50,22 +49,34 @@ float BuildExponentialShadowMap(float4 position : SV_Position, float2 texCoord :
 			return accumulativeLinearDepth / float(DownsampleCount*DownsampleCount);
 		#endif
 	} else {
+
 			//	Collect the maximum depth here. This might make the shadows slightly smaller,
 			//	but that's probably better than making the shadows slightly larger
-
-		float maxDepth = 0.f;
-		const int DownsampleCount = 4;
-		[unroll] for (int y=0; y<DownsampleCount; ++y) {
-			[unroll] for (int x=0; x<DownsampleCount; ++x) {
-				int2 coords = int2(position.xy)*DownsampleCount + int2(x, y);
-				maxDepth = max(maxDepth, LoadDepth(coords.xy));
+		float depth = 0.f;
+		const bool useMax = true;
+		if (useMax) {
+			[unroll] for (int y=0; y<DownsampleCount; ++y) {
+				[unroll] for (int x=0; x<DownsampleCount; ++x) {
+					int2 coords = int2(position.xy)*(DownsampleCount*DownsampleScaleFactor) + int2(x, y);
+					depth = max(depth, LoadDepth(coords.xy));
+				}
+			}
+		} else {
+			depth = 1.f;
+			[unroll] for (int y=0; y<DownsampleCount; ++y) {
+				[unroll] for (int x=0; x<DownsampleCount; ++x) {
+					int2 coords = int2(position.xy)*(DownsampleCount*DownsampleScaleFactor) + int2(x, y);
+					depth = min(depth, LoadDepth(coords.xy));
+				}
 			}
 		}
 
+		depth = MakeComparisonDistance(depth, WorkingSlice);
+
 		#if ESM_SHADOW_MAPS==1
-			return exp(-ESM_C * maxDepth);
+			return exp(-ESM_C * depth);
 		#else
-			return maxDepth;
+			return depth;
 		#endif
 	}
 }

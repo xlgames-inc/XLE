@@ -24,6 +24,9 @@ cbuffer VolumetricFogConstants
 
     float3 ForwardColour;
     float3 BackColour;
+
+    float3 ReciprocalGridDimensions;
+    float WorldSpaceGridDepth;
 }
 
 #include "../Colour.h"

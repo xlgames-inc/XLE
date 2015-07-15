@@ -49,7 +49,21 @@ namespace SceneEngine
             FogVolume(const ParameterBox& params);
         };
 
+        class Renderer
+        {
+        public:
+            unsigned _blurredShadowSize;
+            unsigned _shadowDownsample;
+            unsigned _maxShadowFrustums;
+            UInt3 _gridDimensions;
+            float _worldSpaceGridDepth;
+
+            Renderer();
+            Renderer(const ParameterBox& params);
+        };
+
         std::vector<FogVolume> _volumes;
+        Renderer _renderer;
     };
 
     class VolumetricFogManager
