@@ -2550,6 +2550,10 @@ namespace BufferUploads
         bool multithreadingOk = true; // CRenderer::CV_r_BufferUpload_Enable!=2;
         bool doBatchingUploadInForeground = !PlatformInterface::CanDoNooverwriteMapInBackground;
 
+        const auto nsightMode = ConsoleRig::GlobalServices::GetCrossModule()._services.CallDefault(Hash64("nsight"), false);
+        if (nsightMode)
+            multithreadingOk = false;
+
         auto immediateDeviceContext = renderDevice->GetImmediateContext();
         decltype(immediateDeviceContext) backgroundDeviceContext;
 

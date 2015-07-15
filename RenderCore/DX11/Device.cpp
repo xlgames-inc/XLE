@@ -9,6 +9,7 @@
 #include "Metal/State.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/WinAPI/WinAPIWrapper.h"
 #include "../../Core/Exceptions.h"
@@ -80,8 +81,9 @@ namespace RenderCore
             //
         auto adapter = SelectAdapter();
 
+        const auto nsightMode = ConsoleRig::GlobalServices::GetCrossModule()._services.CallDefault(Hash64("nsight"), false);
         #if defined(_DEBUG)
-            unsigned deviceCreationFlags = D3D11_CREATE_DEVICE_DEBUG;
+            unsigned deviceCreationFlags = nsightMode?0:D3D11_CREATE_DEVICE_DEBUG;
         #else
             unsigned deviceCreationFlags = 0;
         #endif

@@ -14,6 +14,7 @@
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/SystemUtils.h"
 #include "../Utility/StringFormat.h"
+#include "../Utility/StringUtils.h"
 #include <assert.h>
 #include <random>
 
@@ -135,6 +136,13 @@ namespace ConsoleRig
 
         MainRig_Startup(cfg, _crossModule._services);
         _crossModule.Publish(*this);
+
+            // add "nsight" marker to global services when "-nsight" is on
+            // the command line. This is an easy way to record a global (&cross-dll)
+            // state to use the nsight configuration when the given flag is set.
+        const auto* cmdLine = XlGetCommandLine();
+        if (cmdLine && XlFindString(cmdLine, "-nsight"))
+            _crossModule._services.Add(Hash64("nsight"), []() { return true; });
     }
 
     GlobalServices::~GlobalServices() 

@@ -246,6 +246,11 @@ void XlChDir(const ucs2 path[])                          { SetCurrentDirectoryW(
 void XlDeleteFile(const utf8 path[]) { auto result = ::DeleteFileA((char*)path); assert(result); (void)result; }
 void XlDeleteFile(const ucs2 path[]) { auto result = ::DeleteFileW((wchar_t*)path); assert(result); (void)result; }
 
+const char* XlGetCommandLine()
+{
+    return GetCommandLine();
+}
+
 #if 0
 
 void XlStartSelfProcess(const char* commandLine, int delaySec, bool terminateSelf)
