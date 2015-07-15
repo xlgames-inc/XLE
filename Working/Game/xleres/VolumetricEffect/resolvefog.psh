@@ -72,6 +72,7 @@ float4 ResolveFog(			float4 position : SV_Position,
 	float worldSpaceDepth	= NDCDepthToWorldSpace(depth);
 
 	float slice 			= worldSpaceDepth / WorldSpaceGridDepth;
+	slice = DepthBiasInvEq(slice);
 
 	float transmissionValue		= SampleTransmission(texCoord, slice);
 	float3 inscatterAmount		= SampleInscatter(texCoord, slice);

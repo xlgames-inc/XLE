@@ -70,6 +70,7 @@ float3 CalculateSamplePoint(uint3 cellIndex)
 	centralNearPlaneXYCoords.y = 1.0f - centralNearPlaneXYCoords.y;
 
 	float gridCellCentreDepth = (cellIndex.z + 0.5) * multiplier.z;
+	gridCellCentreDepth = DepthBiasEq(gridCellCentreDepth);
 	gridCellCentreDepth *= WorldSpaceGridDepth;
 
 		//
@@ -162,8 +163,6 @@ float MonochromeRaleighScattering(float cosTheta)
 
 static float3 GetDirectionToSun()
 {
-		// hack -- not currently working on intel chip? Maybe this constant buffer isn't being set correctly?
-	// return normalize(float3(1,1,.1));
 	return -normalize(BasicLight[0].NegativeDirection);
 }
 
@@ -210,12 +209,12 @@ float3 CalculateInscatter(int3 dispatchThreadId, float density)
 		//			We could use an int type that is packed RGBA?
 
 	float frontDensity = DensityValues[int3(dispatchThreadId.xy, 0)];
-	float4 accumulatedInscatter = float4(CalculateInscatter(int3(dispatchThreadId.xy, 0), frontDensity), 1.f);
+	float4 accumulatedInscatter = 0.0.xxxx; // float4(CalculateInscatter(int3(dispatchThreadId.xy, 0), frontDensity), 1.f);
 	float accumulatedTransmission = 1.f;
 	TransmissionValues[int3(dispatchThreadId.xy, 0)] = accumulatedTransmission;
 	InscatterOutput[int3(dispatchThreadId.xy, 0)] = 0.0.xxxx;
 
-	[loop] for (int d=1; d<=127; d++) {
+	[loop] for (int d=1; d<DEPTH_SLICE_COUNT; d++) {
 
 		float backDensity = DensityValues[int3(dispatchThreadId.xy, d)];
 
@@ -223,9 +222,13 @@ float3 CalculateInscatter(int3 dispatchThreadId, float density)
 			//	of the cells are the same.
 			//		-- but should this affect the simulation in any way?
 			//			In effect, we're simulating a single ray... So does the volume really matter?
-		const float transmissionDistance = WorldSpaceGridDepth * ReciprocalGridDimensions.z;
+		const float transmissionDistance =
+			(DepthBiasEq(d / float(DEPTH_SLICE_COUNT)) - DepthBiasEq((d-1) / float(DEPTH_SLICE_COUNT)))
+			* WorldSpaceGridDepth;
 
-		float3 inscatter		 = CalculateInscatter(int3(dispatchThreadId.xy, d), backDensity);
+		// const float transmissionDistance = WorldSpaceGridDepth * ReciprocalGridDimensions.z;
+
+		float3 inscatter		 = CalculateInscatter(int3(dispatchThreadId.xy, d), backDensity) * transmissionDistance;
 		float4 newInscatter		 = float4(inscatter, 1.f);
 
 			//	using Beer-Lambert equation for fog outscatter

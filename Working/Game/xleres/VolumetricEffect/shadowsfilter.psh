@@ -53,7 +53,7 @@ float BuildExponentialShadowMap(float4 position : SV_Position, float2 texCoord :
 			//	Collect the maximum depth here. This might make the shadows slightly smaller,
 			//	but that's probably better than making the shadows slightly larger
 		float depth = 0.f;
-		const bool useMax = true;
+		const bool useMax = false;
 		if (useMax) {
 			[unroll] for (int y=0; y<DownsampleCount; ++y) {
 				[unroll] for (int x=0; x<DownsampleCount; ++x) {
@@ -149,7 +149,7 @@ float VerticalFilter7(float4 position : SV_Position, float2 texCoord : TEXCOORD0
 	return accumulatedValue;
 }
 
-static const bool DontBlurDistantSamples = false;
+static const bool DontBlurDistantSamples = true;
 
 float HorizontalBoxFilter11(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
@@ -172,7 +172,11 @@ float HorizontalBoxFilter11(float4 position : SV_Position, float2 texCoord : TEX
 		accumulatedValue += FilteringSource.Load(int4(min(midpointCoords.x + 5, outputWidth-1), midpointCoords.y, WorkingSlice, 0));
 		accumulatedValue /= float(11.f + 6.f);
 	} else {
-		float maxV = exp(.95f * ESM_C);
+		#if ESM_SHADOW_MAPS==1
+			float maxV = exp(.95f * ESM_C);
+		#else
+			float maxV = 0.98f;
+		#endif
 		float accWeight = 0.f;
 		uint offsets[11] = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
 		[unroll] for (uint c=0; c<11; ++c) {
@@ -184,7 +188,11 @@ float HorizontalBoxFilter11(float4 position : SV_Position, float2 texCoord : TEX
 			}
 		}
 		if (!accWeight) {
-			accumulatedValue = maxV;
+			#if ESM_SHADOW_MAPS==1
+				accumulatedValue = maxV;
+			#else
+				accumulatedValue = 1.f;
+			#endif
 		} else
 			accumulatedValue /= accWeight;
 	}
@@ -211,7 +219,11 @@ float VerticalBoxFilter11(float4 position : SV_Position, float2 texCoord : TEXCO
 		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 5, outputHeight-1), WorkingSlice, 0));
 		accumulatedValue /= float(11.f + 6.f);
 	} else {
-		float maxV = exp(.95f * ESM_C);
+		#if ESM_SHADOW_MAPS==1
+			float maxV = exp(.95f * ESM_C);
+		#else
+			float maxV = 0.98f;
+		#endif
 		float accWeight = 0.f;
 		uint offsets[11] = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
 		[unroll] for (uint c=0; c<11; ++c) {
@@ -223,7 +235,11 @@ float VerticalBoxFilter11(float4 position : SV_Position, float2 texCoord : TEXCO
 			}
 		}
 		if (!accWeight) {
-			accumulatedValue = maxV;
+			#if ESM_SHADOW_MAPS==1
+				accumulatedValue = maxV;
+			#else
+				accumulatedValue = 1.f;
+			#endif
 		} else
 			accumulatedValue /= accWeight;
 	}

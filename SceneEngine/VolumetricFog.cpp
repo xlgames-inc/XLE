@@ -55,11 +55,13 @@ namespace SceneEngine
             bool        _doNoiseOffset;
             unsigned    _shadowCascadeMode;
             unsigned    _blurredShadowCascadeCount;
+            unsigned    _depthSlices;
 
             Desc(   unsigned msaaSampleCount, bool useMsaaSamplers, 
                     bool flipDirection, bool esmShadowMaps, 
                     bool doNoiseOffset, unsigned shadowCascadeMode,
-                    unsigned blurredShadowCascadeCount)
+                    unsigned blurredShadowCascadeCount,
+                    unsigned depthSlices)
             {
                 XlZeroMemory(*this);
                 _msaaSampleCount = msaaSampleCount;
@@ -69,6 +71,7 @@ namespace SceneEngine
                 _doNoiseOffset = doNoiseOffset;
                 _shadowCascadeMode = shadowCascadeMode;
                 _blurredShadowCascadeCount = blurredShadowCascadeCount;
+                _depthSlices = depthSlices;
             }
         };
 
@@ -97,9 +100,9 @@ namespace SceneEngine
     {
         char defines[256];
         _snprintf_s(
-            defines, _TRUNCATE, "ESM_SHADOW_MAPS=%i;DO_NOISE_OFFSET=%i;SHADOW_CASCADE_MODE=%i;BLURRED_SHADOW_CASCADE_COUNT=%i", 
+            defines, _TRUNCATE, "ESM_SHADOW_MAPS=%i;DO_NOISE_OFFSET=%i;SHADOW_CASCADE_MODE=%i;BLURRED_SHADOW_CASCADE_COUNT=%i;DEPTH_SLICE_COUNT=%i", 
             int(desc._esmShadowMaps), int(desc._doNoiseOffset), desc._shadowCascadeMode,
-            desc._blurredShadowCascadeCount);
+            desc._blurredShadowCascadeCount, desc._depthSlices);
         auto* buildExponentialShadowMap = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/VolumetricEffect/shadowsfilter.psh:BuildExponentialShadowMap:ps_*", defines);
         auto* horizontalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
@@ -384,7 +387,8 @@ namespace SceneEngine
                 1, useMsaaSamplers, false, UseESMShadowMaps(), 
                 cfg._material._noiseDensityScale > 0.f,
                 GetShadowCascadeMode(shadowFrustum),
-                unsigned(fogRes._shadowMapRTVs.size()));
+                unsigned(fogRes._shadowMapRTVs.size()),
+                rendererCfg._gridDimensions[2]);
 
             RenderCore::Metal::ConstantBufferPacket constantBufferPackets[2];
             constantBufferPackets[0] = MakeVolFogConstants(cfg, rendererCfg);
@@ -518,7 +522,8 @@ namespace SceneEngine
             samplingCount, useMsaaSamplers, flipDirection, UseESMShadowMaps(), 
             cfg._material._noiseDensityScale > 0.f,
             GetShadowCascadeMode(shadowFrustum),
-            unsigned(fogRes._shadowMapRTVs.size()));
+            unsigned(fogRes._shadowMapRTVs.size()),
+            rendererCfg._gridDimensions[2]);
 
         RenderCore::Metal::ConstantBufferPacket constantBufferPackets[1];
         constantBufferPackets[0] = MakeVolFogConstants(cfg, rendererCfg);
