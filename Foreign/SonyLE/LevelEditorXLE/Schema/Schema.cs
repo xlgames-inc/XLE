@@ -277,6 +277,7 @@ namespace LevelEditorXLE
             fogVolumeRendererType.Type = getNodeType("gap", "fogVolumeRendererType");
             fogVolumeRendererType.BlurredShadowSizeAttribute = fogVolumeRendererType.Type.GetAttributeInfo("BlurredShadowSize");
             fogVolumeRendererType.ShadowDownsampleAttribute = fogVolumeRendererType.Type.GetAttributeInfo("ShadowDownsample");
+            fogVolumeRendererType.SkipShadowFrustumsAttribute = fogVolumeRendererType.Type.GetAttributeInfo("SkipShadowFrustums");
             fogVolumeRendererType.MaxShadowFrustumsAttribute = fogVolumeRendererType.Type.GetAttributeInfo("MaxShadowFrustums");
             fogVolumeRendererType.GridDimensionsAttribute = fogVolumeRendererType.Type.GetAttributeInfo("GridDimensions");
             fogVolumeRendererType.WorldSpaceGridDepthAttribute = fogVolumeRendererType.Type.GetAttributeInfo("WorldSpaceGridDepth");
@@ -801,6 +802,7 @@ namespace LevelEditorXLE
             public static DomNodeType Type;
             public static AttributeInfo BlurredShadowSizeAttribute;
             public static AttributeInfo ShadowDownsampleAttribute;
+            public static AttributeInfo SkipShadowFrustumsAttribute;
             public static AttributeInfo MaxShadowFrustumsAttribute;
             public static AttributeInfo GridDimensionsAttribute;
             public static AttributeInfo WorldSpaceGridDepthAttribute;

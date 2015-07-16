@@ -51,13 +51,11 @@ static const float DepthPower = 3.f;
 
 float DepthBiasEq(float depth0To1)
 {
-    // return depth0To1;
     return pow(max(0.f, depth0To1), DepthPower);
 }
 
 float DepthBiasInvEq(float depth0To1)
 {
-    // return depth0To1;
     return pow(max(0.f, depth0To1), 1.f/DepthPower);
 }
 

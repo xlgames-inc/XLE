@@ -10,16 +10,18 @@
 #include "../Utility/perlinnoise.h"
 #include "../Utility/MathConstants.h"
 
-Texture2DArray<float>		ShadowTextures	 	: register(t2);
+Texture2DArray<float>	ShadowTextures	 			: register(t2);
 
-RWTexture3D<float>			InscatterShadowingValues	: register(u0);
-RWTexture3D<float>			TransmissionValues			: register(u1);
-RWTexture3D<float>			DensityValues				: register(u2);
-RWTexture3D<float4>			InscatterOutput				: register(u3);
+RWTexture3D<float>		InscatterShadowingValues	: register(u0);
+RWTexture3D<float>		TransmissionValues			: register(u1);
+RWTexture3D<float>		DensityValues				: register(u2);
+RWTexture3D<float4>		InscatterOutput				: register(u3);
 
-Texture3D<float>			InputInscatterShadowingValues	: register(t3);
-Texture3D<float4>			InputInscatterPointLightSources : register(t4);
-Texture2D<float>			NoiseValues						: register(t9);
+Texture3D<float>		InputInscatterShadowingValues	: register(t3);
+Texture3D<float4>		InputInscatterPointLightSources : register(t4);
+Texture2D<float>		NoiseValues						: register(t9);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	//
 	//		 -- todo -- how to rotate the grid? perhaps increase in depth should be
@@ -33,8 +35,8 @@ float ResolveShadows(float3 worldPosition)
 	float d;
 	float2 tc;
 
-	for (int c=0; c<BLURRED_SHADOW_CASCADE_COUNT; ++c) {
-		float4 frustumCoordinates = ShadowProjection_GetOutput(worldPosition, c);
+	[unroll] for (int c=0; c<BLURRED_SHADOW_CASCADE_COUNT; ++c) {
+		float4 frustumCoordinates = ShadowProjection_GetOutput(worldPosition, SHADOW_CASCADE_SKIP+c);
 
 		d = frustumCoordinates.z / frustumCoordinates.w;
 		tc = frustumCoordinates.xy / frustumCoordinates.w;
@@ -48,15 +50,16 @@ float ResolveShadows(float3 worldPosition)
 	if (cascadeIndex < BLURRED_SHADOW_CASCADE_COUNT) {
 		tc = float2(0.5f + 0.5f * tc.x, 0.5f - 0.5f * tc.y);
 
-		float texSample = ShadowTextures.SampleLevel(ClampingSampler, float3(tc, float(cascadeIndex)), 0);
 		float comparisonDistance = MakeComparisonDistance(d, cascadeIndex);
-
 		#if ESM_SHADOW_MAPS==1
+			float texSample = ShadowTextures.SampleLevel(ClampingSampler, float3(tc, float(cascadeIndex)), 0);
 					//	As per esm resolve equations...
 			return saturate(exp(ESM_C*(comparisonDistance + ShadowsBias)) * texSample);
 		#else
-			bool isInShadow = comparisonDistance > texSample;
-			return float(!isInShadow);
+			float4 texSample = ShadowTextures.GatherRed(ClampingSampler, float3(tc, float(cascadeIndex)), 0);
+
+			bool4 isInShadow = comparisonDistance < texSample;
+			return dot(isInShadow, 0.25.xxxx);
 		#endif
 	}
 
@@ -110,6 +113,8 @@ float3 CalculateSamplePoint(uint3 cellIndex)
 		viewFrustumVectorToCentre, gridCellCentreDepth / FarClip,
 		WorldSpaceView);
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 float MonochromeRaleighScattering(float cosTheta)
 {
@@ -249,7 +254,7 @@ float3 CalculateInscatter(int3 dispatchThreadId, float density)
 	}
 }
 
-//////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	struct Light
 	{
@@ -280,7 +285,7 @@ float3 CalculateInscatter(int3 dispatchThreadId, float density)
 	Light GetInputLight(uint lightIndex)				{ return InputLightList[lightIndex]; }
 	ProjectedLight GetProjectedLight(uint lightIndex)	{ return ProjectedLightList[lightIndex]; }
 
-//////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Texture2D<float>				AirLightLookup			: register(t1);
 

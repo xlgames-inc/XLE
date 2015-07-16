@@ -57,6 +57,7 @@ namespace SceneEngine
             bool        _doNoiseOffset;
             unsigned    _shadowCascadeMode;
             unsigned    _blurredShadowCascadeCount;
+            unsigned    _shadowCascadeSkip;
             unsigned    _depthSlices;
             unsigned    _shadowFilterMode;
             float       _filterStdDev;
@@ -65,6 +66,7 @@ namespace SceneEngine
                     bool flipDirection, bool esmShadowMaps, 
                     bool doNoiseOffset, unsigned shadowCascadeMode,
                     unsigned blurredShadowCascadeCount,
+                    unsigned shadowCascadeSkip,
                     unsigned depthSlices,
                     unsigned shadowFilterMode,
                     float filterStdDev)
@@ -77,6 +79,7 @@ namespace SceneEngine
                 _doNoiseOffset = doNoiseOffset;
                 _shadowCascadeMode = shadowCascadeMode;
                 _blurredShadowCascadeCount = blurredShadowCascadeCount;
+                _shadowCascadeSkip = shadowCascadeSkip;
                 _depthSlices = depthSlices;
                 _shadowFilterMode = shadowFilterMode;
                 _filterStdDev = filterStdDev;
@@ -111,10 +114,11 @@ namespace SceneEngine
         char defines[256];
         _snprintf_s(
             defines, _TRUNCATE, 
-            "ESM_SHADOW_MAPS=%i;DO_NOISE_OFFSET=%i;SHADOW_CASCADE_MODE=%i;BLURRED_SHADOW_CASCADE_COUNT=%i;DEPTH_SLICE_COUNT=%i", 
+            "ESM_SHADOW_MAPS=%i;DO_NOISE_OFFSET=%i;SHADOW_CASCADE_MODE=%i;BLURRED_SHADOW_CASCADE_COUNT=%i;DEPTH_SLICE_COUNT=%i;SHADOW_CASCADE_SKIP=%i", 
             int(desc._esmShadowMaps), int(desc._doNoiseOffset), 
             desc._shadowCascadeMode,
-            desc._blurredShadowCascadeCount, desc._depthSlices);
+            desc._blurredShadowCascadeCount, desc._depthSlices,
+            desc._shadowCascadeSkip);
         auto* buildExponentialShadowMap = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", 
             "game/xleres/VolumetricEffect/shadowsfilter.psh:BuildExponentialShadowMap:ps_*", 
@@ -259,7 +263,7 @@ namespace SceneEngine
             UInt3       _gridDimensions;
             Desc(const VolumetricFogConfig::Renderer& cfg, unsigned frustumCount, bool esmShadowMaps) 
             {
-                _frustumCount = std::min(cfg._maxShadowFrustums, frustumCount);
+                _frustumCount = std::min(cfg._maxShadowFrustums, frustumCount - cfg._skipShadowFrustums);
                 _esmShadowMaps = esmShadowMaps;
                 _blurredShadowSize = cfg._blurredShadowSize;
                 _gridDimensions = cfg._gridDimensions;
@@ -385,7 +389,7 @@ namespace SceneEngine
     VolumetricFogResources::~VolumetricFogResources() {}
 
     static void VolumetricFog_DrawDebugging(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, VolumetricFogResources& res);
-    static bool UseESMShadowMaps() { return Tweakable("VolFogESM", true); }
+    static bool UseESMShadowMaps() { return Tweakable("VolFogESM", false); }
     static unsigned GetShadowCascadeMode(PreparedShadowFrustum& shadowFrustum)
     {
         return (shadowFrustum._mode == ShadowProjectionDesc::Projections::Mode::Ortho) ? 2u : 1u;
@@ -447,6 +451,7 @@ namespace SceneEngine
                 cfg._material._noiseDensityScale > 0.f,
                 GetShadowCascadeMode(shadowFrustum),
                 unsigned(fogRes._shadowMapRTVs.size()),
+                rendererCfg._skipShadowFrustums,
                 rendererCfg._gridDimensions[2],
                 GetShadowFilterMode(), GetShadowFilterStdDev());
 
@@ -471,8 +476,8 @@ namespace SceneEngine
 
             int c=0; 
             for (auto i=fogRes._shadowMapRTVs.begin(); i!=fogRes._shadowMapRTVs.end(); ++i, ++c) {
-                struct WorkingSlice { int _workingSlice; unsigned downsampleFactor; unsigned dummy[2]; } 
-                    globalsBuffer = { c, downsampleScaleFactor, { 0,0 } };
+                struct WorkingSlice { int _workingSlice; unsigned downsampleFactor; unsigned dummy[2]; }
+                    globalsBuffer = { c + rendererCfg._skipShadowFrustums, downsampleScaleFactor, { 0,0 } };
                 constantBufferPackets[1] = MakeSharedPkt(globalsBuffer);
 
                 fogShaders._buildExponentialShadowMapBinding.Apply(
@@ -580,6 +585,7 @@ namespace SceneEngine
             cfg._material._noiseDensityScale > 0.f,
             GetShadowCascadeMode(shadowFrustum),
             unsigned(fogRes._shadowMapRTVs.size()),
+            rendererCfg._skipShadowFrustums,
             rendererCfg._gridDimensions[2],
             GetShadowFilterMode(), GetShadowFilterStdDev());
 
@@ -666,6 +672,7 @@ namespace SceneEngine
     {
         _blurredShadowSize = 256;
         _shadowDownsample = 4;
+        _skipShadowFrustums = 1;
         _maxShadowFrustums = 3;
         _gridDimensions = UInt3(160, 90, 128);
         _worldSpaceGridDepth = 150.f;
@@ -675,12 +682,14 @@ namespace SceneEngine
     {
         ParamName(BlurredShadowSize);
         ParamName(ShadowDownsample);
+        ParamName(SkipShadowFrustums);
         ParamName(MaxShadowFrustums);
         ParamName(GridDimensions);
         ParamName(WorldSpaceGridDepth);
 
         _blurredShadowSize = params.GetParameter(BlurredShadowSize, _blurredShadowSize);
         _shadowDownsample = params.GetParameter(ShadowDownsample, _shadowDownsample);
+        _skipShadowFrustums = params.GetParameter(SkipShadowFrustums, _skipShadowFrustums);
         _maxShadowFrustums = params.GetParameter(MaxShadowFrustums, _maxShadowFrustums);
         _gridDimensions = params.GetParameter(GridDimensions, _gridDimensions);
         _worldSpaceGridDepth = params.GetParameter(WorldSpaceGridDepth, _worldSpaceGridDepth);

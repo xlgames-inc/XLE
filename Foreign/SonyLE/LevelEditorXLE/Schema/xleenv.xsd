@@ -595,12 +595,14 @@
         <LeGe.NativeType nativeName="FogVolumeRenderer"/>
         <LeGe.NativeProperty name="BlurredShadowSize" nativeName="BlurredShadowSize"/>
         <LeGe.NativeProperty name="ShadowDownsample" nativeName="ShadowDownsample"/>
+        <LeGe.NativeProperty name="SkipShadowFrustums" nativeName="SkipShadowFrustums"/>
         <LeGe.NativeProperty name="MaxShadowFrustums" nativeName="MaxShadowFrustums"/>
         <LeGe.NativeProperty name="GridDimensions" nativeName="GridDimensions"/>
         <LeGe.NativeProperty name="WorldSpaceGridDepth" nativeName="WorldSpaceGridDepth"/>
 
         <scea.dom.editors.attribute category="General" name="BlurredShadowSize" displayName="BlurredShadowSize"/>
         <scea.dom.editors.attribute category="General" name="ShadowDownsample" displayName="ShadowDownsample"/>
+        <scea.dom.editors.attribute category="General" name="SkipShadowFrustums" displayName="SkipShadowFrustums"/>
         <scea.dom.editors.attribute category="General" name="MaxShadowFrustums" displayName="MaxShadowFrustums"/>
         <scea.dom.editors.attribute category="General" name="GridDimensions" displayName="GridDimensions"/>
         <scea.dom.editors.attribute category="General" name="WorldSpaceGridDepth" displayName="WorldSpaceGridDepth"
@@ -615,6 +617,7 @@
       <xs:extension base="envMiscType">
         <xs:attribute name="BlurredShadowSize" type="xs:int" default="256"/>
         <xs:attribute name="ShadowDownsample" type="xs:int" default="4"/>
+        <xs:attribute name="SkipShadowFrustums" type="xs:int" default="1"/>
         <xs:attribute name="MaxShadowFrustums" type="xs:int" default="3"/>
         <xs:attribute name="GridDimensions" type="int3Type" default="160 90 128"/>
         <xs:attribute name="WorldSpaceGridDepth" type="xs:float" default="150"/>

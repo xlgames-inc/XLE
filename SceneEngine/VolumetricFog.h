@@ -54,6 +54,7 @@ namespace SceneEngine
         public:
             unsigned _blurredShadowSize;
             unsigned _shadowDownsample;
+            unsigned _skipShadowFrustums;
             unsigned _maxShadowFrustums;
             UInt3 _gridDimensions;
             float _worldSpaceGridDepth;
