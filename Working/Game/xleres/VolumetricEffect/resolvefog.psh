@@ -61,38 +61,48 @@ float3 SampleInscatter(float2 coords, float slice)
 	return InscatterTexture.SampleLevel(ClampingSampler, float3(coords, slice), 0.f).rgb;
 }
 
-float CalculateInscatter(float distance)
+Texture2D<float> LookupTable : register(t10);
+
+cbuffer LookupTableConstants
 {
-	float result = 0.f;
-	const uint stepCount = 256;
-	const float stepDistance = distance / float(stepCount);
-	float t = 1.f; // exp(-Density * stepDistance);
-	for (uint c=0; c<stepCount; ++c) {
-		result += t * stepDistance * Density * 0.1f;
-		t *= exp(-Density * stepDistance);
-	}
-	return result;
+	float LookupTableMaxValue;
+	float LookupTableMaxDistance;
 }
 
 float CalculatePartialInscatter(float distance, float densScale)
 {
-	float result = 0.f;
-	const uint stepCount = 256;
-	const float stepDistance = distance / float(stepCount);
-	float t = 1.f; // exp(-Density * stepDistance);
-	for (uint c=0; c<stepCount; ++c) {
-		result += t * stepDistance * densScale * Density * 0.1f;
-		t *= exp(-Density * densScale * stepDistance);
+	const bool usePrecalculatedDensity = true;
+	if (usePrecalculatedDensity) {
+		return LookupTableMaxValue * LookupTable.SampleLevel(
+			ClampingSampler, float2(distance / LookupTableMaxDistance, densScale), 0);
+	} else {
+		float result = 0.f;
+		const uint stepCount = 256;
+		const float stepDistance = distance / float(stepCount);
+		float t = 1.f; // exp(-Density * stepDistance);
+		for (uint c=0; c<stepCount; ++c) {
+			result += t * stepDistance * densScale * Density;
+			t *= exp(-Density * densScale * stepDistance);
+		}
+		return result;
 	}
-	return result;
 }
+
+float CalculateInscatter(float distance)
+{
+	return CalculatePartialInscatter(distance, 1.f);
+}
+
 
 void CalculateTransmissionAndInscatter(float3 rayStart, float3 rayEnd, out float transmissionValue, out float3 inscatter)
 {
-	if (true) { // rayEnd.z < rayStart.z) {
-		float3 diff = rayStart - rayEnd;
-		float diffLen = length(diff);
+	float3 diff = rayStart - rayEnd;
+	float diffLen = length(diff);
 
+	if (rayEnd.z < rayStart.z) {
+
+			// Ray is pointing down. Camera might be outside of the volume, and we're
+			// looking into it.
 		float maxDensityDistance = 0.f;
 		if (rayEnd.z < HeightEnd)
 			maxDensityDistance =
@@ -122,14 +132,38 @@ void CalculateTransmissionAndInscatter(float3 rayStart, float3 rayEnd, out float
 			// However occlusion should also apply to the inscattered light (ie, the transmission
 			// coefficient should take effect). The inscattered light can turn out to be a lot of
 			// light, so this is can important step. But the math is a bit more complex.
-		inscatter = CalculateInscatter(maxDensityDistance) * ForwardColour;
+		inscatter = CalculateInscatter(maxDensityDistance) * .1f * ForwardColour;
 		inscatter *= exp(-aveDensity * partialDistance);
 
 			// rough estimate for inscatter in the partial area...
 			// this is a cheap hack, but it works surprisingly well!
-		inscatter += CalculatePartialInscatter(partialDistance, aveDensity / Density) * ForwardColour;
+		inscatter += CalculatePartialInscatter(partialDistance, aveDensity / Density) * .1f * ForwardColour;
 
 		// inscatter.g = inscatter.b = 0.f;
+
+		return;
+
+	} else {
+
+			// Ray is pointing up. Camera might be inside of the volume, and we're
+			// looking out of it.
+		float maxDensityDistance = 0.f;
+		if (rayStart.z < HeightEnd)
+			maxDensityDistance =
+				diffLen * min(1.f, (HeightEnd - rayStart.z) / (rayEnd.z - rayStart.z));
+
+		float a = saturate((HeightEnd   - rayEnd.z) / (rayStart.z - rayEnd.z));
+		float b = saturate((HeightStart - rayEnd.z) / (rayStart.z - rayEnd.z));
+		float ha = (lerp(rayEnd.z, rayStart.z, a) - HeightEnd) / (HeightStart - HeightEnd);
+		float hb = (lerp(rayEnd.z, rayStart.z, b) - HeightEnd) / (HeightStart - HeightEnd);
+
+		float aveDensity = (lerp(Density, 0.f, ha) + lerp(Density, 0.f, hb)) * 0.5f;
+		float partialDistance = abs(b - a) * diffLen;
+
+		transmissionValue = exp(-aveDensity * partialDistance - Density * maxDensityDistance);
+
+		inscatter = CalculateInscatter(maxDensityDistance) * .1f * ForwardColour;
+		inscatter += exp(-Density * maxDensityDistance) * CalculatePartialInscatter(partialDistance, aveDensity / Density) * .1f * ForwardColour;
 
 		return;
 	}

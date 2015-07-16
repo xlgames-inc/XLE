@@ -26,6 +26,7 @@
 
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../BufferUploads/DataPacket.h"
 
 #include "../ConsoleRig/Console.h"
 #include "../Utility/StringFormat.h"
@@ -211,12 +212,13 @@ namespace SceneEngine
         if (desc._useMsaaSamplers) {
             XlCatString(definesTable, dimof(definesTable), ";MSAA_SAMPLERS=1");
         }
+
         auto* resolveLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             vertexShader, "game/xleres/VolumetricEffect/resolvefog.psh:ResolveFog:ps_*", definesTable);
-
         Metal::BoundUniforms resolveLightBinding(*resolveLight);
         Techniques::TechniqueContext::BindGlobalUniforms(resolveLightBinding);
-        resolveLightBinding.BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
+        resolveLightBinding.BindConstantBuffers(1, {"VolumetricFogConstants", "LookupTableConstants"});
+        resolveLightBinding.BindShaderResources(1, {"InscatterTexture", "TransmissionTexture", "LookupTable"});
 
         ///////////////////////////////////////////////////////////////////////////////////////////
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
@@ -387,6 +389,80 @@ namespace SceneEngine
     }
 
     VolumetricFogResources::~VolumetricFogResources() {}
+
+    class VolumetricFogDensityTable
+    {
+    public:
+        class Desc
+        {
+        public:
+            float _density;
+            Desc(float density) : _density(density) {}
+        };
+
+        intrusive_ptr<BufferUploads::ResourceLocator> _table;
+        Metal::ShaderResourceView _tableSRV;
+        Metal::ConstantBuffer _tableConstants;
+
+        VolumetricFogDensityTable(const Desc& desc);
+        ~VolumetricFogDensityTable();
+    };
+
+    float CalculateInscatter(float distance, float density)
+    {
+        float result = 0.f;
+	    const unsigned stepCount = 256;
+	    const float stepDistance = distance / float(stepCount);
+	    float t = XlExp(-density * stepDistance);
+	    for (uint c=0; c<stepCount; ++c) {
+		    result += t * stepDistance * density;
+		    t *= XlExp(-density * stepDistance);
+	    }
+	    return result;
+    }
+
+    VolumetricFogDensityTable::VolumetricFogDensityTable(const Desc& desc)
+    {
+            /////////////////////////////////////////////////////////////////////////////
+            // Lookup table for calculating fog density
+            // X coordinate is a distance value. Generally we want to balance this so
+            //      the maximum distance is the point where transmission is very low
+            // Y coordinate is a value for scaling the 
+        using namespace BufferUploads;
+        const unsigned width = 256, height = 256;
+        const auto bufferDesc = CreateDesc(
+            BindFlag::ShaderResource,
+            0, GPUAccess::Read, 
+            TextureDesc::Plain2D(width, height, Metal::NativeFormat::R16_UNORM),
+            "VolumetricFogLookupTable");
+
+        auto& bufferUploads = GetBufferUploads();
+        auto pkt = CreateEmptyPacket(bufferDesc);
+
+        const float maxDistance = 1024.f;
+        float values[width][height];
+        float maxValue = 0.f;
+        for (unsigned y=0; y<height; ++y)
+            for (unsigned x=0; x<width; ++x) {
+                values[x][y] = CalculateInscatter(
+                    x * maxDistance / float(width-1), 
+                    desc._density * (y+1) / float(height));
+                maxValue = std::max(maxValue, values[x][y]);
+            }
+
+        unsigned short* data = (unsigned short*)pkt->GetData(0);
+        for (unsigned y=0; y<height; ++y)
+            for (unsigned x=0; x<width; ++x)
+                data[y*256+x] = (unsigned short)(values[x][y] * float(0xffff) / maxValue);
+
+        _table = bufferUploads.Transaction_Immediate(bufferDesc, pkt.get());
+        _tableSRV = Metal::ShaderResourceView(_table->GetUnderlying());
+
+        float constants[4] = { maxValue, maxDistance, 0.f, 0.f };
+        _tableConstants = Metal::ConstantBuffer(constants, sizeof(constants));
+    }
+
+    VolumetricFogDensityTable::~VolumetricFogDensityTable() {}
 
     static void VolumetricFog_DrawDebugging(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, VolumetricFogResources& res);
     static bool UseESMShadowMaps() { return Tweakable("VolFogESM", false); }
@@ -588,14 +664,25 @@ namespace SceneEngine
             rendererCfg._skipShadowFrustums,
             rendererCfg._gridDimensions[2],
             GetShadowFilterMode(), GetShadowFilterStdDev());
+        auto& fogTable = Techniques::FindCachedBox2<VolumetricFogDensityTable>(
+            cfg._material._density);
 
-        RenderCore::Metal::ConstantBufferPacket constantBufferPackets[1];
+        Metal::ConstantBufferPacket constantBufferPackets[2];
         constantBufferPackets[0] = MakeVolFogConstants(cfg, rendererCfg);
+        const Metal::ShaderResourceView* srvs[] =
+        {
+            &fogRes._inscatterFinalsValuesSRV,
+            &fogRes._transmissionValuesSRV,
+            &fogTable._tableSRV
+        };
+        const Metal::ConstantBuffer* rebuiltConstants[2] = {nullptr, nullptr};
+        rebuiltConstants[1] = &fogTable._tableConstants;
 
-        context->BindPS(MakeResourceList(7, fogRes._inscatterFinalsValuesSRV, fogRes._transmissionValuesSRV));
         fogShaders._resolveLightBinding.Apply(
             *context, lightingParserContext.GetGlobalUniformsStream(), 
-            Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
+            Metal::UniformsStream(
+                constantBufferPackets, rebuiltConstants, dimof(constantBufferPackets),
+                srvs, dimof(srvs)));
         context->Bind(*fogShaders._resolveLight);
         context->Draw(4);
     }
@@ -784,15 +871,8 @@ namespace SceneEngine
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::shared_ptr<ILightingParserPlugin> VolumetricFogManager::GetParserPlugin()
-    {
-        return _pimpl->_parserPlugin;
-    }
-
-    void VolumetricFogManager::Load(const VolumetricFogConfig& cfg)
-    {
-        _pimpl->_cfg = cfg;
-    }
+    std::shared_ptr<ILightingParserPlugin> VolumetricFogManager::GetParserPlugin()  { return _pimpl->_parserPlugin; }
+    void VolumetricFogManager::Load(const VolumetricFogConfig& cfg)                 { _pimpl->_cfg = cfg; }
 
     VolumetricFogManager::VolumetricFogManager()
     {
@@ -800,9 +880,7 @@ namespace SceneEngine
         _pimpl->_parserPlugin = std::make_shared<VolumetricFogPlugin>(*_pimpl.get());
     }
 
-    VolumetricFogManager::~VolumetricFogManager()
-    {
-    }
+    VolumetricFogManager::~VolumetricFogManager() {}
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
 
