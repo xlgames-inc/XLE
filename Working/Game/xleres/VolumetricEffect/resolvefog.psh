@@ -74,9 +74,22 @@ float CalculateInscatter(float distance)
 	return result;
 }
 
+float CalculatePartialInscatter(float distance, float densScale)
+{
+	float result = 0.f;
+	const uint stepCount = 256;
+	const float stepDistance = distance / float(stepCount);
+	float t = 1.f; // exp(-Density * stepDistance);
+	for (uint c=0; c<stepCount; ++c) {
+		result += t * stepDistance * densScale * Density * 0.1f;
+		t *= exp(-Density * densScale * stepDistance);
+	}
+	return result;
+}
+
 void CalculateTransmissionAndInscatter(float3 rayStart, float3 rayEnd, out float transmissionValue, out float3 inscatter)
 {
-	if (rayEnd.z < rayStart.z) {
+	if (true) { // rayEnd.z < rayStart.z) {
 		float3 diff = rayStart - rayEnd;
 		float diffLen = length(diff);
 
@@ -109,10 +122,15 @@ void CalculateTransmissionAndInscatter(float3 rayStart, float3 rayEnd, out float
 			// However occlusion should also apply to the inscattered light (ie, the transmission
 			// coefficient should take effect). The inscattered light can turn out to be a lot of
 			// light, so this is can important step. But the math is a bit more complex.
-		// float3 rawInscatter = maxDensityDistance * Density * 0.1f * ForwardColour;
-		// rawInscatter *= exp(-Density * .37f * maxDensityDistance);
-		// float3 rawInscatter = 0.0.xxx;
 		inscatter = CalculateInscatter(maxDensityDistance) * ForwardColour;
+		inscatter *= exp(-aveDensity * partialDistance);
+
+			// rough estimate for inscatter in the partial area...
+			// this is a cheap hack, but it works surprisingly well!
+		inscatter += CalculatePartialInscatter(partialDistance, aveDensity / Density) * ForwardColour;
+
+		// inscatter.g = inscatter.b = 0.f;
+
 		return;
 	}
 
@@ -133,26 +151,25 @@ float4 ResolveFog(
 	float worldSpaceDepth	= NDCDepthToWorldSpace(depth);
 
 	float slice	= worldSpaceDepth / WorldSpaceGridDepth;
-	if (slice < 1.f) {
-		slice = DepthBiasInvEq(slice);
 
-		float transmissionValue	= SampleTransmission(texCoord, slice);
-		float3 inscatterAmount	= SampleInscatter(texCoord, slice);
+	float transmission = 1.f;
+	float3 inscatter = 0.0.xxx;
 
-		// return float4(lerp(float3(1,0,0), float3(0,0,1), saturate(slice)), 0.1f);
-		return float4(inscatterAmount, transmissionValue);
-	} else {
-
-		// Distant sample!
-		//   .. calculate occlusion and inscatter to try to match the results from the
-		//		simulated grid
-
-		float transmissionValue;
-		float3 inscatterAmount;
+	if (slice > 1.f) {
+		float3 gridEnd = CalculateWorldPosition(viewFrustumVector, WorldSpaceGridDepth / FarClip, WorldSpaceView);
 		float3 worldPosition = CalculateWorldPosition(viewFrustumVector, NDCDepthToLinear0To1(depth), WorldSpaceView);
-
-		CalculateTransmissionAndInscatter(WorldSpaceView, worldPosition, transmissionValue, inscatterAmount);
-		return float4(inscatterAmount, transmissionValue);
-
+		CalculateTransmissionAndInscatter(gridEnd, worldPosition, transmission, inscatter);
+		// CalculateTransmissionAndInscatter(WorldSpaceView, worldPosition, transmission, inscatter);
+		// return float4(inscatter, transmission);
 	}
+
+	slice = DepthBiasInvEq(saturate(slice));
+
+	float gridTransmission	= SampleTransmission(texCoord, slice);
+	float3 gridInscatter = SampleInscatter(texCoord, slice);
+
+	inscatter = inscatter * gridTransmission + gridInscatter;
+	transmission *= gridTransmission;
+
+	return float4(inscatter, transmission);
 }
