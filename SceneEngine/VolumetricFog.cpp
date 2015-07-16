@@ -42,6 +42,8 @@ namespace SceneEngine
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
 
+    enum class ShadowFilterMode { BoxFilter = 0, Seven = 1, Five = 2, None };
+
     class VolumetricFogShaders
     {
     public:
@@ -56,12 +58,16 @@ namespace SceneEngine
             unsigned    _shadowCascadeMode;
             unsigned    _blurredShadowCascadeCount;
             unsigned    _depthSlices;
+            unsigned    _shadowFilterMode;
+            float       _filterStdDev;
 
             Desc(   unsigned msaaSampleCount, bool useMsaaSamplers, 
                     bool flipDirection, bool esmShadowMaps, 
                     bool doNoiseOffset, unsigned shadowCascadeMode,
                     unsigned blurredShadowCascadeCount,
-                    unsigned depthSlices)
+                    unsigned depthSlices,
+                    unsigned shadowFilterMode,
+                    float filterStdDev)
             {
                 XlZeroMemory(*this);
                 _msaaSampleCount = msaaSampleCount;
@@ -72,21 +78,25 @@ namespace SceneEngine
                 _shadowCascadeMode = shadowCascadeMode;
                 _blurredShadowCascadeCount = blurredShadowCascadeCount;
                 _depthSlices = depthSlices;
+                _shadowFilterMode = shadowFilterMode;
+                _filterStdDev = filterStdDev;
             }
         };
 
-        const Metal::ShaderProgram*             _buildExponentialShadowMap;
-        std::unique_ptr<Metal::BoundUniforms>   _buildExponentialShadowMapBinding;
-        const Metal::ShaderProgram*             _horizontalFilter;
-        const Metal::ShaderProgram*             _verticalFilter;
-        std::unique_ptr<Metal::BoundUniforms>   _horizontalFilterBinding, _verticalFilterBinding;
+        const Metal::ShaderProgram*     _buildExponentialShadowMap;
+        Metal::BoundUniforms            _buildExponentialShadowMapBinding;
+        const Metal::ShaderProgram*     _horizontalFilter;
+        const Metal::ShaderProgram*     _verticalFilter;
+        Metal::BoundUniforms            _horizontalFilterBinding, _verticalFilterBinding;
 
-        const Metal::ComputeShader*             _injectLight;
-        std::unique_ptr<Metal::BoundUniforms>   _injectLightBinding;
-        const Metal::ComputeShader*             _propagateLight;
-        std::unique_ptr<Metal::BoundUniforms>   _propagateLightBinding;
-        const Metal::ShaderProgram*             _resolveLight;
-        std::unique_ptr<Metal::BoundUniforms>   _resolveLightBinding;
+        const Metal::ComputeShader*     _injectLight;
+        Metal::BoundUniforms            _injectLightBinding;
+        const Metal::ComputeShader*     _propagateLight;
+        Metal::BoundUniforms            _propagateLightBinding;
+        const Metal::ShaderProgram*     _resolveLight;
+        Metal::BoundUniforms            _resolveLightBinding;
+
+        Metal::ConstantBuffer           _filterWeightsConstants;
 
         VolumetricFogShaders(const Desc& desc);
         ~VolumetricFogShaders();
@@ -100,42 +110,90 @@ namespace SceneEngine
     {
         char defines[256];
         _snprintf_s(
-            defines, _TRUNCATE, "ESM_SHADOW_MAPS=%i;DO_NOISE_OFFSET=%i;SHADOW_CASCADE_MODE=%i;BLURRED_SHADOW_CASCADE_COUNT=%i;DEPTH_SLICE_COUNT=%i", 
-            int(desc._esmShadowMaps), int(desc._doNoiseOffset), desc._shadowCascadeMode,
+            defines, _TRUNCATE, 
+            "ESM_SHADOW_MAPS=%i;DO_NOISE_OFFSET=%i;SHADOW_CASCADE_MODE=%i;BLURRED_SHADOW_CASCADE_COUNT=%i;DEPTH_SLICE_COUNT=%i", 
+            int(desc._esmShadowMaps), int(desc._doNoiseOffset), 
+            desc._shadowCascadeMode,
             desc._blurredShadowCascadeCount, desc._depthSlices);
         auto* buildExponentialShadowMap = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/VolumetricEffect/shadowsfilter.psh:BuildExponentialShadowMap:ps_*", defines);
-        auto* horizontalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/VolumetricEffect/shadowsfilter.psh:HorizontalBoxFilter11:ps_*");
-        auto* verticalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/VolumetricEffect/shadowsfilter.psh:VerticalBoxFilter11:ps_*");
+            "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+            "game/xleres/VolumetricEffect/shadowsfilter.psh:BuildExponentialShadowMap:ps_*", 
+            defines);
 
-        auto buildExponentialShadowMapBinding = std::make_unique<Metal::BoundUniforms>(std::ref(*buildExponentialShadowMap));
-        Techniques::TechniqueContext::BindGlobalUniforms(*buildExponentialShadowMapBinding);
-        buildExponentialShadowMapBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
-        buildExponentialShadowMapBinding->BindConstantBuffer(Hash64("$Globals"), 1, 1);
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        const Metal::ShaderProgram *horizontalFilter = nullptr, *verticalFilter = nullptr;
+        unsigned filterSize = 0;
+        if (desc._shadowFilterMode == (unsigned)ShadowFilterMode::BoxFilter) {
+            StringMeld<32> filterDefines; filterDefines << "ESM_SHADOW_MAPS=" << int(desc._esmShadowMaps);
+            horizontalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+                "game/xleres/VolumetricEffect/shadowsfilter.psh:HorizontalBoxFilter11:ps_*",
+                filterDefines.get());
+            verticalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+                "game/xleres/VolumetricEffect/shadowsfilter.psh:VerticalBoxFilter11:ps_*",
+                filterDefines.get());
+            filterSize = 11;
+        } else if (desc._shadowFilterMode == (unsigned)ShadowFilterMode::Seven) {
+            horizontalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+                "game/xleres/VolumetricEffect/shadowsfilter.psh:HorizontalFilter7:ps_*");
+            verticalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+                "game/xleres/VolumetricEffect/shadowsfilter.psh:VerticalFilter7:ps_*");
+            filterSize = 7;
+        } else if (desc._shadowFilterMode == (unsigned)ShadowFilterMode::Five) {
+            horizontalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+                "game/xleres/VolumetricEffect/shadowsfilter.psh:HorizontalFilter5:ps_*");
+            verticalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+                "game/xleres/VolumetricEffect/shadowsfilter.psh:VerticalFilter5:ps_*");
+            filterSize = 5;
+        }
 
-        auto horizontalFilterBinding = std::make_unique<Metal::BoundUniforms>(std::ref(*horizontalFilter));
-        horizontalFilterBinding->BindConstantBuffer(Hash64("$Globals"), 0, 1);
-        horizontalFilterBinding->BindConstantBuffer(Hash64("Filtering"), 1, 1);
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        float filteringWeightsBuffer[12];
+        XlZeroMemory(filteringWeightsBuffer);
+        BuildGaussianFilteringWeights(filteringWeightsBuffer, desc._filterStdDev, filterSize);
+        Metal::ConstantBuffer filterWeightsConstants(filteringWeightsBuffer, sizeof(filteringWeightsBuffer));
 
-        auto verticalFilterBinding = std::make_unique<Metal::BoundUniforms>(std::ref(*verticalFilter));
-        verticalFilterBinding->BindConstantBuffer(Hash64("$Globals"), 0, 1);
-        verticalFilterBinding->BindConstantBuffer(Hash64("Filtering"), 1, 1);
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        Metal::BoundUniforms buildExponentialShadowMapBinding(*buildExponentialShadowMap);
+        Techniques::TechniqueContext::BindGlobalUniforms(buildExponentialShadowMapBinding);
+        buildExponentialShadowMapBinding.BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
+        buildExponentialShadowMapBinding.BindConstantBuffer(Hash64("$Globals"), 1, 1);
 
+        Metal::BoundUniforms horizontalFilterBinding, verticalFilterBinding;
+        if (horizontalFilter && verticalFilter) {
+            horizontalFilterBinding = Metal::BoundUniforms(std::ref(*horizontalFilter));
+            horizontalFilterBinding.BindConstantBuffer(Hash64("$Globals"), 0, 1);
+            horizontalFilterBinding.BindConstantBuffer(Hash64("Filtering"), 1, 1);
+
+            verticalFilterBinding = Metal::BoundUniforms(std::ref(*verticalFilter));
+            verticalFilterBinding.BindConstantBuffer(Hash64("$Globals"), 0, 1);
+            verticalFilterBinding.BindConstantBuffer(Hash64("Filtering"), 1, 1);   
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////
         auto* injectLight = &::Assets::GetAssetDep<Metal::ComputeShader>(
             "game/xleres/volumetriceffect/injectlight.csh:InjectLighting:cs_*", defines);
         auto* propagateLight = &::Assets::GetAssetDep<Metal::ComputeShader>(
             "game/xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines);
 
-        auto injectLightBinding = std::make_unique<Metal::BoundUniforms>(std::ref(::Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/volumetriceffect/injectlight.csh:InjectLighting:cs_*", defines)));
-        Techniques::TechniqueContext::BindGlobalUniforms(*injectLightBinding);
-        injectLightBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
+        Metal::BoundUniforms injectLightBinding(
+            std::ref(::Assets::GetAssetDep<CompiledShaderByteCode>(
+                "game/xleres/volumetriceffect/injectlight.csh:InjectLighting:cs_*", defines)));
+        Techniques::TechniqueContext::BindGlobalUniforms(injectLightBinding);
+        injectLightBinding.BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
 
-        auto propagateLightBinding = std::make_unique<Metal::BoundUniforms>(std::ref(::Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines)));
-        Techniques::TechniqueContext::BindGlobalUniforms(*propagateLightBinding);
-        propagateLightBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
+        Metal::BoundUniforms propagateLightBinding(
+            std::ref(::Assets::GetAssetDep<CompiledShaderByteCode>(
+                "game/xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines)));
+        Techniques::TechniqueContext::BindGlobalUniforms(propagateLightBinding);
+        propagateLightBinding.BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
 
+        ///////////////////////////////////////////////////////////////////////////////////////////
         const char* vertexShader = 
             desc._flipDirection
                 ? "game/xleres/basic2D.vsh:fullscreen_flip:vs_*"
@@ -152,14 +210,15 @@ namespace SceneEngine
         auto* resolveLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             vertexShader, "game/xleres/VolumetricEffect/resolvefog.psh:ResolveFog:ps_*", definesTable);
 
-        auto resolveLightBinding = std::make_unique<Metal::BoundUniforms>(std::ref(*resolveLight));
-        Techniques::TechniqueContext::BindGlobalUniforms(*resolveLightBinding);
-        resolveLightBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
+        Metal::BoundUniforms resolveLightBinding(*resolveLight);
+        Techniques::TechniqueContext::BindGlobalUniforms(resolveLightBinding);
+        resolveLightBinding.BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
 
+        ///////////////////////////////////////////////////////////////////////////////////////////
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(validationCallback, buildExponentialShadowMap->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, horizontalFilter->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, verticalFilter->GetDependencyValidation());
+        if (horizontalFilter) ::Assets::RegisterAssetDependency(validationCallback, horizontalFilter->GetDependencyValidation());
+        if (verticalFilter) ::Assets::RegisterAssetDependency(validationCallback, verticalFilter->GetDependencyValidation());
         ::Assets::RegisterAssetDependency(validationCallback, injectLight->GetDependencyValidation());
         ::Assets::RegisterAssetDependency(validationCallback, propagateLight->GetDependencyValidation());
         ::Assets::RegisterAssetDependency(validationCallback, resolveLight->GetDependencyValidation());
@@ -180,6 +239,7 @@ namespace SceneEngine
         _validationCallback = std::move(validationCallback);
         _injectLightBinding = std::move(injectLightBinding);
         _propagateLightBinding = std::move(propagateLightBinding);
+        _filterWeightsConstants = std::move(filterWeightsConstants);
     }
 
     VolumetricFogShaders::~VolumetricFogShaders()
@@ -322,12 +382,16 @@ namespace SceneEngine
         _shadowMapTempSRV = std::move(shadowMapShaderResourceTemp);
     }
 
-    VolumetricFogResources::~VolumetricFogResources()
-    {}
+    VolumetricFogResources::~VolumetricFogResources() {}
 
     static void VolumetricFog_DrawDebugging(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, VolumetricFogResources& res);
-
     static bool UseESMShadowMaps() { return Tweakable("VolFogESM", true); }
+    static unsigned GetShadowCascadeMode(PreparedShadowFrustum& shadowFrustum)
+    {
+        return (shadowFrustum._mode == ShadowProjectionDesc::Projections::Mode::Ortho) ? 2u : 1u;
+    }
+    static unsigned GetShadowFilterMode() { return Tweakable("VolFogFilter", 0); }
+    static float GetShadowFilterStdDev() { return Tweakable("VolFogStdDev", 2.2f); }
 
     static RenderCore::Metal::ConstantBufferPacket MakeVolFogConstants(
         const VolumetricFogConfig::FogVolume& volume,
@@ -367,11 +431,6 @@ namespace SceneEngine
         return RenderCore::MakeSharedPkt(constants);
     }
 
-    static unsigned GetShadowCascadeMode(PreparedShadowFrustum& shadowFrustum)
-    {
-        return (shadowFrustum._mode == ShadowProjectionDesc::Projections::Mode::Ortho) ? 2u : 1u;
-    }
-
     void VolumetricFog_Build(   RenderCore::Metal::DeviceContext* context, 
                                 LightingParserContext& lightingParserContext,
                                 bool useMsaaSamplers, 
@@ -388,7 +447,8 @@ namespace SceneEngine
                 cfg._material._noiseDensityScale > 0.f,
                 GetShadowCascadeMode(shadowFrustum),
                 unsigned(fogRes._shadowMapRTVs.size()),
-                rendererCfg._gridDimensions[2]);
+                rendererCfg._gridDimensions[2],
+                GetShadowFilterMode(), GetShadowFilterStdDev());
 
             RenderCore::Metal::ConstantBufferPacket constantBufferPackets[2];
             constantBufferPackets[0] = MakeVolFogConstants(cfg, rendererCfg);
@@ -415,7 +475,7 @@ namespace SceneEngine
                     globalsBuffer = { c, downsampleScaleFactor, { 0,0 } };
                 constantBufferPackets[1] = MakeSharedPkt(globalsBuffer);
 
-                fogShaders._buildExponentialShadowMapBinding->Apply(
+                fogShaders._buildExponentialShadowMapBinding.Apply(
                     *context, lightingParserContext.GetGlobalUniformsStream(),
                     Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
 
@@ -423,34 +483,31 @@ namespace SceneEngine
                 context->Draw(4);
             }
 
-            float filteringWeights[8];
-            static float standardDeviation = 1.6f; // 0.809171316279f; // 1.6f;
-            BuildGaussianFilteringWeights(filteringWeights, standardDeviation, dimof(filteringWeights));
-            auto filteringWeightsConstants = MakeSharedPkt(filteringWeights);
+            if (fogShaders._horizontalFilter && fogShaders._verticalFilter) {
+                c = 0;
+                auto i2 = fogRes._shadowMapTempRTVs.begin();
+                for (auto i=fogRes._shadowMapRTVs.begin(); i!=fogRes._shadowMapRTVs.end(); ++i, ++c, ++i2) {
+                    struct WorkingSlice { int _workingSlice; unsigned dummy[3]; } globalsBuffer = { c, {0,0,0} };
+                    Metal::ConstantBufferPacket constantBufferPackets[2];
+                    constantBufferPackets[0] = MakeSharedPkt(globalsBuffer);
+                    const Metal::ConstantBuffer* prebuiltConstantBuffers[2] = { nullptr, nullptr };
+                    prebuiltConstantBuffers[1] = &fogShaders._filterWeightsConstants;
+                    fogShaders._horizontalFilterBinding.Apply(
+                        *context, lightingParserContext.GetGlobalUniformsStream(),
+                        Metal::UniformsStream(constantBufferPackets, prebuiltConstantBuffers, 2));
 
-            c = 0;
-            auto i2 = fogRes._shadowMapTempRTVs.begin();
-            for (auto i=fogRes._shadowMapRTVs.begin(); i!=fogRes._shadowMapRTVs.end(); ++i, ++c, ++i2) {
+                    context->UnbindPS<Metal::ShaderResourceView>(0, 1);
+                    context->Bind(MakeResourceList(*i2), nullptr);
+                    context->BindPS(MakeResourceList(fogRes._shadowMapSRV));
+                    context->Bind(*fogShaders._horizontalFilter);
+                    context->Draw(4);
 
-                struct WorkingSlice { int _workingSlice; unsigned dummy[3]; } globalsBuffer = { c, {0,0,0} };
-                RenderCore::Metal::ConstantBufferPacket constantBufferPackets[2];
-                constantBufferPackets[0] = MakeSharedPkt(globalsBuffer);
-                constantBufferPackets[1] = filteringWeightsConstants;
-                fogShaders._horizontalFilterBinding->Apply(
-                    *context, lightingParserContext.GetGlobalUniformsStream(),
-                    Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
-
-                context->UnbindPS<Metal::ShaderResourceView>(0, 1);
-                context->Bind(MakeResourceList(*i2), nullptr);
-                context->BindPS(MakeResourceList(fogRes._shadowMapSRV));
-                context->Bind(*fogShaders._horizontalFilter);
-                context->Draw(4);
-
-                context->UnbindPS<Metal::ShaderResourceView>(0, 1);
-                context->Bind(MakeResourceList(*i), nullptr);
-                context->BindPS(MakeResourceList(fogRes._shadowMapTempSRV));
-                context->Bind(*fogShaders._verticalFilter);
-                context->Draw(4);
+                    context->UnbindPS<Metal::ShaderResourceView>(0, 1);
+                    context->Bind(MakeResourceList(*i), nullptr);
+                    context->BindPS(MakeResourceList(fogRes._shadowMapTempSRV));
+                    context->Bind(*fogShaders._verticalFilter);
+                    context->Draw(4);
+                }
             }
 
             ///////////////////////////////////////////////////////////////////////////////////////
@@ -476,7 +533,7 @@ namespace SceneEngine
                 fogRes._densityValuesUAV, fogRes._inscatterFinalsValuesUAV));
             context->BindCS(MakeResourceList(2, fogRes._shadowMapSRV));
 
-            fogShaders._injectLightBinding->Apply(
+            fogShaders._injectLightBinding.Apply(
                 *context, lightingParserContext.GetGlobalUniformsStream(),
                 Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
             context->Bind(*fogShaders._injectLight);
@@ -486,7 +543,7 @@ namespace SceneEngine
 
                 // do light propagation
             context->BindCS(MakeResourceList(3, fogRes._inscatterShadowingValuesSRV, fogRes._inscatterPointLightsValuesSRV));
-            fogShaders._propagateLightBinding->Apply(
+            fogShaders._propagateLightBinding.Apply(
                 *context, lightingParserContext.GetGlobalUniformsStream(),
                 Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
             context->Bind(*fogShaders._propagateLight);
@@ -523,15 +580,15 @@ namespace SceneEngine
             cfg._material._noiseDensityScale > 0.f,
             GetShadowCascadeMode(shadowFrustum),
             unsigned(fogRes._shadowMapRTVs.size()),
-            rendererCfg._gridDimensions[2]);
+            rendererCfg._gridDimensions[2],
+            GetShadowFilterMode(), GetShadowFilterStdDev());
 
         RenderCore::Metal::ConstantBufferPacket constantBufferPackets[1];
         constantBufferPackets[0] = MakeVolFogConstants(cfg, rendererCfg);
 
         context->BindPS(MakeResourceList(7, fogRes._inscatterFinalsValuesSRV, fogRes._transmissionValuesSRV));
-        fogShaders._resolveLightBinding->Apply(
-            *context, 
-            lightingParserContext.GetGlobalUniformsStream(), 
+        fogShaders._resolveLightBinding.Apply(
+            *context, lightingParserContext.GetGlobalUniformsStream(), 
             Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
         context->Bind(*fogShaders._resolveLight);
         context->Draw(4);

@@ -164,6 +164,8 @@ namespace RenderCore { namespace Metal_DX11
         BoundUniforms();
         ~BoundUniforms();
         BoundUniforms& operator=(const BoundUniforms& copyFrom);
+        BoundUniforms(BoundUniforms&& moveFrom);
+        BoundUniforms& operator=(BoundUniforms&& moveFrom);
 
         bool BindConstantBuffer(    uint64 hashName, unsigned slot, unsigned uniformsStream,
                                     const ConstantBufferLayoutElement elements[] = nullptr, 
@@ -199,6 +201,8 @@ namespace RenderCore { namespace Metal_DX11
 
             StageBinding();
             ~StageBinding();
+            StageBinding(StageBinding&& moveFrom);
+            StageBinding& operator=(StageBinding&& moveFrom);
         };
 
         StageBinding    _stageBindings[ShaderStage::Max];
