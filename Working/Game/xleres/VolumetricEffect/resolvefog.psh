@@ -61,9 +61,70 @@ float3 SampleInscatter(float2 coords, float slice)
 	return InscatterTexture.SampleLevel(ClampingSampler, float3(coords, slice), 0.f).rgb;
 }
 
-float4 ResolveFog(			float4 position : SV_Position,
-							float2 texCoord : TEXCOORD0,
-							SystemInputs sys) : SV_Target0
+float CalculateInscatter(float distance)
+{
+	float result = 0.f;
+	const uint stepCount = 256;
+	const float stepDistance = distance / float(stepCount);
+	float t = 1.f; // exp(-Density * stepDistance);
+	for (uint c=0; c<stepCount; ++c) {
+		result += t * stepDistance * Density * 0.1f;
+		t *= exp(-Density * stepDistance);
+	}
+	return result;
+}
+
+void CalculateTransmissionAndInscatter(float3 rayStart, float3 rayEnd, out float transmissionValue, out float3 inscatter)
+{
+	if (rayEnd.z < rayStart.z) {
+		float3 diff = rayStart - rayEnd;
+		float diffLen = length(diff);
+
+		float maxDensityDistance = 0.f;
+		if (rayEnd.z < HeightEnd)
+			maxDensityDistance =
+				diffLen * min(1.f, (HeightEnd - rayEnd.z) / (rayStart.z - rayEnd.z));
+
+		float a = saturate((HeightEnd   - rayEnd.z) / (rayStart.z - rayEnd.z));
+		float b = saturate((HeightStart - rayEnd.z) / (rayStart.z - rayEnd.z));
+		float ha = (lerp(rayEnd.z, rayStart.z, a) - HeightEnd) / (HeightStart - HeightEnd);
+		float hb = (lerp(rayEnd.z, rayStart.z, b) - HeightEnd) / (HeightStart - HeightEnd);
+
+			// We need to calculate an integral of density against distance for the ray
+			// as it passes through the area where the falls off!
+			// Fortunately, it's easy... The fog falls off linearly with height. So the
+			// integral is just average of the density at the start and at the end (if the
+			// camera is outside, that average should just be half the desnity value).
+			// Distance within the partial area is easy, as well... We just have to handle the
+			// situation where the camera is within the fog.
+		float aveDensity = (lerp(Density, 0.f, ha) + lerp(Density, 0.f, hb)) * 0.5f;
+		float partialDistance = abs(b - a) * diffLen;
+
+		transmissionValue = exp(-aveDensity * partialDistance - Density * maxDensityDistance);
+
+			// Calculate the inscattered light. This is a little more difficult than the
+			// transmission coefficient!
+			// Light scatters in proportional to distance (and proportional to density in
+			// the partial section).
+			// However occlusion should also apply to the inscattered light (ie, the transmission
+			// coefficient should take effect). The inscattered light can turn out to be a lot of
+			// light, so this is can important step. But the math is a bit more complex.
+		// float3 rawInscatter = maxDensityDistance * Density * 0.1f * ForwardColour;
+		// rawInscatter *= exp(-Density * .37f * maxDensityDistance);
+		// float3 rawInscatter = 0.0.xxx;
+		inscatter = CalculateInscatter(maxDensityDistance) * ForwardColour;
+		return;
+	}
+
+	transmissionValue = 1.f;
+	inscatter = 0.0.xxx;
+}
+
+float4 ResolveFog(
+	float4 position : SV_Position,
+	float2 texCoord : TEXCOORD0,
+	float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
+	SystemInputs sys) : SV_Target0
 {
 	// return float4(0.0.xxx, 1);
 
@@ -71,12 +132,27 @@ float4 ResolveFog(			float4 position : SV_Position,
 	float depth				= LoadFloat1(DepthTexture, pixelCoords.xy, GetSampleIndex(sys));
 	float worldSpaceDepth	= NDCDepthToWorldSpace(depth);
 
-	float slice 			= worldSpaceDepth / WorldSpaceGridDepth;
-	slice = DepthBiasInvEq(slice);
+	float slice	= worldSpaceDepth / WorldSpaceGridDepth;
+	if (slice < 1.f) {
+		slice = DepthBiasInvEq(slice);
 
-	float transmissionValue		= SampleTransmission(texCoord, slice);
-	float3 inscatterAmount		= SampleInscatter(texCoord, slice);
+		float transmissionValue	= SampleTransmission(texCoord, slice);
+		float3 inscatterAmount	= SampleInscatter(texCoord, slice);
 
-	// return float4(lerp(float3(1,0,0), float3(0,0,1), saturate(slice)), 0.1f);
-	return float4(inscatterAmount, transmissionValue);
+		// return float4(lerp(float3(1,0,0), float3(0,0,1), saturate(slice)), 0.1f);
+		return float4(inscatterAmount, transmissionValue);
+	} else {
+
+		// Distant sample!
+		//   .. calculate occlusion and inscatter to try to match the results from the
+		//		simulated grid
+
+		float transmissionValue;
+		float3 inscatterAmount;
+		float3 worldPosition = CalculateWorldPosition(viewFrustumVector, NDCDepthToLinear0To1(depth), WorldSpaceView);
+
+		CalculateTransmissionAndInscatter(WorldSpaceView, worldPosition, transmissionValue, inscatterAmount);
+		return float4(inscatterAmount, transmissionValue);
+
+	}
 }

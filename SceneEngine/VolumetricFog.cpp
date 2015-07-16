@@ -200,8 +200,8 @@ namespace SceneEngine
         ///////////////////////////////////////////////////////////////////////////////////////////
         const char* vertexShader = 
             desc._flipDirection
-                ? "game/xleres/basic2D.vsh:fullscreen_flip:vs_*"
-                : "game/xleres/basic2D.vsh:fullscreen:vs_*"
+                ? "game/xleres/basic2D.vsh:fullscreen_flip_viewfrustumvector:vs_*"
+                : "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*"
                 ;
         char definesTable[256];
         Utility::XlFormatString(

@@ -173,6 +173,8 @@ static float3 GetDirectionToSun()
 
 float3 CalculateInscatter(int3 dispatchThreadId, float density)
 {
+	return density * 0.1f * ForwardColour;
+
 	float3 centrePoint = CalculateSamplePoint(dispatchThreadId);
 	float3 directionToSun = GetDirectionToSun();
 	float3 directionToSample = centrePoint - WorldSpaceView;
@@ -191,18 +193,22 @@ float3 CalculateInscatter(int3 dispatchThreadId, float density)
 		offset.y = frac(0.5f * 0.178f * dispatchThreadId.z);
 		uint3 dimensions; InputInscatterShadowingValues.GetDimensions(dimensions.x, dimensions.y, dimensions.z);
 		float3 texCoord = (dispatchThreadId + float3(offset, 0.5f)) / float3(dimensions);
-		// float3 texCoord = float3(dispatchThreadId.xyz + 0.5.xxx) / float3(dimensions);
 		float shadowing = InputInscatterShadowingValues.SampleLevel(DefaultSampler, texCoord, 0);
 	#else
 		float shadowing = InputInscatterShadowingValues[dispatchThreadId];
 	#endif
 
-	float4 inscatterPointLightSources = InputInscatterPointLightSources[dispatchThreadId];
 	float raleighScattering	 = MonochromeRaleighScattering(cosTheta);
 	float inscatterScalar = shadowing * raleighScattering * density;		// inscatter quantity must be scale with the volume of the cell
 
 	float3 colour = lerp(ForwardColour, BackColour, 0.5f + 0.5f * cosTheta);
-	return (inscatterScalar * colour) + inscatterPointLightSources.rgb;
+	float3 result = inscatterScalar * colour;
+
+	const bool pointLightSources = false;
+	if (pointLightSources)
+		result += InputInscatterPointLightSources[dispatchThreadId].rgb;
+
+	return result;
 }
 
 [numthreads(10, 10, 1)]
@@ -231,23 +237,16 @@ float3 CalculateInscatter(int3 dispatchThreadId, float density)
 			(DepthBiasEq(d / float(DEPTH_SLICE_COUNT)) - DepthBiasEq((d-1) / float(DEPTH_SLICE_COUNT)))
 			* WorldSpaceGridDepth;
 
-		// const float transmissionDistance = WorldSpaceGridDepth * ReciprocalGridDimensions.z;
-
-		float3 inscatter		 = CalculateInscatter(int3(dispatchThreadId.xy, d), backDensity) * transmissionDistance;
-		float4 newInscatter		 = float4(inscatter, 1.f);
+		float3 inscatter = CalculateInscatter(int3(dispatchThreadId.xy, d), backDensity) * transmissionDistance;
+		float4 newInscatter = float4(inscatter, 1.f);
+		accumulatedInscatter += newInscatter * accumulatedTransmission;
 
 			//	using Beer-Lambert equation for fog outscatter
-		float integralSolution	 = (backDensity + frontDensity) * .5f * transmissionDistance;
-		float transmissionScalar = exp(-integralSolution);
+		float integralSolution = backDensity * transmissionDistance; // (backDensity + frontDensity) * .5f * transmissionDistance;
+		accumulatedTransmission *= exp(-integralSolution);
 
-		accumulatedInscatter	 = accumulatedInscatter + newInscatter * accumulatedTransmission;
-		accumulatedTransmission *= transmissionScalar;
-
-			// accumulatedValue = min(accumulatedValue, newSample);
-			// accumulatedValue = max(accumulatedValue, newSample);
-
-		InscatterOutput   [int3(dispatchThreadId.xy, d)] = accumulatedInscatter;
-		TransmissionValues[int3(dispatchThreadId.xy, d)] = accumulatedTransmission;
+		InscatterOutput   	[int3(dispatchThreadId.xy, d)] = accumulatedInscatter;
+		TransmissionValues	[int3(dispatchThreadId.xy, d)] = accumulatedTransmission;
 
 		frontDensity = backDensity;
 
