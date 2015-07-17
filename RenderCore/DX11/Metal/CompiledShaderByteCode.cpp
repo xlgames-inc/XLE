@@ -135,7 +135,12 @@ namespace RenderCore { namespace Metal_DX11
         #if defined(_DEBUG)
             return D3D10_SHADER_ENABLE_STRICTNESS | D3D10_SHADER_DEBUG | D3D10_SHADER_SKIP_OPTIMIZATION; //| D3D10_SHADER_WARNINGS_ARE_ERRORS;
         #else
-            return D3D10_SHADER_ENABLE_STRICTNESS | D3D10_SHADER_OPTIMIZATION_LEVEL3; // | D3D10_SHADER_NO_PRESHADER;
+            return 
+                  D3D10_SHADER_ENABLE_STRICTNESS 
+                | D3D10_SHADER_OPTIMIZATION_LEVEL3 // | D3D10_SHADER_NO_PRESHADER;
+                // | D3D10_SHADER_IEEE_STRICTNESS
+                // | D3D10_SHADER_WARNINGS_ARE_ERRORS
+                ;
         #endif
     }
 

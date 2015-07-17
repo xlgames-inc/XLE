@@ -52,27 +52,19 @@ struct HS_ConstantOutput
 
 #if DO_EXTRA_SMOOTHING==1
     static const int InterpolationQuality = 2;
-    #define MaxTessellation 2*32
+    #define MaxTessellation (2.f*32.f)
 #else
     static const int InterpolationQuality = 1;
-    #define MaxTessellation 32
+    #define MaxTessellation 32.f
 #endif
-#define MinTessellation 4
-
-uint RemapEdgeIndex(uint hsEdgeIndex)
-{
-    if (hsEdgeIndex == 0) { return 3; }
-    if (hsEdgeIndex == 1) { return 0; }
-    if (hsEdgeIndex == 2) { return 1; }
-    return 2;
-}
+#define MinTessellation 4.f
 
 float Area(float2 A, float2 B, float2 C, float2 D)
 {
     return abs((C.x - A.x) * (D.y - B.y) - (D.x - B.x) * (C.y - A.y));
 }
 
-float LengthSq(float2 A) { return dot(A, A); }
+float VLengthSq(float2 A) { return dot(A, A); }
 
     //
     //		PatchConstantFunction
@@ -94,7 +86,7 @@ HS_ConstantOutput PatchConstantFunction(
     float2 screenPtsMax[4];
     float2 screenPtsMin[4];
     float3 bias = float3(0,0,20);       // note -- this would ideally be set to some real value based on the data!
-    for (uint c2=0; c2<4; ++c2) {
+    [unroll] for (uint c2=0; c2<4; ++c2) {
         float4 clipMax = mul(WorldToClip, float4(ip[c2].worldPosition+bias, 1));
         screenPtsMax[c2] = clipMax.xy / clipMax.w * halfViewport;
 
@@ -109,8 +101,15 @@ HS_ConstantOutput PatchConstantFunction(
         //	3: v == 1 (pt3 -> pt2)
     uint edgeStartPts[4]	= { 0, 0, 3, 3 };
     uint edgeEndPts[4]		= { 2, 1, 1, 2 };
+    uint remapEdgeIndex[4]  = { 3, 0, 1, 2 };
 
-    for (uint c=0; c<4; ++c) {
+    [unroll] for (uint c=0; c<4; ++c) {
+
+        float2 startMin = screenPtsMin[edgeStartPts[c]];
+        float2 endMin   = screenPtsMin[edgeEndPts[c]];
+        float2 startMax = screenPtsMax[edgeStartPts[c]];
+        float2 endMax   = screenPtsMax[edgeEndPts[c]];
+
             //	Here, we calculate the amount of tessellation for the terrain edge
             //	This is the most important algorithm for terrain.
             //
@@ -125,46 +124,53 @@ HS_ConstantOutput PatchConstantFunction(
             //	Note that this method is currently producing the wrong results for
             //	tiles that straddle the near clip plane! This can make geometry near
             //	the camera swim around a bit.
-#if 0
-        float2 startS	= screenPts[edgeStartPts[c]];
-        float2 endS		= screenPts[edgeEndPts[c]];
 
-            //	The "extra-smoothing" boosts the maximum tessellation to twice it's
-            //	normal value, and enables higher quality interpolation. This way
-            //	distant geometry should be the same quality, but we can add extra
-            //	vertices in near geometry when we need it.
-        float screenSpaceLength = length(startS - endS);
-        output.Edges[c] = clamp(screenSpaceLength * mult, MinTessellation, MaxTessellation);
-#else
-            // this calculation helps protect against bad collapses near the camera
-            //      (which are really annoying!)
-        float screenSpaceLength = LengthSq(screenPtsMax[edgeStartPts[c]] - screenPtsMax[edgeEndPts[c]]);
-        screenSpaceLength = max(LengthSq(screenPtsMax[edgeEndPts[c]] - screenPtsMin[edgeEndPts[c]]), screenSpaceLength);
-        screenSpaceLength = max(LengthSq(screenPtsMin[edgeEndPts[c]] - screenPtsMin[edgeStartPts[c]]), screenSpaceLength);
-        screenSpaceLength = max(LengthSq(screenPtsMin[edgeStartPts[c]] - screenPtsMax[edgeStartPts[c]]), screenSpaceLength);
-        screenSpaceLength = sqrt(screenSpaceLength);
-        output.Edges[c] = clamp(screenSpaceLength * mult, MinTessellation, MaxTessellation);
-#endif
+        #if 0 ///////////////////////////////////////////////////////////////////////////////
 
-        // On the LOD interface boundaries, we need to lock the tessellation
-        // amounts to something predictable
+                //	The "extra-smoothing" boosts the maximum tessellation to twice it's
+                //	normal value, and enables higher quality interpolation. This way
+                //	distant geometry should be the same quality, but we can add extra
+                //	vertices in near geometry when we need it.
+            float screenSpaceLength = VLengthSq(startMax - endMax);
+            output.Edges[c] = clamp(screenSpaceLength * mult, MinTessellation, MaxTessellation);
+
+        #else ///////////////////////////////////////////////////////////////////////////////
+
+                // this calculation helps protect against bad collapses near the camera
+                //      (which are really annoying!)
+            float screenSpaceLength = VLengthSq(screenPtsMax[edgeStartPts[c]] - screenPtsMax[edgeEndPts[c]]);
+            screenSpaceLength = max(VLengthSq(screenPtsMax[edgeEndPts[c]] - screenPtsMin[edgeEndPts[c]]), screenSpaceLength);
+            screenSpaceLength = max(VLengthSq(screenPtsMin[edgeEndPts[c]] - screenPtsMin[edgeStartPts[c]]), screenSpaceLength);
+            screenSpaceLength = max(VLengthSq(screenPtsMin[edgeStartPts[c]] - screenPtsMax[edgeStartPts[c]]), screenSpaceLength);
+            screenSpaceLength = sqrt(screenSpaceLength);
+            output.Edges[c] = clamp(screenSpaceLength * mult, MinTessellation, MaxTessellation);
+
+        #endif ///////////////////////////////////////////////////////////////////////////////
+
+            // On the LOD interface boundaries, we need to lock the tessellation
+            // amounts to something predictable
+            // note that all of the these array indexes should compile out
+            // when the compiler unrolls the loop (ie, remapEdgeIndex is constant,
+            // so NeighbourLodDiffs[...] just becomes a basic NeighbourLodDiffs.x or NeighbourLodDiffs.y, etc)
+
         const float lodBoundaryTess = MaxTessellation;
-        if (NeighbourLodDiffs[RemapEdgeIndex(c)] > 0) {
+        if (NeighbourLodDiffs[remapEdgeIndex[c]] > 0) {
             output.Edges[c] = lodBoundaryTess;
-        } else if (NeighbourLodDiffs[RemapEdgeIndex(c)] < 0) {
+        } else if (NeighbourLodDiffs[remapEdgeIndex[c]] < 0) {
             output.Edges[c] = lodBoundaryTess/2;
         }
     }
 
-        //	Could use min, max or average edge
-        //	Note that when there are large variations between edge tessellation and
-        //	inside tessellation, it can cause some wierd artefacts. We need to be
-        //	careful about that.
+        // Could use min, max or average edge
+        // Note that when there are large variations between edge tessellation and
+        // inside tessellation, it can cause some wierd artefacts. We need to be
+        // careful about that.
         //
         // Anything other than max is causing some wierd shuddering near the
         // camera currently. Actually, "max" should be the most stable. Average or
         // min will react more strongly to lod changes (particularly if only one
         // edge is changing a lot)
+
     output.Inside[0] = max(output.Edges[1], output.Edges[3]);	// v==0 && v==1 edges
     output.Inside[1] = max(output.Edges[0], output.Edges[2]);	// u==0 && u==1 edges
 
@@ -186,7 +192,7 @@ struct PatchOutputControlPoint
 // [partitioning("integer")]
 [outputtopology("triangle_cw")]
 [patchconstantfunc("PatchConstantFunction")]
-[outputcontrolpoints(4)]
+[outputcontrolpoints(ControlPointCount)]
 [maxtessfactor(MaxTessellation)]
 PatchOutputControlPoint hs_main(
     InputPatch<PatchInputControlPoint, ControlPointCount> ip,
@@ -210,11 +216,14 @@ PatchOutputControlPoint hs_main(
         //	calculate the positions of the final points. That means finding the
         //	correct location on the patch surface, and reading the height values from
         //	the texture. Let's just go back to patch local coords again.
-
-    // int temp2 = int(UV.y * TileDimensionsInVertices)&1;
-    // if (temp2 == 1) {
-        //     UV.x += .5f / TileDimensionsInVertices;
-        // }
+        //
+        //  Unfortunately we don't have any control over the triangulation here!
+        //  We want to be able to affect the directions of the triangle diagonals
+        //  But this is fixed in firmware!
+        //  We also want to create holes sometimes (ie, missing triangles)
+        //  To get that functionality, we would have to create a custom tessellator
+        //  using compute shaders. The compute shader only needs to write out a
+        //  index buffer & set of vertex UV coords.
 
     float rawHeightValue = CustomSample(UV.xy, InterpolationQuality);
 

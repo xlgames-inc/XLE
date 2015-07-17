@@ -43,7 +43,9 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 
 			//	this is "panoramic projection."
 		float2 t = HemisphericalMappingCoord(viewFrustumVector);
-		if (t.y < 1.f) {
+		// if (t.y < 1.f)
+		{
+
 				// 	Texture coordinates wrap strangely because of
 				//	the hemispherical projection. At the wrapping
 				//	point the "x" texture coordinate will approach 1,
@@ -52,6 +54,7 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 				//	can correct for this, though, compensating for
 				//	wrapping in the derviatives values.
 				//	(or, I guess, always use the top mip-map level...?)
+
 			float2 tddx = ddx(t);
 			float2 tddy = ddy(t);
 			if (tddx.x < -0.5f) { tddx.x += 1.f; }
@@ -78,8 +81,7 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 
 cbuffer SkySettings { float SkyBrightness; }
 
-float4 CalculateColour0(	float2 texCoord,
-							float3 viewFrustumVector, float3 worldSpacePosition)
+float4 CalculateColour0(float2 texCoord, float3 viewFrustumVector, float3 worldSpacePosition)
 {
 	float3 color = SkyBrightness * CalculateBaseSkyColor(texCoord, viewFrustumVector);
 

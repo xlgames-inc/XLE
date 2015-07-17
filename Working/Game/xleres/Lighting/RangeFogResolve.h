@@ -16,7 +16,7 @@ void LightResolve_RangeFog(RangeFogDesc desc, float distance, out float outscatt
     // Just basic linear inscatter currently. This won't correctly deal with the amount of
     // inscattered light that later gets outscattered.
 
-    outscatterScale = exp(-desc.OpticalThickness * distance);
+    outscatterScale = exp(-desc.OpticalThickness.r * distance);
     inscatter = desc.Inscatter * distance;
 }
 

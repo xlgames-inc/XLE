@@ -81,8 +81,8 @@ namespace RenderCore
             //
         auto adapter = SelectAdapter();
 
-        const auto nsightMode = ConsoleRig::GlobalServices::GetCrossModule()._services.CallDefault(Hash64("nsight"), false);
         #if defined(_DEBUG)
+            const auto nsightMode = ConsoleRig::GlobalServices::GetCrossModule()._services.CallDefault(Hash64("nsight"), false);
             unsigned deviceCreationFlags = nsightMode?0:D3D11_CREATE_DEVICE_DEBUG;
         #else
             unsigned deviceCreationFlags = 0;

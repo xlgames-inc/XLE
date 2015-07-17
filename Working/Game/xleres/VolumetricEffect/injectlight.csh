@@ -177,7 +177,7 @@ float3 CalculateSamplePoint(uint3 cellIndex)
 
 static float3 GetDirectionToSun()
 {
-	return normalize(BasicLight[0].NegativeDirection);
+	return BasicLight[0].NegativeDirection;
 }
 
 #if (MONOCHROME_INSCATTER==1)

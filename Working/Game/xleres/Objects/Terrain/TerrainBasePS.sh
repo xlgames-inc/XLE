@@ -117,9 +117,16 @@ TerrainPixel CalculateTexturing(PSInput geo)
             materialId[3] = MakeCoverageTileSet(COVERAGE_1000).Load(
                 uint4(uint2(matIdTCB) + uint2(1,1), CoverageOrigin[COVERAGE_1000].z, 0));
 
+                // note that when we do this, we don't need to do blending inside
+                // of the ITerrainTexturing object! If we blend inside of that object
+                // we will end up with 16 taps... We only need 4, so long as coverage
+                // samples evenly fit inside of the gradient flag samples (which they
+                // should always do)
             procTexture = TerrainTextureOutput_Blank();
-            [unroll] for (uint c=0; c<4; c++)
-                procTexture = AddWeighted(procTexture, MainTexturing.Calculate(worldPosition, geo.dhdxy, materialId[c], geo.texCoord), w[c]);
+            [unroll] for (uint c=0; c<4; c++) {
+                TerrainTextureOutput sample = MainTexturing.Calculate(worldPosition, geo.dhdxy, materialId[c], geo.texCoord);
+                procTexture = AddWeighted(procTexture, sample, w[c]);
+            }
         }
     #else
         procTexture = MainTexturing.Calculate(worldPosition, geo.dhdxy, 0, geo.texCoord);

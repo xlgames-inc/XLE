@@ -34,7 +34,7 @@ VSShadowOutput main(VSInput input)
 
 	VSShadowOutput result;
 
-	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), GetColour(input));
+	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), GetColour(input).rgb);
 	result.position = worldPosition.xyz;
 
 	#if OUTPUT_TEXCOORD==1

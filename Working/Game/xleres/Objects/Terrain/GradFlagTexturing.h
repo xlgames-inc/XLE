@@ -137,10 +137,10 @@ TerrainTextureOutput GradFlagTexturing::Calculate(
         s[3] = CalculateCenterType(baseTC + int2(1, 1));
 
         float w[4];
-        w[0] = (1.f - C.x) * (1.f - C.y);
-        w[1] = (C.x) * (1.f - C.y);
-        w[2] = (1.f - C.x) * (C.y);
-        w[3] = (C.x) * (C.y);
+        w[0] = (1.f - C.x)  * (1.f - C.y);
+        w[1] = (C.x)        * (1.f - C.y);
+        w[2] = (1.f - C.x)  * (C.y);
+        w[3] = (C.x)        * (C.y);
 
         float typeWeights[4];
         typeWeights[0] = typeWeights[1] = typeWeights[2] = typeWeights[3] = 0;
@@ -160,6 +160,7 @@ TerrainTextureOutput GradFlagTexturing::Calculate(
 
             typeWeights[s[c]] += w[c];
         }
+
         result.diffuseAlbedo /= max(1e-5f, weightTotal);
 
             // we can find the edging like this --

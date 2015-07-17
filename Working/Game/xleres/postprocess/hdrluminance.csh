@@ -55,7 +55,7 @@ float CalculateLuminance(float3 colour)
 			//
 		const float3 componentWeights = float3(0.299f, .587f, .114f);
 		return sqrt(dot(componentWeights, colour*colour));
-	} else {	
+	} else {
 		const float3 componentWeights = float3(0.2126f, 0.7152f, 0.0722f);
 		return dot(colour, componentWeights);
 	}
@@ -65,7 +65,7 @@ float3 BrightPassFilter(float3 colour)
 {
 	const float scale	= SceneKey / OutputLuminanceBuffer[0]._currentLuminance;
 	float3 l			= scale * colour.rgb;
-	
+
 		//	We could use the whitepoint to calculate
 		//	this threshold value... Pixels very close (or over)
 		//	the whitepoint should get the bloom.
@@ -90,8 +90,8 @@ float3 BrightPassFilter(float3 colour)
 		//
 		//		Actually, I wonder if it really matters that much. Each individual
 		//		pixel will only add a tiny amount to the final average. Small
-		//		variations are ignorable. Also, the values are averaged over 
-		//		a few frames. 
+		//		variations are ignorable. Also, the values are averaged over
+		//		a few frames.
 		//
 		//		So perhaps we could get by with sampling fewer input texels, and
 		//		varying the sample pattern per frame. Let's try doing a single
@@ -106,8 +106,8 @@ float3 BrightPassFilter(float3 colour)
 		InputTexture.GetDimensions(inputDims.x, inputDims.y);
 	#endif
 	OutputLuminance.GetDimensions(outputDims.x, outputDims.y);
-	
-	uint ditherArray[16] = 
+
+	uint ditherArray[16] =
 	{
 		 4, 12,  0,  8,
 		10,  2, 14,  6,
@@ -115,7 +115,7 @@ float3 BrightPassFilter(float3 colour)
 		 1,  9,  5, 13
 	};
 
-	int2 ditherAddress	= dispatchThreadId.xy + int2(FrameIndex, FrameIndex);
+	uint2 ditherAddress	= dispatchThreadId.xy + uint2(FrameIndex, FrameIndex);
 	uint randomValue	= ditherArray[(ditherAddress.x%4)+(ditherAddress.y%4)*4];
 
 	int2 readOffset		= int2(randomValue%4, randomValue/4);
@@ -144,7 +144,7 @@ float3 BrightPassFilter(float3 colour)
 		//		all of the input pixels. Otherwise, we get a lot of flickering
 		//		as bright pixels move in and out of sampling.
 		//
-		//		Take the average of the pixels in our area, then run that 
+		//		Take the average of the pixels in our area, then run that
 		//		through a single bright pass filter. (ie, this isn't the
 		//		average of post-filtered values).
 		//
@@ -173,7 +173,7 @@ float3 BrightPassFilter(float3 colour)
 	uint2 outputDims;
 	OutputLuminance.GetDimensions(outputDims.x, outputDims.y);
 	if (dispatchThreadId.x < outputDims.x && dispatchThreadId.y < outputDims.y) {
-			//	Each step-down is a quartering step. So each time we add the 
+			//	Each step-down is a quartering step. So each time we add the
 			//	contribution of 4 pixels.
 		int2 baseTX = dispatchThreadId.xy*2;
 		float l0 = InputTexture[baseTX + int2(0,0)].r;
@@ -190,7 +190,7 @@ float3 BrightPassFilter(float3 colour)
 	uint2 outputDims;
 	OutputBrightPass.GetDimensions(outputDims.x, outputDims.y);
 	if (dispatchThreadId.x < outputDims.x && dispatchThreadId.y < outputDims.y) {
-			//	Each step-down is a quartering step. So each time we add the 
+			//	Each step-down is a quartering step. So each time we add the
 			//	contribution of 4 pixels.
 			//	In this case, we need to take the average of the 4 samples
 		int2 baseTX = dispatchThreadId.xy*2;
@@ -256,5 +256,3 @@ float3 BrightPassFilter(float3 colour)
 	OutputLuminanceBuffer[0]._prevLuminance = prevLum;
 	OutputLuminanceBuffer[0]._currentLuminance = lerp(prevLum, result, 0.2f);
 }
-
-

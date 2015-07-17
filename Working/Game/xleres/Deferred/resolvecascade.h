@@ -73,6 +73,7 @@ void FindCascade_CameraToShadowMethod(
 
     uint projectionCount = min(GetShadowSubProjectionCount(), ShadowMaxSubProjections);
     finalCascadeIndex = projectionCount;
+    frustumCoordinates = 0.0.xxxx;
 
         // 	Find the first frustum we're within
         //	This first loop is kept separate and simple

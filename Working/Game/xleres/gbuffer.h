@@ -51,7 +51,8 @@ float3 GBuffer_CalculateBestFitNormal(float3 inputNormal)
 	// get the texture coordinates in a collapsed cubemap
 	float2 vTexCoord = vNormalUns.z<maxNAbs?(vNormalUns.y<maxNAbs?vNormalUns.yz:vNormalUns.xz):vNormalUns.xy;
 	vTexCoord = vTexCoord.x < vTexCoord.y ? vTexCoord.yx : vTexCoord.xy;
-	vTexCoord.y /= vTexCoord.x;
+    if (vTexCoord.x != 0.f)   // DavidJ -- when x & y are zero, can get a divide by zero here
+        vTexCoord.y /= vTexCoord.x;
 	// fit normal into the edge of the unit cube
 	float3 result = inputNormal.xyz / maxNAbs;
 	// look-up fitting length and scale the normal to get the best fit

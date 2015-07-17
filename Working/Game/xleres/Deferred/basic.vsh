@@ -49,7 +49,7 @@ VSOutput main(VSInput input)
 		output.normal = worldNormal;
 	#endif
 
-	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), GetColour(input));
+	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), GetColour(input).rgb);
 
 	output.position = mul(WorldToClip, float4(worldPosition,1));
 

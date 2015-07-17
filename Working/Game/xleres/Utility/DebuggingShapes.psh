@@ -6,7 +6,7 @@
 
 #include "DebuggingShapes.h"
 
-float4 ScrollBarShader(	
+float4 ScrollBarShader(
 	float4 position	    : SV_Position,
 	float4 color		: COLOR0,
 	float2 texCoord0	: TEXCOORD0,
@@ -21,18 +21,18 @@ float4 ScrollBarShader(
     return result;
 }
 
-float4 RoundedRectShader( 
+float4 RoundedRectShader(
 	float4 position	    : SV_Position,
 	float4 color		: COLOR0,
 	float2 texCoord0	: TEXCOORD0,
 	float2 texCoord1	: TEXCOORD1,
     nointerpolation float2 outputDimensions : OUTPUTDIMENSIONS) : SV_Target0
 {
-	DebuggingShapesCoords coords = 
+	DebuggingShapesCoords coords =
 		DebuggingShapesCoords_Make(position, texCoord0, outputDimensions);
 
 	float2 shape = RoundedRectShape2(
-		0.0.xx, 1.0.xx, coords, 
+		0.0.xx, 1.0.xx, coords,
 		texCoord1.x, texCoord1.y);
 	if (shape.y <= 0.f && shape.x <= 0.f) { discard; }
 
@@ -48,11 +48,11 @@ float4 CrossHatchRoundedRectShader(
 	float2 texCoord1	: TEXCOORD1,
     nointerpolation float2 outputDimensions : OUTPUTDIMENSIONS) : SV_Target0
 {
-	DebuggingShapesCoords coords = 
+	DebuggingShapesCoords coords =
 		DebuggingShapesCoords_Make(position, texCoord0, outputDimensions);
 
 	float2 shape = RoundedRectShape2(
-		0.0.xx, 1.0.xx, coords, 
+		0.0.xx, 1.0.xx, coords,
 		texCoord1.x, texCoord1.y);
 	if (shape.y <= 0.f && shape.x <= 0.f) { discard; }
 
@@ -67,7 +67,7 @@ float4 CrossHatchRoundedRectShader(
 	return lerp(nonBorderColor, borderColor, shape.x);
 }
 
-float4 TagShader(		
+float4 TagShader(
 	float4 position	    : SV_Position,
 	float4 color		: COLOR0,
 	float2 texCoord0	: TEXCOORD0,
@@ -76,13 +76,13 @@ float4 TagShader(
 {
     float4 result = 0.0.xxxx;
 	RenderTag(
-		0.0.xx, 1.0.xx, 
+		0.0.xx, 1.0.xx,
 		DebuggingShapesCoords_Make(position, texCoord0, outputDimensions),
 		result);
     return result;
 }
 
-float4 SmallGridBackground(		
+float4 SmallGridBackground(
 	float4 position	    : SV_Position,
 	float4 color		: COLOR0,
 	float2 texCoord0	: TEXCOORD0,
@@ -117,7 +117,7 @@ float4 SmallGridBackground(
 		uint pixelsFromCenterX = uint(abs(texCoord0.x - 0.5f) / coords.udds.x + 0.5f);
 		if (pixelsFromCenterX % 4 == 0) {
 			uint height = ((pixelsFromCenterX % 32) == 0) ? 7 : 4;
-			if (pixelsFromCenterY < height) {
+			if (uint(pixelsFromCenterY) < height) {
 				return gridColor;
 			}
 		}
@@ -126,7 +126,7 @@ float4 SmallGridBackground(
 	return float4(0.35f, 0.5f, 0.35f, 0.75f);
 }
 
-float4 GridBackgroundShader(	
+float4 GridBackgroundShader(
 	float4 position	    : SV_Position,
 	float4 color		: COLOR0,
 	float2 texCoord0	: TEXCOORD0,
@@ -138,7 +138,7 @@ float4 GridBackgroundShader(
 	if (texCoord0.x >= (1.f-coords.udds.x) || texCoord0.y <= coords.vdds.y || texCoord0.y >= (1.f-coords.vdds.y)) {
 		return float4(0.0.xxx, 1.f);
 	}
-    
+
 	float brightness = 0.f;
 
 	float xPixels = coords.texCoord.x / coords.udds.x;
@@ -161,4 +161,3 @@ float4 GridBackgroundShader(
 		return float4(1.0.xxx, 0.25f);
 	}
 }
-

@@ -39,7 +39,7 @@ float LoadFloat1(Texture2D<float> textureObject, int2 pixelCoords, int sampleInd
 
 static float3 GetDirectionToSun()
 {
-	return normalize(BasicLight[0].NegativeDirection);
+	return BasicLight[0].NegativeDirection;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

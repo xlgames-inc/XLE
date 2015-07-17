@@ -50,7 +50,7 @@ void OrenNayar_CalculateInputs(float roughness, out float rho, out float shinine
     shininess = 2.0f / (roughness*roughness);
 }
 
-float4 ReadReflectionHemiBox( float3 direction, 
+float4 ReadReflectionHemiBox( float3 direction,
                                 Texture2D face12, Texture2D face34, Texture2D face5,
                                 uint2 textureSize, uint defaultMipMap)
 {
@@ -112,15 +112,15 @@ float4 ReadReflectionHemiBox( float3 direction,
 
 float2 HemisphericalMappingCoord(float3 direction)
 {
-	float2 a = normalize(direction.xy);
-	float theta = atan2(a.x, a.y);
-	float inc = atan(direction.z/length(direction.xy));
+		// note -- 	the trigonometry here is a little inaccurate. It causes shaking
+		//			when the camera moves. We might need to replace it with more
+		//			accurate math.
+	float theta = atan2(direction.x, direction.y);
+	float inc = atan(direction.z * rsqrt(dot(direction.xy, direction.xy)));
 
 	float x = 0.5f + 0.5f*(theta / (1.f*pi));
-
 	float y = 1.f-(inc / (.5f*pi));
 	y /= 2.f;
-    // y /= 1.1f;
 
 	return float2(x, y);
 }
@@ -137,7 +137,7 @@ float SimplifiedOrenNayer(float3 normal, float3 viewDirection, float3 lightDirec
 		//		See also original Oren-Nayar paper:
 		//			http://www1.cs.columbia.edu/CAVE/publications/pdfs/Oren_SIGGRAPH94.pdf
 		//
-		
+
 	const float NL	 = dot(normal, lightDirection);
 	const float NE	 = dot(normal, viewDirection);
 	const float EL	 = dot(viewDirection, lightDirection);
@@ -158,4 +158,3 @@ float SimplifiedOrenNayer(float3 normal, float3 viewDirection, float3 lightDirec
 
 
 #endif
-
