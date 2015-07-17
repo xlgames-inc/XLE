@@ -7,17 +7,22 @@
 #if !defined(UTILITY_MISC_H)
 #define UTILITY_MISC_H
 
-float DitherPatternValue(uint2 pixelCoords)
+float DitherPatternInt(uint2 pixelCoords)
 {
-	int ditherArray[16] = 
+	int ditherArray[16] =
 	{
-		 4, 12,  0,  8,
+		4, 12,  0,  8,
 		10,  2, 14,  6,
 		15,  7, 11,  3,
-		 1,  9,  5, 13
+		1,  9,  5, 13
 	};
 	uint2 t = pixelCoords.xy & 0x3;
-	return float(ditherArray[t.x+t.y*4]) / 16.f;
+	return ditherArray[t.x+t.y*4];
+}
+
+float DitherPatternValue(uint2 pixelCoords)
+{
+	return float(DitherPatternInt(pixelCoords)) / 16.f;
 }
 
 #endif

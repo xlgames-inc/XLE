@@ -9,6 +9,7 @@
 #include "../Lighting/BasicLightingEnvironment.h"
 #include "../Utility/perlinnoise.h"
 #include "../Utility/MathConstants.h"
+#include "../Utility/Misc.h"
 
 Texture2DArray<float>	ShadowTextures	 			: register(t2);
 
@@ -88,9 +89,17 @@ float3 CalculateSamplePoint(uint3 cellIndex)
 	#if defined(JITTER_SAMPLE_POSITION)
 			// note --	would we be better off with a more regular pattern for this jittering?
 			//			currently using just random inputs.
-		float noise0 = -1.f + 2.f * NoiseValues[int2(cellIndex.x, cellIndex.y*cellIndex.z) & 0xff];
-		float noise1 = -1.f + 2.f * NoiseValues[int2(cellIndex.y*cellIndex.x, cellIndex.z) & 0xff];
-		float noise2 = NoiseValues[int2(cellIndex.z, cellIndex.x*cellIndex.y) & 0xff];
+		const bool regularPattern = true;
+		float noise0, noise1, noise2;
+		if (!regularPattern) {
+			noise0 = -1.f + 2.f * NoiseValues[int2(cellIndex.x, cellIndex.y*cellIndex.z) & 0xff];
+			noise1 = -1.f + 2.f * NoiseValues[int2(cellIndex.y*cellIndex.x, cellIndex.z) & 0xff];
+			noise2 = NoiseValues[int2(cellIndex.z, cellIndex.x*cellIndex.y) & 0xff];
+		} else {
+			noise0 = 1.f - float(DitherPatternInt(cellIndex.yz)) / 8.f;
+			noise1 = 1.f - float(DitherPatternInt(cellIndex.xz)) / 8.f;
+			noise2 = .5 - float(DitherPatternInt(cellIndex.xy)) / 16.f;
+		}
 
 		centralNearPlaneXYCoords.x += JitteringAmount * multiplier.x * noise0;
 		centralNearPlaneXYCoords.y += JitteringAmount * multiplier.y * noise1;
@@ -173,8 +182,6 @@ static float3 GetDirectionToSun()
 
 float3 CalculateInscatter(int3 dispatchThreadId, float density)
 {
-	return density * 0.1f * ForwardColour;
-
 	float3 centrePoint = CalculateSamplePoint(dispatchThreadId);
 	float3 directionToSun = GetDirectionToSun();
 	float3 directionToSample = centrePoint - WorldSpaceView;
@@ -184,16 +191,19 @@ float3 CalculateInscatter(int3 dispatchThreadId, float density)
 			//
 			//		Smooth the search through the shadowing grid
 			//		by jittering X & Y slightly as we walk through
-			//		the grid.
+			//		the grid. It's should use the interpolation between
+			//		samples to blur out the result slightly while
+			//		working through the grid.
 			//
 	#define SMOOTH_SHADOWING_RESULT
 	#if defined(SMOOTH_SHADOWING_RESULT)
+		uint dither = DitherPatternInt(dispatchThreadId.xy);
 		float2 offset;
-		offset.x = frac(0.5f * 0.125f * dispatchThreadId.z);
-		offset.y = frac(0.5f * 0.178f * dispatchThreadId.z);
+		offset.x = 1.f - 2.f * frac(3.5f * 0.125f * (dispatchThreadId.z + dither));
+		offset.y = 1.f - 2.f * frac(3.5f * 0.178f * (dispatchThreadId.z - dither));
 		uint3 dimensions; InputInscatterShadowingValues.GetDimensions(dimensions.x, dimensions.y, dimensions.z);
 		float3 texCoord = (dispatchThreadId + float3(offset, 0.5f)) / float3(dimensions);
-		float shadowing = InputInscatterShadowingValues.SampleLevel(DefaultSampler, texCoord, 0);
+		float shadowing = InputInscatterShadowingValues.SampleLevel(ClampingSampler, texCoord, 0);
 	#else
 		float shadowing = InputInscatterShadowingValues[dispatchThreadId];
 	#endif
