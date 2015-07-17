@@ -270,6 +270,7 @@ namespace SceneEngine
             UInt3       _gridDimensions;
             Desc(const VolumetricFogConfig::Renderer& cfg, unsigned frustumCount, bool esmShadowMaps, bool highPrecision) 
             {
+                XlZeroMemory(*this);
                 _frustumCount = std::min(cfg._maxShadowFrustums, frustumCount - cfg._skipShadowFrustums);
                 _esmShadowMaps = esmShadowMaps;
                 _blurredShadowSize = cfg._blurredShadowSize;
