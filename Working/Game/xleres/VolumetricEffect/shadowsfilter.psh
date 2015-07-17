@@ -181,14 +181,14 @@ static float VertBlur(int2 mid, int samples, int textureHeight)
 	}
 
 	float accWeight = 0.f;
-	[unroll] for (uint c=0; c<samples/2; ++c) {
+	[unroll] for (int c=0; c<samples/2; ++c) {
 		int y = max(mid.y - samples/2 + c, 0);
 		AccValue(int2(mid.x, y), filteringWeights[c], accumulatedValue, accWeight);
 	}
 
 	AccValue(mid.xy, filteringWeights[samples/2], accumulatedValue, accWeight);
 
-	[unroll] for (uint c=0; c<samples/2; ++c) {
+	[unroll] for (int c=0; c<samples/2; ++c) {
 		uint y = min(mid.y + 1 + c, textureHeight-1);
 		AccValue(int2(mid.x, y), filteringWeights[samples/2 + 1 + c], accumulatedValue, accWeight);
 	}

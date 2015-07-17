@@ -8,18 +8,23 @@
 #include "../CommonResources.h"
 #include "../Lighting/BasicLightingEnvironment.h"
 #include "../Utility/perlinnoise.h"
-#include "../Utility/MathConstants.h"
 #include "../Utility/Misc.h"
 
 Texture2DArray<float>	ShadowTextures	 			: register(t2);
 
 RWTexture3D<float>		InscatterShadowingValues	: register(u0);
-RWTexture3D<float>		TransmissionValues			: register(u1);
-RWTexture3D<float>		DensityValues				: register(u2);
-RWTexture3D<float4>		InscatterOutput				: register(u3);
+RWTexture3D<float>		DensityValues				: register(u1);
+RWTexture3D<float>		TransmissionValues			: register(u2);
+
+#if (MONOCHROME_INSCATTER==1)
+	RWTexture3D<float>	InscatterOutput				: register(u3);
+#else
+	RWTexture3D<float4>	InscatterOutput				: register(u3);
+#endif
 
 Texture3D<float>		InputInscatterShadowingValues	: register(t3);
-Texture3D<float4>		InputInscatterPointLightSources : register(t4);
+Texture3D<float>		InputDensityValues 				: register(t4);
+Texture3D<float4>		InputInscatterPointLightSources : register(t5);
 Texture2D<float>		NoiseValues						: register(t9);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -125,11 +130,6 @@ float3 CalculateSamplePoint(uint3 cellIndex)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-float MonochromeRaleighScattering(float cosTheta)
-{
-	return 3.f / (16.f * pi) * (1.f + cosTheta * cosTheta);
-}
-
 [numthreads(10, 10, 8)]
 	void InjectLighting(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
@@ -177,17 +177,15 @@ float MonochromeRaleighScattering(float cosTheta)
 
 static float3 GetDirectionToSun()
 {
-	return -normalize(BasicLight[0].NegativeDirection);
+	return normalize(BasicLight[0].NegativeDirection);
 }
 
-float3 CalculateInscatter(int3 dispatchThreadId, float density)
+#if (MONOCHROME_INSCATTER==1)
+	float CalculateInscatter(int3 dispatchThreadId, float density)
+#else
+	float3 CalculateInscatter(int3 dispatchThreadId, float density)
+#endif
 {
-	float3 centrePoint = CalculateSamplePoint(dispatchThreadId);
-	float3 directionToSun = GetDirectionToSun();
-	float3 directionToSample = centrePoint - WorldSpaceView;
-	float directionToSampleRLength = rsqrt(dot(directionToSample, directionToSample));
-	float cosTheta = dot(directionToSun, directionToSample) * directionToSampleRLength;
-
 			//
 			//		Smooth the search through the shadowing grid
 			//		by jittering X & Y slightly as we walk through
@@ -208,17 +206,26 @@ float3 CalculateInscatter(int3 dispatchThreadId, float density)
 		float shadowing = InputInscatterShadowingValues[dispatchThreadId];
 	#endif
 
-	float raleighScattering	 = MonochromeRaleighScattering(cosTheta);
-	float inscatterScalar = shadowing * raleighScattering * density;		// inscatter quantity must be scale with the volume of the cell
+	float inscatterScalar = shadowing * density;		// inscatter quantity must be scale with the volume of the cell
 
-	float3 colour = lerp(ForwardColour, BackColour, 0.5f + 0.5f * cosTheta);
-	float3 result = inscatterScalar * colour;
+	#if (MONOCHROME_INSCATTER==1)
+		return inscatterScalar;
+	#else
+		float3 centrePoint = CalculateSamplePoint(dispatchThreadId);
+		float3 directionToSun = GetDirectionToSun();
+		float3 directionToSample = centrePoint - WorldSpaceView;
+		float directionToSampleRLength = rsqrt(dot(directionToSample, directionToSample));
+		float cosTheta = dot(directionToSun, directionToSample) * directionToSampleRLength;
 
-	const bool pointLightSources = false;
-	if (pointLightSources)
-		result += InputInscatterPointLightSources[dispatchThreadId].rgb;
+		float3 colour = MonochromeRaleighScattering(cosTheta) * lerp(ForwardColour, BackColour, 0.5f + 0.5f * cosTheta);
+		float3 result = inscatterScalar * colour;
 
-	return result;
+		const bool pointLightSources = false;
+		if (pointLightSources)
+			result += InputInscatterPointLightSources[dispatchThreadId].rgb;
+
+		return result;
+	#endif
 }
 
 [numthreads(10, 10, 1)]
@@ -229,15 +236,15 @@ float3 CalculateInscatter(int3 dispatchThreadId, float density)
 		//			element UVAs.
 		//			We could use an int type that is packed RGBA?
 
-	float frontDensity = DensityValues[int3(dispatchThreadId.xy, 0)];
-	float4 accumulatedInscatter = 0.0.xxxx; // float4(CalculateInscatter(int3(dispatchThreadId.xy, 0), frontDensity), 1.f);
+	float frontDensity = InputDensityValues[int3(dispatchThreadId.xy, 0)];
+	float accumulatedInscatter = 0.f; // float4(CalculateInscatter(int3(dispatchThreadId.xy, 0), frontDensity), 1.f);
 	float accumulatedTransmission = 1.f;
 	TransmissionValues[int3(dispatchThreadId.xy, 0)] = accumulatedTransmission;
-	InscatterOutput[int3(dispatchThreadId.xy, 0)] = 0.0.xxxx;
+	InscatterOutput[int3(dispatchThreadId.xy, 0)] = 0.f;
 
 	[loop] for (int d=1; d<DEPTH_SLICE_COUNT; d++) {
 
-		float backDensity = DensityValues[int3(dispatchThreadId.xy, d)];
+		float backDensity = InputDensityValues[int3(dispatchThreadId.xy, d)];
 
 			//	Note, each cell is progressively larger towards the camera, but the z-dimension
 			//	of the cells are the same.
@@ -247,12 +254,11 @@ float3 CalculateInscatter(int3 dispatchThreadId, float density)
 			(DepthBiasEq(d / float(DEPTH_SLICE_COUNT)) - DepthBiasEq((d-1) / float(DEPTH_SLICE_COUNT)))
 			* WorldSpaceGridDepth;
 
-		float3 inscatter = CalculateInscatter(int3(dispatchThreadId.xy, d), backDensity) * transmissionDistance;
-		float4 newInscatter = float4(inscatter, 1.f);
-		accumulatedInscatter += newInscatter * accumulatedTransmission;
+		float inscatter = CalculateInscatter(int3(dispatchThreadId.xy, d), backDensity) * transmissionDistance;
+		accumulatedInscatter += inscatter * accumulatedTransmission;
 
 			//	using Beer-Lambert equation for fog outscatter
-		float integralSolution = backDensity * transmissionDistance; // (backDensity + frontDensity) * .5f * transmissionDistance;
+		float integralSolution = (backDensity + frontDensity) * .5f * transmissionDistance;
 		accumulatedTransmission *= exp(-integralSolution);
 
 		InscatterOutput   	[int3(dispatchThreadId.xy, d)] = accumulatedInscatter;

@@ -72,8 +72,8 @@ namespace SceneEngine
             float       _skyReflectionBlurriness; 
             unsigned    _dummy[3];
 
-            Float3      _rangeFloatInscatter; unsigned _dummy1;
-            Float3      _rangeFloatOpticalThickness; unsigned _dummy2;
+            Float3      _rangeFogInscatter; unsigned _dummy1;
+            Float3      _rangeFogOpticalThickness; unsigned _dummy2;
         };
 
         class Light

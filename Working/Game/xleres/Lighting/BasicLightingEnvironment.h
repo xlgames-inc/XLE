@@ -20,6 +20,7 @@
 cbuffer BasicLightingEnvironment : register(b10)
 {
     AmbientDesc BasicAmbient;
+    RangeFogDesc BasicRangeFog;
     LightDesc BasicLight[BASIC_LIGHT_COUNT];
 }
 

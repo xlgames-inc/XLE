@@ -29,9 +29,12 @@ cbuffer VolumetricFogConstants
     float HeightEnd;
 }
 
+#define MONOCHROME_INSCATTER 1
+
 #include "../Colour.h"
 #include "../ShadowProjection.h"
 #include "../TransformAlgorithm.h"
+#include "../Utility/MathConstants.h"
 
 float MakeComparisonDistance(float shadowBufferDepth, int slice)
 {
@@ -57,6 +60,11 @@ float DepthBiasEq(float depth0To1)
 float DepthBiasInvEq(float depth0To1)
 {
     return pow(max(0.f, depth0To1), 1.f/DepthPower);
+}
+
+float MonochromeRaleighScattering(float cosTheta)
+{
+    return 3.f / (16.f * pi) * (1.f + cosTheta * cosTheta);
 }
 
 #endif

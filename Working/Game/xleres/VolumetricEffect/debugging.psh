@@ -9,15 +9,15 @@
 
 Texture2DArray<float>		ShadowTextures	 	: register(t0);
 
-Texture3D<float4>			InscatterTexture				: register(t1);
+Texture3D<float>			InscatterTexture				: register(t1);
 Texture3D<float>			TransmissionTexture				: register(t2);
 Texture3D<float>			InputInscatterShadowingValues	: register(t3);
 Texture3D<float>			DensityValues					: register(t4);
 
 float4 VolumeShadows(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
-	const bool showShadows = true;
-	const bool vis3DShadows = true;
+	const bool showShadows = false;
+	const bool vis3DShadows = false;
 	if (showShadows) {
 		float4 result = float4(0.0.xxx, 0.f);
 		RenderTile(float2(.5f, 0.f), float2(1.f, .5f), texCoord, ShadowTextures, 0, result);
@@ -42,6 +42,6 @@ float4 VolumeShadows(float4 position : SV_Position, float2 texCoord : TEXCOORD0)
 		uint tilesDown = screenSize.y / tileSize;
 		uint tileIndex = (floor(position.y / tileSize) * tilesAlong) + (position.x / tileSize);
 		float z = tileIndex / float(tilesDown * tilesAlong);
-		return InputInscatterShadowingValues.SampleLevel(ClampingSampler, float3(frac(position.xy/tileSize), z), 0);
+		return InscatterTexture.SampleLevel(ClampingSampler, float3(frac(position.xy/tileSize), z), 0);
 	}
 }
