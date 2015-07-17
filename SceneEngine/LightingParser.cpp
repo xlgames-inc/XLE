@@ -264,9 +264,9 @@ namespace SceneEngine
         }
 
         if (Tweakable("DoRain", false)) {
-            // Rain_Render(context, parserContext);
-            // Rain_RenderSimParticles(context, parserContext, depthsSRV, normalsSRV);
-            SparkParticleTest_RenderSimParticles(context, parserContext, depthsSRV, normalsSRV);
+            Rain_Render(context, parserContext);
+            Rain_RenderSimParticles(context, parserContext, depthsSRV, normalsSRV);
+            // SparkParticleTest_RenderSimParticles(context, parserContext, depthsSRV, normalsSRV);
         }
 
         if (Tweakable("DoSun", false)) {

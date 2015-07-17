@@ -8,6 +8,7 @@
 #include "../Utility/perlinnoise.h"
 #include "../Utility/ProjectionMath.h"
 #include "../CommonResources.h"
+#include "../Colour.h"
 
 struct VStoGS
 {
@@ -68,15 +69,15 @@ VStoGS vs_main(uint particleId : SV_VertexID)
 
 	float spaceBetweenParticles = SpawnWidth / float(ParticleCountWidth);
 	float2 quantStartMidPoint = spaceBetweenParticles * floor(SpawnMidPoint.xy / spaceBetweenParticles);
-	float2 startPosition = 
-		quantStartMidPoint.xy 
+	float2 startPosition =
+		quantStartMidPoint.xy
 		+ float2(	spaceBetweenParticles * id.x,
 					spaceBetweenParticles * id.y);
 
 		// random variation in speed helps fill in the space with drops
 	float fallingSpeedScale			= .5f + .5f * RandomValue(startPosition / 1.7f);
 	float3 fallingSpeed				= fallingSpeedScale * FallingVelocity;
-	
+
 	const float verticalWrapTime	= VerticalWrap / -fallingSpeed.z;
 	float fallingOffset				= VerticalWrap * RandomValue(startPosition / 2.3f);
 
@@ -112,7 +113,7 @@ VStoGS vs_main(uint particleId : SV_VertexID)
 	float4 projected1 = mul(WorldToClip, float4(input[0].positions[1],1));
 	if (InsideFrustum(projected0) || InsideFrustum(projected1)) {
 		float width = input[0].radius * projected0.w;
-	
+
 		GStoPS output;
 		output.brightness = input[0].brightness;
 
@@ -139,12 +140,13 @@ float4 ps_main(GStoPS input) : SV_Target0
 {
 	// return 1.0.xxxx;
 
-	float brightness = 
+	float brightness =
 			(1.f - input.texCoord.x) * input.texCoord.x
 		*	(1.f - input.texCoord.y) * input.texCoord.y;
-	brightness = 1.0f - brightness;
-	brightness *= brightness; brightness *= brightness;
-	brightness = 1.0f - brightness;
-	return float4(0.4f * float3(.3f, .35f, .37f), 0.75f * brightness * input.brightness);
+		// brightness = 1.0f - brightness;
+	// brightness *= brightness; brightness *= brightness;
+	// brightness = 1.0f - brightness;
+	return float4(
+		LightingScale * 2.f * float3(.33f, .35f, .37f),
+		(.5f + 0.5f * brightness) * .33f * input.brightness);
 }
-

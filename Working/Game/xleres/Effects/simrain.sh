@@ -112,7 +112,7 @@ bool FindCollision(float3 startPosition, float3 endPosition, out float3 collisio
 			foundCollision = true;
 		}
 	}
-	
+
 	collisionPosition = TransformViewToWorld(lerp(startViewSpace, endViewSpace, collisionStep/float(stepCount)));
 	return foundCollision;
 }
@@ -124,7 +124,7 @@ bool FindCollision(float3 startPosition, float3 endPosition, out float3 collisio
 	RainParticle input = Particles[particleIndex];
 	float2 randomSeed = float2(dispatchThreadId.xy) / float2(ParticleCountWidth.xx);
 
-		//	If this particle begins outside of the camera frustum, then cull it and 
+		//	If this particle begins outside of the camera frustum, then cull it and
 		//	find a new starting point inside the frustum
 	float velocityMagSquared = dot(input.velocity, input.velocity);
 	float4 projectedPoint = mul(WorldToClip, float4(input.position, 1.f));
@@ -134,7 +134,7 @@ bool FindCollision(float3 startPosition, float3 endPosition, out float3 collisio
 	}
 
 	float3 newPosition = input.position + input.velocity * ElapsedTime + .5f * ElapsedTime * ElapsedTime * Accel;
-	input.velocity *= 0.96f;
+	input.velocity *= 0.97f;
 	input.velocity += ElapsedTime * Accel;
 
 	float3 collisionPoint;
@@ -145,7 +145,8 @@ bool FindCollision(float3 startPosition, float3 endPosition, out float3 collisio
 		float4 rawNormal = NormalsBuffer.Load(int3(collisionTexCoords,0));
 		float3 worldSpaceNormal = DecompressGBufferNormal(rawNormal);
 		input.velocity = 0.33f * reflect(input.velocity, worldSpaceNormal);
-		input.position = collisionPoint + (2.f/60.f) * input.velocity;
+		input.velocity.z *= 0.5f;
+		input.position = collisionPoint + (1.f/60.f) * input.velocity;
 
 	} else {
 
@@ -178,6 +179,3 @@ VStoGS vs_main(uint particleId : SV_VertexID)
 	output.brightness		= 1.f;
 	return output;
 }
-
-
-
