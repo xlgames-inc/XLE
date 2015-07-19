@@ -56,8 +56,8 @@ namespace SceneEngine
                 auto v3 = mesh._vertices[i->_verts[3]]._pt;
 
                     // split based on which is the shortest splitter
-                auto l0 = Magnitude(v2 - v1);
-                auto l1 = Magnitude(v3 - v0);
+                auto l0 = MagnitudeSquared(v2 - v1);
+                auto l1 = MagnitudeSquared(v3 - v0);
 
                 if (l0 < l1) {
                     indices[0] = (unsigned short)i->_verts[0];
@@ -88,8 +88,8 @@ namespace SceneEngine
                 auto v3 = mesh._vertices[i->_verts[3]]._pt;
 
                     // split based on which is the shortest splitter
-                auto l0 = Magnitude(v2 - v1);
-                auto l1 = Magnitude(v3 - v0);
+                auto l0 = MagnitudeSquared(v2 - v1);
+                auto l1 = MagnitudeSquared(v3 - v0);
 
                 if (l0 < l1) {
                     indices[0] = i->_verts[0]; indices[1] = i->_verts[1]; indices[2] = i->_verts[2];

@@ -19,6 +19,18 @@
 
 namespace SceneEngine
 {
+    class EdgeIntersection
+    {
+    public:
+        Float3 _pt;
+        Float3 _normal;
+
+        EdgeIntersection(const Float3& intersectionPt, const Float3& intersectionNormal)
+            : _pt(intersectionPt), _normal(intersectionNormal) {}
+    };
+
+// #define STORE_INTERSECTIONS
+
     class GridElement
     {
     public:
@@ -31,19 +43,13 @@ namespace SceneEngine
         Float3      _massPointAccum;
         unsigned    _massPointCount;
 
+        #if defined(STORE_INTERSECTIONS)
+            std::vector<EdgeIntersection> _intersectionPts;
+        #endif
+
         GridElement() 
             : _Ahat(Zero<Float3x3>()), _Bhat(Zero<Float3>()), _r(0.f)
             , _massPointAccum(Zero<Float3>()), _massPointCount(0) {}
-    };
-
-    class EdgeIntersection
-    {
-    public:
-        Float3 _pt;
-        Float3 _normal;
-
-        EdgeIntersection(const Float3& intersectionPt, const Float3& intersectionNormal)
-            : _pt(intersectionPt), _normal(intersectionNormal) {}
     };
 
     static EdgeIntersection  TestEdge(  const Float3& e0, const Float3& e1, float d0, float d1, 
@@ -66,7 +72,7 @@ namespace SceneEngine
 
         float x0 = 0.f, x1 = 1.f;
         float x = 1.f, d = FLT_MAX;
-        unsigned maxImprovementSteps = 4;
+        unsigned maxImprovementSteps = 16;
         for (unsigned c=0; ; ++c) {
             float prevD = d; float prevX = x;
             x = LinearInterpolate(x0, x1, -d0 / (d1 - d0));
@@ -79,7 +85,7 @@ namespace SceneEngine
                 break;
             }
 
-            if (d < 1e-6f) break;   // if we get close enough, just stop
+            if (XlAbs(d) < 1e-6f) break;   // if we get close enough, just stop
             if ((c+1)>=maxImprovementSteps) break;
 
                 //  We're going to attempt another improvement.
@@ -94,6 +100,7 @@ namespace SceneEngine
             }
         }
 
+        assert(x>=0.f && x <= 1.f);
         Float3 bestIntersection = LinearInterpolate(e0, e1, x);
         Float3 normal = fn.GetNormal(bestIntersection);     // note -- we might need to tell the function the sampling density
         return EdgeIntersection(bestIntersection, normal);
@@ -164,70 +171,139 @@ namespace SceneEngine
         gridElement._Bhat[2] = mat(2, 3);
         gridElement._r = mat(3, 3);
 
+        assert( Equivalent(mat(3, 0), 0.0f, 1e-6f)
+            &&  Equivalent(mat(3, 1), 0.0f, 1e-6f)
+            &&  Equivalent(mat(3, 2), 0.0f, 1e-6f));
+
         gridElement._massPointAccum += intersection._pt - gridElementCenter;
         ++gridElement._massPointCount;
+
+        #if defined(STORE_INTERSECTIONS)
+            gridElement._intersectionPts.push_back(
+                EdgeIntersection(intersection._pt - gridElementCenter, intersection._normal));
+        #endif
     }
 
     static Float3 CalculateCellPoint(const GridElement& gridElement, const Float3& gridElementSize)
     {
         Float3 massPoint = gridElement._massPointAccum / float(gridElement._massPointCount);
+        assert(XlAbs(massPoint[0]) <= 0.5f*gridElementSize[0] 
+            && XlAbs(massPoint[1]) <= 0.5f*gridElementSize[1] 
+            && XlAbs(massPoint[2]) <= 0.5f*gridElementSize[2]);
 
-        Eigen::Matrix<float,3,1> massPointVec;
-        massPointVec(0,0) = massPoint[0];
-        massPointVec(1,0) = massPoint[1];
-        massPointVec(2,0) = 0.f;
+        #if defined(STORE_INTERSECTIONS)
+            typedef Eigen::Matrix<float,5,4> Float5x4;
+            Float5x4 mat = Float5x4::Zero();
 
-        Eigen::Matrix<float,3,1> x;
+            for (unsigned c=0; c<unsigned(gridElement._intersectionPts.size()); ++c) {
+                mat(4, 0) = gridElement._intersectionPts[c]._normal[0];
+                mat(4, 1) = gridElement._intersectionPts[c]._normal[1];
+                mat(4, 2) = gridElement._intersectionPts[c]._normal[2];
+                mat(4, 3) = Dot(gridElement._intersectionPts[c]._pt, gridElement._intersectionPts[c]._normal);
 
-        Eigen::Matrix<float,3,3> Ahat;
-        Eigen::Matrix<float,3,1> Bhat;
-        Ahat(0,0) = gridElement._Ahat(0,0);
-        Ahat(0,1) = gridElement._Ahat(0,1);
-        Ahat(0,2) = gridElement._Ahat(0,2);
-        Ahat(1,0) = gridElement._Ahat(1,0);
-        Ahat(1,1) = gridElement._Ahat(1,1);
-        Ahat(1,2) = gridElement._Ahat(1,2);
-        Ahat(2,0) = gridElement._Ahat(2,0);
-        Ahat(2,1) = gridElement._Ahat(2,1);
-        Ahat(2,2) = gridElement._Ahat(2,2);
-
-        Bhat(0, 0) = gridElement._Bhat[0];
-        Bhat(1, 0) = gridElement._Bhat[1];
-        Bhat(2, 0) = gridElement._Bhat[2];
-
-            //  The original dual contour multiplies through with the transpose of A. This might
-            //  reduce the work when calculating the SVD, but the Eigen library doesn't seem to
-            //  support this optimisation, however. So I'm not sure if we need to multiply
-            //  through with AHatTranspose here.
-        const bool useTranspose = true;
-        if (useTranspose) {
-            auto AhatTranspose = Ahat.transpose();
-            Eigen::JacobiSVD<Eigen::Matrix<float, 3, 3>> svd(AhatTranspose * Ahat, Eigen::ComputeFullU | Eigen::ComputeFullV);
-            svd.solve(AhatTranspose * Bhat - AhatTranspose * Ahat * massPointVec).evalTo(x);
-        } else {
-                //  note that if we know the mass point when we're calculating Ahat, we can probably
-                //  just take into account the mass point then. However, if we're using a marching
-                //  cubes-like algorithm to move through the data field, and so visiting each cube
-                //  element multiple times, we might not be able to calculate the mass point until 
-                //  after AHat has been fully built. But we can compensate during the solution, 
-                //  as so ---
-            Eigen::JacobiSVD<Eigen::Matrix<float, 3, 3>> svd(Ahat, Eigen::ComputeFullU | Eigen::ComputeFullV);
-            svd.solve(Bhat - Ahat * massPointVec).evalTo(x);
-        }
-
-        auto result = Float3(x(0, 0) + massPoint[0], x(1, 0) + massPoint[1], x(2, 0) + massPoint[2]);
-
-        static bool preventBadResults = false;
-        if (preventBadResults) {
-            Float3 halfSize = 0.5f * gridElementSize;
-            if (result[0] < -halfSize[0] || result[0] > halfSize[0] ||  
-                result[1] < -halfSize[1] || result[1] > halfSize[1] ||
-                result[2] < -halfSize[2] || result[2] > halfSize[2]) {
-                return massPoint;       // got a poor result from the QEF test -- too much curvature in a small area.
+                assert(XlAbs(gridElement._intersectionPts[c]._pt[0]) <= 0.5f*gridElementSize[0]);
+                assert(XlAbs(gridElement._intersectionPts[c]._pt[1]) <= 0.5f*gridElementSize[1]);
+                assert(XlAbs(gridElement._intersectionPts[c]._pt[2]) <= 0.5f*gridElementSize[2]);
+                RotateToUpperTriangle(mat);
             }
-        }
 
-        return result;
+            Eigen::Matrix<float,3,3> Ahat;
+            Eigen::Matrix<float,3,1> Bhat;
+            for (unsigned c=0; c<3; ++c) {
+                Ahat(c,0) = mat(c,0);
+                Ahat(c,1) = mat(c,1);
+                Ahat(c,2) = mat(c,2);
+                Bhat(c,0) = mat(c,3);
+            }
+
+            Eigen::Matrix<float,3,1> massPointVec;
+            massPointVec(0,0) = massPoint[0];
+            massPointVec(1,0) = massPoint[1];
+            massPointVec(2,0) = massPoint[2];
+
+            Eigen::MatrixXf x(3, 1);
+
+                //  The original dual contour multiplies through with the transpose of A. This might
+                //  reduce the work when calculating the SVD, but the Eigen library doesn't seem to
+                //  support this optimisation, however. So I'm not sure if we need to multiply
+                //  through with AHatTranspose here.
+            static bool useTranspose = true;
+            if (useTranspose) {
+                auto AhatTranspose = Ahat.transpose();
+                Eigen::JacobiSVD<Eigen::MatrixXf> svd(AhatTranspose * Ahat, Eigen::ComputeFullU | Eigen::ComputeFullV);
+                svd.solve(AhatTranspose * Bhat - AhatTranspose * Ahat * massPointVec).evalTo(x);
+            } else {
+                Eigen::JacobiSVD<Eigen::MatrixXf> svd(Ahat, Eigen::ComputeFullU | Eigen::ComputeFullV);
+                svd.solve(Bhat - Ahat * massPointVec).evalTo(x);
+            }
+
+            // assert(XlAbs(x(0,0)) < .5f * gridElementSize[0] 
+            //     && XlAbs(x(1,0)) < .5f * gridElementSize[1]
+            //     && XlAbs(x(2,0)) < .5f * gridElementSize[2]);
+
+            auto result = Float3(x(0, 0) + massPoint[0], x(1, 0) + massPoint[1], x(2, 0) + massPoint[2]);
+            return result;
+
+        #else
+
+            Eigen::Matrix<float,3,1> massPointVec;
+            massPointVec(0,0) = massPoint[0];
+            massPointVec(1,0) = massPoint[1];
+            massPointVec(2,0) = massPoint[2];
+
+            Eigen::Matrix<float,3,1> x;
+
+            Eigen::Matrix<float,3,3> Ahat;
+            Eigen::Matrix<float,3,1> Bhat;
+            Ahat(0,0) = gridElement._Ahat(0,0);
+            Ahat(0,1) = gridElement._Ahat(0,1);
+            Ahat(0,2) = gridElement._Ahat(0,2);
+            Ahat(1,0) = gridElement._Ahat(1,0);
+            Ahat(1,1) = gridElement._Ahat(1,1);
+            Ahat(1,2) = gridElement._Ahat(1,2);
+            Ahat(2,0) = gridElement._Ahat(2,0);
+            Ahat(2,1) = gridElement._Ahat(2,1);
+            Ahat(2,2) = gridElement._Ahat(2,2);
+
+            Bhat(0, 0) = gridElement._Bhat[0];
+            Bhat(1, 0) = gridElement._Bhat[1];
+            Bhat(2, 0) = gridElement._Bhat[2];
+
+                //  The original dual contour multiplies through with the transpose of A. This might
+                //  reduce the work when calculating the SVD, but the Eigen library doesn't seem to
+                //  support this optimisation, however. So I'm not sure if we need to multiply
+                //  through with AHatTranspose here.
+            const bool useTranspose = true;
+            if (useTranspose) {
+                auto AhatTranspose = Ahat.transpose();
+                Eigen::JacobiSVD<Eigen::Matrix<float, 3, 3>> svd(AhatTranspose * Ahat, Eigen::ComputeFullU | Eigen::ComputeFullV);
+                svd.solve(AhatTranspose * Bhat - AhatTranspose * Ahat * massPointVec).evalTo(x);
+            } else {
+                    //  note that if we know the mass point when we're calculating Ahat, we can probably
+                    //  just take into account the mass point then. However, if we're using a marching
+                    //  cubes-like algorithm to move through the data field, and so visiting each cube
+                    //  element multiple times, we might not be able to calculate the mass point until 
+                    //  after AHat has been fully built. But we can compensate during the solution, 
+                    //  as so ---
+                Eigen::JacobiSVD<Eigen::Matrix<float, 3, 3>> svd(Ahat, Eigen::ComputeFullU | Eigen::ComputeFullV);
+                svd.solve(Bhat - Ahat * massPointVec).evalTo(x);
+            }
+
+            auto result = Float3(x(0, 0) + massPoint[0], x(1, 0) + massPoint[1], x(2, 0) + massPoint[2]);
+
+            static bool preventBadResults = false;
+            if (preventBadResults) {
+                Float3 halfSize = 0.5f * gridElementSize;
+                if (result[0] < -halfSize[0] || result[0] > halfSize[0] ||  
+                    result[1] < -halfSize[1] || result[1] > halfSize[1] ||
+                    result[2] < -halfSize[2] || result[2] > halfSize[2]) {
+                    return massPoint;       // got a poor result from the QEF test -- too much curvature in a small area.
+                }
+            }
+
+            return result;
+
+        #endif
     }
 
     static void CheckWindingOrder(DualContourMesh::Quad& q, const std::vector<DualContourMesh::Vertex>& vertices)
@@ -375,7 +451,7 @@ namespace SceneEngine
                 }
 
             // note --  The order of the cell offsets here is important, because it 
-            //          determines the order of the vertices in the quad. We 
+            //          determines the order of the vertices in the quad.
         Int3 cellOffsetsX[] = { Int3(0, 0, 0), Int3(0, -1, 0), Int3(0, 0, -1), Int3(0, -1, -1) };
         Int3 cellOffsetsY[] = { Int3(0, 0, 0), Int3(-1, 0, 0), Int3(0, 0, -1), Int3(-1, 0, -1) };
         Int3 cellOffsetsZ[] = { Int3(0, 0, 0), Int3(-1, 0, 0), Int3(0, -1, 0), Int3(-1, -1, 0) };
