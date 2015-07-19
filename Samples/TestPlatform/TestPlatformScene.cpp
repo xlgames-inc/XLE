@@ -18,6 +18,8 @@
 
 #include "../../ConsoleRig/Console.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
+#include "../../Math/Noise.h"
+#include "../../Math/Geometry.h"
 
 namespace Sample
 {
@@ -55,6 +57,21 @@ namespace Sample
             DualContourTest(const Desc& desc);
         };
 
+        static float SimplexFBM(Float3 pos, float hgrid, float gain, float lacunarity, int octaves)
+        {
+            float total = 0.0f;
+	        float frequency = 1.0f/(float)hgrid;
+	        float amplitude = 1.f;
+        
+	        for (int i = 0; i < octaves; ++i) {
+		        total += SimplexNoise(Float3(pos * frequency)) * amplitude;
+		        frequency *= lacunarity;
+		        amplitude *= gain;
+	        }
+        
+	        return total;
+        }
+
         class TestDensityFunction : public IVolumeDensityFunction
         {
         public:
@@ -65,12 +82,35 @@ namespace Sample
 
             float       GetDensity(const Float3& pt) const
             {
-                return (MagnitudeSquared(pt) < (9.f * 9.f)) ? 1.f : -1.f;
+                float basic = 1.f - (Magnitude(pt) / 9.f);
+                // return basic;
+
+                static Float3 posMult(1.f, 1.f, 0.25f);
+                static float hgrid = 1.f;
+                static float gain = 0.5f;
+                static float lacunarity = 2.1042f;
+                static unsigned octaves = 4;
+                
+                // return SimplexFBM(
+                //     Float3(pt[0] * posMult[0], pt[1] * posMult[1], pt[2] * posMult[2]),
+                //     hgrid, gain, lacunarity, octaves);
+                
+                auto spherical = CartesianToSpherical(pt);
+                return basic + .33f * SimplexFBM(
+                    Float3(spherical[0] * posMult[0], spherical[1] * posMult[1], spherical[2] * posMult[2]),
+                    hgrid, gain, lacunarity, octaves);
             }
 
             Float3      GetNormal(const Float3& pt) const
             {
-                return Normalize(pt);
+                static float range = 0.15f;
+                float x0 = GetDensity(pt + Float3(-range, 0.f, 0.f));
+                float x1 = GetDensity(pt + Float3( range, 0.f, 0.f));
+                float y0 = GetDensity(pt + Float3(0.f, -range, 0.f));
+                float y1 = GetDensity(pt + Float3(0.f,  range, 0.f));
+                float z0 = GetDensity(pt + Float3(0.f, 0.f, -range));
+                float z1 = GetDensity(pt + Float3(0.f, 0.f,  range));
+                return Normalize(Float3(x0-x1, y0-y1, z0-z1));
             }
         };
 

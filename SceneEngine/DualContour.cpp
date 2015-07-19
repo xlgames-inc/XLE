@@ -7,6 +7,7 @@
 #include "DualContour.h"
 #include "../Math/Matrix.h"
 #include "../Math/Transformations.h"
+#include "../Math/Geometry.h"
 #include "../Utility/PtrUtils.h"
 
 #pragma warning(disable:4714)
@@ -187,9 +188,9 @@ namespace SceneEngine
     static Float3 CalculateCellPoint(const GridElement& gridElement, const Float3& gridElementSize)
     {
         Float3 massPoint = gridElement._massPointAccum / float(gridElement._massPointCount);
-        assert(XlAbs(massPoint[0]) <= 0.5f*gridElementSize[0] 
-            && XlAbs(massPoint[1]) <= 0.5f*gridElementSize[1] 
-            && XlAbs(massPoint[2]) <= 0.5f*gridElementSize[2]);
+        // assert(XlAbs(massPoint[0]) <= 0.5f*gridElementSize[0] 
+        //     && XlAbs(massPoint[1]) <= 0.5f*gridElementSize[1] 
+        //     && XlAbs(massPoint[2]) <= 0.5f*gridElementSize[2]);
 
         #if defined(STORE_INTERSECTIONS)
             typedef Eigen::Matrix<float,5,4> Float5x4;
@@ -291,7 +292,7 @@ namespace SceneEngine
 
             auto result = Float3(x(0, 0) + massPoint[0], x(1, 0) + massPoint[1], x(2, 0) + massPoint[2]);
 
-            static bool preventBadResults = false;
+            static bool preventBadResults = true;
             if (preventBadResults) {
                 Float3 halfSize = 0.5f * gridElementSize;
                 if (result[0] < -halfSize[0] || result[0] > halfSize[0] ||  
@@ -306,6 +307,7 @@ namespace SceneEngine
         #endif
     }
 
+#if 0
     static void CheckWindingOrder(DualContourMesh::Quad& q, const std::vector<DualContourMesh::Vertex>& vertices)
     {
             //  Check the winding order of the given quad, and correct if necessary
@@ -393,7 +395,66 @@ namespace SceneEngine
             }
 
         }
+
+    }
+
+    static bool NeedsFlip(DualContourMesh& mesh, unsigned a, unsigned b, unsigned c, const IVolumeDensityFunction& fn)
+    {
+        auto plane = PlaneFit(mesh._vertices[a]._pt, mesh._vertices[b]._pt, mesh._vertices[c]._pt);
+        auto averagePoint = 0.25f * (mesh._vertices[a]._pt + mesh._vertices[b]._pt + mesh._vertices[c]._pt);
+
+        static float testOffset = 0.1f;
         
+        float density0 = fn.GetDensity(averagePoint);
+        float density1 = fn.GetDensity(averagePoint + Truncate(plane) * testOffset);
+        return density0 > density1;
+    }
+
+    static void AddQuad(DualContourMesh& mesh, const DualContourMesh::Quad& quad, const IVolumeDensityFunction& fn)
+    {
+        // Our quad should be reasonbly close to coplanear. When we convert it into
+        // triangles, we want the winding order of both triangles to be the same...
+        // so let's do a winding order test on the quad, and apply the result to 
+        // both triangles.
+        // Float3 pts[4] = 
+        // {
+        //     mesh._vertices[quad._verts[0]]._pt,
+        //     mesh._vertices[quad._verts[1]]._pt,
+        //     mesh._vertices[quad._verts[2]]._pt,
+        //     mesh._vertices[quad._verts[3]]._pt
+        // };
+        // Float3 averagePoint = 0.25f * (pts[0] + pts[1] + pts[2] + pts[3]);
+        // Float4 plane = PlaneFit(pts, dimof(pts));
+        // 
+        // // the average point should be almost (if not quite) on both triangles.
+        // static float testOffset = 0.1f;
+        // 
+        // auto q = quad;
+        // float density0 = fn.GetDensity(averagePoint);
+        // float density1 = fn.GetDensity(averagePoint + Truncate(plane) * testOffset);
+        // if (density0 > density1)
+        //     std::swap(q._verts[1], q._verts[2]);
+        // 
+        // mesh._quads.push_back(q);
+
+        bool flip0 = NeedsFlip(mesh, quad._verts[0], quad._verts[1], quad._verts[2], fn);
+        bool flip1 = NeedsFlip(mesh, quad._verts[2], quad._verts[1], quad._verts[3], fn);
+        // assert(flip0 == flip1);
+
+        auto q = quad;
+        if (flip0 || flip1)
+            std::swap(q._verts[1], q._verts[2]);
+        mesh._quads.push_back(q);
+    }
+
+#endif
+    
+    static void AddQuad(DualContourMesh& mesh, const DualContourMesh::Quad& quad, bool flipDirection)
+    {
+        auto q = quad;
+        if (flipDirection)
+            std::swap(q._verts[1], q._verts[2]);
+        mesh._quads.push_back(q);
     }
 
     DualContourMesh     DualContourMesh_Build(  unsigned samplingGridDimensions, 
@@ -453,7 +514,7 @@ namespace SceneEngine
             // note --  The order of the cell offsets here is important, because it 
             //          determines the order of the vertices in the quad.
         Int3 cellOffsetsX[] = { Int3(0, 0, 0), Int3(0, -1, 0), Int3(0, 0, -1), Int3(0, -1, -1) };
-        Int3 cellOffsetsY[] = { Int3(0, 0, 0), Int3(-1, 0, 0), Int3(0, 0, -1), Int3(-1, 0, -1) };
+        Int3 cellOffsetsY[] = { Int3(0, 0, 0), Int3(0, 0, -1), Int3(-1, 0, 0), Int3(-1, 0, -1) };
         Int3 cellOffsetsZ[] = { Int3(0, 0, 0), Int3(-1, 0, 0), Int3(0, -1, 0), Int3(-1, -1, 0) };
 
         for (int z=0; z<int(samplingGridDimensions); ++z) {
@@ -582,7 +643,9 @@ namespace SceneEngine
             //  we start at one here, because the edge cells have nothing to join
             //  on to.
 
-        std::vector<DualContourMesh::Quad> quads;
+        DualContourMesh mesh;
+        mesh._vertices = std::move(vertices);
+
         for (int z=1; z<int(samplingGridDimensions); ++z) {
             for (int y=1; y<int(samplingGridDimensions); ++y) {
                 for (int x=1; x<int(samplingGridDimensions); ++x) {
@@ -600,10 +663,9 @@ namespace SceneEngine
                             Int3 g(x + cellOffsetsX[c][0], y + cellOffsetsX[c][1], z + cellOffsetsX[c][2]);
                             auto index = (g[2] * samplingGridDimensions + g[1]) * samplingGridDimensions + g[0];
                             q._verts[c] = vertexIndices[index];
-                            assert(q._verts[c] < vertices.size());
+                            assert(q._verts[c] < mesh._vertices.size());
                         }
-                        CheckWindingOrder(q, vertices);
-                        quads.push_back(q);
+                        AddQuad(mesh, q, d0 < 0.f);
                     }
 
                     if ((d0 < 0.f) != (d2 < 0.f)) {
@@ -612,10 +674,9 @@ namespace SceneEngine
                             Int3 g(x + cellOffsetsY[c][0], y + cellOffsetsY[c][1], z + cellOffsetsY[c][2]);
                             auto index = (g[2] * samplingGridDimensions + g[1]) * samplingGridDimensions + g[0];
                             q._verts[c] = vertexIndices[index];
-                            assert(q._verts[c] < vertices.size());
+                            assert(q._verts[c] < mesh._vertices.size());
                         }
-                        CheckWindingOrder(q, vertices);
-                        quads.push_back(q);
+                        AddQuad(mesh, q, d0 < 0.f);
                     }
 
                     if ((d0 < 0.f) != (d3 < 0.f)) {
@@ -624,19 +685,15 @@ namespace SceneEngine
                             Int3 g(x + cellOffsetsZ[c][0], y + cellOffsetsZ[c][1], z + cellOffsetsZ[c][2]);
                             auto index = (g[2] * samplingGridDimensions + g[1]) * samplingGridDimensions + g[0];
                             q._verts[c] = vertexIndices[index];
-                            assert(q._verts[c] < vertices.size());
+                            assert(q._verts[c] < mesh._vertices.size());
                         }
-                        CheckWindingOrder(q, vertices);
-                        quads.push_back(q);
+                        AddQuad(mesh, q, d0 < 0.f);
                     }
 
                 }
             }
         }
 
-        DualContourMesh mesh;
-        mesh._vertices = std::move(vertices);
-        mesh._quads = std::move(quads);
         return mesh;
     }
 
