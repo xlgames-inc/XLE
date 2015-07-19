@@ -15,12 +15,15 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
+#include "../RenderCore/Techniques/CommonBindings.h"
+#include "../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
+#include "../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"
@@ -298,42 +301,26 @@ namespace SceneEngine
 
         TRY {
             using namespace RenderCore;
+            using namespace RenderCore::Techniques;
 
-            // auto& patchRender = Assets::GetAssetDep<Metal::ShaderProgram>(
-            //     "game/xleres/deferred/basic.vsh:main:vs_*",
-            //     "game/xleres/deferred/basic.psh:main:ps_*", "GEO_HAS_NORMAL=1");
-            // 
-            // Metal::BoundUniforms boundUniforms(patchRender);
-            // TechniqueContext::BindGlobalUniforms(boundUniforms);
-            // 
-            // context->Bind(patchRender);
-            // boundUniforms.Apply(*context, 
-            //     parserContext.GetGlobalUniformsStream(), Metal::UniformsStream());
-            //
-            // Metal::BoundInputLayout inputLayout(Metal::GlobalInputLayouts::PN, patchRender);
-            // context->Bind(inputLayout);
+            TechniqueMaterial material(
+                Metal::GlobalInputLayouts::PN, 
+                { ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants },
+                ParameterBox());
 
-            ParameterBox materialParameters;
-            ParameterBox geoParameters;
-            geoParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1);
-            const ParameterBox* state[] = {
-                &geoParameters, &parserContext.GetTechniqueContext()._globalEnvironmentState,
-                &parserContext.GetTechniqueContext()._runtimeState, &materialParameters
-            };
+            auto shader = material.FindVariation(parserContext, techniqueIndex, "game/xleres/illum.txt");
+            if (shader._shaderProgram) {
+                const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
+                    "game/xleres/BasicMaterialConstants.txt");
 
-            Techniques::TechniqueInterface techniqueInterface(Metal::GlobalInputLayouts::PN);
-            Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
-
-            auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>("game/xleres/illum.txt");
-            auto variation = shaderType.FindVariation(techniqueIndex, state, techniqueInterface);
-            if (variation._shaderProgram != nullptr) {
-                context->Bind(*variation._shaderProgram);
-                if (variation._boundLayout) {
-                    context->Bind(*variation._boundLayout);
-                }
-                if (variation._boundUniforms) {
-                    variation._boundUniforms->Apply(*context, parserContext.GetGlobalUniformsStream(), Metal::UniformsStream());
-                }
+                shader.Apply(
+                    *context, parserContext, 
+                    {
+                        MakeLocalTransformPacket(
+                            Identity<Float4x4>(),
+                            ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
+                        cbLayout.BuildCBDataAsPkt(ParameterBox())
+                    });
 
                 Metal::VertexBuffer vb(
                     AsPointer(mesh._vertices.cbegin()), mesh._vertices.size() * sizeof(DualContourMesh::Vertex));
