@@ -84,71 +84,6 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class ManipulatorStack : public RenderOverlays::DebuggingDisplay::IInputListener
-    {
-    public:
-        bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
-        void    Register(uint64 id, std::shared_ptr<ToolsRig::IManipulator> manipulator);
-
-        static const uint64 CameraManipulator = 256;
-
-        ManipulatorStack(
-            std::shared_ptr<SceneEngine::IntersectionTestContext> intrContext = nullptr,
-            std::shared_ptr<SceneEngine::IntersectionTestScene> intrScene = nullptr);
-        ~ManipulatorStack();
-    protected:
-        std::vector<std::shared_ptr<ToolsRig::IManipulator>> _activeManipulators;
-        std::vector<std::pair<uint64, std::shared_ptr<ToolsRig::IManipulator>>> _registeredManipulators;
-        std::shared_ptr<SceneEngine::IntersectionTestContext> _intrContext;
-        std::shared_ptr<SceneEngine::IntersectionTestScene> _intrScene;
-    };
-
-    bool    ManipulatorStack::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
-    {
-        static auto ctrl = RenderOverlays::DebuggingDisplay::KeyId_Make("control");
-        if (evnt.IsPress_MButton() || (evnt.IsHeld(ctrl) && evnt.IsPress_LButton())) {
-            auto i = LowerBound(_registeredManipulators, CameraManipulator);
-            if (i!=_registeredManipulators.end() && i->first == CameraManipulator) {
-                    // remove this manipulator if it already is on the active manipulators list...
-                auto e = std::find(_activeManipulators.begin(), _activeManipulators.end(), i->second);
-                if (e!=_activeManipulators.end()) { _activeManipulators.erase(e); }
-
-                _activeManipulators.push_back(i->second);
-            }
-        }
-
-        if (!_activeManipulators.empty()) {
-            bool r = _activeManipulators[_activeManipulators.size()-1]->OnInputEvent(
-                evnt, *_intrContext, *_intrScene);
-
-            if (!r) { 
-                _activeManipulators.erase(_activeManipulators.begin() + (_activeManipulators.size()-1));
-            }
-        }
-
-        return false;
-    }
-
-    void    ManipulatorStack::Register(uint64 id, std::shared_ptr<ToolsRig::IManipulator> manipulator)
-    {
-        auto i = LowerBound(_registeredManipulators, id);
-        if (i!=_registeredManipulators.end() && i->first == id) {
-            i->second = manipulator;
-        } else {
-            _registeredManipulators.insert(i, std::make_pair(id, std::move(manipulator)));
-        }
-    }
-
-    ManipulatorStack::ManipulatorStack(
-        std::shared_ptr<SceneEngine::IntersectionTestContext> intrContext,
-        std::shared_ptr<SceneEngine::IntersectionTestScene> intrScene)
-    : _intrContext(intrContext), _intrScene(intrScene)
-    {}
-    ManipulatorStack::~ManipulatorStack()
-    {}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
     class InputLayer : public PlatformRig::IOverlaySystem
     {
     public:
@@ -227,9 +162,9 @@ namespace GUILayer
 
         // AddDefaultCameraHandler(settings->Camera);
         {
-            auto manipulators = std::make_unique<ManipulatorStack>(intersectionContext, intersectionScene);
+            auto manipulators = std::make_unique<ToolsRig::ManipulatorStack>(intersectionContext, intersectionScene);
             manipulators->Register(
-                ManipulatorStack::CameraManipulator,
+                ToolsRig::ManipulatorStack::CameraManipulator,
                 ToolsRig::CreateCameraManipulator(settings->Camera->GetUnderlying()));
             overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
         }
@@ -302,9 +237,9 @@ namespace GUILayer
     void LayerControl::AddDefaultCameraHandler(VisCameraSettings^ settings)
     {
             // create an input listener that feeds into a stack of manipulators
-        auto manipulators = std::make_unique<ManipulatorStack>();
+        auto manipulators = std::make_unique<ToolsRig::ManipulatorStack>();
         manipulators->Register(
-            ManipulatorStack::CameraManipulator,
+            ToolsRig::ManipulatorStack::CameraManipulator,
             ToolsRig::CreateCameraManipulator(settings->GetUnderlying()));
 
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();

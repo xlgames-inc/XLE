@@ -196,6 +196,52 @@ namespace ToolsRig
     {
         return std::make_shared<CameraMovementManipulator>(visCameraSettings);
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    bool    ManipulatorStack::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+    {
+        static auto ctrl = RenderOverlays::DebuggingDisplay::KeyId_Make("control");
+        if (evnt.IsPress_MButton() || (evnt.IsHeld(ctrl) && evnt.IsPress_LButton())) {
+            auto i = LowerBound(_registeredManipulators, CameraManipulator);
+            if (i!=_registeredManipulators.end() && i->first == CameraManipulator) {
+                    // remove this manipulator if it already is on the active manipulators list...
+                auto e = std::find(_activeManipulators.begin(), _activeManipulators.end(), i->second);
+                if (e!=_activeManipulators.end()) { _activeManipulators.erase(e); }
+
+                _activeManipulators.push_back(i->second);
+            }
+        }
+
+        if (!_activeManipulators.empty()) {
+            bool r = _activeManipulators[_activeManipulators.size()-1]->OnInputEvent(
+                evnt, *_intrContext, *_intrScene);
+
+            if (!r) { 
+                _activeManipulators.erase(_activeManipulators.begin() + (_activeManipulators.size()-1));
+            }
+        }
+
+        return false;
+    }
+
+    void    ManipulatorStack::Register(uint64 id, std::shared_ptr<ToolsRig::IManipulator> manipulator)
+    {
+        auto i = LowerBound(_registeredManipulators, id);
+        if (i!=_registeredManipulators.end() && i->first == id) {
+            i->second = manipulator;
+        } else {
+            _registeredManipulators.insert(i, std::make_pair(id, std::move(manipulator)));
+        }
+    }
+
+    ManipulatorStack::ManipulatorStack(
+        std::shared_ptr<SceneEngine::IntersectionTestContext> intrContext,
+        std::shared_ptr<SceneEngine::IntersectionTestScene> intrScene)
+    : _intrContext(intrContext), _intrScene(intrScene)
+    {}
+    ManipulatorStack::~ManipulatorStack()
+    {}
     
 }
 

@@ -90,6 +90,8 @@ namespace PlatformRig
         case WM_KEYUP:
         case WM_CHAR:
         case WM_SIZE:
+        case WM_SYSKEYDOWN:
+        case WM_SYSKEYUP:
             {
                 auto pimpl = (OverlappedWindow::Pimpl*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
                 if (!pimpl || pimpl->_hwnd != hwnd) break;
@@ -125,9 +127,12 @@ namespace PlatformRig
 
                 case WM_MOUSEWHEEL:     if (inputTrans) { inputTrans->OnMouseWheel(GET_WHEEL_DELTA_WPARAM(wparam)); }    break;
 
+                case WM_SYSKEYDOWN:
+                case WM_SYSKEYUP:
                 case WM_KEYDOWN:
                 case WM_KEYUP:
-                    if (inputTrans) { inputTrans->OnKeyChange((unsigned)wparam, msg==WM_KEYDOWN); }
+                    if (inputTrans) { inputTrans->OnKeyChange((unsigned)wparam, (msg==WM_KEYDOWN) || (msg==WM_SYSKEYDOWN)); }
+                    if (msg==WM_SYSKEYUP || msg==WM_SYSKEYDOWN) return true;        // (suppress default windows behaviour for these system keys)
                     break;
 
                 case WM_CHAR:
