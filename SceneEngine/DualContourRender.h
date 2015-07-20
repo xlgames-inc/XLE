@@ -9,6 +9,8 @@
 #include "../RenderCore/Metal/Forward.h"
 #include <memory>
 
+namespace Assets { class DependencyValidation; }
+
 namespace SceneEngine
 {
     class DualContourMesh;
@@ -17,15 +19,24 @@ namespace SceneEngine
     class DualContourRenderer
     {
     public:
-        void Render(RenderCore::Metal::DeviceContext* context, 
-                    LightingParserContext& lightingParserContext,
-                    unsigned techniqueIndex) const;
+        void Render(
+            RenderCore::Metal::DeviceContext* context, 
+            LightingParserContext& lightingParserContext,
+            unsigned techniqueIndex) const;
 
-        void RenderAsCloud( RenderCore::Metal::DeviceContext* context, 
-                            LightingParserContext& lightingParserContext);
+        void RenderAsCloud( 
+            RenderCore::Metal::DeviceContext* context, 
+            LightingParserContext& lightingParserContext);
+
+        void RenderUnsortedTrans(
+            RenderCore::Metal::DeviceContext* context, 
+            LightingParserContext& lightingParserContext,
+            unsigned techniqueIndex) const;
 
         DualContourRenderer(const DualContourMesh& mesh);
         ~DualContourRenderer();
+
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation();
 
         class Pimpl;
     private:

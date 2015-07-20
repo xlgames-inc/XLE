@@ -49,11 +49,27 @@ namespace RenderCore { namespace Techniques
         if (HasElement(inputLayout, "COLOR"))           _geometryParameters.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1);
     }
 
+    TechniqueMaterial::TechniqueMaterial() {}
+    TechniqueMaterial::TechniqueMaterial(TechniqueMaterial&& moveFrom)
+    : _materialParameters(std::move(moveFrom._materialParameters))
+    , _geometryParameters(std::move(moveFrom._geometryParameters))
+    , _techniqueInterface(std::move(moveFrom._techniqueInterface))
+    {
+    }
+
+    const TechniqueMaterial& TechniqueMaterial::operator=(TechniqueMaterial&& moveFrom)
+    {
+        _materialParameters = std::move(moveFrom._materialParameters);
+        _geometryParameters = std::move(moveFrom._geometryParameters);
+        _techniqueInterface = std::move(moveFrom._techniqueInterface);
+        return *this;
+    }
+
     TechniqueMaterial::~TechniqueMaterial() {}
 
     Techniques::ResolvedShader TechniqueMaterial::FindVariation(
         Techniques::ParsingContext& parsingContext,
-        unsigned techniqueIndex, const char shaderName[])
+        unsigned techniqueIndex, const char shaderName[]) const
     {
         const ParameterBox* state[] = {
             &_geometryParameters, 

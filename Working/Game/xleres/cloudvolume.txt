@@ -43,3 +43,13 @@
     ~Parameters
     VertexShader=game/xleres/forward/illum.vsh:main
     PixelShader=game/xleres/forward/transparency/cloudvolume.psh:main
+~PrepareVegetationSpawn
+~RayTest
+~VisNormals
+~VisWireframe
+    ~Parameters
+        ~Geometry
+            OUTPUT_WORLD_POSITION=1
+    VertexShader=game/xleres/forward/illum.vsh:main
+    GeometryShader=game/xleres/solidwireframe.gsh:main
+    PixelShader=game/xleres/solidwireframe.psh:blend

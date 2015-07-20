@@ -53,18 +53,26 @@ namespace Sample
             };
 
             DualContourMesh _mesh;
+            std::unique_ptr<DualContourRenderer> _renderer;
+
+            const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() { return _dependencyValidation; }
 
             DualContourTest(const Desc& desc);
+            ~DualContourTest();
+
+        protected:
+            std::shared_ptr<::Assets::DependencyValidation> _dependencyValidation;
         };
 
-        static float SimplexFBM(Float3 pos, float hgrid, float gain, float lacunarity, int octaves)
+        template<typename Type>
+            static float SimplexFBM(Type pos, float hgrid, float gain, float lacunarity, int octaves)
         {
             float total = 0.0f;
 	        float frequency = 1.0f/(float)hgrid;
 	        float amplitude = 1.f;
         
 	        for (int i = 0; i < octaves; ++i) {
-		        total += SimplexNoise(Float3(pos * frequency)) * amplitude;
+		        total += SimplexNoise(Type(pos * frequency)) * amplitude;
 		        frequency *= lacunarity;
 		        amplitude *= gain;
 	        }
@@ -82,28 +90,50 @@ namespace Sample
 
             float       GetDensity(const Float3& pt) const
             {
-                float basic = 1.f - (Magnitude(pt) / 9.f);
-                // return basic;
+                float radius = 10.f * .66f;
+                
+                // float basic = 1.f - (Magnitude(pt) / radius);
 
-                static Float3 posMult(1.f, 1.f, 0.25f);
+                float xyLen = Magnitude(Truncate(pt));
+                float a = std::max(1.f-XlAbs(3.f*3.f*xyLen*xyLen/(radius*radius)), XlExp(-XlAbs(3.f*xyLen/radius))) - 0.05f;
+                float basic = radius * a - XlAbs(pt[2]);
+
+                static Float3 posMult(.75f, .75f, .3f);
                 static float hgrid = 1.f;
-                static float gain = 0.5f;
+                static float gain = 0.75f;
                 static float lacunarity = 2.1042f;
                 static unsigned octaves = 4;
                 
-                // return SimplexFBM(
-                //     Float3(pt[0] * posMult[0], pt[1] * posMult[1], pt[2] * posMult[2]),
-                //     hgrid, gain, lacunarity, octaves);
+                auto spherical0 = CartesianToSpherical(Float3(pt[0], pt[1], pt[2]));
+                auto spherical1 = CartesianToSpherical(Float3(pt[1], pt[2], pt[0]));
+                auto spherical2 = CartesianToSpherical(Float3(pt[2], pt[0], pt[1]));
+                float weight0 = 1.f - 2.f * XlAbs(.5f - spherical0[0] / gPI);
+                float weight1 = 1.f - 2.f * XlAbs(.5f - spherical1[0] / gPI);
+                float weight2 = 1.f - 2.f * XlAbs(.5f - spherical2[0] / gPI);
                 
-                auto spherical = CartesianToSpherical(pt);
-                return basic + .33f * SimplexFBM(
-                    Float3(spherical[0] * posMult[0], spherical[1] * posMult[1], spherical[2] * posMult[2]),
+                if ((weight0 + weight1 + weight2) == 0.f)
+                    return basic; // (happens at the origin)
+                
+                float noise0 = SimplexFBM(
+                    Float4(spherical0[0] * posMult[0], XlCos(spherical0[1]) * posMult[1], XlSin(spherical0[1]) * posMult[1], spherical0[2] * posMult[2]),
                     hgrid, gain, lacunarity, octaves);
+                float noise1 = SimplexFBM(
+                    Float4(spherical1[0] * posMult[0], XlCos(spherical1[1]) * posMult[1], XlSin(spherical1[1]) * posMult[1], spherical1[2] * posMult[2]),
+                    hgrid, gain, lacunarity, octaves);
+                float noise2 = SimplexFBM(
+                    Float4(spherical2[0] * posMult[0], XlCos(spherical2[1]) * posMult[1], XlSin(spherical2[1]) * posMult[1], spherical2[2] * posMult[2]),
+                    hgrid, gain, lacunarity, octaves);
+                
+                float noiseScale = 4.f * std::min(1.f, 10.f * (1.f - std::min(xyLen, 10.f) / 10.f));
+                return basic + noiseScale * //.33f * 
+                        ( (noise0 * weight0 / (weight0 + weight1 + weight2))
+                        + (noise1 * weight1 / (weight0 + weight1 + weight2))
+                        + (noise2 * weight2 / (weight0 + weight1 + weight2)));
             }
 
             Float3      GetNormal(const Float3& pt) const
             {
-                static float range = 0.15f;
+                static float range = 0.05f;
                 float x0 = GetDensity(pt + Float3(-range, 0.f, 0.f));
                 float x1 = GetDensity(pt + Float3( range, 0.f, 0.f));
                 float y0 = GetDensity(pt + Float3(0.f, -range, 0.f));
@@ -117,7 +147,13 @@ namespace Sample
         DualContourTest::DualContourTest(const Desc& desc)
         {
             _mesh = DualContourMesh_Build(desc._gridDims, TestDensityFunction());
+            _renderer = std::make_unique<DualContourRenderer>(std::ref(_mesh));
+            
+            _dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
+            ::Assets::RegisterAssetDependency(_dependencyValidation, _renderer->GetDependencyValidation());
         }
+
+        DualContourTest::~DualContourTest() {}
     }
 
     void TestPlatformSceneParser::ExecuteScene(   
@@ -128,12 +164,21 @@ namespace Sample
     {
         CPUProfileEvent pEvnt("ExecuteScene", g_cpuProfiler);
 
+        bool renderAsCloud = Tweakable("RenderAsCloud", false);
+        auto& box = RenderCore::Techniques::FindCachedBoxDep2<Test::DualContourTest>(Tweakable("GridDims", 256));
+
         if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
             ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::Depth) {
 
-            auto& box = RenderCore::Techniques::FindCachedBox2<Test::DualContourTest>(
-                Tweakable("GridDims", 64));
-            DualContourMesh_DebuggingRender(context, parserContext, techniqueIndex, box._mesh);
+            if (!renderAsCloud)
+                box._renderer->Render(context, parserContext, techniqueIndex);
+        }
+
+        if (parseSettings._batchFilter == SceneParseSettings::BatchFilter::Transparent) {
+            if (renderAsCloud)
+                box._renderer->RenderAsCloud(context, parserContext);
+            if (Tweakable("TerrainWireframe", false))
+                box._renderer->RenderUnsortedTrans(context, parserContext, 8);
         }
     }
 

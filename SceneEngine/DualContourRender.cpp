@@ -39,6 +39,11 @@ namespace SceneEngine
         Metal::IndexBuffer _indexBuffer;
         Metal::NativeFormat::Enum _indexFormat;
         unsigned _indexCount;
+
+        Techniques::TechniqueMaterial _basicMaterial;
+        RenderCore::SharedPkt _materialConstants;
+
+        std::shared_ptr<::Assets::DependencyValidation> _dependencyValidation;
     };
 
     static void WriteIndexData(void* destination, unsigned indexSize, const DualContourMesh& mesh)
@@ -104,40 +109,22 @@ namespace SceneEngine
         }
     }
 
-    static void RenderOpaqueMethod(
+    static void MainRender(
         RenderCore::Metal::DeviceContext* context, 
         LightingParserContext& parserContext,
         unsigned techniqueIndex, const DualContourRenderer::Pimpl* pimpl)
     {
         TRY {
-            ParameterBox materialParameters;
-            ParameterBox geoParameters;
-            geoParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1);
-            const ParameterBox* state[] = {
-                &geoParameters, &parserContext.GetTechniqueContext()._globalEnvironmentState,
-                &parserContext.GetTechniqueContext()._runtimeState, &materialParameters
-            };
-
-            Techniques::TechniqueInterface techniqueInterface(Metal::GlobalInputLayouts::PN);
-            Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
-            techniqueInterface.BindConstantBuffer(Hash64("LocalTransform"), 0, 1);
-
-            const auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>("game/xleres/cloudvolume.txt");
-            auto variation = shaderType.FindVariation(techniqueIndex, state, techniqueInterface);
+            using namespace RenderCore::Techniques;
+            auto variation = pimpl->_basicMaterial.FindVariation(parserContext, techniqueIndex, "game/xleres/cloudvolume.txt");
             if (variation._shaderProgram != nullptr) {
-                context->Bind(*variation._shaderProgram);
-                if (variation._boundLayout) {
-                    context->Bind(*variation._boundLayout);
-                }
-                if (variation._boundUniforms) {
-                    Metal::ConstantBufferPacket pkts[] = 
+                variation.Apply(*context, parserContext, 
                     {
-                        Techniques::MakeLocalTransformPacket(Identity<Float4x4>(), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld))
-                    };
-                    variation._boundUniforms->Apply(
-                        *context, parserContext.GetGlobalUniformsStream(), 
-                        Metal::UniformsStream(pkts, nullptr, dimof(pkts)));
-                }
+                        MakeLocalTransformPacket(
+                            Identity<Float4x4>(),
+                            ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
+                        pimpl->_materialConstants
+                    });
 
                 context->Bind(MakeResourceList(pimpl->_vertexBuffer), sizeof(DualContourMesh::Vertex), 0);
                 context->Bind(pimpl->_indexBuffer, pimpl->_indexFormat);
@@ -221,7 +208,7 @@ namespace SceneEngine
             OrderIndependentTransparency_ClearAndBind(context, transparencyTargets, duplicatedDepthBuffer);
             context->Bind(Techniques::CommonResources()._dssReadOnly);  // never write to depth (even for very opaque pixels)
             context->Bind(Techniques::CommonResources()._cullDisable);  // we need to write both front and back faces (but the pixel shader will treat them differently)
-            RenderOpaqueMethod(context, parserContext, 4, pimpl);
+            MainRender(context, parserContext, 4, pimpl);
 
 
             // unbind the depth buffer, and create a shader resource view for the depth buffer
@@ -257,8 +244,20 @@ namespace SceneEngine
     {
             // render as a solid object (into main scene or shadow scene)
         context->Bind(Techniques::CommonResources()._dssReadWrite);
-        context->Bind(Techniques::CommonResources()._defaultRasterizer);
-        RenderOpaqueMethod(context, parserContext, techniqueIndex, _pimpl.get());
+        // context->Bind(Techniques::CommonResources()._defaultRasterizer);
+        MainRender(context, parserContext, techniqueIndex, _pimpl.get());
+    }
+
+    void DualContourRenderer::RenderUnsortedTrans(
+        RenderCore::Metal::DeviceContext* context, 
+        LightingParserContext& parserContext,
+        unsigned techniqueIndex) const
+    {
+            // (intended to be used when rendering wireframe)
+        context->Bind(Techniques::CommonResources()._dssReadOnly);
+        // context->Bind(Techniques::CommonResources()._defaultRasterizer);
+        context->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+        MainRender(context, parserContext, techniqueIndex, _pimpl.get());
     }
 
     void DualContourRenderer::RenderAsCloud( 
@@ -267,6 +266,11 @@ namespace SceneEngine
     {
             // render as a cloud, during a post-opaque rendering
         RenderMainSceneViaOIT(context, parserContext, _pimpl.get());
+    }
+
+    const std::shared_ptr<::Assets::DependencyValidation>& DualContourRenderer::GetDependencyValidation()
+    {
+        return _pimpl->_dependencyValidation;
     }
 
     DualContourRenderer::DualContourRenderer(const DualContourMesh& mesh)
@@ -282,6 +286,20 @@ namespace SceneEngine
             AsPointer(mesh._vertices.cbegin()), mesh._vertices.size() * sizeof(DualContourMesh::Vertex));
         pimpl->_indexFormat = (indexSize==4)?Metal::NativeFormat::R32_UINT:Metal::NativeFormat::R16_UINT;
         pimpl->_indexCount = (unsigned)ibDataCount;
+
+        using namespace Techniques;
+        pimpl->_basicMaterial = TechniqueMaterial(
+            Metal::GlobalInputLayouts::PN, 
+            { ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants },
+            ParameterBox());
+
+        const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
+            "game/xleres/BasicMaterialConstants.txt");
+        pimpl->_materialConstants = cbLayout.BuildCBDataAsPkt(ParameterBox());
+
+        pimpl->_dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterAssetDependency(
+            pimpl->_dependencyValidation, cbLayout.GetDependencyValidation());
 
         _pimpl = std::move(pimpl);
     }

@@ -73,7 +73,7 @@ namespace SceneEngine
 
         float x0 = 0.f, x1 = 1.f;
         float x = 1.f, d = FLT_MAX;
-        unsigned maxImprovementSteps = 16;
+        unsigned maxImprovementSteps = 6;
         for (unsigned c=0; ; ++c) {
             float prevD = d; float prevX = x;
             x = LinearInterpolate(x0, x1, -d0 / (d1 - d0));

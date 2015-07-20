@@ -22,12 +22,15 @@ namespace RenderCore { namespace Techniques
         ResolvedShader FindVariation(
             ParsingContext& parsingContext,
             unsigned techniqueIndex,
-            const char shaderName[]);
+            const char shaderName[]) const;
 
         TechniqueMaterial(
             const Metal::InputLayout& inputLayout,
             const std::initializer_list<uint64>& objectCBs,
             ParameterBox materialParameters);
+        TechniqueMaterial();
+        TechniqueMaterial(TechniqueMaterial&& moveFrom);
+        const TechniqueMaterial& operator=(TechniqueMaterial&& moveFrom);
         ~TechniqueMaterial();
     };
 }}
