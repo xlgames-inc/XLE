@@ -166,14 +166,14 @@ namespace SceneEngine
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
             TextureDesc::Plain2D(width, height, Metal::NativeFormat::R8_TYPELESS, 1, uint8(maxSimulationGrids)),
             "ShallowFoam");
-        auto foamQuantity0 = uploads.Transaction_Immediate(foamTextureDesc, nullptr)->AdoptUnderlying();
-        auto foamQuantity1 = uploads.Transaction_Immediate(foamTextureDesc, nullptr)->AdoptUnderlying();
-        UAV foamQuantityUVA0(foamQuantity0.get(), Metal::NativeFormat::R8_UINT);
-        SRV foamQuantitySRV0(foamQuantity0.get(), Metal::NativeFormat::R8_UNORM);
-        SRV foamQuantitySRV20(foamQuantity0.get(), Metal::NativeFormat::R8_UINT);
-        UAV foamQuantityUVA1(foamQuantity1.get(), Metal::NativeFormat::R8_UINT);
-        SRV foamQuantitySRV1(foamQuantity1.get(), Metal::NativeFormat::R8_UNORM);
-        SRV foamQuantitySRV21(foamQuantity1.get(), Metal::NativeFormat::R8_UINT);
+        auto foamQuantity0 = uploads.Transaction_Immediate(foamTextureDesc, nullptr);
+        auto foamQuantity1 = uploads.Transaction_Immediate(foamTextureDesc, nullptr);
+        UAV foamQuantityUVA0(foamQuantity0->GetUnderlying(), Metal::NativeFormat::R8_UINT);
+        SRV foamQuantitySRV0(foamQuantity0->GetUnderlying(), Metal::NativeFormat::R8_UNORM);
+        SRV foamQuantitySRV20(foamQuantity0->GetUnderlying(), Metal::NativeFormat::R8_UINT);
+        UAV foamQuantityUVA1(foamQuantity1->GetUnderlying(), Metal::NativeFormat::R8_UINT);
+        SRV foamQuantitySRV1(foamQuantity1->GetUnderlying(), Metal::NativeFormat::R8_UNORM);
+        SRV foamQuantitySRV21(foamQuantity1->GetUnderlying(), Metal::NativeFormat::R8_UINT);
     
                 ////
         for (unsigned c=0; c<3; ++c) {
@@ -379,15 +379,15 @@ namespace SceneEngine
 
     static bool CalculateAddressing(
         SurfaceHeightsAddressingConstants& dest,
-        const ShallowWaterSim::ActiveElement& e, 
+        const Int2& gridCoords, 
         ISurfaceHeightsProvider* surfaceHeightsProvider, 
         float gridPhysicalDimension)
     {
             //  Even though we have a cached heights addressing, we should recalculate height addressing to 
             //  match new uploads, etc...
             //  Note that if the terrain is edited, it can change the height scale & offset
-        Float2 gridMins(float(e._gridCoords[0]) * gridPhysicalDimension, float(e._gridCoords[1]) * gridPhysicalDimension);
-        Float2 gridMaxs(float(e._gridCoords[0]+1) * gridPhysicalDimension, float(e._gridCoords[1]+1) * gridPhysicalDimension);
+        Float2 gridMins(float(gridCoords[0]) * gridPhysicalDimension, float(gridCoords[1]) * gridPhysicalDimension);
+        Float2 gridMaxs(float(gridCoords[0]+1) * gridPhysicalDimension, float(gridCoords[1]+1) * gridPhysicalDimension);
         auto surfaceAddressing = surfaceHeightsProvider->GetAddress(gridMins, gridMaxs);
         if (!surfaceAddressing._valid) return false;
 
@@ -402,10 +402,10 @@ namespace SceneEngine
     static bool SetAddressingConstants(
         const ShallowWaterSim::SimulationContext& context,
         Metal::ConstantBuffer& cb, 
-        const ShallowWaterSim::ActiveElement& e)
+        const Int2& gridCoords)
     {
         SurfaceHeightsAddressingConstants newHeightsAddressing;
-        if (!CalculateAddressing(newHeightsAddressing, e, context._surfaceHeightsProvider, context._gridPhysicalDimension))
+        if (!CalculateAddressing(newHeightsAddressing, gridCoords, context._surfaceHeightsProvider, context._gridPhysicalDimension))
             return false;
         cb.Update(*context._metalContext, &newHeightsAddressing, sizeof(newHeightsAddressing));
         return true;
@@ -458,7 +458,7 @@ namespace SceneEngine
     {
         for (auto i=elements.cbegin(); i!=elements.cend(); ++i) {
             if (i->_arrayIndex < 128) {
-                if (!SetAddressingConstants(context, surfaceHeightsConstantsBuffer, *i))
+                if (!SetAddressingConstants(context, surfaceHeightsConstantsBuffer, i->_gridCoords))
                     continue;
                 SetSimulatingConstants(*context._metalContext, basicConstantsBuffer, *i, settings);
                 context._metalContext->Dispatch(1, elementDimension, 1);
@@ -540,7 +540,7 @@ namespace SceneEngine
                 for (auto i = _activeSimulationElements.cbegin(); i!=_activeSimulationElements.cend(); ++i) {
                     if (i->_arrayIndex < 128) {
                         SetSimulatingConstants(metalContext, basicConstantsBuffer, *i, settings);
-                        if (!SetAddressingConstants(context, surfaceHeightsConstantsBuffer, *i))
+                        if (!SetAddressingConstants(context, surfaceHeightsConstantsBuffer, i->_gridCoords))
                             continue;
 
                             // checkerboard pattern flip horizontal/vertical
@@ -697,40 +697,32 @@ namespace SceneEngine
         metalContext.BindCS(MakeResourceList(1, surfaceHeightsAddressingBuffer, initCellConstantsBuffer));
 
         std::vector<ShallowWaterSim::ActiveElement> gridsForSecondInitPhase;
+        gridsForSecondInitPhase.reserve(newElementsEnd - newElementsBegin);
             
         for (auto i=newElementsBegin; i!=newElementsEnd; ++i) {
-            if (i->_arrayIndex == ~unsigned(0x0)) {
+            assert(!_poolOfUnallocatedArrayIndices.empty());        // there should always been at least one unallocated array index
 
-                assert(!_poolOfUnallocatedArrayIndices.empty());        // there should always been at least one unallocated array index
+                //  Check the surface heights provider, to get the surface heights
+                //  if this fails, we can't render this grid element
+                //      todo -- we need to not only "get", but "lock" this data, so it's not swapped out
+            if (!SetAddressingConstants(context, surfaceHeightsAddressingBuffer, *i))
+                continue;
 
-                    //  Check the surface heights provider, to get the surface heights
-                    //  if this fails, we can't render this grid element
-                    //      todo -- we need to not only "get", but "lock" this data, so it's not swapped out
-                if (!SetAddressingConstants(context, surfaceHeightsAddressingBuffer, *i))
-                    continue;
+                //  Assign one of the free grids (or destroy the least recently used one)
+                //  call a compute shader to fill out the simulation grids with the new values
+                //  (this will also set the simulation grid value into the lookup table)
+            unsigned assignmentIndex = *(_poolOfUnallocatedArrayIndices.cend()-1);
+            _poolOfUnallocatedArrayIndices.erase(
+                _poolOfUnallocatedArrayIndices.cend()-1);
 
-                    //  Assign one of the free grids (or destroy the least recently used one)
-                    //  call a compute shader to fill out the simulation grids with the new values
-                    //  (this will also set the simulation grid value into the lookup table)
-                unsigned assignmentIndex = *(_poolOfUnallocatedArrayIndices.cend()-1);
-                _poolOfUnallocatedArrayIndices.erase(
-                    _poolOfUnallocatedArrayIndices.cend()-1);
+            ShallowWaterSim::ActiveElement newElement(*i, assignmentIndex);
+            auto insertPoint = std::lower_bound(newElements.begin(), newElements.end(), newElement, SortOceanGridElement);
+            newElements.insert(insertPoint, newElement);
 
-                ShallowWaterSim::ActiveElement newElement(i->_gridCoords[0], i->_gridCoords[1], assignmentIndex);
-                auto insertPoint = std::lower_bound(newElements.begin(), newElements.end(), newElement, SortOceanGridElement);
-                newElements.insert(insertPoint, newElement);
+            gridsForSecondInitPhase.push_back(newElement);
 
-                gridsForSecondInitPhase.push_back(newElement);
-
-                SetSimulatingConstants(metalContext, initCellConstantsBuffer, newElement, ShallowWaterSim::SimSettings());
-                metalContext.Dispatch(1, _gridDimension, 1);
-
-            } else {
-
-                auto insertPoint = std::lower_bound(newElements.begin(), newElements.end(), *i, SortOceanGridElement);
-                newElements.insert(insertPoint, *i);
-
-            }
+            SetSimulatingConstants(metalContext, initCellConstantsBuffer, newElement, ShallowWaterSim::SimSettings());
+            metalContext.Dispatch(1, _gridDimension, 1);
         }
 
         if (usePipeModel) {
@@ -857,10 +849,19 @@ namespace SceneEngine
             //          at lower resolution. Only closer grids would be at maximum resolution...?
 
         if (hasNewGrids) {
-            BeginElements(
-                context,
-                &gridsToPrioritise.cbegin()->_e, &AsPointer(gridsToPrioritise.cend())->_e,
-                sizeof(PrioritisedActiveElement));
+            _activeSimulationElements.clear();
+            std::vector<Int2> gridsToBegin;
+            for (const auto& i : gridsToPrioritise) {
+                if (i._e._arrayIndex != ~unsigned(0x0)) {
+                    auto insertPoint = std::lower_bound(_activeSimulationElements.begin(), _activeSimulationElements.end(), i._e, SortOceanGridElement);
+                    _activeSimulationElements.insert(insertPoint, i._e);
+                } else {
+                    gridsToBegin.push_back(i._e._gridCoords);
+                }
+            }
+
+            if (!gridsToBegin.empty())
+                BeginElements(context, AsPointer(gridsToBegin.cbegin()), AsPointer(gridsToBegin.cend()));
         }
 
         if (!gridsDestroyedThisFrame.empty()) {

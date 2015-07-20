@@ -131,7 +131,7 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
    
-    ShallowWaterSim::SimulationContext::SimulationContext(
+    inline ShallowWaterSim::SimulationContext::SimulationContext(
         MetalContext& metalContext,
         const OceanSettings& oceanSettings,
         float gridPhysicalDimension,
