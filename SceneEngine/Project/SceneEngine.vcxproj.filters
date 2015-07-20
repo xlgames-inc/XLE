@@ -115,6 +115,9 @@
     <ClCompile Include="..\SunFlare.cpp">
       <Filter>Objects</Filter>
     </ClCompile>
+    <ClCompile Include="..\ShallowSurface.cpp">
+      <Filter>Objects\Water</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -243,6 +246,9 @@
     </ClInclude>
     <ClInclude Include="..\SunFlare.h">
       <Filter>Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ShallowSurface.h">
+      <Filter>Objects\Water</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

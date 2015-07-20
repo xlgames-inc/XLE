@@ -10,6 +10,7 @@
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/UTFUtils.h"
 
+namespace SceneEngine { class VolumetricFogManager; class ShallowSurfaceManager; }
 namespace PlatformRig { class EnvironmentSettings; }
 
 namespace Utility 
@@ -17,8 +18,6 @@ namespace Utility
     class OutputStreamFormatter; 
     template<typename CharType> class InputStreamFormatter;
 }
-
-namespace SceneEngine { class VolumetricFogManager; }
 
 namespace EntityInterface
 {
@@ -30,6 +29,8 @@ namespace EntityInterface
             const RetainedEntities& flexGobInterface,
             const RetainedEntity& obj);
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     using EnvSettingsVector = 
         std::vector<std::pair<std::string, PlatformRig::EnvironmentSettings>>;
     EnvSettingsVector BuildEnvironmentSettings(
@@ -39,12 +40,17 @@ namespace EntityInterface
         OutputStreamFormatter& formatter,
         const RetainedEntities& flexGobInterface,
         DocumentId docId);
-
     EnvSettingsVector DeserializeEnvSettings(InputStreamFormatter<utf8>& formatter);
-    void RegisterEnvironmentFlexObjects(RetainedEntities& flexSys);
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void RegisterEnvironmentFlexObjects(RetainedEntities& flexSys);
     void RegisterVolumetricFogFlexObjects(
         RetainedEntities& flexSys, 
         std::shared_ptr<SceneEngine::VolumetricFogManager> manager);
+
+    void RegisterShallowSurfaceFlexObjects(
+        RetainedEntities& flexSys, 
+        std::shared_ptr<SceneEngine::ShallowSurfaceManager> manager);
 }
 

@@ -282,6 +282,18 @@ namespace LevelEditorXLE
             fogVolumeRendererType.GridDimensionsAttribute = fogVolumeRendererType.Type.GetAttributeInfo("GridDimensions");
             fogVolumeRendererType.WorldSpaceGridDepthAttribute = fogVolumeRendererType.Type.GetAttributeInfo("WorldSpaceGridDepth");
 
+            shallowSurfaceType.Type = getNodeType("gap", "shallowSurfaceType");
+            shallowSurfaceType.transformAttribute = shallowSurfaceType.Type.GetAttributeInfo("transform");
+            shallowSurfaceType.translateAttribute = shallowSurfaceType.Type.GetAttributeInfo("translate");
+            shallowSurfaceType.rotateAttribute = shallowSurfaceType.Type.GetAttributeInfo("rotate");
+            shallowSurfaceType.scaleAttribute = shallowSurfaceType.Type.GetAttributeInfo("scale");
+            shallowSurfaceType.pivotAttribute = shallowSurfaceType.Type.GetAttributeInfo("pivot");
+            shallowSurfaceType.transformationTypeAttribute = shallowSurfaceType.Type.GetAttributeInfo("transformationType");
+            shallowSurfaceType.nameAttribute = shallowSurfaceType.Type.GetAttributeInfo("name");
+            shallowSurfaceType.visibleAttribute = shallowSurfaceType.Type.GetAttributeInfo("visible");
+            shallowSurfaceType.lockedAttribute = shallowSurfaceType.Type.GetAttributeInfo("locked");
+            shallowSurfaceType.MarkerAttribute = shallowSurfaceType.Type.GetAttributeInfo("Marker");
+
             placementsCellReferenceType.Type = getNodeType("gap", "placementsCellReferenceType");
             placementsCellReferenceType.refAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ref");
             placementsCellReferenceType.ExportTargetAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ExportTarget");
@@ -452,6 +464,7 @@ namespace LevelEditorXLE
             triMeshMarkerType.lockedAttribute = triMeshMarkerType.Type.GetAttributeInfo("locked");
             triMeshMarkerType.indexlistAttribute = triMeshMarkerType.Type.GetAttributeInfo("indexlist");
             triMeshMarkerType.ShowMarkerAttribute = triMeshMarkerType.Type.GetAttributeInfo("ShowMarker");
+            triMeshMarkerType.NameAttribute = triMeshMarkerType.Type.GetAttributeInfo("Name");
             triMeshMarkerType.pointsChild = triMeshMarkerType.Type.GetChildInfo("points");
 
             xleGameType.Type = getNodeType("gap", "xleGameType");
@@ -808,6 +821,21 @@ namespace LevelEditorXLE
             public static AttributeInfo WorldSpaceGridDepthAttribute;
         }
 
+        public static class shallowSurfaceType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo nameAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
+            public static AttributeInfo MarkerAttribute;
+        }
+
         public static class placementsCellReferenceType
         {
             public static DomNodeType Type;
@@ -1037,6 +1065,7 @@ namespace LevelEditorXLE
             public static AttributeInfo lockedAttribute;
             public static AttributeInfo indexlistAttribute;
             public static AttributeInfo ShowMarkerAttribute;
+            public static AttributeInfo NameAttribute;
             public static ChildInfo pointsChild;
         }
 

@@ -1,0 +1,12 @@
+~Illum
+~DepthOnly
+~Deferred
+    ~Parameters
+        ~Material
+            SHALLOW_WATER_TILE_DIMENSION=128
+        ~GlobalEnvironment
+    VertexShader=game/xleres/ocean/shallowsurface.sh:vs_main
+    GeometryShader=game/xleres/solidwireframe.gsh:main
+    PixelShader=game/xleres/solidwireframe.psh:main
+~ShadowGen
+~OrderIndependentTransparency

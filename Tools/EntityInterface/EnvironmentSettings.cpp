@@ -10,6 +10,7 @@
 #include "RetainedEntities.h"
 #include "../../SceneEngine/Ocean.h"
 #include "../../SceneEngine/VolumetricFog.h"
+#include "../../SceneEngine/ShallowSurface.h"
 #include "../../PlatformRig/BasicSceneParser.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringUtils.h"
@@ -464,5 +465,129 @@ namespace EntityInterface
             );
         }
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static Float4x4 GetTransform(const RetainedEntity& obj)
+    {
+        ParamName(Transform);
+        ParamName(Translation);
+
+        auto xform = obj._properties.GetParameter<Float4x4>(Transform);
+        if (xform.first) return Transpose(xform.second);
+
+        auto transl = obj._properties.GetParameter<Float3>(Translation);
+        if (transl.first) {
+            return AsFloat4x4(transl.second);
+        }
+        return Identity<Float4x4>();
+    }
+
+    std::vector<Float2> ExtractVertices(const RetainedEntities& sys, const RetainedEntity& obj)
+    {
+            // Find the vertices within a tri mesh marker type entity,
+            // and return as a triangle list of 2d positions.
+        ParamName(IndexList);
+
+        auto indexListType = obj._properties.GetParameterType(IndexList);
+        if (indexListType._type == ImpliedTyping::TypeCat::Void || indexListType._arrayCount < 3)
+            return std::vector<Float2>();
+
+        auto ibData = std::make_unique<unsigned[]>(indexListType._arrayCount);
+        bool success = obj._properties.GetParameter(
+            IndexList, ibData.get(), 
+            ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::UInt32, indexListType._arrayCount));
+        if (!success) std::vector<Float2>();
+
+        const auto& chld = obj._children;
+        if (!chld.size()) std::vector<Float2>();
+
+        auto vbData = std::make_unique<Float3[]>(chld.size());
+        for (size_t c=0; c<chld.size(); ++c) {
+            const auto* e = sys.GetEntity(obj._doc, chld[c]);
+            if (e) {
+                vbData[c] = ExtractTranslation(GetTransform(*e));
+            } else {
+                vbData[c] = Zero<Float3>();
+            }
+        }
+
+        std::vector<Float2> result;
+        result.reserve(indexListType._arrayCount);
+        for (unsigned c=0; c<indexListType._arrayCount; ++c) {
+            auto i = ibData[c];
+            result.push_back(Truncate(vbData[i]));
+        }
+
+        return std::move(result);
+    }
+
+    static void UpdateShallowSurface(
+        const RetainedEntities& sys, const RetainedEntity& obj,
+        SceneEngine::ShallowSurfaceManager& mgr)
+    {
+        using namespace SceneEngine;
+
+        ParamName(Marker);
+        ParamName(Name);
+
+        mgr.Clear();
+
+        const auto surfaceType = sys.GetTypeId((const utf8*)"ShallowSurface");
+        const auto markerType = sys.GetTypeId((const utf8*)"TriMeshMarker");
+
+            // Create new surface objects for all of the "ShallowSurface" objects
+        auto surfaces = sys.FindEntitiesOfType(surfaceType);
+        auto markers = sys.FindEntitiesOfType(markerType);
+        for (auto s:surfaces) {
+            const auto& props = s->_properties;
+            auto markerName = props.GetString<utf8>(Marker);
+            if (markerName.empty()) continue;
+
+                // Look for the marker with the matching name
+            const RetainedEntity* marker = nullptr;
+            for (auto m:markers) {
+                auto testName = m->_properties.GetString<utf8>(Name);
+                if (XlEqStringI(testName, markerName)) {
+                    marker = m;
+                    break;
+                }
+            }
+
+            if (marker) {
+                auto verts = ExtractVertices(sys, *marker);
+                if (verts.empty()) continue;
+
+                ShallowSurface::Config cfg { 2.f, 32 };
+                mgr.Add(
+                    std::make_shared<ShallowSurface>(
+                        AsPointer(verts.cbegin()), sizeof(Float2), 
+                        verts.size(), cfg));
+            }
+        }
+    }
+
+    void RegisterShallowSurfaceFlexObjects(
+        RetainedEntities& flexSys, 
+        std::shared_ptr<SceneEngine::ShallowSurfaceManager> manager)
+    {
+        std::weak_ptr<SceneEngine::ShallowSurfaceManager> weakPtrToManager = manager;
+        const utf8* types[] = { (const utf8*)"ShallowSurface" };
+        for (unsigned c=0; c<dimof(types); ++c) {
+            flexSys.RegisterCallback(
+                flexSys.GetTypeId(types[c]),
+                [weakPtrToManager](const RetainedEntities& flexSys, const Identifier& obj)
+                {
+                    auto mgr = weakPtrToManager.lock();
+                    if (!mgr) return;
+
+                    auto* object = flexSys.GetEntity(obj);
+                    if (object)
+                        UpdateShallowSurface(flexSys, *object, *mgr);
+                }
+            );
+        }
+    }
+
 
 }

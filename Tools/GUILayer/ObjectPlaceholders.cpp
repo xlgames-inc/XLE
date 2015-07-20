@@ -127,7 +127,6 @@ namespace GUILayer
         EntityInterface::RetainedEntities& objs)
     {
         static auto IndexListHash = ParameterBox::MakeParameterNameHash("IndexList");
-        static auto TransformHash = ParameterBox::MakeParameterNameHash("Transform");
 
         if (!obj._properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(obj)) return;
 

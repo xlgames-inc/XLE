@@ -215,6 +215,9 @@ namespace Utility
     XL_UTILITY_API char     XlToLower(char c);
     XL_UTILITY_API char     XlToUpper(char c);
 
+    inline utf8     XlToLower(utf8 c) { return (utf8)XlToLower((char)c); }
+    inline utf8     XlToUpper(utf8 c) { return (utf8)XlToLower((char)c); }
+
     XL_UTILITY_API ucs2     XlToLower(ucs2 c);
     XL_UTILITY_API ucs2     XlToUpper(ucs2 c);
 
@@ -224,8 +227,8 @@ namespace Utility
     XL_UTILITY_API bool     XlIsUpper(ucs4 c);
     XL_UTILITY_API bool     XlIsLower(ucs4 c);
 
-    XL_UTILITY_API ucs4  XlToLower(ucs4 c);
-    XL_UTILITY_API ucs4  XlToUpper(ucs4 c);
+    XL_UTILITY_API ucs4     XlToLower(ucs4 c);
+    XL_UTILITY_API ucs4     XlToUpper(ucs4 c);
 
     XL_UTILITY_API bool     XlIsUpper(ucs4 c);
     XL_UTILITY_API bool     XlIsLower(ucs4 c);
@@ -290,9 +293,9 @@ namespace Utility
     template<typename T>
         bool XlEqStringI(const std::basic_string<T>& a, const std::basic_string<T>& b)
         {
-            unsigned int sz = a.size();
+            auto sz = a.size();
             if (b.size() != sz) return false;
-            for (unsigned int i = 0; i < sz; ++i)
+            for (size_t i = 0; i < sz; ++i)
                 if (XlToLower(a[i]) != XlToLower(b[i]))
                     return false;
             return true;

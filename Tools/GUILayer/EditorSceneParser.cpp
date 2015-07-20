@@ -24,6 +24,7 @@
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/VegetationSpawn.h"
 #include "../../SceneEngine/VolumetricFog.h"
+#include "../../SceneEngine/ShallowSurface.h"
 
 #include "../../RenderCore/IThreadContext.h"
 #include "../../Utility/StringUtils.h"
@@ -92,6 +93,8 @@ namespace GUILayer
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
                 _editorScene->_placementsManager->Render(metalContext, parserContext, techniqueIndex);
                 _editorScene->_vegetationSpawnManager->Render(metalContext, parserContext, techniqueIndex);
+
+                _editorScene->_shallowSurfaceManager->RenderDebugging(*metalContext, parserContext, techniqueIndex);
             }
         }
         else 

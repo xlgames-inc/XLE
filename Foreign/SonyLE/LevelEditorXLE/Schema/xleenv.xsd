@@ -346,7 +346,6 @@
     </xs:complexContent>
   </xs:complexType>
 
-
       <!-- O C E A N   S E T T I N G S -->
   <xs:complexType name="oceanSettings">
     <xs:annotation>
@@ -435,7 +434,6 @@
     </xs:complexContent>
   </xs:complexType>
 
-
       <!-- O C E A N   L I G H T I N G   S E T T I N G S -->
   <xs:complexType name="oceanLightingSettings">
     <xs:annotation>
@@ -504,7 +502,6 @@
     </xs:complexContent>
   </xs:complexType>
 
-
       <!-- E N V   U T I L I T Y -->
   <xs:complexType name="envUtilityType">
     <xs:annotation>
@@ -524,9 +521,8 @@
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>
-  
 
-      <!--   F O G   V O L U M E   -->
+      <!-- F O G   V O L U M E -->
   <xs:complexType name="fogVolumeType">
     <xs:annotation>
       <xs:appinfo>
@@ -562,7 +558,7 @@
         <scea.dom.editors.attribute category="Range" name="HeightStart" displayName="Height Start"/>
         <scea.dom.editors.attribute category="Range" name="HeightEnd" displayName="Height End"/>
         
-        <scea.dom.editors category="Lights" name="FogVolume" menuText="Lights/FogVolume" description="Volumetric fog effect"/>
+        <scea.dom.editors category="Environment" name="FogVolume" menuText="Lights/FogVolume" description="Volumetric fog effect"/>
         <LeGe.OpaqueListable label="Fog Volume"/>
       </xs:appinfo>
     </xs:annotation>
@@ -608,7 +604,7 @@
         <scea.dom.editors.attribute category="General" name="WorldSpaceGridDepth" displayName="WorldSpaceGridDepth"
                                     editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:20,750"/>
 
-        <scea.dom.editors category="Lights" name="FogVolumeRenderer" menuText="Lights/FogVolumeRenderer" description="Configuration options for fog volume renderer"/>
+        <scea.dom.editors category="Environment" name="FogVolumeRenderer" menuText="Lights/FogVolumeRenderer" description="Configuration options for fog volume renderer"/>
         <LeGe.OpaqueListable label="Fog Volume Renderer Config"/>
       </xs:appinfo>
     </xs:annotation>
@@ -621,6 +617,26 @@
         <xs:attribute name="MaxShadowFrustums" type="xs:int" default="3"/>
         <xs:attribute name="GridDimensions" type="int3Type" default="160 90 128"/>
         <xs:attribute name="WorldSpaceGridDepth" type="xs:float" default="150"/>
+      </xs:extension>
+    </xs:complexContent>
+
+  </xs:complexType>
+
+      <!-- S H A L L O W   S U R F A C E   V O L U M E -->
+  <xs:complexType name="shallowSurfaceType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="ShallowSurface"/>
+        <LeGe.NativeProperty name="Marker" nativeName="Marker"/>
+        <scea.dom.editors.attribute category="General" name="Marker" displayName="Marker"/>
+        <scea.dom.editors category="Environment" name="ShallowSurface" menuText="Lights/ShallowSurface" description="Shallow water surface (eg, a lake surface)"/>
+        <LeGe.OpaqueListable label="Shallow Surface"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:complexContent>
+      <xs:extension base="envObjectType">
+        <xs:attribute name="Marker" type="xs:string" default=""/>
       </xs:extension>
     </xs:complexContent>
 

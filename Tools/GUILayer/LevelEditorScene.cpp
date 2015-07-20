@@ -26,6 +26,7 @@
 #include "../../SceneEngine/TerrainConfig.h"
 #include "../../SceneEngine/VegetationSpawn.h"
 #include "../../SceneEngine/VolumetricFog.h"
+#include "../../SceneEngine/ShallowSurface.h"
 #include "../../Utility/Streams/Data.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/PathUtils.h"
@@ -74,6 +75,7 @@ namespace GUILayer
         _terrainManager = std::make_shared<SceneEngine::TerrainManager>(std::make_shared<SceneEngine::TerrainFormat>());
         _vegetationSpawnManager = std::make_shared<SceneEngine::VegetationSpawnManager>(modelCache);
         _volumeFogManager = std::make_shared<SceneEngine::VolumetricFogManager>();
+        _shallowSurfaceManager = std::make_shared<SceneEngine::ShallowSurfaceManager>();
         _flexObjects = std::make_shared<EntityInterface::RetainedEntities>();
         _placeholders = std::make_shared<ObjectPlaceholders>(_flexObjects);
         _currentTime = 0.f;
@@ -413,6 +415,7 @@ namespace GUILayer
         RegisterVegetationSpawnFlexObjects(*_scene->_flexObjects, _scene->_vegetationSpawnManager);
         RegisterVolumetricFogFlexObjects(*_scene->_flexObjects, _scene->_volumeFogManager);
         RegisterEnvironmentFlexObjects(*_scene->_flexObjects);
+        RegisterShallowSurfaceFlexObjects(*_scene->_flexObjects, _scene->_shallowSurfaceManager);
     }
 
     EditorSceneManager::~EditorSceneManager()
