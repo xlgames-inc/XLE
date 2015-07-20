@@ -112,6 +112,7 @@ namespace SceneEngine
 
         unsigned GetGridDimension() const { return _gridDimension; }
         bool IsActive() const { return _simulatingGridsCount != 0; }
+        unsigned FindActiveGrid(Int2 gridCoords);
 
         ShallowWaterSim(const Desc& desc);
         ~ShallowWaterSim();

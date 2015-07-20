@@ -109,6 +109,7 @@ namespace SceneEngine
             Metal::IndexBuffer _ib;
             Float4x4 _gridToWorld;
             unsigned _indexCount;
+            Int2 _gridCoord;
         };
 
         std::vector<SimGrid> _simGrids;
@@ -214,31 +215,23 @@ namespace SceneEngine
 
         unsigned simGridsX = (surfaceSize[0] + settings._simGridDims + 1) / settings._simGridDims;
         unsigned simGridsY = (surfaceSize[1] + settings._simGridDims + 1) / settings._simGridDims;
-        for (unsigned y=0; y<simGridsY; ++y) {
-            for (unsigned x=0; x<simGridsX; ++x) {
-                auto cellMins = Int2(x*settings._simGridDims, y*settings._simGridDims);
-                auto cellMaxs = Int2((x+1)*settings._simGridDims, (y+1) * settings._simGridDims);
-                MaybeCreateGrid(
-                    mask,
-                    cellMins, cellMaxs,
-                    cellMins * settings._cellPhysicalSize + mins,
-                    cellMaxs * settings._cellPhysicalSize + mins,
-                    0.f);
-
-                _pimpl->_validGridList.push_back(Int2(x, y));
-            }
-        }
+        for (unsigned y=0; y<simGridsY; ++y)
+            for (unsigned x=0; x<simGridsX; ++x)
+                MaybeCreateGrid(mask, Int2(x, y));
     }
 
     ShallowSurface::~ShallowSurface()
     {}
 
-    void ShallowSurface::MaybeCreateGrid(
-        RasterizationSurface& mask,
-        Int2 mins, Int2 maxs,
-        Float2 physicalMins, Float2 physicalMaxs,
-        float physicalHeight)
+    void ShallowSurface::MaybeCreateGrid(RasterizationSurface& mask, Int2 gridCoords)
     {
+        const auto& settings = _pimpl->_cfg;
+        auto mins = Int2(gridCoords[0]*settings._simGridDims, gridCoords[1]*settings._simGridDims);
+        auto maxs = Int2((gridCoords[0]+1)*settings._simGridDims, (gridCoords[1]+1) * settings._simGridDims);
+        Float2 physicalMins = mins * settings._cellPhysicalSize + _pimpl->_simulationMins;
+        Float2 physicalMaxs = maxs * settings._cellPhysicalSize + _pimpl->_simulationMins;
+        const float physicalHeight = 0.f;
+
         std::vector<unsigned short> ibData;
         ibData.reserve((maxs[0] - mins[0]) * (maxs[1] - mins[1]) * 6);
 
@@ -280,8 +273,10 @@ namespace SceneEngine
                     Expand(Float2(physicalMaxs - physicalMins), 1.f),
                     Expand(physicalMins, physicalHeight)));
         simGrid._indexCount = (unsigned)ibData.size();
+        simGrid._gridCoord = gridCoords;
 
         _pimpl->_simGrids.push_back(simGrid);
+        _pimpl->_validGridList.push_back(gridCoords);
     }
 
     void ShallowSurface::UpdateSimulation(
@@ -289,6 +284,8 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         ISurfaceHeightsProvider* surfaceHeights)
     {
+        _pimpl->_bufferCounter = (_pimpl->_bufferCounter+1)%3;
+
         OceanSettings oceanSettings;
 
         ShallowWaterSim::SimulationContext simContext(
@@ -301,8 +298,6 @@ namespace SceneEngine
         _pimpl->_sim->ExecuteSim(
             simContext, parserContext, _pimpl->_bufferCounter,
             AsPointer(_pimpl->_validGridList.cbegin()), AsPointer(_pimpl->_validGridList.cend()));
-
-        _pimpl->_bufferCounter = (_pimpl->_bufferCounter+1)%3;
     }
 
     void ShallowSurface::RenderDebugging(
@@ -317,8 +312,10 @@ namespace SceneEngine
             _pimpl->_cfg._simGridDims);
         TechniqueMaterial material(
             Metal::InputLayout(nullptr, 0),
-            { ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants },
+            { ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants, ObjectCBs::Globals },
             matParam);
+
+        _pimpl->_sim->BindForOceanRender(metalContext, _pimpl->_bufferCounter);
 
         auto shader = material.FindVariation(
             parserContext, techniqueIndex, "game/xleres/ocean/shallowsurface.txt");
@@ -328,13 +325,18 @@ namespace SceneEngine
 
             metalContext.Bind(Metal::Topology::TriangleList);
             for (auto i=_pimpl->_simGrids.cbegin(); i!=_pimpl->_simGrids.cend(); ++i) {
+                auto page = _pimpl->_sim->FindActiveGrid(i->_gridCoord);
+                if (page == ~unsigned(0x0)) continue;
+
+                unsigned globals[4] = { page, 0, 0, 0 };
                 shader.Apply(
                     metalContext, parserContext, 
                     {
                         MakeLocalTransformPacket(
                             i->_gridToWorld,
                             ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                        cbLayout.BuildCBDataAsPkt(ParameterBox())
+                        cbLayout.BuildCBDataAsPkt(ParameterBox()),
+                        MakeSharedPkt(globals)
                     });
                 metalContext.Unbind<Metal::VertexBuffer>();
                 metalContext.Unbind<Metal::BoundInputLayout>();

@@ -47,9 +47,7 @@ namespace SceneEngine
     protected:
         void MaybeCreateGrid(
             RasterizationSurface& mask,
-            Int2 mins, Int2 maxs,
-            Float2 physicalMins, Float2 physicalMaxs,
-            float physicalHeight);
+            Int2 gridCoords);
 
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;

@@ -14,6 +14,7 @@ namespace RenderCore { namespace Techniques
     {
         static const auto LocalTransform = Hash64("LocalTransform");
         static const auto BasicMaterialConstants = Hash64("BasicMaterialConstants");
+        static const auto Globals = Hash64("$Globals");
     }
 }}
 

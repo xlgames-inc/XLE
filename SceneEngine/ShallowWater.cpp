@@ -1163,6 +1163,14 @@ namespace SceneEngine
         metalContext.BindCS(MakeResourceList(3, _simulationGrid->_waterHeightsSRV[thisFrameBuffer], _lookupTableSRV));
         metalContext.BindCS(MakeResourceList(5, _simulationGrid->_waterVelocitiesSRV[0], _simulationGrid->_waterVelocitiesSRV[1], _simulationGrid->_waterVelocitiesSRV[2], _simulationGrid->_waterVelocitiesSRV[3]));
     }
+
+    unsigned ShallowWaterSim::FindActiveGrid(Int2 gridCoords)
+    {
+        for (const auto& i : _activeSimulationElements)
+            if (i._gridCoords == gridCoords)
+                return i._arrayIndex;
+        return ~unsigned(0x0);
+    }
 }
 
 

@@ -11,22 +11,23 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-float3 CalculateLocalPosition(uint vertexId)
-{
-    uint2 p = uint2(
-        vertexId % (SHALLOW_WATER_TILE_DIMENSION+1),
-        vertexId / (SHALLOW_WATER_TILE_DIMENSION+1));
-
-    return float3(
-        p.x / float(SHALLOW_WATER_TILE_DIMENSION),
-        p.y / float(SHALLOW_WATER_TILE_DIMENSION),
-        0.f);
-}
+uint ShallowWaterPage;
+Texture2DArray<float>	ShallowWaterHeights		: register(t3);
 
 VSOutput vs_main(uint vertexId : SV_VertexId)
 {
     VSOutput output;
-    float3 localPosition = CalculateLocalPosition(vertexId);
+
+    uint2 p = uint2(
+        vertexId % (SHALLOW_WATER_TILE_DIMENSION+1),
+        vertexId / (SHALLOW_WATER_TILE_DIMENSION+1));
+
+    float3 localPosition = float3(
+        p.x / float(SHALLOW_WATER_TILE_DIMENSION),
+        p.y / float(SHALLOW_WATER_TILE_DIMENSION),
+        0.f);
+
+    localPosition.z = ShallowWaterHeights.Load(uint4(p, ShallowWaterPage, 0));
 
     #if GEO_HAS_INSTANCE_ID==1
         float3 worldPosition = InstanceWorldPosition(input, objectCentreWorld);
