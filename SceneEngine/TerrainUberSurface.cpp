@@ -831,16 +831,19 @@ namespace SceneEngine
         auto newShallowWater = std::make_unique<ShallowWaterSim>(
             ShallowWaterSim::Desc(unsigned(ErosionWaterTileDimension), gridsX * gridsY, usePipeModel, true));
         
-        std::vector<ShallowWaterSim::ActiveElement> newElements;
+        std::vector<Int2> newElements;
         for (unsigned y=0; y<gridsY; ++y)
             for (unsigned x=0; x<gridsX; ++x)
-                newElements.push_back(ShallowWaterSim::ActiveElement(x, y));
+                newElements.push_back(Int2(x, y));
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
-        ShallowWater_NewElements(
-            metalContext.get(), *newShallowWater, 
-            *surfaceHeightsProvider, OceanSettings(), terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, nullptr,
-            ShallowBorderMode::Surface,
+        ShallowWaterSim::SimulationContext simContext(
+            *metalContext, OceanSettings(),
+            terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale,
+            nullptr, nullptr, ShallowWaterSim::BorderMode::Surface);
+
+        newShallowWater->BeginElements(
+            simContext,
             AsPointer(newElements.cbegin()), AsPointer(newElements.cend()));
 
         /////////////////////////////////////////////////////////////////////////////////////
@@ -904,16 +907,19 @@ namespace SceneEngine
         float terrainScale = _pimpl->_erosionSim._elementSpacing;
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
-        ShallowWaterSettings settings;
+        ShallowWaterSim::SimSettings settings;
         settings._rainQuantityPerFrame = params._rainQuantityPerFrame;
         settings._evaporationConstant = params._evaporationConstant;
         settings._pressureConstant = params._pressureConstant;
 
-        ShallowWater_ExecuteInternalSimulation(
-            metalContext.get(), OceanSettings(), terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, 
-            nullptr, _pimpl->_erosionSim._surfaceHeightsProvider.get(),
-            *_pimpl->_erosionSim._waterSim.get(), _pimpl->_erosionSim._bufferCount, 
-            settings, ShallowBorderMode::Surface);
+        ShallowWaterSim::SimulationContext simContext(
+            *metalContext, OceanSettings(),
+            terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale,
+            _pimpl->_erosionSim._surfaceHeightsProvider.get(), nullptr,
+            ShallowWaterSim::BorderMode::Surface);
+
+        _pimpl->_erosionSim._waterSim->ExecuteInternalSimulation(
+            simContext, settings, _pimpl->_erosionSim._bufferCount);
 
             //      We need to use the water movement information to change rock to dirt,
             //      and then move dirt along with the water movement
@@ -924,7 +930,7 @@ namespace SceneEngine
             //      be a strong flow, but the height is staying the same).
 
         auto& erosionSim = _pimpl->_erosionSim;
-        ShallowWater_BindForErosionSimulation(metalContext.get(), *erosionSim._waterSim.get(), erosionSim._bufferCount);
+        erosionSim._waterSim->BindForErosionSimulation(*metalContext, erosionSim._bufferCount);
         
         metalContext->GetUnderlying()->CopyResource(_pimpl->_gpucache[1].get(), _pimpl->_gpucache[0].get());
         Metal::ShaderResourceView terrainHeightsCopySRV(_pimpl->_gpucache[1].get());
@@ -968,7 +974,7 @@ namespace SceneEngine
         char defines[256];
         _snprintf_s(defines, _TRUNCATE, 
             "SHALLOW_WATER_TILE_DIMENSION=%i;SURFACE_HEIGHTS_FLOAT=%i", 
-            erosionSim._waterSim->_gridDimension,
+            erosionSim._waterSim->GetGridDimension(),
             _pimpl->_erosionSim._surfaceHeightsProvider->IsFloatFormat());
 
             // update sediment
@@ -1043,12 +1049,11 @@ namespace SceneEngine
 
             auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
             metalContext->BindPS(RenderCore::MakeResourceList(2, _pimpl->_erosionSim._hardMaterialsSRV, _pimpl->_erosionSim._softMaterialsSRV));
-            ShallowWater_RenderVelocities(
-                metalContext.get(), parserContext,
+            _pimpl->_erosionSim._waterSim->RenderVelocities(
+                *metalContext, parserContext,
                 OceanSettings(), terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, 
-                worldSpaceOffset,
-                *_pimpl->_erosionSim._waterSim.get(), 
-                _pimpl->_erosionSim._bufferCount-1, ShallowBorderMode::Surface, true);
+                worldSpaceOffset, _pimpl->_erosionSim._bufferCount-1, 
+                ShallowWaterSim::BorderMode::Surface, true);
         } 
         CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
         CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }

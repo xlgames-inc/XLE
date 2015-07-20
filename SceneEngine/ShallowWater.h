@@ -16,9 +16,15 @@
 
 namespace SceneEngine
 {
-    class ShallowWaterGrid;
 
-        ////////////////////////////////////////////////////////////////////////////////////////
+    class ShallowWaterGrid;
+    class FFTBufferBox;
+    class OceanSettings;
+    class LightingParserContext;
+    class ISurfaceHeightsProvider;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     class ShallowWaterSim
     {
     public:
@@ -34,44 +40,88 @@ namespace SceneEngine
                 : _gridDimension(gridDimension), _maxSimulationGrid(maxSimulationGrid), _usePipeModel(usePipeModel), _buildVelocities(buildVelocities) {}
         };
 
+        struct BorderMode
+        {
+            enum Enum { GlobalWaves = 1, Surface = 2, BaseHeight = 3 };
+        };
+
+        class SimSettings
+        {
+        public:
+            float _rainQuantityPerFrame;
+            float _evaporationConstant;
+            float _pressureConstant;
+            Float4 _compressionConstants;
+
+            SimSettings();
+        };
+
+        using SRV = RenderCore::Metal::ShaderResourceView;
+        using UAV = RenderCore::Metal::UnorderedAccessView;
+        using MetalContext = RenderCore::Metal::DeviceContext;
+
+        class SimulationContext
+        {
+        public:
+            MetalContext* _metalContext;
+            const OceanSettings* _oceanSettings;
+            float _gridPhysicalDimension;
+            ISurfaceHeightsProvider* _surfaceHeightsProvider;
+            SRV* _globalOceanWorkingHeights;
+            BorderMode::Enum _borderMode;
+
+            SimulationContext(
+                MetalContext& metalContext,
+                const OceanSettings& oceanSettings,
+                float gridPhysicalDimension,
+                ISurfaceHeightsProvider* surfaceHeightsProvider,
+                SRV* globalOceanWorkingHeights,
+                BorderMode::Enum borderMode);
+        };
+
+        void ExecuteSim(
+            const SimulationContext& context, 
+            LightingParserContext& parserContext, 
+            unsigned bufferCounter);
+
+        void ExecuteInternalSimulation(
+            const SimulationContext& context,
+            const SimSettings& settings,
+            unsigned bufferCounter);
+
+        void BeginElements(
+            const SimulationContext& context,
+            const Int2* newElementsBegin, const Int2* newElementsEnd);
+
+        void BindForOceanRender(MetalContext& context, unsigned bufferCounter);
+        void BindForErosionSimulation(MetalContext& context, unsigned bufferCounter);
+
+        void RenderWireframe(
+            MetalContext& context, LightingParserContext& parserContext, 
+            const OceanSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
+            unsigned bufferCounter, BorderMode::Enum borderMode);
+
+        void RenderVelocities(
+            MetalContext& context, LightingParserContext& parserContext, 
+            const OceanSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
+            unsigned bufferCounter, BorderMode::Enum borderMode,
+            bool showErosion);
+
+        unsigned GetGridDimension() const { return _gridDimension; }
+        bool IsActive() const { return _simulatingGridsCount != 0; }
+
         ShallowWaterSim(const Desc& desc);
         ~ShallowWaterSim();
 
-        std::unique_ptr<ShallowWaterGrid>       _simulationGrid;
+        struct ActiveElement;
 
-        intrusive_ptr<ID3D::Resource>           _lookupTable;
-        RenderCore::Metal::ShaderResourceView   _lookupTableSRV;
-        RenderCore::Metal::UnorderedAccessView  _lookupTableUAV;
+    protected:
+        std::unique_ptr<ShallowWaterGrid>   _simulationGrid;
 
-        class SurfaceHeightsAddressingConstants
-        {
-        public:
-            Int3 _baseCoord;
-            unsigned _dummy0;
-            Int2 _textureMin, _textureMax;
-            float _scale;
-            float _offset;
-            unsigned _dummy1[2];
-
-            SurfaceHeightsAddressingConstants() 
-                : _baseCoord(Int3(0,0,0))
-                , _dummy0(0), _textureMin(0,0), _textureMax(0,0)
-                , _scale(0.f), _offset(0.f) 
-            {
-                _dummy1[0] = _dummy1[1] = 0;
-            }
-        };
-
-        struct ActiveElement
-        {
-            signed      _gridX, _gridY;
-            unsigned    _arrayIndex;
-
-            ActiveElement() {}
-            ActiveElement(signed gridX, signed gridY, unsigned arrayIndex = ~unsigned(0x0))
-                :   _gridX(gridX), _gridY(gridY), _arrayIndex(arrayIndex) {}
-        };
-
+        intrusive_ptr<ID3D::Resource>   _lookupTable;
+        SRV                             _lookupTableSRV;
+        UAV                             _lookupTableUAV;
+        
         std::vector<ActiveElement>  _activeSimulationElements;
         std::vector<unsigned>       _poolOfUnallocatedArrayIndices;
         unsigned                    _simulatingGridsCount;
@@ -79,61 +129,23 @@ namespace SceneEngine
         bool                        _usePipeModel;
     };
 
-        ////////////////////////////////////////////////////////////////////////////////////////
-
-    class FFTBufferBox;
-    class OceanSettings;
-    class LightingParserContext;
-    class ISurfaceHeightsProvider;
-
-    namespace ShallowBorderMode
+///////////////////////////////////////////////////////////////////////////////////////////////////
+   
+    ShallowWaterSim::SimulationContext::SimulationContext(
+        MetalContext& metalContext,
+        const OceanSettings& oceanSettings,
+        float gridPhysicalDimension,
+        ISurfaceHeightsProvider* surfaceHeightsProvider,
+        SRV* globalOceanWorkingHeights,
+        BorderMode::Enum borderMode)
     {
-        enum Enum { GlobalWaves = 1, Surface = 2, BaseHeight = 3 };
+        _metalContext = &metalContext;
+        _oceanSettings = &oceanSettings;
+        _gridPhysicalDimension = gridPhysicalDimension;
+        _globalOceanWorkingHeights = globalOceanWorkingHeights;
+        _surfaceHeightsProvider = surfaceHeightsProvider;
+        _borderMode = borderMode;
     }
 
-    class ShallowWaterSettings
-    {
-    public:
-        float _rainQuantityPerFrame;
-        float _evaporationConstant;
-        float _pressureConstant;
-        Float4 _compressionConstants;
-
-        ShallowWaterSettings();
-    };
-
-    void ShallowWater_DoSim(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
-        const OceanSettings& oceanSettings, float gridPhysicalDimension,
-        RenderCore::Metal::ShaderResourceView* globalOceanWorkingHeights,
-        ISurfaceHeightsProvider* surfaceHeightsProvider, ShallowWaterSim& shallowBox, unsigned bufferCounter);
-    void ShallowWater_BindForOceanRender(
-        RenderCore::Metal::DeviceContext* context, ShallowWaterSim& shallowBox, unsigned bufferCounter);
-    void ShallowWater_BindForErosionSimulation(
-        RenderCore::Metal::DeviceContext* context, ShallowWaterSim& shallowBox, unsigned bufferCounter);
-    void ShallowWater_ExecuteInternalSimulation(
-        RenderCore::Metal::DeviceContext* context,
-        const OceanSettings& oceanSettings, float gridPhysicalDimension,
-        RenderCore::Metal::ShaderResourceView* globalOceanWorkingHeights,
-        ISurfaceHeightsProvider* surfaceHeightsProvider, ShallowWaterSim& shallowBox, 
-        unsigned bufferCounter, const ShallowWaterSettings& settings,
-        ShallowBorderMode::Enum borderMode = ShallowBorderMode::GlobalWaves);
-    void ShallowWater_NewElements(
-        RenderCore::Metal::DeviceContext* context, 
-        ShallowWaterSim& shallowBox, ISurfaceHeightsProvider& surfaceHeightsProvider,
-        const OceanSettings& oceanSettings, const float gridPhysicalDimension,
-        RenderCore::Metal::ShaderResourceView* globalOceanWorkingHeights,
-        ShallowBorderMode::Enum borderMode,
-        const ShallowWaterSim::ActiveElement* newElementsBegin, const ShallowWaterSim::ActiveElement* newElementsEnd,
-        size_t stride = sizeof(ShallowWaterSim::ActiveElement));
-    void ShallowWater_RenderWireframe(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
-        const OceanSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
-        ShallowWaterSim& shallowBox, unsigned bufferCounter, ShallowBorderMode::Enum borderMode);
-    void ShallowWater_RenderVelocities(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
-        const OceanSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
-        ShallowWaterSim& shallowBox, unsigned bufferCounter, ShallowBorderMode::Enum borderMode,
-        bool showErosion);
 }
 

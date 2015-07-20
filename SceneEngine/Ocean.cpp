@@ -1153,10 +1153,10 @@ namespace SceneEngine
 
             ParameterBox materialParameters;
             materialParameters.SetParameter((const utf8*)"MAT_USE_DERIVATIVES_MAP", unsigned(fftBuffer._useDerivativesMapForNormals));
-            materialParameters.SetParameter((const utf8*)"MAT_USE_SHALLOW_WATER", shallowWater && unsigned(shallowWater->_simulatingGridsCount!=0));
+            materialParameters.SetParameter((const utf8*)"MAT_USE_SHALLOW_WATER", shallowWater && unsigned(shallowWater->IsActive()));
             materialParameters.SetParameter((const utf8*)"MAT_DO_REFRACTION", refractionsBox!=nullptr);
             materialParameters.SetParameter((const utf8*)"MAT_DYNAMIC_REFLECTION", int(doDynamicReflection));
-            materialParameters.SetParameter((const utf8*)"SHALLOW_WATER_TILE_DIMENSION", shallowWater?int(shallowWater->_gridDimension):0);
+            materialParameters.SetParameter((const utf8*)"SHALLOW_WATER_TILE_DIMENSION", shallowWater?shallowWater->GetGridDimension():0);
             materialParameters.SetParameter((const utf8*)"SKY_PROJECTION", skyProjectionType);
             ParameterBox dummyBox;
             const ParameterBox* state[] = {
@@ -1219,7 +1219,7 @@ namespace SceneEngine
             // ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/defaultresources/waternoise.png").GetShaderResource()
             Techniques::FindCachedBox2<WaterNoiseTexture>()._srv));
         if (shallowWater) {
-            ShallowWater_BindForOceanRender(context, *shallowWater, OceanBufferCounter);
+            shallowWater->BindForOceanRender(*context, OceanBufferCounter);
         }
         if (refractionsBox) {
                 //  only need the depth buffer if we're doing refractions
@@ -1316,10 +1316,14 @@ namespace SceneEngine
             if (doShallowWater && MainSurfaceHeightsProvider) {
                 shallowWaterBox = &Techniques::FindCachedBox<ShallowWaterSim>(
                     ShallowWaterSim::Desc(shallowGridDimension, simulatingGridsCount, usePipeModel, false));
-                ShallowWater_DoSim(
-                    context, parserContext, settings, shallowGridPhysicalDimension,
-                    &fftBuffer._workingTextureRealShaderResource,
-                    MainSurfaceHeightsProvider, *shallowWaterBox, OceanBufferCounter);
+                shallowWaterBox->ExecuteSim(
+                    ShallowWaterSim::SimulationContext(
+                        *context, settings, shallowGridPhysicalDimension,
+                        MainSurfaceHeightsProvider,
+                        &fftBuffer._workingTextureRealShaderResource,
+                        ShallowWaterSim::BorderMode::GlobalWaves),
+                    parserContext,
+                    OceanBufferCounter);
             }
             RenderOceanSurface(
                 context, parserContext, settings, lightingSettings, fftBuffer, shallowWaterBox, 

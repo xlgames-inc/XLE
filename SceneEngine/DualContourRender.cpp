@@ -317,7 +317,8 @@ namespace SceneEngine
             //  vertex buffers and index buffers on the fly -- so it's not
             //  really very efficient. Just for debugging purposes
 
-        TRY {
+        TRY 
+        {
             using namespace RenderCore;
             using namespace RenderCore::Techniques;
 

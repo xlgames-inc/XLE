@@ -37,39 +37,45 @@
 namespace SceneEngine
 {
     using namespace RenderCore;
-    using namespace RenderCore::Metal;
+
+    using SRV = RenderCore::Metal::ShaderResourceView;
+    using UAV = RenderCore::Metal::UnorderedAccessView;
+    using MetalContext = RenderCore::Metal::DeviceContext;
+    using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     class ShallowWaterGrid
     {
     public:
-        intrusive_ptr<ID3D::Resource>           _waterHeightsTextures[3];
-        RenderCore::Metal::ShaderResourceView   _waterHeightsSRV[3];
-        RenderCore::Metal::UnorderedAccessView  _waterHeightsUAV[3];
+        ResLocator          _waterHeightsTextures[3];
+        SRV                 _waterHeightsSRV[3];
+        UAV                 _waterHeightsUAV[3];
 
         static const unsigned VelTextures = 8;
-        intrusive_ptr<ID3D::Resource>           _waterVelocitiesTexture[VelTextures];
-        RenderCore::Metal::ShaderResourceView   _waterVelocitiesSRV[VelTextures];
-        RenderCore::Metal::UnorderedAccessView  _waterVelocitiesUAV[VelTextures];
+        ResLocator          _waterVelocitiesTexture[VelTextures];
+        SRV                 _waterVelocitiesSRV[VelTextures];
+        UAV                 _waterVelocitiesUAV[VelTextures];
 
-        intrusive_ptr<ID3D::Resource>           _slopesBuffer[2];
-        RenderCore::Metal::UnorderedAccessView  _slopesBufferUAV[2];
+        ResLocator          _slopesBuffer[2];
+        UAV                 _slopesBufferUAV[2];
 
-        intrusive_ptr<ID3D::Resource>                       _normalsTexture;
-        std::vector<RenderCore::Metal::UnorderedAccessView> _normalsTextureUAV;
-        std::vector<RenderCore::Metal::ShaderResourceView>  _normalsSingleMipSRV;
-        RenderCore::Metal::ShaderResourceView               _normalsTextureShaderResource;
+        ResLocator          _normalsTexture;
+        std::vector<UAV>    _normalsTextureUAV;
+        std::vector<SRV>    _normalsSingleMipSRV;
+        SRV                 _normalsTextureShaderResource;
 
-        intrusive_ptr<ID3D::Resource>           _foamQuantity[2];
-        RenderCore::Metal::UnorderedAccessView  _foamQuantityUAV[2];
-        RenderCore::Metal::ShaderResourceView   _foamQuantitySRV[2];
-        RenderCore::Metal::ShaderResourceView   _foamQuantitySRV2[2];
+        ResLocator          _foamQuantity[2];
+        UAV                 _foamQuantityUAV[2];
+        SRV                 _foamQuantitySRV[2];
+        SRV                 _foamQuantitySRV2[2];
 
-        unsigned    _rotatingBufferCount;
-        bool        _pendingInitialClear;
+        unsigned            _rotatingBufferCount;
+        bool                _pendingInitialClear;
 
         ShallowWaterGrid();
-        ShallowWaterGrid(unsigned width, unsigned height, unsigned maxSimulationGrids, bool pipeModel, bool calculateVelocities);
+        ShallowWaterGrid(
+            unsigned width, unsigned height, unsigned maxSimulationGrids, 
+            bool pipeModel, bool calculateVelocities);
         ~ShallowWaterGrid();
     };
 
@@ -81,9 +87,9 @@ namespace SceneEngine
         using namespace BufferUploads;
         auto& uploads = GetBufferUploads();
 
-        auto tDesc = BufferUploads::TextureDesc::Plain2D(width, height, NativeFormat::R32_TYPELESS, 1, uint8(maxSimulationGrids));
+        auto tDesc = TextureDesc::Plain2D(width, height, Metal::NativeFormat::R32_TYPELESS, 1, uint8(maxSimulationGrids));
         if (height<=1) {
-            tDesc = BufferUploads::TextureDesc::Plain1D(width, NativeFormat::R32_TYPELESS, 1, uint8(maxSimulationGrids));
+            tDesc = TextureDesc::Plain1D(width, Metal::NativeFormat::R32_TYPELESS, 1, uint8(maxSimulationGrids));
         }
 
         BufferDesc targetDesc;
@@ -95,23 +101,23 @@ namespace SceneEngine
         targetDesc._name[0] = '\0';
         targetDesc._textureDesc = tDesc;
 
-        intrusive_ptr<ID3D::Resource> waterHeightsTextures[3];
-        UnorderedAccessView waterHeightsUAV[3];
-        ShaderResourceView waterHeightsSRV[3];
+        ResLocator waterHeightsTextures[3];
+        UAV waterHeightsUAV[3];
+        SRV waterHeightsSRV[3];
 
-        intrusive_ptr<ID3D::Resource> waterVelocitiesTexture[VelTextures];
-        UnorderedAccessView waterVelocitiesUAV[VelTextures];
-        ShaderResourceView waterVelocitiesSRV[VelTextures];
+        ResLocator waterVelocitiesTexture[VelTextures];
+        UAV waterVelocitiesUAV[VelTextures];
+        SRV waterVelocitiesSRV[VelTextures];
 
-        intrusive_ptr<ID3D::Resource> slopesBuffer[2];
-        UnorderedAccessView slopesBufferUAV[2];
+        ResLocator slopesBuffer[2];
+        UAV slopesBufferUAV[2];
 
         unsigned heightsTextureCount = pipeModel?1:3;
 
         for (unsigned c=0; c<heightsTextureCount; ++c) {
-            waterHeightsTextures[c] = uploads.Transaction_Immediate(targetDesc)->AdoptUnderlying();
-            waterHeightsUAV[c] = UnorderedAccessView(waterHeightsTextures[c].get(), NativeFormat::R32_FLOAT, 0, false, true);
-            waterHeightsSRV[c] = ShaderResourceView(waterHeightsTextures[c].get(), NativeFormat::R32_FLOAT, maxSimulationGrids);
+            waterHeightsTextures[c] = uploads.Transaction_Immediate(targetDesc);
+            waterHeightsUAV[c] = UAV(waterHeightsTextures[c]->GetUnderlying(), Metal::NativeFormat::R32_FLOAT, 0, false, true);
+            waterHeightsSRV[c] = SRV(waterHeightsTextures[c]->GetUnderlying(), Metal::NativeFormat::R32_FLOAT, maxSimulationGrids);
         }
 
             //  The pipe model always needs velocities. Otherwise, we only calculate them
@@ -119,55 +125,55 @@ namespace SceneEngine
             //  the movement of water from place to place.
 
         if (pipeModel || calculateVelocities) {
-            targetDesc._textureDesc._nativePixelFormat = NativeFormat::R32_TYPELESS;
+            targetDesc._textureDesc._nativePixelFormat = Metal::NativeFormat::R32_TYPELESS;
             for (unsigned c=0; c<VelTextures; ++c) {
-                waterVelocitiesTexture[c] = uploads.Transaction_Immediate(targetDesc)->AdoptUnderlying();
-                waterVelocitiesUAV[c] = UnorderedAccessView(waterVelocitiesTexture[c].get(), NativeFormat::R32_FLOAT, 0, false, true);
-                waterVelocitiesSRV[c] = ShaderResourceView(waterVelocitiesTexture[c].get(), NativeFormat::R32_FLOAT, maxSimulationGrids);
+                waterVelocitiesTexture[c] = uploads.Transaction_Immediate(targetDesc);
+                waterVelocitiesUAV[c] = UAV(waterVelocitiesTexture[c]->GetUnderlying(), Metal::NativeFormat::R32_FLOAT, 0, false, true);
+                waterVelocitiesSRV[c] = SRV(waterVelocitiesTexture[c]->GetUnderlying(), Metal::NativeFormat::R32_FLOAT, maxSimulationGrids);
             }
         }
 
         if (!pipeModel && calculateVelocities) {
-            targetDesc._textureDesc._nativePixelFormat = NativeFormat::R32_TYPELESS;
+            targetDesc._textureDesc._nativePixelFormat = Metal::NativeFormat::R32_TYPELESS;
             for (unsigned c=0; c<2; ++c) {
-                slopesBuffer[c] = uploads.Transaction_Immediate(targetDesc)->AdoptUnderlying();
-                slopesBufferUAV[c] = UnorderedAccessView(slopesBuffer[c].get(), NativeFormat::R32_FLOAT, 0, false, true);
+                slopesBuffer[c] = uploads.Transaction_Immediate(targetDesc);
+                slopesBufferUAV[c] = UAV(slopesBuffer[c]->GetUnderlying(), Metal::NativeFormat::R32_FLOAT, 0, false, true);
             }
         }
 
                 ////
         const unsigned normalsMipCount = IntegerLog2(std::max(width, height));
-        const auto typelessNormalFormat = NativeFormat::R8G8_TYPELESS;
-        const auto uintNormalFormat = NativeFormat::R8G8_UINT;
-        const auto unormNormalFormat = NativeFormat::R8G8_UNORM;
+        const auto typelessNormalFormat = Metal::NativeFormat::R8G8_TYPELESS;
+        const auto uintNormalFormat = Metal::NativeFormat::R8G8_UINT;
+        const auto unormNormalFormat = Metal::NativeFormat::R8G8_UNORM;
         auto normalsBufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
             BufferUploads::TextureDesc::Plain2D(width, height, typelessNormalFormat, uint8(normalsMipCount), uint8(maxSimulationGrids)),
             "ShallowNormals");
-        auto normalsTexture = uploads.Transaction_Immediate(normalsBufferUploadsDesc, nullptr)->AdoptUnderlying();
-        std::vector<UnorderedAccessView> normalsTextureUVA;
-        std::vector<ShaderResourceView> normalsSingleMipSRV;
+        auto normalsTexture = uploads.Transaction_Immediate(normalsBufferUploadsDesc, nullptr);
+        std::vector<UAV> normalsTextureUVA;
+        std::vector<SRV> normalsSingleMipSRV;
         normalsTextureUVA.reserve(normalsMipCount);
         normalsSingleMipSRV.reserve(normalsMipCount);
         for (unsigned c=0; c<normalsMipCount; ++c) {
-            normalsTextureUVA.push_back(UnorderedAccessView(normalsTexture.get(), uintNormalFormat, c, false, true));
-            normalsSingleMipSRV.push_back(ShaderResourceView(normalsTexture.get(), uintNormalFormat, MipSlice(c, 1)));
+            normalsTextureUVA.push_back(UAV(normalsTexture->GetUnderlying(), uintNormalFormat, c, false, true));
+            normalsSingleMipSRV.push_back(SRV(normalsTexture->GetUnderlying(), uintNormalFormat, Metal::MipSlice(c, 1)));
         }
-        ShaderResourceView normalsTextureShaderResource(normalsTexture.get(), unormNormalFormat, MipSlice(0, normalsMipCount));
+        SRV normalsTextureShaderResource(normalsTexture->GetUnderlying(), unormNormalFormat, Metal::MipSlice(0, normalsMipCount));
 
                 ////
         auto foamTextureDesc = BuildRenderTargetDesc(
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain2D(width, height, NativeFormat::R8_TYPELESS, 1, uint8(maxSimulationGrids)),
+            TextureDesc::Plain2D(width, height, Metal::NativeFormat::R8_TYPELESS, 1, uint8(maxSimulationGrids)),
             "ShallowFoam");
         auto foamQuantity0 = uploads.Transaction_Immediate(foamTextureDesc, nullptr)->AdoptUnderlying();
         auto foamQuantity1 = uploads.Transaction_Immediate(foamTextureDesc, nullptr)->AdoptUnderlying();
-        UnorderedAccessView foamQuantityUVA0(foamQuantity0.get(), NativeFormat::R8_UINT);
-        ShaderResourceView foamQuantitySRV0(foamQuantity0.get(), NativeFormat::R8_UNORM);
-        ShaderResourceView foamQuantitySRV20(foamQuantity0.get(), NativeFormat::R8_UINT);
-        UnorderedAccessView foamQuantityUVA1(foamQuantity1.get(), NativeFormat::R8_UINT);
-        ShaderResourceView foamQuantitySRV1(foamQuantity1.get(), NativeFormat::R8_UNORM);
-        ShaderResourceView foamQuantitySRV21(foamQuantity1.get(), NativeFormat::R8_UINT);
+        UAV foamQuantityUVA0(foamQuantity0.get(), Metal::NativeFormat::R8_UINT);
+        SRV foamQuantitySRV0(foamQuantity0.get(), Metal::NativeFormat::R8_UNORM);
+        SRV foamQuantitySRV20(foamQuantity0.get(), Metal::NativeFormat::R8_UINT);
+        UAV foamQuantityUVA1(foamQuantity1.get(), Metal::NativeFormat::R8_UINT);
+        SRV foamQuantitySRV1(foamQuantity1.get(), Metal::NativeFormat::R8_UNORM);
+        SRV foamQuantitySRV21(foamQuantity1.get(), Metal::NativeFormat::R8_UINT);
     
                 ////
         for (unsigned c=0; c<3; ++c) {
@@ -209,14 +215,14 @@ namespace SceneEngine
 
     ShallowWaterGrid::~ShallowWaterGrid() {}
     
-    void CheckInitialClear(RenderCore::Metal::DeviceContext* context, ShallowWaterGrid& grid)
+    void CheckInitialClear(MetalContext& context, ShallowWaterGrid& grid)
     {
         // When we create the resources initially, we don't have a device context, so we can't do
         // a clear... We have to deferred until we have a device context
         if (grid._pendingInitialClear) {
             float clearValues[4] = {0,0,0,0};
             for (unsigned c=0; c<ShallowWaterGrid::VelTextures; ++c)
-                context->Clear(grid._waterVelocitiesUAV[c], clearValues);
+                context.Clear(grid._waterVelocitiesUAV[c], clearValues);
             grid._pendingInitialClear = false;
         }
     }
@@ -246,14 +252,14 @@ namespace SceneEngine
         targetDesc._allocationRules = 0;
         targetDesc._name[0] = '\0';
         targetDesc._textureDesc = 
-            BufferUploads::TextureDesc::Plain2D(
-                lookupTableDimensions, lookupTableDimensions, NativeFormat::R8_TYPELESS);
+            TextureDesc::Plain2D(
+                lookupTableDimensions, lookupTableDimensions, Metal::NativeFormat::R8_TYPELESS);
 
         auto initData = BufferUploads::CreateEmptyPacket(targetDesc);
         XlSetMemory(initData->GetData(), 0xff, initData->GetDataSize());
         auto lookupTable = uploads.Transaction_Immediate(targetDesc, initData.get())->AdoptUnderlying();
-        UnorderedAccessView lookupTableUAV(lookupTable.get(), NativeFormat::R8_UINT);
-        ShaderResourceView lookupTableSRV(lookupTable.get(), NativeFormat::R8_UINT);
+        UAV lookupTableUAV(lookupTable.get(), Metal::NativeFormat::R8_UINT);
+        SRV lookupTableSRV(lookupTable.get(), Metal::NativeFormat::R8_UINT);
 
         _poolOfUnallocatedArrayIndices.reserve(desc._maxSimulationGrid);
         for (unsigned c=0; c<desc._maxSimulationGrid; ++c) {
@@ -273,6 +279,16 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    struct ShallowWaterSim::ActiveElement
+    {
+        Int2        _gridCoords;
+        unsigned    _arrayIndex;
+
+        ActiveElement() {}
+        ActiveElement(Int2 gridCoords, unsigned arrayIndex = ~unsigned(0x0))
+        :   _gridCoords(gridCoords), _arrayIndex(arrayIndex) {}
+    };
+
     template<typename First, typename Second>
         static bool SortCells(const std::pair<First,Second>& lhs, const std::pair<First,Second>& rhs) 
             { return (lhs.first + lhs.second) < (rhs.first + rhs.second); }
@@ -280,7 +296,7 @@ namespace SceneEngine
     static bool SortOceanGridElement(   const ShallowWaterSim::ActiveElement& lhs, 
                                         const ShallowWaterSim::ActiveElement& rhs)
     {
-        return (lhs._gridX + lhs._gridY) < (rhs._gridX + rhs._gridY);
+        return (lhs._gridCoords[0] + lhs._gridCoords[1]) < (rhs._gridCoords[0] + rhs._gridCoords[1]);
     }
 
     static bool GridIsVisible(
@@ -297,7 +313,7 @@ namespace SceneEngine
     public:
         ShallowWaterSim::ActiveElement _e;
         float   _priority;
-        PrioritisedActiveElement(signed gridX, signed gridY, float priority) : _e(gridX, gridY), _priority(priority) {}
+        PrioritisedActiveElement(Int2 gridCoords, float priority) : _e(gridCoords), _priority(priority) {}
         PrioritisedActiveElement(const ShallowWaterSim::ActiveElement& e, float priority) : _e(e), _priority(priority) {}
         PrioritisedActiveElement() {}
     };
@@ -315,12 +331,12 @@ namespace SceneEngine
         return Int2(cursorPos.x, cursorPos.y);
     }
 
-    static std::pair<Float3, Float3> CalculateMouseOverRay(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext)
+    static std::pair<Float3, Float3> CalculateMouseOverRay(MetalContext& context, LightingParserContext& parserContext)
     {
             // calculate a world space ray underneath the mouse cursor
         auto cursorPos = GetCursorPos();
 
-        ViewportDesc viewport(*context);
+        Metal::ViewportDesc viewport(context);
         float A = Clamp(cursorPos[0] / viewport.Width, 0.f, 1.f);
         float B = Clamp(cursorPos[1] / viewport.Height, 0.f, 1.f);
 
@@ -342,8 +358,27 @@ namespace SceneEngine
 
         ////////////////////////////////
 
+    class SurfaceHeightsAddressingConstants
+    {
+    public:
+        Int3 _baseCoord;
+        unsigned _dummy0;
+        Int2 _textureMin, _textureMax;
+        float _scale;
+        float _offset;
+        unsigned _dummy1[2];
+
+        SurfaceHeightsAddressingConstants() 
+            : _baseCoord(Int3(0,0,0))
+            , _dummy0(0), _textureMin(0,0), _textureMax(0,0)
+            , _scale(0.f), _offset(0.f) 
+        {
+            _dummy1[0] = _dummy1[1] = 0;
+        }
+    };
+
     static bool CalculateAddressing(
-        ShallowWaterSim::SurfaceHeightsAddressingConstants& dest,
+        SurfaceHeightsAddressingConstants& dest,
         const ShallowWaterSim::ActiveElement& e, 
         ISurfaceHeightsProvider* surfaceHeightsProvider, 
         float gridPhysicalDimension)
@@ -351,8 +386,8 @@ namespace SceneEngine
             //  Even though we have a cached heights addressing, we should recalculate height addressing to 
             //  match new uploads, etc...
             //  Note that if the terrain is edited, it can change the height scale & offset
-        Float2 gridMins(float(e._gridX) * gridPhysicalDimension, float(e._gridY) * gridPhysicalDimension);
-        Float2 gridMaxs(float(e._gridX+1) * gridPhysicalDimension, float(e._gridY+1) * gridPhysicalDimension);
+        Float2 gridMins(float(e._gridCoords[0]) * gridPhysicalDimension, float(e._gridCoords[1]) * gridPhysicalDimension);
+        Float2 gridMaxs(float(e._gridCoords[0]+1) * gridPhysicalDimension, float(e._gridCoords[1]+1) * gridPhysicalDimension);
         auto surfaceAddressing = surfaceHeightsProvider->GetAddress(gridMins, gridMaxs);
         if (!surfaceAddressing._valid) return false;
 
@@ -364,19 +399,19 @@ namespace SceneEngine
         return true;
     }
 
-    static bool SetAddressingConstants(RenderCore::Metal::DeviceContext* context, ConstantBuffer& cb, 
-        const ShallowWaterSim::ActiveElement& e, 
-        ISurfaceHeightsProvider* surfaceHeightsProvider, 
-        float gridPhysicalDimension)
+    static bool SetAddressingConstants(
+        const ShallowWaterSim::SimulationContext& context,
+        Metal::ConstantBuffer& cb, 
+        const ShallowWaterSim::ActiveElement& e)
     {
-        ShallowWaterSim::SurfaceHeightsAddressingConstants newHeightsAddressing;
-        if (!CalculateAddressing(newHeightsAddressing, e, surfaceHeightsProvider, gridPhysicalDimension))
+        SurfaceHeightsAddressingConstants newHeightsAddressing;
+        if (!CalculateAddressing(newHeightsAddressing, e, context._surfaceHeightsProvider, context._gridPhysicalDimension))
             return false;
-        cb.Update(*context, &newHeightsAddressing, sizeof(newHeightsAddressing));
+        cb.Update(*context._metalContext, &newHeightsAddressing, sizeof(newHeightsAddressing));
         return true;
     }
 
-    ShallowWaterSettings::ShallowWaterSettings()
+    ShallowWaterSim::SimSettings::SimSettings()
     {
         _rainQuantityPerFrame = 0.f;
         _evaporationConstant = 0.f; // 0.985f;
@@ -397,12 +432,13 @@ namespace SceneEngine
     };
 
     static void SetSimulatingConstants(
-        RenderCore::Metal::DeviceContext* context, 
-        ConstantBuffer& cb, 
-        const ShallowWaterSim::ActiveElement& ele, const ShallowWaterSettings & settings, Float2 offset = Float2(0,0))
+        RenderCore::Metal::DeviceContext& context, 
+        Metal::ConstantBuffer& cb, 
+        const ShallowWaterSim::ActiveElement& ele, const ShallowWaterSim::SimSettings& settings, 
+        Float2 offset = Float2(0,0))
     {
         SimulatingConstants constants = { 
-            Int2(ele._gridX, ele._gridY), ele._arrayIndex, 0,
+            Int2(ele._gridCoords[0], ele._gridCoords[1]), ele._arrayIndex, 0,
             offset, 
             settings._rainQuantityPerFrame, 
             settings._evaporationConstant,
@@ -410,23 +446,22 @@ namespace SceneEngine
             {0,0,0}
         };
 
-        cb.Update(*context, &constants, sizeof(SimulatingConstants));
+        cb.Update(context, &constants, sizeof(SimulatingConstants));
     }
 
     static void DispatchEachElement(
-        RenderCore::Metal::DeviceContext* context,
+        const ShallowWaterSim::SimulationContext& context,
         const std::vector<ShallowWaterSim::ActiveElement>& elements,
-        ConstantBuffer& basicConstantsBuffer, ConstantBuffer& surfaceHeightsConstantsBuffer,
-        ISurfaceHeightsProvider* surfaceHeightsProvider, 
-        float gridPhysicalDimension, const ShallowWaterSettings& settings, 
+        Metal::ConstantBuffer& basicConstantsBuffer, Metal::ConstantBuffer& surfaceHeightsConstantsBuffer,
+        const ShallowWaterSim::SimSettings& settings, 
         unsigned elementDimension)
     {
         for (auto i=elements.cbegin(); i!=elements.cend(); ++i) {
             if (i->_arrayIndex < 128) {
-                if (!SetAddressingConstants(context, surfaceHeightsConstantsBuffer, *i, surfaceHeightsProvider, gridPhysicalDimension))
+                if (!SetAddressingConstants(context, surfaceHeightsConstantsBuffer, *i))
                     continue;
-                SetSimulatingConstants(context, basicConstantsBuffer, *i, settings);
-                context->Dispatch(1, elementDimension, 1);
+                SetSimulatingConstants(*context._metalContext, basicConstantsBuffer, *i, settings);
+                context._metalContext->Dispatch(1, elementDimension, 1);
             }
         }
     }
@@ -435,80 +470,82 @@ namespace SceneEngine
         static void BuildShaderDefines(
             char (&result)[Count], unsigned gridDimension, 
             ISurfaceHeightsProvider* surfaceHeightsProvider = nullptr, 
-            ShallowBorderMode::Enum borderMode = ShallowBorderMode::BaseHeight)
+            ShallowWaterSim::BorderMode::Enum borderMode = ShallowWaterSim::BorderMode::BaseHeight)
     {
         _snprintf_s(result, Count, 
             "SHALLOW_WATER_TILE_DIMENSION=%i;SHALLOW_WATER_BOUNDARY=%i;SURFACE_HEIGHTS_FLOAT=%i", 
             gridDimension, unsigned(borderMode), surfaceHeightsProvider ? int(surfaceHeightsProvider->IsFloatFormat()) : 0);
     }
 
-    void ShallowWater_ExecuteInternalSimulation(
-        RenderCore::Metal::DeviceContext* context,
-        const OceanSettings& oceanSettings, float gridPhysicalDimension,
-        RenderCore::Metal::ShaderResourceView* globalOceanWorkingHeights,
-        ISurfaceHeightsProvider* surfaceHeightsProvider, ShallowWaterSim& shallowBox, 
-        unsigned bufferCounter, const ShallowWaterSettings& settings, ShallowBorderMode::Enum borderMode)
+    void ShallowWaterSim::ExecuteInternalSimulation(
+        const SimulationContext& context,
+        const SimSettings& settings,
+        unsigned bufferCounter)
     {
-        unsigned thisFrameBuffer     = (bufferCounter+0) % shallowBox._simulationGrid->_rotatingBufferCount;
-        unsigned prevFrameBuffer     = (bufferCounter+2) % shallowBox._simulationGrid->_rotatingBufferCount;     // (ie, -1 then +3)
-        unsigned prevPrevFrameBuffer = (bufferCounter+1) % shallowBox._simulationGrid->_rotatingBufferCount;
+        unsigned thisFrameBuffer     = (bufferCounter+0) % _simulationGrid->_rotatingBufferCount;
+        unsigned prevFrameBuffer     = (bufferCounter+2) % _simulationGrid->_rotatingBufferCount;     // (ie, -1 then +3)
+        unsigned prevPrevFrameBuffer = (bufferCounter+1) % _simulationGrid->_rotatingBufferCount;
 
-        CheckInitialClear(context, *shallowBox._simulationGrid);
+        auto& metalContext = *context._metalContext;
+        CheckInitialClear(metalContext, *_simulationGrid);
 
-        auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
-        ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
+        auto materialConstants = Internal::BuildOceanMaterialConstants(
+            *context._oceanSettings, context._gridPhysicalDimension);
+        Metal::ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
 
         char shaderDefines[256]; 
-        BuildShaderDefines(shaderDefines, shallowBox._gridDimension, surfaceHeightsProvider, borderMode);
+        BuildShaderDefines(shaderDefines, _gridDimension, context._surfaceHeightsProvider, context._borderMode);
 
         if (prevFrameBuffer!=thisFrameBuffer) {
-            context->BindCS(MakeResourceList(
-                surfaceHeightsProvider->GetSRV(),
-                shallowBox._simulationGrid->_waterHeightsSRV[prevFrameBuffer], 
-                shallowBox._simulationGrid->_waterHeightsSRV[prevPrevFrameBuffer],
-                shallowBox._lookupTableSRV));
+            metalContext.BindCS(MakeResourceList(
+                context._surfaceHeightsProvider->GetSRV(),
+                _simulationGrid->_waterHeightsSRV[prevFrameBuffer], 
+                _simulationGrid->_waterHeightsSRV[prevPrevFrameBuffer],
+                _lookupTableSRV));
         } else {
-            context->BindCS(MakeResourceList(
-                surfaceHeightsProvider->GetSRV(),
-                RenderCore::Metal::ShaderResourceView(), RenderCore::Metal::ShaderResourceView(),
-                shallowBox._lookupTableSRV));
+            metalContext.BindCS(MakeResourceList(
+                context._surfaceHeightsProvider->GetSRV(),
+                SRV(), SRV(),
+                _lookupTableSRV));
         }
 
-        if (globalOceanWorkingHeights) {
-            context->BindCS(MakeResourceList(4, *globalOceanWorkingHeights));
+        if (context._globalOceanWorkingHeights) {
+            metalContext.BindCS(MakeResourceList(4, *context._globalOceanWorkingHeights));
         }
 
-        context->BindCS(MakeResourceList(0, globalOceanMaterialConstantBuffer));
+        metalContext.BindCS(MakeResourceList(0, globalOceanMaterialConstantBuffer));
 
-        ConstantBuffer surfaceHeightsConstantsBuffer(nullptr, sizeof(ShallowWaterSim::SurfaceHeightsAddressingConstants));
-        ConstantBuffer basicConstantsBuffer(nullptr, sizeof(SimulatingConstants));
-        context->BindCS(MakeResourceList(1, surfaceHeightsConstantsBuffer, basicConstantsBuffer, 
-            ConstantBuffer(&settings._compressionConstants, 4*sizeof(float))));
+        Metal::ConstantBuffer surfaceHeightsConstantsBuffer(
+            nullptr, sizeof(SurfaceHeightsAddressingConstants));
+        Metal::ConstantBuffer basicConstantsBuffer(nullptr, sizeof(SimulatingConstants));
+        metalContext.BindCS(MakeResourceList(
+            1, surfaceHeightsConstantsBuffer, basicConstantsBuffer, 
+            Metal::ConstantBuffer(&settings._compressionConstants, 4*sizeof(float))));
 
-        if (!shallowBox._usePipeModel) {
+        if (!_usePipeModel) {
 
-            context->BindCS(MakeResourceList(
-                shallowBox._simulationGrid->_waterHeightsUAV[thisFrameBuffer],
-                shallowBox._simulationGrid->_waterVelocitiesUAV[0],
-                shallowBox._simulationGrid->_waterVelocitiesUAV[1],
-                shallowBox._simulationGrid->_waterVelocitiesUAV[2],
-                shallowBox._simulationGrid->_waterVelocitiesUAV[3]));
+            metalContext.BindCS(MakeResourceList(
+                _simulationGrid->_waterHeightsUAV[thisFrameBuffer],
+                _simulationGrid->_waterVelocitiesUAV[0],
+                _simulationGrid->_waterVelocitiesUAV[1],
+                _simulationGrid->_waterVelocitiesUAV[2],
+                _simulationGrid->_waterVelocitiesUAV[3]));
 
-            auto& cshaderH = Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/ShallowWaterSim.csh:RunSimulationH:cs_*", shaderDefines);
-            auto& cshaderV = Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/ShallowWaterSim.csh:RunSimulationV:cs_*", shaderDefines);
+            auto& cshaderH = Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/ShallowWaterSim.csh:RunSimulationH:cs_*", shaderDefines);
+            auto& cshaderV = Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/ShallowWaterSim.csh:RunSimulationV:cs_*", shaderDefines);
 
             for (unsigned p=0; p<2; ++p) {
                     // flip forward and reverse iteration through "box._activeSimulationElements" every frame
                     //  (and every pass)
-                for (auto i = shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
+                for (auto i = _activeSimulationElements.cbegin(); i!=_activeSimulationElements.cend(); ++i) {
                     if (i->_arrayIndex < 128) {
-                        SetSimulatingConstants(context, basicConstantsBuffer, *i, settings);
-                        if (!SetAddressingConstants(context, surfaceHeightsConstantsBuffer, *i, surfaceHeightsProvider, gridPhysicalDimension))
+                        SetSimulatingConstants(metalContext, basicConstantsBuffer, *i, settings);
+                        if (!SetAddressingConstants(context, surfaceHeightsConstantsBuffer, *i))
                             continue;
 
                             // checkerboard pattern flip horizontal/vertical
-                        int flip = (i->_gridX + i->_gridY + bufferCounter + p)&1;
-                        context->Bind((flip)?cshaderH:cshaderV); context->Dispatch(1, shallowBox._gridDimension, 1);
+                        int flip = (i->_gridCoords[0] + i->_gridCoords[1] + bufferCounter + p)&1;
+                        metalContext.Bind((flip)?cshaderH:cshaderV); metalContext.Dispatch(1, _gridDimension, 1);
                     }
                 }
             }
@@ -516,182 +553,177 @@ namespace SceneEngine
                 //  if we've requested normals, we should calculate them now. We can use the same method as
                 //  the pipe model to calculate a rough approximation of the movement of water.
             if (Tweakable("OceanVelMethod", 1)==0) {
-                auto& cshaderVel = Assets::GetAssetDep<ComputeShader>(
+                auto& cshaderVel = Assets::GetAssetDep<Metal::ComputeShader>(
                     "game/xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateVelocities:cs_*", shaderDefines);
-                context->Bind(cshaderVel);
+                metalContext.Bind(cshaderVel);
                 DispatchEachElement(
-                    context, shallowBox._activeSimulationElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
-                    surfaceHeightsProvider, gridPhysicalDimension, settings, shallowBox._gridDimension);
+                    context, _activeSimulationElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
+                    settings, _gridDimension);
             } else {
 
                     //      Second method for calculating velocity
                     //      This method uses the slopes of the change in height to attempt to estimate water flow
                     
-                context->BindCS(MakeResourceList(
-                    5, shallowBox._simulationGrid->_slopesBufferUAV[0],
-                    shallowBox._simulationGrid->_slopesBufferUAV[1]));
+                metalContext.BindCS(MakeResourceList(
+                    5, _simulationGrid->_slopesBufferUAV[0],
+                    _simulationGrid->_slopesBufferUAV[1]));
 
-                context->Bind(Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/ShallowWaterSim.csh:UpdateVelocities0:cs_*", shaderDefines));
+                metalContext.Bind(Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/ShallowWaterSim.csh:UpdateVelocities0:cs_*", shaderDefines));
                 DispatchEachElement(
-                    context, shallowBox._activeSimulationElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
-                    surfaceHeightsProvider, gridPhysicalDimension, settings, shallowBox._gridDimension);
+                    context, _activeSimulationElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
+                    settings, _gridDimension);
 
 
-                context->Bind(Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/ShallowWaterSim.csh:UpdateVelocities1:cs_*", shaderDefines));
+                metalContext.Bind(Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/ShallowWaterSim.csh:UpdateVelocities1:cs_*", shaderDefines));
                 DispatchEachElement(
-                    context, shallowBox._activeSimulationElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
-                    surfaceHeightsProvider, gridPhysicalDimension, settings, shallowBox._gridDimension);
+                    context, _activeSimulationElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
+                    settings, _gridDimension);
             }
 
         } else {
 
                 // have to run all of the "update velocities" first and then update heights
-            auto& cshader0 = Assets::GetAssetDep<ComputeShader>(
+            auto& cshader0 = Assets::GetAssetDep<Metal::ComputeShader>(
                 "game/xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateVelocities:cs_*", 
                 (StringMeld<256>() << shaderDefines << ";WRITING_VELOCITIES=1").get());
-            auto& cshader1 = Assets::GetAssetDep<ComputeShader>(
+            auto& cshader1 = Assets::GetAssetDep<Metal::ComputeShader>(
                 "game/xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateHeights:cs_*", shaderDefines);
 
                 // order is important... We must start in the bottom right corner and work to the top left
-            auto sortedElements = shallowBox._activeSimulationElements;
+            auto sortedElements = _activeSimulationElements;
             std::sort(sortedElements.begin(), sortedElements.end(),
                 [](const ShallowWaterSim::ActiveElement& lhs, const ShallowWaterSim::ActiveElement& rhs) -> bool
                 {
-                    if (lhs._gridY == rhs._gridY) return lhs._gridX > rhs._gridX;
-                    return lhs._gridY > rhs._gridY;
+                    if (lhs._gridCoords[1] == rhs._gridCoords[1]) return lhs._gridCoords[0] > rhs._gridCoords[0];
+                    return lhs._gridCoords[1] > rhs._gridCoords[1];
                 });
 
             for (unsigned pass=0; pass<2; ++pass) {
-                context->Bind((pass==0)?cshader0:cshader1);
+                metalContext.Bind((pass==0)?cshader0:cshader1);
 
                     // limit of 8 UAV slots means that we can't bind 8 velocity UAVs 
                     // and a heights UAV at the same time
                 if (pass == 0) {
-                    context->BindCS(MakeResourceList(
-                        shallowBox._simulationGrid->_waterVelocitiesUAV[0],
-                        shallowBox._simulationGrid->_waterVelocitiesUAV[1],
-                        shallowBox._simulationGrid->_waterVelocitiesUAV[2],
-                        shallowBox._simulationGrid->_waterVelocitiesUAV[3],
-                        shallowBox._simulationGrid->_waterVelocitiesUAV[4],
-                        shallowBox._simulationGrid->_waterVelocitiesUAV[5],
-                        shallowBox._simulationGrid->_waterVelocitiesUAV[6],
-                        shallowBox._simulationGrid->_waterVelocitiesUAV[7]));
-                    context->BindCS(MakeResourceList(
-                        5, shallowBox._simulationGrid->_waterHeightsSRV[thisFrameBuffer]));
+                    metalContext.BindCS(MakeResourceList(
+                        _simulationGrid->_waterVelocitiesUAV[0],
+                        _simulationGrid->_waterVelocitiesUAV[1],
+                        _simulationGrid->_waterVelocitiesUAV[2],
+                        _simulationGrid->_waterVelocitiesUAV[3],
+                        _simulationGrid->_waterVelocitiesUAV[4],
+                        _simulationGrid->_waterVelocitiesUAV[5],
+                        _simulationGrid->_waterVelocitiesUAV[6],
+                        _simulationGrid->_waterVelocitiesUAV[7]));
+                    metalContext.BindCS(MakeResourceList(
+                        5, _simulationGrid->_waterHeightsSRV[thisFrameBuffer]));
                 } else {
-                    context->BindCS(MakeResourceList(
+                    metalContext.BindCS(MakeResourceList(
                         5,
-                        shallowBox._simulationGrid->_waterVelocitiesSRV[0],
-                        shallowBox._simulationGrid->_waterVelocitiesSRV[1],
-                        shallowBox._simulationGrid->_waterVelocitiesSRV[2],
-                        shallowBox._simulationGrid->_waterVelocitiesSRV[3],
-                        shallowBox._simulationGrid->_waterVelocitiesSRV[4],
-                        shallowBox._simulationGrid->_waterVelocitiesSRV[5],
-                        shallowBox._simulationGrid->_waterVelocitiesSRV[6],
-                        shallowBox._simulationGrid->_waterVelocitiesSRV[7]));
-                    context->BindCS(MakeResourceList(
-                        shallowBox._simulationGrid->_waterHeightsUAV[thisFrameBuffer]));
+                        _simulationGrid->_waterVelocitiesSRV[0],
+                        _simulationGrid->_waterVelocitiesSRV[1],
+                        _simulationGrid->_waterVelocitiesSRV[2],
+                        _simulationGrid->_waterVelocitiesSRV[3],
+                        _simulationGrid->_waterVelocitiesSRV[4],
+                        _simulationGrid->_waterVelocitiesSRV[5],
+                        _simulationGrid->_waterVelocitiesSRV[6],
+                        _simulationGrid->_waterVelocitiesSRV[7]));
+                    metalContext.BindCS(MakeResourceList(
+                        _simulationGrid->_waterHeightsUAV[thisFrameBuffer]));
                 }
 
                 DispatchEachElement(
                     context, sortedElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
-                    surfaceHeightsProvider, gridPhysicalDimension, settings, shallowBox._gridDimension);
+                    settings, _gridDimension);
 
-                context->UnbindCS<RenderCore::Metal::UnorderedAccessView>(0, 8);
+                metalContext.UnbindCS<UAV>(0, 8);
             }
 
         }
 
-        context->UnbindCS<UnorderedAccessView>(0, 5);
-        context->UnbindVS<ShaderResourceView>(0, 5);
+        metalContext.UnbindCS<UAV>(0, 5);
+        metalContext.UnbindVS<SRV>(0, 5);
     }
 
         ////////////////////////////////
 
-    void ShallowWater_NewElements(
-        RenderCore::Metal::DeviceContext* context, 
-        ShallowWaterSim& shallowBox, ISurfaceHeightsProvider& surfaceHeightsProvider,
-        const OceanSettings& oceanSettings, const float gridPhysicalDimension,
-        RenderCore::Metal::ShaderResourceView* globalOceanWorkingHeights,
-        ShallowBorderMode::Enum borderMode,
-        const ShallowWaterSim::ActiveElement* newElementsBegin, const ShallowWaterSim::ActiveElement* newElementsEnd,
-        size_t stride)
+    void ShallowWaterSim::BeginElements(
+        const SimulationContext& context,
+        const Int2* newElementsBegin, const Int2* newElementsEnd)
     {
-        const bool usePipeModel = shallowBox._usePipeModel;
+        const bool usePipeModel = _usePipeModel;
         std::vector<ShallowWaterSim::ActiveElement> newElements;
 
-        CheckInitialClear(context, *shallowBox._simulationGrid);
+        auto& metalContext = *context._metalContext;
+        CheckInitialClear(metalContext, *_simulationGrid);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
         if (!usePipeModel) {
-            context->BindCS(MakeResourceList(
-                shallowBox._simulationGrid->_waterHeightsUAV[0],
-                shallowBox._simulationGrid->_waterHeightsUAV[1], 
-                shallowBox._simulationGrid->_waterHeightsUAV[2],
-                shallowBox._lookupTableUAV));
+            metalContext.BindCS(MakeResourceList(
+                _simulationGrid->_waterHeightsUAV[0],
+                _simulationGrid->_waterHeightsUAV[1], 
+                _simulationGrid->_waterHeightsUAV[2],
+                _lookupTableUAV));
         } else {
-            context->BindCS(MakeResourceList(shallowBox._simulationGrid->_waterHeightsUAV[0]));
-            context->BindCS(MakeResourceList(3,
-                shallowBox._lookupTableUAV,
-                shallowBox._simulationGrid->_waterVelocitiesUAV[0],
-                shallowBox._simulationGrid->_waterVelocitiesUAV[1],
-                shallowBox._simulationGrid->_waterVelocitiesUAV[2],
-                shallowBox._simulationGrid->_waterVelocitiesUAV[3]));
+            metalContext.BindCS(MakeResourceList(_simulationGrid->_waterHeightsUAV[0]));
+            metalContext.BindCS(MakeResourceList(3,
+                _lookupTableUAV,
+                _simulationGrid->_waterVelocitiesUAV[0],
+                _simulationGrid->_waterVelocitiesUAV[1],
+                _simulationGrid->_waterVelocitiesUAV[2],
+                _simulationGrid->_waterVelocitiesUAV[3]));
         }
 
-        if (globalOceanWorkingHeights) {
-            context->BindCS(MakeResourceList(4, *globalOceanWorkingHeights));
-        }
+        if (context._globalOceanWorkingHeights)
+            metalContext.BindCS(MakeResourceList(4, *context._globalOceanWorkingHeights));
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
         char shaderDefines[256]; 
-        BuildShaderDefines(shaderDefines, shallowBox._gridDimension, &surfaceHeightsProvider, borderMode);
+        BuildShaderDefines(shaderDefines, _gridDimension, context._surfaceHeightsProvider, context._borderMode);
 
-        auto& cshader = Assets::GetAssetDep<ComputeShader>(
+        auto& cshader = Assets::GetAssetDep<Metal::ComputeShader>(
             usePipeModel?"game/xleres/Ocean/InitSimGrid.csh:InitPipeModel:cs_*":"game/xleres/Ocean/InitSimGrid.csh:main:cs_*", shaderDefines);
 
-        auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
-        ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
-        context->BindCS(MakeResourceList(globalOceanMaterialConstantBuffer));
-        context->Bind(cshader);
-        context->BindCS(MakeResourceList(surfaceHeightsProvider.GetSRV()));
+        auto materialConstants = Internal::BuildOceanMaterialConstants(*context._oceanSettings, context._gridPhysicalDimension);
+        Metal::ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
+        metalContext.BindCS(MakeResourceList(globalOceanMaterialConstantBuffer));
+        metalContext.Bind(cshader);
+        metalContext.BindCS(MakeResourceList(context._surfaceHeightsProvider->GetSRV()));
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-        ConstantBuffer initCellConstantsBuffer(nullptr, sizeof(SimulatingConstants));
-        ConstantBuffer surfaceHeightsAddressingBuffer(nullptr, sizeof(ShallowWaterSim::SurfaceHeightsAddressingConstants));
-        context->BindCS(MakeResourceList(1, surfaceHeightsAddressingBuffer, initCellConstantsBuffer));
+        Metal::ConstantBuffer initCellConstantsBuffer(nullptr, sizeof(SimulatingConstants));
+        Metal::ConstantBuffer surfaceHeightsAddressingBuffer(nullptr, sizeof(SurfaceHeightsAddressingConstants));
+        metalContext.BindCS(MakeResourceList(1, surfaceHeightsAddressingBuffer, initCellConstantsBuffer));
 
         std::vector<ShallowWaterSim::ActiveElement> gridsForSecondInitPhase;
             
-        for (auto i = newElementsBegin; i!=newElementsEnd; i=PtrAdd(i, stride)) {
+        for (auto i=newElementsBegin; i!=newElementsEnd; ++i) {
             if (i->_arrayIndex == ~unsigned(0x0)) {
 
-                assert(!shallowBox._poolOfUnallocatedArrayIndices.empty());        // there should always been at least one unallocated array index
+                assert(!_poolOfUnallocatedArrayIndices.empty());        // there should always been at least one unallocated array index
 
                     //  Check the surface heights provider, to get the surface heights
                     //  if this fails, we can't render this grid element
                     //      todo -- we need to not only "get", but "lock" this data, so it's not swapped out
-                if (!SetAddressingConstants(context, surfaceHeightsAddressingBuffer, *i, &surfaceHeightsProvider, gridPhysicalDimension))
+                if (!SetAddressingConstants(context, surfaceHeightsAddressingBuffer, *i))
                     continue;
 
                     //  Assign one of the free grids (or destroy the least recently used one)
                     //  call a compute shader to fill out the simulation grids with the new values
                     //  (this will also set the simulation grid value into the lookup table)
-                unsigned assignmentIndex = *(shallowBox._poolOfUnallocatedArrayIndices.cend()-1);
-                shallowBox._poolOfUnallocatedArrayIndices.erase(
-                    shallowBox._poolOfUnallocatedArrayIndices.cend()-1);
+                unsigned assignmentIndex = *(_poolOfUnallocatedArrayIndices.cend()-1);
+                _poolOfUnallocatedArrayIndices.erase(
+                    _poolOfUnallocatedArrayIndices.cend()-1);
 
-                ShallowWaterSim::ActiveElement newElement(i->_gridX, i->_gridY, assignmentIndex);
+                ShallowWaterSim::ActiveElement newElement(i->_gridCoords[0], i->_gridCoords[1], assignmentIndex);
                 auto insertPoint = std::lower_bound(newElements.begin(), newElements.end(), newElement, SortOceanGridElement);
                 newElements.insert(insertPoint, newElement);
 
                 gridsForSecondInitPhase.push_back(newElement);
 
-                SetSimulatingConstants(context, initCellConstantsBuffer, newElement, ShallowWaterSettings());
-                context->Dispatch(1, shallowBox._gridDimension, 1);
+                SetSimulatingConstants(metalContext, initCellConstantsBuffer, newElement, ShallowWaterSim::SimSettings());
+                metalContext.Dispatch(1, _gridDimension, 1);
 
             } else {
 
@@ -702,43 +734,43 @@ namespace SceneEngine
         }
 
         if (usePipeModel) {
-            auto& cshader = Assets::GetAssetDep<ComputeShader>(
+            auto& cshader = Assets::GetAssetDep<Metal::ComputeShader>(
                 "game/xleres/Ocean/InitSimGrid2.csh:InitPipeModel2:cs_*", shaderDefines);
-            context->Bind(cshader);
+            metalContext.Bind(cshader);
             for (auto i = gridsForSecondInitPhase.cbegin(); i!=gridsForSecondInitPhase.cend(); ++i) {
                 if (i->_arrayIndex == ~unsigned(0x0)) {
-                    SetSimulatingConstants(context, initCellConstantsBuffer, *i, ShallowWaterSettings());
-                    context->Dispatch(1, shallowBox._gridDimension, 1);
+                    SetSimulatingConstants(*context._metalContext, initCellConstantsBuffer, *i, ShallowWaterSim::SimSettings());
+                    metalContext.Dispatch(1, _gridDimension, 1);
                 }
             }
         }
 
-        shallowBox._activeSimulationElements = std::move(newElements);
+        _activeSimulationElements = std::move(newElements);
     }
 
         ////////////////////////////////
 
-    void ShallowWater_DoSim(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
-        const OceanSettings& oceanSettings, float gridPhysicalDimension,
-        RenderCore::Metal::ShaderResourceView* globalOceanWorkingHeights,
-        ISurfaceHeightsProvider* surfaceHeightsProvider, ShallowWaterSim& shallowBox, unsigned bufferCounter)
+    void ShallowWaterSim::ExecuteSim(
+        const SimulationContext& context, 
+        LightingParserContext& parserContext, 
+        unsigned bufferCounter)
     {
             // run a simulation of shallow water (for some interesting wave dynamics near the shore...)
         auto& oceanReset = Tweakable("OceanReset", false);
-        const auto shallowWaterBorderMode = (ShallowBorderMode::Enum)Tweakable("OceanShallowBorder", 1);
-        const float baseHeight = oceanSettings._baseHeight;
+        const auto shallowWaterBorderMode = (BorderMode::Enum)Tweakable("OceanShallowBorder", 1);
+        const float baseHeight = context._oceanSettings->_baseHeight;
 
-        auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
-        ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
+        auto materialConstants = Internal::BuildOceanMaterialConstants(*context._oceanSettings, context._gridPhysicalDimension);
+        Metal::ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
+        auto& metalContext = *context._metalContext;
 
             // unbind resources that were bound in ShallowWater_BindForOceanRender
-        context->UnbindVS<ShaderResourceView>( 3, 2);
-        context->UnbindPS<ShaderResourceView>( 5, 1);
-        context->UnbindPS<ShaderResourceView>(11, 1);
-        context->UnbindPS<ShaderResourceView>(15, 1);
+        metalContext.UnbindVS<SRV>( 3, 2);
+        metalContext.UnbindPS<SRV>( 5, 1);
+        metalContext.UnbindPS<SRV>(11, 1);
+        metalContext.UnbindPS<SRV>(15, 1);
 
-        unsigned thisFrameBuffer = (bufferCounter+0)%shallowBox._simulationGrid->_rotatingBufferCount;
+        unsigned thisFrameBuffer = (bufferCounter+0)%_simulationGrid->_rotatingBufferCount;
 
             //  Calculate what grids we need for the current frame. If those grids aren't currently
             //  simulated, we need to set up the simulation (calculate depths and initialise the 
@@ -747,16 +779,16 @@ namespace SceneEngine
         std::vector<PrioritisedActiveElement> gridsToPrioritise;
     
         auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld);
-        signed baseGridX = signed(cameraPosition[0] / gridPhysicalDimension);
-        signed baseGridY = signed(cameraPosition[1] / gridPhysicalDimension);
+        signed baseGridX = signed(cameraPosition[0] / context._gridPhysicalDimension);
+        signed baseGridY = signed(cameraPosition[1] / context._gridPhysicalDimension);
         for (signed y=0; y<5; ++y) {
             for (signed x=0; x<5; ++x) {
                 signed testGridX = baseGridX + x - 2;
                 signed testGridY = baseGridY + y - 2;
-                auto visibility = GridIsVisible(parserContext, testGridX, testGridY, gridPhysicalDimension, baseHeight);
+                auto visibility = GridIsVisible(parserContext, testGridX, testGridY, context._gridPhysicalDimension, baseHeight);
                 if (visibility) {
                         // calculate priority
-                    Float2 gridCentrePosition = Float2(float(testGridX) + 0.5f, float(testGridY) + 0.5f) * gridPhysicalDimension;
+                    Float2 gridCentrePosition = Float2(float(testGridX) + 0.5f, float(testGridY) + 0.5f) * context._gridPhysicalDimension;
                     float gridDistance = Magnitude(gridCentrePosition - Float2(cameraPosition[0], cameraPosition[1]));
                     float priority = gridDistance;
                     // if (visibility != CULL_INCLUSION) {
@@ -764,21 +796,21 @@ namespace SceneEngine
                     // }
 
                     scheduledGrids.push_back(
-                        PrioritisedActiveElement(testGridX, testGridY, priority));
+                        PrioritisedActiveElement(Int2(testGridX, testGridY), priority));
                 }
             }
         }
 
         std::sort(scheduledGrids.begin(), scheduledGrids.end(), SortByGridIndex);
-        auto i2 = shallowBox._activeSimulationElements.begin();
+        auto i2 = _activeSimulationElements.begin();
         for (auto i = scheduledGrids.cbegin(); i != scheduledGrids.cend(); ++i) {
 
                 //  since "scheduledGrids" is sorted, we can truncate the search through
                 //  box._activeSimulationElements every time
-            auto t = std::equal_range(i2, shallowBox._activeSimulationElements.end(), i->_e, SortOceanGridElement);
+            auto t = std::equal_range(i2, _activeSimulationElements.end(), i->_e, SortOceanGridElement);
             bool foundEqual = false;
             for (auto t2 = t.first; t2 != t.second; ++t2) {
-                if (t2->_gridX == i->_e._gridX && t2->_gridY == i->_e._gridY) {
+                if (t2->_gridCoords[0] == i->_e._gridCoords[0] && t2->_gridCoords[0] == i->_e._gridCoords[0]) {
                     foundEqual = true;
                     break;
                 }
@@ -791,10 +823,10 @@ namespace SceneEngine
         }
 
             // add the old grids into the list of grids to prioritize
-        for (auto i=shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
+        for (auto i=_activeSimulationElements.cbegin(); i!=_activeSimulationElements.cend(); ++i) {
             Float2 gridCentrePosition(
-                (float(i->_gridX) + 0.5f) * gridPhysicalDimension, 
-                (float(i->_gridY) + 0.5f) * gridPhysicalDimension);
+                (float(i->_gridCoords[0]) + 0.5f) * context._gridPhysicalDimension, 
+                (float(i->_gridCoords[1]) + 0.5f) * context._gridPhysicalDimension);
             float gridDistance = Magnitude(gridCentrePosition - Float2(cameraPosition[0], cameraPosition[1]));
                 //  Prioritize existing grids while ignoring camera facing. The way, the simulation won't
                 //  be stopped as soon as it goes off screen... Perhaps we can stop if the grid stays off the
@@ -806,18 +838,18 @@ namespace SceneEngine
         std::vector<Int4> gridsDestroyedThisFrame;
         bool hasNewGrids = false;
         std::sort(gridsToPrioritise.begin(), gridsToPrioritise.end(), SortByPriority);
-        if (gridsToPrioritise.size() > shallowBox._simulatingGridsCount) {
+        if (gridsToPrioritise.size() > _simulatingGridsCount) {
                 // cancel some grids, and return their ids to the pool
-            for (auto i=gridsToPrioritise.begin() + shallowBox._simulatingGridsCount; i!=gridsToPrioritise.end(); ++i) {
+            for (auto i=gridsToPrioritise.begin() + _simulatingGridsCount; i!=gridsToPrioritise.end(); ++i) {
                 if (i->_e._arrayIndex!=~unsigned(0x0)) {
-                    shallowBox._poolOfUnallocatedArrayIndices.push_back(i->_e._arrayIndex);
-                    gridsDestroyedThisFrame.push_back(Int4(i->_e._gridX, i->_e._gridY, 0, 0));
+                    _poolOfUnallocatedArrayIndices.push_back(i->_e._arrayIndex);
+                    gridsDestroyedThisFrame.push_back(Int4(i->_e._gridCoords[0], i->_e._gridCoords[1], 0, 0));
                     hasNewGrids = true;
                 }
             }
-            gridsToPrioritise.erase(gridsToPrioritise.begin() + shallowBox._simulatingGridsCount, gridsToPrioritise.end());
+            gridsToPrioritise.erase(gridsToPrioritise.begin() + _simulatingGridsCount, gridsToPrioritise.end());
         }
-        hasNewGrids |= gridsToPrioritise.size() > shallowBox._activeSimulationElements.size();
+        hasNewGrids |= gridsToPrioritise.size() > _activeSimulationElements.size();
 
             // Setup any new grids that have been priortised into the list...
 
@@ -825,10 +857,8 @@ namespace SceneEngine
             //          at lower resolution. Only closer grids would be at maximum resolution...?
 
         if (hasNewGrids) {
-            ShallowWater_NewElements(
-                context, shallowBox, *surfaceHeightsProvider, 
-                oceanSettings, gridPhysicalDimension, globalOceanWorkingHeights,
-                shallowWaterBorderMode,
+            BeginElements(
+                context,
                 &gridsToPrioritise.cbegin()->_e, &AsPointer(gridsToPrioritise.cend())->_e,
                 sizeof(PrioritisedActiveElement));
         }
@@ -850,31 +880,31 @@ namespace SceneEngine
             std::copy(gridsDestroyedThisFrame.begin(), gridsDestroyedThisFrame.end(), clearGridsConstants._indices);
             clearGridsConstants._indexCount = unsigned(gridsDestroyedThisFrame.size());
 
-            context->Bind(Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/InitSimGrid.csh:ClearGrids:cs_*"));
-            context->BindCS(MakeResourceList(0, ConstantBuffer(&clearGridsConstants, sizeof(clearGridsConstants))));
-            context->Dispatch(unsigned(gridsDestroyedThisFrame.size()));
+            metalContext.Bind(Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/InitSimGrid.csh:ClearGrids:cs_*"));
+            metalContext.BindCS(MakeResourceList(0, Metal::ConstantBuffer(&clearGridsConstants, sizeof(clearGridsConstants))));
+            metalContext.Dispatch(unsigned(gridsDestroyedThisFrame.size()));
 
         }
 
-        context->UnbindCS<UnorderedAccessView>(1, 8);
+        metalContext.UnbindCS<UAV>(1, 8);
 
             //  For each actively simulated grid, run the compute shader to calculate the heights 
             //  for the new frame. We simulate horizontally and vertically separate. Between frames we
             //  alternate the order.
 
-        if (!shallowBox._activeSimulationElements.empty()) {
+        if (!_activeSimulationElements.empty()) {
 
             auto cursorPos = GetCursorPos();
-            ViewportDesc vpd(*context);
+            Metal::ViewportDesc vpd(metalContext);
 
-            ShallowWaterSettings settings;
+            SimSettings settings;
             settings._rainQuantityPerFrame = Tweakable("OceanRainQuantity", 0.f);
 
             static unsigned framesMouseDown = 0;
             if (GetKeyState(VK_MBUTTON)<0) {
                     //  Find the mouse over ray, and find the intersection
                     //  point with the ocean water plane
-                auto mouseOverRay = CalculateMouseOverRay(context, parserContext);
+                auto mouseOverRay = CalculateMouseOverRay(metalContext, parserContext);
                 float a = mouseOverRay.first[2] - baseHeight;
                 float b = mouseOverRay.second[2] - mouseOverRay.first[2];
                 float alpha = -a / b;
@@ -890,58 +920,55 @@ namespace SceneEngine
                 framesMouseDown = 0;
             }
 
-            ShallowWater_ExecuteInternalSimulation(
-                context, oceanSettings, gridPhysicalDimension,
-                globalOceanWorkingHeights, surfaceHeightsProvider, 
-                shallowBox, bufferCounter, settings, shallowWaterBorderMode);
+            ExecuteInternalSimulation(context, settings, bufferCounter);
 
         }
 
         char shaderDefines[256];
-        BuildShaderDefines(shaderDefines, shallowBox._gridDimension);
+        BuildShaderDefines(shaderDefines, _gridDimension);
 
                 //  Generate normals using the displacement textures
                 //  Note, this will generate the normals for every array slice, even
                 //  for slices that aren't actually used.
-        if (!shallowBox._simulationGrid->_normalsTextureUAV.empty()) {
+        if (!_simulationGrid->_normalsTextureUAV.empty()) {
 
-            auto& buildNormals = Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/OceanNormalsShallow.csh:BuildDerivatives:cs_*", shaderDefines);
-            auto& buildNormalsMipmaps = Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/OceanNormalsShallow.csh:BuildDerivativesMipmap:cs_*", shaderDefines);
+            auto& buildNormals = Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/OceanNormalsShallow.csh:BuildDerivatives:cs_*", shaderDefines);
+            auto& buildNormalsMipmaps = Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/OceanNormalsShallow.csh:BuildDerivativesMipmap:cs_*", shaderDefines);
 
                 // build devs shader needs to know the gridXY for all simulated elements (so it can find the adjacent grids)
             signed buildDevsConstants[4*128];
             XlSetMemory(buildDevsConstants, 0, sizeof(buildDevsConstants));
-            for (auto i = shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
+            for (auto i = _activeSimulationElements.cbegin(); i!=_activeSimulationElements.cend(); ++i) {
                 if (i->_arrayIndex < dimof(buildDevsConstants)/4) {
-                    buildDevsConstants[i->_arrayIndex*4+0] = i->_gridX;
-                    buildDevsConstants[i->_arrayIndex*4+1] = i->_gridY;
+                    buildDevsConstants[i->_arrayIndex*4+0] = i->_gridCoords[0];
+                    buildDevsConstants[i->_arrayIndex*4+1] = i->_gridCoords[1];
                 }
             }
 
-            context->BindCS(MakeResourceList(globalOceanMaterialConstantBuffer));
-            context->BindCS(MakeResourceList(2, ConstantBuffer(buildDevsConstants, sizeof(buildDevsConstants))));
+            metalContext.BindCS(MakeResourceList(globalOceanMaterialConstantBuffer));
+            metalContext.BindCS(MakeResourceList(2, Metal::ConstantBuffer(buildDevsConstants, sizeof(buildDevsConstants))));
 
-            context->BindCS(MakeResourceList(   shallowBox._simulationGrid->_waterHeightsSRV[thisFrameBuffer],
-                                                shallowBox._lookupTableSRV,
-                                                shallowBox._simulationGrid->_foamQuantitySRV2[(bufferCounter+1)&1]));
-            context->BindCS(MakeResourceList(   shallowBox._simulationGrid->_normalsTextureUAV[0], 
-                                                shallowBox._simulationGrid->_foamQuantityUAV[bufferCounter&1]));
-            context->Bind(buildNormals); 
-            context->Dispatch(1, 1, shallowBox._simulatingGridsCount);
-            context->UnbindCS<UnorderedAccessView>(0, 2);
+            metalContext.BindCS(MakeResourceList(   _simulationGrid->_waterHeightsSRV[thisFrameBuffer],
+                                                _lookupTableSRV,
+                                                _simulationGrid->_foamQuantitySRV2[(bufferCounter+1)&1]));
+            metalContext.BindCS(MakeResourceList(   _simulationGrid->_normalsTextureUAV[0], 
+                                                _simulationGrid->_foamQuantityUAV[bufferCounter&1]));
+            metalContext.Bind(buildNormals); 
+            metalContext.Dispatch(1, 1, _simulatingGridsCount);
+            metalContext.UnbindCS<UAV>(0, 2);
 
                 // do we really need mipmaps for shallow water grids?
-            context->Bind(buildNormalsMipmaps);
-            for (unsigned step = 0; step<shallowBox._simulationGrid->_normalsTextureUAV.size()-1; ++step) {
-                unsigned mipDims = shallowBox._gridDimension >> (step+1);
+            metalContext.Bind(buildNormalsMipmaps);
+            for (unsigned step = 0; step<_simulationGrid->_normalsTextureUAV.size()-1; ++step) {
+                unsigned mipDims = _gridDimension >> (step+1);
                 unsigned constants[4] = { mipDims, mipDims, 0, 0 };
-                context->BindCS(MakeResourceList(ConstantBuffer(constants, sizeof(constants))));
+                metalContext.BindCS(MakeResourceList(Metal::ConstantBuffer(constants, sizeof(constants))));
 
-                context->BindCS(MakeResourceList(4, shallowBox._simulationGrid->_normalsSingleMipSRV[step]));
-                context->BindCS(MakeResourceList(shallowBox._simulationGrid->_normalsTextureUAV[step+1]));
+                metalContext.BindCS(MakeResourceList(4, _simulationGrid->_normalsSingleMipSRV[step]));
+                metalContext.BindCS(MakeResourceList(_simulationGrid->_normalsTextureUAV[step+1]));
             
-                context->Dispatch((mipDims + (8-1))/8, (mipDims + (8-1))/8, shallowBox._simulatingGridsCount);
-                context->UnbindCS<UnorderedAccessView>(0, 1);
+                metalContext.Dispatch((mipDims + (8-1))/8, (mipDims + (8-1))/8, _simulatingGridsCount);
+                metalContext.UnbindCS<UAV>(0, 1);
             }
         }
 
@@ -957,153 +984,156 @@ namespace SceneEngine
             // }
 
         if (Tweakable("OceanShallowDrawWireframe", false)) {
-            ShallowWater_RenderWireframe(context, parserContext, oceanSettings, gridPhysicalDimension, Float2(0.f, 0.f), shallowBox, bufferCounter, shallowWaterBorderMode);
+            RenderWireframe(
+                metalContext, parserContext, 
+                *context._oceanSettings, 
+                context._gridPhysicalDimension, Float2(0.f, 0.f), bufferCounter, shallowWaterBorderMode);
         }
 
         if (oceanReset) {
-            shallowBox._activeSimulationElements.clear();
-            shallowBox._poolOfUnallocatedArrayIndices.clear();
-            shallowBox._poolOfUnallocatedArrayIndices.reserve(shallowBox._simulatingGridsCount);
-            for (unsigned c=0; c<shallowBox._simulatingGridsCount; ++c) {
-                shallowBox._poolOfUnallocatedArrayIndices.push_back(c);
+            _activeSimulationElements.clear();
+            _poolOfUnallocatedArrayIndices.clear();
+            _poolOfUnallocatedArrayIndices.reserve(_simulatingGridsCount);
+            for (unsigned c=0; c<_simulatingGridsCount; ++c) {
+                _poolOfUnallocatedArrayIndices.push_back(c);
             }
 
             unsigned clearInts[] = { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff };
-            context->Clear(shallowBox._lookupTableUAV, clearInts);
+            metalContext.Clear(_lookupTableUAV, clearInts);
         }
     }
 
-    void ShallowWater_RenderWireframe(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
+    void ShallowWaterSim::RenderWireframe(
+        MetalContext& metalContext, LightingParserContext& parserContext, 
         const OceanSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
-        ShallowWaterSim& shallowBox, unsigned bufferCounter, ShallowBorderMode::Enum borderMode)
+        unsigned bufferCounter, BorderMode::Enum borderMode)
     {
         auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
-        ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
+        Metal::ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
 
         char shaderDefines[256]; 
-        BuildShaderDefines(shaderDefines, shallowBox._gridDimension, nullptr, borderMode);
+        BuildShaderDefines(shaderDefines, _gridDimension, nullptr, borderMode);
 
-        unsigned thisFrameBuffer = (bufferCounter+0) % shallowBox._simulationGrid->_rotatingBufferCount;
+        unsigned thisFrameBuffer = (bufferCounter+0) % _simulationGrid->_rotatingBufferCount;
         auto& patchRender = Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/Ocean/OceanPatch.vsh:ShallowWater:vs_*",
             "game/xleres/solidwireframe.gsh:main:gs_*",
             "game/xleres/solidwireframe.psh:main:ps_*",
             shaderDefines);
-        BoundUniforms boundUniforms(patchRender);
+        Metal::BoundUniforms boundUniforms(patchRender);
         Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
         boundUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 0, 1);
         boundUniforms.BindConstantBuffer(Hash64("ShallowWaterUpdateConstants"), 1, 1);
 
-        context->Bind(patchRender);
+        metalContext.Bind(patchRender);
 
-        SetupVertexGeneratorShader(context);
-        context->BindVS(MakeResourceList(3, shallowBox._simulationGrid->_waterHeightsSRV[thisFrameBuffer]));
-        context->Bind(Topology::TriangleList);
-        context->Bind(Techniques::CommonResources()._dssReadWrite);
+        SetupVertexGeneratorShader(&metalContext);
+        metalContext.BindVS(MakeResourceList(3, _simulationGrid->_waterHeightsSRV[thisFrameBuffer]));
+        metalContext.Bind(Metal::Topology::TriangleList);
+        metalContext.Bind(Techniques::CommonResources()._dssReadWrite);
 
-        auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(shallowBox._gridDimension, shallowBox._gridDimension, true));
-        context->Bind(simplePatchBox._simplePatchIndexBuffer, NativeFormat::R32_UINT);
+        auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(_gridDimension, _gridDimension, true));
+        metalContext.Bind(simplePatchBox._simplePatchIndexBuffer, Metal::NativeFormat::R32_UINT);
 
-        ConstantBuffer simulatingCB(nullptr, sizeof(SimulatingConstants));
+        Metal::ConstantBuffer simulatingCB(nullptr, sizeof(SimulatingConstants));
 
-        const ConstantBuffer* prebuiltBuffers[] = { &globalOceanMaterialConstantBuffer, &simulatingCB };
+        const Metal::ConstantBuffer* prebuiltBuffers[] = { &globalOceanMaterialConstantBuffer, &simulatingCB };
         boundUniforms.Apply(
-            *context, 
+            metalContext, 
             parserContext.GetGlobalUniformsStream(),
-            UniformsStream(nullptr, prebuiltBuffers, dimof(prebuiltBuffers)));
+            Metal::UniformsStream(nullptr, prebuiltBuffers, dimof(prebuiltBuffers)));
 
-        for (auto i=shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
+        for (auto i=_activeSimulationElements.cbegin(); i!=_activeSimulationElements.cend(); ++i) {
             if (i->_arrayIndex < 128) {
-                SetSimulatingConstants(context, simulatingCB, *i, ShallowWaterSettings(), offset);
-                context->DrawIndexed(simplePatchBox._simplePatchIndexCount);
+                SetSimulatingConstants(metalContext, simulatingCB, *i, SimSettings(), offset);
+                metalContext.DrawIndexed(simplePatchBox._simplePatchIndexCount);
             }
         }
 
-        context->UnbindVS<ShaderResourceView>(3, 1);
+        metalContext.UnbindVS<SRV>(3, 1);
     }
 
-    void ShallowWater_RenderVelocities(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
+    void ShallowWaterSim::RenderVelocities(
+        MetalContext& metalContext, LightingParserContext& parserContext, 
         const OceanSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
-        ShallowWaterSim& shallowBox, unsigned bufferCounter, ShallowBorderMode::Enum borderMode,
+        unsigned bufferCounter, BorderMode::Enum borderMode,
         bool showErosion)
     {
         auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
-        ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
+        Metal::ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
 
         char shaderDefines[256]; 
-        BuildShaderDefines(shaderDefines, shallowBox._gridDimension, nullptr, borderMode);
+        BuildShaderDefines(shaderDefines, _gridDimension, nullptr, borderMode);
         if (showErosion)
             XlCatString(shaderDefines, dimof(shaderDefines), ";SHOW_EROSION=1");
 
-        unsigned thisFrameBuffer = (bufferCounter+0) % shallowBox._simulationGrid->_rotatingBufferCount;
+        unsigned thisFrameBuffer = (bufferCounter+0) % _simulationGrid->_rotatingBufferCount;
         auto& patchRender = Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/Ocean/OceanVelocitiesDebugging.sh:vs_main:vs_*",
             "game/xleres/Ocean/OceanVelocitiesDebugging.sh:ps_main:ps_*",
             shaderDefines);
 
-        BoundUniforms boundUniforms(patchRender);
+        Metal::BoundUniforms boundUniforms(patchRender);
         Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
         boundUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 0, 1);
         boundUniforms.BindConstantBuffer(Hash64("ShallowWaterUpdateConstants"), 1, 1);
 
-        context->Bind(patchRender);
+        metalContext.Bind(patchRender);
 
-        SetupVertexGeneratorShader(context);
-        context->BindVS(MakeResourceList(1, 
-            shallowBox._simulationGrid->_waterHeightsSRV[thisFrameBuffer]));
+        SetupVertexGeneratorShader(&metalContext);
+        metalContext.BindVS(MakeResourceList(1, 
+            _simulationGrid->_waterHeightsSRV[thisFrameBuffer]));
 
-        context->BindPS(MakeResourceList(4, 
-            shallowBox._lookupTableSRV,
-            shallowBox._simulationGrid->_waterVelocitiesSRV[0],
-            shallowBox._simulationGrid->_waterVelocitiesSRV[1],
-            shallowBox._simulationGrid->_waterVelocitiesSRV[2],
-            shallowBox._simulationGrid->_waterVelocitiesSRV[3],
-            shallowBox._simulationGrid->_waterVelocitiesSRV[4],
-            shallowBox._simulationGrid->_waterVelocitiesSRV[5],
-            shallowBox._simulationGrid->_waterVelocitiesSRV[6],
-            shallowBox._simulationGrid->_waterVelocitiesSRV[7]));
-        context->Bind(Topology::TriangleList);
-        context->Bind(Techniques::CommonResources()._dssReadWrite);
+        metalContext.BindPS(MakeResourceList(4, 
+            _lookupTableSRV,
+            _simulationGrid->_waterVelocitiesSRV[0],
+            _simulationGrid->_waterVelocitiesSRV[1],
+            _simulationGrid->_waterVelocitiesSRV[2],
+            _simulationGrid->_waterVelocitiesSRV[3],
+            _simulationGrid->_waterVelocitiesSRV[4],
+            _simulationGrid->_waterVelocitiesSRV[5],
+            _simulationGrid->_waterVelocitiesSRV[6],
+            _simulationGrid->_waterVelocitiesSRV[7]));
+        metalContext.Bind(Metal::Topology::TriangleList);
+        metalContext.Bind(Techniques::CommonResources()._dssReadWrite);
 
-        auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(shallowBox._gridDimension, shallowBox._gridDimension, true));
-        context->Bind(simplePatchBox._simplePatchIndexBuffer, NativeFormat::R32_UINT);
+        auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(
+            SimplePatchBox::Desc(_gridDimension, _gridDimension, true));
+        metalContext.Bind(simplePatchBox._simplePatchIndexBuffer, Metal::NativeFormat::R32_UINT);
 
-        ConstantBuffer simulatingCB(nullptr, sizeof(SimulatingConstants));
-        const ConstantBuffer* prebuiltBuffers[] = { &globalOceanMaterialConstantBuffer, &simulatingCB };
+        Metal::ConstantBuffer simulatingCB(nullptr, sizeof(SimulatingConstants));
+        const Metal::ConstantBuffer* prebuiltBuffers[] = { &globalOceanMaterialConstantBuffer, &simulatingCB };
         boundUniforms.Apply(
-            *context, 
+            metalContext, 
             parserContext.GetGlobalUniformsStream(),
-            UniformsStream(nullptr, prebuiltBuffers, dimof(prebuiltBuffers)));
+            Metal::UniformsStream(nullptr, prebuiltBuffers, dimof(prebuiltBuffers)));
 
-        for (auto i=shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
+        for (auto i=_activeSimulationElements.cbegin(); i!=_activeSimulationElements.cend(); ++i) {
             if (i->_arrayIndex < 128) {
-                SetSimulatingConstants(context, simulatingCB, *i, ShallowWaterSettings(), offset);
-                context->DrawIndexed(simplePatchBox._simplePatchIndexCount);
+                SetSimulatingConstants(metalContext, simulatingCB, *i, SimSettings(), offset);
+                metalContext.DrawIndexed(simplePatchBox._simplePatchIndexCount);
             }
         }
 
-        context->UnbindVS<ShaderResourceView>(3, 1);
+        metalContext.UnbindVS<SRV>(3, 1);
     }
 
-    void ShallowWater_BindForOceanRender(RenderCore::Metal::DeviceContext* context, ShallowWaterSim& shallowWater, unsigned bufferCounter)
+    void ShallowWaterSim::BindForOceanRender(MetalContext& metalContext, unsigned bufferCounter)
     {
-        unsigned thisFrameBuffer = (bufferCounter+0)%shallowWater._simulationGrid->_rotatingBufferCount;
-
-        context->BindVS(MakeResourceList(3, 
-            shallowWater._simulationGrid->_waterHeightsSRV[thisFrameBuffer],
-            shallowWater._lookupTableSRV));
-        context->BindPS(MakeResourceList(5, shallowWater._simulationGrid->_normalsTextureShaderResource));
-        context->BindPS(MakeResourceList(11, shallowWater._simulationGrid->_foamQuantitySRV[bufferCounter&1]));
-        context->BindPS(MakeResourceList(15, shallowWater._lookupTableSRV));
+        unsigned thisFrameBuffer = (bufferCounter+0)%_simulationGrid->_rotatingBufferCount;
+        metalContext.BindVS(MakeResourceList(3, 
+            _simulationGrid->_waterHeightsSRV[thisFrameBuffer],
+            _lookupTableSRV));
+        metalContext.BindPS(MakeResourceList(5, _simulationGrid->_normalsTextureShaderResource));
+        metalContext.BindPS(MakeResourceList(11, _simulationGrid->_foamQuantitySRV[bufferCounter&1]));
+        metalContext.BindPS(MakeResourceList(15, _lookupTableSRV));
     }
 
-    void ShallowWater_BindForErosionSimulation(RenderCore::Metal::DeviceContext* context, ShallowWaterSim& shallowWater, unsigned bufferCounter)
+    void ShallowWaterSim::BindForErosionSimulation(MetalContext& metalContext, unsigned bufferCounter)
     {
-        unsigned thisFrameBuffer = (bufferCounter+0)%shallowWater._simulationGrid->_rotatingBufferCount;
-        context->BindCS(MakeResourceList(3, shallowWater._simulationGrid->_waterHeightsSRV[thisFrameBuffer], shallowWater._lookupTableSRV));
-        context->BindCS(MakeResourceList(5, shallowWater._simulationGrid->_waterVelocitiesSRV[0], shallowWater._simulationGrid->_waterVelocitiesSRV[1], shallowWater._simulationGrid->_waterVelocitiesSRV[2], shallowWater._simulationGrid->_waterVelocitiesSRV[3]));
+        unsigned thisFrameBuffer = (bufferCounter+0)%_simulationGrid->_rotatingBufferCount;
+        metalContext.BindCS(MakeResourceList(3, _simulationGrid->_waterHeightsSRV[thisFrameBuffer], _lookupTableSRV));
+        metalContext.BindCS(MakeResourceList(5, _simulationGrid->_waterVelocitiesSRV[0], _simulationGrid->_waterVelocitiesSRV[1], _simulationGrid->_waterVelocitiesSRV[2], _simulationGrid->_waterVelocitiesSRV[3]));
     }
 }
 
