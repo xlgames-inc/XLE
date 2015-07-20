@@ -1319,6 +1319,7 @@ namespace SceneEngine
                 shallowWaterBox->ExecuteSim(
                     ShallowWaterSim::SimulationContext(
                         *context, settings, shallowGridPhysicalDimension,
+                        Zero<Float2>(),
                         MainSurfaceHeightsProvider,
                         &fftBuffer._workingTextureRealShaderResource,
                         ShallowWaterSim::BorderMode::GlobalWaves),

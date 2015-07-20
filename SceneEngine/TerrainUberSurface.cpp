@@ -839,7 +839,7 @@ namespace SceneEngine
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
         ShallowWaterSim::SimulationContext simContext(
             *metalContext, OceanSettings(),
-            terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale,
+            terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, Zero<Float2>(),
             nullptr, nullptr, ShallowWaterSim::BorderMode::Surface);
 
         newShallowWater->BeginElements(
@@ -914,7 +914,7 @@ namespace SceneEngine
 
         ShallowWaterSim::SimulationContext simContext(
             *metalContext, OceanSettings(),
-            terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale,
+            terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, Zero<Float2>(),
             _pimpl->_erosionSim._surfaceHeightsProvider.get(), nullptr,
             ShallowWaterSim::BorderMode::Surface);
 

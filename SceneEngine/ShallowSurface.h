@@ -14,6 +14,7 @@
 namespace SceneEngine
 {
     class RasterizationSurface;
+    class ISurfaceHeightsProvider;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -31,6 +32,11 @@ namespace SceneEngine
             RenderCore::Metal::DeviceContext& metalContext,
             LightingParserContext& parserContext,
             unsigned techniqueIndex);
+
+        void UpdateSimulation(
+            RenderCore::Metal::DeviceContext& metalContext,
+            LightingParserContext& parserContext,
+            ISurfaceHeightsProvider* surfaceHeights);
 
         ShallowSurface(
             const Float2 triangleList[], size_t stride,
@@ -60,7 +66,8 @@ namespace SceneEngine
         void RenderDebugging(
             RenderCore::Metal::DeviceContext& metalContext,
             LightingParserContext& parserContext,
-            unsigned techniqueIndex);
+            unsigned techniqueIndex,
+            ISurfaceHeightsProvider* surfaceHeights);
 
         ShallowSurfaceManager();
         ~ShallowSurfaceManager();

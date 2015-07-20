@@ -300,11 +300,12 @@ namespace SceneEngine
     }
 
     static bool GridIsVisible(
-        LightingParserContext& parserContext, int gridX, int gridY, 
-        float gridPhysicalDimension, float baseWaterHeight)
+        const ShallowWaterSim::SimulationContext& context,
+        LightingParserContext& parserContext, Int2 grid, 
+        float baseWaterHeight)
     {
-        Float3 mins( gridX    * gridPhysicalDimension,  gridY    * gridPhysicalDimension, baseWaterHeight - 3.f);
-        Float3 maxs((gridX+1) * gridPhysicalDimension, (gridY+1) * gridPhysicalDimension, baseWaterHeight + 3.f);
+        Float3 mins( grid[0]    * context._gridPhysicalDimension + context._physicalMins[0],  grid[1]    * context._gridPhysicalDimension + context._physicalMins[1], baseWaterHeight - 3.f);
+        Float3 maxs((grid[0]+1) * context._gridPhysicalDimension + context._physicalMins[0], (grid[1]+1) * context._gridPhysicalDimension + context._physicalMins[1], baseWaterHeight + 3.f);
         return !CullAABB_Aligned(AsFloatArray(parserContext.GetProjectionDesc()._worldToProjection), mins, maxs);
     }
 
@@ -378,17 +379,18 @@ namespace SceneEngine
     };
 
     static bool CalculateAddressing(
+        const ShallowWaterSim::SimulationContext& context,
         SurfaceHeightsAddressingConstants& dest,
-        const Int2& gridCoords, 
-        ISurfaceHeightsProvider* surfaceHeightsProvider, 
-        float gridPhysicalDimension)
+        const Int2& gridCoords)
     {
+        if (!context._surfaceHeightsProvider) return false;
+
             //  Even though we have a cached heights addressing, we should recalculate height addressing to 
             //  match new uploads, etc...
             //  Note that if the terrain is edited, it can change the height scale & offset
-        Float2 gridMins(float(gridCoords[0]) * gridPhysicalDimension, float(gridCoords[1]) * gridPhysicalDimension);
-        Float2 gridMaxs(float(gridCoords[0]+1) * gridPhysicalDimension, float(gridCoords[1]+1) * gridPhysicalDimension);
-        auto surfaceAddressing = surfaceHeightsProvider->GetAddress(gridMins, gridMaxs);
+        Float2 gridMins = context._physicalMins + Float2(float(gridCoords[0]) * context._gridPhysicalDimension, float(gridCoords[1]) * context._gridPhysicalDimension);
+        Float2 gridMaxs = context._physicalMins + Float2(float(gridCoords[0]+1) * context._gridPhysicalDimension, float(gridCoords[1]+1) * context._gridPhysicalDimension);
+        auto surfaceAddressing = context._surfaceHeightsProvider->GetAddress(gridMins, gridMaxs);
         if (!surfaceAddressing._valid) return false;
 
         dest._baseCoord = surfaceAddressing._baseCoordinate;
@@ -405,7 +407,7 @@ namespace SceneEngine
         const Int2& gridCoords)
     {
         SurfaceHeightsAddressingConstants newHeightsAddressing;
-        if (!CalculateAddressing(newHeightsAddressing, gridCoords, context._surfaceHeightsProvider, context._gridPhysicalDimension))
+        if (!CalculateAddressing(context, newHeightsAddressing, gridCoords))
             return false;
         cb.Update(*context._metalContext, &newHeightsAddressing, sizeof(newHeightsAddressing));
         return true;
@@ -688,7 +690,8 @@ namespace SceneEngine
         Metal::ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
         metalContext.BindCS(MakeResourceList(globalOceanMaterialConstantBuffer));
         metalContext.Bind(cshader);
-        metalContext.BindCS(MakeResourceList(context._surfaceHeightsProvider->GetSRV()));
+        if (context._surfaceHeightsProvider)
+            metalContext.BindCS(MakeResourceList(context._surfaceHeightsProvider->GetSRV()));
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -745,7 +748,8 @@ namespace SceneEngine
     void ShallowWaterSim::ExecuteSim(
         const SimulationContext& context, 
         LightingParserContext& parserContext, 
-        unsigned bufferCounter)
+        unsigned bufferCounter,
+        const Int2* validGridBegin, const Int2* validGridEnd)
     {
             // run a simulation of shallow water (for some interesting wave dynamics near the shore...)
         auto& oceanReset = Tweakable("OceanReset", false);
@@ -770,25 +774,44 @@ namespace SceneEngine
         std::vector<PrioritisedActiveElement> scheduledGrids;
         std::vector<PrioritisedActiveElement> gridsToPrioritise;
     
+            //  Either we assume that all possible grids are valid (ie, when simulating a large open
+            //  ocean). Or we pick from a limited number of available grids (ie, when simulating a
+            //  restricted body of water)
         auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld);
-        signed baseGridX = signed(cameraPosition[0] / context._gridPhysicalDimension);
-        signed baseGridY = signed(cameraPosition[1] / context._gridPhysicalDimension);
-        for (signed y=0; y<5; ++y) {
-            for (signed x=0; x<5; ++x) {
-                signed testGridX = baseGridX + x - 2;
-                signed testGridY = baseGridY + y - 2;
-                auto visibility = GridIsVisible(parserContext, testGridX, testGridY, context._gridPhysicalDimension, baseHeight);
-                if (visibility) {
-                        // calculate priority
-                    Float2 gridCentrePosition = Float2(float(testGridX) + 0.5f, float(testGridY) + 0.5f) * context._gridPhysicalDimension;
-                    float gridDistance = Magnitude(gridCentrePosition - Float2(cameraPosition[0], cameraPosition[1]));
-                    float priority = gridDistance;
-                    // if (visibility != CULL_INCLUSION) {
-                    //     priority += 512.f;   // give priority penalty for grids on the edge of the screen (but maybe exclude the grid the camera is immediately over?)
-                    // }
+        if (validGridBegin && validGridEnd) {
+            for (auto i = validGridBegin; i != validGridEnd; ++i) {
+                auto visibility = GridIsVisible(context, parserContext, *i, baseHeight);
+                    if (visibility) {
+                            // calculate priority
+                        Float2 gridCentrePosition = 
+                            Float2(float((*i)[0]) + 0.5f, float((*i)[1]) + 0.5f) * context._gridPhysicalDimension
+                            + context._physicalMins;
 
-                    scheduledGrids.push_back(
-                        PrioritisedActiveElement(Int2(testGridX, testGridY), priority));
+                        float gridDistance = Magnitude(gridCentrePosition - Float2(cameraPosition[0], cameraPosition[1]));
+                        scheduledGrids.push_back(PrioritisedActiveElement(*i, gridDistance));
+                    }
+            }
+        } else {
+            signed baseGridX = signed((cameraPosition[0] - context._physicalMins[0]) / context._gridPhysicalDimension);
+            signed baseGridY = signed((cameraPosition[1] - context._physicalMins[1]) / context._gridPhysicalDimension);
+            for (signed y=0; y<5; ++y) {
+                for (signed x=0; x<5; ++x) {
+                    Int2 testGrid(baseGridX + x - 2, baseGridY + y - 2);
+                    auto visibility = GridIsVisible(context, parserContext, testGrid, baseHeight);
+                    if (visibility) {
+                            // calculate priority
+                        Float2 gridCentrePosition = 
+                            Float2(float(testGrid[0]) + 0.5f, float(testGrid[1]) + 0.5f) * context._gridPhysicalDimension
+                            + context._physicalMins;
+
+                        float gridDistance = Magnitude(gridCentrePosition - Float2(cameraPosition[0], cameraPosition[1]));
+                        float priority = gridDistance;
+                        // if (visibility != CULL_INCLUSION) {
+                        //     priority += 512.f;   // give priority penalty for grids on the edge of the screen (but maybe exclude the grid the camera is immediately over?)
+                        // }
+
+                        scheduledGrids.push_back(PrioritisedActiveElement(testGrid, priority));
+                    }
                 }
             }
         }
@@ -816,9 +839,10 @@ namespace SceneEngine
 
             // add the old grids into the list of grids to prioritize
         for (auto i=_activeSimulationElements.cbegin(); i!=_activeSimulationElements.cend(); ++i) {
-            Float2 gridCentrePosition(
+            Float2 gridCentrePosition = Float2(
                 (float(i->_gridCoords[0]) + 0.5f) * context._gridPhysicalDimension, 
-                (float(i->_gridCoords[1]) + 0.5f) * context._gridPhysicalDimension);
+                (float(i->_gridCoords[1]) + 0.5f) * context._gridPhysicalDimension)
+                + context._physicalMins;
             float gridDistance = Magnitude(gridCentrePosition - Float2(cameraPosition[0], cameraPosition[1]));
                 //  Prioritize existing grids while ignoring camera facing. The way, the simulation won't
                 //  be stopped as soon as it goes off screen... Perhaps we can stop if the grid stays off the
@@ -949,11 +973,14 @@ namespace SceneEngine
             metalContext.BindCS(MakeResourceList(globalOceanMaterialConstantBuffer));
             metalContext.BindCS(MakeResourceList(2, Metal::ConstantBuffer(buildDevsConstants, sizeof(buildDevsConstants))));
 
-            metalContext.BindCS(MakeResourceList(   _simulationGrid->_waterHeightsSRV[thisFrameBuffer],
-                                                _lookupTableSRV,
-                                                _simulationGrid->_foamQuantitySRV2[(bufferCounter+1)&1]));
-            metalContext.BindCS(MakeResourceList(   _simulationGrid->_normalsTextureUAV[0], 
-                                                _simulationGrid->_foamQuantityUAV[bufferCounter&1]));
+            metalContext.BindCS(MakeResourceList(   
+                _simulationGrid->_waterHeightsSRV[thisFrameBuffer],
+                _lookupTableSRV,
+                _simulationGrid->_foamQuantitySRV2[(bufferCounter+1)&1]));
+            metalContext.BindCS(MakeResourceList(   
+                _simulationGrid->_normalsTextureUAV[0], 
+                _simulationGrid->_foamQuantityUAV[bufferCounter&1]));
+
             metalContext.Bind(buildNormals); 
             metalContext.Dispatch(1, 1, _simulatingGridsCount);
             metalContext.UnbindCS<UAV>(0, 2);

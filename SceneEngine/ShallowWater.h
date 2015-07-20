@@ -66,6 +66,7 @@ namespace SceneEngine
             MetalContext* _metalContext;
             const OceanSettings* _oceanSettings;
             float _gridPhysicalDimension;
+            Float2 _physicalMins;
             ISurfaceHeightsProvider* _surfaceHeightsProvider;
             SRV* _globalOceanWorkingHeights;
             BorderMode::Enum _borderMode;
@@ -74,6 +75,7 @@ namespace SceneEngine
                 MetalContext& metalContext,
                 const OceanSettings& oceanSettings,
                 float gridPhysicalDimension,
+                Float2 physicalMins,
                 ISurfaceHeightsProvider* surfaceHeightsProvider,
                 SRV* globalOceanWorkingHeights,
                 BorderMode::Enum borderMode);
@@ -82,7 +84,8 @@ namespace SceneEngine
         void ExecuteSim(
             const SimulationContext& context, 
             LightingParserContext& parserContext, 
-            unsigned bufferCounter);
+            unsigned bufferCounter,
+            const Int2* validGridBegin = nullptr, const Int2* validGridEnd = nullptr);
 
         void ExecuteInternalSimulation(
             const SimulationContext& context,
@@ -135,6 +138,7 @@ namespace SceneEngine
         MetalContext& metalContext,
         const OceanSettings& oceanSettings,
         float gridPhysicalDimension,
+        Float2 physicalMins,
         ISurfaceHeightsProvider* surfaceHeightsProvider,
         SRV* globalOceanWorkingHeights,
         BorderMode::Enum borderMode)
@@ -142,6 +146,7 @@ namespace SceneEngine
         _metalContext = &metalContext;
         _oceanSettings = &oceanSettings;
         _gridPhysicalDimension = gridPhysicalDimension;
+        _physicalMins = physicalMins;
         _globalOceanWorkingHeights = globalOceanWorkingHeights;
         _surfaceHeightsProvider = surfaceHeightsProvider;
         _borderMode = borderMode;

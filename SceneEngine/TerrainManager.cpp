@@ -104,10 +104,13 @@ namespace SceneEngine
             //      -- maybe there's a better way to go directly to a hash value?
         char heightMapFile[MaxPath], coverageFile[MaxPath];
         _terrainConfig.GetCellFilename(heightMapFile, dimof(heightMapFile), cellIndex, CoverageId_Heights);
-        _terrainConfig.GetCellFilename(coverageFile, dimof(coverageFile), cellIndex, CoverageId_AngleBasedShadows);
-
         auto hash = Hash64(heightMapFile);
-        hash = Hash64(coverageFile, &coverageFile[XlStringLen(coverageFile)], hash);
+
+        for (unsigned c = 0; c<_terrainConfig.GetCoverageLayerCount(); ++c) {
+            _terrainConfig.GetCellFilename(coverageFile, dimof(coverageFile), cellIndex, _terrainConfig.GetCoverageLayer(c)._id);
+            hash = Hash64(coverageFile, hash);
+        }
+        
         auto i = std::lower_bound(
             _terrainRenderer->_renderInfos.begin(), _terrainRenderer->_renderInfos.end(), 
             hash, CompareFirst<uint64, std::unique_ptr<TerrainCellRenderer::CellRenderInfo>>());
@@ -235,7 +238,7 @@ namespace SceneEngine
     {
     public:
         std::shared_ptr<TerrainCellRenderer> _renderer;
-        std::unique_ptr<TerrainSurfaceHeightsProvider> _heightsProvider;
+        std::shared_ptr<TerrainSurfaceHeightsProvider> _heightsProvider;
         std::shared_ptr<ITerrainFormat> _ioFormat;
 
         std::unique_ptr<TerrainUberHeightsSurface> _uberSurface;
@@ -512,7 +515,7 @@ namespace SceneEngine
             _pimpl->_textures.reset();
 
             _pimpl->_renderer = CreateRenderer(rendererCfg, _pimpl->_ioFormat, allowModification);
-            _pimpl->_heightsProvider = std::make_unique<TerrainSurfaceHeightsProvider>(
+            _pimpl->_heightsProvider = std::make_shared<TerrainSurfaceHeightsProvider>(
                 _pimpl->_renderer, _pimpl->_cfg, _pimpl->_coords);
             MainSurfaceHeightsProvider = _pimpl->_heightsProvider.get();
         }
@@ -797,9 +800,9 @@ namespace SceneEngine
         }
     }
 
-    const TerrainCoordinateSystem&  TerrainManager::GetCoords() const       { return _pimpl->_coords; }
-    HeightsUberSurfaceInterface* TerrainManager::GetHeightsInterface()      { return _pimpl->_uberSurfaceInterface.get(); }
-    ISurfaceHeightsProvider* TerrainManager::GetHeightsProvider()           { return _pimpl->_heightsProvider.get(); }
+    const TerrainCoordinateSystem&  TerrainManager::GetCoords() const                       { return _pimpl->_coords; }
+    HeightsUberSurfaceInterface* TerrainManager::GetHeightsInterface()                      { return _pimpl->_uberSurfaceInterface.get(); }
+    std::shared_ptr<ISurfaceHeightsProvider> TerrainManager::GetHeightsProvider()    { return _pimpl->_heightsProvider; }
 
     CoverageUberSurfaceInterface*   TerrainManager::GetCoverageInterface(TerrainCoverageId id)
     {

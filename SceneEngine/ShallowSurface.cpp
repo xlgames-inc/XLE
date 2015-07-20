@@ -5,6 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ShallowSurface.h"
+#include "ShallowWater.h"
+#include "Ocean.h"      // (for OceanSettings)
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Techniques/TechniqueMaterial.h"
@@ -110,6 +112,10 @@ namespace SceneEngine
         };
 
         std::vector<SimGrid> _simGrids;
+        std::vector<Int2> _validGridList;
+        std::unique_ptr<ShallowWaterSim> _sim;
+        Float2 _simulationMins;
+        unsigned _bufferCounter;
         Config _cfg;
     };
 
@@ -120,6 +126,13 @@ namespace SceneEngine
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_cfg = settings;
+        _pimpl->_bufferCounter = 0;
+
+        const auto maxSimulationGrids = 12u;
+        const bool usePipeModel = true;
+        _pimpl->_sim = std::make_unique<ShallowWaterSim>(
+            ShallowWaterSim::Desc(
+                settings._simGridDims, maxSimulationGrids, usePipeModel, false));
 
             //
             //      Given the input points, we want to create a set of sim grids
@@ -158,12 +171,18 @@ namespace SceneEngine
             mins[1] = std::min(pt[1], mins[1]);
             maxs[0] = std::max(pt[0], maxs[0]);
             maxs[1] = std::max(pt[1], maxs[1]);
-        }
+        }   
+        
+            //   todo -- we have to align the sim grids to the terrain surface heights
+            //      provider! We want to only require the terrain height values for
+            //      a single node to simulate a given water cell.
 
         mins[0] = XlFloor(mins[0] / settings._cellPhysicalSize) * settings._cellPhysicalSize;
         mins[1] = XlFloor(mins[1] / settings._cellPhysicalSize) * settings._cellPhysicalSize;
         maxs[0] =  XlCeil(maxs[0] / settings._cellPhysicalSize) * settings._cellPhysicalSize;
         maxs[1] =  XlCeil(maxs[1] / settings._cellPhysicalSize) * settings._cellPhysicalSize;
+
+        _pimpl->_simulationMins = mins;
 
         UInt2 surfaceSize;
         surfaceSize[0] = unsigned((maxs[0] - mins[0]) / settings._cellPhysicalSize)+1;
@@ -205,6 +224,8 @@ namespace SceneEngine
                     cellMins * settings._cellPhysicalSize + mins,
                     cellMaxs * settings._cellPhysicalSize + mins,
                     0.f);
+
+                _pimpl->_validGridList.push_back(Int2(x, y));
             }
         }
     }
@@ -263,51 +284,65 @@ namespace SceneEngine
         _pimpl->_simGrids.push_back(simGrid);
     }
 
+    void ShallowSurface::UpdateSimulation(
+        RenderCore::Metal::DeviceContext& metalContext,
+        LightingParserContext& parserContext,
+        ISurfaceHeightsProvider* surfaceHeights)
+    {
+        OceanSettings oceanSettings;
+
+        ShallowWaterSim::SimulationContext simContext(
+            metalContext, oceanSettings,
+            _pimpl->_cfg._simGridDims * _pimpl->_cfg._cellPhysicalSize,
+            _pimpl->_simulationMins,
+            surfaceHeights, 
+            nullptr, ShallowWaterSim::BorderMode::BaseHeight);
+
+        _pimpl->_sim->ExecuteSim(
+            simContext, parserContext, _pimpl->_bufferCounter,
+            AsPointer(_pimpl->_validGridList.cbegin()), AsPointer(_pimpl->_validGridList.cend()));
+
+        _pimpl->_bufferCounter = (_pimpl->_bufferCounter+1)%3;
+    }
+
     void ShallowSurface::RenderDebugging(
         RenderCore::Metal::DeviceContext& metalContext,
         LightingParserContext& parserContext,
         unsigned techniqueIndex)
     {
-        TRY 
-        {
+        using namespace Techniques;
+        ParameterBox matParam;
+        matParam.SetParameter(
+            (const utf8*)"SHALLOW_WATER_TILE_DIMENSION", 
+            _pimpl->_cfg._simGridDims);
+        TechniqueMaterial material(
+            Metal::InputLayout(nullptr, 0),
+            { ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants },
+            matParam);
 
-            using namespace Techniques;
-            ParameterBox matParam;
-            matParam.SetParameter((const utf8*)"SHALLOW_WATER_TILE_DIMENSION", _pimpl->_cfg._simGridDims);
-            TechniqueMaterial material(
-                Metal::InputLayout(nullptr, 0),
-                { ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants },
-                matParam);
+        auto shader = material.FindVariation(
+            parserContext, techniqueIndex, "game/xleres/ocean/shallowsurface.txt");
+        if (shader._shaderProgram) {
+            const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
+                "game/xleres/BasicMaterialConstants.txt");
 
-            auto shader = material.FindVariation(
-                parserContext, techniqueIndex, "game/xleres/ocean/shallowsurface.txt");
-            if (shader._shaderProgram) {
-                const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
-                    "game/xleres/BasicMaterialConstants.txt");
+            metalContext.Bind(Metal::Topology::TriangleList);
+            for (auto i=_pimpl->_simGrids.cbegin(); i!=_pimpl->_simGrids.cend(); ++i) {
+                shader.Apply(
+                    metalContext, parserContext, 
+                    {
+                        MakeLocalTransformPacket(
+                            i->_gridToWorld,
+                            ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
+                        cbLayout.BuildCBDataAsPkt(ParameterBox())
+                    });
+                metalContext.Unbind<Metal::VertexBuffer>();
+                metalContext.Unbind<Metal::BoundInputLayout>();
 
-                metalContext.Bind(Metal::Topology::TriangleList);
-                for (auto i=_pimpl->_simGrids.cbegin(); i!=_pimpl->_simGrids.cend(); ++i) {
-                    shader.Apply(
-                        metalContext, parserContext, 
-                        {
-                            MakeLocalTransformPacket(
-                                i->_gridToWorld,
-                                ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                            cbLayout.BuildCBDataAsPkt(ParameterBox())
-                        });
-                    metalContext.Unbind<Metal::VertexBuffer>();
-                    metalContext.Unbind<Metal::BoundInputLayout>();
-
-                    metalContext.Bind(i->_ib, Metal::NativeFormat::R16_UINT);
-                    metalContext.DrawIndexed(i->_indexCount);
-                }
+                metalContext.Bind(i->_ib, Metal::NativeFormat::R16_UINT);
+                metalContext.DrawIndexed(i->_indexCount);
             }
-
         }
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-        CATCH(...) {} 
-        CATCH_END
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -325,10 +360,19 @@ namespace SceneEngine
     void ShallowSurfaceManager::RenderDebugging(
         RenderCore::Metal::DeviceContext& metalContext,
         LightingParserContext& parserContext,
-        unsigned techniqueIndex)
+        unsigned techniqueIndex,
+        ISurfaceHeightsProvider* surfaceHeights)
     {
-        for (auto i:_surfaces)
-            i->RenderDebugging(metalContext, parserContext, techniqueIndex);
+        for (auto i : _surfaces) {
+            TRY 
+            {
+                i->UpdateSimulation(metalContext, parserContext, surfaceHeights);
+                i->RenderDebugging(metalContext, parserContext, techniqueIndex);
+            }
+            CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+            CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+            CATCH_END
+        }
     }
 
     ShallowSurfaceManager::ShallowSurfaceManager() {}

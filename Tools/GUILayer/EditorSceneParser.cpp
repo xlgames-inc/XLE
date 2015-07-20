@@ -94,7 +94,11 @@ namespace GUILayer
                 _editorScene->_placementsManager->Render(metalContext, parserContext, techniqueIndex);
                 _editorScene->_vegetationSpawnManager->Render(metalContext, parserContext, techniqueIndex);
 
-                _editorScene->_shallowSurfaceManager->RenderDebugging(*metalContext, parserContext, techniqueIndex);
+                std::shared_ptr<ISurfaceHeightsProvider> surfaceHeights;
+                if (_editorScene->_terrainManager)
+                    surfaceHeights = _editorScene->_terrainManager->GetHeightsProvider();
+                _editorScene->_shallowSurfaceManager->RenderDebugging(
+                    *metalContext, parserContext, techniqueIndex, surfaceHeights.get());
             }
         }
         else 

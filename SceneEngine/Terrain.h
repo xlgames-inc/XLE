@@ -73,7 +73,7 @@ namespace SceneEngine
 
         HeightsUberSurfaceInterface*    GetHeightsInterface();
         CoverageUberSurfaceInterface*   GetCoverageInterface(TerrainCoverageId id);
-        ISurfaceHeightsProvider*        GetHeightsProvider();
+        std::shared_ptr<ISurfaceHeightsProvider>    GetHeightsProvider();
 
         const TerrainCoordinateSystem&  GetCoords() const;
         const TerrainConfig&            GetConfig() const;
