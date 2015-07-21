@@ -129,8 +129,8 @@ namespace SceneEngine
         _pimpl->_cfg = settings;
         _pimpl->_bufferCounter = 0;
 
-        const auto maxSimulationGrids = 12u;
-        const bool usePipeModel = true;
+        const auto maxSimulationGrids = settings._simGridCount;
+        const bool usePipeModel = settings._usePipeModel;
         _pimpl->_sim = std::make_unique<ShallowWaterSim>(
             ShallowWaterSim::Desc(
                 settings._simGridDims, maxSimulationGrids, usePipeModel, false, false));
@@ -178,16 +178,17 @@ namespace SceneEngine
             //      provider! We want to only require the terrain height values for
             //      a single node to simulate a given water cell.
 
-        mins[0] = XlFloor(mins[0] / settings._cellPhysicalSize) * settings._cellPhysicalSize;
-        mins[1] = XlFloor(mins[1] / settings._cellPhysicalSize) * settings._cellPhysicalSize;
-        maxs[0] =  XlCeil(maxs[0] / settings._cellPhysicalSize) * settings._cellPhysicalSize;
-        maxs[1] =  XlCeil(maxs[1] / settings._cellPhysicalSize) * settings._cellPhysicalSize;
+        float cellPhySize = settings._gridPhysicalSize / float(settings._simGridDims);
+        mins[0] = XlFloor(mins[0] / cellPhySize) * cellPhySize;
+        mins[1] = XlFloor(mins[1] / cellPhySize) * cellPhySize;
+        maxs[0] =  XlCeil(maxs[0] / cellPhySize) * cellPhySize;
+        maxs[1] =  XlCeil(maxs[1] / cellPhySize) * cellPhySize;
 
         _pimpl->_simulationMins = mins;
 
         UInt2 surfaceSize;
-        surfaceSize[0] = unsigned((maxs[0] - mins[0]) / settings._cellPhysicalSize)+1;
-        surfaceSize[1] = unsigned((maxs[1] - mins[1]) / settings._cellPhysicalSize)+1;
+        surfaceSize[0] = unsigned((maxs[0] - mins[0]) / cellPhySize)+1;
+        surfaceSize[1] = unsigned((maxs[1] - mins[1]) / cellPhySize)+1;
 
         RasterizationSurface mask(surfaceSize[0], surfaceSize[1]);
 
@@ -200,9 +201,9 @@ namespace SceneEngine
             auto p1 = *PtrAdd(triangleList, stride*(c+1));
             auto p2 = *PtrAdd(triangleList, stride*(c+2));
 
-            auto a0 = (p0 - mins) / settings._cellPhysicalSize;
-            auto a1 = (p1 - mins) / settings._cellPhysicalSize;
-            auto a2 = (p2 - mins) / settings._cellPhysicalSize;
+            auto a0 = (p0 - mins) / cellPhySize;
+            auto a1 = (p1 - mins) / cellPhySize;
+            auto a2 = (p2 - mins) / cellPhySize;
 
             mask.Draw(
                 Int2((int)a0[0], (int)a0[1]), 
@@ -228,8 +229,8 @@ namespace SceneEngine
         const auto& settings = _pimpl->_cfg;
         auto mins = Int2(gridCoords[0]*settings._simGridDims, gridCoords[1]*settings._simGridDims);
         auto maxs = Int2((gridCoords[0]+1)*settings._simGridDims, (gridCoords[1]+1) * settings._simGridDims);
-        Float2 physicalMins = mins * settings._cellPhysicalSize + _pimpl->_simulationMins;
-        Float2 physicalMaxs = maxs * settings._cellPhysicalSize + _pimpl->_simulationMins;
+        Float2 physicalMins = mins * settings._gridPhysicalSize / float(settings._simGridDims) + _pimpl->_simulationMins;
+        Float2 physicalMaxs = maxs * settings._gridPhysicalSize / float(settings._simGridDims) + _pimpl->_simulationMins;
         const float physicalHeight = 0.f;
 
         std::vector<unsigned short> ibData;
@@ -287,16 +288,26 @@ namespace SceneEngine
         _pimpl->_bufferCounter = (_pimpl->_bufferCounter+1)%3;
 
         OceanSettings oceanSettings;
+        oceanSettings._baseHeight = _pimpl->_cfg._baseHeight;
 
         ShallowWaterSim::SimulationContext simContext(
             metalContext, oceanSettings,
-            _pimpl->_cfg._simGridDims * _pimpl->_cfg._cellPhysicalSize,
+            _pimpl->_cfg._gridPhysicalSize,
             _pimpl->_simulationMins,
             surfaceHeights, 
             nullptr, ShallowWaterSim::BorderMode::BaseHeight);
 
+        ShallowWaterSim::SimSettings settings;
+        settings._rainQuantityPerFrame = _pimpl->_cfg._rainQuantity;
+        settings._evaporationConstant = _pimpl->_cfg._evaporationConstant;
+        settings._pressureConstant = _pimpl->_cfg._pressureConstant;
+        settings._compressionConstants = 
+            OceanHack_CompressionConstants(
+                metalContext, parserContext, 
+                _pimpl->_cfg._baseHeight, 0.2f, 6.f);
+
         _pimpl->_sim->ExecuteSim(
-            simContext, parserContext, _pimpl->_bufferCounter,
+            simContext, parserContext, settings, _pimpl->_bufferCounter,
             AsPointer(_pimpl->_validGridList.cbegin()), AsPointer(_pimpl->_validGridList.cend()));
     }
 

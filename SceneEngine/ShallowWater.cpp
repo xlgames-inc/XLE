@@ -222,7 +222,8 @@ namespace SceneEngine
         if (grid._pendingInitialClear) {
             float clearValues[4] = {0,0,0,0};
             for (unsigned c=0; c<ShallowWaterGrid::VelTextures; ++c)
-                context.Clear(grid._waterVelocitiesUAV[c], clearValues);
+                if (grid._waterVelocitiesUAV[c].IsGood())
+                    context.Clear(grid._waterVelocitiesUAV[c], clearValues);
             grid._pendingInitialClear = false;
         }
     }
@@ -320,41 +321,6 @@ namespace SceneEngine
     static bool SortByGridIndex(const PrioritisedActiveElement& lhs, const PrioritisedActiveElement& rhs)       { return SortOceanGridElement(lhs._e, rhs._e); }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    static Int2 GetCursorPos()
-    {
-        POINT cursorPos;
-        GetCursorPos(&cursorPos);
-        ScreenToClient((HWND)::GetActiveWindow(), &cursorPos);
-        return Int2(cursorPos.x, cursorPos.y);
-    }
-
-    static std::pair<Float3, Float3> CalculateMouseOverRay(MetalContext& context, LightingParserContext& parserContext)
-    {
-            // calculate a world space ray underneath the mouse cursor
-        auto cursorPos = GetCursorPos();
-
-        Metal::ViewportDesc viewport(context);
-        float A = Clamp(cursorPos[0] / viewport.Width, 0.f, 1.f);
-        float B = Clamp(cursorPos[1] / viewport.Height, 0.f, 1.f);
-
-        float weights[4] = {
-            (1.0f - A) * (1.0f - B),
-            (1.0f - A) * B,
-            A * (1.0f - B),
-            A * B,
-        };
-    
-        Float3 absFrustumCorners[8];
-        CalculateAbsFrustumCorners(absFrustumCorners, parserContext.GetProjectionDesc()._worldToProjection);
-
-            // use the weights to find positions on the near and far plane...
-        return std::make_pair(
-            weights[0] * absFrustumCorners[0] + weights[1] * absFrustumCorners[1] + weights[2] * absFrustumCorners[2] + weights[3] * absFrustumCorners[3],
-            weights[0] * absFrustumCorners[4] + weights[1] * absFrustumCorners[5] + weights[2] * absFrustumCorners[6] + weights[3] * absFrustumCorners[7]);
-    }
-
-        ////////////////////////////////
 
     class SurfaceHeightsAddressingConstants
     {
@@ -496,6 +462,8 @@ namespace SceneEngine
             }
         }
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<int Count>
         static void BuildShaderDefines(
@@ -703,13 +671,9 @@ namespace SceneEngine
                 _simulationGrid->_waterHeightsUAV[2],
                 _lookupTableUAV));
         } else {
-            metalContext.BindCS(MakeResourceList(_simulationGrid->_waterHeightsUAV[0]));
-            metalContext.BindCS(MakeResourceList(3,
-                _lookupTableUAV,
-                _simulationGrid->_waterVelocitiesUAV[0],
-                _simulationGrid->_waterVelocitiesUAV[1],
-                _simulationGrid->_waterVelocitiesUAV[2],
-                _simulationGrid->_waterVelocitiesUAV[3]));
+            metalContext.BindCS(MakeResourceList(
+                _simulationGrid->_waterHeightsUAV[0],
+                UAV(), UAV(), _lookupTableUAV));
         }
 
         if (context._globalOceanWorkingHeights)
@@ -768,6 +732,16 @@ namespace SceneEngine
         }
 
         if (usePipeModel) {
+            metalContext.BindCS(MakeResourceList(
+                _simulationGrid->_waterVelocitiesUAV[0],
+                _simulationGrid->_waterVelocitiesUAV[1],
+                _simulationGrid->_waterVelocitiesUAV[2],
+                _simulationGrid->_waterVelocitiesUAV[3],
+                _simulationGrid->_waterVelocitiesUAV[4],
+                _simulationGrid->_waterVelocitiesUAV[5],
+                _simulationGrid->_waterVelocitiesUAV[6],
+                _simulationGrid->_waterVelocitiesUAV[7]));
+
             auto& cshader = Assets::GetAssetDep<Metal::ComputeShader>(
                 "game/xleres/Ocean/InitSimGrid2.csh:InitPipeModel2:cs_*", shaderDefines);
             metalContext.Bind(cshader);
@@ -779,15 +753,18 @@ namespace SceneEngine
             }
         }
 
+        metalContext.UnbindCS<UAV>(0,8);
+
         _poolOfUnallocatedArrayIndices = std::move(poolOfUnallocatedArrayIndices);
         _activeSimulationElements = std::move(newElements);
     }
 
-        ////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void ShallowWaterSim::ExecuteSim(
         const SimulationContext& context, 
         LightingParserContext& parserContext, 
+        const SimSettings& settings,
         unsigned bufferCounter,
         const Int2* validGridBegin, const Int2* validGridEnd)
     {
@@ -972,36 +949,8 @@ namespace SceneEngine
             //  for the new frame. We simulate horizontally and vertically separate. Between frames we
             //  alternate the order.
 
-        if (!_activeSimulationElements.empty()) {
-
-            auto cursorPos = GetCursorPos();
-            Metal::ViewportDesc vpd(metalContext);
-
-            SimSettings settings;
-
-            static unsigned framesMouseDown = 0;
-            if (GetKeyState(VK_MBUTTON)<0) {
-                    //  Find the mouse over ray, and find the intersection
-                    //  point with the ocean water plane
-                auto mouseOverRay = CalculateMouseOverRay(metalContext, parserContext);
-                float a = mouseOverRay.first[2] - baseHeight;
-                float b = mouseOverRay.second[2] - mouseOverRay.first[2];
-                float alpha = -a / b;
-                Float3 intersectionPoint = LinearInterpolate(mouseOverRay.first, mouseOverRay.second, alpha);
-            
-                settings._compressionConstants[0] = intersectionPoint[0];
-                settings._compressionConstants[1] = intersectionPoint[1];
-                settings._compressionConstants[2] = baseHeight-.2f;
-                settings._compressionConstants[3] = 6.f;
-
-                ++framesMouseDown;
-            } else {
-                framesMouseDown = 0;
-            }
-
+        if (!_activeSimulationElements.empty())
             ExecuteInternalSimulation(context, settings, bufferCounter);
-
-        }
 
         char shaderDefines[256];
         BuildShaderDefines(shaderDefines, _gridDimension, nullptr, ShallowWaterSim::BorderMode::BaseHeight, _lookupTableSRV.IsGood());
@@ -1220,6 +1169,70 @@ namespace SceneEngine
                 return RenderCore::MakeSharedPkt(constants);
             }
         return RenderCore::SharedPkt();
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static Int2 GetCursorPos()
+    {
+        POINT cursorPos;
+        GetCursorPos(&cursorPos);
+        ScreenToClient((HWND)::GetActiveWindow(), &cursorPos);
+        return Int2(cursorPos.x, cursorPos.y);
+    }
+
+    static std::pair<Float3, Float3> CalculateMouseOverRay(MetalContext& context, LightingParserContext& parserContext)
+    {
+            // calculate a world space ray underneath the mouse cursor
+        auto cursorPos = GetCursorPos();
+
+        Metal::ViewportDesc viewport(context);
+        float A = Clamp(cursorPos[0] / viewport.Width, 0.f, 1.f);
+        float B = Clamp(cursorPos[1] / viewport.Height, 0.f, 1.f);
+
+        float weights[4] = {
+            (1.0f - A) * (1.0f - B),
+            (1.0f - A) * B,
+            A * (1.0f - B),
+            A * B,
+        };
+    
+        Float3 absFrustumCorners[8];
+        CalculateAbsFrustumCorners(absFrustumCorners, parserContext.GetProjectionDesc()._worldToProjection);
+
+            // use the weights to find positions on the near and far plane...
+        return std::make_pair(
+            weights[0] * absFrustumCorners[0] + weights[1] * absFrustumCorners[1] + weights[2] * absFrustumCorners[2] + weights[3] * absFrustumCorners[3],
+            weights[0] * absFrustumCorners[4] + weights[1] * absFrustumCorners[5] + weights[2] * absFrustumCorners[6] + weights[3] * absFrustumCorners[7]);
+    }
+
+    Float4 OceanHack_CompressionConstants(
+        RenderCore::Metal::DeviceContext& metalContext,
+        LightingParserContext& parserContext, 
+        float baseHeight, float compressionAmount, float compressionRadius)
+    {
+        static unsigned framesMouseDown = 0;
+        if (GetKeyState(VK_MBUTTON)<0) {
+                //  Find the mouse over ray, and find the intersection
+                //  point with the ocean water plane
+            auto mouseOverRay = CalculateMouseOverRay(metalContext, parserContext);
+            float a = mouseOverRay.first[2] - baseHeight;
+            float b = mouseOverRay.second[2] - mouseOverRay.first[2];
+            float alpha = -a / b;
+            Float3 intersectionPoint = LinearInterpolate(mouseOverRay.first, mouseOverRay.second, alpha);
+            
+            Float4 result;
+            result[0] = intersectionPoint[0];
+            result[1] = intersectionPoint[1];
+            result[2] = baseHeight-compressionAmount;
+            result[3] = compressionRadius;
+
+            ++framesMouseDown;
+            return result;
+        }
+
+        framesMouseDown = 0;
+        return Float4(0.f, 0.f, 1000.f, 1.f);
     }
 }
 

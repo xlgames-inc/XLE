@@ -86,6 +86,7 @@ namespace SceneEngine
         void ExecuteSim(
             const SimulationContext& context, 
             LightingParserContext& parserContext, 
+            const SimSettings& settings,
             unsigned bufferCounter,
             const Int2* validGridBegin = nullptr, const Int2* validGridEnd = nullptr);
 
@@ -156,6 +157,11 @@ namespace SceneEngine
         _surfaceHeightsProvider = surfaceHeightsProvider;
         _borderMode = borderMode;
     }
+
+    Float4 OceanHack_CompressionConstants(
+        RenderCore::Metal::DeviceContext& metalContext,
+        LightingParserContext& parserContext, 
+        float baseHeight, float compressionAmount, float compressionRadius);
 
 }
 

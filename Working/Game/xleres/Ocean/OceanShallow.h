@@ -81,15 +81,30 @@ cbuffer SurfaceHeightAddressing : register(b1)
 	float	SurfaceHeightScale, SurfaceHeightOffset;
 }
 
+#if 0
+    uint2 Coord10(uint2 a, uint2 dims) { return uint2(min(a.x+1, dims.x-1), a.y); }
+    uint2 Coord01(uint2 a, uint2 dims) { return uint2(a.x, min(a.y+1, dims.y-1)); }
+    uint2 Coord11(uint2 a, uint2 dims) { return uint2(min(a.x+1, dims.x-1), min(a.y+1, dims.y-1)); }
+#else
+    uint2 Coord10(uint2 a, uint2 dims) { return uint2(a.x+1, a.y); }
+    uint2 Coord01(uint2 a, uint2 dims) { return uint2(a.x, a.y+1); }
+    uint2 Coord11(uint2 a, uint2 dims) { return uint2(a.x+1, a.y+1); }
+#endif
+
 float ManualInterpolateSurfaceHeight_Exploded(Texture2DArray<uint> tex, float2 exploded, uint arrayIndex)
 {
 		// note that wrapping/borders aren't handled
 		//	.. it means there can be problems if we try to read from
 		//	outside the normal texture area
-	float result00 = tex[uint3(uint2(exploded) + uint2(0,0), arrayIndex)] & 0x3fff;
-	float result10 = tex[uint3(uint2(exploded) + uint2(1,0), arrayIndex)] & 0x3fff;
-	float result01 = tex[uint3(uint2(exploded) + uint2(0,1), arrayIndex)] & 0x3fff;
-	float result11 = tex[uint3(uint2(exploded) + uint2(1,1), arrayIndex)] & 0x3fff;
+        //  (but when reading from terrain textures, we should have some extra "overlap" pixels out our normal range)
+    uint3 dims; tex.GetDimensions(dims.x, dims.y, dims.z);
+    uint2 base = uint2(exploded);
+    // base.x = min(base.x, dims.x-1);
+    // base.y = min(base.y, dims.y-1);
+	float result00 = tex[uint3(  uint2(base), arrayIndex)] & 0x3fff;
+	float result10 = tex[uint3(Coord10(base, dims.xy), arrayIndex)] & 0x3fff;
+	float result01 = tex[uint3(Coord01(base, dims.xy), arrayIndex)] & 0x3fff;
+	float result11 = tex[uint3(Coord11(base, dims.xy), arrayIndex)] & 0x3fff;
 	float2 fracPart = frac(exploded);
 	return
 	      result00 * (1.0f-fracPart.x) * (1.0f-fracPart.y)
@@ -112,7 +127,7 @@ float LoadSurfaceHeight(int2 coord)
 		float rawHeight = (float)SurfaceHeightsTexture.Load(int4(SurfaceHeightBaseCoord + int3(coord.xy, 0), 0));
 		return SurfaceHeightOffset + rawHeight * SurfaceHeightScale;
 	} else {
-		float2 tcInput = coord.xy / float2(SHALLOW_WATER_TILE_DIMENSION, SHALLOW_WATER_TILE_DIMENSION);
+		float2 tcInput = saturate(coord.xy / float2(SHALLOW_WATER_TILE_DIMENSION, SHALLOW_WATER_TILE_DIMENSION));
 		float2 surfaceHeightCoord = lerp(float2(SurfaceHeightTextureMin), float2(SurfaceHeightTextureMax), tcInput);
 
 			// "surfaceHeightCoord" is the "exploded" coordinates on this texture
@@ -195,12 +210,9 @@ float CalculateExternalPressure(float2 worldPosition)
 {
     float2 off = worldPosition - CompressionMidPoint.xy;
     float distance2DSq = dot(off, off);
-    float radiusSq = 100.f * CompressionRadius * CompressionRadius;
-    if (distance2DSq < radiusSq) {
-        return 1e11f * (1.0f - (distance2DSq / radiusSq));
-    }
-
-    return 0.f;
+    float radiusSq = CompressionRadius * CompressionRadius;
+    float d = max(0.f, 1.0f - (distance2DSq / radiusSq));
+    return 1e7f * d;
 }
 
 #endif

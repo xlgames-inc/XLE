@@ -1324,6 +1324,7 @@ namespace SceneEngine
                         &fftBuffer._workingTextureRealShaderResource,
                         ShallowWaterSim::BorderMode::GlobalWaves),
                     parserContext,
+                    ShallowWaterSim::SimSettings(),
                     OceanBufferCounter);
             }
             RenderOceanSurface(

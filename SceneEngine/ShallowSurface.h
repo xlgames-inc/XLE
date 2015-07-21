@@ -24,8 +24,15 @@ namespace SceneEngine
         class Config
         {
         public:
-            float _cellPhysicalSize;
-            unsigned _simGridDims;
+            float       _gridPhysicalSize;
+            unsigned    _simGridDims;
+            unsigned    _simGridCount;
+            float       _baseHeight;
+            bool        _usePipeModel;
+
+            float       _rainQuantity;
+            float       _evaporationConstant;
+            float       _pressureConstant;
         };
 
         void RenderDebugging(

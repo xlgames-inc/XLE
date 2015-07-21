@@ -529,6 +529,14 @@ namespace EntityInterface
 
         ParamName(Marker);
         ParamName(name);
+        ParamName(GridPhysicalSize)
+        ParamName(GridDims)
+        ParamName(SimGridCount)
+        ParamName(BaseHeight)
+        ParamName(SimMethod)
+        ParamName(RainQuantity)
+        ParamName(EvaporationConstant)
+        ParamName(PressureConstant)
 
         mgr.Clear();
 
@@ -562,7 +570,17 @@ namespace EntityInterface
                 auto verts = ExtractVertices(sys, *marker);
                 if (verts.empty()) continue;
 
-                ShallowSurface::Config cfg { 2.f, 32 };
+                ShallowSurface::Config cfg;
+                cfg._gridPhysicalSize = s->_properties.GetParameter(GridPhysicalSize, 64.f);
+                cfg._simGridDims = s->_properties.GetParameter(GridDims, 128);
+                cfg._simGridCount = s->_properties.GetParameter(SimGridCount, 12);
+                cfg._baseHeight = s->_properties.GetParameter(BaseHeight, 0.f);
+                auto simMethod = s->_properties.GetParameter(SimMethod, 0);
+                cfg._usePipeModel = (simMethod==0);
+                cfg._rainQuantity = s->_properties.GetParameter(RainQuantity, 0.f);
+                cfg._evaporationConstant = s->_properties.GetParameter(EvaporationConstant, 1.f);
+                cfg._pressureConstant = s->_properties.GetParameter(PressureConstant, 150.f);
+
                 mgr.Add(
                     std::make_shared<ShallowSurface>(
                         AsPointer(verts.cbegin()), sizeof(Float2), 

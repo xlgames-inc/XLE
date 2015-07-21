@@ -628,7 +628,38 @@
       <xs:appinfo>
         <LeGe.NativeType nativeName="ShallowSurface"/>
         <LeGe.NativeProperty name="Marker" nativeName="Marker"/>
+        
+        <LeGe.NativeProperty name="GridPhysicalSize" nativeName="GridPhysicalSize"/>
+        <LeGe.NativeProperty name="GridDims" nativeName="GridDims"/>
+        <LeGe.NativeProperty name="SimGridCount" nativeName="SimGridCount"/>
+        <LeGe.NativeProperty name="BaseHeight" nativeName="BaseHeight"/>
+        <LeGe.NativeProperty name="SimMethod" nativeName="SimMethod"/>
+        <LeGe.NativeProperty name="RainQuantity" nativeName="RainQuantity"/>
+        <LeGe.NativeProperty name="EvaporationConstant" nativeName="EvaporationConstant"/>
+        <LeGe.NativeProperty name="PressureConstant" nativeName="PressureConstant"/>
+
         <scea.dom.editors.attribute category="General" name="Marker" displayName="Marker"/>
+
+        <scea.dom.editors.attribute category="Grid" name="GridPhysicalSize" displayName="Grid world space size"
+                                    description="Size of each grid, in world space units. Note that this must divide evenly into the size of a terrain node."/>
+        <scea.dom.editors.attribute category="Grid" name="GridDims" displayName="Simulation resolution"
+                                    description="Resolution of the simulation grid. Generally use a power of 2."/>
+        <scea.dom.editors.attribute category="Grid" name="SimGridCount" displayName="Grid Count"
+                                    description="Maximum number of simulation grids that can be active at a time (usually small, eg 8 or 12)."/>
+        <scea.dom.editors.attribute category="General" name="BaseHeight" displayName="Base water height"/>
+
+        <scea.dom.editors.attribute category="Simulation" name="SimMethod" displayName="Simulation Method"
+                                    description="Simulation method for animation. PipeModel is cheaper and simplier. But the JabobiRelax method handles water depth better. The models produce subtly different animation."
+                                    editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:PipeModel=0,JacobiRelax=1"
+                                    converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:PipeModel=0,JacobiRelax=1"/>
+        <scea.dom.editors.attribute category="Simulation" name="RainQuantity" displayName="RainQuantity"
+                                    description="Quantity of rain fall added to the simulation, every frame."/>
+        <scea.dom.editors.attribute category="Simulation" name="EvaporationConstant" displayName="EvaporationConstant"
+                                    description="Simple percentage based evaporation. 1 means no evaporation, 0 means every evaporates instantly."
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="Simulation" name="PressureConstant" displayName="PressureConstant"
+                                    description="Constant used by the PipeModel for controlling the size of waves. Try adjusting if waves seem too big or too small."/>
+        
         <scea.dom.editors category="Environment" name="ShallowSurface" menuText="Lights/ShallowSurface" description="Shallow water surface (eg, a lake surface)"/>
         <LeGe.OpaqueListable label="Shallow Surface"/>
       </xs:appinfo>
@@ -637,6 +668,15 @@
     <xs:complexContent>
       <xs:extension base="envObjectType">
         <xs:attribute name="Marker" type="xs:string" default=""/>
+
+        <xs:attribute name="GridPhysicalSize" type="xs:float" default="64"/>
+        <xs:attribute name="GridDims" type="xs:unsignedInt" default="128"/>
+        <xs:attribute name="SimGridCount" type="xs:unsignedInt" default="12"/>
+        <xs:attribute name="BaseHeight" type="xs:float" default="0"/>
+        <xs:attribute name="SimMethod" type="xs:int" default="0"/>
+        <xs:attribute name="RainQuantity" type="xs:float" default="0"/>
+        <xs:attribute name="EvaporationConstant" type="xs:float" default="1"/>
+        <xs:attribute name="PressureConstant" type="xs:float" default="150"/>
       </xs:extension>
     </xs:complexContent>
 

@@ -56,14 +56,14 @@ float CalculateCompression(uint x, int3 c0)
 				(float(SimulatingIndex.y) + float(c0.y) / float(SHALLOW_WATER_TILE_DIMENSION)) * ShallowGridPhysicalDimension);
 	float2 off = worldPosition - CompressionMidPoint.xy;
 
-	float minCompression = LoadSurfaceHeight(c0);
+	float minCompression = LoadSurfaceHeight(c0.xy);
 
 	float distance2DSq = dot(off, off);
 	float radiusSq = CompressionRadius * CompressionRadius;
 	if (distance2DSq < radiusSq) {
-		float x = 0.75f * min(1.f - distance2DSq / radiusSq, 0.5f);
+		float x = 1.f - min(distance2DSq / radiusSq, 1.f);
 		// return max(minCompression, lerp(WaterBaseHeight, CompressionMidPoint.z, x));
-		return WaterHeightsN1[c0] - x;
+		return WaterHeightsN1[c0] - 0.15f * x;
 	}
 
 	return 5000.f;
@@ -71,7 +71,7 @@ float CalculateCompression(uint x, int3 c0)
 
 float SimulateCompression(uint x, int3 cm1, int3 c0, int3 cp1, inout float workingHeight, int bufferIndex=2)
 {
-	return 1000000.f;
+	// return 1000000.f;
 
 	float compressionX = CalculateCompression(x, c0);
 	float compressionXm1 = CalculateCompression(x-1, cm1);
@@ -130,11 +130,11 @@ float4 BuildCoefficients(uint x, int3 cm1, int3 c0, int3 cp1, float centerSurfac
 	const float commonFactor = g * DeltaTime * DeltaTime / (2.0f * deltaX * deltaX);
 
 	float d0  = WorkingHeights[0][1+x]   - centerSurfaceHeight;
-	float dm1 = WorkingHeights[0][1+x-1] - LoadSurfaceHeight(cm1);
-	float dp1 = WorkingHeights[0][1+x+1] - LoadSurfaceHeight(cp1);
-	dm1 = max(dm1, .0f);
-	d0  = max(d0,  .0f);
-	dp1 = max(dp1, .0f);
+	float dm1 = WorkingHeights[0][1+x-1] - LoadSurfaceHeight(cm1.xy);
+	float dp1 = WorkingHeights[0][1+x+1] - LoadSurfaceHeight(cp1.xy);
+	dm1 = max(dm1, 0.0f);
+	d0  = max(d0,  0.0f);
+	dp1 = max(dp1, 0.0f);
 
 	float e0  = 1.f + commonFactor * (dm1 + 2.f * d0 + dp1);
 	float f0  = -commonFactor * (d0 + dp1);
@@ -168,7 +168,7 @@ void		RunSimulation(uint x, int3 cm1, int3 c0, int3 cp1)
 		float compressionX = SimulateCompression(x, cm1, c0, cp1, initialWorkingHeight, 2);
 	#endif
 
-	float centerSurfaceHeight = LoadSurfaceHeight(c0);
+	float centerSurfaceHeight = LoadSurfaceHeight(c0.xy);
 
 	initialWorkingHeight += RainQuantityPerFrame;
 
@@ -198,9 +198,9 @@ void		RunSimulation(uint x, int3 cm1, int3 c0, int3 cp1)
 			float hp1		 = WorkingHeights[readBufferIndex][1+x+1];
 			float sum		 = hm1 * coefficients.r + hp1 * coefficients.b;
 			float newValue	 = (coefficients.a - sum) / coefficients.g;
-			#if COMPRESS_BEFORE_SIMULATION == 1
-				newValue = min(newValue, compressionX);		// keep compression limitation, no matter what
-			#endif
+			//#if COMPRESS_BEFORE_SIMULATION == 1
+			//	newValue = min(newValue, compressionX);		// keep compression limitation, no matter what
+			//#endif
 			WorkingHeights[writeBufferIndex][1+x] = newValue;
 
 			GroupMemoryBarrierWithGroupSync();		// (sync each iteration, as we swap the buffers)
@@ -302,46 +302,84 @@ float CombineLocalAndGlobalWaves(float localWaves, float globalWaves)
 	}
 }
 
-float CalculateBoundingWaterHeight(int2 address, int2 direction)
+float CombineEdgeWaves(bool gotAdjSample, float adjSample, float2 worldCoords, float baseHeight)
 {
-		//	When calling this, address should be a coordinate on the very boundary of the tile,
-		//	and direction should shift us into the next tile
-		//		eg, address = int2(SHALLOW_WATER_TILE_DIMENSION-1, 5); direction = (1,0)
-
-	float2 worldCoords = (float2(SimulatingIndex.xy) + float2(address.xy + direction.xy) / float(SHALLOW_WATER_TILE_DIMENSION)) * ShallowGridPhysicalDimension;
 	float globalWaves = LookupGlobalWaves(worldCoords);
-
-	uint adjacentSimulatingGrid = CalculateShallowWaterArrayIndex(LookupTable, SimulatingIndex + direction);
-	if (adjacentSimulatingGrid < 128) {
-		int2 dims = int2(SHALLOW_WATER_TILE_DIMENSION, SHALLOW_WATER_TILE_DIMENSION);
-		uint3 coords = uint3((address.xy + direction.xy + dims) % dims, adjacentSimulatingGrid);
-		return CombineLocalAndGlobalWaves(WaterHeightsN1[coords], globalWaves);
+	if (gotAdjSample) {
+		return CombineLocalAndGlobalWaves(adjSample, globalWaves);
 	}
 
 	#if SHALLOW_WATER_BOUNDARY == SWB_SURFACE
-		return LoadSurfaceHeight(int3(address + direction, 0));
+		return LoadSurfaceHeight(address + direction);
 	#elif SHALLOW_WATER_BOUNDARY == SWB_GLOBALWAVES
 		return globalWaves;
 	#elif SHALLOW_WATER_BOUNDARY == SWB_BASEHEIGHT
-		return WaterBaseHeight;
+		return baseHeight; // WaterBaseHeight;
 	#endif
+}
+
+float GetLeftEdgeWaterHeight(uint y, float baseHeight)
+{
+	const uint tileDims = SHALLOW_WATER_TILE_DIMENSION;
+	float adjSample = 0.f;
+	bool gotAdjSample = LeftGrid >= 0;
+	if (gotAdjSample)
+		adjSample = WaterHeightsN1[uint3(tileDims-1, y, LeftGrid)];
+
+	float2 worldCoords = (float2(SimulatingIndex.xy) + float2(-1, y) / float(tileDims)) * ShallowGridPhysicalDimension;
+	return CombineEdgeWaves(gotAdjSample, adjSample, worldCoords, baseHeight);
+}
+
+float GetRightEdgeWaterHeight(uint y, float baseHeight)
+{
+	const uint tileDims = SHALLOW_WATER_TILE_DIMENSION;
+	float adjSample = 0.f;
+	bool gotAdjSample = RightGrid >= 0;
+	if (gotAdjSample)
+		adjSample = WaterHeightsN1[uint3(0, y, RightGrid)];
+
+	float2 worldCoords = (float2(SimulatingIndex.xy) + float2(tileDims, y) / float(tileDims)) * ShallowGridPhysicalDimension;
+	return CombineEdgeWaves(gotAdjSample, adjSample, worldCoords, baseHeight);
+}
+
+float GetTopEdgeWaterHeight(uint x, float baseHeight)
+{
+	const uint tileDims = SHALLOW_WATER_TILE_DIMENSION;
+	float adjSample = 0.f;
+	bool gotAdjSample = TopGrid >= 0;
+	if (gotAdjSample)
+		adjSample = WaterHeightsN1[uint3(x, tileDims-1, TopGrid)];
+
+	float2 worldCoords = (float2(SimulatingIndex.xy) + float2(x, -1) / float(tileDims)) * ShallowGridPhysicalDimension;
+	return CombineEdgeWaves(gotAdjSample, adjSample, worldCoords, baseHeight);
+}
+
+float GetBottomEdgeWaterHeight(uint x, float baseHeight)
+{
+	const uint tileDims = SHALLOW_WATER_TILE_DIMENSION;
+	float adjSample = 0.f;
+	bool gotAdjSample = BottomGrid >= 0;
+	if (gotAdjSample)
+		adjSample = WaterHeightsN1[uint3(x, 0, BottomGrid)];
+
+	float2 worldCoords = (float2(SimulatingIndex.xy) + float2(x, tileDims) / float(tileDims)) * ShallowGridPhysicalDimension;
+	return CombineEdgeWaves(gotAdjSample, adjSample, worldCoords, baseHeight);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 	//   e n t r y   p o i n t s   //
 ////////////////////////////////////////////////////////////////////////////////////////////////
+
 [numthreads(SHALLOW_WATER_TILE_DIMENSION, 1, 1)]
 	void		RunSimulationH(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
 	int3 baseCoord = int3(dispatchThreadId.x, dispatchThreadId.y, ArrayIndex);
 
 	if (dispatchThreadId.x==0) {
-		WorkingHeights[1][0] = WorkingHeights[0][0] = CalculateBoundingWaterHeight(baseCoord.xy, int2(-1, 0));
-	}
-
-	if (dispatchThreadId.x==SHALLOW_WATER_TILE_DIMENSION-1) {
+		WorkingHeights[1][0] = WorkingHeights[0][0] = GetLeftEdgeWaterHeight(baseCoord.y, WaterHeightsN1[baseCoord]);
+	} else if (dispatchThreadId.x == SHALLOW_WATER_TILE_DIMENSION-1) {
 		WorkingHeights[1][1+SHALLOW_WATER_TILE_DIMENSION] = WorkingHeights[0][1+SHALLOW_WATER_TILE_DIMENSION] =
-			CalculateBoundingWaterHeight(baseCoord.xy, int2(1,0));
+			GetRightEdgeWaterHeight(baseCoord.y, WaterHeightsN1[baseCoord]);
 	}
 
 	RunSimulation(dispatchThreadId.x, baseCoord + int3(-1,0,0), baseCoord, baseCoord + int3(1,0,0));
@@ -353,12 +391,10 @@ float CalculateBoundingWaterHeight(int2 address, int2 direction)
 	int3 baseCoord = int3(dispatchThreadId.y, dispatchThreadId.x, ArrayIndex);
 
 	if (dispatchThreadId.x==0) {
-		WorkingHeights[1][0] = WorkingHeights[0][0] = CalculateBoundingWaterHeight(baseCoord.xy, int2(0, -1));
-	}
-
-	if (dispatchThreadId.x==SHALLOW_WATER_TILE_DIMENSION-1) {
+		WorkingHeights[1][0] = WorkingHeights[0][0] = GetTopEdgeWaterHeight(baseCoord.x, WaterHeightsN1[baseCoord]);
+	} else if (dispatchThreadId.x == SHALLOW_WATER_TILE_DIMENSION-1) {
 		WorkingHeights[1][1+SHALLOW_WATER_TILE_DIMENSION] = WorkingHeights[0][1+SHALLOW_WATER_TILE_DIMENSION] =
-			CalculateBoundingWaterHeight(baseCoord.xy, int2(0, 1));
+			GetBottomEdgeWaterHeight(baseCoord.x, WaterHeightsN1[baseCoord]);
 	}
 
 	RunSimulation(dispatchThreadId.x, baseCoord + int3(0,-1,0), baseCoord, baseCoord + int3(0,1,0));
@@ -377,48 +413,30 @@ RWTexture2DArray<float>		Velocities3		: register(u4);
 RWTexture2DArray<float>		SobelSlopesX	: register(u5);
 RWTexture2DArray<float>		SobelSlopesY	: register(u6);
 
-int3 NormalizeGridCoord(int3 coord)
+float LoadHeightDifference(int2 coord)
 {
-	int3 dims;
-	WaterHeights.GetDimensions(dims.x, dims.y, dims.z);
-	if (	coord.x >= 0		&& coord.y >= 0
-		&&	coord.x < dims.x	&& coord.y < dims.y) {
-		return coord;
-	}
-
-	int2 tile = ((SimulatingIndex * SHALLOW_WATER_TILE_DIMENSION) + coord.xy) / SHALLOW_WATER_TILE_DIMENSION;
-	uint adjacentSimulatingGrid = CalculateShallowWaterArrayIndex(LookupTable, tile);
-	if (adjacentSimulatingGrid < 128) {
-		return int3(coord.xy - tile * SHALLOW_WATER_TILE_DIMENSION, adjacentSimulatingGrid);
-	}
-
-	return int3(0,0,-1);	// off the edge of the simulation area
-}
-
-float LoadHeightDifference(int3 coord)
-{
-	coord = NormalizeGridCoord(coord);
-	if (coord.z < 0) {
+	int3 finalCoord = NormalizeRelativeGridGood(coord);
+	if (finalCoord.z < 0) {
 		return 0.f;
 	}
 
-	return WaterHeights[coord] - WaterHeightsN1[coord];
+	return WaterHeights[finalCoord] - WaterHeightsN1[finalCoord];
 }
 
-float LoadHeight(int3 coord)
+float LoadHeight(int2 coord)
 {
-	coord = NormalizeGridCoord(coord);
-	if (coord.z < 0) {
+	int3 finalCoord = NormalizeRelativeGridGood(coord);
+	if (finalCoord.z < 0) {
 		return 0.f;
 	}
 
-	return WaterHeights[coord];
+	return WaterHeights[finalCoord];
 }
 
 [numthreads(SHALLOW_WATER_TILE_DIMENSION, 1, 1)]
 	void UpdateVelocities0(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
-	int3 baseCoord = int3(dispatchThreadId.x, dispatchThreadId.y, ArrayIndex);
+	int2 baseCoord = dispatchThreadId.xy;
 
 		//	Try to estimate the velocity by using a Sobel filter to find
 		//	the slopes of the change in height. This theory, this might
@@ -449,7 +467,7 @@ float LoadHeight(int3 coord)
 	for (int y=0; y<5; ++y) {
 		for (int x=0; x<5; ++x) {
 
-			float otherHeight = LoadHeightDifference(baseCoord + int3(x-2, y-2, 0));
+			float otherHeight = LoadHeightDifference(baseCoord + int2(x-2, y-2));
 			// if (otherHeight < centerHeight) otherHeight = .25f * (otherHeight - centerHeight);
 			// else							otherHeight = otherHeight - centerHeight;
 
@@ -466,7 +484,7 @@ float LoadHeight(int3 coord)
 	float weightScale = 0.f;
 
 	float filteredX = 0.f, filteredY = 0.f;
-	const uint filterSize = 11;
+	const int filterSize = 11;
 
 	if (LoadHeightDifference(baseCoord)<0) {
 
@@ -477,7 +495,7 @@ float LoadHeight(int3 coord)
 				float thisWeight = exp(-length(float2(offset)));
 				weightScale += thisWeight;
 
-				float otherHeight = max(0, LoadHeightDifference(baseCoord + int3(offset, 0)));
+				float otherHeight = max(0, LoadHeightDifference(baseCoord + offset));
 				filteredX += thisWeight * sign(float(offset.x)) * otherHeight;
 				filteredY += thisWeight * sign(float(offset.y)) * otherHeight;
 
@@ -493,7 +511,7 @@ float LoadHeight(int3 coord)
 				float thisWeight = exp(-length(float2(offset)));
 				weightScale += thisWeight;
 
-				float otherHeight = min(0, LoadHeightDifference(baseCoord + int3(offset, 0)));
+				float otherHeight = min(0, LoadHeightDifference(baseCoord + offset));
 				filteredX += thisWeight * sign(float(offset.x)) * otherHeight;
 				filteredY += thisWeight * sign(float(offset.y)) * otherHeight;
 
@@ -507,8 +525,8 @@ float LoadHeight(int3 coord)
 
 #endif
 
-	SobelSlopesX[baseCoord] = filteredX;
-	SobelSlopesY[baseCoord] = filteredY;
+	SobelSlopesX[int3(baseCoord,ArrayIndex)] = filteredX;
+	SobelSlopesY[int3(baseCoord,ArrayIndex)] = filteredY;
 }
 
 void StoreVelocities(uint3 coord, float vel[4])
@@ -522,7 +540,7 @@ void StoreVelocities(uint3 coord, float vel[4])
 [numthreads(SHALLOW_WATER_TILE_DIMENSION, 1, 1)]
 	void UpdateVelocities1(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
-	int3 baseCoord = int3(dispatchThreadId.x, dispatchThreadId.y, ArrayIndex);
+	int2 baseCoord = dispatchThreadId.xy;
 
 		//	We know the slopes of the changes in height. This tells us a little
 		//	about the direction water is flowing in. We can use this an as estimate
@@ -533,13 +551,13 @@ void StoreVelocities(uint3 coord, float vel[4])
 		//	with the velocity to get this. Perhaps we should use the velocities in both
 		//	grid elements to calculate this movement of water.
 
-	float2 baseVel = float2(SobelSlopesX[baseCoord], SobelSlopesY[baseCoord]);
+	float2 baseVel = float2(SobelSlopesX[int3(baseCoord,ArrayIndex)], SobelSlopesY[int3(baseCoord,ArrayIndex)]);
 
 	float result[4];
 	int2 offsets[4] = { int2(-1, -1), int2(0, -1), int2(1, -1), int2(-1, 0) };
 
 	[unroll] for (uint c=0; c<4; ++c) {
-		int3 otherCoord = NormalizeGridCoord(baseCoord + int3(offsets[c], 0));
+		int3 otherCoord = NormalizeRelativeGridGood(baseCoord + offsets[c]);
 		float2 otherVel = float2(SobelSlopesX[otherCoord], SobelSlopesY[otherCoord]);
 
 		float2 dir = normalize(float2(offsets[c]));	// out of the grid
@@ -549,5 +567,5 @@ void StoreVelocities(uint3 coord, float vel[4])
 		result[c] = (flow0 + flow1) * 0.5f;
 	}
 
-	StoreVelocities(baseCoord, result);
+	StoreVelocities(int3(baseCoord,ArrayIndex), result);
 }

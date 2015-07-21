@@ -137,6 +137,7 @@ float CalcShallowWaterHeight(float2 worldCoords, out float3 shallowWaterTexCoord
 	shallowWaterWeight = 0.f;
 	float result = WaterBaseHeight;
 
+#if (USE_LOOKUP_TABLE==1)
 	int2 tileCoord = int2(floor(worldCoords / ShallowGridPhysicalDimension));
 	uint arrayIndex = CalculateShallowWaterArrayIndex(ShallowGridsLookupTable, tileCoord);
 	[branch] if (arrayIndex < 128) {
@@ -152,6 +153,7 @@ float CalcShallowWaterHeight(float2 worldCoords, out float3 shallowWaterTexCoord
 		shallowWaterWeight = 1.f;		// weight could fade off towards the edges (particularly since we've already calculated the neighbouring tiles)
 
 	}
+#endif
 
 	return result;
 }
