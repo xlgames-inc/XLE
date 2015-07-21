@@ -6,12 +6,12 @@
 
 #pragma once
 
-#include "..\RenderCore\Metal\Forward.h"
-#include "..\RenderCore\Metal\ShaderResource.h"
-#include "..\RenderCore\Metal\RenderTargetView.h"
-#include "..\RenderCore\DX11\Metal\DX11.h"
-#include "..\Utility\IntrusivePtr.h"
-#include "..\Math\Vector.h"
+#include "../RenderCore/Metal/Forward.h"
+#include "../RenderCore/Metal/ShaderResource.h"
+#include "../RenderCore/Metal/RenderTargetView.h"
+#include "../BufferUploads/ResourceLocator.h"
+#include "../Utility/IntrusivePtr.h"
+#include "../Math/Vector.h"
 #include <vector>
 
 namespace SceneEngine
@@ -35,9 +35,11 @@ namespace SceneEngine
             unsigned _maxSimulationGrid;
             bool _usePipeModel;
             bool _buildVelocities;
+            bool _useLookupTable;
 
-            Desc(unsigned gridDimension, unsigned maxSimulationGrid, bool usePipeModel, bool buildVelocities) 
-                : _gridDimension(gridDimension), _maxSimulationGrid(maxSimulationGrid), _usePipeModel(usePipeModel), _buildVelocities(buildVelocities) {}
+            Desc(unsigned gridDimension, unsigned maxSimulationGrid, bool usePipeModel, bool buildVelocities, bool useLookupTable) 
+                : _gridDimension(gridDimension), _maxSimulationGrid(maxSimulationGrid), _usePipeModel(usePipeModel), _buildVelocities(buildVelocities) 
+                , _useLookupTable(useLookupTable) {}
         };
 
         struct BorderMode
@@ -110,9 +112,10 @@ namespace SceneEngine
             unsigned bufferCounter, BorderMode::Enum borderMode,
             bool showErosion);
 
-        unsigned GetGridDimension() const { return _gridDimension; }
-        bool IsActive() const { return _simulatingGridsCount != 0; }
-        unsigned FindActiveGrid(Int2 gridCoords);
+        unsigned    GetGridDimension() const    { return _gridDimension; }
+        bool        IsActive() const            { return _simulatingGridsCount != 0; }
+        unsigned    FindActiveGrid(Int2 gridCoords);
+        RenderCore::SharedPkt BuildCellConstants(Int2 gridCoords);
 
         ShallowWaterSim(const Desc& desc);
         ~ShallowWaterSim();
@@ -122,9 +125,10 @@ namespace SceneEngine
     protected:
         std::unique_ptr<ShallowWaterGrid>   _simulationGrid;
 
-        intrusive_ptr<ID3D::Resource>   _lookupTable;
-        SRV                             _lookupTableSRV;
-        UAV                             _lookupTableUAV;
+        using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
+        ResLocator  _lookupTable;
+        SRV         _lookupTableSRV;
+        UAV         _lookupTableUAV;
         
         std::vector<ActiveElement>  _activeSimulationElements;
         std::vector<unsigned>       _poolOfUnallocatedArrayIndices;

@@ -94,6 +94,8 @@ namespace SceneEngine
         Float2 cellCoordMin = Truncate(TransformPoint(worldToCellBased, Expand(minCoord, 0.f)));
         Float2 cellCoordMax = Truncate(TransformPoint(worldToCellBased, Expand(maxCoord, 0.f)));
 
+        if (cellCoordMin[0] < 0.f || cellCoordMin[1] < 0.f) return result;  // can't deal with negative coords currently
+
         UInt2 cellIndex = UInt2(unsigned(XlFloor(cellCoordMin[0])), unsigned(XlFloor(cellCoordMin[1])));
         assert(unsigned(XlFloor(cellCoordMax[0])) == cellIndex[0]);
         assert(unsigned(XlFloor(cellCoordMax[1])) == cellIndex[1]);

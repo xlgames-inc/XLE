@@ -37,6 +37,7 @@ namespace RenderCore { namespace Metal_DX11
         
         typedef ID3D::RenderTargetView*         UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
+        bool                                    IsGood() const { return _underlying.get() != nullptr; }
     private:
         intrusive_ptr<ID3D::RenderTargetView>      _underlying;
     };
@@ -58,6 +59,7 @@ namespace RenderCore { namespace Metal_DX11
         
         typedef ID3D::DepthStencilView*         UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
+        bool                                    IsGood() const { return _underlying.get() != nullptr; }
     private:
         intrusive_ptr<ID3D::DepthStencilView>      _underlying;
     };
@@ -86,6 +88,7 @@ namespace RenderCore { namespace Metal_DX11
         
         typedef ID3D::UnorderedAccessView*      UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
+        bool                                    IsGood() const { return _underlying.get() != nullptr; }
     private:
         intrusive_ptr<ID3D::UnorderedAccessView>   _underlying;
     };

@@ -243,32 +243,29 @@ namespace SceneEngine
             //      could use a sparse tree for this -- so that an infinitely
             //      large world could be supported.
             //
-        const unsigned lookupTableDimensions = 512;
-        BufferDesc targetDesc;
-        targetDesc._type = BufferDesc::Type::Texture;
-        targetDesc._bindFlags = BindFlag::ShaderResource|BindFlag::UnorderedAccess;
-        targetDesc._cpuAccess = 0;
-        targetDesc._gpuAccess = GPUAccess::Read|GPUAccess::Write;
-        targetDesc._allocationRules = 0;
-        targetDesc._name[0] = '\0';
-        targetDesc._textureDesc = 
-            TextureDesc::Plain2D(
-                lookupTableDimensions, lookupTableDimensions, Metal::NativeFormat::R8_TYPELESS);
+        if (desc._useLookupTable) {
+            const unsigned lookupTableDimensions = 512;
+            BufferDesc targetDesc;
+            targetDesc._type = BufferDesc::Type::Texture;
+            targetDesc._bindFlags = BindFlag::ShaderResource|BindFlag::UnorderedAccess;
+            targetDesc._cpuAccess = 0;
+            targetDesc._gpuAccess = GPUAccess::Read|GPUAccess::Write;
+            targetDesc._allocationRules = 0;
+            targetDesc._name[0] = '\0';
+            targetDesc._textureDesc = 
+                TextureDesc::Plain2D(
+                    lookupTableDimensions, lookupTableDimensions, Metal::NativeFormat::R8_TYPELESS);
 
-        auto initData = BufferUploads::CreateEmptyPacket(targetDesc);
-        XlSetMemory(initData->GetData(), 0xff, initData->GetDataSize());
-        auto lookupTable = uploads.Transaction_Immediate(targetDesc, initData.get())->AdoptUnderlying();
-        UAV lookupTableUAV(lookupTable.get(), Metal::NativeFormat::R8_UINT);
-        SRV lookupTableSRV(lookupTable.get(), Metal::NativeFormat::R8_UINT);
+            auto initData = BufferUploads::CreateEmptyPacket(targetDesc);
+            XlSetMemory(initData->GetData(), 0xff, initData->GetDataSize());
+            _lookupTable = uploads.Transaction_Immediate(targetDesc, initData.get());
+            _lookupTableUAV = UAV(_lookupTable->GetUnderlying(), Metal::NativeFormat::R8_UINT);
+            _lookupTableSRV = SRV(_lookupTable->GetUnderlying(), Metal::NativeFormat::R8_UINT);
+        }
 
         _poolOfUnallocatedArrayIndices.reserve(desc._maxSimulationGrid);
-        for (unsigned c=0; c<desc._maxSimulationGrid; ++c) {
+        for (unsigned c=0; c<desc._maxSimulationGrid; ++c)
             _poolOfUnallocatedArrayIndices.push_back(c);
-        }
-    
-        _lookupTable = std::move(lookupTable);
-        _lookupTableSRV = std::move(lookupTableSRV);
-        _lookupTableUAV = std::move(lookupTableUAV);
         _simulationGrid = std::move(simulationGrid);
         _simulatingGridsCount = desc._maxSimulationGrid;
         _gridDimension = desc._gridDimension;
@@ -415,40 +412,72 @@ namespace SceneEngine
 
     ShallowWaterSim::SimSettings::SimSettings()
     {
-        _rainQuantityPerFrame = 0.f;
-        _evaporationConstant = 0.f; // 0.985f;
-        _pressureConstant = 150.f;
+        _rainQuantityPerFrame = Tweakable("OceanRainQuantity", 0.f);
+        _evaporationConstant = Tweakable("OceanEvaporation", 0.985f);
+        _pressureConstant = Tweakable("OceanPressureConstant", 150.f);
         _compressionConstants = Float4(0.f, 0.f, 1000.f, 1.f);
     }
 
-    struct SimulatingConstants
+    struct CellConstants
     {
         Int2	    _simulatingIndex; 
 	    unsigned    _arrayIndex;
         unsigned    _dummy0;
         Float2      _worldSpaceOffset;
+        int         _adjacentGrids[8];
+        unsigned    _dummy1[2];
+    };
+
+    struct SimulatingConstants
+    {
         float       _rainQuantityPerFrame;
         float       _evaporationConstant;
         float       _pressureConstant;
-        unsigned    _dummy1[3];
+        unsigned    _dummy;
+        Float4      _compressionConstants;
     };
 
-    static void SetSimulatingConstants(
-        RenderCore::Metal::DeviceContext& context, 
-        Metal::ConstantBuffer& cb, 
-        const ShallowWaterSim::ActiveElement& ele, const ShallowWaterSim::SimSettings& settings, 
+    static const Int2 AdjOffset[8] = 
+    {
+        Int2(-1, -1), Int2(0, -1), Int2(1, -1),
+        Int2(-1,  0),              Int2(1,  0),
+        Int2(-1,  1), Int2(0,  1), Int2(1,  1)
+    };
+
+    static CellConstants MakeCellConstants(
+        const ShallowWaterSim::ActiveElement& ele,
+        const std::vector<ShallowWaterSim::ActiveElement>& elements,
         Float2 offset = Float2(0,0))
     {
-        SimulatingConstants constants = { 
+        CellConstants constants = { 
             Int2(ele._gridCoords[0], ele._gridCoords[1]), ele._arrayIndex, 0,
             offset, 
-            settings._rainQuantityPerFrame, 
-            settings._evaporationConstant,
-            settings._pressureConstant,
-            {0,0,0}
+            {-1, -1, -1, -1, -1, -1, -1, -1},
+            {0,0}
         };
 
-        cb.Update(context, &constants, sizeof(SimulatingConstants));
+            //  Find the adjacent grids and set the grid indices 
+            //  as appropriate. Just doing a brute-force search!
+        for (unsigned c=0; c<dimof(AdjOffset); ++c) {
+            for (auto i=elements.cbegin(); i!=elements.cend(); ++i) {
+                if (i->_gridCoords == (ele._gridCoords + AdjOffset[c])) {
+                    constants._adjacentGrids[c] = i->_arrayIndex;
+                    break;
+                }
+            }
+        }
+        return constants;
+    }
+
+    static void SetCellConstants(
+        RenderCore::Metal::DeviceContext& context, 
+        Metal::ConstantBuffer& cb, 
+        const ShallowWaterSim::ActiveElement& ele,
+        const std::vector<ShallowWaterSim::ActiveElement>& elements,
+        Float2 offset = Float2(0,0))
+    {
+        auto constants = MakeCellConstants(ele, elements, offset);
+        cb.Update(context, &constants, sizeof(CellConstants));
     }
 
     static void DispatchEachElement(
@@ -462,7 +491,7 @@ namespace SceneEngine
             if (i->_arrayIndex < 128) {
                 if (!SetAddressingConstants(context, surfaceHeightsConstantsBuffer, i->_gridCoords))
                     continue;
-                SetSimulatingConstants(*context._metalContext, basicConstantsBuffer, *i, settings);
+                SetCellConstants(*context._metalContext, basicConstantsBuffer, *i, elements);
                 context._metalContext->Dispatch(1, elementDimension, 1);
             }
         }
@@ -472,11 +501,14 @@ namespace SceneEngine
         static void BuildShaderDefines(
             char (&result)[Count], unsigned gridDimension, 
             ISurfaceHeightsProvider* surfaceHeightsProvider = nullptr, 
-            ShallowWaterSim::BorderMode::Enum borderMode = ShallowWaterSim::BorderMode::BaseHeight)
+            ShallowWaterSim::BorderMode::Enum borderMode = ShallowWaterSim::BorderMode::BaseHeight,
+            bool useLookupTable = false)
     {
         _snprintf_s(result, Count, 
-            "SHALLOW_WATER_TILE_DIMENSION=%i;SHALLOW_WATER_BOUNDARY=%i;SURFACE_HEIGHTS_FLOAT=%i", 
-            gridDimension, unsigned(borderMode), surfaceHeightsProvider ? int(surfaceHeightsProvider->IsFloatFormat()) : 0);
+            "SHALLOW_WATER_TILE_DIMENSION=%i;SHALLOW_WATER_BOUNDARY=%i;SURFACE_HEIGHTS_FLOAT=%i;USE_LOOKUP_TABLE=%i", 
+            gridDimension, unsigned(borderMode), 
+            surfaceHeightsProvider ? int(surfaceHeightsProvider->IsFloatFormat()) : 0,
+            int(useLookupTable));
     }
 
     void ShallowWaterSim::ExecuteInternalSimulation(
@@ -496,7 +528,7 @@ namespace SceneEngine
         Metal::ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
 
         char shaderDefines[256]; 
-        BuildShaderDefines(shaderDefines, _gridDimension, context._surfaceHeightsProvider, context._borderMode);
+        BuildShaderDefines(shaderDefines, _gridDimension, context._surfaceHeightsProvider, context._borderMode, _lookupTableSRV.IsGood());
 
         if (prevFrameBuffer!=thisFrameBuffer) {
             metalContext.BindCS(MakeResourceList(
@@ -506,9 +538,7 @@ namespace SceneEngine
                 _lookupTableSRV));
         } else {
             metalContext.BindCS(MakeResourceList(
-                context._surfaceHeightsProvider->GetSRV(),
-                SRV(), SRV(),
-                _lookupTableSRV));
+                context._surfaceHeightsProvider->GetSRV(), SRV(), SRV(), _lookupTableSRV));
         }
 
         if (context._globalOceanWorkingHeights) {
@@ -517,12 +547,20 @@ namespace SceneEngine
 
         metalContext.BindCS(MakeResourceList(0, globalOceanMaterialConstantBuffer));
 
-        Metal::ConstantBuffer surfaceHeightsConstantsBuffer(
-            nullptr, sizeof(SurfaceHeightsAddressingConstants));
-        Metal::ConstantBuffer basicConstantsBuffer(nullptr, sizeof(SimulatingConstants));
-        metalContext.BindCS(MakeResourceList(
-            1, surfaceHeightsConstantsBuffer, basicConstantsBuffer, 
-            Metal::ConstantBuffer(&settings._compressionConstants, 4*sizeof(float))));
+        SimulatingConstants simConstants = {
+            settings._rainQuantityPerFrame, 
+            settings._evaporationConstant,
+            settings._pressureConstant,
+            0,
+            settings._compressionConstants
+        };
+
+        Metal::ConstantBuffer surfaceHeightsConstantsBuffer(nullptr, sizeof(SurfaceHeightsAddressingConstants));
+        Metal::ConstantBuffer basicConstantsBuffer(nullptr, sizeof(CellConstants));
+        metalContext.BindCS(
+            MakeResourceList(
+                1, surfaceHeightsConstantsBuffer, basicConstantsBuffer, 
+                Metal::ConstantBuffer(&simConstants, sizeof(simConstants))));
 
         if (!_usePipeModel) {
 
@@ -541,7 +579,7 @@ namespace SceneEngine
                     //  (and every pass)
                 for (auto i = _activeSimulationElements.cbegin(); i!=_activeSimulationElements.cend(); ++i) {
                     if (i->_arrayIndex < 128) {
-                        SetSimulatingConstants(metalContext, basicConstantsBuffer, *i, settings);
+                        SetCellConstants(metalContext, basicConstantsBuffer, *i, _activeSimulationElements);
                         if (!SetAddressingConstants(context, surfaceHeightsConstantsBuffer, i->_gridCoords))
                             continue;
 
@@ -652,7 +690,6 @@ namespace SceneEngine
         const Int2* newElementsBegin, const Int2* newElementsEnd)
     {
         const bool usePipeModel = _usePipeModel;
-        std::vector<ShallowWaterSim::ActiveElement> newElements;
 
         auto& metalContext = *context._metalContext;
         CheckInitialClear(metalContext, *_simulationGrid);
@@ -677,11 +714,12 @@ namespace SceneEngine
 
         if (context._globalOceanWorkingHeights)
             metalContext.BindCS(MakeResourceList(4, *context._globalOceanWorkingHeights));
+        metalContext.BindCS(MakeResourceList(1, Techniques::CommonResources()._linearClampSampler));
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
         char shaderDefines[256]; 
-        BuildShaderDefines(shaderDefines, _gridDimension, context._surfaceHeightsProvider, context._borderMode);
+        BuildShaderDefines(shaderDefines, _gridDimension, context._surfaceHeightsProvider, context._borderMode, _lookupTableSRV.IsGood());
 
         auto& cshader = Assets::GetAssetDep<Metal::ComputeShader>(
             usePipeModel?"game/xleres/Ocean/InitSimGrid.csh:InitPipeModel:cs_*":"game/xleres/Ocean/InitSimGrid.csh:main:cs_*", shaderDefines);
@@ -695,15 +733,17 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-        Metal::ConstantBuffer initCellConstantsBuffer(nullptr, sizeof(SimulatingConstants));
+        Metal::ConstantBuffer initCellConstantsBuffer(nullptr, sizeof(CellConstants));
         Metal::ConstantBuffer surfaceHeightsAddressingBuffer(nullptr, sizeof(SurfaceHeightsAddressingConstants));
         metalContext.BindCS(MakeResourceList(1, surfaceHeightsAddressingBuffer, initCellConstantsBuffer));
 
         std::vector<ShallowWaterSim::ActiveElement> gridsForSecondInitPhase;
         gridsForSecondInitPhase.reserve(newElementsEnd - newElementsBegin);
+        auto poolOfUnallocatedArrayIndices = _poolOfUnallocatedArrayIndices;
+        auto newElements = _activeSimulationElements;
             
         for (auto i=newElementsBegin; i!=newElementsEnd; ++i) {
-            assert(!_poolOfUnallocatedArrayIndices.empty());        // there should always been at least one unallocated array index
+            assert(!poolOfUnallocatedArrayIndices.empty());        // there should always been at least one unallocated array index
 
                 //  Check the surface heights provider, to get the surface heights
                 //  if this fails, we can't render this grid element
@@ -714,9 +754,8 @@ namespace SceneEngine
                 //  Assign one of the free grids (or destroy the least recently used one)
                 //  call a compute shader to fill out the simulation grids with the new values
                 //  (this will also set the simulation grid value into the lookup table)
-            unsigned assignmentIndex = *(_poolOfUnallocatedArrayIndices.cend()-1);
-            _poolOfUnallocatedArrayIndices.erase(
-                _poolOfUnallocatedArrayIndices.cend()-1);
+            unsigned assignmentIndex = *(poolOfUnallocatedArrayIndices.cend()-1);
+            poolOfUnallocatedArrayIndices.erase(poolOfUnallocatedArrayIndices.cend()-1);
 
             ShallowWaterSim::ActiveElement newElement(*i, assignmentIndex);
             auto insertPoint = std::lower_bound(newElements.begin(), newElements.end(), newElement, SortOceanGridElement);
@@ -724,7 +763,7 @@ namespace SceneEngine
 
             gridsForSecondInitPhase.push_back(newElement);
 
-            SetSimulatingConstants(metalContext, initCellConstantsBuffer, newElement, ShallowWaterSim::SimSettings());
+            SetCellConstants(metalContext, initCellConstantsBuffer, newElement, std::vector<ActiveElement>());
             metalContext.Dispatch(1, _gridDimension, 1);
         }
 
@@ -734,12 +773,13 @@ namespace SceneEngine
             metalContext.Bind(cshader);
             for (auto i = gridsForSecondInitPhase.cbegin(); i!=gridsForSecondInitPhase.cend(); ++i) {
                 if (i->_arrayIndex == ~unsigned(0x0)) {
-                    SetSimulatingConstants(*context._metalContext, initCellConstantsBuffer, *i, ShallowWaterSim::SimSettings());
+                    SetCellConstants(*context._metalContext, initCellConstantsBuffer, *i, std::vector<ActiveElement>());
                     metalContext.Dispatch(1, _gridDimension, 1);
                 }
             }
         }
 
+        _poolOfUnallocatedArrayIndices = std::move(poolOfUnallocatedArrayIndices);
         _activeSimulationElements = std::move(newElements);
     }
 
@@ -765,6 +805,21 @@ namespace SceneEngine
         metalContext.UnbindPS<SRV>( 5, 1);
         metalContext.UnbindPS<SRV>(11, 1);
         metalContext.UnbindPS<SRV>(15, 1);
+        metalContext.BindCS(MakeResourceList(1, Techniques::CommonResources()._linearClampSampler));
+
+        if (oceanReset) {
+            _activeSimulationElements.clear();
+            _poolOfUnallocatedArrayIndices.clear();
+            _poolOfUnallocatedArrayIndices.reserve(_simulatingGridsCount);
+            for (unsigned c=0; c<_simulatingGridsCount; ++c) {
+                _poolOfUnallocatedArrayIndices.push_back(c);
+            }
+
+            if (_lookupTableUAV.IsGood()) {
+                unsigned clearInts[] = { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff };
+                metalContext.Clear(_lookupTableUAV, clearInts);
+            }
+        }
 
         unsigned thisFrameBuffer = (bufferCounter+0)%_simulationGrid->_rotatingBufferCount;
 
@@ -852,7 +907,7 @@ namespace SceneEngine
         }
 
         std::vector<Int4> gridsDestroyedThisFrame;
-        bool hasNewGrids = false;
+        bool activeGridsChanged = false;
         std::sort(gridsToPrioritise.begin(), gridsToPrioritise.end(), SortByPriority);
         if (gridsToPrioritise.size() > _simulatingGridsCount) {
                 // cancel some grids, and return their ids to the pool
@@ -860,19 +915,19 @@ namespace SceneEngine
                 if (i->_e._arrayIndex!=~unsigned(0x0)) {
                     _poolOfUnallocatedArrayIndices.push_back(i->_e._arrayIndex);
                     gridsDestroyedThisFrame.push_back(Int4(i->_e._gridCoords[0], i->_e._gridCoords[1], 0, 0));
-                    hasNewGrids = true;
+                    activeGridsChanged = true;
                 }
             }
             gridsToPrioritise.erase(gridsToPrioritise.begin() + _simulatingGridsCount, gridsToPrioritise.end());
         }
-        hasNewGrids |= gridsToPrioritise.size() > _activeSimulationElements.size();
+        activeGridsChanged |= gridsToPrioritise.size() > _activeSimulationElements.size();
 
             // Setup any new grids that have been priortised into the list...
 
             // todo --  should we have a tree of these simulation grids... Some distance grids could be
             //          at lower resolution. Only closer grids would be at maximum resolution...?
 
-        if (hasNewGrids) {
+        if (activeGridsChanged) {
             _activeSimulationElements.clear();
             std::vector<Int2> gridsToBegin;
             for (const auto& i : gridsToPrioritise) {
@@ -923,7 +978,6 @@ namespace SceneEngine
             Metal::ViewportDesc vpd(metalContext);
 
             SimSettings settings;
-            settings._rainQuantityPerFrame = Tweakable("OceanRainQuantity", 0.f);
 
             static unsigned framesMouseDown = 0;
             if (GetKeyState(VK_MBUTTON)<0) {
@@ -950,7 +1004,7 @@ namespace SceneEngine
         }
 
         char shaderDefines[256];
-        BuildShaderDefines(shaderDefines, _gridDimension);
+        BuildShaderDefines(shaderDefines, _gridDimension, nullptr, ShallowWaterSim::BorderMode::BaseHeight, _lookupTableSRV.IsGood());
 
                 //  Generate normals using the displacement textures
                 //  Note, this will generate the normals for every array slice, even
@@ -1017,18 +1071,6 @@ namespace SceneEngine
                 *context._oceanSettings, 
                 context._gridPhysicalDimension, Float2(0.f, 0.f), bufferCounter, shallowWaterBorderMode);
         }
-
-        if (oceanReset) {
-            _activeSimulationElements.clear();
-            _poolOfUnallocatedArrayIndices.clear();
-            _poolOfUnallocatedArrayIndices.reserve(_simulatingGridsCount);
-            for (unsigned c=0; c<_simulatingGridsCount; ++c) {
-                _poolOfUnallocatedArrayIndices.push_back(c);
-            }
-
-            unsigned clearInts[] = { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff };
-            metalContext.Clear(_lookupTableUAV, clearInts);
-        }
     }
 
     void ShallowWaterSim::RenderWireframe(
@@ -1040,7 +1082,7 @@ namespace SceneEngine
         Metal::ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
 
         char shaderDefines[256]; 
-        BuildShaderDefines(shaderDefines, _gridDimension, nullptr, borderMode);
+        BuildShaderDefines(shaderDefines, _gridDimension, nullptr, borderMode, _lookupTableSRV.IsGood());
 
         unsigned thisFrameBuffer = (bufferCounter+0) % _simulationGrid->_rotatingBufferCount;
         auto& patchRender = Assets::GetAssetDep<Metal::ShaderProgram>(
@@ -1050,8 +1092,7 @@ namespace SceneEngine
             shaderDefines);
         Metal::BoundUniforms boundUniforms(patchRender);
         Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
-        boundUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 0, 1);
-        boundUniforms.BindConstantBuffer(Hash64("ShallowWaterUpdateConstants"), 1, 1);
+        boundUniforms.BindConstantBuffers(1, {"OceanMaterialSettings", "ShallowWaterCellConstants"});
 
         metalContext.Bind(patchRender);
 
@@ -1063,7 +1104,7 @@ namespace SceneEngine
         auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(_gridDimension, _gridDimension, true));
         metalContext.Bind(simplePatchBox._simplePatchIndexBuffer, Metal::NativeFormat::R32_UINT);
 
-        Metal::ConstantBuffer simulatingCB(nullptr, sizeof(SimulatingConstants));
+        Metal::ConstantBuffer simulatingCB(nullptr, sizeof(CellConstants));
 
         const Metal::ConstantBuffer* prebuiltBuffers[] = { &globalOceanMaterialConstantBuffer, &simulatingCB };
         boundUniforms.Apply(
@@ -1073,7 +1114,7 @@ namespace SceneEngine
 
         for (auto i=_activeSimulationElements.cbegin(); i!=_activeSimulationElements.cend(); ++i) {
             if (i->_arrayIndex < 128) {
-                SetSimulatingConstants(metalContext, simulatingCB, *i, SimSettings(), offset);
+                SetCellConstants(metalContext, simulatingCB, *i, _activeSimulationElements, offset);
                 metalContext.DrawIndexed(simplePatchBox._simplePatchIndexCount);
             }
         }
@@ -1091,7 +1132,7 @@ namespace SceneEngine
         Metal::ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
 
         char shaderDefines[256]; 
-        BuildShaderDefines(shaderDefines, _gridDimension, nullptr, borderMode);
+        BuildShaderDefines(shaderDefines, _gridDimension, nullptr, borderMode, _lookupTableSRV.IsGood());
         if (showErosion)
             XlCatString(shaderDefines, dimof(shaderDefines), ";SHOW_EROSION=1");
 
@@ -1103,8 +1144,7 @@ namespace SceneEngine
 
         Metal::BoundUniforms boundUniforms(patchRender);
         Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
-        boundUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 0, 1);
-        boundUniforms.BindConstantBuffer(Hash64("ShallowWaterUpdateConstants"), 1, 1);
+        boundUniforms.BindConstantBuffers(1, { "OceanMaterialSettings", "ShallowWaterCellConstants" });
 
         metalContext.Bind(patchRender);
 
@@ -1129,7 +1169,7 @@ namespace SceneEngine
             SimplePatchBox::Desc(_gridDimension, _gridDimension, true));
         metalContext.Bind(simplePatchBox._simplePatchIndexBuffer, Metal::NativeFormat::R32_UINT);
 
-        Metal::ConstantBuffer simulatingCB(nullptr, sizeof(SimulatingConstants));
+        Metal::ConstantBuffer simulatingCB(nullptr, sizeof(CellConstants));
         const Metal::ConstantBuffer* prebuiltBuffers[] = { &globalOceanMaterialConstantBuffer, &simulatingCB };
         boundUniforms.Apply(
             metalContext, 
@@ -1138,7 +1178,7 @@ namespace SceneEngine
 
         for (auto i=_activeSimulationElements.cbegin(); i!=_activeSimulationElements.cend(); ++i) {
             if (i->_arrayIndex < 128) {
-                SetSimulatingConstants(metalContext, simulatingCB, *i, SimSettings(), offset);
+                SetCellConstants(metalContext, simulatingCB, *i, _activeSimulationElements, offset);
                 metalContext.DrawIndexed(simplePatchBox._simplePatchIndexCount);
             }
         }
@@ -1170,6 +1210,16 @@ namespace SceneEngine
             if (i._gridCoords == gridCoords)
                 return i._arrayIndex;
         return ~unsigned(0x0);
+    }
+
+    RenderCore::SharedPkt ShallowWaterSim::BuildCellConstants(Int2 gridCoords)
+    {
+        for (const auto& i : _activeSimulationElements)
+            if (i._gridCoords == gridCoords) {
+                auto constants = MakeCellConstants(i, _activeSimulationElements);
+                return RenderCore::MakeSharedPkt(constants);
+            }
+        return RenderCore::SharedPkt();
     }
 }
 

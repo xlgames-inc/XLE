@@ -10,7 +10,10 @@
 RWTexture2DArray<float>		WaterHeights : register(u0);
 RWTexture2DArray<float>		WaterHeightsN1 : register(u1);
 RWTexture2DArray<float>		WaterHeightsN2 : register(u2);
-RWTexture2D<uint>			LookupTable : register(u3);
+
+#if (USE_LOOKUP_TABLE==1)
+	RWTexture2D<uint>			LookupTable : register(u3);
+#endif
 
 Texture2D<float>			GlobalWavesHeightsTexture : register(t4);
 
@@ -46,9 +49,11 @@ cbuffer Consts : register(b2)
 	WaterHeightsN1	[uint3(dispatchThreadId.xy, SimulatingGridIndex)] = max(initHeight, surfaceHeight);
 	WaterHeightsN2	[uint3(dispatchThreadId.xy, SimulatingGridIndex)] = max(initHeight, surfaceHeight);
 
-	if (dispatchThreadId.x == 0 && dispatchThreadId.y == 0) {
-		LookupTable[int2(256,256)+LookupTableCoords] = SimulatingGridIndex;
-	}
+	#if (USE_LOOKUP_TABLE==1)
+		if (dispatchThreadId.x == 0 && dispatchThreadId.y == 0) {
+			LookupTable[int2(256,256)+LookupTableCoords] = SimulatingGridIndex;
+		}
+	#endif
 }
 
 [numthreads(SHALLOW_WATER_TILE_DIMENSION, 1, 1)]
@@ -74,9 +79,11 @@ cbuffer Consts : register(b2)
 
 	WaterHeights		[uint3(dispatchThreadId.xy, SimulatingGridIndex)] = max(initHeight, surfaceHeight);
 
-	if (dispatchThreadId.x == 0 && dispatchThreadId.y == 0) {
-		LookupTable[int2(256,256)+LookupTableCoords] = SimulatingGridIndex;
-	}
+	#if (USE_LOOKUP_TABLE==1)
+		if (dispatchThreadId.x == 0 && dispatchThreadId.y == 0) {
+			LookupTable[int2(256,256)+LookupTableCoords] = SimulatingGridIndex;
+		}
+	#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,9 +98,10 @@ cbuffer ClearGridsConstants
 [numthreads(1, 1, 1)]
 	void		ClearGrids(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
-	uint index = dispatchThreadId.x;
-	if (index < ClearGridsCount) {
-		LookupTable[int2(256,256)+ClearGridsAddress[index]] = 0xff;		// (8 bits per element)
-	}
-
+	#if (USE_LOOKUP_TABLE==1)
+		uint index = dispatchThreadId.x;
+		if (index < ClearGridsCount) {
+			LookupTable[int2(256,256)+ClearGridsAddress[index]] = 0xff;		// (8 bits per element)
+		}
+	#endif
 }

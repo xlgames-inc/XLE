@@ -44,7 +44,6 @@ float AccelerationFromPressure(float h0, float h1, float waterDepth, float ep0, 
 
 		// we can factor out "WaterDensity" if there is no external pressure
 	return max(0, ((g * PressureConstant * (h0 - h1)) / waterDepth + (externalPressure1 - externalPressure0) / (WaterDensity * waterDepth)));
-	// return max(0, h0 - h1);
 }
 
 #if defined(DUPLEX_VEL)
@@ -86,7 +85,7 @@ void CalculateAcceleration(
 		//		processing point of view.
 		//
 
-	float centerCellHeight  = CachedHeights[1][1 + cellIndex];
+	float centerCellHeight = CachedHeights[1][1 + cellIndex];
 
 	float cellHeight[AdjCellCount];
 	cellHeight[0] = CachedHeights[0][cellIndex];		// cell (-1, -1)
@@ -142,10 +141,10 @@ void StoreVelocities(float velocities[AdjCellCount], uint3 coord)
 
 void LoadVelocities_BoundaryCheck(out float velocities[AdjCellCount], int3 coord)
 {
-	if (coord.x >= 0 && coord.y >= 0 && coord.x < SHALLOW_WATER_TILE_DIMENSION && coord.y < SHALLOW_WATER_TILE_DIMENSION) {
+	[branch] if (coord.x >= 0 && coord.y >= 0 && coord.x < SHALLOW_WATER_TILE_DIMENSION && coord.y < SHALLOW_WATER_TILE_DIMENSION) {
 		LoadVelocities(velocities, coord);
 	} else {
-		int3 normalized = NormalizeGridCoord(SimulatingIndex * SHALLOW_WATER_TILE_DIMENSION + coord.xy);
+		int3 normalized = NormalizeRelativeGridGood(coord.xy);
 		if (normalized.z >= 0) {
 			LoadVelocities(velocities, normalized);
 		} else {
@@ -160,9 +159,9 @@ float LoadWaterHeight(int3 pos)
 	return WaterHeights[pos] + RainQuantityPerFrame;
 }
 
-float LoadWaterHeight_BoundaryCheck(int2 absPosition)
+float LoadWaterHeight_BoundaryCheck(int2 relCoord)
 {
-	int3 normalized = NormalizeGridCoord(absPosition + SimulatingIndex * SHALLOW_WATER_TILE_DIMENSION);
+	int3 normalized = NormalizeRelativeGridGood(relCoord);
 	if (normalized.z < 0)
 		return EdgeHeight;
 
@@ -272,7 +271,11 @@ float4 LoadVelocities4D(uint3 coord)
 
 float4 GetRightVelocity(int2 address)
 {
-	uint rightSimulatingGrid = CalculateShallowWaterArrayIndex(CellIndexLookupTable, SimulatingIndex + int2(1, 0));
+	#if (USE_LOOKUP_TABLE==1)
+		uint rightSimulatingGrid = CalculateShallowWaterArrayIndex(CellIndexLookupTable, SimulatingIndex + int2(1, 0));
+	#else
+		uint rightSimulatingGrid = RightGrid;
+	#endif
 	if (rightSimulatingGrid < 128) {
 		uint3 coords = uint3(0, address.y, rightSimulatingGrid);
 		return LoadVelocities4D(coords);
@@ -283,7 +286,11 @@ float4 GetRightVelocity(int2 address)
 
 float4 GetLeftVelocity(int2 address)
 {
-	uint leftSimulatingGrid = CalculateShallowWaterArrayIndex(CellIndexLookupTable, SimulatingIndex + int2(-1, 0));
+	#if (USE_LOOKUP_TABLE==1)
+		uint leftSimulatingGrid = CalculateShallowWaterArrayIndex(CellIndexLookupTable, SimulatingIndex + int2(-1, 0));
+	#else
+		uint leftSimulatingGrid = LeftGrid;
+	#endif
 	if (leftSimulatingGrid < 128) {
 		uint3 coords = uint3(SHALLOW_WATER_TILE_DIMENSION-1, address.y, leftSimulatingGrid);
 		return LoadVelocities4D(coords);
@@ -294,7 +301,11 @@ float4 GetLeftVelocity(int2 address)
 
 float4 GetBottomVelocity(int2 address)
 {
-	uint bottomSimulatingGrid = CalculateShallowWaterArrayIndex(CellIndexLookupTable, SimulatingIndex + int2(0, 1));
+	#if (USE_LOOKUP_TABLE==1)
+		uint bottomSimulatingGrid = CalculateShallowWaterArrayIndex(CellIndexLookupTable, SimulatingIndex + int2(0, 1));
+	#else
+		uint bottomSimulatingGrid = BottomGrid;
+	#endif
 	if (bottomSimulatingGrid < 128) {
 		uint3 coords = uint3(address.x, 0, bottomSimulatingGrid);
 		return LoadVelocities4D(coords);
@@ -305,7 +316,11 @@ float4 GetBottomVelocity(int2 address)
 
 float4 GetBottomLeftVelocity(int2 address)
 {
-	uint bottomLeftSimulatingGrid = CalculateShallowWaterArrayIndex(CellIndexLookupTable, SimulatingIndex + int2(-1, 1));
+	#if (USE_LOOKUP_TABLE==1)
+		uint bottomLeftSimulatingGrid = CalculateShallowWaterArrayIndex(CellIndexLookupTable, SimulatingIndex + int2(-1, 1));
+	#else
+		uint bottomLeftSimulatingGrid = BottomLeftGrid;
+	#endif
 	if (bottomLeftSimulatingGrid < 128) {
 		uint3 coords = uint3(SHALLOW_WATER_TILE_DIMENSION-1, 0, bottomLeftSimulatingGrid);
 		return LoadVelocities4D(coords);
@@ -316,7 +331,11 @@ float4 GetBottomLeftVelocity(int2 address)
 
 float4 GetBottomRightVelocity(int2 address)
 {
-	uint bottomRightSimulatingGrid = CalculateShallowWaterArrayIndex(CellIndexLookupTable, SimulatingIndex + int2(1, 1));
+	#if (USE_LOOKUP_TABLE==1)
+		uint bottomRightSimulatingGrid = CalculateShallowWaterArrayIndex(CellIndexLookupTable, SimulatingIndex + int2(1, 1));
+	#else
+		uint bottomRightSimulatingGrid = BottomRightGrid;
+	#endif
 	if (bottomRightSimulatingGrid < 128) {
 		uint3 coords = uint3(0, 0, bottomRightSimulatingGrid);
 		return LoadVelocities4D(coords);

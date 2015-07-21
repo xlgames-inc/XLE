@@ -19,31 +19,53 @@
     #define SHALLOW_WATER_TILE_DIMENSION 128
 #endif
 
-Texture2D<uint> CellIndexLookupTable : register(t4);
+#if (USE_LOOKUP_TABLE==1)
+    Texture2D<uint> CellIndexLookupTable : register(t4);
+#endif
 
-cbuffer ShallowWaterUpdateConstants : register(b2)
+cbuffer ShallowWaterCellConstants : register(b2)
 {
     int2	SimulatingIndex;
     uint	ArrayIndex;
     float2  WorldSpaceOffset;
+
+    //  -X, -Y
+    //  -------------------------------
+    //  TopLeft,    Top,    TopRight
+    //  Left,               Right
+    //  BottomLeft, Bottom, BottomRight
+    //  -------------------------------
+    //                           +X, +Y
+    int    TopLeftGrid, TopGrid, TopRightGrid;
+    int    LeftGrid, RightGrid;
+    int    BottomLeftGrid, BottomGrid, BottomRightGrid;
+}
+
+cbuffer SimulatingConstants : register(b3)
+{
     float	RainQuantityPerFrame;		// 0.001f
     float   EvaporationConstant;
     float   PressureConstant;           // 150.f (for pipe model)
+
+    float3  CompressionMidPoint;
+    float   CompressionRadius;
 }
 
-uint CalculateShallowWaterArrayIndex(Texture2D<uint> CellIndexLookupTable, int2 gridCoord)
-{
-	uint2 dims;
-	CellIndexLookupTable.GetDimensions(dims.x, dims.y);
-	uint result;
-	uint2 a = gridCoord + int2(256,256);
-    if (a.x < dims.x && a.y < dims.y) {
-		result = CellIndexLookupTable.Load(uint3(a, 0));
-	} else {
-		result = 0xffffffff;
-	}
-	return result;
-}
+#if (USE_LOOKUP_TABLE==1)
+    uint CalculateShallowWaterArrayIndex(Texture2D<uint> CellIndexLookupTable, int2 gridCoord)
+    {
+    	uint2 dims;
+    	CellIndexLookupTable.GetDimensions(dims.x, dims.y);
+    	uint result;
+    	uint2 a = gridCoord + int2(256,256);
+        if (a.x < dims.x && a.y < dims.y) {
+    		result = CellIndexLookupTable.Load(uint3(a, 0));
+    	} else {
+    		result = 0xffffffff;
+    	}
+    	return result;
+    }
+#endif
 
 #if SURFACE_HEIGHTS_FLOAT==1
     Texture2D<float>        SurfaceHeightsTexture : register(t0);
@@ -64,10 +86,10 @@ float ManualInterpolateSurfaceHeight_Exploded(Texture2DArray<uint> tex, float2 e
 		// note that wrapping/borders aren't handled
 		//	.. it means there can be problems if we try to read from
 		//	outside the normal texture area
-	float result00 = tex[uint3(uint2(exploded) + uint2(0,0), arrayIndex)];
-	float result10 = tex[uint3(uint2(exploded) + uint2(1,0), arrayIndex)];
-	float result01 = tex[uint3(uint2(exploded) + uint2(0,1), arrayIndex)];
-	float result11 = tex[uint3(uint2(exploded) + uint2(1,1), arrayIndex)];
+	float result00 = tex[uint3(uint2(exploded) + uint2(0,0), arrayIndex)] & 0x3fff;
+	float result10 = tex[uint3(uint2(exploded) + uint2(1,0), arrayIndex)] & 0x3fff;
+	float result01 = tex[uint3(uint2(exploded) + uint2(0,1), arrayIndex)] & 0x3fff;
+	float result11 = tex[uint3(uint2(exploded) + uint2(1,1), arrayIndex)] & 0x3fff;
 	float2 fracPart = frac(exploded);
 	return
 	      result00 * (1.0f-fracPart.x) * (1.0f-fracPart.y)
@@ -77,7 +99,7 @@ float ManualInterpolateSurfaceHeight_Exploded(Texture2DArray<uint> tex, float2 e
 	    ;
 }
 
-SamplerState LinearClampingSampler : register(s0);
+SamplerState LinearClampingSampler : register(s1);
 
 float LoadSurfaceHeight(int2 coord)
 {
@@ -110,26 +132,57 @@ float LoadSurfaceHeight(int2 coord)
 	}
 }
 
-int3 NormalizeGridCoord(int2 coord)
-{
-    int2 tile = float2(coord.xy) / float(SHALLOW_WATER_TILE_DIMENSION);
-    uint gridIndex = CalculateShallowWaterArrayIndex(CellIndexLookupTable, tile);
-    if (gridIndex < 128) {
-        return int3(coord.xy - tile * SHALLOW_WATER_TILE_DIMENSION, gridIndex);
-    }
+#if (USE_LOOKUP_TABLE==1)
+    int3 NormalizeGridCoord(int2 coord)
+    {
+        int2 tile = float2(coord.xy) / float(SHALLOW_WATER_TILE_DIMENSION);
+        uint gridIndex = CalculateShallowWaterArrayIndex(CellIndexLookupTable, tile);
+        if (gridIndex < 128) {
+            return int3(coord.xy - tile * SHALLOW_WATER_TILE_DIMENSION, gridIndex);
+        }
 
-    return int3(0,0,-1);	// off the edge of the simulation area
+        return int3(0,0,-1);	// off the edge of the simulation area
+    }
+#endif
+
+int3 NormalizeRelativeGridGood(int2 relCoord)
+{
+    #if (USE_LOOKUP_TABLE==1)
+        return NormalizeGridCoord(SimulatingIndex * SHALLOW_WATER_TILE_DIMENSION + relCoord);
+    #else
+        const int tileDim = SHALLOW_WATER_TILE_DIMENSION;
+        if (relCoord.y < 0) {
+            if (relCoord.x < 0) {
+                return int3(relCoord + int2(tileDim, tileDim), TopLeftGrid);
+            } else if (relCoord.x >= tileDim) {
+                return int3(relCoord + int2(-tileDim, tileDim), TopRightGrid);
+            } else {
+                return int3(relCoord + int2(0, tileDim), TopGrid);
+            }
+        } else if (relCoord.y >= tileDim) {
+            if (relCoord.x < 0) {
+                return int3(relCoord + int2(tileDim, -tileDim), BottomLeftGrid);
+            } else if (relCoord.x >= tileDim) {
+                return int3(relCoord + int2(-tileDim, -tileDim), BottomRightGrid);
+            } else {
+                return int3(relCoord + int2(0, -tileDim), BottomGrid);
+            }
+        } else {
+            if (relCoord.x < 0) {
+                return int3(relCoord + int2(tileDim, 0), LeftGrid);
+            } else if (relCoord.x >= tileDim) {
+                return int3(relCoord + int2(-tileDim, 0), RightGrid);
+            } else {
+                return int3(relCoord, ArrayIndex);
+            }
+        }
+
+    #endif
 }
 
     ///////////////////////////////////////////////////
         //   c o m p r e s s i o n   //
     ///////////////////////////////////////////////////
-
-cbuffer CompressionConstants
-{
-    float3 CompressionMidPoint;
-    float CompressionRadius;
-}
 
 float2 WorldPositionFromElementIndex(int2 eleIndex)
 {

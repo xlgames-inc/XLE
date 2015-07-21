@@ -192,7 +192,7 @@
     <xs:annotation>
       <xs:appinfo>
         <scea.dom.editors.attribute name="ExportTarget" displayName="Export Target" category="Export" description="Destination file written to in export operations"/>
-        <scea.dom.editors.attribute name="ExportEnabled" displayName="Export Enabled" category="Export" description="Enable or disable export of this item"/>
+        <scea.dom.editors.attribute name="ExportEnabled" displayName="Export Enabled" category="Export" description="Enable or disable export of this item" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
         
         <LeGe.OpaqueListable label="EnvSettingsFolder"/>
       </xs:appinfo>
@@ -369,7 +369,7 @@
         <LeGe.NativeProperty name="FoamIncreaseClamp" nativeName="FoamIncreaseClamp"/>
         <LeGe.NativeProperty name="FoamDecrease" nativeName="FoamDecrease"/>
 
-        <scea.dom.editors.attribute category="Enable" name="Enable" displayName="Enable" description="Enable or disable ocean rendering"/>
+        <scea.dom.editors.attribute category="Enable" name="Enable" displayName="Enable" description="Enable or disable ocean rendering" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
         
         <scea.dom.editors.attribute category="General" name="WindAngle" displayName="Wind Angle" description="Angle of the wind (this controls the movement of waves)"
                                     editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,6.28318"/>

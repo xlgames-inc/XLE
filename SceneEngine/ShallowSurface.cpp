@@ -133,7 +133,7 @@ namespace SceneEngine
         const bool usePipeModel = true;
         _pimpl->_sim = std::make_unique<ShallowWaterSim>(
             ShallowWaterSim::Desc(
-                settings._simGridDims, maxSimulationGrids, usePipeModel, false));
+                settings._simGridDims, maxSimulationGrids, usePipeModel, false, false));
 
             //
             //      Given the input points, we want to create a set of sim grids
@@ -312,7 +312,8 @@ namespace SceneEngine
             _pimpl->_cfg._simGridDims);
         TechniqueMaterial material(
             Metal::InputLayout(nullptr, 0),
-            { ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants, ObjectCBs::Globals },
+            {   ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants, 
+                Hash64("ShallowWaterCellConstants") },
             matParam);
 
         _pimpl->_sim->BindForOceanRender(metalContext, _pimpl->_bufferCounter);
@@ -325,10 +326,9 @@ namespace SceneEngine
 
             metalContext.Bind(Metal::Topology::TriangleList);
             for (auto i=_pimpl->_simGrids.cbegin(); i!=_pimpl->_simGrids.cend(); ++i) {
-                auto page = _pimpl->_sim->FindActiveGrid(i->_gridCoord);
-                if (page == ~unsigned(0x0)) continue;
+                auto page = _pimpl->_sim->BuildCellConstants(i->_gridCoord);
+                if (!page) continue;
 
-                unsigned globals[4] = { page, 0, 0, 0 };
                 shader.Apply(
                     metalContext, parserContext, 
                     {
@@ -336,7 +336,7 @@ namespace SceneEngine
                             i->_gridToWorld,
                             ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
                         cbLayout.BuildCBDataAsPkt(ParameterBox()),
-                        MakeSharedPkt(globals)
+                        page
                     });
                 metalContext.Unbind<Metal::VertexBuffer>();
                 metalContext.Unbind<Metal::BoundInputLayout>();

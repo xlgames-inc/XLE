@@ -464,7 +464,6 @@ namespace LevelEditorXLE
             triMeshMarkerType.lockedAttribute = triMeshMarkerType.Type.GetAttributeInfo("locked");
             triMeshMarkerType.indexlistAttribute = triMeshMarkerType.Type.GetAttributeInfo("indexlist");
             triMeshMarkerType.ShowMarkerAttribute = triMeshMarkerType.Type.GetAttributeInfo("ShowMarker");
-            triMeshMarkerType.NameAttribute = triMeshMarkerType.Type.GetAttributeInfo("Name");
             triMeshMarkerType.pointsChild = triMeshMarkerType.Type.GetChildInfo("points");
 
             xleGameType.Type = getNodeType("gap", "xleGameType");
@@ -1065,7 +1064,6 @@ namespace LevelEditorXLE
             public static AttributeInfo lockedAttribute;
             public static AttributeInfo indexlistAttribute;
             public static AttributeInfo ShowMarkerAttribute;
-            public static AttributeInfo NameAttribute;
             public static ChildInfo pointsChild;
         }
 

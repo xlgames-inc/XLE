@@ -413,9 +413,15 @@ namespace GUILayer
         _terrainInterface = terrainEditor;
         RegisterTerrainFlexObjects(*_scene->_flexObjects);
         RegisterVegetationSpawnFlexObjects(*_scene->_flexObjects, _scene->_vegetationSpawnManager);
-        RegisterVolumetricFogFlexObjects(*_scene->_flexObjects, _scene->_volumeFogManager);
-        RegisterEnvironmentFlexObjects(*_scene->_flexObjects);
-        RegisterShallowSurfaceFlexObjects(*_scene->_flexObjects, _scene->_shallowSurfaceManager);
+
+        auto envEntitiesManager = std::make_shared<::EntityInterface::EnvEntitiesManager>(_scene->_flexObjects);
+        envEntitiesManager->RegisterVolumetricFogFlexObjects(_scene->_volumeFogManager);
+        envEntitiesManager->RegisterEnvironmentFlexObjects();
+        envEntitiesManager->RegisterShallowSurfaceFlexObjects(_scene->_shallowSurfaceManager);
+        _envEntitiesManager = envEntitiesManager;
+
+        _scene->_prepareSteps.push_back(
+            std::bind(&::EntityInterface::EnvEntitiesManager::FlushUpdates, _envEntitiesManager.get()));
     }
 
     EditorSceneManager::~EditorSceneManager()

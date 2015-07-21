@@ -829,7 +829,7 @@ namespace SceneEngine
             // erosion simulation
         static bool usePipeModel = true;
         auto newShallowWater = std::make_unique<ShallowWaterSim>(
-            ShallowWaterSim::Desc(unsigned(ErosionWaterTileDimension), gridsX * gridsY, usePipeModel, true));
+            ShallowWaterSim::Desc(unsigned(ErosionWaterTileDimension), gridsX * gridsY, usePipeModel, true, false));
         
         std::vector<Int2> newElements;
         for (unsigned y=0; y<gridsY; ++y)

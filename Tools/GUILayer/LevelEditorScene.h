@@ -11,6 +11,7 @@
 #include "CLIXAutoPtr.h"
 #include "../EntityInterface/EntityInterface.h"
 #include <memory>
+#include <functional>
 
 using namespace System::Collections::Generic;
 
@@ -25,7 +26,14 @@ namespace SceneEngine
 }
 namespace Tools { class IManipulator; }
 
-namespace EntityInterface { class Switch; class RetainedEntities; class RetainedEntityInterface; class TerrainEntities; }
+namespace EntityInterface 
+{ 
+    class Switch; 
+    class RetainedEntities; 
+    class RetainedEntityInterface; 
+    class TerrainEntities; 
+    class EnvEntitiesManager; 
+}
 
 namespace GUILayer
 {
@@ -48,6 +56,7 @@ namespace GUILayer
         std::shared_ptr<SceneEngine::ShallowSurfaceManager> _shallowSurfaceManager;
         std::shared_ptr<EntityInterface::RetainedEntities> _flexObjects;
         std::shared_ptr<ObjectPlaceholders> _placeholders;
+        std::vector<std::function<void()>> _prepareSteps;
 
         void    IncrementTime(float increment) { _currentTime += increment; }
         float   _currentTime;
@@ -142,6 +151,7 @@ namespace GUILayer
         clix::shared_ptr<EditorScene> _scene;
         clix::shared_ptr<::EntityInterface::RetainedEntityInterface> _flexGobInterface;
         clix::shared_ptr<::EntityInterface::TerrainEntities> _terrainInterface;
+        clix::shared_ptr<::EntityInterface::EnvEntitiesManager> _envEntitiesManager;
         EntityLayer^ _entities;
     };
 }

@@ -133,6 +133,9 @@ namespace GUILayer
 
     void EditorSceneParser::PrepareEnvironmentalSettings(const char envSettings[])
     {
+        for (const auto& i:_editorScene->_prepareSteps)
+            i();
+
         using namespace EntityInterface;
         const auto& objs = *_editorScene->_flexObjects;
         const RetainedEntity* settings = nullptr;
@@ -204,6 +207,7 @@ namespace GUILayer
         if (_sceneParser.get()) {
             _sceneParser->PrepareEnvironmentalSettings(
                 clix::marshalString<clix::E_UTF8>(_renderSettings->_activeEnvironmentSettings).c_str());
+
             _sceneParser->AddLightingPlugins(parserContext);
             SceneEngine::LightingParser_ExecuteScene(
                 *threadContext, parserContext, *_sceneParser.get(), 

@@ -397,10 +397,10 @@ namespace EntityInterface
         return result;
     }
 
-    void RegisterEnvironmentFlexObjects(RetainedEntities& flexSys)
+    void EnvEntitiesManager::RegisterEnvironmentFlexObjects()
     {
-        flexSys.RegisterCallback(
-            flexSys.GetTypeId((const utf8*)"OceanSettings"),
+        _flexSys->RegisterCallback(
+            _flexSys->GetTypeId((const utf8*)"OceanSettings"),
             [](const RetainedEntities& flexSys, const Identifier& obj)
             {
                 auto* object = flexSys.GetEntity(obj);
@@ -409,8 +409,8 @@ namespace EntityInterface
             }
         );
 
-        flexSys.RegisterCallback(
-            flexSys.GetTypeId((const utf8*)"OceanLightingSettings"),
+        _flexSys->RegisterCallback(
+            _flexSys->GetTypeId((const utf8*)"OceanLightingSettings"),
             [](const RetainedEntities& flexSys, const Identifier& obj)
             {
                 auto* object = flexSys.GetEntity(obj);
@@ -444,15 +444,14 @@ namespace EntityInterface
         mgr.Load(cfg);
     }
 
-    void RegisterVolumetricFogFlexObjects(
-        RetainedEntities& flexSys, 
+    void EnvEntitiesManager::RegisterVolumetricFogFlexObjects(
         std::shared_ptr<SceneEngine::VolumetricFogManager> manager)
     {
         std::weak_ptr<SceneEngine::VolumetricFogManager> weakPtrToManager = manager;
         const utf8* types[] = { (const utf8*)"FogVolume", (const utf8*)"FogVolumeRenderer" };
         for (unsigned c=0; c<dimof(types); ++c) {
-            flexSys.RegisterCallback(
-                flexSys.GetTypeId(types[c]),
+            _flexSys->RegisterCallback(
+                _flexSys->GetTypeId(types[c]),
                 [weakPtrToManager](const RetainedEntities& flexSys, const Identifier& obj)
                 {
                     auto mgr = weakPtrToManager.lock();
@@ -523,13 +522,13 @@ namespace EntityInterface
     }
 
     static void UpdateShallowSurface(
-        const RetainedEntities& sys, const RetainedEntity& obj,
+        const RetainedEntities& sys,
         SceneEngine::ShallowSurfaceManager& mgr)
     {
         using namespace SceneEngine;
 
         ParamName(Marker);
-        ParamName(Name);
+        ParamName(name);
 
         mgr.Clear();
 
@@ -547,7 +546,7 @@ namespace EntityInterface
                 // Look for the marker with the matching name
             const RetainedEntity* marker = nullptr;
             for (auto m:markers) {
-                auto testName = m->_properties.GetString<utf8>(Name);
+                auto testName = m->_properties.GetString<utf8>(name);
                 if (XlEqStringI(testName, markerName)) {
                     marker = m;
                     break;
@@ -555,6 +554,11 @@ namespace EntityInterface
             }
 
             if (marker) {
+                    // We have to be careful here -- because we get update
+                    // callbacks when the markers change, the marker might
+                    // only be partially constructed. Sometimes the vertex
+                    // positions aren't properly set -- which causes us to
+                    // generate bad triangles.
                 auto verts = ExtractVertices(sys, *marker);
                 if (verts.empty()) continue;
 
@@ -567,27 +571,43 @@ namespace EntityInterface
         }
     }
 
-    void RegisterShallowSurfaceFlexObjects(
-        RetainedEntities& flexSys, 
+    void EnvEntitiesManager::RegisterShallowSurfaceFlexObjects(
         std::shared_ptr<SceneEngine::ShallowSurfaceManager> manager)
     {
-        std::weak_ptr<SceneEngine::ShallowSurfaceManager> weakPtrToManager = manager;
-        const utf8* types[] = { (const utf8*)"ShallowSurface" };
-        for (unsigned c=0; c<dimof(types); ++c) {
-            flexSys.RegisterCallback(
-                flexSys.GetTypeId(types[c]),
-                [weakPtrToManager](const RetainedEntities& flexSys, const Identifier& obj)
-                {
-                    auto mgr = weakPtrToManager.lock();
-                    if (!mgr) return;
+        _shallowWaterManager = manager;
 
-                    auto* object = flexSys.GetEntity(obj);
-                    if (object)
-                        UpdateShallowSurface(flexSys, *object, *mgr);
+        std::weak_ptr<EnvEntitiesManager> weakPtrToThis = shared_from_this();
+        const utf8* types[] = { (const utf8*)"ShallowSurface", (const utf8*)"TriMeshMarker" };
+        for (unsigned c=0; c<dimof(types); ++c) {
+            _flexSys->RegisterCallback(
+                _flexSys->GetTypeId(types[c]),
+                [weakPtrToThis](const RetainedEntities& flexSys, const Identifier& obj)
+                {
+                    auto mgr = weakPtrToThis.lock();
+                    if (!mgr) return;
+                    mgr->_pendingShallowSurfaceUpdate = true;
                 }
             );
         }
     }
+
+    void EnvEntitiesManager::FlushUpdates()
+    {
+        if (_pendingShallowSurfaceUpdate) {
+            auto mgr = _shallowWaterManager.lock();
+            if (mgr) {
+                UpdateShallowSurface(*_flexSys, *mgr);
+            }
+            _pendingShallowSurfaceUpdate = false;
+        }
+    }
+
+    EnvEntitiesManager::EnvEntitiesManager(std::shared_ptr<RetainedEntities> sys)
+    : _flexSys(std::move(sys))
+    , _pendingShallowSurfaceUpdate(false)
+    {}
+
+    EnvEntitiesManager::~EnvEntitiesManager() {}
 
 
 }

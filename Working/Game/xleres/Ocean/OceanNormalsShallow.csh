@@ -31,7 +31,7 @@ void SetupXHeights(out float heights[BLOCK_DIMENSION+1], uint2 baseCoord, uint a
 
 		//	handle border condition... We might need to
 		//	fall into a neighbour grid. Note that this is only
-		//	required for thread groups that lie on the right 
+		//	required for thread groups that lie on the right
 		//	or bottom
 	if ((x+baseCoord.x) >= SHALLOW_WATER_TILE_DIMENSION) {
 		if (rightArrayIndex < 16) {
@@ -50,9 +50,9 @@ void SetupXHeights(out float heights[BLOCK_DIMENSION+1], uint2 baseCoord, uint a
 {
 	uint arrayIndex = dispatchThreadId.z;
 
-	uint rightArrayIndex		= CalculateShallowWaterArrayIndex(LookupTable, GridIndex[arrayIndex]+int2(1,0));
-	uint bottomArrayIndex		= CalculateShallowWaterArrayIndex(LookupTable, GridIndex[arrayIndex]+int2(0,1));
-	uint bottomRightArrayIndex	= CalculateShallowWaterArrayIndex(LookupTable, GridIndex[arrayIndex]+int2(1,1));
+	uint rightArrayIndex		= RightGrid; 		// CalculateShallowWaterArrayIndex(LookupTable, GridIndex[arrayIndex]+int2(1,0));
+	uint bottomArrayIndex		= BottomGrid; 		// CalculateShallowWaterArrayIndex(LookupTable, GridIndex[arrayIndex]+int2(0,1));
+	uint bottomRightArrayIndex	= BottomRightGrid;	// CalculateShallowWaterArrayIndex(LookupTable, GridIndex[arrayIndex]+int2(1,1));
 
 		// could also do this with a "groupshared" array and do fewer loops in here
 	float heights[BLOCK_DIMENSION+1][BLOCK_DIMENSION+1];
@@ -60,7 +60,7 @@ void SetupXHeights(out float heights[BLOCK_DIMENSION+1], uint2 baseCoord, uint a
 		uint y=0;
 		for (; y<BLOCK_DIMENSION; ++y) {
 			SetupXHeights(
-				heights[y], 
+				heights[y],
 				uint2(dispatchThreadId.x*BLOCK_DIMENSION, y+dispatchThreadId.y*BLOCK_DIMENSION),
 				arrayIndex, rightArrayIndex);
 		}
@@ -84,7 +84,7 @@ void SetupXHeights(out float heights[BLOCK_DIMENSION+1], uint2 baseCoord, uint a
 		}
 	}
 
-		//	In the shallow water simulation, we just move the 
+		//	In the shallow water simulation, we just move the
 		//	grids up and down... So calculating the derivative is easy
 		//	(and X & Y derivatives remain constant)
 	float cellSize = ShallowGridPhysicalDimension / SHALLOW_WATER_TILE_DIMENSION;
@@ -99,7 +99,7 @@ void SetupXHeights(out float heights[BLOCK_DIMENSION+1], uint2 baseCoord, uint a
 			result.x = lerp(dhdx0, dhdx1, 0.5f);
 			result.y = lerp(dhdy0, dhdy1, 0.5f);
 
-			uint3 outCoord = uint3(	
+			uint3 outCoord = uint3(
 				x+dispatchThreadId.x*BLOCK_DIMENSION,
 				y+dispatchThreadId.y*BLOCK_DIMENSION,
 				arrayIndex);
@@ -136,4 +136,3 @@ Texture2DArray<uint2>	SourceDerivativesTexture : register(t4);
 		OutputDerivativesTexture[destinationCoords] = uint4(result, 0, 0);
 	}
 }
-
