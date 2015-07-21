@@ -4,9 +4,22 @@
     ~Parameters
         ~Material
             SHALLOW_WATER_TILE_DIMENSION=128
+        ~Geometry
+            OUTPUT_WORLD_VIEW_VECTOR=1
+            OUTPUT_TEXCOORD=1
+        ~GlobalEnvironment
+    VertexShader=game/xleres/ocean/shallowsurface.sh:vs_main
+    PixelShader=game/xleres/ocean/shallowsurface.sh:ps_main
+~ShadowGen
+~OrderIndependentTransparency
+~PrepareVegetationSpawn
+~RayTest
+~VisNormals
+~VisWireframe
+    ~Parameters
+        ~Material
+            SHALLOW_WATER_TILE_DIMENSION=128
         ~GlobalEnvironment
     VertexShader=game/xleres/ocean/shallowsurface.sh:vs_main
     GeometryShader=game/xleres/solidwireframe.gsh:main
     PixelShader=game/xleres/solidwireframe.psh:main
-~ShadowGen
-~OrderIndependentTransparency

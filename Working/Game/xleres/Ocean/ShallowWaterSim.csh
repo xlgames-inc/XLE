@@ -415,7 +415,7 @@ RWTexture2DArray<float>		SobelSlopesY	: register(u6);
 
 float LoadHeightDifference(int2 coord)
 {
-	int3 finalCoord = NormalizeRelativeGridGood(coord);
+	int3 finalCoord = NormalizeRelativeGridCoord(coord);
 	if (finalCoord.z < 0) {
 		return 0.f;
 	}
@@ -425,7 +425,7 @@ float LoadHeightDifference(int2 coord)
 
 float LoadHeight(int2 coord)
 {
-	int3 finalCoord = NormalizeRelativeGridGood(coord);
+	int3 finalCoord = NormalizeRelativeGridCoord(coord);
 	if (finalCoord.z < 0) {
 		return 0.f;
 	}
@@ -557,7 +557,7 @@ void StoreVelocities(uint3 coord, float vel[4])
 	int2 offsets[4] = { int2(-1, -1), int2(0, -1), int2(1, -1), int2(-1, 0) };
 
 	[unroll] for (uint c=0; c<4; ++c) {
-		int3 otherCoord = NormalizeRelativeGridGood(baseCoord + offsets[c]);
+		int3 otherCoord = NormalizeRelativeGridCoord(baseCoord + offsets[c]);
 		float2 otherVel = float2(SobelSlopesX[otherCoord], SobelSlopesY[otherCoord]);
 
 		float2 dir = normalize(float2(offsets[c]));	// out of the grid

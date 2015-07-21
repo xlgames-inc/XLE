@@ -746,10 +746,8 @@ namespace SceneEngine
                 "game/xleres/Ocean/InitSimGrid2.csh:InitPipeModel2:cs_*", shaderDefines);
             metalContext.Bind(cshader);
             for (auto i = gridsForSecondInitPhase.cbegin(); i!=gridsForSecondInitPhase.cend(); ++i) {
-                if (i->_arrayIndex == ~unsigned(0x0)) {
-                    SetCellConstants(*context._metalContext, initCellConstantsBuffer, *i, std::vector<ActiveElement>());
-                    metalContext.Dispatch(1, _gridDimension, 1);
-                }
+                SetCellConstants(*context._metalContext, initCellConstantsBuffer, *i, std::vector<ActiveElement>());
+                metalContext.Dispatch(1, _gridDimension, 1);
             }
         }
 
@@ -1212,7 +1210,7 @@ namespace SceneEngine
         float baseHeight, float compressionAmount, float compressionRadius)
     {
         static unsigned framesMouseDown = 0;
-        if (GetKeyState(VK_MBUTTON)<0) {
+        if (GetKeyState(VK_LBUTTON)<0 && GetKeyState(VK_LSHIFT)<0) {
                 //  Find the mouse over ray, and find the intersection
                 //  point with the ocean water plane
             auto mouseOverRay = CalculateMouseOverRay(metalContext, parserContext);

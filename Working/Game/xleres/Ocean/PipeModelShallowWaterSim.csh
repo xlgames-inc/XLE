@@ -144,7 +144,7 @@ void LoadVelocities_BoundaryCheck(out float velocities[AdjCellCount], int3 coord
 	[branch] if (coord.x >= 0 && coord.y >= 0 && coord.x < SHALLOW_WATER_TILE_DIMENSION && coord.y < SHALLOW_WATER_TILE_DIMENSION) {
 		LoadVelocities(velocities, coord);
 	} else {
-		int3 normalized = NormalizeRelativeGridGood(coord.xy);
+		int3 normalized = NormalizeRelativeGridCoord(coord.xy);
 		if (normalized.z >= 0) {
 			LoadVelocities(velocities, normalized);
 		} else {
@@ -161,7 +161,7 @@ float LoadWaterHeight(int3 pos)
 
 float LoadWaterHeight_BoundaryCheck(int2 relCoord)
 {
-	int3 normalized = NormalizeRelativeGridGood(relCoord);
+	int3 normalized = NormalizeRelativeGridCoord(relCoord);
 	if (normalized.z < 0)
 		return EdgeHeight;
 

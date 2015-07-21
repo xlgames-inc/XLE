@@ -52,19 +52,22 @@ float Material_GetSpecular1(GBufferValues gbuffer)
     else { return 0.f; }
 }
 
+float Material_SpecularToF0(float specularParameter)
+{
+    return RefractiveIndexToF0(lerp(1.0f, 2.5f, specularParameter));
+}
+
 float Material_GetF0_0(GBufferValues gbuffer)
 {
         //	Note that we don't need to do the conversion from
         //	from refractive index -> F0 here. We could start
-        //	working with
-    float specularParameter = Material_GetSpecular0(gbuffer);
-    return RefractiveIndexToF0(lerp(1.0f, 2.5f, specularParameter));
+        //	working with F0 values directly.
+    return Material_SpecularToF0(Material_GetSpecular0(gbuffer));
 }
 
 float Material_GetF0_1(GBufferValues gbuffer)
 {
-    float specularParameter = Material_GetSpecular1(gbuffer);
-    return RefractiveIndexToF0(lerp(1.0f, 2.5f, specularParameter));
+    return Material_SpecularToF0(Material_GetSpecular1(gbuffer));
 }
 
 float Material_GetDiffuseScale(GBufferValues gbuffer)

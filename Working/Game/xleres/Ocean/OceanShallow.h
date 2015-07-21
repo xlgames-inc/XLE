@@ -160,7 +160,7 @@ float LoadSurfaceHeight(int2 coord)
     }
 #endif
 
-int3 NormalizeRelativeGridGood(int2 relCoord)
+int3 NormalizeRelativeGridCoord(int2 relCoord)
 {
     #if (USE_LOOKUP_TABLE==1)
         return NormalizeGridCoord(SimulatingIndex * SHALLOW_WATER_TILE_DIMENSION + relCoord);
@@ -212,7 +212,7 @@ float CalculateExternalPressure(float2 worldPosition)
     float distance2DSq = dot(off, off);
     float radiusSq = CompressionRadius * CompressionRadius;
     float d = max(0.f, 1.0f - (distance2DSq / radiusSq));
-    return 1e7f * d;
+    return 5e7f * d;
 }
 
 #endif
