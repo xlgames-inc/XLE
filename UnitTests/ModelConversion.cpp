@@ -21,13 +21,43 @@
 #include "../Utility/StringFormat.h"
 #include "../Utility/TimeUtils.h"
 #include "../Utility/Threading/ThreadingUtils.h"
+#include "../Utility/Conversion.h"
+#include "../Utility/Streams/StreamDOM.h"
+#include "../Utility/Streams/XmlStreamFormatter.h"
 #include "../Core/SelectConfiguration.h"
 #include <CppUnitTest.h>
+
+#include "../Core/WinAPI/IncludeWindows.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace UnitTests
 {
+    __declspec(noinline) static void StreamDomPerformanceTest(const utf8*start, const utf8*end, uint64 iterationCount)
+    {
+        for (uint64 c=0; c<iterationCount; ++c) {
+            XmlInputStreamFormatter<utf8> formatter(MemoryMappedInputStream(start, end));
+            Document<XmlInputStreamFormatter<utf8>> doc(formatter);
+            (void) doc;
+        }
+    }
+
+    size_t GlobalHack = 0;
+
+    __declspec(noinline) static void StrLenPerformanceTest(const utf8*start, uint64 iterationCount)
+    {
+        for (uint64 c=0; c<iterationCount; ++c) {
+            GlobalHack += std::strlen((const char*)start);
+        }
+    }
+
+    __declspec(noinline) static void XlStrLenPerformanceTest(const utf8*start, uint64 iterationCount)
+    {
+        for (uint64 c=0; c<iterationCount; ++c) {
+            GlobalHack += XlStringLen(start);
+        }
+    }
+
 	TEST_CLASS(ModelConversion)
 	{
 	public:
@@ -88,6 +118,74 @@ namespace UnitTests
 			}
 		}
 
+        TEST_METHOD(ColladaParsePerformance)
+        {
+            UnitTest_SetWorkingDirectory();
+            ConsoleRig::GlobalServices services(GetStartupConfig());
+
+            {
+                #if defined(_DEBUG)
+                    ConsoleRig::AttachableLibrary lib("../Finals_Debug32/ColladaConversion.dll");
+                #else
+                    ConsoleRig::AttachableLibrary lib("../Finals_Release32/ColladaConversion.dll");
+                #endif
+                lib.TryAttach();
+                auto createScaffold = lib.GetFunction<RenderCore::ColladaConversion::CreateColladaScaffoldFn*>(
+                    "?CreateColladaScaffold@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VColladaScaffold@ColladaConversion@RenderCore@@@std@@QBD@Z");
+
+                const char sampleAsset[] = "game/testmodels/ironman/ironman.dae";
+                // const char sampleAsset[] = "game/model/spaceship/mccv/mccv.dae";
+                // const char sampleAsset[] = "game/model/Towns/BarrackHouseA/BarrackHouseA.dae";
+
+                WIN32_FILE_ATTRIBUTE_DATA fileAttrib;
+                GetFileAttributesEx(
+                    Conversion::Convert<std::wstring>(std::string(sampleAsset)).c_str(), 
+                    GetFileExInfoStandard, &fileAttrib);
+                uint64 bytes = uint64(fileAttrib.nFileSizeHigh)<<32 | fileAttrib.nFileSizeLow;
+
+                auto start = __rdtsc();
+                const auto iterationCount = (uint64)std::max(100ull, 10000000000ull / uint64(bytes));
+                for (uint64 c=0; c<iterationCount; ++c) {
+                    auto mdl = (*createScaffold)(sampleAsset);
+                    mdl.reset();    // (incur the cost of deletion here)
+                }
+                auto end = __rdtsc();
+
+                LogAlwaysWarning << "New path: " << (end-start) / iterationCount << " cycles per collada file.";
+                LogAlwaysWarning << "That's about " << (end-start) / (uint64(bytes)*iterationCount) << " cycles per byte in the input file.";
+            }
+        }
+
+        TEST_METHOD(StreamDOMParsePerformance)
+        {
+            UnitTest_SetWorkingDirectory();
+            ConsoleRig::GlobalServices services(GetStartupConfig());
+
+            {
+                const char sampleAsset[] = "game/testmodels/ironman/ironman.dae";
+                // const char sampleAsset[] = "game/model/galleon/galleon.dae";
+                // const char sampleAsset[] = "game/model/spaceship/mccv/mccv.dae";
+
+                    // (automatically appends null terminator)
+                size_t size = 0;
+                auto chars = LoadFileAsMemoryBlock(sampleAsset, &size);
+
+                const uint64 iterationCount = (uint64)std::max(100ull, 10000000000ull / uint64(size));
+                
+                auto startXML = __rdtsc();
+                StreamDomPerformanceTest(chars.get(), PtrAdd(chars.get(), size), iterationCount);
+                auto middleSample = __rdtsc();
+                StrLenPerformanceTest(chars.get(), iterationCount);
+                auto middleSample2 = __rdtsc();
+                XlStrLenPerformanceTest(chars.get(), iterationCount);
+                auto endStrLen = __rdtsc();
+
+                LogAlwaysWarning << "Ran " << iterationCount << " iterations.";
+                LogAlwaysWarning << "XML parser: " << (middleSample-startXML) / (iterationCount*uint64(size)) << " cycles per byte. (" << (middleSample-startXML) << ") total";
+                LogAlwaysWarning << "std::strlen: " << (middleSample2-middleSample) / (iterationCount*uint64(size)) << " cycles per byte. (" << (middleSample2-middleSample) << ") total";
+                LogAlwaysWarning << "XlStringLen: " << (endStrLen-middleSample2) / (iterationCount*uint64(size)) << " cycles per byte. (" << (endStrLen-middleSample2) << ") total";
+            }
+        }
 
         TEST_METHOD(ColladaScaffold)
 		{
