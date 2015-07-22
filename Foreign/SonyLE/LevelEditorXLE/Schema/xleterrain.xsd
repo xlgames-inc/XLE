@@ -133,7 +133,7 @@
         <scea.dom.editors.attribute name="SlopeTexture2Mapping" displayName="SlopeTexture2Mapping" description="SlopeTexture2Mapping" category="General"/>
         <scea.dom.editors.attribute name="BlendingTextureMapping" displayName="BlendingTextureMapping" description="BlendingTextureMapping" category="General"/>
 
-        <scea.dom.editors name="TerrainMaterial" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="TerrainMaterial" description="TerrainMaterial"/>
+        <scea.dom.editors name="TerrainMaterial" category="Terrain" image="LevelEditorCore.Resources.gameObject.png" menuText="TerrainMaterial" description="TerrainMaterial"/>
       </xs:appinfo>
     </xs:annotation>
 
@@ -175,7 +175,7 @@
         <scea.dom.editors.attribute name="Gain" displayName="Gain" description="Gain" category="General"/>
         <scea.dom.editors.attribute name="Name" displayName="Name" description="Name" category="General"/>
 
-        <scea.dom.editors name="ProcTextureMaterial" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="ProcTextureMaterial" description="ProcTextureMaterial"/>
+        <scea.dom.editors name="ProcTextureMaterial" category="Terrain" image="LevelEditorCore.Resources.gameObject.png" menuText="ProcTextureMaterial" description="ProcTextureMaterial"/>
       </xs:appinfo>
     </xs:annotation>
 
@@ -234,7 +234,7 @@
         <scea.dom.editors.attribute name="SuppressionLacunarity" displayName="SuppressionLacunarity" description="Lacunarity value for noise pattern for suppression" category="General"/>
         <scea.dom.editors.attribute name="MaterialId" displayName="MaterialId" description="Id for this material (must be unique and contiguous)" category="General"/>
 
-        <scea.dom.editors name="VegetationSpawnMaterial" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="VegetationSpawnMaterial" description="VegetationSpawnMaterial"/>
+        <scea.dom.editors name="VegetationSpawnMaterial" category="Terrain" image="LevelEditorCore.Resources.gameObject.png" menuText="VegetationSpawnMaterial" description="VegetationSpawnMaterial"/>
         <LeGe.OpaqueListable label="Material"/>
       </xs:appinfo>
     </xs:annotation>
@@ -260,7 +260,7 @@
         <scea.dom.editors.attribute name="BaseGridSpacing" displayName="Base Grid Spacing" description="Spacing between objects (before position jittering)" category="General"/>
         <scea.dom.editors.attribute name="JitterAmount" displayName="Jitter Amount" description="Randomness applied to positions. Higher numbers mean objects are more randomly scattered." category="General"/>
 
-        <scea.dom.editors name="VegetationSpawnConfig" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="VegetationSpawnConfig" description="VegetationSpawnConfig"/>
+        <scea.dom.editors name="VegetationSpawnConfig" category="Terrain" image="LevelEditorCore.Resources.gameObject.png" menuText="VegetationSpawnConfig" description="VegetationSpawnConfig"/>
       </xs:appinfo>
     </xs:annotation>
     <xs:sequence>

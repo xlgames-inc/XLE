@@ -31,7 +31,7 @@ VSOutput vs_main(uint vertexId : SV_VertexId)
     float3 localPosition = float3(
         p.x / float(SHALLOW_WATER_TILE_DIMENSION),
         p.y / float(SHALLOW_WATER_TILE_DIMENSION),
-        0.f);
+        -50.f);
 
     int3 coord = NormalizeRelativeGridCoord(p);
     if (coord.z >= 0)
@@ -88,9 +88,12 @@ float3 BuildNormalFromDerivatives(float2 derivativesSample)
         ShallowDerivatives.Sample(ClampingSampler, float3(texCoord.xy, ArrayIndex)).xy,
         1.0.xxx);
 
+    float cameraDistance = length(geo.worldViewVector);
+    float detailStrength = lerp(1.25f, .25f, saturate((cameraDistance - 50.f)/150.f));
+
     surfaceDerivatives += DecompressDerivatives(
-        NormalsTexture.Sample(DefaultSampler, texCoord.xy).xy,
-        1.0.xxx);
+        NormalsTexture.Sample(DefaultSampler, 3.f * texCoord.xy).xy,
+        detailStrength.xxx);
 
     float3 worldSpaceNormal = BuildNormalFromDerivatives(surfaceDerivatives);
     // return float4(worldSpaceNormal, 1.f);
@@ -124,7 +127,7 @@ float3 BuildNormalFromDerivatives(float2 derivativesSample)
         //
 
     const float refractiveIndex = 1.333f;
-    float3 opticalThickness	= 0.1f * float3(0.45f, 0.175f, 0.05f);
+    float3 opticalThickness	= 0.2f * float3(0.45f, 0.175f, 0.05f);
 
     CalculateReflectivityAndTransmission2(parts, oceanSurface, parameters, refractiveIndex, true);
     // CalculateFoam(parts, oceanSurface);
@@ -136,7 +139,7 @@ float3 BuildNormalFromDerivatives(float2 derivativesSample)
     float3 refractedAttenuation = exp(-opticalThickness * min(MaxDistanceToSimulate, parts.refractionAttenuationDepth));
     parts.upwelling *= 0.33f;
     parts.skyReflection *= 0.2f;
-    parts.specular *= 5.f;
+    // parts.specular *= 2.5f;
 
     float3 colour =
           parts.transmission * refractedAttenuation * parts.refracted

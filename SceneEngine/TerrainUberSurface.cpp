@@ -822,7 +822,7 @@ namespace SceneEngine
             // coords and the real world coords
         float terrainScale = cfg.ElementSpacing();
         auto surfaceHeightsProvider = std::make_unique<Internal::SurfaceHeightsProvider>(
-            (Float2(_pimpl->_gpuCacheMins) - Float2(finalCacheMin)) * terrainScale, (Float2(_pimpl->_gpuCacheMaxs) - Float2(finalCacheMin)) * terrainScale,
+            (Float2(_pimpl->_gpuCacheMins) - Float2(finalCacheMin)) * terrainScale, (Float2(_pimpl->_gpuCacheMaxs + UInt2(1,1)) - Float2(finalCacheMin)) * terrainScale,
             _pimpl->_gpuCacheMaxs - _pimpl->_gpuCacheMins + UInt2(1,1), 
             _pimpl->_gpucache[0]);
 
@@ -831,7 +831,7 @@ namespace SceneEngine
         static bool usePipeModel = true;
         auto newShallowWater = std::make_unique<ShallowWaterSim>(
             ShallowWaterSim::Desc(unsigned(ErosionWaterTileDimension), gridsX * gridsY, usePipeModel, 
-            true, false, false));
+            true, false, true));
         
         std::vector<Int2> newElements;
         for (unsigned y=0; y<gridsY; ++y)
@@ -842,7 +842,7 @@ namespace SceneEngine
         ShallowWaterSim::SimulationContext simContext(
             *metalContext, DeepOceanSimSettings(),
             terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, Zero<Float2>(),
-            nullptr, nullptr, ShallowWaterSim::BorderMode::Surface);
+            surfaceHeightsProvider.get(), nullptr, ShallowWaterSim::BorderMode::Surface);
 
         newShallowWater->BeginElements(
             simContext,
@@ -971,11 +971,13 @@ namespace SceneEngine
             params._thermalErosionRate
         };
         metalContext->BindCS(RenderCore::MakeResourceList(5, ConstantBuffer(&constants, sizeof(constants))));
-        metalContext->BindCS(RenderCore::MakeResourceList(Techniques::CommonResources()._linearClampSampler));
+        metalContext->BindCS(RenderCore::MakeResourceList(
+            Techniques::CommonResources()._defaultSampler,
+            Techniques::CommonResources()._linearClampSampler));
 
         char defines[256];
         _snprintf_s(defines, _TRUNCATE, 
-            "SHALLOW_WATER_TILE_DIMENSION=%i;SURFACE_HEIGHTS_FLOAT=%i", 
+            "SHALLOW_WATER_TILE_DIMENSION=%i;SURFACE_HEIGHTS_FLOAT=%i;USE_LOOKUP_TABLE=1", 
             erosionSim._waterSim->GetGridDimension(),
             _pimpl->_erosionSim._surfaceHeightsProvider->IsFloatFormat());
 

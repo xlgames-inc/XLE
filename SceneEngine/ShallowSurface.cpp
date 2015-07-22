@@ -314,6 +314,8 @@ namespace SceneEngine
             OceanHack_CompressionConstants(
                 metalContext, parserContext, 
                 _pimpl->_cfg._baseHeight, 0.2f, 6.f);
+        settings._compressionConstants[0] -= _pimpl->_simulationMins[0];
+        settings._compressionConstants[1] -= _pimpl->_simulationMins[1];
 
         _pimpl->_sim->ExecuteSim(
             simContext, parserContext, settings, _pimpl->_bufferCounter,

@@ -72,7 +72,10 @@ namespace GUILayer
         _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
             SceneEngine::WorldPlacementsConfig(), modelCache, Float2(0.f, 0.f));
         _placementsEditor = _placementsManager->CreateEditor();
-        _terrainManager = std::make_shared<SceneEngine::TerrainManager>(std::make_shared<SceneEngine::TerrainFormat>());
+            // note --  we need to have the terrain manager a default terrain format here... But it's too early
+            //          for some settings (like the gradient flags settings!)
+        auto defTerrainFormat = std::make_shared<SceneEngine::TerrainFormat>(SceneEngine::GradientFlagsSettings(true));
+        _terrainManager = std::make_shared<SceneEngine::TerrainManager>(defTerrainFormat);
         _vegetationSpawnManager = std::make_shared<SceneEngine::VegetationSpawnManager>(modelCache);
         _volumeFogManager = std::make_shared<SceneEngine::VolumetricFogManager>();
         _shallowSurfaceManager = std::make_shared<SceneEngine::ShallowSurfaceManager>();

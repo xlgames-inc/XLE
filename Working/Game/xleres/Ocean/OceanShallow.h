@@ -122,11 +122,12 @@ float LoadSurfaceHeight(int2 coord)
 		//	for the surface height texture. We need to convert coordinate systems, and
 		//	potentially to bilinear filtering between sample points
 
-	const bool oneToOne = false;
-	if (oneToOne) {
-		float rawHeight = (float)SurfaceHeightsTexture.Load(int4(SurfaceHeightBaseCoord + int3(coord.xy, 0), 0));
-		return SurfaceHeightOffset + rawHeight * SurfaceHeightScale;
-	} else {
+	// const bool oneToOne = false;
+    // if (oneToOne) {
+    // 	float rawHeight = (float)SurfaceHeightsTexture.Load(int4(SurfaceHeightBaseCoord + int3(coord.xy, 0), 0));
+    // 	return SurfaceHeightOffset + rawHeight * SurfaceHeightScale;
+    // } else {
+    {
 		float2 tcInput = saturate(coord.xy / float2(SHALLOW_WATER_TILE_DIMENSION, SHALLOW_WATER_TILE_DIMENSION));
 		float2 surfaceHeightCoord = lerp(float2(SurfaceHeightTextureMin), float2(SurfaceHeightTextureMax), tcInput);
 

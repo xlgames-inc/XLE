@@ -81,11 +81,11 @@ float2 CalculateVel2D(int2 baseCoord)
 #if defined(DUPLEX_VEL) ///////////////////////////////////////////////////////////////////////////
 
 	float centerVel[AdjCellCount];
-	LoadVelocities(centerVel, NormalizeGridCoord(int2(baseCoord.xy) + SimulatingIndex * SHALLOW_WATER_TILE_DIMENSION));
+	LoadVelocities(centerVel, NormalizeGridCoord(int2(baseCoord.xy))); // + SimulatingIndex * SHALLOW_WATER_TILE_DIMENSION));
 
 	for (uint c=0; c<AdjCellCount; ++c) {
 		float temp[AdjCellCount];
-		LoadVelocities(temp, NormalizeGridCoord(int2(baseCoord.xy) + SimulatingIndex * SHALLOW_WATER_TILE_DIMENSION + AdjCellDir[c]));
+		LoadVelocities(temp, NormalizeGridCoord(int2(baseCoord.xy) /*+ SimulatingIndex * SHALLOW_WATER_TILE_DIMENSION*/ + AdjCellDir[c]));
 		centerVel[c] = centerVel[c] - temp[AdjCellComplement[c]];
 	}
 
@@ -167,9 +167,9 @@ float2 CalculateVel2D(int2 baseCoord)
 	float rightWaterHeight = LoadWaterHeight(baseCoord + int2(1,0));
 	float leftWaterHeight = LoadWaterHeight(baseCoord + int2(0,1));
 
-	float centerTerrainHeight = LoadSurfaceHeight(baseCoord);
-	float rightTerrainHeight = LoadSurfaceHeight(baseCoord + int2(1,0));
-	float bottomTerrainHeight = LoadSurfaceHeight(baseCoord + int2(0,1));
+	float centerTerrainHeight = HardMaterials[baseCoord]; //LoadSurfaceHeight(baseCoord);
+	float rightTerrainHeight = HardMaterials[baseCoord + int2(1,0)]; //LoadSurfaceHeight(baseCoord + int2(1,0));
+	float bottomTerrainHeight = HardMaterials[baseCoord + int2(0,1)]; //LoadSurfaceHeight(baseCoord + int2(0,1));
 	float terrainEleDist = 10.f; // spacing between terrain elements
 
 	float3 terrainTangentXDir = float3(terrainEleDist, 0.f, rightTerrainHeight-centerTerrainHeight);
@@ -237,7 +237,7 @@ float CalculateFlowIn(int2 baseCoord)
 		// soft material that will flow into this cell.
 	for (uint c=0; c<AdjCellCount; ++c) {
 		float temp[AdjCellCount];
-		int3 normCoord = NormalizeGridCoord(int2(baseCoord.xy) + SimulatingIndex * SHALLOW_WATER_TILE_DIMENSION + AdjCellDir[c]);
+		int3 normCoord = NormalizeGridCoord(int2(baseCoord.xy) /*+ SimulatingIndex * SHALLOW_WATER_TILE_DIMENSION*/ + AdjCellDir[c]);
 		LoadVelocities(temp, normCoord);
 
 		float intoThis = temp[AdjCellComplement[c]];

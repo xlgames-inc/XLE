@@ -142,6 +142,12 @@ namespace LevelEditorXLE.Terrain
             set { SetAttribute(TerrainST.GradFlagSlopeThreshold2Attribute, value); }
         }
 
+        public DomNode BaseTexture
+        {
+            get { return DomNode.GetChild(TerrainST.baseTextureChild); }
+            set { DomNode.SetChild(TerrainST.baseTextureChild, value); }
+        }
+
         private static uint ClampNodeDimensions(uint input)
         {
             return input.Clamp(1u, 1024u);
@@ -152,20 +158,34 @@ namespace LevelEditorXLE.Terrain
             return input.Clamp(1u, 16u);
         }
 
+        private static bool IsDerivedFrom(DomNode node, DomNodeType type)
+        {
+            return node.Type.Lineage.FirstOrDefault(t => t == type) != null;
+        }
+
         public bool CanAddChild(object child)
         {
             var domNode = child.As<DomNode>();
             if (domNode == null) return false;
-
-            return domNode.Type.Lineage.FirstOrDefault(t => t == Schema.vegetationSpawnConfigType.Type) != null;
+            return  IsDerivedFrom(domNode, Schema.vegetationSpawnConfigType.Type)
+                ||  IsDerivedFrom(domNode, Schema.abstractTerrainMaterialDescType.Type)
+                ;
         }
 
         public bool AddChild(object child)
         {
             var domNode = child.As<DomNode>();
-            if (domNode != null && domNode.Type.Lineage.FirstOrDefault(t => t == Schema.vegetationSpawnConfigType.Type) != null)
+            if (domNode != null && IsDerivedFrom(domNode, Schema.vegetationSpawnConfigType.Type))
             {
                 SetChild(Schema.terrainType.VegetationSpawnChild, domNode);
+                return true;
+            }
+
+            if (domNode != null && IsDerivedFrom(domNode, Schema.abstractTerrainMaterialDescType.Type))
+            {
+                if (BaseTexture == null)
+                    BaseTexture = new DomNode(Schema.terrainBaseTextureType.Type);
+                BaseTexture.GetChildList(Schema.terrainBaseTextureType.materialChild).Add(domNode);
                 return true;
             }
 
@@ -392,7 +412,7 @@ namespace LevelEditorXLE.Terrain
                 switch ((Command)commandTag)
                 {
                     case Command.CreateBaseTexture:
-                        return DomNode.GetChild(TerrainST.baseTextureChild) == null;
+                        return BaseTexture == null;
 
                     case Command.Configure:
                     case Command.GenerateShadows:
@@ -412,12 +432,8 @@ namespace LevelEditorXLE.Terrain
             {
                 case Command.CreateBaseTexture:
                     {
-                        if (DomNode.GetChild(TerrainST.baseTextureChild) == null)
-                        {
-                            DomNode.SetChild(
-                                TerrainST.baseTextureChild,
-                                new DomNode(Schema.terrainBaseTextureType.Type));
-                        }
+                        if (BaseTexture == null)
+                            BaseTexture = new DomNode(Schema.terrainBaseTextureType.Type);
                         break;
                     }
 
