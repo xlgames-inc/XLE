@@ -162,7 +162,7 @@ namespace Overlays
         return false;
     }
 
-    OceanSettingsDisplay::OceanSettingsDisplay(SceneEngine::OceanSettings& oceanSettings)
+    OceanSettingsDisplay::OceanSettingsDisplay(SceneEngine::DeepOceanSimSettings& oceanSettings)
     : _oceanSettings(&oceanSettings)
     {
         const auto scrollBarId = InteractableId_Make("ScrollBar");

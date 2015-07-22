@@ -22,7 +22,7 @@
 
 namespace SceneEngine 
 {
-    extern OceanSettings GlobalOceanSettings; 
+    extern DeepOceanSimSettings GlobalOceanSettings; 
     extern OceanLightingSettings GlobalOceanLightingSettings;
 }
 
@@ -317,7 +317,7 @@ namespace EntityInterface
             (float)(packedColor & 0xff) / 255.f);
     }
 
-    static SceneEngine::OceanSettings BuildOceanSettings(const RetainedEntities& sys, const RetainedEntity& obj)
+    static SceneEngine::DeepOceanSimSettings BuildOceanSettings(const RetainedEntities& sys, const RetainedEntity& obj)
     {
         ParamName(Enable);
         ParamName(WindAngle);
@@ -337,7 +337,7 @@ namespace EntityInterface
         ParamName(FoamIncreaseClamp);
         ParamName(FoamDecrease);
 
-        SceneEngine::OceanSettings result;
+        SceneEngine::DeepOceanSimSettings result;
         result._enable = obj._properties.GetParameter(Enable, result._enable);
         result._windAngle[0] = obj._properties.GetParameter(WindAngle, result._windAngle[0] * (180.f / gPI)) * (gPI / 180.f);
         result._windVelocity[0] = obj._properties.GetParameter(WindVelocity, result._windVelocity[0]);

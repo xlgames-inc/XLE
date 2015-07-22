@@ -839,7 +839,7 @@ namespace SceneEngine
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
         ShallowWaterSim::SimulationContext simContext(
-            *metalContext, OceanSettings(),
+            *metalContext, DeepOceanSimSettings(),
             terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, Zero<Float2>(),
             nullptr, nullptr, ShallowWaterSim::BorderMode::Surface);
 
@@ -914,7 +914,7 @@ namespace SceneEngine
         settings._pressureConstant = params._pressureConstant;
 
         ShallowWaterSim::SimulationContext simContext(
-            *metalContext, OceanSettings(),
+            *metalContext, DeepOceanSimSettings(),
             terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, Zero<Float2>(),
             _pimpl->_erosionSim._surfaceHeightsProvider.get(), nullptr,
             ShallowWaterSim::BorderMode::Surface);
@@ -1052,7 +1052,7 @@ namespace SceneEngine
             metalContext->BindPS(RenderCore::MakeResourceList(2, _pimpl->_erosionSim._hardMaterialsSRV, _pimpl->_erosionSim._softMaterialsSRV));
             _pimpl->_erosionSim._waterSim->RenderVelocities(
                 *metalContext, parserContext,
-                OceanSettings(), terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, 
+                DeepOceanSimSettings(), terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, 
                 worldSpaceOffset, _pimpl->_erosionSim._bufferCount-1, 
                 ShallowWaterSim::BorderMode::Surface, true);
         } 

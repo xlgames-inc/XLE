@@ -9,64 +9,16 @@
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Metal/RenderTargetView.h"
+#include "../BufferUploads/IBufferUploads_Forward.h"
 #include <vector>
+
+namespace BufferUploads { class ResourceLocator; }
 
 namespace SceneEngine
 {
-    class FFTBufferBox
-    {
-    public:
-        class Desc
-        {
-        public:
-            Desc(unsigned width, unsigned height, bool useDerivativesMapForNormals);
-            unsigned _width, _height;
-            bool _useDerivativesMapForNormals;
-        };
+    class LightingParserContext;
 
-        FFTBufferBox(const Desc& desc);
-        ~FFTBufferBox();
-
-        intrusive_ptr<ID3D::Resource>               _workingTextureReal;
-        RenderCore::Metal::UnorderedAccessView      _workingTextureRealUVA;
-        RenderCore::Metal::RenderTargetView         _workingTextureRealTarget;
-        RenderCore::Metal::ShaderResourceView       _workingTextureRealShaderResource;
-
-        intrusive_ptr<ID3D::Resource>               _workingTextureImaginary;
-        RenderCore::Metal::UnorderedAccessView      _workingTextureImaginaryUVA;
-        RenderCore::Metal::RenderTargetView         _workingTextureImaginaryTarget;
-        RenderCore::Metal::ShaderResourceView       _workingTextureImaginaryShaderResource;
-
-        intrusive_ptr<ID3D::Resource>               _workingTextureXReal;
-        RenderCore::Metal::UnorderedAccessView      _workingTextureXRealUVA;
-        RenderCore::Metal::ShaderResourceView       _workingTextureXRealShaderResource;
-
-        intrusive_ptr<ID3D::Resource>               _workingTextureXImaginary;
-        RenderCore::Metal::UnorderedAccessView      _workingTextureXImaginaryUVA;
-        RenderCore::Metal::ShaderResourceView       _workingTextureXImaginaryShaderResource;
-
-        intrusive_ptr<ID3D::Resource>               _workingTextureYReal;
-        RenderCore::Metal::UnorderedAccessView      _workingTextureYRealUVA;
-        RenderCore::Metal::ShaderResourceView       _workingTextureYRealShaderResource;
-
-        intrusive_ptr<ID3D::Resource>               _workingTextureYImaginary;
-        RenderCore::Metal::UnorderedAccessView      _workingTextureYImaginaryUVA;
-        RenderCore::Metal::ShaderResourceView       _workingTextureYImaginaryShaderResource;
-
-        intrusive_ptr<ID3D::Resource>                       _normalsTexture;
-        std::vector<RenderCore::Metal::UnorderedAccessView> _normalsTextureUAV;
-        std::vector<RenderCore::Metal::ShaderResourceView>  _normalsSingleMipSRV;
-        RenderCore::Metal::ShaderResourceView               _normalsTextureShaderResource;
-
-        intrusive_ptr<ID3D::Resource>               _foamQuantity[2];
-        RenderCore::Metal::UnorderedAccessView      _foamQuantityUAV[2];
-        RenderCore::Metal::ShaderResourceView       _foamQuantitySRV[2];
-        RenderCore::Metal::ShaderResourceView       _foamQuantitySRV2[2];
-
-        bool _useDerivativesMapForNormals;
-    };
-
-    class OceanSettings
+    class DeepOceanSimSettings
     {
     public:
         bool        _enable;
@@ -83,25 +35,84 @@ namespace SceneEngine
         float       _gridShiftSpeed;
         float       _baseHeight;
 
-        float _foamThreshold, _foamIncreaseSpeed;
-        float _foamIncreaseClamp;
-        unsigned _foamDecrease;
+        float       _foamThreshold, _foamIncreaseSpeed;
+        float       _foamIncreaseClamp;
+        unsigned    _foamDecrease;
 
-        OceanSettings();
+        DeepOceanSimSettings();
     };
 
-    class LightingParserContext;
+    class DeepOceanSim
+    {
+    public:
+        class Desc
+        {
+        public:
+            Desc(unsigned width, unsigned height, bool useDerivativesMapForNormals, bool buildFoam);
+            unsigned _width, _height;
+            bool _useDerivativesMapForNormals;
+            bool _buildFoam;
+        };
+        
+        using SRV = RenderCore::Metal::ShaderResourceView;
+        using RTV = RenderCore::Metal::RenderTargetView;
+        using UAV = RenderCore::Metal::UnorderedAccessView;
+        using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
+        using MetalContext = RenderCore::Metal::DeviceContext;
 
-    void UpdateOceanSurface(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
-        const OceanSettings& oceanSettings, FFTBufferBox& fftBuffer,
-        unsigned bufferCounter);
+        void Update(
+            MetalContext* context, LightingParserContext& parserContext, 
+            const DeepOceanSimSettings& oceanSettings,
+            unsigned bufferCounter);
 
-    void OceanSurface_DrawDebugging(   
-        RenderCore::Metal::DeviceContext* context, 
-        LightingParserContext& parserContext,
-        const OceanSettings& oceanSettings,
-        FFTBufferBox& fftBuffer);
+        void DrawDebugging(   
+            MetalContext* context, 
+            LightingParserContext& parserContext,
+            const DeepOceanSimSettings& oceanSettings);
+
+        DeepOceanSim(const Desc& desc);
+        ~DeepOceanSim();
+
+    // protected:
+
+        ResLocator  _workingTextureReal;
+        UAV         _workingTextureRealUVA;
+        RTV         _workingTextureRealRTV;
+        SRV         _workingTextureRealSRV;
+
+        ResLocator  _workingTextureImaginary;
+        UAV         _workingTextureImaginaryUVA;
+        RTV         _workingTextureImaginaryRTV;
+        SRV         _workingTextureImaginarySRV;
+
+        ResLocator  _workingTextureXReal;
+        UAV         _workingTextureXRealUVA;
+        SRV         _workingTextureXRealSRV;
+
+        ResLocator  _workingTextureXImaginary;
+        UAV         _workingTextureXImaginaryUVA;
+        SRV         _workingTextureXImaginarySRV;
+
+        ResLocator  _workingTextureYReal;
+        UAV         _workingTextureYRealUVA;
+        SRV         _workingTextureYRealSRV;
+
+        ResLocator  _workingTextureYImaginary;
+        UAV         _workingTextureYImaginaryUVA;
+        SRV         _workingTextureYImaginarySRV;
+
+        ResLocator          _normalsTexture;
+        std::vector<UAV>    _normalsTextureUAV;
+        std::vector<SRV>    _normalsSingleMipSRV;
+        SRV                 _normalsTextureSRV;
+
+        ResLocator  _foamQuantity[2];
+        UAV         _foamQuantityUAV[2];
+        SRV         _foamQuantitySRV[2];
+        SRV         _foamQuantitySRV2[2];
+
+        bool        _useDerivativesMapForNormals;
+    };
 
     namespace Internal
     {
@@ -122,6 +133,6 @@ namespace SceneEngine
         };
 
         OceanMaterialConstants BuildOceanMaterialConstants(
-            const OceanSettings& oceanSettings, float shallowGridPhysicalDimension);
+            const DeepOceanSimSettings& oceanSettings, float shallowGridPhysicalDimension);
     }
 }

@@ -62,7 +62,7 @@ namespace SceneEngine
     void FFT_DoDebugging(RenderCore::Metal::DeviceContext* context)
     {
         const unsigned dimensions = 256;
-        auto& box = Techniques::FindCachedBox<FFTBufferBox>(FFTBufferBox::Desc(dimensions,dimensions, false));
+        auto& box = Techniques::FindCachedBox2<DeepOceanSim>(dimensions,dimensions, false, true);
 
         SavedTargets savedTargets(context);
         ViewportDesc oldViewport(*context);
@@ -72,7 +72,7 @@ namespace SceneEngine
 
         context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/Ocean/FFTDebugging.psh:copy:ps_*"));
-        context->Bind(MakeResourceList(box._workingTextureRealTarget, box._workingTextureImaginaryTarget), nullptr);
+        context->Bind(MakeResourceList(box._workingTextureRealRTV, box._workingTextureImaginaryRTV), nullptr);
         context->BindPS(MakeResourceList(::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/objects/env/nature/grassland/plant/co_gland_weed_a_df.dds").GetShaderResource()));
         SetupVertexGeneratorShader(context);
         context->Draw(4);
@@ -100,7 +100,7 @@ namespace SceneEngine
         context->Bind(Techniques::CommonResources()._blendStraightAlpha);
         context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/Ocean/FFTDebugging.psh:main:ps_*"));
-        context->BindPS(MakeResourceList(box._workingTextureRealShaderResource, box._workingTextureImaginaryShaderResource));
+        context->BindPS(MakeResourceList(box._workingTextureRealSRV, box._workingTextureImaginarySRV));
         context->Draw(4);
     }
 
@@ -181,7 +181,7 @@ namespace SceneEngine
     };
 
     static OceanRenderingConstants BuildOceanRenderingConstants(
-        const OceanSettings& oceanSettings, const Float4x4& oceanToReflection,
+        const DeepOceanSimSettings& oceanSettings, const Float4x4& oceanToReflection,
         float currentTime)
     {
         const unsigned screenSpaceGridScale = Tweakable("OceanScreenSpaceGridScale", 6);
@@ -591,9 +591,9 @@ namespace SceneEngine
 
     void RenderOceanSurface(RenderCore::Metal::DeviceContext* context, 
                             LightingParserContext& parserContext,
-                            const OceanSettings& oceanSettings, 
+                            const DeepOceanSimSettings& oceanSettings, 
                             const OceanLightingSettings& oceanLightingSettings,
-                            FFTBufferBox& fftBuffer, ShallowWaterSim* shallowWater, 
+                            DeepOceanSim& fftBuffer, ShallowWaterSim* shallowWater, 
                             RefractionsBuffer* refractionsBox, 
                             RenderCore::Metal::ShaderResourceView& depthBufferSRV,
                             int techniqueIndex)
@@ -732,10 +732,10 @@ namespace SceneEngine
 
         }
 
-        context->BindVS(MakeResourceList(   fftBuffer._workingTextureRealShaderResource, 
-                                            fftBuffer._workingTextureXRealShaderResource, 
-                                            fftBuffer._workingTextureYRealShaderResource));
-        context->BindPS(MakeResourceList(1, fftBuffer._normalsTextureShaderResource));
+        context->BindVS(MakeResourceList(   fftBuffer._workingTextureRealSRV, 
+                                            fftBuffer._workingTextureXRealSRV, 
+                                            fftBuffer._workingTextureYRealSRV));
+        context->BindPS(MakeResourceList(1, fftBuffer._normalsTextureSRV));
         context->BindPS(MakeResourceList(3, 
             fftBuffer._foamQuantitySRV[OceanBufferCounter&1], 
             // ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/defaultresources/waternoise.png").GetShaderResource()
@@ -761,8 +761,9 @@ namespace SceneEngine
             //  some debugging information
         if (Tweakable("OceanDebugging", false)) {
             parserContext._pendingOverlays.push_back(
-                std::bind(  &OceanSurface_DrawDebugging, 
-                            std::placeholders::_1, std::placeholders::_2, oceanSettings, fftBuffer));
+                std::bind(  &DeepOceanSim::DrawDebugging, 
+                            fftBuffer,
+                            std::placeholders::_1, std::placeholders::_2, oceanSettings));
         }
 
         if (pause) {
@@ -773,7 +774,7 @@ namespace SceneEngine
         ////////////////////////////////
 
     void Ocean_Execute( DeviceContext* context, LightingParserContext& parserContext,
-                        const OceanSettings& settings,
+                        const DeepOceanSimSettings& settings,
                         const OceanLightingSettings& lightingSettings,
                         ShaderResourceView& depthBufferSRV)
     {
@@ -801,12 +802,12 @@ namespace SceneEngine
             const bool useDerivativesMap = Tweakable("OceanNormalsBasedOnDerivatives", true);
             const bool doShallowWater = Tweakable("OceanDoShallowWater", false);
             const bool usePipeModel = Tweakable("OceanShallowPipeModel", false);
-            auto& fftBuffer = Techniques::FindCachedBox<FFTBufferBox>(FFTBufferBox::Desc(
-                settings._gridDimensions, settings._gridDimensions, useDerivativesMap));
+            auto& fftBuffer = Techniques::FindCachedBox2<DeepOceanSim>(
+                settings._gridDimensions, settings._gridDimensions, useDerivativesMap, true);
             ShallowWaterSim* shallowWaterBox = nullptr;
 
             context->Bind(Techniques::CommonResources()._dssReadOnly);   // write disabled
-            UpdateOceanSurface(context, parserContext, settings, fftBuffer, OceanBufferCounter);
+            fftBuffer.Update(context, parserContext, settings, OceanBufferCounter);
             if (doShallowWater && MainSurfaceHeightsProvider) {
                 shallowWaterBox = &Techniques::FindCachedBox<ShallowWaterSim>(
                     ShallowWaterSim::Desc(shallowGridDimension, simulatingGridsCount, usePipeModel, false, true));
@@ -815,7 +816,7 @@ namespace SceneEngine
                         *context, settings, shallowGridPhysicalDimension,
                         Zero<Float2>(),
                         MainSurfaceHeightsProvider,
-                        &fftBuffer._workingTextureRealShaderResource,
+                        &fftBuffer._workingTextureRealSRV,
                         ShallowWaterSim::BorderMode::GlobalWaves),
                     parserContext,
                     ShallowWaterSim::SimSettings(),
@@ -837,32 +838,7 @@ namespace SceneEngine
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    OceanSettings::OceanSettings()
-    {
-        _enable = false;
-        _windAngle[0] = 0.734f * 2.f * gPI;
-        _windAngle[1] = 0.41f * 2.f * gPI;
-        _windVelocity[0] = 48.f;
-        _windVelocity[1] = 50.f;
-        _physicalDimensions = 256.f;
-        _gridDimensions = 256;
-        _strengthConstantXY = 1.f;
-        _strengthConstantZ = 0.61f;
-        _detailNormalsStrength = 0.65f;
-        _spectrumFade = 0.f;
-        _scaleAgainstWind[0] = 0.25f;
-        _scaleAgainstWind[1] = 0.25f;
-        _suppressionFactor[0] = 0.06f;
-        _suppressionFactor[1] = 0.06f;
-        _gridShiftSpeed = 0.062f;
-        _baseHeight = 0.f;
-        _foamThreshold = 0.3f;
-        _foamIncreaseSpeed = 8.f / .33f;
-        _foamIncreaseClamp = 8.f;
-        _foamDecrease = 1;
-    }
-
+    
     OceanLightingSettings::OceanLightingSettings()
     {
         _specularReflectionBrightness = Float3(2.8f, 2.4f, 2.1f);

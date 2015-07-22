@@ -27,7 +27,7 @@
 
 namespace SceneEngine
 {
-    extern OceanSettings GlobalOceanSettings;
+    extern DeepOceanSimSettings GlobalOceanSettings;
     extern OceanLightingSettings GlobalOceanLightingSettings;
 }
 

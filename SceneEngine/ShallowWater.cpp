@@ -1030,7 +1030,7 @@ namespace SceneEngine
 
     void ShallowWaterSim::RenderWireframe(
         MetalContext& metalContext, LightingParserContext& parserContext, 
-        const OceanSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
+        const DeepOceanSimSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
         unsigned bufferCounter, BorderMode::Enum borderMode)
     {
         auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
@@ -1079,7 +1079,7 @@ namespace SceneEngine
 
     void ShallowWaterSim::RenderVelocities(
         MetalContext& metalContext, LightingParserContext& parserContext, 
-        const OceanSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
+        const DeepOceanSimSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
         unsigned bufferCounter, BorderMode::Enum borderMode,
         bool showErosion)
     {

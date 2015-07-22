@@ -41,7 +41,7 @@ namespace SceneEngine
     using namespace RenderCore;
     using namespace RenderCore::Metal;
 
-    OceanSettings GlobalOceanSettings; 
+    DeepOceanSimSettings GlobalOceanSettings; 
     OceanLightingSettings GlobalOceanLightingSettings; 
 
     void LightingParser_ResolveGBuffer( 

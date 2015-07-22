@@ -193,7 +193,7 @@ float Sq(float x) { return x*x; }
 		//				pixel). This will minimize the overhead in
 		//				sampling adjacent displacement amounts.
 		//
-#if 1
+#if (DO_FOAM_SIM==1)
 	{
 			//	DavidJ -- note --	have to multiply by StrengthConstantXY here,
 			//						because it's been removed from BuildWorldSpaceDisplacement().

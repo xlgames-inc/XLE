@@ -296,7 +296,7 @@ namespace SceneEngine
     {
         _pimpl->_bufferCounter = (_pimpl->_bufferCounter+1)%3;
 
-        OceanSettings oceanSettings;
+        DeepOceanSimSettings oceanSettings;
         oceanSettings._baseHeight = _pimpl->_cfg._baseHeight;
 
         ShallowWaterSim::SimulationContext simContext(

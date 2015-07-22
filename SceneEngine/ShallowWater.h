@@ -18,8 +18,8 @@ namespace SceneEngine
 {
 
     class ShallowWaterGrid;
-    class FFTBufferBox;
-    class OceanSettings;
+    class DeepOceanSim;
+    class DeepOceanSimSettings;
     class LightingParserContext;
     class ISurfaceHeightsProvider;
 
@@ -66,7 +66,7 @@ namespace SceneEngine
         {
         public:
             MetalContext* _metalContext;
-            const OceanSettings* _oceanSettings;
+            const DeepOceanSimSettings* _oceanSettings;
             float _gridPhysicalDimension;
             Float2 _physicalMins;
             ISurfaceHeightsProvider* _surfaceHeightsProvider;
@@ -75,7 +75,7 @@ namespace SceneEngine
 
             SimulationContext(
                 MetalContext& metalContext,
-                const OceanSettings& oceanSettings,
+                const DeepOceanSimSettings& oceanSettings,
                 float gridPhysicalDimension,
                 Float2 physicalMins,
                 ISurfaceHeightsProvider* surfaceHeightsProvider,
@@ -104,12 +104,12 @@ namespace SceneEngine
 
         void RenderWireframe(
             MetalContext& context, LightingParserContext& parserContext, 
-            const OceanSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
+            const DeepOceanSimSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
             unsigned bufferCounter, BorderMode::Enum borderMode);
 
         void RenderVelocities(
             MetalContext& context, LightingParserContext& parserContext, 
-            const OceanSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
+            const DeepOceanSimSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
             unsigned bufferCounter, BorderMode::Enum borderMode,
             bool showErosion);
 
@@ -142,7 +142,7 @@ namespace SceneEngine
    
     inline ShallowWaterSim::SimulationContext::SimulationContext(
         MetalContext& metalContext,
-        const OceanSettings& oceanSettings,
+        const DeepOceanSimSettings& oceanSettings,
         float gridPhysicalDimension,
         Float2 physicalMins,
         ISurfaceHeightsProvider* surfaceHeightsProvider,

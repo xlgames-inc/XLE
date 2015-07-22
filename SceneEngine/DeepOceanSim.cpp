@@ -21,6 +21,7 @@
 #include "../ConsoleRig/Console.h"
 #include "../Assets/Assets.h"
 #include "../Math/Vector.h"
+#include "../Utility/StringFormat.h"
 #include "../Utility/BitUtils.h"
 
 namespace SceneEngine
@@ -39,26 +40,33 @@ namespace SceneEngine
             float       _scaleAgainstWind;
             float       _suppressionFactor;
 
-            Desc(unsigned width, unsigned height, const Float2& physicalDimensions, const Float2& windVector, float scaleAgainstWind, float suppressionFactor)
-                {   _width = width; _height = height; _windVector = windVector; 
-                    _physicalDimensions = physicalDimensions; _scaleAgainstWind = scaleAgainstWind; _suppressionFactor = suppressionFactor; }
+            Desc(   unsigned width, unsigned height, const 
+                    Float2& physicalDimensions, const Float2& windVector, 
+                    float scaleAgainstWind, float suppressionFactor)
+            {   
+                _width = width; _height = height; _windVector = windVector; 
+                _physicalDimensions = physicalDimensions; 
+                _scaleAgainstWind = scaleAgainstWind; _suppressionFactor = suppressionFactor; 
+            }
         };
 
         StartingSpectrumBox(const Desc& desc);
         ~StartingSpectrumBox();
 
-        intrusive_ptr<ID3D::Resource>                  _inputReal;
-        intrusive_ptr<ID3D::Resource>                  _inputImaginary;
-        RenderCore::Metal::ShaderResourceView       _inputRealShaderResource;
-        RenderCore::Metal::ShaderResourceView       _inputImaginaryShaderResource;
+        using SRV = RenderCore::Metal::ShaderResourceView;
+        using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
+
+        ResLocator  _inputReal;
+        ResLocator  _inputImaginary;
+        SRV         _inputRealShaderResource;
+        SRV         _inputImaginaryShaderResource;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void UpdateOceanSurface(
+    void DeepOceanSim::Update(
         Metal::DeviceContext* context, LightingParserContext& parserContext, 
-        const OceanSettings& oceanSettings, FFTBufferBox& fftBuffer,
-        unsigned bufferCounter)
+        const DeepOceanSimSettings& oceanSettings, unsigned bufferCounter)
     {
         const unsigned dimensions = oceanSettings._gridDimensions;
         const Float2 physicalDimensions = Float2(oceanSettings._physicalDimensions, oceanSettings._physicalDimensions);
@@ -80,8 +88,11 @@ namespace SceneEngine
         auto& fft2 = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/FFT.csh:FFT2D_2:cs_*");
         auto& setup = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/FFT.csh:Setup:cs_*", fftDefines);
 
-        auto& buildNormals = ::Assets::GetAssetDep<Metal::ComputeShader>(fftBuffer._useDerivativesMapForNormals ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivatives:cs_*" : "game/xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*");
-        auto& buildNormalsMipmaps = ::Assets::GetAssetDep<Metal::ComputeShader>(fftBuffer._useDerivativesMapForNormals ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivativesMipmap:cs_*" : "game/xleres/Ocean/OceanNormals.csh:BuildNormalsMipmap:cs_*");
+        StringMeld<64> shaderDefines;
+        shaderDefines << "DO_FOAM_SIM=" << int(_foamQuantityUAV[0].IsGood());
+
+        auto& buildNormals = ::Assets::GetAssetDep<Metal::ComputeShader>(_useDerivativesMapForNormals ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivatives:cs_*" : "game/xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*", shaderDefines.get());
+        auto& buildNormalsMipmaps = ::Assets::GetAssetDep<Metal::ComputeShader>(_useDerivativesMapForNormals ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivativesMipmap:cs_*" : "game/xleres/Ocean/OceanNormals.csh:BuildNormalsMipmap:cs_*", shaderDefines.get());
     
         const float shallowGridPhysicalDimension = Tweakable("OceanShallowPhysicalDimension", 256.f);
         // const float currentTime = parserContext.GetSceneParser()->GetTimeValue();
@@ -106,9 +117,9 @@ namespace SceneEngine
             Metal::UniformsStream(nullptr, cbs, dimof(cbs)));
 
         context->BindCS(MakeResourceList(
-            fftBuffer._workingTextureRealUVA, fftBuffer._workingTextureImaginaryUVA,
-            fftBuffer._workingTextureXRealUVA, fftBuffer._workingTextureXImaginaryUVA,
-            fftBuffer._workingTextureYRealUVA, fftBuffer._workingTextureYImaginaryUVA));
+            _workingTextureRealUVA, _workingTextureImaginaryUVA,
+            _workingTextureXRealUVA, _workingTextureXImaginaryUVA,
+            _workingTextureYRealUVA, _workingTextureYImaginaryUVA));
         context->BindCS(MakeResourceList(
             calmSpectrum._inputRealShaderResource, calmSpectrum._inputImaginaryShaderResource,
             strongSpectrum._inputRealShaderResource, strongSpectrum._inputImaginaryShaderResource));
@@ -123,27 +134,28 @@ namespace SceneEngine
         context->UnbindCS<Metal::UnorderedAccessView>(0, 6);
 
             //  Perform FFT transform first on the heights texture, then on the X & Y displacement textures
-        context->BindCS(MakeResourceList(fftBuffer._workingTextureRealUVA, fftBuffer._workingTextureImaginaryUVA));
+        context->BindCS(MakeResourceList(_workingTextureRealUVA, _workingTextureImaginaryUVA));
         context->Bind(fft1); context->Dispatch((dimensions + (32-1))/32);
         context->Bind(fft2); context->Dispatch((dimensions + (32-1))/32);
 
-        context->BindCS(MakeResourceList(fftBuffer._workingTextureXRealUVA, fftBuffer._workingTextureXImaginaryUVA));
+        context->BindCS(MakeResourceList(_workingTextureXRealUVA, _workingTextureXImaginaryUVA));
         context->Bind(fft1); context->Dispatch((dimensions + (32-1))/32);
         context->Bind(fft2); context->Dispatch((dimensions + (32-1))/32);
 
-        context->BindCS(MakeResourceList(fftBuffer._workingTextureYRealUVA, fftBuffer._workingTextureYImaginaryUVA));
+        context->BindCS(MakeResourceList(_workingTextureYRealUVA, _workingTextureYImaginaryUVA));
         context->Bind(fft1); context->Dispatch((dimensions + (32-1))/32);
         context->Bind(fft2); context->Dispatch((dimensions + (32-1))/32);
 
         context->UnbindCS<Metal::UnorderedAccessView>(0, 6);
 
             //  Generate normals using the displacement textures
-        if (!fftBuffer._normalsTextureUAV.empty()) {
+        if (!_normalsTextureUAV.empty()) {
             Metal::BoundUniforms buildNormalsUniforms(
                 ::Assets::GetAssetDep<CompiledShaderByteCode>(
-                    fftBuffer._useDerivativesMapForNormals 
+                    _useDerivativesMapForNormals 
                     ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivatives:cs_*" 
-                    : "game/xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*"));
+                    : "game/xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*",
+                    shaderDefines.get()));
             Techniques::TechniqueContext::BindGlobalUniforms(buildNormalsUniforms);
             buildNormalsUniforms.BindConstantBuffer(Hash64("OceanGridConstants"), 0, 1);
             buildNormalsUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 1, 1);
@@ -152,22 +164,22 @@ namespace SceneEngine
                 Metal::UniformsStream(nullptr, cbs, dimof(cbs)));
 
             context->BindCS(MakeResourceList(
-                fftBuffer._workingTextureRealShaderResource, 
-                fftBuffer._workingTextureXRealShaderResource, 
-                fftBuffer._workingTextureYRealShaderResource,
-                fftBuffer._foamQuantitySRV2[(bufferCounter+1)&1]));
-            context->BindCS(MakeResourceList(fftBuffer._normalsTextureUAV[0], fftBuffer._foamQuantityUAV[bufferCounter&1]));
+                _workingTextureRealSRV, 
+                _workingTextureXRealSRV, 
+                _workingTextureYRealSRV,
+                _foamQuantitySRV2[(bufferCounter+1)&1]));
+            context->BindCS(MakeResourceList(_normalsTextureUAV[0], _foamQuantityUAV[bufferCounter&1]));
             context->Bind(buildNormals); context->Dispatch((dimensions + (32-1))/32, (dimensions + (32-1))/32);
             context->UnbindCS<Metal::UnorderedAccessView>(0, 2);
 
             context->Bind(buildNormalsMipmaps);
-            for (unsigned step = 0; step<fftBuffer._normalsTextureUAV.size()-1; ++step) {
+            for (unsigned step = 0; step<_normalsTextureUAV.size()-1; ++step) {
                 unsigned mipDims = dimensions >> (step+1);
                 unsigned constants[4] = { mipDims, mipDims, 0, 0 };
                 context->BindCS(MakeResourceList(Metal::ConstantBuffer(constants, sizeof(constants))));
 
-                context->BindCS(MakeResourceList(4, fftBuffer._normalsSingleMipSRV[step]));
-                context->BindCS(MakeResourceList(fftBuffer._normalsTextureUAV[step+1]));
+                context->BindCS(MakeResourceList(4, _normalsSingleMipSRV[step]));
+                context->BindCS(MakeResourceList(_normalsTextureUAV[step+1]));
             
                 context->Dispatch((mipDims + (32-1))/32, (mipDims + (32-1))/32);
                 context->UnbindCS<Metal::UnorderedAccessView>(0, 1);
@@ -177,11 +189,10 @@ namespace SceneEngine
         }
     }
 
-    void OceanSurface_DrawDebugging(   
+    void DeepOceanSim::DrawDebugging(   
         RenderCore::Metal::DeviceContext* context, 
         LightingParserContext& parserContext,
-        const OceanSettings& oceanSettings,
-        FFTBufferBox& fftBuffer)
+        const DeepOceanSimSettings& oceanSettings)
     {
         using namespace RenderCore;
 
@@ -202,7 +213,7 @@ namespace SceneEngine
         context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/Ocean/FFTDebugging.psh:main:ps_*"));
         context->BindPS(MakeResourceList(
-            fftBuffer._workingTextureRealShaderResource, fftBuffer._workingTextureImaginaryShaderResource,
+            _workingTextureRealSRV, _workingTextureImaginarySRV,
             calmSpectrum._inputRealShaderResource, calmSpectrum._inputImaginaryShaderResource,
             strongSpectrum._inputRealShaderResource, strongSpectrum._inputImaginaryShaderResource));
         context->Draw(4);
@@ -212,7 +223,7 @@ namespace SceneEngine
 
     namespace Internal
     {
-        OceanMaterialConstants BuildOceanMaterialConstants(const OceanSettings& oceanSettings, float shallowGridPhysicalDimension)
+        OceanMaterialConstants BuildOceanMaterialConstants(const DeepOceanSimSettings& oceanSettings, float shallowGridPhysicalDimension)
         {
             const Float2 physicalDimensions = Float2(oceanSettings._physicalDimensions, oceanSettings._physicalDimensions);
             OceanMaterialConstants result = {
@@ -347,7 +358,7 @@ namespace SceneEngine
                     TexturePitches(
                         unsigned(desc._width*sizeof(float)), 
                         unsigned(desc._width*desc._height*sizeof(float)))).get()
-            )->AdoptUnderlying();
+            );
         auto inputImaginary = 
             uploads.Transaction_Immediate(
                 bufferUploadsDesc, 
@@ -356,10 +367,10 @@ namespace SceneEngine
                     TexturePitches(
                         unsigned(desc._width*sizeof(float)), 
                         unsigned(desc._width*desc._height*sizeof(float)))).get()
-            )->AdoptUnderlying();
+            );
 
-        RenderCore::Metal::ShaderResourceView inputRealShaderResource(inputReal.get());
-        RenderCore::Metal::ShaderResourceView inputImaginaryShaderResource(inputImaginary.get());
+        Metal::ShaderResourceView inputRealShaderResource(inputReal->GetUnderlying());
+        Metal::ShaderResourceView inputImaginaryShaderResource(inputImaginary->GetUnderlying());
 
         _inputReal = std::move(inputReal);
         _inputImaginary = std::move(inputImaginary);
@@ -371,9 +382,37 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    FFTBufferBox::Desc::Desc(unsigned width, unsigned height, bool useDerivativesMapForNormals) : _width(width), _height(height), _useDerivativesMapForNormals(useDerivativesMapForNormals) {}
+    DeepOceanSimSettings::DeepOceanSimSettings()
+    {
+        _enable = false;
+        _windAngle[0] = 0.734f * 2.f * gPI;
+        _windAngle[1] = 0.41f * 2.f * gPI;
+        _windVelocity[0] = 48.f;
+        _windVelocity[1] = 50.f;
+        _physicalDimensions = 256.f;
+        _gridDimensions = 256;
+        _strengthConstantXY = 1.f;
+        _strengthConstantZ = 0.61f;
+        _detailNormalsStrength = 0.65f;
+        _spectrumFade = 0.f;
+        _scaleAgainstWind[0] = 0.25f;
+        _scaleAgainstWind[1] = 0.25f;
+        _suppressionFactor[0] = 0.06f;
+        _suppressionFactor[1] = 0.06f;
+        _gridShiftSpeed = 0.062f;
+        _baseHeight = 0.f;
+        _foamThreshold = 0.3f;
+        _foamIncreaseSpeed = 8.f / .33f;
+        _foamIncreaseClamp = 8.f;
+        _foamDecrease = 1;
+    }
 
-    FFTBufferBox::FFTBufferBox(const Desc& desc) 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    DeepOceanSim::Desc::Desc(unsigned width, unsigned height, bool useDerivativesMapForNormals, bool buildFoam)
+    : _width(width), _height(height), _useDerivativesMapForNormals(useDerivativesMapForNormals), _buildFoam(buildFoam) {}
+
+    DeepOceanSim::DeepOceanSim(const Desc& desc) 
     {
         using namespace BufferUploads;
         auto& uploads = GetBufferUploads();
@@ -384,33 +423,33 @@ namespace SceneEngine
             "FFT");
 
             ////
-        auto workingTextureReal = uploads.Transaction_Immediate(bufferUploadsDesc)->AdoptUnderlying();
-        Metal::UnorderedAccessView workingTextureRealUVA(workingTextureReal.get(), Metal::NativeFormat::R32_UINT);
-        Metal::RenderTargetView workingTextureRealTarget(workingTextureReal.get(), Metal::NativeFormat::R32_UINT);
-        Metal::ShaderResourceView workingTextureRealShaderResource(workingTextureReal.get(), Metal::NativeFormat::R32_FLOAT);
+        auto workingTextureReal = uploads.Transaction_Immediate(bufferUploadsDesc);
+        Metal::UnorderedAccessView workingTextureRealUVA(workingTextureReal->GetUnderlying(), Metal::NativeFormat::R32_UINT);
+        Metal::RenderTargetView workingTextureRealTarget(workingTextureReal->GetUnderlying(), Metal::NativeFormat::R32_UINT);
+        Metal::ShaderResourceView workingTextureRealShaderResource(workingTextureReal->GetUnderlying(), Metal::NativeFormat::R32_FLOAT);
 
-        auto workingTextureImaginary = uploads.Transaction_Immediate(bufferUploadsDesc)->AdoptUnderlying();
-        Metal::UnorderedAccessView workingTextureImaginaryUVA(workingTextureImaginary.get(), Metal::NativeFormat::R32_UINT);
-        Metal::RenderTargetView workingTextureImaginaryTarget(workingTextureImaginary.get(), Metal::NativeFormat::R32_UINT);
-        Metal::ShaderResourceView workingTextureImaginaryShaderResource(workingTextureImaginary.get(), Metal::NativeFormat::R32_FLOAT);
-
-            ////
-        auto workingTextureXReal = uploads.Transaction_Immediate(bufferUploadsDesc)->AdoptUnderlying();
-        Metal::UnorderedAccessView workingTextureXRealUVA(workingTextureXReal.get(), Metal::NativeFormat::R32_UINT);
-        Metal::ShaderResourceView workingTextureXRealShaderResource(workingTextureXReal.get(), Metal::NativeFormat::R32_FLOAT);
-
-        auto workingTextureXImaginary = uploads.Transaction_Immediate(bufferUploadsDesc)->AdoptUnderlying();
-        Metal::UnorderedAccessView workingTextureXImaginaryUVA(workingTextureXImaginary.get(), Metal::NativeFormat::R32_UINT);
-        Metal::ShaderResourceView workingTextureXImaginaryShaderResource(workingTextureXImaginary.get(), Metal::NativeFormat::R32_FLOAT);
+        auto workingTextureImaginary = uploads.Transaction_Immediate(bufferUploadsDesc);
+        Metal::UnorderedAccessView workingTextureImaginaryUVA(workingTextureImaginary->GetUnderlying(), Metal::NativeFormat::R32_UINT);
+        Metal::RenderTargetView workingTextureImaginaryTarget(workingTextureImaginary->GetUnderlying(), Metal::NativeFormat::R32_UINT);
+        Metal::ShaderResourceView workingTextureImaginaryShaderResource(workingTextureImaginary->GetUnderlying(), Metal::NativeFormat::R32_FLOAT);
 
             ////
-        auto workingTextureYReal = uploads.Transaction_Immediate(bufferUploadsDesc)->AdoptUnderlying();
-        Metal::UnorderedAccessView workingTextureYRealUVA(workingTextureYReal.get(), Metal::NativeFormat::R32_UINT);
-        Metal::ShaderResourceView workingTextureYRealShaderResource(workingTextureYReal.get(), Metal::NativeFormat::R32_FLOAT);
+        auto workingTextureXReal = uploads.Transaction_Immediate(bufferUploadsDesc);
+        Metal::UnorderedAccessView workingTextureXRealUVA(workingTextureXReal->GetUnderlying(), Metal::NativeFormat::R32_UINT);
+        Metal::ShaderResourceView workingTextureXRealShaderResource(workingTextureXReal->GetUnderlying(), Metal::NativeFormat::R32_FLOAT);
 
-        auto workingTextureYImaginary = uploads.Transaction_Immediate(bufferUploadsDesc)->AdoptUnderlying();
-        Metal::UnorderedAccessView workingTextureYImaginaryUVA(workingTextureYImaginary.get(), Metal::NativeFormat::R32_UINT);
-        Metal::ShaderResourceView workingTextureYImaginaryShaderResource(workingTextureYImaginary.get(), Metal::NativeFormat::R32_FLOAT);
+        auto workingTextureXImaginary = uploads.Transaction_Immediate(bufferUploadsDesc);
+        Metal::UnorderedAccessView workingTextureXImaginaryUVA(workingTextureXImaginary->GetUnderlying(), Metal::NativeFormat::R32_UINT);
+        Metal::ShaderResourceView workingTextureXImaginaryShaderResource(workingTextureXImaginary->GetUnderlying(), Metal::NativeFormat::R32_FLOAT);
+
+            ////
+        auto workingTextureYReal = uploads.Transaction_Immediate(bufferUploadsDesc);
+        Metal::UnorderedAccessView workingTextureYRealUVA(workingTextureYReal->GetUnderlying(), Metal::NativeFormat::R32_UINT);
+        Metal::ShaderResourceView workingTextureYRealShaderResource(workingTextureYReal->GetUnderlying(), Metal::NativeFormat::R32_FLOAT);
+
+        auto workingTextureYImaginary = uploads.Transaction_Immediate(bufferUploadsDesc);
+        Metal::UnorderedAccessView workingTextureYImaginaryUVA(workingTextureYImaginary->GetUnderlying(), Metal::NativeFormat::R32_UINT);
+        Metal::ShaderResourceView workingTextureYImaginaryShaderResource(workingTextureYImaginary->GetUnderlying(), Metal::NativeFormat::R32_FLOAT);
 
             ////
         const unsigned normalsMipCount = IntegerLog2(std::max(desc._width, desc._height));
@@ -421,65 +460,65 @@ namespace SceneEngine
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
             BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, typelessNormalFormat, uint8(normalsMipCount)),
             "OceanNormals");
-        auto normalsTexture = uploads.Transaction_Immediate(normalsBufferUploadsDesc)->AdoptUnderlying();
+        auto normalsTexture = uploads.Transaction_Immediate(normalsBufferUploadsDesc);
         std::vector<Metal::UnorderedAccessView> normalsTextureUVA;
         std::vector<Metal::ShaderResourceView> normalsSingleMipSRV;
         normalsTextureUVA.reserve(normalsMipCount);
         normalsSingleMipSRV.reserve(normalsMipCount);
         for (unsigned c=0; c<normalsMipCount; ++c) {
-            normalsTextureUVA.push_back(Metal::UnorderedAccessView(normalsTexture.get(), uintNormalFormat, c));
-            normalsSingleMipSRV.push_back(Metal::ShaderResourceView(normalsTexture.get(), uintNormalFormat, Metal::MipSlice(c, 1)));
+            normalsTextureUVA.push_back(Metal::UnorderedAccessView(normalsTexture->GetUnderlying(), uintNormalFormat, c));
+            normalsSingleMipSRV.push_back(Metal::ShaderResourceView(normalsTexture->GetUnderlying(), uintNormalFormat, Metal::MipSlice(c, 1)));
         }
-        Metal::ShaderResourceView normalsTextureShaderResource(normalsTexture.get(), unormNormalFormat, Metal::MipSlice(0, normalsMipCount));
+        Metal::ShaderResourceView normalsTextureShaderResource(normalsTexture->GetUnderlying(), unormNormalFormat, Metal::MipSlice(0, normalsMipCount));
 
             ////
         auto foamTextureDesc = BuildRenderTargetDesc(
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
             BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R8_TYPELESS),
             "Foam");
-        auto foamQuantity0 = uploads.Transaction_Immediate(foamTextureDesc, nullptr)->AdoptUnderlying();
-        auto foamQuantity1 = uploads.Transaction_Immediate(foamTextureDesc, nullptr)->AdoptUnderlying();
-        Metal::UnorderedAccessView foamQuantityUVA0(foamQuantity0.get(), Metal::NativeFormat::R8_UINT);
-        Metal::ShaderResourceView foamQuantitySRV0(foamQuantity0.get(), Metal::NativeFormat::R8_UNORM);
-        Metal::ShaderResourceView foamQuantitySRV20(foamQuantity0.get(), Metal::NativeFormat::R8_UINT);
-        Metal::UnorderedAccessView foamQuantityUVA1(foamQuantity1.get(), Metal::NativeFormat::R8_UINT);
-        Metal::ShaderResourceView foamQuantitySRV1(foamQuantity1.get(), Metal::NativeFormat::R8_UNORM);
-        Metal::ShaderResourceView foamQuantitySRV21(foamQuantity1.get(), Metal::NativeFormat::R8_UINT);
+        auto foamQuantity0 = uploads.Transaction_Immediate(foamTextureDesc, nullptr);
+        auto foamQuantity1 = uploads.Transaction_Immediate(foamTextureDesc, nullptr);
+        Metal::UnorderedAccessView foamQuantityUVA0(foamQuantity0->GetUnderlying(), Metal::NativeFormat::R8_UINT);
+        Metal::ShaderResourceView foamQuantitySRV0(foamQuantity0->GetUnderlying(), Metal::NativeFormat::R8_UNORM);
+        Metal::ShaderResourceView foamQuantitySRV20(foamQuantity0->GetUnderlying(), Metal::NativeFormat::R8_UINT);
+        Metal::UnorderedAccessView foamQuantityUVA1(foamQuantity1->GetUnderlying(), Metal::NativeFormat::R8_UINT);
+        Metal::ShaderResourceView foamQuantitySRV1(foamQuantity1->GetUnderlying(), Metal::NativeFormat::R8_UNORM);
+        Metal::ShaderResourceView foamQuantitySRV21(foamQuantity1->GetUnderlying(), Metal::NativeFormat::R8_UINT);
 
             ////
         _workingTextureReal = std::move(workingTextureReal);
         _workingTextureRealUVA = std::move(workingTextureRealUVA);
-        _workingTextureRealTarget = std::move(workingTextureRealTarget);
-        _workingTextureRealShaderResource = std::move(workingTextureRealShaderResource);
+        _workingTextureRealRTV = std::move(workingTextureRealTarget);
+        _workingTextureRealSRV = std::move(workingTextureRealShaderResource);
 
         _workingTextureImaginary = std::move(workingTextureImaginary);
         _workingTextureImaginaryUVA = std::move(workingTextureImaginaryUVA);
-        _workingTextureImaginaryTarget = std::move(workingTextureImaginaryTarget);
-        _workingTextureImaginaryShaderResource = std::move(workingTextureImaginaryShaderResource);
+        _workingTextureImaginaryRTV = std::move(workingTextureImaginaryTarget);
+        _workingTextureImaginarySRV = std::move(workingTextureImaginaryShaderResource);
 
             ////
         _workingTextureXReal = std::move(workingTextureXReal);
         _workingTextureXRealUVA = std::move(workingTextureXRealUVA);
-        _workingTextureXRealShaderResource = std::move(workingTextureXRealShaderResource);
+        _workingTextureXRealSRV = std::move(workingTextureXRealShaderResource);
 
         _workingTextureXImaginary = std::move(workingTextureXImaginary);
         _workingTextureXImaginaryUVA = std::move(workingTextureXImaginaryUVA);
-        _workingTextureXImaginaryShaderResource = std::move(workingTextureXImaginaryShaderResource);
+        _workingTextureXImaginarySRV = std::move(workingTextureXImaginaryShaderResource);
 
             ////
         _workingTextureYReal = std::move(workingTextureYReal);
         _workingTextureYRealUVA = std::move(workingTextureYRealUVA);
-        _workingTextureYRealShaderResource = std::move(workingTextureYRealShaderResource);
+        _workingTextureYRealSRV = std::move(workingTextureYRealShaderResource);
 
         _workingTextureYImaginary = std::move(workingTextureYImaginary);
         _workingTextureYImaginaryUVA = std::move(workingTextureYImaginaryUVA);
-        _workingTextureYImaginaryShaderResource = std::move(workingTextureYImaginaryShaderResource);
+        _workingTextureYImaginarySRV = std::move(workingTextureYImaginaryShaderResource);
 
             ////
         _normalsTexture = std::move(normalsTexture);
         _normalsTextureUAV = std::move(normalsTextureUVA);
         _normalsSingleMipSRV = std::move(normalsSingleMipSRV);
-        _normalsTextureShaderResource = std::move(normalsTextureShaderResource);
+        _normalsTextureSRV = std::move(normalsTextureShaderResource);
 
             ////
         _foamQuantity[0] = std::move(foamQuantity0);
@@ -494,7 +533,7 @@ namespace SceneEngine
         _useDerivativesMapForNormals = desc._useDerivativesMapForNormals;
     }
 
-    FFTBufferBox::~FFTBufferBox() {}
+    DeepOceanSim::~DeepOceanSim() {}
 
 }
 

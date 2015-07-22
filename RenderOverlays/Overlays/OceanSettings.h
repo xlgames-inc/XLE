@@ -8,7 +8,7 @@
 
 #include "../DebuggingDisplay.h"
 
-namespace SceneEngine { class OceanSettings; class OceanLightingSettings; }
+namespace SceneEngine { class OceanLightingSettings; class DeepOceanSimSettings; }
 
 namespace Overlays
 {
@@ -18,14 +18,14 @@ namespace Overlays
     class OceanSettingsDisplay : public IWidget ///////////////////////////////////////////////////////////
     {
     public:
-        OceanSettingsDisplay(SceneEngine::OceanSettings& oceanSettings);
+        OceanSettingsDisplay(SceneEngine::DeepOceanSimSettings& oceanSettings);
         ~OceanSettingsDisplay();
         void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
     private:
         ScrollBar   _scrollers[14];
-        SceneEngine::OceanSettings* _oceanSettings;
+        SceneEngine::DeepOceanSimSettings* _oceanSettings;
     };
 
     class OceanLightingSettingsDisplay : public IWidget ///////////////////////////////////////////////////////////

@@ -12,7 +12,7 @@
 namespace SceneEngine
 {
     class LightingParserContext;
-    class OceanSettings;
+    class DeepOceanSimSettings;
     class OceanLightingSettings;
 
     /// Entry point for ocean rendering
@@ -20,7 +20,7 @@ namespace SceneEngine
     void Ocean_Execute(
         RenderCore::Metal::DeviceContext* context,
         LightingParserContext& parserContext,
-        const OceanSettings& settings,
+        const DeepOceanSimSettings& settings,
         const OceanLightingSettings& lightingSettings,
         RenderCore::Metal::ShaderResourceView& depthBufferSRV);
 
