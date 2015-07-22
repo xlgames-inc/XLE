@@ -281,8 +281,8 @@ namespace SceneEngine
 
         ViewportDesc mainViewportDesc(*context);
         auto& refractionBox = Techniques::FindCachedBox<RefractionsBuffer>(RefractionsBuffer::Desc(unsigned(mainViewportDesc.Width/2), unsigned(mainViewportDesc.Height/2)));
-        BuildRefractionsTexture(context, parserContext, refractionBox, 4.f);
-        context->BindPS(MakeResourceList(12, refractionBox._refractionsFrontSRV));
+        refractionBox.Build(*context, parserContext, 4.f);
+        context->BindPS(MakeResourceList(12, refractionBox.GetSRV()));
 
         for (auto i=parserContext._pendingOverlays.cbegin(); i!=parserContext._pendingOverlays.cend(); ++i) {
             (*i)(context, parserContext);

@@ -1,15 +1,17 @@
 ~Illum
-~DepthOnly
-~Deferred
     ~Parameters
         ~Material
             SHALLOW_WATER_TILE_DIMENSION=128
+            MAT_DO_REFRACTION
+            SKY_PROJECTION
         ~Geometry
             OUTPUT_WORLD_VIEW_VECTOR=1
             OUTPUT_TEXCOORD=1
         ~GlobalEnvironment
     VertexShader=game/xleres/ocean/shallowsurface.sh:vs_main
     PixelShader=game/xleres/ocean/shallowsurface.sh:ps_main
+~DepthOnly
+~Deferred
 ~ShadowGen
 ~OrderIndependentTransparency
 ~PrepareVegetationSpawn

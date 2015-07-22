@@ -11,6 +11,7 @@
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../BufferUploads/IBufferUploads.h"
+#include "../BufferUploads/ResourceLocator.h"
 
 namespace SceneEngine
 {
@@ -26,24 +27,30 @@ namespace SceneEngine
             unsigned _width, _height;
         };
 
+        using SRV = RenderCore::Metal::ShaderResourceView;
+        using RTV = RenderCore::Metal::RenderTargetView;
+        using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
+
+        void Build(
+            RenderCore::Metal::DeviceContext& context, 
+            LightingParserContext& parserContext,
+            float standardDeviationForBlur);
+        
+        const SRV& GetSRV() { return _refractionsFrontSRV; }
+
         RefractionsBuffer(const Desc& desc);
         ~RefractionsBuffer();
 
-        intrusive_ptr<ID3D::Resource>              _refractionsTexture[2];
-        RenderCore::Metal::RenderTargetView     _refractionsFrontTarget;
-        RenderCore::Metal::RenderTargetView     _refractionsBackTarget;
-        RenderCore::Metal::ShaderResourceView   _refractionsFrontSRV;
-        RenderCore::Metal::ShaderResourceView   _refractionsBackSRV;
+    protected:
+        ResLocator  _refractionsTexture[2];
+        RTV         _refractionsFrontTarget;
+        RTV         _refractionsBackTarget;
+        SRV         _refractionsFrontSRV;
+        SRV         _refractionsBackSRV;
         unsigned _width, _height;
     };
 
     inline RefractionsBuffer::Desc::Desc(unsigned width, unsigned height) { _width = width; _height = height; }
-
-    void        BuildRefractionsTexture(RenderCore::Metal::DeviceContext* context, 
-                                        LightingParserContext& parserContext,
-                                        RefractionsBuffer& refractionBox, float standardDeviationForBlur);
-
-
 
     class DuplicateDepthBuffer
     {

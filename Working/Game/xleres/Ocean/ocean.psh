@@ -16,22 +16,18 @@
 	#define VSOUTPUT_EXTRA float2 specularityTC : SPECTC;
 #endif
 
+#include "Ocean.h"
+// #include "OceanShallow.h"
+#include "OceanLighting.h"
+
 #include "../MainGeometry.h"
 #include "../CommonResources.h"
 #include "../Surface.h"
 #include "../gbuffer.h"
-#include "../Lighting/LightingAlgorithm.h"
-#include "../Lighting/BasicLightingEnvironment.h"
-#include "../Lighting/DirectionalResolve.h"
-#include "../Lighting/AmbientResolve.h"
-#include "../TransformAlgorithm.h"
 #include "../TextureAlgorithm.h"
 #include "../Colour.h"
 #include "../Effects/Sky.psh"
-#include "Ocean.h"
-#include "OceanShallow.h"
 #include "../Utility/perlinnoise.h"
-#include "../Utility/Misc.h"
 
 Texture2D<float>			FoamQuantity : register(t3);
 Texture2D					Foam_Diffuse : register(t4);
@@ -42,20 +38,9 @@ Texture2D					Foam_Diffuse : register(t4);
 	Texture2D<uint>				ShallowGridsLookupTable;
 #endif
 
-Texture2D					RefractionsTexture : register(t9);
-Texture2D_MaybeMS<float>	DepthBuffer : register(t10);
-
-Texture2D					DynamicReflectionTexture;
-
 Texture2D<float>			SurfaceSpecularity;
 
 static const bool			DoFresnel = true;
-
-static const bool			Specular_JitterNormal = false;
-static const float			Specular_JitterNormalStrength = .115f; // 0.075f;
-static const uint			Specular_JitterNormalCount = 3;
-
-static const float			MaxDistanceToSimulate = 100.f;
 
 // #define USE_ACCURATE_NORMAL_DECOMPRESSION 1
 
@@ -125,17 +110,6 @@ float3 BuildNormalFromDerivatives(float2 derivativesSample)
 	float3 v = float3(0.f, 1.0f, derivativesSample.y);
 	return normalize(cross(u, v));
 }
-
-struct OceanSurfaceSample
-{
-	float3 worldSpaceNormal;
-	float4 compressedNormal;
-	float foamQuantity;
-	float3 foamAlbedo;
-	float normalMapAccuracy;
-	float4 dynamicReflectionTexCoord;
-	float specularity;
-};
 
 OceanSurfaceSample BuildOceanSurfaceSample(
 	float2 texCoord,
@@ -217,7 +191,10 @@ OceanSurfaceSample BuildOceanSurfaceSample(
 		result.worldSpaceNormal = DecompressGBufferNormal(compressedNormal);
 	#endif
 
-	result.specularity = SurfaceSpecularity.Sample(DefaultSampler, specularityTC);
+	float specularity = SurfaceSpecularity.Sample(DefaultSampler, specularityTC);
+	result.material.metal = 1.f;
+	result.material.specular = lerp(MatSpecularMin, MatSpecularMax, specularity);
+	result.material.roughness = MatRoughness;
 
 	result.foamAlbedo = 1.0.xxx;
 	float foamQuantity = FoamQuantity.SampleLevel(DefaultSampler, texCoord, 0);
@@ -291,15 +268,6 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
 	return 0.f;
 }
 
-float CalculateFresnel(float3 worldSpaceNormal, float3 worldViewVector)
-{
-	float3 viewDirection = normalize(worldViewVector);
-	float3 worldSpaceReflection = reflect(-viewDirection, worldSpaceNormal);
-	float3 halfVector = normalize(worldSpaceReflection + viewDirection);
-	float fresnel = SchlickFresnel(viewDirection, halfVector, RefractiveIndex);
-	return fresnel;
-}
-
 [earlydepthstencil]
 	GBufferEncoded Deferred(VSOutput geo)
 {
@@ -327,274 +295,6 @@ float CalculateFresnel(float3 worldSpaceNormal, float3 worldViewVector)
 
 	result.normalMapAccuracy = oceanSurface.normalMapAccuracy;
 	return Encode(result);
-}
-
-GBufferValues BuildSample(float3 worldSpaceNormal, float specularity)
-{
-	GBufferValues sample = GBufferValues_Default();
-	sample.diffuseAlbedo = 0.0.xxx;
-	sample.material.metal = 1.f;
-
-	sample.worldSpaceNormal = worldSpaceNormal;
-	sample.material.specular = lerp(MatSpecularMin, MatSpecularMax, specularity);
-	sample.material.roughness = MatRoughness;
-	return sample;
-}
-
-float3 DoSingleSpecular(float3 worldSpaceNormal, float3 worldViewDirection, float specularity)
-{
-	return LightResolve_Specular(BuildSample(worldSpaceNormal, specularity), worldViewDirection, BasicLight[0]);
-}
-
-struct OceanLightingParts
-{
-	float3 upwelling;
-	float3 refracted;
-	float3 foamAlbedo;
-	float3 specular;
-	float3 skyReflection;
-
-	float refractionAttenuationDepth;
-	float forwardDistanceThroughWater;		// distance through the water from the viewport to the refraction point
-	float reflectivity;
-	float transmission;
-	float foamQuantity;
-};
-
-struct OceanParameters
-{
-	float3 worldViewVector;
-	float3 worldViewDirection;
-	uint4 pixelPosition;
-};
-
-struct ReflectionAndTransmission
-{
-	float reflectivity;
-	float transmission;
-};
-
-ReflectionAndTransmission CalculateReflectionAndTransmission(float3 incidentDirection, float3 normal)
-{
-	float thetai = acos(dot(-normal, incidentDirection));
-	float sinthetat = sin(thetai)/RefractiveIndex;
-	float thetat = asin(sinthetat);
-
-		//	Using full expansion of snell's law
-		//	(can be approximated with schlick fresnel)
-	float A = sin(thetat - thetai) / sin(thetat + thetai);
-	float B = tan(thetat - thetai) / tan(thetat + thetai);
-
-	ReflectionAndTransmission result;
-	result.reflectivity = .5f * (A*A + B*B);
-	result.transmission = 1.f - result.reflectivity;
-	return result;
-}
-
-float3 CalculateUpwelling(float angle, OceanLightingParts parts)
-{
-		//
-		//	Calculate an approximate upwelling value. This is
-		//	a basic single scattering simulation
-		//
-		//		We want to find the brightness of a line passing
-		//		beneath the ocean surface. The brightness of a
-		//		point beneath the ocean surface is related to the
-		//		exponential of the depth. We need to find the
-		//		integral of the graph of these changing values.
-		//
-	const float distanceToSimulate = min(MaxDistanceToSimulate, parts.forwardDistanceThroughWater); // 25.f;
-	const uint steps = 8;
-	float hDistance = distanceToSimulate;
-	float xDistance = cos(angle) * distanceToSimulate;
-	float dDistance = sin(angle) * distanceToSimulate;
-
-	float3 result = 0.f;
-	const float surfaceBrightness = 1.f;
-	for (uint c=0; c<steps; ++c) {
-
-			// step linearly through
-		float depth = (c+1)/float(steps) * dDistance;
-		float width = hDistance / float(steps);
-		float postScatterDistance = (c+1)/float(steps) * hDistance;
-
-			//	simulate some light that travels down from the surface,
-			//	reflects in the view direction and then travels towards the
-			//	viewer.
-		float3 brightness = (surfaceBrightness * width) * exp(-OpticalThickness * (depth+postScatterDistance));
-		result += brightness;
-	}
-
-	return result / 100.f;
-}
-
-void CalculateRefractionValue(	inout OceanLightingParts parts,
-								float oceanDepth,
-								OceanParameters parameters,
-								OceanSurfaceSample oceanSurface)
-{
-#if MAT_DO_REFRACTION==1
-	float oceanBottomDepthValue = LoadFloat1(DepthBuffer, parameters.pixelPosition.xy, 0);
-
-	float oceanBottomLinearDepth = NDCDepthToWorldSpace(oceanBottomDepthValue);
-	float oceanLinearDepth = NDCDepthToWorldSpace(oceanDepth);
-	float linearDepthThroughWater = oceanBottomLinearDepth - oceanLinearDepth;
-
-	if (linearDepthThroughWater > (.25f * FarClip) || oceanBottomLinearDepth > (.75f * FarClip)) {
-		parts.refractionAttenuationDepth = 100000.f;
-		parts.forwardDistanceThroughWater = 100000.f;
-		parts.refracted = 0.0.xxx;
-		return;
-	}
-
-	const float airRefractiveIndex = 1.f;
-	float3 incidentRay = -parameters.worldViewDirection;
-	float3 refractedVector = refract(incidentRay, oceanSurface.worldSpaceNormal, airRefractiveIndex/RefractiveIndex);
-	// refractedVector = normalize(refractedVector);
-
-	float3 worldSpaceOceanSurface = WorldSpaceView - parameters.worldViewVector;
-
-		//	Using equal triangles, we can find the vertical depth through the
-		//	water by multiplying the depth along the worldViewDirection by
-		//	the z component of the worldViewDirection. Here, we're assuming
-		//	"parameters.worldViewDirection" is unit length.
-	float zDistanceThroughWater = parameters.worldViewDirection.z * linearDepthThroughWater;
-
-	zDistanceThroughWater = min(zDistanceThroughWater, MaxDistanceToSimulate);
-	float3 refractedOceanBottom = worldSpaceOceanSurface + refractedVector * (-zDistanceThroughWater/refractedVector.z);
-
-	float4 t = mul(WorldToClip, float4(refractedOceanBottom.xyz,1));
-	float2 refractTexCoord = .5f + .5f * t.xy / t.w;
-	refractTexCoord.y = 1.0f - refractTexCoord.y;
-
-		//	imagine a V pattern -- light travels straight down
-		//	to the point on the bottom of the ocean, then back in
-		//	the direction to the viewer. We can cause attenuation
-		//	all along this line.
-		//		(Separate optical thickness values for R, G, B?)
-	parts.refractionAttenuationDepth = linearDepthThroughWater + zDistanceThroughWater;
-	parts.forwardDistanceThroughWater = linearDepthThroughWater;
-
-	float edgeFactor = 1.f;
-	if (false) {	// fade off edges of refaction
-		float2 edgeTest = min(refractTexCoord.xy, 1.0f-refractTexCoord.xy);
-		edgeFactor = saturate(15.f * min(edgeTest.x, edgeTest.y));
-	}
-
-	float3 refractionTextureSample = (1.0f/LightingScale) * RefractionsTexture.SampleLevel(ClampingSampler, refractTexCoord, 0).rgb;
-	parts.refracted = lerp(0.25.xxx, refractionTextureSample, edgeFactor);
-#endif
-}
-
-void CalculateUpwelling(inout OceanLightingParts parts,
-						OceanParameters parameters)
-{
-	float angleToFlatSurface = acos(dot(float3(0.f, 0.f, 1.f), -parameters.worldViewDirection));
-	float3 upwellingStrength = CalculateUpwelling(angleToFlatSurface, parts);
-	parts.upwelling = UpwellingScale * upwellingStrength;
-}
-
-void CalculateFoam(	inout OceanLightingParts parts,
-					OceanSurfaceSample oceanSurface)
-{
-	float diffuseAmount = saturate(dot(oceanSurface.worldSpaceNormal, BasicLight[0].NegativeDirection));
-	parts.foamAlbedo = ((0.5f + diffuseAmount) * FoamBrightness) * oceanSurface.foamAlbedo;
-	parts.foamQuantity = oceanSurface.foamQuantity;
-}
-
-void CalculateReflectivityAndTransmission2(	inout OceanLightingParts parts,
-											OceanSurfaceSample oceanSurface,
-											OceanParameters parameters)
-{
-	parts.reflectivity = 1.f;
-	parts.transmission = 1.f;
-
-	if (DoFresnel) {
-		parts.reflectivity = CalculateFresnel(oceanSurface.worldSpaceNormal, parameters.worldViewVector);
-		parts.transmission = 1.f - parts.reflectivity;
-
-		const bool useShlickApprox = true;
-		if (!useShlickApprox) {
-			// float3 worldSpaceReflection = reflect(worldViewVectorDirection, oceanSurface.worldSpaceNormal);
-			// ReflectionAndTransmission r = CalculateReflectionAndTransmission(worldSpaceReflection, oceanSurface.worldSpaceNormal);
-			ReflectionAndTransmission r = CalculateReflectionAndTransmission(-parameters.worldViewDirection, oceanSurface.worldSpaceNormal);
-			parts.reflectivity = r.reflectivity;
-			parts.transmission = r.transmission;
-		}
-	}
-
-	parts.reflectivity *= .4f + .6f * oceanSurface.specularity;
-}
-
-void CalculateSkyReflection(inout OceanLightingParts parts,
-							OceanSurfaceSample oceanSurface,
-							OceanParameters parameters)
-{
-	float3 reflectionVector = reflect(-parameters.worldViewDirection, oceanSurface.worldSpaceNormal);
-
-	#if MAT_DYNAMIC_REFLECTION == 1
-
-		#if DO_REFLECTION_IN_VS==1
-			float2 reflTC = oceanSurface.dynamicReflectionTexCoord.xy / oceanSurface.dynamicReflectionTexCoord.w;
-			reflTC += oceanSurface.worldSpaceNormal.xy * ReflectionBumpScale;
-			parts.skyReflection = DynamicReflectionTexture.Sample(
-				ClampingSampler, reflTC);
-		#else
-		#endif
-		parts.skyReflection /= LightingScale;
-
-	#else
-
-		parts.skyReflection = LightResolve_Ambient(
-			BuildSample(oceanSurface.worldSpaceNormal, oceanSurface.specularity),
-			parameters.worldViewDirection, BasicAmbient, parameters.pixelPosition.xy, 0);
-
-	#endif
-
-}
-
-void CalculateSpecular(	inout OceanLightingParts parts,
-						OceanSurfaceSample oceanSurface,
-						OceanParameters parameters)
-{
-		//
-		//			Here in an interesting hack for ocean specular...
-		//			let's jitter the normal a bit. This has a different
-		//			affect on the shape of the highlight than changing
-		//			the specular power -- and can make the highlight feel
-		//			longer when the sun is low. If the jittering is too
-		//			much, however -- it will break apart into a U shape.
-		//
-		// todo --	maybe only do the normal jittering around the specular
-		//			highlight
-	float3 baseSpecular = DoSingleSpecular(oceanSurface.worldSpaceNormal, parameters.worldViewDirection, oceanSurface.specularity);
-
-	if (Specular_JitterNormal) {
-		float dither = DitherPatternValue(parameters.pixelPosition.xy);
-
-		float3 result = 0.0.xxx;
-		const float scale = 2.f * pi / float(Specular_JitterNormalCount);
-		for (uint c=0; c<Specular_JitterNormalCount; ++c) {
-			float angle = (float(c)+dither) * scale;
-			float2 sinecosine;
-			sincos(angle, sinecosine.x, sinecosine.y);
-
-			float3 jitteredNormal =
-				oceanSurface.worldSpaceNormal + float3(Specular_JitterNormalStrength * sinecosine.yx, 0.f);
-			const bool doNormalize = true;
-			if (doNormalize) {
-				jitteredNormal = normalize(jitteredNormal);
-			} else {
-					// rough approximation of normalize (it seems too inaccurate, and makes the strangely result unbalanced)
-				jitteredNormal *= 1.f/(1.f + .075f*Specular_JitterNormalStrength);
-			}
-
-			result += DoSingleSpecular(jitteredNormal, parameters.worldViewDirection, oceanSurface.specularity);
-		}
-		parts.specular = (2.f*baseSpecular + result) * (1.f/float(2+Specular_JitterNormalCount));
-	} else {
-		parts.specular = baseSpecular;
-	}
 }
 
 [earlydepthstencil]
@@ -633,15 +333,17 @@ void CalculateSpecular(	inout OceanLightingParts parts,
 		//		the normal a bit
 		//
 
-	CalculateReflectivityAndTransmission2(parts, oceanSurface, parameters);
-	CalculateFoam(parts, oceanSurface);
-	CalculateRefractionValue(parts, geo.position.z, parameters, oceanSurface);
-	CalculateUpwelling(parts, parameters);
+	CalculateReflectivityAndTransmission2(parts, oceanSurface, parameters, RefractiveIndex, DoFresnel);
+	CalculateFoam(parts, oceanSurface, FoamBrightness);
+	CalculateRefractionValue(parts, geo.position.z, parameters, oceanSurface, RefractiveIndex);
+	CalculateUpwelling(parts, parameters, OpticalThickness);
 	CalculateSkyReflection(parts, oceanSurface, parameters);
 	CalculateSpecular(parts, oceanSurface, parameters);
 
+	parts.upwelling *= UpwellingScale;
 	parts.foamQuantity += 1.f-saturate(parts.forwardDistanceThroughWater*.2f);
 	float foamTex = CalculateFoamFromFoamQuantity(geo.texCoord, parts.foamQuantity);
+	parts.skyReflection.rgb *= SkyReflectionBrightness;
 
 	float3 refractedAttenuation = exp(-OpticalThickness * min(MaxDistanceToSimulate, parts.refractionAttenuationDepth));
 

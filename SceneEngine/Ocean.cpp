@@ -1223,7 +1223,7 @@ namespace SceneEngine
         }
         if (refractionsBox) {
                 //  only need the depth buffer if we're doing refractions
-            context->BindPS(MakeResourceList(9, refractionsBox->_refractionsFrontSRV, depthBufferSRV));
+            context->BindPS(MakeResourceList(9, refractionsBox->GetSRV(), depthBufferSRV));
         }
         auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
         context->BindVS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
@@ -1292,7 +1292,7 @@ namespace SceneEngine
             ViewportDesc mainViewportDesc(*context);
             auto& refractionBox = Techniques::FindCachedBox<RefractionsBuffer>(
                 RefractionsBuffer::Desc(unsigned(mainViewportDesc.Width/2.f), unsigned(mainViewportDesc.Height/2.f)));
-            BuildRefractionsTexture(context, parserContext, refractionBox, 1.6f);
+            refractionBox.Build(*context, parserContext, 1.6f);
 
             auto duplicatedDepthBuffer = DuplicateResource(
                 context->GetUnderlying(), ExtractResource<ID3D::Resource>(depthBufferSRV.GetUnderlying()).get());

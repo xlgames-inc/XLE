@@ -37,13 +37,13 @@ namespace SceneEngine
             BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R8G8B8A8_TYPELESS),
             "Refractions");
 
-        auto _refractionsTexture0 = uploads.Transaction_Immediate(targetDesc)->AdoptUnderlying();
-        auto _refractionsTexture1 = uploads.Transaction_Immediate(targetDesc)->AdoptUnderlying();
+        auto _refractionsTexture0 = uploads.Transaction_Immediate(targetDesc);
+        auto _refractionsTexture1 = uploads.Transaction_Immediate(targetDesc);
 
-        RenderTargetView refractionsFrontTarget(_refractionsTexture0.get(), NativeFormat::R8G8B8A8_UNORM);
-        RenderTargetView refractionsBackTarget(_refractionsTexture1.get(), NativeFormat::R8G8B8A8_UNORM);
-        ShaderResourceView refractionsFrontSRV(_refractionsTexture0.get(), NativeFormat::R8G8B8A8_UNORM);
-        ShaderResourceView refractionsBackSRV(_refractionsTexture1.get(), NativeFormat::R8G8B8A8_UNORM);
+        RenderTargetView refractionsFrontTarget(_refractionsTexture0->GetUnderlying(), NativeFormat::R8G8B8A8_UNORM);
+        RenderTargetView refractionsBackTarget(_refractionsTexture1->GetUnderlying(), NativeFormat::R8G8B8A8_UNORM);
+        ShaderResourceView refractionsFrontSRV(_refractionsTexture0->GetUnderlying(), NativeFormat::R8G8B8A8_UNORM);
+        ShaderResourceView refractionsBackSRV(_refractionsTexture1->GetUnderlying(), NativeFormat::R8G8B8A8_UNORM);
 
         _refractionsTexture[0] = std::move(_refractionsTexture0);
         _refractionsTexture[1] = std::move(_refractionsTexture1);
@@ -57,56 +57,56 @@ namespace SceneEngine
 
         ////////////////////////////////
 
-    void        BuildRefractionsTexture(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, RefractionsBuffer& refractionBox, float standardDeviationForBlur)
+    void RefractionsBuffer::Build(RenderCore::Metal::DeviceContext& metalContext, LightingParserContext& parserContext, float standardDeviationForBlur)
     {
         TRY {
                 // Build a refractions texture
-            SavedTargets oldTargets(context);
-            ViewportDesc newViewport(0, 0, float(refractionBox._width), float(refractionBox._height), 0.f, 1.f);
-            context->Bind(newViewport);
+            SavedTargets oldTargets(&metalContext);
+            ViewportDesc newViewport(0, 0, float(_width), float(_height), 0.f, 1.f);
+            metalContext.Bind(newViewport);
 
-            context->Bind(Techniques::CommonResources()._blendOpaque);
-            context->UnbindPS<ShaderResourceView>(12, 1);
+            metalContext.Bind(Techniques::CommonResources()._blendOpaque);
+            metalContext.UnbindPS<ShaderResourceView>(12, 1);
 
             auto res = ExtractResource<ID3D::Resource>(oldTargets.GetRenderTargets()[0]);
             ShaderResourceView sourceSRV(res.get());
             TextureDesc2D textureDesc(res.get());
                         
-            context->Bind(MakeResourceList(refractionBox._refractionsFrontTarget), nullptr);
-            context->BindPS(MakeResourceList(sourceSRV)); // mainTargets._postResolveSRV));
-            context->Bind(
+            metalContext.Bind(MakeResourceList(_refractionsFrontTarget), nullptr);
+            metalContext.BindPS(MakeResourceList(sourceSRV)); // mainTargets._postResolveSRV));
+            metalContext.Bind(
                 Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                     "game/xleres/Effects/SeparableFilter.psh:SingleStepDownSample:ps_*",
                     (textureDesc.SampleDesc.Count>1)?"MSAA_SAMPLERS=1":""));
-            SetupVertexGeneratorShader(context);
-            context->Draw(4);
+            SetupVertexGeneratorShader(&metalContext);
+            metalContext.Draw(4);
 
             float filteringWeights[8];
             XlSetMemory(filteringWeights, 0, sizeof(filteringWeights));
             BuildGaussianFilteringWeights(filteringWeights, standardDeviationForBlur, 7);
-            context->BindPS(MakeResourceList(Metal::ConstantBuffer(filteringWeights, sizeof(filteringWeights))));
+            metalContext.BindPS(MakeResourceList(Metal::ConstantBuffer(filteringWeights, sizeof(filteringWeights))));
 
-            context->Bind(MakeResourceList(refractionBox._refractionsBackTarget), nullptr);
-            context->BindPS(MakeResourceList(refractionBox._refractionsFrontSRV));
-            context->Bind(
+            metalContext.Bind(MakeResourceList(_refractionsBackTarget), nullptr);
+            metalContext.BindPS(MakeResourceList(_refractionsFrontSRV));
+            metalContext.Bind(
                 Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                     "game/xleres/Effects/SeparableFilter.psh:HorizontalBlur:ps_*"));
-            context->Draw(4);
+            metalContext.Draw(4);
 
-            context->UnbindPS<ShaderResourceView>(0, 1);
+            metalContext.UnbindPS<ShaderResourceView>(0, 1);
 
-            context->Bind(MakeResourceList(refractionBox._refractionsFrontTarget), nullptr);
-            context->BindPS(MakeResourceList(refractionBox._refractionsBackSRV));
-            context->Bind(
+            metalContext.Bind(MakeResourceList(_refractionsFrontTarget), nullptr);
+            metalContext.BindPS(MakeResourceList(_refractionsBackSRV));
+            metalContext.Bind(
                 Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                     "game/xleres/Effects/SeparableFilter.psh:VerticalBlur:ps_*"));
-            context->Draw(4);
+            metalContext.Draw(4);
                         
-            context->UnbindPS<ShaderResourceView>(0, 1);
-            oldTargets.ResetToOldTargets(context);
+            metalContext.UnbindPS<ShaderResourceView>(0, 1);
+            oldTargets.ResetToOldTargets(&metalContext);
         } 
         CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }

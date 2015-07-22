@@ -7,16 +7,25 @@
 #include "ShallowSurface.h"
 #include "ShallowWater.h"
 #include "Ocean.h"      // (for OceanSettings)
+#include "RefractionsBuffer.h"
+#include "SceneEngineUtils.h"
+#include "../SceneEngine/SceneParser.h"
+#include "../SceneEngine/Sky.h"
+#include "../SceneEngine/LightDesc.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../Assets/Assets.h"
 #include "../Math/Matrix.h"
 #include "../Math/Transformations.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/MemoryUtils.h"
+
+#include "../RenderCore/DX11/Metal/DX11Utils.h"
 
 namespace SceneEngine
 {
@@ -314,28 +323,33 @@ namespace SceneEngine
     void ShallowSurface::RenderDebugging(
         RenderCore::Metal::DeviceContext& metalContext,
         LightingParserContext& parserContext,
-        unsigned techniqueIndex)
+        unsigned techniqueIndex,
+        unsigned skyProjType, bool refractionsEnable)
     {
         using namespace Techniques;
         ParameterBox matParam;
         matParam.SetParameter(
             (const utf8*)"SHALLOW_WATER_TILE_DIMENSION", 
             _pimpl->_cfg._simGridDims);
+        matParam.SetParameter((const utf8*)"MAT_DO_REFRACTION", int(refractionsEnable));
+        matParam.SetParameter((const utf8*)"SKY_PROJECTION", skyProjType);
         TechniqueMaterial material(
             Metal::InputLayout(nullptr, 0),
             {   ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants, 
                 Hash64("ShallowWaterCellConstants") },
             matParam);
 
-        _pimpl->_sim->BindForOceanRender(metalContext, _pimpl->_bufferCounter);
-
         auto shader = material.FindVariation(
             parserContext, techniqueIndex, "game/xleres/ocean/shallowsurface.txt");
         if (shader._shaderProgram) {
+            metalContext.Bind(Metal::Topology::TriangleList);
+            metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+            _pimpl->_sim->BindForOceanRender(metalContext, _pimpl->_bufferCounter);
+
             const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
                 "game/xleres/BasicMaterialConstants.txt");
-
-            metalContext.Bind(Metal::Topology::TriangleList);
+            auto matParam = cbLayout.BuildCBDataAsPkt(ParameterBox());
+            
             for (auto i=_pimpl->_simGrids.cbegin(); i!=_pimpl->_simGrids.cend(); ++i) {
                 auto page = _pimpl->_sim->BuildCellConstants(i->_gridCoord);
                 if (!page) continue;
@@ -346,7 +360,7 @@ namespace SceneEngine
                         MakeLocalTransformPacket(
                             i->_gridToWorld,
                             ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                        cbLayout.BuildCBDataAsPkt(ParameterBox()),
+                        matParam,
                         page
                     });
                 metalContext.Unbind<Metal::VertexBuffer>();
@@ -370,22 +384,56 @@ namespace SceneEngine
         _surfaces.clear();
     }
 
+    static bool BindRefractions(
+        Metal::DeviceContext& metalContext, 
+        LightingParserContext& parserContext,
+        float refractionStdDev)
+    {
+        Metal::ViewportDesc mainViewportDesc(metalContext);
+        auto& refractionBox = Techniques::FindCachedBox2<RefractionsBuffer>(
+            unsigned(mainViewportDesc.Width/2.f), unsigned(mainViewportDesc.Height/2.f));
+        refractionBox.Build(metalContext, parserContext, refractionStdDev);
+
+        SavedTargets targets(&metalContext);
+        auto duplicatedDepthBuffer = Metal::DuplicateResource(
+            metalContext.GetUnderlying(), 
+            Metal::ExtractResource<ID3D::Resource>(targets.GetDepthStencilView()).get());
+        Metal::ShaderResourceView secondaryDepthBufferSRV(
+            duplicatedDepthBuffer.get(), (Metal::NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
+
+        metalContext.BindPS(MakeResourceList(9, refractionBox.GetSRV(), secondaryDepthBufferSRV));
+        return true;
+    }
+
     void ShallowSurfaceManager::RenderDebugging(
-        RenderCore::Metal::DeviceContext& metalContext,
+        Metal::DeviceContext& metalContext,
         LightingParserContext& parserContext,
         unsigned techniqueIndex,
         ISurfaceHeightsProvider* surfaceHeights)
     {
-        for (auto i : _surfaces) {
-            TRY 
-            {
+        if (_surfaces.empty()) return;
+
+        TRY 
+        {
+            for (auto i : _surfaces)
                 i->UpdateSimulation(metalContext, parserContext, surfaceHeights);
-                i->RenderDebugging(metalContext, parserContext, techniqueIndex);
+
+            bool refractionsEnable = BindRefractions(metalContext, parserContext, 1.6f);
+
+            unsigned skyProjectionType = 0;
+            auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
+            if (skyTexture[0]) {
+                skyProjectionType = SkyTexture_BindPS(&metalContext, parserContext, skyTexture, 11);
             }
-            CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-            CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-            CATCH_END
+
+            for (auto i : _surfaces)
+                i->RenderDebugging(
+                    metalContext, parserContext, techniqueIndex, 
+                    skyProjectionType, refractionsEnable);
         }
+        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH_END
     }
 
     ShallowSurfaceManager::ShallowSurfaceManager() {}

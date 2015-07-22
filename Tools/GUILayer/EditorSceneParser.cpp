@@ -93,12 +93,6 @@ namespace GUILayer
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
                 _editorScene->_placementsManager->Render(metalContext, parserContext, techniqueIndex);
                 _editorScene->_vegetationSpawnManager->Render(metalContext, parserContext, techniqueIndex);
-
-                std::shared_ptr<ISurfaceHeightsProvider> surfaceHeights;
-                if (_editorScene->_terrainManager)
-                    surfaceHeights = _editorScene->_terrainManager->GetHeightsProvider();
-                _editorScene->_shallowSurfaceManager->RenderDebugging(
-                    *metalContext, parserContext, techniqueIndex, surfaceHeights.get());
             }
         }
         else 
@@ -109,6 +103,12 @@ namespace GUILayer
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
                 TRY {
                     _editorScene->_placeholders->Render(*metalContext, parserContext, techniqueIndex);
+
+                    std::shared_ptr<ISurfaceHeightsProvider> surfaceHeights;
+                    if (_editorScene->_terrainManager)
+                        surfaceHeights = _editorScene->_terrainManager->GetHeightsProvider();
+                    _editorScene->_shallowSurfaceManager->RenderDebugging(
+                        *metalContext, parserContext, techniqueIndex, surfaceHeights.get());
                 }
                 CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
                 CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }

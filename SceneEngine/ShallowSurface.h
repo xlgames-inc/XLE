@@ -38,7 +38,8 @@ namespace SceneEngine
         void RenderDebugging(
             RenderCore::Metal::DeviceContext& metalContext,
             LightingParserContext& parserContext,
-            unsigned techniqueIndex);
+            unsigned techniqueIndex,
+            unsigned skyProjType, bool refractionsEnable);
 
         void UpdateSimulation(
             RenderCore::Metal::DeviceContext& metalContext,

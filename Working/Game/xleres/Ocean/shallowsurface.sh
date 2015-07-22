@@ -4,11 +4,9 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "OceanLighting.h"
 #include "Ocean.h"
 #include "OceanShallow.h"
-#include "../Lighting/BasicLightingEnvironment.h"
-#include "../Lighting/MaterialQuery.h"
-#include "../Lighting/SpecularMethods.h"
 #include "../MainGeometry.h"
 #include "../Transform.h"
 #include "../Colour.h"
@@ -50,6 +48,10 @@ VSOutput vs_main(uint vertexId : SV_VertexId)
         output.texCoord = localPosition.xy;
     #endif
 
+    #if OUTPUT_WORLD_VIEW_VECTOR==1
+        output.worldViewVector = WorldSpaceView.xyz - worldPosition.xyz;
+    #endif
+
     return output;
 }
 
@@ -86,16 +88,56 @@ float3 BuildNormalFromDerivatives(float2 derivativesSample)
         1.0.xxx);
 
     float3 worldSpaceNormal = BuildNormalFromDerivatives(surfaceDerivatives);
-    return float4(worldSpaceNormal, 1.f);
+    // return float4(worldSpaceNormal, 1.f);
 
-    float rawDiffuse = dot(worldSpaceNormal, BasicLight[0].NegativeDirection);
-    float specBrightness = CalculateSpecular(
-        worldSpaceNormal, directionToEye,
-        BasicLight[0].NegativeDirection,
-        SpecularParameters_RoughF0(RoughnessMin, Material_SpecularToF0(SpecularMin)), rawDiffuse);
+    // float rawDiffuse = dot(worldSpaceNormal, BasicLight[0].NegativeDirection);
+    //float specBrightness = CalculateSpecular(
+    //    worldSpaceNormal, directionToEye,
+    //    BasicLight[0].NegativeDirection,
+    //    SpecularParameters_RoughF0(RoughnessMin, Material_SpecularToF0(SpecularMin)), rawDiffuse);
+
+    OceanSurfaceSample oceanSurface = (OceanSurfaceSample)0;
+    oceanSurface.worldSpaceNormal = worldSpaceNormal;
+    oceanSurface.material.specular = SpecularMin;
+    oceanSurface.material.roughness = RoughnessMin;
+    oceanSurface.material.metal = 1.f;
+
+    OceanParameters parameters;
+    parameters.worldViewVector = geo.worldViewVector;
+    parameters.worldViewDirection = normalize(geo.worldViewVector);
+    parameters.pixelPosition = uint4(geo.position);
+
+    OceanLightingParts parts = (OceanLightingParts)0;
+
+        //
+        //		Calculate all of the lighting effects
+        //			- diffuse, specular, reflections, etc..
+        //
+        //		There's an interesting trick for reflecting
+        //		specular -- use a high specular power and jitter
+        //		the normal a bit
+        //
+
+    const float refractiveIndex = 1.333f;
+    float3 opticalThickness	= float3(0.15f, 0.075f, 0.05f);
+
+    CalculateReflectivityAndTransmission2(parts, oceanSurface, parameters, refractiveIndex, true);
+    // CalculateFoam(parts, oceanSurface);
+    CalculateRefractionValue(parts, geo.position.z, parameters, oceanSurface, refractiveIndex);
+    CalculateUpwelling(parts, parameters, opticalThickness);
+    CalculateSkyReflection(parts, oceanSurface, parameters);
+    CalculateSpecular(parts, oceanSurface, parameters);
+
+    float3 refractedAttenuation = exp(-opticalThickness * min(MaxDistanceToSimulate, parts.refractionAttenuationDepth));
+
+    float3 colour =
+          parts.transmission * refractedAttenuation * parts.refracted
+        + parts.transmission * parts.upwelling
+        + (1.f-parts.foamQuantity) * (parts.specular + parts.skyReflection)
+        ;
 
     float4 result;
-    result = float4(specBrightness.xxx, 1.f);
+    result = float4(colour, 1.f);
 
     #if MAT_SKIP_LIGHTING_SCALE==0
         result.rgb *= LightingScale;		// (note -- should we scale by this here? when using this shader with a basic lighting pipeline [eg, for material preview], the scale is unwanted)
