@@ -119,7 +119,7 @@ float3 BuildNormalFromDerivatives(float2 derivativesSample)
         //
 
     const float refractiveIndex = 1.333f;
-    float3 opticalThickness	= float3(0.15f, 0.075f, 0.05f);
+    float3 opticalThickness	= 0.05f * float3(0.15f, 0.075f, 0.05f);
 
     CalculateReflectivityAndTransmission2(parts, oceanSurface, parameters, refractiveIndex, true);
     // CalculateFoam(parts, oceanSurface);

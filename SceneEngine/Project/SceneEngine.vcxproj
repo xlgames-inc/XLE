@@ -213,6 +213,7 @@
     <ClCompile Include="..\MetricsBox.cpp" />
     <ClCompile Include="..\Noise.cpp" />
     <ClCompile Include="..\Ocean.cpp" />
+    <ClCompile Include="..\DeepOceanSim.cpp" />
     <ClCompile Include="..\OrderIndependentTransparency.cpp" />
     <ClCompile Include="..\PlacementsManager.cpp" />
     <ClCompile Include="..\PlacementsQuadTree.cpp" />
@@ -254,6 +255,7 @@
     <ClInclude Include="..\MetricsBox.h" />
     <ClInclude Include="..\Noise.h" />
     <ClInclude Include="..\Ocean.h" />
+    <ClInclude Include="..\DeepOceanSim.h" />
     <ClInclude Include="..\OITInternal.h" />
     <ClInclude Include="..\OrderIndependentTransparency.h" />
     <ClInclude Include="..\PlacementsManager.h" />

@@ -6,6 +6,7 @@
 
 #include "ShallowWater.h"
 #include "Ocean.h"
+#include "DeepOceanSim.h"
 #include "SimplePatchBox.h"
 #include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
@@ -410,6 +411,20 @@ namespace SceneEngine
         Int2(-1,  1), Int2(0,  1), Int2(1,  1)
     };
 
+    static void FindAdjacentGrids(int result[8], Int2 baseCoord, const std::vector<ShallowWaterSim::ActiveElement>& elements)
+    {
+            //  Find the adjacent grids and set the grid indices 
+            //  as appropriate. Just doing a brute-force search!
+        for (unsigned c=0; c<dimof(AdjOffset); ++c) {
+            for (auto i=elements.cbegin(); i!=elements.cend(); ++i) {
+                if (i->_gridCoords == (baseCoord + AdjOffset[c])) {
+                    result[c] = i->_arrayIndex;
+                    break;
+                }
+            }
+        }
+    }
+
     static CellConstants MakeCellConstants(
         const ShallowWaterSim::ActiveElement& ele,
         const std::vector<ShallowWaterSim::ActiveElement>& elements,
@@ -421,17 +436,7 @@ namespace SceneEngine
             {-1, -1, -1, -1, -1, -1, -1, -1},
             {0,0}
         };
-
-            //  Find the adjacent grids and set the grid indices 
-            //  as appropriate. Just doing a brute-force search!
-        for (unsigned c=0; c<dimof(AdjOffset); ++c) {
-            for (auto i=elements.cbegin(); i!=elements.cend(); ++i) {
-                if (i->_gridCoords == (ele._gridCoords + AdjOffset[c])) {
-                    constants._adjacentGrids[c] = i->_arrayIndex;
-                    break;
-                }
-            }
-        }
+        FindAdjacentGrids(constants._adjacentGrids, ele._gridCoords, elements);
         return constants;
     }
 
@@ -961,13 +966,16 @@ namespace SceneEngine
             auto& buildNormals = Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/OceanNormalsShallow.csh:BuildDerivatives:cs_*", shaderDefines);
             auto& buildNormalsMipmaps = Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/OceanNormalsShallow.csh:BuildDerivativesMipmap:cs_*", shaderDefines);
 
-                // build devs shader needs to know the gridXY for all simulated elements (so it can find the adjacent grids)
-            signed buildDevsConstants[4*128];
-            XlSetMemory(buildDevsConstants, 0, sizeof(buildDevsConstants));
+                // build devs shader needs to know adjacent cells on right, bottom and bottom-right edges
+            int buildDevsConstants[4*128];
+            XlSetMemory(buildDevsConstants, 0xff, sizeof(buildDevsConstants));
             for (auto i = _activeSimulationElements.cbegin(); i!=_activeSimulationElements.cend(); ++i) {
                 if (i->_arrayIndex < dimof(buildDevsConstants)/4) {
-                    buildDevsConstants[i->_arrayIndex*4+0] = i->_gridCoords[0];
-                    buildDevsConstants[i->_arrayIndex*4+1] = i->_gridCoords[1];
+                    int adj[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
+                    FindAdjacentGrids(adj, i->_gridCoords, _activeSimulationElements);
+                    buildDevsConstants[i->_arrayIndex*4+0] = adj[4];
+                    buildDevsConstants[i->_arrayIndex*4+1] = adj[6];
+                    buildDevsConstants[i->_arrayIndex*4+2] = adj[7];
                 }
             }
 

@@ -13,6 +13,7 @@
 #include "Noise.h"
 #include "ShallowWater.h"
 #include "Ocean.h"
+#include "DeepOceanSim.h"
 #include "SurfaceHeightsProvider.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ResourceBox.h"

@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "OceanSettings.h"
+#include "../../SceneEngine/DeepOceanSim.h"
 #include "../../SceneEngine/Ocean.h"
 
 namespace Overlays

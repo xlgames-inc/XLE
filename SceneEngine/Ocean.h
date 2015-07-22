@@ -26,30 +26,6 @@ namespace SceneEngine
 
     void FFT_DoDebugging(RenderCore::Metal::DeviceContext* context);
 
-    class OceanSettings
-    {
-    public:
-        bool        _enable;
-        float       _windAngle[2];
-        float       _windVelocity[2];
-        float       _physicalDimensions;
-        unsigned    _gridDimensions;
-        float       _strengthConstantXY;
-        float       _strengthConstantZ;
-        float       _detailNormalsStrength;
-        float       _spectrumFade;
-        float       _scaleAgainstWind[2];
-        float       _suppressionFactor[2];
-        float       _gridShiftSpeed;
-        float       _baseHeight;
-
-        float _foamThreshold, _foamIncreaseSpeed;
-        float _foamIncreaseClamp;
-        unsigned _foamDecrease;
-
-        OceanSettings();
-    };
-
     class OceanLightingSettings
     {
     public:
@@ -75,27 +51,5 @@ namespace SceneEngine
 
     extern RenderCore::Metal::ShaderResourceView OceanReflectionResource;
     extern Float4x4 OceanWorldToReflection;
-
-    namespace Internal
-    {
-        class OceanMaterialConstants
-        {
-        public:
-            float _physicalWidth, _physicalHeight;
-            float _strengthConstantXY;
-            float _strengthConstantZ;
-
-            float _shallowGridPhysicalDimension;
-            float _baseHeight;
-            float _foamThreshold, _foamIncreaseSpeed;
-
-            float _foamIncreaseClamp;
-            unsigned _foamDecrease;
-            float _dummy[2];
-        };
-
-        OceanMaterialConstants BuildOceanMaterialConstants(
-            const OceanSettings& oceanSettings, float shallowGridPhysicalDimension);
-    }
 }
 

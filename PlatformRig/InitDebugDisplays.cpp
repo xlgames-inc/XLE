@@ -18,6 +18,7 @@
 #include "../RenderOverlays/Overlays/VolFogSettings.h"
 
 #include "../SceneEngine/Ocean.h"
+#include "../SceneEngine/DeepOceanSim.h"
 #include "../SceneEngine/Tonemap.h"
 #include "../SceneEngine/VolumetricFog.h"
 #include "../SceneEngine/SceneEngineUtils.h"

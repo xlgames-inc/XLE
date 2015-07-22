@@ -16,6 +16,7 @@
 #include "Shadows.h"
 #include "MetricsBox.h"
 #include "Ocean.h"
+#include "DeepOceanSim.h"
 #include "RefractionsBuffer.h"
 #include "OrderIndependentTransparency.h"
 #include "Sky.h"

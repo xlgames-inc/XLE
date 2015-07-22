@@ -17,8 +17,8 @@
 #endif
 
 #include "Ocean.h"
-// #include "OceanShallow.h"
 #include "OceanLighting.h"
+#include "OceanRenderingConstants.h"
 
 #include "../MainGeometry.h"
 #include "../CommonResources.h"

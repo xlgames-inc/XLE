@@ -19,10 +19,10 @@ Texture2D<uint>			LookupTable : register(t1);
 
 cbuffer BuildDerivativesConstants : register(b2)
 {
-	int2	GridIndex[128];
+	int4	AdjacentCells[128];
 }
 
-void SetupXHeights(out float heights[BLOCK_DIMENSION+1], uint2 baseCoord, uint arrayIndex, uint rightArrayIndex)
+void SetupXHeights(out float heights[BLOCK_DIMENSION+1], uint2 baseCoord, uint arrayIndex, int rightArrayIndex)
 {
 	uint x=0;
 	for (; x<BLOCK_DIMENSION; ++x) {
@@ -34,7 +34,7 @@ void SetupXHeights(out float heights[BLOCK_DIMENSION+1], uint2 baseCoord, uint a
 		//	required for thread groups that lie on the right
 		//	or bottom
 	if ((x+baseCoord.x) >= SHALLOW_WATER_TILE_DIMENSION) {
-		if (rightArrayIndex < 16) {
+		if (rightArrayIndex >= 0) {
 			heights[x] = ShallowWaterHeights[uint3(0, baseCoord.y, rightArrayIndex)];
 		} else {
 				// no tile there... Just smear across
@@ -50,9 +50,9 @@ void SetupXHeights(out float heights[BLOCK_DIMENSION+1], uint2 baseCoord, uint a
 {
 	uint arrayIndex = dispatchThreadId.z;
 
-	uint rightArrayIndex		= RightGrid; 		// CalculateShallowWaterArrayIndex(LookupTable, GridIndex[arrayIndex]+int2(1,0));
-	uint bottomArrayIndex		= BottomGrid; 		// CalculateShallowWaterArrayIndex(LookupTable, GridIndex[arrayIndex]+int2(0,1));
-	uint bottomRightArrayIndex	= BottomRightGrid;	// CalculateShallowWaterArrayIndex(LookupTable, GridIndex[arrayIndex]+int2(1,1));
+	int rightArrayIndex		  = AdjacentCells[arrayIndex].x;	// CalculateShallowWaterArrayIndex(LookupTable, GridIndex[arrayIndex]+int2(1,0));
+	int bottomArrayIndex	  = AdjacentCells[arrayIndex].y;	// CalculateShallowWaterArrayIndex(LookupTable, GridIndex[arrayIndex]+int2(0,1));
+	int bottomRightArrayIndex = AdjacentCells[arrayIndex].z;	// CalculateShallowWaterArrayIndex(LookupTable, GridIndex[arrayIndex]+int2(1,1));
 
 		// could also do this with a "groupshared" array and do fewer loops in here
 	float heights[BLOCK_DIMENSION+1][BLOCK_DIMENSION+1];
@@ -66,7 +66,7 @@ void SetupXHeights(out float heights[BLOCK_DIMENSION+1], uint2 baseCoord, uint a
 		}
 
 		if ((y+dispatchThreadId.y*BLOCK_DIMENSION) >= SHALLOW_WATER_TILE_DIMENSION) {
-			if (bottomArrayIndex < 16) {
+			if (bottomArrayIndex >= 0) {
 				SetupXHeights(
 					heights[y], uint2(dispatchThreadId.x*BLOCK_DIMENSION, 0),
 					bottomArrayIndex, bottomRightArrayIndex);

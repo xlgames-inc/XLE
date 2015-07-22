@@ -22,6 +22,12 @@ RWTexture2D<uint>	WorkingTextureYImaginaryPart : register(u5);
 
 #define AVOID_TRIG
 
+cbuffer OceanGridConstants
+{
+	uint GridWidth, GridHeight;
+	float SpectrumFade;
+}
+
 Complex ComplexMultiply(Complex lhs, Complex rhs)
 {
 	float realPart		= lhs.x * rhs.x - lhs.y * rhs.y;

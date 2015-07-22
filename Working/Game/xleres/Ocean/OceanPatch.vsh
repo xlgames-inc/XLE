@@ -16,11 +16,13 @@
 	#define VSOUTPUT_EXTRA float2 specularityTC : SPECTC;
 #endif
 
+#include "Ocean.h"
+#include "OceanShallow.h"
+#include "OceanRenderingConstants.h"
+
 #include "../MainGeometry.h"
 #include "../Transform.h"
 #include "../CommonResources.h"
-#include "Ocean.h"
-#include "OceanShallow.h"
 #include "../Utility/perlinnoise.h"
 
 #if !defined(SHALLOW_WATER_TILE_DIMENSION)

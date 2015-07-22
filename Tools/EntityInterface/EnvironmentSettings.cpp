@@ -9,6 +9,7 @@
 #include "EnvironmentSettings.h"
 #include "RetainedEntities.h"
 #include "../../SceneEngine/Ocean.h"
+#include "../../SceneEngine/DeepOceanSim.h"
 #include "../../SceneEngine/VolumetricFog.h"
 #include "../../SceneEngine/ShallowSurface.h"
 #include "../../PlatformRig/BasicSceneParser.h"

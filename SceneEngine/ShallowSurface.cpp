@@ -6,7 +6,7 @@
 
 #include "ShallowSurface.h"
 #include "ShallowWater.h"
-#include "Ocean.h"      // (for OceanSettings)
+#include "DeepOceanSim.h"
 #include "RefractionsBuffer.h"
 #include "SceneEngineUtils.h"
 #include "../SceneEngine/SceneParser.h"

@@ -118,6 +118,9 @@
     <ClCompile Include="..\ShallowSurface.cpp">
       <Filter>Objects\Water</Filter>
     </ClCompile>
+    <ClCompile Include="..\DeepOceanSim.cpp">
+      <Filter>Objects\Water</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -248,6 +251,9 @@
       <Filter>Objects</Filter>
     </ClInclude>
     <ClInclude Include="..\ShallowSurface.h">
+      <Filter>Objects\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DeepOceanSim.h">
       <Filter>Objects\Water</Filter>
     </ClInclude>
   </ItemGroup>

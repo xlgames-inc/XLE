@@ -15,6 +15,12 @@ Texture2D<float>	XTexture				: register(t1);
 Texture2D<float>	YTexture				: register(t2);
 Texture2D<uint>		FoamQuantityLastFrame	: register(t3);
 
+cbuffer OceanGridConstants
+{
+	uint GridWidth, GridHeight;
+	float SpectrumFade;
+}
+
 // #define USE_ENCODED_NORMALS 1
 
 float3 BuildWorldSpaceDisplacement(uint2 gridCoords)
