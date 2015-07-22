@@ -142,7 +142,7 @@ namespace SceneEngine
         const bool usePipeModel = settings._usePipeModel;
         _pimpl->_sim = std::make_unique<ShallowWaterSim>(
             ShallowWaterSim::Desc(
-                settings._simGridDims, maxSimulationGrids, usePipeModel, false, false));
+                settings._simGridDims, maxSimulationGrids, usePipeModel, false, false, false));
 
             //
             //      Given the input points, we want to create a set of sim grids
@@ -374,14 +374,21 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    class ShallowSurfaceManager::Pimpl
+    {
+    public:
+        std::vector<std::shared_ptr<ShallowSurface>> _surfaces;
+        std::unique_ptr<DeepOceanSim> _oceanSim;
+    };
+
     void ShallowSurfaceManager::Add(std::shared_ptr<ShallowSurface> surface)
     {
-        _surfaces.push_back(std::move(surface));
+        _pimpl->_surfaces.push_back(std::move(surface));
     }
 
     void ShallowSurfaceManager::Clear()
     {
-        _surfaces.clear();
+        _pimpl->_surfaces.clear();
     }
 
     static bool BindRefractions(
@@ -411,14 +418,28 @@ namespace SceneEngine
         unsigned techniqueIndex,
         ISurfaceHeightsProvider* surfaceHeights)
     {
-        if (_surfaces.empty()) return;
+        if (_pimpl->_surfaces.empty()) return;
 
         TRY 
         {
-            for (auto i : _surfaces)
+            for (auto i : _pimpl->_surfaces)
                 i->UpdateSimulation(metalContext, parserContext, surfaceHeights);
 
             bool refractionsEnable = BindRefractions(metalContext, parserContext, 1.6f);
+
+            {
+                static DeepOceanSimSettings deepOceanSettings;
+                deepOceanSettings._gridDimensions = 128;
+                deepOceanSettings._physicalDimensions = 64.f;
+                deepOceanSettings._windVelocity[0] = 10.f;
+                deepOceanSettings._scaleAgainstWind[0] = 1.f;
+                deepOceanSettings._strengthConstantZ = 1.f;
+                deepOceanSettings._gridShiftSpeed = 0.f;
+                _pimpl->_oceanSim->Update(
+                    &metalContext, parserContext,
+                    deepOceanSettings, 0);
+                metalContext.BindPS(MakeResourceList(1, _pimpl->_oceanSim->_normalsTextureSRV));
+            }
 
             unsigned skyProjectionType = 0;
             auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
@@ -426,7 +447,7 @@ namespace SceneEngine
                 skyProjectionType = SkyTexture_BindPS(&metalContext, parserContext, skyTexture, 11);
             }
 
-            for (auto i : _surfaces)
+            for (auto i : _pimpl->_surfaces)
                 i->RenderDebugging(
                     metalContext, parserContext, techniqueIndex, 
                     skyProjectionType, refractionsEnable);
@@ -436,7 +457,13 @@ namespace SceneEngine
         CATCH_END
     }
 
-    ShallowSurfaceManager::ShallowSurfaceManager() {}
+    ShallowSurfaceManager::ShallowSurfaceManager() 
+    {
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_oceanSim = std::make_unique<DeepOceanSim>(
+            DeepOceanSim::Desc(128, 128, true, false));
+    }
+
     ShallowSurfaceManager::~ShallowSurfaceManager() {}
 }
 

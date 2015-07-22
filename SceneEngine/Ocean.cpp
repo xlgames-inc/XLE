@@ -810,7 +810,7 @@ namespace SceneEngine
             fftBuffer.Update(context, parserContext, settings, OceanBufferCounter);
             if (doShallowWater && MainSurfaceHeightsProvider) {
                 shallowWaterBox = &Techniques::FindCachedBox<ShallowWaterSim>(
-                    ShallowWaterSim::Desc(shallowGridDimension, simulatingGridsCount, usePipeModel, false, true));
+                    ShallowWaterSim::Desc(shallowGridDimension, simulatingGridsCount, usePipeModel, false, false, true));
                 shallowWaterBox->ExecuteSim(
                     ShallowWaterSim::SimulationContext(
                         *context, settings, shallowGridPhysicalDimension,

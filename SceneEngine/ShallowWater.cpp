@@ -76,14 +76,16 @@ namespace SceneEngine
         ShallowWaterGrid();
         ShallowWaterGrid(
             unsigned width, unsigned height, unsigned maxSimulationGrids, 
-            bool pipeModel, bool calculateVelocities);
+            bool pipeModel, bool calculateVelocities, bool calculateFoam);
         ~ShallowWaterGrid();
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     ShallowWaterGrid::ShallowWaterGrid() {}
-    ShallowWaterGrid::ShallowWaterGrid(unsigned width, unsigned height, unsigned maxSimulationGrids, bool pipeModel, bool calculateVelocities)
+    ShallowWaterGrid::ShallowWaterGrid(
+        unsigned width, unsigned height, unsigned maxSimulationGrids, 
+        bool pipeModel, bool calculateVelocities, bool calculateFoam)
     {
         using namespace BufferUploads;
         auto& uploads = GetBufferUploads();
@@ -163,18 +165,18 @@ namespace SceneEngine
         SRV normalsTextureShaderResource(normalsTexture->GetUnderlying(), unormNormalFormat, Metal::MipSlice(0, normalsMipCount));
 
                 ////
-        auto foamTextureDesc = BuildRenderTargetDesc(
-            BindFlag::UnorderedAccess|BindFlag::ShaderResource,
-            TextureDesc::Plain2D(width, height, Metal::NativeFormat::R8_TYPELESS, 1, uint8(maxSimulationGrids)),
-            "ShallowFoam");
-        auto foamQuantity0 = uploads.Transaction_Immediate(foamTextureDesc, nullptr);
-        auto foamQuantity1 = uploads.Transaction_Immediate(foamTextureDesc, nullptr);
-        UAV foamQuantityUVA0(foamQuantity0->GetUnderlying(), Metal::NativeFormat::R8_UINT);
-        SRV foamQuantitySRV0(foamQuantity0->GetUnderlying(), Metal::NativeFormat::R8_UNORM);
-        SRV foamQuantitySRV20(foamQuantity0->GetUnderlying(), Metal::NativeFormat::R8_UINT);
-        UAV foamQuantityUVA1(foamQuantity1->GetUnderlying(), Metal::NativeFormat::R8_UINT);
-        SRV foamQuantitySRV1(foamQuantity1->GetUnderlying(), Metal::NativeFormat::R8_UNORM);
-        SRV foamQuantitySRV21(foamQuantity1->GetUnderlying(), Metal::NativeFormat::R8_UINT);
+        if (calculateFoam) {
+            auto foamTextureDesc = BuildRenderTargetDesc(
+                BindFlag::UnorderedAccess|BindFlag::ShaderResource,
+                TextureDesc::Plain2D(width, height, Metal::NativeFormat::R8_TYPELESS, 1, uint8(maxSimulationGrids)),
+                "ShallowFoam");
+            for (unsigned c=0; c<2; ++c) {
+                _foamQuantity[c] = uploads.Transaction_Immediate(foamTextureDesc, nullptr);
+                _foamQuantityUAV[c] = UAV(_foamQuantity[c]->GetUnderlying(), Metal::NativeFormat::R8_UINT);
+                _foamQuantitySRV[c] = SRV(_foamQuantity[c]->GetUnderlying(), Metal::NativeFormat::R8_UNORM);
+                _foamQuantitySRV2[c] = SRV(_foamQuantity[c]->GetUnderlying(), Metal::NativeFormat::R8_UINT);
+            }
+        }
     
                 ////
         for (unsigned c=0; c<3; ++c) {
@@ -202,16 +204,6 @@ namespace SceneEngine
         _normalsTextureUAV = std::move(normalsTextureUVA);
         _normalsSingleMipSRV = std::move(normalsSingleMipSRV);
         _normalsTextureShaderResource = std::move(normalsTextureShaderResource);
-
-                ////
-        _foamQuantity[0] = std::move(foamQuantity0);
-        _foamQuantity[1] = std::move(foamQuantity1);
-        _foamQuantityUAV[0] = std::move(foamQuantityUVA0);
-        _foamQuantityUAV[1] = std::move(foamQuantityUVA1);
-        _foamQuantitySRV[0] = std::move(foamQuantitySRV0);
-        _foamQuantitySRV[1] = std::move(foamQuantitySRV1);
-        _foamQuantitySRV2[0] = std::move(foamQuantitySRV20);
-        _foamQuantitySRV2[1] = std::move(foamQuantitySRV21);
     }
 
     ShallowWaterGrid::~ShallowWaterGrid() {}
@@ -237,7 +229,7 @@ namespace SceneEngine
         auto simulationGrid = std::make_unique<ShallowWaterGrid>(
             desc._gridDimension, desc._gridDimension, 
             desc._maxSimulationGrid, desc._usePipeModel, 
-            desc._buildVelocities);
+            desc._buildVelocities, desc._calculateFoam);
 
             //
             //      Build a lookup table that will provide the indices into
@@ -1148,7 +1140,8 @@ namespace SceneEngine
             _simulationGrid->_waterHeightsSRV[thisFrameBuffer],
             _lookupTableSRV));
         metalContext.BindPS(MakeResourceList(5, _simulationGrid->_normalsTextureShaderResource));
-        metalContext.BindPS(MakeResourceList(11, _simulationGrid->_foamQuantitySRV[bufferCounter&1]));
+        if (_simulationGrid->_foamQuantitySRV[bufferCounter&1].IsGood())
+            metalContext.BindPS(MakeResourceList(11, _simulationGrid->_foamQuantitySRV[bufferCounter&1]));
         metalContext.BindPS(MakeResourceList(15, _lookupTableSRV));
     }
 

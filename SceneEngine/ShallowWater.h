@@ -35,11 +35,12 @@ namespace SceneEngine
             unsigned _maxSimulationGrid;
             bool _usePipeModel;
             bool _buildVelocities;
+            bool _calculateFoam;
             bool _useLookupTable;
 
-            Desc(unsigned gridDimension, unsigned maxSimulationGrid, bool usePipeModel, bool buildVelocities, bool useLookupTable) 
+            Desc(unsigned gridDimension, unsigned maxSimulationGrid, bool usePipeModel, bool buildVelocities, bool calculateFoam, bool useLookupTable) 
                 : _gridDimension(gridDimension), _maxSimulationGrid(maxSimulationGrid), _usePipeModel(usePipeModel), _buildVelocities(buildVelocities) 
-                , _useLookupTable(useLookupTable) {}
+                , _calculateFoam(calculateFoam), _useLookupTable(useLookupTable) {}
         };
 
         struct BorderMode

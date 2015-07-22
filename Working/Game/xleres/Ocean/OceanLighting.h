@@ -25,8 +25,8 @@ Texture2D					RefractionsTexture : register(t9);
 Texture2D_MaybeMS<float>	DepthBuffer : register(t10);
 Texture2D					DynamicReflectionTexture;
 
-static const bool			Specular_JitterNormal = false;
-static const float			Specular_JitterNormalStrength = .115f; // 0.075f;
+static const bool			Specular_JitterNormal = true;
+static const float			Specular_JitterNormalStrength = 0.075f; // .115f; // 0.075f;
 static const uint			Specular_JitterNormalCount = 3;
 
 static const float			MaxDistanceToSimulate = 100.f;

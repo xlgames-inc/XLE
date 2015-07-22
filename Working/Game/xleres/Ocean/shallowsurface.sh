@@ -11,13 +11,14 @@
 #include "../Transform.h"
 #include "../Colour.h"
 #include "../BasicMaterial.h"
+#include "../CommonResources.h"
 
 Texture2DArray<float2>		ShallowDerivatives : register(t5);
 Texture2DArray<float>		ShallowFoamQuantity : register(t11);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-Texture2DArray<float>	ShallowWaterHeights : register(t3);
+Texture2DArray<float>       ShallowWaterHeights : register(t3);
 
 VSOutput vs_main(uint vertexId : SV_VertexId)
 {
@@ -87,6 +88,10 @@ float3 BuildNormalFromDerivatives(float2 derivativesSample)
         ShallowDerivatives.Sample(ClampingSampler, float3(texCoord.xy, ArrayIndex)).xy,
         1.0.xxx);
 
+    surfaceDerivatives += DecompressDerivatives(
+        NormalsTexture.Sample(DefaultSampler, texCoord.xy).xy,
+        1.0.xxx);
+
     float3 worldSpaceNormal = BuildNormalFromDerivatives(surfaceDerivatives);
     // return float4(worldSpaceNormal, 1.f);
 
@@ -98,8 +103,8 @@ float3 BuildNormalFromDerivatives(float2 derivativesSample)
 
     OceanSurfaceSample oceanSurface = (OceanSurfaceSample)0;
     oceanSurface.worldSpaceNormal = worldSpaceNormal;
-    oceanSurface.material.specular = SpecularMin;
-    oceanSurface.material.roughness = RoughnessMin;
+    oceanSurface.material.specular = .22f; // SpecularMin;
+    oceanSurface.material.roughness = .06f; // RoughnessMin;
     oceanSurface.material.metal = 1.f;
 
     OceanParameters parameters;
@@ -119,7 +124,7 @@ float3 BuildNormalFromDerivatives(float2 derivativesSample)
         //
 
     const float refractiveIndex = 1.333f;
-    float3 opticalThickness	= 0.05f * float3(0.15f, 0.075f, 0.05f);
+    float3 opticalThickness	= 0.1f * float3(0.45f, 0.175f, 0.05f);
 
     CalculateReflectivityAndTransmission2(parts, oceanSurface, parameters, refractiveIndex, true);
     // CalculateFoam(parts, oceanSurface);
@@ -129,6 +134,9 @@ float3 BuildNormalFromDerivatives(float2 derivativesSample)
     CalculateSpecular(parts, oceanSurface, parameters);
 
     float3 refractedAttenuation = exp(-opticalThickness * min(MaxDistanceToSimulate, parts.refractionAttenuationDepth));
+    parts.upwelling *= 0.33f;
+    parts.skyReflection *= 0.2f;
+    parts.specular *= 5.f;
 
     float3 colour =
           parts.transmission * refractedAttenuation * parts.refracted

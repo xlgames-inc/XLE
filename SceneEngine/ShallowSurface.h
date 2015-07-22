@@ -78,7 +78,8 @@ namespace SceneEngine
         ShallowSurfaceManager();
         ~ShallowSurfaceManager();
     protected:
-        std::vector<std::shared_ptr<ShallowSurface>> _surfaces;
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
