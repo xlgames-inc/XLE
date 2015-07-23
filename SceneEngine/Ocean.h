@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/ShaderResource.h"
 #include "../Math/Matrix.h"
 
 namespace SceneEngine
@@ -51,5 +52,22 @@ namespace SceneEngine
 
     extern RenderCore::Metal::ShaderResourceView OceanReflectionResource;
     extern Float4x4 OceanWorldToReflection;
+
+    class WaterNoiseTexture
+    {
+    public:
+        class Desc
+        {
+        public:
+            float _hgrid, _gain, _lacunarity;
+            unsigned _octaves;
+            Desc(float hgrid, float gain, float lacunarity, unsigned octaves);
+            Desc();
+        };
+
+        RenderCore::Metal::ShaderResourceView _srv;
+
+        WaterNoiseTexture(const Desc& desc);
+    };
 }
 

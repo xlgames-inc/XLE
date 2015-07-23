@@ -171,6 +171,7 @@ float LoadWaterHeight_BoundaryCheck(int2 relCoord)
 float GetWaterDepth(float waterHeight, float surfaceHeight)
 {
 	return max(1e-2f, waterHeight - surfaceHeight);
+	// return max(2.f, waterHeight - surfaceHeight);
 }
 
 float InitCachedHeights(int3 baseCoord)

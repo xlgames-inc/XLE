@@ -19,6 +19,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
+#include "../ConsoleRig/Console.h"
 #include "../Assets/Assets.h"
 #include "../Math/Matrix.h"
 #include "../Math/Transformations.h"
@@ -26,6 +27,8 @@
 #include "../Utility/MemoryUtils.h"
 
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
+
+#include "Ocean.h"  // for WaterNoiseTexture
 
 namespace SceneEngine
 {
@@ -421,6 +424,7 @@ namespace SceneEngine
         ISurfaceHeightsProvider* surfaceHeights)
     {
         if (_pimpl->_surfaces.empty()) return;
+        if (!Tweakable("DoShallowSurface", true)) return;
 
         TRY 
         {
@@ -448,6 +452,9 @@ namespace SceneEngine
             if (skyTexture[0]) {
                 skyProjectionType = SkyTexture_BindPS(&metalContext, parserContext, skyTexture, 11);
             }
+
+            metalContext.BindPS(MakeResourceList(4,
+                Techniques::FindCachedBox2<WaterNoiseTexture>()._srv));
 
             for (auto i : _pimpl->_surfaces)
                 i->RenderDebugging(

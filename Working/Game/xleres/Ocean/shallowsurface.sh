@@ -13,12 +13,13 @@
 #include "../BasicMaterial.h"
 #include "../CommonResources.h"
 
+Texture2D					Foam_Diffuse : register(t4);
 Texture2DArray<float2>		ShallowDerivatives : register(t5);
 Texture2DArray<float>		ShallowFoamQuantity : register(t11);
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
 Texture2DArray<float>       ShallowWaterHeights : register(t3);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 VSOutput vs_main(uint vertexId : SV_VertexId)
 {
@@ -31,7 +32,7 @@ VSOutput vs_main(uint vertexId : SV_VertexId)
     float3 localPosition = float3(
         p.x / float(SHALLOW_WATER_TILE_DIMENSION),
         p.y / float(SHALLOW_WATER_TILE_DIMENSION),
-        -50.f);
+        -75.f);
 
     int3 coord = NormalizeRelativeGridCoord(p);
     if (coord.z >= 0)
@@ -74,6 +75,26 @@ float3 BuildNormalFromDerivatives(float2 derivativesSample)
     return normalize(cross(u, v));
 }
 
+float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
+{
+    if (foamQuantity > 0.f) {
+
+            //	simplier, but nicer method.
+            //	first tap is used as texture coordinate offset for
+            //	second tap
+
+        float4 foamFirstTap = Foam_Diffuse.Sample(DefaultSampler, 1.33f*texCoord + Time * 0.001f * float2(0.0078f, 0.0046f));
+        float foamSecondTap = Foam_Diffuse.Sample(DefaultSampler,
+            23.7f*-texCoord
+            + 0.027f * (-1.0.xx + 2.f * foamFirstTap.xy)
+            + Time * float2(0.023f, -0.015f));
+
+        return smoothstep(0.f, foamSecondTap, foamQuantity);
+    }
+
+    return 0.f;
+}
+
 [earlydepthstencil]
     float4 ps_main(VSOutput geo) : SV_Target0
 {
@@ -92,7 +113,7 @@ float3 BuildNormalFromDerivatives(float2 derivativesSample)
     float detailStrength = lerp(1.25f, .25f, saturate((cameraDistance - 50.f)/150.f));
 
     surfaceDerivatives += DecompressDerivatives(
-        NormalsTexture.Sample(DefaultSampler, 3.f * texCoord.xy).xy,
+        NormalsTexture.Sample(DefaultSampler, 1.f * texCoord.xy).xy,
         detailStrength.xxx);
 
     float3 worldSpaceNormal = BuildNormalFromDerivatives(surfaceDerivatives);
@@ -138,13 +159,17 @@ float3 BuildNormalFromDerivatives(float2 derivativesSample)
 
     float3 refractedAttenuation = exp(-opticalThickness * min(MaxDistanceToSimulate, parts.refractionAttenuationDepth));
     parts.upwelling *= 0.33f;
-    parts.skyReflection *= 0.2f;
+    parts.skyReflection *= 0.75f;
     // parts.specular *= 2.5f;
+
+    parts.foamQuantity += 1.f-saturate(parts.forwardDistanceThroughWater*.75f);
+    float foamTex = CalculateFoamFromFoamQuantity(0.05f * geo.texCoord, 0.5f * parts.foamQuantity);
 
     float3 colour =
           parts.transmission * refractedAttenuation * parts.refracted
         + parts.transmission * parts.upwelling
         + (1.f-parts.foamQuantity) * (parts.specular + parts.skyReflection)
+        + float3(0.5f, 0.5f, .5f) * foamTex
         ;
 
     float4 result;

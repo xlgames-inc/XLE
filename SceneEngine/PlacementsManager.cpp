@@ -791,6 +791,8 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex)
     {
+        if (!Tweakable("DoPlacements", true)) return;
+
         TRY 
         {
                 // render every registered cell
@@ -810,6 +812,8 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex)
     {
+        if (!Tweakable("DoPlacements", true)) return;
+
             // assuming that we previously called "Render" to render
             // the main opaque part of the placements, let's now go
             // over each cell and render the transluent parts.

@@ -493,24 +493,7 @@ namespace SceneEngine
             context->Draw(dimof(lines));
         }
     }
-
-    class WaterNoiseTexture
-    {
-    public:
-        class Desc
-        {
-        public:
-            float _hgrid, _gain, _lacunarity;
-            unsigned _octaves;
-            Desc(float hgrid, float gain, float lacunarity, unsigned octaves);
-            Desc();
-        };
-
-        Metal::ShaderResourceView _srv;
-
-        WaterNoiseTexture(const Desc& desc);
-    };
-
+    
     WaterNoiseTexture::Desc::Desc(float hgrid, float gain, float lacunarity, unsigned octaves)
     {
         _hgrid = hgrid;
