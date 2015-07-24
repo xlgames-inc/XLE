@@ -25,6 +25,11 @@ namespace EntityInterface
         ParameterBox _properties;
         std::vector<ObjectId> _children;
         ObjectId _parent;
+
+        RetainedEntity();
+        RetainedEntity(RetainedEntity&& moveFrom) never_throws;
+        RetainedEntity& operator=(RetainedEntity&& moveFrom) never_throws;
+        ~RetainedEntity();
     };
 
     /// <summary>Stores entity data generically</summary>
@@ -45,9 +50,31 @@ namespace EntityInterface
         const RetainedEntity* GetEntity(const Identifier&) const;
         std::vector<const RetainedEntity*> FindEntitiesOfType(ObjectTypeId typeId) const;
 
+        enum class ChangeType 
+        {
+            SetProperty, Create, Delete,
+            
+            // SetParent, AddChild and RemoveChild are all invoked after the change
+            // takes place (so, in the callback, the parents and children will be in
+            // the new configuration). This means that the callback does not have
+            // access to the old parent pointer in SetParent.
+            // For a single SetParent operation, the order of callbacks is always:
+            //      RemoveChild, SetParent, AddChild
+            // (though, obviously, some callbacks will be skipped if there was no
+            // previous parent, or no new parent)
+            SetParent, AddChild, RemoveChild, 
+
+            // The following occur when there have been changes lower in
+            // the hierachy:
+            //      ChildSetProperty -- some object in our subtree has a property change
+            //      ChangeHierachy --   an object was added or removed somewhere in our
+            //                          subtree (not including immediate children)
+            ChildSetProperty, ChangeHierachy
+        };
+
         using OnChangeDelegate = 
             std::function<
-                void(const RetainedEntities& flexSys, const Identifier&)
+                void(const RetainedEntities& flexSys, const Identifier&, ChangeType)
             >;
         bool RegisterCallback(ObjectTypeId typeId, OnChangeDelegate onChange);
 
@@ -79,7 +106,7 @@ namespace EntityInterface
         mutable ObjectTypeId _nextObjectTypeId;
 
         RegisteredObjectType* GetObjectType(ObjectTypeId id) const;
-        void InvokeOnChange(RegisteredObjectType& type, RetainedEntity& obj) const;
+        void InvokeOnChange(RegisteredObjectType& type, RetainedEntity& obj, ChangeType changeType) const;
         RetainedEntity* GetEntityInt(DocumentId doc, ObjectId obj) const;
         bool SetSingleProperties(RetainedEntity& dest, const RegisteredObjectType& type, const PropertyInitializer& initializer) const;
 

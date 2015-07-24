@@ -279,39 +279,54 @@ namespace EntityInterface
         }
     }
 
+    static void ClearTerrainBaseTexture()
+    {
+        using namespace SceneEngine;
+        auto& divAsset = *Assets::GetDivergentAsset<TerrainMaterialScaffold>();
+        auto trans = divAsset.Transaction_Begin("UpdateTerrainBaseTexture");
+        if (trans) {
+            trans->GetAsset() = TerrainMaterialScaffold();
+            trans->Commit();
+        }
+    }
+
     void RegisterTerrainFlexObjects(RetainedEntities& flexSys)
     {
         flexSys.RegisterCallback(
             flexSys.GetTypeId((const utf8*)"TerrainBaseTexture"),
-            [](const RetainedEntities& flexSys, const Identifier& obj)
+            [](const RetainedEntities& flexSys, const Identifier& obj, RetainedEntities::ChangeType changeType)
             {
-                auto* object = flexSys.GetEntity(obj);
-                if (object)
-                    UpdateTerrainBaseTexture(flexSys, *object);
-            }
-        );
-
-        const utf8* materialObjects[] = 
-        {
-            (const utf8*)"TerrainStrataMaterial",
-            (const utf8*)"TerrainGradFlagMaterial",
-            (const utf8*)"TerrainProcTexture"
-        };
-
-        for (unsigned c=0; c<dimof(materialObjects); ++c) {
-            flexSys.RegisterCallback(
-                flexSys.GetTypeId(materialObjects[c]),
-                [](const RetainedEntities& flexSys, const Identifier& obj)
-                {
+                if (changeType != RetainedEntities::ChangeType::Delete) {
                     auto* object = flexSys.GetEntity(obj);
-                    if (object) {
-                        auto* parent = flexSys.GetEntity(object->_doc, object->_parent);
-                        if (parent && parent->_type == flexSys.GetTypeId((const utf8*)"TerrainBaseTexture"))
-                            UpdateTerrainBaseTexture(flexSys, *parent);
-                    }
+                    if (object)
+                        UpdateTerrainBaseTexture(flexSys, *object);
+                } else {
+                    ClearTerrainBaseTexture();
                 }
-            );
-        }
+            });
+
+        // const utf8* materialObjects[] = 
+        // {
+        //     (const utf8*)"TerrainStrataMaterial",
+        //     (const utf8*)"TerrainGradFlagMaterial",
+        //     (const utf8*)"TerrainProcTexture"
+        // };
+        // 
+        // for (unsigned c=0; c<dimof(materialObjects); ++c) {
+        //     flexSys.RegisterCallback(
+        //         flexSys.GetTypeId(materialObjects[c]),
+        //         [](const RetainedEntities& flexSys, const Identifier& obj, RetainedEntities::ChangeType changeType)
+        //         {
+        //             if (changeType == RetainedEntities::ChangeType::Delete) return;
+        // 
+        //             auto* object = flexSys.GetEntity(obj);
+        //             if (object) {
+        //                 auto* parent = flexSys.GetEntity(object->_doc, object->_parent);
+        //                 if (parent && parent->_type == flexSys.GetTypeId((const utf8*)"TerrainBaseTexture"))
+        //                     UpdateTerrainBaseTexture(flexSys, *parent);
+        //             }
+        //         });
+        // }
     }
 
     void ReloadTerrainFlexObjects(RetainedEntities& flexSys)

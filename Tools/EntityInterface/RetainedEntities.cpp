@@ -38,19 +38,29 @@ namespace EntityInterface
         return true;
     }
 
-    void RetainedEntities::InvokeOnChange(RegisteredObjectType& type, RetainedEntity& obj) const
+    void RetainedEntities::InvokeOnChange(RegisteredObjectType& type, RetainedEntity& obj, ChangeType changeType) const
     {
         for (auto i=type._onChange.begin(); i!=type._onChange.end(); ++i) {
-            (*i)(*this, Identifier(obj._doc, obj._id, obj._type));
+            (*i)(*this, Identifier(obj._doc, obj._id, obj._type), changeType);
         }
 
-        if (obj._parent != 0)
+        if ((   changeType == ChangeType::SetProperty || changeType == ChangeType::ChildSetProperty 
+            ||  changeType == ChangeType::AddChild || changeType == ChangeType::RemoveChild
+            ||  changeType == ChangeType::ChangeHierachy || changeType == ChangeType::Delete)
+            &&  obj._parent != 0) {
+
+            ChangeType newChangeType = ChangeType::ChildSetProperty;
+            if (    changeType == ChangeType::AddChild || changeType == ChangeType::RemoveChild
+                ||  changeType == ChangeType::ChangeHierachy || changeType == ChangeType::Delete)
+                newChangeType = ChangeType::ChangeHierachy;
+
             for (auto i=_objects.begin(); i!=_objects.end(); ++i)
                 if (i->_id == obj._parent && i->_doc == obj._doc) {
                     auto type = GetObjectType(i->_type);
                     if (type) 
-                        InvokeOnChange(*type, *i);
+                        InvokeOnChange(*type, *i, newChangeType);
                 }
+        }
     }
 
     auto RetainedEntities::GetEntity(DocumentId doc, ObjectId obj) const -> const RetainedEntity*
@@ -145,6 +155,33 @@ namespace EntityInterface
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    RetainedEntity::RetainedEntity() {}
+
+    RetainedEntity::RetainedEntity(RetainedEntity&& moveFrom) never_throws
+    : _properties(std::move(moveFrom._properties))
+    , _children(std::move(moveFrom._children))
+    {
+        _id = moveFrom._id;
+        _doc = moveFrom._doc;
+        _type = moveFrom._type;
+        _parent = moveFrom._parent;
+    }
+
+    RetainedEntity& RetainedEntity::operator=(RetainedEntity&& moveFrom) never_throws
+    {
+        _properties = std::move(moveFrom._properties);
+        _children = std::move(moveFrom._children);
+        _id = moveFrom._id;
+        _doc = moveFrom._doc;
+        _type = moveFrom._type;
+        _parent = moveFrom._parent;
+        return *this;
+    }
+
+    RetainedEntity::~RetainedEntity() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 	ObjectId RetainedEntityInterface::AssignObjectId(DocumentId doc, ObjectTypeId typeId) const
     {
         return _scene->_nextObjectId++;
@@ -170,7 +207,7 @@ namespace EntityInterface
 
         _scene->_objects.push_back(std::move(newObject));
 
-        _scene->InvokeOnChange(*type, _scene->_objects[_scene->_objects.size()-1]);
+        _scene->InvokeOnChange(*type, _scene->_objects[_scene->_objects.size()-1], RetainedEntities::ChangeType::Create);
         return true;
     }
 
@@ -179,7 +216,12 @@ namespace EntityInterface
         for (auto i=_scene->_objects.cbegin(); i!=_scene->_objects.cend(); ++i)
             if (i->_doc == id.Document() && i->_id == id.Object()) {
                 assert(i->_type == id.ObjectType());
+                RetainedEntity copy = std::move(*i);
                 _scene->_objects.erase(i);
+
+                auto type = _scene->GetObjectType(id.ObjectType());
+                if (type)
+                    _scene->InvokeOnChange(*type, copy, RetainedEntities::ChangeType::Delete);
                 return true;
             }
         return false;
@@ -199,7 +241,7 @@ namespace EntityInterface
                     auto& prop = initializers[c];
                     gotChange |= _scene->SetSingleProperties(*i, *type, prop);
                 }
-                if (gotChange) _scene->InvokeOnChange(*type, *i);
+                if (gotChange) _scene->InvokeOnChange(*type, *i, RetainedEntities::ChangeType::SetProperty);
                 return true;
             }
 
@@ -244,20 +286,29 @@ namespace EntityInterface
             if (oldParent) {
                 auto i = std::find(oldParent->_children.begin(), oldParent->_children.end(), child.Object());
                 oldParent->_children.erase(i);
+
+                auto oldParentType = _scene->GetObjectType(parent.ObjectType());
+                if (oldParentType)
+                    _scene->InvokeOnChange(
+                        *oldParentType, *oldParent, 
+                        RetainedEntities::ChangeType::RemoveChild);
             }
+
             childObj->_parent = 0;
         }
 
-        _scene->InvokeOnChange(*childType, *childObj);
-
+///////////////////////////////////////////////////////////////////////////////////////////////////
             // if parent is set to 0, then this is a "remove from parent" operation
-        if (!parent.Object()) return true;
+        if (!parent.Object()) {
+            _scene->InvokeOnChange(*childType, *childObj, RetainedEntities::ChangeType::SetParent);
+            return true;
+        }
 
         auto* parentObj = _scene->GetEntityInt(parent.Document(), parent.Object());
-        if (!parentObj || parentObj->_type != parent.ObjectType()) return false;
-
-        auto parentType = _scene->GetObjectType(parent.ObjectType());
-        if (!parentType) return false;
+        if (!parentObj || parentObj->_type != parent.ObjectType()) {
+            _scene->InvokeOnChange(*childType, *childObj, RetainedEntities::ChangeType::SetParent);
+            return false;
+        }
 
         if (insertionPosition < 0 || insertionPosition >= (int)parentObj->_children.size()) {
             parentObj->_children.push_back(child.Object());
@@ -268,7 +319,12 @@ namespace EntityInterface
         }
         childObj->_parent = parentObj->_id;
 
-        _scene->InvokeOnChange(*parentType, *parentObj);
+        _scene->InvokeOnChange(*childType, *childObj, RetainedEntities::ChangeType::SetParent);
+
+        auto parentType = _scene->GetObjectType(parent.ObjectType());
+        if (parentType)
+            _scene->InvokeOnChange(*parentType, *parentObj, RetainedEntities::ChangeType::AddChild);
+
         return true;
     }
 

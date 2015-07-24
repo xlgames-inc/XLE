@@ -402,30 +402,35 @@ namespace EntityInterface
     {
         _flexSys->RegisterCallback(
             _flexSys->GetTypeId((const utf8*)"OceanSettings"),
-            [](const RetainedEntities& flexSys, const Identifier& obj)
+            [](const RetainedEntities& flexSys, const Identifier& obj, RetainedEntities::ChangeType changeType)
             {
-                auto* object = flexSys.GetEntity(obj);
-                if (object)
-                    SceneEngine::GlobalOceanSettings = BuildOceanSettings(flexSys, *object);
-            }
-        );
+                if (changeType != RetainedEntities::ChangeType::Delete) {
+                    auto* object = flexSys.GetEntity(obj);
+                    if (object)
+                        SceneEngine::GlobalOceanSettings = BuildOceanSettings(flexSys, *object);
+                } else {
+                    SceneEngine::GlobalOceanSettings._enable = false;
+                }
+            });
 
         _flexSys->RegisterCallback(
             _flexSys->GetTypeId((const utf8*)"OceanLightingSettings"),
-            [](const RetainedEntities& flexSys, const Identifier& obj)
+            [](const RetainedEntities& flexSys, const Identifier& obj, RetainedEntities::ChangeType changeType)
             {
-                auto* object = flexSys.GetEntity(obj);
-                if (object)
-                    SceneEngine::GlobalOceanLightingSettings = BuildOceanLightingSettings(flexSys, *object);
-            }
-        );
+                if (changeType != RetainedEntities::ChangeType::Delete) {
+                    auto* object = flexSys.GetEntity(obj);
+                    if (object)
+                        SceneEngine::GlobalOceanLightingSettings = BuildOceanLightingSettings(flexSys, *object);
+                } else {
+                    SceneEngine::GlobalOceanLightingSettings = SceneEngine::OceanLightingSettings();
+                }
+            });
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static void UpdateVolumetricFog(
-        const RetainedEntities& sys, const RetainedEntity& obj,
-        SceneEngine::VolumetricFogManager& mgr)
+        const RetainedEntities& sys, SceneEngine::VolumetricFogManager& mgr)
     {
         using namespace SceneEngine;
         VolumetricFogConfig cfg;
@@ -453,16 +458,12 @@ namespace EntityInterface
         for (unsigned c=0; c<dimof(types); ++c) {
             _flexSys->RegisterCallback(
                 _flexSys->GetTypeId(types[c]),
-                [weakPtrToManager](const RetainedEntities& flexSys, const Identifier& obj)
+                [weakPtrToManager](const RetainedEntities& flexSys, const Identifier&, RetainedEntities::ChangeType)
                 {
                     auto mgr = weakPtrToManager.lock();
                     if (!mgr) return;
-
-                    auto* object = flexSys.GetEntity(obj);
-                    if (object)
-                        UpdateVolumetricFog(flexSys, *object, *mgr);
-                }
-            );
+                    UpdateVolumetricFog(flexSys, *mgr);
+                });
         }
     }
 
@@ -600,13 +601,12 @@ namespace EntityInterface
         for (unsigned c=0; c<dimof(types); ++c) {
             _flexSys->RegisterCallback(
                 _flexSys->GetTypeId(types[c]),
-                [weakPtrToThis](const RetainedEntities& flexSys, const Identifier& obj)
+                [weakPtrToThis](const RetainedEntities&, const Identifier&, RetainedEntities::ChangeType)
                 {
                     auto mgr = weakPtrToThis.lock();
                     if (!mgr) return;
                     mgr->_pendingShallowSurfaceUpdate = true;
-                }
-            );
+                });
         }
     }
 

@@ -88,10 +88,17 @@ namespace EntityInterface
         std::weak_ptr<SceneEngine::VegetationSpawnManager> weakPtrToManager = spawnManager;
         flexSys.RegisterCallback(
             flexSys.GetTypeId((const utf8*)"VegetationSpawnConfig"),
-            [weakPtrToManager](const RetainedEntities& flexSys, const Identifier& obj)
+            [weakPtrToManager](
+                const RetainedEntities& flexSys, const Identifier& obj,
+                RetainedEntities::ChangeType changeType)
             {
                 auto mgr = weakPtrToManager.lock();
                 if (!mgr) return;
+
+                if (changeType == RetainedEntities::ChangeType::Delete) {
+                    mgr->Load(SceneEngine::VegetationSpawnConfig());
+                    return;
+                }
 
                 auto* object = flexSys.GetEntity(obj);
                 if (object)
