@@ -37,6 +37,6 @@ Texture2D<uint> InputSurface;
 	uint2 surfaceSpaceCoord = DispatchOffset + dispatchThreadId.xy;
 	float rsq = LengthSquared(float2(surfaceSpaceCoord) - Center);
 	if (surfaceSpaceCoord.x <= SurfaceMaxs.x && surfaceSpaceCoord.y <= SurfaceMaxs.y && rsq < (Radius*Radius)) {
-	  OutputSurface[surfaceSpaceCoord - SurfaceMins] = paintValue;
+		OutputSurface[surfaceSpaceCoord - SurfaceMins] = paintValue;
 	}
 }

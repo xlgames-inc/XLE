@@ -49,11 +49,20 @@ float4 ps_circlehighlight(	float4 position : SV_Position,
 	if (r > Radius)
 		discard;
 
-	float theta = atan2(xyOffset.y, xyOffset.x);
-	const float wrappingCount = 32;
+	//float theta = atan2(xyOffset.y, xyOffset.x);
+	//const float wrappingCount = 128;
 
-	float a = HighlightResource.Sample(DefaultSampler, float2(theta/(2.f*pi)*wrappingCount, lerp(1.f/128.f, 127/128.f, r/Radius))).r;
-	return float4(1.0.xxx*a*.25f, .25f*a);
+	//float a = HighlightResource.SampleLevel(DefaultSampler, float2(theta/(2.f*pi)*wrappingCount, lerp(1.f/128.f, 127/128.f, r/Radius)), 0).r;
+	//return float4(1.0.xxx*a*.25f, .25f*a);
+
+	float d = fwidth(r/Radius);
+	float a3 = 1.f - smoothstep(0., d*2.f, (1.f - r/Radius));
+	// float a3 = 1.f - saturate((1.f - r/Radius) / (4.f * d));
+
+	float2 B = float2(worldPosition.xy - HighlightCenter.xy);
+	bool hatch = frac((B.x + B.y) / 2.f) < .5f;
+
+	return float4(hatch * 1.0.xxx*a3, hatch?0.5f:0.25f);
 }
 
 
@@ -77,7 +86,7 @@ float4 ps_rectanglehighlight(	float4 position : SV_Position,
 		//		texCoord.y should be a distance from the edge
 		//		texCoord.x should be a parameter for the dotted line
 
-	float distances[4] = 
+	float distances[4] =
 	{
 			// (note -- ignoring z)
 		worldPosition.x - Mins.x,
@@ -89,10 +98,16 @@ float4 ps_rectanglehighlight(	float4 position : SV_Position,
 	if (minDist < 0.f)
 		discard;
 
-	texCoord.y = saturate(minDist / 100.f);
-	texCoord.x = worldPosition.x + worldPosition.y;
+	float2 b2 = float2(
+		(worldPosition.x - Mins.x) / (Maxs.x - Mins.x),
+		(worldPosition.y - Mins.y) / (Maxs.y - Mins.y));
 
-	float a = HighlightResource.Sample(DefaultSampler, texCoord).r;
-	return float4(1.0.xxx*a, a);
+	float2 d = fwidth(b2);
+	float4 A = float4(b2, 1.0.xx-b2);
+	float4 a3 = 1.f - smoothstep(0.0.xxxx, d.xyxy*2.f, A);
+
+	float2 B = float2(worldPosition.xy - Mins.xy);
+	bool hatch = frac((B.x + B.y) / 4.f) < .5f;
+
+	return float4(hatch * 1.0.xxx*max(max(max(a3.x, a3.y), a3.z), a3.w), hatch?0.5f:0.25f);
 }
-
