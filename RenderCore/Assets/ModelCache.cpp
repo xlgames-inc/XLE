@@ -10,7 +10,7 @@
 #include "SharedStateSet.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
-#include "../../Assets/IntermediateResources.h"
+#include "../../Assets/IntermediateAssets.h"
 #include "../../Utility/HeapUtils.h"
 #include <map>
 
@@ -50,7 +50,7 @@ namespace RenderCore { namespace Assets
         {
             auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
             auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-            auto marker = compilers.PrepareResource(
+            auto marker = compilers.PrepareAsset(
                 ModelScaffold::CompileProcessType, 
                 (const char**)&filename, 1, store);
             return std::make_shared<ModelScaffold>(std::move(marker));
@@ -64,7 +64,7 @@ namespace RenderCore { namespace Assets
             auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
             auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
             const ::Assets::ResChar* inits[] = { material, model };
-            auto marker = compilers.PrepareResource(
+            auto marker = compilers.PrepareAsset(
                 MaterialScaffold::CompileProcessType, 
                 inits, dimof(inits), store);
             return std::make_shared<MaterialScaffold>(std::move(marker));

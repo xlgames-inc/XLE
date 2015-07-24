@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CompileAndAsyncManager.h"
-#include "IntermediateResources.h"
+#include "IntermediateAssets.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/Threading/ThreadingUtils.h"
@@ -36,8 +36,8 @@ namespace Assets
 	class CompileAndAsyncManager::Pimpl
 	{
 	public:
-		std::unique_ptr<IntermediateResources::Store> _intStore;
-        std::unique_ptr<IntermediateResources::CompilerSet> _intMan;
+		std::unique_ptr<IntermediateAssets::Store> _intStore;
+        std::unique_ptr<IntermediateAssets::CompilerSet> _intMan;
 		std::vector<std::shared_ptr<IPollingAsyncProcess>> _pollingProcesses;
 		std::unique_ptr<IThreadPump> _threadPump;
 
@@ -76,12 +76,12 @@ namespace Assets
 		_pimpl->_pollingProcesses.push_back(pollingProcess);
     }
 
-    IntermediateResources::Store& CompileAndAsyncManager::GetIntermediateStore() 
+    IntermediateAssets::Store& CompileAndAsyncManager::GetIntermediateStore() 
     { 
 		return *_pimpl->_intStore.get();
     }
     
-    IntermediateResources::CompilerSet& CompileAndAsyncManager::GetIntermediateCompilers() 
+    IntermediateAssets::CompilerSet& CompileAndAsyncManager::GetIntermediateCompilers() 
     { 
 		return *_pimpl->_intMan.get();
     }
@@ -117,9 +117,9 @@ namespace Assets
                 const char storeVersionString[] = "0.0.0r";
             #endif
         #endif
-        auto intStore = std::make_unique<IntermediateResources::Store>("Int", storeVersionString);
+        auto intStore = std::make_unique<IntermediateAssets::Store>("Int", storeVersionString);
 
-        auto intMan = std::make_unique<IntermediateResources::CompilerSet>();
+        auto intMan = std::make_unique<IntermediateAssets::CompilerSet>();
 		_pimpl = std::make_unique<Pimpl>();
 
         _pimpl->_intMan = std::move(intMan);
@@ -129,7 +129,7 @@ namespace Assets
     CompileAndAsyncManager::~CompileAndAsyncManager()
     {
             // note -- this order is important. The compiler set
-            // can make use of the IntermediateResources::Store during
+            // can make use of the IntermediateAssets::Store during
             // it's destructor (eg, when flushing an archive cache to disk). 
         _pimpl->_intMan.reset();
         _pimpl->_intStore.reset();

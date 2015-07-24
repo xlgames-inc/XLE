@@ -31,7 +31,7 @@
 
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/ChunkFile.h"
-#include "../../Assets/IntermediateResources.h"
+#include "../../Assets/IntermediateAssets.h"
 
 #include "../../Core/Exceptions.h"
 #include "../../Utility/PtrUtils.h"

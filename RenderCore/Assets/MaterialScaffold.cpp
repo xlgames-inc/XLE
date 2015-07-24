@@ -11,7 +11,7 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/ChunkFile.h"
-#include "../../Assets/IntermediateResources.h"
+#include "../../Assets/IntermediateAssets.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -192,10 +192,10 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::shared_ptr<::Assets::PendingCompileMarker> MaterialScaffoldCompiler::PrepareResource(
+    std::shared_ptr<::Assets::PendingCompileMarker> MaterialScaffoldCompiler::PrepareAsset(
         uint64 typeCode, 
         const ::Assets::ResChar* initializers[], unsigned initializerCount,
-        const ::Assets::IntermediateResources::Store& destinationStore)
+        const ::Assets::IntermediateAssets::Store& destinationStore)
     {
         if (initializerCount < 2 || !initializers[0][0] || !initializers[1][0]) return nullptr;
 

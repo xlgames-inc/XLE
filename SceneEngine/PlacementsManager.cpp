@@ -11,7 +11,7 @@
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/ModelRunTimeInternal.h"
 #include "../Assets/CompileAndAsyncManager.h"
-#include "../Assets/IntermediateResources.h"
+#include "../Assets/IntermediateAssets.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"
 #include "../RenderCore/Assets/ModelCache.h"
 

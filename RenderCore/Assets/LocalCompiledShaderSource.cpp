@@ -8,7 +8,7 @@
 #include "../Metal/Shader.h"
 
 #include "../../Assets/ChunkFile.h"
-#include "../../Assets/IntermediateResources.h"
+#include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/ArchiveCache.h"
@@ -241,9 +241,9 @@ namespace RenderCore { namespace Assets
     public:
         std::shared_ptr<::Assets::ArchiveCache> GetArchive(
             const char shaderBaseFilename[], 
-            const ::Assets::IntermediateResources::Store& intermediateStore);
+            const ::Assets::IntermediateAssets::Store& intermediateStore);
 
-        void LogStats(const ::Assets::IntermediateResources::Store& intermediateStore);
+        void LogStats(const ::Assets::IntermediateAssets::Store& intermediateStore);
 
         ShaderCacheSet();
         ~ShaderCacheSet();
@@ -255,7 +255,7 @@ namespace RenderCore { namespace Assets
 
     std::shared_ptr<::Assets::ArchiveCache> ShaderCacheSet::GetArchive(
         const char shaderBaseFilename[],
-        const ::Assets::IntermediateResources::Store& intermediateStore)
+        const ::Assets::IntermediateAssets::Store& intermediateStore)
     {
         auto hashedName = Hash64(shaderBaseFilename);
 
@@ -272,7 +272,7 @@ namespace RenderCore { namespace Assets
         return std::move(newArchive);
     }
 
-    void ShaderCacheSet::LogStats(const ::Assets::IntermediateResources::Store& intermediateStore)
+    void ShaderCacheSet::LogStats(const ::Assets::IntermediateAssets::Store& intermediateStore)
     {
             // log statistics information for all shaders in all archive caches
         uint64 totalShaderSize = 0; // in bytes
@@ -392,9 +392,9 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
     
-    std::shared_ptr<::Assets::PendingCompileMarker> LocalCompiledShaderSource::PrepareResource(
+    std::shared_ptr<::Assets::PendingCompileMarker> LocalCompiledShaderSource::PrepareAsset(
         uint64 typeCode, const ResChar* initializers[], unsigned initializerCount,
-        const ::Assets::IntermediateResources::Store& destinationStore)
+        const ::Assets::IntermediateAssets::Store& destinationStore)
     {
             //  Execute an offline compile. This should happen in the background
             //  When it's complete, we'll write the result into the appropriate

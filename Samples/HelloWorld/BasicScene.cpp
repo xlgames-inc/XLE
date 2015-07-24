@@ -15,7 +15,7 @@
 #include "../../SceneEngine/Tonemap.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetUtils.h"
-#include "../../Assets/IntermediateResources.h"
+#include "../../Assets/IntermediateAssets.h"
 #include "../../PlatformRig/PlatformRigUtil.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"

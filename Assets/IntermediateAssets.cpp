@@ -6,7 +6,7 @@
 
 #define _SCL_SECURE_NO_WARNINGS
 
-#include "IntermediateResources.h"
+#include "IntermediateAssets.h"
 
 #include "CompileAndAsyncManager.h"     // for ~PendingCompileMarker -- remove
 
@@ -23,7 +23,7 @@
 #include "../Core/WinAPI/IncludeWindows.h"
 #include <memory>
 
-namespace Assets { namespace IntermediateResources
+namespace Assets { namespace IntermediateAssets
 {
 
     static ResChar ConvChar(ResChar input) 
@@ -338,10 +338,10 @@ namespace Assets { namespace IntermediateResources
     class CompilerSet::Pimpl 
     {
     public:
-        std::vector<std::pair<uint64, std::shared_ptr<IResourceCompiler>>> _compilers;
+        std::vector<std::pair<uint64, std::shared_ptr<IAssetCompiler>>> _compilers;
     };
 
-    void CompilerSet::AddCompiler(uint64 typeCode, const std::shared_ptr<IResourceCompiler>& processor)
+    void CompilerSet::AddCompiler(uint64 typeCode, const std::shared_ptr<IAssetCompiler>& processor)
     {
         auto i = LowerBound(_pimpl->_compilers, typeCode);
         if (i != _pimpl->_compilers.cend() && i->first == typeCode) {
@@ -351,7 +351,7 @@ namespace Assets { namespace IntermediateResources
         }
     }
 
-    std::shared_ptr<PendingCompileMarker> CompilerSet::PrepareResource(
+    std::shared_ptr<PendingCompileMarker> CompilerSet::PrepareAsset(
         uint64 typeCode, const ResChar* initializers[], unsigned initializerCount,
         Store& store)
     {
@@ -367,7 +367,7 @@ namespace Assets { namespace IntermediateResources
         if (i != _pimpl->_compilers.cend() && i->first == typeCode) {
 
             TRY {
-                return i->second->PrepareResource(typeCode, initializers, initializerCount, store);
+                return i->second->PrepareAsset(typeCode, initializers, initializerCount, store);
             } CATCH (const std::exception& e) {
                 LogAlwaysError << "Exception during processing of (" << initializers[0] << "). Exception details: (" << e.what() << ")";
             } CATCH (...) {
@@ -397,7 +397,7 @@ namespace Assets { namespace IntermediateResources
     {
     }
 
-    IResourceCompiler::~IResourceCompiler() {}
+    IAssetCompiler::~IAssetCompiler() {}
 }}
 
             ////////////////////////////////////////////////////////////

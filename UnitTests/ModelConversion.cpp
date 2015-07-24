@@ -11,7 +11,7 @@
 #include "../RenderCore/Assets/Services.h"
 #include "../ColladaConversion/DLLInterface.h"
 #include "../ColladaConversion/NascentModel.h"
-#include "../Assets/IntermediateResources.h"
+#include "../Assets/IntermediateAssets.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"

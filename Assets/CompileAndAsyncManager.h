@@ -17,7 +17,7 @@
 namespace Assets
 {
     class DependencyValidation; class DependentFileState; 
-    namespace IntermediateResources { class CompilerSet; class Store; }
+    namespace IntermediateAssets { class CompilerSet; class Store; }
     class ArchiveCache;
 
     class IPollingAsyncProcess
@@ -52,8 +52,8 @@ namespace Assets
         void Add(const std::shared_ptr<IPollingAsyncProcess>& pollingProcess);
         void Add(std::unique_ptr<IThreadPump>&& threadPump);
 
-        IntermediateResources::Store&       GetIntermediateStore();
-        IntermediateResources::CompilerSet& GetIntermediateCompilers();
+        IntermediateAssets::Store&       GetIntermediateStore();
+        IntermediateAssets::CompilerSet& GetIntermediateCompilers();
 
         CompileAndAsyncManager();
         ~CompileAndAsyncManager();

@@ -112,7 +112,7 @@ static void TestParser()
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/ModelRunTimeInternal.h"
 #include "../../RenderCore/Assets/Services.h"
-#include "../../Assets/IntermediateResources.h"
+#include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/Assets.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Threading/ThreadingUtils.h"

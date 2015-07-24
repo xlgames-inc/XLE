@@ -11,7 +11,7 @@
 #include "../Metal/Shader.h"            // (for Metal::CreateLowLevelShaderCompiler)
 #include "../ShaderService.h"
 #include "../../Assets/CompileAndAsyncManager.h"
-#include "../../Assets/IntermediateResources.h"
+#include "../../Assets/IntermediateAssets.h"
 #include "../../ConsoleRig/AttachableInternal.h"
 #include "../../BufferUploads/IBufferUploads.h"
 

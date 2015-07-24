@@ -43,9 +43,9 @@ namespace Assets
     };
 }
 
-namespace Assets { namespace IntermediateResources
+namespace Assets { namespace IntermediateAssets
 {
-    class IResourceCompiler;
+    class IAssetCompiler;
 
     class Store
     {
@@ -70,21 +70,21 @@ namespace Assets { namespace IntermediateResources
         std::string _baseDirectory;
     };
 
-    class IResourceCompiler
+    class IAssetCompiler
     {
     public:
-        virtual std::shared_ptr<PendingCompileMarker> PrepareResource(
+        virtual std::shared_ptr<PendingCompileMarker> PrepareAsset(
             uint64 typeCode, const ResChar* initializers[], unsigned initializerCount,
             const Store& destinationStore) = 0;
         virtual void StallOnPendingOperations(bool cancelAll) = 0;
-        virtual ~IResourceCompiler();
+        virtual ~IAssetCompiler();
     };
 
     class CompilerSet
     {
     public:
-        void AddCompiler(uint64 typeCode, const std::shared_ptr<IResourceCompiler>& processor);
-        std::shared_ptr<PendingCompileMarker> PrepareResource(
+        void AddCompiler(uint64 typeCode, const std::shared_ptr<IAssetCompiler>& processor);
+        std::shared_ptr<PendingCompileMarker> PrepareAsset(
             uint64 typeCode, const ResChar* initializers[], unsigned initializerCount,
             Store& store);
         void StallOnPendingOperations(bool cancelAll);

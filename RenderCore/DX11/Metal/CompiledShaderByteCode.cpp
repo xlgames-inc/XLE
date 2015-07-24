@@ -7,7 +7,7 @@
 #include "Shader.h"
 #include "DeviceContext.h"
 #include "../../ShaderService.h"
-#include "../../../Assets/IntermediateResources.h"
+#include "../../../Assets/IntermediateAssets.h"
 #include "../../../Assets/AssetUtils.h"
 #include "../../../Assets/InvalidAssetManager.h"
 #include "../../../Utility/Streams/PathUtils.h"

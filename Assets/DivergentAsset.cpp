@@ -6,7 +6,7 @@
 
 #include "DivergentAsset.h"
 #include "CompileAndAsyncManager.h"
-#include "IntermediateResources.h"
+#include "IntermediateAssets.h"
 #include "AssetServices.h"
 
 namespace Assets

@@ -7,7 +7,7 @@
 #include "Material.h"
 #include "../Metal/State.h"      // (just for Blend/BlendOp enum members... maybe we need a higher level version of these enums?)
 #include "../../Assets/AssetUtils.h"
-#include "../../Assets/IntermediateResources.h"
+#include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/ChunkFile.h"
 #include "../../ConsoleRig/Log.h"

@@ -8,7 +8,7 @@
 #include "DeviceContext.h"
 #include "InputLayout.h"
 #include "../../RenderUtils.h"
-#include "../../../Assets/IntermediateResources.h"
+#include "../../../Assets/IntermediateAssets.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Core/Exceptions.h"
 

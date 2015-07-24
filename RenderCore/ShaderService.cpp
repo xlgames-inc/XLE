@@ -7,7 +7,7 @@
 #include "ShaderService.h"
 #include "Resource.h"
 #include "../Assets/Assets.h"
-#include "../Assets/IntermediateResources.h"
+#include "../Assets/IntermediateAssets.h"
 #include "../Assets/ArchiveCache.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/StringUtils.h"

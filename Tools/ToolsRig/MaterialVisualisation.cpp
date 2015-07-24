@@ -22,7 +22,7 @@
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/ModelRunTimeInternal.h"
 
-#include "../../Assets/IntermediateResources.h"
+#include "../../Assets/IntermediateAssets.h"
 
 #include "../../RenderCore/IThreadContext.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -244,8 +244,8 @@ namespace ToolsRig
 
         auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
         auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-        auto skinMarker = compilers.PrepareResource(RenderCore::Assets::ModelScaffold::CompileProcessType, &modelFile, 1, store);
-        auto skelMarker = compilers.PrepareResource(RenderCore::Assets::SkeletonScaffold::CompileProcessType, &modelFile, 1, store);
+        auto skinMarker = compilers.PrepareAsset(RenderCore::Assets::ModelScaffold::CompileProcessType, &modelFile, 1, store);
+        auto skelMarker = compilers.PrepareAsset(RenderCore::Assets::SkeletonScaffold::CompileProcessType, &modelFile, 1, store);
 
         skinMarker->StallWhilePending();
         skelMarker->StallWhilePending();
@@ -375,7 +375,7 @@ namespace ToolsRig
                     auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
                     auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
                     const ::Assets::ResChar* modelFile = object._previewModelFile.c_str();
-                    auto skinMarker = compilers.PrepareResource(RenderCore::Assets::ModelScaffold::CompileProcessType, &modelFile, 1, store);
+                    auto skinMarker = compilers.PrepareAsset(RenderCore::Assets::ModelScaffold::CompileProcessType, &modelFile, 1, store);
                     const auto& model = ::Assets::GetAsset<ModelScaffold>(skinMarker->_sourceID0);
                     *settings._camera = AlignCameraToBoundingBox(settings._camera->_verticalFieldOfView, model.GetStaticBoundingBox());
                 } else {

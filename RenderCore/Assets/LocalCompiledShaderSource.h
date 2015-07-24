@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../ShaderService.h"
-#include "../../Assets/IntermediateResources.h"
+#include "../../Assets/IntermediateAssets.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
 #include <vector>
 #include <memory>
@@ -18,14 +18,14 @@ namespace RenderCore { namespace Assets
     class ShaderCompileMarker;
 
     class LocalCompiledShaderSource 
-        : public ::Assets::IntermediateResources::IResourceCompiler
+        : public ::Assets::IntermediateAssets::IAssetCompiler
         , public ShaderService::IShaderSource
         , public std::enable_shared_from_this<LocalCompiledShaderSource>
     {
     public:
-        std::shared_ptr<::Assets::PendingCompileMarker> PrepareResource(
+        std::shared_ptr<::Assets::PendingCompileMarker> PrepareAsset(
             uint64 typeCode, const ::Assets::ResChar* initializers[], unsigned initializerCount,
-            const ::Assets::IntermediateResources::Store& destinationStore);
+            const ::Assets::IntermediateAssets::Store& destinationStore);
 
         using IPendingMarker = ShaderService::IPendingMarker;
         std::shared_ptr<IPendingMarker> CompileFromFile(

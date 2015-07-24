@@ -6,19 +6,19 @@
 
 #pragma once
 
-#include "../../Assets/IntermediateResources.h"
+#include "../../Assets/IntermediateAssets.h"
 #include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Assets 
 {
 
-    class ColladaCompiler : public ::Assets::IntermediateResources::IResourceCompiler
+    class ColladaCompiler : public ::Assets::IntermediateAssets::IAssetCompiler
     {
     public:
-        std::shared_ptr<::Assets::PendingCompileMarker> PrepareResource(
+        std::shared_ptr<::Assets::PendingCompileMarker> PrepareAsset(
             uint64 typeCode, 
             const ::Assets::ResChar* initializers[], unsigned initializerCount,
-            const ::Assets::IntermediateResources::Store& destinationStore);
+            const ::Assets::IntermediateAssets::Store& destinationStore);
 
         void StallOnPendingOperations(bool cancelAll);
 

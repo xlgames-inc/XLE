@@ -28,7 +28,7 @@ namespace RenderCore { namespace Assets
         uint64 _typeCode;
         ::Assets::ResChar _initializer[MaxPath];
 
-        const ::Assets::IntermediateResources::Store* _destinationStore;
+        const ::Assets::IntermediateAssets::Store* _destinationStore;
     };
 
     class ColladaCompiler::Pimpl
@@ -412,10 +412,10 @@ namespace RenderCore { namespace Assets
         } CATCH_END
     }
     
-    std::shared_ptr<::Assets::PendingCompileMarker> ColladaCompiler::PrepareResource(
+    std::shared_ptr<::Assets::PendingCompileMarker> ColladaCompiler::PrepareAsset(
         uint64 typeCode, 
         const ::Assets::ResChar* initializers[], unsigned initializerCount, 
-        const ::Assets::IntermediateResources::Store& destinationStore)
+        const ::Assets::IntermediateAssets::Store& destinationStore)
     {
         char outputName[MaxPath];
         destinationStore.MakeIntermediateName(outputName, dimof(outputName), initializers[0]);

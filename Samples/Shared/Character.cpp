@@ -11,7 +11,7 @@
 #include "../../RenderCore/Assets/AnimationRunTime.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../Assets/Assets.h"
-#include "../../Assets/IntermediateResources.h"
+#include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Utility/Streams/PathUtils.h"
@@ -66,9 +66,9 @@ namespace Sample
             //          objects only after everything is ready
         auto& compilers = Assets::Services::GetAsyncMan().GetIntermediateCompilers();
         auto& store = Assets::Services::GetAsyncMan().GetIntermediateStore();
-        auto skinMarker = compilers.PrepareResource(RenderCore::Assets::ModelScaffold::CompileProcessType, &skin, 1, store);
-        auto skelMarker = compilers.PrepareResource(RenderCore::Assets::SkeletonScaffold::CompileProcessType, &skeleton, 1, store);
-        auto animMarker = compilers.PrepareResource(RenderCore::Assets::AnimationSetScaffold::CompileProcessType, &animationSet, 1, store);
+        auto skinMarker = compilers.PrepareAsset(RenderCore::Assets::ModelScaffold::CompileProcessType, &skin, 1, store);
+        auto skelMarker = compilers.PrepareAsset(RenderCore::Assets::SkeletonScaffold::CompileProcessType, &skeleton, 1, store);
+        auto animMarker = compilers.PrepareAsset(RenderCore::Assets::AnimationSetScaffold::CompileProcessType, &animationSet, 1, store);
         skinMarker->StallWhilePending();
         skelMarker->StallWhilePending();
         animMarker->StallWhilePending();

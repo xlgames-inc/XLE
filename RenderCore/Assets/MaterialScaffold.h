@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../../Assets/IntermediateResources.h"
+#include "../../Assets/IntermediateAssets.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Core/Types.h"
 
@@ -40,13 +40,13 @@ namespace RenderCore { namespace Assets
 
     static const uint64 ChunkType_ResolvedMat = ConstHash64<'ResM', 'at'>::Value;
 
-    class MaterialScaffoldCompiler : public ::Assets::IntermediateResources::IResourceCompiler
+    class MaterialScaffoldCompiler : public ::Assets::IntermediateAssets::IAssetCompiler
     {
     public:
-        std::shared_ptr<::Assets::PendingCompileMarker> PrepareResource(
+        std::shared_ptr<::Assets::PendingCompileMarker> PrepareAsset(
             uint64 typeCode, 
             const ::Assets::ResChar* initializers[], unsigned initializerCount,
-            const ::Assets::IntermediateResources::Store& destinationStore);
+            const ::Assets::IntermediateAssets::Store& destinationStore);
 
         void StallOnPendingOperations(bool cancelAll);
 

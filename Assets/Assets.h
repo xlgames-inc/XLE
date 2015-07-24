@@ -117,7 +117,7 @@ namespace Assets
                 auto& compilers = Services::GetAsyncMan().GetIntermediateCompilers();
                 auto& store = Services::GetAsyncMan().GetIntermediateStore();
 				const char* inits[] = { ((const char*)initialisers)... };
-				auto marker = compilers.PrepareResource(GetCompileProcessType<AssetType>(), inits, dimof(inits), store);
+				auto marker = compilers.PrepareAsset(GetCompileProcessType<AssetType>(), inits, dimof(inits), store);
                 return std::make_unique<AssetType>(std::move(marker));
             }
         };
