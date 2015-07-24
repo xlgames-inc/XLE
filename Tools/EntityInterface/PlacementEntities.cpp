@@ -144,7 +144,7 @@ namespace EntityInterface
         auto transaction = _editor->Transaction_Begin(
             &guid, &guid+1, 
             SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
-        if (transaction->GetObjectCount()==1) {
+        if (transaction && transaction->GetObjectCount()==1) {
             auto originalObject = transaction->GetObject(0);
 
             bool result = false;

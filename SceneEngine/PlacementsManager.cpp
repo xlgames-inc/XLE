@@ -1777,13 +1777,13 @@ namespace SceneEngine
 
             cellIterator = std::lower_bound(cellIterator, editorPimpl->_cells.end(), i->first, PlacementsEditor::Pimpl::RegisteredCell::CompareHash());
             if (cellIterator == editorPimpl->_cells.end() || cellIterator->_filenameHash != i->first) {
-                i = iend;
+                i = guids.erase(i, iend);
                 continue;
             }
 
             auto cellToWorld = cellIterator->_cellToWorld;
             auto* placements = editorPimpl->GetPlacements(cellIterator->_filenameHash);
-            if (!placements) { i = iend; continue; }
+            if (!placements) { i = guids.erase(i, iend); continue; }
 
             if (transactionFlags & PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits) {
                     //  Sometimes we want to ignore the top 32 bits of the id. It works, but it's
