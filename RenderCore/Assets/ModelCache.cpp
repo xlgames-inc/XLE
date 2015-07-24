@@ -109,7 +109,7 @@ namespace RenderCore { namespace Assets
     {
         auto scaffold = GetScaffolds(modelFilename, materialFilename);
         if (!scaffold._model || !scaffold._material)
-            ThrowException(::Assets::Exceptions::PendingResource(modelFilename, "Scaffolds still pending in ModelVisCache"));
+            Throw(::Assets::Exceptions::PendingResource(modelFilename, "Scaffolds still pending in ModelVisCache"));
 
         auto maxLOD = scaffold._model->GetMaxLOD();
         LOD = std::min(LOD, maxLOD);

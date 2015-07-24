@@ -134,7 +134,7 @@ namespace SceneEngine
         if (    writeResult0 != 1
             ||  writeResult1 != hdr._objectRefCount
             ||  writeResult2 != hdr._filenamesBufferSize)
-            ThrowException(::Exceptions::BasicLabel("Failure in file write while saving placements"));
+            Throw(::Exceptions::BasicLabel("Failure in file write while saving placements"));
     }
 
     void Placements::LogDetails(const char title[]) const
@@ -245,14 +245,14 @@ namespace SceneEngine
                 chunks.begin(), chunks.end(), 
                 [](const ChunkHeader& hdr) { return hdr._type == ChunkType_Placements; });
             if (i == chunks.end()) {
-                ThrowException(::Assets::Exceptions::InvalidResource(filename, "Missing correct chunks"));
+                Throw(::Assets::Exceptions::InvalidResource(filename, "Missing correct chunks"));
             }
 
             file.Seek(i->_fileOffset, SEEK_SET);
             PlacementsHeader hdr;
             file.Read(&hdr, sizeof(hdr), 1);
             if (hdr._version != 0) {
-                ThrowException(::Assets::Exceptions::InvalidResource(filename, 
+                Throw(::Assets::Exceptions::InvalidResource(filename, 
                     StringMeld<128>() << "Unexpected version number (" << hdr._version << ")"));
             }
 
@@ -2065,7 +2065,7 @@ namespace SceneEngine
             return;
         }
 
-        ThrowException(
+        Throw(
             ::Exceptions::BasicLabel("Could not find cell with given id (0x%08x%08x). Saving cancelled",
                 uint32(cellId>>32), uint32(cellId)));
     }

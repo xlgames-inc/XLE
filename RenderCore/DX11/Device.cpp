@@ -58,14 +58,14 @@ namespace RenderCore
             module = (*Windows::Fn_LoadLibrary)("d3d11.dll");
         }
         if (!module || module == INVALID_HANDLE_VALUE) {
-            ThrowException(::Exceptions::BasicLabel("Could not load D3D11 library"));
+            Throw(::Exceptions::BasicLabel("Could not load D3D11 library"));
         }
 
         auto fn = (PFN_D3D11_CREATE_DEVICE)(*Windows::Fn_GetProcAddress)(module, "D3D11CreateDevice");
         if (!fn) {
             (*Windows::FreeLibrary)(module);
             module = (HMODULE)INVALID_HANDLE_VALUE;
-            ThrowException(::Exceptions::BasicLabel("D3D11 library appears corrupt"));
+            Throw(::Exceptions::BasicLabel("D3D11 library appears corrupt"));
         }
 
         return (*fn)(
@@ -122,7 +122,7 @@ namespace RenderCore
         }
 
         if (!SUCCEEDED(hresult)) {
-            ThrowException(Exceptions::BasicLabel("Failure in D3D11 device construction. Aborting."));
+            Throw(Exceptions::BasicLabel("Failure in D3D11 device construction. Aborting."));
         }
 
         Metal_DX11::ObjectFactory::PrepareDevice(*underlying);
@@ -225,7 +225,7 @@ namespace RenderCore
             result = moveptr(swapChainTemp);
         }
         if (!SUCCEEDED(hresult)) {
-            ThrowException(Exceptions::BasicLabel("Failure while constructing a swap chain. Aborting."));
+            Throw(Exceptions::BasicLabel("Failure while constructing a swap chain. Aborting."));
         }
 
             //
@@ -377,7 +377,7 @@ namespace RenderCore
                 newWidth = clientRect.right - clientRect.left;
                 newHeight = clientRect.bottom - clientRect.top;
             } else {
-                ThrowException(Exceptions::BasicLabel("Cannot resize because this presentation chain isn't attached to a window."));
+                Throw(Exceptions::BasicLabel("Cannot resize because this presentation chain isn't attached to a window."));
             }
         }
 

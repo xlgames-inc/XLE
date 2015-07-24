@@ -186,7 +186,7 @@ namespace Utility
         void VariantFunctions::Add(Id id, std::function<Fn>&& fn)
     {
         auto i = LowerBound(_fns, id);
-        if (i != _fns.end() && i->first == id) { ThrowException(DuplicateFunction()); } // duplicate of one already here!
+        if (i != _fns.end() && i->first == id) { Throw(DuplicateFunction()); } // duplicate of one already here!
 
         StoredFunction sfn;
         sfn._offset = _buffer.size();
@@ -214,12 +214,12 @@ namespace Utility
     {
         auto i = LowerBound(_fns, id);
         if (i == _fns.end() || i->first != id)
-            ThrowException(NoFunction());
+            Throw(NoFunction());
         
         using FnType = std::function<Result (Args...)>;
         auto expectedSize = sizeof(FnType);
         if (i->second._size != expectedSize || typeid(FnType).hash_code() != i->second._typeHashCode)
-            ThrowException(SignatureMismatch());
+            Throw(SignatureMismatch());
 
         auto* obj = (void*)PtrAdd(AsPointer(_buffer.begin()), i->second._offset);
         auto* fn = reinterpret_cast<std::function<Result (Args...)>*>(obj);
@@ -256,7 +256,7 @@ namespace Utility
         using FnType = std::function<Result (Args...)>;
         auto expectedSize = sizeof(FnType);
         if (i->second._size != expectedSize || typeid(FnType).hash_code() != i->second._typeHashCode)
-            ThrowException(SignatureMismatch());
+            Throw(SignatureMismatch());
 
         auto* obj = (void*)PtrAdd(AsPointer(_buffer.begin()), i->second._offset);
         auto* fn = reinterpret_cast<std::function<Result (Args...)>*>(obj);
@@ -269,12 +269,12 @@ namespace Utility
     {
         auto i = LowerBound(_fns, id);
         if (i == _fns.end() || i->first != id)
-            ThrowException(NoFunction());
+            Throw(NoFunction());
         
         using FnType = std::function<FnSig>;
         auto expectedSize = sizeof(FnType);
         if (i->second._size != expectedSize || typeid(FnType).hash_code() != i->second._typeHashCode)
-            ThrowException(SignatureMismatch());
+            Throw(SignatureMismatch());
 
         auto* obj = (void*)PtrAdd(AsPointer(_buffer.begin()), i->second._offset);
         auto* fn = reinterpret_cast<std::function<FnSig>*>(obj);
@@ -294,7 +294,7 @@ namespace Utility
         using FnType = std::function<FnSig>;
         auto expectedSize = sizeof(FnType);
         if (i->second._size != expectedSize || typeid(FnType).hash_code() != i->second._typeHashCode)
-            ThrowException(SignatureMismatch());
+            Throw(SignatureMismatch());
 
         return true;
     }

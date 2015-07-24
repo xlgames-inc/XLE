@@ -22,7 +22,7 @@ namespace Utility
 	            _file = fopen(filename, openMode);
             #endif
             if (!_file) {
-                ThrowException(Exceptions::BasicLabel("Failure during file open. Probably missing file or bad privileges: (%s), openMode: (%s)", filename, openMode));
+                Throw(Exceptions::BasicLabel("Failure during file open. Probably missing file or bad privileges: (%s), openMode: (%s)", filename, openMode));
             }
         }
 

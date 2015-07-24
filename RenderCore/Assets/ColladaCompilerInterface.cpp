@@ -318,7 +318,7 @@ namespace RenderCore { namespace Assets
                 } else {
 
                     if (!_oldPathOk)
-                        ThrowException(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Some interface functions are missing"));
+                        Throw(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Some interface functions are missing"));
 
                     #if defined(SUPPORT_OLD_PATH)
                         if (op._typeCode == Type_Model) {
@@ -381,7 +381,7 @@ namespace RenderCore { namespace Assets
                     SerializeToFile(*mergedAnimationSet, _serializeAnimationSetFn, op._sourceID0, libVersionDesc);
                 } else {
                     if (!_oldPathOk)
-                        ThrowException(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Some interface functions are missing"));
+                        Throw(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Some interface functions are missing"));
                         
                     #if defined(SUPPORT_OLD_PATH)
                         auto mergedAnimationSet = (*_ocCreateModel)(nullptr);
@@ -527,7 +527,7 @@ namespace RenderCore { namespace Assets
 
             // check for problems (missing functions or bad version number)
         if (!_isAttached)
-            ThrowException(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Could not find DLL (%s)", ColladaLibraryName));
+            Throw(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Could not find DLL (%s)", ColladaLibraryName));
 
         _newPathOk = !!_createColladaScaffold && !!_serializeSkinFunction && !!_serializeSkeletonFunction && !!_serializeMaterialsFunction && !!_createAnimationSetFn && !!_extractAnimationsFn && !!_serializeAnimationSetFn;
 
@@ -536,7 +536,7 @@ namespace RenderCore { namespace Assets
         #endif
 
         if (!_newPathOk && !_oldPathOk)
-            ThrowException(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Some interface functions are missing"));
+            Throw(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Some interface functions are missing"));
     }
 
 }}

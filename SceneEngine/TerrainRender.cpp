@@ -1169,7 +1169,7 @@ namespace SceneEngine
                 nullptr, OPEN_EXISTING,
                 FILE_FLAG_OVERLAPPED|FILE_FLAG_RANDOM_ACCESS, nullptr);
             if (heightMapFileHandle == INVALID_HANDLE_VALUE) {
-                ThrowException(::Exceptions::BasicLabel("Failed opening terrain height-map file for streaming"));
+                Throw(::Exceptions::BasicLabel("Failed opening terrain height-map file for streaming"));
             }
 
             std::vector<CoverageLayer> coverage;

@@ -314,7 +314,7 @@ namespace ConsoleRig
 
     int LuaState::PanicBridge(lua_State* L)
     {
-        ThrowException(std::exception());
+        Throw(std::exception());
         return 0;
     }
 

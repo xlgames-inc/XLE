@@ -41,7 +41,7 @@ namespace Utility
             creationDisposition = OPEN_EXISTING;
         } else if (XlFindString(openMode, "a+")) {
             assert(0); // not supported;
-            ThrowException(Exceptions::IOException("Append file mode not supported"));
+            Throw(Exceptions::IOException("Append file mode not supported"));
         } else if (XlFindChar(openMode, 'w')) {
             underlyingAccessMode = FILE_GENERIC_WRITE;
             creationDisposition = CREATE_ALWAYS;
@@ -50,16 +50,16 @@ namespace Utility
             creationDisposition = OPEN_EXISTING;
         } else if (XlFindChar(openMode, 'a')) {
             assert(0); // not supported;
-            ThrowException(Exceptions::IOException("Append file mode not supported"));
+            Throw(Exceptions::IOException("Append file mode not supported"));
         }
 
         if (XlFindChar(openMode, 't')) {
             assert(0); // not supported;
-            ThrowException(Exceptions::IOException("Text oriented file modes not supported"));
+            Throw(Exceptions::IOException("Text oriented file modes not supported"));
         }
         if (XlFindString(openMode, "ccs=")) {
             assert(0); // not supported;
-            ThrowException(Exceptions::IOException("Encoded text file modes supported"));
+            Throw(Exceptions::IOException("Encoded text file modes supported"));
         }
 
         if (XlFindChar(openMode, 'T') || XlFindChar(openMode, 'D')) {
@@ -96,7 +96,7 @@ namespace Utility
                 filename, openMode, lpMsgBuf);
             LocalFree(lpMsgBuf);
 
-            ThrowException(except);
+            Throw(except);
         }
 
         _file = (void*)handle;

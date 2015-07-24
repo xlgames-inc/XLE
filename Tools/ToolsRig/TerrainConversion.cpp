@@ -320,7 +320,7 @@ namespace ToolsRig
 
         DEMConfig inCfg(input);
         if (!(inCfg._dims[0]*inCfg._dims[1])) {
-            ThrowException(
+            Throw(
                 ::Exceptions::BasicLabel("Bad or missing input terrain config file (%s)", input));
         }
 
@@ -347,7 +347,7 @@ namespace ToolsRig
 
         MemoryMappedFile outputUberFile(outputUberFileName, resultSize, MemoryMappedFile::Access::Write);
         if (!outputUberFile.IsValid())
-            ThrowException(::Exceptions::BasicLabel("Couldn't open output file (%s)", outputUberFile));
+            Throw(::Exceptions::BasicLabel("Couldn't open output file (%s)", outputUberFile));
 
         auto& hdr   = *(TerrainUberHeader*)outputUberFile.GetData();
         hdr._magic  = TerrainUberHeader::Magic;
@@ -362,7 +362,7 @@ namespace ToolsRig
         if (ext && (!XlCompareStringI(ext, "hdr") || !XlCompareStringI(ext, "flt"))) {
             MemoryMappedFile inputFileData(input, 0, MemoryMappedFile::Access::Read);
             if (!inputFileData.IsValid())
-                ThrowException(::Exceptions::BasicLabel("Couldn't open input file (%s)", input));
+                Throw(::Exceptions::BasicLabel("Couldn't open input file (%s)", input));
 
             if (initStep) {
                 initStep->Advance();
@@ -386,7 +386,7 @@ namespace ToolsRig
 
                 if (copyStep) {
                     if (copyStep->IsCancelled())
-                        ThrowException(::Exceptions::BasicLabel("User cancelled"));
+                        Throw(::Exceptions::BasicLabel("User cancelled"));
                     copyStep->Advance();
                 }
             }
@@ -402,7 +402,7 @@ namespace ToolsRig
                 // attempt to read geotiff file
             auto* tif = TIFFOpen(input, "r");
             if (!tif)
-                ThrowException(::Exceptions::BasicLabel("Couldn't open input file (%s)", input));
+                Throw(::Exceptions::BasicLabel("Couldn't open input file (%s)", input));
 
             // auto buf = _TIFFmalloc(TIFFStripSize(tif));
             auto stripCount = TIFFNumberOfStrips(tif);
@@ -423,7 +423,7 @@ namespace ToolsRig
 
                 if (copyStep) {
                     if (copyStep->IsCancelled())
-                        ThrowException(::Exceptions::BasicLabel("User cancelled"));
+                        Throw(::Exceptions::BasicLabel("User cancelled"));
                     copyStep->Advance();
                 }
             }
@@ -476,7 +476,7 @@ namespace ToolsRig
 
         MemoryMappedFile outputUberFile(outputUberFileName, resultSize, MemoryMappedFile::Access::Write);
         if (!outputUberFile.IsValid())
-            ThrowException(::Exceptions::BasicLabel("Couldn't open output file (%s)", outputUberFile));
+            Throw(::Exceptions::BasicLabel("Couldn't open output file (%s)", outputUberFile));
 
         auto& hdr   = *(TerrainUberHeader*)outputUberFile.GetData();
         hdr._magic  = TerrainUberHeader::Magic;
@@ -497,7 +497,7 @@ namespace ToolsRig
         BasicFile file(fn, "rb", BasicFile::ShareMode::Read|BasicFile::ShareMode::Write);
         TerrainUberHeader hdr;
         if ((file.Read(&hdr, sizeof(hdr), 1) != 1) || (hdr._magic != TerrainUberHeader::Magic))
-            ThrowException(::Exceptions::BasicLabel("Error while reading from: (%s)", fn));
+            Throw(::Exceptions::BasicLabel("Error while reading from: (%s)", fn));
         return UInt2(hdr._width, hdr._height);
     }
 
@@ -515,7 +515,7 @@ namespace ToolsRig
 
         auto cellDimsInEles = (1 << (destCellTreeDepth - 1)) * destNodeDims;
         if ((eleCount[0] % cellDimsInEles[0])!=0 || (eleCount[1] % cellDimsInEles[1])!=0)
-            ThrowException(::Exceptions::BasicLabel("Uber surface size is not divisable by cell size (uber surface size:(%ix%i), cell size:(%i))", 
+            Throw(::Exceptions::BasicLabel("Uber surface size is not divisable by cell size (uber surface size:(%ix%i), cell size:(%i))", 
             eleCount[0], eleCount[1], cellDimsInEles[0]));
 
         return UInt2(eleCount[0] / cellDimsInEles[0], eleCount[1] / cellDimsInEles[1]);

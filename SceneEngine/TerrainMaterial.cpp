@@ -61,7 +61,7 @@ namespace SceneEngine
         size_t fileSize = 0;
         auto file = LoadFileAsMemoryBlock(definitionFile, &fileSize);
         if (!fileSize)
-            ThrowException(::Exceptions::BasicLabel("Parse error while loading terrain texture list"));
+            Throw(::Exceptions::BasicLabel("Parse error while loading terrain texture list"));
 
         TRY
         {

@@ -15,7 +15,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         if (glIsTexture((GLuint)underlyingTexture)) {
             _underlyingTexture = underlyingTexture;
         } else {
-            ThrowException(Exceptions::GenericFailure("Binding non-texture to resource"));
+            Throw(Exceptions::GenericFailure("Binding non-texture to resource"));
         }
     }
 
@@ -24,7 +24,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         if (glIsTexture((GLuint)underlyingTexture)) {
             _underlyingTexture = underlyingTexture->As<GlObject_Type::Texture>();
         } else {
-            ThrowException(Exceptions::GenericFailure("Binding non-texture to resource"));
+            Throw(Exceptions::GenericFailure("Binding non-texture to resource"));
         }
     }
 

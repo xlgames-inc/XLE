@@ -88,12 +88,12 @@ namespace RenderCore { namespace ColladaConversion
     {
         using namespace COLLADAFW;
         if (animation.getAnimationType() != Animation::ANIMATION_CURVE) {
-            ThrowException(FormatError("Formula animations not currently supported. Failure in animation (%s)", animation.getName().c_str()));
+            Throw(FormatError("Formula animations not currently supported. Failure in animation (%s)", animation.getName().c_str()));
         }
 
         const AnimationCurve* curve = objectSafeCast<const AnimationCurve>(&animation);
         if (curve->getInPhysicalDimension() != PHYSICAL_DIMENSION_TIME) {
-            ThrowException(FormatError("Input physical dimension for animation is not \"time\" in animation (%s). Only time animations are supported.", animation.getName().c_str()));
+            Throw(FormatError("Input physical dimension for animation is not \"time\" in animation (%s). Only time animations are supported.", animation.getName().c_str()));
         }
 
         Assets::RawAnimationCurve::InterpolationType interpolationType = Assets::RawAnimationCurve::Linear;
@@ -101,12 +101,12 @@ namespace RenderCore { namespace ColladaConversion
         case AnimationCurve::INTERPOLATION_LINEAR:      interpolationType = Assets::RawAnimationCurve::Linear;  break;
         case AnimationCurve::INTERPOLATION_BEZIER:      interpolationType = Assets::RawAnimationCurve::Bezier;  break;
         case AnimationCurve::INTERPOLATION_HERMITE:     interpolationType = Assets::RawAnimationCurve::Hermite; break;
-        default: ThrowException(FormatError("Interpolation type for animation (%s) is not linear, bezier or hermite. Only these interpolation types are currently supported.", animation.getName().c_str()));
+        default: Throw(FormatError("Interpolation type for animation (%s) is not linear, bezier or hermite. Only these interpolation types are currently supported.", animation.getName().c_str()));
         }
 
         size_t keyCount = curve->getKeyCount();
         if (!keyCount) {
-            ThrowException(FormatError("Zero key count in animation (%s). Invalid input data.", animation.getName().c_str()));
+            Throw(FormatError("Zero key count in animation (%s). Invalid input data.", animation.getName().c_str()));
         }
 
         using namespace Metal;
@@ -120,7 +120,7 @@ namespace RenderCore { namespace ColladaConversion
         case 3:     positionFormat = NativeFormat::R32G32B32_FLOAT; break;
         case 4:     positionFormat = NativeFormat::R32G32B32A32_FLOAT; break;
         case 16:    positionFormat = NativeFormat::Matrix4x4; break;
-        default:    ThrowException(FormatError("Out dimension is animation (%s) is invalid (%i). Expected 1, 3, 4 or 16.", animation.getName().c_str(), outDimension));
+        default:    Throw(FormatError("Out dimension is animation (%s) is invalid (%i). Expected 1, 3, 4 or 16.", animation.getName().c_str(), outDimension));
         }
 
         if (!curve->getInTangentValues().empty()) {

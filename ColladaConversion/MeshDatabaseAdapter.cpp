@@ -179,10 +179,10 @@ namespace RenderCore { namespace ColladaConversion
                 }
 
             } else {
-                ThrowException(FormatError("Error while copying vertex data. Unexpected format for destination parameter."));
+                Throw(FormatError("Error while copying vertex data. Unexpected format for destination parameter."));
             }
         } else {
-            ThrowException(FormatError("Error while copying vertex data. Only float type data is supported."));
+            Throw(FormatError("Error while copying vertex data. Only float type data is supported."));
         }
     }
 

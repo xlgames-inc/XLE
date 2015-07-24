@@ -312,7 +312,7 @@ namespace RenderCore { namespace Assets
             _jointTags.begin(), _jointTags.end(), 
             name, Joint::CompareColladaId());
         if (insertionPoint != _jointTags.end() && insertionPoint->_name==name) {
-            ThrowException(
+            Throw(
                 ::Assets::Exceptions::FormatError(
                     "Duplicate when inserting joint tag in node (%s)", name.c_str()));
         }

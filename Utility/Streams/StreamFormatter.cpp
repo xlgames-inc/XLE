@@ -126,7 +126,7 @@ namespace Utility
             
             CharType tabBuffer[64];
             if (_currentIndentLevel > dimof(tabBuffer))
-                ThrowException(::Exceptions::BasicLabel("Excessive indent level found in OutputStreamFormatter (%i)", _currentIndentLevel));
+                Throw(::Exceptions::BasicLabel("Excessive indent level found in OutputStreamFormatter (%i)", _currentIndentLevel));
             std::fill(tabBuffer, &tabBuffer[_currentIndentLevel], FormatterConstants<CharType>::Tab);
             _stream->WriteString(tabBuffer, &tabBuffer[_currentIndentLevel]);
             _hotLine = false;
@@ -176,12 +176,12 @@ namespace Utility
     void OutputStreamFormatter::EndElement(ElementId id)
     {
         if (_currentIndentLevel == 0)
-            ThrowException(::Exceptions::BasicLabel("Unexpected EndElement in OutputStreamFormatter"));
+            Throw(::Exceptions::BasicLabel("Unexpected EndElement in OutputStreamFormatter"));
 
         #if defined(STREAM_FORMATTER_CHECK_ELEMENTS)
             assert(_elementStack.size() == _currentIndentLevel);
             if (_elementStack[_elementStack.size()-1] != id)
-                ThrowException(::Exceptions::BasicLabel("EndElement for wrong element id in OutputStreamFormatter"));
+                Throw(::Exceptions::BasicLabel("EndElement for wrong element id in OutputStreamFormatter"));
             _elementStack.erase(_elementStack.end()-1);
         #endif
 
@@ -254,12 +254,12 @@ namespace Utility
         void Eat(MemoryMappedInputStream& stream, CharType (&pattern)[Count], StreamLocation location)
     {
         if (stream.RemainingBytes() < (sizeof(CharType)*Count))
-            ThrowException(FormatException("Blob prefix clipped", lineIndex, charIndex));
+            Throw(FormatException("Blob prefix clipped", lineIndex, charIndex));
 
         const auto* test = (const CharType*)stream.ReadPointer();
         for (unsigned c=0; c<Count; ++c)
             if (test[c] != pattern[c])
-                ThrowException(FormatException("Malformed blob prefix", location));
+                Throw(FormatException("Malformed blob prefix", location));
         
         stream.AdvancePointer(sizeof(CharType)*Count);
     }
@@ -286,7 +286,7 @@ namespace Utility
                 ++ptr;
             }
 
-            ThrowException(FormatException("String deliminator not found", location));
+            Throw(FormatException("String deliminator not found", location));
         } else {
                 // we must read forward until we hit a formatting character
                 // the end of the string will be the last non-whitespace before that formatting character
@@ -351,7 +351,7 @@ namespace Utility
             case 0x0C:  // (form feed)
             case 0x85:  // (next line)
             case 0xA0:  // (no-break space)
-                ThrowException(FormatException("Unsupported white space character", GetLocation()));
+                Throw(FormatException("Unsupported white space character", GetLocation()));
 
             case '\r':  // (could be an independant new line, or /r/n combo)
                 _stream.AdvancePointer(sizeof(CharType));
@@ -451,10 +451,10 @@ namespace Utility
                 break;
 
             case 0x0B: case 0x0C: case 0x85: case 0xA0:
-                ThrowException(FormatException("Unsupported white space character", GetLocation()));
+                Throw(FormatException("Unsupported white space character", GetLocation()));
 
             case '~':
-                ThrowException(FormatException("Unexpected element in header", GetLocation()));
+                Throw(FormatException("Unexpected element in header", GetLocation()));
 
             case '\r':  // (could be an independant new line, or /r/n combo)
             case '\n':  // (independant new line. A following /r will be treated as another new line)
@@ -473,11 +473,11 @@ namespace Utility
 
                     if (!XlCompareStringI(convBuffer, "Format")) {
                         if (AsInt(aValueStart, aValueEnd)!=1)
-                            ThrowException(FormatException("Unsupported format in input stream formatter header", GetLocation()));
+                            Throw(FormatException("Unsupported format in input stream formatter header", GetLocation()));
                     } else if (!XlCompareStringI(convBuffer, "Tab")) {
                         _tabWidth = AsInt(aValueStart, aValueEnd);
                         if (_tabWidth==0)
-                            ThrowException(FormatException("Bad tab width in input stream formatter header", GetLocation()));
+                            Throw(FormatException("Bad tab width in input stream formatter header", GetLocation()));
                     }
                 }
                 break;
@@ -500,7 +500,7 @@ namespace Utility
 
         // the new "parent base line" should be the indentation level of the line this element started on
         if ((_baseLineStackPtr+1) > dimof(_baseLineStack))
-            ThrowException(FormatException(
+            Throw(FormatException(
                 "Excessive indentation format in input stream formatter", GetLocation()));
 
         _baseLineStack[_baseLineStackPtr++] = _activeLineSpaces;
@@ -534,7 +534,7 @@ namespace Utility
             switch(PeekNext()) {
             case Blob::BeginElement:
                 if (!TryBeginElement(dummy0))
-                    ThrowException(FormatException(
+                    Throw(FormatException(
                         "Malformed begin element while skipping forward", GetLocation()));
                 ++subtreeEle;
                 break;
@@ -543,19 +543,19 @@ namespace Utility
                 if (!subtreeEle) return;    // end now, while the EndElement is primed
 
                 if (!TryEndElement())
-                    ThrowException(FormatException(
+                    Throw(FormatException(
                         "Malformed end element while skipping forward", GetLocation()));
                 --subtreeEle;
                 break;
 
             case Blob::AttributeName:
                 if (!TryAttribute(dummy0, dummy1))
-                    ThrowException(FormatException(
+                    Throw(FormatException(
                         "Malformed attribute while skipping forward", GetLocation()));
                 break;
 
             default:
-                ThrowException(FormatException(
+                Throw(FormatException(
                     "Unexpected blob or end of stream hit while skipping forward", GetLocation()));
             }
         }

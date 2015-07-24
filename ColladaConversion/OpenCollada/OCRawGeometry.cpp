@@ -393,7 +393,7 @@ namespace RenderCore { namespace ColladaConversion
         for (unsigned c = 1; c<parameterCount; ++c) {
                 // make sure all 
             if (parameters[c]._type != parameters[0]._type)
-                ThrowException(FormatError("Collada format contains components with mixed types. All components of the same vertex element must be the same type (normally either float or double)"));
+                Throw(FormatError("Collada format contains components with mixed types. All components of the same vertex element must be the same type (normally either float or double)"));
         }
     
         if (parameters[0]._type == VertexSourceDataAdapter::Param::Float) {
@@ -404,7 +404,7 @@ namespace RenderCore { namespace ColladaConversion
             default: return Metal::NativeFormat::R32G32B32A32_FLOAT;
             }
         } else {
-            ThrowException(FormatError("Found non-float type while reading collada file. Only float type components supported currently."));
+            Throw(FormatError("Found non-float type while reading collada file. Only float type components supported currently."));
         }
     }
 
@@ -453,7 +453,7 @@ namespace RenderCore { namespace ColladaConversion
     {
         unsigned indexOfEachAttribute[32];
         if (semantics.size() > dimof(indexOfEachAttribute)) {
-            ThrowException(FormatError("Exceeded maximum vertex semantics"));
+            Throw(FormatError("Exceeded maximum vertex semantics"));
         }
 
         unsigned hashKey = 0;
@@ -609,7 +609,7 @@ namespace RenderCore { namespace ColladaConversion
             //      supported by us currently.
             //
         if (geometry->getType() != COLLADAFW::Geometry::GEO_TYPE_MESH) {
-            ThrowException(FormatError(
+            Throw(FormatError(
                 "Failed while importing geometry element (%s).\r Non mesh type encountered (%s). This object must be converted into a mesh in the exporter tool.",
                 geometry->getName().c_str(), AsString(geometry->getType())));
         }
@@ -626,7 +626,7 @@ namespace RenderCore { namespace ColladaConversion
             //
         const COLLADAFW::Mesh* mesh = COLLADAFW::objectSafeCast<COLLADAFW::Mesh>(geometry);
         if (!mesh) {
-            ThrowException(FormatError("Casting failure while processing geometry node (%s).", geometry->getName().c_str()));
+            Throw(FormatError("Casting failure while processing geometry node (%s).", geometry->getName().c_str()));
         }
 
             // some exports can have empty meshes -- ideally, we just want to ignore them
@@ -776,7 +776,7 @@ namespace RenderCore { namespace ColladaConversion
                 const MeshPrimitiveWithFaceVertexCount<int>* polygons = 
                     COLLADAFW::objectSafeCast<const MeshPrimitiveWithFaceVertexCount<int>>(meshPrimitives[c]);
                 if (!polygons) {
-                    ThrowException(FormatError("Casting failure while processing geometry node (%s).", geometry->getName().c_str()));
+                    Throw(FormatError("Casting failure while processing geometry node (%s).", geometry->getName().c_str()));
                 }
 
                 const Polygons::VertexCountArray& vertexCounts = polygons->getGroupedVerticesVertexCountArray();
@@ -786,10 +786,10 @@ namespace RenderCore { namespace ColladaConversion
 
                     const unsigned MaxPolygonSize = 32;
                     if ((groupEnd - groupStart) > MaxPolygonSize) {
-                        ThrowException(FormatError("Exceeded maximum polygon size in node (%s).", geometry->getName().c_str()));
+                        Throw(FormatError("Exceeded maximum polygon size in node (%s).", geometry->getName().c_str()));
                     }
                     if ((groupEnd - groupStart) <=2) {
-                        ThrowException(FormatError("Polygon with less than 3 vertices in node (%s).", geometry->getName().c_str()));
+                        Throw(FormatError("Polygon with less than 3 vertices in node (%s).", geometry->getName().c_str()));
                     }
 
                         //
@@ -824,7 +824,7 @@ namespace RenderCore { namespace ColladaConversion
                             vertexMap, &vertexHashTable, vertexAttributes, *meshPrimitives[c], index));
                 }
             } else {
-                ThrowException(FormatError("Unsupported primitive type found in mesh (%s) (%s)", mesh->getName().c_str(), AsString(primitiveType)));
+                Throw(FormatError("Unsupported primitive type found in mesh (%s) (%s)", mesh->getName().c_str(), AsString(primitiveType)));
             }
 
             drawOperations.push_back(std::move(convertDrawCall));

@@ -23,7 +23,7 @@ namespace RenderCore { namespace ColladaConversion
     ReferencedTexture       Convert(const COLLADAFW::Image* image)
     {
         if (image->getSourceType() != COLLADAFW::Image::SOURCE_TYPE_URI) {
-            ThrowException(FormatError("Cannot load image (%s). Only URI type textures are supported.", image->getName().c_str()));
+            Throw(FormatError("Cannot load image (%s). Only URI type textures are supported.", image->getName().c_str()));
         }
 
         const COLLADABU::URI& originalURI = image->getImageURI();

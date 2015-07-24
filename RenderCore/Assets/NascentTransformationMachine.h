@@ -107,7 +107,7 @@ namespace RenderCore { namespace Assets
             tables.first.begin(), tables.first.end(), 
             parameterHash, CompareFirst<AnimationParameterId, uint32>());
         if (i!=tables.first.end() && i->first == parameterHash)
-            ThrowException(::Assets::Exceptions::FormatError("Non-unique parameter hash found for animatable property in node (%s)", nodeName));
+            Throw(::Assets::Exceptions::FormatError("Non-unique parameter hash found for animatable property in node (%s)", nodeName));
 
         _stringNameMapping.push_back(std::make_pair(std::string(nodeName), parameterHash));
         size_t parameterIndex = tables.second.size();

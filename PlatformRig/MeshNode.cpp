@@ -414,13 +414,13 @@ namespace PlatformRig { namespace Network
             const char configFilename[] = "network.cfg";
             Data config;
             if (!CommonProcServerConfig(configFilename, &config)) {
-                ThrowException(Exceptions::BasicLabel("Failed loading network.cfg"));
+                Throw(Exceptions::BasicLabel("Failed loading network.cfg"));
             }
 
             ListenerConfig connectionListenerConfig;
             const bool loadSuccess = connectionListenerConfig.Load(config.ChildWithValue("connection_listener"));
             if (!loadSuccess) {
-                ThrowException(Exceptions::BasicLabel("Failed reading connection_listener part of network.cfg"));
+                Throw(Exceptions::BasicLabel("Failed reading connection_listener part of network.cfg"));
             }
 
             if (connectionServerAlreadyThere) {

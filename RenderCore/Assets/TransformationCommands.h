@@ -147,7 +147,7 @@ namespace RenderCore { namespace Assets
             switch (commandIndex) {
             case TransformStackCommand::PushLocalToWorld:
                 if ((workingTransform+1) >= &workingStack[dimof(workingStack)]) {
-                    ThrowException(::Exceptions::BasicLabel("Exceeded maximum stack depth in GenerateOutputTransforms"));
+                    Throw(::Exceptions::BasicLabel("Exceeded maximum stack depth in GenerateOutputTransforms"));
                 }
                     
                 if (workingTransform != workingStack) {
@@ -162,7 +162,7 @@ namespace RenderCore { namespace Assets
                 {
                     auto popCount = *i++;
                     if (workingTransform < workingStack+popCount) {
-                        ThrowException(::Exceptions::BasicLabel("Stack underflow in GenerateOutputTransforms"));
+                        Throw(::Exceptions::BasicLabel("Stack underflow in GenerateOutputTransforms"));
                     }
 
                     workingTransform -= popCount;

@@ -116,7 +116,7 @@ namespace SceneEngine
         GFSDK_SSAO_Context_D3D11* tempPtr = nullptr;
         status = GFSDK_SSAO_CreateContext_D3D11(ObjectFactory().GetUnderlying(), &tempPtr, &customHeap);
         if (status != GFSDK_SSAO_OK || !tempPtr) {
-            ThrowException(RenderCore::Exceptions::GenericFailure("Failure initializing GFSDK_SSAO"));
+            Throw(RenderCore::Exceptions::GenericFailure("Failure initializing GFSDK_SSAO"));
         }
         std::unique_ptr<GFSDK_SSAO_Context_D3D11, ContextDeletor> aoContext(tempPtr);
 
@@ -127,7 +127,7 @@ namespace SceneEngine
         auto params = BuildAOParameters();
         status = aoContext->PreCreateRTs(&params, desc._width, desc._height);
         if (status != GFSDK_SSAO_OK) {
-            ThrowException(RenderCore::Exceptions::GenericFailure("Failure while pre-creating AO RTs"));
+            Throw(RenderCore::Exceptions::GenericFailure("Failure while pre-creating AO RTs"));
         }
 
             // note -- always writing to non-MSAA texture

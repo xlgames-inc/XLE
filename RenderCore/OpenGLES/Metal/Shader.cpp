@@ -90,7 +90,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         auto newShaderIndex = CreateShader(shaderType);
         if (newShaderIndex.get() == RawGLHandle_Invalid) {
-            ThrowException(Exceptions::AllocationFailure("Shader allocation failure"));
+            Throw(Exceptions::AllocationFailure("Shader allocation failure"));
         }
         
         const GLchar* shaderSourcePointer = (const GLchar*)rawFile.get();
@@ -116,7 +116,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             #endif
 
-            ThrowException(Assets::Exceptions::InvalidResource("", ""));
+            Throw(Assets::Exceptions::InvalidResource("", ""));
         }
 
         _underlying = std::move(newShaderIndex);
@@ -157,7 +157,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             #endif
 
-            ThrowException(Assets::Exceptions::InvalidResource("", ""));
+            Throw(Assets::Exceptions::InvalidResource("", ""));
         }
 
         _underlying = std::move(newProgramIndex);

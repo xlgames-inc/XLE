@@ -824,7 +824,7 @@ namespace SceneEngine
             context->Bind(MakeResourceList(RenderTargetView(savedTargets.GetRenderTargets()[0])), nullptr);
 
             if (!savedTargets.GetDepthStencilView()) {
-                ThrowException(::Exceptions::BasicLabel("No depth stencil buffer bound using atmospheric blur render"));
+                Throw(::Exceptions::BasicLabel("No depth stencil buffer bound using atmospheric blur render"));
             }
 
             context->Bind(*resources._integrateDistantBlur);

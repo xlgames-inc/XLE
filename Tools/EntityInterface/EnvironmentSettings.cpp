@@ -191,7 +191,7 @@ namespace EntityInterface
             }
         
         if (!foundAtLeastOne)
-            ThrowException(::Exceptions::BasicLabel("No environment settings found"));
+            Throw(::Exceptions::BasicLabel("No environment settings found"));
 
         formatter.Flush();
     }

@@ -29,11 +29,11 @@ namespace Assets
         class InvalidResource : public ::Exceptions::BasicLabel
         {
         public: 
-            InvalidResource(const char resourceId[], const char what[]);
-            const char* ResourceId() const { return _resourceId; }
+            InvalidResource(const ResChar resourceId[], const char what[]);
+            const ResChar* ResourceId() const { return _resourceId; }
 
         private:
-            char _resourceId[512];
+            ResChar _resourceId[512];
         };
 
         /// <summary>Resource is still being loaded</summary>
@@ -46,11 +46,11 @@ namespace Assets
         class PendingResource : public ::Exceptions::BasicLabel
         {
         public: 
-            PendingResource(const char resourceId[], const char what[]);
-            const char* ResourceId() const { return _resourceId; }
+            PendingResource(const ResChar resourceId[], const char what[]);
+            const ResChar* ResourceId() const { return _resourceId; }
 
         private:
-            char _resourceId[512];
+            ResChar _resourceId[512];
         };
 
         class FormatError : public ::Exceptions::BasicLabel

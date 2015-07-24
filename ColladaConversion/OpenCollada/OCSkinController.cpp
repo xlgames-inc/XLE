@@ -119,7 +119,7 @@ namespace RenderCore { namespace ColladaConversion
         for (unsigned c=0; c<std::min(jointCount, unsigned(WeightCount)); ++c) {
             uint32 index = controller.getJointIndices()[indexOffset+c];
             if (index > 0xff) {
-                ThrowException(Exceptions::FormatError("Joint index out of range in controller (%s). There may be too many joints in this model.", controller.getName().c_str()));
+                Throw(Exceptions::FormatError("Joint index out of range in controller (%s). There may be too many joints in this model.", controller.getName().c_str()));
             }
             attachment._jointIndex[c] = (uint8)index;        // (has to be re-mapped in binding stage)
         }
@@ -152,7 +152,7 @@ namespace RenderCore { namespace ColladaConversion
         using namespace COLLADAFW;
 
         if (!input->getJointsCount()) {
-            ThrowException(FormatError("Skin controller object found with 0 joint count. This would be better as static geometry (%s)", input->getName().c_str()));
+            Throw(FormatError("Skin controller object found with 0 joint count. This would be better as static geometry (%s)", input->getName().c_str()));
         }
 
         Float4x4 bindShapeMatrix = AsFloat4x4(input->getBindShapeMatrix());
@@ -206,7 +206,7 @@ namespace RenderCore { namespace ColladaConversion
 
         size_t vertexCount = input->getVertexCount();
         if (vertexCount >= std::numeric_limits<uint16>::max()) {
-            ThrowException(FormatError("Exceeded maximum number of vertices supported by skinning controller (%s)", input->getName().c_str()));
+            Throw(FormatError("Exceeded maximum number of vertices supported by skinning controller (%s)", input->getName().c_str()));
         }
 
         std::vector<uint32> vertexPositionToBucketIndex;
@@ -236,7 +236,7 @@ namespace RenderCore { namespace ColladaConversion
             for (size_t c=0; c<jointCount; ++c) {
                 uint32 index = input->getJointIndices()[indexIterator+c];
                 if (index > 0xff) {
-                    ThrowException(FormatError("Joint index out of range in controller (%s). There may be too many joints in this model.", input->getName().c_str()));
+                    Throw(FormatError("Joint index out of range in controller (%s). There may be too many joints in this model.", input->getName().c_str()));
                 }
                 assert(std::find(jointIndices, &jointIndices[c], index) == &jointIndices[c]);
                 jointIndices[c] = (uint8)index;        // (has to be re-mapped in binding stage)

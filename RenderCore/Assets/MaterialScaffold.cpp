@@ -51,7 +51,7 @@ namespace RenderCore { namespace Assets
             size_t sourceFileSize = 0;
             auto sourceFile = LoadFileAsMemoryBlock(_rawModelMaterial, &sourceFileSize);
             if (!sourceFile)
-                ThrowException(::Assets::Exceptions::InvalidResource(sourceModel, 
+                Throw(::Assets::Exceptions::InvalidResource(sourceModel, 
                     StringMeld<128>() << "Missing or empty file: " << _rawModelMaterial));
 
             Data data;
@@ -260,7 +260,7 @@ namespace RenderCore { namespace Assets
     MaterialScaffold::MaterialScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
     {
         if (!marker || marker->GetState() == ::Assets::AssetState::Invalid) {
-            ThrowException(::Assets::Exceptions::InvalidResource("", "MaterialScaffold not ready"));
+            Throw(::Assets::Exceptions::InvalidResource("", "MaterialScaffold not ready"));
         }
 
         const auto* filename = marker->_sourceID0;

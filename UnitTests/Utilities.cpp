@@ -28,7 +28,7 @@ namespace UnitTests
     public:
         static bool s_expectingDestroy;
         static unsigned s_destroyCount;
-        ~ThrowOnDestructor() { ++s_destroyCount; if (!s_expectingDestroy) ThrowException(std::runtime_error("Object was destroyed at unexpected time")); }
+        ~ThrowOnDestructor() { ++s_destroyCount; if (!s_expectingDestroy) Throw(std::runtime_error("Object was destroyed at unexpected time")); }
     };
 
     bool ThrowOnDestructor::s_expectingDestroy = false;

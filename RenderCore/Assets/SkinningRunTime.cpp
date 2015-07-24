@@ -232,7 +232,7 @@ namespace RenderCore { namespace Assets
             //
 
         if (outputCount < _outputMatrixCount) {
-            ThrowException(::Exceptions::BasicLabel("Output buffer to TransformationMachine::GenerateOutputTransforms is too small"));
+            Throw(::Exceptions::BasicLabel("Output buffer to TransformationMachine::GenerateOutputTransforms is too small"));
         }
         GenerateOutputTransformsFree(
             output, outputCount, parameterSet, 

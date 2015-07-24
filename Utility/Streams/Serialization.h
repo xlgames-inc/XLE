@@ -34,7 +34,7 @@ namespace Utility
         pointer allocate(size_type n, std::allocator<void>::const_pointer ptr= 0)
         {
             if (_fromFixedStorage) {
-                ThrowException(std::invalid_argument("Cannot allocate from a BlockSerializerAllocator than has been serialized in from a fixed block"));
+                Throw(std::invalid_argument("Cannot allocate from a BlockSerializerAllocator than has been serialized in from a fixed block"));
                 return nullptr;
             }
             return std::allocator<Type>::allocate(n, ptr);

@@ -185,22 +185,22 @@ namespace RenderCore { namespace Assets
     {
         if (!_pimpl->_srv.GetUnderlying()) {
             if (_pimpl->_transaction == ~BufferUploads::TransactionID(0))
-                ThrowException(::Assets::Exceptions::InvalidResource(Initializer(), "Unknown error during loading"));
+                Throw(::Assets::Exceptions::InvalidResource(Initializer(), "Unknown error during loading"));
 
             auto& bu = Services::GetBufferUploads();
             if (!bu.IsCompleted(_pimpl->_transaction))
-                ThrowException(::Assets::Exceptions::PendingResource(Initializer(), ""));
+                Throw(::Assets::Exceptions::PendingResource(Initializer(), ""));
 
             _pimpl->_locator = bu.GetResource(_pimpl->_transaction);
             bu.Transaction_End(_pimpl->_transaction);
             _pimpl->_transaction = ~BufferUploads::TransactionID(0);
 
             if (!_pimpl->_locator || !_pimpl->_locator->GetUnderlying())
-                ThrowException(::Assets::Exceptions::InvalidResource(Initializer(), "Unknown error during loading"));
+                Throw(::Assets::Exceptions::InvalidResource(Initializer(), "Unknown error during loading"));
 
             auto desc = BufferUploads::ExtractDesc(*_pimpl->_locator->GetUnderlying());
             if (desc._type != BufferUploads::BufferDesc::Type::Texture)
-                ThrowException(::Assets::Exceptions::InvalidResource(Initializer(), "Unknown error during loading"));
+                Throw(::Assets::Exceptions::InvalidResource(Initializer(), "Unknown error during loading"));
 
                 // calculate the color space to use (resolving the defaults, request string and metadata)
             auto colSpace = SourceColorSpace::SRGB;
@@ -211,7 +211,7 @@ namespace RenderCore { namespace Assets
                 if (_pimpl->_metadataMarker) {
                     auto state = _pimpl->_metadataMarker->GetState();
                     if (state == ::Assets::AssetState::Pending)
-                        ThrowException(::Assets::Exceptions::PendingResource(Initializer(), ""));
+                        Throw(::Assets::Exceptions::PendingResource(Initializer(), ""));
 
                     if (state == ::Assets::AssetState::Ready && _pimpl->_metadataMarker->_colorSpace != SourceColorSpace::Unspecified) {
                         colSpace = _pimpl->_metadataMarker->_colorSpace;
@@ -291,7 +291,7 @@ namespace RenderCore { namespace Assets
             //  right srgb mode when creating a shader resource view
 
         if (!result)
-            ThrowException(::Assets::Exceptions::InvalidResource(initializer, "Failure while attempting to load texture immediately"));
+            Throw(::Assets::Exceptions::InvalidResource(initializer, "Failure while attempting to load texture immediately"));
 
         auto desc = ExtractDesc(*result->GetUnderlying());
         assert(desc._type == BufferDesc::Type::Texture);

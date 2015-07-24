@@ -592,7 +592,7 @@ namespace RenderCore { namespace Metal_DX11
         ID3D::ShaderReflection* reflectionTemp = nullptr;
         HRESULT hresult = compiler->D3DReflect_Wrapper(byteCode.first, byteCode.second, __uuidof(ID3D::ShaderReflection), (void**)&reflectionTemp);
         if (!SUCCEEDED(hresult) || !reflectionTemp)
-            ThrowException(::Assets::Exceptions::InvalidResource(
+            Throw(::Assets::Exceptions::InvalidResource(
                 shaderCode.Initializer(), "Error while invoking low-level shader reflection"));
         return moveptr(reflectionTemp);
     }

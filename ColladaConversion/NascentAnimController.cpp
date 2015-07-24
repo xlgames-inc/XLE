@@ -113,7 +113,7 @@ namespace RenderCore { namespace ColladaConversion
             bucketStart[b] = bucketEnd[b] = indexAccumulator;
         }
         if (indexAccumulator != unifiedVertexCount) {
-            ThrowException(FormatError("Vertex count mismatch in node (%s)", nodeName));
+            Throw(FormatError("Vertex count mismatch in node (%s)", nodeName));
         }
 
             //
@@ -153,7 +153,7 @@ namespace RenderCore { namespace ColladaConversion
         unsigned animatedVertexStride    = CalculateVertexSize(AsPointer(animatedVertexLayout.begin()), AsPointer(animatedVertexLayout.end()));
 
         if (!animatedVertexStride) {
-            ThrowException(FormatError("Could not find any animated vertex elements in skinning controller in node (%s). There must be a problem with vertex input semantics.", nodeName));
+            Throw(FormatError("Could not find any animated vertex elements in skinning controller in node (%s). There must be a problem with vertex input semantics.", nodeName));
         }
                             
             //      Copy out those parts of the vertex buffer that are unanimated and animated
@@ -185,7 +185,7 @@ namespace RenderCore { namespace ColladaConversion
                 (uint8*)newIndexBuffer.get(),
                 [&unifiedVertexReordering](uint8 inputIndex){return unifiedVertexReordering[inputIndex];});
         } else {
-            ThrowException(FormatError("Unrecognised index format when instantiating skin controller in node (%s).", nodeName));
+            Throw(FormatError("Unrecognised index format when instantiating skin controller in node (%s).", nodeName));
         }
                                 
             //      We have to define the draw calls that perform the pre-skinning step

@@ -101,11 +101,11 @@ namespace SceneEngine
             //  a huge 2D array of height values
         auto mappedFile = std::make_unique<MemoryMappedFile>(filename, 0, MemoryMappedFile::Access::Read|MemoryMappedFile::Access::Write, BasicFile::ShareMode::Read);
         if (!mappedFile->IsValid())
-            ThrowException(::Assets::Exceptions::InvalidResource(filename, "Failed while openning uber surface file"));
+            Throw(::Assets::Exceptions::InvalidResource(filename, "Failed while openning uber surface file"));
         
         auto& hdr = *(TerrainUberHeader*)mappedFile->GetData();
         if (hdr._magic != TerrainUberHeader::Magic)
-            ThrowException(::Assets::Exceptions::InvalidResource(filename, "Uber surface file appears to be corrupt"));
+            Throw(::Assets::Exceptions::InvalidResource(filename, "Uber surface file appears to be corrupt"));
 
         _width = hdr._width;
         _height = hdr._height;

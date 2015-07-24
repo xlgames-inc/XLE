@@ -50,7 +50,7 @@ namespace RenderCore
             if (_marker->GetState() != ::Assets::AssetState::Pending) {
                 ResolveFromCompileMarker();
                 if (!_shader || _shader->empty())
-                    ThrowException(Assets::Exceptions::InvalidResource(Initializer(), ""));
+                    Throw(Assets::Exceptions::InvalidResource(Initializer(), ""));
             }
         }
     }
@@ -106,14 +106,14 @@ namespace RenderCore
             _compileHelper.reset();
         } else if (_marker) {
             if (_marker->GetState() == ::Assets::AssetState::Pending)
-                ThrowException(Assets::Exceptions::PendingResource(Initializer(), ""));
+                Throw(Assets::Exceptions::PendingResource(Initializer(), ""));
             
             ResolveFromCompileMarker();
         }
 
         if (!_shader || _shader->empty()) {
             _shader.reset();
-            ThrowException(Assets::Exceptions::InvalidResource(Initializer(), ""));
+            Throw(Assets::Exceptions::InvalidResource(Initializer(), ""));
         }
     }
 
@@ -139,7 +139,7 @@ namespace RenderCore
             Assets::RegisterAssetDependency(_validationCallback, _marker->_dependencyValidation);
 
         if (_marker->GetState() == ::Assets::AssetState::Invalid)
-            ThrowException(Assets::Exceptions::InvalidResource(Initializer(), ""));
+            Throw(Assets::Exceptions::InvalidResource(Initializer(), ""));
 
         _marker.reset();
     }

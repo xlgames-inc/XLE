@@ -1071,7 +1071,7 @@ namespace Utility
                
                 // attributes with empty name strings will throw an exception here
             if (finalNameLen <= 0)
-                ThrowException(::Exceptions::BasicLabel("Empty name string or error during name conversion"));
+                Throw(::Exceptions::BasicLabel("Empty name string or error during name conversion"));
 
                 // We need special cases for string types. In these cases we might have to
                 // do some conversion to get the value in the format we want.
@@ -1083,7 +1083,7 @@ namespace Utility
                     start, &start[type._arrayCount]);
                 
                 if (valueLen < 0)
-                    ThrowException(::Exceptions::BasicLabel("Error during string conversion for member: %s", AsString(nameBuffer, finalNameLen).c_str()));
+                    Throw(::Exceptions::BasicLabel("Error during string conversion for member: %s", AsString(nameBuffer, finalNameLen).c_str()));
 
                 stream.WriteAttribute(
                     AsPointer(nameBuffer.begin()), AsPointer(nameBuffer.begin()) + finalNameLen,
@@ -1099,7 +1099,7 @@ namespace Utility
                     start, &start[type._arrayCount]);
                 
                 if (valueLen < 0)
-                    ThrowException(::Exceptions::BasicLabel("Error during string conversion for member: %s", AsString(nameBuffer, finalNameLen).c_str()));
+                    Throw(::Exceptions::BasicLabel("Error during string conversion for member: %s", AsString(nameBuffer, finalNameLen).c_str()));
 
                 stream.WriteAttribute(
                     AsPointer(nameBuffer.begin()), AsPointer(nameBuffer.begin()) + finalNameLen,

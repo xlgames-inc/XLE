@@ -87,7 +87,7 @@ namespace RenderCore
             //
         EGL::Display displayTemp = eglGetDisplay(EGL_DEFAULT_DISPLAY);
         if (displayTemp == EGL_NO_DISPLAY) {
-            ThrowException(::Exceptions::BasicLabel("Failure while creating display"));
+            Throw(::Exceptions::BasicLabel("Failure while creating display"));
         }
 
         DestructorPointer<EGL::Display, decltype(&eglTerminate)> display(displayTemp, &eglTerminate);
@@ -95,16 +95,16 @@ namespace RenderCore
         EGLint majorVersion = 0, minorVersion = 0;
         EGLint configCount = 0;
         if (!eglInitialize(display, &majorVersion, &minorVersion)) {
-            ThrowException(::Exceptions::BasicLabel("Failure while creating display"));
+            Throw(::Exceptions::BasicLabel("Failure while creating display"));
         }
 
         if (!eglGetConfigs(display, NULL, 0, &configCount)) {
-            ThrowException(::Exceptions::BasicLabel("Failure in eglGetConfigs"));
+            Throw(::Exceptions::BasicLabel("Failure in eglGetConfigs"));
         }
 
         std::vector<EGL::Config> configs(configCount);
         if (!eglGetConfigs(display, AsPointer(configs.begin()), configs.size(), &configCount)) {
-            ThrowException(::Exceptions::BasicLabel("Failure in eglGetConfigs"));
+            Throw(::Exceptions::BasicLabel("Failure in eglGetConfigs"));
         }
 
         for (auto i = configs.begin(); i!=configs.end(); ++i) {
@@ -210,7 +210,7 @@ namespace RenderCore
 
         EGL::Config config = nullptr;
         if (!eglChooseConfig(display, configAttribList, &config, 1, &configCount)) {
-            ThrowException(::Exceptions::BasicLabel("Failure in eglChooseConfig"));
+            Throw(::Exceptions::BasicLabel("Failure in eglChooseConfig"));
         }
 
             //
@@ -232,7 +232,7 @@ namespace RenderCore
         EGLint contextAttribs[]  = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE, EGL_NONE };
         EGL::Display contextTemp = eglCreateContext(display, config, EGL_NO_CONTEXT, contextAttribs);
         if (contextTemp == EGL_NO_CONTEXT) {
-            ThrowException(::Exceptions::BasicLabel("Failure while creating the immediate context"));
+            Throw(::Exceptions::BasicLabel("Failure while creating the immediate context"));
         }
 
             // (here, contextDestroyer just binds the first parameter to eglDestroyContext)
@@ -271,7 +271,7 @@ namespace RenderCore
                                 underlyingSurface, 
                                 underlyingSurface, 
                                 _immediateContext->GetUnderlying())) {
-            ThrowException(::Exceptions::BasicLabel("Failure in eglMakeCurrent"));
+            Throw(::Exceptions::BasicLabel("Failure in eglMakeCurrent"));
         }
 
         return std::move(result);
@@ -290,7 +290,7 @@ namespace RenderCore
                                 underlyingSurface, 
                                 underlyingSurface, 
                                 _immediateContext->GetUnderlying())) {
-            ThrowException(::Exceptions::BasicLabel("Failure in eglMakeCurrent"));
+            Throw(::Exceptions::BasicLabel("Failure in eglMakeCurrent"));
         }
 
         EGLint width, height;
@@ -334,7 +334,7 @@ namespace RenderCore
         EGLint contextAttribs[]  = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE, EGL_NONE };
         EGL::Context contextTemp = eglCreateContext(_display, _config, _immediateContext->GetUnderlying(), contextAttribs);
         if (contextTemp == EGL_NO_CONTEXT) {
-            ThrowException(::Exceptions::BasicLabel("Failure while creating the immediate context"));
+            Throw(::Exceptions::BasicLabel("Failure while creating the immediate context"));
         }
 
         return moveptr(new Metal_OpenGLES::DeviceContext(_display, contextTemp));
@@ -373,7 +373,7 @@ namespace RenderCore
             display, config, 
             EGLNativeWindowType(platformValue), surfaceAttribList);
         if (surfaceTemp == EGL_NO_SURFACE) {
-            ThrowException(::Exceptions::BasicLabel("Failure constructing EGL window surface"));
+            Throw(::Exceptions::BasicLabel("Failure constructing EGL window surface"));
         }
 
         _surface = surfaceTemp;

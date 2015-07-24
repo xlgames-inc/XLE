@@ -17,6 +17,10 @@
 #include <stdio.h>      // note -- could be avoided if we moved the constructor for BasicLabel into .cpp file
 
 #if FEATURE_EXCEPTIONS
+    #include <type_traits>  // for std::is_base_of, used by exceptions
+#endif
+
+#if FEATURE_EXCEPTIONS
 
     #define TRY { try 
     #define CATCH(x) catch(x) 
@@ -39,12 +43,13 @@ namespace Exceptions
     class BasicLabel : public std::exception
     {
     public:
+        virtual const char* what() const never_throws /*override*/ { return _buffer; }
+        virtual bool CustomReport() const { return false; }
+        
         BasicLabel(const char format[], ...) never_throws;
         BasicLabel(const char format[], va_list args) never_throws;
         BasicLabel(const BasicLabel& copyFrom) never_throws;
         BasicLabel& operator=(const BasicLabel& copyFrom) never_throws;
-
-        virtual const char* what() const never_throws /*override*/ { return _buffer; }
     protected:
         BasicLabel() never_throws;
         char _buffer[512];
@@ -80,15 +85,27 @@ namespace Exceptions
 namespace Utility
 {
     #if FEATURE_EXCEPTIONS
-        template <class E> inline void ThrowException(const E& e)   { throw e; }
-        template <class E> inline void Throw(const E& e)            { throw e; }
-    #else
-        template <class E> inline void ThrowException(const E& e)
+        typedef void (*OnThrowCallback)(const ::Exceptions::BasicLabel&);
+        inline OnThrowCallback& GlobalOnThrowCallback()
         {
-            // OutputDebugString("Suppressed thrown exception");
-            exit(-1);
+            static OnThrowCallback s_result = nullptr;
+            return s_result;
         }
 
+        template <class E, typename std::enable_if<std::is_base_of<::Exceptions::BasicLabel, E>::value>::type* = nullptr>
+            inline __declspec(noreturn) void Throw(const E& e)
+        {
+            auto* callback = GlobalOnThrowCallback();
+            if (callback) (*callback)(e);
+            throw e; 
+        }
+
+        template <class E, typename std::enable_if<!std::is_base_of<::Exceptions::BasicLabel, E>::value>::type* = nullptr>
+            inline __declspec(noreturn) void Throw(const E& e)
+        {
+            throw e;
+        }
+    #else
         template <class E> inline void Throw(const E& e)
         {
             // OutputDebugString("Suppressed thrown exception");

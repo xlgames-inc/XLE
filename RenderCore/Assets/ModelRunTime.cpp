@@ -1185,7 +1185,7 @@ namespace RenderCore { namespace Assets
             const std::function<void(unsigned, unsigned, unsigned)>* callback)
     {
         if (drawCalls.GetRendererGUID() != typeid(ModelRenderer).hash_code())
-            ThrowException(::Exceptions::BasicLabel("Delayed draw call set matched with wrong renderer type"));
+            Throw(::Exceptions::BasicLabel("Delayed draw call set matched with wrong renderer type"));
 
         auto& entries = drawCalls._entries[(unsigned)delayStep];
         if (entries.empty()) return;
@@ -1610,11 +1610,11 @@ namespace RenderCore { namespace Assets
     {
         if (_marker) {
             if (_marker->GetState() == ::Assets::AssetState::Invalid) {
-                ThrowException(::Assets::Exceptions::InvalidResource(_marker->Initializer(), ""));
+                Throw(::Assets::Exceptions::InvalidResource(_marker->Initializer(), ""));
             } else if (_marker->GetState() == ::Assets::AssetState::Pending) {
                     // we need to throw immediately on pending resource
                     // this object is useless while it's pending.
-                ThrowException(::Assets::Exceptions::PendingResource(_marker->Initializer(), ""));
+                Throw(::Assets::Exceptions::PendingResource(_marker->Initializer(), ""));
             }
 
                 // hack --  Resolve needs to be called by const methods (like "GetStaticBoundingBox")

@@ -19,6 +19,9 @@
     <Filter Include="LibTIFF">
       <UniqueIdentifier>{b8d7f679-3c55-4e31-9581-474345104c72}</UniqueIdentifier>
     </Filter>
+    <Filter Include="StackWalker">
+      <UniqueIdentifier>{6f8a0b77-c6ff-4a09-b6ee-73c16b95f3fc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Hash\MurmurHash2.cpp">
@@ -261,6 +264,9 @@
     <ClCompile Include="..\LibTiff\tif_zip.c">
       <Filter>LibTIFF</Filter>
     </ClCompile>
+    <ClCompile Include="..\StackWalker\StackWalker.cpp">
+      <Filter>StackWalker</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Hash\MurmurHash3.h">
@@ -394,6 +400,9 @@
     </ClInclude>
     <ClInclude Include="..\LibTiff\tiffconf.h">
       <Filter>LibTIFF</Filter>
+    </ClInclude>
+    <ClInclude Include="..\StackWalker\StackWalker.h">
+      <Filter>StackWalker</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

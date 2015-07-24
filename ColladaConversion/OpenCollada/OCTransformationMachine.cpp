@@ -142,7 +142,7 @@ namespace RenderCore { namespace ColladaConversion
 
                 const Matrix* matrixTransform = (const Matrix*)(transformations[c]);
                 if (!matrixTransform) {
-                    ThrowException(FormatError(
+                    Throw(FormatError(
                         "Bad transformation list in node (%s)", nodeName));
                 }
 
@@ -179,7 +179,7 @@ namespace RenderCore { namespace ColladaConversion
 
                 const Translate* translation = (const Translate*)(transformations[c]);
                 if (!translation) {
-                    ThrowException(FormatError(
+                    Throw(FormatError(
                         "Bad transformation list in node (%s)", nodeName));
                 }
 
@@ -197,7 +197,7 @@ namespace RenderCore { namespace ColladaConversion
 
                 const Rotate* rotation = (const Rotate*)(transformations[c]);
                 if (!rotation) {
-                    ThrowException(FormatError(
+                    Throw(FormatError(
                         "Bad transformation list in node (%s)", nodeName));
                 }
 
@@ -269,7 +269,7 @@ namespace RenderCore { namespace ColladaConversion
 
                 const Scale* scale = (const Scale*)(transformations[c]);
                 if (!scale) {
-                    ThrowException(FormatError(
+                    Throw(FormatError(
                         "Bad transformation list in node (%s)", nodeName));
                 }
                             

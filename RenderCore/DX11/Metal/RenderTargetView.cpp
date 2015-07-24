@@ -17,7 +17,7 @@ namespace RenderCore { namespace Metal_DX11
         NativeFormat::Enum format, const ArraySlice& arraySlice)
     {
         if (!resource) {
-            ThrowException(::Exceptions::BasicLabel("NULL resource passed to RenderTargetView constructor"));
+            Throw(::Exceptions::BasicLabel("NULL resource passed to RenderTargetView constructor"));
         }
 
         intrusive_ptr<ID3D::RenderTargetView> rtv;
@@ -78,7 +78,7 @@ namespace RenderCore { namespace Metal_DX11
         NativeFormat::Enum format, const ArraySlice& arraySlice)
     {
         if (!resource) {
-            ThrowException(::Exceptions::BasicLabel("NULL resource passed to DepthStencilView constructor"));
+            Throw(::Exceptions::BasicLabel("NULL resource passed to DepthStencilView constructor"));
         }
 
         intrusive_ptr<ID3D::DepthStencilView> view;
@@ -139,7 +139,7 @@ namespace RenderCore { namespace Metal_DX11
     UnorderedAccessView::UnorderedAccessView(UnderlyingResource resource, NativeFormat::Enum format, unsigned mipSlice, bool appendBuffer, bool forceArray)
     {
         if (!resource) {
-            ThrowException(::Exceptions::BasicLabel("NULL resource passed to UnorderedAccessView constructor"));
+            Throw(::Exceptions::BasicLabel("NULL resource passed to UnorderedAccessView constructor"));
         }
 
         intrusive_ptr<ID3D::UnorderedAccessView> view = nullptr;
@@ -191,7 +191,7 @@ namespace RenderCore { namespace Metal_DX11
     UnorderedAccessView::UnorderedAccessView(UnderlyingResource resource, Flags::BitField field)
     {
         if (!resource) {
-            ThrowException(::Exceptions::BasicLabel("NULL resource passed to DepthStencilView constructor"));
+            Throw(::Exceptions::BasicLabel("NULL resource passed to DepthStencilView constructor"));
         }
 
         intrusive_ptr<ID3D::UnorderedAccessView> view;

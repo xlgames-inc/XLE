@@ -467,7 +467,7 @@ namespace Utility
             switch(PeekNext()) {
             case Blob::BeginElement:
                 if (!TryBeginElement(dummy0))
-                    ThrowException(FormatException(
+                    Throw(FormatException(
                         "Malformed begin element while skipping forward", GetLocation()));
                 ++subtreeEle;
                 break;
@@ -476,19 +476,19 @@ namespace Utility
                 if (!subtreeEle) return;    // end now, while the EndElement is primed
 
                 if (!TryEndElement())
-                    ThrowException(FormatException(
+                    Throw(FormatException(
                         "Malformed end element while skipping forward", GetLocation()));
                 --subtreeEle;
                 break;
 
             case Blob::AttributeName:
                 if (!TryAttribute(dummy0, dummy1))
-                    ThrowException(FormatException(
+                    Throw(FormatException(
                         "Malformed attribute while skipping forward", GetLocation()));
                 break;
 
             default:
-                ThrowException(FormatException(
+                Throw(FormatException(
                     "Unexpected blob or end of stream hit while skipping forward", GetLocation()));
             }
         }

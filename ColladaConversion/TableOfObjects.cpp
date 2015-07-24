@@ -115,7 +115,7 @@ namespace RenderCore { namespace ColladaConversion
 
         auto i = std::lower_bound(c.cbegin(), c.cend(), id, CompareGuid());
         if (i != c.cend() && i->_id == id)
-            ThrowException(FormatError("Duplicate object ids found while building table of local objects! (%s)", idString.c_str()));
+            Throw(FormatError("Duplicate object ids found while building table of local objects! (%s)", idString.c_str()));
 
         c.insert(i, Object<Type>(id, name, idString, std::forward<Type>(object)));
     }

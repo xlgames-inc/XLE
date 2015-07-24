@@ -331,7 +331,7 @@ namespace RenderCore { namespace Assets
             // We're expecting an initialiser of the format "filename:setting"
         auto colon = XlFindCharReverse(initialiser, ':');
         if (!colon)
-            ThrowException(::Assets::Exceptions::InvalidResource(initialiser, ""));
+            Throw(::Assets::Exceptions::InvalidResource(initialiser, ""));
 
         ::Assets::ResChar rawFilename[MaxPath];
         XlCopyNString(rawFilename, initialiser, colon - initialiser);
@@ -352,7 +352,7 @@ namespace RenderCore { namespace Assets
         size_t sourceFileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(_splitName._concreteFilename.c_str(), &sourceFileSize);
         if (!sourceFile)
-            ThrowException(::Assets::Exceptions::InvalidResource(initialiser, 
+            Throw(::Assets::Exceptions::InvalidResource(initialiser, 
                 StringMeld<128>() << "Missing or empty file: " << _splitName._concreteFilename));
 
         Data data;
@@ -366,7 +366,7 @@ namespace RenderCore { namespace Assets
         }
 
         if (!source)
-            ThrowException(::Assets::Exceptions::InvalidResource(initialiser, 
+            Throw(::Assets::Exceptions::InvalidResource(initialiser, 
                 StringMeld<256>() << "Missing material configuration: " << _splitName._settingName));
 
         _depVal = std::make_shared<::Assets::DependencyValidation>();

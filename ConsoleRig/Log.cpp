@@ -16,6 +16,11 @@
 #include "../Utility/StringFormat.h"
 #include <assert.h>
 
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+    #include "../Core/WinAPI/IncludeWindows.h"
+    #include "../Foreign/StackWalker/StackWalker.h"
+#endif
+
     // We can't use the default initialisation method for easylogging++
     // because is causes a "LoaderLock" exception when used with C++/CLI dlls.
     // It also doesn't work well when sharing a single log file across dlls.
@@ -78,6 +83,8 @@ namespace ConsoleRig
         static std::basic_streambuf<char>* s_oldCoutStreamBuf = nullptr;
     #endif
 
+    static void SendExceptionToLogger(const ::Exceptions::BasicLabel&);
+
     void Logging_Startup(const char configFile[], const char logFileName[])
     {
         auto currentModule = GetCurrentModuleId();
@@ -133,6 +140,10 @@ namespace ConsoleRig
             serv.Add(Fn_GetStorage, el::Helpers::storage);
             serv.Add(Fn_LogMainModule, [=](){ return currentModule; });
 
+            auto& onThrow = GlobalOnThrowCallback();
+            if (!onThrow)
+                onThrow = &SendExceptionToLogger;
+
         } else {
 
             auto storage = serv.Call<StoragePtr>(Fn_GetStorage);
@@ -164,6 +175,60 @@ namespace ConsoleRig
                 serv.Remove(Fn_CoutRedirectModule);
             }
         #endif
+    }
+
+    #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+        class StackWalkerToLog : public StackWalker
+        {
+        protected:
+            virtual void OnOutput(LPCSTR) {}
+
+            void OnCallstackEntry(CallstackEntryType eType, int frameNumber, CallstackEntry &entry)
+            {
+                    // We should normally have 3 entries on the callstack ahead of what we want:
+                    //  StackWalker::ShowCallstack
+                    //  ConsoleRig::SendExceptionToLogger
+                    //  Utility::Throw
+                if ((frameNumber >= 3) && (eType != lastEntry) && (entry.offset != 0)) {
+                    if (entry.lineFileName[0] == 0) {
+                        LogAlwaysError 
+                            << std::hex << entry.offset << std::dec
+                            << " (" << entry.moduleName << "): "
+                            << entry.name;
+                    } else {
+                        LogAlwaysError 
+                            << entry.lineFileName << " (" << entry.lineNumber << "): "
+                            << ((entry.undFullName[0] != 0) ? entry.undFullName : ((entry.undName[0] != 0) ? entry.undName : entry.name))
+                            ;
+                    }
+                }
+            }
+        };
+    #endif
+
+    static void SendExceptionToLogger(const ::Exceptions::BasicLabel& e)
+    {
+        TRY
+        {
+            if (!e.CustomReport()) {
+                #if FEATURE_RTTI
+                    LogAlwaysError << "Throwing Exception -- " << typeid(e).name() << ". Extra information follows:";
+                #else
+                    LogAlwaysError << "Throwing Exception. Extra information follows:";
+                #endif
+                LogAlwaysError << e.what();
+
+                    // report this exception to the logger (including callstack information)
+                #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+                    static StackWalkerToLog walker;
+                    walker.ShowCallstack(7);
+                #endif
+            }
+        } CATCH (...) {
+            // Encountering another exception at this point would be trouble.
+            // We have to suppress any exception that happen during reporting,
+            // and allow the exception, 'e' to be handled
+        } CATCH_END
     }
 
     namespace Internal

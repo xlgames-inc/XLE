@@ -38,7 +38,7 @@ namespace RenderCore { namespace ColladaConversion
         case  4:    samplerType = Assets::TransformationParameterSet::Type::Float4;     break;
         case 16:    samplerType = Assets::TransformationParameterSet::Type::Float4x4;   break;
         default: 
-            ThrowException(
+            Throw(
                 FormatError(
                     "Strange sampler width encountered when adding animation driver!"));
         }

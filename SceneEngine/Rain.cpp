@@ -199,7 +199,7 @@ namespace SceneEngine
 
             SavedTargets oldTargets(context);
             if (!oldTargets.GetDepthStencilView()) {
-                ThrowException(::Exceptions::BasicLabel("Missing depth stencil view when drawing rain particles"));
+                Throw(::Exceptions::BasicLabel("Missing depth stencil view when drawing rain particles"));
             }
 
             // auto depthBufferResource = Metal::ExtractResource<ID3D::Resource>(oldTargets.GetDepthStencilView());
@@ -338,7 +338,7 @@ namespace SceneEngine
 
             SavedTargets oldTargets(context);
             if (!oldTargets.GetDepthStencilView()) {
-                ThrowException(::Exceptions::BasicLabel("Missing depth stencil view when drawing rain particles"));
+                Throw(::Exceptions::BasicLabel("Missing depth stencil view when drawing rain particles"));
             }
 
             // auto depthBufferResource = Metal::ExtractResource<ID3D::Resource>(oldTargets.GetDepthStencilView());

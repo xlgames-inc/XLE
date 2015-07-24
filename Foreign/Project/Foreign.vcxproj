@@ -209,6 +209,7 @@
     <ClCompile Include="..\Lua\src\lutf8lib.c" />
     <ClCompile Include="..\Lua\src\lvm.c" />
     <ClCompile Include="..\Lua\src\lzio.c" />
+    <ClCompile Include="..\StackWalker\StackWalker.cpp" />
     <ClCompile Include="..\TinyThreadPP\source\tinythread.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
@@ -264,6 +265,7 @@
     <ClInclude Include="..\Lua\src\lundump.h" />
     <ClInclude Include="..\Lua\src\lvm.h" />
     <ClInclude Include="..\Lua\src\lzio.h" />
+    <ClInclude Include="..\StackWalker\StackWalker.h" />
     <ClInclude Include="..\TinyThreadPP\source\fast_mutex.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>

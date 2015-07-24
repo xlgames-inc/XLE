@@ -200,7 +200,7 @@ namespace PlatformRig
             NULL, NULL, CurrentModule::GetInstance().HInstance(), NULL);
 
         if (!pimpl->_hwnd || pimpl->_hwnd == INVALID_HANDLE_VALUE) {
-            ThrowException(std::exception( "Failure during windows construction" ));        // (note that a window class can be leaked by this.. But, who cares?)
+            Throw(std::exception( "Failure during windows construction" ));        // (note that a window class can be leaked by this.. But, who cares?)
         }
 
         SetWindowLongPtr(pimpl->_hwnd, GWLP_USERDATA, (LONG_PTR)pimpl.get());

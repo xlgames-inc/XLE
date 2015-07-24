@@ -660,7 +660,7 @@ namespace RenderCore { namespace ColladaConversion
                 }
 
             } else {
-                ThrowException(FormatError(
+                Throw(FormatError(
                     "Unknown controller type found (%s). This isn't currently supported!", controller->getUniqueId().toAscii().c_str()));
             }
 

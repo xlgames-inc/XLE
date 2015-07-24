@@ -442,15 +442,15 @@ namespace RenderCore { namespace Techniques
             auto next = source.PeekNext();
             if (next == Formatter::Blob::EndElement) return;
             if (next != Formatter::Blob::AttributeName)
-                ThrowException(FormatException("Unexpected blob when serializing inheritted list", source.GetLocation()));
+                Throw(FormatException("Unexpected blob when serializing inheritted list", source.GetLocation()));
             
             Formatter::InteriorSection name, value;
             if (!source.TryAttribute(name, value))
-                ThrowException(FormatException("Bad attribute in inheritted list", source.GetLocation()));
+                Throw(FormatException("Bad attribute in inheritted list", source.GetLocation()));
         
             auto colon = std::find(name._start, name._end, ':');
             if (colon == name._end) 
-                ThrowException(FormatException("Inheritted object missing a colon", source.GetLocation()));
+                Throw(FormatException("Inheritted object missing a colon", source.GetLocation()));
 
             ::Assets::ResChar resolvedFile[MaxPath];
             XlCopyNString(resolvedFile, (const ::Assets::ResChar*)name._start, colon-name._start);
@@ -473,7 +473,7 @@ namespace RenderCore { namespace Techniques
             }
 
             if (!foundAtLeastOne)
-                ThrowException(FormatException("Inheritted object not found", source.GetLocation()));
+                Throw(FormatException("Inheritted object not found", source.GetLocation()));
 
             if (inherited && std::find(inherited->begin(), inherited->end(), settingsTable.GetDependencyValidation()) == inherited->end()) {
                 inherited->push_back(settingsTable.GetDependencyValidation());
@@ -487,11 +487,11 @@ namespace RenderCore { namespace Techniques
             auto next = source.PeekNext();
             if (next == Formatter::Blob::EndElement) return;
             if (next != Formatter::Blob::BeginElement)
-                ThrowException(FormatException("Unexpected blob when serializing parameter box list", source.GetLocation()));
+                Throw(FormatException("Unexpected blob when serializing parameter box list", source.GetLocation()));
 
             Formatter::InteriorSection eleName;
             if (!source.TryBeginElement(eleName))
-                ThrowException(FormatException("Bad begin element in parameter box list", source.GetLocation()));
+                Throw(FormatException("Bad begin element in parameter box list", source.GetLocation()));
 
             bool matched = false;
             for (unsigned q=0; q<dimof(s_parameterBoxNames); ++q)
@@ -501,10 +501,10 @@ namespace RenderCore { namespace Techniques
                 }
 
             if (!matched)
-                ThrowException(FormatException("Unknown parameter box name", source.GetLocation()));
+                Throw(FormatException("Unknown parameter box name", source.GetLocation()));
 
             if (!source.TryEndElement())
-                ThrowException(FormatException("Bad end element in parameter box list", source.GetLocation()));
+                Throw(FormatException("Bad end element in parameter box list", source.GetLocation()));
         }
     }
 
@@ -517,11 +517,11 @@ namespace RenderCore { namespace Techniques
             auto next = formatter.PeekNext();
             if (next == Formatter::Blob::EndElement) break;
             if (next != Formatter::Blob::BeginElement)
-                ThrowException(FormatException("Unexpected blob in parameter box table setting", formatter.GetLocation()));
+                Throw(FormatException("Unexpected blob in parameter box table setting", formatter.GetLocation()));
 
             Formatter::InteriorSection eleName;
             if (!formatter.TryBeginElement(eleName)) 
-                ThrowException(FormatException("Bad begin element", formatter.GetLocation()));
+                Throw(FormatException("Bad begin element", formatter.GetLocation()));
 
             if (Is("Inherit", eleName)) {
                 LoadInheritedParameterBoxes(formatter, _boxes, &searchRules, &inherited);
@@ -530,7 +530,7 @@ namespace RenderCore { namespace Techniques
             } else break;
 
             if (!formatter.TryEndElement()) 
-                ThrowException(FormatException("Bad end element", formatter.GetLocation()));
+                Throw(FormatException("Bad end element", formatter.GetLocation()));
         }
     }
 
@@ -578,7 +578,7 @@ namespace RenderCore { namespace Techniques
                     }
 
                     if (!cleanQuit)
-                        ThrowException(FormatException("Unexpected blob while reading stream", formatter.GetLocation()));
+                        Throw(FormatException("Unexpected blob while reading stream", formatter.GetLocation()));
                     break;
                 }
 
@@ -587,7 +587,7 @@ namespace RenderCore { namespace Techniques
             CATCH (const FormatException& e)
             {
                 ::Assets::Services::GetInvalidAssetMan().MarkInvalid(filename, e.what());
-                ThrowException(::Assets::Exceptions::InvalidResource(filename, e.what()));
+                Throw(::Assets::Exceptions::InvalidResource(filename, e.what()));
             }
             CATCH_END
 
@@ -667,7 +667,7 @@ namespace RenderCore { namespace Techniques
             }
 
             if (!cleanQuit)
-                ThrowException(FormatException("Unexpected blob while reading technique", formatter.GetLocation()));
+                Throw(FormatException("Unexpected blob while reading technique", formatter.GetLocation()));
             break;
         }
 
@@ -765,7 +765,7 @@ namespace RenderCore { namespace Techniques
                     }
 
                     if (!cleanQuit)
-                        ThrowException(FormatException("Unexpected blob while reading stream", formatter.GetLocation()));
+                        Throw(FormatException("Unexpected blob while reading stream", formatter.GetLocation()));
                     break;
                 }
 
@@ -774,7 +774,7 @@ namespace RenderCore { namespace Techniques
             CATCH (const FormatException& e)
             {
                 ::Assets::Services::GetInvalidAssetMan().MarkInvalid(resourceName, e.what());
-                ThrowException(::Assets::Exceptions::InvalidResource(resourceName, e.what()));
+                Throw(::Assets::Exceptions::InvalidResource(resourceName, e.what()));
             }
             CATCH_END
 
