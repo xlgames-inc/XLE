@@ -175,40 +175,49 @@ void CalculateTransmissionAndInscatter(float3 rayStart, float3 rayEnd, out float
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-float4 ResolveFog(
-	float4 position : SV_Position,
-	float2 texCoord : TEXCOORD0,
-	float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
-	SystemInputs sys) : SV_Target0
+float4 DoResolveFog(
+	float4 position,
+	float2 texCoord,
+	float3 viewFrustumVector,
+	SystemInputs sys,
+	bool useVolumetricGrid)
 {
-	// return float4(0.0.xxx, 1);
-
 	int2 pixelCoords		= position.xy;
 	float depth				= LoadFloat1(DepthTexture, pixelCoords.xy, GetSampleIndex(sys));
 	float worldSpaceDepth	= NDCDepthToWorldSpace(depth);
-
-	float slice	= worldSpaceDepth / WorldSpaceGridDepth;
+	float3 worldPosition 	= CalculateWorldPosition(viewFrustumVector, NDCDepthToLinear0To1(depth), WorldSpaceView);
 
 	float transmission = 1.f;
 	float inscatter = 0.f;
 
-	if (slice > 1.f) {
-		float3 gridEnd = CalculateWorldPosition(viewFrustumVector, WorldSpaceGridDepth / FarClip, WorldSpaceView);
-		float3 worldPosition = CalculateWorldPosition(viewFrustumVector, NDCDepthToLinear0To1(depth), WorldSpaceView);
-		CalculateTransmissionAndInscatter(gridEnd, worldPosition, transmission, inscatter);
+	if (useVolumetricGrid) {
 
+		float slice	= worldSpaceDepth / WorldSpaceGridDepth;
+		if (slice > 1.f) {
+			float3 gridEnd = CalculateWorldPosition(viewFrustumVector, WorldSpaceGridDepth / FarClip, WorldSpaceView);
+			CalculateTransmissionAndInscatter(gridEnd, worldPosition, transmission, inscatter);
+
+			#if (MONOCHROME_INSCATTER!=1)
+				inscatter *= .1f * ForwardColour;
+			#endif
+		}
+
+		slice = DepthBiasInvEq(saturate(slice));
+
+		float gridTransmission = SampleTransmission(texCoord, slice);
+		float gridInscatter = SampleInscatter(texCoord, slice);
+
+		inscatter = inscatter * gridTransmission + gridInscatter;
+		transmission *= gridTransmission;
+
+	} else {
+
+		CalculateTransmissionAndInscatter(WorldSpaceView, worldPosition, transmission, inscatter);
 		#if (MONOCHROME_INSCATTER!=1)
 			inscatter *= .1f * ForwardColour;
 		#endif
+
 	}
-
-	slice = DepthBiasInvEq(saturate(slice));
-
-	float gridTransmission = SampleTransmission(texCoord, slice);
-	float gridInscatter = SampleInscatter(texCoord, slice);
-
-	inscatter = inscatter * gridTransmission + gridInscatter;
-	transmission *= gridTransmission;
 
 	#if (MONOCHROME_INSCATTER==1)
 
@@ -237,4 +246,22 @@ float4 ResolveFog(
 	#else
 		return float4(inscatter, transmission);
 	#endif
+}
+
+float4 ResolveFog(
+	float4 position : SV_Position,
+	float2 texCoord : TEXCOORD0,
+	float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
+	SystemInputs sys) : SV_Target0
+{
+	return DoResolveFog(position, texCoord, viewFrustumVector, sys, true);
+}
+
+float4 ResolveFogNoGrid(
+	float4 position : SV_Position,
+	float2 texCoord : TEXCOORD0,
+	float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
+	SystemInputs sys) : SV_Target0
+{
+	return DoResolveFog(position, texCoord, viewFrustumVector, sys, false);
 }

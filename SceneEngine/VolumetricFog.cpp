@@ -99,6 +99,8 @@ namespace SceneEngine
         Metal::BoundUniforms            _propagateLightBinding;
         const Metal::ShaderProgram*     _resolveLight;
         Metal::BoundUniforms            _resolveLightBinding;
+        const Metal::ShaderProgram*     _resolveLightNoGrid;
+        Metal::BoundUniforms            _resolveLightNoGridBinding;
 
         Metal::ConstantBuffer           _filterWeightsConstants;
 
@@ -212,7 +214,7 @@ namespace SceneEngine
                 ;
         char definesTable[256];
         Utility::XlFormatString(
-            definesTable, dimof(definesTable), "MSAA_SAMPLES=%i", 
+            definesTable, dimof(definesTable), "USE_VOLUMETRIC_GRID=1;MSAA_SAMPLES=%i", 
             (desc._msaaSampleCount<=1)?0:desc._msaaSampleCount);
         if (desc._useMsaaSamplers)
             XlCatString(definesTable, dimof(definesTable), ";MSAA_SAMPLERS=1");
@@ -223,6 +225,13 @@ namespace SceneEngine
         Techniques::TechniqueContext::BindGlobalUniforms(resolveLightBinding);
         resolveLightBinding.BindConstantBuffers(1, {"VolumetricFogConstants", "LookupTableConstants"});
         resolveLightBinding.BindShaderResources(1, {"InscatterTexture", "TransmissionTexture", "LookupTable"});
+
+        auto* resolveLightNoGrid = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+            vertexShader, "game/xleres/VolumetricEffect/resolvefog.psh:ResolveFogNoGrid:ps_*", definesTable);
+        Metal::BoundUniforms resolveLightNoGridBinding(*resolveLightNoGrid);
+        Techniques::TechniqueContext::BindGlobalUniforms(resolveLightNoGridBinding);
+        resolveLightNoGridBinding.BindConstantBuffers(1, {"VolumetricFogConstants", "LookupTableConstants"});
+        resolveLightNoGridBinding.BindShaderResources(1, {"InscatterTexture", "TransmissionTexture", "LookupTable"});
 
         ///////////////////////////////////////////////////////////////////////////////////////////
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
@@ -246,6 +255,8 @@ namespace SceneEngine
         _propagateLight = propagateLight;
         _resolveLight = resolveLight;
         _resolveLightBinding = std::move(resolveLightBinding);
+        _resolveLightNoGrid = resolveLightNoGrid;
+        _resolveLightNoGridBinding = std::move(resolveLightNoGridBinding);
         _validationCallback = std::move(validationCallback);
         _injectLightBinding = std::move(injectLightBinding);
         _propagateLightBinding = std::move(propagateLightBinding);
@@ -672,41 +683,64 @@ namespace SceneEngine
     void VolumetricFog_Resolve( RenderCore::Metal::DeviceContext* context, 
                                 LightingParserContext& lightingParserContext,
                                 unsigned samplingCount, bool useMsaaSamplers, bool flipDirection,
-                                PreparedShadowFrustum& shadowFrustum,
+                                PreparedShadowFrustum* shadowFrustum,
                                 const VolumetricFogConfig::Renderer& rendererCfg,
                                 const VolumetricFogConfig::FogVolume& cfg)
     {
-        auto& fogRes = Techniques::FindCachedBox2<VolumetricFogResources>(
-            rendererCfg, shadowFrustum._frustumCount, 
-            UseESMShadowMaps(), GetHighPrecisionResources());
+        unsigned shadowCascadeMode = 2;
+        unsigned shadowMapRTVs = 0;
+        VolumetricFogResources* fogRes = nullptr;
+        if (shadowFrustum) {
+            fogRes = &Techniques::FindCachedBox2<VolumetricFogResources>(
+                rendererCfg, shadowFrustum->_frustumCount, 
+                UseESMShadowMaps(), GetHighPrecisionResources());
+            shadowCascadeMode = GetShadowCascadeMode(*shadowFrustum);
+            shadowMapRTVs = unsigned(fogRes->_shadowMapRTVs.size());
+        }
+
         auto& fogShaders = Techniques::FindCachedBoxDep2<VolumetricFogShaders>(
             samplingCount, useMsaaSamplers, flipDirection, UseESMShadowMaps(), 
             cfg._material._noiseDensityScale > 0.f,
-            GetShadowCascadeMode(shadowFrustum),
-            unsigned(fogRes._shadowMapRTVs.size()),
+            shadowCascadeMode,
+            shadowMapRTVs,
             rendererCfg._skipShadowFrustums,
             rendererCfg._gridDimensions[2],
             GetShadowFilterMode(), GetShadowFilterStdDev());
-        auto& fogTable = Techniques::FindCachedBox2<VolumetricFogDensityTable>(
-            cfg._material._density);
 
         Metal::ConstantBufferPacket constantBufferPackets[2];
         constantBufferPackets[0] = MakeVolFogConstants(cfg, rendererCfg);
+
+        auto& fogTable = Techniques::FindCachedBox2<VolumetricFogDensityTable>(
+            cfg._material._density);
+
         const Metal::ShaderResourceView* srvs[] =
         {
-            &fogRes._inscatterFinalsValuesSRV,
-            &fogRes._transmissionValuesSRV,
+            fogRes ? &fogRes->_inscatterFinalsValuesSRV : nullptr,
+            fogRes ? &fogRes->_transmissionValuesSRV : nullptr,
             &fogTable._tableSRV
         };
-        const Metal::ConstantBuffer* rebuiltConstants[2] = {nullptr, nullptr};
-        rebuiltConstants[1] = &fogTable._tableConstants;
+        const Metal::ConstantBuffer* prebuiltConstants[2] = {nullptr, nullptr};
+        prebuiltConstants[1] = &fogTable._tableConstants;
 
-        fogShaders._resolveLightBinding.Apply(
-            *context, lightingParserContext.GetGlobalUniformsStream(), 
-            Metal::UniformsStream(
-                constantBufferPackets, rebuiltConstants, dimof(constantBufferPackets),
-                srvs, dimof(srvs)));
-        context->Bind(*fogShaders._resolveLight);
+        if (shadowFrustum) {
+
+            fogShaders._resolveLightBinding.Apply(
+                *context, lightingParserContext.GetGlobalUniformsStream(), 
+                Metal::UniformsStream(
+                    constantBufferPackets, prebuiltConstants, dimof(constantBufferPackets),
+                    srvs, dimof(srvs)));
+            context->Bind(*fogShaders._resolveLight);
+
+        } else {
+
+            fogShaders._resolveLightNoGridBinding.Apply(
+                *context, lightingParserContext.GetGlobalUniformsStream(), 
+                Metal::UniformsStream(constantBufferPackets, prebuiltConstants, dimof(constantBufferPackets),
+                    srvs, dimof(srvs)));
+            context->Bind(*fogShaders._resolveLightNoGrid);
+
+        }
+
         context->Draw(4);
     }
 
@@ -854,7 +888,23 @@ namespace SceneEngine
         VolumetricFog_Resolve(
             metalContext, parserContext, 
             (resolvePass==0)?samplingCount:1, useMsaaSamplers, resolvePass==1,
-            parserContext._preparedShadows[0], rendererCfg, volume);
+            &parserContext._preparedShadows[0], rendererCfg, volume);
+    }
+
+    static void DoVolumetricFogResolveNoGrid(
+        MetalContext* metalContext, LightingParserContext& parserContext, 
+        LightingResolveContext& resolveContext, unsigned resolvePass,
+        const VolumetricFogConfig::Renderer& rendererCfg,
+        const VolumetricFogConfig::FogVolume& volume)
+    {
+        Metal::GPUProfiler::DebugAnnotation anno(*metalContext, L"VolFog");
+
+        const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();
+        const auto samplingCount = resolveContext.GetSamplingCount();
+        VolumetricFog_Resolve(
+            metalContext, parserContext, 
+            (resolvePass==0)?samplingCount:1, useMsaaSamplers, resolvePass==1,
+            nullptr, rendererCfg, volume);
     }
 
     void VolumetricFogPlugin::OnLightingResolvePrepare(
@@ -864,8 +914,10 @@ namespace SceneEngine
         if (_pimpl->_cfg._volumes.empty()) return;
 
         const bool doVolumetricFog = Tweakable("DoVolumetricFog", true);
-        if (    !parserContext._preparedShadows.empty() && parserContext._preparedShadows[0].IsReady() 
-            &&  doVolumetricFog) {
+        if (!doVolumetricFog) return;
+
+        using namespace std::placeholders;
+        if (!parserContext._preparedShadows.empty() && parserContext._preparedShadows[0].IsReady()) {
 
             const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();
             VolumetricFog_Build(
@@ -873,11 +925,17 @@ namespace SceneEngine
                 useMsaaSamplers, parserContext._preparedShadows[0],
                 _pimpl->_cfg._renderer, _pimpl->_cfg._volumes[0]);
 
-            using namespace std::placeholders;
             resolveContext.AppendResolve(
                 std::bind(DoVolumetricFogResolve, _1, _2, _3, _4, 
                     std::ref(_pimpl->_cfg._renderer),
                     std::ref(_pimpl->_cfg._volumes[0])));
+        } else {
+
+            resolveContext.AppendResolve(
+                std::bind(DoVolumetricFogResolveNoGrid, _1, _2, _3, _4, 
+                    std::ref(_pimpl->_cfg._renderer),
+                    std::ref(_pimpl->_cfg._volumes[0])));
+
         }
 
     }
