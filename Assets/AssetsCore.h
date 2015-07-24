@@ -31,6 +31,7 @@ namespace Assets
         public: 
             InvalidAsset(const ResChar initializer[], const char what[]);
             const ResChar* Initializer() const { return _initializer; }
+            virtual bool CustomReport() const;
 
         private:
             ResChar _initializer[512];
@@ -48,6 +49,7 @@ namespace Assets
         public: 
             PendingAsset(const ResChar initializer[], const char what[]);
             const ResChar* Initializer() const { return _initializer; }
+            virtual bool CustomReport() const;
 
         private:
             ResChar _initializer[512];

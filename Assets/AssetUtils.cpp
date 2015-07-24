@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "AssetUtils.h"
+#include "../ConsoleRig/Log.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/MemoryUtils.h"
@@ -304,10 +305,23 @@ namespace Assets
             XlCopyString(_initializer, dimof(_initializer), initializer); 
         }
 
+        bool InvalidAsset::CustomReport() const
+        {
+            LogAlwaysError << "Invalid asset: " << _initializer << ". More information:";
+            LogAlwaysError << what();
+            return true;
+        }
+
         PendingAsset::PendingAsset(const char initializer[], const char what[]) 
         : ::Exceptions::BasicLabel(what) 
         {
             XlCopyString(_initializer, dimof(_initializer), initializer); 
+        }
+
+        bool PendingAsset::CustomReport() const
+        {
+            LogAlwaysWarning << "Pending asset: " << _initializer;
+            return true;
         }
 
         FormatError::FormatError(const char format[], ...) never_throws
