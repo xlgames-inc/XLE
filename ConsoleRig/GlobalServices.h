@@ -26,6 +26,7 @@ namespace ConsoleRig
         public:
             void Detach();
             Obj& Get();
+            operator bool() { return _isAttached; }
 
             AttachRef();
             AttachRef(AttachRef&& moveFrom);

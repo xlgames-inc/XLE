@@ -107,6 +107,7 @@
     <ClInclude Include="..\IncludeLUA.h" />
     <ClInclude Include="..\IProgress.h" />
     <ClInclude Include="..\Log.h" />
+    <ClInclude Include="..\LogStartup.h" />
     <ClInclude Include="..\OutputStream.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -8,8 +8,12 @@
 #include "XLELayerUtils.h"
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
 #include "../../Tools/EntityInterface/EntityInterface.h"
+#include "../../Tools/GuiLayer/MarshalString.h"
+#include "../../Tools/GuiLayer/NativeEngineDevice.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../Math/Transformations.h"
+#include "../../ConsoleRig/LogStartup.h"
+#include "../../ConsoleRig/GlobalServices.h"
 
 using namespace Sce::Atf;
 using namespace Sce::Atf::Applications;
@@ -63,7 +67,7 @@ namespace XLEBridgeUtils
         float ty = -(-2.f * .5f * (fRect.Top + fRect.Bottom) + 1.f) * sy;
 
         Float4x4 rectangleAdj = MakeFloat4x4(
-                sx, 0.f, 0.f,  tx,
+            sx, 0.f, 0.f,  tx,
             0.f,  sy, 0.f,  ty,
             0.f, 0.f, 1.f, 0.f,
             0.f, 0.f, 0.f, 1.f);
@@ -112,5 +116,69 @@ namespace XLEBridgeUtils
         }
         OnActiveContextChanged(sender);
     }
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    namespace Internal 
+    { 
+        static Sce::Atf::OutputMessageType AsOutputMessageType(ConsoleRig::LogLevel level)
+        {
+            switch (level) {
+            default:
+            case ConsoleRig::LogLevel::Fatal: 
+            case ConsoleRig::LogLevel::Error: return Sce::Atf::OutputMessageType::Error;
+            case ConsoleRig::LogLevel::Warning: return Sce::Atf::OutputMessageType::Warning;
+            case ConsoleRig::LogLevel::Info:
+            case ConsoleRig::LogLevel::Verbose: return Sce::Atf::OutputMessageType::Info;
+            }
+        }
+
+        class LoggingRedirectHelper : public ConsoleRig::LogCallback
+        {
+        public:
+            virtual void OnDispatch(ConsoleRig::LogLevel level, const std::string& str)
+            {
+                if (!str.empty()) {
+                    auto s = clix::marshalString<clix::E_UTF8>(str);
+                        // we must append a new line if one isn't already there!
+                        // this falls in line with the behaviour of easylogging++,
+                        // which will automatically add a new line at the end of each
+                        // message.
+                    if (!s->EndsWith(System::Environment::NewLine))
+                        s += System::Environment::NewLine;
+                    Sce::Atf::Outputs::Write(AsOutputMessageType(level), s);
+                }
+            }
+
+            LoggingRedirectHelper() {}
+            ~LoggingRedirectHelper() {}
+        };
+    }
+
+    LoggingRedirect::LoggingRedirect()
+    {
+        _helper = std::make_shared<Internal::LoggingRedirectHelper>();
+        _helper->Enable();
+    }
+
+    LoggingRedirect::~LoggingRedirect() {}
+    LoggingRedirect::!LoggingRedirect() {}
+
+
+    static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
+
+    void Utils::AttachLibrary(GUILayer::EngineDevice^ device)
+    {
+        if (!s_attachRef) {
+            s_attachRef = device->GetNative().GetGlobalServices()->Attach();
+        }
+    }
+
+    void Utils::DetachLibrary()
+    {
+        s_attachRef.Detach();
+    }
+
 }
 

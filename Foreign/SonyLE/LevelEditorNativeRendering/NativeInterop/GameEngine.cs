@@ -82,6 +82,7 @@ namespace RenderingInterop
         private static GUILayer.SavedRenderResources s_savedRenderResources;
         private static GUILayer.EditorSceneManager s_underlyingScene;
         private static GUILayer.EntityLayer s_entityInterface;
+        private static XLEBridgeUtils.LoggingRedirect s_loggingRedirect;
 
         /// <summary>
         /// init game engine 
@@ -109,7 +110,8 @@ namespace RenderingInterop
                         </SupportedResources>
                     </EngineInfo>");
 
-                // \todo -- hook up logging to "LogCallback"
+                XLEBridgeUtils.Utils.AttachLibrary(s_engineDevice);
+                s_loggingRedirect = new XLEBridgeUtils.LoggingRedirect();
             }
             catch (Exception e)
             {
@@ -141,6 +143,9 @@ namespace RenderingInterop
             }
             s_idToDomNode.Clear();
 
+            s_loggingRedirect.Dispose();
+            s_loggingRedirect = null;
+            XLEBridgeUtils.Utils.DetachLibrary();
             Util3D.Shutdown();
             XLEBridgeUtils.NativeManipulatorLayer.SceneManager = null;
             s_entityInterface = null;
@@ -172,19 +177,19 @@ namespace RenderingInterop
         private static SynchronizationContext s_syncContext;
         #endregion
 
-        #region log callbacks
-
-        [UnmanagedFunctionPointer(CallingConvention.StdCall,CharSet = CharSet.Unicode)]
-        private delegate void LogCallbackType(int messageType, string text);
-        private static void LogCallback(int messageType, string text)
-        {
-            Console.Write(text);
-            if (messageType == (int)OutputMessageType.Warning
-                || messageType == (int)OutputMessageType.Error)
-                Outputs.Write((OutputMessageType)messageType, text);                            
-        }
-
-        #endregion
+        // #region log callbacks
+        // 
+        // [UnmanagedFunctionPointer(CallingConvention.StdCall,CharSet = CharSet.Unicode)]
+        // private delegate void LogCallbackType(int messageType, string text);
+        // private static void LogCallback(int messageType, string text)
+        // {
+        //     Console.Write(text);
+        //     if (messageType == (int)OutputMessageType.Warning
+        //         || messageType == (int)OutputMessageType.Error)
+        //         Outputs.Write((OutputMessageType)messageType, text);                            
+        // }
+        // 
+        // #endregion
 
         #region Object management.
 

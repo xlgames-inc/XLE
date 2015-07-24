@@ -6,7 +6,7 @@
 
 #include "GlobalServices.h"
 #include "AttachableInternal.h"
-#include "Log.h"
+#include "LogStartup.h"
 #include "Console.h"
 #include "IProgress.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
@@ -48,6 +48,7 @@ namespace ConsoleRig
     static auto Fn_ConsoleMainModule = ConstHash64<'cons', 'olem', 'ain'>::Value;
     static auto Fn_GetAppName = ConstHash64<'appn', 'ame'>::Value;
     static auto Fn_LogCfg = ConstHash64<'logc', 'fg'>::Value;
+    static auto Fn_GuidGen = ConstHash64<'guid', 'gen'>::Value;
 
     static void MainRig_Startup(const StartupConfig& cfg, VariantFunctions& serv)
     {
@@ -59,6 +60,10 @@ namespace ConsoleRig
             Fn_LogCfg, [logCfgString](){ return logCfgString; });
 
         srand(std::random_device().operator()());
+
+        auto guidGen = std::make_shared<std::mt19937_64>(std::random_device().operator()());
+        serv.Add<uint64()>(
+            Fn_GuidGen, [guidGen](){ return (*guidGen)(); });
 
             //
             //      We need to initialize logging output.

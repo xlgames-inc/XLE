@@ -25,6 +25,7 @@ namespace GUILayer
         std::unique_ptr<IWindowRig> CreateWindowRig(const void* nativeWindowHandle);
         void                        AttachDefaultCompilers();
         RenderCore::IThreadContext* GetImmediateContext();
+        ConsoleRig::GlobalServices* GetGlobalServices() { return _services.get(); }
 
         NativeEngineDevice();
         ~NativeEngineDevice();

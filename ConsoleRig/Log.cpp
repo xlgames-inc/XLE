@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Log.h"
+#include "LogStartup.h"
 #include "OutputStream.h"
 #include "GlobalServices.h"
 #include "../Utility/Streams/FileUtils.h"
@@ -12,6 +13,7 @@
 #include "../Utility/FunctionUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/SystemUtils.h"
+#include "../Utility/StringFormat.h"
 #include <assert.h>
 
     // We can't use the default initialisation method for easylogging++
@@ -31,6 +33,7 @@ INITIALIZE_NULL_EASYLOGGINGPP
 static auto Fn_GetStorage = ConstHash64<'getl', 'ogst', 'orag', 'e'>::Value;
 static auto Fn_CoutRedirectModule = ConstHash64<'cout', 'redi', 'rect'>::Value;
 static auto Fn_LogMainModule = ConstHash64<'logm', 'ainm', 'odul', 'e'>::Value;
+static auto Fn_GuidGen = ConstHash64<'guid', 'gen'>::Value;
 
 namespace ConsoleRig
 {
@@ -161,6 +164,86 @@ namespace ConsoleRig
                 serv.Remove(Fn_CoutRedirectModule);
             }
         #endif
+    }
+
+    namespace Internal
+    {
+        static LogLevel AsLogLevel(el::Level level)
+        {
+            switch (level) {
+            case el::Level::Fatal: return LogLevel::Fatal; 
+
+            default:
+            case el::Level::Global:
+            case el::Level::Debug:
+            case el::Level::Trace:
+            case el::Level::Error: return LogLevel::Error; 
+            case el::Level::Warning: return LogLevel::Warning; 
+            case el::Level::Verbose: return LogLevel::Verbose; 
+            case el::Level::Info: return LogLevel::Info; 
+            }
+        }
+
+        class LogHelper : public el::LogDispatchCallback
+        {
+        public:
+            void SetUpstream(std::shared_ptr<LogCallback> upstream);
+            LogHelper();
+            ~LogHelper();
+        private:
+            virtual void handle(const el::LogDispatchData* handlePtr);
+            std::weak_ptr<LogCallback> _upstream;
+        };
+
+        void LogHelper::handle(const el::LogDispatchData* handlePtr)
+        {
+            auto l = _upstream.lock();
+            if (l) {
+                LogLevel level = AsLogLevel(handlePtr->logMessage()->level());
+                l->OnDispatch(level, handlePtr->logMessage()->message());
+            }
+        }
+        void LogHelper::SetUpstream(std::shared_ptr<LogCallback> upstream)
+        {
+            _upstream = upstream;
+        }
+        LogHelper::LogHelper() {}
+        LogHelper::~LogHelper() {}
+    }
+
+    void LogCallback::Enable()
+    {
+        auto storage = el::Helpers::storage();
+        if (storage) {
+            std::string guid = StringMeld<64>() << _guid;
+            auto* helper = storage->logDispatchCallback<Internal::LogHelper>(guid);
+            if (!helper) {
+                storage->installLogDispatchCallback<Internal::LogHelper>(guid);
+                helper = storage->logDispatchCallback<Internal::LogHelper>(guid);
+                assert(helper);
+                helper->SetUpstream(shared_from_this());
+            }
+        }
+    }
+
+    void LogCallback::Disable()
+    {
+        auto storage = el::Helpers::storage();
+        if (storage) {
+            storage->uninstallLogDispatchCallback<Internal::LogHelper>(
+                std::string(StringMeld<64>() << _guid));
+        }
+    }
+
+    LogCallback::LogCallback()
+    {
+        auto& serv = GlobalServices::GetCrossModule()._services;
+        _guid = serv.Call<uint64>(Fn_GuidGen);
+    }
+
+    LogCallback::~LogCallback()
+    {
+        Disable();
     }
 }
 

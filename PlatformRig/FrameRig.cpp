@@ -218,9 +218,9 @@ namespace PlatformRig
         //     heapMetrics._usage, _pimpl->_prevFrameAllocationCount._allocationCount);
 
         {
-            if ((_pimpl->_frameRenderCount % 64) == (64-1)) {
+            if (Tweakable("FrameRigStats", false) && (_pimpl->_frameRenderCount % 64) == (64-1)) {
                 auto f = _pimpl->_frameRate.GetPerformanceStats();
-                LogInfo << "Ave FPS: " << std::get<0>(f);
+                LogInfo << "Ave FPS: " << 1000.f / std::get<0>(f);
                     // todo -- we should get a rolling average of these values
                 if (_pimpl->_prevFrameAllocationCount._allocationCount) {
                     LogInfo << "(" << _pimpl->_prevFrameAllocationCount._freeCount << ") frees and (" << _pimpl->_prevFrameAllocationCount._allocationCount << ") allocs during frame. Ave alloc: (" << _pimpl->_prevFrameAllocationCount._allocationsSize / _pimpl->_prevFrameAllocationCount._allocationCount << ").";

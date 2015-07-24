@@ -8,6 +8,7 @@
 
 #pragma warning(disable:4564) //  method '.ctor' of class 'Sce::Atf::ItemChangedEventArgs' defines unsupported default parameter 'reloaded'
 
+#include "../../Tools/GUILayer/CLIXAutoPtr.h"
 #include "../../../Math/Vector.h"
 
 using namespace System;
@@ -47,6 +48,9 @@ namespace XLEBridgeUtils
 
         static GUILayer::EditorSceneManager^ GetSceneManager(LevelEditorCore::ViewControl^ vc);
         static GUILayer::TechniqueContextWrapper^ GetTechniqueContext(LevelEditorCore::ViewControl^ vc);
+
+        static void AttachLibrary(GUILayer::EngineDevice^ device);
+        static void DetachLibrary();
     };
 
     public ref class DomChangeInspector
@@ -68,6 +72,18 @@ namespace XLEBridgeUtils
         
         Sce::Atf::IObservableContext^ m_observableContext;
         Sce::Atf::Applications::IContextRegistry^ m_contextRegistry;
+    };
+
+    namespace Internal { class LoggingRedirectHelper; }
+
+    public ref class LoggingRedirect
+    {
+    public:
+        LoggingRedirect();
+        ~LoggingRedirect();
+        !LoggingRedirect();
+    private:
+        clix::shared_ptr<Internal::LoggingRedirectHelper> _helper;
     };
 }
 
