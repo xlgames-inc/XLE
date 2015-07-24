@@ -23,10 +23,8 @@ namespace LevelEditorXLE.Placements
         public void Render(LevelEditorCore.ViewControl vc)                     { _nativeManip.Render(vc); }
         public void OnBeginDrag()                                              { _nativeManip.OnBeginDrag(); }
         public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc, scrPt); }
-        public void OnEndDrag(LevelEditorCore.ViewControl vc, Point scrPt) 
-		{
-            _nativeManip.OnEndDrag(vc, scrPt);
-		}
+        public void OnEndDrag(LevelEditorCore.ViewControl vc, Point scrPt)     { _nativeManip.OnEndDrag(vc, scrPt); }
+        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc, scrPt, delta); }
 
         public LevelEditorCore.ManipulatorInfo ManipulatorInfo
         {

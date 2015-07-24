@@ -46,7 +46,9 @@ namespace LevelEditorCore
         /// <param name="scrPt"> 2d point in screen space.
         /// where (0,0) is topleft and  (width,height) is bottom right</param>        
         /// </summary>
-        void OnEndDrag(ViewControl vc, Point scrPt);        
+        void OnEndDrag(ViewControl vc, Point scrPt);
+
+        void OnMouseWheel(ViewControl vc, Point scrPt, int delta);
 
         /// <summary>
         /// Gets ManipulatorInfo.

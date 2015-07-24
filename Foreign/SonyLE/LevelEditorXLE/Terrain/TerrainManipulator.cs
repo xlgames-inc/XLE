@@ -40,6 +40,7 @@ namespace LevelEditorXLE.Terrain
 			// }, transName);
 			// m_tmpOps.Clear();
 		}
+        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc, scrPt, delta); }
 
         public LevelEditorCore.ManipulatorInfo ManipulatorInfo
         {

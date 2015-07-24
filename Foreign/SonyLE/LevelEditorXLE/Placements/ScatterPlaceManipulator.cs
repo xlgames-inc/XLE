@@ -165,6 +165,7 @@ namespace LevelEditorXLE.Placements
             }
         }
         public void OnEndDrag(ViewControl vc, Point scrPt) {}
+        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { }
 
         public void Render(ViewControl vc)
         {

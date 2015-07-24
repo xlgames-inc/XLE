@@ -255,6 +255,8 @@ namespace RenderingInterop
             m_hitRegion = HitRegion.None;                        
             m_rotations = null;
         }
+
+        public override void OnMouseWheel(ViewControl vc, Point scrPt, int delta) { }
         
         private static float CalcAngle(Vec3F origin, Plane3F plane, Ray3F ray0, Ray3F ray1, float snapAngle)
         {

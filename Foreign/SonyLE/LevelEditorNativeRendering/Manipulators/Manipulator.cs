@@ -38,6 +38,7 @@ namespace RenderingInterop
         public abstract void OnBeginDrag();
         public abstract void OnDragging(ViewControl vc, Point scrPt);
         public abstract void OnEndDrag(ViewControl vc, Point scrPt);
+        public abstract void OnMouseWheel(ViewControl vc, Point scrPt, int delta);
 
         public ManipulatorInfo ManipulatorInfo
         {

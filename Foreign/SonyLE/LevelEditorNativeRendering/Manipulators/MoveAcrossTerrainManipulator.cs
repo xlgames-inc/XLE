@@ -191,6 +191,8 @@ namespace RenderingInterop
             Clear();
         }
 
+        public override void OnMouseWheel(ViewControl vc, Point scrPt, int delta) { }
+
         #endregion
 
         protected override Matrix4F GetManipulatorMatrix()

@@ -215,6 +215,21 @@ namespace LevelEditorCore
             
         }
 
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            bool sentToManipulator = false;
+            if (    (DesignView.Context != null)
+                &&  ((Control.ModifierKeys & Keys.Control)!=0)
+                &&  (DesignView.Manipulator != null))
+            {
+                DesignView.Manipulator.OnMouseWheel(this, e.Location, e.Delta);
+                sentToManipulator = true;
+            }
+
+            if (!sentToManipulator)
+                base.OnMouseWheel(e);
+        }
+
         
         protected virtual void HandlePick(MouseEventArgs e)
         {

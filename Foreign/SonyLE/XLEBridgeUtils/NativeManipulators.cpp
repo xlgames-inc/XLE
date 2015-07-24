@@ -74,6 +74,16 @@ namespace XLEBridgeUtils
         SendInputEvent(vc->ClientSize, vc->Camera, evnt);
 	}
 
+    void NativeManipulatorLayer::OnMouseWheel(LevelEditorCore::ViewControl^ vc, Point scrPt, int delta)
+    {
+        using namespace RenderOverlays::DebuggingDisplay;
+		InputSnapshot evnt(
+			0, 0, delta,
+			Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
+        GUILayer::EditorInterfaceUtils::SetupModifierKeys(evnt);
+        SendInputEvent(vc->ClientSize, vc->Camera, evnt);
+    }
+
     NativeManipulatorLayer::NativeManipulatorLayer(ActiveManipulatorContext^ manipContext) 
     : _manipContext(manipContext)
     {

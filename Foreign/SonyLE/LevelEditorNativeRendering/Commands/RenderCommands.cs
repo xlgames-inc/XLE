@@ -70,7 +70,7 @@ namespace RenderingInterop
                         m_splitContainer.SplitterDistance = size.Width / 2; 
                     }
                 }
-                else 
+                else if (size.Width != 0 && size.Height != 0)
                 {
                     if (m_splitContainer.Orientation != Orientation.Horizontal)
                     {

@@ -461,6 +461,8 @@ namespace RenderingInterop
             m_scale = new Vec3F(1, 1, 1);
         }
 
+        public override void OnMouseWheel(ViewControl vc, Point scrPt, int delta) { }
+
         
         protected override Matrix4F GetManipulatorMatrix()
         {

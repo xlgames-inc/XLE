@@ -48,6 +48,7 @@ namespace XLEBridgeUtils
         void OnBeginDrag();
         void OnDragging(LevelEditorCore::ViewControl^ vc, Point scrPt);
         void OnEndDrag(LevelEditorCore::ViewControl^ vc, Point scrPt);
+        void OnMouseWheel(LevelEditorCore::ViewControl^ vc, Point scrPt, int delta);
 
         NativeManipulatorLayer(ActiveManipulatorContext^ manipContext);
         ~NativeManipulatorLayer();

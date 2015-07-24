@@ -113,6 +113,8 @@ namespace RenderingInterop
             m_node = null;
         }
 
+        public override void OnMouseWheel(ViewControl vc, Point scrPt, int delta) { }
+
         #endregion
           
         

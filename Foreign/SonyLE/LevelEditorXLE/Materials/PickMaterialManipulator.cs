@@ -105,6 +105,8 @@ namespace LevelEditorXLE.Materials
             m_highlight.Clear();
         }
 
+        public void OnMouseWheel(ViewControl vc, Point scrPt, int delta) { }
+
         public void Render(ViewControl vc)
         {
             if (m_highlightMaterialGUID == ~0ul) return;
