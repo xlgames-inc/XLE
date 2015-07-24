@@ -469,8 +469,8 @@ namespace SceneEngine
 
             context->UnbindPS<ShaderResourceView>(0, 9);
         } 
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
     }
 }

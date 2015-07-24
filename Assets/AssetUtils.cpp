@@ -298,16 +298,16 @@ namespace Assets
 
     namespace Exceptions
     {
-        InvalidResource::InvalidResource(const char resourceId[], const char what[]) 
+        InvalidAsset::InvalidAsset(const char initializer[], const char what[]) 
         : ::Exceptions::BasicLabel(what) 
         {
-            XlCopyString(_resourceId, dimof(_resourceId), resourceId); 
+            XlCopyString(_initializer, dimof(_initializer), initializer); 
         }
 
-        PendingResource::PendingResource(const char resourceId[], const char what[]) 
+        PendingAsset::PendingAsset(const char initializer[], const char what[]) 
         : ::Exceptions::BasicLabel(what) 
         {
-            XlCopyString(_resourceId, dimof(_resourceId), resourceId); 
+            XlCopyString(_initializer, dimof(_initializer), initializer); 
         }
 
         FormatError::FormatError(const char format[], ...) never_throws

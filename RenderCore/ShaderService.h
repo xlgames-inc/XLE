@@ -162,9 +162,9 @@ namespace RenderCore
     ///
     /// The constructor will invoke background compile operations.
     /// The resulting compiled byte code can be accessed using GetByteCode()
-    /// However, GetByteCode can throw exceptions (such as ::Assets::Exceptions::PendingResource
-    /// and ::Assets::Exceptions::InvalidResource). If the background compile operation has
-    /// not completed yet, a PendingResource exception will be thrown.
+    /// However, GetByteCode can throw exceptions (such as ::Assets::Exceptions::PendingAsset
+    /// and ::Assets::Exceptions::InvalidAsset). If the background compile operation has
+    /// not completed yet, a PendingAsset exception will be thrown.
     ///
     /// Alternatively, use TryGetByteCode() to return an error code instead of throwing an
     /// exception. But note that TryGetByteCode() can still throw exceptions -- but only in

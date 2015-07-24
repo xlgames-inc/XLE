@@ -172,8 +172,8 @@ namespace SceneEngine
             context->BindPS(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
             context->BindPS(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
         }
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
 
         context->BindPS(MakeResourceList(9, ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
@@ -213,8 +213,8 @@ namespace SceneEngine
                 context->Bind(*resolveRes._perSampleMask);
                 context->Draw(4);
             } 
-            CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-            CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+            CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+            CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
             CATCH_END
         }
 
@@ -224,8 +224,8 @@ namespace SceneEngine
                 TRY {
                     (*i)->OnLightingResolvePrepare(context, parserContext, lightingResolveContext);
                 } 
-                CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-                CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+                CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+                CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
                 CATCH_END
             }
         }
@@ -284,8 +284,8 @@ namespace SceneEngine
                 TRY {
                     ResolveLights(context, parserContext, mainTargets, lightingResolveContext);
                 }
-                CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-                CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+                CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+                CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
                 CATCH_END
 
                 TRY {
@@ -324,8 +324,8 @@ namespace SceneEngine
                     context->Bind(*ambientResolveShaders._ambientLight);
                     context->Draw(4);
                 }
-                CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-                CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+                CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+                CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
                 CATCH_END
 
                     //-------- do sky --------
@@ -355,8 +355,8 @@ namespace SceneEngine
 
             }
         } 
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
 
         context->UnbindPS<ShaderResourceView>(0, 9);
@@ -455,8 +455,8 @@ namespace SceneEngine
                 context->Bind(*shader->_shader);
                 context->Draw(4);
             } 
-            CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-            CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+            CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+            CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
             CATCH_END
         }
     }

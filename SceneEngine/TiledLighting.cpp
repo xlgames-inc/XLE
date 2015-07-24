@@ -148,8 +148,8 @@ namespace SceneEngine
             context->Draw(4);
             context->UnbindPS<ShaderResourceView>(0, 4);
         } 
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { lightingParserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { lightingParserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { lightingParserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { lightingParserContext.Process(e); }
         CATCH_END
     }
 
@@ -319,8 +319,8 @@ namespace SceneEngine
 
                 return tileLightingResources._lightOutputTextureSRV;
             } 
-            CATCH(const ::Assets::Exceptions::InvalidResource& e) { lightingParserContext.Process(e); }
-            CATCH(const ::Assets::Exceptions::PendingResource& e) { lightingParserContext.Process(e); }
+            CATCH(const ::Assets::Exceptions::InvalidAsset& e) { lightingParserContext.Process(e); }
+            CATCH(const ::Assets::Exceptions::PendingAsset& e) { lightingParserContext.Process(e); }
             CATCH_END
         }
 
@@ -409,8 +409,8 @@ namespace SceneEngine
 
                 context->UnbindVS<ShaderResourceView>(0, 2);
             } 
-            CATCH(const ::Assets::Exceptions::InvalidResource& e) { lightingParserContext.Process(e); }
-            CATCH(const ::Assets::Exceptions::PendingResource& e) { lightingParserContext.Process(e); }
+            CATCH(const ::Assets::Exceptions::InvalidAsset& e) { lightingParserContext.Process(e); }
+            CATCH(const ::Assets::Exceptions::PendingAsset& e) { lightingParserContext.Process(e); }
             CATCH_END
         }
 

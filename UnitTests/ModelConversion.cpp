@@ -104,7 +104,7 @@ namespace UnitTests
 						auto& scaffold = Assets::GetAssetComp<ModelScaffold>(sampleAsset);
 						Assert::AreEqual(scaffold.ImmutableData()._geoCount, size_t(9));
 						break;
-					} CATCH(Assets::Exceptions::PendingResource&) {}
+					} CATCH(Assets::Exceptions::PendingAsset&) {}
 					CATCH_END
 
 					if ((Millisecond_Now() - startTime) > 30 * 1000) {

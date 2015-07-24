@@ -26,19 +26,19 @@ namespace RenderCore { namespace Techniques
         }
     }
 
-    void ParsingContext::Process(const ::Assets::Exceptions::InvalidResource& e)
+    void ParsingContext::Process(const ::Assets::Exceptions::InvalidAsset& e)
     {
             //  Handle a "invalid resource" exception that 
             //  occurred during rendering. Normally this will just mean
             //  reporting the invalid resource to the screen.
-        std::string id = e.ResourceId();
+        std::string id = e.Initializer();
         auto i = std::lower_bound(_invalidResources.begin(), _invalidResources.end(), id);
         if (i == _invalidResources.end() || *i != id) {
             _invalidResources.insert(i, id);
         }
     }
 
-    void ParsingContext::Process(const ::Assets::Exceptions::PendingResource& e)
+    void ParsingContext::Process(const ::Assets::Exceptions::PendingAsset& e)
     {
             //  Handle a "pending resource" exception that 
             //  occurred during rendering. Normally this will just mean
@@ -47,7 +47,7 @@ namespace RenderCore { namespace Techniques
             //  when changing rendering settings.
             //  at the moment, this will result in a bunch of allocations -- that's not
             //  ideal during error processing.
-        std::string id = e.ResourceId();
+        std::string id = e.Initializer();
         auto i = std::lower_bound(_pendingResources.begin(), _pendingResources.end(), id);
         if (i == _pendingResources.end() || *i != id) {
             _pendingResources.insert(i, id);

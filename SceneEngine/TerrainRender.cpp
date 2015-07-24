@@ -364,7 +364,7 @@ namespace SceneEngine
             if (i != end) {
                 TRY {
                     tex[c] = &ioFormat.LoadCoverage(cell._coverageFilename[i-cell._coverageIds]);
-                } CATCH (const ::Assets::Exceptions::InvalidResource& e) {
+                } CATCH (const ::Assets::Exceptions::InvalidAsset& e) {
                     parserContext.Process(e);
                 } CATCH_END
             }

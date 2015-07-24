@@ -38,7 +38,7 @@ namespace SceneEngine
         for (;;) {
             TRY {
                 return ::Assets::GetAsset<Type>(initializer);
-            } CATCH (::Assets::Exceptions::PendingResource&) {
+            } CATCH (::Assets::Exceptions::PendingAsset&) {
                 ::Assets::Services::GetAsyncMan().Update();
             } CATCH_END
         }
@@ -62,10 +62,10 @@ namespace SceneEngine
 
         if (!IsPowerOfTwo(destinationDesc.Width) || !IsPowerOfTwo(destinationDesc.Height)) {
             // only power-of-two textures supported (too difficult to merge them into a atlas otherwise)
-            Throw(::Assets::Exceptions::InvalidResource(sourceFile, "Expecting power of two texture for terrain texturing"));
+            Throw(::Assets::Exceptions::InvalidAsset(sourceFile, "Expecting power of two texture for terrain texturing"));
         }
         if (destinationDesc.Width != destinationDesc.Height) {
-            Throw(::Assets::Exceptions::InvalidResource(sourceFile, "Expecting square texture for terrain texturing"));
+            Throw(::Assets::Exceptions::InvalidAsset(sourceFile, "Expecting square texture for terrain texturing"));
         }
 
         Metal::TextureDesc2D sourceDesc(inputRes.get());
@@ -372,7 +372,7 @@ namespace SceneEngine
                     LoadTextureIntoArray(diffuseTextureArray.get(), resolvedFile, (unsigned)std::distance(atlasTextureNames.cbegin(), i));
                     RegisterFileDependency(_validationCallback, resolvedFile);
                 }
-            } CATCH (const ::Assets::Exceptions::InvalidResource&) {}
+            } CATCH (const ::Assets::Exceptions::InvalidAsset&) {}
             CATCH_END
         }
 
@@ -386,7 +386,7 @@ namespace SceneEngine
                     LoadTextureIntoArray(normalTextureArray.get(), resolvedFile, (unsigned)std::distance(atlasTextureNames.cbegin(), i));
                     RegisterFileDependency(_validationCallback, resolvedFile);
                 }
-            } CATCH (const ::Assets::Exceptions::InvalidResource&) {}
+            } CATCH (const ::Assets::Exceptions::InvalidAsset&) {}
             CATCH_END
         }
 
@@ -403,7 +403,7 @@ namespace SceneEngine
                     RegisterFileDependency(_validationCallback, resolvedFile);
                     fillInWhiteSpecular = true;
                 }
-            } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+            } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
             } CATCH_END
 
                 // on exception or missing files, we should fill int specularlity with whiteness

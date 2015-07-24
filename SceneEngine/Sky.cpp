@@ -228,8 +228,8 @@ namespace SceneEngine
                 RenderHalfCubeGeometry(context, textureParts, *res._shader);
             }
         } 
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
 
         context->Bind(RenderCore::Metal::Topology::TriangleList);
@@ -282,8 +282,8 @@ namespace SceneEngine
                 RenderHalfCubeGeometry(context, textureParts, *res._postFogShader);
             }
         } 
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
 
         context->Bind(RenderCore::Metal::Topology::TriangleList);

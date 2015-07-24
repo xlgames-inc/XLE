@@ -21,7 +21,7 @@ namespace RenderCore { namespace Techniques
     class TechniqueInterface;
 }}
 
-namespace Assets { namespace Exceptions { class InvalidResource; class PendingResource; } }
+namespace Assets { namespace Exceptions { class InvalidAsset; class PendingAsset; } }
 
 namespace SceneEngine
 {

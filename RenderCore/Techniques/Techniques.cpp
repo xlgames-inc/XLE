@@ -587,7 +587,7 @@ namespace RenderCore { namespace Techniques
             CATCH (const FormatException& e)
             {
                 ::Assets::Services::GetInvalidAssetMan().MarkInvalid(filename, e.what());
-                Throw(::Assets::Exceptions::InvalidResource(filename, e.what()));
+                Throw(::Assets::Exceptions::InvalidAsset(filename, e.what()));
             }
             CATCH_END
 
@@ -774,7 +774,7 @@ namespace RenderCore { namespace Techniques
             CATCH (const FormatException& e)
             {
                 ::Assets::Services::GetInvalidAssetMan().MarkInvalid(resourceName, e.what());
-                Throw(::Assets::Exceptions::InvalidResource(resourceName, e.what()));
+                Throw(::Assets::Exceptions::InvalidAsset(resourceName, e.what()));
             }
             CATCH_END
 

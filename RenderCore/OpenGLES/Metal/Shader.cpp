@@ -116,7 +116,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             #endif
 
-            Throw(Assets::Exceptions::InvalidResource("", ""));
+            Throw(Assets::Exceptions::InvalidAsset("", ""));
         }
 
         _underlying = std::move(newShaderIndex);
@@ -157,7 +157,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             #endif
 
-            Throw(Assets::Exceptions::InvalidResource("", ""));
+            Throw(Assets::Exceptions::InvalidAsset("", ""));
         }
 
         _underlying = std::move(newProgramIndex);

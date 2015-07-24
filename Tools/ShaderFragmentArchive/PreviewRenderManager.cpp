@@ -117,12 +117,12 @@ namespace PreviewRender
         {
             if (_shaderProgram)         { return *_shaderProgram.get(); }
 
-                // can throw a "PendingResource" or "InvalidResource"
+                // can throw a "PendingAsset" or "InvalidAsset"
             try {
                 auto program = std::make_unique<RenderCore::Metal::ShaderProgram>(std::ref(*_vertexShader), std::ref(*_pixelShader));
                 _shaderProgram = std::move(program);
                 return *program;
-            } catch (const ::Assets::Exceptions::InvalidResource& exception) {
+            } catch (const ::Assets::Exceptions::InvalidAsset& exception) {
                 _errorString = exception.what();
                 throw exception;
             }
@@ -245,8 +245,8 @@ namespace PreviewRender
 
             if (result) return DrawPreviewResult_Success;
             if (!parserContext._pendingResources.empty()) return DrawPreviewResult_Pending;
-        } catch (::Assets::Exceptions::InvalidResource&) { return DrawPreviewResult_Error; }
-        catch (::Assets::Exceptions::PendingResource&) { return DrawPreviewResult_Pending; }
+        } catch (::Assets::Exceptions::InvalidAsset&) { return DrawPreviewResult_Error; }
+        catch (::Assets::Exceptions::PendingAsset&) { return DrawPreviewResult_Pending; }
 
         return DrawPreviewResult_Error;
     }
@@ -283,7 +283,7 @@ namespace PreviewRender
             //          overhead in the main thread while shaders are still compiling
         try {
             _pimpl->GetShaderProgram();
-        } catch (const ::Assets::Exceptions::PendingResource&) {
+        } catch (const ::Assets::Exceptions::PendingAsset&) {
             return nullptr; // still pending
         }
         catch (...) {}
@@ -413,8 +413,8 @@ namespace PreviewRender
             _pimpl->_vertexShader = std::make_unique<CompiledShaderByteCode>(nativeShaderText.c_str(), "VertexShaderEntry", VS_DefShaderModel, "SHADER_NODE_EDITOR=1");
             _pimpl->_pixelShader = std::make_unique<CompiledShaderByteCode>(nativeShaderText.c_str(), "PixelShaderEntry", PS_DefShaderModel, "SHADER_NODE_EDITOR=1");
         }
-        catch (::Assets::Exceptions::PendingResource&) {}
-        catch (::Assets::Exceptions::InvalidResource&) 
+        catch (::Assets::Exceptions::PendingAsset&) {}
+        catch (::Assets::Exceptions::InvalidAsset&) 
         {
             _pimpl->_errorString = "Compile failure";
         }

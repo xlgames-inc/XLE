@@ -162,12 +162,12 @@ namespace GUILayer
                     return result;
                 }
             }
-            CATCH(const ::Assets::Exceptions::InvalidResource& e)
+            CATCH(const ::Assets::Exceptions::InvalidAsset& e)
             {
                 (void)e;
                 // LogWarning << "Invalid resource while performing ray intersection test: {" << e.what() << "}";
             }
-            CATCH(const ::Assets::Exceptions::PendingResource&) {}
+            CATCH(const ::Assets::Exceptions::PendingAsset&) {}
             CATCH_END
 
             return nullptr;
@@ -211,12 +211,12 @@ namespace GUILayer
                     return result;
                 }
             }
-            CATCH(const ::Assets::Exceptions::InvalidResource& e)
+            CATCH(const ::Assets::Exceptions::InvalidAsset& e)
             {
                 (void)e;
                 // LogWarning << "Invalid resource while performing ray intersection test: {" << e.what() << "}";
             }
-            CATCH(const ::Assets::Exceptions::PendingResource&) {}
+            CATCH(const ::Assets::Exceptions::PendingAsset&) {}
             CATCH_END
 
             return nullptr;

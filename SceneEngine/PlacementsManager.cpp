@@ -245,14 +245,14 @@ namespace SceneEngine
                 chunks.begin(), chunks.end(), 
                 [](const ChunkHeader& hdr) { return hdr._type == ChunkType_Placements; });
             if (i == chunks.end()) {
-                Throw(::Assets::Exceptions::InvalidResource(filename, "Missing correct chunks"));
+                Throw(::Assets::Exceptions::InvalidAsset(filename, "Missing correct chunks"));
             }
 
             file.Seek(i->_fileOffset, SEEK_SET);
             PlacementsHeader hdr;
             file.Read(&hdr, sizeof(hdr), 1);
             if (hdr._version != 0) {
-                Throw(::Assets::Exceptions::InvalidResource(filename, 
+                Throw(::Assets::Exceptions::InvalidAsset(filename, 
                     StringMeld<128>() << "Unexpected version number (" << hdr._version << ")"));
             }
 
@@ -458,8 +458,8 @@ namespace SceneEngine
                 RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
                 _cache->GetSharedStateSet(), _preparedRenders, RenderCore::Assets::DelayStep::OpaqueRender);
         }
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
         _cache->GetSharedStateSet().ReleaseState(context);
     }
@@ -477,8 +477,8 @@ namespace SceneEngine
                 RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
                 _cache->GetSharedStateSet(), _preparedRenders, delayStep);
         }
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
         _cache->GetSharedStateSet().ReleaseState(context);
     }
@@ -578,8 +578,8 @@ namespace SceneEngine
                     cell._cellToWorld, filterStart, filterEnd);
             }
         } 
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH (...) {} 
         CATCH_END
     }
@@ -802,8 +802,8 @@ namespace SceneEngine
             }
             _pimpl->_renderer->EndRender(context, parserContext, techniqueIndex);
         }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
         CATCH_END
     }
 
@@ -1083,7 +1083,7 @@ namespace SceneEngine
         TRY {
             auto& sourcePlacements = Assets::GetAsset<Placements>(cellName);
             return &sourcePlacements;
-        } CATCH (const Assets::Exceptions::PendingResource&) {
+        } CATCH (const Assets::Exceptions::PendingAsset&) {
             throw;
         } CATCH (const std::exception& e) {
             LogWarning << "Got invalid resource while loading placements file (" << cellName << "). Error: (" << e.what() << ").";
@@ -1106,7 +1106,7 @@ namespace SceneEngine
             TRY {
                 auto& sourcePlacements = Assets::GetAsset<Placements>(cellName);
                 placements = std::make_shared<DynamicPlacements>(sourcePlacements);
-            } CATCH (const Assets::Exceptions::PendingResource&) {
+            } CATCH (const Assets::Exceptions::PendingAsset&) {
                 throw;
             } CATCH (const std::exception& e) {
                 LogWarning << "Got invalid resource while loading placements file (" << cellName << "). If this file exists, but is corrupted, the next save will overwrite it. Error: (" << e.what() << ").";

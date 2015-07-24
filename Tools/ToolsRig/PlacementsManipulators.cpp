@@ -1328,8 +1328,8 @@ namespace ToolsRig
                         auto browserSRV = _browser->GetSRV(*devContext, ucs2Filename);
                         srv = browserSRV.first;
                     } 
-                    CATCH(const ::Assets::Exceptions::InvalidResource&) { errorMsg = "Invalid"; } 
-                    CATCH(const ::Assets::Exceptions::PendingResource&) { errorMsg = "Pending"; } 
+                    CATCH(const ::Assets::Exceptions::InvalidAsset&) { errorMsg = "Invalid"; } 
+                    CATCH(const ::Assets::Exceptions::PendingAsset&) { errorMsg = "Pending"; } 
                     CATCH_END
 
                     if (srv) {

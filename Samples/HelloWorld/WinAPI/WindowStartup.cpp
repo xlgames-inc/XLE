@@ -142,7 +142,7 @@ static void TestParser3()
 		TRY {
             scaffold.GetStaticBoundingBox();
 			break;
-		} CATCH(Assets::Exceptions::PendingResource&) {}
+		} CATCH(Assets::Exceptions::PendingAsset&) {}
 		CATCH_END
 
 		Threading::Sleep(64);

@@ -146,8 +146,8 @@ namespace GUILayer
                 });
             return true;
         }
-        CATCH (const ::Assets::Exceptions::InvalidResource&) {}
-        CATCH (const ::Assets::Exceptions::PendingResource&) {}
+        CATCH (const ::Assets::Exceptions::InvalidAsset&) {}
+        CATCH (const ::Assets::Exceptions::PendingAsset&) {}
         CATCH_END
         return false;
     }
@@ -352,8 +352,8 @@ namespace GUILayer
 
                     highlight.FinishWithOutlineAndOverlay(metalContext, highlightCol, overlayCol);
                 }
-                CATCH (const ::Assets::Exceptions::InvalidResource&) {} 
-                CATCH (const ::Assets::Exceptions::PendingResource&) {} 
+                CATCH (const ::Assets::Exceptions::InvalidAsset&) {} 
+                CATCH (const ::Assets::Exceptions::PendingAsset&) {} 
                 CATCH_END
 
             } else {

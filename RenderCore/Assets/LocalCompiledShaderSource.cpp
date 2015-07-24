@@ -205,10 +205,10 @@ namespace RenderCore { namespace Assets
     {
         auto state = GetState();
         if (state == ::Assets::AssetState::Invalid)
-            Throw(::Assets::Exceptions::InvalidResource(initializer, ""));
+            Throw(::Assets::Exceptions::InvalidAsset(initializer, ""));
 
         if (state == ::Assets::AssetState::Pending) 
-            Throw(::Assets::Exceptions::PendingResource(initializer, ""));
+            Throw(::Assets::Exceptions::PendingAsset(initializer, ""));
 
         if (depVal)
             for (const auto& i:_deps)

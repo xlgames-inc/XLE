@@ -322,7 +322,7 @@ namespace ToolsRig
                                 bindingHash,
                                 unsigned(result.size()-1), 1);
                         }
-                        CATCH (const ::Assets::Exceptions::InvalidResource&) {}
+                        CATCH (const ::Assets::Exceptions::InvalidAsset&) {}
                         CATCH_END
                     }
                 

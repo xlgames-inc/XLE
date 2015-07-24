@@ -143,8 +143,8 @@ namespace ToolsRig
 
                 }
             } 
-            CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-            CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+            CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+            CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
             CATCH_END
         }
 
@@ -410,8 +410,8 @@ namespace ToolsRig
 
             return true;
         }
-        CATCH (::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-        CATCH (::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+        CATCH (::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
+        CATCH (::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
         CATCH_END
 
         return false;

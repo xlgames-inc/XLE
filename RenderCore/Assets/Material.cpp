@@ -331,7 +331,7 @@ namespace RenderCore { namespace Assets
             // We're expecting an initialiser of the format "filename:setting"
         auto colon = XlFindCharReverse(initialiser, ':');
         if (!colon)
-            Throw(::Assets::Exceptions::InvalidResource(initialiser, ""));
+            Throw(::Assets::Exceptions::InvalidAsset(initialiser, ""));
 
         ::Assets::ResChar rawFilename[MaxPath];
         XlCopyNString(rawFilename, initialiser, colon - initialiser);
@@ -352,7 +352,7 @@ namespace RenderCore { namespace Assets
         size_t sourceFileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(_splitName._concreteFilename.c_str(), &sourceFileSize);
         if (!sourceFile)
-            Throw(::Assets::Exceptions::InvalidResource(initialiser, 
+            Throw(::Assets::Exceptions::InvalidAsset(initialiser, 
                 StringMeld<128>() << "Missing or empty file: " << _splitName._concreteFilename));
 
         Data data;
@@ -366,7 +366,7 @@ namespace RenderCore { namespace Assets
         }
 
         if (!source)
-            Throw(::Assets::Exceptions::InvalidResource(initialiser, 
+            Throw(::Assets::Exceptions::InvalidAsset(initialiser, 
                 StringMeld<256>() << "Missing material configuration: " << _splitName._settingName));
 
         _depVal = std::make_shared<::Assets::DependencyValidation>();
@@ -534,7 +534,7 @@ namespace RenderCore { namespace Assets
                 newSearchRules.AddSearchDirectory(directory);
 
                 rawParams.Resolve(result, newSearchRules, deps);
-            } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+            } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
                 // we still need to add a dependency, even if it's a missing file
                 if (deps) AddDep(*deps, RawMatSplitName(i->c_str()));
             } CATCH_END

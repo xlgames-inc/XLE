@@ -27,31 +27,31 @@ namespace Sample
 
     const RenderCore::Assets::AnimationImmutableData& CharacterModel::GetAnimationData() const  
     {
-        if (!_animationSet) throw ::Assets::Exceptions::PendingResource(AnimationSetInitialiser(), "");
+        if (!_animationSet) throw ::Assets::Exceptions::PendingAsset(AnimationSetInitialiser(), "");
         return _animationSet->ImmutableData(); 
     }
 
     const RenderCore::Assets::AnimationSet& CharacterModel::GetAnimationSet() const
     {
-        if (!_animationSet) throw ::Assets::Exceptions::PendingResource(AnimationSetInitialiser(), "");
+        if (!_animationSet) throw ::Assets::Exceptions::PendingAsset(AnimationSetInitialiser(), "");
         return _animationSet->ImmutableData()._animationSet; 
     }
 
     const RenderCore::Assets::ModelRenderer& CharacterModel::GetRenderer() const
     {
-        if (!_renderer) throw ::Assets::Exceptions::PendingResource(SkinInitialiser(), "");
+        if (!_renderer) throw ::Assets::Exceptions::PendingAsset(SkinInitialiser(), "");
         return *_renderer; 
     }
 
     const RenderCore::Assets::SkinPrepareMachine& CharacterModel::GetPrepareMachine() const
     {
-        if (!_prepareMachine) throw ::Assets::Exceptions::PendingResource(SkinInitialiser(), "");
+        if (!_prepareMachine) throw ::Assets::Exceptions::PendingAsset(SkinInitialiser(), "");
         return *_prepareMachine; 
     }
 
     const RenderCore::Assets::ModelScaffold& CharacterModel::GetModelScaffold() const
     {
-        if (!_model) throw ::Assets::Exceptions::PendingResource(SkinInitialiser(), "");
+        if (!_model) throw ::Assets::Exceptions::PendingAsset(SkinInitialiser(), "");
         return *_model; 
     }
 

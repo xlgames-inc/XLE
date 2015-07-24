@@ -299,7 +299,7 @@ namespace RenderCore { namespace Assets
             i->first = hashName;
             TRY {
                 i->second = (uint32)DeferredShaderResource::LoadFormat(textureName.c_str());
-            } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+            } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
                 i->second = RenderCore::Metal::NativeFormat::Unknown;
             } CATCH_END
             ++hdr._count;

@@ -361,7 +361,7 @@ namespace RenderCore { namespace Assets
                             boundTextures[dsti] = &::Assets::GetAssetDep<DeferredShaderResource>(resourceName.c_str());
                             DEBUG_ONLY(boundTextureNames[dsti] = resourceName);
                         }
-                    } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+                    } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
                         LogWarning << "Warning -- shader resource (" << resourceName << ") couldn't be found";
                     } CATCH_END
                 }
@@ -1035,8 +1035,8 @@ namespace RenderCore { namespace Assets
             }
 
         } 
-        CATCH(::Assets::Exceptions::InvalidResource& e) { context._parserContext->Process(e); }
-        CATCH(::Assets::Exceptions::PendingResource& e) { context._parserContext->Process(e); }
+        CATCH(::Assets::Exceptions::InvalidAsset& e) { context._parserContext->Process(e); }
+        CATCH(::Assets::Exceptions::PendingAsset& e) { context._parserContext->Process(e); }
         CATCH_END
     }
 
@@ -1610,11 +1610,11 @@ namespace RenderCore { namespace Assets
     {
         if (_marker) {
             if (_marker->GetState() == ::Assets::AssetState::Invalid) {
-                Throw(::Assets::Exceptions::InvalidResource(_marker->Initializer(), ""));
+                Throw(::Assets::Exceptions::InvalidAsset(_marker->Initializer(), ""));
             } else if (_marker->GetState() == ::Assets::AssetState::Pending) {
                     // we need to throw immediately on pending resource
                     // this object is useless while it's pending.
-                Throw(::Assets::Exceptions::PendingResource(_marker->Initializer(), ""));
+                Throw(::Assets::Exceptions::PendingAsset(_marker->Initializer(), ""));
             }
 
                 // hack --  Resolve needs to be called by const methods (like "GetStaticBoundingBox")

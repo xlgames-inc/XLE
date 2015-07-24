@@ -101,11 +101,11 @@ namespace SceneEngine
             //  a huge 2D array of height values
         auto mappedFile = std::make_unique<MemoryMappedFile>(filename, 0, MemoryMappedFile::Access::Read|MemoryMappedFile::Access::Write, BasicFile::ShareMode::Read);
         if (!mappedFile->IsValid())
-            Throw(::Assets::Exceptions::InvalidResource(filename, "Failed while openning uber surface file"));
+            Throw(::Assets::Exceptions::InvalidAsset(filename, "Failed while openning uber surface file"));
         
         auto& hdr = *(TerrainUberHeader*)mappedFile->GetData();
         if (hdr._magic != TerrainUberHeader::Magic)
-            Throw(::Assets::Exceptions::InvalidResource(filename, "Uber surface file appears to be corrupt"));
+            Throw(::Assets::Exceptions::InvalidAsset(filename, "Uber surface file appears to be corrupt"));
 
         _width = hdr._width;
         _height = hdr._height;
@@ -586,8 +586,8 @@ namespace SceneEngine
             SetupVertexGeneratorShader(context);
             context->Draw(4);
         } 
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
 
         context->UnbindPS<RenderCore::Metal::ShaderResourceView>(5, 1);
@@ -1059,8 +1059,8 @@ namespace SceneEngine
                 worldSpaceOffset, _pimpl->_erosionSim._bufferCount-1, 
                 ShallowWaterSim::BorderMode::Surface, true);
         } 
-        CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-        CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+        CATCH (const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
+        CATCH (const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
         CATCH_END
     }
 

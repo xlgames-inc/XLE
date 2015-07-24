@@ -15,7 +15,7 @@ namespace RenderCore { namespace Assets
     /// This is used to load a file from disk, as use as a shader resource (eg, a texture).
     /// Disk access and GPU upload are performed in background threads. While
     /// the resource is being loaded and upload, GetShaderResource() will throw
-    /// PendingResource().
+    /// PendingAsset().
     ///
     /// The filename can have flags appended after a colon. For example:
     ///   texture.dds:l1
@@ -29,7 +29,7 @@ namespace RenderCore { namespace Assets
     /// not know immediately if the requested file is missing (or invalid). So, if you
     /// attempt to load a texture, but the texture file is missing, the construction will
     /// appear to complete successfully. However, eventually GetShaderResource() will
-    /// throw an InvalidResource() exception.
+    /// throw an InvalidAsset() exception.
     ///
     /// The system can load a variety of texture formats, and can perform data massaging as
     /// necessary (for example, building mip-map). This work will happen within the buffer

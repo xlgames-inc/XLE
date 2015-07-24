@@ -92,8 +92,8 @@ namespace SceneEngine
             // context->BindPS(MakeResourceList(17, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchnorm.dds:L").GetShaderResource()));
             // context->BindPS(MakeResourceList(18, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchocc.dds:L").GetShaderResource()));
         }
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
     }
 
@@ -320,8 +320,8 @@ namespace SceneEngine
                 context->UnbindVS<ShaderResourceView>(0, 1);
 
             } 
-            CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-            CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+            CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+            CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
             CATCH_END
         }
     }
@@ -541,8 +541,8 @@ namespace SceneEngine
                 LightingParser_LateGBufferRender(context, parserContext, mainTargets);
                 LightingParser_ResolveGBuffer(context, parserContext, mainTargets, lightingResTargets);
             } 
-            CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(context); }
-            CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(context); }
+            CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(context); }
+            CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(context); }
             CATCH_END
 
                 // Post lighting resolve operations... (must rebind the depth buffer)
@@ -570,8 +570,8 @@ namespace SceneEngine
                 }
 
             } 
-            CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(context); }
-            CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(context); }
+            CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(context); }
+            CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(context); }
             CATCH_END
 
             sceneDepthsSRV              = mainTargets._msaaDepthBufferSRV;
@@ -758,8 +758,8 @@ namespace SceneEngine
    
                 /////////////////////////////////////////////
         }
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
 
         savedTargets.ResetToOldTargets(context);
@@ -814,8 +814,8 @@ namespace SceneEngine
             LightingParser_SetGlobalTransform(
                 context, parserContext, camera, qualitySettings._dimensions[0], qualitySettings._dimensions[1]);
         } 
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
     }
 
@@ -835,8 +835,8 @@ namespace SceneEngine
                 TRY {
                     (*i)->OnPreScenePrepare(metalContext.get(), parserContext);
                 }
-                CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-                CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+                CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+                CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
                 CATCH_END
             }
 
@@ -847,8 +847,8 @@ namespace SceneEngine
         TRY {
             LightingParser_MainScene(metalContext.get(), parserContext, qualitySettings);
         }
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
 
         parserContext.SetSceneParser(nullptr);

@@ -287,7 +287,7 @@ namespace SceneEngine
                 _nodeFileOffsets = std::move(fileOffsetsBreadthFirst);
                 _validationCallback = std::move(validationCallback);
             } 
-            CATCH (const Utility::Exceptions::IOException&) { Throw(::Assets::Exceptions::InvalidResource(filename, "Missing terrain texture")); }
+            CATCH (const Utility::Exceptions::IOException&) { Throw(::Assets::Exceptions::InvalidAsset(filename, "Missing terrain texture")); }
             CATCH_END
         }
 

@@ -126,8 +126,8 @@ namespace SceneEngine
                 context->Draw(rainSpawnConstaints.particleCountWidth*rainSpawnConstaints.particleCountWidth);
             }
         } 
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
 
         context->Bind(RenderCore::Metal::Topology::TriangleList);
@@ -309,8 +309,8 @@ namespace SceneEngine
             context->Draw(particleCountWidth*particleCountWidth);
             context->UnbindVS<Metal::ShaderResourceView>(3, 1);
         }
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH(...) {}
         CATCH_END
 
@@ -463,8 +463,8 @@ namespace SceneEngine
 
             context->UnbindVS<Metal::ShaderResourceView>(3, 1);
         }
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH(...) {}
         CATCH_END
 

@@ -149,8 +149,8 @@ namespace PlatformRig
             TRY {
                 (*i)->RenderToScene(device, parserContext);
             } 
-            CATCH (::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-            CATCH (::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+            CATCH (::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
+            CATCH (::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
             CATCH_END
         }
     }

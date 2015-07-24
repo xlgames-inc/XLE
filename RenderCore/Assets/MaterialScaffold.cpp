@@ -51,7 +51,7 @@ namespace RenderCore { namespace Assets
             size_t sourceFileSize = 0;
             auto sourceFile = LoadFileAsMemoryBlock(_rawModelMaterial, &sourceFileSize);
             if (!sourceFile)
-                Throw(::Assets::Exceptions::InvalidResource(sourceModel, 
+                Throw(::Assets::Exceptions::InvalidAsset(sourceModel, 
                     StringMeld<128>() << "Missing or empty file: " << _rawModelMaterial));
 
             Data data;
@@ -136,7 +136,7 @@ namespace RenderCore { namespace Assets
                 resName << sourceModel << ":" << *i;
                 auto& rawMat = ::Assets::GetAssetDep<RawMaterial>((Meld() << modelMat._rawModelMaterial << ":" << *i).get());
                 rawMat.Resolve(resMat, searchRules, &deps);
-            } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+            } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
                 AddDep(deps, modelMat._rawModelMaterial);        // we need need a dependency (even if it's a missing file)
             } CATCH_END
 
@@ -146,7 +146,7 @@ namespace RenderCore { namespace Assets
                 resName << ";" << meld;
                 auto& rawMat = ::Assets::GetAssetDep<RawMaterial>(meld.get());
                 rawMat.Resolve(resMat, searchRules, &deps);
-            } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+            } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
                 AddDep(deps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
             } CATCH_END
 
@@ -156,7 +156,7 @@ namespace RenderCore { namespace Assets
                 resName << ";" << meld;
                 auto& rawMat = ::Assets::GetAssetDep<RawMaterial>(meld.get());
                 rawMat.Resolve(resMat, searchRules, &deps);
-            } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+            } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
                 AddDep(deps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
             } CATCH_END
 
@@ -260,7 +260,7 @@ namespace RenderCore { namespace Assets
     MaterialScaffold::MaterialScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
     {
         if (!marker || marker->GetState() == ::Assets::AssetState::Invalid) {
-            Throw(::Assets::Exceptions::InvalidResource("", "MaterialScaffold not ready"));
+            Throw(::Assets::Exceptions::InvalidAsset("", "MaterialScaffold not ready"));
         }
 
         const auto* filename = marker->_sourceID0;

@@ -161,7 +161,7 @@ namespace SceneEngine
             assert(collisionObject);
             return collisionObject->GetHeight(cellFrac) + coords.TerrainOffset()[2];
 
-        } CATCH(const ::Assets::Exceptions::PendingResource&) {
+        } CATCH(const ::Assets::Exceptions::PendingAsset&) {
         } CATCH(const std::exception&) {
             // we can sometimes get missing files. Just return a default height
             LogWarning << "Error when querying terrain height at " << queryPosition[0] << ", " << queryPosition[1];

@@ -11,7 +11,7 @@
 #include "../Metal/Buffer.h"
 #include "../../Utility/MemoryUtils.h"
 
-namespace Assets { namespace Exceptions { class InvalidResource; class PendingResource; }}
+namespace Assets { namespace Exceptions { class InvalidAsset; class PendingAsset; }}
 
 namespace RenderCore { namespace Techniques 
 {
@@ -35,8 +35,8 @@ namespace RenderCore { namespace Techniques
         std::string                 _errorString;
         std::vector<std::string>    _pendingResources;
         std::vector<std::string>    _invalidResources;
-        void                        Process(const ::Assets::Exceptions::InvalidResource& e);
-        void                        Process(const ::Assets::Exceptions::PendingResource& e);
+        void                        Process(const ::Assets::Exceptions::InvalidAsset& e);
+        void                        Process(const ::Assets::Exceptions::PendingAsset& e);
 
         ParsingContext(const TechniqueContext& techniqueContext);
         ~ParsingContext();

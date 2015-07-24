@@ -337,9 +337,9 @@ namespace Overlays
                 XlBasename(baseName, dimof(baseName), (const char*)utf8Filename);
                 labels.push_back(std::make_pair(std::string(baseName), outputRect));
 
-            } CATCH(const ::Assets::Exceptions::InvalidResource& e) {
-                labels.push_back(std::make_pair(std::string("Invalid res: ") + e.ResourceId(), outputRect));
-            } CATCH(const ::Assets::Exceptions::PendingResource&) {
+            } CATCH(const ::Assets::Exceptions::InvalidAsset& e) {
+                labels.push_back(std::make_pair(std::string("Invalid res: ") + e.Initializer(), outputRect));
+            } CATCH(const ::Assets::Exceptions::PendingAsset&) {
                 labels.push_back(std::make_pair(std::string("Pending!"), outputRect));
             } CATCH(...) {
                 labels.push_back(std::make_pair(std::string("Unknown exception"), outputRect));

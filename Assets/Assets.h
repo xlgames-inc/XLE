@@ -218,7 +218,7 @@ namespace Assets
                             GetAsset<true, false, AssetType>(std::forward<Params>(initialisers)...), 
                             hash, assetSet.GetTypeCode(), 
                             identifier, undoQueue);
-                    } CATCH (const Assets::Exceptions::InvalidResource&) {
+                    } CATCH (const Assets::Exceptions::InvalidAsset&) {
                         constructNewAsset = true;
                     } CATCH_END
 

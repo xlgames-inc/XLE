@@ -287,12 +287,12 @@ namespace Sample
                 //  file into our run-time format in a file in the intermediate store.
                 //
                 //  The compile can occur in a background thread. When this happens,
-                //  we will get thrown a Assets::Exceptions::PendingResource exception
+                //  we will get thrown a Assets::Exceptions::PendingAsset exception
                 //  until the compile is finished. We aware that some assets that are
-                //  compiled or loaded in the background can throw PendingResource when
+                //  compiled or loaded in the background can throw PendingAsset when
                 //  they are not ready!
                 //
-                //  We can also get a Assets::Exceptions::InvalidResource if asset can
+                //  We can also get a Assets::Exceptions::InvalidAsset if asset can
                 //  never be correctly loaded (eg, missing file or something)
             const char sampleAsset[] = "game/model/galleon/galleon.dae";
             const char sampleMaterial[] = "game/model/galleon/galleon.material";

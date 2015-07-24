@@ -85,8 +85,8 @@ namespace GUILayer
 				TRY {
                     _editorScene->_terrainManager->Render(metalContext, parserContext, techniqueIndex);
                 }
-                CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-                CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+                CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
+                CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
                 CATCH_END
 			}
 
@@ -110,8 +110,8 @@ namespace GUILayer
                     _editorScene->_shallowSurfaceManager->RenderDebugging(
                         *metalContext, parserContext, techniqueIndex, surfaceHeights.get());
                 }
-                CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-                CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+                CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
+                CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
                 CATCH_END
             }
         }

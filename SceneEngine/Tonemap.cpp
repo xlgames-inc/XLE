@@ -435,8 +435,8 @@ namespace SceneEngine
             }
             resources._calculateInputsSucceeded = true;
         } 
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); resources._calculateInputsSucceeded = false; }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); resources._calculateInputsSucceeded = false; }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); resources._calculateInputsSucceeded = false; }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); resources._calculateInputsSucceeded = false; }
         CATCH(...) { resources._calculateInputsSucceeded = false; }
         CATCH_END
 
@@ -585,8 +585,8 @@ namespace SceneEngine
                         }
 
                     } 
-                    CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-                    CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+                    CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+                    CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
                     CATCH(...) {
                         // (in this case, we'll fall back to using a copy shader)
                     } CATCH_END
@@ -605,8 +605,8 @@ namespace SceneEngine
             }
             context->Draw(4);
         } 
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
 
         savedStates.ResetToOldStates(context);
