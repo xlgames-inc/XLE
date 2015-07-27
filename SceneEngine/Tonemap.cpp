@@ -911,14 +911,6 @@ namespace SceneEngine
 
     ToneMapSettings::ToneMapSettings() {}
 
-    static Float3 AsFloat3Color(unsigned packedColor)
-    {
-        return Float3(
-            (float)((packedColor >> 16) & 0xff) / 255.f,
-            (float)((packedColor >>  8) & 0xff) / 255.f,
-            (float)(packedColor & 0xff) / 255.f);
-    }
-
     ToneMapSettings::ToneMapSettings(const ParameterBox& paramBox)
     {
         auto defaults = DefaultToneMapSettings();

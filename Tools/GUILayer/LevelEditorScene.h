@@ -114,6 +114,9 @@ namespace GUILayer
         ExportResult^ ExportEnv(EntityInterface::DocumentId docId, System::String^ destinationFile);
         ExportPreview^ PreviewExportEnv(EntityInterface::DocumentId docId);
 
+        ExportResult^ ExportGameObjects(EntityInterface::DocumentId docId, System::String^ destinationFile);
+        ExportPreview^ PreviewExportGameObjects(EntityInterface::DocumentId docId);
+
         ExportResult^ ExportPlacements(EntityInterface::DocumentId placementsDoc, System::String^ destinationFile);
         ExportPreview^ PreviewExportPlacements(EntityInterface::DocumentId placementsDoc);
 

@@ -10,6 +10,9 @@
 #include "../SceneEngine/LightDesc.h"
 #include "../SceneEngine/SceneParser.h"
 #include "../SceneEngine/ToneMap.h"
+#include "../SceneEngine/VolumetricFog.h"
+#include "../SceneEngine/Ocean.h"
+#include "../SceneEngine/DeepOceanSim.h"
 
 namespace PlatformRig
 {
@@ -32,6 +35,10 @@ namespace PlatformRig
             DefaultShadowFrustumSettings _shadowFrustumSettings;
         };
         std::vector<ShadowProj> _shadowProj;
+
+        SceneEngine::VolumetricFogConfig::Renderer _volFogRenderer;
+        SceneEngine::OceanLightingSettings _oceanLighting;
+        SceneEngine::DeepOceanSimSettings _deepOceanSim;
     };
 
     /// <summary>Simple & partial implementation of the ISceneParser interface<summary>

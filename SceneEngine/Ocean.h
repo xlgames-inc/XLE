@@ -10,6 +10,8 @@
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../Math/Matrix.h"
 
+namespace Utility { class ParameterBox; }
+
 namespace SceneEngine
 {
     class LightingParserContext;
@@ -48,6 +50,7 @@ namespace SceneEngine
         unsigned    _dummy[3];
 
         OceanLightingSettings();
+        OceanLightingSettings(const Utility::ParameterBox& params);
     };
 
     extern RenderCore::Metal::ShaderResourceView OceanReflectionResource;

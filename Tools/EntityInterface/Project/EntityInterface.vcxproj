@@ -104,6 +104,7 @@
   <ItemGroup>
     <ClCompile Include="..\EntityInterface.cpp" />
     <ClCompile Include="..\EnvironmentSettings.cpp" />
+    <ClCompile Include="..\GameObjects.cpp" />
     <ClCompile Include="..\RetainedEntities.cpp" />
     <ClCompile Include="..\PlacementEntities.cpp" />
     <ClCompile Include="..\TerrainEntities.cpp" />
@@ -112,6 +113,7 @@
   <ItemGroup>
     <ClInclude Include="..\EntityInterface.h" />
     <ClInclude Include="..\EnvironmentSettings.h" />
+    <ClInclude Include="..\GameObjects.h" />
     <ClInclude Include="..\RetainedEntities.h" />
     <ClInclude Include="..\PlacementEntities.h" />
     <ClInclude Include="..\TerrainEntities.h" />

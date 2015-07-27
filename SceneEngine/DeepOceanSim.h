@@ -13,6 +13,7 @@
 #include <vector>
 
 namespace BufferUploads { class ResourceLocator; }
+namespace Utility { class ParameterBox; }
 
 namespace SceneEngine
 {
@@ -40,6 +41,7 @@ namespace SceneEngine
         unsigned    _foamDecrease;
 
         DeepOceanSimSettings();
+        DeepOceanSimSettings(const Utility::ParameterBox& params);
     };
 
     class DeepOceanSim

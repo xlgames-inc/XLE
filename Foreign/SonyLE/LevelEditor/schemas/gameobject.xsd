@@ -102,7 +102,8 @@
   
   <xs:complexType name="gameObjectFolderType">
     <xs:annotation>
-      <xs:appinfo>        
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="GameObjectFolder"/>
         <scea.dom.editors name="GameObjectFolder" image="LevelEditorCore.Resources.gameObjectFolder.png" menuText="Game Object Folder" description="Game Object Folder" expand="true" category="Level Tools"/>
         <scea.dom.editors.attribute name="name" displayName="Name" description="Unique Name of Game Object Folder" category="General"/>
         <scea.dom.editors.attribute name="visible" displayName="Visible" description="Whether item is visible in Design View" category="Display" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
@@ -127,22 +128,8 @@
   <xs:complexType name="gameType">
     <xs:annotation>
       <xs:appinfo>
-        <LeGe.NativeType nativeName="GameLevel"/>
-        <LeGe.NativeProperty name="name" nativeName="Name" nativeType="wchar_t*" access="set"/>
-        <LeGe.NativeProperty name="fogEnabled" nativeName="FogEnabled" nativeType="bool" access="set"/>
-        <LeGe.NativeProperty name="fogColor" nativeName="FogColor" nativeType="int" access="set"/>
-        <LeGe.NativeProperty name="fogRange" nativeName="FogRange" nativeType="float" access="set"/>
-        <LeGe.NativeProperty name="fogDensity" nativeName="FogDensity" nativeType="float" access="set"/>                        
         <scea.dom.editors name="Game" image="LevelEditorCore.Resources.Document16.png" menuText="Game" description="Game"/>
         <scea.dom.editors.attribute name="name" displayName="Name" description="Unique name of Game"/>
-
-        <scea.dom.editors.attribute name="fogEnabled" displayName="FogEnabled" description="Enable/Disable global fog" category="Fog" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
-        <scea.dom.editors.attribute name="fogColor" displayName="FogColor" description="Fog color" category="Fog"
-                                    editor="Sce.Atf.Controls.PropertyEditing.ColorEditor,Atf.Gui" 
-                                    converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
-        <scea.dom.editors.attribute name="fogDensity" displayName="FogDensity" description="Fog density" category="Fog"/>
-        <scea.dom.editors.attribute name="fogRange" displayName="FogRange" description="Fog range" category="Fog"/>
-        
       </xs:appinfo>
     </xs:annotation>
     <xs:sequence>
@@ -153,11 +140,6 @@
       <xs:element name="grid" type="gridType" minOccurs="0" maxOccurs="1"/>
     </xs:sequence>
     <xs:attribute name="name" type="xs:ID" />
-    <xs:attribute name="fogEnabled" type="xs:boolean" default="true"/>
-    <xs:attribute name="fogColor" type="xs:int" default="-6901028"/>
-    <xs:attribute name="fogRange" type="xs:float" default="4000"/>
-    <xs:attribute name="fogDensity" type="xs:float" default="0.33"/>
-    
   </xs:complexType>
 
   <xs:element name="game" type="gameType"/>

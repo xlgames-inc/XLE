@@ -38,11 +38,7 @@ namespace LevelEditorXLE.Terrain
             info.Label = "Terrain";
         }
 
-        public static DomNode Create()
-        {
-            return new DomNode(TerrainST.Type);
-        }
-
+        public static DomNode Create() { return new DomNode(TerrainST.Type); }
         public static DomNode CreateWithConfigure()
         {
             var result = new DomNode(TerrainST.Type);
@@ -148,20 +144,9 @@ namespace LevelEditorXLE.Terrain
             set { DomNode.SetChild(TerrainST.baseTextureChild, value); }
         }
 
-        private static uint ClampNodeDimensions(uint input)
-        {
-            return input.Clamp(1u, 1024u);
-        }
-
-        private static uint ClampCellTreeDepth(uint input)
-        {
-            return input.Clamp(1u, 16u);
-        }
-
-        private static bool IsDerivedFrom(DomNode node, DomNodeType type)
-        {
-            return node.Type.Lineage.FirstOrDefault(t => t == type) != null;
-        }
+        private static uint ClampNodeDimensions(uint input)                 { return input.Clamp(1u, 1024u); }
+        private static uint ClampCellTreeDepth(uint input)                  { return input.Clamp(1u, 16u); }
+        private static bool IsDerivedFrom(DomNode node, DomNodeType type)   { return node.Type.Lineage.FirstOrDefault(t => t == type) != null; }
 
         public bool CanAddChild(object child)
         {
@@ -171,7 +156,6 @@ namespace LevelEditorXLE.Terrain
                 ||  IsDerivedFrom(domNode, Schema.abstractTerrainMaterialDescType.Type)
                 ;
         }
-
         public bool AddChild(object child)
         {
             var domNode = child.As<DomNode>();
@@ -371,7 +355,7 @@ namespace LevelEditorXLE.Terrain
                         progress);
                 }
             }
-            catch { }
+            catch {}
 
             sceneMan.ReloadTerrain();
         }
@@ -399,7 +383,7 @@ namespace LevelEditorXLE.Terrain
                         GradFlagSlopeThreshold0, GradFlagSlopeThreshold1, GradFlagSlopeThreshold2, progress);
                 }
             }
-            catch { }
+            catch {}
 
             sceneMan.ReloadTerrain();
         }

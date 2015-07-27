@@ -18,6 +18,7 @@
 #include "../EntityInterface/RetainedEntities.h"
 #include "../EntityInterface/EnvironmentSettings.h"
 #include "../EntityInterface/VegetationSpawnEntities.h"
+#include "../EntityInterface/GameObjects.h"
 #include "../ToolsRig/PlacementsManipulators.h"     // just needed for destructors referenced in PlacementGobInterface.h
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../../SceneEngine/PlacementsManager.h"
@@ -254,6 +255,31 @@ namespace GUILayer
         // }
 
         return result;
+    }
+
+    static auto WriteGameObjects(
+        OutputStream& stream, uint64 docId, 
+        EntityInterface::RetainedEntities* flexObjects) -> EditorSceneManager::ExportPreview::Type
+    {
+        OutputStreamFormatter formatter(stream);
+        EntityInterface::ExportGameObjects(formatter, *flexObjects, docId);
+        return EditorSceneManager::ExportPreview::Type::Text;
+    }
+
+    auto EditorSceneManager::ExportGameObjects(
+        EntityInterface::DocumentId docId, 
+        System::String^ destinationFile) -> ExportResult^
+    {
+        return ExportViaStream(
+            "game objects", destinationFile,
+            std::bind(WriteEnvSettings, _1, docId, _scene->_flexObjects.get()));
+    }
+
+    auto EditorSceneManager::PreviewExportGameObjects(EntityInterface::DocumentId docId) -> ExportPreview^
+    {
+        return PreviewViaStream(
+            "game objects",
+            std::bind(WriteGameObjects, _1, docId, _scene->_flexObjects.get()));
     }
 
     static auto WriteTerrainCachedData(OutputStream& stream, SceneEngine::TerrainManager* terrainMan) -> EditorSceneManager::ExportPreview::Type

@@ -47,6 +47,10 @@ namespace EntityInterface
         static const auto* DirectionalLight = (const utf8*)"DirectionalLight";
         static const auto* ToneMapSettings = (const utf8*)"ToneMapSettings";
         static const auto* ShadowFrustumSettings = (const utf8*)"ShadowFrustumSettings";
+
+        static const auto* OceanLightingSettings = (const utf8*)"OceanLightingSettings";
+        static const auto* OceanSettings = (const utf8*)"OceanSettings";
+        static const auto* FogVolumeRenderer = (const utf8*)"FogVolumeRenderer";
     }
     
     namespace Attribute
@@ -120,8 +124,7 @@ namespace EntityInterface
         return std::move(result);
     }
 
-    EnvSettingsVector BuildEnvironmentSettings(
-        const RetainedEntities& flexGobInterface)
+    EnvSettingsVector BuildEnvironmentSettings(const RetainedEntities& flexGobInterface)
     {
         EnvSettingsVector result;
 
@@ -142,12 +145,6 @@ namespace EntityInterface
             const RetainedEntity& obj,
             const RetainedEntities& entities)
     {
-        // static const auto nameHash = ParameterBox::MakeParameterNameHash((const utf8*)"Name");
-        // const auto bufferSize = 256u;
-        // StringMeld<bufferSize, CharType> name;
-        // if (!obj._properties.GetString(nameHash, const_cast<CharType*>(name.get()), bufferSize))
-        //     name << obj._id;
-
         auto name = Conversion::Convert<std::basic_string<CharType>>(entities.GetTypeName(obj._type));
         auto eleId = formatter.BeginElement(AsPointer(name.cbegin()), AsPointer(name.cend()));
         if (!obj._children.empty()) formatter.NewLine();    // properties can continue on the same line, but only if we don't have children
@@ -238,6 +235,7 @@ namespace EntityInterface
                         lightFrustumLink.push_back(frustumLink);
 
                     } else if (!XlComparePrefix(EntityTypeName::ShadowFrustumSettings, name._start, name._end - name._start)) {
+
                         ParameterBox params(formatter);
                         if (params.GetString(Attribute::Name, buffer, dimof(buffer))) {
                             auto h = Hash64((const char*)buffer);
@@ -249,6 +247,13 @@ namespace EntityInterface
                                     i, std::make_pair(h, PlatformRig::DefaultShadowFrustumSettings(params)));
                             }
                         }
+
+                    } else if (!XlComparePrefix(EntityTypeName::OceanLightingSettings, name._start, name._end - name._start)) {
+                        result._oceanLighting = OceanLightingSettings(ParameterBox(formatter));
+                    } else if (!XlComparePrefix(EntityTypeName::OceanSettings, name._start, name._end - name._start)) {
+                        result._deepOceanSim = DeepOceanSimSettings(ParameterBox(formatter));
+                    } else if (!XlComparePrefix(EntityTypeName::FogVolumeRenderer, name._start, name._end - name._start)) {
+                        result._volFogRenderer = VolumetricFogConfig::Renderer(formatter);
                     } else
                         formatter.SkipElement();
                     
@@ -306,96 +311,18 @@ namespace EntityInterface
         }
     }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static Float3 AsFloat3Color(unsigned packedColor)
+    static SceneEngine::DeepOceanSimSettings BuildOceanSettings(
+        const RetainedEntities& sys, const RetainedEntity& obj)
     {
-        return Float3(
-            (float)((packedColor >> 16) & 0xff) / 255.f,
-            (float)((packedColor >>  8) & 0xff) / 255.f,
-            (float)(packedColor & 0xff) / 255.f);
+        return SceneEngine::DeepOceanSimSettings(obj._properties);
     }
 
-    static SceneEngine::DeepOceanSimSettings BuildOceanSettings(const RetainedEntities& sys, const RetainedEntity& obj)
+    static SceneEngine::OceanLightingSettings BuildOceanLightingSettings(
+        const RetainedEntities& sys, const RetainedEntity& obj)
     {
-        ParamName(Enable);
-        ParamName(WindAngle);
-        ParamName(WindVelocity);
-        ParamName(PhysicalDimensions);
-        ParamName(GridDimensions);
-        ParamName(StrengthConstantXY);
-        ParamName(StrengthConstantZ);
-        ParamName(DetailNormalsStrength);
-        ParamName(SpectrumFade);
-        ParamName(ScaleAgainstWind);
-        ParamName(SuppressionFactor);
-        ParamName(GridShiftSpeed);
-        ParamName(BaseHeight);
-        ParamName(FoamThreshold);
-        ParamName(FoamIncreaseSpeed);
-        ParamName(FoamIncreaseClamp);
-        ParamName(FoamDecrease);
-
-        SceneEngine::DeepOceanSimSettings result;
-        result._enable = obj._properties.GetParameter(Enable, result._enable);
-        result._windAngle[0] = obj._properties.GetParameter(WindAngle, result._windAngle[0] * (180.f / gPI)) * (gPI / 180.f);
-        result._windVelocity[0] = obj._properties.GetParameter(WindVelocity, result._windVelocity[0]);
-        result._physicalDimensions = obj._properties.GetParameter(PhysicalDimensions, result._physicalDimensions);
-        result._gridDimensions = obj._properties.GetParameter(GridDimensions, result._gridDimensions);
-        result._strengthConstantXY = obj._properties.GetParameter(StrengthConstantXY, result._strengthConstantXY);
-        result._strengthConstantZ = obj._properties.GetParameter(StrengthConstantZ, result._strengthConstantZ);
-        result._detailNormalsStrength = obj._properties.GetParameter(DetailNormalsStrength, result._detailNormalsStrength);
-        result._spectrumFade = obj._properties.GetParameter(SpectrumFade, result._spectrumFade);
-        result._scaleAgainstWind[0] = obj._properties.GetParameter(ScaleAgainstWind, result._scaleAgainstWind[0]);
-        result._suppressionFactor[0] = obj._properties.GetParameter(SuppressionFactor, result._suppressionFactor[0]);
-        result._gridShiftSpeed = obj._properties.GetParameter(GridShiftSpeed, result._gridShiftSpeed);
-        result._baseHeight = obj._properties.GetParameter(BaseHeight, result._baseHeight);
-        result._foamThreshold = obj._properties.GetParameter(FoamThreshold, result._foamThreshold);
-        result._foamIncreaseSpeed = obj._properties.GetParameter(FoamIncreaseSpeed, result._foamIncreaseSpeed);
-        result._foamIncreaseClamp = obj._properties.GetParameter(FoamIncreaseClamp, result._foamIncreaseClamp);
-        result._foamDecrease = obj._properties.GetParameter(FoamDecrease, result._foamDecrease);
-        return result;
-    }
-
-    static SceneEngine::OceanLightingSettings BuildOceanLightingSettings(const RetainedEntities& sys, const RetainedEntity& obj)
-    {
-        ParamName(SpecularReflectionBrightness);
-        ParamName(FoamBrightness);
-        ParamName(OpticalThicknessScalar);
-        ParamName(OpticalThicknessColor);
-        ParamName(SkyReflectionBrightness);
-        ParamName(SpecularPower);
-        ParamName(UpwellingScale);
-        ParamName(RefractiveIndex);
-        ParamName(ReflectionBumpScale);
-        ParamName(DetailNormalFrequency);
-        ParamName(SpecularityFrequency);
-        ParamName(MatSpecularMin);
-        ParamName(MatSpecularMax);
-        ParamName(MatRoughness);
-
-        SceneEngine::OceanLightingSettings result;
-        result._specularReflectionBrightness = obj._properties.GetParameter(SpecularReflectionBrightness, result._specularReflectionBrightness);
-        result._foamBrightness = obj._properties.GetParameter(FoamBrightness, result._foamBrightness);
-
-        auto otColor = obj._properties.GetParameter<unsigned>(OpticalThicknessColor);
-        auto otScalar = obj._properties.GetParameter<float>(OpticalThicknessScalar);
-        if (otColor.first && otScalar.first) {
-            result._opticalThickness = AsFloat3Color(otColor.second) * otScalar.second;
-        }
-
-        result._skyReflectionBrightness = obj._properties.GetParameter(SkyReflectionBrightness, result._skyReflectionBrightness);
-        result._specularPower = obj._properties.GetParameter(SpecularPower, result._specularPower);
-        result._upwellingScale = obj._properties.GetParameter(UpwellingScale, result._upwellingScale);
-        result._refractiveIndex = obj._properties.GetParameter(RefractiveIndex, result._refractiveIndex);
-        result._reflectionBumpScale = obj._properties.GetParameter(ReflectionBumpScale, result._reflectionBumpScale);
-        result._detailNormalFrequency = obj._properties.GetParameter(DetailNormalFrequency, result._detailNormalFrequency);
-        result._specularityFrequency = obj._properties.GetParameter(SpecularityFrequency, result._specularityFrequency);
-        result._matSpecularMin = obj._properties.GetParameter(MatSpecularMin, result._matSpecularMin);
-        result._matSpecularMax = obj._properties.GetParameter(MatSpecularMax, result._matSpecularMax);
-        result._matRoughness = obj._properties.GetParameter(MatRoughness, result._matRoughness);
-        return result;
+        return SceneEngine::OceanLightingSettings(obj._properties);
     }
 
     void EnvEntitiesManager::RegisterEnvironmentFlexObjects()

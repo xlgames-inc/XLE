@@ -771,14 +771,6 @@ namespace SceneEngine
 
     #define ParamName(x) static auto x = ParameterBox::MakeParameterNameHash(#x);
 
-    static Float3 AsFloat3Color(unsigned packedColor)
-    {
-        return Float3(
-            (float)((packedColor >> 16) & 0xff) / 255.f,
-            (float)((packedColor >>  8) & 0xff) / 255.f,
-            (float)(packedColor & 0xff) / 255.f);
-    }
-
     VolumetricFogConfig::FogVolume::FogVolume(const ParameterBox& params)
     {
         ParamName(Density);
@@ -820,6 +812,7 @@ namespace SceneEngine
         _maxShadowFrustums = 3;
         _gridDimensions = UInt3(160, 90, 128);
         _worldSpaceGridDepth = 150.f;
+        _enable = true;
     }
 
     VolumetricFogConfig::Renderer::Renderer(const ParameterBox& params)
@@ -830,6 +823,7 @@ namespace SceneEngine
         ParamName(MaxShadowFrustums);
         ParamName(GridDimensions);
         ParamName(WorldSpaceGridDepth);
+        ParamName(Enable);
 
         _blurredShadowSize = params.GetParameter(BlurredShadowSize, _blurredShadowSize);
         _shadowDownsample = params.GetParameter(ShadowDownsample, _shadowDownsample);
@@ -837,6 +831,7 @@ namespace SceneEngine
         _maxShadowFrustums = params.GetParameter(MaxShadowFrustums, _maxShadowFrustums);
         _gridDimensions = params.GetParameter(GridDimensions, _gridDimensions);
         _worldSpaceGridDepth = params.GetParameter(WorldSpaceGridDepth, _worldSpaceGridDepth);
+        _enable = params.GetParameter(Enable, _enable);
 
         // grid dimensions has special rules. X & Y must be multiplies of 10. Z must be a multiple of 8
         _gridDimensions[0] = CeilToMultiple(_gridDimensions[0], 10);
@@ -916,6 +911,15 @@ namespace SceneEngine
         const bool doVolumetricFog = Tweakable("DoVolumetricFog", true);
         if (!doVolumetricFog) return;
 
+        ///////////////////////////////////////////////////////////////////////////////////////////
+            // todo --  We should check which volumes are in range, and within
+            //          the right portals / culling / etc.
+
+            // Note that our prepare must occur after the shadows prepare
+            //      (we're going to access the list of prepared shadows in 
+            //      the parser context)
+        ///////////////////////////////////////////////////////////////////////////////////////////
+
         using namespace std::placeholders;
         if (!parserContext._preparedShadows.empty() && parserContext._preparedShadows[0].IsReady()) {
 
@@ -937,7 +941,6 @@ namespace SceneEngine
                     std::ref(_pimpl->_cfg._volumes[0])));
 
         }
-
     }
 
     void VolumetricFogPlugin::OnPreScenePrepare(
@@ -954,6 +957,11 @@ namespace SceneEngine
 
     std::shared_ptr<ILightingParserPlugin> VolumetricFogManager::GetParserPlugin()  { return _pimpl->_parserPlugin; }
     void VolumetricFogManager::Load(const VolumetricFogConfig& cfg)                 { _pimpl->_cfg = cfg; }
+
+    void VolumetricFogManager::AddVolume(const VolumetricFogConfig::FogVolume& volume)
+    {
+        _pimpl->_cfg._volumes.push_back(volume);
+    }
 
     VolumetricFogManager::VolumetricFogManager()
     {

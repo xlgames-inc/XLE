@@ -37,6 +37,7 @@ namespace LevelEditorXLE
             Schema.vegetationSpawnConfigType.Type.Define(new ExtensionInfo<VegetationSpawnConfigGob>());
             Schema.triMeshMarkerType.Type.Define(new ExtensionInfo<Markers.TriMeshMarker>());
             Schema.markerPointType.Type.Define(new ExtensionInfo<Markers.PointMarker>());
+            Schema.gameObjectFolderType.Type.Define(new ExtensionInfo<XLEGameObjectsFolder>());
         }
 
         public static TypeCatalog CreateTypeCatalog()

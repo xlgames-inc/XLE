@@ -23,6 +23,7 @@
 #include "../Math/Vector.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/BitUtils.h"
+#include "../Utility/ParameterBox.h"
 
 namespace SceneEngine
 {
@@ -405,6 +406,48 @@ namespace SceneEngine
         _foamIncreaseSpeed = 8.f / .33f;
         _foamIncreaseClamp = 8.f;
         _foamDecrease = 1;
+    }
+
+    #define ParamName(x) static auto x = ParameterBox::MakeParameterNameHash(#x);
+
+    DeepOceanSimSettings::DeepOceanSimSettings(const ParameterBox& params)
+    : DeepOceanSimSettings()
+    {
+        ParamName(Enable);
+        ParamName(WindAngle);
+        ParamName(WindVelocity);
+        ParamName(PhysicalDimensions);
+        ParamName(GridDimensions);
+        ParamName(StrengthConstantXY);
+        ParamName(StrengthConstantZ);
+        ParamName(DetailNormalsStrength);
+        ParamName(SpectrumFade);
+        ParamName(ScaleAgainstWind);
+        ParamName(SuppressionFactor);
+        ParamName(GridShiftSpeed);
+        ParamName(BaseHeight);
+        ParamName(FoamThreshold);
+        ParamName(FoamIncreaseSpeed);
+        ParamName(FoamIncreaseClamp);
+        ParamName(FoamDecrease);
+
+        _enable = params.GetParameter(Enable, _enable);
+        _windAngle[0] = params.GetParameter(WindAngle, _windAngle[0] * (180.f / gPI)) * (gPI / 180.f);
+        _windVelocity[0] = params.GetParameter(WindVelocity, _windVelocity[0]);
+        _physicalDimensions = params.GetParameter(PhysicalDimensions, _physicalDimensions);
+        _gridDimensions = params.GetParameter(GridDimensions, _gridDimensions);
+        _strengthConstantXY = params.GetParameter(StrengthConstantXY, _strengthConstantXY);
+        _strengthConstantZ = params.GetParameter(StrengthConstantZ, _strengthConstantZ);
+        _detailNormalsStrength = params.GetParameter(DetailNormalsStrength, _detailNormalsStrength);
+        _spectrumFade = params.GetParameter(SpectrumFade, _spectrumFade);
+        _scaleAgainstWind[0] = params.GetParameter(ScaleAgainstWind, _scaleAgainstWind[0]);
+        _suppressionFactor[0] = params.GetParameter(SuppressionFactor, _suppressionFactor[0]);
+        _gridShiftSpeed = params.GetParameter(GridShiftSpeed, _gridShiftSpeed);
+        _baseHeight = params.GetParameter(BaseHeight, _baseHeight);
+        _foamThreshold = params.GetParameter(FoamThreshold, _foamThreshold);
+        _foamIncreaseSpeed = params.GetParameter(FoamIncreaseSpeed, _foamIncreaseSpeed);
+        _foamIncreaseClamp = params.GetParameter(FoamIncreaseClamp, _foamIncreaseClamp);
+        _foamDecrease = params.GetParameter(FoamDecrease, _foamDecrease);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

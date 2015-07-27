@@ -58,6 +58,7 @@ namespace SceneEngine
             unsigned _maxShadowFrustums;
             UInt3 _gridDimensions;
             float _worldSpaceGridDepth;
+            bool _enable;
 
             Renderer();
             Renderer(const ParameterBox& params);
@@ -73,6 +74,7 @@ namespace SceneEngine
         std::shared_ptr<ILightingParserPlugin> GetParserPlugin();
 
         void Load(const VolumetricFogConfig& cfg);
+        void AddVolume(const VolumetricFogConfig::FogVolume& volume);
 
         VolumetricFogManager();
         ~VolumetricFogManager();

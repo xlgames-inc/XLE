@@ -1,5 +1,12 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
 #include "LightInternal.h"
 #include "LightDesc.h"
+#include "SceneEngineUtils.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
@@ -153,14 +160,6 @@ namespace SceneEngine
     , _atmosBlurStdDev(1.3f), _atmosBlurStart(1000.f), _atmosBlurEnd(1500.f)
     {
         _skyTexture[0] = '\0';
-    }
-
-    static Float3 AsFloat3Color(unsigned packedColor)
-    {
-        return Float3(
-            (float)((packedColor >> 16) & 0xff) / 255.f,
-            (float)((packedColor >>  8) & 0xff) / 255.f,
-            (float)(packedColor & 0xff) / 255.f);
     }
 
     static ParameterBox::ParameterNameHash ParamHash(const char name[])

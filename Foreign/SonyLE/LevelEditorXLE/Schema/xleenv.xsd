@@ -564,7 +564,7 @@
     </xs:annotation>
 
     <xs:complexContent>
-      <xs:extension base="envObjectType">
+      <xs:extension base="gameObjectType">
         <xs:attribute name="Density" type="xs:float" default=".5"/>
         <xs:attribute name="NoiseDensityScale" type="xs:float" default="0"/>
         <xs:attribute name="NoiseSpeed" type="xs:float" default="1"/>
@@ -666,7 +666,7 @@
     </xs:annotation>
 
     <xs:complexContent>
-      <xs:extension base="envObjectType">
+      <xs:extension base="gameObjectType">
         <xs:attribute name="Marker" type="xs:string" default=""/>
 
         <xs:attribute name="GridPhysicalSize" type="xs:float" default="64"/>

@@ -842,4 +842,45 @@ namespace SceneEngine
         _dummy[0] = _dummy[1] = _dummy[2] = 0;
     }
 
+    #define ParamName(x) static auto x = ParameterBox::MakeParameterNameHash(#x);
+
+    OceanLightingSettings::OceanLightingSettings(const ParameterBox& params)
+        : OceanLightingSettings()
+    {
+        ParamName(SpecularReflectionBrightness);
+        ParamName(FoamBrightness);
+        ParamName(OpticalThicknessScalar);
+        ParamName(OpticalThicknessColor);
+        ParamName(SkyReflectionBrightness);
+        ParamName(SpecularPower);
+        ParamName(UpwellingScale);
+        ParamName(RefractiveIndex);
+        ParamName(ReflectionBumpScale);
+        ParamName(DetailNormalFrequency);
+        ParamName(SpecularityFrequency);
+        ParamName(MatSpecularMin);
+        ParamName(MatSpecularMax);
+        ParamName(MatRoughness);
+
+        _specularReflectionBrightness = params.GetParameter(SpecularReflectionBrightness, _specularReflectionBrightness);
+        _foamBrightness = params.GetParameter(FoamBrightness, _foamBrightness);
+
+        auto otColor = params.GetParameter<unsigned>(OpticalThicknessColor);
+        auto otScalar = params.GetParameter<float>(OpticalThicknessScalar);
+        if (otColor.first && otScalar.first) {
+            _opticalThickness = AsFloat3Color(otColor.second) * otScalar.second;
+        }
+
+        _skyReflectionBrightness = params.GetParameter(SkyReflectionBrightness, _skyReflectionBrightness);
+        _specularPower = params.GetParameter(SpecularPower, _specularPower);
+        _upwellingScale = params.GetParameter(UpwellingScale, _upwellingScale);
+        _refractiveIndex = params.GetParameter(RefractiveIndex, _refractiveIndex);
+        _reflectionBumpScale = params.GetParameter(ReflectionBumpScale, _reflectionBumpScale);
+        _detailNormalFrequency = params.GetParameter(DetailNormalFrequency, _detailNormalFrequency);
+        _specularityFrequency = params.GetParameter(SpecularityFrequency, _specularityFrequency);
+        _matSpecularMin = params.GetParameter(MatSpecularMin, _matSpecularMin);
+        _matSpecularMax = params.GetParameter(MatSpecularMax, _matSpecularMax);
+        _matRoughness = params.GetParameter(MatRoughness, _matRoughness);
+    }
+
 }
