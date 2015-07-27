@@ -272,7 +272,7 @@ namespace GUILayer
     {
         return ExportViaStream(
             "game objects", destinationFile,
-            std::bind(WriteEnvSettings, _1, docId, _scene->_flexObjects.get()));
+            std::bind(WriteGameObjects, _1, docId, _scene->_flexObjects.get()));
     }
 
     auto EditorSceneManager::PreviewExportGameObjects(EntityInterface::DocumentId docId) -> ExportPreview^

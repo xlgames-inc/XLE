@@ -185,8 +185,9 @@ namespace RenderingInterop
                 }
 
                 // map type.
-                gobFolderType.Define(new ExtensionInfo<NativeObjectAdapter>());
-                gobFolderType.SetTag(NativeAnnotations.NativeType, groupType.GetTag(NativeAnnotations.NativeType));
+                //      XLE --> Separate GameObjectFolder type from GameObjectGroup type
+                // gobFolderType.Define(new ExtensionInfo<NativeObjectAdapter>());
+                // gobFolderType.SetTag(NativeAnnotations.NativeType, groupType.GetTag(NativeAnnotations.NativeType));
 
                 // map all native attributes of gameObjectGroup to gameFolder
                 foreach (AttributeInfo srcAttrib in groupType.Attributes)
