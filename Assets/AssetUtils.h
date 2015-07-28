@@ -19,6 +19,8 @@ namespace Assets
         void ResolveFile(ResChar destination[], unsigned destinationCount, const ResChar baseName[]) const;
         bool HasDirectory(const ResChar dir[]);
 
+        const ResChar* GetFirstSearchDir() const;
+
         DirectorySearchRules();
         DirectorySearchRules(const DirectorySearchRules&);
         DirectorySearchRules& operator=(const DirectorySearchRules&);

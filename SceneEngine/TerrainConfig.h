@@ -7,6 +7,7 @@
 #pragma once
 
 #include "TerrainCoverageId.h"
+#include "../Assets/AssetUtils.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 #include "../Assets/Assets.h"
@@ -27,8 +28,6 @@ namespace SceneEngine
     public:
         enum Filenames { XLE, Legacy };
 
-        ::Assets::rstring _baseDir;
-        ::Assets::rstring _textureCfgName;
         UInt2       _cellCount;
         Filenames   _filenamesMode;
 
@@ -47,7 +46,7 @@ namespace SceneEngine
             Filenames filenamesMode = XLE, 
             unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u, unsigned nodeOverlap = 2u,
             float elementSpacing = 10.f, float sunPathAngle = 0.f, bool encodedGradientFlags = false);
-        TerrainConfig(const ::Assets::ResChar baseDir[]);
+        TerrainConfig(const ::Assets::ResChar configFile[]);
         TerrainConfig();
 
         void        GetCellFilename(::Assets::ResChar buffer[], unsigned cnt, UInt2 cellIndex, TerrainCoverageId id) const;
@@ -70,7 +69,11 @@ namespace SceneEngine
         const CoverageLayer& GetCoverageLayer(unsigned index) const;
         void        AddCoverageLayer(const CoverageLayer& layer);
 
-        void        Save();
+        // void        Save() const;
+        void        Write(Utility::OutputStream& stream) const;
+
+        const ::Assets::DirectorySearchRules& GetSearchRules() const { return _searchRules; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
 
     protected:
         unsigned    _nodeDimsInElements;
@@ -80,6 +83,9 @@ namespace SceneEngine
         float       _sunPathAngle;
         bool        _encodedGradientFlags;
         std::vector<CoverageLayer> _coverageLayers;
+
+        ::Assets::DirectorySearchRules _searchRules;
+        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
     /// <summary>Describes the position and size of terrain in world coordinates<summary>
@@ -149,7 +155,9 @@ namespace SceneEngine
 
     std::vector<PrimedCell> BuildPrimedCells(const TerrainConfig& cfg);
 
+    class TerrainMaterialConfig;
+
     void WriteTerrainCachedData(Utility::OutputStream& stream, const TerrainConfig& cfg, ITerrainFormat& format);
-    void WriteTerrainMaterialData(Utility::OutputStream& stream, const TerrainConfig& cfg);
+    void WriteTerrainMaterialData(Utility::OutputStream& stream, const TerrainMaterialConfig& cfg);
 }
 

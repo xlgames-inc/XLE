@@ -906,7 +906,7 @@ namespace SceneEngine
         MetalContext* metalContext, LightingParserContext& parserContext, 
         LightingResolveContext& resolveContext) const 
     {
-        if (_pimpl->_cfg._volumes.empty()) return;
+        if (_pimpl->_cfg._volumes.empty() || _pimpl->_cfg._renderer._enable == false) return;
 
         const bool doVolumetricFog = Tweakable("DoVolumetricFog", true);
         if (!doVolumetricFog) return;

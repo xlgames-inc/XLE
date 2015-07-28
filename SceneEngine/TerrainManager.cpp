@@ -268,6 +268,7 @@ namespace SceneEngine
         std::vector<TerrainCellId> _cells;
         TerrainCoordinateSystem _coords;
         TerrainConfig _cfg;
+        TerrainMaterialConfig _matCfg;
 
         std::unique_ptr<TerrainMaterialTextures> _textures;
 
@@ -309,8 +310,8 @@ namespace SceneEngine
     {
         auto cells = BuildPrimedCells(cfg);
 
-        StringMeld<MaxPath, ::Assets::ResChar> cachedDataFile;
-        cachedDataFile << cfg._baseDir << "/cached.dat";
+        ::Assets::ResChar cachedDataFile[MaxPath];
+        cfg.GetSearchRules().ResolveFile(cachedDataFile, dimof(cachedDataFile), "cached.dat");
         
         TerrainCachedData cachedData;
         TRY
@@ -319,7 +320,7 @@ namespace SceneEngine
         }
         CATCH(...)
         {
-            LogWarning << "Got error while loading cached terrain data from file: " << cachedDataFile.get() << ". Regenerating data.";
+            LogWarning << "Got error while loading cached terrain data from file: " << cachedDataFile << ". Regenerating data.";
         }
         CATCH_END
 
@@ -441,7 +442,7 @@ namespace SceneEngine
             }
 
             // make sure we save the cfg file, as well
-            _pimpl->_cfg.Save();
+            // _pimpl->_cfg.Save();
         }
 
         auto step = progress ? progress->BeginStep("Reloading terrain", 1, false) : nullptr;
@@ -523,6 +524,12 @@ namespace SceneEngine
         }
     }
 
+    void TerrainManager::LoadMaterial(const TerrainMaterialConfig& matCfg)
+    {
+        _pimpl->_matCfg = matCfg;
+        _pimpl->_textures.reset();
+    }
+
     void TerrainManager::LoadUberSurface(const ::Assets::ResChar uberSurfaceDir[])
     {
         _pimpl->BuildUberSurface(uberSurfaceDir, _pimpl->_cfg);
@@ -579,14 +586,7 @@ namespace SceneEngine
 
         if (!_pimpl->_textures || _pimpl->_textures->GetDependencyValidation()->GetValidationIndex() > 0) {
             _pimpl->_textures.reset();
-
-            if (!_pimpl->_cfg._textureCfgName.empty()) {
-                auto& scaffold = ::Assets::GetAssetDep<TerrainMaterialScaffold>(_pimpl->_cfg._textureCfgName.c_str());
-                _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(scaffold, _pimpl->_cfg.EncodedGradientFlags());
-            } else {
-                auto& scaffold = ::Assets::GetAssetDep<TerrainMaterialScaffold>();
-                _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(scaffold, _pimpl->_cfg.EncodedGradientFlags());
-            }
+            _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(_pimpl->_matCfg, _pimpl->_cfg.EncodedGradientFlags());
         }
 
         context->BindPS(MakeResourceList(8, 
@@ -815,5 +815,6 @@ namespace SceneEngine
 
     const TerrainConfig& TerrainManager::GetConfig() const                      { return _pimpl->_cfg; }
     const std::shared_ptr<ITerrainFormat>& TerrainManager::GetFormat() const    { return _pimpl->_ioFormat; }
+    const TerrainMaterialConfig& TerrainManager::GetMaterialConfig() const      { return _pimpl->_matCfg; }
 }
 

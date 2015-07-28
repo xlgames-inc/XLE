@@ -147,6 +147,7 @@ namespace LevelEditorXLE.Terrain
         private static uint ClampNodeDimensions(uint input)                 { return input.Clamp(1u, 1024u); }
         private static uint ClampCellTreeDepth(uint input)                  { return input.Clamp(1u, 16u); }
         private static bool IsDerivedFrom(DomNode node, DomNodeType type)   { return node.Type.Lineage.FirstOrDefault(t => t == type) != null; }
+        private bool m_isLoaded = false;
 
         public bool CanAddChild(object child)
         {
@@ -201,6 +202,41 @@ namespace LevelEditorXLE.Terrain
         }
         #endregion
 
+        #region Internal Low Level
+        private GUILayer.EditorSceneManager SceneMan { get { return XLEBridgeUtils.NativeManipulatorLayer.SceneManager; } }
+        private void Unload()
+        {
+            SceneMan.UnloadTerrain();
+            m_isLoaded = false;
+        }
+
+        private void Reload()
+        {
+            SceneMan.ReloadTerrain(BuildEngineConfig());
+            m_isLoaded = true;
+        }
+
+        private GUILayer.TerrainConfig BuildEngineConfig(TerrainConfig.Config cfg)
+        {
+            var result = new GUILayer.TerrainConfig(
+                cfg.CellsDirectory,
+                cfg.NodeDimensions, cfg.CellTreeDepth, cfg.Overlap,
+                cfg.Spacing, (float)(cfg.SunPathAngle * Math.PI / 180.0f),
+                cfg.HasEncodedGradientFlags);
+
+            result.CellCount = new GUILayer.VectorUInt2(CellCount[0], CellCount[1]);
+
+            if (cfg.HasBaseMaterialCoverage)
+                result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 1000));
+            if (cfg.HasDecorationCoverage)
+                result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 1001));
+            if (cfg.HasShadowsCoverage)
+                result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 2));
+
+            return result;
+        }
+        #endregion
+
         #region Configure Steps
         internal TerrainConfig.Config BuildDialogConfig()
         {
@@ -240,26 +276,6 @@ namespace LevelEditorXLE.Terrain
             GradFlagSlopeThreshold2 = cfg.SlopeThreshold2;
         }
 
-        internal GUILayer.TerrainConfig BuildEngineConfig(TerrainConfig.Config cfg)
-        {
-            var result = new GUILayer.TerrainConfig(
-                cfg.CellsDirectory,
-                cfg.NodeDimensions, cfg.CellTreeDepth, cfg.Overlap,
-                cfg.Spacing, (float)(cfg.SunPathAngle * Math.PI / 180.0f),
-                cfg.HasEncodedGradientFlags);
-
-            result.CellCount = new GUILayer.VectorUInt2(CellCount[0], CellCount[1]);
-
-            if (cfg.HasBaseMaterialCoverage)
-                result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 1000));
-            if (cfg.HasDecorationCoverage)
-                result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 1001));
-            if (cfg.HasShadowsCoverage)
-                result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 2));
-
-            return result;
-        }
-
         internal GUILayer.TerrainConfig BuildEngineConfig()
         {
             return BuildEngineConfig(BuildDialogConfig());
@@ -267,12 +283,10 @@ namespace LevelEditorXLE.Terrain
 
         internal void Reconfigure(TerrainConfig.Config cfg)
         {
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-
             cfg.NodeDimensions = ClampNodeDimensions(cfg.NodeDimensions);
             cfg.CellTreeDepth = ClampCellTreeDepth(cfg.CellTreeDepth);
 
-            sceneMan.UnloadTerrain();
+            Unload();
 
             try
             {
@@ -309,10 +323,6 @@ namespace LevelEditorXLE.Terrain
                         engineCfg, cfg.UberSurfaceDirectory, false,
                         cfg.SlopeThreshold0, cfg.SlopeThreshold1, cfg.SlopeThreshold2,
                         progress);
-
-                        // native side reads the config from disk atm.
-                        // so we need to commit to disk
-                    engineCfg.Save();
                 }
 
                     // if the above completed without throwing an exception, we can commit the values
@@ -321,7 +331,7 @@ namespace LevelEditorXLE.Terrain
             }
             catch { }
 
-            sceneMan.ReloadTerrain();
+            Reload();
         }
 
         internal bool DoModalConfigure()
@@ -341,10 +351,11 @@ namespace LevelEditorXLE.Terrain
         }
         #endregion
 
+        #region Commands
+
         void DoGenerateShadows()
         {
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            sceneMan.UnloadTerrain();
+            Unload();
 
             try
             {
@@ -357,7 +368,7 @@ namespace LevelEditorXLE.Terrain
             }
             catch {}
 
-            sceneMan.ReloadTerrain();
+            Reload();
         }
 
         void DoFlushToDisk()
@@ -371,8 +382,7 @@ namespace LevelEditorXLE.Terrain
 
         void DoRebuildCellFiles()
         {
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            sceneMan.UnloadTerrain();
+            Unload();
 
             try
             {
@@ -385,7 +395,7 @@ namespace LevelEditorXLE.Terrain
             }
             catch {}
 
-            sceneMan.ReloadTerrain();
+            Reload();
         }
 
         #region ICommandClient Members
@@ -402,7 +412,11 @@ namespace LevelEditorXLE.Terrain
                     case Command.GenerateShadows:
                     case Command.FlushToDisk:
                     case Command.RebuildCellFiles:
+                    case Command.Reload:
                         return true;
+
+                    case Command.Unload:
+                        return m_isLoaded;
                 }
             }
             return false;
@@ -444,6 +458,18 @@ namespace LevelEditorXLE.Terrain
                         DoRebuildCellFiles();
                         break;
                     }
+
+                case Command.Reload:
+                    {
+                        Reload();
+                        break;
+                    }
+
+                case Command.Unload:
+                    {
+                        Unload();
+                        break;
+                    }
             }
         }
 
@@ -453,16 +479,13 @@ namespace LevelEditorXLE.Terrain
 
         private enum Command
         {
-            [Description("Create Base Texture")]
-            CreateBaseTexture,
-            [Description("Configure Terrain...")]
-            Configure,
-            [Description("Generate Shadows")]
-            GenerateShadows,
-            [Description("Commit to disk")]
-            FlushToDisk,
-            [Description("Rebuild cell files")]
-            RebuildCellFiles
+            [Description("Create Base Texture")] CreateBaseTexture,
+            [Description("Configure Terrain...")] Configure,
+            [Description("Generate Shadows")] GenerateShadows,
+            [Description("Commit to disk")] FlushToDisk,
+            [Description("Rebuild cell files")] RebuildCellFiles,
+            [Description("Unload terrain")] Unload,
+            [Description("Reload terrain")] Reload
         }
 
         IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)
@@ -472,5 +495,7 @@ namespace LevelEditorXLE.Terrain
                 yield return command;
             }
         }
+
+        #endregion
     }
 }

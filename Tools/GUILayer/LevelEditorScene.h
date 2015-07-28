@@ -42,6 +42,7 @@ namespace GUILayer
 	ref class IntersectionTestSceneWrapper;
     ref class PlacementsEditorWrapper;
     ref class ObjectSet;
+    ref class TerrainConfig;
     class TerrainGob;
     class ObjectPlaceholders;
 
@@ -142,7 +143,7 @@ namespace GUILayer
         void IncrementTime(float increment);
 
         void UnloadTerrain();
-        void ReloadTerrain();
+        void ReloadTerrain(TerrainConfig^ cfg);
 
         EditorScene& GetScene();
 

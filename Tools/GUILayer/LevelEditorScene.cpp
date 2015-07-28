@@ -11,6 +11,7 @@
 #include "IOverlaySystem.h"
 #include "EditorInterfaceUtils.h"
 #include "ManipulatorsLayer.h"
+#include "TerrainLayer.h"
 #include "UITypesBinding.h" // for VisCameraSettings
 #include "ExportedNativeTypes.h"
 #include "../EntityInterface/PlacementEntities.h"
@@ -304,7 +305,7 @@ namespace GUILayer
 
     static auto WriteTerrainMaterialData(OutputStream& stream, SceneEngine::TerrainManager* terrainMan) -> EditorSceneManager::ExportPreview::Type
     {
-        SceneEngine::WriteTerrainMaterialData(stream, terrainMan->GetConfig());
+        SceneEngine::WriteTerrainMaterialData(stream, terrainMan->GetMaterialConfig());
         return EditorSceneManager::ExportPreview::Type::Text;
     }
 
@@ -417,10 +418,12 @@ namespace GUILayer
         _terrainInterface->UnloadTerrain();
     }
 
-    void EditorSceneManager::ReloadTerrain()
+    void EditorSceneManager::ReloadTerrain(TerrainConfig^ cfg)
     {
+        auto nativeCfg = cfg->GetNative();
+        _scene->_terrainManager->Load(nativeCfg, Int2(0,0), nativeCfg._cellCount, true);
         _terrainInterface->ReloadTerrain();
-        EntityInterface::ReloadTerrainFlexObjects(*_scene->_flexObjects);
+        EntityInterface::ReloadTerrainFlexObjects(*_scene->_flexObjects, *_scene->_terrainManager);
     }
 
     EditorSceneManager::EditorSceneManager()
@@ -440,7 +443,7 @@ namespace GUILayer
 
         _flexGobInterface = flexGobInterface;
         _terrainInterface = terrainEditor;
-        RegisterTerrainFlexObjects(*_scene->_flexObjects);
+        RegisterTerrainFlexObjects(*_scene->_flexObjects, _scene->_terrainManager);
         RegisterVegetationSpawnFlexObjects(*_scene->_flexObjects, _scene->_vegetationSpawnManager);
 
         auto envEntitiesManager = std::make_shared<::EntityInterface::EnvEntitiesManager>(_scene->_flexObjects);

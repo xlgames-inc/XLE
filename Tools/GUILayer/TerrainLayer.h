@@ -41,7 +41,6 @@ namespace GUILayer
             clix::auto_ptr<NativeConfig::CoverageLayer> _native;
         };
 
-        property String^ BaseDir { String^ get(); }
         property VectorUInt2 CellCount { VectorUInt2 get(); void set(VectorUInt2); }
         property VectorUInt2 CellDimsInNodes { VectorUInt2 get(); }
         property VectorUInt2 NodeDims { VectorUInt2 get(); }
@@ -56,7 +55,6 @@ namespace GUILayer
         void Add(CoverageLayerDesc^ layer);
 
         void InitCellCountFromUberSurface(String^ uberSurfaceDir);
-        void Save();
 
         const NativeConfig& GetNative() { return *_native; }
         TerrainConfig(

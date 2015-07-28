@@ -203,7 +203,7 @@ namespace SceneEngine
         return atlasIndex;
     }
 
-    TerrainMaterialTextures::TerrainMaterialTextures(const TerrainMaterialScaffold& scaffold, bool useGradFlagMaterials)
+    TerrainMaterialTextures::TerrainMaterialTextures(const TerrainMaterialConfig& scaffold, bool useGradFlagMaterials)
     {
         _strataCount = 0;
 
@@ -219,7 +219,7 @@ namespace SceneEngine
 
         if (useGradFlagMaterials) {
 
-            const auto texturesPerMaterial = dimof(((TerrainMaterialScaffold::GradFlagMaterial*)nullptr)->_texture);
+            const auto texturesPerMaterial = dimof(((TerrainMaterialConfig::GradFlagMaterial*)nullptr)->_texture);
             auto highestMaterialId = 0u;
             for (auto& mat:scaffold._gradFlagMaterials)
                 highestMaterialId = std::max(highestMaterialId, mat._id);
@@ -236,7 +236,7 @@ namespace SceneEngine
 
                     auto p = std::find_if(
                         scaffold._procTextures.cbegin(), scaffold._procTextures.cend(),
-                        [m, t](const TerrainMaterialScaffold::ProcTextureSetting& s)
+                        [m, t](const TerrainMaterialConfig::ProcTextureSetting& s)
                         { return s._name == m->_texture[t]; });
                     if (p != scaffold._procTextures.cend()) {
 
@@ -269,7 +269,7 @@ namespace SceneEngine
             auto* tcStart = (Float4*)AsPointer(texturingConstants.begin());
             std::fill(tcStart, &tcStart[strataCount*2], Float4(1.f, 1.f, 1.f, 1.f));
 
-            const auto texturesPerStrata = dimof(((TerrainMaterialScaffold::StrataMaterial::Strata*)nullptr)->_texture);
+            const auto texturesPerStrata = dimof(((TerrainMaterialConfig::StrataMaterial::Strata*)nullptr)->_texture);
             unsigned strataIndex = 0;
             for (auto m=scaffold._strataMaterials.cbegin(); m!=scaffold._strataMaterials.cend(); ++m) {
                 for (auto s=m->_strata.cbegin(); s!=m->_strata.cend(); ++s, ++strataIndex) {
@@ -303,7 +303,7 @@ namespace SceneEngine
         for (auto p=procTextureNames.cbegin(); p!=procTextureNames.cend(); ++p) {
             auto i = std::find_if(
                 scaffold._procTextures.cbegin(), scaffold._procTextures.cend(),
-                [p](const TerrainMaterialScaffold::ProcTextureSetting& s)
+                [p](const TerrainMaterialConfig::ProcTextureSetting& s)
                 { return s._name == *p; });
             if (i == scaffold._procTextures.cend()) continue;
 

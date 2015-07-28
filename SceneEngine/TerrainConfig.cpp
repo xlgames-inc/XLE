@@ -45,15 +45,15 @@ namespace SceneEngine
             switch (fileType) {
             case CoverageId_Heights:
                 _snprintf_s(buffer, bufferCount, _TRUNCATE, "%scells/%03i_%03i/client/terrain/heightmap.dat_new", 
-                    _baseDir.c_str(), cellIndex[1], cellIndex[0]);
+                    _searchRules.GetFirstSearchDir(), cellIndex[1], cellIndex[0]);
                 break;
             case CoverageId_AngleBasedShadows:
                 _snprintf_s(buffer, bufferCount, _TRUNCATE, "%scells/%03i_%03i/client/terrain/shadow.ctc", 
-                    _baseDir.c_str(), cellIndex[1], cellIndex[0]);
+                    _searchRules.GetFirstSearchDir(), cellIndex[1], cellIndex[0]);
                 break;
             case CoverageId_ArchiveHeights:
                 _snprintf_s(buffer, bufferCount, _TRUNCATE, "%scells/%03i_%03i/client/terrain/heightmap.dat", 
-                    _baseDir.c_str(), cellIndex[1], cellIndex[0]);
+                    _searchRules.GetFirstSearchDir(), cellIndex[1], cellIndex[0]);
                 break;
             default:
                 buffer[0] = '\0';
@@ -65,11 +65,11 @@ namespace SceneEngine
             if (knownName) {
                _snprintf_s(
                     buffer, bufferCount, _TRUNCATE, "%sc%02i_%02i/%s.terr", 
-                    _baseDir.c_str(), cellIndex[0], cellIndex[1], knownName);
+                    _searchRules.GetFirstSearchDir(), cellIndex[0], cellIndex[1], knownName);
             } else {
                 _snprintf_s(
                     buffer, bufferCount, _TRUNCATE, "%sc%02i_%02i/%08x.terr", 
-                    _baseDir.c_str(), cellIndex[0], cellIndex[1], fileType);
+                    _searchRules.GetFirstSearchDir(), cellIndex[0], cellIndex[1], fileType);
             }
         }
     }
@@ -119,10 +119,10 @@ namespace SceneEngine
 
     static ::Assets::rstring FormatBaseDir(const ::Assets::ResChar input[])
     {
-        // format the input directory name
-        //  * all lower case
-        //  * only use '/' separators
-        //  * must end in a slash (unless empty)
+            // format the input directory name
+            //  * all lower case
+            //  * only use '/' separators
+            //  * must end in a slash (unless empty)
         ::Assets::ResChar buffer[MaxPath];
         XlNormalizePath(buffer, dimof(buffer), input);
         auto len = XlStringLen(buffer);
@@ -139,14 +139,11 @@ namespace SceneEngine
         Filenames filenamesMode, 
         unsigned nodeDimsInElements, unsigned cellTreeDepth, 
         unsigned nodeOverlap, float elementSpacing, float sunPathAngle, bool encodedGradientFlags)
-    : _baseDir(FormatBaseDir(baseDir)), _cellCount(cellCount), _filenamesMode(filenamesMode)
+    : _cellCount(cellCount), _filenamesMode(filenamesMode)
     , _nodeDimsInElements(nodeDimsInElements), _cellTreeDepth(cellTreeDepth), _nodeOverlap(nodeOverlap) 
     , _elementSpacing(elementSpacing), _sunPathAngle(sunPathAngle), _encodedGradientFlags(encodedGradientFlags)
     {
-        ::Assets::ResChar buffer[MaxPath];
-        const auto* fn = "terraintextures/textures.txt";
-        XlConcatPath(buffer, dimof(buffer), _baseDir.c_str(), fn, &fn[XlStringLen(fn)]);
-        _textureCfgName = buffer;
+        _searchRules.AddSearchDirectory(FormatBaseDir(baseDir).c_str());
     }
 
     TerrainConfig::TerrainConfig()
@@ -161,15 +158,15 @@ namespace SceneEngine
         _encodedGradientFlags = false;
     }
 
-    TerrainConfig::TerrainConfig(const ::Assets::ResChar baseDir[])
-    : _baseDir(FormatBaseDir(baseDir)), _filenamesMode(XLE)
+    TerrainConfig::TerrainConfig(const ::Assets::ResChar configFile[])
+    : _filenamesMode(XLE)
     , _cellCount(0,0), _nodeDimsInElements(32u), _nodeOverlap(2u)
     , _cellTreeDepth(5u), _elementSpacing(10.f), _sunPathAngle(0.f)
     , _encodedGradientFlags(false)
+    , _searchRules(::Assets::DefaultDirectorySearchRules(configFile))
     {
         size_t fileSize = 0;
-        StringMeld<MaxPath> fn; fn << _baseDir << "world.cfg";
-        auto sourceFile = LoadFileAsMemoryBlock(fn, &fileSize);
+        auto sourceFile = LoadFileAsMemoryBlock(configFile, &fileSize);
         
         TRY
         {
@@ -204,30 +201,32 @@ namespace SceneEngine
                 }
             }
 
-            {
-                ::Assets::ResChar buffer[MaxPath];
-                const auto* fn = "terraintextures/textures.txt";
-                XlConcatPath(buffer, dimof(buffer), _baseDir.c_str(), fn, &fn[XlStringLen(fn)]);
-                _textureCfgName = buffer;
-            }
-
-            ::Assets::Services::GetInvalidAssetMan().MarkValid(fn.get());
+            ::Assets::Services::GetInvalidAssetMan().MarkValid(configFile);
         } CATCH (const std::exception& e) {
-            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(fn.get(), e.what());
+            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(configFile, e.what());
             throw;
         } CATCH(...) {
-            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(fn.get(), "Unknown error");
+            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(configFile, "Unknown error");
             throw;
         } CATCH_END
+
+        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterFileDependency(_validationCallback, configFile);
+        _searchRules = ::Assets::DefaultDirectorySearchRules(configFile);
     }
 
-    void TerrainConfig::Save()
+    // void TerrainConfig::Save() const
+    // {
+    //         // write this configuration file out to disk
+    //         //  simple serialisation via the "Data" class
+    //     
+    //     auto output = OpenFileOutput(StringMeld<MaxPath>() << _baseDir << "world.cfg", "wb");
+    //     Write(*output);
+    // }
+
+    void TerrainConfig::Write(Utility::OutputStream& stream) const
     {
-            // write this configuration file out to disk
-            //  simple serialisation via the "Data" class
-        
-        auto output = OpenFileOutput(StringMeld<MaxPath>() << _baseDir << "world.cfg", "wb");
-        OutputStreamFormatter formatter(*output);
+        OutputStreamFormatter formatter(stream);
 
         auto cfgEle = formatter.BeginElement(u("TerrainConfig"));
         if (_filenamesMode == Legacy)   { Serialize(formatter, u("Filenames"), u("Legacy")); }
@@ -407,15 +406,16 @@ namespace SceneEngine
         TerrainCachedData(cfg, format).Write(stream);
     }
 
-    void WriteTerrainMaterialData(Utility::OutputStream& stream, const TerrainConfig& cfg)
+    void WriteTerrainMaterialData(Utility::OutputStream& stream, const TerrainMaterialConfig& cfg)
     {
-        if (!cfg._textureCfgName.empty()) {
-            auto& scaffold = ::Assets::GetAssetDep<TerrainMaterialScaffold>(cfg._textureCfgName.c_str());
-            scaffold.Write(stream);
-        } else {
-            auto& scaffold = ::Assets::GetAssetDep<TerrainMaterialScaffold>();
-            scaffold.Write(stream);
-        }
+        // if (!cfg._textureCfgName.empty()) {
+        //     auto& scaffold = ::Assets::GetAssetDep<TerrainMaterialScaffold>(cfg._textureCfgName.c_str());
+        //     scaffold.Write(stream);
+        // } else {
+        //     auto& scaffold = ::Assets::GetAssetDep<TerrainMaterialScaffold>();
+        //     scaffold.Write(stream);
+        // }
+        cfg.Write(stream);
     }
 
 

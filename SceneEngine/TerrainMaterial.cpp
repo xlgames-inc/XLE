@@ -7,10 +7,12 @@
 #include "TerrainMaterial.h"
 #include "../Assets/AssetServices.h"
 #include "../Assets/InvalidAssetManager.h"
+
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/StreamDOM.h"
 #include "../Utility/Streams/FileUtils.h"
+
 #include "../Utility/StringFormat.h"
 #include "../Utility/Conversion.h"
 #include "../Utility/UTFUtils.h"
@@ -21,7 +23,7 @@ namespace SceneEngine
 
     static const utf8* TextureNames[] = { u("Texture0"), u("Texture1"), u("Slopes") };
 
-    void TerrainMaterialScaffold::Write(OutputStream& stream) const
+    void TerrainMaterialConfig::Write(OutputStream& stream) const
     {
         OutputStreamFormatter formatter(stream);
         auto cfg = formatter.BeginElement(u("Config"));
@@ -50,13 +52,13 @@ namespace SceneEngine
         formatter.EndElement(cfg);
     }
 
-    TerrainMaterialScaffold::TerrainMaterialScaffold()
+    TerrainMaterialConfig::TerrainMaterialConfig()
     {
         _diffuseDims = _normalDims = _paramDims = UInt2(32, 32);
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
     }
 
-    TerrainMaterialScaffold::TerrainMaterialScaffold(const char definitionFile[])
+    TerrainMaterialConfig::TerrainMaterialConfig(const char definitionFile[])
     {
         size_t fileSize = 0;
         auto file = LoadFileAsMemoryBlock(definitionFile, &fileSize);
@@ -120,16 +122,16 @@ namespace SceneEngine
         ::Assets::RegisterFileDependency(_validationCallback, definitionFile);
     }
 
-    TerrainMaterialScaffold::~TerrainMaterialScaffold() {}
+    TerrainMaterialConfig::~TerrainMaterialConfig() {}
 
-    std::unique_ptr<TerrainMaterialScaffold> TerrainMaterialScaffold::CreateNew(const char definitionFile[])
-    {
-        auto result = std::make_unique<TerrainMaterialScaffold>();
-        if (definitionFile)
-            result->_searchRules = ::Assets::DefaultDirectorySearchRules(definitionFile);
-        result->_validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        return result;
-    }
+    // std::unique_ptr<TerrainMaterialConfig> TerrainMaterialConfig::CreateNew(const char definitionFile[])
+    // {
+    //     auto result = std::make_unique<TerrainMaterialConfig>();
+    //     if (definitionFile)
+    //         result->_searchRules = ::Assets::DefaultDirectorySearchRules(definitionFile);
+    //     result->_validationCallback = std::make_shared<::Assets::DependencyValidation>();
+    //     return result;
+    // }
 
 
 }

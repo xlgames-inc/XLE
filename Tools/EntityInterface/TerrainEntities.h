@@ -13,7 +13,7 @@
 #include <vector>
 
 namespace Tools { class IManipulator; }
-namespace SceneEngine { class TerrainManager; class TerrainMaterialScaffold; }
+namespace SceneEngine { class TerrainManager; class TerrainMaterialConfig; }
 
 namespace EntityInterface
 {
@@ -45,10 +45,9 @@ namespace EntityInterface
         bool SetTerrainProperty(const PropertyInitializer& prop);
         std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
         ::Assets::rstring _uberSurfaceDir;
-        ::Assets::rstring _cellsDir;
 	};
 
     class RetainedEntities;
-    void RegisterTerrainFlexObjects(RetainedEntities& flexSys);
-    void ReloadTerrainFlexObjects(RetainedEntities& flexSys);
+    void RegisterTerrainFlexObjects(RetainedEntities& flexSys, std::shared_ptr<SceneEngine::TerrainManager>);
+    void ReloadTerrainFlexObjects(RetainedEntities& flexSys, SceneEngine::TerrainManager&);
 }

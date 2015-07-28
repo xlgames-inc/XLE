@@ -26,6 +26,7 @@ namespace SceneEngine
     
     class TerrainConfig;
     class TerrainCoordinateSystem;
+    class TerrainMaterialConfig;
 
     /// <summary>Top-level manager for terrain assets</summary>
     /// Internally, the manager coordinates many class that perform the rendering,
@@ -77,6 +78,7 @@ namespace SceneEngine
 
         const TerrainCoordinateSystem&  GetCoords() const;
         const TerrainConfig&            GetConfig() const;
+        const TerrainMaterialConfig&    GetMaterialConfig() const;
         const std::shared_ptr<ITerrainFormat>& GetFormat() const;
         void SetWorldSpaceOrigin(const Float3& origin);
 
@@ -88,6 +90,7 @@ namespace SceneEngine
         /// The previous terrain (if any) will be removed. However, if
         /// any cached textures or data can be retained, they will be.
         void Load(const TerrainConfig& cfg, UInt2 cellMin, UInt2 cellMax, bool allowModification);
+        void LoadMaterial(const TerrainMaterialConfig& matCfg);
         void LoadUberSurface(const ::Assets::ResChar uberSurfaceDir[]);
 
         /// <summary>Write all changes to disk</summary>

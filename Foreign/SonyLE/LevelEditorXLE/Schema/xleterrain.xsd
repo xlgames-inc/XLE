@@ -278,9 +278,7 @@
         <LeGe.NativeType nativeName="Terrain"/>
         <LeGe.NativeProperty name="Offset" nativeName="Offset" nativeType="float3" access="set"/>
         <LeGe.NativeProperty name="UberSurfaceDir" nativeName="UberSurfaceDir"/>
-        <LeGe.NativeProperty name="CellsDir" nativeName="CellsDir"/>
 
-        <scea.dom.editors.attribute name="CellsDir" displayName="Cells Directory" description="Directory containing terrain cell files" category="General"/>
         <scea.dom.editors.attribute name="UberSurfaceDir" displayName="Uber Surface Directory" description="Directory containing the working &quot;uber-surface&quot; files" category="General"/>
         <scea.dom.editors.attribute name="Offset" displayName="Offset" description="World space origin for terrain" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
       </xs:appinfo>

@@ -16,7 +16,7 @@ namespace Utility { class OutputStream; }
 
 namespace SceneEngine
 {
-    class TerrainMaterialScaffold
+    class TerrainMaterialConfig
     {
     public:
         class StrataMaterial
@@ -62,11 +62,11 @@ namespace SceneEngine
 
         void Write(Utility::OutputStream& stream) const;
 
-        TerrainMaterialScaffold();
-        TerrainMaterialScaffold(const char definitionFile[]);
-        ~TerrainMaterialScaffold();
+        TerrainMaterialConfig();
+        TerrainMaterialConfig(const ::Assets::ResChar definitionFile[]);
+        ~TerrainMaterialConfig();
 
-        static std::unique_ptr<TerrainMaterialScaffold> CreateNew(const char definitionFile[] = nullptr);
+        // static std::unique_ptr<TerrainMaterialConfig> CreateNew(const char definitionFile[] = nullptr);
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
     private:

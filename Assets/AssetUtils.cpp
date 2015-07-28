@@ -263,6 +263,8 @@ namespace Assets
             XlCopyString(destination, destinationCount, baseName);
     }
 
+    const ResChar* DirectorySearchRules::GetFirstSearchDir() const { return _buffer; }
+
     DirectorySearchRules::DirectorySearchRules()
     {
         _buffer[0] = '\0';

@@ -13,11 +13,6 @@ using namespace System;
 namespace GUILayer
 {
 
-    String^ TerrainConfig::BaseDir::get()
-    {
-        return clix::marshalString<clix::E_UTF8>(_native->_baseDir);
-    }
-
     VectorUInt2 TerrainConfig::CellDimsInNodes::get()
     {
         return AsVectorUInt2(_native->CellDimensionsInNodes());
@@ -53,11 +48,6 @@ namespace GUILayer
         _native->_cellCount = ToolsRig::GetCellCountFromUberSurface(
             clix::marshalString<clix::E_UTF8>(uberSurfaceDir).c_str(),
             _native->NodeDimensionsInElements(), _native->CellTreeDepth());
-    }
-
-    void TerrainConfig::Save()
-    {
-        _native->Save();
     }
 
     TerrainConfig::TerrainConfig(
