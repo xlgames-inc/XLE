@@ -13,6 +13,8 @@
 #include <vector>
 #include <functional>
 
+namespace Utility { template<typename Type> class InputStreamFormatter; }
+
 namespace EntityInterface
 {
     class RetainedEntity
@@ -139,6 +141,10 @@ namespace EntityInterface
     protected:
         std::shared_ptr<RetainedEntities> _scene;
     };
+
+    void Deserialize(
+        Utility::InputStreamFormatter<utf8>& formatter,
+        IEntityInterface& interf, DocumentTypeId docType);
 }
 
 

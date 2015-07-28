@@ -112,7 +112,11 @@ namespace Utility
         class XL_UTILITY_API InputStreamFormatter
     {
     public:
-        enum class Blob { BeginElement, EndElement, AttributeName, AttributeValue, None };
+        enum class Blob 
+        {
+            BeginElement, EndElement, 
+            AttributeName, AttributeValue, None 
+        };
         Blob PeekNext();
 
         class InteriorSection

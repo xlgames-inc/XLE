@@ -14,6 +14,11 @@
 #include "../SceneEngine/Ocean.h"
 #include "../SceneEngine/DeepOceanSim.h"
 
+namespace Utility
+{
+    template<typename Type> class InputStreamFormatter;
+}
+
 namespace PlatformRig
 {
     /// <summary>Describes a lighting environment</summary>
@@ -65,5 +70,8 @@ namespace PlatformRig
     SceneEngine::LightDesc DefaultDominantLight();
     SceneEngine::GlobalLightingDesc DefaultGlobalLightingDesc();
     EnvironmentSettings DefaultEnvironmentSettings();
+
+    std::vector<std::pair<std::string, PlatformRig::EnvironmentSettings>> 
+        DeserializeEnvSettings(Utility::InputStreamFormatter<utf8>& formatter);
 }
 

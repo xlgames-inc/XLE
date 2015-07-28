@@ -19,6 +19,11 @@
 #include "../../SceneEngine/TerrainFormat.h"
 #include "../../SceneEngine/TerrainConfig.h"
 
+#include "../../SceneEngine/VolumetricFog.h"
+#include "../../SceneEngine/ShallowSurface.h"
+#include "../../Tools/EntityInterface/EnvironmentSettings.h"
+#include "../../Tools/EntityInterface/RetainedEntities.h"
+
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Assets/ModelCache.h"
@@ -26,6 +31,9 @@
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/Streams/FileUtils.h"
+#include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 
 namespace Sample
@@ -47,6 +55,45 @@ namespace Sample
 
         float _time;
     };
+
+    static void LoadGameObjects(const ::Assets::ResChar filename[])
+    {
+        size_t fileSize = 0;
+        auto sourceFile = LoadFileAsMemoryBlock(filename, &fileSize);
+        using Formatter = InputStreamFormatter<utf8>;
+        Formatter formatter(
+            MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
+
+            // Parse the list of game objects, and create true native objects
+            // as required.
+            //
+            // Note that this path is designed to be generic and flexible...
+            // A final solution would do a lot of this work in the "export" step
+            // of the editor -- and write out objects that are more closely
+            // associated with the native types.
+            //
+            // But of this sample, we'll just use a simple generic approach.
+            // We'll use the EntityInterface library -- this is the library
+            // that is used to drive the native objects in the editor.
+            // The EntityInterface provides a layer
+            // over many native engine types, so they appear as generic
+            // containers of names and values called "entities".
+
+        auto volumetricFog = std::make_shared<SceneEngine::VolumetricFogManager>();
+        auto shallowSurfaces = std::make_shared<SceneEngine::ShallowSurfaceManager>();
+
+        using namespace EntityInterface;
+        auto retainedEntities = std::make_shared<RetainedEntities>();
+        auto updateMan = std::make_shared<EnvEntitiesManager>(retainedEntities);
+        updateMan->RegisterVolumetricFogFlexObjects(volumetricFog);
+        updateMan->RegisterShallowSurfaceFlexObjects(shallowSurfaces);
+
+        RetainedEntityInterface interf(retainedEntities);
+        Deserialize(
+            formatter, interf, 
+            interf.GetDocumentTypeId("GameObjects"));
+        updateMan->FlushUpdates();
+    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -182,6 +229,8 @@ namespace Sample
         pimpl->_cameraDesc->_farClip = 6000.f;
 
         pimpl->_envSettings = PlatformRig::DefaultEnvironmentSettings();
+
+        LoadGameObjects("finals/gameobjects.txt");
 
         _pimpl = std::move(pimpl);
     }

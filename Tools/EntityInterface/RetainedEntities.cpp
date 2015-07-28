@@ -7,6 +7,7 @@
 #include "RetainedEntities.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/PtrUtils.h"
+#include "../../Utility/Streams/StreamFormatter.h"
 
 namespace EntityInterface
 {
@@ -364,6 +365,120 @@ namespace EntityInterface
 
 	RetainedEntityInterface::~RetainedEntityInterface()
     {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static void DeserializeEntity(
+        InputStreamFormatter<utf8>& formatter,
+        IEntityInterface& interf,
+        DocumentId docId)
+    {
+        using Blob = InputStreamFormatter<utf8>::Blob;
+        using Section = InputStreamFormatter<utf8>::InteriorSection;
+        
+        utf8 tempBuffer[256];
+        
+        auto beginLoc = formatter.GetLocation();
+        Section objType = { nullptr, nullptr };
+        if (!formatter.TryBeginElement(objType))
+            Throw(FormatException("Error in begin element in entity file", formatter.GetLocation()));
+
+        XlCopyNString(tempBuffer, objType._start, objType._end - objType._start);
+        auto typeId = interf.GetTypeId((const char*)tempBuffer);
+
+        std::vector<PropertyInitializer> inits;
+        std::vector<char> initsBuffer;
+        initsBuffer.reserve(256);
+
+        for (;;) {
+            switch (formatter.PeekNext()) {
+            case Blob::BeginElement:
+                DeserializeEntity(formatter, interf, docId);
+                break;
+
+            case Blob::AttributeName:
+                {
+                    Section name, value;
+                    if (!formatter.TryAttribute(name, value))
+                        Throw(FormatException("Error in begin element in entity file", formatter.GetLocation()));
+
+                        // parse the value and add it as a property initializer
+                    char intermediateBuffer[64];
+                    auto type = ImpliedTyping::Parse(
+                        (const char*)value._start, (const char*)value._end,
+                        intermediateBuffer, dimof(intermediateBuffer));
+
+                    if (type._type == ImpliedTyping::TypeCat::Void) {
+                        type._type = ImpliedTyping::TypeCat::UInt8;
+                        type._arrayCount = uint16(value._end - value._start);
+                        type._typeHint = ImpliedTyping::TypeHint::String;
+                    }
+
+                    size_t bufferOffset = initsBuffer.size();
+                    auto size = std::min(type.GetSize(), (unsigned)sizeof(intermediateBuffer));
+                    initsBuffer.insert(
+                        initsBuffer.end(),
+                        intermediateBuffer, PtrAdd(intermediateBuffer, size));
+               
+                    XlCopyNString(tempBuffer, name._start, name._end - name._start);
+                    auto id = interf.GetPropertyId(typeId, (const char*)tempBuffer);
+
+                    PropertyInitializer i;
+                    i._prop = id;
+                    i._elementType = unsigned(type._type);
+                    i._arrayCount = type._arrayCount;
+                    i._src = (const void*)bufferOffset;
+
+                    inits.push_back(i);
+                }
+                break;
+
+            case Blob::EndElement:
+            default:
+                if (!formatter.TryEndElement())
+                    Throw(FormatException("Expecting end element in entity deserialisation", formatter.GetLocation()));
+
+                if (typeId != ~ObjectTypeId(0x0)) {
+                    for (auto&i:inits) i._src = PtrAdd(AsPointer(initsBuffer.cbegin()), size_t(i._src));
+
+                    auto id = interf.AssignObjectId(docId, typeId);
+                    if (!interf.CreateObject(
+                        Identifier(docId, id, typeId),
+                        AsPointer(inits.cbegin()), inits.size())) {
+                        Throw(FormatException("Error while creating object in entity deserialisation", beginLoc));
+                    }
+
+                    typeId = ~ObjectTypeId(0x0);
+                    initsBuffer.clear();
+                }
+                return;
+            }
+        }
+    }
+
+    void Deserialize(
+        InputStreamFormatter<utf8>& formatter,
+        IEntityInterface& interf,
+        DocumentTypeId docType)
+    {
+        auto docId = interf.CreateDocument(docType, nullptr);
+
+            // Parse the input file, and send the result to the given entity interface
+            // we expect only a list of entities in the root (no attributes)
+        using Blob = InputStreamFormatter<utf8>::Blob;
+        for (;;) {
+            switch (formatter.PeekNext()) {
+            case Blob::BeginElement:
+                DeserializeEntity(formatter, interf, docId);
+                break;
+
+            case Blob::None: return; // end of file
+
+            default:
+                Throw(FormatException("Unexpected blob while deserializing entities", formatter.GetLocation()));
+            }
+        }
+    }
 
 }
 
