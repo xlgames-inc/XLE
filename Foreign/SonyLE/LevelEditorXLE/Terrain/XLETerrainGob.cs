@@ -189,16 +189,13 @@ namespace LevelEditorXLE.Terrain
             get { return "Terrain"; }
         }
 
-        public GUILayer.EditorSceneManager.ExportResult PerformExport(string destinationFile)
+        public PendingExports BuildPendingExports()
         {
             var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            return sceneMan.ExportTerrainCachedData(destinationFile);
-        }
-
-        public GUILayer.EditorSceneManager.ExportPreview PreviewExport()
-        {
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            return sceneMan.PreviewExportTerrainCachedData();
+            List<GUILayer.EditorSceneManager.PendingExport> result;
+            result.Add(
+                Tuple.Create(ExportTarget, sceneMan.ExportTerrainCachedData())));
+            return result;
         }
         #endregion
 

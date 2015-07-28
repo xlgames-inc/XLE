@@ -32,7 +32,6 @@ namespace LevelEditorXLE.Terrain
         public string ExportTarget
         {
             get { return CellsDirectory + "/TerrainTextures/Textures.txt"; }
-            set { throw new NotImplementedException("TerrainMaterial.ExportTarget.Set"); }
         }
 
         public string ExportCategory
@@ -40,16 +39,13 @@ namespace LevelEditorXLE.Terrain
             get { return "Terrain"; }
         }
 
-        public GUILayer.EditorSceneManager.ExportResult PerformExport(string destinationFile)
+        public PendingExports BuildPendingExports()
         {
             var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            return sceneMan.ExportTerrainMaterialData(destinationFile);
-        }
-
-        public GUILayer.EditorSceneManager.ExportPreview PreviewExport()
-        {
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            return sceneMan.PreviewExportTerrainMaterialData();
+            List<GUILayer.EditorSceneManager.PendingExport> result;
+            result.Add(
+                Tuple.Create(ExportTarget, sceneMan.ExportTerrainMaterialData())));
+            return result;
         }
         #endregion
     }

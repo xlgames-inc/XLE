@@ -206,7 +206,6 @@ namespace LevelEditorXLE.Game
         public string ExportTarget
         {
             get { return "finals/gameobjects.txt"; }
-            set { }
         }
 
         public string ExportCategory
@@ -214,18 +213,13 @@ namespace LevelEditorXLE.Game
             get { return "Game Objects"; }
         }
 
-        public GUILayer.EditorSceneManager.ExportResult PerformExport(string destinationFile)
-        {
-            // This is a bit tricky, here. We need to get both the document id
-            // and a pointer to the EditorSceneManager from the native interop folder
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            return sceneMan.ExportGameObjects(0, destinationFile);
-        }
-
-        public GUILayer.EditorSceneManager.ExportPreview PreviewExport()
+        public PendingExports BuildPendingExports()
         {
             var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            return sceneMan.PreviewExportGameObjects(0);
+            List<GUILayer.EditorSceneManager.PendingExport> result;
+            result.Add(
+                Tuple.Create(ExportTarget, sceneMan.ExportGameObjects(0))));
+            return result;
         }
         #endregion
     }

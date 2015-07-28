@@ -77,10 +77,59 @@ namespace GUILayer
     ref class IManipulatorSet;
     ref class IPlacementManipulatorSettingsLayer;
 
+    /// <summary>High level manager for level editor interface</summary>
+    /// The EditorSceneManager will start up and shutdown the core objects
+    /// responsible for managing the scene in the level editor. This includes
+    /// creating the manager objects for the EntityInterface library.
+    ///
+    /// This also provides a way for some level editor objects to access
+    /// scene objects for export (etc)
     public ref class EditorSceneManager
     {
     public:
-            //// //// ////   U T I L S   //// //// ////
+
+            //// //// ////   E X P O R T   I N T E R F A C E   //// //// ////
+
+        value class ExportResult
+        {
+        public:
+            System::String^ _messages;
+            bool _success = false;
+        };
+
+        ref class PendingExport abstract
+        {
+        public:
+            enum struct Type { Text, Binary, MetricsText, None };
+            System::String^ _preview;
+            System::String^ _messages;
+            Type _previewType = Type::None;
+
+            bool _success = false;
+            
+            virtual ExportResult PerformExport(System::String^ destFile) = 0;
+        };
+
+        PendingExport^ ExportEnv(EntityInterface::DocumentId docId);
+        PendingExport^ ExportGameObjects(EntityInterface::DocumentId docId);
+        PendingExport^ ExportPlacements(EntityInterface::DocumentId placementsDoc);
+
+        PendingExport^ ExportTerrain(TerrainConfig^ cfg);
+        PendingExport^ ExportTerrainCachedData();
+        PendingExport^ ExportTerrainMaterialData();
+
+        value class PlacementCellRef
+        {
+        public:
+            property System::String^ NativeFile;
+            property Vector3 Offset;
+            property Vector3 Mins;
+            property Vector3 Maxs;
+        };
+        PendingExport^ ExportPlacementsCfg(IEnumerable<PlacementCellRef>^ cells);
+
+            //// //// ////   A C C E S S O R S   //// //// ////
+
         IManipulatorSet^ CreateTerrainManipulators();
         IManipulatorSet^ CreatePlacementManipulators(IPlacementManipulatorSettingsLayer^ context);
         IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera, EditorSceneRenderSettings^ renderSettings);
@@ -92,53 +141,8 @@ namespace GUILayer
             uint typeId, System::String^ annotationName, 
             IEnumerable<EntityLayer::PropertyInitializer>^ initializers);
 
-            //// //// ////   E X P O R T   I N T E R F A C E   //// //// ////
-        ref class ExportResult
-        {
-        public:
-            System::String^ _messages;
-            bool _success;
-        };
-
-        ref class ExportPreview
-        {
-        public:
-            enum struct Type { Text, Binary, MetricsText, None };
-            System::String^ _preview;
-            Type _type = Type::None;
-            System::String^ _messages;
-            bool _success = false;
-        };
-
-        ExportResult^ ExportTerrainSettings(System::String^ destinationFolder);
-        
-        ExportResult^ ExportEnv(EntityInterface::DocumentId docId, System::String^ destinationFile);
-        ExportPreview^ PreviewExportEnv(EntityInterface::DocumentId docId);
-
-        ExportResult^ ExportGameObjects(EntityInterface::DocumentId docId, System::String^ destinationFile);
-        ExportPreview^ PreviewExportGameObjects(EntityInterface::DocumentId docId);
-
-        ExportResult^ ExportPlacements(EntityInterface::DocumentId placementsDoc, System::String^ destinationFile);
-        ExportPreview^ PreviewExportPlacements(EntityInterface::DocumentId placementsDoc);
-
-        ExportResult^ ExportTerrainCachedData(System::String^ destinationFile);
-        ExportPreview^ PreviewExportTerrainCachedData();
-
-        ExportResult^ ExportTerrainMaterialData(System::String^ destinationFile);
-        ExportPreview^ PreviewExportTerrainMaterialData();
-
-        value class PlacementCellRef
-        {
-        public:
-            property System::String^ NativeFile;
-            property Vector3 Offset;
-            property Vector3 Mins;
-            property Vector3 Maxs;
-        };
-        ExportPreview^ PreviewExportPlacementsCfg(IEnumerable<PlacementCellRef>^ cells);
-        ExportResult^ ExportPlacementsCfg(IEnumerable<PlacementCellRef>^ cells, System::String^ destinationFile);
-
             //// //// ////   U T I L I T Y   //// //// ////
+
         const EntityInterface::RetainedEntities& GetFlexObjects();
         void IncrementTime(float increment);
 

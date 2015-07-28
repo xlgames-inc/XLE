@@ -196,26 +196,52 @@ namespace GUILayer
             result->_success = true;
             result->_messages = "Success";
         } CATCH(const std::exception& e) {
-            result->_messages = "Error while exporting " + typeName +": " + clix::marshalString<clix::E_UTF8>(e.what());
+            result->_messages = "Error while exporting " + typeName + ": " + clix::marshalString<clix::E_UTF8>(e.what());
         } CATCH(...) {
             result->_messages = "Unknown error occurred while exporting " + typeName;
         } CATCH_END
         return result;
     }
 
+    ref class TextPendingExport : public EditorSceneManager::PendingExport
+    {
+    public:
+        EditorSceneManager::ExportResult PerformExport(System::String^ destFile) override
+        {
+            EditorSceneManager::ExportResult result;
+            TRY
+            {
+                auto nativeDestFile = clix::marshalString<clix::E_UTF8>(destFile);
+                PrepareDirectoryForFile(nativeDestFile);
+
+                pin_ptr<const wchar_t> p = ::PtrToStringChars(_preview);
+                auto output = OpenFileOutput(nativeDestFile.c_str(), "wb");
+                output->Write(p, _preview->Length);
+                
+                result._success = true;
+                result._messages = "Success";
+                
+            } CATCH(const std::exception& e) {
+                result._messages = "Error while writing to file: " + destFile + " : " + clix::marshalString<clix::E_UTF8>(e.what());
+            } CATCH(...) {
+                result._messages = "Unknown error occurred while writing to file " + destFile;
+            } CATCH_END
+            return result;
+        }
+    };
+
     template<typename Type>
-        static EditorSceneManager::ExportPreview^ PreviewViaStream(
+        static EditorSceneManager::PendingExport^ ExportViaStream(
             System::String^ typeName,
             Type streamWriter)
     {
-        auto result = gcnew EditorSceneManager::ExportPreview();
+        auto result = gcnew TextPendingExport();
         result->_success = false;
         
         TRY
         {
             MemoryOutputStream<utf8> stream;
-            result->_type = streamWriter(stream);
-
+            result->_previewType = streamWriter(stream);
             result->_preview = clix::marshalString<clix::E_UTF8>(stream.GetBuffer().str());
             result->_success = true;
             result->_messages = "Success";
@@ -227,105 +253,41 @@ namespace GUILayer
         return result;
     }
 
-    static auto WriteEnvSettings(OutputStream& stream, uint64 docId, EntityInterface::RetainedEntities* flexObjects) -> EditorSceneManager::ExportPreview::Type
+    static auto WriteEnvSettings(OutputStream& stream, uint64 docId, EntityInterface::RetainedEntities* flexObjects) 
+        -> EditorSceneManager::PendingExport::Type
     {
         OutputStreamFormatter formatter(stream);
         EntityInterface::ExportEnvSettings(formatter, *flexObjects, docId);
-        return EditorSceneManager::ExportPreview::Type::Text;
+        return EditorSceneManager::PendingExport::Type::Text;
     }
 
-    auto EditorSceneManager::ExportEnv(EntityInterface::DocumentId docId, System::String^ destinationFile) -> ExportResult^
+    auto EditorSceneManager::ExportEnv(EntityInterface::DocumentId docId) -> PendingExport^
     {
         return ExportViaStream(
-            "environment settings", destinationFile,
-            std::bind(WriteEnvSettings, _1, docId, _scene->_flexObjects.get()));
-    }
-
-    auto EditorSceneManager::PreviewExportEnv(EntityInterface::DocumentId docId) -> ExportPreview^
-    {
-        auto result = PreviewViaStream(
             "environment settings",
             std::bind(WriteEnvSettings, _1, docId, _scene->_flexObjects.get()));
-
-        // {
-        //     auto nativeString = clix::marshalString<clix::E_UTF8>(result->_preview);
-        //     MemoryMappedInputStream str(AsPointer(nativeString.cbegin()), AsPointer(nativeString.cend()));
-        //     InputStreamFormatter<utf8> formatter(str);
-        //     auto envTest = EntityInterface::DeserializeEnvSettings(formatter);
-        //     (void)envTest;
-        // }
-
-        return result;
     }
 
     static auto WriteGameObjects(
         OutputStream& stream, uint64 docId, 
-        EntityInterface::RetainedEntities* flexObjects) -> EditorSceneManager::ExportPreview::Type
+        EntityInterface::RetainedEntities* flexObjects) -> EditorSceneManager::PendingExport::Type
     {
         OutputStreamFormatter formatter(stream);
         EntityInterface::ExportGameObjects(formatter, *flexObjects, docId);
-        return EditorSceneManager::ExportPreview::Type::Text;
+        return EditorSceneManager::PendingExport::Type::Text;
     }
 
     auto EditorSceneManager::ExportGameObjects(
-        EntityInterface::DocumentId docId, 
-        System::String^ destinationFile) -> ExportResult^
+        EntityInterface::DocumentId docId) -> PendingExport^
     {
         return ExportViaStream(
-            "game objects", destinationFile,
-            std::bind(WriteGameObjects, _1, docId, _scene->_flexObjects.get()));
-    }
-
-    auto EditorSceneManager::PreviewExportGameObjects(EntityInterface::DocumentId docId) -> ExportPreview^
-    {
-        return PreviewViaStream(
             "game objects",
             std::bind(WriteGameObjects, _1, docId, _scene->_flexObjects.get()));
     }
 
-    static auto WriteTerrainCachedData(OutputStream& stream, SceneEngine::TerrainManager* terrainMan) -> EditorSceneManager::ExportPreview::Type
-    {
-        SceneEngine::WriteTerrainCachedData(stream, terrainMan->GetConfig(), *terrainMan->GetFormat());
-        return EditorSceneManager::ExportPreview::Type::Text;
-    }
-
-    auto EditorSceneManager::ExportTerrainCachedData(System::String^ destinationFile) -> ExportResult^
-    {
-        return ExportViaStream(
-            "terrain cached data", destinationFile,
-            std::bind(WriteTerrainCachedData, _1, _scene->_terrainManager.get()));
-    }
-
-    auto EditorSceneManager::PreviewExportTerrainCachedData() -> ExportPreview^
-    {
-        return PreviewViaStream(
-            "terrain cached data",
-            std::bind(WriteTerrainCachedData, _1, _scene->_terrainManager.get()));
-    }
-
-    static auto WriteTerrainMaterialData(OutputStream& stream, SceneEngine::TerrainManager* terrainMan) -> EditorSceneManager::ExportPreview::Type
-    {
-        SceneEngine::WriteTerrainMaterialData(stream, terrainMan->GetMaterialConfig());
-        return EditorSceneManager::ExportPreview::Type::Text;
-    }
-
-    auto EditorSceneManager::ExportTerrainMaterialData(System::String^ destinationFile) -> ExportResult^
-    {
-        return ExportViaStream(
-            "terrain material data", destinationFile,
-            std::bind(WriteTerrainMaterialData, _1, _scene->_terrainManager.get()));
-    }
-
-    auto EditorSceneManager::PreviewExportTerrainMaterialData() -> ExportPreview^
-    {
-        return PreviewViaStream(
-            "terrain material data",
-            std::bind(WriteTerrainMaterialData, _1, _scene->_terrainManager.get()));
-    }
-
     static auto WritePlacementsCfg(
         OutputStream& stream, 
-        IEnumerable<EditorSceneManager::PlacementCellRef>^ cells) -> EditorSceneManager::ExportPreview::Type
+        IEnumerable<EditorSceneManager::PlacementCellRef>^ cells) -> EditorSceneManager::PendingExport::Type
     {
         OutputStreamFormatter formatter(stream);
         for each(auto c in cells) {
@@ -337,59 +299,58 @@ namespace GUILayer
             formatter.EndElement(ele);
         }
         formatter.Flush();
-        return EditorSceneManager::ExportPreview::Type::Text;
+        return EditorSceneManager::PendingExport::Type::Text;
     }
 
-    auto EditorSceneManager::PreviewExportPlacementsCfg(IEnumerable<PlacementCellRef>^ cells) -> ExportPreview^
+    auto EditorSceneManager::ExportPlacementsCfg(IEnumerable<PlacementCellRef>^ cells) -> PendingExport^
     {
-        return PreviewViaStream(
+        return ExportViaStream(
             "placements config",
             std::bind(WritePlacementsCfg, _1, gcroot<IEnumerable<PlacementCellRef>^>(cells)));
     }
 
-    auto EditorSceneManager::ExportPlacementsCfg(IEnumerable<PlacementCellRef>^ cells, System::String^ destinationFile) -> ExportResult^
+    ref class PlacementsPendingExport : public EditorSceneManager::PendingExport
     {
-        return ExportViaStream(
-            "placements config", destinationFile,
-            std::bind(WritePlacementsCfg, _1, gcroot<IEnumerable<PlacementCellRef>^>(cells)));
-    }
-
-    auto EditorSceneManager::ExportPlacements(EntityInterface::DocumentId doc, System::String^ destinationFile) -> ExportResult^
-    {
-            //  The document id corresponds directly with the 
-            //  id used in the placements editor object. So we can
-            //  just call the save function in the placements editor
-            //  directly.
-        auto result = gcnew EditorSceneManager::ExportResult();
-        result->_success = false;
-        
-        TRY
+    public:
+        EditorSceneManager::ExportResult PerformExport(System::String^ destFile) override
         {
-                // attempt to create the directory, if we need to
-            auto nativeDestFile = clix::marshalString<clix::E_UTF8>(destinationFile);
-            PrepareDirectoryForFile(nativeDestFile);
-            _scene->_placementsEditor->WriteCell(doc, nativeDestFile.c_str());
-
-                // write metrics file as well
+            EditorSceneManager::ExportResult result;
+            TRY
             {
-                auto metrics = _scene->_placementsEditor->GetMetricsString(doc);
-                auto output = OpenFileOutput((nativeDestFile + ".metrics").c_str(), "wb");
-                output->WriteString((const utf8*)AsPointer(metrics.cbegin()), (const utf8*)AsPointer(metrics.cend()));
-            }
+                auto nativeDestFile = clix::marshalString<clix::E_UTF8>(destFile);
+                PrepareDirectoryForFile(nativeDestFile);
 
-            result->_success = true;
-            result->_messages = "Success";
-        } CATCH(const std::exception& e) {
-            result->_messages = "Error while exporting placements: " + clix::marshalString<clix::E_UTF8>(e.what());
-        } CATCH(...) {
-            result->_messages = "Unknown error occurred while exporting placements";
-        } CATCH_END
-        return result;
-    }
+                _placements->WriteCell(_doc, nativeDestFile.c_str());
 
-    auto EditorSceneManager::PreviewExportPlacements(EntityInterface::DocumentId placementsDoc) -> ExportPreview^
+                    // write metrics file as well
+                {
+                    auto metrics = _placements->GetMetricsString(_doc);
+                    auto output = OpenFileOutput((nativeDestFile + ".metrics").c_str(), "wb");
+                    output->WriteString((const utf8*)AsPointer(metrics.cbegin()), (const utf8*)AsPointer(metrics.cend()));
+                }
+
+                result._success = true;
+                result._messages = "Success";
+                
+            } CATCH(const std::exception& e) {
+                result._messages = "Error while writing to file: " + destFile + " : " + clix::marshalString<clix::E_UTF8>(e.what());
+            } CATCH(...) {
+                result._messages = "Unknown error occurred while writing to file " + destFile;
+            } CATCH_END
+            return result;
+        }
+
+        PlacementsPendingExport(
+            EntityInterface::DocumentId doc,
+            std::shared_ptr<SceneEngine::PlacementsEditor> placements) : _doc(doc), _placements(placements) {}
+    private:
+        EntityInterface::DocumentId _doc;
+        clix::shared_ptr<SceneEngine::PlacementsEditor> _placements;
+    };
+
+    auto EditorSceneManager::ExportPlacements(EntityInterface::DocumentId placementsDoc) -> PendingExport^
     {
-        auto result = gcnew ExportPreview();
+        auto result = gcnew PlacementsPendingExport(placementsDoc, _scene->_placementsEditor);
         result->_success = false;
 
         TRY
@@ -398,7 +359,7 @@ namespace GUILayer
                 _scene->_placementsEditor->GetMetricsString(placementsDoc));
             result->_success = true;
             result->_messages = "Success";
-            result->_type = ExportPreview::Type::MetricsText;
+            result->_previewType = PendingExport::Type::MetricsText;
         } CATCH(const std::exception& e) {
             result->_messages = "Error while exporting placements: " + clix::marshalString<clix::E_UTF8>(e.what());
         } CATCH(...) {
@@ -408,9 +369,45 @@ namespace GUILayer
         return result;
     }
 
-    auto EditorSceneManager::ExportTerrainSettings(System::String^ destinationFolder) -> ExportResult^
+    static auto WriteTerrainCfg(OutputStream& stream, SceneEngine::TerrainConfig& cfg) 
+        -> EditorSceneManager::PendingExport::Type
     {
-        return nullptr;
+        OutputStreamFormatter formatter(stream);
+        cfg.Write(stream);
+        return EditorSceneManager::PendingExport::Type::Text;
+    }
+
+    auto EditorSceneManager::ExportTerrain(TerrainConfig^ cfg) -> PendingExport^
+    {
+        return ExportViaStream("terrain", std::bind(WriteTerrainCfg, _1, cfg->GetNative()));
+    }
+
+    static auto WriteTerrainCachedData(OutputStream& stream, SceneEngine::TerrainManager* terrainMan) 
+        -> EditorSceneManager::PendingExport::Type
+    {
+        SceneEngine::WriteTerrainCachedData(stream, terrainMan->GetConfig(), *terrainMan->GetFormat());
+        return EditorSceneManager::PendingExport::Type::Text;
+    }
+
+    auto EditorSceneManager::ExportTerrainCachedData() -> PendingExport^
+    {
+        return ExportViaStream(
+            "terrain cached data",
+            std::bind(WriteTerrainCachedData, _1, _scene->_terrainManager.get()));
+    }
+
+    static auto WriteTerrainMaterialData(OutputStream& stream, SceneEngine::TerrainManager* terrainMan) 
+        -> EditorSceneManager::PendingExport::Type
+    {
+        SceneEngine::WriteTerrainMaterialData(stream, terrainMan->GetMaterialConfig());
+        return EditorSceneManager::PendingExport::Type::Text;
+    }
+
+    auto EditorSceneManager::ExportTerrainMaterialData() -> PendingExport^
+    {
+        return ExportViaStream(
+            "terrain material data",
+            std::bind(WriteTerrainMaterialData, _1, _scene->_terrainManager.get()));
     }
 
     void EditorSceneManager::UnloadTerrain()

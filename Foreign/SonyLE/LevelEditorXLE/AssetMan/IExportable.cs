@@ -3,11 +3,11 @@ using System.Collections.Generic;
 
 namespace LevelEditorXLE
 {
+    using PendingExports = IEnumerable<Tuple<string, GUILayer.EditorSceneManager.PendingExport>>;
+    
     public interface IExportable
     {
-        string ExportTarget { get; set; }
         string ExportCategory { get; }
-        GUILayer.EditorSceneManager.ExportResult PerformExport(string destinationFile);
-        GUILayer.EditorSceneManager.ExportPreview PreviewExport();
+        PendingExports BuildPendingExports();
     }
 }
