@@ -39,12 +39,11 @@ namespace LevelEditorXLE.Terrain
             get { return "Terrain"; }
         }
 
-        public PendingExports BuildPendingExports()
+        public IEnumerable<PendingExport> BuildPendingExports()
         {
             var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            List<GUILayer.EditorSceneManager.PendingExport> result;
-            result.Add(
-                Tuple.Create(ExportTarget, sceneMan.ExportTerrainMaterialData())));
+            var result = new List<PendingExport>();
+            result.Add(new PendingExport(ExportTarget, sceneMan.ExportTerrainMaterialData()));
             return result;
         }
         #endregion

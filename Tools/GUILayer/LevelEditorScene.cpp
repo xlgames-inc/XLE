@@ -173,36 +173,6 @@ namespace GUILayer
         CreateDirectoryRecursive((char*)dirName);
     }
 
-    template<typename Type>
-        static EditorSceneManager::ExportResult^ ExportViaStream(
-            System::String^ typeName, System::String^ destinationFile,
-            Type streamWriter)
-    {
-        auto result = gcnew EditorSceneManager::ExportResult();
-        result->_success = false;
-        
-        TRY
-        {
-                // attempt to create the directory, if we need to
-            auto nativeDestFile = clix::marshalString<clix::E_UTF8>(destinationFile);
-            PrepareDirectoryForFile(nativeDestFile);
-
-            {
-                    // write out to a file stream
-                auto output = OpenFileOutput(nativeDestFile.c_str(), "wb");
-                streamWriter(*output);
-            }
-
-            result->_success = true;
-            result->_messages = "Success";
-        } CATCH(const std::exception& e) {
-            result->_messages = "Error while exporting " + typeName + ": " + clix::marshalString<clix::E_UTF8>(e.what());
-        } CATCH(...) {
-            result->_messages = "Unknown error occurred while exporting " + typeName;
-        } CATCH_END
-        return result;
-    }
-
     ref class TextPendingExport : public EditorSceneManager::PendingExport
     {
     public:
@@ -214,9 +184,12 @@ namespace GUILayer
                 auto nativeDestFile = clix::marshalString<clix::E_UTF8>(destFile);
                 PrepareDirectoryForFile(nativeDestFile);
 
-                pin_ptr<const wchar_t> p = ::PtrToStringChars(_preview);
                 auto output = OpenFileOutput(nativeDestFile.c_str(), "wb");
-                output->Write(p, _preview->Length);
+                // pin_ptr<const wchar_t> p = ::PtrToStringChars(_preview);
+                // output->Write(p, _preview->Length * sizeof(wchar_t));
+                    // we need to use clix::marshalString in order to convert to UTF8 characters
+                auto nativeString = clix::marshalString<clix::E_UTF8>(_preview);
+                output->Write(AsPointer(nativeString.cbegin()), int(nativeString.size() * sizeof(decltype(nativeString)::value_type)));
                 
                 result._success = true;
                 result._messages = "Success";

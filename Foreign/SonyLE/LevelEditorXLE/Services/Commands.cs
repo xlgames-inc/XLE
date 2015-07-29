@@ -155,44 +155,43 @@ namespace LevelEditorXLE
             if (rootNode==null) return;
 
             var queuedExports = new List<ControlsLibrary.ExportPreviewDialog.QueuedExport>();
-            var exportNodes = new List<IExportable>();
+            var exportNodes = new List<PendingExport>();
             foreach (var n in rootNode.DomNode.Subtree)     // LevelSubtree has a small bug "foreach (var child in Children)" -> "foreach (var child in node.Children)"
             {
                 var exportable = n.As<IExportable>();
                 if (exportable == null) continue;
 
-                var e = new ControlsLibrary.ExportPreviewDialog.QueuedExport
-                    {
-                        DoExport = true,
-                        TargetFile = exportable.ExportTarget,
-                        Category = exportable.ExportCategory
-                    };
-
-                var preview = exportable.PreviewExport();
-                if (preview != null)
+                var exports = exportable.BuildPendingExports();
+                foreach (var preview in exports)
                 {
-                    if (    preview._type == GUILayer.EditorSceneManager.ExportPreview.Type.Text
-                        ||  preview._type == GUILayer.EditorSceneManager.ExportPreview.Type.MetricsText)
+                    var e = new ControlsLibrary.ExportPreviewDialog.QueuedExport
+                        {
+                            DoExport = true,
+                            TargetFile = preview.TargetFile,
+                            Category = exportable.ExportCategory
+                        };
+
+                    if (preview.Export._previewType == GUILayer.EditorSceneManager.PendingExport.Type.Text
+                        || preview.Export._previewType == GUILayer.EditorSceneManager.PendingExport.Type.MetricsText)
                     {
-                        e.TextPreview = preview._preview;
+                        e.TextPreview = preview.Export._preview;
                         var comparisonFile = e.TargetFile;
-                        if (preview._type == GUILayer.EditorSceneManager.ExportPreview.Type.MetricsText)
+                        if (preview.Export._previewType == GUILayer.EditorSceneManager.PendingExport.Type.MetricsText)
                             comparisonFile += ".metrics";
 
                         try
                         {
                             e.ExistingText = System.IO.File.ReadAllText(comparisonFile);
-                        } 
+                        }
                         catch
                         {
                             e.ExistingText = String.Format("<<Error while reading file {0}>>".Localize(), comparisonFile);
                         }
                     }
-                    e.Messages = preview._messages;
+                    e.Messages = preview.Export._messages;
+                    queuedExports.Add(e);
+                    exportNodes.Add(preview);
                 }
-
-                queuedExports.Add(e);
-                exportNodes.Add(exportable);
             }
 
             using (var dialog = new ControlsLibrary.ExportPreviewDialog())
@@ -206,7 +205,7 @@ namespace LevelEditorXLE
                     for (int c = 0; c < queuedExports.Count; ++c)
                     {
                         if (queuedExports[c].DoExport)
-                            exportNodes[c].PerformExport(queuedExports[c].TargetFile);
+                            exportNodes[c].Export.PerformExport(queuedExports[c].TargetFile);
                     }
                 }
             } 

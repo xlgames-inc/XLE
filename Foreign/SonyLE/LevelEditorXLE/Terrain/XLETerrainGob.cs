@@ -138,6 +138,12 @@ namespace LevelEditorXLE.Terrain
             set { SetAttribute(TerrainST.GradFlagSlopeThreshold2Attribute, value); }
         }
 
+        public string ConfigExportTarget
+        {
+            get { return GetAttribute<string>(TerrainST.ConfigFileTargetAttribute); }
+            set { SetAttribute(TerrainST.ConfigFileTargetAttribute, value); }
+        }
+
         public DomNode BaseTexture
         {
             get { return DomNode.GetChild(TerrainST.baseTextureChild); }
@@ -178,23 +184,18 @@ namespace LevelEditorXLE.Terrain
         }
 
         #region IExportable
-        public string ExportTarget
-        {
-            get { return CellsDirectory + "/cached.dat"; }
-            set { throw new NotImplementedException("XLETerrainGob.ExportTarget.Set"); }
-        }
+        public string CacheExportTarget { get { return CellsDirectory + "/cached.dat"; } }
+        public string ExportCategory { get { return "Terrain"; } }
 
-        public string ExportCategory
-        {
-            get { return "Terrain"; }
-        }
-
-        public PendingExports BuildPendingExports()
+        public IEnumerable<PendingExport> BuildPendingExports()
         {
             var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            List<GUILayer.EditorSceneManager.PendingExport> result;
+            var result = new List<PendingExport>();
+            result.Add(new PendingExport(CacheExportTarget, sceneMan.ExportTerrainCachedData()));
             result.Add(
-                Tuple.Create(ExportTarget, sceneMan.ExportTerrainCachedData())));
+                new PendingExport(
+                    ConfigExportTarget, 
+                    sceneMan.ExportTerrain(BuildEngineConfig(BuildDialogConfig()))));
             return result;
         }
         #endregion

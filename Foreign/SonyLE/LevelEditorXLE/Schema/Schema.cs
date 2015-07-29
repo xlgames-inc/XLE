@@ -293,6 +293,14 @@ namespace LevelEditorXLE
             shallowSurfaceType.visibleAttribute = shallowSurfaceType.Type.GetAttributeInfo("visible");
             shallowSurfaceType.lockedAttribute = shallowSurfaceType.Type.GetAttributeInfo("locked");
             shallowSurfaceType.MarkerAttribute = shallowSurfaceType.Type.GetAttributeInfo("Marker");
+            shallowSurfaceType.GridPhysicalSizeAttribute = shallowSurfaceType.Type.GetAttributeInfo("GridPhysicalSize");
+            shallowSurfaceType.GridDimsAttribute = shallowSurfaceType.Type.GetAttributeInfo("GridDims");
+            shallowSurfaceType.SimGridCountAttribute = shallowSurfaceType.Type.GetAttributeInfo("SimGridCount");
+            shallowSurfaceType.BaseHeightAttribute = shallowSurfaceType.Type.GetAttributeInfo("BaseHeight");
+            shallowSurfaceType.SimMethodAttribute = shallowSurfaceType.Type.GetAttributeInfo("SimMethod");
+            shallowSurfaceType.RainQuantityAttribute = shallowSurfaceType.Type.GetAttributeInfo("RainQuantity");
+            shallowSurfaceType.EvaporationConstantAttribute = shallowSurfaceType.Type.GetAttributeInfo("EvaporationConstant");
+            shallowSurfaceType.PressureConstantAttribute = shallowSurfaceType.Type.GetAttributeInfo("PressureConstant");
 
             placementsCellReferenceType.Type = getNodeType("gap", "placementsCellReferenceType");
             placementsCellReferenceType.refAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ref");
@@ -394,6 +402,7 @@ namespace LevelEditorXLE
             terrainType.Type = getNodeType("gap", "terrainType");
             terrainType.UberSurfaceDirAttribute = terrainType.Type.GetAttributeInfo("UberSurfaceDir");
             terrainType.CellsDirAttribute = terrainType.Type.GetAttributeInfo("CellsDir");
+            terrainType.ConfigFileTargetAttribute = terrainType.Type.GetAttributeInfo("ConfigFileTarget");
             terrainType.NodeDimensionsAttribute = terrainType.Type.GetAttributeInfo("NodeDimensions");
             terrainType.OverlapAttribute = terrainType.Type.GetAttributeInfo("Overlap");
             terrainType.SpacingAttribute = terrainType.Type.GetAttributeInfo("Spacing");
@@ -833,6 +842,14 @@ namespace LevelEditorXLE
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
             public static AttributeInfo MarkerAttribute;
+            public static AttributeInfo GridPhysicalSizeAttribute;
+            public static AttributeInfo GridDimsAttribute;
+            public static AttributeInfo SimGridCountAttribute;
+            public static AttributeInfo BaseHeightAttribute;
+            public static AttributeInfo SimMethodAttribute;
+            public static AttributeInfo RainQuantityAttribute;
+            public static AttributeInfo EvaporationConstantAttribute;
+            public static AttributeInfo PressureConstantAttribute;
         }
 
         public static class placementsCellReferenceType
@@ -973,6 +990,7 @@ namespace LevelEditorXLE
             public static DomNodeType Type;
             public static AttributeInfo UberSurfaceDirAttribute;
             public static AttributeInfo CellsDirAttribute;
+            public static AttributeInfo ConfigFileTargetAttribute;
             public static AttributeInfo NodeDimensionsAttribute;
             public static AttributeInfo OverlapAttribute;
             public static AttributeInfo SpacingAttribute;

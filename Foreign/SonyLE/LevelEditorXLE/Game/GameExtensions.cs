@@ -213,12 +213,11 @@ namespace LevelEditorXLE.Game
             get { return "Game Objects"; }
         }
 
-        public PendingExports BuildPendingExports()
+        public IEnumerable<PendingExport> BuildPendingExports()
         {
             var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            List<GUILayer.EditorSceneManager.PendingExport> result;
-            result.Add(
-                Tuple.Create(ExportTarget, sceneMan.ExportGameObjects(0))));
+            var result = new List<PendingExport>();
+            result.Add(new PendingExport(ExportTarget, sceneMan.ExportGameObjects(0)));
             return result;
         }
         #endregion

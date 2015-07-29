@@ -92,21 +92,34 @@ namespace LevelEditorXLE.Placements
             get { return "Placements"; }
         }
 
-        public PendingExports BuildPendingExports()
+        private class ErrorExport : GUILayer.EditorSceneManager.PendingExport
+        {
+            public override GUILayer.EditorSceneManager.ExportResult PerformExport(string destFile)
+            {
+                throw new NotImplementedException("Attempting to perform impossible export");
+            }
+        };
+
+        public IEnumerable<PendingExport> BuildPendingExports()
         {
             if (!IsResolved())
-                return new GUILayer.EditorSceneManager.PendingExport
-                    { _success = false, _messages = "Cell reference is unresolved" };
+                return new List<PendingExport>{
+                    new PendingExport(
+                        ExportTarget,
+                        new ErrorExport
+                            { _success = false, _messages = "Cell reference is unresolved" })};
 
             var target = Target.As<XLEBridgeUtils.INativeDocumentAdapter>();
             if (target == null)
-                return new GUILayer.EditorSceneManager.PendingExport
-                    { _success = false, _messages = "Error resolving target" };
+                return new List<PendingExport>{
+                    new PendingExport(
+                        ExportTarget,
+                        new ErrorExport
+                            { _success = false, _messages = "Error resolving target" })};
 
             var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            List<GUILayer.EditorSceneManager.PendingExport> result;
-            result.Add(
-                Tuple.Create(ExportTarget, sceneMan.ExportPlacements(target.NativeDocumentId))));
+            var result = new List<PendingExport>();
+            result.Add(new PendingExport(ExportTarget, sceneMan.ExportPlacements(target.NativeDocumentId)));
             return result;
         }
         #endregion
@@ -358,12 +371,12 @@ namespace LevelEditorXLE.Placements
 
         public string ExportCategory { get { return "Placements"; } }
 
-        public PendingExports BuildPendingExports()
+        public IEnumerable<PendingExport> BuildPendingExports()
         {
             var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            List<GUILayer.EditorSceneManager.PendingExport> result;
-            auto e = sceneMan.ExportPlacementsCfg(BuildExportRefs());
-            result.Add(Tuple.Create(ExportTarget, e)));
+            var result = new List<PendingExport>();
+            var e = sceneMan.ExportPlacementsCfg(BuildExportRefs());
+            result.Add(new PendingExport(ExportTarget, e));
             return result;
         }
 

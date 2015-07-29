@@ -143,12 +143,11 @@ namespace LevelEditorXLE.Environment
             get { return "Environment Settings"; }
         }
 
-        public PendingExports BuildPendingExports()
+        public IEnumerable<PendingExport> BuildPendingExports()
         {
             var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            List<GUILayer.EditorSceneManager.PendingExport> result;
-            result.Add(
-                Tuple.Create(ExportTarget, sceneMan.ExportEnv(0))));
+            var result = new List<PendingExport>();
+            result.Add(new PendingExport(ExportTarget, sceneMan.ExportEnv(0)));
             return result;
         }
         #endregion
