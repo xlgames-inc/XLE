@@ -72,7 +72,7 @@ namespace GUILayer
     {
         auto modelCache = std::make_shared<RenderCore::Assets::ModelCache>();
         _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
-            SceneEngine::WorldPlacementsConfig(), modelCache, Float2(0.f, 0.f));
+            SceneEngine::WorldPlacementsConfig(), modelCache, Float3(0.f, 0.f, 0.f));
         _placementsEditor = _placementsManager->CreateEditor();
             // note --  we need to have the terrain manager a default terrain format here... But it's too early
             //          for some settings (like the gradient flags settings!)

@@ -354,7 +354,8 @@ namespace SceneEngine
         //     auto& scaffold = ::Assets::GetAssetDep<TerrainMaterialScaffold>();
         //     scaffold.Write(stream);
         // }
-        cfg.Write(stream);
+        Utility::OutputStreamFormatter formatter(stream);
+        cfg.Write(formatter);
     }
 
 

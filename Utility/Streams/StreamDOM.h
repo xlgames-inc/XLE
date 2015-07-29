@@ -182,6 +182,12 @@ namespace Utility
         formatter.WriteAttribute(name, str);
     }
 
+    template<typename CharType>
+        inline void Serialize(OutputStreamFormatter& formatter, const CharType name[], const std::basic_string<CharType>& str)
+    {
+        formatter.WriteAttribute(name, str);
+    }
+
     template<typename FirstType, typename SecondType, typename CharType>
         inline void Serialize(OutputStreamFormatter& formatter, const CharType name[], const std::pair<FirstType, SecondType>& obj)
     {

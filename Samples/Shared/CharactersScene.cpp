@@ -150,13 +150,13 @@ namespace Sample
                     TRY {
                         const auto& model = *i->_model;
                         for (auto i2=i->_instances.cbegin(); i2!=i->_instances.cend(); ++i2) {
-                            RenderCore::Assets::ModelRenderer::MeshToModel meshToModel(
-                                si->_finalMatrices.get(),
-                                model.GetPrepareMachine().GetSkeletonOutputCount(),
-                                &model.GetPrepareMachine().GetSkeletonBinding());
+                            // RenderCore::Assets::ModelRenderer::MeshToModel meshToModel(
+                            //     si->_finalMatrices.get(),
+                            //     model.GetPrepareMachine().GetSkeletonOutputCount(),
+                            //     &model.GetPrepareMachine().GetSkeletonBinding());
 
                             CPUProfileEvent pEvnt("CharacterModelRender", g_cpuProfiler);
-                            model.GetRenderer().Render(modelContext, _pimpl->_charactersSharedStateSet, *i2, &meshToModel, AsPointer(si));
+                            model.GetRenderer().Render(modelContext, _pimpl->_charactersSharedStateSet, *i2, /*&meshToModel*/ nullptr, AsPointer(si));
                         }
                     } CATCH(const std::exception&) {
                     } CATCH_END

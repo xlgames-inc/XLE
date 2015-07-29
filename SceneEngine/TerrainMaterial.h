@@ -10,9 +10,14 @@
 #include "../Assets/AssetUtils.h"
 #include "../Math/Vector.h"
 #include "../Core/Types.h"
+#include "../Utility/UTFUtils.h"
 #include <vector>
 
-namespace Utility { class OutputStream; }
+namespace Utility 
+{ 
+    template<typename CharType> class InputStreamFormatter;
+    class OutputStreamFormatter; 
+}
 
 namespace SceneEngine
 {
@@ -60,17 +65,13 @@ namespace SceneEngine
 
         ::Assets::DirectorySearchRules _searchRules;
 
-        void Write(Utility::OutputStream& stream) const;
+        void Write(Utility::OutputStreamFormatter& formatter) const;
 
         TerrainMaterialConfig();
-        TerrainMaterialConfig(const ::Assets::ResChar definitionFile[]);
+        TerrainMaterialConfig(
+            InputStreamFormatter<utf8>& formatter,
+            const ::Assets::DirectorySearchRules& searchRules);
         ~TerrainMaterialConfig();
-
-        // static std::unique_ptr<TerrainMaterialConfig> CreateNew(const char definitionFile[] = nullptr);
-
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
-    private:
-        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 }
 

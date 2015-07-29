@@ -203,7 +203,9 @@ namespace SceneEngine
         return atlasIndex;
     }
 
-    TerrainMaterialTextures::TerrainMaterialTextures(const TerrainMaterialConfig& scaffold, bool useGradFlagMaterials)
+    TerrainMaterialTextures::TerrainMaterialTextures(
+        const TerrainMaterialConfig& scaffold, 
+        bool useGradFlagMaterials)
     {
         _strataCount = 0;
 
@@ -360,7 +362,6 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(_validationCallback, scaffold.GetDependencyValidation());
 
         for (auto i=atlasTextureNames.cbegin(); i!=atlasTextureNames.cend(); ++i) {
             TRY {

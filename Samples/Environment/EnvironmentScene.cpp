@@ -18,6 +18,7 @@
 #include "../../SceneEngine/Tonemap.h"
 #include "../../SceneEngine/TerrainFormat.h"
 #include "../../SceneEngine/TerrainConfig.h"
+#include "../../SceneEngine/TerrainMaterial.h"
 
 #include "../../SceneEngine/VolumetricFog.h"
 #include "../../SceneEngine/ShallowSurface.h"
@@ -55,6 +56,7 @@ namespace Sample
         PlatformRig::EnvironmentSettings                _envSettings;
 
         std::shared_ptr<::Assets::DependencyValidation> _terrainCfgVal;
+        std::shared_ptr<::Assets::DependencyValidation> _terrainTexturesCfgVal;
         std::shared_ptr<::Assets::DependencyValidation> _placementsCfgVal;
         std::shared_ptr<::Assets::DependencyValidation> _environmentCfgVal;
         std::shared_ptr<::Assets::DependencyValidation> _gameObjectsCfgVal;
@@ -218,10 +220,16 @@ namespace Sample
         return _pimpl->_envSettings; 
     }
 
-    static const ::Assets::ResChar TerrainCfg[] = "TrashWorld/finals/terrain.cfg";
-    static const ::Assets::ResChar PlacementsCfg[] = "TrashWorld/finals/placements.cfg";
-    static const ::Assets::ResChar EnvironmentCfg[] = "TrashWorld/finals/env.txt:environment";
-    static const ::Assets::ResChar GameObjectsCfg[] = "TrashWorld/finals/gameobjects.txt";
+    // static const ::Assets::ResChar TerrainCfg[] = "TrashWorld/finals/terrain.cfg";
+    // static const ::Assets::ResChar PlacementsCfg[] = "TrashWorld/finals/placements.cfg";
+    // static const ::Assets::ResChar EnvironmentCfg[] = "TrashWorld/finals/env.txt:environment";
+    // static const ::Assets::ResChar GameObjectsCfg[] = "TrashWorld/finals/gameobjects.txt";
+
+    static const ::Assets::ResChar TerrainCfg[] = "DemoWorld2/finals/terrain.cfg";
+    static const ::Assets::ResChar TerrainTexturesCfg[] = "DemoWorld2/finals/terraintextures.cfg";
+    static const ::Assets::ResChar PlacementsCfg[] = "DemoWorld2/finals/placements.cfg";
+    static const ::Assets::ResChar EnvironmentCfg[] = "DemoWorld2/finals/env.txt:environment";
+    static const ::Assets::ResChar GameObjectsCfg[] = "DemoWorld2/finals/gameobjects.txt";
 
     // static const Float3 WorldOffset(-11200.f - 7000.f, -11200.f + 700.f, 0.f);
     static const Float3 WorldOffset(-100.f, -100.f, 0.f);
@@ -276,22 +284,28 @@ namespace Sample
 
     void EnvironmentSceneParser::FlushLoading()
     {
-        if (!_pimpl->_terrainCfgVal || _pimpl->_terrainCfgVal->GetValidationIndex() != 0) {
-            #if defined(ENABLE_TERRAIN)
+        #if defined(ENABLE_TERRAIN)
+            if (!_pimpl->_terrainCfgVal || _pimpl->_terrainCfgVal->GetValidationIndex() != 0) {
                 ::Assets::ConfigFileContainer<SceneEngine::TerrainConfig> container(TerrainCfg);
                 MainTerrainConfig = container._asset;
                 _pimpl->_terrainManager->Load(MainTerrainConfig, Int2(0, 0), MainTerrainConfig._cellCount, true);
                 _pimpl->_terrainCfgVal = container.GetDependencyValidation();
                 MainTerrainCoords = _pimpl->_terrainManager->GetCoords();
-            #endif
-        }
+            }
+
+            if (!_pimpl->_terrainTexturesCfgVal || _pimpl->_terrainTexturesCfgVal->GetValidationIndex() != 0) {
+                ::Assets::ConfigFileContainer<SceneEngine::TerrainMaterialConfig> container(TerrainTexturesCfg);
+                _pimpl->_terrainManager->LoadMaterial(container._asset);
+                _pimpl->_terrainTexturesCfgVal = container.GetDependencyValidation();
+            }
+        #endif
 
         if (!_pimpl->_placementsCfgVal || _pimpl->_placementsCfgVal->GetValidationIndex() != 0) {
             ::Assets::ConfigFileContainer<SceneEngine::WorldPlacementsConfig> container(PlacementsCfg);
             _pimpl->_placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
                 container._asset,
                 std::make_shared<RenderCore::Assets::ModelCache>(), 
-                Truncate(WorldOffset));
+                WorldOffset);
             _pimpl->_placementsCfgVal = container.GetDependencyValidation();
         }
 

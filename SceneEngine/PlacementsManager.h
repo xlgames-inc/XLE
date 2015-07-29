@@ -73,7 +73,7 @@ namespace SceneEngine
         PlacementsManager(
             const WorldPlacementsConfig& cfg,
             std::shared_ptr<RenderCore::Assets::ModelCache> modelCache,
-            const Float2& worldOffset);
+            const Float3& worldOffset);
         ~PlacementsManager();
     protected:
         class Pimpl;

@@ -880,7 +880,7 @@ namespace SceneEngine
     PlacementsManager::PlacementsManager(
         const WorldPlacementsConfig& cfg,
         std::shared_ptr<ModelCache> modelCache,
-        const Float2& worldOffset)
+        const Float3& worldOffset)
     {
             //  Using the given config file, let's construct the list of 
             //  placement cells
@@ -892,7 +892,7 @@ namespace SceneEngine
             PlacementCell cell;
             XlCopyString(cell._filename, c->_file);
             cell._filenameHash = Hash64(cell._filename);
-            cell._cellToWorld = AsFloat3x4(c->_offset);
+            cell._cellToWorld = AsFloat3x4(worldOffset + c->_offset);
 
                 // note -- we could shrink wrap this bounding box around th objects
                 //      inside. This might be necessary, actually, because some objects

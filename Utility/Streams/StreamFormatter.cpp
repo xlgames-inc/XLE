@@ -141,7 +141,8 @@ namespace Utility
     {
         const unsigned idealLineLength = 100;
         bool forceNewLine = 
-            (_currentLineLength + (valueEnd - valueStart) + (nameEnd - nameStart) + 3) > idealLineLength;
+            (_currentLineLength + (valueEnd - valueStart) + (nameEnd - nameStart) + 3) > idealLineLength
+            || _pendingHeader;
 
         if (forceNewLine) {
             DoNewLine<CharType>();

@@ -25,7 +25,9 @@ namespace SceneEngine
         unsigned _strataCount;
 
         TerrainMaterialTextures();
-        TerrainMaterialTextures(const TerrainMaterialConfig& scaffold, bool useGradFlagMaterials = true);
+        TerrainMaterialTextures(
+            const TerrainMaterialConfig& scaffold, 
+            bool useGradFlagMaterials = true);
         ~TerrainMaterialTextures();
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
