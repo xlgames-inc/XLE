@@ -45,7 +45,7 @@ namespace SceneEngine
         };
 
         TerrainConfig(
-            const ::Assets::ResChar baseDir[], UInt2 cellCount,
+            const ::Assets::ResChar cellsDirectory[], UInt2 cellCount,
             unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u, unsigned nodeOverlap = 2u,
             float elementSpacing = 10.f, float sunPathAngle = 0.f, bool encodedGradientFlags = false);
         TerrainConfig(

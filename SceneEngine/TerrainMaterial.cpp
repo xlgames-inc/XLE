@@ -160,6 +160,8 @@ namespace SceneEngine
 
             }
         }
+
+        _searchRules = searchRules;
     }
 
     TerrainMaterialConfig::~TerrainMaterialConfig() {}

@@ -51,12 +51,12 @@ namespace GUILayer
     }
 
     TerrainConfig::TerrainConfig(
-        String^ baseDir,
+        String^ cellsDirectory,
         unsigned nodeDimsInElements, unsigned cellTreeDepth, unsigned nodeOverlap,
         float elementSpacing, float sunPathAngle, bool encodedGradientFlags)
     {
         _native.reset(new NativeConfig(
-            clix::marshalString<clix::E_UTF8>(baseDir).c_str(),
+            clix::marshalString<clix::E_UTF8>(cellsDirectory).c_str(),
             UInt2(0,0),
             nodeDimsInElements, cellTreeDepth, nodeOverlap,
             elementSpacing, sunPathAngle, encodedGradientFlags));

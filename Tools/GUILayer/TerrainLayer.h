@@ -58,7 +58,7 @@ namespace GUILayer
 
         const NativeConfig& GetNative() { return *_native; }
         TerrainConfig(
-            String^ baseDir,
+            String^ cellsDirectory,
             unsigned nodeDimsInElements, unsigned cellTreeDepth, unsigned nodeOverlap,
             float elementSpacing, float sunPathAngle, bool encodedGradientFlags);
         TerrainConfig(const NativeConfig& native);

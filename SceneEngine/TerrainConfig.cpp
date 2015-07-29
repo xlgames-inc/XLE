@@ -112,7 +112,7 @@ namespace SceneEngine
     }
 
     TerrainConfig::TerrainConfig(
-		const ::Assets::ResChar baseDir[], UInt2 cellCount,
+		const ::Assets::ResChar cellsDirectory[], UInt2 cellCount,
         unsigned nodeDimsInElements, unsigned cellTreeDepth, 
         unsigned nodeOverlap, float elementSpacing, float sunPathAngle, bool encodedGradientFlags)
     : _cellCount(cellCount)
@@ -121,7 +121,7 @@ namespace SceneEngine
     {
         XlCopyString(
             _cellsDirectory, dimof(_cellsDirectory),
-            FormatBaseDir(baseDir).c_str());
+            FormatBaseDir(cellsDirectory).c_str());
     }
 
     TerrainConfig::TerrainConfig()
@@ -171,7 +171,6 @@ namespace SceneEngine
 
     void TerrainConfig::Write(OutputStreamFormatter& formatter) const
     {
-        Serialize(formatter, u("Filenames"), u("XLE"));
         Serialize(formatter, u("NodeDims"), _nodeDimsInElements);
         Serialize(formatter, u("CellTreeDepth"), _cellTreeDepth);
         Serialize(formatter, u("NodeOverlap"), _nodeOverlap);
@@ -179,6 +178,8 @@ namespace SceneEngine
         Serialize(formatter, u("CellCount"), _cellCount);
         Serialize(formatter, u("SunPathAngle"), _sunPathAngle);
         Serialize(formatter, u("EncodedGradientFlags"), _encodedGradientFlags);
+        formatter.WriteAttribute(u("CellsDirectory"), 
+            Conversion::Convert<std::basic_string<utf8>>(::Assets::rstring(_cellsDirectory)));
 
         auto covEle = formatter.BeginElement(u("Coverage"));
         for (auto l=_coverageLayers.cbegin(); l!=_coverageLayers.cend(); ++l) {

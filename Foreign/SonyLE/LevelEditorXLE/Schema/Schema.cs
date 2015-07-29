@@ -481,6 +481,7 @@ namespace LevelEditorXLE
             xleGameType.fogColorAttribute = xleGameType.Type.GetAttributeInfo("fogColor");
             xleGameType.fogRangeAttribute = xleGameType.Type.GetAttributeInfo("fogRange");
             xleGameType.fogDensityAttribute = xleGameType.Type.GetAttributeInfo("fogDensity");
+            xleGameType.ExportDirectoryAttribute = xleGameType.Type.GetAttributeInfo("ExportDirectory");
             xleGameType.gameObjectFolderChild = xleGameType.Type.GetChildInfo("gameObjectFolder");
             xleGameType.layersChild = xleGameType.Type.GetChildInfo("layers");
             xleGameType.bookmarksChild = xleGameType.Type.GetChildInfo("bookmarks");
@@ -1093,6 +1094,7 @@ namespace LevelEditorXLE
             public static AttributeInfo fogColorAttribute;
             public static AttributeInfo fogRangeAttribute;
             public static AttributeInfo fogDensityAttribute;
+            public static AttributeInfo ExportDirectoryAttribute;
             public static ChildInfo gameObjectFolderChild;
             public static ChildInfo layersChild;
             public static ChildInfo bookmarksChild;

@@ -113,6 +113,12 @@ namespace LevelEditorXLE.Game
             }
         }
 
+        public string ExportDirectory
+        {
+            get { return GetAttribute<string>(Schema.xleGameType.ExportDirectoryAttribute); }
+            set { SetAttribute(Schema.xleGameType.ExportDirectoryAttribute, value); }
+        }
+
         #region Context Menu Commands
         bool ICommandClient.CanDoCommand(object commandTag)
         {
@@ -205,7 +211,12 @@ namespace LevelEditorXLE.Game
         #region IExportable
         public string ExportTarget
         {
-            get { return "finals/gameobjects.txt"; }
+            get 
+            {
+                var parent = DomNode.GetRoot().As<GameExtensions>();
+                if (parent != null) return parent.ExportDirectory + "GameObjects.txt";
+                return "finals/GameObjects.txt"; 
+            }
         }
 
         public string ExportCategory

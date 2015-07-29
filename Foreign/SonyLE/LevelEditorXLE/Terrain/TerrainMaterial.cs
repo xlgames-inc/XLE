@@ -18,20 +18,22 @@ namespace LevelEditorXLE.Terrain
 {
     class TerrainMaterial : DomNodeAdapter, IExportable
     {
-        public string CellsDirectory
+        public string ExportDirectory
         {
             get 
             {
+                var game = DomNode.GetRoot().As<Game.GameExtensions>();
+                if (game != null) return game.ExportDirectory;
                 var rootTerrain = DomNode.Parent.As<XLETerrainGob>();
-                if (rootTerrain==null) return "";
-                return rootTerrain.CellsDirectory;
+                if (rootTerrain != null) return rootTerrain.CellsDirectory;
+                return "";
             }
         }
 
         #region IExportable
         public string ExportTarget
         {
-            get { return CellsDirectory + "/TerrainTextures/Textures.txt"; }
+            get { return ExportDirectory + "TerrainMaterial.cfg"; }
         }
 
         public string ExportCategory

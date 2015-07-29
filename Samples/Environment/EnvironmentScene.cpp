@@ -226,7 +226,7 @@ namespace Sample
     // static const ::Assets::ResChar GameObjectsCfg[] = "TrashWorld/finals/gameobjects.txt";
 
     static const ::Assets::ResChar TerrainCfg[] = "DemoWorld2/finals/terrain.cfg";
-    static const ::Assets::ResChar TerrainTexturesCfg[] = "DemoWorld2/finals/terraintextures.cfg";
+    static const ::Assets::ResChar TerrainMaterialCfg[] = "DemoWorld2/finals/terrainmaterial.cfg";
     static const ::Assets::ResChar PlacementsCfg[] = "DemoWorld2/finals/placements.cfg";
     static const ::Assets::ResChar EnvironmentCfg[] = "DemoWorld2/finals/env.txt:environment";
     static const ::Assets::ResChar GameObjectsCfg[] = "DemoWorld2/finals/gameobjects.txt";
@@ -294,7 +294,7 @@ namespace Sample
             }
 
             if (!_pimpl->_terrainTexturesCfgVal || _pimpl->_terrainTexturesCfgVal->GetValidationIndex() != 0) {
-                ::Assets::ConfigFileContainer<SceneEngine::TerrainMaterialConfig> container(TerrainTexturesCfg);
+                ::Assets::ConfigFileContainer<SceneEngine::TerrainMaterialConfig> container(TerrainMaterialCfg);
                 _pimpl->_terrainManager->LoadMaterial(container._asset);
                 _pimpl->_terrainTexturesCfgVal = container.GetDependencyValidation();
             }

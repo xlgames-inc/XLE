@@ -13,6 +13,12 @@
   <xs:include schemaLocation="gameobject.xsd"/>
 
   <xs:complexType name="xleGameType">
+    <xs:annotation>
+      <xs:appinfo>
+        <scea.dom.editors.attribute name="ExportDirectory" displayName="Export Directory" description="Directory for exported configuration files" category="General"/>
+      </xs:appinfo>
+    </xs:annotation>
+    
     <xs:complexContent>
       <xs:extension base="gameType">
         <xs:sequence>
@@ -20,6 +26,7 @@
           <xs:element name="terrain" type="terrainType" minOccurs="0" maxOccurs="1"/>
           <xs:element name="environment" type="envSettingsFolderType" minOccurs="0" maxOccurs="1"/>
         </xs:sequence>
+        <xs:attribute name="ExportDirectory" type="xs:string" default="finals/" />
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>
