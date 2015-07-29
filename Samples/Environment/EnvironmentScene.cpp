@@ -22,6 +22,7 @@
 
 #include "../../SceneEngine/VolumetricFog.h"
 #include "../../SceneEngine/ShallowSurface.h"
+#include "../../SceneEngine/VegetationSpawn.h"
 #include "../../Tools/EntityInterface/EnvironmentSettings.h"
 #include "../../Tools/EntityInterface/RetainedEntities.h"
 
@@ -46,6 +47,75 @@ namespace Sample
     SceneEngine::TerrainCoordinateSystem             MainTerrainCoords;
     SceneEngine::TerrainConfig                       MainTerrainConfig;
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class IScenePlugin
+    {
+    public:
+        virtual void LoadingPhase() = 0;
+        virtual void PrepareFrame(
+            RenderCore::IThreadContext& threadContext,
+            SceneEngine::LightingParserContext& parserContext) = 0;
+        virtual ~IScenePlugin();
+    };
+
+    IScenePlugin::~IScenePlugin() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class ScenePlugin_EnvironmentFeatures : public IScenePlugin
+    {
+    public:
+        void LoadingPhase();
+        void PrepareFrame(
+            RenderCore::IThreadContext& threadContext,
+            SceneEngine::LightingParserContext& parserContext);
+
+        ScenePlugin_EnvironmentFeatures(std::shared_ptr<EntityInterface::RetainedEntities> retainedEntities);
+        ~ScenePlugin_EnvironmentFeatures();
+
+        std::shared_ptr<SceneEngine::VolumetricFogManager>      _volumetricFogMan;
+        std::shared_ptr<SceneEngine::VegetationSpawnManager>    _vegetationSpawnManager;
+        std::shared_ptr<SceneEngine::ShallowSurfaceManager>     _shallowSurfaces;
+        std::shared_ptr<EntityInterface::EnvEntitiesManager>    _updateMan;
+    };
+
+    void ScenePlugin_EnvironmentFeatures::LoadingPhase()
+    {
+    }
+
+    void ScenePlugin_EnvironmentFeatures::PrepareFrame(
+        RenderCore::IThreadContext& threadContext,
+        SceneEngine::LightingParserContext& parserContext)
+    {
+        parserContext._plugins.push_back(_vegetationSpawnManager->GetParserPlugin());
+        parserContext._plugins.push_back(_volumetricFogMan->GetParserPlugin());
+    }
+
+    ScenePlugin_EnvironmentFeatures::ScenePlugin_EnvironmentFeatures(std::shared_ptr<EntityInterface::RetainedEntities> retainedEntities)
+    {
+        _volumetricFogMan = std::shared_ptr<SceneEngine::VolumetricFogManager>();
+        _shallowSurfaces = std::shared_ptr<SceneEngine::ShallowSurfaceManager>();
+        _vegetationSpawnManager = std::shared_ptr<SceneEngine::VegetationSpawnManager>();
+
+            //  Create the object that will manage updates via the entities
+            //  interface system.
+            //  Then register update events for our scene engine managers.
+            //  When relevant game objects are loaded, the entities interface
+            //  will push update information through to these managers.
+        _updateMan = std::make_shared<EntityInterface::EnvEntitiesManager>(std::move(retainedEntities));
+        _updateMan->RegisterVolumetricFogFlexObjects(_volumetricFogMan);
+        _updateMan->RegisterShallowSurfaceFlexObjects(_shallowSurfaces);
+
+            // Volume Fog renderer configuration must come from the environment
+            // settings... But no access to that here...?
+    }
+
+    ScenePlugin_EnvironmentFeatures::~ScenePlugin_EnvironmentFeatures()
+    {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     class EnvironmentSceneParser::Pimpl
     {
     public:
@@ -61,11 +131,7 @@ namespace Sample
         std::shared_ptr<::Assets::DependencyValidation> _environmentCfgVal;
         std::shared_ptr<::Assets::DependencyValidation> _gameObjectsCfgVal;
 
-        std::shared_ptr<SceneEngine::VolumetricFogManager> _volumetricFogMan;
-        std::shared_ptr<SceneEngine::ShallowSurfaceManager> _shallowSurfaces;
-
         std::shared_ptr<EntityInterface::RetainedEntities> _retainedEntities;
-        std::shared_ptr<EntityInterface::EnvEntitiesManager> _updateMan;
 
         float _time;
 
@@ -342,16 +408,7 @@ namespace Sample
         pimpl->_cameraDesc->_farClip = 6000.f;
         pimpl->_envSettings = PlatformRig::DefaultEnvironmentSettings();
 
-        pimpl->_volumetricFogMan = std::shared_ptr<SceneEngine::VolumetricFogManager>();
-        pimpl->_shallowSurfaces = std::shared_ptr<SceneEngine::ShallowSurfaceManager>();
-
-        {
-            using namespace EntityInterface;
-            pimpl->_retainedEntities = std::make_shared<RetainedEntities>();
-            pimpl->_updateMan = std::make_shared<EnvEntitiesManager>(pimpl->_retainedEntities);
-            pimpl->_updateMan->RegisterVolumetricFogFlexObjects(pimpl->_volumetricFogMan);
-            pimpl->_updateMan->RegisterShallowSurfaceFlexObjects(pimpl->_shallowSurfaces);
-        }
+        pimpl->_retainedEntities = std::make_shared<EntityInterface::RetainedEntities>();
 
         _pimpl = std::move(pimpl);
     }

@@ -605,9 +605,15 @@ namespace SceneEngine
 
     VegetationSpawnManager::~VegetationSpawnManager() {}
 
-    VegetationSpawnConfig::VegetationSpawnConfig(const ::Assets::ResChar src[])
-        : VegetationSpawnConfig()
-    {}
+    VegetationSpawnConfig::VegetationSpawnConfig(
+        InputStreamFormatter<utf8>& formatter,
+        const ::Assets::DirectorySearchRules& searchRules)
+    : VegetationSpawnConfig()
+    {
+        
+
+        _searchRules = searchRules;
+    }
 
     VegetationSpawnConfig::VegetationSpawnConfig() 
     {

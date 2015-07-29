@@ -21,6 +21,9 @@ namespace SceneEngine
         {
         public:
             ::Assets::rstring _modelName, _materialName;
+
+            ObjectType();
+            ObjectType(const ParameterBox&);
         };
 
         class Bucket
@@ -30,6 +33,7 @@ namespace SceneEngine
             float _maxDrawDistance;
             float _frequencyWeight;
             Bucket();
+            Bucket(const ParameterBox&);
         };
 
         class Material
@@ -42,6 +46,7 @@ namespace SceneEngine
             float _suppressionGain;
             float _suppressionLacunarity;
             Material();
+            Material(const ParameterBox&);
         };
 
         float _baseGridSpacing;
@@ -49,9 +54,15 @@ namespace SceneEngine
         std::vector<Material> _materials;
         std::vector<ObjectType> _objectTypes;
 
-        VegetationSpawnConfig(const ::Assets::ResChar src[]);
+        ::Assets::DirectorySearchRules _searchRules;
+
+        VegetationSpawnConfig(
+            InputStreamFormatter<utf8>& formatter,
+            const ::Assets::DirectorySearchRules& searchRules);
         VegetationSpawnConfig();
         ~VegetationSpawnConfig();
+
+        void        Write(OutputStreamFormatter& formatter) const;
     };
 
     class LightingParserContext;
