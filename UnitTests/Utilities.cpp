@@ -64,7 +64,7 @@ namespace UnitTests
             Assert::AreEqual(test.GetParameter<bool>((const utf8*)"ShouldBeTrue").second, true, L"Store/retrieve boolean");
 
             std::vector<std::pair<const utf8*, std::string>> stringTable;
-            test.BuildStringTable(stringTable);
+            BuildStringTable(stringTable, test);
 
             for (auto i=stringTable.begin(); i!=stringTable.end(); ++i) {
                 XlOutputDebugString(

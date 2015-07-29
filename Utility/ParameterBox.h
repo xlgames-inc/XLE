@@ -87,6 +87,8 @@ namespace Utility
     class OutputStreamFormatter;
     template<typename CharType> class InputStreamFormatter;
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
         //////////////////////////////////////////////////////////////////
             //      P A R A M E T E R   B O X                       //
         //////////////////////////////////////////////////////////////////
@@ -98,48 +100,98 @@ namespace Utility
     #pragma pack(push)
     #pragma pack(1)
 
+    #define T1(Type) template<typename Type>
+
     class ParameterBox
     {
     public:
         typedef uint32 ParameterNameHash;
 
-        using TypeDesc = ImpliedTyping::TypeDesc;
+        class ParameterName
+        {
+        public:
+            ParameterNameHash _hash;
 
-        void SetParameter(const utf8 name[], const void* data, const ImpliedTyping::TypeDesc& type);
-        void SetParameter(const utf8 name[], const char data[]);
-        void SetParameter(const utf8 name[], const std::string& data);
-        template<typename Type> void SetParameter(const utf8 name[], Type value);
-
-        template<typename Type> std::pair<bool, Type> GetParameter(const utf8 name[]) const;
-        template<typename Type> std::pair<bool, Type> GetParameter(ParameterNameHash name) const;
-        template<typename Type> Type GetParameter(const utf8 name[], const Type& def) const;
-        template<typename Type> Type GetParameter(ParameterNameHash name, const Type& def) const;
-        bool GetParameter(ParameterNameHash name, void* dest, const ImpliedTyping::TypeDesc& destType) const;
-        bool HasParameter(ParameterNameHash name) const;
-        ImpliedTyping::TypeDesc GetParameterType(ParameterNameHash name) const;
-
-        template<typename CharType> std::basic_string<CharType> GetString(ParameterNameHash name) const;
-        template<typename CharType> bool GetString(ParameterNameHash name, CharType dest[], size_t destCount) const;
-
-        unsigned GetParameterCount() const;
-        ParameterNameHash GetParameterAtIndex(unsigned index) const;
-        const utf8* GetFullNameAtIndex(unsigned index) const;
-
-        uint64  GetHash() const;
-        uint64  GetParameterNamesHash() const;
-        uint64  CalculateFilteredHashValue(const ParameterBox& source) const;
-
-        using StringTable = std::vector<std::pair<const utf8*, std::string>>;
-        void    BuildStringTable(StringTable& defines) const;
-        void    OverrideStringTable(StringTable& defines) const;
-
-        void    MergeIn(const ParameterBox& source);
+            ParameterName(const std::basic_string<utf8>& name);
+            ParameterName(const utf8 name[]);
+            ParameterName(const char name[]);
+            ParameterName(ParameterNameHash hash);
+        };
 
         static ParameterNameHash    MakeParameterNameHash(const std::basic_string<utf8>& name);
         static ParameterNameHash    MakeParameterNameHash(const utf8 name[]);
         static ParameterNameHash    MakeParameterNameHash(const char name[]);
 
-        bool    ParameterNamesAreEqual(const ParameterBox& other) const;
+        using TypeDesc = ImpliedTyping::TypeDesc;
+
+        ////////////////////////////////////////////////////////////////////////////////////////
+            //      S E T                                                   //
+        ////////////////////////////////////////////////////////////////////////////////////////
+
+        void            SetParameter(const utf8 name[], const void* data, const TypeDesc& type);
+        void            SetParameter(const utf8 name[], const char* stringDataBegin, const char* stringDataEnd);
+        void            SetParameter(const utf8 name[], const char* stringDataBegin);
+        void            SetParameter(const utf8 name[], const std::string& stringData);
+        T1(Type) void   SetParameter(const utf8 name[], Type value);
+        
+        ////////////////////////////////////////////////////////////////////////////////////////
+            //      G E T                                                   //
+        ////////////////////////////////////////////////////////////////////////////////////////
+
+        T1(Type) std::pair<bool, Type>  GetParameter(ParameterName name) const;
+        T1(Type) Type   GetParameter(ParameterName name, const Type& def) const;
+        bool            GetParameter(ParameterName name, void* dest, const TypeDesc& destType) const;
+        bool            HasParameter(ParameterName name) const;
+        TypeDesc        GetParameterType(ParameterName name) const;
+
+        T1(CharType) std::basic_string<CharType> GetString(ParameterName name) const;
+        T1(CharType) bool   GetString(ParameterName name, CharType dest[], size_t destCount) const;
+
+        ////////////////////////////////////////////////////////////////////////////////////////
+            //      H A S H   V A L U E S                                   //
+        ////////////////////////////////////////////////////////////////////////////////////////
+
+        uint64  GetHash() const;
+        uint64  GetParameterNamesHash() const;
+        uint64  CalculateFilteredHashValue(const ParameterBox& source) const;
+        bool    AreParameterNamesEqual(const ParameterBox& other) const;
+
+        ////////////////////////////////////////////////////////////////////////////////////////
+            //      M E R G I N G   &   I T E R A T O R                     //
+        ////////////////////////////////////////////////////////////////////////////////////////
+
+        void    MergeIn(const ParameterBox& source);
+
+        class Iterator
+        {
+        public:
+            bool                IsEnd() const;
+
+            const utf8*         Name() const;
+            const void*         RawValue() const;
+            const TypeDesc&     Type() const;
+            ParameterNameHash   HashName() const;
+
+            const void*         ValueTableEnd() const;
+
+            void operator++();
+
+        private:
+            size_t                  _index;
+            const ParameterBox*     _box;
+
+            Iterator(const ParameterBox& box, size_t index);
+            Iterator();
+            friend class ParameterBox;
+        };
+
+        Iterator    Begin() const;
+        Iterator    At(size_t index) const;
+        size_t      GetCount() const;
+
+        ////////////////////////////////////////////////////////////////////////////////////////
+            //      S E R I A L I S A T I O N                               //
+        ////////////////////////////////////////////////////////////////////////////////////////
 
         template<typename CharType>
             void    Serialize(OutputStreamFormatter& stream) const;
@@ -157,29 +209,23 @@ namespace Utility
         mutable uint64      _cachedHash;
         mutable uint64      _cachedParameterNameHash;
 
-        SerializableVector<ParameterNameHash>            _parameterHashValues;
+        SerializableVector<ParameterNameHash>            _hashNames;
         SerializableVector<std::pair<uint32, uint32>>    _offsets;
         SerializableVector<utf8>         _names;
         SerializableVector<uint8>        _values;
         SerializableVector<TypeDesc>     _types;
 
-        const void* GetValue(size_t index) const;
-        uint64      CalculateHash() const;
-        uint64      CalculateParameterNamesHash() const;
+        const void*         GetValue(size_t index) const;
+        uint64              CalculateHash() const;
+        uint64              CalculateParameterNamesHash() const;
     };
 
     #pragma pack(pop)
 
-    template<typename Type> 
-        Type ParameterBox::GetParameter(const utf8 name[], const Type& def) const
-    {
-        auto q = GetParameter<Type>(name);
-        if (q.first) return q.second;
-        return def;
-    }
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename Type> 
-        Type ParameterBox::GetParameter(ParameterNameHash name, const Type& def) const
+        Type ParameterBox::GetParameter(ParameterName name, const Type& def) const
     {
         auto q = GetParameter<Type>(name);
         if (q.first) return q.second;
@@ -195,17 +241,90 @@ namespace Utility
         }
     }
 
+    inline ParameterBox::ParameterName::ParameterName(const std::basic_string<utf8>& name)
+    {
+        _hash = ParameterBox::MakeParameterNameHash(name);
+    }
+
+    inline ParameterBox::ParameterName::ParameterName(const utf8 name[])
+    {
+        _hash = ParameterBox::MakeParameterNameHash(name);
+    }
+
+    inline ParameterBox::ParameterName::ParameterName(const char name[])
+    {
+        _hash = ParameterBox::MakeParameterNameHash(name);
+    }
+
+    inline ParameterBox::ParameterName::ParameterName(ParameterNameHash hash)
+    {
+        _hash = hash;
+    }
+
     template<typename Stream>
         void ParameterBox::Serialize(Stream& serializer) const
     {
         ::Serialize(serializer, _cachedHash);
         ::Serialize(serializer, _cachedParameterNameHash);
-        ::Serialize(serializer, _parameterHashValues);
+        ::Serialize(serializer, _hashNames);
         ::Serialize(serializer, _offsets);
         ::Serialize(serializer, _names);
         ::Serialize(serializer, _values);
         ::Serialize(serializer, _types);
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    inline auto ParameterBox::Begin() const -> Iterator
+    {
+        return Iterator(*this, 0);
+    }
+
+    inline auto ParameterBox::At(size_t index) const -> Iterator
+    {
+        if (index >= _offsets.size()) return Iterator();
+        return Iterator(*this, index);
+    }
+
+    inline bool        ParameterBox::Iterator::IsEnd() const
+    {
+        return _index >= _box->_offsets.size();
+    }
+
+    inline const utf8* ParameterBox::Iterator::Name() const
+    {
+        return &_box->_names[_box->_offsets[_index].first];
+    }
+
+    inline const void* ParameterBox::Iterator::RawValue() const
+    {
+        return &_box->_values[_box->_offsets[_index].second];
+    }
+
+    inline auto        ParameterBox::Iterator::Type() const -> const TypeDesc&
+    {
+        return _box->_types[_index];
+    }
+
+    inline auto   ParameterBox::Iterator::HashName() const -> ParameterNameHash
+    {
+        return _box->_hashNames[_index];
+    }
+
+    inline void ParameterBox::Iterator::operator++()
+    {
+        ++_index;
+    }
+
+    inline ParameterBox::Iterator::Iterator(const ParameterBox& box, size_t index)
+    : _box(&box), _index(index)
+    {}
+
+    inline ParameterBox::Iterator::Iterator() : _box(nullptr), _index(0) {}
+
+    using StringTable = std::vector<std::pair<const utf8*, std::string>>;
+    void    BuildStringTable(StringTable& defines, const ParameterBox& box);
+    void    OverrideStringTable(StringTable& defines, const ParameterBox& box);
 }
 
 using namespace Utility;

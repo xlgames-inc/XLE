@@ -44,9 +44,9 @@ namespace ToolsRig
             // (and what are missing). We need to set these parameters according to our
             // binding list
         ParameterBox result = inputMatParameters;
-        for (unsigned c=0; c<resBindings.GetParameterCount(); ++c) {
-            result.SetParameter(StringMeld<64, utf8>() << "RES_HAS_" << resBindings.GetFullNameAtIndex(c), 1);
-            if (resBindings.GetParameterAtIndex(c) == DefaultNormalsTextureBindingHash) {
+        for (auto param=resBindings.Begin(); !param.IsEnd(); ++param) {
+            result.SetParameter(StringMeld<64, utf8>() << "RES_HAS_" << param.Name(), 1);
+            if (param.HashName() == DefaultNormalsTextureBindingHash) {
                 auto resourceName = resBindings.GetString<::Assets::ResChar>(DefaultNormalsTextureBindingHash);
                 ::Assets::ResChar resolvedName[MaxPath];
                 searchRules.ResolveFile(resolvedName, dimof(resolvedName), resourceName.c_str());

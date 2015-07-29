@@ -155,7 +155,7 @@ namespace RenderCore { namespace Techniques
                 // check to make sure the parameter names in both of these boxes is the same
                 // note -- this isn't exactly correctly. we need to filter out parameters that are not relevant to this technique
             // for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
-            //     assert(globalState[c]->ParameterNamesAreEqual(comparison._globalState[c]));
+            //     assert(globalState[c]->AreParameterNamesEqual(comparison._globalState[c]));
             // }
         }
 
@@ -273,7 +273,7 @@ namespace RenderCore { namespace Techniques
         std::vector<std::pair<const utf8*, std::string>> defines;
         _baseParameters.BuildStringTable(defines);
         for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
-            globalState[c]->OverrideStringTable(defines);
+            OverrideStringTable(defines, *globalState[c]);
         }
 
         std::string combinedStrings;
@@ -819,7 +819,7 @@ namespace RenderCore { namespace Techniques
     void        ShaderParameters::BuildStringTable(std::vector<std::pair<const utf8*, std::string>>& defines) const
     {
         for (unsigned c=0; c<dimof(_parameters); ++c) {
-            _parameters[c].BuildStringTable(defines);
+            Utility::BuildStringTable(defines, _parameters[c]);
         }
     }
 

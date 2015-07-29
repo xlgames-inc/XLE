@@ -441,19 +441,19 @@ namespace RenderCore { namespace Assets
         }
 
         std::vector<std::pair<const utf8*, std::string>> matParamStringTable;
-        _matParamBox.BuildStringTable(matParamStringTable);
+        BuildStringTable(matParamStringTable, _matParamBox);
         if (!matParamStringTable.empty()) {
             result->Add(SerializeToData("ShaderParams", matParamStringTable).release());
         }
 
         std::vector<std::pair<const utf8*, std::string>> constantsStringTable;
-        _constants.BuildStringTable(constantsStringTable);
+        BuildStringTable(constantsStringTable, _constants);
         if (!constantsStringTable.empty()) {
             result->Add(SerializeToData("Constants", constantsStringTable).release());
         }
 
         std::vector<std::pair<const utf8*, std::string>> resourceBindingsStringTable;
-        _resourceBindings.BuildStringTable(resourceBindingsStringTable);
+        BuildStringTable(resourceBindingsStringTable, _resourceBindings);
         if (!resourceBindingsStringTable.empty()) {
             result->Add(SerializeToData("ResourceBindings", resourceBindingsStringTable).release());
         }

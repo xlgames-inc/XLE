@@ -214,7 +214,7 @@ namespace GUILayer
     {
         auto result = gcnew BindingList<StringStringPair^>();
         std::vector<std::pair<const utf8*, std::string>> stringTable;
-        paramBox.BuildStringTable(stringTable);
+        BuildStringTable(stringTable, paramBox);
 
         for (auto i=stringTable.cbegin(); i!=stringTable.cend(); ++i) {
             result->Add(

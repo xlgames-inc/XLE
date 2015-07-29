@@ -159,7 +159,7 @@ namespace RenderCore { namespace Assets
             static std::string MakeDescription(const ParameterBox& paramBox)
             {
                 std::vector<std::pair<const utf8*, std::string>> defines;
-                paramBox.BuildStringTable(defines);
+                BuildStringTable(defines, paramBox);
                 std::stringstream dst;
                 for (auto i=defines.cbegin(); i!=defines.cend(); ++i) {
                     if (i != defines.cbegin()) { dst << "; "; }
@@ -271,12 +271,11 @@ namespace RenderCore { namespace Assets
                     materialParamBox = matData->_matParams;
                     stateSet = matData->_stateSet;
                 
-                    for (unsigned c=0; c<matData->_bindings.GetParameterCount(); ++c) {
-                        auto bindName = matData->_bindings.GetFullNameAtIndex(c);
+                    for (auto param = matData->_bindings.Begin(); !param.IsEnd(); ++param) {
                         materialParamBox.SetParameter(
-                            (const utf8*)(StringMeld<64, utf8>() << "RES_HAS_" << bindName), 1);
+                            (const utf8*)(StringMeld<64, utf8>() << "RES_HAS_" << param.Name()), 1);
                 
-                        auto bindNameHash = Hash64((const char*)bindName);
+                        auto bindNameHash = Hash64((const char*)param.Name());
                         auto q = std::lower_bound(textureBindPoints.begin(), textureBindPoints.end(), bindNameHash);
                         if (q != textureBindPoints.end() && *q == bindNameHash) { continue; }
                         textureBindPoints.insert(q, bindNameHash);
@@ -332,16 +331,14 @@ namespace RenderCore { namespace Assets
                 auto* matData = matScaffold.GetMaterial(i->first);
                 if (!matData) { continue; }
 
-                for (unsigned c=0; c<matData->_bindings.GetParameterCount(); ++c) {
-                    auto bindName = matData->_bindings.GetFullNameAtIndex(c);
-                    auto bindNameHash = Hash64((const char*)bindName);
+                for (auto param=matData->_bindings.Begin(); !param.IsEnd(); ++param) {
+                    auto bindNameHash = Hash64((const char*)param.Name());
 
                     auto i = std::find(textureBindPoints.cbegin(), textureBindPoints.cend(), bindNameHash);
                     assert(i!=textureBindPoints.cend() && *i == bindNameHash);
                     auto index = std::distance(textureBindPoints.cbegin(), i);
 
-                    auto resourceName = matData->_bindings.GetString<::Assets::ResChar>(
-                        matData->_bindings.GetParameterAtIndex(c));
+                    auto resourceName = matData->_bindings.GetString<::Assets::ResChar>(param.HashName());
                     if (resourceName.empty()) continue;
                 
                     TRY {
