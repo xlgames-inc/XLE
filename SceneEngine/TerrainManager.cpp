@@ -310,8 +310,8 @@ namespace SceneEngine
     {
         auto cells = BuildPrimedCells(cfg);
 
-        ::Assets::ResChar cachedDataFile[MaxPath];
-        cfg.GetSearchRules().ResolveFile(cachedDataFile, dimof(cachedDataFile), "cached.dat");
+        StringMeld<MaxPath, ::Assets::ResChar> cachedDataFile;
+        cachedDataFile << cfg._cellsDirectory << "cached.dat";
         
         TerrainCachedData cachedData;
         TRY

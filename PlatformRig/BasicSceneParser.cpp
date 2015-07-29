@@ -8,6 +8,7 @@
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Conversion.h"
 
 namespace PlatformRig
 {
@@ -144,11 +145,12 @@ namespace PlatformRig
         static const auto Name = ParameterBox::MakeParameterNameHash("Name");
     }
 
-    PlatformRig::EnvironmentSettings DeserializeSingleSettings(InputStreamFormatter<utf8>& formatter)
+    std::pair<std::string, PlatformRig::EnvironmentSettings> DeserializeSingleSettings(InputStreamFormatter<utf8>& formatter)
     {
         using namespace SceneEngine;
         using namespace PlatformRig;
 
+        std::string resultName;
         PlatformRig::EnvironmentSettings result;
         result._globalLightingDesc = DefaultGlobalLightingDesc();
         result._toneMapSettings = DefaultToneMapSettings();
@@ -216,6 +218,9 @@ namespace PlatformRig
                 {
                     InputStreamFormatter<utf8>::InteriorSection name, value;
                     formatter.TryAttribute(name, value);
+                    if (XlEqString(std::basic_string<utf8>(name._start, name._end), u("Name"))) {
+                        resultName = Conversion::Convert<std::string>(std::basic_string<utf8>(value._start, value._end));
+                    }
                     break;
                 }
 
@@ -234,7 +239,7 @@ namespace PlatformRig
             }
         }
 
-        return std::move(result);
+        return std::make_pair(resultName, std::move(result));
     }
 
     std::vector<std::pair<std::string, PlatformRig::EnvironmentSettings>> 
@@ -250,10 +255,7 @@ namespace PlatformRig
                     auto settings = DeserializeSingleSettings(formatter);
                     if (!formatter.TryEndElement()) break;
 
-                    result.emplace_back(
-                        std::make_pair(
-                            std::string((const char*)name._start, (const char*)name._end), 
-                            std::move(settings)));
+                    result.emplace_back(std::move(settings));
                     break;
                 }
 

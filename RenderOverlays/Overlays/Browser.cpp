@@ -318,7 +318,8 @@ namespace Overlays
             if (!outputRect.Width() || !outputRect.Height() || outputRect._topLeft[1] > toolBoxLayout.GetMaximumSize()._bottomRight[1])
                 break;
 
-            TRY {
+            TRY 
+            {
 
                 utf8 utf8Filename[MaxPath];
                 ucs2_2_utf8(AsPointer(i->_filename.cbegin()), i->_filename.size(), utf8Filename, dimof(utf8Filename));

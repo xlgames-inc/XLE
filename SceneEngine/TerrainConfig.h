@@ -14,7 +14,12 @@
 #include "../Utility/UTFUtils.h"
 #include "../Core/Types.h"
 
-namespace Utility { class OutputStream; }
+namespace Utility 
+{
+    template<typename CharType> class InputStreamFormatter;
+    class OutputStreamFormatter;
+    class OutputStream;
+}
 
 namespace SceneEngine
 {
@@ -26,10 +31,8 @@ namespace SceneEngine
     class TerrainConfig
     {
     public:
-        enum Filenames { XLE, Legacy };
-
-        UInt2       _cellCount;
-        Filenames   _filenamesMode;
+        UInt2               _cellCount;
+        ::Assets::ResChar   _cellsDirectory[MaxPath];
 
         class CoverageLayer
         {
@@ -43,10 +46,11 @@ namespace SceneEngine
 
         TerrainConfig(
             const ::Assets::ResChar baseDir[], UInt2 cellCount,
-            Filenames filenamesMode = XLE, 
             unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u, unsigned nodeOverlap = 2u,
             float elementSpacing = 10.f, float sunPathAngle = 0.f, bool encodedGradientFlags = false);
-        TerrainConfig(const ::Assets::ResChar configFile[]);
+        TerrainConfig(
+            InputStreamFormatter<utf8>& formatter,
+            const ::Assets::DirectorySearchRules& searchRules);
         TerrainConfig();
 
         void        GetCellFilename(::Assets::ResChar buffer[], unsigned cnt, UInt2 cellIndex, TerrainCoverageId id) const;
@@ -69,11 +73,7 @@ namespace SceneEngine
         const CoverageLayer& GetCoverageLayer(unsigned index) const;
         void        AddCoverageLayer(const CoverageLayer& layer);
 
-        // void        Save() const;
-        void        Write(Utility::OutputStream& stream) const;
-
-        const ::Assets::DirectorySearchRules& GetSearchRules() const { return _searchRules; }
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+        void        Write(OutputStreamFormatter& formatter) const;
 
     protected:
         unsigned    _nodeDimsInElements;
@@ -83,9 +83,6 @@ namespace SceneEngine
         float       _sunPathAngle;
         bool        _encodedGradientFlags;
         std::vector<CoverageLayer> _coverageLayers;
-
-        ::Assets::DirectorySearchRules _searchRules;
-        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
     /// <summary>Describes the position and size of terrain in world coordinates<summary>

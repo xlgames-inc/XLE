@@ -20,6 +20,7 @@
 #include "../Assets/Assets.h"
 #include "../Assets/ChunkFile.h"
 #include "../Assets/AssetUtils.h"
+#include "../Assets/InvalidAssetManager.h"
 
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/MaterialScaffold.h"
@@ -37,8 +38,10 @@
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/Streams/FileUtils.h"
-#include "../Utility/Streams/DataSerialize.h"
 #include "../Utility/Streams/PathUtils.h"
+#include "../Utility/Streams/StreamFormatter.h"
+#include "../Utility/Streams/StreamDOM.h"
+#include "../Utility/Conversion.h"
 #include "../Core/Types.h"
 
 #include <random>
@@ -882,26 +885,24 @@ namespace SceneEngine
             //  Using the given config file, let's construct the list of 
             //  placement cells
         auto pimpl = std::make_unique<Pimpl>();
-        pimpl->_cells.reserve(cfg._cellCount[0] * cfg._cellCount[1]);
-        for (unsigned y=0; y<cfg._cellCount[1]; ++y)
-            for (unsigned x=0; x<cfg._cellCount[0]; ++x) {
-                PlacementCell cell;
-                _snprintf_s(cell._filename, dimof(cell._filename), "%s/placements/p%03i_%03i.plc", 
-                    cfg._baseDir.c_str(), x, y);
-                cell._filenameHash = Hash64(cell._filename);
-                Float3 offset(cfg._cellSize * x + worldOffset[0], cfg._cellSize * y + worldOffset[1], 0.f);
-                cell._cellToWorld = AsFloat3x4(offset);
 
-                    // note -- we could shrink wrap this bounding box around th objects
-                    //      inside. This might be necessary, actually, because some objects
-                    //      may be straddling the edges of the area, so the cell bounding box
-                    //      should be slightly larger.
-                const float minHeight = 0.f, maxHeight = 3000.f;
-                cell._aabbMin = offset + Float3(0.f, 0.f, minHeight);
-                cell._aabbMax = offset + Float3(cfg._cellSize, cfg._cellSize, maxHeight);
+        pimpl->_cells.reserve(cfg._cells.size());
 
-                pimpl->_cells.push_back(cell);
-            }
+        for (auto c=cfg._cells.cbegin(); c!=cfg._cells.cend(); ++c) {
+            PlacementCell cell;
+            XlCopyString(cell._filename, c->_file);
+            cell._filenameHash = Hash64(cell._filename);
+            cell._cellToWorld = AsFloat3x4(c->_offset);
+
+                // note -- we could shrink wrap this bounding box around th objects
+                //      inside. This might be necessary, actually, because some objects
+                //      may be straddling the edges of the area, so the cell bounding box
+                //      should be slightly larger.
+            cell._aabbMin = c->_offset + c->_mins;
+            cell._aabbMax = c->_offset + c->_maxs;
+
+            pimpl->_cells.push_back(cell);
+        }
 
         pimpl->_placementsCache = std::make_shared<PlacementsCache>();
         pimpl->_modelCache = modelCache;
@@ -2137,28 +2138,29 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    WorldPlacementsConfig::WorldPlacementsConfig(const std::string& baseDir)
-        : _baseDir(baseDir)
+    WorldPlacementsConfig::WorldPlacementsConfig(
+        InputStreamFormatter<utf8>& formatter,
+        const ::Assets::DirectorySearchRules& searchRules)
+    : WorldPlacementsConfig()
     {
-        _cellCount = UInt2(0,0);
-        _cellSize = 512.f;
+        Document<InputStreamFormatter<utf8>> doc(formatter);
+        for (auto c=doc.FirstChild(); c; c=c.NextSibling()) {
+            Cell cell;
+            cell._offset = c(u("Offset"), Float3(0,0,0));
+            cell._mins = c(u("Mins"), Float3(0,0,0));
+            cell._maxs = c(u("Maxs"), Float3(0,0,0));
 
-        size_t fileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(StringMeld<MaxPath>() << baseDir << "\\world.cfg", &fileSize);
-
-        Data data;
-        data.Load((const char*)sourceFile.get(), int(fileSize));
-        auto* c = data.ChildWithValue("PlacementsConfig");
-        if (c) {
-            _cellCount = Deserialize(c, "CellCount", _cellCount);
-            _cellSize = Deserialize(c, "CellSize", _cellSize);
+            auto baseFile = Conversion::Convert<::Assets::rstring>(
+                c.Attribute(u("NativeFile")).Value());
+            searchRules.ResolveFile(
+                cell._file, dimof(cell._file),
+                baseFile.c_str());
+            _cells.push_back(cell);
         }
     }
 
     WorldPlacementsConfig::WorldPlacementsConfig()
     {
-        _cellCount = UInt2(0,0);
-        _cellSize = 512.f;
     }
 
 }

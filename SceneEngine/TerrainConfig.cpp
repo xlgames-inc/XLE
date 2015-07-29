@@ -39,38 +39,15 @@ namespace SceneEngine
         ::Assets::ResChar buffer[], unsigned bufferCount,
         UInt2 cellIndex, TerrainCoverageId fileType) const
     {
-        if (_filenamesMode == Legacy) {
-                // note -- cell xy flipped
-                //      This is a related to the terrain format used in Archeage
-            switch (fileType) {
-            case CoverageId_Heights:
-                _snprintf_s(buffer, bufferCount, _TRUNCATE, "%scells/%03i_%03i/client/terrain/heightmap.dat_new", 
-                    _searchRules.GetFirstSearchDir(), cellIndex[1], cellIndex[0]);
-                break;
-            case CoverageId_AngleBasedShadows:
-                _snprintf_s(buffer, bufferCount, _TRUNCATE, "%scells/%03i_%03i/client/terrain/shadow.ctc", 
-                    _searchRules.GetFirstSearchDir(), cellIndex[1], cellIndex[0]);
-                break;
-            case CoverageId_ArchiveHeights:
-                _snprintf_s(buffer, bufferCount, _TRUNCATE, "%scells/%03i_%03i/client/terrain/heightmap.dat", 
-                    _searchRules.GetFirstSearchDir(), cellIndex[1], cellIndex[0]);
-                break;
-            default:
-                buffer[0] = '\0';
-                break;
-            }
-        } else if (_filenamesMode == XLE) {
-            
-            auto knownName = KnownCoverageNames(fileType);
-            if (knownName) {
-               _snprintf_s(
-                    buffer, bufferCount, _TRUNCATE, "%sc%02i_%02i/%s.terr", 
-                    _searchRules.GetFirstSearchDir(), cellIndex[0], cellIndex[1], knownName);
-            } else {
-                _snprintf_s(
-                    buffer, bufferCount, _TRUNCATE, "%sc%02i_%02i/%08x.terr", 
-                    _searchRules.GetFirstSearchDir(), cellIndex[0], cellIndex[1], fileType);
-            }
+        auto knownName = KnownCoverageNames(fileType);
+        if (knownName) {
+            _snprintf_s(
+                buffer, bufferCount, _TRUNCATE, "%sc%02i_%02i/%s.terr", 
+                _cellsDirectory, cellIndex[0], cellIndex[1], knownName);
+        } else {
+            _snprintf_s(
+                buffer, bufferCount, _TRUNCATE, "%sc%02i_%02i/%08x.terr", 
+                _cellsDirectory, cellIndex[0], cellIndex[1], fileType);
         }
     }
 
@@ -136,102 +113,65 @@ namespace SceneEngine
 
     TerrainConfig::TerrainConfig(
 		const ::Assets::ResChar baseDir[], UInt2 cellCount,
-        Filenames filenamesMode, 
         unsigned nodeDimsInElements, unsigned cellTreeDepth, 
         unsigned nodeOverlap, float elementSpacing, float sunPathAngle, bool encodedGradientFlags)
-    : _cellCount(cellCount), _filenamesMode(filenamesMode)
+    : _cellCount(cellCount)
     , _nodeDimsInElements(nodeDimsInElements), _cellTreeDepth(cellTreeDepth), _nodeOverlap(nodeOverlap) 
     , _elementSpacing(elementSpacing), _sunPathAngle(sunPathAngle), _encodedGradientFlags(encodedGradientFlags)
     {
-        _searchRules.AddSearchDirectory(FormatBaseDir(baseDir).c_str());
+        XlCopyString(
+            _cellsDirectory, dimof(_cellsDirectory),
+            FormatBaseDir(baseDir).c_str());
     }
 
     TerrainConfig::TerrainConfig()
     {
         _cellCount = UInt2(0,0);
-        _filenamesMode = XLE;
-        _nodeDimsInElements = 0;
-        _cellTreeDepth = 0;
-        _nodeOverlap = 0;
-        _elementSpacing = 0.f;
+        _nodeDimsInElements = 32u;
+        _cellTreeDepth = 5u;
+        _nodeOverlap = 2u;
+        _elementSpacing = 10.f;
         _sunPathAngle = 0.f;
         _encodedGradientFlags = false;
+        _cellsDirectory[0] = '\0';
     }
 
-    TerrainConfig::TerrainConfig(const ::Assets::ResChar configFile[])
-    : _filenamesMode(XLE)
-    , _cellCount(0,0), _nodeDimsInElements(32u), _nodeOverlap(2u)
-    , _cellTreeDepth(5u), _elementSpacing(10.f), _sunPathAngle(0.f)
-    , _encodedGradientFlags(false)
-    , _searchRules(::Assets::DefaultDirectorySearchRules(configFile))
+    TerrainConfig::TerrainConfig(
+        InputStreamFormatter<utf8>& formatter,
+        const ::Assets::DirectorySearchRules& searchRules)
+    : TerrainConfig()
     {
-        size_t fileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(configFile, &fileSize);
-        
-        TRY
-        {
-            InputStreamFormatter<utf8> formatter(
-                MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
-            Document<InputStreamFormatter<utf8>> doc(formatter);
+        Document<InputStreamFormatter<utf8>> doc(formatter);
+        _nodeDimsInElements     = doc(u("NodeDims"), _nodeDimsInElements);
+        _cellTreeDepth          = doc(u("CellTreeDepth"), _cellTreeDepth);
+        _nodeOverlap            = doc(u("NodeOverlap"), _nodeOverlap);
+        _elementSpacing         = doc(u("ElementSpacing"), _elementSpacing);
+        _cellCount              = doc(u("CellCount"), _cellCount);
+        _sunPathAngle           = doc(u("SunPathAngle"), _sunPathAngle);
+        _encodedGradientFlags   = doc(u("EncodedGradientFlags"), _encodedGradientFlags);
 
-            auto c = doc.Element(u("TerrainConfig"));
-            if (c) {
-                if (!XlCompareStringI(c.Attribute(u("Filenames")).Value().c_str(), u("Legacy"))) 
-                    _filenamesMode = Legacy;
+        auto cellsDirectory = Conversion::Convert<::Assets::rstring>(doc.Attribute(u("CellsDirectory")).Value());
+        searchRules.ResolveDirectory(
+            _cellsDirectory, dimof(_cellsDirectory), 
+            cellsDirectory.c_str());
 
-                _nodeDimsInElements     = c(u("NodeDims"), _nodeDimsInElements);
-                _cellTreeDepth          = c(u("CellTreeDepth"), _cellTreeDepth);
-                _nodeOverlap            = c(u("NodeOverlap"), _nodeOverlap);
-                _elementSpacing         = c(u("ElementSpacing"), _elementSpacing);
-                _cellCount              = c(u("CellCount"), _cellCount);
-                _sunPathAngle           = c(u("SunPathAngle"), _sunPathAngle);
-                _encodedGradientFlags   = c(u("EncodedGradientFlags"), _encodedGradientFlags);
-
-                auto coverage = c.Element(u("Coverage"));
-                if (coverage) {
-                    for (auto l = coverage.FirstChild(); l; l=l.NextSibling()) {
-                        CoverageLayer layer;
-                        layer._name             = l.Name();
-                        layer._id               = l(u("Id"), 0);
-                        layer._nodeDimensions   = l(u("Dims"), UInt2(32, 32));
-                        layer._overlap          = l(u("Overlap"), 1);
-                        layer._format           = l(u("Format"), 35);
-                        _coverageLayers.push_back(layer);
-                    }
-                }
+        auto coverage = doc.Element(u("Coverage"));
+        if (coverage) {
+            for (auto l = coverage.FirstChild(); l; l=l.NextSibling()) {
+                CoverageLayer layer;
+                layer._name             = l.Name();
+                layer._id               = l(u("Id"), 0);
+                layer._nodeDimensions   = l(u("Dims"), UInt2(32, 32));
+                layer._overlap          = l(u("Overlap"), 1);
+                layer._format           = l(u("Format"), 35);
+                _coverageLayers.push_back(layer);
             }
-
-            ::Assets::Services::GetInvalidAssetMan().MarkValid(configFile);
-        } CATCH (const std::exception& e) {
-            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(configFile, e.what());
-            throw;
-        } CATCH(...) {
-            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(configFile, "Unknown error");
-            throw;
-        } CATCH_END
-
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterFileDependency(_validationCallback, configFile);
-        _searchRules = ::Assets::DefaultDirectorySearchRules(configFile);
+        }
     }
 
-    // void TerrainConfig::Save() const
-    // {
-    //         // write this configuration file out to disk
-    //         //  simple serialisation via the "Data" class
-    //     
-    //     auto output = OpenFileOutput(StringMeld<MaxPath>() << _baseDir << "world.cfg", "wb");
-    //     Write(*output);
-    // }
-
-    void TerrainConfig::Write(Utility::OutputStream& stream) const
+    void TerrainConfig::Write(OutputStreamFormatter& formatter) const
     {
-        OutputStreamFormatter formatter(stream);
-
-        auto cfgEle = formatter.BeginElement(u("TerrainConfig"));
-        if (_filenamesMode == Legacy)   { Serialize(formatter, u("Filenames"), u("Legacy")); }
-        else                            { Serialize(formatter, u("Filenames"), u("XLE")); }
-
+        Serialize(formatter, u("Filenames"), u("XLE"));
         Serialize(formatter, u("NodeDims"), _nodeDimsInElements);
         Serialize(formatter, u("CellTreeDepth"), _cellTreeDepth);
         Serialize(formatter, u("NodeOverlap"), _nodeOverlap);
@@ -250,7 +190,6 @@ namespace SceneEngine
             formatter.EndElement(ele);
         }
         formatter.EndElement(covEle);
-        formatter.EndElement(cfgEle);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -263,6 +263,43 @@ namespace Assets
             XlCopyString(destination, destinationCount, baseName);
     }
 
+    void DirectorySearchRules::ResolveDirectory(
+            ResChar destination[], unsigned destinationCount, 
+            const ResChar baseName[]) const
+    {
+            //  We have a problem with basic paths (like '../')
+            //  These will match for most directories -- which means that
+            //  there is some ambiguity. Let's prefer to use the first
+            //  registered path for simple relative paths like this.
+        bool useBaseName = 
+            (baseName[0] != '.' && DoesDirectoryExist(baseName));
+
+        if (!useBaseName) {
+            const ResChar* b = _buffer;
+            if (!_bufferOverflow.empty()) {
+                b = AsPointer(_bufferOverflow.begin());
+            }
+
+            const auto* baseEnd = &baseName[XlStringLen(baseName)];
+            
+            ResChar tempBuffer[MaxPath];
+            ResChar* workingBuffer = (baseName!=destination) ? destination : tempBuffer;
+            unsigned workingBufferSize = (baseName!=destination) ? destinationCount : unsigned(dimof(tempBuffer));
+
+            for (unsigned c=0; c<_startPointCount; ++c) {
+                XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], baseName, baseEnd);
+                if (DoesDirectoryExist(workingBuffer)) {
+                    if (workingBuffer != destination)
+                        XlCopyString(destination, destinationCount, workingBuffer);
+                    return;
+                }
+            }
+        }
+
+        if (baseName != destination)
+            XlCopyString(destination, destinationCount, baseName);
+    }
+
     const ResChar* DirectorySearchRules::GetFirstSearchDir() const { return _buffer; }
 
     DirectorySearchRules::DirectorySearchRules()

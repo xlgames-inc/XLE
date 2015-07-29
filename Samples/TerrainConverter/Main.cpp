@@ -11,6 +11,7 @@
 #include "../../SceneEngine/TerrainFormat.h"
 #include "../../SceneEngine/TerrainConfig.h"
 #include "../../Assets/CompileAndAsyncManager.h"
+#include "../../Assets/ConfigFileContainer.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Streams/PathUtils.h"
@@ -51,9 +52,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     auto compileAndAsync = std::make_unique<::Assets::CompileAndAsyncManager>();
 
-    SceneEngine::TerrainConfig cfg("game/centralcal");
-    ToolsRig::GenerateMissingUberSurfaceFiles(cfg, "game/centralcal");
-    ToolsRig::GenerateCellFiles(cfg, "game/centralcal", false, SceneEngine::GradientFlagsSettings());
+    ::Assets::ConfigFileContainer<SceneEngine::TerrainConfig> cfg("game/centralcal");
+    ToolsRig::GenerateMissingUberSurfaceFiles(cfg._asset, "game/centralcal");
+    ToolsRig::GenerateCellFiles(cfg._asset, "game/centralcal", false, SceneEngine::GradientFlagsSettings());
 
     // const unsigned nodeDims = 32;
     // const unsigned cellTreeDepth = 5;

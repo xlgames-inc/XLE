@@ -14,6 +14,7 @@
     <ClInclude Include="..\InvalidAssetManager.h" />
     <ClInclude Include="..\AsyncLoadOperation.h" />
     <ClInclude Include="..\IntermediateAssets.h" />
+    <ClInclude Include="..\ConfigFileContainer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets.cpp" />

@@ -28,6 +28,7 @@
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Assets/ModelCache.h"
 
+#include "../../Assets/ConfigFileContainer.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/Streams/PathUtils.h"
@@ -51,12 +52,25 @@ namespace Sample
         std::shared_ptr<SceneEngine::TerrainManager>    _terrainManager;
         std::shared_ptr<SceneEngine::PlacementsManager> _placementsManager;
         std::shared_ptr<RenderCore::Techniques::CameraDesc> _cameraDesc;
-        PlatformRig::EnvironmentSettings _envSettings;
+        PlatformRig::EnvironmentSettings                _envSettings;
+
+        std::shared_ptr<::Assets::DependencyValidation> _terrainCfgVal;
+        std::shared_ptr<::Assets::DependencyValidation> _placementsCfgVal;
+        std::shared_ptr<::Assets::DependencyValidation> _environmentCfgVal;
+        std::shared_ptr<::Assets::DependencyValidation> _gameObjectsCfgVal;
+
+        std::shared_ptr<SceneEngine::VolumetricFogManager> _volumetricFogMan;
+        std::shared_ptr<SceneEngine::ShallowSurfaceManager> _shallowSurfaces;
+
+        std::shared_ptr<EntityInterface::RetainedEntities> _retainedEntities;
+        std::shared_ptr<EntityInterface::EnvEntitiesManager> _updateMan;
 
         float _time;
+
+        void LoadGameObjects(const ::Assets::ResChar filename[]);
     };
 
-    static void LoadGameObjects(const ::Assets::ResChar filename[])
+    void EnvironmentSceneParser::Pimpl::LoadGameObjects(const ::Assets::ResChar filename[])
     {
         size_t fileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(filename, &fileSize);
@@ -79,32 +93,35 @@ namespace Sample
             // over many native engine types, so they appear as generic
             // containers of names and values called "entities".
 
-        auto volumetricFog = std::make_shared<SceneEngine::VolumetricFogManager>();
-        auto shallowSurfaces = std::make_shared<SceneEngine::ShallowSurfaceManager>();
-
         using namespace EntityInterface;
-        auto retainedEntities = std::make_shared<RetainedEntities>();
-        auto updateMan = std::make_shared<EnvEntitiesManager>(retainedEntities);
-        updateMan->RegisterVolumetricFogFlexObjects(volumetricFog);
-        updateMan->RegisterShallowSurfaceFlexObjects(shallowSurfaces);
-
-        RetainedEntityInterface interf(retainedEntities);
+        RetainedEntityInterface interf(_retainedEntities);
         Deserialize(
             formatter, interf, 
             interf.GetDocumentTypeId("GameObjects"));
-        updateMan->FlushUpdates();
+        _updateMan->FlushUpdates();
+
+        _gameObjectsCfgVal = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterFileDependency(_gameObjectsCfgVal, filename);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void EnvironmentSceneParser::PrepareFrame(RenderCore::IThreadContext& context)
     {
+        ////////////////////////////////////////////////////////////////////////
+            // Reload anything that might have changed on disk
+        FlushLoading();
+
+        ////////////////////////////////////////////////////////////////////////
+            // Culling, etc
+
         auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
         RenderCore::Metal::ViewportDesc viewport(*metalContext.get());
         auto sceneCamera = GetCameraDesc();
         auto projectionMatrix = RenderCore::Techniques::PerspectiveProjection(
             sceneCamera, viewport.Width / float(viewport.Height));
-        auto worldToProjection = Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
+        auto worldToProjection = Combine(
+            InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
 
         _pimpl->_characters->Cull(worldToProjection);
         _pimpl->_characters->Prepare(metalContext.get());
@@ -201,36 +218,126 @@ namespace Sample
         return _pimpl->_envSettings; 
     }
 
+    static const ::Assets::ResChar TerrainCfg[] = "TrashWorld/finals/terrain.cfg";
+    static const ::Assets::ResChar PlacementsCfg[] = "TrashWorld/finals/placements.cfg";
+    static const ::Assets::ResChar EnvironmentCfg[] = "TrashWorld/finals/env.txt:environment";
+    static const ::Assets::ResChar GameObjectsCfg[] = "TrashWorld/finals/gameobjects.txt";
+
+    // static const Float3 WorldOffset(-11200.f - 7000.f, -11200.f + 700.f, 0.f);
+    static const Float3 WorldOffset(-100.f, -100.f, 0.f);
+
+    class EnvironmentSettingsAsset
+    {
+    public:
+        PlatformRig::EnvironmentSettings _settings;
+
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() { return _dependencyValidation; }
+
+        EnvironmentSettingsAsset(const ::Assets::ResChar initializer[]);
+        ~EnvironmentSettingsAsset();
+    protected:
+        std::shared_ptr<::Assets::DependencyValidation> _dependencyValidation;
+    };
+
+    EnvironmentSettingsAsset::EnvironmentSettingsAsset(const ::Assets::ResChar initializer[])
+    {
+        ::Assets::ResChar filename[MaxPath];
+        const auto* divider = XlFindChar(initializer, ':');
+        if (divider) {
+            XlCopyNString(filename, dimof(filename), initializer, divider - initializer);
+        } else {
+            XlCopyString(filename, initializer);
+        }
+
+        size_t fileSize = 0;
+        auto sourceFile = LoadFileAsMemoryBlock(filename, &fileSize);
+        using Formatter = InputStreamFormatter<utf8>;
+        Formatter formatter(
+            MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
+
+        auto allSettings = PlatformRig::DeserializeEnvSettings(formatter);
+        if (divider) {
+            auto i = std::find_if(allSettings.cbegin(), allSettings.cend(),
+                [divider](const std::pair<std::string, PlatformRig::EnvironmentSettings>& c)
+                {
+                    return XlEqString(c.first, (const char*)(divider+1));
+                });
+            if (i != allSettings.end())
+                _settings = i->second;
+        } else if (!allSettings.empty()) {
+            _settings = allSettings[0].second;
+        }
+
+        _dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterFileDependency(_dependencyValidation, filename);
+    }
+
+    EnvironmentSettingsAsset::~EnvironmentSettingsAsset() {}
+
+    void EnvironmentSceneParser::FlushLoading()
+    {
+        if (!_pimpl->_terrainCfgVal || _pimpl->_terrainCfgVal->GetValidationIndex() != 0) {
+            #if defined(ENABLE_TERRAIN)
+                ::Assets::ConfigFileContainer<SceneEngine::TerrainConfig> container(TerrainCfg);
+                MainTerrainConfig = container._asset;
+                _pimpl->_terrainManager->Load(MainTerrainConfig, Int2(0, 0), MainTerrainConfig._cellCount, true);
+                _pimpl->_terrainCfgVal = container.GetDependencyValidation();
+                MainTerrainCoords = _pimpl->_terrainManager->GetCoords();
+            #endif
+        }
+
+        if (!_pimpl->_placementsCfgVal || _pimpl->_placementsCfgVal->GetValidationIndex() != 0) {
+            ::Assets::ConfigFileContainer<SceneEngine::WorldPlacementsConfig> container(PlacementsCfg);
+            _pimpl->_placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
+                container._asset,
+                std::make_shared<RenderCore::Assets::ModelCache>(), 
+                Truncate(WorldOffset));
+            _pimpl->_placementsCfgVal = container.GetDependencyValidation();
+        }
+
+        if (!_pimpl->_environmentCfgVal || _pimpl->_environmentCfgVal->GetValidationIndex() != 0) {
+            TRY
+            {
+                EnvironmentSettingsAsset asset(EnvironmentCfg);
+                _pimpl->_envSettings = asset._settings;
+                _pimpl->_environmentCfgVal = asset.GetDependencyValidation();
+            } CATCH(...) {
+            } CATCH_END
+        }
+
+        if (!_pimpl->_gameObjectsCfgVal || _pimpl->_gameObjectsCfgVal->GetValidationIndex() != 0) {
+            _pimpl->LoadGameObjects(GameObjectsCfg);
+        }
+    }
+
     EnvironmentSceneParser::EnvironmentSceneParser()
     {
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->_time = 0.f;
         pimpl->_characters = std::make_unique<CharactersScene>();
 
-        Float3 worldOffset(-11200.f - 7000.f, -11200.f + 700.f, 0.f);
-
         #if defined(ENABLE_TERRAIN)
             MainTerrainFormat = std::make_shared<SceneEngine::TerrainFormat>();
-            MainTerrainConfig = SceneEngine::TerrainConfig(WorldDirectory);
             pimpl->_terrainManager = std::make_shared<SceneEngine::TerrainManager>(MainTerrainFormat);
-            pimpl->_terrainManager->SetWorldSpaceOrigin(worldOffset);
-            pimpl->_terrainManager->Load(MainTerrainConfig, Int2(0, 0), MainTerrainConfig._cellCount, true);
-            MainTerrainCoords = pimpl->_terrainManager->GetCoords();
+            pimpl->_terrainManager->SetWorldSpaceOrigin(WorldOffset);
         #endif
-
-        pimpl->_placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
-            SceneEngine::WorldPlacementsConfig(WorldDirectory),
-            std::make_shared<RenderCore::Assets::ModelCache>(), 
-            Truncate(worldOffset));
 
         pimpl->_cameraDesc = std::make_shared<RenderCore::Techniques::CameraDesc>();
         pimpl->_cameraDesc->_cameraToWorld = pimpl->_characters->DefaultCameraToWorld();
         pimpl->_cameraDesc->_nearClip = 0.5f;
         pimpl->_cameraDesc->_farClip = 6000.f;
-
         pimpl->_envSettings = PlatformRig::DefaultEnvironmentSettings();
 
-        LoadGameObjects("finals/gameobjects.txt");
+        pimpl->_volumetricFogMan = std::shared_ptr<SceneEngine::VolumetricFogManager>();
+        pimpl->_shallowSurfaces = std::shared_ptr<SceneEngine::ShallowSurfaceManager>();
+
+        {
+            using namespace EntityInterface;
+            pimpl->_retainedEntities = std::make_shared<RetainedEntities>();
+            pimpl->_updateMan = std::make_shared<EnvEntitiesManager>(pimpl->_retainedEntities);
+            pimpl->_updateMan->RegisterVolumetricFogFlexObjects(pimpl->_volumetricFogMan);
+            pimpl->_updateMan->RegisterShallowSurfaceFlexObjects(pimpl->_shallowSurfaces);
+        }
 
         _pimpl = std::move(pimpl);
     }

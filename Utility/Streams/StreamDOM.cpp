@@ -98,6 +98,13 @@ namespace Utility
     }
 
     template<typename Formatter>
+        DocElementHelper<Formatter> Document<Formatter>::FirstChild() const
+    {
+        if (!_elements.size()) return DocElementHelper<Formatter>();
+        return DocElementHelper<Formatter>(0, *this);
+    }
+
+    template<typename Formatter>
         unsigned Document<Formatter>::FindAttribute(const value_type* nameStart, const value_type* nameEnd) const
     {
         if (_attributes.empty()) return ~0u;

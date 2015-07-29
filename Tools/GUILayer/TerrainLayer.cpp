@@ -58,7 +58,6 @@ namespace GUILayer
         _native.reset(new NativeConfig(
             clix::marshalString<clix::E_UTF8>(baseDir).c_str(),
             UInt2(0,0),
-            NativeConfig::XLE,
             nodeDimsInElements, cellTreeDepth, nodeOverlap,
             elementSpacing, sunPathAngle, encodedGradientFlags));
     }

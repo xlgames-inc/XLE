@@ -312,6 +312,17 @@ namespace Utility
             return b[i] == 0;
         }
 
+    template<typename T>
+        bool XlEqString(const std::basic_string<T>& a, const T* b)
+        {
+            auto sz = a.size();
+            size_t i = 0;
+            for (; i < sz; ++i)
+                if (!b[i] || a[i] != b[i])
+                    return false;
+            return b[i] == 0;
+        }
+
     #if REDIRECT_CLIB_WITH_PREPROCESSOR
 
         #undef itoa

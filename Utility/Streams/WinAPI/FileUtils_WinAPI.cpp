@@ -186,6 +186,12 @@ namespace Utility
         return dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
     }
 
+    bool DoesDirectoryExist(const char filename[])
+    {
+        DWORD dwAttrib = GetFileAttributes(filename);
+        return (dwAttrib != INVALID_FILE_ATTRIBUTES) && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
+    }
+
     void CreateDirectoryRecursive(const char filename[])
     {
         const char delims[] = "/\\";

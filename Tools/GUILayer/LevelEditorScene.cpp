@@ -346,7 +346,7 @@ namespace GUILayer
         -> EditorSceneManager::PendingExport::Type
     {
         OutputStreamFormatter formatter(stream);
-        cfg.Write(stream);
+        cfg.Write(formatter);
         return EditorSceneManager::PendingExport::Type::Text;
     }
 

@@ -50,6 +50,8 @@ namespace Sample
         std::shared_ptr<SceneEngine::PlacementsManager> GetPlacementManager();
         std::shared_ptr<RenderCore::Techniques::CameraDesc> GetCameraPtr();
 
+        void FlushLoading();
+
         EnvironmentSceneParser();
         ~EnvironmentSceneParser();
 

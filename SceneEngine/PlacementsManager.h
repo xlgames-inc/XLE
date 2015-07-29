@@ -17,18 +17,26 @@
 
 namespace RenderCore { namespace Assets { class ModelCache; class DelayedDrawCall; } }
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
-namespace Utility { class OutputStream; }
+namespace Utility { class OutputStream; template<typename CharType> class InputStreamFormatter; }
+namespace Assets { class DirectorySearchRules; }
 
 namespace SceneEngine
 {
     class WorldPlacementsConfig
     {
     public:
-        std::string _baseDir;
-        float _cellSize;
-        UInt2 _cellCount;
+        class Cell
+        {
+        public:
+            Float3 _offset;
+            Float3 _mins, _maxs;
+            ::Assets::ResChar _file[MaxPath];
+        };
+        std::vector<Cell> _cells;
 
-        WorldPlacementsConfig(const std::string& baseDir);
+        WorldPlacementsConfig(
+            Utility::InputStreamFormatter<utf8>& formatter,
+            const ::Assets::DirectorySearchRules& searchRules);
         WorldPlacementsConfig();
     };
 

@@ -29,6 +29,8 @@ namespace Utility
         DocAttributeHelper<Formatter> Attribute(const value_type name[]) const;
         DocElementHelper<Formatter> Element(const value_type name[]) const;
 
+        DocElementHelper<Formatter> FirstChild() const;
+
         template<typename Type>
             Type Attribute(const value_type name[], const Type& def) const;
 

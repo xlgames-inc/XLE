@@ -100,6 +100,7 @@
     <ClInclude Include="..\BlockSerializer.h" />
     <ClInclude Include="..\ChunkFile.h" />
     <ClInclude Include="..\CompileAndAsyncManager.h" />
+    <ClInclude Include="..\ConfigFileContainer.h" />
     <ClInclude Include="..\DivergentAsset.h" />
     <ClInclude Include="..\AssetServices.h" />
     <ClInclude Include="..\IntermediateAssets.h" />
