@@ -34,6 +34,9 @@ namespace Utility
     struct FunctionTraits
       : public FunctionTraits<decltype(&T::operator())>
     {};
+
+    template<>
+    struct FunctionTraits<nullptr_t> {};
  
     // for pointers to member function
     template <typename ClassType, typename ReturnType, typename... Args>
@@ -79,6 +82,10 @@ namespace Utility
     auto MakeFunction(ReturnType(ClassType::*p)(Args...)) 
         -> std::function<ReturnType(Args...)> { 
       return {p};
+    }
+
+    inline auto MakeFunction(nullptr_t) -> std::function<void()> { 
+      return nullptr;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

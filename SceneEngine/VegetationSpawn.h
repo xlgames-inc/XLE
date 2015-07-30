@@ -9,8 +9,15 @@
 #include "LightingParser.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../Assets/AssetsCore.h"
+#include "../Assets/AssetUtils.h"
+#include "../Utility/UTFUtils.h"
 
 namespace RenderCore { namespace Assets { class ModelCache; }}
+namespace Utility
+{
+    template<typename Type> class InputStreamFormatter;
+    class OutputStreamFormatter;
+}
 
 namespace SceneEngine
 {
@@ -23,7 +30,6 @@ namespace SceneEngine
             ::Assets::rstring _modelName, _materialName;
 
             ObjectType();
-            ObjectType(const ParameterBox&);
         };
 
         class Bucket
@@ -33,7 +39,6 @@ namespace SceneEngine
             float _maxDrawDistance;
             float _frequencyWeight;
             Bucket();
-            Bucket(const ParameterBox&);
         };
 
         class Material
@@ -46,7 +51,6 @@ namespace SceneEngine
             float _suppressionGain;
             float _suppressionLacunarity;
             Material();
-            Material(const ParameterBox&);
         };
 
         float _baseGridSpacing;
@@ -57,7 +61,7 @@ namespace SceneEngine
         ::Assets::DirectorySearchRules _searchRules;
 
         VegetationSpawnConfig(
-            InputStreamFormatter<utf8>& formatter,
+            Utility::InputStreamFormatter<utf8>& formatter,
             const ::Assets::DirectorySearchRules& searchRules);
         VegetationSpawnConfig();
         ~VegetationSpawnConfig();

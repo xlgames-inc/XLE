@@ -82,6 +82,7 @@ namespace Sample
 
     void ScenePlugin_EnvironmentFeatures::LoadingPhase()
     {
+        _updateMan->FlushUpdates();
     }
 
     void ScenePlugin_EnvironmentFeatures::PrepareFrame(
@@ -166,7 +167,7 @@ namespace Sample
         Deserialize(
             formatter, interf, 
             interf.GetDocumentTypeId("GameObjects"));
-        _updateMan->FlushUpdates();
+        // _updateMan->FlushUpdates();
 
         _gameObjectsCfgVal = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterFileDependency(_gameObjectsCfgVal, filename);
@@ -394,7 +395,7 @@ namespace Sample
     {
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->_time = 0.f;
-        pimpl->_characters = std::make_unique<CharactersScene>();
+        // pimpl->_characters = std::make_unique<CharactersScene>();
 
         #if defined(ENABLE_TERRAIN)
             MainTerrainFormat = std::make_shared<SceneEngine::TerrainFormat>();
@@ -403,7 +404,8 @@ namespace Sample
         #endif
 
         pimpl->_cameraDesc = std::make_shared<RenderCore::Techniques::CameraDesc>();
-        pimpl->_cameraDesc->_cameraToWorld = pimpl->_characters->DefaultCameraToWorld();
+        if (pimpl->_characters)
+            pimpl->_cameraDesc->_cameraToWorld = pimpl->_characters->DefaultCameraToWorld();
         pimpl->_cameraDesc->_nearClip = 0.5f;
         pimpl->_cameraDesc->_farClip = 6000.f;
         pimpl->_envSettings = PlatformRig::DefaultEnvironmentSettings();
@@ -411,6 +413,8 @@ namespace Sample
         pimpl->_retainedEntities = std::make_shared<EntityInterface::RetainedEntities>();
 
         _pimpl = std::move(pimpl);
+
+        FlushLoading();
     }
 
     EnvironmentSceneParser::~EnvironmentSceneParser()

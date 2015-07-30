@@ -639,5 +639,8 @@ namespace SceneEngine
         _suppressionLacunarity = 2.0192f;
     }
 
+    VegetationSpawnConfig::ObjectType::ObjectType()
+    {}
+
 }
 

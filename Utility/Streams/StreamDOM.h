@@ -30,6 +30,7 @@ namespace Utility
         DocElementHelper<Formatter> Element(const value_type name[]) const;
 
         DocElementHelper<Formatter> FirstChild() const;
+        DocAttributeHelper<Formatter> FirstAttribute() const;
 
         template<typename Type>
             Type Attribute(const value_type name[], const Type& def) const;
@@ -85,6 +86,7 @@ namespace Utility
         DocAttributeHelper<Formatter> FirstAttribute() const;
 
         std::basic_string<value_type> Name() const;
+        typename Formatter::InteriorSection RawName() const;
 
         template<typename Type>
             Type Attribute(const value_type name[], const Type& def) const;
@@ -117,6 +119,9 @@ namespace Utility
 
         std::basic_string<value_type> Name() const;
         std::basic_string<value_type> Value() const;
+
+        typename Formatter::InteriorSection RawName() const;
+        typename Formatter::InteriorSection RawValue() const;
 
         DocAttributeHelper<Formatter> Next() const;
 
