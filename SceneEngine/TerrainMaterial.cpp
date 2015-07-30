@@ -156,37 +156,61 @@ namespace SceneEngine
     class ClassProperties;
     template<typename Type> const ClassProperties& Properties();
 
-    template<typename SetSig> struct SetterFnTraits { static const bool IsArrayForm = false; static const bool IsString = false; };
-
     template<typename Type> struct IsStringType { static const bool Result = false; };
-
     template<typename CharType, typename Allocator> struct IsStringType<std::basic_string<CharType, Allocator>> 
         { static const bool Result = true; };
 
-    template<typename ObjectType, typename ValueTypeT> 
-        struct SetterFnTraits<void(ObjectType, ValueTypeT)>
+    template<typename SetSig> struct SetterFnTraits { static const bool IsArrayForm = false; static const bool IsString = false; };
+    template<typename ObjectTypeT, typename ValueTypeT> 
+        struct SetterFnTraits<void(ObjectTypeT, ValueTypeT)>
         {
             using ValueType = ValueTypeT;
+            using ObjectType = typename std::remove_reference<ObjectTypeT>::type;
             static const bool IsArrayForm = false;
             static const bool IsString = IsStringType<std::remove_const<std::remove_reference<ValueTypeT>::type>::type>::Result;
         };
 
-    template<typename ObjectType, typename ValueTypeT> 
-        struct SetterFnTraits<void(ObjectType, size_t, ValueTypeT)>
+    template<typename ObjectTypeT, typename ValueTypeT> 
+        struct SetterFnTraits<void(ObjectTypeT, size_t, ValueTypeT)>
         {
             using ValueType = ValueTypeT;
+            using ObjectType = typename std::remove_reference<ObjectTypeT>::type;
             static const bool IsArrayForm = true;
             static const bool IsString = IsStringType<std::remove_const<std::remove_reference<ValueTypeT>::type>::type>::Result;
+        };
+
+    template<typename SetSig> struct GetterFnTraits { static const bool IsArrayForm = false; static const bool IsString = false; };
+    template<typename ObjectTypeT, typename ReturnTypeT> 
+        struct GetterFnTraits<ReturnTypeT(ObjectTypeT)>
+        {
+            using ValueType = ReturnTypeT;
+            using ObjectType = typename std::remove_reference<ObjectTypeT>::type;
+            static const bool IsArrayForm = false;
+            static const bool IsString = IsStringType<std::remove_const<std::remove_reference<ReturnTypeT>::type>::type>::Result;
+        };
+
+    template<typename ObjectTypeT, typename ReturnTypeT> 
+        struct GetterFnTraits<ReturnTypeT(ObjectTypeT, size_t)>
+        {
+            using ValueType = ReturnTypeT;
+            using ObjectType = typename std::remove_reference<ObjectTypeT>::type;
+            static const bool IsArrayForm = true;
+            static const bool IsString = IsStringType<std::remove_const<std::remove_reference<ReturnTypeT>::type>::type>::Result;
         };
 
     class ClassProperties
     {
     public:
         using CastFromFn = std::function<bool(void*, const void*, ImpliedTyping::TypeDesc, bool)>;
-        std::vector<std::pair<uint64, CastFromFn>> _castFrom;
-
         using CastFromArrayFn = std::function<bool(void*, size_t, const void*, ImpliedTyping::TypeDesc, bool)>;
-        std::vector<std::pair<uint64, CastFromArrayFn>> _castFromArray;
+
+        using CastToFn = std::function<bool(const void*, void*, size_t, ImpliedTyping::TypeDesc, bool)>;
+        using CastToArrayFn = std::function<bool(const void*, size_t, void*, size_t, ImpliedTyping::TypeDesc, bool)>;
+        
+        std::vector<std::pair<uint64, CastFromFn>>          _castFrom;
+        std::vector<std::pair<uint64, CastFromArrayFn>>     _castFromArray;
+        std::vector<std::pair<uint64, CastToFn>>            _castTo;
+        std::vector<std::pair<uint64, CastToArrayFn>>       _castToArray;
 
         class ChildList
         {
@@ -242,65 +266,68 @@ namespace SceneEngine
         size_t _associatedType;
 
         template<typename SetSig, typename std::enable_if<!SetterFnTraits<SetSig>::IsArrayForm>::type* = nullptr>
-            void MaybeAddCasterForSet(
-                    uint64 id,
-                    std::function<SetSig>&& setter);
+            void MaybeAddCasterForSet(uint64 id, std::function<SetSig>&& setter);
 
-        template<typename SetSig, 
-            typename std::enable_if<SetterFnTraits<SetSig>::IsString>::type* = nullptr,
-            typename std::enable_if<SetterFnTraits<SetSig>::IsArrayForm>::type* = nullptr>
-            void MaybeAddCasterForSet(
-                    uint64 id,
-                    std::function<SetSig>&& setter);
+        template<typename SetSig, typename std::enable_if<SetterFnTraits<SetSig>::IsArrayForm>::type* = nullptr>
+            void MaybeAddCasterForSet(uint64 id, std::function<SetSig>&& setter);
 
-        template<typename SetSig, 
-            typename std::enable_if<!SetterFnTraits<SetSig>::IsString>::type* = nullptr,
-            typename std::enable_if<SetterFnTraits<SetSig>::IsArrayForm>::type* = nullptr>
-            void MaybeAddCasterForSet(
-                    uint64 id,
-                    std::function<SetSig>&& setter);
+        template<typename GetSig, typename std::enable_if<!GetterFnTraits<GetSig>::IsArrayForm>::type* = nullptr>
+            void MaybeAddCasterForGet(uint64 id, std::function<GetSig>&& getter);
+
+        template<typename GetSig, typename std::enable_if<GetterFnTraits<GetSig>::IsArrayForm>::type* = nullptr>
+            void MaybeAddCasterForGet(uint64 id, std::function<GetSig>&& getter);
     };
     
-    template<typename Type, typename SetFn>
+    template<typename SetFn>
         bool DefaultCastFrom(
-            void* obj, const void* src, ImpliedTyping::TypeDesc srcType, bool stringForm,
+            void* obj, const void* src, ImpliedTyping::TypeDesc srcType, bool srcStringForm,
             std::function<SetFn> setFn)
         {
             static_assert(SetterFnTraits<SetFn>::IsArrayForm == false, "Mismatch on setter array form");
-            char buffer[256];
-            using PassToSetter = std::remove_const<std::remove_reference<SetterFnTraits<SetFn>::ValueType>::type>::type;
-            auto destType = ImpliedTyping::TypeOf<PassToSetter>();
-            if (stringForm) {
-                char buffer2[256];
-                auto parsedType = ImpliedTyping::Parse(
-                    (const char*)src, (const char*)PtrAdd(src, srcType.GetSize()),
-                    buffer2, sizeof(buffer2));
-                if (parsedType._type == ImpliedTyping::TypeCat::Void) return false;
+            using PassToSetter = typename std::remove_const<typename std::remove_reference<typename SetterFnTraits<SetFn>::ValueType>::type>::type;
+            using Type = SetterFnTraits<SetFn>::ObjectType;
 
-                if (!ImpliedTyping::Cast(
-                    buffer, sizeof(buffer), destType, 
-                    buffer2, parsedType))
-                    return false;
+            if (constant_expression<!SetterFnTraits<SetFn>::IsString>::result()) {
+                char buffer[256];
+                auto destType = ImpliedTyping::TypeOf<PassToSetter>();
+                if (srcStringForm) {
+                    char buffer2[256];
+                    auto parsedType = ImpliedTyping::Parse(
+                        (const char*)src, (const char*)PtrAdd(src, srcType.GetSize()),
+                        buffer2, sizeof(buffer2));
+                    if (parsedType._type == ImpliedTyping::TypeCat::Void) return false;
+
+                    if (!ImpliedTyping::Cast(
+                        buffer, sizeof(buffer), destType, 
+                        buffer2, parsedType))
+                        return false;
+                } else {
+                    if (!ImpliedTyping::Cast(
+                        buffer, sizeof(buffer), destType, 
+                        src, srcType))
+                        return false;
+                }
+            
+                setFn(*(std::remove_reference<Type>::type*)obj, *(const PassToSetter*)buffer);
+                return true;
             } else {
-                if (!ImpliedTyping::Cast(
-                    buffer, sizeof(buffer), destType, 
-                    src, srcType))
-                    return false;
+                assert(0);      // string version unimplemented
+                return false;
             }
-            setFn(*(std::remove_reference<Type>::type*)obj, *(const PassToSetter*)buffer);
-            return true;
         }
 
-    template<typename Type, typename SetFn>
+    template<typename SetFn, typename std::enable_if<!SetterFnTraits<SetFn>::IsString>::type* = nullptr>
         bool DefaultArrayCastFrom(
-            void* obj, size_t arrayIndex, const void* src, ImpliedTyping::TypeDesc srcType, bool stringForm,
+            void* obj, size_t arrayIndex, const void* src, ImpliedTyping::TypeDesc srcType, bool srcStringForm,
             std::function<SetFn> setFn)
         {
             static_assert(SetterFnTraits<SetFn>::IsArrayForm == true, "Mismatch on setter array form");
+            using PassToSetter = typename std::remove_const<typename std::remove_reference<typename SetterFnTraits<SetFn>::ValueType>::type>::type;
+            using Type = SetterFnTraits<SetFn>::ObjectType;
+
             char buffer[256];
-            using PassToSetter = std::remove_const<std::remove_reference<SetterFnTraits<SetFn>::ValueType>::type>::type;
             auto destType = ImpliedTyping::TypeOf<PassToSetter>();
-            if (stringForm) {
+            if (srcStringForm) {
                 char buffer2[256];
                 auto parsedType = ImpliedTyping::Parse(
                     (const char*)src, (const char*)PtrAdd(src, srcType.GetSize()),
@@ -317,31 +344,86 @@ namespace SceneEngine
                     src, srcType))
                     return false;
             }
-            setFn(*(std::remove_reference<Type>::type*)obj, arrayIndex, *(const PassToSetter*)buffer);
+                
+            setFn(*(typename std::remove_reference<Type>::type*)obj, arrayIndex, *(const PassToSetter*)buffer);
             return true;
         }
 
-    template<typename Type, typename SetFn>
-        bool StringArrayCastFrom(
-            void* obj, size_t arrayIndex, const void* src, ImpliedTyping::TypeDesc srcType, bool stringForm,
+
+    template<typename SetFn, typename std::enable_if<SetterFnTraits<SetFn>::IsString>::type* = nullptr>
+        bool DefaultArrayCastFrom(
+            void* obj, size_t arrayIndex, const void* src, ImpliedTyping::TypeDesc srcType, bool srcStringForm,
             std::function<SetFn> setFn)
         {
-            using PassToSetter = std::remove_const<std::remove_reference<SetterFnTraits<SetFn>::ValueType>::type>::type;
+            static_assert(SetterFnTraits<SetFn>::IsArrayForm == true, "Mismatch on setter array form");
+            using PassToSetter = typename std::remove_const<typename std::remove_reference<typename SetterFnTraits<SetFn>::ValueType>::type>::type;
+            using Type = SetterFnTraits<SetFn>::ObjectType;
+
             using DestCharType = PassToSetter::value_type;
-            
-            if (stringForm) {
+            if (srcStringForm) {
                 setFn(
-                    *(std::remove_reference<Type>::type*)obj, arrayIndex, 
+                    *(typename std::remove_reference<Type>::type*)obj, arrayIndex, 
                     std::basic_string<DestCharType>(
                         (const DestCharType*)src,
                         (const DestCharType*)PtrAdd(src,srcType.GetSize())));
             } else {
                 setFn(
-                    *(std::remove_reference<Type>::type*)obj, arrayIndex, 
+                    *(typename std::remove_reference<Type>::type*)obj, arrayIndex, 
                     ImpliedTyping::AsString(src, srcType.GetSize(), srcType, true));
             }
 
             return true;
+        }
+
+    template<typename GetFn, typename std::enable_if<!GetterFnTraits<GetFn>::IsString>::type* = nullptr>
+        bool DefaultCastTo(
+            const void* obj, void* dst, size_t dstSize, ImpliedTyping::TypeDesc dstType, bool dstStringForm,
+            std::function<GetFn> getFn)
+        {
+            auto temp = getFn(*(const typename GetterFnTraits<GetFn>::ObjectType*)obj);
+            if (dstStringForm) {
+                XlCopyString((char*)dst, dstSize / sizeof(char), ImpliedTyping::AsString(temp, true).c_str());
+                return true;
+            } else {
+                return ImpliedTyping::Cast(dst, dstSize, dstType, &temp, ImpliedTyping::TypeOf<decltype(temp)>());
+            }
+        }
+
+    template<typename GetFn, typename std::enable_if<GetterFnTraits<GetFn>::IsString>::type* = nullptr>
+        bool DefaultCastTo(
+            const void* obj, void* dst, size_t dstSize, ImpliedTyping::TypeDesc dstType, bool dstStringForm,
+            std::function<GetFn> getFn)
+        {
+            auto temp = getFn(*(const typename GetterFnTraits<GetFn>::ObjectType*)obj);
+            if (dstStringForm) {
+                XlCopyString((char*)dst, dstSize / sizeof(char), temp.c_str());
+                return true;
+            } else {
+                char parseBuffer[256];
+                auto parseType = ImpliedTyping::Parse(
+                    AsPointer(temp.cbegin()), AsPointer(temp.cend()),
+                    parseBuffer, sizeof(parseBuffer));
+                if (parseType._type == ImpliedTyping::TypeCat::Void) return false;
+                return ImpliedTyping::Cast(dst, dstSize, dstType, parseBuffer, parseType);
+            }
+        }
+
+    template<typename GetFn, typename std::enable_if<!GetterFnTraits<GetFn>::IsString>::type* = nullptr>
+        bool DefaultArrayCastTo(
+            const void* obj, size_t arrayIndex, void* dst, size_t dstSize, ImpliedTyping::TypeDesc dstType, bool dstStringForm,
+            std::function<GetFn> getFn)
+        {
+            assert(0);
+            return false;
+        }
+
+    template<typename GetFn, typename std::enable_if<GetterFnTraits<GetFn>::IsString>::type* = nullptr>
+        bool DefaultArrayCastTo(
+            const void* obj, size_t arrayIndex, void* dst, size_t dstSize, ImpliedTyping::TypeDesc dstType, bool dstStringForm,
+            std::function<GetFn> getFn)
+        {
+            assert(0);
+            return false;
         }
 
     template<typename Fn> struct ExtractFunctionSig;
@@ -349,20 +431,6 @@ namespace SceneEngine
         struct ExtractFunctionSig<std::function<FnSig>>
     {
         using Type = FnSig;
-    };
-
-    template<typename Fn> struct ReturnType;
-    template<typename Return, typename... Args>
-        struct ReturnType<Return(Args...)>
-    {
-        using Type = Return;
-    };
-        
-    template<typename Fn> struct FirstArg;
-    template<typename Return, typename First, typename... Args>
-        struct FirstArg<Return(First, Args...)>
-    {
-        using Type = First;
     };
 
     template<typename GetFn, typename SetFn>
@@ -374,6 +442,7 @@ namespace SceneEngine
             auto g = MakeFunction(std::move(getter));
             auto s = MakeFunction(std::move(setter));
             auto scopy = s;
+            auto gcopy = g;
             auto id = Hash64((const char*)name);
             _getters.Add(id, std::move(g));
             _setters.Add(id, std::move(s));
@@ -384,51 +453,62 @@ namespace SceneEngine
                 //          during serialization (etc)
             
             MaybeAddCasterForSet(id, std::move(scopy));
+            MaybeAddCasterForGet(id, std::move(gcopy));
         }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
     
     template<typename SetSig, typename std::enable_if<!SetterFnTraits<SetSig>::IsArrayForm>::type*>
         void ClassProperties::MaybeAddCasterForSet(
-                uint64 id,
-                std::function<SetSig>&& setter)
+            uint64 id, std::function<SetSig>&& setter)
         {
             using namespace std::placeholders;
-            auto castFromFn = std::bind(&DefaultCastFrom<typename FirstArg<SetSig>::Type, SetSig>, _1, _2, _3, _4, std::move(setter));
+            auto castFromFn = std::bind(&DefaultCastFrom<SetSig>, _1, _2, _3, _4, std::move(setter));
             auto i = LowerBound(_castFrom, id);
             _castFrom.insert(i, std::make_pair(id, std::move(castFromFn)));
         }
 
-    template<
-        typename SetSig, 
-        typename std::enable_if<!SetterFnTraits<SetSig>::IsString>::type*,
-        typename std::enable_if<SetterFnTraits<SetSig>::IsArrayForm>::type*>
+    template<typename SetSig, typename std::enable_if<SetterFnTraits<SetSig>::IsArrayForm>::type*>
         void ClassProperties::MaybeAddCasterForSet(
-                uint64 id,
-                std::function<SetSig>&& setter)
+            uint64 id, std::function<SetSig>&& setter)
         {
             using namespace std::placeholders;
-            auto castFromFn = std::bind(&DefaultArrayCastFrom<typename FirstArg<SetSig>::Type, SetSig>, _1, _2, _3, _4, _5, std::move(setter));
+            auto castFromFn = std::bind(&DefaultArrayCastFrom<SetSig>, _1, _2, _3, _4, _5, std::move(setter));
             auto i = LowerBound(_castFromArray, id);
             _castFromArray.insert(i, std::make_pair(id, std::move(castFromFn)));
         }
     
-    template<
-        typename SetSig, 
-        typename std::enable_if<SetterFnTraits<SetSig>::IsString>::type*,
-        typename std::enable_if<SetterFnTraits<SetSig>::IsArrayForm>::type*>
-        void ClassProperties::MaybeAddCasterForSet(
-                uint64 id,
-                std::function<SetSig>&& setter)
-        {
-            using namespace std::placeholders;
-            auto castFromFn = std::bind(&StringArrayCastFrom<typename FirstArg<SetSig>::Type, SetSig>, _1, _2, _3, _4, _5, std::move(setter));
-            auto i = LowerBound(_castFromArray, id);
-            _castFromArray.insert(i, std::make_pair(id, std::move(castFromFn)));
-        }
-
     template<>
         void ClassProperties::MaybeAddCasterForSet(
-            uint64 id,
-            std::function<void()>&& setter) {}
+            uint64 id, std::function<void()>&& setter) {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template<typename GetSig, typename std::enable_if<!GetterFnTraits<GetSig>::IsArrayForm>::type*>
+        void ClassProperties::MaybeAddCasterForGet(
+            uint64 id, std::function<GetSig>&& getter)
+        {
+            using namespace std::placeholders;
+            auto castToFn = std::bind(&DefaultCastTo<GetSig>, _1, _2, _3, _4, _5, std::move(getter));
+            auto i = LowerBound(_castTo, id);
+            _castTo.insert(i, std::make_pair(id, std::move(castToFn)));
+        }
+
+    template<typename GetSig, typename std::enable_if<GetterFnTraits<GetSig>::IsArrayForm>::type*>
+        void ClassProperties::MaybeAddCasterForGet(
+            uint64 id, std::function<GetSig>&& getter)
+        {
+            using namespace std::placeholders;
+            auto castToFn = std::bind(&DefaultArrayCastTo<GetSig>, _1, _2, _3, _4, _5, _6, std::move(getter));
+            auto i = LowerBound(_castToArray, id);
+            _castToArray.insert(i, std::make_pair(id, std::move(castToFn)));
+        }
+    
+    template<>
+        void ClassProperties::MaybeAddCasterForGet(
+            uint64 id, std::function<void()>&& getter) {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename ChildType, typename CreateFn, typename GetByKeyFn>
         void ClassProperties::AddChildList(
@@ -466,6 +546,7 @@ namespace SceneEngine
                 // First, we'll use the implied typing system to break down
                 // our input into array components.. Then we'll set each
                 // element individually.
+                assert(0);
             }
         }
 
