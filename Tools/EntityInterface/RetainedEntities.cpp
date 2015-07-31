@@ -17,10 +17,12 @@ namespace EntityInterface
         if (prop._prop == 0 || prop._prop > type._properties.size()) return false;
         if (!prop._src) return false;
 
+        auto typeHint = prop._isString ? ImpliedTyping::TypeHint::String : ImpliedTyping::TypeHint::None;
+
         const auto& propertyName = type._properties[prop._prop-1];
         dest._properties.SetParameter(
             propertyName.c_str(), prop._src, 
-            ImpliedTyping::TypeDesc((ImpliedTyping::TypeCat)prop._elementType, (uint16)prop._arrayCount));
+            ImpliedTyping::TypeDesc((ImpliedTyping::TypeCat)prop._elementType, (uint16)prop._arrayCount, typeHint));
         return true;
     }
 

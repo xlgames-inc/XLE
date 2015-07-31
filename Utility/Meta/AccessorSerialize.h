@@ -10,6 +10,7 @@ namespace Utility
 {
     class OutputStreamFormatter;
     class ClassAccessors;
+    class ParameterBox;
 }
 
 template<typename Type> const Utility::ClassAccessors& GetAccessors();
@@ -24,6 +25,10 @@ namespace Utility
     void AccessorSerialize(
         OutputStreamFormatter& formatter,
         const void* obj, const ClassAccessors& props);
+
+    void SetParameters(
+        void* obj, const ClassAccessors& accessors,
+        const ParameterBox& paramBox);
 
     template<typename Formatter, typename Type>
         void AccessorDeserialize(
@@ -43,6 +48,15 @@ namespace Utility
             const auto& props = GetAccessors<Type>();
             AccessorSerialize(formatter, &obj, props);
         }
+
+    template<typename Type>
+        Type CreateFromParameters(const ParameterBox& paramBox)
+        {
+            Type result;
+            SetParameters(&result, GetAccessors<Type>(), paramBox);
+            return std::move(result);
+        }
+
 
 }
 

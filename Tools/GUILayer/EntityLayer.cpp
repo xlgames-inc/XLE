@@ -31,6 +31,7 @@ namespace GUILayer
                 n._src = i._src;
                 n._elementType = i._elementType;
                 n._arrayCount = i._arrayCount;
+                n._isString = i._isString;
                 native.push_back(n);
             }
         }

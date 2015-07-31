@@ -18,6 +18,7 @@
 
 namespace Utility
 {
+    static const unsigned ParsingBufferSize = 256;
 
     template<typename Formatter>
         void AccessorDeserialize(
@@ -95,7 +96,7 @@ namespace Utility
     {
         using CharType = utf8;
         auto charTypeCat = ImpliedTyping::TypeOf<CharType>()._type;
-        CharType buffer[256];
+        CharType buffer[ParsingBufferSize];
 
         for (size_t i=0; i<props.GetPropertyCount(); ++i) {
             const auto& p = props.GetPropertyByIndex(i);
@@ -138,4 +139,36 @@ namespace Utility
         void AccessorDeserialize(
             InputStreamFormatter<utf8>& formatter,
             void* obj, const ClassAccessors& props);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void SetParameters(
+        void* obj, const ClassAccessors& accessors,
+        const ParameterBox& paramBox)
+    {
+        // we can choose to iterate through the parameters in either way:
+        // either by iterating through the accessors in "accessors" and pulling
+        // values from the parameter box...
+        // or by iterating through the parameters in "paramBox" and pushing those
+        // values in.
+        // We have to consider array cases -- perhaps it easier to go through the
+        // parameters in the parameter box
+        for (auto i=paramBox.Begin(); !i.IsEnd(); ++i) {
+            const auto nameStart = i.Name();
+            const auto nameEnd = &nameStart[XlStringLen(nameStart)];
+            auto arrayBracket = std::find(nameStart, nameEnd, '[');
+            if (arrayBracket == nameEnd) {
+                accessors.TryCastFrom(
+                    obj,
+                    Hash64(nameStart, nameEnd), i.RawValue(), 
+                    i.Type(), false);
+            } else {
+                auto arrayIndex = XlAtoUI32((const char*)(arrayBracket+1));
+                accessors.TryCastFrom(
+                    obj, Hash64(nameStart, arrayBracket), arrayIndex, i.RawValue(), 
+                    i.Type(), false);
+            }
+        }
+    }
+
 }

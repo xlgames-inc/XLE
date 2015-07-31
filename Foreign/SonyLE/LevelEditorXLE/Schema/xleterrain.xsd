@@ -25,9 +25,9 @@
     <xs:annotation>
       <xs:appinfo>
         <LeGe.NativeType nativeName="TerrainBaseTexture"/>
-        <LeGe.NativeProperty name="diffusedims" nativeName="diffusedims" nativeType="Float2" access="set"/>
-        <LeGe.NativeProperty name="normaldims" nativeName="normaldims" nativeType="Float2" access="set"/>
-        <LeGe.NativeProperty name="paramdims" nativeName="paramdims" nativeType="Float2" access="set"/>
+        <LeGe.NativeProperty name="diffusedims" nativeName="DiffuseDims" nativeType="Float2" access="set"/>
+        <LeGe.NativeProperty name="normaldims" nativeName="NormalDims" nativeType="Float2" access="set"/>
+        <LeGe.NativeProperty name="paramdims" nativeName="ParamDims" nativeType="Float2" access="set"/>
 
         <LeGe.OpaqueListable label="Texturing"/>
         <scea.dom.editors.attribute name="diffusedims" displayName="Diffuse Dims" description="Diffuse texture dimensions" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
@@ -50,13 +50,13 @@
     <xs:annotation>
       <xs:appinfo>
         <LeGe.NativeType nativeName="TerrainBaseTextureStrata"/>
-        <LeGe.NativeProperty name="texture0" nativeName="texture0" nativeType="wchar_t*" access="set"/>
-        <LeGe.NativeProperty name="texture1" nativeName="texture1" nativeType="wchar_t*" access="set"/>
-        <LeGe.NativeProperty name="texture2" nativeName="texture2" nativeType="wchar_t*" access="set"/>
-        <LeGe.NativeProperty name="mapping0" nativeName="mapping0" nativeType="float" access="set"/>
-        <LeGe.NativeProperty name="mapping1" nativeName="mapping1" nativeType="float" access="set"/>
-        <LeGe.NativeProperty name="mapping2" nativeName="mapping2" nativeType="float" access="set"/>
-        <LeGe.NativeProperty name="endheight" nativeName="endheight" nativeType="float" access="set"/>
+        <LeGe.NativeProperty name="texture0" nativeName="Texture[0]" nativeType="wchar_t*" access="set"/>
+        <LeGe.NativeProperty name="texture1" nativeName="Texture[1]" nativeType="wchar_t*" access="set"/>
+        <LeGe.NativeProperty name="texture2" nativeName="Texture[2]" nativeType="wchar_t*" access="set"/>
+        <LeGe.NativeProperty name="mapping0" nativeName="Mapping[0]" nativeType="float" access="set"/>
+        <LeGe.NativeProperty name="mapping1" nativeName="Mapping[1]" nativeType="float" access="set"/>
+        <LeGe.NativeProperty name="mapping2" nativeName="Mapping[2]" nativeType="float" access="set"/>
+        <LeGe.NativeProperty name="endheight" nativeName="EndHeight" nativeType="float" access="set"/>
 
         <scea.dom.editors.attribute name="texture0" displayName="texture0" description="texture0" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
         <scea.dom.editors.attribute name="texture1" displayName="texture1" description="texture1" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
@@ -102,17 +102,17 @@
         <LeGe.NativeType nativeName="TerrainGradFlagMaterial"/>
         <LeGe.OpaqueListable label="Material"/>
 
-        <LeGe.NativeProperty name="FlatTexture" nativeName="Texture0"/>
-        <LeGe.NativeProperty name="SlopeTexture0" nativeName="Texture1"/>
-        <LeGe.NativeProperty name="SlopeTexture1" nativeName="Texture2"/>
-        <LeGe.NativeProperty name="SlopeTexture2" nativeName="Texture3"/>
-        <LeGe.NativeProperty name="BlendingTexture" nativeName="Texture4"/>
+        <LeGe.NativeProperty name="FlatTexture" nativeName="Texture[0]"/>
+        <LeGe.NativeProperty name="SlopeTexture0" nativeName="Texture[1]"/>
+        <LeGe.NativeProperty name="SlopeTexture1" nativeName="Texture[2]"/>
+        <LeGe.NativeProperty name="SlopeTexture2" nativeName="Texture[3]"/>
+        <LeGe.NativeProperty name="BlendingTexture" nativeName="Texture[4]"/>
 
-        <LeGe.NativeProperty name="FlatTextureMapping" nativeName="TextureMapping0"/>
-        <LeGe.NativeProperty name="SlopeTexture0Mapping" nativeName="TextureMapping1"/>
-        <LeGe.NativeProperty name="SlopeTexture1Mapping" nativeName="TextureMapping2"/>
-        <LeGe.NativeProperty name="SlopeTexture2Mapping" nativeName="TextureMapping3"/>
-        <LeGe.NativeProperty name="BlendingTextureMapping" nativeName="TextureMapping4"/>
+        <LeGe.NativeProperty name="FlatTextureMapping" nativeName="Mapping[0]"/>
+        <LeGe.NativeProperty name="SlopeTexture0Mapping" nativeName="Mapping[1]"/>
+        <LeGe.NativeProperty name="SlopeTexture1Mapping" nativeName="Mapping[2]"/>
+        <LeGe.NativeProperty name="SlopeTexture2Mapping" nativeName="Mapping[3]"/>
+        <LeGe.NativeProperty name="BlendingTextureMapping" nativeName="Mapping[4]"/>
 
         <scea.dom.editors.attribute name="FlatTexture" displayName="FlatTexture" description="FlatTexture" category="General" 
           editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
@@ -161,8 +161,8 @@
         <LeGe.OpaqueListable label="ProcTexture"/>
 
         <LeGe.NativeProperty name="Name" nativeName="Name"/>
-        <LeGe.NativeProperty name="Texture0" nativeName="Texture0"/>
-        <LeGe.NativeProperty name="Texture1" nativeName="Texture1"/>
+        <LeGe.NativeProperty name="Texture0" nativeName="Texture[0]"/>
+        <LeGe.NativeProperty name="Texture1" nativeName="Texture[1]"/>
         <LeGe.NativeProperty name="HGrid" nativeName="HGrid"/>
         <LeGe.NativeProperty name="Gain" nativeName="Gain"/>
 

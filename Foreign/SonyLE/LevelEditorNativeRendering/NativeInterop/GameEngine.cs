@@ -237,11 +237,11 @@ namespace RenderingInterop
             return propId;
         }
 
-        public static PropertyInitializer CreateInitializer(uint prop, void* ptr, Type elementType, uint arrayCount)
+        public static PropertyInitializer CreateInitializer(uint prop, void* ptr, Type elementType, uint arrayCount, bool isString)
         {
             return new PropertyInitializer(
                 prop, ptr, 
-                GUILayer.EditorInterfaceUtils.AsTypeId(elementType), arrayCount);
+                GUILayer.EditorInterfaceUtils.AsTypeId(elementType), arrayCount, isString);
         }
 
         public static ulong CreateObject(

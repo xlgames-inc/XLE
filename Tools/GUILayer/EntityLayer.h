@@ -35,9 +35,10 @@ namespace GUILayer
             const void* _src;
             unsigned _elementType;
             unsigned _arrayCount;
+            bool _isString;
 
-            PropertyInitializer(PropertyId prop, const void* src, unsigned elementType, unsigned arrayCount)
-                : _prop(prop), _src(src), _elementType(elementType), _arrayCount(arrayCount) {}
+            PropertyInitializer(PropertyId prop, const void* src, unsigned elementType, unsigned arrayCount, bool isString)
+                : _prop(prop), _src(src), _elementType(elementType), _arrayCount(arrayCount), _isString(isString) {}
         };
 
         ObjectId AssignObjectId(DocumentId doc, ObjectTypeId type);

@@ -242,7 +242,7 @@ namespace RenderingInterop
                 var length = str.Length;
                 properties.Add(GameEngine.CreateInitializer(
                     propId, stream.PositionPointer,
-                    typeof(char), (uint)length));
+                    typeof(char), (uint)length, true));
 
                     // copy in string data with no string formatting or changes to encoding
                 fixed (char* raw = str)
@@ -261,7 +261,7 @@ namespace RenderingInterop
         {
             properties.Add(GameEngine.CreateInitializer(
                 propId, stream.PositionPointer, 
-                typeof(T), 1));
+                typeof(T), 1, false));
         }
 
         unsafe internal static void UpdateNativeProperty(
@@ -296,7 +296,7 @@ namespace RenderingInterop
                     var count = Math.Min(arrayLength, ((float[])data).Length);
                     properties.Add(GameEngine.CreateInitializer(
                         propertyId, stream.PositionPointer,
-                        elmentType, (uint)count));
+                        elmentType, (uint)count, false));
 
                     fixed (float* d = (float[])data)
                         for (uint c = 0; c < count; ++c)
@@ -308,7 +308,7 @@ namespace RenderingInterop
                     var count = Math.Min(arrayLength, ((int[])data).Length);
                     properties.Add(GameEngine.CreateInitializer(
                         propertyId, stream.PositionPointer,
-                        elmentType, (uint)count));
+                        elmentType, (uint)count, false));
 
                     fixed (int* d = (int[])data)
                         for (uint c = 0; c < count; ++c)
@@ -321,7 +321,7 @@ namespace RenderingInterop
                     var count = Math.Min(arrayLength, ((uint[])data).Length);
                     properties.Add(GameEngine.CreateInitializer(
                         propertyId, stream.PositionPointer,
-                        elmentType, (uint)count));
+                        elmentType, (uint)count, false));
 
                     fixed (uint* d = (uint[])data)
                         for (uint c = 0; c < count; ++c)

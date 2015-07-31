@@ -9,6 +9,7 @@
 #include "PtrUtils.h"
 #include "StringUtils.h"
 #include "IteratorUtils.h"
+#include "MemoryUtils.h"
 #include "StringFormat.h"
 #include "Conversion.h"
 #include "Streams/StreamFormatter.h"
@@ -219,7 +220,7 @@ namespace Utility
                     // First -- trival cases can be completed with a memcpy
                 if (    srcType._arrayCount == destType._arrayCount
                     &&  srcType._type == destType._type) {
-                    XlCopyMemory(dest, src, std::min(destSize, srcType.GetSize()));
+                    XlCopyMemory(dest, src, std::min(destSize, size_t(srcType.GetSize())));
                     return true;
                 }
                     

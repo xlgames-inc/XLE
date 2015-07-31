@@ -27,6 +27,9 @@ namespace EntityInterface
         const void* _src;
         unsigned _elementType;
         unsigned _arrayCount;
+        bool _isString;
+
+        PropertyInitializer() : _prop(0), _src(nullptr), _elementType(0), _arrayCount(0), _isString(false) {}
     };
 
     class Identifier

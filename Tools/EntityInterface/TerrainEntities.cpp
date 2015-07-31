@@ -12,6 +12,7 @@
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/TerrainFormat.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/Meta/AccessorSerialize.h"
 
 namespace EntityInterface
 {
@@ -163,53 +164,28 @@ namespace EntityInterface
     {
         using namespace SceneEngine;
 
-        static auto diffusedims = ParameterBox::MakeParameterNameHash("diffusedims");
-        static auto normaldims = ParameterBox::MakeParameterNameHash("normaldims");
-        static auto paramdims = ParameterBox::MakeParameterNameHash("paramdims");
-
-        TerrainMaterialConfig asset;
-        asset._diffuseDims = obj._properties.GetParameter<UInt2>(diffusedims, UInt2(512, 512));
-        asset._normalDims = obj._properties.GetParameter<UInt2>(normaldims, UInt2(512, 512));
-        asset._paramDims = obj._properties.GetParameter<UInt2>(paramdims, UInt2(512, 512));
-
-        static auto materialId = ParameterBox::MakeParameterNameHash("MaterialId");
-        static auto texture0 = ParameterBox::MakeParameterNameHash("texture0");
-        static auto texture1 = ParameterBox::MakeParameterNameHash("texture1");
-        static auto texture2 = ParameterBox::MakeParameterNameHash("texture2");
-        static auto mapping0 = ParameterBox::MakeParameterNameHash("mapping0");
-        static auto mapping1 = ParameterBox::MakeParameterNameHash("mapping1");
-        static auto mapping2 = ParameterBox::MakeParameterNameHash("mapping2");
-        static auto endheight = ParameterBox::MakeParameterNameHash("endheight");
+        auto asset = CreateFromParameters<TerrainMaterialConfig>(obj._properties);
 
             // rebuild all of the material binding information as well
-        {
-            asset._strataMaterials.clear();
-            auto matType = sys.GetTypeId((const utf8*)"TerrainStrataMaterial");
-            for (auto c=obj._children.cbegin(); c!=obj._children.end(); ++c) {
-                auto* mat = sys.GetEntity(obj._doc, *c);
-                if (!mat || mat->_type != matType) continue;
-
-                TerrainMaterialConfig::StrataMaterial nativeMat;
-                nativeMat._id = mat->_properties.GetParameter<unsigned>(materialId, 0);
-
-                for (auto c=mat->_children.begin(); c!=mat->_children.end(); ++c) {
-                    auto* strataObj = sys.GetEntity(mat->_doc, *c);
-                    if (!strataObj) continue;
-
-                    TerrainMaterialConfig::StrataMaterial::Strata newStrata;
-                    newStrata._texture[0] = strataObj->_properties.GetString<::Assets::ResChar>(texture0);
-                    newStrata._texture[1] = strataObj->_properties.GetString<::Assets::ResChar>(texture1);
-                    newStrata._texture[2] = strataObj->_properties.GetString<::Assets::ResChar>(texture2);
-                    newStrata._mappingConstant[0] = strataObj->_properties.GetParameter<float>(mapping0, 10.f);
-                    newStrata._mappingConstant[1] = strataObj->_properties.GetParameter<float>(mapping1, 10.f);
-                    newStrata._mappingConstant[2] = strataObj->_properties.GetParameter<float>(mapping2, 10.f);
-                    newStrata._endHeight = strataObj->_properties.GetParameter<float>(endheight, 1000.f);
-                    nativeMat._strata.push_back(newStrata);
-                }
-
-                asset._strataMaterials.push_back(std::move(nativeMat));
-            }
-        }
+        // {
+        //     asset._strataMaterials.clear();
+        //     auto matType = sys.GetTypeId((const utf8*)"TerrainStrataMaterial");
+        //     for (auto c=obj._children.cbegin(); c!=obj._children.end(); ++c) {
+        //         auto* mat = sys.GetEntity(obj._doc, *c);
+        //         if (!mat || mat->_type != matType) continue;
+        // 
+        //         auto nativeMat = CreateFromParameters<TerrainMaterialConfig::StrataMaterial>(mat->_properties);
+        //         for (auto c=mat->_children.begin(); c!=mat->_children.end(); ++c) {
+        //             auto* strataObj = sys.GetEntity(mat->_doc, *c);
+        //             if (!strataObj) continue;
+        // 
+        //             nativeMat._strata.emplace_back(
+        //                 CreateFromParameters<TerrainMaterialConfig::StrataMaterial::Strata>(strataObj->_properties));
+        //         }
+        // 
+        //         asset._strataMaterials.emplace_back(std::move(nativeMat));
+        //     }
+        // }
 
         {
             asset._gradFlagMaterials.clear();
@@ -218,17 +194,8 @@ namespace EntityInterface
                 auto* mat = sys.GetEntity(obj._doc, *c);
                 if (!mat || mat->_type != matType) continue;
 
-                TerrainMaterialConfig::GradFlagMaterial nativeMat;
-                nativeMat._id = mat->_properties.GetParameter<unsigned>(materialId, 0);
-
-                for (unsigned c=0; c<dimof(nativeMat._texture); ++c) {
-                    auto textureHash = ParameterBox::MakeParameterNameHash(StringMeld<128>() << "Texture" << c);
-                    auto mappingHash = ParameterBox::MakeParameterNameHash(StringMeld<128>() << "TextureMapping" << c);
-                    nativeMat._texture[c] = mat->_properties.GetString<::Assets::ResChar>(textureHash);
-                    nativeMat._mappingConstant[c] = mat->_properties.GetParameter(mappingHash, 1.f);
-                }
-
-                asset._gradFlagMaterials.push_back(std::move(nativeMat));
+                asset._gradFlagMaterials.emplace_back(
+                    CreateFromParameters<TerrainMaterialConfig::GradFlagMaterial>(mat->_properties));
             }
         }
 
@@ -239,19 +206,8 @@ namespace EntityInterface
                 auto* mat = sys.GetEntity(obj._doc, *c);
                 if (!mat || mat->_type != matType) continue;
 
-                static auto nameHash = ParameterBox::MakeParameterNameHash("Name");
-                static auto textureHash0 = ParameterBox::MakeParameterNameHash("Texture0");
-                static auto textureHash1 = ParameterBox::MakeParameterNameHash("Texture1");
-                static auto hgridHash = ParameterBox::MakeParameterNameHash("HGrid");
-                static auto gainHash = ParameterBox::MakeParameterNameHash("Gain");
-                    
-                TerrainMaterialConfig::ProcTextureSetting procTexture;
-                procTexture._name = mat->_properties.GetString<::Assets::ResChar>(nameHash);
-                procTexture._texture[0] = mat->_properties.GetString<::Assets::ResChar>(textureHash0);
-                procTexture._texture[1] = mat->_properties.GetString<::Assets::ResChar>(textureHash1);
-                procTexture._hgrid = mat->_properties.GetParameter(hgridHash, procTexture._hgrid);
-                procTexture._gain = mat->_properties.GetParameter(gainHash, procTexture._gain);
-                asset._procTextures.push_back(std::move(procTexture));
+                asset._procTextures.emplace_back(
+                    CreateFromParameters<TerrainMaterialConfig::ProcTextureSetting>(mat->_properties));
             }
         }
 
