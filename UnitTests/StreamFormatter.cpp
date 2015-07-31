@@ -5,6 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CppUnitTest.h"
+#include "UnitTestHelper.h"
+#include "../SceneEngine/TerrainMaterial.h"
+#include "../ConsoleRig/Log.h"
+#include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/StreamDOM.h"
 #include "../Utility/Conversion.h"
@@ -64,6 +68,28 @@ namespace UnitTests
         (void)t;
     }
 
+    static __declspec(noinline) void RunPerformanceTest1(
+        const std::basic_string<utf8>& testString, unsigned iterationCount)
+    {
+        for (unsigned c=0; c<iterationCount; ++c) {
+            MemoryMappedInputStream stream(AsPointer(testString.cbegin()), AsPointer(testString.cend()));
+            InputStreamFormatter<utf8> formatter(stream);
+            SceneEngine::TerrainMaterialConfig matConfig(formatter, ::Assets::DirectorySearchRules());
+            (void)matConfig;
+        }
+    }
+
+    static __declspec(noinline) void RunPerformanceTest2(
+        const std::basic_string<utf8>& testString, unsigned iterationCount)
+    {
+        for (unsigned c=0; c<iterationCount; ++c) {
+            MemoryMappedInputStream stream(AsPointer(testString.cbegin()), AsPointer(testString.cend()));
+            InputStreamFormatter<utf8> formatter(stream);
+            SceneEngine::TerrainMaterialConfig matConfig(formatter, ::Assets::DirectorySearchRules(), true);
+            (void)matConfig;
+        }
+    }
+
 	TEST_CLASS(StreamFormatter)
 	{
 	public:
@@ -74,6 +100,41 @@ namespace UnitTests
             RunBasicTest<ucs2>();
             RunBasicTest<ucs4>();
 		}
+
+        TEST_METHOD(ClassPropertiesPerformance)
+        {
+            const std::basic_string<utf8> testString = (const utf8*)R"~~(~~!Format=1; Tab=4
+DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
+
+~GradFlagMaterial; MaterialId=0u; 
+	Texture[0]=Game/plaintextures/grass/grassTextureNo9227
+	Texture[1]=Game/aa_terrain/canyon/tr_canyon_rock_700b_800b
+	Texture[2]=Game/aa_terrain/canyon/tr_canyon_rock3d_708a
+	Texture[3]=Game/aa_terrain/canyon/tr_canyon_rock3d_602b
+	Texture[4]=Game/plaintextures/grass/grassTextureNo9227; Mapping={1.8f, 1f, 1f, 1f, 1f}
+
+~GradFlagMaterial; MaterialId=1u; Texture[0]=ProcTexture
+	Texture[1]=Game/plaintextures/gravel/stonesTextureNo8648
+	Texture[2]=Game/aa_terrain/canyon/tr_canyon_rock3d_409a
+	Texture[3]=Game/aa_terrain/canyon/tr_canyon_rock3d_409a
+	Texture[4]=Game/plaintextures/gravel/gravelTextureNo7899; Mapping={1.8f, 1f, 1f, 1f, 1f}
+
+~ProcTextureSetting; Name=ProcTexture; Texture[0]=Game/plaintextures/grass/grassTextureNo7109
+	Texture[1]=Game/plaintextures/grass/grassTextureNo6354; HGrid=5f; Gain=0.5f)~~";
+
+            UnitTest_SetWorkingDirectory();
+            ConsoleRig::GlobalServices services(GetStartupConfig());
+
+            const unsigned iterationCount = 64 * 128;
+            auto start = __rdtsc();
+            RunPerformanceTest1(testString, iterationCount);
+            auto middle = __rdtsc();
+            RunPerformanceTest2(testString, iterationCount);
+            auto end = __rdtsc();
+
+            LogAlwaysWarning << "Properties based serialization: " << (middle-start) / iterationCount << " cycles per iteration.";
+            LogAlwaysWarning << "Old style serialization: " << (end-middle) / iterationCount << " cycles per iteration.";
+        }
 
 	};
 }

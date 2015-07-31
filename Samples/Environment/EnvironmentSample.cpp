@@ -51,6 +51,8 @@
 
 unsigned FrameRenderCount = 0;
 
+// static void RunPerformanceTest();
+
 namespace Sample
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -144,6 +146,8 @@ namespace Sample
     {
         using namespace PlatformRig;
         using namespace Sample;
+
+        // RunPerformanceTest();
 
             // We need to startup some basic objects:
             //      * OverlappedWindow (corresponds to a single basic window on Windows)
@@ -329,4 +333,40 @@ namespace Sample
         return PlatformRig::FrameRig::RenderResult(!lightingParserContext._pendingResources.empty());
     }
 }
+
+#if 0
+
+#include "../../SceneEngine/TerrainMaterial.h"
+#include "../../Utility/Streams/StreamFormatter.h"
+
+void RunPerformanceTest()
+{
+    const std::basic_string<utf8> testString = (const utf8*)R"~~(~~!Format=1; Tab=4
+        DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
+
+        ~GradFlagMaterial; MaterialId=0u; 
+	        Texture[0]=Game/plaintextures/grass/grassTextureNo9227
+	        Texture[1]=Game/aa_terrain/canyon/tr_canyon_rock_700b_800b
+	        Texture[2]=Game/aa_terrain/canyon/tr_canyon_rock3d_708a
+	        Texture[3]=Game/aa_terrain/canyon/tr_canyon_rock3d_602b
+	        Texture[4]=Game/plaintextures/grass/grassTextureNo9227; Mapping={1.8f, 1f, 1f, 1f, 1f}
+
+        ~GradFlagMaterial; MaterialId=1u; Texture[0]=ProcTexture
+	        Texture[1]=Game/plaintextures/gravel/stonesTextureNo8648
+	        Texture[2]=Game/aa_terrain/canyon/tr_canyon_rock3d_409a
+	        Texture[3]=Game/aa_terrain/canyon/tr_canyon_rock3d_409a
+	        Texture[4]=Game/plaintextures/gravel/gravelTextureNo7899; Mapping={1.8f, 1f, 1f, 1f, 1f}
+
+        ~ProcTextureSetting; Name=ProcTexture; Texture[0]=Game/plaintextures/grass/grassTextureNo7109
+	        Texture[1]=Game/plaintextures/grass/grassTextureNo6354; HGrid=5f; Gain=0.5f)~~";
+
+    for (;;) {
+        MemoryMappedInputStream stream(AsPointer(testString.cbegin()), AsPointer(testString.cend()));
+        InputStreamFormatter<utf8> formatter(stream);
+        SceneEngine::TerrainMaterialConfig matConfig(formatter, ::Assets::DirectorySearchRules());
+        (void)matConfig;
+    }
+}
+
+#endif
 

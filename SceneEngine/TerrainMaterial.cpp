@@ -18,7 +18,6 @@
 #include "../Utility/UTFUtils.h"
 #include "../Utility/ParameterBox.h"
 
-
 #include "../Utility/FunctionUtils.h"
 #include "../ConsoleRig/Log.h"
 
@@ -133,7 +132,7 @@ namespace SceneEngine
         {
             const auto& vec = (t.*ptrToMember);
             using ValueType = typename std::remove_reference<typename PtrToMemberTarget<InType, PtrToMember>::Type>::type::value_type;
-            const auto& props = Properties<ValueType>();
+            const auto& props = GetAccessors<ValueType>();
             static const auto KeyHash = Hash64("Key");
             for (const auto&i:vec) {
                 uint64 ckey;
@@ -183,8 +182,8 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class ClassProperties;
-    template<typename Type> const ClassProperties& Properties();
+    class ClassAccessors;
+    template<typename Type> const ClassAccessors& GetAccessors();
 
     template<typename Type> struct IsStringType { static const bool Result = false; };
     template<typename CharType, typename Allocator> struct IsStringType<std::basic_string<CharType, Allocator>> 
@@ -228,37 +227,135 @@ namespace SceneEngine
             static const bool IsString = IsStringType<std::remove_const<std::remove_reference<ReturnTypeT>::type>::type>::Result;
         };
 
-    class ClassProperties
+    /// <summary>Get and set properties associated with a native C++ class</summary>
+    /// This class is designed to facilite interaction between a native class and data.
+    /// For a class type, we can define get and set operations, with a given string name. The
+    /// system can use these properties for serialisation tasks (as well as binding to data
+    /// in various ways.
+    ///
+    /// To use this system, classes must define a specialisation of GetAccessors<Type>().
+    /// That exposes a list of get and set operations to the system. Typically these get
+    /// and set operations will use the default implementations. But sometimes custom
+    /// functionality can be provided for special types.
+    ///
+    /// <example>
+    ///     Here is a typical implementation of GetAccessors<>()
+    ///      <code>\code
+    ///         class Rect2D
+    ///         {
+    ///             UInt2 _topLeft, _bottomRight;
+    //              friend const ClassAccessors& GetAccessors<Rect2D>();
+    ///         };
+    ///
+    ///         template<> const ClassAccessors& GetAccessors<Rect2D>()
+    ///         {
+    ///             static ClassAccessors accessors(typeid(Rect2D).hash_code());
+    ///             static bool init = false;
+    ///             if (!init) {
+    ///                 accessors.Add(
+    ///                     u("TopLeft"), 
+    ///                     DefaultGet(Rect2D, _topLeft),
+    ///                     DefaultSet(Rect2D, _topLeft));
+    ///                 accessors.Add(
+    ///                     u("BottomRight"), 
+    ///                     DefaultGet(Rect2D, _bottomRight),
+    ///                     DefaultSet(Rect2D, _bottomRight));
+    ///                 accessors.Add(
+    ///                     u("Size"), 
+    ///                     [](const Rect2D& r) { return UInt2(r._bottomRight - r._topLeft); },
+    ///                     nullptr);
+    ///                 init = true;
+    ///             }
+    ///             return accessors;
+    ///         };
+    ///     \endcode</code>
+    ///     Notice that some accessors provide access to a member. The "Size" accessor has a special case "get"
+    ///     implementation. We could have provided a "set" for "Size" as well -- but in this case it's ommitted.
+    /// </example>
+    ///
+    /// Classes with registered accessors can be used with the AccessorSerialize and AccessorDeserialize functions.
+    /// These can load and save these types automatically.
+    ///
+    /// This system is particularly useful for types that require multiple different types of serialisation methods
+    /// (or multiple data-based ways to interact with them). For example, the editor performs string based get and sets
+    /// on native types. At the same type, we may want to have separate code to load and save those types from disk.
+    /// This is a perfect type to use class accessors.
+    class ClassAccessors
     {
     public:
-        using CastFromFn        = std::function<bool(void*, const void*, ImpliedTyping::TypeDesc, bool)>;
-        using CastFromArrayFn   = std::function<bool(void*, size_t, const void*, ImpliedTyping::TypeDesc, bool)>;
-        using CastToFn          = std::function<bool(const void*, void*, size_t, ImpliedTyping::TypeDesc, bool)>;
-        using CastToArrayFn     = std::function<bool(const void*, size_t, void*, size_t, ImpliedTyping::TypeDesc, bool)>;
-        
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         class Property
         {
         public:
-            std::basic_string<utf8> _name;
-            CastFromFn              _castFrom;
-            CastFromArrayFn         _castFromArray;
-            CastToFn                _castTo;
-            CastToArrayFn           _castToArray;
-            size_t                  _fixedArrayLength;
+            using CastFromFn        = std::function<bool(void*, const void*, ImpliedTyping::TypeDesc, bool)>;
+            using CastFromArrayFn   = std::function<bool(void*, size_t, const void*, ImpliedTyping::TypeDesc, bool)>;
+            using CastToFn          = std::function<bool(const void*, void*, size_t, ImpliedTyping::TypeDesc, bool)>;
+            using CastToArrayFn     = std::function<bool(const void*, size_t, void*, size_t, ImpliedTyping::TypeDesc, bool)>;
+
+            std::basic_string<utf8>     _name;
+            CastFromFn                  _castFrom;
+            CastFromArrayFn             _castFromArray;
+            CastToFn                    _castTo;
+            CastToArrayFn               _castToArray;
+            size_t                      _fixedArrayLength;
         };
-        std::vector<std::pair<uint64, Property>> _properties;
 
         class ChildList
         {
         public:
-            std::basic_string<utf8>                         _name;
-            const ClassProperties*                          _props;
-            std::function<void*(void*)>                     _createFn;
-            std::function<size_t(const void*)>              _getCount;
-            std::function<const void*(const void*,size_t)>  _getByIndex;
-            std::function<const void*(const void*,uint64)>  _getByKeyFn;
+            using CreateFn      = std::function<void*(void*)>;
+            using GetCountFn    = std::function<size_t(const void*)>;
+            using GetByIndexFn  = std::function<const void*(const void*,size_t)>;
+            using GetByKeyFn    = std::function<const void*(const void*,uint64)>;
+
+            std::basic_string<utf8>     _name;
+            const ClassAccessors*   _childProps;
+            CreateFn                    _createFn;
+            GetCountFn                  _getCount;
+            GetByIndexFn                _getByIndex;
+            GetByKeyFn                  _getByKeyFn;
         };
-        std::vector<std::pair<uint64, ChildList>> _childLists;
+
+        size_t GetPropertyCount() const { return _properties.size(); }
+        const Property& GetPropertyByIndex(size_t index) const { return _properties[index].second; }
+
+        size_t GetChildListCount() const { return _childLists.size(); }
+        const ChildList& GetChildListByIndex(size_t index) const { return _childLists[index].second; }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                ////   Q U E R I E S   I N T E R F A C E   ////
+
+        bool TryCastFrom(
+            void* dst, uint64 id,
+            const void* src, ImpliedTyping::TypeDesc srcType,
+            bool stringForm = false) const;
+
+        bool TryCastFrom(
+            void* dst, uint64 id, size_t arrayIndex,
+            const void* src, ImpliedTyping::TypeDesc srcType,
+            bool stringForm = false) const;
+
+        template<typename ResultType, typename Type>
+            bool TryGet(ResultType& result, const Type& src, uint64 id) const;
+
+        template<typename Type>
+            bool TryCastFrom(
+                Type& dst, uint64 id,
+                const void* src, ImpliedTyping::TypeDesc srcType,
+                bool stringForm = false) const;
+            
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                ////   S E T T E R   I N T E R F A C E   ////
+
+        std::pair<void*, const ClassAccessors*> TryCreateChild(void* dst, uint64 childListId) const;
+
+        template<typename Type>
+            std::pair<void*, const ClassAccessors*> TryCreateChild(Type& dst, uint64 childListId) const;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                ////   I N I T I A L I Z A T I O N   I N T E R F A C E   ////
 
         template<typename GetFn, typename SetFn>
             void Add(const utf8 name[], GetFn&& getter, SetFn&& setter, size_t fixedArrayLength = 1);
@@ -266,40 +363,11 @@ namespace SceneEngine
         template<typename ChildType, typename CreateFn, typename GetCountFn, typename GetByIndexFn, typename GetByKeyFn>
             void AddChildList(const utf8 name[], CreateFn&&, GetCountFn&&, GetByIndexFn&&, GetByKeyFn&&);
 
-        bool TryCastFrom(
-            void* dst,
-            uint64 id,
-            const void* src,
-            ImpliedTyping::TypeDesc srcType,
-            bool stringForm = false) const;
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        bool TryCastFrom(
-            void* dst,
-            uint64 id, size_t arrayIndex,
-            const void* src,
-            ImpliedTyping::TypeDesc srcType,
-            bool stringForm = false) const;
+        ClassAccessors(size_t associatedType) : _associatedType(associatedType) {}
+        ~ClassAccessors();
 
-        template<typename ResultType, typename Type>
-            bool TryGet(ResultType& result, const Type& src, uint64 id) const;
-
-        std::pair<void*, const ClassProperties*> TryCreateChild(void* dst, uint64 childListId) const;
-
-        template<typename Type>
-            bool TryCastFrom(
-                Type& dst,
-                uint64 id,
-                const void* src,
-                ImpliedTyping::TypeDesc srcType,
-                bool stringForm = false) const;
-            
-        template<typename Type>
-            std::pair<void*, const ClassProperties*> TryCreateChild(Type& dst, uint64 childListId) const;
-
-        VariantFunctions _getters;
-        VariantFunctions _setters;
-
-        ClassProperties(size_t associatedType) : _associatedType(associatedType) {}
     protected:
         size_t _associatedType;
 
@@ -316,6 +384,11 @@ namespace SceneEngine
             void MaybeAddCasterForGet(uint64 id, std::function<GetSig>&& getter);
 
         Property& PropertyForId(uint64 id);
+
+        VariantFunctions _getters;
+        VariantFunctions _setters;
+        std::vector<std::pair<uint64, Property>> _properties;
+        std::vector<std::pair<uint64, ChildList>> _childLists;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -497,7 +570,7 @@ namespace SceneEngine
     };
 
     template<typename GetFn, typename SetFn>
-        void ClassProperties::Add(
+        void ClassAccessors::Add(
             const utf8 name[],
             GetFn&& getter,
             SetFn&& setter,
@@ -527,7 +600,7 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     
     template<typename SetSig, typename std::enable_if<!SetterFnTraits<SetSig>::IsArrayForm>::type*>
-        void ClassProperties::MaybeAddCasterForSet(
+        void ClassAccessors::MaybeAddCasterForSet(
             uint64 id, std::function<SetSig>&& setter)
         {
             using namespace std::placeholders;
@@ -535,7 +608,7 @@ namespace SceneEngine
         }
 
     template<typename SetSig, typename std::enable_if<SetterFnTraits<SetSig>::IsArrayForm>::type*>
-        void ClassProperties::MaybeAddCasterForSet(
+        void ClassAccessors::MaybeAddCasterForSet(
             uint64 id, std::function<SetSig>&& setter)
         {
             using namespace std::placeholders;
@@ -543,12 +616,12 @@ namespace SceneEngine
         }
     
     template<>
-        void ClassProperties::MaybeAddCasterForSet(
+        void ClassAccessors::MaybeAddCasterForSet(
             uint64 id, std::function<void()>&& setter) {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    auto ClassProperties::PropertyForId(uint64 id) -> Property&
+    auto ClassAccessors::PropertyForId(uint64 id) -> Property&
     {
         auto i = LowerBound(_properties, id);
         if (i==_properties.end() || i->first != id)
@@ -557,7 +630,7 @@ namespace SceneEngine
     }
 
     template<typename GetSig, typename std::enable_if<!GetterFnTraits<GetSig>::IsArrayForm>::type*>
-        void ClassProperties::MaybeAddCasterForGet(
+        void ClassAccessors::MaybeAddCasterForGet(
             uint64 id, std::function<GetSig>&& getter)
         {
             using namespace std::placeholders;
@@ -565,7 +638,7 @@ namespace SceneEngine
         }
 
     template<typename GetSig, typename std::enable_if<GetterFnTraits<GetSig>::IsArrayForm>::type*>
-        void ClassProperties::MaybeAddCasterForGet(
+        void ClassAccessors::MaybeAddCasterForGet(
             uint64 id, std::function<GetSig>&& getter)
         {
             using namespace std::placeholders;
@@ -573,13 +646,13 @@ namespace SceneEngine
         }
     
     template<>
-        void ClassProperties::MaybeAddCasterForGet(
+        void ClassAccessors::MaybeAddCasterForGet(
             uint64 id, std::function<void()>&& getter) {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename ChildType, typename CreateFn, typename GetCountFn, typename GetByIndexFn, typename GetByKeyFn>
-        void ClassProperties::AddChildList(
+        void ClassAccessors::AddChildList(
             const utf8 name[], 
             CreateFn&& createFn, GetCountFn&& getCountFn, GetByIndexFn&& getByIndexFn, GetByKeyFn&& getByKeyFn)
         {
@@ -591,7 +664,7 @@ namespace SceneEngine
 
             ChildList child;
             child._name = name;
-            child._props = &Properties<ChildType>();
+            child._childProps = &GetAccessors<ChildType>();
             child._createFn = std::move(c);
             child._getCount = std::move(gc);
             child._getByIndex = std::move(gi);
@@ -600,7 +673,7 @@ namespace SceneEngine
             _childLists.insert(i, std::make_pair(id, std::move(child)));
         }
 
-    bool ClassProperties::TryCastFrom(
+    bool ClassAccessors::TryCastFrom(
         void* dst,
         uint64 id,
         const void* src,
@@ -643,7 +716,7 @@ namespace SceneEngine
         return false;
     }
 
-    bool ClassProperties::TryCastFrom(
+    bool ClassAccessors::TryCastFrom(
         void* dst,
         uint64 id, size_t arrayIndex,
         const void* src,
@@ -656,19 +729,19 @@ namespace SceneEngine
         return false;
     }
 
-    std::pair<void*, const ClassProperties*> ClassProperties::TryCreateChild(
+    std::pair<void*, const ClassAccessors*> ClassAccessors::TryCreateChild(
         void* dst, uint64 childListId) const
     {
         auto i = LowerBound(_childLists, childListId);
         if (i!=_childLists.end() && i->first == childListId) {
             void* created = i->second._createFn(dst);
-            return std::make_pair(created, i->second._props);
+            return std::make_pair(created, i->second._childProps);
         }
         return std::make_pair(nullptr, nullptr);
     }
 
     template<typename Type>
-        bool ClassProperties::TryCastFrom(
+        bool ClassAccessors::TryCastFrom(
             Type& dst,
             uint64 id, const void* src,
             ImpliedTyping::TypeDesc srcType, bool stringForm) const
@@ -678,7 +751,7 @@ namespace SceneEngine
         }
         
     template<typename Type>
-        std::pair<void*, const ClassProperties*> ClassProperties::TryCreateChild(
+        std::pair<void*, const ClassAccessors*> ClassAccessors::TryCreateChild(
             Type& dst, uint64 childListId) const
         {
             assert(typeid(Type).hash_code() == _associatedType);
@@ -686,111 +759,110 @@ namespace SceneEngine
         }
 
     template<typename ResultType, typename Type>
-        bool ClassProperties::TryGet(ResultType& result, const Type& src, uint64 id) const
+        bool ClassAccessors::TryGet(ResultType& result, const Type& src, uint64 id) const
         {
             return _getters.TryCall<ResultType, const Type&>(result, id, src);
         }
 
+    ClassAccessors::~ClassAccessors() {}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template<>
-        const ClassProperties& Properties<TerrainMaterialConfig>()
-        {
-            using Obj = TerrainMaterialConfig;
-            static ClassProperties props(typeid(Obj).hash_code());
-            static bool init = false;
-            if (!init) {
-                props.Add(
-                    u("DiffuseDims"), 
-                    DefaultGet(Obj, _diffuseDims),
-                    DefaultSet(Obj, _diffuseDims));
-                props.Add(
-                    u("NormalDims"), 
-                    DefaultGet(Obj, _normalDims),
-                    DefaultSet(Obj, _normalDims));
-                props.Add(
-                    u("ParamDims"), 
-                    DefaultGet(Obj, _paramDims),
-                    DefaultSet(Obj, _paramDims));
+    template<> const ClassAccessors& GetAccessors<TerrainMaterialConfig>()
+    {
+        using Obj = TerrainMaterialConfig;
+        static ClassAccessors props(typeid(Obj).hash_code());
+        static bool init = false;
+        if (!init) {
+            props.Add(
+                u("DiffuseDims"), 
+                DefaultGet(Obj, _diffuseDims),
+                DefaultSet(Obj, _diffuseDims));
+            props.Add(
+                u("NormalDims"), 
+                DefaultGet(Obj, _normalDims),
+                DefaultSet(Obj, _normalDims));
+            props.Add(
+                u("ParamDims"), 
+                DefaultGet(Obj, _paramDims),
+                DefaultSet(Obj, _paramDims));
 
-                props.AddChildList<Obj::GradFlagMaterial>(
-                    u("GradFlagMaterial"),
-                    DefaultCreate(Obj, _gradFlagMaterials),
-                    DefaultGetCount(Obj, _gradFlagMaterials),
-                    DefaultGetChildByIndex(Obj, _gradFlagMaterials),
-                    DefaultGetChildByKey(Obj, _gradFlagMaterials));
+            props.AddChildList<Obj::GradFlagMaterial>(
+                u("GradFlagMaterial"),
+                DefaultCreate(Obj, _gradFlagMaterials),
+                DefaultGetCount(Obj, _gradFlagMaterials),
+                DefaultGetChildByIndex(Obj, _gradFlagMaterials),
+                DefaultGetChildByKey(Obj, _gradFlagMaterials));
 
-                props.AddChildList<TerrainMaterialConfig::ProcTextureSetting>(
-                    u("ProcTextureSetting"),
-                    DefaultCreate(Obj, _procTextures),
-                    DefaultGetCount(Obj, _procTextures),
-                    DefaultGetChildByIndex(Obj, _procTextures),
-                    DefaultGetChildByKey(Obj, _procTextures));
+            props.AddChildList<TerrainMaterialConfig::ProcTextureSetting>(
+                u("ProcTextureSetting"),
+                DefaultCreate(Obj, _procTextures),
+                DefaultGetCount(Obj, _procTextures),
+                DefaultGetChildByIndex(Obj, _procTextures),
+                DefaultGetChildByKey(Obj, _procTextures));
 
-                init = true;
-            }
-            return props;
+            init = true;
         }
+        return props;
+    }
 
-    template<>
-        const ClassProperties& Properties<TerrainMaterialConfig::GradFlagMaterial>()
-        {
-            using Obj = TerrainMaterialConfig::GradFlagMaterial;
-            static ClassProperties props(typeid(Obj).hash_code());
-            static bool init = false;
-            if (!init) {
-                props.Add(
-                    u("MaterialId"), 
-                    DefaultGet(Obj, _id),
-                    DefaultSet(Obj, _id));
-                props.Add(
-                    u("Texture"),
-                    DefaultGetArray(Obj, _texture),
-                    DefaultSetArray(Obj, _texture),
-                    dimof(std::declval<Obj>()._texture));
-                props.Add(
-                    u("Mapping"), 
-                    DefaultGetArray(Obj, _mappingConstant),
-                    DefaultSetArray(Obj, _mappingConstant),
-                    dimof(std::declval<Obj>()._texture));
-                props.Add(
-                    u("Key"), 
-                    [](const Obj& mat) { return mat._id; },
-                    nullptr);
+    template<> const ClassAccessors& GetAccessors<TerrainMaterialConfig::GradFlagMaterial>()
+    {
+        using Obj = TerrainMaterialConfig::GradFlagMaterial;
+        static ClassAccessors props(typeid(Obj).hash_code());
+        static bool init = false;
+        if (!init) {
+            props.Add(
+                u("MaterialId"), 
+                DefaultGet(Obj, _id),
+                DefaultSet(Obj, _id));
+            props.Add(
+                u("Texture"),
+                DefaultGetArray(Obj, _texture),
+                DefaultSetArray(Obj, _texture),
+                dimof(std::declval<Obj>()._texture));
+            props.Add(
+                u("Mapping"), 
+                DefaultGetArray(Obj, _mappingConstant),
+                DefaultSetArray(Obj, _mappingConstant),
+                dimof(std::declval<Obj>()._texture));
+            props.Add(
+                u("Key"), 
+                [](const Obj& mat) { return mat._id; },
+                nullptr);
 
-                init = true;
-            }
-            return props;
+            init = true;
         }
+        return props;
+    }
 
-    template<>
-        const ClassProperties& Properties<TerrainMaterialConfig::ProcTextureSetting>()
-        {
-            using Obj = TerrainMaterialConfig::ProcTextureSetting;
-            static ClassProperties props(typeid(Obj).hash_code());
-            static bool init = false;
-            if (!init) {
-                props.Add(
-                    u("Name"), 
-                    DefaultGet(Obj, _name),
-                    DefaultSet(Obj, _name));
-                props.Add(
-                    u("Texture"),
-                    DefaultGetArray(Obj, _texture),
-                    DefaultSetArray(Obj, _texture),
-                    dimof(std::declval<Obj>()._texture));
-                props.Add(
-                    u("HGrid"), 
-                    DefaultGet(Obj, _hgrid),
-                    DefaultSet(Obj, _hgrid));
-                props.Add(
-                    u("Gain"), 
-                    DefaultGet(Obj, _gain),
-                    DefaultSet(Obj, _gain));
-                init = true;
-            }
-            return props;
+    template<> const ClassAccessors& GetAccessors<TerrainMaterialConfig::ProcTextureSetting>()
+    {
+        using Obj = TerrainMaterialConfig::ProcTextureSetting;
+        static ClassAccessors props(typeid(Obj).hash_code());
+        static bool init = false;
+        if (!init) {
+            props.Add(
+                u("Name"), 
+                DefaultGet(Obj, _name),
+                DefaultSet(Obj, _name));
+            props.Add(
+                u("Texture"),
+                DefaultGetArray(Obj, _texture),
+                DefaultSetArray(Obj, _texture),
+                dimof(std::declval<Obj>()._texture));
+            props.Add(
+                u("HGrid"), 
+                DefaultGet(Obj, _hgrid),
+                DefaultSet(Obj, _hgrid));
+            props.Add(
+                u("Gain"), 
+                DefaultGet(Obj, _gain),
+                DefaultSet(Obj, _gain));
+            init = true;
         }
+        return props;
+    }
 
 }
 
@@ -798,9 +870,9 @@ namespace SceneEngine
 {
 
     template<typename Formatter>
-        void PropertyDeserialize(
+        void AccessorDeserialize(
             Formatter& formatter,
-            void* obj, const ClassProperties& props)
+            void* obj, const ClassAccessors& props)
     {
         using Blob = Formatter::Blob;
         using CharType = Formatter::value_type;
@@ -838,8 +910,6 @@ namespace SceneEngine
                 break;
 
             case Blob::EndElement:
-                if (!formatter.TryEndElement())
-                    Throw(FormatException("Expecting end element", formatter.GetLocation()));
             case Blob::None:
                 return;
 
@@ -851,14 +921,15 @@ namespace SceneEngine
 
                     auto created = props.TryCreateChild(obj, Hash64(eleName._start, eleName._end));
                     if (created.first) {
-                        PropertyDeserialize(formatter, created.first, *created.second);
+                        AccessorDeserialize(formatter, created.first, *created.second);
                     } else {
                         LogWarning << "Couldn't find a match for element name during deserialization -- " << 
                             Conversion::Convert<std::string>(std::basic_string<CharType>(eleName._start, eleName._end));
                         formatter.SkipElement();
-                        if (!formatter.TryEndElement())
-                            Throw(FormatException("Expecting end element", formatter.GetLocation()));
                     }
+
+                    if (!formatter.TryEndElement())
+                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
 
                     break;
                 }
@@ -867,26 +938,26 @@ namespace SceneEngine
     }
 
     template<typename Formatter, typename Type>
-        void PropertyDeserialize(
+        void AccessorDeserialize(
             Formatter& formatter,
             Type& obj)
         {
-            const auto& props = Properties<Type>();
-            PropertyDeserialize(formatter, &obj, props);
+            const auto& props = GetAccessors<Type>();
+            AccessorDeserialize(formatter, &obj, props);
         }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void PropertySerialize(
+    void AccessorSerialize(
         OutputStreamFormatter& formatter,
-        const void* obj, const ClassProperties& props)
+        const void* obj, const ClassAccessors& props)
     {
         using CharType = utf8;
         auto charTypeCat = ImpliedTyping::TypeOf<CharType>()._type;
         CharType buffer[ParseBufferSize];
 
-        for (const auto& i:props._properties) {
-            const auto& p =i .second;
+        for (size_t i=0; i<props.GetPropertyCount(); ++i) {
+            const auto& p = props.GetPropertyByIndex(i);
             if (p._castTo) {
                 p._castTo(
                     obj, buffer, sizeof(buffer), 
@@ -910,84 +981,32 @@ namespace SceneEngine
             }
         }
 
-        for (const auto& childList:props._childLists) {
-            auto count = childList.second._getCount(obj);
+        for (size_t i=0; i<props.GetChildListCount(); ++i) {
+            const auto& childList = props.GetChildListByIndex(i);
+            auto count = childList._getCount(obj);
             for (size_t e=0; e<count; ++e) {
-                const auto* child = childList.second._getByIndex(obj, e);
-                auto eleId = formatter.BeginElement(childList.second._name);
-                PropertySerialize(formatter, child, *childList.second._props);
+                const auto* child = childList._getByIndex(obj, e);
+                auto eleId = formatter.BeginElement(childList._name);
+                AccessorSerialize(formatter, child, *childList._childProps);
                 formatter.EndElement(eleId);
             }
         }
     }
 
     template<typename Type>
-        void PropertySerialize(
+        void AccessorSerialize(
             OutputStreamFormatter& formatter,
             const Type& obj)
         {
-            const auto& props = Properties<Type>();
-            PropertySerialize(formatter, &obj, props);
+            const auto& props = GetAccessors<Type>();
+            AccessorSerialize(formatter, &obj, props);
         }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static const utf8* TextureNames[] = { u("Texture0"), u("Texture1"), u("Slopes") };
-
     void TerrainMaterialConfig::Write(OutputStreamFormatter& formatter) const
     {
-        PropertySerialize(formatter, *this);
-#if 0
-        Serialize(formatter, u("DiffuseDims"), _diffuseDims);
-        Serialize(formatter, u("NormalDims"), _normalDims);
-        Serialize(formatter, u("ParamDims"), _paramDims);
-
-        for (auto mat=_strataMaterials.cbegin(); mat!=_strataMaterials.cend(); ++mat) {
-            auto matEle = formatter.BeginElement(u("StrataMaterial"));
-            Serialize(formatter, "MaterialId", mat->_id);
-
-            auto strataList = formatter.BeginElement(u("Strata"));
-            unsigned strataIndex = 0;
-            for (auto s=mat->_strata.cbegin(); s!=mat->_strata.cend(); ++s, ++strataIndex) {
-                auto strata = formatter.BeginElement((StringMeld<64, utf8>() << "Strata" << strataIndex).get());
-                for (unsigned t=0; t<dimof(TextureNames); ++t)
-                    formatter.WriteAttribute(TextureNames[t], Conversion::Convert<std::basic_string<utf8>>(s->_texture[t]));
-
-                Serialize(formatter, "EndHeight", s->_endHeight);
-                Serialize(formatter, "Mapping", Float4(s->_mappingConstant[0], s->_mappingConstant[1], s->_mappingConstant[2], 1.f));
-                formatter.EndElement(strata);
-            }
-            formatter.EndElement(strataList);
-            formatter.EndElement(matEle);
-        }
-
-        for (auto mat=_gradFlagMaterials.cbegin(); mat!=_gradFlagMaterials.cend(); ++mat) {
-            auto matEle = formatter.BeginElement(u("GradFlagMaterial"));
-            Serialize(formatter, "MaterialId", mat->_id);
-            
-            Serialize(formatter, "Texture0", mat->_texture[0]);
-            Serialize(formatter, "Texture1", mat->_texture[1]);
-            Serialize(formatter, "Texture2", mat->_texture[2]);
-            Serialize(formatter, "Texture3", mat->_texture[3]);
-            Serialize(formatter, "Texture4", mat->_texture[4]);
-            using namespace ImpliedTyping;
-            Serialize(formatter, "Mapping", 
-                AsString(
-                    mat->_mappingConstant, sizeof(mat->_mappingConstant),
-                    TypeDesc(TypeCat::Float, dimof(mat->_mappingConstant)), true));
-            formatter.EndElement(matEle);
-        }
-
-        for (auto mat=_procTextures.cbegin(); mat!=_procTextures.cend(); ++mat) {
-            auto matEle = formatter.BeginElement(u("ProcTextureSetting"));
-            Serialize(formatter, "Name", mat->_name);
-            Serialize(formatter, "Texture0", mat->_texture[0]);
-            Serialize(formatter, "Texture1", mat->_texture[1]);
-            Serialize(formatter, "HGrid", mat->_hgrid);
-            Serialize(formatter, "Gain", mat->_gain);
-            formatter.EndElement(matEle);
-        }
-#endif
+        AccessorSerialize(formatter, *this);
     }
 
     TerrainMaterialConfig::TerrainMaterialConfig()
@@ -995,29 +1014,32 @@ namespace SceneEngine
         _diffuseDims = _normalDims = _paramDims = UInt2(32, 32);
     }
 
-    template<typename InputType>
-        ::Assets::rstring AsRString(InputType input) { return Conversion::Convert<::Assets::rstring>(input); }
-
     TerrainMaterialConfig::TerrainMaterialConfig(
         InputStreamFormatter<utf8>& formatter,
         const ::Assets::DirectorySearchRules& searchRules)
     : TerrainMaterialConfig()
     {
-        // Document<InputStreamFormatter<utf8>> doc(formatter);
+        AccessorDeserialize(formatter, *this);
+    }
 
-        // _diffuseDims = doc(u("DiffuseDims"), _diffuseDims);
-        // _normalDims = doc(u("NormalDims"), _normalDims);
-        // _paramDims = doc(u("ParamDims"), _paramDims);
+    TerrainMaterialConfig::~TerrainMaterialConfig() {}
 
-        PropertyDeserialize(formatter, *this);
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        // Previous implementations (for performance comparisons)...
 
-        {
-            auto stream = OpenFileOutput("temp.txt", "wb");
-            OutputStreamFormatter formatter(*stream);
-            Write(formatter);
-        }
+    template<typename InputType>
+        ::Assets::rstring AsRString(InputType input) { return Conversion::Convert<::Assets::rstring>(input); }
+        
+    static const utf8* TextureNames[] = { u("Texture0"), u("Texture1"), u("Slopes") };
 
-#if 0
+    TerrainMaterialConfig::TerrainMaterialConfig(
+        InputStreamFormatter<utf8>& formatter,
+        const ::Assets::DirectorySearchRules& searchRules,
+        bool)
+    : TerrainMaterialConfig()
+    {
+        Document<InputStreamFormatter<utf8>> doc(formatter);
+
         for (auto matCfg=doc.FirstChild(); matCfg; matCfg=matCfg.NextSibling()) {
             if (XlEqString(matCfg.Name(), u("StrataMaterial"))) {
 
@@ -1083,12 +1105,61 @@ namespace SceneEngine
 
             }
         }
-#endif
 
         _searchRules = searchRules;
     }
 
-    TerrainMaterialConfig::~TerrainMaterialConfig() {}
+    #if 0
+        Serialize(formatter, u("DiffuseDims"), _diffuseDims);
+        Serialize(formatter, u("NormalDims"), _normalDims);
+        Serialize(formatter, u("ParamDims"), _paramDims);
+
+        for (auto mat=_strataMaterials.cbegin(); mat!=_strataMaterials.cend(); ++mat) {
+            auto matEle = formatter.BeginElement(u("StrataMaterial"));
+            Serialize(formatter, "MaterialId", mat->_id);
+
+            auto strataList = formatter.BeginElement(u("Strata"));
+            unsigned strataIndex = 0;
+            for (auto s=mat->_strata.cbegin(); s!=mat->_strata.cend(); ++s, ++strataIndex) {
+                auto strata = formatter.BeginElement((StringMeld<64, utf8>() << "Strata" << strataIndex).get());
+                for (unsigned t=0; t<dimof(TextureNames); ++t)
+                    formatter.WriteAttribute(TextureNames[t], Conversion::Convert<std::basic_string<utf8>>(s->_texture[t]));
+
+                Serialize(formatter, "EndHeight", s->_endHeight);
+                Serialize(formatter, "Mapping", Float4(s->_mappingConstant[0], s->_mappingConstant[1], s->_mappingConstant[2], 1.f));
+                formatter.EndElement(strata);
+            }
+            formatter.EndElement(strataList);
+            formatter.EndElement(matEle);
+        }
+
+        for (auto mat=_gradFlagMaterials.cbegin(); mat!=_gradFlagMaterials.cend(); ++mat) {
+            auto matEle = formatter.BeginElement(u("GradFlagMaterial"));
+            Serialize(formatter, "MaterialId", mat->_id);
+            
+            Serialize(formatter, "Texture0", mat->_texture[0]);
+            Serialize(formatter, "Texture1", mat->_texture[1]);
+            Serialize(formatter, "Texture2", mat->_texture[2]);
+            Serialize(formatter, "Texture3", mat->_texture[3]);
+            Serialize(formatter, "Texture4", mat->_texture[4]);
+            using namespace ImpliedTyping;
+            Serialize(formatter, "Mapping", 
+                AsString(
+                    mat->_mappingConstant, sizeof(mat->_mappingConstant),
+                    TypeDesc(TypeCat::Float, dimof(mat->_mappingConstant)), true));
+            formatter.EndElement(matEle);
+        }
+
+        for (auto mat=_procTextures.cbegin(); mat!=_procTextures.cend(); ++mat) {
+            auto matEle = formatter.BeginElement(u("ProcTextureSetting"));
+            Serialize(formatter, "Name", mat->_name);
+            Serialize(formatter, "Texture0", mat->_texture[0]);
+            Serialize(formatter, "Texture1", mat->_texture[1]);
+            Serialize(formatter, "HGrid", mat->_hgrid);
+            Serialize(formatter, "Gain", mat->_gain);
+            formatter.EndElement(matEle);
+        }
+    #endif
 
 }
 

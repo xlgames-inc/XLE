@@ -214,7 +214,15 @@ namespace Utility
                     break;
                 }
             } else {
+
                     // multiple array elements. We might need to remap elements
+                    // First -- trival cases can be completed with a memcpy
+                if (    srcType._arrayCount == destType._arrayCount
+                    &&  srcType._type == destType._type) {
+                    XlCopyMemory(dest, src, std::min(destSize, srcType.GetSize()));
+                    return true;
+                }
+                    
                 void* destIterator = dest;
                 const void* srcIterator = src;
                 auto sizeRemaining = destSize;

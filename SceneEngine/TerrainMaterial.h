@@ -59,11 +59,11 @@ namespace SceneEngine
         UInt2 _diffuseDims;
         UInt2 _normalDims;
         UInt2 _paramDims;
-        std::vector<StrataMaterial> _strataMaterials;
-        std::vector<GradFlagMaterial> _gradFlagMaterials;
+        std::vector<StrataMaterial>     _strataMaterials;
+        std::vector<GradFlagMaterial>   _gradFlagMaterials;
         std::vector<ProcTextureSetting> _procTextures;
 
-        ::Assets::DirectorySearchRules _searchRules;
+        ::Assets::DirectorySearchRules  _searchRules;
 
         void Write(Utility::OutputStreamFormatter& formatter) const;
 
@@ -72,6 +72,12 @@ namespace SceneEngine
             InputStreamFormatter<utf8>& formatter,
             const ::Assets::DirectorySearchRules& searchRules);
         ~TerrainMaterialConfig();
+
+            // the following constructor is intended for performance comparisons only
+        TerrainMaterialConfig(
+            InputStreamFormatter<utf8>& formatter,
+            const ::Assets::DirectorySearchRules& searchRules,
+            bool);
     };
 }
 
