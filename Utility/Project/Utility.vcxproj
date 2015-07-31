@@ -126,6 +126,9 @@
     <ClInclude Include="..\HeapUtils.h" />
     <ClInclude Include="..\IteratorUtils.h" />
     <ClInclude Include="..\MemoryUtils.h" />
+    <ClInclude Include="..\Meta\AccessorSerialize.h" />
+    <ClInclude Include="..\Meta\ClassAccessors.h" />
+    <ClInclude Include="..\Meta\ClassAccessorsImpl.h" />
     <ClInclude Include="..\MiniHeap.h" />
     <ClInclude Include="..\Mixins.h" />
     <ClInclude Include="..\ParameterBox.h" />
@@ -164,6 +167,8 @@
     <ClCompile Include="..\FunctionUtils.cpp" />
     <ClCompile Include="..\HashUtils.cpp" />
     <ClCompile Include="..\HeapUtils.cpp" />
+    <ClCompile Include="..\Meta\AccessorSerialize.cpp" />
+    <ClCompile Include="..\Meta\ClassAccessors.cpp" />
     <ClCompile Include="..\MiniHeap.cpp" />
     <ClCompile Include="..\MiscImplementation.cpp" />
     <ClCompile Include="..\ParameterBox.cpp" />

@@ -16,7 +16,7 @@
 namespace Utility 
 { 
     template<typename CharType> class InputStreamFormatter;
-    class OutputStreamFormatter; 
+    class OutputStreamFormatter;
 }
 
 namespace SceneEngine
@@ -33,9 +33,13 @@ namespace SceneEngine
                 ::Assets::rstring _texture[3];
                 float _mappingConstant[3];
                 float _endHeight;
+
+                Strata();
             };
             std::vector<Strata> _strata;
             unsigned _id;
+
+            StrataMaterial();
         };
 
         class GradFlagMaterial
@@ -44,6 +48,8 @@ namespace SceneEngine
             ::Assets::rstring _texture[5];
             float _mappingConstant[5];
             unsigned _id;
+
+            GradFlagMaterial();
         };
 
         class ProcTextureSetting
@@ -53,7 +59,7 @@ namespace SceneEngine
             ::Assets::rstring _texture[2];
             float _hgrid, _gain;
 
-            ProcTextureSetting() : _hgrid(100.f), _gain(.5f) {}
+            ProcTextureSetting();
         };
 
         UInt2 _diffuseDims;
@@ -80,4 +86,6 @@ namespace SceneEngine
             bool);
     };
 }
+
+using namespace Utility;
 

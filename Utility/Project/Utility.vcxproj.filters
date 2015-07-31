@@ -19,6 +19,9 @@
     <Filter Include="Profiling">
       <UniqueIdentifier>{d771d502-7b44-4238-814d-86282c25af42}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Meta">
+      <UniqueIdentifier>{89b85ed2-9bbe-4122-9b65-0f232193ce14}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\BitUtils.h" />
@@ -97,6 +100,15 @@
     <ClInclude Include="..\Streams\Serialization.h">
       <Filter>Streams</Filter>
     </ClInclude>
+    <ClInclude Include="..\Meta\ClassAccessors.h">
+      <Filter>Meta</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Meta\ClassAccessorsImpl.h">
+      <Filter>Meta</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Meta\AccessorSerialize.h">
+      <Filter>Meta</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\StringFormat.cpp" />
@@ -158,6 +170,12 @@
     </ClCompile>
     <ClCompile Include="..\Streams\XmlStreamFormatter.cpp">
       <Filter>Streams</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Meta\ClassAccessors.cpp">
+      <Filter>Meta</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Meta\AccessorSerialize.cpp">
+      <Filter>Meta</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

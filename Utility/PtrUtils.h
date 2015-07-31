@@ -281,6 +281,11 @@ namespace Utility
             return !lhs.owner_before(rhs) && !rhs.owner_before(lhs);
         }
 
+            ////////////////////////////////////////////////////////
+
+    template<typename Type> Type Default() { return Type(); }
+    template<typename Type, typename std::enable_if<std::is_pointer<Type>::value>::type* = nullptr>
+        Type* Default() { return nullptr; }
 
             ////////////////////////////////////////////////////////
 

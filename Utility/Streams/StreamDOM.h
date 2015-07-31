@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../PtrUtils.h"    // (for Default)
 #include <vector>
 #include <string>
 
@@ -137,10 +138,6 @@ namespace Utility
         friend class DocElementHelper<Formatter>;
         friend class Document<Formatter>;
     };
-
-    template<typename Type> Type Default() { return Type(); }
-    template<typename Type, typename std::enable_if<std::is_pointer<Type>::value>::type* = nullptr>
-        Type* Default() { return nullptr; }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

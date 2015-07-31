@@ -1,0 +1,141 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#include "AccessorSerialize.h"
+#include "ClassAccessors.h"
+#include "ClassAccessorsImpl.h"
+
+#include "../../ConsoleRig/Log.h"
+
+#include "../Streams/StreamFormatter.h"
+#include "../StringFormat.h"
+#include "../ParameterBox.h"
+#include "../MemoryUtils.h"
+#include "../Conversion.h"
+
+namespace Utility
+{
+
+    template<typename Formatter>
+        void AccessorDeserialize(
+            Formatter& formatter,
+            void* obj, const ClassAccessors& props)
+    {
+        using Blob = Formatter::Blob;
+        using CharType = Formatter::value_type;
+        auto charTypeCat = ImpliedTyping::TypeOf<CharType>()._type;
+
+        for (;;) {
+            switch (formatter.PeekNext()) {
+            case Blob::AttributeName:
+                {
+                    typename Formatter::InteriorSection name, value;
+                    if (!formatter.TryAttribute(name, value))
+                        Throw(FormatException("Error in begin element", formatter.GetLocation()));
+                    
+                    auto arrayBracket = std::find(name._start, name._end, '[');
+                    if (arrayBracket == name._end) {
+                        if (!props.TryCastFrom(
+                            obj,
+                            Hash64(name._start, name._end), value._start, 
+                            ImpliedTyping::TypeDesc(charTypeCat, uint16(value._end - value._start)), true)) {
+
+                            LogWarning << "Failure while assigning property during deserialization -- " << 
+                                Conversion::Convert<std::string>(std::basic_string<CharType>(name._start, name._end));
+                        }
+                    } else {
+                        auto arrayIndex = XlAtoUI32((const char*)(arrayBracket+1));
+                        if (!props.TryCastFrom(
+                            obj, Hash64(name._start, arrayBracket), arrayIndex, value._start, 
+                            ImpliedTyping::TypeDesc(charTypeCat, uint16(value._end - value._start)), true)) {
+
+                            LogWarning << "Failure while assigning array property during deserialization -- " << 
+                                Conversion::Convert<std::string>(std::basic_string<CharType>(name._start, name._end));
+                        }
+                    }
+                }
+                break;
+
+            case Blob::EndElement:
+            case Blob::None:
+                return;
+
+            case Blob::BeginElement:
+                {
+                    typename Formatter::InteriorSection eleName;
+                    if (!formatter.TryBeginElement(eleName))
+                        Throw(FormatException("Error in begin element", formatter.GetLocation()));
+
+                    auto created = props.TryCreateChild(obj, Hash64(eleName._start, eleName._end));
+                    if (created.first) {
+                        AccessorDeserialize(formatter, created.first, *created.second);
+                    } else {
+                        LogWarning << "Couldn't find a match for element name during deserialization -- " << 
+                            Conversion::Convert<std::string>(std::basic_string<CharType>(eleName._start, eleName._end));
+                        formatter.SkipElement();
+                    }
+
+                    if (!formatter.TryEndElement())
+                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
+
+                    break;
+                }
+            }
+        }
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void AccessorSerialize(
+        OutputStreamFormatter& formatter,
+        const void* obj, const ClassAccessors& props)
+    {
+        using CharType = utf8;
+        auto charTypeCat = ImpliedTyping::TypeOf<CharType>()._type;
+        CharType buffer[256];
+
+        for (size_t i=0; i<props.GetPropertyCount(); ++i) {
+            const auto& p = props.GetPropertyByIndex(i);
+            if (p._castTo) {
+                p._castTo(
+                    obj, buffer, sizeof(buffer), 
+                    ImpliedTyping::TypeDesc(charTypeCat, dimof(buffer)), true);
+
+                formatter.WriteAttribute(
+                    AsPointer(p._name.cbegin()), AsPointer(p._name.cend()), 
+                    buffer, &buffer[XlStringLen(buffer)]);
+            }
+
+            if (p._castToArray) {
+                for (size_t e=0; e<p._fixedArrayLength; ++e) {
+                    p._castToArray(
+                        obj, e, buffer, sizeof(buffer), 
+                        ImpliedTyping::TypeDesc(charTypeCat, dimof(buffer)), true);
+
+                    StringMeld<256, CharType> name;
+                    name << p._name.c_str() << "[" << e << "]";
+                    formatter.WriteAttribute(name.get(), buffer);
+                }
+            }
+        }
+
+        for (size_t i=0; i<props.GetChildListCount(); ++i) {
+            const auto& childList = props.GetChildListByIndex(i);
+            auto count = childList._getCount(obj);
+            for (size_t e=0; e<count; ++e) {
+                const auto* child = childList._getByIndex(obj, e);
+                auto eleId = formatter.BeginElement(childList._name);
+                AccessorSerialize(formatter, child, *childList._childProps);
+                formatter.EndElement(eleId);
+            }
+        }
+    }
+
+    template
+        void AccessorDeserialize(
+            InputStreamFormatter<utf8>& formatter,
+            void* obj, const ClassAccessors& props);
+}

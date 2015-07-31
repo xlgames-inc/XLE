@@ -395,7 +395,7 @@ namespace Sample
     {
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->_time = 0.f;
-        // pimpl->_characters = std::make_unique<CharactersScene>();
+        pimpl->_characters = std::make_unique<CharactersScene>();
 
         #if defined(ENABLE_TERRAIN)
             MainTerrainFormat = std::make_shared<SceneEngine::TerrainFormat>();
