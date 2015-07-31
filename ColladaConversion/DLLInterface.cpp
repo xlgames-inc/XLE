@@ -27,7 +27,6 @@
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/Streams/StreamTypes.h"
 #include "../Utility/Streams/PathUtils.h"
-#include "../Utility/Streams/Data.h"
 #include "../Utility/PtrUtils.h"
 #include "../ConsoleRig/OutputStream.h"
 #include <memory>
@@ -303,16 +302,10 @@ namespace RenderCore { namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class PreparedMaterialFile
+    static void SerializeMatTable(OutputStream& stream, const ColladaScaffold& model)
     {
-    public:
-        std::vector<std::unique_ptr<Data>> _table;
+        OutputStreamFormatter formatter(stream);
 
-        PreparedMaterialFile(const ColladaScaffold& model);
-    };
-
-    PreparedMaterialFile::PreparedMaterialFile(const ColladaScaffold& model)
-    {
         std::vector<std::pair<ObjectGuid, Assets::RawMaterial>> compiledEffects;
 
         const auto& effects = model._doc->_effects;
@@ -334,9 +327,10 @@ namespace RenderCore { namespace ColladaConversion
             if (i == compiledEffects.end() || !(i->first == ObjectGuid(effect._id, effect._fileHash)))
                 continue;
 
-            auto newBlock = i->second.SerializeAsData();
-            newBlock->SetValue(AsString(m->_name).c_str());
-            _table.push_back(std::move(newBlock));
+            auto ele = formatter.BeginElement(
+                Conversion::Convert<std::basic_string<utf8>>(AsString(m->_name)).c_str());
+            i->second.Serialize(formatter);
+            formatter.EndElement(ele);
         }
     }
 
@@ -351,13 +345,8 @@ namespace RenderCore { namespace ColladaConversion
             matSettingsFile = settingsName;
         }
 
-        PreparedMaterialFile preparedFile(model);
-
         MemoryOutputStream<uint8> strm;
-        auto root = std::make_unique<Data>();
-        for (auto i=preparedFile._table.begin(); i!=preparedFile._table.end(); ++i)
-            root->Add(i->release());
-        root->SaveToOutputStream(strm);
+        SerializeMatTable(strm, model);
 
             // convert into a chunk...
 

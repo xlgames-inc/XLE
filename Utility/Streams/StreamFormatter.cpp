@@ -160,14 +160,16 @@ namespace Utility
             WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePostfix, _currentLineLength);
         }
 
-        _stream->WriteChar((CharType)'=');
+        if (valueStart) {
+            _stream->WriteChar((CharType)'=');
 
-        if (IsSimpleString(valueStart, valueEnd)) {
-            _stream->WriteString(valueStart, valueEnd);
-        } else {
-            WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePrefix, _currentLineLength);
-            _stream->WriteString(valueStart, valueEnd);
-            WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePostfix, _currentLineLength);
+            if (IsSimpleString(valueStart, valueEnd)) {
+                _stream->WriteString(valueStart, valueEnd);
+            } else {
+                WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePrefix, _currentLineLength);
+                _stream->WriteString(valueStart, valueEnd);
+                WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePostfix, _currentLineLength);
+            }
         }
 
         _currentLineLength += unsigned((valueEnd - valueStart) + (nameEnd - nameStart) + 1);

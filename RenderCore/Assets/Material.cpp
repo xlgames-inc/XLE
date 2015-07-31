@@ -5,17 +5,18 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Material.h"
-#include "../Metal/State.h"      // (just for Blend/BlendOp enum members... maybe we need a higher level version of these enums?)
+#include "../Metal/State.h"                 // (just for Blend/BlendOp enum members... maybe we need a higher level version of these enums?)
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/ChunkFile.h"
+#include "../../Assets/InvalidAssetManager.h"
 #include "../../ConsoleRig/Log.h"
-#include "../../Utility/Streams/Data.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
-#include "../../Utility/Streams/DataSerialize.h"
+#include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/MemoryUtils.h"
 
@@ -64,99 +65,126 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static const std::pair<Metal::Blend::Enum, const char*> s_blendNames[] =
+    static bool Is(const InputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
     {
-        std::make_pair(Metal::Blend::Zero, "zero"),
-        std::make_pair(Metal::Blend::One, "one"),
-            
-        std::make_pair(Metal::Blend::SrcColor, "srccolor"),
-        std::make_pair(Metal::Blend::InvSrcColor, "invsrccolor"),
-        std::make_pair(Metal::Blend::DestColor, "destcolor"),
-        std::make_pair(Metal::Blend::InvDestColor, "invdestcolor"),
+        const auto* a = section._start;
+        const auto* b = match;
+        for (;;) {
+            if (a == section._end)
+                return !(*b);   // success if both strings have terminated at the same time
+            if (*b != *a) return false;
+            assert(*b); // potentially hit this assert if there are null characters in "section"... that isn't supported
+            ++b; ++a;
+        }
+    }
 
-        std::make_pair(Metal::Blend::SrcAlpha, "srcalpha"),
-        std::make_pair(Metal::Blend::InvSrcAlpha, "invsrcalpha"),
-        std::make_pair(Metal::Blend::DestAlpha, "destalpha"),
-        std::make_pair(Metal::Blend::InvDestAlpha, "invdestalpha"),
+    static bool IsI(const InputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
+    {
+        const auto* a = section._start;
+        const auto* b = match;
+        for (;;) {
+            if (a == section._end)
+                return !(*b);   // success if both strings have terminated at the same time
+            if (XlToLower(*b) != XlToLower(*a)) return false;
+            assert(*b); // potentially hit this assert if there are null characters in "section"... that isn't supported
+            ++b; ++a;
+        }
+    }
+
+    static const std::pair<Metal::Blend::Enum, const utf8*> s_blendNames[] =
+    {
+        std::make_pair(Metal::Blend::Zero, u("zero")),
+        std::make_pair(Metal::Blend::One, u("one")),
+            
+        std::make_pair(Metal::Blend::SrcColor, u("srccolor")),
+        std::make_pair(Metal::Blend::InvSrcColor, u("invsrccolor")),
+        std::make_pair(Metal::Blend::DestColor, u("destcolor")),
+        std::make_pair(Metal::Blend::InvDestColor, u("invdestcolor")),
+
+        std::make_pair(Metal::Blend::SrcAlpha, u("srcalpha")),
+        std::make_pair(Metal::Blend::InvSrcAlpha, u("invsrcalpha")),
+        std::make_pair(Metal::Blend::DestAlpha, u("destalpha")),
+        std::make_pair(Metal::Blend::InvDestAlpha, u("invdestalpha")),
     };
 
-    static const std::pair<Metal::BlendOp::Enum, const char*> s_blendOpNames[] =
+    static const std::pair<Metal::BlendOp::Enum, const utf8*> s_blendOpNames[] =
     {
-        std::make_pair(Metal::BlendOp::NoBlending, "noblending"),
-        std::make_pair(Metal::BlendOp::NoBlending, "none"),
-        std::make_pair(Metal::BlendOp::NoBlending, "false"),
+        std::make_pair(Metal::BlendOp::NoBlending, u("noblending")),
+        std::make_pair(Metal::BlendOp::NoBlending, u("none")),
+        std::make_pair(Metal::BlendOp::NoBlending, u("false")),
 
-        std::make_pair(Metal::BlendOp::Add, "add"),
-        std::make_pair(Metal::BlendOp::Subtract, "subtract"),
-        std::make_pair(Metal::BlendOp::RevSubtract, "revSubtract"),
-        std::make_pair(Metal::BlendOp::Min, "min"),
-        std::make_pair(Metal::BlendOp::Max, "max")
+        std::make_pair(Metal::BlendOp::Add, u("add")),
+        std::make_pair(Metal::BlendOp::Subtract, u("subtract")),
+        std::make_pair(Metal::BlendOp::RevSubtract, u("revSubtract")),
+        std::make_pair(Metal::BlendOp::Min, u("min")),
+        std::make_pair(Metal::BlendOp::Max, u("max"))
     };
     
-    static Metal::Blend::Enum DeserializeBlend(const Data* source, const char name[])
+    static Metal::Blend::Enum DeserializeBlend(
+        DocElementHelper<InputStreamFormatter<utf8>> ele, const utf8 name[])
     {
-        if (source) {
-            auto* child = source->ChildWithValue(name);
-            if (child && child->child && child->child->value) {
-                const char* value = child->child->value;
-                for (unsigned c=0; c<dimof(s_blendNames); ++c) {
-                    if (!XlCompareStringI(value, s_blendNames[c].second)) {
+        if (ele) {
+            auto child = ele.Attribute(name);
+            if (child) {
+                auto value = child.RawValue();
+                for (unsigned c=0; c<dimof(s_blendNames); ++c)
+                    if (!IsI(value, s_blendNames[c].second))
                         return s_blendNames[c].first;
-                    }
-                }
-                return (Metal::Blend::Enum)XlAtoI32(value);
+                return (Metal::Blend::Enum)XlAtoI32((const char*)child.Value().c_str());
             }
         }
 
         return Metal::Blend::Zero;
     }
 
-    static Metal::BlendOp::Enum DeserializeBlendOp(const Data* source, const char name[])
+    static Metal::BlendOp::Enum DeserializeBlendOp(
+        DocElementHelper<InputStreamFormatter<utf8>> ele, const utf8 name[])
     {
-        if (source) {
-            auto* child = source->ChildWithValue(name);
-            if (child && child->child && child->child->value) {
-                const char* value = child->child->value;
-                for (unsigned c=0; c<dimof(s_blendOpNames); ++c) {
-                    if (!XlCompareStringI(value, s_blendOpNames[c].second)) {
+        if (ele) {
+            auto child = ele.Attribute(name);
+            if (child) {
+                auto value = child.RawValue();
+                for (unsigned c=0; c<dimof(s_blendOpNames); ++c)
+                    if (!IsI(value, s_blendOpNames[c].second))
                         return s_blendOpNames[c].first;
-                    }
-                }
-                return (Metal::BlendOp::Enum)XlAtoI32(value);
+                return (Metal::BlendOp::Enum)XlAtoI32((const char*)child.Value().c_str());
             }
         }
 
         return Metal::BlendOp::NoBlending;
     }
 
-    static RenderStateSet DeserializeStateSet(const Data& src)
+    static RenderStateSet DeserializeStateSet(InputStreamFormatter<utf8>& formatter)
     {
         RenderStateSet result;
+
+        Document<InputStreamFormatter<utf8>> doc(formatter);
+
         {
-            auto* child = src.ChildWithValue("DoubleSided");
-            if (child && child->child && child->child->value) {
-                result._doubleSided = Conversion::Convert<bool>((const char*)child->child->value);
+            auto child = doc.Attribute(u("DoubleSided")).As<bool>();
+            if (child.first) {
+                result._doubleSided = child.second;
                 result._flag |= RenderStateSet::Flag::DoubleSided;
             }
         }
         {
-            auto* child = src.ChildWithValue("Wireframe");
-            if (child && child->child && child->child->value) {
-                result._wireframe = Conversion::Convert<bool>((const char*)child->child->value);
+            auto child = doc.Attribute(u("Wireframe")).As<bool>();
+            if (child.first) {
+                result._wireframe = child.second;
                 result._flag |= RenderStateSet::Flag::Wireframe;
             }
         }
         {
-            auto* child = src.ChildWithValue("WriteMask");
-            if (child && child->child && child->child->value) {
-                result._writeMask = child->child->IntValue();
+            auto child = doc.Attribute(u("WriteMask")).As<unsigned>();
+            if (child.first) {
+                result._writeMask = child.second;
                 result._flag |= RenderStateSet::Flag::WriteMask;
             }
         }
         {
-            auto* child = src.ChildWithValue("DeferredBlend");
-            if (child && child->child && child->child->value) {
-                if (XlCompareStringI(child->child->value, "decal")) {
+            auto child = doc.Attribute(u("DeferredBlend"));
+            if (child) {
+                if (IsI(child.RawValue(), u("decal"))) {
                     result._deferredBlend = RenderStateSet::DeferredBlend::Decal;
                 } else {
                     result._deferredBlend = RenderStateSet::DeferredBlend::Opaque;
@@ -165,86 +193,84 @@ namespace RenderCore { namespace Assets
             }
         }
         {
-            auto* child = src.ChildWithValue("DepthBias");
-            if (child && child->child && child->child->value) {
-                result._depthBias = child->child->IntValue();
+            auto child = doc.Attribute(u("DepthBias")).As<int>();
+            if (child.first) {
+                result._depthBias = child.second;
                 result._flag |= RenderStateSet::Flag::DepthBias;
             }
         }
         {
-            auto* child = src.ChildWithValue("ForwardBlend");
-            if (child && child->child) {
-                result._forwardBlendSrc = DeserializeBlend(child, "Src");
-                result._forwardBlendDst = DeserializeBlend(child, "Dst");
-                result._forwardBlendOp = DeserializeBlendOp(child, "Op");
+            auto child = doc.Element(u("ForwardBlend"));
+            if (child) {
+                result._forwardBlendSrc = DeserializeBlend(child, u("Src"));
+                result._forwardBlendDst = DeserializeBlend(child, u("Dst"));
+                result._forwardBlendOp = DeserializeBlendOp(child, u("Op"));
                 result._flag |= RenderStateSet::Flag::ForwardBlend;
             }
         }
         return result;
     }
 
-    static const char* AsString(RenderStateSet::DeferredBlend::Enum blend)
+    static const utf8* AsString(RenderStateSet::DeferredBlend::Enum blend)
     {
         switch (blend) {
-        case RenderStateSet::DeferredBlend::Decal: return "decal";
+        case RenderStateSet::DeferredBlend::Decal: return u("decal");
         default:
-        case RenderStateSet::DeferredBlend::Opaque: return "opaque";
+        case RenderStateSet::DeferredBlend::Opaque: return u("opaque");
         }
     }
 
-    static const char* AsString(Metal::Blend::Enum input)
+    static const utf8* AsString(Metal::Blend::Enum input)
     {
         for (unsigned c=0; c<dimof(s_blendNames); ++c) {
             if (s_blendNames[c].first == input) {
                 return s_blendNames[c].second;
             }
         }
-        return "one";
+        return u("one");
     }
 
-    static const char* AsString(Metal::BlendOp::Enum input)
+    static const utf8* AsString(Metal::BlendOp::Enum input)
     {
         for (unsigned c=0; c<dimof(s_blendOpNames); ++c) {
             if (s_blendOpNames[c].first == input) {
                 return s_blendOpNames[c].second;
             }
         }
-        return "noblending";
+        return u("noblending");
     }
 
-    std::unique_ptr<Data> SerializeStateSet(const char name[], const RenderStateSet& stateSet)
+    template<typename Type>
+        std::basic_string<utf8> AutoAsString(const Type& type)
+        {
+            return Conversion::Convert<std::basic_string<utf8>>(
+                ImpliedTyping::AsString(type, true));
+        }
+
+    void SerializeStateSet(OutputStreamFormatter& formatter, const RenderStateSet& stateSet)
     {
-        // opposite of DeserializeStateSet... create a serialized form of these states
-        auto result = std::make_unique<Data>(name);
-        if (stateSet._flag & RenderStateSet::Flag::DoubleSided) {
-            result->SetAttribute("DoubleSided", stateSet._doubleSided);
-        }
+        if (stateSet._flag & RenderStateSet::Flag::DoubleSided)
+            formatter.WriteAttribute(u("DoubleSided"), AutoAsString(stateSet._doubleSided));
 
-        if (stateSet._flag & RenderStateSet::Flag::Wireframe) {
-            result->SetAttribute("Wireframe", stateSet._wireframe);
-        }
+        if (stateSet._flag & RenderStateSet::Flag::Wireframe)
+            formatter.WriteAttribute(u("Wireframe"), AutoAsString(stateSet._wireframe));
 
-        if (stateSet._flag & RenderStateSet::Flag::WriteMask) {
-            result->SetAttribute("WriteMask", stateSet._writeMask);
-        }
+        if (stateSet._flag & RenderStateSet::Flag::WriteMask)
+            formatter.WriteAttribute(u("WriteMask"), AutoAsString(stateSet._writeMask));
 
-        if (stateSet._flag & RenderStateSet::Flag::DeferredBlend) {
-            result->SetAttribute("DeferredBlend", AsString(stateSet._deferredBlend));
-        }
+        if (stateSet._flag & RenderStateSet::Flag::DeferredBlend)
+            formatter.WriteAttribute(u("DeferredBlend"), AsString(stateSet._deferredBlend));
 
-        if (stateSet._flag & RenderStateSet::Flag::DepthBias) {
-            result->SetAttribute("DepthBias", stateSet._depthBias);
-        }
+        if (stateSet._flag & RenderStateSet::Flag::DepthBias)
+            formatter.WriteAttribute(u("DepthBias"), AutoAsString(stateSet._depthBias));
 
         if (stateSet._flag & RenderStateSet::Flag::ForwardBlend) {
-            auto block = std::make_unique<Data>("ForwardBlend");
-            block->SetAttribute("Src", AsString(stateSet._forwardBlendSrc));
-            block->SetAttribute("Dst", AsString(stateSet._forwardBlendDst));
-            block->SetAttribute("Op", AsString(stateSet._forwardBlendOp));
-            result->Add(block.release());
+            auto ele = formatter.BeginElement(u("ForwardBlend"));
+            formatter.WriteAttribute(u("Src"), AsString(stateSet._forwardBlendSrc));
+            formatter.WriteAttribute(u("Dst"), AsString(stateSet._forwardBlendDst));
+            formatter.WriteAttribute(u("Op"), AsString(stateSet._forwardBlendOp));
+            formatter.EndElement(ele);
         }
-
-        return std::move(result);
     }
 
     static Assets::RenderStateSet Merge(
@@ -349,72 +375,145 @@ namespace RenderCore { namespace Assets
         _splitName = RawMatSplitName(initialiser);
         auto searchRules = ::Assets::DefaultDirectorySearchRules(_splitName._initializerFilename.c_str());
         
-        size_t sourceFileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(_splitName._concreteFilename.c_str(), &sourceFileSize);
-        if (!sourceFile)
-            Throw(::Assets::Exceptions::InvalidAsset(initialiser, 
-                StringMeld<128>() << "Missing or empty file: " << _splitName._concreteFilename));
+        TRY
+        {
+            size_t sourceFileSize = 0;
+            auto sourceFile = LoadFileAsMemoryBlock(_splitName._concreteFilename.c_str(), &sourceFileSize);
+            if (!sourceFile)
+                Throw(::Assets::Exceptions::InvalidAsset(initialiser, 
+                    StringMeld<128>() << "Missing or empty file: " << _splitName._concreteFilename));
 
-        Data data;
-        data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
+            InputStreamFormatter<utf8> formatter(
+                MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), sourceFileSize)));
 
-        auto source = data.ChildWithValue(_splitName._settingName.c_str());
-        if (!source) {
-            StringMeld<64> hashedName;
+                // scan through to find the part we're interested in
+            bool settingPrimed = false;
+            StringMeld<64, utf8> hashedName;
             hashedName << std::hex << Hash64(_splitName._settingName);
-            source = data.ChildWithValue(hashedName);
-        }
+            for (;;) {
+                using Blob = InputStreamFormatter<utf8>::Blob;
+                switch (formatter.PeekNext()) {
+                case Blob::AttributeName:
+                    {
+                        InputStreamFormatter<utf8>::InteriorSection name, value;
+                        formatter.TryAttribute(name, value);
+                        continue;
+                    }
 
-        if (!source)
-            Throw(::Assets::Exceptions::InvalidAsset(initialiser, 
-                StringMeld<256>() << "Missing material configuration: " << _splitName._settingName));
+                case Blob::BeginElement:
+                    {
+                        InputStreamFormatter<utf8>::InteriorSection eleName;
+                        formatter.TryBeginElement(eleName);
+                        if (    Is(eleName, (const utf8*)_splitName._settingName.c_str())
+                            ||  Is(eleName, hashedName.get())) {
+                            settingPrimed = true;
+                            break;
+                        } else {
+                            formatter.SkipElement();
+                            formatter.TryEndElement();
+                        }
+                        continue;
+                    }
+
+                case Blob::EndElement:
+                case Blob::None:
+                    break;
+                }
+                break;
+            }
+
+            if (!settingPrimed)
+                Throw(::Assets::Exceptions::InvalidAsset(initialiser, 
+                    StringMeld<256>() << "Missing material configuration: " << _splitName._settingName));
+
+            Deserialize(formatter);
+
+            ::Assets::Services::GetInvalidAssetMan().MarkValid(initialiser);
+        } CATCH (const std::exception& e) {
+            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(initialiser, e.what());
+            throw;
+        } CATCH(...) {
+            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(initialiser, "Unknown error");
+            throw;
+        } CATCH_END
 
         _depVal = std::make_shared<::Assets::DependencyValidation>();
-
-                // first, load inherited settings.
-        auto* inheritList = source->ChildWithValue("Inherit");
-        if (inheritList) {
-            for (auto i=inheritList->child; i; i=i->next) {
-                _inherit.push_back(ResString(i->value));
-            }
-        }
-
-            //  Load ShaderParams & ResourceBindings & Constants
-
-        const auto* p = source->ChildWithValue("ShaderParams");
-        if (p) {
-            for (auto child=p->child; child; child=child->next) {
-                if (child->ChildAt(0)) {
-                    _matParamBox.SetParameter((const utf8*)child->StrValue(), child->ChildAt(0)->StrValue());
-                }
-            }
-        }
-
-        const auto* c = source->ChildWithValue("Constants");
-        if (c) {
-            for (auto child=c->child; child; child=child->next) {
-                if (child->ChildAt(0)) {
-                    _constants.SetParameter((const utf8*)child->StrValue(), child->ChildAt(0)->StrValue());
-                }
-            }
-        }
-
-        const auto* resourceBindings = source->ChildWithValue("ResourceBindings");
-        if (resourceBindings) {
-            for (auto child=resourceBindings->child; child; child=child->next) {
-                if (child->ChildAt(0)) {
-                    _resourceBindings.SetParameter((const utf8*)child->StrValue(), child->ChildAt(0)->StrValue());
-                }
-            }
-        }
-
-            // also load "States" table. This requires a bit more parsing work
-        const auto* stateSet = source->ChildWithValue("States");
-        if (stateSet) {
-            _stateSet = DeserializeStateSet(*stateSet);
-        }
-
         RegisterFileDependency(_depVal, _splitName._concreteFilename.c_str());
+    }
+
+    std::vector<::Assets::rstring> 
+        DeserializeInheritList(InputStreamFormatter<utf8>& formatter)
+    {
+        std::vector<::Assets::rstring> result;
+
+        for (;;) {
+            using Blob = InputStreamFormatter<utf8>::Blob;
+            switch (formatter.PeekNext()) {
+            case Blob::AttributeName:
+                {
+                    InputStreamFormatter<utf8>::InteriorSection name, value;
+                    formatter.TryAttribute(name, value);
+                    result.push_back(
+                        Conversion::Convert<::Assets::rstring>(std::basic_string<utf8>(name._start, name._end)));
+                    break;
+                }
+
+            case Blob::BeginElement:
+                {
+                    InputStreamFormatter<utf8>::InteriorSection eleName;
+                    formatter.TryBeginElement(eleName);
+                    break;
+                }
+
+            case Blob::EndElement:
+            case Blob::None:
+                return result;
+            }
+        }
+    }
+
+    void RawMaterial::Deserialize(InputStreamFormatter<utf8>& formatter)
+    {
+        for (;;) {
+            using Blob = InputStreamFormatter<utf8>::Blob;
+            switch (formatter.PeekNext()) {
+            case Blob::AttributeName:
+                {
+                    InputStreamFormatter<utf8>::InteriorSection name, value;
+                    formatter.TryAttribute(name, value);
+                    break;
+                }
+
+            case Blob::BeginElement:
+                {
+                    InputStreamFormatter<utf8>::InteriorSection eleName;
+                    formatter.TryBeginElement(eleName);
+
+                       // first, load inherited settings.
+                    if (Is(eleName, u("Inherit"))) {
+                        _inherit = DeserializeInheritList(formatter);
+                    } else if (Is(eleName, u("ShaderParams"))) {
+                        _matParamBox = ParameterBox(formatter);
+                    } else if (Is(eleName, u("Constants"))) {
+                        _constants = ParameterBox(formatter);
+                    } else if (Is(eleName, u("ResourceBindings"))) {
+                        _resourceBindings = ParameterBox(formatter);
+                    } else if (Is(eleName, u("States"))) {
+                        _stateSet = DeserializeStateSet(formatter);
+                    } else {
+                        formatter.SkipElement();
+                    }
+
+                    if (!formatter.TryEndElement())
+                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
+                    break;
+                }
+
+            case Blob::EndElement:
+            case Blob::None:
+                return;
+            }
+        }
     }
 
     std::unique_ptr<RawMaterial> RawMaterial::CreateNew(const ::Assets::ResChar initialiser[])
@@ -427,41 +526,46 @@ namespace RenderCore { namespace Assets
 
     RawMaterial::~RawMaterial() {}
 
-    std::unique_ptr<Data> RawMaterial::SerializeAsData() const
+    void RawMaterial::Serialize(OutputStreamFormatter& formatter) const
     {
-        auto result = std::make_unique<Data>();
+        auto matEle = formatter.BeginElement(GetSettingName());
 
         if (!_inherit.empty()) {
-            auto inheritBlock = std::make_unique<Data>("Inherit");
+            auto ele = formatter.BeginElement(u("Inherit"));
             for (auto i=_inherit.cbegin(); i!=_inherit.cend(); ++i) {
-                inheritBlock->Add(new Data(i->c_str()));
+                auto str = Conversion::Convert<std::basic_string<utf8>>(*i);
+                formatter.WriteAttribute(
+                    AsPointer(str.cbegin()), AsPointer(str.cend()),
+                    (const utf8*)nullptr, (const utf8*)nullptr);
             }
-
-            result->Add(inheritBlock.release());
+            formatter.EndElement(ele);
         }
 
-        std::vector<std::pair<const utf8*, std::string>> matParamStringTable;
-        BuildStringTable(matParamStringTable, _matParamBox);
-        if (!matParamStringTable.empty()) {
-            result->Add(SerializeToData("ShaderParams", matParamStringTable).release());
+        {
+            auto ele = formatter.BeginElement(u("ShaderParams"));
+            _matParamBox.Serialize(formatter);
+            formatter.EndElement(ele);
         }
 
-        std::vector<std::pair<const utf8*, std::string>> constantsStringTable;
-        BuildStringTable(constantsStringTable, _constants);
-        if (!constantsStringTable.empty()) {
-            result->Add(SerializeToData("Constants", constantsStringTable).release());
+        {
+            auto ele = formatter.BeginElement(u("Constants"));
+            _constants.Serialize(formatter);
+            formatter.EndElement(ele);
         }
 
-        std::vector<std::pair<const utf8*, std::string>> resourceBindingsStringTable;
-        BuildStringTable(resourceBindingsStringTable, _resourceBindings);
-        if (!resourceBindingsStringTable.empty()) {
-            result->Add(SerializeToData("ResourceBindings", resourceBindingsStringTable).release());
+        {
+            auto ele = formatter.BeginElement(u("ResourceBindings"));
+            _resourceBindings.Serialize(formatter);
+            formatter.EndElement(ele);
         }
 
-        result->Add(SerializeStateSet("States", _stateSet).release());
+        {
+            auto ele = formatter.BeginElement(u("ResourceBindings"));
+            SerializeStateSet(formatter, _stateSet);
+            formatter.EndElement(ele);
+        }
 
-        result->SetValue(GetSettingName().c_str());
-        return std::move(result);
+        formatter.EndElement(matEle);
     }
 
     void RawMaterial::MergeInto(ResolvedMaterial& dest) const

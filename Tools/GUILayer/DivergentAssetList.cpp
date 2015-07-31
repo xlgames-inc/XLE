@@ -268,6 +268,7 @@ namespace GUILayer
         return result;
     }
 
+#if 0
     static void SerializeInto(::Utility::Data& originalFile, const RenderCore::Assets::RawMaterial& material)
     {
         auto asData = material.SerializeAsData();
@@ -295,6 +296,7 @@ namespace GUILayer
             originalFile.Add(asData.release());
         }
     }
+#endif
 
     PendingSaveList^ PendingSaveList::Create()
     {
@@ -329,7 +331,7 @@ namespace GUILayer
                         fullData.Load((const char*)pinnedAddress, originalFile->Length);
                     }
 
-                    SerializeInto(fullData, a->second->GetAsset());
+                    // SerializeInto(fullData, a->second->GetAsset());
 
                     MemoryOutputStream<utf8> strm;
                     fullData.SaveToOutputStream(strm);
@@ -373,7 +375,7 @@ namespace GUILayer
                         fullData.Load((const char*)pinnedAddress, originalFile->Length);
                     }
 
-                    SerializeInto(fullData, a->second->GetAsset());
+                    // SerializeInto(fullData, a->second->GetAsset());
 
                     MemoryOutputStream<utf8> strm;
                     fullData.SaveToOutputStream(strm);
