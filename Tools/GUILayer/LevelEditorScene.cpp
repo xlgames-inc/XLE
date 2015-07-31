@@ -383,6 +383,21 @@ namespace GUILayer
             std::bind(WriteTerrainMaterialData, _1, _scene->_terrainManager.get()));
     }
 
+    static auto WriteVegetationSpawnConfig(OutputStream& stream, SceneEngine::VegetationSpawnManager* man) 
+        -> EditorSceneManager::PendingExport::Type
+    {
+        Utility::OutputStreamFormatter formatter(stream);
+        man->GetConfig().Write(formatter);
+        return EditorSceneManager::PendingExport::Type::Text;
+    }
+
+    auto EditorSceneManager::ExportVegetationSpawn(EntityInterface::DocumentId docId) -> PendingExport^
+    {
+        return ExportViaStream(
+            "vegetation spawn",
+            std::bind(WriteVegetationSpawnConfig, _1, _scene->_vegetationSpawnManager.get()));
+    }
+
     void EditorSceneManager::UnloadTerrain()
     {
         _terrainInterface->UnloadTerrain();

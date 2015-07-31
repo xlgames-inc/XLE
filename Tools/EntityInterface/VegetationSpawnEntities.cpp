@@ -6,6 +6,7 @@
 
 #include "RetainedEntities.h"
 #include "../../SceneEngine/VegetationSpawn.h"
+#include "../../Utility/Meta/AccessorSerialize.h"
 
 namespace EntityInterface
 {
@@ -15,41 +16,19 @@ namespace EntityInterface
     {
         using namespace SceneEngine;
 
-        static const auto BaseGridSpacing = ParameterBox::MakeParameterNameHash("BaseGridSpacing");
-        static const auto JitterAmount = ParameterBox::MakeParameterNameHash("JitterAmount");
-        static const auto MaxDrawDistance = ParameterBox::MakeParameterNameHash("MaxDrawDistance");
-        static const auto FrequencyWeight = ParameterBox::MakeParameterNameHash("FrequencyWeight");
-        static const auto NoSpawnWeight = ParameterBox::MakeParameterNameHash("NoSpawnWeight");
-        static const auto SuppressionThreshold = ParameterBox::MakeParameterNameHash("SuppressionThreshold");
-        static const auto SuppressionNoise = ParameterBox::MakeParameterNameHash("SuppressionNoise");
-        static const auto SuppressionGain = ParameterBox::MakeParameterNameHash("SuppressionGain");
-        static const auto SuppressionLacunarity = ParameterBox::MakeParameterNameHash("SuppressionLacunarity");
-        static const auto Model = ParameterBox::MakeParameterNameHash("Model");
-        static const auto Material = ParameterBox::MakeParameterNameHash("Material");
-
-        VegetationSpawnConfig cfg;
-        cfg._baseGridSpacing = obj._properties.GetParameter(BaseGridSpacing, cfg._baseGridSpacing);
-        cfg._jitterAmount = obj._properties.GetParameter(JitterAmount, cfg._jitterAmount);
+        auto cfg = CreateFromParameters<VegetationSpawnConfig>(obj._properties);
 
         for (auto cid:obj._children) {
             const auto* child = sys.GetEntity(obj._doc, cid);
             if (!child) continue;
 
-            VegetationSpawnConfig::Material material;
-            material._noSpawnWeight = child->_properties.GetParameter(NoSpawnWeight, material._noSpawnWeight);
-            material._suppressionThreshold = child->_properties.GetParameter(SuppressionThreshold, material._suppressionThreshold);
-            material._suppressionNoise = child->_properties.GetParameter(SuppressionNoise, material._suppressionNoise);
-            material._suppressionGain = child->_properties.GetParameter(SuppressionGain, material._suppressionGain);
-            material._suppressionLacunarity = child->_properties.GetParameter(SuppressionLacunarity, material._suppressionLacunarity);
+            auto material = CreateFromParameters<VegetationSpawnConfig::Material>(child->_properties);
 
             for (auto cid:child->_children) {
                 const auto* objType = sys.GetEntity(obj._doc, cid);
                 if (!objType) continue;
 
-                VegetationSpawnConfig::ObjectType objTypeBucket;
-                objTypeBucket._modelName = objType->_properties.GetString<::Assets::ResChar>(Model);
-                objTypeBucket._materialName = objType->_properties.GetString<::Assets::ResChar>(Material);
-
+                auto objTypeBucket = CreateFromParameters<VegetationSpawnConfig::ObjectType>(objType->_properties);
                 if (objTypeBucket._modelName.empty() || objTypeBucket._materialName.empty())
                     continue;
 
@@ -66,9 +45,7 @@ namespace EntityInterface
                     cfg._objectTypes.push_back(objTypeBucket);
                 }
 
-                VegetationSpawnConfig::Bucket bucket;
-                bucket._maxDrawDistance = objType->_properties.GetParameter(MaxDrawDistance, bucket._maxDrawDistance);
-                bucket._frequencyWeight = objType->_properties.GetParameter(FrequencyWeight, bucket._frequencyWeight);
+                auto bucket = CreateFromParameters<VegetationSpawnConfig::Bucket>(objType->_properties);
                 bucket._objectType = objectTypeIndex;
                 
                 material._buckets.push_back(bucket);

@@ -121,6 +121,9 @@
     <ClCompile Include="..\DeepOceanSim.cpp">
       <Filter>Objects\Water</Filter>
     </ClCompile>
+    <ClCompile Include="..\VegetationSpawnConfig.cpp">
+      <Filter>Objects\Terrain</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">

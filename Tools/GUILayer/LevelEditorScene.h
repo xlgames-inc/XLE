@@ -117,6 +117,7 @@ namespace GUILayer
         PendingExport^ ExportTerrain(TerrainConfig^ cfg);
         PendingExport^ ExportTerrainCachedData();
         PendingExport^ ExportTerrainMaterialData();
+        PendingExport^ ExportVegetationSpawn(EntityInterface::DocumentId docId);
 
         value class PlacementCellRef
         {

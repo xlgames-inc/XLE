@@ -294,6 +294,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\VegetationSpawn.cpp" />
+    <ClCompile Include="..\VegetationSpawnConfig.cpp" />
     <ClCompile Include="..\VolumetricFog.cpp">
       <FileType>Document</FileType>
     </ClCompile>

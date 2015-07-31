@@ -50,6 +50,7 @@ namespace SceneEngine
             float _suppressionNoise;
             float _suppressionGain;
             float _suppressionLacunarity;
+            unsigned _materialId;
             Material();
         };
 
@@ -96,6 +97,8 @@ namespace SceneEngine
 
         void Load(const VegetationSpawnConfig& cfg);
         void Reset();
+
+        const VegetationSpawnConfig& GetConfig() const;
 
         VegetationSpawnManager(
             std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);

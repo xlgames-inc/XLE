@@ -591,6 +591,11 @@ namespace SceneEngine
         _pimpl->_resources.reset();
     }
 
+    const VegetationSpawnConfig& VegetationSpawnManager::GetConfig() const
+    {
+        return _pimpl->_cfg;
+    }
+
     std::shared_ptr<ILightingParserPlugin> VegetationSpawnManager::GetParserPlugin()
     {
         return _pimpl->_parserPlugin;
@@ -605,42 +610,7 @@ namespace SceneEngine
 
     VegetationSpawnManager::~VegetationSpawnManager() {}
 
-    VegetationSpawnConfig::VegetationSpawnConfig(
-        InputStreamFormatter<utf8>& formatter,
-        const ::Assets::DirectorySearchRules& searchRules)
-    : VegetationSpawnConfig()
-    {
-        
-
-        _searchRules = searchRules;
-    }
-
-    VegetationSpawnConfig::VegetationSpawnConfig() 
-    {
-        _baseGridSpacing = 1.f;
-        _jitterAmount = 1.f;
-    }
-
-    VegetationSpawnConfig::~VegetationSpawnConfig() {}
-
-    VegetationSpawnConfig::Bucket::Bucket()
-    {
-        _maxDrawDistance = 100.f;
-        _frequencyWeight = 1.f;
-        _objectType = 0;
-    }
-
-    VegetationSpawnConfig::Material::Material()
-    {
-        _noSpawnWeight = 0.f;
-        _suppressionThreshold = -1.f;
-        _suppressionNoise = 0.85f * 9.632f;
-        _suppressionGain = 1.1f * .85f;
-        _suppressionLacunarity = 2.0192f;
-    }
-
-    VegetationSpawnConfig::ObjectType::ObjectType()
-    {}
+    
 
 }
 

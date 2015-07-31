@@ -17,7 +17,7 @@ using LevelEditorCore;
 
 namespace LevelEditorXLE.Terrain
 {
-    class VegetationSpawnConfigGob : DomNodeAdapter, IHierarchical, IListable
+    class VegetationSpawnConfigGob : DomNodeAdapter, IHierarchical, IListable, IExportable
     {
         public bool CanAddChild(object child)
         {
@@ -44,6 +44,31 @@ namespace LevelEditorXLE.Terrain
             info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
             info.Label = "VegetationSpawnConfig";
         }
+
+        #region IExportable
+        public string ExportDirectory
+        {
+            get
+            {
+                var game = DomNode.GetRoot().As<Game.GameExtensions>();
+                if (game != null) return game.ExportDirectory;
+                var rootTerrain = DomNode.Parent.As<XLETerrainGob>();
+                if (rootTerrain != null) return rootTerrain.CellsDirectory;
+                return "";
+            }
+        }
+
+        public string ExportTarget { get { return ExportDirectory + "/vegetationspawn.cfg"; } }
+        public string ExportCategory { get { return "VegetationSpawn"; } }
+
+        public IEnumerable<PendingExport> BuildPendingExports()
+        {
+            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+            var result = new List<PendingExport>();
+            result.Add(new PendingExport(ExportTarget, sceneMan.ExportVegetationSpawn(0)));
+            return result;
+        }
+        #endregion
 
         public VegetationSpawnConfigGob() { }
     }
