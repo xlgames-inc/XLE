@@ -16,8 +16,6 @@
 
 namespace Utility
 {
-    template<typename Type> Type DefaultValue() { return Type(0); }
-
         //
         //  MakeFunction is based on a stack overflow answer:
         //      http://stackoverflow.com/questions/21738775/c11-how-to-write-a-wrapper-function-to-make-stdfunction-objects?lq=1
@@ -92,6 +90,79 @@ namespace Utility
     //      V A R I A N T   F U N C T I O N S
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+    /// <summary>A collection of functions with varying signatures<summary>
+    /// 
+    /// VariantFunctions can be used to store function objects with arbitrary 
+    /// signatures. These functions can then be called by using a hash key id.
+    ///
+    /// It is similar to ParameterBox. But where ParameterBox is used to store
+    /// primitive data values, VariantFunctions is used to store functions and
+    /// procedures.
+    ///
+    /// VariantFunctions can be used with any of function-like object. That 
+    /// includes function pointers, std::bind expressions, lambda functions,
+    /// std::function<> objects and other functor objects. In the case of 
+    /// lamdba expressions and functor objects, extra data associated in the 
+    /// object will be stored (and freed when the VariantFunctions object 
+    /// is destroyed).
+    ///
+    /// Callers will specify the id of the function they want to call, plus the
+    /// signature (ie, return type and argument types). Callers must get the 
+    /// signature exactly right. An incorrect signature will result in an 
+    /// exception (that is, the system is type safe, in a very strict way).
+    ///
+    /// But callers won't know what type of function object they are calling
+    /// (function pointer, std::function<>, lambda function, etc). All types of
+    /// functions work in the same way.
+    ///
+    /// <example>
+    ///     Consider the following example:
+    ///      <code>\code{.cpp}
+    ///         VariantFunctions fns;
+    ///         fns.Add(Hash64("Inc"), [](int i) { return i+1; });
+    ///             ....
+    ///         auto result = fns.Call<int>(Hash64("Inc"), 2);
+    ///     \endcode</code>
+    ///
+    ///     This will call the lamdba function, and pass "2" as the parameter.
+    ///
+    ///     Stored functions can also store captured data. Consider:
+    ///     <code>\code{.cpp}
+    ///         void Publish(std::shared_ptr<Foo> foo)
+    ///         {
+    ///             std::weak_ptr<Foo> weakPtrToFoo = foo;
+    ///             s_variantFunctions.Add(Hash64("GetFoo"), 
+    ///                 [weakPtrToFoo]() { return weakPtrToFoo.lock(); });
+    ///         }
+    ///     \endcode</code>
+    ///     
+    ///     In the above example, a std::weak_ptr is capured by the lambda.
+    ///     Its lifetime will be managed correctly; the std::weak_ptr will be 
+    ///     stored in the VariantFunctions, until the VariantFunctions object 
+    ///     is destroyed. Any type of object can be captured like this
+    ///     (including std::shared_ptr<>).
+    ///
+    ///     This means that it is possible to store arbitrarily complex data within
+    ///     a VariantFunctions instance (simply by adding "get" accessor functions 
+    //      to return that data).
+    ///
+    ///     Bind expressions also work. Consider:
+    ///     <code>\code{.cpp}
+    ///         void Foo::AddEvents(VariantFunctions& fn)
+    ///         {
+    ///             using namespace std::placeholders;
+    ///             fn.Add(Hash64("OnMouseClick"), 
+    ///                 std::bind(&Foo::OnMouseClick, shared_from_this(), _1, _2, _3));
+    ///         }
+    ///     \endcode</code>
+    ///
+    ///     Here, a class registers a pointer to its member function "OnMouseClick",
+    ///     using std::bind to bind a class instance pointer.
+    /// </example>
+    ///
+    /// <seealso cref="Utility::ParameterBox"/>
+    /// <seealso cref="Utility::MakeFunction"/>
     class VariantFunctions
     {
     public:

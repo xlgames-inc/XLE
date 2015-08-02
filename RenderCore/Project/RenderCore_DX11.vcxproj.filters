@@ -30,5 +30,6 @@
     <ClInclude Include="..\DX11\Metal\RenderTargetView.h" />
     <ClInclude Include="..\DX11\Metal\Forward.h" />
     <ClInclude Include="..\DX11\Metal\DeviceContextImpl.h" />
+    <ClInclude Include="..\DX11\Metal\Documentation.h" />
   </ItemGroup>
 </Project>

@@ -362,7 +362,7 @@ namespace BufferUploads
             /// Adds another reference count to a transaction. Useful when a 
             /// resource is getting cloned.
             /// Should be balanced with a call to Transaction_End
-            /// <seealso cref="Transaction_end"/>
+            /// <seealso cref="Transaction_End"/>
         IMETHOD void            AddRef      (TransactionID id) IPURE;
 
             /// <summary>Checks for completion</summary>
