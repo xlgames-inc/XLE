@@ -11,6 +11,7 @@
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/ChunkFile.h"
 #include "../../Assets/InvalidAssetManager.h"
+#include "../../Assets/ConfigFileContainer.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -370,77 +371,6 @@ namespace RenderCore { namespace Assets
         _initializerFilename = rawFilename;
     }
 
-    RawMaterial::RawMaterial(const ::Assets::ResChar initialiser[])
-    {
-        _splitName = RawMatSplitName(initialiser);
-        auto searchRules = ::Assets::DefaultDirectorySearchRules(_splitName._initializerFilename.c_str());
-        
-        TRY
-        {
-            size_t sourceFileSize = 0;
-            auto sourceFile = LoadFileAsMemoryBlock(_splitName._concreteFilename.c_str(), &sourceFileSize);
-            if (!sourceFile)
-                Throw(::Assets::Exceptions::InvalidAsset(initialiser, 
-                    StringMeld<128>() << "Missing or empty file: " << _splitName._concreteFilename));
-
-            InputStreamFormatter<utf8> formatter(
-                MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), sourceFileSize)));
-
-                // scan through to find the part we're interested in
-            bool settingPrimed = false;
-            StringMeld<64, utf8> hashedName;
-            hashedName << std::hex << Hash64(_splitName._settingName);
-            for (;;) {
-                using Blob = InputStreamFormatter<utf8>::Blob;
-                switch (formatter.PeekNext()) {
-                case Blob::AttributeName:
-                    {
-                        InputStreamFormatter<utf8>::InteriorSection name, value;
-                        formatter.TryAttribute(name, value);
-                        continue;
-                    }
-
-                case Blob::BeginElement:
-                    {
-                        InputStreamFormatter<utf8>::InteriorSection eleName;
-                        formatter.TryBeginElement(eleName);
-                        if (    Is(eleName, (const utf8*)_splitName._settingName.c_str())
-                            ||  Is(eleName, hashedName.get())) {
-                            settingPrimed = true;
-                            break;
-                        } else {
-                            formatter.SkipElement();
-                            formatter.TryEndElement();
-                        }
-                        continue;
-                    }
-
-                case Blob::EndElement:
-                case Blob::None:
-                    break;
-                }
-                break;
-            }
-
-            if (!settingPrimed)
-                Throw(::Assets::Exceptions::InvalidAsset(initialiser, 
-                    StringMeld<256>() << "Missing material configuration: " << _splitName._settingName));
-
-            Deserialize(formatter);
-
-            ::Assets::Services::GetInvalidAssetMan().MarkValid(initialiser);
-        } CATCH (const std::exception& e) {
-            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(initialiser, e.what());
-            throw;
-        } CATCH(...) {
-            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(initialiser, "Unknown error");
-            throw;
-        } CATCH_END
-
-        _depVal = std::make_shared<::Assets::DependencyValidation>();
-        RegisterFileDependency(_depVal, _splitName._concreteFilename.c_str());
-    }
-
     std::vector<::Assets::rstring> 
         DeserializeInheritList(InputStreamFormatter<utf8>& formatter)
     {
@@ -472,7 +402,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    void RawMaterial::Deserialize(InputStreamFormatter<utf8>& formatter)
+    RawMaterial::RawMaterial(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules&)
     {
         for (;;) {
             using Blob = InputStreamFormatter<utf8>::Blob;
@@ -516,20 +446,18 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    std::unique_ptr<RawMaterial> RawMaterial::CreateNew(const ::Assets::ResChar initialiser[])
-    {
-        auto result = std::make_unique<RawMaterial>();
-        result->_splitName = RawMatSplitName(initialiser);
-        result->_depVal = std::make_shared<::Assets::DependencyValidation>();
-        return std::move(result);
-    }
+    // std::unique_ptr<RawMaterial> RawMaterial::CreateNew(const ::Assets::ResChar initialiser[])
+    // {
+    //     auto result = std::make_unique<RawMaterial>();
+    //     result->_splitName = RawMatSplitName(initialiser);
+    //     result->_depVal = std::make_shared<::Assets::DependencyValidation>();
+    //     return std::move(result);
+    // }
 
     RawMaterial::~RawMaterial() {}
 
     void RawMaterial::Serialize(OutputStreamFormatter& formatter) const
     {
-        auto matEle = formatter.BeginElement(GetSettingName());
-
         if (!_inherit.empty()) {
             auto ele = formatter.BeginElement(u("Inherit"));
             for (auto i=_inherit.cbegin(); i!=_inherit.cend(); ++i) {
@@ -543,19 +471,19 @@ namespace RenderCore { namespace Assets
 
         {
             auto ele = formatter.BeginElement(u("ShaderParams"));
-            _matParamBox.Serialize(formatter);
+            _matParamBox.Serialize<utf8>(formatter);
             formatter.EndElement(ele);
         }
 
         {
             auto ele = formatter.BeginElement(u("Constants"));
-            _constants.Serialize(formatter);
+            _constants.Serialize<utf8>(formatter);
             formatter.EndElement(ele);
         }
 
         {
             auto ele = formatter.BeginElement(u("ResourceBindings"));
-            _resourceBindings.Serialize(formatter);
+            _resourceBindings.Serialize<utf8>(formatter);
             formatter.EndElement(ele);
         }
 
@@ -564,8 +492,6 @@ namespace RenderCore { namespace Assets
             SerializeStateSet(formatter, _stateSet);
             formatter.EndElement(ele);
         }
-
-        formatter.EndElement(matEle);
     }
 
     void RawMaterial::MergeInto(ResolvedMaterial& dest) const
@@ -630,14 +556,13 @@ namespace RenderCore { namespace Assets
         auto inheritted = ResolveInherited(searchRules);
         for (auto i=inheritted.cbegin(); i!=inheritted.cend(); ++i) {
             TRY {
-                auto& rawParams = ::Assets::GetAssetDep<RawMaterial>(i->c_str());
+                auto& rawParams = ::Assets::GetAssetDep<
+                    ::Assets::ConfigFileListContainer<RawMaterial>>(i->c_str());
 
-                ::Assets::ResChar directory[MaxPath];
-                XlDirname(directory, dimof(directory), rawParams._splitName._concreteFilename.c_str());
                 ::Assets::DirectorySearchRules newSearchRules = searchRules;
-                newSearchRules.AddSearchDirectory(directory);
+                newSearchRules.Merge(rawParams._searchRules);
 
-                rawParams.Resolve(result, newSearchRules, deps);
+                rawParams._asset.Resolve(result, newSearchRules, deps);
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
                 // we still need to add a dependency, even if it's a missing file
                 if (deps) AddDep(*deps, RawMatSplitName(i->c_str()));

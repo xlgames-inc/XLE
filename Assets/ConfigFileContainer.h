@@ -9,6 +9,7 @@
 #include "Assets.h"
 #include "InvalidAssetManager.h"
 #include "../Utility/Streams/StreamFormatter.h"
+#include "../Utility/StringFormat.h"
 #include <memory>
 
 namespace Assets
@@ -89,5 +90,108 @@ namespace Assets
 
     template<typename Type, typename Formatter> 
         ConfigFileContainer<Type, Formatter>::~ConfigFileContainer() {}
+
+
+    /// <summary>Loads a single configuration setting from a file with multiple settings</summary>
+    /// Like ConfigFileContainer, but this is for cases where we want to load a single setting
+    /// from a file that contains a list of settings.
+    /// Client should specify a configuration name after ':' in the initializer passed to the
+    /// constructor. This is compared against the root element names in the file.
+    template<typename Type, typename Formatter = InputStreamFormatter<utf8>>
+        class ConfigFileListContainer
+    {
+    public:
+        Type _asset;
+        DirectorySearchRules _searchRules;
+
+        ConfigFileListContainer(const ::Assets::ResChar initializer[]);
+        ~ConfigFileListContainer();
+
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+    protected:
+        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
+    };
+
+    template<typename Type, typename Formatter>
+        ConfigFileListContainer<Type, Formatter>::ConfigFileListContainer(const ::Assets::ResChar initializer[])
+    {
+        ::Assets::ResChar filename[MaxPath];
+        const auto* divider = XlFindChar(initializer, ':');
+        const ::Assets::ResChar* configName = "default";
+        if (divider) {
+            XlCopyNString(filename, dimof(filename), initializer, divider - initializer);
+            configName = divider+1;
+        } else {
+            XlCopyString(filename, initializer);
+        }
+
+        size_t fileSize = 0;
+        auto sourceFile = LoadFileAsMemoryBlock(filename, &fileSize);
+
+        TRY
+        {
+            _searchRules = ::Assets::DefaultDirectorySearchRules(initializer);
+
+            Formatter formatter(
+                MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
+
+            bool gotConfig = false;
+
+            // search through for the specific element we need (ignoring other elements)
+            while (!gotConfig) {
+                using Blob = Formatter::Blob;
+                switch (formatter.PeekNext()) {
+                case Blob::BeginElement:
+                    {
+                        Formatter::InteriorSection eleName;
+                        if (!formatter.TryBeginElement(eleName))
+                            Throw(FormatException("Poorly formed begin element in config file", formatter.GetLocation()));
+
+                        if (    size_t(eleName._end - eleName._start) == XlStringLen(configName)
+                            &&  XlComparePrefixI((const ::Assets::ResChar*)eleName._start, configName, size_t(eleName._end - eleName._start))) {
+
+                            _asset = Type(formatter, _searchRules);
+                            gotConfig = true;
+                        } else {
+                            formatter.SkipElement();    // skip the whole element; it's not required
+                        }
+
+                        if (!formatter.TryEndElement())
+                            Throw(FormatException("Expecting end element in config file", formatter.GetLocation()));
+
+                        continue;
+                    }
+
+                case Blob::AttributeName:
+                    {
+                        Formatter::InteriorSection name, value;
+                        formatter.TryAttribute(name, value);
+                        continue;
+                    }
+
+                default:
+                    break;
+                }
+                break;
+            }
+            
+            if (!gotConfig)
+                Throw(::Exceptions::BasicLabel(StringMeld<256>() << "Configuration setting (" << initializer << ") is missing"));
+
+            ::Assets::Services::GetInvalidAssetMan().MarkValid(initializer);
+        } CATCH (const std::exception& e) {
+            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(initializer, e.what());
+            throw;
+        } CATCH(...) {
+            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(initializer, "Unknown error");
+            throw;
+        } CATCH_END
+
+        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterFileDependency(_validationCallback, filename);
+    }
+
+    template<typename Type, typename Formatter>
+        ConfigFileListContainer<Type, Formatter>::~ConfigFileListContainer() {}
 }
 

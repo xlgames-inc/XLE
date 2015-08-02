@@ -301,54 +301,6 @@ namespace Sample
     // static const Float3 WorldOffset(-11200.f - 7000.f, -11200.f + 700.f, 0.f);
     static const Float3 WorldOffset(-100.f, -100.f, 0.f);
 
-    class EnvironmentSettingsAsset
-    {
-    public:
-        PlatformRig::EnvironmentSettings _settings;
-
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() { return _dependencyValidation; }
-
-        EnvironmentSettingsAsset(const ::Assets::ResChar initializer[]);
-        ~EnvironmentSettingsAsset();
-    protected:
-        std::shared_ptr<::Assets::DependencyValidation> _dependencyValidation;
-    };
-
-    EnvironmentSettingsAsset::EnvironmentSettingsAsset(const ::Assets::ResChar initializer[])
-    {
-        ::Assets::ResChar filename[MaxPath];
-        const auto* divider = XlFindChar(initializer, ':');
-        if (divider) {
-            XlCopyNString(filename, dimof(filename), initializer, divider - initializer);
-        } else {
-            XlCopyString(filename, initializer);
-        }
-
-        size_t fileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(filename, &fileSize);
-        using Formatter = InputStreamFormatter<utf8>;
-        Formatter formatter(
-            MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
-
-        auto allSettings = PlatformRig::DeserializeEnvSettings(formatter);
-        if (divider) {
-            auto i = std::find_if(allSettings.cbegin(), allSettings.cend(),
-                [divider](const std::pair<std::string, PlatformRig::EnvironmentSettings>& c)
-                {
-                    return XlEqString(c.first, (const char*)(divider+1));
-                });
-            if (i != allSettings.end())
-                _settings = i->second;
-        } else if (!allSettings.empty()) {
-            _settings = allSettings[0].second;
-        }
-
-        _dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterFileDependency(_dependencyValidation, filename);
-    }
-
-    EnvironmentSettingsAsset::~EnvironmentSettingsAsset() {}
-
     void EnvironmentSceneParser::FlushLoading()
     {
         #if defined(ENABLE_TERRAIN)
@@ -379,8 +331,8 @@ namespace Sample
         if (!_pimpl->_environmentCfgVal || _pimpl->_environmentCfgVal->GetValidationIndex() != 0) {
             TRY
             {
-                EnvironmentSettingsAsset asset(EnvironmentCfg);
-                _pimpl->_envSettings = asset._settings;
+                ::Assets::ConfigFileListContainer<PlatformRig::EnvironmentSettings> asset(EnvironmentCfg);
+                _pimpl->_envSettings = asset._asset;
                 _pimpl->_environmentCfgVal = asset.GetDependencyValidation();
             } CATCH(...) {
             } CATCH_END

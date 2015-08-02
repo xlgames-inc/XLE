@@ -44,6 +44,12 @@ namespace PlatformRig
         SceneEngine::VolumetricFogConfig::Renderer _volFogRenderer;
         SceneEngine::OceanLightingSettings _oceanLighting;
         SceneEngine::DeepOceanSimSettings _deepOceanSim;
+        
+        EnvironmentSettings();
+        EnvironmentSettings(
+            InputStreamFormatter<utf8>& formatter,
+            const ::Assets::DirectorySearchRules&);
+        ~EnvironmentSettings();
     };
 
     /// <summary>Simple & partial implementation of the ISceneParser interface<summary>
@@ -70,8 +76,5 @@ namespace PlatformRig
     SceneEngine::LightDesc DefaultDominantLight();
     SceneEngine::GlobalLightingDesc DefaultGlobalLightingDesc();
     EnvironmentSettings DefaultEnvironmentSettings();
-
-    std::vector<std::pair<std::string, PlatformRig::EnvironmentSettings>> 
-        DeserializeEnvSettings(Utility::InputStreamFormatter<utf8>& formatter);
 }
 

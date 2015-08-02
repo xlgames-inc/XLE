@@ -145,15 +145,12 @@ namespace PlatformRig
         static const auto Name = ParameterBox::MakeParameterNameHash("Name");
     }
 
-    std::pair<std::string, PlatformRig::EnvironmentSettings> DeserializeSingleSettings(InputStreamFormatter<utf8>& formatter)
+    EnvironmentSettings::EnvironmentSettings(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules&)
     {
         using namespace SceneEngine;
-        using namespace PlatformRig;
 
-        std::string resultName;
-        PlatformRig::EnvironmentSettings result;
-        result._globalLightingDesc = DefaultGlobalLightingDesc();
-        result._toneMapSettings = DefaultToneMapSettings();
+        _globalLightingDesc = DefaultGlobalLightingDesc();
+        _toneMapSettings = DefaultToneMapSettings();
 
         std::vector<std::pair<uint64, DefaultShadowFrustumSettings>> shadowSettings;
         std::vector<uint64> lightFrustumLink;
@@ -169,16 +166,16 @@ namespace PlatformRig
                     if (!formatter.TryBeginElement(name)) break;
 
                     if (!XlComparePrefix(EntityTypeName::AmbientSettings, name._start, name._end - name._start)) {
-                        result._globalLightingDesc = GlobalLightingDesc(ParameterBox(formatter));
+                        _globalLightingDesc = GlobalLightingDesc(ParameterBox(formatter));
                     } else if (!XlComparePrefix(EntityTypeName::ToneMapSettings, name._start, name._end - name._start)) {
-                        result._toneMapSettings = ToneMapSettings(ParameterBox(formatter));
+                        _toneMapSettings = ToneMapSettings(ParameterBox(formatter));
                     } else if (!XlComparePrefix(EntityTypeName::DirectionalLight, name._start, name._end - name._start)) {
 
                         ParameterBox params(formatter);
                         SceneEngine::LightDesc lightDesc(params);
                         Fixup(lightDesc, params);
 
-                        result._lights.push_back(lightDesc);
+                        _lights.push_back(lightDesc);
 
                         uint64 frustumLink = 0;
                         if (params.GetParameter(Attribute::Flags, 0u) & (1<<0)) {
@@ -202,11 +199,11 @@ namespace PlatformRig
                         }
 
                     } else if (!XlComparePrefix(EntityTypeName::OceanLightingSettings, name._start, name._end - name._start)) {
-                        result._oceanLighting = OceanLightingSettings(ParameterBox(formatter));
+                        _oceanLighting = OceanLightingSettings(ParameterBox(formatter));
                     } else if (!XlComparePrefix(EntityTypeName::OceanSettings, name._start, name._end - name._start)) {
-                        result._deepOceanSim = DeepOceanSimSettings(ParameterBox(formatter));
+                        _deepOceanSim = DeepOceanSimSettings(ParameterBox(formatter));
                     } else if (!XlComparePrefix(EntityTypeName::FogVolumeRenderer, name._start, name._end - name._start)) {
-                        result._volFogRenderer = VolumetricFogConfig::Renderer(formatter);
+                        _volFogRenderer = VolumetricFogConfig::Renderer(formatter);
                     } else
                         formatter.SkipElement();
                     
@@ -218,9 +215,9 @@ namespace PlatformRig
                 {
                     InputStreamFormatter<utf8>::InteriorSection name, value;
                     formatter.TryAttribute(name, value);
-                    if (XlEqString(std::basic_string<utf8>(name._start, name._end), u("Name"))) {
-                        resultName = Conversion::Convert<std::string>(std::basic_string<utf8>(value._start, value._end));
-                    }
+                    // if (XlEqString(std::basic_string<utf8>(name._start, name._end), u("Name"))) {
+                    //     _name = Conversion::Convert<std::string>(std::basic_string<utf8>(value._start, value._end));
+                    // }
                     break;
                 }
 
@@ -233,16 +230,17 @@ namespace PlatformRig
         for (unsigned c=0; c<lightFrustumLink.size(); ++c) {
             auto f = LowerBound(shadowSettings, lightFrustumLink[c]);
             if (f != shadowSettings.end() && f->first == lightFrustumLink[c]) {
-                result._lights[c]._shadowFrustumIndex = (unsigned)result._shadowProj.size();
-                result._shadowProj.push_back(
-                    EnvironmentSettings::ShadowProj { result._lights[c], f->second });
+                _lights[c]._shadowFrustumIndex = (unsigned)_shadowProj.size();
+                _shadowProj.push_back(
+                    EnvironmentSettings::ShadowProj { _lights[c], f->second });
             }
         }
-
-        return std::make_pair(resultName, std::move(result));
     }
 
-    std::vector<std::pair<std::string, PlatformRig::EnvironmentSettings>> 
+    EnvironmentSettings::EnvironmentSettings() {}
+    EnvironmentSettings::~EnvironmentSettings() {}
+
+    /*std::vector<std::pair<std::string, PlatformRig::EnvironmentSettings>> 
         DeserializeEnvSettings(InputStreamFormatter<utf8>& formatter)
     {
         std::vector<std::pair<std::string, PlatformRig::EnvironmentSettings>> result;
@@ -263,5 +261,5 @@ namespace PlatformRig
                 return std::move(result);
             }
         }
-    }
+    }*/
 }

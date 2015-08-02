@@ -140,6 +140,21 @@ namespace EntityInterface
     }
 
     template<typename CharType>
+        void SerializeBody(
+            OutputStreamFormatter& formatter,
+            const RetainedEntity& obj,
+            const RetainedEntities& entities)
+    {
+        obj._properties.Serialize<CharType>(formatter);
+
+        for (auto c=obj._children.cbegin(); c!=obj._children.cend(); ++c) {
+            const auto* child = entities.GetEntity(obj._doc, *c);
+            if (child)
+                Serialize<CharType>(formatter, *child, entities);
+        }
+    }
+
+    template<typename CharType>
         void Serialize(
             OutputStreamFormatter& formatter,
             const RetainedEntity& obj,
@@ -148,14 +163,7 @@ namespace EntityInterface
         auto name = Conversion::Convert<std::basic_string<CharType>>(entities.GetTypeName(obj._type));
         auto eleId = formatter.BeginElement(AsPointer(name.cbegin()), AsPointer(name.cend()));
         if (!obj._children.empty()) formatter.NewLine();    // properties can continue on the same line, but only if we don't have children
-        obj._properties.Serialize<CharType>(formatter);
-
-        for (auto c=obj._children.cbegin(); c!=obj._children.cend(); ++c) {
-            const auto* child = entities.GetEntity(obj._doc, *c);
-            if (child)
-                Serialize<CharType>(formatter, *child, entities);
-        }
-
+        SerializeBody<CharType>(formatter, obj, entities);
         formatter.EndElement(eleId);
     }
 
@@ -183,7 +191,14 @@ namespace EntityInterface
         bool foundAtLeastOne = false;
         for (const auto& s : allSettings)
             if (s->_doc == docId) {
-                Serialize<utf8>(formatter, *s, flexGobInterface);
+                {
+                    auto name = s->_properties.GetString<utf8>(Attribute::Name);
+                    auto eleId = formatter.BeginElement(AsPointer(name.cbegin()), AsPointer(name.cend()));
+                    formatter.NewLine();
+                    SerializeBody<utf8>(formatter, *s, flexGobInterface);
+                    formatter.EndElement(eleId);
+                }
+
                 foundAtLeastOne = true;
             }
         

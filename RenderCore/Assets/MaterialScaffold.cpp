@@ -12,6 +12,7 @@
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/ChunkFile.h"
 #include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/ConfigFileContainer.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -134,8 +135,8 @@ namespace RenderCore { namespace Assets
             TRY {
                     // resolve in model:configuration
                 resName << sourceModel << ":" << *i;
-                auto& rawMat = ::Assets::GetAssetDep<RawMaterial>((Meld() << modelMat._rawModelMaterial << ":" << *i).get());
-                rawMat.Resolve(resMat, searchRules, &deps);
+                auto& rawMat = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<RawMaterial>>((Meld() << modelMat._rawModelMaterial << ":" << *i).get());
+                rawMat._asset.Resolve(resMat, searchRules, &deps);
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
                 AddDep(deps, modelMat._rawModelMaterial);        // we need need a dependency (even if it's a missing file)
             } CATCH_END
@@ -144,8 +145,8 @@ namespace RenderCore { namespace Assets
                     // resolve in material:*
                 Meld meld; meld << resolvedSourceMaterial << ":*";
                 resName << ";" << meld;
-                auto& rawMat = ::Assets::GetAssetDep<RawMaterial>(meld.get());
-                rawMat.Resolve(resMat, searchRules, &deps);
+                auto& rawMat = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<RawMaterial>>(meld.get());
+                rawMat._asset.Resolve(resMat, searchRules, &deps);
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
                 AddDep(deps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
             } CATCH_END
@@ -154,8 +155,8 @@ namespace RenderCore { namespace Assets
                     // resolve in material:configuration
                 Meld meld; meld << resolvedSourceMaterial << ":" << *i;
                 resName << ";" << meld;
-                auto& rawMat = ::Assets::GetAssetDep<RawMaterial>(meld.get());
-                rawMat.Resolve(resMat, searchRules, &deps);
+                auto& rawMat = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<RawMaterial>>(meld.get());
+                rawMat._asset.Resolve(resMat, searchRules, &deps);
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
                 AddDep(deps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
             } CATCH_END

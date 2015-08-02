@@ -300,6 +300,20 @@ namespace Assets
             XlCopyString(destination, destinationCount, baseName);
     }
 
+    void DirectorySearchRules::Merge(const DirectorySearchRules& mergeFrom)
+    {
+            // Merge in the settings from the given search rules (if the directories
+            // don't already exist here)
+            // We should really do a better job of comparing directories. Where strings
+            // resolve to the same directory, we should consider them identical
+        const ResChar* b = mergeFrom._buffer;
+        if (!mergeFrom._bufferOverflow.empty())
+            b = AsPointer(mergeFrom._bufferOverflow.begin());
+
+        for (unsigned c=0; c<mergeFrom._startPointCount; ++c)
+            AddSearchDirectory(&b[mergeFrom._startOffsets[c]]);
+    }
+
     const ResChar* DirectorySearchRules::GetFirstSearchDir() const { return _buffer; }
 
     DirectorySearchRules::DirectorySearchRules()

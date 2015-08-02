@@ -27,6 +27,8 @@ namespace Assets
 
         const ResChar* GetFirstSearchDir() const;
 
+        void Merge(const DirectorySearchRules& mergeFrom);
+
         DirectorySearchRules();
         DirectorySearchRules(const DirectorySearchRules&);
         DirectorySearchRules& operator=(const DirectorySearchRules&);
