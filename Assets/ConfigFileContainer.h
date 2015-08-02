@@ -9,6 +9,7 @@
 #include "Assets.h"
 #include "InvalidAssetManager.h"
 #include "../Utility/Streams/StreamFormatter.h"
+#include "../Utility/Streams/FileUtils.h"
 #include "../Utility/StringFormat.h"
 #include <memory>
 
@@ -105,7 +106,10 @@ namespace Assets
         DirectorySearchRules _searchRules;
 
         ConfigFileListContainer(const ::Assets::ResChar initializer[]);
+        ConfigFileListContainer();
         ~ConfigFileListContainer();
+
+        static std::unique_ptr<ConfigFileListContainer> CreateNew(const ::Assets::ResChar initialiser[]);
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
     protected:
@@ -145,10 +149,10 @@ namespace Assets
                     {
                         Formatter::InteriorSection eleName;
                         if (!formatter.TryBeginElement(eleName))
-                            Throw(FormatException("Poorly formed begin element in config file", formatter.GetLocation()));
+                            Throw(Utility::FormatException("Poorly formed begin element in config file", formatter.GetLocation()));
 
                         if (    size_t(eleName._end - eleName._start) == XlStringLen(configName)
-                            &&  XlComparePrefixI((const ::Assets::ResChar*)eleName._start, configName, size_t(eleName._end - eleName._start))) {
+                            &&  !XlComparePrefixI((const ::Assets::ResChar*)eleName._start, configName, size_t(eleName._end - eleName._start))) {
 
                             _asset = Type(formatter, _searchRules);
                             gotConfig = true;
@@ -157,7 +161,7 @@ namespace Assets
                         }
 
                         if (!formatter.TryEndElement())
-                            Throw(FormatException("Expecting end element in config file", formatter.GetLocation()));
+                            Throw(Utility::FormatException("Expecting end element in config file", formatter.GetLocation()));
 
                         continue;
                     }
@@ -175,8 +179,9 @@ namespace Assets
                 break;
             }
             
-            if (!gotConfig)
-                Throw(::Exceptions::BasicLabel(StringMeld<256>() << "Configuration setting (" << initializer << ") is missing"));
+            //      Missing entry isn't an exception... just return the defaults
+            // if (!gotConfig)
+            //     Throw(::Exceptions::BasicLabel(StringMeld<256>() << "Configuration setting (" << initializer << ") is missing"));
 
             ::Assets::Services::GetInvalidAssetMan().MarkValid(initializer);
         } CATCH (const std::exception& e) {
@@ -192,6 +197,15 @@ namespace Assets
     }
 
     template<typename Type, typename Formatter>
+        ConfigFileListContainer<Type, Formatter>::ConfigFileListContainer() {}
+
+    template<typename Type, typename Formatter>
         ConfigFileListContainer<Type, Formatter>::~ConfigFileListContainer() {}
+
+    template<typename Type, typename Formatter>
+        auto ConfigFileListContainer<Type, Formatter>::CreateNew(const ::Assets::ResChar initialiser[]) -> std::unique_ptr < ConfigFileListContainer >
+        {
+            return std::make_unique<ConfigFileListContainer>();
+        }
 }
 

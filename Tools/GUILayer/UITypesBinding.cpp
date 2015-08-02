@@ -18,8 +18,9 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/InvalidAssetManager.h"
+#include "../../Assets/ConfigFileContainer.h"
 #include "../../Utility/StringFormat.h"
-#include <msclr\auto_gcroot.h>
+#include <msclr/auto_gcroot.h>
 #include <iomanip>
 
 namespace Assets
@@ -263,7 +264,7 @@ namespace GUILayer
     {
         if (!_underlying) { return nullptr; }
         if (!_materialParameterBox) {
-            _materialParameterBox = BindingConv::AsBindingList(_underlying->GetAsset()._matParamBox);
+            _materialParameterBox = BindingConv::AsBindingList(_underlying->GetAsset()._asset._matParamBox);
             _materialParameterBox->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ParameterBox_Changed);
@@ -278,7 +279,7 @@ namespace GUILayer
     {
         if (!_underlying) { return nullptr; }
         if (!_shaderConstants) {
-            _shaderConstants = BindingConv::AsBindingList(_underlying->GetAsset()._constants);
+            _shaderConstants = BindingConv::AsBindingList(_underlying->GetAsset()._asset._constants);
             _shaderConstants->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ParameterBox_Changed);
@@ -293,7 +294,7 @@ namespace GUILayer
     {
         if (!_underlying) { return nullptr; }
         if (!_resourceBindings) {
-            _resourceBindings = BindingConv::AsBindingList(_underlying->GetAsset()._resourceBindings);
+            _resourceBindings = BindingConv::AsBindingList(_underlying->GetAsset()._asset._resourceBindings);
             _resourceBindings->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ResourceBinding_Changed);
@@ -329,13 +330,13 @@ namespace GUILayer
             if (obj == _materialParameterBox) {
                 auto transaction = _underlying->Transaction_Begin("Material parameter");
                 if (transaction) {
-                    transaction->GetAsset()._matParamBox = BindingConv::AsParameterBox(_materialParameterBox);
+                    transaction->GetAsset()._asset._matParamBox = BindingConv::AsParameterBox(_materialParameterBox);
                     transaction->Commit();
                 }
             } else if (obj == _shaderConstants) {
                 auto transaction = _underlying->Transaction_Begin("Material constant");
                 if (transaction) {
-                    transaction->GetAsset()._constants = BindingConv::AsParameterBox(_shaderConstants);
+                    transaction->GetAsset()._asset._constants = BindingConv::AsParameterBox(_shaderConstants);
                     transaction->Commit();
                 }
             }
@@ -361,7 +362,7 @@ namespace GUILayer
             assert(obj == _resourceBindings);
             auto transaction = _underlying->Transaction_Begin("Resource Binding");
             if (transaction) {
-                transaction->GetAsset()._resourceBindings = BindingConv::AsParameterBox(_resourceBindings);
+                transaction->GetAsset()._asset._resourceBindings = BindingConv::AsParameterBox(_resourceBindings);
                 transaction->Commit();
             }
         }
@@ -375,9 +376,9 @@ namespace GUILayer
 
             auto& asset = _underlying->GetAsset();
             auto searchRules = ::Assets::DefaultDirectorySearchRules(
-                asset.GetInitializerFilename().c_str());
+                clix::marshalString<clix::E_UTF8>(_filename).c_str());
             
-            auto inheritted = asset.ResolveInherited(searchRules);
+            auto inheritted = asset._asset.ResolveInherited(searchRules);
             for (auto i = inheritted.cbegin(); i != inheritted.cend(); ++i) {
                 result->Add(clix::marshalString<clix::E_UTF8>(*i));
             }
@@ -394,35 +395,43 @@ namespace GUILayer
         return result;
     }
 
-    System::String^ RawMaterial::Filename::get()
-    {
-        return clix::marshalString<clix::E_UTF8>(_underlying->GetAsset().GetInitializerFilename());
-    }
+    System::String^ RawMaterial::Filename::get() { return _filename; }
+    System::String^ RawMaterial::SettingName::get() { return _settingName; }
 
-    System::String^ RawMaterial::SettingName::get()
-    {
-        return clix::marshalString<clix::E_UTF8>(_underlying->GetAsset().GetSettingName());
+    const RenderCore::Assets::RawMaterial* RawMaterial::GetUnderlying() 
+    { 
+        return (!!_underlying) ? &_underlying->GetAsset()._asset : nullptr; 
     }
 
     RawMaterial::RawMaterial(System::String^ initialiser)
     {
         auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
-        auto& source = ::Assets::GetDivergentAsset<RenderCore::Assets::RawMaterial>(nativeInit.c_str());
+        auto& source = ::Assets::GetDivergentAsset<
+            ::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial>>(nativeInit.c_str());
         _underlying = source;
+
+        RenderCore::Assets::RawMaterial::RawMatSplitName splitName(nativeInit.c_str());
+        _filename = clix::marshalString<clix::E_UTF8>(splitName._concreteFilename);
+        _settingName = clix::marshalString<clix::E_UTF8>(splitName._settingName);
+
         _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
     }
 
-    RawMaterial::RawMaterial(
-        std::shared_ptr<NativeConfig> underlying)
-    {
-        _underlying = std::move(underlying);
-        _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
-    }
+    // RawMaterial::RawMaterial(
+    //     std::shared_ptr<NativeConfig> underlying)
+    // {
+    //     _underlying = std::move(underlying);
+    //     _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
+    //     _filename = "unknown";
+    //     _settingName = "unknown";
+    // }
 
     RawMaterial::RawMaterial(RawMaterial^ cloneFrom)
     {
         _underlying = cloneFrom->_underlying;
         _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
+        _filename = cloneFrom->_filename;
+        _settingName = cloneFrom->_filename;
     }
 
     RawMaterial::~RawMaterial()
@@ -435,7 +444,7 @@ namespace GUILayer
 
     auto RenderStateSet::DoubleSided::get() -> CheckState
     {
-        auto& stateSet = _underlying->GetAsset()._stateSet;
+        auto& stateSet = _underlying->GetAsset()._asset._stateSet;
         if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::DoubleSided) {
             if (stateSet._doubleSided) return CheckState::Checked;
             else return CheckState::Unchecked;
@@ -446,7 +455,7 @@ namespace GUILayer
     void RenderStateSet::DoubleSided::set(CheckState checkState)
     {
         auto transaction = _underlying->Transaction_Begin("RenderState");
-        auto& stateSet = transaction->GetAsset()._stateSet;
+        auto& stateSet = transaction->GetAsset()._asset._stateSet;
         if (checkState == CheckState::Indeterminate) {
             stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::DoubleSided;
         } else {
@@ -459,7 +468,7 @@ namespace GUILayer
 
     CheckState RenderStateSet::Wireframe::get()
     {
-        auto& stateSet = _underlying->GetAsset()._stateSet;
+        auto& stateSet = _underlying->GetAsset()._asset._stateSet;
         if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::Wireframe) {
             if (stateSet._wireframe) return CheckState::Checked;
             else return CheckState::Unchecked;
@@ -470,7 +479,7 @@ namespace GUILayer
     void RenderStateSet::Wireframe::set(CheckState checkState)
     {
         auto transaction = _underlying->Transaction_Begin("RenderState");
-        auto& stateSet = transaction->GetAsset()._stateSet;
+        auto& stateSet = transaction->GetAsset()._asset._stateSet;
         if (checkState == CheckState::Indeterminate) {
             stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::Wireframe;
         } else {
@@ -556,7 +565,7 @@ namespace GUILayer
     auto RenderStateSet::StandardBlendMode::get() -> StandardBlendModes
     {
         const auto& underlying = _underlying->GetAsset();
-        return AsStandardBlendMode(underlying._stateSet);
+        return AsStandardBlendMode(underlying._asset._stateSet);
     }
     
     void RenderStateSet::StandardBlendMode::set(StandardBlendModes newMode)
@@ -566,7 +575,7 @@ namespace GUILayer
 
         if (newMode == StandardBlendModes::Inherit) {
             auto transaction = _underlying->Transaction_Begin("RenderState");
-            auto& stateSet = transaction->GetAsset()._stateSet;
+            auto& stateSet = transaction->GetAsset()._asset._stateSet;
             stateSet._forwardBlendOp = BlendOp::NoBlending;
             stateSet._forwardBlendSrc = One;
             stateSet._forwardBlendDst = RenderCore::Metal::Blend::Zero;
@@ -581,7 +590,7 @@ namespace GUILayer
         for (unsigned c=0; c<dimof(s_standardBlendDefs); ++c)
             if (s_standardBlendDefs[c]._standardMode == newMode) {
                 auto transaction = _underlying->Transaction_Begin("RenderState");
-                auto& stateSet = transaction->GetAsset()._stateSet;
+                auto& stateSet = transaction->GetAsset()._asset._stateSet;
 
                 stateSet._forwardBlendOp = s_standardBlendDefs[c]._op;
                 stateSet._forwardBlendSrc = s_standardBlendDefs[c]._src;
@@ -601,7 +610,7 @@ namespace GUILayer
             }
     }
 
-    RenderStateSet::RenderStateSet(std::shared_ptr<::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>> underlying)
+    RenderStateSet::RenderStateSet(std::shared_ptr<NativeConfig> underlying)
     {
         _underlying = std::move(underlying);
         _propertyChangedContext = System::Threading::SynchronizationContext::Current;

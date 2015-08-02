@@ -17,9 +17,11 @@
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
-#include "../../Utility/Streams/Data.h"
+#include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/ExceptionLogging.h"
+#include "../../Utility/Conversion.h"
 
 namespace RenderCore { extern char VersionString[]; extern char BuildDateString[]; }
 
@@ -31,13 +33,13 @@ namespace RenderCore { namespace Assets
     class RawMatConfigurations
     {
     public:
-        SerializableVector<std::string> _configurations;
+        SerializableVector<std::basic_string<utf8>> _configurations;
         ::Assets::ResChar _rawModelMaterial[MaxPath];
 
-        RawMatConfigurations(const char sourceModel[]);
+        RawMatConfigurations(const ::Assets::ResChar sourceModel[]);
     };
 
-    RawMatConfigurations::RawMatConfigurations(const char sourceModel[])
+    RawMatConfigurations::RawMatConfigurations(const ::Assets::ResChar sourceModel[])
     {
             //  get associated "raw" material information. This is should contain the material information attached
             //  to the geometry export (eg, .dae file). Note -- maybe the name of the raw file should come
@@ -55,12 +57,14 @@ namespace RenderCore { namespace Assets
                 Throw(::Assets::Exceptions::InvalidAsset(sourceModel, 
                     StringMeld<128>() << "Missing or empty file: " << _rawModelMaterial));
 
-            Data data;
-            data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
-
-            for (auto config=data.child; config; config=config->next) {
-                if (!config->value) continue;
-                _configurations.push_back(config->value);
+            InputStreamFormatter<utf8> formatter(
+                MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), sourceFileSize)));
+            Document<decltype(formatter)> doc(formatter);
+            
+            for (auto config=doc.FirstChild(); config; config=config.NextSibling()) {
+                auto name = config.Name();
+                if (name.empty()) continue;
+                _configurations.push_back(name);
             }
         }
     }
@@ -134,32 +138,35 @@ namespace RenderCore { namespace Assets
 
             TRY {
                     // resolve in model:configuration
-                resName << sourceModel << ":" << *i;
-                auto& rawMat = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<RawMaterial>>((Meld() << modelMat._rawModelMaterial << ":" << *i).get());
+                auto configName = Conversion::Convert<::Assets::rstring>(*i);
+                resName << sourceModel << ":" << configName;
+                auto& rawMat = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<RawMaterial>>((Meld() << modelMat._rawModelMaterial << ":" << configName).get());
                 rawMat._asset.Resolve(resMat, searchRules, &deps);
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
                 AddDep(deps, modelMat._rawModelMaterial);        // we need need a dependency (even if it's a missing file)
             } CATCH_END
 
-            TRY {
-                    // resolve in material:*
-                Meld meld; meld << resolvedSourceMaterial << ":*";
-                resName << ";" << meld;
-                auto& rawMat = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<RawMaterial>>(meld.get());
-                rawMat._asset.Resolve(resMat, searchRules, &deps);
-            } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
-                AddDep(deps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
-            } CATCH_END
+            if (resolvedSourceMaterial[0] != '\0') {
+                TRY {
+                        // resolve in material:*
+                    Meld meld; meld << resolvedSourceMaterial << ":*";
+                    resName << ";" << meld;
+                    auto& rawMat = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<RawMaterial>>(meld.get());
+                    rawMat._asset.Resolve(resMat, searchRules, &deps);
+                } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
+                    AddDep(deps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
+                } CATCH_END
 
-            TRY {
-                    // resolve in material:configuration
-                Meld meld; meld << resolvedSourceMaterial << ":" << *i;
-                resName << ";" << meld;
-                auto& rawMat = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<RawMaterial>>(meld.get());
-                rawMat._asset.Resolve(resMat, searchRules, &deps);
-            } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
-                AddDep(deps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
-            } CATCH_END
+                TRY {
+                        // resolve in material:configuration
+                    Meld meld; meld << resolvedSourceMaterial << ":" << Conversion::Convert<::Assets::rstring>(*i);
+                    resName << ";" << meld;
+                    auto& rawMat = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<RawMaterial>>(meld.get());
+                    rawMat._asset.Resolve(resMat, searchRules, &deps);
+                } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
+                    AddDep(deps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
+                } CATCH_END
+            }
 
             resolved.push_back(std::make_pair(guid, std::move(resMat)));
             resolvedNames.push_back(std::make_pair(guid, resName.str()));

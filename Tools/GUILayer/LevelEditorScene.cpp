@@ -29,7 +29,6 @@
 #include "../../SceneEngine/VegetationSpawn.h"
 #include "../../SceneEngine/VolumetricFog.h"
 #include "../../SceneEngine/ShallowSurface.h"
-#include "../../Utility/Streams/Data.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"

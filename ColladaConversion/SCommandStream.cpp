@@ -165,8 +165,7 @@ namespace RenderCore { namespace ColladaConversion
                     const auto* mat = file->FindMaterial(ref._id);
                     if (mat) {
                         newMaterialGuid = 
-                            RenderCore::Assets::MakeMaterialGuid(
-                                (const char*)mat->_name._start, (const char*)mat->_name._end);
+                            RenderCore::Assets::MakeMaterialGuid(mat->_name._start, mat->_name._end);
                     }
                 }
 

@@ -20,6 +20,11 @@ using namespace System::Drawing::Design;
 using namespace System::Collections::Generic;
 
 namespace RenderCore { namespace Assets { class RawMaterial; class RenderStateSet; }}
+namespace Assets
+{
+    template<typename Type, typename Formatter>
+        class ConfigFileListContainer;
+}
 
 namespace GUILayer
 {
@@ -314,7 +319,8 @@ namespace GUILayer
 
         virtual event System::ComponentModel::PropertyChangedEventHandler^ PropertyChanged;
 
-        RenderStateSet(std::shared_ptr<::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>> underlying);
+        using NativeConfig = ::Assets::DivergentAsset<::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial, InputStreamFormatter<utf8>>>;
+        RenderStateSet(std::shared_ptr<NativeConfig> underlying);
         ~RenderStateSet();
 
         !RenderStateSet()
@@ -322,7 +328,7 @@ namespace GUILayer
             System::Diagnostics::Debug::Assert(false, "Non deterministic delete of RenderStateSet");
         }
     protected:
-        clix::shared_ptr<::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>> _underlying;
+        clix::shared_ptr<NativeConfig> _underlying;
 
         void NotifyPropertyChanged(/*[CallerMemberName]*/ String^ propertyName);
         System::Threading::SynchronizationContext^ _propertyChangedContext;
@@ -331,7 +337,6 @@ namespace GUILayer
     public ref class RawMaterial
     {
     public:
-        using NativeConfig = ::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>;
         property BindingList<StringStringPair^>^ MaterialParameterBox {
             BindingList<StringStringPair^>^ get();
         }
@@ -348,7 +353,7 @@ namespace GUILayer
 
         property RenderStateSet^ StateSet { RenderStateSet^ get() { return _renderStateSet; } }
 
-        const RenderCore::Assets::RawMaterial* GetUnderlying() { return (!!_underlying) ? &_underlying->GetAsset() : nullptr; }
+        const RenderCore::Assets::RawMaterial* GetUnderlying();
 
         List<String^>^ BuildInheritanceList();
         static List<String^>^ BuildInheritanceList(String^ topMost);
@@ -357,7 +362,7 @@ namespace GUILayer
         property String^ SettingName { String^ get(); }
 
         RawMaterial(String^ initialiser);
-        RawMaterial(std::shared_ptr<NativeConfig> underlying);
+        // RawMaterial(std::shared_ptr<NativeConfig> underlying);
         RawMaterial(RawMaterial^ cloneFrom);
         ~RawMaterial();
 
@@ -366,12 +371,16 @@ namespace GUILayer
             System::Diagnostics::Debug::Assert(false, "Non deterministic delete of RawMaterial");
         }
     protected:
+        using NativeConfig = ::Assets::DivergentAsset<::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial, InputStreamFormatter<utf8>>>;
         clix::shared_ptr<NativeConfig> _underlying;
+
         RenderStateSet^ _renderStateSet;
 
         BindingList<StringStringPair^>^ _materialParameterBox;
         BindingList<StringStringPair^>^ _shaderConstants;
         BindingList<StringStringPair^>^ _resourceBindings;
+        String^ _filename;
+        String^ _settingName;
         void ParameterBox_Changed(System::Object^, ListChangedEventArgs^);
         void ResourceBinding_Changed(System::Object^, ListChangedEventArgs^);
     };

@@ -49,7 +49,7 @@ namespace GUILayer
         
         if (_config) {
             for each(auto c in _config)
-                searchRules.AddSearchDirectoryFromFilename(c->GetUnderlying()->GetInitializerFilename().c_str());
+                searchRules.AddSearchDirectoryFromFilename(clix::marshalString<clix::E_UTF8>(c->Filename).c_str());
 
             for each(auto c in _config)
                 c->GetUnderlying()->Resolve(resMat, searchRules);

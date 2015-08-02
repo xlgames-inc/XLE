@@ -57,6 +57,8 @@ namespace Exceptions
 
     inline BasicLabel::BasicLabel() never_throws { _buffer[0] = '\0'; }
 
+#pragma warning(push)
+#pragma warning(disable:4793)       // 'Exceptions::BasicLabel::BasicLabel' : function compiled as native :
     inline BasicLabel::BasicLabel(const char format[], ...) never_throws
     {
         va_list args;
@@ -69,6 +71,7 @@ namespace Exceptions
     {
         _vsnprintf_s(_buffer, _TRUNCATE, format, args);
     }
+#pragma warning(pop)
 
     inline BasicLabel::BasicLabel(const BasicLabel& copyFrom) never_throws
     {
