@@ -15,6 +15,7 @@
 #include "../Utility/SystemUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/StringUtils.h"
+#include "../Utility/MemoryUtils.h"
 #include <assert.h>
 #include <random>
 
@@ -34,11 +35,9 @@ namespace ConsoleRig
         nchar_t workingDir  [MaxPath];
 
         XlGetProcessPath    (appPath, dimof(appPath));
-        XlSimplifyPath      (appPath, dimof(appPath), appPath, a2n("\\/"));
         XlDirname           (appDir, dimof(appDir), appPath);
         const auto* fn = a2n("..\\Working");
         XlConcatPath        (workingDir, dimof(workingDir), appDir, fn, &fn[XlStringLen(fn)]);
-        XlSimplifyPath      (workingDir, dimof(workingDir), workingDir, a2n("\\/"));
         XlChDir             (workingDir);
     }
 

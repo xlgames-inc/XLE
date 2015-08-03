@@ -248,6 +248,7 @@ namespace Assets
             for (unsigned c=0; c<_startPointCount; ++c) {
                 XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], baseName, colon);
                 if (DoesFileExist(workingBuffer)) {
+                    SplitPath<ResChar>(workingBuffer).Rebuild(workingBuffer, workingBufferSize);
                     if (workingBuffer != destination) {
                         auto workingBufferLen = std::min((ptrdiff_t)XlStringLen(workingBuffer), ptrdiff_t(destinationCount) - 1);
                         auto colonLen = (ptrdiff_t)XlStringLen(colon);
@@ -268,6 +269,7 @@ namespace Assets
 
         if (baseName != destination)
             XlCopyString(destination, destinationCount, baseName);
+        SplitPath<ResChar>(destination).Rebuild(destination, destinationCount);
     }
 
     void DirectorySearchRules::ResolveDirectory(

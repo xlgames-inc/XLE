@@ -626,15 +626,19 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 
         if (!_drive.Empty()) {
             auto*s = _drive._start;
-            while (s!=_drive._end && i!=iend)
+            while (s!=_drive._end && i!=iend) {
+                if (s >= dest && s < iend) assert(s>=i);   // check for reading&writing from the same place
                 *i++ = ConvertPathChar(*s++, rules);
+            }
             if (i!=iend) *i++ = ':';
         }
 
         for (auto e=_sections.cbegin();;) {
             auto*s = e->_start;
-            while (s!=e->_end && i!=iend)
+            while (s!=e->_end && i!=iend) {
+                if (s >= dest && s < iend) assert(s>=i);   // check for reading&writing from the same place
                 *i++ = ConvertPathChar(*s++, rules);
+            }
 
             ++e;
             if (e==_sections.cend() || i == iend) break;
@@ -692,12 +696,6 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 	, _endsInSeparator(endsInSeparator)
     , _drive(drive)
 	{}
-
-    TC SplitPath<CharType>::SplitPath(const FileNameSplitter<CharType>& splitter)
-        : SplitPath(splitter.Path())
-    {
-        _drive = splitter.Drive();
-    }
 
     TC SplitPath<CharType>::~SplitPath() {}
 

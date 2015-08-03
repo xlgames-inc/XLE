@@ -51,7 +51,6 @@ namespace Utility
 
         FilenameRules(char separator, bool isCaseSensitive)
             : _separator(separator), _isCaseSensitive(isCaseSensitive) {}
-        ~FilenameRules();
     protected:
         char _separator;
         bool _isCaseSensitive;

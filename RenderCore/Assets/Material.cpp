@@ -337,8 +337,6 @@ namespace RenderCore { namespace Assets
         if (!XlExtension(resolvedFile))
             XlCatString(resolvedFile, resolvedFileCount, ".material");
         searchRules.ResolveFile(resolvedFile, resolvedFileCount, resolvedFile);
-        XlNormalizePath(resolvedFile, resolvedFileCount, resolvedFile);
-        XlSimplifyPath(resolvedFile, resolvedFileCount, resolvedFile, "\\/");
     }
 
     uint64 MakeMaterialGuid(const utf8* nameStart, const utf8* nameEnd)
@@ -445,14 +443,6 @@ namespace RenderCore { namespace Assets
             }
         }
     }
-
-    // std::unique_ptr<RawMaterial> RawMaterial::CreateNew(const ::Assets::ResChar initialiser[])
-    // {
-    //     auto result = std::make_unique<RawMaterial>();
-    //     result->_splitName = RawMatSplitName(initialiser);
-    //     result->_depVal = std::make_shared<::Assets::DependencyValidation>();
-    //     return std::move(result);
-    // }
 
     RawMaterial::~RawMaterial() {}
 

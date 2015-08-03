@@ -167,11 +167,11 @@ namespace RenderCore { namespace Metal_DX11
     HRESULT     IncludeHandler::Open(D3D10_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID *ppData, UINT *pBytes)
     {
         size_t size = 0;
-        char path[MaxPath];
+        ::Assets::ResolvedAssetFile path, buffer;
         for (auto i=_searchDirectories.cbegin(); i!=_searchDirectories.cend(); ++i) {
-            XlCopyString(path, dimof(path), i->c_str());
-            XlCatString(path, dimof(path), pFileName);
-            XlSimplifyPath(path, dimof(path), path, "\\/");
+            XlCopyString(buffer._fn, dimof(buffer._fn), i->c_str());
+            XlCatString(buffer._fn, dimof(buffer._fn), pFileName);
+            SplitPath<ResChar>(buffer._fn).Rebuild(path._fn);
 
             std::unique_ptr<uint8[]> file;
             ::Assets::DependentFileState timeMarker;
@@ -179,7 +179,7 @@ namespace RenderCore { namespace Metal_DX11
                     // need to use Win32 file operations, so we can get the modification time
                     //  at exactly the time we're reading it.
                 auto handle = CreateFile(
-                    path, GENERIC_READ, FILE_SHARE_READ,
+                    path._fn, GENERIC_READ, FILE_SHARE_READ,
                     nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
                 if (handle != INVALID_HANDLE_VALUE) {
                     LARGE_INTEGER fileSize;
@@ -207,15 +207,14 @@ namespace RenderCore { namespace Metal_DX11
                 auto existing = std::find_if(_includeFiles.cbegin(), _includeFiles.cend(),
                     [&path](const ::Assets::DependentFileState& depState)
                     {
-                        return !XlCompareStringI(depState._filename.c_str(), path);
+                        return !XlCompareStringI(depState._filename.c_str(), path._fn);
                     });
 
                 if (existing == _includeFiles.cend()) {
-                    timeMarker._filename = path;
+                    timeMarker._filename = path._fn;
                     _includeFiles.push_back(timeMarker);
                     
-                    XlDirname(path, dimof(path), path);
-                    std::string newDirectory = path;
+                    auto newDirectory = FileNameSplitter<ResChar>(path._fn).DriveAndPath().AsString();
                     auto i = std::find(_searchDirectories.cbegin(), _searchDirectories.cend(), newDirectory);
                     if (i==_searchDirectories.cend()) {
                         _searchDirectories.push_back(newDirectory);

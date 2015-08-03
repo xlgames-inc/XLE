@@ -68,8 +68,9 @@ namespace Utility
         const CharType* _start;
         const CharType* _end;
 
-        size_t Length() const { return size_t(_end - _start); }
-        bool Empty() const { return _end <= _start; }
+        size_t Length() const                           { return size_t(_end - _start); }
+        bool Empty() const                              { return _end <= _start; }
+        std::basic_string<CharType> AsString() const    { return std::basic_string<CharType>(_start, _end); }
 
         StringSection(const CharType* start, const CharType* end) : _start(start), _end(end) {}
         StringSection() : _start(nullptr), _end(nullptr) {}
