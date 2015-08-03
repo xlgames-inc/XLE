@@ -8,6 +8,7 @@
 
 #include "StringUtils.h"
 #include "MemoryUtils.h"
+#include "PtrUtils.h"   // for AsPointer
 #include <string.h>
 #include <wchar.h>
 #include <locale>
@@ -884,6 +885,15 @@ int XlExtractInt(const char* buf, int* arr, size_t length)
 
     return int(index);
 }
+
+template<typename CharType>
+    StringSection<CharType>::StringSection(const std::basic_string<CharType>& str) 
+: _start(AsPointer(str.cbegin())), _end(AsPointer(str.cend())) {}
+
+template class StringSection<char>;
+template class StringSection<utf8>;
+template class StringSection<ucs2>;
+template class StringSection<ucs4>;
 
 bool XlSafeAtoi(const char* str, int* n)
 {

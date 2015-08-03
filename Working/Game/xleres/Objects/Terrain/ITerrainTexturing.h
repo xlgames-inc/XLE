@@ -31,8 +31,8 @@ TerrainTextureOutput Blend(in TerrainTextureOutput A, in TerrainTextureOutput B,
 {
     TerrainTextureOutput result;
     result.diffuseAlbedo        = lerp(A.diffuseAlbedo, B.diffuseAlbedo, alpha);
-    result.tangentSpaceNormal   = A.tangentSpaceNormal;
-    result.specularity          = A.specularity;
+    result.tangentSpaceNormal   = lerp(A.tangentSpaceNormal, B.tangentSpaceNormal, alpha);
+    result.specularity          = lerp(A.specularity, B.specularity, alpha);
     return result;
 }
 
@@ -40,8 +40,8 @@ TerrainTextureOutput AddWeighted(in TerrainTextureOutput A, in TerrainTextureOut
 {
     TerrainTextureOutput result;
     result.diffuseAlbedo        = A.diffuseAlbedo + B.diffuseAlbedo * weight;
-    result.tangentSpaceNormal   = A.tangentSpaceNormal;
-    result.specularity          = A.specularity;
+    result.tangentSpaceNormal   = A.tangentSpaceNormal + B.tangentSpaceNormal * weight;
+    result.specularity          = A.specularity + B.specularity * weight;
     return result;
 }
 
@@ -49,8 +49,8 @@ TerrainTextureOutput TerrainTextureOutput_Blank()
 {
     TerrainTextureOutput result;
     result.diffuseAlbedo        = 0.0.xxx;
-    result.tangentSpaceNormal   = float3(0,0,1);
-    result.specularity          = 1.f;
+    result.tangentSpaceNormal   = float3(0,0,0);
+    result.specularity          = 0.f;
     return result;
 }
 

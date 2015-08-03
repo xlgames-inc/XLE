@@ -147,7 +147,7 @@ namespace SceneEngine
     class GlobalLightingDesc
     {
     public:
-        ::Assets::ResChar   _skyTexture[MaxPath];   ///< use "<texturename>_XX" when using a half cube style sky texture
+        ::Assets::ResChar   _skyTexture[MaxPath];   ///< use "<texturename>_*" when using a half cube style sky texture. The system will fill in "_??" with appropriate characters
 
         Float3  _ambientLight;
         float   _skyBrightness;

@@ -23,10 +23,10 @@ namespace Utility
     class MonitoredDirectory
     {
     public:
-        MonitoredDirectory(const char directoryName[]);
+        MonitoredDirectory(const std::string& directoryName);
         ~MonitoredDirectory();
 
-        static uint64   HashFilename(const char filename[]);
+        static uint64   HashFilename(StringSection<char> filename);
         void            AttachCallback(uint64 filenameHash, std::shared_ptr<OnChangeCallback> callback);
         void            OnTriggered();
 
@@ -35,7 +35,7 @@ namespace Utility
         const OVERLAPPED*   GetOverlappedPtr() const { return &_overlapped; }
         unsigned            GetCreationOrderId() const { return _monitoringUpdateId; }
 
-        void OnChange(const char filename[]);
+        void OnChange(StringSection<char> filename);
     private:
         std::vector<std::pair<uint64, std::weak_ptr<OnChangeCallback>>>  _callbacks;
         Threading::Mutex  _callbacksLock;
@@ -61,7 +61,7 @@ namespace Utility
     static Utility::Threading::Mutex                    MonitoringThreadLock;
     static bool                                         MonitoringQuit = false;
 
-    MonitoredDirectory::MonitoredDirectory(const char directoryName[])
+    MonitoredDirectory::MonitoredDirectory(const std::string& directoryName)
         : _directoryName(directoryName)
     {
         _overlapped.Internal = _overlapped.InternalHigh = 0;
@@ -82,17 +82,21 @@ namespace Utility
         CloseHandle(_overlapped.hEvent);
     }
 
-    uint64          MonitoredDirectory::HashFilename(const char filename[])
+    uint64 MonitoredDirectory::HashFilename(StringSection<char> filename)
     {
         char buffer[MaxPath];
-        char *b = buffer;
-        while (*filename !='\0' && b!=&buffer[MaxPath]) {
-            *b = (char)tolower(*filename); ++filename; ++b;
+        const char *i = filename._start;
+        const char *iend = filename._end;
+        char* b = buffer;
+        while (i!=iend && b!=ArrayEnd(buffer)) {
+            *b = XlToLower(*i); ++i; ++b;
         }
         return Hash64(buffer, b);
     }
 
-    void            MonitoredDirectory::AttachCallback(uint64 filenameHash, std::shared_ptr<OnChangeCallback> callback)
+    void MonitoredDirectory::AttachCallback(
+        uint64 filenameHash, 
+        std::shared_ptr<OnChangeCallback> callback)
     {
         ScopedLock(_callbacksLock);
         _callbacks.insert(
@@ -123,7 +127,7 @@ namespace Utility
                     (utf8*)buffer, dimof(buffer));
                 buffer[std::min(size_t(destSize), dimof(buffer)-1)] = '\0';
 
-                OnChange((const char*)buffer);
+                OnChange(StringSection<char>(buffer, &buffer[destSize]));
             }
 
             if (!notifyInformation->NextEntryOffset) {
@@ -138,7 +142,7 @@ namespace Utility
         BeginMonitoring();
     }
 
-    void MonitoredDirectory::OnChange(const char filename[])
+    void MonitoredDirectory::OnChange(StringSection<char> filename)
     {
         auto hash = MonitoredDirectory::HashFilename(filename);
         ScopedLock(_callbacksLock);
@@ -259,11 +263,13 @@ namespace Utility
         }
     }
 
-    void AttachFileSystemMonitor(   const char directoryName[], const char filename[], 
-                                    std::shared_ptr<OnChangeCallback> callback)
+    void AttachFileSystemMonitor(
+        StringSection<char> directoryName,
+        StringSection<char> filename, 
+        std::shared_ptr<OnChangeCallback> callback)
     {
         ScopedLock(MonitoredDirectoriesLock);
-        assert(directoryName && directoryName[0]);
+        assert(!directoryName.Empty());
 
         auto hash = MonitoredDirectory::HashFilename(directoryName);
         auto i = std::lower_bound(
@@ -274,10 +280,14 @@ namespace Utility
             return;
         }
 
+            // we must have a null terminated string -- so use a temp buffer
+        std::basic_string<char> dirNameCopy(directoryName._start, directoryName._end);
+
         #if defined(_DEBUG)
             {
+                    // verify that it exists
                 auto handle = CreateFile(
-                    directoryName, FILE_LIST_DIRECTORY,
+                    dirNameCopy.c_str(), FILE_LIST_DIRECTORY,
                     FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
                     nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED, nullptr);
                 assert(handle != INVALID_HANDLE_VALUE);
@@ -286,7 +296,8 @@ namespace Utility
         #endif
 
         ++CreationOrderId_Foreground;
-        auto i2 = MonitoredDirectories.insert(i, std::make_pair(hash, std::make_unique<MonitoredDirectory>(directoryName)));
+        auto i2 = MonitoredDirectories.insert(
+            i, std::make_pair(hash, std::make_unique<MonitoredDirectory>(dirNameCopy)));
         i2->second->AttachCallback(MonitoredDirectory::HashFilename(filename), std::move(callback));
 
             //  we need to trigger the background thread so that it begins the the ReadDirectoryChangesW operation
@@ -294,7 +305,7 @@ namespace Utility
         RestartMonitoring();
     }
 
-    void    FakeFileChange(const char directoryName[], const char filename[])
+    void    FakeFileChange(StringSection<char> directoryName, StringSection<char> filename)
     {
         ScopedLock(MonitoredDirectoriesLock);
         auto hash = MonitoredDirectory::HashFilename(directoryName);

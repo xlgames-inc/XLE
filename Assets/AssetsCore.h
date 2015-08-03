@@ -29,10 +29,10 @@ namespace Assets
         class InvalidAsset : public ::Exceptions::BasicLabel
         {
         public: 
-            InvalidAsset(const ResChar initializer[], const char what[]);
             const ResChar* Initializer() const { return _initializer; }
             virtual bool CustomReport() const;
 
+            InvalidAsset(const ResChar initializer[], const char what[]);
         private:
             ResChar _initializer[512];
         };
@@ -47,10 +47,10 @@ namespace Assets
         class PendingAsset : public ::Exceptions::BasicLabel
         {
         public: 
-            PendingAsset(const ResChar initializer[], const char what[]);
             const ResChar* Initializer() const { return _initializer; }
             virtual bool CustomReport() const;
 
+            PendingAsset(const ResChar initializer[], const char what[]);
         private:
             ResChar _initializer[512];
         };

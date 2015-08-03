@@ -14,6 +14,7 @@
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/FileUtils.h"
+#include "../Utility/SystemUtils.h"     // for XlGetCurrentDirectorys
 #include <vector>
 #include <algorithm>
 
@@ -124,19 +125,25 @@ namespace Assets
 
     void RegisterFileDependency(
         const std::shared_ptr<Utility::OnChangeCallback>& validationIndex, 
-        const char filename[])
+        const ResChar filename[])
     {
-        ResChar directoryName[MaxPath], baseName[MaxPath];
-        XlNormalizePath(baseName, dimof(baseName), filename);
-        XlSimplifyPath(baseName, dimof(baseName), baseName, "\\/");
-        XlDirname(directoryName, dimof(directoryName), baseName);
-        auto len = XlStringLen(directoryName);
-        if (len > 0 && (directoryName[len-1] == '\\' || directoryName[len-1] == '/')) {
-            directoryName[len-1] = '\0'; 
-        }
-        XlBasename(baseName, dimof(baseName), baseName);
-        if (!directoryName[0]) XlCopyString(directoryName, "./");
-        Utility::AttachFileSystemMonitor(directoryName, baseName, validationIndex);
+        // ResChar directoryName[MaxPath], baseName[MaxPath];
+        // XlNormalizePath(baseName, dimof(baseName), filename);
+        // XlSimplifyPath(baseName, dimof(baseName), baseName, "\\/");
+        // XlDirname(directoryName, dimof(directoryName), baseName);
+        // auto len = XlStringLen(directoryName);
+        // if (len > 0 && (directoryName[len-1] == '\\' || directoryName[len-1] == '/')) {
+        //     directoryName[len-1] = '\0'; 
+        // }
+        // XlBasename(baseName, dimof(baseName), baseName);
+        // if (!directoryName[0]) XlCopyString(directoryName, "./");
+        // Utility::AttachFileSystemMonitor(directoryName, baseName, validationIndex);
+
+        ResChar directoryName[MaxPath];
+        FileNameSplitter<ResChar> splitter(filename);
+        SplitPath<ResChar>(splitter.DriveAndPath()).Rebuild(directoryName);
+        Utility::AttachFileSystemMonitor(
+            StringSection<ResChar>(directoryName), splitter.FileAndExtension(), validationIndex);
     }
 
     void RegisterAssetDependency(
@@ -439,5 +446,44 @@ namespace Assets
 
         return *state;
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void MakeAssetName(ResolvedAssetFile& dest, const ::Assets::ResChar src[])
+    {
+        XlGetCurrentDirectory(dimof(dest._fn), dest._fn);
+
+        auto rules = s_defaultFilenameRules;
+        FileNameSplitter<ResChar> srcSplit(src);
+        auto relPath = 
+            MakeRelativePath(
+                SplitPath<ResChar>(dest._fn),
+                SplitPath<ResChar>(srcSplit.DriveAndPath()),
+                rules);
+
+        XlCopyString(dest._fn, relPath.c_str());
+
+        auto* i = &dest._fn[XlStringLen(dest._fn)];
+        auto* iend = ArrayEnd(dest._fn);
+        auto fileAndExtension = srcSplit.FileAndExtension();
+        auto* s = fileAndExtension._start;
+        auto* send = fileAndExtension._end;
+
+        while (i!=iend && s!=send) { *i = ConvertPathChar(*s, rules); ++i; ++s; }
+        
+        if (!srcSplit.Parameters().Empty()) {
+            s = srcSplit.Parameters()._start;
+            send = srcSplit.Parameters()._end;
+            while (i!=iend && s!=send) { *i = *s; ++i; ++s; }
+        }
+
+        *std::min(i, iend-1) = '\0';
+    }
+
+    void MakeAssetName(ResolvedAssetFile& dest, const utf8 src[])
+    {
+        MakeAssetName(dest, (const ::Assets::ResChar*)src);
+    }
+
 }
 

@@ -5,10 +5,18 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PathUtils.h"
+#include "../PtrUtils.h"
+#include "../IteratorUtils.h"
+#include "../../Core/SelectConfiguration.h"
+#include <utility>
+#include <sstream>
+#include <algorithm>
+#include <assert.h>
 
 namespace Utility
 {
 
+#if 0
 template <class T, char SEP>
 void conv_separator(T* dst, int count, const T* path)
 {
@@ -126,6 +134,7 @@ void XlToDosPath(ucs2* dst, int count, const ucs2* path)
 {
     conv_separator<ucs2, '\\'>(dst, count, path);
 }
+#endif
 
 template <class T>
 void concat_path(T* dst, int count, const T* a, const T* b, const T* bEnd)
@@ -161,6 +170,8 @@ void XlConcatPath(ucs2* dst, int count, const ucs2* a, const ucs2* b, const ucs2
 {
     concat_path<ucs2>(dst, count, a, b, bEnd);
 }
+
+#if 0
 
 void XlMakeRelPath(char* dst, int count, const char* root, const char* path)
 {
@@ -217,6 +228,8 @@ void XlResolveRelPath(char* dst, int count, const char* base, const char* rel)
     XlDirname(tmp, dimof(tmp), base);
     XlConcatPath(dst, count, tmp, rel, &rel[XlStringLen(rel)]);
 }
+
+#endif
 
 template<typename CharType>
     const CharType* XlExtension(const CharType* path)
@@ -312,6 +325,8 @@ const char* XlBasename(const char* path)
 
     return sep ? sep + 1 : path;
 }
+
+#if 0
 
 template <class T>
 void split_path(const T* path, T* drive, T* dir, T* fname, T* ext)
@@ -526,6 +541,317 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 {
     make_path<ucs2>(path, drive, dir, fname, ext);
 }
+
+#endif
+
+    #define TC template<typename CharType>
+
+	TC unsigned SplitPath<CharType>::GetSectionCount() const { return (unsigned)_sections.size(); }
+    
+	TC typename SplitPath<CharType>::SectionType AsSectionType(StringSection<CharType> e)
+	{
+		if ((e._end - e._start) == 1 && *e._start == '.')
+            return SplitPath<CharType>::SectionType::CurrentDir;
+		if ((e._end - e._start) == 2 && *e._start == '.' && *(e._start + 1) == '.')
+            return SplitPath<CharType>::SectionType::BackOne;
+
+        // extended series of dots (eg, "...") are considered just a name, and not special
+        // commands
+		return SplitPath<CharType>::SectionType::Name;
+	}
+
+	TC auto SplitPath<CharType>::GetSectionType(unsigned index) const -> SectionType
+	{
+		return AsSectionType(GetSection(index));
+	}
+
+	TC auto SplitPath<CharType>::GetSection(unsigned index) const -> Section
+	{
+		return _sections[index];
+	}
+
+    TC auto SplitPath<CharType>::GetDrive() const -> Section { return _drive; }
+
+	TC auto SplitPath<CharType>::Simplify() const -> SplitPath
+	{
+		auto result = _sections;    // (copy)
+
+		    // remove "." and ".." elements where possible
+		for (auto i = result.begin(); i != result.end();) {
+			auto e = *i;
+			auto type = AsSectionType(e);
+			if (type == SectionType::CurrentDir) {
+				i = result.erase(i);
+			} else if (type == SectionType::BackOne) {
+				if (i != result.begin()) {
+					i = result.erase(i - 1, i + 1);
+				} else ++i;		// can't go back too far (this means some ".." may be left)
+			} else ++i;
+		}
+
+		return SplitPath(std::move(result), _endsInSeparator, _drive);
+	}
+
+	TC auto SplitPath<CharType>::Rebuild(const FilenameRules& rules) const -> String
+	{
+		std::basic_stringstream<CharType> stream;
+
+        if (!_drive.Empty())
+            stream.write(_drive._start, _drive.Length());
+
+        auto sep = rules.GetSeparator<CharType>();
+		for (auto e=_sections.cbegin();;) {
+			auto*s = e->_start;
+            while (s!=e->_end) {
+                auto chr = ConvertPathChar(*s++, rules);
+                stream.write(&chr, 1);
+            }
+
+            ++e;
+            if (e==_sections.cend()) break;
+            stream.write(&sep, 1);
+		}
+
+		if (_endsInSeparator)
+			stream.write(&sep, 1);
+		return stream.str();
+	}
+
+    TC void SplitPath<CharType>::Rebuild(
+        CharType dest[], size_t destCount, 
+        const FilenameRules& rules) const
+    {
+        auto* i = dest;
+        auto* iend = &dest[destCount];
+
+        if (!_drive.Empty()) {
+            auto*s = _drive._start;
+            while (s!=_drive._end && i!=iend)
+                *i++ = ConvertPathChar(*s++, rules);
+            if (i!=iend) *i++ = ':';
+        }
+
+        for (auto e=_sections.cbegin();;) {
+            auto*s = e->_start;
+            while (s!=e->_end && i!=iend)
+                *i++ = ConvertPathChar(*s++, rules);
+
+            ++e;
+            if (e==_sections.cend() || i == iend) break;
+            *i++ = rules.GetSeparator<CharType>();
+		}
+
+        if (_endsInSeparator && i < iend)
+			*i++ = rules.GetSeparator<CharType>();
+
+        // force null terminator, even if it causes a truncate
+        *std::min(i, iend-1) = '\0';
+    }
+    
+    TC SplitPath<CharType>::SplitPath(Section rawString)
+    {
+        _endsInSeparator = false;
+
+        const CharType seps[] = { (CharType)'\\', (CharType)'/' };
+        const auto* sepsEnd = ArrayEnd(seps);
+		const auto* i = rawString._start;
+        const auto* iend = rawString._end;
+
+            // (not supporting "d:file.txt" type filenames currently! (ambiguity with parameters)
+        auto firstSep = std::find_first_of(i, iend, seps, sepsEnd);
+        auto firstColon = std::find(i, iend, ':');
+        if (firstColon != iend && firstSep != iend && firstColon < firstSep) {
+            _drive = Section(i, firstColon);
+            i = firstColon+1;
+        }
+
+		for (;;) {
+            i = FindFirstNotOf(i, iend, seps, sepsEnd);
+            if (i == iend) { _endsInSeparator = true; break; }
+
+            auto* start = i;
+            i = std::find_first_of(i, iend, seps, sepsEnd);
+            
+            _sections.push_back(Section(start, i));
+            if (i == iend) break;
+            ++i;
+		}
+    }
+
+	TC SplitPath<CharType>::SplitPath(const String& input)
+        : SplitPath(Section(input))
+	{
+	}
+
+	TC SplitPath<CharType>::SplitPath(const CharType input[])
+		: SplitPath(Section(input))
+	{}
+
+	TC SplitPath<CharType>::SplitPath(std::vector<Section>&& sections, bool endsInSeparator, Section drive)
+	: _sections(std::forward<std::vector<Section>>(sections))
+	, _endsInSeparator(endsInSeparator)
+    , _drive(drive)
+	{}
+
+    TC SplitPath<CharType>::SplitPath(const FileNameSplitter<CharType>& splitter)
+        : SplitPath(splitter.Path())
+    {
+        _drive = splitter.Drive();
+    }
+
+    TC SplitPath<CharType>::~SplitPath() {}
+
+    TC SplitPath<CharType>::SplitPath(SplitPath&& moveFrom) never_throws
+    : _sections(std::move(moveFrom._sections))
+    , _endsInSeparator(moveFrom._endsInSeparator)
+    , _drive(moveFrom._drive)
+    {
+    }
+
+    TC auto SplitPath<CharType>::operator=(SplitPath&& moveFrom) never_throws -> SplitPath&
+    {
+        _sections = std::move(moveFrom._sections);
+        _endsInSeparator = moveFrom._endsInSeparator;
+        _drive = moveFrom._drive;
+        return *this;
+    }
+
+	
+
+	TC static bool PathElementMatch(StringSection<CharType> lhs, StringSection<CharType> rhs)
+	{
+            // note -- case insensitive compare done here!
+        return XlEqStringI(lhs, rhs);
+	}
+
+	TC std::basic_string<CharType> MakeRelativePath(
+        const SplitPath<CharType>& iBasePath, 
+        const SplitPath<CharType>& iDestinationObject,
+        const FilenameRules& rules)
+	{
+
+        ////////////////////////////////////////////////////////////////////////////////
+		    // Find initial parts of "basePath" that match "destinationObject"
+            // Note that if there is a drive specified for "destinationObject",
+            // then it must match the drive in "basePath". If there is a drive
+            // in destinationObject, but no drive in basePath (or a different drive), 
+            // then we can't make a relative path.
+            // Alternatively, if there is a drive in basePath, and no drive in destinationObject,
+            // then we'll assume that destinationObject is on the same drive
+        auto destinationObject = iDestinationObject.Simplify();
+        
+        if (!iDestinationObject.GetDrive().Empty()) {
+            if (!XlEqStringI(iBasePath.GetDrive(), iDestinationObject.GetDrive()))
+                return destinationObject.Rebuild(rules);
+        }
+
+		auto basePath = iBasePath.Simplify();
+
+        using SectionType = SplitPath<CharType>::SectionType;
+
+		unsigned basePrefix = 0, destinationPrefix = 0;
+		unsigned baseCount = basePath.GetSectionCount();
+		unsigned destinationCount = destinationObject.GetSectionCount();
+		for (; basePrefix < baseCount && destinationPrefix < destinationCount;) {
+			if (basePath.GetSectionType(basePrefix) == SectionType::CurrentDir) {
+				++basePrefix;
+				continue;
+			}
+			if (destinationObject.GetSectionType(destinationPrefix) == SectionType::CurrentDir) {
+				++destinationPrefix;
+				continue;
+			}
+
+			if (	basePath.GetSectionType(basePrefix) == SectionType::BackOne
+				||	destinationObject.GetSectionType(destinationPrefix) == SectionType::BackOne) {
+				break;
+			}
+
+			if (PathElementMatch(basePath.GetSection(basePrefix), destinationObject.GetSection(destinationPrefix))) {
+				++basePrefix;
+				++destinationPrefix;
+				continue;
+			}
+
+			break;		// paths have diverged
+		}
+
+		if (basePrefix == 0) {
+			// if there's no agreement, we just have to assume that the destination path is absolute
+			return destinationObject.Rebuild(rules);
+		}
+
+		// any remaining paths in "basePath" need to be translated into "../"
+		signed backPaths = 0;
+		auto baseIterator = basePrefix;
+		for (; baseIterator < baseCount; ++baseIterator) {
+			auto type = basePath.GetSectionType(baseIterator);
+			if (type == SectionType::CurrentDir) {
+			} else if (type == SectionType::BackOne) {
+				--backPaths;
+			} else {
+				++backPaths;
+			}
+		}
+
+        CharType dots[] = { (CharType)'.', (CharType)'.' };
+        auto sep = rules.GetSeparator<CharType>();
+
+		    // now we can just append the rest of "destinationObject"
+		    //		... if backPaths is 0, we should prepend "./"
+		    //		and backPaths shouldn't be less than zero if we properly simplified
+		    //		the paths, and the base path is valid
+            //  (note that we never need to write the drive out here)
+		std::basic_stringstream<CharType> meld;
+		bool pendingSlash = false;
+		if (backPaths < 0) {
+			assert(0);
+		} else if (!backPaths) {
+			// meld << "./";
+		} else {
+			meld.write(dots, 2);
+			for (signed c = 1; c < backPaths; ++c) {
+				meld.write(&sep, 1);
+                meld.write(dots, 2);
+            }
+			pendingSlash = true;
+		}
+
+		auto destinationIterator = destinationPrefix;
+		for (; destinationIterator < destinationCount; ++destinationIterator) {
+			auto element = destinationObject.GetSection(destinationIterator);
+			if (pendingSlash)
+				meld.write(&sep, 1);
+			meld.write(element._start, element._end - element._start);
+			pendingSlash = true;
+		}
+
+		if (destinationObject.EndsInSeparator()) {
+			if (!pendingSlash)
+                meld.write(dots, 1);    // (creates "./" for empty paths)
+            meld.write(&sep, 1);
+		}
+
+		return meld.str();
+	}
+
+        //  Selectively convert case to lower case on filesystems where it doesn't matter.
+    char ConvertPathChar(char input, const FilenameRules& rules) { if (rules.IsCaseSensitive()) return input; return XlToLower(input); }
+    utf8 ConvertPathChar(utf8 input, const FilenameRules& rules) { if (rules.IsCaseSensitive()) return input; return XlToLower(input); }
+    ucs2 ConvertPathChar(ucs2 input, const FilenameRules& rules) { if (rules.IsCaseSensitive()) return input; return XlToLower(input); }
+
+    #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+        FilenameRules s_defaultFilenameRules('/', false);
+    #else
+        FilenameRules s_defaultFilenameRules('/', true);
+    #endif
+
+    template class SplitPath<char>;
+    template class SplitPath<utf8>;
+    template class SplitPath<ucs2>;
+    template std::basic_string<char> MakeRelativePath(const SplitPath<char>&, const SplitPath<char>&, const FilenameRules&);
+    template std::basic_string<utf8> MakeRelativePath(const SplitPath<utf8>&, const SplitPath<utf8>&, const FilenameRules&);
+    template std::basic_string<ucs2> MakeRelativePath(const SplitPath<ucs2>&, const SplitPath<ucs2>&, const FilenameRules&);
 
 }
 

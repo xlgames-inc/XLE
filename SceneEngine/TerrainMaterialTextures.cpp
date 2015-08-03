@@ -44,7 +44,7 @@ namespace SceneEngine
         }
     }
 
-    static void LoadTextureIntoArray(ID3D::Resource* destinationArray, const char sourceFile[], unsigned arrayIndex)
+    static void LoadTextureIntoArray(Metal::DeviceContext& context, ID3D::Resource* destinationArray, const char sourceFile[], unsigned arrayIndex)
     {
             //      We want to load the given texture, and merge it into
             //      the texture array. We have to do this synchronously, otherwise the scheduling
@@ -72,7 +72,6 @@ namespace SceneEngine
         auto srcWidthPower = (int)IntegerLog2(sourceDesc.Width);
         auto mipDifference = srcWidthPower - dstWidthPower;
 
-        auto context = GetImmediateContext();
         for (unsigned m=0; m<dstMipCount; ++m) {
             
             auto sourceMip = m + mipDifference;
@@ -162,14 +161,13 @@ namespace SceneEngine
         }
     }
 
-    static void FillWhite(ID3D::Resource* destinationArray, ID3D::Resource* sourceResource, unsigned arrayIndex)
+    static void FillWhite(Metal::DeviceContext& context, ID3D::Resource* destinationArray, ID3D::Resource* sourceResource, unsigned arrayIndex)
     {
             // copy dummy white data into all of the mip levels of the given array index in the
             // destination resource
         Metal::TextureDesc2D destinationDesc(destinationArray);
         const auto mipCount = destinationDesc.MipLevels;
 
-        auto context = GetImmediateContext();
         for (unsigned m=0; m<mipCount; ++m) {
             const unsigned mipWidth = std::max(destinationDesc.Width >> m, 4u);
             const unsigned mipHeight = std::max(destinationDesc.Height >> m, 4u);
@@ -202,6 +200,116 @@ namespace SceneEngine
         }
         return atlasIndex;
     }
+    
+    class ResolvedTextureFiles
+    {
+    public:
+        ResolvedFilename _diffuse, _normals, _params;
+
+        ResolvedTextureFiles(
+            const ::Assets::ResChar baseName[],
+            const ::Assets::DirectorySearchRules& searchRules);
+
+    protected:
+        void PatchFilename(
+            ResolvedFilename& dest, const ::Assets::ResChar input[], 
+            const ::Assets::ResChar marker[], const ::Assets::ResChar markerEnd[],
+            const ::Assets::ResChar replacement[]);
+    };
+
+    ResolvedTextureFiles::ResolvedTextureFiles(
+        const ::Assets::ResChar baseName[], 
+        const ::Assets::DirectorySearchRules& searchRules)
+    {
+        auto marker = XlFindString(baseName, "_*");
+        if (marker) {
+            auto* markerEnd = marker+2;
+            const ::Assets::ResChar d[] = "_df", n[] = "_ddn", p[] = "_sp";
+            PatchFilename(_diffuse, baseName, marker, markerEnd, d);
+            PatchFilename(_normals, baseName, marker, markerEnd, n);
+            PatchFilename(_params, baseName, marker, markerEnd, p);
+
+            searchRules.ResolveFile(_diffuse._fn, dimof(_diffuse._fn), _diffuse._fn);
+            searchRules.ResolveFile(_normals._fn, dimof(_normals._fn), _normals._fn);
+            searchRules.ResolveFile(_params._fn, dimof(_params._fn), _params._fn);
+        } else {
+            searchRules.ResolveFile(_diffuse._fn, dimof(_diffuse._fn), baseName);
+        }
+    }
+
+    void ResolvedTextureFiles::PatchFilename(
+        ResolvedFilename& dest, const ::Assets::ResChar input[], 
+        const ::Assets::ResChar marker[], const ::Assets::ResChar markerEnd[],
+        const ::Assets::ResChar replacement[])
+    {
+        auto*i = dest._fn;
+        auto*iend = &dest._fn[dimof(dest._fn)];
+
+            // fill in part before the marker
+        {
+            const auto* s = input;
+            while (i < iend && s < marker) {
+                *i = *s;
+                ++i; ++s;
+            }
+        }
+
+            // fill in null terminated replacement
+        {
+            const auto* s = replacement;
+            while (i < iend && *s) {
+                *i = *s;
+                ++i; ++s;
+            }
+        }
+        
+            // fill in null terminated part after the marker
+        {
+            const auto* s = markerEnd;
+            while (i < iend && *s) {
+                *i = *s;
+                ++i; ++s;
+            }
+        }
+
+            // null terminator (even if we ran out of buffer space)
+        *std::min(i, iend-1) = '\0';
+    }
+
+    static intrusive_ptr<BufferUploads::ResourceLocator> BC1Dummy(const BufferUploads::BufferDesc& desc, uint16 blankColor)
+    {
+        auto tempBuffer = CreateEmptyPacket(desc);
+        struct BC1Block { uint16 c0; uint16 c1; uint32 t; } block { blankColor, blankColor, 0 };
+
+        auto dataSize = tempBuffer->GetDataSize();
+        assert((dataSize % sizeof(BC1Block))==0);
+        auto blockCount = dataSize / sizeof(BC1Block);
+        auto data = (BC1Block*)tempBuffer->GetData();
+        for (unsigned c=0; c<blockCount; ++c) data[c] = block;
+
+        return GetBufferUploads().Transaction_Immediate(desc, tempBuffer.get());
+    }
+
+    static intrusive_ptr<BufferUploads::ResourceLocator> BC5Dummy(const BufferUploads::BufferDesc& desc, uint8 x, uint8 y)
+    {
+        auto tempBuffer = CreateEmptyPacket(desc);
+        struct BC5Block 
+        { 
+            uint8 x0; uint8 x1; uint8 tx[6];
+            uint8 y0; uint8 y1; uint8 ty[6];
+        } block {
+            x, x, {0,0,0,0,0,0},
+            y, y, {0,0,0,0,0,0}
+        };
+
+        auto dataSize = tempBuffer->GetDataSize();
+        assert((dataSize % sizeof(BC5Block))==0);
+        auto blockCount = dataSize / sizeof(BC5Block);
+        auto data = (BC5Block*)tempBuffer->GetData();
+        for (unsigned c=0; c<blockCount; ++c) data[c] = block;
+
+        return GetBufferUploads().Transaction_Immediate(desc, tempBuffer.get());
+    }
 
     TerrainMaterialTextures::TerrainMaterialTextures(
         const TerrainMaterialConfig& scaffold, 
@@ -216,6 +324,8 @@ namespace SceneEngine
         std::vector<::Assets::rstring> procTextureNames;
         std::vector<uint8> texturingConstants;
         std::vector<uint8> procTextureConstants;
+
+        auto context = GetImmediateContext();
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -340,85 +450,72 @@ namespace SceneEngine
         auto normalTextureArray = GetBufferUploads().Transaction_Immediate(desc)->AdoptUnderlying();
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
+            scaffold._normalDims[0], scaffold._normalDims[1], Metal::NativeFormat::BC5_UNORM);
+        auto bc5Dummy = BC5Dummy(desc, 0x80, 0x80);
+
+        desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._paramDims[0], scaffold._paramDims[1], Metal::NativeFormat::BC1_UNORM, 
             (uint8)IntegerLog2(std::max(scaffold._paramDims[0], scaffold._paramDims[1]))-1, uint8(atlasTextureNames.size()));
         auto specularityTextureArray = GetBufferUploads().Transaction_Immediate(desc)->AdoptUnderlying();
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._paramDims[0], scaffold._paramDims[1], Metal::NativeFormat::BC1_UNORM);
-        auto tempBuffer = CreateEmptyPacket(desc);
-        {
-            uint16 blankColor = ((0x1f/2) << 11) | ((0x3f/2) << 5) | (0x1f/2);
-            struct BC1Block { uint16 c0; uint16 c1; uint32 t; } block { blankColor, blankColor, 0 };
-
-            auto dataSize = tempBuffer->GetDataSize();
-            assert((dataSize % sizeof(BC1Block))==0);
-            auto blockCount = dataSize / sizeof(BC1Block);
-            auto data = (BC1Block*)tempBuffer->GetData();
-            for (unsigned c=0; c<blockCount; ++c) data[c] = block;
-        }
-        auto dummyWhiteBuffer = GetBufferUploads().Transaction_Immediate(desc, tempBuffer.get())->AdoptUnderlying();
+        auto bc1Dummy = BC1Dummy(desc, ((0x1f/2) << 11) | ((0x3f/2) << 5) | (0x1f/2));
+        
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
 
         for (auto i=atlasTextureNames.cbegin(); i!=atlasTextureNames.cend(); ++i) {
+            ResolvedTextureFiles texFiles(i->c_str(), scaffold._searchRules);
+
+                // --- Diffuse --->
             TRY {
-                ::Assets::ResChar resolvedFile[MaxPath];
-                scaffold._searchRules.ResolveFile(
-                    resolvedFile, dimof(resolvedFile), 
-                    StringMeld<MaxPath, ::Assets::ResChar>() << *i << "_df.dds");
-                if (resolvedFile[0]) {
-                    LoadTextureIntoArray(diffuseTextureArray.get(), resolvedFile, (unsigned)std::distance(atlasTextureNames.cbegin(), i));
-                    RegisterFileDependency(_validationCallback, resolvedFile);
+                if (texFiles._diffuse.get()[0]) {
+                    LoadTextureIntoArray(context, diffuseTextureArray.get(), texFiles._diffuse.get(), (unsigned)std::distance(atlasTextureNames.cbegin(), i));
+                    RegisterFileDependency(_validationCallback, texFiles._diffuse.get());
                 }
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {}
             CATCH_END
-        }
 
-        for (auto i=atlasTextureNames.cbegin(); i!=atlasTextureNames.cend(); ++i) {
+                // --- Normals --->
+            bool fillInDummyNormals = true;
             TRY {
-                ::Assets::ResChar resolvedFile[MaxPath];
-                scaffold._searchRules.ResolveFile(
-                    resolvedFile, dimof(resolvedFile), 
-                    StringMeld<MaxPath, ::Assets::ResChar>() << *i << "_ddn.dds");
-                if (resolvedFile[0]) {
-                    LoadTextureIntoArray(normalTextureArray.get(), resolvedFile, (unsigned)std::distance(atlasTextureNames.cbegin(), i));
-                    RegisterFileDependency(_validationCallback, resolvedFile);
+                if (texFiles._normals.get()[0]) {
+                    LoadTextureIntoArray(context, normalTextureArray.get(), texFiles._normals.get(), (unsigned)std::distance(atlasTextureNames.cbegin(), i));
+                    RegisterFileDependency(_validationCallback, texFiles._normals.get());
+                    fillInDummyNormals = false;
                 }
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {}
             CATCH_END
-        }
 
-        for (auto i=atlasTextureNames.cbegin(); i!=atlasTextureNames.cend(); ++i) {
+                // --- Specular params --->
             bool fillInWhiteSpecular = true;
             auto index = (unsigned)std::distance(atlasTextureNames.cbegin(), i);
             TRY {
-                ::Assets::ResChar resolvedFile[MaxPath];
-                scaffold._searchRules.ResolveFile(
-                    resolvedFile, dimof(resolvedFile), 
-                    StringMeld<MaxPath, ::Assets::ResChar>() << *i << "_sp.dds");
-                if (resolvedFile[0]) {
-                    LoadTextureIntoArray(normalTextureArray.get(), resolvedFile, index);
-                    RegisterFileDependency(_validationCallback, resolvedFile);
-                    fillInWhiteSpecular = true;
+                if (texFiles._params.get()[0]) {
+                    LoadTextureIntoArray(context, normalTextureArray.get(), texFiles._params.get(), index);
+                    RegisterFileDependency(_validationCallback, texFiles._params.get());
+                    fillInWhiteSpecular = false;
                 }
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
             } CATCH_END
 
-                // on exception or missing files, we should fill int specularlity with whiteness
+                // on exception or missing files, we should fill in default
+            if (fillInDummyNormals)
+                FillWhite(context, normalTextureArray.get(), bc5Dummy->GetUnderlying(), index);
             if (fillInWhiteSpecular)
-                FillWhite(specularityTextureArray.get(), dummyWhiteBuffer.get(), index);
+                FillWhite(context, specularityTextureArray.get(), bc1Dummy->GetUnderlying(), index);
         }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        RenderCore::Metal::ShaderResourceView diffuseSrv(diffuseTextureArray.get());
-        RenderCore::Metal::ShaderResourceView normalSrv(normalTextureArray.get());
-        RenderCore::Metal::ShaderResourceView specularitySrv(specularityTextureArray.get());
-        RenderCore::Metal::ConstantBuffer texContBuffer(AsPointer(texturingConstants.cbegin()), texturingConstants.size());
-        RenderCore::Metal::ConstantBuffer procTexContsBuffer(AsPointer(procTextureConstants.cbegin()), procTextureConstants.size());
+        Metal::ShaderResourceView diffuseSrv(diffuseTextureArray.get());
+        Metal::ShaderResourceView normalSrv(normalTextureArray.get());
+        Metal::ShaderResourceView specularitySrv(specularityTextureArray.get());
+        Metal::ConstantBuffer texContBuffer(AsPointer(texturingConstants.cbegin()), texturingConstants.size());
+        Metal::ConstantBuffer procTexContsBuffer(AsPointer(procTextureConstants.cbegin()), procTextureConstants.size());
 
         _textureArray[Diffuse] = std::move(diffuseTextureArray);
         _textureArray[Normal] = std::move(normalTextureArray);

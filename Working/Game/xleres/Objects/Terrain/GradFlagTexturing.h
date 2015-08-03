@@ -38,8 +38,15 @@ TerrainTextureOutput LoadRawTexSample(uint remappedTexIndex, float2 coord, float
 {
     TerrainTextureOutput result;
     result.diffuseAlbedo = DiffuseAtlas.SampleGrad(MaybeAnisotropicSampler, float3(coord, remappedTexIndex), duvdx, duvdy).rgb;
-    result.tangentSpaceNormal = float3(0,0,1);
+    result.tangentSpaceNormal.xy = NormalsAtlas.SampleGrad(MaybeAnisotropicSampler, float3(coord, remappedTexIndex), duvdx, duvdy).xy;
     result.specularity = 1.f;
+
+    result.tangentSpaceNormal.xy = 2.f * result.tangentSpaceNormal.xy - 1.0.xx;
+    result.tangentSpaceNormal =
+        float3(
+            result.tangentSpaceNormal.xy,
+            sqrt(saturate(1.f + dot(result.tangentSpaceNormal.xy, -result.tangentSpaceNormal.xy))));
+
     return result;
 }
 
@@ -99,8 +106,6 @@ TerrainTextureOutput GradFlagTexturing::Calculate(
     float3 worldPosition, float2 dhdxy, uint materialId, float2 textureCoord)
 {
     TerrainTextureOutput result = TerrainTextureOutput_Blank();
-    result.tangentSpaceNormal = float3(0,0,1);
-    result.specularity = 1.f;
 
     float3 debugColors[4] =
     {
@@ -118,131 +123,143 @@ TerrainTextureOutput GradFlagTexturing::Calculate(
 
     const float A = 0.15f;  // grace area
 
-    const bool highQualityBlend = true;
-    const bool useDebugColors = false;
-    if (highQualityBlend) {
-
-            // This is a basic bilinear style blend
-            // it requires 4 texture lookups per pixel
+    #if defined(COVERAGE_1000)
+        const bool doBlending = false;
+    #else
+        const bool doBlending = true;
+    #endif
+    if (!doBlending) {
         float2 explodedTC = textureCoord * (TileDimensionsInVertices-HeightsOverlap);
-        int2 baseTC = floor(explodedTC);
-        float2 C = explodedTC - baseTC;
+        int s = CalculateCenterType(floor(explodedTC));
+        return LoadTexSample(worldPosition, materialId, s);
+    } else {
+        const bool highQualityBlend = true;
+        const bool useDebugColors = false;
+        if (highQualityBlend) {
 
-        C = saturate((C - A.xx) / (1.f - 2 * A));
+                // This is a basic bilinear style blend
+                // it requires 4 texture lookups per pixel
+            float2 explodedTC = textureCoord * (TileDimensionsInVertices-HeightsOverlap);
+            int2 baseTC = floor(explodedTC);
+            float2 C = explodedTC - baseTC;
 
-        int s[4];
-        s[0] = CalculateCenterType(baseTC);
-        s[1] = CalculateCenterType(baseTC + int2(1, 0));
-        s[2] = CalculateCenterType(baseTC + int2(0, 1));
-        s[3] = CalculateCenterType(baseTC + int2(1, 1));
+            C = saturate((C - A.xx) / (1.f - 2 * A));
 
-        float w[4];
-        w[0] = (1.f - C.x)  * (1.f - C.y);
-        w[1] = (C.x)        * (1.f - C.y);
-        w[2] = (1.f - C.x)  * (C.y);
-        w[3] = (C.x)        * (C.y);
+            int s[4];
+            s[0] = CalculateCenterType(baseTC);
+            s[1] = CalculateCenterType(baseTC + int2(1, 0));
+            s[2] = CalculateCenterType(baseTC + int2(0, 1));
+            s[3] = CalculateCenterType(baseTC + int2(1, 1));
 
-        float typeWeights[4];
-        typeWeights[0] = typeWeights[1] = typeWeights[2] = typeWeights[3] = 0;
+            float w[4];
+            w[0] = (1.f - C.x)  * (1.f - C.y);
+            w[1] = (C.x)        * (1.f - C.y);
+            w[2] = (1.f - C.x)  * (C.y);
+            w[3] = (C.x)        * (C.y);
 
-        float weightTotal = 0.f;
-        [unroll] for (uint c=0; c<4; ++c) {
-            if (useDebugColors) {
-                result.diffuseAlbedo += debugColors[s[c]] * w[c];
-                weightTotal += .25f;
-            } else {
-                TerrainTextureOutput texSample = LoadTexSample(worldPosition, materialId, s[c]);
-                float weightBias = GetBlendingWeightBias(texSample);
-                float weight = weightBias * w[c] + w[c];
-                result = AddWeighted(result, texSample, weight);
-                weightTotal += weight;
+            float typeWeights[4];
+            typeWeights[0] = typeWeights[1] = typeWeights[2] = typeWeights[3] = 0;
+
+            float weightTotal = 0.f;
+            [unroll] for (uint c=0; c<4; ++c) {
+                if (useDebugColors) {
+                    result.diffuseAlbedo += debugColors[s[c]] * w[c];
+                    weightTotal += .25f;
+                } else {
+                    TerrainTextureOutput texSample = LoadTexSample(worldPosition, materialId, s[c]);
+                    float weightBias = GetBlendingWeightBias(texSample);
+                    float weight = weightBias * w[c] + w[c];
+                    result = AddWeighted(result, texSample, weight);
+                    weightTotal += weight;
+                }
+
+                typeWeights[s[c]] += w[c];
             }
 
-            typeWeights[s[c]] += w[c];
-        }
+            result.diffuseAlbedo /= max(1e-5f, weightTotal);
+            result.specularity /= max(1e-5f, weightTotal);
 
-        result.diffuseAlbedo /= max(1e-5f, weightTotal);
+                // we can find the edging like this --
+                //      This allows blending in a transition texture between the repeating textures
+            const bool blendingTexture = false;
+            if (blendingTexture) {
+                float trans = 0.0f;
+                [unroll] for (uint c2=0; c2<2; ++c2)
+                    trans += .5f - abs(0.5f - typeWeights[c2]);
+                trans *= trans;
+                result = Blend(result, LoadTexSample(worldPosition, materialId, TexType_Blending), trans);
+            }
 
-            // we can find the edging like this --
-            //      This allows blending in a transition texture between the repeating textures
-        const bool blendingTexture = false;
-        if (blendingTexture) {
-            float trans = 0.0f;
-            [unroll] for (uint c2=0; c2<2; ++c2)
-                trans += .5f - abs(0.5f - typeWeights[c2]);
-            trans *= trans;
-            result = Blend(result, LoadTexSample(worldPosition, materialId, TexType_Blending), trans);
-        }
-
-    } else {
-
-            // this blending method limits the number of texture lookups to
-            // only 2. But the blending is not perfect. Sometimes it produces
-            // sharp edges.
-
-        float2 explodedTC = textureCoord * (TileDimensionsInVertices-HeightsOverlap);
-        int2 baseTC = floor(explodedTC + 0.5.xx);
-        float2 C = explodedTC - baseTC;
-
-        int centerType = CalculateCenterType(baseTC);
-
-        int blockRegion;
-
-    #if 0
-            // this gives diagonals in the corners
-        if (C.x <= -A) {
-            if (C.y <= -A) blockRegion = 0;
-            else if (C.y >= A) blockRegion = 6;
-            else blockRegion = 3;
-        } else if (C.x >= A) {
-            if (C.y <= -A) blockRegion = 2;
-            else if (C.y >= A) blockRegion = 8;
-            else blockRegion = 5;
         } else {
-            if (C.y <= -A) blockRegion = 1;
-            else if (C.y >= A) blockRegion = 7;
-            else blockRegion = 4;
-        }
-    #else
-            // this has no diagonals
-        if (abs(C.x) < A && abs(C.y) < A) {
-            blockRegion = 4;
-        } else if (C.x > C.y) {
-            if (-C.y > C.x) blockRegion = 1;
-            else blockRegion = 5;
-        } else {
-            if (-C.x > C.y) blockRegion = 3;
-            else blockRegion = 7;
-        }
-    #endif
 
-        const int2 Offsets[9] =
-        {
-            int2(-1, -1), int2( 0, -1), int2( 1, -1),
-            int2(-1,  0), int2( 0,  0), int2( 1,  0),
-            int2(-1,  1), int2( 0,  1), int2( 1,  1)
-        };
+                // this blending method limits the number of texture lookups to
+                // only 2. But the blending is not perfect. Sometimes it produces
+                // sharp edges.
 
-        int blendType = centerType;
-        if (blockRegion != 4) {
-            int connectType = CalculateCenterType(baseTC + Offsets[blockRegion]);
-            blendType = connectType; // min(centerType, connectType);
-        }
+            float2 explodedTC = textureCoord * (TileDimensionsInVertices-HeightsOverlap);
+            int2 baseTC = floor(explodedTC + 0.5.xx);
+            float2 C = explodedTC - baseTC;
 
-        float2 blendXY = (abs(C) - A.xx) / (.5f - A);
-        float blendAlpha = max(blendXY.x, blendXY.y);
+            int centerType = CalculateCenterType(baseTC);
 
-        int s[2];
-        s[0] = centerType;
-        s[1] = blendType;
-        float w[2];
-        w[0] = 1.f - 0.5f * blendAlpha;
-        w[1] = 0.5f * blendAlpha;
+            int blockRegion;
 
-        [unroll] for (uint c=0; c<2; ++c) {
-            if (useDebugColors) result.diffuseAlbedo += debugColors[s[c]] * w[c];
-            else {
-                result = AddWeighted(result, LoadTexSample(worldPosition, materialId, s[c]), w[c]);
+        #if 0
+                // this gives diagonals in the corners
+            if (C.x <= -A) {
+                if (C.y <= -A) blockRegion = 0;
+                else if (C.y >= A) blockRegion = 6;
+                else blockRegion = 3;
+            } else if (C.x >= A) {
+                if (C.y <= -A) blockRegion = 2;
+                else if (C.y >= A) blockRegion = 8;
+                else blockRegion = 5;
+            } else {
+                if (C.y <= -A) blockRegion = 1;
+                else if (C.y >= A) blockRegion = 7;
+                else blockRegion = 4;
+            }
+        #else
+                // this has no diagonals
+            if (abs(C.x) < A && abs(C.y) < A) {
+                blockRegion = 4;
+            } else if (C.x > C.y) {
+                if (-C.y > C.x) blockRegion = 1;
+                else blockRegion = 5;
+            } else {
+                if (-C.x > C.y) blockRegion = 3;
+                else blockRegion = 7;
+            }
+        #endif
+
+            const int2 Offsets[9] =
+            {
+                int2(-1, -1), int2( 0, -1), int2( 1, -1),
+                int2(-1,  0), int2( 0,  0), int2( 1,  0),
+                int2(-1,  1), int2( 0,  1), int2( 1,  1)
+            };
+
+            int blendType = centerType;
+            if (blockRegion != 4) {
+                int connectType = CalculateCenterType(baseTC + Offsets[blockRegion]);
+                blendType = connectType; // min(centerType, connectType);
+            }
+
+            float2 blendXY = (abs(C) - A.xx) / (.5f - A);
+            float blendAlpha = max(blendXY.x, blendXY.y);
+
+            int s[2];
+            s[0] = centerType;
+            s[1] = blendType;
+            float w[2];
+            w[0] = 1.f - 0.5f * blendAlpha;
+            w[1] = 0.5f * blendAlpha;
+
+            [unroll] for (uint c=0; c<2; ++c) {
+                if (useDebugColors) result.diffuseAlbedo += debugColors[s[c]] * w[c];
+                else {
+                    result = AddWeighted(result, LoadTexSample(worldPosition, materialId, s[c]), w[c]);
+                }
             }
         }
     }

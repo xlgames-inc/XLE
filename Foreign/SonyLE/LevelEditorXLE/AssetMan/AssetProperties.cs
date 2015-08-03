@@ -109,18 +109,17 @@ namespace LevelEditorXLE
 
         public virtual string GetBaseTextureName(string input)
         {
-            // to get the "base texture name", we must strip off _ddn, _df and _sp suffixes
-            var withoutExt = StripExtension(input);
-            if (withoutExt.EndsWith("_ddn", true, System.Globalization.CultureInfo.CurrentCulture))
-            {
-                return withoutExt.Substring(0, withoutExt.Length - 4);
-            }
-            if (withoutExt.EndsWith("_df", true, System.Globalization.CultureInfo.CurrentCulture)
-                || withoutExt.EndsWith("_sp", true, System.Globalization.CultureInfo.CurrentCulture))
-            {
-                return withoutExt.Substring(0, withoutExt.Length - 3);
-            }
-            return withoutExt;
+                // To get the "base texture name", we must strip off _ddn, _df and _sp suffixes
+                // we will replace them with _*
+                // Note that we want to keep extension
+                // It's important that we use "_*", because this works best with the FileOpen dialog
+                // When open the editor for this filename, the FileOpen dialog will default to
+                // the previous value. If we use "_*", the pattern will actually match the right
+                // textures in that dialog -- and it feels more natural to the user. Other patterns
+                // won't match any files
+            var pattern = new
+                System.Text.RegularExpressions.Regex("(_[dD][fF])|(_[dD][dD][nN])|(_[sS][pP])");
+            return pattern.Replace(input, "_*");
         }
     };
 

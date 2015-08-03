@@ -8,6 +8,7 @@
 
 #include "AssetsCore.h"
 #include "Assets.h"
+#include "../Utility/UTFUtils.h"
 
 namespace Assets
 {
@@ -83,6 +84,38 @@ namespace Assets
         AssetState _state;
         DEBUG_ONLY(char _initializer[MaxPath];)
     };
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /// <summary>Container for a asset filename in string format<summary>
+    /// Just a simple generalisation of a path and file name in char array form.
+    /// Avoids scattering references to ::Assets::ResChar and MaxPath about
+    /// the code (and provide some future-proof-ness).
+    ///
+    /// Note that in this form there is a strict limit on the max length of 
+    /// and asset file name. This is in line with the MAX_PATH soft limit
+    /// on some filesystems and standard library implementations... But most
+    /// filesystems can actually support much longer path names (even if an
+    /// individual directory name or filename is limited)
+    class ResolvedAssetFile
+    {
+    public:
+        ::Assets::ResChar _fn[MaxPath];
+
+        const ::Assets::ResChar* get() const    { return _fn; }
+        const bool IsGood() const               { return _fn[0] != '\0'; }
+
+        ResolvedAssetFile() { _fn[0] = '\0'; }
+    };
+
+    /// @{
+    /// Converts an input filename to a form that is best suited for the assets system.
+    /// This includes converting absolute filenames into relative format (relative to the
+    /// primary mount point).
+    /// This is intended for GUI tools that allow the user to enter filenames of any form.
+    void MakeAssetName(ResolvedAssetFile& dest, const ::Assets::ResChar src[]);
+    void MakeAssetName(ResolvedAssetFile& dest, const utf8 src[]);
+    /// @}
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 

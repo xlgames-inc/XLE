@@ -60,6 +60,17 @@ namespace Utility
         {
             return std::find_if(v.cbegin(), v.cend(), std::forward<Pred>(predicate));
         }
+
+    template<typename SearchI, typename CompareI>
+        SearchI FindFirstNotOf(
+            SearchI searchStart, SearchI searchEnd,
+            CompareI compareBegin, CompareI compareEnd)
+        {
+            auto i = searchStart;
+            while (i != searchEnd && std::find(compareBegin, compareEnd, *i) != compareEnd)
+                ++i;
+            return i;
+        }
 }
 
 using namespace Utility;

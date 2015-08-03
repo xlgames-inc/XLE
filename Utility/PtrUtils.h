@@ -244,6 +244,8 @@ namespace Utility
 
     #endif
 
+    template<typename Type, int Count>
+        Type* ArrayEnd(Type (&input)[Count]) { return &input[Count]; }
 
     template<typename DestinationType, typename SourceType>
         DestinationType checked_cast(SourceType source)

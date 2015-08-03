@@ -67,7 +67,6 @@ float2 LoadInterpolatedShadows(Texture2DArray<float2> tex, float2 texCoord, int 
 
 TerrainPixel CalculateTexturing(PSInput geo)
 {
-    float4 result = 1.0.xxxx;
     float2 finalTexCoord = 0.0.xx;
     float shadowing = 1.f;
 
@@ -101,11 +100,13 @@ TerrainPixel CalculateTexturing(PSInput geo)
                 CoverageCoordMaxs[COVERAGE_1000].xy, geo.texCoord.xy);
             float2 matIdTCB = floor(matIdTC);
             float2 A = matIdTC - matIdTCB;
-            float w[4];
-            w[0] = (1.f - A.x) * (1.f - A.y);
-            w[1] = (1.f - A.x) * A.y;
-            w[2] = A.x * (1.f - A.y);
-            w[3] = A.x * A.y;
+            const float w[4] =
+            {
+                (1.f - A.x) * (1.f - A.y),
+                (1.f - A.x) * A.y,
+                A.x * (1.f - A.y),
+                A.x * A.y
+            };
 
             uint materialId[4];
             materialId[0] = MakeCoverageTileSet(COVERAGE_1000).Load(
@@ -117,6 +118,15 @@ TerrainPixel CalculateTexturing(PSInput geo)
             materialId[3] = MakeCoverageTileSet(COVERAGE_1000).Load(
                 uint4(uint2(matIdTCB) + uint2(1,1), CoverageOrigin[COVERAGE_1000].z, 0));
 
+            float2 m = 1.0f / float2(CoverageCoordMaxs[COVERAGE_1000].xy - CoverageCoordMins[COVERAGE_1000].xy);
+            const float2 tcOffset[4] =
+            {
+                0.0.xx,
+                float2(0.f, m.y),
+                float2(m.x, 0.f),
+                float2(m.x, m.y)
+            };
+
                 // note that when we do this, we don't need to do blending inside
                 // of the ITerrainTexturing object! If we blend inside of that object
                 // we will end up with 16 taps... We only need 4, so long as coverage
@@ -124,7 +134,8 @@ TerrainPixel CalculateTexturing(PSInput geo)
                 // should always do)
             procTexture = TerrainTextureOutput_Blank();
             [unroll] for (uint c=0; c<4; c++) {
-                TerrainTextureOutput sample = MainTexturing.Calculate(worldPosition, geo.dhdxy, materialId[c], geo.texCoord);
+                float2 texCoord = geo.texCoord + tcOffset[c];
+                TerrainTextureOutput sample = MainTexturing.Calculate(worldPosition, geo.dhdxy, materialId[c], texCoord);
                 procTexture = AddWeighted(procTexture, sample, w[c]);
             }
         }
@@ -132,30 +143,41 @@ TerrainPixel CalculateTexturing(PSInput geo)
         procTexture = MainTexturing.Calculate(worldPosition, geo.dhdxy, 0, geo.texCoord);
     #endif
 
-    result.rgb = procTexture.diffuseAlbedo.rgb;
+    float3 resultDiffuse = procTexture.diffuseAlbedo.rgb;
 
     #if DRAW_WIREFRAME==1
-        result.rgb = BlendWireframe(geo, result.rgb);
+        resultDiffuse = BlendWireframe(geo, result.rgb);
     #endif
 
-        //	calculate the normal from the input derivatives
-        //	because of the nature of terrain, we can make
-        //	some simplifying assumptions.
+        //	How to calculate the tangent frame? If we do
+        //  not normalize uaxis and vaxis before the cross
+        //  product, it should allow the optimizer to simplify
+        //  the cross product operation... But we will end up
+        //  with a tangent frame with 3 unnormalized vectors.
+        //
+        //  Alternatively, we could normalize uaxis and vaxis
+        //  first...?
     float3 uaxis = float3(1.0f, 0.f, geo.dhdxy.x);
     float3 vaxis = float3(0.0f, 1.f, geo.dhdxy.y);
-    float3 normal = normalize(cross(uaxis, vaxis));	// because of all of the constant values, this cross product should be simplified in the optimiser
+    float3 normal = cross(uaxis, vaxis);
 
     #if DO_DEFORM_NORMAL==1
+            // because of all of the blending, tangentSpaceNormal
+            // will be unnormalized. We could normalize it here, before
+            // we pass it through the tangent frame.
+            // But the tangent frame is already unnormalized. So we already
+            // have some accuracy problems. Well, we can avoid normalizes
+            // until the very end, and just accept some accuracy problems.
         float3 deformedNormal = normalize(
              procTexture.tangentSpaceNormal.x * uaxis
            + procTexture.tangentSpaceNormal.y * vaxis
            + procTexture.tangentSpaceNormal.z * normal);
     #else
-        float3 deformedNormal = normal;
+        float3 deformedNormal = normalize(normal);
     #endif
 
     TerrainPixel output;
-    output.diffuseAlbedo = result.rgb;
+    output.diffuseAlbedo = resultDiffuse;
     output.worldSpaceNormal = deformedNormal;
     output.specularity = .25f * procTexture.specularity;
     output.cookedAmbientOcclusion = shadowing;

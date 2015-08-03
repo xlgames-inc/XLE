@@ -47,6 +47,36 @@ namespace Utility
     XL_UTILITY_API void     XlCopyString        (wchar_t* dst, size_t size, const wchar_t* src);
     XL_UTILITY_API void     XlCopyNString       (wchar_t* dst, size_t count, const wchar_t*src, size_t length);
 
+        ////////////   S T R I N G   S E C T I O N   ////////////
+
+    /// <summary>Pointers to the start and end of a string</summary>
+    /// This object points into the interior of another object, identifying
+    /// the start and end of a string.
+    ///
+    /// This is a 3rd common string representation:
+    ///     * c-style char pointer
+    ///     * stl-style std::string
+    ///     * begin/end string "section"
+    ///
+    /// This useful for separating a part of a large string, or while serializing
+    /// from an text file (when we want to identify an interior string without
+    /// requiring an extra allocation).
+    template<typename CharType=char>
+        class StringSection
+    {
+    public:
+        const CharType* _start;
+        const CharType* _end;
+
+        size_t Length() const { return size_t(_end - _start); }
+        bool Empty() const { return _end <= _start; }
+
+        StringSection(const CharType* start, const CharType* end) : _start(start), _end(end) {}
+        StringSection() : _start(nullptr), _end(nullptr) {}
+        explicit StringSection(const CharType* nullTerm) : _start(nullTerm), _end(&_start[XlStringLen(nullTerm)]) {}
+        explicit StringSection(const std::basic_string<CharType>& str);
+    };
+
         ////////////   S T R I N G   C O M P A R I S O N S   ////////////
     XL_UTILITY_API int      XlComparePrefix     (const char* x, const char* y, size_t size);
     XL_UTILITY_API int      XlComparePrefixI    (const char* x, const char* y, size_t size);
@@ -322,6 +352,54 @@ namespace Utility
                     return false;
             return b[i] == 0;
         }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template<typename T>
+        bool XlEqStringI(const StringSection<T>& a, const StringSection<T>& b)
+        {
+            auto sz = a.Length();
+            if (b.Length() != sz) return false;
+            for (size_t i = 0; i < sz; ++i)
+                if (XlToLower(a._start[i]) != XlToLower(b._start[i]))
+                    return false;
+            return true;
+        }
+
+    template<typename T>
+        bool XlEqString(const StringSection<T>& a, const StringSection<T>& b)
+        {
+            auto sz = a.Length();
+            if (b.Length() != sz) return false;
+            for (size_t i = 0; i < sz; ++i)
+                if (a._start[i] != b._start[i])
+                    return false;
+            return true;
+        }
+
+    template<typename T>
+        bool XlEqStringI(const StringSection<T>& a, const T* b)
+        {
+            auto sz = a.Length();
+            size_t i = 0;
+            for (; i < sz; ++i)
+                if (!b[i] || XlToLower(a._start[i]) != XlToLower(b[i]))
+                    return false;
+            return b[i] == 0;
+        }
+
+    template<typename T>
+        bool XlEqString(const StringSection<T>& a, const T* b)
+        {
+            auto sz = a.Length();
+            size_t i = 0;
+            for (; i < sz; ++i)
+                if (!b[i] || a._start[i] != b[i])
+                    return false;
+            return b[i] == 0;
+        }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     #if REDIRECT_CLIB_WITH_PREPROCESSOR
 

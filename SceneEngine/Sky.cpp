@@ -295,13 +295,13 @@ namespace SceneEngine
     {
         using namespace RenderCore;
 
-        auto* halfCubePart = strstr(skyTextureName, "_XX");
+        auto* halfCubePart = strstr(skyTextureName, "_*");
         if (halfCubePart) {
             _projectionType = 1;
 
                 //  This is a half-cube projection style (like Archeage).
                 //  We need to extract the names of 3 separate textures by
-                //  replacing the "_XX" with "_12", "_34" & "_5"
+                //  replacing the "_*" with "_12", "_34" & "_5"
             char nameBuffer[MaxPath];
             size_t beforePart = halfCubePart-skyTextureName;
             XlCopyNString(nameBuffer, skyTextureName, beforePart);

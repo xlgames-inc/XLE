@@ -103,16 +103,15 @@ namespace GUILayer
                     //  we need to make a filename relative to the current working
                     //  directory
                 auto nativeName = clix::marshalString<clix::E_UTF8>(value);
-                char directory[MaxPath];
-                XlGetCurrentDirectory(dimof(directory), directory);
-                XlCatString(directory, dimof(directory), "/");
-                XlMakeRelPath(directory, dimof(directory), directory, nativeName.c_str());
-                _object->_modelName = directory;
+                ::Assets::ResolvedAssetFile resName;
+                ::Assets::MakeAssetName(resName, nativeName.c_str());
+                
+                _object->_modelName = resName._fn;
 
                     // also set the material name (the old material file probably won't match the new model file)
-                XlChopExtension(directory);
-                XlCatString(directory, dimof(directory), ".material");
-                _object->_materialName = directory;
+                XlChopExtension(resName._fn);
+                XlCatString(resName._fn, dimof(resName._fn), ".material");
+                _object->_materialName = resName._fn;
 
                 _object->_pendingCameraAlignToModel = true; 
                 _object->_changeEvent.Trigger(); 
@@ -134,10 +133,9 @@ namespace GUILayer
                     //  we need to make a filename relative to the current working
                     //  directory
                 auto nativeName = clix::marshalString<clix::E_UTF8>(value);
-                char directory[MaxPath];
-                XlGetCurrentDirectory(dimof(directory), directory);
-                XlMakeRelPath(directory, dimof(directory), directory, nativeName.c_str());
-                _object->_materialName = directory;
+                ::Assets::ResolvedAssetFile resName;
+                ::Assets::MakeAssetName(resName, nativeName.c_str());
+                _object->_materialName = resName._fn;
                 _object->_changeEvent.Trigger(); 
             }
         }

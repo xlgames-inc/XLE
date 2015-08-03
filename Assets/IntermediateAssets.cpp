@@ -81,9 +81,9 @@ namespace Assets { namespace IntermediateAssets
     {
             //  We should normalize to avoid problems related to
             //  case insensitivity and slash differences
-        char buffer[MaxPath];
-        XlNormalizePath(buffer, dimof(buffer), filename);
-        auto hash = Hash64(buffer);
+        ResolvedAssetFile assetName;
+        MakeAssetName(assetName, filename);
+        auto hash = Hash64(assetName._fn);
 
         {
             ScopedLock(RetainedRecordsLock);
@@ -94,9 +94,9 @@ namespace Assets { namespace IntermediateAssets
 
                 //  we should call "AttachFileSystemMonitor" before we query for the
                 //  file's current modification time
-            auto newRecord = std::make_shared<RetainedFileRecord>(buffer);
-            RegisterFileDependency(newRecord, buffer);
-            newRecord->_state._timeMarker = GetFileModificationTime(buffer);
+            auto newRecord = std::make_shared<RetainedFileRecord>(assetName._fn);
+            RegisterFileDependency(newRecord, assetName._fn);
+            newRecord->_state._timeMarker = GetFileModificationTime(assetName._fn);
 
             return RetainedRecords.insert(i, std::make_pair(hash, std::move(newRecord)))->second;
         }
@@ -114,18 +114,11 @@ namespace Assets { namespace IntermediateAssets
 
             // propagate change messages...
             // (duplicating processing from RegisterFileDependency)
-        ResChar directoryName[MaxPath], baseName[MaxPath];
-        XlNormalizePath(baseName, dimof(baseName), record->_state._filename.c_str());
-        XlSimplifyPath(baseName, dimof(baseName), baseName, "\\/");
-        XlDirname(directoryName, dimof(directoryName), baseName);
-        auto len = XlStringLen(directoryName);
-        if (len > 0 && (directoryName[len-1] == '\\' || directoryName[len-1] == '/')) {
-            directoryName[len-1] = '\0'; 
-        }
-        XlBasename(baseName, dimof(baseName), baseName);
-        if (!directoryName[0]) XlCopyString(directoryName, "./");
+        ResChar directoryName[MaxPath];
+        FileNameSplitter<ResChar> splitter(filename);
+        SplitPath<ResChar>(splitter.DriveAndPath()).Rebuild(directoryName);
         
-        FakeFileChange(directoryName, baseName);
+        FakeFileChange(StringSection<ResChar>(directoryName), splitter.FileAndExtension());
 
         record->OnChange();
     }
@@ -214,16 +207,16 @@ namespace Assets { namespace IntermediateAssets
         char buffer[MaxPath];
         data.SetAttribute("BasePath", baseDir);
 
+        SplitPath<ResChar> baseSplitPath(baseDir);
+
         auto dependenciesBlock = std::make_unique<Data>("Dependencies");
         for (auto s=depsBegin; s!=depsEnd; ++s) {
             auto c = std::make_unique<Data>();
 
-            ResChar normalizedPath[MaxPath];
-            XlNormalizePath(normalizedPath, dimof(normalizedPath), s->_filename.c_str());
-
-            ResChar relativePath[MaxPath];
-            XlMakeRelPath(relativePath, dimof(relativePath), baseDir, normalizedPath);
-            c->SetValue(relativePath);
+            auto relPath = MakeRelativePath(
+                baseSplitPath, 
+                SplitPath<ResChar>(s->_filename));
+            c->SetValue(relPath.c_str());
 
             if (s->_status != DependentFileState::Status::Shadowed) {
                 c->SetAttribute("ModTimeH", (int)(s->_timeMarker>>32ull));

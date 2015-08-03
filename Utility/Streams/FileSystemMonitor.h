@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../StringUtils.h" // for StringSection
 #include <memory>
 
 namespace Utility
@@ -16,8 +17,8 @@ namespace Utility
         virtual void    OnChange() = 0;
     };
 
-    void    AttachFileSystemMonitor(const char directoryName[], const char filename[], std::shared_ptr<OnChangeCallback> callback);
-    void    FakeFileChange(const char directoryName[], const char filename[]);
+    void    AttachFileSystemMonitor(StringSection<char> directoryName, StringSection<char> filename, std::shared_ptr<OnChangeCallback> callback);
+    void    FakeFileChange(StringSection<char> directoryName, StringSection<char> filename);
     void    TerminateFileSystemMonitoring();
 }
 
