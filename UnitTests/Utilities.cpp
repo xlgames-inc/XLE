@@ -10,6 +10,7 @@
 #include "../Utility/StringFormat.h"
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/Streams/StreamTypes.h"
+#include "../Utility/Streams/PathUtils.h"
 #include "../Utility/FunctionUtils.h"
 #include "../Math/Vector.h"
 #include <CppUnitTest.h>
@@ -208,6 +209,43 @@ namespace UnitTests
             for (auto i=0u; i<100; ++i)
                 fns.Add(100+i, [](int x, int y) { return x+y; });
         }
+
+        TEST_METHOD(MakeRelativePathTest)
+		{
+			Assert::AreEqual(
+				std::string("somedir/source/sourcefile.cpp"),
+				MakeRelativePath(
+                    SplitPath<char>("D:\\LM\\Code"), 
+                    SplitPath<char>("D:\\LM\\Code\\SomeDir\\Source\\SourceFile.cpp")));
+
+			Assert::AreEqual(
+				std::string("d:/lm/.source/sourcefile.cpp"),
+				SplitPath<char>("D:\\LM\\Code\\.././\\SomeDir\\..\\.Source/////\\SourceFile.cpp").Simplify().Rebuild());
+
+			Assert::AreEqual(
+				std::string("d:/lm/somedir/"),
+				SplitPath<char>("D:\\LM\\Code../..\\SomeDir/").Simplify().Rebuild());
+
+			Assert::AreEqual(
+				std::string("someobject"),
+				MakeRelativePath(SplitPath<char>("D:\\LM\\Code"), SplitPath<char>("D:\\LM\\Code\\SomeObject")));
+
+			Assert::AreEqual(
+				std::string("someobject/"),
+				MakeRelativePath(SplitPath<char>("D:\\LM\\Code"), SplitPath<char>("D:\\LM\\Code\\SomeObject\\")));
+
+			Assert::AreEqual(
+				std::string("../../somedir/source/sourcefile.cpp"),
+				MakeRelativePath(SplitPath<char>("D:\\LM\\Code\\SomeOtherDirectory\\Another\\"), SplitPath<char>("D:\\LM\\Code\\SomeDir\\Source\\SourceFile.cpp")));
+
+			Assert::AreEqual(
+				std::string("../../code/somedir/source/sourcefile.cpp"),
+				MakeRelativePath(SplitPath<char>("D:\\./LM\\\\Code\\..\\SomeOtherDirectory\\/\\Another\\"), SplitPath<char>("D:\\LM\\Code\\SomeDir\\Source\\SourceFile.cpp")));
+
+			Assert::AreEqual(
+				std::string("source/sourcefile.cpp"),
+				MakeRelativePath(SplitPath<char>("D:\\LM\\Code\\SomeOtherDirectory\\Another\\../.."), SplitPath<char>("D:\\LM\\Code\\SomeDir\\../.\\Source\\./SourceFile.cpp")));
+		}
     };
 }
 

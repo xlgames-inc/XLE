@@ -557,7 +557,7 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 
 		auto firstColon = std::find(rawString._start, rawString._end, ':');
 		if (firstColon > std::find_first_of(rawString._start, rawString._end, seps, sepsEnd)) {
-    		_drive = Section(rawString._start, firstColon);
+    		_drive = Section(rawString._start, firstColon+1);
             pathStart = firstColon+1;
         } else {
             _drive = Section(rawString._start, rawString._end);
@@ -627,17 +627,25 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 			} else ++i;
 		}
 
-		return SplitPath(std::move(result), _endsInSeparator, _drive);
+		return SplitPath(std::move(result), _beginsWithSeparator, _endsWithSeparator, _drive);
 	}
 
 	TC auto SplitPath<CharType>::Rebuild(const FilenameRules& rules) const -> String
 	{
 		std::basic_stringstream<CharType> stream;
 
-        if (!_drive.Empty())
-            stream.write(_drive._start, _drive.Length());
+        if (!_drive.Empty()) {
+            auto*s = _drive._start;
+            while (s!=_drive._end) {
+                auto chr = ConvertPathChar(*s++, rules);
+                stream.write(&chr, 1);
+            }
+        }
 
         auto sep = rules.GetSeparator<CharType>();
+        if (_beginsWithSeparator)
+			stream.write(&sep, 1);
+
         if (!_sections.empty()) {
 		    for (auto e=_sections.cbegin();;) {
 			    auto*s = e->_start;
@@ -652,7 +660,7 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 		    }
         }
 
-		if (_endsInSeparator)
+		if (_endsWithSeparator)
 			stream.write(&sep, 1);
 		return stream.str();
 	}
@@ -670,8 +678,10 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
                 if (s >= dest && s < iend) assert(s>=i);   // check for reading&writing from the same place
                 *i++ = ConvertPathChar(*s++, rules);
             }
-            if (i!=iend) *i++ = ':';
         }
+
+        if (_beginsWithSeparator && i < iend)
+			*i++ = rules.GetSeparator<CharType>();
 
         if (!_sections.empty()) {
             for (auto e=_sections.cbegin();;) {
@@ -687,7 +697,7 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 		    }
         }
 
-        if (_endsInSeparator && i < iend)
+        if (_endsWithSeparator && i < iend)
 			*i++ = rules.GetSeparator<CharType>();
 
         // force null terminator, even if it causes a truncate
@@ -696,7 +706,8 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
     
     TC SplitPath<CharType>::SplitPath(Section rawString)
     {
-        _endsInSeparator = false;
+        _endsWithSeparator = false;
+        _beginsWithSeparator = false;
 
         const CharType seps[] = { (CharType)'\\', (CharType)'/' };
         const auto* sepsEnd = ArrayEnd(seps);
@@ -707,22 +718,30 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
         auto firstSep = std::find_first_of(i, iend, seps, sepsEnd);
         auto firstColon = std::find(i, iend, ':');
         if (firstColon != iend && firstSep != iend && firstColon < firstSep) {
-            _drive = Section(i, firstColon);
+            _drive = Section(i, firstColon+1);
             i = firstColon+1;
         } else {
             _drive = Section(i, i);
         }
 
-		for (;;) {
-            i = FindFirstNotOf(i, iend, seps, sepsEnd);
-            if (i == iend) { _endsInSeparator = true; break; }
+        auto* leadingSeps = FindFirstNotOf(i, iend, seps, sepsEnd);
+        if (leadingSeps != i) {
+            _beginsWithSeparator = true;
+            i = leadingSeps;
+        }
 
-            auto* start = i;
-            i = std::find_first_of(i, iend, seps, sepsEnd);
+		if (i != iend) {
+            for (;;) {
+                auto* start = i;
+                i = std::find_first_of(i, iend, seps, sepsEnd);
             
-            _sections.push_back(Section(start, i));
-            if (i == iend) { _endsInSeparator = false; break; }
-		}
+                _sections.push_back(Section(start, i));
+                if (i == iend) break;
+
+                i = FindFirstNotOf(i, iend, seps, sepsEnd);
+                if (i == iend) { _endsWithSeparator = true; break; }
+		    }
+        }
     }
 
 	TC SplitPath<CharType>::SplitPath(const String& input)
@@ -734,11 +753,14 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 		: SplitPath(Section(input))
 	{}
 
-    TC SplitPath<CharType>::SplitPath() { _endsInSeparator = false; }
+    TC SplitPath<CharType>::SplitPath() { _beginsWithSeparator = false; _endsWithSeparator = false; }
 
-	TC SplitPath<CharType>::SplitPath(std::vector<Section>&& sections, bool endsInSeparator, Section drive)
+	TC SplitPath<CharType>::SplitPath(std::vector<Section>&& sections, 
+        bool beginsWithSeparator, bool endsWithSeparator, 
+        Section drive)
 	: _sections(std::forward<std::vector<Section>>(sections))
-	, _endsInSeparator(endsInSeparator)
+	, _beginsWithSeparator(beginsWithSeparator)
+    , _endsWithSeparator(endsWithSeparator)
     , _drive(drive)
 	{}
 
@@ -746,7 +768,8 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 
     TC SplitPath<CharType>::SplitPath(SplitPath&& moveFrom) never_throws
     : _sections(std::move(moveFrom._sections))
-    , _endsInSeparator(moveFrom._endsInSeparator)
+    , _beginsWithSeparator(moveFrom._beginsWithSeparator)
+    , _endsWithSeparator(moveFrom._endsWithSeparator)
     , _drive(moveFrom._drive)
     {
     }
@@ -754,7 +777,8 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
     TC auto SplitPath<CharType>::operator=(SplitPath&& moveFrom) never_throws -> SplitPath&
     {
         _sections = std::move(moveFrom._sections);
-        _endsInSeparator = moveFrom._endsInSeparator;
+        _beginsWithSeparator = moveFrom._beginsWithSeparator;
+        _endsWithSeparator = moveFrom._endsWithSeparator;
         _drive = moveFrom._drive;
         return *this;
     }
@@ -877,7 +901,7 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 			pendingSlash = true;
 		}
 
-		if (destinationObject.EndsInSeparator()) {
+		if (destinationObject.EndsWithSeparator()) {
 			if (!pendingSlash)
                 meld.write(dots, 1);    // (creates "./" for empty paths)
             meld.write(&sep, 1);

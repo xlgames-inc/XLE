@@ -130,7 +130,8 @@ namespace Utility
 		Section     GetSection(unsigned index) const;
         Section     GetDrive() const;
 		SplitPath   Simplify() const;
-		bool        EndsInSeparator() const         { return _endsInSeparator; }
+        bool        BeginsWithSeparator() const     { return _beginsWithSeparator; }
+		bool        EndsWithSeparator() const         { return _endsWithSeparator; }
 
         String      Rebuild(const FilenameRules& rules = s_defaultFilenameRules) const; 
         void        Rebuild(CharType dest[], size_t destCount, const FilenameRules& rules = s_defaultFilenameRules) const;
@@ -151,10 +152,14 @@ namespace Utility
         ~SplitPath();
 	private:
 		std::vector<Section>	_sections;          // vector here means we need heap allocations (but it avoid imposing confusing limitations)
-		bool                    _endsInSeparator;
+		bool                    _beginsWithSeparator;
+        bool                    _endsWithSeparator;
         Section                 _drive;
 
-        SplitPath(std::vector<Section>&& sections, bool endsInSeparator, Section drive);
+        SplitPath(
+            std::vector<Section>&& sections, 
+            bool beginsWithSeparator, bool endsWithSeparator, 
+            Section drive);
 	};
 
     template<typename CharType>
