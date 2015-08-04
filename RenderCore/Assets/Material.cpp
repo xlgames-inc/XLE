@@ -364,9 +364,10 @@ namespace RenderCore { namespace Assets
         ::Assets::ResChar concreteFilename[MaxPath];
         MakeConcreteRawMaterialFilename(concreteFilename, dimof(concreteFilename), rawFilename);
 
+        _initializerName = ::Assets::rstring(concreteFilename) + colon;
+
         _settingName = colon+1;
         _concreteFilename  = concreteFilename;
-        _initializerFilename = rawFilename;
     }
 
     std::vector<::Assets::rstring> 
@@ -478,7 +479,7 @@ namespace RenderCore { namespace Assets
         }
 
         {
-            auto ele = formatter.BeginElement(u("ResourceBindings"));
+            auto ele = formatter.BeginElement(u("States"));
             SerializeStateSet(formatter, _stateSet);
             formatter.EndElement(ele);
         }
@@ -546,8 +547,10 @@ namespace RenderCore { namespace Assets
         auto inheritted = ResolveInherited(searchRules);
         for (auto i=inheritted.cbegin(); i!=inheritted.cend(); ++i) {
             TRY {
+                RawMaterial::RawMatSplitName splitName(i->c_str());
                 auto& rawParams = ::Assets::GetAssetDep<
-                    ::Assets::ConfigFileListContainer<RawMaterial>>(i->c_str());
+                    ::Assets::ConfigFileListContainer<RawMaterial>>(
+                        splitName._initializerName.c_str());
 
                 ::Assets::DirectorySearchRules newSearchRules = searchRules;
                 newSearchRules.Merge(rawParams._searchRules);

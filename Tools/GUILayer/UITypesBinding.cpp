@@ -436,11 +436,11 @@ namespace GUILayer
     RawMaterial::RawMaterial(System::String^ initialiser)
     {
         auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
+        RenderCore::Assets::RawMaterial::RawMatSplitName splitName(nativeInit.c_str());
         auto& source = ::Assets::GetDivergentAsset<
-            ::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial>>(nativeInit.c_str());
+            ::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial>>(splitName._initializerName.c_str());
         _underlying = source;
 
-        RenderCore::Assets::RawMaterial::RawMatSplitName splitName(nativeInit.c_str());
         _filename = clix::marshalString<clix::E_UTF8>(splitName._concreteFilename);
         _settingName = clix::marshalString<clix::E_UTF8>(splitName._settingName);
 

@@ -635,29 +635,33 @@ namespace RenderCore { namespace Techniques
             switch (formatter.PeekNext())
             {
             case Formatter::Blob::BeginElement:
-                Formatter::InteriorSection eleName;
-                if (!formatter.TryBeginElement(eleName)) break;
+                {
+                    Formatter::InteriorSection eleName;
+                    if (!formatter.TryBeginElement(eleName)) break;
 
-                if (Is("Inherit", eleName)) {
-                    LoadInheritedParameterBoxes(formatter, _baseParameters._parameters, searchRules, inherited);
-                } else if (Is("Parameters", eleName)) {
-                    LoadParameterBoxes(formatter, _baseParameters._parameters);
-                } else break;
+                    if (Is("Inherit", eleName)) {
+                        LoadInheritedParameterBoxes(formatter, _baseParameters._parameters, searchRules, inherited);
+                    } else if (Is("Parameters", eleName)) {
+                        LoadParameterBoxes(formatter, _baseParameters._parameters);
+                    } else break;
 
-                if (!formatter.TryEndElement()) break;
-                continue;
+                    if (!formatter.TryEndElement()) break;
+                    continue;
+                }
 
             case Formatter::Blob::AttributeName:
-                Formatter::InteriorSection name, value;
-                if (!formatter.TryAttribute(name, value)) break;
-                if (Is("VertexShader", name)) {
-                    _vertexShaderName = Conversion::Convert<decltype(_vertexShaderName)>(AsString(value));
-                } else if (Is("PixelShader", name)) {
-                    _pixelShaderName = Conversion::Convert<decltype(_pixelShaderName)>(AsString(value));
-                } else if (Is("GeometryShader", name)) {
-                    _geometryShaderName = Conversion::Convert<decltype(_geometryShaderName)>(AsString(value));
+                {
+                    Formatter::InteriorSection name, value;
+                    if (!formatter.TryAttribute(name, value)) break;
+                    if (Is("VertexShader", name)) {
+                        _vertexShaderName = Conversion::Convert<decltype(_vertexShaderName)>(AsString(value));
+                    } else if (Is("PixelShader", name)) {
+                        _pixelShaderName = Conversion::Convert<decltype(_pixelShaderName)>(AsString(value));
+                    } else if (Is("GeometryShader", name)) {
+                        _geometryShaderName = Conversion::Convert<decltype(_geometryShaderName)>(AsString(value));
+                    }
+                    continue;
                 }
-                continue;
 
             case Formatter::Blob::EndElement:
                 cleanQuit = true;

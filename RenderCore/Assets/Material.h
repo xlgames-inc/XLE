@@ -183,7 +183,7 @@ namespace RenderCore { namespace Assets
         Assets::RenderStateSet _stateSet;
         ParameterBox _constants;
 
-        using ResString = std::basic_string<::Assets::ResChar>;
+        using ResString = ::Assets::rstring;
         std::vector<ResString> _inherit;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
@@ -196,9 +196,6 @@ namespace RenderCore { namespace Assets
         std::vector<ResString> ResolveInherited(
             const ::Assets::DirectorySearchRules& searchRules) const;
 
-        // ResString GetInitializerFilename() const    { return _splitName._initializerFilename; }
-        // ResString GetSettingName() const            { return _splitName._settingName; }
-        
         void Serialize(OutputStreamFormatter& formatter) const;
         
         RawMaterial();
@@ -214,7 +211,7 @@ namespace RenderCore { namespace Assets
         public:
             ResString _settingName;
             ResString _concreteFilename;
-            ResString _initializerFilename;
+            ResString _initializerName;
 
             RawMatSplitName();
             RawMatSplitName(const ::Assets::ResChar initialiser[]);

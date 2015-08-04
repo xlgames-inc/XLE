@@ -119,12 +119,7 @@ namespace Utility
         };
         Blob PeekNext();
 
-        class InteriorSection
-        {
-        public:
-            const CharType* _start;
-            const CharType* _end;
-        };
+        using InteriorSection = StringSection<CharType>;
 
         bool TryBeginElement(InteriorSection& name);
         bool TryEndElement();
