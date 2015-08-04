@@ -71,6 +71,34 @@ namespace Utility
                 ++i;
             return i;
         }
+
+    template<typename SearchI, typename CompareI>
+        SearchI FindLastOf(
+            SearchI searchStart, SearchI searchEnd,
+            CompareI compareBegin, CompareI compareEnd)
+        {
+            auto i = searchEnd-1;
+            while (i >= searchStart) {
+                if (std::find(compareBegin, compareEnd, *i) != compareEnd)
+                    return i;
+                --i;
+            }
+            return searchEnd;
+        }
+
+    template<typename SearchI, typename CompareI>
+        SearchI FindLastOf(
+            SearchI searchStart, SearchI searchEnd,
+            CompareI compare)
+        {
+            auto i = searchEnd-1;
+            while (i >= searchStart) {
+                if (*i == compare)
+                    return i;
+                --i;
+            }
+            return searchEnd;
+        }
 }
 
 using namespace Utility;

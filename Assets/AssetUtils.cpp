@@ -451,15 +451,31 @@ namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    static const SplitPath<ResChar>& BaseDir()
+    {
+            // hack -- find the base directory we'll use to build relative names from 
+            //  Note that this is going to call XlGetCurrentDirectory at some unpredictable
+            //  time; so we're assuming that the current directory is set at app start, and
+            //  remains constant
+        static ResolvedAssetFile buffer;
+        static SplitPath<ResChar> result;
+        static bool init = false;
+        if (!init) {
+            XlGetCurrentDirectory(dimof(buffer._fn), buffer._fn);
+            SplitPath<ResChar>(buffer._fn).Rebuild(buffer._fn, dimof(buffer._fn));
+            result = SplitPath<ResChar>(buffer._fn);
+            init = true;
+        }
+        return result;
+    }
+
     void MakeAssetName(ResolvedAssetFile& dest, const ::Assets::ResChar src[])
     {
-        XlGetCurrentDirectory(dimof(dest._fn), dest._fn);
-
         auto rules = s_defaultFilenameRules;
         FileNameSplitter<ResChar> srcSplit(src);
         auto relPath = 
             MakeRelativePath(
-                SplitPath<ResChar>(dest._fn),
+                BaseDir(),
                 SplitPath<ResChar>(srcSplit.DriveAndPath()),
                 rules);
 

@@ -84,9 +84,9 @@ namespace Utility
 		Section		Drive() const					{ return _drive; }
 		Section		Path() const					{ return _path; }
 		Section		File() const					{ return _file; }
-		Section		Extension() const				{ return _extension; }
-		Section		ExtensionWithPeriod() const		{ return (_extension._end > _extension._start) ? Section(extension._start - 1, extension.second) : Section(); }
-        Section		Parameters() const				{ return _parameters; }
+		Section		Extension() const				{ return !_extension.Empty() ? Section(_extension._start+1, _extension._end) : Section(); }
+		Section		ExtensionWithPeriod() const		{ return _extension; }
+        Section		Parameters() const				{ return !_parameters.Empty() ? Section(_parameters._start+1, _parameters._end) : Section(); }
 
 		Section     DriveAndPath() const			{ return Section(_drive._start, _path._end); }
 		Section	    FileAndExtension() const        { return Section(_file._start, _extension._end); }
@@ -142,6 +142,7 @@ namespace Utility
 		explicit SplitPath(const String& path);
 		explicit SplitPath(const CharType path[]);
         explicit SplitPath(Section path);
+        SplitPath();
         
         SplitPath(SplitPath&& moveFrom) never_throws;
         SplitPath& operator=(SplitPath&& moveFrom) never_throws;

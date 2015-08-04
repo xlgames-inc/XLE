@@ -546,6 +546,44 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 
     #define TC template<typename CharType>
 
+    TC FileNameSplitter<CharType>::FileNameSplitter(Section rawString)
+	{
+        _fullFilename = rawString;
+
+        const CharType seps[] = { (CharType)'\\', (CharType)'/' };
+        const auto* sepsEnd = ArrayEnd(seps);
+
+        const auto* pathStart = rawString._start;
+
+		auto firstColon = std::find(rawString._start, rawString._end, ':');
+		if (firstColon > std::find_first_of(rawString._start, rawString._end, seps, sepsEnd)) {
+    		_drive = Section(rawString._start, firstColon);
+            pathStart = firstColon+1;
+        } else {
+            _drive = Section(rawString._start, rawString._end);
+        }
+
+		auto lastSlash = FindLastOf(rawString._start, rawString._end, seps, sepsEnd);
+		if (lastSlash == rawString._end) {
+            _path = Section(pathStart, pathStart);
+        } else {
+            _path = Section(pathStart, lastSlash+1);
+        }
+
+		auto paramStart = std::find(_path._end, rawString._end, ':');
+        auto endOfFile = FindLastOf(_path._end, paramStart, '.');
+		_file = Section(_path._end, endOfFile);
+        _extension = Section(endOfFile, paramStart);
+        _parameters = Section(paramStart, rawString._end);
+	}
+
+    TC FileNameSplitter<CharType>::FileNameSplitter(const CharType rawString[])
+        : FileNameSplitter(Section(rawString)) {}
+
+    TC FileNameSplitter<CharType>::FileNameSplitter(const std::basic_string<CharType>& rawString)
+        : FileNameSplitter(Section(rawString)) {}
+
+
 	TC unsigned SplitPath<CharType>::GetSectionCount() const { return (unsigned)_sections.size(); }
     
 	TC typename SplitPath<CharType>::SectionType AsSectionType(StringSection<CharType> e)
@@ -600,17 +638,19 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
             stream.write(_drive._start, _drive.Length());
 
         auto sep = rules.GetSeparator<CharType>();
-		for (auto e=_sections.cbegin();;) {
-			auto*s = e->_start;
-            while (s!=e->_end) {
-                auto chr = ConvertPathChar(*s++, rules);
-                stream.write(&chr, 1);
-            }
+        if (!_sections.empty()) {
+		    for (auto e=_sections.cbegin();;) {
+			    auto*s = e->_start;
+                while (s!=e->_end) {
+                    auto chr = ConvertPathChar(*s++, rules);
+                    stream.write(&chr, 1);
+                }
 
-            ++e;
-            if (e==_sections.cend()) break;
-            stream.write(&sep, 1);
-		}
+                ++e;
+                if (e==_sections.cend()) break;
+                stream.write(&sep, 1);
+		    }
+        }
 
 		if (_endsInSeparator)
 			stream.write(&sep, 1);
@@ -633,17 +673,19 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
             if (i!=iend) *i++ = ':';
         }
 
-        for (auto e=_sections.cbegin();;) {
-            auto*s = e->_start;
-            while (s!=e->_end && i!=iend) {
-                if (s >= dest && s < iend) assert(s>=i);   // check for reading&writing from the same place
-                *i++ = ConvertPathChar(*s++, rules);
-            }
+        if (!_sections.empty()) {
+            for (auto e=_sections.cbegin();;) {
+                auto*s = e->_start;
+                while (s!=e->_end && i!=iend) {
+                    if (s >= dest && s < iend) assert(s>=i);   // check for reading&writing from the same place
+                    *i++ = ConvertPathChar(*s++, rules);
+                }
 
-            ++e;
-            if (e==_sections.cend() || i == iend) break;
-            *i++ = rules.GetSeparator<CharType>();
-		}
+                ++e;
+                if (e==_sections.cend() || i == iend) break;
+                *i++ = rules.GetSeparator<CharType>();
+		    }
+        }
 
         if (_endsInSeparator && i < iend)
 			*i++ = rules.GetSeparator<CharType>();
@@ -667,6 +709,8 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
         if (firstColon != iend && firstSep != iend && firstColon < firstSep) {
             _drive = Section(i, firstColon);
             i = firstColon+1;
+        } else {
+            _drive = Section(i, i);
         }
 
 		for (;;) {
@@ -677,8 +721,7 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
             i = std::find_first_of(i, iend, seps, sepsEnd);
             
             _sections.push_back(Section(start, i));
-            if (i == iend) break;
-            ++i;
+            if (i == iend) { _endsInSeparator = false; break; }
 		}
     }
 
@@ -690,6 +733,8 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 	TC SplitPath<CharType>::SplitPath(const CharType input[])
 		: SplitPath(Section(input))
 	{}
+
+    TC SplitPath<CharType>::SplitPath() { _endsInSeparator = false; }
 
 	TC SplitPath<CharType>::SplitPath(std::vector<Section>&& sections, bool endsInSeparator, Section drive)
 	: _sections(std::forward<std::vector<Section>>(sections))
@@ -820,7 +865,15 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 			auto element = destinationObject.GetSection(destinationIterator);
 			if (pendingSlash)
 				meld.write(&sep, 1);
-			meld.write(element._start, element._end - element._start);
+            if (rules.IsCaseSensitive()) {
+			    meld.write(element._start, element._end - element._start);
+            } else {
+                    // convert to lower case for non-case sensitive file systems
+                for (auto* i=element._start; i!=element._end; ++i) {
+                    auto c = XlToLower(*i);
+                    meld.write(&c, 1);
+                }
+            }
 			pendingSlash = true;
 		}
 
@@ -844,6 +897,9 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
         FilenameRules s_defaultFilenameRules('/', true);
     #endif
 
+    template class FileNameSplitter<char>;
+    template class FileNameSplitter<utf8>;
+    template class FileNameSplitter<ucs2>;
     template class SplitPath<char>;
     template class SplitPath<utf8>;
     template class SplitPath<ucs2>;

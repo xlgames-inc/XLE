@@ -135,7 +135,7 @@ namespace ShaderFragmentArchive
         auto len = XlStringLen(directoryName);
         if (len > 0) { directoryName[len-1] = '\0'; }
         XlBasename(baseName, dimof(baseName), filename);
-        Utility::AttachFileSystemMonitor(directoryName, baseName, validationIndex);
+        Utility::AttachFileSystemMonitor(StringSection<char>(directoryName), StringSection<char>(baseName), validationIndex);
     }
 
     void ShaderFragment::OnChange(Object^obj)

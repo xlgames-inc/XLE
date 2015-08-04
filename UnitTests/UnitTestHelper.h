@@ -42,10 +42,8 @@ namespace UnitTests
     	nchar_t workingDir[MaxPath];
     
     	XlGetCurrentDirectory(dimof(appDir), appDir);
-    	XlSimplifyPath(appDir, dimof(appDir), appDir, a2n("\\/"));
          auto* catPath = a2n("..\\Working");
     	XlConcatPath(workingDir, dimof(workingDir), appDir, catPath, &catPath[XlStringLen(catPath)]);
-    	XlSimplifyPath(workingDir, dimof(workingDir), workingDir, a2n("\\/"));
     	XlChDir(workingDir);
     }
     

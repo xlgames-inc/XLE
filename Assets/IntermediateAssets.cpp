@@ -145,6 +145,8 @@ namespace Assets { namespace IntermediateAssets
             if (dependenciesBlock) {
                 for (auto* dependency = dependenciesBlock->child; dependency; dependency = dependency->next) {
                     auto* depName = dependency->value;
+                    if (!depName || !depName[0]) continue;
+
                     auto dateLow = (unsigned)dependency->IntAttribute("ModTimeL");
                     auto dateHigh = (unsigned)dependency->IntAttribute("ModTimeH");
                     

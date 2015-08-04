@@ -204,7 +204,7 @@ namespace SceneEngine
     class ResolvedTextureFiles
     {
     public:
-        ResolvedFilename _diffuse, _normals, _params;
+        ::Assets::ResolvedAssetFile _diffuse, _normals, _params;
 
         ResolvedTextureFiles(
             const ::Assets::ResChar baseName[],
@@ -212,7 +212,7 @@ namespace SceneEngine
 
     protected:
         void PatchFilename(
-            ResolvedFilename& dest, const ::Assets::ResChar input[], 
+            ::Assets::ResolvedAssetFile& dest, const ::Assets::ResChar input[], 
             const ::Assets::ResChar marker[], const ::Assets::ResChar markerEnd[],
             const ::Assets::ResChar replacement[]);
     };
@@ -238,7 +238,7 @@ namespace SceneEngine
     }
 
     void ResolvedTextureFiles::PatchFilename(
-        ResolvedFilename& dest, const ::Assets::ResChar input[], 
+        ::Assets::ResolvedAssetFile& dest, const ::Assets::ResChar input[], 
         const ::Assets::ResChar marker[], const ::Assets::ResChar markerEnd[],
         const ::Assets::ResChar replacement[])
     {

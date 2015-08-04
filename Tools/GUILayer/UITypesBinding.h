@@ -98,24 +98,7 @@ namespace GUILayer
                 return clix::marshalString<clix::E_UTF8>(_object->_modelName);
             }
 
-            void set(String^ value)
-            {
-                    //  we need to make a filename relative to the current working
-                    //  directory
-                auto nativeName = clix::marshalString<clix::E_UTF8>(value);
-                ::Assets::ResolvedAssetFile resName;
-                ::Assets::MakeAssetName(resName, nativeName.c_str());
-                
-                _object->_modelName = resName._fn;
-
-                    // also set the material name (the old material file probably won't match the new model file)
-                XlChopExtension(resName._fn);
-                XlCatString(resName._fn, dimof(resName._fn), ".material");
-                _object->_materialName = resName._fn;
-
-                _object->_pendingCameraAlignToModel = true; 
-                _object->_changeEvent.Trigger(); 
-            }
+            void set(String^ value);
         }
 
         [Category("Model")]
@@ -128,16 +111,7 @@ namespace GUILayer
                 return clix::marshalString<clix::E_UTF8>(_object->_materialName);
             }
 
-            void set(String^ value)
-            {
-                    //  we need to make a filename relative to the current working
-                    //  directory
-                auto nativeName = clix::marshalString<clix::E_UTF8>(value);
-                ::Assets::ResolvedAssetFile resName;
-                ::Assets::MakeAssetName(resName, nativeName.c_str());
-                _object->_materialName = resName._fn;
-                _object->_changeEvent.Trigger(); 
-            }
+            void set(String^ value);
         }
 
         enum class ColourByMaterialType { None, All, MouseOver };

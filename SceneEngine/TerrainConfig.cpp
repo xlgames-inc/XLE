@@ -101,7 +101,7 @@ namespace SceneEngine
             //  * only use '/' separators
             //  * must end in a slash (unless empty)
         ::Assets::ResChar buffer[MaxPath];
-        XlNormalizePath(buffer, dimof(buffer), input);
+        SplitPath<::Assets::ResChar>(input).Rebuild(buffer, dimof(buffer));
         auto len = XlStringLen(buffer);
         std::transform(buffer, &buffer[len], buffer, &std::tolower);
         if (len && buffer[len-1] != '/' && (len+1) < dimof(buffer)) {
