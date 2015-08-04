@@ -24,6 +24,9 @@
     <ClCompile Include="..\..\Shared\TerrainOverlaySystem.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Shared\EnvFeatures.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EnvironmentScene.h" />
@@ -46,6 +49,12 @@
       <Filter>Shared</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Shared\TerrainOverlaySystem.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Shared\EnvFeatures.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Shared\IScenePlugin.h">
       <Filter>Shared</Filter>
     </ClInclude>
   </ItemGroup>

@@ -353,7 +353,7 @@ namespace RenderCore { namespace Assets
                 std::vector<::Assets::DependentFileState> deps;
 
                 if (_newPathOk) {
-                    auto mergedAnimationSet = (*_createAnimationSetFn)();
+                    auto mergedAnimationSet = (*_createAnimationSetFn)("mergedanim");
                     for (auto i=sourceFiles.begin(); i!=sourceFiles.end(); ++i) {
                         char baseName[MaxPath]; // get the base name of the file (without the extension)
                         XlBasename(baseName, dimof(baseName), i->c_str());

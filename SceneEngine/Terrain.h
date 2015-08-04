@@ -89,7 +89,7 @@ namespace SceneEngine
         ///
         /// The previous terrain (if any) will be removed. However, if
         /// any cached textures or data can be retained, they will be.
-        void Load(const TerrainConfig& cfg, UInt2 cellMin, UInt2 cellMax, bool allowModification);
+        void Load(const TerrainConfig& cfg, UInt2 cellMin = UInt2(0,0), UInt2 cellMax = UInt2(~0u, ~0u), bool allowModification = false);
         void LoadMaterial(const TerrainMaterialConfig& matCfg);
         void LoadUberSurface(const ::Assets::ResChar uberSurfaceDir[]);
 

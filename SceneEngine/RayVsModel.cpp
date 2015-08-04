@@ -205,7 +205,7 @@ namespace SceneEngine
         LightingParser_SetupScene(
             metalContext.get(), _pimpl->_parserContext, nullptr, camera, qualitySettings);
         LightingParser_SetGlobalTransform(
-            metalContext.get(), _pimpl->_parserContext, camera, qualitySettings._dimensions[0], qualitySettings._dimensions[1],
+            metalContext.get(), _pimpl->_parserContext, camera, qualitySettings._dimensions,
             &specialProjMatrix);
 
         _pimpl->_oldSO = RenderCore::Metal::GeometryShader::GetDefaultStreamOutputInitializers();

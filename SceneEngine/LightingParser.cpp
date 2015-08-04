@@ -126,10 +126,9 @@ namespace SceneEngine
         context->Clear(mainTargets._msaaDepthBuffer, 1.f, 0);
     }
 
-    void LightingParser_SetGlobalTransform( DeviceContext* context, 
-                                            LightingParserContext& parserContext, 
+    void LightingParser_SetProjectionDesc(  LightingParserContext& parserContext, 
                                             const Techniques::CameraDesc& sceneCamera,
-                                            unsigned viewportWidth, unsigned viewportHeight,
+                                            UInt2 viewportDims,
                                             const Float4x4* specialProjectionMatrix)
     {
             //  Setup our projection matrix... Scene parser should give us some camera
@@ -137,7 +136,7 @@ namespace SceneEngine
             //  from the lighting parser. The reason is because the size of the output
             //  texture matters... The scene parser doesn't know what we're rendering
             //  do, so can't know the complete rendering output.
-        const float aspectRatio = viewportWidth / float(viewportHeight);
+        const float aspectRatio = viewportDims[0] / float(viewportDims[1]);
         auto cameraToProjection = Techniques::PerspectiveProjection(sceneCamera, aspectRatio);
 
         if (specialProjectionMatrix) {
@@ -152,7 +151,16 @@ namespace SceneEngine
         projDesc._worldToProjection = Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), cameraToProjection);
         projDesc._cameraToProjection = cameraToProjection;
         projDesc._cameraToWorld = sceneCamera._cameraToWorld;
+    }
 
+    void LightingParser_SetGlobalTransform( DeviceContext* context, 
+                                            LightingParserContext& parserContext, 
+                                            const Techniques::CameraDesc& sceneCamera,
+                                            UInt2 viewportDims,
+                                            const Float4x4* specialProjectionMatrix)
+    {
+        LightingParser_SetProjectionDesc(parserContext, sceneCamera, viewportDims, specialProjectionMatrix);
+        auto& projDesc = parserContext.GetProjectionDesc();
         auto globalTransform = BuildGlobalTransformConstants(projDesc);
         parserContext.SetGlobalCB(0, context, &globalTransform, sizeof(globalTransform));
     }
@@ -328,10 +336,10 @@ namespace SceneEngine
 
     std::vector<PreparedShadowFrustum> LightingParser_PrepareShadows(DeviceContext* context, LightingParserContext& parserContext);
 
-    static void ForwardLightingModel_Render(DeviceContext* context, 
-                                            LightingParserContext& parserContext,
-                                            ForwardTargetsBox& targetsBox,
-                                            unsigned sampleCount)
+    static void ForwardLightingModel_Render(    DeviceContext* context, 
+                                                LightingParserContext& parserContext,
+                                                ForwardTargetsBox& targetsBox,
+                                                unsigned sampleCount)
     {
         auto skyProj = LightingParser_BindLightResolveResources(context, parserContext);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", skyProj);
@@ -812,7 +820,7 @@ namespace SceneEngine
             parserContext.SetMetricsBox(&metricsBox);
 
             LightingParser_SetGlobalTransform(
-                context, parserContext, camera, qualitySettings._dimensions[0], qualitySettings._dimensions[1]);
+                context, parserContext, camera, qualitySettings._dimensions);
         } 
         CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }

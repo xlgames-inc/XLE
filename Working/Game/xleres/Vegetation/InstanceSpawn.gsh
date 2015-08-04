@@ -47,7 +47,7 @@ void WriteInstance(
 	float3 instancePosition, float2 tc, float dhdxy,
 	inout uint outputVertices, inout PointStream<GSOutput> outputStream)
 {
-	if ((outputVertices+1)>MaxOutputVertices)
+	if (outputVertices>=MaxOutputVertices)
 		return;
 
 	float3 camOffset = instancePosition - WorldSpaceView;
@@ -121,6 +121,10 @@ void RasterizeBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 							inout uint outputVertices, float spacing,
 							inout PointStream<GSOutput> outputStream)
 {
+		// If either edge is horizontal, we will get an finite
+		// loop here. So we need to prevent this case
+	[branch] if ((e01.y == e00.y) || (e11.y == e10.y)) return;
+
 	float y = ceil(e00.y/spacing)*spacing;
 	for (;y<e01.y; y+=spacing) {
 		float e0a = (y - e00.y) / (e01.y - e00.y);
@@ -136,6 +140,8 @@ void RasterizeBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 
 		float spanMinX = min(spanx0, spanx1);
 		float spanMaxX = max(spanx0, spanx1);
+
+		if (spanx1 == spanx0) continue;		// causes a divide by zero, which could mean bad outputs
 
 		float x = ceil(spanMinX/spacing)*spacing;
 		for (;x<spanMaxX; x+=spacing) {
@@ -350,7 +356,7 @@ void RasterizeLineBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 			output.position = mul(WorldToClip, float4(end,1));
 			outputStream.Append(output);
 			outputStream.RestartStrip();
-			outputVertices+= 2;
+			outputVertices += 2;
 		}
 	}
 }

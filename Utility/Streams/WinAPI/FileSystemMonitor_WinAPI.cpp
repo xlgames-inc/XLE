@@ -269,7 +269,8 @@ namespace Utility
         std::shared_ptr<OnChangeCallback> callback)
     {
         ScopedLock(MonitoredDirectoriesLock);
-        assert(!directoryName.Empty());
+        if (directoryName.Empty())
+            directoryName = StringSection<char>("./");
 
         auto hash = MonitoredDirectory::HashFilename(directoryName);
         auto i = std::lower_bound(

@@ -113,7 +113,13 @@ namespace SceneEngine
         MetalContext* context, 
         LightingParserContext& parserContext, 
         const RenderCore::Techniques::CameraDesc& sceneCamera,
-        unsigned viewportWidth, unsigned viewportHeight,
+        UInt2 viewportDims,
+        const Float4x4* specialProjectionMatrix = nullptr);
+
+    void LightingParser_SetProjectionDesc(  
+        LightingParserContext& parserContext, 
+        const RenderCore::Techniques::CameraDesc& sceneCamera,
+        UInt2 viewportDims,
         const Float4x4* specialProjectionMatrix = nullptr);
 
         ///////////////////////////////////////////////////////////////////////////

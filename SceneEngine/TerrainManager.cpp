@@ -499,6 +499,9 @@ namespace SceneEngine
         _pimpl->_coords = TerrainCoordinateSystem(_pimpl->_coords.TerrainOffset(), CellSizeWorldSpace(cfg));
         _pimpl->_cfg = cfg;
 
+        if (cellMax == UInt2(~0u, ~0u))
+            cellMax = cfg._cellCount + UInt2(1,1);
+
         _pimpl->AddCells(cfg, cellMin, cellMax);
 
         ////////////////////////////////////////////////////////////////////////////

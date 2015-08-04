@@ -62,7 +62,7 @@ namespace RenderCore { namespace ColladaConversion
     typedef std::shared_ptr<ColladaScaffold> CreateColladaScaffoldFn(const ::Assets::ResChar identifier[]);
     typedef NascentChunkArray ModelSerializeFn(const ColladaScaffold&);
 
-    typedef std::shared_ptr<WorkingAnimationSet> CreateAnimationSetFn();
+    typedef std::shared_ptr<WorkingAnimationSet> CreateAnimationSetFn(const char name[]);
     typedef void ExtractAnimationsFn(WorkingAnimationSet&, const ColladaScaffold&, const char[]);
     typedef NascentChunkArray SerializeAnimationSetFn(const WorkingAnimationSet&);
 }}

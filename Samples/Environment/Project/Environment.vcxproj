@@ -97,6 +97,7 @@
     <ClCompile Include="..\..\Shared\AnimationDecisionTree.cpp" />
     <ClCompile Include="..\..\Shared\Character.cpp" />
     <ClCompile Include="..\..\Shared\CharactersScene.cpp" />
+    <ClCompile Include="..\..\Shared\EnvFeatures.cpp" />
     <ClCompile Include="..\..\Shared\PlacementsOverlaySystem.cpp" />
     <ClCompile Include="..\..\Shared\SampleInputHandler.cpp" />
     <ClCompile Include="..\..\Shared\TerrainOverlaySystem.cpp" />
@@ -108,6 +109,8 @@
     <ClInclude Include="..\..\Shared\AnimationDecisionTree.h" />
     <ClInclude Include="..\..\Shared\Character.h" />
     <ClInclude Include="..\..\Shared\CharactersScene.h" />
+    <ClInclude Include="..\..\Shared\EnvFeatures.h" />
+    <ClInclude Include="..\..\Shared\IScenePlugin.h" />
     <ClInclude Include="..\..\Shared\PlacementsOverlaySystem.h" />
     <ClInclude Include="..\..\Shared\SampleGlobals.h" />
     <ClInclude Include="..\..\Shared\SampleInputHandler.h" />

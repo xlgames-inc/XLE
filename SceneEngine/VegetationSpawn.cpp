@@ -174,7 +174,7 @@ namespace SceneEngine
 
         TRY 
         {
-            auto& perlinNoiseRes = Techniques::FindCachedBox<SceneEngine::PerlinNoiseResources>(SceneEngine::PerlinNoiseResources::Desc());
+            auto& perlinNoiseRes = Techniques::FindCachedBox2<SceneEngine::PerlinNoiseResources>();
             context->BindGS(RenderCore::MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
             context->BindGS(RenderCore::MakeResourceList(RenderCore::Metal::SamplerState()));
 
@@ -182,12 +182,13 @@ namespace SceneEngine
                 //  we're going to be writing to buffers that will be used for instancing.
             // ID3D::Buffer* nullBuffer = nullptr; unsigned zero = 0;
             // context->GetUnderlying()->IASetVertexBuffers(3, 1, &nullBuffer, &zero, &zero);
+            context->Unbind<Metal::VertexBuffer>();
             context->UnbindVS<Metal::ShaderResourceView>(15, 1);
 
             float maxDrawDistance = 0.f;
             for (const auto& m:cfg._materials)
-                for (const auto& b:m._buckets) 
-                        maxDrawDistance = std::max(b._maxDrawDistance, maxDrawDistance);
+                for (const auto& b:m._buckets)
+                    maxDrawDistance = std::max(b._maxDrawDistance, maxDrawDistance);
 
             class InstanceSpawnConstants
             {
@@ -264,10 +265,11 @@ namespace SceneEngine
                 //  when the bound camera changes...
             LightingParser_SetGlobalTransform(
                 context, parserContext, cameraDesc, 
-                unsigned(viewport.Width), unsigned(viewport.Height));
+                UInt2(unsigned(viewport.Width), unsigned(viewport.Height)));
 
             ID3D::Buffer* targets[2] = { res._streamOutputBuffers[0].get(), res._streamOutputBuffers[1].get() };
             context->GetUnderlying()->SOSetTargets(2, targets, offsets);
+
             parserContext.GetSceneParser()->ExecuteScene(context, parserContext, parseSettings, 5);
 
             context->GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
@@ -332,7 +334,7 @@ namespace SceneEngine
                 shaderParams.get()));
             context->Dispatch(StreamOutputMaxCount / 256);
 
-                // clear all of the UAVs again
+                // unbind all of the UAVs again
             context->UnbindCS<Metal::UnorderedAccessView>(0, outputBinCount);
             context->UnbindCS<Metal::ShaderResourceView>(0, 2);
 
@@ -350,7 +352,7 @@ namespace SceneEngine
             // (reset the camera transform if it's changed)
         LightingParser_SetGlobalTransform(
             context, parserContext, oldCamera, 
-            unsigned(viewport.Width), unsigned(viewport.Height));
+            UInt2(unsigned(viewport.Width), unsigned(viewport.Height)));
 
         context->GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
         Metal::GeometryShader::SetDefaultStreamOutputInitializers(oldSO);

@@ -131,7 +131,9 @@ namespace Utility
         Section     GetDrive() const;
 		SplitPath   Simplify() const;
         bool        BeginsWithSeparator() const     { return _beginsWithSeparator; }
-		bool        EndsWithSeparator() const         { return _endsWithSeparator; }
+		bool        EndsWithSeparator() const       { return _endsWithSeparator; }
+        bool&       BeginsWithSeparator()           { return _beginsWithSeparator; }
+		bool&       EndsWithSeparator()             { return _endsWithSeparator; }
 
         String      Rebuild(const FilenameRules& rules = s_defaultFilenameRules) const; 
         void        Rebuild(CharType dest[], size_t destCount, const FilenameRules& rules = s_defaultFilenameRules) const;

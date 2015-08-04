@@ -370,7 +370,7 @@ namespace EntityInterface
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void DeserializeEntity(
+    static Identifier DeserializeEntity(
         InputStreamFormatter<utf8>& formatter,
         IEntityInterface& interf,
         DocumentId docId)
@@ -392,10 +392,16 @@ namespace EntityInterface
         std::vector<char> initsBuffer;
         initsBuffer.reserve(256);
 
+        std::vector<Identifier> children;
+
         for (;;) {
             switch (formatter.PeekNext()) {
             case Blob::BeginElement:
-                DeserializeEntity(formatter, interf, docId);
+                {
+                    auto child = DeserializeEntity(formatter, interf, docId);
+                    if (child.Object())
+                        children.push_back(child);
+                }
                 break;
 
             case Blob::AttributeName:
@@ -410,17 +416,17 @@ namespace EntityInterface
                         (const char*)value._start, (const char*)value._end,
                         intermediateBuffer, dimof(intermediateBuffer));
 
+                    size_t bufferOffset = initsBuffer.size();
+                    
                     if (type._type == ImpliedTyping::TypeCat::Void) {
                         type._type = ImpliedTyping::TypeCat::UInt8;
                         type._arrayCount = uint16(value._end - value._start);
                         type._typeHint = ImpliedTyping::TypeHint::String;
+                        initsBuffer.insert(initsBuffer.end(), value._start, value._end);
+                    } else {
+                        auto size = std::min(type.GetSize(), (unsigned)sizeof(intermediateBuffer));
+                        initsBuffer.insert(initsBuffer.end(), intermediateBuffer, PtrAdd(intermediateBuffer, size));
                     }
-
-                    size_t bufferOffset = initsBuffer.size();
-                    auto size = std::min(type.GetSize(), (unsigned)sizeof(intermediateBuffer));
-                    initsBuffer.insert(
-                        initsBuffer.end(),
-                        intermediateBuffer, PtrAdd(intermediateBuffer, size));
                
                     XlCopyNString(tempBuffer, name._start, name._end - name._start);
                     auto id = interf.GetPropertyId(typeId, (const char*)tempBuffer);
@@ -444,16 +450,20 @@ namespace EntityInterface
                     for (auto&i:inits) i._src = PtrAdd(AsPointer(initsBuffer.cbegin()), size_t(i._src));
 
                     auto id = interf.AssignObjectId(docId, typeId);
-                    if (!interf.CreateObject(
-                        Identifier(docId, id, typeId),
-                        AsPointer(inits.cbegin()), inits.size())) {
+                    Identifier identifier(docId, id, typeId);
+                    if (!interf.CreateObject(identifier, AsPointer(inits.cbegin()), inits.size()))
                         Throw(FormatException("Error while creating object in entity deserialisation", beginLoc));
-                    }
+
+                    for (const auto&c:children)
+                        interf.SetParent(c, identifier, -1);
 
                     typeId = ~ObjectTypeId(0x0);
                     initsBuffer.clear();
+
+                    return identifier;
                 }
-                return;
+
+                return Identifier();
             }
         }
     }

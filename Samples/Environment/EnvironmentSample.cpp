@@ -166,7 +166,7 @@ namespace Sample
 
             // main scene
         LogInfo << "Creating main scene";
-        auto mainScene = std::make_shared<EnvironmentSceneParser>();
+        auto mainScene = std::make_shared<EnvironmentSceneParser>("demoworld2/finals");
         
         {
                 //  Create the debugging system, and add any "displays"
@@ -303,19 +303,22 @@ namespace Sample
     {
         CPUProfileEvent pEvnt("RenderFrame", g_cpuProfiler);
 
-            //  some scene might need a "prepare" step to 
-            //  build some resources before the main render occurs.
-        scene->PrepareFrame(context);
-
         using namespace SceneEngine;
         if (scene) {
-            auto presChainDims = presentationChain->GetViewportContext()->_dimensions;
-            LightingParser_ExecuteScene(
-                context, lightingParserContext, *scene, 
-                RenderingQualitySettings(
-                    presChainDims, 
-                    (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
-                    Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
+
+            RenderingQualitySettings qualSettings(
+                presentationChain->GetViewportContext()->_dimensions, 
+                (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
+                Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0));
+
+            LightingParser_SetProjectionDesc(
+                lightingParserContext, scene->GetCameraDesc(), qualSettings._dimensions);
+
+                //  some scene might need a "prepare" step to 
+                //  build some resources before the main render occurs.
+            scene->PrepareFrame(context, lightingParserContext);
+
+            LightingParser_ExecuteScene(context, lightingParserContext, *scene, qualSettings);
         }
 
         if (overlaySys) {

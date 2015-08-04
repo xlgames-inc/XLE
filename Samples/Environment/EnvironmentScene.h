@@ -19,7 +19,9 @@ namespace Sample
     class EnvironmentSceneParser : public PlatformRig::BasicSceneParser
     {
     public:
-        void PrepareFrame(RenderCore::IThreadContext& context);
+        void PrepareFrame(
+            RenderCore::IThreadContext& context, 
+            SceneEngine::LightingParserContext& parserContext);
         void Update(float deltaTime);
 
         typedef SceneEngine::ShadowProjectionDesc   ShadowProjectionDesc;
@@ -52,7 +54,7 @@ namespace Sample
 
         void FlushLoading();
 
-        EnvironmentSceneParser();
+        EnvironmentSceneParser(const ::Assets::ResChar cfgDir[]);
         ~EnvironmentSceneParser();
 
     protected:
