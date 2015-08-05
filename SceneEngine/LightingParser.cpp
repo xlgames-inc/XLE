@@ -894,5 +894,8 @@ namespace SceneEngine
     : _dimensions(dimensions), _lightingModel(lightingModel), _samplingCount(samplingCount), _samplingQuality(samplingQuality)
     {}
 
+
+    ISceneParser::~ISceneParser() {}
+
 }
 

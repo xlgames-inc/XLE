@@ -245,6 +245,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h" />
+    <ClInclude Include="..\Documentation.h" />
     <ClInclude Include="..\DualContour.h" />
     <ClInclude Include="..\DualContourRender.h" />
     <ClInclude Include="..\IntersectionTest.h" />

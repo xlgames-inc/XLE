@@ -44,7 +44,7 @@ namespace SceneEngine
     class PlacementsEditor;
     class PlacementsQuadTree;
 
-    /// <summmary>Manages stream and organization of object placements</summary>
+    /// <summary>Manages stream and organization of object placements</summary>
     /// In this context, placements are static objects placed in the world. Most
     /// scenes will have a large number of essentially static objects. This object
     /// manages a large continuous world of these kinds of objects.

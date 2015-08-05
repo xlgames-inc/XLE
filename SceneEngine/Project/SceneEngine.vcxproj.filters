@@ -259,6 +259,7 @@
     <ClInclude Include="..\DeepOceanSim.h">
       <Filter>Objects\Water</Filter>
     </ClInclude>
+    <ClInclude Include="..\Documentation.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">

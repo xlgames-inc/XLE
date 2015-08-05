@@ -83,9 +83,16 @@ namespace SceneEngine
         void SetWorldSpaceOrigin(const Float3& origin);
 
         /// <summary>Loads a new terrain, removing the old one</summary>
+        ///
+        /// We can restrict the amount loaded to a rectangle of cells using
+        /// cellMin and cellMax. This is especially useful when writing a
+        /// test-bed app that must startup quickly.
+        ///
         /// Note that "cellMax" is non-inclusive. That is,
         ///   Load(cfg, Int2(0,0), Int2(1,1));
         /// will only load a single cell (not 4)
+        ///
+        /// Use the defaults for cellMin and cellMax to load the entire terrain.
         ///
         /// The previous terrain (if any) will be removed. However, if
         /// any cached textures or data can be retained, they will be.

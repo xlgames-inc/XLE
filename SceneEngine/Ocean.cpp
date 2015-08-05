@@ -355,7 +355,7 @@ namespace SceneEngine
             intersectionWithCameraMiddle = std::min(intersectionWithCameraMiddle, Tweakable("OceanProjectionMaxDistance", 10000.f));
             projectionFocusPoint = 
                 position + intersectionWithCameraMiddle * forward;
-            projectionFocusPoint[2] = oceanBaseHeight;   /// (push down to the water plane (assume normal straight up)
+            projectionFocusPoint[2] = oceanBaseHeight;   // push down to the water plane (assume normal straight up)
         }
 
         Float3 projectionViewPoint = 

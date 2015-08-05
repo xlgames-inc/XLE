@@ -78,6 +78,8 @@ namespace SceneEngine
         virtual ToneMapSettings         GetToneMapSettings() const = 0;
 
         virtual float                   GetTimeValue() const = 0;
+
+        virtual ~ISceneParser();
     };
 
 }

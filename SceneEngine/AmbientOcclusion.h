@@ -15,6 +15,8 @@ class GFSDK_SSAO_Context_D3D11;
 
 namespace SceneEngine
 {
+    /// \defgroup AO Ambient Occlusion
+    /// @{
     class AmbientOcclusionResources
     {
     public:
@@ -62,5 +64,6 @@ namespace SceneEngine
                                     RenderCore::Metal::ShaderResourceView& depthBuffer,
                                     RenderCore::Metal::ShaderResourceView* normalsBuffer,
                                     const RenderCore::Metal::ViewportDesc& mainViewport);
+    /// @}
 }
 
