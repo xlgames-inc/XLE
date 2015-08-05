@@ -15,10 +15,24 @@ namespace Utility
     {
     public:
         virtual void    OnChange() = 0;
+        virtual ~OnChangeCallback();
     };
 
+    /// <summary>Monitor a file for changes</summary>
+    /// Attaches a callback function to a file on disk. The callback will then be
+    /// executed whenever the file changes.
+    /// This is typically used to reload source assets after they receive 
+    /// changes form an external source.
     void    AttachFileSystemMonitor(StringSection<char> directoryName, StringSection<char> filename, std::shared_ptr<OnChangeCallback> callback);
+    
+    /// <summary>Executed all on-change callbacks associated with file</summary>
+    /// This will create a fake change event for a file, and execute any attached
+    /// callbacks.
     void    FakeFileChange(StringSection<char> directoryName, StringSection<char> filename);
+
+    /// <summary>Shut down all file system monitoring</summary>
+    /// Intended to be called on application shutdown, this frees all resources
+    /// used by file system monitoring.
     void    TerminateFileSystemMonitoring();
 }
 

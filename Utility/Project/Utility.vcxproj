@@ -121,6 +121,7 @@
     <ClInclude Include="..\BitHeap.h" />
     <ClInclude Include="..\BitUtils.h" />
     <ClInclude Include="..\Conversion.h" />
+    <ClInclude Include="..\Documentation.h" />
     <ClInclude Include="..\ExceptionLogging.h" />
     <ClInclude Include="..\FunctionUtils.h" />
     <ClInclude Include="..\HeapUtils.h" />

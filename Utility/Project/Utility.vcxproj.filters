@@ -109,6 +109,7 @@
     <ClInclude Include="..\Meta\AccessorSerialize.h">
       <Filter>Meta</Filter>
     </ClInclude>
+    <ClInclude Include="..\Documentation.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\StringFormat.cpp" />

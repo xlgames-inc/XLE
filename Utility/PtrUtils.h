@@ -244,9 +244,25 @@ namespace Utility
 
     #endif
 
+    /// <summary>Finds the end of a fixed length array</summary>
+    /// This just finds the end of an array. It's similar to using dimof
+    /// as in the following example:
+    /// <code>\code{.cpp}
+    ///     char fixedLengthArray[256];
+    ///     auto* end1 = &fixedLengthArray[dimof(fixedLengthArray)];
+    ///     auto* end2 = ArrayEnd(fixedLengthArray);
+    ///     assert(end1==end2);
+    /// \endcode</code>
     template<typename Type, int Count>
         Type* ArrayEnd(Type (&input)[Count]) { return &input[Count]; }
 
+    /// <summary>Equivalent to static_cast, but with extra debugging in Debug builds</summary>
+    /// In debug builds, if rtti is enabled, performs a dynamic_cast. Otherwise, performs a
+    /// static_cast.
+    /// This is useful when doing an up-cast with static_cast, because it provides some
+    /// extra validation.
+    /// But note that is rtti is disabled in debug, dynamic_cast can't be performed. So the
+    /// system will just drop back to static_cast.
     template<typename DestinationType, typename SourceType>
         DestinationType checked_cast(SourceType source)
         {
@@ -285,6 +301,12 @@ namespace Utility
 
             ////////////////////////////////////////////////////////
 
+    /// <summary>Returns a default value for a given type</summary>
+    /// Returns a reasonable default for the templated type. The meaning of "default"
+    /// can change from type to type. Generally this is used by other template functions,
+    /// where any assignment is required, but no value is forthcoming (for example, if
+    /// deserialization failed, or an expected value is somehow missing).
+    /// This is intended to be similar to the "default" keyword in C#.
     template<typename Type> Type Default() { return Type(); }
     template<typename Type, typename std::enable_if<std::is_pointer<Type>::value>::type* = nullptr>
         Type* Default() { return nullptr; }

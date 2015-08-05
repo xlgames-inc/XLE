@@ -317,6 +317,9 @@ namespace Utility
             i->second->OnChange(filename);
         }
     }
+
+
+    OnChangeCallback::~OnChangeCallback() {}
     
 }
 

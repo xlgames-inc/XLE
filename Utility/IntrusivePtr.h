@@ -25,11 +25,11 @@ namespace Utility
         /// For example, imagine we have a raw pointer to an object, and that object already
         /// has a reference count related to that raw pointer. We might want to construct
         /// an intrusive_ptr without taking a new reference. We can use moveptr to do that.
-        /// <code>
+        /// <code>\code{.cpp}
         ///     T* someObject = new Object();       // constructed with ref count "1"
         ///     intrusive_ptr<T> ptr(moveptr(T));   // make intrusive_ptr without increasing ref count
         ///     // "someObject" is now nullptr
-        /// </code>
+        /// \endcode</code>
         /// This happens sometimes when using 3rd party code. For example, using D3D, we
         /// often construct an object using a device method. The object is returned in raw
         /// pointer with an initial reference count already allocated. We want to "move" that
