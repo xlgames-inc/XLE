@@ -194,6 +194,62 @@ namespace ToolsRig
             cfg, *fmt, shadowUberFn, shadowLayerIndex, overwriteExisting, progress);
     }
 
+    void GenerateAmbientOcclusionSurface(
+        const TerrainConfig& cfg, 
+        const ::Assets::ResChar uberSurfaceDir[],
+        bool overwriteExisting,
+        ConsoleRig::IProgress* progress)
+    {
+        unsigned layerIndex = ~0u;
+        for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l)
+            if (cfg.GetCoverageLayer(l)._id == CoverageId_AmbientOcclusion) {
+                layerIndex = l;
+                break;
+            }
+        if (layerIndex == ~0u) return;
+
+        ::Assets::ResChar shadowUberFn[MaxPath];
+        TerrainConfig::GetUberSurfaceFilename(shadowUberFn, dimof(shadowUberFn), uberSurfaceDir, CoverageId_AmbientOcclusion);
+
+        if (overwriteExisting || !DoesFileExist(shadowUberFn)) {
+            Float2 sunAxisOfMovement(XlCos(cfg.SunPathAngle()), XlSin(cfg.SunPathAngle()));
+
+            {
+                //////////////////////////////////////////////////////////////////////////////////////
+                    // this is the shadows layer... We need to build the shadows procedurally
+                ::Assets::ResChar uberHeightsFile[MaxPath];
+                TerrainConfig::GetUberSurfaceFilename(uberHeightsFile, dimof(uberHeightsFile), uberSurfaceDir, CoverageId_Heights);
+                TerrainUberHeightsSurface heightsData(uberHeightsFile);
+                HeightsUberSurfaceInterface uberSurfaceInterface(heightsData);
+
+                //////////////////////////////////////////////////////////////////////////////////////
+                    // build the uber shadowing file, and then write out the shadowing textures for each node
+                // Int2 interestingMins((9-1) * 16 * 32, (19-1) * 16 * 32), interestingMaxs((9+4) * 16 * 32, (19+4) * 16 * 32);
+                float shadowToHeightsScale = 
+                    cfg.NodeDimensionsInElements()[0] 
+                    / float(cfg.GetCoverageLayer(layerIndex)._nodeDimensions[0]);
+            
+                UInt2 interestingMins(0, 0);
+                UInt2 interestingMaxs = UInt2(
+                    unsigned((cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0]) / shadowToHeightsScale),
+                    unsigned((cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * cfg.NodeDimensionsInElements()[1]) / shadowToHeightsScale));
+
+                //////////////////////////////////////////////////////////////////////////////////////
+                static auto testRadius = 24u;
+                uberSurfaceInterface.BuildAmbientOcclusion(
+                    shadowUberFn, interestingMins, interestingMaxs, 
+                    cfg.ElementSpacing(), shadowToHeightsScale, testRadius,
+                    progress);
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////////////////
+            // write cell files
+        auto fmt = std::make_shared<TerrainFormat>();
+        WriteCellCoverageData<uint8>(
+            cfg, *fmt, shadowUberFn, layerIndex, overwriteExisting, progress);
+    }
+
     void GenerateMissingUberSurfaceFiles(
         const TerrainConfig& cfg, 
         const ::Assets::ResChar uberSurfaceDir[],
@@ -205,18 +261,13 @@ namespace ToolsRig
         for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l) {
             const auto& layer = cfg.GetCoverageLayer(l);
 
-            // bool hasShadows = false;
-            // for (unsigned c=0; c<outputConfig.GetCoverageLayerCount(); ++c)
-            //     hasShadows |= outputConfig.GetCoverageLayer(c)._id == CoverageId_AngleBasedShadows;
-            // if (!hasShadows) return;
-
             ::Assets::ResChar uberSurfaceFile[MaxPath];
             TerrainConfig::GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, layer._id);
             if (DoesFileExist(uberSurfaceFile)) continue;
 
-            if (layer._id == CoverageId_AngleBasedShadows) {
+            if (layer._id == CoverageId_AngleBasedShadows || layer._id == CoverageId_AmbientOcclusion) {
 
-                break;      // (skip, we'll get this later in GenerateShadowsSurface)
+                continue;      // (skip, we'll get this later in GenerateShadowsSurface)
 
             } else {
 
@@ -235,6 +286,7 @@ namespace ToolsRig
         }
 
         GenerateShadowsSurface(cfg, uberSurfaceDir, false, progress);
+        GenerateAmbientOcclusionSurface(cfg, uberSurfaceDir, false, progress);
     }
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////

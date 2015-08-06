@@ -13,5 +13,6 @@ namespace SceneEngine
     using TerrainCoverageId = uint32;
     static const TerrainCoverageId CoverageId_Heights = 1;
     static const TerrainCoverageId CoverageId_AngleBasedShadows = 2;
+    static const TerrainCoverageId CoverageId_AmbientOcclusion = 3;
     static const TerrainCoverageId CoverageId_ArchiveHeights = 100;
 }

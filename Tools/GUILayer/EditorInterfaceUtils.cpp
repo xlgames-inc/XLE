@@ -350,6 +350,7 @@ namespace GUILayer
         {
             switch (layerId) {
             case SceneEngine::CoverageId_AngleBasedShadows: return 1;
+            case SceneEngine::CoverageId_AmbientOcclusion: return 1;
             default: return 4;
             }
         }
@@ -358,6 +359,7 @@ namespace GUILayer
         {
             switch (layerId) {
             case SceneEngine::CoverageId_AngleBasedShadows: return 1;
+            case SceneEngine::CoverageId_AmbientOcclusion: return 1;
             default: return 1;
             }
         }
@@ -367,6 +369,8 @@ namespace GUILayer
             switch (layerId) {
             case SceneEngine::CoverageId_AngleBasedShadows: 
                 return RenderCore::Metal::NativeFormat::R16G16_UNORM;
+            case SceneEngine::CoverageId_AmbientOcclusion: 
+                return RenderCore::Metal::NativeFormat::R8_UINT;
             default: return RenderCore::Metal::NativeFormat::R8_UINT;
             }
         }
@@ -398,6 +402,16 @@ namespace GUILayer
         {
             auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
             ToolsRig::GenerateShadowsSurface(
+                cfg->GetNative(), clix::marshalString<clix::E_UTF8>(uberSurfaceDir).c_str(),
+                true, nativeProgress.get());
+        }
+
+        static void GenerateAmbientOcclusionSurface(
+            TerrainConfig^ cfg, String^ uberSurfaceDir,
+            IProgress^ progress)
+        {
+            auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
+            ToolsRig::GenerateAmbientOcclusionSurface(
                 cfg->GetNative(), clix::marshalString<clix::E_UTF8>(uberSurfaceDir).c_str(),
                 true, nativeProgress.get());
         }

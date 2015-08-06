@@ -411,7 +411,8 @@ namespace LevelEditorXLE
             terrainType.SunPathAngleAttribute = terrainType.Type.GetAttributeInfo("SunPathAngle");
             terrainType.HasBaseMaterialCoverageAttribute = terrainType.Type.GetAttributeInfo("HasBaseMaterialCoverage");
             terrainType.HasDecorationCoverageAttribute = terrainType.Type.GetAttributeInfo("HasDecorationCoverage");
-            terrainType.HasShadowsConverageAttribute = terrainType.Type.GetAttributeInfo("HasShadowsConverage");
+            terrainType.HasShadowsCoverageAttribute = terrainType.Type.GetAttributeInfo("HasShadowsCoverage");
+            terrainType.HasAOCoverageAttribute = terrainType.Type.GetAttributeInfo("HasAOCoverage");
             terrainType.HasEncodedGradientFlagsAttribute = terrainType.Type.GetAttributeInfo("HasEncodedGradientFlags");
             terrainType.CellCountAttribute = terrainType.Type.GetAttributeInfo("CellCount");
             terrainType.GradFlagSlopeThreshold0Attribute = terrainType.Type.GetAttributeInfo("GradFlagSlopeThreshold0");
@@ -1000,7 +1001,8 @@ namespace LevelEditorXLE
             public static AttributeInfo SunPathAngleAttribute;
             public static AttributeInfo HasBaseMaterialCoverageAttribute;
             public static AttributeInfo HasDecorationCoverageAttribute;
-            public static AttributeInfo HasShadowsConverageAttribute;
+            public static AttributeInfo HasShadowsCoverageAttribute;
+            public static AttributeInfo HasAOCoverageAttribute;
             public static AttributeInfo HasEncodedGradientFlagsAttribute;
             public static AttributeInfo CellCountAttribute;
             public static AttributeInfo GradFlagSlopeThreshold0Attribute;

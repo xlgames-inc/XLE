@@ -102,29 +102,29 @@ TerrainPixel CalculateTexturing(PSInput geo)
             float2 A = matIdTC - matIdTCB;
             const float w[4] =
             {
-                (1.f - A.x) * (1.f - A.y),
                 (1.f - A.x) * A.y,
+                A.x * A.y,
                 A.x * (1.f - A.y),
-                A.x * A.y
+                (1.f - A.x) * (1.f - A.y)
             };
 
             uint materialId[4];
             materialId[0] = MakeCoverageTileSet(COVERAGE_1000).Load(
-                uint4(matIdTCB, CoverageOrigin[COVERAGE_1000].z, 0));
-            materialId[1] = MakeCoverageTileSet(COVERAGE_1000).Load(
                 uint4(uint2(matIdTCB) + uint2(0,1), CoverageOrigin[COVERAGE_1000].z, 0));
+            materialId[1] = MakeCoverageTileSet(COVERAGE_1000).Load(
+                uint4(uint2(matIdTCB) + uint2(1,1), CoverageOrigin[COVERAGE_1000].z, 0));
             materialId[2] = MakeCoverageTileSet(COVERAGE_1000).Load(
                 uint4(uint2(matIdTCB) + uint2(1,0), CoverageOrigin[COVERAGE_1000].z, 0));
             materialId[3] = MakeCoverageTileSet(COVERAGE_1000).Load(
-                uint4(uint2(matIdTCB) + uint2(1,1), CoverageOrigin[COVERAGE_1000].z, 0));
+                uint4(matIdTCB, CoverageOrigin[COVERAGE_1000].z, 0));
 
             float2 m = 1.0f / float2(CoverageCoordMaxs[COVERAGE_1000].xy - CoverageCoordMins[COVERAGE_1000].xy);
             const float2 tcOffset[4] =
             {
-                0.0.xx,
                 float2(0.f, m.y),
+                float2(m.x, m.y),
                 float2(m.x, 0.f),
-                float2(m.x, m.y)
+                0.0.xx
             };
 
                 // note that when we do this, we don't need to do blending inside
@@ -174,6 +174,41 @@ TerrainPixel CalculateTexturing(PSInput geo)
            + procTexture.tangentSpaceNormal.z * normal);
     #else
         float3 deformedNormal = normalize(normal);
+    #endif
+
+    #if defined(COVERAGE_3)
+        finalTexCoord = lerp(CoverageCoordMins[COVERAGE_3].xy, CoverageCoordMaxs[COVERAGE_3].xy, geo.texCoord.xy);
+
+        float aoSample;
+        {
+            float2 tcf = floor(finalTexCoord);
+            float2 A = finalTexCoord - tcf;
+            const float w[4] =
+            {
+                (1.f - A.x) * A.y,
+                A.x * A.y,
+                A.x * (1.f - A.y),
+                (1.f - A.x) * (1.f - A.y)
+            };
+
+            uint aoSamples[4];
+            aoSamples[0] = MakeCoverageTileSet(COVERAGE_3).Load(
+                uint4(uint2(tcf) + uint2(0,1), CoverageOrigin[COVERAGE_3].z, 0));
+            aoSamples[1] = MakeCoverageTileSet(COVERAGE_3).Load(
+                uint4(uint2(tcf) + uint2(1,1), CoverageOrigin[COVERAGE_3].z, 0));
+            aoSamples[2] = MakeCoverageTileSet(COVERAGE_3).Load(
+                uint4(uint2(tcf) + uint2(1,0), CoverageOrigin[COVERAGE_3].z, 0));
+            aoSamples[3] = MakeCoverageTileSet(COVERAGE_3).Load(
+                uint4(tcf, CoverageOrigin[COVERAGE_3].z, 0));
+
+            aoSample =
+                ( aoSamples[0] * w[0] + aoSamples[1] * w[1]
+                + aoSamples[2] * w[2] + aoSamples[3] * w[3] ) / float(0xff);
+        }
+
+        resultDiffuse = lerp(float3(0,0,1), float3(1,0,0), aoSample);
+        aoSample = pow(aoSample, 4.f);
+        shadowing *= aoSample;
     #endif
 
     TerrainPixel output;

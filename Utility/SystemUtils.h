@@ -23,6 +23,7 @@ namespace Utility
     void XlChDir(const ucs2 path[]);
 	void XlDeleteFile(const utf8 path[]);
 	void XlDeleteFile(const ucs2 path[]);
+    void XlMoveFile(const utf8 destination[], const utf8 source[]);
 
     void XlOutputDebugString(const char* format);
     void XlMessageBox(const char* content, const char* title);

@@ -243,8 +243,13 @@ void XlGetProcessPath(ucs2 dst[], size_t bufferCount)    { GetModuleFileNameW(NU
 void XlChDir(const utf8 path[])                          { SetCurrentDirectoryA((const char*)path); }
 void XlChDir(const ucs2 path[])                          { SetCurrentDirectoryW((const wchar_t*)path); }
 
-void XlDeleteFile(const utf8 path[]) { auto result = ::DeleteFileA((char*)path); assert(result); (void)result; }
-void XlDeleteFile(const ucs2 path[]) { auto result = ::DeleteFileW((wchar_t*)path); assert(result); (void)result; }
+void XlDeleteFile(const utf8 path[]) { auto result = ::DeleteFileA((char*)path); (void)result; }
+void XlDeleteFile(const ucs2 path[]) { auto result = ::DeleteFileW((wchar_t*)path); (void)result; }
+
+void XlMoveFile(const utf8 destination[], const utf8 source[])
+{
+    MoveFileA((const char*)source, (const char*)destination);
+}
 
 const char* XlGetCommandLine()
 {

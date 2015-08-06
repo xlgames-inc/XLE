@@ -30,6 +30,7 @@ namespace SceneEngine
         switch (id) {
         case CoverageId_Heights: knownName = "height"; break;
         case CoverageId_AngleBasedShadows: knownName = "shadow"; break;
+        case CoverageId_AmbientOcclusion: knownName = "ao"; break;
         case CoverageId_ArchiveHeights: knownName = "archiveheights"; break;
         }
         return knownName;

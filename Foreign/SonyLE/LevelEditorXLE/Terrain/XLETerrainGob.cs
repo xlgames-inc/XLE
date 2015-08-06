@@ -98,8 +98,14 @@ namespace LevelEditorXLE.Terrain
 
         public bool HasShadowsCoverage
         {
-            get { return GetAttribute<bool>(TerrainST.HasShadowsConverageAttribute); }
-            set { SetAttribute(TerrainST.HasShadowsConverageAttribute, value); }
+            get { return GetAttribute<bool>(TerrainST.HasShadowsCoverageAttribute); }
+            set { SetAttribute(TerrainST.HasShadowsCoverageAttribute, value); }
+        }
+
+        public bool HasAOCoverage
+        {
+            get { return GetAttribute<bool>(TerrainST.HasAOCoverageAttribute); }
+            set { SetAttribute(TerrainST.HasAOCoverageAttribute, value); }
         }
 
         public bool HasEncodedGradientFlags
@@ -230,6 +236,8 @@ namespace LevelEditorXLE.Terrain
                 result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 1001));
             if (cfg.HasShadowsCoverage)
                 result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 2));
+            if (cfg.HasAOCoverage)
+                result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 3));
 
             return result;
         }
@@ -248,6 +256,7 @@ namespace LevelEditorXLE.Terrain
             cfg.HasBaseMaterialCoverage = HasBaseMaterialCoverage;
             cfg.HasDecorationCoverage = HasDecorationCoverage;
             cfg.HasShadowsCoverage = HasShadowsCoverage;
+            cfg.HasAOCoverage = HasAOCoverage;
             cfg.HasEncodedGradientFlags = HasEncodedGradientFlags;
             cfg.SunPathAngle = SunPathAngle;
             cfg.SlopeThreshold0 = GradFlagSlopeThreshold0;
@@ -267,6 +276,7 @@ namespace LevelEditorXLE.Terrain
             HasDecorationCoverage = cfg.HasDecorationCoverage;
             HasBaseMaterialCoverage = cfg.HasBaseMaterialCoverage;
             HasShadowsCoverage = cfg.HasShadowsCoverage;
+            HasAOCoverage = cfg.HasAOCoverage;
             HasEncodedGradientFlags = cfg.HasEncodedGradientFlags;
             SunPathAngle = cfg.SunPathAngle;
             GradFlagSlopeThreshold0 = cfg.SlopeThreshold0;
@@ -360,6 +370,13 @@ namespace LevelEditorXLE.Terrain
                 using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
                 {
                     GUILayer.EditorInterfaceUtils.GenerateShadowsSurface(
+                        BuildEngineConfig(), UberSurfaceDirectory,
+                        progress);
+                }
+
+                using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
+                {
+                    GUILayer.EditorInterfaceUtils.GenerateAmbientOcclusionSurface(
                         BuildEngineConfig(), UberSurfaceDirectory,
                         progress);
                 }

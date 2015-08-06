@@ -77,6 +77,9 @@ namespace LevelEditorXLE.Terrain
             [Category("Coverage")] [Description("Has a layer for precalculated terrain shadows")]
             public bool HasShadowsCoverage { get; set; }
 
+            [Category("Coverage")] [Description("Has a layer for precalculated ambient occlusion")]
+            public bool HasAOCoverage { get; set; }
+
             [Category("Coverage")] [Description("Sun Path Angle (in degrees)")]
             public float SunPathAngle { get; set; }
 

@@ -45,6 +45,12 @@ namespace ToolsRig
         bool overwriteExisting,
         ConsoleRig::IProgress* progress = nullptr);
 
+    void GenerateAmbientOcclusionSurface(
+        const SceneEngine::TerrainConfig& cfg, 
+        const ::Assets::ResChar uberSurfaceDir[],
+        bool overwriteExisting,
+        ConsoleRig::IProgress* progress = nullptr);
+
     UInt2 GetCellCountFromUberSurface(
         const ::Assets::ResChar inputUberSurfaceDirectory[],
         UInt2 destNodeDims, unsigned destCellTreeDepth);

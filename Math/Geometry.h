@@ -196,7 +196,9 @@ namespace XLEMath
             float ysign = (dy < 0.f) ? -1.f : 1.f;
                 
             dx = XlAbs(dx); dy = XlAbs(dy);
-            const float xoffset = 10000.f, yoffset = 10000.f;
+                // x and y values must be kept positive (because of the implementation of GridEdgeCeil)... So offset everything here
+            const float xoffset = 10.f - std::min(xsign * start[0], xsign * end[0]), 
+                        yoffset = 10.f - std::min(ysign * start[1], ysign * end[1]);
             float x = xsign * start[0] + xoffset, y = ysign * start[1] + yoffset;
 
             // const float epsilon = 1e-2f;    // hack! ceil(x) will sometimes return x... We need to prevent this!

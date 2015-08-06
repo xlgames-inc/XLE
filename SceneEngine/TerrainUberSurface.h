@@ -189,8 +189,14 @@ namespace SceneEngine
             const char destinationFile[], 
             Int2 interestingMins, Int2 interestingMaxs, 
             Float2 sunDirectionOfMovement, 
-            float xyScale, float shadowToHeightsScale, ConsoleRig
-            ::IProgress* progress);
+            float xyScale, float relativeResolution, 
+            ConsoleRig::IProgress* progress);
+
+        void    BuildAmbientOcclusion(
+            const char destinationFile[],
+            Int2 interestingMins, Int2 interestingMaxs,
+            float xyScale, float relativeResolution, unsigned testRadius,
+            ConsoleRig::IProgress* progress);
 
         TerrainUberHeightsSurface* GetUberSurface();
 
@@ -199,7 +205,6 @@ namespace SceneEngine
             std::shared_ptr<ITerrainFormat> ioFormat = nullptr);
         ~HeightsUberSurfaceInterface();
     private:
-        float   CalculateShadowingAngle(Float2 samplePt, Float2 sunDirectionOfMovement, float xyScale);
         void    CancelActiveOperations();
 
         TerrainUberHeightsSurface*      _uberSurface;
