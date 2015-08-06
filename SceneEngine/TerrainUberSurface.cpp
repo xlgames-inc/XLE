@@ -44,6 +44,7 @@
 #include "..\Core\Exceptions.h"
 #include <memory>
 #include <stack>
+#include <thread>
 
 #include "..\RenderCore\DX11\Metal\DX11.h"
 #include "..\RenderCore\DX11\Metal\IncludeDX11.h"
@@ -1318,20 +1319,20 @@ namespace SceneEngine
     public:
         unsigned GetBitsPerPixel() const;
         void FillDefault(void* dst, unsigned count) const;
-        void Calculate(void* dst, Float2 coord, TerrainUberHeightsSurface& heightsSurface, float xyScale) const;
+        void Calculate(
+            void* dst, Float2 coord, 
+            TerrainUberHeightsSurface& heightsSurface, float xyScale) const;
 
-        AOOperator(unsigned testRadius);
+        AOOperator(unsigned testRadius, float power);
         ~AOOperator();
     protected:
         using AoSample = uint8;
         unsigned _testRadius;
+        float _power;
         std::vector<Float3> _testPts;
     };
 
-    unsigned AOOperator::GetBitsPerPixel() const
-    {
-        return unsigned(sizeof(AoSample)*8);
-    }
+    unsigned AOOperator::GetBitsPerPixel() const { return unsigned(sizeof(AoSample)*8); }
 
     void AOOperator::FillDefault(void* dst, unsigned count) const
     {
@@ -1374,15 +1375,17 @@ namespace SceneEngine
         }
 
         float result = Clamp(averageAngle / (0.5f * gPI), 0.f, 1.f);
+        result = std::pow(result, _power);
         *(AoSample*)dst = AoSample(0xff * result);
     }
 
-    AOOperator::AOOperator(unsigned testRadius)
+    AOOperator::AOOperator(unsigned testRadius, float power)
     {
         _testRadius = testRadius;
+        _power = power;
 
         Float2 minTest = Float2(-float(_testRadius), -float(_testRadius));
-        Float2 maxTest = Float2(float(_testRadius), float(_testRadius));
+        Float2 maxTest = Float2( float(_testRadius),  float(_testRadius));
 
         for (unsigned c=0; c<_testRadius; ++c)
             _testPts.push_back(Float3(minTest[0] + float(c) + 0.5f, minTest[1], 0.f));
@@ -1409,17 +1412,18 @@ namespace SceneEngine
     void HeightsUberSurfaceInterface::BuildAmbientOcclusion(
             const char destinationFile[],
             Int2 interestingMins, Int2 interestingMaxs,
-            float xyScale, float relativeResolution, unsigned testRadius,
+            float xyScale, float relativeResolution, 
+            unsigned testRadius, float power,
             ConsoleRig::IProgress* progress)
     {
-        AOOperator op(testRadius);
+        AOOperator op(testRadius, power);
         UInt2 outDims(0,0);
         outDims[0] = unsigned(_uberSurface->GetWidth() / relativeResolution);
         outDims[1] = unsigned(_uberSurface->GetHeight() / relativeResolution);
 
         unsigned bpp = op.GetBitsPerPixel();
-
         StringMeld<MaxPath> tempFile; tempFile << destinationFile << ".building";
+
         {
             MemoryMappedFile outputFile(
                 tempFile.get(),
@@ -1440,43 +1444,61 @@ namespace SceneEngine
             void* linesDest = PtrAdd(outputFile.GetData(), sizeof(TerrainUberHeader));
             size_t lineSize = outDims[0]*bpp/8;
             
-            auto lineOfSamples = std::make_unique<char[]>(lineSize);
-            op.FillDefault(lineOfSamples.get(), outDims[0]);
+            auto lineCount = int(outDims[1])-border;
+            Interlocked::Value queueLoc = border;
 
-            int y=0;
-            for (;y<border;++y)
-                XlCopyMemory(PtrAdd(linesDest, y*lineSize), lineOfSamples.get(), lineSize);
+            auto* uberSurface = _uberSurface;
+            auto threadFunction = 
+                [   &queueLoc, &interestingMins, &interestingMaxs, 
+                    border, &outDims, relativeResolution,
+                    bpp, uberSurface, xyScale, &op, 
+                    linesDest, lineSize, lineCount, &step]()
+                {
+                    auto lineOfSamples = std::make_unique<char[]>(lineSize);
+                    op.FillDefault(lineOfSamples.get(), outDims[0]);
 
-            for (; y<int(outDims[1])-border; ++y) {
-                if (y >= interestingMins[1] && y < interestingMaxs[1]) {
-                    for (   int x=std::max(interestingMins[0], border); 
-                            x<std::min(interestingMaxs[0], int(outDims[0])-border); 
-                            ++x) {
+                    for (;;) {
+                        auto y = Interlocked::Increment(&queueLoc);
+                        if (y >= lineCount) return;
 
-                        Float2 coord = Float2(float(x), float(y)) * relativeResolution;
-                        op.Calculate(PtrAdd(lineOfSamples.get(), x*bpp/8), coord, *_uberSurface, xyScale);
+                        if (y >= interestingMins[1] && y < interestingMaxs[1]) {
+                            for (   int x=std::max(interestingMins[0], border); 
+                                    x<std::min(interestingMaxs[0], int(outDims[0])-border); 
+                                    ++x) {
+
+                                    Float2 coord = Float2(float(x), float(y)) * relativeResolution;
+                                    op.Calculate(PtrAdd(lineOfSamples.get(), x*bpp/8), coord, *uberSurface, xyScale);
+                                }
+                        } else {
+                            op.FillDefault(
+                                PtrAdd(lineOfSamples.get(), interestingMins[0]*bpp/8), 
+                                std::min(interestingMaxs[0]+1, int(outDims[0])) - interestingMins[0]);
+                        }
+
+                        XlCopyMemory(PtrAdd(linesDest, y*lineSize), lineOfSamples.get(), lineSize);
+                        if (step) {
+                            step->Advance();
+                            if (step->IsCancelled()) return;
+                        }
                     }
-                } else {
-                    op.FillDefault(
-                        PtrAdd(lineOfSamples.get(), interestingMins[0]*bpp/8), 
-                        std::min(interestingMaxs[0]+1, int(outDims[0])) - interestingMins[0]);
-                }
+                };
 
-                XlCopyMemory(PtrAdd(linesDest, y*lineSize), lineOfSamples.get(), lineSize);
-                if (step) {
-                    step->Advance();
-                    if (step->IsCancelled()) break;
-                }
-            }
+            std::vector<std::thread> threads;
+            for (unsigned c=0; c<6; ++c)
+                threads.emplace_back(std::thread(threadFunction));
 
-                // if we get cancelled, fill the remainder in with blanks.
-            if (y < int(outDims[1])) {
-                op.FillDefault(
-                    PtrAdd(lineOfSamples.get(), interestingMins[0]*bpp/8), 
-                    std::min(interestingMaxs[0]+1, int(outDims[0])) - interestingMins[0]);
-                for (; y<int(outDims[1]); ++y) {
+            for (auto&t : threads) t.join();
+
+            // fill in the border and any other space untouched...
+            {
+                auto lineOfSamples = std::make_unique<char[]>(lineSize);
+                op.FillDefault(lineOfSamples.get(), outDims[0]);
+
+                for (int y=0;y<border;++y)
                     XlCopyMemory(PtrAdd(linesDest, y*lineSize), lineOfSamples.get(), lineSize);
-                }
+
+                for (; queueLoc<int(outDims[1]); ++queueLoc)
+                    XlCopyMemory(PtrAdd(linesDest, queueLoc*lineSize), lineOfSamples.get(), lineSize);
             }
         }
 

@@ -236,9 +236,11 @@ namespace ToolsRig
 
                 //////////////////////////////////////////////////////////////////////////////////////
                 static auto testRadius = 24u;
+                static auto power = 4.f;
                 uberSurfaceInterface.BuildAmbientOcclusion(
                     shadowUberFn, interestingMins, interestingMaxs, 
-                    cfg.ElementSpacing(), shadowToHeightsScale, testRadius,
+                    cfg.ElementSpacing(), shadowToHeightsScale, 
+                    testRadius, power,
                     progress);
             }
         }

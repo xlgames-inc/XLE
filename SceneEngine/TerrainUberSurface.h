@@ -195,7 +195,8 @@ namespace SceneEngine
         void    BuildAmbientOcclusion(
             const char destinationFile[],
             Int2 interestingMins, Int2 interestingMaxs,
-            float xyScale, float relativeResolution, unsigned testRadius,
+            float xyScale, float relativeResolution, 
+            unsigned testRadius, float power,
             ConsoleRig::IProgress* progress);
 
         TerrainUberHeightsSurface* GetUberSurface();

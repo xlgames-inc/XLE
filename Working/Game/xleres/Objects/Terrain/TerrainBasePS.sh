@@ -206,8 +206,7 @@ TerrainPixel CalculateTexturing(PSInput geo)
                 + aoSamples[2] * w[2] + aoSamples[3] * w[3] ) / float(0xff);
         }
 
-        resultDiffuse = lerp(float3(0,0,1), float3(1,0,0), aoSample);
-        aoSample = pow(aoSample, 4.f);
+        // resultDiffuse = lerp(float3(0,0,1), float3(1,0,0), aoSample);
         shadowing *= aoSample;
     #endif
 
