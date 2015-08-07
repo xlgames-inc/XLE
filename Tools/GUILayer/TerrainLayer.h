@@ -29,7 +29,8 @@ namespace GUILayer
             property SceneEngine::TerrainCoverageId Id { SceneEngine::TerrainCoverageId get(); }
             property VectorUInt2 NodeDims { VectorUInt2 get(); void set(VectorUInt2); }
             property unsigned Overlap { unsigned get(); void set(unsigned); }
-            property unsigned Format { unsigned get(); void set(unsigned); }
+            property unsigned FormatCat { unsigned get(); void set(unsigned); }
+            property unsigned FormatArrayCount { unsigned get(); void set(unsigned); }
 
             const NativeConfig::CoverageLayer& GetNative() { return *_native; }
 

@@ -139,9 +139,7 @@ namespace SceneEngine
 
     class TerrainCell;
     class TerrainCellTexture;
-
-    template <typename Type> class TerrainUberSurface;
-    typedef std::pair<uint16, uint16> ShadowSample;
+    class TerrainUberSurfaceGeneric;
 
         /// <summary>Interface for reading and writing terrain data</summary>
         /// Interface for reading and writing terrain data of a particular format.
@@ -156,13 +154,7 @@ namespace SceneEngine
         virtual const TerrainCell& LoadHeights(const char filename[], bool skipDependsCheck = false) const = 0;
         virtual const TerrainCellTexture& LoadCoverage(const char filename[]) const = 0;
         virtual void WriteCell( 
-            const char destinationFile[], TerrainUberSurface<float>& surface, 
-            UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const = 0;
-        virtual void WriteCell(
-            const char destinationFile[], TerrainUberSurface<ShadowSample>& surface, 
-            UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const = 0;
-        virtual void WriteCell(
-            const char destinationFile[], TerrainUberSurface<uint8>& surface, 
+            const char destinationFile[], TerrainUberSurfaceGeneric& surface, 
             UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const = 0;
         virtual ~ITerrainFormat();
     };

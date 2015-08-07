@@ -41,7 +41,8 @@ namespace SceneEngine
             TerrainCoverageId _id;
             UInt2 _nodeDimensions;
             unsigned _overlap;
-            unsigned _format;
+            unsigned _typeCat;
+            unsigned _typeCount;
         };
 
         TerrainConfig(

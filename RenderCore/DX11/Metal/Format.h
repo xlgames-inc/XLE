@@ -8,6 +8,8 @@
 
 #include <dxgiformat.h>         // maintain format number compatibility with DXGI whenever possible (note that dxgiformat.h is very simple and has no dependencies!)
 
+namespace Utility { namespace ImpliedTyping { class TypeDesc; }}
+
 namespace RenderCore { namespace Metal_DX11
 {
     /// Container for NativeFormat::Enum
@@ -86,5 +88,6 @@ namespace RenderCore { namespace Metal_DX11
     bool                    HasLinearAndSRGBFormats(NativeFormat::Enum inputFormat);
 
     inline DXGI_FORMAT      AsDXGIFormat(NativeFormat::Enum format) { return DXGI_FORMAT(format); }
+    NativeFormat::Enum      AsNativeFormat(const Utility::ImpliedTyping::TypeDesc& type);
 }}
 

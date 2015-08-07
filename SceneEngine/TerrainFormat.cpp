@@ -331,6 +331,14 @@ namespace SceneEngine
             , _rawDataSize(rawDataSize) {}
         };
 
+        template<typename Element>
+            Element GetValue(TerrainUberSurfaceGeneric& surf, UInt2 coord)
+            {
+                void* d = surf.GetData(coord);
+                if (!d) return SceneEngine::Internal::DummyValue<Element>();
+                return *(Element*)d;
+            }
+
         namespace Internal
         {
             static const float SharrConstant3x3 = 1.f/32.f;
@@ -349,15 +357,15 @@ namespace SceneEngine
         }
 
         template<typename Element>
-            static Float2 CalculateDHDXY(TerrainUberSurface<Element>& surface, UInt2 coord)
+            static Float2 CalculateDHDXY(TerrainUberSurfaceGeneric& surface, UInt2 coord)
         {
-            auto centerHeight = surface.GetValue(coord[0], coord[1]);
+            auto centerHeight = GetValue<Element>(surface, coord);
             Float2 dhdxy(0.f, 0.f);
             for (int y=0; y<3; ++y) {
                 for (int x=0; x<3; ++x) {
                     Int2 c = Int2(coord) + Int2(x-1, y-1);
                     if (c[0] >= 0 && c[1] >= 0 && c[0] < (int)surface.GetWidth() && c[1] < (int)surface.GetHeight()) {
-                        float heightDiff = surface.GetValueFast(c[0], c[1]) - centerHeight;
+                        float heightDiff = *(Element*)surface.GetDataFast(c) - centerHeight;
                         dhdxy[0] += Internal::SharrHoriz3x3[x][y] * heightDiff;
                         dhdxy[1] +=  Internal::SharrVert3x3[x][y] * heightDiff;
                     }
@@ -367,14 +375,14 @@ namespace SceneEngine
         }
 
         template<typename Element>
-            static unsigned CalculateGradientFlag(TerrainUberSurface<Element>&, UInt2 , const GradientFlagsSettings&)
+            static unsigned CalculateGradientFlag(TerrainUberSurfaceGeneric&, UInt2 , const GradientFlagsSettings&)
             {
                 return 0;
             }
 
         template<>
             static unsigned CalculateGradientFlag<float>(
-                TerrainUberSurface<float>& surface, UInt2 coord, 
+                TerrainUberSurfaceGeneric& surface, UInt2 coord, 
                 const GradientFlagsSettings& settings)
             {
                     // Calculate the gradient flags for the element at the given coordinate
@@ -413,7 +421,7 @@ namespace SceneEngine
                     return result;
                 #endif
 
-                Float2 dhdxy = CalculateDHDXY(surface, coord) / spacing;
+                Float2 dhdxy = CalculateDHDXY<float>(surface, coord) / spacing;
                 float slope = std::max(XlAbs(dhdxy[0]), XlAbs(dhdxy[1]));
                 if (slope < settings._slopeThresholds[0]) return 0;
                 if (slope < settings._slopeThresholds[1]) return 1;
@@ -423,7 +431,7 @@ namespace SceneEngine
 
         template<typename Element>
             static CoverageDataResult WriteCoverageData(
-                BasicFile& destinationFile, TerrainUberSurface<Element>& surface,
+                BasicFile& destinationFile, TerrainUberSurfaceGeneric& surface,
                 unsigned startx, unsigned starty, signed downsample, unsigned dimensionsInElements,
                 const GradientFlagsSettings& gradFlagsSettings, Compression::Enum compression)
         {
@@ -454,10 +462,10 @@ namespace SceneEngine
                     if (constant_expression<downsampleMethod == DownsampleMethod::Average>::result()) {
                         for (unsigned ky=0; ky<kw; ++ky)
                             for (unsigned kx=0; kx<kw; ++kx)
-                                k = Add(k, surface.GetValue(startx + kw*x + kx, starty + kw*y + ky));
+                                k = Add(k, GetValue<Element>(surface, UInt2(startx + kw*x + kx, starty + kw*y + ky)));
                         k = Divide(k, kw*kw);
                     } else if (constant_expression<downsampleMethod == DownsampleMethod::Corner>::result()) {
-                        k = surface.GetValue(startx + kw*x, starty + kw*y);
+                        k = GetValue<Element>(surface, UInt2(startx + kw*x, starty + kw*y));
                     }
 
                     minValue = std::min(minValue, AsScalar(k));
@@ -481,7 +489,7 @@ namespace SceneEngine
                             
                             for (unsigned ky=0; ky<kw; ++ky)
                                 for (unsigned kx=0; kx<kw; ++kx) {
-                                    unsigned flag = CalculateGradientFlag(surface, UInt2(startx + kw*x + kx, starty + kw*y + ky), gradFlagsSettings);
+                                    unsigned flag = CalculateGradientFlag<Element>(surface, UInt2(startx + kw*x + kx, starty + kw*y + ky), gradFlagsSettings);
                                     if (flag < dimof(counts)) ++counts[flag];
                                 }
                             
@@ -532,7 +540,7 @@ namespace SceneEngine
 
         template<typename Element>
             static void WriteCellFromUberSurface(
-                const char destinationFile[], TerrainUberSurface<Element>& surface, 
+                const char destinationFile[], TerrainUberSurfaceGeneric& surface, 
                 UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements,
                 const GradientFlagsSettings& gradFlagsSettings,
                 Compression::Enum compression, std::pair<const char*, const char*> versionInfo)
@@ -590,9 +598,10 @@ namespace SceneEngine
                         unsigned rawCoordX = cellMins[0] + x * uniqueElementsDimension * skip;
                         unsigned rawCoordY = cellMins[1] + y * uniqueElementsDimension * skip;
 
-                        auto p = WriteCoverageData(
+                        auto p = WriteCoverageData<Element>(
                             outputFile, surface, rawCoordX, rawCoordY,
-                            downsample, uniqueElementsDimension + overlapElements, gradFlagsSettings, compression);
+                            downsample, uniqueElementsDimension + overlapElements, 
+                            gradFlagsSettings, compression);
                         assert(p._compressionData.size() == compressionDataPerNode);
 
                         nodeHdr._dataOffset = heightDataOffsetIterator;
@@ -634,33 +643,28 @@ namespace SceneEngine
     }
 
     void TerrainFormat::WriteCell(
-        const char destinationFile[], TerrainUberSurface<float>& surface, 
+        const char destinationFile[], TerrainUberSurfaceGeneric& surface, 
         UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const
     {
-        MainTerrainFormat::WriteCellFromUberSurface(
-            destinationFile, surface, 
-            cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
-            MainTerrainFormat::Compression::QuantRange, std::make_pair(VersionString, BuildDateString));
-    }
-
-    void TerrainFormat::WriteCell(
-        const char destinationFile[], TerrainUberSurface<ShadowSample>& surface, 
-        UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const
-    {
-        MainTerrainFormat::WriteCellFromUberSurface(
-            destinationFile, surface, 
-            cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
-            MainTerrainFormat::Compression::None, std::make_pair(VersionString, BuildDateString));
-    }
-
-    void TerrainFormat::WriteCell(
-        const char destinationFile[], TerrainUberSurface<uint8>& surface, 
-        UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const
-    {
-        MainTerrainFormat::WriteCellFromUberSurface(
-            destinationFile, surface, 
-            cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
-            MainTerrainFormat::Compression::None, std::make_pair(VersionString, BuildDateString));
+        if (surface.Format() == ImpliedTyping::TypeOf<float>()) {
+            MainTerrainFormat::WriteCellFromUberSurface<float>(
+                destinationFile, surface, 
+                cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
+                MainTerrainFormat::Compression::QuantRange, 
+                std::make_pair(VersionString, BuildDateString));
+        } else if (surface.Format() == ImpliedTyping::TypeOf<ShadowSample>()) {
+            MainTerrainFormat::WriteCellFromUberSurface<ShadowSample>(
+                destinationFile, surface, 
+                cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
+                MainTerrainFormat::Compression::QuantRange, 
+                std::make_pair(VersionString, BuildDateString));
+        } else if (surface.Format() == ImpliedTyping::TypeOf<uint8>()) {
+            MainTerrainFormat::WriteCellFromUberSurface<uint8>(
+                destinationFile, surface, 
+                cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
+                MainTerrainFormat::Compression::QuantRange, 
+                std::make_pair(VersionString, BuildDateString));
+        }
     }
 
     TerrainFormat::TerrainFormat(const GradientFlagsSettings& gradFlagsSettings)

@@ -8,6 +8,8 @@
 
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/IThreadContext_Forward.h"
+#include "../Utility/ParameterBox.h"        // for ImpliedTyping::TypeDesc
+#include "../Utility/PtrUtils.h"
 #include "../Assets/Assets.h"
 #include "../Math/Vector.h"
 #include "../Core/Types.h"
@@ -30,23 +32,29 @@ namespace SceneEngine
     class TerrainConfig;
     class TerrainCoordinateSystem;
 
-    class ITerrainUberSurface
+    class TerrainUberSurfaceGeneric
     {
     public:
-        virtual unsigned GetWidth() const = 0;
-        virtual unsigned GetHeight() const = 0;
+        void* GetData(UInt2 coord);
+        void* GetDataFast(UInt2 coord);
+        unsigned GetStride() const;
+        ImpliedTyping::TypeDesc Format() const;
+        unsigned GetWidth() const { return _width; }
+        unsigned GetHeight() const { return _height; }
 
-        virtual void* GetData(UInt2 coord) = 0;
-        virtual unsigned GetStride() const = 0;
-        virtual unsigned BitsPerPixel() const = 0;
-        virtual unsigned Format() const = 0;
+        TerrainUberSurfaceGeneric(const ::Assets::ResChar filename[]);
+        ~TerrainUberSurfaceGeneric();
+        
+        TerrainUberSurfaceGeneric();
+        TerrainUberSurfaceGeneric(TerrainUberSurfaceGeneric&& moveFrom);
+        TerrainUberSurfaceGeneric& operator=(TerrainUberSurfaceGeneric&& moveFrom);
+    protected:
+        std::unique_ptr<Utility::MemoryMappedFile> _mappedFile;
 
-        virtual void WriteCell(
-            const ITerrainFormat& ioFormat,
-            const char destinationFile[],
-            UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) = 0;
-
-        virtual ~ITerrainUberSurface();
+        unsigned _width, _height;
+        void* _dataStart;
+        ImpliedTyping::TypeDesc _format;
+        unsigned _sampleBytes; // sample size in bytes
     };
 
     /// <summary>Represents a single "uber" field of terrain data</summary>
@@ -66,37 +74,16 @@ namespace SceneEngine
     /// be able to manipulate it in full precision, whatever true format it is.
     /// That means we can't just cast all data to a Float4... we probably need
     /// something a little nicer than that.
-    template <typename Type> class TerrainUberSurface : public ITerrainUberSurface
+    template <typename Type> class TerrainUberSurface : public TerrainUberSurfaceGeneric
     {
     public:
         Type GetValue(unsigned x, unsigned y) const;
         void SetValue(unsigned x, unsigned y, Type newValue);
         Type GetValueFast(unsigned x, unsigned y) const;
-        unsigned GetWidth() const { return _width; }
-        unsigned GetHeight() const { return _height; }
 
-        virtual void* GetData(UInt2 coord);
-        virtual unsigned GetStride() const;
-        virtual unsigned BitsPerPixel() const;
-        virtual unsigned Format() const;
-
-        void WriteCell(
-            const ITerrainFormat& ioFormat,
-            const char destinationFile[],
-            UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements);
-
-        TerrainUberSurface(const char filename[]);
-        ~TerrainUberSurface();
-        
+        TerrainUberSurface(const ::Assets::ResChar filename[]);
         TerrainUberSurface();
-        TerrainUberSurface(TerrainUberSurface&& moveFrom);
-        TerrainUberSurface& operator=(TerrainUberSurface&& moveFrom);
     private:
-        std::unique_ptr<Utility::MemoryMappedFile> _mappedFile;
-
-        unsigned _width, _height;
-        Type* _dataStart;
-
         friend class HeightsUberSurfaceInterface;
     };
 
@@ -116,7 +103,8 @@ namespace SceneEngine
     public:
         static void    BuildEmptyFile(
             const ::Assets::ResChar destinationFile[], 
-            unsigned width, unsigned height, unsigned bitsPerElement);
+            unsigned width, unsigned height, 
+            const ImpliedTyping::TypeDesc& type);
 
         void    RegisterCell(
                     const char destinationFile[], UInt2 mins, UInt2 maxs, unsigned overlap,
@@ -126,7 +114,7 @@ namespace SceneEngine
         void    FlushGPUCache();
 
         GenericUberSurfaceInterface(
-            ITerrainUberSurface& uberSurface, 
+            TerrainUberSurfaceGeneric& uberSurface, 
             std::shared_ptr<ITerrainFormat> ioFormat = nullptr);
         virtual ~GenericUberSurfaceInterface();
     protected:
@@ -185,20 +173,6 @@ namespace SceneEngine
             LightingParserContext& parserContext,
             const TerrainCoordinateSystem& coords);
 
-        void    BuildShadowingSurface(
-            const char destinationFile[], 
-            Int2 interestingMins, Int2 interestingMaxs, 
-            Float2 sunDirectionOfMovement, 
-            float xyScale, float relativeResolution, 
-            ConsoleRig::IProgress* progress);
-
-        void    BuildAmbientOcclusion(
-            const char destinationFile[],
-            Int2 interestingMins, Int2 interestingMaxs,
-            float xyScale, float relativeResolution, 
-            unsigned testRadius, float power,
-            ConsoleRig::IProgress* progress);
-
         TerrainUberHeightsSurface* GetUberSurface();
 
         HeightsUberSurfaceInterface(
@@ -217,7 +191,7 @@ namespace SceneEngine
         void Paint(Float2 centre, float radius, unsigned paintValue);
 
         CoverageUberSurfaceInterface(
-            ITerrainUberSurface& uberSurface,
+            TerrainUberSurfaceGeneric& uberSurface,
             std::shared_ptr<ITerrainFormat> ioFormat);
         ~CoverageUberSurfaceInterface();
 
@@ -226,6 +200,14 @@ namespace SceneEngine
     };
 
         ///////////////   I N L I N E   I M P L E M E N T A T I O N S   ///////////////
+
+    inline void* TerrainUberSurfaceGeneric::GetDataFast(UInt2 coord)
+    {
+        assert(_mappedFile && _dataStart);
+        assert(coord[0] < _width && coord[1] < _height);
+        auto stride = _width * _sampleBytes;
+        return PtrAdd(_dataStart, coord[1] * stride + coord[0] * _sampleBytes);
+    }
 
     namespace Internal
     {
@@ -239,7 +221,7 @@ namespace SceneEngine
         assert(_mappedFile && _dataStart);
         if (y >= _height || x >= _width)
             return Internal::DummyValue<Type>();
-        return _dataStart[y*_width+x];
+        return ((Type*)_dataStart)[y*_width+x];
     }
 
     template <typename Type>
@@ -247,7 +229,7 @@ namespace SceneEngine
     {
         assert(_mappedFile && _dataStart);
         if (y < _height && x < _width) {
-            _dataStart[y*_width+x] = newValue;
+            ((Type*)_dataStart)[y*_width+x] = newValue;
         }
     }
 
@@ -256,6 +238,19 @@ namespace SceneEngine
     {
         assert(_mappedFile && _dataStart);
         assert(y < _height && x < _width);
-        return _dataStart[y*_width+x];
+        return ((Type*)_dataStart)[y*_width+x];
     }
+
+    class TerrainUberHeader
+    {
+    public:
+        unsigned _magic;
+        unsigned _width, _height;
+        unsigned _typeCat;
+        unsigned _typeArrayCount;
+        unsigned _dummy[3];
+
+        static const unsigned Magic = 0xa4d3e4c3;
+    };
+
 }

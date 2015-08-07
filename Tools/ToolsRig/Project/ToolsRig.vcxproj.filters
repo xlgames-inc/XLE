@@ -1,35 +1,87 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="..\TerrainManipulators.cpp" />
-    <ClCompile Include="..\BasicManipulators.cpp" />
-    <ClCompile Include="..\PlacementsManipulators.cpp" />
     <ClCompile Include="..\ModelVisualisation.cpp" />
     <ClCompile Include="..\MaterialVisualisation.cpp" />
-    <ClCompile Include="..\TerrainManipulatorsCommon.cpp" />
-    <ClCompile Include="..\TerrainManipulatorsInterface.cpp" />
     <ClCompile Include="..\HighlightEffects.cpp" />
-    <ClCompile Include="..\ManipulatorsRender.cpp" />
     <ClCompile Include="..\VisualisationGeo.cpp" />
     <ClCompile Include="..\VisualisationUtils.cpp" />
     <ClCompile Include="..\MaterialBinder.cpp" />
-    <ClCompile Include="..\TerrainConversion.cpp" />
+    <ClCompile Include="..\TerrainConversion.cpp">
+      <Filter>Terrain</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TerrainOp.cpp">
+      <Filter>Terrain</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TerrainShadowOp.cpp">
+      <Filter>Terrain</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BasicManipulators.cpp">
+      <Filter>Manipulators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ManipulatorsRender.cpp">
+      <Filter>Manipulators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\PlacementsManipulators.cpp">
+      <Filter>Manipulators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TerrainManipulators.cpp">
+      <Filter>Manipulators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TerrainManipulatorsCommon.cpp">
+      <Filter>Manipulators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TerrainManipulatorsInterface.cpp">
+      <Filter>Manipulators</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\BasicManipulators.h" />
-    <ClInclude Include="..\ManipulatorsUtil.h" />
-    <ClInclude Include="..\PlacementsManipulators.h" />
     <ClInclude Include="..\ModelVisualisation.h" />
     <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\VisualisationUtils.h" />
-    <ClInclude Include="..\TerrainManipulatorsCommon.h" />
-    <ClInclude Include="..\IManipulator.h" />
-    <ClInclude Include="..\TerrainManipulatorsInterface.h" />
-    <ClInclude Include="..\TerrainManipulators.h" />
     <ClInclude Include="..\HighlightEffects.h" />
-    <ClInclude Include="..\ManipulatorsRender.h" />
     <ClInclude Include="..\VisualisationGeo.h" />
     <ClInclude Include="..\MaterialBinder.h" />
-    <ClInclude Include="..\TerrainConversion.h" />
+    <ClInclude Include="..\TerrainConversion.h">
+      <Filter>Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainOp.h">
+      <Filter>Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainShadowOp.h">
+      <Filter>Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="..\BasicManipulators.h">
+      <Filter>Manipulators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ManipulatorsRender.h">
+      <Filter>Manipulators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ManipulatorsUtil.h">
+      <Filter>Manipulators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\IManipulator.h">
+      <Filter>Manipulators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\PlacementsManipulators.h">
+      <Filter>Manipulators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainManipulators.h">
+      <Filter>Manipulators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainManipulatorsCommon.h">
+      <Filter>Manipulators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainManipulatorsInterface.h">
+      <Filter>Manipulators</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Terrain">
+      <UniqueIdentifier>{04094e55-2523-4d32-aa90-3d68a8d131c3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Manipulators">
+      <UniqueIdentifier>{27a25d8b-6140-4116-ba20-0398e6d2f3b2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

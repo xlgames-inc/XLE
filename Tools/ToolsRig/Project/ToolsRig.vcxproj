@@ -125,6 +125,8 @@
     <ClCompile Include="..\TerrainManipulators.cpp" />
     <ClCompile Include="..\TerrainManipulatorsCommon.cpp" />
     <ClCompile Include="..\TerrainManipulatorsInterface.cpp" />
+    <ClCompile Include="..\TerrainOp.cpp" />
+    <ClCompile Include="..\TerrainShadowOp.cpp" />
     <ClCompile Include="..\VisualisationGeo.cpp" />
     <ClCompile Include="..\VisualisationUtils.cpp" />
   </ItemGroup>
@@ -142,6 +144,8 @@
     <ClInclude Include="..\TerrainManipulators.h" />
     <ClInclude Include="..\TerrainManipulatorsInterface.h" />
     <ClInclude Include="..\TerrainManipulatorsCommon.h" />
+    <ClInclude Include="..\TerrainOp.h" />
+    <ClInclude Include="..\TerrainShadowOp.h" />
     <ClInclude Include="..\VisualisationGeo.h" />
     <ClInclude Include="..\VisualisationUtils.h" />
   </ItemGroup>

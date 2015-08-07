@@ -25,6 +25,8 @@ namespace SceneEngine
             float slope2Threshold = 1.75f);
     };
 
+    class TerrainUberSurfaceGeneric;
+   
     /// <summary>Native XLE file format for terrain</summary>
     /// XLE allows for support for multiple formats for storing
     /// terrain data using the ITerrainFormat interface. This
@@ -36,13 +38,7 @@ namespace SceneEngine
         virtual const TerrainCell& LoadHeights(const char filename[], bool skipDependsCheck) const;
         virtual const TerrainCellTexture& LoadCoverage(const char filename[]) const;
         virtual void WriteCell( 
-            const char destinationFile[], TerrainUberSurface<float>& surface, 
-            UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const;
-        virtual void WriteCell(
-            const char destinationFile[], TerrainUberSurface<ShadowSample>& surface, 
-            UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const;
-        virtual void WriteCell(
-            const char destinationFile[], TerrainUberSurface<uint8>& surface, 
+            const char destinationFile[], TerrainUberSurfaceGeneric& surface, 
             UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const;
 
         TerrainFormat(const GradientFlagsSettings& gradFlagsSettings = GradientFlagsSettings());

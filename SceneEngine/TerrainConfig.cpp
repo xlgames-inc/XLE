@@ -164,7 +164,8 @@ namespace SceneEngine
                 layer._id               = l(u("Id"), 0);
                 layer._nodeDimensions   = l(u("Dims"), UInt2(32, 32));
                 layer._overlap          = l(u("Overlap"), 1);
-                layer._format           = l(u("Format"), 35);
+                layer._typeCat          = l(u("TypeCat"), unsigned(ImpliedTyping::TypeCat::Float));
+                layer._typeCount        = l(u("TypeCount"), 1);
                 _coverageLayers.push_back(layer);
             }
         }
@@ -188,7 +189,8 @@ namespace SceneEngine
             Serialize(formatter, u("Id"), l->_id);
             Serialize(formatter, u("Dims"), l->_nodeDimensions);
             Serialize(formatter, u("Overlap"), l->_overlap);
-            Serialize(formatter, u("Format"), l->_format);
+            Serialize(formatter, u("TypeCat"), l->_typeCat);
+            Serialize(formatter, u("TypeCount"), l->_typeCount);
             formatter.EndElement(ele);
         }
         formatter.EndElement(covEle);

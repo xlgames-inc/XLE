@@ -364,14 +364,21 @@ namespace GUILayer
             }
         }
 
-        static unsigned DefaultFormatForLayer(SceneEngine::TerrainCoverageId layerId)
+        static unsigned DefaultFormatCatForLayer(SceneEngine::TerrainCoverageId layerId)
         {
             switch (layerId) {
-            case SceneEngine::CoverageId_AngleBasedShadows: 
-                return RenderCore::Metal::NativeFormat::R16G16_UNORM;
-            case SceneEngine::CoverageId_AmbientOcclusion: 
-                return RenderCore::Metal::NativeFormat::R8_UINT;
-            default: return RenderCore::Metal::NativeFormat::R8_UINT;
+            case SceneEngine::CoverageId_AngleBasedShadows: return (unsigned)ImpliedTyping::TypeCat::UInt16;
+            case SceneEngine::CoverageId_AmbientOcclusion:  return (unsigned)ImpliedTyping::TypeCat::UInt8;
+            default: return (unsigned)ImpliedTyping::TypeCat::UInt8;
+            }
+        }
+
+        static unsigned DefaultFormatCountForLayer(SceneEngine::TerrainCoverageId layerId)
+        {
+            switch (layerId) {
+            case SceneEngine::CoverageId_AngleBasedShadows: return 2;
+            case SceneEngine::CoverageId_AmbientOcclusion:  return 1;
+            default: return 1;
             }
         }
 
@@ -391,7 +398,8 @@ namespace GUILayer
             const auto overlap = DefaultOverlapForLayer(coverageLayerId);
             result->NodeDims = AsVectorUInt2(layerRes * AsUInt2(cfg->NodeDims));
             result->Overlap = overlap;
-            result->Format = DefaultFormatForLayer(coverageLayerId);
+            result->FormatCat = DefaultFormatCatForLayer(coverageLayerId);
+            result->FormatArrayCount = DefaultFormatCountForLayer(coverageLayerId);
 
             return result;
         }

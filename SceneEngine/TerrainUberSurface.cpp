@@ -29,7 +29,6 @@
 #include "..\BufferUploads\ResourceLocator.h"
 #include "..\BufferUploads\DataPacket.h"
 
-#include "..\Math\Geometry.h"
 #include "..\Math\Math.h"
 #include "..\ConsoleRig\IProgress.h"
 
@@ -44,7 +43,6 @@
 #include "..\Core\Exceptions.h"
 #include <memory>
 #include <stack>
-#include <thread>
 
 #include "..\RenderCore\DX11\Metal\DX11.h"
 #include "..\RenderCore\DX11\Metal\IncludeDX11.h"
@@ -53,86 +51,67 @@ namespace SceneEngine
 {
     using namespace RenderCore;
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class TerrainUberHeader
-    {
-    public:
-        unsigned _magic;
-        unsigned _width, _height;
-        unsigned _dummy;
-
-        static const unsigned Magic = 0xa3d3e3c3;
-    };
-   
-    template <typename Type>
-        void TerrainUberSurface<Type>::WriteCell(
-            const ITerrainFormat& ioFormat,
-            const char destinationFile[],
-            UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements)
-    {
-        ioFormat.WriteCell(destinationFile, *this, cellMins, cellMaxs, treeDepth, overlapElements);
-    }
-
-    template <typename Type>
-        void* TerrainUberSurface<Type>::GetData(UInt2 coord)
+    void* TerrainUberSurfaceGeneric::GetData(UInt2 coord)
     {
         assert(_mappedFile && _dataStart);
-        return &_dataStart[coord[1] * _width + coord[0]];
+        if (coord[0] >= _width || coord[1] >= _height) return nullptr;
+        auto stride = _width * _sampleBytes;
+        return PtrAdd(_dataStart, coord[1] * stride + coord[0] * _sampleBytes);
     }
 
-    template <typename Type>
-        unsigned TerrainUberSurface<Type>::GetStride() const { return _width*sizeof(Type); }
-
-    template <typename Type>
-        unsigned TerrainUberSurface<Type>::BitsPerPixel() const
-    {
-        return sizeof(Type)*8;
+    unsigned TerrainUberSurfaceGeneric::GetStride() const 
+    { 
+        return _width * _sampleBytes;
     }
 
-    template<> unsigned TerrainUberSurface<float>::Format() const { return (unsigned)RenderCore::Metal::NativeFormat::R32_FLOAT; }
-    template<> unsigned TerrainUberSurface<uint8>::Format() const { return (unsigned)RenderCore::Metal::NativeFormat::R8_UINT; }
-    template<> unsigned TerrainUberSurface<ShadowSample>::Format() const { return (unsigned)RenderCore::Metal::NativeFormat::R16G16_UNORM; }
+    ImpliedTyping::TypeDesc TerrainUberSurfaceGeneric::Format() const { return _format; }
 
-    template <typename Type>
-        TerrainUberSurface<Type>::TerrainUberSurface(const char filename[])
+    TerrainUberSurfaceGeneric::TerrainUberSurfaceGeneric(const ::Assets::ResChar filename[])
     {
         _width = _height = 0;
         _dataStart = nullptr;
+        _sampleBytes = 0;
 
             //  Load the file as a Win32 "mapped file"
             //  the format is very simple.. it's just a basic header, and then
             //  a huge 2D array of height values
         auto mappedFile = std::make_unique<MemoryMappedFile>(filename, 0, MemoryMappedFile::Access::Read|MemoryMappedFile::Access::Write, BasicFile::ShareMode::Read);
         if (!mappedFile->IsValid())
-            Throw(::Assets::Exceptions::InvalidAsset(filename, "Failed while openning uber surface file"));
+            Throw(::Assets::Exceptions::InvalidAsset(
+                filename, "Failed while openning uber surface file"));
         
         auto& hdr = *(TerrainUberHeader*)mappedFile->GetData();
         if (hdr._magic != TerrainUberHeader::Magic)
-            Throw(::Assets::Exceptions::InvalidAsset(filename, "Uber surface file appears to be corrupt"));
-
-        if (mappedFile->GetSize() < (sizeof(TerrainUberHeader) + hdr._width * hdr._height * sizeof(Type)))
-            Throw(::Assets::Exceptions::InvalidAsset(filename, "Uber surface file appears to be corrupt (it is smaller than it should be)"));
+            Throw(::Assets::Exceptions::InvalidAsset(
+                filename, "Uber surface file appears to be corrupt"));
 
         _width = hdr._width;
         _height = hdr._height;
-        _dataStart = (Type*)PtrAdd(mappedFile->GetData(), sizeof(TerrainUberHeader));
+        _dataStart = PtrAdd(mappedFile->GetData(), sizeof(TerrainUberHeader));
+        _format = ImpliedTyping::TypeDesc(
+            ImpliedTyping::TypeCat(hdr._typeCat), 
+            (uint16)hdr._typeArrayCount);
+        _sampleBytes = _format.GetSize();
+
+        if (mappedFile->GetSize() < (sizeof(TerrainUberHeader) + hdr._width * hdr._height * _sampleBytes))
+            Throw(::Assets::Exceptions::InvalidAsset(
+                filename, "Uber surface file appears to be corrupt (it is smaller than it should be)"));
+
         _mappedFile = std::move(mappedFile);
     }
 
-    template <typename Type>
-        TerrainUberSurface<Type>::TerrainUberSurface()
+    TerrainUberSurfaceGeneric::TerrainUberSurfaceGeneric()
     {
         _width = _height = 0;
         _dataStart = nullptr;
     }
 
-    template <typename Type>
-        TerrainUberSurface<Type>::~TerrainUberSurface()
+    TerrainUberSurfaceGeneric::~TerrainUberSurfaceGeneric()
     {}
 
-    template <typename Type>
-        TerrainUberSurface<Type>::TerrainUberSurface(TerrainUberSurface<Type>&& moveFrom)
+    TerrainUberSurfaceGeneric::TerrainUberSurfaceGeneric(TerrainUberSurfaceGeneric&& moveFrom)
     : _mappedFile(std::move(moveFrom._mappedFile))
     , _dataStart(moveFrom._dataStart)
     , _width(moveFrom._width)
@@ -142,8 +121,7 @@ namespace SceneEngine
         moveFrom._width = moveFrom._height = 0;
     }
 
-    template <typename Type>
-        TerrainUberSurface<Type>& TerrainUberSurface<Type>::operator=(TerrainUberSurface<Type>&& moveFrom)
+    TerrainUberSurfaceGeneric& TerrainUberSurfaceGeneric::operator=(TerrainUberSurfaceGeneric&& moveFrom)
     {
         _mappedFile = std::move(moveFrom._mappedFile);
         _width = moveFrom._width;
@@ -154,7 +132,19 @@ namespace SceneEngine
         return *this;
     }
 
-    ITerrainUberSurface::~ITerrainUberSurface() {}
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template <typename Type>
+        TerrainUberSurface<Type>::TerrainUberSurface(const ::Assets::ResChar filename[])
+            : TerrainUberSurfaceGeneric(filename)
+        {
+            if (!(_format == ImpliedTyping::TypeOf<Type>()))
+                Throw(::Assets::Exceptions::InvalidAsset(
+                    filename, "Uber surface format doesn't match expected type"));
+        }
+
+    template <typename Type>
+        TerrainUberSurface<Type>::TerrainUberSurface() {}
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -192,7 +182,7 @@ namespace SceneEngine
         };
 
         std::vector<RegisteredCell>     _registeredCells;
-        ITerrainUberSurface*            _uberSurface;
+        TerrainUberSurfaceGeneric*      _uberSurface;
 
         UInt2                           _gpuCacheMins, _gpuCacheMaxs;
         intrusive_ptr<ID3D::Resource>   _gpucache[2];
@@ -331,7 +321,7 @@ namespace SceneEngine
 
                 auto dstStart = _pimpl->_uberSurface->GetData(_pimpl->_gpuCacheMins);
                 auto dstStride = _pimpl->_uberSurface->GetStride();
-                auto bbp = _pimpl->_uberSurface->BitsPerPixel();
+                auto bytesPerSample = _pimpl->_uberSurface->Format().GetSize();
 
                 UInt2 dims( _pimpl->_gpuCacheMaxs[0]-_pimpl->_gpuCacheMins[0]+1, 
                             _pimpl->_gpuCacheMaxs[1]-_pimpl->_gpuCacheMins[1]+1);
@@ -339,7 +329,7 @@ namespace SceneEngine
                     XlCopyMemory(
                         PtrAdd(dstStart, y*dstStride),
                         PtrAdd(readbackData, y*readbackStride),
-                        dims[0] * bbp / 8);
+                        dims[0] * bytesPerSample);
             }
 
                 //  Destroy the gpu cache
@@ -355,9 +345,8 @@ namespace SceneEngine
 
                     TRY {
                         const auto treeDepth = 5u;
-                        _pimpl->_uberSurface->WriteCell(
-                            *_pimpl->_ioFormat,
-                            i->_filename.c_str(),
+                        _pimpl->_ioFormat->WriteCell(
+                            i->_filename.c_str(), *_pimpl->_uberSurface,
                             i->_mins, i->_maxs, treeDepth, i->_overlap);
                     } CATCH (...) {
                     } CATCH_END     // if the directory for the output file doesn't exist, we can get an exception here
@@ -380,7 +369,7 @@ namespace SceneEngine
         auto& bufferUploads = GetBufferUploads();
 
         UInt2 dims(maxs[0]-mins[0]+1, maxs[1]-mins[1]+1);
-        auto desc = Internal::BuildCacheDesc(dims, (RenderCore::Metal::NativeFormat::Enum)_pimpl->_uberSurface->Format());
+        auto desc = Internal::BuildCacheDesc(dims, Metal::AsNativeFormat(_pimpl->_uberSurface->Format()));
         auto pkt = make_intrusive<Internal::UberSurfacePacket>(
             _pimpl->_uberSurface->GetData(mins), _pimpl->_uberSurface->GetStride(), dims);
 
@@ -540,7 +529,7 @@ namespace SceneEngine
 
     void    GenericUberSurfaceInterface::BuildEmptyFile(
         const ::Assets::ResChar destinationFile[], 
-        unsigned width, unsigned height, unsigned bitsPerElement)
+        unsigned width, unsigned height, const ImpliedTyping::TypeDesc& type)
     {
         BasicFile outputFile(destinationFile, "wb");
 
@@ -548,10 +537,12 @@ namespace SceneEngine
         hdr._magic = TerrainUberHeader::Magic;
         hdr._width = width;
         hdr._height = height;
-        hdr._dummy = 0;
+        hdr._typeCat = (unsigned)type._type;
+        hdr._typeArrayCount = type._arrayCount;
+        hdr._dummy[0] = hdr._dummy[1] = hdr._dummy[2] = 0;
         outputFile.Write(&hdr, sizeof(hdr), 1);
 
-        unsigned lineSize = width*bitsPerElement/8;
+        unsigned lineSize = width*type.GetSize();
         auto lineOfSamples = std::make_unique<uint8[]>(lineSize);
         std::fill(lineOfSamples.get(), &lineOfSamples[lineSize], 0);
         for (int y=0; y<int(height); ++y) {
@@ -600,7 +591,7 @@ namespace SceneEngine
         context->UnbindPS<RenderCore::Metal::ShaderResourceView>(5, 1);
     }
 
-    GenericUberSurfaceInterface::GenericUberSurfaceInterface(ITerrainUberSurface& uberSurface, std::shared_ptr<ITerrainFormat> ioFormat)
+    GenericUberSurfaceInterface::GenericUberSurfaceInterface(TerrainUberSurfaceGeneric& uberSurface, std::shared_ptr<ITerrainFormat> ioFormat)
     {
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->_uberSurface = &uberSurface;     // no protection on this pointer (assuming it's coming from a resource)
@@ -858,7 +849,7 @@ namespace SceneEngine
         /////////////////////////////////////////////////////////////////////////////////////
 
         auto& bufferUploads = GetBufferUploads();
-        auto desc = Internal::BuildCacheDesc(size, (RenderCore::Metal::NativeFormat::Enum)_pimpl->_uberSurface->Format());
+        auto desc = Internal::BuildCacheDesc(size, Metal::AsNativeFormat(_pimpl->_uberSurface->Format()));
         auto hardMaterials = bufferUploads.Transaction_Immediate(desc)->AdoptUnderlying();
         auto softMaterials = bufferUploads.Transaction_Immediate(desc)->AdoptUnderlying();
         auto softMaterialsCopy = bufferUploads.Transaction_Immediate(desc)->AdoptUnderlying();
@@ -1086,426 +1077,6 @@ namespace SceneEngine
         _thermalErosionRate = 0.05f;
     }
 
-    class ShadowingAngleOperator
-    {
-    public:
-        void operator()(Float2 s0, Float2 s1, float edgeAlpha)
-        {
-                // for performance reasons, we don't do any boundary checking
-                // on the input values. The input algorithm must guarantee that
-                // we get reasonable results.
-            Int2 is0 = Int2(int(s0[0]), int(s0[1])), is1 = Int2(int(s1[0]), int(s1[1]));
-            assert(is0[0] >= 0 && is0[0] <= int(_surface->GetWidth()));
-            assert(is0[1] >= 0 && is0[1] <= int(_surface->GetHeight()));
-            assert(is1[0] >= 0 && is1[0] <= int(_surface->GetWidth()));
-            assert(is1[1] >= 0 && is1[1] <= int(_surface->GetHeight()));
-
-            // we need to find the height of the edge at the point we pass through it
-            float h0 = _surface->GetValueFast(is0[0], is0[1]);
-            float h1 = _surface->GetValueFast(is1[0], is1[1]);
-            float finalHeight = LinearInterpolate(h0, h1, edgeAlpha);
-            Float2 finalPos = LinearInterpolate(s0, s1, edgeAlpha);
-            
-                // this defines an angle. We can do "smaller than" comparisons on tanTheta to find the smallest theta
-            float distance = Magnitude(finalPos - Truncate(_samplePt)); // * _xyScale;
-            assert(distance > 0.f);
-            float grad = (finalHeight - _samplePt[2]) / distance;
-            _bestResult = BranchlessMax(grad, _bestResult);
-        }
-
-        ShadowingAngleOperator(TerrainUberHeightsSurface* surface, Float3 samplePt) { _bestResult = -FLT_MAX; _surface = surface; _samplePt = samplePt; }
-
-        float _bestResult;
-    protected:
-        TerrainUberHeightsSurface* _surface;
-        Float3 _samplePt;
-    };
-
-    float GetInterpolatedValue(TerrainUberHeightsSurface& surface, Float2 pt)
-    {
-        Float2 floored(XlFloor(pt[0]), XlFloor(pt[1]));
-        Float2 ceiled = floored + Float2(1.f, 1.f);
-        Float2 alpha = pt - floored;
-        float A = surface.GetValue((unsigned)floored[0], (unsigned)floored[1]);
-        float B = surface.GetValue((unsigned) ceiled[0], (unsigned)floored[1]);
-        float C = surface.GetValue((unsigned)floored[0], (unsigned) ceiled[1]);
-        float D = surface.GetValue((unsigned) ceiled[0], (unsigned) ceiled[1]);
-        return 
-              A * (1.f - alpha[0]) * (1.f - alpha[1])
-            + B * (      alpha[0]) * (1.f - alpha[1])
-            + C * (1.f - alpha[0]) * (      alpha[1])
-            + D * (      alpha[0]) * (      alpha[1])
-            ;
-    }
-
-    static float CalculateShadowingGrad(
-        TerrainUberHeightsSurface& surface, 
-        Float2 rayStart, Float2 rayEnd)
-    {
-            //  Travel forward along the sunDirectionOfMovement and find the shadowing angle.
-            //  It's important here that integer coordinates are on corners of the "pixels"
-            //      -- ie, not the centers. This will keep the height map correctly aligned
-            //  with the shadowing samples
-        float sampleHeight = GetInterpolatedValue(surface, rayStart);
-
-            //  Have to keep a border around the edge. Sometimes the interpolation generated 
-            //  GridEdgeIterator2 will be just outside of the valid area. To avoid reading
-            //  bad memory, we need to avoid the very edge.
-        const float border = 1.f;
-        if (rayEnd[0] < border) {
-            rayEnd = LinearInterpolate(rayStart, rayEnd, (border-rayStart[0]) / (rayEnd[0]-rayStart[0]));
-            rayEnd[0] = border;
-        } else if (rayEnd[0] > float(surface.GetWidth()-2)) {
-            rayEnd = LinearInterpolate(rayStart, rayEnd, (float(surface.GetWidth()-1)-border - rayStart[0]) / (rayEnd[0]-rayStart[0]));
-            rayEnd[0] = float(surface.GetWidth()-1)-border;
-        }
-        
-        if (rayEnd[1] < border) {
-            rayEnd = LinearInterpolate(rayStart, rayEnd, (border-rayStart[1]) / (rayEnd[1]-rayStart[1]));
-            rayEnd[1] = border;
-        } else if (rayEnd[1] > float(surface.GetHeight()-1)-border) {
-            rayEnd = LinearInterpolate(rayStart, rayEnd, (float(surface.GetHeight()-1)-border - rayStart[1]) / (rayEnd[1]-rayStart[1]));
-            rayEnd[1] = float(surface.GetHeight()-1)-border;
-        }
-
-        assert(rayStart[0] >= 0.f && rayStart[0] < surface.GetWidth());
-        assert(rayStart[1] >= 0.f && rayStart[1] < surface.GetHeight());
-        assert(rayEnd[0] >= 0.f && rayEnd[0] < surface.GetWidth());
-        assert(rayEnd[1] >= 0.f && rayEnd[1] < surface.GetHeight());
-
-        ShadowingAngleOperator opr(&surface, Expand(rayStart, sampleHeight));
-        GridEdgeIterator2(rayStart, rayEnd, opr);
-        return opr._bestResult;
-    }
-
-    static float CalculateShadowingAngleForSun(
-        TerrainUberHeightsSurface& surface, 
-        Float2 samplePt, Float2 sunDirectionOfMovement, float xyScale)
-    {
-            //  limit the maximum shadow distance (for efficiency while calculating the angles)
-            //  As we get further away from the sample point, we're less likely to find the shadow
-            //  caster... So just cut off at a given distance (helps performance greatly)
-            //  It seems that around 1000 is needed for very long shadows. At 200, shadows get clipped off too soon.
-        const unsigned maxShadowDistance = 1000;
-
-            //  where will this iteration hit the edge of the valid area?
-            //  start with a really long line, then clamp it to the valid region
-        Float2 fe = samplePt + std::min(maxShadowDistance, surface.GetWidth() + surface.GetHeight()) * sunDirectionOfMovement;
-
-        float grad = CalculateShadowingGrad(surface, samplePt, fe);
-        grad /= xyScale;
-        return XlATan2(1.f, grad);
-    }
-
-    void    HeightsUberSurfaceInterface::BuildShadowingSurface(
-        const char destinationFile[], Int2 interestingMins, Int2 interestingMaxs, 
-        Float2 sunDirectionOfMovement, float xyScale, float relativeResolution,
-        ConsoleRig::IProgress* progress)
-    {
-            //      There are some limitations on the way the sun can move.
-            //      It must move in a perfect circle arc, and pass through a
-            //      point directly above. It must be as if our terrain is near
-            //      the equator of the planet. The results won't be exactly physically
-            //      correct for areas away from the equator; but maybe that's difficult
-            //      for people to notice.
-            //
-            //      While this limitation is fairly significant, for many situations
-            //      it's ok. It's difficult for the player to notice that the sun
-            //      follows the same path every time and we still have control over 
-            //      the time of sunrise and sunset, etc.
-
-            //  For each point, we want to move both ways along the "sunDirectionOfMovement"
-            //  vector. We want to find the angle at which shadowing starts. We can then
-            //  assume that the point will always be in shadow when the sun is below that
-            //  angle (this applies for the other direction, also).
-            //
-            //  We'll align the shadowing information perfectly with the height information.
-            //  That means the shadowing samples happen on the corners of the quads that
-            //  are generated by the height map.
-            //
-            //  For iterating along the line, we can use a fixed point method like Bresenham's method. 
-            //  We want to pass through every height map quad that the line passes through. We'll then
-            //  find the two points on the edges of that quad that are pierced by the line.
-            //  The simplest way to do this, is to consider the grid as a set of grid lines, and look
-            //  for all of the cases where the test line intersects those grid lines.
-            //  Note that it's possible that the first shadow could be cast by the diagonal edge on
-            //  the triangles for the quad (not an outside edge). This method will miss those cases.
-            //  But the difference should be subtle.
-            //
-            //  We want to write to a real big file... So here's what we'll do.
-            //      Lets do 1 line at a time, and write each line to the file in one write operation
-            //
-            //  If we wanted to improve this, we could twiddle the data in the texture. This would
-            //  mean that samples that are close to each other in physical space are more likely to
-            //  be close in the file.
-
-        auto width = unsigned(_pimpl->_uberSurface->GetWidth() / relativeResolution);
-        auto height = unsigned(_pimpl->_uberSurface->GetHeight() / relativeResolution);
-
-        StringMeld<MaxPath> tempFile; tempFile << destinationFile << ".building";
-        {
-            BasicFile outputFile(tempFile, "wb");
-
-            TerrainUberHeader hdr;
-            hdr._magic = TerrainUberHeader::Magic;
-            hdr._width = width;
-            hdr._height = height;
-            hdr._dummy = 0;
-            outputFile.Write(&hdr, sizeof(hdr), 1);
-
-                // The "expansion constant" helps prevent shadows creaping up on peaks.
-                // Peaks (especially sharp peaks) shouldn't receive shadows until the sun is >90 degrees, or <-90 degrees.
-                // But if we clamp the direction at +-90, shadow will start to the creep
-                // up on the peak when the sun gets near 90 degrees. We want to prevent the
-                // shadow from behaving like this -- which we can do by clamping the angle
-                // beyond 90.
-            const float expansionConstant = 1.5f;
-            const float conversionConstant = float(0xffff) / (.5f * expansionConstant * float(M_PI));
-
-            auto step = progress ? progress->BeginStep("Generate Terrain Shadowing", height, true) : nullptr;
-
-            const int border = int(2.f / relativeResolution);
-
-            auto lineOfSamples = std::make_unique<ShadowSample[]>(width);
-            std::fill(lineOfSamples.get(), &lineOfSamples[width], ShadowSample(0xffff, 0xffff));
-
-            outputFile.Write(lineOfSamples.get(), sizeof(ShadowSample), width); // first line is a dummy
-
-            int y=1;
-            for (; y<int(height)-border; ++y) {
-                if (y >= interestingMins[1] && y < interestingMaxs[1]) {
-                    for (int x=std::max(interestingMins[0], 1); x<std::min(interestingMaxs[0], int(width)-border); ++x) {
-
-                            //  First values is in the opposite direction of the sun movement. This will be a negative number
-                            //  (but we'll store it as a positive value to increase precision)
-                        const float sampleOffset = 0.f;
-                        float a0 = CalculateShadowingAngleForSun(*_uberSurface, Float2(float(x) + sampleOffset, float(y) + sampleOffset) * relativeResolution, -sunDirectionOfMovement, xyScale);
-                        float a1 = CalculateShadowingAngleForSun(*_uberSurface, Float2(float(x) + sampleOffset, float(y) + sampleOffset) * relativeResolution,  sunDirectionOfMovement, xyScale);
-
-                            // Both a0 and a1 should be positive. But we'll negate a0 before we use it for a comparison
-                        assert(a0 > 0.f && a1 > 0.f);
-
-                        lineOfSamples[x] = ShadowSample(
-                            (int16)Clamp(a0 * conversionConstant, 0.f, float(0xffff)),
-                            (int16)Clamp(a1 * conversionConstant, 0.f, float(0xffff)));
-                    }
-                } else {
-                    std::fill(&lineOfSamples[interestingMins[0]], &lineOfSamples[std::min(interestingMaxs[0]+1, int(width))], ShadowSample(0xffff, 0xffff));
-                }
-
-                outputFile.Write(lineOfSamples.get(), sizeof(ShadowSample), width);
-
-                if (step) {
-                    step->Advance();
-                    if (step->IsCancelled()) break;
-                }
-            }
-
-                // if we get cancelled, fill the remainder in with blanks.
-            for (; y<int(height); ++y) {
-                std::fill(&lineOfSamples[interestingMins[0]], &lineOfSamples[std::min(interestingMaxs[0]+1, int(width))], ShadowSample(0xffff, 0xffff));
-                outputFile.Write(lineOfSamples.get(), sizeof(ShadowSample), width);
-            }
-        }
-
-        XlDeleteFile((const utf8*)destinationFile);
-        XlMoveFile((const utf8*)destinationFile, (const utf8*)tempFile.get());
-    }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class AOOperator
-    {
-    public:
-        unsigned GetBitsPerPixel() const;
-        void FillDefault(void* dst, unsigned count) const;
-        void Calculate(
-            void* dst, Float2 coord, 
-            TerrainUberHeightsSurface& heightsSurface, float xyScale) const;
-
-        AOOperator(unsigned testRadius, float power);
-        ~AOOperator();
-    protected:
-        using AoSample = uint8;
-        unsigned _testRadius;
-        float _power;
-        std::vector<Float3> _testPts;
-    };
-
-    unsigned AOOperator::GetBitsPerPixel() const { return unsigned(sizeof(AoSample)*8); }
-
-    void AOOperator::FillDefault(void* dst, unsigned count) const
-    {
-        auto* d = (AoSample*)dst;
-        std::fill(d, d + count, ~AoSample(0));
-    }
-
-    void AOOperator::Calculate(void* dst, Float2 coord, TerrainUberHeightsSurface& heightsSurface, float xyScale) const
-    {
-        // For the given point, we're going to calculate an ambient occlusion sample
-        // We want our sample to be the proportion of the upper hemisphere that is visible to the sky
-        // So it is a proportion of a solid angle (actually, a proportion of 2 steradians).
-        //      Note -- is is worthwhile to go beyond 2 steradians? Geometry on the size of amount will
-        //              be partially occluded in the upper hemisphere. But it could be getting reflected
-        //              light from below...?
-        //
-        // To test this, we need to calculate test rays in 360 degrees around a circle (in a similar
-        // way to how the shadows are calculated). That will tell us how exposed the geometry is in that
-        // direction. 
-        // When shooting out rays, we have 2 options:
-        //      1) send rays to the vertices (but the geometry is most extreme on the vertices, so small
-        //          details may have a more significant result)
-        //      2) send rays to the midpoints between two vertices (this should give a smoother result,
-        //          over all?)
-        //
-        // We will find the vertices in a rectangle around the input point. We need to weight the 
-        // contribution of each point according to the angles to adjacent sample points (because we are
-        // going around a rectangle, each point will not be equally spaced). The result might be a bit
-        // distorted in some cases (particularly when there are more AO samples than height map
-        // samples)
-
-        Float2 baseCoord(XlFloor(coord[0]), XlFloor(coord[1]));
-
-        float averageAngle = 0.f;
-        for (const auto&p:_testPts) {
-            float grad = CalculateShadowingGrad(heightsSurface, coord, baseCoord + Truncate(p));
-            grad /= xyScale;
-            float angle = XlATan2(1.f, grad);
-            averageAngle += angle * p[2];   // weight in z element
-        }
-
-        float result = Clamp(averageAngle / (0.5f * gPI), 0.f, 1.f);
-        result = std::pow(result, _power);
-        *(AoSample*)dst = AoSample(0xff * result);
-    }
-
-    AOOperator::AOOperator(unsigned testRadius, float power)
-    {
-        _testRadius = testRadius;
-        _power = power;
-
-        Float2 minTest = Float2(-float(_testRadius), -float(_testRadius));
-        Float2 maxTest = Float2( float(_testRadius),  float(_testRadius));
-
-        for (unsigned c=0; c<_testRadius; ++c)
-            _testPts.push_back(Float3(minTest[0] + float(c) + 0.5f, minTest[1], 0.f));
-        for (unsigned c=0; c<_testRadius; ++c)
-            _testPts.push_back(Float3(maxTest[0], minTest[1] + float(c) + 0.5f, 0.f));
-        for (unsigned c=0; c<_testRadius; ++c)
-            _testPts.push_back(Float3(minTest[0] + float(_testRadius-c-1) + 0.5f, maxTest[1], 0.f));
-        for (unsigned c=0; c<_testRadius; ++c)
-            _testPts.push_back(Float3(minTest[0], minTest[1] + float(_testRadius-c-1) + 0.5f, 0.f));
-
-        auto testPtsCount = _testPts.size(); 
-        for (size_t p=0; p<testPtsCount; ++p) {
-            auto prevPt = Truncate(_testPts[(p+testPtsCount-1)%testPtsCount]);
-            auto nextPt = Truncate(_testPts[(p+1)%testPtsCount]);
-
-            auto cosTheta = Dot(Normalize(prevPt), Normalize(nextPt));
-            auto theta = XlACos(cosTheta);
-            _testPts[p][2] = (.5f * theta) / (2.f * gPI); // this is the weight for this point
-        }
-    }
-
-    AOOperator::~AOOperator() {}
-
-    void HeightsUberSurfaceInterface::BuildAmbientOcclusion(
-            const char destinationFile[],
-            Int2 interestingMins, Int2 interestingMaxs,
-            float xyScale, float relativeResolution, 
-            unsigned testRadius, float power,
-            ConsoleRig::IProgress* progress)
-    {
-        AOOperator op(testRadius, power);
-        UInt2 outDims(0,0);
-        outDims[0] = unsigned(_uberSurface->GetWidth() / relativeResolution);
-        outDims[1] = unsigned(_uberSurface->GetHeight() / relativeResolution);
-
-        unsigned bpp = op.GetBitsPerPixel();
-        StringMeld<MaxPath> tempFile; tempFile << destinationFile << ".building";
-
-        {
-            MemoryMappedFile outputFile(
-                tempFile.get(),
-                sizeof(TerrainUberHeader) + outDims[0] * outDims[1] * bpp / 8,
-                MemoryMappedFile::Access::Write);
-
-            TerrainUberHeader hdr;
-            hdr._magic = TerrainUberHeader::Magic;
-            hdr._width = outDims[0];
-            hdr._height = outDims[1];
-            hdr._dummy = 0;
-
-            *(TerrainUberHeader*)outputFile.GetData() = hdr;
-
-            auto step = progress ? progress->BeginStep("Generate Terrain Ambient Occlusion", outDims[1], true) : nullptr;
-
-            const int border = int(2.f / relativeResolution);
-            void* linesDest = PtrAdd(outputFile.GetData(), sizeof(TerrainUberHeader));
-            size_t lineSize = outDims[0]*bpp/8;
-            
-            auto lineCount = int(outDims[1])-border;
-            Interlocked::Value queueLoc = border;
-
-            auto* uberSurface = _uberSurface;
-            auto threadFunction = 
-                [   &queueLoc, &interestingMins, &interestingMaxs, 
-                    border, &outDims, relativeResolution,
-                    bpp, uberSurface, xyScale, &op, 
-                    linesDest, lineSize, lineCount, &step]()
-                {
-                    auto lineOfSamples = std::make_unique<char[]>(lineSize);
-                    op.FillDefault(lineOfSamples.get(), outDims[0]);
-
-                    for (;;) {
-                        auto y = Interlocked::Increment(&queueLoc);
-                        if (y >= lineCount) return;
-
-                        if (y >= interestingMins[1] && y < interestingMaxs[1]) {
-                            for (   int x=std::max(interestingMins[0], border); 
-                                    x<std::min(interestingMaxs[0], int(outDims[0])-border); 
-                                    ++x) {
-
-                                    Float2 coord = Float2(float(x), float(y)) * relativeResolution;
-                                    op.Calculate(PtrAdd(lineOfSamples.get(), x*bpp/8), coord, *uberSurface, xyScale);
-                                }
-                        } else {
-                            op.FillDefault(
-                                PtrAdd(lineOfSamples.get(), interestingMins[0]*bpp/8), 
-                                std::min(interestingMaxs[0]+1, int(outDims[0])) - interestingMins[0]);
-                        }
-
-                        XlCopyMemory(PtrAdd(linesDest, y*lineSize), lineOfSamples.get(), lineSize);
-                        if (step) {
-                            step->Advance();
-                            if (step->IsCancelled()) return;
-                        }
-                    }
-                };
-
-            std::vector<std::thread> threads;
-            for (unsigned c=0; c<6; ++c)
-                threads.emplace_back(std::thread(threadFunction));
-
-            for (auto&t : threads) t.join();
-
-            // fill in the border and any other space untouched...
-            {
-                auto lineOfSamples = std::make_unique<char[]>(lineSize);
-                op.FillDefault(lineOfSamples.get(), outDims[0]);
-
-                for (int y=0;y<border;++y)
-                    XlCopyMemory(PtrAdd(linesDest, y*lineSize), lineOfSamples.get(), lineSize);
-
-                for (; queueLoc<int(outDims[1]); ++queueLoc)
-                    XlCopyMemory(PtrAdd(linesDest, queueLoc*lineSize), lineOfSamples.get(), lineSize);
-            }
-        }
-
-        XlDeleteFile((const utf8*)destinationFile);
-        XlMoveFile((const utf8*)destinationFile, (const utf8*)tempFile.get());
-    }
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void HeightsUberSurfaceInterface::CancelActiveOperations()
@@ -1560,7 +1131,7 @@ namespace SceneEngine
     }
 
     CoverageUberSurfaceInterface::CoverageUberSurfaceInterface(
-        ITerrainUberSurface& uberSurface,
+        TerrainUberSurfaceGeneric& uberSurface,
         std::shared_ptr<ITerrainFormat> ioFormat)
         : GenericUberSurfaceInterface(uberSurface, std::move(ioFormat))
     {
@@ -1575,3 +1146,11 @@ namespace SceneEngine
 }
 
 
+namespace Utility { namespace ImpliedTyping
+{
+    template<>
+        TypeDesc TypeOf<SceneEngine::ShadowSample>()
+        {
+            return TypeDesc(TypeCat::UInt16, 2);
+        }
+}}

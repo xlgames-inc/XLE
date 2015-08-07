@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Format.h"
+#include "../../../Utility/ParameterBox.h"
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -291,6 +292,59 @@ namespace RenderCore { namespace Metal_DX11
 
         default: return false;
         }
+    }
+
+    NativeFormat::Enum AsNativeFormat(const ImpliedTyping::TypeDesc& type)
+    {
+        using namespace NativeFormat;
+        switch (type._type) {
+        case ImpliedTyping::TypeCat::Int8:
+            if (type._arrayCount == 1) return R8_SINT;
+            if (type._arrayCount == 2) return R8G8_SINT;
+            if (type._arrayCount == 4) return R8G8B8A8_SINT;
+            break;
+
+        case ImpliedTyping::TypeCat::UInt8:
+            if (type._arrayCount == 1) return R8_UINT;
+            if (type._arrayCount == 2) return R8G8_UINT;
+            if (type._arrayCount == 4) return R8G8B8A8_UINT;
+            break;
+
+        case ImpliedTyping::TypeCat::Int16:
+            if (type._arrayCount == 1) return R16_SINT;
+            if (type._arrayCount == 2) return R16G16_SINT;
+            if (type._arrayCount == 4) return R16G16B16A16_SINT;
+            break;
+
+        case ImpliedTyping::TypeCat::UInt16:
+            if (type._arrayCount == 1) return R16_UINT;
+            if (type._arrayCount == 2) return R16G16_UINT;
+            if (type._arrayCount == 4) return R16G16B16A16_UINT;
+            break;
+
+        case ImpliedTyping::TypeCat::Int32:
+            if (type._arrayCount == 1) return R32_SINT;
+            if (type._arrayCount == 2) return R32G32_SINT;
+            if (type._arrayCount == 3) return R32G32B32_SINT;
+            if (type._arrayCount == 4) return R32G32B32A32_SINT;
+            break;
+
+        case ImpliedTyping::TypeCat::UInt32:
+            if (type._arrayCount == 1) return R32_UINT;
+            if (type._arrayCount == 2) return R32G32_UINT;
+            if (type._arrayCount == 3) return R32G32B32_UINT;
+            if (type._arrayCount == 4) return R32G32B32A32_UINT;
+            break;
+
+        case ImpliedTyping::TypeCat::Float:
+            if (type._arrayCount == 1) return R32_FLOAT;
+            if (type._arrayCount == 2) return R32G32_FLOAT;
+            if (type._arrayCount == 3) return R32G32B32_FLOAT;
+            if (type._arrayCount == 4) return R32G32B32A32_FLOAT;
+            break;
+        }
+
+        return Unknown;
     }
 }}
 

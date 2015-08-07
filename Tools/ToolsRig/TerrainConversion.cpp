@@ -7,6 +7,8 @@
 #define _SCL_SECURE_NO_WARNINGS
 
 #include "TerrainConversion.h"
+#include "TerrainOp.h"
+#include "TerrainShadowOp.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/TerrainFormat.h"
 #include "../../SceneEngine/TerrainConfig.h"
@@ -21,23 +23,24 @@
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Conversion.h"
+#include "../../Utility/Threading/ThreadingUtils.h"
 #include <vector>
 #include <regex>
 
 #include "../../Foreign/LibTiff/tiff.h"
 #include "../../Foreign/LibTiff/tiffio.h"
+#include "../../Foreign/half-1.9.2/include/half.hpp"
 
 namespace ToolsRig
 {
     using namespace SceneEngine;
 
     //////////////////////////////////////////////////////////////////////////////////////////
-    template<typename Sample>
-        static void WriteCellCoverageData(
-            const TerrainConfig& cfg, ITerrainFormat& ioFormat, 
-            const ::Assets::ResChar uberSurfaceName[], unsigned layerIndex,
-            bool overwriteExisting,
-            ConsoleRig::IProgress* progress)
+    static void WriteCellCoverageData(
+        const TerrainConfig& cfg, ITerrainFormat& ioFormat, 
+        const ::Assets::ResChar uberSurfaceName[], unsigned layerIndex,
+        bool overwriteExisting,
+        ConsoleRig::IProgress* progress)
     {
         ::Assets::ResChar path[MaxPath];
 
@@ -46,7 +49,7 @@ namespace ToolsRig
 
         auto step = progress ? progress->BeginStep("Write coverage cells", (unsigned)cells.size(), true) : nullptr;
 
-        TerrainUberSurface<Sample> uberSurface(uberSurfaceName);
+        TerrainUberSurfaceGeneric uberSurface(uberSurfaceName);
         for (auto c=cells.cbegin(); c!=cells.cend(); ++c) {
 
             char cellFile[MaxPath];
@@ -94,15 +97,7 @@ namespace ToolsRig
             if (DoesFileExist(layerUberSurface)) {
                     //  open and destroy these coverage uber shadowing surface before we open the uber heights surface
                     //  (opening them both at the same time requires too much memory)
-                if (layer._format == 35) {
-                    WriteCellCoverageData<ShadowSample>(outputConfig, *outputIOFormat, layerUberSurface, l, overwriteExisting, progress);
-                } else if (layer._format == 62) {
-                    WriteCellCoverageData<uint8>(outputConfig, *outputIOFormat, layerUberSurface, l, overwriteExisting, progress);
-                } else {
-                    LogAlwaysError 
-                        << "Unknown format (" << layer._format 
-                        << ") for terrain coverage file for layer: " << Conversion::Convert<std::string>(layer._name);
-                }
+                WriteCellCoverageData(outputConfig, *outputIOFormat, layerUberSurface, l, overwriteExisting, progress);
             }
         }
 
@@ -116,82 +111,120 @@ namespace ToolsRig
 
         //////////////////////////////////////////////////////////////////////////////////////
         auto cells = BuildPrimedCells(outputConfig);
+        Interlocked::Value queueLoc = 0;
         auto step = progress ? progress->BeginStep("Generate Cell Files", (unsigned)cells.size(), true) : nullptr;
-        for (auto c=cells.cbegin(); c!=cells.cend(); ++c) {
-            char heightMapFile[MaxPath];
-            outputConfig.GetCellFilename(heightMapFile, dimof(heightMapFile), c->_cellIndex, CoverageId_Heights);
-            if (overwriteExisting || !DoesFileExist(heightMapFile)) {
-                char path[MaxPath];
-                XlDirname(path, dimof(path), heightMapFile);
-                CreateDirectoryRecursive(path);
-                TRY {
-                    outputIOFormat->WriteCell(
-                        heightMapFile, *uberSurfaceInterface.GetUberSurface(), 
-                        c->_heightUber.first, c->_heightUber.second, outputConfig.CellTreeDepth(), outputConfig.NodeOverlap());
-                } CATCH(...) { // sometimes throws (eg, if the directory doesn't exist)
-                } CATCH_END
-            }
 
-            if (step) {
-                if (step->IsCancelled()) break;
-                step->Advance();
-            }
-        }
+        auto threadFunction = 
+            [&queueLoc, &cells, &outputConfig, overwriteExisting, &outputIOFormat, &step, &uberSurfaceInterface]()
+            {
+                for (;;) {
+                    auto i = Interlocked::Increment(&queueLoc);
+                    if (i >= cells.size()) return;
+
+                    const auto& c = cells[i];
+                    char heightMapFile[MaxPath];
+                    outputConfig.GetCellFilename(heightMapFile, dimof(heightMapFile), c._cellIndex, CoverageId_Heights);
+                    if (overwriteExisting || !DoesFileExist(heightMapFile)) {
+                        char path[MaxPath];
+                        XlDirname(path, dimof(path), heightMapFile);
+                        CreateDirectoryRecursive(path);
+                        TRY {
+                            outputIOFormat->WriteCell(
+                                heightMapFile, *uberSurfaceInterface.GetUberSurface(), 
+                                c._heightUber.first, c._heightUber.second, outputConfig.CellTreeDepth(), outputConfig.NodeOverlap());
+                        } CATCH(...) { // sometimes throws (eg, if the directory doesn't exist)
+                        } CATCH_END
+                    }
+
+                    if (step) {
+                        if (step->IsCancelled()) break;
+                        step->Advance();
+                    }
+                }
+            };
+
+        auto hardwareConc = std::thread::hardware_concurrency();
+
+        std::vector<std::thread> threads;
+        for (unsigned c=0; c<std::max(1u, hardwareConc); ++c)
+            threads.emplace_back(std::thread(threadFunction));
+
+        for (auto&t : threads) t.join();
     }
 
-    void GenerateShadowsSurface(
+    static unsigned FindLayer(const TerrainConfig& cfg, TerrainCoverageId coverageId)
+    {
+        for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l)
+            if (cfg.GetCoverageLayer(l)._id == coverageId)
+                return l;
+        return ~0u;
+    }
+
+    static void GenerateSurface(
+        ITerrainOp& op, TerrainCoverageId coverageId,
         const TerrainConfig& cfg, 
         const ::Assets::ResChar uberSurfaceDir[],
         bool overwriteExisting,
         ConsoleRig::IProgress* progress)
     {
-        unsigned shadowLayerIndex = ~0u;
-        for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l)
-            if (cfg.GetCoverageLayer(l)._id == CoverageId_AngleBasedShadows) {
-                shadowLayerIndex = l;
-                break;
-            }
-        if (shadowLayerIndex == ~0u) return;
+        auto layerIndex = FindLayer(cfg, coverageId);
+        if (layerIndex == ~0u) return;
 
         ::Assets::ResChar shadowUberFn[MaxPath];
-        TerrainConfig::GetUberSurfaceFilename(shadowUberFn, dimof(shadowUberFn), uberSurfaceDir, CoverageId_AngleBasedShadows);
+        TerrainConfig::GetUberSurfaceFilename(shadowUberFn, dimof(shadowUberFn), uberSurfaceDir, coverageId);
 
         if (overwriteExisting || !DoesFileExist(shadowUberFn)) {
-            Float2 sunAxisOfMovement(XlCos(cfg.SunPathAngle()), XlSin(cfg.SunPathAngle()));
 
-            {
-                //////////////////////////////////////////////////////////////////////////////////////
-                    // this is the shadows layer... We need to build the shadows procedurally
-                ::Assets::ResChar uberHeightsFile[MaxPath];
-                TerrainConfig::GetUberSurfaceFilename(uberHeightsFile, dimof(uberHeightsFile), uberSurfaceDir, CoverageId_Heights);
-                TerrainUberHeightsSurface heightsData(uberHeightsFile);
-                HeightsUberSurfaceInterface uberSurfaceInterface(heightsData);
+            //////////////////////////////////////////////////////////////////////////////////////
+                // this is the shadows layer... We need to build the shadows procedurally
+            ::Assets::ResChar uberHeightsFile[MaxPath];
+            TerrainConfig::GetUberSurfaceFilename(uberHeightsFile, dimof(uberHeightsFile), uberSurfaceDir, CoverageId_Heights);
+            TerrainUberHeightsSurface heightsData(uberHeightsFile);
+            HeightsUberSurfaceInterface uberSurfaceInterface(heightsData);
 
-                //////////////////////////////////////////////////////////////////////////////////////
-                    // build the uber shadowing file, and then write out the shadowing textures for each node
-                // Int2 interestingMins((9-1) * 16 * 32, (19-1) * 16 * 32), interestingMaxs((9+4) * 16 * 32, (19+4) * 16 * 32);
-                float shadowToHeightsScale = 
-                    cfg.NodeDimensionsInElements()[0] 
-                    / float(cfg.GetCoverageLayer(shadowLayerIndex)._nodeDimensions[0]);
+            //////////////////////////////////////////////////////////////////////////////////////
+                // build the uber shadowing file, and then write out the shadowing textures for each node
+            // Int2 interestingMins((9-1) * 16 * 32, (19-1) * 16 * 32), interestingMaxs((9+4) * 16 * 32, (19+4) * 16 * 32);
+            float shadowToHeightsScale = 
+                cfg.NodeDimensionsInElements()[0] 
+                / float(cfg.GetCoverageLayer(layerIndex)._nodeDimensions[0]);
             
-                UInt2 interestingMins(0, 0);
-                UInt2 interestingMaxs = UInt2(
-                    unsigned((cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0]) / shadowToHeightsScale),
-                    unsigned((cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * cfg.NodeDimensionsInElements()[1]) / shadowToHeightsScale));
+            UInt2 interestingMins(0, 0);
+            UInt2 interestingMaxs = UInt2(
+                unsigned((cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0]) / shadowToHeightsScale),
+                unsigned((cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * cfg.NodeDimensionsInElements()[1]) / shadowToHeightsScale));
 
-                //////////////////////////////////////////////////////////////////////////////////////
-                uberSurfaceInterface.BuildShadowingSurface(
-                    shadowUberFn, interestingMins, interestingMaxs, 
-                    sunAxisOfMovement, cfg.ElementSpacing(), 
-                    shadowToHeightsScale, progress);
-            }
+            //////////////////////////////////////////////////////////////////////////////////////
+                
+            BuildUberSurface(
+                shadowUberFn, op, 
+                *uberSurfaceInterface.GetUberSurface(), interestingMins, interestingMaxs, 
+                cfg.ElementSpacing(), shadowToHeightsScale, 
+                TerrainOpConfig(),
+                progress);
+
         }
 
         //////////////////////////////////////////////////////////////////////////////////////
             // write cell files
         auto fmt = std::make_shared<TerrainFormat>();
-        WriteCellCoverageData<ShadowSample>(
-            cfg, *fmt, shadowUberFn, shadowLayerIndex, overwriteExisting, progress);
+        WriteCellCoverageData(
+            cfg, *fmt, shadowUberFn, layerIndex, overwriteExisting, progress);
+    }
+
+    void GenerateShadowsSurface(
+        const TerrainConfig& cfg,
+        const ::Assets::ResChar uberSurfaceDir[],
+        bool overwriteExisting,
+        ConsoleRig::IProgress* progress)
+    {
+        Float2 sunAxisOfMovement(XlCos(cfg.SunPathAngle()), XlSin(cfg.SunPathAngle()));
+        const float shadowSearchDistance = 1000.f;
+        AngleBasedShadowsOperator op(sunAxisOfMovement, shadowSearchDistance);
+        
+        GenerateSurface(
+            op, CoverageId_AngleBasedShadows,
+            cfg, uberSurfaceDir, overwriteExisting, progress);
     }
 
     void GenerateAmbientOcclusionSurface(
@@ -200,56 +233,13 @@ namespace ToolsRig
         bool overwriteExisting,
         ConsoleRig::IProgress* progress)
     {
-        unsigned layerIndex = ~0u;
-        for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l)
-            if (cfg.GetCoverageLayer(l)._id == CoverageId_AmbientOcclusion) {
-                layerIndex = l;
-                break;
-            }
-        if (layerIndex == ~0u) return;
+        static auto testRadius = 24u;
+        static auto power = 4.f;
+        AOOperator op(testRadius, power);
 
-        ::Assets::ResChar shadowUberFn[MaxPath];
-        TerrainConfig::GetUberSurfaceFilename(shadowUberFn, dimof(shadowUberFn), uberSurfaceDir, CoverageId_AmbientOcclusion);
-
-        if (overwriteExisting || !DoesFileExist(shadowUberFn)) {
-            Float2 sunAxisOfMovement(XlCos(cfg.SunPathAngle()), XlSin(cfg.SunPathAngle()));
-
-            {
-                //////////////////////////////////////////////////////////////////////////////////////
-                    // this is the shadows layer... We need to build the shadows procedurally
-                ::Assets::ResChar uberHeightsFile[MaxPath];
-                TerrainConfig::GetUberSurfaceFilename(uberHeightsFile, dimof(uberHeightsFile), uberSurfaceDir, CoverageId_Heights);
-                TerrainUberHeightsSurface heightsData(uberHeightsFile);
-                HeightsUberSurfaceInterface uberSurfaceInterface(heightsData);
-
-                //////////////////////////////////////////////////////////////////////////////////////
-                    // build the uber shadowing file, and then write out the shadowing textures for each node
-                // Int2 interestingMins((9-1) * 16 * 32, (19-1) * 16 * 32), interestingMaxs((9+4) * 16 * 32, (19+4) * 16 * 32);
-                float shadowToHeightsScale = 
-                    cfg.NodeDimensionsInElements()[0] 
-                    / float(cfg.GetCoverageLayer(layerIndex)._nodeDimensions[0]);
-            
-                UInt2 interestingMins(0, 0);
-                UInt2 interestingMaxs = UInt2(
-                    unsigned((cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0]) / shadowToHeightsScale),
-                    unsigned((cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * cfg.NodeDimensionsInElements()[1]) / shadowToHeightsScale));
-
-                //////////////////////////////////////////////////////////////////////////////////////
-                static auto testRadius = 24u;
-                static auto power = 4.f;
-                uberSurfaceInterface.BuildAmbientOcclusion(
-                    shadowUberFn, interestingMins, interestingMaxs, 
-                    cfg.ElementSpacing(), shadowToHeightsScale, 
-                    testRadius, power,
-                    progress);
-            }
-        }
-
-        //////////////////////////////////////////////////////////////////////////////////////
-            // write cell files
-        auto fmt = std::make_shared<TerrainFormat>();
-        WriteCellCoverageData<uint8>(
-            cfg, *fmt, shadowUberFn, layerIndex, overwriteExisting, progress);
+        GenerateSurface(
+            op, CoverageId_AmbientOcclusion,
+            cfg, uberSurfaceDir, overwriteExisting, progress);
     }
 
     void GenerateMissingUberSurfaceFiles(
@@ -277,7 +267,7 @@ namespace ToolsRig
                     uberSurfaceFile, 
                     cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * layer._nodeDimensions[0],
                     cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * layer._nodeDimensions[1],
-                    RenderCore::Metal::BitsPerPixel((RenderCore::Metal::NativeFormat::Enum)layer._format));
+                    ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat(layer._typeCat), uint16(layer._typeCount)));
 
             }
 
@@ -353,15 +343,38 @@ namespace ToolsRig
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    class TerrainUberHeader
+
+    template<typename InputType>
+        static void SimpleConvert(float dest[], const InputType* input, size_t count, float scale)
+    {
+        for (unsigned c=0; c<count; ++c)
+            dest[c] = float(input[c]) * scale;
+    }
+
+    static float Float16AsFloat32(unsigned short input)
+    {
+        return half_float::detail::half2float(input);
+    }
+
+    static void ConvertFloat16(float dest[], const uint16* input, size_t count, float scale)
+    {
+        for (unsigned c=0; c<count; ++c)
+            dest[c] = Float16AsFloat32(input[c]) * scale;
+    }
+
+    template<typename Fn>
+        class AutoClose
     {
     public:
-        unsigned _magic;
-        unsigned _width, _height;
-        unsigned _dummy;
-
-        static const unsigned Magic = 0xa3d3e3c3;
+        AutoClose(Fn&& fn) : _fn(std::move(fn)) {}
+        ~AutoClose() { _fn(); }
+        
+    protected:
+        Fn _fn;
     };
+
+    template<typename Fn>
+        AutoClose<Fn> MakeAutoClose(Fn&& fn) { return AutoClose<Fn>(std::move(fn)); }
 
     UInt2 ConvertDEMData(
         const ::Assets::ResChar outputDir[], const ::Assets::ResChar input[], 
@@ -407,7 +420,9 @@ namespace ToolsRig
         hdr._magic  = TerrainUberHeader::Magic;
         hdr._width  = finalDims[0];
         hdr._height = finalDims[1];
-        hdr._dummy  = 0;
+        hdr._typeCat = (unsigned)ImpliedTyping::TypeCat::Float;
+        hdr._typeArrayCount = 1;
+        hdr._dummy[0] = hdr._dummy[1] = hdr._dummy[2]  = 0;
 
         float* outputArray = (float*)PtrAdd(outputUberFile.GetData(), sizeof(TerrainUberHeader));
 
@@ -458,7 +473,8 @@ namespace ToolsRig
             if (!tif)
                 Throw(::Exceptions::BasicLabel("Couldn't open input file (%s)", input));
 
-            // auto buf = _TIFFmalloc(TIFFStripSize(tif));
+            auto autoClose = MakeAutoClose([tif]() { TIFFClose(tif); });
+
             auto stripCount = TIFFNumberOfStrips(tif);
 
             auto copyStep = 
@@ -469,11 +485,61 @@ namespace ToolsRig
             uint32 rowsperstrip = 1;
             TIFFGetFieldDefaulted(tif, TIFFTAG_ROWSPERSTRIP, &rowsperstrip);
 
-                // assuming that we're going to load in an array of floats here
-                // Well, tiff can store other types of elements... But we'll just
-                // assume it's want we want
+            uint32 bitsPerPixel = 32;
+            uint32 sampleFormat = SAMPLEFORMAT_IEEEFP;
+            TIFFGetFieldDefaulted(tif, TIFFTAG_BITSPERSAMPLE, &bitsPerPixel);
+            TIFFGetFieldDefaulted(tif, TIFFTAG_SAMPLEFORMAT, &sampleFormat);
+
+                //  We only support loading a few input formats.
+                //  TIFF supports a wide variety of formats. If we get something
+                //  unexpected, just throw;
+            if (sampleFormat != SAMPLEFORMAT_UINT && sampleFormat != SAMPLEFORMAT_INT && sampleFormat != SAMPLEFORMAT_IEEEFP)
+                Throw(::Exceptions::BasicLabel("Unexpected sample format in input file (%s). Only supporting integer or floating point inputs", input));
+
+            if (bitsPerPixel != 8 && bitsPerPixel != 16 && bitsPerPixel != 32)
+                Throw(::Exceptions::BasicLabel("Unexpected bits per sample in input file (%s). Only supporting 8, 16 or 32 bit formats. Try floating a 32 bit float format.", input));
+
+            auto stripSize = TIFFStripSize(tif);
+            if (!stripSize)
+                Throw(::Exceptions::BasicLabel("Could not get strip byte codes from tiff file (%s). Input file may be corrupted.", input));
+            
+            auto stripBuffer = std::make_unique<char[]>(stripSize);
+            XlSetMemory(stripBuffer.get(), 0, stripSize);
+
+            typedef void ConversionFn(float*, const void*, size_t, float);
+            ConversionFn* convFn;
+            switch (sampleFormat) {
+            case SAMPLEFORMAT_UINT:
+            case SAMPLEFORMAT_INT:
+                if (bitsPerPixel == 8)          convFn = (ConversionFn*)&SimpleConvert<uint8>;
+                else if (bitsPerPixel == 16)    convFn = (ConversionFn*)&SimpleConvert<uint16>;
+                else if (bitsPerPixel == 32)    convFn = (ConversionFn*)&SimpleConvert<uint32>;
+                else Throw(::Exceptions::BasicLabel("Unknown input format.", input));
+                break;
+
+            case SAMPLEFORMAT_IEEEFP:
+                if (bitsPerPixel == 16)         convFn = (ConversionFn*)&ConvertFloat16;
+                else if (bitsPerPixel == 32)    convFn = (ConversionFn*)&SimpleConvert<float>;
+                else Throw(::Exceptions::BasicLabel("8 bit floats not supported in input file (%s). Use 16 or 32 bit floats instead.", input));
+                break;
+
+            default:
+                Throw(::Exceptions::BasicLabel("Unknown input format.", input));
+            }
+
+            float valueScale = 2000.f / float(0xffff);
+                
             for (tstrip_t strip = 0; strip < stripCount; strip++) {
-                TIFFReadEncodedStrip(tif, strip, &outputArray[strip * rowsperstrip * finalDims[0]], (tsize_t) -1);
+                auto readResult = TIFFReadEncodedStrip(
+                    tif, strip, stripBuffer.get(), stripSize);
+
+                if (readResult != stripSize)
+                    Throw(::Exceptions::BasicLabel("Error while reading from tiff file. File may be truncated or otherwise corrupted.", input));
+
+                (*convFn)(
+                    &outputArray[strip * rowsperstrip * finalDims[0]],
+                    stripBuffer.get(), stripSize*8/bitsPerPixel,
+                    valueScale);
 
                 if (copyStep) {
                     if (copyStep->IsCancelled())
@@ -482,8 +548,7 @@ namespace ToolsRig
                 }
             }
 
-            // _TIFFfree(buf);
-            TIFFClose(tif);
+            // TIFFClose called by AutoClose
         }
 
             // fill in the extra space caused by rounding up
@@ -536,7 +601,9 @@ namespace ToolsRig
         hdr._magic  = TerrainUberHeader::Magic;
         hdr._width  = finalDims[0];
         hdr._height = finalDims[1];
-        hdr._dummy  = 0;
+        hdr._typeCat = (unsigned)ImpliedTyping::TypeCat::Float;
+        hdr._typeArrayCount = 1;
+        hdr._dummy[0] = hdr._dummy[1] = hdr._dummy[2]  = 0;
 
         float* outputArray = (float*)PtrAdd(outputUberFile.GetData(), sizeof(TerrainUberHeader));
         std::fill(

@@ -89,16 +89,16 @@ namespace SceneEngine
             
         auto worldToCellBased = _coordSystem.WorldToCellBased();
 
-            //  we're going to assume that both points are in the same cell.
-            //  we can only return a contiguous texture if they both belong to the same cell
+            //  We're going to assume that both points are in the same cell.
+            //  We can only return a contiguous texture if they both belong to the same cell
         Float2 cellCoordMin = Truncate(TransformPoint(worldToCellBased, Expand(minCoord, 0.f)));
         Float2 cellCoordMax = Truncate(TransformPoint(worldToCellBased, Expand(maxCoord, 0.f)));
 
         if (cellCoordMin[0] < 0.f || cellCoordMin[1] < 0.f) return result;  // can't deal with negative coords currently
 
         UInt2 cellIndex = UInt2(unsigned(XlFloor(cellCoordMin[0])), unsigned(XlFloor(cellCoordMin[1])));
-        assert(unsigned(XlFloor(cellCoordMax[0])) == cellIndex[0]);
-        assert(unsigned(XlFloor(cellCoordMax[1])) == cellIndex[1]);
+        assert(unsigned(XlFloor(cellCoordMax[0] - 1e-5f)) == cellIndex[0]);
+        assert(unsigned(XlFloor(cellCoordMax[1] - 1e-5f)) == cellIndex[1]);
 
             //  Currently we don't have a strong mapping between world space and rendered terrain
             //  we have to calculate the names of the height map and coverage files, and then look
@@ -292,9 +292,11 @@ namespace SceneEngine
 
         for (unsigned c=0; c<cfg.GetCoverageLayerCount(); ++c) {
             const auto& l = cfg.GetCoverageLayer(c);
-            rendererCfg._coverageLayers.push_back(std::make_pair(
-                l._id, 
-                TerrainRendererConfig::Layer { (l._nodeDimensions+UInt2(l._overlap, l._overlap)), cachedTileCount, Metal::NativeFormat::Enum(l._format) } ));
+            ImpliedTyping::TypeDesc t(ImpliedTyping::TypeCat(l._typeCat), uint16(l._typeCount));
+            rendererCfg._coverageLayers.push_back(
+                std::make_pair(
+                    l._id, 
+                    TerrainRendererConfig::Layer { (l._nodeDimensions+UInt2(l._overlap, l._overlap)), cachedTileCount, RenderCore::Metal::AsNativeFormat(t) } ));
         }
         return std::move(rendererCfg);
     }
@@ -390,7 +392,8 @@ namespace SceneEngine
         for (unsigned c=0; c<cfg.GetCoverageLayerCount(); ++c) {
             const auto& l = cfg.GetCoverageLayer(c);
             if (l._id == CoverageId_AngleBasedShadows) continue;
-            if (l._format != 62) continue;
+            ImpliedTyping::TypeDesc t(ImpliedTyping::TypeCat(l._typeCat), uint16(l._typeCount));
+            if (!(t == ImpliedTyping::TypeOf<ShadowSample>())) continue;
 
             ::Assets::ResChar uberSurfaceFile[MaxPath];
             TerrainConfig::GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, l._id);

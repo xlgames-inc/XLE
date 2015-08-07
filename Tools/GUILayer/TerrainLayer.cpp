@@ -103,14 +103,24 @@ namespace GUILayer
         _native->_overlap = value;
     }
 
-    unsigned TerrainConfig::CoverageLayerDesc::Format::get()
+    unsigned TerrainConfig::CoverageLayerDesc::FormatCat::get()
     {
-        return _native->_format;
+        return _native->_typeCat;
     }
     
-    void TerrainConfig::CoverageLayerDesc::Format::set(unsigned value)
+    void TerrainConfig::CoverageLayerDesc::FormatCat::set(unsigned value)
     {
-        _native->_format = value;
+        _native->_typeCat = value;
+    }
+
+    unsigned TerrainConfig::CoverageLayerDesc::FormatArrayCount::get()
+    {
+        return _native->_typeCount;
+    }
+    
+    void TerrainConfig::CoverageLayerDesc::FormatArrayCount::set(unsigned value)
+    {
+        _native->_typeCount = value;
     }
 
     TerrainConfig::CoverageLayerDesc::CoverageLayerDesc(
@@ -125,7 +135,8 @@ namespace GUILayer
         _native->_id = id;
         _native->_nodeDimensions = UInt2(0,0);
         _native->_overlap = 0;
-        _native->_format = 0;
+        _native->_typeCat = 0;
+        _native->_typeCount = 0;
     }
 
     TerrainConfig::CoverageLayerDesc::CoverageLayerDesc(const NativeConfig::CoverageLayer& native)
