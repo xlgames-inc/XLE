@@ -146,7 +146,7 @@ TerrainPixel CalculateTexturing(PSInput geo)
     float3 resultDiffuse = procTexture.diffuseAlbedo.rgb;
 
     #if DRAW_WIREFRAME==1
-        resultDiffuse = BlendWireframe(geo, result.rgb);
+        resultDiffuse = BlendWireframe(geo, resultDiffuse);
     #endif
 
         //	How to calculate the tangent frame? If we do

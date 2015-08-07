@@ -21,7 +21,7 @@
 static const float g 			 = 9.8f;
 static const float WaterDensity  = 999.97;		// (kg/m^2) (important for dynamic compression)
 static const float DeltaTime     = 1.f / 60.f;
-static const float VelResistance = .99f; // .97f;
+static const float VelResistance = .98f; // .97f;
 static const float4 EdgeVelocity = 0.0.xxxx;
 static const float EdgeHeight 	 = -10000.f;	// WaterBaseHeight
 
@@ -170,8 +170,7 @@ float LoadWaterHeight_BoundaryCheck(int2 relCoord)
 
 float GetWaterDepth(float waterHeight, float surfaceHeight)
 {
-	return max(1e-2f, waterHeight - surfaceHeight);
-	// return max(2.f, waterHeight - surfaceHeight);
+	return waterHeight - surfaceHeight;
 }
 
 float InitCachedHeights(int3 baseCoord)
@@ -237,11 +236,12 @@ float InitCachedHeights(int3 baseCoord)
 	float centerSurfaceHeight = LoadSurfaceHeight(baseCoord.xy);
 	float2 worldPosition = WorldPositionFromElementIndex(baseCoord.xy);
 	float waterDepth = GetWaterDepth(centerWaterHeight, centerSurfaceHeight);
+	float clampedWaterDepth = max(1e-2f, waterDepth);
 
 	GroupMemoryBarrierWithGroupSync();
 
 	float acceleration[AdjCellCount], velocities[AdjCellCount];
-	CalculateAcceleration(acceleration, baseCoord.x, waterDepth, worldPosition);
+	CalculateAcceleration(acceleration, baseCoord.x, clampedWaterDepth, worldPosition);
 	LoadVelocities(velocities, baseCoord);
 
 	float velSum = 0.f;
@@ -254,7 +254,12 @@ float InitCachedHeights(int3 baseCoord)
 		// Prevent the velocity values getting too high when we have little water available
 		// The velocity calculation gives us high velocity values for shallow water. This will
 		// end up generating new water, if it's not clamped.
-	float clamp = min(1, waterDepth / (velSum * DeltaTime));
+		//
+		// Let's put an upper limit on the max quantity of water
+		// in a cell that can move in a single frame. This is to attempt to avoid integration
+		// errors when shallow water is moving very fast.
+	const float maxWaterToMove = 0.5f;
+	float clamp = min(1, maxWaterToMove * max(0,waterDepth) / (velSum * DeltaTime));
 	for (uint c=0; c<AdjCellCount; ++c)
 		velocities[c] *= clamp;
 

@@ -189,10 +189,14 @@ namespace SceneEngine
             //   todo -- we have to align the sim grids to the terrain surface heights
             //      provider! We want to only require the terrain height values for
             //      a single node to simulate a given water cell.
+            //
+            //  if _gridPhysicalSize divides evenly into the terrain provider nodes,
+            //  then we have to align the "mins" with the node edge (but max can be aligned
+            //  to a terrain element)
 
         float cellPhySize = settings._gridPhysicalSize / float(settings._simGridDims);
-        mins[0] = XlFloor(mins[0] / cellPhySize) * cellPhySize;
-        mins[1] = XlFloor(mins[1] / cellPhySize) * cellPhySize;
+        mins[0] = XlFloor(mins[0] / settings._gridPhysicalSize) * settings._gridPhysicalSize;
+        mins[1] = XlFloor(mins[1] / settings._gridPhysicalSize) * settings._gridPhysicalSize;
         maxs[0] =  XlCeil(maxs[0] / cellPhySize) * cellPhySize;
         maxs[1] =  XlCeil(maxs[1] / cellPhySize) * cellPhySize;
 
