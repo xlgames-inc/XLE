@@ -124,6 +124,9 @@
     <ClCompile Include="..\VegetationSpawnConfig.cpp">
       <Filter>Objects\Terrain</Filter>
     </ClCompile>
+    <ClCompile Include="..\RayTracedShadows.cpp">
+      <Filter>Lighting And Processing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -260,6 +263,9 @@
       <Filter>Objects\Water</Filter>
     </ClInclude>
     <ClInclude Include="..\Documentation.h" />
+    <ClInclude Include="..\RayTracedShadows.h">
+      <Filter>Lighting And Processing</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">

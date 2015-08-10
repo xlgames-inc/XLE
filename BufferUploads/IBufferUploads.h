@@ -122,6 +122,8 @@ namespace BufferUploads
     {
         unsigned _sizeInBytes;
         unsigned _structureByteSize;
+
+        static LinearBufferDesc Create(unsigned sizeInBytes, unsigned structureByteSize);
     };
 
     struct TextureSamples
@@ -516,6 +518,11 @@ namespace BufferUploads
         result._arrayCount = 0;
         result._samples = TextureSamples::Create();
         return result;
+    }
+
+    inline LinearBufferDesc LinearBufferDesc::Create(unsigned sizeInBytes, unsigned structureByteSize)
+    {
+        return LinearBufferDesc { sizeInBytes, structureByteSize };
     }
 
 }

@@ -12,6 +12,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../Assets/AssetUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringFormat.h"

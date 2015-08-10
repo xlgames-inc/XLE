@@ -25,11 +25,11 @@ namespace SceneEngine
         {
             enum Enum
             {
-                Opaque          = 1<<0, 
-                Transparent     = 1<<1,
-                NonTerrain      = 1<<2,
-                Terrain         = 1<<3,
-                TerrainLayers   = 1<<4
+                Opaque              = 1<<0, 
+                Transparent         = 1<<1,
+                NonTerrain          = 1<<2,
+                Terrain             = 1<<3,
+                TerrainLayers       = 1<<4
             };
             typedef unsigned BitField;
         };
@@ -40,7 +40,8 @@ namespace SceneEngine
             {
                 General,
                 Depth,
-                Transparent
+                Transparent,
+                RayTracedShadows
             };
         };
 

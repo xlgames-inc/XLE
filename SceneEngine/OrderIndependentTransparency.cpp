@@ -17,6 +17,7 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
 

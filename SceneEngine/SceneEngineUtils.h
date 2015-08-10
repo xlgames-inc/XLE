@@ -6,13 +6,14 @@
 
 #pragma once 
 
-#include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/State.h"
-#include "../BufferUploads/IBufferUploads.h"
+#include "../RenderCore/Metal/Format.h"
+#include "../BufferUploads/IBufferUploads_Forward.h"
 
 #include "../RenderCore/DX11/Metal/DX11.h"
 
 namespace RenderOverlays { class Font; }
+namespace BufferUploads { struct BufferDesc; struct TextureDesc; namespace BindFlag { typedef unsigned BitField; }}
 
 namespace SceneEngine
 {
@@ -88,7 +89,9 @@ namespace SceneEngine
     static const unsigned TechniqueIndex_DepthOnly = 1;
     static const unsigned TechniqueIndex_Deferred  = 2;
     static const unsigned TechniqueIndex_ShadowGen = 3;
+
     static const unsigned TechniqueIndex_OrderIndependentTransparency = 4;
+    static const unsigned TechniqueIndex_RTShadowGen = 9;
 
     typedef intrusive_ptr<ID3D::Resource>      ResourcePtr;
     ResourcePtr         CreateResourceImmediate(const BufferUploads::BufferDesc& desc);

@@ -91,8 +91,10 @@ namespace SceneEngine
 
     static const unsigned MaxShadowTexturesPerLight = 6;
 
+    using LightId = unsigned;
+
     /// <summary>Defines the projected shadows for a single light<summary>
-    /// Tied to a specific light via the "_shadowFrustumIndex" member.
+    /// Tied to a specific light via the "_lightId" member.
     class ShadowProjectionDesc
     {
     public:
@@ -118,6 +120,11 @@ namespace SceneEngine
         float           _tanBlurAngle;
         float           _minBlurSearch, _maxBlurSearch;
 
+        enum class ResolveType { DepthTexture, RayTraced };
+        ResolveType     _resolveType;
+
+        LightId         _lightId;
+
         ShadowProjectionDesc();
     };
 
@@ -131,7 +138,6 @@ namespace SceneEngine
         Float3      _negativeLightDirection;
         float       _radius;
         Type        _type;
-        unsigned    _shadowFrustumIndex;
         Float3      _diffuseColor;
         Float3      _specularColor;
         float       _nonMetalSpecularBrightness;

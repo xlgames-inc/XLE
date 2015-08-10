@@ -6,14 +6,15 @@
 
 #pragma once
 
-#include "../Core/Prefix.h"
-#include "../Core/Types.h"
+#include "FontPrimitives.h"
+#include "../RenderCore/IDevice_Forward.h"
+#include "../RenderCore/Metal/Forward.h"      // \todo remove metal dependency
+#include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../Utility/Threading/ThreadingUtils.h"      // (for ReferenceCountedObject)
 #include "../Utility/IntrusivePtr.h"
 #include "../Utility/UTFUtils.h"
-#include "../RenderCore/Metal/DeviceContext.h"      // \todo remove metal dependency
-#include "../BufferUploads/IBufferUploads_Forward.h"
-#include "FontPrimitives.h"
+#include "../Core/Prefix.h"
+#include "../Core/Types.h"
 
 namespace RenderOverlays
 {

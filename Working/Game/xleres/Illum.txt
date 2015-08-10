@@ -108,3 +108,11 @@
     VertexShader=game/xleres/forward/illum.vsh:main
     GeometryShader=game/xleres/solidwireframe.gsh:main
     PixelShader=game/xleres/solidwireframe.psh:main
+~WriteTriangleIndex
+    ~Inherit; Shared:Skinnable; Shared:VegetationSpawn
+    ~Parameters
+        ~Geometry
+            OUTPUT_WORLD_POSITION=0
+    VertexShader=game/xleres/shadowgen/rtwritetiles.sh:vs_writetris
+    GeometryShader=game/xleres/shadowgen/rtwritetiles.sh:gs_writetris
+    PixelShader=null

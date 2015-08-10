@@ -10,6 +10,7 @@
 #include "LightingParserContext.h"
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"

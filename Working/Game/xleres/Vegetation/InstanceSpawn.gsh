@@ -10,6 +10,7 @@
 #include "../MainGeometry.h"
 #include "../Utility/perlinnoise.h"
 #include "../Utility/MathConstants.h"
+#include "../Utility/ProjectionMath.h"
 
 #include "../Terrain.h"
 #include "../Utility/perlinnoise.h"
@@ -171,36 +172,6 @@ float EstimatePointCount(WorkingTriangle tri, float spacing)
 
 		//	Calculation is not exact... But it's quick.
 	return ceil((maxX - ceilMinX)/spacing) * ceil((maxY - ceilMinY)/spacing) / 2;
-}
-
-bool PtInFrustum(float4 pt)
-{
-	float3 p = pt.xyz/pt.w;
-	float3 q = max(float3(p.x, p.y, p.z), float3(-p.x, -p.y, 1-pt.z));
-	float m = max(max(q.x, q.y), q.z);
-	return m <= 1.f;
-}
-
-int CountTrue(bool3 input)
-{
-	return dot(true.xxx, input);
-}
-
-bool TriInFrustum(float4 pt0, float4 pt1, float4 pt2)
-{
-	float3 xs = float3(pt0.x, pt1.x, pt2.x);
-	float3 ys = float3(pt0.y, pt1.y, pt2.y);
-	float3 zs = float3(pt0.z, pt1.z, pt2.z);
-	float3 ws = abs(float3(pt0.w, pt1.w, pt2.w));
-
-	int l  = CountTrue(xs < -ws);
-	int r  = CountTrue(xs >  ws);
-	int t  = CountTrue(ys < -ws);
-	int b  = CountTrue(ys >  ws);
-	int f  = CountTrue(zs < 0.f);
-	int bk = CountTrue(zs >  ws);
-
-	return max(max(max(max(max(l, r), t), b), f), bk) < 3;
 }
 
 bool CullTriangle(WorkingTriangle tri)

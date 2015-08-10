@@ -10,7 +10,6 @@
 namespace SceneEngine
 {
     using namespace RenderCore;
-    using namespace RenderCore::Metal;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -23,13 +22,13 @@ namespace SceneEngine
             BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, desc._formats._resourceFormat, 1, uint8(desc._targetCount)),
             "Shadows");
 
-        auto shadowTexture = uploads.Transaction_Immediate(uploadsDesc, nullptr)->AdoptUnderlying();
-        DepthStencilView depthStencilView(shadowTexture.get(), desc._formats._writeFormat, RenderCore::Metal::ArraySlice(desc._targetCount));
-        RenderCore::Metal::ShaderResourceView shaderResource(shadowTexture.get(), desc._formats._shaderReadFormat, desc._targetCount);
+        auto shadowTexture = uploads.Transaction_Immediate(uploadsDesc, nullptr);
+        Metal::DepthStencilView depthStencilView(shadowTexture->GetUnderlying(), desc._formats._writeFormat, Metal::ArraySlice(desc._targetCount));
+        Metal::ShaderResourceView shaderResource(shadowTexture->GetUnderlying(), desc._formats._shaderReadFormat, desc._targetCount);
 
-        std::vector<RenderCore::Metal::DepthStencilView> dsvBySlice;
+        std::vector<Metal::DepthStencilView> dsvBySlice;
         for (unsigned c=0; c<desc._targetCount; ++c) {
-            dsvBySlice.push_back(DepthStencilView(shadowTexture.get(), desc._formats._writeFormat, ArraySlice(1, c)));
+            dsvBySlice.push_back(Metal::DepthStencilView(shadowTexture->GetUnderlying(), desc._formats._writeFormat, Metal::ArraySlice(1, c)));
         }
 
         _shaderResource = std::move(shaderResource);
@@ -85,7 +84,7 @@ namespace SceneEngine
         shadowParameters._filterKernel[29] = Float4(0.7366455f, -0.6388465f,0,0);
         shadowParameters._filterKernel[30] = Float4(-0.6067169f, 0.6372176f,0,0);
         shadowParameters._filterKernel[31] = Float4(0.2743046f, -0.9303559f,0,0);
-        RenderCore::Metal::ConstantBuffer sampleKernel32(&shadowParameters, sizeof(shadowParameters));
+        Metal::ConstantBuffer sampleKernel32(&shadowParameters, sizeof(shadowParameters));
 
         _sampleKernel32 = std::move(sampleKernel32);
     }
@@ -99,9 +98,9 @@ namespace SceneEngine
             // note --  should we be doing back-face culling during shadow rasterization?
             //          There are potentially some problems if the shadow camera enters
             //          the rasterized shape.
-        RenderCore::Metal::RasterizerState rasterizerState(
-            RenderCore::Metal::CullMode::Back, true, 
-            RenderCore::Metal::FillMode::Solid,
+        Metal::RasterizerState rasterizerState(
+            Metal::CullMode::Back, true, 
+            Metal::FillMode::Solid,
             desc._rasterDepthBias, desc._depthBiasClamp, desc._slopeScaledBias);
         _rasterizerState = std::move(rasterizerState);
     }

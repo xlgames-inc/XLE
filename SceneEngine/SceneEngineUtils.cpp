@@ -9,6 +9,7 @@
 #include "LightingParserContext.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Assets/Services.h"
 #include "../RenderOverlays/Font.h"
 

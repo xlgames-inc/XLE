@@ -114,6 +114,7 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static ConstantBufferPacket BuildScreenToShadowConstants(LightingParserContext& parserContext, unsigned shadowFrustumIndex);
+    static unsigned FindShadowFrustum(LightingParserContext& parserContext, unsigned lightId);
     static ConstantBufferPacket BuildLightConstants(const LightDesc& light);
     static void ResolveLights(  DeviceContext* context,
                                 LightingParserContext& parserContext,
@@ -411,10 +412,11 @@ namespace SceneEngine
                     //  We only support a limited set of different light types so far.
                     //  Perhaps this will be extended to support more lights with custom
                     //  shaders and resources.
-                if (    i._shadowFrustumIndex < parserContext._preparedShadows.size() 
-                    &&  parserContext._preparedShadows[i._shadowFrustumIndex].IsReady()) {
+                auto shadowFrustumIndex = FindShadowFrustum(parserContext, l);
+                if (shadowFrustumIndex < parserContext._preparedShadows.size()) {
+                    assert(parserContext._preparedShadows[shadowFrustumIndex].second.IsReady());
 
-                    const auto& preparedShadows = parserContext._preparedShadows[i._shadowFrustumIndex];
+                    const auto& preparedShadows = parserContext._preparedShadows[shadowFrustumIndex].second;
                     context->BindPS(MakeResourceList(3, preparedShadows._shadowTextureSRV));
                     prebuiltConstantBuffers[0] = &preparedShadows._arbitraryCB;
                     prebuiltConstantBuffers[4] = &preparedShadows._orthoCB;
@@ -433,7 +435,7 @@ namespace SceneEngine
                         //              are affected by this light.
                         //
                     
-                    constantBufferPackets[3] = BuildScreenToShadowConstants(parserContext, i._shadowFrustumIndex);
+                    constantBufferPackets[3] = BuildScreenToShadowConstants(parserContext, shadowFrustumIndex);
 
                     if (preparedShadows._mode == ShadowProjectionDesc::Projections::Mode::Ortho && allowOrthoShadowResolve) {
                         shaderType._shadows = LightingResolveShaders::OrthShadows;
@@ -526,10 +528,18 @@ namespace SceneEngine
         LightingParserContext& parserContext, unsigned shadowFrustumIndex)
     {
         return BuildScreenToShadowConstants(
-            parserContext._preparedShadows[shadowFrustumIndex]._frustumCount,
-            parserContext._preparedShadows[shadowFrustumIndex]._arbitraryCBSource,
-            parserContext._preparedShadows[shadowFrustumIndex]._orthoCBSource,
+            parserContext._preparedShadows[shadowFrustumIndex].second._frustumCount,
+            parserContext._preparedShadows[shadowFrustumIndex].second._arbitraryCBSource,
+            parserContext._preparedShadows[shadowFrustumIndex].second._orthoCBSource,
             parserContext.GetProjectionDesc()._cameraToWorld);
+    }
+
+    static unsigned FindShadowFrustum(LightingParserContext& parserContext, unsigned lightId)
+    {
+        for (unsigned c=0; c<unsigned(parserContext._preparedShadows.size()); ++c)
+            if (parserContext._preparedShadows[c].first==lightId)
+                return c;
+        return ~0u;
     }
 
     static ConstantBufferPacket BuildLightConstants(const LightDesc& light)

@@ -77,8 +77,18 @@ namespace SceneEngine
         bool IsReady() const;
 
         PreparedShadowFrustum();
-        PreparedShadowFrustum(PreparedShadowFrustum&& moveFrom);
+        PreparedShadowFrustum(PreparedShadowFrustum&& moveFrom) never_throws;
         PreparedShadowFrustum& operator=(PreparedShadowFrustum&& moveFrom) never_throws;
+    };
+
+    class PreparedRTShadowFrustum
+    {
+    public:
+        bool IsReady() const { return true; }
+
+        PreparedRTShadowFrustum();
+        PreparedRTShadowFrustum(PreparedRTShadowFrustum&& moveFrom) never_throws;
+        PreparedRTShadowFrustum& operator=(PreparedRTShadowFrustum&& moveFrom) never_throws;
     };
 
     void BuildShadowConstantBuffers(

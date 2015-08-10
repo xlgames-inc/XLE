@@ -23,6 +23,7 @@
 #include "SunFlare.h"
 #include "Rain.h"
 #include "Noise.h"
+#include "RayTracedShadows.h"
 
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
@@ -334,7 +335,7 @@ namespace SceneEngine
         }
     }
 
-    std::vector<PreparedShadowFrustum> LightingParser_PrepareShadows(DeviceContext* context, LightingParserContext& parserContext);
+    void LightingParser_PrepareShadows(DeviceContext* context, LightingParserContext& parserContext);
 
     static void ForwardLightingModel_Render(    DeviceContext* context, 
                                                 LightingParserContext& parserContext,
@@ -685,16 +686,15 @@ namespace SceneEngine
     static const std::string StringShadowCascadeMode = "SHADOW_CASCADE_MODE";
 
     PreparedShadowFrustum LightingParser_PrepareShadow(
-        DeviceContext* context, LightingParserContext& parserContext, unsigned shadowFrustumIndex)
+        DeviceContext* context, LightingParserContext& parserContext, 
+        const ShadowProjectionDesc& frustum,
+        unsigned shadowFrustumIndex)
     {
-        auto frustum = parserContext.GetSceneParser()->GetShadowProjectionDesc(
-            shadowFrustumIndex, parserContext.GetProjectionDesc());
-        ViewportDesc newViewport[MaxShadowTexturesPerLight];
         auto projectionCount = std::min(frustum._projections._count, MaxShadowTexturesPerLight);
-        if (!projectionCount) {
+        if (!projectionCount)
             return PreparedShadowFrustum();
-        }
 
+        ViewportDesc newViewport[MaxShadowTexturesPerLight];
         for (unsigned c=0; c<frustum._projections._count; ++c) {
             newViewport[c].TopLeftX = newViewport[c].TopLeftY = 0;
             newViewport[c].Width = float(frustum._width);
@@ -778,17 +778,42 @@ namespace SceneEngine
         return std::move(preparedResult);
     }
 
-    std::vector<PreparedShadowFrustum> LightingParser_PrepareShadows(DeviceContext* context, LightingParserContext& parserContext)
+    PreparedRTShadowFrustum LightingParser_PrepareRTShadow(
+        DeviceContext* context, LightingParserContext& parserContext, 
+        const ShadowProjectionDesc& frustum,
+        unsigned shadowFrustumIndex)
+    {
+        PreparedRTShadowFrustum result;
+        PrepareRTShadows(*context, parserContext, frustum, shadowFrustumIndex);
+        return result;
+    }
+
+    void LightingParser_PrepareShadows(DeviceContext* context, LightingParserContext& parserContext)
     {
         GPUProfiler::DebugAnnotation anno(*context, L"Prepare-Shadows");
 
-        std::vector<PreparedShadowFrustum> result;
+            // todo --  we should be using a temporary frame heap for this vector
         auto shadowFrustumCount = parserContext.GetSceneParser()->GetShadowProjectionCount();
-        result.reserve(shadowFrustumCount);
+        parserContext._preparedShadows.reserve(shadowFrustumCount);
+
         for (unsigned c=0; c<shadowFrustumCount; ++c) {
-            result.push_back(std::move(LightingParser_PrepareShadow(context, parserContext, c)));
+            auto frustum = parserContext.GetSceneParser()->GetShadowProjectionDesc(
+                c, parserContext.GetProjectionDesc());
+
+            if (frustum._resolveType == ShadowProjectionDesc::ResolveType::DepthTexture) {
+
+                auto shadow = LightingParser_PrepareShadow(context, parserContext, frustum, c);
+                if (shadow.IsReady())
+                    parserContext._preparedShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
+
+            } else if (frustum._resolveType == ShadowProjectionDesc::ResolveType::RayTraced) {
+
+                auto shadow = LightingParser_PrepareRTShadow(context, parserContext, frustum, c);
+                if (shadow.IsReady())
+                    parserContext._preparedRTShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
+
+            }
         }
-        return std::move(result);
     }
 
     void LightingParser_InitBasicLightEnv(  
@@ -848,8 +873,7 @@ namespace SceneEngine
                 CATCH_END
             }
 
-            parserContext._preparedShadows = 
-                std::move(LightingParser_PrepareShadows(metalContext.get(), parserContext));
+            LightingParser_PrepareShadows(metalContext.get(), parserContext);
         }
 
         TRY {

@@ -13,6 +13,7 @@
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../Assets/Assets.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"

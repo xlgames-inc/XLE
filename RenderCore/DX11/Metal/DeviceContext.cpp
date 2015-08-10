@@ -238,6 +238,11 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->IASetVertexBuffers(0, 1, &vb, &strides, &offsets);
     }
 
+    template<> void DeviceContext::Unbind<RenderTargetView>()
+    {
+        _underlying->OMSetRenderTargets(0, nullptr, nullptr);
+    }
+
     void DeviceContext::Dispatch(unsigned countX, unsigned countY, unsigned countZ)
     {
         _underlying->Dispatch(countX, countY, countZ);

@@ -7,6 +7,7 @@
 #include "../../TransformAlgorithm.h"
 #include "../../MainGeometry.h"
 #include "../../ShadowProjection.h"
+#include "../../Utility/ProjectionMath.h"
 
 struct GSInput
 {
@@ -65,13 +66,7 @@ void WriteQuad(float4 A, float4 B, float4 C, float4 D, uint colorIndex, float3 n
 	#endif
 
 		//	Quick backface culling test...
-	float2 a = A.xy / A.w;
-	float2 b = B.xy / B.w;
-	float2 c = C.xy / C.w;
-	float2 edge0 = float2(b.x - a.x, b.y - a.y);
-	float2 edge1 = float2(c.x - b.x, c.y - b.y);
-	float sign = (edge0.x*edge1.y) - (edge0.y*edge1.x);
-
+	float sign = BackfaceSign(A, B, C);
 	if (sign < 0.f) {
 		output.position = A; outputStream.Append(output);
 		output.position = C; outputStream.Append(output);

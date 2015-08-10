@@ -11,8 +11,9 @@
 #include "../RenderCore/Metal/RenderTargetView.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/State.h"
-#include "../RenderCOre/DX11/Metal/DX11Utils.h"
 #include <vector>
+
+namespace BufferUploads { class ResourceLocator; }
 
 namespace SceneEngine
 {
@@ -26,14 +27,17 @@ namespace SceneEngine
             unsigned        _height;
             unsigned        _targetCount;
             FormatStack     _formats;
-            Desc(unsigned width, unsigned height, unsigned targetCount, const FormatStack& format) : _width(width), _height(height), _targetCount(targetCount), _formats(format) {}
+            Desc(unsigned width, unsigned height, unsigned targetCount, const FormatStack& format) 
+                : _width(width), _height(height), _targetCount(targetCount), _formats(format) {}
         };
 
-        RenderCore::Metal::ShaderResourceView _shaderResource;
-        RenderCore::Metal::DepthStencilView _depthStencilView;
-        intrusive_ptr<ID3D::Resource> _shadowTexture;
-
-        std::vector<RenderCore::Metal::DepthStencilView> _dsvBySlice;
+        using SRV = RenderCore::Metal::ShaderResourceView;
+        using DSV = RenderCore::Metal::DepthStencilView;
+        using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
+        SRV _shaderResource;
+        DSV _depthStencilView;
+        std::vector<DSV> _dsvBySlice;
+        ResLocator _shadowTexture;
 
         ShadowTargetsBox(const Desc& desc);
         ~ShadowTargetsBox();

@@ -9,9 +9,6 @@
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Metal/Forward.h"
-#include "../RenderCore/Metal/Buffer.h"
-#include "../Math/Matrix.h"
-#include "../Utility/MemoryUtils.h"
 #include <functional>
 
 namespace RenderCore { namespace Techniques 
@@ -28,9 +25,12 @@ namespace SceneEngine
     class MetricsBox;
     class ISceneParser;
     class PreparedShadowFrustum;
+    class PreparedRTShadowFrustum;
     class ShadowProjectionConstants;
     class ILightingParserPlugin;
     class RenderingQualitySettings;
+
+    using LightId = unsigned;
 
     class LightingParserContext : public RenderCore::Techniques::ParsingContext
     {
@@ -42,7 +42,8 @@ namespace SceneEngine
         ISceneParser*   GetSceneParser()                    { return _sceneParser; }
 
             //  ----------------- Working shadow state ----------------- 
-        std::vector<PreparedShadowFrustum>     _preparedShadows;
+        std::vector<std::pair<LightId, PreparedShadowFrustum>>      _preparedShadows;
+        std::vector<std::pair<LightId, PreparedRTShadowFrustum>>    _preparedRTShadows;
 
             //  ----------------- Overlays for late rendering -----------------
         typedef std::function<void(RenderCore::Metal::DeviceContext*, LightingParserContext&)> PendingOverlay;

@@ -49,7 +49,6 @@ namespace PlatformRig
         light._type = SceneEngine::LightDesc::Directional;
         light._negativeLightDirection = Normalize(Float3(-0.15046243f, 0.97377890f, 0.17063323f));
         light._radius = 10000.f;
-        light._shadowFrustumIndex = ~unsigned(0x0);
         light._diffuseColor = Float3(3.2803922f, 2.2372551f, 1.9627452f);
         light._nonMetalSpecularBrightness = 7.5f;
         light._specularColor = Float3(6.7647061f, 6.4117646f, 4.7647061f);
@@ -78,18 +77,16 @@ namespace PlatformRig
         result._toneMapSettings = DefaultToneMapSettings();
 
         auto defLight = DefaultDominantLight();
-        defLight._shadowFrustumIndex = 0;
         result._lights.push_back(defLight);
 
         auto frustumSettings = PlatformRig::DefaultShadowFrustumSettings();
-        result._shadowProj.push_back(EnvironmentSettings::ShadowProj { defLight, frustumSettings });
+        result._shadowProj.push_back(EnvironmentSettings::ShadowProj { defLight, 0, frustumSettings });
 
         {
             SceneEngine::LightDesc secondaryLight;
             secondaryLight._type = SceneEngine::LightDesc::Directional;
             secondaryLight._negativeLightDirection = Normalize(Float3(0.71622938f, 0.48972201f, -0.49717990f));
             secondaryLight._radius = 10000.f;
-            secondaryLight._shadowFrustumIndex = ~unsigned(0x0);
             secondaryLight._diffuseColor = Float3(3.2803922f, 2.2372551f, 1.9627452f);
             secondaryLight._nonMetalSpecularBrightness = 5.f;
             secondaryLight._specularColor = Float3(5.f, 5.f, 5.f);
@@ -102,7 +99,6 @@ namespace PlatformRig
             tertiaryLight._type = SceneEngine::LightDesc::Directional;
             tertiaryLight._negativeLightDirection = Normalize(Float3(-0.75507462f, -0.62672323f, 0.19256261f));
             tertiaryLight._radius = 10000.f;
-            tertiaryLight._shadowFrustumIndex = ~unsigned(0x0);
             tertiaryLight._diffuseColor = Float3(0.13725491f, 0.18666667f, 0.18745099f);
             tertiaryLight._nonMetalSpecularBrightness = 3.5f;
             tertiaryLight._specularColor = Float3(3.5f, 3.5f, 3.5f);
@@ -230,9 +226,8 @@ namespace PlatformRig
         for (unsigned c=0; c<lightFrustumLink.size(); ++c) {
             auto f = LowerBound(shadowSettings, lightFrustumLink[c]);
             if (f != shadowSettings.end() && f->first == lightFrustumLink[c]) {
-                _lights[c]._shadowFrustumIndex = (unsigned)_shadowProj.size();
                 _shadowProj.push_back(
-                    EnvironmentSettings::ShadowProj { _lights[c], f->second });
+                    EnvironmentSettings::ShadowProj { _lights[c], c, f->second });
             }
         }
     }

@@ -883,7 +883,7 @@ namespace SceneEngine
         VolumetricFog_Resolve(
             metalContext, parserContext, 
             (resolvePass==0)?samplingCount:1, useMsaaSamplers, resolvePass==1,
-            &parserContext._preparedShadows[0], rendererCfg, volume);
+            &parserContext._preparedShadows[0].second, rendererCfg, volume);
     }
 
     static void DoVolumetricFogResolveNoGrid(
@@ -921,12 +921,12 @@ namespace SceneEngine
         ///////////////////////////////////////////////////////////////////////////////////////////
 
         using namespace std::placeholders;
-        if (!parserContext._preparedShadows.empty() && parserContext._preparedShadows[0].IsReady()) {
+        if (!parserContext._preparedShadows.empty() && parserContext._preparedShadows[0].second.IsReady()) {
 
             const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();
             VolumetricFog_Build(
                 metalContext, parserContext, 
-                useMsaaSamplers, parserContext._preparedShadows[0],
+                useMsaaSamplers, parserContext._preparedShadows[0].second,
                 _pimpl->_cfg._renderer, _pimpl->_cfg._volumes[0]);
 
             resolveContext.AppendResolve(

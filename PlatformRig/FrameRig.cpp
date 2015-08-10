@@ -11,6 +11,7 @@
 
 #include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderOverlays/Font.h"
 #include "../RenderOverlays/DebuggingDisplay.h"
 

@@ -108,9 +108,8 @@ namespace EntityInterface
                         }
                     }
 
-                    light._shadowFrustumIndex = (unsigned)result._shadowProj.size();
                     result._shadowProj.push_back(
-                        EnvironmentSettings::ShadowProj { light, frustumSettings });
+                        EnvironmentSettings::ShadowProj { light, unsigned(result._lights.size()), frustumSettings });
                 }
 
                 result._lights.push_back(light);

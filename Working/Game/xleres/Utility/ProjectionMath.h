@@ -7,15 +7,46 @@
 #if !defined(PROJECTION_MATH_H)
 #define PROJECTION_MATH_H
 
-bool InsideFrustum(float4 clipSpacePosition)
+bool PtInFrustum(float4 pt)
 {
-	float3 p = clipSpacePosition.xyz / clipSpacePosition.w;
-		// arrange all coordinates so that values inside of the frustum are < 1.f
-	float2 t = abs(p.xy);
-	float t2 = max(1.f-p.z, p.z);
-	float t3 = max(t2, max(t.x, t.y));
-	return t3 < 1.f;	// if the maximum is less than 1.f, then all must be less than 1.f
+	float3 p = pt.xyz/pt.w;
+	float3 q = max(float3(p.x, p.y, p.z), float3(-p.x, -p.y, 1-pt.z));
+	float m = max(max(q.x, q.y), q.z);
+	return m <= 1.f;
+}
+
+bool InsideFrustum(float4 clipSpacePosition) { return PtInFrustum(clipSpacePosition); }
+
+int CountTrue(bool3 input)
+{
+	return dot(true.xxx, input);
+}
+
+bool TriInFrustum(float4 pt0, float4 pt1, float4 pt2)
+{
+	float3 xs = float3(pt0.x, pt1.x, pt2.x);
+	float3 ys = float3(pt0.y, pt1.y, pt2.y);
+	float3 zs = float3(pt0.z, pt1.z, pt2.z);
+	float3 ws = abs(float3(pt0.w, pt1.w, pt2.w));
+
+	int l  = CountTrue(xs < -ws);
+	int r  = CountTrue(xs >  ws);
+	int t  = CountTrue(ys < -ws);
+	int b  = CountTrue(ys >  ws);
+	int f  = CountTrue(zs < 0.f);
+	int bk = CountTrue(zs >  ws);
+
+	return max(max(max(max(max(l, r), t), b), f), bk) < 3;
+}
+
+float BackfaceSign(float4 A, float4 B, float4 C)
+{
+	float2 a = A.xy / A.w;
+	float2 b = B.xy / B.w;
+	float2 c = C.xy / C.w;
+	float2 edge0 = float2(b.x - a.x, b.y - a.y);
+	float2 edge1 = float2(c.x - b.x, c.y - b.y);
+	return (edge0.x*edge1.y) - (edge0.y*edge1.x);
 }
 
 #endif
-

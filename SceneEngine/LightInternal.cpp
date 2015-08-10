@@ -127,7 +127,7 @@ namespace SceneEngine
     , _mode(ShadowProjectionDesc::Projections::Mode::Arbitrary)
     {}
 
-    PreparedShadowFrustum::PreparedShadowFrustum(PreparedShadowFrustum&& moveFrom)
+    PreparedShadowFrustum::PreparedShadowFrustum(PreparedShadowFrustum&& moveFrom) never_throws
     : _shadowTextureSRV(std::move(moveFrom._shadowTextureSRV))
     , _arbitraryCBSource(std::move(moveFrom._arbitraryCBSource))
     , _orthoCBSource(std::move(moveFrom._orthoCBSource))
@@ -138,7 +138,7 @@ namespace SceneEngine
     , _resolveParameters(moveFrom._resolveParameters)
     {}
 
-    PreparedShadowFrustum& PreparedShadowFrustum::operator=(PreparedShadowFrustum&& moveFrom)
+    PreparedShadowFrustum& PreparedShadowFrustum::operator=(PreparedShadowFrustum&& moveFrom) never_throws
     {
         _shadowTextureSRV = std::move(moveFrom._shadowTextureSRV);
         _arbitraryCBSource = std::move(moveFrom._arbitraryCBSource);
@@ -148,6 +148,17 @@ namespace SceneEngine
         _frustumCount = moveFrom._frustumCount;
         _mode = moveFrom._mode;
         _resolveParameters = moveFrom._resolveParameters;
+        return *this;
+    }
+
+    PreparedRTShadowFrustum::PreparedRTShadowFrustum() {}
+
+    PreparedRTShadowFrustum::PreparedRTShadowFrustum(PreparedRTShadowFrustum&& moveFrom) never_throws
+    {
+    }
+
+    PreparedRTShadowFrustum& PreparedRTShadowFrustum::operator=(PreparedRTShadowFrustum&& moveFrom) never_throws
+    {
         return *this;
     }
 
@@ -223,6 +234,8 @@ namespace SceneEngine
         _worldSpaceResolveBias = 0.f;
         _tanBlurAngle = 0.f;
         _minBlurSearch = _maxBlurSearch = 0.f;
+        _resolveType = ResolveType::DepthTexture;
+        _lightId = ~0u;
     }
 
     LightDesc::LightDesc()
@@ -230,7 +243,6 @@ namespace SceneEngine
         _type = Directional;
         _negativeLightDirection = Normalize(Float3(-.1f, 0.33f, 1.f));
         _radius = 10000.f;
-        _shadowFrustumIndex = ~unsigned(0x0);
         _diffuseColor = Float3(1.f, 1.f, 1.f);
         _specularColor = Float3(1.f, 1.f, 1.f);
         _nonMetalSpecularBrightness = 1.f;
@@ -266,7 +278,6 @@ namespace SceneEngine
         _shadowResolveModel = props.GetParameter(shadowResolveModel, 0);
 
         _radius = 10000.f;
-        _shadowFrustumIndex = ~unsigned(0x0);
     }
 
     RenderCore::SharedPkt BuildScreenToShadowConstants(
