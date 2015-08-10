@@ -146,7 +146,7 @@ namespace SceneEngine
         using BoundUniforms = RenderCore::Metal::BoundUniforms;
 
         enum Projection : uint8 { Directional, Point };
-        enum Shadowing : uint8 { NoShadows, PerspectiveShadows, OrthShadows };
+        enum Shadowing : uint8 { NoShadows, PerspectiveShadows, OrthShadows, OrthHybridShadows };
             
         class LightShaderType
         {
@@ -174,6 +174,21 @@ namespace SceneEngine
             BoundUniforms           _uniforms;
 
             LightShader() : _shader(nullptr) {}
+        };
+
+        struct CB
+        {
+            enum 
+            {
+                ShadowProj_Arbit,
+                LightBuffer,
+                ShadowParam,
+                ScreenToShadow,
+                ShadowProj_Ortho,
+                ShadowResolveParam,
+                ScreenToRTShadow,
+                Max
+            };
         };
 
         const LightShader* GetShader(const LightShaderType& type);

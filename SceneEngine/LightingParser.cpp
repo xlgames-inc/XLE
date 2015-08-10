@@ -685,14 +685,14 @@ namespace SceneEngine
 
     static const std::string StringShadowCascadeMode = "SHADOW_CASCADE_MODE";
 
-    PreparedShadowFrustum LightingParser_PrepareShadow(
+    PreparedDMShadowFrustum LightingParser_PrepareShadow(
         DeviceContext* context, LightingParserContext& parserContext, 
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex)
     {
         auto projectionCount = std::min(frustum._projections._count, MaxShadowTexturesPerLight);
         if (!projectionCount)
-            return PreparedShadowFrustum();
+            return PreparedDMShadowFrustum();
 
         ViewportDesc newViewport[MaxShadowTexturesPerLight];
         for (unsigned c=0; c<frustum._projections._count; ++c) {
@@ -703,7 +703,7 @@ namespace SceneEngine
             newViewport[c].MaxDepth = 1.f;
         }
 
-        PreparedShadowFrustum preparedResult;
+        PreparedDMShadowFrustum preparedResult;
         preparedResult.InitialiseConstants(context, frustum._projections);
         parserContext.SetGlobalCB(3, context, &preparedResult._arbitraryCBSource, sizeof(preparedResult._arbitraryCBSource));
         parserContext.SetGlobalCB(4, context, &preparedResult._orthoCBSource, sizeof(preparedResult._orthoCBSource));
@@ -794,7 +794,7 @@ namespace SceneEngine
 
             // todo --  we should be using a temporary frame heap for this vector
         auto shadowFrustumCount = parserContext.GetSceneParser()->GetShadowProjectionCount();
-        parserContext._preparedShadows.reserve(shadowFrustumCount);
+        parserContext._preparedDMShadows.reserve(shadowFrustumCount);
 
         for (unsigned c=0; c<shadowFrustumCount; ++c) {
             auto frustum = parserContext.GetSceneParser()->GetShadowProjectionDesc(
@@ -804,7 +804,7 @@ namespace SceneEngine
 
                 auto shadow = LightingParser_PrepareShadow(context, parserContext, frustum, c);
                 if (shadow.IsReady())
-                    parserContext._preparedShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
+                    parserContext._preparedDMShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
 
             } else if (frustum._resolveType == ShadowProjectionDesc::ResolveType::RayTraced) {
 

@@ -545,7 +545,7 @@ namespace SceneEngine
     void VolumetricFog_Build(   RenderCore::Metal::DeviceContext* context, 
                                 LightingParserContext& lightingParserContext,
                                 bool useMsaaSamplers, 
-                                PreparedShadowFrustum& shadowFrustum,
+                                PreparedDMShadowFrustum& shadowFrustum,
                                 const VolumetricFogConfig::Renderer& rendererCfg,
                                 const VolumetricFogConfig::FogVolume& cfg)
     {
@@ -883,7 +883,7 @@ namespace SceneEngine
         VolumetricFog_Resolve(
             metalContext, parserContext, 
             (resolvePass==0)?samplingCount:1, useMsaaSamplers, resolvePass==1,
-            &parserContext._preparedShadows[0].second, rendererCfg, volume);
+            &parserContext._preparedDMShadows[0].second, rendererCfg, volume);
     }
 
     static void DoVolumetricFogResolveNoGrid(
@@ -921,12 +921,12 @@ namespace SceneEngine
         ///////////////////////////////////////////////////////////////////////////////////////////
 
         using namespace std::placeholders;
-        if (!parserContext._preparedShadows.empty() && parserContext._preparedShadows[0].second.IsReady()) {
+        if (!parserContext._preparedDMShadows.empty() && parserContext._preparedDMShadows[0].second.IsReady()) {
 
             const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();
             VolumetricFog_Build(
                 metalContext, parserContext, 
-                useMsaaSamplers, parserContext._preparedShadows[0].second,
+                useMsaaSamplers, parserContext._preparedDMShadows[0].second,
                 _pimpl->_cfg._renderer, _pimpl->_cfg._volumes[0]);
 
             resolveContext.AppendResolve(

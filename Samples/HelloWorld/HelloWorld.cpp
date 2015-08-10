@@ -19,6 +19,7 @@
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Metal/GPUProfiler.h"
 #include "../../RenderCore/Metal/Shader.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"

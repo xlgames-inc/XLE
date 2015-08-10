@@ -117,48 +117,67 @@ namespace SceneEngine
         }
     }
 
-    bool PreparedShadowFrustum::IsReady() const
-    {
-        return _shadowTextureSRV.GetUnderlying() && (_arbitraryCB.GetUnderlying() || _orthoCB.GetUnderlying());
-    }
-
     PreparedShadowFrustum::PreparedShadowFrustum()
     : _frustumCount(0) 
     , _mode(ShadowProjectionDesc::Projections::Mode::Arbitrary)
     {}
 
     PreparedShadowFrustum::PreparedShadowFrustum(PreparedShadowFrustum&& moveFrom) never_throws
-    : _shadowTextureSRV(std::move(moveFrom._shadowTextureSRV))
-    , _arbitraryCBSource(std::move(moveFrom._arbitraryCBSource))
+    : _arbitraryCBSource(std::move(moveFrom._arbitraryCBSource))
     , _orthoCBSource(std::move(moveFrom._orthoCBSource))
     , _arbitraryCB(std::move(moveFrom._arbitraryCB))
     , _orthoCB(std::move(moveFrom._orthoCB))
     , _frustumCount(moveFrom._frustumCount)
     , _mode(moveFrom._mode)
-    , _resolveParameters(moveFrom._resolveParameters)
     {}
 
     PreparedShadowFrustum& PreparedShadowFrustum::operator=(PreparedShadowFrustum&& moveFrom) never_throws
     {
-        _shadowTextureSRV = std::move(moveFrom._shadowTextureSRV);
         _arbitraryCBSource = std::move(moveFrom._arbitraryCBSource);
         _orthoCBSource = std::move(moveFrom._orthoCBSource);
         _arbitraryCB = std::move(moveFrom._arbitraryCB);
         _orthoCB = std::move(moveFrom._orthoCB);
         _frustumCount = moveFrom._frustumCount;
         _mode = moveFrom._mode;
+        return *this;
+    }
+
+
+    bool PreparedDMShadowFrustum::IsReady() const
+    {
+        return _shadowTextureSRV.GetUnderlying() && (_arbitraryCB.GetUnderlying() || _orthoCB.GetUnderlying());
+    }
+
+    PreparedDMShadowFrustum::PreparedDMShadowFrustum()
+    {
+        
+    }
+
+    PreparedDMShadowFrustum::PreparedDMShadowFrustum(PreparedDMShadowFrustum&& moveFrom) never_throws
+    : PreparedShadowFrustum(std::move(moveFrom))
+    , _shadowTextureSRV(std::move(moveFrom._shadowTextureSRV))
+    , _resolveParameters(moveFrom._resolveParameters)
+    {}
+
+    PreparedDMShadowFrustum& PreparedDMShadowFrustum::operator=(PreparedDMShadowFrustum&& moveFrom) never_throws
+    {
+        PreparedShadowFrustum::operator=(std::move(moveFrom));
+        _shadowTextureSRV = std::move(moveFrom._shadowTextureSRV);
         _resolveParameters = moveFrom._resolveParameters;
         return *this;
     }
 
+
     PreparedRTShadowFrustum::PreparedRTShadowFrustum() {}
 
     PreparedRTShadowFrustum::PreparedRTShadowFrustum(PreparedRTShadowFrustum&& moveFrom) never_throws
+    : PreparedShadowFrustum(std::move(moveFrom))
     {
     }
 
     PreparedRTShadowFrustum& PreparedRTShadowFrustum::operator=(PreparedRTShadowFrustum&& moveFrom) never_throws
     {
+        PreparedShadowFrustum::operator=(std::move(moveFrom));
         return *this;
     }
 
@@ -312,6 +331,15 @@ namespace SceneEngine
         _shadowTextureSize = 1024.f;
         XlZeroMemory(_dummy);
     }
+
+    RenderCore::SharedPkt BuildScreenToShadowConstants(
+        const PreparedShadowFrustum& preparedFrustum, const Float4x4& cameraToWorld)
+    {
+        return BuildScreenToShadowConstants(
+            preparedFrustum._frustumCount, preparedFrustum._arbitraryCBSource, preparedFrustum._orthoCBSource,
+            cameraToWorld);
+    }
+
 
 }
 

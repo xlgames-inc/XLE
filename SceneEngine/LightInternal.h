@@ -60,7 +60,6 @@ namespace SceneEngine
         typedef RenderCore::Metal::ShaderResourceView SRV;
         typedef RenderCore::Metal::ConstantBuffer CB;
 
-        SRV         _shadowTextureSRV;
         CB          _arbitraryCB;
         CB          _orthoCB;
         unsigned    _frustumCount;
@@ -68,20 +67,32 @@ namespace SceneEngine
         ShadowProjectionDesc::Projections::Mode::Enum _mode;
         CB_ArbitraryShadowProjection    _arbitraryCBSource;
         CB_OrthoShadowProjection        _orthoCBSource;
-        CB_ShadowResolveParameters      _resolveParameters;
 
         void InitialiseConstants(
             RenderCore::Metal::DeviceContext* devContext,
             const MultiProjection<MaxShadowTexturesPerLight>&);
-
-        bool IsReady() const;
 
         PreparedShadowFrustum();
         PreparedShadowFrustum(PreparedShadowFrustum&& moveFrom) never_throws;
         PreparedShadowFrustum& operator=(PreparedShadowFrustum&& moveFrom) never_throws;
     };
 
-    class PreparedRTShadowFrustum
+    /// <summary>Prepared "Depth Map" shadow frustum</summary>
+    class PreparedDMShadowFrustum : public PreparedShadowFrustum
+    {
+    public:
+        SRV                         _shadowTextureSRV;
+        CB_ShadowResolveParameters  _resolveParameters;
+
+        bool IsReady() const;
+
+        PreparedDMShadowFrustum();
+        PreparedDMShadowFrustum(PreparedDMShadowFrustum&& moveFrom) never_throws;
+        PreparedDMShadowFrustum& operator=(PreparedDMShadowFrustum&& moveFrom) never_throws;
+    };
+
+    /// <summary>Prepared "Ray Traced" shadow frustum</summary>
+    class PreparedRTShadowFrustum : public PreparedShadowFrustum
     {
     public:
         bool IsReady() const { return true; }
@@ -96,6 +107,8 @@ namespace SceneEngine
         CB_OrthoShadowProjection& orthoCBSource,
         const MultiProjection<MaxShadowTexturesPerLight>& desc);
 
+    RenderCore::SharedPkt BuildScreenToShadowConstants(
+        const PreparedShadowFrustum& preparedFrustum, const Float4x4& cameraToWorld);
     RenderCore::SharedPkt BuildScreenToShadowConstants(
         unsigned frustumCount,
         const CB_ArbitraryShadowProjection& arbitraryCB,

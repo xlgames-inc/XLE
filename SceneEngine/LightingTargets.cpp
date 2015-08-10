@@ -231,9 +231,10 @@ namespace SceneEngine
         definesTable << "GBUFFER_TYPE=" << desc._gbufferType;
         definesTable << ";MSAA_SAMPLES=" << (desc._msaaSampleCount<=1)?0:desc._msaaSampleCount;
         if (desc._msaaSamplers) definesTable << ";MSAA_SAMPLERS=1";
-        definesTable << ";SHADOW_CASCADE_MODE=" << ((type._shadows == OrthShadows) ? 2u : 1u);
+        definesTable << ";SHADOW_CASCADE_MODE=" << ((type._shadows == OrthShadows || type._shadows == OrthHybridShadows) ? 2u : 1u);
         definesTable << ";DIFFUSE_METHOD=" << unsigned(type._diffuseModel);
         definesTable << ";SHADOW_RESOLVE_MODEL=" << unsigned(type._shadowResolveModel);
+        definesTable << ";SHADOW_RT_HYRBID=" << unsigned(type._shadows == OrthHybridShadows);
 
         const char* vertexShader_viewFrustumVector = 
             desc._flipDirection
@@ -277,12 +278,13 @@ namespace SceneEngine
         dest._uniforms = Metal::BoundUniforms(std::ref(*dest._shader));
 
         Techniques::TechniqueContext::BindGlobalUniforms(dest._uniforms);
-        dest._uniforms.BindConstantBuffer(Hash64("ArbitraryShadowProjection"),  0, 1);
-        dest._uniforms.BindConstantBuffer(Hash64("LightBuffer"),                1, 1);
-        dest._uniforms.BindConstantBuffer(Hash64("ShadowParameters"),           2, 1);
-        dest._uniforms.BindConstantBuffer(Hash64("ScreenToShadowProjection"),   3, 1);
-        dest._uniforms.BindConstantBuffer(Hash64("OrthogonalShadowProjection"), 4, 1);
-        dest._uniforms.BindConstantBuffer(Hash64("ShadowResolveParameters"),    5, 1);
+        dest._uniforms.BindConstantBuffer(Hash64("ArbitraryShadowProjection"),  CB::ShadowProj_Arbit, 1);
+        dest._uniforms.BindConstantBuffer(Hash64("LightBuffer"),                CB::LightBuffer, 1);
+        dest._uniforms.BindConstantBuffer(Hash64("ShadowParameters"),           CB::ShadowParam, 1);
+        dest._uniforms.BindConstantBuffer(Hash64("ScreenToShadowProjection"),   CB::ScreenToShadow, 1);
+        dest._uniforms.BindConstantBuffer(Hash64("OrthogonalShadowProjection"), CB::ShadowProj_Ortho, 1);
+        dest._uniforms.BindConstantBuffer(Hash64("ShadowResolveParameters"),    CB::ShadowResolveParam, 1);
+        dest._uniforms.BindConstantBuffer(Hash64("ScreenToRTShadowProjection"), CB::ScreenToRTShadow, 1);
 
         ::Assets::RegisterAssetDependency(_validationCallback, dest._shader->GetDependencyValidation());
     }
@@ -312,6 +314,10 @@ namespace SceneEngine
         BuildShader(desc, LightShaderType(Directional, OrthShadows, 1, 0));
         BuildShader(desc, LightShaderType(Directional, OrthShadows, 0, 1));
         BuildShader(desc, LightShaderType(Directional, OrthShadows, 1, 1));
+        BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 0, 0));
+        BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 1, 0));
+        BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 0, 1));
+        BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 1, 1));
         BuildShader(desc, LightShaderType(Point, NoShadows, 0, 0));
         BuildShader(desc, LightShaderType(Point, NoShadows, 1, 0));
         BuildShader(desc, LightShaderType(Point, PerspectiveShadows, 0, 0));

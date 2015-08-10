@@ -24,7 +24,7 @@ namespace SceneEngine
 {
     class MetricsBox;
     class ISceneParser;
-    class PreparedShadowFrustum;
+    class PreparedDMShadowFrustum;
     class PreparedRTShadowFrustum;
     class ShadowProjectionConstants;
     class ILightingParserPlugin;
@@ -42,7 +42,7 @@ namespace SceneEngine
         ISceneParser*   GetSceneParser()                    { return _sceneParser; }
 
             //  ----------------- Working shadow state ----------------- 
-        std::vector<std::pair<LightId, PreparedShadowFrustum>>      _preparedShadows;
+        std::vector<std::pair<LightId, PreparedDMShadowFrustum>>    _preparedDMShadows;
         std::vector<std::pair<LightId, PreparedRTShadowFrustum>>    _preparedRTShadows;
 
             //  ----------------- Overlays for late rendering -----------------
