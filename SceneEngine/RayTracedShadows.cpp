@@ -25,6 +25,7 @@
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Resource.h"
 
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
@@ -107,14 +108,14 @@ namespace SceneEngine
         unsigned triangleSize = 3*sizeof(Float4);
         _triangleBufferRes = uploads.Transaction_Immediate(
             CreateDesc(
-                BindFlag::StreamOutput|BindFlag::ShaderResource|BindFlag::VertexBuffer,
+                BindFlag::StreamOutput|BindFlag::ShaderResource|BindFlag::VertexBuffer|BindFlag::RawViews,
                 0, GPUAccess::Read | GPUAccess::Write,
                 BufferUploads::LinearBufferDesc::Create(triangleSize*desc._triangleCount, triangleSize),
                 "RTShadowsTriangles"));
 
         _triangleBuffer = Metal::QueryInterfaceCast<ID3D::Buffer>(_triangleBufferRes->GetUnderlying());
         _triangleBufferVB = Metal::VertexBuffer(_triangleBufferRes->GetUnderlying());
-        _triangleBufferSRV = SRV::StructuredBuffer(_triangleBufferRes->GetUnderlying(), desc._triangleCount);
+        _triangleBufferSRV = SRV::RawBuffer(_triangleBufferRes->GetUnderlying(), triangleSize*desc._triangleCount);
 
         _gridBufferUAV = UAV(_gridBuffer->GetUnderlying());
         _gridBufferSRV = SRV(_gridBuffer->GetUnderlying());
@@ -135,6 +136,8 @@ namespace SceneEngine
     RTShadowsBox::~RTShadowsBox() {}
 
 
+    static const std::string StringShadowCascadeMode = "SHADOW_CASCADE_MODE";
+
     PreparedRTShadowFrustum PrepareRTShadows(
         Metal::DeviceContext& metalContext, 
         LightingParserContext& parserContext,
@@ -143,7 +146,7 @@ namespace SceneEngine
     {
         Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Prepare-RTShadows");
 
-        auto& box = Techniques::FindCachedBox2<RTShadowsBox>(64, 64, 1024*1024, 32, 64*1024);
+        auto& box = Techniques::FindCachedBox2<RTShadowsBox>(256, 256, 1024*1024, 32, 64*1024);
         auto oldSO = Metal::GeometryShader::GetDefaultStreamOutputInitializers();
         
         static const Metal::InputElementDesc eles[] = {
@@ -154,6 +157,8 @@ namespace SceneEngine
         {
             Metal::InputElementDesc("POSITION", 0, Metal::NativeFormat::R32G32B32A32_FLOAT)
         };
+
+        metalContext.UnbindPS<Metal::ShaderResourceView>(5, 3);
 
         const unsigned bufferCount = 1;
         unsigned strides[] = { 4*4 };
@@ -174,6 +179,15 @@ namespace SceneEngine
         metalContext.Unbind<Metal::RenderTargetView>();
         metalContext.Bind(Techniques::CommonResources()._blendOpaque);
         metalContext.Bind(Techniques::CommonResources()._defaultRasterizer);    // for newer video cards, we need "conservative raster" enabled
+
+        PreparedRTShadowFrustum preparedResult;
+        preparedResult.InitialiseConstants(&metalContext, frustum._projections);
+        parserContext.SetGlobalCB(3, &metalContext, &preparedResult._arbitraryCBSource, sizeof(preparedResult._arbitraryCBSource));
+        parserContext.SetGlobalCB(4, &metalContext, &preparedResult._orthoCBSource, sizeof(preparedResult._orthoCBSource));
+
+        parserContext.GetTechniqueContext()._runtimeState.SetParameter(
+            (const utf8*)StringShadowCascadeMode.c_str(), 
+            preparedResult._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
 
             // Now, we need to transform the object's triangle buffer into shadow
             // projection space during this step (also applying skinning, wind bending, and
@@ -198,7 +212,11 @@ namespace SceneEngine
         TRY
         {
             auto savedWorldToProjection = parserContext.GetProjectionDesc()._worldToProjection;
-            parserContext.GetProjectionDesc()._worldToProjection = frustum._worldToClip;
+            auto& projDesc = parserContext.GetProjectionDesc();
+            projDesc._worldToProjection = frustum._worldToClip;
+
+            // auto globalTransform = Techniques::BuildGlobalTransformConstants(projDesc);
+            // parserContext.SetGlobalCB(0, &metalContext, &globalTransform, sizeof(globalTransform));
 
             SceneParseSettings sceneParseSettings(
                 SceneParseSettings::BatchFilter::RayTracedShadows, 
@@ -207,7 +225,9 @@ namespace SceneEngine
                 &metalContext, parserContext, sceneParseSettings, 
                 shadowFrustumIndex, TechniqueIndex_RTShadowGen);
 
-            parserContext.GetProjectionDesc()._worldToProjection = savedWorldToProjection;
+            projDesc._worldToProjection = savedWorldToProjection;
+            // globalTransform = Techniques::BuildGlobalTransformConstants(projDesc);
+            // parserContext.SetGlobalCB(0, &metalContext, &globalTransform, sizeof(globalTransform));
         }
         CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
@@ -231,7 +251,7 @@ namespace SceneEngine
         {
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/shadowgen/rtwritetiles.sh:vs_passthrough:vs_*",
-                "game/xleres/shadowgen/rtwritetiles.sh:gs_passthrough:gs_*",
+                // "game/xleres/shadowgen/rtwritetiles.sh:gs_passthrough:gs_*",
                 "game/xleres/shadowgen/rtwritetiles.sh:ps_main:ps_*",
                 "");
             metalContext.Bind(shader);
@@ -244,18 +264,40 @@ namespace SceneEngine
             unsigned clearValues[] = { 0, 0, 0, 0 };
             metalContext.Clear(box._gridBufferUAV, clearValues);
 
-            auto blendState = Metal::BlendState::OutputDisabled();
-            metalContext.Bind(blendState);
+            using UAV = Metal::UnorderedAccessView;
+            using SRV = Metal::ShaderResourceView;
+            using namespace BufferUploads;
+            using namespace Metal::NativeFormat;
+            // box._listsBuffer = GetBufferUploads().Transaction_Immediate(
+            //     CreateDesc(
+            //         BindFlag::UnorderedAccess|BindFlag::ShaderResource|BindFlag::StructuredBuffer,
+            //         0, GPUAccess::Read | GPUAccess::Write,
+            //         BufferUploads::LinearBufferDesc::Create(4*2*1024*1024, 4*2),
+            //         "RTShadowsList"));
+            // box._listsBufferSRV = SRV(box._listsBuffer->GetUnderlying());
+            box._listsBufferUAV = UAV(box._listsBuffer->GetUnderlying(), UAV::Flags::AttachedCounter);
+            // metalContext.Clear(box._listsBufferUAV, clearValues);       // todo -- don't clear this every frame! we just want to reset the counter
+
+            // auto blendState = Metal::BlendState::OutputDisabled();
+            // metalContext.Bind(blendState);
+            metalContext.Bind(Techniques::CommonResources()._blendOpaque);
             metalContext.Bind(Techniques::CommonResources()._dssDisable);
             metalContext.Bind(Techniques::CommonResources()._cullDisable);
             metalContext.Bind(Metal::Topology::TriangleList);
             metalContext.Bind(MakeResourceList(box._triangleBufferVB), strides[0], offsets[0]);
 
-                // pixel shader writes only to UAV (oddly)
-            metalContext.Bind(
-                // ResourceList<Metal::RenderTargetView, 0>(), nullptr, 
-                MakeResourceList(box._dummyRTV), nullptr,
-                MakeResourceList(box._gridBufferUAV, box._listsBufferUAV));
+            // metalContext.Bind(
+            //     // ResourceList<Metal::RenderTargetView, 0>(), nullptr, 
+            //     MakeResourceList(box._dummyRTV), nullptr,
+            //     MakeResourceList(box._gridBufferUAV, box._listsBufferUAV));
+
+            ID3D::RenderTargetView* rtv[] = { box._dummyRTV.GetUnderlying() };
+            ID3D::UnorderedAccessView* uavs[] = { box._gridBufferUAV.GetUnderlying(), box._listsBufferUAV.GetUnderlying() };
+            const UINT initialCounts[] = { UINT(0), UINT(0) };
+            static_assert(dimof(initialCounts) == dimof(uavs), "Initial count array size mismatch");
+            metalContext.GetUnderlying()->OMSetRenderTargetsAndUnorderedAccessViews(
+                dimof(rtv), rtv, nullptr,
+                dimof(rtv), dimof(uavs), uavs, initialCounts);
 
             metalContext.GetUnderlying()->DrawAuto();
         }
@@ -264,12 +306,12 @@ namespace SceneEngine
         CATCH_END
 
         savedTargets.ResetToOldTargets(&metalContext);
+        parserContext.GetTechniqueContext()._runtimeState.SetParameter((const utf8*)StringShadowCascadeMode.c_str(), 0);
 
-        PreparedRTShadowFrustum result;
-        result._listHeadSRV = box._gridBufferSRV;
-        result._linkedListsSRV = box._listsBufferSRV;
-        result._trianglesSRV = box._triangleBufferSRV;
-        return result;
+        preparedResult._listHeadSRV = box._gridBufferSRV;
+        preparedResult._linkedListsSRV = box._listsBufferSRV;
+        preparedResult._trianglesSRV = box._triangleBufferSRV;
+        return std::move(preparedResult);
     }
 
 }

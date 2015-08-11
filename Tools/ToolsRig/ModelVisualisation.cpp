@@ -81,7 +81,8 @@ namespace ToolsRig
                             unsigned techniqueIndex) const 
         {
             if (    parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::Depth
-                ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::General) {
+                ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::General
+                ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::RayTracedShadows) {
 
                 if (_sharedStateSet) {
                     _sharedStateSet->CaptureState(context);

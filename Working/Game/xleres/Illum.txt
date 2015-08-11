@@ -113,6 +113,8 @@
     ~Parameters
         ~Geometry
             OUTPUT_WORLD_POSITION=0
+        ~Runtime
+            SHADOW_CASCADE_MODE
     VertexShader=game/xleres/shadowgen/rtwritetiles.sh:vs_writetris
     GeometryShader=game/xleres/shadowgen/rtwritetiles.sh:gs_writetris
     PixelShader=null

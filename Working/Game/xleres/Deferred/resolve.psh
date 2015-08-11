@@ -9,7 +9,6 @@
 
 #include "resolveutil.h"
 #include "resolvecascade.h"
-#include "resolvertshadows.h"
 #include "../CommonResources.h"
 #include "../Utility/Misc.h"
 #include "../Lighting/SampleFiltering.h"
@@ -20,6 +19,10 @@
 
 #if !defined(SHADOW_RESOLVE_MODEL)
 	#define SHADOW_RESOLVE_MODEL 0
+#endif
+
+#if SHADOW_RT_HYBRID==1
+	#include "resolvertshadows.h"
 #endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -322,7 +325,7 @@ float ResolveShadows_Cascade(uint cascadeIndex, float4 cascadeNormCoords, int2 r
 			//	We could alternatively have a completely independent cascade; but
 			//	that would make doing the hybrid blend more difficult
 		if (cascadeIndex==0) {
-			return ResolveRTShadows(cascadeNormCoords.xyz / cascadeNormCoords.w, randomizerValue);
+			return ResolveRTShadows(cascadeNormCoords.xyz/cascadeNormCoords.w, randomizerValue);
 		}
 	#endif
 

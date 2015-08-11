@@ -177,12 +177,18 @@ namespace SceneEngine
 
     PreparedRTShadowFrustum::PreparedRTShadowFrustum(PreparedRTShadowFrustum&& moveFrom) never_throws
     : PreparedShadowFrustum(std::move(moveFrom))
+    , _listHeadSRV(std::move(moveFrom._listHeadSRV))
+    , _linkedListsSRV(std::move(moveFrom._linkedListsSRV))
+    , _trianglesSRV(std::move(moveFrom._trianglesSRV))
     {
     }
 
     PreparedRTShadowFrustum& PreparedRTShadowFrustum::operator=(PreparedRTShadowFrustum&& moveFrom) never_throws
     {
         PreparedShadowFrustum::operator=(std::move(moveFrom));
+        _listHeadSRV = std::move(moveFrom._listHeadSRV);
+        _linkedListsSRV = std::move(moveFrom._linkedListsSRV);
+        _trianglesSRV = std::move(moveFrom._trianglesSRV);
         return *this;
     }
 

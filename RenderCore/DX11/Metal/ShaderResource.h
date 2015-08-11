@@ -36,7 +36,7 @@ namespace RenderCore { namespace Metal_DX11
         ShaderResourceView& operator=(const ShaderResourceView& cloneFrom);
         ShaderResourceView& operator=(ShaderResourceView&& moveFrom) never_throws;
 
-        static ShaderResourceView StructuredBuffer(UnderlyingResource res, unsigned elementCount, unsigned elementOffset = 0);
+        static ShaderResourceView RawBuffer(UnderlyingResource res, unsigned sizeBytes, unsigned offsetBytes = 0);
 
         intrusive_ptr<ID3D::Resource>           GetResource() const;
         

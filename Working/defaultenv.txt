@@ -1,0 +1,23 @@
+~~!Format=1; Tab=4
+
+~environment
+	Name=environment
+	
+	~AmbientSettings; RangeFogThicknessScale=675.55f; AtmosBlurStart=1000f; AmbientLight=-1i
+		AmbientBrightness=0.25f; SkyReflectionBlurriness=2f; AtmosBlurStdDev=1.3f
+		SkyTexture=Game/xleres/DefaultResources/sky/desertsky.dds; Flags=0i
+	
+	~ShadowFrustumSettings; FrustumCount=1i; ShadowRasterDepthBias=300i; FrustumSizeFactor=3.8f
+		ShadowSlopeScaledBias=1f; Flags=1i; ShadowDepthBiasClamp=0f; MaxBlurSearch=25f
+		MinBlurSearch=0.5f; MaxDistanceFromCamera=1000f; WorldSpaceResolveBias=0f; FocusDistance=3f
+		BlurAngleDegrees=0.25f; Name=shadows; TextureSize=2048i; Light=Sun
+
+	~ShadowFrustumSettings; FrustumCount=1i; FrustumSizeFactor=3.8f
+		Flags=5i; FocusDistance=3f; MaxDistanceFromCamera=1000f; FocusDistance=3f
+		Name=rtshadows; Light=Sun
+	
+	~DirectionalLight; DiffuseModel=0i; DiffuseBrightness=4.5f; Diffuse=-1i; Specular=-1i; Flags=1i
+		SpecularBrightness=7f; DiffuseWideningMin=0.5f
+		Transform={1f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f, 0f, 76.3231f, 44.0652f, 47.255f, 1f}
+		ShadowResolveModel=0i; SpecularNonMetalBrightness=7f; DiffuseWideningMax=2.5f; Name=Sun
+		ShadowFrustumSettings=shadows; Visible=1u
