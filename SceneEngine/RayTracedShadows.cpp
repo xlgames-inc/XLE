@@ -10,6 +10,7 @@
 #include "SceneParser.h"
 #include "SceneEngineUtils.h"
 #include "LightDesc.h"
+#include "LightInternal.h"
 
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -19,6 +20,7 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
@@ -51,16 +53,20 @@ namespace SceneEngine
         using UAV = RenderCore::Metal::UnorderedAccessView;
         using SRV = RenderCore::Metal::ShaderResourceView;
 
-        RTV _gridBufferRTV;
+        UAV _gridBufferUAV;
         SRV _gridBufferSRV;
         UAV _listsBufferUAV;
         SRV _listsBufferSRV;
         ResLocator _gridBuffer;
         ResLocator _listsBuffer;
 
+        RTV _dummyRTV;
+        ResLocator _dummyTarget;
+
         intrusive_ptr<ID3D::Buffer> _triangleBuffer;
         ResLocator _triangleBufferRes;
         Metal::VertexBuffer _triangleBufferVB;
+        SRV _triangleBufferSRV;
 
         Metal::ViewportDesc _gridBufferViewport;
 
@@ -80,11 +86,11 @@ namespace SceneEngine
 
         auto& uploads = GetBufferUploads();
         auto indexFormat = (desc._indexDepth==16) ? R16_UINT : R32_UINT;
-        unsigned indexSize = desc._indexDepth ? 2 : 4;
+        unsigned indexSize = (desc._indexDepth==16) ? 2 : 4;
 
         _gridBuffer = uploads.Transaction_Immediate(
             CreateDesc(
-                BindFlag::RenderTarget|BindFlag::ShaderResource,
+                BindFlag::UnorderedAccess|BindFlag::ShaderResource,
                 0, GPUAccess::Read | GPUAccess::Write,
                 BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, indexFormat),
                 "RTShadowsGrid"));
@@ -98,7 +104,7 @@ namespace SceneEngine
 
             // note that if we want to use alpha test textures on the triangles,
             // we will need to leave space for the texture coordinates as well.
-        unsigned triangleSize = 4*sizeof(Float3);
+        unsigned triangleSize = 3*sizeof(Float4);
         _triangleBufferRes = uploads.Transaction_Immediate(
             CreateDesc(
                 BindFlag::StreamOutput|BindFlag::ShaderResource|BindFlag::VertexBuffer,
@@ -108,11 +114,20 @@ namespace SceneEngine
 
         _triangleBuffer = Metal::QueryInterfaceCast<ID3D::Buffer>(_triangleBufferRes->GetUnderlying());
         _triangleBufferVB = Metal::VertexBuffer(_triangleBufferRes->GetUnderlying());
+        _triangleBufferSRV = SRV::StructuredBuffer(_triangleBufferRes->GetUnderlying(), desc._triangleCount);
 
-        _gridBufferRTV = RTV(_gridBuffer->GetUnderlying());
+        _gridBufferUAV = UAV(_gridBuffer->GetUnderlying());
         _gridBufferSRV = SRV(_gridBuffer->GetUnderlying());
-        _listsBufferUAV = UAV(_listsBuffer->GetUnderlying());
+        _listsBufferUAV = UAV(_listsBuffer->GetUnderlying(), UAV::Flags::AttachedCounter);
         _listsBufferSRV = SRV(_listsBuffer->GetUnderlying());
+
+        _dummyTarget = uploads.Transaction_Immediate(
+            CreateDesc(
+                BindFlag::RenderTarget,
+                0, GPUAccess::Read | GPUAccess::Write,
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, R8_UINT),
+                "RTShadowsDummy"));
+        _dummyRTV = RTV(_dummyTarget->GetUnderlying());
 
         _gridBufferViewport = Metal::ViewportDesc { 0.f, 0.f, float(desc._width), float(desc._height), 0.f, 1.f };
     }
@@ -120,7 +135,7 @@ namespace SceneEngine
     RTShadowsBox::~RTShadowsBox() {}
 
 
-    void PrepareRTShadows(
+    PreparedRTShadowFrustum PrepareRTShadows(
         Metal::DeviceContext& metalContext, 
         LightingParserContext& parserContext,
         const ShadowProjectionDesc& frustum,
@@ -128,7 +143,7 @@ namespace SceneEngine
     {
         Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Prepare-RTShadows");
 
-        auto& box = Techniques::FindCachedBox2<RTShadowsBox>(16, 16, 1024*1024, 32, 64*1024);
+        auto& box = Techniques::FindCachedBox2<RTShadowsBox>(64, 64, 1024*1024, 32, 64*1024);
         auto oldSO = Metal::GeometryShader::GetDefaultStreamOutputInitializers();
         
         static const Metal::InputElementDesc eles[] = {
@@ -221,19 +236,27 @@ namespace SceneEngine
                 "");
             metalContext.Bind(shader);
 
-            Metal::BoundInputLayout inputLayout(
-                Metal::InputLayout(il, dimof(il)),
-                shader);
+            Metal::BoundInputLayout inputLayout(Metal::InputLayout(il, dimof(il)), shader);
             metalContext.Bind(inputLayout);
 
                 // no shader constants/resources required
 
-            float clearValues[] = {0,0,0,0};
-            metalContext.Clear(box._gridBufferRTV, clearValues);
+            unsigned clearValues[] = { 0, 0, 0, 0 };
+            metalContext.Clear(box._gridBufferUAV, clearValues);
 
+            auto blendState = Metal::BlendState::OutputDisabled();
+            metalContext.Bind(blendState);
+            metalContext.Bind(Techniques::CommonResources()._dssDisable);
+            metalContext.Bind(Techniques::CommonResources()._cullDisable);
             metalContext.Bind(Metal::Topology::TriangleList);
             metalContext.Bind(MakeResourceList(box._triangleBufferVB), strides[0], offsets[0]);
-            metalContext.Bind(MakeResourceList(box._gridBufferRTV), nullptr);
+
+                // pixel shader writes only to UAV (oddly)
+            metalContext.Bind(
+                // ResourceList<Metal::RenderTargetView, 0>(), nullptr, 
+                MakeResourceList(box._dummyRTV), nullptr,
+                MakeResourceList(box._gridBufferUAV, box._listsBufferUAV));
+
             metalContext.GetUnderlying()->DrawAuto();
         }
         CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
@@ -241,6 +264,12 @@ namespace SceneEngine
         CATCH_END
 
         savedTargets.ResetToOldTargets(&metalContext);
+
+        PreparedRTShadowFrustum result;
+        result._listHeadSRV = box._gridBufferSRV;
+        result._linkedListsSRV = box._listsBufferSRV;
+        result._trianglesSRV = box._triangleBufferSRV;
+        return result;
     }
 
 }

@@ -107,12 +107,23 @@ namespace RenderCore { namespace Metal_DX11
         _underlying = std::move(srv);
     }
 
+    ShaderResourceView ShaderResourceView::StructuredBuffer(UnderlyingResource res, unsigned elementCount, unsigned elementOffset)
+    {
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+        srvDesc.Format = DXGI_FORMAT_R32_UINT;
+        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+        srvDesc.Buffer.ElementOffset = elementOffset;
+        srvDesc.Buffer.ElementWidth = elementCount;  // count of elements
+        return ShaderResourceView(
+            ObjectFactory(*res).CreateShaderResourceView(res, &srvDesc));
+    }
+
     auto ShaderResourceView::GetResource() const -> intrusive_ptr<ID3D::Resource>
     {
         return ExtractResource<ID3D::Resource>(_underlying.get());
     }
 
-    ShaderResourceView::ShaderResourceView(ID3D::ShaderResourceView* resource)
+    ShaderResourceView::ShaderResourceView(intrusive_ptr<ID3D::ShaderResourceView>&& resource)
     : _underlying(resource)
     {
     }

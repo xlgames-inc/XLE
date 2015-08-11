@@ -50,7 +50,12 @@ namespace PlatformRig
     public:
         struct Flags 
         { 
-            enum Enum { HighPrecisionDepths = 1<<0, ArbitraryCascades = 1<<1 }; 
+            enum Enum 
+            { 
+                HighPrecisionDepths = 1<<0, 
+                ArbitraryCascades = 1<<1,
+                RayTraced = 1<<2,
+            }; 
             typedef unsigned BitField;
         };
         unsigned        _frustumCount;
@@ -69,7 +74,6 @@ namespace PlatformRig
         float           _minBlurSearch, _maxBlurSearch;
 
         DefaultShadowFrustumSettings();
-        DefaultShadowFrustumSettings(const Utility::ParameterBox& paramBox);
     };
 
     /// <summary>Calculate a default set of shadow cascades for the sun<summary>
@@ -80,6 +84,7 @@ namespace PlatformRig
     /// is required for adapting the shadows projection to the main scene camera.</param>
     SceneEngine::ShadowProjectionDesc CalculateDefaultShadowCascades(
         const SceneEngine::LightDesc& lightDesc,
+        unsigned lightId,
         const RenderCore::Techniques::ProjectionDesc& mainSceneCameraDesc,
         const DefaultShadowFrustumSettings& settings);
 

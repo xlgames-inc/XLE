@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Assets.h"
+#include "AssetUtils.h" // for DirectorySearchRules
 #include "InvalidAssetManager.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/FileUtils.h"

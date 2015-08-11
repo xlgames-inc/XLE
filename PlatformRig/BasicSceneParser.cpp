@@ -9,6 +9,7 @@
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Conversion.h"
+#include "../../Utility/Meta/AccessorSerialize.h"
 
 namespace PlatformRig
 {
@@ -20,7 +21,8 @@ namespace PlatformRig
         -> ShadowProjectionDesc
     {
         return PlatformRig::CalculateDefaultShadowCascades(
-            GetEnvSettings()._shadowProj[index]._light,
+            GetEnvSettings()._shadowProj[index]._light, 
+            GetEnvSettings()._shadowProj[index]._lightId,
             mainSceneProjectionDesc,
             GetEnvSettings()._shadowProj[index]._shadowFrustumSettings);
     }
@@ -136,12 +138,14 @@ namespace PlatformRig
     
     namespace Attribute
     {
-        static const auto Flags = ParameterBox::MakeParameterNameHash("Flags");
-        static const auto ShadowFrustumSettings = ParameterBox::MakeParameterNameHash("ShadowFrustumSettings");
+        static const auto AttachedLight = ParameterBox::MakeParameterNameHash("Light");
         static const auto Name = ParameterBox::MakeParameterNameHash("Name");
+        static const auto Flags = ParameterBox::MakeParameterNameHash("Flags");
     }
 
-    EnvironmentSettings::EnvironmentSettings(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules&)
+    EnvironmentSettings::EnvironmentSettings(
+        InputStreamFormatter<utf8>& formatter, 
+        const ::Assets::DirectorySearchRules&)
     {
         using namespace SceneEngine;
 
@@ -149,7 +153,8 @@ namespace PlatformRig
         _toneMapSettings = DefaultToneMapSettings();
 
         std::vector<std::pair<uint64, DefaultShadowFrustumSettings>> shadowSettings;
-        std::vector<uint64> lightFrustumLink;
+        std::vector<uint64> lightNames;
+        std::vector<std::pair<uint64, uint64>> lightFrustumLink;    // lightid to shadow settings map
 
         utf8 buffer[256];
 
@@ -168,31 +173,37 @@ namespace PlatformRig
                     } else if (!XlComparePrefix(EntityTypeName::DirectionalLight, name._start, name._end - name._start)) {
 
                         ParameterBox params(formatter);
+                        uint64 hashName = 0ull;
+                        if (params.GetString(Attribute::Name, buffer, dimof(buffer))) {
+                            hashName = Hash64((const char*)buffer);
+                        }
+
                         SceneEngine::LightDesc lightDesc(params);
                         Fixup(lightDesc, params);
 
                         _lights.push_back(lightDesc);
 
-                        uint64 frustumLink = 0;
                         if (params.GetParameter(Attribute::Flags, 0u) & (1<<0)) {
-                            if (params.GetString(Attribute::ShadowFrustumSettings, buffer, dimof(buffer)))
-                                frustumLink = Hash64((const char*)buffer);
+                            lightNames.push_back(hashName);
+                        } else {
+                            lightNames.push_back(0);    // dummy if shadows are disabled
                         }
-                        lightFrustumLink.push_back(frustumLink);
-
+                        
                     } else if (!XlComparePrefix(EntityTypeName::ShadowFrustumSettings, name._start, name._end - name._start)) {
 
                         ParameterBox params(formatter);
+                        uint64 hashName = 0ull;
                         if (params.GetString(Attribute::Name, buffer, dimof(buffer))) {
-                            auto h = Hash64((const char*)buffer);
-                            auto i = LowerBound(shadowSettings, h);
-                            if (i != shadowSettings.end() && i->first == h) {
-                                assert(0); // hash or name conflict
-                            } else {
-                                shadowSettings.insert(
-                                    i, std::make_pair(h, PlatformRig::DefaultShadowFrustumSettings(params)));
-                            }
+                            hashName = Hash64((const char*)buffer);
                         }
+
+                        shadowSettings.push_back(
+                            std::make_pair(hashName, CreateFromParameters<PlatformRig::DefaultShadowFrustumSettings>(params)));
+
+                        uint64 frustumLink = 0;
+                        if (params.GetString(Attribute::AttachedLight, buffer, dimof(buffer)))
+                            frustumLink = Hash64((const char*)buffer);
+                        lightFrustumLink.push_back(std::make_pair(frustumLink, hashName));
 
                     } else if (!XlComparePrefix(EntityTypeName::OceanLightingSettings, name._start, name._end - name._start)) {
                         _oceanLighting = OceanLightingSettings(ParameterBox(formatter));
@@ -211,9 +222,6 @@ namespace PlatformRig
                 {
                     InputStreamFormatter<utf8>::InteriorSection name, value;
                     formatter.TryAttribute(name, value);
-                    // if (XlEqString(std::basic_string<utf8>(name._start, name._end), u("Name"))) {
-                    //     _name = Conversion::Convert<std::string>(std::basic_string<utf8>(value._start, value._end));
-                    // }
                     break;
                 }
 
@@ -223,11 +231,19 @@ namespace PlatformRig
             }
         }
 
+            // bind shadow settings (mapping via the light name parameter)
         for (unsigned c=0; c<lightFrustumLink.size(); ++c) {
-            auto f = LowerBound(shadowSettings, lightFrustumLink[c]);
-            if (f != shadowSettings.end() && f->first == lightFrustumLink[c]) {
+            auto f = std::find_if(shadowSettings.cbegin(), shadowSettings.cend(), 
+                [&lightFrustumLink, c](const std::pair<uint64, DefaultShadowFrustumSettings>&i) { return i.first == lightFrustumLink[c].second; });
+
+            auto l = std::find(lightNames.cbegin(), lightNames.cend(), lightFrustumLink[c].first);
+
+            if (f != shadowSettings.end() && l != lightNames.end()) {
+                auto lightIndex = std::distance(lightNames.cbegin(), l);
+                assert(lightIndex < ptrdiff_t(_lights.size()));
+
                 _shadowProj.push_back(
-                    EnvironmentSettings::ShadowProj { _lights[c], c, f->second });
+                    EnvironmentSettings::ShadowProj { _lights[lightIndex], SceneEngine::LightId(lightIndex), f->second });
             }
         }
     }

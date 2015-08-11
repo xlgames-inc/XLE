@@ -384,9 +384,13 @@ namespace SceneEngine
         const bool useMsaaSamplers = resolveContext.UseMsaaSamplers();
 
         using CB = LightingResolveShaders::CB;
+        using SR = LightingResolveShaders::SR;
         ConstantBufferPacket constantBufferPackets[CB::Max];
         const Metal::ConstantBuffer* prebuiltConstantBuffers[] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-        static_assert(dimof(prebuiltConstantBuffers)==CB::Max, "Prebuild constant buffer array incorrect size");
+        static_assert(dimof(prebuiltConstantBuffers)==CB::Max, "Prebuilt constant buffer array incorrect size");
+
+        const Metal::ShaderResourceView* srvs[] = { nullptr, nullptr, nullptr };
+        static_assert(dimof(srvs)==SR::Max, "Shader resource array incorrect size");
         
         prebuiltConstantBuffers[CB::ShadowParam] = &Techniques::FindCachedBox2<ShadowResourcesBox>()._sampleKernel32;
 
@@ -451,6 +455,10 @@ namespace SceneEngine
                             constantBufferPackets[CB::ScreenToRTShadow] = BuildScreenToShadowConstants(
                                 preparedRTShadows, parserContext.GetProjectionDesc()._cameraToWorld);
 
+                            srvs[SR::RTShadow_ListHead] = &preparedRTShadows._listHeadSRV;
+                            srvs[SR::RTShadow_LinkedLists] = &preparedRTShadows._linkedListsSRV;
+                            srvs[SR::RTShadow_Triangles] = &preparedRTShadows._trianglesSRV;
+
                             shaderType._shadows = LightingResolveShaders::OrthHybridShadows;
                         }
 
@@ -468,7 +476,7 @@ namespace SceneEngine
 
                 shader->_uniforms.Apply(
                     *context, parserContext.GetGlobalUniformsStream(), 
-                    UniformsStream(constantBufferPackets, prebuiltConstantBuffers));
+                    UniformsStream(constantBufferPackets, prebuiltConstantBuffers, srvs));
                 context->Bind(*shader->_shader);
                 context->Draw(4);
             } 

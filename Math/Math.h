@@ -84,6 +84,7 @@ namespace XLEMath
     }
 
     inline float Deg2Rad(float input)               { return input / 180.f * gPI; }
+    inline float Rad2Deg(float input)               { return input * 180.f / gPI; }
 
         //
         //      Useful general math functions:

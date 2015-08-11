@@ -18,6 +18,7 @@
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Meta/AccessorSerialize.h"
 #include <memory>
 
 namespace SceneEngine 
@@ -103,7 +104,7 @@ namespace EntityInterface
                             auto settingsName = fsSetObj->_properties.GetString<char>(Attribute::Name);
                             if (XlCompareStringI(settingsName.c_str(), fsRef.c_str())!=0) continue;
 
-                            frustumSettings = PlatformRig::DefaultShadowFrustumSettings(fsSetObj->_properties);
+                            frustumSettings = CreateFromParameters<PlatformRig::DefaultShadowFrustumSettings>(fsSetObj->_properties);
                             break;
                         }
                     }

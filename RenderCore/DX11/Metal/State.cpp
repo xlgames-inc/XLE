@@ -134,6 +134,10 @@ namespace RenderCore { namespace Metal_DX11
     : _underlying(std::move(moveFrom._underlying))
     {}
 
+    BlendState::BlendState(intrusive_ptr<ID3D::BlendState>&& moveFrom)
+    : _underlying(std::move(moveFrom))
+    {}
+
     BlendState& BlendState::operator=(BlendState&& moveFrom)
     {
         _underlying = std::move(moveFrom._underlying);
@@ -179,6 +183,25 @@ namespace RenderCore { namespace Metal_DX11
         }
 
         _underlying = ObjectFactory().CreateBlendState(&blendStateDesc);
+    }
+
+    BlendState BlendState::OutputDisabled()
+    {
+        D3D11_BLEND_DESC blendStateDesc;
+        blendStateDesc.AlphaToCoverageEnable = false;
+        blendStateDesc.IndependentBlendEnable = false;
+        for (unsigned c=0; c<dimof(blendStateDesc.RenderTarget); ++c) {
+            blendStateDesc.RenderTarget[c].BlendEnable = false;
+            blendStateDesc.RenderTarget[c].SrcBlend = D3D11_BLEND_ONE;
+            blendStateDesc.RenderTarget[c].DestBlend = D3D11_BLEND_ZERO;
+            blendStateDesc.RenderTarget[c].BlendOp = D3D11_BLEND_OP_ADD;
+            blendStateDesc.RenderTarget[c].SrcBlendAlpha = D3D11_BLEND_ONE;
+            blendStateDesc.RenderTarget[c].DestBlendAlpha = D3D11_BLEND_ZERO;
+            blendStateDesc.RenderTarget[c].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+            blendStateDesc.RenderTarget[c].RenderTargetWriteMask = 0;
+        }
+
+        return BlendState(ObjectFactory().CreateBlendState(&blendStateDesc));
     }
 
     BlendState::~BlendState() {}

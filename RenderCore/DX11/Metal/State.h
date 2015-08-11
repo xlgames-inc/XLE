@@ -305,6 +305,9 @@ namespace RenderCore { namespace Metal_DX11
         BlendState& operator=(BlendState&& moveFrom);
         BlendState(const BlendState& copyFrom);
         BlendState& operator=(const BlendState& copyFrom);
+        BlendState(intrusive_ptr<ID3D::BlendState>&& moveFrom);
+
+        static BlendState OutputDisabled();
 
         typedef ID3D::BlendState*   UnderlyingType;
         UnderlyingType              GetUnderlying() const  { return _underlying.get(); }

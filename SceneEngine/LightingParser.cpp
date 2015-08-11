@@ -685,7 +685,7 @@ namespace SceneEngine
 
     static const std::string StringShadowCascadeMode = "SHADOW_CASCADE_MODE";
 
-    PreparedDMShadowFrustum LightingParser_PrepareShadow(
+    PreparedDMShadowFrustum LightingParser_PrepareDMShadow(
         DeviceContext* context, LightingParserContext& parserContext, 
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex)
@@ -783,9 +783,7 @@ namespace SceneEngine
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex)
     {
-        PreparedRTShadowFrustum result;
-        PrepareRTShadows(*context, parserContext, frustum, shadowFrustumIndex);
-        return result;
+        return PrepareRTShadows(*context, parserContext, frustum, shadowFrustumIndex);
     }
 
     void LightingParser_PrepareShadows(DeviceContext* context, LightingParserContext& parserContext)
@@ -802,7 +800,7 @@ namespace SceneEngine
 
             if (frustum._resolveType == ShadowProjectionDesc::ResolveType::DepthTexture) {
 
-                auto shadow = LightingParser_PrepareShadow(context, parserContext, frustum, c);
+                auto shadow = LightingParser_PrepareDMShadow(context, parserContext, frustum, c);
                 if (shadow.IsReady())
                     parserContext._preparedDMShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
 

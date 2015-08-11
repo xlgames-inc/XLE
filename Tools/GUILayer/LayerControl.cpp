@@ -143,7 +143,7 @@ namespace GUILayer
     {
         auto visLayer = std::make_unique<ToolsRig::ModelVisLayer>(
             settings->GetUnderlying(), 
-            std::make_shared<ToolsRig::VisEnvSettings>(),
+            std::make_shared<ToolsRig::VisEnvSettings>("defaultenv.txt:environment"),
             resources->_visCache.GetNativePtr());
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
         overlaySet.AddSystem(std::move(visLayer));

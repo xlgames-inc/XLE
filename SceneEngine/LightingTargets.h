@@ -191,6 +191,17 @@ namespace SceneEngine
             };
         };
 
+        struct SR
+        {
+            enum
+            {
+                RTShadow_ListHead,
+                RTShadow_LinkedLists,
+                RTShadow_Triangles,
+                Max
+            };
+        };
+
         const LightShader* GetShader(const LightShaderType& type);
 
         const std::shared_ptr<Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }

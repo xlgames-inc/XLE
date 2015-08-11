@@ -234,7 +234,7 @@ namespace SceneEngine
         definesTable << ";SHADOW_CASCADE_MODE=" << ((type._shadows == OrthShadows || type._shadows == OrthHybridShadows) ? 2u : 1u);
         definesTable << ";DIFFUSE_METHOD=" << unsigned(type._diffuseModel);
         definesTable << ";SHADOW_RESOLVE_MODEL=" << unsigned(type._shadowResolveModel);
-        definesTable << ";SHADOW_RT_HYRBID=" << unsigned(type._shadows == OrthHybridShadows);
+        definesTable << ";SHADOW_RT_HYBRID=" << unsigned(type._shadows == OrthHybridShadows);
 
         const char* vertexShader_viewFrustumVector = 
             desc._flipDirection
@@ -285,6 +285,9 @@ namespace SceneEngine
         dest._uniforms.BindConstantBuffer(Hash64("OrthogonalShadowProjection"), CB::ShadowProj_Ortho, 1);
         dest._uniforms.BindConstantBuffer(Hash64("ShadowResolveParameters"),    CB::ShadowResolveParam, 1);
         dest._uniforms.BindConstantBuffer(Hash64("ScreenToRTShadowProjection"), CB::ScreenToRTShadow, 1);
+        dest._uniforms.BindShaderResource(Hash64("RTSListsHead"),               SR::RTShadow_ListHead, 1);
+        dest._uniforms.BindShaderResource(Hash64("RTSLinkedLists"),             SR::RTShadow_LinkedLists, 1);
+        dest._uniforms.BindShaderResource(Hash64("RTSTriangles"),               SR::RTShadow_Triangles, 1);
 
         ::Assets::RegisterAssetDependency(_validationCallback, dest._shader->GetDependencyValidation());
     }

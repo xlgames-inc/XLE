@@ -168,6 +168,11 @@ namespace SceneEngine
     }
 
 
+    bool PreparedRTShadowFrustum::IsReady() const
+    {
+        return _listHeadSRV.GetUnderlying() && _linkedListsSRV.GetUnderlying() && _trianglesSRV.GetUnderlying();
+    }
+
     PreparedRTShadowFrustum::PreparedRTShadowFrustum() {}
 
     PreparedRTShadowFrustum::PreparedRTShadowFrustum(PreparedRTShadowFrustum&& moveFrom) never_throws

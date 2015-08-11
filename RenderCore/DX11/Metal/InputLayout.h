@@ -144,6 +144,10 @@ namespace RenderCore { namespace Metal_DX11
         template <int Count0, int Count1>
             UniformsStream( ConstantBufferPacket (&packets)[Count0],
                             const ShaderResourceView* (&resources)[Count1]);
+        template <int Count0, int Count1, int Count2>
+            UniformsStream( ConstantBufferPacket (&packets)[Count0],
+                            const ConstantBuffer* (&prebuiltBuffers)[Count1],
+                            const ShaderResourceView* (&resources)[Count2]);
     protected:
         const ConstantBufferPacket*     _packets;
         const ConstantBuffer**          _prebuiltBuffers;
@@ -298,6 +302,19 @@ namespace RenderCore { namespace Metal_DX11
             _resources = resources;
             _resourceCount = Count1;
         }
+
+    template <int Count0, int Count1, int Count2>
+        UniformsStream::UniformsStream( ConstantBufferPacket (&packets)[Count0],
+                                        const ConstantBuffer* (&prebuiltBuffers)[Count1],
+                                        const ShaderResourceView* (&resources)[Count2])
+    {
+            static_assert(Count0 == Count1, "Expecting equal length arrays in UniformsStream constructor");
+            _packets = packets;
+            _prebuiltBuffers = prebuiltBuffers;
+            _packetCount = Count0;
+            _resources = resources;
+            _resourceCount = Count2;
+    }
 
 }}
 

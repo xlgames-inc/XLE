@@ -37,7 +37,7 @@ namespace PlatformRig
         {
         public:
             SceneEngine::LightDesc _light;
-            unsigned _lightId;
+            SceneEngine::LightId _lightId;
             DefaultShadowFrustumSettings _shadowFrustumSettings;
         };
         std::vector<ShadowProj> _shadowProj;

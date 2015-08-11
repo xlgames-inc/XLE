@@ -7,6 +7,7 @@
 #include "VisualisationUtils.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../Assets/ConfigFileContainer.h"
 #include "../../Math/Transformations.h"
 
 namespace ToolsRig
@@ -42,6 +43,15 @@ namespace ToolsRig
     VisEnvSettings::VisEnvSettings()
     {
         _activeSetting = PlatformRig::DefaultEnvironmentSettings();
+    }
+
+    VisEnvSettings::VisEnvSettings(const ::Assets::ResChar filename[])
+    {
+        TRY {
+            _activeSetting = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<PlatformRig::EnvironmentSettings>>(filename)._asset;
+        } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
+            _activeSetting = PlatformRig::DefaultEnvironmentSettings();
+        } CATCH_END
     }
 
     VisEnvSettings::~VisEnvSettings() {}

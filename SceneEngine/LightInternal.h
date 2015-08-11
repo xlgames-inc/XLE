@@ -95,7 +95,11 @@ namespace SceneEngine
     class PreparedRTShadowFrustum : public PreparedShadowFrustum
     {
     public:
-        bool IsReady() const { return true; }
+        SRV _listHeadSRV;
+        SRV _linkedListsSRV;
+        SRV _trianglesSRV;
+
+        bool IsReady() const;
 
         PreparedRTShadowFrustum();
         PreparedRTShadowFrustum(PreparedRTShadowFrustum&& moveFrom) never_throws;

@@ -12,8 +12,9 @@ namespace SceneEngine
 {
     class LightingParserContext;
     class ShadowProjectionDesc;
+    class PreparedRTShadowFrustum;
 
-    void PrepareRTShadows(
+    PreparedRTShadowFrustum PrepareRTShadows(
         RenderCore::Metal::DeviceContext& metalContext, 
         LightingParserContext& parserContext,
         const ShadowProjectionDesc& frustum,

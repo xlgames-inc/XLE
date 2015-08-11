@@ -11,6 +11,8 @@
 #include "../Vegetation/InstanceVS.h"
 #include "../Utility/ProjectionMath.h"
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 struct RTS_VSOutput
 {
     float4 position : POSITION;
@@ -82,6 +84,8 @@ void vs_passthrough(float4 position : POSITION, out float4 outPos : POSITION)
     outPos = position;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 struct RTS_GSInput
 {
     float4 position : POSITION;
@@ -110,7 +114,33 @@ struct RTS_GSOutput
     outputStream.Append(two);
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct ListNode
+{
+    uint    next;
+    uint	triIndex;
+};
+
+RWTexture2D<uint>	          ListsHead    : register(u1);
+RWStructuredBuffer<ListNode>  LinkedLists  : register(u2);
+
 uint ps_main(float4 pos : SV_Position, uint triIndex : TRIINDEX) : SV_Target0
 {
-    return triIndex;
+        // it would be helpful for ListsHead where our bound render target.
+        // But we need to both read and write from it... That isn't possible
+        // without using a UAV. But it means that the pixel shader output
+        // is going to be discarded.
+
+    uint oldHead = ListsHead[int2(pos.xy)];
+    uint newNodeId = LinkedLists.IncrementCounter();
+
+    ListNode newNode;
+    newNode.triIndex = triIndex;
+    newNode.next = oldHead;
+    LinkedLists[newNodeId] = newNode;
+    ListsHead[int2(pos.xy)] = newNodeId;
+
+    discard;    // perhaps we can write out min/max here (instead of just discard)
+    return newNodeId;
 }

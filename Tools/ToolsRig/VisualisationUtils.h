@@ -31,6 +31,7 @@ namespace ToolsRig
         PlatformRig::EnvironmentSettings _activeSetting;
 
         VisEnvSettings();
+        VisEnvSettings(const ::Assets::ResChar filename[]);
         ~VisEnvSettings();
     };
 

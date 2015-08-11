@@ -9,6 +9,7 @@
 
 #include "resolveutil.h"
 #include "resolvecascade.h"
+#include "resolvertshadows.h"
 #include "../CommonResources.h"
 #include "../Utility/Misc.h"
 #include "../Lighting/SampleFiltering.h"
@@ -262,7 +263,7 @@ float CalculateFilteredShadows(
 
 static const bool DoShadowFiltering = true;
 
-float ResolveShadows(	uint projection, float2 shadowTexCoord, float comparisonDistance,
+float ResolveDMShadows(	uint projection, float2 shadowTexCoord, float comparisonDistance,
 						int2 randomizerValue, uint msaaSampleIndex)
 {
 	float casterDistanceComparison = comparisonDistance;
@@ -313,7 +314,19 @@ float ResolveShadows_Cascade(uint cascadeIndex, float4 cascadeNormCoords, int2 r
 	texCoords = float2(0.5f + 0.5f * texCoords.x, 0.5f - 0.5f * texCoords.y);
 	comparisonDistance = cascadeNormCoords.z / cascadeNormCoords.w;
 
-	return ResolveShadows(cascadeIndex, texCoords, comparisonDistance, randomizerValue, msaaSampleIndex);
+	#if SHADOW_RT_HYBRID==1
+			// 	When hybrid shadows are enabled, the first cascade might be
+			//	resolved using ray traced shadows. For convenience, we'll assume
+			//	the the ray traced shadow cascade always matches the first cascade
+			//	of the depth map shadows...
+			//	We could alternatively have a completely independent cascade; but
+			//	that would make doing the hybrid blend more difficult
+		if (cascadeIndex==0) {
+			return ResolveRTShadows(cascadeNormCoords.xyz / cascadeNormCoords.w, randomizerValue);
+		}
+	#endif
+
+	return ResolveDMShadows(cascadeIndex, texCoords, comparisonDistance, randomizerValue, msaaSampleIndex);
 }
 
 float ResolvePointLightShadows(float3 worldPosition, int2 randomizerValue, uint msaaSampleIndex)
