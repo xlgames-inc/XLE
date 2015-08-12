@@ -11,6 +11,7 @@
 #include "SceneEngineUtils.h"
 #include "LightDesc.h"
 #include "LightInternal.h"
+#include "LightingTargets.h"        // for MainTargetsBox in RTShadows_DrawMetrics
 
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -27,6 +28,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Resource.h"
+#include "../Utility/StringFormat.h"
 
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 
@@ -293,6 +295,60 @@ namespace SceneEngine
         preparedResult._linkedListsSRV = box._listsBufferSRV;
         preparedResult._trianglesSRV = box._triangleBufferSRV;
         return std::move(preparedResult);
+    }
+
+
+    void RTShadows_DrawMetrics(
+        RenderCore::Metal::DeviceContext* context, 
+        LightingParserContext& parserContext, MainTargetsBox& mainTargets)
+    {
+        SavedTargets savedTargets(context);
+
+        TRY {
+            context->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
+
+            context->BindPS(MakeResourceList(5, mainTargets._gbufferRTVsSRV[0], mainTargets._gbufferRTVsSRV[1], mainTargets._gbufferRTVsSRV[2], mainTargets._msaaDepthBufferSRV));
+            const bool useMsaaSamplers = mainTargets._desc._sampling._sampleCount > 1;
+
+            StringMeld<256> defines;
+            defines << "SHADOW_CASCADE_MODE=2";
+            if (useMsaaSamplers) defines << ";MSAA_SAMPLERS=1";
+
+            auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+                "game/xleres/shadowgen/rtshadmetrics.sh:ps_main:ps_*",
+                defines.get());
+            Metal::BoundUniforms uniforms(debuggingShader);
+            Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
+            uniforms.BindShaderResources(1, {"RTSListsHead", "RTSLinkedLists", "RTSTriangles", "DepthTexture"});
+            uniforms.BindConstantBuffers(1, {"OrthogonalShadowProjection", "ScreenToShadowProjection"});
+
+            context->Bind(debuggingShader);
+            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
+            SetupVertexGeneratorShader(context);
+
+            for (const auto& p:parserContext._preparedRTShadows) {
+                const Metal::ShaderResourceView* srvs[] = 
+                    { &p.second._listHeadSRV, &p.second._linkedListsSRV, &p.second._trianglesSRV, &mainTargets._msaaDepthBufferSRV };
+
+                SharedPkt constants[2];
+                const Metal::ConstantBuffer* prebuiltConstants[2] = {nullptr, nullptr};
+                prebuiltConstants[0] = &p.second._orthoCB;
+                constants[1] = BuildScreenToShadowConstants(
+                    p.second, parserContext.GetProjectionDesc()._cameraToWorld);
+
+                uniforms.Apply(
+                    *context, parserContext.GetGlobalUniformsStream(), 
+                    Metal::UniformsStream(constants, prebuiltConstants, dimof(constants), srvs, dimof(srvs)));
+            }
+
+            context->Draw(4);
+        } 
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
+        CATCH_END
+
+        savedTargets.ResetToOldTargets(context);
     }
 
 }

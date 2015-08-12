@@ -14,6 +14,7 @@
 
 #include "Sky.h"
 #include "VolumetricFog.h"
+#include "RayTracedShadows.h"
 
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
@@ -370,6 +371,11 @@ namespace SceneEngine
         if (Tweakable("DeferredDebugging", false)) {
             parserContext._pendingOverlays.push_back(
                 std::bind(&Deferred_DrawDebugging, std::placeholders::_1, std::placeholders::_2, std::ref(mainTargets)));
+        }
+
+        if (Tweakable("RTShadowMetrics", false)) {
+            parserContext._pendingOverlays.push_back(
+                std::bind(&RTShadows_DrawMetrics, std::placeholders::_1, std::placeholders::_2, std::ref(mainTargets)));
         }
     }
 

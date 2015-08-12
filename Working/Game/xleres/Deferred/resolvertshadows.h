@@ -166,11 +166,9 @@ float ResolveRTShadows(float3 postDivideCoord, int2 randomizerValue)
         // todo -- check min/max here
 
     uint i = RTSListsHead[gridIndex];
-    int count = 0;
     while (i!=0) {
         if (IsShadowedByTriangle(postDivideCoord, RTSLinkedLists[i-1].triIndex))
             return 0.f;
-        ++count;
         i = RTSLinkedLists[i-1].next;
     }
 

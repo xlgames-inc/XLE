@@ -7,6 +7,7 @@
 #if !defined(RESOLVE_CASCADE_H)
 #define RESOLVE_CASCADE_H
 
+#include "../Transform.h"
 #include "../ShadowProjection.h"
 
 void FindCascade_FromWorldPosition(

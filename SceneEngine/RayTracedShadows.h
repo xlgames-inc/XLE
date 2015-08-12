@@ -13,10 +13,15 @@ namespace SceneEngine
     class LightingParserContext;
     class ShadowProjectionDesc;
     class PreparedRTShadowFrustum;
+    class MainTargetsBox;
 
     PreparedRTShadowFrustum PrepareRTShadows(
         RenderCore::Metal::DeviceContext& metalContext, 
         LightingParserContext& parserContext,
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex);
+
+    void RTShadows_DrawMetrics(
+        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
+        MainTargetsBox& mainTargets);
 }
