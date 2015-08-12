@@ -91,24 +91,24 @@ namespace SceneEngine
 
         _gridBuffer = uploads.Transaction_Immediate(
             CreateDesc(
-                BindFlag::UnorderedAccess|BindFlag::ShaderResource,
+                BindFlag::UnorderedAccess | BindFlag::ShaderResource,
                 0, GPUAccess::Read | GPUAccess::Write,
                 BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, indexFormat),
                 "RTShadowsGrid"));
 
         _listsBuffer = uploads.Transaction_Immediate(
             CreateDesc(
-                BindFlag::UnorderedAccess|BindFlag::ShaderResource|BindFlag::StructuredBuffer,
+                BindFlag::UnorderedAccess | BindFlag::ShaderResource | BindFlag::StructuredBuffer,
                 0, GPUAccess::Read | GPUAccess::Write,
                 BufferUploads::LinearBufferDesc::Create(indexSize*2*desc._storageCount, indexSize*2),
                 "RTShadowsList"));
 
             // note that if we want to use alpha test textures on the triangles,
             // we will need to leave space for the texture coordinates as well.
-        unsigned triangleSize = 3*sizeof(Float4);
+        unsigned triangleSize = 52;
         _triangleBufferRes = uploads.Transaction_Immediate(
             CreateDesc(
-                BindFlag::StreamOutput|BindFlag::ShaderResource|BindFlag::VertexBuffer|BindFlag::RawViews,
+                BindFlag::StreamOutput | BindFlag::ShaderResource | BindFlag::VertexBuffer | BindFlag::RawViews,
                 0, GPUAccess::Read | GPUAccess::Write,
                 BufferUploads::LinearBufferDesc::Create(triangleSize*desc._triangleCount, triangleSize),
                 "RTShadowsTriangles"));
@@ -149,28 +149,34 @@ namespace SceneEngine
         auto& box = Techniques::FindCachedBox2<RTShadowsBox>(256, 256, 1024*1024, 32, 64*1024);
         auto oldSO = Metal::GeometryShader::GetDefaultStreamOutputInitializers();
         
-        static const Metal::InputElementDesc eles[] = {
-            Metal::InputElementDesc("POSITION", 0, Metal::NativeFormat::R32G32B32A32_FLOAT)
+        static const Metal::InputElementDesc soVertex[] = 
+        {
+            Metal::InputElementDesc("A", 0, Metal::NativeFormat::R32G32B32A32_FLOAT),
+            Metal::InputElementDesc("B", 0, Metal::NativeFormat::R32G32_FLOAT),
+            Metal::InputElementDesc("C", 0, Metal::NativeFormat::R32G32B32A32_FLOAT),
+            Metal::InputElementDesc("D", 0, Metal::NativeFormat::R32G32B32_FLOAT)
         };
 
         static const Metal::InputElementDesc il[] = 
         {
-            Metal::InputElementDesc("POSITION", 0, Metal::NativeFormat::R32G32B32A32_FLOAT)
+            Metal::InputElementDesc("A", 0, Metal::NativeFormat::R32G32B32A32_FLOAT),
+            Metal::InputElementDesc("B", 0, Metal::NativeFormat::R32G32_FLOAT),
+            Metal::InputElementDesc("C", 0, Metal::NativeFormat::R32G32B32A32_FLOAT),
+            Metal::InputElementDesc("D", 0, Metal::NativeFormat::R32G32B32_FLOAT)
         };
 
         metalContext.UnbindPS<Metal::ShaderResourceView>(5, 3);
 
         const unsigned bufferCount = 1;
-        unsigned strides[] = { 4*4 };
+        unsigned strides[] = { 52 };
         unsigned offsets[] = { 0 };
         Metal::GeometryShader::SetDefaultStreamOutputInitializers(
-            Metal::GeometryShader::StreamOutputInitializers(eles, dimof(eles), strides, 1));
+            Metal::GeometryShader::StreamOutputInitializers(soVertex, dimof(soVertex), strides, 1));
 
         ID3D::Buffer* targets[] = { box._triangleBuffer.get() };
         static_assert(bufferCount == dimof(strides), "Stream output buffer count mismatch");
         static_assert(bufferCount == dimof(offsets), "Stream output buffer count mismatch");
         static_assert(bufferCount == dimof(targets), "Stream output buffer count mismatch");
-        static_assert(bufferCount == dimof(eles), "Stream output buffer count mismatch");
         metalContext.GetUnderlying()->SOSetTargets(bufferCount, targets, offsets);
 
             // set up the render state for writing into the grid buffer
@@ -215,9 +221,6 @@ namespace SceneEngine
             auto& projDesc = parserContext.GetProjectionDesc();
             projDesc._worldToProjection = frustum._worldToClip;
 
-            // auto globalTransform = Techniques::BuildGlobalTransformConstants(projDesc);
-            // parserContext.SetGlobalCB(0, &metalContext, &globalTransform, sizeof(globalTransform));
-
             SceneParseSettings sceneParseSettings(
                 SceneParseSettings::BatchFilter::RayTracedShadows, 
                 ~SceneParseSettings::Toggles::BitField(0));
@@ -226,8 +229,6 @@ namespace SceneEngine
                 shadowFrustumIndex, TechniqueIndex_RTShadowGen);
 
             projDesc._worldToProjection = savedWorldToProjection;
-            // globalTransform = Techniques::BuildGlobalTransformConstants(projDesc);
-            // parserContext.SetGlobalCB(0, &metalContext, &globalTransform, sizeof(globalTransform));
         }
         CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
@@ -251,10 +252,9 @@ namespace SceneEngine
         {
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/shadowgen/rtwritetiles.sh:vs_passthrough:vs_*",
-                // "game/xleres/shadowgen/rtwritetiles.sh:gs_passthrough:gs_*",
                 "game/xleres/shadowgen/consraster.sh:gs_conservativeRasterization:gs_*",
                 "game/xleres/shadowgen/rtwritetiles.sh:ps_main:ps_*",
-                "OUTPUT_PRIM_ID=1");
+                "OUTPUT_PRIM_ID=1;INPUT_RAYTEST_TRIS=1");
             metalContext.Bind(shader);
 
             Metal::BoundInputLayout inputLayout(Metal::InputLayout(il, dimof(il)), shader);
@@ -265,32 +265,11 @@ namespace SceneEngine
             unsigned clearValues[] = { 0, 0, 0, 0 };
             metalContext.Clear(box._gridBufferUAV, clearValues);
 
-            using UAV = Metal::UnorderedAccessView;
-            using SRV = Metal::ShaderResourceView;
-            using namespace BufferUploads;
-            using namespace Metal::NativeFormat;
-            // box._listsBuffer = GetBufferUploads().Transaction_Immediate(
-            //     CreateDesc(
-            //         BindFlag::UnorderedAccess|BindFlag::ShaderResource|BindFlag::StructuredBuffer,
-            //         0, GPUAccess::Read | GPUAccess::Write,
-            //         BufferUploads::LinearBufferDesc::Create(4*2*1024*1024, 4*2),
-            //         "RTShadowsList"));
-            // box._listsBufferSRV = SRV(box._listsBuffer->GetUnderlying());
-            box._listsBufferUAV = UAV(box._listsBuffer->GetUnderlying(), UAV::Flags::AttachedCounter);
-            // metalContext.Clear(box._listsBufferUAV, clearValues);       // todo -- don't clear this every frame! we just want to reset the counter
-
-            // auto blendState = Metal::BlendState::OutputDisabled();
-            // metalContext.Bind(blendState);
             metalContext.Bind(Techniques::CommonResources()._blendOpaque);
             metalContext.Bind(Techniques::CommonResources()._dssDisable);
             metalContext.Bind(Techniques::CommonResources()._cullDisable);
-            metalContext.Bind(Metal::Topology::TriangleList);
+            metalContext.Bind(Metal::Topology::PointList);
             metalContext.Bind(MakeResourceList(box._triangleBufferVB), strides[0], offsets[0]);
-
-            // metalContext.Bind(
-            //     // ResourceList<Metal::RenderTargetView, 0>(), nullptr, 
-            //     MakeResourceList(box._dummyRTV), nullptr,
-            //     MakeResourceList(box._gridBufferUAV, box._listsBufferUAV));
 
             ID3D::RenderTargetView* rtv[] = { box._dummyRTV.GetUnderlying() };
             ID3D::UnorderedAccessView* uavs[] = { box._gridBufferUAV.GetUnderlying(), box._listsBufferUAV.GetUnderlying() };
@@ -306,6 +285,7 @@ namespace SceneEngine
         CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
 
+        metalContext.Bind(Metal::Topology::TriangleList);
         savedTargets.ResetToOldTargets(&metalContext);
         parserContext.GetTechniqueContext()._runtimeState.SetParameter((const utf8*)StringShadowCascadeMode.c_str(), 0);
 

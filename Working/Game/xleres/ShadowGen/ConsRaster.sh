@@ -111,38 +111,87 @@ GSOutput MakeVertex(VSOutput current, float2 semiDiagonalAdj, uint primId)
     return result;
 }
 
-// (if we could output triangle lists, worse case output would be 9 vertices)
-[maxvertexcount(16)]
-    void gs_conservativeRasterization(
-        triangle VSOutput input[3],
-        #if (OUTPUT_PRIM_ID==1)
-            uint primId : SV_PrimitiveID,
+#if !(INPUT_RAYTEST_TRIS)
+
+    // (if we could output triangle lists, worse case output would be 9 vertices)
+    [maxvertexcount(16)]
+        void gs_conservativeRasterization(
+            triangle VSOutput input[3],
+            #if (OUTPUT_PRIM_ID==1)
+                uint primId : SV_PrimitiveID,
+            #endif
+            inout TriangleStream<GSOutput> outputStream)
+    {
+        #if !(OUTPUT_PRIM_ID==1)
+            uint primId = 0;
         #endif
-        inout TriangleStream<GSOutput> outputStream)
-{
-    #if !(OUTPUT_PRIM_ID==1)
-        uint primId = 0;
-    #endif
 
-        // note -- if there are back facing triangle input
-        //  sometimes we will get reversed triangles output!
-        //  we should always do backface culling before this point
-        //  Also, we may need to clipping
-        //  Also, currently the 'z' value for the output primitives will
-        //  be wrong (because it's not adjusted for the skirt)
-    GSOutput starterVertex;
-    GenerateCorner(
-        input[2], input[0], input[1],
-        starterVertex, true, primId,
-        outputStream);
+            // note -- if there are back facing triangle input
+            //  sometimes we will get reversed triangles output!
+            //  we should always do backface culling before this point
+            //  Also, we may need to clipping
+            //  Also, currently the 'z' value for the output primitives will
+            //  be wrong (because it's not adjusted for the skirt)
+        GSOutput starterVertex;
+        GenerateCorner(
+            input[2], input[0], input[1],
+            starterVertex, true, primId,
+            outputStream);
 
-    GenerateCorner(
-        input[0], input[1], input[2],
-        starterVertex, false, primId,
-        outputStream);
+        GenerateCorner(
+            input[0], input[1], input[2],
+            starterVertex, false, primId,
+            outputStream);
 
-    GenerateCorner(
-        input[1], input[2], input[0],
-        starterVertex, false, primId,
-        outputStream);
-}
+        GenerateCorner(
+            input[1], input[2], input[0],
+            starterVertex, false, primId,
+            outputStream);
+    }
+
+#else
+
+    struct RTSTriangle
+    {
+        float4 a_v0 : A;
+        float2 v1 : B;
+        float4 param : C;
+        float3 depths : D;
+    };
+
+    // (if we could output triangle lists, worse case output would be 9 vertices)
+    [maxvertexcount(16)]
+        void gs_conservativeRasterization(
+            point RTSTriangle input[1],
+            #if (OUTPUT_PRIM_ID==1)
+                uint primId : SV_PrimitiveID,
+            #endif
+            inout TriangleStream<GSOutput> outputStream)
+    {
+        #if !(OUTPUT_PRIM_ID==1)
+            uint primId = 0;
+        #endif
+
+        VSOutput v[3];
+        v[0].position = float4(input[0].a_v0.xy, 0.f, 1.f);
+        v[1].position = float4(input[0].a_v0.xy + input[0].a_v0.zw, 0.f, 1.f);
+        v[2].position = float4(input[0].a_v0.xy + input[0].v1, 0.f, 1.f);
+
+        GSOutput starterVertex;
+        GenerateCorner(
+            v[2], v[0], v[1],
+            starterVertex, true, primId,
+            outputStream);
+
+        GenerateCorner(
+            v[0], v[1], v[2],
+            starterVertex, false, primId,
+            outputStream);
+
+        GenerateCorner(
+            v[1], v[2], v[0],
+            starterVertex, false, primId,
+            outputStream);
+    }
+
+#endif
