@@ -28,7 +28,7 @@ void fullscreen(uint vertexId : SV_VertexID, out float4 oPosition : SV_Position,
 	oPosition = float4(2.f * coord.x - 1.f, -2.f * coord.y + 1.f, 0.f, 1.f);
 }
 
-void fullscreen_viewfrustumvector(uint vertexId : SV_VertexID, out float4 oPosition : SV_Position, out float2 oTexCoord : TEXCOORD0, out ViewFrustumInterpolator vfi) 
+void fullscreen_viewfrustumvector(uint vertexId : SV_VertexID, out float4 oPosition : SV_Position, out float2 oTexCoord : TEXCOORD0, out ViewFrustumInterpolator vfi)
 {
 	float2 coord = float2((float)(vertexId / 2), (float)(vertexId % 2));
 	oTexCoord = coord;
@@ -36,7 +36,7 @@ void fullscreen_viewfrustumvector(uint vertexId : SV_VertexID, out float4 oPosit
 	oPosition = float4(2.f * coord.x - 1.f, -2.f * coord.y + 1.f, 0.f, 1.f);
 }
 
-void fullscreen_viewfrustumvector_deep(uint vertexId : SV_VertexID, out float4 oPosition : SV_Position, out float2 oTexCoord : TEXCOORD0, out ViewFrustumInterpolator vfi) 
+void fullscreen_viewfrustumvector_deep(uint vertexId : SV_VertexID, out float4 oPosition : SV_Position, out float2 oTexCoord : TEXCOORD0, out ViewFrustumInterpolator vfi)
 {
 	float2 coord = float2((float)(vertexId / 2), (float)(vertexId % 2));
 	oTexCoord = coord;
@@ -65,7 +65,6 @@ void fullscreen_flip_viewfrustumvector(uint vertexId : SV_VertexID, out float4 o
 
 //////////////
 
-
 struct PSInput_Basic
 {
 	float4 _position : SV_Position;
@@ -78,14 +77,14 @@ cbuffer ReciprocalViewportDimensions
 	float2 ReciprocalViewportDimensions;
 }
 
-float4 PixelCoordToSVPosition(float3 pixelCoord)
+float4 PixelCoordToSVPosition(float2 pixelCoord)
 {
-	return float4(	pixelCoord.x * ReciprocalViewportDimensions.x  *  2.f - 1.f, 
-					pixelCoord.y * ReciprocalViewportDimensions.y * -2.f + 1.f, 
+	return float4(	pixelCoord.x * ReciprocalViewportDimensions.x  *  2.f - 1.f,
+					pixelCoord.y * ReciprocalViewportDimensions.y * -2.f + 1.f,
 					0.f, 1.f);
 }
 
-float4 P2C(		float3 iPosition : POSITION0,
+float4 P2C(		float2 iPosition : POSITION0,
 				float4 iColor	 : COLOR0,
 				out float4 oColor : COLOR0 ) : SV_POSITION
 {
@@ -93,7 +92,7 @@ float4 P2C(		float3 iPosition : POSITION0,
 	return PixelCoordToSVPosition(iPosition);
 }
 
-float4 P2CR(	float3 iPosition  : POSITION0,
+float4 P2CR(	float2 iPosition  : POSITION0,
 				float4 iColor	  : COLOR0,
 				float iRadius	  : RADIUS,
 				out float4 oColor : COLOR0,
@@ -104,7 +103,7 @@ float4 P2CR(	float3 iPosition  : POSITION0,
 	return PixelCoordToSVPosition(iPosition);
 }
 
-PSInput_Basic P2CT(	float3 iPosition : POSITION0,
+PSInput_Basic P2CT(	float2 iPosition : POSITION0,
 				float4 iColor	 : COLOR0,
 				float2 iTexCoord : TEXCOORD0 )
 {
@@ -115,7 +114,7 @@ PSInput_Basic P2CT(	float3 iPosition : POSITION0,
 	return output;
 }
 
-void P2T(	float3 iPosition : POSITION0,
+void P2T(	float2 iPosition : POSITION0,
 			float2 iTexCoord : TEXCOORD0,
 			out float4 oPosition	: SV_Position,
 			out float2 oTexCoord0	: TEXCOORD0 )
@@ -124,7 +123,7 @@ void P2T(	float3 iPosition : POSITION0,
 	oTexCoord0 = iTexCoord;
 }
 
-void P2CTT(	float3 iPosition	: POSITION0,
+void P2CTT(	float2 iPosition	: POSITION0,
 			float4 iColor		: COLOR0,
 			float2 iTexCoord0	: TEXCOORD0,
 			float2 iTexCoord1	: TEXCOORD1,
@@ -143,4 +142,3 @@ void P2CTT(	float3 iPosition	: POSITION0,
 }
 
 #endif
-

@@ -555,3 +555,228 @@ namespace PlatformRig { namespace Overlays
     {}
 
 }}
+
+#include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Metal/Shader.h"
+#include "../../RenderCore/Metal/ShaderResource.h"
+#include "../../RenderCore/Metal/RenderTargetView.h"
+#include "../../RenderCore/Metal/InputLayout.h"
+#include "../../RenderCore/Assets/Services.h"
+#include "../../RenderCore/Techniques/ResourceBox.h"
+#include "../../RenderCore/Techniques/CommonResources.h"
+#include "../../BufferUploads/IBufferUploads.h"
+#include "../../BufferUploads/ResourceLocator.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
+#include "../../Assets/Assets.h"
+
+namespace PlatformRig { namespace Overlays
+{
+    using namespace RenderCore;
+
+    class CRTBox
+    {
+    public:
+        class Desc {};
+
+        using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
+        using SRV = Metal::ShaderResourceView;
+        using RTV = Metal::RenderTargetView;
+
+        ResLocator _buffer;
+        RTV _bufferRTV;
+        SRV _bufferSRV;
+        Metal::ViewportDesc _viewport;
+
+        CRTBox(const Desc&);
+        ~CRTBox();
+    };
+
+    const unsigned width = 64;
+    const unsigned height = 64;
+
+    CRTBox::CRTBox(const Desc&)
+    {
+        using namespace BufferUploads;
+        auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
+        _buffer = bufferUploads.Transaction_Immediate(
+            CreateDesc(BindFlag::RenderTarget|BindFlag::ShaderResource, 0, GPUAccess::Read|GPUAccess::Write,
+                TextureDesc::Plain2D(64, 64, Metal::NativeFormat::R8_UNORM), "ConsRasterTest"));
+        _bufferRTV = RTV(_buffer->GetUnderlying());
+        _bufferSRV = SRV(_buffer->GetUnderlying());
+        _viewport = Metal::ViewportDesc(0.f, 0.f, float(width), float(height), 0.f, 1.f);
+    }
+
+    CRTBox::~CRTBox() {}
+
+    void    ConservativeRasterTest::Render(
+        IOverlayContext* context, Layout& layout, 
+        Interactables&interactables, InterfaceState& interfaceState)
+    {
+        auto& box = Techniques::FindCachedBox2<CRTBox>();
+        auto metalContext = Metal::DeviceContext::Get(*context->GetDeviceContext());
+        SceneEngine::SavedTargets savedTargets(metalContext.get());
+
+        //
+        //  we're going to test the conversative rasterization geometry shader
+        //  to do this, we need to render to a low-res offscreen texture. Then
+        //  we blow that up to fill the screen.
+        //
+
+        auto& commonResources = Techniques::CommonResources();
+        metalContext->Bind(commonResources._blendOpaque);
+        metalContext->Bind(commonResources._dssDisable);
+        metalContext->Bind(commonResources._defaultRasterizer);
+        // metalContext->Bind(commonResources._cullDisable);
+        metalContext->Bind(Metal::Topology::TriangleList);
+
+        Metal::ViewportDesc mainViewport(*metalContext);
+        const float scale = XlFloor((mainViewport.Height - 150.f) / box._viewport.Height);
+        const Float2 base(5.f, 100.f);
+
+        Float2 triPoints[] = 
+        {
+            Float2(3.f, 3.f),
+            Float2(40.f, 58.f),
+            Float2(55.f, 5.f)
+        };
+
+        if (interfaceState.IsMouseButtonHeld(0)) {
+            auto mp = interfaceState.MousePosition();
+            triPoints[0] = (mp - base) / scale;
+            triPoints[0][0] = XlFloor(triPoints[0][0]*10.f) / 10.f;
+            triPoints[0][1] = XlFloor(triPoints[0][1]*10.f) / 10.f;
+        }
+
+        if (interfaceState.IsMouseButtonHeld(1)) {
+            auto mp = interfaceState.MousePosition();
+            triPoints[1] = (mp - base) / scale;
+            triPoints[1][0] = XlFloor(triPoints[1][0]*10.f) / 10.f;
+            triPoints[1][1] = XlFloor(triPoints[1][1]*10.f) / 10.f;
+        }
+
+        TRY
+        {
+            float clearCol[] = {0.f, 0.f, 0.f, 0.f};
+            metalContext->Clear(box._bufferRTV, clearCol);
+            metalContext->Bind(MakeResourceList(box._bufferRTV), nullptr);
+            metalContext->Bind(box._viewport);
+
+            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                "game/xleres/basic2d.vsh:P2C:vs_*",
+                "game/xleres/shadowgen/consraster.sh:gs_conservativeRasterization:gs_*",
+                "game/xleres/basic.psh:P:ps_*",
+                "");
+            
+            class Vertex
+            {
+            public:
+                Float2 p; unsigned col;
+            } 
+            vertices[3] = 
+            {
+                { triPoints[0], 0xffff0000 },
+                { triPoints[1], 0xff0000ff },
+                { triPoints[2], 0xff00ff00 }
+            };
+            Metal::VertexBuffer vb(vertices, sizeof(vertices));
+            metalContext->Bind(MakeResourceList(vb), sizeof(Vertex), 0);
+            Metal::BoundInputLayout inputLayout(Metal::GlobalInputLayouts::P2C, shader);
+            metalContext->Bind(inputLayout);
+
+            Float4 recipViewport(1.f / box._viewport.Width, 1.f / box._viewport.Height, 0.f, 0.f);
+            SharedPkt constants[] = { MakeSharedPkt(recipViewport) };
+
+            Metal::BoundUniforms uniforms(shader);
+            uniforms.BindConstantBuffers(1, {"ReciprocalViewportDimensions"});
+            uniforms.Apply(
+                *metalContext, context->GetGlobalUniformsStream(),
+                Metal::UniformsStream(constants));
+            
+            metalContext->Bind(shader);
+            metalContext->Draw(3);
+
+        } CATCH (...) {
+        } CATCH_END
+
+        savedTargets.ResetToOldTargets(metalContext.get());
+
+        // now render this texture onto the main render target
+        TRY
+        {
+            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                "game/xleres/basic2d.vsh:P2CT:vs_*",
+                "game/xleres/basic.psh:PCT:ps_*",
+                "");
+
+            class Vertex
+            {
+            public:
+                Float2 p; unsigned col; Float2 tc;
+            } 
+            vertices[6] = 
+            {
+                { Float2(5.f, 100.f), ~0u, Float2(0.f, 0.f) },
+                { Float2(5.f, 100.f + scale * box._viewport.Height), ~0u, Float2(0.f, 1.f) },
+                { Float2(5.f + scale * box._viewport.Width, 100.f), ~0u, Float2(1.f, 0.f) },
+                { Float2(5.f + scale * box._viewport.Width, 100.f), ~0u, Float2(1.f, 0.f) },
+                { Float2(5.f, 100.f + scale * box._viewport.Height), ~0u, Float2(0.f, 1.f) },
+                { Float2(5.f + scale * box._viewport.Width, 100.f + scale * box._viewport.Height), ~0u, Float2(1.f, 1.f) }
+            };
+            Metal::VertexBuffer vb(vertices, sizeof(vertices));
+            metalContext->Bind(MakeResourceList(vb), sizeof(Vertex), 0);
+            Metal::BoundInputLayout inputLayout(Metal::GlobalInputLayouts::P2CT, shader);
+            metalContext->Bind(inputLayout);
+
+            Float4 recipViewport(1.f / mainViewport.Width, 1.f / mainViewport.Height, 0.f, 0.f);
+            SharedPkt constants[] = { MakeSharedPkt(recipViewport) };
+            const Metal::ShaderResourceView* srvs[] = {&box._bufferSRV};
+
+            Metal::BoundUniforms uniforms(shader);
+            uniforms.BindShaderResources(1, {"DiffuseTexture"});
+            uniforms.BindConstantBuffers(1, {"ReciprocalViewportDimensions"});
+            uniforms.Apply(
+                *metalContext, context->GetGlobalUniformsStream(),
+                Metal::UniformsStream(constants, srvs));
+            
+            metalContext->BindPS(MakeResourceList(commonResources._pointClampSampler));
+            metalContext->Bind(shader);
+            metalContext->Draw(6);
+
+        } CATCH (...) {
+        } CATCH_END
+
+                // draw the triangle in wireframe
+        context->DrawLine(
+            ProjectionMode::P2D, 
+            Expand(Float2(base + scale * triPoints[0]), 0.f), ColorB(0xffffffff),
+            Expand(Float2(base + scale * triPoints[1]), 0.f), ColorB(0xffffffff),
+            1.f);
+
+        context->DrawLine(
+            ProjectionMode::P2D, 
+            Expand(Float2(base + scale * triPoints[1]), 0.f), ColorB(0xffffffff),
+            Expand(Float2(base + scale * triPoints[2]), 0.f), ColorB(0xffffffff),
+            1.f);
+
+        context->DrawLine(
+            ProjectionMode::P2D, 
+            Expand(Float2(base + scale * triPoints[2]), 0.f), ColorB(0xffffffff),
+            Expand(Float2(base + scale * triPoints[0]), 0.f), ColorB(0xffffffff),
+            1.f);
+
+        metalContext->BindPS(MakeResourceList(commonResources._linearClampSampler));
+        metalContext->Bind(commonResources._blendStraightAlpha);
+    }
+
+    bool    ConservativeRasterTest::ProcessInput(
+        InterfaceState& interfaceState, const InputSnapshot& input)
+    {
+        return false;
+    }
+
+    ConservativeRasterTest::ConservativeRasterTest() {}
+    ConservativeRasterTest::~ConservativeRasterTest() {}
+
+}}
+
+

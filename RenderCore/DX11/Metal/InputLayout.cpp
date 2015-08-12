@@ -70,6 +70,12 @@ namespace RenderCore { namespace Metal_DX11
                 InputElementDesc( "TEXCOORD",   0, NativeFormat::R32G32_FLOAT   )
             };
 
+            InputElementDesc P2C_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, NativeFormat::R32G32_FLOAT   ),
+                InputElementDesc( "COLOR",      0, NativeFormat::R8G8B8A8_UNORM )
+            };
+
             InputElementDesc PCT_Elements[] = 
             {
                 InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT),
@@ -118,6 +124,7 @@ namespace RenderCore { namespace Metal_DX11
         }
 
         InputLayout P2CT = std::make_pair(Detail::P2CT_Elements, dimof(Detail::P2CT_Elements));
+        InputLayout P2C = std::make_pair(Detail::P2C_Elements, dimof(Detail::P2C_Elements));
         InputLayout PCT = std::make_pair(Detail::PCT_Elements, dimof(Detail::PCT_Elements));
         InputLayout P = std::make_pair(Detail::P_Elements, dimof(Detail::P_Elements));
         InputLayout PC = std::make_pair(Detail::PC_Elements, dimof(Detail::PC_Elements));

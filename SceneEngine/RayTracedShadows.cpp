@@ -252,8 +252,9 @@ namespace SceneEngine
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/shadowgen/rtwritetiles.sh:vs_passthrough:vs_*",
                 // "game/xleres/shadowgen/rtwritetiles.sh:gs_passthrough:gs_*",
+                "game/xleres/shadowgen/consraster.sh:gs_conservativeRasterization:gs_*",
                 "game/xleres/shadowgen/rtwritetiles.sh:ps_main:ps_*",
-                "");
+                "OUTPUT_PRIM_ID=1");
             metalContext.Bind(shader);
 
             Metal::BoundInputLayout inputLayout(Metal::InputLayout(il, dimof(il)), shader);

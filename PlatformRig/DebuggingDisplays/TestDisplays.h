@@ -26,7 +26,6 @@ namespace PlatformRig { namespace Overlays
         Coord2 _currentMousePosition;
     };
 
-
     class DualContouringTest : public IWidget ///////////////////////////////////////////////////////////
     {
     public:
@@ -35,6 +34,16 @@ namespace PlatformRig { namespace Overlays
 
         DualContouringTest();
         ~DualContouringTest();
+    };
+
+    class ConservativeRasterTest : public IWidget ///////////////////////////////////////////////////////////
+    {
+    public:
+        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
+
+        ConservativeRasterTest();
+        ~ConservativeRasterTest();
     };
 }}
 

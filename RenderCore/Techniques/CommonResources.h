@@ -34,6 +34,7 @@ namespace RenderCore { namespace Techniques
 
         Metal::SamplerState _defaultSampler;
         Metal::SamplerState _linearClampSampler;
+        Metal::SamplerState _pointClampSampler;
 
         Metal::ConstantBuffer _localTransformBuffer;
 

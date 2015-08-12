@@ -60,6 +60,7 @@ namespace RenderCore { namespace Metal_DX11
     {
         extern InputLayout P;
         extern InputLayout PC;
+        extern InputLayout P2C;
         extern InputLayout P2CT;
         extern InputLayout PCT;
         extern InputLayout PT;
@@ -138,6 +139,8 @@ namespace RenderCore { namespace Metal_DX11
         UniformsStream( const ConstantBufferPacket packets[], const ConstantBuffer* prebuiltBuffers[], size_t packetCount,
                         const ShaderResourceView* resources[] = nullptr, size_t resourceCount = 0);
 
+        template <int Count0>
+            UniformsStream( ConstantBufferPacket (&packets)[Count0]);
         template <int Count0, int Count1>
             UniformsStream( ConstantBufferPacket (&packets)[Count0],
                             const ConstantBuffer* (&prebuiltBuffers)[Count1]);
@@ -280,6 +283,16 @@ namespace RenderCore { namespace Metal_DX11
         _resourceCount = resourceCount;
     }
 
+    template <int Count0>
+        UniformsStream::UniformsStream(ConstantBufferPacket (&packets)[Count0])
+        {
+            _packets = packets;
+            _prebuiltBuffers = nullptr;
+            _packetCount = Count0;
+            _resources = nullptr;
+            _resourceCount = 0;
+        }
+        
     template <int Count0, int Count1>
         UniformsStream::UniformsStream( ConstantBufferPacket (&packets)[Count0],
                                         const ConstantBuffer* (&prebuildBuffers)[Count1])

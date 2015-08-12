@@ -135,8 +135,11 @@ RWTexture2D<uint>	          ListsHead    : register(u1);
 RWStructuredBuffer<ListNode>  LinkedLists  : register(u2);
 
 uint ps_main(float4 pos : SV_Position,
-    // uint triIndex : TRIINDEX
-    uint triIndex : SV_PrimitiveID
+    #if (OUTPUT_PRIM_ID==1)     // (set if we get the primitive id from the geometry shader)
+        uint triIndex : PRIMID
+    #else
+        uint triIndex : SV_PrimitiveID
+    #endif
     ) : SV_Target0
 {
         // it would be helpful for ListsHead where our bound render target.
