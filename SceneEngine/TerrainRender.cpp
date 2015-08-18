@@ -172,10 +172,23 @@ namespace SceneEngine
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
-    const char* AsShaderFormat(CoverageFormat fmt)
+    static const char* AsShaderFormat(CoverageFormat fmt)
     {
-        switch (fmt) {
-        case RenderCore::Metal::NativeFormat::R16G16_UNORM: return "float2";
+        const char* floatNames[]    = { "float", "float2", "float3", "float4" };
+        const char* uintNames[]     = { "uint", "uint2", "uint3", "uint4" };
+        const char* intNames[]      = { "int", "int2", "int3", "int4" };
+
+        using namespace RenderCore::Metal::NativeFormat;
+        auto compCount = (size_t)GetComponentCount(GetComponents(fmt));
+        switch (GetComponentType(fmt)) {
+        case FormatComponentType::UNorm:
+        case FormatComponentType::SNorm:
+        case FormatComponentType::UNorm_SRGB:
+        case FormatComponentType::UnsignedFloat16:
+        case FormatComponentType::SignedFloat16:
+        case FormatComponentType::Float: return floatNames[std::min(compCount-1, dimof(floatNames))];
+        case FormatComponentType::UInt: return uintNames[std::min(compCount-1, dimof(uintNames))];
+        case FormatComponentType::SInt: return intNames[std::min(compCount-1, dimof(intNames))];
         default: return "uint";
         }
     }

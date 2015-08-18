@@ -293,10 +293,15 @@ namespace SceneEngine
         for (unsigned c=0; c<cfg.GetCoverageLayerCount(); ++c) {
             const auto& l = cfg.GetCoverageLayer(c);
             ImpliedTyping::TypeDesc t(ImpliedTyping::TypeCat(l._typeCat), uint16(l._typeCount));
+
+            auto fmt = RenderCore::Metal::AsNativeFormat(t);
+            if (l._typeCat == (unsigned)ImpliedTyping::TypeCat::UInt16 && l._typeCount == 2)
+                fmt = RenderCore::Metal::NativeFormat::R16G16_UNORM;        // hack! ShadowSample must be "unorm"
+
             rendererCfg._coverageLayers.push_back(
                 std::make_pair(
                     l._id, 
-                    TerrainRendererConfig::Layer { (l._nodeDimensions+UInt2(l._overlap, l._overlap)), cachedTileCount, RenderCore::Metal::AsNativeFormat(t) } ));
+                    TerrainRendererConfig::Layer { (l._nodeDimensions+UInt2(l._overlap, l._overlap)), cachedTileCount,  fmt } ));
         }
         return std::move(rendererCfg);
     }
@@ -392,8 +397,6 @@ namespace SceneEngine
         for (unsigned c=0; c<cfg.GetCoverageLayerCount(); ++c) {
             const auto& l = cfg.GetCoverageLayer(c);
             if (l._id == CoverageId_AngleBasedShadows) continue;
-            ImpliedTyping::TypeDesc t(ImpliedTyping::TypeCat(l._typeCat), uint16(l._typeCount));
-            if (!(t == ImpliedTyping::TypeOf<ShadowSample>())) continue;
 
             ::Assets::ResChar uberSurfaceFile[MaxPath];
             TerrainConfig::GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, l._id);

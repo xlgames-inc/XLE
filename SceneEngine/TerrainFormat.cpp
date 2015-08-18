@@ -312,10 +312,7 @@ namespace SceneEngine
         template<> Metal::NativeFormat::Enum AsFormat<int16>()                      { return Metal::NativeFormat::R16_SINT; }
         template<> Metal::NativeFormat::Enum AsFormat<int8>()                       { return Metal::NativeFormat::R8_SINT; }
         template<> Metal::NativeFormat::Enum AsFormat<std::pair<float, float>>()    { return Metal::NativeFormat::R32G32_FLOAT; }
-        template<> Metal::NativeFormat::Enum AsFormat<std::pair<uint16, uint16>>()  { return Metal::NativeFormat::R16G16_UINT; }
-        template<> Metal::NativeFormat::Enum AsFormat<std::pair<uint8, uint8>>()    { return Metal::NativeFormat::R8G8_UINT; }
-        template<> Metal::NativeFormat::Enum AsFormat<std::pair<int16, int16>>()    { return Metal::NativeFormat::R16G16_SINT; }
-        template<> Metal::NativeFormat::Enum AsFormat<std::pair<int8, int8>>()      { return Metal::NativeFormat::R8G8_SINT; }
+        template<> Metal::NativeFormat::Enum AsFormat<std::pair<uint16, uint16>>()  { return Metal::NativeFormat::R16G16_UNORM; }       // note -- UNORM (not UINT). Required for shadow samples to work right
 
         class CoverageDataResult
         {

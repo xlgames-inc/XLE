@@ -230,8 +230,11 @@ namespace LevelEditorXLE.Terrain
 
             result.CellCount = new GUILayer.VectorUInt2(CellCount[0], CellCount[1]);
 
-            if (cfg.HasBaseMaterialCoverage)
-                result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 1000));
+            if (cfg.HasBaseMaterialCoverage) {
+                var baseMatLayer = GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 1000);
+                baseMatLayer.NodeDims = new GUILayer.VectorUInt2(cfg.BaseMaterialResolution * cfg.NodeDimensions, cfg.BaseMaterialResolution * cfg.NodeDimensions);
+                result.Add(baseMatLayer);
+            }
             if (cfg.HasDecorationCoverage)
                 result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 1001));
             if (cfg.HasShadowsCoverage)
