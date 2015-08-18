@@ -219,7 +219,6 @@
         <LeGe.NativeProperty name="SpecularBrightness" nativeName="SpecularBrightness"/>
         <LeGe.NativeProperty name="SpecularNonMetalBrightness" nativeName="SpecularNonMetalBrightness"/>
         <LeGe.NativeProperty name="Flags" nativeName="Flags"/>
-        <LeGe.NativeProperty name="ShadowFrustumSettings" nativeName="ShadowFrustumSettings"/>
         <LeGe.NativeProperty name="ShadowResolveModel" nativeName="ShadowResolveModel"/>
         <LeGe.NativeVis geo="sphere"/>
 
@@ -245,7 +244,6 @@
         <scea.dom.editors.attribute category="Other" name="Flags" displayName="Flags"
           editor="Sce.Atf.Controls.PropertyEditing.FlagsUITypeEditor,Atf.Gui.WinForms:CastShadows"
           converter="Sce.Atf.Controls.PropertyEditing.FlagsTypeConverter:CastShadows"/>
-        <scea.dom.editors.attribute category="Other" name="ShadowFrustumSettings" displayName="Shadow Frustum Settings"/>
         <scea.dom.editors.attribute category="Other" name="ShadowResolveModel" displayName="Shadow Resolve Model"
           editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:Noisy=0,Smooth=1"
           converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:Noisy=0,Smooth=1"/>
@@ -265,7 +263,6 @@
         <xs:attribute name="SpecularBrightness" type="xs:float" default="1"/>
         <xs:attribute name="SpecularNonMetalBrightness" type="xs:float" default="1"/>
         <xs:attribute name="Flags" type="xs:int" default="0"/>
-        <xs:attribute name="ShadowFrustumSettings" type="xs:string" default="shadows"/>
         <xs:attribute name="ShadowResolveModel" type="xs:int" default="0"/>
       </xs:extension>
     </xs:complexContent>
@@ -290,6 +287,7 @@
         <LeGe.NativeProperty name="BlurAngleDegrees" nativeName="BlurAngleDegrees"/>
         <LeGe.NativeProperty name="MinBlurSearch" nativeName="MinBlurSearch"/>
         <LeGe.NativeProperty name="MaxBlurSearch" nativeName="MaxBlurSearch"/>
+        <LeGe.NativeProperty name="Light" nativeName="Light"/>
 
         <scea.dom.editors.attribute category="Projection" name="FrustumCount" displayName="Frustum Count" description="Number of separate shadow frustums (1 to 6)"/>
         <scea.dom.editors.attribute category="Projection" name="MaxDistanceFromCamera" displayName="Max Distance From Camera" description="Furtherest distance from camera for objects to cast shadows"/>
@@ -313,13 +311,13 @@
 
         <scea.dom.editors.attribute category="Resolve" name="BlurAngleDegrees" displayName="Blur Angle" description="Angle of the penumbra of the light (higher numbers mean softer shadows)"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
-
         <scea.dom.editors.attribute category="Resolve" name="MinBlurSearch" displayName="Min Blur Search" description="Minimum pixel radius blur for shadows. Increase if there is a lot of scintillation in the shadows."
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,128"/>
         <scea.dom.editors.attribute category="Resolve" name="MaxBlurSearch" displayName="Max Blur Search" description="Maximum pixel radius blur for shadows. Decrease if shadows appear grainy and excessively blurred. Try Blur Angle as well."
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,128"/>
 
-        <scea.dom.editors.attribute category="Name" name="Name" displayName="Name"/>
+        <scea.dom.editors.attribute category="General" name="Name" displayName="Name"/>
+        <scea.dom.editors.attribute category="General" name="Light" displayName="Attached Light"/>
 
         <scea.dom.editors category="Lights" name="ShadowFrustumSettings" menuText="Lights/ShadowFrustumSettings" description="Shadow frustum settings"/>
         <LeGe.OpaqueListable label="ShadowFrustumSettings"/>
@@ -342,6 +340,7 @@
         <xs:attribute name="BlurAngleDegrees" type="xs:float" default=".25"/>
         <xs:attribute name="MinBlurSearch" type="xs:float" default=".5"/>
         <xs:attribute name="MaxBlurSearch" type="xs:float" default="25"/>
+        <xs:attribute name="Light" type="xs:string" default="Sun"/>
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>

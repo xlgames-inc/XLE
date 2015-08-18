@@ -306,11 +306,9 @@ namespace LevelEditorXLE.Terrain
                     if (cfg.Import == TerrainConfig.Config.ImportType.DEMFile
                         && cfg.SourceDEMFile != null && cfg.SourceDEMFile.Length > 0)
                     {
-                        GUILayer.EditorInterfaceUtils.GenerateUberSurfaceFromDEM(
-                            cfg.UberSurfaceDirectory, cfg.SourceDEMFile,
-                            cfg.NodeDimensions, cfg.CellTreeDepth,
-                            progress);
-                    } else if (cfg.Import == TerrainConfig.Config.ImportType.NewBlankTerrain
+                        cfg.ImportOp.Execute(cfg.UberSurfaceDirectory, progress);
+                    } 
+                    else if (cfg.Import == TerrainConfig.Config.ImportType.NewBlankTerrain
                         && cfg.NewCellCountX != 0 && cfg.NewCellCountY != 0)
                     {
                         GUILayer.EditorInterfaceUtils.GenerateBlankUberSurface(

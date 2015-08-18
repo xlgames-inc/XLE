@@ -10,14 +10,37 @@
 #include "../../SceneEngine/TerrainFormat.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
+#include <vector>
 
 namespace ConsoleRig { class IProgress; }
 namespace SceneEngine { class TerrainConfig; class ITerrainFormat; class GradientFlagsSettings; }
 
 namespace ToolsRig
 {
-    UInt2 ConvertDEMData(
-        const ::Assets::ResChar outputDir[], const ::Assets::ResChar input[], 
+    class TerrainImportOp
+    {
+    public:
+        enum class SourceFormat { AbsoluteFloats, Quantized };
+        UInt2 _sourceDims;
+        SourceFormat _sourceFormat;
+        Float2 _sourceHeightRange;
+        Assets::rstring _sourceFile;
+        bool _sourceIsGood;
+
+        UInt2 _importMins;
+        UInt2 _importMaxs;
+        Float2 _importHeightRange;
+
+        std::vector<std::string> _warnings;
+    };
+
+    TerrainImportOp PrepareTerrainImport(
+        const ::Assets::ResChar input[], 
+        unsigned destNodeDims, unsigned destCellTreeDepth);
+
+    void ExecuteTerrainImport(
+        const TerrainImportOp& operation,
+        const ::Assets::ResChar outputDir[],
         unsigned destNodeDims, unsigned destCellTreeDepth,
         ConsoleRig::IProgress* progress);
 

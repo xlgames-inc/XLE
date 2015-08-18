@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TerrainLayer.h"
+#include "GUILayerUtil.h"
 #include "MarshalString.h"
 #include "../ToolsRig/TerrainConversion.h"
 
@@ -147,4 +148,63 @@ namespace GUILayer
     TerrainConfig::CoverageLayerDesc::~CoverageLayerDesc() {}
 
     
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    public ref class TerrainImportOp
+    {
+    public:
+        property VectorUInt2 SourceDims     { VectorUInt2 get() { return AsVectorUInt2(_native->_sourceDims); } }
+        property Vector2 SourceHeightRange  { Vector2 get() { return AsVector2(_native->_sourceHeightRange); } }
+        property bool SourceIsGood          { bool get() { return _native->_sourceIsGood; } }
+
+        property VectorUInt2 ImportMins     
+        { 
+            VectorUInt2 get()           { return AsVectorUInt2(_native->_importMins); }
+            void set(VectorUInt2 value) { _native->_importMins = AsUInt2(value); }
+        }
+        property VectorUInt2 ImportMaxs     
+        { 
+            VectorUInt2 get()           { return AsVectorUInt2(_native->_importMaxs); }
+            void set(VectorUInt2 value) { _native->_importMaxs = AsUInt2(value); }
+        }
+        property Vector2 ImportHeightRange  
+        { 
+            Vector2 get()               { return AsVector2(_native->_importHeightRange); }
+            void set(Vector2 value)     { _native->_importHeightRange = AsFloat2(value); }
+        }
+
+        property bool AbsoluteHeights
+        {
+            bool get() { return _native->_sourceFormat == ToolsRig::TerrainImportOp::SourceFormat::AbsoluteFloats; }
+        }
+
+        property unsigned   WarningCount                { unsigned get() { return (unsigned)_native->_warnings.size(); } }
+        String^             Warning(unsigned index)     { return clix::marshalString<clix::E_UTF8>(_native->_warnings[index]); }
+
+        void Execute(String^ outputDir, IProgress^ progress)
+        {
+            auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
+            ToolsRig::ExecuteTerrainImport(
+                *_native, 
+                clix::marshalString<clix::E_UTF8>(outputDir).c_str(),
+                _destNodeDims, _destCellTreeDepth, nativeProgress.get());
+        }
+
+        TerrainImportOp(String^ input, unsigned destNodeDims, unsigned destCellTreeDepth)
+        {
+            auto r = ToolsRig::PrepareTerrainImport(
+                clix::marshalString<clix::E_UTF8>(input).c_str(),
+                destNodeDims, destCellTreeDepth);
+            _native.reset(new ToolsRig::TerrainImportOp());
+            *_native = r;
+            _destNodeDims = destNodeDims;
+            _destCellTreeDepth = destCellTreeDepth;
+        }
+
+    protected:
+        clix::auto_ptr<ToolsRig::TerrainImportOp> _native;
+        unsigned _destNodeDims;
+        unsigned _destCellTreeDepth;
+    };
+
 }

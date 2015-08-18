@@ -321,18 +321,6 @@ namespace GUILayer
             return Tuple::Create(AsVector3(boundary.first), AsVector3(boundary.second));
         }
 
-        static void GenerateUberSurfaceFromDEM(
-            String^ uberSurfaceDirectory, String^ demFile,
-            unsigned nodeDimensions, unsigned cellTreeDepth,
-            IProgress^ progress)
-        {
-            auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
-            ToolsRig::ConvertDEMData(
-                clix::marshalString<clix::E_UTF8>(uberSurfaceDirectory).c_str(),
-                clix::marshalString<clix::E_UTF8>(demFile).c_str(),
-                nodeDimensions, cellTreeDepth, nativeProgress.get());
-        }
-
         static void GenerateBlankUberSurface(
             String^ uberSurfaceDirectory, 
             unsigned newCellCountX, unsigned newCellCountY,

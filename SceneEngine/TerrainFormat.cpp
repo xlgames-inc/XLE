@@ -656,13 +656,13 @@ namespace SceneEngine
             MainTerrainFormat::WriteCellFromUberSurface<ShadowSample>(
                 destinationFile, surface, 
                 cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
-                MainTerrainFormat::Compression::QuantRange, 
+                MainTerrainFormat::Compression::None, 
                 std::make_pair(VersionString, BuildDateString));
         } else if (surface.Format() == ImpliedTyping::TypeOf<uint8>()) {
             MainTerrainFormat::WriteCellFromUberSurface<uint8>(
                 destinationFile, surface, 
                 cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
-                MainTerrainFormat::Compression::QuantRange, 
+                MainTerrainFormat::Compression::None, 
                 std::make_pair(VersionString, BuildDateString));
         }
     }

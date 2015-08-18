@@ -46,6 +46,11 @@ namespace LevelEditorXLE.Terrain
             this.m_createCellsX = new System.Windows.Forms.TextBox();
             this.m_createCellsY = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
+            this.label3 = new System.Windows.Forms.Label();
+            this.m_sourceHeightRangeMax = new System.Windows.Forms.TextBox();
+            this.m_sourceHeightRangeMin = new System.Windows.Forms.TextBox();
+            this.m_importWarnings = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // m_propertyGrid1
@@ -64,7 +69,7 @@ namespace LevelEditorXLE.Terrain
             // 
             this.m_okButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.m_okButton.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this.m_okButton.Location = new System.Drawing.Point(381, 281);
+            this.m_okButton.Location = new System.Drawing.Point(381, 310);
             this.m_okButton.Name = "m_okButton";
             this.m_okButton.Size = new System.Drawing.Size(119, 23);
             this.m_okButton.TabIndex = 1;
@@ -75,7 +80,7 @@ namespace LevelEditorXLE.Terrain
             // 
             this.m_cancelButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.m_cancelButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.m_cancelButton.Location = new System.Drawing.Point(256, 281);
+            this.m_cancelButton.Location = new System.Drawing.Point(256, 310);
             this.m_cancelButton.Name = "m_cancelButton";
             this.m_cancelButton.Size = new System.Drawing.Size(119, 23);
             this.m_cancelButton.TabIndex = 2;
@@ -142,7 +147,7 @@ namespace LevelEditorXLE.Terrain
             // 
             this.m_createBlankTerrainCheck.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.m_createBlankTerrainCheck.AutoSize = true;
-            this.m_createBlankTerrainCheck.Location = new System.Drawing.Point(12, 246);
+            this.m_createBlankTerrainCheck.Location = new System.Drawing.Point(12, 275);
             this.m_createBlankTerrainCheck.Name = "m_createBlankTerrainCheck";
             this.m_createBlankTerrainCheck.Size = new System.Drawing.Size(123, 17);
             this.m_createBlankTerrainCheck.TabIndex = 3;
@@ -153,7 +158,7 @@ namespace LevelEditorXLE.Terrain
             // m_createCellsX
             // 
             this.m_createCellsX.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.m_createCellsX.Location = new System.Drawing.Point(317, 243);
+            this.m_createCellsX.Location = new System.Drawing.Point(317, 272);
             this.m_createCellsX.Name = "m_createCellsX";
             this.m_createCellsX.Size = new System.Drawing.Size(79, 20);
             this.m_createCellsX.TabIndex = 8;
@@ -162,7 +167,7 @@ namespace LevelEditorXLE.Terrain
             // m_createCellsY
             // 
             this.m_createCellsY.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.m_createCellsY.Location = new System.Drawing.Point(421, 243);
+            this.m_createCellsY.Location = new System.Drawing.Point(421, 272);
             this.m_createCellsY.Name = "m_createCellsY";
             this.m_createCellsY.Size = new System.Drawing.Size(79, 20);
             this.m_createCellsY.TabIndex = 9;
@@ -171,17 +176,70 @@ namespace LevelEditorXLE.Terrain
             // 
             this.label1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(403, 249);
+            this.label1.Location = new System.Drawing.Point(403, 278);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(12, 13);
             this.label1.TabIndex = 10;
             this.label1.Text = "x";
             // 
+            // label2
+            // 
+            this.label2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(114, 247);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(113, 13);
+            this.label2.TabIndex = 11;
+            this.label2.Text = "Source Height Range:";
+            // 
+            // label3
+            // 
+            this.label3.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(319, 250);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(10, 13);
+            this.label3.TabIndex = 14;
+            this.label3.Text = "-";
+            // 
+            // m_sourceHeightRangeMax
+            // 
+            this.m_sourceHeightRangeMax.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.m_sourceHeightRangeMax.Location = new System.Drawing.Point(337, 244);
+            this.m_sourceHeightRangeMax.Name = "m_sourceHeightRangeMax";
+            this.m_sourceHeightRangeMax.Size = new System.Drawing.Size(79, 20);
+            this.m_sourceHeightRangeMax.TabIndex = 13;
+            this.m_sourceHeightRangeMax.TextChanged += new System.EventHandler(this.m_sourceHeightRangeMax_TextChanged);
+            // 
+            // m_sourceHeightRangeMin
+            // 
+            this.m_sourceHeightRangeMin.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.m_sourceHeightRangeMin.Location = new System.Drawing.Point(233, 244);
+            this.m_sourceHeightRangeMin.Name = "m_sourceHeightRangeMin";
+            this.m_sourceHeightRangeMin.Size = new System.Drawing.Size(79, 20);
+            this.m_sourceHeightRangeMin.TabIndex = 12;
+            this.m_sourceHeightRangeMin.TextChanged += new System.EventHandler(this.m_sourceHeightRangeMin_TextChanged);
+            // 
+            // m_importWarnings
+            // 
+            this.m_importWarnings.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.m_importWarnings.Location = new System.Drawing.Point(422, 242);
+            this.m_importWarnings.Name = "m_importWarnings";
+            this.m_importWarnings.Size = new System.Drawing.Size(75, 23);
+            this.m_importWarnings.TabIndex = 15;
+            this.m_importWarnings.Text = "Warnings";
+            this.m_importWarnings.UseVisualStyleBackColor = true;
+            // 
             // TerrainConfig
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(513, 316);
+            this.ClientSize = new System.Drawing.Size(513, 346);
+            this.Controls.Add(this.m_importWarnings);
+            this.Controls.Add(this.label3);
+            this.Controls.Add(this.m_sourceHeightRangeMax);
+            this.Controls.Add(this.m_sourceHeightRangeMin);
+            this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.m_createCellsY);
             this.Controls.Add(this.m_createCellsX);
@@ -216,5 +274,10 @@ namespace LevelEditorXLE.Terrain
         private System.Windows.Forms.TextBox m_createCellsX;
         private System.Windows.Forms.TextBox m_createCellsY;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.TextBox m_sourceHeightRangeMax;
+        private System.Windows.Forms.TextBox m_sourceHeightRangeMin;
+        private System.Windows.Forms.Button m_importWarnings;
     }
 }

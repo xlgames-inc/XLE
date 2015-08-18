@@ -195,7 +195,6 @@ namespace LevelEditorXLE
             directionalLightType.SpecularBrightnessAttribute = directionalLightType.Type.GetAttributeInfo("SpecularBrightness");
             directionalLightType.SpecularNonMetalBrightnessAttribute = directionalLightType.Type.GetAttributeInfo("SpecularNonMetalBrightness");
             directionalLightType.FlagsAttribute = directionalLightType.Type.GetAttributeInfo("Flags");
-            directionalLightType.ShadowFrustumSettingsAttribute = directionalLightType.Type.GetAttributeInfo("ShadowFrustumSettings");
             directionalLightType.ShadowResolveModelAttribute = directionalLightType.Type.GetAttributeInfo("ShadowResolveModel");
 
             shadowFrustumSettings.Type = getNodeType("gap", "shadowFrustumSettings");
@@ -213,6 +212,7 @@ namespace LevelEditorXLE
             shadowFrustumSettings.BlurAngleDegreesAttribute = shadowFrustumSettings.Type.GetAttributeInfo("BlurAngleDegrees");
             shadowFrustumSettings.MinBlurSearchAttribute = shadowFrustumSettings.Type.GetAttributeInfo("MinBlurSearch");
             shadowFrustumSettings.MaxBlurSearchAttribute = shadowFrustumSettings.Type.GetAttributeInfo("MaxBlurSearch");
+            shadowFrustumSettings.LightAttribute = shadowFrustumSettings.Type.GetAttributeInfo("Light");
 
             oceanSettings.Type = getNodeType("gap", "oceanSettings");
             oceanSettings.EnableAttribute = oceanSettings.Type.GetAttributeInfo("Enable");
@@ -725,7 +725,6 @@ namespace LevelEditorXLE
             public static AttributeInfo SpecularBrightnessAttribute;
             public static AttributeInfo SpecularNonMetalBrightnessAttribute;
             public static AttributeInfo FlagsAttribute;
-            public static AttributeInfo ShadowFrustumSettingsAttribute;
             public static AttributeInfo ShadowResolveModelAttribute;
         }
 
@@ -746,6 +745,7 @@ namespace LevelEditorXLE
             public static AttributeInfo BlurAngleDegreesAttribute;
             public static AttributeInfo MinBlurSearchAttribute;
             public static AttributeInfo MaxBlurSearchAttribute;
+            public static AttributeInfo LightAttribute;
         }
 
         public static class oceanSettings

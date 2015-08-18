@@ -43,6 +43,8 @@ namespace LevelEditorXLE.Terrain
                 m_createCellsY.Text = value.NewCellCountY.ToString();
                 m_createCellsX.Enabled = value.Import == Config.ImportType.NewBlankTerrain;
                 m_createCellsY.Enabled = value.Import == Config.ImportType.NewBlankTerrain;
+
+                UpdateImportOp();
             }
         }
 
@@ -101,8 +103,8 @@ namespace LevelEditorXLE.Terrain
 
             public enum ImportType { None, DEMFile, NewBlankTerrain };
 
-            [Browsable(false)]
-            public ImportType Import { get; set; }
+            [Browsable(false)] public ImportType Import { get; set; }
+            [Browsable(false)] public GUILayer.TerrainImportOp ImportOp { get; set; }
 
             internal Config() 
             { 
@@ -153,6 +155,7 @@ namespace LevelEditorXLE.Terrain
         private void m_importSource_TextChanged(object sender, EventArgs e)
         {
             m_config.SourceDEMFile = m_importSource.Text;
+            UpdateImportOp();
         }
 
         private void DoCreateBlank_CheckedChanged(object sender, EventArgs e)
@@ -186,6 +189,41 @@ namespace LevelEditorXLE.Terrain
             uint newCellCount = 0;
             if (!uint.TryParse(m_createCellsY.Text, out newCellCount)) newCellCount = 0;
             m_config.NewCellCountY = newCellCount;
+        }
+
+        private void UpdateImportOp()
+        {
+            m_config.ImportOp = null;
+            if (m_config.Import == Config.ImportType.DEMFile && m_config.SourceDEMFile.Length > 0)
+            {
+                m_config.ImportOp = new GUILayer.TerrainImportOp(
+                    m_config.SourceDEMFile,
+                    m_config.NodeDimensions, m_config.CellTreeDepth);
+
+                m_sourceHeightRangeMin.Text = m_config.ImportOp.ImportHeightRange.X.ToString();
+                m_sourceHeightRangeMax.Text = m_config.ImportOp.ImportHeightRange.Y.ToString();
+            }
+
+            bool enableCtrls = m_config.ImportOp != null && m_config.ImportOp.SourceIsGood;
+            m_sourceHeightRangeMin.Enabled = enableCtrls && !m_config.ImportOp.AbsoluteHeights;
+            m_sourceHeightRangeMax.Enabled = enableCtrls && !m_config.ImportOp.AbsoluteHeights;
+            m_importWarnings.Enabled = m_config.ImportOp != null && m_config.ImportOp.WarningCount > 0;
+        }
+
+        private void m_sourceHeightRangeMin_TextChanged(object sender, EventArgs e)
+        {
+            float newRangeMin = 0.0f;
+            if (!float.TryParse(m_sourceHeightRangeMin.Text, out newRangeMin)) newRangeMin = 0;
+            m_config.ImportOp.ImportHeightRange = 
+                new GUILayer.Vector2(newRangeMin, m_config.ImportOp.ImportHeightRange.Y);
+        }
+
+        private void m_sourceHeightRangeMax_TextChanged(object sender, EventArgs e)
+        {
+            float newRangeMax = 1000.0f;
+            if (!float.TryParse(m_sourceHeightRangeMax.Text, out newRangeMax)) newRangeMax = 0;
+            m_config.ImportOp.ImportHeightRange =
+                new GUILayer.Vector2(m_config.ImportOp.ImportHeightRange.X, newRangeMax);
         }
     }
 }

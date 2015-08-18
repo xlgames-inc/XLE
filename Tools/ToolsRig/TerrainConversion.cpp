@@ -282,84 +282,29 @@ namespace ToolsRig
     }
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    class DEMConfig
-    {
-    public:
-        UInt2 _dims;
-
-        DEMConfig(const char inputHdr[]);
-    };
-
+    std::vector<std::string>* s_tiffWarningVector = nullptr;
     static void TIFFWarningHandler(const char* module, const char* fmt, va_list args)
     {
         // suppress warnings
         char buffer[1024];
         _vsnprintf_s(buffer, dimof(buffer), _TRUNCATE, fmt, args);
         LogWarning << "Tiff reader warning: " << buffer;
-    }
 
-    DEMConfig::DEMConfig(const char inputHdr[])
-    {
-        _dims = UInt2(0, 0);
-
-        auto ext = XlExtension(inputHdr);
-        if (ext && (!XlCompareStringI(ext, "hdr") || !XlCompareStringI(ext, "flt"))) {
-
-            ::Assets::ResChar inputFile[MaxPath];
-            XlCopyString(inputFile, inputHdr);
-            XlChopExtension(inputFile);
-            XlCatString(inputFile, dimof(inputFile), ".hdr");
-
-            size_t fileSize = 0;
-            auto block = LoadFileAsMemoryBlock(inputFile, &fileSize);
-            std::string configAsString(block.get(), &block[fileSize]);
-            std::regex parse("^(\\S+)\\s+(.*)");
-
-            std::vector<int> captureGroups;
-            captureGroups.push_back(1);
-            captureGroups.push_back(2);
-    
-            const std::sregex_token_iterator end;
-            std::sregex_token_iterator iter(configAsString.begin(), configAsString.end(), parse, captureGroups);
-            for (;iter != end;) {
-                auto paramName = *iter++;
-                auto paramValue = *iter++;
-
-                    //  we ignore many parameters. But we at least need to get ncols & nrows
-                    //  These tell us the dimensions of the input data
-                if (!XlCompareStringI(paramName.str().c_str(), "ncols")) { _dims[0] = XlAtoI32(paramValue.str().c_str()); }
-                if (!XlCompareStringI(paramName.str().c_str(), "nrows")) { _dims[1] = XlAtoI32(paramValue.str().c_str()); }
-            }
-
-        } else if (ext && (!XlCompareStringI(ext, "tif") || !XlCompareStringI(ext, "tiff"))) {
-            
-            auto* tif = TIFFOpen(inputHdr, "r");
-            if (tif) {
-                TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &_dims[0]);
-                TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &_dims[1]);
-            }
-
+        if (s_tiffWarningVector) {
+            s_tiffWarningVector->push_back(buffer);
         }
     }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    template<typename InputType>
-        static void SimpleConvert(float dest[], const InputType* input, size_t count, float scale)
+    static void TIFFErrorHandler(const char* module, const char* fmt, va_list args)
     {
-        for (unsigned c=0; c<count; ++c)
-            dest[c] = float(input[c]) * scale;
-    }
+        // suppress warnings
+        char buffer[1024];
+        _vsnprintf_s(buffer, dimof(buffer), _TRUNCATE, fmt, args);
+        LogWarning << "Tiff reader error: " << buffer;
 
-    static float Float16AsFloat32(unsigned short input)
-    {
-        return half_float::detail::half2float(input);
-    }
-
-    static void ConvertFloat16(float dest[], const uint16* input, size_t count, float scale)
-    {
-        for (unsigned c=0; c<count; ++c)
-            dest[c] = Float16AsFloat32(input[c]) * scale;
+        if (s_tiffWarningVector) {
+            s_tiffWarningVector->push_back(buffer);
+        }
     }
 
     template<typename Fn>
@@ -376,29 +321,171 @@ namespace ToolsRig
     template<typename Fn>
         AutoClose<Fn> MakeAutoClose(Fn&& fn) { return AutoClose<Fn>(std::move(fn)); }
 
-    UInt2 ConvertDEMData(
-        const ::Assets::ResChar outputDir[], const ::Assets::ResChar input[], 
-        unsigned destNodeDims, unsigned destCellTreeDepth,
-        ConsoleRig::IProgress* progress)
+    static UInt2 ClampImportDims(UInt2 input, unsigned destNodeDims, unsigned destCellTreeDepth)
     {
-        auto initStep = progress ? progress->BeginStep("Load source data", 1, false) : nullptr;
-
-        TIFFSetWarningHandler(&TIFFWarningHandler);
-
-        DEMConfig inCfg(input);
-        if (!(inCfg._dims[0]*inCfg._dims[1])) {
-            Throw(
-                ::Exceptions::BasicLabel("Bad or missing input terrain config file (%s)", input));
-        }
-
             //  we have to make sure the width and height are multiples of the
             //  dimensions of a cell (in elements). We'll pad out the edges if
             //  they don't match
         const unsigned cellWidthInNodes = 1<<(destCellTreeDepth-1);
         const unsigned clampingDim = destNodeDims * cellWidthInNodes;
-        UInt2 finalDims = inCfg._dims;
-        if ((finalDims[0] % clampingDim) != 0) { finalDims[0] += clampingDim - (finalDims[0] % clampingDim); }
-        if ((finalDims[1] % clampingDim) != 0) { finalDims[1] += clampingDim - (finalDims[1] % clampingDim); }
+        
+        if ((input[0] % clampingDim) != 0) { input[0] += clampingDim - (input[0] % clampingDim); }
+        if ((input[1] % clampingDim) != 0) { input[1] += clampingDim - (input[1] % clampingDim); }
+        return input;
+    }
+
+    TerrainImportOp PrepareTerrainImport(
+        const ::Assets::ResChar input[], 
+        unsigned destNodeDims, unsigned destCellTreeDepth)
+    {
+        TerrainImportOp result;
+        result._sourceDims = UInt2(0, 0);
+        result._sourceFile = input;
+        result._sourceIsGood = false;
+
+        auto ext = XlExtension(input);
+        if (ext && (!XlCompareStringI(ext, "hdr") || !XlCompareStringI(ext, "flt"))) {
+
+            result._sourceFormat = TerrainImportOp::SourceFormat::AbsoluteFloats;
+            result._sourceHeightRange = Float2(FLT_MAX, -FLT_MAX);
+
+            ::Assets::ResChar inputFile[MaxPath];
+            XlCopyString(inputFile, input);
+            XlChopExtension(inputFile);
+            XlCatString(inputFile, dimof(inputFile), ".hdr");
+
+            size_t fileSize = 0;
+            auto block = LoadFileAsMemoryBlock(inputFile, &fileSize);
+            if (block.get() && fileSize) {
+                std::string configAsString(block.get(), &block[fileSize]);
+                std::regex parse("^(\\S+)\\s+(.*)");
+
+                std::vector<int> captureGroups;
+                captureGroups.push_back(1);
+                captureGroups.push_back(2);
+    
+                const std::sregex_token_iterator end;
+                std::sregex_token_iterator iter(configAsString.begin(), configAsString.end(), parse, captureGroups);
+                for (;iter != end;) {
+                    auto paramName = *iter++;
+                    auto paramValue = *iter++;
+
+                        //  we ignore many parameters. But we at least need to get ncols & nrows
+                        //  These tell us the dimensions of the input data
+                    if (!XlCompareStringI(paramName.str().c_str(), "ncols")) { result._sourceDims[0] = XlAtoI32(paramValue.str().c_str()); }
+                    if (!XlCompareStringI(paramName.str().c_str(), "nrows")) { result._sourceDims[1] = XlAtoI32(paramValue.str().c_str()); }
+                }
+
+                result._sourceIsGood = true;
+            } else {
+                result._warnings.push_back("Could not open input file");
+            }
+
+        } else if (ext && (!XlCompareStringI(ext, "tif") || !XlCompareStringI(ext, "tiff"))) {
+
+            auto oldWarningHandler = TIFFSetWarningHandler(&TIFFWarningHandler);
+            auto oldErrorHandler = TIFFSetErrorHandler(&TIFFErrorHandler);
+            s_tiffWarningVector = &result._warnings;
+            auto autoClose = MakeAutoClose([oldWarningHandler, oldErrorHandler]() 
+                {
+                    TIFFSetWarningHandler(oldWarningHandler);
+                    TIFFSetErrorHandler(oldErrorHandler);
+                    s_tiffWarningVector = nullptr;
+                });
+            
+            auto* tif = TIFFOpen(input, "r");
+            if (tif) {
+                auto autoClose = MakeAutoClose([tif]() { TIFFClose(tif); });
+
+                TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &result._sourceDims[0]);
+                TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &result._sourceDims[1]);
+
+                uint32 bitsPerPixel = 32;
+                uint32 sampleFormat = SAMPLEFORMAT_IEEEFP;
+                TIFFGetFieldDefaulted(tif, TIFFTAG_BITSPERSAMPLE, &bitsPerPixel);
+                TIFFGetFieldDefaulted(tif, TIFFTAG_SAMPLEFORMAT, &sampleFormat);
+
+                switch (sampleFormat) {
+                case SAMPLEFORMAT_UINT:
+                case SAMPLEFORMAT_INT:
+                    result._sourceFormat = TerrainImportOp::SourceFormat::Quantized;
+                    if (bitsPerPixel == 8)          { result._sourceHeightRange = Float2(0.f, float(0xff)); }
+                    else if (bitsPerPixel == 16)    { result._sourceHeightRange = Float2(0.f, float(0xffff)); }
+                    else if (bitsPerPixel == 32)    { result._sourceHeightRange = Float2(0.f, float(0xffffffff)); }
+                    else                            { result._warnings.push_back("Bad bits per pixel"); return result; }
+                    break;
+
+                case SAMPLEFORMAT_IEEEFP:
+                    result._sourceFormat = TerrainImportOp::SourceFormat::AbsoluteFloats;
+                    if (bitsPerPixel != 16 && bitsPerPixel != 32)
+                        { result._warnings.push_back("Bad bits per pixel"); return result; }
+                    break;
+
+                default:
+                    result._warnings.push_back("Unsupported sample format");
+                    return result;
+                }
+
+                result._sourceIsGood = true;
+            } else {
+                result._warnings.push_back("Could not open tiff file");
+            }
+
+        } else {
+            result._warnings.push_back("Unknown input file format");
+        }
+
+        result._importMins = UInt2(0, 0);
+        result._importMaxs = ClampImportDims(result._sourceDims, destNodeDims, destCellTreeDepth);
+        result._importHeightRange = result._sourceHeightRange;
+        return result;
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template<typename InputType>
+        static void SimpleConvert(float dest[], const InputType* input, size_t count, float offset, float scale)
+    {
+        for (unsigned c=0; c<count; ++c)
+            dest[c] = float(input[c]) * scale + offset;
+    }
+
+    static float Float16AsFloat32(unsigned short input)
+    {
+        return half_float::detail::half2float(input);
+    }
+
+    static void ConvertFloat16(float dest[], const uint16* input, size_t count, float offset, float scale)
+    {
+        for (unsigned c=0; c<count; ++c)
+            dest[c] = Float16AsFloat32(input[c]) * scale + offset;
+    }
+    
+    void ExecuteTerrainImport(
+        const TerrainImportOp& op,
+        const ::Assets::ResChar outputDir[],
+        unsigned destNodeDims, unsigned destCellTreeDepth,
+        ConsoleRig::IProgress* progress)
+    {
+        auto initStep = progress ? progress->BeginStep("Load source data", 1, false) : nullptr;
+
+        auto oldWarningHandler = TIFFSetWarningHandler(&TIFFWarningHandler);
+        auto oldErrorHandler = TIFFSetErrorHandler(&TIFFErrorHandler);
+        s_tiffWarningVector = nullptr;
+        auto autoClose = MakeAutoClose([oldWarningHandler, oldErrorHandler]() 
+            {
+                TIFFSetWarningHandler(oldWarningHandler);
+                TIFFSetErrorHandler(oldErrorHandler);
+                s_tiffWarningVector = nullptr;
+            });
+
+        if (!op._sourceIsGood || ((op._importMaxs[0] <= op._importMins[0]) && (op._importMaxs[1] <= op._importMins[1]))) {
+            Throw(
+                ::Exceptions::BasicLabel("Bad or missing input terrain config file (%s)", op._sourceFile.c_str()));
+        }
+
+        UInt2 importOffset =  op._importMins;
+        UInt2 finalDims = ClampImportDims(op._importMaxs - op._importMins, destNodeDims, destCellTreeDepth);
 
         CreateDirectoryRecursive(outputDir);
 
@@ -426,30 +513,33 @@ namespace ToolsRig
 
         float* outputArray = (float*)PtrAdd(outputUberFile.GetData(), sizeof(TerrainUberHeader));
 
-        auto ext = XlExtension(input);
-
+        auto ext = XlExtension(op._sourceFile.c_str());
         if (ext && (!XlCompareStringI(ext, "hdr") || !XlCompareStringI(ext, "flt"))) {
-            MemoryMappedFile inputFileData(input, 0, MemoryMappedFile::Access::Read);
+            MemoryMappedFile inputFileData(op._sourceFile.c_str(), 0, MemoryMappedFile::Access::Read);
             if (!inputFileData.IsValid())
-                Throw(::Exceptions::BasicLabel("Couldn't open input file (%s)", input));
+                Throw(::Exceptions::BasicLabel("Couldn't open input file (%s)", op._sourceFile.c_str()));
+
+            if (op._sourceFormat!=TerrainImportOp::SourceFormat::AbsoluteFloats)
+                Throw(::Exceptions::BasicLabel("Expecting absolute floats when loading from raw float array"));
 
             if (initStep) {
                 initStep->Advance();
                 initStep.reset();
             }
 
-            auto copyRows = std::min(finalDims[1], inCfg._dims[1]);
+            auto copyRows = std::min(finalDims[1], op._importMaxs[1]) - op._importMins[1];
             const unsigned progressStep = 16;
             auto copyStep = progress ? progress->BeginStep("Create uber surface data", copyRows / progressStep, true) : nullptr;
 
             auto inputArray = (const float*)inputFileData.GetData();
 
+            unsigned yoff = op._importMins[1];
             unsigned y2=0;
             for (; (y2+progressStep)<=copyRows; y2+=progressStep) {
                 for (unsigned y=0; y<progressStep; ++y) {
                     std::copy(
-                        &inputArray[(y2+y) * inCfg._dims[0]],
-                        &inputArray[(y2+y) * inCfg._dims[0] + std::min(inCfg._dims[0], finalDims[0])],
+                        &inputArray[(y2+y+yoff) * op._sourceDims[0] + op._importMins[0]],
+                        &inputArray[(y2+y+yoff) * op._sourceDims[0] + std::min(op._sourceDims[0], op._importMaxs[0])],
                         &outputArray[(y2+y) * finalDims[0]]);
                 }
 
@@ -463,22 +553,21 @@ namespace ToolsRig
                 // remainder rows left over after dividing by progressStep
             for (; y2<copyRows; ++y2) {
                 std::copy(
-                    &inputArray[y2 * inCfg._dims[0]],
-                    &inputArray[y2 * inCfg._dims[0] + std::min(inCfg._dims[0], finalDims[0])],
+                    &inputArray[(y2+yoff) * op._sourceDims[0] + op._importMins[0]],
+                    &inputArray[(y2+yoff) * op._sourceDims[0] + std::min(op._sourceDims[0], op._importMaxs[0])],
                     &outputArray[y2 * finalDims[0]]);
             }
         } else if (ext && (!XlCompareStringI(ext, "tif") || !XlCompareStringI(ext, "tiff"))) {
                 // attempt to read geotiff file
-            auto* tif = TIFFOpen(input, "r");
+            auto* tif = TIFFOpen(op._sourceFile.c_str(), "r");
             if (!tif)
-                Throw(::Exceptions::BasicLabel("Couldn't open input file (%s)", input));
+                Throw(::Exceptions::BasicLabel("Couldn't open input file (%s)", op._sourceFile.c_str()));
 
             auto autoClose = MakeAutoClose([tif]() { TIFFClose(tif); });
-
             auto stripCount = TIFFNumberOfStrips(tif);
 
             auto copyStep = 
-                progress 
+                  progress 
                 ? progress->BeginStep("Create uber surface data", stripCount, true)
                 : nullptr;
 
@@ -494,19 +583,19 @@ namespace ToolsRig
                 //  TIFF supports a wide variety of formats. If we get something
                 //  unexpected, just throw;
             if (sampleFormat != SAMPLEFORMAT_UINT && sampleFormat != SAMPLEFORMAT_INT && sampleFormat != SAMPLEFORMAT_IEEEFP)
-                Throw(::Exceptions::BasicLabel("Unexpected sample format in input file (%s). Only supporting integer or floating point inputs", input));
+                Throw(::Exceptions::BasicLabel("Unexpected sample format in input file (%s). Only supporting integer or floating point inputs", op._sourceFile.c_str()));
 
             if (bitsPerPixel != 8 && bitsPerPixel != 16 && bitsPerPixel != 32)
-                Throw(::Exceptions::BasicLabel("Unexpected bits per sample in input file (%s). Only supporting 8, 16 or 32 bit formats. Try floating a 32 bit float format.", input));
+                Throw(::Exceptions::BasicLabel("Unexpected bits per sample in input file (%s). Only supporting 8, 16 or 32 bit formats. Try floating a 32 bit float format.", op._sourceFile.c_str()));
 
             auto stripSize = TIFFStripSize(tif);
             if (!stripSize)
-                Throw(::Exceptions::BasicLabel("Could not get strip byte codes from tiff file (%s). Input file may be corrupted.", input));
+                Throw(::Exceptions::BasicLabel("Could not get strip byte codes from tiff file (%s). Input file may be corrupted.", op._sourceFile.c_str()));
             
             auto stripBuffer = std::make_unique<char[]>(stripSize);
             XlSetMemory(stripBuffer.get(), 0, stripSize);
 
-            typedef void ConversionFn(float*, const void*, size_t, float);
+            typedef void ConversionFn(float*, const void*, size_t, float, float);
             ConversionFn* convFn;
             switch (sampleFormat) {
             case SAMPLEFORMAT_UINT:
@@ -514,32 +603,39 @@ namespace ToolsRig
                 if (bitsPerPixel == 8)          convFn = (ConversionFn*)&SimpleConvert<uint8>;
                 else if (bitsPerPixel == 16)    convFn = (ConversionFn*)&SimpleConvert<uint16>;
                 else if (bitsPerPixel == 32)    convFn = (ConversionFn*)&SimpleConvert<uint32>;
-                else Throw(::Exceptions::BasicLabel("Unknown input format.", input));
+                else Throw(::Exceptions::BasicLabel("Unknown input format.", op._sourceFile.c_str()));
                 break;
 
             case SAMPLEFORMAT_IEEEFP:
                 if (bitsPerPixel == 16)         convFn = (ConversionFn*)&ConvertFloat16;
                 else if (bitsPerPixel == 32)    convFn = (ConversionFn*)&SimpleConvert<float>;
-                else Throw(::Exceptions::BasicLabel("8 bit floats not supported in input file (%s). Use 16 or 32 bit floats instead.", input));
+                else Throw(::Exceptions::BasicLabel("8 bit floats not supported in input file (%s). Use 16 or 32 bit floats instead.", op._sourceFile.c_str()));
                 break;
 
             default:
-                Throw(::Exceptions::BasicLabel("Unknown input format.", input));
+                Throw(::Exceptions::BasicLabel("Unknown input format.", op._sourceFile.c_str()));
             }
 
-            float valueScale = 2000.f / float(0xffff);
+            float valueScale = (op._importHeightRange[1] - op._importHeightRange[0]) / (op._sourceHeightRange[1] - op._sourceHeightRange[0]);
+            float valueOffset = op._importHeightRange[0] - op._sourceHeightRange[0] * valueScale;
                 
             for (tstrip_t strip = 0; strip < stripCount; strip++) {
                 auto readResult = TIFFReadEncodedStrip(
                     tif, strip, stripBuffer.get(), stripSize);
 
                 if (readResult != stripSize)
-                    Throw(::Exceptions::BasicLabel("Error while reading from tiff file. File may be truncated or otherwise corrupted.", input));
+                    Throw(::Exceptions::BasicLabel("Error while reading from tiff file. File may be truncated or otherwise corrupted.", op._sourceFile.c_str()));
 
-                (*convFn)(
-                    &outputArray[strip * rowsperstrip * finalDims[0]],
-                    stripBuffer.get(), stripSize*8/bitsPerPixel,
-                    valueScale);
+                for (unsigned r=0; r<rowsperstrip; ++r) {
+                    auto y = strip * rowsperstrip + r;
+                    if (y >= op._importMins[1] && y < op._importMaxs[1]) {
+                        (*convFn)(
+                            &outputArray[(y - op._importMins[1]) * finalDims[0]],
+                            PtrAdd(stripBuffer.get(), op._importMins[0]*8/bitsPerPixel),
+                            std::min(op._sourceDims[0], op._importMaxs[0]),
+                            valueOffset, valueScale);
+                    }
+                }
 
                 if (copyStep) {
                     if (copyStep->IsCancelled())
@@ -552,23 +648,21 @@ namespace ToolsRig
         }
 
             // fill in the extra space caused by rounding up
-        if (finalDims[0] > inCfg._dims[0]) {
-            for (unsigned y=0; y<inCfg._dims[1]; ++y) {
+        if (finalDims[0] > op._sourceDims[0]) {
+            for (unsigned y=0; y<(op._importMaxs[1] - op._importMins[1]); ++y) {
                 std::fill(
-                    &outputArray[y * finalDims[0] + inCfg._dims[0]],
+                    &outputArray[y * finalDims[0] + op._sourceDims[0]],
                     &outputArray[y * finalDims[0] + finalDims[0]],
                     0.f);
             }
         }
 
-        for (unsigned y=inCfg._dims[1]; y < finalDims[1]; ++y) {
+        for (unsigned y=op._importMaxs[1] - op._importMins[1]; y < finalDims[1]; ++y) {
             std::fill(
                 &outputArray[y * finalDims[0]],
                 &outputArray[y * finalDims[0] + finalDims[0]],
                 0.f);
         }
-
-        return UInt2(finalDims[0] / clampingDim, finalDims[1] / clampingDim);
     }
 
     void GenerateBlankUberSurface(
