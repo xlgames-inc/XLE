@@ -636,6 +636,15 @@
         <LeGe.NativeProperty name="RainQuantity" nativeName="RainQuantity"/>
         <LeGe.NativeProperty name="EvaporationConstant" nativeName="EvaporationConstant"/>
         <LeGe.NativeProperty name="PressureConstant" nativeName="PressureConstant"/>
+        
+        <LeGe.NativeProperty name="OpticalThicknessColor" nativeName="OpticalThicknessColor"/>
+        <LeGe.NativeProperty name="OpticalThicknessScalar" nativeName="OpticalThicknessScalar"/>
+        <LeGe.NativeProperty name="FoamColor" nativeName="FoamColor"/>
+        <LeGe.NativeProperty name="Specular" nativeName="Specular"/>
+        <LeGe.NativeProperty name="Roughness" nativeName="Roughness"/>
+        <LeGe.NativeProperty name="RefractiveIndex" nativeName="RefractiveIndex"/>
+        <LeGe.NativeProperty name="UpwellingScale" nativeName="UpwellingScale"/>
+        <LeGe.NativeProperty name="SkyReflectionScale" nativeName="SkyReflectionScale"/>
 
         <scea.dom.editors.attribute category="General" name="Marker" displayName="Marker"/>
 
@@ -659,6 +668,17 @@
         <scea.dom.editors.attribute category="Simulation" name="PressureConstant" displayName="PressureConstant"
                                     description="Constant used by the PipeModel for controlling the size of waves. Try adjusting if waves seem too big or too small."/>
         
+        <scea.dom.editors.attribute category="Lighting" name="OpticalThicknessColor" displayName="Optical Thickness"
+                                    editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
+        <scea.dom.editors.attribute category="Lighting" name="OpticalThicknessScalar" displayName="Optical Thickness Scalar"/>
+        <scea.dom.editors.attribute category="Lighting" name="FoamColor" displayName="Foam Color"
+                                    editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
+        <scea.dom.editors.attribute category="Lighting" name="Specular" displayName="Specular"/>
+        <scea.dom.editors.attribute category="Lighting" name="Roughness" displayName="Roughness"/>
+        <scea.dom.editors.attribute category="Lighting" name="RefractiveIndex" displayName="Refractive Index"/>
+        <scea.dom.editors.attribute category="Lighting" name="UpwellingScale" displayName="Upwelling Brightness"/>
+        <scea.dom.editors.attribute category="Lighting" name="SkyReflectionScale" displayName="Sky Reflection Brightness"/>
+        
         <scea.dom.editors category="Environment" name="ShallowSurface" menuText="Lights/ShallowSurface" description="Shallow water surface (eg, a lake surface)"/>
         <LeGe.OpaqueListable label="Shallow Surface"/>
       </xs:appinfo>
@@ -676,6 +696,15 @@
         <xs:attribute name="RainQuantity" type="xs:float" default="0"/>
         <xs:attribute name="EvaporationConstant" type="xs:float" default="1"/>
         <xs:attribute name="PressureConstant" type="xs:float" default="150"/>
+      
+        <xs:attribute name="OpticalThicknessColor" type="xs:int" default="-1"/>
+        <xs:attribute name="OpticalThicknessScalar" type="xs:float" default="0.07"/>
+        <xs:attribute name="FoamColor" type="xs:int" default="-1"/>
+        <xs:attribute name="Specular" type="xs:float" default=".22"/>
+        <xs:attribute name="Roughness" type="xs:float" default=".06"/>
+        <xs:attribute name="RefractiveIndex" type="xs:float" default="1.3333"/>
+        <xs:attribute name="UpwellingScale" type="xs:float" default="0.33"/>
+        <xs:attribute name="SkyReflectionScale" type="xs:float" default="0.75"/>
       </xs:extension>
     </xs:complexContent>
 

@@ -19,6 +19,17 @@ Texture2DArray<float>		ShallowFoamQuantity : register(t11);
 
 Texture2DArray<float>       ShallowWaterHeights : register(t3);
 
+cbuffer ShallowWaterLighting
+{
+    float3 OpticalThickness	= 0.2f * float3(0.45f, 0.175f, 0.05f);
+    float3 FoamColor = float3(0.5f, 0.5f, .5f);
+    float Specular = .22f;
+    float Roughness = .06f;
+    float RefractiveIndex = 1.333f;
+    float UpwellingScale = 0.33f;
+    float SkyReflectionScale = 0.75f;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 VSOutput vs_main(uint vertexId : SV_VertexId)
@@ -32,7 +43,7 @@ VSOutput vs_main(uint vertexId : SV_VertexId)
     float3 localPosition = float3(
         p.x / float(SHALLOW_WATER_TILE_DIMENSION),
         p.y / float(SHALLOW_WATER_TILE_DIMENSION),
-        -75.f);
+        0.f);
 
     int3 coord = NormalizeRelativeGridCoord(p);
     if (coord.z >= 0)
@@ -117,18 +128,11 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
         detailStrength.xxx);
 
     float3 worldSpaceNormal = BuildNormalFromDerivatives(surfaceDerivatives);
-    // return float4(worldSpaceNormal, 1.f);
-
-    // float rawDiffuse = dot(worldSpaceNormal, BasicLight[0].NegativeDirection);
-    //float specBrightness = CalculateSpecular(
-    //    worldSpaceNormal, directionToEye,
-    //    BasicLight[0].NegativeDirection,
-    //    SpecularParameters_RoughF0(RoughnessMin, Material_SpecularToF0(SpecularMin)), rawDiffuse);
 
     OceanSurfaceSample oceanSurface = (OceanSurfaceSample)0;
     oceanSurface.worldSpaceNormal = worldSpaceNormal;
-    oceanSurface.material.specular = .22f; // SpecularMin;
-    oceanSurface.material.roughness = .06f; // RoughnessMin;
+    oceanSurface.material.specular = Specular;
+    oceanSurface.material.roughness = Roughness;
     oceanSurface.material.metal = 1.f;
 
     OceanParameters parameters;
@@ -147,8 +151,8 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
         //		the normal a bit
         //
 
-    const float refractiveIndex = 1.333f;
-    float3 opticalThickness	= 0.2f * float3(0.45f, 0.175f, 0.05f);
+    const float refractiveIndex = RefractiveIndex;
+    float3 opticalThickness	= OpticalThickness;
 
     CalculateReflectivityAndTransmission2(parts, oceanSurface, parameters, refractiveIndex, true);
     // CalculateFoam(parts, oceanSurface);
@@ -157,10 +161,11 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
     CalculateSkyReflection(parts, oceanSurface, parameters);
     CalculateSpecular(parts, oceanSurface, parameters);
 
+    // return float4(LightingScale * parts.refracted, 1.f);
+
     float3 refractedAttenuation = exp(-opticalThickness * min(MaxDistanceToSimulate, parts.refractionAttenuationDepth));
-    parts.upwelling *= 0.33f;
-    parts.skyReflection *= 0.75f;
-    // parts.specular *= 2.5f;
+    parts.upwelling *= UpwellingScale;
+    parts.skyReflection *= SkyReflectionScale;
 
     parts.foamQuantity += 1.f-saturate(parts.forwardDistanceThroughWater*.75f);
     float foamTex = CalculateFoamFromFoamQuantity(0.05f * geo.texCoord, 0.5f * parts.foamQuantity);
@@ -169,7 +174,7 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
           parts.transmission * refractedAttenuation * parts.refracted
         + parts.transmission * parts.upwelling
         + (1.f-parts.foamQuantity) * (parts.specular + parts.skyReflection)
-        + float3(0.5f, 0.5f, .5f) * foamTex
+        + FoamColor * foamTex
         ;
 
     float4 result;

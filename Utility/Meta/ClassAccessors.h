@@ -135,9 +135,12 @@ namespace Utility
                 Type& dst, uint64 id,
                 const void* src, ImpliedTyping::TypeDesc srcType,
                 bool stringForm = false) const;
+
+        template<typename ValueType, typename Type>
+            bool TrySet(ValueType& valueSrc, Type& dst, uint64 id) const;
             
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                ////   S E T T E R   I N T E R F A C E   ////
+                ////   C H I L D   I N T E R F A C E   ////
 
         std::pair<void*, const ClassAccessors*> TryCreateChild(void* dst, uint64 childListId) const;
 
@@ -180,6 +183,13 @@ namespace Utility
         {
             assert(typeid(Type).hash_code() == _associatedType);
             return TryCastFrom(&dst, id, src, srcType, stringForm);
+        }
+
+    template<typename ValueType, typename Type>
+        bool ClassAccessors::TrySet(ValueType& valueSrc, Type& dst, uint64 id) const
+        {
+            assert(typeid(Type).hash_code() == _associatedType);
+            return TryCastFrom(&valueSrc, id, src, ImpliedTyping::TypeOf<ValueType>());
         }
         
     template<typename Type>

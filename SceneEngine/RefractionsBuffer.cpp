@@ -33,18 +33,24 @@ namespace SceneEngine
         using namespace BufferUploads;
         auto& uploads = GetBufferUploads();
 
+            // We're loosing a huge amount of colour precision with lower quality
+            // pixel formats here... We often duplicate the lighting buffer, so
+            // we need a floating point format.
         auto targetDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::RenderTarget,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R8G8B8A8_TYPELESS),
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, 
+                // NativeFormat::R10G10B10A2_UNORM), 
+                NativeFormat::R16G16B16A16_FLOAT), 
+                // NativeFormat::R8G8B8A8_TYPELESS),
             "Refractions");
 
         auto _refractionsTexture0 = uploads.Transaction_Immediate(targetDesc);
         auto _refractionsTexture1 = uploads.Transaction_Immediate(targetDesc);
 
-        RenderTargetView refractionsFrontTarget(_refractionsTexture0->GetUnderlying(), NativeFormat::R8G8B8A8_UNORM);
-        RenderTargetView refractionsBackTarget(_refractionsTexture1->GetUnderlying(), NativeFormat::R8G8B8A8_UNORM);
-        ShaderResourceView refractionsFrontSRV(_refractionsTexture0->GetUnderlying(), NativeFormat::R8G8B8A8_UNORM);
-        ShaderResourceView refractionsBackSRV(_refractionsTexture1->GetUnderlying(), NativeFormat::R8G8B8A8_UNORM);
+        RenderTargetView refractionsFrontTarget(_refractionsTexture0->GetUnderlying());
+        RenderTargetView refractionsBackTarget(_refractionsTexture1->GetUnderlying());
+        ShaderResourceView refractionsFrontSRV(_refractionsTexture0->GetUnderlying());
+        ShaderResourceView refractionsBackSRV(_refractionsTexture1->GetUnderlying());
 
         _refractionsTexture[0] = std::move(_refractionsTexture0);
         _refractionsTexture[1] = std::move(_refractionsTexture1);
@@ -58,7 +64,10 @@ namespace SceneEngine
 
         ////////////////////////////////
 
-    void RefractionsBuffer::Build(RenderCore::Metal::DeviceContext& metalContext, LightingParserContext& parserContext, float standardDeviationForBlur)
+    void RefractionsBuffer::Build(
+        RenderCore::Metal::DeviceContext& metalContext, 
+        LightingParserContext& parserContext, 
+        float standardDeviationForBlur)
     {
         TRY {
                 // Build a refractions texture
@@ -75,13 +84,21 @@ namespace SceneEngine
                         
             metalContext.Bind(MakeResourceList(_refractionsFrontTarget), nullptr);
             metalContext.BindPS(MakeResourceList(sourceSRV)); // mainTargets._postResolveSRV));
-            metalContext.Bind(
-                Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                    "game/xleres/Effects/SeparableFilter.psh:SingleStepDownSample:ps_*",
-                    (textureDesc.SampleDesc.Count>1)?"MSAA_SAMPLERS=1":""));
             SetupVertexGeneratorShader(&metalContext);
-            metalContext.Draw(4);
+            
+            bool needStepDown = 
+                _width != textureDesc.Width || _height != textureDesc.Height || textureDesc.SampleDesc.Count > 1;
+            if (needStepDown) {
+                metalContext.Bind(
+                    Assets::GetAssetDep<Metal::ShaderProgram>(
+                        "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+                        "game/xleres/Effects/SeparableFilter.psh:SingleStepDownSample:ps_*",
+                        (textureDesc.SampleDesc.Count>1)?"MSAA_SAMPLERS=1":""));
+                metalContext.Draw(4);
+
+                metalContext.Bind(MakeResourceList(_refractionsBackTarget), nullptr);
+                metalContext.BindPS(MakeResourceList(_refractionsFrontSRV));
+            }
 
             float filteringWeights[8];
             XlSetMemory(filteringWeights, 0, sizeof(filteringWeights));
@@ -89,7 +106,6 @@ namespace SceneEngine
             metalContext.BindPS(MakeResourceList(Metal::ConstantBuffer(filteringWeights, sizeof(filteringWeights))));
 
             metalContext.Bind(MakeResourceList(_refractionsBackTarget), nullptr);
-            metalContext.BindPS(MakeResourceList(_refractionsFrontSRV));
             metalContext.Bind(
                 Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", 

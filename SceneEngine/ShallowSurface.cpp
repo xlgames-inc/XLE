@@ -25,6 +25,7 @@
 #include "../Math/Transformations.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/MemoryUtils.h"
+#include "../Utility/Meta/ClassAccessorsImpl.h"
 
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 
@@ -130,15 +131,18 @@ namespace SceneEngine
         Float2 _simulationMins;
         unsigned _bufferCounter;
         Config _cfg;
+        LightingConfig _lightingCfg;
     };
 
     ShallowSurface::ShallowSurface(
         const Float2 triangleList[], size_t stride,
         size_t ptCount,
-        const Config& settings)
+        const Config& settings,
+        const LightingConfig& lightingSettings)
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_cfg = settings;
+        _pimpl->_lightingCfg = lightingSettings;
         _pimpl->_bufferCounter = 0;
 
         const auto maxSimulationGrids = settings._simGridCount;
@@ -329,6 +333,38 @@ namespace SceneEngine
             AsPointer(_pimpl->_validGridList.cbegin()), AsPointer(_pimpl->_validGridList.cend()));
     }
 
+    static SharedPkt MakeLightingConstants(const ShallowSurface::LightingConfig& cfg)
+    {
+        class LightingConstants
+        {
+        public:
+            Float3 OpticalThickness;
+            unsigned dummy0;
+            Float3 FoamColor;
+            float Specular;
+            float Roughness;
+            float RefractiveIndex;
+            float UpwellingScale;
+            float SkyReflectionScale;
+        };
+        // static LightingConstants lightingConstants = 
+        // {
+        //     0.2f * Float3(0.45f, 0.175f, 0.05f), 0,
+        //     Float3(0.5f, 0.5f, .5f),
+        //     .22f, .06f, 1.333f, 0.33f, 0.75f
+        // };
+        return MakeSharedPkt(
+            LightingConstants
+            {
+                cfg._opticalThicknessScalar * AsFloat3Color(cfg._opticalThicknessColor),
+                0,
+                AsFloat3Color(cfg._foamColor),
+                cfg._specular, cfg._roughness,
+                cfg._refractiveIndex, cfg._upwellingScale,
+                cfg._skyReflectionScale
+            });
+    }
+
     void ShallowSurface::RenderDebugging(
         RenderCore::Metal::DeviceContext& metalContext,
         LightingParserContext& parserContext,
@@ -345,7 +381,7 @@ namespace SceneEngine
         TechniqueMaterial material(
             Metal::InputLayout(nullptr, 0),
             {   ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants, 
-                Hash64("ShallowWaterCellConstants") },
+                Hash64("ShallowWaterCellConstants"), Hash64("ShallowWaterLighting") },
             matParam);
 
         auto shader = material.FindVariation(
@@ -354,6 +390,8 @@ namespace SceneEngine
             metalContext.Bind(Metal::Topology::TriangleList);
             metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
             _pimpl->_sim->BindForOceanRender(metalContext, _pimpl->_bufferCounter);
+
+            auto lightingConstantsBuffer = MakeLightingConstants(_pimpl->_lightingCfg);
 
             const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
                 "game/xleres/BasicMaterialConstants.txt");
@@ -370,7 +408,7 @@ namespace SceneEngine
                             i->_gridToWorld,
                             ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
                         matParam,
-                        page
+                        page, lightingConstantsBuffer
                     });
                 metalContext.Unbind<Metal::VertexBuffer>();
                 metalContext.Unbind<Metal::BoundInputLayout>();
@@ -403,11 +441,13 @@ namespace SceneEngine
     static bool BindRefractions(
         Metal::DeviceContext& metalContext, 
         LightingParserContext& parserContext,
-        float refractionStdDev)
+        float refractionStdDev, bool doStepDown)
     {
         Metal::ViewportDesc mainViewportDesc(metalContext);
+        float scale = doStepDown ? .5f : 1.f;
         auto& refractionBox = Techniques::FindCachedBox2<RefractionsBuffer>(
-            unsigned(mainViewportDesc.Width/2.f), unsigned(mainViewportDesc.Height/2.f));
+            unsigned(mainViewportDesc.Width*scale), 
+            unsigned(mainViewportDesc.Height*scale));
         refractionBox.Build(metalContext, parserContext, refractionStdDev);
 
         SavedTargets targets(&metalContext);
@@ -435,7 +475,9 @@ namespace SceneEngine
             for (auto i : _pimpl->_surfaces)
                 i->UpdateSimulation(metalContext, parserContext, surfaceHeights);
 
-            bool refractionsEnable = BindRefractions(metalContext, parserContext, 1.6f);
+            static bool doStepDown = true;
+            static float refractionBlur = 1.3f;
+            bool refractionsEnable = BindRefractions(metalContext, parserContext, refractionBlur, doStepDown);
 
             {
                 static DeepOceanSimSettings deepOceanSettings;
@@ -478,5 +520,75 @@ namespace SceneEngine
     }
 
     ShallowSurfaceManager::~ShallowSurfaceManager() {}
+
 }
 
+template<> const ClassAccessors& GetAccessors<SceneEngine::ShallowSurface::Config>()
+{
+    using Obj = SceneEngine::ShallowSurface::Config;
+    static ClassAccessors props(typeid(Obj).hash_code());
+    static bool init = false;
+    if (!init) {
+        props.Add(u("GridPhysicalSize"),    DefaultGet(Obj, _gridPhysicalSize), DefaultSet(Obj, _gridPhysicalSize));
+        props.Add(u("GridDims"),            DefaultGet(Obj, _simGridDims),      DefaultSet(Obj, _simGridDims));
+        props.Add(u("SimGridCount"),        DefaultGet(Obj, _simGridCount),     DefaultSet(Obj, _simGridCount));
+        props.Add(u("BaseHeight"),          DefaultGet(Obj, _baseHeight),       DefaultSet(Obj, _baseHeight));
+
+        props.Add(u("SimMethod"),
+            [](const Obj& obj) { return obj._usePipeModel ? 0 : 1; },
+            [](Obj& obj, unsigned value) { obj._usePipeModel = (value==0); });
+
+        props.Add(u("RainQuantity"),            DefaultGet(Obj, _rainQuantity),         DefaultSet(Obj, _rainQuantity));
+        props.Add(u("EvaporationConstant"),     DefaultGet(Obj, _evaporationConstant),  DefaultSet(Obj, _evaporationConstant));
+        props.Add(u("PressureConstant"),        DefaultGet(Obj, _pressureConstant),     DefaultSet(Obj, _pressureConstant));
+
+        init = true;
+    }
+    return props;
+}
+
+template<> const ClassAccessors& GetAccessors<SceneEngine::ShallowSurface::LightingConfig>()
+{
+    using Obj = SceneEngine::ShallowSurface::LightingConfig;
+    static ClassAccessors props(typeid(Obj).hash_code());
+    static bool init = false;
+    if (!init) {
+        props.Add(u("OpticalThicknessColor"),   DefaultGet(Obj, _opticalThicknessColor),    DefaultSet(Obj, _opticalThicknessColor));
+        props.Add(u("OpticalThicknessScalar"),  DefaultGet(Obj, _opticalThicknessScalar),   DefaultSet(Obj, _opticalThicknessScalar));
+        props.Add(u("FoamColor"),               DefaultGet(Obj, _foamColor),                DefaultSet(Obj, _foamColor));
+        props.Add(u("Specular"),                DefaultGet(Obj, _specular),                 DefaultSet(Obj, _specular));
+        props.Add(u("Roughness"),               DefaultGet(Obj, _roughness),                DefaultSet(Obj, _roughness));
+        props.Add(u("RefractiveIndex"),         DefaultGet(Obj, _refractiveIndex),          DefaultSet(Obj, _refractiveIndex));
+        props.Add(u("UpwellingScale"),          DefaultGet(Obj, _upwellingScale),           DefaultSet(Obj, _upwellingScale));
+        props.Add(u("SkyReflectionScale"),      DefaultGet(Obj, _skyReflectionScale),       DefaultSet(Obj, _skyReflectionScale));
+        init = true;
+    }
+    return props;
+}
+
+namespace SceneEngine 
+{
+    ShallowSurface::Config::Config()
+    {
+        _gridPhysicalSize = 64.f;
+        _simGridDims = 128;
+        _simGridCount = 12;
+        _baseHeight = 0.f;
+        _usePipeModel = true;
+        _rainQuantity = 0.f;
+        _evaporationConstant = 1.f;
+        _pressureConstant = 150.f;
+    }
+
+    ShallowSurface::LightingConfig::LightingConfig()
+    {
+        _opticalThicknessColor = ~0u;
+        _opticalThicknessScalar = .35f * .2f;
+        _foamColor = ~0u;
+        _specular = .22f;
+        _roughness = .06f;
+        _refractiveIndex = 1.333f;
+        _upwellingScale = 0.33f;
+        _skyReflectionScale = 0.75f;
+    }
+}

@@ -33,6 +33,23 @@ namespace SceneEngine
             float       _rainQuantity;
             float       _evaporationConstant;
             float       _pressureConstant;
+
+            Config();
+        };
+
+        class LightingConfig
+        {
+        public:
+            unsigned _opticalThicknessColor;
+            float _opticalThicknessScalar;
+            unsigned _foamColor;
+            float _specular;
+            float _roughness;
+            float _refractiveIndex;
+            float _upwellingScale;
+            float _skyReflectionScale;
+
+            LightingConfig();
         };
 
         void RenderDebugging(
@@ -49,7 +66,8 @@ namespace SceneEngine
         ShallowSurface(
             const Float2 triangleList[], size_t stride,
             size_t ptCount,
-            const Config& settings);
+            const Config& settings,
+            const LightingConfig& lightingSettings);
         ~ShallowSurface();
 
     protected:
