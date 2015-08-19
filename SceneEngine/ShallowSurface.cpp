@@ -125,6 +125,8 @@ namespace SceneEngine
             Int2 _gridCoord;
         };
 
+        Metal::IndexBuffer _defaultIB;
+        Metal::IndexBuffer _unsimDefaultIB;
         std::vector<SimGrid> _simGrids;
         std::vector<Int2> _validGridList;
         std::unique_ptr<ShallowWaterSim> _sim;
@@ -234,6 +236,8 @@ namespace SceneEngine
             //      Our mask should have active/inactive cells. We should go through and 
             //      create simgrids as needed, and build the index buffer for each.
 
+        BuildDefaultIB();
+
         unsigned simGridsX = (surfaceSize[0] + settings._simGridDims + 1) / settings._simGridDims;
         unsigned simGridsY = (surfaceSize[1] + settings._simGridDims + 1) / settings._simGridDims;
         for (unsigned y=0; y<simGridsY; ++y)
@@ -244,6 +248,58 @@ namespace SceneEngine
     ShallowSurface::~ShallowSurface()
     {}
 
+    void ShallowSurface::BuildDefaultIB()
+    {
+        const auto& settings = _pimpl->_cfg;
+        Int2 mins(0, 0);
+        Int2 maxs(settings._simGridDims, settings._simGridDims);
+
+        std::vector<uint16> ibData;
+        ibData.reserve((maxs[0] - mins[0]) * (maxs[1] - mins[1]) * 6);
+
+        auto vbWidth = maxs[0] - mins[0] + 1;
+
+        for (int y=mins[1]; y<maxs[1]; ++y) {
+            for (int x=mins[0]; x<maxs[0]; ++x) {
+                auto cx = x-mins[0];
+                auto cy = y-mins[1];
+                auto 
+                    a = (cy*vbWidth)+cx,
+                    b = (cy*vbWidth)+cx+1,
+                    c = ((cy+1)*vbWidth)+cx,
+                    d = ((cy+1)*vbWidth)+cx+1;
+
+                ibData.push_back((uint16)a);
+                ibData.push_back((uint16)b);
+                ibData.push_back((uint16)c);
+                ibData.push_back((uint16)c);
+                ibData.push_back((uint16)b);
+                ibData.push_back((uint16)d);
+            }
+        }
+
+        _pimpl->_defaultIB = Metal::IndexBuffer(
+            AsPointer(ibData.cbegin()), 
+            ibData.size() * sizeof(unsigned short));
+
+        {
+            auto    a = 0u,
+                    b = settings._simGridDims,
+                    c = (settings._simGridDims*vbWidth),
+                    d = (settings._simGridDims*vbWidth)+settings._simGridDims;
+            unsigned short ibData[] = 
+            {
+                (uint16)a,
+                (uint16)b,
+                (uint16)c,
+                (uint16)c,
+                (uint16)b,
+                (uint16)d
+            };
+            _pimpl->_unsimDefaultIB = Metal::IndexBuffer(ibData, sizeof(ibData));
+        }
+    }
+
     void ShallowSurface::MaybeCreateGrid(RasterizationSurface& mask, Int2 gridCoords)
     {
         const auto& settings = _pimpl->_cfg;
@@ -253,47 +309,61 @@ namespace SceneEngine
         Float2 physicalMaxs = maxs * settings._gridPhysicalSize / float(settings._simGridDims) + _pimpl->_simulationMins;
         const float physicalHeight = 0.f;
 
-        std::vector<unsigned short> ibData;
-        ibData.reserve((maxs[0] - mins[0]) * (maxs[1] - mins[1]) * 6);
+        Pimpl::SimGrid simGrid;
 
-        auto vbWidth = maxs[0] - mins[0] + 1;
+            // when no cells are masked out, we can just use the default IB
+        bool useDefaultIB = true;
+        for (int y=mins[1]; y<maxs[1]; ++y)
+            for (int x=mins[0]; x<maxs[0]; ++x)
+                if (!mask.Get(x, y)) {
+                    useDefaultIB = false;
+                    break;
+                }
 
-            // For each active cell, we create 2 triangles, and
-            // add them to the index buffer
-        for (int y=mins[1]; y<maxs[1]; ++y) {
-            for (int x=mins[0]; x<maxs[0]; ++x) {
-                auto active = mask.Get(x, y);
-                if (active) {
-                    auto cx = x-mins[0];
-                    auto cy = y-mins[1];
-                    auto 
-                        a = (cy*vbWidth)+cx,
-                        b = (cy*vbWidth)+cx+1,
-                        c = ((cy+1)*vbWidth)+cx,
-                        d = ((cy+1)*vbWidth)+cx+1;
+        if (!useDefaultIB) {
+            std::vector<unsigned short> ibData;
+            ibData.reserve((maxs[0] - mins[0]) * (maxs[1] - mins[1]) * 6);
+            auto vbWidth = maxs[0] - mins[0] + 1;
 
-                    ibData.push_back((unsigned short)a);
-                    ibData.push_back((unsigned short)b);
-                    ibData.push_back((unsigned short)c);
-                    ibData.push_back((unsigned short)c);
-                    ibData.push_back((unsigned short)b);
-                    ibData.push_back((unsigned short)d);
+                // For each active cell, we create 2 triangles, and
+                // add them to the index buffer
+            for (int y=mins[1]; y<maxs[1]; ++y) {
+                for (int x=mins[0]; x<maxs[0]; ++x) {
+                    auto active = mask.Get(x, y);
+                    if (active) {
+                        auto cx = x-mins[0];
+                        auto cy = y-mins[1];
+                        auto 
+                            a = (cy*vbWidth)+cx,
+                            b = (cy*vbWidth)+cx+1,
+                            c = ((cy+1)*vbWidth)+cx,
+                            d = ((cy+1)*vbWidth)+cx+1;
+
+                        ibData.push_back((unsigned short)a);
+                        ibData.push_back((unsigned short)b);
+                        ibData.push_back((unsigned short)c);
+                        ibData.push_back((unsigned short)c);
+                        ibData.push_back((unsigned short)b);
+                        ibData.push_back((unsigned short)d);
+                    }
                 }
             }
+
+            if (ibData.empty()) return; // no cells in this one
+
+            simGrid._ib = Metal::IndexBuffer(
+                AsPointer(ibData.cbegin()), 
+                ibData.size() * sizeof(unsigned short));
+            simGrid._indexCount = (unsigned)ibData.size();
+        } else {
+            simGrid._indexCount = settings._simGridDims * settings._simGridDims * 6;
         }
-
-        if (ibData.empty()) return; // no cells in this one
-
-        Pimpl::SimGrid simGrid;
-        simGrid._ib = Metal::IndexBuffer(
-            AsPointer(ibData.cbegin()), 
-            ibData.size() * sizeof(unsigned short));
+        
         simGrid._gridToWorld = 
             AsFloat4x4(
                 ScaleTranslation(
                     Expand(Float2(physicalMaxs - physicalMins), 1.f),
                     Expand(physicalMins, physicalHeight)));
-        simGrid._indexCount = (unsigned)ibData.size();
         simGrid._gridCoord = gridCoords;
 
         _pimpl->_simGrids.push_back(simGrid);
@@ -378,28 +448,44 @@ namespace SceneEngine
             _pimpl->_cfg._simGridDims);
         matParam.SetParameter((const utf8*)"MAT_DO_REFRACTION", int(refractionsEnable));
         matParam.SetParameter((const utf8*)"SKY_PROJECTION", skyProjType);
-        TechniqueMaterial material(
+        TechniqueMaterial simMaterial(
             Metal::InputLayout(nullptr, 0),
-            {   ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants, 
+            {   ObjectCBs::LocalTransform,
                 Hash64("ShallowWaterCellConstants"), Hash64("ShallowWaterLighting") },
             matParam);
 
-        auto shader = material.FindVariation(
+        matParam.SetParameter((const utf8*)"SHALLOW_WATER_IS_SIMULATED", 0);
+        TechniqueMaterial unsimMaterial(
+            Metal::InputLayout(nullptr, 0),
+            { ObjectCBs::LocalTransform, Hash64("ShallowWaterLighting") },
+            matParam);
+
+            // set up basic render state
+        metalContext.Bind(Metal::Topology::TriangleList);
+        metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+        metalContext.Unbind<Metal::VertexBuffer>();
+        metalContext.Unbind<Metal::BoundInputLayout>();
+        _pimpl->_sim->BindForOceanRender(metalContext, _pimpl->_bufferCounter);
+
+        auto lightingConstantsBuffer = MakeLightingConstants(_pimpl->_lightingCfg);
+
+        // const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
+        //     "game/xleres/BasicMaterialConstants.txt");
+        // auto matParam = cbLayout.BuildCBDataAsPkt(ParameterBox());
+
+        std::vector<unsigned> unsimulated;  // todo -- use frame temporary heap
+        unsimulated.reserve(_pimpl->_simGrids.size());
+
+            // First, render the tiles that are currently being simulated
+        auto shader = simMaterial.FindVariation(
             parserContext, techniqueIndex, "game/xleres/ocean/shallowsurface.txt");
         if (shader._shaderProgram) {
-            metalContext.Bind(Metal::Topology::TriangleList);
-            metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
-            _pimpl->_sim->BindForOceanRender(metalContext, _pimpl->_bufferCounter);
-
-            auto lightingConstantsBuffer = MakeLightingConstants(_pimpl->_lightingCfg);
-
-            const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
-                "game/xleres/BasicMaterialConstants.txt");
-            auto matParam = cbLayout.BuildCBDataAsPkt(ParameterBox());
-            
             for (auto i=_pimpl->_simGrids.cbegin(); i!=_pimpl->_simGrids.cend(); ++i) {
                 auto page = _pimpl->_sim->BuildCellConstants(i->_gridCoord);
-                if (!page) continue;
+                if (!page) {
+                    unsimulated.push_back((unsigned)std::distance(_pimpl->_simGrids.cbegin(), i));
+                    continue;
+                }
 
                 shader.Apply(
                     metalContext, parserContext, 
@@ -407,14 +493,44 @@ namespace SceneEngine
                         MakeLocalTransformPacket(
                             i->_gridToWorld,
                             ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                        matParam,
                         page, lightingConstantsBuffer
                     });
-                metalContext.Unbind<Metal::VertexBuffer>();
-                metalContext.Unbind<Metal::BoundInputLayout>();
 
-                metalContext.Bind(i->_ib, Metal::NativeFormat::R16_UINT);
+                if (i->_ib.GetUnderlying()) {
+                    metalContext.Bind(i->_ib, Metal::NativeFormat::R16_UINT);
+                } else {
+                    metalContext.Bind(_pimpl->_defaultIB, Metal::NativeFormat::R16_UINT);
+                }
                 metalContext.DrawIndexed(i->_indexCount);
+            }
+        }
+
+            //  We must also render distant tiles that don't have active simulation
+        auto unsimShader = unsimMaterial.FindVariation(
+            parserContext, techniqueIndex, "game/xleres/ocean/shallowsurface.txt");
+        if (unsimShader._shaderProgram) {
+            for (auto i=unsimulated.cbegin(); i!=unsimulated.cend(); ++i) {
+                auto& grid = _pimpl->_simGrids[*i];
+
+                auto gridToWorld = grid._gridToWorld;
+                gridToWorld(2, 3) = _pimpl->_cfg._baseHeight;   // apply base height to the grid-to-world transform
+
+                unsimShader.Apply(
+                    metalContext, parserContext, 
+                    {
+                        MakeLocalTransformPacket(
+                            gridToWorld,
+                            ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
+                        lightingConstantsBuffer
+                    });
+
+                if (grid._ib.GetUnderlying()) {
+                    metalContext.Bind(grid._ib, Metal::NativeFormat::R16_UINT);
+                    metalContext.DrawIndexed(grid._indexCount);
+                } else {
+                    metalContext.Bind(_pimpl->_unsimDefaultIB, Metal::NativeFormat::R16_UINT);
+                    metalContext.DrawIndexed(6);
+                }
             }
         }
     }
@@ -469,6 +585,9 @@ namespace SceneEngine
     {
         if (_pimpl->_surfaces.empty()) return;
         if (!Tweakable("DoShallowSurface", true)) return;
+
+        if (Tweakable("ShallowSurfaceWireframe", false))
+            techniqueIndex = 8;
 
         TRY 
         {

@@ -4,6 +4,7 @@
             SHALLOW_WATER_TILE_DIMENSION=128
             MAT_DO_REFRACTION
             SKY_PROJECTION
+            SHALLOW_WATER_IS_SIMULATED=1
         ~Geometry
             OUTPUT_WORLD_VIEW_VECTOR=1
             OUTPUT_TEXCOORD=1
@@ -21,6 +22,10 @@
     ~Parameters
         ~Material
             SHALLOW_WATER_TILE_DIMENSION=128
+            SHALLOW_WATER_IS_SIMULATED=1
+        ~Geometry
+            OUTPUT_WORLD_VIEW_VECTOR=1
+            OUTPUT_TEXCOORD=1
         ~GlobalEnvironment
     VertexShader=game/xleres/ocean/shallowsurface.sh:vs_main
     GeometryShader=game/xleres/solidwireframe.gsh:main

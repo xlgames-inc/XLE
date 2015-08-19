@@ -45,9 +45,11 @@ VSOutput vs_main(uint vertexId : SV_VertexId)
         p.y / float(SHALLOW_WATER_TILE_DIMENSION),
         0.f);
 
-    int3 coord = NormalizeRelativeGridCoord(p);
-    if (coord.z >= 0)
-        localPosition.z = ShallowWaterHeights.Load(uint4(coord, 0));
+    #if SHALLOW_WATER_IS_SIMULATED==1
+        int3 coord = NormalizeRelativeGridCoord(p);
+        if (coord.z >= 0)
+            localPosition.z = ShallowWaterHeights.Load(uint4(coord, 0));
+    #endif
 
     #if GEO_HAS_INSTANCE_ID==1
         float3 worldPosition = InstanceWorldPosition(input, objectCentreWorld);
@@ -116,9 +118,13 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
 
     float2 texCoord = geo.texCoord;
 
-    float2 surfaceDerivatives = DecompressDerivatives(
-        ShallowDerivatives.Sample(ClampingSampler, float3(texCoord.xy, ArrayIndex)).xy,
-        1.0.xxx);
+    #if SHALLOW_WATER_IS_SIMULATED==1
+        float2 surfaceDerivatives = DecompressDerivatives(
+            ShallowDerivatives.Sample(ClampingSampler, float3(texCoord.xy, ArrayIndex)).xy,
+            1.0.xxx);
+    #else
+        float2 surfaceDerivatives = 0.0.xx;
+    #endif
 
     float cameraDistance = length(geo.worldViewVector);
     float detailStrength = lerp(1.25f, .25f, saturate((cameraDistance - 50.f)/150.f));

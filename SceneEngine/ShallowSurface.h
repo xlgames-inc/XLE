@@ -74,6 +74,7 @@ namespace SceneEngine
         void MaybeCreateGrid(
             RasterizationSurface& mask,
             Int2 gridCoords);
+        void BuildDefaultIB();
 
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
