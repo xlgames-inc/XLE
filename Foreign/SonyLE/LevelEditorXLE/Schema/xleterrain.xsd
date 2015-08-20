@@ -271,6 +271,16 @@
   </xs:complexType>
   
   <!-- ......................................................................... -->
+
+  <xs:complexType name="terrainCoverageLayer">
+    <xs:attribute name="Id" type="xs:unsignedInt" default="1000"/>
+    <xs:attribute name="Resolution" type="xs:float" default="1"/>
+    <xs:attribute name="Overlap" type="xs:unsignedInt" default="1"/>
+    <xs:attribute name="SourceFile" type="xs:string"/>
+    <xs:attribute name="Enable" type="xs:boolean" default="true"/>
+  </xs:complexType>
+
+  <!-- ......................................................................... -->
   
   <xs:complexType name="terrainType">
     <xs:annotation>
@@ -288,25 +298,27 @@
     <xs:sequence>
       <xs:element name="baseTexture" type="terrainBaseTextureType" minOccurs="1" maxOccurs="1" />
       <xs:element name="VegetationSpawn" type="vegetationSpawnConfigType" minOccurs="0" maxOccurs="1" />
+      <xs:element name="coverage" type="terrainCoverageLayer" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
+    
     <xs:attribute name="UberSurfaceDir" type="xs:string" />
     <xs:attribute name="CellsDir" type="xs:string" />
     <xs:attribute name="ConfigFileTarget" type="xs:string" default="terrain.cfg" />
+    
     <xs:attribute name="NodeDimensions" type="xs:unsignedInt" default="32" />
     <xs:attribute name="Overlap" type="xs:unsignedInt" default="2" />
     <xs:attribute name="Spacing" type="xs:float" default="10" />
     <xs:attribute name="CellTreeDepth" type="xs:unsignedInt" default="5" />
-    <xs:attribute name="Offset" type="vector3Type" default="0 0 0"/>
-    <xs:attribute name="SunPathAngle" type="xs:float" default="0"/>
-    <xs:attribute name="HasBaseMaterialCoverage" type="xs:boolean" default="false" />
-    <xs:attribute name="HasDecorationCoverage" type="xs:boolean" default="false" />
-    <xs:attribute name="HasShadowsCoverage" type="xs:boolean" default="false" />
-    <xs:attribute name="HasAOCoverage" type="xs:boolean" default="false" />
-    <xs:attribute name="HasEncodedGradientFlags" type="xs:boolean" default="true" />
     <xs:attribute name="CellCount" type="int2Type" default="0 0" />
+
+    <xs:attribute name="Offset" type="vector3Type" default="0 0 0"/>
+
+    <xs:attribute name="HasEncodedGradientFlags" type="xs:boolean" default="true" />
     <xs:attribute name="GradFlagSlopeThreshold0" type="xs:float" default=".5" />
     <xs:attribute name="GradFlagSlopeThreshold1" type="xs:float" default="1.125" />
     <xs:attribute name="GradFlagSlopeThreshold2" type="xs:float" default="1.75" />
+
+    <xs:attribute name="SunPathAngle" type="xs:float" default="0"/>
   </xs:complexType>
 
   <!-- ......................................................................... -->

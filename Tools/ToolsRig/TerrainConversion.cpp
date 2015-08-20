@@ -342,6 +342,7 @@ namespace ToolsRig
         result._sourceDims = UInt2(0, 0);
         result._sourceFile = input;
         result._sourceIsGood = false;
+        result._importCoverageFormat = (unsigned)ImpliedTyping::TypeCat::Float;
 
         auto ext = XlExtension(input);
         if (ext && (!XlCompareStringI(ext, "hdr") || !XlCompareStringI(ext, "flt"))) {
@@ -409,9 +410,9 @@ namespace ToolsRig
                 case SAMPLEFORMAT_UINT:
                 case SAMPLEFORMAT_INT:
                     result._sourceFormat = TerrainImportOp::SourceFormat::Quantized;
-                    if (bitsPerPixel == 8)          { result._sourceHeightRange = Float2(0.f, float(0xff)); }
-                    else if (bitsPerPixel == 16)    { result._sourceHeightRange = Float2(0.f, float(0xffff)); }
-                    else if (bitsPerPixel == 32)    { result._sourceHeightRange = Float2(0.f, float(0xffffffff)); }
+                    if (bitsPerPixel == 8)          { result._sourceHeightRange = Float2(0.f, float(0xff)); result._importCoverageFormat = (unsigned)ImpliedTyping::TypeCat::UInt8; }
+                    else if (bitsPerPixel == 16)    { result._sourceHeightRange = Float2(0.f, float(0xffff)); result._importCoverageFormat = (unsigned)ImpliedTyping::TypeCat::UInt16; }
+                    else if (bitsPerPixel == 32)    { result._sourceHeightRange = Float2(0.f, float(0xffffffff)); result._importCoverageFormat = (unsigned)ImpliedTyping::TypeCat::UInt32; }
                     else                            { result._warnings.push_back("Bad bits per pixel"); return result; }
                     break;
 
@@ -419,6 +420,8 @@ namespace ToolsRig
                     result._sourceFormat = TerrainImportOp::SourceFormat::AbsoluteFloats;
                     if (bitsPerPixel != 16 && bitsPerPixel != 32)
                         { result._warnings.push_back("Bad bits per pixel"); return result; }
+
+                    result._importCoverageFormat = (unsigned)ImpliedTyping::TypeCat::Float;     // (todo -- float16 support?)
                     break;
 
                 default:
@@ -450,21 +453,52 @@ namespace ToolsRig
             dest[c] = float(input[c]) * scale + offset;
     }
 
+    template<typename InputType>
+        static void SimpleConvertGen(void* dest, const ImpliedTyping::TypeDesc& dstType, const InputType* input, size_t count, float offset, float scale)
+    {
+            // note --  the implied typing cast here is quite expensive! But it's 
+            //          reliable
+        auto dstSize = dstType.GetSize();
+        for (unsigned c=0; c<count; ++c) {
+            auto midway = float(input[c]) * scale + offset;
+            ImpliedTyping::Cast(
+                PtrAdd(dest, c*dstSize),
+                dstSize, dstType,
+                &midway, ImpliedTyping::TypeOf<decltype(midway)>());
+        }
+    }
+
     static float Float16AsFloat32(unsigned short input)
     {
         return half_float::detail::half2float(input);
     }
 
-    static void ConvertFloat16(float dest[], const uint16* input, size_t count, float offset, float scale)
+    // static void ConvertFloat16(float dest[], const uint16* input, size_t count, float offset, float scale)
+    // {
+    //     for (unsigned c=0; c<count; ++c)
+    //         dest[c] = Float16AsFloat32(input[c]) * scale + offset;
+    // }
+
+    static void ConvertFloat16Gen(void* dest, const ImpliedTyping::TypeDesc& dstType, const uint16* input, size_t count, float offset, float scale)
     {
-        for (unsigned c=0; c<count; ++c)
-            dest[c] = Float16AsFloat32(input[c]) * scale + offset;
+            // note --  the implied typing cast here is quite expensive! But it's 
+            //          reliable
+        auto dstSize = dstType.GetSize();
+        for (unsigned c=0; c<count; ++c) {
+            auto midway = Float16AsFloat32(input[c]) * scale + offset;
+            ImpliedTyping::Cast(
+                PtrAdd(dest, c*dstSize),
+                dstSize, dstType,
+                &midway, ImpliedTyping::TypeOf<decltype(midway)>());
+        }
     }
     
     void ExecuteTerrainImport(
         const TerrainImportOp& op,
         const ::Assets::ResChar outputDir[],
         unsigned destNodeDims, unsigned destCellTreeDepth,
+        SceneEngine::TerrainCoverageId coverageId,
+        ImpliedTyping::TypeCat dstType,
         ConsoleRig::IProgress* progress)
     {
         auto initStep = progress ? progress->BeginStep("Load source data", 1, false) : nullptr;
@@ -489,15 +523,16 @@ namespace ToolsRig
 
         CreateDirectoryRecursive(outputDir);
 
+        auto dstSampleSize = ImpliedTyping::TypeDesc(dstType).GetSize();
         uint64 resultSize = 
             sizeof(TerrainUberHeader)
-            + finalDims[0] * finalDims[1] * sizeof(float)
+            + finalDims[0] * finalDims[1] * dstSampleSize
             ;
 
         ::Assets::ResChar outputUberFileName[MaxPath]; 
         SceneEngine::TerrainConfig::GetUberSurfaceFilename(
             outputUberFileName, dimof(outputUberFileName),
-            outputDir, SceneEngine::CoverageId_Heights);
+            outputDir, coverageId);
 
         MemoryMappedFile outputUberFile(outputUberFileName, resultSize, MemoryMappedFile::Access::Write);
         if (!outputUberFile.IsValid())
@@ -507,14 +542,17 @@ namespace ToolsRig
         hdr._magic  = TerrainUberHeader::Magic;
         hdr._width  = finalDims[0];
         hdr._height = finalDims[1];
-        hdr._typeCat = (unsigned)ImpliedTyping::TypeCat::Float;
+        hdr._typeCat = (unsigned)dstType;
         hdr._typeArrayCount = 1;
         hdr._dummy[0] = hdr._dummy[1] = hdr._dummy[2]  = 0;
 
-        float* outputArray = (float*)PtrAdd(outputUberFile.GetData(), sizeof(TerrainUberHeader));
+        void* outputArray = PtrAdd(outputUberFile.GetData(), sizeof(TerrainUberHeader));
 
         auto ext = XlExtension(op._sourceFile.c_str());
         if (ext && (!XlCompareStringI(ext, "hdr") || !XlCompareStringI(ext, "flt"))) {
+            if (dstType != ImpliedTyping::TypeCat::Float)
+                Throw(::Exceptions::BasicLabel("Attempting to load float format input into non-float destination (%s)", op._sourceFile.c_str()));
+
             MemoryMappedFile inputFileData(op._sourceFile.c_str(), 0, MemoryMappedFile::Access::Read);
             if (!inputFileData.IsValid())
                 Throw(::Exceptions::BasicLabel("Couldn't open input file (%s)", op._sourceFile.c_str()));
@@ -540,7 +578,7 @@ namespace ToolsRig
                     std::copy(
                         &inputArray[(y2+y+yoff) * op._sourceDims[0] + op._importMins[0]],
                         &inputArray[(y2+y+yoff) * op._sourceDims[0] + std::min(op._sourceDims[0], op._importMaxs[0])],
-                        &outputArray[(y2+y) * finalDims[0]]);
+                        (float*)PtrAdd(outputArray, ((y2+y) * finalDims[0]) * dstSampleSize));
                 }
 
                 if (copyStep) {
@@ -555,7 +593,7 @@ namespace ToolsRig
                 std::copy(
                     &inputArray[(y2+yoff) * op._sourceDims[0] + op._importMins[0]],
                     &inputArray[(y2+yoff) * op._sourceDims[0] + std::min(op._sourceDims[0], op._importMaxs[0])],
-                    &outputArray[y2 * finalDims[0]]);
+                    (float*)PtrAdd(outputArray, (y2 * finalDims[0]) * dstSampleSize));
             }
         } else if (ext && (!XlCompareStringI(ext, "tif") || !XlCompareStringI(ext, "tiff"))) {
                 // attempt to read geotiff file
@@ -595,20 +633,20 @@ namespace ToolsRig
             auto stripBuffer = std::make_unique<char[]>(stripSize);
             XlSetMemory(stripBuffer.get(), 0, stripSize);
 
-            typedef void ConversionFn(float*, const void*, size_t, float, float);
+            typedef void ConversionFn(void*, const ImpliedTyping::TypeDesc&, const void*, size_t, float, float);
             ConversionFn* convFn;
             switch (sampleFormat) {
             case SAMPLEFORMAT_UINT:
             case SAMPLEFORMAT_INT:
-                if (bitsPerPixel == 8)          convFn = (ConversionFn*)&SimpleConvert<uint8>;
-                else if (bitsPerPixel == 16)    convFn = (ConversionFn*)&SimpleConvert<uint16>;
-                else if (bitsPerPixel == 32)    convFn = (ConversionFn*)&SimpleConvert<uint32>;
+                if (bitsPerPixel == 8)          convFn = (ConversionFn*)&SimpleConvertGen<uint8>;
+                else if (bitsPerPixel == 16)    convFn = (ConversionFn*)&SimpleConvertGen<uint16>;
+                else if (bitsPerPixel == 32)    convFn = (ConversionFn*)&SimpleConvertGen<uint32>;
                 else Throw(::Exceptions::BasicLabel("Unknown input format.", op._sourceFile.c_str()));
                 break;
 
             case SAMPLEFORMAT_IEEEFP:
-                if (bitsPerPixel == 16)         convFn = (ConversionFn*)&ConvertFloat16;
-                else if (bitsPerPixel == 32)    convFn = (ConversionFn*)&SimpleConvert<float>;
+                if (bitsPerPixel == 16)         convFn = (ConversionFn*)&ConvertFloat16Gen;
+                else if (bitsPerPixel == 32)    convFn = (ConversionFn*)&SimpleConvertGen<float>;
                 else Throw(::Exceptions::BasicLabel("8 bit floats not supported in input file (%s). Use 16 or 32 bit floats instead.", op._sourceFile.c_str()));
                 break;
 
@@ -630,7 +668,8 @@ namespace ToolsRig
                     auto y = strip * rowsperstrip + r;
                     if (y >= op._importMins[1] && y < op._importMaxs[1]) {
                         (*convFn)(
-                            &outputArray[(y - op._importMins[1]) * finalDims[0]],
+                            PtrAdd(outputArray, ((y - op._importMins[1]) * finalDims[0]) * dstSampleSize),
+                            ImpliedTyping::TypeDesc(dstType),
                             PtrAdd(stripBuffer.get(), op._importMins[0]*8/bitsPerPixel),
                             std::min(op._sourceDims[0], op._importMaxs[0]),
                             valueOffset, valueScale);
@@ -648,20 +687,24 @@ namespace ToolsRig
         }
 
             // fill in the extra space caused by rounding up
+        float blank = 0.f;
         if (finalDims[0] > op._sourceDims[0]) {
             for (unsigned y=0; y<(op._importMaxs[1] - op._importMins[1]); ++y) {
-                std::fill(
-                    &outputArray[y * finalDims[0] + op._sourceDims[0]],
-                    &outputArray[y * finalDims[0] + finalDims[0]],
-                    0.f);
+                for (unsigned x=op._sourceDims[0]; x<finalDims[0]; ++x)
+                    ImpliedTyping::Cast(
+                        PtrAdd(outputArray, (y * finalDims[0] + x)*dstSampleSize),
+                        dstSampleSize, ImpliedTyping::TypeDesc(dstType),
+                        &blank, ImpliedTyping::TypeOf<decltype(blank)>());
+                    
             }
         }
 
         for (unsigned y=op._importMaxs[1] - op._importMins[1]; y < finalDims[1]; ++y) {
-            std::fill(
-                &outputArray[y * finalDims[0]],
-                &outputArray[y * finalDims[0] + finalDims[0]],
-                0.f);
+            for (unsigned x=0; x<finalDims[0]; ++x)
+                ImpliedTyping::Cast(
+                    PtrAdd(outputArray, (y * finalDims[0] + x)*dstSampleSize),
+                    dstSampleSize, ImpliedTyping::TypeDesc(dstType),
+                    &blank, ImpliedTyping::TypeOf<decltype(blank)>());
         }
     }
 

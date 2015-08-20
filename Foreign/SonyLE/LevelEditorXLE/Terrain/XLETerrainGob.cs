@@ -84,30 +84,6 @@ namespace LevelEditorXLE.Terrain
             set { SetAttribute(TerrainST.CellTreeDepthAttribute, ClampCellTreeDepth(value)); }
         }
 
-        public bool HasBaseMaterialCoverage
-        {
-            get { return GetAttribute<bool>(TerrainST.HasBaseMaterialCoverageAttribute); }
-            set { SetAttribute(TerrainST.HasBaseMaterialCoverageAttribute, value); }
-        }
-
-        public bool HasDecorationCoverage
-        {
-            get { return GetAttribute<bool>(TerrainST.HasDecorationCoverageAttribute); }
-            set { SetAttribute(TerrainST.HasDecorationCoverageAttribute, value); }
-        }
-
-        public bool HasShadowsCoverage
-        {
-            get { return GetAttribute<bool>(TerrainST.HasShadowsCoverageAttribute); }
-            set { SetAttribute(TerrainST.HasShadowsCoverageAttribute, value); }
-        }
-
-        public bool HasAOCoverage
-        {
-            get { return GetAttribute<bool>(TerrainST.HasAOCoverageAttribute); }
-            set { SetAttribute(TerrainST.HasAOCoverageAttribute, value); }
-        }
-
         public bool HasEncodedGradientFlags
         {
             get { return GetAttribute<bool>(TerrainST.HasEncodedGradientFlagsAttribute); }
@@ -154,6 +130,22 @@ namespace LevelEditorXLE.Terrain
         {
             get { return DomNode.GetChild(TerrainST.baseTextureChild); }
             set { DomNode.SetChild(TerrainST.baseTextureChild, value); }
+        }
+
+        public IList<XLETerrainCoverage> CoverageLayers
+        {
+            get
+            {
+                return GetChildList<XLETerrainCoverage>(TerrainST.coverageChild);
+            }
+        }
+
+        public bool HasCoverageLayer(uint layerId)
+        {
+            var layers = CoverageLayers;
+            foreach (var l in layers)
+                if (l.LayerId == layerId) return true;
+            return false;
         }
 
         private static uint ClampNodeDimensions(uint input)                 { return input.Clamp(1u, 1024u); }
@@ -230,17 +222,30 @@ namespace LevelEditorXLE.Terrain
 
             result.CellCount = new GUILayer.VectorUInt2(CellCount[0], CellCount[1]);
 
-            if (cfg.HasBaseMaterialCoverage) {
-                var baseMatLayer = GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 1000);
-                baseMatLayer.NodeDims = new GUILayer.VectorUInt2(cfg.BaseMaterialResolution * cfg.NodeDimensions, cfg.BaseMaterialResolution * cfg.NodeDimensions);
-                result.Add(baseMatLayer);
+            var layers = CoverageLayers;
+            foreach (var l in layers)
+            {
+                if (!l.Enable) continue;
+
+                    // we should avoid adding multiple layers with the same id
+                var id = l.LayerId;
+                bool alreadyHere = false;
+                for (uint c=0; c<result.CoverageLayerCount; ++c)
+                    if (result.GetCoverageLayer(c).Id == id)
+                    {
+                        alreadyHere = true;
+                        break;
+                    }
+
+                if (alreadyHere) break;
+
+                var d = GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(
+                    result, cfg.UberSurfaceDirectory, id);
+                d.NodeDims = new GUILayer.VectorUInt2(
+                    (uint)(l.Resolution * cfg.NodeDimensions), 
+                    (uint)(l.Resolution * cfg.NodeDimensions));
+                result.Add(d);
             }
-            if (cfg.HasDecorationCoverage)
-                result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 1001));
-            if (cfg.HasShadowsCoverage)
-                result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 2));
-            if (cfg.HasAOCoverage)
-                result.Add(GUILayer.EditorInterfaceUtils.DefaultCoverageLayer(result, cfg.UberSurfaceDirectory, 3));
 
             return result;
         }
@@ -256,10 +261,6 @@ namespace LevelEditorXLE.Terrain
             cfg.CellTreeDepth = CellTreeDepth;
             cfg.UberSurfaceDirectory = UberSurfaceDirectory;
             cfg.CellsDirectory = CellsDirectory;
-            cfg.HasBaseMaterialCoverage = HasBaseMaterialCoverage;
-            cfg.HasDecorationCoverage = HasDecorationCoverage;
-            cfg.HasShadowsCoverage = HasShadowsCoverage;
-            cfg.HasAOCoverage = HasAOCoverage;
             cfg.HasEncodedGradientFlags = HasEncodedGradientFlags;
             cfg.SunPathAngle = SunPathAngle;
             cfg.SlopeThreshold0 = GradFlagSlopeThreshold0;
@@ -276,10 +277,6 @@ namespace LevelEditorXLE.Terrain
             Spacing = cfg.Spacing;
             UberSurfaceDirectory = cfg.UberSurfaceDirectory;
             CellsDirectory = cfg.CellsDirectory;
-            HasDecorationCoverage = cfg.HasDecorationCoverage;
-            HasBaseMaterialCoverage = cfg.HasBaseMaterialCoverage;
-            HasShadowsCoverage = cfg.HasShadowsCoverage;
-            HasAOCoverage = cfg.HasAOCoverage;
             HasEncodedGradientFlags = cfg.HasEncodedGradientFlags;
             SunPathAngle = cfg.SunPathAngle;
             GradFlagSlopeThreshold0 = cfg.SlopeThreshold0;
@@ -309,7 +306,7 @@ namespace LevelEditorXLE.Terrain
                     if (cfg.Import == TerrainConfig.Config.ImportType.DEMFile
                         && cfg.SourceDEMFile != null && cfg.SourceDEMFile.Length > 0)
                     {
-                        cfg.ImportOp.Execute(cfg.UberSurfaceDirectory, progress);
+                        cfg.ImportOp.ExecuteForHeights(cfg.UberSurfaceDirectory, progress);
                     } 
                     else if (cfg.Import == TerrainConfig.Config.ImportType.NewBlankTerrain
                         && cfg.NewCellCountX != 0 && cfg.NewCellCountY != 0)
@@ -342,6 +339,8 @@ namespace LevelEditorXLE.Terrain
 
             Reload();
         }
+
+        internal void Reconfigure() { Reconfigure(BuildDialogConfig()); }
 
         internal bool DoModalConfigure()
         {
@@ -429,13 +428,32 @@ namespace LevelEditorXLE.Terrain
                     case Command.FlushToDisk:
                     case Command.RebuildCellFiles:
                     case Command.Reload:
+                    case Command.AddGenericCoverage:
                         return true;
+
+                    case Command.AddShadows:
+                    case Command.AddAO:
+                    case Command.AddBaseMaterialCoverage:
+                    case Command.AddDecorationCoverage:
+                        return !HasCoverageLayer(AssociatedLayerId((Command)commandTag));
 
                     case Command.Unload:
                         return m_isLoaded;
                 }
             }
             return false;
+        }
+
+        uint AssociatedLayerId(Command cmd)
+        {
+            switch (cmd)
+            {
+                case Command.AddShadows: return 2;
+                case Command.AddAO: return 3;
+                case Command.AddBaseMaterialCoverage: return 1000;
+                case Command.AddDecorationCoverage: return 1001;
+                default: return 0;
+            }
         }
 
         void ICommandClient.DoCommand(object commandTag)
@@ -486,6 +504,58 @@ namespace LevelEditorXLE.Terrain
                         Unload();
                         break;
                     }
+
+                case Command.AddShadows:
+                case Command.AddAO:
+                case Command.AddBaseMaterialCoverage:
+                case Command.AddDecorationCoverage:
+                    {
+                        var layerId = AssociatedLayerId((Command)commandTag);
+                        if (!HasCoverageLayer(layerId)) 
+                        {
+                            var layer = XLETerrainCoverage.CreateWithConfigure(this, layerId).As<XLETerrainCoverage>();
+                            if (layer != null)
+                            {
+                                if (!HasCoverageLayer(layer.LayerId))
+                                {
+                                    CoverageLayers.Add(layer);
+                                    Reconfigure();
+                                }
+                                else
+                                {
+                                    System.Windows.Forms.MessageBox.Show(
+                                        "Layer id conflicts with existing id. You can't have 2 layers with the same id. Try using a unique id", "Error adding layer",
+                                        System.Windows.Forms.MessageBoxButtons.OK,
+                                        System.Windows.Forms.MessageBoxIcon.Error);
+                                }
+                            }
+                        }
+                        break;
+                    }
+
+                case Command.AddGenericCoverage:
+                    {
+                        var layerId = 1003u;
+                        while (HasCoverageLayer(layerId)) ++layerId;
+
+                        var layer = XLETerrainCoverage.CreateWithConfigure(this, layerId).As<XLETerrainCoverage>();
+                        if (layer != null)
+                        {
+                            if (!HasCoverageLayer(layer.LayerId))
+                            {
+                                CoverageLayers.Add(layer);
+                                Reconfigure();
+                            }
+                            else
+                            {
+                                System.Windows.Forms.MessageBox.Show(
+                                    "Layer id conflicts with existing id. You can't have 2 layers with the same id. Try using a unique id", "Error adding layer",
+                                    System.Windows.Forms.MessageBoxButtons.OK,
+                                    System.Windows.Forms.MessageBoxIcon.Error);
+                            }
+                        }
+                        break;
+                    }
             }
         }
 
@@ -501,7 +571,13 @@ namespace LevelEditorXLE.Terrain
             [Description("Commit to disk")] FlushToDisk,
             [Description("Rebuild cell files")] RebuildCellFiles,
             [Description("Unload terrain")] Unload,
-            [Description("Reload terrain")] Reload
+            [Description("Reload terrain")] Reload,
+
+            [Description("Add Shadows")] AddShadows,
+            [Description("Add Ambient Occlusion")] AddAO,
+            [Description("Add Base Material Coverage")] AddBaseMaterialCoverage,
+            [Description("Add Decoration Coverage")] AddDecorationCoverage,
+            [Description("Add Generic Converage")] AddGenericCoverage
         }
 
         IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)
@@ -513,5 +589,196 @@ namespace LevelEditorXLE.Terrain
         }
 
         #endregion
+    }
+
+    class XLETerrainCoverage : DomNodeAdapter, IListable, ICommandClient, IContextMenuCommandProvider
+    {
+        public void GetInfo(ItemInfo info)
+        {
+            info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
+            info.Label = "Coverage: " + LayerName;
+        }
+
+        public static DomNode Create() { return new DomNode(Schema.terrainCoverageLayer.Type); }
+        public static DomNode CreateWithConfigure(XLETerrainGob terrain, uint id)
+        {
+            var result = new DomNode(Schema.terrainCoverageLayer.Type);
+            var adapter = result.As<XLETerrainCoverage>();
+            if (adapter != null)
+            {
+                adapter.LayerId = id;
+                if (adapter.DoModalConfigure(terrain))
+                    return result;
+            }
+            return null;
+        }
+
+        public uint LayerId
+        {
+            get { return GetAttribute<uint>(Schema.terrainCoverageLayer.IdAttribute); }
+            set { SetAttribute(Schema.terrainCoverageLayer.IdAttribute, value); }
+        }
+
+        public string LayerName
+        {
+            get
+            {
+                switch (LayerId)
+                {
+                case 0: return "Heights";
+                case 2: return "Shadows";
+                case 3: return "AO";
+                case 1000: return "Base Material";
+                case 1001: return "Decoration";
+                default: return LayerId.ToString();
+                }
+            }
+        }
+
+        public float Resolution
+        {
+            get { return GetAttribute<float>(Schema.terrainCoverageLayer.ResolutionAttribute); }
+            set { SetAttribute(Schema.terrainCoverageLayer.ResolutionAttribute, value); }
+        }
+
+        public string SourceFile
+        {
+            get { return GetAttribute<string>(Schema.terrainCoverageLayer.SourceFileAttribute); }
+            set { SetAttribute(Schema.terrainCoverageLayer.SourceFileAttribute, value); }
+        }
+
+        public uint Overlap
+        {
+            get { return GetAttribute<uint>(Schema.terrainCoverageLayer.OverlapAttribute); }
+            set { SetAttribute(Schema.terrainCoverageLayer.OverlapAttribute, value); }
+        }
+
+        public bool Enable
+        {
+            get { return GetAttribute<bool>(Schema.terrainCoverageLayer.EnableAttribute); }
+            set { SetAttribute(Schema.terrainCoverageLayer.EnableAttribute, value); }
+        }
+
+        public XLETerrainGob Parent { get { return DomNode.Parent.As<XLETerrainGob>(); } }
+
+        #region Configure Steps
+        internal TerrainCoverageConfig.Config BuildDialogConfig(XLETerrainGob terrain)
+        {
+            var cfg = new TerrainCoverageConfig.Config();
+
+            cfg.NodeDimensions = terrain.NodeDimensions;
+            cfg.CellTreeDepth = terrain.CellTreeDepth;
+
+            cfg.Resolution = Resolution;
+            cfg.SourceFile = SourceFile;
+            cfg.Enable = Enable;
+            cfg.Id = LayerId;
+            return cfg;
+        }
+
+        internal void CommitDialogConfig(TerrainCoverageConfig.Config cfg)
+        {
+            Resolution = cfg.Resolution;
+            SourceFile = cfg.SourceFile;
+            Enable = cfg.Enable;
+            LayerId = cfg.Id;
+        }
+
+        internal bool Reconfigure(TerrainCoverageConfig.Config cfg, XLETerrainGob terrain)
+        {
+            try
+            {
+                // If an import or create operation was requested, we 
+                // must perform those now. Note that this might require
+                // some format changes.
+                if (cfg.Import == TerrainCoverageConfig.Config.ImportType.DEMFile
+                    && cfg.SourceFile != null && cfg.SourceFile.Length > 0
+                    && terrain!=null)
+                {
+                    using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
+                    {
+                        cfg.ImportOp.Execute(
+                            terrain.UberSurfaceDirectory,
+                            cfg.Id, cfg.ImportOp.ImportCoverageFormat,
+                            progress);
+                    }
+                }
+                else if (cfg.Import == TerrainCoverageConfig.Config.ImportType.NewBlankTerrain)
+                {
+
+                }
+            }
+            catch 
+            {
+                return false;
+            }
+
+            CommitDialogConfig(cfg);
+
+            if (terrain!=null)
+                terrain.Reconfigure();
+            return true;
+        }
+
+        internal bool DoModalConfigure(XLETerrainGob terrain)
+        {
+            // open the configuration dialog
+            using (var dlg = new TerrainCoverageConfig())
+            {
+                dlg.Value = BuildDialogConfig(terrain);
+                var result = dlg.ShowDialog();
+                if (result == System.Windows.Forms.DialogResult.OK)
+                {
+                    return Reconfigure(dlg.Value, terrain);
+                }
+            }
+            return false;
+        }
+        #endregion
+
+        #region ICommandClient Members
+        bool ICommandClient.CanDoCommand(object commandTag)
+        {
+            if (commandTag is Command)
+            {
+                switch ((Command)commandTag)
+                {
+                    case Command.Configure:
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        void ICommandClient.DoCommand(object commandTag)
+        {
+            if (!(commandTag is Command)) return;
+
+            switch ((Command)commandTag)
+            {
+                case Command.Configure:
+                    {
+                        DoModalConfigure(Parent);
+                        break;
+                    }
+            }
+        }
+
+        void ICommandClient.UpdateCommand(object commandTag, CommandState commandState)
+        { }
+        #endregion
+
+        private enum Command
+        {
+            [Description("Configure...")] Configure
+        }
+
+        IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)
+        {
+            foreach (Command command in Enum.GetValues(typeof(Command)))
+            {
+                yield return command;
+            }
+        }
     }
 }

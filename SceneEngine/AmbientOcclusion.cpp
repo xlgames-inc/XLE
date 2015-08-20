@@ -244,6 +244,13 @@ namespace SceneEngine
 
         context->InvalidateCachedState();   // (nvidia code might change some states)
 
+            // Getting a warning message here if the pixel shader used
+            // immediately before this point uses class instances. Seems to
+            // be ok if we unbind the pixel shader first.
+        context->Unbind<RenderCore::Metal::PixelShader>();
+        context->Unbind<RenderCore::Metal::VertexShader>();
+        context->Unbind<RenderCore::Metal::GeometryShader>();
+
         auto parameters = BuildAOParameters();
         auto status = resources._aoContext->RenderAO(
             context->GetUnderlying(), 

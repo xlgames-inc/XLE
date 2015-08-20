@@ -511,6 +511,14 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+        #if defined(_DEBUG)
+                // resize this buffer in debug to prevent D3D warning messages when it is smaller than the buffer in the shader code
+                // it's ok for it to be smaller, because the shader will only actually read from the filled-in data... So this is
+                // just to suppress the warning.
+            if (texturingConstants.size() < sizeof(Float4) * 32 * 5)
+                texturingConstants.resize(sizeof(Float4) * 32 * 5, 0);
+        #endif
+
         Metal::ShaderResourceView diffuseSrv(diffuseTextureArray.get());
         Metal::ShaderResourceView normalSrv(normalTextureArray.get());
         Metal::ShaderResourceView specularitySrv(specularityTextureArray.get());

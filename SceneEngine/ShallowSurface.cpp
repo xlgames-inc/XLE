@@ -533,6 +533,8 @@ namespace SceneEngine
                 }
             }
         }
+
+        _pimpl->_sim->UnbindForOceanRender(metalContext);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -625,6 +627,9 @@ namespace SceneEngine
                 i->RenderDebugging(
                     metalContext, parserContext, techniqueIndex, 
                     skyProjectionType, refractionsEnable);
+
+                // unbind refractions
+            metalContext.UnbindPS<Metal::ShaderResourceView>(9, 2);
         }
         CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }

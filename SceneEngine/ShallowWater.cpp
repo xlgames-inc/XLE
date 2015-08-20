@@ -639,7 +639,13 @@ namespace SceneEngine
                     context, sortedElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
                     settings, _gridDimension);
 
-                metalContext.UnbindCS<UAV>(0, 8);
+                if (pass == 0) {
+                    metalContext.UnbindCS<UAV>(0, 8);
+                    metalContext.UnbindCS<SRV>(5, 1);
+                } else {
+                    metalContext.UnbindCS<SRV>(5, 8);
+                    metalContext.UnbindCS<UAV>(0, 1);
+                }
             }
 
         }
@@ -938,7 +944,7 @@ namespace SceneEngine
 
         }
 
-        metalContext.UnbindCS<UAV>(1, 8);
+        metalContext.UnbindCS<UAV>(0, 8);
 
             //  For each actively simulated grid, run the compute shader to calculate the heights 
             //  for the new frame. We simulate horizontally and vertically separate. Between frames we
@@ -1143,6 +1149,14 @@ namespace SceneEngine
         if (_simulationGrid->_foamQuantitySRV[bufferCounter&1].IsGood())
             metalContext.BindPS(MakeResourceList(11, _simulationGrid->_foamQuantitySRV[bufferCounter&1]));
         metalContext.BindPS(MakeResourceList(15, _lookupTableSRV));
+    }
+
+    void ShallowWaterSim::UnbindForOceanRender(MetalContext& metalContext)
+    {
+        metalContext.UnbindVS<Metal::ShaderResourceView>(3, 2);
+        metalContext.UnbindPS<Metal::ShaderResourceView>(5, 1);
+        metalContext.UnbindPS<Metal::ShaderResourceView>(11, 1);
+        metalContext.UnbindPS<Metal::ShaderResourceView>(15, 1);
     }
 
     void ShallowWaterSim::BindForErosionSimulation(MetalContext& metalContext, unsigned bufferCounter)

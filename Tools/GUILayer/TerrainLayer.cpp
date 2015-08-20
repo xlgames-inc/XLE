@@ -172,6 +172,11 @@ namespace GUILayer
             Vector2 get()               { return AsVector2(_native->_importHeightRange); }
             void set(Vector2 value)     { _native->_importHeightRange = AsFloat2(value); }
         }
+        property unsigned ImportCoverageFormat
+        {
+            unsigned get()              { return _native->_importCoverageFormat; }
+            void set(unsigned value)    { _native->_importCoverageFormat = value; }
+        }
 
         property bool AbsoluteHeights
         {
@@ -181,13 +186,26 @@ namespace GUILayer
         property unsigned   WarningCount                { unsigned get() { return (unsigned)_native->_warnings.size(); } }
         String^             Warning(unsigned index)     { return clix::marshalString<clix::E_UTF8>(_native->_warnings[index]); }
 
-        void Execute(String^ outputDir, IProgress^ progress)
+        void Execute(String^ outputDir, unsigned layerId, unsigned typeCat, IProgress^ progress)
         {
             auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
             ToolsRig::ExecuteTerrainImport(
                 *_native, 
                 clix::marshalString<clix::E_UTF8>(outputDir).c_str(),
-                _destNodeDims, _destCellTreeDepth, nativeProgress.get());
+                _destNodeDims, _destCellTreeDepth, 
+                layerId, (ImpliedTyping::TypeCat)typeCat,
+                nativeProgress.get());
+        }
+
+        void ExecuteForHeights(String^ outputDir, IProgress^ progress)
+        {
+            auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
+            ToolsRig::ExecuteTerrainImport(
+                *_native, 
+                clix::marshalString<clix::E_UTF8>(outputDir).c_str(),
+                _destNodeDims, _destCellTreeDepth, 
+                SceneEngine::CoverageId_Heights, ImpliedTyping::TypeCat::Float,
+                nativeProgress.get());
         }
 
         TerrainImportOp(String^ input, unsigned destNodeDims, unsigned destCellTreeDepth)

@@ -9,6 +9,7 @@
 #include "../../SceneEngine/TerrainCoverageId.h"
 #include "../../SceneEngine/TerrainFormat.h"
 #include "../../Assets/AssetsCore.h"
+#include "../../Utility/ParameterBox.h"     // for ImpliedTyping::TypeCat
 #include "../../Math/Vector.h"
 #include <vector>
 
@@ -30,6 +31,7 @@ namespace ToolsRig
         UInt2 _importMins;
         UInt2 _importMaxs;
         Float2 _importHeightRange;
+        unsigned _importCoverageFormat;
 
         std::vector<std::string> _warnings;
     };
@@ -42,6 +44,8 @@ namespace ToolsRig
         const TerrainImportOp& operation,
         const ::Assets::ResChar outputDir[],
         unsigned destNodeDims, unsigned destCellTreeDepth,
+        SceneEngine::TerrainCoverageId coverageId,
+        ImpliedTyping::TypeCat dstType,
         ConsoleRig::IProgress* progress);
 
     void GenerateMissingUberSurfaceFiles(

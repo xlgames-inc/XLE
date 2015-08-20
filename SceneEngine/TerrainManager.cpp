@@ -250,7 +250,7 @@ namespace SceneEngine
         {
         public:
             TerrainCoverageId _id;
-            std::unique_ptr<TerrainUberSurface<uint8>> _uberSurface;
+            std::unique_ptr<TerrainUberSurfaceGeneric> _uberSurface;
             std::unique_ptr<CoverageUberSurfaceInterface> _interface;
 
             CoverageInterface() {}
@@ -404,7 +404,7 @@ namespace SceneEngine
             Pimpl::CoverageInterface ci;
             ci._id = l._id;
                 
-            ci._uberSurface = std::make_unique<TerrainUberSurface<uint8>>(uberSurfaceFile);
+            ci._uberSurface = std::make_unique<TerrainUberSurfaceGeneric>(uberSurfaceFile);
             ci._interface = std::make_unique<CoverageUberSurfaceInterface>(std::ref(*ci._uberSurface), _ioFormat);
 
             if (constant_expression<registerShortCircuit>::result()) {

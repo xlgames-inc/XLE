@@ -101,6 +101,7 @@ namespace SceneEngine
             const Int2* newElementsBegin, const Int2* newElementsEnd);
 
         void BindForOceanRender(MetalContext& context, unsigned bufferCounter);
+        void UnbindForOceanRender(MetalContext& metalContext);
         void BindForErosionSimulation(MetalContext& context, unsigned bufferCounter);
 
         void RenderWireframe(

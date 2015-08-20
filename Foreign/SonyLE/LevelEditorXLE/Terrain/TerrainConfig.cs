@@ -28,9 +28,6 @@ namespace LevelEditorXLE.Terrain
             set
             {
                 m_config = value;
-                // var props = TypeDescriptor.GetProperties(typeof(Config));
-                // m_propertyGrid1.Bind(
-                //     new XLEBridgeUtils.BasicPropertyEditingContext(m_config, props));
                 m_propertyGrid1.SelectedObject = value;
 
                 m_importType.Enabled = value.Import == Config.ImportType.DEMFile;
@@ -70,18 +67,8 @@ namespace LevelEditorXLE.Terrain
             [EditorAttribute(typeof(System.Windows.Forms.Design.FolderNameEditor), typeof(System.Drawing.Design.UITypeEditor))]
             public string CellsDirectory { get; set; }
 
-            [Category("Decoration")] [Description("Has a layer for the decoration selection")]
-            public bool HasDecorationCoverage { get; set; }
-
-            [Category("Shadows")] [Description("Has a layer for precalculated terrain shadows")]
-            public bool HasShadowsCoverage { get; set; }
-
-            [Category("Shadows")] [Description("Has a layer for precalculated ambient occlusion")]
-            public bool HasAOCoverage { get; set; }
-
             [Category("Shadows")] [Description("Sun Path Angle (in degrees)")]
             public float SunPathAngle { get; set; }
-
             [Category("Gradient Flags")] [Description("Has encoded gradient flags")]
             public bool HasEncodedGradientFlags { get; set; }
 
@@ -94,12 +81,6 @@ namespace LevelEditorXLE.Terrain
             [Category("Gradient Flags")] [Description("Threshold for second slope texturing")]
             public float SlopeThreshold2 { get; set; }
 
-            [Category("Base Material")] [Description("Has a layer for the base material selection")]
-            public bool HasBaseMaterialCoverage { get; set; }
-
-            [Category("Base Material")] [Description("Resolution of the base material texturing (relative to heights resolution. 1 means the same as heights)")]
-            public uint BaseMaterialResolution { get; set; }
-
             [Browsable(false)] public string SourceDEMFile { get; set; }
             [Browsable(false)] public uint NewCellCountX { get; set; }
             [Browsable(false)] public uint NewCellCountY { get; set; }
@@ -111,9 +92,10 @@ namespace LevelEditorXLE.Terrain
 
             internal Config() 
             {
-                NodeDimensions = 32; Overlap = 2; Spacing = 10; Import = ImportType.None; BaseMaterialResolution = 2;
+                NodeDimensions = 32; Overlap = 2; Spacing = 10; Import = ImportType.None;
+                CellTreeDepth = 5;
                 NewCellCountX = NewCellCountY = 1;
-                HasBaseMaterialCoverage = HasDecorationCoverage = HasShadowsCoverage = HasEncodedGradientFlags = false;
+                HasEncodedGradientFlags = false;
                 SunPathAngle = 0.0f;
             }
         };

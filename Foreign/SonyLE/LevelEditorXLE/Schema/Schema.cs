@@ -301,6 +301,14 @@ namespace LevelEditorXLE
             shallowSurfaceType.RainQuantityAttribute = shallowSurfaceType.Type.GetAttributeInfo("RainQuantity");
             shallowSurfaceType.EvaporationConstantAttribute = shallowSurfaceType.Type.GetAttributeInfo("EvaporationConstant");
             shallowSurfaceType.PressureConstantAttribute = shallowSurfaceType.Type.GetAttributeInfo("PressureConstant");
+            shallowSurfaceType.OpticalThicknessColorAttribute = shallowSurfaceType.Type.GetAttributeInfo("OpticalThicknessColor");
+            shallowSurfaceType.OpticalThicknessScalarAttribute = shallowSurfaceType.Type.GetAttributeInfo("OpticalThicknessScalar");
+            shallowSurfaceType.FoamColorAttribute = shallowSurfaceType.Type.GetAttributeInfo("FoamColor");
+            shallowSurfaceType.SpecularAttribute = shallowSurfaceType.Type.GetAttributeInfo("Specular");
+            shallowSurfaceType.RoughnessAttribute = shallowSurfaceType.Type.GetAttributeInfo("Roughness");
+            shallowSurfaceType.RefractiveIndexAttribute = shallowSurfaceType.Type.GetAttributeInfo("RefractiveIndex");
+            shallowSurfaceType.UpwellingScaleAttribute = shallowSurfaceType.Type.GetAttributeInfo("UpwellingScale");
+            shallowSurfaceType.SkyReflectionScaleAttribute = shallowSurfaceType.Type.GetAttributeInfo("SkyReflectionScale");
 
             placementsCellReferenceType.Type = getNodeType("gap", "placementsCellReferenceType");
             placementsCellReferenceType.refAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ref");
@@ -399,6 +407,13 @@ namespace LevelEditorXLE
             vegetationSpawnConfigType.JitterAmountAttribute = vegetationSpawnConfigType.Type.GetAttributeInfo("JitterAmount");
             vegetationSpawnConfigType.materialChild = vegetationSpawnConfigType.Type.GetChildInfo("material");
 
+            terrainCoverageLayer.Type = getNodeType("gap", "terrainCoverageLayer");
+            terrainCoverageLayer.IdAttribute = terrainCoverageLayer.Type.GetAttributeInfo("Id");
+            terrainCoverageLayer.ResolutionAttribute = terrainCoverageLayer.Type.GetAttributeInfo("Resolution");
+            terrainCoverageLayer.OverlapAttribute = terrainCoverageLayer.Type.GetAttributeInfo("Overlap");
+            terrainCoverageLayer.SourceFileAttribute = terrainCoverageLayer.Type.GetAttributeInfo("SourceFile");
+            terrainCoverageLayer.EnableAttribute = terrainCoverageLayer.Type.GetAttributeInfo("Enable");
+
             terrainType.Type = getNodeType("gap", "terrainType");
             terrainType.UberSurfaceDirAttribute = terrainType.Type.GetAttributeInfo("UberSurfaceDir");
             terrainType.CellsDirAttribute = terrainType.Type.GetAttributeInfo("CellsDir");
@@ -407,19 +422,16 @@ namespace LevelEditorXLE
             terrainType.OverlapAttribute = terrainType.Type.GetAttributeInfo("Overlap");
             terrainType.SpacingAttribute = terrainType.Type.GetAttributeInfo("Spacing");
             terrainType.CellTreeDepthAttribute = terrainType.Type.GetAttributeInfo("CellTreeDepth");
-            terrainType.OffsetAttribute = terrainType.Type.GetAttributeInfo("Offset");
-            terrainType.SunPathAngleAttribute = terrainType.Type.GetAttributeInfo("SunPathAngle");
-            terrainType.HasBaseMaterialCoverageAttribute = terrainType.Type.GetAttributeInfo("HasBaseMaterialCoverage");
-            terrainType.HasDecorationCoverageAttribute = terrainType.Type.GetAttributeInfo("HasDecorationCoverage");
-            terrainType.HasShadowsCoverageAttribute = terrainType.Type.GetAttributeInfo("HasShadowsCoverage");
-            terrainType.HasAOCoverageAttribute = terrainType.Type.GetAttributeInfo("HasAOCoverage");
-            terrainType.HasEncodedGradientFlagsAttribute = terrainType.Type.GetAttributeInfo("HasEncodedGradientFlags");
             terrainType.CellCountAttribute = terrainType.Type.GetAttributeInfo("CellCount");
+            terrainType.OffsetAttribute = terrainType.Type.GetAttributeInfo("Offset");
+            terrainType.HasEncodedGradientFlagsAttribute = terrainType.Type.GetAttributeInfo("HasEncodedGradientFlags");
             terrainType.GradFlagSlopeThreshold0Attribute = terrainType.Type.GetAttributeInfo("GradFlagSlopeThreshold0");
             terrainType.GradFlagSlopeThreshold1Attribute = terrainType.Type.GetAttributeInfo("GradFlagSlopeThreshold1");
             terrainType.GradFlagSlopeThreshold2Attribute = terrainType.Type.GetAttributeInfo("GradFlagSlopeThreshold2");
+            terrainType.SunPathAngleAttribute = terrainType.Type.GetAttributeInfo("SunPathAngle");
             terrainType.baseTextureChild = terrainType.Type.GetChildInfo("baseTexture");
             terrainType.VegetationSpawnChild = terrainType.Type.GetChildInfo("VegetationSpawn");
+            terrainType.coverageChild = terrainType.Type.GetChildInfo("coverage");
 
             resourceReferenceType.Type = getNodeType("gap", "resourceReferenceType");
             resourceReferenceType.uriAttribute = resourceReferenceType.Type.GetAttributeInfo("uri");
@@ -852,6 +864,14 @@ namespace LevelEditorXLE
             public static AttributeInfo RainQuantityAttribute;
             public static AttributeInfo EvaporationConstantAttribute;
             public static AttributeInfo PressureConstantAttribute;
+            public static AttributeInfo OpticalThicknessColorAttribute;
+            public static AttributeInfo OpticalThicknessScalarAttribute;
+            public static AttributeInfo FoamColorAttribute;
+            public static AttributeInfo SpecularAttribute;
+            public static AttributeInfo RoughnessAttribute;
+            public static AttributeInfo RefractiveIndexAttribute;
+            public static AttributeInfo UpwellingScaleAttribute;
+            public static AttributeInfo SkyReflectionScaleAttribute;
         }
 
         public static class placementsCellReferenceType
@@ -987,6 +1007,16 @@ namespace LevelEditorXLE
             public static ChildInfo materialChild;
         }
 
+        public static class terrainCoverageLayer
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo IdAttribute;
+            public static AttributeInfo ResolutionAttribute;
+            public static AttributeInfo OverlapAttribute;
+            public static AttributeInfo SourceFileAttribute;
+            public static AttributeInfo EnableAttribute;
+        }
+
         public static class terrainType
         {
             public static DomNodeType Type;
@@ -997,19 +1027,16 @@ namespace LevelEditorXLE
             public static AttributeInfo OverlapAttribute;
             public static AttributeInfo SpacingAttribute;
             public static AttributeInfo CellTreeDepthAttribute;
-            public static AttributeInfo OffsetAttribute;
-            public static AttributeInfo SunPathAngleAttribute;
-            public static AttributeInfo HasBaseMaterialCoverageAttribute;
-            public static AttributeInfo HasDecorationCoverageAttribute;
-            public static AttributeInfo HasShadowsCoverageAttribute;
-            public static AttributeInfo HasAOCoverageAttribute;
-            public static AttributeInfo HasEncodedGradientFlagsAttribute;
             public static AttributeInfo CellCountAttribute;
+            public static AttributeInfo OffsetAttribute;
+            public static AttributeInfo HasEncodedGradientFlagsAttribute;
             public static AttributeInfo GradFlagSlopeThreshold0Attribute;
             public static AttributeInfo GradFlagSlopeThreshold1Attribute;
             public static AttributeInfo GradFlagSlopeThreshold2Attribute;
+            public static AttributeInfo SunPathAngleAttribute;
             public static ChildInfo baseTextureChild;
             public static ChildInfo VegetationSpawnChild;
+            public static ChildInfo coverageChild;
         }
 
         public static class resourceReferenceType

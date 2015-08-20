@@ -243,6 +243,21 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->OMSetRenderTargets(0, nullptr, nullptr);
     }
 
+    template<> void DeviceContext::Unbind<VertexShader>()
+    {
+        _underlying->VSSetShader(nullptr, nullptr, 0);
+    }
+
+    template<> void DeviceContext::Unbind<PixelShader>()
+    {
+        _underlying->PSSetShader(nullptr, nullptr, 0);
+    }
+
+    template<> void DeviceContext::Unbind<GeometryShader>()
+    {
+        _underlying->GSSetShader(nullptr, nullptr, 0);
+    }
+
     void DeviceContext::Dispatch(unsigned countX, unsigned countY, unsigned countZ)
     {
         _underlying->Dispatch(countX, countY, countZ);

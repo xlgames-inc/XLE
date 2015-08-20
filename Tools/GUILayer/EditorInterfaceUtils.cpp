@@ -373,14 +373,8 @@ namespace GUILayer
         static TerrainConfig::CoverageLayerDesc^ DefaultCoverageLayer(
             TerrainConfig^ cfg, String^ baseDirectory, unsigned coverageLayerId) 
         {
-            ::Assets::ResChar uberSurfaceFN[MaxPath]; 
-            SceneEngine::TerrainConfig::GetUberSurfaceFilename(
-                uberSurfaceFN, dimof(uberSurfaceFN),
-                clix::marshalString<clix::E_UTF8>(baseDirectory).c_str(),
-                coverageLayerId);
-
             auto result = gcnew TerrainConfig::CoverageLayerDesc(
-                clix::marshalString<clix::E_UTF8>(uberSurfaceFN), coverageLayerId);
+                baseDirectory, coverageLayerId);
             
             const auto layerRes = DefaultResolutionForLayer(coverageLayerId);
             const auto overlap = DefaultOverlapForLayer(coverageLayerId);
