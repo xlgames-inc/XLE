@@ -450,6 +450,21 @@ namespace GUILayer
                 nativeProgress.get());
         }
 
+        static void ExecuteTerrainExport(
+            String^ dstFile, 
+            TerrainConfig^ cfg, 
+            String^ uberSurfaceDir,
+            unsigned coverageId,
+            IProgress^ progress)
+        {
+            auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
+            ToolsRig::ExecuteTerrainExport(
+                clix::marshalString<clix::E_UTF8>(dstFile).c_str(), 
+                cfg->GetNative(), 
+                clix::marshalString<clix::E_UTF8>(uberSurfaceDir).c_str(), 
+                coverageId, nativeProgress.get());
+        }
+
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

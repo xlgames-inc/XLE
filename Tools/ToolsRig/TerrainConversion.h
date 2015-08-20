@@ -48,6 +48,13 @@ namespace ToolsRig
         ImpliedTyping::TypeCat dstType,
         ConsoleRig::IProgress* progress);
 
+    void ExecuteTerrainExport(
+        const ::Assets::ResChar dstFile[],
+        const SceneEngine::TerrainConfig& srcCfg, 
+        const ::Assets::ResChar uberSurfaceDir[],
+        SceneEngine::TerrainCoverageId coverageId,
+        ConsoleRig::IProgress* progress);
+
     void GenerateMissingUberSurfaceFiles(
         const SceneEngine::TerrainConfig& outputConfig, 
         const ::Assets::ResChar uberSurfaceDir[],

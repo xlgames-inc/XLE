@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Windows.Forms;
 
 using Sce.Atf.Adaptation;
 using Sce.Atf.Applications;
@@ -200,13 +201,13 @@ namespace LevelEditorXLE.Terrain
 
         #region Internal Low Level
         private GUILayer.EditorSceneManager SceneMan { get { return XLEBridgeUtils.NativeManipulatorLayer.SceneManager; } }
-        private void Unload()
+        internal void Unload()
         {
             SceneMan.UnloadTerrain();
             m_isLoaded = false;
         }
 
-        private void Reload()
+        internal void Reload()
         {
             SceneMan.ReloadTerrain(BuildEngineConfig());
             m_isLoaded = true;
@@ -523,10 +524,10 @@ namespace LevelEditorXLE.Terrain
                                 }
                                 else
                                 {
-                                    System.Windows.Forms.MessageBox.Show(
+                                    MessageBox.Show(
                                         "Layer id conflicts with existing id. You can't have 2 layers with the same id. Try using a unique id", "Error adding layer",
-                                        System.Windows.Forms.MessageBoxButtons.OK,
-                                        System.Windows.Forms.MessageBoxIcon.Error);
+                                        MessageBoxButtons.OK,
+                                        MessageBoxIcon.Error);
                                 }
                             }
                         }
@@ -548,10 +549,10 @@ namespace LevelEditorXLE.Terrain
                             }
                             else
                             {
-                                System.Windows.Forms.MessageBox.Show(
+                                MessageBox.Show(
                                     "Layer id conflicts with existing id. You can't have 2 layers with the same id. Try using a unique id", "Error adding layer",
-                                    System.Windows.Forms.MessageBoxButtons.OK,
-                                    System.Windows.Forms.MessageBoxIcon.Error);
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Error);
                             }
                         }
                         break;
@@ -736,6 +737,37 @@ namespace LevelEditorXLE.Terrain
         }
         #endregion
 
+        internal void DoExport(XLETerrainGob terrain)
+        {
+            if (terrain == null) return;
+
+            var fileDlg = new SaveFileDialog();
+            fileDlg.Filter = "Tiff files|*.tiff;*.tif";
+            if (fileDlg.ShowDialog() == DialogResult.OK)
+            {
+                try
+                {
+                    terrain.Unload();
+                    using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
+                    {
+                        GUILayer.EditorInterfaceUtils.ExecuteTerrainExport(
+                            fileDlg.FileName,
+                            terrain.BuildEngineConfig(),
+                            terrain.UberSurfaceDirectory,
+                            LayerId, progress);
+                    }
+                    terrain.Reload();
+                }
+                catch 
+                {
+                    MessageBox.Show(
+                        "Export operation failed", "Terrain coverage export",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
+            }
+        }
+
         #region ICommandClient Members
         bool ICommandClient.CanDoCommand(object commandTag)
         {
@@ -744,6 +776,7 @@ namespace LevelEditorXLE.Terrain
                 switch ((Command)commandTag)
                 {
                     case Command.Configure:
+                    case Command.Export:
                         return true;
                 }
             }
@@ -757,10 +790,12 @@ namespace LevelEditorXLE.Terrain
             switch ((Command)commandTag)
             {
                 case Command.Configure:
-                    {
-                        DoModalConfigure(Parent);
-                        break;
-                    }
+                    DoModalConfigure(Parent);
+                    break;
+
+                case Command.Export:
+                    DoExport(Parent);
+                    break;
             }
         }
 
@@ -770,7 +805,8 @@ namespace LevelEditorXLE.Terrain
 
         private enum Command
         {
-            [Description("Configure...")] Configure
+            [Description("Configure...")] Configure,
+            [Description("Export...")] Export
         }
 
         IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)

@@ -708,6 +708,80 @@ namespace ToolsRig
         }
     }
 
+    void ExecuteTerrainExport(
+        const ::Assets::ResChar dstFile[],
+        const SceneEngine::TerrainConfig& srcCfg, 
+        const ::Assets::ResChar srcDir[],
+        SceneEngine::TerrainCoverageId coverageId,
+        ConsoleRig::IProgress* progress)
+    {
+            // Export a uber surface file to tiff format.
+        ::Assets::ResChar dirName[MaxPath];
+        XlDirname(dirName, dimof(dirName), dstFile);
+        CreateDirectoryRecursive(dirName);
+
+        ::Assets::ResChar srcFN[MaxPath];
+        srcCfg.GetUberSurfaceFilename(srcFN, dimof(srcFN), srcDir, coverageId);
+        if (!DoesFileExist(srcFN))
+            Throw(::Exceptions::BasicLabel("Could not find input file (%s)", srcFN));
+
+        TerrainUberSurfaceGeneric uberSurface(srcFN);
+        auto step = 
+              progress 
+            ? progress->BeginStep("Create uber surface data", uberSurface.GetHeight(), true)
+            : nullptr;
+
+        auto* tif = TIFFOpen(dstFile, "w");
+        if (!tif)
+            Throw(::Exceptions::BasicLabel("Error openning output file (%s)", dstFile));
+        auto autoClose = MakeAutoClose([tif]() { TIFFClose(tif); });
+
+        TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, uberSurface.GetWidth());  // set the width of the image
+        TIFFSetField(tif, TIFFTAG_IMAGELENGTH, uberSurface.GetHeight());    // set the height of the image
+        TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);    // set the origin of the image.
+
+        TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
+        TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
+
+        auto fmt = uberSurface.Format();
+        TIFFSetField(tif, TIFFTAG_SAMPLESPERPIXEL, fmt._arrayCount);
+        TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, fmt.GetSize() * 8 / fmt._arrayCount);
+        using TC = ImpliedTyping::TypeCat;
+        switch (fmt._type) {
+        case TC::Bool:
+        case TC::Int8:
+        case TC::Int16:
+        case TC::Int32:
+            TIFFSetField(tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_INT);
+            break;
+
+        case TC::UInt8:
+        case TC::UInt16:
+        case TC::UInt32:
+            TIFFSetField(tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
+            break;
+
+        case TC::Float:
+            TIFFSetField(tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_IEEEFP);
+            break;
+
+        default:
+            Throw(::Exceptions::BasicLabel("Unknown uber surface format, can't export"));
+        }
+
+        TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, 1);
+            // I think this will only work correctly with a single sample per pixel
+        for (unsigned row = 0; row < uberSurface.GetHeight(); row++) {
+            TIFFWriteScanline(tif, uberSurface.GetData(UInt2(0, row)), row, 0);
+
+            if (step) {
+                if (step->IsCancelled())
+                    break;
+                step->Advance();
+            }
+        }
+    }
+
     void GenerateBlankUberSurface(
         const ::Assets::ResChar outputDir[], 
         unsigned cellCountX, unsigned cellCountY,

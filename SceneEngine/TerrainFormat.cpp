@@ -661,6 +661,24 @@ namespace SceneEngine
                 cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
                 MainTerrainFormat::Compression::None, 
                 std::make_pair(VersionString, BuildDateString));
+        } else if (surface.Format() == ImpliedTyping::TypeOf<uint16>()) {
+            MainTerrainFormat::WriteCellFromUberSurface<uint16>(
+                destinationFile, surface, 
+                cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
+                MainTerrainFormat::Compression::None, 
+                std::make_pair(VersionString, BuildDateString));
+        } else if (surface.Format() == ImpliedTyping::TypeOf<int8>()) {
+            MainTerrainFormat::WriteCellFromUberSurface<int8>(
+                destinationFile, surface, 
+                cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
+                MainTerrainFormat::Compression::None, 
+                std::make_pair(VersionString, BuildDateString));
+        } else if (surface.Format() == ImpliedTyping::TypeOf<int16>()) {
+            MainTerrainFormat::WriteCellFromUberSurface<int16>(
+                destinationFile, surface, 
+                cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
+                MainTerrainFormat::Compression::None, 
+                std::make_pair(VersionString, BuildDateString));
         }
     }
 
