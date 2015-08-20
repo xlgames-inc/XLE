@@ -278,6 +278,8 @@
     <xs:attribute name="Overlap" type="xs:unsignedInt" default="1"/>
     <xs:attribute name="SourceFile" type="xs:string"/>
     <xs:attribute name="Enable" type="xs:boolean" default="true"/>
+    <xs:attribute name="Format" type="xs:unsignedInt" default="0"/>
+    <xs:attribute name="ShaderNormalizationMode" type="xs:unsignedInt" default="0"/>
   </xs:complexType>
 
   <!-- ......................................................................... -->

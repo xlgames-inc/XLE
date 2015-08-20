@@ -114,6 +114,16 @@ namespace GUILayer
         _native->_typeCat = value;
     }
 
+    unsigned TerrainConfig::CoverageLayerDesc::ShaderNormalizationMode::get()
+    {
+        return _native->_shaderNormalizationMode;
+    }
+    
+    void TerrainConfig::CoverageLayerDesc::ShaderNormalizationMode::set(unsigned value)
+    {
+        _native->_shaderNormalizationMode = value;
+    }
+
     unsigned TerrainConfig::CoverageLayerDesc::FormatArrayCount::get()
     {
         return _native->_typeCount;
@@ -137,6 +147,7 @@ namespace GUILayer
         _native->_nodeDimensions = UInt2(0,0);
         _native->_overlap = 0;
         _native->_typeCat = 0;
+        _native->_shaderNormalizationMode = 0;
         _native->_typeCount = 0;
     }
 

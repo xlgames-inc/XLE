@@ -88,6 +88,17 @@ namespace RenderCore { namespace Metal_DX11
     bool                    HasLinearAndSRGBFormats(NativeFormat::Enum inputFormat);
 
     inline DXGI_FORMAT      AsDXGIFormat(NativeFormat::Enum format) { return DXGI_FORMAT(format); }
-    NativeFormat::Enum      AsNativeFormat(const Utility::ImpliedTyping::TypeDesc& type);
+
+    namespace ShaderNormalizationMode
+    {
+        enum Enum 
+        {
+            Integer, Normalized, Float
+        };
+    }
+
+    NativeFormat::Enum      AsNativeFormat(
+        const Utility::ImpliedTyping::TypeDesc& type,
+        ShaderNormalizationMode::Enum norm = ShaderNormalizationMode::Integer);
 }}
 

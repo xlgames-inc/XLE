@@ -166,6 +166,7 @@ namespace SceneEngine
                 layer._overlap          = l(u("Overlap"), 1);
                 layer._typeCat          = l(u("TypeCat"), unsigned(ImpliedTyping::TypeCat::Float));
                 layer._typeCount        = l(u("TypeCount"), 1);
+                layer._shaderNormalizationMode = l(u("ShaderNormMode"), 0);
                 _coverageLayers.push_back(layer);
             }
         }
@@ -191,6 +192,7 @@ namespace SceneEngine
             Serialize(formatter, u("Overlap"), l->_overlap);
             Serialize(formatter, u("TypeCat"), l->_typeCat);
             Serialize(formatter, u("TypeCount"), l->_typeCount);
+            Serialize(formatter, u("ShaderNormMode"), l->_shaderNormalizationMode);
             formatter.EndElement(ele);
         }
         formatter.EndElement(covEle);

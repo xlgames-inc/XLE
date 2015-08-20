@@ -42,6 +42,7 @@ TerrainTextureOutput LoadRawTexSample(uint remappedTexIndex, float2 coord, float
     result.specularity = 1.f;
 
     result.tangentSpaceNormal.xy = 2.f * result.tangentSpaceNormal.xy - 1.0.xx;
+    result.tangentSpaceNormal.xy = float2(result.tangentSpaceNormal.x, -result.tangentSpaceNormal.y);
     result.tangentSpaceNormal =
         float3(
             result.tangentSpaceNormal.xy,

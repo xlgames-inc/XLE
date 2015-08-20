@@ -51,6 +51,9 @@ namespace LevelEditorXLE.Terrain
             [Category("General")] [Description("Id for this layer")]
             public uint Id { get; set; }
 
+            [Category("General")] [Description("Normalization mode expected by the shader. 0: integer, 1: normalized, 2: float")]
+            public uint ShaderNormalizationMode { get; set; }
+
             [Browsable(false)] public string SourceFile { get; set; }
             public enum ImportType { None, DEMFile, NewBlankTerrain };
 
@@ -68,6 +71,7 @@ namespace LevelEditorXLE.Terrain
                 Import = ImportType.None;
                 NodeDimensions = 32;
                 CellTreeDepth = 5;
+                ShaderNormalizationMode = 0;
             }
         };
 

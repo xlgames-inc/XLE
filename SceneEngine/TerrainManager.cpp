@@ -294,7 +294,7 @@ namespace SceneEngine
             const auto& l = cfg.GetCoverageLayer(c);
             ImpliedTyping::TypeDesc t(ImpliedTyping::TypeCat(l._typeCat), uint16(l._typeCount));
 
-            auto fmt = RenderCore::Metal::AsNativeFormat(t);
+            auto fmt = RenderCore::Metal::AsNativeFormat(t, (Metal::ShaderNormalizationMode::Enum)l._shaderNormalizationMode);
             if (l._typeCat == (unsigned)ImpliedTyping::TypeCat::UInt16 && l._typeCount == 2)
                 fmt = RenderCore::Metal::NativeFormat::R16G16_UNORM;        // hack! ShadowSample must be "unorm"
 

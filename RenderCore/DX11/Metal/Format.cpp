@@ -294,54 +294,95 @@ namespace RenderCore { namespace Metal_DX11
         }
     }
 
-    NativeFormat::Enum AsNativeFormat(const ImpliedTyping::TypeDesc& type)
+    NativeFormat::Enum AsNativeFormat(
+        const ImpliedTyping::TypeDesc& type,
+        ShaderNormalizationMode::Enum norm)
     {
         using namespace NativeFormat;
-        switch (type._type) {
-        case ImpliedTyping::TypeCat::Int8:
-            if (type._arrayCount == 1) return R8_SINT;
-            if (type._arrayCount == 2) return R8G8_SINT;
-            if (type._arrayCount == 4) return R8G8B8A8_SINT;
-            break;
 
-        case ImpliedTyping::TypeCat::UInt8:
-            if (type._arrayCount == 1) return R8_UINT;
-            if (type._arrayCount == 2) return R8G8_UINT;
-            if (type._arrayCount == 4) return R8G8B8A8_UINT;
-            break;
-
-        case ImpliedTyping::TypeCat::Int16:
-            if (type._arrayCount == 1) return R16_SINT;
-            if (type._arrayCount == 2) return R16G16_SINT;
-            if (type._arrayCount == 4) return R16G16B16A16_SINT;
-            break;
-
-        case ImpliedTyping::TypeCat::UInt16:
-            if (type._arrayCount == 1) return R16_UINT;
-            if (type._arrayCount == 2) return R16G16_UINT;
-            if (type._arrayCount == 4) return R16G16B16A16_UINT;
-            break;
-
-        case ImpliedTyping::TypeCat::Int32:
-            if (type._arrayCount == 1) return R32_SINT;
-            if (type._arrayCount == 2) return R32G32_SINT;
-            if (type._arrayCount == 3) return R32G32B32_SINT;
-            if (type._arrayCount == 4) return R32G32B32A32_SINT;
-            break;
-
-        case ImpliedTyping::TypeCat::UInt32:
-            if (type._arrayCount == 1) return R32_UINT;
-            if (type._arrayCount == 2) return R32G32_UINT;
-            if (type._arrayCount == 3) return R32G32B32_UINT;
-            if (type._arrayCount == 4) return R32G32B32A32_UINT;
-            break;
-
-        case ImpliedTyping::TypeCat::Float:
+        if (type._type == ImpliedTyping::TypeCat::Float) {
             if (type._arrayCount == 1) return R32_FLOAT;
             if (type._arrayCount == 2) return R32G32_FLOAT;
             if (type._arrayCount == 3) return R32G32B32_FLOAT;
             if (type._arrayCount == 4) return R32G32B32A32_FLOAT;
-            break;
+            return Unknown;
+        }
+        
+        if (norm == ShaderNormalizationMode::Integer) {
+            switch (type._type) {
+            case ImpliedTyping::TypeCat::Int8:
+                if (type._arrayCount == 1) return R8_SINT;
+                if (type._arrayCount == 2) return R8G8_SINT;
+                if (type._arrayCount == 4) return R8G8B8A8_SINT;
+                break;
+
+            case ImpliedTyping::TypeCat::UInt8:
+                if (type._arrayCount == 1) return R8_UINT;
+                if (type._arrayCount == 2) return R8G8_UINT;
+                if (type._arrayCount == 4) return R8G8B8A8_UINT;
+                break;
+
+            case ImpliedTyping::TypeCat::Int16:
+                if (type._arrayCount == 1) return R16_SINT;
+                if (type._arrayCount == 2) return R16G16_SINT;
+                if (type._arrayCount == 4) return R16G16B16A16_SINT;
+                break;
+
+            case ImpliedTyping::TypeCat::UInt16:
+                if (type._arrayCount == 1) return R16_UINT;
+                if (type._arrayCount == 2) return R16G16_UINT;
+                if (type._arrayCount == 4) return R16G16B16A16_UINT;
+                break;
+
+            case ImpliedTyping::TypeCat::Int32:
+                if (type._arrayCount == 1) return R32_SINT;
+                if (type._arrayCount == 2) return R32G32_SINT;
+                if (type._arrayCount == 3) return R32G32B32_SINT;
+                if (type._arrayCount == 4) return R32G32B32A32_SINT;
+                break;
+
+            case ImpliedTyping::TypeCat::UInt32:
+                if (type._arrayCount == 1) return R32_UINT;
+                if (type._arrayCount == 2) return R32G32_UINT;
+                if (type._arrayCount == 3) return R32G32B32_UINT;
+                if (type._arrayCount == 4) return R32G32B32A32_UINT;
+                break;
+            }
+        } else if (norm == ShaderNormalizationMode::Normalized) {
+            switch (type._type) {
+            case ImpliedTyping::TypeCat::Int8:
+                if (type._arrayCount == 1) return R8_SNORM;
+                if (type._arrayCount == 2) return R8G8_SNORM;
+                if (type._arrayCount == 4) return R8G8B8A8_SNORM;
+                break;
+
+            case ImpliedTyping::TypeCat::UInt8:
+                if (type._arrayCount == 1) return R8_UNORM;
+                if (type._arrayCount == 2) return R8G8_UNORM;
+                if (type._arrayCount == 4) return R8G8B8A8_UNORM;
+                break;
+
+            case ImpliedTyping::TypeCat::Int16:
+                if (type._arrayCount == 1) return R16_SNORM;
+                if (type._arrayCount == 2) return R16G16_SNORM;
+                if (type._arrayCount == 4) return R16G16B16A16_SNORM;
+                break;
+
+            case ImpliedTyping::TypeCat::UInt16:
+                if (type._arrayCount == 1) return R16_UNORM;
+                if (type._arrayCount == 2) return R16G16_UNORM;
+                if (type._arrayCount == 4) return R16G16B16A16_UNORM;
+                break;
+            }
+        } else if (norm == ShaderNormalizationMode::Float) {
+            switch (type._type) {
+            case ImpliedTyping::TypeCat::Int16:
+            case ImpliedTyping::TypeCat::UInt16:
+                if (type._arrayCount == 1) return R16_FLOAT;
+                if (type._arrayCount == 2) return R16G16_FLOAT;
+                if (type._arrayCount == 4) return R16G16B16A16_FLOAT;
+                break;
+            }
         }
 
         return Unknown;

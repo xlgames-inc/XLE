@@ -76,6 +76,14 @@ namespace ToolsRig
         }
     }
 
+    static unsigned FindLayer(const TerrainConfig& cfg, TerrainCoverageId coverageId)
+    {
+        for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l)
+            if (cfg.GetCoverageLayer(l)._id == coverageId)
+                return l;
+        return ~0u;
+    }
+
     //////////////////////////////////////////////////////////////////////////////////////////
     void GenerateCellFiles(
         const TerrainConfig& outputConfig, 
@@ -152,14 +160,29 @@ namespace ToolsRig
         for (auto&t : threads) t.join();
     }
 
-    static unsigned FindLayer(const TerrainConfig& cfg, TerrainCoverageId coverageId)
+    //////////////////////////////////////////////////////////////////////////////////////////
+    void GenerateCellFiles(
+        const TerrainConfig& outputConfig, 
+        const ::Assets::ResChar uberSurfaceDir[],
+        bool overwriteExisting,
+        SceneEngine::TerrainCoverageId coverageId,
+        ConsoleRig::IProgress* progress)
     {
-        for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l)
-            if (cfg.GetCoverageLayer(l)._id == coverageId)
-                return l;
-        return ~0u;
-    }
+        auto layerIndex = FindLayer(outputConfig, coverageId);
+        if (layerIndex == ~0u) return;
 
+        auto outputIOFormat = std::make_shared<TerrainFormat>();
+        assert(outputIOFormat);
+
+        ::Assets::ResChar layerUberSurface[MaxPath];
+        TerrainConfig::GetUberSurfaceFilename(layerUberSurface, dimof(layerUberSurface), uberSurfaceDir, coverageId);
+        if (DoesFileExist(layerUberSurface)) {
+                //  open and destroy these coverage uber shadowing surface before we open the uber heights surface
+                //  (opening them both at the same time requires too much memory)
+            WriteCellCoverageData(outputConfig, *outputIOFormat, layerUberSurface, layerIndex, overwriteExisting, progress);
+        }
+    }
+    
     static void GenerateSurface(
         ITerrainOp& op, TerrainCoverageId coverageId,
         const TerrainConfig& cfg, 
@@ -536,7 +559,7 @@ namespace ToolsRig
 
         MemoryMappedFile outputUberFile(outputUberFileName, resultSize, MemoryMappedFile::Access::Write);
         if (!outputUberFile.IsValid())
-            Throw(::Exceptions::BasicLabel("Couldn't open output file (%s)", outputUberFile));
+            Throw(::Exceptions::BasicLabel("Couldn't open output file (%s)", outputUberFileName));
 
         auto& hdr   = *(TerrainUberHeader*)outputUberFile.GetData();
         hdr._magic  = TerrainUberHeader::Magic;

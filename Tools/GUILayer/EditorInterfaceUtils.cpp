@@ -439,6 +439,19 @@ namespace GUILayer
                 overwriteExisting, gradFlagSettings, nativeProgress.get());
         }
 
+        static void GenerateCellFiles(
+            TerrainConfig^ cfg, String^ uberSurfaceDir, 
+            bool overwriteExisting, 
+            unsigned coverageId,
+            IProgress^ progress)
+        {
+            auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
+            ToolsRig::GenerateCellFiles(
+                cfg->GetNative(), 
+                clix::marshalString<clix::E_UTF8>(uberSurfaceDir).c_str(), 
+                overwriteExisting, coverageId, nativeProgress.get());
+        }
+
         static void GenerateMissingUberSurfaceFiles(
             TerrainConfig^ cfg, String^ uberSurfaceDir, 
             IProgress^ progress)

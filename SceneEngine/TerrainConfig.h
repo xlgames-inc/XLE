@@ -43,6 +43,7 @@ namespace SceneEngine
             unsigned _overlap;
             unsigned _typeCat;
             unsigned _typeCount;
+            unsigned _shaderNormalizationMode;
         };
 
         TerrainConfig(

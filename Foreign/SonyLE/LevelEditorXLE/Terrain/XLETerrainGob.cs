@@ -245,6 +245,12 @@ namespace LevelEditorXLE.Terrain
                 d.NodeDims = new GUILayer.VectorUInt2(
                     (uint)(l.Resolution * cfg.NodeDimensions), 
                     (uint)(l.Resolution * cfg.NodeDimensions));
+                if (l.Format != 0)
+                {
+                    d.FormatCat = l.Format;
+                    d.FormatArrayCount = 1;
+                }
+                d.ShaderNormalizationMode = l.ShaderNormalizationMode;
                 result.Add(d);
             }
 
@@ -660,6 +666,18 @@ namespace LevelEditorXLE.Terrain
             set { SetAttribute(Schema.terrainCoverageLayer.EnableAttribute, value); }
         }
 
+        public uint Format
+        {
+            get { return GetAttribute<uint>(Schema.terrainCoverageLayer.FormatAttribute); }
+            set { SetAttribute(Schema.terrainCoverageLayer.FormatAttribute, value); }
+        }
+
+        public uint ShaderNormalizationMode
+        {
+            get { return GetAttribute<uint>(Schema.terrainCoverageLayer.ShaderNormalizationModeAttribute); }
+            set { SetAttribute(Schema.terrainCoverageLayer.ShaderNormalizationModeAttribute, value); }
+        }
+
         public XLETerrainGob Parent { get { return DomNode.Parent.As<XLETerrainGob>(); } }
 
         #region Configure Steps
@@ -674,6 +692,7 @@ namespace LevelEditorXLE.Terrain
             cfg.SourceFile = SourceFile;
             cfg.Enable = Enable;
             cfg.Id = LayerId;
+            cfg.ShaderNormalizationMode = ShaderNormalizationMode;
             return cfg;
         }
 
@@ -683,10 +702,14 @@ namespace LevelEditorXLE.Terrain
             SourceFile = cfg.SourceFile;
             Enable = cfg.Enable;
             LayerId = cfg.Id;
+            ShaderNormalizationMode = cfg.ShaderNormalizationMode;
         }
 
         internal bool Reconfigure(TerrainCoverageConfig.Config cfg, XLETerrainGob terrain)
         {
+            if (terrain != null)
+                terrain.Unload();   // (have to unload to write to ubersurface)
+
             try
             {
                 // If an import or create operation was requested, we 
@@ -703,10 +726,11 @@ namespace LevelEditorXLE.Terrain
                             cfg.Id, cfg.ImportOp.ImportCoverageFormat,
                             progress);
                     }
+                    Format = cfg.ImportOp.ImportCoverageFormat;
                 }
                 else if (cfg.Import == TerrainCoverageConfig.Config.ImportType.NewBlankTerrain)
                 {
-
+                    // todo -- create new blank coverage with the given format
                 }
             }
             catch 
@@ -768,6 +792,26 @@ namespace LevelEditorXLE.Terrain
             }
         }
 
+        void DoRebuildCellFiles(XLETerrainGob terrain)
+        {
+            if (terrain == null) return;
+
+            terrain.Unload();
+
+            try
+            {
+                using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
+                {
+                    GUILayer.EditorInterfaceUtils.GenerateCellFiles(
+                        terrain.BuildEngineConfig(), terrain.UberSurfaceDirectory, true,
+                        LayerId, progress);
+                }
+            }
+            catch { }
+
+            terrain.Reload();
+        }
+
         #region ICommandClient Members
         bool ICommandClient.CanDoCommand(object commandTag)
         {
@@ -777,6 +821,7 @@ namespace LevelEditorXLE.Terrain
                 {
                     case Command.Configure:
                     case Command.Export:
+                    case Command.RebuildLayerCellFiles:
                         return true;
                 }
             }
@@ -796,6 +841,10 @@ namespace LevelEditorXLE.Terrain
                 case Command.Export:
                     DoExport(Parent);
                     break;
+
+                case Command.RebuildLayerCellFiles:
+                    DoRebuildCellFiles(Parent);
+                    break;
             }
         }
 
@@ -806,7 +855,8 @@ namespace LevelEditorXLE.Terrain
         private enum Command
         {
             [Description("Configure...")] Configure,
-            [Description("Export...")] Export
+            [Description("Export...")] Export,
+            [Description("Rebuild layer cell files")] RebuildLayerCellFiles
         }
 
         IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)

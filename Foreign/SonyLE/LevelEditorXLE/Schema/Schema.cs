@@ -413,6 +413,8 @@ namespace LevelEditorXLE
             terrainCoverageLayer.OverlapAttribute = terrainCoverageLayer.Type.GetAttributeInfo("Overlap");
             terrainCoverageLayer.SourceFileAttribute = terrainCoverageLayer.Type.GetAttributeInfo("SourceFile");
             terrainCoverageLayer.EnableAttribute = terrainCoverageLayer.Type.GetAttributeInfo("Enable");
+            terrainCoverageLayer.FormatAttribute = terrainCoverageLayer.Type.GetAttributeInfo("Format");
+            terrainCoverageLayer.ShaderNormalizationModeAttribute = terrainCoverageLayer.Type.GetAttributeInfo("ShaderNormalizationMode");
 
             terrainType.Type = getNodeType("gap", "terrainType");
             terrainType.UberSurfaceDirAttribute = terrainType.Type.GetAttributeInfo("UberSurfaceDir");
@@ -1015,6 +1017,8 @@ namespace LevelEditorXLE
             public static AttributeInfo OverlapAttribute;
             public static AttributeInfo SourceFileAttribute;
             public static AttributeInfo EnableAttribute;
+            public static AttributeInfo FormatAttribute;
+            public static AttributeInfo ShaderNormalizationModeAttribute;
         }
 
         public static class terrainType

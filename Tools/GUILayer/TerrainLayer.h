@@ -31,6 +31,7 @@ namespace GUILayer
             property unsigned Overlap { unsigned get(); void set(unsigned); }
             property unsigned FormatCat { unsigned get(); void set(unsigned); }
             property unsigned FormatArrayCount { unsigned get(); void set(unsigned); }
+            property unsigned ShaderNormalizationMode { unsigned get(); void set(unsigned); }
 
             const NativeConfig::CoverageLayer& GetNative() { return *_native; }
 

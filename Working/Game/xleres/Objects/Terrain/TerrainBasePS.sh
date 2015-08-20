@@ -79,9 +79,13 @@ TerrainPixel CalculateTexturing(PSInput geo)
             finalTexCoord = lerp(CoverageCoordMins[COVERAGE_2].xy, CoverageCoordMaxs[COVERAGE_2].xy, geo.texCoord.xy);
             float2 shadowSample = LoadInterpolatedShadows(MakeCoverageTileSet(COVERAGE_2), finalTexCoord, CoverageOrigin[COVERAGE_2].z);
 
+                // shadowing is being emulated via ambient occlusion currently...
+                //      but this isn't correct! we don't actually want to adjust the intensity
+                //      of ambient light, just the intensity of the main directional light source
             shadowing
                 = saturate(ShadowSoftness * (SunAngle + shadowSample.r))
                 * saturate(ShadowSoftness * (shadowSample.g - SunAngle));
+            shadowing = lerp(0.5f, 1.f, shadowing);
         #endif
 
     #endif
@@ -177,37 +181,20 @@ TerrainPixel CalculateTexturing(PSInput geo)
     #endif
 
     #if defined(COVERAGE_3)
-        finalTexCoord = lerp(CoverageCoordMins[COVERAGE_3].xy, CoverageCoordMaxs[COVERAGE_3].xy, geo.texCoord.xy);
-
-        float aoSample;
-        {
-            float2 tcf = floor(finalTexCoord);
-            float2 A = finalTexCoord - tcf;
-            const float w[4] =
-            {
-                (1.f - A.x) * A.y,
-                A.x * A.y,
-                A.x * (1.f - A.y),
-                (1.f - A.x) * (1.f - A.y)
-            };
-
-            uint aoSamples[4];
-            aoSamples[0] = MakeCoverageTileSet(COVERAGE_3).Load(
-                uint4(uint2(tcf) + uint2(0,1), CoverageOrigin[COVERAGE_3].z, 0));
-            aoSamples[1] = MakeCoverageTileSet(COVERAGE_3).Load(
-                uint4(uint2(tcf) + uint2(1,1), CoverageOrigin[COVERAGE_3].z, 0));
-            aoSamples[2] = MakeCoverageTileSet(COVERAGE_3).Load(
-                uint4(uint2(tcf) + uint2(1,0), CoverageOrigin[COVERAGE_3].z, 0));
-            aoSamples[3] = MakeCoverageTileSet(COVERAGE_3).Load(
-                uint4(tcf, CoverageOrigin[COVERAGE_3].z, 0));
-
-            aoSample =
-                ( aoSamples[0] * w[0] + aoSamples[1] * w[1]
-                + aoSamples[2] * w[2] + aoSamples[3] * w[3] ) / float(0xff);
-        }
-
-        // resultDiffuse = lerp(float3(0,0,1), float3(1,0,0), aoSample);
+        float aoSample = SampleCoverageTileSet(COVERAGE_3, geo.texCoord.xy) / float(0xff);
         shadowing *= aoSample;
+    #endif
+
+    #if defined(COVERAGE_1003)
+        {
+            //uint sample = MakeCoverageTileSet(COVERAGE_1003).Load(
+            //    uint4(lerp(CoverageCoordMins[COVERAGE_1003].xy, CoverageCoordMaxs[COVERAGE_1003].xy, geo.texCoord.xy),
+            //    CoverageOrigin[COVERAGE_1003].z, 0));
+
+            //resultDiffuse = lerp(resultDiffuse, float3(.8,.5,.5), .75f * sample / float(0xffff));
+            float sample = SampleCoverageTileSet(COVERAGE_1003, geo.texCoord.xy);
+            resultDiffuse = lerp(resultDiffuse, float3(.8,.5,.5), .75f * sample);
+        }
     #endif
 
     TerrainPixel output;

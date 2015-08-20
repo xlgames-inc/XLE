@@ -46,14 +46,14 @@ namespace ToolsRig
         unsigned destNodeDims, unsigned destCellTreeDepth,
         SceneEngine::TerrainCoverageId coverageId,
         ImpliedTyping::TypeCat dstType,
-        ConsoleRig::IProgress* progress);
+        ConsoleRig::IProgress* progress = nullptr);
 
     void ExecuteTerrainExport(
         const ::Assets::ResChar dstFile[],
         const SceneEngine::TerrainConfig& srcCfg, 
         const ::Assets::ResChar uberSurfaceDir[],
         SceneEngine::TerrainCoverageId coverageId,
-        ConsoleRig::IProgress* progress);
+        ConsoleRig::IProgress* progress = nullptr);
 
     void GenerateMissingUberSurfaceFiles(
         const SceneEngine::TerrainConfig& outputConfig, 
@@ -65,6 +65,13 @@ namespace ToolsRig
         const ::Assets::ResChar uberSurfaceDir[],
         bool overwriteExisting,
         const SceneEngine::GradientFlagsSettings& gradFlagSettings,
+        ConsoleRig::IProgress* progress = nullptr);
+
+    void GenerateCellFiles(
+        const SceneEngine::TerrainConfig& outputConfig, 
+        const ::Assets::ResChar uberSurfaceDir[],
+        bool overwriteExisting,
+        SceneEngine::TerrainCoverageId coverageId,
         ConsoleRig::IProgress* progress = nullptr);
 
     void GenerateBlankUberSurface(

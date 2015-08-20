@@ -106,6 +106,8 @@ float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample
         float ambientOcclusionSample = 1.f;
     #endif
 
+    ambientOcclusionSample *= sample.cookedAmbientOcclusion;
+
     #if CALCULATE_TILED_LIGHTS==1
         #if defined(TILED_LIGHTS_RESOLVE_MS)
             float3 tiledLights	= LoadFloat4(TiledLightsResolve, pixelCoords, sampleIndex).xyz;
@@ -144,7 +146,7 @@ float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample
         litSample += CalcBasicAmbient(int2(samplePosition.xy), SystemInputs_Default(), sample, ambientColor);
 
         return float4(
-            litSample.rgb * (fresnel * cookedAmbientOcclusion / LightingScale), 
+            litSample.rgb * (fresnel * cookedAmbientOcclusion / LightingScale),
             min(1.f, intersectionQuality * pixelReflectivity));
     }
 #endif
