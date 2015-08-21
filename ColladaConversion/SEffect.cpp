@@ -10,6 +10,7 @@
 #include "../RenderCore/Assets/Material.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/Conversion.h"
+#include "../Utility/Streams/PathUtils.h"
 #include <string>
 
 namespace RenderCore { namespace ColladaConversion
@@ -61,9 +62,11 @@ namespace RenderCore { namespace ColladaConversion
                 if (file) {
                     auto* image = file->FindImage(ref._id);
                     if (image) {
-                        dest._resourceBindings.SetParameter(
-                            bindingName,
-                            AsString(image->GetInitFrom()).c_str());
+                        utf8 rebuiltPath[MaxPath];
+                        SplitPath<utf8>(image->GetInitFrom()).Simplify().Rebuild(rebuiltPath, dimof(rebuiltPath));
+
+                        dest._resourceBindings.SetParameter(bindingName, (const char*)rebuiltPath);
+                        return;
                     }
                 }
             }

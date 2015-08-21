@@ -327,7 +327,7 @@ namespace RenderCore { namespace Assets
             if (!XlComparePrefixI(baseDir, buffer, baseDirLen)) {
                 XlMoveMemory(buffer, &buffer[baseDirLen], length - baseDirLen + 1);
             }
-            SplitPath<char>(buffer).Rebuild(buffer, dimof(buffer));
+            SplitPath<char>(buffer).Simplify().Rebuild(buffer, dimof(buffer));
 
             auto metrics = GetArchive(buffer, intermediateStore)->GetMetrics();
             totalShaderSize += metrics._usedSpace;

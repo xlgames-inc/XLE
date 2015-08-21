@@ -118,17 +118,35 @@ namespace ControlsLibrary.MaterialEditor
         protected List<GUILayer.RawMaterial> _objectsPendingDispose = null;
         protected GUILayer.RawMaterial _currentFocusMat = null;
 
-        protected void ClearAndDispose()
+        protected void ClearAndDispose(bool disposing = false)
         {
-            _materialParameterBox.DataSource = null;
-            _shaderConstants.DataSource =  null;
-            _resourceBindings.DataSource = null;
-            _materialPreview1.Object = null;
-            foreach (var o in _controls) o.Object = null;
-            _doubleSidedCheck.DataBindings.Clear();
-            _wireframeGroup.DataBindings.Clear();
-            _doubleSidedCheck.CheckState = CheckState.Indeterminate;
-            _wireframeGroup.CheckState = CheckState.Indeterminate;
+            if (!disposing)
+            {
+                _materialParameterBox.DataSource = null;
+                _shaderConstants.DataSource = null;
+                _resourceBindings.DataSource = null;
+                _materialPreview1.Object = null;
+                foreach (var o in _controls) o.Object = null;
+                _doubleSidedCheck.DataBindings.Clear();
+                _wireframeGroup.DataBindings.Clear();
+                _doubleSidedCheck.CheckState = CheckState.Indeterminate;
+                _wireframeGroup.CheckState = CheckState.Indeterminate;
+            }
+            else
+            {
+                    // note --  We can get a crash here if the user is currently
+                    //          editing a value in the data grid. We just want to
+                    //          release any references on the objects bound to DataSource
+                    //  Nothing we can do about it... just have to skip the dispose
+                // _materialParameterBox.Dispose();
+                // _shaderConstants.Dispose();
+                // _resourceBindings.Dispose();
+                foreach (var o in _controls) o.Dispose();
+                _doubleSidedCheck.Dispose();
+                _wireframeGroup.Dispose();
+                _doubleSidedCheck.Dispose();
+                _wireframeGroup.Dispose();
+            }
 
             if (_currentFocusMat != null)
             {

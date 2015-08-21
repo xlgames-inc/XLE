@@ -21,10 +21,14 @@ namespace ControlsLibrary.MaterialEditor
         {
             if (disposing)
             {
+                    //      ClearComboBoxNodes causes a crash (indirectly)
+                    //      if the user is currently editing one of the items
+                    //      in a DataGrid in MaterialControl
+                // ClearComboBoxNodes();
+                _materialControl.Dispose();
+                _hierachyTree.Dispose();
                 if (components != null)
                     components.Dispose();
-                ClearComboBoxNodes();
-                _materialControl.Dispose();
             }
             base.Dispose(disposing);
         }

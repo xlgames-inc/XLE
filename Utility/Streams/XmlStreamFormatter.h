@@ -55,15 +55,7 @@ namespace Utility
         enum class Blob { BeginElement, EndElement, AttributeName, AttributeValue, CharacterData, None };
         Blob PeekNext(bool allowCharacterData=false);
 
-        class InteriorSection
-        {
-        public:
-            const CharType* _start;
-            const CharType* _end;
-
-            InteriorSection() : _start(nullptr), _end(nullptr) {}
-            InteriorSection(const CharType* start, const CharType* end) : _start(start), _end(end) {}
-        };
+        using InteriorSection = StringSection<CharType>;
 
         bool TryBeginElement(InteriorSection& name);
         bool TryEndElement();

@@ -292,7 +292,7 @@ namespace Sample
 
         SplitPath<::Assets::ResChar> path(cfgDir);
         path.EndsWithSeparator() |= path.GetSectionCount() != 0;
-        pimpl->_cfgDir = path.Rebuild();
+        pimpl->_cfgDir = path.Simplify().Rebuild();
 
         #if defined(ENABLE_TERRAIN)
             MainTerrainFormat = std::make_shared<SceneEngine::TerrainFormat>();

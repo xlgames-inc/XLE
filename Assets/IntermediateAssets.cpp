@@ -116,7 +116,7 @@ namespace Assets { namespace IntermediateAssets
             // (duplicating processing from RegisterFileDependency)
         ResChar directoryName[MaxPath];
         FileNameSplitter<ResChar> splitter(filename);
-        SplitPath<ResChar>(splitter.DriveAndPath()).Rebuild(directoryName);
+        SplitPath<ResChar>(splitter.DriveAndPath()).Simplify().Rebuild(directoryName);
         
         FakeFileChange(StringSection<ResChar>(directoryName), splitter.FileAndExtension());
 

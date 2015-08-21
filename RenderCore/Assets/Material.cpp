@@ -66,32 +66,6 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static bool Is(const InputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
-    {
-        const auto* a = section._start;
-        const auto* b = match;
-        for (;;) {
-            if (a == section._end)
-                return !(*b);   // success if both strings have terminated at the same time
-            if (*b != *a) return false;
-            assert(*b); // potentially hit this assert if there are null characters in "section"... that isn't supported
-            ++b; ++a;
-        }
-    }
-
-    static bool IsI(const InputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
-    {
-        const auto* a = section._start;
-        const auto* b = match;
-        for (;;) {
-            if (a == section._end)
-                return !(*b);   // success if both strings have terminated at the same time
-            if (XlToLower(*b) != XlToLower(*a)) return false;
-            assert(*b); // potentially hit this assert if there are null characters in "section"... that isn't supported
-            ++b; ++a;
-        }
-    }
-
     static const std::pair<Metal::Blend::Enum, const utf8*> s_blendNames[] =
     {
         std::make_pair(Metal::Blend::Zero, u("zero")),
@@ -129,7 +103,7 @@ namespace RenderCore { namespace Assets
             if (child) {
                 auto value = child.RawValue();
                 for (unsigned c=0; c<dimof(s_blendNames); ++c)
-                    if (!IsI(value, s_blendNames[c].second))
+                    if (XlEqStringI(value, s_blendNames[c].second))
                         return s_blendNames[c].first;
                 return (Metal::Blend::Enum)XlAtoI32((const char*)child.Value().c_str());
             }
@@ -146,7 +120,7 @@ namespace RenderCore { namespace Assets
             if (child) {
                 auto value = child.RawValue();
                 for (unsigned c=0; c<dimof(s_blendOpNames); ++c)
-                    if (!IsI(value, s_blendOpNames[c].second))
+                    if (XlEqStringI(value, s_blendOpNames[c].second))
                         return s_blendOpNames[c].first;
                 return (Metal::BlendOp::Enum)XlAtoI32((const char*)child.Value().c_str());
             }
@@ -185,7 +159,7 @@ namespace RenderCore { namespace Assets
         {
             auto child = doc.Attribute(u("DeferredBlend"));
             if (child) {
-                if (IsI(child.RawValue(), u("decal"))) {
+                if (XlEqStringI(child.RawValue(), u("decal"))) {
                     result._deferredBlend = RenderStateSet::DeferredBlend::Decal;
                 } else {
                     result._deferredBlend = RenderStateSet::DeferredBlend::Opaque;
@@ -419,15 +393,15 @@ namespace RenderCore { namespace Assets
                     formatter.TryBeginElement(eleName);
 
                        // first, load inherited settings.
-                    if (Is(eleName, u("Inherit"))) {
+                    if (XlEqString(eleName, u("Inherit"))) {
                         _inherit = DeserializeInheritList(formatter);
-                    } else if (Is(eleName, u("ShaderParams"))) {
+                    } else if (XlEqString(eleName, u("ShaderParams"))) {
                         _matParamBox = ParameterBox(formatter);
-                    } else if (Is(eleName, u("Constants"))) {
+                    } else if (XlEqString(eleName, u("Constants"))) {
                         _constants = ParameterBox(formatter);
-                    } else if (Is(eleName, u("ResourceBindings"))) {
+                    } else if (XlEqString(eleName, u("ResourceBindings"))) {
                         _resourceBindings = ParameterBox(formatter);
-                    } else if (Is(eleName, u("States"))) {
+                    } else if (XlEqString(eleName, u("States"))) {
                         _stateSet = DeserializeStateSet(formatter);
                     } else {
                         formatter.SkipElement();

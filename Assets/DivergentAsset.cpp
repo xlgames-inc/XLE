@@ -24,8 +24,12 @@ namespace Assets
 
         if (_targetFilename.empty()) return;
 
-        Services::GetAsyncMan().GetIntermediateStore().ShadowFile(
-            _targetFilename.c_str());
+        auto fn = _targetFilename;
+        auto paramStart = fn.find_first_of(':');
+        if (paramStart != std::basic_string<ResChar>::npos)
+            fn.erase(fn.begin() + paramStart, fn.end());
+
+        Services::GetAsyncMan().GetIntermediateStore().ShadowFile(fn.c_str());
     }
 
 

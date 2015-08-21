@@ -171,7 +171,7 @@ namespace RenderCore { namespace Metal_DX11
         for (auto i=_searchDirectories.cbegin(); i!=_searchDirectories.cend(); ++i) {
             XlCopyString(buffer._fn, dimof(buffer._fn), i->c_str());
             XlCatString(buffer._fn, dimof(buffer._fn), pFileName);
-            SplitPath<ResChar>(buffer._fn).Rebuild(path._fn);
+            SplitPath<ResChar>(buffer._fn).Simplify().Rebuild(path._fn);
 
             std::unique_ptr<uint8[]> file;
             ::Assets::DependentFileState timeMarker;

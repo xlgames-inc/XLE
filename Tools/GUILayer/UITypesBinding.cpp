@@ -584,9 +584,9 @@ namespace GUILayer
         }
 
         for (unsigned c=0; c<dimof(s_standardBlendDefs); ++c)
-            if (    op == s_standardBlendDefs[c]._op == op
-                &&  op == s_standardBlendDefs[c]._src == src
-                &&  op == s_standardBlendDefs[c]._dst == dst)
+            if (    op == s_standardBlendDefs[c]._op
+                &&  src == s_standardBlendDefs[c]._src
+                &&  dst == s_standardBlendDefs[c]._dst)
                 return s_standardBlendDefs[c]._standardMode;
 
         return StandardBlendModes::Complex;

@@ -127,21 +127,12 @@ namespace Assets
         const std::shared_ptr<Utility::OnChangeCallback>& validationIndex, 
         const ResChar filename[])
     {
-        // ResChar directoryName[MaxPath], baseName[MaxPath];
-        // XlNormalizePath(baseName, dimof(baseName), filename);
-        // XlSimplifyPath(baseName, dimof(baseName), baseName, "\\/");
-        // XlDirname(directoryName, dimof(directoryName), baseName);
-        // auto len = XlStringLen(directoryName);
-        // if (len > 0 && (directoryName[len-1] == '\\' || directoryName[len-1] == '/')) {
-        //     directoryName[len-1] = '\0'; 
-        // }
-        // XlBasename(baseName, dimof(baseName), baseName);
-        // if (!directoryName[0]) XlCopyString(directoryName, "./");
-        // Utility::AttachFileSystemMonitor(directoryName, baseName, validationIndex);
+            // try to prevent unoptimisated path names from getting here!
+        assert(!XlFindString(filename, "../") && !XlFindString(filename, "./"));
 
         ResChar directoryName[MaxPath];
         FileNameSplitter<ResChar> splitter(filename);
-        SplitPath<ResChar>(splitter.DriveAndPath()).Rebuild(directoryName);
+        SplitPath<ResChar>(splitter.DriveAndPath()).Simplify().Rebuild(directoryName);
         Utility::AttachFileSystemMonitor(
             StringSection<ResChar>(directoryName), splitter.FileAndExtension(), validationIndex);
     }
@@ -248,7 +239,7 @@ namespace Assets
             for (unsigned c=0; c<_startPointCount; ++c) {
                 XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], baseName, colon);
                 if (DoesFileExist(workingBuffer)) {
-                    SplitPath<ResChar>(workingBuffer).Rebuild(workingBuffer, workingBufferSize);
+                    SplitPath<ResChar>(workingBuffer).Simplify().Rebuild(workingBuffer, workingBufferSize);
                     if (workingBuffer != destination) {
                         auto workingBufferLen = std::min((ptrdiff_t)XlStringLen(workingBuffer), ptrdiff_t(destinationCount) - 1);
                         auto colonLen = (ptrdiff_t)XlStringLen(colon);
@@ -269,7 +260,7 @@ namespace Assets
 
         if (baseName != destination)
             XlCopyString(destination, destinationCount, baseName);
-        SplitPath<ResChar>(destination).Rebuild(destination, destinationCount);
+        SplitPath<ResChar>(destination).Simplify().Rebuild(destination, destinationCount);
     }
 
     void DirectorySearchRules::ResolveDirectory(

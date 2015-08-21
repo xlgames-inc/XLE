@@ -46,7 +46,7 @@ float3 RayTriangleIntersection(float3 p, float3 d, float3 v0, float3 v1, float3 
 	float3 h = cross(d,e2);
 	float a = dot(e1,h);
 
-	if (a > -0.00001f && a < 0.00001f)
+	if (a == 0.f)		// this test has some problems with very small triangles. We can't test for close to zero, we have to test for exact equality
 		return 0.0.xxx;
 
 	float f = 1.f/a;
