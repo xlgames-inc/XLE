@@ -115,7 +115,7 @@ namespace ColladaConversion
 
         _offset = accessor->GetOffset() * parsedTypeSize;
         _stride = accessor->GetStride() * parsedTypeSize;
-        _count = source.GetCount();
+        _count = accessor->GetCount();
         _dataFormat = finalFormat;
         _formatHint = 0;
 
@@ -588,6 +588,7 @@ namespace ColladaConversion
         composingVertex._cfg = &cfg;
 
         std::vector<WorkingPrimitive> workingPrims;
+        bool atLeastOneInput = true;
 
             //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -617,54 +618,70 @@ namespace ColladaConversion
                     // the "source" can be either a DataFlow::Source, or
                     // it can be a VertexInputs
 
+                bool boundSource = false;
+                    
                 GuidReference ref(input._source);
                 const auto* file = pubEles.FindFile(ref._fileHash);
-                if (!file) continue;
+                if (file) {
 
-                const auto* source = file->FindSource(ref._id);
-                if (source) {
+                    const auto* source = file->FindSource(ref._id);
+                    if (source) {
 
-                    workingPrim._inputs.push_back(
-                        WorkingPrimitive::EleRef
-                        {
-                            composingVertex.FindOrCreateElement(*source, input._semantic, input._semanticIndex),
-                            input._indexInPrimitive
-                        });
+                        workingPrim._inputs.push_back(
+                            WorkingPrimitive::EleRef
+                            {
+                                composingVertex.FindOrCreateElement(*source, input._semantic, input._semanticIndex),
+                                input._indexInPrimitive
+                            });
+                        boundSource = true;
 
-                } else {
+                    } else {
 
-                    const auto* extraInputs = file->FindVertexInputs(ref._id);
-                    if (extraInputs) {
-                        for (size_t c=0; c<extraInputs->GetCount(); ++c) {
-                            const auto& refInput = extraInputs->GetInput(c);
+                        const auto* extraInputs = file->FindVertexInputs(ref._id);
+                        if (extraInputs) {
+                            for (size_t c=0; c<extraInputs->GetCount(); ++c) {
+                                const auto& refInput = extraInputs->GetInput(c);
 
-                                // find the true source by looking up the reference
-                                // provided within the <vertex> elemenet
-                            const DataFlow::Source* source = nullptr;
-                            GuidReference secondRef(refInput._source);
-                            const auto* file = pubEles.FindFile(secondRef._fileHash);
-                            if (file) source = file->FindSource(secondRef._id);
-                            if (!source) continue;
-
-                                // push back with the semantic name from the <vertex> element
-                                // but the semantic index from the <input> element
-                            workingPrim._inputs.push_back(
-                                WorkingPrimitive::EleRef
-                                {
-                                    composingVertex.FindOrCreateElement(
-                                        *source, refInput._semantic, input._semanticIndex),
-                                    input._indexInPrimitive
-                                });
+                                    // find the true source by looking up the reference
+                                    // provided within the <vertex> elemenet
+                                const DataFlow::Source* source = nullptr;
+                                GuidReference secondRef(refInput._source);
+                                const auto* file = pubEles.FindFile(secondRef._fileHash);
+                                if (file) source = file->FindSource(secondRef._id);
+                                if (source) {
+                                        // push back with the semantic name from the <vertex> element
+                                        // but the semantic index from the <input> element
+                                    workingPrim._inputs.push_back(
+                                        WorkingPrimitive::EleRef
+                                        {
+                                            composingVertex.FindOrCreateElement(
+                                                *source, refInput._semantic, input._semanticIndex),
+                                            input._indexInPrimitive
+                                        });
+                                    boundSource = true;
+                                }
+                            }
                         }
-                    }
 
+                    }
                 }
+
+                if (!boundSource) {
+                    LogWarning << "Couldn't find source for geometry input. Source name: " << input._source << " in geometry " << mesh.GetName();
+                }
+
+                    // we must adjust the primitive stride, even if we couldn't properly resolve
+                    // the input source
+                workingPrim._primitiveStride = std::max(input._indexInPrimitive+1, workingPrim._primitiveStride);
             }
 
-            for (const auto& i:workingPrim._inputs)
-                workingPrim._primitiveStride = std::max(i._indexInPrimitive+1, workingPrim._primitiveStride);
-
+            atLeastOneInput |= workingPrim._inputs.size() > 0;
             workingPrims.push_back(workingPrim);
+        }
+
+        if (!atLeastOneInput) {
+            LogWarning << "Geometry object with no valid vertex inputs: " << mesh.GetName();
+            return NascentRawGeometry();
         }
 
         composingVertex.FixBadSemanticIndicies();

@@ -189,6 +189,7 @@ namespace RenderCore { namespace ColladaConversion
         for (size_t c=0; c<vertexCount; ++c) {
             const void* v    = PtrAdd(vertexData, vertexStride*c + elementDesc._alignedByteOffset);
             Float3 position  = Truncate(AsFloat4(v, elementDesc._nativeFormat));
+            assert(!isinf(position[0]) && !isinf(position[1]) && !isinf(position[2]));
             AddToBoundingBox(boundingBox, position, localToWorld);
         }
     }

@@ -129,7 +129,7 @@ namespace RenderCore { namespace ColladaConversion
 
     static void CopyVertexData(
         const void* dst, Metal::NativeFormat::Enum dstFmt, size_t dstStride,
-        const void* src, Metal::NativeFormat::Enum srcFmt, size_t srcStride,
+        const void* src, Metal::NativeFormat::Enum srcFmt, size_t srcStride, size_t srcDataSize,
         std::vector<unsigned> mapping,
         unsigned count, ProcessingFlags::BitField processingFlags)
     {
@@ -143,6 +143,7 @@ namespace RenderCore { namespace ColladaConversion
 
                 for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
                     auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
                     auto* srcV = PtrAdd(src, srcIndex * srcStride);
 
                     float input[4];
@@ -156,6 +157,7 @@ namespace RenderCore { namespace ColladaConversion
 
                 for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
                     auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
                     auto* srcV = PtrAdd(src, srcIndex * srcStride);
 
                     float input[4];
@@ -169,6 +171,7 @@ namespace RenderCore { namespace ColladaConversion
 
                 for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
                     auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
                     auto* srcV = PtrAdd(src, srcIndex * srcStride);
 
                     float input[4];
@@ -194,7 +197,7 @@ namespace RenderCore { namespace ColladaConversion
         auto stride = sourceData.GetStride();
         CopyVertexData(
             dst, dstFormat, dstStride,
-            sourceData.GetData(), sourceData.GetFormat(), stride,
+            sourceData.GetData(), sourceData.GetFormat(), stride, sourceData.GetDataSize(),
             stream._vertexMap, (unsigned)_unifiedVertexCount, sourceData.GetProcessingFlags());
     }
 
@@ -435,7 +438,9 @@ namespace RenderCore { namespace ColladaConversion
         //      modes!
         //
 
-        return half_float::detail::float2half<std::round_to_nearest>(input);
+        auto result = half_float::detail::float2half<std::round_to_nearest>(input);
+        assert(!isinf(half_float::detail::half2float(result)));
+        return result;
     }
 
     // static unsigned short AsFloat16_Fast(float input)

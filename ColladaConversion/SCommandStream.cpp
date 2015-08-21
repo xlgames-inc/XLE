@@ -416,6 +416,9 @@ namespace RenderCore { namespace ColladaConversion
             }
         }
 
+        assert(!isinf(result.first[0]) && !isinf(result.first[1]) && !isinf(result.first[2]));
+        assert(!isinf(result.second[0]) && !isinf(result.second[1]) && !isinf(result.second[2]));
+
         return result;
     }
 
