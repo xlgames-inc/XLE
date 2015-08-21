@@ -546,8 +546,12 @@ namespace RenderCore { namespace Assets
 
         auto inheritted = ResolveInherited(searchRules);
         for (auto i=inheritted.cbegin(); i!=inheritted.cend(); ++i) {
+            RawMaterial::RawMatSplitName splitName(i->c_str());
+            
+                // we still need to add a dependency, even if it's a missing file
+            if (deps) AddDep(*deps, splitName);
+
             TRY {
-                RawMaterial::RawMatSplitName splitName(i->c_str());
                 auto& rawParams = ::Assets::GetAssetDep<
                     ::Assets::ConfigFileListContainer<RawMaterial>>(
                         splitName._initializerName.c_str());
@@ -557,13 +561,10 @@ namespace RenderCore { namespace Assets
 
                 rawParams._asset.Resolve(result, newSearchRules, deps);
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
-                // we still need to add a dependency, even if it's a missing file
-                if (deps) AddDep(*deps, RawMatSplitName(i->c_str()));
             } CATCH_END
         }
 
         MergeInto(result);
-        if (deps) AddDep(*deps, _splitName);
     }
 
 

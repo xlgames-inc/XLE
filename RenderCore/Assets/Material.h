@@ -221,8 +221,6 @@ namespace RenderCore { namespace Assets
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
 
         void MergeInto(ResolvedMaterial& dest) const;
-
-        RawMatSplitName _splitName;
     };
 
     void MakeConcreteRawMaterialFilename(

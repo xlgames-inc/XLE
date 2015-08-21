@@ -136,6 +136,8 @@ namespace RenderCore { namespace Assets
                 // different material settings (eg, when we want one thing to have
                 // a red version and a blue version)
 
+            AddDep(deps, modelMat._rawModelMaterial);        // we need need a dependency (even if it's a missing file)
+            
             TRY {
                     // resolve in model:configuration
                 auto configName = Conversion::Convert<::Assets::rstring>(*i);
@@ -143,10 +145,11 @@ namespace RenderCore { namespace Assets
                 auto& rawMat = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<RawMaterial>>((Meld() << modelMat._rawModelMaterial << ":" << configName).get());
                 rawMat._asset.Resolve(resMat, searchRules, &deps);
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
-                AddDep(deps, modelMat._rawModelMaterial);        // we need need a dependency (even if it's a missing file)
             } CATCH_END
 
             if (resolvedSourceMaterial[0] != '\0') {
+                AddDep(deps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
+
                 TRY {
                         // resolve in material:*
                     Meld meld; meld << resolvedSourceMaterial << ":*";
@@ -154,7 +157,6 @@ namespace RenderCore { namespace Assets
                     auto& rawMat = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<RawMaterial>>(meld.get());
                     rawMat._asset.Resolve(resMat, searchRules, &deps);
                 } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
-                    AddDep(deps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
                 } CATCH_END
 
                 TRY {
@@ -164,7 +166,6 @@ namespace RenderCore { namespace Assets
                     auto& rawMat = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<RawMaterial>>(meld.get());
                     rawMat._asset.Resolve(resMat, searchRules, &deps);
                 } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
-                    AddDep(deps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
                 } CATCH_END
             }
 

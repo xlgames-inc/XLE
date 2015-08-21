@@ -28,6 +28,7 @@
 
 #include "../../RenderCore/Assets/ModelCache.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
+#include "../../RenderCore/Assets/ModelRunTimeInternal.h"
 
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Shader.h"
@@ -43,6 +44,7 @@ namespace ToolsRig
     using RenderCore::Assets::MaterialScaffold;
     using RenderCore::Assets::SharedStateSet;
     using RenderCore::Assets::ModelCache;
+    using RenderCore::Assets::TransformationMachine;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -72,6 +74,39 @@ namespace ToolsRig
         return result;
     }
     
+    static void RenderWithEmbeddedSkeleton(
+        const RenderCore::Assets::ModelRendererContext& context,
+        const ModelRenderer& model,
+        const SharedStateSet& sharedStateSet,
+        const ModelScaffold* scaffold)
+    {
+        if (scaffold) {
+
+            auto& transMachine = scaffold->EmbeddedSkeleton();
+            auto transformCount = transMachine.GetOutputMatrixCount();
+            auto skelTransforms = std::make_unique<Float4x4[]>(transformCount);
+            transMachine.GenerateOutputTransforms(
+                skelTransforms.get(), transformCount,
+                &transMachine.GetDefaultParameters());
+
+            RenderCore::Assets::SkeletonBinding binding(
+                transMachine.GetOutputInterface(),
+                scaffold->CommandStream().GetInputInterface());
+
+            ModelRenderer::MeshToModel transforms(
+                skelTransforms.get(), transformCount, &binding);
+
+            model.Render(
+                context, sharedStateSet,
+                Identity<Float4x4>(), &transforms);
+
+        } else {
+
+            model.Render(context, sharedStateSet, Identity<Float4x4>());
+
+        }
+    }
+    
     class ModelSceneParser : public VisSceneParser
     {
     public:
@@ -88,10 +123,9 @@ namespace ToolsRig
                     _sharedStateSet->CaptureState(context);
                 }
 
-                _model->Render(
+                RenderWithEmbeddedSkeleton(
                     RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
-                    *_sharedStateSet,
-                    Identity<Float4x4>());
+                    *_model, *_sharedStateSet, _modelScaffold);
 
                 if (_sharedStateSet) {
                     _sharedStateSet->ReleaseState(context);
@@ -110,17 +144,19 @@ namespace ToolsRig
         ModelSceneParser(
             const ModelVisSettings& settings,
             const VisEnvSettings& envSettings,
-            ModelRenderer& model, const std::pair<Float3, Float3>& boundingBox, SharedStateSet& sharedStateSet)
+            ModelRenderer& model, const std::pair<Float3, Float3>& boundingBox, SharedStateSet& sharedStateSet,
+            const ModelScaffold* modelScaffold = nullptr)
             : VisSceneParser(settings._camera, envSettings)
             , _model(&model), _boundingBox(boundingBox), _sharedStateSet(&sharedStateSet)
-            , _settings(&settings) {}
+            , _settings(&settings), _modelScaffold(modelScaffold) {}
         ~ModelSceneParser() {}
 
     protected:
-        ModelRenderer * _model;
+        ModelRenderer* _model;
         SharedStateSet* _sharedStateSet;
         std::pair<Float3, Float3> _boundingBox;
         const ModelVisSettings* _settings;
+        const ModelScaffold* _modelScaffold;
     };
 
     std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const ModelCache::Model& model)
@@ -170,7 +206,8 @@ namespace ToolsRig
 
         ModelSceneParser sceneParser(
             *_pimpl->_settings, *_pimpl->_envSettings,
-            *model._renderer, model._boundingBox, *model._sharedStateSet);
+            *model._renderer, model._boundingBox, *model._sharedStateSet,
+            model._model);
         sceneParser.Prepare();
         LightingParser_ExecuteScene(
             *context, parserContext, sceneParser,
@@ -279,10 +316,9 @@ namespace ToolsRig
 
                 const auto techniqueIndex = 8u;
 
-                model._renderer->Render(
+                RenderWithEmbeddedSkeleton(
                     RenderCore::Assets::ModelRendererContext(metalContext.get(), parserContext, techniqueIndex),
-                    *model._sharedStateSet,
-                    Identity<Float4x4>());
+                    *model._renderer, *model._sharedStateSet, model._model);
 
                 if (model._sharedStateSet) {
                     model._sharedStateSet->ReleaseState(metalContext.get());
@@ -310,10 +346,9 @@ namespace ToolsRig
 
                 const auto techniqueIndex = 7u;
 
-                model._renderer->Render(
+                RenderWithEmbeddedSkeleton(
                     RenderCore::Assets::ModelRendererContext(metalContext.get(), parserContext, techniqueIndex),
-                    *model._sharedStateSet,
-                    Identity<Float4x4>());
+                    *model._renderer, *model._sharedStateSet, model._model);
 
                 if (model._sharedStateSet) {
                     model._sharedStateSet->ReleaseState(metalContext.get());
@@ -391,9 +426,9 @@ namespace ToolsRig
         stateContext.SetRay(worldSpaceRay);
 
         model._sharedStateSet->CaptureState(metalContext.get());
-        model._renderer->Render(
+        RenderWithEmbeddedSkeleton(
             RenderCore::Assets::ModelRendererContext(metalContext.get(), parserContext, 6),
-            *model._sharedStateSet, Identity<Float4x4>());
+            *model._renderer, *model._sharedStateSet, model._model);
         model._sharedStateSet->ReleaseState(metalContext.get());
 
         auto results = stateContext.GetResults();
