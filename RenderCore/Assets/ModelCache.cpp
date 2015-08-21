@@ -76,7 +76,6 @@ namespace RenderCore { namespace Assets
         const ResChar materialFilename[]) -> Scaffolds
     {
         Scaffolds result;
-
         result._hashedModelName = Hash64(modelFilename);
         result._model = _pimpl->_modelScaffolds.Get(result._hashedModelName).get();
         if (!result._model || result._model->GetDependencyValidation()->GetValidationIndex() > 0) {
@@ -97,6 +96,8 @@ namespace RenderCore { namespace Assets
                 _pimpl->_materialScaffolds.Insert(result._hashedMaterialName, mat);
                 result._material = mat.get();
             }
+        } else {
+            result._material = nullptr;
         }
 
         return result;
