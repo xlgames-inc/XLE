@@ -40,61 +40,38 @@ struct PSInput
     float3 BlendWireframe(PSInput geo, float3 baseColour);
 #endif
 
-struct TerrainPixel
-{
-    float3 diffuseAlbedo;
-    float3 worldSpaceNormal;
-    float specularity;
-    float cookedAmbientOcclusion;
-};
+#if OUTPUT_WORLD_POSITION==1
+    float3 GetWorldPosition(PSInput geo) { return geo.worldPosition; }
+#else
+    float3 GetWorldPosition(PSInput geo) { return 0.0.xxx; }
+#endif
 
-float2 LoadInterpolatedShadows(Texture2DArray<float2> tex, float2 texCoord, int arrayIndex)
+float TerrainResolve_AngleBasedShadows(PSInput geo)
 {
-    float2 floored = floor(texCoord);
-    float2 ceiled = floored + 1.0.xx;
-    float2 alpha = texCoord - floored;
-    float2 A = tex.Load(int4(floored.x, floored.y, arrayIndex, 0));
-    float2 B = tex.Load(int4(ceiled.x, floored.y, arrayIndex, 0));
-    float2 C = tex.Load(int4(floored.x, ceiled.y, arrayIndex, 0));
-    float2 D = tex.Load(int4(ceiled.x, ceiled.y, arrayIndex, 0));
-    return
-          (1.f - alpha.x) * (1.f - alpha.y) * A
-        + (alpha.x) * (1.f - alpha.y) * B
-        + (1.f - alpha.x) * (alpha.y) * C
-        + (alpha.x) * (alpha.y) * D
-        ;
-}
-
-TerrainPixel CalculateTexturing(PSInput geo)
-{
-    float2 finalTexCoord = 0.0.xx;
-    float shadowing = 1.f;
-
     #if (OUTPUT_TEXCOORD==1) && (SOLIDWIREFRAME_TEXCOORD==1)
 
             // "COVERAGE_2" is the angle based shadows layer.
-            // if it exists, we will have this define
         #if defined(COVERAGE_2)
-                // todo -- we need special interpolation to avoid wrapping into neighbour coverage tiles
-            finalTexCoord = lerp(CoverageCoordMins[COVERAGE_2].xy, CoverageCoordMaxs[COVERAGE_2].xy, geo.texCoord.xy);
-            float2 shadowSample = LoadInterpolatedShadows(MakeCoverageTileSet(COVERAGE_2), finalTexCoord, CoverageOrigin[COVERAGE_2].z);
-
-                // shadowing is being emulated via ambient occlusion currently...
-                //      but this isn't correct! we don't actually want to adjust the intensity
-                //      of ambient light, just the intensity of the main directional light source
-            shadowing
+            float2 shadowSample = SampleCoverageTileSet(COVERAGE_2, geo.texCoord.xy);
+            return
                 = saturate(ShadowSoftness * (SunAngle + shadowSample.r))
                 * saturate(ShadowSoftness * (shadowSample.g - SunAngle));
-            shadowing = lerp(0.5f, 1.f, shadowing);
         #endif
 
     #endif
 
-    float3 worldPosition = 0.0.xxx;
-    #if OUTPUT_WORLD_POSITION==1
-        worldPosition = geo.worldPosition;
-    #endif
+    return 1.f;
+}
 
+float TerrainResolve_AmbientOcclusion(PSInput geo)
+{
+    #if defined(COVERAGE_3)
+        return SampleCoverageTileSet(COVERAGE_3, geo.texCoord.xy) / float(0xff);
+    #endif
+}
+
+TerrainTextureOutput TerrainResolve_BaseTexturing(PSInput geo)
+{
     TerrainTextureOutput procTexture;
 
     #if defined(COVERAGE_1000)
@@ -139,20 +116,19 @@ TerrainPixel CalculateTexturing(PSInput geo)
             procTexture = TerrainTextureOutput_Blank();
             [unroll] for (uint c=0; c<4; c++) {
                 float2 texCoord = geo.texCoord + tcOffset[c];
-                TerrainTextureOutput sample = MainTexturing.Calculate(worldPosition, geo.dhdxy, materialId[c], texCoord);
+                TerrainTextureOutput sample = MainTexturing.Calculate(GetWorldPosition(geo), geo.dhdxy, materialId[c], texCoord);
                 procTexture = AddWeighted(procTexture, sample, w[c]);
             }
         }
     #else
-        procTexture = MainTexturing.Calculate(worldPosition, geo.dhdxy, 0, geo.texCoord);
+        procTexture = MainTexturing.Calculate(GetWorldPosition(geo), geo.dhdxy, 0, geo.texCoord);
     #endif
 
-    float3 resultDiffuse = procTexture.diffuseAlbedo.rgb;
+    return procTexture;
+}
 
-    #if DRAW_WIREFRAME==1
-        resultDiffuse = BlendWireframe(geo, resultDiffuse);
-    #endif
-
+float3 TerrainResolve_CalculateWorldSpaceNormal(PSInput geo, float3 tangentSpaceNormal)
+{
         //	How to calculate the tangent frame? If we do
         //  not normalize uaxis and vaxis before the cross
         //  product, it should allow the optimizer to simplify
@@ -172,51 +148,63 @@ TerrainPixel CalculateTexturing(PSInput geo)
             // But the tangent frame is already unnormalized. So we already
             // have some accuracy problems. Well, we can avoid normalizes
             // until the very end, and just accept some accuracy problems.
-        float3 deformedNormal = normalize(
-             procTexture.tangentSpaceNormal.x * uaxis
-           + procTexture.tangentSpaceNormal.y * vaxis
-           + procTexture.tangentSpaceNormal.z * normal);
+        return normalize(
+            tangentSpaceNormal.x * uaxis
+           + tangentSpaceNormal.y * vaxis
+           + tangentSpaceNormal.z * normal);
     #else
-        float3 deformedNormal = normalize(normal);
+        return normalize(normal);
     #endif
+}
 
-    #if defined(COVERAGE_3)
-        float aoSample = SampleCoverageTileSet(COVERAGE_3, geo.texCoord.xy) / float(0xff);
-        shadowing *= aoSample;
-    #endif
+struct TerrainPixel
+{
+    float3 diffuseAlbedo;
+    float3 worldSpaceNormal;
+    float specularity;
+
+    float cookedAmbientOcclusion;
+    float mainLightOcclusion;
+};
+
+TerrainPixel CalculateTerrainPixel(PSInput geo)
+{
+    TerrainTextureOutput baseTexturing = TerrainResolve_BaseTexturing(geo);
+
+    float3 resultDiffuse = baseTexturing.diffuseAlbedo.rgb;
 
     #if defined(COVERAGE_1003)
         {
-            //uint sample = MakeCoverageTileSet(COVERAGE_1003).Load(
-            //    uint4(lerp(CoverageCoordMins[COVERAGE_1003].xy, CoverageCoordMaxs[COVERAGE_1003].xy, geo.texCoord.xy),
-            //    CoverageOrigin[COVERAGE_1003].z, 0));
-
-            //resultDiffuse = lerp(resultDiffuse, float3(.8,.5,.5), .75f * sample / float(0xffff));
             float sample = SampleCoverageTileSet(COVERAGE_1003, geo.texCoord.xy);
-            resultDiffuse = lerp(resultDiffuse, float3(.8,.5,.5), .75f * sample);
+            resultDiffuse = lerp(resultDiffuse, float3(.8,.5,.5), .85f * sample);
         }
     #endif
 
     TerrainPixel output;
     output.diffuseAlbedo = resultDiffuse;
-    output.worldSpaceNormal = deformedNormal;
-    output.specularity = .25f * procTexture.specularity;
-    output.cookedAmbientOcclusion = shadowing;
-
-    #if (OUTPUT_TEXCOORD==1) && defined(VISUALIZE_COVERAGE)
-        if ((dot(uint2(geo.position.xy), uint2(1,1))/4)%4 == 0) {
-            float2 coverageTC = lerp(CoverageCoordMins[VISUALIZE_COVERAGE].xy, CoverageCoordMaxs[VISUALIZE_COVERAGE].xy, geo.texCoord.xy);
-            uint sample = MakeCoverageTileSet(VISUALIZE_COVERAGE).Load(uint4(uint2(coverageTC.xy), CoverageOrigin[VISUALIZE_COVERAGE].z, 0));
-            output.diffuseAlbedo = GetDistinctFloatColour(sample);
-        }
-    #endif
-
+    output.worldSpaceNormal = TerrainResolve_CalculateWorldSpaceNormal(geo, baseTexturing.tangentSpaceNormal);
+    output.specularity = .25f * baseTexturing.specularity;
+    output.cookedAmbientOcclusion = TerrainResolve_AmbientOcclusion(geo);
+    output.mainLightOcclusion = TerrainResolve_AngleBasedShadows(geo);
     return output;
 }
 
 [earlydepthstencil] GBufferEncoded ps_main(PSInput geo)
 {
-    TerrainPixel p = CalculateTexturing(geo);
+    TerrainPixel p = CalculateTerrainPixel(geo);
+
+    #if (DRAW_WIREFRAME==1)
+        p.diffuseAlbedo = BlendWireframe(geo, p.diffuseAlbedo);
+    #endif
+
+    #if (OUTPUT_TEXCOORD==1) && defined(VISUALIZE_COVERAGE)
+        if ((dot(uint2(geo.position.xy), uint2(1,1))/4)%4 == 0) {
+            float2 coverageTC = lerp(CoverageCoordMins[VISUALIZE_COVERAGE].xy, CoverageCoordMaxs[VISUALIZE_COVERAGE].xy, geo.texCoord.xy);
+            uint sample = MakeCoverageTileSet(VISUALIZE_COVERAGE).Load(uint4(uint2(coverageTC.xy), CoverageOrigin[VISUALIZE_COVERAGE].z, 0));
+            p.diffuseAlbedo = GetDistinctFloatColour(sample);
+        }
+    #endif
+
     GBufferValues output = GBufferValues_Default();
     output.diffuseAlbedo = p.diffuseAlbedo;
     output.worldSpaceNormal = p.worldSpaceNormal;
@@ -224,12 +212,20 @@ TerrainPixel CalculateTexturing(PSInput geo)
     output.material.roughness = 0.85f;
     output.material.metal = 0.f;
     output.cookedAmbientOcclusion = p.cookedAmbientOcclusion;
+
+        // shadowing is being emulated via ambient occlusion currently...
+        //      but this isn't correct! we don't actually want to adjust the intensity
+        //      of ambient light, just the intensity of the main directional light source
+        // We should be writing mainLightOcclusion to a special-case light mask render target
+    output.cookedAmbientOcclusion =
+        min(output.cookedAmbientOcclusion, lerp(0.5f, 1.f, p.mainLightOcclusion));
+
     return Encode(output);
 }
 
 [earlydepthstencil] float4 ps_main_forward(PSInput geo) : SV_Target0
 {
-    TerrainPixel p = CalculateTexturing(geo);
+    TerrainPixel p = CalculateTerrainPixel(geo);
     return float4(LightingScale * p.diffuseAlbedo * p.cookedAmbientOcclusion, 1.f);
 }
 

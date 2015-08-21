@@ -113,6 +113,35 @@ float SampleCoverageTileSet_Int(Texture2DArray<uint> tileSet, uint tileSetIndex,
 		+ samples[2] * w[2] + samples[3] * w[3] );
 }
 
+float SampleCoverageTileSet_Int(Texture2DArray<float2> tileSet, uint tileSetIndex, float2 texCoord)
+{
+	float2 finalTexCoord = lerp(CoverageCoordMins[tileSetIndex].xy, CoverageCoordMaxs[tileSetIndex].xy, texCoord);
+
+	float2 tcf = floor(finalTexCoord);
+	float2 A = finalTexCoord - tcf;
+	const float w[4] =
+	{
+		(1.f - A.x) * A.y,
+		A.x * A.y,
+		A.x * (1.f - A.y),
+		(1.f - A.x) * (1.f - A.y)
+	};
+
+	float2 samples[4];
+	samples[0] = tileSet.Load(
+		uint4(uint2(tcf) + uint2(0,1), CoverageOrigin[tileSetIndex].z, 0));
+	samples[1] = tileSet.Load(
+		uint4(uint2(tcf) + uint2(1,1), CoverageOrigin[tileSetIndex].z, 0));
+	samples[2] = tileSet.Load(
+		uint4(uint2(tcf) + uint2(1,0), CoverageOrigin[tileSetIndex].z, 0));
+	samples[3] = tileSet.Load(
+		uint4(tcf, CoverageOrigin[tileSetIndex].z, 0));
+
+	return
+		( samples[0] * w[0] + samples[1] * w[1]
+		+ samples[2] * w[2] + samples[3] * w[3] );
+}
+
 #define SampleCoverageTileSet(tileSetIndex, texCoord)											\
 	SampleCoverageTileSet_Int(MakeCoverageTileSet(tileSetIndex), tileSetIndex, texCoord)		\
 	/**/
