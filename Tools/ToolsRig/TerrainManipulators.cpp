@@ -385,7 +385,7 @@ namespace ToolsRig
     private:
         Float2  _activeMins;
         Float2  _activeMaxs;
-        SceneEngine::HeightsUberSurfaceInterface::ErosionParameters _params;
+        SceneEngine::ErosionSimulation::Settings _params;
         unsigned _flags;
 
         size_t OffsetOf(const void* member) const;

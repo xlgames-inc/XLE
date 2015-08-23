@@ -127,6 +127,9 @@
     <ClCompile Include="..\RayTracedShadows.cpp">
       <Filter>Lighting And Processing</Filter>
     </ClCompile>
+    <ClCompile Include="..\Erosion.cpp">
+      <Filter>Objects</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -265,6 +268,9 @@
     <ClInclude Include="..\Documentation.h" />
     <ClInclude Include="..\RayTracedShadows.h">
       <Filter>Lighting And Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Erosion.h">
+      <Filter>Objects</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

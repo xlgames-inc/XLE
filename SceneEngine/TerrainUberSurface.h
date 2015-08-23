@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "Erosion.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../Utility/ParameterBox.h"        // for ImpliedTyping::TypeDesc
@@ -142,30 +143,8 @@ namespace SceneEngine
 
         void    FillWithNoise(Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail);
 
-        struct ErosionParameters
-        {
-                // water movement
-            float _rainQuantityPerFrame;
-            float _evaporationConstant;
-            float _pressureConstant;
-
-                // rainfall erosion
-            float _kConstant;
-            float _erosionRate;
-            float _settlingRate;
-            float _maxSediment;
-            float _depthMax;
-            float _sedimentShiftScalar;
-
-                // thermal erosion
-            float _thermalSlopeAngle;
-            float _thermalErosionRate;
-
-            ErosionParameters();
-        };
-
         void    Erosion_Begin(RenderCore::IThreadContext* context, Float2 mins, Float2 maxs, const TerrainConfig& cfg);
-        void    Erosion_Tick(RenderCore::IThreadContext* context, const ErosionParameters& params);
+        void    Erosion_Tick(RenderCore::IThreadContext* context, const ErosionSimulation::Settings& params);
         void    Erosion_End();
         bool    Erosion_IsPrepared() const;
         void    Erosion_RenderDebugging(

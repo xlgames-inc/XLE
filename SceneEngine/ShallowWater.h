@@ -38,7 +38,9 @@ namespace SceneEngine
             bool _calculateFoam;
             bool _useLookupTable;
 
-            Desc(unsigned gridDimension, unsigned maxSimulationGrid, bool usePipeModel, bool buildVelocities, bool calculateFoam, bool useLookupTable) 
+            Desc(   unsigned gridDimension, unsigned maxSimulationGrid, 
+                    bool usePipeModel, bool buildVelocities, 
+                    bool calculateFoam, bool useLookupTable)
                 : _gridDimension(gridDimension), _maxSimulationGrid(maxSimulationGrid), _usePipeModel(usePipeModel), _buildVelocities(buildVelocities) 
                 , _calculateFoam(calculateFoam), _useLookupTable(useLookupTable) {}
         };

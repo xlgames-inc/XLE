@@ -9,7 +9,7 @@
 #include "ShallowFlux.h"
 #include "../Utility/MathConstants.h"
 
-RWTexture2D<float>		OutputSurface		: register(u0);
+//RWTexture2D<float>		OutputSurface		: register(u0);
 RWTexture2D<float>		HardMaterials		: register(u1);
 RWTexture2D<float>		SoftMaterials		: register(u2);
 
@@ -295,7 +295,7 @@ float CalculateFlowIn(int2 baseCoord)
 
 	float initialHard = HardMaterials[baseCoord.xy];
 	SoftMaterials[baseCoord.xy] = newSediment;
-	OutputSurface[gpuCacheOffset + baseCoord.xy] = initialHard;
+	// OutputSurface[gpuCacheOffset + baseCoord.xy] = initialHard;
 }
 
 
@@ -355,5 +355,5 @@ float CalculateFlowIn(int2 baseCoord)
 	}
 
 	HardMaterials[baseCoord.xy] = localInitial + flow;
-	OutputSurface[gpuCacheOffset + baseCoord.xy] = localInitial + flow;
+	// OutputSurface[gpuCacheOffset + baseCoord.xy] = localInitial + flow;
 }

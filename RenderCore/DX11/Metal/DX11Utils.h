@@ -81,6 +81,19 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     template <typename ResourceType>
+        intrusive_ptr<ResourceType> ExtractResource( ID3D::UnorderedAccessView * uav )
+    {
+        assert(uav);
+        ID3D::Resource * resourceUnknownPtr = NULL;
+        uav->GetResource( &resourceUnknownPtr );
+        if (resourceUnknownPtr) {
+            intrusive_ptr<ID3D::Resource> resourceUnknown( resourceUnknownPtr, false );
+            return QueryInterfaceCast<ResourceType>( resourceUnknown );
+        }
+        return intrusive_ptr<ResourceType>();
+    }
+
+    template <typename ResourceType>
         intrusive_ptr<ResourceType> ExtractResource( ID3D::DepthStencilView * dsv )
     {
         assert(dsv);

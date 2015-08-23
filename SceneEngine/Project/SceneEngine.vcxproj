@@ -205,6 +205,7 @@
     <ClCompile Include="..\AmbientOcclusion.cpp" />
     <ClCompile Include="..\DualContour.cpp" />
     <ClCompile Include="..\DualContourRender.cpp" />
+    <ClCompile Include="..\Erosion.cpp" />
     <ClCompile Include="..\IntersectionTest.cpp" />
     <ClCompile Include="..\LightingTargets.cpp" />
     <ClCompile Include="..\LightingParserResolve.cpp" />
@@ -249,6 +250,7 @@
     <ClInclude Include="..\Documentation.h" />
     <ClInclude Include="..\DualContour.h" />
     <ClInclude Include="..\DualContourRender.h" />
+    <ClInclude Include="..\Erosion.h" />
     <ClInclude Include="..\IntersectionTest.h" />
     <ClInclude Include="..\LightingTargets.h" />
     <ClInclude Include="..\LightingParserContext.h" />
