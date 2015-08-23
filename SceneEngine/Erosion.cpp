@@ -141,8 +141,8 @@ namespace SceneEngine
 
         UInt2 waterDims = dimensions * ErosionWaterTileScale;
         UInt2 waterGrids(
-            CeilToMultiple(dimensions[0] * ErosionWaterTileScale, ErosionWaterTileDimension),
-            CeilToMultiple(dimensions[1] * ErosionWaterTileScale, ErosionWaterTileDimension));
+            CeilToMultiple(dimensions[0] * ErosionWaterTileScale, ErosionWaterTileDimension) / ErosionWaterTileDimension,
+            CeilToMultiple(dimensions[1] * ErosionWaterTileScale, ErosionWaterTileDimension) / ErosionWaterTileDimension);
 
         static bool usePipeModel = true;
         auto newShallowWater = std::make_unique<ShallowWaterSim>(

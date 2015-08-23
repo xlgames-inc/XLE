@@ -16,7 +16,12 @@ namespace IterativeSystemDebugger
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainForm());
+
+            GUILayer.EngineDevice.SetDefaultWorkingDirectory();
+            using (var device = new GUILayer.EngineDevice()) {
+                device.AttachDefaultCompilers();
+                Application.Run(new MainForm());
+            }
         }
     }
 }

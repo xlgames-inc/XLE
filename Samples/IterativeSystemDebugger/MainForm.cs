@@ -15,6 +15,7 @@ namespace IterativeSystemDebugger
         public MainForm()
         {
             InitializeComponent();
+            _forms = new List<Control>();
         }
 
         private void erosionSimToolStripMenuItem_Click(object sender, EventArgs e)
@@ -24,7 +25,25 @@ namespace IterativeSystemDebugger
             if (dlg.ShowDialog() == DialogResult.OK)
             {
                 var system = new GUILayer.ErosionIterativeSystem(dlg.FileName);
+                var form = new Erosion(system);
+                form.Show();
+                _forms.Add(form);
             }
         }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            if (disposing && (_forms != null))
+            {
+                foreach (var f in _forms) f.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        IList<Control> _forms;
     }
 }

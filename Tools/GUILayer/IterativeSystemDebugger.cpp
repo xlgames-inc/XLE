@@ -61,7 +61,7 @@ namespace GUILayer
     {}
 
     ErosionOverlay::!ErosionOverlay() { _sim.reset(); }
-    ErosionOverlay::~ErosionOverlay() {}
+    ErosionOverlay::~ErosionOverlay() { _sim.reset(); }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
