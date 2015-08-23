@@ -45,7 +45,7 @@ namespace SceneEngine
         void RenderDebugging(
             RenderCore::Metal::DeviceContext& metalContext,
             LightingParserContext& parserContext,
-            const Float2& worldSpaceOffset);
+            const Float2& worldSpaceOffset = Float2(0.f, 0.f));
 
         void InitHeights(
             RenderCore::Metal::DeviceContext& metalContext,

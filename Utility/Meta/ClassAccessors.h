@@ -8,6 +8,7 @@
 
 #include "../UTFUtils.h"
 #include "../FunctionUtils.h"
+#include "../ParameterBox.h"        // only needed for TrySet
 #include <string>
 #include <functional>
 #include <vector>
@@ -137,7 +138,7 @@ namespace Utility
                 bool stringForm = false) const;
 
         template<typename ValueType, typename Type>
-            bool TrySet(ValueType& valueSrc, Type& dst, uint64 id) const;
+            bool TrySet(const ValueType& valueSrc, Type& dst, uint64 id) const;
             
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 ////   C H I L D   I N T E R F A C E   ////
@@ -186,10 +187,10 @@ namespace Utility
         }
 
     template<typename ValueType, typename Type>
-        bool ClassAccessors::TrySet(ValueType& valueSrc, Type& dst, uint64 id) const
+        bool ClassAccessors::TrySet(const ValueType& valueSrc, Type& dst, uint64 id) const
         {
             assert(typeid(Type).hash_code() == _associatedType);
-            return TryCastFrom(&valueSrc, id, src, ImpliedTyping::TypeOf<ValueType>());
+            return TryCastFrom(dst, id, &valueSrc, ImpliedTyping::TypeOf<ValueType>());
         }
         
     template<typename Type>

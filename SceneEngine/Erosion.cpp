@@ -19,6 +19,7 @@
 #include "../Assets/Assets.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/PtrUtils.h"
+#include "../Utility/Meta/ClassAccessorsImpl.h"
 
 #include "..\RenderCore\DX11\Metal\DX11.h"
 #include "..\RenderCore\DX11\Metal\IncludeDX11.h"       // needed for CopySubresourceRegion
@@ -395,6 +396,28 @@ namespace SceneEngine
         _thermalErosionRate = 0.05f;
     }
 
+}
 
+
+template<> const ClassAccessors& GetAccessors<SceneEngine::ErosionSimulation::Settings>()
+{
+    using Obj = SceneEngine::ErosionSimulation::Settings;
+    static ClassAccessors props(typeid(Obj).hash_code());
+    static bool init = false;
+    if (!init) {
+        props.Add(u("RainQuantityPerFrame"), DefaultGet(Obj, _rainQuantityPerFrame),  DefaultSet(Obj, _rainQuantityPerFrame));
+        props.Add(u("EvaporationConstant"), DefaultGet(Obj, _evaporationConstant),  DefaultSet(Obj, _evaporationConstant));
+        props.Add(u("PressureConstant"), DefaultGet(Obj, _pressureConstant),  DefaultSet(Obj, _pressureConstant));
+        props.Add(u("KConstant"), DefaultGet(Obj, _kConstant),  DefaultSet(Obj, _kConstant));
+        props.Add(u("ErosionRate"), DefaultGet(Obj, _erosionRate),  DefaultSet(Obj, _erosionRate));
+        props.Add(u("SettlingRate"), DefaultGet(Obj, _settlingRate),  DefaultSet(Obj, _settlingRate));
+        props.Add(u("MaxSediment"), DefaultGet(Obj, _maxSediment),  DefaultSet(Obj, _maxSediment));
+        props.Add(u("DepthMax"), DefaultGet(Obj, _depthMax),  DefaultSet(Obj, _depthMax));
+        props.Add(u("SedimentShiftScalar"), DefaultGet(Obj, _sedimentShiftScalar),  DefaultSet(Obj, _sedimentShiftScalar));
+        props.Add(u("ThermalSlopeAngle"), DefaultGet(Obj, _thermalSlopeAngle),  DefaultSet(Obj, _thermalSlopeAngle));
+        props.Add(u("ThermalErosionRate"), DefaultGet(Obj, _thermalErosionRate),  DefaultSet(Obj, _thermalErosionRate));
+        init = true;
+    }
+    return props;
 }
 

@@ -50,6 +50,9 @@
     <ClCompile Include="..\TerrainLayer.cpp">
       <Filter>LevelEditor</Filter>
     </ClCompile>
+    <ClCompile Include="..\IterativeSystemDebugger.cpp">
+      <Filter>IterativeSystem</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -110,6 +113,9 @@
     <ClInclude Include="..\TerrainLayer.h">
       <Filter>LevelEditor</Filter>
     </ClInclude>
+    <ClInclude Include="..\IterativeSystemDebugger.h">
+      <Filter>IterativeSystem</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="BasicControls">
@@ -123,6 +129,9 @@
     </Filter>
     <Filter Include="LevelEditor">
       <UniqueIdentifier>{2e5a400c-56a8-4a39-ac39-d6829928e93f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="IterativeSystem">
+      <UniqueIdentifier>{0211ba0a-2698-4e77-bf68-bfda5c419e32}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

@@ -36,13 +36,6 @@ namespace GUILayer
         return nullptr;
     }
 
-    public interface class IGetAndSetProperties
-    {
-    public:
-        virtual bool TryGetMember(System::String^ name, bool caseInsensitive, System::Type^ type, Object^% result);
-        virtual bool TrySetMember(System::String^ name, bool caseInsensitive, Object^ value);
-    };
-
     public ref class BasicPropertySource : public IPropertySource
     {
     public:

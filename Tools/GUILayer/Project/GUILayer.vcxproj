@@ -87,6 +87,7 @@
     <ClCompile Include="..\EngineControl.cpp" />
     <ClCompile Include="..\EntityLayer.cpp" />
     <ClCompile Include="..\GUILayerUtil.cpp" />
+    <ClCompile Include="..\IterativeSystemDebugger.cpp" />
     <ClCompile Include="..\LayerControl.cpp" />
     <ClCompile Include="..\LevelEditorScene.cpp" />
     <ClCompile Include="..\ManipulatorUtils.cpp" />
@@ -110,6 +111,7 @@
     <ClInclude Include="..\ExportedNativeTypes.h" />
     <ClInclude Include="..\GUILayerUtil.h" />
     <ClInclude Include="..\IOverlaySystem.h" />
+    <ClInclude Include="..\IterativeSystemDebugger.h" />
     <ClInclude Include="..\IWindowRig.h" />
     <ClInclude Include="..\LayerControl.h" />
     <ClInclude Include="..\LevelEditorScene.h" />
