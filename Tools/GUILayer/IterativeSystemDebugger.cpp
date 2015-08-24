@@ -227,12 +227,14 @@ namespace GUILayer
     {
         _pimpl.reset();
         delete _overlay; _overlay = nullptr;
+        delete _getAndSetProperties; _getAndSetProperties = nullptr;
     }
 
     ErosionIterativeSystem::~ErosionIterativeSystem()
     {
         _pimpl.reset();
         delete _overlay; _overlay = nullptr;
+        delete _getAndSetProperties; _getAndSetProperties = nullptr;
     }
 
     ErosionIterativeSystem::Settings::Settings()
