@@ -96,7 +96,7 @@ namespace SceneEngine
                 result._minCoordOffset[1] = (int)(minCoordWorld[1] / _worldSpaceSpacing);
 
                 result._maxCoordOffset[0] = (int)(maxCoordWorld[0] / _worldSpaceSpacing);
-                result._maxCoordOffset[1] = (int)(maxCoordWorld[0] / _worldSpaceSpacing);
+                result._maxCoordOffset[1] = (int)(maxCoordWorld[1] / _worldSpaceSpacing);
 
                 result._valid = true;
             } else {
@@ -402,11 +402,11 @@ namespace SceneEngine
                 uniforms.Apply(metalContext, 
                     parserContext.GetGlobalUniformsStream(), Metal::UniformsStream());
                 metalContext.Bind(shader);
-                SetupVertexGeneratorShader(&metalContext);
 
                 metalContext.Bind(MakeResourceList(
                     Metal::VertexBuffer(vertices, sizeof(vertices))), sizeof(Vertex), 0);
                 metalContext.Bind(Techniques::CommonResources()._cullDisable);
+                metalContext.Bind(Metal::Topology::TriangleStrip);
                 metalContext.Draw(4);
             }
         } 

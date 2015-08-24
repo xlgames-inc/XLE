@@ -196,7 +196,7 @@ namespace GUILayer
             TerrainUberSurfaceGeneric uberSurface(
                 clix::marshalString<clix::E_UTF8>(sourceHeights).c_str());
 
-            auto maxSize = 512u;
+            auto maxSize = 4096u;
             UInt2 dims(
                 std::min(uberSurface.GetWidth(), maxSize),
                 std::min(uberSurface.GetHeight(), maxSize));
@@ -225,11 +225,13 @@ namespace GUILayer
     ErosionIterativeSystem::!ErosionIterativeSystem()
     {
         _pimpl.reset();
+        delete _overlay; _overlay = nullptr;
     }
 
     ErosionIterativeSystem::~ErosionIterativeSystem()
     {
         _pimpl.reset();
+        delete _overlay; _overlay = nullptr;
     }
 
     ErosionIterativeSystem::Settings::Settings()

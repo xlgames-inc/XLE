@@ -30,6 +30,6 @@ float4 ps_softMaterials(float4 position : SV_Position, float2 coords : TEXCOORD0
     float hard = HardMaterials.Load(uint3(coords.xy, 0));
     float soft = SoftMaterials.Load(uint3(coords.xy, 0));
 
-    float3 hardCol = lerp(0.0.xxx, float3(1.f, 0.f, 0.f), hard / 500.f);
+    float3 hardCol = float3(1.f, 0.25f, 0.25f) * GradColor(hard / 500.f);
     return float4(hardCol + soft.xxx, 1.f);
 }

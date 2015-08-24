@@ -36,7 +36,7 @@ namespace IterativeSystemDebugger
                 components.Dispose();
             }
             if (_system != null) { _system.Dispose(); _system = null; }
-            if (_previewWindow!=null) { _previewWindow.Dispose(); }
+            if (_previewWindow != null) { _previewWindow.Dispose(); _previewWindow = null; }
             base.Dispose(disposing);
         }
 
