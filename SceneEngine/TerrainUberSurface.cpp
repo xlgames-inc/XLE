@@ -799,14 +799,13 @@ namespace SceneEngine
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
 
-        auto erosionSim = std::make_unique<ErosionSimulation>(
-            finalCacheMax - finalCacheMin + UInt2(1,1),
-            terrainScale);
+        UInt2 erosionSimSize = finalCacheMax - finalCacheMin + UInt2(1,1);
+        auto erosionSim = std::make_unique<ErosionSimulation>(erosionSimSize, terrainScale);
 
         Metal::ShaderResourceView gpuCacheSRV(_pimpl->_gpucache[0]->GetUnderlying());
         erosionSim->InitHeights(
             *metalContext, gpuCacheSRV,
-            gpuCacheOffset, gpuCacheOffset + size);
+            gpuCacheOffset, gpuCacheOffset + erosionSimSize);
 
         _pimpl->_erosionSim = std::move(erosionSim);
         _pimpl->_erosionSimGPUCacheOffset = gpuCacheOffset;
@@ -822,6 +821,7 @@ namespace SceneEngine
         }
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+        _pimpl->_erosionSim->Tick(*metalContext, params);
 
         auto gpuCacheOffset = _pimpl->_erosionSimGPUCacheOffset;
         auto size = _pimpl->_erosionSim->GetDimensions();
