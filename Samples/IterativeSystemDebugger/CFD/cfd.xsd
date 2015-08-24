@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<xs:schema
+  elementFormDefault="qualified"
+  targetNamespace="gap"
+  xmlns="gap"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:complexType name="RefCFDSettings">
+    <xs:annotation>
+      <xs:appinfo>
+        <scea.dom.editors.attribute category="General" name="DeltaTime" displayName="DeltaTime"/>
+        <scea.dom.editors.attribute category="General" name="Viscosity" displayName="Viscosity"/>
+        <scea.dom.editors.attribute category="General" name="DiffusionRate" displayName="DiffusionRate"/>
+      </xs:appinfo>
+    </xs:annotation>
+    
+    <xs:attribute name="DeltaTime" type="xs:float" default="0.016667"/>
+    <xs:attribute name="Viscosity" type="xs:float" default="0"/>
+    <xs:attribute name="DiffusionRate" type="xs:float" default="0"/>
+    
+  </xs:complexType>
+</xs:schema>
+

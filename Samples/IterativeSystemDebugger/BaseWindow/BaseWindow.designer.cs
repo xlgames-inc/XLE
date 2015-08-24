@@ -9,7 +9,7 @@ namespace IterativeSystemDebugger
     using LayerControlType = ControlsLibrary.LayerControl;
     // using LayerControlType = System.Windows.Forms.Button;
 
-    partial class Erosion
+    partial class BaseWindow
     {
         /// <summary>
         /// Required designer variable.
@@ -62,7 +62,6 @@ namespace IterativeSystemDebugger
             // 
             this._previewWindow.Dock = System.Windows.Forms.DockStyle.Fill;
             this._previewWindow.Location = new System.Drawing.Point(0, 0);
-            this._previewWindow.Name = "_previewWindow";
             this._previewWindow.Size = new System.Drawing.Size(547, 629);
             this._previewWindow.TabIndex = 0;
             this._previewWindow.Text = "button1";
@@ -71,7 +70,6 @@ namespace IterativeSystemDebugger
             // 
             this.splitContainer2.Dock = System.Windows.Forms.DockStyle.Fill;
             this.splitContainer2.Location = new System.Drawing.Point(0, 0);
-            this.splitContainer2.Name = "splitContainer2";
             this.splitContainer2.Orientation = System.Windows.Forms.Orientation.Horizontal;
             // 
             // splitContainer2.Panel1
@@ -92,7 +90,6 @@ namespace IterativeSystemDebugger
             this._previewSettings.CategoryForeColor = System.Drawing.SystemColors.InactiveCaptionText;
             this._previewSettings.Dock = System.Windows.Forms.DockStyle.Fill;
             this._previewSettings.Location = new System.Drawing.Point(0, 0);
-            this._previewSettings.Name = "_previewSettings";
             this._previewSettings.Size = new System.Drawing.Size(268, 174);
             this._previewSettings.TabIndex = 0;
             // 
@@ -101,7 +98,6 @@ namespace IterativeSystemDebugger
             this._tickButton.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this._tickButton.Location = new System.Drawing.Point(109, 427);
-            this._tickButton.Name = "_tickButton";
             this._tickButton.Size = new System.Drawing.Size(156, 21);
             this._tickButton.TabIndex = 1;
             this._tickButton.Text = "Tick";
@@ -114,7 +110,6 @@ namespace IterativeSystemDebugger
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this._systemSettings.Location = new System.Drawing.Point(0, 0);
-            this._systemSettings.Name = "_systemSettings";
             this._systemSettings.Size = new System.Drawing.Size(273, 425);
             this._systemSettings.TabIndex = 0;
             // 
@@ -124,21 +119,20 @@ namespace IterativeSystemDebugger
             | System.Windows.Forms.AnchorStyles.Right)));
             this._autoTick.AutoSize = true;
             this._autoTick.Location = new System.Drawing.Point(3, 430);
-            this._autoTick.Name = "_autoTick";
             this._autoTick.Size = new System.Drawing.Size(72, 17);
             this._autoTick.TabIndex = 2;
             this._autoTick.Text = "Auto Tick";
             this._autoTick.UseVisualStyleBackColor = true;
             this._autoTick.CheckedChanged += new System.EventHandler(this._autoTick_CheckedChanged);
             // 
-            // Erosion
+            // IterativeSystem
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(819, 629);
             this.Controls.Add(this.splitContainer1);
-            this.Name = "Erosion";
-            this.Text = "Erosion";
+            this.Name = "IterativeSystem";
+            this.Text = "IterativeSystem";
             this.splitContainer1.Panel1.ResumeLayout(false);
             this.splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
@@ -155,10 +149,10 @@ namespace IterativeSystemDebugger
         #endregion
 
         private System.Windows.Forms.SplitContainer splitContainer1;
-        private LayerControlType _previewWindow;
+        protected LayerControlType _previewWindow;
         private System.Windows.Forms.SplitContainer splitContainer2;
-        private System.Windows.Forms.PropertyGrid _previewSettings;
-        private Sce.Atf.Controls.PropertyEditing.PropertyGrid _systemSettings;
+        protected System.Windows.Forms.PropertyGrid _previewSettings;
+        protected Sce.Atf.Controls.PropertyEditing.PropertyGrid _systemSettings;
         private System.Windows.Forms.Button _tickButton;
         private System.Windows.Forms.CheckBox _autoTick;
     }

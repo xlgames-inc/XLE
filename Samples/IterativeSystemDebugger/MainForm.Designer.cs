@@ -18,6 +18,7 @@
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.debuggersToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.erosionSimToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.referenceCFDToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -34,7 +35,8 @@
             // debuggersToolStripMenuItem
             // 
             this.debuggersToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.erosionSimToolStripMenuItem});
+            this.erosionSimToolStripMenuItem,
+            this.referenceCFDToolStripMenuItem});
             this.debuggersToolStripMenuItem.Name = "debuggersToolStripMenuItem";
             this.debuggersToolStripMenuItem.Size = new System.Drawing.Size(76, 20);
             this.debuggersToolStripMenuItem.Text = "Debuggers";
@@ -42,18 +44,25 @@
             // erosionSimToolStripMenuItem
             // 
             this.erosionSimToolStripMenuItem.Name = "erosionSimToolStripMenuItem";
-            this.erosionSimToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.erosionSimToolStripMenuItem.Size = new System.Drawing.Size(160, 22);
             this.erosionSimToolStripMenuItem.Text = "&Erosion Sim...";
             this.erosionSimToolStripMenuItem.Click += new System.EventHandler(this.erosionSimToolStripMenuItem_Click);
             // 
-            // Form1
+            // referenceCFDToolStripMenuItem
+            // 
+            this.referenceCFDToolStripMenuItem.Name = "referenceCFDToolStripMenuItem";
+            this.referenceCFDToolStripMenuItem.Size = new System.Drawing.Size(160, 22);
+            this.referenceCFDToolStripMenuItem.Text = "Reference CFD...";
+            this.referenceCFDToolStripMenuItem.Click += new System.EventHandler(this.referenceCFDToolStripMenuItem_Click);
+            // 
+            // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(284, 261);
             this.Controls.Add(this.menuStrip1);
             this.MainMenuStrip = this.menuStrip1;
-            this.Name = "Form1";
+            this.Name = "MainForm";
             this.Text = "Iterative System Host";
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
@@ -67,6 +76,7 @@
         private System.Windows.Forms.MenuStrip menuStrip1;
         private System.Windows.Forms.ToolStripMenuItem debuggersToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem erosionSimToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem referenceCFDToolStripMenuItem;
     }
 }
 

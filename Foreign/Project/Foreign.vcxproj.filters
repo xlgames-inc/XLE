@@ -22,6 +22,9 @@
     <Filter Include="StackWalker">
       <UniqueIdentifier>{6f8a0b77-c6ff-4a09-b6ee-73c16b95f3fc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="StamSimpleFluid">
+      <UniqueIdentifier>{7f199cf2-efff-41d7-94b2-8578cc9b9bd9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Hash\MurmurHash2.cpp">
@@ -266,6 +269,9 @@
     </ClCompile>
     <ClCompile Include="..\StackWalker\StackWalker.cpp">
       <Filter>StackWalker</Filter>
+    </ClCompile>
+    <ClCompile Include="..\StamSimpleFluid\solver.c">
+      <Filter>StamSimpleFluid</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

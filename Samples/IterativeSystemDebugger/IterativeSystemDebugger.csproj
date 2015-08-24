@@ -79,11 +79,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Erosion\Erosion.cs">
+    <Compile Include="BaseWindow\BaseWindow.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Erosion\Erosion.Designer.cs">
-      <DependentUpon>Erosion.cs</DependentUpon>
+    <Compile Include="BaseWindow\BaseWindow.designer.cs">
+      <DependentUpon>BaseWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CFD\RefCFD.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Erosion\Erosion.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
@@ -93,8 +99,8 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="Erosion\Erosion.resx">
-      <DependentUpon>Erosion.cs</DependentUpon>
+    <EmbeddedResource Include="BaseWindow\BaseWindow.resx">
+      <DependentUpon>BaseWindow.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
@@ -109,6 +115,9 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <EmbeddedResource Include="Erosion\erosion.xsd">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CFD\cfd.xsd">
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <None Include="Properties\Settings.settings">

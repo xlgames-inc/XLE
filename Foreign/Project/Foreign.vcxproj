@@ -210,6 +210,7 @@
     <ClCompile Include="..\Lua\src\lvm.c" />
     <ClCompile Include="..\Lua\src\lzio.c" />
     <ClCompile Include="..\StackWalker\StackWalker.cpp" />
+    <ClCompile Include="..\StamSimpleFluid\solver.c" />
     <ClCompile Include="..\TinyThreadPP\source\tinythread.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>

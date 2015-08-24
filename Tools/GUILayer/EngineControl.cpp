@@ -130,7 +130,7 @@ namespace GUILayer
     {
         // when we've lost or gained the focus, we need to reset the input translator 
         //  (because we might miss key up/down message when not focused)
-        if (_pimpl->_inputTranslator) {
+        if (_pimpl && _pimpl->_inputTranslator) {       // (this can sometimes be called after the dispose, which ends up with an invalid _pimpl)
             _pimpl->_inputTranslator->OnFocusChange();
         }
     }

@@ -12,15 +12,12 @@ using Sce.Atf.Applications;
 
 namespace IterativeSystemDebugger
 {
-    public partial class Erosion : Form
+    public partial class Erosion : BaseWindow
     {
         public Erosion(GUILayer.ErosionIterativeSystem system)
         {
-            _autoTickState = false;
             _system = system;
-            InitializeComponent();
             _previewWindow.Underlying.AddSystem(_system._overlay);
-
             _previewSettings.SelectedObject = _system._settings;
 
             _schemaLoader = new ErosionSettingsSchemaLoader();
@@ -30,46 +27,16 @@ namespace IterativeSystemDebugger
 
         protected override void Dispose(bool disposing)
         {
-            Application.Idle -= OnAppIdle;
-            if (disposing && (components != null))
-            {
-                components.Dispose();
-            }
             if (_system != null) { _system.Dispose(); _system = null; }
-            if (_previewWindow != null) { _previewWindow.Dispose(); _previewWindow = null; }
             base.Dispose(disposing);
         }
 
-        private void _tickButton_Click(object sender, EventArgs e)
+        protected override void DoTick()
         {
             _system.Tick();
-            _previewWindow.Invalidate();
-        }
-
-        private void OnAppIdle(object sender, EventArgs e)
-        {
-            _system.Tick();
-            _previewWindow.Invalidate();
-        }
-
-        private void _autoTick_CheckedChanged(object sender, EventArgs e)
-        {
-            bool newAutoTickState = _autoTick.CheckState == CheckState.Checked;
-            if (newAutoTickState != _autoTickState) {
-                _autoTickState = newAutoTickState;
-                if (_autoTickState)
-                {
-                    Application.Idle += OnAppIdle;
-                }
-                else
-                {
-                    Application.Idle -= OnAppIdle;
-                }
-            }
         }
 
         private GUILayer.ErosionIterativeSystem _system;
-        private bool _autoTickState;
         private ErosionSettingsSchemaLoader _schemaLoader;
     }
 

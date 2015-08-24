@@ -47,4 +47,37 @@ namespace GUILayer
         clix::auto_ptr<ErosionIterativeSystemPimpl> _pimpl;
     };
 
+
+    class CFDRefIterativeSystemPimpl;
+
+    public ref class CFDRefIterativeSystem
+    {
+    public:
+        IOverlaySystem^ _overlay;
+        IGetAndSetProperties^ _getAndSetProperties;
+
+        ref class Settings
+        {
+        public:
+            enum class Preview { Density, Velocity };
+            
+            [Browsable(true)]
+            [Category("Preview")] [Description("Rendering mode for the preview window")]
+            property Preview ActivePreview;
+
+            Settings();
+        };
+        Settings^ _settings;
+
+        void Tick();
+        void OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton);
+
+        CFDRefIterativeSystem(unsigned size);
+        !CFDRefIterativeSystem();
+        ~CFDRefIterativeSystem();
+
+    private:
+        clix::auto_ptr<CFDRefIterativeSystemPimpl> _pimpl;
+    };
+
 }

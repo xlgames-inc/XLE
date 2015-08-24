@@ -13,6 +13,7 @@
 #include "../../SceneEngine/Erosion.h"
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/TerrainUberSurface.h"
+#include "../../SceneEngine/Fluid.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../BufferUploads/ResourceLocator.h"
@@ -158,7 +159,7 @@ namespace GUILayer
         ClassAccessors_GetAndSet<Type>::!ClassAccessors_GetAndSet() { _type.reset(); }
 
     template<typename Type>
-        ClassAccessors_GetAndSet<Type>::~ClassAccessors_GetAndSet() {}
+        ClassAccessors_GetAndSet<Type>::~ClassAccessors_GetAndSet() { _type.reset(); }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -237,6 +238,151 @@ namespace GUILayer
     ErosionIterativeSystem::Settings::Settings()
     {
         ActivePreview = Preview::HardMaterials;
+    }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    ref class CFDOverlay : public IOverlaySystem
+    {
+    public:
+        virtual void RenderToScene(
+            RenderCore::IThreadContext* device, 
+            SceneEngine::LightingParserContext& parserContext) override;
+        virtual void RenderWidgets(
+            RenderCore::IThreadContext* device, 
+            const RenderCore::Techniques::ProjectionDesc& projectionDesc) override;
+        virtual void SetActivationState(bool newState) override {}
+
+        CFDOverlay(
+            std::shared_ptr<SceneEngine::ReferenceFluidSolver2D> sim,
+            CFDRefIterativeSystem::Settings^ previewSettings);
+        !CFDOverlay();
+        ~CFDOverlay();
+    private:
+        clix::shared_ptr<SceneEngine::ReferenceFluidSolver2D> _sim;
+        CFDRefIterativeSystem::Settings^ _previewSettings;
+    };
+
+    static SceneEngine::ReferenceFluidSolver2D::DebuggingMode AsDebugMode(CFDRefIterativeSystem::Settings::Preview input)
+    {
+        using P = CFDRefIterativeSystem::Settings::Preview;
+        switch (input) {
+        default:
+        case P::Density: return SceneEngine::ReferenceFluidSolver2D::DebuggingMode::Density;
+        case P::Velocity: return SceneEngine::ReferenceFluidSolver2D::DebuggingMode::Velocity;
+        }
+    }
+
+    void CFDOverlay::RenderToScene(
+        RenderCore::IThreadContext* device,
+        SceneEngine::LightingParserContext& parserContext)
+    {
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(*device);
+        Float2 worldDims = _sim->GetDimensions();
+
+        auto camToWorld = MakeCameraToWorld(
+            Float3(0.f, 0.f, -1.f),
+            Float3(0.f, 1.f, 0.f),
+            Float3(0.f, 0.f, 0.f));
+        SceneEngine::LightingParser_SetGlobalTransform(
+            metalContext.get(), parserContext, camToWorld, 
+            0.f, worldDims[1], worldDims[0], 0.f, 
+            -4096.f, 4096.f);
+
+        _sim->RenderDebugging(*metalContext, parserContext, AsDebugMode(_previewSettings->ActivePreview));
+    }
+
+    void CFDOverlay::RenderWidgets(
+        RenderCore::IThreadContext* device,
+        const RenderCore::Techniques::ProjectionDesc& projectionDesc)
+    {}
+
+    CFDOverlay::CFDOverlay(
+        std::shared_ptr<SceneEngine::ReferenceFluidSolver2D> sim,
+        CFDRefIterativeSystem::Settings^ previewSettings)
+    : _sim(sim), _previewSettings(previewSettings)
+    {}
+
+    CFDOverlay::!CFDOverlay() { _sim.reset(); }
+    CFDOverlay::~CFDOverlay() { _sim.reset(); }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class CFDRefIterativeSystemPimpl
+    {
+    public:
+        std::shared_ptr<SceneEngine::ReferenceFluidSolver2D> _sim;
+        std::shared_ptr<SceneEngine::ReferenceFluidSolver2D::Settings> _settings;
+    };
+
+    void CFDRefIterativeSystem::Tick()
+    {
+        _pimpl->_sim->Tick(*_pimpl->_settings);
+    }
+
+    void CFDRefIterativeSystem::OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton)
+    {
+        Float2 coords(
+            _pimpl->_sim->GetDimensions()[0] * x,
+            _pimpl->_sim->GetDimensions()[1] * y);
+
+        auto radius = 10.f;
+        auto radiusSq = radius*radius;
+        for (float y = XlFloor(coords[1] - radius); y <= XlCeil(coords[1] + radius); ++y) {
+            for (float x = XlFloor(coords[0] - radius); x <= XlCeil(coords[0] + radius); ++x) {
+                Float2 fo = Float2(x, y) - coords;
+                if (MagnitudeSquared(fo) <= radiusSq && x >= 0.f && y >= 0.f) {
+
+                    auto c = UInt2(unsigned(x), unsigned(y));
+                    if (mouseButton == 0) {
+                        _pimpl->_sim->AddDensity(c, .05f);
+                    } else if (mouseButton == 2) {
+                        _pimpl->_sim->AddDensity(c, -.05f);
+                    } else {
+                        _pimpl->_sim->AddVelocity(c, 0.05f * Float2(velX, velY));
+                    }
+                }
+            }
+        }
+    }
+
+    CFDRefIterativeSystem::CFDRefIterativeSystem(unsigned size)
+    {
+        using namespace SceneEngine;
+        _pimpl.reset(new CFDRefIterativeSystemPimpl);
+        _pimpl->_settings = std::make_shared<SceneEngine::ReferenceFluidSolver2D::Settings>();
+        _pimpl->_sim = std::make_shared<SceneEngine::ReferenceFluidSolver2D>(UInt2(size, size));
+        _settings = gcnew Settings();
+
+        _getAndSetProperties = gcnew ClassAccessors_GetAndSet<
+            SceneEngine::ReferenceFluidSolver2D::Settings>(_pimpl->_settings);
+
+        _overlay = gcnew CFDOverlay(_pimpl->_sim, _settings);
+    }
+
+    CFDRefIterativeSystem::!CFDRefIterativeSystem()
+    {
+        _pimpl.reset();
+        delete _overlay; _overlay = nullptr;
+        delete _getAndSetProperties; _getAndSetProperties = nullptr;
+    }
+
+    CFDRefIterativeSystem::~CFDRefIterativeSystem()
+    {
+        _pimpl.reset();
+        delete _overlay; _overlay = nullptr;
+        delete _getAndSetProperties; _getAndSetProperties = nullptr;
+    }
+
+    CFDRefIterativeSystem::Settings::Settings()
+    {
+        ActivePreview = Preview::Density;
     }
 }
 

@@ -22,7 +22,7 @@ namespace ControlsLibrary
             if (disposing && (components != null))
             {
                 components.Dispose();
-                if (layerControl!=null) { layerControl.Dispose(); }
+                if (layerControl != null) { layerControl.Dispose(); layerControl = null; }
             }
             base.Dispose(disposing);
         }
