@@ -127,10 +127,11 @@ namespace SceneEngine
         context->Clear(mainTargets._msaaDepthBuffer, 1.f, 0);
     }
 
-    void LightingParser_SetProjectionDesc(  LightingParserContext& parserContext, 
-                                            const Techniques::CameraDesc& sceneCamera,
-                                            UInt2 viewportDims,
-                                            const Float4x4* specialProjectionMatrix)
+    static void LightingParser_SetProjectionDesc(  
+        LightingParserContext& parserContext, 
+        const Techniques::CameraDesc& sceneCamera,
+        UInt2 viewportDims,
+        const Float4x4* specialProjectionMatrix)
     {
             //  Setup our projection matrix... Scene parser should give us some camera
             //  parameters... But perhaps the projection matrix should be created here,
@@ -162,6 +163,28 @@ namespace SceneEngine
     {
         LightingParser_SetProjectionDesc(parserContext, sceneCamera, viewportDims, specialProjectionMatrix);
         auto& projDesc = parserContext.GetProjectionDesc();
+        auto globalTransform = BuildGlobalTransformConstants(projDesc);
+        parserContext.SetGlobalCB(0, context, &globalTransform, sizeof(globalTransform));
+    }
+
+    void LightingParser_SetGlobalTransform(
+        MetalContext* context,
+        LightingParserContext& parserContext,
+        const Float4x4& cameraToWorld,
+        float l, float t, float r, float b,
+        float nearClip, float farClip)
+    {
+        auto cameraToProjection = Techniques::OrthogonalProjection(l, t, r, b, nearClip, farClip);
+
+        auto& projDesc = parserContext.GetProjectionDesc();
+        projDesc._verticalFov = 0.f;
+        projDesc._aspectRatio = 1.f;
+        projDesc._nearClip = nearClip;
+        projDesc._farClip = farClip;
+        projDesc._worldToProjection = Combine(InvertOrthonormalTransform(cameraToWorld), cameraToProjection);
+        projDesc._cameraToProjection = cameraToProjection;
+        projDesc._cameraToWorld = cameraToWorld;
+
         auto globalTransform = BuildGlobalTransformConstants(projDesc);
         parserContext.SetGlobalCB(0, context, &globalTransform, sizeof(globalTransform));
     }

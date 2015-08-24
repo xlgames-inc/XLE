@@ -90,6 +90,11 @@ namespace XLEBridgeUtils
                 || (value == nullptr && AttributeInfo->DefaultValue != nullptr);
         }
 
+        property Type^ ComponentType
+        {
+            Type^ get() override { return GUILayer::IGetAndSetProperties::typeid; }
+        }
+
         Object^ GetValue(Object^ component) override
         {
             auto dynObject = dynamic_cast<GUILayer::IGetAndSetProperties^>(component);

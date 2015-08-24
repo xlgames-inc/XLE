@@ -90,9 +90,9 @@ namespace SceneEngine
         using namespace BufferUploads;
         auto& uploads = GetBufferUploads();
 
-        auto tDesc = TextureDesc::Plain2D(width, height, Metal::NativeFormat::R32_TYPELESS, 1, uint8(maxSimulationGrids));
+        auto tDesc = TextureDesc::Plain2D(width, height, Metal::NativeFormat::R32_TYPELESS, 1, uint16(maxSimulationGrids));
         if (height<=1) {
-            tDesc = TextureDesc::Plain1D(width, Metal::NativeFormat::R32_TYPELESS, 1, uint8(maxSimulationGrids));
+            tDesc = TextureDesc::Plain1D(width, Metal::NativeFormat::R32_TYPELESS, 1, uint16(maxSimulationGrids));
         }
 
         BufferDesc targetDesc;

@@ -55,6 +55,18 @@
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Atf.Core, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Foreign\SonyLE\ATF\lib\Debug\Atf.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Atf.Gui, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Foreign\SonyLE\ATF\lib\Debug\Atf.Gui.dll</HintPath>
+    </Reference>
+    <Reference Include="Atf.Gui.WinForms, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Foreign\SonyLE\ATF\lib\Debug\Atf.Gui.WinForms.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -67,10 +79,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Erosion.cs">
+    <Compile Include="Erosion\Erosion.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Erosion.Designer.cs">
+    <Compile Include="Erosion\Erosion.Designer.cs">
       <DependentUpon>Erosion.cs</DependentUpon>
     </Compile>
     <Compile Include="MainForm.cs">
@@ -81,7 +93,7 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="Erosion.resx">
+    <EmbeddedResource Include="Erosion\Erosion.resx">
       <DependentUpon>Erosion.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="MainForm.resx">
@@ -96,6 +108,9 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <EmbeddedResource Include="Erosion\erosion.xsd">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -109,10 +124,12 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
-    <Folder Include="Erosion\" />
-  </ItemGroup>
-  <ItemGroup>
+    <ProjectReference Include="..\..\Foreign\SonyLE\XLEBridgeUtils\Project\XLEBridgeUtils.vcxproj">
+      <Project>{7626c65e-8df3-42e0-b9cb-414561c50bc5}</Project>
+      <Name>XLEBridgeUtils</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\Tools\ControlsLibrary\ControlsLibrary.csproj">
       <Project>{b7539653-6e9c-4493-8023-d4a2bffcd8e2}</Project>
       <Name>ControlsLibrary</Name>

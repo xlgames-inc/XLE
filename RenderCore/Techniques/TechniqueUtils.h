@@ -82,6 +82,10 @@ namespace RenderCore { namespace Techniques
         GeometricCoordinateSpace::Enum coordinateSpace,
         ClipSpaceType::Enum clipSpaceType);
 
+    Float4x4 OrthogonalProjection(
+        float l, float t, float r, float b,
+        float nearClipPlane, float farClipPlane);
+
     ClipSpaceType::Enum GetDefaultClipSpaceType();
 
     std::pair<float, float> CalculateNearAndFarPlane(

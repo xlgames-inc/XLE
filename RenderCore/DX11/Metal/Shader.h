@@ -182,12 +182,12 @@ namespace RenderCore { namespace Metal_DX11
     ///
     ///     The DirectX11 shader pipeline looks like this:
     ///         <list>
-    ///             <item> Vertex Shader
-    ///             <item> Hull Shader
-    ///             <item> (fixed function tessellator)
-    ///             <item> Domain shader
-    ///             <item> Geometry shader
-    ///             <item> Pixel Shader
+    ///             <item>Vertex Shader</item>
+    ///             <item>Hull Shader</item>
+    ///             <item>(fixed function tessellator)</item>
+    ///             <item>Domain shader</item>
+    ///             <item>Geometry shader</item>
+    ///             <item>Pixel Shader</item>
     ///         </list>
     ///
     /// Normally ShaderProgram objects are created and managed using the "Assets::GetAsset" or "Assets::GetAssetDep"
@@ -204,14 +204,14 @@ namespace RenderCore { namespace Metal_DX11
     ///
     /// Note that the parameters ":main:vs_*" specify the entry point and shader compilation model.
     ///     <list>
-    ///         <item> ":main" -- this is the entry point function. That is, there is a function in
+    ///         <item>":main" -- this is the entry point function. That is, there is a function in
     ///                 the shader file called "main." It will take the shader input parameters and 
-    ///                 return the shader output values.
-    ///         <item> ":vs_*" -- this is the compilation model. "vs" means vertex shader. The "_*"
+    ///                 return the shader output values.</item>
+    ///         <item>":vs_*" -- this is the compilation model. "vs" means vertex shader. The "_*"
     ///                 means to use the default compilation model for the current device. But it can 
     ///                 be replaced with an appropriate compilation model 
     ///                     (eg, vs_5_0, vs_4_0_level_9_1, ps_3_0, etc)
-    ///                 Normally it's best to use the default compilation model.
+    ///                 Normally it's best to use the default compilation model.</item>
     ///     </list>
     ///
     class ShaderProgram : noncopyable

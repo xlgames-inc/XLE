@@ -42,9 +42,16 @@ namespace SceneEngine
         void Tick(
             RenderCore::Metal::DeviceContext& metalContext,
             const Settings& settings);
+
+        enum class RenderDebugMode
+        {
+            WaterVelocity3D,
+            HardMaterials, SoftMaterials
+        };
         void RenderDebugging(
             RenderCore::Metal::DeviceContext& metalContext,
             LightingParserContext& parserContext,
+            RenderDebugMode mode,
             const Float2& worldSpaceOffset = Float2(0.f, 0.f));
 
         void InitHeights(
@@ -57,6 +64,7 @@ namespace SceneEngine
             UInt2 topLeft, UInt2 bottomRight);
 
         UInt2 GetDimensions() const;
+        float GetWorldSpaceSpacing() const;
 
         static UInt2 DefaultTileSize();
         

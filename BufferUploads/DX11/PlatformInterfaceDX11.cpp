@@ -414,7 +414,7 @@
                     {
                         if (initialisationData) {
                             for (unsigned l=0; l<desc._textureDesc._mipCount; ++l) {
-                                for (unsigned a=0; a<std::max(desc._textureDesc._arrayCount,uint8(1)); ++a) {
+                                for (unsigned a=0; a<std::max(desc._textureDesc._arrayCount,uint16(1)); ++a) {
                                     uint32 subresourceIndex = D3D11CalcSubresource(l, a, desc._textureDesc._mipCount);
                                     subResources[subresourceIndex].pSysMem = initialisationData->GetData(SubR(l,a));
                                     auto rowAndSlicePitch = initialisationData->GetPitches(SubR(l,a));
@@ -430,7 +430,7 @@
                             XlZeroMemory(textureDesc);
                             textureDesc.Width = desc._textureDesc._width;
                             textureDesc.MipLevels = desc._textureDesc._mipCount;
-                            textureDesc.ArraySize = std::max(desc._textureDesc._arrayCount, uint8(1));
+                            textureDesc.ArraySize = std::max(desc._textureDesc._arrayCount, uint16(1));
                             textureDesc.Format = AsDXGIFormat((NativeFormat::Enum)desc._textureDesc._nativePixelFormat);
                             const bool lateInitialisation = !initialisationData; /// it must be lateInitialisation, because we don't have any initialization data
                             textureDesc.Usage = UsageForDesc(desc, lateInitialisation);
@@ -446,7 +446,7 @@
                             textureDesc.Width = desc._textureDesc._width;
                             textureDesc.Height = desc._textureDesc._height;
                             textureDesc.MipLevels = desc._textureDesc._mipCount;
-                            textureDesc.ArraySize = std::max(desc._textureDesc._arrayCount, uint8(1));
+                            textureDesc.ArraySize = std::max(desc._textureDesc._arrayCount, uint16(1));
                             textureDesc.Format = AsDXGIFormat((NativeFormat::Enum)desc._textureDesc._nativePixelFormat);
                             textureDesc.SampleDesc.Count = std::max(uint8(1),desc._textureDesc._samples._sampleCount);
                             textureDesc.SampleDesc.Quality = desc._textureDesc._samples._samplingQuality;
@@ -557,7 +557,7 @@
             desc._textureDesc._width = d3dDesc.Width;
             desc._textureDesc._height = d3dDesc.Height;
             desc._textureDesc._mipCount = uint8(d3dDesc.MipLevels);
-            desc._textureDesc._arrayCount = uint8(d3dDesc.ArraySize);
+            desc._textureDesc._arrayCount = uint16(d3dDesc.ArraySize);
             desc._textureDesc._nativePixelFormat = d3dDesc.Format;
             desc._textureDesc._samples = BufferUploads::TextureSamples::Create();
             desc._name[0] = '\0';
@@ -575,7 +575,7 @@
             desc._textureDesc._width = d3dDesc.Width;
             desc._textureDesc._height = 1;
             desc._textureDesc._mipCount = uint8(d3dDesc.MipLevels);
-            desc._textureDesc._arrayCount = uint8(d3dDesc.ArraySize);
+            desc._textureDesc._arrayCount = uint16(d3dDesc.ArraySize);
             desc._textureDesc._nativePixelFormat = d3dDesc.Format;
             desc._textureDesc._samples = BufferUploads::TextureSamples::Create();
             desc._name[0] = '\0';

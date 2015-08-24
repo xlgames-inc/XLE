@@ -135,7 +135,7 @@ namespace BufferUploads { namespace PlatformInterface
         for (unsigned mipIndex=0; mipIndex<tDesc._mipCount; ++mipIndex) {
             result  +=  std::max(mipMin, tDesc._width>>mipIndex)
                     *   std::max(mipMin, tDesc._height>>mipIndex)
-                    *   std::max(uint8(1), tDesc._arrayCount)
+                    *   std::max(uint16(1), tDesc._arrayCount)
                     *   bitsPerPixel
                     /   8
                     ;

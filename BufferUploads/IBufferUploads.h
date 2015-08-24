@@ -145,15 +145,16 @@ namespace BufferUploads
         unsigned _nativePixelFormat;
         struct Dimensionality { enum Enum { T1D, T2D, T3D, CubeMap }; };
         Dimensionality::Enum _dimensionality;
-        uint8 _mipCount, _arrayCount;
+        uint8 _mipCount;
+        uint16 _arrayCount;
         TextureSamples _samples;
 
         static TextureDesc Plain1D(
             uint32 width, unsigned nativePixelFormat, 
-            uint8 mipCount=1, uint8 arrayCount=0);
+            uint8 mipCount=1, uint16 arrayCount=0);
         static TextureDesc Plain2D(
             uint32 width, uint32 height, unsigned nativePixelFormat, 
-            uint8 mipCount=1, uint8 arrayCount=0, const TextureSamples& samples = TextureSamples::Create());
+            uint8 mipCount=1, uint16 arrayCount=0, const TextureSamples& samples = TextureSamples::Create());
         static TextureDesc Plain3D(
             uint32 width, uint32 height, uint32 depth, unsigned nativePixelFormat, uint8 mipCount=1);
         static TextureDesc Empty();
@@ -459,7 +460,7 @@ namespace BufferUploads
 
     inline TextureDesc TextureDesc::Plain1D(
                 uint32 width, unsigned nativePixelFormat, 
-                uint8 mipCount, uint8 arrayCount)
+                uint8 mipCount, uint16 arrayCount)
     {
         TextureDesc result;
         result._width = width;
@@ -475,7 +476,7 @@ namespace BufferUploads
         
     inline TextureDesc TextureDesc::Plain2D(
                 uint32 width, uint32 height, unsigned nativePixelFormat, 
-                uint8 mipCount, uint8 arrayCount,
+                uint8 mipCount, uint16 arrayCount,
                 const TextureSamples& samples)
     {
         TextureDesc result;

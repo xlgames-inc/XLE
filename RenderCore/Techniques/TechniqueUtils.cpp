@@ -175,6 +175,15 @@ namespace RenderCore { namespace Techniques
         return result;
     }
 
+    Float4x4 OrthogonalProjection(
+        float l, float t, float r, float b,
+        float nearClipPlane, float farClipPlane)
+    {
+        return OrthogonalProjection(
+            l, t, r, b, nearClipPlane, farClipPlane,
+            GeometricCoordinateSpace::RightHanded, GetDefaultClipSpaceType());
+    }
+
     std::pair<float, float> CalculateNearAndFarPlane(
         const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType)
     {

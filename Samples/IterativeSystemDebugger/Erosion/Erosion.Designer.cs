@@ -7,6 +7,7 @@
 namespace IterativeSystemDebugger
 {
     using LayerControlType = ControlsLibrary.LayerControl;
+    // using LayerControlType = System.Windows.Forms.Button;
 
     partial class Erosion
     {
@@ -24,10 +25,12 @@ namespace IterativeSystemDebugger
         private void InitializeComponent()
         {
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+            this._previewWindow = new ControlsLibrary.LayerControl();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
-            this._previewWindow = new LayerControlType();
-            this._systemSettings = new System.Windows.Forms.PropertyGrid();
             this._previewSettings = new System.Windows.Forms.PropertyGrid();
+            this._tickButton = new System.Windows.Forms.Button();
+            this._systemSettings = new Sce.Atf.Controls.PropertyEditing.PropertyGrid();
+            this._autoTick = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -51,9 +54,18 @@ namespace IterativeSystemDebugger
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.splitContainer2);
-            this.splitContainer1.Size = new System.Drawing.Size(1070, 680);
-            this.splitContainer1.SplitterDistance = 707;
+            this.splitContainer1.Size = new System.Drawing.Size(819, 629);
+            this.splitContainer1.SplitterDistance = 547;
             this.splitContainer1.TabIndex = 0;
+            // 
+            // _previewWindow
+            // 
+            this._previewWindow.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._previewWindow.Location = new System.Drawing.Point(0, 0);
+            this._previewWindow.Name = "_previewWindow";
+            this._previewWindow.Size = new System.Drawing.Size(547, 629);
+            this._previewWindow.TabIndex = 0;
+            this._previewWindow.Text = "button1";
             // 
             // splitContainer2
             // 
@@ -68,41 +80,62 @@ namespace IterativeSystemDebugger
             // 
             // splitContainer2.Panel2
             // 
+            this.splitContainer2.Panel2.Controls.Add(this._autoTick);
+            this.splitContainer2.Panel2.Controls.Add(this._tickButton);
             this.splitContainer2.Panel2.Controls.Add(this._systemSettings);
-            this.splitContainer2.Size = new System.Drawing.Size(359, 680);
-            this.splitContainer2.SplitterDistance = 187;
+            this.splitContainer2.Size = new System.Drawing.Size(268, 629);
+            this.splitContainer2.SplitterDistance = 174;
             this.splitContainer2.TabIndex = 0;
-            // 
-            // _previewWindow
-            // 
-            this._previewWindow.Dock = System.Windows.Forms.DockStyle.Fill;
-            this._previewWindow.Location = new System.Drawing.Point(0, 0);
-            this._previewWindow.Name = "_previewWindow";
-            this._previewWindow.Size = new System.Drawing.Size(707, 680);
-            this._previewWindow.TabIndex = 0;
-            this._previewWindow.Text = "button1";
-            // 
-            // _systemSettings
-            // 
-            this._systemSettings.Dock = System.Windows.Forms.DockStyle.Fill;
-            this._systemSettings.Location = new System.Drawing.Point(0, 0);
-            this._systemSettings.Name = "_systemSettings";
-            this._systemSettings.Size = new System.Drawing.Size(359, 489);
-            this._systemSettings.TabIndex = 0;
             // 
             // _previewSettings
             // 
+            this._previewSettings.CategoryForeColor = System.Drawing.SystemColors.InactiveCaptionText;
             this._previewSettings.Dock = System.Windows.Forms.DockStyle.Fill;
             this._previewSettings.Location = new System.Drawing.Point(0, 0);
             this._previewSettings.Name = "_previewSettings";
-            this._previewSettings.Size = new System.Drawing.Size(359, 187);
+            this._previewSettings.Size = new System.Drawing.Size(268, 174);
             this._previewSettings.TabIndex = 0;
+            // 
+            // _tickButton
+            // 
+            this._tickButton.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this._tickButton.Location = new System.Drawing.Point(109, 427);
+            this._tickButton.Name = "_tickButton";
+            this._tickButton.Size = new System.Drawing.Size(156, 21);
+            this._tickButton.TabIndex = 1;
+            this._tickButton.Text = "Tick";
+            this._tickButton.UseVisualStyleBackColor = true;
+            this._tickButton.Click += new System.EventHandler(this._tickButton_Click);
+            // 
+            // _systemSettings
+            // 
+            this._systemSettings.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this._systemSettings.Location = new System.Drawing.Point(0, 0);
+            this._systemSettings.Name = "_systemSettings";
+            this._systemSettings.Size = new System.Drawing.Size(273, 425);
+            this._systemSettings.TabIndex = 0;
+            // 
+            // _autoTick
+            // 
+            this._autoTick.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this._autoTick.AutoSize = true;
+            this._autoTick.Location = new System.Drawing.Point(3, 430);
+            this._autoTick.Name = "_autoTick";
+            this._autoTick.Size = new System.Drawing.Size(72, 17);
+            this._autoTick.TabIndex = 2;
+            this._autoTick.Text = "Auto Tick";
+            this._autoTick.UseVisualStyleBackColor = true;
+            this._autoTick.CheckedChanged += new System.EventHandler(this._autoTick_CheckedChanged);
             // 
             // Erosion
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1070, 680);
+            this.ClientSize = new System.Drawing.Size(819, 629);
             this.Controls.Add(this.splitContainer1);
             this.Name = "Erosion";
             this.Text = "Erosion";
@@ -112,6 +145,7 @@ namespace IterativeSystemDebugger
             this.splitContainer1.ResumeLayout(false);
             this.splitContainer2.Panel1.ResumeLayout(false);
             this.splitContainer2.Panel2.ResumeLayout(false);
+            this.splitContainer2.Panel2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).EndInit();
             this.splitContainer2.ResumeLayout(false);
             this.ResumeLayout(false);
@@ -124,6 +158,8 @@ namespace IterativeSystemDebugger
         private LayerControlType _previewWindow;
         private System.Windows.Forms.SplitContainer splitContainer2;
         private System.Windows.Forms.PropertyGrid _previewSettings;
-        private System.Windows.Forms.PropertyGrid _systemSettings;
+        private Sce.Atf.Controls.PropertyEditing.PropertyGrid _systemSettings;
+        private System.Windows.Forms.Button _tickButton;
+        private System.Windows.Forms.CheckBox _autoTick;
     }
 }

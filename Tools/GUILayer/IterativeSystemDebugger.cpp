@@ -8,8 +8,16 @@
 #include "IOverlaySystem.h"
 #include "ManipulatorUtils.h"       // for IGetAndSetProperties
 #include "MarshalString.h"
+#include "EngineDevice.h"
+#include "NativeEngineDevice.h"
 #include "../../SceneEngine/Erosion.h"
+#include "../../SceneEngine/LightingParser.h"
+#include "../../SceneEngine/TerrainUberSurface.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/IDevice.h"
+#include "../../BufferUploads/ResourceLocator.h"
+#include "../../Math/Transformations.h"
+#include "../../Assets/AssetsCore.h"
 #include "../../Utility/Meta/ClassAccessors.h"
 #include "../../Utility/MemoryUtils.h"
 #include <memory>
@@ -17,6 +25,8 @@
 namespace GUILayer
 {
     using ErosionSettings = SceneEngine::ErosionSimulation::Settings;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
     ref class ErosionOverlay : public IOverlaySystem
     {
@@ -39,20 +49,40 @@ namespace GUILayer
         ErosionIterativeSystem::Settings^ _previewSettings;
     };
 
+    static SceneEngine::ErosionSimulation::RenderDebugMode AsDebugMode(ErosionIterativeSystem::Settings::Preview input)
+    {
+        using P = ErosionIterativeSystem::Settings::Preview;
+        switch (input) {
+        default:
+        case P::WaterVelocity: return SceneEngine::ErosionSimulation::RenderDebugMode::WaterVelocity3D;
+        case P::HardMaterials: return SceneEngine::ErosionSimulation::RenderDebugMode::HardMaterials;
+        case P::SoftMaterials: return SceneEngine::ErosionSimulation::RenderDebugMode::SoftMaterials;
+        }
+    }
+
     void ErosionOverlay::RenderToScene(
         RenderCore::IThreadContext* device,
         SceneEngine::LightingParserContext& parserContext)
     {
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*device);
-        _sim->RenderDebugging(*metalContext, parserContext);
+        Float2 worldDims = _sim->GetDimensions() * _sim->GetWorldSpaceSpacing();
+
+        auto camToWorld = MakeCameraToWorld(
+            Float3(0.f, 0.f, -1.f),
+            Float3(0.f, 1.f, 0.f),
+            Float3(0.f, 0.f, 0.f));
+        SceneEngine::LightingParser_SetGlobalTransform(
+            metalContext.get(), parserContext, camToWorld, 
+            0.f, 0.f, worldDims[0], worldDims[1], 
+            -4096.f, 4096.f);
+
+        _sim->RenderDebugging(*metalContext, parserContext, AsDebugMode(_previewSettings->ActivePreview));
     }
 
     void ErosionOverlay::RenderWidgets(
         RenderCore::IThreadContext* device,
         const RenderCore::Techniques::ProjectionDesc& projectionDesc)
-    {
-
-    }
+    {}
 
     ErosionOverlay::ErosionOverlay(
         std::shared_ptr<SceneEngine::ErosionSimulation> sim,
@@ -139,17 +169,56 @@ namespace GUILayer
         std::shared_ptr<ErosionSettings> _settings;
     };
 
+    static std::shared_ptr<RenderCore::Metal::DeviceContext> GetImmediateContext()
+    {
+        auto immContext = EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext();
+        return RenderCore::Metal::DeviceContext::Get(*immContext);
+    }
+
     void ErosionIterativeSystem::Tick()
-    {}
+    {
+        TRY {
+            _pimpl->_sim->Tick(*GetImmediateContext(), *_pimpl->_settings);
+        } CATCH (const ::Assets::Exceptions::PendingAsset&) {
+        } CATCH_END
+    }
 
     ErosionIterativeSystem::ErosionIterativeSystem(String^ sourceHeights)
     {
+        using namespace SceneEngine;
         _pimpl.reset(new ErosionIterativeSystemPimpl);
-        _pimpl->_sim = std::make_shared<SceneEngine::ErosionSimulation>(UInt2(512, 512), 1.f);
         _pimpl->_settings = std::make_shared<ErosionSettings>();
-        _settings = gcnew Settings;
+        _settings = gcnew ErosionIterativeSystem::Settings();
 
         _getAndSetProperties = gcnew ClassAccessors_GetAndSet<ErosionSettings>(_pimpl->_settings);
+
+        {
+            TerrainUberSurfaceGeneric uberSurface(
+                clix::marshalString<clix::E_UTF8>(sourceHeights).c_str());
+
+            auto maxSize = 512u;
+            UInt2 dims(
+                std::min(uberSurface.GetWidth(), maxSize),
+                std::min(uberSurface.GetHeight(), maxSize));
+            _pimpl->_sim = std::make_shared<ErosionSimulation>(dims, 1.f);
+
+                // We can use the an ubersurface interface to get the 
+                // heights data onto the GPU (in the form of a resource locator)
+                // Note that we're limited by the maximum texture size supported
+                // by the GPU here. If we want to deal with a very large area, we
+                // have to split it up into multiple related simulations.
+            intrusive_ptr<BufferUploads::ResourceLocator> resLoc;
+            {
+                GenericUberSurfaceInterface interf(uberSurface);
+                resLoc = interf.CopyToGPU(UInt2(0,0), dims);
+            }
+
+            RenderCore::Metal::ShaderResourceView srv(resLoc->GetUnderlying());
+            _pimpl->_sim->InitHeights(
+                *GetImmediateContext(), srv,
+                UInt2(0,0), dims);
+        }
+
         _overlay = gcnew ErosionOverlay(_pimpl->_sim, _settings);
     }
 
@@ -161,6 +230,11 @@ namespace GUILayer
     ErosionIterativeSystem::~ErosionIterativeSystem()
     {
         _pimpl.reset();
+    }
+
+    ErosionIterativeSystem::Settings::Settings()
+    {
+        ActivePreview = Preview::HardMaterials;
     }
 }
 

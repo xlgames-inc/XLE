@@ -13,6 +13,7 @@
 #include "../Utility/PtrUtils.h"
 #include "../Assets/Assets.h"
 #include "../Math/Vector.h"
+#include "../Utility/IntrusivePtr.h"
 #include "../Core/Types.h"
 #include <memory>
 #include <functional>
@@ -20,6 +21,7 @@
 
 namespace Utility { class MemoryMappedFile; }
 namespace ConsoleRig { class IProgress; }
+namespace BufferUploads { class ResourceLocator; }
 
 namespace SceneEngine
 {
@@ -113,6 +115,8 @@ namespace SceneEngine
         void    RenderDebugging(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& context);
 
         void    FlushGPUCache();
+
+        intrusive_ptr<BufferUploads::ResourceLocator> CopyToGPU(UInt2 topLeft, UInt2 bottomRight);
 
         GenericUberSurfaceInterface(
             TerrainUberSurfaceGeneric& uberSurface, 

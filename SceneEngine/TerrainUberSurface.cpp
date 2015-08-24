@@ -351,6 +351,20 @@ namespace SceneEngine
         _pimpl->_gpuCacheMaxs = maxs;
     }
 
+    intrusive_ptr<BufferUploads::ResourceLocator> GenericUberSurfaceInterface::CopyToGPU(
+        UInt2 topLeft, UInt2 bottomRight)
+    {
+        using namespace BufferUploads;
+        auto& bufferUploads = GetBufferUploads();
+
+        auto dims = bottomRight - topLeft;
+        auto desc = Internal::BuildCacheDesc(dims, Metal::AsNativeFormat(_pimpl->_uberSurface->Format()));
+        auto pkt = make_intrusive<Internal::UberSurfacePacket>(
+            _pimpl->_uberSurface->GetData(topLeft), _pimpl->_uberSurface->GetStride(), dims);
+
+        return bufferUploads.Transaction_Immediate(desc, pkt.get());
+    }
+
     void    GenericUberSurfaceInterface::PrepareCache(UInt2 adjMins, UInt2 adjMaxs)
     {
         unsigned fieldWidth = _pimpl->_uberSurface->GetWidth();
@@ -846,6 +860,7 @@ namespace SceneEngine
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
         _pimpl->_erosionSim->RenderDebugging(
             *metalContext, parserContext, 
+            ErosionSimulation::RenderDebugMode::WaterVelocity3D,
             _pimpl->_erosionWorldSpaceOffset + Truncate(coords.TerrainOffset()));
     }
 

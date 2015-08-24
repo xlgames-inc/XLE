@@ -10,6 +10,7 @@
 #include "ManipulatorUtils.h"       // for IGetAndSetProperties
 
 using namespace System;
+using namespace System::ComponentModel;
 
 namespace GUILayer
 {
@@ -25,8 +26,14 @@ namespace GUILayer
 
         ref class Settings
         {
-            enum class Preview { Velocities, Heights };
-            Preview _preview;
+        public:
+            enum class Preview { WaterVelocity, HardMaterials, SoftMaterials };
+            
+            [Browsable(true)]
+            [Category("Preview")] [Description("Rendering mode for the preview window")]
+            property Preview ActivePreview;
+
+            Settings();
         };
         Settings^ _settings;
 

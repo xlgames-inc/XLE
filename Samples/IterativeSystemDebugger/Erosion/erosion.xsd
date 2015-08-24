@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<xs:schema
+  elementFormDefault="qualified"
+  targetNamespace="gap"
+  xmlns="gap"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:complexType name="ErosionSettings">
+    <xs:annotation>
+      <xs:appinfo>
+        <scea.dom.editors.attribute category="Water" name="RainQuantityPerFrame" displayName="RainQuantityPerFrame"/>
+        <scea.dom.editors.attribute category="Water" name="EvaporationConstant" displayName="EvaporationConstant"/>
+        <scea.dom.editors.attribute category="Water" name="PressureConstant" displayName="PressureConstant"/>
+        <scea.dom.editors.attribute category="Rain Erosion" name="KConstant" displayName="KConstant"/>
+        <scea.dom.editors.attribute category="Rain Erosion" name="ErosionRate" displayName="ErosionRate"/>
+        <scea.dom.editors.attribute category="Rain Erosion" name="SettlingRate" displayName="SettlingRate"/>
+        <scea.dom.editors.attribute category="Rain Erosion" name="MaxSediment" displayName="MaxSediment"/>
+        <scea.dom.editors.attribute category="Rain Erosion" name="DepthMax" displayName="DepthMax"/>
+        <scea.dom.editors.attribute category="Rain Erosion" name="SedimentShiftScalar" displayName="SedimentShiftScalar"/>
+        <scea.dom.editors.attribute category="Thermal Erosion" name="ThermalSlopeAngle" displayName="ThermalSlopeAngle"/>
+        <scea.dom.editors.attribute category="Thermal Erosion" name="ThermalErosionRate" displayName="ThermalErosionRate"/>
+      </xs:appinfo>
+    </xs:annotation>
+    
+    <xs:attribute name="RainQuantityPerFrame" type="xs:float" default="0.001"/>
+    <xs:attribute name="EvaporationConstant" type="xs:float" default=".99"/>
+    <xs:attribute name="PressureConstant" type="xs:float" default="200"/>
+    <xs:attribute name="KConstant" type="xs:float" default="3"/>
+    <xs:attribute name="ErosionRate" type="xs:float" default="0.15"/>
+    <xs:attribute name="SettlingRate" type="xs:float" default="0.25"/>
+    <xs:attribute name="MaxSediment" type="xs:float" default="1"/>
+    <xs:attribute name="DepthMax" type="xs:float" default="25"/>
+    <xs:attribute name="SedimentShiftScalar" type="xs:float" default="1"/>
+    <xs:attribute name="ThermalSlopeAngle" type="xs:float" default="40"/>
+    <xs:attribute name="ThermalErosionRate" type="xs:float" default="0.05"/>
+    
+  </xs:complexType>
+</xs:schema>
+

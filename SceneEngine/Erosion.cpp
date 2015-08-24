@@ -15,7 +15,9 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/Techniques.h"
 #include "../Assets/Assets.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/PtrUtils.h"
@@ -150,10 +152,9 @@ namespace SceneEngine
                 unsigned(ErosionWaterTileDimension), waterGrids[0] * waterGrids[1], usePipeModel, 
                 true, false, true));
         
-        std::vector<Int2> newElements;
         for (unsigned y=0; y<waterGrids[1]; ++y)
             for (unsigned x=0; x<waterGrids[0]; ++x)
-                newElements.push_back(Int2(x, y));
+                _pendingNewElements.push_back(Int2(x, y));
 
         auto surfaceHeightsProvider = std::make_unique<Internal::ErosionSurfaceHeightsProvider>(
             hardMaterialsSRV, dimensions, worldSpaceSpacing);
@@ -233,7 +234,7 @@ namespace SceneEngine
             _pimpl->_surfaceHeightsProvider.get(), nullptr,
             ShallowWaterSim::BorderMode::Surface);
 
-        if (_pimpl->_pendingNewElements.empty()) {
+        if (!_pimpl->_pendingNewElements.empty()) {
             _pimpl->_waterSim->BeginElements(
                 simContext,
                 AsPointer(_pimpl->_pendingNewElements.cbegin()), AsPointer(_pimpl->_pendingNewElements.cend()));
@@ -327,6 +328,7 @@ namespace SceneEngine
     }
 
     UInt2 ErosionSimulation::GetDimensions() const { return _pimpl->_simSize; }
+    float ErosionSimulation::GetWorldSpaceSpacing() const { return _pimpl->_worldSpaceSpacing; }
 
     UInt2 ErosionSimulation::DefaultTileSize()
     {
@@ -355,17 +357,58 @@ namespace SceneEngine
     void    ErosionSimulation::RenderDebugging(
         RenderCore::Metal::DeviceContext& metalContext,
         LightingParserContext& parserContext,
+        RenderDebugMode mode,
         const Float2& worldSpaceOffset)
     {
         TRY {
             const float terrainScale = _pimpl->_worldSpaceSpacing;
+            metalContext.BindPS(RenderCore::MakeResourceList(2, 
+                _pimpl->_hardMaterialsSRV, _pimpl->_softMaterialsSRV));
 
-            metalContext.BindPS(RenderCore::MakeResourceList(2, _pimpl->_hardMaterialsSRV, _pimpl->_softMaterialsSRV));
-            _pimpl->_waterSim->RenderVelocities(
-                metalContext, parserContext,
-                DeepOceanSimSettings(), terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, 
-                worldSpaceOffset, _pimpl->_bufferId-1, 
-                ShallowWaterSim::BorderMode::Surface, true);
+            if (mode == RenderDebugMode::WaterVelocity3D) {
+                _pimpl->_waterSim->RenderVelocities(
+                    metalContext, parserContext,
+                    DeepOceanSimSettings(), terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, 
+                    worldSpaceOffset, _pimpl->_bufferId-1, 
+                    ShallowWaterSim::BorderMode::Surface, true);
+            } else {
+
+                const ::Assets::ResChar* pixelShader;
+                if (mode == RenderDebugMode::HardMaterials) {
+                    pixelShader = "game/xleres/ocean/erosiondebug.sh:ps_hardMaterials:ps_*";
+                } else {
+                    pixelShader = "game/xleres/ocean/erosiondebug.sh:ps_softMaterials:ps_*";
+                }
+
+                auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    "game/xleres/basic3D.vsh:PT:vs_*", pixelShader);
+
+                Float2 wsDims = _pimpl->_simSize * _pimpl->_worldSpaceSpacing;
+
+                struct Vertex { Float3 position; Float2 texCoord; } 
+                vertices[] = 
+                {
+                    { Float3(0.f, 0.f, 0.f), Float2(0.f, 0.f) },
+                    { Float3(wsDims[0], 0.f, 0.f), Float2(wsDims[0], 0.f) },
+                    { Float3(0.f, wsDims[1], 0.f), Float2(0.f, wsDims[1]) },
+                    { Float3(wsDims[0], wsDims[1], 0.f), Float2(wsDims[0], wsDims[1]) }
+                };
+
+                Metal::BoundInputLayout inputLayout(Metal::GlobalInputLayouts::PT, shader);
+                Metal::BoundUniforms uniforms(shader);
+                Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
+                
+                metalContext.Bind(inputLayout);
+                uniforms.Apply(metalContext, 
+                    parserContext.GetGlobalUniformsStream(), Metal::UniformsStream());
+                metalContext.Bind(shader);
+                SetupVertexGeneratorShader(&metalContext);
+
+                metalContext.Bind(MakeResourceList(
+                    Metal::VertexBuffer(vertices, sizeof(vertices))), sizeof(Vertex), 0);
+                metalContext.Bind(Techniques::CommonResources()._cullDisable);
+                metalContext.Draw(4);
+            }
         } 
         CATCH (const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH (const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
