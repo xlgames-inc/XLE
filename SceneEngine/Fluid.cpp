@@ -157,7 +157,7 @@ namespace SceneEngine
     };
 
     template<typename Vec>
-        static void Multiply(Vec& dst, std::function<float(unsigned, unsigned)>& A, const Vec& b, unsigned N)
+        static void Multiply(Vec& dst, const std::function<float(unsigned, unsigned)>& A, const Vec& b, unsigned N)
     {
         for (unsigned i=0; i<N; ++i) {
             float d = 0.f;
@@ -210,6 +210,12 @@ namespace SceneEngine
         v((wh-1)*wh+wh-1) = 0.f;
     }
 
+    template <typename Vec>
+        static void ZeroBorder(Vec& v, const AMat2D & A) { ZeroBorder(v, A.wh); }
+
+    template <typename Vec, typename Unknown>
+        static void ZeroBorder(Vec&, const Unknown&) {}
+
     template<typename Vec, typename Mat>
         static void SolveLowerTriangular(Vec& x, const Mat& M, const Vec& b, unsigned N)
     {
@@ -223,6 +229,76 @@ namespace SceneEngine
             x(i) = d / M(i, i);
         }
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class Solver_PlainCG
+    {
+    public:
+
+        template<typename Vec, typename Mat>
+            unsigned Execute(Vec& x, const Mat& A, const Vec& b);
+
+        Solver_PlainCG(unsigned N);
+        ~Solver_PlainCG();
+
+    protected:
+        VectorX _r, _d, _q;
+        unsigned _N;
+    };
+
+    template<typename Vec, typename Mat>
+        unsigned Solver_PlainCG::Execute(Vec& x, const Mat& A, const Vec& b)
+    {
+            // This is the basic "conjugate gradient" method; with no special thrills
+            // returns the number of iterations
+        const auto rhoThreshold = 1e-10f;
+        const auto maxIterations = 13u;
+
+        Multiply(_r, A, x, _N);
+        ZeroBorder(_r, A);
+        _r = b - _r;
+        _d = _r;
+        float rho = _r.dot(_r);
+
+        ZeroBorder(_q, A);
+        unsigned k=0;
+        if (XlAbs(rho) > rhoThreshold) {
+            for (; k<maxIterations; ++k) {
+            
+                Multiply(_q, A, _d, _N);
+                float dDotQ = _d.dot(_q);
+                float alpha = rho / dDotQ;
+                assert(isfinite(alpha) && !isnan(alpha));
+                 x += alpha * _d;
+                _r -= alpha * _d;
+            
+                float rhoOld = rho;
+                rho = _r.dot(_r);
+                if (XlAbs(rho) < rhoThreshold) break;
+                float beta = rho / rhoOld;
+                assert(isfinite(beta) && !isnan(beta));
+            
+                    // we can skip the border for the following...
+                    // (but that requires different cases for 2D/3D)
+                for (unsigned i=0; i<_N; ++i)
+                    _d(i) = _r(i) + beta * _d(i);
+
+            }
+        }
+
+        return k;
+    }
+
+    Solver_PlainCG::Solver_PlainCG(unsigned N)
+    : _r(N), _d(N), _q(N)
+    {
+        _N = N;
+    }
+
+    Solver_PlainCG::~Solver_PlainCG() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void FluidSolver2D::Pimpl::DensityDiffusion(float dt)
     {
@@ -279,7 +355,7 @@ namespace SceneEngine
         enum class Diffusion { CG_Cholseky, PlainCG, ForwardEuler, SOR };
         static auto diffusion = Diffusion::PlainCG;
         static bool useGeneralA = false;
-        static float estimateFactor = .75f;
+        static float estimateFactor = .75f; // maybe we could adapt this based on the amount of noise in the system? In low noise systems, explicit euler seems very close to correct
         static float diffFactor = 5.f;
 
         auto N = (_dimensions[0]+2) * (_dimensions[1]+2);
@@ -392,71 +468,16 @@ namespace SceneEngine
             ZeroBorder(x, wh);
             ZeroBorder(b, wh);
 
-            const float rhoThreshold = 1e-10f;
-            unsigned k=0;
+            Solver_PlainCG solver(N);
+
+            auto iterations = 0u;
             if (useGeneralA) {
-                Multiply(r, AMat, x, N);    // r = AMat * x
-                r = b - r;
-                d = r;
-                float rho = r.dot(r);
-
-                if (XlAbs(rho) > rhoThreshold) {
-                    for (; k<iterations; ++k) {
-            
-                        Multiply(q, AMat, d, N);
-                        float dDotQ = d.dot(q);
-                        float alpha = rho / dDotQ;
-                        assert(isfinite(alpha) && !isnan(alpha));
-                        x += alpha * d;
-                        r -= alpha * d;
-            
-                        float rhoOld = rho;
-                        rho = r.dot(r);
-                        float beta = rho / rhoOld;
-                        if (XlAbs(rho) < rhoThreshold) break;
-                        assert(isfinite(beta) && !isnan(beta));
-            
-                        for (unsigned i=0; i<N; ++i)
-                            d(i) = r(i) + beta * d(i);
-
-                    }
-                }
+                iterations = solver.Execute(x, AMat, b);
             } else {
-                Multiply(r, AMat2D { wh, a0, a1 }, x, N);
-                ZeroBorder(r, wh);
-                r = b - r;
-                d = r;
-                float rho = r.dot(r);
-
-                ZeroBorder(q, wh);
-                if (XlAbs(rho) > rhoThreshold) {
-                    for (; k<iterations; ++k) {
-            
-                        Multiply(q, AMat2D { wh, a0, a1 }, d, N);
-                        float dDotQ = d.dot(q);
-                        float alpha = rho / dDotQ;
-                        assert(isfinite(alpha) && !isnan(alpha));
-                        x += alpha * d;
-                        r -= alpha * d;
-            
-                        float rhoOld = rho;
-                        rho = r.dot(r);
-                        if (XlAbs(rho) < rhoThreshold) break;
-                        float beta = rho / rhoOld;
-                        assert(isfinite(beta) && !isnan(beta));
-            
-                        for (unsigned y=1; y<wh-1; ++y) {
-                            for (unsigned x=1; x<wh-1; ++x) {
-                                unsigned i = y*wh+x;
-                                d(i) = r(i) + beta * d(i);
-                            }
-                        }
-
-                    }
-                }
+                iterations = solver.Execute(x, AMat2D { wh, a0, a1 }, b);
             }
 
-            LogInfo << "Diffusion took: " << k << " iterations.";
+            LogInfo << "Diffusion took: " << iterations << " iterations.";
             
             for (unsigned c=0; c<N; ++c) {
                 assert(isfinite(x(c)) && !isnan(x(c)));
