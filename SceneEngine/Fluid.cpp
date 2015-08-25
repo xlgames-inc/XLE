@@ -234,8 +234,10 @@ namespace SceneEngine
         // We must also consider the boundary conditions in this step.
         // 
 
-        enum class Diffusion { CG_Cholseky, PlainCG, ForwardEuler };
-        static auto diffusion = Diffusion::CG_Cholseky;
+        enum class Diffusion { CG_Cholseky, PlainCG, ForwardEuler, SOR };
+        static auto diffusion = Diffusion::SOR;
+
+        auto N = (_dimensions[0]+2) * (_dimensions[1]+2);
 
         if (diffusion == Diffusion::CG_Cholseky) {
 
@@ -250,8 +252,6 @@ namespace SceneEngine
                 // 
                 // see also reference at http://math.nist.gov/iml++/
             
-            auto N = (_dimensions[0]+2) * (_dimensions[1]+2);
-
                 // init 'x' to some initial estimate
                 //      Perhaps run basic euler integration to get the starting estimate?
                 //  Or, maybe there's a better way to initialize 'r' for this calculation?
@@ -324,7 +324,6 @@ namespace SceneEngine
 
         } else if (diffusion == Diffusion::PlainCG) {
 
-            auto N = (_dimensions[0]+2) * (_dimensions[1]+2);
             for (unsigned c=0; c<N; ++c) x(c) = _density[c];
             const auto& b = x;
 
@@ -370,10 +369,89 @@ namespace SceneEngine
         
                 // This is the simpliest integration. We just
                 // move forward a single timestep...
-            auto N = (_dimensions[0]+2) * (_dimensions[1]+2);
             for (unsigned c=0; c<N; ++c) x(c) = _density[c];
-            Multiply(r, AMat, x, N);
+            // Multiply(r, AMat, x, N);
             for (unsigned c=0; c<N; ++c) _density[c] = r(c);
+
+        } else if (diffusion == Diffusion::SOR) {
+
+                // This is successive over relaxation. It's a iterative method similar
+                // to Gauss-Seidel. But we have an extra factor, the relaxation factor, 
+                // that can be used to adjust the way in which the system converges. 
+                //
+                // The choice of relaxation factor has an effect on the rate of convergence.
+                // However, it's not clear how we should pick the relaxation factor.
+                //
+                // An advantage of this method is it can be done in-place... It doesn't
+                // require any extra space.
+                //
+                // One possibility is that we should allow the relaxation factor to evolve
+                // over several frames. That is, we increase or decrease the factor every
+                // frame (within the range of 0 to 2) to improve the convergence of the 
+                // next frame.
+                //
+                // We can calculate the ideal relaxation factor for a (positive definite)
+                // tridiagonal matrix. Even though our matrix doesn't meet this restriction
+                // the relaxation factor many be close to ideal for us. To calculate that,
+                // we need the spectral radius of the associated Jacobi matrix.
+
+                // We should start with an approximate result. We can just start with the
+                // previous frame's result -- but maybe there is a better starting point?
+                // (maybe stepping forward 3/4 of a timestep would be a good starting point?)
+
+            for (unsigned i=0; i<N; ++i)
+                _prevDensity[i] = _density[i];
+                
+            float gamma = 1.25f;    // relaxation factor
+
+            static bool useGeneralA = false;
+            if (useGeneralA) {
+
+                const unsigned iterations = 15;
+                for (unsigned k = 0; k<iterations; ++k) {
+                    for (unsigned i = 0; i < N; ++i) {
+                        float A = _prevDensity[i];
+
+                            // these loops work oddly simply in this situation
+                            // (but of course we can simplify because our matrix is sparse)
+                        for (unsigned j = 0; j < i; ++j)
+                            A -= AMat(i, j) * _density[j];
+                        for (unsigned j = i+1; j < N; ++j)
+                            A -= AMat(i, j) * _density[j];
+
+                        _density[i] = (1.f-gamma) * _density[i] + gamma * A / AMat(i, i);
+                    }
+                }
+
+            } else {
+
+                const unsigned wh = _dimensions[0] + 2;
+
+                const float dt = 1.0f / 60.f;
+                const float a = 5.f * dt;
+                const float a0 = 1.f + 4.f * a;
+                const float a1 = -a;
+
+                const unsigned iterations = 15;
+                for (unsigned k = 0; k<iterations; ++k) {
+
+                    for (unsigned y=1; y<wh-1; ++y) {
+                        for (unsigned x=1; x<wh-1; ++x) {
+                            const unsigned i = y*wh+x;
+                            float A = _prevDensity[i];
+
+                            A -= a1 * _density[i-1];
+                            A -= a1 * _density[i+1];
+                            A -= a1 * _density[i-wh];
+                            A -= a1 * _density[i+wh];
+
+                            _density[i] = (1.f-gamma) * _density[i] + gamma * A / a0;
+                        }
+                    }
+
+                }
+
+            }
 
         }
     }
@@ -391,16 +469,6 @@ namespace SceneEngine
         }
 
         _pimpl->DensityDiffusion(settings._deltaTime);
-
-        // vel_step( 
-        //     D, 
-        //     _pimpl->_velU.get(), _pimpl->_velV.get(), 
-        //     _pimpl->_prevVelU.get(), _pimpl->_prevVelV.get(), 
-        //     settings._viscosity, settings._deltaTime );
-	    // dens_step( 
-        //     D, _pimpl->_density.get(), _pimpl->_prevDensity.get(), 
-        //     _pimpl->_velU.get(), _pimpl->_velV.get(), 
-        //     settings._diffusionRate, settings._deltaTime );
 
         for (unsigned c=0; c<N; ++c) {
             _pimpl->_prevVelU[c] = 0.f;
