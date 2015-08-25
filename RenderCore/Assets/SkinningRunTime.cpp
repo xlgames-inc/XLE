@@ -15,7 +15,6 @@
 #include "../Metal/Shader.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
-#include "../Metal/DeviceContextImpl.h"
 #include "../Metal/ShaderResource.h"
 
 #include "../Techniques/ResourceBox.h"
@@ -27,7 +26,7 @@
 #include "../../Assets/ChunkFile.h"
 #include "../../Utility/Streams/FileUtils.h"
 
-// #include "../DX11/Metal/IncludeDX11.h"
+#include "../DX11/Metal/IncludeDX11.h"
 
 #pragma warning(disable:4127)       // conditional expression is constant
 

@@ -261,5 +261,11 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
+    extern template void DeviceContext::Unbind<BoundInputLayout>();
+    extern template void DeviceContext::Unbind<VertexBuffer>();
+    extern template void DeviceContext::Unbind<RenderTargetView>();
+    extern template void DeviceContext::Unbind<VertexShader>();
+    extern template void DeviceContext::Unbind<PixelShader>();
+    extern template void DeviceContext::Unbind<GeometryShader>();
 
 }}

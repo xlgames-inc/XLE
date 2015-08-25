@@ -14,6 +14,11 @@ namespace SceneEngine
 {
     class LightingParserContext;
 
+    enum class FluidDebuggingMode
+    {
+        Density, Velocity
+    };
+
     class ReferenceFluidSolver2D
     {
     public:
@@ -32,17 +37,44 @@ namespace SceneEngine
 
         UInt2 GetDimensions() const;
 
-        enum class DebuggingMode
-        {
-            Density, Velocity
-        };
         void RenderDebugging(
             RenderCore::Metal::DeviceContext& metalContext,
             LightingParserContext& parserContext,
-            DebuggingMode debuggingMode = DebuggingMode::Density);
+            FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
 
         ReferenceFluidSolver2D(UInt2 dimensions);
         ~ReferenceFluidSolver2D();
+
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
+
+    class FluidSolver2D
+    {
+    public:
+        struct Settings
+        {
+            float _deltaTime;
+            float _viscosity;
+            float _diffusionRate;
+
+            Settings();
+        };
+
+        void Tick(const Settings& settings);
+        void AddDensity(UInt2 coords, float amount);
+        void AddVelocity(UInt2 coords, Float2 vel);
+
+        UInt2 GetDimensions() const;
+
+        void RenderDebugging(
+            RenderCore::Metal::DeviceContext& metalContext,
+            LightingParserContext& parserContext,
+            FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
+
+        FluidSolver2D(UInt2 dimensions);
+        ~FluidSolver2D();
 
     private:
         class Pimpl;

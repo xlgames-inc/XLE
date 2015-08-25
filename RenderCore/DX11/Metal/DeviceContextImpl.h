@@ -153,9 +153,6 @@ namespace RenderCore { namespace Metal_DX11
             Count1 + unorderedAccess._startingPoint, Count2, unorderedAccess._buffers, initialCounts);
     }
 
-    template<> inline void DeviceContext::Unbind<VertexShader>()    { _underlying->VSSetShader(nullptr, nullptr, 0); }
-    template<> inline void DeviceContext::Unbind<GeometryShader>()  { _underlying->GSSetShader(nullptr, nullptr, 0); }
-    template<> inline void DeviceContext::Unbind<PixelShader>()     { _underlying->PSSetShader(nullptr, nullptr, 0); }
     template<> inline void DeviceContext::Unbind<ComputeShader>()   { _underlying->CSSetShader(nullptr, nullptr, 0); }
     template<> inline void DeviceContext::Unbind<HullShader>()      { _underlying->HSSetShader(nullptr, nullptr, 0); }
     template<> inline void DeviceContext::Unbind<DomainShader>()    { _underlying->DSSetShader(nullptr, nullptr, 0); }
