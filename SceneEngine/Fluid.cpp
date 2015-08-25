@@ -148,7 +148,7 @@ namespace SceneEngine
         std::unique_ptr<float[]> _prevDensity;
         UInt2 _dimensions;
 
-        VectorX x, r;
+        VectorX x, r, b;
         VectorX d, s, q;
         MatrixX precon;
         std::function<float(unsigned, unsigned)> AMat;
@@ -166,6 +166,48 @@ namespace SceneEngine
             }
             dst(i) = d;
         }
+    }
+        
+    struct AMat2D
+    {
+        unsigned wh;
+        float a0;
+        float a1;
+    };
+
+    template <typename Vec>
+        static void Multiply(Vec& dst, AMat2D A, const Vec& b, unsigned N)
+    {
+        for (unsigned y=1; y<A.wh-1; ++y) {
+            for (unsigned x=1; x<A.wh-1; ++x) {
+                const unsigned i = y*A.wh + x;
+
+                float v = A.a0 * b(i);
+                v += A.a1 * b(i-1);
+                v += A.a1 * b(i+1);
+                v += A.a1 * b(i-A.wh);
+                v += A.a1 * b(i+A.wh);
+
+                dst(i) = v;
+            }
+        }
+    }
+
+    template <typename Vec>
+        static void ZeroBorder(Vec& v, unsigned wh)
+    {
+        for (unsigned i = 1; i < wh - 1; ++i) {
+            v(i) = 0.f;             // top
+            v(i+(wh-1)*wh) = 0.f;   // bottom
+            v(i*wh) = 0.f;          // left
+            v(i*wh+(wh-1)) = 0.f;   // right
+        }
+
+            // 4 corners
+        v(0) = 0.f;
+        v(wh-1) = 0.f;
+        v((wh-1)*wh) = 0.f;
+        v((wh-1)*wh+wh-1) = 0.f;
     }
 
     template<typename Vec, typename Mat>
@@ -235,9 +277,21 @@ namespace SceneEngine
         // 
 
         enum class Diffusion { CG_Cholseky, PlainCG, ForwardEuler, SOR };
-        static auto diffusion = Diffusion::SOR;
+        static auto diffusion = Diffusion::PlainCG;
+        static bool useGeneralA = false;
+        static float estimateFactor = .75f;
+        static float diffFactor = 5.f;
 
         auto N = (_dimensions[0]+2) * (_dimensions[1]+2);
+
+        const unsigned wh = _dimensions[0] + 2;
+
+        const float a = diffFactor * dt;
+        const float a0 = 1.f + 4.f * a;
+        const float a1 = -a;
+        const float estA = estimateFactor * a;  // used when calculating a starting estimate
+
+        const auto iterations = 15u;
 
         if (diffusion == Diffusion::CG_Cholseky) {
 
@@ -273,45 +327,39 @@ namespace SceneEngine
             
             float rho = r.dot(d);
             // float rho0 = rho;
+            const float rhoThreshold = 1e-10f;
             
-            if (rho != 0.f) {
-                const auto iterations = 15u;
-                unsigned k=0;
-                for (; k<iterations; ++k) {
+            unsigned k=0;
+            for (; k<iterations && XlAbs(rho) > rhoThreshold; ++k) {
             
-                        // Note that all of the vectors and matrices
-                        // used here are quite sparse! So we need to
-                        // simplify the operation shere to take advantage 
-                        // of that sparseness.
-                        // Multiply by AMat can be replaced with a specialized
-                        // operation. Unfortunately the dot products can't be
-                        // simplified, because the vectors already have only one
-                        // element per cell.
+                    // Note that all of the vectors and matrices
+                    // used here are quite sparse! So we need to
+                    // simplify the operation shere to take advantage 
+                    // of that sparseness.
+                    // Multiply by AMat can be replaced with a specialized
+                    // operation. Unfortunately the dot products can't be
+                    // simplified, because the vectors already have only one
+                    // element per cell.
             
-                    Multiply(q, AMat, d, N);
-                    float dDotQ = d.dot(q);
-                    float alpha = rho / dDotQ;
-                    assert(isfinite(alpha) && !isnan(alpha));
-                    x += alpha * d;
-                    r -= alpha * q;
+                Multiply(q, AMat, d, N);
+                float dDotQ = d.dot(q);
+                float alpha = rho / dDotQ;
+                assert(isfinite(alpha) && !isnan(alpha));
+                x += alpha * d;
+                r -= alpha * q;
             
-                    SolveLowerTriangular(s, precon, r, N);
-                    float rhoOld = rho;
-                    rho = r.dot(s);
-                    assert(rho < rhoOld);
-                    float beta = rho / rhoOld;
-                    assert(isfinite(beta) && !isnan(beta));
+                SolveLowerTriangular(s, precon, r, N);
+                float rhoOld = rho;
+                rho = r.dot(s);
+                assert(rho < rhoOld);
+                float beta = rho / rhoOld;
+                assert(isfinite(beta) && !isnan(beta));
             
-                    for (unsigned i=0; i<N; ++i)
-                        d(i) = s(i) + beta * d(i);
-            
-                    // if (rho < e^2*rho0) break;
-                    if (XlAbs(rho) < 1e-8f) break;
-                    // if (rho == 0.f) break;
-                }
-
-                LogInfo << "Diffusion took: " << k << " iterations.";
+                for (unsigned i=0; i<N; ++i)
+                    d(i) = s(i) + beta * d(i);
             }
+
+            LogInfo << "Diffusion took: " << k << " iterations.";
             
             // std::copy(x.data(), x.data() + N, _density.get());
             for (unsigned c=0; c<N; ++c) {
@@ -324,41 +372,91 @@ namespace SceneEngine
 
         } else if (diffusion == Diffusion::PlainCG) {
 
-            for (unsigned c=0; c<N; ++c) x(c) = _density[c];
-            const auto& b = x;
+            for (unsigned y=1; y<wh-1; ++y) {
+                for (unsigned x=1; x<wh-1; ++x) {
+                    unsigned i = y*wh+x;
+                    b(i) = _density[i];
 
-            Multiply(r, AMat, x, N);    // r = AMat * x
-            r = b - r;
-            d = r;
-
-            float rho = r.dot(r);
-            if (rho != 0.f) {
-                const auto iterations = 15u;
-                unsigned k=0;
-                for (; k<iterations; ++k) {
-            
-                    Multiply(q, AMat, d, N);
-                    float dDotQ = d.dot(q);
-                    float alpha = rho / dDotQ;
-                    assert(isfinite(alpha) && !isnan(alpha));
-                    x += alpha * d;
-                    r -= alpha * d;
-            
-                    float rhoOld = rho;
-                    rho = r.dot(r);
-                    float beta = rho / rhoOld;
-                    assert(isfinite(beta) && !isnan(beta));
-            
-                    for (unsigned i=0; i<N; ++i)
-                        d(i) = r(i) + beta * d(i);
-            
-                    // if (rho < e^2*rho0) break;
-                    if (XlAbs(rho) < 1e-10f) break;
-                    // if (rho == 0.f) break;
+                        // set an initial estimate using
+                        // explicit euler. We'll march forward part of
+                        // the timestep, and then refine the estimate
+                        // from there using the iterative implicit method.
+                    float v = (1.0f - 4.f * estA) * _density[i];
+                    v += estA * _density[i-1];
+                    v += estA * _density[i+1];
+                    v += estA * _density[i-wh];
+                    v += estA * _density[i+wh];
+                    this->x(i) = v;
                 }
-
-                LogInfo << "Diffusion took: " << k << " iterations.";
             }
+            ZeroBorder(x, wh);
+            ZeroBorder(b, wh);
+
+            const float rhoThreshold = 1e-10f;
+            unsigned k=0;
+            if (useGeneralA) {
+                Multiply(r, AMat, x, N);    // r = AMat * x
+                r = b - r;
+                d = r;
+                float rho = r.dot(r);
+
+                if (XlAbs(rho) > rhoThreshold) {
+                    for (; k<iterations; ++k) {
+            
+                        Multiply(q, AMat, d, N);
+                        float dDotQ = d.dot(q);
+                        float alpha = rho / dDotQ;
+                        assert(isfinite(alpha) && !isnan(alpha));
+                        x += alpha * d;
+                        r -= alpha * d;
+            
+                        float rhoOld = rho;
+                        rho = r.dot(r);
+                        float beta = rho / rhoOld;
+                        if (XlAbs(rho) < rhoThreshold) break;
+                        assert(isfinite(beta) && !isnan(beta));
+            
+                        for (unsigned i=0; i<N; ++i)
+                            d(i) = r(i) + beta * d(i);
+
+                    }
+                }
+            } else {
+                Multiply(r, AMat2D { wh, a0, a1 }, x, N);
+                ZeroBorder(r, wh);
+                r = b - r;
+                d = r;
+                float rho = r.dot(r);
+
+                ZeroBorder(q, wh);
+                if (XlAbs(rho) > rhoThreshold) {
+                    for (; k<iterations; ++k) {
+            
+                        Multiply(q, AMat2D { wh, a0, a1 }, d, N);
+                        float dDotQ = d.dot(q);
+                        float alpha = rho / dDotQ;
+                        assert(isfinite(alpha) && !isnan(alpha));
+                        x += alpha * d;
+                        r -= alpha * d;
+            
+                        float rhoOld = rho;
+                        rho = r.dot(r);
+                        if (XlAbs(rho) < rhoThreshold) break;
+                        float beta = rho / rhoOld;
+                        assert(isfinite(beta) && !isnan(beta));
+            
+                        for (unsigned y=1; y<wh-1; ++y) {
+                            for (unsigned x=1; x<wh-1; ++x) {
+                                unsigned i = y*wh+x;
+                                d(i) = r(i) + beta * d(i);
+                            }
+                        }
+
+                    }
+                }
+            }
+
+            LogInfo << "Diffusion took: " << k << " iterations.";
             
             for (unsigned c=0; c<N; ++c) {
                 assert(isfinite(x(c)) && !isnan(x(c)));
@@ -369,9 +467,19 @@ namespace SceneEngine
         
                 // This is the simpliest integration. We just
                 // move forward a single timestep...
-            for (unsigned c=0; c<N; ++c) x(c) = _density[c];
-            // Multiply(r, AMat, x, N);
-            for (unsigned c=0; c<N; ++c) _density[c] = r(c);
+            for (unsigned c=0; c<N; ++c) _prevDensity[c] = _density[c];
+
+            for (unsigned y=1; y<wh-1; ++y)
+                for (unsigned x=1; x<wh-1; ++x) {
+                    const unsigned i = y*wh+x;
+                    float A = (1.0f - 4.f * a) * _prevDensity[i];
+                    A += a * _prevDensity[i-1];
+                    A += a * _prevDensity[i+1];
+                    A += a * _prevDensity[i-wh];
+                    A += a * _prevDensity[i+wh];
+                    
+                    _density[i] = A;
+                }
 
         } else if (diffusion == Diffusion::SOR) {
 
@@ -404,10 +512,8 @@ namespace SceneEngine
                 
             float gamma = 1.25f;    // relaxation factor
 
-            static bool useGeneralA = false;
             if (useGeneralA) {
 
-                const unsigned iterations = 15;
                 for (unsigned k = 0; k<iterations; ++k) {
                     for (unsigned i = 0; i < N; ++i) {
                         float A = _prevDensity[i];
@@ -425,16 +531,7 @@ namespace SceneEngine
 
             } else {
 
-                const unsigned wh = _dimensions[0] + 2;
-
-                const float dt = 1.0f / 60.f;
-                const float a = 5.f * dt;
-                const float a0 = 1.f + 4.f * a;
-                const float a1 = -a;
-
-                const unsigned iterations = 15;
                 for (unsigned k = 0; k<iterations; ++k) {
-
                     for (unsigned y=1; y<wh-1; ++y) {
                         for (unsigned x=1; x<wh-1; ++x) {
                             const unsigned i = y*wh+x;
@@ -448,7 +545,6 @@ namespace SceneEngine
                             _density[i] = (1.f-gamma) * _density[i] + gamma * A / a0;
                         }
                     }
-
                 }
 
             }
@@ -533,6 +629,7 @@ namespace SceneEngine
         _pimpl->d = VectorX(N);
         _pimpl->s = VectorX(N);
         _pimpl->q = VectorX(N);
+        _pimpl->b = VectorX(N);
 
         const float dt = 1.0f / 60.f;
         float a = 5.f * dt;
