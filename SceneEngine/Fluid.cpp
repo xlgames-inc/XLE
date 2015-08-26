@@ -135,28 +135,7 @@ namespace SceneEngine
 
     using MatrixX = Eigen::MatrixXf;
     using VectorX = Eigen::VectorXf;
-
-    class FluidSolver2D::Pimpl
-    {
-    public:
-        std::unique_ptr<float[]> _velU;
-        std::unique_ptr<float[]> _velV;
-        std::unique_ptr<float[]> _density;
-
-        std::unique_ptr<float[]> _prevVelU;
-        std::unique_ptr<float[]> _prevVelV;
-        std::unique_ptr<float[]> _prevDensity;
-        UInt2 _dimensions;
-
-        VectorX x, r, b;
-        VectorX d, s, q;
-        MatrixX _fullPrecon;
-        MatrixX _bandedPrecon;
-        std::function<float(unsigned, unsigned)> AMat;
-
-        void DensityDiffusion(float dt);
-    };
-
+    
     template<typename Vec>
         static void Multiply(Vec& dst, const std::function<float(unsigned, unsigned)>& A, const Vec& b, unsigned N)
     {
@@ -231,11 +210,25 @@ namespace SceneEngine
         }
     }
 
-    template<typename Vec, typename Mat>
-        static void SolveLowerTriangularBanded(Vec& x, const Mat& M, const Vec& b, unsigned N, int bands[], unsigned bandCount)
+    class SparseBandedMatrix
+    {
+    public:
+        const int *_bands;
+        unsigned _bandCount;
+        MatrixX _underlying;
+
+        SparseBandedMatrix() { _bandCount = 0; _bands = nullptr; }
+        SparseBandedMatrix(MatrixX&& underlying, const int bands[], unsigned bandCount)
+            : _underlying(std::move(underlying))
+            { _bands = bands; _bandCount = bandCount; }
+        ~SparseBandedMatrix() {}
+    };
+
+    template<typename Vec>
+        static void SolveLowerTriangular(Vec& x, const SparseBandedMatrix& M, const Vec& b, unsigned N)
     {
             // assuming the last "band" in the matrix is the diagonal aprt
-        assert(bandCount > 0 && bands[bandCount-1] == 0);
+        assert(M._bandCount > 0 && M._bands[M._bandCount-1] == 0);
 
             // solve: M * dst = b
             // for a lower triangular matrix, using forward substitution
@@ -244,24 +237,24 @@ namespace SceneEngine
             //          common cases (eg, 2D, 3D, etc)
         for (unsigned i=0; i<N; ++i) {
             float d = b(i);
-            for (unsigned j=0; j<bandCount-1; ++j) {
-                int j2 = int(i) + bands[j];
+            for (unsigned j=0; j<M._bandCount-1; ++j) {
+                int j2 = int(i) + M._bands[j];
                 if (j2 >= 0 && j2 < int(i))  // with agressive unrolling, we should avoid this condition
-                    d -= M(i, j) * x(j2);
+                    d -= M._underlying(i, j) * x(j2);
             }
-            x(i) = d / M(i, bandCount-1);
+            x(i) = d / M._underlying(i, M._bandCount-1);
         }
     }
 
-    template<typename Vec, typename Mat>
-        static void MultiplyBanded(Vec& dst, const Mat& A, const Vec& b, unsigned N, int bands[], unsigned bandCount)
+    template<typename Vec>
+        static void Multiply(Vec& dst, const SparseBandedMatrix& A, const Vec& b, unsigned N)
     {
         for (unsigned i=0; i<N; ++i) {
             float d = 0.f;
-            for (unsigned j=0; j<bandCount; ++j) {
-                int j2 = int(i) + bands[j];
+            for (unsigned j=0; j<A._bandCount; ++j) {
+                int j2 = int(i) + A._bands[j];
                 if (j2 >= 0 && j2 < int(N))  // with agressive unrolling, we should avoid this condition
-                    d += A(i, j) * b(j2);
+                    d += A._underlying(i, j) * b(j2);
             }
             dst(i) = d;
         }
@@ -337,6 +330,127 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    class Solver_PreconCG
+    {
+    public:
+
+        template<typename Vec, typename Mat, typename PreCon>
+            unsigned Execute(Vec& x, const Mat& A, const Vec& b, const PreCon& precon);
+
+        Solver_PreconCG(unsigned N);
+        ~Solver_PreconCG();
+
+    protected:
+        VectorX _r, _d, _q;
+        VectorX _s;
+        unsigned _N;
+    };
+
+    template<typename Vec, typename Mat, typename PreCon>
+        unsigned Solver_PreconCG::Execute(Vec& x, const Mat& A, const Vec& b, const PreCon& precon)
+    {
+            // This is the conjugate gradient method with a preconditioner.
+            //
+            // Note that for our CFD operations, the preconditioner often comes out very similar
+            // to "A" -- so it's not clear whether it will help in any significant way.
+            //
+            // See http://www.cs.cmu.edu/~quake-papers/painless-conjugate-gradient.pdf 
+            // for for detailed description of conjugate gradient methods!
+            // 
+            // see also reference at http://math.nist.gov/iml++/
+        const auto rhoThreshold = 1e-10f;
+        const auto maxIterations = 13u;
+
+        Multiply(_r, A, x, _N);    // r = AMat * x
+        ZeroBorder(_r, A);
+        _r = b - _r;
+            
+        SolveLowerTriangular(_d, precon, _r, _N);
+            
+        #if defined(_DEBUG)
+            {
+                    // testing "SolveLowerTriangular"
+                VectorX t(_N);
+                Multiply(t, precon, _d, _N);
+                for (unsigned c=0; c<_N; ++c) {
+                    float z = t(c), y = _r(c);
+                    assert(Equivalent(z, y, 1e-2f));
+                }
+            }
+        #endif
+            
+        float rho = _r.dot(_d);
+        // float rho0 = rho;
+
+        ZeroBorder(_q, A);
+            
+        unsigned k=0;
+        if (XlAbs(rho) > rhoThreshold) {
+            for (; k<maxIterations; ++k) {
+            
+                    // Note that all of the vectors and matrices
+                    // used here are quite sparse! So we need to
+                    // simplify the operation shere to take advantage 
+                    // of that sparseness.
+                    // Multiply by AMat can be replaced with a specialized
+                    // operation. Unfortunately the dot products can't be
+                    // simplified, because the vectors already have only one
+                    // element per cell.
+            
+                Multiply(_q, A, _d, _N);
+                float dDotQ = _d.dot(_q);
+                float alpha = rho / dDotQ;
+                assert(isfinite(alpha) && !isnan(alpha));
+                 x += alpha * _d;
+                _r -= alpha * _q;
+            
+                SolveLowerTriangular(_s, precon, _r, _N);
+                float rhoOld = rho;
+                rho = _r.dot(_s);
+                if (XlAbs(rho) < rhoThreshold) break;
+                assert(rho < rhoOld);
+                float beta = rho / rhoOld;
+                assert(isfinite(beta) && !isnan(beta));
+            
+                for (unsigned i=0; i<_N; ++i)
+                    _d(i) = _s(i) + beta * _d(i);
+            }
+        }
+
+        return k;
+    }
+
+    Solver_PreconCG::Solver_PreconCG(unsigned N)
+    : _r(N), _d(N), _q(N), _s(N)
+    {
+        _N = N;
+    }
+
+    Solver_PreconCG::~Solver_PreconCG() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class FluidSolver2D::Pimpl
+    {
+    public:
+        std::unique_ptr<float[]> _velU;
+        std::unique_ptr<float[]> _velV;
+        std::unique_ptr<float[]> _density;
+
+        std::unique_ptr<float[]> _prevVelU;
+        std::unique_ptr<float[]> _prevVelV;
+        std::unique_ptr<float[]> _prevDensity;
+        UInt2 _dimensions;
+
+        VectorX _x, _b;
+
+        int _bands[5];
+        SparseBandedMatrix _bandedPrecon;
+        std::function<float(unsigned, unsigned)> AMat;
+
+        void DensityDiffusion(float dt);
+    };
+
     void FluidSolver2D::Pimpl::DensityDiffusion(float dt)
     {
         //
@@ -404,117 +518,12 @@ namespace SceneEngine
         const float a1 = -a;
         const float estA = estimateFactor * a;  // used when calculating a starting estimate
 
-        const auto iterations = 15u;
-
-        int sparseBands[] = { -int(wh), -1, 1, wh, 0 };
-
-        if (diffusion == Diffusion::CG_Precon) {
-
-                // Calculate the incomplete cholesky factorization first
-                // (this will be used as a preconditioner to the 
-
-                // "precon" should now hold our preconditioner for the 
-                // conjugate gradient.
-                //
-                // See http://www.cs.cmu.edu/~quake-papers/painless-conjugate-gradient.pdf 
-                // for for detailed description of conjugate gradient methods!
-                // 
-                // see also reference at http://math.nist.gov/iml++/
-            
-                // init 'x' to some initial estimate
-                //      Perhaps run basic euler integration to get the starting estimate?
-                //  Or, maybe there's a better way to initialize 'r' for this calculation?
-            // std::copy(_density.get(), _density.get() + N, x.data());
-            for (unsigned c=0; c<N; ++c) x(c) = _density[c];
-            const auto& b = x;
-
-            Multiply(r, AMat, x, N);    // r = AMat * x
-            r = b - r;
-            
-            static bool useBandedPrecon = true;
-            if (useBandedPrecon) {
-                SolveLowerTriangularBanded(d, _bandedPrecon, r, N, sparseBands, dimof(sparseBands));
-            
-                #if defined(_DEBUG)
-                    {
-                            // testing "SolveLowerTriangular"
-                        VectorX t(N);
-                        MultiplyBanded(t, _bandedPrecon, d, N, sparseBands, dimof(sparseBands));
-                        for (unsigned c=0; c<N; ++c) {
-                            float z = t(c), y = r(c);
-                            assert(Equivalent(z, y, 1e-2f));
-                        }
-                    }
-                #endif
-            } else {
-                SolveLowerTriangular(d, _fullPrecon, r, N);
-            
-                #if defined(_DEBUG)
-                    {
-                            // testing "SolveLowerTriangular"
-                        VectorX t(N);
-                        Multiply(t, _fullPrecon, d, N);
-                        for (unsigned c=0; c<N; ++c)
-                            assert(XlAbs(t(c)-r(c)) <= 1e-5f);
-                    }
-                #endif
-            }
-            
-            float rho = r.dot(d);
-            // float rho0 = rho;
-            const float rhoThreshold = 1e-10f;
-            
-            unsigned k=0;
-            for (; k<iterations && XlAbs(rho) > rhoThreshold; ++k) {
-            
-                    // Note that all of the vectors and matrices
-                    // used here are quite sparse! So we need to
-                    // simplify the operation shere to take advantage 
-                    // of that sparseness.
-                    // Multiply by AMat can be replaced with a specialized
-                    // operation. Unfortunately the dot products can't be
-                    // simplified, because the vectors already have only one
-                    // element per cell.
-            
-                Multiply(q, AMat, d, N);
-                float dDotQ = d.dot(q);
-                float alpha = rho / dDotQ;
-                assert(isfinite(alpha) && !isnan(alpha));
-                x += alpha * d;
-                r -= alpha * q;
-            
-                if (useBandedPrecon) {
-                    SolveLowerTriangularBanded(s, _bandedPrecon, r, N, sparseBands, dimof(sparseBands));
-                } else {
-                    SolveLowerTriangular(s, _fullPrecon, r, N);
-                }
-                float rhoOld = rho;
-                rho = r.dot(s);
-                assert(rho < rhoOld);
-                float beta = rho / rhoOld;
-                assert(isfinite(beta) && !isnan(beta));
-            
-                for (unsigned i=0; i<N; ++i)
-                    d(i) = s(i) + beta * d(i);
-            }
-
-            LogInfo << "Diffusion took: " << k << " iterations.";
-            
-            // std::copy(x.data(), x.data() + N, _density.get());
-            for (unsigned c=0; c<N; ++c) {
-                    // We sometimes get negative values coming in,
-                    // because of noise in the calculation. But that shouldn't
-                    // be happening, if everything was perfectly accurate.
-                assert(isfinite(x(c)) && !isnan(x(c)));
-                _density[c] = x(c);
-            }
-
-        } else if (diffusion == Diffusion::PlainCG) {
+        if (diffusion == Diffusion::PlainCG || diffusion == Diffusion::CG_Precon) {
 
             for (unsigned y=1; y<wh-1; ++y) {
                 for (unsigned x=1; x<wh-1; ++x) {
                     unsigned i = y*wh+x;
-                    b(i) = _density[i];
+                    _b(i) = _density[i];
 
                         // set an initial estimate using
                         // explicit euler. We'll march forward part of
@@ -525,26 +534,34 @@ namespace SceneEngine
                     v += estA * _density[i+1];
                     v += estA * _density[i-wh];
                     v += estA * _density[i+wh];
-                    this->x(i) = v;
+                    _x(i) = v;
                 }
             }
-            ZeroBorder(x, wh);
-            ZeroBorder(b, wh);
-
-            Solver_PlainCG solver(N);
+            ZeroBorder(_x, wh);
+            ZeroBorder(_b, wh);
 
             auto iterations = 0u;
-            if (useGeneralA) {
-                iterations = solver.Execute(x, AMat, b);
+            if (diffusion == Diffusion::PlainCG) {
+                Solver_PlainCG solver(N);
+                if (useGeneralA) {
+                    iterations = solver.Execute(_x, AMat, _b);
+                } else {
+                    iterations = solver.Execute(_x, AMat2D { wh, a0, a1 }, _b);
+                }
             } else {
-                iterations = solver.Execute(x, AMat2D { wh, a0, a1 }, b);
+                Solver_PreconCG solver(N);
+                if (useGeneralA) {
+                    iterations = solver.Execute(_x, AMat, _b, _bandedPrecon);
+                } else {
+                    iterations = solver.Execute(_x, AMat2D { wh, a0, a1 }, _b, _bandedPrecon);
+                }
             }
 
             LogInfo << "Diffusion took: " << iterations << " iterations.";
             
             for (unsigned c=0; c<N; ++c) {
-                assert(isfinite(x(c)) && !isnan(x(c)));
-                _density[c] = x(c);
+                assert(isfinite(_x(c)) && !isnan(_x(c)));
+                _density[c] = _x(c);
             }
 
         } else if (diffusion == Diffusion::ForwardEuler) {
@@ -595,6 +612,7 @@ namespace SceneEngine
                 _prevDensity[i] = _density[i];
                 
             float gamma = 1.25f;    // relaxation factor
+            const auto iterations = 15u;
 
             if (useGeneralA) {
 
@@ -806,12 +824,8 @@ namespace SceneEngine
             _pimpl->_prevDensity[c] = 0.f;
         }
 
-        _pimpl->x = VectorX(N);
-        _pimpl->r = VectorX(N);
-        _pimpl->d = VectorX(N);
-        _pimpl->s = VectorX(N);
-        _pimpl->q = VectorX(N);
-        _pimpl->b = VectorX(N);
+        _pimpl->_x = VectorX(N);
+        _pimpl->_b = VectorX(N);
 
         const float dt = 1.0f / 60.f;
         float a = 5.f * dt;
@@ -830,27 +844,40 @@ namespace SceneEngine
             };
 
         _pimpl->AMat = std::function<float(unsigned, unsigned)>(AMat);
-        _pimpl->_bandedPrecon = CalculateIncompleteCholesky( AMat2D { wh, 1.f + 4.f * a, -a }, N );
+        auto bandedPrecon = CalculateIncompleteCholesky( AMat2D { wh, 1.f + 4.f * a, -a }, N );
+
+        _pimpl->_bands[0] = -int(wh);
+        _pimpl->_bands[1] =  -1;
+        _pimpl->_bands[2] =   1;
+        _pimpl->_bands[3] =  wh;
+        _pimpl->_bands[4] =   0;
 
         for (unsigned i=0; i<N; ++i)
-            LogInfo << _pimpl->_bandedPrecon(i, 0) << ", " << _pimpl->_bandedPrecon(i, 1) << ", " << _pimpl->_bandedPrecon(i, 2) << ", " << _pimpl->_bandedPrecon(i, 3) << ", " << _pimpl->_bandedPrecon(i, 4);
-
-        _pimpl->_fullPrecon = CalculateIncompleteCholesky(_pimpl->AMat, N);
+            LogInfo << bandedPrecon(i, 0) << ", " << bandedPrecon(i, 1) << ", " << bandedPrecon(i, 2) << ", " << bandedPrecon(i, 3) << ", " << bandedPrecon(i, 4);
 
         #if defined(_DEBUG)
             {
+                auto fullPrecon = CalculateIncompleteCholesky(_pimpl->AMat, N);
                 for (unsigned i=0; i<N; ++i) {
-                    int j2[] = { int(i) - wh, int(i) - 1, int(i) + 1, int(i) + wh, int(i) + 0 };
+                    int j2[] = { 
+                        int(i) + _pimpl->_bands[0], 
+                        int(i) + _pimpl->_bands[1],
+                        int(i) + _pimpl->_bands[2], 
+                        int(i) + _pimpl->_bands[3], 
+                        int(i) + _pimpl->_bands[4]
+                    };
                     for (unsigned j=0; j<dimof(j2); ++j) {
                         if (j2[j] >= 0 && j2[j] < int(N)) {
-                            float a = _pimpl->_bandedPrecon(i, j);
-                            float b = _pimpl->_fullPrecon(i, j2[j]);
+                            float a = bandedPrecon(i, j);
+                            float b = fullPrecon(i, j2[j]);
                             assert(Equivalent(a, b, 1.e-3f));
                         }
                     }
                 }
             }
         #endif
+
+        _pimpl->_bandedPrecon = SparseBandedMatrix(std::move(bandedPrecon), _pimpl->_bands, dimof(_pimpl->_bands));
     }
 
     FluidSolver2D::~FluidSolver2D(){}
