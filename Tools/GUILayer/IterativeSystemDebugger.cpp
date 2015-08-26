@@ -250,6 +250,8 @@ namespace GUILayer
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    using CFDSolver = SceneEngine::FluidSolver2D;
+
     ref class CFDOverlay : public IOverlaySystem
     {
     public:
@@ -262,22 +264,22 @@ namespace GUILayer
         virtual void SetActivationState(bool newState) override {}
 
         CFDOverlay(
-            std::shared_ptr<SceneEngine::ReferenceFluidSolver2D> sim,
+            std::shared_ptr<CFDSolver> sim,
             CFDRefIterativeSystem::Settings^ previewSettings);
         !CFDOverlay();
         ~CFDOverlay();
     private:
-        clix::shared_ptr<SceneEngine::ReferenceFluidSolver2D> _sim;
+        clix::shared_ptr<CFDSolver> _sim;
         CFDRefIterativeSystem::Settings^ _previewSettings;
     };
 
-    static SceneEngine::ReferenceFluidSolver2D::DebuggingMode AsDebugMode(CFDRefIterativeSystem::Settings::Preview input)
+    static SceneEngine::FluidDebuggingMode AsDebugMode(CFDRefIterativeSystem::Settings::Preview input)
     {
         using P = CFDRefIterativeSystem::Settings::Preview;
         switch (input) {
         default:
-        case P::Density: return SceneEngine::ReferenceFluidSolver2D::DebuggingMode::Density;
-        case P::Velocity: return SceneEngine::ReferenceFluidSolver2D::DebuggingMode::Velocity;
+        case P::Density: return SceneEngine::FluidDebuggingMode::Density;
+        case P::Velocity: return SceneEngine::FluidDebuggingMode::Velocity;
         }
     }
 
@@ -306,7 +308,7 @@ namespace GUILayer
     {}
 
     CFDOverlay::CFDOverlay(
-        std::shared_ptr<SceneEngine::ReferenceFluidSolver2D> sim,
+        std::shared_ptr<CFDSolver> sim,
         CFDRefIterativeSystem::Settings^ previewSettings)
     : _sim(sim), _previewSettings(previewSettings)
     {}
@@ -319,8 +321,8 @@ namespace GUILayer
     class CFDRefIterativeSystemPimpl
     {
     public:
-        std::shared_ptr<SceneEngine::ReferenceFluidSolver2D> _sim;
-        std::shared_ptr<SceneEngine::ReferenceFluidSolver2D::Settings> _settings;
+        std::shared_ptr<CFDSolver> _sim;
+        std::shared_ptr<CFDSolver::Settings> _settings;
     };
 
     void CFDRefIterativeSystem::Tick()
@@ -358,12 +360,12 @@ namespace GUILayer
     {
         using namespace SceneEngine;
         _pimpl.reset(new CFDRefIterativeSystemPimpl);
-        _pimpl->_settings = std::make_shared<SceneEngine::ReferenceFluidSolver2D::Settings>();
-        _pimpl->_sim = std::make_shared<SceneEngine::ReferenceFluidSolver2D>(UInt2(size, size));
+        _pimpl->_settings = std::make_shared<CFDSolver::Settings>();
+        _pimpl->_sim = std::make_shared<CFDSolver>(UInt2(size, size));
         _settings = gcnew Settings();
 
         _getAndSetProperties = gcnew ClassAccessors_GetAndSet<
-            SceneEngine::ReferenceFluidSolver2D::Settings>(_pimpl->_settings);
+            CFDSolver::Settings>(_pimpl->_settings);
 
         _overlay = gcnew CFDOverlay(_pimpl->_sim, _settings);
     }

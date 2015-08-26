@@ -150,7 +150,8 @@ namespace SceneEngine
 
         VectorX x, r, b;
         VectorX d, s, q;
-        MatrixX precon;
+        MatrixX _fullPrecon;
+        MatrixX _bandedPrecon;
         std::function<float(unsigned, unsigned)> AMat;
 
         void DensityDiffusion(float dt);
@@ -227,6 +228,42 @@ namespace SceneEngine
                 d -= M(i, j) * x(j);
             }
             x(i) = d / M(i, i);
+        }
+    }
+
+    template<typename Vec, typename Mat>
+        static void SolveLowerTriangularBanded(Vec& x, const Mat& M, const Vec& b, unsigned N, int bands[], unsigned bandCount)
+    {
+            // assuming the last "band" in the matrix is the diagonal aprt
+        assert(bandCount > 0 && bands[bandCount-1] == 0);
+
+            // solve: M * dst = b
+            // for a lower triangular matrix, using forward substitution
+            // this is for a sparse banded matrix, with the bands described by "bands"
+            //      -- note that we can improve this further by writing implementations for
+            //          common cases (eg, 2D, 3D, etc)
+        for (unsigned i=0; i<N; ++i) {
+            float d = b(i);
+            for (unsigned j=0; j<bandCount-1; ++j) {
+                int j2 = int(i) + bands[j];
+                if (j2 >= 0 && j2 < int(i))  // with agressive unrolling, we should avoid this condition
+                    d -= M(i, j) * x(j2);
+            }
+            x(i) = d / M(i, bandCount-1);
+        }
+    }
+
+    template<typename Vec, typename Mat>
+        static void MultiplyBanded(Vec& dst, const Mat& A, const Vec& b, unsigned N, int bands[], unsigned bandCount)
+    {
+        for (unsigned i=0; i<N; ++i) {
+            float d = 0.f;
+            for (unsigned j=0; j<bandCount; ++j) {
+                int j2 = int(i) + bands[j];
+                if (j2 >= 0 && j2 < int(N))  // with agressive unrolling, we should avoid this condition
+                    d += A(i, j) * b(j2);
+            }
+            dst(i) = d;
         }
     }
 
@@ -352,8 +389,8 @@ namespace SceneEngine
         // We must also consider the boundary conditions in this step.
         // 
 
-        enum class Diffusion { CG_Cholseky, PlainCG, ForwardEuler, SOR };
-        static auto diffusion = Diffusion::PlainCG;
+        enum class Diffusion { CG_Precon, PlainCG, ForwardEuler, SOR };
+        static auto diffusion = Diffusion::CG_Precon;
         static bool useGeneralA = false;
         static float estimateFactor = .75f; // maybe we could adapt this based on the amount of noise in the system? In low noise systems, explicit euler seems very close to correct
         static float diffFactor = 5.f;
@@ -369,7 +406,9 @@ namespace SceneEngine
 
         const auto iterations = 15u;
 
-        if (diffusion == Diffusion::CG_Cholseky) {
+        int sparseBands[] = { -int(wh), -1, 1, wh, 0 };
+
+        if (diffusion == Diffusion::CG_Precon) {
 
                 // Calculate the incomplete cholesky factorization first
                 // (this will be used as a preconditioner to the 
@@ -392,13 +431,33 @@ namespace SceneEngine
             Multiply(r, AMat, x, N);    // r = AMat * x
             r = b - r;
             
-            SolveLowerTriangular(d, precon, r, N);
+            static bool useBandedPrecon = true;
+            if (useBandedPrecon) {
+                SolveLowerTriangularBanded(d, _bandedPrecon, r, N, sparseBands, dimof(sparseBands));
             
-            {
-                    // testing "SolveLowerTriangular"
-                VectorX t = precon * d;
-                for (unsigned c=0; c<N; ++c)
-                    assert(XlAbs(t(c)-r(c)) <= 1e-5f);
+                #if defined(_DEBUG)
+                    {
+                            // testing "SolveLowerTriangular"
+                        VectorX t(N);
+                        MultiplyBanded(t, _bandedPrecon, d, N, sparseBands, dimof(sparseBands));
+                        for (unsigned c=0; c<N; ++c) {
+                            float z = t(c), y = r(c);
+                            assert(Equivalent(z, y, 1e-2f));
+                        }
+                    }
+                #endif
+            } else {
+                SolveLowerTriangular(d, _fullPrecon, r, N);
+            
+                #if defined(_DEBUG)
+                    {
+                            // testing "SolveLowerTriangular"
+                        VectorX t(N);
+                        Multiply(t, _fullPrecon, d, N);
+                        for (unsigned c=0; c<N; ++c)
+                            assert(XlAbs(t(c)-r(c)) <= 1e-5f);
+                    }
+                #endif
             }
             
             float rho = r.dot(d);
@@ -424,7 +483,11 @@ namespace SceneEngine
                 x += alpha * d;
                 r -= alpha * q;
             
-                SolveLowerTriangular(s, precon, r, N);
+                if (useBandedPrecon) {
+                    SolveLowerTriangularBanded(s, _bandedPrecon, r, N, sparseBands, dimof(sparseBands));
+                } else {
+                    SolveLowerTriangular(s, _fullPrecon, r, N);
+                }
                 float rhoOld = rho;
                 rho = r.dot(s);
                 assert(rho < rhoOld);
@@ -624,6 +687,104 @@ namespace SceneEngine
 
     UInt2 FluidSolver2D::GetDimensions() const { return _pimpl->_dimensions; }
 
+    static MatrixX CalculateIncompleteCholesky(std::function<float(unsigned, unsigned)>& mat, unsigned N)
+    {
+        MatrixX result(N, N);
+        result.fill(0.f);
+            
+        for (unsigned i=0; i<N; ++i) {
+            float a = mat(i, i);
+            for (unsigned k=0; k<i; ++k) {
+                float l = result(i, k);
+                a -= l*l;
+            }
+            a = XlSqrt(a);
+            result(i,i) = a;
+
+            if (i != 0) {
+                for (unsigned j=i+1; j<N; ++j) {
+                    float aij = mat(i, j);
+                    for (unsigned k=0; k<i; ++k) {
+                        aij -= result(i, k) * result(j, k);
+                    }
+                    result(j, i) = aij / a;
+                }
+            }
+        }
+
+            // zero-out elements that are zero in the source element
+            // (this is an aspect of the "incomplete" Cholesky factorization
+            //      -- the result should have the same sparseness as the input)
+        // for (unsigned i=0; i<N; ++i) {
+        //     for (unsigned j=0; j<N; ++j) {
+        //         auto v = mat(i, j);
+        //         if (v == 0.f) result(i, j) = 0.f;
+        //     }
+        // }
+
+        return result * result.transpose();
+    }
+
+    static MatrixX CalculateIncompleteCholesky(AMat2D mat, unsigned N)
+    {
+            //
+            //  The final matrix we build will only hold values in
+            //  the places where the input matrix also holds values.
+            //  However, while building the matrix, we need to store
+            //  and calculate values at every address. This means
+            //  allocating a very large temporary matrix.
+            //  We will return a compressed matrix with the unneeded
+            //  bands removed
+        MatrixX factorization(N, N);
+        factorization.fill(0.f);
+            
+        for (unsigned i=0; i<N; ++i) {
+            float a = mat.a0;
+            for (unsigned k=0; k<i; ++k) {
+                float l = factorization(i, k);
+                a -= l*l;
+            }
+            a = XlSqrt(a);
+            factorization(i,i) = a;
+
+            if (i != 0) {
+                for (unsigned j=i+1; j<N; ++j) {
+                    float aij = ((j==i+1)||(j==i+mat.wh)) ? mat.a1 : 0.f;
+                    for (unsigned k=0; k<i; ++k) {
+                        aij -= factorization(i, k) * factorization(j, k);
+                    }
+                    factorization(j, i) = aij / a;
+                }
+            }
+        }
+
+            // 
+            //  Our preconditioner matrix is "factorization" multiplied by
+            //  it's transpose
+            //
+
+        int bands[] = { -int(mat.wh), -1, 1, mat.wh, 0 };
+        MatrixX sparseMatrix(N, dimof(bands));
+        for (unsigned i=0; i<N; ++i)
+            for (unsigned j=0; j<dimof(bands); ++j) {
+                int j2 = int(i) + bands[j];
+                if (j2 >= 0 && j2 < int(N)) {
+
+                        // Here, calculate M(i, j), where M
+                        // is the factorization multiplied by its transpose
+                    float A = 0.f;
+                    for (unsigned k=0; k<N; ++k)
+                        A += factorization(i, k) * factorization(j2, k);
+
+                    sparseMatrix(i, j) = A;
+                } else {
+                    sparseMatrix(i, j) = 0.f;
+                }
+            }
+
+        return std::move(sparseMatrix);
+    }
+
     FluidSolver2D::FluidSolver2D(UInt2 dimensions)
     {
         _pimpl = std::make_unique<Pimpl>();
@@ -655,44 +816,41 @@ namespace SceneEngine
         const float dt = 1.0f / 60.f;
         float a = 5.f * dt;
 
-        auto w = _pimpl->_dimensions[0]+2;
-        auto AMat = [w, a](unsigned i, unsigned j)
+        auto wh = _pimpl->_dimensions[0]+2;
+        auto AMat = [wh, a](unsigned i, unsigned j)
             {
                 if (i == j) return 1.f + 4.f*a;
-                auto x0 = (i%w), y0 = i/w;
-                auto x1 = (j%w), y1 = j/w;
-                if (    (std::abs(int(x0)-int(x1)) == 1 && y0 == y1)
-                    ||  (std::abs(int(y0)-int(y1)) == 1 && x0 == x1)) {
-                        // Compare with the Crank-Nicolson method, which
-                        // blends values at t-1 with values at t
+                // auto x0 = (i%wh), y0 = i/wh;
+                // auto x1 = (j%wh), y1 = j/wh;
+                // if (    (std::abs(int(x0)-int(x1)) == 1 && y0 == y1)
+                //     ||  (std::abs(int(y0)-int(y1)) == 1 && x0 == x1)) {
+                if (j==(i+1) || j==(i-1) || j==(i+wh) || j == (i-wh))
                     return -a;   
-                }
                 return 0.f;
             };
 
-        _pimpl->precon = MatrixX(N, N);
-        _pimpl->precon.fill(0.f);
-            
-        for (unsigned i=0; i<N; ++i) {
-            float a = AMat(i, i);
-            for (unsigned k=0; k<i; ++k) {
-                float l = _pimpl->precon(i, k);
-                a -= l*l;
-            }
-            _pimpl->precon(i,i) = XlSqrt(a);
+        _pimpl->AMat = std::function<float(unsigned, unsigned)>(AMat);
+        _pimpl->_bandedPrecon = CalculateIncompleteCholesky( AMat2D { wh, 1.f + 4.f * a, -a }, N );
 
-            if (i != 0) {
-                for (unsigned j=i+1; j<N; ++j) {
-                    float aij = AMat(i, j);
-                    for (unsigned k=0; k<i-1; ++k) {
-                        aij -= _pimpl->precon(i, k) * _pimpl->precon(j, k);
+        for (unsigned i=0; i<N; ++i)
+            LogInfo << _pimpl->_bandedPrecon(i, 0) << ", " << _pimpl->_bandedPrecon(i, 1) << ", " << _pimpl->_bandedPrecon(i, 2) << ", " << _pimpl->_bandedPrecon(i, 3) << ", " << _pimpl->_bandedPrecon(i, 4);
+
+        _pimpl->_fullPrecon = CalculateIncompleteCholesky(_pimpl->AMat, N);
+
+        #if defined(_DEBUG)
+            {
+                for (unsigned i=0; i<N; ++i) {
+                    int j2[] = { int(i) - wh, int(i) - 1, int(i) + 1, int(i) + wh, int(i) + 0 };
+                    for (unsigned j=0; j<dimof(j2); ++j) {
+                        if (j2[j] >= 0 && j2[j] < int(N)) {
+                            float a = _pimpl->_bandedPrecon(i, j);
+                            float b = _pimpl->_fullPrecon(i, j2[j]);
+                            assert(Equivalent(a, b, 1.e-3f));
+                        }
                     }
-                    _pimpl->precon(j, i) = aij / a;
                 }
             }
-        }
-
-        _pimpl->AMat = std::function<float(unsigned, unsigned)>(AMat);
+        #endif
     }
 
     FluidSolver2D::~FluidSolver2D(){}
