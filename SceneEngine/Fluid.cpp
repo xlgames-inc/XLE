@@ -432,6 +432,104 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+    class Solver_Multigrid
+    {
+    public:
+        template<typename Vec, typename Mat, typename PreCon>
+            unsigned Execute(Vec& x, const Mat& A, const Vec& b, const PreCon& precon);
+
+        Solver_Multigrid(unsigned wh, unsigned levels);
+        ~Solver_Multigrid();
+
+    protected:
+        std::vector<VectorX> _residual;
+        unsigned _N;
+        unsigned _wh;
+    };
+
+    template<typename Vec, typename Mat, typename PreCon>
+        unsigned Solver_Multigrid::Execute(Vec& x, const Mat& A, const Vec& b, const PreCon& precon)
+    {
+        //
+        // Here is our basic V-cycle:
+        //  * start with the finest grid
+        //  * perform pre-smoothing
+        //  * iteratively reduce down:
+        //      * "restrict" onto next more coarse grid
+        //      * smooth result
+        //  * iteratively expand upwards:
+        //      * "prolongonate" up to next more fine grid
+        //      * smooth result
+        //  * do post-smoothing
+        //
+        //      Note that this is often done in parallel, by dividing the fine
+        //      grids across multiple processors.
+        //
+
+            // pre-smoothing
+        float gamma = 1.25f;                // relaxation factor
+        const auto preSmoothIterations = 3u;
+        const auto postSmoothIterations = 3u;
+
+        for (unsigned k = 0; k<preSmoothIterations; ++k) {
+            for (unsigned y=1; y<wh-1; ++y) {
+                for (unsigned x=1; x<wh-1; ++x) {
+                    const unsigned i = y*wh+x;
+                    float A = b[i];
+
+                    A -= a1 * x[i-1];
+                    A -= a1 * x[i+1];
+                    A -= a1 * x[i-wh];
+                    A -= a1 * x[i+wh];
+
+                    x[i] = (1.f-gamma) * _density[i] + gamma * A / a0;
+                }
+            }
+        }
+
+            // step down
+        auto gridCount = int(_residual.size());
+        for (int g=0; g<gridCount; ++g) {
+
+        }
+            // step up
+        for (int g=gridCount-1; g>0; ++g) {
+        }
+
+            // post-smoothing
+        for (unsigned k = 0; k<postSmoothIterations; ++k) {
+            for (unsigned y=1; y<wh-1; ++y) {
+                for (unsigned x=1; x<wh-1; ++x) {
+                    const unsigned i = y*wh+x;
+                    float A = b[i];
+
+                    A -= a1 * x[i-1];
+                    A -= a1 * x[i+1];
+                    A -= a1 * x[i-wh];
+                    A -= a1 * x[i+wh];
+
+                    x[i] = (1.f-gamma) * _density[i] + gamma * A / a0;
+                }
+            }
+        }
+    }
+
+    Solver_Multigrid::Solver_Multigrid(unsigned wh, unsigned levels)
+    {
+        _N = wh*wh;
+        _wh = wh;
+        unsigned n = _N;
+        for (unsigned c=0; c<levels; c++) {
+            _residual.push_back(VectorX(n));
+            n <<= 1;
+        }
+    }
+
+    Solver_Multigrid::~Solver_Multigrid() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     class FluidSolver2D::Pimpl
     {
     public:
