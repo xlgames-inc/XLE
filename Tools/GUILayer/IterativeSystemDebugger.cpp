@@ -132,6 +132,14 @@ namespace GUILayer
                 result = gcnew System::UInt32(f);
             return success;
         }
+        else if (type == System::Int32::typeid) {
+            int32 f = 0;
+            bool success = accessors.TryGet(
+                f, *_type.get(), Hash64(nativeString.c_str()));
+            if (success)
+                result = gcnew System::Int32(f);
+            return success;
+        }
         return false;
     }
 
@@ -145,7 +153,10 @@ namespace GUILayer
             return accessors.TrySet(v, *_type.get(), Hash64(nativeString.c_str()));
         } else if (value->GetType() == System::UInt32::typeid) {
             auto v = *dynamic_cast<System::UInt32^>(value);
-            return accessors.TryGet(v, *_type.get(), Hash64(nativeString.c_str()));
+            return accessors.TrySet(v, *_type.get(), Hash64(nativeString.c_str()));
+        } else if (value->GetType() == System::Int32::typeid) {
+            auto v = *dynamic_cast<System::Int32^>(value);
+            return accessors.TrySet(v, *_type.get(), Hash64(nativeString.c_str()));
         }
         return false;
     }

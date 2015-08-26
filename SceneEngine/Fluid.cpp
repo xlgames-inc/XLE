@@ -19,6 +19,8 @@ extern "C" void vel_step ( int N, float * u, float * v, float * u0, float * v0, 
 #include <Eigen/Dense>
 #pragma pop_macro("new")
 
+#pragma warning(disable:4505)       // 'SceneEngine::CalculateIncompleteCholesky' : unreferenced local function has been removed
+
 
 namespace SceneEngine
 {
@@ -367,17 +369,17 @@ namespace SceneEngine
             
         SolveLowerTriangular(_d, precon, _r, _N);
             
-        #if defined(_DEBUG)
-            {
-                    // testing "SolveLowerTriangular"
-                VectorX t(_N);
-                Multiply(t, precon, _d, _N);
-                for (unsigned c=0; c<_N; ++c) {
-                    float z = t(c), y = _r(c);
-                    assert(Equivalent(z, y, 1e-2f));
-                }
-            }
-        #endif
+        // #if defined(_DEBUG)
+        //     {
+        //             // testing "SolveLowerTriangular"
+        //         VectorX t(_N);
+        //         Multiply(t, precon, _d, _N);
+        //         for (unsigned c=0; c<_N; ++c) {
+        //             float z = t(c), y = _r(c);
+        //             assert(Equivalent(z, y, 1e-1f));
+        //         }
+        //     }
+        // #endif
             
         float rho = _r.dot(_d);
         // float rho0 = rho;
@@ -448,10 +450,10 @@ namespace SceneEngine
         SparseBandedMatrix _bandedPrecon;
         std::function<float(unsigned, unsigned)> AMat;
 
-        void DensityDiffusion(float dt);
+        void DensityDiffusion(const FluidSolver2D::Settings& settings);
     };
 
-    void FluidSolver2D::Pimpl::DensityDiffusion(float dt)
+    void FluidSolver2D::Pimpl::DensityDiffusion(const FluidSolver2D::Settings& settings)
     {
         //
         // Diffuse velocity! This is similar to other diffusion operations. 
@@ -504,7 +506,7 @@ namespace SceneEngine
         // 
 
         enum class Diffusion { CG_Precon, PlainCG, ForwardEuler, SOR };
-        static auto diffusion = Diffusion::CG_Precon;
+        auto diffusion = (Diffusion)settings._diffusionMethod;
         static bool useGeneralA = false;
         static float estimateFactor = .75f; // maybe we could adapt this based on the amount of noise in the system? In low noise systems, explicit euler seems very close to correct
         static float diffFactor = 5.f;
@@ -513,7 +515,7 @@ namespace SceneEngine
 
         const unsigned wh = _dimensions[0] + 2;
 
-        const float a = diffFactor * dt;
+        const float a = diffFactor * settings._deltaTime;
         const float a0 = 1.f + 4.f * a;
         const float a1 = -a;
         const float estA = estimateFactor * a;  // used when calculating a starting estimate
@@ -666,7 +668,7 @@ namespace SceneEngine
             _pimpl->_velV[c] += _pimpl->_prevVelV[c];
         }
 
-        _pimpl->DensityDiffusion(settings._deltaTime);
+        _pimpl->DensityDiffusion(settings);
 
         for (unsigned c=0; c<N; ++c) {
             _pimpl->_prevVelU[c] = 0.f;
@@ -852,30 +854,30 @@ namespace SceneEngine
         _pimpl->_bands[3] =  wh;
         _pimpl->_bands[4] =   0;
 
-        for (unsigned i=0; i<N; ++i)
-            LogInfo << bandedPrecon(i, 0) << ", " << bandedPrecon(i, 1) << ", " << bandedPrecon(i, 2) << ", " << bandedPrecon(i, 3) << ", " << bandedPrecon(i, 4);
-
-        #if defined(_DEBUG)
-            {
-                auto fullPrecon = CalculateIncompleteCholesky(_pimpl->AMat, N);
-                for (unsigned i=0; i<N; ++i) {
-                    int j2[] = { 
-                        int(i) + _pimpl->_bands[0], 
-                        int(i) + _pimpl->_bands[1],
-                        int(i) + _pimpl->_bands[2], 
-                        int(i) + _pimpl->_bands[3], 
-                        int(i) + _pimpl->_bands[4]
-                    };
-                    for (unsigned j=0; j<dimof(j2); ++j) {
-                        if (j2[j] >= 0 && j2[j] < int(N)) {
-                            float a = bandedPrecon(i, j);
-                            float b = fullPrecon(i, j2[j]);
-                            assert(Equivalent(a, b, 1.e-3f));
-                        }
-                    }
-                }
-            }
-        #endif
+        // #if defined(_DEBUG)
+        //     for (unsigned i=0; i<N; ++i)
+        //         LogInfo << bandedPrecon(i, 0) << ", " << bandedPrecon(i, 1) << ", " << bandedPrecon(i, 2) << ", " << bandedPrecon(i, 3) << ", " << bandedPrecon(i, 4);
+        // 
+        //     {
+        //         auto fullPrecon = CalculateIncompleteCholesky(_pimpl->AMat, N);
+        //         for (unsigned i=0; i<N; ++i) {
+        //             int j2[] = { 
+        //                 int(i) + _pimpl->_bands[0], 
+        //                 int(i) + _pimpl->_bands[1],
+        //                 int(i) + _pimpl->_bands[2], 
+        //                 int(i) + _pimpl->_bands[3], 
+        //                 int(i) + _pimpl->_bands[4]
+        //             };
+        //             for (unsigned j=0; j<dimof(j2); ++j) {
+        //                 if (j2[j] >= 0 && j2[j] < int(N)) {
+        //                     float a = bandedPrecon(i, j);
+        //                     float b = fullPrecon(i, j2[j]);
+        //                     assert(Equivalent(a, b, 1.e-3f));
+        //                 }
+        //             }
+        //         }
+        //     }
+        // #endif
 
         _pimpl->_bandedPrecon = SparseBandedMatrix(std::move(bandedPrecon), _pimpl->_bands, dimof(_pimpl->_bands));
     }
@@ -887,6 +889,7 @@ namespace SceneEngine
         _deltaTime = 1.0f/60.f;
         _viscosity = 0.f;
         _diffusionRate = 0.f;
+        _diffusionMethod = 0;
     }
 
 }
@@ -1006,6 +1009,7 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver2D::Settin
         props.Add(u("DeltaTime"), DefaultGet(Obj, _deltaTime),  DefaultSet(Obj, _deltaTime));
         props.Add(u("Viscosity"), DefaultGet(Obj, _viscosity),  DefaultSet(Obj, _viscosity));
         props.Add(u("DiffusionRate"), DefaultGet(Obj, _diffusionRate),  DefaultSet(Obj, _diffusionRate));
+        props.Add(u("DiffusionMethod"), DefaultGet(Obj, _diffusionMethod),  DefaultSet(Obj, _diffusionMethod));
         init = true;
     }
     return props;

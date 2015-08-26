@@ -58,6 +58,7 @@ namespace SceneEngine
             float _deltaTime;
             float _viscosity;
             float _diffusionRate;
+            int _diffusionMethod;
 
             Settings();
         };
