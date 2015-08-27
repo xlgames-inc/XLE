@@ -436,20 +436,107 @@ namespace SceneEngine
     class Solver_Multigrid
     {
     public:
-        template<typename Vec, typename Mat, typename PreCon>
-            unsigned Execute(Vec& x, const Mat& A, const Vec& b, const PreCon& precon);
+        template<typename Vec, typename Mat>
+            unsigned Execute(Vec& x, const Mat& A, const Vec& b);
 
         Solver_Multigrid(unsigned wh, unsigned levels);
         ~Solver_Multigrid();
 
     protected:
-        std::vector<VectorX> _residual;
+        std::vector<VectorX> _subResidual;
+        std::vector<VectorX> _subB;
+        std::vector<unsigned> _subWh;
         unsigned _N;
         unsigned _wh;
     };
 
-    template<typename Vec, typename Mat, typename PreCon>
-        unsigned Solver_Multigrid::Execute(Vec& x, const Mat& A, const Vec& b, const PreCon& precon)
+    template<typename Vec>
+        static void RunSOR(Vec& xv, AMat2D A, const Vec& b, float relaxationFactor)
+    {
+        for (unsigned y=1; y<A.wh-1; ++y) {
+            for (unsigned x=1; x<A.wh-1; ++x) {
+                const unsigned i = y*A.wh+x;
+                float v = b[i];
+
+                v -= A.a1 * xv[i-1];
+                v -= A.a1 * xv[i+1];
+                v -= A.a1 * xv[i-A.wh];
+                v -= A.a1 * xv[i+A.wh];
+
+                xv[i] = (1.f-relaxationFactor) * xv[i] + relaxationFactor * v / A.a0;
+            }
+        }
+    }
+
+    static AMat2D ChangeResolution(AMat2D i, unsigned layer)
+    {
+            // 'a' values are proportion to the square of N
+            // N quarters with every layer (width and height half)
+        float scale = std::pow(4.f, float(layer));
+        AMat2D result = i;
+        result.a0 /= scale;
+        result.a1 /= scale;
+        return result;
+    }
+
+    template<typename Vec>
+        static void Restrict(Vec& dst, const Vec& src, unsigned dstWh, unsigned srcWh)
+    {
+            // This is the "restrict" operator
+            // There are many possible methods for this
+            // We're going to start with a simple method that
+            // assumes that the sample values are at the corners
+            // of the grid. This way we can just use the box
+            // mipmap operator; as so...
+            // If we have more complex boundary conditions, we
+            // might want to move the sames to the center of the 
+            // grid cells; which would mean that we should 
+            // use a more complex operator here
+        for (unsigned y=1; y<dstWh-1; ++y) {
+            for (unsigned x=1; x<dstWh-1; ++x) {
+                unsigned sx = (x-1)*2+1, sy = (y-1)*2+1;
+                dst[y*dstWh+x]
+                    = .25f * src[(sy+0)*srcWh+(sx+0)]
+                    + .25f * src[(sy+0)*srcWh+(sx+1)]
+                    + .25f * src[(sy+1)*srcWh+(sx+0)]
+                    + .25f * src[(sy+1)*srcWh+(sx+1)]
+                    ;
+            }
+        }
+    }
+
+    template<typename Vec>
+        static void Prolongate(Vec& dst, const Vec& src, unsigned dstWh, unsigned srcWh)
+    {
+            // This is the "prolongate" operator.
+            // As with the restrict operator, we're going
+            // to use a simple bilinear sample, as if each
+            // layer was a mipmap.
+
+        for (unsigned y=1; y<dstWh-1; ++y) {
+            for (unsigned x=1; x<dstWh-1; ++x) {
+                float sx = (x-1)/2.f + 1.f;
+                float sy = (y-1)/2.f + 1.f;
+                float sx0 = XlFloor(sx), sy0 = XlFloor(sy);
+                float a = sx - sx0, b = sy - sy0;
+                float weights[] = {
+                    (1.0f - a) * (1.0f - b),
+                    a * (1.0f - b),
+                    (1.0f - a) * b,
+                    a * b
+                };
+                dst[y*dstWh+x]
+                    = weights[0] * src[(unsigned(sy0)+0)*srcWh+unsigned(sx0)]
+                    + weights[1] * src[(unsigned(sy0)+0)*srcWh+unsigned(sx0)+1]
+                    + weights[2] * src[(unsigned(sy0)+1)*srcWh+unsigned(sx0)]
+                    + weights[3] * src[(unsigned(sy0)+1)*srcWh+unsigned(sx0)+1]
+                    ;
+            }
+        }
+    }
+
+    template<typename Vec, typename Mat>
+        unsigned Solver_Multigrid::Execute(Vec& x, const Mat& A, const Vec& b)
     {
         //
         // Here is our basic V-cycle:
@@ -467,62 +554,82 @@ namespace SceneEngine
         //      grids across multiple processors.
         //
 
-            // pre-smoothing
         float gamma = 1.25f;                // relaxation factor
         const auto preSmoothIterations = 3u;
         const auto postSmoothIterations = 3u;
+        const auto stepSmoothIterations = 1u;
+        auto iterations = 0u;
 
-        for (unsigned k = 0; k<preSmoothIterations; ++k) {
-            for (unsigned y=1; y<wh-1; ++y) {
-                for (unsigned x=1; x<wh-1; ++x) {
-                    const unsigned i = y*wh+x;
-                    float A = b[i];
+            // pre-smoothing (SOR method -- can be done in place)
+        for (unsigned k = 0; k<preSmoothIterations; ++k)
+            RunSOR(x, A, b, gamma);
+        iterations += preSmoothIterations;
 
-                    A -= a1 * x[i-1];
-                    A -= a1 * x[i+1];
-                    A -= a1 * x[i-wh];
-                    A -= a1 * x[i+wh];
+            // ---------- step down ----------
+        unsigned activeWh = A.wh;
+        auto* prevLayer = &x;
+        auto* prevB = &b;
+        auto gridCount = unsigned(_subResidual.size());
+        for (unsigned g=0; g<gridCount; ++g) {
+            auto prevWh = activeWh;
+            activeWh = _subWh[g];
+            auto& dst = _subResidual[g];
+            auto& dstB = _subB[g];
 
-                    x[i] = (1.f-gamma) * _density[i] + gamma * A / a0;
-                }
-            }
+            Restrict(dst, *prevLayer, activeWh, prevWh);
+            Restrict(dstB, *prevB, activeWh, prevWh);   // is it better to downsample B from the top most level each time?
+
+            auto SA = ChangeResolution(A, g+1);
+            SA.wh = activeWh;
+            for (unsigned k = 0; k<stepSmoothIterations; ++k)
+                RunSOR(dst, SA, dstB, gamma);
+            iterations += stepSmoothIterations;
+
+            prevLayer = &dst;
+            prevB = &dstB;
         }
 
-            // step down
-        auto gridCount = int(_residual.size());
-        for (int g=0; g<gridCount; ++g) {
+            // ---------- step up ----------
+        for (unsigned g=gridCount-1; g>0; --g) {
+            auto& src = _subResidual[g];
+            auto& dst = _subResidual[g-1];
+            auto& dstB = _subB[g-1];
+            unsigned srcWh = _subWh[g];
+            unsigned dstWh = _subWh[g-1];
 
+            Prolongate(dst, src, dstWh, srcWh);
+
+            auto SA = ChangeResolution(A, g-1+1);
+            SA.wh = dstWh;
+            for (unsigned k = 0; k<stepSmoothIterations; ++k)
+                RunSOR(dst, SA, dstB, gamma);
+            iterations += stepSmoothIterations;
         }
-            // step up
-        for (int g=gridCount-1; g>0; ++g) {
-        }
 
-            // post-smoothing
-        for (unsigned k = 0; k<postSmoothIterations; ++k) {
-            for (unsigned y=1; y<wh-1; ++y) {
-                for (unsigned x=1; x<wh-1; ++x) {
-                    const unsigned i = y*wh+x;
-                    float A = b[i];
+            // finally, step back onto 'x'
+        Prolongate(x, _subResidual[0], A.wh, _subWh[0]);
 
-                    A -= a1 * x[i-1];
-                    A -= a1 * x[i+1];
-                    A -= a1 * x[i-wh];
-                    A -= a1 * x[i+wh];
+            // post-smoothing (SOR method -- can be done in place)
+        for (unsigned k = 0; k<postSmoothIterations; ++k)
+            RunSOR(x, A, b, gamma);
+        iterations += postSmoothIterations;
 
-                    x[i] = (1.f-gamma) * _density[i] + gamma * A / a0;
-                }
-            }
-        }
+        return iterations;
     }
 
     Solver_Multigrid::Solver_Multigrid(unsigned wh, unsigned levels)
     {
+            // todo -- need to consider the border for "wh"
         _N = wh*wh;
         _wh = wh;
-        unsigned n = _N;
         for (unsigned c=0; c<levels; c++) {
-            _residual.push_back(VectorX(n));
-            n <<= 1;
+            wh = ((wh-2) >> 1) + 2;
+            unsigned n = wh*wh;
+            VectorX subr(n); subr.fill(0.f);
+            _subResidual.push_back(std::move(subr));
+            VectorX subb(n); subb.fill(0.f);
+            _subB.push_back(std::move(subb));
+            _subWh.push_back(wh);
         }
     }
 
@@ -599,11 +706,18 @@ namespace SceneEngine
         //  * Multi-grid methods
         //  * Parallel methods
         //      -   (such as dividing the matrix into many smaller parts).
+        //  * conjugate gradient methods with complex preconditioners
+        //      - (such as using a parallel multi-grid as a preconditioner for
+        //          the conjugate gradient method)
+        //
+        // See: https://www.math.ucla.edu/~jteran/papers/MST10.pdf for a method that
+        // uses a multigrid preconditioner for the conjugate gradient method (which
+        // can be parallelized) with complex boundary conditions support.
         //
         // We must also consider the boundary conditions in this step.
         // 
 
-        enum class Diffusion { CG_Precon, PlainCG, ForwardEuler, SOR };
+        enum class Diffusion { CG_Precon, PlainCG, ForwardEuler, SOR, Multigrid };
         auto diffusion = (Diffusion)settings._diffusionMethod;
         static bool useGeneralA = false;
         static float estimateFactor = .75f; // maybe we could adapt this based on the amount of noise in the system? In low noise systems, explicit euler seems very close to correct
@@ -618,7 +732,7 @@ namespace SceneEngine
         const float a1 = -a;
         const float estA = estimateFactor * a;  // used when calculating a starting estimate
 
-        if (diffusion == Diffusion::PlainCG || diffusion == Diffusion::CG_Precon) {
+        if (diffusion == Diffusion::PlainCG || diffusion == Diffusion::CG_Precon || diffusion == Diffusion::Multigrid) {
 
             for (unsigned y=1; y<wh-1; ++y) {
                 for (unsigned x=1; x<wh-1; ++x) {
@@ -648,13 +762,16 @@ namespace SceneEngine
                 } else {
                     iterations = solver.Execute(_x, AMat2D { wh, a0, a1 }, _b);
                 }
-            } else {
+            } else if (diffusion == Diffusion::CG_Precon) {
                 Solver_PreconCG solver(N);
                 if (useGeneralA) {
                     iterations = solver.Execute(_x, AMat, _b, _bandedPrecon);
                 } else {
                     iterations = solver.Execute(_x, AMat2D { wh, a0, a1 }, _b, _bandedPrecon);
                 }
+            } else if (diffusion == Diffusion::Multigrid) {
+                Solver_Multigrid solver(wh, 2);
+                iterations = solver.Execute(_x, AMat2D { wh, a0, a1 }, _b);
             }
 
             LogInfo << "Diffusion took: " << iterations << " iterations.";
