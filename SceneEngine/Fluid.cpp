@@ -468,6 +468,23 @@ namespace SceneEngine
         }
     }
 
+    template<typename Vec>
+        static void RunSOR(Vec& xv, std::function<float(unsigned, unsigned)>& A, const Vec& b, float relaxationFactor)
+    {
+        for (unsigned i = 0; i < N; ++i) {
+            float v = b[i];
+
+                // these loops work oddly simply in this situation
+                // (but of course we can simplify because our matrix is sparse)
+            for (unsigned j = 0; j < i; ++j)
+                v -= A(i, j) * x[j];
+            for (unsigned j = i+1; j < N; ++j)
+                v -= A(i, j) * x[j];
+
+            xv[i] = (1.f-relaxationFactor) * x[i] + relaxationFactor * v / A(i, i);
+        }
+    }
+
     static AMat2D ChangeResolution(AMat2D i, unsigned layer)
     {
             // 'a' values are proportion to the square of N
@@ -649,7 +666,7 @@ namespace SceneEngine
         VectorX _prevDensity;
         UInt2 _dimensions;
 
-        VectorX _x, _b;
+        VectorX _workingX, _workingB;
 
         int _bands[5];
         SparseBandedMatrix _bandedPrecon;
@@ -660,6 +677,16 @@ namespace SceneEngine
         template<typename Field>
             void VelocityAdvect(
                 Field dstValues, Field prevValues,
+                const FluidSolver2D::Settings& settings);
+
+        enum class PossionSolver { CG_Precon, PlainCG, ForwardEuler, SOR, Multigrid };
+
+        template<typename Vec, typename AMatType>
+            unsigned SolvePoisson(Vec& x, AMatType A, const Vec& b, PossionSolver solver);
+
+        template<typename Field>
+            void EnforceIncompressibility(
+                Field velField,
                 const FluidSolver2D::Settings& settings);
     };
 
@@ -680,6 +707,39 @@ namespace SceneEngine
         // The equation can be written using the laplacian operation. So this
         // is a partial differential equation. We must solve it using an
         // estimate.
+        //
+
+        static bool useGeneralA = false;
+        static float diffFactor = 5.f;
+        const float a = diffFactor * settings._deltaTime;
+        const float a0 = 1.f + 4.f * a;
+        const float a1 = -a;
+
+        auto method = (PossionSolver)settings._diffusionMethod;
+
+        unsigned iterations = 0;
+        if (useGeneralA) {
+            // iterations = SolvePoisson(_density, AMat, _density, method);
+        } else {
+            iterations = SolvePoisson(_density, AMat2D { _dimensions[0]+2, a0, a1 }, _density, method);
+        }
+        LogInfo << "Diffusion took: " << iterations << " iterations.";
+    }
+
+    static unsigned GetN(const AMat2D& A) { return A.wh * A.wh; }
+    static unsigned GetWH(const AMat2D& A) { return A.wh; }
+    static AMat2D GetEstimate(const AMat2D& A, float estimationFactor)
+    {
+        const float estA1 = estimationFactor * A.a1;  // used when calculating a starting estimate
+        return AMat2D { A.wh, 1.f - 4.f * estA1, estA1 };
+    }
+
+    template<typename Vec, typename AMatType>
+        unsigned FluidSolver2D::Pimpl::SolvePoisson(Vec& x, AMatType A, const Vec& b, PossionSolver solver)
+    {
+        //
+        // Here is our basic solver for Poisson equations (such as the heat equation).
+        // It's a complex partial differential equation, so the solution is complex.
         //
         // There are many methods to solve this equation. We want a method that
         // is:
@@ -722,89 +782,75 @@ namespace SceneEngine
         // We must also consider the boundary conditions in this step.
         // 
 
-        enum class Diffusion { CG_Precon, PlainCG, ForwardEuler, SOR, Multigrid };
-        auto diffusion = (Diffusion)settings._diffusionMethod;
-        static bool useGeneralA = false;
         static float estimateFactor = .75f; // maybe we could adapt this based on the amount of noise in the system? In low noise systems, explicit euler seems very close to correct
-        static float diffFactor = 5.f;
+        auto estMatA = GetEstimate(A, estimateFactor);
 
-        auto N = (_dimensions[0]+2) * (_dimensions[1]+2);
+        const auto N = GetN(A);
+        const auto wh = GetWH(A);
 
-        const unsigned wh = _dimensions[0] + 2;
-
-        const float a = diffFactor * settings._deltaTime;
-        const float a0 = 1.f + 4.f * a;
-        const float a1 = -a;
-        const float estA = estimateFactor * a;  // used when calculating a starting estimate
-
-        if (diffusion == Diffusion::PlainCG || diffusion == Diffusion::CG_Precon || diffusion == Diffusion::Multigrid) {
+        if (solver == PossionSolver::PlainCG || solver == PossionSolver::CG_Precon || solver == PossionSolver::Multigrid) {
 
             for (unsigned y=1; y<wh-1; ++y) {
                 for (unsigned x=1; x<wh-1; ++x) {
-                    unsigned i = y*wh+x;
-                    _b(i) = _density[i];
+                    auto i = y*wh+x;
+                    _workingB(i) = b[i];
 
                         // set an initial estimate using
                         // explicit euler. We'll march forward part of
                         // the timestep, and then refine the estimate
                         // from there using the iterative implicit method.
-                    float v = (1.0f - 4.f * estA) * _density[i];
-                    v += estA * _density[i-1];
-                    v += estA * _density[i+1];
-                    v += estA * _density[i-wh];
-                    v += estA * _density[i+wh];
-                    _x(i) = v;
+                    float v = estMatA.a0 * b[i];
+                    v += estMatA.a1 * b[i-1];
+                    v += estMatA.a1 * b[i+1];
+                    v += estMatA.a1 * b[i-wh];
+                    v += estMatA.a1 * b[i+wh];
+                    _workingX(i) = v;
                 }
             }
-            ZeroBorder(_x, wh);
-            ZeroBorder(_b, wh);
+            ZeroBorder(_workingX, wh);
+            ZeroBorder(_workingB, wh);
 
             auto iterations = 0u;
-            if (diffusion == Diffusion::PlainCG) {
+            if (solver == PossionSolver::PlainCG) {
                 Solver_PlainCG solver(N);
-                if (useGeneralA) {
-                    iterations = solver.Execute(_x, AMat, _b);
-                } else {
-                    iterations = solver.Execute(_x, AMat2D { wh, a0, a1 }, _b);
-                }
-            } else if (diffusion == Diffusion::CG_Precon) {
+                iterations = solver.Execute(_workingX, A, _workingB);
+            } else if (solver == PossionSolver::CG_Precon) {
                 Solver_PreconCG solver(N);
-                if (useGeneralA) {
-                    iterations = solver.Execute(_x, AMat, _b, _bandedPrecon);
-                } else {
-                    iterations = solver.Execute(_x, AMat2D { wh, a0, a1 }, _b, _bandedPrecon);
-                }
-            } else if (diffusion == Diffusion::Multigrid) {
+                iterations = solver.Execute(_workingX, A, _workingB, _bandedPrecon);
+            } else if (solver == PossionSolver::Multigrid) {
                 Solver_Multigrid solver(wh, 2);
-                iterations = solver.Execute(_x, AMat2D { wh, a0, a1 }, _b);
+                iterations = solver.Execute(_workingX, A, _workingB);
             }
-
-            LogInfo << "Diffusion took: " << iterations << " iterations.";
             
             for (unsigned c=0; c<N; ++c) {
-                assert(isfinite(_x(c)) && !isnan(_x(c)));
-                _density[c] = _x(c);
+                assert(isfinite(_workingX(c)) && !isnan(_workingX(c)));
+                x[c] = _workingX(c);
             }
 
-        } else if (diffusion == Diffusion::ForwardEuler) {
+            return iterations;
+
+        } else if (solver == PossionSolver::ForwardEuler) {
         
                 // This is the simpliest integration. We just
                 // move forward a single timestep...
-            for (unsigned c=0; c<N; ++c) _prevDensity[c] = _density[c];
+            for (unsigned c=0; c<N; ++c) _workingX[c] = b[c];
 
-            for (unsigned y=1; y<wh-1; ++y)
-                for (unsigned x=1; x<wh-1; ++x) {
-                    const unsigned i = y*wh+x;
-                    float A = (1.0f - 4.f * a) * _prevDensity[i];
-                    A += a * _prevDensity[i-1];
-                    A += a * _prevDensity[i+1];
-                    A += a * _prevDensity[i-wh];
-                    A += a * _prevDensity[i+wh];
-                    
-                    _density[i] = A;
+            float a0 = 1.f - 4.f * -A.a1;
+            float a1 = -A.a1;
+            for (unsigned iy=1; iy<wh-1; ++iy)
+                for (unsigned ix=1; ix<wh-1; ++ix) {
+                    const unsigned i = iy*wh+ix;
+                    float v = a0 * _workingX[i];
+                    v += a1 * _workingX[i-1];
+                    v += a1 * _workingX[i+1];
+                    v += a1 * _workingX[i-wh];
+                    v += a1 * _workingX[i+wh];
+                    x[i] = v;
                 }
 
-        } else if (diffusion == Diffusion::SOR) {
+            return 1;
+
+        } else if (solver == PossionSolver::SOR) {
 
                 // This is successive over relaxation. It's a iterative method similar
                 // to Gauss-Seidel. But we have an extra factor, the relaxation factor, 
@@ -830,50 +876,24 @@ namespace SceneEngine
                 // previous frame's result -- but maybe there is a better starting point?
                 // (maybe stepping forward 3/4 of a timestep would be a good starting point?)
 
-            for (unsigned i=0; i<N; ++i)
-                _prevDensity[i] = _density[i];
-                
             float gamma = 1.25f;    // relaxation factor
             const auto iterations = 15u;
 
-            if (useGeneralA) {
-
-                for (unsigned k = 0; k<iterations; ++k) {
-                    for (unsigned i = 0; i < N; ++i) {
-                        float A = _prevDensity[i];
-
-                            // these loops work oddly simply in this situation
-                            // (but of course we can simplify because our matrix is sparse)
-                        for (unsigned j = 0; j < i; ++j)
-                            A -= AMat(i, j) * _density[j];
-                        for (unsigned j = i+1; j < N; ++j)
-                            A -= AMat(i, j) * _density[j];
-
-                        _density[i] = (1.f-gamma) * _density[i] + gamma * A / AMat(i, i);
-                    }
-                }
-
-            } else {
-
-                for (unsigned k = 0; k<iterations; ++k) {
-                    for (unsigned y=1; y<wh-1; ++y) {
-                        for (unsigned x=1; x<wh-1; ++x) {
-                            const unsigned i = y*wh+x;
-                            float A = _prevDensity[i];
-
-                            A -= a1 * _density[i-1];
-                            A -= a1 * _density[i+1];
-                            A -= a1 * _density[i-wh];
-                            A -= a1 * _density[i+wh];
-
-                            _density[i] = (1.f-gamma) * _density[i] + gamma * A / a0;
-                        }
-                    }
-                }
-
+            auto* bCopy = &b;
+            if (&x == bCopy) {
+                for (unsigned i=0; i<N; ++i)
+                    _workingB[i] = b[i];
+                bCopy = &_workingB;
             }
 
+            for (unsigned k = 0; k<iterations; ++k)
+                RunSOR(x, A, *bCopy, gamma);
+
+            return iterations;
+
         }
+
+        return 0;
     }
 
     class VelocityField2D
@@ -1022,7 +1042,7 @@ namespace SceneEngine
             for (unsigned y=1; y<wh-1; ++y)
                 for (unsigned x=1; x<wh-1; ++x) {
 
-                        // this is the RK4 version
+                        // This is the RK4 version
                         // We'll use the average of the velocity field at t and
                         // the velocity field at t+dt as an estimate of the field
                         // at t+.5*dt
@@ -1036,14 +1056,12 @@ namespace SceneEngine
                         // So doing k1 on velField1, and k4 on velFieldT0
                         //      -- hoping this will interact with the velocity diffusion more sensibly
                     auto k1 = Load(velFieldT1, UInt2(x, y));
-                    auto k2 = 
-                            .5f * LoadBilinear<true>(velFieldT0, startTap - halfS * k1)
-                        +   .5f * LoadBilinear<true>(velFieldT1, startTap - halfS * k1)
-                        ;
-                    auto k3 = 
-                            .5f * LoadBilinear<true>(velFieldT0, startTap - halfS * k2)
-                        +   .5f * LoadBilinear<true>(velFieldT1, startTap - halfS * k2)
-                        ;
+                    auto k2 = .5f * LoadBilinear<true>(velFieldT0, startTap - halfS * k1)
+                            + .5f * LoadBilinear<true>(velFieldT1, startTap - halfS * k1)
+                            ;
+                    auto k3 = .5f * LoadBilinear<true>(velFieldT0, startTap - halfS * k2)
+                            + .5f * LoadBilinear<true>(velFieldT1, startTap - halfS * k2)
+                            ;
                     auto k4 = LoadBilinear<true>(velFieldT0, startTap - s * k3);
 
                     auto tap = startTap - (s / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
@@ -1055,6 +1073,63 @@ namespace SceneEngine
 
         }
 
+    }
+
+    template<typename Field>
+        void FluidSolver2D::Pimpl::EnforceIncompressibility(
+            Field velField,
+            const FluidSolver2D::Settings& settings)
+    {
+        //
+        // Following Jos Stam's stable fluids, we'll use Helmholtz-Hodge Decomposition
+        // to build a projection operator that will force the velocity field to have
+        // zero divergence.
+        //
+        // This is important for meeting the restrictions from the Naver Stokes equations.
+        // 
+        // For our input vector field, "w", we can decompose it into two parts:
+        //      w = u + del . q        (1)
+        // where "u" has zero-divergence (and is our output field). The scalar field,
+        // "q" is considered error, and just dropped.
+        //
+        // We find "q" by multiplying equation (1) by del on both sides, and we get:
+        //      del . w = del^2 . q    (2)     (given that del . u is zero)
+        //
+        // and "u" = w - del . q
+        //
+        // "b = del^2 . q" is the possion equation; and can be solved in the same way
+        // we solve for diffusion (though, the matrix "A" is slightly different). 
+        //
+        // Following Stam's sample code, we'll do this for both u and v at the same time,
+        // with the same solution for "q".
+        //
+
+        unsigned wh = _dimensions[0] + 2;
+        VectorX delW(wh * wh);
+        VectorX q(wh * wh);
+
+        for (unsigned y=1; y<wh-1; ++y)
+            for (unsigned x=1; x<wh-1; ++x)
+                delW[y*wh+x] = 
+                    -0.5f * 
+                    (
+                          (*velField._u)[y*wh+x+1] - (*velField._u)[y*wh+x-1]
+                        + (*velField._v)[(y+1)*wh+x] - (*velField._v)[(y-1)*wh+x]
+                    );
+
+        ZeroBorder(delW, wh);
+        ZeroBorder(q, wh);
+        auto iterations = SolvePoisson(
+            q, AMat2D { wh, 1.f + 4.f, 1.f }, 
+            delW, (PossionSolver)settings._enforceIncompressibilityMethod);
+
+        for (unsigned y=1; y<wh-1; ++y)
+            for (unsigned x=1; x<wh-1; ++x) {
+                (*velField._u)[y*wh+x] -= .5f * (delW[y*wh+x+1] - delW[y*wh+x-1]);
+                (*velField._v)[y*wh+x] -= .5f * (delW[(y+1)*wh+x] - delW[(y-1)*wh+x]);
+            }
+
+        LogInfo << "EnforceIncompressibility took: " << iterations << " iterations.";
     }
 
     void FluidSolver2D::Tick(const Settings& settings)
@@ -1071,18 +1146,26 @@ namespace SceneEngine
 
         _pimpl->DensityDiffusion(settings);
 
-        _pimpl->_prevVelU = _pimpl->_velU;
-        _pimpl->_prevVelV = _pimpl->_velV;
-        VectorX newU(N), newV(N);
-        _pimpl->VelocityAdvect(
-            VelocityField2D { &newU, &newV, D+2 },
-            VelocityField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
-            settings);
+        // _pimpl->_prevVelU = _pimpl->_velU;
+        // _pimpl->_prevVelV = _pimpl->_velV;
+        // VectorX newU(N), newV(N);
+        // _pimpl->VelocityAdvect(
+        //     VelocityField2D { &newU, &newV, D+2 },
+        //     VelocityField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
+        //     settings);
+        // 
+        // ZeroBorder(newU, D+2);
+        // ZeroBorder(newV, D+2);
+        // _pimpl->EnforceIncompressibility(
+        //     VelocityField2D { &newU, &newV, D+2 },
+        //     settings);
+        // 
+        // _pimpl->_velU = newU;
+        // _pimpl->_velV = newV;
 
-        ZeroBorder(newU, D+2);
-        ZeroBorder(newV, D+2);
-        _pimpl->_velU = newU;
-        _pimpl->_velV = newV;
+        _pimpl->EnforceIncompressibility(
+            VelocityField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
+            settings);
 
         for (unsigned c=0; c<N; ++c) {
             _pimpl->_prevVelU[c] = 0.f;
@@ -1239,8 +1322,8 @@ namespace SceneEngine
         _pimpl->_prevVelV.fill(0.f);
         _pimpl->_prevDensity.fill(0.f);
 
-        _pimpl->_x = VectorX(N);
-        _pimpl->_b = VectorX(N);
+        _pimpl->_workingX = VectorX(N);
+        _pimpl->_workingB = VectorX(N);
 
         const float dt = 1.0f / 60.f;
         float a = 5.f * dt;
@@ -1305,6 +1388,7 @@ namespace SceneEngine
         _diffusionMethod = 0;
         _advectionMethod = 0;
         _advectionSteps = 4;
+        _enforceIncompressibilityMethod = 0;
     }
 
 }
@@ -1427,6 +1511,7 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver2D::Settin
         props.Add(u("DiffusionMethod"), DefaultGet(Obj, _diffusionMethod),  DefaultSet(Obj, _diffusionMethod));
         props.Add(u("AdvectionMethod"), DefaultGet(Obj, _advectionMethod),  DefaultSet(Obj, _advectionMethod));
         props.Add(u("AdvectionSteps"), DefaultGet(Obj, _advectionSteps),  DefaultSet(Obj, _advectionSteps));
+        props.Add(u("EnforceIncompressibility"), DefaultGet(Obj, _enforceIncompressibilityMethod),  DefaultSet(Obj, _enforceIncompressibilityMethod));
         init = true;
     }
     return props;

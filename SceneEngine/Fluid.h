@@ -61,6 +61,7 @@ namespace SceneEngine
             int _diffusionMethod;
             int _advectionMethod;
             unsigned _advectionSteps;
+            int _enforceIncompressibilityMethod;
 
             Settings();
         };
