@@ -891,8 +891,8 @@ namespace SceneEngine
         float a = coord[0] - fx, b = coord[1] - fy;
         float weights[] = 
         {
-            (1.f - a) * (1.f - a),
-            a * (1.f - a),
+            (1.f - a) * (1.f - b),
+            a * (1.f - b),
             (1.f - a) * b,
             a * b
         };
@@ -947,8 +947,7 @@ namespace SceneEngine
             const FluidSolver2D::Settings& settings)
     {
         //
-        // This is the advection step.
-        // We will use the method of characteristics.
+        // This is the advection step. We will use the method of characteristics.
         //
         // We have a few different options for the stepping method:
         //  * basic euler forward integration (ie, just step forward in time)
@@ -957,11 +956,16 @@ namespace SceneEngine
         //  * Modified MacCormick methods
         //  * Back and Forth Error Compensation and Correction (BFECC)
         //
-        // Let's start with simple boundary conditions. 
+        // Let's start without any complex boundary conditions.
+        //
+        // We have to be careful about how the velocity sample is aligned with
+        // the grid cell. Incorrect alignment will produce a bias in the way that
+        // we interpolate the field.
         //
 
-        enum class Advection { ForwardEuler, RungeKutta };
-        auto advectionMethod = (Advection)settings._advectionMethod;
+        enum class Advection { ForwardEuler, ForwardEulerDiv, RungeKutta };
+        const auto advectionMethod = (Advection)settings._advectionMethod;
+        const auto adjvectionSteps = settings._advectionSteps;
 
         const unsigned wh = _dimensions[0] + 2;
         const float deltaTime = settings._deltaTime;
@@ -987,6 +991,32 @@ namespace SceneEngine
                         LoadBilinear<false>(prevValues, tap));
                 }
 
+        } else if (advectionMethod == Advection::ForwardEulerDiv) {
+
+            float stepScale = deltaTime * velFieldScale / float(adjvectionSteps);
+
+            for (unsigned y=1; y<wh-1; ++y)
+                for (unsigned x=1; x<wh-1; ++x) {
+
+                    Float2 tap = Float2(float(x), float(y));
+                    for (unsigned s=0; s<adjvectionSteps; ++s) {
+                        float a = (adjvectionSteps-1-s) / float(adjvectionSteps-1);
+                        auto vel = 
+                            LinearInterpolate(
+                                LoadBilinear<false>(velFieldT0, tap),
+                                LoadBilinear<false>(velFieldT1, tap),
+                                a);
+
+                        tap -= stepScale * vel;
+                        tap[0] = Clamp(tap[0], 0.f, float(wh-1) - 1e-5f);
+                        tap[1] = Clamp(tap[1], 0.f, float(wh-1) - 1e-5f);
+                    }
+
+                    Write(
+                        dstValues, UInt2(x, y),
+                        LoadBilinear<false>(prevValues, tap));
+                }
+
         } else if (advectionMethod == Advection::RungeKutta) {
 
             for (unsigned y=1; y<wh-1; ++y)
@@ -1001,18 +1031,22 @@ namespace SceneEngine
                     float halfS = .5f * s;
 
                     Float2 startTap = Float2(float(x), float(y));
-                    auto k1 = Load(velFieldT0, UInt2(x, y));
+
+                        // Note that we're tracing the velocity field backwards.
+                        // So doing k1 on velField1, and k4 on velFieldT0
+                        //      -- hoping this will interact with the velocity diffusion more sensibly
+                    auto k1 = Load(velFieldT1, UInt2(x, y));
                     auto k2 = 
-                            .5f * LoadBilinear<true>(velFieldT0, startTap - s * k1)
-                        +   .5f * LoadBilinear<true>(velFieldT1, startTap - s * k1)
+                            .5f * LoadBilinear<true>(velFieldT0, startTap - halfS * k1)
+                        +   .5f * LoadBilinear<true>(velFieldT1, startTap - halfS * k1)
                         ;
                     auto k3 = 
                             .5f * LoadBilinear<true>(velFieldT0, startTap - halfS * k2)
                         +   .5f * LoadBilinear<true>(velFieldT1, startTap - halfS * k2)
                         ;
-                    auto k4 = LoadBilinear<true>(velFieldT1, startTap - s * k3);
+                    auto k4 = LoadBilinear<true>(velFieldT0, startTap - s * k3);
 
-                    auto tap = startTap + (s / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
+                    auto tap = startTap - (s / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
                     Write(
                         dstValues, UInt2(x, y),
                         LoadBilinear<true>(prevValues, tap));
@@ -1045,6 +1079,8 @@ namespace SceneEngine
             VelocityField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
             settings);
 
+        ZeroBorder(newU, D+2);
+        ZeroBorder(newV, D+2);
         _pimpl->_velU = newU;
         _pimpl->_velV = newV;
 
@@ -1268,6 +1304,7 @@ namespace SceneEngine
         _diffusionRate = 0.f;
         _diffusionMethod = 0;
         _advectionMethod = 0;
+        _advectionSteps = 4;
     }
 
 }
@@ -1389,6 +1426,7 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver2D::Settin
         props.Add(u("DiffusionRate"), DefaultGet(Obj, _diffusionRate),  DefaultSet(Obj, _diffusionRate));
         props.Add(u("DiffusionMethod"), DefaultGet(Obj, _diffusionMethod),  DefaultSet(Obj, _diffusionMethod));
         props.Add(u("AdvectionMethod"), DefaultGet(Obj, _advectionMethod),  DefaultSet(Obj, _advectionMethod));
+        props.Add(u("AdvectionSteps"), DefaultGet(Obj, _advectionSteps),  DefaultSet(Obj, _advectionSteps));
         init = true;
     }
     return props;

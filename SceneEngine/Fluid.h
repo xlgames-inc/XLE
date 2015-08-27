@@ -60,6 +60,7 @@ namespace SceneEngine
             float _diffusionRate;
             int _diffusionMethod;
             int _advectionMethod;
+            unsigned _advectionSteps;
 
             Settings();
         };

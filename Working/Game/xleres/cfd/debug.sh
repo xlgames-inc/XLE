@@ -31,7 +31,7 @@ float4 ps_velocity(float4 position : SV_Position, float2 coords : TEXCOORD0) : S
     float2 velocity = float2(
         VelocityU.SampleLevel(ClampingSampler, coords, 0),
         VelocityV.SampleLevel(ClampingSampler, coords, 0));
-    float2 v = saturate((velocity + 1.0.xx) * 0.5.xx);
+    float2 v = saturate((velocity/10.0f + 1.0.xx) * 0.5.xx);
 
     return float4(v, 0.f, 1.f);
 }
