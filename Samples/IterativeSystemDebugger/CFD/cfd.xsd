@@ -33,7 +33,7 @@
     <xs:attribute name="DiffusionMethod" type="xs:int" default="0"/>
     <xs:attribute name="AdvectionMethod" type="xs:int" default="0"/>
     <xs:attribute name="AdvectionSteps" type="xs:unsignedInt" default="4"/>
-    <xs:attribute name="EnforceIncompressibility" type="xs:unsignedInt" default="0"/>
+    <xs:attribute name="EnforceIncompressibility" type="xs:int" default="3"/>
     
   </xs:complexType>
 </xs:schema>

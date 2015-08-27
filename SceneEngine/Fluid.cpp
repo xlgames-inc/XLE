@@ -1107,26 +1107,27 @@ namespace SceneEngine
         unsigned wh = _dimensions[0] + 2;
         VectorX delW(wh * wh);
         VectorX q(wh * wh);
+        q.fill(0.f);
 
+        float N = float(wh*wh);
         for (unsigned y=1; y<wh-1; ++y)
             for (unsigned x=1; x<wh-1; ++x)
                 delW[y*wh+x] = 
-                    -0.5f * 
+                    -0.5f/N * 
                     (
-                          (*velField._u)[y*wh+x+1] - (*velField._u)[y*wh+x-1]
+                          (*velField._u)[y*wh+x+1]   - (*velField._u)[y*wh+x-1]
                         + (*velField._v)[(y+1)*wh+x] - (*velField._v)[(y-1)*wh+x]
                     );
 
         ZeroBorder(delW, wh);
-        ZeroBorder(q, wh);
         auto iterations = SolvePoisson(
-            q, AMat2D { wh, 1.f + 4.f, 1.f }, 
+            q, AMat2D { wh, 4.f, -1.f },
             delW, (PossionSolver)settings._enforceIncompressibilityMethod);
 
         for (unsigned y=1; y<wh-1; ++y)
             for (unsigned x=1; x<wh-1; ++x) {
-                (*velField._u)[y*wh+x] -= .5f * (delW[y*wh+x+1] - delW[y*wh+x-1]);
-                (*velField._v)[y*wh+x] -= .5f * (delW[(y+1)*wh+x] - delW[(y-1)*wh+x]);
+                (*velField._u)[y*wh+x] -= .5f*N * (q[y*wh+x+1]   - q[y*wh+x-1]);
+                (*velField._v)[y*wh+x] -= .5f*N * (q[(y+1)*wh+x] - q[(y-1)*wh+x]);
             }
 
         LogInfo << "EnforceIncompressibility took: " << iterations << " iterations.";
@@ -1163,6 +1164,8 @@ namespace SceneEngine
         // _pimpl->_velU = newU;
         // _pimpl->_velV = newV;
 
+        ZeroBorder(_pimpl->_velU, D+2);
+        ZeroBorder(_pimpl->_velV, D+2);
         _pimpl->EnforceIncompressibility(
             VelocityField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
             settings);
@@ -1388,7 +1391,7 @@ namespace SceneEngine
         _diffusionMethod = 0;
         _advectionMethod = 0;
         _advectionSteps = 4;
-        _enforceIncompressibilityMethod = 0;
+        _enforceIncompressibilityMethod = 3;
     }
 
 }
