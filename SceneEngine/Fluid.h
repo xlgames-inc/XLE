@@ -59,6 +59,7 @@ namespace SceneEngine
             float _viscosity;
             float _diffusionRate;
             int _diffusionMethod;
+            int _advectionMethod;
 
             Settings();
         };

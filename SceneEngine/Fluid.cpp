@@ -640,13 +640,13 @@ namespace SceneEngine
     class FluidSolver2D::Pimpl
     {
     public:
-        std::unique_ptr<float[]> _velU;
-        std::unique_ptr<float[]> _velV;
-        std::unique_ptr<float[]> _density;
+        VectorX _velU;
+        VectorX _velV;
+        VectorX _density;
 
-        std::unique_ptr<float[]> _prevVelU;
-        std::unique_ptr<float[]> _prevVelV;
-        std::unique_ptr<float[]> _prevDensity;
+        VectorX _prevVelU;
+        VectorX _prevVelV;
+        VectorX _prevDensity;
         UInt2 _dimensions;
 
         VectorX _x, _b;
@@ -656,6 +656,11 @@ namespace SceneEngine
         std::function<float(unsigned, unsigned)> AMat;
 
         void DensityDiffusion(const FluidSolver2D::Settings& settings);
+
+        template<typename Field>
+            void VelocityAdvect(
+                Field dstValues, Field prevValues,
+                const FluidSolver2D::Settings& settings);
     };
 
     void FluidSolver2D::Pimpl::DensityDiffusion(const FluidSolver2D::Settings& settings)
@@ -871,6 +876,153 @@ namespace SceneEngine
         }
     }
 
+    class VelocityField2D
+    {
+    public:
+        VectorX* _u, *_v; 
+        unsigned _wh;
+    };
+
+    template<bool DoClamp>
+        static Float2 LoadBilinear(const VelocityField2D& field, Float2 coord)
+    {
+        float fx = XlFloor(coord[0]);
+        float fy = XlFloor(coord[1]);
+        float a = coord[0] - fx, b = coord[1] - fy;
+        float weights[] = 
+        {
+            (1.f - a) * (1.f - a),
+            a * (1.f - a),
+            (1.f - a) * b,
+            a * b
+        };
+        unsigned x0, x1, y0, y1;
+        
+        if (constant_expression<DoClamp>::result()) {
+            x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
+            x1 = std::min(x0+1u, field._wh-1u);
+            y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
+            y1 = std::min(y0+1u, field._wh-1u);
+        } else {
+            x0 = unsigned(fx); x1 = x0+1;
+            y0 = unsigned(fy); y1 = y0+1;
+        }
+        assert(x1 < field._wh && y1 < field._wh);
+        
+        float u
+            = weights[0] * (*field._u)[y0*field._wh+x0]
+            + weights[1] * (*field._u)[y0*field._wh+x1]
+            + weights[2] * (*field._u)[y1*field._wh+x0]
+            + weights[3] * (*field._u)[y1*field._wh+x1]
+            ;
+        float v
+            = weights[0] * (*field._v)[y0*field._wh+x0]
+            + weights[1] * (*field._v)[y0*field._wh+x1]
+            + weights[2] * (*field._v)[y1*field._wh+x0]
+            + weights[3] * (*field._v)[y1*field._wh+x1]
+            ;
+        return Float2(u, v);
+    }
+
+    static Float2 Load(const VelocityField2D& field, UInt2 coord)
+    {
+        assert(coord[0] < field._wh && coord[1] < field._wh);
+        return Float2(
+            (*field._u)[coord[1] * field._wh + coord[0]],
+            (*field._v)[coord[1] * field._wh + coord[0]]);
+    }
+
+    static void Write(VelocityField2D& field, UInt2 coord, Float2 value)
+    {
+        assert(coord[0] < field._wh && coord[1] < field._wh);
+        (*field._u)[coord[1] * field._wh + coord[0]] = value[0];
+        (*field._v)[coord[1] * field._wh + coord[0]] = value[1];
+        assert(isfinite(value[0]) && !isnan(value[0]));
+        assert(isfinite(value[1]) && !isnan(value[1]));
+    }
+
+    template<typename Field>
+        void FluidSolver2D::Pimpl::VelocityAdvect(
+            Field dstValues, Field prevValues,
+            const FluidSolver2D::Settings& settings)
+    {
+        //
+        // This is the advection step.
+        // We will use the method of characteristics.
+        //
+        // We have a few different options for the stepping method:
+        //  * basic euler forward integration (ie, just step forward in time)
+        //  * forward integration method divided into smaller time steps
+        //  * Runge-Kutta integration
+        //  * Modified MacCormick methods
+        //  * Back and Forth Error Compensation and Correction (BFECC)
+        //
+        // Let's start with simple boundary conditions. 
+        //
+
+        enum class Advection { ForwardEuler, RungeKutta };
+        auto advectionMethod = (Advection)settings._advectionMethod;
+
+        const unsigned wh = _dimensions[0] + 2;
+        const float deltaTime = settings._deltaTime;
+        const float velFieldScale = 1.f; // float(_dimensions[0]*_dimensions[1]);   // (grid size without borders)
+
+        VelocityField2D velFieldT0 { &_prevVelU, &_prevVelV, _dimensions[0]+2 };
+        VelocityField2D velFieldT1 { &_velU, &_velV, _dimensions[0]+2 };
+
+        if (advectionMethod == Advection::ForwardEuler) {
+
+                //  For each cell in the grid, trace backwards
+                //  through the velocity field to find an approximation
+                //  of where the point was in the previous frame.
+
+            for (unsigned y=1; y<wh-1; ++y)
+                for (unsigned x=1; x<wh-1; ++x) {
+                    auto startVel = Load(velFieldT0, UInt2(x, y));
+                    Float2 tap = Float2(float(x), float(y)) - (deltaTime * velFieldScale) * startVel;
+                    tap[0] = Clamp(tap[0], 0.f, float(wh-1) - 1e-5f);
+                    tap[1] = Clamp(tap[1], 0.f, float(wh-1) - 1e-5f);
+                    Write(
+                        dstValues, UInt2(x, y),
+                        LoadBilinear<false>(prevValues, tap));
+                }
+
+        } else if (advectionMethod == Advection::RungeKutta) {
+
+            for (unsigned y=1; y<wh-1; ++y)
+                for (unsigned x=1; x<wh-1; ++x) {
+
+                        // this is the RK4 version
+                        // We'll use the average of the velocity field at t and
+                        // the velocity field at t+dt as an estimate of the field
+                        // at t+.5*dt
+
+                    float s = deltaTime * velFieldScale;
+                    float halfS = .5f * s;
+
+                    Float2 startTap = Float2(float(x), float(y));
+                    auto k1 = Load(velFieldT0, UInt2(x, y));
+                    auto k2 = 
+                            .5f * LoadBilinear<true>(velFieldT0, startTap - s * k1)
+                        +   .5f * LoadBilinear<true>(velFieldT1, startTap - s * k1)
+                        ;
+                    auto k3 = 
+                            .5f * LoadBilinear<true>(velFieldT0, startTap - halfS * k2)
+                        +   .5f * LoadBilinear<true>(velFieldT1, startTap - halfS * k2)
+                        ;
+                    auto k4 = LoadBilinear<true>(velFieldT1, startTap - s * k3);
+
+                    auto tap = startTap + (s / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
+                    Write(
+                        dstValues, UInt2(x, y),
+                        LoadBilinear<true>(prevValues, tap));
+
+                }
+
+        }
+
+    }
+
     void FluidSolver2D::Tick(const Settings& settings)
     {
         auto D = _pimpl->_dimensions[0];
@@ -885,6 +1037,17 @@ namespace SceneEngine
 
         _pimpl->DensityDiffusion(settings);
 
+        _pimpl->_prevVelU = _pimpl->_velU;
+        _pimpl->_prevVelV = _pimpl->_velV;
+        VectorX newU(N), newV(N);
+        _pimpl->VelocityAdvect(
+            VelocityField2D { &newU, &newV, D+2 },
+            VelocityField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
+            settings);
+
+        _pimpl->_velU = newU;
+        _pimpl->_velV = newV;
+
         for (unsigned c=0; c<N; ++c) {
             _pimpl->_prevVelU[c] = 0.f;
             _pimpl->_prevVelV[c] = 0.f;
@@ -895,7 +1058,7 @@ namespace SceneEngine
     void FluidSolver2D::AddDensity(UInt2 coords, float amount)
     {
         if (coords[0] < _pimpl->_dimensions[0] && coords[1] < _pimpl->_dimensions[1]) {
-            unsigned i = coords[0] + coords[1] * (_pimpl->_dimensions[0] + 2);
+            unsigned i = (coords[0]+1) + (coords[1]+1) * (_pimpl->_dimensions[0] + 2);
             _pimpl->_prevDensity[i] += amount;
         }
     }
@@ -903,7 +1066,7 @@ namespace SceneEngine
     void FluidSolver2D::AddVelocity(UInt2 coords, Float2 vel)
     {
         if (coords[0] < _pimpl->_dimensions[0] && coords[1] < _pimpl->_dimensions[1]) {
-            unsigned i = coords[0] + coords[1] * (_pimpl->_dimensions[0] + 2);
+            unsigned i = (coords[0]+1) + (coords[1]+1) * (_pimpl->_dimensions[0] + 2);
             _pimpl->_prevVelU[i] += vel[0];
             _pimpl->_prevVelV[i] += vel[1];
         }
@@ -916,8 +1079,8 @@ namespace SceneEngine
     {
         RenderFluidDebugging(
             metalContext, parserContext, debuggingMode,
-            _pimpl->_dimensions, _pimpl->_density.get(),
-            _pimpl->_velU.get(), _pimpl->_velV.get());
+            _pimpl->_dimensions, _pimpl->_density.data(),
+            _pimpl->_velU.data(), _pimpl->_velV.data());
     }
 
     UInt2 FluidSolver2D::GetDimensions() const { return _pimpl->_dimensions; }
@@ -1025,21 +1188,20 @@ namespace SceneEngine
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_dimensions = dimensions;
         auto N = (dimensions[0]+2) * (dimensions[1]+2);
-        _pimpl->_velU = std::make_unique<float[]>(N);
-        _pimpl->_velV = std::make_unique<float[]>(N);
-        _pimpl->_density = std::make_unique<float[]>(N);
-        _pimpl->_prevVelU = std::make_unique<float[]>(N);
-        _pimpl->_prevVelV = std::make_unique<float[]>(N);
-        _pimpl->_prevDensity = std::make_unique<float[]>(N);
 
-        for (unsigned c=0; c<N; ++c) {
-            _pimpl->_velU[c] = 0.f;
-            _pimpl->_velV[c] = 0.f;
-            _pimpl->_density[c] = 0.f;
-            _pimpl->_prevVelU[c] = 0.f;
-            _pimpl->_prevVelV[c] = 0.f;
-            _pimpl->_prevDensity[c] = 0.f;
-        }
+        _pimpl->_velU = VectorX(N);
+        _pimpl->_velV = VectorX(N);
+        _pimpl->_density = VectorX(N);
+        _pimpl->_prevVelU = VectorX(N);
+        _pimpl->_prevVelV = VectorX(N);
+        _pimpl->_prevDensity = VectorX(N);
+
+        _pimpl->_velU.fill(0.f);
+        _pimpl->_velV.fill(0.f);
+        _pimpl->_density.fill(0.f);
+        _pimpl->_prevVelU.fill(0.f);
+        _pimpl->_prevVelV.fill(0.f);
+        _pimpl->_prevDensity.fill(0.f);
 
         _pimpl->_x = VectorX(N);
         _pimpl->_b = VectorX(N);
@@ -1063,7 +1225,7 @@ namespace SceneEngine
         _pimpl->AMat = std::function<float(unsigned, unsigned)>(AMat);
         auto bandedPrecon = CalculateIncompleteCholesky( AMat2D { wh, 1.f + 4.f * a, -a }, N );
 
-        _pimpl->_bands[0] = -int(wh);
+        _pimpl->_bands[0] =  -int(wh);
         _pimpl->_bands[1] =  -1;
         _pimpl->_bands[2] =   1;
         _pimpl->_bands[3] =  wh;
@@ -1105,6 +1267,7 @@ namespace SceneEngine
         _viscosity = 0.f;
         _diffusionRate = 0.f;
         _diffusionMethod = 0;
+        _advectionMethod = 0;
     }
 
 }
@@ -1225,6 +1388,7 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver2D::Settin
         props.Add(u("Viscosity"), DefaultGet(Obj, _viscosity),  DefaultSet(Obj, _viscosity));
         props.Add(u("DiffusionRate"), DefaultGet(Obj, _diffusionRate),  DefaultSet(Obj, _diffusionRate));
         props.Add(u("DiffusionMethod"), DefaultGet(Obj, _diffusionMethod),  DefaultSet(Obj, _diffusionMethod));
+        props.Add(u("AdvectionMethod"), DefaultGet(Obj, _advectionMethod),  DefaultSet(Obj, _advectionMethod));
         init = true;
     }
     return props;
