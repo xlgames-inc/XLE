@@ -65,7 +65,7 @@ namespace SceneEngine
     void ReferenceFluidSolver2D::AddDensity(UInt2 coords, float amount)
     {
         if (coords[0] < _pimpl->_dimensions[0] && coords[1] < _pimpl->_dimensions[1]) {
-            unsigned i = coords[0] + coords[1] * (_pimpl->_dimensions[0] + 2);
+            unsigned i = (coords[0]+1) + (coords[1]+1) * (_pimpl->_dimensions[0] + 2);
             _pimpl->_prevDensity[i] += amount;
         }
     }
@@ -73,7 +73,7 @@ namespace SceneEngine
     void ReferenceFluidSolver2D::AddVelocity(UInt2 coords, Float2 vel)
     {
         if (coords[0] < _pimpl->_dimensions[0] && coords[1] < _pimpl->_dimensions[1]) {
-            unsigned i = coords[0] + coords[1] * (_pimpl->_dimensions[0] + 2);
+            unsigned i = (coords[0]+1) + (coords[1]+1) * (_pimpl->_dimensions[0] + 2);
             _pimpl->_prevVelU[i] += vel[0];
             _pimpl->_prevVelV[i] += vel[1];
         }
@@ -190,6 +190,64 @@ namespace SceneEngine
         v(wh-1) = 0.f;
         v((wh-1)*wh) = 0.f;
         v((wh-1)*wh+wh-1) = 0.f;
+    }
+
+    static unsigned XY(unsigned x, unsigned y, unsigned wh) { return y*wh+x; }
+    template <typename Vec>
+        static void ReflectUBorder(Vec& v, unsigned wh)
+    {
+        #define XY(x,y) XY(x,y,wh)
+        for (unsigned i = 1; i < wh - 1; ++i) {
+            v(XY(0, i))     = -v(XY(1,i));
+            v(XY(wh-1, i))  = -v(XY(wh-2,i));
+            v(XY(i, 0))     =  v(XY(i, 1));
+            v(XY(i, wh-1))  =  v(XY(i, wh-2));
+        }
+
+            // 4 corners
+        v(XY(0,0))          = 0.5f*(v(XY(1,0))          + v(XY(0,1)));
+        v(XY(0,wh-1))       = 0.5f*(v(XY(1,wh-1))       + v(XY(0,wh-2)));
+        v(XY(wh-1,0))       = 0.5f*(v(XY(wh-2,0))       + v(XY(wh-1,1)));
+        v(XY(wh-1,wh-1))    = 0.5f*(v(XY(wh-2,wh-1))    + v(XY(wh-1,wh-2)));
+        #undef XY
+    }
+
+    template <typename Vec>
+        static void ReflectVBorder(Vec& v, unsigned wh)
+    {
+        #define XY(x,y) XY(x,y,wh)
+        for (unsigned i = 1; i < wh - 1; ++i) {
+            v(XY(0, i))     =  v(XY(1,i));
+            v(XY(wh-1, i))  =  v(XY(wh-2,i));
+            v(XY(i, 0))     = -v(XY(i, 1));
+            v(XY(i, wh-1))  = -v(XY(i, wh-2));
+        }
+
+            // 4 corners
+        v(XY(0,0))          = 0.5f*(v(XY(1,0))          + v(XY(0,1)));
+        v(XY(0,wh-1))       = 0.5f*(v(XY(1,wh-1))       + v(XY(0,wh-2)));
+        v(XY(wh-1,0))       = 0.5f*(v(XY(wh-2,0))       + v(XY(wh-1,1)));
+        v(XY(wh-1,wh-1))    = 0.5f*(v(XY(wh-2,wh-1))    + v(XY(wh-1,wh-2)));
+        #undef XY
+    }
+
+    template <typename Vec>
+        static void SmearBorder(Vec& v, unsigned wh)
+    {
+        #define XY(x,y) XY(x,y,wh)
+        for (unsigned i = 1; i < wh - 1; ++i) {
+            v(XY(0, i))     =  v(XY(1,i));
+            v(XY(wh-1, i))  =  v(XY(wh-2,i));
+            v(XY(i, 0))     =  v(XY(i, 1));
+            v(XY(i, wh-1))  =  v(XY(i, wh-2));
+        }
+
+            // 4 corners
+        v(XY(0,0))          = 0.5f*(v(XY(1,0))          + v(XY(0,1)));
+        v(XY(0,wh-1))       = 0.5f*(v(XY(1,wh-1))       + v(XY(0,wh-2)));
+        v(XY(wh-1,0))       = 0.5f*(v(XY(wh-2,0))       + v(XY(wh-1,1)));
+        v(XY(wh-1,wh-1))    = 0.5f*(v(XY(wh-2,wh-1))    + v(XY(wh-1,wh-2)));
+        #undef XY
     }
 
     template <typename Vec>
@@ -1104,11 +1162,9 @@ namespace SceneEngine
         // with the same solution for "q".
         //
 
-        unsigned wh = _dimensions[0] + 2;
-        VectorX delW(wh * wh);
-        VectorX q(wh * wh);
+        const auto wh = velField._wh;
+        VectorX delW(wh * wh), q(wh * wh);
         q.fill(0.f);
-
         float N = float(wh*wh);
         for (unsigned y=1; y<wh-1; ++y)
             for (unsigned x=1; x<wh-1; ++x)
@@ -1119,10 +1175,11 @@ namespace SceneEngine
                         + (*velField._v)[(y+1)*wh+x] - (*velField._v)[(y-1)*wh+x]
                     );
 
-        ZeroBorder(delW, wh);
+        SmearBorder(delW, wh);
         auto iterations = SolvePoisson(
             q, AMat2D { wh, 4.f, -1.f },
             delW, (PossionSolver)settings._enforceIncompressibilityMethod);
+        SmearBorder(q, wh);
 
         for (unsigned y=1; y<wh-1; ++y)
             for (unsigned x=1; x<wh-1; ++x) {
@@ -1138,37 +1195,32 @@ namespace SceneEngine
         auto D = _pimpl->_dimensions[0];
         assert(_pimpl->_dimensions[1] == _pimpl->_dimensions[0]);
 
+        float dt = settings._deltaTime;
         auto N = (D+2) * (D+2);
         for (unsigned c=0; c<N; ++c) {
-            _pimpl->_density[c] += _pimpl->_prevDensity[c];
-            _pimpl->_velU[c] += _pimpl->_prevVelU[c];
-            _pimpl->_velV[c] += _pimpl->_prevVelV[c];
+            _pimpl->_density[c] += dt * _pimpl->_prevDensity[c];
+            _pimpl->_velU[c] += dt * _pimpl->_prevVelU[c];
+            _pimpl->_velV[c] += dt * _pimpl->_prevVelV[c];
         }
 
         _pimpl->DensityDiffusion(settings);
 
-        // _pimpl->_prevVelU = _pimpl->_velU;
-        // _pimpl->_prevVelV = _pimpl->_velV;
-        // VectorX newU(N), newV(N);
-        // _pimpl->VelocityAdvect(
-        //     VelocityField2D { &newU, &newV, D+2 },
-        //     VelocityField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
-        //     settings);
-        // 
-        // ZeroBorder(newU, D+2);
-        // ZeroBorder(newV, D+2);
-        // _pimpl->EnforceIncompressibility(
-        //     VelocityField2D { &newU, &newV, D+2 },
-        //     settings);
-        // 
-        // _pimpl->_velU = newU;
-        // _pimpl->_velV = newV;
-
-        ZeroBorder(_pimpl->_velU, D+2);
-        ZeroBorder(_pimpl->_velV, D+2);
-        _pimpl->EnforceIncompressibility(
-            VelocityField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
+        _pimpl->_prevVelU = _pimpl->_velU;
+        _pimpl->_prevVelV = _pimpl->_velV;
+        VectorX newU(N), newV(N);
+        _pimpl->VelocityAdvect(
+            VelocityField2D { &newU, &newV, D+2 },
+            VelocityField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
             settings);
+        
+        ReflectUBorder(newU, D+2);
+        ReflectVBorder(newV, D+2);
+        _pimpl->EnforceIncompressibility(
+            VelocityField2D { &newU, &newV, D+2 },
+            settings);
+        
+        _pimpl->_velU = newU;
+        _pimpl->_velV = newV;
 
         for (unsigned c=0; c<N; ++c) {
             _pimpl->_prevVelU[c] = 0.f;
