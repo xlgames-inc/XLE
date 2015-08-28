@@ -127,7 +127,7 @@ namespace SceneEngine
         context->Clear(mainTargets._msaaDepthBuffer, 1.f, 0);
     }
 
-    static void LightingParser_SetProjectionDesc(  
+    void LightingParser_SetProjectionDesc(  
         LightingParserContext& parserContext, 
         const Techniques::CameraDesc& sceneCamera,
         UInt2 viewportDims,

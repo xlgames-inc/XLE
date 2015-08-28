@@ -123,6 +123,18 @@ namespace SceneEngine
         float l, float t, float r, float b,
         float nearClip, float farClip);
 
+    void LightingParser_SetProjectionDesc(  
+        LightingParserContext& parserContext, 
+        const RenderCore::Techniques::CameraDesc& sceneCamera,
+        UInt2 viewportDims,
+        const Float4x4* specialProjectionMatrix);
+
+    void LightingParser_SetProjectionDesc(  
+        LightingParserContext& parserContext, 
+        const RenderCore::Techniques::CameraDesc& sceneCamera,
+        UInt2 viewportDims,
+        const Float4x4* specialProjectionMatrix = nullptr);
+
         ///////////////////////////////////////////////////////////////////////////
 
     class MainTargetsBox;

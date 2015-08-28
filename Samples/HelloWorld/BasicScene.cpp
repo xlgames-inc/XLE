@@ -201,7 +201,7 @@ namespace Sample
         }
 
         return PlatformRig::CalculateDefaultShadowCascades(
-            GetLightDesc(index), mainSceneProjectionDesc,
+            GetLightDesc(index), index, mainSceneProjectionDesc,
             PlatformRig::DefaultShadowFrustumSettings());
     }
 
