@@ -48,29 +48,66 @@ namespace GUILayer
     };
 
 
-    class CFDRefIterativeSystemPimpl;
+    public ref class CFDPreviewSettings
+    {
+    public:
+        enum class Preview { Density, Velocity };
+            
+        [Browsable(true)]
+        [Category("Preview")] [Description("Rendering mode for the preview window")]
+        property Preview ActivePreview;
 
-    public ref class CFDRefIterativeSystem
+        CFDPreviewSettings();
+    };
+
+    public interface class IterativeSystem : public IDisposable
+    {
+    public:
+        property Object^ PreviewSettings { Object^ get(); }
+        property IOverlaySystem^ Overlay { IOverlaySystem^ get(); }
+        property IGetAndSetProperties^ SimulationSettings { IGetAndSetProperties^ get(); }
+
+        virtual void Tick();
+        virtual void OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton);
+    };
+
+    class CFDIterativeSystemPimpl;
+    public ref class CFDIterativeSystem : public IterativeSystem
     {
     public:
         IOverlaySystem^ _overlay;
         IGetAndSetProperties^ _getAndSetProperties;
+        CFDPreviewSettings^ _settings;
 
-        ref class Settings
-        {
-        public:
-            enum class Preview { Density, Velocity };
-            
-            [Browsable(true)]
-            [Category("Preview")] [Description("Rendering mode for the preview window")]
-            property Preview ActivePreview;
+        property Object^ PreviewSettings { virtual Object^ get() { return _settings; } }
+        property IOverlaySystem^ Overlay { virtual IOverlaySystem^ get() { return _overlay; } }
+        property IGetAndSetProperties^ SimulationSettings { virtual IGetAndSetProperties^ get() { return _getAndSetProperties; } }
 
-            Settings();
-        };
-        Settings^ _settings;
+        virtual void Tick();
+        virtual void OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton);
 
-        void Tick();
-        void OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton);
+        CFDIterativeSystem(unsigned size);
+        !CFDIterativeSystem();
+        ~CFDIterativeSystem();
+
+    private:
+        clix::auto_ptr<CFDIterativeSystemPimpl> _pimpl;
+    };
+    
+    class CFDRefIterativeSystemPimpl;
+    public ref class CFDRefIterativeSystem : public IterativeSystem
+    {
+    public:
+        IOverlaySystem^ _overlay;
+        IGetAndSetProperties^ _getAndSetProperties;
+        CFDPreviewSettings^ _settings;
+
+        property Object^ PreviewSettings { virtual Object^ get() { return _settings; } }
+        property IOverlaySystem^ Overlay { virtual IOverlaySystem^ get() { return _overlay; } }
+        property IGetAndSetProperties^ SimulationSettings { virtual IGetAndSetProperties^ get() { return _getAndSetProperties; } }
+
+        virtual void Tick();
+        virtual void OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton);
 
         CFDRefIterativeSystem(unsigned size);
         !CFDRefIterativeSystem();
@@ -79,5 +116,5 @@ namespace GUILayer
     private:
         clix::auto_ptr<CFDRefIterativeSystemPimpl> _pimpl;
     };
-
+    
 }

@@ -14,16 +14,16 @@ namespace IterativeSystemDebugger
 {
     public partial class RefCFD : BaseWindow
     {
-        public RefCFD(GUILayer.CFDRefIterativeSystem system)
+        public RefCFD(GUILayer.IterativeSystem system)
         {
             _hasOldMouse = false;
             _system = system;
-            _previewWindow.Underlying.AddSystem(_system._overlay);
-            _previewSettings.SelectedObject = _system._settings;
+            _previewWindow.Underlying.AddSystem(_system.Overlay);
+            _previewSettings.SelectedObject = _system.PreviewSettings;
 
             _schemaLoader = new CFDSettingsSchemaLoader();
             _systemSettings.Bind(
-                _schemaLoader.CreatePropertyContext(_system._getAndSetProperties));
+                _schemaLoader.CreatePropertyContext(_system.SimulationSettings));
 
             // _previewWindow.MouseDown += _previewWindow_MouseDown;
             _previewWindow.MouseMove += _previewWindow_MouseMove;
@@ -68,7 +68,7 @@ namespace IterativeSystemDebugger
             _system.Tick();
         }
 
-        private GUILayer.CFDRefIterativeSystem _system;
+        private GUILayer.IterativeSystem _system;
         private CFDSettingsSchemaLoader _schemaLoader;
         private Point _oldMouse;
         private bool _hasOldMouse;

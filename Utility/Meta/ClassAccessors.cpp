@@ -9,7 +9,7 @@
 
 namespace Utility
 {
-    bool ClassAccessors::TryCastFrom(
+    bool ClassAccessors::TryOpaqueSet(
         void* dst, uint64 id,
         const void* src, ImpliedTyping::TypeDesc srcType,
         bool stringForm) const
@@ -50,7 +50,7 @@ namespace Utility
         return false;
     }
 
-    bool ClassAccessors::TryCastFrom(
+    bool ClassAccessors::TryOpaqueSet(
         void* dst,
         uint64 id, size_t arrayIndex,
         const void* src,
@@ -61,6 +61,22 @@ namespace Utility
         if (i!=_properties.end() && i->first == id)
             return i->second._castFromArray(dst, arrayIndex, src, srcType, stringForm);
         return false;
+    }
+
+    bool ClassAccessors::TryOpaqueGet(
+        void* dst, size_t dstSize, ImpliedTyping::TypeDesc dstType,
+        const void* src, uint64 id,
+        bool stringForm) const
+    {
+        auto i = LowerBound(_properties, id);
+        if (i!=_properties.end() && i->first == id) {
+            if (i->second._castTo)
+                return i->second._castTo(src, dst, dstSize, dstType, stringForm);
+
+            // note -- array form not supported
+        }
+
+        return true;
     }
 
     std::pair<void*, const ClassAccessors*> ClassAccessors::TryCreateChild(

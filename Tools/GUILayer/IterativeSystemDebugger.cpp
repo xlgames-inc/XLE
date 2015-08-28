@@ -27,7 +27,7 @@ namespace GUILayer
 {
     using ErosionSettings = SceneEngine::ErosionSimulation::Settings;
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     ref class ErosionOverlay : public IOverlaySystem
     {
@@ -96,46 +96,48 @@ namespace GUILayer
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template<typename Type>
-        public ref class ClassAccessors_GetAndSet : public IGetAndSetProperties
+    public ref class ClassAccessors_GetAndSet : public IGetAndSetProperties
     {
     public:
         virtual bool TryGetMember(System::String^ name, bool caseInsensitive, System::Type^ type, Object^% result);
         virtual bool TrySetMember(System::String^ name, bool caseInsensitive, Object^ value);
 
-        explicit ClassAccessors_GetAndSet(std::shared_ptr<Type> type);
+        template<typename Type>
+            explicit ClassAccessors_GetAndSet(std::shared_ptr<Type> type);
         !ClassAccessors_GetAndSet();
         ~ClassAccessors_GetAndSet();
 
     protected:
-        clix::shared_ptr<Type> _type;
+        const ClassAccessors* _accessors;
+        clix::shared_ptr<void> _type;
     };
 
-    template<typename Type>
-        bool ClassAccessors_GetAndSet<Type>::TryGetMember(System::String^ name, bool caseInsensitive, System::Type^ type, Object^% result)
+    bool ClassAccessors_GetAndSet::TryGetMember(System::String^ name, bool caseInsensitive, System::Type^ type, Object^% result)
     {
-        auto& accessors = GetAccessors<Type>();
         auto nativeString = clix::marshalString<clix::E_UTF8>(name);
         if (type == System::Single::typeid) {
             float f = 0.f;
-            bool success = accessors.TryGet(
-                f, *_type.get(), Hash64(nativeString.c_str()));
+            bool success = _accessors->TryOpaqueGet(
+                &f, sizeof(f), ImpliedTyping::TypeOf<float>(),
+                _type.get(), Hash64(nativeString.c_str()));
             if (success)
                 result = gcnew System::Single(f);
             return success;
         } 
         else if (type == System::UInt32::typeid) {
             uint32 f = 0;
-            bool success = accessors.TryGet(
-                f, *_type.get(), Hash64(nativeString.c_str()));
+            bool success = _accessors->TryOpaqueGet(
+                &f, sizeof(f), ImpliedTyping::TypeOf<uint32>(),
+                _type.get(), Hash64(nativeString.c_str()));
             if (success)
                 result = gcnew System::UInt32(f);
             return success;
         }
         else if (type == System::Int32::typeid) {
             int32 f = 0;
-            bool success = accessors.TryGet(
-                f, *_type.get(), Hash64(nativeString.c_str()));
+            bool success = _accessors->TryOpaqueGet(
+                &f, sizeof(f), ImpliedTyping::TypeOf<uint32>(),
+                _type.get(), Hash64(nativeString.c_str()));
             if (success)
                 result = gcnew System::Int32(f);
             return success;
@@ -143,36 +145,39 @@ namespace GUILayer
         return false;
     }
 
-    template<typename Type>
-        bool ClassAccessors_GetAndSet<Type>::TrySetMember(System::String^ name, bool caseInsensitive, Object^ value)
+    bool ClassAccessors_GetAndSet::TrySetMember(System::String^ name, bool caseInsensitive, Object^ value)
     {
-        auto& accessors = GetAccessors<Type>();
         auto nativeString = clix::marshalString<clix::E_UTF8>(name);
         if (value->GetType() == System::Single::typeid) {
             auto v = *dynamic_cast<System::Single^>(value);
-            return accessors.TrySet(v, *_type.get(), Hash64(nativeString.c_str()));
+            return _accessors->TryOpaqueSet(
+                _type.get(), Hash64(nativeString.c_str()),
+                &v, ImpliedTyping::TypeOf<decltype(v)>());
         } else if (value->GetType() == System::UInt32::typeid) {
             auto v = *dynamic_cast<System::UInt32^>(value);
-            return accessors.TrySet(v, *_type.get(), Hash64(nativeString.c_str()));
+            return _accessors->TryOpaqueSet(
+                _type.get(), Hash64(nativeString.c_str()),
+                &v, ImpliedTyping::TypeOf<decltype(v)>());
         } else if (value->GetType() == System::Int32::typeid) {
             auto v = *dynamic_cast<System::Int32^>(value);
-            return accessors.TrySet(v, *_type.get(), Hash64(nativeString.c_str()));
+            return _accessors->TryOpaqueSet(
+                _type.get(), Hash64(nativeString.c_str()),
+                &v, ImpliedTyping::TypeOf<decltype(v)>());
         }
         return false;
     }
 
     template<typename Type>
-        ClassAccessors_GetAndSet<Type>::ClassAccessors_GetAndSet(std::shared_ptr<Type> type)
+        ClassAccessors_GetAndSet::ClassAccessors_GetAndSet(std::shared_ptr<Type> type)
         : _type(type)
-    {}
+    {
+        _accessors = &GetAccessors<Type>();
+    }
 
-    template<typename Type>
-        ClassAccessors_GetAndSet<Type>::!ClassAccessors_GetAndSet() { _type.reset(); }
+    ClassAccessors_GetAndSet::!ClassAccessors_GetAndSet() { _type.reset(); }
+    ClassAccessors_GetAndSet::~ClassAccessors_GetAndSet() { _type.reset(); }
 
-    template<typename Type>
-        ClassAccessors_GetAndSet<Type>::~ClassAccessors_GetAndSet() { _type.reset(); }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class ErosionIterativeSystemPimpl
     {
@@ -202,7 +207,7 @@ namespace GUILayer
         _pimpl->_settings = std::make_shared<ErosionSettings>();
         _settings = gcnew ErosionIterativeSystem::Settings();
 
-        _getAndSetProperties = gcnew ClassAccessors_GetAndSet<ErosionSettings>(_pimpl->_settings);
+        _getAndSetProperties = gcnew ClassAccessors_GetAndSet(_pimpl->_settings);
 
         {
             TerrainUberSurfaceGeneric uberSurface(
@@ -253,15 +258,13 @@ namespace GUILayer
         ActivePreview = Preview::HardMaterials;
     }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    using CFDSolver = SceneEngine::FluidSolver2D;
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     ref class CFDOverlay : public IOverlaySystem
     {
@@ -274,19 +277,25 @@ namespace GUILayer
             const RenderCore::Techniques::ProjectionDesc& projectionDesc) override;
         virtual void SetActivationState(bool newState) override {}
 
+        using RenderFn = std::function<void(
+            RenderCore::Metal::DeviceContext&,
+            SceneEngine::LightingParserContext&,
+            void*)>;
         CFDOverlay(
-            std::shared_ptr<CFDSolver> sim,
-            CFDRefIterativeSystem::Settings^ previewSettings);
+            std::shared_ptr<void> sim, 
+            RenderFn&& renderFn,
+            Float2 dims);
         !CFDOverlay();
         ~CFDOverlay();
     private:
-        clix::shared_ptr<CFDSolver> _sim;
-        CFDRefIterativeSystem::Settings^ _previewSettings;
+        clix::shared_ptr<void> _sim;
+        clix::auto_ptr<RenderFn> _renderFn;
+        array<float>^ _worldDims;
     };
 
-    static SceneEngine::FluidDebuggingMode AsDebugMode(CFDRefIterativeSystem::Settings::Preview input)
+    static SceneEngine::FluidDebuggingMode AsDebugMode(CFDPreviewSettings::Preview input)
     {
-        using P = CFDRefIterativeSystem::Settings::Preview;
+        using P = CFDPreviewSettings::Preview;
         switch (input) {
         default:
         case P::Density: return SceneEngine::FluidDebuggingMode::Density;
@@ -299,7 +308,7 @@ namespace GUILayer
         SceneEngine::LightingParserContext& parserContext)
     {
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*device);
-        Float2 worldDims = _sim->GetDimensions();
+        Float2 worldDims = Float2(_worldDims[0], _worldDims[1]);
 
         auto camToWorld = MakeCameraToWorld(
             Float3(0.f, 0.f, -1.f),
@@ -310,7 +319,10 @@ namespace GUILayer
             0.f, worldDims[1], worldDims[0], 0.f, 
             -4096.f, 4096.f);
 
-        _sim->RenderDebugging(*metalContext, parserContext, AsDebugMode(_previewSettings->ActivePreview));
+        // _sim->RenderDebugging(*metalContext, parserContext, AsDebugMode(_previewSettings->ActivePreview));
+        (*_renderFn)(
+            *metalContext, parserContext,
+            _sim.get());
     }
 
     void CFDOverlay::RenderWidgets(
@@ -319,21 +331,123 @@ namespace GUILayer
     {}
 
     CFDOverlay::CFDOverlay(
-        std::shared_ptr<CFDSolver> sim,
-        CFDRefIterativeSystem::Settings^ previewSettings)
-    : _sim(sim), _previewSettings(previewSettings)
-    {}
+        std::shared_ptr<void> sim,
+        RenderFn&& renderFn,
+        Float2 dims)
+    : _sim(sim)
+    {
+        _renderFn.reset(new RenderFn(std::move(renderFn)));
+        _worldDims = gcnew array<float>(2);
+        _worldDims[0] = dims[0];
+        _worldDims[1] = dims[1];
+    }
 
     CFDOverlay::!CFDOverlay() { _sim.reset(); }
     CFDOverlay::~CFDOverlay() { _sim.reset(); }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    template<typename SimObject>
+        static CFDOverlay::RenderFn MakeRenderFn(
+            gcroot<CFDPreviewSettings^> settings)
+    {
+        return [settings](
+                RenderCore::Metal::DeviceContext& device,
+                SceneEngine::LightingParserContext& parserContext,
+                void* sim)
+            {
+                ((SimObject*)sim)->RenderDebugging(
+                    device, parserContext, 
+                    AsDebugMode(settings->ActivePreview));
+            };
+    }
+
+    CFDPreviewSettings::CFDPreviewSettings()
+    {
+        ActivePreview = Preview::Density;
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    using FluidSolver = SceneEngine::FluidSolver2D;
+
+    class CFDIterativeSystemPimpl
+    {
+    public:
+        std::shared_ptr<FluidSolver> _sim;
+        std::shared_ptr<FluidSolver::Settings> _settings;
+    };
+
+    void CFDIterativeSystem::Tick()
+    {
+        _pimpl->_sim->Tick(*_pimpl->_settings);
+    }
+
+    void CFDIterativeSystem::OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton)
+    {
+        Float2 coords(
+            _pimpl->_sim->GetDimensions()[0] * x,
+            _pimpl->_sim->GetDimensions()[1] * y);
+
+        auto radius = 10.f;
+        auto radiusSq = radius*radius;
+        for (float y = XlFloor(coords[1] - radius); y <= XlCeil(coords[1] + radius); ++y) {
+            for (float x = XlFloor(coords[0] - radius); x <= XlCeil(coords[0] + radius); ++x) {
+                Float2 fo = Float2(x, y) - coords;
+                if (MagnitudeSquared(fo) <= radiusSq && x >= 0.f && y >= 0.f) {
+
+                    auto c = UInt2(unsigned(x), unsigned(y));
+                    if (mouseButton == 0) {
+                        _pimpl->_sim->AddDensity(c, .05f);
+                    } else if (mouseButton == 2) {
+                        _pimpl->_sim->AddDensity(c, -.05f);
+                    } else {
+                        _pimpl->_sim->AddVelocity(c, 0.05f * Float2(velX, velY));
+                    }
+                }
+            }
+        }
+    }
+    
+    CFDIterativeSystem::CFDIterativeSystem(unsigned size)
+    {
+        using namespace SceneEngine;
+        _pimpl.reset(new CFDIterativeSystemPimpl);
+        _pimpl->_settings = std::make_shared<FluidSolver::Settings>();
+        _pimpl->_sim = std::make_shared<FluidSolver>(UInt2(size, size));
+        _settings = gcnew CFDPreviewSettings();
+
+        _getAndSetProperties = gcnew ClassAccessors_GetAndSet(_pimpl->_settings);
+
+        _overlay = gcnew CFDOverlay(
+            _pimpl->_sim, 
+            MakeRenderFn<FluidSolver>(_settings),
+            _pimpl->_sim->GetDimensions());
+    }
+
+    CFDIterativeSystem::!CFDIterativeSystem()
+    {
+        _pimpl.reset();
+        delete _overlay; _overlay = nullptr;
+        delete _getAndSetProperties; _getAndSetProperties = nullptr;
+    }
+
+    CFDIterativeSystem::~CFDIterativeSystem()
+    {
+        _pimpl.reset();
+        delete _overlay; _overlay = nullptr;
+        delete _getAndSetProperties; _getAndSetProperties = nullptr;
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    using RefFluidSolver = SceneEngine::ReferenceFluidSolver2D;
+
     class CFDRefIterativeSystemPimpl
     {
     public:
-        std::shared_ptr<CFDSolver> _sim;
-        std::shared_ptr<CFDSolver::Settings> _settings;
+        std::shared_ptr<RefFluidSolver> _sim;
+        std::shared_ptr<RefFluidSolver::Settings> _settings;
     };
 
     void CFDRefIterativeSystem::Tick()
@@ -366,19 +480,21 @@ namespace GUILayer
             }
         }
     }
-
+    
     CFDRefIterativeSystem::CFDRefIterativeSystem(unsigned size)
     {
         using namespace SceneEngine;
         _pimpl.reset(new CFDRefIterativeSystemPimpl);
-        _pimpl->_settings = std::make_shared<CFDSolver::Settings>();
-        _pimpl->_sim = std::make_shared<CFDSolver>(UInt2(size, size));
-        _settings = gcnew Settings();
+        _pimpl->_settings = std::make_shared<RefFluidSolver::Settings>();
+        _pimpl->_sim = std::make_shared<RefFluidSolver>(UInt2(size, size));
+        _settings = gcnew CFDPreviewSettings();
 
-        _getAndSetProperties = gcnew ClassAccessors_GetAndSet<
-            CFDSolver::Settings>(_pimpl->_settings);
+        _getAndSetProperties = gcnew ClassAccessors_GetAndSet(_pimpl->_settings);
 
-        _overlay = gcnew CFDOverlay(_pimpl->_sim, _settings);
+        _overlay = gcnew CFDOverlay(
+            _pimpl->_sim, 
+            MakeRenderFn<RefFluidSolver>(_settings),
+            _pimpl->_sim->GetDimensions());
     }
 
     CFDRefIterativeSystem::!CFDRefIterativeSystem()
@@ -394,10 +510,6 @@ namespace GUILayer
         delete _overlay; _overlay = nullptr;
         delete _getAndSetProperties; _getAndSetProperties = nullptr;
     }
-
-    CFDRefIterativeSystem::Settings::Settings()
-    {
-        ActivePreview = Preview::Density;
-    }
+    
 }
 

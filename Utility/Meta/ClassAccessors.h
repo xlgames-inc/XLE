@@ -102,7 +102,7 @@ namespace Utility
             using GetByKeyFn    = std::function<const void*(const void*,uint64)>;
 
             std::basic_string<utf8>     _name;
-            const ClassAccessors*   _childProps;
+            const ClassAccessors*       _childProps;
             CreateFn                    _createFn;
             GetCountFn                  _getCount;
             GetByIndexFn                _getByIndex;
@@ -118,21 +118,29 @@ namespace Utility
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 ////   Q U E R I E S   I N T E R F A C E   ////
 
-        bool TryCastFrom(
-            void* dst, uint64 id,
-            const void* src, ImpliedTyping::TypeDesc srcType,
-            bool stringForm = false) const;
-
-        bool TryCastFrom(
-            void* dst, uint64 id, size_t arrayIndex,
-            const void* src, ImpliedTyping::TypeDesc srcType,
+        bool TryOpaqueGet(
+            void* dst, size_t dstSize, ImpliedTyping::TypeDesc dstType,
+            const void* src, uint64 id,
             bool stringForm = false) const;
 
         template<typename ResultType, typename Type>
             bool TryGet(ResultType& result, const Type& src, uint64 id) const;
 
+        template<typename ResultType>
+            bool TryGet(ResultType& result, const void* src, uint64 id) const;
+
+        bool TryOpaqueSet(
+            void* dst, uint64 id,
+            const void* src, ImpliedTyping::TypeDesc srcType,
+            bool stringForm = false) const;
+
+        bool TryOpaqueSet(
+            void* dst, uint64 id, size_t arrayIndex,
+            const void* src, ImpliedTyping::TypeDesc srcType,
+            bool stringForm = false) const;
+        
         template<typename Type>
-            bool TryCastFrom(
+            bool TryOpaqueSet(
                 Type& dst, uint64 id,
                 const void* src, ImpliedTyping::TypeDesc srcType,
                 bool stringForm = false) const;
@@ -177,7 +185,7 @@ namespace Utility
 
 
     template<typename Type>
-        bool ClassAccessors::TryCastFrom(
+        bool ClassAccessors::TryOpaqueSet(
             Type& dst,
             uint64 id, const void* src,
             ImpliedTyping::TypeDesc srcType, bool stringForm) const

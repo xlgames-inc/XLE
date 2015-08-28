@@ -39,7 +39,7 @@ namespace Utility
                     
                     auto arrayBracket = std::find(name._start, name._end, '[');
                     if (arrayBracket == name._end) {
-                        if (!props.TryCastFrom(
+                        if (!props.TryOpaqueSet(
                             obj,
                             Hash64(name._start, name._end), value._start, 
                             ImpliedTyping::TypeDesc(charTypeCat, uint16(value._end - value._start)), true)) {
@@ -49,7 +49,7 @@ namespace Utility
                         }
                     } else {
                         auto arrayIndex = XlAtoUI32((const char*)(arrayBracket+1));
-                        if (!props.TryCastFrom(
+                        if (!props.TryOpaqueSet(
                             obj, Hash64(name._start, arrayBracket), arrayIndex, value._start, 
                             ImpliedTyping::TypeDesc(charTypeCat, uint16(value._end - value._start)), true)) {
 
@@ -158,13 +158,13 @@ namespace Utility
             const auto nameEnd = &nameStart[XlStringLen(nameStart)];
             auto arrayBracket = std::find(nameStart, nameEnd, '[');
             if (arrayBracket == nameEnd) {
-                accessors.TryCastFrom(
+                accessors.TryOpaqueSet(
                     obj,
                     Hash64(nameStart, nameEnd), i.RawValue(), 
                     i.Type(), false);
             } else {
                 auto arrayIndex = XlAtoUI32((const char*)(arrayBracket+1));
-                accessors.TryCastFrom(
+                accessors.TryOpaqueSet(
                     obj, Hash64(nameStart, arrayBracket), arrayIndex, i.RawValue(), 
                     i.Type(), false);
             }

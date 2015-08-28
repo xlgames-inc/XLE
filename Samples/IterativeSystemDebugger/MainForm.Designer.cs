@@ -19,6 +19,7 @@
             this.debuggersToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.erosionSimToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.referenceCFDToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.customCFDToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -36,6 +37,7 @@
             // 
             this.debuggersToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.erosionSimToolStripMenuItem,
+            this.customCFDToolStripMenuItem,
             this.referenceCFDToolStripMenuItem});
             this.debuggersToolStripMenuItem.Name = "debuggersToolStripMenuItem";
             this.debuggersToolStripMenuItem.Size = new System.Drawing.Size(76, 20);
@@ -54,6 +56,13 @@
             this.referenceCFDToolStripMenuItem.Size = new System.Drawing.Size(160, 22);
             this.referenceCFDToolStripMenuItem.Text = "Reference CFD...";
             this.referenceCFDToolStripMenuItem.Click += new System.EventHandler(this.referenceCFDToolStripMenuItem_Click);
+            // 
+            // customCFDToolStripMenuItem
+            // 
+            this.customCFDToolStripMenuItem.Name = "customCFDToolStripMenuItem";
+            this.customCFDToolStripMenuItem.Size = new System.Drawing.Size(160, 22);
+            this.customCFDToolStripMenuItem.Text = "Custom CFD...";
+            this.customCFDToolStripMenuItem.Click += new System.EventHandler(this.customCFDToolStripMenuItem_Click);
             // 
             // MainForm
             // 
@@ -77,6 +86,7 @@
         private System.Windows.Forms.ToolStripMenuItem debuggersToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem erosionSimToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem referenceCFDToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem customCFDToolStripMenuItem;
     }
 }
 
