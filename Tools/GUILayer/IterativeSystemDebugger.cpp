@@ -300,6 +300,7 @@ namespace GUILayer
         default:
         case P::Density: return SceneEngine::FluidDebuggingMode::Density;
         case P::Velocity: return SceneEngine::FluidDebuggingMode::Velocity;
+        case P::Temperature: return SceneEngine::FluidDebuggingMode::Temperature;
         }
     }
 
@@ -398,11 +399,13 @@ namespace GUILayer
 
                     auto c = UInt2(unsigned(x), unsigned(y));
                     if (mouseButton == 0) {
-                        _pimpl->_sim->AddDensity(c, .05f);
+                        _pimpl->_sim->AddDensity(c, _pimpl->_settings->_addDensity);
+                        _pimpl->_sim->AddTemperature(c, _pimpl->_settings->_addTemperature);
                     } else if (mouseButton == 2) {
-                        _pimpl->_sim->AddDensity(c, -.05f);
+                        _pimpl->_sim->AddDensity(c, -_pimpl->_settings->_addDensity);
+                        _pimpl->_sim->AddTemperature(c, -_pimpl->_settings->_addTemperature);
                     } else {
-                        _pimpl->_sim->AddVelocity(c, 0.05f * Float2(velX, velY));
+                        _pimpl->_sim->AddVelocity(c, .2f * Float2(velX, velY));
                     }
                 }
             }
@@ -470,11 +473,11 @@ namespace GUILayer
 
                     auto c = UInt2(unsigned(x), unsigned(y));
                     if (mouseButton == 0) {
-                        _pimpl->_sim->AddDensity(c, .05f);
+                        _pimpl->_sim->AddDensity(c, 1.f);
                     } else if (mouseButton == 2) {
-                        _pimpl->_sim->AddDensity(c, -.05f);
+                        _pimpl->_sim->AddDensity(c, -1.f);
                     } else {
-                        _pimpl->_sim->AddVelocity(c, 0.05f * Float2(velX, velY));
+                        _pimpl->_sim->AddVelocity(c, 1.f * Float2(velX, velY));
                     }
                 }
             }

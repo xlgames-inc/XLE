@@ -51,7 +51,7 @@ namespace GUILayer
     public ref class CFDPreviewSettings
     {
     public:
-        enum class Preview { Density, Velocity };
+        enum class Preview { Density, Velocity, Temperature };
             
         [Browsable(true)]
         [Category("Preview")] [Description("Rendering mode for the preview window")]

@@ -11,29 +11,41 @@
         <scea.dom.editors.attribute category="General" name="DeltaTime" displayName="DeltaTime"/>
         <scea.dom.editors.attribute category="General" name="Viscosity" displayName="Viscosity"/>
         <scea.dom.editors.attribute category="General" name="DiffusionRate" displayName="DiffusionRate"/>
+        <scea.dom.editors.attribute category="General" name="TempDiffusionRate" displayName="TempDiffusionRate"/>
 
-        <scea.dom.editors.attribute category="General" name="DiffusionMethod" displayName="DiffusionMethod"
+        <scea.dom.editors.attribute category="Simulation" name="DiffusionMethod" displayName="DiffusionMethod"
           editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:CGPrecon=0,CGPlain=1,ForwardEuler=2,SOR=3,Multigrid=4"
           converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:CGPrecon=0,CGPlain=1,ForwardEuler=2,SOR=3,Multigrid=4"/>
 
-        <scea.dom.editors.attribute category="General" name="AdvectionMethod" displayName="AdvectionMethod"
+        <scea.dom.editors.attribute category="Simulation" name="AdvectionMethod" displayName="AdvectionMethod"
           editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:ForwardEuler=0,ForwardEulerDiv=1,RungeKutta=2"
           converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:ForwardEuler=0,ForwardEulerDiv=1,RungeKutta=2"/>
-        <scea.dom.editors.attribute category="General" name="AdvectionSteps" displayName="AdvectionSteps"/>
+        <scea.dom.editors.attribute category="Simulation" name="AdvectionSteps" displayName="AdvectionSteps"/>
 
-        <scea.dom.editors.attribute category="General" name="EnforceIncompressibility" displayName="Enforce Incompressibility Method"
+        <scea.dom.editors.attribute category="Simulation" name="EnforceIncompressibility" displayName="Enforce Incompressibility Method"
           editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:CGPrecon=0,CGPlain=1,ForwardEuler=2,SOR=3,Multigrid=4"
           converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:CGPrecon=0,CGPlain=1,ForwardEuler=2,SOR=3,Multigrid=4"/>
+      
+        <scea.dom.editors.attribute category="Smoke" name="BouyancyAlpha" displayName="BouyancyAlpha"/>
+        <scea.dom.editors.attribute category="Smoke" name="BouyancyBeta" displayName="BouyancyBeta"/>
+        
+        <scea.dom.editors.attribute category="MouseClick" name="AddDensity" displayName="AddDensity"/>
+        <scea.dom.editors.attribute category="MouseClick" name="AddTemperature" displayName="AddTemperature"/>
       </xs:appinfo>
     </xs:annotation>
     
     <xs:attribute name="DeltaTime" type="xs:float" default="0.016667"/>
-    <xs:attribute name="Viscosity" type="xs:float" default="0"/>
-    <xs:attribute name="DiffusionRate" type="xs:float" default="0"/>
+    <xs:attribute name="Viscosity" type="xs:float" default="1"/>
+    <xs:attribute name="DiffusionRate" type="xs:float" default="15"/>
+    <xs:attribute name="TempDiffusionRate" type="xs:float" default="65"/>
     <xs:attribute name="DiffusionMethod" type="xs:int" default="0"/>
     <xs:attribute name="AdvectionMethod" type="xs:int" default="0"/>
     <xs:attribute name="AdvectionSteps" type="xs:unsignedInt" default="4"/>
     <xs:attribute name="EnforceIncompressibility" type="xs:int" default="3"/>
+    <xs:attribute name="BouyancyAlpha" type="xs:float" default=".035"/>
+    <xs:attribute name="BouyancyBeta" type="xs:float" default=".075"/>
+    <xs:attribute name="AddDensity" type="xs:float" default=".1"/>
+    <xs:attribute name="AddTemperature" type="xs:float" default=".2"/>
     
   </xs:complexType>
 </xs:schema>

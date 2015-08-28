@@ -84,7 +84,7 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         FluidDebuggingMode debuggingMode,
         UInt2 dimensions,
-        const float* density, const float* velocityU, const float* velocityV);
+        const float* density, const float* velocityU, const float* velocityV, const float* temperature);
 
     void ReferenceFluidSolver2D::RenderDebugging(
         RenderCore::Metal::DeviceContext& metalContext,
@@ -94,7 +94,8 @@ namespace SceneEngine
         RenderFluidDebugging(
             metalContext, parserContext, debuggingMode,
             _pimpl->_dimensions, _pimpl->_density.get(),
-            _pimpl->_velU.get(), _pimpl->_velV.get());
+            _pimpl->_velU.get(), _pimpl->_velV.get(),
+            nullptr);
     }
 
     UInt2 ReferenceFluidSolver2D::GetDimensions() const { return _pimpl->_dimensions; }
@@ -718,10 +719,12 @@ namespace SceneEngine
         VectorX _velU;
         VectorX _velV;
         VectorX _density;
+        VectorX _temperature;
 
         VectorX _prevVelU;
         VectorX _prevVelV;
         VectorX _prevDensity;
+        VectorX _prevTemperature;
         UInt2 _dimensions;
 
         VectorX _workingX, _workingB;
@@ -732,6 +735,7 @@ namespace SceneEngine
 
         void DensityDiffusion(const FluidSolver2D::Settings& settings);
         void VelocityDiffusion(const FluidSolver2D::Settings& settings);
+        void TemperatureDiffusion(const FluidSolver2D::Settings& settings);
 
         template<typename Field, typename VelField>
             void Advect(
@@ -769,7 +773,7 @@ namespace SceneEngine
         // estimate.
         //
 
-        static float diffFactor = 5.f;
+        const float diffFactor = settings._diffusionRate;
         const float a = diffFactor * settings._deltaTime;
         const float a0 = 1.f + 4.f * a;
         const float a1 = -a;
@@ -788,7 +792,7 @@ namespace SceneEngine
 
     void FluidSolver2D::Pimpl::VelocityDiffusion(const FluidSolver2D::Settings& settings)
     {
-        static float diffFactor = 5.f;
+        const float diffFactor = settings._viscosity;
         const float a = diffFactor * settings._deltaTime;
         const float a0 = 1.f + 4.f * a, a1 = -a;
 
@@ -805,6 +809,25 @@ namespace SceneEngine
                 _velV, (PossionSolver)settings._diffusionMethod);
         }
         LogInfo << "Velocity diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations.";
+    }
+
+    void FluidSolver2D::Pimpl::TemperatureDiffusion(const FluidSolver2D::Settings& settings)
+    {
+        const float diffFactor = settings._tempDiffusion;
+        const float a = diffFactor * settings._deltaTime;
+        const float a0 = 1.f + 4.f * a;
+        const float a1 = -a;
+
+        unsigned iterations = 0;
+        const bool useGeneralA = false;
+        if (constant_expression<useGeneralA>::result()) {
+            // iterations = SolvePoisson(_temperature, AMat, _temperature, (PossionSolver)settings._diffusionMethod);
+        } else {
+            iterations = SolvePoisson(
+                _temperature, AMat2D { _dimensions[0]+2, a0, a1 }, 
+                _temperature, (PossionSolver)settings._diffusionMethod);
+        }
+        LogInfo << "Temperature diffusion took: (" << iterations << ") iterations.";
     }
 
     static unsigned GetN(const AMat2D& A) { return A.wh * A.wh; }
@@ -1139,9 +1162,7 @@ namespace SceneEngine
                     Float2 tap = Float2(float(x), float(y)) - (deltaTime * velFieldScale) * startVel;
                     tap[0] = Clamp(tap[0], 0.f, float(wh-1) - 1e-5f);
                     tap[1] = Clamp(tap[1], 0.f, float(wh-1) - 1e-5f);
-                    Write(
-                        dstValues, UInt2(x, y),
-                        LoadBilinear<false>(srcValues, tap));
+                    Write(dstValues, UInt2(x, y), LoadBilinear<false>(srcValues, tap));
                 }
 
         } else if (advectionMethod == Advection::ForwardEulerDiv) {
@@ -1165,9 +1186,7 @@ namespace SceneEngine
                         tap[1] = Clamp(tap[1], 0.f, float(wh-1) - 1e-5f);
                     }
 
-                    Write(
-                        dstValues, UInt2(x, y),
-                        LoadBilinear<false>(srcValues, tap));
+                    Write(dstValues, UInt2(x, y), LoadBilinear<false>(srcValues, tap));
                 }
 
         } else if (advectionMethod == Advection::RungeKutta) {
@@ -1198,9 +1217,7 @@ namespace SceneEngine
                     auto k4 = LoadBilinear<true>(velFieldT0, startTap - s * k3);
 
                     auto tap = startTap - (s / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
-                    Write(
-                        dstValues, UInt2(x, y),
-                        LoadBilinear<true>(srcValues, tap));
+                    Write(dstValues, UInt2(x, y), LoadBilinear<true>(srcValues, tap));
 
                 }
 
@@ -1271,12 +1288,25 @@ namespace SceneEngine
         assert(_pimpl->_dimensions[1] == _pimpl->_dimensions[0]);
 
         float dt = settings._deltaTime;
-        auto N = (D+2) * (D+2);
+        auto wh = D+2;
+        auto N = wh*wh;
         for (unsigned c=0; c<N; ++c) {
             _pimpl->_density[c] += dt * _pimpl->_prevDensity[c];
             _pimpl->_velU[c] += dt * _pimpl->_prevVelU[c];
             _pimpl->_velV[c] += dt * _pimpl->_prevVelV[c];
+            _pimpl->_temperature[c] += dt * _pimpl->_prevTemperature[c];
         }
+
+            // buoyancy force
+        const float buoyancyAlpha = settings._buoyancyAlpha;
+        const float buoyancyBeta = settings._buoyancyBeta;
+        for (unsigned y=1; y<wh-1; ++y)
+            for (unsigned x=1; x<wh-1; ++x) {
+                unsigned i=y*wh+x;
+                _pimpl->_velV[i] -=     // (upwards is -1 in V)
+                     -buoyancyAlpha * _pimpl->_density[i]
+                    + buoyancyBeta  * _pimpl->_temperature[i];       // temperature field is just the difference from ambient
+            }
 
         _pimpl->_prevVelU = _pimpl->_velU;
         _pimpl->_prevVelV = _pimpl->_velV;
@@ -1308,10 +1338,20 @@ namespace SceneEngine
             VectorField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
             settings);
 
+        _pimpl->TemperatureDiffusion(settings);
+        auto prevTemperature = _pimpl->_temperature;
+        _pimpl->Advect(
+            ScalarField2D { &_pimpl->_temperature, D+2 },
+            ScalarField2D { &prevTemperature, D+2 },
+            VectorField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
+            VectorField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
+            settings);
+
         for (unsigned c=0; c<N; ++c) {
             _pimpl->_prevVelU[c] = 0.f;
             _pimpl->_prevVelV[c] = 0.f;
             _pimpl->_prevDensity[c] = 0.f;
+            _pimpl->_prevTemperature[c] = 0.f;
         }
     }
 
@@ -1320,6 +1360,14 @@ namespace SceneEngine
         if (coords[0] < _pimpl->_dimensions[0] && coords[1] < _pimpl->_dimensions[1]) {
             unsigned i = (coords[0]+1) + (coords[1]+1) * (_pimpl->_dimensions[0] + 2);
             _pimpl->_prevDensity[i] += amount;
+        }
+    }
+
+    void FluidSolver2D::AddTemperature(UInt2 coords, float amount)
+    {
+        if (coords[0] < _pimpl->_dimensions[0] && coords[1] < _pimpl->_dimensions[1]) {
+            unsigned i = (coords[0]+1) + (coords[1]+1) * (_pimpl->_dimensions[0] + 2);
+            _pimpl->_prevTemperature[i] += amount;
         }
     }
 
@@ -1340,7 +1388,8 @@ namespace SceneEngine
         RenderFluidDebugging(
             metalContext, parserContext, debuggingMode,
             _pimpl->_dimensions, _pimpl->_density.data(),
-            _pimpl->_velU.data(), _pimpl->_velV.data());
+            _pimpl->_velU.data(), _pimpl->_velV.data(),
+            _pimpl->_temperature.data());
     }
 
     UInt2 FluidSolver2D::GetDimensions() const { return _pimpl->_dimensions; }
@@ -1549,16 +1598,20 @@ namespace SceneEngine
         _pimpl->_velU = VectorX(N);
         _pimpl->_velV = VectorX(N);
         _pimpl->_density = VectorX(N);
+        _pimpl->_temperature = VectorX(N);
         _pimpl->_prevVelU = VectorX(N);
         _pimpl->_prevVelV = VectorX(N);
         _pimpl->_prevDensity = VectorX(N);
+        _pimpl->_prevTemperature = VectorX(N);
 
         _pimpl->_velU.fill(0.f);
         _pimpl->_velV.fill(0.f);
         _pimpl->_density.fill(0.f);
+        _pimpl->_temperature.fill(0.f);
         _pimpl->_prevVelU.fill(0.f);
         _pimpl->_prevVelV.fill(0.f);
         _pimpl->_prevDensity.fill(0.f);
+        _pimpl->_prevTemperature.fill(0.f);
 
         _pimpl->_workingX = VectorX(N);
         _pimpl->_workingB = VectorX(N);
@@ -1634,12 +1687,17 @@ namespace SceneEngine
     FluidSolver2D::Settings::Settings()
     {
         _deltaTime = 1.0f/60.f;
-        _viscosity = 0.f;
-        _diffusionRate = 0.f;
+        _viscosity = 1.f;
+        _diffusionRate = 15.f;
+        _tempDiffusion = 65.f;
         _diffusionMethod = 0;
-        _advectionMethod = 0;
+        _advectionMethod = 2;
         _advectionSteps = 4;
         _enforceIncompressibilityMethod = 3;
+        _buoyancyAlpha = 0.035f;
+        _buoyancyBeta = 0.075f;
+        _addDensity = 0.1f;
+        _addTemperature = 0.2f;
     }
 
 }
@@ -1665,7 +1723,7 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         FluidDebuggingMode debuggingMode,
         UInt2 dimensions,
-        const float* density, const float* velocityU, const float* velocityV)
+        const float* density, const float* velocityU, const float* velocityV, const float* temperature)
     {
         TRY {
             using namespace RenderCore;
@@ -1682,21 +1740,26 @@ namespace SceneEngine
             auto densityPkt = CreateBasicPacket((dx+2)*(dy+2)*sizeof(float), density, TexturePitches((dx+2)*sizeof(float), (dy+2)*(dx+2)*sizeof(float)));
             auto velUPkt = CreateBasicPacket((dx+2)*(dy+2)*sizeof(float), velocityU, TexturePitches((dx+2)*sizeof(float), (dy+2)*(dx+2)*sizeof(float)));
             auto velVPkt = CreateBasicPacket((dx+2)*(dy+2)*sizeof(float), velocityV, TexturePitches((dx+2)*sizeof(float), (dy+2)*(dx+2)*sizeof(float)));
+            auto temperaturePkt = CreateBasicPacket((dx+2)*(dy+2)*sizeof(float), temperature, TexturePitches((dx+2)*sizeof(float), (dy+2)*(dx+2)*sizeof(float)));
 
             auto density = uploads.Transaction_Immediate(desc, densityPkt.get());
             auto velU = uploads.Transaction_Immediate(desc, velUPkt.get());
             auto velV = uploads.Transaction_Immediate(desc, velVPkt.get());
+            auto temperature = uploads.Transaction_Immediate(desc, temperaturePkt.get());
 
             metalContext.BindPS(
                 MakeResourceList(
                     Metal::ShaderResourceView(density->GetUnderlying()),
                     Metal::ShaderResourceView(velU->GetUnderlying()),
-                    Metal::ShaderResourceView(velV->GetUnderlying())));
+                    Metal::ShaderResourceView(velV->GetUnderlying()),
+                    Metal::ShaderResourceView(temperature->GetUnderlying())));
 
-            const ::Assets::ResChar* pixelShader;
+            const ::Assets::ResChar* pixelShader = "";
             if (debuggingMode == FluidDebuggingMode::Density) {
                 pixelShader = "game/xleres/cfd/debug.sh:ps_density:ps_*";
-            } else {
+            } else if (debuggingMode == FluidDebuggingMode::Temperature) {
+                pixelShader = "game/xleres/cfd/debug.sh:ps_temperature:ps_*";
+            } else if (debuggingMode == FluidDebuggingMode::Velocity) {
                 pixelShader = "game/xleres/cfd/debug.sh:ps_velocity:ps_*";
             }
 
@@ -1759,10 +1822,15 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver2D::Settin
         props.Add(u("DeltaTime"), DefaultGet(Obj, _deltaTime),  DefaultSet(Obj, _deltaTime));
         props.Add(u("Viscosity"), DefaultGet(Obj, _viscosity),  DefaultSet(Obj, _viscosity));
         props.Add(u("DiffusionRate"), DefaultGet(Obj, _diffusionRate),  DefaultSet(Obj, _diffusionRate));
+        props.Add(u("TempDiffusionRate"), DefaultGet(Obj, _tempDiffusion),  DefaultSet(Obj, _tempDiffusion));
         props.Add(u("DiffusionMethod"), DefaultGet(Obj, _diffusionMethod),  DefaultSet(Obj, _diffusionMethod));
         props.Add(u("AdvectionMethod"), DefaultGet(Obj, _advectionMethod),  DefaultSet(Obj, _advectionMethod));
         props.Add(u("AdvectionSteps"), DefaultGet(Obj, _advectionSteps),  DefaultSet(Obj, _advectionSteps));
         props.Add(u("EnforceIncompressibility"), DefaultGet(Obj, _enforceIncompressibilityMethod),  DefaultSet(Obj, _enforceIncompressibilityMethod));
+        props.Add(u("BouyancyAlpha"), DefaultGet(Obj, _buoyancyAlpha),  DefaultSet(Obj, _buoyancyAlpha));
+        props.Add(u("BouyancyBeta"), DefaultGet(Obj, _buoyancyBeta),  DefaultSet(Obj, _buoyancyBeta));
+        props.Add(u("AddDensity"), DefaultGet(Obj, _addDensity),  DefaultSet(Obj, _addDensity));
+        props.Add(u("AddTemperature"), DefaultGet(Obj, _addTemperature),  DefaultSet(Obj, _addTemperature));
         init = true;
     }
     return props;

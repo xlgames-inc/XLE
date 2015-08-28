@@ -10,6 +10,7 @@
 Texture2D<float>	Density : register(t0);
 Texture2D<float>	VelocityU : register(t1);
 Texture2D<float>	VelocityV : register(t2);
+Texture2D<float>	Temperature : register(t3);
 
 float3 GradColor(float input)
 {
@@ -23,6 +24,12 @@ float3 GradColor(float input)
 float4 ps_density(float4 position : SV_Position, float2 coords : TEXCOORD0) : SV_Target0
 {
     float value = Density.SampleLevel(ClampingSampler, coords, 0);
+    return float4(GradColor(value), 1.f);
+}
+
+float4 ps_temperature(float4 position : SV_Position, float2 coords : TEXCOORD0) : SV_Target0
+{
+    float value = Temperature.SampleLevel(ClampingSampler, coords, 0);
     return float4(GradColor(value), 1.f);
 }
 
