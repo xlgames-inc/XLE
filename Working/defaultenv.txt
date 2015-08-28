@@ -13,7 +13,7 @@
 		BlurAngleDegrees=0.25f; Name=shadows; TextureSize=2048i; Light=Sun
 
 	~ShadowFrustumSettings; FrustumCount=1i; FrustumSizeFactor=3.8f
-		Flags=5i; FocusDistance=3f; MaxDistanceFromCamera=1000f; FocusDistance=3f
+		Flags=1i; FocusDistance=3f; MaxDistanceFromCamera=1000f; FocusDistance=3f
 		Name=rtshadows; Light=Sun
 	
 	~DirectionalLight; DiffuseModel=0i; DiffuseBrightness=4.5f; Diffuse=-1i; Specular=-1i; Flags=1i
