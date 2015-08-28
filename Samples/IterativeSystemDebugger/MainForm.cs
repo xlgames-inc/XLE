@@ -33,7 +33,7 @@ namespace IterativeSystemDebugger
 
         private void referenceCFDToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var system = new GUILayer.CFDRefIterativeSystem(32);
+            var system = new GUILayer.CFDRefIterativeSystem(128);
             var form = new RefCFD(system);
             form.Show();
             _forms.Add(form);
@@ -41,7 +41,7 @@ namespace IterativeSystemDebugger
 
         private void customCFDToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var system = new GUILayer.CFDIterativeSystem(32);
+            var system = new GUILayer.CFDIterativeSystem(128);
             var form = new RefCFD(system);
             form.Show();
             _forms.Add(form);
