@@ -731,10 +731,12 @@ namespace SceneEngine
         std::function<float(unsigned, unsigned)> AMat;
 
         void DensityDiffusion(const FluidSolver2D::Settings& settings);
+        void VelocityDiffusion(const FluidSolver2D::Settings& settings);
 
-        template<typename Field>
-            void VelocityAdvect(
-                Field dstValues, Field prevValues,
+        template<typename Field, typename VelField>
+            void Advect(
+                Field dstValues, Field srcValues, 
+                VelField velFieldT0, VelField velFieldT1,
                 const FluidSolver2D::Settings& settings);
 
         enum class PossionSolver { CG_Precon, PlainCG, ForwardEuler, SOR, Multigrid };
@@ -767,21 +769,42 @@ namespace SceneEngine
         // estimate.
         //
 
-        static bool useGeneralA = false;
         static float diffFactor = 5.f;
         const float a = diffFactor * settings._deltaTime;
         const float a0 = 1.f + 4.f * a;
         const float a1 = -a;
 
-        auto method = (PossionSolver)settings._diffusionMethod;
-
         unsigned iterations = 0;
-        if (useGeneralA) {
-            // iterations = SolvePoisson(_density, AMat, _density, method);
+        const bool useGeneralA = false;
+        if (constant_expression<useGeneralA>::result()) {
+            // iterations = SolvePoisson(_density, AMat, _density, (PossionSolver)settings._diffusionMethod);
         } else {
-            iterations = SolvePoisson(_density, AMat2D { _dimensions[0]+2, a0, a1 }, _density, method);
+            iterations = SolvePoisson(
+                _density, AMat2D { _dimensions[0]+2, a0, a1 }, 
+                _density, (PossionSolver)settings._diffusionMethod);
         }
-        LogInfo << "Diffusion took: " << iterations << " iterations.";
+        LogInfo << "Density diffusion took: (" << iterations << ") iterations.";
+    }
+
+    void FluidSolver2D::Pimpl::VelocityDiffusion(const FluidSolver2D::Settings& settings)
+    {
+        static float diffFactor = 5.f;
+        const float a = diffFactor * settings._deltaTime;
+        const float a0 = 1.f + 4.f * a, a1 = -a;
+
+        unsigned iterationsu = 0, iterationsv = 0;
+        const bool useGeneralA = false;
+        if (constant_expression<useGeneralA>::result()) {
+            // iterations = SolvePoisson(_density, AMat, _density, (PossionSolver)settings._diffusionMethod);
+        } else {
+            iterationsu = SolvePoisson(
+                _velU, AMat2D { _dimensions[0]+2, a0, a1 }, 
+                _velU, (PossionSolver)settings._diffusionMethod);
+            iterationsv += SolvePoisson(
+                _velV, AMat2D { _dimensions[0]+2, a0, a1 }, 
+                _velV, (PossionSolver)settings._diffusionMethod);
+        }
+        LogInfo << "Velocity diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations.";
     }
 
     static unsigned GetN(const AMat2D& A) { return A.wh * A.wh; }
@@ -954,7 +977,7 @@ namespace SceneEngine
         return 0;
     }
 
-    class VelocityField2D
+    class VectorField2D
     {
     public:
         VectorX* _u, *_v; 
@@ -962,7 +985,7 @@ namespace SceneEngine
     };
 
     template<bool DoClamp>
-        static Float2 LoadBilinear(const VelocityField2D& field, Float2 coord)
+        static Float2 LoadBilinear(const VectorField2D& field, Float2 coord)
     {
         float fx = XlFloor(coord[0]);
         float fy = XlFloor(coord[1]);
@@ -1002,7 +1025,7 @@ namespace SceneEngine
         return Float2(u, v);
     }
 
-    static Float2 Load(const VelocityField2D& field, UInt2 coord)
+    static Float2 Load(const VectorField2D& field, UInt2 coord)
     {
         assert(coord[0] < field._wh && coord[1] < field._wh);
         return Float2(
@@ -1010,7 +1033,7 @@ namespace SceneEngine
             (*field._v)[coord[1] * field._wh + coord[0]]);
     }
 
-    static void Write(VelocityField2D& field, UInt2 coord, Float2 value)
+    static void Write(VectorField2D& field, UInt2 coord, Float2 value)
     {
         assert(coord[0] < field._wh && coord[1] < field._wh);
         (*field._u)[coord[1] * field._wh + coord[0]] = value[0];
@@ -1019,9 +1042,64 @@ namespace SceneEngine
         assert(isfinite(value[1]) && !isnan(value[1]));
     }
 
-    template<typename Field>
-        void FluidSolver2D::Pimpl::VelocityAdvect(
-            Field dstValues, Field prevValues,
+    class ScalarField2D
+    {
+    public:
+        VectorX* _u;
+        unsigned _wh;
+    };
+
+    template<bool DoClamp>
+        static float LoadBilinear(const ScalarField2D& field, Float2 coord)
+    {
+        float fx = XlFloor(coord[0]);
+        float fy = XlFloor(coord[1]);
+        float a = coord[0] - fx, b = coord[1] - fy;
+        float weights[] = 
+        {
+            (1.f - a) * (1.f - b),
+            a * (1.f - b),
+            (1.f - a) * b,
+            a * b
+        };
+        unsigned x0, x1, y0, y1;
+        
+        if (constant_expression<DoClamp>::result()) {
+            x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
+            x1 = std::min(x0+1u, field._wh-1u);
+            y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
+            y1 = std::min(y0+1u, field._wh-1u);
+        } else {
+            x0 = unsigned(fx); x1 = x0+1;
+            y0 = unsigned(fy); y1 = y0+1;
+        }
+        assert(x1 < field._wh && y1 < field._wh);
+        
+        return 
+              weights[0] * (*field._u)[y0*field._wh+x0]
+            + weights[1] * (*field._u)[y0*field._wh+x1]
+            + weights[2] * (*field._u)[y1*field._wh+x0]
+            + weights[3] * (*field._u)[y1*field._wh+x1]
+            ;
+    }
+
+    static float Load(const ScalarField2D& field, UInt2 coord)
+    {
+        assert(coord[0] < field._wh && coord[1] < field._wh);
+        return (*field._u)[coord[1] * field._wh + coord[0]];
+    }
+
+    static void Write(ScalarField2D& field, UInt2 coord, float value)
+    {
+        assert(coord[0] < field._wh && coord[1] < field._wh);
+        (*field._u)[coord[1] * field._wh + coord[0]] = value;
+        assert(isfinite(value) && !isnan(value));
+    }
+
+    template<typename Field, typename VelField>
+        void FluidSolver2D::Pimpl::Advect(
+            Field dstValues, Field srcValues, 
+            VelField velFieldT0, VelField velFieldT1,
             const FluidSolver2D::Settings& settings)
     {
         //
@@ -1047,10 +1125,7 @@ namespace SceneEngine
 
         const unsigned wh = _dimensions[0] + 2;
         const float deltaTime = settings._deltaTime;
-        const float velFieldScale = 1.f; // float(_dimensions[0]*_dimensions[1]);   // (grid size without borders)
-
-        VelocityField2D velFieldT0 { &_prevVelU, &_prevVelV, _dimensions[0]+2 };
-        VelocityField2D velFieldT1 { &_velU, &_velV, _dimensions[0]+2 };
+        const float velFieldScale = float(_dimensions[0]);   // (grid size without borders)
 
         if (advectionMethod == Advection::ForwardEuler) {
 
@@ -1060,13 +1135,13 @@ namespace SceneEngine
 
             for (unsigned y=1; y<wh-1; ++y)
                 for (unsigned x=1; x<wh-1; ++x) {
-                    auto startVel = Load(velFieldT0, UInt2(x, y));
+                    auto startVel = Load(velFieldT1, UInt2(x, y));
                     Float2 tap = Float2(float(x), float(y)) - (deltaTime * velFieldScale) * startVel;
                     tap[0] = Clamp(tap[0], 0.f, float(wh-1) - 1e-5f);
                     tap[1] = Clamp(tap[1], 0.f, float(wh-1) - 1e-5f);
                     Write(
                         dstValues, UInt2(x, y),
-                        LoadBilinear<false>(prevValues, tap));
+                        LoadBilinear<false>(srcValues, tap));
                 }
 
         } else if (advectionMethod == Advection::ForwardEulerDiv) {
@@ -1092,7 +1167,7 @@ namespace SceneEngine
 
                     Write(
                         dstValues, UInt2(x, y),
-                        LoadBilinear<false>(prevValues, tap));
+                        LoadBilinear<false>(srcValues, tap));
                 }
 
         } else if (advectionMethod == Advection::RungeKutta) {
@@ -1125,7 +1200,7 @@ namespace SceneEngine
                     auto tap = startTap - (s / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
                     Write(
                         dstValues, UInt2(x, y),
-                        LoadBilinear<true>(prevValues, tap));
+                        LoadBilinear<true>(srcValues, tap));
 
                 }
 
@@ -1165,7 +1240,7 @@ namespace SceneEngine
         const auto wh = velField._wh;
         VectorX delW(wh * wh), q(wh * wh);
         q.fill(0.f);
-        float N = float(wh*wh);
+        float N = float(wh);
         for (unsigned y=1; y<wh-1; ++y)
             for (unsigned x=1; x<wh-1; ++x)
                 delW[y*wh+x] = 
@@ -1203,24 +1278,35 @@ namespace SceneEngine
             _pimpl->_velV[c] += dt * _pimpl->_prevVelV[c];
         }
 
-        _pimpl->DensityDiffusion(settings);
-
         _pimpl->_prevVelU = _pimpl->_velU;
         _pimpl->_prevVelV = _pimpl->_velV;
+        _pimpl->VelocityDiffusion(settings);
+
         VectorX newU(N), newV(N);
-        _pimpl->VelocityAdvect(
-            VelocityField2D { &newU, &newV, D+2 },
-            VelocityField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
+        _pimpl->Advect(
+            VectorField2D { &newU, &newV, D+2 },
+            VectorField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
+            VectorField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
+            VectorField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
             settings);
         
         ReflectUBorder(newU, D+2);
         ReflectVBorder(newV, D+2);
         _pimpl->EnforceIncompressibility(
-            VelocityField2D { &newU, &newV, D+2 },
+            VectorField2D { &newU, &newV, D+2 },
             settings);
         
         _pimpl->_velU = newU;
         _pimpl->_velV = newV;
+
+        _pimpl->DensityDiffusion(settings);
+        auto prevDensity = _pimpl->_density;
+        _pimpl->Advect(
+            ScalarField2D { &_pimpl->_density, D+2 },
+            ScalarField2D { &prevDensity, D+2 },
+            VectorField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
+            VectorField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
+            settings);
 
         for (unsigned c=0; c<N; ++c) {
             _pimpl->_prevVelU[c] = 0.f;
