@@ -53,9 +53,11 @@ namespace GUILayer
     public:
         enum class Preview { Density, Velocity, Temperature };
             
-        [Browsable(true)]
         [Category("Preview")] [Description("Rendering mode for the preview window")]
         property Preview ActivePreview;
+
+        [Category("Preview")] [Description("Time step")]
+        property float DeltaTime;
 
         CFDPreviewSettings();
     };

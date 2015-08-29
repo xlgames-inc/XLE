@@ -366,6 +366,7 @@ namespace GUILayer
     CFDPreviewSettings::CFDPreviewSettings()
     {
         ActivePreview = Preview::Density;
+        DeltaTime = 1.0f / 60.f;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -381,7 +382,7 @@ namespace GUILayer
 
     void CFDIterativeSystem::Tick()
     {
-        _pimpl->_sim->Tick(*_pimpl->_settings);
+        _pimpl->_sim->Tick(_settings->DeltaTime, *_pimpl->_settings);
     }
 
     void CFDIterativeSystem::OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton)
@@ -390,7 +391,7 @@ namespace GUILayer
             _pimpl->_sim->GetDimensions()[0] * x,
             _pimpl->_sim->GetDimensions()[1] * y);
 
-        auto radius = 10.f;
+        auto radius = 4.f;
         auto radiusSq = radius*radius;
         for (float y = XlFloor(coords[1] - radius); y <= XlCeil(coords[1] + radius); ++y) {
             for (float x = XlFloor(coords[0] - radius); x <= XlCeil(coords[0] + radius); ++x) {

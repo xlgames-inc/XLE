@@ -713,6 +713,8 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    class VectorField2D;
+
     class FluidSolver2D::Pimpl
     {
     public:
@@ -733,15 +735,15 @@ namespace SceneEngine
         SparseBandedMatrix _bandedPrecon;
         std::function<float(unsigned, unsigned)> AMat;
 
-        void DensityDiffusion(const FluidSolver2D::Settings& settings);
-        void VelocityDiffusion(const FluidSolver2D::Settings& settings);
-        void TemperatureDiffusion(const FluidSolver2D::Settings& settings);
+        void DensityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings);
+        void VelocityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings);
+        void TemperatureDiffusion(float deltaTime, const FluidSolver2D::Settings& settings);
 
         template<typename Field, typename VelField>
             void Advect(
                 Field dstValues, Field srcValues, 
                 VelField velFieldT0, VelField velFieldT1,
-                const FluidSolver2D::Settings& settings);
+                float deltaTime, const FluidSolver2D::Settings& settings);
 
         enum class PossionSolver { CG_Precon, PlainCG, ForwardEuler, SOR, Multigrid };
 
@@ -752,9 +754,11 @@ namespace SceneEngine
             void EnforceIncompressibility(
                 Field velField,
                 const FluidSolver2D::Settings& settings);
+
+        void VorticityConfinement(VectorField2D outputField, VectorField2D inputVelocities, float strength, float deltaTime);
     };
 
-    void FluidSolver2D::Pimpl::DensityDiffusion(const FluidSolver2D::Settings& settings)
+    void FluidSolver2D::Pimpl::DensityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings)
     {
         //
         // Diffuse velocity! This is similar to other diffusion operations. 
@@ -774,7 +778,7 @@ namespace SceneEngine
         //
 
         const float diffFactor = settings._diffusionRate;
-        const float a = diffFactor * settings._deltaTime;
+        const float a = diffFactor * deltaTime;
         const float a0 = 1.f + 4.f * a;
         const float a1 = -a;
 
@@ -790,10 +794,10 @@ namespace SceneEngine
         LogInfo << "Density diffusion took: (" << iterations << ") iterations.";
     }
 
-    void FluidSolver2D::Pimpl::VelocityDiffusion(const FluidSolver2D::Settings& settings)
+    void FluidSolver2D::Pimpl::VelocityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings)
     {
         const float diffFactor = settings._viscosity;
-        const float a = diffFactor * settings._deltaTime;
+        const float a = diffFactor * deltaTime;
         const float a0 = 1.f + 4.f * a, a1 = -a;
 
         unsigned iterationsu = 0, iterationsv = 0;
@@ -811,10 +815,10 @@ namespace SceneEngine
         LogInfo << "Velocity diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations.";
     }
 
-    void FluidSolver2D::Pimpl::TemperatureDiffusion(const FluidSolver2D::Settings& settings)
+    void FluidSolver2D::Pimpl::TemperatureDiffusion(float deltaTime, const FluidSolver2D::Settings& settings)
     {
         const float diffFactor = settings._tempDiffusion;
-        const float a = diffFactor * settings._deltaTime;
+        const float a = diffFactor * deltaTime;
         const float a0 = 1.f + 4.f * a;
         const float a1 = -a;
 
@@ -1123,7 +1127,7 @@ namespace SceneEngine
         void FluidSolver2D::Pimpl::Advect(
             Field dstValues, Field srcValues, 
             VelField velFieldT0, VelField velFieldT1,
-            const FluidSolver2D::Settings& settings)
+            float deltaTime, const FluidSolver2D::Settings& settings)
     {
         //
         // This is the advection step. We will use the method of characteristics.
@@ -1141,13 +1145,18 @@ namespace SceneEngine
         // the grid cell. Incorrect alignment will produce a bias in the way that
         // we interpolate the field.
         //
+        // We could consider offsetting the velocity field by half a cell (see
+        // Visual Simulation of Smoke, Fedkiw, et al)
+        //
+        // Also consider Semi-Lagrangian methods for large timesteps (when the CFL
+        // number is larger than 1)
+        //
 
         enum class Advection { ForwardEuler, ForwardEulerDiv, RungeKutta };
         const auto advectionMethod = (Advection)settings._advectionMethod;
         const auto adjvectionSteps = settings._advectionSteps;
 
         const unsigned wh = _dimensions[0] + 2;
-        const float deltaTime = settings._deltaTime;
         const float velFieldScale = float(_dimensions[0]);   // (grid size without borders)
 
         if (advectionMethod == Advection::ForwardEuler) {
@@ -1253,6 +1262,10 @@ namespace SceneEngine
         // Following Stam's sample code, we'll do this for both u and v at the same time,
         // with the same solution for "q".
         //
+        // Also, here to have to consider how we define the discrete divergence of the
+        // field. Stam uses .5f * (f[i+1] - f[i-1]). Depending on how we arrange the physical
+        // values with respect to the grid, we could alternatively consider f[i] - f[i-1].
+        //
 
         const auto wh = velField._wh;
         VectorX delW(wh * wh), q(wh * wh);
@@ -1282,14 +1295,74 @@ namespace SceneEngine
         LogInfo << "EnforceIncompressibility took: " << iterations << " iterations.";
     }
 
-    void FluidSolver2D::Tick(const Settings& settings)
+    void FluidSolver2D::Pimpl::VorticityConfinement(
+        VectorField2D outputField,
+        VectorField2D inputVelocities, float strength, float deltaTime)
+    {
+        //
+        // VorticityConfinement amplifies the existing vorticity at each cell.
+        // This is intended to add back errors caused by the discrete equations
+        // we're using here.
+        //
+        // The vorticity can be calculated from the velocity field (by taking the
+        // cross product with del. In 2D, this produces a scalar value (which is
+        // conceptually a vector in the direction of an imaginary Z axis). We also
+        // need to find the divergence of this scalar field.
+        //
+        // See http://web.stanford.edu/class/cs237d/smoke.pdf for details. In that
+        // paper, Fedkiw calculates the vorticity at a half-cell offset from the 
+        // velocity field. It's not clear why that was done. We will ignore that, 
+        // and calculate vorticity exactly on the velocity field.
+        //
+
+        const auto wh = inputVelocities._wh;
+        VectorX vorticity(wh*wh);
+        for (unsigned y=1; y<wh-1; ++y)
+            for (unsigned x=1; x<wh-1; ++x) {
+                auto dvydx = .5f * Load(inputVelocities, UInt2(x+1, y))[1] - Load(inputVelocities, UInt2(x-1, y))[1];
+                auto dvxdy = .5f * Load(inputVelocities, UInt2(x, y+1))[0] - Load(inputVelocities, UInt2(x, y-1))[0];
+                vorticity[y*wh+x] = dvydx - dvxdy;
+            }
+        SmearBorder(vorticity, wh);
+
+        const float s = deltaTime * strength * float(wh-2);
+        for (unsigned y=1; y<wh-1; ++y)
+            for (unsigned x=1; x<wh-1; ++x) {
+                    // find the discrete divergence of the absolute vorticity field
+                Float2 div(
+                    .5f * (XlAbs(vorticity[y*wh+x+1]) - XlAbs(vorticity[y*wh+x-1])),
+                    .5f * (XlAbs(vorticity[(y+1)*wh+x]) - XlAbs(vorticity[(y-1)*wh+x])));
+
+                float magSq = MagnitudeSquared(div);
+                if (magSq > 1e-10f) {
+                    div *= XlRSqrt(magSq);
+
+                        // in 2D, the vorticity is in the Z direction. Which means the cross product
+                        // with our divergence vector is simple
+                    float omega = vorticity[y*wh+x];
+                    Float2 additionalVel(s * div[1] * omega, s * -div[0] * omega);
+
+                    Write(
+                        outputField, UInt2(x, y),
+                        Load(outputField, UInt2(x, y)) + additionalVel);
+                }
+            }
+    }
+
+    void FluidSolver2D::Tick(float deltaTime, const Settings& settings)
     {
         auto D = _pimpl->_dimensions[0];
         assert(_pimpl->_dimensions[1] == _pimpl->_dimensions[0]);
 
-        float dt = settings._deltaTime;
+        float dt = deltaTime;
         auto wh = D+2;
         auto N = wh*wh;
+
+        _pimpl->VorticityConfinement(
+            VectorField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
+            VectorField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
+            settings._vorticityConfinement, deltaTime);
+
         for (unsigned c=0; c<N; ++c) {
             _pimpl->_density[c] += dt * _pimpl->_prevDensity[c];
             _pimpl->_velU[c] += dt * _pimpl->_prevVelU[c];
@@ -1310,7 +1383,7 @@ namespace SceneEngine
 
         _pimpl->_prevVelU = _pimpl->_velU;
         _pimpl->_prevVelV = _pimpl->_velV;
-        _pimpl->VelocityDiffusion(settings);
+        _pimpl->VelocityDiffusion(deltaTime, settings);
 
         VectorX newU(N), newV(N);
         _pimpl->Advect(
@@ -1318,7 +1391,7 @@ namespace SceneEngine
             VectorField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
             VectorField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
             VectorField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
-            settings);
+            deltaTime, settings);
         
         ReflectUBorder(newU, D+2);
         ReflectVBorder(newV, D+2);
@@ -1329,23 +1402,23 @@ namespace SceneEngine
         _pimpl->_velU = newU;
         _pimpl->_velV = newV;
 
-        _pimpl->DensityDiffusion(settings);
+        _pimpl->DensityDiffusion(deltaTime, settings);
         auto prevDensity = _pimpl->_density;
         _pimpl->Advect(
             ScalarField2D { &_pimpl->_density, D+2 },
             ScalarField2D { &prevDensity, D+2 },
             VectorField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
             VectorField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
-            settings);
+            deltaTime, settings);
 
-        _pimpl->TemperatureDiffusion(settings);
+        _pimpl->TemperatureDiffusion(deltaTime, settings);
         auto prevTemperature = _pimpl->_temperature;
         _pimpl->Advect(
             ScalarField2D { &_pimpl->_temperature, D+2 },
             ScalarField2D { &prevTemperature, D+2 },
             VectorField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
             VectorField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
-            settings);
+            deltaTime, settings);
 
         for (unsigned c=0; c<N; ++c) {
             _pimpl->_prevVelU[c] = 0.f;
@@ -1367,7 +1440,11 @@ namespace SceneEngine
     {
         if (coords[0] < _pimpl->_dimensions[0] && coords[1] < _pimpl->_dimensions[1]) {
             unsigned i = (coords[0]+1) + (coords[1]+1) * (_pimpl->_dimensions[0] + 2);
-            _pimpl->_prevTemperature[i] += amount;
+            // _pimpl->_prevTemperature[i] += amount;
+
+                // heat up to approach this temperature
+            auto oldTemp = _pimpl->_temperature[i];
+            _pimpl->_temperature[i] = std::max(oldTemp, LinearInterpolate(oldTemp, amount, 0.5f));
         }
     }
 
@@ -1686,18 +1763,18 @@ namespace SceneEngine
 
     FluidSolver2D::Settings::Settings()
     {
-        _deltaTime = 1.0f/60.f;
-        _viscosity = 1.f;
-        _diffusionRate = 15.f;
-        _tempDiffusion = 65.f;
+        _viscosity = 0.5f;
+        _diffusionRate = 2.f;
+        _tempDiffusion = 2.f;
         _diffusionMethod = 0;
         _advectionMethod = 2;
         _advectionSteps = 4;
         _enforceIncompressibilityMethod = 3;
         _buoyancyAlpha = 0.035f;
-        _buoyancyBeta = 0.075f;
-        _addDensity = 0.1f;
-        _addTemperature = 0.2f;
+        _buoyancyBeta = 0.04f;
+        _addDensity = 1.f;
+        _addTemperature = 0.3f;
+        _vorticityConfinement = 0.75f;
     }
 
 }
@@ -1819,7 +1896,6 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver2D::Settin
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("DeltaTime"), DefaultGet(Obj, _deltaTime),  DefaultSet(Obj, _deltaTime));
         props.Add(u("Viscosity"), DefaultGet(Obj, _viscosity),  DefaultSet(Obj, _viscosity));
         props.Add(u("DiffusionRate"), DefaultGet(Obj, _diffusionRate),  DefaultSet(Obj, _diffusionRate));
         props.Add(u("TempDiffusionRate"), DefaultGet(Obj, _tempDiffusion),  DefaultSet(Obj, _tempDiffusion));
@@ -1831,6 +1907,7 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver2D::Settin
         props.Add(u("BouyancyBeta"), DefaultGet(Obj, _buoyancyBeta),  DefaultSet(Obj, _buoyancyBeta));
         props.Add(u("AddDensity"), DefaultGet(Obj, _addDensity),  DefaultSet(Obj, _addDensity));
         props.Add(u("AddTemperature"), DefaultGet(Obj, _addTemperature),  DefaultSet(Obj, _addTemperature));
+        props.Add(u("VorticityConfinement"), DefaultGet(Obj, _vorticityConfinement),  DefaultSet(Obj, _vorticityConfinement));
         init = true;
     }
     return props;

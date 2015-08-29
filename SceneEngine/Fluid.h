@@ -55,7 +55,6 @@ namespace SceneEngine
     public:
         struct Settings
         {
-            float _deltaTime;
             float _viscosity;
             float _diffusionRate;
             float _tempDiffusion;
@@ -67,11 +66,12 @@ namespace SceneEngine
             float _buoyancyBeta;
             float _addDensity;
             float _addTemperature;
+            float _vorticityConfinement;
 
             Settings();
         };
 
-        void Tick(const Settings& settings);
+        void Tick(float deltaTime, const Settings& settings);
         void AddDensity(UInt2 coords, float amount);
         void AddVelocity(UInt2 coords, Float2 vel);
         void AddTemperature(UInt2 coords, float amount);

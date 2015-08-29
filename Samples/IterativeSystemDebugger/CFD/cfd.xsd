@@ -28,6 +28,7 @@
       
         <scea.dom.editors.attribute category="Smoke" name="BouyancyAlpha" displayName="BouyancyAlpha"/>
         <scea.dom.editors.attribute category="Smoke" name="BouyancyBeta" displayName="BouyancyBeta"/>
+        <scea.dom.editors.attribute category="Smoke" name="VorticityConfinement" displayName="VorticityConfinement"/>
         
         <scea.dom.editors.attribute category="MouseClick" name="AddDensity" displayName="AddDensity"/>
         <scea.dom.editors.attribute category="MouseClick" name="AddTemperature" displayName="AddTemperature"/>
@@ -46,6 +47,7 @@
     <xs:attribute name="BouyancyBeta" type="xs:float" default=".075"/>
     <xs:attribute name="AddDensity" type="xs:float" default=".1"/>
     <xs:attribute name="AddTemperature" type="xs:float" default=".2"/>
+    <xs:attribute name="VorticityConfinement" type="xs:float" default=".5"/>
     
   </xs:complexType>
 </xs:schema>
