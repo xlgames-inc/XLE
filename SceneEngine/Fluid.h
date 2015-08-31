@@ -67,6 +67,7 @@ namespace SceneEngine
             float _addDensity;
             float _addTemperature;
             float _vorticityConfinement;
+            int _interpolationMethod;
 
             Settings();
         };

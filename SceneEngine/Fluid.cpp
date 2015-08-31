@@ -1112,6 +1112,150 @@ namespace SceneEngine
             ;
     }
 
+    static float Sign(float x) { return (x < 0.f) ? -1.f : (x==0.f) ? 0.f : 1.f; }
+    static float MonotonicCubic(float xn1, float x0, float x1, float x2, float alpha)
+    {
+        float dk        = (x1 - xn1) / 2.f;
+        float dk1       = (x2 - x0) / 2.f;
+        float deltak    = x1 - x0;
+        if (Sign(dk) != Sign(deltak) || Sign(dk1) != Sign(deltak)) {
+            dk = dk1 = 0.f;
+            deltak = 0.f;
+        }
+
+        float a2 = alpha * alpha;
+        float a3 = alpha * a2;
+        return 
+              (dk + dk1 - deltak) * a3
+            + (3.f * deltak - 2.f * dk - dk1) * a2
+            + dk * alpha
+            + x0;
+    }
+
+    static float LoadMonotonicCubic(const ScalarField2D& field, Float2 coord)
+    {
+        float fx = XlFloor(coord[0]);
+        float fy = XlFloor(coord[1]);
+        float a = coord[0] - fx, b = coord[1] - fy;
+
+        unsigned x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
+        unsigned x1 = std::min(x0+1u, field._wh-1u);
+        unsigned y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
+        unsigned y1 = std::min(y0+1u, field._wh-1u);
+        assert(x1 < field._wh && y1 < field._wh);
+
+        unsigned x2 = std::min(x1+1u, field._wh-1u);
+        unsigned y2 = std::min(y1+1u, field._wh-1u);
+        unsigned xn1 = std::max(x0, 1u) - 1u;
+        unsigned yn1 = std::max(y0, 1u) - 1u;
+        
+        float u[] = 
+        {
+            (*field._u)[yn1*field._wh+xn1],
+            (*field._u)[yn1*field._wh+ x0],
+            (*field._u)[yn1*field._wh+ x1],
+            (*field._u)[yn1*field._wh+ x2],
+
+            (*field._u)[ y0*field._wh+xn1],
+            (*field._u)[ y0*field._wh+ x0],
+            (*field._u)[ y0*field._wh+ x1],
+            (*field._u)[ y0*field._wh+ x2],
+
+            (*field._u)[ y1*field._wh+xn1],
+            (*field._u)[ y1*field._wh+ x0],
+            (*field._u)[ y1*field._wh+ x1],
+            (*field._u)[ y1*field._wh+ x2],
+
+            (*field._u)[ y2*field._wh+xn1],
+            (*field._u)[ y2*field._wh+ x0],
+            (*field._u)[ y2*field._wh+ x1],
+            (*field._u)[ y2*field._wh+ x2]
+        };
+
+        float un1 = MonotonicCubic(u[ 0], u[ 1], u[ 2], u[ 3], a);
+        float u0  = MonotonicCubic(u[ 4], u[ 5], u[ 6], u[ 7], a);
+        float u1  = MonotonicCubic(u[ 8], u[ 9], u[10], u[11], a);
+        float u2  = MonotonicCubic(u[12], u[13], u[14], u[15], a);
+        return MonotonicCubic(un1, u0, u1, u2, b);
+    }
+
+    static Float2 LoadMonotonicCubic(const VectorField2D& field, Float2 coord)
+    {
+        float fx = XlFloor(coord[0]);
+        float fy = XlFloor(coord[1]);
+        float a = coord[0] - fx, b = coord[1] - fy;
+
+        unsigned x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
+        unsigned x1 = std::min(x0+1u, field._wh-1u);
+        unsigned y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
+        unsigned y1 = std::min(y0+1u, field._wh-1u);
+        assert(x1 < field._wh && y1 < field._wh);
+
+        unsigned x2 = std::min(x1+1u, field._wh-1u);
+        unsigned y2 = std::min(y1+1u, field._wh-1u);
+        unsigned xn1 = std::max(x0, 1u) - 1u;
+        unsigned yn1 = std::max(y0, 1u) - 1u;
+        
+        float u[] = 
+        {
+            (*field._u)[yn1*field._wh+xn1],
+            (*field._u)[yn1*field._wh+ x0],
+            (*field._u)[yn1*field._wh+ x1],
+            (*field._u)[yn1*field._wh+ x2],
+
+            (*field._u)[ y0*field._wh+xn1],
+            (*field._u)[ y0*field._wh+ x0],
+            (*field._u)[ y0*field._wh+ x1],
+            (*field._u)[ y0*field._wh+ x2],
+
+            (*field._u)[ y1*field._wh+xn1],
+            (*field._u)[ y1*field._wh+ x0],
+            (*field._u)[ y1*field._wh+ x1],
+            (*field._u)[ y1*field._wh+ x2],
+
+            (*field._u)[ y2*field._wh+xn1],
+            (*field._u)[ y2*field._wh+ x0],
+            (*field._u)[ y2*field._wh+ x1],
+            (*field._u)[ y2*field._wh+ x2]
+        };
+
+        float v[] = 
+        {
+            (*field._v)[yn1*field._wh+xn1],
+            (*field._v)[yn1*field._wh+ x0],
+            (*field._v)[yn1*field._wh+ x1],
+            (*field._v)[yn1*field._wh+ x2],
+
+            (*field._v)[ y0*field._wh+xn1],
+            (*field._v)[ y0*field._wh+ x0],
+            (*field._v)[ y0*field._wh+ x1],
+            (*field._v)[ y0*field._wh+ x2],
+
+            (*field._v)[ y1*field._wh+xn1],
+            (*field._v)[ y1*field._wh+ x0],
+            (*field._v)[ y1*field._wh+ x1],
+            (*field._v)[ y1*field._wh+ x2],
+
+            (*field._v)[ y2*field._wh+xn1],
+            (*field._v)[ y2*field._wh+ x0],
+            (*field._v)[ y2*field._wh+ x1],
+            (*field._v)[ y2*field._wh+ x2]
+        };
+
+        float un1 = MonotonicCubic(u[ 0], u[ 1], u[ 2], u[ 3], a);
+        float u0  = MonotonicCubic(u[ 4], u[ 5], u[ 6], u[ 7], a);
+        float u1  = MonotonicCubic(u[ 8], u[ 9], u[10], u[11], a);
+        float u2  = MonotonicCubic(u[12], u[13], u[14], u[15], a);
+        float fu = MonotonicCubic(un1, u0, u1, u2, b);
+
+        float vn1 = MonotonicCubic(v[ 0], v[ 1], v[ 2], v[ 3], a);
+        float v0  = MonotonicCubic(v[ 4], v[ 5], v[ 6], v[ 7], a);
+        float v1  = MonotonicCubic(v[ 8], v[ 9], v[10], v[11], a);
+        float v2  = MonotonicCubic(v[12], v[13], v[14], v[15], a);
+        float fv = MonotonicCubic(vn1, v0, v1, v2, b);
+        return Float2(fu, fv);
+    }
+
     static void GatherNeighbours(Float2 neighbours[8], float weights[4], const VectorField2D& field, Float2 coord)
     {
         float fx = XlFloor(coord[0]);
@@ -1198,7 +1342,17 @@ namespace SceneEngine
         assert(isfinite(value) && !isnan(value));
     }
 
-    template<typename Field>
+    namespace Interp { const unsigned Clamp = 1<<0; const unsigned Cubic = 1<<1; };
+
+    template <unsigned Interpolation, typename Field>
+        static typename Field::ValueType LoadInterpolated(const Field& field, Float2 coord)
+        {
+            if (constant_expression<!!(Interpolation & Interp::Cubic)>::result())
+                return LoadMonotonicCubic(field, coord);
+            return LoadBilinear<!!(Interpolation & Interp::Clamp)>(field, coord);
+        }
+
+    template<unsigned Interpolation, typename Field>
         static Float2 AdvectRK4(
             Field velFieldT0, Field velFieldT1,
             UInt2 pt, float velScale)
@@ -1219,7 +1373,7 @@ namespace SceneEngine
             return startTap + (s / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
         }
 
-    template<typename Field>
+    template<unsigned Interpolation, typename Field>
         static Float2 AdvectRK4(
             Field velFieldT0, Field velFieldT1,
             Float2 pt, float velScale)
@@ -1248,6 +1402,31 @@ namespace SceneEngine
     float   Max(float lhs, float rhs)   { return std::max(lhs, rhs); }
     Float2  Max(Float2 lhs, Float2 rhs) { return Float2(std::max(lhs[0], rhs[0]), std::max(lhs[1], rhs[1])); }
 
+    template<unsigned Interpolation, typename Field>
+        typename Field::ValueType LoadWithNearbyRange(typename Field::ValueType& minNeighbour, typename Field::ValueType& maxNeighbour, const Field& field, Float2 pt)
+        {
+            Field::ValueType predictorParts[9];
+            float predictorWeights[4];
+            GatherNeighbours(predictorParts, predictorWeights, field, pt);
+            
+            minNeighbour =  MaxValue<Field::ValueType>();
+            maxNeighbour = -MaxValue<Field::ValueType>();
+            for (unsigned c=0; c<9; ++c) {
+                minNeighbour = Min(predictorParts[c], minNeighbour);
+                maxNeighbour = Max(predictorParts[c], maxNeighbour);
+            }
+
+            if (constant_expression<(Interpolation & Interp::Cubic)==0>::result()) {
+                return
+                      predictorWeights[0] * predictorParts[0]
+                    + predictorWeights[1] * predictorParts[1]
+                    + predictorWeights[2] * predictorParts[2]
+                    + predictorWeights[3] * predictorParts[3];
+            } else {
+                return LoadInterpolated<Interp::Cubic|Interp::Clamp>(field, pt);
+            }
+        }
+
     template<typename Field, typename VelField>
         void FluidSolver2D::Pimpl::Advect(
             Field dstValues, Field srcValues, 
@@ -1261,7 +1440,7 @@ namespace SceneEngine
         //  * basic euler forward integration (ie, just step forward in time)
         //  * forward integration method divided into smaller time steps
         //  * Runge-Kutta integration
-        //  * Modified MacCormick methods
+        //  * Modified MacCormack methods
         //  * Back and Forth Error Compensation and Correction (BFECC)
         //
         // Let's start without any complex boundary conditions.
@@ -1325,21 +1504,33 @@ namespace SceneEngine
 
         } else if (advectionMethod == Advection::RungeKutta) {
 
-            for (unsigned y=1; y<wh-1; ++y)
-                for (unsigned x=1; x<wh-1; ++x) {
+            if (settings._interpolationMethod == 0) {
 
-                        // This is the RK4 version
-                        // We'll use the average of the velocity field at t and
-                        // the velocity field at t+dt as an estimate of the field
-                        // at t+.5*dt
+                for (unsigned y=1; y<wh-1; ++y)
+                    for (unsigned x=1; x<wh-1; ++x) {
 
-                        // Note that we're tracing the velocity field backwards.
-                        // So doing k1 on velField1, and k4 on velFieldT0
-                        //      -- hoping this will interact with the velocity diffusion more sensibly
-                    const auto tap = AdvectRK4(velFieldT1, velFieldT0, UInt2(x, y), -deltaTime * velFieldScale);
-                    Write(dstValues, UInt2(x, y), LoadBilinear<true>(srcValues, tap));
+                            // This is the RK4 version
+                            // We'll use the average of the velocity field at t and
+                            // the velocity field at t+dt as an estimate of the field
+                            // at t+.5*dt
 
-                }
+                            // Note that we're tracing the velocity field backwards.
+                            // So doing k1 on velField1, and k4 on velFieldT0
+                            //      -- hoping this will interact with the velocity diffusion more sensibly
+                        const auto tap = AdvectRK4<0>(velFieldT1, velFieldT0, UInt2(x, y), -deltaTime * velFieldScale);
+                        Write(dstValues, UInt2(x, y), LoadInterpolated<Interp::Clamp>(srcValues, tap));
+
+                    }
+
+            } else {
+
+                for (unsigned y=1; y<wh-1; ++y)
+                    for (unsigned x=1; x<wh-1; ++x) {
+                        const auto tap = AdvectRK4<Interp::Cubic>(velFieldT1, velFieldT0, UInt2(x, y), -deltaTime * velFieldScale);
+                        Write(dstValues, UInt2(x, y), LoadInterpolated<Interp::Clamp|Interp::Cubic>(srcValues, tap));
+                    }
+
+            }
 
         } else if (advectionMethod == Advection::MacCormickRK4) {
 
@@ -1368,51 +1559,64 @@ namespace SceneEngine
                 // method and just clamp.
                 //
 
-            for (unsigned y=1; y<wh-1; ++y)
-                for (unsigned x=1; x<wh-1; ++x) {
+            if (settings._interpolationMethod == 0) {
 
-                    const auto pt = UInt2(x, y);
+                for (unsigned y=1; y<wh-1; ++y)
+                    for (unsigned x=1; x<wh-1; ++x) {
 
-                        // advect backwards in time first, to find the predictor
-                    const auto predictor = AdvectRK4(velFieldT1, velFieldT0, pt, -deltaTime * velFieldScale);
-                        // advect forward again to find the error tap
-                    const auto reversedTap = AdvectRK4(velFieldT0, velFieldT1, predictor, deltaTime * velFieldScale);
+                        const auto pt = UInt2(x, y);
 
-                    auto originalValue = Load(srcValues, pt);
-                    auto reversedValue = LoadBilinear<true>(srcValues, reversedTap);
-                    Field::ValueType finalValue;
+                            // advect backwards in time first, to find the predictor
+                        const auto predictor = AdvectRK4<0>(velFieldT1, velFieldT0, pt, -deltaTime * velFieldScale);
+                            // advect forward again to find the error tap
+                        const auto reversedTap = AdvectRK4<0>(velFieldT0, velFieldT1, predictor, deltaTime * velFieldScale);
 
-                        // Here we clamp the final result within the range of the neighbour cells of the 
-                        // original predictor. This prevents the scheme from becoming unstable (by avoiding
-                        // irrational values for 0.5f * (originalValue - reversedValue)
-                    const bool doClamping = true;
-                    if (constant_expression<doClamping>::result()) {
-                        Field::ValueType predictorParts[8];
-                        float predictorWeights[4];
-                        GatherNeighbours(predictorParts, predictorWeights, srcValues, predictor);
-                        auto predictorValue = 
-                              predictorWeights[0] * predictorParts[0]
-                            + predictorWeights[1] * predictorParts[1]
-                            + predictorWeights[2] * predictorParts[2]
-                            + predictorWeights[3] * predictorParts[3];
-                        auto minNeighbour =  MaxValue<Field::ValueType>();
-                        auto maxNeighbour = Field::ValueType(-MaxValue<Field::ValueType>());
-                        for (unsigned c=0; c<8; ++c) {
-                            minNeighbour = Min(predictorParts[c], minNeighbour);
-                            maxNeighbour = Max(predictorParts[c], maxNeighbour);
+                        auto originalValue = Load(srcValues, pt);
+                        auto reversedValue = LoadInterpolated<Interp::Clamp>(srcValues, reversedTap);
+                        Field::ValueType finalValue;
+
+                            // Here we clamp the final result within the range of the neighbour cells of the 
+                            // original predictor. This prevents the scheme from becoming unstable (by avoiding
+                            // irrational values for 0.5f * (originalValue - reversedValue)
+                        const bool doRangeClamping = true;
+                        if (constant_expression<doRangeClamping>::result()) {
+                            Field::ValueType minNeighbour, maxNeighbour;
+                            auto predictorValue = LoadWithNearbyRange<0>(minNeighbour, maxNeighbour, srcValues, predictor);
+                            finalValue = Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
+                            finalValue = Max(finalValue, minNeighbour);
+                            finalValue = Min(finalValue, maxNeighbour);
+                        } else {
+                            auto predictorValue = LoadInterpolated<Interp::Clamp>(srcValues, predictor);
+                            finalValue = Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
                         }
 
-                        finalValue = Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
-                        finalValue = Max(finalValue, minNeighbour);
-                        finalValue = Min(finalValue, maxNeighbour);
-                    } else {
-                        auto predictorValue = LoadBilinear<true>(srcValues, predictor);
-                        finalValue = Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
+                        Write(dstValues, pt, finalValue);
+
                     }
 
-                    Write(dstValues, pt, finalValue);
+            } else {
 
-                }
+                for (unsigned y=1; y<wh-1; ++y)
+                    for (unsigned x=1; x<wh-1; ++x) {
+
+                        const auto pt = UInt2(x, y);
+                        const auto predictor = AdvectRK4<Interp::Cubic>(velFieldT1, velFieldT0, pt, -deltaTime * velFieldScale);
+                        const auto reversedTap = AdvectRK4<Interp::Cubic>(velFieldT0, velFieldT1, predictor, deltaTime * velFieldScale);
+
+                        auto originalValue = Load(srcValues, pt);
+                        auto reversedValue = LoadInterpolated<Interp::Cubic|Interp::Clamp>(srcValues, reversedTap);
+
+                        Field::ValueType minNeighbour, maxNeighbour;
+                        auto predictorValue = LoadWithNearbyRange<Interp::Cubic>(minNeighbour, maxNeighbour, srcValues, predictor);
+                        auto finalValue = Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
+                        finalValue = Max(finalValue, minNeighbour);
+                        finalValue = Min(finalValue, maxNeighbour);
+
+                        Write(dstValues, pt, finalValue);
+
+                    }
+
+            }
 
         }
 
@@ -1966,7 +2170,7 @@ namespace SceneEngine
         _diffusionRate = 2.f;
         _tempDiffusion = 2.f;
         _diffusionMethod = 0;
-        _advectionMethod = 3;
+        _advectionMethod = 2;
         _advectionSteps = 4;
         _enforceIncompressibilityMethod = 3;
         _buoyancyAlpha = 0.035f;
@@ -1974,6 +2178,7 @@ namespace SceneEngine
         _addDensity = 1.f;
         _addTemperature = 0.3f;
         _vorticityConfinement = 0.75f;
+        _interpolationMethod = 0;
     }
 
 }
@@ -2107,6 +2312,7 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver2D::Settin
         props.Add(u("AddDensity"), DefaultGet(Obj, _addDensity),  DefaultSet(Obj, _addDensity));
         props.Add(u("AddTemperature"), DefaultGet(Obj, _addTemperature),  DefaultSet(Obj, _addTemperature));
         props.Add(u("VorticityConfinement"), DefaultGet(Obj, _vorticityConfinement),  DefaultSet(Obj, _vorticityConfinement));
+        props.Add(u("InterpolationMethod"), DefaultGet(Obj, _interpolationMethod),  DefaultSet(Obj, _interpolationMethod));
         init = true;
     }
     return props;

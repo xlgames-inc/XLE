@@ -32,6 +32,10 @@
         
         <scea.dom.editors.attribute category="MouseClick" name="AddDensity" displayName="AddDensity"/>
         <scea.dom.editors.attribute category="MouseClick" name="AddTemperature" displayName="AddTemperature"/>
+
+        <scea.dom.editors.attribute category="Simulation" name="InterpolationMethod" displayName="Interpolation Method"
+          editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:Bilinear=0,CubicMonotonic=1"
+          converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:Bilinear=0,CubicMonotonic=1"/>
       </xs:appinfo>
     </xs:annotation>
     
@@ -48,7 +52,8 @@
     <xs:attribute name="AddDensity" type="xs:float" default=".1"/>
     <xs:attribute name="AddTemperature" type="xs:float" default=".2"/>
     <xs:attribute name="VorticityConfinement" type="xs:float" default=".5"/>
-    
+    <xs:attribute name="InterpolationMethod" type="xs:int" default="0"/>
+
   </xs:complexType>
 </xs:schema>
 
