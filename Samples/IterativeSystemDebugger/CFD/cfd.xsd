@@ -18,8 +18,8 @@
           converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:CGPrecon=0,CGPlain=1,ForwardEuler=2,SOR=3,Multigrid=4"/>
 
         <scea.dom.editors.attribute category="Simulation" name="AdvectionMethod" displayName="AdvectionMethod"
-          editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:ForwardEuler=0,ForwardEulerDiv=1,RungeKutta=2"
-          converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:ForwardEuler=0,ForwardEulerDiv=1,RungeKutta=2"/>
+          editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:ForwardEuler=0,ForwardEulerDiv=1,RungeKutta=2,MacCormickRK4=3"
+          converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:ForwardEuler=0,ForwardEulerDiv=1,RungeKutta=2,MacCormickRK4=3"/>
         <scea.dom.editors.attribute category="Simulation" name="AdvectionSteps" displayName="AdvectionSteps"/>
 
         <scea.dom.editors.attribute category="Simulation" name="EnforceIncompressibility" displayName="Enforce Incompressibility Method"

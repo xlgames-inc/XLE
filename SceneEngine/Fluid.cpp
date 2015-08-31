@@ -1009,6 +1009,7 @@ namespace SceneEngine
     public:
         VectorX* _u, *_v; 
         unsigned _wh;
+        using ValueType = Float2;
     };
 
     template<bool DoClamp>
@@ -1074,6 +1075,7 @@ namespace SceneEngine
     public:
         VectorX* _u;
         unsigned _wh;
+        using ValueType = float;
     };
 
     template<bool DoClamp>
@@ -1110,6 +1112,79 @@ namespace SceneEngine
             ;
     }
 
+    static void GatherNeighbours(Float2 neighbours[8], float weights[4], const VectorField2D& field, Float2 coord)
+    {
+        float fx = XlFloor(coord[0]);
+        float fy = XlFloor(coord[1]);
+        float a = coord[0] - fx, b = coord[1] - fy;
+        weights[0] = (1.f - a) * (1.f - b);
+        weights[1] = a * (1.f - b);
+        weights[2] = (1.f - a) * b;
+        weights[3] = a * b;
+
+        unsigned x0, x1, y0, y1;
+        x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
+        x1 = std::min(x0+1u, field._wh-1u);
+        y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
+        y1 = std::min(y0+1u, field._wh-1u);
+
+        unsigned xx = std::max(x0, 1u) - 1u;
+        unsigned yx = std::max(y0, 1u) - 1u;
+
+        neighbours[0][0] = (*field._u)[y0*field._wh+x0];
+        neighbours[1][0] = (*field._u)[y0*field._wh+x1];
+        neighbours[2][0] = (*field._u)[y1*field._wh+x0];
+        neighbours[3][0] = (*field._u)[y1*field._wh+x1];
+
+        neighbours[4][0] = (*field._u)[yx*field._wh+xx];
+        neighbours[5][0] = (*field._u)[yx*field._wh+x0];
+        neighbours[6][0] = (*field._u)[yx*field._wh+x1];
+        neighbours[7][0] = (*field._u)[y0*field._wh+xx];
+        neighbours[8][0] = (*field._u)[y1*field._wh+xx];
+
+        neighbours[0][1] = (*field._v)[y0*field._wh+x0];
+        neighbours[1][1] = (*field._v)[y0*field._wh+x1];
+        neighbours[2][1] = (*field._v)[y1*field._wh+x0];
+        neighbours[3][1] = (*field._v)[y1*field._wh+x1];
+
+        neighbours[4][1] = (*field._v)[yx*field._wh+xx];
+        neighbours[5][1] = (*field._v)[yx*field._wh+x0];
+        neighbours[6][1] = (*field._v)[yx*field._wh+x1];
+        neighbours[7][1] = (*field._v)[y0*field._wh+xx];
+        neighbours[8][1] = (*field._v)[y1*field._wh+xx];
+    }
+
+    static void GatherNeighbours(float neighbours[8], float weights[4], const ScalarField2D& field, Float2 coord)
+    {
+        float fx = XlFloor(coord[0]);
+        float fy = XlFloor(coord[1]);
+        float a = coord[0] - fx, b = coord[1] - fy;
+        weights[0] = (1.f - a) * (1.f - b);
+        weights[1] = a * (1.f - b);
+        weights[2] = (1.f - a) * b;
+        weights[3] = a * b;
+
+        unsigned x0, x1, y0, y1;
+        x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
+        x1 = std::min(x0+1u, field._wh-1u);
+        y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
+        y1 = std::min(y0+1u, field._wh-1u);
+
+        unsigned xx = std::max(x0, 1u) - 1u;
+        unsigned yx = std::max(y0, 1u) - 1u;
+
+        neighbours[0] = (*field._u)[y0*field._wh+x0];
+        neighbours[1] = (*field._u)[y0*field._wh+x1];
+        neighbours[2] = (*field._u)[y1*field._wh+x0];
+        neighbours[3] = (*field._u)[y1*field._wh+x1];
+
+        neighbours[4] = (*field._u)[yx*field._wh+xx];
+        neighbours[5] = (*field._u)[yx*field._wh+x0];
+        neighbours[6] = (*field._u)[yx*field._wh+x1];
+        neighbours[7] = (*field._u)[y0*field._wh+xx];
+        neighbours[8] = (*field._u)[y1*field._wh+xx];
+    }
+
     static float Load(const ScalarField2D& field, UInt2 coord)
     {
         assert(coord[0] < field._wh && coord[1] < field._wh);
@@ -1122,6 +1197,56 @@ namespace SceneEngine
         (*field._u)[coord[1] * field._wh + coord[0]] = value;
         assert(isfinite(value) && !isnan(value));
     }
+
+    template<typename Field>
+        static Float2 AdvectRK4(
+            Field velFieldT0, Field velFieldT1,
+            UInt2 pt, float velScale)
+        {
+            const float s = velScale;
+            const float halfS = s / 2.f;
+
+            Float2 startTap = Float2(float(pt[0]), float(pt[1]));
+            auto k1 = Load(velFieldT0, pt);
+            auto k2 = .5f * LoadBilinear<true>(velFieldT0, startTap + halfS * k1)
+                    + .5f * LoadBilinear<true>(velFieldT1, startTap + halfS * k1)
+                    ;
+            auto k3 = .5f * LoadBilinear<true>(velFieldT0, startTap + halfS * k2)
+                    + .5f * LoadBilinear<true>(velFieldT1, startTap + halfS * k2)
+                    ;
+            auto k4 = LoadBilinear<true>(velFieldT1, startTap + s * k3);
+
+            return startTap + (s / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
+        }
+
+    template<typename Field>
+        static Float2 AdvectRK4(
+            Field velFieldT0, Field velFieldT1,
+            Float2 pt, float velScale)
+        {
+            const float s = velScale;
+            const float halfS = s / 2.f;
+
+                // when using a float point input, we need bilinear interpolation
+            auto k1 = LoadBilinear<true>(velFieldT0, pt);
+            auto k2 = .5f * LoadBilinear<true>(velFieldT0, pt + halfS * k1)
+                    + .5f * LoadBilinear<true>(velFieldT1, pt + halfS * k1)
+                    ;
+            auto k3 = .5f * LoadBilinear<true>(velFieldT0, pt + halfS * k2)
+                    + .5f * LoadBilinear<true>(velFieldT1, pt + halfS * k2)
+                    ;
+            auto k4 = LoadBilinear<true>(velFieldT1, pt + s * k3);
+
+            return pt + (s / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
+        }
+
+    template<typename Type> Type MaxValue();
+    template<> float MaxValue()         { return FLT_MAX; }
+    template<> Float2 MaxValue()        { return Float2(FLT_MAX, FLT_MAX); }
+    float   Min(float lhs, float rhs)   { return std::min(lhs, rhs); }
+    Float2  Min(Float2 lhs, Float2 rhs) { return Float2(std::min(lhs[0], rhs[0]), std::min(lhs[1], rhs[1])); }
+    float   Max(float lhs, float rhs)   { return std::max(lhs, rhs); }
+    Float2  Max(Float2 lhs, Float2 rhs) { return Float2(std::max(lhs[0], rhs[0]), std::max(lhs[1], rhs[1])); }
 
     template<typename Field, typename VelField>
         void FluidSolver2D::Pimpl::Advect(
@@ -1152,7 +1277,7 @@ namespace SceneEngine
         // number is larger than 1)
         //
 
-        enum class Advection { ForwardEuler, ForwardEulerDiv, RungeKutta };
+        enum class Advection { ForwardEuler, ForwardEulerDiv, RungeKutta, MacCormickRK4 };
         const auto advectionMethod = (Advection)settings._advectionMethod;
         const auto adjvectionSteps = settings._advectionSteps;
 
@@ -1208,25 +1333,84 @@ namespace SceneEngine
                         // the velocity field at t+dt as an estimate of the field
                         // at t+.5*dt
 
-                    float s = deltaTime * velFieldScale;
-                    float halfS = .5f * s;
-
-                    Float2 startTap = Float2(float(x), float(y));
-
                         // Note that we're tracing the velocity field backwards.
                         // So doing k1 on velField1, and k4 on velFieldT0
                         //      -- hoping this will interact with the velocity diffusion more sensibly
-                    auto k1 = Load(velFieldT1, UInt2(x, y));
-                    auto k2 = .5f * LoadBilinear<true>(velFieldT0, startTap - halfS * k1)
-                            + .5f * LoadBilinear<true>(velFieldT1, startTap - halfS * k1)
-                            ;
-                    auto k3 = .5f * LoadBilinear<true>(velFieldT0, startTap - halfS * k2)
-                            + .5f * LoadBilinear<true>(velFieldT1, startTap - halfS * k2)
-                            ;
-                    auto k4 = LoadBilinear<true>(velFieldT0, startTap - s * k3);
-
-                    auto tap = startTap - (s / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
+                    const auto tap = AdvectRK4(velFieldT1, velFieldT0, UInt2(x, y), -deltaTime * velFieldScale);
                     Write(dstValues, UInt2(x, y), LoadBilinear<true>(srcValues, tap));
+
+                }
+
+        } else if (advectionMethod == Advection::MacCormickRK4) {
+
+                //
+                // This is a modified MacCormack scheme, as described in An Unconditionally
+                // Stable MacCormack Method -- Selle & Fedkiw, et al.
+                //  http://physbam.stanford.edu/~fedkiw/papers/stanford2006-09.pdf
+                //
+                // It's also similar to the (oddly long nammed) Back And Forth Error Compensation 
+                // and Correction (BFECC).
+                //
+                // Basically, we want to run an initial predictor step, then run a backwards
+                // advection to find an intermediate point. The difference between the value at
+                // the initial point and the intermediate point is used as a error term.
+                //
+                // This way, we get an improved estimate, but with only 2 advection steps.
+                //
+                // We need to use some advection method for the forward and advection steps. Often
+                // a semi-lagrangian method is used (particularly velocities and timesteps are large
+                // with respect to the grid size). 
+                //
+                // But here, we'll use RK4.
+                //
+                // We also need a way to check for overruns and oscillation cases. Selle & Fedkiw
+                // suggest using a normal semi-Lagrangian method in these cases. We'll try a simplier
+                // method and just clamp.
+                //
+
+            for (unsigned y=1; y<wh-1; ++y)
+                for (unsigned x=1; x<wh-1; ++x) {
+
+                    const auto pt = UInt2(x, y);
+
+                        // advect backwards in time first, to find the predictor
+                    const auto predictor = AdvectRK4(velFieldT1, velFieldT0, pt, -deltaTime * velFieldScale);
+                        // advect forward again to find the error tap
+                    const auto reversedTap = AdvectRK4(velFieldT0, velFieldT1, predictor, deltaTime * velFieldScale);
+
+                    auto originalValue = Load(srcValues, pt);
+                    auto reversedValue = LoadBilinear<true>(srcValues, reversedTap);
+                    Field::ValueType finalValue;
+
+                        // Here we clamp the final result within the range of the neighbour cells of the 
+                        // original predictor. This prevents the scheme from becoming unstable (by avoiding
+                        // irrational values for 0.5f * (originalValue - reversedValue)
+                    const bool doClamping = true;
+                    if (constant_expression<doClamping>::result()) {
+                        Field::ValueType predictorParts[8];
+                        float predictorWeights[4];
+                        GatherNeighbours(predictorParts, predictorWeights, srcValues, predictor);
+                        auto predictorValue = 
+                              predictorWeights[0] * predictorParts[0]
+                            + predictorWeights[1] * predictorParts[1]
+                            + predictorWeights[2] * predictorParts[2]
+                            + predictorWeights[3] * predictorParts[3];
+                        auto minNeighbour =  MaxValue<Field::ValueType>();
+                        auto maxNeighbour = Field::ValueType(-MaxValue<Field::ValueType>());
+                        for (unsigned c=0; c<8; ++c) {
+                            minNeighbour = Min(predictorParts[c], minNeighbour);
+                            maxNeighbour = Max(predictorParts[c], maxNeighbour);
+                        }
+
+                        finalValue = Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
+                        finalValue = Max(finalValue, minNeighbour);
+                        finalValue = Min(finalValue, maxNeighbour);
+                    } else {
+                        auto predictorValue = LoadBilinear<true>(srcValues, predictor);
+                        finalValue = Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
+                    }
+
+                    Write(dstValues, pt, finalValue);
 
                 }
 
@@ -1265,6 +1449,14 @@ namespace SceneEngine
         // Also, here to have to consider how we define the discrete divergence of the
         // field. Stam uses .5f * (f[i+1] - f[i-1]). Depending on how we arrange the physical
         // values with respect to the grid, we could alternatively consider f[i] - f[i-1].
+        //
+
+        //
+        //  Note -- there may be some benefit in doing this step with a multigrid-like approach
+        //          that is, we could solve for incompressibility on a resamples low resolution
+        //          grid first; to remove low frequency divergence first... And then successively
+        //          use higher resolution grids to remove higher frequency divergence. It might
+        //          improve large scale details a bit.
         //
 
         const auto wh = velField._wh;
@@ -1313,6 +1505,13 @@ namespace SceneEngine
         // paper, Fedkiw calculates the vorticity at a half-cell offset from the 
         // velocity field. It's not clear why that was done. We will ignore that, 
         // and calculate vorticity exactly on the velocity field.
+        //
+        // Note --  like EnforceIncompressibility, it might be helpful to do take a
+        //          multigrid-like approach for this step. That is, here we're emphasising
+        //          very high frequency vorticity features (because these are the features
+        //          that are most likely to be lost in the approximations of the model).
+        //          But, by using grids of different resolutions, it might be interesting
+        //          to emphasise some higher level vorticity features, as well.
         //
 
         const auto wh = inputVelocities._wh;
@@ -1767,7 +1966,7 @@ namespace SceneEngine
         _diffusionRate = 2.f;
         _tempDiffusion = 2.f;
         _diffusionMethod = 0;
-        _advectionMethod = 2;
+        _advectionMethod = 3;
         _advectionSteps = 4;
         _enforceIncompressibilityMethod = 3;
         _buoyancyAlpha = 0.035f;
