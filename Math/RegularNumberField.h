@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#pragma once
+
 #include "Vector.h"
 
 namespace XLEMath
@@ -25,7 +27,6 @@ namespace XLEMath
     /// This implementation is a square grid of vectors. X and Y components
     /// of the vectors are not interleaved (ie, they are stored separately
     /// in memory)
-    ///
     template<typename Store>
         class VectorField2DSeparate
     {

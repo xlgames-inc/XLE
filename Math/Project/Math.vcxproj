@@ -97,6 +97,8 @@
     <ClInclude Include="..\Math.h" />
     <ClInclude Include="..\Matrix.h" />
     <ClInclude Include="..\Noise.h" />
+    <ClInclude Include="..\PoissonSolver.h" />
+    <ClInclude Include="..\PoissonSolverDetail.h" />
     <ClInclude Include="..\ProjectionMath.h" />
     <ClInclude Include="..\Quaternion.h" />
     <ClInclude Include="..\RegularNumberField.h" />
@@ -109,6 +111,7 @@
     <ClCompile Include="..\Interpolation.cpp" />
     <ClCompile Include="..\Matrix.cpp" />
     <ClCompile Include="..\Noise.cpp" />
+    <ClCompile Include="..\PoissonSolver.cpp" />
     <ClCompile Include="..\ProjectionMath.cpp" />
     <ClCompile Include="..\RegularNumberField.cpp" />
     <ClCompile Include="..\Transformations.cpp" />

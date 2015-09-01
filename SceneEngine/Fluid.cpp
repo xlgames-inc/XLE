@@ -9,6 +9,8 @@
 #include "Fluid.h"
 #include "../ConsoleRig/Log.h"
 #include "../Math/RegularNumberField.h"
+#include "../Math/PoissonSolver.h"
+#include "../Math/PoissonSolverDetail.h"
 #include "../Utility/Meta/ClassAccessorsImpl.h"
 
 extern "C" void dens_step ( int N, float * x, float * x0, float * u, float * v, float diff, float dt );
@@ -22,6 +24,7 @@ extern "C" void vel_step ( int N, float * u, float * v, float * u0, float * v0, 
 
 #pragma warning(disable:4505)       // 'SceneEngine::CalculateIncompleteCholesky' : unreferenced local function has been removed
 
+using namespace XLEMath::PoissonSolverInternal;
 
 namespace SceneEngine
 {
@@ -137,585 +140,12 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    using MatrixX = Eigen::MatrixXf;
     using VectorX = Eigen::VectorXf;
-    
-    template<typename Vec>
-        static void Multiply(Vec& dst, const std::function<float(unsigned, unsigned)>& A, const Vec& b, unsigned N)
-    {
-        for (unsigned i=0; i<N; ++i) {
-            float d = 0.f;
-            for (unsigned j=0; j<N; ++j) {
-                d += A(i, j) * b(j);
-            }
-            dst(i) = d;
-        }
-    }
-        
-    struct AMat2D
-    {
-        unsigned wh;
-        float a0;
-        float a1;
-    };
-
-    template <typename Vec>
-        static void Multiply(Vec& dst, AMat2D A, const Vec& b, unsigned N)
-    {
-        for (unsigned y=1; y<A.wh-1; ++y) {
-            for (unsigned x=1; x<A.wh-1; ++x) {
-                const unsigned i = y*A.wh + x;
-
-                float v = A.a0 * b(i);
-                v += A.a1 * b(i-1);
-                v += A.a1 * b(i+1);
-                v += A.a1 * b(i-A.wh);
-                v += A.a1 * b(i+A.wh);
-
-                dst(i) = v;
-            }
-        }
-    }
-
-    template <typename Vec>
-        static void ZeroBorder(Vec& v, unsigned wh)
-    {
-        for (unsigned i = 1; i < wh - 1; ++i) {
-            v(i) = 0.f;             // top
-            v(i+(wh-1)*wh) = 0.f;   // bottom
-            v(i*wh) = 0.f;          // left
-            v(i*wh+(wh-1)) = 0.f;   // right
-        }
-
-            // 4 corners
-        v(0) = 0.f;
-        v(wh-1) = 0.f;
-        v((wh-1)*wh) = 0.f;
-        v((wh-1)*wh+wh-1) = 0.f;
-    }
-
-    static unsigned XY(unsigned x, unsigned y, unsigned wh) { return y*wh+x; }
-    template <typename Vec>
-        static void ReflectUBorder(Vec& v, unsigned wh)
-    {
-        #define XY(x,y) XY(x,y,wh)
-        for (unsigned i = 1; i < wh - 1; ++i) {
-            v(XY(0, i))     = -v(XY(1,i));
-            v(XY(wh-1, i))  = -v(XY(wh-2,i));
-            v(XY(i, 0))     =  v(XY(i, 1));
-            v(XY(i, wh-1))  =  v(XY(i, wh-2));
-        }
-
-            // 4 corners
-        v(XY(0,0))          = 0.5f*(v(XY(1,0))          + v(XY(0,1)));
-        v(XY(0,wh-1))       = 0.5f*(v(XY(1,wh-1))       + v(XY(0,wh-2)));
-        v(XY(wh-1,0))       = 0.5f*(v(XY(wh-2,0))       + v(XY(wh-1,1)));
-        v(XY(wh-1,wh-1))    = 0.5f*(v(XY(wh-2,wh-1))    + v(XY(wh-1,wh-2)));
-        #undef XY
-    }
-
-    template <typename Vec>
-        static void ReflectVBorder(Vec& v, unsigned wh)
-    {
-        #define XY(x,y) XY(x,y,wh)
-        for (unsigned i = 1; i < wh - 1; ++i) {
-            v(XY(0, i))     =  v(XY(1,i));
-            v(XY(wh-1, i))  =  v(XY(wh-2,i));
-            v(XY(i, 0))     = -v(XY(i, 1));
-            v(XY(i, wh-1))  = -v(XY(i, wh-2));
-        }
-
-            // 4 corners
-        v(XY(0,0))          = 0.5f*(v(XY(1,0))          + v(XY(0,1)));
-        v(XY(0,wh-1))       = 0.5f*(v(XY(1,wh-1))       + v(XY(0,wh-2)));
-        v(XY(wh-1,0))       = 0.5f*(v(XY(wh-2,0))       + v(XY(wh-1,1)));
-        v(XY(wh-1,wh-1))    = 0.5f*(v(XY(wh-2,wh-1))    + v(XY(wh-1,wh-2)));
-        #undef XY
-    }
-
-    template <typename Vec>
-        static void SmearBorder(Vec& v, unsigned wh)
-    {
-        #define XY(x,y) XY(x,y,wh)
-        for (unsigned i = 1; i < wh - 1; ++i) {
-            v(XY(0, i))     =  v(XY(1,i));
-            v(XY(wh-1, i))  =  v(XY(wh-2,i));
-            v(XY(i, 0))     =  v(XY(i, 1));
-            v(XY(i, wh-1))  =  v(XY(i, wh-2));
-        }
-
-            // 4 corners
-        v(XY(0,0))          = 0.5f*(v(XY(1,0))          + v(XY(0,1)));
-        v(XY(0,wh-1))       = 0.5f*(v(XY(1,wh-1))       + v(XY(0,wh-2)));
-        v(XY(wh-1,0))       = 0.5f*(v(XY(wh-2,0))       + v(XY(wh-1,1)));
-        v(XY(wh-1,wh-1))    = 0.5f*(v(XY(wh-2,wh-1))    + v(XY(wh-1,wh-2)));
-        #undef XY
-    }
-
-    template <typename Vec>
-        static void ZeroBorder(Vec& v, const AMat2D & A) { ZeroBorder(v, A.wh); }
-
-    template <typename Vec, typename Unknown>
-        static void ZeroBorder(Vec&, const Unknown&) {}
-
-    template<typename Vec, typename Mat>
-        static void SolveLowerTriangular(Vec& x, const Mat& M, const Vec& b, unsigned N)
-    {
-            // solve: M * dst = b
-            // for a lower triangular matrix, using forward substitution
-        for (unsigned i=0; i<N; ++i) {
-            float d = b(i);
-            for (unsigned j=0; j<i; ++j) {
-                d -= M(i, j) * x(j);
-            }
-            x(i) = d / M(i, i);
-        }
-    }
-
-    class SparseBandedMatrix
-    {
-    public:
-        const int *_bands;
-        unsigned _bandCount;
-        MatrixX _underlying;
-
-        SparseBandedMatrix() { _bandCount = 0; _bands = nullptr; }
-        SparseBandedMatrix(MatrixX&& underlying, const int bands[], unsigned bandCount)
-            : _underlying(std::move(underlying))
-            { _bands = bands; _bandCount = bandCount; }
-        ~SparseBandedMatrix() {}
-    };
-
-    template<typename Vec>
-        static void SolveLowerTriangular(Vec& x, const SparseBandedMatrix& M, const Vec& b, unsigned N)
-    {
-            // assuming the last "band" in the matrix is the diagonal aprt
-        assert(M._bandCount > 0 && M._bands[M._bandCount-1] == 0);
-
-            // solve: M * dst = b
-            // for a lower triangular matrix, using forward substitution
-            // this is for a sparse banded matrix, with the bands described by "bands"
-            //      -- note that we can improve this further by writing implementations for
-            //          common cases (eg, 2D, 3D, etc)
-        for (unsigned i=0; i<N; ++i) {
-            float d = b(i);
-            for (unsigned j=0; j<M._bandCount-1; ++j) {
-                int j2 = int(i) + M._bands[j];
-                if (j2 >= 0 && j2 < int(i))  // with agressive unrolling, we should avoid this condition
-                    d -= M._underlying(i, j) * x(j2);
-            }
-            x(i) = d / M._underlying(i, M._bandCount-1);
-        }
-    }
-
-    template<typename Vec>
-        static void Multiply(Vec& dst, const SparseBandedMatrix& A, const Vec& b, unsigned N)
-    {
-        for (unsigned i=0; i<N; ++i) {
-            float d = 0.f;
-            for (unsigned j=0; j<A._bandCount; ++j) {
-                int j2 = int(i) + A._bands[j];
-                if (j2 >= 0 && j2 < int(N))  // with agressive unrolling, we should avoid this condition
-                    d += A._underlying(i, j) * b(j2);
-            }
-            dst(i) = d;
-        }
-    }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class Solver_PlainCG
-    {
-    public:
-
-        template<typename Vec, typename Mat>
-            unsigned Execute(Vec& x, const Mat& A, const Vec& b);
-
-        Solver_PlainCG(unsigned N);
-        ~Solver_PlainCG();
-
-    protected:
-        VectorX _r, _d, _q;
-        unsigned _N;
-    };
-
-    template<typename Vec, typename Mat>
-        unsigned Solver_PlainCG::Execute(Vec& x, const Mat& A, const Vec& b)
-    {
-            // This is the basic "conjugate gradient" method; with no special thrills
-            // returns the number of iterations
-        const auto rhoThreshold = 1e-10f;
-        const auto maxIterations = 13u;
-
-        Multiply(_r, A, x, _N);
-        ZeroBorder(_r, A);
-        _r = b - _r;
-        _d = _r;
-        float rho = _r.dot(_r);
-
-        ZeroBorder(_q, A);
-        unsigned k=0;
-        if (XlAbs(rho) > rhoThreshold) {
-            for (; k<maxIterations; ++k) {
-            
-                Multiply(_q, A, _d, _N);
-                float dDotQ = _d.dot(_q);
-                float alpha = rho / dDotQ;
-                assert(isfinite(alpha) && !isnan(alpha));
-                 x += alpha * _d;
-                _r -= alpha * _d;
-            
-                float rhoOld = rho;
-                rho = _r.dot(_r);
-                if (XlAbs(rho) < rhoThreshold) break;
-                float beta = rho / rhoOld;
-                assert(isfinite(beta) && !isnan(beta));
-            
-                    // we can skip the border for the following...
-                    // (but that requires different cases for 2D/3D)
-                for (unsigned i=0; i<_N; ++i)
-                    _d(i) = _r(i) + beta * _d(i);
-
-            }
-        }
-
-        return k;
-    }
-
-    Solver_PlainCG::Solver_PlainCG(unsigned N)
-    : _r(N), _d(N), _q(N)
-    {
-        _N = N;
-    }
-
-    Solver_PlainCG::~Solver_PlainCG() {}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class Solver_PreconCG
-    {
-    public:
-
-        template<typename Vec, typename Mat, typename PreCon>
-            unsigned Execute(Vec& x, const Mat& A, const Vec& b, const PreCon& precon);
-
-        Solver_PreconCG(unsigned N);
-        ~Solver_PreconCG();
-
-    protected:
-        VectorX _r, _d, _q;
-        VectorX _s;
-        unsigned _N;
-    };
-
-    template<typename Vec, typename Mat, typename PreCon>
-        unsigned Solver_PreconCG::Execute(Vec& x, const Mat& A, const Vec& b, const PreCon& precon)
-    {
-            // This is the conjugate gradient method with a preconditioner.
-            //
-            // Note that for our CFD operations, the preconditioner often comes out very similar
-            // to "A" -- so it's not clear whether it will help in any significant way.
-            //
-            // See http://www.cs.cmu.edu/~quake-papers/painless-conjugate-gradient.pdf 
-            // for for detailed description of conjugate gradient methods!
-            // 
-            // see also reference at http://math.nist.gov/iml++/
-        const auto rhoThreshold = 1e-10f;
-        const auto maxIterations = 13u;
-
-        Multiply(_r, A, x, _N);    // r = AMat * x
-        ZeroBorder(_r, A);
-        _r = b - _r;
-            
-        SolveLowerTriangular(_d, precon, _r, _N);
-            
-        // #if defined(_DEBUG)
-        //     {
-        //             // testing "SolveLowerTriangular"
-        //         VectorX t(_N);
-        //         Multiply(t, precon, _d, _N);
-        //         for (unsigned c=0; c<_N; ++c) {
-        //             float z = t(c), y = _r(c);
-        //             assert(Equivalent(z, y, 1e-1f));
-        //         }
-        //     }
-        // #endif
-            
-        float rho = _r.dot(_d);
-        // float rho0 = rho;
-
-        ZeroBorder(_q, A);
-            
-        unsigned k=0;
-        if (XlAbs(rho) > rhoThreshold) {
-            for (; k<maxIterations; ++k) {
-            
-                    // Note that all of the vectors and matrices
-                    // used here are quite sparse! So we need to
-                    // simplify the operation shere to take advantage 
-                    // of that sparseness.
-                    // Multiply by AMat can be replaced with a specialized
-                    // operation. Unfortunately the dot products can't be
-                    // simplified, because the vectors already have only one
-                    // element per cell.
-            
-                Multiply(_q, A, _d, _N);
-                float dDotQ = _d.dot(_q);
-                float alpha = rho / dDotQ;
-                assert(isfinite(alpha) && !isnan(alpha));
-                 x += alpha * _d;
-                _r -= alpha * _q;
-            
-                SolveLowerTriangular(_s, precon, _r, _N);
-                float rhoOld = rho;
-                rho = _r.dot(_s);
-                if (XlAbs(rho) < rhoThreshold) break;
-                assert(rho < rhoOld);
-                float beta = rho / rhoOld;
-                assert(isfinite(beta) && !isnan(beta));
-            
-                for (unsigned i=0; i<_N; ++i)
-                    _d(i) = _s(i) + beta * _d(i);
-            }
-        }
-
-        return k;
-    }
-
-    Solver_PreconCG::Solver_PreconCG(unsigned N)
-    : _r(N), _d(N), _q(N), _s(N)
-    {
-        _N = N;
-    }
-
-    Solver_PreconCG::~Solver_PreconCG() {}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-    class Solver_Multigrid
-    {
-    public:
-        template<typename Vec, typename Mat>
-            unsigned Execute(Vec& x, const Mat& A, const Vec& b);
-
-        Solver_Multigrid(unsigned wh, unsigned levels);
-        ~Solver_Multigrid();
-
-    protected:
-        std::vector<VectorX> _subResidual;
-        std::vector<VectorX> _subB;
-        std::vector<unsigned> _subWh;
-        unsigned _N;
-        unsigned _wh;
-    };
-
-    template<typename Vec>
-        static void RunSOR(Vec& xv, AMat2D A, const Vec& b, float relaxationFactor)
-    {
-        for (unsigned y=1; y<A.wh-1; ++y) {
-            for (unsigned x=1; x<A.wh-1; ++x) {
-                const unsigned i = y*A.wh+x;
-                float v = b[i];
-
-                v -= A.a1 * xv[i-1];
-                v -= A.a1 * xv[i+1];
-                v -= A.a1 * xv[i-A.wh];
-                v -= A.a1 * xv[i+A.wh];
-
-                xv[i] = (1.f-relaxationFactor) * xv[i] + relaxationFactor * v / A.a0;
-            }
-        }
-    }
-
-    template<typename Vec>
-        static void RunSOR(Vec& xv, std::function<float(unsigned, unsigned)>& A, const Vec& b, float relaxationFactor)
-    {
-        for (unsigned i = 0; i < N; ++i) {
-            float v = b[i];
-
-                // these loops work oddly simply in this situation
-                // (but of course we can simplify because our matrix is sparse)
-            for (unsigned j = 0; j < i; ++j)
-                v -= A(i, j) * x[j];
-            for (unsigned j = i+1; j < N; ++j)
-                v -= A(i, j) * x[j];
-
-            xv[i] = (1.f-relaxationFactor) * x[i] + relaxationFactor * v / A(i, i);
-        }
-    }
-
-    static AMat2D ChangeResolution(AMat2D i, unsigned layer)
-    {
-            // 'a' values are proportion to the square of N
-            // N quarters with every layer (width and height half)
-        float scale = std::pow(4.f, float(layer));
-        AMat2D result = i;
-        result.a0 /= scale;
-        result.a1 /= scale;
-        return result;
-    }
-
-    template<typename Vec>
-        static void Restrict(Vec& dst, const Vec& src, unsigned dstWh, unsigned srcWh)
-    {
-            // This is the "restrict" operator
-            // There are many possible methods for this
-            // We're going to start with a simple method that
-            // assumes that the sample values are at the corners
-            // of the grid. This way we can just use the box
-            // mipmap operator; as so...
-            // If we have more complex boundary conditions, we
-            // might want to move the sames to the center of the 
-            // grid cells; which would mean that we should 
-            // use a more complex operator here
-        for (unsigned y=1; y<dstWh-1; ++y) {
-            for (unsigned x=1; x<dstWh-1; ++x) {
-                unsigned sx = (x-1)*2+1, sy = (y-1)*2+1;
-                dst[y*dstWh+x]
-                    = .25f * src[(sy+0)*srcWh+(sx+0)]
-                    + .25f * src[(sy+0)*srcWh+(sx+1)]
-                    + .25f * src[(sy+1)*srcWh+(sx+0)]
-                    + .25f * src[(sy+1)*srcWh+(sx+1)]
-                    ;
-            }
-        }
-    }
-
-    template<typename Vec>
-        static void Prolongate(Vec& dst, const Vec& src, unsigned dstWh, unsigned srcWh)
-    {
-            // This is the "prolongate" operator.
-            // As with the restrict operator, we're going
-            // to use a simple bilinear sample, as if each
-            // layer was a mipmap.
-
-        for (unsigned y=1; y<dstWh-1; ++y) {
-            for (unsigned x=1; x<dstWh-1; ++x) {
-                float sx = (x-1)/2.f + 1.f;
-                float sy = (y-1)/2.f + 1.f;
-                float sx0 = XlFloor(sx), sy0 = XlFloor(sy);
-                float a = sx - sx0, b = sy - sy0;
-                float weights[] = {
-                    (1.0f - a) * (1.0f - b),
-                    a * (1.0f - b),
-                    (1.0f - a) * b,
-                    a * b
-                };
-                dst[y*dstWh+x]
-                    = weights[0] * src[(unsigned(sy0)+0)*srcWh+unsigned(sx0)]
-                    + weights[1] * src[(unsigned(sy0)+0)*srcWh+unsigned(sx0)+1]
-                    + weights[2] * src[(unsigned(sy0)+1)*srcWh+unsigned(sx0)]
-                    + weights[3] * src[(unsigned(sy0)+1)*srcWh+unsigned(sx0)+1]
-                    ;
-            }
-        }
-    }
-
-    template<typename Vec, typename Mat>
-        unsigned Solver_Multigrid::Execute(Vec& x, const Mat& A, const Vec& b)
-    {
-        //
-        // Here is our basic V-cycle:
-        //  * start with the finest grid
-        //  * perform pre-smoothing
-        //  * iteratively reduce down:
-        //      * "restrict" onto next more coarse grid
-        //      * smooth result
-        //  * iteratively expand upwards:
-        //      * "prolongonate" up to next more fine grid
-        //      * smooth result
-        //  * do post-smoothing
-        //
-        //      Note that this is often done in parallel, by dividing the fine
-        //      grids across multiple processors.
-        //
-
-        float gamma = 1.25f;                // relaxation factor
-        const auto preSmoothIterations = 3u;
-        const auto postSmoothIterations = 3u;
-        const auto stepSmoothIterations = 1u;
-        auto iterations = 0u;
-
-            // pre-smoothing (SOR method -- can be done in place)
-        for (unsigned k = 0; k<preSmoothIterations; ++k)
-            RunSOR(x, A, b, gamma);
-        iterations += preSmoothIterations;
-
-            // ---------- step down ----------
-        unsigned activeWh = A.wh;
-        auto* prevLayer = &x;
-        auto* prevB = &b;
-        auto gridCount = unsigned(_subResidual.size());
-        for (unsigned g=0; g<gridCount; ++g) {
-            auto prevWh = activeWh;
-            activeWh = _subWh[g];
-            auto& dst = _subResidual[g];
-            auto& dstB = _subB[g];
-
-            Restrict(dst, *prevLayer, activeWh, prevWh);
-            Restrict(dstB, *prevB, activeWh, prevWh);   // is it better to downsample B from the top most level each time?
-
-            auto SA = ChangeResolution(A, g+1);
-            SA.wh = activeWh;
-            for (unsigned k = 0; k<stepSmoothIterations; ++k)
-                RunSOR(dst, SA, dstB, gamma);
-            iterations += stepSmoothIterations;
-
-            prevLayer = &dst;
-            prevB = &dstB;
-        }
-
-            // ---------- step up ----------
-        for (unsigned g=gridCount-1; g>0; --g) {
-            auto& src = _subResidual[g];
-            auto& dst = _subResidual[g-1];
-            auto& dstB = _subB[g-1];
-            unsigned srcWh = _subWh[g];
-            unsigned dstWh = _subWh[g-1];
-
-            Prolongate(dst, src, dstWh, srcWh);
-
-            auto SA = ChangeResolution(A, g-1+1);
-            SA.wh = dstWh;
-            for (unsigned k = 0; k<stepSmoothIterations; ++k)
-                RunSOR(dst, SA, dstB, gamma);
-            iterations += stepSmoothIterations;
-        }
-
-            // finally, step back onto 'x'
-        Prolongate(x, _subResidual[0], A.wh, _subWh[0]);
-
-            // post-smoothing (SOR method -- can be done in place)
-        for (unsigned k = 0; k<postSmoothIterations; ++k)
-            RunSOR(x, A, b, gamma);
-        iterations += postSmoothIterations;
-
-        return iterations;
-    }
-
-    Solver_Multigrid::Solver_Multigrid(unsigned wh, unsigned levels)
-    {
-            // todo -- need to consider the border for "wh"
-        _N = wh*wh;
-        _wh = wh;
-        for (unsigned c=0; c<levels; c++) {
-            wh = ((wh-2) >> 1) + 2;
-            unsigned n = wh*wh;
-            VectorX subr(n); subr.fill(0.f);
-            _subResidual.push_back(std::move(subr));
-            VectorX subb(n); subb.fill(0.f);
-            _subB.push_back(std::move(subb));
-            _subWh.push_back(wh);
-        }
-    }
-
-    Solver_Multigrid::~Solver_Multigrid() {}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
+    using MatrixX = Eigen::MatrixXf;
     using VectorField2D = XLEMath::VectorField2DSeparate<VectorX>;
     using ScalarField2D = XLEMath::ScalarField2D<VectorX>;
+
+    static ScalarField1D AsScalarField1D(VectorX& v) { return ScalarField1D { v.data(), (unsigned)v.size() }; }
 
     class FluidSolver2D::Pimpl
     {
@@ -734,8 +164,12 @@ namespace SceneEngine
         VectorX _workingX, _workingB;
 
         int _bands[5];
-        SparseBandedMatrix _bandedPrecon;
+        // SparseBandedMatrix _bandedPrecon;
         std::function<float(unsigned, unsigned)> AMat;
+        PoissonSolver _densityDiffusionSolver;
+        PoissonSolver _velocityDiffusionSolver;
+        PoissonSolver _temperatureDiffusionSolver;
+        PoissonSolver _incompressibilitySolver;
 
         void DensityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings);
         void VelocityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings);
@@ -746,11 +180,6 @@ namespace SceneEngine
                 Field dstValues, Field srcValues, 
                 VelField velFieldT0, VelField velFieldT1,
                 float deltaTime, const FluidSolver2D::Settings& settings);
-
-        enum class PossionSolver { CG_Precon, PlainCG, ForwardEuler, SOR, Multigrid };
-
-        template<typename Vec, typename AMatType>
-            unsigned SolvePoisson(Vec& x, AMatType A, const Vec& b, PossionSolver solver);
 
         template<typename Field>
             void EnforceIncompressibility(
@@ -779,231 +208,61 @@ namespace SceneEngine
         // estimate.
         //
 
-        const float diffFactor = settings._diffusionRate;
-        const float a = diffFactor * deltaTime;
-        const float a0 = 1.f + 4.f * a;
-        const float a1 = -a;
+        // const float diffFactor = settings._diffusionRate;
+        // const float a = diffFactor * deltaTime;
+        // const float a0 = 1.f + 4.f * a;
+        // const float a1 = -a;
 
         unsigned iterations = 0;
         const bool useGeneralA = false;
         if (constant_expression<useGeneralA>::result()) {
             // iterations = SolvePoisson(_density, AMat, _density, (PossionSolver)settings._diffusionMethod);
         } else {
-            iterations = SolvePoisson(
-                _density, AMat2D { _dimensions[0]+2, a0, a1 }, 
-                _density, (PossionSolver)settings._diffusionMethod);
+            iterations = _densityDiffusionSolver.Solve(
+                AsScalarField1D(_density), AsScalarField1D(_density), 
+                (PoissonSolver::Method)settings._diffusionMethod);
         }
         LogInfo << "Density diffusion took: (" << iterations << ") iterations.";
     }
 
     void FluidSolver2D::Pimpl::VelocityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings)
     {
-        const float diffFactor = settings._viscosity;
-        const float a = diffFactor * deltaTime;
-        const float a0 = 1.f + 4.f * a, a1 = -a;
+        // const float diffFactor = settings._viscosity;
+        // const float a = diffFactor * deltaTime;
+        // const float a0 = 1.f + 4.f * a, a1 = -a;
 
         unsigned iterationsu = 0, iterationsv = 0;
         const bool useGeneralA = false;
         if (constant_expression<useGeneralA>::result()) {
             // iterations = SolvePoisson(_density, AMat, _density, (PossionSolver)settings._diffusionMethod);
         } else {
-            iterationsu = SolvePoisson(
-                _velU, AMat2D { _dimensions[0]+2, a0, a1 }, 
-                _velU, (PossionSolver)settings._diffusionMethod);
-            iterationsv += SolvePoisson(
-                _velV, AMat2D { _dimensions[0]+2, a0, a1 }, 
-                _velV, (PossionSolver)settings._diffusionMethod);
+            iterationsu = _velocityDiffusionSolver.Solve(
+                AsScalarField1D(_velU), AsScalarField1D(_velU), 
+                (PoissonSolver::Method)settings._diffusionMethod);
+            iterationsv += _velocityDiffusionSolver.Solve(
+                AsScalarField1D(_velV), AsScalarField1D(_velV), 
+                (PoissonSolver::Method)settings._diffusionMethod);
         }
         LogInfo << "Velocity diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations.";
     }
 
     void FluidSolver2D::Pimpl::TemperatureDiffusion(float deltaTime, const FluidSolver2D::Settings& settings)
     {
-        const float diffFactor = settings._tempDiffusion;
-        const float a = diffFactor * deltaTime;
-        const float a0 = 1.f + 4.f * a;
-        const float a1 = -a;
+        // const float diffFactor = settings._tempDiffusion;
+        // const float a = diffFactor * deltaTime;
+        // const float a0 = 1.f + 4.f * a;
+        // const float a1 = -a;
 
         unsigned iterations = 0;
         const bool useGeneralA = false;
         if (constant_expression<useGeneralA>::result()) {
             // iterations = SolvePoisson(_temperature, AMat, _temperature, (PossionSolver)settings._diffusionMethod);
         } else {
-            iterations = SolvePoisson(
-                _temperature, AMat2D { _dimensions[0]+2, a0, a1 }, 
-                _temperature, (PossionSolver)settings._diffusionMethod);
+            iterations = _temperatureDiffusionSolver.Solve(
+                AsScalarField1D(_temperature), AsScalarField1D(_temperature), 
+                (PoissonSolver::Method)settings._diffusionMethod);
         }
         LogInfo << "Temperature diffusion took: (" << iterations << ") iterations.";
-    }
-
-    static unsigned GetN(const AMat2D& A) { return A.wh * A.wh; }
-    static unsigned GetWH(const AMat2D& A) { return A.wh; }
-    static AMat2D GetEstimate(const AMat2D& A, float estimationFactor)
-    {
-        const float estA1 = estimationFactor * A.a1;  // used when calculating a starting estimate
-        return AMat2D { A.wh, 1.f - 4.f * estA1, estA1 };
-    }
-
-    template<typename Vec, typename AMatType>
-        unsigned FluidSolver2D::Pimpl::SolvePoisson(Vec& x, AMatType A, const Vec& b, PossionSolver solver)
-    {
-        //
-        // Here is our basic solver for Poisson equations (such as the heat equation).
-        // It's a complex partial differential equation, so the solution is complex.
-        //
-        // There are many methods to solve this equation. We want a method that
-        // is:
-        //  * stable
-        //  * parallelizable
-        //  * sparse in memory usage
-        // 
-        // Some methods (including the methods below) produce oscillation at high
-        // time steps (or large distances between cells). We need to be careful to
-        // to avoid that type of oscillation.
-        //
-        // As suggested in Jos Stam's Stable Fluids, we'll use an integration scheme
-        // based on an implicit euler method. There are a number of variations on this
-        // basic method (such as the Crank-Nicolson method).
-        //
-        // Note that when we want a periodic boundary condition (such as wrapping around
-        // on the edges), then we can consider solutions other than the ones provided
-        // here.
-        //
-        // These methods produce a system of linear equations. In 1D, this system is
-        // tridiagonal, and can be solved with the tridiagonal matrix algorithm.
-        //
-        // But in 2D, we must use more complex methods. There are many options here:
-        //  * Jacobi relaxation (or sucessive over-relaxation, or similar)
-        //      -   this type of method is very convenient because the implementation is
-        //          simple with our type of banded matrix. But it is not as efficient 
-        //          or accurate as other methods.
-        //  * Conjugate Gradient methods
-        //  * Multi-grid methods
-        //  * Parallel methods
-        //      -   (such as dividing the matrix into many smaller parts).
-        //  * conjugate gradient methods with complex preconditioners
-        //      - (such as using a parallel multi-grid as a preconditioner for
-        //          the conjugate gradient method)
-        //
-        // See: https://www.math.ucla.edu/~jteran/papers/MST10.pdf for a method that
-        // uses a multigrid preconditioner for the conjugate gradient method (which
-        // can be parallelized) with complex boundary conditions support.
-        //
-        // We must also consider the boundary conditions in this step.
-        // 
-
-        static float estimateFactor = .75f; // maybe we could adapt this based on the amount of noise in the system? In low noise systems, explicit euler seems very close to correct
-        auto estMatA = GetEstimate(A, estimateFactor);
-
-        const auto N = GetN(A);
-        const auto wh = GetWH(A);
-
-        if (solver == PossionSolver::PlainCG || solver == PossionSolver::CG_Precon || solver == PossionSolver::Multigrid) {
-
-            for (unsigned y=1; y<wh-1; ++y) {
-                for (unsigned x=1; x<wh-1; ++x) {
-                    auto i = y*wh+x;
-                    _workingB(i) = b[i];
-
-                        // set an initial estimate using
-                        // explicit euler. We'll march forward part of
-                        // the timestep, and then refine the estimate
-                        // from there using the iterative implicit method.
-                    float v = estMatA.a0 * b[i];
-                    v += estMatA.a1 * b[i-1];
-                    v += estMatA.a1 * b[i+1];
-                    v += estMatA.a1 * b[i-wh];
-                    v += estMatA.a1 * b[i+wh];
-                    _workingX(i) = v;
-                }
-            }
-            ZeroBorder(_workingX, wh);
-            ZeroBorder(_workingB, wh);
-
-            auto iterations = 0u;
-            if (solver == PossionSolver::PlainCG) {
-                Solver_PlainCG solver(N);
-                iterations = solver.Execute(_workingX, A, _workingB);
-            } else if (solver == PossionSolver::CG_Precon) {
-                Solver_PreconCG solver(N);
-                iterations = solver.Execute(_workingX, A, _workingB, _bandedPrecon);
-            } else if (solver == PossionSolver::Multigrid) {
-                Solver_Multigrid solver(wh, 2);
-                iterations = solver.Execute(_workingX, A, _workingB);
-            }
-            
-            for (unsigned c=0; c<N; ++c) {
-                assert(isfinite(_workingX(c)) && !isnan(_workingX(c)));
-                x[c] = _workingX(c);
-            }
-
-            return iterations;
-
-        } else if (solver == PossionSolver::ForwardEuler) {
-        
-                // This is the simpliest integration. We just
-                // move forward a single timestep...
-            for (unsigned c=0; c<N; ++c) _workingX[c] = b[c];
-
-            float a0 = 1.f - 4.f * -A.a1;
-            float a1 = -A.a1;
-            for (unsigned iy=1; iy<wh-1; ++iy)
-                for (unsigned ix=1; ix<wh-1; ++ix) {
-                    const unsigned i = iy*wh+ix;
-                    float v = a0 * _workingX[i];
-                    v += a1 * _workingX[i-1];
-                    v += a1 * _workingX[i+1];
-                    v += a1 * _workingX[i-wh];
-                    v += a1 * _workingX[i+wh];
-                    x[i] = v;
-                }
-
-            return 1;
-
-        } else if (solver == PossionSolver::SOR) {
-
-                // This is successive over relaxation. It's a iterative method similar
-                // to Gauss-Seidel. But we have an extra factor, the relaxation factor, 
-                // that can be used to adjust the way in which the system converges. 
-                //
-                // The choice of relaxation factor has an effect on the rate of convergence.
-                // However, it's not clear how we should pick the relaxation factor.
-                //
-                // An advantage of this method is it can be done in-place... It doesn't
-                // require any extra space.
-                //
-                // One possibility is that we should allow the relaxation factor to evolve
-                // over several frames. That is, we increase or decrease the factor every
-                // frame (within the range of 0 to 2) to improve the convergence of the 
-                // next frame.
-                //
-                // We can calculate the ideal relaxation factor for a (positive definite)
-                // tridiagonal matrix. Even though our matrix doesn't meet this restriction
-                // the relaxation factor many be close to ideal for us. To calculate that,
-                // we need the spectral radius of the associated Jacobi matrix.
-
-                // We should start with an approximate result. We can just start with the
-                // previous frame's result -- but maybe there is a better starting point?
-                // (maybe stepping forward 3/4 of a timestep would be a good starting point?)
-
-            float gamma = 1.25f;    // relaxation factor
-            const auto iterations = 15u;
-
-            auto* bCopy = &b;
-            if (&x == bCopy) {
-                for (unsigned i=0; i<N; ++i)
-                    _workingB[i] = b[i];
-                bCopy = &_workingB;
-            }
-
-            for (unsigned k = 0; k<iterations; ++k)
-                RunSOR(x, A, *bCopy, gamma);
-
-            return iterations;
-
-        }
-
-        return 0;
     }
 
     template<unsigned Interpolation, typename Field>
@@ -1336,9 +595,9 @@ namespace SceneEngine
                     );
 
         SmearBorder(delW, wh);
-        auto iterations = SolvePoisson(
-            q, AMat2D { wh, 4.f, -1.f },
-            delW, (PossionSolver)settings._enforceIncompressibilityMethod);
+        auto iterations = _incompressibilitySolver.Solve(
+            AsScalarField1D(q), AsScalarField1D(delW), 
+            (PoissonSolver::Method)settings._enforceIncompressibilityMethod);
         SmearBorder(q, wh);
 
         for (unsigned y=1; y<wh-1; ++y)
@@ -1571,7 +830,7 @@ namespace SceneEngine
         return result * result.transpose();
     }
 
-    static MatrixX CalculateIncompleteCholesky(AMat2D mat, unsigned N, unsigned bandOptimization)
+    static MatrixX CalculateIncompleteCholesky(PoissonSolver::AMat2D mat, unsigned N, unsigned bandOptimization)
     {
             //
             //  The final matrix we build will only hold values in
@@ -1587,7 +846,7 @@ namespace SceneEngine
         if (bandOptimization == 0) {
 
             for (unsigned i=0; i<N; ++i) {
-                float a = mat.a0;
+                float a = mat._a0;
                 for (unsigned k=0; k<i; ++k) {
                     float l = factorization(i, k);
                     a -= l*l;
@@ -1597,7 +856,7 @@ namespace SceneEngine
 
                 if (i != 0) {
                     for (unsigned j=i+1; j<N; ++j) {
-                        float aij = ((j==i+1)||(j==i+mat.wh)) ? mat.a1 : 0.f;
+                        float aij = ((j==i+1)||(j==i+mat._wh)) ? mat._a1 : 0.f;
                         for (unsigned k=0; k<i; ++k)
                             aij -= factorization(i, k) * factorization(j, k);
                         factorization(j, i) = aij / a;
@@ -1610,7 +869,7 @@ namespace SceneEngine
                 //  it's transpose
                 //
 
-            int bands[] = { -int(mat.wh), -1, 1, mat.wh, 0 };
+            int bands[] = { -int(mat._wh), -1, 1, mat._wh, 0 };
             MatrixX sparseMatrix(N, dimof(bands));
             for (unsigned i=0; i<N; ++i)
                 for (unsigned j=0; j<dimof(bands); ++j) {
@@ -1646,7 +905,7 @@ namespace SceneEngine
             // final matrix is sparse, and has zeroes off the main bands).
 
             for (unsigned i=0; i<N; ++i) {
-                float a = mat.a0;
+                float a = mat._a0;
                 for (unsigned k=0; k<i; ++k) {
                     float l = factorization(i, k);
                     a -= l*l;
@@ -1656,12 +915,12 @@ namespace SceneEngine
 
                 if (i != 0) {
 
-                    int kband0Start = std::max(0, int(i)-int(mat.wh)-2-int(bandOptimization));
+                    int kband0Start = std::max(0, int(i)-int(mat._wh)-2-int(bandOptimization));
                     int kband1Start = std::max(0, int(i)-1-int(bandOptimization));
-                    int kband0End = std::min(int(kband1Start), int(i)-int(mat.wh)-2+int(bandOptimization)+1);
+                    int kband0End = std::min(int(kband1Start), int(i)-int(mat._wh)-2+int(bandOptimization)+1);
 
                     for (unsigned j=i+1; j<std::min(i+1+bandOptimization+1, N); ++j) {
-                        float aij = ((j==i+1)||(j==i+mat.wh)) ? mat.a1 : 0.f;
+                        float aij = ((j==i+1)||(j==i+mat._wh)) ? mat._a1 : 0.f;
 
                             // there are only some cases of "k" that can possibly have data
                             // it must be within the widened bands of both i and k. It's awkward
@@ -1674,8 +933,8 @@ namespace SceneEngine
                         factorization(j, i) = aij / a;
                     }
                     
-                    for (unsigned j=i+mat.wh-2-bandOptimization; j<std::min(i+mat.wh-2+bandOptimization+1, N); ++j) {
-                        float aij = ((j==i+1)||(j==i+mat.wh)) ? mat.a1 : 0.f;
+                    for (unsigned j=i+mat._wh-2-bandOptimization; j<std::min(i+mat._wh-2+bandOptimization+1, N); ++j) {
+                        float aij = ((j==i+1)||(j==i+mat._wh)) ? mat._a1 : 0.f;
                         for (int k=kband0Start; k<kband0End; ++k)
                             aij -= factorization(i, k) * factorization(j, k);
                         for (int k=kband1Start; k<int(i); ++k)
@@ -1690,16 +949,16 @@ namespace SceneEngine
                 //  it's transpose
                 //
 
-            int bands[] = { -int(mat.wh), -1, 1, mat.wh, 0 };
+            int bands[] = { -int(mat._wh), -1, 1, mat._wh, 0 };
             MatrixX sparseMatrix(N, dimof(bands));
             for (unsigned i=0; i<N; ++i) {
 
-                int kband0Start = std::max(0,       int(i)-int(mat.wh)-2-int(bandOptimization));
-                int kband0End   = std::max(0,       int(i)-int(mat.wh)-2+int(bandOptimization)+1);
+                int kband0Start = std::max(0,       int(i)-int(mat._wh)-2-int(bandOptimization));
+                int kband0End   = std::max(0,       int(i)-int(mat._wh)-2+int(bandOptimization)+1);
                 int kband1Start = std::max(0,       int(i)-1-int(bandOptimization));
                 int kband1End   = std::min(int(N),  int(i)+1+int(bandOptimization)+1);
-                int kband2Start = std::min(int(N),  int(i)+int(mat.wh)-2-int(bandOptimization));
-                int kband2End   = std::min(int(N),  int(i)+int(mat.wh)-2+int(bandOptimization)+1);
+                int kband2Start = std::min(int(N),  int(i)+int(mat._wh)-2-int(bandOptimization));
+                int kband2End   = std::min(int(N),  int(i)+int(mat._wh)-2+int(bandOptimization)+1);
 
                 for (unsigned j=0; j<dimof(bands); ++j) {
                     int j2 = int(i) + bands[j];
@@ -1774,7 +1033,7 @@ namespace SceneEngine
         _pimpl->AMat = std::function<float(unsigned, unsigned)>(AMat);
         static unsigned bandOptimisation = 3;
         auto bandedPrecon = CalculateIncompleteCholesky(
-            AMat2D { wh, 1.f + 4.f * a, -a }, N, bandOptimisation );
+            PoissonSolver::AMat2D { wh, 1.f + 4.f * a, -a }, N, bandOptimisation );
 
         _pimpl->_bands[0] =  -int(wh);
         _pimpl->_bands[1] =  -1;
@@ -1818,7 +1077,12 @@ namespace SceneEngine
             // }
         #endif
 
-        _pimpl->_bandedPrecon = SparseBandedMatrix(std::move(bandedPrecon), _pimpl->_bands, dimof(_pimpl->_bands));
+        // _pimpl->_bandedPrecon = SparseBandedMatrix(std::move(bandedPrecon), _pimpl->_bands, dimof(_pimpl->_bands));
+
+        _pimpl->_densityDiffusionSolver = PoissonSolver(PoissonSolver::AMat2D { wh, 1.f + 4.f * a, -a });
+        _pimpl->_velocityDiffusionSolver = PoissonSolver(PoissonSolver::AMat2D { wh, 1.f + 4.f * a, -a });
+        _pimpl->_temperatureDiffusionSolver = PoissonSolver(PoissonSolver::AMat2D { wh, 1.f + 4.f * a, -a });
+        _pimpl->_incompressibilitySolver = PoissonSolver(PoissonSolver::AMat2D { wh, 4.f, -1.f });
     }
 
     FluidSolver2D::~FluidSolver2D(){}

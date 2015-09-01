@@ -1,0 +1,190 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#pragma once
+
+#include "PoissonSolver.h"
+#include <functional>
+
+namespace XLEMath
+{
+    namespace PoissonSolverInternal
+    {
+        template <typename Vec>
+            static void ZeroBorder(Vec& v, unsigned wh)
+        {
+            for (unsigned i = 1; i < wh - 1; ++i) {
+                v[i] = 0.f;             // top
+                v[i+(wh-1)*wh] = 0.f;   // bottom
+                v[i*wh] = 0.f;          // left
+                v[i*wh+(wh-1)] = 0.f;   // right
+            }
+
+                // 4 corners
+            v[0] = 0.f;
+            v[wh-1]= 0.f;
+            v[(wh-1)*wh] = 0.f;
+            v[(wh-1)*wh+wh-1] = 0.f;
+        }
+
+        inline unsigned XY(unsigned x, unsigned y, unsigned wh) { return y*wh+x; }
+        template <typename Vec>
+            static void ReflectUBorder(Vec& v, unsigned wh)
+        {
+            #define XY(x,y) XY(x,y,wh)
+            for (unsigned i = 1; i < wh - 1; ++i) {
+                v[XY(0, i)]     = -v[XY(1,i)];
+                v[XY(wh-1, i)]  = -v[XY(wh-2,i)];
+                v[XY(i, 0)]     =  v[XY(i, 1)];
+                v[XY(i, wh-1)]  =  v[XY(i, wh-2)];
+            }
+
+                // 4 corners
+            v[XY(0,0)]          = 0.5f*(v[XY(1,0)]          + v[XY(0,1)]);
+            v[XY(0,wh-1)]       = 0.5f*(v[XY(1,wh-1)]       + v[XY(0,wh-2)]);
+            v[XY(wh-1,0)]       = 0.5f*(v[XY(wh-2,0)]       + v[XY(wh-1,1)]);
+            v[XY(wh-1,wh-1)]    = 0.5f*(v[XY(wh-2,wh-1)]    + v[XY(wh-1,wh-2)]);
+            #undef XY
+        }
+
+        template <typename Vec>
+            static void ReflectVBorder(Vec& v, unsigned wh)
+        {
+            #define XY(x,y) XY(x,y,wh)
+            for (unsigned i = 1; i < wh - 1; ++i) {
+                v[XY(0, i)]     =  v[XY(1,i)];
+                v[XY(wh-1, i)]  =  v[XY(wh-2,i)];
+                v[XY(i, 0)]     = -v[XY(i, 1)];
+                v[XY(i, wh-1)]  = -v[XY(i, wh-2)];
+            }
+
+                // 4 corners
+            v[XY(0,0)]          = 0.5f*(v[XY(1,0)]          + v[XY(0,1)]);
+            v[XY(0,wh-1)]       = 0.5f*(v[XY(1,wh-1)]       + v[XY(0,wh-2)]);
+            v[XY(wh-1,0)]       = 0.5f*(v[XY(wh-2,0)]       + v[XY(wh-1,1)]);
+            v[XY(wh-1,wh-1)]    = 0.5f*(v[XY(wh-2,wh-1)]    + v[XY(wh-1,wh-2)]);
+            #undef XY
+        }
+
+        template <typename Vec>
+            static void SmearBorder(Vec& v, unsigned wh)
+        {
+            #define XY(x,y) XY(x,y,wh)
+            for (unsigned i = 1; i < wh - 1; ++i) {
+                v[XY(0, i)]     =  v[XY(1,i)];
+                v[XY(wh-1, i)]  =  v[XY(wh-2,i)];
+                v[XY(i, 0)]     =  v[XY(i, 1)];
+                v[XY(i, wh-1)]  =  v[XY(i, wh-2)];
+            }
+
+                // 4 corners
+            v[XY(0,0)]          = 0.5f*(v[XY(1,0)]          + v[XY(0,1)]);
+            v[XY(0,wh-1)]       = 0.5f*(v[XY(1,wh-1)]       + v[XY(0,wh-2)]);
+            v[XY(wh-1,0)]       = 0.5f*(v[XY(wh-2,0)]       + v[XY(wh-1,1)]);
+            v[XY(wh-1,wh-1)]    = 0.5f*(v[XY(wh-2,wh-1)]    + v[XY(wh-1,wh-2)]);
+            #undef XY
+        }
+
+
+        template<typename Vec, typename Mat>
+            static void SolveLowerTriangular(Vec& x, const Mat& M, const Vec& b, unsigned N)
+        {
+                // solve: M * dst = b
+                // for a lower triangular matrix, using forward substitution
+            for (unsigned i=0; i<N; ++i) {
+                auto d = b(i);
+                for (unsigned j=0; j<i; ++j) {
+                    d -= M(i, j) * x(j);
+                }
+                x(i) = d / M(i, i);
+            }
+        }
+
+        template<typename Mat>
+            class SparseBandedMatrix
+        {
+        public:
+            const int *_bands;
+            unsigned _bandCount;
+            Mat _underlying;
+
+            SparseBandedMatrix() { _bandCount = 0; _bands = nullptr; }
+            SparseBandedMatrix(Mat&& underlying, const int bands[], unsigned bandCount)
+                : _underlying(std::move(underlying))
+                { _bands = bands; _bandCount = bandCount; }
+            ~SparseBandedMatrix() {}
+        };
+
+        template<typename Vec, typename Mat>
+            static void SolveLowerTriangular(Vec& x, const SparseBandedMatrix<Mat>& M, const Vec& b, unsigned N)
+        {
+                // assuming the last "band" in the matrix is the diagonal aprt
+            assert(M._bandCount > 0 && M._bands[M._bandCount-1] == 0);
+
+                // solve: M * dst = b
+                // for a lower triangular matrix, using forward substitution
+                // this is for a sparse banded matrix, with the bands described by "bands"
+                //      -- note that we can improve this further by writing implementations for
+                //          common cases (eg, 2D, 3D, etc)
+            for (unsigned i=0; i<N; ++i) {
+                auto d = b(i);
+                for (unsigned j=0; j<M._bandCount-1; ++j) {
+                    int j2 = int(i) + M._bands[j];
+                    if (j2 >= 0 && j2 < int(i))  // with agressive unrolling, we should avoid this condition
+                        d -= M._underlying(i, j) * x[j2];
+                }
+                x[i] = d / M._underlying(i, M._bandCount-1);
+            }
+        }
+
+        template<typename Vec, typename Mat>
+            static void Multiply(Vec& dst, const SparseBandedMatrix<Mat>& A, const Vec& b, unsigned N)
+        {
+            for (unsigned i=0; i<N; ++i) {
+                decltype(dst[0]) d = 0;
+                for (unsigned j=0; j<A._bandCount; ++j) {
+                    int j2 = int(i) + A._bands[j];
+                    if (j2 >= 0 && j2 < int(N))  // with agressive unrolling, we should avoid this condition
+                        d += A._underlying(i, j) * b[j2];
+                }
+                dst[i] = d;
+            }
+        }
+
+        template<typename Vec>
+            static void Multiply(Vec& dst, const std::function<float(unsigned, unsigned)>& A, const Vec& b, unsigned N)
+        {
+            for (unsigned i=0; i<N; ++i) {
+                decltype(dst[0]) d = 0.f;
+                for (unsigned j=0; j<N; ++j) {
+                    d += A(i, j) * b[j];
+                }
+                dst[i] = d;
+            }
+        }
+    
+        template <typename Vec>
+            static void Multiply(Vec& dst, PoissonSolver::AMat2D A, const Vec& b, unsigned N)
+        {
+            for (unsigned y=1; y<A._wh-1; ++y) {
+                for (unsigned x=1; x<A._wh-1; ++x) {
+                    const unsigned i = y*A._wh + x;
+
+                    auto v = A._a0 * b[i];
+                    v += A._a1 * b[i-1];
+                    v += A._a1 * b[i+1];
+                    v += A._a1 * b[i-A._wh];
+                    v += A._a1 * b[i+A._wh];
+
+                    dst[i] = v;
+                }
+            }
+        }
+
+        inline unsigned GetN(const PoissonSolver::AMat2D& A) { return A._wh * A._wh; }
+        inline unsigned GetWH(const PoissonSolver::AMat2D& A) { return A._wh; }
+    }
+}
