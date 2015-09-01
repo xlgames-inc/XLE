@@ -441,6 +441,10 @@ namespace XLEMath
         VectorX _tempBuffer;
         UInt3 _dimensions;
         unsigned _dimensionality;
+
+        std::unique_ptr<Solver_PlainCG> _plainCGSolver;
+        std::unique_ptr<Solver_PreconCG> _preconCGSolver;
+        std::unique_ptr<Solver_Multigrid> _multigridSolver;
     };
 
     class PoissonSolver::PreparedMatrix
@@ -532,7 +536,7 @@ namespace XLEMath
             workingB._u = _pimpl->_tempBuffer.data();
         }
 
-        if (solver == Method::PlainCG || solver == Method::CG_Precon || solver == Method::Multigrid) {
+        if (solver == Method::PlainCG || solver == Method::PreconCG || solver == Method::Multigrid) {
 
             for (unsigned qz=bor[2]; qz<depth-bor[2]; ++qz) {
                 for (unsigned qy=bor[1]; qy<height-bor[1]; ++qy) {
@@ -557,14 +561,17 @@ namespace XLEMath
 
             auto iterations = 0u;
             if (solver == Method::PlainCG) {
-                Solver_PlainCG solver(N);
-                iterations = solver.Execute(x, matA, workingB);
-            } else if (solver == Method::CG_Precon) {
-                Solver_PreconCG solver(N);
-                iterations = solver.Execute(x, matA, workingB, A._bandedPrecon);
+                if (!_pimpl->_plainCGSolver)
+                    _pimpl->_plainCGSolver = std::make_unique<Solver_PlainCG>(N);
+                iterations = _pimpl->_plainCGSolver->Execute(x, matA, workingB);
+            } else if (solver == Method::PreconCG) {
+                if (!_pimpl->_preconCGSolver)
+                    _pimpl->_preconCGSolver = std::make_unique<Solver_PreconCG>(N);
+                iterations = _pimpl->_preconCGSolver->Execute(x, matA, workingB, A._bandedPrecon);
             } else if (solver == Method::Multigrid) {
-                Solver_Multigrid solver(Expand(matA._dims, 1u), 2);
-                iterations = solver.Execute(x, matA, workingB);
+                if (!_pimpl->_multigridSolver)
+                    _pimpl->_multigridSolver = std::make_unique<Solver_Multigrid>(_pimpl->_dimensions, 2);
+                iterations = _pimpl->_multigridSolver->Execute(x, matA, workingB);
             }
 
             return iterations;
@@ -847,7 +854,7 @@ namespace XLEMath
         auto result = std::make_shared<PreparedMatrix>();
         result->_A =A;
 
-        const bool needPrecon = method == Method::CG_Precon;
+        const bool needPrecon = method == Method::PreconCG;
         if (needPrecon) {
             static unsigned bandOptimisation = 3;
             auto precon = CalculateIncompleteCholesky(A, N, bandOptimisation);
@@ -875,7 +882,7 @@ namespace XLEMath
         auto result = std::make_shared<PreparedMatrix>();
         result->_A =A;
 
-        const bool needPrecon = method == Method::CG_Precon;
+        const bool needPrecon = method == Method::PreconCG;
         if (needPrecon) {
             static unsigned bandOptimisation = 3;
             auto precon = CalculateIncompleteCholesky(A, N, bandOptimisation);

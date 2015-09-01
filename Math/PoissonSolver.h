@@ -35,7 +35,7 @@ namespace XLEMath
     public:
         enum Method
         {
-            CG_Precon, PlainCG, 
+            PreconCG, PlainCG, 
             ForwardEuler, SOR, 
             Multigrid
         };
