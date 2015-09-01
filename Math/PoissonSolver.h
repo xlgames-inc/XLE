@@ -40,19 +40,21 @@ namespace XLEMath
             Multigrid
         };
 
-        struct AMat2D
-        {
-            unsigned _wh;
-            float _a0;
-            float _a1;
-        };
+        class PreparedMatrix;
         
             // Solve for x in A * x = b
             // Returns the number of iterations performed during solving
-        unsigned Solve(ScalarField1D x, const ScalarField1D& b, Method method);
-        void SetA(AMat2D A);
+        unsigned Solve(
+            ScalarField1D x, 
+            const PreparedMatrix& A, 
+            const ScalarField1D& b, Method method);
+        
+        std::shared_ptr<PreparedMatrix> PrepareDiffusionMatrix(
+            float centralWeight, float adjWeight, Method method);
 
-        PoissonSolver(AMat2D A);
+        std::shared_ptr<PreparedMatrix> PrepareDivergenceMatrix(Method method);
+
+        PoissonSolver(unsigned dimensionality, unsigned dimensions[]);
         PoissonSolver(PoissonSolver&& moveFrom);
         PoissonSolver& operator=(PoissonSolver&& moveFrom);
         PoissonSolver();

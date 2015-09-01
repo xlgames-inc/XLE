@@ -165,10 +165,11 @@ namespace SceneEngine
         // SparseBandedMatrix _bandedPrecon;
         // std::function<float(unsigned, unsigned)> AMat;
 
-        PoissonSolver _densityDiffusionSolver;
-        PoissonSolver _velocityDiffusionSolver;
-        PoissonSolver _temperatureDiffusionSolver;
-        PoissonSolver _incompressibilitySolver;
+        PoissonSolver _poissonSolver;
+        std::shared_ptr<PoissonSolver::PreparedMatrix> _densityDiffusion;
+        std::shared_ptr<PoissonSolver::PreparedMatrix> _velocityDiffusion;
+        std::shared_ptr<PoissonSolver::PreparedMatrix> _temperatureDiffusion;
+        std::shared_ptr<PoissonSolver::PreparedMatrix> _incompressibility;
 
         void DensityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings);
         void VelocityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings);
@@ -217,8 +218,10 @@ namespace SceneEngine
         if (constant_expression<useGeneralA>::result()) {
             // iterations = SolvePoisson(_density, AMat, _density, (PossionSolver)settings._diffusionMethod);
         } else {
-            iterations = _densityDiffusionSolver.Solve(
-                AsScalarField1D(_density), AsScalarField1D(_density), 
+            iterations = _poissonSolver.Solve(
+                AsScalarField1D(_density), 
+                *_densityDiffusion,
+                AsScalarField1D(_density), 
                 (PoissonSolver::Method)settings._diffusionMethod);
         }
         LogInfo << "Density diffusion took: (" << iterations << ") iterations.";
@@ -235,11 +238,11 @@ namespace SceneEngine
         if (constant_expression<useGeneralA>::result()) {
             // iterations = SolvePoisson(_density, AMat, _density, (PossionSolver)settings._diffusionMethod);
         } else {
-            iterationsu = _velocityDiffusionSolver.Solve(
-                AsScalarField1D(_velU), AsScalarField1D(_velU), 
+            iterationsu = _poissonSolver.Solve(
+                AsScalarField1D(_velU), *_velocityDiffusion, AsScalarField1D(_velU), 
                 (PoissonSolver::Method)settings._diffusionMethod);
-            iterationsv += _velocityDiffusionSolver.Solve(
-                AsScalarField1D(_velV), AsScalarField1D(_velV), 
+            iterationsv += _poissonSolver.Solve(
+                AsScalarField1D(_velV), *_velocityDiffusion, AsScalarField1D(_velV), 
                 (PoissonSolver::Method)settings._diffusionMethod);
         }
         LogInfo << "Velocity diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations.";
@@ -257,8 +260,8 @@ namespace SceneEngine
         if (constant_expression<useGeneralA>::result()) {
             // iterations = SolvePoisson(_temperature, AMat, _temperature, (PossionSolver)settings._diffusionMethod);
         } else {
-            iterations = _temperatureDiffusionSolver.Solve(
-                AsScalarField1D(_temperature), AsScalarField1D(_temperature), 
+            iterations = _poissonSolver.Solve(
+                AsScalarField1D(_temperature), *_temperatureDiffusion, AsScalarField1D(_temperature), 
                 (PoissonSolver::Method)settings._diffusionMethod);
         }
         LogInfo << "Temperature diffusion took: (" << iterations << ") iterations.";
@@ -594,8 +597,8 @@ namespace SceneEngine
                     );
 
         SmearBorder(delW, wh);
-        auto iterations = _incompressibilitySolver.Solve(
-            AsScalarField1D(q), AsScalarField1D(delW), 
+        auto iterations = _poissonSolver.Solve(
+            AsScalarField1D(q), *_incompressibility, AsScalarField1D(delW), 
             (PoissonSolver::Method)settings._enforceIncompressibilityMethod);
         SmearBorder(q, wh);
 
@@ -821,7 +824,7 @@ namespace SceneEngine
         const float dt = 1.0f / 60.f;
         float a = 5.f * dt;
 
-        auto wh = _pimpl->_dimensions[0]+2;
+        // auto wh = _pimpl->_dimensions[0]+2;
         // auto AMat = [wh, a](unsigned i, unsigned j)
         //     {
         //         if (i == j) return 1.f + 4.f*a;
@@ -874,10 +877,12 @@ namespace SceneEngine
 
         // _pimpl->_bandedPrecon = SparseBandedMatrix(std::move(bandedPrecon), _pimpl->_bands, dimof(_pimpl->_bands));
 
-        _pimpl->_densityDiffusionSolver = PoissonSolver(PoissonSolver::AMat2D { wh, 1.f + 4.f * a, -a });
-        _pimpl->_velocityDiffusionSolver = PoissonSolver(PoissonSolver::AMat2D { wh, 1.f + 4.f * a, -a });
-        _pimpl->_temperatureDiffusionSolver = PoissonSolver(PoissonSolver::AMat2D { wh, 1.f + 4.f * a, -a });
-        _pimpl->_incompressibilitySolver = PoissonSolver(PoissonSolver::AMat2D { wh, 4.f, -1.f });
+        UInt2 fullDims(dimensions[0]+2, dimensions[1]+2);
+        _pimpl->_poissonSolver = PoissonSolver(2, &fullDims[0]);
+        _pimpl->_densityDiffusion = _pimpl->_poissonSolver.PrepareDiffusionMatrix(1.f + 4.f * a, -a, PoissonSolver::Method::CG_Precon);
+        _pimpl->_velocityDiffusion = _pimpl->_poissonSolver.PrepareDiffusionMatrix(1.f + 4.f * a, -a, PoissonSolver::Method::CG_Precon);
+        _pimpl->_temperatureDiffusion = _pimpl->_poissonSolver.PrepareDiffusionMatrix(1.f + 4.f * a, -a, PoissonSolver::Method::CG_Precon);
+        _pimpl->_incompressibility = _pimpl->_poissonSolver.PrepareDivergenceMatrix(PoissonSolver::Method::CG_Precon);
     }
 
     FluidSolver2D::~FluidSolver2D(){}

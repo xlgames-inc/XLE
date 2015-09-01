@@ -7,6 +7,7 @@
 #pragma once
 
 #include "PoissonSolver.h"
+#include "Vector.h"
 #include <functional>
 
 namespace XLEMath
@@ -166,25 +167,39 @@ namespace XLEMath
             }
         }
     
-        template <typename Vec>
-            static void Multiply(Vec& dst, PoissonSolver::AMat2D A, const Vec& b, unsigned N)
+        struct AMat2D
         {
-            for (unsigned y=1; y<A._wh-1; ++y) {
-                for (unsigned x=1; x<A._wh-1; ++x) {
-                    const unsigned i = y*A._wh + x;
+            UInt2 _dims;
+            float _a0, _a1;
+        };
 
-                    auto v = A._a0 * b[i];
-                    v += A._a1 * b[i-1];
-                    v += A._a1 * b[i+1];
-                    v += A._a1 * b[i-A._wh];
-                    v += A._a1 * b[i+A._wh];
+        inline unsigned GetN(const AMat2D& A)       { return A._dims[0] * A._dims[1]; }
+        inline unsigned GetWidth(const AMat2D& A)   { return A._dims[0]; }
+        inline unsigned GetHeight(const AMat2D& A)  { return A._dims[1]; }
+        inline unsigned GetDepth(const AMat2D& A)   { return 1; }
+        inline UInt3 GetMargins(const AMat2D& A)    { return UInt3(1,1,0); }
 
-                    dst[i] = v;
+        template <typename Vec>
+            static void Multiply(Vec& dst, AMat2D A, const Vec& b, unsigned N)
+        {
+            const auto width = GetWidth(A), height = GetHeight(A);
+            const auto bor = GetMargins(A);
+            for (unsigned z=bor[2]; z<GetDepth(A)-bor[2]; ++z) {
+                for (unsigned y=bor[1]; y<height-bor[1]; ++y) {
+                    for (unsigned x=bor[0]; x<width-bor[0]; ++x) {
+                        const unsigned i = (z*height+y)*width + x;
+
+                        auto v = A._a0 * b[i];
+                        v += A._a1 * b[i-1];
+                        v += A._a1 * b[i+1];
+                        v += A._a1 * b[i-width];
+                        v += A._a1 * b[i+width];
+
+                        dst[i] = v;
+                    }
                 }
             }
         }
-
-        inline unsigned GetN(const PoissonSolver::AMat2D& A) { return A._wh * A._wh; }
-        inline unsigned GetWH(const PoissonSolver::AMat2D& A) { return A._wh; }
+        
     }
 }
