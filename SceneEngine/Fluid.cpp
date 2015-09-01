@@ -1115,18 +1115,26 @@ namespace SceneEngine
     static float Sign(float x) { return (x < 0.f) ? -1.f : (x==0.f) ? 0.f : 1.f; }
     static float MonotonicCubic(float xn1, float x0, float x1, float x2, float alpha)
     {
+            // See also http://grmanet.sogang.ac.kr/ihm/webpapers/CLMCI.pdf
+            // (Controllable Local Monotonic Cubic Interpolation in Fluid Animations)
+            // for a much more expensive, but more flexible, monotonic interpolation
+            // method.
+            // This method reverts to linear in non-monotonic cases. The above paper
+            // attempts to find a good curve even on non-monotonic cases
+      
         float dk        = (x1 - xn1) / 2.f;
         float dk1       = (x2 - x0) / 2.f;
         float deltak    = x1 - x0;
-        if (Sign(dk) != Sign(deltak) || Sign(dk1) != Sign(deltak)) {
+        if (Sign(dk) != Sign(deltak) || Sign(dk1) != Sign(deltak))
             dk = dk1 = 0.f;
-            deltak = 0.f;
-        }
 
         float a2 = alpha * alpha;
         float a3 = alpha * a2;
+
+            //      original math from Fedkiw has a small error in the first term
+            //      (should be -2*deltak, not -delta)
         return 
-              (dk + dk1 - deltak) * a3
+              (dk + dk1 - 2.f * deltak) * a3
             + (3.f * deltak - 2.f * dk - dk1) * a2
             + dk * alpha
             + x0;
@@ -1242,17 +1250,28 @@ namespace SceneEngine
             (*field._v)[ y2*field._wh+ x2]
         };
 
+            // Unfortunately, to get correct cubic interpolation in 2D, we
+            // have to do a lot of interpolations (similar to the math used
+            // in refining cubic surfaces)
+            //
+            // We can optimise this by only doing the monotonic interpolation
+            // of the U parameter in the U direction (and the V parameter in
+            // the V direction). Maybe we could fall back to linear in the 
+            // cross-wise direction.
+            //
+            // It's hard to know what effect that optimisation would have on
+            // the advection operation.
         float un1 = MonotonicCubic(u[ 0], u[ 1], u[ 2], u[ 3], a);
         float u0  = MonotonicCubic(u[ 4], u[ 5], u[ 6], u[ 7], a);
         float u1  = MonotonicCubic(u[ 8], u[ 9], u[10], u[11], a);
         float u2  = MonotonicCubic(u[12], u[13], u[14], u[15], a);
-        float fu = MonotonicCubic(un1, u0, u1, u2, b);
+        float fu =  MonotonicCubic(un1, u0, u1, u2, b);
 
         float vn1 = MonotonicCubic(v[ 0], v[ 1], v[ 2], v[ 3], a);
         float v0  = MonotonicCubic(v[ 4], v[ 5], v[ 6], v[ 7], a);
         float v1  = MonotonicCubic(v[ 8], v[ 9], v[10], v[11], a);
         float v2  = MonotonicCubic(v[12], v[13], v[14], v[15], a);
-        float fv = MonotonicCubic(vn1, v0, v1, v2, b);
+        float fv =  MonotonicCubic(vn1, v0, v1, v2, b);
         return Float2(fu, fv);
     }
 
