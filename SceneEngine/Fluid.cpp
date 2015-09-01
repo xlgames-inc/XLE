@@ -22,8 +22,6 @@ extern "C" void vel_step ( int N, float * u, float * v, float * u0, float * v0, 
 #include <Eigen/Dense>
 #pragma pop_macro("new")
 
-#pragma warning(disable:4505)       // 'SceneEngine::CalculateIncompleteCholesky' : unreferenced local function has been removed
-
 using namespace XLEMath::PoissonSolverInternal;
 
 namespace SceneEngine
@@ -163,9 +161,10 @@ namespace SceneEngine
 
         VectorX _workingX, _workingB;
 
-        int _bands[5];
+        // int _bands[5];
         // SparseBandedMatrix _bandedPrecon;
-        std::function<float(unsigned, unsigned)> AMat;
+        // std::function<float(unsigned, unsigned)> AMat;
+
         PoissonSolver _densityDiffusionSolver;
         PoissonSolver _velocityDiffusionSolver;
         PoissonSolver _temperatureDiffusionSolver;
@@ -792,201 +791,6 @@ namespace SceneEngine
 
     UInt2 FluidSolver2D::GetDimensions() const { return _pimpl->_dimensions; }
 
-    static MatrixX CalculateIncompleteCholesky(std::function<float(unsigned, unsigned)>& mat, unsigned N)
-    {
-        MatrixX result(N, N);
-        result.fill(0.f);
-            
-        for (unsigned i=0; i<N; ++i) {
-            float a = mat(i, i);
-            for (unsigned k=0; k<i; ++k) {
-                float l = result(i, k);
-                a -= l*l;
-            }
-            a = XlSqrt(a);
-            result(i,i) = a;
-
-            if (i != 0) {
-                for (unsigned j=i+1; j<N; ++j) {
-                    float aij = mat(i, j);
-                    for (unsigned k=0; k<i; ++k) {
-                        aij -= result(i, k) * result(j, k);
-                    }
-                    result(j, i) = aij / a;
-                }
-            }
-        }
-
-            // zero-out elements that are zero in the source element
-            // (this is an aspect of the "incomplete" Cholesky factorization
-            //      -- the result should have the same sparseness as the input)
-        // for (unsigned i=0; i<N; ++i) {
-        //     for (unsigned j=0; j<N; ++j) {
-        //         auto v = mat(i, j);
-        //         if (v == 0.f) result(i, j) = 0.f;
-        //     }
-        // }
-
-        return result * result.transpose();
-    }
-
-    static MatrixX CalculateIncompleteCholesky(PoissonSolver::AMat2D mat, unsigned N, unsigned bandOptimization)
-    {
-            //
-            //  The final matrix we build will only hold values in
-            //  the places where the input matrix also holds values.
-            //  However, while building the matrix, we need to store
-            //  and calculate values at every address. This means
-            //  allocating a very large temporary matrix.
-            //  We will return a compressed matrix with the unneeded
-            //  bands removed
-        MatrixX factorization(N, N);
-        factorization.fill(0.f);
-            
-        if (bandOptimization == 0) {
-
-            for (unsigned i=0; i<N; ++i) {
-                float a = mat._a0;
-                for (unsigned k=0; k<i; ++k) {
-                    float l = factorization(i, k);
-                    a -= l*l;
-                }
-                a = XlSqrt(a);
-                factorization(i,i) = a;
-
-                if (i != 0) {
-                    for (unsigned j=i+1; j<N; ++j) {
-                        float aij = ((j==i+1)||(j==i+mat._wh)) ? mat._a1 : 0.f;
-                        for (unsigned k=0; k<i; ++k)
-                            aij -= factorization(i, k) * factorization(j, k);
-                        factorization(j, i) = aij / a;
-                    }
-                }
-            }
-
-                // 
-                //  Our preconditioner matrix is "factorization" multiplied by
-                //  it's transpose
-                //
-
-            int bands[] = { -int(mat._wh), -1, 1, mat._wh, 0 };
-            MatrixX sparseMatrix(N, dimof(bands));
-            for (unsigned i=0; i<N; ++i)
-                for (unsigned j=0; j<dimof(bands); ++j) {
-                    int j2 = int(i) + bands[j];
-                    if (j2 >= 0 && j2 < int(N)) {
-
-                            // Here, calculate M(i, j), where M
-                            // is the factorization multiplied by its transpose
-                        float A = 0.f;
-                        for (unsigned k=0; k<N; ++k)
-                            A += factorization(i, k) * factorization(j2, k);
-
-                        sparseMatrix(i, j) = A;
-                    } else {
-                        sparseMatrix(i, j) = 0.f;
-                    }
-                }
-            return std::move(sparseMatrix);
-
-        } else {
-
-            // Generating the Cholesky factorization is actually really expensive!
-            // But we can optimise it because the input matrix is banded.
-            // We will assume the values in the factorization fall off to zero 
-            // within a certain number of cells from the bands. This happens naturally,
-            // and we can adjust the number of cells to adjust the accuracy we want.
-            // (also note that some of the small details in the matrix will be lost
-            // when we generate the preconditioner matrix -- because all off-band cells
-            // in the final matrix are zero, anyway).
-            //
-            // Actually, it seems like the values off the main bands may not have any
-            // effect on the final preconditioner matrix we generate? (given that the
-            // final matrix is sparse, and has zeroes off the main bands).
-
-            for (unsigned i=0; i<N; ++i) {
-                float a = mat._a0;
-                for (unsigned k=0; k<i; ++k) {
-                    float l = factorization(i, k);
-                    a -= l*l;
-                }
-                a = XlSqrt(a);
-                factorization(i,i) = a;
-
-                if (i != 0) {
-
-                    int kband0Start = std::max(0, int(i)-int(mat._wh)-2-int(bandOptimization));
-                    int kband1Start = std::max(0, int(i)-1-int(bandOptimization));
-                    int kband0End = std::min(int(kband1Start), int(i)-int(mat._wh)-2+int(bandOptimization)+1);
-
-                    for (unsigned j=i+1; j<std::min(i+1+bandOptimization+1, N); ++j) {
-                        float aij = ((j==i+1)||(j==i+mat._wh)) ? mat._a1 : 0.f;
-
-                            // there are only some cases of "k" that can possibly have data
-                            // it must be within the widened bands of both i and k. It's awkward
-                            // to find an overlap, so let's just check the bands of i
-                        for (int k=kband0Start; k<kband0End; ++k)
-                            aij -= factorization(i, k) * factorization(j, k);
-                        for (int k=kband1Start; k<int(i); ++k)
-                            aij -= factorization(i, k) * factorization(j, k);
-
-                        factorization(j, i) = aij / a;
-                    }
-                    
-                    for (unsigned j=i+mat._wh-2-bandOptimization; j<std::min(i+mat._wh-2+bandOptimization+1, N); ++j) {
-                        float aij = ((j==i+1)||(j==i+mat._wh)) ? mat._a1 : 0.f;
-                        for (int k=kband0Start; k<kband0End; ++k)
-                            aij -= factorization(i, k) * factorization(j, k);
-                        for (int k=kband1Start; k<int(i); ++k)
-                            aij -= factorization(i, k) * factorization(j, k);
-                        factorization(j, i) = aij / a;
-                    }
-                }
-            }
-
-                // 
-                //  Our preconditioner matrix is "factorization" multiplied by
-                //  it's transpose
-                //
-
-            int bands[] = { -int(mat._wh), -1, 1, mat._wh, 0 };
-            MatrixX sparseMatrix(N, dimof(bands));
-            for (unsigned i=0; i<N; ++i) {
-
-                int kband0Start = std::max(0,       int(i)-int(mat._wh)-2-int(bandOptimization));
-                int kband0End   = std::max(0,       int(i)-int(mat._wh)-2+int(bandOptimization)+1);
-                int kband1Start = std::max(0,       int(i)-1-int(bandOptimization));
-                int kband1End   = std::min(int(N),  int(i)+1+int(bandOptimization)+1);
-                int kband2Start = std::min(int(N),  int(i)+int(mat._wh)-2-int(bandOptimization));
-                int kband2End   = std::min(int(N),  int(i)+int(mat._wh)-2+int(bandOptimization)+1);
-
-                for (unsigned j=0; j<dimof(bands); ++j) {
-                    int j2 = int(i) + bands[j];
-                    if (j2 >= 0 && j2 < int(N)) {
-
-                            // Here, calculate M(i, j), where M
-                            // is the factorization multiplied by its transpose
-                        float A = 0.f;
-                        for (int k=kband0Start; k<kband0End; ++k)
-                            A += factorization(i, k) * factorization(j2, k);
-                        for (int k=kband1Start; k<kband1End; ++k)
-                            A += factorization(i, k) * factorization(j2, k);
-                        for (int k=kband2Start; k<kband2End; ++k)
-                            A += factorization(i, k) * factorization(j2, k);
-
-                        sparseMatrix(i, j) = A;
-                    } else {
-                        sparseMatrix(i, j) = 0.f;
-                    }
-                }
-            }
-
-            return std::move(sparseMatrix);
-
-        }
-        
-    }
-
     FluidSolver2D::FluidSolver2D(UInt2 dimensions)
     {
         _pimpl = std::make_unique<Pimpl>();
@@ -1018,29 +822,20 @@ namespace SceneEngine
         float a = 5.f * dt;
 
         auto wh = _pimpl->_dimensions[0]+2;
-        auto AMat = [wh, a](unsigned i, unsigned j)
-            {
-                if (i == j) return 1.f + 4.f*a;
-                // auto x0 = (i%wh), y0 = i/wh;
-                // auto x1 = (j%wh), y1 = j/wh;
-                // if (    (std::abs(int(x0)-int(x1)) == 1 && y0 == y1)
-                //     ||  (std::abs(int(y0)-int(y1)) == 1 && x0 == x1)) {
-                if (j==(i+1) || j==(i-1) || j==(i+wh) || j == (i-wh))
-                    return -a;   
-                return 0.f;
-            };
-
-        _pimpl->AMat = std::function<float(unsigned, unsigned)>(AMat);
-        static unsigned bandOptimisation = 3;
-        auto bandedPrecon = CalculateIncompleteCholesky(
-            PoissonSolver::AMat2D { wh, 1.f + 4.f * a, -a }, N, bandOptimisation );
-
-        _pimpl->_bands[0] =  -int(wh);
-        _pimpl->_bands[1] =  -1;
-        _pimpl->_bands[2] =   1;
-        _pimpl->_bands[3] =  wh;
-        _pimpl->_bands[4] =   0;
-
+        // auto AMat = [wh, a](unsigned i, unsigned j)
+        //     {
+        //         if (i == j) return 1.f + 4.f*a;
+        //         // auto x0 = (i%wh), y0 = i/wh;
+        //         // auto x1 = (j%wh), y1 = j/wh;
+        //         // if (    (std::abs(int(x0)-int(x1)) == 1 && y0 == y1)
+        //         //     ||  (std::abs(int(y0)-int(y1)) == 1 && x0 == x1)) {
+        //         if (j==(i+1) || j==(i-1) || j==(i+wh) || j == (i-wh))
+        //             return -a;   
+        //         return 0.f;
+        //     };
+        // 
+        // _pimpl->AMat = std::function<float(unsigned, unsigned)>(AMat);
+        
         #if defined(_DEBUG)
             // {
             //     auto comparePrecon = CalculateIncompleteCholesky(AMat2D { wh, 1.f + 4.f * a, -a }, N, 0);
@@ -1093,7 +888,7 @@ namespace SceneEngine
         _diffusionRate = 2.f;
         _tempDiffusion = 2.f;
         _diffusionMethod = 0;
-        _advectionMethod = 2;
+        _advectionMethod = 3;
         _advectionSteps = 4;
         _enforceIncompressibilityMethod = 3;
         _buoyancyAlpha = 0.035f;

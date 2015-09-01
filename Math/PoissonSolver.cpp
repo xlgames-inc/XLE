@@ -16,6 +16,7 @@
 #include <Eigen/Dense>
 #pragma pop_macro("new")
 
+#pragma warning(disable:4505)       // 'SceneEngine::CalculateIncompleteCholesky' : unreferenced local function has been removed
 
 namespace XLEMath
 {
@@ -29,7 +30,7 @@ namespace XLEMath
         for (unsigned y=1; y<A._wh-1; ++y) {
             for (unsigned x=1; x<A._wh-1; ++x) {
                 const unsigned i = y*A._wh+x;
-                float v = b[i];
+                auto v = b[i];
 
                 v -= A._a1 * xv[i-1];
                 v -= A._a1 * xv[i+1];
@@ -42,10 +43,10 @@ namespace XLEMath
     }
 
     template<typename Vec>
-        static void RunSOR(Vec& xv, std::function<float(unsigned, unsigned)>& A, const Vec& b, float relaxationFactor)
+        static void RunSOR(Vec& xv, std::function<float(unsigned, unsigned)>& A, const Vec& b, unsigned N, float relaxationFactor)
     {
         for (unsigned i = 0; i < N; ++i) {
-            float v = b[i];
+            auto v = b[i];
 
                 // these loops work oddly simply in this situation
                 // (but of course we can simplify because our matrix is sparse)
@@ -61,6 +62,7 @@ namespace XLEMath
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     
     using VectorX = Eigen::VectorXf;
+    using MatrixX = Eigen::MatrixXf;
 
     static ScalarField1D AsScalarField1D(VectorX& v) { return ScalarField1D { v.data(), (unsigned)v.size() }; }
 
@@ -94,7 +96,7 @@ namespace XLEMath
         }
         ZeroBorder(_r, GetWH(A));
         ZeroBorder(_d, GetWH(A));
-        float rho = _r.dot(_r);
+        auto rho = _r.dot(_r);
 
         ZeroBorder(_q, GetWH(A));
         unsigned k=0;
@@ -102,24 +104,24 @@ namespace XLEMath
             for (; k<maxIterations; ++k) {
             
                 Multiply(_q, A, _d, _N);
-                float dDotQ = _d.dot(_q);
-                float alpha = rho / dDotQ;
+                auto dDotQ = _d.dot(_q);
+                auto alpha = rho / dDotQ;
                 assert(isfinite(alpha) && !isnan(alpha));
                 for (unsigned i=0; i<_N; ++i) {
                      x[i] += alpha * _d[i];
                     _r[i] -= alpha * _d[i];
                 }
             
-                float rhoOld = rho;
+                auto rhoOld = rho;
                 rho = _r.dot(_r);
                 if (XlAbs(rho) < rhoThreshold) break;
-                float beta = rho / rhoOld;
+                auto beta = rho / rhoOld;
                 assert(isfinite(beta) && !isnan(beta));
             
                     // we can skip the border for the following...
                     // (but that requires different cases for 2D/3D)
                 for (unsigned i=0; i<_N; ++i)
-                    _d(i) = _r(i) + beta * _d(i);
+                    _d[i] = _r[i] + beta * _d[i];
 
             }
         }
@@ -136,7 +138,7 @@ namespace XLEMath
     Solver_PlainCG::~Solver_PlainCG() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-#if 0
+
     class Solver_PreconCG
     {
     public:
@@ -168,9 +170,12 @@ namespace XLEMath
         const auto rhoThreshold = 1e-10f;
         const auto maxIterations = 13u;
 
-        Multiply(_r, A, x, _N);    // r = AMat * x
-        ZeroBorder(_r, A);
-        _r = b - _r;
+        auto rAsField = AsScalarField1D(_r);
+        Multiply(rAsField, A, x, _N);    // r = AMat * x
+        for (unsigned c=0; c<b._count; ++c) {
+            _r[c] = b[c] - _r[c];
+        }
+        ZeroBorder(_r, GetWH(A));
             
         SolveLowerTriangular(_d, precon, _r, _N);
             
@@ -180,16 +185,16 @@ namespace XLEMath
         //         VectorX t(_N);
         //         Multiply(t, precon, _d, _N);
         //         for (unsigned c=0; c<_N; ++c) {
-        //             float z = t(c), y = _r(c);
+        //             auto z = t(c), y = _r(c);
         //             assert(Equivalent(z, y, 1e-1f));
         //         }
         //     }
         // #endif
             
-        float rho = _r.dot(_d);
-        // float rho0 = rho;
+        auto rho = _r.dot(_d);
+        // auto rho0 = rho;
 
-        ZeroBorder(_q, A);
+        ZeroBorder(_q, GetWH(A));
             
         unsigned k=0;
         if (XlAbs(rho) > rhoThreshold) {
@@ -205,22 +210,24 @@ namespace XLEMath
                     // element per cell.
             
                 Multiply(_q, A, _d, _N);
-                float dDotQ = _d.dot(_q);
-                float alpha = rho / dDotQ;
+                auto dDotQ = _d.dot(_q);
+                auto alpha = rho / dDotQ;
                 assert(isfinite(alpha) && !isnan(alpha));
-                 x += alpha * _d;
-                _r -= alpha * _q;
+                for (unsigned i=0; i<_N; ++i) {
+                     x[i] += alpha * _d[i];
+                    _r[i] -= alpha * _q[i];
+                }
             
                 SolveLowerTriangular(_s, precon, _r, _N);
-                float rhoOld = rho;
+                auto rhoOld = rho;
                 rho = _r.dot(_s);
                 if (XlAbs(rho) < rhoThreshold) break;
                 assert(rho < rhoOld);
-                float beta = rho / rhoOld;
+                auto beta = rho / rhoOld;
                 assert(isfinite(beta) && !isnan(beta));
             
                 for (unsigned i=0; i<_N; ++i)
-                    _d(i) = _s(i) + beta * _d(i);
+                    _d[i] = _s[i] + beta * _d[i];
             }
         }
 
@@ -236,7 +243,6 @@ namespace XLEMath
     Solver_PreconCG::~Solver_PreconCG() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
 
     class Solver_Multigrid
     {
@@ -259,7 +265,7 @@ namespace XLEMath
     {
             // 'a' values are proportion to the square of N
             // N quarters with every layer (width and height half)
-        float scale = std::pow(4.f, float(layer));
+        auto scale = std::pow(4.f, float(layer));
         auto result = i;
         result._a0 /= scale;
         result._a1 /= scale;
@@ -302,11 +308,11 @@ namespace XLEMath
 
         for (unsigned y=1; y<dstWh-1; ++y) {
             for (unsigned x=1; x<dstWh-1; ++x) {
-                float sx = (x-1)/2.f + 1.f;
-                float sy = (y-1)/2.f + 1.f;
-                float sx0 = XlFloor(sx), sy0 = XlFloor(sy);
-                float a = sx - sx0, b = sy - sy0;
-                float weights[] = {
+                auto sx = (x-1)/2.f + 1.f;
+                auto sy = (y-1)/2.f + 1.f;
+                auto sx0 = XlFloor(sx), sy0 = XlFloor(sy);
+                auto a = sx - sx0, b = sy - sy0;
+                decltype(a) weights[] = {
                     (1.0f - a) * (1.0f - b),
                     a * (1.0f - b),
                     (1.0f - a) * b,
@@ -353,48 +359,48 @@ namespace XLEMath
         iterations += preSmoothIterations;
 
             // ---------- step down ----------
-        unsigned activeWh = A.wh;
-        auto* prevLayer = &x;
-        auto* prevB = &b;
+        unsigned activeWh = GetWH(A);
+        ScalarField1D prevLayer = x;
+        ScalarField1D prevB = b;
         auto gridCount = unsigned(_subResidual.size());
         for (unsigned g=0; g<gridCount; ++g) {
             auto prevWh = activeWh;
             activeWh = _subWh[g];
-            auto& dst = _subResidual[g];
-            auto& dstB = _subB[g];
+            auto dst = AsScalarField1D(_subResidual[g]);
+            auto dstB = AsScalarField1D(_subB[g]);
 
-            Restrict(dst, *prevLayer, activeWh, prevWh);
-            Restrict(dstB, *prevB, activeWh, prevWh);   // is it better to downsample B from the top most level each time?
+            Restrict(dst, prevLayer, activeWh, prevWh);
+            Restrict(dstB, prevB, activeWh, prevWh);   // is it better to downsample B from the top most level each time?
 
             auto SA = ChangeResolution(A, g+1);
-            SA.wh = activeWh;
+            SA._wh = activeWh;
             for (unsigned k = 0; k<stepSmoothIterations; ++k)
                 RunSOR(dst, SA, dstB, gamma);
             iterations += stepSmoothIterations;
 
-            prevLayer = &dst;
-            prevB = &dstB;
+            prevLayer = dst;
+            prevB = dstB;
         }
 
             // ---------- step up ----------
         for (unsigned g=gridCount-1; g>0; --g) {
-            auto& src = _subResidual[g];
-            auto& dst = _subResidual[g-1];
-            auto& dstB = _subB[g-1];
+            auto src = AsScalarField1D(_subResidual[g]);
+            auto dst = AsScalarField1D(_subResidual[g-1]);
+            auto dstB = AsScalarField1D(_subB[g-1]);
             unsigned srcWh = _subWh[g];
             unsigned dstWh = _subWh[g-1];
 
             Prolongate(dst, src, dstWh, srcWh);
 
             auto SA = ChangeResolution(A, g-1+1);
-            SA.wh = dstWh;
+            SA._wh = dstWh;
             for (unsigned k = 0; k<stepSmoothIterations; ++k)
                 RunSOR(dst, SA, dstB, gamma);
             iterations += stepSmoothIterations;
         }
 
             // finally, step back onto 'x'
-        Prolongate(x, _subResidual[0], A.wh, _subWh[0]);
+        Prolongate(x, AsScalarField1D(_subResidual[0]), GetWH(A), _subWh[0]);
 
             // post-smoothing (SOR method -- can be done in place)
         for (unsigned k = 0; k<postSmoothIterations; ++k)
@@ -422,8 +428,6 @@ namespace XLEMath
 
     Solver_Multigrid::~Solver_Multigrid() {}
 
-#endif
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class PoissonSolver::Pimpl
@@ -431,11 +435,14 @@ namespace XLEMath
     public:
         AMat2D _A;
         VectorX _tempBuffer;
+
+        int _bands[5];
+        SparseBandedMatrix<MatrixX> _bandedPrecon;
     };
 
     static PoissonSolver::AMat2D GetEstimate(const PoissonSolver::AMat2D& A, float estimationFactor)
     {
-        const float estA1 = estimationFactor * A._a1;  // used when calculating a starting estimate
+        const auto estA1 = estimationFactor * A._a1;  // used when calculating a starting estimate
         return PoissonSolver::AMat2D { A._wh, 1.f - 4.f * estA1, estA1 };
     }
 
@@ -516,7 +523,7 @@ namespace XLEMath
                         // explicit euler. We'll march forward part of
                         // the timestep, and then refine the estimate
                         // from there using the iterative implicit method.
-                    float v = estMatA._a0 * b[i];
+                    auto v = estMatA._a0 * b[i];
                     v += estMatA._a1 * b[i-1];
                     v += estMatA._a1 * b[i+1];
                     v += estMatA._a1 * b[i-wh];
@@ -531,13 +538,13 @@ namespace XLEMath
             if (solver == Method::PlainCG) {
                 Solver_PlainCG solver(N);
                 iterations = solver.Execute(x, A, workingB);
-            } /*else if (solver == Method::CG_Precon) {
+            } else if (solver == Method::CG_Precon) {
                 Solver_PreconCG solver(N);
-                iterations = solver.Execute(x, A, workingB, _bandedPrecon);
+                iterations = solver.Execute(x, A, workingB, _pimpl->_bandedPrecon);
             } else if (solver == Method::Multigrid) {
                 Solver_Multigrid solver(wh, 2);
                 iterations = solver.Execute(x, A, workingB);
-            }*/
+            }
 
             return iterations;
 
@@ -545,12 +552,12 @@ namespace XLEMath
         
                 // This is the simpliest integration. We just
                 // move forward a single timestep...
-            float a0 = 1.f - 4.f * -A._a1;
-            float a1 = -A._a1;
+            auto a0 = 1.f - 4.f * -A._a1;
+            auto a1 = -A._a1;
             for (unsigned iy=1; iy<wh-1; ++iy)
                 for (unsigned ix=1; ix<wh-1; ++ix) {
                     const unsigned i = iy*wh+ix;
-                    float v = a0 * workingB[i];
+                    auto v = a0 * workingB[i];
                     v += a1 * workingB[i-1];
                     v += a1 * workingB[i+1];
                     v += a1 * workingB[i-wh];
@@ -601,12 +608,212 @@ namespace XLEMath
         return 0;
     }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static MatrixX CalculateIncompleteCholesky(std::function<float(unsigned, unsigned)>& mat, unsigned N)
+    {
+        MatrixX result(N, N);
+        result.fill(0.f);
+            
+        for (unsigned i=0; i<N; ++i) {
+            float a = mat(i, i);
+            for (unsigned k=0; k<i; ++k) {
+                float l = result(i, k);
+                a -= l*l;
+            }
+            a = XlSqrt(a);
+            result(i,i) = a;
+
+            if (i != 0) {
+                for (unsigned j=i+1; j<N; ++j) {
+                    float aij = mat(i, j);
+                    for (unsigned k=0; k<i; ++k) {
+                        aij -= result(i, k) * result(j, k);
+                    }
+                    result(j, i) = aij / a;
+                }
+            }
+        }
+
+        return result * result.transpose();
+    }
+
+    static MatrixX CalculateIncompleteCholesky(PoissonSolver::AMat2D mat, unsigned N, unsigned bandOptimization)
+    {
+            //
+            //  The final matrix we build will only hold values in
+            //  the places where the input matrix also holds values.
+            //  However, while building the matrix, we need to store
+            //  and calculate values at every address. This means
+            //  allocating a very large temporary matrix.
+            //  We will return a compressed matrix with the unneeded
+            //  bands removed
+        MatrixX factorization(N, N);
+        factorization.fill(0.f);
+            
+        if (bandOptimization == 0) {
+
+            for (unsigned i=0; i<N; ++i) {
+                float a = mat._a0;
+                for (unsigned k=0; k<i; ++k) {
+                    float l = factorization(i, k);
+                    a -= l*l;
+                }
+                a = XlSqrt(a);
+                factorization(i,i) = a;
+
+                if (i != 0) {
+                    for (unsigned j=i+1; j<N; ++j) {
+                        float aij = ((j==i+1)||(j==i+mat._wh)) ? mat._a1 : 0.f;
+                        for (unsigned k=0; k<i; ++k)
+                            aij -= factorization(i, k) * factorization(j, k);
+                        factorization(j, i) = aij / a;
+                    }
+                }
+            }
+
+                // 
+                //  Our preconditioner matrix is "factorization" multiplied by
+                //  it's transpose
+                //
+
+            int bands[] = { -int(mat._wh), -1, 1, mat._wh, 0 };
+            MatrixX sparseMatrix(N, dimof(bands));
+            for (unsigned i=0; i<N; ++i)
+                for (unsigned j=0; j<dimof(bands); ++j) {
+                    int j2 = int(i) + bands[j];
+                    if (j2 >= 0 && j2 < int(N)) {
+
+                            // Here, calculate M(i, j), where M
+                            // is the factorization multiplied by its transpose
+                        float A = 0.f;
+                        for (unsigned k=0; k<N; ++k)
+                            A += factorization(i, k) * factorization(j2, k);
+
+                        sparseMatrix(i, j) = A;
+                    } else {
+                        sparseMatrix(i, j) = 0.f;
+                    }
+                }
+            return std::move(sparseMatrix);
+
+        } else {
+
+            // Generating the Cholesky factorization is actually really expensive!
+            // But we can optimise it because the input matrix is banded.
+            // We will assume the values in the factorization fall off to zero 
+            // within a certain number of cells from the bands. This happens naturally,
+            // and we can adjust the number of cells to adjust the accuracy we want.
+            // (also note that some of the small details in the matrix will be lost
+            // when we generate the preconditioner matrix -- because all off-band cells
+            // in the final matrix are zero, anyway).
+            //
+            // Actually, it seems like the values off the main bands may not have any
+            // effect on the final preconditioner matrix we generate? (given that the
+            // final matrix is sparse, and has zeroes off the main bands).
+
+            for (unsigned i=0; i<N; ++i) {
+                float a = mat._a0;
+                for (unsigned k=0; k<i; ++k) {
+                    float l = factorization(i, k);
+                    a -= l*l;
+                }
+                a = XlSqrt(a);
+                factorization(i,i) = a;
+
+                if (i != 0) {
+
+                    int kband0Start = std::max(0, int(i)-int(mat._wh)-2-int(bandOptimization));
+                    int kband1Start = std::max(0, int(i)-1-int(bandOptimization));
+                    int kband0End = std::min(int(kband1Start), int(i)-int(mat._wh)-2+int(bandOptimization)+1);
+
+                    for (unsigned j=i+1; j<std::min(i+1+bandOptimization+1, N); ++j) {
+                        float aij = ((j==i+1)||(j==i+mat._wh)) ? mat._a1 : 0.f;
+
+                            // there are only some cases of "k" that can possibly have data
+                            // it must be within the widened bands of both i and k. It's awkward
+                            // to find an overlap, so let's just check the bands of i
+                        for (int k=kband0Start; k<kband0End; ++k)
+                            aij -= factorization(i, k) * factorization(j, k);
+                        for (int k=kband1Start; k<int(i); ++k)
+                            aij -= factorization(i, k) * factorization(j, k);
+
+                        factorization(j, i) = aij / a;
+                    }
+                    
+                    for (unsigned j=i+mat._wh-2-bandOptimization; j<std::min(i+mat._wh-2+bandOptimization+1, N); ++j) {
+                        float aij = ((j==i+1)||(j==i+mat._wh)) ? mat._a1 : 0.f;
+                        for (int k=kband0Start; k<kband0End; ++k)
+                            aij -= factorization(i, k) * factorization(j, k);
+                        for (int k=kband1Start; k<int(i); ++k)
+                            aij -= factorization(i, k) * factorization(j, k);
+                        factorization(j, i) = aij / a;
+                    }
+                }
+            }
+
+                // 
+                //  Our preconditioner matrix is "factorization" multiplied by
+                //  it's transpose
+                //
+
+            int bands[] = { -int(mat._wh), -1, 1, mat._wh, 0 };
+            MatrixX sparseMatrix(N, dimof(bands));
+            for (unsigned i=0; i<N; ++i) {
+
+                int kband0Start = std::max(0,       int(i)-int(mat._wh)-2-int(bandOptimization));
+                int kband0End   = std::max(0,       int(i)-int(mat._wh)-2+int(bandOptimization)+1);
+                int kband1Start = std::max(0,       int(i)-1-int(bandOptimization));
+                int kband1End   = std::min(int(N),  int(i)+1+int(bandOptimization)+1);
+                int kband2Start = std::min(int(N),  int(i)+int(mat._wh)-2-int(bandOptimization));
+                int kband2End   = std::min(int(N),  int(i)+int(mat._wh)-2+int(bandOptimization)+1);
+
+                for (unsigned j=0; j<dimof(bands); ++j) {
+                    int j2 = int(i) + bands[j];
+                    if (j2 >= 0 && j2 < int(N)) {
+
+                            // Here, calculate M(i, j), where M
+                            // is the factorization multiplied by its transpose
+                        float A = 0.f;
+                        for (int k=kband0Start; k<kband0End; ++k)
+                            A += factorization(i, k) * factorization(j2, k);
+                        for (int k=kband1Start; k<kband1End; ++k)
+                            A += factorization(i, k) * factorization(j2, k);
+                        for (int k=kband2Start; k<kband2End; ++k)
+                            A += factorization(i, k) * factorization(j2, k);
+
+                        sparseMatrix(i, j) = A;
+                    } else {
+                        sparseMatrix(i, j) = 0.f;
+                    }
+                }
+            }
+
+            return std::move(sparseMatrix);
+
+        }
+        
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     PoissonSolver::PoissonSolver(AMat2D A)
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_A = A;
-        _pimpl->_tempBuffer = VectorX(A._wh*A._wh);
+        const auto wh = GetWH(A);
+        const auto N = GetN(A);
+        _pimpl->_tempBuffer = VectorX(wh*wh);
+
+        static unsigned bandOptimisation = 3;
+        auto precon = CalculateIncompleteCholesky(A, N, bandOptimisation );
+
+        _pimpl->_bands[0] =  -int(wh);
+        _pimpl->_bands[1] =  -1;
+        _pimpl->_bands[2] =   1;
+        _pimpl->_bands[3] =  wh;
+        _pimpl->_bands[4] =   0;
+        _pimpl->_bandedPrecon = SparseBandedMatrix<MatrixX>(std::move(precon), _pimpl->_bands, dimof(_pimpl->_bands));
     }
 
     PoissonSolver::PoissonSolver(PoissonSolver&& moveFrom)
