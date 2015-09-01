@@ -8,6 +8,7 @@
 
 #include "Fluid.h"
 #include "../ConsoleRig/Log.h"
+#include "../Math/RegularNumberField.h"
 #include "../Utility/Meta/ClassAccessorsImpl.h"
 
 extern "C" void dens_step ( int N, float * x, float * x0, float * u, float * v, float diff, float dt );
@@ -713,7 +714,8 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class VectorField2D;
+    using VectorField2D = XLEMath::VectorField2DSeparate<VectorX>;
+    using ScalarField2D = XLEMath::ScalarField2D<VectorX>;
 
     class FluidSolver2D::Pimpl
     {
@@ -1004,394 +1006,6 @@ namespace SceneEngine
         return 0;
     }
 
-    class VectorField2D
-    {
-    public:
-        VectorX* _u, *_v; 
-        unsigned _wh;
-        using ValueType = Float2;
-    };
-
-    template<bool DoClamp>
-        static Float2 LoadBilinear(const VectorField2D& field, Float2 coord)
-    {
-        float fx = XlFloor(coord[0]);
-        float fy = XlFloor(coord[1]);
-        float a = coord[0] - fx, b = coord[1] - fy;
-        float weights[] = 
-        {
-            (1.f - a) * (1.f - b),
-            a * (1.f - b),
-            (1.f - a) * b,
-            a * b
-        };
-        unsigned x0, x1, y0, y1;
-        
-        if (constant_expression<DoClamp>::result()) {
-            x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
-            x1 = std::min(x0+1u, field._wh-1u);
-            y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
-            y1 = std::min(y0+1u, field._wh-1u);
-        } else {
-            x0 = unsigned(fx); x1 = x0+1;
-            y0 = unsigned(fy); y1 = y0+1;
-        }
-        assert(x1 < field._wh && y1 < field._wh);
-        
-        float u
-            = weights[0] * (*field._u)[y0*field._wh+x0]
-            + weights[1] * (*field._u)[y0*field._wh+x1]
-            + weights[2] * (*field._u)[y1*field._wh+x0]
-            + weights[3] * (*field._u)[y1*field._wh+x1]
-            ;
-        float v
-            = weights[0] * (*field._v)[y0*field._wh+x0]
-            + weights[1] * (*field._v)[y0*field._wh+x1]
-            + weights[2] * (*field._v)[y1*field._wh+x0]
-            + weights[3] * (*field._v)[y1*field._wh+x1]
-            ;
-        return Float2(u, v);
-    }
-
-    static Float2 Load(const VectorField2D& field, UInt2 coord)
-    {
-        assert(coord[0] < field._wh && coord[1] < field._wh);
-        return Float2(
-            (*field._u)[coord[1] * field._wh + coord[0]],
-            (*field._v)[coord[1] * field._wh + coord[0]]);
-    }
-
-    static void Write(VectorField2D& field, UInt2 coord, Float2 value)
-    {
-        assert(coord[0] < field._wh && coord[1] < field._wh);
-        (*field._u)[coord[1] * field._wh + coord[0]] = value[0];
-        (*field._v)[coord[1] * field._wh + coord[0]] = value[1];
-        assert(isfinite(value[0]) && !isnan(value[0]));
-        assert(isfinite(value[1]) && !isnan(value[1]));
-    }
-
-    class ScalarField2D
-    {
-    public:
-        VectorX* _u;
-        unsigned _wh;
-        using ValueType = float;
-    };
-
-    template<bool DoClamp>
-        static float LoadBilinear(const ScalarField2D& field, Float2 coord)
-    {
-        float fx = XlFloor(coord[0]);
-        float fy = XlFloor(coord[1]);
-        float a = coord[0] - fx, b = coord[1] - fy;
-        float weights[] = 
-        {
-            (1.f - a) * (1.f - b),
-            a * (1.f - b),
-            (1.f - a) * b,
-            a * b
-        };
-        unsigned x0, x1, y0, y1;
-        
-        if (constant_expression<DoClamp>::result()) {
-            x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
-            x1 = std::min(x0+1u, field._wh-1u);
-            y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
-            y1 = std::min(y0+1u, field._wh-1u);
-        } else {
-            x0 = unsigned(fx); x1 = x0+1;
-            y0 = unsigned(fy); y1 = y0+1;
-        }
-        assert(x1 < field._wh && y1 < field._wh);
-        
-        return 
-              weights[0] * (*field._u)[y0*field._wh+x0]
-            + weights[1] * (*field._u)[y0*field._wh+x1]
-            + weights[2] * (*field._u)[y1*field._wh+x0]
-            + weights[3] * (*field._u)[y1*field._wh+x1]
-            ;
-    }
-
-    static float Sign(float x) { return (x < 0.f) ? -1.f : (x==0.f) ? 0.f : 1.f; }
-    static float MonotonicCubic(float xn1, float x0, float x1, float x2, float alpha)
-    {
-            // See also http://grmanet.sogang.ac.kr/ihm/webpapers/CLMCI.pdf
-            // (Controllable Local Monotonic Cubic Interpolation in Fluid Animations)
-            // for a much more expensive, but more flexible, monotonic interpolation
-            // method.
-            // This method reverts to linear in non-monotonic cases. The above paper
-            // attempts to find a good curve even on non-monotonic cases
-      
-        float dk        = (x1 - xn1) / 2.f;
-        float dk1       = (x2 - x0) / 2.f;
-        float deltak    = x1 - x0;
-        if (Sign(dk) != Sign(deltak) || Sign(dk1) != Sign(deltak))
-            dk = dk1 = 0.f;
-
-        float a2 = alpha * alpha;
-        float a3 = alpha * a2;
-
-            //      original math from Fedkiw has a small error in the first term
-            //      (should be -2*deltak, not -delta)
-        return 
-              (dk + dk1 - 2.f * deltak) * a3
-            + (3.f * deltak - 2.f * dk - dk1) * a2
-            + dk * alpha
-            + x0;
-    }
-
-    static float LoadMonotonicCubic(const ScalarField2D& field, Float2 coord)
-    {
-        float fx = XlFloor(coord[0]);
-        float fy = XlFloor(coord[1]);
-        float a = coord[0] - fx, b = coord[1] - fy;
-
-        unsigned x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
-        unsigned x1 = std::min(x0+1u, field._wh-1u);
-        unsigned y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
-        unsigned y1 = std::min(y0+1u, field._wh-1u);
-        assert(x1 < field._wh && y1 < field._wh);
-
-        unsigned x2 = std::min(x1+1u, field._wh-1u);
-        unsigned y2 = std::min(y1+1u, field._wh-1u);
-        unsigned xn1 = std::max(x0, 1u) - 1u;
-        unsigned yn1 = std::max(y0, 1u) - 1u;
-        
-        float u[] = 
-        {
-            (*field._u)[yn1*field._wh+xn1],
-            (*field._u)[yn1*field._wh+ x0],
-            (*field._u)[yn1*field._wh+ x1],
-            (*field._u)[yn1*field._wh+ x2],
-
-            (*field._u)[ y0*field._wh+xn1],
-            (*field._u)[ y0*field._wh+ x0],
-            (*field._u)[ y0*field._wh+ x1],
-            (*field._u)[ y0*field._wh+ x2],
-
-            (*field._u)[ y1*field._wh+xn1],
-            (*field._u)[ y1*field._wh+ x0],
-            (*field._u)[ y1*field._wh+ x1],
-            (*field._u)[ y1*field._wh+ x2],
-
-            (*field._u)[ y2*field._wh+xn1],
-            (*field._u)[ y2*field._wh+ x0],
-            (*field._u)[ y2*field._wh+ x1],
-            (*field._u)[ y2*field._wh+ x2]
-        };
-
-        float un1 = MonotonicCubic(u[ 0], u[ 1], u[ 2], u[ 3], a);
-        float u0  = MonotonicCubic(u[ 4], u[ 5], u[ 6], u[ 7], a);
-        float u1  = MonotonicCubic(u[ 8], u[ 9], u[10], u[11], a);
-        float u2  = MonotonicCubic(u[12], u[13], u[14], u[15], a);
-        return MonotonicCubic(un1, u0, u1, u2, b);
-    }
-
-    static Float2 LoadMonotonicCubic(const VectorField2D& field, Float2 coord)
-    {
-        float fx = XlFloor(coord[0]);
-        float fy = XlFloor(coord[1]);
-        float a = coord[0] - fx, b = coord[1] - fy;
-
-        unsigned x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
-        unsigned x1 = std::min(x0+1u, field._wh-1u);
-        unsigned y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
-        unsigned y1 = std::min(y0+1u, field._wh-1u);
-        assert(x1 < field._wh && y1 < field._wh);
-
-        unsigned x2 = std::min(x1+1u, field._wh-1u);
-        unsigned y2 = std::min(y1+1u, field._wh-1u);
-        unsigned xn1 = std::max(x0, 1u) - 1u;
-        unsigned yn1 = std::max(y0, 1u) - 1u;
-        
-        float u[] = 
-        {
-            (*field._u)[yn1*field._wh+xn1],
-            (*field._u)[yn1*field._wh+ x0],
-            (*field._u)[yn1*field._wh+ x1],
-            (*field._u)[yn1*field._wh+ x2],
-
-            (*field._u)[ y0*field._wh+xn1],
-            (*field._u)[ y0*field._wh+ x0],
-            (*field._u)[ y0*field._wh+ x1],
-            (*field._u)[ y0*field._wh+ x2],
-
-            (*field._u)[ y1*field._wh+xn1],
-            (*field._u)[ y1*field._wh+ x0],
-            (*field._u)[ y1*field._wh+ x1],
-            (*field._u)[ y1*field._wh+ x2],
-
-            (*field._u)[ y2*field._wh+xn1],
-            (*field._u)[ y2*field._wh+ x0],
-            (*field._u)[ y2*field._wh+ x1],
-            (*field._u)[ y2*field._wh+ x2]
-        };
-
-        float v[] = 
-        {
-            (*field._v)[yn1*field._wh+xn1],
-            (*field._v)[yn1*field._wh+ x0],
-            (*field._v)[yn1*field._wh+ x1],
-            (*field._v)[yn1*field._wh+ x2],
-
-            (*field._v)[ y0*field._wh+xn1],
-            (*field._v)[ y0*field._wh+ x0],
-            (*field._v)[ y0*field._wh+ x1],
-            (*field._v)[ y0*field._wh+ x2],
-
-            (*field._v)[ y1*field._wh+xn1],
-            (*field._v)[ y1*field._wh+ x0],
-            (*field._v)[ y1*field._wh+ x1],
-            (*field._v)[ y1*field._wh+ x2],
-
-            (*field._v)[ y2*field._wh+xn1],
-            (*field._v)[ y2*field._wh+ x0],
-            (*field._v)[ y2*field._wh+ x1],
-            (*field._v)[ y2*field._wh+ x2]
-        };
-
-            // Unfortunately, to get correct cubic interpolation in 2D, we
-            // have to do a lot of interpolations (similar to the math used
-            // in refining cubic surfaces)
-            //
-            // We can optimise this by only doing the monotonic interpolation
-            // of the U parameter in the U direction (and the V parameter in
-            // the V direction). Maybe we could fall back to linear in the 
-            // cross-wise direction.
-            //
-            // It's hard to know what effect that optimisation would have on
-            // the advection operation.
-        float un1 = MonotonicCubic(u[ 0], u[ 1], u[ 2], u[ 3], a);
-        float u0  = MonotonicCubic(u[ 4], u[ 5], u[ 6], u[ 7], a);
-        float u1  = MonotonicCubic(u[ 8], u[ 9], u[10], u[11], a);
-        float u2  = MonotonicCubic(u[12], u[13], u[14], u[15], a);
-        float fu =  MonotonicCubic(un1, u0, u1, u2, b);
-
-        float vn1 = MonotonicCubic(v[ 0], v[ 1], v[ 2], v[ 3], a);
-        float v0  = MonotonicCubic(v[ 4], v[ 5], v[ 6], v[ 7], a);
-        float v1  = MonotonicCubic(v[ 8], v[ 9], v[10], v[11], a);
-        float v2  = MonotonicCubic(v[12], v[13], v[14], v[15], a);
-        float fv =  MonotonicCubic(vn1, v0, v1, v2, b);
-        return Float2(fu, fv);
-    }
-
-    static void GatherNeighbours(Float2 neighbours[8], float weights[4], const VectorField2D& field, Float2 coord)
-    {
-        float fx = XlFloor(coord[0]);
-        float fy = XlFloor(coord[1]);
-        float a = coord[0] - fx, b = coord[1] - fy;
-        weights[0] = (1.f - a) * (1.f - b);
-        weights[1] = a * (1.f - b);
-        weights[2] = (1.f - a) * b;
-        weights[3] = a * b;
-
-        unsigned x0, x1, y0, y1;
-        x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
-        x1 = std::min(x0+1u, field._wh-1u);
-        y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
-        y1 = std::min(y0+1u, field._wh-1u);
-
-        unsigned xx = std::max(x0, 1u) - 1u;
-        unsigned yx = std::max(y0, 1u) - 1u;
-
-        neighbours[0][0] = (*field._u)[y0*field._wh+x0];
-        neighbours[1][0] = (*field._u)[y0*field._wh+x1];
-        neighbours[2][0] = (*field._u)[y1*field._wh+x0];
-        neighbours[3][0] = (*field._u)[y1*field._wh+x1];
-
-        neighbours[4][0] = (*field._u)[yx*field._wh+xx];
-        neighbours[5][0] = (*field._u)[yx*field._wh+x0];
-        neighbours[6][0] = (*field._u)[yx*field._wh+x1];
-        neighbours[7][0] = (*field._u)[y0*field._wh+xx];
-        neighbours[8][0] = (*field._u)[y1*field._wh+xx];
-
-        neighbours[0][1] = (*field._v)[y0*field._wh+x0];
-        neighbours[1][1] = (*field._v)[y0*field._wh+x1];
-        neighbours[2][1] = (*field._v)[y1*field._wh+x0];
-        neighbours[3][1] = (*field._v)[y1*field._wh+x1];
-
-        neighbours[4][1] = (*field._v)[yx*field._wh+xx];
-        neighbours[5][1] = (*field._v)[yx*field._wh+x0];
-        neighbours[6][1] = (*field._v)[yx*field._wh+x1];
-        neighbours[7][1] = (*field._v)[y0*field._wh+xx];
-        neighbours[8][1] = (*field._v)[y1*field._wh+xx];
-    }
-
-    static void GatherNeighbours(float neighbours[8], float weights[4], const ScalarField2D& field, Float2 coord)
-    {
-        float fx = XlFloor(coord[0]);
-        float fy = XlFloor(coord[1]);
-        float a = coord[0] - fx, b = coord[1] - fy;
-        weights[0] = (1.f - a) * (1.f - b);
-        weights[1] = a * (1.f - b);
-        weights[2] = (1.f - a) * b;
-        weights[3] = a * b;
-
-        unsigned x0, x1, y0, y1;
-        x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
-        x1 = std::min(x0+1u, field._wh-1u);
-        y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
-        y1 = std::min(y0+1u, field._wh-1u);
-
-        unsigned xx = std::max(x0, 1u) - 1u;
-        unsigned yx = std::max(y0, 1u) - 1u;
-
-        neighbours[0] = (*field._u)[y0*field._wh+x0];
-        neighbours[1] = (*field._u)[y0*field._wh+x1];
-        neighbours[2] = (*field._u)[y1*field._wh+x0];
-        neighbours[3] = (*field._u)[y1*field._wh+x1];
-
-        neighbours[4] = (*field._u)[yx*field._wh+xx];
-        neighbours[5] = (*field._u)[yx*field._wh+x0];
-        neighbours[6] = (*field._u)[yx*field._wh+x1];
-        neighbours[7] = (*field._u)[y0*field._wh+xx];
-        neighbours[8] = (*field._u)[y1*field._wh+xx];
-    }
-
-    static float Load(const ScalarField2D& field, UInt2 coord)
-    {
-        assert(coord[0] < field._wh && coord[1] < field._wh);
-        return (*field._u)[coord[1] * field._wh + coord[0]];
-    }
-
-    static void Write(ScalarField2D& field, UInt2 coord, float value)
-    {
-        assert(coord[0] < field._wh && coord[1] < field._wh);
-        (*field._u)[coord[1] * field._wh + coord[0]] = value;
-        assert(isfinite(value) && !isnan(value));
-    }
-
-    namespace Interp { const unsigned Clamp = 1<<0; const unsigned Cubic = 1<<1; };
-
-    template<unsigned Interpolation> struct Interper { };
-    template<> struct Interper<Interp::Clamp>
-    {
-        template <typename Field>
-            static __declspec(noinline) typename Field::ValueType Load(const Field& field, Float2 coord)
-                { return LoadBilinear<true>(field, coord); }
-    };
-
-    template<> struct Interper<0>
-    {
-        template <typename Field>
-            static __declspec(noinline) typename Field::ValueType Load(const Field& field, Float2 coord)
-                { return LoadBilinear<false>(field, coord); }
-    };
-
-    template<> struct Interper<Interp::Clamp|Interp::Cubic>
-    {
-        template <typename Field>
-            static __declspec(noinline) typename Field::ValueType Load(const Field& field, Float2 coord)
-                { return LoadMonotonicCubic(field, coord); }
-    };
-
-    template<> struct Interper<Interp::Cubic>
-    {
-        template <typename Field>
-            static __declspec(noinline) typename Field::ValueType Load(const Field& field, Float2 coord)
-                { return LoadMonotonicCubic(field, coord); }
-    };
-
     template<unsigned Interpolation, typename Field>
         static Float2 AdvectRK4(
             const Field& velFieldT0, const Field& velFieldT1,
@@ -1401,14 +1015,14 @@ namespace SceneEngine
             const float halfS = s / 2.f;
     
             Float2 startTap = Float2(float(pt[0]), float(pt[1]));
-            auto k1 = Load(velFieldT0, pt);
-            auto k2 = .5f * Interper<Interpolation|Interp::Clamp>::Load(velFieldT0, startTap + halfS * k1)
-                    + .5f * Interper<Interpolation|Interp::Clamp>::Load(velFieldT1, startTap + halfS * k1)
+            auto k1 = velFieldT0.Load(pt);
+            auto k2 = .5f * velFieldT0.Sample<Interpolation|RNFSample::Clamp>(startTap + halfS * k1)
+                    + .5f * velFieldT1.Sample<Interpolation|RNFSample::Clamp>(startTap + halfS * k1)
                     ;
-            auto k3 = .5f * Interper<Interpolation|Interp::Clamp>::Load(velFieldT0, startTap + halfS * k2)
-                    + .5f * Interper<Interpolation|Interp::Clamp>::Load(velFieldT1, startTap + halfS * k2)
+            auto k3 = .5f * velFieldT0.Sample<Interpolation|RNFSample::Clamp>(startTap + halfS * k2)
+                    + .5f * velFieldT1.Sample<Interpolation|RNFSample::Clamp>(startTap + halfS * k2)
                     ;
-            auto k4 = Interper<Interpolation|Interp::Clamp>::Load(velFieldT1, startTap + s * k3);
+            auto k4 = velFieldT1.Sample<Interpolation|RNFSample::Clamp>(startTap + s * k3);
     
             return startTap + (s / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
         }
@@ -1422,14 +1036,14 @@ namespace SceneEngine
             const float halfS = s / 2.f;
 
                 // when using a float point input, we need bilinear interpolation
-            auto k1 = Interper<Interpolation|Interp::Clamp>::Load(velFieldT0, pt);
-            auto k2 = .5f * Interper<Interpolation|Interp::Clamp>::Load(velFieldT0, pt + halfS * k1)
-                    + .5f * Interper<Interpolation|Interp::Clamp>::Load(velFieldT1, pt + halfS * k1)
+            auto k1 = velFieldT0.Sample<Interpolation|RNFSample::Clamp>(pt);
+            auto k2 = .5f * velFieldT0.Sample<Interpolation|RNFSample::Clamp>(pt + halfS * k1)
+                    + .5f * velFieldT1.Sample<Interpolation|RNFSample::Clamp>(pt + halfS * k1)
                     ;
-            auto k3 = .5f * Interper<Interpolation|Interp::Clamp>::Load(velFieldT0, pt + halfS * k2)
-                    + .5f * Interper<Interpolation|Interp::Clamp>::Load(velFieldT1, pt + halfS * k2)
+            auto k3 = .5f * velFieldT0.Sample<Interpolation|RNFSample::Clamp>(pt + halfS * k2)
+                    + .5f * velFieldT1.Sample<Interpolation|RNFSample::Clamp>(pt + halfS * k2)
                     ;
-            auto k4 = Interper<Interpolation|Interp::Clamp>::Load(velFieldT1, pt + s * k3);
+            auto k4 = velFieldT1.Sample<Interpolation|RNFSample::Clamp>(pt + s * k3);
 
             return pt + (s / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
         }
@@ -1442,12 +1056,12 @@ namespace SceneEngine
     float   Max(float lhs, float rhs)   { return std::max(lhs, rhs); }
     Float2  Max(Float2 lhs, Float2 rhs) { return Float2(std::max(lhs[0], rhs[0]), std::max(lhs[1], rhs[1])); }
 
-    template<unsigned Interpolation, typename Field>
+    template<unsigned SamplingFlags, typename Field>
         typename Field::ValueType LoadWithNearbyRange(typename Field::ValueType& minNeighbour, typename Field::ValueType& maxNeighbour, const Field& field, Float2 pt)
         {
             Field::ValueType predictorParts[9];
             float predictorWeights[4];
-            GatherNeighbours(predictorParts, predictorWeights, field, pt);
+            field.GatherNeighbors(predictorParts, predictorWeights, pt);
             
             minNeighbour =  MaxValue<Field::ValueType>();
             maxNeighbour = -MaxValue<Field::ValueType>();
@@ -1456,14 +1070,14 @@ namespace SceneEngine
                 maxNeighbour = Max(predictorParts[c], maxNeighbour);
             }
 
-            if (constant_expression<(Interpolation & Interp::Cubic)==0>::result()) {
+            if (constant_expression<(SamplingFlags & RNFSample::Cubic)==0>::result()) {
                 return
                       predictorWeights[0] * predictorParts[0]
                     + predictorWeights[1] * predictorParts[1]
                     + predictorWeights[2] * predictorParts[2]
                     + predictorWeights[3] * predictorParts[3];
             } else {
-                return Interper<Interp::Cubic|Interp::Clamp>::Load(field, pt);
+                return field.Sample<RNFSample::Cubic|RNFSample::Clamp>(pt);
             }
         }
 
@@ -1496,7 +1110,7 @@ namespace SceneEngine
         // number is larger than 1)
         //
 
-        enum class Advection { ForwardEuler, ForwardEulerDiv, RungeKutta, MacCormickRK4 };
+        enum class Advection { ForwardEuler, ForwardEulerDiv, RungeKutta, MacCormackRK4 };
         const auto advectionMethod = (Advection)settings._advectionMethod;
         const auto adjvectionSteps = settings._advectionSteps;
 
@@ -1509,19 +1123,20 @@ namespace SceneEngine
                 //  through the velocity field to find an approximation
                 //  of where the point was in the previous frame.
 
+            const unsigned SamplingFlags = 0;
             for (unsigned y=1; y<wh-1; ++y)
                 for (unsigned x=1; x<wh-1; ++x) {
-                    auto startVel = Load(velFieldT1, UInt2(x, y));
+                    auto startVel = velFieldT1.Load(UInt2(x, y));
                     Float2 tap = Float2(float(x), float(y)) - (deltaTime * velFieldScale) * startVel;
                     tap[0] = Clamp(tap[0], 0.f, float(wh-1) - 1e-5f);
                     tap[1] = Clamp(tap[1], 0.f, float(wh-1) - 1e-5f);
-                    Write(dstValues, UInt2(x, y), LoadBilinear<false>(srcValues, tap));
+                    dstValues.Write(UInt2(x, y), srcValues.Sample<SamplingFlags>(tap));
                 }
 
         } else if (advectionMethod == Advection::ForwardEulerDiv) {
 
             float stepScale = deltaTime * velFieldScale / float(adjvectionSteps);
-
+            const unsigned SamplingFlags = 0;
             for (unsigned y=1; y<wh-1; ++y)
                 for (unsigned x=1; x<wh-1; ++x) {
 
@@ -1530,8 +1145,8 @@ namespace SceneEngine
                         float a = (adjvectionSteps-1-s) / float(adjvectionSteps-1);
                         auto vel = 
                             LinearInterpolate(
-                                LoadBilinear<false>(velFieldT0, tap),
-                                LoadBilinear<false>(velFieldT1, tap),
+                                velFieldT0.Sample<SamplingFlags>(tap),
+                                velFieldT1.Sample<SamplingFlags>(tap),
                                 a);
 
                         tap -= stepScale * vel;
@@ -1539,13 +1154,14 @@ namespace SceneEngine
                         tap[1] = Clamp(tap[1], 0.f, float(wh-1) - 1e-5f);
                     }
 
-                    Write(dstValues, UInt2(x, y), LoadBilinear<false>(srcValues, tap));
+                    dstValues.Write(UInt2(x, y), srcValues.Sample<SamplingFlags>(tap));
                 }
 
         } else if (advectionMethod == Advection::RungeKutta) {
 
             if (settings._interpolationMethod == 0) {
 
+                const auto SamplingFlags = 0u;
                 for (unsigned y=1; y<wh-1; ++y)
                     for (unsigned x=1; x<wh-1; ++x) {
 
@@ -1557,22 +1173,23 @@ namespace SceneEngine
                             // Note that we're tracing the velocity field backwards.
                             // So doing k1 on velField1, and k4 on velFieldT0
                             //      -- hoping this will interact with the velocity diffusion more sensibly
-                        const auto tap = AdvectRK4<0>(velFieldT1, velFieldT0, UInt2(x, y), -deltaTime * velFieldScale);
-                        Write(dstValues, UInt2(x, y), Interper<Interp::Clamp>::Load(srcValues, tap));
+                        const auto tap = AdvectRK4<SamplingFlags>(velFieldT1, velFieldT0, UInt2(x, y), -deltaTime * velFieldScale);
+                        dstValues.Write(UInt2(x, y), srcValues.Sample<SamplingFlags|RNFSample::Clamp>(tap));
 
                     }
 
             } else {
 
+                const auto SamplingFlags = RNFSample::Cubic;
                 for (unsigned y=1; y<wh-1; ++y)
                     for (unsigned x=1; x<wh-1; ++x) {
-                        const auto tap = AdvectRK4<Interp::Cubic>(velFieldT1, velFieldT0, UInt2(x, y), -deltaTime * velFieldScale);
-                        Write(dstValues, UInt2(x, y), Interper<Interp::Clamp|Interp::Cubic>::Load(srcValues, tap));
+                        const auto tap = AdvectRK4<SamplingFlags>(velFieldT1, velFieldT0, UInt2(x, y), -deltaTime * velFieldScale);
+                        dstValues.Write(UInt2(x, y), srcValues.Sample<SamplingFlags|RNFSample::Clamp>(tap));
                     }
 
             }
 
-        } else if (advectionMethod == Advection::MacCormickRK4) {
+        } else if (advectionMethod == Advection::MacCormackRK4) {
 
                 //
                 // This is a modified MacCormack scheme, as described in An Unconditionally
@@ -1601,18 +1218,19 @@ namespace SceneEngine
 
             if (settings._interpolationMethod == 0) {
 
+                const auto SamplingFlags = 0u;
                 for (unsigned y=1; y<wh-1; ++y)
                     for (unsigned x=1; x<wh-1; ++x) {
 
                         const auto pt = UInt2(x, y);
 
                             // advect backwards in time first, to find the predictor
-                        const auto predictor = AdvectRK4<0>(velFieldT1, velFieldT0, pt, -deltaTime * velFieldScale);
+                        const auto predictor = AdvectRK4<SamplingFlags>(velFieldT1, velFieldT0, pt, -deltaTime * velFieldScale);
                             // advect forward again to find the error tap
-                        const auto reversedTap = AdvectRK4<0>(velFieldT0, velFieldT1, predictor, deltaTime * velFieldScale);
+                        const auto reversedTap = AdvectRK4<SamplingFlags>(velFieldT0, velFieldT1, predictor, deltaTime * velFieldScale);
 
-                        auto originalValue = Load(srcValues, pt);
-                        auto reversedValue = Interper<Interp::Clamp>::Load(srcValues, reversedTap);
+                        auto originalValue = srcValues.Load(pt);
+                        auto reversedValue = srcValues.Sample<SamplingFlags|RNFSample::Clamp>(reversedTap);
                         Field::ValueType finalValue;
 
                             // Here we clamp the final result within the range of the neighbour cells of the 
@@ -1621,38 +1239,39 @@ namespace SceneEngine
                         const bool doRangeClamping = true;
                         if (constant_expression<doRangeClamping>::result()) {
                             Field::ValueType minNeighbour, maxNeighbour;
-                            auto predictorValue = LoadWithNearbyRange<0>(minNeighbour, maxNeighbour, srcValues, predictor);
+                            auto predictorValue = LoadWithNearbyRange<SamplingFlags>(minNeighbour, maxNeighbour, srcValues, predictor);
                             finalValue = Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
                             finalValue = Max(finalValue, minNeighbour);
                             finalValue = Min(finalValue, maxNeighbour);
                         } else {
-                            auto predictorValue = Interper<Interp::Clamp>::Load(srcValues, predictor);
+                            auto predictorValue = srcValues.Sample<SamplingFlags|RNFSample::Clamp>(predictor);
                             finalValue = Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
                         }
 
-                        Write(dstValues, pt, finalValue);
+                        dstValues.Write(pt, finalValue);
 
                     }
 
             } else {
 
+                const auto SamplingFlags = RNFSample::Cubic;
                 for (unsigned y=1; y<wh-1; ++y)
                     for (unsigned x=1; x<wh-1; ++x) {
 
                         const auto pt = UInt2(x, y);
-                        const auto predictor = AdvectRK4<Interp::Cubic>(velFieldT1, velFieldT0, pt, -deltaTime * velFieldScale);
-                        const auto reversedTap = AdvectRK4<Interp::Cubic>(velFieldT0, velFieldT1, predictor, deltaTime * velFieldScale);
+                        const auto predictor = AdvectRK4<SamplingFlags>(velFieldT1, velFieldT0, pt, -deltaTime * velFieldScale);
+                        const auto reversedTap = AdvectRK4<SamplingFlags>(velFieldT0, velFieldT1, predictor, deltaTime * velFieldScale);
 
-                        auto originalValue = Load(srcValues, pt);
-                        auto reversedValue = Interper<Interp::Cubic|Interp::Clamp>::Load(srcValues, reversedTap);
+                        auto originalValue = srcValues.Load(pt);
+                        auto reversedValue = srcValues.Sample<SamplingFlags|RNFSample::Clamp>(reversedTap);
 
                         Field::ValueType minNeighbour, maxNeighbour;
-                        auto predictorValue = LoadWithNearbyRange<Interp::Cubic>(minNeighbour, maxNeighbour, srcValues, predictor);
+                        auto predictorValue = LoadWithNearbyRange<SamplingFlags>(minNeighbour, maxNeighbour, srcValues, predictor);
                         auto finalValue = Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
                         finalValue = Max(finalValue, minNeighbour);
                         finalValue = Min(finalValue, maxNeighbour);
 
-                        Write(dstValues, pt, finalValue);
+                        dstValues.Write(pt, finalValue);
 
                     }
 
@@ -1762,8 +1381,8 @@ namespace SceneEngine
         VectorX vorticity(wh*wh);
         for (unsigned y=1; y<wh-1; ++y)
             for (unsigned x=1; x<wh-1; ++x) {
-                auto dvydx = .5f * Load(inputVelocities, UInt2(x+1, y))[1] - Load(inputVelocities, UInt2(x-1, y))[1];
-                auto dvxdy = .5f * Load(inputVelocities, UInt2(x, y+1))[0] - Load(inputVelocities, UInt2(x, y-1))[0];
+                auto dvydx = .5f * inputVelocities.Load(UInt2(x+1, y))[1] - inputVelocities.Load(UInt2(x-1, y))[1];
+                auto dvxdy = .5f * inputVelocities.Load(UInt2(x, y+1))[0] - inputVelocities.Load(UInt2(x, y-1))[0];
                 vorticity[y*wh+x] = dvydx - dvxdy;
             }
         SmearBorder(vorticity, wh);
@@ -1785,9 +1404,9 @@ namespace SceneEngine
                     float omega = vorticity[y*wh+x];
                     Float2 additionalVel(s * div[1] * omega, s * -div[0] * omega);
 
-                    Write(
-                        outputField, UInt2(x, y),
-                        Load(outputField, UInt2(x, y)) + additionalVel);
+                    outputField.Write(
+                        UInt2(x, y),
+                        outputField.Load(UInt2(x, y)) + additionalVel);
                 }
             }
     }
@@ -1802,8 +1421,8 @@ namespace SceneEngine
         auto N = wh*wh;
 
         _pimpl->VorticityConfinement(
-            VectorField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
-            VectorField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
+            VectorField2D(&_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2),
+            VectorField2D(&_pimpl->_velU, &_pimpl->_velV, D+2),
             settings._vorticityConfinement, deltaTime);
 
         for (unsigned c=0; c<N; ++c) {
@@ -1830,16 +1449,16 @@ namespace SceneEngine
 
         VectorX newU(N), newV(N);
         _pimpl->Advect(
-            VectorField2D { &newU, &newV, D+2 },
-            VectorField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
-            VectorField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
-            VectorField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
+            VectorField2D(&newU, &newV, D+2),
+            VectorField2D(&_pimpl->_velU, &_pimpl->_velV, D+2),
+            VectorField2D(&_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2),
+            VectorField2D(&_pimpl->_velU, &_pimpl->_velV, D+2),
             deltaTime, settings);
         
         ReflectUBorder(newU, D+2);
         ReflectVBorder(newV, D+2);
         _pimpl->EnforceIncompressibility(
-            VectorField2D { &newU, &newV, D+2 },
+            VectorField2D(&newU, &newV, D+2),
             settings);
         
         _pimpl->_velU = newU;
@@ -1848,19 +1467,19 @@ namespace SceneEngine
         _pimpl->DensityDiffusion(deltaTime, settings);
         auto prevDensity = _pimpl->_density;
         _pimpl->Advect(
-            ScalarField2D { &_pimpl->_density, D+2 },
-            ScalarField2D { &prevDensity, D+2 },
-            VectorField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
-            VectorField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
+            ScalarField2D(&_pimpl->_density, D+2),
+            ScalarField2D(&prevDensity, D+2),
+            VectorField2D(&_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2),
+            VectorField2D(&_pimpl->_velU, &_pimpl->_velV, D+2),
             deltaTime, settings);
 
         _pimpl->TemperatureDiffusion(deltaTime, settings);
         auto prevTemperature = _pimpl->_temperature;
         _pimpl->Advect(
-            ScalarField2D { &_pimpl->_temperature, D+2 },
-            ScalarField2D { &prevTemperature, D+2 },
-            VectorField2D { &_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2 },
-            VectorField2D { &_pimpl->_velU, &_pimpl->_velV, D+2 },
+            ScalarField2D(&_pimpl->_temperature, D+2),
+            ScalarField2D(&prevTemperature, D+2),
+            VectorField2D(&_pimpl->_prevVelU, &_pimpl->_prevVelV, D+2),
+            VectorField2D(&_pimpl->_velU, &_pimpl->_velV, D+2),
             deltaTime, settings);
 
         for (unsigned c=0; c<N; ++c) {

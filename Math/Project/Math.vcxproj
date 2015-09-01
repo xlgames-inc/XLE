@@ -99,6 +99,7 @@
     <ClInclude Include="..\Noise.h" />
     <ClInclude Include="..\ProjectionMath.h" />
     <ClInclude Include="..\Quaternion.h" />
+    <ClInclude Include="..\RegularNumberField.h" />
     <ClInclude Include="..\Transformations.h" />
     <ClInclude Include="..\Vector.h" />
   </ItemGroup>
@@ -109,6 +110,7 @@
     <ClCompile Include="..\Matrix.cpp" />
     <ClCompile Include="..\Noise.cpp" />
     <ClCompile Include="..\ProjectionMath.cpp" />
+    <ClCompile Include="..\RegularNumberField.cpp" />
     <ClCompile Include="..\Transformations.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
