@@ -1344,52 +1344,73 @@ namespace SceneEngine
 
     namespace Interp { const unsigned Clamp = 1<<0; const unsigned Cubic = 1<<1; };
 
-    template <unsigned Interpolation, typename Field>
-        static typename Field::ValueType LoadInterpolated(const Field& field, Float2 coord)
-        {
-            if (constant_expression<!!(Interpolation & Interp::Cubic)>::result())
-                return LoadMonotonicCubic(field, coord);
-            return LoadBilinear<!!(Interpolation & Interp::Clamp)>(field, coord);
-        }
+    template<unsigned Interpolation> struct Interper { };
+    template<> struct Interper<Interp::Clamp>
+    {
+        template <typename Field>
+            static __declspec(noinline) typename Field::ValueType Load(const Field& field, Float2 coord)
+                { return LoadBilinear<true>(field, coord); }
+    };
+
+    template<> struct Interper<0>
+    {
+        template <typename Field>
+            static __declspec(noinline) typename Field::ValueType Load(const Field& field, Float2 coord)
+                { return LoadBilinear<false>(field, coord); }
+    };
+
+    template<> struct Interper<Interp::Clamp|Interp::Cubic>
+    {
+        template <typename Field>
+            static __declspec(noinline) typename Field::ValueType Load(const Field& field, Float2 coord)
+                { return LoadMonotonicCubic(field, coord); }
+    };
+
+    template<> struct Interper<Interp::Cubic>
+    {
+        template <typename Field>
+            static __declspec(noinline) typename Field::ValueType Load(const Field& field, Float2 coord)
+                { return LoadMonotonicCubic(field, coord); }
+    };
 
     template<unsigned Interpolation, typename Field>
         static Float2 AdvectRK4(
-            Field velFieldT0, Field velFieldT1,
+            const Field& velFieldT0, const Field& velFieldT1,
             UInt2 pt, float velScale)
         {
             const float s = velScale;
             const float halfS = s / 2.f;
-
+    
             Float2 startTap = Float2(float(pt[0]), float(pt[1]));
             auto k1 = Load(velFieldT0, pt);
-            auto k2 = .5f * LoadBilinear<true>(velFieldT0, startTap + halfS * k1)
-                    + .5f * LoadBilinear<true>(velFieldT1, startTap + halfS * k1)
+            auto k2 = .5f * Interper<Interpolation|Interp::Clamp>::Load(velFieldT0, startTap + halfS * k1)
+                    + .5f * Interper<Interpolation|Interp::Clamp>::Load(velFieldT1, startTap + halfS * k1)
                     ;
-            auto k3 = .5f * LoadBilinear<true>(velFieldT0, startTap + halfS * k2)
-                    + .5f * LoadBilinear<true>(velFieldT1, startTap + halfS * k2)
+            auto k3 = .5f * Interper<Interpolation|Interp::Clamp>::Load(velFieldT0, startTap + halfS * k2)
+                    + .5f * Interper<Interpolation|Interp::Clamp>::Load(velFieldT1, startTap + halfS * k2)
                     ;
-            auto k4 = LoadBilinear<true>(velFieldT1, startTap + s * k3);
-
+            auto k4 = Interper<Interpolation|Interp::Clamp>::Load(velFieldT1, startTap + s * k3);
+    
             return startTap + (s / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
         }
 
-    template<unsigned Interpolation, typename Field>
+    template<unsigned Interpolation>
         static Float2 AdvectRK4(
-            Field velFieldT0, Field velFieldT1,
+            const VectorField2D& velFieldT0, const VectorField2D& velFieldT1,
             Float2 pt, float velScale)
         {
             const float s = velScale;
             const float halfS = s / 2.f;
 
                 // when using a float point input, we need bilinear interpolation
-            auto k1 = LoadBilinear<true>(velFieldT0, pt);
-            auto k2 = .5f * LoadBilinear<true>(velFieldT0, pt + halfS * k1)
-                    + .5f * LoadBilinear<true>(velFieldT1, pt + halfS * k1)
+            auto k1 = Interper<Interpolation|Interp::Clamp>::Load(velFieldT0, pt);
+            auto k2 = .5f * Interper<Interpolation|Interp::Clamp>::Load(velFieldT0, pt + halfS * k1)
+                    + .5f * Interper<Interpolation|Interp::Clamp>::Load(velFieldT1, pt + halfS * k1)
                     ;
-            auto k3 = .5f * LoadBilinear<true>(velFieldT0, pt + halfS * k2)
-                    + .5f * LoadBilinear<true>(velFieldT1, pt + halfS * k2)
+            auto k3 = .5f * Interper<Interpolation|Interp::Clamp>::Load(velFieldT0, pt + halfS * k2)
+                    + .5f * Interper<Interpolation|Interp::Clamp>::Load(velFieldT1, pt + halfS * k2)
                     ;
-            auto k4 = LoadBilinear<true>(velFieldT1, pt + s * k3);
+            auto k4 = Interper<Interpolation|Interp::Clamp>::Load(velFieldT1, pt + s * k3);
 
             return pt + (s / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
         }
@@ -1423,7 +1444,7 @@ namespace SceneEngine
                     + predictorWeights[2] * predictorParts[2]
                     + predictorWeights[3] * predictorParts[3];
             } else {
-                return LoadInterpolated<Interp::Cubic|Interp::Clamp>(field, pt);
+                return Interper<Interp::Cubic|Interp::Clamp>::Load(field, pt);
             }
         }
 
@@ -1518,7 +1539,7 @@ namespace SceneEngine
                             // So doing k1 on velField1, and k4 on velFieldT0
                             //      -- hoping this will interact with the velocity diffusion more sensibly
                         const auto tap = AdvectRK4<0>(velFieldT1, velFieldT0, UInt2(x, y), -deltaTime * velFieldScale);
-                        Write(dstValues, UInt2(x, y), LoadInterpolated<Interp::Clamp>(srcValues, tap));
+                        Write(dstValues, UInt2(x, y), Interper<Interp::Clamp>::Load(srcValues, tap));
 
                     }
 
@@ -1527,7 +1548,7 @@ namespace SceneEngine
                 for (unsigned y=1; y<wh-1; ++y)
                     for (unsigned x=1; x<wh-1; ++x) {
                         const auto tap = AdvectRK4<Interp::Cubic>(velFieldT1, velFieldT0, UInt2(x, y), -deltaTime * velFieldScale);
-                        Write(dstValues, UInt2(x, y), LoadInterpolated<Interp::Clamp|Interp::Cubic>(srcValues, tap));
+                        Write(dstValues, UInt2(x, y), Interper<Interp::Clamp|Interp::Cubic>::Load(srcValues, tap));
                     }
 
             }
@@ -1572,7 +1593,7 @@ namespace SceneEngine
                         const auto reversedTap = AdvectRK4<0>(velFieldT0, velFieldT1, predictor, deltaTime * velFieldScale);
 
                         auto originalValue = Load(srcValues, pt);
-                        auto reversedValue = LoadInterpolated<Interp::Clamp>(srcValues, reversedTap);
+                        auto reversedValue = Interper<Interp::Clamp>::Load(srcValues, reversedTap);
                         Field::ValueType finalValue;
 
                             // Here we clamp the final result within the range of the neighbour cells of the 
@@ -1586,7 +1607,7 @@ namespace SceneEngine
                             finalValue = Max(finalValue, minNeighbour);
                             finalValue = Min(finalValue, maxNeighbour);
                         } else {
-                            auto predictorValue = LoadInterpolated<Interp::Clamp>(srcValues, predictor);
+                            auto predictorValue = Interper<Interp::Clamp>::Load(srcValues, predictor);
                             finalValue = Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
                         }
 
@@ -1604,7 +1625,7 @@ namespace SceneEngine
                         const auto reversedTap = AdvectRK4<Interp::Cubic>(velFieldT0, velFieldT1, predictor, deltaTime * velFieldScale);
 
                         auto originalValue = Load(srcValues, pt);
-                        auto reversedValue = LoadInterpolated<Interp::Cubic|Interp::Clamp>(srcValues, reversedTap);
+                        auto reversedValue = Interper<Interp::Cubic|Interp::Clamp>::Load(srcValues, reversedTap);
 
                         Field::ValueType minNeighbour, maxNeighbour;
                         auto predictorValue = LoadWithNearbyRange<Interp::Cubic>(minNeighbour, maxNeighbour, srcValues, predictor);
