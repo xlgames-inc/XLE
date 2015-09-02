@@ -27,16 +27,17 @@ namespace XLEMath
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void RunSOR(ScalarField1D& xv, AMat2D A, const ScalarField1D& b, float relaxationFactor)
+    static void RunSOR(ScalarField1D& xv, const AMat& A, const ScalarField1D& b, float relaxationFactor)
     {
         const auto width = GetWidth(A);
         const auto height = GetHeight(A);
         const auto depth = GetDepth(A);
-        const auto bor = GetMargins(A);
-        for (unsigned z=bor[2]; z<depth-bor[2]; ++z) {
+        const auto bor = GetBorders(A);
+
+        if (A._dimensionality==2) {
             for (unsigned y=bor[1]; y<height-bor[1]; ++y) {
                 for (unsigned x=bor[0]; x<width-bor[0]; ++x) {
-                    const unsigned i = (z*height+y)*width+x;
+                    const unsigned i = y*width+x;
                     auto v = b[i];
 
                     v -= A._a1 * xv[i-1];
@@ -45,6 +46,24 @@ namespace XLEMath
                     v -= A._a1 * xv[i+width];
 
                     xv[i] = (1.f-relaxationFactor) * xv[i] + relaxationFactor * v / A._a0;
+                }
+            }
+        } else {
+            for (unsigned z=bor[2]; z<depth-bor[2]; ++z) {
+                for (unsigned y=bor[1]; y<height-bor[1]; ++y) {
+                    for (unsigned x=bor[0]; x<width-bor[0]; ++x) {
+                        const unsigned i = (z*height+y)*width+x;
+                        auto v = b[i];
+
+                        v -= A._a1 * xv[i-width*height];
+                        v -= A._a1 * xv[i-width];
+                        v -= A._a1 * xv[i-1];
+                        v -= A._a1 * xv[i+1];
+                        v -= A._a1 * xv[i+width];
+                        v -= A._a1 * xv[i+width*height];
+
+                        xv[i] = (1.f-relaxationFactor) * xv[i] + relaxationFactor * v / A._a0;
+                    }
                 }
             }
         }
@@ -256,7 +275,7 @@ namespace XLEMath
         template<typename Mat>
             unsigned Execute(ScalarField1D& x, const Mat& A, const ScalarField1D& b);
 
-        Solver_Multigrid(UInt3 dims, unsigned levels);
+        Solver_Multigrid(UInt3 dims, unsigned dimensionality, unsigned levels);
         ~Solver_Multigrid();
 
     protected:
@@ -264,9 +283,10 @@ namespace XLEMath
         std::vector<VectorX> _subB;
         std::vector<UInt3> _subDims;
         unsigned _N;
+        unsigned _dimensionality;
     };
 
-    static AMat2D ChangeResolution(AMat2D i, unsigned layer)
+    static AMat ChangeResolution(AMat i, unsigned layer)
     {
             // 'a' values are proportion to the square of N
             // N quarters with every layer (width and height half)
@@ -277,7 +297,7 @@ namespace XLEMath
         return result;
     }
 
-    static void Restrict(ScalarField1D& dst, const ScalarField1D& src, UInt3 dstDims, UInt3 srcDims)
+    static void Restrict2D(ScalarField1D& dst, const ScalarField1D& src, UInt2 dstDims, UInt2 srcDims)
     {
             // This is the "restrict" operator
             // There are many possible methods for this
@@ -302,7 +322,28 @@ namespace XLEMath
         }
     }
 
-    static void Prolongate(ScalarField1D& dst, const ScalarField1D& src, UInt3 dstDims, UInt3 srcDims)
+    static void Restrict3D(ScalarField1D& dst, const ScalarField1D& src, UInt3 dstDims, UInt3 srcDims)
+    {
+        for (unsigned z=1; z<dstDims[2]-1; ++z) {
+            for (unsigned y=1; y<dstDims[1]-1; ++y) {
+                for (unsigned x=1; x<dstDims[0]-1; ++x) {
+                    unsigned sx = (x-1)*2+1, sy = (y-1)*2+1, sz = (z-1)*2+1;
+                    dst[(z*dstDims[1]+y)*dstDims[0]+x]
+                        = .125f * src[((sz+0)*srcDims[1]+(sy+0))*srcDims[0]+(sx+0)]
+                        + .125f * src[((sz+0)*srcDims[1]+(sy+0))*srcDims[0]+(sx+1)]
+                        + .125f * src[((sz+0)*srcDims[1]+(sy+1))*srcDims[0]+(sx+0)]
+                        + .125f * src[((sz+0)*srcDims[1]+(sy+1))*srcDims[0]+(sx+1)]
+                        + .125f * src[((sz+1)*srcDims[1]+(sy+0))*srcDims[0]+(sx+0)]
+                        + .125f * src[((sz+1)*srcDims[1]+(sy+0))*srcDims[0]+(sx+1)]
+                        + .125f * src[((sz+1)*srcDims[1]+(sy+1))*srcDims[0]+(sx+0)]
+                        + .125f * src[((sz+1)*srcDims[1]+(sy+1))*srcDims[0]+(sx+1)]
+                        ;
+                }
+            }
+        }
+    }
+
+    static void Prolongate2D(ScalarField1D& dst, const ScalarField1D& src, UInt2 dstDims, UInt2 srcDims)
     {
             // This is the "prolongate" operator.
             // As with the restrict operator, we're going
@@ -327,6 +368,41 @@ namespace XLEMath
                     + weights[2] * src[(unsigned(sy0)+1)*srcDims[0]+unsigned(sx0)]
                     + weights[3] * src[(unsigned(sy0)+1)*srcDims[0]+unsigned(sx0)+1]
                     ;
+            }
+        }
+    }
+
+    static void Prolongate3D(ScalarField1D& dst, const ScalarField1D& src, UInt3 dstDims, UInt3 srcDims)
+    {
+        for (unsigned z=1; z<dstDims[2]-1; ++z) {
+            for (unsigned y=1; y<dstDims[1]-1; ++y) {
+                for (unsigned x=1; x<dstDims[0]-1; ++x) {
+                    auto sx = (x-1)/2.f + 1.f;
+                    auto sy = (y-1)/2.f + 1.f;
+                    auto sz = (z-1)/2.f + 1.f;
+                    auto sx0 = XlFloor(sx), sy0 = XlFloor(sy), sz0 = XlFloor(sz);
+                    auto a = sx - sx0, b = sy - sy0, c = sz - sz0;
+                    decltype(a) weights[] = {
+                        (1.0f - a) * (1.0f - b) * (1.0f - c),
+                        a * (1.0f - b) * (1.0f - c),
+                        (1.0f - a) * b * (1.0f - c),
+                        a * b * (1.0f - c),
+                        (1.0f - a) * (1.0f - b) * c,
+                        a * (1.0f - b) * c,
+                        (1.0f - a) * b * c,
+                        a * b * c
+                    };
+                    dst[(z*dstDims[1]+y)*dstDims[0]+x]
+                        = weights[0] * src[((unsigned(sz0)+0)*srcDims[1]+(unsigned(sy0)+0))*srcDims[0]+unsigned(sx0)+0]
+                        + weights[1] * src[((unsigned(sz0)+0)*srcDims[1]+(unsigned(sy0)+0))*srcDims[0]+unsigned(sx0)+1]
+                        + weights[2] * src[((unsigned(sz0)+0)*srcDims[1]+(unsigned(sy0)+1))*srcDims[0]+unsigned(sx0)+0]
+                        + weights[3] * src[((unsigned(sz0)+0)*srcDims[1]+(unsigned(sy0)+1))*srcDims[0]+unsigned(sx0)+1]
+                        + weights[4] * src[((unsigned(sz0)+1)*srcDims[1]+(unsigned(sy0)+0))*srcDims[0]+unsigned(sx0)+0]
+                        + weights[5] * src[((unsigned(sz0)+1)*srcDims[1]+(unsigned(sy0)+0))*srcDims[0]+unsigned(sx0)+1]
+                        + weights[6] * src[((unsigned(sz0)+1)*srcDims[1]+(unsigned(sy0)+1))*srcDims[0]+unsigned(sx0)+0]
+                        + weights[7] * src[((unsigned(sz0)+1)*srcDims[1]+(unsigned(sy0)+1))*srcDims[0]+unsigned(sx0)+1]
+                        ;
+                }
             }
         }
     }
@@ -362,7 +438,7 @@ namespace XLEMath
         iterations += preSmoothIterations;
 
             // ---------- step down ----------
-        auto activeDims = Expand(A._dims, 1u);
+        auto activeDims = A._dims;
         ScalarField1D prevLayer = x;
         ScalarField1D prevB = b;
         auto gridCount = unsigned(_subResidual.size());
@@ -372,11 +448,16 @@ namespace XLEMath
             auto dst = AsScalarField1D(_subResidual[g]);
             auto dstB = AsScalarField1D(_subB[g]);
 
-            Restrict(dst, prevLayer, activeDims, prevDims);
-            Restrict(dstB, prevB, activeDims, prevDims);   // is it better to downsample B from the top most level each time?
+            if (_dimensionality==2) {
+                Restrict2D(dst, prevLayer, Truncate(activeDims), Truncate(prevDims));
+                Restrict2D(dstB, prevB, Truncate(activeDims), Truncate(prevDims));   // is it better to downsample B from the top most level each time?
+            } else {
+                Restrict3D(dst, prevLayer, activeDims, prevDims);
+                Restrict3D(dstB, prevB, activeDims, prevDims);   // is it better to downsample B from the top most level each time?
+            }
 
             auto SA = ChangeResolution(A, g+1);
-            SA._dims = Truncate(activeDims);
+            SA._dims = activeDims;
             for (unsigned k = 0; k<stepSmoothIterations; ++k)
                 RunSOR(dst, SA, dstB, gamma);
             iterations += stepSmoothIterations;
@@ -393,17 +474,25 @@ namespace XLEMath
             auto srcDims = _subDims[g];
             auto dstDims = _subDims[g-1];
 
-            Prolongate(dst, src, dstDims, srcDims);
+            if (_dimensionality==2) {
+                Prolongate2D(dst, src, Truncate(dstDims), Truncate(srcDims));
+            } else {
+                Prolongate3D(dst, src, dstDims, srcDims);
+            }
 
             auto SA = ChangeResolution(A, g-1+1);
-            SA._dims = Truncate(dstDims);
+            SA._dims = dstDims;
             for (unsigned k = 0; k<stepSmoothIterations; ++k)
                 RunSOR(dst, SA, dstB, gamma);
             iterations += stepSmoothIterations;
         }
 
             // finally, step back onto 'x'
-        Prolongate(x, AsScalarField1D(_subResidual[0]), Expand(A._dims, 1u), _subDims[0]);
+        if (_dimensionality==2) {
+            Prolongate2D(x, AsScalarField1D(_subResidual[0]), Truncate(A._dims), Truncate(_subDims[0]));
+        } else {
+            Prolongate3D(x, AsScalarField1D(_subResidual[0]), A._dims, _subDims[0]);
+        }
 
             // post-smoothing (SOR method -- can be done in place)
         for (unsigned k = 0; k<postSmoothIterations; ++k)
@@ -413,9 +502,9 @@ namespace XLEMath
         return iterations;
     }
 
-    Solver_Multigrid::Solver_Multigrid(UInt3 dims, unsigned levels)
+    Solver_Multigrid::Solver_Multigrid(UInt3 dims, unsigned dimensionality, unsigned levels)
     {
-            // todo -- need to consider the border for "wh"
+        _dimensionality = dimensionality;
         _N = dims[0]*dims[1]*dims[2];
         for (unsigned c=0; c<levels; c++) {
             dims[0] = (unsigned)std::max(1, ((int(dims[0])-2) >> 1)) + 2u;
@@ -441,6 +530,7 @@ namespace XLEMath
     public:
         VectorX _tempBuffer;
         UInt3 _dimensions;
+        UInt3 _borders;
         unsigned _dimensionality;
 
         std::unique_ptr<Solver_PlainCG> _plainCGSolver;
@@ -451,16 +541,15 @@ namespace XLEMath
     class PoissonSolver::PreparedMatrix
     {
     public:
-        AMat2D _A;
-
+        AMat _amat;
         std::vector<int> _bands;
         SparseBandedMatrix<MatrixX> _bandedPrecon;
     };
 
-    static AMat2D GetEstimate(const AMat2D& A, float estimationFactor)
+    static AMat GetEstimate(const AMat& A, float estimationFactor)
     {
         const auto estA1 = estimationFactor * A._a1;  // used when calculating a starting estimate
-        return AMat2D { A._dims, 1.f - 4.f * estA1, estA1 };
+        return AMat { A._dims, A._borders, A._dimensionality, 1.f - 4.f * estA1, estA1 };
     }
 
     unsigned PoissonSolver::Solve(
@@ -516,14 +605,14 @@ namespace XLEMath
             // maybe we could adapt this based on the amount of noise in the system? 
             // In low noise systems, explicit euler seems very close to correct
         static float estimateFactor = .75f; 
-        const auto& matA = A._A;
+        const auto& matA = A._amat;
         auto estMatA = GetEstimate(matA, estimateFactor);
         const auto N = GetN(matA);
 
         const auto width = GetWidth(matA);
         const auto height = GetHeight(matA);
         const auto depth = GetDepth(matA);
-        const auto bor = GetMargins(matA);
+        const auto bor = GetBorders(matA);
 
         assert(x._count == N);
         assert(b._count == N);
@@ -571,7 +660,7 @@ namespace XLEMath
                 iterations = _pimpl->_preconCGSolver->Execute(x, matA, workingB, A._bandedPrecon);
             } else if (solver == Method::Multigrid) {
                 if (!_pimpl->_multigridSolver)
-                    _pimpl->_multigridSolver = std::make_unique<Solver_Multigrid>(_pimpl->_dimensions, 2);
+                    _pimpl->_multigridSolver = std::make_unique<Solver_Multigrid>(_pimpl->_dimensions, _pimpl->_dimensionality, 2);
                 iterations = _pimpl->_multigridSolver->Execute(x, matA, workingB);
             }
 
@@ -668,7 +757,7 @@ namespace XLEMath
         return result * result.transpose();
     }
 
-    static MatrixX CalculateIncompleteCholesky(AMat2D mat, unsigned N, unsigned bandOptimization)
+    static MatrixX CalculateIncompleteCholesky(const AMat& mat, unsigned N, unsigned bandOptimization)
     {
             //
             //  The final matrix we build will only hold values in
@@ -682,6 +771,7 @@ namespace XLEMath
         factorization.fill(0.f);
 
         const auto width = GetWidth(mat);
+        const auto height = GetHeight(mat);
             
         if (bandOptimization == 0) {
 
@@ -744,6 +834,8 @@ namespace XLEMath
             // effect on the final preconditioner matrix we generate? (given that the
             // final matrix is sparse, and has zeroes off the main bands).
 
+            assert(bandOptimization < width);   // if "bandOptimisation" is very big, the math will be incorrect (and anyway, it will run slowly)
+
             for (unsigned i=0; i<N; ++i) {
                 float a = mat._a0;
                 for (unsigned k=0; k<i; ++k) {
@@ -755,9 +847,18 @@ namespace XLEMath
 
                 if (i != 0) {
 
-                    int kband0Start = std::max(0, int(i)-int(width)-2-int(bandOptimization));
-                    int kband1Start = std::max(0, int(i)-1-int(bandOptimization));
-                    int kband0End = std::min(int(kband1Start), int(i)-int(width)-2+int(bandOptimization)+1);
+                    int kband0Start, kband0End;
+                    if (mat._dimensionality==2) {
+                        kband0Start = kband0End = 0;
+                    } else {
+                        kband0Start = std::max(0, int(i)-int(width*height)-int(bandOptimization));
+                        kband0End = int(i)-int(width*height)+int(bandOptimization)+1;
+                    }
+
+                    int kband1Start = std::max(0, int(i)-int(width)-2-int(bandOptimization));
+                    int kband1End = int(i)-int(width)-2+int(bandOptimization)+1;
+
+                    int kband2Start = std::max(0, int(i)-1-int(bandOptimization));
 
                     for (unsigned j=i+1; j<std::min(i+1+bandOptimization+1, N); ++j) {
                         float aij = ((j==i+1)||(j==i+width)) ? mat._a1 : 0.f;
@@ -767,7 +868,9 @@ namespace XLEMath
                             // to find an overlap, so let's just check the bands of i
                         for (int k=kband0Start; k<kband0End; ++k)
                             aij -= factorization(i, k) * factorization(j, k);
-                        for (int k=kband1Start; k<int(i); ++k)
+                        for (int k=kband1Start; k<kband1End; ++k)
+                            aij -= factorization(i, k) * factorization(j, k);
+                        for (int k=kband2Start; k<int(i); ++k)
                             aij -= factorization(i, k) * factorization(j, k);
 
                         factorization(j, i) = aij / a;
@@ -777,7 +880,9 @@ namespace XLEMath
                         float aij = ((j==i+1)||(j==i+width)) ? mat._a1 : 0.f;
                         for (int k=kband0Start; k<kband0End; ++k)
                             aij -= factorization(i, k) * factorization(j, k);
-                        for (int k=kband1Start; k<int(i); ++k)
+                        for (int k=kband1Start; k<kband1End; ++k)
+                            aij -= factorization(i, k) * factorization(j, k);
+                        for (int k=kband2Start; k<int(i); ++k)
                             aij -= factorization(i, k) * factorization(j, k);
                         factorization(j, i) = aij / a;
                     }
@@ -789,8 +894,17 @@ namespace XLEMath
                 //  it's transpose
                 //
 
-            int bands[] = { -int(width), -1, 1, width, 0 };
-            MatrixX sparseMatrix(N, dimof(bands));
+            int bands2D[] = { -int(width), -1, 1, width, 0 };
+            int bands3D[] = { -int(width*height), -int(width), -1, 1, width, width*height, 0 };
+            unsigned bandCount; int* bands;
+            if (mat._dimensionality == 2) {
+                bandCount = dimof(bands2D);
+                bands = bands2D;
+            } else {
+                bandCount = dimof(bands3D);
+                bands = bands3D;
+            }
+            MatrixX sparseMatrix(N, bandCount);
             for (unsigned i=0; i<N; ++i) {
 
                 int kband0Start = std::max(0,       int(i)-int(width)-2-int(bandOptimization));
@@ -800,7 +914,17 @@ namespace XLEMath
                 int kband2Start = std::min(int(N),  int(i)+int(width)-2-int(bandOptimization));
                 int kband2End   = std::min(int(N),  int(i)+int(width)-2+int(bandOptimization)+1);
 
-                for (unsigned j=0; j<dimof(bands); ++j) {
+                int kband3Start, kband3End, kband4Start, kband4End;
+                if (mat._dimensionality==2) {
+                    kband3Start =  kband3End =  kband4Start = kband4End = 0;
+                } else {
+                    kband3Start =  std::max(0,      int(i)-int(width*height)-int(bandOptimization));
+                    kband3End   =  std::max(0,      int(i)-int(width*height)+int(bandOptimization)+1);
+                    kband4Start =  std::min(int(N), int(i)+int(width*height)-int(bandOptimization));
+                    kband4End   =  std::min(int(N), int(i)+int(width*height)+int(bandOptimization)+1);
+                }
+
+                for (unsigned j=0; j<bandCount; ++j) {
                     int j2 = int(i) + bands[j];
                     if (j2 >= 0 && j2 < int(N)) {
 
@@ -812,6 +936,10 @@ namespace XLEMath
                         for (int k=kband1Start; k<kband1End; ++k)
                             A += factorization(i, k) * factorization(j2, k);
                         for (int k=kband2Start; k<kband2End; ++k)
+                            A += factorization(i, k) * factorization(j2, k);
+                        for (int k=kband3Start; k<kband3End; ++k)
+                            A += factorization(i, k) * factorization(j2, k);
+                        for (int k=kband4Start; k<kband4End; ++k)
                             A += factorization(i, k) * factorization(j2, k);
 
                         sparseMatrix(i, j) = A;
@@ -835,8 +963,12 @@ namespace XLEMath
         dimensionality = std::min(dimensionality, 3u);
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_dimensions = UInt3(1,1,1);
-        for (unsigned c=0; c<dimensionality; ++c)
+        _pimpl->_borders = UInt3(0,0,0);
+        _pimpl->_dimensionality = dimensionality;
+        for (unsigned c=0; c<dimensionality; ++c) {
             _pimpl->_dimensions[c] = dimensions[c];
+            _pimpl->_borders[c] = 1u;
+        }
 
         const auto N = 
               _pimpl->_dimensions[0]
@@ -850,11 +982,15 @@ namespace XLEMath
     auto PoissonSolver::PrepareDiffusionMatrix(
             float centralWeight, float adjWeight, Method method) -> std::shared_ptr<PreparedMatrix>
     {
-        AMat2D A = { Truncate(_pimpl->_dimensions), centralWeight, adjWeight };
-        const auto N = _pimpl->_dimensions[0] * _pimpl->_dimensions[1];
+        AMat A = { 
+            _pimpl->_dimensions, 
+            _pimpl->_borders,
+            _pimpl->_dimensionality,
+            centralWeight, adjWeight };
+        const auto N = _pimpl->_dimensions[0] * _pimpl->_dimensions[1] * _pimpl->_dimensions[2];
 
         auto result = std::make_shared<PreparedMatrix>();
-        result->_A = A;
+        result->_amat = A;
 
         const bool needPrecon = method == Method::PreconCG;
         if (needPrecon) {
@@ -863,7 +999,15 @@ namespace XLEMath
             const auto width = _pimpl->_dimensions[0];
             const auto height = _pimpl->_dimensions[1];
 
-            if (_pimpl->_dimensionality==3) {
+            if (_pimpl->_dimensionality==2) {
+                    // ----- 2D case -----
+                result->_bands.resize(5);
+                result->_bands[0] =  -int(width);
+                result->_bands[1] =  -1;
+                result->_bands[2] =   1;
+                result->_bands[3] =   width;
+                result->_bands[4] =   0;
+            } else {
                     // ----- 3D case -----
                 result->_bands.resize(7);
                 result->_bands[0] =  -int(width*height);
@@ -873,14 +1017,6 @@ namespace XLEMath
                 result->_bands[4] =   width;
                 result->_bands[5] =   width*height;
                 result->_bands[6] =   0;
-            } else {
-                    // ----- 2D case -----
-                result->_bands.resize(5);
-                result->_bands[0] =  -int(width);
-                result->_bands[1] =  -1;
-                result->_bands[2] =   1;
-                result->_bands[3] =   width;
-                result->_bands[4] =   0;
             }
 
             result->_bandedPrecon = SparseBandedMatrix<MatrixX>(
@@ -893,11 +1029,11 @@ namespace XLEMath
 
     auto PoissonSolver::PrepareDivergenceMatrix(Method method) -> std::shared_ptr<PreparedMatrix>
     {
-        AMat2D A = { Truncate(_pimpl->_dimensions), 4.f, -1.f };
-        const auto N = _pimpl->_dimensions[0] * _pimpl->_dimensions[1];
+        AMat A = { _pimpl->_dimensions, _pimpl->_borders, _pimpl->_dimensionality, 4.f, -1.f };
+        const auto N = _pimpl->_dimensions[0] * _pimpl->_dimensions[1] * _pimpl->_dimensions[2];
 
         auto result = std::make_shared<PreparedMatrix>();
-        result->_A = A;
+        result->_amat = A;
 
         const bool needPrecon = method == Method::PreconCG;
         if (needPrecon) {
@@ -906,7 +1042,15 @@ namespace XLEMath
             const auto width = _pimpl->_dimensions[0];
             const auto height = _pimpl->_dimensions[1];
 
-            if (_pimpl->_dimensionality==3) {
+            if (_pimpl->_dimensionality==2) {
+                    // ----- 2D case -----
+                result->_bands.resize(5);
+                result->_bands[0] =  -int(width);
+                result->_bands[1] =  -1;
+                result->_bands[2] =   1;
+                result->_bands[3] =   width;
+                result->_bands[4] =   0;
+            } else {
                     // ----- 3D case -----
                 result->_bands.resize(7);
                 result->_bands[0] =  -int(width*height);
@@ -916,14 +1060,6 @@ namespace XLEMath
                 result->_bands[4] =   width;
                 result->_bands[5] =   width*height;
                 result->_bands[6] =   0;
-            } else {
-                    // ----- 2D case -----
-                result->_bands.resize(5);
-                result->_bands[0] =  -int(width);
-                result->_bands[1] =  -1;
-                result->_bands[2] =   1;
-                result->_bands[3] =   width;
-                result->_bands[4] =   0;
             }
 
             result->_bandedPrecon = SparseBandedMatrix<MatrixX>(

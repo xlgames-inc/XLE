@@ -47,6 +47,14 @@ namespace IterativeSystemDebugger
             _forms.Add(form);
         }
 
+        private void customCFD3DToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var system = new GUILayer.CFD3DIterativeSystem(32, 32, 16);
+            var form = new RefCFD(system);
+            form.Show();
+            _forms.Add(form);
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -61,6 +69,6 @@ namespace IterativeSystemDebugger
         }
 
         IList<Control> _forms;
-        
+                
     }
 }

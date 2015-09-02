@@ -95,6 +95,29 @@ namespace GUILayer
     private:
         clix::auto_ptr<CFDIterativeSystemPimpl> _pimpl;
     };
+
+    class CFD3DIterativeSystemPimpl;
+    public ref class CFD3DIterativeSystem : public IterativeSystem
+    {
+    public:
+        IOverlaySystem^ _overlay;
+        IGetAndSetProperties^ _getAndSetProperties;
+        CFDPreviewSettings^ _settings;
+
+        property Object^ PreviewSettings { virtual Object^ get() { return _settings; } }
+        property IOverlaySystem^ Overlay { virtual IOverlaySystem^ get() { return _overlay; } }
+        property IGetAndSetProperties^ SimulationSettings { virtual IGetAndSetProperties^ get() { return _getAndSetProperties; } }
+
+        virtual void Tick();
+        virtual void OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton);
+
+        CFD3DIterativeSystem(unsigned width, unsigned height, unsigned depth);
+        !CFD3DIterativeSystem();
+        ~CFD3DIterativeSystem();
+
+    private:
+        clix::auto_ptr<CFD3DIterativeSystemPimpl> _pimpl;
+    };
     
     class CFDRefIterativeSystemPimpl;
     public ref class CFDRefIterativeSystem : public IterativeSystem

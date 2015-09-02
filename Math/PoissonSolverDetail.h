@@ -12,6 +12,7 @@
 
 namespace XLEMath
 {
+    
     namespace PoissonSolverInternal
     {
         template<typename Vec, typename Mat>
@@ -90,28 +91,32 @@ namespace XLEMath
                 dst[i] = d;
             }
         }
-    
-        struct AMat2D
+
+        class AMat
         {
-            UInt2 _dims;
+        public:
+            UInt3 _dims;
+            UInt3 _borders;
+            unsigned _dimensionality;
             float _a0, _a1;
         };
-
-        inline unsigned GetN(const AMat2D& A)       { return A._dims[0] * A._dims[1]; }
-        inline unsigned GetWidth(const AMat2D& A)   { return A._dims[0]; }
-        inline unsigned GetHeight(const AMat2D& A)  { return A._dims[1]; }
-        inline unsigned GetDepth(const AMat2D& A)   { return 1; }
-        inline UInt3 GetMargins(const AMat2D& A)    { return UInt3(1,1,0); }
+    
+        inline unsigned GetN(const AMat& A)       { return A._dims[0] * A._dims[1] * A._dims[2]; }
+        inline unsigned GetWidth(const AMat& A)   { return A._dims[0]; }
+        inline unsigned GetHeight(const AMat& A)  { return A._dims[1]; }
+        inline unsigned GetDepth(const AMat& A)   { return A._dims[2]; }
+        inline UInt3 GetBorders(const AMat& A)    { return A._borders; }
 
         template <typename Vec>
-            static void Multiply(Vec& dst, AMat2D A, const Vec& b, unsigned N)
+            static void Multiply(Vec& dst, const AMat& A, const Vec& b, unsigned N)
         {
             const auto width = GetWidth(A), height = GetHeight(A);
-            const auto bor = GetMargins(A);
-            for (unsigned z=bor[2]; z<GetDepth(A)-bor[2]; ++z) {
+            const auto bor = GetBorders(A);
+
+            if (A._dimensionality==2) {
                 for (unsigned y=bor[1]; y<height-bor[1]; ++y) {
                     for (unsigned x=bor[0]; x<width-bor[0]; ++x) {
-                        const unsigned i = (z*height+y)*width + x;
+                        const unsigned i = y*width + x;
 
                         auto v = A._a0 * b[i];
                         v += A._a1 * b[i-1];
@@ -120,6 +125,24 @@ namespace XLEMath
                         v += A._a1 * b[i+width];
 
                         dst[i] = v;
+                    }
+                }
+            } else {
+                for (unsigned z=bor[2]; z<GetDepth(A)-bor[2]; ++z) {
+                    for (unsigned y=bor[1]; y<height-bor[1]; ++y) {
+                        for (unsigned x=bor[0]; x<width-bor[0]; ++x) {
+                            const unsigned i = (z*height+y)*width + x;
+
+                            auto v = A._a0 * b[i];
+                            v += A._a1 * b[i-width*height];
+                            v += A._a1 * b[i-width];
+                            v += A._a1 * b[i-1];
+                            v += A._a1 * b[i+1];
+                            v += A._a1 * b[i+width];
+                            v += A._a1 * b[i+width*height];
+
+                            dst[i] = v;
+                        }
                     }
                 }
             }

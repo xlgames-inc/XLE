@@ -445,6 +445,61 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    using FluidSolver3D = SceneEngine::FluidSolver3D;
+
+    class CFD3DIterativeSystemPimpl
+    {
+    public:
+        std::shared_ptr<FluidSolver3D> _sim;
+        std::shared_ptr<FluidSolver3D::Settings> _settings;
+    };
+
+    void CFD3DIterativeSystem::Tick()
+    {
+        _pimpl->_sim->Tick(_settings->DeltaTime, *_pimpl->_settings);
+    }
+
+    void CFD3DIterativeSystem::OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton)
+    {
+        auto dims = _pimpl->_sim->GetDimensions();
+        if (mouseButton == 0) {
+            _pimpl->_sim->AddDensity(
+                UInt3(rand()%dims[0], rand()%dims[1], rand()%dims[2]), .5f);
+        }
+    }
+    
+    CFD3DIterativeSystem::CFD3DIterativeSystem(unsigned width, unsigned height, unsigned depth)
+    {
+        using namespace SceneEngine;
+        _pimpl.reset(new CFD3DIterativeSystemPimpl);
+        _pimpl->_settings = std::make_shared<FluidSolver3D::Settings>();
+        _pimpl->_sim = std::make_shared<FluidSolver3D>(UInt3(width, height, depth));
+        _settings = gcnew CFDPreviewSettings();
+
+        _getAndSetProperties = gcnew ClassAccessors_GetAndSet(_pimpl->_settings);
+
+        _overlay = gcnew CFDOverlay(
+            _pimpl->_sim, 
+            MakeRenderFn<FluidSolver3D>(_settings),
+            Truncate(_pimpl->_sim->GetDimensions()));
+    }
+
+    CFD3DIterativeSystem::!CFD3DIterativeSystem()
+    {
+        _pimpl.reset();
+        delete _overlay; _overlay = nullptr;
+        delete _getAndSetProperties; _getAndSetProperties = nullptr;
+    }
+
+    CFD3DIterativeSystem::~CFD3DIterativeSystem()
+    {
+        _pimpl.reset();
+        delete _overlay; _overlay = nullptr;
+        delete _getAndSetProperties; _getAndSetProperties = nullptr;
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     using RefFluidSolver = SceneEngine::ReferenceFluidSolver2D;
 
     class CFDRefIterativeSystemPimpl

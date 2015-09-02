@@ -402,7 +402,7 @@ namespace SceneEngine
         //
 
         const auto dims = inputVelocities.Dimensions();
-        VectorX vorticity(dims[0], dims[1]);
+        VectorX vorticity(dims[0]*dims[1]);
         const UInt2 border(1,1);
         for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
             for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
@@ -770,6 +770,24 @@ namespace SceneEngine
         }
     }
 
+    void FluidSolver3D::AddDensity(UInt3 coords, float amount)
+    {
+        if (    coords[0] < _pimpl->_dimsWithoutBorder[0] 
+            &&  coords[1] < _pimpl->_dimsWithoutBorder[1]
+            &&  coords[2] < _pimpl->_dimsWithoutBorder[2]) {
+
+            unsigned i = (coords[0]+1) + _pimpl->_dimsWithBorder[0] * ((coords[1]+1) + (coords[2]+1) * _pimpl->_dimsWithBorder[1]);
+            _pimpl->_density[0][i] += amount;
+        }
+    }
+
+    void FluidSolver3D::RenderDebugging(
+        RenderCore::Metal::DeviceContext& metalContext,
+        LightingParserContext& parserContext,
+        FluidDebuggingMode debuggingMode)
+    {
+    }
+
     std::shared_ptr<PoissonSolver::PreparedMatrix> FluidSolver3D::Pimpl::BuildDiffusionMethod(float diffusion)
     {
         const float a0 = 1.f + 4.f * diffusion;
@@ -842,6 +860,18 @@ namespace SceneEngine
     }
 
     FluidSolver3D::~FluidSolver3D() {}
+
+    FluidSolver3D::Settings::Settings()
+    {
+        _viscosity = 0.05f;
+        _diffusionRate = 0.05f;
+        _diffusionMethod = 0;
+        _advectionMethod = 3;
+        _advectionSteps = 4;
+        _enforceIncompressibilityMethod = 3;
+        _vorticityConfinement = 0.75f;
+        _interpolationMethod = 0;
+    }
 
 }
 
@@ -979,4 +1009,27 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver2D::Settin
     }
     return props;
 }
+
+template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver3D::Settings>()
+{
+    using Obj = SceneEngine::FluidSolver3D::Settings;
+    static ClassAccessors props(typeid(Obj).hash_code());
+    static bool init = false;
+    if (!init) {
+        props.Add(u("Viscosity"), DefaultGet(Obj, _viscosity),  DefaultSet(Obj, _viscosity));
+        props.Add(u("DiffusionRate"), DefaultGet(Obj, _diffusionRate),  DefaultSet(Obj, _diffusionRate));
+        props.Add(u("DiffusionMethod"), DefaultGet(Obj, _diffusionMethod),  DefaultSet(Obj, _diffusionMethod));
+
+        props.Add(u("AdvectionMethod"), DefaultGet(Obj, _advectionMethod),  DefaultSet(Obj, _advectionMethod));
+        props.Add(u("AdvectionSteps"), DefaultGet(Obj, _advectionSteps),  DefaultSet(Obj, _advectionSteps));
+        props.Add(u("InterpolationMethod"), DefaultGet(Obj, _interpolationMethod),  DefaultSet(Obj, _interpolationMethod));
+
+        props.Add(u("EnforceIncompressibility"), DefaultGet(Obj, _enforceIncompressibilityMethod),  DefaultSet(Obj, _enforceIncompressibilityMethod));
+        props.Add(u("VorticityConfinement"), DefaultGet(Obj, _vorticityConfinement),  DefaultSet(Obj, _vorticityConfinement));
+        
+        init = true;
+    }
+    return props;
+}
+
 

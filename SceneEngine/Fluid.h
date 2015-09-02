@@ -55,19 +55,26 @@ namespace SceneEngine
     public:
         struct Settings
         {
-            float _viscosity;
-            float _diffusionRate;
-            float _tempDiffusion;
-            int _diffusionMethod;
-            int _advectionMethod;
-            unsigned _advectionSteps;
-            int _enforceIncompressibilityMethod;
-            float _buoyancyAlpha;
-            float _buoyancyBeta;
-            float _addDensity;
-            float _addTemperature;
-            float _vorticityConfinement;
-            int _interpolationMethod;
+                // diffusion
+            float       _viscosity;
+            float       _diffusionRate;
+            float       _tempDiffusion;
+            int         _diffusionMethod;
+
+                // advection
+            int         _advectionMethod;
+            unsigned    _advectionSteps;
+            int         _interpolationMethod;
+
+                // forces
+            int         _enforceIncompressibilityMethod;
+            float       _buoyancyAlpha;
+            float       _buoyancyBeta;
+            float       _vorticityConfinement;
+
+                // debugging
+            float       _addDensity;
+            float       _addTemperature;
 
             Settings();
         };
@@ -115,7 +122,13 @@ namespace SceneEngine
         };
 
         void Tick(float deltaTime, const Settings& settings);
+        void AddDensity(UInt3 coords, float amount);
         UInt3 GetDimensions() const;
+
+        void RenderDebugging(
+            RenderCore::Metal::DeviceContext& metalContext,
+            LightingParserContext& parserContext,
+            FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
 
         FluidSolver3D(UInt3 dimensions);
         ~FluidSolver3D();
