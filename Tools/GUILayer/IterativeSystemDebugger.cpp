@@ -406,7 +406,7 @@ namespace GUILayer
                         _pimpl->_sim->AddDensity(c, -_pimpl->_settings->_addDensity);
                         _pimpl->_sim->AddTemperature(c, -_pimpl->_settings->_addTemperature);
                     } else {
-                        _pimpl->_sim->AddVelocity(c, .2f * Float2(velX, velY));
+                        _pimpl->_sim->AddVelocity(c, 1.f * Float2(velX, velY));
                     }
                 }
             }

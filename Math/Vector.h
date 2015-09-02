@@ -133,6 +133,39 @@ namespace XLEMath
 				return true;
 			}
 
+        template<typename BasicType, int Count>
+			inline cml::vector<BasicType, cml::fixed<Count>> MultiplyAcross(
+				const cml::vector<BasicType, cml::fixed<Count>>& lhs, 
+				const cml::vector<BasicType, cml::fixed<Count>>& rhs)
+			{
+                cml::vector<BasicType, cml::fixed<Count>> result;
+				for (unsigned i=0; i<Count; ++i)
+                    result[i] = lhs[i] * rhs[i];
+				return result;
+			}
+
+        template<typename BasicType, int Count, typename ExprType>
+			inline cml::vector<BasicType, cml::fixed<Count>> MultiplyAcross(
+				const cml::vector<BasicType, cml::fixed<Count>>& lhs, 
+				const cml::et::VectorXpr<ExprType>& rhs)
+			{
+                cml::vector<BasicType, cml::fixed<Count>> result;
+				for (unsigned i=0; i<Count; ++i)
+                    result[i] = lhs[i] * rhs[i];
+				return result;
+			}
+
+        template<typename BasicType, int Count, typename ExprType>
+			inline cml::vector<BasicType, cml::fixed<Count>> MultiplyAcross(
+				const cml::et::VectorXpr<ExprType>& lhs,
+                const cml::vector<BasicType, cml::fixed<Count>>& rhs)
+			{
+                cml::vector<BasicType, cml::fixed<Count>> result;
+				for (unsigned i=0; i<Count; ++i)
+                    result[i] = lhs[i] * rhs[i];
+				return result;
+			}
+
     #endif
 
     template<> inline const Float2& Zero<Float2>()

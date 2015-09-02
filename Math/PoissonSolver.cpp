@@ -6,6 +6,7 @@
 
 #include "PoissonSolver.h"
 #include "PoissonSolverDetail.h"
+#include "RegularNumberField.h"
 #include "./Math.h"
 #include "Vector.h"
 #include "../Utility/PtrUtils.h"
@@ -100,11 +101,11 @@ namespace XLEMath
             _r[c] = b[c] - _r[c];
             _d[c] = _r[c];
         }
-        ZeroBorder(_r, GetWidth(A));
-        ZeroBorder(_d, GetWidth(A));
+        ZeroBorder2D(_r, GetWidth(A));
+        ZeroBorder2D(_d, GetWidth(A));
         auto rho = _r.dot(_r);
 
-        ZeroBorder(_q, GetWidth(A));
+        ZeroBorder2D(_q, GetWidth(A));
         unsigned k=0;
         if (XlAbs(rho) > rhoThreshold) {
             for (; k<maxIterations; ++k) {
@@ -180,7 +181,7 @@ namespace XLEMath
         for (unsigned c=0; c<b._count; ++c) {
             _r[c] = b[c] - _r[c];
         }
-        ZeroBorder(_r, GetWidth(A));
+        ZeroBorder2D(_r, GetWidth(A));
             
         SolveLowerTriangular(_d, precon, _r, _N);
             
@@ -199,7 +200,7 @@ namespace XLEMath
         auto rho = _r.dot(_d);
         // auto rho0 = rho;
 
-        ZeroBorder(_q, GetWidth(A));
+        ZeroBorder2D(_q, GetWidth(A));
             
         unsigned k=0;
         if (XlAbs(rho) > rhoThreshold) {
@@ -557,7 +558,7 @@ namespace XLEMath
                 }
             }
 
-            ZeroBorder(x._u, width);
+            ZeroBorder2D(x._u, width);
 
             auto iterations = 0u;
             if (solver == Method::PlainCG) {
@@ -594,7 +595,7 @@ namespace XLEMath
                         x._u[i] = v;
                     }
 
-            ZeroBorder(x._u, width);
+            ZeroBorder2D(x._u, width);
             return 1;
 
         } else if (solver == Method::SOR) {
@@ -629,7 +630,7 @@ namespace XLEMath
             for (unsigned k = 0; k<iterations; ++k)
                 RunSOR(x, matA, workingB, gamma);
 
-            ZeroBorder(x._u, width);
+            ZeroBorder2D(x._u, width);
             return iterations;
 
         }

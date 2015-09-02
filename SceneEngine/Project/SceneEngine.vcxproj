@@ -207,6 +207,7 @@
     <ClCompile Include="..\DualContourRender.cpp" />
     <ClCompile Include="..\Erosion.cpp" />
     <ClCompile Include="..\Fluid.cpp" />
+    <ClCompile Include="..\FluidAdvection.cpp" />
     <ClCompile Include="..\IntersectionTest.cpp" />
     <ClCompile Include="..\LightingTargets.cpp" />
     <ClCompile Include="..\LightingParserResolve.cpp" />
@@ -253,6 +254,7 @@
     <ClInclude Include="..\DualContourRender.h" />
     <ClInclude Include="..\Erosion.h" />
     <ClInclude Include="..\Fluid.h" />
+    <ClInclude Include="..\FluidAdvection.h" />
     <ClInclude Include="..\IntersectionTest.h" />
     <ClInclude Include="..\LightingTargets.h" />
     <ClInclude Include="..\LightingParserContext.h" />

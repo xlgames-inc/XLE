@@ -79,6 +79,84 @@ namespace XLEMath
         ScalarField2D(Store* u, unsigned wh) : _u(u), _wh(wh) {}
     };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      U T I L I I T I E S
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template <typename Vec>
+        static void ZeroBorder2D(Vec& v, unsigned wh)
+    {
+        for (unsigned i = 1; i < wh - 1; ++i) {
+            v[i] = 0.f;             // top
+            v[i+(wh-1)*wh] = 0.f;   // bottom
+            v[i*wh] = 0.f;          // left
+            v[i*wh+(wh-1)] = 0.f;   // right
+        }
+
+            // 4 corners
+        v[0] = 0.f;
+        v[wh-1]= 0.f;
+        v[(wh-1)*wh] = 0.f;
+        v[(wh-1)*wh+wh-1] = 0.f;
+    }
+
+    inline unsigned XY(unsigned x, unsigned y, unsigned wh) { return y*wh+x; }
+    template <typename Vec>
+        static void ReflectUBorder2D(Vec& v, unsigned wh)
+    {
+        #define XY(x,y) XY(x,y,wh)
+        for (unsigned i = 1; i < wh - 1; ++i) {
+            v[XY(0, i)]     = -v[XY(1,i)];
+            v[XY(wh-1, i)]  = -v[XY(wh-2,i)];
+            v[XY(i, 0)]     =  v[XY(i, 1)];
+            v[XY(i, wh-1)]  =  v[XY(i, wh-2)];
+        }
+
+            // 4 corners
+        v[XY(0,0)]          = 0.5f*(v[XY(1,0)]          + v[XY(0,1)]);
+        v[XY(0,wh-1)]       = 0.5f*(v[XY(1,wh-1)]       + v[XY(0,wh-2)]);
+        v[XY(wh-1,0)]       = 0.5f*(v[XY(wh-2,0)]       + v[XY(wh-1,1)]);
+        v[XY(wh-1,wh-1)]    = 0.5f*(v[XY(wh-2,wh-1)]    + v[XY(wh-1,wh-2)]);
+        #undef XY
+    }
+
+    template <typename Vec>
+        static void ReflectVBorder2D(Vec& v, unsigned wh)
+    {
+        #define XY(x,y) XY(x,y,wh)
+        for (unsigned i = 1; i < wh - 1; ++i) {
+            v[XY(0, i)]     =  v[XY(1,i)];
+            v[XY(wh-1, i)]  =  v[XY(wh-2,i)];
+            v[XY(i, 0)]     = -v[XY(i, 1)];
+            v[XY(i, wh-1)]  = -v[XY(i, wh-2)];
+        }
+
+            // 4 corners
+        v[XY(0,0)]          = 0.5f*(v[XY(1,0)]          + v[XY(0,1)]);
+        v[XY(0,wh-1)]       = 0.5f*(v[XY(1,wh-1)]       + v[XY(0,wh-2)]);
+        v[XY(wh-1,0)]       = 0.5f*(v[XY(wh-2,0)]       + v[XY(wh-1,1)]);
+        v[XY(wh-1,wh-1)]    = 0.5f*(v[XY(wh-2,wh-1)]    + v[XY(wh-1,wh-2)]);
+        #undef XY
+    }
+
+    template <typename Vec>
+        static void SmearBorder2D(Vec& v, unsigned wh)
+    {
+        #define XY(x,y) XY(x,y,wh)
+        for (unsigned i = 1; i < wh - 1; ++i) {
+            v[XY(0, i)]     =  v[XY(1,i)];
+            v[XY(wh-1, i)]  =  v[XY(wh-2,i)];
+            v[XY(i, 0)]     =  v[XY(i, 1)];
+            v[XY(i, wh-1)]  =  v[XY(i, wh-2)];
+        }
+
+            // 4 corners
+        v[XY(0,0)]          = 0.5f*(v[XY(1,0)]          + v[XY(0,1)]);
+        v[XY(0,wh-1)]       = 0.5f*(v[XY(1,wh-1)]       + v[XY(0,wh-2)]);
+        v[XY(wh-1,0)]       = 0.5f*(v[XY(wh-2,0)]       + v[XY(wh-1,1)]);
+        v[XY(wh-1,wh-1)]    = 0.5f*(v[XY(wh-2,wh-1)]    + v[XY(wh-1,wh-2)]);
+        #undef XY
+    }
 
 }
 
