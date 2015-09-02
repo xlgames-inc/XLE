@@ -149,10 +149,8 @@ namespace SceneEngine
         VectorX _velU[3];
         VectorX _velV[3];
 
-        VectorX _density;
-        VectorX _temperature;
-        VectorX _prevDensity;
-        VectorX _prevTemperature;
+        VectorX _density[2];
+        VectorX _temperature[2];
 
         UInt2 _dimensions;
 
@@ -214,9 +212,9 @@ namespace SceneEngine
             // iterations = SolvePoisson(_density, AMat, _density, (PossionSolver)settings._diffusionMethod);
         } else {
             iterations = _poissonSolver.Solve(
-                AsScalarField1D(_density), 
+                AsScalarField1D(_density[0]), 
                 *_densityDiffusion,
-                AsScalarField1D(_density), 
+                AsScalarField1D(_density[0]), 
                 (PoissonSolver::Method)settings._diffusionMethod);
         }
         LogInfo << "Density diffusion took: (" << iterations << ") iterations.";
@@ -257,7 +255,7 @@ namespace SceneEngine
             // iterations = SolvePoisson(_temperature, AMat, _temperature, (PossionSolver)settings._diffusionMethod);
         } else {
             iterations = _poissonSolver.Solve(
-                AsScalarField1D(_temperature), *_temperatureDiffusion, AsScalarField1D(_temperature), 
+                AsScalarField1D(_temperature[0]), *_temperatureDiffusion, AsScalarField1D(_temperature[0]), 
                 (PoissonSolver::Method)settings._diffusionMethod);
         }
         LogInfo << "Temperature diffusion took: (" << iterations << ") iterations.";
@@ -412,32 +410,39 @@ namespace SceneEngine
         auto& velVSrc = _pimpl->_velV[2];
         auto& velVWorking = _pimpl->_velV[2];
 
+        auto& densitySrc = _pimpl->_density[0];
+        auto& densityWorking = _pimpl->_density[0];
+        auto& densityT1 = _pimpl->_density[1];
+
+        auto& temperatureSrc = _pimpl->_temperature[0];
+        auto& temperatureWorking = _pimpl->_temperature[0];
+        auto& temperatureT1 = _pimpl->_temperature[1];
+
         _pimpl->VorticityConfinement(
             VectorField2D(&velUSrc, &velVSrc, D+2),
             VectorField2D(&velUT1, &velVT1, D+2),           // last frame results
             settings._vorticityConfinement, deltaTime);
 
-        for (unsigned c=0; c<N; ++c) {
-            _pimpl->_density[c] += dt * _pimpl->_prevDensity[c];
-
-            velUT0[c] = velUT1[c];
-            velVT0[c] = velVT1[c];
-            velUWorking[c] = velUT1[c] + dt * velUSrc[c];
-            velVWorking[c] = velVT1[c] + dt * velVSrc[c];
-
-            _pimpl->_temperature[c] += dt * _pimpl->_prevTemperature[c];
-        }
-
-            // buoyancy force
+                    // buoyancy force
         const float buoyancyAlpha = settings._buoyancyAlpha;
         const float buoyancyBeta = settings._buoyancyBeta;
         for (unsigned y=1; y<wh-1; ++y)
             for (unsigned x=1; x<wh-1; ++x) {
                 unsigned i=y*wh+x;
-                velVWorking[i] -=     // (upwards is -1 in V)
-                     -buoyancyAlpha * _pimpl->_density[i]
-                    + buoyancyBeta  * _pimpl->_temperature[i];       // temperature field is just the difference from ambient
+                velVSrc[i] -=     // (upwards is -1 in V)
+                     -buoyancyAlpha * densityT1[i]
+                    + buoyancyBeta  * temperatureT1[i];       // temperature field is just the difference from ambient
             }
+
+        for (unsigned c=0; c<N; ++c) {
+            velUT0[c] = velUT1[c];
+            velVT0[c] = velVT1[c];
+            velUWorking[c] = velUT1[c] + dt * velUSrc[c];
+            velVWorking[c] = velVT1[c] + dt * velVSrc[c];
+
+            densityWorking[c] = densityT1[c] + dt * densitySrc[c];
+            temperatureWorking[c] = temperatureT1[c] + dt * temperatureSrc[c];
+        }
 
         _pimpl->VelocityDiffusion(deltaTime, settings);
 
@@ -456,19 +461,17 @@ namespace SceneEngine
             settings);
 
         _pimpl->DensityDiffusion(deltaTime, settings);
-        auto prevDensity = _pimpl->_density;
         PerformAdvection(
-            ScalarField2D(&_pimpl->_density, D+2),
-            ScalarField2D(&prevDensity, D+2),
+            ScalarField2D(&densityT1, D+2),
+            ScalarField2D(&densityWorking, D+2),
             VectorField2D(&velUT0, &velVT0, D+2),
             VectorField2D(&velUT1, &velVT1, D+2),
             deltaTime, advSettings);
 
         _pimpl->TemperatureDiffusion(deltaTime, settings);
-        auto prevTemperature = _pimpl->_temperature;
         PerformAdvection(
-            ScalarField2D(&_pimpl->_temperature, D+2),
-            ScalarField2D(&prevTemperature, D+2),
+            ScalarField2D(&temperatureT1, D+2),
+            ScalarField2D(&temperatureWorking, D+2),
             VectorField2D(&velUT0, &velVT0, D+2),
             VectorField2D(&velUT1, &velVT1, D+2),
             deltaTime, advSettings);
@@ -476,8 +479,8 @@ namespace SceneEngine
         for (unsigned c=0; c<N; ++c) {
             velUSrc[c] = 0.f;
             velVSrc[c] = 0.f;
-            _pimpl->_prevDensity[c] = 0.f;
-            _pimpl->_prevTemperature[c] = 0.f;
+            densitySrc[c] = 0.f;
+            temperatureSrc[c] = 0.f;
         }
     }
 
@@ -485,7 +488,7 @@ namespace SceneEngine
     {
         if (coords[0] < _pimpl->_dimensions[0] && coords[1] < _pimpl->_dimensions[1]) {
             unsigned i = (coords[0]+1) + (coords[1]+1) * (_pimpl->_dimensions[0] + 2);
-            _pimpl->_prevDensity[i] += amount;
+            _pimpl->_density[0][i] += amount;
         }
     }
 
@@ -496,8 +499,8 @@ namespace SceneEngine
             // _pimpl->_prevTemperature[i] += amount;
 
                 // heat up to approach this temperature
-            auto oldTemp = _pimpl->_temperature[i];
-            _pimpl->_temperature[i] = std::max(oldTemp, LinearInterpolate(oldTemp, amount, 0.5f));
+            auto oldTemp = _pimpl->_temperature[1][i];
+            _pimpl->_temperature[1][i] = std::max(oldTemp, LinearInterpolate(oldTemp, amount, 0.5f));
         }
     }
 
@@ -517,9 +520,9 @@ namespace SceneEngine
     {
         RenderFluidDebugging(
             metalContext, parserContext, debuggingMode,
-            _pimpl->_dimensions, _pimpl->_density.data(),
+            _pimpl->_dimensions, _pimpl->_density[1].data(),
             _pimpl->_velU[1].data(), _pimpl->_velV[1].data(),
-            _pimpl->_temperature.data());
+            _pimpl->_temperature[1].data());
     }
 
     UInt2 FluidSolver2D::GetDimensions() const { return _pimpl->_dimensions; }
@@ -537,14 +540,12 @@ namespace SceneEngine
             _pimpl->_velV[c].fill(0.f);
         }
 
-        _pimpl->_density = VectorX(N);
-        _pimpl->_temperature = VectorX(N);
-        _pimpl->_prevDensity = VectorX(N);
-        _pimpl->_prevTemperature = VectorX(N);
-        _pimpl->_density.fill(0.f);
-        _pimpl->_temperature.fill(0.f);
-        _pimpl->_prevDensity.fill(0.f);
-        _pimpl->_prevTemperature.fill(0.f);
+        for (unsigned c=0; c<dimof(_pimpl->_density); ++c) {
+            _pimpl->_density[c] = VectorX(N);
+            _pimpl->_temperature[c] = VectorX(N);
+            _pimpl->_density[c].fill(0.f);
+            _pimpl->_temperature[c].fill(0.f);
+        }
 
         // const float dt = 1.0f / 60.f;
         // float a = 5.f * dt;
@@ -622,8 +623,8 @@ namespace SceneEngine
         _advectionMethod = 3;
         _advectionSteps = 4;
         _enforceIncompressibilityMethod = 3;
-        _buoyancyAlpha = 0.035f;
-        _buoyancyBeta = 0.04f;
+        _buoyancyAlpha = 2.f;
+        _buoyancyBeta = 2.2f;
         _addDensity = 1.f;
         _addTemperature = 0.25f;
         _vorticityConfinement = 0.75f;
