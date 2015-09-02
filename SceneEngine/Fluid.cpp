@@ -93,7 +93,7 @@ namespace SceneEngine
     {
         RenderFluidDebugging(
             metalContext, parserContext, debuggingMode,
-            _pimpl->_dimensions, _pimpl->_density.get(),
+            _pimpl->_dimensions + UInt2(2,2), _pimpl->_density.get(),
             _pimpl->_velU.get(), _pimpl->_velV.get(),
             nullptr);
     }
@@ -878,12 +878,12 @@ namespace SceneEngine
             auto desc = CreateDesc(
                 BindFlag::ShaderResource,
                 0, GPUAccess::Read|GPUAccess::Write,
-                TextureDesc::Plain2D(dx+2, dy+2, RenderCore::Metal::NativeFormat::R32_FLOAT),
+                TextureDesc::Plain2D(dx, dy, RenderCore::Metal::NativeFormat::R32_FLOAT),
                 "fluid");
-            auto densityPkt = CreateBasicPacket((dx+2)*(dy+2)*sizeof(float), density, TexturePitches((dx+2)*sizeof(float), (dy+2)*(dx+2)*sizeof(float)));
-            auto velUPkt = CreateBasicPacket((dx+2)*(dy+2)*sizeof(float), velocityU, TexturePitches((dx+2)*sizeof(float), (dy+2)*(dx+2)*sizeof(float)));
-            auto velVPkt = CreateBasicPacket((dx+2)*(dy+2)*sizeof(float), velocityV, TexturePitches((dx+2)*sizeof(float), (dy+2)*(dx+2)*sizeof(float)));
-            auto temperaturePkt = CreateBasicPacket((dx+2)*(dy+2)*sizeof(float), temperature, TexturePitches((dx+2)*sizeof(float), (dy+2)*(dx+2)*sizeof(float)));
+            auto densityPkt = CreateBasicPacket((dx)*(dy)*sizeof(float), density, TexturePitches((dx)*sizeof(float), (dy)*(dx)*sizeof(float)));
+            auto velUPkt = CreateBasicPacket((dx)*(dy)*sizeof(float), velocityU, TexturePitches((dx)*sizeof(float), (dy)*(dx)*sizeof(float)));
+            auto velVPkt = CreateBasicPacket((dx)*(dy)*sizeof(float), velocityV, TexturePitches((dx)*sizeof(float), (dy)*(dx)*sizeof(float)));
+            auto temperaturePkt = CreateBasicPacket((dx)*(dy)*sizeof(float), temperature, TexturePitches((dx)*sizeof(float), (dy)*(dx)*sizeof(float)));
 
             auto density = uploads.Transaction_Immediate(desc, densityPkt.get());
             auto velU = uploads.Transaction_Immediate(desc, velUPkt.get());

@@ -46,7 +46,7 @@ namespace XLEMath
         template<unsigned SamplingFlags = RNFSample::Clamp>
             ValueType Sample(FloatCoord c) const;
 
-        void GatherNeighbors(ValueType neighbours[8], float weights[4], FloatCoord coord) const;
+        void GatherNeighbors(ValueType neighbours[9], float weights[4], FloatCoord coord) const;
 
         VectorField2DSeparate() : _u(nullptr), _v(nullptr), _dims(0, 0) {}
         VectorField2DSeparate(Store* u, Store* v, UInt2 dims) : _u(u), _v(v), _dims(dims) {}
@@ -71,7 +71,7 @@ namespace XLEMath
         template<unsigned SamplingFlags = RNFSample::Clamp>
             ValueType Sample(FloatCoord c) const;
 
-        void GatherNeighbors(ValueType neighbours[8], float weights[4], FloatCoord coord) const;
+        void GatherNeighbors(ValueType neighbours[27], float weights[8], FloatCoord coord) const;
 
         VectorField3DSeparate() : _u(nullptr), _v(nullptr), _dims(0, 0, 0) {}
         VectorField3DSeparate(Store* u, Store* v, Store* w, UInt3 dims) : _u(u), _v(v), _w(w), _dims(dims) {}
@@ -96,7 +96,7 @@ namespace XLEMath
         template<unsigned SamplingFlags = RNFSample::Clamp>
             ValueType Sample(FloatCoord c) const;
 
-        void GatherNeighbors(ValueType neighbours[8], float weights[4], FloatCoord coord) const;
+        void GatherNeighbors(ValueType neighbours[9], float weights[4], FloatCoord coord) const;
 
         ScalarField2D() : _u(nullptr), _dims(0, 0) {}
         ScalarField2D(Store* u, UInt2 dims) : _u(u), _dims(dims) {}
@@ -121,7 +121,7 @@ namespace XLEMath
         template<unsigned SamplingFlags = RNFSample::Clamp>
             ValueType Sample(FloatCoord c) const;
 
-        void GatherNeighbors(ValueType neighbours[8], float weights[4], FloatCoord coord) const;
+        void GatherNeighbors(ValueType neighbours[27], float weights[8], FloatCoord coord) const;
 
         ScalarField3D() : _u(nullptr), _dims(0, 0, 0) {}
         ScalarField3D(Store* u, UInt3 dims) : _u(u), _dims(dims) {}

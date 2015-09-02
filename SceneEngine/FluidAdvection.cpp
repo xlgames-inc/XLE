@@ -81,15 +81,26 @@ namespace SceneEngine
             return pt + MultiplyAcross(s, finalVel);
         }
 
-    template<typename Type> Type MaxValue();
-    template<> float MaxValue()         { return FLT_MAX; }
-    template<> Float2 MaxValue()        { return Float2(FLT_MAX, FLT_MAX); }
-    float   MinAcross(float lhs, float rhs)   { return std::min(lhs, rhs); }
-    Float2  MinAcross(Float2 lhs, Float2 rhs) { return Float2(std::min(lhs[0], rhs[0]), std::min(lhs[1], rhs[1])); }
-    Float3  MinAcross(Float3 lhs, Float3 rhs) { return Float3(std::min(lhs[0], rhs[0]), std::min(lhs[1], rhs[1]), std::min(lhs[2], rhs[2])); }
-    float   MaxAcross(float lhs, float rhs)   { return std::max(lhs, rhs); }
-    Float2  MaxAcross(Float2 lhs, Float2 rhs) { return Float2(std::max(lhs[0], rhs[0]), std::max(lhs[1], rhs[1])); }
-    Float3  MaxAcross(Float3 lhs, Float3 rhs) { return Float3(std::max(lhs[0], rhs[0]), std::max(lhs[1], rhs[1]), std::max(lhs[2], rhs[2])); }
+    template<typename Type> static Type MaxValue();
+    template<> static float MaxValue()         { return FLT_MAX; }
+    template<> static Float2 MaxValue()        { return Float2(FLT_MAX, FLT_MAX); }
+    template<> static Float3 MaxValue()        { return Float3(FLT_MAX, FLT_MAX, FLT_MAX); }
+    static float   MinAcross(float lhs, float rhs)   { return std::min(lhs, rhs); }
+    static Float2  MinAcross(Float2 lhs, Float2 rhs) { return Float2(std::min(lhs[0], rhs[0]), std::min(lhs[1], rhs[1])); }
+    static Float3  MinAcross(Float3 lhs, Float3 rhs) { return Float3(std::min(lhs[0], rhs[0]), std::min(lhs[1], rhs[1]), std::min(lhs[2], rhs[2])); }
+    static float   MaxAcross(float lhs, float rhs)   { return std::max(lhs, rhs); }
+    static Float2  MaxAcross(Float2 lhs, Float2 rhs) { return Float2(std::max(lhs[0], rhs[0]), std::max(lhs[1], rhs[1])); }
+    static Float3  MaxAcross(Float3 lhs, Float3 rhs) { return Float3(std::max(lhs[0], rhs[0]), std::max(lhs[1], rhs[1]), std::max(lhs[2], rhs[2])); }
+
+    static Float2 ClampAcross(const Float2& input, const Float2& mins, const Float2& maxs)
+    {
+        return Float2(Clamp(input[0], mins[0], maxs[0]), Clamp(input[1], mins[1], maxs[1]));
+    }
+
+    static Float3 ClampAcross(const Float3& input, const Float3& mins, const Float3& maxs)
+    {
+        return Float3(Clamp(input[0], mins[0], maxs[0]), Clamp(input[1], mins[1], maxs[1]), Clamp(input[2], mins[2], maxs[2]));
+    }
 
     template<unsigned SamplingFlags, typename Field>
         typename Field::ValueType LoadWithNearbyRange(
@@ -162,6 +173,11 @@ namespace SceneEngine
                 float(dims[0]-2*margin[0]),
                 float(dims[1]-2*margin[1]),
                 float(dims[2]-2*margin[2])));   // (grid size without borders)
+        const auto clampMax = ConvertVector<FloatCoord>(
+            Float3(
+                float(dims[0]-1) - 1e-5f,
+                float(dims[1]-1) - 1e-5f,
+                float(dims[2]-1) - 1e-5f));   // (grid size without borders)
 
         if (advectionMethod == AdvectionMethod::ForwardEuler) {
 
@@ -176,9 +192,7 @@ namespace SceneEngine
                         auto coord = ConvertVector<Coord>(UInt3(x, y, z));
                         auto startVel = velFieldT1.Load(coord);
                         FloatCoord tap = ConvertVector<FloatCoord>(coord) - MultiplyAcross(deltaTime * velFieldScale, startVel);
-                        tap[0] = Clamp(tap[0], 0.f, float(dims[0]-1) - 1e-5f);
-                        tap[1] = Clamp(tap[1], 0.f, float(dims[1]-1) - 1e-5f);
-                        tap[2] = Clamp(tap[2], 0.f, float(dims[2]-1) - 1e-5f);
+                        tap = ClampAcross(tap, Zero<FloatCoord>(), clampMax);
                         dstValues.Write(coord, srcValues.Sample<SamplingFlags>(tap));
                     }
 
@@ -192,18 +206,16 @@ namespace SceneEngine
 
                         auto coord = ConvertVector<Coord>(UInt3(x, y, z));
                         auto tap = ConvertVector<FloatCoord>(UInt3(x, y, z));
-                        for (unsigned s=0; s<adjvectionSteps; ++s) {
-                            float a = (adjvectionSteps-1-s) / float(adjvectionSteps-1);
-                            auto vel = 
-                                LinearInterpolate(
-                                    velFieldT0.Sample<SamplingFlags>(tap),
-                                    velFieldT1.Sample<SamplingFlags>(tap),
-                                    a);
-
+                        auto vel = velFieldT0.Load(coord);
+                        for (unsigned s=1; ; ++s) {
                             tap -= MultiplyAcross(stepScale, vel);
-                            tap[0] = Clamp(tap[0], 0.f, float(dims[0]-1) - 1e-5f);
-                            tap[1] = Clamp(tap[1], 0.f, float(dims[1]-1) - 1e-5f);
-                            tap[2] = Clamp(tap[2], 0.f, float(dims[2]-1) - 1e-5f);
+                            tap = ClampAcross(tap, Zero<FloatCoord>(), clampMax);
+                            if (s>=adjvectionSteps) break;
+
+                            vel = LinearInterpolate(
+                                velFieldT0.Sample<SamplingFlags>(tap),
+                                velFieldT1.Sample<SamplingFlags>(tap),
+                                s / float(adjvectionSteps-1));
                         }
 
                         dstValues.Write(coord, srcValues.Sample<SamplingFlags>(tap));

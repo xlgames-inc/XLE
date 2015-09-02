@@ -96,6 +96,123 @@ namespace XLEMath
             ;
     }
 
+    template<unsigned SamplingFlags, typename Store>
+        static Float3 SampleBilinear(const VectorField3DSeparate<Store>& field, Float3 coord)
+    {
+        float fx = XlFloor(coord[0]);
+        float fy = XlFloor(coord[1]);
+        float fz = XlFloor(coord[2]);
+        float a = coord[0] - fx, b = coord[1] - fy, c = coord[2] - fz;
+        float weights[] = 
+        {
+            (1.f - a) * (1.f - b) * (1.f - c),
+            a * (1.f - b) * (1.f - c),
+            (1.f - a) * b * (1.f - c),
+            a * b * (1.f - c),
+
+            (1.f - a) * (1.f - b) * c,
+            a * (1.f - b) * c,
+            (1.f - a) * b * c,
+            a * b * c,
+        };
+        unsigned x0, x1, y0, y1, z0, z1;
+        
+        const auto dims = field.Dimensions();
+        if (constant_expression<(SamplingFlags & RNFSample::Clamp)!=0>::result()) {
+            x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
+            x1 = std::min(x0+1u, dims[0]-1u);
+            y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
+            y1 = std::min(y0+1u, dims[1]-1u);
+            z0 = unsigned(Clamp(fz, 0.f, float(dims[2]-1)));
+            z1 = std::min(z0+1u, dims[2]-1u);
+        } else {
+            x0 = unsigned(fx); x1 = x0+1;
+            y0 = unsigned(fy); y1 = y0+1;
+            z0 = unsigned(fz); z1 = z0+1;
+        }
+        assert(x1 < dims[0] && y1 < dims[1] && z1 < dims[2]);
+        
+        float u
+            = weights[0] * (*field._u)[(z0*dims[1]+y0)*dims[0]+x0]
+            + weights[1] * (*field._u)[(z0*dims[1]+y0)*dims[0]+x1]
+            + weights[2] * (*field._u)[(z0*dims[1]+y1)*dims[0]+x0]
+            + weights[3] * (*field._u)[(z0*dims[1]+y1)*dims[0]+x1]
+            + weights[4] * (*field._u)[(z1*dims[1]+y0)*dims[0]+x0]
+            + weights[5] * (*field._u)[(z1*dims[1]+y0)*dims[0]+x1]
+            + weights[6] * (*field._u)[(z1*dims[1]+y1)*dims[0]+x0]
+            + weights[7] * (*field._u)[(z1*dims[1]+y1)*dims[0]+x1]
+            ;
+        float v
+            = weights[0] * (*field._v)[(z0*dims[1]+y0)*dims[0]+x0]
+            + weights[1] * (*field._v)[(z0*dims[1]+y0)*dims[0]+x1]
+            + weights[2] * (*field._v)[(z0*dims[1]+y1)*dims[0]+x0]
+            + weights[3] * (*field._v)[(z0*dims[1]+y1)*dims[0]+x1]
+            + weights[4] * (*field._v)[(z1*dims[1]+y0)*dims[0]+x0]
+            + weights[5] * (*field._v)[(z1*dims[1]+y0)*dims[0]+x1]
+            + weights[6] * (*field._v)[(z1*dims[1]+y1)*dims[0]+x0]
+            + weights[7] * (*field._v)[(z1*dims[1]+y1)*dims[0]+x1]
+            ;
+        float w
+            = weights[0] * (*field._w)[(z0*dims[1]+y0)*dims[0]+x0]
+            + weights[1] * (*field._w)[(z0*dims[1]+y0)*dims[0]+x1]
+            + weights[2] * (*field._w)[(z0*dims[1]+y1)*dims[0]+x0]
+            + weights[3] * (*field._w)[(z0*dims[1]+y1)*dims[0]+x1]
+            + weights[4] * (*field._w)[(z1*dims[1]+y0)*dims[0]+x0]
+            + weights[5] * (*field._w)[(z1*dims[1]+y0)*dims[0]+x1]
+            + weights[6] * (*field._w)[(z1*dims[1]+y1)*dims[0]+x0]
+            + weights[7] * (*field._w)[(z1*dims[1]+y1)*dims[0]+x1]
+            ;
+        return Float3(u, v, w);
+    }
+
+    template<unsigned SamplingFlags, typename Store>
+        static float SampleBilinear(const ScalarField3D<Store>& field, Float3 coord)
+    {
+        float fx = XlFloor(coord[0]);
+        float fy = XlFloor(coord[1]);
+        float fz = XlFloor(coord[2]);
+        float a = coord[0] - fx, b = coord[1] - fy, c = coord[2] - fz;
+        float weights[] = 
+        {
+            (1.f - a) * (1.f - b) * (1.f - c),
+            a * (1.f - b) * (1.f - c),
+            (1.f - a) * b * (1.f - c),
+            a * b * (1.f - c),
+
+            (1.f - a) * (1.f - b) * c,
+            a * (1.f - b) * c,
+            (1.f - a) * b * c,
+            a * b * c,
+        };
+        unsigned x0, x1, y0, y1, z0, z1;
+        
+        const auto dims = field.Dimensions();
+        if (constant_expression<(SamplingFlags & RNFSample::Clamp)!=0>::result()) {
+            x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
+            x1 = std::min(x0+1u, dims[0]-1u);
+            y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
+            y1 = std::min(y0+1u, dims[1]-1u);
+            z0 = unsigned(Clamp(fz, 0.f, float(dims[2]-1)));
+            z1 = std::min(z0+1u, dims[2]-1u);
+        } else {
+            x0 = unsigned(fx); x1 = x0+1;
+            y0 = unsigned(fy); y1 = y0+1;
+            z0 = unsigned(fz); z1 = z0+1;
+        }
+        assert(x1 < dims[0] && y1 < dims[1] && z1 < dims[2]);
+        
+        return
+              weights[0] * (*field._u)[(z0*dims[1]+y0)*dims[0]+x0]
+            + weights[1] * (*field._u)[(z0*dims[1]+y0)*dims[0]+x1]
+            + weights[2] * (*field._u)[(z0*dims[1]+y1)*dims[0]+x0]
+            + weights[3] * (*field._u)[(z0*dims[1]+y1)*dims[0]+x1]
+            + weights[4] * (*field._u)[(z1*dims[1]+y0)*dims[0]+x0]
+            + weights[5] * (*field._u)[(z1*dims[1]+y0)*dims[0]+x1]
+            + weights[6] * (*field._u)[(z1*dims[1]+y1)*dims[0]+x0]
+            + weights[7] * (*field._u)[(z1*dims[1]+y1)*dims[0]+x1]
+            ;
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
             //   M O N O T O N I C   C U B I C
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -272,7 +389,7 @@ namespace XLEMath
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename Store>
-        void GatherNeighbors(Float2 neighbours[8], float weights[4], const VectorField2DSeparate<Store>& field, Float2 coord)
+        void GatherNeighbors(Float2 neighbours[9], float weights[4], const VectorField2DSeparate<Store>& field, Float2 coord)
     {
         float fx = XlFloor(coord[0]);
         float fy = XlFloor(coord[1]);
@@ -348,6 +465,106 @@ namespace XLEMath
         neighbours[8] = (*field._u)[y1*dims[0]+xx];
     }
 
+    static void GatherNeighbors(float* result, size_t stride, const float* source, UInt3 base, UInt3 dims)
+    {
+        auto x0 = base[0], y0 = base[1], z0 = base[2];
+        auto x1 = std::min(x0+1u, dims[0]-1u);
+        auto y1 = std::min(y0+1u, dims[1]-1u);
+        auto z1 = std::min(z0+1u, dims[2]-1u);
+        unsigned xx = std::max(x0, 1u) - 1u;
+        unsigned yx = std::max(y0, 1u) - 1u;
+        unsigned zx = std::max(z0, 1u) - 1u;
+
+        #define V(x,y,z) source[(z*dims[1]+y)*dims[0]+x]
+        #define R(x) result[x*stride]
+
+            // results are arranged so the first 8 are the ones used for
+            // bilinear interpolation
+        R( 0) = V(x0, y0, z0);
+        R( 1) = V(x1, y0, z0);
+        R( 2) = V(x0, y1, z0);
+        R( 3) = V(x1, y1, z0);
+        R( 4) = V(x0, y0, z1);
+        R( 5) = V(x1, y0, z1);
+        R( 6) = V(x0, y1, z1);
+        R( 7) = V(x1, y1, z1);
+
+        R( 8) = V(xx, yx, z0);
+        R( 9) = V(x0, yx, z0);
+        R(10) = V(x1, yx, z0);
+        R(11) = V(xx, y0, z0);
+        R(12) = V(xx, y1, z0);
+
+        R(13) = V(xx, yx, z1);
+        R(14) = V(x0, yx, z1);
+        R(15) = V(x1, yx, z1);
+        R(16) = V(xx, y0, z1);
+        R(17) = V(xx, y1, z1);
+
+        R(18) = V(xx, yx, zx);
+        R(19) = V(x0, yx, zx);
+        R(20) = V(x1, yx, zx);
+        R(21) = V(xx, y0, zx);
+        R(22) = V(x0, y0, zx);
+        R(23) = V(x1, y0, zx);
+        R(24) = V(xx, y1, zx);
+        R(25) = V(x0, y1, zx);
+        R(26) = V(x1, y1, zx);
+        
+        #undef V
+        #undef R
+    }
+
+    template<typename Store>
+        void GatherNeighbors(Float3 neighbours[27], float weights[8], const VectorField3DSeparate<Store>& field, Float3 coord)
+    {
+        float fx = XlFloor(coord[0]);
+        float fy = XlFloor(coord[1]);
+        float fz = XlFloor(coord[2]);
+        float a = coord[0] - fx, b = coord[1] - fy, c = coord[2] - fz;
+        weights[0] = (1.f - a) * (1.f - b) * (1.f - c);
+        weights[1] = a * (1.f - b) * (1.f - c);
+        weights[2] = (1.f - a) * b * (1.f - c);
+        weights[3] = a * b * (1.f - c);
+        weights[4] = (1.f - a) * (1.f - b) * c;
+        weights[5] = a * (1.f - b) * c;
+        weights[6] = (1.f - a) * b * c;
+        weights[7] = a * b * c;
+
+        const auto dims = field.Dimensions();
+        auto x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
+        auto y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
+        auto z0 = unsigned(Clamp(fz, 0.f, float(dims[2]-1)));
+
+        GatherNeighbors(&neighbours[0][0], 3, &(*field._u)[0], UInt3(x0, y0, z0), dims);
+        GatherNeighbors(&neighbours[0][1], 3, &(*field._v)[0], UInt3(x0, y0, z0), dims);
+        GatherNeighbors(&neighbours[0][2], 3, &(*field._w)[0], UInt3(x0, y0, z0), dims);
+    }
+
+    template<typename Store>
+        void GatherNeighbors(float neighbours[27], float weights[8], const ScalarField3D<Store>& field, Float3 coord)
+    {
+        float fx = XlFloor(coord[0]);
+        float fy = XlFloor(coord[1]);
+        float fz = XlFloor(coord[2]);
+        float a = coord[0] - fx, b = coord[1] - fy, c = coord[2] - fz;
+        weights[0] = (1.f - a) * (1.f - b) * (1.f - c);
+        weights[1] = a * (1.f - b) * (1.f - c);
+        weights[2] = (1.f - a) * b * (1.f - c);
+        weights[3] = a * b * (1.f - c);
+        weights[4] = (1.f - a) * (1.f - b) * c;
+        weights[5] = a * (1.f - b) * c;
+        weights[6] = (1.f - a) * b * c;
+        weights[7] = a * b * c;
+
+        const auto dims = field.Dimensions();
+        auto x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
+        auto y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
+        auto z0 = unsigned(Clamp(fz, 0.f, float(dims[2]-1)));
+
+        GatherNeighbors(neighbours, 1, &(*field._u)[0], UInt3(x0, y0, z0), dims);
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename Store>
@@ -375,9 +592,9 @@ namespace XLEMath
     }
 
     template<typename Store>
-        void ScalarField2D<Store>::GatherNeighbors(ValueType neighbours[8], float weights[4], FloatCoord coord) const
+        void ScalarField2D<Store>::GatherNeighbors(ValueType neighbours[9], float weights[4], FloatCoord coord) const
     {
-        return XLEMath::GatherNeighbors(neighbours, weights, *this, coord);
+        XLEMath::GatherNeighbors(neighbours, weights, *this, coord);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -411,9 +628,79 @@ namespace XLEMath
     }
 
     template<typename Store>
-        void VectorField2DSeparate<Store>::GatherNeighbors(ValueType neighbours[8], float weights[4], FloatCoord coord) const
+        void VectorField2DSeparate<Store>::GatherNeighbors(ValueType neighbours[9], float weights[4], FloatCoord coord) const
     {
-        return XLEMath::GatherNeighbors(neighbours, weights, *this, coord);
+        XLEMath::GatherNeighbors(neighbours, weights, *this, coord);
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template<typename Store>
+        float ScalarField3D<Store>::Load(Coord coord) const
+    {
+        assert(coord[0] < _dims[0] && coord[1] < _dims[1]);
+        return (*_u)[(coord[2] * _dims[1] + coord[1]) * _dims[0] + coord[0]];
+    }
+
+    template<typename Store>
+        void ScalarField3D<Store>::Write(Coord coord, ValueType value)
+    {
+        assert(coord[0] < _dims[0] && coord[1] < _dims[1]);
+        (*_u)[(coord[2] * _dims[1] + coord[1]) * _dims[0] + coord[0]] = value;
+        assert(isfinite(value) && !isnan(value));
+    }
+
+    template<typename Store>
+    template<unsigned SamplingFlags>
+        auto ScalarField3D<Store>::Sample(FloatCoord c) const -> ValueType
+    {
+        // if (constant_expression<(SamplingFlags & RNFSample::Cubic)!=0>::result())
+        //     return SampleMonotonicCubic(*this, c);
+        return SampleBilinear<SamplingFlags>(*this, c);
+    }
+
+    template<typename Store>
+        void ScalarField3D<Store>::GatherNeighbors(ValueType neighbours[27], float weights[4], FloatCoord coord) const
+    {
+        XLEMath::GatherNeighbors(neighbours, weights, *this, coord);
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template<typename Store>
+        Float3 VectorField3DSeparate<Store>::Load(Coord coord) const
+    {
+        assert(coord[0] < _dims[0] && coord[1] < _dims[1]);
+        return Float3(
+            (*_u)[(coord[2] * _dims[1] + coord[1]) * _dims[0] + coord[0]],
+            (*_v)[(coord[2] * _dims[1] + coord[1]) * _dims[0] + coord[0]],
+            (*_w)[(coord[2] * _dims[1] + coord[1]) * _dims[0] + coord[0]]);
+    }
+
+    template<typename Store>
+        void VectorField3DSeparate<Store>::Write(Coord coord, ValueType value)
+    {
+        assert(coord[0] < _dims[0] && coord[1] < _dims[1] && coord[2] < _dims[2]);
+        (*_u)[(coord[2] * _dims[1] + coord[1]) * _dims[0] + coord[0]] = value[0];
+        (*_v)[(coord[2] * _dims[1] + coord[1]) * _dims[0] + coord[0]] = value[1];
+        (*_w)[(coord[2] * _dims[1] + coord[1]) * _dims[0] + coord[0]] = value[2];
+        assert(isfinite(value[0]) && !isnan(value[0]));
+        assert(isfinite(value[1]) && !isnan(value[1]));
+    }
+
+    template<typename Store>
+    template<unsigned SamplingFlags>
+        auto VectorField3DSeparate<Store>::Sample(FloatCoord c) const -> ValueType
+    {
+        // if (constant_expression<(SamplingFlags & RNFSample::Cubic)!=0>::result())
+        //     return SampleMonotonicCubic(*this, c);
+        return SampleBilinear<SamplingFlags>(*this, c);
+    }
+
+    template<typename Store>
+        void VectorField3DSeparate<Store>::GatherNeighbors(ValueType neighbours[27], float weights[4], FloatCoord coord) const
+    {
+        XLEMath::GatherNeighbors(neighbours, weights, *this, coord);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -432,11 +719,15 @@ namespace XLEMath
     static const unsigned s_i[] = 
     {
         InstantiateField<ScalarField2D<Eigen::VectorXf>>(),
-        InstantiateField<VectorField2DSeparate<Eigen::VectorXf>>()
+        InstantiateField<VectorField2DSeparate<Eigen::VectorXf>>(),
+        InstantiateField<ScalarField3D<Eigen::VectorXf>>(),
+        InstantiateField<VectorField3DSeparate<Eigen::VectorXf>>()
     };
 
     template class ScalarField2D<Eigen::VectorXf>;
     template class VectorField2DSeparate<Eigen::VectorXf>;
+    template class ScalarField3D<Eigen::VectorXf>;
+    template class VectorField3DSeparate<Eigen::VectorXf>;
 
 }
 
