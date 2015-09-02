@@ -9,6 +9,7 @@
 #include "RegularNumberField.h"
 #include "./Math.h"
 #include "Vector.h"
+#include "../ConsoleRig/Log.h"
 #include "../Utility/PtrUtils.h"
 #include <vector>
 #include <assert.h>
@@ -529,7 +530,7 @@ namespace XLEMath
     {
     public:
         VectorX _tempBuffer;
-        UInt3 _dimensions;
+        UInt3 _dimensionsWithBorders;
         UInt3 _borders;
         unsigned _dimensionality;
 
@@ -660,7 +661,7 @@ namespace XLEMath
                 iterations = _pimpl->_preconCGSolver->Execute(x, matA, workingB, A._bandedPrecon);
             } else if (solver == Method::Multigrid) {
                 if (!_pimpl->_multigridSolver)
-                    _pimpl->_multigridSolver = std::make_unique<Solver_Multigrid>(_pimpl->_dimensions, _pimpl->_dimensionality, 2);
+                    _pimpl->_multigridSolver = std::make_unique<Solver_Multigrid>(_pimpl->_dimensionsWithBorders, _pimpl->_dimensionality, 2);
                 iterations = _pimpl->_multigridSolver->Execute(x, matA, workingB);
             }
 
@@ -772,6 +773,7 @@ namespace XLEMath
 
         const auto width = GetWidth(mat);
         const auto height = GetHeight(mat);
+        const unsigned thirdTest = (mat._dimensionality==2)?0:(width*height);
             
         if (bandOptimization == 0) {
 
@@ -786,7 +788,7 @@ namespace XLEMath
 
                 if (i != 0) {
                     for (unsigned j=i+1; j<N; ++j) {
-                        float aij = ((j==i+1)||(j==i+width)) ? mat._a1 : 0.f;
+                        float aij = ((j==i+1)||(j==i+width)||(j==i+thirdTest)) ? mat._a1 : 0.f;
                         for (unsigned k=0; k<i; ++k)
                             aij -= factorization(i, k) * factorization(j, k);
                         factorization(j, i) = aij / a;
@@ -799,10 +801,19 @@ namespace XLEMath
                 //  it's transpose
                 //
 
-            int bands[] = { -int(width), -1, 1, width, 0 };
-            MatrixX sparseMatrix(N, dimof(bands));
+            int bands2D[] = { -int(width), -1, 1, width, 0 };
+            int bands3D[] = { -int(width*height), -int(width), -1, 1, width, width*height, 0 };
+            unsigned bandCount; int* bands;
+            if (mat._dimensionality == 2) {
+                bandCount = dimof(bands2D);
+                bands = bands2D;
+            } else {
+                bandCount = dimof(bands3D);
+                bands = bands3D;
+            }
+            MatrixX sparseMatrix(N, bandCount);
             for (unsigned i=0; i<N; ++i)
-                for (unsigned j=0; j<dimof(bands); ++j) {
+                for (unsigned j=0; j<bandCount; ++j) {
                     int j2 = int(i) + bands[j];
                     if (j2 >= 0 && j2 < int(N)) {
 
@@ -835,6 +846,8 @@ namespace XLEMath
             // final matrix is sparse, and has zeroes off the main bands).
 
             assert(bandOptimization < width);   // if "bandOptimisation" is very big, the math will be incorrect (and anyway, it will run slowly)
+            const int magicOffset0 = width; // +2;
+            const int magicOffset1 = width; // -2;
 
             for (unsigned i=0; i<N; ++i) {
                 float a = mat._a0;
@@ -851,17 +864,17 @@ namespace XLEMath
                     if (mat._dimensionality==2) {
                         kband0Start = kband0End = 0;
                     } else {
-                        kband0Start = std::max(0, int(i)-int(width*height)-int(bandOptimization));
-                        kband0End = int(i)-int(width*height)+int(bandOptimization)+1;
+                        kband0Start = std::max(0,   int(i)-int(width*height)-int(bandOptimization));
+                        kband0End =                 int(i)-int(width*height)+int(bandOptimization)+1;
                     }
 
-                    int kband1Start = std::max(0, int(i)-int(width)-2-int(bandOptimization));
-                    int kband1End = int(i)-int(width)-2+int(bandOptimization)+1;
+                    int kband1Start = std::max(0,   int(i)-magicOffset0-int(bandOptimization));
+                    int kband1End =                 int(i)-magicOffset0+int(bandOptimization)+1;
 
-                    int kband2Start = std::max(0, int(i)-1-int(bandOptimization));
+                    int kband2Start = std::max(0,   int(i)-1-int(bandOptimization));
 
                     for (unsigned j=i+1; j<std::min(i+1+bandOptimization+1, N); ++j) {
-                        float aij = ((j==i+1)||(j==i+width)) ? mat._a1 : 0.f;
+                        float aij = ((j==i+1)||(j==i+width)||(j==i+thirdTest)) ? mat._a1 : 0.f;
 
                             // there are only some cases of "k" that can possibly have data
                             // it must be within the widened bands of both i and k. It's awkward
@@ -876,8 +889,8 @@ namespace XLEMath
                         factorization(j, i) = aij / a;
                     }
                     
-                    for (unsigned j=i+width-2-bandOptimization; j<std::min(i+width-2+bandOptimization+1, N); ++j) {
-                        float aij = ((j==i+1)||(j==i+width)) ? mat._a1 : 0.f;
+                    for (unsigned j=i+magicOffset1-bandOptimization; j<std::min(i+magicOffset1+bandOptimization+1, N); ++j) {
+                        float aij = ((j==i+1)||(j==i+width)||(j==i+thirdTest)) ? mat._a1 : 0.f;
                         for (int k=kband0Start; k<kband0End; ++k)
                             aij -= factorization(i, k) * factorization(j, k);
                         for (int k=kband1Start; k<kband1End; ++k)
@@ -885,6 +898,19 @@ namespace XLEMath
                         for (int k=kband2Start; k<int(i); ++k)
                             aij -= factorization(i, k) * factorization(j, k);
                         factorization(j, i) = aij / a;
+                    }
+
+                    if (mat._dimensionality!=2) {
+                        for (unsigned j=i+width*height-bandOptimization; j<std::min(i+width*height+bandOptimization+1, N); ++j) {
+                            float aij = ((j==i+1)||(j==i+width)||(j==i+thirdTest)) ? mat._a1 : 0.f;
+                            for (int k=kband0Start; k<kband0End; ++k)
+                                aij -= factorization(i, k) * factorization(j, k);
+                            for (int k=kband1Start; k<kband1End; ++k)
+                                aij -= factorization(i, k) * factorization(j, k);
+                            for (int k=kband2Start; k<int(i); ++k)
+                                aij -= factorization(i, k) * factorization(j, k);
+                            factorization(j, i) = aij / a;
+                        }
                     }
                 }
             }
@@ -907,12 +933,12 @@ namespace XLEMath
             MatrixX sparseMatrix(N, bandCount);
             for (unsigned i=0; i<N; ++i) {
 
-                int kband0Start = std::max(0,       int(i)-int(width)-2-int(bandOptimization));
-                int kband0End   = std::max(0,       int(i)-int(width)-2+int(bandOptimization)+1);
+                int kband0Start = std::max(0,       int(i)-magicOffset0-int(bandOptimization));
+                int kband0End   = std::max(0,       int(i)-magicOffset0+int(bandOptimization)+1);
                 int kband1Start = std::max(0,       int(i)-1-int(bandOptimization));
                 int kband1End   = std::min(int(N),  int(i)+1+int(bandOptimization)+1);
-                int kband2Start = std::min(int(N),  int(i)+int(width)-2-int(bandOptimization));
-                int kband2End   = std::min(int(N),  int(i)+int(width)-2+int(bandOptimization)+1);
+                int kband2Start = std::min(int(N),  int(i)+magicOffset1-int(bandOptimization));
+                int kband2End   = std::min(int(N),  int(i)+magicOffset1+int(bandOptimization)+1);
 
                 int kband3Start, kband3End, kband4Start, kband4End;
                 if (mat._dimensionality==2) {
@@ -962,32 +988,68 @@ namespace XLEMath
         assert(dimensionality==2 || dimensionality == 3);
         dimensionality = std::min(dimensionality, 3u);
         _pimpl = std::make_unique<Pimpl>();
-        _pimpl->_dimensions = UInt3(1,1,1);
+        _pimpl->_dimensionsWithBorders = UInt3(1,1,1);
         _pimpl->_borders = UInt3(0,0,0);
         _pimpl->_dimensionality = dimensionality;
         for (unsigned c=0; c<dimensionality; ++c) {
-            _pimpl->_dimensions[c] = dimensions[c];
+            _pimpl->_dimensionsWithBorders[c] = dimensions[c];
             _pimpl->_borders[c] = 1u;
         }
 
         const auto N = 
-              _pimpl->_dimensions[0]
-            * _pimpl->_dimensions[1]
-            * _pimpl->_dimensions[2];
+              _pimpl->_dimensionsWithBorders[0]
+            * _pimpl->_dimensionsWithBorders[1]
+            * _pimpl->_dimensionsWithBorders[2];
         
         _pimpl->_tempBuffer = VectorX(N);
         _pimpl->_tempBuffer.fill(0.f);
+
+        #if defined(_DEBUG)
+            {
+                const auto diffusion = 0.1f;
+                const auto a0 = 1.f + 4.f * diffusion;
+                const auto a1 = -diffusion;
+                AMat A = { 
+                    UInt3(8, 8, 8), 
+                    UInt3(1, 1, 1),
+                    3,
+                    a0, a1 };
+                auto precon0 = CalculateIncompleteCholesky(A, 8*8*8, 1);
+                auto precon1 = CalculateIncompleteCholesky(A, 8*8*8, 0);
+
+                const auto rows = precon0.rows();
+                for (unsigned i=0; i<rows; ++i) {
+                    LogInfo << "[" << i << "] " 
+                        << precon0(i, 0) << ", "
+                        << precon0(i, 1) << ", "
+                        << precon0(i, 2) << ", "
+                        << precon0(i, 3) << ", "
+                        << precon0(i, 4) << ", "
+                        << precon0(i, 5) << ", "
+                        << precon0(i, 6) << " ("
+                        << precon1(i, 0) << ", "
+                        << precon1(i, 1) << ", "
+                        << precon1(i, 2) << ", "
+                        << precon1(i, 3) << ", "
+                        << precon1(i, 4) << ", "
+                        << precon1(i, 5) << ", "
+                        << precon1(i, 6) << ")";
+                }
+
+                (void)precon1;
+            }
+        #endif
     }
 
     auto PoissonSolver::PrepareDiffusionMatrix(
             float centralWeight, float adjWeight, Method method) -> std::shared_ptr<PreparedMatrix>
     {
         AMat A = { 
-            _pimpl->_dimensions, 
+            _pimpl->_dimensionsWithBorders, 
             _pimpl->_borders,
             _pimpl->_dimensionality,
             centralWeight, adjWeight };
-        const auto N = _pimpl->_dimensions[0] * _pimpl->_dimensions[1] * _pimpl->_dimensions[2];
+        const auto N = _pimpl->_dimensionsWithBorders[0] * _pimpl->_dimensionsWithBorders[1] * _pimpl->_dimensionsWithBorders[2];
 
         auto result = std::make_shared<PreparedMatrix>();
         result->_amat = A;
@@ -996,8 +1058,8 @@ namespace XLEMath
         if (needPrecon) {
             static unsigned bandOptimisation = 3;
             auto precon = CalculateIncompleteCholesky(A, N, bandOptimisation);
-            const auto width = _pimpl->_dimensions[0];
-            const auto height = _pimpl->_dimensions[1];
+            const auto width = _pimpl->_dimensionsWithBorders[0];
+            const auto height = _pimpl->_dimensionsWithBorders[1];
 
             if (_pimpl->_dimensionality==2) {
                     // ----- 2D case -----
@@ -1029,8 +1091,8 @@ namespace XLEMath
 
     auto PoissonSolver::PrepareDivergenceMatrix(Method method) -> std::shared_ptr<PreparedMatrix>
     {
-        AMat A = { _pimpl->_dimensions, _pimpl->_borders, _pimpl->_dimensionality, 4.f, -1.f };
-        const auto N = _pimpl->_dimensions[0] * _pimpl->_dimensions[1] * _pimpl->_dimensions[2];
+        AMat A = { _pimpl->_dimensionsWithBorders, _pimpl->_borders, _pimpl->_dimensionality, 4.f, -1.f };
+        const auto N = _pimpl->_dimensionsWithBorders[0] * _pimpl->_dimensionsWithBorders[1] * _pimpl->_dimensionsWithBorders[2];
 
         auto result = std::make_shared<PreparedMatrix>();
         result->_amat = A;
@@ -1039,8 +1101,8 @@ namespace XLEMath
         if (needPrecon) {
             static unsigned bandOptimisation = 3;
             auto precon = CalculateIncompleteCholesky(A, N, bandOptimisation);
-            const auto width = _pimpl->_dimensions[0];
-            const auto height = _pimpl->_dimensions[1];
+            const auto width = _pimpl->_dimensionsWithBorders[0];
+            const auto height = _pimpl->_dimensionsWithBorders[1];
 
             if (_pimpl->_dimensionality==2) {
                     // ----- 2D case -----
