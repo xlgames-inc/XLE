@@ -47,11 +47,10 @@ namespace XLEMath
         unsigned Solve(
             ScalarField1D x, 
             const PreparedMatrix& A, 
-            const ScalarField1D& b, Method method);
+            const ScalarField1D& b, Method method) const;
         
         std::shared_ptr<PreparedMatrix> PrepareDiffusionMatrix(
             float centralWeight, float adjWeight, Method method);
-
         std::shared_ptr<PreparedMatrix> PrepareDivergenceMatrix(Method method);
 
         PoissonSolver(unsigned dimensionality, unsigned dimensions[]);

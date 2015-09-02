@@ -91,5 +91,37 @@ namespace SceneEngine
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
+
+    class FluidSolver3D
+    {
+    public:
+        struct Settings
+        {
+                // diffusion
+            float       _viscosity;
+            float       _diffusionRate;
+            int         _diffusionMethod;
+
+                // advection
+            int         _advectionMethod;
+            unsigned    _advectionSteps;
+            int         _interpolationMethod;
+
+                // forces
+            int         _enforceIncompressibilityMethod;
+            float       _vorticityConfinement;
+
+            Settings();
+        };
+
+        void Tick(float deltaTime, const Settings& settings);
+        UInt3 GetDimensions() const;
+
+        FluidSolver3D(UInt3 dimensions);
+        ~FluidSolver3D();
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
 }
 

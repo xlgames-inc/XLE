@@ -466,7 +466,7 @@ namespace XLEMath
     unsigned PoissonSolver::Solve(
         ScalarField1D x, 
         const PreparedMatrix& A, 
-        const ScalarField1D& b, Method solver)
+        const ScalarField1D& b, Method solver) const
     {
         //
         // Here is our basic solver for Poisson equations (such as the heat equation).
@@ -831,6 +831,7 @@ namespace XLEMath
 
     PoissonSolver::PoissonSolver(unsigned dimensionality, unsigned dimensions[])
     {
+        assert(dimensionality==2 || dimensionality == 3);
         dimensionality = std::min(dimensionality, 3u);
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_dimensions = UInt3(1,1,1);
@@ -853,20 +854,35 @@ namespace XLEMath
         const auto N = _pimpl->_dimensions[0] * _pimpl->_dimensions[1];
 
         auto result = std::make_shared<PreparedMatrix>();
-        result->_A =A;
+        result->_A = A;
 
         const bool needPrecon = method == Method::PreconCG;
         if (needPrecon) {
             static unsigned bandOptimisation = 3;
             auto precon = CalculateIncompleteCholesky(A, N, bandOptimisation);
             const auto width = _pimpl->_dimensions[0];
+            const auto height = _pimpl->_dimensions[1];
 
-            result->_bands.resize(5);
-            result->_bands[0] =  -int(width);
-            result->_bands[1] =  -1;
-            result->_bands[2] =   1;
-            result->_bands[3] =  width;
-            result->_bands[4] =   0;
+            if (_pimpl->_dimensionality==3) {
+                    // ----- 3D case -----
+                result->_bands.resize(7);
+                result->_bands[0] =  -int(width*height);
+                result->_bands[1] =  -int(width);
+                result->_bands[2] =  -1;
+                result->_bands[3] =   1;
+                result->_bands[4] =   width;
+                result->_bands[5] =   width*height;
+                result->_bands[6] =   0;
+            } else {
+                    // ----- 2D case -----
+                result->_bands.resize(5);
+                result->_bands[0] =  -int(width);
+                result->_bands[1] =  -1;
+                result->_bands[2] =   1;
+                result->_bands[3] =   width;
+                result->_bands[4] =   0;
+            }
+
             result->_bandedPrecon = SparseBandedMatrix<MatrixX>(
                 std::move(precon), 
                 AsPointer(result->_bands.cbegin()), (unsigned)result->_bands.size());
@@ -881,20 +897,35 @@ namespace XLEMath
         const auto N = _pimpl->_dimensions[0] * _pimpl->_dimensions[1];
 
         auto result = std::make_shared<PreparedMatrix>();
-        result->_A =A;
+        result->_A = A;
 
         const bool needPrecon = method == Method::PreconCG;
         if (needPrecon) {
             static unsigned bandOptimisation = 3;
             auto precon = CalculateIncompleteCholesky(A, N, bandOptimisation);
             const auto width = _pimpl->_dimensions[0];
+            const auto height = _pimpl->_dimensions[1];
 
-            result->_bands.resize(5);
-            result->_bands[0] =  -int(width);
-            result->_bands[1] =  -1;
-            result->_bands[2] =   1;
-            result->_bands[3] =  width;
-            result->_bands[4] =   0;
+            if (_pimpl->_dimensionality==3) {
+                    // ----- 3D case -----
+                result->_bands.resize(7);
+                result->_bands[0] =  -int(width*height);
+                result->_bands[1] =  -int(width);
+                result->_bands[2] =  -1;
+                result->_bands[3] =   1;
+                result->_bands[4] =   width;
+                result->_bands[5] =   width*height;
+                result->_bands[6] =   0;
+            } else {
+                    // ----- 2D case -----
+                result->_bands.resize(5);
+                result->_bands[0] =  -int(width);
+                result->_bands[1] =  -1;
+                result->_bands[2] =   1;
+                result->_bands[3] =   width;
+                result->_bands[4] =   0;
+            }
+
             result->_bandedPrecon = SparseBandedMatrix<MatrixX>(
                 std::move(precon), 
                 AsPointer(result->_bands.cbegin()), (unsigned)result->_bands.size());

@@ -139,7 +139,9 @@ namespace SceneEngine
     using VectorX = Eigen::VectorXf;
     using MatrixX = Eigen::MatrixXf;
     using VectorField2D = XLEMath::VectorField2DSeparate<VectorX>;
+    using VectorField3D = XLEMath::VectorField3DSeparate<VectorX>;
     using ScalarField2D = XLEMath::ScalarField2D<VectorX>;
+    using ScalarField3D = XLEMath::ScalarField3D<VectorX>;
 
     static ScalarField1D AsScalarField1D(VectorX& v) { return ScalarField1D { v.data(), (unsigned)v.size() }; }
 
@@ -165,11 +167,6 @@ namespace SceneEngine
         void DensityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings);
         void VelocityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings);
         void TemperatureDiffusion(float deltaTime, const FluidSolver2D::Settings& settings);
-
-        template<typename Field>
-            void EnforceIncompressibility(
-                Field velField,
-                const FluidSolver2D::Settings& settings);
 
         void VorticityConfinement(VectorField2D outputField, VectorField2D inputVelocities, float strength, float deltaTime);
         std::shared_ptr<PoissonSolver::PreparedMatrix> BuildDiffusionMethod(float diffusion);
@@ -235,7 +232,7 @@ namespace SceneEngine
             iterationsu = _poissonSolver.Solve(
                 AsScalarField1D(_velU[2]), *_velocityDiffusion, AsScalarField1D(_velU[2]), 
                 (PoissonSolver::Method)settings._diffusionMethod);
-            iterationsv += _poissonSolver.Solve(
+            iterationsv = _poissonSolver.Solve(
                 AsScalarField1D(_velV[2]), *_velocityDiffusion, AsScalarField1D(_velV[2]), 
                 (PoissonSolver::Method)settings._diffusionMethod);
         }
@@ -261,10 +258,10 @@ namespace SceneEngine
         LogInfo << "Temperature diffusion took: (" << iterations << ") iterations.";
     }
 
-    template<typename Field>
-        void FluidSolver2D::Pimpl::EnforceIncompressibility(
-            Field velField,
-            const FluidSolver2D::Settings& settings)
+    static void EnforceIncompressibility(
+        VectorField2D velField,
+        const PoissonSolver& solver, const PoissonSolver::PreparedMatrix& A,
+        PoissonSolver::Method method)
     {
         //
         // Following Jos Stam's stable fluids, we'll use Helmholtz-Hodge Decomposition
@@ -316,9 +313,9 @@ namespace SceneEngine
                     );
 
         SmearBorder2D(delW, wh);
-        auto iterations = _poissonSolver.Solve(
-            AsScalarField1D(q), *_incompressibility, AsScalarField1D(delW), 
-            (PoissonSolver::Method)settings._enforceIncompressibilityMethod);
+        auto iterations = solver.Solve(
+            AsScalarField1D(q), A, AsScalarField1D(delW), 
+            method);
         SmearBorder2D(q, wh);
 
         for (unsigned y=1; y<wh-1; ++y)
@@ -326,6 +323,47 @@ namespace SceneEngine
                 (*velField._u)[y*wh+x] -= .5f*N * (q[y*wh+x+1]   - q[y*wh+x-1]);
                 (*velField._v)[y*wh+x] -= .5f*N * (q[(y+1)*wh+x] - q[(y-1)*wh+x]);
             }
+
+        LogInfo << "EnforceIncompressibility took: " << iterations << " iterations.";
+    }
+
+    static void EnforceIncompressibility(
+        VectorField3D velField,
+        const PoissonSolver& solver, const PoissonSolver::PreparedMatrix& A,
+        PoissonSolver::Method method)
+    {
+        const auto dims = velField.Dimensions();
+        VectorX delW(dims[0] * dims[1] * dims[2]), q(dims[0] * dims[1] * dims[2]);
+        q.fill(0.f);
+        Float3 velFieldScale = Float3(float(dims[0]), float(dims[1]), float(dims[2]));
+        const UInt3 border(1,1,1);
+        for (unsigned z=border[2]; z<dims[2]-border[2]; ++z)
+            for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
+                for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
+                    const auto i = (z*dims[2]+y)*dims[1]+x;
+                    delW[i] = 
+                        -0.5f * 
+                        (
+                              ((*velField._u)[i+1]               - (*velField._u)[i-1]) / velFieldScale[0]
+                            + ((*velField._v)[i+dims[0]]         - (*velField._v)[i-dims[0]]) / velFieldScale[1]
+                            + ((*velField._w)[i+dims[0]*dims[1]] - (*velField._w)[i-dims[0]*dims[1]])  / velFieldScale[2]
+                        );
+                }
+
+        SmearBorder3D(delW, dims);
+        auto iterations = solver.Solve(
+            AsScalarField1D(q), A, AsScalarField1D(delW), 
+            method);
+        SmearBorder3D(q, dims);
+
+        for (unsigned z=border[2]; z<dims[2]-border[2]; ++z)
+            for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
+                for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
+                    const auto i = (z*dims[2]+y)*dims[1]+x;
+                    (*velField._u)[i] -= .5f*velFieldScale[0] * (q[i+1]                 - q[i-1]);
+                    (*velField._v)[i] -= .5f*velFieldScale[1] * (q[i+dims[0]]           - q[i-dims[0]]);
+                    (*velField._w)[i] -= .5f*velFieldScale[2] * (q[i+dims[0]*dims[1]]   - q[i-dims[0]*dims[1]]);
+                }
 
         LogInfo << "EnforceIncompressibility took: " << iterations << " iterations.";
     }
@@ -456,9 +494,10 @@ namespace SceneEngine
         
         ReflectUBorder2D(velUT1, D+2);
         ReflectVBorder2D(velVT1, D+2);
-        _pimpl->EnforceIncompressibility(
+        EnforceIncompressibility(
             VectorField2D(&velUT1, &velVT1, D+2),
-            settings);
+            _pimpl->_poissonSolver, *_pimpl->_incompressibility,
+            (PoissonSolver::Method)settings._enforceIncompressibilityMethod);
 
         _pimpl->DensityDiffusion(deltaTime, settings);
         PerformAdvection(
@@ -630,6 +669,170 @@ namespace SceneEngine
         _vorticityConfinement = 0.75f;
         _interpolationMethod = 0;
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class FluidSolver3D::Pimpl
+    {
+    public:
+        VectorX _velU[3];
+        VectorX _velV[3];
+        VectorX _velW[3];
+        VectorX _density[2];
+
+        UInt3 _dimsWithoutBorder;
+        UInt3 _dimsWithBorder;
+        unsigned _N;
+
+        PoissonSolver _poissonSolver;
+        std::shared_ptr<PoissonSolver::PreparedMatrix> _densityDiffusion;
+        std::shared_ptr<PoissonSolver::PreparedMatrix> _velocityDiffusion;
+        std::shared_ptr<PoissonSolver::PreparedMatrix> _incompressibility;
+
+        float _preparedDensityDiffusion, _preparedVelocityDiffusion;
+
+        void DensityDiffusion(float deltaTime, const Settings& settings);
+        void VelocityDiffusion(float deltaTime, const Settings& settings);
+        std::shared_ptr<PoissonSolver::PreparedMatrix> BuildDiffusionMethod(float diffusion);
+    };
+
+    void FluidSolver3D::Tick(float deltaTime, const Settings& settings)
+    {
+        float dt = deltaTime;
+        const auto N = _pimpl->_N;
+        auto& velUT0 = _pimpl->_velU[0];
+        auto& velUT1 = _pimpl->_velU[1];
+        auto& velUSrc = _pimpl->_velU[2];
+        auto& velUWorking = _pimpl->_velU[2];
+
+        auto& velVT0 = _pimpl->_velV[0];
+        auto& velVT1 = _pimpl->_velV[1];
+        auto& velVSrc = _pimpl->_velV[2];
+        auto& velVWorking = _pimpl->_velV[2];
+
+        auto& velWT0 = _pimpl->_velW[0];
+        auto& velWT1 = _pimpl->_velW[1];
+        auto& velWSrc = _pimpl->_velW[2];
+        auto& velWWorking = _pimpl->_velW[2];
+
+        auto& densitySrc = _pimpl->_density[0];
+        auto& densityWorking = _pimpl->_density[0];
+        auto& densityT1 = _pimpl->_density[1];
+
+        for (unsigned c=0; c<N; ++c) {
+            velUT0[c] = velUT1[c];
+            velVT0[c] = velVT1[c];
+            velWT0[c] = velWT1[c];
+            velUWorking[c] = velUT1[c] + dt * velUSrc[c];
+            velVWorking[c] = velVT1[c] + dt * velVSrc[c];
+            densityWorking[c] = densityT1[c] + dt * densitySrc[c];
+        }
+
+        _pimpl->VelocityDiffusion(deltaTime, settings);
+
+        AdvectionSettings advSettings { (AdvectionMethod)settings._advectionMethod, (AdvectionInterpolationMethod)settings._interpolationMethod, settings._advectionSteps };
+        PerformAdvection(
+            VectorField3D(&velUT1,      &velVT1,        &velWT1,        _pimpl->_dimsWithBorder),
+            VectorField3D(&velUWorking, &velVWorking,   &velWWorking,   _pimpl->_dimsWithBorder),
+            VectorField3D(&velUT0,      &velVT0,        &velWT0,        _pimpl->_dimsWithBorder),
+            VectorField3D(&velUWorking, &velVWorking,   &velWWorking,   _pimpl->_dimsWithBorder),
+            deltaTime, advSettings);
+        
+        ReflectUBorder2D(velUT1, _pimpl->_dimsWithBorder[0]);
+        ReflectVBorder2D(velVT1, _pimpl->_dimsWithBorder[0]);
+        EnforceIncompressibility(
+            VectorField3D(&velUT1, &velVT1, &velWT1, _pimpl->_dimsWithBorder),
+            _pimpl->_poissonSolver, *_pimpl->_incompressibility,
+            (PoissonSolver::Method)settings._enforceIncompressibilityMethod);
+
+        _pimpl->DensityDiffusion(deltaTime, settings);
+        PerformAdvection(
+            ScalarField3D(&densityT1, _pimpl->_dimsWithBorder),
+            ScalarField3D(&densityWorking, _pimpl->_dimsWithBorder),
+            VectorField3D(&velUT0, &velVT0, &velWT0, _pimpl->_dimsWithBorder),
+            VectorField3D(&velUT1, &velVT1, &velWT1, _pimpl->_dimsWithBorder),
+            deltaTime, advSettings);
+
+        for (unsigned c=0; c<N; ++c) {
+            velUSrc[c] = 0.f;
+            velVSrc[c] = 0.f;
+            velWSrc[c] = 0.f;
+            densitySrc[c] = 0.f;
+        }
+    }
+
+    std::shared_ptr<PoissonSolver::PreparedMatrix> FluidSolver3D::Pimpl::BuildDiffusionMethod(float diffusion)
+    {
+        const float a0 = 1.f + 4.f * diffusion;
+        const float a1 = -diffusion;
+        return _poissonSolver.PrepareDiffusionMatrix(a0, a1, PoissonSolver::Method::PreconCG);
+    }
+
+    void FluidSolver3D::Pimpl::DensityDiffusion(float deltaTime, const Settings& settings)
+    {
+        if (!_densityDiffusion || _preparedDensityDiffusion != deltaTime * settings._diffusionRate) {
+            _preparedDensityDiffusion = deltaTime * settings._diffusionRate;
+            _densityDiffusion = BuildDiffusionMethod(_preparedDensityDiffusion);
+        }
+
+        auto iterations = _poissonSolver.Solve(
+            AsScalarField1D(_density[0]), 
+            *_densityDiffusion,
+            AsScalarField1D(_density[0]), 
+            (PoissonSolver::Method)settings._diffusionMethod);
+        LogInfo << "Density diffusion took: (" << iterations << ") iterations.";
+    }
+
+    void FluidSolver3D::Pimpl::VelocityDiffusion(float deltaTime, const Settings& settings)
+    {
+        if (!_velocityDiffusion || _preparedVelocityDiffusion != deltaTime * settings._viscosity) {
+            _preparedVelocityDiffusion = deltaTime * settings._viscosity;
+            _velocityDiffusion = BuildDiffusionMethod(_preparedVelocityDiffusion);
+        }
+
+        auto iterationsu = _poissonSolver.Solve(
+            AsScalarField1D(_velU[2]), *_velocityDiffusion, AsScalarField1D(_velU[2]), 
+            (PoissonSolver::Method)settings._diffusionMethod);
+        auto iterationsv = _poissonSolver.Solve(
+            AsScalarField1D(_velV[2]), *_velocityDiffusion, AsScalarField1D(_velV[2]), 
+            (PoissonSolver::Method)settings._diffusionMethod);
+        LogInfo << "Velocity diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations.";
+    }
+
+    UInt3 FluidSolver3D::GetDimensions() const { return _pimpl->_dimsWithoutBorder; }
+
+    FluidSolver3D::FluidSolver3D(UInt3 dimensions)
+    {
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_dimsWithoutBorder = dimensions;
+        _pimpl->_dimsWithBorder = dimensions + UInt3(2, 2, 2);
+        auto N = _pimpl->_dimsWithBorder[0] * _pimpl->_dimsWithBorder[1] * _pimpl->_dimsWithBorder[2];
+        _pimpl->_N = N;
+
+        for (unsigned c=0; c<dimof(_pimpl->_velU); ++c) {
+            _pimpl->_velU[c] = VectorX(N);
+            _pimpl->_velV[c] = VectorX(N);
+            _pimpl->_velW[c] = VectorX(N);
+            _pimpl->_velU[c].fill(0.f);
+            _pimpl->_velV[c].fill(0.f);
+            _pimpl->_velW[c].fill(0.f);
+        }
+
+        for (unsigned c=0; c<dimof(_pimpl->_density); ++c) {
+            _pimpl->_density[c] = VectorX(N);
+            _pimpl->_density[c].fill(0.f);
+        }
+
+        UInt3 fullDims(dimensions[0]+2, dimensions[1]+2, dimensions[2]+2);
+        _pimpl->_poissonSolver = PoissonSolver(3, &fullDims[0]);
+        _pimpl->_incompressibility = _pimpl->_poissonSolver.PrepareDivergenceMatrix(
+            PoissonSolver::Method::PreconCG);
+
+        _pimpl->_preparedDensityDiffusion = 0.f;
+        _pimpl->_preparedVelocityDiffusion = 0.f;
+    }
+
+    FluidSolver3D::~FluidSolver3D() {}
 
 }
 
