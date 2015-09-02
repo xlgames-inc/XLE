@@ -32,14 +32,13 @@ namespace XLEMath
     {
     public:
         Store* _u, *_v; 
-        unsigned _wh;
+        UInt2 _dims;
 
         using ValueType = Float2;
         using Coord = UInt2;
         using FloatCoord = Float2;
 
-        inline unsigned Width() const { return _wh; }
-        inline unsigned Height() const { return _wh; }
+        inline UInt2 Dimensions() const { return _dims; }
 
         ValueType Load(Coord c) const;
         void Write(Coord x, ValueType value);
@@ -49,8 +48,8 @@ namespace XLEMath
 
         void GatherNeighbors(ValueType neighbours[8], float weights[4], FloatCoord coord) const;
 
-        VectorField2DSeparate() : _u(nullptr), _v(nullptr), _wh(0) {}
-        VectorField2DSeparate(Store* u, Store* v, unsigned wh) : _u(u), _v(v), _wh(wh) {}
+        VectorField2DSeparate() : _u(nullptr), _v(nullptr), _dims(0, 0) {}
+        VectorField2DSeparate(Store* u, Store* v, UInt2 dims) : _u(u), _v(v), _dims(dims) {}
     };
 
     template<typename Store>
@@ -74,7 +73,7 @@ namespace XLEMath
 
         void GatherNeighbors(ValueType neighbours[8], float weights[4], FloatCoord coord) const;
 
-        VectorField3DSeparate() : _u(nullptr), _v(nullptr), _wh(0) {}
+        VectorField3DSeparate() : _u(nullptr), _v(nullptr), _dims(0, 0, 0) {}
         VectorField3DSeparate(Store* u, Store* v, Store* w, UInt3 dims) : _u(u), _v(v), _w(w), _dims(dims) {}
     };
 
@@ -83,14 +82,13 @@ namespace XLEMath
     {
     public:
         Store* _u;
-        unsigned _wh;
+        UInt2 _dims;
 
         using ValueType = float;
         using Coord = UInt2;
         using FloatCoord = Float2;
 
-        inline unsigned Width() const { return _wh; }
-        inline unsigned Height() const { return _wh; }
+        inline UInt2 Dimensions() const { return _dims; }
 
         ValueType Load(Coord c) const;
         void Write(Coord x, ValueType value);
@@ -100,8 +98,8 @@ namespace XLEMath
 
         void GatherNeighbors(ValueType neighbours[8], float weights[4], FloatCoord coord) const;
 
-        ScalarField2D() : _u(nullptr), _wh(0) {}
-        ScalarField2D(Store* u, unsigned wh) : _u(u), _wh(wh) {}
+        ScalarField2D() : _u(nullptr), _dims(0, 0) {}
+        ScalarField2D(Store* u, UInt2 dims) : _u(u), _dims(dims) {}
     };
 
     template<typename Store>
@@ -125,7 +123,7 @@ namespace XLEMath
 
         void GatherNeighbors(ValueType neighbours[8], float weights[4], FloatCoord coord) const;
 
-        ScalarField3D() : _u(nullptr), _wh(0) {}
+        ScalarField3D() : _u(nullptr), _dims(0, 0, 0) {}
         ScalarField3D(Store* u, UInt3 dims) : _u(u), _dims(dims) {}
     };
 
@@ -210,7 +208,7 @@ namespace XLEMath
     }
 
     template <typename Vec>
-        static void SmearBorder3D(Vec& v, UInt3 dims)
+        static void ZeroBorder3D(Vec& v, UInt3 dims)
     {
         auto LX = dims[0]-1, LY = dims[1]-1, LZ = dims[2]-1;
         #define XYZ(x,y,z) XYZ(x,y,z,dims)
@@ -218,20 +216,85 @@ namespace XLEMath
             // 6 faces
         for (unsigned y=1; y<dims[1]-1; ++y)
             for (unsigned x=1; x<dims[0]-1; ++x) {
-                v[XYZ(x,y,0)]   = v[XYZ(x,y,1)];
-                v[XYZ(x,y,LZ)]  = v[XYZ(x,y,LZ-1)];
+                v[XYZ(x,y,0)]   = 0.f;
+                v[XYZ(x,y,LZ)]  = 0.f;
             }
 
         for (unsigned z=1; z<dims[2]-1; ++z)
             for (unsigned x=1; x<dims[0]-1; ++x) {
-                v[XYZ(x,0,z)]   = v[XYZ(x,1,z)];
-                v[XYZ(x,LY,z)]  = v[XYZ(x,LY-1,z)];
+                v[XYZ(x,0,z)]   = 0.f;
+                v[XYZ(x,LY,z)]  = 0.f;
             }
 
         for (unsigned z=1; z<dims[2]-1; ++z)
             for (unsigned y=1; y<dims[1]-1; ++y) {
-                v[XYZ(0,y,z)]   = v[XYZ(1,y,z)];
-                v[XYZ(LX,y,z)]  = v[XYZ(LX-1,y,z)];
+                v[XYZ(0,y,z)]   = 0.f;
+                v[XYZ(LX,y,z)]  = 0.f;
+            }
+
+            // 12 edges
+        for (unsigned x=1; x<dims[0]-1; ++x) {
+            v[XYZ(x, 0, 0)]     = 0.f;
+            v[XYZ(x, 0,LY)]     = 0.f;
+            v[XYZ(x,LX, 0)]     = 0.f;
+            v[XYZ(x,LX,LY)]     = 0.f;
+        }
+
+        for (unsigned y=1; y<dims[0]-1; ++y) {
+            v[XYZ( 0,y, 0)]     = 0.f;
+            v[XYZ( 0,y,LY)]     = 0.f;
+            v[XYZ(LX,y, 0)]     = 0.f;
+            v[XYZ(LX,y,LY)]     = 0.f;
+        }
+
+        for (unsigned z=1; z<dims[2]-1; ++z) {
+            v[XYZ( 0, 0,z)]     = 0.f;
+            v[XYZ( 0,LY,z)]     = 0.f;
+            v[XYZ(LX, 0,z)]     = 0.f;
+            v[XYZ(LX,LY,z)]     = 0.f;
+        }
+
+            // 8 corners
+        v[XYZ( 0, 0, 0)] = 0.f;
+        v[XYZ(LX, 0, 0)] = 0.f;
+
+        v[XYZ( 0, LY, 0)] = 0.f;
+        v[XYZ(LX, LY, 0)] = 0.f;
+
+        v[XYZ(LX, 0, LZ)] = 0.f;
+        v[XYZ( 0, 0, LZ)] = 0.f;
+
+        v[XYZ( 0, LY, LZ)] = 0.f;
+        v[XYZ(LX, LY, LZ)] = 0.f;
+        #undef XY
+    }
+
+    template <typename Vec>
+        static void ReflectBorder3D(Vec& v, UInt3 dims, unsigned reflectionAxis)
+    {
+        auto LX = dims[0]-1, LY = dims[1]-1, LZ = dims[2]-1;
+        #define XYZ(x,y,z) XYZ(x,y,z,dims)
+
+            // 6 faces
+        auto reflect = (reflectionAxis==2)?-1.f:1.f;
+        for (unsigned y=1; y<dims[1]-1; ++y)
+            for (unsigned x=1; x<dims[0]-1; ++x) {
+                v[XYZ(x,y,0)]   = reflect * v[XYZ(x,y,1)];
+                v[XYZ(x,y,LZ)]  = reflect * v[XYZ(x,y,LZ-1)];
+            }
+
+        reflect = (reflectionAxis==1)?-1.f:1.f;
+        for (unsigned z=1; z<dims[2]-1; ++z)
+            for (unsigned x=1; x<dims[0]-1; ++x) {
+                v[XYZ(x,0,z)]   = reflect * v[XYZ(x,1,z)];
+                v[XYZ(x,LY,z)]  = reflect * v[XYZ(x,LY-1,z)];
+            }
+
+        reflect = (reflectionAxis==0)?-1.f:1.f;
+        for (unsigned z=1; z<dims[2]-1; ++z)
+            for (unsigned y=1; y<dims[1]-1; ++y) {
+                v[XYZ(0,y,z)]   = reflect * v[XYZ(1,y,z)];
+                v[XYZ(LX,y,z)]  = reflect * v[XYZ(LX-1,y,z)];
             }
 
             // 12 edges
@@ -270,6 +333,12 @@ namespace XLEMath
         v[XYZ(LX, LY, LZ)]      = (v[XYZ(LX-1,LY,LZ)] + v[XYZ(LX,LY-1,LZ)] + v[XYZ(LX,LY,LZ-1)])/3.f;
         
         #undef XY
+    }
+
+    template <typename Vec>
+        static void SmearBorder3D(Vec& v, UInt3 dims)
+    {
+        ReflectBorder3D(v, dims, 4);        // (same as ReflectBorder with an invalid reflection axis)
     }
 
 }

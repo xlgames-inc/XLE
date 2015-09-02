@@ -34,28 +34,29 @@ namespace XLEMath
         };
         unsigned x0, x1, y0, y1;
         
+        const auto dims = field.Dimensions();
         if (constant_expression<(SamplingFlags & RNFSample::Clamp)!=0>::result()) {
-            x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
-            x1 = std::min(x0+1u, field._wh-1u);
-            y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
-            y1 = std::min(y0+1u, field._wh-1u);
+            x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
+            x1 = std::min(x0+1u, dims[0]-1u);
+            y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
+            y1 = std::min(y0+1u, dims[1]-1u);
         } else {
             x0 = unsigned(fx); x1 = x0+1;
             y0 = unsigned(fy); y1 = y0+1;
         }
-        assert(x1 < field._wh && y1 < field._wh);
+        assert(x1 < dims[0] && y1 < dims[1]);
         
         float u
-            = weights[0] * (*field._u)[y0*field._wh+x0]
-            + weights[1] * (*field._u)[y0*field._wh+x1]
-            + weights[2] * (*field._u)[y1*field._wh+x0]
-            + weights[3] * (*field._u)[y1*field._wh+x1]
+            = weights[0] * (*field._u)[y0*dims[0]+x0]
+            + weights[1] * (*field._u)[y0*dims[0]+x1]
+            + weights[2] * (*field._u)[y1*dims[0]+x0]
+            + weights[3] * (*field._u)[y1*dims[0]+x1]
             ;
         float v
-            = weights[0] * (*field._v)[y0*field._wh+x0]
-            + weights[1] * (*field._v)[y0*field._wh+x1]
-            + weights[2] * (*field._v)[y1*field._wh+x0]
-            + weights[3] * (*field._v)[y1*field._wh+x1]
+            = weights[0] * (*field._v)[y0*dims[0]+x0]
+            + weights[1] * (*field._v)[y0*dims[0]+x1]
+            + weights[2] * (*field._v)[y1*dims[0]+x0]
+            + weights[3] * (*field._v)[y1*dims[0]+x1]
             ;
         return Float2(u, v);
     }
@@ -75,22 +76,23 @@ namespace XLEMath
         };
         unsigned x0, x1, y0, y1;
         
+        const auto dims = field.Dimensions();
         if (constant_expression<(SamplingFlags & RNFSample::Clamp)!=0>::result()) {
-            x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
-            x1 = std::min(x0+1u, field._wh-1u);
-            y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
-            y1 = std::min(y0+1u, field._wh-1u);
+            x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
+            x1 = std::min(x0+1u, dims[0]-1u);
+            y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
+            y1 = std::min(y0+1u, dims[1]-1u);
         } else {
             x0 = unsigned(fx); x1 = x0+1;
             y0 = unsigned(fy); y1 = y0+1;
         }
-        assert(x1 < field._wh && y1 < field._wh);
+        assert(x1 < dims[0] && y1 < dims[1]);
         
         return 
-              weights[0] * (*field._u)[y0*field._wh+x0]
-            + weights[1] * (*field._u)[y0*field._wh+x1]
-            + weights[2] * (*field._u)[y1*field._wh+x0]
-            + weights[3] * (*field._u)[y1*field._wh+x1]
+              weights[0] * (*field._u)[y0*dims[0]+x0]
+            + weights[1] * (*field._u)[y0*dims[0]+x1]
+            + weights[2] * (*field._u)[y1*dims[0]+x0]
+            + weights[3] * (*field._u)[y1*dims[0]+x1]
             ;
     }
 
@@ -133,38 +135,39 @@ namespace XLEMath
         float fy = XlFloor(coord[1]);
         float a = coord[0] - fx, b = coord[1] - fy;
 
-        unsigned x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
-        unsigned x1 = std::min(x0+1u, field._wh-1u);
-        unsigned y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
-        unsigned y1 = std::min(y0+1u, field._wh-1u);
-        assert(x1 < field._wh && y1 < field._wh);
+        const auto dims = field.Dimensions();
+        unsigned x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
+        unsigned x1 = std::min(x0+1u, dims[0]-1u);
+        unsigned y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
+        unsigned y1 = std::min(y0+1u, dims[1]-1u);
+        assert(x1 < dims[0] && y1 < dims[1]);
 
-        unsigned x2 = std::min(x1+1u, field._wh-1u);
-        unsigned y2 = std::min(y1+1u, field._wh-1u);
+        unsigned x2 = std::min(x1+1u, dims[0]-1u);
+        unsigned y2 = std::min(y1+1u, dims[1]-1u);
         unsigned xn1 = std::max(x0, 1u) - 1u;
         unsigned yn1 = std::max(y0, 1u) - 1u;
         
         float u[] = 
         {
-            (*field._u)[yn1*field._wh+xn1],
-            (*field._u)[yn1*field._wh+ x0],
-            (*field._u)[yn1*field._wh+ x1],
-            (*field._u)[yn1*field._wh+ x2],
+            (*field._u)[yn1*dims[0]+xn1],
+            (*field._u)[yn1*dims[0]+ x0],
+            (*field._u)[yn1*dims[0]+ x1],
+            (*field._u)[yn1*dims[0]+ x2],
 
-            (*field._u)[ y0*field._wh+xn1],
-            (*field._u)[ y0*field._wh+ x0],
-            (*field._u)[ y0*field._wh+ x1],
-            (*field._u)[ y0*field._wh+ x2],
+            (*field._u)[ y0*dims[0]+xn1],
+            (*field._u)[ y0*dims[0]+ x0],
+            (*field._u)[ y0*dims[0]+ x1],
+            (*field._u)[ y0*dims[0]+ x2],
 
-            (*field._u)[ y1*field._wh+xn1],
-            (*field._u)[ y1*field._wh+ x0],
-            (*field._u)[ y1*field._wh+ x1],
-            (*field._u)[ y1*field._wh+ x2],
+            (*field._u)[ y1*dims[0]+xn1],
+            (*field._u)[ y1*dims[0]+ x0],
+            (*field._u)[ y1*dims[0]+ x1],
+            (*field._u)[ y1*dims[0]+ x2],
 
-            (*field._u)[ y2*field._wh+xn1],
-            (*field._u)[ y2*field._wh+ x0],
-            (*field._u)[ y2*field._wh+ x1],
-            (*field._u)[ y2*field._wh+ x2]
+            (*field._u)[ y2*dims[0]+xn1],
+            (*field._u)[ y2*dims[0]+ x0],
+            (*field._u)[ y2*dims[0]+ x1],
+            (*field._u)[ y2*dims[0]+ x2]
         };
 
         float un1 = MonotonicCubic(u[ 0], u[ 1], u[ 2], u[ 3], a);
@@ -181,61 +184,62 @@ namespace XLEMath
         float fy = XlFloor(coord[1]);
         float a = coord[0] - fx, b = coord[1] - fy;
 
-        unsigned x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
-        unsigned x1 = std::min(x0+1u, field._wh-1u);
-        unsigned y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
-        unsigned y1 = std::min(y0+1u, field._wh-1u);
-        assert(x1 < field._wh && y1 < field._wh);
+        const auto dims = field.Dimensions();
+        unsigned x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
+        unsigned x1 = std::min(x0+1u, dims[0]-1u);
+        unsigned y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
+        unsigned y1 = std::min(y0+1u, dims[1]-1u);
+        assert(x1 < dims[0] && y1 < dims[1]);
 
-        unsigned x2 = std::min(x1+1u, field._wh-1u);
-        unsigned y2 = std::min(y1+1u, field._wh-1u);
+        unsigned x2 = std::min(x1+1u, dims[0]-1u);
+        unsigned y2 = std::min(y1+1u, dims[1]-1u);
         unsigned xn1 = std::max(x0, 1u) - 1u;
         unsigned yn1 = std::max(y0, 1u) - 1u;
         
         float u[] = 
         {
-            (*field._u)[yn1*field._wh+xn1],
-            (*field._u)[yn1*field._wh+ x0],
-            (*field._u)[yn1*field._wh+ x1],
-            (*field._u)[yn1*field._wh+ x2],
+            (*field._u)[yn1*dims[0]+xn1],
+            (*field._u)[yn1*dims[0]+ x0],
+            (*field._u)[yn1*dims[0]+ x1],
+            (*field._u)[yn1*dims[0]+ x2],
 
-            (*field._u)[ y0*field._wh+xn1],
-            (*field._u)[ y0*field._wh+ x0],
-            (*field._u)[ y0*field._wh+ x1],
-            (*field._u)[ y0*field._wh+ x2],
+            (*field._u)[ y0*dims[0]+xn1],
+            (*field._u)[ y0*dims[0]+ x0],
+            (*field._u)[ y0*dims[0]+ x1],
+            (*field._u)[ y0*dims[0]+ x2],
 
-            (*field._u)[ y1*field._wh+xn1],
-            (*field._u)[ y1*field._wh+ x0],
-            (*field._u)[ y1*field._wh+ x1],
-            (*field._u)[ y1*field._wh+ x2],
+            (*field._u)[ y1*dims[0]+xn1],
+            (*field._u)[ y1*dims[0]+ x0],
+            (*field._u)[ y1*dims[0]+ x1],
+            (*field._u)[ y1*dims[0]+ x2],
 
-            (*field._u)[ y2*field._wh+xn1],
-            (*field._u)[ y2*field._wh+ x0],
-            (*field._u)[ y2*field._wh+ x1],
-            (*field._u)[ y2*field._wh+ x2]
+            (*field._u)[ y2*dims[0]+xn1],
+            (*field._u)[ y2*dims[0]+ x0],
+            (*field._u)[ y2*dims[0]+ x1],
+            (*field._u)[ y2*dims[0]+ x2]
         };
 
         float v[] = 
         {
-            (*field._v)[yn1*field._wh+xn1],
-            (*field._v)[yn1*field._wh+ x0],
-            (*field._v)[yn1*field._wh+ x1],
-            (*field._v)[yn1*field._wh+ x2],
+            (*field._v)[yn1*dims[0]+xn1],
+            (*field._v)[yn1*dims[0]+ x0],
+            (*field._v)[yn1*dims[0]+ x1],
+            (*field._v)[yn1*dims[0]+ x2],
 
-            (*field._v)[ y0*field._wh+xn1],
-            (*field._v)[ y0*field._wh+ x0],
-            (*field._v)[ y0*field._wh+ x1],
-            (*field._v)[ y0*field._wh+ x2],
+            (*field._v)[ y0*dims[0]+xn1],
+            (*field._v)[ y0*dims[0]+ x0],
+            (*field._v)[ y0*dims[0]+ x1],
+            (*field._v)[ y0*dims[0]+ x2],
 
-            (*field._v)[ y1*field._wh+xn1],
-            (*field._v)[ y1*field._wh+ x0],
-            (*field._v)[ y1*field._wh+ x1],
-            (*field._v)[ y1*field._wh+ x2],
+            (*field._v)[ y1*dims[0]+xn1],
+            (*field._v)[ y1*dims[0]+ x0],
+            (*field._v)[ y1*dims[0]+ x1],
+            (*field._v)[ y1*dims[0]+ x2],
 
-            (*field._v)[ y2*field._wh+xn1],
-            (*field._v)[ y2*field._wh+ x0],
-            (*field._v)[ y2*field._wh+ x1],
-            (*field._v)[ y2*field._wh+ x2]
+            (*field._v)[ y2*dims[0]+xn1],
+            (*field._v)[ y2*dims[0]+ x0],
+            (*field._v)[ y2*dims[0]+ x1],
+            (*field._v)[ y2*dims[0]+ x2]
         };
 
             // Unfortunately, to get correct cubic interpolation in 2D, we
@@ -278,36 +282,37 @@ namespace XLEMath
         weights[2] = (1.f - a) * b;
         weights[3] = a * b;
 
+        const auto dims = field.Dimensions();
         unsigned x0, x1, y0, y1;
-        x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
-        x1 = std::min(x0+1u, field._wh-1u);
-        y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
-        y1 = std::min(y0+1u, field._wh-1u);
+        x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
+        x1 = std::min(x0+1u, dims[0]-1u);
+        y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
+        y1 = std::min(y0+1u, dims[1]-1u);
 
         unsigned xx = std::max(x0, 1u) - 1u;
         unsigned yx = std::max(y0, 1u) - 1u;
 
-        neighbours[0][0] = (*field._u)[y0*field._wh+x0];
-        neighbours[1][0] = (*field._u)[y0*field._wh+x1];
-        neighbours[2][0] = (*field._u)[y1*field._wh+x0];
-        neighbours[3][0] = (*field._u)[y1*field._wh+x1];
+        neighbours[0][0] = (*field._u)[y0*dims[0]+x0];
+        neighbours[1][0] = (*field._u)[y0*dims[0]+x1];
+        neighbours[2][0] = (*field._u)[y1*dims[0]+x0];
+        neighbours[3][0] = (*field._u)[y1*dims[0]+x1];
 
-        neighbours[4][0] = (*field._u)[yx*field._wh+xx];
-        neighbours[5][0] = (*field._u)[yx*field._wh+x0];
-        neighbours[6][0] = (*field._u)[yx*field._wh+x1];
-        neighbours[7][0] = (*field._u)[y0*field._wh+xx];
-        neighbours[8][0] = (*field._u)[y1*field._wh+xx];
+        neighbours[4][0] = (*field._u)[yx*dims[0]+xx];
+        neighbours[5][0] = (*field._u)[yx*dims[0]+x0];
+        neighbours[6][0] = (*field._u)[yx*dims[0]+x1];
+        neighbours[7][0] = (*field._u)[y0*dims[0]+xx];
+        neighbours[8][0] = (*field._u)[y1*dims[0]+xx];
 
-        neighbours[0][1] = (*field._v)[y0*field._wh+x0];
-        neighbours[1][1] = (*field._v)[y0*field._wh+x1];
-        neighbours[2][1] = (*field._v)[y1*field._wh+x0];
-        neighbours[3][1] = (*field._v)[y1*field._wh+x1];
+        neighbours[0][1] = (*field._v)[y0*dims[0]+x0];
+        neighbours[1][1] = (*field._v)[y0*dims[0]+x1];
+        neighbours[2][1] = (*field._v)[y1*dims[0]+x0];
+        neighbours[3][1] = (*field._v)[y1*dims[0]+x1];
 
-        neighbours[4][1] = (*field._v)[yx*field._wh+xx];
-        neighbours[5][1] = (*field._v)[yx*field._wh+x0];
-        neighbours[6][1] = (*field._v)[yx*field._wh+x1];
-        neighbours[7][1] = (*field._v)[y0*field._wh+xx];
-        neighbours[8][1] = (*field._v)[y1*field._wh+xx];
+        neighbours[4][1] = (*field._v)[yx*dims[0]+xx];
+        neighbours[5][1] = (*field._v)[yx*dims[0]+x0];
+        neighbours[6][1] = (*field._v)[yx*dims[0]+x1];
+        neighbours[7][1] = (*field._v)[y0*dims[0]+xx];
+        neighbours[8][1] = (*field._v)[y1*dims[0]+xx];
     }
 
     template<typename Store>
@@ -321,25 +326,26 @@ namespace XLEMath
         weights[2] = (1.f - a) * b;
         weights[3] = a * b;
 
+        const auto dims = field.Dimensions();
         unsigned x0, x1, y0, y1;
-        x0 = unsigned(Clamp(fx, 0.f, float(field._wh-1)));
-        x1 = std::min(x0+1u, field._wh-1u);
-        y0 = unsigned(Clamp(fy, 0.f, float(field._wh-1)));
-        y1 = std::min(y0+1u, field._wh-1u);
+        x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
+        x1 = std::min(x0+1u, dims[0]-1u);
+        y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
+        y1 = std::min(y0+1u, dims[1]-1u);
 
         unsigned xx = std::max(x0, 1u) - 1u;
         unsigned yx = std::max(y0, 1u) - 1u;
 
-        neighbours[0] = (*field._u)[y0*field._wh+x0];
-        neighbours[1] = (*field._u)[y0*field._wh+x1];
-        neighbours[2] = (*field._u)[y1*field._wh+x0];
-        neighbours[3] = (*field._u)[y1*field._wh+x1];
+        neighbours[0] = (*field._u)[y0*dims[0]+x0];
+        neighbours[1] = (*field._u)[y0*dims[0]+x1];
+        neighbours[2] = (*field._u)[y1*dims[0]+x0];
+        neighbours[3] = (*field._u)[y1*dims[0]+x1];
 
-        neighbours[4] = (*field._u)[yx*field._wh+xx];
-        neighbours[5] = (*field._u)[yx*field._wh+x0];
-        neighbours[6] = (*field._u)[yx*field._wh+x1];
-        neighbours[7] = (*field._u)[y0*field._wh+xx];
-        neighbours[8] = (*field._u)[y1*field._wh+xx];
+        neighbours[4] = (*field._u)[yx*dims[0]+xx];
+        neighbours[5] = (*field._u)[yx*dims[0]+x0];
+        neighbours[6] = (*field._u)[yx*dims[0]+x1];
+        neighbours[7] = (*field._u)[y0*dims[0]+xx];
+        neighbours[8] = (*field._u)[y1*dims[0]+xx];
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -347,15 +353,15 @@ namespace XLEMath
     template<typename Store>
         float ScalarField2D<Store>::Load(Coord coord) const
     {
-        assert(coord[0] < _wh && coord[1] < _wh);
-        return (*_u)[coord[1] * _wh + coord[0]];
+        assert(coord[0] < _dims[0] && coord[1] < _dims[1]);
+        return (*_u)[coord[1] * _dims[0] + coord[0]];
     }
 
     template<typename Store>
         void ScalarField2D<Store>::Write(Coord coord, ValueType value)
     {
-        assert(coord[0] < _wh && coord[1] < _wh);
-        (*_u)[coord[1] * _wh + coord[0]] = value;
+        assert(coord[0] < _dims[0] && coord[1] < _dims[1]);
+        (*_u)[coord[1] * _dims[0] + coord[0]] = value;
         assert(isfinite(value) && !isnan(value));
     }
 
@@ -379,18 +385,18 @@ namespace XLEMath
     template<typename Store>
         Float2 VectorField2DSeparate<Store>::Load(Coord coord) const
     {
-        assert(coord[0] < _wh && coord[1] < _wh);
+        assert(coord[0] < _dims[0] && coord[1] < _dims[1]);
         return Float2(
-            (*_u)[coord[1] * _wh + coord[0]],
-            (*_v)[coord[1] * _wh + coord[0]]);
+            (*_u)[coord[1] * _dims[0] + coord[0]],
+            (*_v)[coord[1] * _dims[0] + coord[0]]);
     }
 
     template<typename Store>
         void VectorField2DSeparate<Store>::Write(Coord coord, ValueType value)
     {
-        assert(coord[0] < _wh && coord[1] < _wh);
-        (*_u)[coord[1] * _wh + coord[0]] = value[0];
-        (*_v)[coord[1] * _wh + coord[0]] = value[1];
+        assert(coord[0] < _dims[0] && coord[1] < _dims[1]);
+        (*_u)[coord[1] * _dims[0] + coord[0]] = value[0];
+        (*_v)[coord[1] * _dims[0] + coord[0]] = value[1];
         assert(isfinite(value[0]) && !isnan(value[0]));
         assert(isfinite(value[1]) && !isnan(value[1]));
     }

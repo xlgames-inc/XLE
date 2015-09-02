@@ -38,6 +38,7 @@ namespace XLEMath
         template<typename Type> using Vector2T = cml::vector<Type, cml::fixed<2>>;
         template<typename Type> using Vector3T = cml::vector<Type, cml::fixed<3>>;
         template<typename Type> using Vector4T = cml::vector<Type, cml::fixed<4>>;
+        template<typename Type, size_t N> using VectorTT = cml::vector<Type, cml::fixed<N>>;
 
         template <typename Type, size_t N>
             cml::vector<Type, cml::fixed<N+1>>      Expand(const cml::vector<Type, cml::fixed<N>>& input, Type extra);

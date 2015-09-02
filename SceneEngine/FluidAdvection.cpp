@@ -17,16 +17,35 @@ namespace SceneEngine
 {
     using ScalarField2D = XLEMath::ScalarField2D<Eigen::VectorXf>;
     using VectorField2D = VectorField2DSeparate<Eigen::VectorXf>;
+    using ScalarField3D = XLEMath::ScalarField3D<Eigen::VectorXf>;
+    using VectorField3D = VectorField3DSeparate<Eigen::VectorXf>;
+
+    UInt3 As3DDims(UInt2 input)     { return Expand(input, 1u); }
+    UInt3 As3DBorder(UInt2 input)   { return UInt3(1,1,0); }
+    UInt3 As3DDims(UInt3 input)     { return input; }
+    UInt3 As3DBorder(UInt3 input)   { return UInt3(1,1,1); }
+
+    template<typename OutType, typename InType>
+        OutType ConvertVector(const InType& in)
+        {
+            OutType result; 
+            unsigned i=0u; 
+            for (; i<std::min((unsigned)InType::dimension, (unsigned)OutType::dimension); ++i)
+                result[i] = (OutType::value_type)in[i];
+            for (; i<(unsigned)OutType::dimension; ++i)
+                result[i] = (OutType::value_type)0;
+            return result;
+        }
 
     template<unsigned Interpolation, typename Field>
-        static Float2 AdvectRK4(
+        static typename Field::ValueType AdvectRK4(
             const Field& velFieldT0, const Field& velFieldT1,
-            UInt2 pt, Float2 velScale)
+            typename Field::Coord pt, typename Field::FloatCoord velScale)
         {
             const auto s = velScale;
             const auto halfS = decltype(s)(s / 2);
     
-            Float2 startTap = Float2(float(pt[0]), float(pt[1]));
+            auto startTap = ConvertVector<typename Field::FloatCoord>(pt);
             auto k1 = velFieldT0.Load(pt);
             auto k2 = .5f * velFieldT0.Sample<Interpolation|RNFSample::Clamp>(startTap + MultiplyAcross(halfS, k1))
                     + .5f * velFieldT1.Sample<Interpolation|RNFSample::Clamp>(startTap + MultiplyAcross(halfS, k1))
@@ -40,10 +59,10 @@ namespace SceneEngine
             return startTap + MultiplyAcross(s, finalVel);
         }
 
-    template<unsigned Interpolation>
-        static Float2 AdvectRK4(
-            const VectorField2D& velFieldT0, const VectorField2D& velFieldT1,
-            Float2 pt, Float2 velScale)
+    template<unsigned Interpolation, typename Field>
+        static typename Field::ValueType AdvectRK4(
+            const Field& velFieldT0, const Field& velFieldT1,
+            typename Field::FloatCoord pt, typename Field::FloatCoord velScale)
         {
             const auto s = velScale;
             const auto halfS = decltype(s)(s / 2);
@@ -65,23 +84,27 @@ namespace SceneEngine
     template<typename Type> Type MaxValue();
     template<> float MaxValue()         { return FLT_MAX; }
     template<> Float2 MaxValue()        { return Float2(FLT_MAX, FLT_MAX); }
-    float   Min(float lhs, float rhs)   { return std::min(lhs, rhs); }
-    Float2  Min(Float2 lhs, Float2 rhs) { return Float2(std::min(lhs[0], rhs[0]), std::min(lhs[1], rhs[1])); }
-    float   Max(float lhs, float rhs)   { return std::max(lhs, rhs); }
-    Float2  Max(Float2 lhs, Float2 rhs) { return Float2(std::max(lhs[0], rhs[0]), std::max(lhs[1], rhs[1])); }
+    float   MinAcross(float lhs, float rhs)   { return std::min(lhs, rhs); }
+    Float2  MinAcross(Float2 lhs, Float2 rhs) { return Float2(std::min(lhs[0], rhs[0]), std::min(lhs[1], rhs[1])); }
+    Float3  MinAcross(Float3 lhs, Float3 rhs) { return Float3(std::min(lhs[0], rhs[0]), std::min(lhs[1], rhs[1]), std::min(lhs[2], rhs[2])); }
+    float   MaxAcross(float lhs, float rhs)   { return std::max(lhs, rhs); }
+    Float2  MaxAcross(Float2 lhs, Float2 rhs) { return Float2(std::max(lhs[0], rhs[0]), std::max(lhs[1], rhs[1])); }
+    Float3  MaxAcross(Float3 lhs, Float3 rhs) { return Float3(std::max(lhs[0], rhs[0]), std::max(lhs[1], rhs[1]), std::max(lhs[2], rhs[2])); }
 
     template<unsigned SamplingFlags, typename Field>
-        typename Field::ValueType LoadWithNearbyRange(typename Field::ValueType& minNeighbour, typename Field::ValueType& maxNeighbour, const Field& field, Float2 pt)
+        typename Field::ValueType LoadWithNearbyRange(
+            typename Field::ValueType& minNeighbour, 
+            typename Field::ValueType& maxNeighbour, const Field& field, typename Field::FloatCoord pt)
         {
-            Field::ValueType predictorParts[9];
+            typename Field::ValueType predictorParts[9];
             float predictorWeights[4];
             field.GatherNeighbors(predictorParts, predictorWeights, pt);
             
-            minNeighbour =  MaxValue<Field::ValueType>();
-            maxNeighbour = -MaxValue<Field::ValueType>();
+            minNeighbour =  MaxValue<typename Field::ValueType>();
+            maxNeighbour = -MaxValue<typename Field::ValueType>();
             for (unsigned c=0; c<9; ++c) {
-                minNeighbour = Min(predictorParts[c], minNeighbour);
-                maxNeighbour = Max(predictorParts[c], maxNeighbour);
+                minNeighbour = MinAcross(predictorParts[c], minNeighbour);
+                maxNeighbour = MaxAcross(predictorParts[c], maxNeighbour);
             }
 
             if (constant_expression<(SamplingFlags & RNFSample::Cubic)==0>::result()) {
@@ -94,7 +117,7 @@ namespace SceneEngine
                 return field.Sample<RNFSample::Cubic|RNFSample::Clamp>(pt);
             }
         }
-
+    
     template<typename Field, typename VelField>
         void PerformAdvection(
             Field dstValues, Field srcValues, 
@@ -127,15 +150,18 @@ namespace SceneEngine
         const auto advectionMethod = settings._method;
         const auto adjvectionSteps = settings._subSteps;
 
-        const unsigned width = dstValues.Width();
-        assert(width == srcValues.Width());
-        assert(width == velFieldT0.Width());
-        assert(width == velFieldT1.Width());
-        const UInt3 dims(width, width, 1);
-        const UInt3 margin(1,1,0);
-        const Float2 velFieldScale = Float2(
-            float(dims[0]-2*margin[0]),
-            float(dims[1]-2*margin[1]));   // (grid size without borders)
+        assert(dstValues.Dimensions() == srcValues.Dimensions());
+        assert(dstValues.Dimensions() == velFieldT0.Dimensions());
+        assert(dstValues.Dimensions() == velFieldT1.Dimensions());
+        const UInt3 dims = As3DDims(dstValues.Dimensions());
+        const UInt3 margin = As3DBorder(dstValues.Dimensions());
+        using FloatCoord = typename VelField::FloatCoord;
+        using Coord = typename VelField::Coord;
+        const auto velFieldScale = ConvertVector<FloatCoord>(
+            Float3(
+                float(dims[0]-2*margin[0]),
+                float(dims[1]-2*margin[1]),
+                float(dims[2]-2*margin[2])));   // (grid size without borders)
 
         if (advectionMethod == AdvectionMethod::ForwardEuler) {
 
@@ -144,68 +170,78 @@ namespace SceneEngine
                 //  of where the point was in the previous frame.
 
             const unsigned SamplingFlags = 0;
-            for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
-                for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
-                    auto startVel = velFieldT1.Load(UInt2(x, y));
-                    Float2 tap = Float2(float(x), float(y)) - MultiplyAcross(deltaTime * velFieldScale, startVel);
-                    tap[0] = Clamp(tap[0], 0.f, float(dims[0]-1) - 1e-5f);
-                    tap[1] = Clamp(tap[1], 0.f, float(dims[1]-1) - 1e-5f);
-                    dstValues.Write(UInt2(x, y), srcValues.Sample<SamplingFlags>(tap));
-                }
+            for (unsigned z=margin[2]; z<dims[2]-margin[2]; ++z)
+                for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
+                    for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
+                        auto coord = ConvertVector<Coord>(UInt3(x, y, z));
+                        auto startVel = velFieldT1.Load(coord);
+                        FloatCoord tap = ConvertVector<FloatCoord>(coord) - MultiplyAcross(deltaTime * velFieldScale, startVel);
+                        tap[0] = Clamp(tap[0], 0.f, float(dims[0]-1) - 1e-5f);
+                        tap[1] = Clamp(tap[1], 0.f, float(dims[1]-1) - 1e-5f);
+                        tap[2] = Clamp(tap[2], 0.f, float(dims[2]-1) - 1e-5f);
+                        dstValues.Write(coord, srcValues.Sample<SamplingFlags>(tap));
+                    }
 
         } else if (advectionMethod == AdvectionMethod::ForwardEulerDiv) {
 
-            auto stepScale = Float2(deltaTime * velFieldScale / float(adjvectionSteps));
+            auto stepScale = decltype(velFieldScale)(deltaTime * velFieldScale / float(adjvectionSteps));
             const unsigned SamplingFlags = 0;
-            for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
-                for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
+            for (unsigned z=margin[2]; z<dims[2]-margin[2]; ++z)
+                for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
+                    for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
 
-                    Float2 tap = Float2(float(x), float(y));
-                    for (unsigned s=0; s<adjvectionSteps; ++s) {
-                        float a = (adjvectionSteps-1-s) / float(adjvectionSteps-1);
-                        auto vel = 
-                            LinearInterpolate(
-                                velFieldT0.Sample<SamplingFlags>(tap),
-                                velFieldT1.Sample<SamplingFlags>(tap),
-                                a);
+                        auto coord = ConvertVector<Coord>(UInt3(x, y, z));
+                        auto tap = ConvertVector<FloatCoord>(UInt3(x, y, z));
+                        for (unsigned s=0; s<adjvectionSteps; ++s) {
+                            float a = (adjvectionSteps-1-s) / float(adjvectionSteps-1);
+                            auto vel = 
+                                LinearInterpolate(
+                                    velFieldT0.Sample<SamplingFlags>(tap),
+                                    velFieldT1.Sample<SamplingFlags>(tap),
+                                    a);
 
-                        tap -= MultiplyAcross(stepScale, vel);
-                        tap[0] = Clamp(tap[0], 0.f, float(dims[0]-1) - 1e-5f);
-                        tap[1] = Clamp(tap[1], 0.f, float(dims[1]-1) - 1e-5f);
+                            tap -= MultiplyAcross(stepScale, vel);
+                            tap[0] = Clamp(tap[0], 0.f, float(dims[0]-1) - 1e-5f);
+                            tap[1] = Clamp(tap[1], 0.f, float(dims[1]-1) - 1e-5f);
+                            tap[2] = Clamp(tap[2], 0.f, float(dims[2]-1) - 1e-5f);
+                        }
+
+                        dstValues.Write(coord, srcValues.Sample<SamplingFlags>(tap));
                     }
-
-                    dstValues.Write(UInt2(x, y), srcValues.Sample<SamplingFlags>(tap));
-                }
 
         } else if (advectionMethod == AdvectionMethod::RungeKutta) {
 
             if (settings._interpolation == AdvectionInterpolationMethod::Bilinear) {
 
                 const auto SamplingFlags = 0u;
-                for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
-                    for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
+                for (unsigned z=margin[2]; z<dims[2]-margin[2]; ++z)
+                    for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
+                        for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
 
-                            // This is the RK4 version
-                            // We'll use the average of the velocity field at t and
-                            // the velocity field at t+dt as an estimate of the field
-                            // at t+.5*dt
+                                // This is the RK4 version
+                                // We'll use the average of the velocity field at t and
+                                // the velocity field at t+dt as an estimate of the field
+                                // at t+.5*dt
 
-                            // Note that we're tracing the velocity field backwards.
-                            // So doing k1 on velField1, and k4 on velFieldT0
-                            //      -- hoping this will interact with the velocity diffusion more sensibly
-                        const auto tap = AdvectRK4<SamplingFlags>(velFieldT1, velFieldT0, UInt2(x, y), -deltaTime * velFieldScale);
-                        dstValues.Write(UInt2(x, y), srcValues.Sample<SamplingFlags|RNFSample::Clamp>(tap));
+                                // Note that we're tracing the velocity field backwards.
+                                // So doing k1 on velField1, and k4 on velFieldT0
+                                //      -- hoping this will interact with the velocity diffusion more sensibly
+                            auto coord = ConvertVector<Coord>(UInt3(x, y, z));
+                            const auto tap = AdvectRK4<SamplingFlags>(velFieldT1, velFieldT0, coord, -deltaTime * velFieldScale);
+                            dstValues.Write(coord, srcValues.Sample<SamplingFlags|RNFSample::Clamp>(tap));
 
-                    }
+                        }
 
             } else {
 
                 const auto SamplingFlags = RNFSample::Cubic;
-                for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
-                    for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
-                        const auto tap = AdvectRK4<SamplingFlags>(velFieldT1, velFieldT0, UInt2(x, y), -deltaTime * velFieldScale);
-                        dstValues.Write(UInt2(x, y), srcValues.Sample<SamplingFlags|RNFSample::Clamp>(tap));
-                    }
+                for (unsigned z=margin[2]; z<dims[2]-margin[2]; ++z)
+                    for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
+                        for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
+                            auto coord = ConvertVector<Coord>(UInt3(x, y, z));
+                            const auto tap = AdvectRK4<SamplingFlags>(velFieldT1, velFieldT0, coord, -deltaTime * velFieldScale);
+                            dstValues.Write(coord, srcValues.Sample<SamplingFlags|RNFSample::Clamp>(tap));
+                        }
 
             }
 
@@ -239,61 +275,63 @@ namespace SceneEngine
             if (settings._interpolation == AdvectionInterpolationMethod::Bilinear) {
 
                 const auto SamplingFlags = 0u;
-                for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
-                    for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
+                for (unsigned z=margin[2]; z<dims[2]-margin[2]; ++z)
+                    for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
+                        for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
 
-                        const auto pt = UInt2(x, y);
+                            auto coord = ConvertVector<Coord>(UInt3(x, y, z));
 
-                            // advect backwards in time first, to find the predictor
-                        const auto predictor = AdvectRK4<SamplingFlags>(velFieldT1, velFieldT0, pt, -deltaTime * velFieldScale);
-                            // advect forward again to find the error tap
-                        const auto reversedTap = AdvectRK4<SamplingFlags>(velFieldT0, velFieldT1, predictor, deltaTime * velFieldScale);
+                                // advect backwards in time first, to find the predictor
+                            const auto predictor = AdvectRK4<SamplingFlags>(velFieldT1, velFieldT0, coord, -deltaTime * velFieldScale);
+                                // advect forward again to find the error tap
+                            const auto reversedTap = AdvectRK4<SamplingFlags>(velFieldT0, velFieldT1, predictor, deltaTime * velFieldScale);
 
-                        auto originalValue = srcValues.Load(pt);
-                        auto reversedValue = srcValues.Sample<SamplingFlags|RNFSample::Clamp>(reversedTap);
-                        Field::ValueType finalValue;
+                            auto originalValue = srcValues.Load(coord);
+                            auto reversedValue = srcValues.Sample<SamplingFlags|RNFSample::Clamp>(reversedTap);
+                            Field::ValueType finalValue;
 
-                            // Here we clamp the final result within the range of the neighbour cells of the 
-                            // original predictor. This prevents the scheme from becoming unstable (by avoiding
-                            // irrational values for 0.5f * (originalValue - reversedValue)
-                        const bool doRangeClamping = true;
-                        if (constant_expression<doRangeClamping>::result()) {
-                            Field::ValueType minNeighbour, maxNeighbour;
-                            auto predictorValue = LoadWithNearbyRange<SamplingFlags>(minNeighbour, maxNeighbour, srcValues, predictor);
-                            finalValue = Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
-                            finalValue = Max(finalValue, minNeighbour);
-                            finalValue = Min(finalValue, maxNeighbour);
-                        } else {
-                            auto predictorValue = srcValues.Sample<SamplingFlags|RNFSample::Clamp>(predictor);
-                            finalValue = Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
-                        }
+                                // Here we clamp the final result within the range of the neighbour cells of the 
+                                // original predictor. This prevents the scheme from becoming unstable (by avoiding
+                                // irrational values for 0.5f * (originalValue - reversedValue)
+                            const bool doRangeClamping = true;
+                            if (constant_expression<doRangeClamping>::result()) {
+                                typename Field::ValueType minNeighbour, maxNeighbour;
+                                auto predictorValue = LoadWithNearbyRange<SamplingFlags>(minNeighbour, maxNeighbour, srcValues, predictor);
+                                finalValue = typename Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
+                                finalValue = MaxAcross(finalValue, minNeighbour);
+                                finalValue = MinAcross(finalValue, maxNeighbour);
+                            } else {
+                                auto predictorValue = srcValues.Sample<SamplingFlags|RNFSample::Clamp>(predictor);
+                                finalValue = typename Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
+                            }
 
-                        dstValues.Write(pt, finalValue);
+                            dstValues.Write(coord, finalValue);
 
-                    }
+                        }   
 
             } else {
 
                 const auto SamplingFlags = RNFSample::Cubic;
-                for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
-                    for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
+                for (unsigned z=margin[2]; z<dims[2]-margin[2]; ++z)
+                    for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
+                        for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
 
-                        const auto pt = UInt2(x, y);
-                        const auto predictor = AdvectRK4<SamplingFlags>(velFieldT1, velFieldT0, pt, -deltaTime * velFieldScale);
-                        const auto reversedTap = AdvectRK4<SamplingFlags>(velFieldT0, velFieldT1, predictor, deltaTime * velFieldScale);
+                            auto coord = ConvertVector<Coord>(UInt3(x, y, z));
+                            const auto predictor = AdvectRK4<SamplingFlags>(velFieldT1, velFieldT0, coord, -deltaTime * velFieldScale);
+                            const auto reversedTap = AdvectRK4<SamplingFlags>(velFieldT0, velFieldT1, predictor, deltaTime * velFieldScale);
 
-                        auto originalValue = srcValues.Load(pt);
-                        auto reversedValue = srcValues.Sample<SamplingFlags|RNFSample::Clamp>(reversedTap);
+                            auto originalValue = srcValues.Load(coord);
+                            auto reversedValue = srcValues.Sample<SamplingFlags|RNFSample::Clamp>(reversedTap);
 
-                        Field::ValueType minNeighbour, maxNeighbour;
-                        auto predictorValue = LoadWithNearbyRange<SamplingFlags>(minNeighbour, maxNeighbour, srcValues, predictor);
-                        auto finalValue = Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
-                        finalValue = Max(finalValue, minNeighbour);
-                        finalValue = Min(finalValue, maxNeighbour);
+                            Field::ValueType minNeighbour, maxNeighbour;
+                            auto predictorValue = LoadWithNearbyRange<SamplingFlags>(minNeighbour, maxNeighbour, srcValues, predictor);
+                            auto finalValue = Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
+                            finalValue = MaxAcross(finalValue, minNeighbour);
+                            finalValue = MinAcross(finalValue, maxNeighbour);
 
-                        dstValues.Write(pt, finalValue);
+                            dstValues.Write(coord, finalValue);
 
-                    }
+                        }
 
             }
 
@@ -309,6 +347,16 @@ namespace SceneEngine
     template void PerformAdvection(
         VectorField2D, VectorField2D, 
         VectorField2D, VectorField2D,
+        float, const AdvectionSettings&);
+
+    template void PerformAdvection(
+        ScalarField3D, ScalarField3D, 
+        VectorField3D, VectorField3D,
+        float, const AdvectionSettings&);
+
+    template void PerformAdvection(
+        VectorField3D, VectorField3D, 
+        VectorField3D, VectorField3D,
         float, const AdvectionSettings&);
 }
 

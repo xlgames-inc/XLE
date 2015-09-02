@@ -154,7 +154,9 @@ namespace SceneEngine
         VectorX _density[2];
         VectorX _temperature[2];
 
-        UInt2 _dimensions;
+        UInt2 _dimsWithoutBorder;
+        UInt2 _dimsWithBorder;
+        unsigned _N;
 
         PoissonSolver _poissonSolver;
         std::shared_ptr<PoissonSolver::PreparedMatrix> _densityDiffusion;
@@ -299,29 +301,33 @@ namespace SceneEngine
         //          improve large scale details a bit.
         //
 
-        const auto wh = velField._wh;
-        VectorX delW(wh * wh), q(wh * wh);
+        const auto dims = velField.Dimensions();
+        VectorX delW(dims[0] * dims[1]), q(dims[0] * dims[1]);
         q.fill(0.f);
-        float N = float(wh);
-        for (unsigned y=1; y<wh-1; ++y)
-            for (unsigned x=1; x<wh-1; ++x)
-                delW[y*wh+x] = 
-                    -0.5f/N * 
+        const UInt2 border(1,1);
+        auto velFieldScale = Float2(float(dims[0]-2*border[0]), float(dims[1]-2*border[1]));
+        for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
+            for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
+                const auto i = y*dims[1]+x;
+                delW[i] = 
+                    -0.5f * 
                     (
-                          (*velField._u)[y*wh+x+1]   - (*velField._u)[y*wh+x-1]
-                        + (*velField._v)[(y+1)*wh+x] - (*velField._v)[(y-1)*wh+x]
+                          ((*velField._u)[i+1]               - (*velField._u)[i-1]) / velFieldScale[0]
+                        + ((*velField._v)[i+dims[0]]         - (*velField._v)[i-dims[0]]) / velFieldScale[1]
                     );
+            }
 
-        SmearBorder2D(delW, wh);
+        SmearBorder2D(delW, dims[0]);
         auto iterations = solver.Solve(
             AsScalarField1D(q), A, AsScalarField1D(delW), 
             method);
-        SmearBorder2D(q, wh);
+        SmearBorder2D(q, dims[0]);
 
-        for (unsigned y=1; y<wh-1; ++y)
-            for (unsigned x=1; x<wh-1; ++x) {
-                (*velField._u)[y*wh+x] -= .5f*N * (q[y*wh+x+1]   - q[y*wh+x-1]);
-                (*velField._v)[y*wh+x] -= .5f*N * (q[(y+1)*wh+x] - q[(y-1)*wh+x]);
+        for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
+            for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
+                const auto i = y*dims[1]+x;
+                (*velField._u)[i] -= .5f*velFieldScale[0] * (q[i+1]                 - q[i-1]);
+                (*velField._v)[i] -= .5f*velFieldScale[1] * (q[i+dims[0]]           - q[i-dims[0]]);
             }
 
         LogInfo << "EnforceIncompressibility took: " << iterations << " iterations.";
@@ -335,8 +341,8 @@ namespace SceneEngine
         const auto dims = velField.Dimensions();
         VectorX delW(dims[0] * dims[1] * dims[2]), q(dims[0] * dims[1] * dims[2]);
         q.fill(0.f);
-        Float3 velFieldScale = Float3(float(dims[0]), float(dims[1]), float(dims[2]));
         const UInt3 border(1,1,1);
+        auto velFieldScale = Float3(float(dims[0]-2*border[0]), float(dims[1]-2*border[1]), float(dims[2]-2*border[2]));
         for (unsigned z=border[2]; z<dims[2]-border[2]; ++z)
             for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
                 for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
@@ -395,23 +401,26 @@ namespace SceneEngine
         //          to emphasise some higher level vorticity features, as well.
         //
 
-        const auto wh = inputVelocities._wh;
-        VectorX vorticity(wh*wh);
-        for (unsigned y=1; y<wh-1; ++y)
-            for (unsigned x=1; x<wh-1; ++x) {
+        const auto dims = inputVelocities.Dimensions();
+        VectorX vorticity(dims[0], dims[1]);
+        const UInt2 border(1,1);
+        for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
+            for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
                 auto dvydx = .5f * inputVelocities.Load(UInt2(x+1, y))[1] - inputVelocities.Load(UInt2(x-1, y))[1];
                 auto dvxdy = .5f * inputVelocities.Load(UInt2(x, y+1))[0] - inputVelocities.Load(UInt2(x, y-1))[0];
-                vorticity[y*wh+x] = dvydx - dvxdy;
+                vorticity[y*dims[0]+x] = dvydx - dvxdy;
             }
-        SmearBorder2D(vorticity, wh);
+        SmearBorder2D(vorticity, dims[0]);
 
-        const float s = deltaTime * strength * float(wh-2);
-        for (unsigned y=1; y<wh-1; ++y)
-            for (unsigned x=1; x<wh-1; ++x) {
+        Float2 velFieldScale = deltaTime * strength * Float2(float(dims[0]-2*border[0]), float(dims[1]-2*border[1]));
+        for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
+            for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
                     // find the discrete divergence of the absolute vorticity field
+                const auto i = y*dims[0]+x;
                 Float2 div(
-                    .5f * (XlAbs(vorticity[y*wh+x+1]) - XlAbs(vorticity[y*wh+x-1])),
-                    .5f * (XlAbs(vorticity[(y+1)*wh+x]) - XlAbs(vorticity[(y-1)*wh+x])));
+                        .5f * (XlAbs(vorticity[i+1]) - XlAbs(vorticity[i-1])),
+                        .5f * (XlAbs(vorticity[i+dims[0]]) - XlAbs(vorticity[i-dims[0]]))
+                    );
 
                 float magSq = MagnitudeSquared(div);
                 if (magSq > 1e-10f) {
@@ -419,9 +428,8 @@ namespace SceneEngine
 
                         // in 2D, the vorticity is in the Z direction. Which means the cross product
                         // with our divergence vector is simple
-                    float omega = vorticity[y*wh+x];
-                    Float2 additionalVel(s * div[1] * omega, s * -div[0] * omega);
-
+                    float omega = vorticity[i];
+                    auto additionalVel = MultiplyAcross(velFieldScale, Float2(div[1] * omega, -div[0] * omega));
                     outputField.Write(
                         UInt2(x, y),
                         outputField.Load(UInt2(x, y)) + additionalVel);
@@ -431,12 +439,8 @@ namespace SceneEngine
 
     void FluidSolver2D::Tick(float deltaTime, const Settings& settings)
     {
-        auto D = _pimpl->_dimensions[0];
-        assert(_pimpl->_dimensions[1] == _pimpl->_dimensions[0]);
-
         float dt = deltaTime;
-        auto wh = D+2;
-        auto N = wh*wh;
+        const auto N = _pimpl->_N;
 
         auto& velUT0 = _pimpl->_velU[0];
         auto& velUT1 = _pimpl->_velU[1];
@@ -457,16 +461,17 @@ namespace SceneEngine
         auto& temperatureT1 = _pimpl->_temperature[1];
 
         _pimpl->VorticityConfinement(
-            VectorField2D(&velUSrc, &velVSrc, D+2),
-            VectorField2D(&velUT1, &velVT1, D+2),           // last frame results
+            VectorField2D(&velUSrc, &velVSrc, _pimpl->_dimsWithBorder),
+            VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),           // last frame results
             settings._vorticityConfinement, deltaTime);
 
                     // buoyancy force
         const float buoyancyAlpha = settings._buoyancyAlpha;
         const float buoyancyBeta = settings._buoyancyBeta;
-        for (unsigned y=1; y<wh-1; ++y)
-            for (unsigned x=1; x<wh-1; ++x) {
-                unsigned i=y*wh+x;
+        const UInt2 border(1,1);
+        for (unsigned y=border[1]; y<_pimpl->_dimsWithBorder[1]-border[1]; ++y)
+            for (unsigned x=border[0]; x<_pimpl->_dimsWithBorder[0]-border[0]; ++x) {
+                unsigned i=y*_pimpl->_dimsWithBorder[0]+x;
                 velVSrc[i] -=     // (upwards is -1 in V)
                      -buoyancyAlpha * densityT1[i]
                     + buoyancyBeta  * temperatureT1[i];       // temperature field is just the difference from ambient
@@ -486,33 +491,33 @@ namespace SceneEngine
 
         AdvectionSettings advSettings { (AdvectionMethod)settings._advectionMethod, (AdvectionInterpolationMethod)settings._interpolationMethod, settings._advectionSteps };
         PerformAdvection(
-            VectorField2D(&velUT1,      &velVT1,        D+2),
-            VectorField2D(&velUWorking, &velVWorking,   D+2),
-            VectorField2D(&velUT0,      &velVT0,        D+2),
-            VectorField2D(&velUWorking, &velVWorking,   D+2),
+            VectorField2D(&velUT1,      &velVT1,        _pimpl->_dimsWithBorder),
+            VectorField2D(&velUWorking, &velVWorking,   _pimpl->_dimsWithBorder),
+            VectorField2D(&velUT0,      &velVT0,        _pimpl->_dimsWithBorder),
+            VectorField2D(&velUWorking, &velVWorking,   _pimpl->_dimsWithBorder),
             deltaTime, advSettings);
         
-        ReflectUBorder2D(velUT1, D+2);
-        ReflectVBorder2D(velVT1, D+2);
+        ReflectUBorder2D(velUT1, _pimpl->_dimsWithBorder[0]);
+        ReflectVBorder2D(velVT1, _pimpl->_dimsWithBorder[0]);
         EnforceIncompressibility(
-            VectorField2D(&velUT1, &velVT1, D+2),
+            VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
             _pimpl->_poissonSolver, *_pimpl->_incompressibility,
             (PoissonSolver::Method)settings._enforceIncompressibilityMethod);
 
         _pimpl->DensityDiffusion(deltaTime, settings);
         PerformAdvection(
-            ScalarField2D(&densityT1, D+2),
-            ScalarField2D(&densityWorking, D+2),
-            VectorField2D(&velUT0, &velVT0, D+2),
-            VectorField2D(&velUT1, &velVT1, D+2),
+            ScalarField2D(&densityT1, _pimpl->_dimsWithBorder),
+            ScalarField2D(&densityWorking, _pimpl->_dimsWithBorder),
+            VectorField2D(&velUT0, &velVT0, _pimpl->_dimsWithBorder),
+            VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
             deltaTime, advSettings);
 
         _pimpl->TemperatureDiffusion(deltaTime, settings);
         PerformAdvection(
-            ScalarField2D(&temperatureT1, D+2),
-            ScalarField2D(&temperatureWorking, D+2),
-            VectorField2D(&velUT0, &velVT0, D+2),
-            VectorField2D(&velUT1, &velVT1, D+2),
+            ScalarField2D(&temperatureT1, _pimpl->_dimsWithBorder),
+            ScalarField2D(&temperatureWorking, _pimpl->_dimsWithBorder),
+            VectorField2D(&velUT0, &velVT0, _pimpl->_dimsWithBorder),
+            VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
             deltaTime, advSettings);
 
         for (unsigned c=0; c<N; ++c) {
@@ -525,16 +530,16 @@ namespace SceneEngine
 
     void FluidSolver2D::AddDensity(UInt2 coords, float amount)
     {
-        if (coords[0] < _pimpl->_dimensions[0] && coords[1] < _pimpl->_dimensions[1]) {
-            unsigned i = (coords[0]+1) + (coords[1]+1) * (_pimpl->_dimensions[0] + 2);
+        if (coords[0] < _pimpl->_dimsWithoutBorder[0] && coords[1] < _pimpl->_dimsWithoutBorder[1]) {
+            unsigned i = (coords[0]+1) + (coords[1]+1) * _pimpl->_dimsWithBorder[0];
             _pimpl->_density[0][i] += amount;
         }
     }
 
     void FluidSolver2D::AddTemperature(UInt2 coords, float amount)
     {
-        if (coords[0] < _pimpl->_dimensions[0] && coords[1] < _pimpl->_dimensions[1]) {
-            unsigned i = (coords[0]+1) + (coords[1]+1) * (_pimpl->_dimensions[0] + 2);
+        if (coords[0] < _pimpl->_dimsWithoutBorder[0] && coords[1] < _pimpl->_dimsWithoutBorder[1]) {
+            unsigned i = (coords[0]+1) + (coords[1]+1) * _pimpl->_dimsWithBorder[0];
             // _pimpl->_prevTemperature[i] += amount;
 
                 // heat up to approach this temperature
@@ -545,8 +550,8 @@ namespace SceneEngine
 
     void FluidSolver2D::AddVelocity(UInt2 coords, Float2 vel)
     {
-        if (coords[0] < _pimpl->_dimensions[0] && coords[1] < _pimpl->_dimensions[1]) {
-            unsigned i = (coords[0]+1) + (coords[1]+1) * (_pimpl->_dimensions[0] + 2);
+        if (coords[0] < _pimpl->_dimsWithoutBorder[0] && coords[1] < _pimpl->_dimsWithoutBorder[1]) {
+            unsigned i = (coords[0]+1) + (coords[1]+1) * _pimpl->_dimsWithBorder[0];
             _pimpl->_velU[2][i] += vel[0];
             _pimpl->_velV[2][i] += vel[1];
         }
@@ -559,18 +564,20 @@ namespace SceneEngine
     {
         RenderFluidDebugging(
             metalContext, parserContext, debuggingMode,
-            _pimpl->_dimensions, _pimpl->_density[1].data(),
+            _pimpl->_dimsWithBorder, _pimpl->_density[1].data(),
             _pimpl->_velU[1].data(), _pimpl->_velV[1].data(),
             _pimpl->_temperature[1].data());
     }
 
-    UInt2 FluidSolver2D::GetDimensions() const { return _pimpl->_dimensions; }
+    UInt2 FluidSolver2D::GetDimensions() const { return _pimpl->_dimsWithBorder; }
 
     FluidSolver2D::FluidSolver2D(UInt2 dimensions)
     {
         _pimpl = std::make_unique<Pimpl>();
-        _pimpl->_dimensions = dimensions;
-        auto N = (dimensions[0]+2) * (dimensions[1]+2);
+        _pimpl->_dimsWithoutBorder = dimensions;
+        _pimpl->_dimsWithBorder = dimensions + UInt2(2, 2);
+        auto N = _pimpl->_dimsWithBorder[0] * _pimpl->_dimsWithBorder[1];
+        _pimpl->_N = N;
 
         for (unsigned c=0; c<dimof(_pimpl->_velU); ++c) {
             _pimpl->_velU[c] = VectorX(N);
@@ -725,6 +732,7 @@ namespace SceneEngine
             velWT0[c] = velWT1[c];
             velUWorking[c] = velUT1[c] + dt * velUSrc[c];
             velVWorking[c] = velVT1[c] + dt * velVSrc[c];
+            velWWorking[c] = velWT1[c] + dt * velWSrc[c];
             densityWorking[c] = densityT1[c] + dt * densitySrc[c];
         }
 
@@ -738,8 +746,9 @@ namespace SceneEngine
             VectorField3D(&velUWorking, &velVWorking,   &velWWorking,   _pimpl->_dimsWithBorder),
             deltaTime, advSettings);
         
-        ReflectUBorder2D(velUT1, _pimpl->_dimsWithBorder[0]);
-        ReflectVBorder2D(velVT1, _pimpl->_dimsWithBorder[0]);
+        ReflectBorder3D(velUT1, _pimpl->_dimsWithBorder, 0);
+        ReflectBorder3D(velVT1, _pimpl->_dimsWithBorder, 1);
+        ReflectBorder3D(velWT1, _pimpl->_dimsWithBorder, 2);
         EnforceIncompressibility(
             VectorField3D(&velUT1, &velVT1, &velWT1, _pimpl->_dimsWithBorder),
             _pimpl->_poissonSolver, *_pimpl->_incompressibility,
