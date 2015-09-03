@@ -22,6 +22,8 @@ extern "C" void vel_step ( int N, float * u, float * v, float * u0, float * v0, 
 #include <Eigen/Dense>
 #pragma pop_macro("new")
 
+#pragma warning(disable:4505) // warning C4505: 'SceneEngine::EnforceIncompressibility' : unreferenced local function has been removed
+
 namespace SceneEngine
 {
 
@@ -79,11 +81,18 @@ namespace SceneEngine
         }
     }
 
-    static void RenderFluidDebugging(
+    static void RenderFluidDebugging2D(
         RenderCore::Metal::DeviceContext& metalContext,
         LightingParserContext& parserContext,
         FluidDebuggingMode debuggingMode,
         UInt2 dimensions,
+        const float* density, const float* velocityU, const float* velocityV, const float* temperature);
+
+    static void RenderFluidDebugging3D(
+        RenderCore::Metal::DeviceContext& metalContext,
+        LightingParserContext& parserContext,
+        FluidDebuggingMode debuggingMode,
+        UInt3 dimensions,
         const float* density, const float* velocityU, const float* velocityV, const float* temperature);
 
     void ReferenceFluidSolver2D::RenderDebugging(
@@ -91,7 +100,7 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         FluidDebuggingMode debuggingMode)
     {
-        RenderFluidDebugging(
+        RenderFluidDebugging2D(
             metalContext, parserContext, debuggingMode,
             _pimpl->_dimensions + UInt2(2,2), _pimpl->_density.get(),
             _pimpl->_velU.get(), _pimpl->_velV.get(),
@@ -562,7 +571,7 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         FluidDebuggingMode debuggingMode)
     {
-        RenderFluidDebugging(
+        RenderFluidDebugging2D(
             metalContext, parserContext, debuggingMode,
             _pimpl->_dimsWithBorder, _pimpl->_density[1].data(),
             _pimpl->_velU[1].data(), _pimpl->_velV[1].data(),
@@ -726,6 +735,16 @@ namespace SceneEngine
         auto& densityWorking = _pimpl->_density[0];
         auto& densityT1 = _pimpl->_density[1];
 
+            // simple buoyancy... just add upwards force where there is density
+        static float buoyancyScale = 25.f;
+        const UInt3 border(1u,1u,1u);
+        for (unsigned z=border[1]; z<_pimpl->_dimsWithBorder[2]-border[2]; ++z)
+            for (unsigned y=border[1]; y<_pimpl->_dimsWithBorder[1]-border[1]; ++y)
+                for (unsigned x=border[0]; x<_pimpl->_dimsWithBorder[0]-border[0]; ++x) {
+                    unsigned i = (z*_pimpl->_dimsWithBorder[1]+y)*_pimpl->_dimsWithBorder[0]+x;
+                    velWSrc[i] += buoyancyScale * densityT1[i];
+                }
+
         for (unsigned c=0; c<N; ++c) {
             velUT0[c] = velUT1[c];
             velVT0[c] = velVT1[c];
@@ -786,6 +805,11 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         FluidDebuggingMode debuggingMode)
     {
+        RenderFluidDebugging3D(
+            metalContext, parserContext, debuggingMode,
+            _pimpl->_dimsWithBorder, _pimpl->_density[1].data(),
+            _pimpl->_velU[1].data(), _pimpl->_velV[1].data(),
+            nullptr);
     }
 
     std::shared_ptr<PoissonSolver::PreparedMatrix> FluidSolver3D::Pimpl::BuildDiffusionMethod(float diffusion)
@@ -891,7 +915,7 @@ namespace SceneEngine
 
 namespace SceneEngine
 {
-    static void RenderFluidDebugging(
+    static void RenderFluidDebugging2D(
         RenderCore::Metal::DeviceContext& metalContext,
         LightingParserContext& parserContext,
         FluidDebuggingMode debuggingMode,
@@ -955,6 +979,84 @@ namespace SceneEngine
             Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
                 
             metalContext.BindPS(MakeResourceList(Techniques::CommonResources()._defaultSampler, Techniques::CommonResources()._linearClampSampler));
+            metalContext.Bind(inputLayout);
+            uniforms.Apply(metalContext, 
+                parserContext.GetGlobalUniformsStream(), Metal::UniformsStream());
+            metalContext.Bind(shader);
+
+            metalContext.Bind(MakeResourceList(
+                Metal::VertexBuffer(vertices, sizeof(vertices))), sizeof(Vertex), 0);
+            metalContext.Bind(Techniques::CommonResources()._cullDisable);
+            metalContext.Bind(Metal::Topology::TriangleStrip);
+            metalContext.Draw(4);
+        } 
+        CATCH (const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
+        CATCH (const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH_END
+    }
+
+    static void RenderFluidDebugging3D(
+        RenderCore::Metal::DeviceContext& metalContext,
+        LightingParserContext& parserContext,
+        FluidDebuggingMode debuggingMode,
+        UInt3 dimensions,
+        const float* density, const float* velocityU, const float* velocityV, const float* temperature)
+    {
+        TRY {
+            using namespace RenderCore;
+            using namespace BufferUploads;
+            auto& uploads = GetBufferUploads();
+
+            auto dx = dimensions[0], dy = dimensions[1], dz = dimensions[2];
+            auto pktSize = dx*dy*dz*sizeof(float);
+            TexturePitches pitches(dx*sizeof(float), dy*dx*sizeof(float));
+
+            auto desc = CreateDesc(
+                BindFlag::ShaderResource,
+                0, GPUAccess::Read|GPUAccess::Write,
+                TextureDesc::Plain3D(dx, dy, dz, RenderCore::Metal::NativeFormat::R32_FLOAT),
+                "fluid");
+            auto densityPkt = CreateBasicPacket(pktSize, density, pitches);
+            auto velUPkt = CreateBasicPacket(pktSize, velocityU, pitches);
+            auto velVPkt = CreateBasicPacket(pktSize, velocityV, pitches);
+            auto temperaturePkt = CreateBasicPacket(pktSize, temperature, pitches);
+
+            auto density = uploads.Transaction_Immediate(desc, densityPkt.get());
+            auto velU = uploads.Transaction_Immediate(desc, velUPkt.get());
+            auto velV = uploads.Transaction_Immediate(desc, velVPkt.get());
+            auto temperature = uploads.Transaction_Immediate(desc, temperaturePkt.get());
+
+            metalContext.BindPS(
+                MakeResourceList(
+                    Metal::ShaderResourceView(density->GetUnderlying()),
+                    Metal::ShaderResourceView(velU->GetUnderlying()),
+                    Metal::ShaderResourceView(velV->GetUnderlying()),
+                    Metal::ShaderResourceView(temperature->GetUnderlying())));
+
+            const ::Assets::ResChar* pixelShader = "";
+            if (debuggingMode == FluidDebuggingMode::Density)           pixelShader = "game/xleres/cfd/debug3d.sh:ps_density:ps_*";
+            else if (debuggingMode == FluidDebuggingMode::Temperature)  pixelShader = "game/xleres/cfd/debug3d.sh:ps_temperature:ps_*";
+            else if (debuggingMode == FluidDebuggingMode::Velocity)     pixelShader = "game/xleres/cfd/debug3d.sh:ps_velocity:ps_*";
+
+            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>("game/xleres/basic3D.vsh:PT:vs_*", pixelShader);
+            Float2 wsDims = Truncate(dimensions);
+
+            struct Vertex { Float3 position; Float2 texCoord; } 
+            vertices[] = 
+            {
+                { Float3(0.f, 0.f, 0.f), Float2(0.f, 0.f) },
+                { Float3(wsDims[0], 0.f, 0.f), Float2(1.f, 0.f) },
+                { Float3(0.f, wsDims[1], 0.f), Float2(0.f, 1.f) },
+                { Float3(wsDims[0], wsDims[1], 0.f), Float2(1.f, 1.f) }
+            };
+
+            Metal::BoundInputLayout inputLayout(Metal::GlobalInputLayouts::PT, shader);
+            Metal::BoundUniforms uniforms(shader);
+            Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
+                
+            metalContext.BindPS(MakeResourceList(
+                Techniques::CommonResources()._defaultSampler, 
+                Techniques::CommonResources()._linearClampSampler));
             metalContext.Bind(inputLayout);
             uniforms.Apply(metalContext, 
                 parserContext.GetGlobalUniformsStream(), Metal::UniformsStream());

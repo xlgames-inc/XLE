@@ -464,7 +464,7 @@ namespace GUILayer
         auto dims = _pimpl->_sim->GetDimensions();
         if (mouseButton == 0) {
             _pimpl->_sim->AddDensity(
-                UInt3(rand()%dims[0], rand()%dims[1], rand()%dims[2]), .5f);
+                UInt3((dims[0]/4)+rand()%(dims[0]/2), (dims[1]/4)+rand()%(dims[1]/2), 0), 150.f);
         }
     }
     

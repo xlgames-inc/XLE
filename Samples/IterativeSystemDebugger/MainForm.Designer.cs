@@ -19,15 +19,18 @@
             this.debuggersToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.erosionSimToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.customCFDToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.referenceCFDToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.customCFD3DToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.referenceCFDToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.utilitiesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.invalidAssetsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
             // menuStrip1
             // 
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.debuggersToolStripMenuItem});
+            this.debuggersToolStripMenuItem,
+            this.utilitiesToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.Size = new System.Drawing.Size(284, 24);
@@ -43,7 +46,7 @@
             this.referenceCFDToolStripMenuItem});
             this.debuggersToolStripMenuItem.Name = "debuggersToolStripMenuItem";
             this.debuggersToolStripMenuItem.Size = new System.Drawing.Size(76, 20);
-            this.debuggersToolStripMenuItem.Text = "Debuggers";
+            this.debuggersToolStripMenuItem.Text = "&Debuggers";
             // 
             // erosionSimToolStripMenuItem
             // 
@@ -59,6 +62,13 @@
             this.customCFDToolStripMenuItem.Text = "Custom CFD...";
             this.customCFDToolStripMenuItem.Click += new System.EventHandler(this.customCFDToolStripMenuItem_Click);
             // 
+            // customCFD3DToolStripMenuItem
+            // 
+            this.customCFD3DToolStripMenuItem.Name = "customCFD3DToolStripMenuItem";
+            this.customCFD3DToolStripMenuItem.Size = new System.Drawing.Size(167, 22);
+            this.customCFD3DToolStripMenuItem.Text = "Custom CFD 3D...";
+            this.customCFD3DToolStripMenuItem.Click += new System.EventHandler(this.customCFD3DToolStripMenuItem_Click);
+            // 
             // referenceCFDToolStripMenuItem
             // 
             this.referenceCFDToolStripMenuItem.Name = "referenceCFDToolStripMenuItem";
@@ -66,12 +76,20 @@
             this.referenceCFDToolStripMenuItem.Text = "Reference CFD...";
             this.referenceCFDToolStripMenuItem.Click += new System.EventHandler(this.referenceCFDToolStripMenuItem_Click);
             // 
-            // customCFD3DToolStripMenuItem
+            // utilitiesToolStripMenuItem
             // 
-            this.customCFD3DToolStripMenuItem.Name = "customCFD3DToolStripMenuItem";
-            this.customCFD3DToolStripMenuItem.Size = new System.Drawing.Size(167, 22);
-            this.customCFD3DToolStripMenuItem.Text = "Custom CFD 3D...";
-            this.customCFD3DToolStripMenuItem.Click += new System.EventHandler(this.customCFD3DToolStripMenuItem_Click);
+            this.utilitiesToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.invalidAssetsToolStripMenuItem});
+            this.utilitiesToolStripMenuItem.Name = "utilitiesToolStripMenuItem";
+            this.utilitiesToolStripMenuItem.Size = new System.Drawing.Size(58, 20);
+            this.utilitiesToolStripMenuItem.Text = "&Utilities";
+            // 
+            // invalidAssetsToolStripMenuItem
+            // 
+            this.invalidAssetsToolStripMenuItem.Name = "invalidAssetsToolStripMenuItem";
+            this.invalidAssetsToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.invalidAssetsToolStripMenuItem.Text = "&Invalid Assets";
+            this.invalidAssetsToolStripMenuItem.Click += new System.EventHandler(this.invalidAssetsToolStripMenuItem_Click);
             // 
             // MainForm
             // 
@@ -97,6 +115,8 @@
         private System.Windows.Forms.ToolStripMenuItem referenceCFDToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem customCFDToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem customCFD3DToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem utilitiesToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem invalidAssetsToolStripMenuItem;
     }
 }
 

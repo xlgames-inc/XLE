@@ -1098,7 +1098,10 @@ namespace XLEMath
 
     auto PoissonSolver::PrepareDivergenceMatrix(Method method) -> std::shared_ptr<PreparedMatrix>
     {
-        AMat A = { _pimpl->_dimensionsWithBorders, _pimpl->_borders, _pimpl->_dimensionality, 4.f, -1.f };
+        AMat A = {
+            _pimpl->_dimensionsWithBorders, _pimpl->_borders, _pimpl->_dimensionality, 
+            (_pimpl->_dimensionality==2)?4.f:6.f, 
+            -1.f };
         const auto N = _pimpl->_dimensionsWithBorders[0] * _pimpl->_dimensionsWithBorders[1] * _pimpl->_dimensionsWithBorders[2];
 
         auto result = std::make_shared<PreparedMatrix>();

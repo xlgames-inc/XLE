@@ -69,6 +69,12 @@ namespace IterativeSystemDebugger
         }
 
         IList<Control> _forms;
+
+        private void invalidAssetsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            using (var dialog = new ControlsLibrary.InvalidAssetDialog())
+                dialog.ShowDialog();
+        }
                 
     }
 }
