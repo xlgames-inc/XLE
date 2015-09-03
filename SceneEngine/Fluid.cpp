@@ -346,7 +346,7 @@ namespace SceneEngine
         for (unsigned z=border[2]; z<dims[2]-border[2]; ++z)
             for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
                 for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
-                    const auto i = (z*dims[2]+y)*dims[1]+x;
+                    const auto i = (z*dims[1]+y)*dims[0]+x;
                     delW[i] = 
                         -0.5f * 
                         (
@@ -365,7 +365,7 @@ namespace SceneEngine
         for (unsigned z=border[2]; z<dims[2]-border[2]; ++z)
             for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
                 for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
-                    const auto i = (z*dims[2]+y)*dims[1]+x;
+                    const auto i = (z*dims[1]+y)*dims[0]+x;
                     (*velField._u)[i] -= .5f*velFieldScale[0] * (q[i+1]                 - q[i-1]);
                     (*velField._v)[i] -= .5f*velFieldScale[1] * (q[i+dims[0]]           - q[i-dims[0]]);
                     (*velField._w)[i] -= .5f*velFieldScale[2] * (q[i+dims[0]*dims[1]]   - q[i-dims[0]*dims[1]]);
@@ -790,7 +790,7 @@ namespace SceneEngine
 
     std::shared_ptr<PoissonSolver::PreparedMatrix> FluidSolver3D::Pimpl::BuildDiffusionMethod(float diffusion)
     {
-        const float a0 = 1.f + 4.f * diffusion;
+        const float a0 = 1.f + 6.f * diffusion;
         const float a1 = -diffusion;
         return _poissonSolver.PrepareDiffusionMatrix(a0, a1, PoissonSolver::Method::PreconCG);
     }

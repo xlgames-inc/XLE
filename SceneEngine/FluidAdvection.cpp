@@ -107,23 +107,22 @@ namespace SceneEngine
             typename Field::ValueType& minNeighbour, 
             typename Field::ValueType& maxNeighbour, const Field& field, typename Field::FloatCoord pt)
         {
-            typename Field::ValueType predictorParts[9];
-            float predictorWeights[4];
+            typename Field::ValueType predictorParts[Field::NeighborCount];
+            float predictorWeights[Field::BilinearWeightCount];
             field.GatherNeighbors(predictorParts, predictorWeights, pt);
             
             minNeighbour =  MaxValue<typename Field::ValueType>();
             maxNeighbour = -MaxValue<typename Field::ValueType>();
-            for (unsigned c=0; c<9; ++c) {
+            for (unsigned c=0; c<Field::NeighborCount; ++c) {
                 minNeighbour = MinAcross(predictorParts[c], minNeighbour);
                 maxNeighbour = MaxAcross(predictorParts[c], maxNeighbour);
             }
 
             if (constant_expression<(SamplingFlags & RNFSample::Cubic)==0>::result()) {
-                return
-                      predictorWeights[0] * predictorParts[0]
-                    + predictorWeights[1] * predictorParts[1]
-                    + predictorWeights[2] * predictorParts[2]
-                    + predictorWeights[3] * predictorParts[3];
+                Field::ValueType result =  predictorWeights[0] * predictorParts[0];
+                for (unsigned i=1; i<Field::BilinearWeightCount; ++i)   // hopefully the compiler should unroll this loop (which is short, there are only 4 or 8 weights)
+                    result += predictorWeights[i] * predictorParts[i];
+                return result;
             } else {
                 return field.Sample<RNFSample::Cubic|RNFSample::Clamp>(pt);
             }

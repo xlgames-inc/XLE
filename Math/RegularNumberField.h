@@ -46,6 +46,8 @@ namespace XLEMath
         template<unsigned SamplingFlags = RNFSample::Clamp>
             ValueType Sample(FloatCoord c) const;
 
+        static const unsigned NeighborCount = 9;
+        static const unsigned BilinearWeightCount = 4;
         void GatherNeighbors(ValueType neighbours[9], float weights[4], FloatCoord coord) const;
 
         VectorField2DSeparate() : _u(nullptr), _v(nullptr), _dims(0, 0) {}
@@ -71,6 +73,8 @@ namespace XLEMath
         template<unsigned SamplingFlags = RNFSample::Clamp>
             ValueType Sample(FloatCoord c) const;
 
+        static const unsigned NeighborCount = 27;
+        static const unsigned BilinearWeightCount = 8;
         void GatherNeighbors(ValueType neighbours[27], float weights[8], FloatCoord coord) const;
 
         VectorField3DSeparate() : _u(nullptr), _v(nullptr), _dims(0, 0, 0) {}
@@ -96,6 +100,8 @@ namespace XLEMath
         template<unsigned SamplingFlags = RNFSample::Clamp>
             ValueType Sample(FloatCoord c) const;
 
+        static const unsigned NeighborCount = 9;
+        static const unsigned BilinearWeightCount = 4;
         void GatherNeighbors(ValueType neighbours[9], float weights[4], FloatCoord coord) const;
 
         ScalarField2D() : _u(nullptr), _dims(0, 0) {}
@@ -121,6 +127,8 @@ namespace XLEMath
         template<unsigned SamplingFlags = RNFSample::Clamp>
             ValueType Sample(FloatCoord c) const;
 
+        static const unsigned NeighborCount = 27;
+        static const unsigned BilinearWeightCount = 8;
         void GatherNeighbors(ValueType neighbours[27], float weights[8], FloatCoord coord) const;
 
         ScalarField3D() : _u(nullptr), _dims(0, 0, 0) {}
@@ -149,7 +157,7 @@ namespace XLEMath
     }
 
     inline unsigned XY(unsigned x, unsigned y, unsigned wh)                 { return y*wh+x; }
-    inline unsigned XYZ(unsigned x, unsigned y, unsigned z, UInt3 dims)     { return (z*dims[2]+y)*dims[1]+x; }
+    inline unsigned XYZ(unsigned x, unsigned y, unsigned z, UInt3 dims)     { return (z*dims[1]+y)*dims[0]+x; }
     template <typename Vec>
         static void ReflectUBorder2D(Vec& v, unsigned wh)
     {
@@ -216,35 +224,35 @@ namespace XLEMath
             // 6 faces
         for (unsigned y=1; y<dims[1]-1; ++y)
             for (unsigned x=1; x<dims[0]-1; ++x) {
-                v[XYZ(x,y,0)]   = 0.f;
+                v[XYZ(x,y, 0)]  = 0.f;
                 v[XYZ(x,y,LZ)]  = 0.f;
             }
 
         for (unsigned z=1; z<dims[2]-1; ++z)
             for (unsigned x=1; x<dims[0]-1; ++x) {
-                v[XYZ(x,0,z)]   = 0.f;
+                v[XYZ(x, 0,z)]  = 0.f;
                 v[XYZ(x,LY,z)]  = 0.f;
             }
 
         for (unsigned z=1; z<dims[2]-1; ++z)
             for (unsigned y=1; y<dims[1]-1; ++y) {
-                v[XYZ(0,y,z)]   = 0.f;
+                v[XYZ( 0,y,z)]  = 0.f;
                 v[XYZ(LX,y,z)]  = 0.f;
             }
 
             // 12 edges
         for (unsigned x=1; x<dims[0]-1; ++x) {
             v[XYZ(x, 0, 0)]     = 0.f;
-            v[XYZ(x, 0,LY)]     = 0.f;
-            v[XYZ(x,LX, 0)]     = 0.f;
-            v[XYZ(x,LX,LY)]     = 0.f;
+            v[XYZ(x, 0,LZ)]     = 0.f;
+            v[XYZ(x,LY, 0)]     = 0.f;
+            v[XYZ(x,LY,LZ)]     = 0.f;
         }
 
-        for (unsigned y=1; y<dims[0]-1; ++y) {
+        for (unsigned y=1; y<dims[1]-1; ++y) {
             v[XYZ( 0,y, 0)]     = 0.f;
-            v[XYZ( 0,y,LY)]     = 0.f;
+            v[XYZ( 0,y,LZ)]     = 0.f;
             v[XYZ(LX,y, 0)]     = 0.f;
-            v[XYZ(LX,y,LY)]     = 0.f;
+            v[XYZ(LX,y,LZ)]     = 0.f;
         }
 
         for (unsigned z=1; z<dims[2]-1; ++z) {
@@ -255,15 +263,13 @@ namespace XLEMath
         }
 
             // 8 corners
-        v[XYZ( 0, 0, 0)] = 0.f;
-        v[XYZ(LX, 0, 0)] = 0.f;
+        v[XYZ( 0,  0,  0)] = 0.f;
+        v[XYZ(LX,  0,  0)] = 0.f;
+        v[XYZ( 0, LY,  0)] = 0.f;
+        v[XYZ(LX, LY,  0)] = 0.f;
 
-        v[XYZ( 0, LY, 0)] = 0.f;
-        v[XYZ(LX, LY, 0)] = 0.f;
-
-        v[XYZ(LX, 0, LZ)] = 0.f;
-        v[XYZ( 0, 0, LZ)] = 0.f;
-
+        v[XYZ( 0,  0, LZ)] = 0.f;
+        v[XYZ(LX,  0, LZ)] = 0.f;
         v[XYZ( 0, LY, LZ)] = 0.f;
         v[XYZ(LX, LY, LZ)] = 0.f;
         #undef XY
@@ -300,16 +306,16 @@ namespace XLEMath
             // 12 edges
         for (unsigned x=1; x<dims[0]-1; ++x) {
             v[XYZ(x, 0, 0)]     = 0.5f*(v[XYZ(x,   1, 0)]   + v[XYZ(x, 0,   1)]);
-            v[XYZ(x, 0,LY)]     = 0.5f*(v[XYZ(x,   1,LY)]   + v[XYZ(x, 0,LY-1)]);
-            v[XYZ(x,LX, 0)]     = 0.5f*(v[XYZ(x,LX-1, 0)]   + v[XYZ(x,LX,   1)]);
-            v[XYZ(x,LX,LY)]     = 0.5f*(v[XYZ(x,LX-1,LY)]   + v[XYZ(x,LX,LY-1)]);
+            v[XYZ(x, 0,LZ)]     = 0.5f*(v[XYZ(x,   1,LZ)]   + v[XYZ(x, 0,LZ-1)]);
+            v[XYZ(x,LY, 0)]     = 0.5f*(v[XYZ(x,LY-1, 0)]   + v[XYZ(x,LY,   1)]);
+            v[XYZ(x,LY,LZ)]     = 0.5f*(v[XYZ(x,LY-1,LZ)]   + v[XYZ(x,LY,LZ-1)]);
         }
 
         for (unsigned y=1; y<dims[0]-1; ++y) {
             v[XYZ( 0,y, 0)]     = 0.5f*(v[XYZ(   1,y, 0)]   + v[XYZ( 0,y,   1)]);
-            v[XYZ( 0,y,LY)]     = 0.5f*(v[XYZ(   1,y,LY)]   + v[XYZ( 0,y,LY-1)]);
+            v[XYZ( 0,y,LZ)]     = 0.5f*(v[XYZ(   1,y,LZ)]   + v[XYZ( 0,y,LZ-1)]);
             v[XYZ(LX,y, 0)]     = 0.5f*(v[XYZ(LX-1,y, 0)]   + v[XYZ(LX,y,   1)]);
-            v[XYZ(LX,y,LY)]     = 0.5f*(v[XYZ(LX-1,y,LY)]   + v[XYZ(LX,y,LY-1)]);
+            v[XYZ(LX,y,LZ)]     = 0.5f*(v[XYZ(LX-1,y,LZ)]   + v[XYZ(LX,y,LZ-1)]);
         }
 
         for (unsigned z=1; z<dims[2]-1; ++z) {

@@ -93,6 +93,13 @@ namespace XLEMath
 
     static ScalarField1D AsScalarField1D(VectorX& v) { return ScalarField1D { v.data(), (unsigned)v.size() }; }
 
+    template<typename Vec>
+        static void ZeroBorder(Vec&x, const AMat& a)
+    {
+        if (a._dimensionality==2) ZeroBorder2D(x, GetWidth(a));
+        else ZeroBorder3D(x, a._dims);
+    }
+
     class Solver_PlainCG
     {
     public:
@@ -121,11 +128,11 @@ namespace XLEMath
             _r[c] = b[c] - _r[c];
             _d[c] = _r[c];
         }
-        ZeroBorder2D(_r, GetWidth(A));
-        ZeroBorder2D(_d, GetWidth(A));
+        ZeroBorder(_r, A);
+        ZeroBorder(_d, A);
         auto rho = _r.dot(_r);
 
-        ZeroBorder2D(_q, GetWidth(A));
+        ZeroBorder(_q, A);
         unsigned k=0;
         if (XlAbs(rho) > rhoThreshold) {
             for (; k<maxIterations; ++k) {
@@ -201,7 +208,7 @@ namespace XLEMath
         for (unsigned c=0; c<b._count; ++c) {
             _r[c] = b[c] - _r[c];
         }
-        ZeroBorder2D(_r, GetWidth(A));
+        ZeroBorder(_r, A);
             
         SolveLowerTriangular(_d, precon, _r, _N);
             
@@ -220,7 +227,7 @@ namespace XLEMath
         auto rho = _r.dot(_d);
         // auto rho0 = rho;
 
-        ZeroBorder2D(_q, GetWidth(A));
+        ZeroBorder(_q, A);
             
         unsigned k=0;
         if (XlAbs(rho) > rhoThreshold) {
@@ -648,7 +655,7 @@ namespace XLEMath
                 }
             }
 
-            ZeroBorder2D(x._u, width);
+            ZeroBorder(x, matA);
 
             auto iterations = 0u;
             if (solver == Method::PlainCG) {
@@ -685,7 +692,7 @@ namespace XLEMath
                         x._u[i] = v;
                     }
 
-            ZeroBorder2D(x._u, width);
+            ZeroBorder(x, matA);
             return 1;
 
         } else if (solver == Method::SOR) {
@@ -720,7 +727,7 @@ namespace XLEMath
             for (unsigned k = 0; k<iterations; ++k)
                 RunSOR(x, matA, workingB, gamma);
 
-            ZeroBorder2D(x._u, width);
+            ZeroBorder(x, matA);
             return iterations;
 
         }
@@ -1007,7 +1014,7 @@ namespace XLEMath
         #if defined(_DEBUG)
             {
                 const auto diffusion = 0.1f;
-                const auto a0 = 1.f + 4.f * diffusion;
+                const auto a0 = 1.f + 6.f * diffusion;
                 const auto a1 = -diffusion;
                 AMat A = { 
                     UInt3(8, 8, 8), 
