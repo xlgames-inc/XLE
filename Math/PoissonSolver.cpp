@@ -765,6 +765,68 @@ namespace XLEMath
         return result * result.transpose();
     }
 
+    class TempFactorization
+    {
+    public:
+        class Accessor
+        {
+        public:
+            float& operator[](unsigned j) 
+            {
+                auto offset = int(j) - int(_row);
+                auto b = std::lower_bound(_parent->_bands.cbegin(), _parent->_bands.cend(), offset);
+                if (b == _parent->_bands.cend() || *b != offset) {
+                    assert(_parent->_dummy == 0.f);
+                    return _parent->_dummy;
+                }
+                auto bandIndex = std::distance(_parent->_bands.cbegin(), b);
+                return _parent->_data[_row*_parent->_bands.size()+bandIndex];
+            }
+
+            Accessor(TempFactorization& parent, unsigned row) : _parent(&parent), _row(row) {}
+        private:
+            TempFactorization* _parent;
+            unsigned _row;
+        };
+        Accessor operator[](unsigned i) { return Accessor(*this, i); }
+
+        unsigned BandCount() const { return (unsigned)_bands.size(); }
+        float BandedValue(unsigned i, unsigned b) const { return _data[i*_bands.size()+b]; }
+
+        TempFactorization(unsigned width, unsigned height, unsigned depth, unsigned dimensionality, unsigned bandOptimization);
+        ~TempFactorization();
+
+    private:
+        std::vector<int> _bands;
+        std::vector<float> _data;
+        float _dummy;
+    };
+
+    TempFactorization::TempFactorization(unsigned width, unsigned height, unsigned depth, unsigned dimensionality, unsigned bandOptimization)
+    {
+        _dummy = 0.f;
+        assert(bandOptimization < width);
+
+            // calculate the bands we're going to store (everything off-band is assumed to be zero)
+        int kband0Start = -int(width)-int(bandOptimization);
+        int kband0End   = -int(width)+int(bandOptimization);
+        int kband1Start = -1-int(bandOptimization);
+        int kband1End   = 0;
+
+        if (dimensionality>=3) {
+            auto kband3Start =  -int(width*height)-int(bandOptimization);
+            auto kband3End   =  -int(width*height)+int(bandOptimization);
+            for (int k=kband3Start; k<=kband3End; ++k) _bands.push_back(k);
+        }
+        
+        for (int k=kband0Start; k<=kband0End; ++k) _bands.push_back(k);
+        for (int k=kband1Start; k<=kband1End; ++k) _bands.push_back(k);
+
+        _data.resize(width*height*depth*_bands.size(), 0.f);
+    }
+
+    TempFactorization::~TempFactorization() {}
+
     static MatrixX CalculateIncompleteCholesky(const AMat& mat, unsigned N, unsigned bandOptimization)
     {
             //
@@ -775,19 +837,21 @@ namespace XLEMath
             //  allocating a very large temporary matrix.
             //  We will return a compressed matrix with the unneeded
             //  bands removed
-        MatrixX factorization(N, N);
-        factorization.fill(0.f);
-
+            //
+            
         const auto width = GetWidth(mat);
         const auto height = GetHeight(mat);
         const unsigned thirdTest = (mat._dimensionality==2)?0:(width*height);
-            
+        
         if (bandOptimization == 0) {
+
+            MatrixX factorization(N, N);
+            factorization.fill(0.f);
 
             for (unsigned i=0; i<N; ++i) {
                 float a = mat._a0;
                 for (unsigned k=0; k<i; ++k) {
-                    float l = factorization(i, k);
+                    float l = factorization(i,k);
                     a -= l*l;
                 }
                 a = XlSqrt(a);
@@ -797,8 +861,8 @@ namespace XLEMath
                     for (unsigned j=i+1; j<N; ++j) {
                         float aij = ((j==i+1)||(j==i+width)||(j==i+thirdTest)) ? mat._a1 : 0.f;
                         for (unsigned k=0; k<i; ++k)
-                            aij -= factorization(i, k) * factorization(j, k);
-                        factorization(j, i) = aij / a;
+                            aij -= factorization(i,k) * factorization(j,k);
+                        factorization(j,i) = aij / a;
                     }
                 }
             }
@@ -828,7 +892,7 @@ namespace XLEMath
                             // is the factorization multiplied by its transpose
                         float A = 0.f;
                         for (unsigned k=0; k<N; ++k)
-                            A += factorization(i, k) * factorization(j2, k);
+                            A += factorization(i,k) * factorization(j2,k);
 
                         sparseMatrix(i, j) = A;
                     } else {
@@ -853,17 +917,26 @@ namespace XLEMath
             // final matrix is sparse, and has zeroes off the main bands).
 
             assert(bandOptimization < width);   // if "bandOptimisation" is very big, the math will be incorrect (and anyway, it will run slowly)
+
+                // this factorization matrix can end up begin huge!
+                // We need a better way to generate this factorization
+                // that won't blow up like this (or, at least, precalculate it and store on disk)
+            TempFactorization factorization(width, height, GetDepth(mat), mat._dimensionality, bandOptimization);
             const int magicOffset0 = width; // +2;
             const int magicOffset1 = width; // -2;
 
             for (unsigned i=0; i<N; ++i) {
                 float a = mat._a0;
-                for (unsigned k=0; k<i; ++k) {
-                    float l = factorization(i, k);
+                // for (unsigned k=0; k<i; ++k) {
+                //     float l = factorization[i][k];
+                //     a -= l*l;
+                // }
+                for (unsigned k=0; k<factorization.BandCount()-1; ++k) {
+                    float l = factorization.BandedValue(i, k);
                     a -= l*l;
                 }
                 a = XlSqrt(a);
-                factorization(i,i) = a;
+                factorization[i][i] = a;
 
                 if (i != 0) {
 
@@ -887,36 +960,36 @@ namespace XLEMath
                             // it must be within the widened bands of both i and k. It's awkward
                             // to find an overlap, so let's just check the bands of i
                         for (int k=kband0Start; k<kband0End; ++k)
-                            aij -= factorization(i, k) * factorization(j, k);
+                            aij -= factorization[i][k] * factorization[j][k];
                         for (int k=kband1Start; k<kband1End; ++k)
-                            aij -= factorization(i, k) * factorization(j, k);
+                            aij -= factorization[i][k] * factorization[j][k];
                         for (int k=kband2Start; k<int(i); ++k)
-                            aij -= factorization(i, k) * factorization(j, k);
+                            aij -= factorization[i][k] * factorization[j][k];
 
-                        factorization(j, i) = aij / a;
+                        factorization[j][i] = aij / a;
                     }
                     
                     for (unsigned j=i+magicOffset1-bandOptimization; j<std::min(i+magicOffset1+bandOptimization+1, N); ++j) {
                         float aij = ((j==i+1)||(j==i+width)||(j==i+thirdTest)) ? mat._a1 : 0.f;
                         for (int k=kband0Start; k<kband0End; ++k)
-                            aij -= factorization(i, k) * factorization(j, k);
+                            aij -= factorization[i][k] * factorization[j][k];
                         for (int k=kband1Start; k<kband1End; ++k)
-                            aij -= factorization(i, k) * factorization(j, k);
+                            aij -= factorization[i][k] * factorization[j][k];
                         for (int k=kband2Start; k<int(i); ++k)
-                            aij -= factorization(i, k) * factorization(j, k);
-                        factorization(j, i) = aij / a;
+                            aij -= factorization[i][k] * factorization[j][k];
+                        factorization[j][i] = aij / a;
                     }
 
                     if (mat._dimensionality!=2) {
                         for (unsigned j=i+width*height-bandOptimization; j<std::min(i+width*height+bandOptimization+1, N); ++j) {
                             float aij = ((j==i+1)||(j==i+width)||(j==i+thirdTest)) ? mat._a1 : 0.f;
                             for (int k=kband0Start; k<kband0End; ++k)
-                                aij -= factorization(i, k) * factorization(j, k);
+                                aij -= factorization[i][k] * factorization[j][k];
                             for (int k=kband1Start; k<kband1End; ++k)
-                                aij -= factorization(i, k) * factorization(j, k);
+                                aij -= factorization[i][k] * factorization[j][k];
                             for (int k=kband2Start; k<int(i); ++k)
-                                aij -= factorization(i, k) * factorization(j, k);
-                            factorization(j, i) = aij / a;
+                                aij -= factorization[i][k] * factorization[j][k];
+                            factorization[j][i] = aij / a;
                         }
                     }
                 }
@@ -965,15 +1038,15 @@ namespace XLEMath
                             // is the factorization multiplied by its transpose
                         float A = 0.f;
                         for (int k=kband0Start; k<kband0End; ++k)
-                            A += factorization(i, k) * factorization(j2, k);
+                            A += factorization[i][k] * factorization[j2][k];
                         for (int k=kband1Start; k<kband1End; ++k)
-                            A += factorization(i, k) * factorization(j2, k);
+                            A += factorization[i][k] * factorization[j2][k];
                         for (int k=kband2Start; k<kband2End; ++k)
-                            A += factorization(i, k) * factorization(j2, k);
+                            A += factorization[i][k] * factorization[j2][k];
                         for (int k=kband3Start; k<kband3End; ++k)
-                            A += factorization(i, k) * factorization(j2, k);
+                            A += factorization[i][k] * factorization[j2][k];
                         for (int k=kband4Start; k<kband4End; ++k)
-                            A += factorization(i, k) * factorization(j2, k);
+                            A += factorization[i][k] * factorization[j2][k];
 
                         sparseMatrix(i, j) = A;
                     } else {

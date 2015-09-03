@@ -463,8 +463,23 @@ namespace GUILayer
     {
         auto dims = _pimpl->_sim->GetDimensions();
         if (mouseButton == 0) {
-            _pimpl->_sim->AddDensity(
-                UInt3((dims[0]/4)+rand()%(dims[0]/2), (dims[1]/4)+rand()%(dims[1]/2), 0), 150.f);
+
+            UInt2 coords((dims[0]*3/8)+rand()%(dims[0]/4), (dims[1]/4)+rand()%(dims[1]*3/8));
+            auto radius = 3.f;
+            auto radiusSq = radius*radius;
+            for (float y = XlFloor(coords[1] - radius); y <= XlCeil(coords[1] + radius); ++y) {
+                for (float x = XlFloor(coords[0] - radius); x <= XlCeil(coords[0] + radius); ++x) {
+                    Float2 fo = Float2(x, y) - coords;
+                    if (MagnitudeSquared(fo) <= radiusSq && x >= 0.f && y >= 0.f) {
+
+                        auto c = UInt2(unsigned(x), unsigned(y));
+                        if (mouseButton == 0) {
+                            _pimpl->_sim->AddDensity(Expand(c, 1u), 10.f);
+                        }
+                    }
+                }
+            }
+
         }
     }
     
