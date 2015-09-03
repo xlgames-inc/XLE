@@ -49,7 +49,7 @@ namespace IterativeSystemDebugger
 
         private void customCFD3DToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var system = new GUILayer.CFD3DIterativeSystem(32, 32, 16);
+            var system = new GUILayer.CFD3DIterativeSystem(64, 64, 32);
             var form = new RefCFD(system);
             form.Show();
             _forms.Add(form);

@@ -927,10 +927,6 @@ namespace XLEMath
 
             for (unsigned i=0; i<N; ++i) {
                 float a = mat._a0;
-                // for (unsigned k=0; k<i; ++k) {
-                //     float l = factorization[i][k];
-                //     a -= l*l;
-                // }
                 for (unsigned k=0; k<factorization.BandCount()-1; ++k) {
                     float l = factorization.BandedValue(i, k);
                     a -= l*l;
@@ -947,10 +943,10 @@ namespace XLEMath
                         kband0Start = std::max(0,   int(i)-int(width*height)-int(bandOptimization));
                         kband0End =                 int(i)-int(width*height)+int(bandOptimization)+1;
                     }
-
+                    
                     int kband1Start = std::max(0,   int(i)-magicOffset0-int(bandOptimization));
                     int kband1End =                 int(i)-magicOffset0+int(bandOptimization)+1;
-
+                    
                     int kband2Start = std::max(0,   int(i)-1-int(bandOptimization));
 
                     for (unsigned j=i+1; j<std::min(i+1+bandOptimization+1, N); ++j) {
@@ -1061,6 +1057,160 @@ namespace XLEMath
         
     }
 
+    static float Sq(float i) { return i*i; }
+
+    static bool IsOnBand(UInt2 coord, const AMat& mat)
+    {
+        const auto width = GetWidth(mat);
+        const auto height = GetHeight(mat);
+        return  coord[0] > coord[1]
+            &&  (
+                        (coord[0]-1) == coord[1]
+                    ||  (coord[0]-int(width)) == coord[1]
+                    ||  (coord[0]-int(width*height)) == coord[1]
+                );
+    }
+    
+    static float CalculateOffDiag(UInt2 coord, const float diagonals[], const AMat& mat)
+    {
+        // Calculate the value in the cholesky decomposition at the given coordinate (for an off-diagonal)
+        // this is an unusual method to calculate this, but it suits us because of the way our
+        // matrix is banded.
+        const auto width = GetWidth(mat); (void)width;
+        const auto height = GetHeight(mat); (void)height;
+        const auto i = coord[1], j = coord[0]; // flipped around in this case
+        assert(i < j); (void)j;
+        assert(((j-1)==i) || ((j-int(width))==i) || ((j-int(width*height))==i));  // expecting a coordinate on a band
+
+        float A = mat._a1;  // assuming the request is on a band (we can consider it zero, otherwise)
+
+            // We need to subtract the dot product of the 'i' row with the 'j' row (up to 'i')
+            // but only entries on the bands have values... so we should only need to find the cases
+            // where they overlap.
+            //      doesn't seem to have a big effect..
+        // auto bc0 = j-int(width);
+        // if (bc0 >= 0 && bc0 < i) {
+        //     if (IsOnBand(UInt2(i, bc0), mat)) {
+        //         A -=    CalculateOffDiag(UInt2(i, bc0), diagonals, mat)
+        //             *   CalculateOffDiag(UInt2(j, bc0), diagonals, mat);
+        //     }
+        // }
+        // 
+        // auto bc1 = j-int(width*height);
+        // if (bc1 >= 0 && bc1 < i) {
+        //     if (IsOnBand(UInt2(i, bc1), mat)) {
+        //         A -=    CalculateOffDiag(UInt2(i, bc1), diagonals, mat)
+        //             *   CalculateOffDiag(UInt2(j, bc1), diagonals, mat);
+        //     }
+        // }
+
+        return A / diagonals[i];
+    }
+
+    static MatrixX CalculateIncompleteCholeskyFast(const AMat& mat, unsigned N)
+    {
+        VectorX diagonalFactor(N);  // diagonal factorization
+        diagonalFactor.fill(0.f);
+        
+        const auto width = GetWidth(mat);
+        const auto height = GetHeight(mat);
+        // const unsigned thirdTest = (mat._dimensionality==2)?0:(width*height);
+
+        int band0 = -1;
+        int band1 = -int(width);
+        int band2 = INT_MIN;
+        if (mat._dimensionality >= 3) band2 = -int(width*height);
+
+        diagonalFactor[0] = XlSqrt(mat._a0);
+        for (unsigned i=1; i<N; ++i) {
+            float a = mat._a0;
+
+                // We're assuming that only values directly on our
+                // bands have values. Those values should be mat._a1 
+                // divided by the 'a' for that row. 
+                // Note that we're avoiding part of the algorithm that
+                // subtracts small amount from the off-diagonal elements
+            {
+                int k = int(i)+band2;
+                if (k >= 0) a -= Sq(CalculateOffDiag(UInt2(i, k), diagonalFactor.data(), mat));
+            }
+            {
+                int k = int(i)+band1;
+                if (k >= 0) a -= Sq(CalculateOffDiag(UInt2(i, k), diagonalFactor.data(), mat));
+            }
+            {
+                int k = int(i)+band0;
+                if (k >= 0) a -= Sq(CalculateOffDiag(UInt2(i, k), diagonalFactor.data(), mat));
+            }
+
+            a = XlSqrt(a);
+            diagonalFactor[i] = a;
+        }
+
+            // 
+            //  Our preconditioner matrix is "factorization" multiplied by
+            //  it's transpose
+            //
+
+        int bands2D[] = { -int(width), -1, 1, width, 0 };
+        int bands3D[] = { -int(width*height), -int(width), -1, 1, width, width*height, 0 };
+        unsigned bandCount; int* bands;
+        if (mat._dimensionality == 2) {
+            bandCount = dimof(bands2D);
+            bands = bands2D;
+        } else {
+            bandCount = dimof(bands3D);
+            bands = bands3D;
+        }
+        VectorX a(N), b(N); 
+        MatrixX sparseMatrix(N, bandCount);
+        for (unsigned i=0; i<N; ++i) {
+            a.fill(0.f);
+            a(i) = diagonalFactor[i];
+            {
+                int k = int(i)+band2;
+                if (k >= 0) a(k) = CalculateOffDiag(UInt2(i, k), diagonalFactor.data(), mat);
+            }
+            {
+                int k = int(i)+band1;
+                if (k >= 0) a(k) = CalculateOffDiag(UInt2(i, k), diagonalFactor.data(), mat);
+            }
+            {
+                int k = int(i)+band0;
+                if (k >= 0) a(k) = CalculateOffDiag(UInt2(i, k), diagonalFactor.data(), mat);
+            }
+
+            for (unsigned j=0; j<bandCount; ++j) {
+                int j2 = int(i) + bands[j];
+                if (j2 >= 0 && j2 < int(N)) {
+
+                        // Here, calculate M(i, j), where M
+                        // is the factorization multiplied by its transpose
+                    b.fill(0.f);
+                    b[j2] = diagonalFactor[j2];
+                    {
+                        int k = int(j2)+band2;
+                        if (k >= 0) b(k) = CalculateOffDiag(UInt2(j2, k), diagonalFactor.data(), mat);
+                    }
+                    {
+                        int k = int(j2)+band1;
+                        if (k >= 0) b(k) = CalculateOffDiag(UInt2(j2, k), diagonalFactor.data(), mat);
+                    }
+                    {
+                        int k = int(j2)+band0;
+                        if (k >= 0) b(k) = CalculateOffDiag(UInt2(j2, k), diagonalFactor.data(), mat);
+                    }
+
+                    sparseMatrix(i, j) = a.dot(b);
+                } else {
+                    sparseMatrix(i, j) = 0.f;
+                }
+            }
+        }
+
+        return std::move(sparseMatrix);
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     PoissonSolver::PoissonSolver(unsigned dimensionality, unsigned dimensions[])
@@ -1090,11 +1240,10 @@ namespace XLEMath
                 const auto a0 = 1.f + 6.f * diffusion;
                 const auto a1 = -diffusion;
                 AMat A = { 
-                    UInt3(8, 8, 8), 
+                    UInt3(16, 16, 8), 
                     UInt3(1, 1, 1),
-                    3,
-                    a0, a1 };
-                auto precon0 = CalculateIncompleteCholesky(A, 8*8*8, 1);
+                    3, a0, a1 };
+                auto precon0 = CalculateIncompleteCholeskyFast(A, 8*8*8);
                 auto precon1 = CalculateIncompleteCholesky(A, 8*8*8, 0);
 
                 const auto rows = precon0.rows();
@@ -1136,8 +1285,7 @@ namespace XLEMath
 
         const bool needPrecon = method == Method::PreconCG;
         if (needPrecon) {
-            static unsigned bandOptimisation = 3;
-            auto precon = CalculateIncompleteCholesky(A, N, bandOptimisation);
+            auto precon = CalculateIncompleteCholeskyFast(A, N);
             const auto width = _pimpl->_dimensionsWithBorders[0];
             const auto height = _pimpl->_dimensionsWithBorders[1];
 
@@ -1182,8 +1330,7 @@ namespace XLEMath
 
         const bool needPrecon = method == Method::PreconCG;
         if (needPrecon) {
-            static unsigned bandOptimisation = 3;
-            auto precon = CalculateIncompleteCholesky(A, N, bandOptimisation);
+            auto precon = CalculateIncompleteCholeskyFast(A, N);
             const auto width = _pimpl->_dimensionsWithBorders[0];
             const auto height = _pimpl->_dimensionsWithBorders[1];
 
