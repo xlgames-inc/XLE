@@ -136,5 +136,46 @@ namespace SceneEngine
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
+
+    class CloudsForm2D
+    {
+    public:
+        struct Settings
+        {
+                // diffusion
+            float       _viscosity;
+            float       _diffusionRate;
+            int         _diffusionMethod;
+
+                // advection
+            int         _advectionMethod;
+            unsigned    _advectionSteps;
+            int         _interpolationMethod;
+
+                // forces
+            int         _enforceIncompressibilityMethod;
+            float       _vorticityConfinement;
+
+            Settings();
+        };
+
+        void Tick(float deltaTime, const Settings& settings);
+        void AddDensity(UInt2 coords, float amount);
+        void AddVelocity(UInt2 coords, Float2 vel);
+
+        UInt2 GetDimensions() const;
+
+        void RenderDebugging(
+            RenderCore::Metal::DeviceContext& metalContext,
+            LightingParserContext& parserContext,
+            FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
+
+        CloudsForm2D(UInt2 dimensions);
+        ~CloudsForm2D();
+
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
 }
 

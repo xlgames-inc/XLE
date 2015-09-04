@@ -29,7 +29,26 @@ namespace XLEMath
         }
     };
 
-
+    /// <summary>Solves "Poisson equations", such as the heat equation</summary>
+    /// A Poisson equation is a partial differential equations that involves the
+    /// Laplace operator (del). The Laplace operator measures the "divergence" of
+    /// a field of numbers -- that is, the derivatives with respect to the cardinal
+    /// axes (eg, X, Y, Z).
+    ///
+    /// A Poisson equation imposes some restriction on the divergence of a number
+    /// field, and we most solve to mean this restriction.
+    ///
+    /// This is useful for many simulations and problems. For example, the "heat equation"
+    /// is a Poisson equation -- this simulates how heat (or a electro magnetic field, or
+    /// other fields) diffuse in space.
+    ///
+    /// We can't solve Poisson equations perfectly -- we must use an estimate. There are 
+    /// many different methods that can produce estimates; all with different metrics 
+    /// for performance, accuracy and hardware suitability. Sometimes the best method to
+    /// use in one case is not ideal in another.
+    ///
+    /// This class aims to encapsulate the implementation details and math involved in 
+    /// calculating the solution -- and provide a simple reusable interface.
     class PoissonSolver
     {
     public:
