@@ -481,7 +481,7 @@ namespace SceneEngine
         for (unsigned y=border[1]; y<_pimpl->_dimsWithBorder[1]-border[1]; ++y)
             for (unsigned x=border[0]; x<_pimpl->_dimsWithBorder[0]-border[0]; ++x) {
                 unsigned i=y*_pimpl->_dimsWithBorder[0]+x;
-                velVSrc[i] -=     // (upwards is -1 in V)
+                velVSrc[i] +=     // (upwards is +1 in V)
                      -buoyancyAlpha * densityT1[i]
                     + buoyancyBeta  * temperatureT1[i];       // temperature field is just the difference from ambient
             }
@@ -1018,10 +1018,10 @@ namespace SceneEngine
             //  See here for more information:
             //      https://en.wikipedia.org/wiki/Atmospheric_pressure
             //
-        const float g = 9.81f;
-        const float p0 = 101325.f;  // (in pascals, 1 standard atmosphere)
-        const float T0 = 295.f;     // (in kelvin, base temperature) (about 20 degrees)
-        const float Rd = 287.058f;  // (in J . kg^-1 . K^-1. This is the "specific" gas constant for dry air. It is R / M, where R is the gas constant, and M is the ideal gas constant)
+        const float g = 9.81f / 1000.f; // (in km/second)
+        const float p0 = 101325.f;      // (in pascals, 1 standard atmosphere)
+        const float T0 = 295.f;         // (in kelvin, base temperature) (about 20 degrees)
+        const float Rd = 287.058f;      // (in J . kg^-1 . K^-1. This is the "specific" gas constant for dry air. It is R / M, where R is the gas constant, and M is the ideal gas constant)
 
             //  We have a few choices for the lape rate here.
             //      we're could use a value close to the "dry adiabatic lapse rate" (around 9.8 kelvin/km)
@@ -1175,8 +1175,9 @@ namespace SceneEngine
 
                 const auto temp = potentialTemp * exner;
                 auto virtualTemperature = temp * (1.f + vapourMixingRatio);
-                auto B = g * (virtualTemperature - ambientTemperature) / ambientTemperature;
-                velVSrc[i] -= B / zScale;
+                auto temperatureBuoyancy = (virtualTemperature - ambientTemperature) / ambientTemperature;
+                auto B = g * (temperatureBuoyancy * settings._buoyancyAlpha - condensationMixingRatio * settings._buoyancyBeta);
+                velVSrc[i] += B / zScale;
             }
 
         for (unsigned c=0; c<N; ++c) {
@@ -1244,7 +1245,7 @@ namespace SceneEngine
 
         _pimpl->_temperatureDiffusion.Execute(
             _pimpl->_poissonSolver,
-            ScalarField2D(&qvWorking, _pimpl->_dimsWithBorder),
+            ScalarField2D(&potTempWorking, _pimpl->_dimsWithBorder),
             settings._temperatureDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, "Temperature");
         PerformAdvection(
             ScalarField2D(&potTempT1, _pimpl->_dimsWithBorder),
@@ -1334,9 +1335,8 @@ namespace SceneEngine
                     // equilibriumMixingRatio equation. Only the change in temperature (which is adjusted 
                     // here) effects the equilibriumMixingRatio.
 
-                static float condensationSpeed = 15.f;
                 auto difference = vapourMixingRatio - equilibriumMixingRatio;
-                auto deltaCondensation = std::min(1.f, deltaTime * condensationSpeed) * difference;
+                auto deltaCondensation = std::min(1.f, deltaTime * settings._condensationSpeed) * difference;
                 deltaCondensation = std::max(deltaCondensation, -condensationMixingRatio);
                 vapourMixingRatio -= deltaCondensation;
                 condensationMixingRatio += deltaCondensation;
@@ -1353,7 +1353,7 @@ namespace SceneEngine
                 const auto latentHeatOfVaporization = 2260.f * 1000.f;  // in J . kg^-1 for water at 0 degrees celsius
                 const auto cp = 1005.f;                                 // in J . kg^-1 . K^-1. heat capacity of dry air at constant pressure
                 auto deltaPotTemp = latentHeatOfVaporization / (cp * exner) * deltaCondensation;
-                potentialTemp += deltaPotTemp;
+                potentialTemp += deltaPotTemp * settings._temperatureChangeSpeed;
             }
 
         for (unsigned c=0; c<N; ++c) {
@@ -1391,7 +1391,7 @@ namespace SceneEngine
             _pimpl->_condensedMixingRatio[1].data(),
             // _pimpl->_vaporMixingRatio[1].data(),
             _pimpl->_velU[1].data(), _pimpl->_velV[1].data(),
-            nullptr);
+            _pimpl->_potentialTemperature[1].data());
     }
 
     UInt2 CloudsForm2D::GetDimensions() const { return _pimpl->_dimsWithBorder; }
@@ -1440,10 +1440,14 @@ namespace SceneEngine
                     auto pressure = PressureAtAltitude(altitudeKm);     // (precalculate these pressures)
                     auto exner = ExnerFunction(pressure);
                     auto T = KelvinToCelsius(potentialTemp * exner);
-                    auto saturationPressure = (1.f/100.f) * 6.1094f * XlExp((17.625f * T) / (T + 243.04f));
-                    auto saturationMixingRatio = 0.622f * saturationPressure / pressure;
+                    auto saturationPressure = 100.f * 6.1094f * XlExp((17.625f * T) / (T + 243.04f));
+                    const auto Rd = 287.058f;  // in J . kg^-1 . K^-1. Gas constant for dry air
+                    const auto Rv = 461.495f;  // in J . kg^-1 . K^-1. Gas constant for water vapor
+                    const auto gasConstantRatio = Rd/Rv;   // ~0.622f;
+                    auto equilibriumMixingRatio = 
+                        gasConstantRatio * (pressure / (pressure-saturationPressure) - 1.f);
                     // RH = vaporMixingRatio/saturationMixingRatio
-                    _pimpl->_vaporMixingRatio[c][i] = relativeHumidity * saturationMixingRatio;
+                    _pimpl->_vaporMixingRatio[c][i] = relativeHumidity * equilibriumMixingRatio;
                 }
 
                 // Starting with zero condensation... But we could initialise
@@ -1464,13 +1468,17 @@ namespace SceneEngine
         _viscosity = 0.05f;
         _condensedDiffusionRate = 0.f;
         _vaporDiffusionRate = 0.f;
-        _temperatureDiffusionRate = 0.f;
+        _temperatureDiffusionRate = 2.f;
         _diffusionMethod = 0;
         _advectionMethod = 3;
         _advectionSteps = 4;
         _enforceIncompressibilityMethod = 0;
         _vorticityConfinement = 0.75f;
         _interpolationMethod = 0;
+        _buoyancyAlpha = 1.f;
+        _buoyancyBeta = 1.f;
+        _condensationSpeed = 60.f;
+        _temperatureChangeSpeed = .25f;
     }
 
 }
@@ -1544,10 +1552,10 @@ namespace SceneEngine
             struct Vertex { Float3 position; Float2 texCoord; } 
             vertices[] = 
             {
-                { Float3(0.f, 0.f, 0.f), Float2(0.f, 0.f) },
-                { Float3(wsDims[0], 0.f, 0.f), Float2(1.f, 0.f) },
-                { Float3(0.f, wsDims[1], 0.f), Float2(0.f, 1.f) },
-                { Float3(wsDims[0], wsDims[1], 0.f), Float2(1.f, 1.f) }
+                { Float3(0.f, 0.f, 0.f), Float2(0.f, 1.f) },
+                { Float3(wsDims[0], 0.f, 0.f), Float2(1.f, 1.f) },
+                { Float3(0.f, wsDims[1], 0.f), Float2(0.f, 0.f) },
+                { Float3(wsDims[0], wsDims[1], 0.f), Float2(1.f, 0.f) }
             };
 
             Metal::BoundInputLayout inputLayout(Metal::GlobalInputLayouts::PT, shader);
@@ -1620,10 +1628,10 @@ namespace SceneEngine
             struct Vertex { Float3 position; Float2 texCoord; } 
             vertices[] = 
             {
-                { Float3(0.f, 0.f, 0.f), Float2(0.f, 0.f) },
-                { Float3(wsDims[0], 0.f, 0.f), Float2(1.f, 0.f) },
-                { Float3(0.f, wsDims[1], 0.f), Float2(0.f, 1.f) },
-                { Float3(wsDims[0], wsDims[1], 0.f), Float2(1.f, 1.f) }
+                { Float3(0.f, 0.f, 0.f), Float2(0.f, 1.f) },
+                { Float3(wsDims[0], 0.f, 0.f), Float2(1.f, 1.f) },
+                { Float3(0.f, wsDims[1], 0.f), Float2(0.f, 0.f) },
+                { Float3(wsDims[0], wsDims[1], 0.f), Float2(1.f, 0.f) }
             };
 
             Metal::BoundInputLayout inputLayout(Metal::GlobalInputLayouts::PT, shader);
@@ -1728,6 +1736,11 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::CloudsForm2D::Setting
 
         props.Add(u("EnforceIncompressibility"), DefaultGet(Obj, _enforceIncompressibilityMethod),  DefaultSet(Obj, _enforceIncompressibilityMethod));
         props.Add(u("VorticityConfinement"), DefaultGet(Obj, _vorticityConfinement),  DefaultSet(Obj, _vorticityConfinement));
+        props.Add(u("BuoyancyAlpha"), DefaultGet(Obj, _buoyancyAlpha),  DefaultSet(Obj, _buoyancyAlpha));
+        props.Add(u("BuoyancyBeta"), DefaultGet(Obj, _buoyancyBeta),  DefaultSet(Obj, _buoyancyBeta));
+
+        props.Add(u("CondensationSpeed"), DefaultGet(Obj, _condensationSpeed),  DefaultSet(Obj, _condensationSpeed));
+        props.Add(u("TemperatureChangeSpeed"), DefaultGet(Obj, _temperatureChangeSpeed),  DefaultSet(Obj, _temperatureChangeSpeed));
         
         init = true;
     }

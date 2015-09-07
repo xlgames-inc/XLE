@@ -391,7 +391,7 @@ namespace GUILayer
     {
         Float2 coords(
             _pimpl->_sim->GetDimensions()[0] * x,
-            _pimpl->_sim->GetDimensions()[1] * y);
+            _pimpl->_sim->GetDimensions()[1] * (1.f-y));
 
         auto radius = 4.f;
         auto radiusSq = radius*radius;
@@ -408,7 +408,7 @@ namespace GUILayer
                         _pimpl->_sim->AddDensity(c, -_pimpl->_settings->_addDensity);
                         _pimpl->_sim->AddTemperature(c, -_pimpl->_settings->_addTemperature);
                     } else {
-                        _pimpl->_sim->AddVelocity(c, 1.f * Float2(velX, velY));
+                        _pimpl->_sim->AddVelocity(c, 1.f * Float2(velX, -velY));
                     }
                 }
             }
@@ -465,7 +465,7 @@ namespace GUILayer
     {
         Float2 coords(
             _pimpl->_sim->GetDimensions()[0] * x,
-            _pimpl->_sim->GetDimensions()[1] * y);
+            _pimpl->_sim->GetDimensions()[1] * (1.f-y));
 
         auto radius = 4.f;
         auto radiusSq = radius*radius;
@@ -478,7 +478,7 @@ namespace GUILayer
                     if (mouseButton == 0) {
                         _pimpl->_sim->AddVapor(c, _settings->AddDensity);
                     } else {
-                        _pimpl->_sim->AddVelocity(c, _settings->AddVelocity * Float2(velX, velY));
+                        _pimpl->_sim->AddVelocity(c, _settings->AddVelocity * Float2(velX, -velY));
                     }
                 }
             }
@@ -605,7 +605,7 @@ namespace GUILayer
     {
         Float2 coords(
             _pimpl->_sim->GetDimensions()[0] * x,
-            _pimpl->_sim->GetDimensions()[1] * y);
+            _pimpl->_sim->GetDimensions()[1] * (1.f-y));
 
         auto radius = 10.f;
         auto radiusSq = radius*radius;
@@ -620,7 +620,7 @@ namespace GUILayer
                     } else if (mouseButton == 2) {
                         _pimpl->_sim->AddDensity(c, -1.f);
                     } else {
-                        _pimpl->_sim->AddVelocity(c, 1.f * Float2(velX, velY));
+                        _pimpl->_sim->AddVelocity(c, 1.f * Float2(velX, -velY));
                     }
                 }
             }

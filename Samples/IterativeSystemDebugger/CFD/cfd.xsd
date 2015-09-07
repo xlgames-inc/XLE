@@ -80,6 +80,11 @@
           editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:CGPrecon=0,CGPlain=1,ForwardEuler=2,SOR=3,Multigrid=4"
           converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:CGPrecon=0,CGPlain=1,ForwardEuler=2,SOR=3,Multigrid=4"/>
         <scea.dom.editors.attribute category="Forces" name="VorticityConfinement" displayName="VorticityConfinement"/>
+        <scea.dom.editors.attribute category="Forces" name="BuoyancyAlpha" displayName="BuoyancyAlpha"/>
+        <scea.dom.editors.attribute category="Forces" name="BuoyancyBeta" displayName="BuoyancyBeta"/>
+
+        <scea.dom.editors.attribute category="Condensation" name="CondensationSpeed" displayName="CondensationSpeed"/>
+        <scea.dom.editors.attribute category="Condensation" name="TemperatureChangeSpeed" displayName="TemperatureChangeSpeed"/>
       </xs:appinfo>
     </xs:annotation>
     
@@ -95,6 +100,11 @@
     
     <xs:attribute name="EnforceIncompressibility" type="xs:int" default="3"/>
     <xs:attribute name="VorticityConfinement" type="xs:float" default=".5"/>
+    <xs:attribute name="BuoyancyAlpha" type="xs:float" default="1"/>
+    <xs:attribute name="BuoyancyBeta" type="xs:float" default="1"/>
+
+    <xs:attribute name="CondensationSpeed" type="xs:float" default="1"/>
+    <xs:attribute name="TemperatureChangeSpeed" type="xs:float" default="1"/>
   </xs:complexType>
 
 </xs:schema>

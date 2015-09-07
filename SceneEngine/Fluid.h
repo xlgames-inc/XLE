@@ -161,6 +161,12 @@ namespace SceneEngine
                 // forces
             int         _enforceIncompressibilityMethod;
             float       _vorticityConfinement;
+            float       _buoyancyAlpha;
+            float       _buoyancyBeta;
+
+                // condensation
+            float       _condensationSpeed;
+            float       _temperatureChangeSpeed;
 
             Settings();
         };
