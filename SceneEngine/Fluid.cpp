@@ -1023,11 +1023,16 @@ namespace SceneEngine
         const float T0 = 295.f;     // (in kelvin, base temperature) (about 20 degrees)
         const float Rd = 287.058f;  // (in J . kg^-1 . K^-1. This is the "specific" gas constant for dry air. It is R / M, where R is the gas constant, and M is the ideal gas constant)
 
-            //  Here, we're using a value close to the "dry adiabatic lapse rate"
-            //      see https://en.wikipedia.org/wiki/Lapse_rate
-        const float tempLapseRate = 9.8f;   // around 10 kelvin/km
+            //  We have a few choices for the lape rate here.
+            //      we're could use a value close to the "dry adiabatic lapse rate" (around 9.8 kelvin/km)
+            //      Or we could use a value around 6 or 7 -- this is the average lapse rate in the troposphere
+            //  see https://en.wikipedia.org/wiki/Lapse_rate
+            //  The minimum value for lapse rate in the troposhere should be around 4
+            //      (see http://www.iac.ethz.ch/edu/courses/bachelor/vertiefung/atmospheric_physics/Slides_2012/buoyancy.pdf)
+        const float tempLapseRate = 6.5f;
 
         // roughly: p0 * std::exp(kilometers * g / (1000.f * T0 * Rd));     (see wikipedia page)
+        // see also the "hypsometric equation" equation, similar to above
         return p0 * std::pow(1.f - kilometers * tempLapseRate / T0, g / (tempLapseRate * Rd));
     }
 
@@ -1105,8 +1110,8 @@ namespace SceneEngine
             // The strength of buoyancy is proportional to the reciprocal of
             // the referenceVirtualPotentialTemperature. So we can just the 
             // amount of bouyancy by changing this number.
-        const auto referenceVirtualPotentialTemperature = 295.f;
         const auto g = 9.81f / 1000.f;  // (in km/second)
+        const auto ambientTemperature = CelsiusToKelvin(23.f);
 
         const auto zScale = 2.f / float(dims[1]);    // simulating 2 km of atmosphere
 
@@ -1147,6 +1152,11 @@ namespace SceneEngine
                 auto virtualPotentialTemp = 
                     potentialTemp * (1.f + 0.61f * vapourMixingRatio);
 
+                auto altitudeKm = float(y) * zScale;
+                auto pressure = PressureAtAltitude(altitudeKm);     // (precalculate these pressures)
+                auto exner = ExnerFunction(pressure);
+                const auto referenceVirtualPotentialTemperature = 295.f / exner;
+
                     //
                     // As per Harris, we use the condenstation mixing ratio for the "hydrometeors" mixing
                     // ratio here. Note that this final equation is similar to our simple smoke buoyancy
@@ -1155,12 +1165,18 @@ namespace SceneEngine
                     // We need to scale the velocity according the scaling system of our grid. In the CFD
                     // system, coordinates are in grid units. 
                     // 
-                auto B = 
-                    g * (virtualPotentialTemp / referenceVirtualPotentialTemperature - condensationMixingRatio);
-                B /= zScale;
+                // auto B = 
+                //     g * (virtualPotentialTemp / referenceVirtualPotentialTemperature - condensationMixingRatio);
+                // B /= zScale;
+                // 
+                //     // B is now our buoyant force per unit mass -- so it is just our acceleration.
+                // velVSrc[i] -= B;
+                (void)virtualPotentialTemp; (void)referenceVirtualPotentialTemperature; (void)condensationMixingRatio;
 
-                    // B is now our buoyancy force.
-                velVSrc[i] -= B;
+                const auto temp = potentialTemp * exner;
+                auto virtualTemperature = temp * (1.f + vapourMixingRatio);
+                auto B = g * (virtualTemperature - ambientTemperature) / ambientTemperature;
+                velVSrc[i] -= B / zScale;
             }
 
         for (unsigned c=0; c<N; ++c) {
@@ -1318,33 +1334,32 @@ namespace SceneEngine
                     // equilibriumMixingRatio equation. Only the change in temperature (which is adjusted 
                     // here) effects the equilibriumMixingRatio.
 
-                static float condensationSpeed = 1.f;
+                static float condensationSpeed = 15.f;
                 auto difference = vapourMixingRatio - equilibriumMixingRatio;
-                auto deltaCondensation = deltaTime * condensationSpeed * difference;
+                auto deltaCondensation = std::min(1.f, deltaTime * condensationSpeed) * difference;
                 deltaCondensation = std::max(deltaCondensation, -condensationMixingRatio);
-                if (deltaCondensation != 0.f && deltaCondensation != -0.f) {
-                    vapourMixingRatio -= deltaCondensation;
-                    condensationMixingRatio += deltaCondensation;
+                vapourMixingRatio -= deltaCondensation;
+                condensationMixingRatio += deltaCondensation;
 
-                        // Delta condensation should effect the temperature, as well
-                        // When water vapour condenses, it releases its latent heat.
-                        // Note that the change in temperature will change the equilibrium
-                        // mixing ratio (for the next update).
+                    // Delta condensation should effect the temperature, as well
+                    // When water vapour condenses, it releases its latent heat.
+                    // Note that the change in temperature will change the equilibrium
+                    // mixing ratio (for the next update).
 
-                        // Note -- "latentHeatOfVaporization" value comes from Harris' paper.
-                        //          But we should check this. It appears that the units may be
-                        //          out in that paper. It maybe should be 2.5 x 10^6, or thereabouts?
+                    // Note -- "latentHeatOfVaporization" value comes from Harris' paper.
+                    //          But we should check this. It appears that the units may be
+                    //          out in that paper. It maybe should be 2.5 x 10^6, or thereabouts?
 
-                    const auto latentHeatOfVaporization = 2260.f * 1000.f;  // in J . kg^-1 for water at 0 degrees celsius
-                    const auto cp = 1005.f;                                 // in J . kg^-1 . K^-1. heat capacity of dry air at constant pressure
-                    auto deltaPotTemp = latentHeatOfVaporization / (cp * exner) * deltaCondensation;
-                    potentialTemp +=  deltaPotTemp;
-                }
+                const auto latentHeatOfVaporization = 2260.f * 1000.f;  // in J . kg^-1 for water at 0 degrees celsius
+                const auto cp = 1005.f;                                 // in J . kg^-1 . K^-1. heat capacity of dry air at constant pressure
+                auto deltaPotTemp = latentHeatOfVaporization / (cp * exner) * deltaCondensation;
+                potentialTemp += deltaPotTemp;
             }
 
         for (unsigned c=0; c<N; ++c) {
             velUSrc[c] = 0.f;
             velVSrc[c] = 0.f;
+            qvSrc[c] = 0.f;
         }
     }
 
