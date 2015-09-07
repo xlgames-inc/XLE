@@ -513,6 +513,7 @@ namespace SceneEngine
             _pimpl->_poissonSolver, *_pimpl->_incompressibility,
             (PoissonSolver::Method)settings._enforceIncompressibilityMethod);
 
+        SmearBorder2D(densityWorking, _pimpl->_dimsWithBorder[0]);
         _pimpl->DensityDiffusion(deltaTime, settings);
         PerformAdvection(
             ScalarField2D(&densityT1, _pimpl->_dimsWithBorder),
@@ -521,6 +522,7 @@ namespace SceneEngine
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
             deltaTime, advSettings);
 
+        SmearBorder2D(temperatureWorking, _pimpl->_dimsWithBorder[0]);
         _pimpl->TemperatureDiffusion(deltaTime, settings);
         PerformAdvection(
             ScalarField2D(&temperatureT1, _pimpl->_dimsWithBorder),

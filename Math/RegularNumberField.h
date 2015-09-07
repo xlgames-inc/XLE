@@ -156,6 +156,23 @@ namespace XLEMath
         v[(wh-1)*wh+wh-1] = 0.f;
     }
 
+    template <typename Vec>
+        static void CopyBorder2D(Vec& dst, const Vec& src, unsigned wh)
+    {
+        for (unsigned i = 1; i < wh - 1; ++i) {
+            dst[i] = src[i];
+            dst[i+(wh-1)*wh] = src[i+(wh-1)*wh];
+            dst[i*wh] = src[i*wh];
+            dst[i*wh+(wh-1)] = src[i*wh+(wh-1)];
+        }
+
+            // 4 corners
+        dst[0] = src[0];
+        dst[wh-1]= src[wh-1];
+        dst[(wh-1)*wh] = src[(wh-1)*wh];
+        dst[(wh-1)*wh+wh-1] = src[(wh-1)*wh+wh-1];
+    }
+
     inline unsigned XY(unsigned x, unsigned y, unsigned wh)                 { return y*wh+x; }
     inline unsigned XYZ(unsigned x, unsigned y, unsigned z, UInt3 dims)     { return (z*dims[1]+y)*dims[0]+x; }
     template <typename Vec>
@@ -272,6 +289,66 @@ namespace XLEMath
         v[XYZ(LX,  0, LZ)] = 0.f;
         v[XYZ( 0, LY, LZ)] = 0.f;
         v[XYZ(LX, LY, LZ)] = 0.f;
+        #undef XY
+    }
+
+    template <typename Vec>
+        static void CopyBorder3D(Vec& dst, const Vec& src, UInt3 dims)
+    {
+        auto LX = dims[0]-1, LY = dims[1]-1, LZ = dims[2]-1;
+        #define XYZ(x,y,z) XYZ(x,y,z,dims)
+
+            // 6 faces
+        for (unsigned y=1; y<dims[1]-1; ++y)
+            for (unsigned x=1; x<dims[0]-1; ++x) {
+                dst[XYZ(x,y, 0)]  = src[XYZ(x,y, 0)];
+                dst[XYZ(x,y,LZ)]  = src[XYZ(x,y,LZ)];
+            }
+
+        for (unsigned z=1; z<dims[2]-1; ++z)
+            for (unsigned x=1; x<dims[0]-1; ++x) {
+                dst[XYZ(x, 0,z)]  = src[XYZ(x, 0,z)];
+                dst[XYZ(x,LY,z)]  = src[XYZ(x,LY,z)];
+            }
+
+        for (unsigned z=1; z<dims[2]-1; ++z)
+            for (unsigned y=1; y<dims[1]-1; ++y) {
+                dst[XYZ( 0,y,z)]  = src[XYZ( 0,y,z)];
+                dst[XYZ(LX,y,z)]  = src[XYZ(LX,y,z)];
+            }
+
+            // 12 edges
+        for (unsigned x=1; x<dims[0]-1; ++x) {
+            dst[XYZ(x, 0, 0)]     = src[XYZ(x, 0, 0)];
+            dst[XYZ(x, 0,LZ)]     = src[XYZ(x, 0,LZ)];
+            dst[XYZ(x,LY, 0)]     = src[XYZ(x,LY, 0)];
+            dst[XYZ(x,LY,LZ)]     = src[XYZ(x,LY,LZ)];
+        }
+
+        for (unsigned y=1; y<dims[1]-1; ++y) {
+            dst[XYZ( 0,y, 0)]     = src[XYZ( 0,y, 0)];
+            dst[XYZ( 0,y,LZ)]     = src[XYZ( 0,y,LZ)];
+            dst[XYZ(LX,y, 0)]     = src[XYZ(LX,y, 0)];
+            dst[XYZ(LX,y,LZ)]     = src[XYZ(LX,y,LZ)];
+        }
+
+        for (unsigned z=1; z<dims[2]-1; ++z) {
+            dst[XYZ( 0, 0,z)]     = src[XYZ( 0, 0,z)];
+            dst[XYZ( 0,LY,z)]     = src[XYZ( 0,LY,z)];
+            dst[XYZ(LX, 0,z)]     = src[XYZ(LX, 0,z)];
+            dst[XYZ(LX,LY,z)]     = src[XYZ(LX,LY,z)];
+        }
+
+            // 8 corners
+        dst[XYZ( 0,  0,  0)] = src[XYZ( 0,  0,  0)];
+        dst[XYZ(LX,  0,  0)] = src[XYZ(LX,  0,  0)];
+        dst[XYZ( 0, LY,  0)] = src[XYZ( 0, LY,  0)];
+        dst[XYZ(LX, LY,  0)] = src[XYZ(LX, LY,  0)];
+
+        dst[XYZ( 0,  0, LZ)] = src[XYZ( 0,  0, LZ)];
+        dst[XYZ(LX,  0, LZ)] = src[XYZ(LX,  0, LZ)];
+        dst[XYZ( 0, LY, LZ)] = src[XYZ( 0, LY, LZ)];
+        dst[XYZ(LX, LY, LZ)] = src[XYZ(LX, LY, LZ)];
         #undef XY
     }
 

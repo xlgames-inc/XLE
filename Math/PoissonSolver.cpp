@@ -100,6 +100,13 @@ namespace XLEMath
         else ZeroBorder3D(x, a._dims);
     }
 
+    template<typename Vec>
+        static void CopyBorder(Vec&dst, const Vec&src, const AMat& a)
+    {
+        if (a._dimensionality==2) CopyBorder2D(dst, src, GetWidth(a));
+        else CopyBorder3D(dst, src, a._dims);
+    }
+
     class Solver_PlainCG
     {
     public:
@@ -205,10 +212,9 @@ namespace XLEMath
 
         auto rAsField = AsScalarField1D(_r);
         Multiply(rAsField, A, x, _N);    // r = AMat * x
-        for (unsigned c=0; c<b._count; ++c) {
+        for (unsigned c=0; c<b._count; ++c)
             _r[c] = b[c] - _r[c];
-        }
-        ZeroBorder(_r, A);
+        ZeroBorder(_r, A);  // what should be the border values for _r ?
             
         SolveLowerTriangular(_d, precon, _r, _N);
             
@@ -223,11 +229,22 @@ namespace XLEMath
         //         }
         //     }
         // #endif
-            
-        auto rho = _r.dot(_d);
-        // auto rho0 = rho;
 
-        ZeroBorder(_q, A);
+        const UInt3 bor = GetBorders(A);
+        const auto& dims = A._dims;
+        #define FOR_EACH_CELL                                               \
+            for (unsigned qz=bor[2]; qz<dims[2]-bor[2]; ++qz)               \
+                for (unsigned qy=bor[1]; qy<dims[1]-bor[1]; ++qy)           \
+                    for (unsigned qx=bor[0]; qx<dims[0]-bor[0]; ++qx) {     \
+                        auto i = (qz*dims[1]+qy)*dims[0]+qx;                \
+            /**/
+        #define FOR_EACH_CELL_END }
+            
+        auto rho = 0.f;
+        FOR_EACH_CELL
+            rho += _r[i] * _d[i];       // calculating: auto rho = _r.dot(_d);
+        FOR_EACH_CELL_END
+        // auto rho0 = rho;
             
         unsigned k=0;
         if (XlAbs(rho) > rhoThreshold) {
@@ -243,26 +260,39 @@ namespace XLEMath
                     // element per cell.
             
                 Multiply(_q, A, _d, _N);
-                auto dDotQ = _d.dot(_q);
+                auto dDotQ = 0.f; // _d.dot(_q);
+                FOR_EACH_CELL
+                    dDotQ += _d[i] * _q[i];
+                FOR_EACH_CELL_END
+
                 auto alpha = rho / dDotQ;
                 assert(isfinite(alpha) && !isnan(alpha));
-                for (unsigned i=0; i<_N; ++i) {
+                FOR_EACH_CELL
                      x[i] += alpha * _d[i];
                     _r[i] -= alpha * _q[i];
-                }
+                FOR_EACH_CELL_END
             
                 SolveLowerTriangular(_s, precon, _r, _N);
                 auto rhoOld = rho;
-                rho = _r.dot(_s);
+                rho = 0.f; // _r.dot(_s);
+                FOR_EACH_CELL
+                    rho += _r[i] * _s[i];
+                FOR_EACH_CELL_END
                 if (XlAbs(rho) < rhoThreshold) break;
                 // assert(rho < rhoOld);
+
                 auto beta = rho / rhoOld;
                 assert(isfinite(beta) && !isnan(beta));
             
-                for (unsigned i=0; i<_N; ++i)
+                // for (unsigned i=0; i<_N; ++i)
+                FOR_EACH_CELL
                     _d[i] = _s[i] + beta * _d[i];
+                FOR_EACH_CELL_END
             }
         }
+
+        #undef FOR_EACH_CELL
+        #undef FOR_EACH_CELL_END
 
         return k;
     }
@@ -441,6 +471,7 @@ namespace XLEMath
         auto iterations = 0u;
 
             // pre-smoothing (SOR method -- can be done in place)
+        if (x._u != b._u) CopyBorder(x, b, A);
         for (unsigned k = 0; k<preSmoothIterations; ++k)
             RunSOR(x, A, b, gamma);
         iterations += preSmoothIterations;
@@ -608,6 +639,10 @@ namespace XLEMath
         // can be parallelized) with complex boundary conditions support.
         //
         // We must also consider the boundary conditions in this step.
+        //
+        // Note -- rules for the border of region of the input:
+        //      * this function will not modify the border region (but it will read from there)
+        //      * if x is not an alias of b, the border region will be copied from b into x
         // 
 
             // maybe we could adapt this based on the amount of noise in the system? 
@@ -636,26 +671,12 @@ namespace XLEMath
 
         if (solver == Method::PlainCG || solver == Method::PreconCG || solver == Method::Multigrid) {
 
-            for (unsigned qz=bor[2]; qz<depth-bor[2]; ++qz) {
-                for (unsigned qy=bor[1]; qy<height-bor[1]; ++qy) {
-                    for (unsigned qx=bor[0]; qx<width-bor[0]; ++qx) {
-                        auto i = (qz*height+qy)*width+qx;
-
-                            // set an initial estimate using
-                            // explicit euler. We'll march forward part of
-                            // the timestep, and then refine the estimate
-                            // from there using the iterative implicit method.
-                        auto v = estMatA._a0 * b[i];
-                        v += estMatA._a1 * b[i-1];
-                        v += estMatA._a1 * b[i+1];
-                        v += estMatA._a1 * b[i-width];
-                        v += estMatA._a1 * b[i+width];
-                        x._u[i] = v;
-                    }
-                }
-            }
-
-            ZeroBorder(x, matA);
+                // set an initial estimate using
+                // explicit euler. We'll march forward part of
+                // the timestep, and then refine the estimate
+                // from there using the iterative implicit method.
+            Multiply(x, matA, workingB, GetN(matA));
+            if (x._u != b._u) CopyBorder(x, b, matA);
 
             auto iterations = 0u;
             if (solver == Method::PlainCG) {
@@ -692,7 +713,7 @@ namespace XLEMath
                         x._u[i] = v;
                     }
 
-            ZeroBorder(x, matA);
+            if (x._u != b._u) CopyBorder(x, b, matA);
             return 1;
 
         } else if (solver == Method::SOR) {
@@ -724,10 +745,10 @@ namespace XLEMath
             float gamma = 1.25f;    // relaxation factor
             const auto iterations = 15u;
 
+            if (x._u != b._u) CopyBorder(x, b, matA);
             for (unsigned k = 0; k<iterations; ++k)
                 RunSOR(x, matA, workingB, gamma);
 
-            ZeroBorder(x, matA);
             return iterations;
 
         }
