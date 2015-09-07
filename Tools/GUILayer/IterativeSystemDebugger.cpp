@@ -367,6 +367,8 @@ namespace GUILayer
     {
         ActivePreview = Preview::Density;
         DeltaTime = 1.0f / 60.f;
+        AddDensity = 0.25f;
+        AddVelocity = 1.f;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -437,6 +439,76 @@ namespace GUILayer
     }
 
     CFDIterativeSystem::~CFDIterativeSystem()
+    {
+        _pimpl.reset();
+        delete _overlay; _overlay = nullptr;
+        delete _getAndSetProperties; _getAndSetProperties = nullptr;
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    using CloudsForm2D = SceneEngine::CloudsForm2D;
+
+    class CloudsIterativeSystemPimpl
+    {
+    public:
+        std::shared_ptr<CloudsForm2D> _sim;
+        std::shared_ptr<CloudsForm2D::Settings> _settings;
+    };
+
+    void CloudsIterativeSystem::Tick()
+    {
+        _pimpl->_sim->Tick(_settings->DeltaTime, *_pimpl->_settings);
+    }
+
+    void CloudsIterativeSystem::OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton)
+    {
+        Float2 coords(
+            _pimpl->_sim->GetDimensions()[0] * x,
+            _pimpl->_sim->GetDimensions()[1] * y);
+
+        auto radius = 4.f;
+        auto radiusSq = radius*radius;
+        for (float y = XlFloor(coords[1] - radius); y <= XlCeil(coords[1] + radius); ++y) {
+            for (float x = XlFloor(coords[0] - radius); x <= XlCeil(coords[0] + radius); ++x) {
+                Float2 fo = Float2(x, y) - coords;
+                if (MagnitudeSquared(fo) <= radiusSq && x >= 0.f && y >= 0.f) {
+
+                    auto c = UInt2(unsigned(x), unsigned(y));
+                    if (mouseButton == 0) {
+                        _pimpl->_sim->AddVapor(c, _settings->AddDensity);
+                    } else {
+                        _pimpl->_sim->AddVelocity(c, _settings->AddVelocity * Float2(velX, velY));
+                    }
+                }
+            }
+        }
+    }
+    
+    CloudsIterativeSystem::CloudsIterativeSystem(unsigned size)
+    {
+        using namespace SceneEngine;
+        _pimpl.reset(new CloudsIterativeSystemPimpl);
+        _pimpl->_settings = std::make_shared<CloudsForm2D::Settings>();
+        _pimpl->_sim = std::make_shared<CloudsForm2D>(UInt2(size, size));
+        _settings = gcnew CFDPreviewSettings();
+
+        _getAndSetProperties = gcnew ClassAccessors_GetAndSet(_pimpl->_settings);
+
+        _overlay = gcnew CFDOverlay(
+            _pimpl->_sim, 
+            MakeRenderFn<CloudsForm2D>(_settings),
+            _pimpl->_sim->GetDimensions());
+    }
+
+    CloudsIterativeSystem::!CloudsIterativeSystem()
+    {
+        _pimpl.reset();
+        delete _overlay; _overlay = nullptr;
+        delete _getAndSetProperties; _getAndSetProperties = nullptr;
+    }
+
+    CloudsIterativeSystem::~CloudsIterativeSystem()
     {
         _pimpl.reset();
         delete _overlay; _overlay = nullptr;

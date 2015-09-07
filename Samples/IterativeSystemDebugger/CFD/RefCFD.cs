@@ -14,14 +14,14 @@ namespace IterativeSystemDebugger
 {
     public partial class RefCFD : BaseWindow
     {
-        public RefCFD(GUILayer.IterativeSystem system)
+        public RefCFD(GUILayer.IterativeSystem system, String settingsName)
         {
             _hasOldMouse = false;
             _system = system;
             _previewWindow.Underlying.AddSystem(_system.Overlay);
             _previewSettings.SelectedObject = _system.PreviewSettings;
 
-            _schemaLoader = new CFDSettingsSchemaLoader();
+            _schemaLoader = new CFDSettingsSchemaLoader(settingsName);
             _systemSettings.Bind(
                 _schemaLoader.CreatePropertyContext(_system.SimulationSettings));
 
@@ -80,16 +80,19 @@ namespace IterativeSystemDebugger
         {
             var ps = new GUILayer.BasicPropertySource(
                 getAndSet,
-                GetPropertyDescriptors("gap:RefCFDSettings"));
+                GetPropertyDescriptors("gap:" + _settingsName));
             return new XLEBridgeUtils.PropertyBridge(ps);
         }
 
-        public CFDSettingsSchemaLoader()
+        public CFDSettingsSchemaLoader(String settingsName)
         {
+            _settingsName = settingsName;
             SchemaResolver = new Sce.Atf.ResourceStreamResolver(
                 System.Reflection.Assembly.GetExecutingAssembly(), 
                 "IterativeSystemDebugger.CFD");
             Load("cfd.xsd");
         }
+
+        private String _settingsName;
     };
 }

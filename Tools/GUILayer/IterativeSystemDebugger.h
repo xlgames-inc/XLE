@@ -59,6 +59,12 @@ namespace GUILayer
         [Category("Preview")] [Description("Time step")]
         property float DeltaTime;
 
+        [Category("Mouse")] [Description("Quantity of stuff added on left click")]
+        property float AddDensity;
+
+        [Category("Mouse")] [Description("Strength of the force added on right click")]
+        property float AddVelocity;
+
         CFDPreviewSettings();
     };
 
@@ -140,6 +146,30 @@ namespace GUILayer
 
     private:
         clix::auto_ptr<CFDRefIterativeSystemPimpl> _pimpl;
+    };
+
+
+    class CloudsIterativeSystemPimpl;
+    public ref class CloudsIterativeSystem : public IterativeSystem
+    {
+    public:
+        IOverlaySystem^ _overlay;
+        IGetAndSetProperties^ _getAndSetProperties;
+        CFDPreviewSettings^ _settings;
+
+        property Object^ PreviewSettings { virtual Object^ get() { return _settings; } }
+        property IOverlaySystem^ Overlay { virtual IOverlaySystem^ get() { return _overlay; } }
+        property IGetAndSetProperties^ SimulationSettings { virtual IGetAndSetProperties^ get() { return _getAndSetProperties; } }
+
+        virtual void Tick();
+        virtual void OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton);
+
+        CloudsIterativeSystem(unsigned size);
+        !CloudsIterativeSystem();
+        ~CloudsIterativeSystem();
+
+    private:
+        clix::auto_ptr<CloudsIterativeSystemPimpl> _pimpl;
     };
     
 }

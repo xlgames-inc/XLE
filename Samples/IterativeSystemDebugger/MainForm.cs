@@ -34,7 +34,7 @@ namespace IterativeSystemDebugger
         private void referenceCFDToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var system = new GUILayer.CFDRefIterativeSystem(128);
-            var form = new RefCFD(system);
+            var form = new RefCFD(system, "RefCFDSettings");
             form.Show();
             _forms.Add(form);
         }
@@ -42,7 +42,7 @@ namespace IterativeSystemDebugger
         private void customCFDToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var system = new GUILayer.CFDIterativeSystem(128);
-            var form = new RefCFD(system);
+            var form = new RefCFD(system, "RefCFDSettings");
             form.Show();
             _forms.Add(form);
         }
@@ -50,7 +50,15 @@ namespace IterativeSystemDebugger
         private void customCFD3DToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var system = new GUILayer.CFD3DIterativeSystem(64, 64, 32);
-            var form = new RefCFD(system);
+            var form = new RefCFD(system, "RefCFDSettings");
+            form.Show();
+            _forms.Add(form);
+        }
+
+        private void cloudsForm2DToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var system = new GUILayer.CloudsIterativeSystem(128);
+            var form = new RefCFD(system, "CloudsFormSettings");
             form.Show();
             _forms.Add(form);
         }

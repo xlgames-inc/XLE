@@ -118,6 +118,10 @@ namespace SceneEngine
             int         _enforceIncompressibilityMethod;
             float       _vorticityConfinement;
 
+                // debugging
+            float       _addDensity;
+            float       _addTemperature;
+
             Settings();
         };
 
@@ -144,7 +148,9 @@ namespace SceneEngine
         {
                 // diffusion
             float       _viscosity;
-            float       _diffusionRate;
+            float       _condensedDiffusionRate;
+            float       _vaporDiffusionRate;
+            float       _temperatureDiffusionRate;
             int         _diffusionMethod;
 
                 // advection
@@ -160,7 +166,7 @@ namespace SceneEngine
         };
 
         void Tick(float deltaTime, const Settings& settings);
-        void AddDensity(UInt2 coords, float amount);
+        void AddVapor(UInt2 coords, float amount);
         void AddVelocity(UInt2 coords, Float2 vel);
 
         UInt2 GetDimensions() const;

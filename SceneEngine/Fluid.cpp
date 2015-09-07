@@ -900,13 +900,90 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    static std::shared_ptr<PoissonSolver::PreparedMatrix> BuildDiffusionMethod(
+        const PoissonSolver& solver, float diffusion, PoissonSolver::Method method)
+    {
+        const float a0 = 1.f + 4.f * diffusion;
+        const float a1 = -diffusion;
+        return solver.PrepareDiffusionMatrix(a0, a1, method);
+    }
+
+    class DiffusionOperation
+    {
+    public:
+        void Execute(
+            PoissonSolver& solver, VectorField2D vectorField,
+            float diffusionAmount, float deltaTime,
+            PoissonSolver::Method method = PoissonSolver::Method::PreconCG, const char name[] = nullptr);
+
+        void Execute(
+            PoissonSolver& solver, ScalarField2D field,
+            float diffusionAmount, float deltaTime,
+            PoissonSolver::Method method = PoissonSolver::Method::PreconCG, const char name[] = nullptr);
+
+        DiffusionOperation();
+        ~DiffusionOperation();
+    private:
+        float _preparedValue;
+        PoissonSolver::Method _preparedMethod;
+        std::shared_ptr<PoissonSolver::PreparedMatrix> _matrix;
+    };
+
+    void DiffusionOperation::Execute(
+        PoissonSolver& solver, VectorField2D vectorField,
+        float diffusionAmount, float deltaTime,
+        PoissonSolver::Method method, const char name[])
+    {
+        if (!diffusionAmount || !deltaTime) return;
+
+        if (_preparedValue != deltaTime * diffusionAmount || method != _preparedMethod) {
+            _preparedValue = deltaTime * diffusionAmount;
+            _preparedMethod = method;
+            _matrix = BuildDiffusionMethod(solver, _preparedValue, _preparedMethod);
+        }
+
+        auto iterationsu = solver.Solve(
+            AsScalarField1D(*vectorField._u), *_matrix, AsScalarField1D(*vectorField._u), 
+            method);
+        auto iterationsv = solver.Solve(
+            AsScalarField1D(*vectorField._v), *_matrix, AsScalarField1D(*vectorField._v), 
+            method);
+
+        if (name)
+            LogInfo << name << " diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations.";
+    }
+
+    void DiffusionOperation::Execute(
+        PoissonSolver& solver, ScalarField2D field,
+        float diffusionAmount, float deltaTime,
+        PoissonSolver::Method method, const char name[])
+    {
+        if (!diffusionAmount || !deltaTime) return;
+
+        if (_preparedValue != deltaTime * diffusionAmount || method != _preparedMethod) {
+            _preparedValue = deltaTime * diffusionAmount;
+            _preparedMethod = method;
+            _matrix = BuildDiffusionMethod(solver, _preparedValue, _preparedMethod);
+        }
+
+        auto iterationsu = solver.Solve(
+            AsScalarField1D(*field._u), *_matrix, AsScalarField1D(*field._u), 
+            method);
+
+        if (name)
+            LogInfo << name << " diffusion took: (" << iterationsu << ") iterations.";
+    }
+
+    DiffusionOperation::DiffusionOperation() { _preparedValue = 0.f; _preparedMethod = (PoissonSolver::Method)~0u; }
+    DiffusionOperation::~DiffusionOperation() {}
+
     class CloudsForm2D::Pimpl
     {
     public:
         VectorX _velU[3];
         VectorX _velV[3];
 
-        VectorX _vapourMixingRatio[2];      // qv
+        VectorX _vaporMixingRatio[2];      // qv
         VectorX _condensedMixingRatio[2];   // qc
         VectorX _potentialTemperature[2];   // theta
 
@@ -916,45 +993,17 @@ namespace SceneEngine
 
         PoissonSolver _poissonSolver;
         std::shared_ptr<PoissonSolver::PreparedMatrix> _incompressibility;
-        std::shared_ptr<PoissonSolver::PreparedMatrix> _velocityDiffusion;
-        std::shared_ptr<PoissonSolver::PreparedMatrix> _vapourDiffusion;
-        std::shared_ptr<PoissonSolver::PreparedMatrix> _condensedDiffusion;
-        std::shared_ptr<PoissonSolver::PreparedMatrix> _thetaDiffusion;
 
-        float _preparedVelocityDiffusion, _preparedVapourDiffusion, _preparedCondensedDiffusion, _preparedThetaDiffusion;
-
-        void VelocityDiffusion(float deltaTime, const Settings& settings);
-
-        std::shared_ptr<PoissonSolver::PreparedMatrix> BuildDiffusionMethod(float diffusion);
+        DiffusionOperation _velocityDiffusion;
+        DiffusionOperation _vaporDiffusion;
+        DiffusionOperation _condensedDiffusion;
+        DiffusionOperation _temperatureDiffusion;
     };
-
-    std::shared_ptr<PoissonSolver::PreparedMatrix> CloudsForm2D::Pimpl::BuildDiffusionMethod(float diffusion)
-    {
-        const float a0 = 1.f + 4.f * diffusion;
-        const float a1 = -diffusion;
-        return _poissonSolver.PrepareDiffusionMatrix(a0, a1, PoissonSolver::Method::PreconCG);
-    }
-
-    void CloudsForm2D::Pimpl::VelocityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings)
-    {
-        if (!_velocityDiffusion || _preparedVelocityDiffusion != deltaTime * settings._viscosity) {
-            _preparedVelocityDiffusion = deltaTime * settings._viscosity;
-            _velocityDiffusion = BuildDiffusionMethod(_preparedVelocityDiffusion);
-        }
-
-        auto iterationsu = _poissonSolver.Solve(
-            AsScalarField1D(_velU[2]), *_velocityDiffusion, AsScalarField1D(_velU[2]), 
-            (PoissonSolver::Method)settings._diffusionMethod);
-        auto iterationsv = _poissonSolver.Solve(
-            AsScalarField1D(_velV[2]), *_velocityDiffusion, AsScalarField1D(_velV[2]), 
-            (PoissonSolver::Method)settings._diffusionMethod);
-        LogInfo << "Velocity diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations.";
-    }
 
     static float PressureAtAltitude(float kilometers)
     {
             //
-            //  Returns a value in kilopascals.
+            //  Returns a value in pascals.
             //  For a given altitude, we can calculate the standard
             //  atmospheric pressure.
             //
@@ -970,7 +1019,7 @@ namespace SceneEngine
             //      https://en.wikipedia.org/wiki/Atmospheric_pressure
             //
         const float g = 9.81f;
-        const float p0 = 101.325f;  // (in kilopascals, 1 standard atmosphere)
+        const float p0 = 101325.f;  // (in pascals, 1 standard atmosphere)
         const float T0 = 295.f;     // (in kelvin, base temperature) (about 20 degrees)
         const float Rd = 287.058f;  // (in J . kg^-1 . K^-1. This is the "specific" gas constant for dry air. It is R / M, where R is the gas constant, and M is the ideal gas constant)
 
@@ -982,8 +1031,9 @@ namespace SceneEngine
         return p0 * std::pow(1.f - kilometers * tempLapseRate / T0, g / (tempLapseRate * Rd));
     }
 
-    static float TemperatureFromPotentialTemperature(float potentialTemp, float pressure)
+    static float ExnerFunction(float pressure)
     {
+
             //
             //  The potential temperature is defined based on the atmosphere pressure.
             //  So, we can go backwards as well and get the temperature from the potential
@@ -992,16 +1042,21 @@ namespace SceneEngine
             //  Note that if "pressure" comes from PressureAtAltitude, we will be 
             //  multiplying by p0, and then dividing it away again.
             //
+            //  The Exner function is ratio of the potential temperature and absolute temperature.
+            //  So,
+            //      temperature = ExnerFunction * potentialTemperature
+            //      potentialTemperature = temperature / ExnerFunction
+            //
 
-        const float p0 = 101.325f;  // in kilopascals, 1 standard atmosphere
+        const float p0 = 101325.f;  // (in pascals, 1 standard atmosphere)
         const float Rd = 287.058f;  // in J . kg^-1 . K^-1. Gas constant for dry air
         const float cp = 1005.f;    // in J . kg^-1 . K^-1. heat capacity of dry air at constant pressure
         const float kappa = Rd/cp;
-
-        return potentialTemp * std::pow(pressure/p0, kappa);
+        return std::pow(pressure/p0, kappa);
     }
 
     static float KelvinToCelsius(float kelvin) { return kelvin - 273.15f; }
+    static float CelsiusToKelvin(float celius) { return celius + 273.15f; }
 
     void CloudsForm2D::Tick(float deltaTime, const Settings& settings)
     {
@@ -1021,8 +1076,9 @@ namespace SceneEngine
 
         auto& potTempT1 = _pimpl->_potentialTemperature[1];
         auto& potTempWorking = _pimpl->_potentialTemperature[0];
-        auto& qvT1 = _pimpl->_vapourMixingRatio[1];
-        auto& qvWorking = _pimpl->_vapourMixingRatio[0];
+        auto& qvT1 = _pimpl->_vaporMixingRatio[1];
+        auto& qvSrc = _pimpl->_vaporMixingRatio[0];
+        auto& qvWorking = _pimpl->_vaporMixingRatio[0];
         auto& qcT1 = _pimpl->_condensedMixingRatio[1];
         auto& qcWorking = _pimpl->_condensedMixingRatio[0];
 
@@ -1041,16 +1097,18 @@ namespace SceneEngine
             //
 
             // Vorticity confinement (additional) force
-        _pimpl->VorticityConfinement(
-            VectorField2D(&velUSrc, &velVSrc, _pimpl->_dimsWithBorder),
-            VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),           // last frame results
-            settings._vorticityConfinement, deltaTime);
+        // _pimpl->VorticityConfinement(
+        //     VectorField2D(&velUSrc, &velVSrc, _pimpl->_dimsWithBorder),
+        //     VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),           // last frame results
+        //     settings._vorticityConfinement, deltaTime);
 
             // The strength of buoyancy is proportional to the reciprocal of
             // the referenceVirtualPotentialTemperature. So we can just the 
             // amount of bouyancy by changing this number.
-        const float referenceVirtualPotentialTemperature = 295.f;
-        const float g = 9.81f;
+        const auto referenceVirtualPotentialTemperature = 295.f;
+        const auto g = 9.81f / 1000.f;  // (in km/second)
+
+        const auto zScale = 2.f / float(dims[1]);    // simulating 2 km of atmosphere
 
             // Buoyancy force
         const UInt2 border(1,1);
@@ -1086,20 +1144,23 @@ namespace SceneEngine
                     //  virtual temperature ~= T . (1 + 0.61qv)
                     // we can apply the same equation to the potential temperature.
                     //
-                float virtualPotentialTemp = 
+                auto virtualPotentialTemp = 
                     potentialTemp * (1.f + 0.61f * vapourMixingRatio);
 
                     //
                     // As per Harris, we use the condenstation mixing ratio for the "hydrometeors" mixing
                     // ratio here. Note that this final equation is similar to our simple smoke buoyancy
-                    //  -- the force up is linear against temperatures and density of particles 
+                    //  --  the force up is linear against temperatures and density of particles 
                     //      in the air
+                    // We need to scale the velocity according the scaling system of our grid. In the CFD
+                    // system, coordinates are in grid units. 
                     // 
-                float B = 
+                auto B = 
                     g * (virtualPotentialTemp / referenceVirtualPotentialTemperature - condensationMixingRatio);
+                B /= zScale;
 
                     // B is now our buoyancy force.
-                velVSrc[i] += g;
+                velVSrc[i] -= B;
             }
 
         for (unsigned c=0; c<N; ++c) {
@@ -1109,11 +1170,14 @@ namespace SceneEngine
             velVWorking[c] = velVT1[c] + dt * velVSrc[c];
 
             qcWorking[c] = qcT1[c]; //  + dt * qcSrc[c];
-            qvWorking[c] = qvT1[c]; //  + dt * qvSrc[c];
+            qvWorking[c] = qvT1[c] + dt * qvSrc[c];
             potTempWorking[c] = potTempT1[c]; // + dt * temperatureSrc[c];
         }
 
-        _pimpl->VelocityDiffusion(deltaTime, settings);
+        _pimpl->_velocityDiffusion.Execute(
+            _pimpl->_poissonSolver,
+            VectorField2D(&velUWorking, &velVWorking, _pimpl->_dimsWithBorder),
+            settings._viscosity, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, "Velocity");
 
         AdvectionSettings advSettings {
             (AdvectionMethod)settings._advectionMethod, 
@@ -1140,6 +1204,10 @@ namespace SceneEngine
             // while advecting velocity -- it's unclear how that would change
             // the result (especially since that advection happens before we
             // enforce incompressibility).
+        _pimpl->_condensedDiffusion.Execute(
+            _pimpl->_poissonSolver,
+            ScalarField2D(&qcWorking, _pimpl->_dimsWithBorder),
+            settings._condensedDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, "Condensed");
         PerformAdvection(
             ScalarField2D(&qcT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&qcWorking, _pimpl->_dimsWithBorder),
@@ -1147,6 +1215,10 @@ namespace SceneEngine
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
             deltaTime, advSettings);
 
+        _pimpl->_vaporDiffusion.Execute(
+            _pimpl->_poissonSolver,
+            ScalarField2D(&qvWorking, _pimpl->_dimsWithBorder),
+            settings._vaporDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, "Vapor");
         PerformAdvection(
             ScalarField2D(&qvT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&qvWorking, _pimpl->_dimsWithBorder),
@@ -1154,6 +1226,10 @@ namespace SceneEngine
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
             deltaTime, advSettings);
 
+        _pimpl->_temperatureDiffusion.Execute(
+            _pimpl->_poissonSolver,
+            ScalarField2D(&qvWorking, _pimpl->_dimsWithBorder),
+            settings._temperatureDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, "Temperature");
         PerformAdvection(
             ScalarField2D(&potTempT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&potTempWorking, _pimpl->_dimsWithBorder),
@@ -1169,6 +1245,7 @@ namespace SceneEngine
                     // When the water vapour mixing ratio exceeds a certain point, condensation
                     // may occur. This point is called the saturation point. It depends on
                     // the temperature of the parcel.
+
                 const auto i = y*dims[0]+x;
                 auto& potentialTemp = potTempT1[i];
                 auto& vapourMixingRatio = qvT1[i];
@@ -1176,12 +1253,18 @@ namespace SceneEngine
 
                     // There are a lot of constants here... Maybe there is a better
                     // way to express this equation?
-                auto altitudeKm = float(y);
-                auto pressure = PressureAtAltitude(altitudeKm);     // (precalculate these pressures)
-                auto T = KelvinToCelsius(TemperatureFromPotentialTemperature(potentialTemp, pressure));
 
-                    // We can calculate the pressure at which the air should be saturated 
-                    // (well, here the pressure is calculated assuming all air is dry air, 
+                auto altitudeKm = float(y) * zScale;
+                auto pressure = PressureAtAltitude(altitudeKm);     // (precalculate these pressures)
+                auto exner = ExnerFunction(pressure);
+                auto T = KelvinToCelsius(potentialTemp * exner);
+
+                    // We can calculate the partial pressure for water vapor at saturation point.
+                    // Note that this pressure value is much smaller than the pressure value
+                    // calculated from PressureAtAltitude because it is a "partial" pressure.
+                    // It is the pressure for the vapor part only.
+                    //
+                    // (Here the pressure is calculated assuming all air is dry air, 
                     // but it's not clear if that has a big impact). At this saturation
                     // point, condensation can start to occur. And condensation is what we're
                     // interested in!
@@ -1190,9 +1273,17 @@ namespace SceneEngine
                     // this value and potentialTemp -- by precalculating any terms that are
                     // only dependent on the pressure (which is constant with altitude).
                     //
+                    // See https://en.wikipedia.org/wiki/Clausius%E2%80%93Clapeyron_relation
+                    // This is called the August-Roche-Magnus formula.
+                    //
+                    // Note that this is very slightly different from the Harris' paper.
+                    // I'm using the equation from wikipedia, which gives a result in hectopascals.
+                    //
+                    // See also http://www.vaisala.com/Vaisala%20Documents/Application%20notes/Humidity_Conversion_Formulas_B210973EN-F.pdf
+                    // ("HUMIDITY CONVERSION FORMULAS") for an alternative formula.
+                    //
                     //      (in pascals)
-                float saturationPressure =  
-                    611.2f * XlExp((17.67f * T) / (T + 243.5f));
+                auto saturationPressure = 100.f * 6.1094f * XlExp((17.625f * T) / (T + 243.04f));
 
                     // We can use this to calculate the equilibrium point for the vapour mixing
                     // ratio. 
@@ -1209,9 +1300,10 @@ namespace SceneEngine
                     //      It seems that a common approximation is just to ignore the es in
                     //      the denominator of the first equation (since it should be small compared to total
                     //      pressure). But that seems like a minor optimisation? Why not use the full equation?
-                const float Rd = 287.058f;  // in J . kg^-1 . K^-1. Gas constant for dry air
-                const float Rv = 461.495;   // in J . kg^-1 . K^-1. Gas constant for dry air
-                const float gasConstantRatio = Rd/Rv;   // ~0.622f;
+
+                const auto Rd = 287.058f;  // in J . kg^-1 . K^-1. Gas constant for dry air
+                const auto Rv = 461.495f;  // in J . kg^-1 . K^-1. Gas constant for water vapor
+                const auto gasConstantRatio = Rd/Rv;   // ~0.622f;
                 float equilibriumMixingRatio = 
                     gasConstantRatio * (pressure / (pressure-saturationPressure) - 1.f);
 
@@ -1227,14 +1319,27 @@ namespace SceneEngine
                     // here) effects the equilibriumMixingRatio.
 
                 static float condensationSpeed = 1.f;
-                float difference = vapourMixingRatio - equilibriumMixingRatio;
-                float deltaCondensation = deltaTime * condensationSpeed * difference;
+                auto difference = vapourMixingRatio - equilibriumMixingRatio;
+                auto deltaCondensation = deltaTime * condensationSpeed * difference;
                 deltaCondensation = std::max(deltaCondensation, -condensationMixingRatio);
-                vapourMixingRatio -= deltaCondensation;
-                condensationMixingRatio += deltaCondensation;
+                if (deltaCondensation != 0.f && deltaCondensation != -0.f) {
+                    vapourMixingRatio -= deltaCondensation;
+                    condensationMixingRatio += deltaCondensation;
 
-                    // Delta condensating should effect the temperature, as well
+                        // Delta condensation should effect the temperature, as well
+                        // When water vapour condenses, it releases its latent heat.
+                        // Note that the change in temperature will change the equilibrium
+                        // mixing ratio (for the next update).
 
+                        // Note -- "latentHeatOfVaporization" value comes from Harris' paper.
+                        //          But we should check this. It appears that the units may be
+                        //          out in that paper. It maybe should be 2.5 x 10^6, or thereabouts?
+
+                    const auto latentHeatOfVaporization = 2260.f * 1000.f;  // in J . kg^-1 for water at 0 degrees celsius
+                    const auto cp = 1005.f;                                 // in J . kg^-1 . K^-1. heat capacity of dry air at constant pressure
+                    auto deltaPotTemp = latentHeatOfVaporization / (cp * exner) * deltaCondensation;
+                    potentialTemp +=  deltaPotTemp;
+                }
             }
 
         for (unsigned c=0; c<N; ++c) {
@@ -1243,11 +1348,11 @@ namespace SceneEngine
         }
     }
 
-    void CloudsForm2D::AddDensity(UInt2 coords, float amount)
+    void CloudsForm2D::AddVapor(UInt2 coords, float amount)
     {
         if (coords[0] < _pimpl->_dimsWithoutBorder[0] && coords[1] < _pimpl->_dimsWithoutBorder[1]) {
             unsigned i = (coords[0]+1) + (coords[1]+1) * _pimpl->_dimsWithBorder[0];
-            _pimpl->_density[0][i] += amount;
+            _pimpl->_vaporMixingRatio[0][i] += amount;
         }
     }
 
@@ -1267,7 +1372,9 @@ namespace SceneEngine
     {
         RenderFluidDebugging2D(
             metalContext, parserContext, debuggingMode,
-            _pimpl->_dimsWithBorder, _pimpl->_condensedMixingRatio[1].data(),
+            _pimpl->_dimsWithBorder, 
+            _pimpl->_condensedMixingRatio[1].data(),
+            // _pimpl->_vaporMixingRatio[1].data(),
             _pimpl->_velU[1].data(), _pimpl->_velV[1].data(),
             nullptr);
     }
@@ -1289,20 +1396,50 @@ namespace SceneEngine
             _pimpl->_velV[c].fill(0.f);
         }
 
-        for (unsigned c=0; c<dimof(_pimpl->_density); ++c) {
-            _pimpl->_density[c] = VectorX(N);
-            _pimpl->_temperature[c] = VectorX(N);
-            _pimpl->_density[c].fill(0.f);
-            _pimpl->_temperature[c].fill(0.f);
+        for (unsigned c=0; c<dimof(_pimpl->_vaporMixingRatio); ++c) {
+                // It should be ok to start with constant (or near constant) for potential temperature
+                // this means that everything is adiabatic -- and that the temperature varies
+                // with altitude in a standard manner.
+                // Note that it might be better to start with a noise field -- just so we
+                // get some initial randomness into the simulation.
+            const float airTemp = CelsiusToKelvin(23.f);
+            _pimpl->_potentialTemperature[c] = VectorX(N);
+            _pimpl->_potentialTemperature[c].fill(airTemp);
+
+                // we should start with some vapor in the atmosphere. The
+                // amount depends on the humidity of the atmosphere.
+                // The "specific humidity" is the ratio of the vapor mass to 
+                // total mass -- and this is approximate equal to the vapor
+                // mixing ratio (because the ratio is very small).
+                // So, we can use formulas for specific humidity to calculate a
+                // starting point.
+            const auto relativeHumidity = .75f; // 75%
+
+            _pimpl->_vaporMixingRatio[c] = VectorX(N);
+            const auto& dims = _pimpl->_dimsWithBorder;
+            for (unsigned y=0; y<dims[1]; ++y)
+                for (unsigned x=0; x<dims[0]; ++x) {
+                    unsigned i = x*dims[0]+y;
+                    auto potentialTemp = _pimpl->_potentialTemperature[c][i];
+                    auto altitudeKm = 2.f * float(y)/float(dims[1]);    // simulating 2 km of atmosphere
+                    auto pressure = PressureAtAltitude(altitudeKm);     // (precalculate these pressures)
+                    auto exner = ExnerFunction(pressure);
+                    auto T = KelvinToCelsius(potentialTemp * exner);
+                    auto saturationPressure = (1.f/100.f) * 6.1094f * XlExp((17.625f * T) / (T + 243.04f));
+                    auto saturationMixingRatio = 0.622f * saturationPressure / pressure;
+                    // RH = vaporMixingRatio/saturationMixingRatio
+                    _pimpl->_vaporMixingRatio[c][i] = relativeHumidity * saturationMixingRatio;
+                }
+
+                // Starting with zero condensation... But we could initialise
+                // with with a noise field; just to get started.
+            _pimpl->_condensedMixingRatio[c] = VectorX(N);
+            _pimpl->_condensedMixingRatio[c].fill(0.f);
         }
 
         UInt2 fullDims(dimensions[0]+2, dimensions[1]+2);
         _pimpl->_poissonSolver = PoissonSolver(2, &fullDims[0]);
         _pimpl->_incompressibility = _pimpl->_poissonSolver.PrepareDivergenceMatrix(PoissonSolver::Method::PreconCG);
-
-        _pimpl->_preparedDensityDiffusion = 0.f;
-        _pimpl->_preparedVelocityDiffusion = 0.f;
-        _pimpl->_preparedTemperatureDiffusion = 0.f;
     }
 
     CloudsForm2D::~CloudsForm2D(){}
@@ -1310,7 +1447,9 @@ namespace SceneEngine
     CloudsForm2D::Settings::Settings()
     {
         _viscosity = 0.05f;
-        _diffusionRate = 0.05f;
+        _condensedDiffusionRate = 0.f;
+        _vaporDiffusionRate = 0.f;
+        _temperatureDiffusionRate = 0.f;
         _diffusionMethod = 0;
         _advectionMethod = 3;
         _advectionSteps = 4;
@@ -1555,5 +1694,30 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver3D::Settin
     }
     return props;
 }
+
+template<> const ClassAccessors& GetAccessors<SceneEngine::CloudsForm2D::Settings>()
+{
+    using Obj = SceneEngine::CloudsForm2D::Settings;
+    static ClassAccessors props(typeid(Obj).hash_code());
+    static bool init = false;
+    if (!init) {
+        props.Add(u("Viscosity"), DefaultGet(Obj, _viscosity),  DefaultSet(Obj, _viscosity));
+        props.Add(u("CondensedDiffusionRate"), DefaultGet(Obj, _condensedDiffusionRate),  DefaultSet(Obj, _condensedDiffusionRate));
+        props.Add(u("VaporDiffusionRate"), DefaultGet(Obj, _vaporDiffusionRate),  DefaultSet(Obj, _vaporDiffusionRate));
+        props.Add(u("TemperatureDiffusionRate"), DefaultGet(Obj, _temperatureDiffusionRate),  DefaultSet(Obj, _temperatureDiffusionRate));
+        props.Add(u("DiffusionMethod"), DefaultGet(Obj, _diffusionMethod),  DefaultSet(Obj, _diffusionMethod));
+
+        props.Add(u("AdvectionMethod"), DefaultGet(Obj, _advectionMethod),  DefaultSet(Obj, _advectionMethod));
+        props.Add(u("AdvectionSteps"), DefaultGet(Obj, _advectionSteps),  DefaultSet(Obj, _advectionSteps));
+        props.Add(u("InterpolationMethod"), DefaultGet(Obj, _interpolationMethod),  DefaultSet(Obj, _interpolationMethod));
+
+        props.Add(u("EnforceIncompressibility"), DefaultGet(Obj, _enforceIncompressibilityMethod),  DefaultSet(Obj, _enforceIncompressibilityMethod));
+        props.Add(u("VorticityConfinement"), DefaultGet(Obj, _vorticityConfinement),  DefaultSet(Obj, _vorticityConfinement));
+        
+        init = true;
+    }
+    return props;
+}
+
 
 

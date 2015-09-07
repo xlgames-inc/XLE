@@ -55,5 +55,47 @@
     <xs:attribute name="InterpolationMethod" type="xs:int" default="0"/>
 
   </xs:complexType>
+
+
+  <xs:complexType name="CloudsFormSettings">
+    <xs:annotation>
+      <xs:appinfo>
+        <scea.dom.editors.attribute category="Diffusion" name="Viscosity" displayName="Viscosity"/>
+        <scea.dom.editors.attribute category="Diffusion" name="CondensedDiffusionRate" displayName="CondensedDiffusionRate"/>
+        <scea.dom.editors.attribute category="Diffusion" name="VaporDiffusionRate" displayName="VaporDiffusionRate"/>
+        <scea.dom.editors.attribute category="Diffusion" name="TemperatureDiffusionRate" displayName="TemperatureDiffusionRate"/>
+        <scea.dom.editors.attribute category="Diffusion" name="DiffusionMethod" displayName="DiffusionMethod"
+          editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:CGPrecon=0,CGPlain=1,ForwardEuler=2,SOR=3,Multigrid=4"
+          converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:CGPrecon=0,CGPlain=1,ForwardEuler=2,SOR=3,Multigrid=4"/>
+
+        <scea.dom.editors.attribute category="Advection" name="AdvectionMethod" displayName="AdvectionMethod"
+          editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:ForwardEuler=0,ForwardEulerDiv=1,RungeKutta=2,MacCormickRK4=3"
+          converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:ForwardEuler=0,ForwardEulerDiv=1,RungeKutta=2,MacCormickRK4=3"/>
+        <scea.dom.editors.attribute category="Advection" name="AdvectionSteps" displayName="AdvectionSteps"/>
+        <scea.dom.editors.attribute category="Advection" name="InterpolationMethod" displayName="Interpolation Method"
+          editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:Bilinear=0,CubicMonotonic=1"
+          converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:Bilinear=0,CubicMonotonic=1"/>
+        
+        <scea.dom.editors.attribute category="Forces" name="EnforceIncompressibility" displayName="Enforce Incompressibility Method"
+          editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:CGPrecon=0,CGPlain=1,ForwardEuler=2,SOR=3,Multigrid=4"
+          converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:CGPrecon=0,CGPlain=1,ForwardEuler=2,SOR=3,Multigrid=4"/>
+        <scea.dom.editors.attribute category="Forces" name="VorticityConfinement" displayName="VorticityConfinement"/>
+      </xs:appinfo>
+    </xs:annotation>
+    
+    <xs:attribute name="Viscosity" type="xs:float" default="1"/>
+    <xs:attribute name="CondensedDiffusionRate" type="xs:float" default="0"/>
+    <xs:attribute name="VaporDiffusionRate" type="xs:float" default="0"/>
+    <xs:attribute name="TemperatureDiffusionRate" type="xs:float" default="0"/>
+    <xs:attribute name="DiffusionMethod" type="xs:int" default="0"/>
+    
+    <xs:attribute name="AdvectionMethod" type="xs:int" default="0"/>
+    <xs:attribute name="AdvectionSteps" type="xs:unsignedInt" default="4"/>
+    <xs:attribute name="InterpolationMethod" type="xs:int" default="0"/>
+    
+    <xs:attribute name="EnforceIncompressibility" type="xs:int" default="3"/>
+    <xs:attribute name="VorticityConfinement" type="xs:float" default=".5"/>
+  </xs:complexType>
+
 </xs:schema>
 

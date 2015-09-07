@@ -255,7 +255,7 @@ namespace XLEMath
                 auto rhoOld = rho;
                 rho = _r.dot(_s);
                 if (XlAbs(rho) < rhoThreshold) break;
-                assert(rho < rhoOld);
+                // assert(rho < rhoOld);
                 auto beta = rho / rhoOld;
                 assert(isfinite(beta) && !isnan(beta));
             
@@ -1271,7 +1271,7 @@ namespace XLEMath
     }
 
     auto PoissonSolver::PrepareDiffusionMatrix(
-            float centralWeight, float adjWeight, Method method) -> std::shared_ptr<PreparedMatrix>
+            float centralWeight, float adjWeight, Method method) const -> std::shared_ptr<PreparedMatrix>
     {
         AMat A = { 
             _pimpl->_dimensionsWithBorders, 
@@ -1317,7 +1317,7 @@ namespace XLEMath
         return std::move(result);
     }
 
-    auto PoissonSolver::PrepareDivergenceMatrix(Method method) -> std::shared_ptr<PreparedMatrix>
+    auto PoissonSolver::PrepareDivergenceMatrix(Method method) const -> std::shared_ptr<PreparedMatrix>
     {
         AMat A = {
             _pimpl->_dimensionsWithBorders, _pimpl->_borders, _pimpl->_dimensionality, 
