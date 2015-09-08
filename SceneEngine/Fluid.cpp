@@ -27,8 +27,6 @@ extern "C" void vel_step ( int N, float * u, float * v, float * u0, float * v0, 
 namespace SceneEngine
 {
 
-    static const bool WrapEdges = true;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class ReferenceFluidSolver2D::Pimpl
@@ -158,9 +156,10 @@ namespace SceneEngine
 
 
     static std::shared_ptr<PoissonSolver::PreparedMatrix> BuildDiffusionMethod(
-        const PoissonSolver& solver, float diffusion, PoissonSolver::Method method)
+        const PoissonSolver& solver, float diffusion, PoissonSolver::Method method,
+        unsigned marginFlags, bool wrapEdges)
     {
-        return solver.PrepareDiffusionMatrix(diffusion, method, WrapEdges);
+        return solver.PrepareDiffusionMatrix(diffusion, method, marginFlags, wrapEdges);
     }
 
     class DiffusionOperation
@@ -169,17 +168,21 @@ namespace SceneEngine
         void Execute(
             PoissonSolver& solver, VectorField2D vectorField,
             float diffusionAmount, float deltaTime,
-            PoissonSolver::Method method = PoissonSolver::Method::PreconCG, const char name[] = nullptr);
+            PoissonSolver::Method method = PoissonSolver::Method::PreconCG, unsigned marginFlags = ~0u, bool wrapEdges = false,
+            const char name[] = nullptr);
 
         void Execute(
             PoissonSolver& solver, ScalarField2D field,
             float diffusionAmount, float deltaTime,
-            PoissonSolver::Method method = PoissonSolver::Method::PreconCG, const char name[] = nullptr);
+            PoissonSolver::Method method = PoissonSolver::Method::PreconCG,  unsigned marginFlags = ~0u, bool wrapEdges = false,
+            const char name[] = nullptr);
 
         DiffusionOperation();
         ~DiffusionOperation();
     private:
         float _preparedValue;
+        unsigned _preparedMarginFlags;
+        bool _preparedWrapEdges;
         PoissonSolver::Method _preparedMethod;
         std::shared_ptr<PoissonSolver::PreparedMatrix> _matrix;
     };
@@ -187,14 +190,19 @@ namespace SceneEngine
     void DiffusionOperation::Execute(
         PoissonSolver& solver, VectorField2D vectorField,
         float diffusionAmount, float deltaTime,
-        PoissonSolver::Method method, const char name[])
+        PoissonSolver::Method method, unsigned marginFlags, bool wrapEdges,
+        const char name[])
     {
         if (!diffusionAmount || !deltaTime) return;
 
-        if (_preparedValue != deltaTime * diffusionAmount || method != _preparedMethod) {
+        if (    _preparedValue != deltaTime * diffusionAmount || method != _preparedMethod 
+            ||  marginFlags != _preparedMarginFlags || wrapEdges != _preparedWrapEdges) {
+
             _preparedValue = deltaTime * diffusionAmount;
             _preparedMethod = method;
-            _matrix = BuildDiffusionMethod(solver, _preparedValue, _preparedMethod);
+            _preparedMarginFlags = marginFlags;
+            _preparedWrapEdges = wrapEdges;
+            _matrix = BuildDiffusionMethod(solver, _preparedValue, _preparedMethod, _preparedMarginFlags, _preparedWrapEdges);
         }
 
         auto iterationsu = solver.Solve(
@@ -211,14 +219,16 @@ namespace SceneEngine
     void DiffusionOperation::Execute(
         PoissonSolver& solver, ScalarField2D field,
         float diffusionAmount, float deltaTime,
-        PoissonSolver::Method method, const char name[])
+        PoissonSolver::Method method, unsigned marginFlags, bool wrapEdges, const char name[])
     {
         if (!diffusionAmount || !deltaTime) return;
 
         if (_preparedValue != deltaTime * diffusionAmount || method != _preparedMethod) {
             _preparedValue = deltaTime * diffusionAmount;
             _preparedMethod = method;
-            _matrix = BuildDiffusionMethod(solver, _preparedValue, _preparedMethod);
+            _preparedMarginFlags = marginFlags;
+            _preparedWrapEdges = wrapEdges;
+            _matrix = BuildDiffusionMethod(solver, _preparedValue, _preparedMethod, _preparedMarginFlags, _preparedWrapEdges);
         }
 
         auto iterationsu = solver.Solve(
@@ -253,13 +263,16 @@ namespace SceneEngine
         DiffusionOperation _temperatureDiffusion;
         std::shared_ptr<PoissonSolver::PreparedMatrix> _incompressibility;
 
+        unsigned _incompMarginFlags;
+        bool _incompWrapEdges;
+
         void VorticityConfinement(VectorField2D outputField, VectorField2D inputVelocities, float strength, float deltaTime);
     };
 
     static void EnforceIncompressibility(
         VectorField2D velField,
         const PoissonSolver& solver, const PoissonSolver::PreparedMatrix& A,
-        PoissonSolver::Method method)
+        PoissonSolver::Method method, unsigned marginFlags, bool wrapEdges)
     {
         //
         // Following Jos Stam's stable fluids, we'll use Helmholtz-Hodge Decomposition
@@ -300,62 +313,43 @@ namespace SceneEngine
         const auto dims = velField.Dimensions();
         VectorX delW(dims[0] * dims[1]), q(dims[0] * dims[1]);
         q.fill(0.f);
-        const UInt2 border(1,1);
+        UInt2 border(1,1);
+        if (!(marginFlags & 1<<0)) border[0] = 0u;
+        if (!(marginFlags & 1<<1)) border[1] = 0u;
         auto velFieldScale = Float2(float(dims[0]-2*border[0]), float(dims[1]-2*border[1]));
 
-        if (!constant_expression<WrapEdges>::result()) {
-            for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
-                for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
-                    const auto i = y*dims[0]+x;
-                    delW[i] = 
-                        -0.5f * 
-                        (
-                              ((*velField._u)[i+1]       - (*velField._u)[i-1]) / velFieldScale[0]
-                            + ((*velField._v)[i+dims[0]] - (*velField._v)[i-dims[0]]) / velFieldScale[1]
-                        );
-                }
-            SmearBorder2D(delW, dims[0]);
-        } else {
-            for (unsigned y=0; y<dims[1]; ++y)
-                for (unsigned x=0; x<dims[0]; ++x) {
-                    const auto i = y*dims[0]+x;
-                    const auto i0 = y*dims[0]+(x+1)%dims[0];
-                    const auto i1 = y*dims[0]+(x+dims[0]-1)%dims[0];
-                    const auto i2 = ((y+1)%dims[1])*dims[0]+x;
-                    const auto i3 = ((y+dims[1]-1)%dims[1])*dims[0]+x;
-                    delW[i] = 
-                        -0.5f * 
-                        (
-                              ((*velField._u)[i0] - (*velField._u)[i1]) / velFieldScale[0]
-                            + ((*velField._v)[i2] - (*velField._v)[i3]) / velFieldScale[1]
-                        );
-                }
-        }
+            // note -- default to wrapping on borders without a margin
+        for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
+            for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
+                const auto i = y*dims[0]+x;
+                const auto i0 = y*dims[0]+(x+1)%dims[0];
+                const auto i1 = y*dims[0]+(x+dims[0]-1)%dims[0];
+                const auto i2 = ((y+1)%dims[1])*dims[0]+x;
+                const auto i3 = ((y+dims[1]-1)%dims[1])*dims[0]+x;
+                delW[i] = 
+                    -0.5f * 
+                    (
+                            ((*velField._u)[i0] - (*velField._u)[i1]) / velFieldScale[0]
+                        + ((*velField._v)[i2] - (*velField._v)[i3]) / velFieldScale[1]
+                    );
+            }
+        SmearBorder2D(delW, dims, marginFlags);
 
         auto iterations = solver.Solve(
             AsScalarField1D(q), A, AsScalarField1D(delW), 
             method);
 
-        if (!constant_expression<WrapEdges>::result()) {
-            SmearBorder2D(q, dims[0]);
-            for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
-                for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
-                    const auto i = y*dims[0]+x;
-                    (*velField._u)[i] -= .5f*velFieldScale[0] * (q[i+1]       - q[i-1]);
-                    (*velField._v)[i] -= .5f*velFieldScale[1] * (q[i+dims[0]] - q[i-dims[0]]);
-                }
-        } else {
-            for (unsigned y=0; y<dims[1]; ++y)
-                for (unsigned x=0; x<dims[0]; ++x) {
-                    const auto i = y*dims[0]+x;
-                    const auto i0 = y*dims[0]+(x+1)%dims[0];
-                    const auto i1 = y*dims[0]+(x+dims[0]-1)%dims[0];
-                    const auto i2 = ((y+1)%dims[1])*dims[0]+x;
-                    const auto i3 = ((y+dims[1]-1)%dims[1])*dims[0]+x;
-                    (*velField._u)[i] -= .5f*velFieldScale[0] * (q[i0] - q[i1]);
-                    (*velField._v)[i] -= .5f*velFieldScale[1] * (q[i2] - q[i3]);
-                }
-        }
+        SmearBorder2D(q, dims, marginFlags);
+        for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
+            for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
+                const auto i = y*dims[0]+x;
+                const auto i0 = y*dims[0]+(x+1)%dims[0];
+                const auto i1 = y*dims[0]+(x+dims[0]-1)%dims[0];
+                const auto i2 = ((y+1)%dims[1])*dims[0]+x;
+                const auto i3 = ((y+dims[1]-1)%dims[1])*dims[0]+x;
+                (*velField._u)[i] -= .5f*velFieldScale[0] * (q[i0] - q[i1]);
+                (*velField._v)[i] -= .5f*velFieldScale[1] * (q[i2] - q[i3]);
+            }
 
         LogInfo << "EnforceIncompressibility took: " << iterations << " iterations.";
     }
@@ -428,6 +422,7 @@ namespace SceneEngine
         //          to emphasise some higher level vorticity features, as well.
         //
 
+            // todo -- support margins fully!
         const auto dims = inputVelocities.Dimensions();
         VectorX vorticity(dims[0]*dims[1]);
         const UInt2 border(1,1);
@@ -437,7 +432,7 @@ namespace SceneEngine
                 auto dvxdy = .5f * inputVelocities.Load(UInt2(x, y+1))[0] - inputVelocities.Load(UInt2(x, y-1))[0];
                 vorticity[y*dims[0]+x] = dvydx - dvxdy;
             }
-        SmearBorder2D(vorticity, dims[0]);
+        SmearBorder2D(vorticity, dims, ~0u);
 
         Float2 velFieldScale = deltaTime * strength * Float2(float(dims[0]-2*border[0]), float(dims[1]-2*border[1]));
         for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
@@ -514,6 +509,18 @@ namespace SceneEngine
             temperatureWorking[c] = temperatureT1[c] + dt * temperatureSrc[c];
         }
 
+        unsigned marginFlags = 0;
+        marginFlags |= (1<<0) * (settings._borderX == (int)AdvectionBorder::Margin);
+        marginFlags |= (1<<1) * (settings._borderY == (int)AdvectionBorder::Margin);
+        bool wrapEdges = (settings._borderX == (int)AdvectionBorder::Wrap) || (settings._borderY == (int)AdvectionBorder::Wrap);
+
+        if (marginFlags != _pimpl->_incompMarginFlags || wrapEdges != _pimpl->_incompWrapEdges) {
+            _pimpl->_incompMarginFlags = marginFlags;
+            _pimpl->_incompWrapEdges = wrapEdges;
+            _pimpl->_incompressibility = _pimpl->_poissonSolver.PrepareDivergenceMatrix(
+                PoissonSolver::Method::PreconCG, _pimpl->_incompMarginFlags, _pimpl->_incompWrapEdges);
+        }
+
             //
             // Diffuse velocity! This is similar to other diffusion operations. 
             // In effect, the values in each cell should slowly "seep" into 
@@ -532,32 +539,35 @@ namespace SceneEngine
             //
         _pimpl->_velocityDiffusion.Execute(
             _pimpl->_poissonSolver, 
-            VectorField2D(&velUWorking, &velVWorking,   _pimpl->_dimsWithBorder),
-            settings._viscosity, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, "Velocity");
+            VectorField2D(&velUWorking, &velVWorking, _pimpl->_dimsWithBorder),
+            settings._viscosity, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, 
+            marginFlags, wrapEdges, "Velocity");
 
-        AdvectionSettings advSettings { (AdvectionMethod)settings._advectionMethod, (AdvectionInterpolationMethod)settings._interpolationMethod, settings._advectionSteps };
+        AdvectionSettings advSettings {
+            (AdvectionMethod)settings._advectionMethod, (AdvectionInterp)settings._interpolationMethod, settings._advectionSteps,
+            (AdvectionBorder)settings._borderX, (AdvectionBorder)settings._borderY, AdvectionBorder::None
+        };
         PerformAdvection(
             VectorField2D(&velUT1,      &velVT1,        _pimpl->_dimsWithBorder),
             VectorField2D(&velUWorking, &velVWorking,   _pimpl->_dimsWithBorder),
             VectorField2D(&velUT0,      &velVT0,        _pimpl->_dimsWithBorder),
             VectorField2D(&velUWorking, &velVWorking,   _pimpl->_dimsWithBorder),
             deltaTime, advSettings);
-        
-        if (!constant_expression<WrapEdges>::result()) {
-            ReflectUBorder2D(velUT1, _pimpl->_dimsWithBorder[0]);
-            ReflectVBorder2D(velVT1, _pimpl->_dimsWithBorder[0]);
-        }
+
+        ReflectUBorder2D(velUT1, _pimpl->_dimsWithBorder, marginFlags);
+        ReflectVBorder2D(velVT1, _pimpl->_dimsWithBorder, marginFlags);
         EnforceIncompressibility(
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
             _pimpl->_poissonSolver, *_pimpl->_incompressibility,
-            (PoissonSolver::Method)settings._enforceIncompressibilityMethod);
+            (PoissonSolver::Method)settings._enforceIncompressibilityMethod,
+            marginFlags, wrapEdges);
 
-        if (!constant_expression<WrapEdges>::result())
-            SmearBorder2D(densityWorking, _pimpl->_dimsWithBorder[0]);
+        SmearBorder2D(densityWorking, _pimpl->_dimsWithBorder, marginFlags);
         _pimpl->_densityDiffusion.Execute(
             _pimpl->_poissonSolver, 
             ScalarField2D(&densityWorking, _pimpl->_dimsWithBorder),
-            settings._diffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, "Density");
+            settings._diffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, 
+            marginFlags, wrapEdges, "Density");
         PerformAdvection(
             ScalarField2D(&densityT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&densityWorking, _pimpl->_dimsWithBorder),
@@ -565,12 +575,12 @@ namespace SceneEngine
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
             deltaTime, advSettings);
 
-        if (!constant_expression<WrapEdges>::result())
-            SmearBorder2D(temperatureWorking, _pimpl->_dimsWithBorder[0]);
+        SmearBorder2D(temperatureWorking, _pimpl->_dimsWithBorder, marginFlags);
         _pimpl->_temperatureDiffusion.Execute(
             _pimpl->_poissonSolver, 
             ScalarField2D(&temperatureWorking, _pimpl->_dimsWithBorder),
-            settings._tempDiffusion, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, "Temperature");
+            settings._tempDiffusion, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, 
+            marginFlags, wrapEdges, "Temperature");
         PerformAdvection(
             ScalarField2D(&temperatureT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&temperatureWorking, _pimpl->_dimsWithBorder),
@@ -709,7 +719,8 @@ namespace SceneEngine
 
         UInt2 fullDims(dimensions[0]+2, dimensions[1]+2);
         _pimpl->_poissonSolver = PoissonSolver(2, &fullDims[0]);
-        _pimpl->_incompressibility = _pimpl->_poissonSolver.PrepareDivergenceMatrix(PoissonSolver::Method::PreconCG, WrapEdges);
+        _pimpl->_incompMarginFlags = ~0u;
+        _pimpl->_incompWrapEdges = false;
     }
 
     FluidSolver2D::~FluidSolver2D(){}
@@ -725,10 +736,9 @@ namespace SceneEngine
         _enforceIncompressibilityMethod = 0;
         _buoyancyAlpha = 2.f;
         _buoyancyBeta = 2.2f;
-        _addDensity = 1.f;
-        _addTemperature = 0.25f;
         _vorticityConfinement = 0.75f;
         _interpolationMethod = 0;
+        _borderX = _borderY = 1;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -802,7 +812,10 @@ namespace SceneEngine
 
         _pimpl->VelocityDiffusion(deltaTime, settings);
 
-        AdvectionSettings advSettings { (AdvectionMethod)settings._advectionMethod, (AdvectionInterpolationMethod)settings._interpolationMethod, settings._advectionSteps };
+        AdvectionSettings advSettings { 
+            (AdvectionMethod)settings._advectionMethod, (AdvectionInterp)settings._interpolationMethod, settings._advectionSteps,
+            AdvectionBorder::Margin, AdvectionBorder::Margin, AdvectionBorder::Margin
+        };
         PerformAdvection(
             VectorField3D(&velUT1,      &velVT1,        &velWT1,        _pimpl->_dimsWithBorder),
             VectorField3D(&velUWorking, &velVWorking,   &velWWorking,   _pimpl->_dimsWithBorder),
@@ -859,7 +872,7 @@ namespace SceneEngine
 
     std::shared_ptr<PoissonSolver::PreparedMatrix> FluidSolver3D::Pimpl::BuildDiffusionMethod(float diffusion)
     {
-        return _poissonSolver.PrepareDiffusionMatrix(diffusion, PoissonSolver::Method::PreconCG, WrapEdges);
+        return _poissonSolver.PrepareDiffusionMatrix(diffusion, PoissonSolver::Method::PreconCG, ~0u, false);
     }
 
     void FluidSolver3D::Pimpl::DensityDiffusion(float deltaTime, const Settings& settings)
@@ -920,7 +933,7 @@ namespace SceneEngine
         UInt3 fullDims(dimensions[0]+2, dimensions[1]+2, dimensions[2]+2);
         _pimpl->_poissonSolver = PoissonSolver(3, &fullDims[0]);
         _pimpl->_incompressibility = _pimpl->_poissonSolver.PrepareDivergenceMatrix(
-            PoissonSolver::Method::PreconCG, WrapEdges);
+            PoissonSolver::Method::PreconCG, ~0u, false);
 
         _pimpl->_preparedDensityDiffusion = 0.f;
         _pimpl->_preparedVelocityDiffusion = 0.f;
@@ -1160,11 +1173,13 @@ namespace SceneEngine
         _pimpl->_velocityDiffusion.Execute(
             _pimpl->_poissonSolver,
             VectorField2D(&velUWorking, &velVWorking, _pimpl->_dimsWithBorder),
-            settings._viscosity, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, "Velocity");
+            settings._viscosity, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, ~0u, false, "Velocity");
 
         AdvectionSettings advSettings {
             (AdvectionMethod)settings._advectionMethod, 
-            (AdvectionInterpolationMethod)settings._interpolationMethod, settings._advectionSteps };
+            (AdvectionInterp)settings._interpolationMethod, settings._advectionSteps,
+            AdvectionBorder::Margin, AdvectionBorder::Margin, AdvectionBorder::Margin
+        };
         PerformAdvection(
             VectorField2D(&velUT1,      &velVT1,        _pimpl->_dimsWithBorder),
             VectorField2D(&velUWorking, &velVWorking,   _pimpl->_dimsWithBorder),
@@ -1172,12 +1187,13 @@ namespace SceneEngine
             VectorField2D(&velUWorking, &velVWorking,   _pimpl->_dimsWithBorder),
             deltaTime, advSettings);
         
-        ReflectUBorder2D(velUT1, _pimpl->_dimsWithBorder[0]);
-        ReflectVBorder2D(velVT1, _pimpl->_dimsWithBorder[0]);
+        ReflectUBorder2D(velUT1, _pimpl->_dimsWithBorder, ~0u);
+        ReflectVBorder2D(velVT1, _pimpl->_dimsWithBorder, ~0u);
         EnforceIncompressibility(
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
             _pimpl->_poissonSolver, *_pimpl->_incompressibility,
-            (PoissonSolver::Method)settings._enforceIncompressibilityMethod);
+            (PoissonSolver::Method)settings._enforceIncompressibilityMethod,
+            ~0u, false);
 
             // note -- advection of all 3 of these properties should be very
             // similar, since the velocity field doesn't change. Rather that 
@@ -1190,7 +1206,7 @@ namespace SceneEngine
         _pimpl->_condensedDiffusion.Execute(
             _pimpl->_poissonSolver,
             ScalarField2D(&qcWorking, _pimpl->_dimsWithBorder),
-            settings._condensedDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, "Condensed");
+            settings._condensedDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, ~0u, false, "Condensed");
         PerformAdvection(
             ScalarField2D(&qcT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&qcWorking, _pimpl->_dimsWithBorder),
@@ -1201,7 +1217,7 @@ namespace SceneEngine
         _pimpl->_vaporDiffusion.Execute(
             _pimpl->_poissonSolver,
             ScalarField2D(&qvWorking, _pimpl->_dimsWithBorder),
-            settings._vaporDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, "Vapor");
+            settings._vaporDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, ~0u, false, "Vapor");
         PerformAdvection(
             ScalarField2D(&qvT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&qvWorking, _pimpl->_dimsWithBorder),
@@ -1212,7 +1228,7 @@ namespace SceneEngine
         _pimpl->_temperatureDiffusion.Execute(
             _pimpl->_poissonSolver,
             ScalarField2D(&potTempWorking, _pimpl->_dimsWithBorder),
-            settings._temperatureDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, "Temperature");
+            settings._temperatureDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, ~0u, false, "Temperature");
         PerformAdvection(
             ScalarField2D(&potTempT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&potTempWorking, _pimpl->_dimsWithBorder),
@@ -1424,7 +1440,7 @@ namespace SceneEngine
 
         UInt2 fullDims(dimensions[0]+2, dimensions[1]+2);
         _pimpl->_poissonSolver = PoissonSolver(2, &fullDims[0]);
-        _pimpl->_incompressibility = _pimpl->_poissonSolver.PrepareDivergenceMatrix(PoissonSolver::Method::PreconCG, WrapEdges);
+        _pimpl->_incompressibility = _pimpl->_poissonSolver.PrepareDivergenceMatrix(PoissonSolver::Method::PreconCG, ~0u, false);
     }
 
     CloudsForm2D::~CloudsForm2D(){}
@@ -1653,10 +1669,10 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver2D::Settin
         props.Add(u("EnforceIncompressibility"), DefaultGet(Obj, _enforceIncompressibilityMethod),  DefaultSet(Obj, _enforceIncompressibilityMethod));
         props.Add(u("BouyancyAlpha"), DefaultGet(Obj, _buoyancyAlpha),  DefaultSet(Obj, _buoyancyAlpha));
         props.Add(u("BouyancyBeta"), DefaultGet(Obj, _buoyancyBeta),  DefaultSet(Obj, _buoyancyBeta));
-        props.Add(u("AddDensity"), DefaultGet(Obj, _addDensity),  DefaultSet(Obj, _addDensity));
-        props.Add(u("AddTemperature"), DefaultGet(Obj, _addTemperature),  DefaultSet(Obj, _addTemperature));
         props.Add(u("VorticityConfinement"), DefaultGet(Obj, _vorticityConfinement),  DefaultSet(Obj, _vorticityConfinement));
         props.Add(u("InterpolationMethod"), DefaultGet(Obj, _interpolationMethod),  DefaultSet(Obj, _interpolationMethod));
+        props.Add(u("BorderX"), DefaultGet(Obj, _borderX),  DefaultSet(Obj, _borderX));
+        props.Add(u("BorderY"), DefaultGet(Obj, _borderY),  DefaultSet(Obj, _borderY));
         init = true;
     }
     return props;

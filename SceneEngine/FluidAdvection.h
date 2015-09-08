@@ -9,14 +9,23 @@
 namespace SceneEngine
 {
     enum class AdvectionMethod { ForwardEuler, ForwardEulerDiv, RungeKutta, MacCormackRK4 };
-    enum class AdvectionInterpolationMethod { Bilinear, MonotonicCubic };
+    enum class AdvectionInterp { Bilinear, MonotonicCubic };
+    enum class AdvectionBorder { None, Margin, Wrap };
 
     class AdvectionSettings
     {
     public:
         AdvectionMethod _method;
-        AdvectionInterpolationMethod _interpolation;
-        unsigned _subSteps;
+        AdvectionInterp _interpolation;
+        unsigned        _subSteps;
+        AdvectionBorder _borderX, _borderY, _borderZ;
+
+        AdvectionSettings();
+        AdvectionSettings(
+            AdvectionMethod method,
+            AdvectionInterp interpolation,
+            unsigned        subSteps,
+            AdvectionBorder borderX, AdvectionBorder borderY, AdvectionBorder borderZ);
     };
 
     template<typename Field, typename VelField>

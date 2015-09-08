@@ -62,6 +62,9 @@ namespace GUILayer
         [Category("Mouse")] [Description("Quantity of stuff added on left click")]
         property float AddDensity;
 
+        [Category("Mouse")] [Description("Temperature added on left click")]
+        property float AddTemperature;
+
         [Category("Mouse")] [Description("Strength of the force added on right click")]
         property float AddVelocity;
 

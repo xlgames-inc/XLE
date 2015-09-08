@@ -145,100 +145,142 @@ namespace XLEMath
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template <typename Vec>
-        static void ZeroBorder2D(Vec& v, unsigned wh)
+        void ZeroBorder2D(Vec& v, UInt2 dims, unsigned edgeFlags)
     {
-        for (unsigned i = 1; i < wh - 1; ++i) {
-            v[i] = 0.f;             // top
-            v[i+(wh-1)*wh] = 0.f;   // bottom
-            v[i*wh] = 0.f;          // left
-            v[i*wh+(wh-1)] = 0.f;   // right
-        }
+        const auto w = dims[0], h = dims[1];
+        if (edgeFlags & (1<<0))
+            for (unsigned i = 1; i < h - 1; ++i) {
+                v[i*w] = 0.f;           // left
+                v[i*w+(w-1)] = 0.f;     // right
+            }
+
+        if (edgeFlags & (1<<1))
+            for (unsigned i = 1; i < w - 1; ++i) {
+                v[i] = 0.f;             // top
+                v[i+(h-1)*w] = 0.f;     // bottom
+            }
 
             // 4 corners
-        v[0] = 0.f;
-        v[wh-1]= 0.f;
-        v[(wh-1)*wh] = 0.f;
-        v[(wh-1)*wh+wh-1] = 0.f;
+        if (edgeFlags & (1<<0|1<<1)) {
+            v[0] = 0.f;
+            v[w-1]= 0.f;
+            v[(h-1)*w] = 0.f;
+            v[(h-1)*w+w-1] = 0.f;
+        }
     }
 
     template <typename Vec>
-        static void CopyBorder2D(Vec& dst, const Vec& src, unsigned wh)
+        void CopyBorder2D(Vec& dst, const Vec& src, UInt2 dims, unsigned edgeFlags)
     {
-        for (unsigned i = 1; i < wh - 1; ++i) {
-            dst[i] = src[i];
-            dst[i+(wh-1)*wh] = src[i+(wh-1)*wh];
-            dst[i*wh] = src[i*wh];
-            dst[i*wh+(wh-1)] = src[i*wh+(wh-1)];
-        }
+        const auto w = dims[0], h = dims[1];
+        if (edgeFlags & (1<<0))
+            for (unsigned i = 1; i < h - 1; ++i) {
+                dst[i*w] = src[i*w];
+                dst[i*w+(w-1)] = src[i*w+(w-1)];
+            }
+
+        if (edgeFlags & (1<<1))
+            for (unsigned i = 1; i < w - 1; ++i) {
+                dst[i] = src[i];
+                dst[i+(h-1)*w] = src[i+(h-1)*w];
+            }
 
             // 4 corners
-        dst[0] = src[0];
-        dst[wh-1]= src[wh-1];
-        dst[(wh-1)*wh] = src[(wh-1)*wh];
-        dst[(wh-1)*wh+wh-1] = src[(wh-1)*wh+wh-1];
+        if (edgeFlags & (1<<0|1<<1)) {
+            dst[0] = src[0];
+            dst[w-1]= src[w-1];
+            dst[(h-1)*w] = src[(h-1)*w];
+            dst[(h-1)*w+w-1] = src[(h-1)*w+w-1];
+        }
     }
 
-    inline unsigned XY_WH(unsigned x, unsigned y, unsigned wh)                 { return y*wh+x; }
-    inline unsigned XYZ_DIMS(unsigned x, unsigned y, unsigned z, UInt3 dims)     { return (z*dims[1]+y)*dims[0]+x; }
+    inline unsigned XY_WH(unsigned x, unsigned y, unsigned wh)                  { return y*wh+x; }
+    inline unsigned XYZ_DIMS(unsigned x, unsigned y, unsigned z, UInt3 dims)    { return (z*dims[1]+y)*dims[0]+x; }
     template <typename Vec>
-        static void ReflectUBorder2D(Vec& v, unsigned wh)
+        void ReflectUBorder2D(Vec& v, UInt2 dims, unsigned edgeFlags)
     {
-        #define XY(x,y) XY_WH(x,y,wh)
-        for (unsigned i = 1; i < wh - 1; ++i) {
-            v[XY(0, i)]     = -v[XY(1,i)];
-            v[XY(wh-1, i)]  = -v[XY(wh-2,i)];
-            v[XY(i, 0)]     =  v[XY(i, 1)];
-            v[XY(i, wh-1)]  =  v[XY(i, wh-2)];
-        }
-
+        #define XY(x,y) XY_WH(x,y,w)
+        const auto w = dims[0], h = dims[1];
+        if (edgeFlags & (1<<0))
+            for (unsigned i = 1; i < w - 1; ++i) {
+                v[XY(0, i)]    = -v[XY(1,i)];
+                v[XY(w-1, i)]  = -v[XY(w-2,i)];
+            }
+            
+        if (edgeFlags & (1<<1))
+            for (unsigned i = 1; i < h - 1; ++i) {
+                v[XY(i, 0)]    =  v[XY(i, 1)];
+                v[XY(i, h-1)]  =  v[XY(i, h-2)];
+            }
+                
             // 4 corners
-        v[XY(0,0)]          = 0.5f*(v[XY(1,0)]          + v[XY(0,1)]);
-        v[XY(0,wh-1)]       = 0.5f*(v[XY(1,wh-1)]       + v[XY(0,wh-2)]);
-        v[XY(wh-1,0)]       = 0.5f*(v[XY(wh-2,0)]       + v[XY(wh-1,1)]);
-        v[XY(wh-1,wh-1)]    = 0.5f*(v[XY(wh-2,wh-1)]    + v[XY(wh-1,wh-2)]);
+        if (edgeFlags & (1<<0|1<<1)) {
+            v[XY(0,0)]      = 0.5f*(v[XY(1,0)]      + v[XY(0,1)]);
+            v[XY(0,h-1)]    = 0.5f*(v[XY(1,h-1)]    + v[XY(0,h-2)]);
+            v[XY(w-1,0)]    = 0.5f*(v[XY(w-2,0)]    + v[XY(w-1,1)]);
+            v[XY(w-1,h-1)]  = 0.5f*(v[XY(w-2,h-1)]  + v[XY(w-1,h-2)]);
+        }
         #undef XY
     }
 
     template <typename Vec>
-        static void ReflectVBorder2D(Vec& v, unsigned wh)
+        void ReflectVBorder2D(Vec& v, UInt2 dims, unsigned edgeFlags)
     {
-        #define XY(x,y) XY_WH(x,y,wh)
-        for (unsigned i = 1; i < wh - 1; ++i) {
-            v[XY(0, i)]     =  v[XY(1,i)];
-            v[XY(wh-1, i)]  =  v[XY(wh-2,i)];
-            v[XY(i, 0)]     = -v[XY(i, 1)];
-            v[XY(i, wh-1)]  = -v[XY(i, wh-2)];
-        }
-
+        #define XY(x,y) XY_WH(x,y,w)
+        const auto w = dims[0], h = dims[1];
+        if (edgeFlags & (1<<0))
+            for (unsigned i = 1; i < w - 1; ++i) {
+                v[XY(0, i)]     =  v[XY(1,i)];
+                v[XY(w-1, i)]  =  v[XY(w-2,i)];
+            }
+            
+        if (edgeFlags & (1<<1))
+            for (unsigned i = 1; i < h - 1; ++i) {
+                v[XY(i, 0)]     = -v[XY(i, 1)];
+                v[XY(i, h-1)]  = -v[XY(i, h-2)];
+            }
+        
             // 4 corners
-        v[XY(0,0)]          = 0.5f*(v[XY(1,0)]          + v[XY(0,1)]);
-        v[XY(0,wh-1)]       = 0.5f*(v[XY(1,wh-1)]       + v[XY(0,wh-2)]);
-        v[XY(wh-1,0)]       = 0.5f*(v[XY(wh-2,0)]       + v[XY(wh-1,1)]);
-        v[XY(wh-1,wh-1)]    = 0.5f*(v[XY(wh-2,wh-1)]    + v[XY(wh-1,wh-2)]);
+        if (edgeFlags & (1<<0|1<<1)) {
+            v[XY(0,0)]      = 0.5f*(v[XY(1,0)]      + v[XY(0,1)]);
+            v[XY(0,h-1)]    = 0.5f*(v[XY(1,h-1)]    + v[XY(0,h-2)]);
+            v[XY(w-1,0)]    = 0.5f*(v[XY(w-2,0)]    + v[XY(w-1,1)]);
+            v[XY(w-1,h-1)]  = 0.5f*(v[XY(w-2,h-1)]  + v[XY(w-1,h-2)]);
+        }
         #undef XY
     }
 
     template <typename Vec>
-        static void SmearBorder2D(Vec& v, unsigned wh)
+        void SmearBorder2D(Vec& v, UInt2 dims, unsigned edgeFlags)
     {
-        #define XY(x,y) XY_WH(x,y,wh)
-        for (unsigned i = 1; i < wh - 1; ++i) {
-            v[XY(0, i)]     =  v[XY(1,i)];
-            v[XY(wh-1, i)]  =  v[XY(wh-2,i)];
-            v[XY(i, 0)]     =  v[XY(i, 1)];
-            v[XY(i, wh-1)]  =  v[XY(i, wh-2)];
-        }
-
+        #define XY(x,y) XY_WH(x,y,w)
+        const auto w = dims[0], h = dims[1];
+        if (edgeFlags & (1<<0))
+            for (unsigned i = 1; i < w - 1; ++i) {
+                v[XY(0, i)]     =  v[XY(1,i)];
+                v[XY(w-1, i)]  =  v[XY(w-2,i)];
+            }
+            
+        if (edgeFlags & (1<<1))
+            for (unsigned i = 1; i < h - 1; ++i) {
+                v[XY(i, 0)]     =  v[XY(i, 1)];
+                v[XY(i, h-1)]  =  v[XY(i, h-2)];
+            }
+        
             // 4 corners
-        v[XY(0,0)]          = 0.5f*(v[XY(1,0)]          + v[XY(0,1)]);
-        v[XY(0,wh-1)]       = 0.5f*(v[XY(1,wh-1)]       + v[XY(0,wh-2)]);
-        v[XY(wh-1,0)]       = 0.5f*(v[XY(wh-2,0)]       + v[XY(wh-1,1)]);
-        v[XY(wh-1,wh-1)]    = 0.5f*(v[XY(wh-2,wh-1)]    + v[XY(wh-1,wh-2)]);
+        if (edgeFlags & (1<<0|1<<1)) {
+            v[XY(0,0)]      = 0.5f*(v[XY(1,0)]      + v[XY(0,1)]);
+            v[XY(0,h-1)]    = 0.5f*(v[XY(1,h-1)]    + v[XY(0,h-2)]);
+            v[XY(w-1,0)]    = 0.5f*(v[XY(w-2,0)]    + v[XY(w-1,1)]);
+            v[XY(w-1,h-1)]  = 0.5f*(v[XY(w-2,h-1)]  + v[XY(w-1,h-2)]);
+        }
         #undef XY
     }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     template <typename Vec>
-        static void ZeroBorder3D(Vec& v, UInt3 dims)
+        void ZeroBorder3D(Vec& v, UInt3 dims)
     {
         auto LX = dims[0]-1, LY = dims[1]-1, LZ = dims[2]-1;
         #define XYZ(x,y,z) XYZ_DIMS(x,y,z,dims)
@@ -298,7 +340,7 @@ namespace XLEMath
     }
 
     template <typename Vec>
-        static void CopyBorder3D(Vec& dst, const Vec& src, UInt3 dims)
+        void CopyBorder3D(Vec& dst, const Vec& src, UInt3 dims)
     {
         auto LX = dims[0]-1, LY = dims[1]-1, LZ = dims[2]-1;
         #define XYZ(x,y,z) XYZ_DIMS(x,y,z,dims)
@@ -358,7 +400,7 @@ namespace XLEMath
     }
 
     template <typename Vec>
-        static void ReflectBorder3D(Vec& v, UInt3 dims, unsigned reflectionAxis)
+        void ReflectBorder3D(Vec& v, UInt3 dims, unsigned reflectionAxis)
     {
         auto LX = dims[0]-1, LY = dims[1]-1, LZ = dims[2]-1;
         #define XYZ(x,y,z) XYZ_DIMS(x,y,z,dims)
@@ -424,7 +466,7 @@ namespace XLEMath
     }
 
     template <typename Vec>
-        static void SmearBorder3D(Vec& v, UInt3 dims)
+        void SmearBorder3D(Vec& v, UInt3 dims)
     {
         ReflectBorder3D(v, dims, 4);        // (same as ReflectBorder with an invalid reflection axis)
     }

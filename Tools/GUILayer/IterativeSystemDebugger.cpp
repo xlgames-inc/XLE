@@ -368,6 +368,7 @@ namespace GUILayer
         ActivePreview = Preview::Density;
         DeltaTime = 1.0f / 60.f;
         AddDensity = 0.25f;
+        AddTemperature = AddDensity * 0.25f;
         AddVelocity = 1.f;
     }
 
@@ -402,11 +403,11 @@ namespace GUILayer
 
                     auto c = UInt2(unsigned(x), unsigned(y));
                     if (mouseButton == 0) {
-                        _pimpl->_sim->AddDensity(c, _pimpl->_settings->_addDensity);
-                        _pimpl->_sim->AddTemperature(c, _pimpl->_settings->_addTemperature);
+                        _pimpl->_sim->AddDensity(c, _settings->AddDensity);
+                        _pimpl->_sim->AddTemperature(c, _settings->AddTemperature);
                     } else if (mouseButton == 2) {
-                        _pimpl->_sim->AddDensity(c, -_pimpl->_settings->_addDensity);
-                        _pimpl->_sim->AddTemperature(c, -_pimpl->_settings->_addTemperature);
+                        _pimpl->_sim->AddDensity(c, -_settings->AddDensity);
+                        _pimpl->_sim->AddTemperature(c, -_settings->AddTemperature);
                     } else {
                         _pimpl->_sim->AddVelocity(c, 1.f * Float2(velX, -velY));
                     }

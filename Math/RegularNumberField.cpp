@@ -881,11 +881,15 @@ namespace XLEMath
                 &Field::Sample<RNFSample::WrapX |RNFSample::ClampY|RNFSample::ClampZ>,
                 &Field::Sample<RNFSample::ClampX|RNFSample::WrapY |RNFSample::ClampZ>,
                 &Field::Sample<RNFSample::ClampX|RNFSample::ClampY|RNFSample::WrapZ >,
+                &Field::Sample<RNFSample::WrapX |RNFSample::WrapY |RNFSample::WrapZ >,
+                &Field::Sample<RNFSample::WrapX |RNFSample::WrapY |RNFSample::ClampZ >,
                 &Field::Sample<RNFSample::Cubic>,
                 &Field::Sample<RNFSample::Cubic|RNFSample::ClampX|RNFSample::ClampY|RNFSample::ClampZ>,
                 &Field::Sample<RNFSample::Cubic|RNFSample::WrapX |RNFSample::ClampY|RNFSample::ClampZ>,
                 &Field::Sample<RNFSample::Cubic|RNFSample::ClampX|RNFSample::WrapY |RNFSample::ClampZ>,
-                &Field::Sample<RNFSample::Cubic|RNFSample::ClampX|RNFSample::ClampY|RNFSample::WrapZ >
+                &Field::Sample<RNFSample::Cubic|RNFSample::ClampX|RNFSample::ClampY|RNFSample::WrapZ >,
+                &Field::Sample<RNFSample::Cubic|RNFSample::WrapX |RNFSample::WrapY |RNFSample::WrapZ >,
+                &Field::Sample<RNFSample::Cubic|RNFSample::WrapX |RNFSample::WrapY |RNFSample::ClampZ >
             };
             (void)fns;
             return 0;

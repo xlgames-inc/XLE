@@ -55,14 +55,26 @@ namespace XLEMath
                 // this is for a sparse banded matrix, with the bands described by "bands"
                 //      -- note that we can improve this further by writing implementations for
                 //          common cases (eg, 2D, 3D, etc)
-            for (unsigned i=0; i<N; ++i) {
-                auto d = b(i);
-                for (unsigned j=0; j<M._bandCount-1; ++j) {
-                    int j2 = int(i) + M._bands[j];
-                    if (j2 >= 0 && j2 < int(i))  // with agressive unrolling, we should avoid this condition
-                        d -= M._underlying(i, j) * x[j2];
+            const bool reflectEdges = true;
+            if (constant_expression<!reflectEdges>::result()) {
+                for (unsigned i=0; i<N; ++i) {
+                    auto d = b(i);
+                    for (unsigned j=0; j<M._bandCount-1; ++j) {
+                        int j2 = int(i) + M._bands[j];
+                        if (j2 >= 0 && j2 < int(i))  // with agressive unrolling, we should avoid this condition
+                            d -= M._underlying(i, j) * x[j2];
+                    }
+                    x[i] = d / M._underlying(i, M._bandCount-1);
                 }
-                x[i] = d / M._underlying(i, M._bandCount-1);
+            } else {
+                for (unsigned i=0; i<N; ++i) {
+                    auto d = b(i);
+                    for (unsigned j=0; j<M._bandCount-1; ++j) {
+                        int j2 = (int(i) + M._bands[j] + int(N))%int(N);
+                        d -= M._underlying(i, j) * x[j2];
+                    }
+                    x[i] = d / M._underlying(i, M._bandCount-1);
+                }
             }
         }
 
@@ -143,7 +155,6 @@ namespace XLEMath
                 }
 
                 for (unsigned i=1; i<h-1; ++i) {
-                        // note -- maybe the "a0" value should be different for these cells, as well?
                     dst[XY(0, i)]       = A._a0e *  b[XY(  0,   i)] 
                                         + A._a1  * (b[XY(  1,   i)] + b[XY(0, i-1)] + b[XY(0, i+1)])
                                         + A._a1r * (b[XY(w-1,   i)]);

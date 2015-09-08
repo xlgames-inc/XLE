@@ -72,9 +72,9 @@ namespace SceneEngine
             float       _buoyancyBeta;
             float       _vorticityConfinement;
 
-                // debugging
-            float       _addDensity;
-            float       _addTemperature;
+                // borders
+            int         _borderX;
+            int         _borderY;
 
             Settings();
         };

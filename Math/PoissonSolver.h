@@ -69,8 +69,8 @@ namespace XLEMath
             const ScalarField1D& b, Method method) const;
         
         std::shared_ptr<PreparedMatrix> PrepareDiffusionMatrix(
-            float diffusionAmount, Method method, bool wrapEdges) const;
-        std::shared_ptr<PreparedMatrix> PrepareDivergenceMatrix(Method method, bool wrapEdges) const;
+            float diffusionAmount, Method method, unsigned marginFlags, bool wrapEdges) const;
+        std::shared_ptr<PreparedMatrix> PrepareDivergenceMatrix(Method method, unsigned marginFlags, bool wrapEdges) const;
 
         PoissonSolver(unsigned dimensionality, unsigned dimensions[]);
         PoissonSolver(PoissonSolver&& moveFrom);

@@ -92,14 +92,32 @@ namespace SceneEngine
     static Float2  MaxAcross(Float2 lhs, Float2 rhs) { return Float2(std::max(lhs[0], rhs[0]), std::max(lhs[1], rhs[1])); }
     static Float3  MaxAcross(Float3 lhs, Float3 rhs) { return Float3(std::max(lhs[0], rhs[0]), std::max(lhs[1], rhs[1]), std::max(lhs[2], rhs[2])); }
 
-    static Float2 ClampAcross(const Float2& input, const Float2& mins, const Float2& maxs)
-    {
-        return Float2(Clamp(input[0], mins[0], maxs[0]), Clamp(input[1], mins[1], maxs[1]));
-    }
+    // static Float2 ClampAcross(const Float2& input, const Float2& mins, const Float2& maxs)
+    // {
+    //     return Float2(Clamp(input[0], mins[0], maxs[0]), Clamp(input[1], mins[1], maxs[1]));
+    // }
+    // 
+    // static Float3 ClampAcross(const Float3& input, const Float3& mins, const Float3& maxs)
+    // {
+    //     return Float3(Clamp(input[0], mins[0], maxs[0]), Clamp(input[1], mins[1], maxs[1]), Clamp(input[2], mins[2], maxs[2]));
+    // }
 
-    static Float3 ClampAcross(const Float3& input, const Float3& mins, const Float3& maxs)
+    template<unsigned WrappingFlags, unsigned Order>
+        static VectorTT<float, Order> ApplyBoundary(
+            const VectorTT<float, Order>& input, 
+            const VectorTT<float, Order>& dims)
     {
-        return Float3(Clamp(input[0], mins[0], maxs[0]), Clamp(input[1], mins[1], maxs[1]), Clamp(input[2], mins[2], maxs[2]));
+        VectorTT<float, Order> result;
+        static_assert(RNFSample::WrapY == (RNFSample::WrapX<<1), "Expecting wrapping flags to be sequential bits");
+        static_assert(RNFSample::WrapZ == (RNFSample::WrapX<<2), "Expecting wrapping flags to be sequential bits");
+        for (unsigned c=0; c<Order; ++c) {
+            if (WrappingFlags & (RNFSample::WrapX<<c)) {
+                result[c] = XlFMod(input[c]+dims[c], dims[c]);
+            } else {
+                result[c] = Clamp(input[c], 0.f, dims[c]-1.f-1e-5f);
+            }
+        }
+        return result;
     }
 
     template<unsigned SamplingFlags, typename Field>
@@ -128,8 +146,8 @@ namespace SceneEngine
             }
         }
     
-    template<typename Field, typename VelField>
-        void PerformAdvection(
+    template<unsigned WrappingFlags, typename Field, typename VelField>
+        static void PerformAdvection_Internal(
             Field dstValues, Field srcValues, 
             VelField velFieldT0, VelField velFieldT1,
             float deltaTime, const AdvectionSettings& settings)
@@ -164,7 +182,14 @@ namespace SceneEngine
         assert(dstValues.Dimensions() == velFieldT0.Dimensions());
         assert(dstValues.Dimensions() == velFieldT1.Dimensions());
         const UInt3 dims = As3DDims(dstValues.Dimensions());
-        const UInt3 margin = UInt3(0,0,0); // As3DBorder(dstValues.Dimensions());
+
+            // when the border condition is "margin" we create a 1 cell margin on that
+            // edge that will be read from, but not written to
+        UInt3 margin = As3DBorder(dstValues.Dimensions());
+        if (settings._borderX != AdvectionBorder::Margin) margin[0] = 0;
+        if (settings._borderY != AdvectionBorder::Margin) margin[1] = 0;
+        if (settings._borderZ != AdvectionBorder::Margin) margin[2] = 0;
+
         using FloatCoord = typename VelField::FloatCoord;
         using Coord = typename VelField::Coord;
         const auto velFieldScale = ConvertVector<FloatCoord>(
@@ -172,11 +197,7 @@ namespace SceneEngine
                 float(dims[0]-2*margin[0]),
                 float(dims[1]-2*margin[1]),
                 float(dims[2]-2*margin[2])));   // (grid size without borders)
-        const auto clampMax = ConvertVector<FloatCoord>(
-            Float3(
-                float(dims[0]-1) - 1e-5f,
-                float(dims[1]-1) - 1e-5f,
-                float(dims[2]-1) - 1e-5f));   // (grid size without borders)
+        const auto clampMax = ConvertVector<FloatCoord>(dims);
 
         if (advectionMethod == AdvectionMethod::ForwardEuler) {
 
@@ -184,21 +205,19 @@ namespace SceneEngine
                 //  through the velocity field to find an approximation
                 //  of where the point was in the previous frame.
 
-            const unsigned SamplingFlags = 0;
             for (unsigned z=margin[2]; z<dims[2]-margin[2]; ++z)
                 for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
                     for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
                         auto coord = ConvertVector<Coord>(UInt3(x, y, z));
                         auto startVel = velFieldT1.Load(coord);
                         FloatCoord tap = ConvertVector<FloatCoord>(coord) - MultiplyAcross(deltaTime * velFieldScale, startVel);
-                        tap = ClampAcross(tap, Zero<FloatCoord>(), clampMax);
-                        dstValues.Write(coord, srcValues.Sample<SamplingFlags>(tap));
+                        tap = ApplyBoundary<WrappingFlags>(tap, clampMax);
+                        dstValues.Write(coord, srcValues.Sample<0>(tap));
                     }
 
         } else if (advectionMethod == AdvectionMethod::ForwardEulerDiv) {
 
             auto stepScale = decltype(velFieldScale)(deltaTime * velFieldScale / float(adjvectionSteps));
-            const unsigned SamplingFlags = 0;
             for (unsigned z=margin[2]; z<dims[2]-margin[2]; ++z)
                 for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
                     for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
@@ -208,23 +227,23 @@ namespace SceneEngine
                         auto vel = velFieldT0.Load(coord);
                         for (unsigned s=1; ; ++s) {
                             tap -= MultiplyAcross(stepScale, vel);
-                            tap = ClampAcross(tap, Zero<FloatCoord>(), clampMax);
+                            tap = ApplyBoundary<WrappingFlags>(tap, clampMax);
                             if (s>=adjvectionSteps) break;
 
                             vel = LinearInterpolate(
-                                velFieldT0.Sample<SamplingFlags>(tap),
-                                velFieldT1.Sample<SamplingFlags>(tap),
+                                velFieldT0.Sample<0>(tap),
+                                velFieldT1.Sample<0>(tap),
                                 s / float(adjvectionSteps-1));
                         }
 
-                        dstValues.Write(coord, srcValues.Sample<SamplingFlags>(tap));
+                        dstValues.Write(coord, srcValues.Sample<WrappingFlags>(tap));
                     }
 
         } else if (advectionMethod == AdvectionMethod::RungeKutta) {
 
-            if (settings._interpolation == AdvectionInterpolationMethod::Bilinear) {
+            if (settings._interpolation == AdvectionInterp::Bilinear) {
 
-                const auto SamplingFlags = RNFSample::WrapX|RNFSample::ClampY|RNFSample::ClampZ;
+                const auto SamplingFlags = WrappingFlags;
                 for (unsigned z=margin[2]; z<dims[2]-margin[2]; ++z)
                     for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
                         for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
@@ -245,7 +264,7 @@ namespace SceneEngine
 
             } else {
 
-                const auto SamplingFlags = RNFSample::Cubic|RNFSample::WrapX|RNFSample::ClampY|RNFSample::ClampZ;
+                const auto SamplingFlags = RNFSample::Cubic|WrappingFlags;
                 for (unsigned z=margin[2]; z<dims[2]-margin[2]; ++z)
                     for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
                         for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
@@ -283,9 +302,9 @@ namespace SceneEngine
                 // method and just clamp.
                 //
 
-            if (settings._interpolation == AdvectionInterpolationMethod::Bilinear) {
+            if (settings._interpolation == AdvectionInterp::Bilinear) {
 
-                const auto SamplingFlags = RNFSample::WrapX|RNFSample::ClampY|RNFSample::ClampZ;
+                const auto SamplingFlags = WrappingFlags;
                 for (unsigned z=margin[2]; z<dims[2]-margin[2]; ++z)
                     for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
                         for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
@@ -322,7 +341,7 @@ namespace SceneEngine
 
             } else {
 
-                const auto SamplingFlags = RNFSample::Cubic|RNFSample::WrapX|RNFSample::ClampY|RNFSample::ClampZ;
+                const auto SamplingFlags = RNFSample::Cubic|WrappingFlags;
                 for (unsigned z=margin[2]; z<dims[2]-margin[2]; ++z)
                     for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
                         for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
@@ -348,6 +367,85 @@ namespace SceneEngine
 
         }
 
+    }
+
+    template<typename Field, typename VelField>
+        void PerformAdvection(
+            Field dstValues, Field srcValues, 
+            VelField velFieldT0, VelField velFieldT1,
+            float deltaTime, const AdvectionSettings& settings)
+    {
+            // it's awkward, but we need to convertion between the
+            // variables "settings._border..." and the compile time
+            // static RNFSample flags. Only a fixed number of variations
+            // are supported... others will fall back to clamping in all
+            // directions.
+        if (    settings._borderX == AdvectionBorder::Wrap 
+            &&  settings._borderY != AdvectionBorder::Wrap 
+            &&  settings._borderZ != AdvectionBorder::Wrap) {
+
+            PerformAdvection_Internal<RNFSample::WrapX|RNFSample::ClampY|RNFSample::ClampZ>(
+                dstValues, srcValues, velFieldT0, velFieldT1, deltaTime, settings);
+
+        } else if ( settings._borderX != AdvectionBorder::Wrap 
+            &&      settings._borderY == AdvectionBorder::Wrap 
+            &&      settings._borderZ != AdvectionBorder::Wrap) {
+
+            PerformAdvection_Internal<RNFSample::ClampX|RNFSample::WrapY|RNFSample::ClampZ>(
+                dstValues, srcValues, velFieldT0, velFieldT1, deltaTime, settings);
+
+        } else if ( settings._borderX != AdvectionBorder::Wrap 
+            &&      settings._borderY != AdvectionBorder::Wrap 
+            &&      settings._borderZ == AdvectionBorder::Wrap) {
+
+            PerformAdvection_Internal<RNFSample::ClampX|RNFSample::ClampY|RNFSample::WrapZ>(
+                dstValues, srcValues, velFieldT0, velFieldT1, deltaTime, settings);
+
+        } else if ( settings._borderX == AdvectionBorder::Wrap 
+            &&      settings._borderY == AdvectionBorder::Wrap 
+            &&      settings._borderZ == AdvectionBorder::Wrap) {
+
+            PerformAdvection_Internal<RNFSample::WrapX|RNFSample::WrapY|RNFSample::WrapZ>(
+                dstValues, srcValues, velFieldT0, velFieldT1, deltaTime, settings);
+
+        } else if ( settings._borderX == AdvectionBorder::Wrap 
+            &&      settings._borderY == AdvectionBorder::Wrap 
+            &&      settings._borderZ != AdvectionBorder::Wrap) {
+
+            PerformAdvection_Internal<RNFSample::WrapX|RNFSample::WrapY|RNFSample::ClampZ>(
+                dstValues, srcValues, velFieldT0, velFieldT1, deltaTime, settings);
+
+        } else {
+
+            assert(settings._borderX != AdvectionBorder::Wrap && settings._borderY != AdvectionBorder::Wrap && settings._borderZ != AdvectionBorder::Wrap);
+            PerformAdvection_Internal<RNFSample::ClampX|RNFSample::ClampY|RNFSample::ClampZ>(
+                dstValues, srcValues, velFieldT0, velFieldT1, deltaTime, settings);
+
+        }
+    }
+
+    AdvectionSettings::AdvectionSettings()
+    {
+        _method = AdvectionMethod::MacCormackRK4;
+        _interpolation = AdvectionInterp::Bilinear;
+        _subSteps = 4;
+        _borderX = AdvectionBorder::Margin; 
+        _borderY = AdvectionBorder::Margin; 
+        _borderZ = AdvectionBorder::Margin;
+    }
+
+    AdvectionSettings::AdvectionSettings(
+        AdvectionMethod method,
+        AdvectionInterp interpolation,
+        unsigned        subSteps,
+        AdvectionBorder borderX, AdvectionBorder borderY, AdvectionBorder borderZ)
+    {
+        _method = method;
+        _interpolation = interpolation;
+        _subSteps = subSteps;
+        _borderX = borderX;
+        _borderY = borderY;
+        _borderZ = borderZ;
     }
 
     template void PerformAdvection(
