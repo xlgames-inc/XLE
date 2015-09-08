@@ -99,6 +99,7 @@ namespace XLEMath
             UInt3 _borders;
             unsigned _dimensionality;
             float _a0, _a1;
+            float _a0e, _a0c, _a1r;
         };
     
         inline unsigned GetN(const AMat& A)       { return A._dims[0] * A._dims[1] * A._dims[2]; }
@@ -127,6 +128,45 @@ namespace XLEMath
                         dst[i] = v;
                     }
                 }
+
+                    // do the borders, as well --
+                    //      4 edges & 4 corners
+                const auto w = width, h = height;
+                #define XY(x,y) XY_WH(x,y,w)
+                for (unsigned i=1; i<w-1; ++i) {
+                    dst[XY(i, 0)]       = A._a0e *  b[XY(  i,   0)] 
+                                        + A._a1  * (b[XY(  i,   1)] + b[XY(i-1, 0)] + b[XY(i+1, 0)])
+                                        + A._a1r * (b[XY(  i, h-1)]);
+                    dst[XY(i, h-1)]     = A._a0e *  b[XY(  i, h-1)] 
+                                        + A._a1  * (b[XY(  i, h-2)] + b[XY(i-1, h-1)] + b[XY(i+1, h-1)])
+                                        + A._a1r * (b[XY(  i,   0)]);
+                }
+
+                for (unsigned i=1; i<h-1; ++i) {
+                        // note -- maybe the "a0" value should be different for these cells, as well?
+                    dst[XY(0, i)]       = A._a0e *  b[XY(  0,   i)] 
+                                        + A._a1  * (b[XY(  1,   i)] + b[XY(0, i-1)] + b[XY(0, i+1)])
+                                        + A._a1r * (b[XY(w-1,   i)]);
+                    dst[XY(w-1, i)]     = A._a0e *  b[XY(w-1,   i)] 
+                                        + A._a1  * (b[XY(w-2,   i)] + b[XY(w-1, i-1)] + b[XY(w-1, i+1)])
+                                        + A._a1r * (b[XY(  0,   i)]);
+                }
+                
+                dst[XY(0, 0)]           = A._a0c *  b[XY(  0,   0)] 
+                                        + A._a1  * (b[XY(  0,   1)] + b[XY(  1,   0)])
+                                        + A._a1r * (b[XY(w-1,   0)] + b[XY(  0, h-1)]);
+                dst[XY(0, h-1)]         = A._a0c *  b[XY(  0, h-1)] 
+                                        + A._a1  * (b[XY(  0, h-2)] + b[XY(  1, h-1)])
+                                        + A._a1r * (b[XY(w-1, h-1)] + b[XY(  0,   0)]);
+
+                dst[XY(w-1, 0)]         = A._a0c *  b[XY(w-1,   0)] 
+                                        + A._a1  * (b[XY(w-1,   1)] + b[XY(w-2,   0)])
+                                        + A._a1r * (b[XY(  0,   0)] + b[XY(w-1, h-1)]);
+                dst[XY(w-1, h-1)]       = A._a0c *  b[XY(w-1, h-1)] 
+                                        + A._a1  * (b[XY(w-1, h-2)] + b[XY(w-2, h-1)])
+                                        + A._a1r * (b[XY(w-1,   0)] + b[XY(  0, h-1)]);
+                #undef XY
+
             } else {
                 for (unsigned z=bor[2]; z<GetDepth(A)-bor[2]; ++z) {
                     for (unsigned y=bor[1]; y<height-bor[1]; ++y) {

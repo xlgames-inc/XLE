@@ -27,6 +27,8 @@ extern "C" void vel_step ( int N, float * u, float * v, float * u0, float * v0, 
 namespace SceneEngine
 {
 
+    static const bool WrapEdges = true;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class ReferenceFluidSolver2D::Pimpl
@@ -185,9 +187,7 @@ namespace SceneEngine
 
     std::shared_ptr<PoissonSolver::PreparedMatrix> FluidSolver2D::Pimpl::BuildDiffusionMethod(float diffusion)
     {
-        const float a0 = 1.f + 4.f * diffusion;
-        const float a1 = -diffusion;
-        return _poissonSolver.PrepareDiffusionMatrix(a0, a1, PoissonSolver::Method::PreconCG);
+        return _poissonSolver.PrepareDiffusionMatrix(diffusion, PoissonSolver::Method::PreconCG, WrapEdges);
     }
 
     void FluidSolver2D::Pimpl::DensityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings)
@@ -315,29 +315,60 @@ namespace SceneEngine
         q.fill(0.f);
         const UInt2 border(1,1);
         auto velFieldScale = Float2(float(dims[0]-2*border[0]), float(dims[1]-2*border[1]));
-        for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
-            for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
-                const auto i = y*dims[1]+x;
-                delW[i] = 
-                    -0.5f * 
-                    (
-                          ((*velField._u)[i+1]               - (*velField._u)[i-1]) / velFieldScale[0]
-                        + ((*velField._v)[i+dims[0]]         - (*velField._v)[i-dims[0]]) / velFieldScale[1]
-                    );
-            }
 
-        SmearBorder2D(delW, dims[0]);
+        if (!constant_expression<WrapEdges>::result()) {
+            for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
+                for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
+                    const auto i = y*dims[0]+x;
+                    delW[i] = 
+                        -0.5f * 
+                        (
+                              ((*velField._u)[i+1]       - (*velField._u)[i-1]) / velFieldScale[0]
+                            + ((*velField._v)[i+dims[0]] - (*velField._v)[i-dims[0]]) / velFieldScale[1]
+                        );
+                }
+            SmearBorder2D(delW, dims[0]);
+        } else {
+            for (unsigned y=0; y<dims[1]; ++y)
+                for (unsigned x=0; x<dims[0]; ++x) {
+                    const auto i = y*dims[0]+x;
+                    const auto i0 = y*dims[0]+(x+1)%dims[0];
+                    const auto i1 = y*dims[0]+(x+dims[0]-1)%dims[0];
+                    const auto i2 = ((y+1)%dims[1])*dims[0]+x;
+                    const auto i3 = ((y+dims[1]-1)%dims[1])*dims[0]+x;
+                    delW[i] = 
+                        -0.5f * 
+                        (
+                              ((*velField._u)[i0] - (*velField._u)[i1]) / velFieldScale[0]
+                            + ((*velField._v)[i2] - (*velField._v)[i3]) / velFieldScale[1]
+                        );
+                }
+        }
+
         auto iterations = solver.Solve(
             AsScalarField1D(q), A, AsScalarField1D(delW), 
             method);
-        SmearBorder2D(q, dims[0]);
 
-        for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
-            for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
-                const auto i = y*dims[1]+x;
-                (*velField._u)[i] -= .5f*velFieldScale[0] * (q[i+1]                 - q[i-1]);
-                (*velField._v)[i] -= .5f*velFieldScale[1] * (q[i+dims[0]]           - q[i-dims[0]]);
-            }
+        if (!constant_expression<WrapEdges>::result()) {
+            SmearBorder2D(q, dims[0]);
+            for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
+                for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
+                    const auto i = y*dims[0]+x;
+                    (*velField._u)[i] -= .5f*velFieldScale[0] * (q[i+1]       - q[i-1]);
+                    (*velField._v)[i] -= .5f*velFieldScale[1] * (q[i+dims[0]] - q[i-dims[0]]);
+                }
+        } else {
+            for (unsigned y=0; y<dims[1]; ++y)
+                for (unsigned x=0; x<dims[0]; ++x) {
+                    const auto i = y*dims[0]+x;
+                    const auto i0 = y*dims[0]+(x+1)%dims[0];
+                    const auto i1 = y*dims[0]+(x+dims[0]-1)%dims[0];
+                    const auto i2 = ((y+1)%dims[1])*dims[0]+x;
+                    const auto i3 = ((y+dims[1]-1)%dims[1])*dims[0]+x;
+                    (*velField._u)[i] -= .5f*velFieldScale[0] * (q[i0] - q[i1]);
+                    (*velField._v)[i] -= .5f*velFieldScale[1] * (q[i2] - q[i3]);
+                }
+        }
 
         LogInfo << "EnforceIncompressibility took: " << iterations << " iterations.";
     }
@@ -506,14 +537,17 @@ namespace SceneEngine
             VectorField2D(&velUWorking, &velVWorking,   _pimpl->_dimsWithBorder),
             deltaTime, advSettings);
         
-        ReflectUBorder2D(velUT1, _pimpl->_dimsWithBorder[0]);
-        ReflectVBorder2D(velVT1, _pimpl->_dimsWithBorder[0]);
+        if (!constant_expression<WrapEdges>::result()) {
+            ReflectUBorder2D(velUT1, _pimpl->_dimsWithBorder[0]);
+            ReflectVBorder2D(velVT1, _pimpl->_dimsWithBorder[0]);
+        }
         EnforceIncompressibility(
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
             _pimpl->_poissonSolver, *_pimpl->_incompressibility,
             (PoissonSolver::Method)settings._enforceIncompressibilityMethod);
 
-        SmearBorder2D(densityWorking, _pimpl->_dimsWithBorder[0]);
+        if (!constant_expression<WrapEdges>::result())
+            SmearBorder2D(densityWorking, _pimpl->_dimsWithBorder[0]);
         _pimpl->DensityDiffusion(deltaTime, settings);
         PerformAdvection(
             ScalarField2D(&densityT1, _pimpl->_dimsWithBorder),
@@ -522,7 +556,8 @@ namespace SceneEngine
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
             deltaTime, advSettings);
 
-        SmearBorder2D(temperatureWorking, _pimpl->_dimsWithBorder[0]);
+        if (!constant_expression<WrapEdges>::result())
+            SmearBorder2D(temperatureWorking, _pimpl->_dimsWithBorder[0]);
         _pimpl->TemperatureDiffusion(deltaTime, settings);
         PerformAdvection(
             ScalarField2D(&temperatureT1, _pimpl->_dimsWithBorder),
@@ -662,7 +697,7 @@ namespace SceneEngine
 
         UInt2 fullDims(dimensions[0]+2, dimensions[1]+2);
         _pimpl->_poissonSolver = PoissonSolver(2, &fullDims[0]);
-        _pimpl->_incompressibility = _pimpl->_poissonSolver.PrepareDivergenceMatrix(PoissonSolver::Method::PreconCG);
+        _pimpl->_incompressibility = _pimpl->_poissonSolver.PrepareDivergenceMatrix(PoissonSolver::Method::PreconCG, WrapEdges);
 
         _pimpl->_preparedDensityDiffusion = 0.f;
         _pimpl->_preparedVelocityDiffusion = 0.f;
@@ -816,9 +851,7 @@ namespace SceneEngine
 
     std::shared_ptr<PoissonSolver::PreparedMatrix> FluidSolver3D::Pimpl::BuildDiffusionMethod(float diffusion)
     {
-        const float a0 = 1.f + 6.f * diffusion;
-        const float a1 = -diffusion;
-        return _poissonSolver.PrepareDiffusionMatrix(a0, a1, PoissonSolver::Method::PreconCG);
+        return _poissonSolver.PrepareDiffusionMatrix(diffusion, PoissonSolver::Method::PreconCG, WrapEdges);
     }
 
     void FluidSolver3D::Pimpl::DensityDiffusion(float deltaTime, const Settings& settings)
@@ -879,7 +912,7 @@ namespace SceneEngine
         UInt3 fullDims(dimensions[0]+2, dimensions[1]+2, dimensions[2]+2);
         _pimpl->_poissonSolver = PoissonSolver(3, &fullDims[0]);
         _pimpl->_incompressibility = _pimpl->_poissonSolver.PrepareDivergenceMatrix(
-            PoissonSolver::Method::PreconCG);
+            PoissonSolver::Method::PreconCG, WrapEdges);
 
         _pimpl->_preparedDensityDiffusion = 0.f;
         _pimpl->_preparedVelocityDiffusion = 0.f;
@@ -905,9 +938,7 @@ namespace SceneEngine
     static std::shared_ptr<PoissonSolver::PreparedMatrix> BuildDiffusionMethod(
         const PoissonSolver& solver, float diffusion, PoissonSolver::Method method)
     {
-        const float a0 = 1.f + 4.f * diffusion;
-        const float a1 = -diffusion;
-        return solver.PrepareDiffusionMatrix(a0, a1, method);
+        return solver.PrepareDiffusionMatrix(diffusion, method, WrapEdges);
     }
 
     class DiffusionOperation
@@ -1339,7 +1370,7 @@ namespace SceneEngine
 
                 auto difference = vapourMixingRatio - equilibriumMixingRatio;
                 auto deltaCondensation = std::min(1.f, deltaTime * settings._condensationSpeed) * difference;
-                deltaCondensation = std::max(deltaCondensation, -condensationMixingRatio);
+                deltaCondensation = std::max(deltaCondensation, 0.f); // -condensationMixingRatio);
                 vapourMixingRatio -= deltaCondensation;
                 condensationMixingRatio += deltaCondensation;
 
@@ -1460,7 +1491,7 @@ namespace SceneEngine
 
         UInt2 fullDims(dimensions[0]+2, dimensions[1]+2);
         _pimpl->_poissonSolver = PoissonSolver(2, &fullDims[0]);
-        _pimpl->_incompressibility = _pimpl->_poissonSolver.PrepareDivergenceMatrix(PoissonSolver::Method::PreconCG);
+        _pimpl->_incompressibility = _pimpl->_poissonSolver.PrepareDivergenceMatrix(PoissonSolver::Method::PreconCG, WrapEdges);
     }
 
     CloudsForm2D::~CloudsForm2D(){}

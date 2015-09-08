@@ -173,12 +173,12 @@ namespace XLEMath
         dst[(wh-1)*wh+wh-1] = src[(wh-1)*wh+wh-1];
     }
 
-    inline unsigned XY(unsigned x, unsigned y, unsigned wh)                 { return y*wh+x; }
-    inline unsigned XYZ(unsigned x, unsigned y, unsigned z, UInt3 dims)     { return (z*dims[1]+y)*dims[0]+x; }
+    inline unsigned XY_WH(unsigned x, unsigned y, unsigned wh)                 { return y*wh+x; }
+    inline unsigned XYZ_DIMS(unsigned x, unsigned y, unsigned z, UInt3 dims)     { return (z*dims[1]+y)*dims[0]+x; }
     template <typename Vec>
         static void ReflectUBorder2D(Vec& v, unsigned wh)
     {
-        #define XY(x,y) XY(x,y,wh)
+        #define XY(x,y) XY_WH(x,y,wh)
         for (unsigned i = 1; i < wh - 1; ++i) {
             v[XY(0, i)]     = -v[XY(1,i)];
             v[XY(wh-1, i)]  = -v[XY(wh-2,i)];
@@ -197,7 +197,7 @@ namespace XLEMath
     template <typename Vec>
         static void ReflectVBorder2D(Vec& v, unsigned wh)
     {
-        #define XY(x,y) XY(x,y,wh)
+        #define XY(x,y) XY_WH(x,y,wh)
         for (unsigned i = 1; i < wh - 1; ++i) {
             v[XY(0, i)]     =  v[XY(1,i)];
             v[XY(wh-1, i)]  =  v[XY(wh-2,i)];
@@ -216,7 +216,7 @@ namespace XLEMath
     template <typename Vec>
         static void SmearBorder2D(Vec& v, unsigned wh)
     {
-        #define XY(x,y) XY(x,y,wh)
+        #define XY(x,y) XY_WH(x,y,wh)
         for (unsigned i = 1; i < wh - 1; ++i) {
             v[XY(0, i)]     =  v[XY(1,i)];
             v[XY(wh-1, i)]  =  v[XY(wh-2,i)];
@@ -236,7 +236,7 @@ namespace XLEMath
         static void ZeroBorder3D(Vec& v, UInt3 dims)
     {
         auto LX = dims[0]-1, LY = dims[1]-1, LZ = dims[2]-1;
-        #define XYZ(x,y,z) XYZ(x,y,z,dims)
+        #define XYZ(x,y,z) XYZ_DIMS(x,y,z,dims)
 
             // 6 faces
         for (unsigned y=1; y<dims[1]-1; ++y)
@@ -296,7 +296,7 @@ namespace XLEMath
         static void CopyBorder3D(Vec& dst, const Vec& src, UInt3 dims)
     {
         auto LX = dims[0]-1, LY = dims[1]-1, LZ = dims[2]-1;
-        #define XYZ(x,y,z) XYZ(x,y,z,dims)
+        #define XYZ(x,y,z) XYZ_DIMS(x,y,z,dims)
 
             // 6 faces
         for (unsigned y=1; y<dims[1]-1; ++y)
@@ -356,7 +356,7 @@ namespace XLEMath
         static void ReflectBorder3D(Vec& v, UInt3 dims, unsigned reflectionAxis)
     {
         auto LX = dims[0]-1, LY = dims[1]-1, LZ = dims[2]-1;
-        #define XYZ(x,y,z) XYZ(x,y,z,dims)
+        #define XYZ(x,y,z) XYZ_DIMS(x,y,z,dims)
 
             // 6 faces
         auto reflect = (reflectionAxis==2)?-1.f:1.f;

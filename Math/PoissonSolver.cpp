@@ -135,11 +135,24 @@ namespace XLEMath
             _r[c] = b[c] - _r[c];
             _d[c] = _r[c];
         }
-        ZeroBorder(_r, A);
-        ZeroBorder(_d, A);
+        // ZeroBorder(_r, A);
+        // ZeroBorder(_d, A);
         auto rho = _r.dot(_r);
 
-        ZeroBorder(_q, A);
+        // const UInt3 bor = GetBorders(A);
+        // const auto& dims = A._dims;
+        // #define FOR_EACH_CELL                                               \
+        //     for (unsigned qz=bor[2]; qz<dims[2]-bor[2]; ++qz)               \
+        //         for (unsigned qy=bor[1]; qy<dims[1]-bor[1]; ++qy)           \
+        //             for (unsigned qx=bor[0]; qx<dims[0]-bor[0]; ++qx) {     \
+        //                 auto i = (qz*dims[1]+qy)*dims[0]+qx;                \
+        //     /**/
+        #define FOR_EACH_CELL                           \
+            for (unsigned i=0; i<GetN(A); ++i) {        \
+            /**/
+        #define FOR_EACH_CELL_END }
+
+        // ZeroBorder(_q, A);
         unsigned k=0;
         if (XlAbs(rho) > rhoThreshold) {
             for (; k<maxIterations; ++k) {
@@ -148,10 +161,10 @@ namespace XLEMath
                 auto dDotQ = _d.dot(_q);
                 auto alpha = rho / dDotQ;
                 assert(isfinite(alpha) && !isnan(alpha));
-                for (unsigned i=0; i<_N; ++i) {
+                FOR_EACH_CELL
                      x[i] += alpha * _d[i];
                     _r[i] -= alpha * _d[i];
-                }
+                FOR_EACH_CELL_END
             
                 auto rhoOld = rho;
                 rho = _r.dot(_r);
@@ -161,11 +174,15 @@ namespace XLEMath
             
                     // we can skip the border for the following...
                     // (but that requires different cases for 2D/3D)
-                for (unsigned i=0; i<_N; ++i)
+                FOR_EACH_CELL
                     _d[i] = _r[i] + beta * _d[i];
+                FOR_EACH_CELL_END
 
             }
         }
+
+        #undef FOR_EACH_CELL
+        #undef FOR_EACH_CELL_END
 
         return k;
     }
@@ -214,7 +231,7 @@ namespace XLEMath
         Multiply(rAsField, A, x, _N);    // r = AMat * x
         for (unsigned c=0; c<b._count; ++c)
             _r[c] = b[c] - _r[c];
-        ZeroBorder(_r, A);  // what should be the border values for _r ?
+        // ZeroBorder(_r, A);  // what should be the border values for _r ?
             
         SolveLowerTriangular(_d, precon, _r, _N);
             
@@ -230,13 +247,16 @@ namespace XLEMath
         //     }
         // #endif
 
-        const UInt3 bor = GetBorders(A);
-        const auto& dims = A._dims;
-        #define FOR_EACH_CELL                                               \
-            for (unsigned qz=bor[2]; qz<dims[2]-bor[2]; ++qz)               \
-                for (unsigned qy=bor[1]; qy<dims[1]-bor[1]; ++qy)           \
-                    for (unsigned qx=bor[0]; qx<dims[0]-bor[0]; ++qx) {     \
-                        auto i = (qz*dims[1]+qy)*dims[0]+qx;                \
+        // const UInt3 bor = GetBorders(A);
+        // const auto& dims = A._dims;
+        // #define FOR_EACH_CELL                                               \
+        //     for (unsigned qz=bor[2]; qz<dims[2]-bor[2]; ++qz)               \
+        //         for (unsigned qy=bor[1]; qy<dims[1]-bor[1]; ++qy)           \
+        //             for (unsigned qx=bor[0]; qx<dims[0]-bor[0]; ++qx) {     \
+        //                 auto i = (qz*dims[1]+qy)*dims[0]+qx;                \
+        //     /**/
+        #define FOR_EACH_CELL                           \
+            for (unsigned i=0; i<GetN(A); ++i) {        \
             /**/
         #define FOR_EACH_CELL_END }
             
@@ -332,6 +352,9 @@ namespace XLEMath
         auto result = i;
         result._a0 /= scale;
         result._a1 /= scale;
+        result._a0e /= scale;
+        result._a0c /= scale;
+        result._a1r /= scale;
         return result;
     }
 
@@ -676,7 +699,7 @@ namespace XLEMath
                 // the timestep, and then refine the estimate
                 // from there using the iterative implicit method.
             Multiply(x, matA, workingB, GetN(matA));
-            if (x._u != b._u) CopyBorder(x, b, matA);
+            // if (x._u != b._u) CopyBorder(x, b, matA);
 
             auto iterations = 0u;
             if (solver == Method::PlainCG) {
@@ -1292,13 +1315,28 @@ namespace XLEMath
     }
 
     auto PoissonSolver::PrepareDiffusionMatrix(
-            float centralWeight, float adjWeight, Method method) const -> std::shared_ptr<PreparedMatrix>
+            float diffusionAmount, Method method, bool wrapEdges) const -> std::shared_ptr<PreparedMatrix>
     {
+        float a0, a1, a0e, a0c, a1r;
+        if (_pimpl->_dimensionality==2) {
+            a0 = 1.f + 4.f * diffusionAmount;
+            a1 = -diffusionAmount;
+            a0e = 1.f + (wrapEdges?4.f:3.f) * diffusionAmount;
+            a0c = 1.f + (wrapEdges?4.f:2.f) * diffusionAmount;
+            a1r = wrapEdges?-diffusionAmount:0.f;
+        } else {
+            a0 = 1.f + 6.f * diffusionAmount;
+            a1 = -diffusionAmount;
+            a0e = 1.f + (wrapEdges?6.f:4.f) * diffusionAmount;
+            a0c = 1.f + (wrapEdges?6.f:3.f) * diffusionAmount;
+            a1r = wrapEdges?-diffusionAmount:0.f;
+        }
+
         AMat A = { 
             _pimpl->_dimensionsWithBorders, 
             _pimpl->_borders,
             _pimpl->_dimensionality,
-            centralWeight, adjWeight };
+            a0, a1, a0e, a0c, a1r };
         const auto N = _pimpl->_dimensionsWithBorders[0] * _pimpl->_dimensionsWithBorders[1] * _pimpl->_dimensionsWithBorders[2];
 
         auto result = std::make_shared<PreparedMatrix>();
@@ -1338,12 +1376,26 @@ namespace XLEMath
         return std::move(result);
     }
 
-    auto PoissonSolver::PrepareDivergenceMatrix(Method method) const -> std::shared_ptr<PreparedMatrix>
+    auto PoissonSolver::PrepareDivergenceMatrix(Method method, bool wrapEdges) const -> std::shared_ptr<PreparedMatrix>
     {
+        float a0, a1, a0e, a0c, a1r;
+        if (_pimpl->_dimensionality==2) {
+            a0 = 4.f;
+            a1 = -1.f;
+            a0e = (wrapEdges?4.f:3.f);
+            a0c = (wrapEdges?4.f:2.f);
+            a1r = wrapEdges?-1.f:0.f;
+        } else {
+            a0 = 6.f;
+            a1 = -1.f;
+            a0e = (wrapEdges?6.f:4.f);
+            a0c = (wrapEdges?6.f:3.f);
+            a1r = wrapEdges?-1.f:0.f;
+        }
+
         AMat A = {
             _pimpl->_dimensionsWithBorders, _pimpl->_borders, _pimpl->_dimensionality, 
-            (_pimpl->_dimensionality==2)?4.f:6.f, 
-            -1.f };
+            a0, a1, a0e, a0c, a1r };
         const auto N = _pimpl->_dimensionsWithBorders[0] * _pimpl->_dimensionsWithBorders[1] * _pimpl->_dimensionsWithBorders[2];
 
         auto result = std::make_shared<PreparedMatrix>();
