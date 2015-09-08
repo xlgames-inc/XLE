@@ -12,8 +12,13 @@ namespace XLEMath
 {
     namespace RNFSample
     { 
-        const unsigned Clamp = 1<<0; 
-        const unsigned Cubic = 1<<1; 
+        const unsigned Cubic    = 1<<0; 
+        const unsigned ClampX   = 1<<1;
+        const unsigned ClampY   = 1<<2;
+        const unsigned ClampZ   = 1<<3;
+        const unsigned WrapX    = 1<<4;
+        const unsigned WrapY    = 1<<5;
+        const unsigned WrapZ    = 1<<6;
     }
 
     /// <summary>A 2D field of 2D vectors</summary>
@@ -43,12 +48,12 @@ namespace XLEMath
         ValueType Load(Coord c) const;
         void Write(Coord x, ValueType value);
 
-        template<unsigned SamplingFlags = RNFSample::Clamp>
+        template<unsigned SamplingFlags = RNFSample::ClampX|RNFSample::ClampY|RNFSample::ClampZ>
             ValueType Sample(FloatCoord c) const;
 
         static const unsigned NeighborCount = 9;
         static const unsigned BilinearWeightCount = 4;
-        void GatherNeighbors(ValueType neighbours[9], float weights[4], FloatCoord coord) const;
+        void GatherNeighbors(ValueType neighbours[9], float weights[4], FloatCoord coord, unsigned samplingFlags) const;
 
         VectorField2DSeparate() : _u(nullptr), _v(nullptr), _dims(0, 0) {}
         VectorField2DSeparate(Store* u, Store* v, UInt2 dims) : _u(u), _v(v), _dims(dims) {}
@@ -70,12 +75,12 @@ namespace XLEMath
         ValueType Load(Coord c) const;
         void Write(Coord x, ValueType value);
 
-        template<unsigned SamplingFlags = RNFSample::Clamp>
+        template<unsigned SamplingFlags = RNFSample::ClampX|RNFSample::ClampY|RNFSample::ClampZ>
             ValueType Sample(FloatCoord c) const;
 
         static const unsigned NeighborCount = 27;
         static const unsigned BilinearWeightCount = 8;
-        void GatherNeighbors(ValueType neighbours[27], float weights[8], FloatCoord coord) const;
+        void GatherNeighbors(ValueType neighbours[27], float weights[8], FloatCoord coord, unsigned samplingFlags) const;
 
         VectorField3DSeparate() : _u(nullptr), _v(nullptr), _dims(0, 0, 0) {}
         VectorField3DSeparate(Store* u, Store* v, Store* w, UInt3 dims) : _u(u), _v(v), _w(w), _dims(dims) {}
@@ -97,12 +102,12 @@ namespace XLEMath
         ValueType Load(Coord c) const;
         void Write(Coord x, ValueType value);
 
-        template<unsigned SamplingFlags = RNFSample::Clamp>
+        template<unsigned SamplingFlags = RNFSample::ClampX|RNFSample::ClampY|RNFSample::ClampZ>
             ValueType Sample(FloatCoord c) const;
 
         static const unsigned NeighborCount = 9;
         static const unsigned BilinearWeightCount = 4;
-        void GatherNeighbors(ValueType neighbours[9], float weights[4], FloatCoord coord) const;
+        void GatherNeighbors(ValueType neighbours[9], float weights[4], FloatCoord coord, unsigned samplingFlags) const;
 
         ScalarField2D() : _u(nullptr), _dims(0, 0) {}
         ScalarField2D(Store* u, UInt2 dims) : _u(u), _dims(dims) {}
@@ -124,12 +129,12 @@ namespace XLEMath
         ValueType Load(Coord c) const;
         void Write(Coord x, ValueType value);
 
-        template<unsigned SamplingFlags = RNFSample::Clamp>
+        template<unsigned SamplingFlags = RNFSample::ClampX|RNFSample::ClampY|RNFSample::ClampZ>
             ValueType Sample(FloatCoord c) const;
 
         static const unsigned NeighborCount = 27;
         static const unsigned BilinearWeightCount = 8;
-        void GatherNeighbors(ValueType neighbours[27], float weights[8], FloatCoord coord) const;
+        void GatherNeighbors(ValueType neighbours[27], float weights[8], FloatCoord coord, unsigned samplingFlags) const;
 
         ScalarField3D() : _u(nullptr), _dims(0, 0, 0) {}
         ScalarField3D(Store* u, UInt3 dims) : _u(u), _dims(dims) {}

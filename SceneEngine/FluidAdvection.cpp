@@ -37,7 +37,7 @@ namespace SceneEngine
             return result;
         }
 
-    template<unsigned Interpolation, typename Field>
+    template<unsigned SamplingFlags, typename Field>
         static typename Field::ValueType AdvectRK4(
             const Field& velFieldT0, const Field& velFieldT1,
             typename Field::Coord pt, typename Field::FloatCoord velScale)
@@ -47,19 +47,19 @@ namespace SceneEngine
     
             auto startTap = ConvertVector<typename Field::FloatCoord>(pt);
             auto k1 = velFieldT0.Load(pt);
-            auto k2 = .5f * velFieldT0.Sample<Interpolation|RNFSample::Clamp>(startTap + MultiplyAcross(halfS, k1))
-                    + .5f * velFieldT1.Sample<Interpolation|RNFSample::Clamp>(startTap + MultiplyAcross(halfS, k1))
+            auto k2 = .5f * velFieldT0.Sample<SamplingFlags>(startTap + MultiplyAcross(halfS, k1))
+                    + .5f * velFieldT1.Sample<SamplingFlags>(startTap + MultiplyAcross(halfS, k1))
                     ;
-            auto k3 = .5f * velFieldT0.Sample<Interpolation|RNFSample::Clamp>(startTap + MultiplyAcross(halfS, k2))
-                    + .5f * velFieldT1.Sample<Interpolation|RNFSample::Clamp>(startTap + MultiplyAcross(halfS, k2))
+            auto k3 = .5f * velFieldT0.Sample<SamplingFlags>(startTap + MultiplyAcross(halfS, k2))
+                    + .5f * velFieldT1.Sample<SamplingFlags>(startTap + MultiplyAcross(halfS, k2))
                     ;
-            auto k4 = velFieldT1.Sample<Interpolation|RNFSample::Clamp>(startTap + MultiplyAcross(s, k3));
+            auto k4 = velFieldT1.Sample<SamplingFlags>(startTap + MultiplyAcross(s, k3));
     
             auto finalVel = (1.f / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
             return startTap + MultiplyAcross(s, finalVel);
         }
 
-    template<unsigned Interpolation, typename Field>
+    template<unsigned SamplingFlags, typename Field>
         static typename Field::ValueType AdvectRK4(
             const Field& velFieldT0, const Field& velFieldT1,
             typename Field::FloatCoord pt, typename Field::FloatCoord velScale)
@@ -68,14 +68,14 @@ namespace SceneEngine
             const auto halfS = decltype(s)(s / 2);
 
                 // when using a float point input, we need bilinear interpolation
-            auto k1 = velFieldT0.Sample<Interpolation|RNFSample::Clamp>(pt);
-            auto k2 = .5f * velFieldT0.Sample<Interpolation|RNFSample::Clamp>(pt + MultiplyAcross(halfS, k1))
-                    + .5f * velFieldT1.Sample<Interpolation|RNFSample::Clamp>(pt + MultiplyAcross(halfS, k1))
+            auto k1 = velFieldT0.Sample<SamplingFlags>(pt);
+            auto k2 = .5f * velFieldT0.Sample<SamplingFlags>(pt + MultiplyAcross(halfS, k1))
+                    + .5f * velFieldT1.Sample<SamplingFlags>(pt + MultiplyAcross(halfS, k1))
                     ;
-            auto k3 = .5f * velFieldT0.Sample<Interpolation|RNFSample::Clamp>(pt + MultiplyAcross(halfS, k2))
-                    + .5f * velFieldT1.Sample<Interpolation|RNFSample::Clamp>(pt + MultiplyAcross(halfS, k2))
+            auto k3 = .5f * velFieldT0.Sample<SamplingFlags>(pt + MultiplyAcross(halfS, k2))
+                    + .5f * velFieldT1.Sample<SamplingFlags>(pt + MultiplyAcross(halfS, k2))
                     ;
-            auto k4 = velFieldT1.Sample<Interpolation|RNFSample::Clamp>(pt + MultiplyAcross(s, k3));
+            auto k4 = velFieldT1.Sample<SamplingFlags>(pt + MultiplyAcross(s, k3));
 
             auto finalVel = (1.f / 6.f) * (k1 + 2.f * k2 + 2.f * k3 + k4);
             return pt + MultiplyAcross(s, finalVel);
@@ -109,7 +109,7 @@ namespace SceneEngine
         {
             typename Field::ValueType predictorParts[Field::NeighborCount];
             float predictorWeights[Field::BilinearWeightCount];
-            field.GatherNeighbors(predictorParts, predictorWeights, pt);
+            field.GatherNeighbors(predictorParts, predictorWeights, pt, SamplingFlags);
             
             minNeighbour =  MaxValue<typename Field::ValueType>();
             maxNeighbour = -MaxValue<typename Field::ValueType>();
@@ -124,7 +124,7 @@ namespace SceneEngine
                     result += predictorWeights[i] * predictorParts[i];
                 return result;
             } else {
-                return field.Sample<RNFSample::Cubic|RNFSample::Clamp>(pt);
+                return field.Sample<SamplingFlags>(pt);
             }
         }
     
@@ -164,7 +164,7 @@ namespace SceneEngine
         assert(dstValues.Dimensions() == velFieldT0.Dimensions());
         assert(dstValues.Dimensions() == velFieldT1.Dimensions());
         const UInt3 dims = As3DDims(dstValues.Dimensions());
-        const UInt3 margin = As3DBorder(dstValues.Dimensions());
+        const UInt3 margin = UInt3(0,0,0); // As3DBorder(dstValues.Dimensions());
         using FloatCoord = typename VelField::FloatCoord;
         using Coord = typename VelField::Coord;
         const auto velFieldScale = ConvertVector<FloatCoord>(
@@ -224,7 +224,7 @@ namespace SceneEngine
 
             if (settings._interpolation == AdvectionInterpolationMethod::Bilinear) {
 
-                const auto SamplingFlags = 0u;
+                const auto SamplingFlags = RNFSample::WrapX|RNFSample::ClampY|RNFSample::ClampZ;
                 for (unsigned z=margin[2]; z<dims[2]-margin[2]; ++z)
                     for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
                         for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
@@ -239,19 +239,19 @@ namespace SceneEngine
                                 //      -- hoping this will interact with the velocity diffusion more sensibly
                             auto coord = ConvertVector<Coord>(UInt3(x, y, z));
                             const auto tap = AdvectRK4<SamplingFlags>(velFieldT1, velFieldT0, coord, -deltaTime * velFieldScale);
-                            dstValues.Write(coord, srcValues.Sample<SamplingFlags|RNFSample::Clamp>(tap));
+                            dstValues.Write(coord, srcValues.Sample<SamplingFlags>(tap));
 
                         }
 
             } else {
 
-                const auto SamplingFlags = RNFSample::Cubic;
+                const auto SamplingFlags = RNFSample::Cubic|RNFSample::WrapX|RNFSample::ClampY|RNFSample::ClampZ;
                 for (unsigned z=margin[2]; z<dims[2]-margin[2]; ++z)
                     for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
                         for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
                             auto coord = ConvertVector<Coord>(UInt3(x, y, z));
                             const auto tap = AdvectRK4<SamplingFlags>(velFieldT1, velFieldT0, coord, -deltaTime * velFieldScale);
-                            dstValues.Write(coord, srcValues.Sample<SamplingFlags|RNFSample::Clamp>(tap));
+                            dstValues.Write(coord, srcValues.Sample<SamplingFlags>(tap));
                         }
 
             }
@@ -285,7 +285,7 @@ namespace SceneEngine
 
             if (settings._interpolation == AdvectionInterpolationMethod::Bilinear) {
 
-                const auto SamplingFlags = 0u;
+                const auto SamplingFlags = RNFSample::WrapX|RNFSample::ClampY|RNFSample::ClampZ;
                 for (unsigned z=margin[2]; z<dims[2]-margin[2]; ++z)
                     for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
                         for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
@@ -298,7 +298,7 @@ namespace SceneEngine
                             const auto reversedTap = AdvectRK4<SamplingFlags>(velFieldT0, velFieldT1, predictor, deltaTime * velFieldScale);
 
                             auto originalValue = srcValues.Load(coord);
-                            auto reversedValue = srcValues.Sample<SamplingFlags|RNFSample::Clamp>(reversedTap);
+                            auto reversedValue = srcValues.Sample<SamplingFlags>(reversedTap);
                             Field::ValueType finalValue;
 
                                 // Here we clamp the final result within the range of the neighbour cells of the 
@@ -312,7 +312,7 @@ namespace SceneEngine
                                 finalValue = MaxAcross(finalValue, minNeighbour);
                                 finalValue = MinAcross(finalValue, maxNeighbour);
                             } else {
-                                auto predictorValue = srcValues.Sample<SamplingFlags|RNFSample::Clamp>(predictor);
+                                auto predictorValue = srcValues.Sample<SamplingFlags>(predictor);
                                 finalValue = typename Field::ValueType(predictorValue + .5f * (originalValue - reversedValue));
                             }
 
@@ -322,7 +322,7 @@ namespace SceneEngine
 
             } else {
 
-                const auto SamplingFlags = RNFSample::Cubic;
+                const auto SamplingFlags = RNFSample::Cubic|RNFSample::WrapX|RNFSample::ClampY|RNFSample::ClampZ;
                 for (unsigned z=margin[2]; z<dims[2]-margin[2]; ++z)
                     for (unsigned y=margin[1]; y<dims[1]-margin[1]; ++y)
                         for (unsigned x=margin[0]; x<dims[0]-margin[0]; ++x) {
@@ -332,7 +332,7 @@ namespace SceneEngine
                             const auto reversedTap = AdvectRK4<SamplingFlags>(velFieldT0, velFieldT1, predictor, deltaTime * velFieldScale);
 
                             auto originalValue = srcValues.Load(coord);
-                            auto reversedValue = srcValues.Sample<SamplingFlags|RNFSample::Clamp>(reversedTap);
+                            auto reversedValue = srcValues.Sample<SamplingFlags>(reversedTap);
 
                             Field::ValueType minNeighbour, maxNeighbour;
                             auto predictorValue = LoadWithNearbyRange<SamplingFlags>(minNeighbour, maxNeighbour, srcValues, predictor);

@@ -35,13 +35,23 @@ namespace XLEMath
         unsigned x0, x1, y0, y1;
         
         const auto dims = field.Dimensions();
-        if (constant_expression<(SamplingFlags & RNFSample::Clamp)!=0>::result()) {
+        if (constant_expression<(SamplingFlags & RNFSample::WrapX)!=0>::result()) {
+            x0 = unsigned((int(fx) + int(dims[0]))%dims[0]);
+            x1 = (x0+1u)%dims[0];
+        } else if (constant_expression<(SamplingFlags & RNFSample::ClampX)!=0>::result()) {
             x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
             x1 = std::min(x0+1u, dims[0]-1u);
+        } else {
+            x0 = unsigned(fx); x1 = x0+1;
+        }
+
+        if (constant_expression<(SamplingFlags & RNFSample::WrapY)!=0>::result()) {
+            y0 = unsigned((int(fy) + int(dims[1]))%dims[1]);
+            y1 = (y0+1u)%dims[1];
+        } else if (constant_expression<(SamplingFlags & RNFSample::ClampY)!=0>::result()) {
             y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
             y1 = std::min(y0+1u, dims[1]-1u);
         } else {
-            x0 = unsigned(fx); x1 = x0+1;
             y0 = unsigned(fy); y1 = y0+1;
         }
         assert(x1 < dims[0] && y1 < dims[1]);
@@ -77,13 +87,23 @@ namespace XLEMath
         unsigned x0, x1, y0, y1;
         
         const auto dims = field.Dimensions();
-        if (constant_expression<(SamplingFlags & RNFSample::Clamp)!=0>::result()) {
+        if (constant_expression<(SamplingFlags & RNFSample::WrapX)!=0>::result()) {
+            x0 = unsigned((int(fx) + int(dims[0]))%dims[0]);
+            x1 = (x0+1u)%dims[0];
+        } else if (constant_expression<(SamplingFlags & RNFSample::ClampX)!=0>::result()) {
             x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
             x1 = std::min(x0+1u, dims[0]-1u);
+        } else {
+            x0 = unsigned(fx); x1 = x0+1;
+        }
+
+        if (constant_expression<(SamplingFlags & RNFSample::WrapY)!=0>::result()) {
+            y0 = unsigned((int(fy) + int(dims[1]))%dims[1]);
+            y1 = (y0+1u)%dims[1];
+        } else if (constant_expression<(SamplingFlags & RNFSample::ClampY)!=0>::result()) {
             y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
             y1 = std::min(y0+1u, dims[1]-1u);
         } else {
-            x0 = unsigned(fx); x1 = x0+1;
             y0 = unsigned(fy); y1 = y0+1;
         }
         assert(x1 < dims[0] && y1 < dims[1]);
@@ -118,16 +138,33 @@ namespace XLEMath
         unsigned x0, x1, y0, y1, z0, z1;
         
         const auto dims = field.Dimensions();
-        if (constant_expression<(SamplingFlags & RNFSample::Clamp)!=0>::result()) {
+        if (constant_expression<(SamplingFlags & RNFSample::WrapX)!=0>::result()) {
+            x0 = unsigned((int(fx) + int(dims[0]))%dims[0]);
+            x1 = (x0+1u)%dims[0];
+        } else if (constant_expression<(SamplingFlags & RNFSample::ClampX)!=0>::result()) {
             x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
             x1 = std::min(x0+1u, dims[0]-1u);
+        } else {
+            x0 = unsigned(fx); x1 = x0+1;
+        }
+
+        if (constant_expression<(SamplingFlags & RNFSample::WrapY)!=0>::result()) {
+            y0 = unsigned((int(fy) + int(dims[1]))%dims[1]);
+            y1 = (y0+1u)%dims[1];
+        } else if (constant_expression<(SamplingFlags & RNFSample::ClampY)!=0>::result()) {
             y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
             y1 = std::min(y0+1u, dims[1]-1u);
+        } else {
+            y0 = unsigned(fy); y1 = y0+1;
+        }
+
+        if (constant_expression<(SamplingFlags & RNFSample::WrapZ)!=0>::result()) {
+            z0 = unsigned((int(fz) + int(dims[2]))%dims[2]);
+            z1 = (z0+1u)%dims[2];
+        } else if (constant_expression<(SamplingFlags & RNFSample::ClampZ)!=0>::result()) {
             z0 = unsigned(Clamp(fz, 0.f, float(dims[2]-1)));
             z1 = std::min(z0+1u, dims[2]-1u);
         } else {
-            x0 = unsigned(fx); x1 = x0+1;
-            y0 = unsigned(fy); y1 = y0+1;
             z0 = unsigned(fz); z1 = z0+1;
         }
         assert(x1 < dims[0] && y1 < dims[1] && z1 < dims[2]);
@@ -187,16 +224,33 @@ namespace XLEMath
         unsigned x0, x1, y0, y1, z0, z1;
         
         const auto dims = field.Dimensions();
-        if (constant_expression<(SamplingFlags & RNFSample::Clamp)!=0>::result()) {
+        if (constant_expression<(SamplingFlags & RNFSample::WrapX)!=0>::result()) {
+            x0 = unsigned((int(fx) + int(dims[0]))%dims[0]);
+            x1 = (x0+1u)%dims[0];
+        } else if (constant_expression<(SamplingFlags & RNFSample::ClampX)!=0>::result()) {
             x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
             x1 = std::min(x0+1u, dims[0]-1u);
+        } else {
+            x0 = unsigned(fx); x1 = x0+1;
+        }
+
+        if (constant_expression<(SamplingFlags & RNFSample::WrapY)!=0>::result()) {
+            y0 = unsigned((int(fy) + int(dims[1]))%dims[1]);
+            y1 = (y0+1u)%dims[1];
+        } else if (constant_expression<(SamplingFlags & RNFSample::ClampY)!=0>::result()) {
             y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
             y1 = std::min(y0+1u, dims[1]-1u);
+        } else {
+            y0 = unsigned(fy); y1 = y0+1;
+        }
+
+        if (constant_expression<(SamplingFlags & RNFSample::WrapZ)!=0>::result()) {
+            z0 = unsigned((int(fz) + int(dims[2]))%dims[2]);
+            z1 = (z0+1u)%dims[2];
+        } else if (constant_expression<(SamplingFlags & RNFSample::ClampZ)!=0>::result()) {
             z0 = unsigned(Clamp(fz, 0.f, float(dims[2]-1)));
             z1 = std::min(z0+1u, dims[2]-1u);
         } else {
-            x0 = unsigned(fx); x1 = x0+1;
-            y0 = unsigned(fy); y1 = y0+1;
             z0 = unsigned(fz); z1 = z0+1;
         }
         assert(x1 < dims[0] && y1 < dims[1] && z1 < dims[2]);
@@ -245,7 +299,7 @@ namespace XLEMath
             + x0;
     }
 
-    template<typename Store>
+    template<unsigned SamplingFlags, typename Store>
         float SampleMonotonicCubic(const ScalarField2D<Store>& field, Float2 coord)
     {
         float fx = XlFloor(coord[0]);
@@ -253,16 +307,31 @@ namespace XLEMath
         float a = coord[0] - fx, b = coord[1] - fy;
 
         const auto dims = field.Dimensions();
-        unsigned x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
-        unsigned x1 = std::min(x0+1u, dims[0]-1u);
-        unsigned y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
-        unsigned y1 = std::min(y0+1u, dims[1]-1u);
-        assert(x1 < dims[0] && y1 < dims[1]);
+        unsigned xn1, x0, x1, x2;
+        unsigned yn1, y0, y1, y2;
+        if (constant_expression<(SamplingFlags & RNFSample::WrapX)!=0>::result()) {
+            x0 = unsigned((int(fx) + int(dims[0]))%dims[0]);
+            x1 = (x0+1u)%dims[0];
+            x2 = (x1+1u)%dims[0];
+            xn1 = (x0+dims[0]-1)%dims[0];
+        } else {
+            x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
+            x1 = std::min(x0+1u, dims[0]-1u);
+            x2 = std::min(x1+1u, dims[0]-1u);
+            xn1 = std::max(x0, 1u) - 1u;
+        }
 
-        unsigned x2 = std::min(x1+1u, dims[0]-1u);
-        unsigned y2 = std::min(y1+1u, dims[1]-1u);
-        unsigned xn1 = std::max(x0, 1u) - 1u;
-        unsigned yn1 = std::max(y0, 1u) - 1u;
+        if (constant_expression<(SamplingFlags & RNFSample::WrapY)!=0>::result()) {
+            y0 = unsigned((int(fy) + int(dims[1]))%dims[1]);
+            y1 = (y0+1u)%dims[1];
+            y2 = (y1+1u)%dims[1];
+            yn1 = (y0+dims[1]-1)%dims[1];
+        } else {
+            y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
+            y1 = std::min(y0+1u, dims[1]-1u);
+            y2 = std::min(y1+1u, dims[1]-1u);
+            yn1 = std::max(y0, 1u) - 1u;
+        }
         
         float u[] = 
         {
@@ -294,7 +363,7 @@ namespace XLEMath
         return MonotonicCubic(un1, u0, u1, u2, b);
     }
 
-    template<typename Store>
+    template<unsigned SamplingFlags, typename Store>
         Float2 SampleMonotonicCubic(const VectorField2DSeparate<Store>& field, Float2 coord)
     {
         float fx = XlFloor(coord[0]);
@@ -302,16 +371,31 @@ namespace XLEMath
         float a = coord[0] - fx, b = coord[1] - fy;
 
         const auto dims = field.Dimensions();
-        unsigned x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
-        unsigned x1 = std::min(x0+1u, dims[0]-1u);
-        unsigned y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
-        unsigned y1 = std::min(y0+1u, dims[1]-1u);
-        assert(x1 < dims[0] && y1 < dims[1]);
+        unsigned xn1, x0, x1, x2;
+        unsigned yn1, y0, y1, y2;
+        if (constant_expression<(SamplingFlags & RNFSample::WrapX)!=0>::result()) {
+            x0  = unsigned((int(fx) + int(dims[0]))%dims[0]);
+            x1  = (x0+1u)%dims[0];
+            x2  = (x1+1u)%dims[0];
+            xn1 = (x0+dims[0]-1)%dims[0];
+        } else {
+            x0  = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
+            x1  = std::min(x0+1u, dims[0]-1u);
+            x2  = std::min(x1+1u, dims[0]-1u);
+            xn1 = std::max(x0, 1u) - 1u;
+        }
 
-        unsigned x2 = std::min(x1+1u, dims[0]-1u);
-        unsigned y2 = std::min(y1+1u, dims[1]-1u);
-        unsigned xn1 = std::max(x0, 1u) - 1u;
-        unsigned yn1 = std::max(y0, 1u) - 1u;
+        if (constant_expression<(SamplingFlags & RNFSample::WrapY)!=0>::result()) {
+            y0  = unsigned((int(fy) + int(dims[1]))%dims[1]);
+            y1  = (y0+1u)%dims[1];
+            y2  = (y1+1u)%dims[1];
+            yn1 = (y0+dims[1]-1)%dims[1];
+        } else {
+            y0  = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
+            y1  = std::min(y0+1u, dims[1]-1u);
+            y2  = std::min(y1+1u, dims[1]-1u);
+            yn1 = std::max(y0, 1u) - 1u;
+        }
         
         float u[] = 
         {
@@ -389,7 +473,9 @@ namespace XLEMath
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename Store>
-        void GatherNeighbors(Float2 neighbours[9], float weights[4], const VectorField2DSeparate<Store>& field, Float2 coord)
+        void GatherNeighbors(
+            Float2 neighbours[9], float weights[4], 
+            const VectorField2DSeparate<Store>& field, Float2 coord, unsigned samplingFlags)
     {
         float fx = XlFloor(coord[0]);
         float fy = XlFloor(coord[1]);
@@ -401,13 +487,26 @@ namespace XLEMath
 
         const auto dims = field.Dimensions();
         unsigned x0, x1, y0, y1;
-        x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
-        x1 = std::min(x0+1u, dims[0]-1u);
-        y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
-        y1 = std::min(y0+1u, dims[1]-1u);
+        unsigned xx, yx;
+        if (samplingFlags & RNFSample::WrapX) {
+            x0 = unsigned((int(fx) + int(dims[0]))%dims[0]);
+            x1 = (x0+1u)%dims[0];
+            xx = (x0+dims[0]-1)%dims[0];
+        } else {
+            x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
+            x1 = std::min(x0+1u, dims[0]-1u);
+            xx = std::max(x0, 1u) - 1u;
+        }
 
-        unsigned xx = std::max(x0, 1u) - 1u;
-        unsigned yx = std::max(y0, 1u) - 1u;
+        if (samplingFlags & RNFSample::WrapY) {
+            y0 = unsigned((int(fy) + int(dims[1]))%dims[1]);
+            y1 = (y0+1u)%dims[1];
+            yx = (y0+dims[1]-1)%dims[1];
+        } else {
+            y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
+            y1 = std::min(y0+1u, dims[1]-1u);
+            yx = std::max(y0, 1u) - 1u;
+        }
 
         neighbours[0][0] = (*field._u)[y0*dims[0]+x0];
         neighbours[1][0] = (*field._u)[y0*dims[0]+x1];
@@ -433,7 +532,9 @@ namespace XLEMath
     }
 
     template<typename Store>
-        void GatherNeighbors(float neighbours[8], float weights[4], const ScalarField2D<Store>& field, Float2 coord)
+        void GatherNeighbors(
+            float neighbours[8], float weights[4], 
+            const ScalarField2D<Store>& field, Float2 coord, unsigned samplingFlags)
     {
         float fx = XlFloor(coord[0]);
         float fy = XlFloor(coord[1]);
@@ -445,13 +546,26 @@ namespace XLEMath
 
         const auto dims = field.Dimensions();
         unsigned x0, x1, y0, y1;
-        x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
-        x1 = std::min(x0+1u, dims[0]-1u);
-        y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
-        y1 = std::min(y0+1u, dims[1]-1u);
+        unsigned xx, yx;
+        if (samplingFlags & RNFSample::WrapX) {
+            x0 = unsigned((int(fx) + int(dims[0]))%dims[0]);
+            x1 = (x0+1u)%dims[0];
+            xx = (x0+dims[0]-1)%dims[0];
+        } else {
+            x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
+            x1 = std::min(x0+1u, dims[0]-1u);
+            xx = std::max(x0, 1u) - 1u;
+        }
 
-        unsigned xx = std::max(x0, 1u) - 1u;
-        unsigned yx = std::max(y0, 1u) - 1u;
+        if (samplingFlags & RNFSample::WrapY) {
+            y0 = unsigned((int(fy) + int(dims[1]))%dims[1]);
+            y1 = (y0+1u)%dims[1];
+            yx = (y0+dims[1]-1)%dims[1];
+        } else {
+            y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
+            y1 = std::min(y0+1u, dims[1]-1u);
+            yx = std::max(y0, 1u) - 1u;
+        }
 
         neighbours[0] = (*field._u)[y0*dims[0]+x0];
         neighbours[1] = (*field._u)[y0*dims[0]+x1];
@@ -465,15 +579,33 @@ namespace XLEMath
         neighbours[8] = (*field._u)[y1*dims[0]+xx];
     }
 
-    static void GatherNeighbors(float* result, size_t stride, const float* source, UInt3 base, UInt3 dims)
+    static void GatherNeighbors(float* result, size_t stride, const float* source, UInt3 base, UInt3 dims, unsigned samplingFlags)
     {
         auto x0 = base[0], y0 = base[1], z0 = base[2];
-        auto x1 = std::min(x0+1u, dims[0]-1u);
-        auto y1 = std::min(y0+1u, dims[1]-1u);
-        auto z1 = std::min(z0+1u, dims[2]-1u);
-        unsigned xx = std::max(x0, 1u) - 1u;
-        unsigned yx = std::max(y0, 1u) - 1u;
-        unsigned zx = std::max(z0, 1u) - 1u;
+        unsigned x1, y1, z1, xx, yx, zx;
+        if (samplingFlags & RNFSample::WrapX) {
+            x1 = (x0+1u)%dims[0];
+            xx = (x0+dims[0]-1u)%dims[0];
+        } else {
+            x1 = std::min(x0+1u, dims[0]-1u);
+            xx = std::max(x0, 1u)-1u;
+        }
+
+        if (samplingFlags & RNFSample::WrapY) {
+            y1 = (y0+1u)%dims[1];
+            yx = (y0+dims[1]-1u)%dims[1];
+        } else {
+            y1 = std::min(y0+1u, dims[1]-1u);
+            yx = std::max(y0, 1u)-1u;
+        }
+
+        if (samplingFlags & RNFSample::WrapY) {
+            z1 = (z0+1u)%dims[2];
+            zx = (z0+dims[2]-1u)%dims[2];
+        } else {
+            z1 = std::min(z0+1u, dims[2]-1u);
+            zx = std::max(z0, 1u)-1u;
+        }
 
         #define V(x,y,z) source[(z*dims[1]+y)*dims[0]+x]
         #define R(x) result[x*stride]
@@ -516,7 +648,9 @@ namespace XLEMath
     }
 
     template<typename Store>
-        void GatherNeighbors(Float3 neighbours[27], float weights[8], const VectorField3DSeparate<Store>& field, Float3 coord)
+        void GatherNeighbors(
+            Float3 neighbours[27], float weights[8], 
+            const VectorField3DSeparate<Store>& field, Float3 coord, unsigned samplingFlags)
     {
         float fx = XlFloor(coord[0]);
         float fy = XlFloor(coord[1]);
@@ -532,17 +666,34 @@ namespace XLEMath
         weights[7] = a * b * c;
 
         const auto dims = field.Dimensions();
-        auto x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
-        auto y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
-        auto z0 = unsigned(Clamp(fz, 0.f, float(dims[2]-1)));
+        unsigned x0, y0, z0;
+        if (samplingFlags & RNFSample::WrapX) {
+            x0 = unsigned((int(fx) + int(dims[0]))%dims[0]);
+        } else {
+            x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
+        }
 
-        GatherNeighbors(&neighbours[0][0], 3, &(*field._u)[0], UInt3(x0, y0, z0), dims);
-        GatherNeighbors(&neighbours[0][1], 3, &(*field._v)[0], UInt3(x0, y0, z0), dims);
-        GatherNeighbors(&neighbours[0][2], 3, &(*field._w)[0], UInt3(x0, y0, z0), dims);
+        if (samplingFlags & RNFSample::WrapY) {
+            y0 = unsigned((int(fy) + int(dims[1]))%dims[1]);
+        } else {
+            y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
+        }
+
+        if (samplingFlags & RNFSample::WrapY) {
+            z0 = unsigned((int(fz) + int(dims[2]))%dims[2]);
+        } else {
+            z0 = unsigned(Clamp(fz, 0.f, float(dims[2]-1)));
+        }
+
+        GatherNeighbors(&neighbours[0][0], 3, &(*field._u)[0], UInt3(x0, y0, z0), dims, samplingFlags);
+        GatherNeighbors(&neighbours[0][1], 3, &(*field._v)[0], UInt3(x0, y0, z0), dims, samplingFlags);
+        GatherNeighbors(&neighbours[0][2], 3, &(*field._w)[0], UInt3(x0, y0, z0), dims, samplingFlags);
     }
 
     template<typename Store>
-        void GatherNeighbors(float neighbours[27], float weights[8], const ScalarField3D<Store>& field, Float3 coord)
+        void GatherNeighbors(
+            float neighbours[27], float weights[8], 
+            const ScalarField3D<Store>& field, Float3 coord, unsigned samplingFlags)
     {
         float fx = XlFloor(coord[0]);
         float fy = XlFloor(coord[1]);
@@ -558,11 +709,26 @@ namespace XLEMath
         weights[7] = a * b * c;
 
         const auto dims = field.Dimensions();
-        auto x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
-        auto y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
-        auto z0 = unsigned(Clamp(fz, 0.f, float(dims[2]-1)));
+        unsigned x0, y0, z0;
+        if (samplingFlags & RNFSample::WrapX) {
+            x0 = unsigned((int(fx) + int(dims[0]))%dims[0]);
+        } else {
+            x0 = unsigned(Clamp(fx, 0.f, float(dims[0]-1)));
+        }
 
-        GatherNeighbors(neighbours, 1, &(*field._u)[0], UInt3(x0, y0, z0), dims);
+        if (samplingFlags & RNFSample::WrapY) {
+            y0 = unsigned((int(fy) + int(dims[1]))%dims[1]);
+        } else {
+            y0 = unsigned(Clamp(fy, 0.f, float(dims[1]-1)));
+        }
+
+        if (samplingFlags & RNFSample::WrapY) {
+            z0 = unsigned((int(fz) + int(dims[2]))%dims[2]);
+        } else {
+            z0 = unsigned(Clamp(fz, 0.f, float(dims[2]-1)));
+        }
+
+        GatherNeighbors(neighbours, 1, &(*field._u)[0], UInt3(x0, y0, z0), dims, samplingFlags);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -587,14 +753,14 @@ namespace XLEMath
         auto ScalarField2D<Store>::Sample(FloatCoord c) const -> ValueType
     {
         if (constant_expression<(SamplingFlags & RNFSample::Cubic)!=0>::result())
-            return SampleMonotonicCubic(*this, c);
+            return SampleMonotonicCubic<SamplingFlags>(*this, c);
         return SampleBilinear<SamplingFlags>(*this, c);
     }
 
     template<typename Store>
-        void ScalarField2D<Store>::GatherNeighbors(ValueType neighbours[9], float weights[4], FloatCoord coord) const
+        void ScalarField2D<Store>::GatherNeighbors(ValueType neighbours[9], float weights[4], FloatCoord coord, unsigned samplingFlags) const
     {
-        XLEMath::GatherNeighbors(neighbours, weights, *this, coord);
+        XLEMath::GatherNeighbors(neighbours, weights, *this, coord, samplingFlags);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -623,14 +789,14 @@ namespace XLEMath
         auto VectorField2DSeparate<Store>::Sample(FloatCoord c) const -> ValueType
     {
         if (constant_expression<(SamplingFlags & RNFSample::Cubic)!=0>::result())
-            return SampleMonotonicCubic(*this, c);
+            return SampleMonotonicCubic<SamplingFlags>(*this, c);
         return SampleBilinear<SamplingFlags>(*this, c);
     }
 
     template<typename Store>
-        void VectorField2DSeparate<Store>::GatherNeighbors(ValueType neighbours[9], float weights[4], FloatCoord coord) const
+        void VectorField2DSeparate<Store>::GatherNeighbors(ValueType neighbours[9], float weights[4], FloatCoord coord, unsigned samplingFlags) const
     {
-        XLEMath::GatherNeighbors(neighbours, weights, *this, coord);
+        XLEMath::GatherNeighbors(neighbours, weights, *this, coord, samplingFlags);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -655,14 +821,14 @@ namespace XLEMath
         auto ScalarField3D<Store>::Sample(FloatCoord c) const -> ValueType
     {
         // if (constant_expression<(SamplingFlags & RNFSample::Cubic)!=0>::result())
-        //     return SampleMonotonicCubic(*this, c);
+        //     return SampleMonotonicCubic<SamplingFlags>(*this, c);
         return SampleBilinear<SamplingFlags>(*this, c);
     }
 
     template<typename Store>
-        void ScalarField3D<Store>::GatherNeighbors(ValueType neighbours[27], float weights[4], FloatCoord coord) const
+        void ScalarField3D<Store>::GatherNeighbors(ValueType neighbours[27], float weights[4], FloatCoord coord, unsigned samplingFlags) const
     {
-        XLEMath::GatherNeighbors(neighbours, weights, *this, coord);
+        XLEMath::GatherNeighbors(neighbours, weights, *this, coord, samplingFlags);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -693,14 +859,14 @@ namespace XLEMath
         auto VectorField3DSeparate<Store>::Sample(FloatCoord c) const -> ValueType
     {
         // if (constant_expression<(SamplingFlags & RNFSample::Cubic)!=0>::result())
-        //     return SampleMonotonicCubic(*this, c);
+        //     return SampleMonotonicCubic<SamplingFlags>(*this, c);
         return SampleBilinear<SamplingFlags>(*this, c);
     }
 
     template<typename Store>
-        void VectorField3DSeparate<Store>::GatherNeighbors(ValueType neighbours[27], float weights[4], FloatCoord coord) const
+        void VectorField3DSeparate<Store>::GatherNeighbors(ValueType neighbours[27], float weights[4], FloatCoord coord, unsigned samplingFlags) const
     {
-        XLEMath::GatherNeighbors(neighbours, weights, *this, coord);
+        XLEMath::GatherNeighbors(neighbours, weights, *this, coord, samplingFlags);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -709,10 +875,19 @@ namespace XLEMath
         unsigned InstantiateField()
         {
             using SampleFn = typename Field::ValueType(Field::*)(typename Field::FloatCoord)const;
-            SampleFn t0 = &Field::Sample<0>; (void)t0;
-            SampleFn t1 = &Field::Sample<RNFSample::Clamp>; (void)t1;
-            SampleFn t2 = &Field::Sample<RNFSample::Cubic>; (void)t2;
-            SampleFn t3 = &Field::Sample<RNFSample::Cubic|RNFSample::Clamp>; (void)t3;
+            SampleFn fns[] = {
+                &Field::Sample<0>,
+                &Field::Sample<RNFSample::ClampX|RNFSample::ClampY|RNFSample::ClampZ>,
+                &Field::Sample<RNFSample::WrapX |RNFSample::ClampY|RNFSample::ClampZ>,
+                &Field::Sample<RNFSample::ClampX|RNFSample::WrapY |RNFSample::ClampZ>,
+                &Field::Sample<RNFSample::ClampX|RNFSample::ClampY|RNFSample::WrapZ >,
+                &Field::Sample<RNFSample::Cubic>,
+                &Field::Sample<RNFSample::Cubic|RNFSample::ClampX|RNFSample::ClampY|RNFSample::ClampZ>,
+                &Field::Sample<RNFSample::Cubic|RNFSample::WrapX |RNFSample::ClampY|RNFSample::ClampZ>,
+                &Field::Sample<RNFSample::Cubic|RNFSample::ClampX|RNFSample::WrapY |RNFSample::ClampZ>,
+                &Field::Sample<RNFSample::Cubic|RNFSample::ClampX|RNFSample::ClampY|RNFSample::WrapZ >
+            };
+            (void)fns;
             return 0;
         }
 

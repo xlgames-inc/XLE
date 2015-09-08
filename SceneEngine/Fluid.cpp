@@ -156,6 +156,84 @@ namespace SceneEngine
 
     static ScalarField1D AsScalarField1D(VectorX& v) { return ScalarField1D { v.data(), (unsigned)v.size() }; }
 
+
+    static std::shared_ptr<PoissonSolver::PreparedMatrix> BuildDiffusionMethod(
+        const PoissonSolver& solver, float diffusion, PoissonSolver::Method method)
+    {
+        return solver.PrepareDiffusionMatrix(diffusion, method, WrapEdges);
+    }
+
+    class DiffusionOperation
+    {
+    public:
+        void Execute(
+            PoissonSolver& solver, VectorField2D vectorField,
+            float diffusionAmount, float deltaTime,
+            PoissonSolver::Method method = PoissonSolver::Method::PreconCG, const char name[] = nullptr);
+
+        void Execute(
+            PoissonSolver& solver, ScalarField2D field,
+            float diffusionAmount, float deltaTime,
+            PoissonSolver::Method method = PoissonSolver::Method::PreconCG, const char name[] = nullptr);
+
+        DiffusionOperation();
+        ~DiffusionOperation();
+    private:
+        float _preparedValue;
+        PoissonSolver::Method _preparedMethod;
+        std::shared_ptr<PoissonSolver::PreparedMatrix> _matrix;
+    };
+
+    void DiffusionOperation::Execute(
+        PoissonSolver& solver, VectorField2D vectorField,
+        float diffusionAmount, float deltaTime,
+        PoissonSolver::Method method, const char name[])
+    {
+        if (!diffusionAmount || !deltaTime) return;
+
+        if (_preparedValue != deltaTime * diffusionAmount || method != _preparedMethod) {
+            _preparedValue = deltaTime * diffusionAmount;
+            _preparedMethod = method;
+            _matrix = BuildDiffusionMethod(solver, _preparedValue, _preparedMethod);
+        }
+
+        auto iterationsu = solver.Solve(
+            AsScalarField1D(*vectorField._u), *_matrix, AsScalarField1D(*vectorField._u), 
+            method);
+        auto iterationsv = solver.Solve(
+            AsScalarField1D(*vectorField._v), *_matrix, AsScalarField1D(*vectorField._v), 
+            method);
+
+        if (name)
+            LogInfo << name << " diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations.";
+    }
+
+    void DiffusionOperation::Execute(
+        PoissonSolver& solver, ScalarField2D field,
+        float diffusionAmount, float deltaTime,
+        PoissonSolver::Method method, const char name[])
+    {
+        if (!diffusionAmount || !deltaTime) return;
+
+        if (_preparedValue != deltaTime * diffusionAmount || method != _preparedMethod) {
+            _preparedValue = deltaTime * diffusionAmount;
+            _preparedMethod = method;
+            _matrix = BuildDiffusionMethod(solver, _preparedValue, _preparedMethod);
+        }
+
+        auto iterationsu = solver.Solve(
+            AsScalarField1D(*field._u), *_matrix, AsScalarField1D(*field._u), 
+            method);
+
+        if (name)
+            LogInfo << name << " diffusion took: (" << iterationsu << ") iterations.";
+    }
+
+    DiffusionOperation::DiffusionOperation() { _preparedValue = 0.f; _preparedMethod = (PoissonSolver::Method)~0u; }
+    DiffusionOperation::~DiffusionOperation() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     class FluidSolver2D::Pimpl
     {
     public:
@@ -170,104 +248,13 @@ namespace SceneEngine
         unsigned _N;
 
         PoissonSolver _poissonSolver;
-        std::shared_ptr<PoissonSolver::PreparedMatrix> _densityDiffusion;
-        std::shared_ptr<PoissonSolver::PreparedMatrix> _velocityDiffusion;
-        std::shared_ptr<PoissonSolver::PreparedMatrix> _temperatureDiffusion;
+        DiffusionOperation _densityDiffusion;
+        DiffusionOperation _velocityDiffusion;
+        DiffusionOperation _temperatureDiffusion;
         std::shared_ptr<PoissonSolver::PreparedMatrix> _incompressibility;
 
-        float _preparedDensityDiffusion, _preparedVelocityDiffusion, _preparedTemperatureDiffusion;
-
-        void DensityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings);
-        void VelocityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings);
-        void TemperatureDiffusion(float deltaTime, const FluidSolver2D::Settings& settings);
-
         void VorticityConfinement(VectorField2D outputField, VectorField2D inputVelocities, float strength, float deltaTime);
-        std::shared_ptr<PoissonSolver::PreparedMatrix> BuildDiffusionMethod(float diffusion);
     };
-
-    std::shared_ptr<PoissonSolver::PreparedMatrix> FluidSolver2D::Pimpl::BuildDiffusionMethod(float diffusion)
-    {
-        return _poissonSolver.PrepareDiffusionMatrix(diffusion, PoissonSolver::Method::PreconCG, WrapEdges);
-    }
-
-    void FluidSolver2D::Pimpl::DensityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings)
-    {
-        //
-        // Diffuse velocity! This is similar to other diffusion operations. 
-        // In effect, the values in each cell should slowly "seep" into 
-        // neighbour cells -- over time spreading out over the whole grid. 
-        // This is diffusion.
-        //
-        // Mathematically, this operation is called the "heat equation."
-        // It is the same equation that is used to model how heat spreads
-        // through a room from some source. Actually, it also applies to
-        // any radiation (including light).
-        //
-        // See reference here: https://en.wikipedia.org/wiki/Heat_equation
-        // The equation can be written using the laplacian operation. So this
-        // is a partial differential equation. We must solve it using an
-        // estimate.
-        //
-
-        if (!_densityDiffusion || _preparedDensityDiffusion != deltaTime * settings._diffusionRate) {
-            _preparedDensityDiffusion = deltaTime * settings._diffusionRate;
-            _densityDiffusion = BuildDiffusionMethod(_preparedDensityDiffusion);
-        }
-
-        unsigned iterations = 0;
-        const bool useGeneralA = false;
-        if (constant_expression<useGeneralA>::result()) {
-            // iterations = SolvePoisson(_density, AMat, _density, (PossionSolver)settings._diffusionMethod);
-        } else {
-            iterations = _poissonSolver.Solve(
-                AsScalarField1D(_density[0]), 
-                *_densityDiffusion,
-                AsScalarField1D(_density[0]), 
-                (PoissonSolver::Method)settings._diffusionMethod);
-        }
-        LogInfo << "Density diffusion took: (" << iterations << ") iterations.";
-    }
-
-    void FluidSolver2D::Pimpl::VelocityDiffusion(float deltaTime, const FluidSolver2D::Settings& settings)
-    {
-        if (!_velocityDiffusion || _preparedVelocityDiffusion != deltaTime * settings._viscosity) {
-            _preparedVelocityDiffusion = deltaTime * settings._viscosity;
-            _velocityDiffusion = BuildDiffusionMethod(_preparedVelocityDiffusion);
-        }
-
-        unsigned iterationsu = 0, iterationsv = 0;
-        const bool useGeneralA = false;
-        if (constant_expression<useGeneralA>::result()) {
-            // iterations = SolvePoisson(_density, AMat, _density, (PossionSolver)settings._diffusionMethod);
-        } else {
-            iterationsu = _poissonSolver.Solve(
-                AsScalarField1D(_velU[2]), *_velocityDiffusion, AsScalarField1D(_velU[2]), 
-                (PoissonSolver::Method)settings._diffusionMethod);
-            iterationsv = _poissonSolver.Solve(
-                AsScalarField1D(_velV[2]), *_velocityDiffusion, AsScalarField1D(_velV[2]), 
-                (PoissonSolver::Method)settings._diffusionMethod);
-        }
-        LogInfo << "Velocity diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations.";
-    }
-
-    void FluidSolver2D::Pimpl::TemperatureDiffusion(float deltaTime, const FluidSolver2D::Settings& settings)
-    {
-        if (!_temperatureDiffusion || _preparedTemperatureDiffusion != deltaTime * settings._tempDiffusion) {
-            _preparedTemperatureDiffusion = deltaTime * settings._tempDiffusion;
-            _temperatureDiffusion = BuildDiffusionMethod(_preparedTemperatureDiffusion);
-        }
-
-        unsigned iterations = 0;
-        const bool useGeneralA = false;
-        if (constant_expression<useGeneralA>::result()) {
-            // iterations = SolvePoisson(_temperature, AMat, _temperature, (PossionSolver)settings._diffusionMethod);
-        } else {
-            iterations = _poissonSolver.Solve(
-                AsScalarField1D(_temperature[0]), *_temperatureDiffusion, AsScalarField1D(_temperature[0]), 
-                (PoissonSolver::Method)settings._diffusionMethod);
-        }
-        LogInfo << "Temperature diffusion took: (" << iterations << ") iterations.";
-    }
 
     static void EnforceIncompressibility(
         VectorField2D velField,
@@ -527,7 +514,26 @@ namespace SceneEngine
             temperatureWorking[c] = temperatureT1[c] + dt * temperatureSrc[c];
         }
 
-        _pimpl->VelocityDiffusion(deltaTime, settings);
+            //
+            // Diffuse velocity! This is similar to other diffusion operations. 
+            // In effect, the values in each cell should slowly "seep" into 
+            // neighbour cells -- over time spreading out over the whole grid. 
+            // This is diffusion.
+            //
+            // Mathematically, this operation is called the "heat equation."
+            // It is the same equation that is used to model how heat spreads
+            // through a room from some source. Actually, it also applies to
+            // any radiation (including light).
+            //
+            // See reference here: https://en.wikipedia.org/wiki/Heat_equation
+            // The equation can be written using the laplacian operation. So this
+            // is a partial differential equation. We must solve it using an
+            // estimate.
+            //
+        _pimpl->_velocityDiffusion.Execute(
+            _pimpl->_poissonSolver, 
+            VectorField2D(&velUWorking, &velVWorking,   _pimpl->_dimsWithBorder),
+            settings._viscosity, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, "Velocity");
 
         AdvectionSettings advSettings { (AdvectionMethod)settings._advectionMethod, (AdvectionInterpolationMethod)settings._interpolationMethod, settings._advectionSteps };
         PerformAdvection(
@@ -548,7 +554,10 @@ namespace SceneEngine
 
         if (!constant_expression<WrapEdges>::result())
             SmearBorder2D(densityWorking, _pimpl->_dimsWithBorder[0]);
-        _pimpl->DensityDiffusion(deltaTime, settings);
+        _pimpl->_densityDiffusion.Execute(
+            _pimpl->_poissonSolver, 
+            ScalarField2D(&densityWorking, _pimpl->_dimsWithBorder),
+            settings._diffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, "Density");
         PerformAdvection(
             ScalarField2D(&densityT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&densityWorking, _pimpl->_dimsWithBorder),
@@ -558,7 +567,10 @@ namespace SceneEngine
 
         if (!constant_expression<WrapEdges>::result())
             SmearBorder2D(temperatureWorking, _pimpl->_dimsWithBorder[0]);
-        _pimpl->TemperatureDiffusion(deltaTime, settings);
+        _pimpl->_temperatureDiffusion.Execute(
+            _pimpl->_poissonSolver, 
+            ScalarField2D(&temperatureWorking, _pimpl->_dimsWithBorder),
+            settings._tempDiffusion, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, "Temperature");
         PerformAdvection(
             ScalarField2D(&temperatureT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&temperatureWorking, _pimpl->_dimsWithBorder),
@@ -698,10 +710,6 @@ namespace SceneEngine
         UInt2 fullDims(dimensions[0]+2, dimensions[1]+2);
         _pimpl->_poissonSolver = PoissonSolver(2, &fullDims[0]);
         _pimpl->_incompressibility = _pimpl->_poissonSolver.PrepareDivergenceMatrix(PoissonSolver::Method::PreconCG, WrapEdges);
-
-        _pimpl->_preparedDensityDiffusion = 0.f;
-        _pimpl->_preparedVelocityDiffusion = 0.f;
-        _pimpl->_preparedTemperatureDiffusion = 0.f;
     }
 
     FluidSolver2D::~FluidSolver2D(){}
@@ -934,81 +942,6 @@ namespace SceneEngine
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    static std::shared_ptr<PoissonSolver::PreparedMatrix> BuildDiffusionMethod(
-        const PoissonSolver& solver, float diffusion, PoissonSolver::Method method)
-    {
-        return solver.PrepareDiffusionMatrix(diffusion, method, WrapEdges);
-    }
-
-    class DiffusionOperation
-    {
-    public:
-        void Execute(
-            PoissonSolver& solver, VectorField2D vectorField,
-            float diffusionAmount, float deltaTime,
-            PoissonSolver::Method method = PoissonSolver::Method::PreconCG, const char name[] = nullptr);
-
-        void Execute(
-            PoissonSolver& solver, ScalarField2D field,
-            float diffusionAmount, float deltaTime,
-            PoissonSolver::Method method = PoissonSolver::Method::PreconCG, const char name[] = nullptr);
-
-        DiffusionOperation();
-        ~DiffusionOperation();
-    private:
-        float _preparedValue;
-        PoissonSolver::Method _preparedMethod;
-        std::shared_ptr<PoissonSolver::PreparedMatrix> _matrix;
-    };
-
-    void DiffusionOperation::Execute(
-        PoissonSolver& solver, VectorField2D vectorField,
-        float diffusionAmount, float deltaTime,
-        PoissonSolver::Method method, const char name[])
-    {
-        if (!diffusionAmount || !deltaTime) return;
-
-        if (_preparedValue != deltaTime * diffusionAmount || method != _preparedMethod) {
-            _preparedValue = deltaTime * diffusionAmount;
-            _preparedMethod = method;
-            _matrix = BuildDiffusionMethod(solver, _preparedValue, _preparedMethod);
-        }
-
-        auto iterationsu = solver.Solve(
-            AsScalarField1D(*vectorField._u), *_matrix, AsScalarField1D(*vectorField._u), 
-            method);
-        auto iterationsv = solver.Solve(
-            AsScalarField1D(*vectorField._v), *_matrix, AsScalarField1D(*vectorField._v), 
-            method);
-
-        if (name)
-            LogInfo << name << " diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations.";
-    }
-
-    void DiffusionOperation::Execute(
-        PoissonSolver& solver, ScalarField2D field,
-        float diffusionAmount, float deltaTime,
-        PoissonSolver::Method method, const char name[])
-    {
-        if (!diffusionAmount || !deltaTime) return;
-
-        if (_preparedValue != deltaTime * diffusionAmount || method != _preparedMethod) {
-            _preparedValue = deltaTime * diffusionAmount;
-            _preparedMethod = method;
-            _matrix = BuildDiffusionMethod(solver, _preparedValue, _preparedMethod);
-        }
-
-        auto iterationsu = solver.Solve(
-            AsScalarField1D(*field._u), *_matrix, AsScalarField1D(*field._u), 
-            method);
-
-        if (name)
-            LogInfo << name << " diffusion took: (" << iterationsu << ") iterations.";
-    }
-
-    DiffusionOperation::DiffusionOperation() { _preparedValue = 0.f; _preparedMethod = (PoissonSolver::Method)~0u; }
-    DiffusionOperation::~DiffusionOperation() {}
 
     class CloudsForm2D::Pimpl
     {
