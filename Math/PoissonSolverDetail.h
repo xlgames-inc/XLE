@@ -15,19 +15,7 @@ namespace XLEMath
     
     namespace PoissonSolverInternal
     {
-        template<typename Vec, typename Mat>
-            static void SolveLowerTriangular(Vec& x, const Mat& M, const Vec& b, unsigned N)
-        {
-                // solve: M * dst = b
-                // for a lower triangular matrix, using forward substitution
-            for (unsigned i=0; i<N; ++i) {
-                auto d = b(i);
-                for (unsigned j=0; j<i; ++j) {
-                    d -= M(i, j) * x(j);
-                }
-                x(i) = d / M(i, i);
-            }
-        }
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
         template<typename Mat>
             class SparseBandedMatrix
@@ -43,6 +31,38 @@ namespace XLEMath
                 { _bands = bands; _bandCount = bandCount; }
             ~SparseBandedMatrix() {}
         };
+
+        class AMat
+        {
+        public:
+            UInt3       _dims;
+            unsigned    _dimensionality;
+            unsigned    _marginFlags;
+            float       _a0, _a1;
+            float       _a0e, _a0c, _a1e, _a1r;
+        };
+    
+        inline unsigned GetN(const AMat& A)             { return A._dims[0] * A._dims[1] * A._dims[2]; }
+        inline unsigned GetWidth(const AMat& A)         { return A._dims[0]; }
+        inline unsigned GetHeight(const AMat& A)        { return A._dims[1]; }
+        inline unsigned GetDepth(const AMat& A)         { return A._dims[2]; }
+        inline unsigned GetMarginFlags(const AMat& a)   { return a._marginFlags; }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+        template<typename Vec, typename Mat>
+            static void SolveLowerTriangular(Vec& x, const Mat& M, const Vec& b, unsigned N)
+        {
+                // solve: M * dst = b
+                // for a lower triangular matrix, using forward substitution
+            for (unsigned i=0; i<N; ++i) {
+                auto d = b(i);
+                for (unsigned j=0; j<i; ++j) {
+                    d -= M(i, j) * x(j);
+                }
+                x(i) = d / M(i, i);
+            }
+        }
 
         template<typename Vec, typename Mat>
             static void SolveLowerTriangular(Vec& x, const SparseBandedMatrix<Mat>& M, const Vec& b, unsigned N)
@@ -78,6 +98,8 @@ namespace XLEMath
             }
         }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
         template<typename Vec, typename Mat>
             static void Multiply(Vec& dst, const SparseBandedMatrix<Mat>& A, const Vec& b, unsigned N)
         {
@@ -103,22 +125,6 @@ namespace XLEMath
                 dst[i] = d;
             }
         }
-
-        class AMat
-        {
-        public:
-            UInt3 _dims;
-            UInt3 _borders;
-            unsigned _dimensionality;
-            float _a0, _a1;
-            float _a0e, _a0c, _a1e, _a1r;
-        };
-    
-        inline unsigned GetN(const AMat& A)       { return A._dims[0] * A._dims[1] * A._dims[2]; }
-        inline unsigned GetWidth(const AMat& A)   { return A._dims[0]; }
-        inline unsigned GetHeight(const AMat& A)  { return A._dims[1]; }
-        inline unsigned GetDepth(const AMat& A)   { return A._dims[2]; }
-        inline UInt3 GetBorders(const AMat& A)    { return A._borders; }
 
         template <typename Vec>
             static void Multiply(Vec& dst, const AMat& A, const Vec& b, unsigned N)
@@ -197,6 +203,8 @@ namespace XLEMath
                         }
                     }
                 }
+
+                    // todo -- borders, edges, faces!
             }
         }
         

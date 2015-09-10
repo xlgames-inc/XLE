@@ -98,16 +98,6 @@ namespace XLEMath
     using MatrixX = Eigen::MatrixXf;
     static ScalarField1D AsScalarField1D(VectorX& v) { return ScalarField1D { v.data(), (unsigned)v.size() }; }
 
-    static unsigned GetMarginFlags(const AMat& a)
-    {
-        const auto bor = GetBorders(a);
-        unsigned marginFlags = 0u;
-        marginFlags |= (1<<0) * (bor[0] > 0);
-        marginFlags |= (1<<1) * (bor[1] > 0);
-        marginFlags |= (1<<2) * (bor[2] > 0);
-        return marginFlags;
-    }
-
     template<typename Vec>
         static void ZeroBorder(Vec&x, const AMat& a)
     {
@@ -141,6 +131,11 @@ namespace XLEMath
     {
             // This is the basic "conjugate gradient" method; with no special thrills
             // returns the number of iterations
+            // todo -- we need a better way to calculate "rhoThreshold"
+            //          ... perhaps it should scale with N? (or the initial error?)
+            //          a fixed number like this will result in a different quality
+            //          of result for different sized grids (and different operations
+            //          probably have varying levels of accuracy required)
         const auto rhoThreshold = 1e-10f;
         const auto maxIterations = 13u;
 
@@ -652,7 +647,7 @@ namespace XLEMath
         auto a1e = diffusionAmount;
         auto a1r = wrapEdges?diffusionAmount:0.f;
         return AMat { 
-            A._dims, A._borders, A._dimensionality, 
+            A._dims, A._dimensionality, A._marginFlags, 
             a0, a1, a0e, a0c, a1e, a1r };
     }
 
@@ -1307,8 +1302,8 @@ namespace XLEMath
                 const auto a1 = -diffusion;
                 AMat A = { 
                     UInt3(16, 16, 8), 
-                    UInt3(1, 1, 1),
-                    3, a0, a1 };
+                    3, ~0u,
+                    a0, a1 };
                 auto precon0 = CalculateIncompleteCholeskyFast(A, 8*8*8);
                 auto precon1 = CalculateIncompleteCholesky(A, 8*8*8, 0);
 
@@ -1356,13 +1351,8 @@ namespace XLEMath
             a1r = wrapEdges?-diffusionAmount:0.f;
         }
 
-        UInt3 borders(0u, 0u, 0u);
-        for (unsigned c=0; c<_pimpl->_dimensionality; ++c)
-            if (marginFlags & (1<<c))
-                borders[c] = 1u;
-
-        AMat A = { 
-            _pimpl->_dimensionsWithBorders, borders, _pimpl->_dimensionality,
+        AMat A = {
+            _pimpl->_dimensionsWithBorders, _pimpl->_dimensionality, marginFlags, 
             a0, a1, a0e, a0c, a1e, a1r 
         };
         const auto N = 
@@ -1426,13 +1416,8 @@ namespace XLEMath
             a1r = wrapEdges?-1.f:0.f;
         }
 
-        UInt3 borders(0u, 0u, 0u);
-        for (unsigned c=0; c<_pimpl->_dimensionality; ++c)
-            if (marginFlags & (1<<c))
-                borders[c] = 1u;
-
         AMat A = {
-            _pimpl->_dimensionsWithBorders, borders, _pimpl->_dimensionality, 
+            _pimpl->_dimensionsWithBorders, _pimpl->_dimensionality, marginFlags, 
             a0, a1, a0e, a0c, a1e, a1r 
         };
         const auto N = 
