@@ -333,7 +333,7 @@ namespace SceneEngine
 
         case FluidDebuggingMode::Temperature:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Vector,
+                metalContext, parserContext, RenderFluidMode::Scalar,
                 _pimpl->_dimsWithBorder,
                 { _pimpl->_temperature[1].data() });
             break;

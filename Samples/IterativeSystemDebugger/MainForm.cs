@@ -61,7 +61,11 @@ namespace IterativeSystemDebugger
 
         private void cloudsForm2DToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var system = new GUILayer.CloudsIterativeSystem(128);
+            #if DEBUG
+                var system = new GUILayer.CloudsIterativeSystem(32);
+            #else
+                var system = new GUILayer.CloudsIterativeSystem(128);
+            #endif
             var form = new RefCFD(system, "CloudsFormSettings");
             form.Show();
             _forms.Add(form);

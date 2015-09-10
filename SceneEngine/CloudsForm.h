@@ -61,6 +61,8 @@ namespace SceneEngine
     private:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
+
+        void OldTick(float deltaTime, const Settings& settings);
     };
 }
 
