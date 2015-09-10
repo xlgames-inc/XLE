@@ -143,28 +143,33 @@ namespace XLEMath
         const auto rhoThreshold = 1e-10f;
         const auto maxIterations = 13u;
 
+        // const UInt3 bor = GetBorders(A);
+        // const auto& dims = A._dims;
+        // #define FOR_EACH_CELL                                               \
+        //     for (unsigned qz=bor[2]; qz<dims[2]-bor[2]; ++qz)               \
+        //         for (unsigned qy=bor[1]; qy<dims[1]-bor[1]; ++qy)           \
+        //             for (unsigned qx=bor[0]; qx<dims[0]-bor[0]; ++qx) {     \
+        //                 auto i = (qz*dims[1]+qy)*dims[0]+qx;                \
+        //     /**/
+        const auto N = GetN(A);
+        assert(N == _N);
+        #define FOR_EACH_CELL                   \
+            for (unsigned i=0; i<N; ++i) {      \
+            /**/
+        #define FOR_EACH_CELL_END }
+
         auto rAsField = AsScalarField1D(_r);
         Multiply(rAsField, A, x, _N);
         for (unsigned c=0; c<b._count; ++c) {
-            _r[c] = b[c] - _r[c];
+            _r[c] =  b[c] - _r[c];
             _d[c] = _r[c];
         }
         // ZeroBorder(_r, A);
         // ZeroBorder(_d, A);
-        auto rho = _r.dot(_r);
-
-        const UInt3 bor = GetBorders(A);
-        const auto& dims = A._dims;
-        #define FOR_EACH_CELL                                               \
-            for (unsigned qz=bor[2]; qz<dims[2]-bor[2]; ++qz)               \
-                for (unsigned qy=bor[1]; qy<dims[1]-bor[1]; ++qy)           \
-                    for (unsigned qx=bor[0]; qx<dims[0]-bor[0]; ++qx) {     \
-                        auto i = (qz*dims[1]+qy)*dims[0]+qx;                \
-            /**/
-        // #define FOR_EACH_CELL                           \
-        //     for (unsigned i=0; i<GetN(A); ++i) {        \
-        //     /**/
-        #define FOR_EACH_CELL_END }
+        auto rho = 0.f; // _r.dot(_r);
+        FOR_EACH_CELL
+            rho += _r[i] * _r[i];
+        FOR_EACH_CELL_END
 
         // ZeroBorder(_q, A);
         unsigned k=0;
@@ -181,7 +186,10 @@ namespace XLEMath
                 assert(isfinite(alpha) && !isnan(alpha));
                 FOR_EACH_CELL
                      x[i] += alpha * _d[i];
-                    _r[i] -= alpha * _d[i];
+                        // _r should be an estimate the of the current error
+                        // Every few iterations, we can improve this estimate
+                        // by recalculating _r = b - A * x
+                    _r[i] -= alpha * _q[i]; 
                 FOR_EACH_CELL_END
             
                 auto rhoOld = rho;
@@ -376,6 +384,7 @@ namespace XLEMath
         result._a1 /= scale;
         result._a0e /= scale;
         result._a0c /= scale;
+        result._a1e /= scale;
         result._a1r /= scale;
         return result;
     }
@@ -1336,18 +1345,20 @@ namespace XLEMath
     auto PoissonSolver::PrepareDiffusionMatrix(
             float diffusionAmount, Method method, unsigned marginFlags, bool wrapEdges) const -> std::shared_ptr<PreparedMatrix>
     {
-        float a0, a1, a0e, a0c, a1r;
+        float a0, a1, a0e, a0c, a1e, a1r;
         if (_pimpl->_dimensionality==2) {
             a0 = 1.f + 4.f * diffusionAmount;
             a1 = -diffusionAmount;
             a0e = 1.f + (wrapEdges?4.f:3.f) * diffusionAmount;
             a0c = 1.f + (wrapEdges?4.f:2.f) * diffusionAmount;
+            a1e = -diffusionAmount;
             a1r = wrapEdges?-diffusionAmount:0.f;
         } else {
             a0 = 1.f + 6.f * diffusionAmount;
             a1 = -diffusionAmount;
             a0e = 1.f + (wrapEdges?6.f:4.f) * diffusionAmount;
             a0c = 1.f + (wrapEdges?6.f:3.f) * diffusionAmount;
+            a1e = -diffusionAmount;
             a1r = wrapEdges?-diffusionAmount:0.f;
         }
 
@@ -1358,7 +1369,7 @@ namespace XLEMath
 
         AMat A = { 
             _pimpl->_dimensionsWithBorders, borders, _pimpl->_dimensionality,
-            a0, a1, a0e, a0c, a1r 
+            a0, a1, a0e, a0c, a1e, a1r 
         };
         const auto N = 
               _pimpl->_dimensionsWithBorders[0] 
@@ -1404,18 +1415,20 @@ namespace XLEMath
 
     auto PoissonSolver::PrepareDivergenceMatrix(Method method, unsigned marginFlags, bool wrapEdges) const -> std::shared_ptr<PreparedMatrix>
     {
-        float a0, a1, a0e, a0c, a1r;
+        float a0, a1, a0e, a0c, a1e, a1r;
         if (_pimpl->_dimensionality==2) {
             a0 = 4.f;
             a1 = -1.f;
             a0e = (wrapEdges?4.f:3.f);
             a0c = (wrapEdges?4.f:2.f);
+            a1e = -1.f;
             a1r = wrapEdges?-1.f:0.f;
         } else {
             a0 = 6.f;
             a1 = -1.f;
             a0e = (wrapEdges?6.f:4.f);
             a0c = (wrapEdges?6.f:3.f);
+            a1e = -1.f;
             a1r = wrapEdges?-1.f:0.f;
         }
 
@@ -1426,7 +1439,7 @@ namespace XLEMath
 
         AMat A = {
             _pimpl->_dimensionsWithBorders, borders, _pimpl->_dimensionality, 
-            a0, a1, a0e, a0c, a1r 
+            a0, a1, a0e, a0c, a1e, a1r 
         };
         const auto N = 
               _pimpl->_dimensionsWithBorders[0] 

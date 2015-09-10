@@ -312,24 +312,27 @@ namespace SceneEngine
 
         const auto dims = velField.Dimensions();
         VectorX delW(dims[0] * dims[1]), q(dims[0] * dims[1]);
-        q.fill(0.f);
+        q.fill(0.f);    // when using the "SOR" method, q must be filled in to some initial estimate (perhaps we can start from the result from last frame?)
         UInt2 border(1,1);
         if (!(marginFlags & 1<<0)) border[0] = 0u;
         if (!(marginFlags & 1<<1)) border[1] = 0u;
+
+            // note that the "velFieldScale" shouldn't really change the result here
+            //      -- but maybe it can help avoid floating point creep?
         auto velFieldScale = Float2(float(dims[0]-2*border[0]), float(dims[1]-2*border[1]));
 
             // note -- default to wrapping on borders without a margin
         for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
             for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
-                const auto i = y*dims[0]+x;
-                const auto i0 = y*dims[0]+(x+1)%dims[0];
-                const auto i1 = y*dims[0]+(x+dims[0]-1)%dims[0];
+                const auto i  = y*dims[0]+x;
+                const auto i0 = y*dims[0]+((x+1)%dims[0]);
+                const auto i1 = y*dims[0]+((x+dims[0]-1)%dims[0]);
                 const auto i2 = ((y+1)%dims[1])*dims[0]+x;
                 const auto i3 = ((y+dims[1]-1)%dims[1])*dims[0]+x;
                 delW[i] = 
                     -0.5f * 
                     (
-                            ((*velField._u)[i0] - (*velField._u)[i1]) / velFieldScale[0]
+                          ((*velField._u)[i0] - (*velField._u)[i1]) / velFieldScale[0]
                         + ((*velField._v)[i2] - (*velField._v)[i3]) / velFieldScale[1]
                     );
             }
@@ -342,9 +345,9 @@ namespace SceneEngine
         SmearBorder2D(q, dims, marginFlags);
         for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
             for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
-                const auto i = y*dims[0]+x;
-                const auto i0 = y*dims[0]+(x+1)%dims[0];
-                const auto i1 = y*dims[0]+(x+dims[0]-1)%dims[0];
+                const auto i  = y*dims[0]+x;
+                const auto i0 = y*dims[0]+((x+1)%dims[0]);
+                const auto i1 = y*dims[0]+((x+dims[0]-1)%dims[0]);
                 const auto i2 = ((y+1)%dims[1])*dims[0]+x;
                 const auto i3 = ((y+dims[1]-1)%dims[1])*dims[0]+x;
                 (*velField._u)[i] -= .5f*velFieldScale[0] * (q[i0] - q[i1]);
@@ -361,7 +364,7 @@ namespace SceneEngine
     {
         const auto dims = velField.Dimensions();
         VectorX delW(dims[0] * dims[1] * dims[2]), q(dims[0] * dims[1] * dims[2]);
-        q.fill(0.f);
+        q.fill(0.f);    // when using the "SOR" method, q must be filled in to some initial estimate
         const UInt3 border(1,1,1);
         auto velFieldScale = Float3(float(dims[0]-2*border[0]), float(dims[1]-2*border[1]), float(dims[2]-2*border[2]));
         for (unsigned z=border[2]; z<dims[2]-border[2]; ++z)
