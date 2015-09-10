@@ -10,6 +10,7 @@
 #include "../FunctionUtils.h"
 #include "../ParameterBox.h"
 #include "../StringUtils.h"
+#include "../MemoryUtils.h" // for Hash64
 
     //  This file contains functions that are useful when implementing GetAccessors<>.
     //  However, to use the ClassAccessors interface, just include "ClassAccessors.h"

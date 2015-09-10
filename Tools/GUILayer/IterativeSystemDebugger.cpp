@@ -14,6 +14,7 @@
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/TerrainUberSurface.h"
 #include "../../SceneEngine/Fluid.h"
+#include "../../SceneEngine/CloudsForm.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../BufferUploads/ResourceLocator.h"

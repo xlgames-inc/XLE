@@ -136,6 +136,12 @@
     <ClCompile Include="..\FluidAdvection.cpp">
       <Filter>Objects</Filter>
     </ClCompile>
+    <ClCompile Include="..\FluidHelper.cpp">
+      <Filter>Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\CloudsForm.cpp">
+      <Filter>Objects</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -282,6 +288,12 @@
       <Filter>Objects</Filter>
     </ClInclude>
     <ClInclude Include="..\FluidAdvection.h">
+      <Filter>Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FluidHelper.h">
+      <Filter>Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CloudsForm.h">
       <Filter>Objects</Filter>
     </ClInclude>
   </ItemGroup>

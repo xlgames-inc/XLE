@@ -7,10 +7,8 @@
 #include "../Utility/DistinctColors.h"
 #include "../CommonResources.h"
 
-Texture2D<float>	Density : register(t0);
-Texture2D<float>	VelocityU : register(t1);
-Texture2D<float>	VelocityV : register(t2);
-Texture2D<float>	Temperature : register(t3);
+Texture2D<float>	Field0 : register(t0);
+Texture2D<float>	Field1 : register(t1);
 
 float3 GradColor(float input)
 {
@@ -21,23 +19,17 @@ float3 GradColor(float input)
     return lerp(GetDistinctFloatColour(t), GetDistinctFloatColour(t+1), frac(A));
 }
 
-float4 ps_density(float4 position : SV_Position, float2 coords : TEXCOORD0) : SV_Target0
+float4 ps_scalarfield(float4 position : SV_Position, float2 coords : TEXCOORD0) : SV_Target0
 {
-    float value = Density.SampleLevel(ClampingSampler, coords, 0);
+    float value = Field0.SampleLevel(ClampingSampler, coords, 0);
     return float4(GradColor(value), 1.f);
 }
 
-float4 ps_temperature(float4 position : SV_Position, float2 coords : TEXCOORD0) : SV_Target0
-{
-    float value = Temperature.SampleLevel(ClampingSampler, coords, 0);
-    return float4(GradColor(value), 1.f);
-}
-
-float4 ps_velocity(float4 position : SV_Position, float2 coords : TEXCOORD0) : SV_Target0
+float4 ps_vectorfield(float4 position : SV_Position, float2 coords : TEXCOORD0) : SV_Target0
 {
     float2 velocity = float2(
-        VelocityU.SampleLevel(ClampingSampler, coords, 0),
-        VelocityV.SampleLevel(ClampingSampler, coords, 0));
+        Field0.SampleLevel(ClampingSampler, coords, 0),
+        Field1.SampleLevel(ClampingSampler, coords, 0));
     float2 v = saturate((velocity/1.0f + 1.0.xx) * 0.5.xx);
 
     return float4(v, 0.f, 1.f);

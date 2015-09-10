@@ -7,10 +7,9 @@
 #include "../Utility/DistinctColors.h"
 #include "../CommonResources.h"
 
-Texture3D<float>	Density        : register(t0);
-Texture3D<float>	VelocityU      : register(t1);
-Texture3D<float>	VelocityV      : register(t2);
-Texture3D<float>	Temperature    : register(t3);
+Texture3D<float>	Field0 : register(t0);
+Texture3D<float>	Field1 : register(t1);
+Texture3D<float>	Field2 : register(t2);
 
 float3 GradColor(float input)
 {
@@ -32,25 +31,19 @@ float3 As3DCoords(float2 input)
     return float3(frac(input), tileIndex/float(dims.z));
 }
 
-float4 ps_density(float4 position : SV_Position, float2 coords : TEXCOORD0) : SV_Target0
+float4 ps_scalarfield(float4 position : SV_Position, float2 coords : TEXCOORD0) : SV_Target0
 {
-    float value = Density.SampleLevel(ClampingSampler, As3DCoords(coords), 0);
+    float value = Field0.SampleLevel(ClampingSampler, As3DCoords(coords), 0);
     return float4(GradColor(value), 1.f);
 }
 
-float4 ps_temperature(float4 position : SV_Position, float2 coords : TEXCOORD0) : SV_Target0
+float4 ps_vectorfield(float4 position : SV_Position, float2 coords : TEXCOORD0) : SV_Target0
 {
-    float value = Temperature.SampleLevel(ClampingSampler, As3DCoords(coords), 0);
-    return float4(GradColor(As3DCoords(coords).z), 1.f);
-    return float4(GradColor(value), 1.f);
-}
+    float3 velocity = float3(
+        Field0.SampleLevel(ClampingSampler, As3DCoords(coords), 0),
+        Field1.SampleLevel(ClampingSampler, As3DCoords(coords), 0),
+        Field2.SampleLevel(ClampingSampler, As3DCoords(coords), 0));
+    float3 v = saturate((velocity/1.0f + 1.0.xxx) * 0.5.xxx);
 
-float4 ps_velocity(float4 position : SV_Position, float2 coords : TEXCOORD0) : SV_Target0
-{
-    float2 velocity = float2(
-        VelocityU.SampleLevel(ClampingSampler, As3DCoords(coords), 0),
-        VelocityV.SampleLevel(ClampingSampler, As3DCoords(coords), 0));
-    float2 v = saturate((velocity/1.0f + 1.0.xx) * 0.5.xx);
-
-    return float4(v, 0.f, 1.f);
+    return float4(v, 1.f);
 }
