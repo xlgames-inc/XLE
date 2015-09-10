@@ -32,8 +32,6 @@ namespace XLEMath
     {
         const auto width = GetWidth(A);
         const auto height = GetHeight(A);
-        const auto depth = GetDepth(A);
-        const auto bor = GetBorders(A);
 
             // Note that "SOR" can't work correctly with wrapping borders
             // Jacobi relaxation could work; but because SOR is done in-place,
@@ -41,6 +39,7 @@ namespace XLEMath
             // wrapped around
 
         if (A._dimensionality==2) {
+            const UInt2 bor(1,1);   // can't fill in the edges using this method
             for (unsigned y=bor[1]; y<height-bor[1]; ++y) {
                 for (unsigned x=bor[0]; x<width-bor[0]; ++x) {
                     const unsigned i = y*width+x;
@@ -55,6 +54,8 @@ namespace XLEMath
                 }
             }
         } else {
+            const UInt3 bor(1,1,1);
+            const auto depth = GetDepth(A);
             for (unsigned z=bor[2]; z<depth-bor[2]; ++z) {
                 for (unsigned y=bor[1]; y<height-bor[1]; ++y) {
                     for (unsigned x=bor[0]; x<width-bor[0]; ++x) {
@@ -164,14 +165,11 @@ namespace XLEMath
             _r[c] =  b[c] - _r[c];
             _d[c] = _r[c];
         }
-        // ZeroBorder(_r, A);
-        // ZeroBorder(_d, A);
         auto rho = 0.f; // _r.dot(_r);
         FOR_EACH_CELL
             rho += _r[i] * _r[i];
         FOR_EACH_CELL_END
 
-        // ZeroBorder(_q, A);
         unsigned k=0;
         if (XlAbs(rho) > rhoThreshold) {
             for (; k<maxIterations; ++k) {
@@ -261,7 +259,6 @@ namespace XLEMath
         Multiply(rAsField, A, x, _N);    // r = AMat * x
         for (unsigned c=0; c<b._count; ++c)
             _r[c] = b[c] - _r[c];
-        // ZeroBorder(_r, A);  // what should be the border values for _r ?
             
         SolveLowerTriangular(_d, precon, _r, _N);
             
@@ -277,17 +274,19 @@ namespace XLEMath
         //     }
         // #endif
 
-        const UInt3 bor = GetBorders(A);
-        const auto& dims = A._dims;
-        #define FOR_EACH_CELL                                               \
-            for (unsigned qz=bor[2]; qz<dims[2]-bor[2]; ++qz)               \
-                for (unsigned qy=bor[1]; qy<dims[1]-bor[1]; ++qy)           \
-                    for (unsigned qx=bor[0]; qx<dims[0]-bor[0]; ++qx) {     \
-                        auto i = (qz*dims[1]+qy)*dims[0]+qx;                \
-            /**/
-        // #define FOR_EACH_CELL                           \
-        //     for (unsigned i=0; i<GetN(A); ++i) {        \
+        // const UInt3 bor = GetBorders(A);
+        // const auto& dims = A._dims;
+        // #define FOR_EACH_CELL                                               \
+        //     for (unsigned qz=bor[2]; qz<dims[2]-bor[2]; ++qz)               \
+        //         for (unsigned qy=bor[1]; qy<dims[1]-bor[1]; ++qy)           \
+        //             for (unsigned qx=bor[0]; qx<dims[0]-bor[0]; ++qx) {     \
+        //                 auto i = (qz*dims[1]+qy)*dims[0]+qx;                \
         //     /**/
+        const auto N = GetN(A);
+        assert(N == _N);
+        #define FOR_EACH_CELL                           \
+            for (unsigned i=0; i<N; ++i) {              \
+            /**/
         #define FOR_EACH_CELL_END }
             
         auto rho = 0.f;
@@ -302,7 +301,7 @@ namespace XLEMath
             
                     // Note that all of the vectors and matrices
                     // used here are quite sparse! So we need to
-                    // simplify the operation shere to take advantage 
+                    // simplify the operation here to take advantage 
                     // of that sparseness.
                     // Multiply by AMat can be replaced with a specialized
                     // operation. Unfortunately the dot products can't be
@@ -334,7 +333,6 @@ namespace XLEMath
                 auto beta = rho / rhoOld;
                 assert(isfinite(beta) && !isnan(beta));
             
-                // for (unsigned i=0; i<_N; ++i)
                 FOR_EACH_CELL
                     _d[i] = _s[i] + beta * _d[i];
                 FOR_EACH_CELL_END
@@ -639,16 +637,28 @@ namespace XLEMath
         SparseBandedMatrix<MatrixX> _bandedPrecon;
     };
 
-    static AMat GetEstimate(const AMat& A, float estimationFactor)
+    static AMat EstimateInverse(const AMat& A, float estimationFactor)
     {
-        const auto estA1 = estimationFactor * A._a1;  // used when calculating a starting estimate
-        return AMat { A._dims, A._borders, A._dimensionality, 1.f - 4.f * estA1, estA1 };
+            // This is a simple estimation of the inverse, assuming that
+            // the input matrix is prepared as a "diffusion matrix" type
+            // A cheap inverse estimation like this allows us to calculate
+            // a good starting estimate for iterative methods.
+        bool wrapEdges = A._a1r > 0.f;
+        auto diffusionAmount = -estimationFactor * A._a1;
+        auto a0 = 1.f - 4.f * diffusionAmount;
+        auto a1 = diffusionAmount;
+        auto a0e = 1.f - (wrapEdges?4.f:3.f) * diffusionAmount;
+        auto a0c = 1.f - (wrapEdges?4.f:2.f) * diffusionAmount;
+        auto a1e = diffusionAmount;
+        auto a1r = wrapEdges?diffusionAmount:0.f;
+        return AMat { 
+            A._dims, A._borders, A._dimensionality, 
+            a0, a1, a0e, a0c, a1e, a1r };
     }
 
     unsigned PoissonSolver::Solve(
-        ScalarField1D x, 
-        const PreparedMatrix& A, 
-        const ScalarField1D& b, Method solver) const
+        ScalarField1D x, const PreparedMatrix& A, const ScalarField1D& b, 
+        Method solver, Flags::BitField flags) const
     {
         //
         // Here is our basic solver for Poisson equations (such as the heat equation).
@@ -703,13 +713,7 @@ namespace XLEMath
             // In low noise systems, explicit euler seems very close to correct
         static float estimateFactor = .75f; 
         const auto& matA = A._amat;
-        auto estMatA = GetEstimate(matA, estimateFactor);
         const auto N = GetN(matA);
-
-        const auto width = GetWidth(matA);
-        const auto height = GetHeight(matA);
-        const auto depth = GetDepth(matA);
-        const auto bor = GetBorders(matA);
 
         assert(x._count == N);
         assert(b._count == N);
@@ -725,12 +729,12 @@ namespace XLEMath
 
         if (solver == Method::PlainCG || solver == Method::PreconCG || solver == Method::Multigrid) {
 
-                // set an initial estimate using
+                // Set an initial estimate using
                 // explicit euler. We'll march forward part of
                 // the timestep, and then refine the estimate
                 // from there using the iterative implicit method.
-            Multiply(x, matA, workingB, GetN(matA));
-            // if (x._u != b._u) CopyBorder(x, b, matA);
+            if (!(flags & Flags::XContainsEstimate))
+                Multiply(x, EstimateInverse(matA, estimateFactor), workingB, GetN(matA));
 
             auto iterations = 0u;
             if (solver == Method::PlainCG) {
@@ -753,21 +757,7 @@ namespace XLEMath
         
                 // This is the simpliest integration. We just
                 // move forward a single timestep...
-            auto a0 = 1.f - 4.f * -matA._a1;
-            auto a1 = -matA._a1;
-            for (unsigned iz=bor[2]; iz<depth-bor[2]; ++iz)
-                for (unsigned iy=bor[1]; iy<height-bor[1]; ++iy)
-                    for (unsigned ix=bor[0]; ix<width-bor[0]; ++ix) {
-                        const unsigned i = (iz*height+iy)*width+ix;
-                        auto v = a0 * workingB[i];
-                        v += a1 * workingB[i-1];
-                        v += a1 * workingB[i+1];
-                        v += a1 * workingB[i-width];
-                        v += a1 * workingB[i+width];
-                        x._u[i] = v;
-                    }
-
-            if (x._u != b._u) CopyBorder(x, b, matA);
+            Multiply(x, EstimateInverse(matA, 1.f), workingB, GetN(matA));
             return 1;
 
         } else if (solver == Method::SOR) {
@@ -799,7 +789,11 @@ namespace XLEMath
             float gamma = 1.25f;    // relaxation factor
             const auto iterations = 15u;
 
-            if (x._u != b._u) CopyBorder(x, b, matA);
+                // If no estimate already exists in 'x', we must set some reasonable
+                // starting estimate
+            if (!(flags & Flags::XContainsEstimate))
+                Multiply(x, EstimateInverse(matA, estimateFactor), workingB, GetN(matA));
+
             for (unsigned k = 0; k<iterations; ++k)
                 RunSOR(x, matA, workingB, gamma);
 

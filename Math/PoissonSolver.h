@@ -59,18 +59,24 @@ namespace XLEMath
             Multigrid
         };
 
+        struct Flags
+        {
+            enum Enum { XContainsEstimate = 1<<0 };
+            using BitField = unsigned;
+        };
+
         class PreparedMatrix;
         
             // Solve for x in A * x = b
             // Returns the number of iterations performed during solving
         unsigned Solve(
-            ScalarField1D x, 
-            const PreparedMatrix& A, 
-            const ScalarField1D& b, Method method) const;
+            ScalarField1D x, const PreparedMatrix& A, const ScalarField1D& b, 
+            Method method, Flags::BitField flags = 0u) const;
         
         std::shared_ptr<PreparedMatrix> PrepareDiffusionMatrix(
             float diffusionAmount, Method method, unsigned marginFlags, bool wrapEdges) const;
-        std::shared_ptr<PreparedMatrix> PrepareDivergenceMatrix(Method method, unsigned marginFlags, bool wrapEdges) const;
+        std::shared_ptr<PreparedMatrix> PrepareDivergenceMatrix(
+            Method method, unsigned marginFlags, bool wrapEdges) const;
 
         PoissonSolver(unsigned dimensionality, unsigned dimensions[]);
         PoissonSolver(PoissonSolver&& moveFrom);

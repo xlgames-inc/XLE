@@ -265,12 +265,16 @@ namespace SceneEngine
 
         unsigned _incompMarginFlags;
         bool _incompWrapEdges;
+        VectorX _incompBuffers[2];
 
-        void VorticityConfinement(VectorField2D outputField, VectorField2D inputVelocities, float strength, float deltaTime);
+        void VorticityConfinement(
+            VectorField2D outputField, VectorField2D inputVelocities, 
+            float strength, float deltaTime);
     };
 
     static void EnforceIncompressibility(
         VectorField2D velField,
+        ScalarField1D qBuffer, ScalarField1D delwBuffer,
         const PoissonSolver& solver, const PoissonSolver::PreparedMatrix& A,
         PoissonSolver::Method method, unsigned marginFlags, bool wrapEdges)
     {
@@ -311,8 +315,6 @@ namespace SceneEngine
         //
 
         const auto dims = velField.Dimensions();
-        VectorX delW(dims[0] * dims[1]), q(dims[0] * dims[1]);
-        q.fill(0.f);    // when using the "SOR" method, q must be filled in to some initial estimate (perhaps we can start from the result from last frame?)
         UInt2 border(1,1);
         if (!(marginFlags & 1<<0)) border[0] = 0u;
         if (!(marginFlags & 1<<1)) border[1] = 0u;
@@ -329,20 +331,26 @@ namespace SceneEngine
                 const auto i1 = y*dims[0]+((x+dims[0]-1)%dims[0]);
                 const auto i2 = ((y+1)%dims[1])*dims[0]+x;
                 const auto i3 = ((y+dims[1]-1)%dims[1])*dims[0]+x;
-                delW[i] = 
+                delwBuffer._u[i] = 
                     -0.5f * 
                     (
                           ((*velField._u)[i0] - (*velField._u)[i1]) / velFieldScale[0]
                         + ((*velField._v)[i2] - (*velField._v)[i3]) / velFieldScale[1]
                     );
             }
-        SmearBorder2D(delW, dims, marginFlags);
+        SmearBorder2D(delwBuffer._u, dims, marginFlags);
 
+        for (unsigned c=0; c<(dims[0]*dims[1]); ++c)
+            qBuffer._u[c] = 0.f;
+
+            // We're going to use the 'q' from the last frame as a 
+            // starting estimate for this frame. The divergence shouldn't
+            // change quickly, so this might be a quite accurate estimate.
         auto iterations = solver.Solve(
-            AsScalarField1D(q), A, AsScalarField1D(delW), 
-            method);
+            qBuffer, A, delwBuffer, 
+            method, PoissonSolver::Flags::XContainsEstimate);
 
-        SmearBorder2D(q, dims, marginFlags);
+        SmearBorder2D(qBuffer, dims, marginFlags);    // note -- perhaps this will polute the starting estimate for the next frame?
         for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
             for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
                 const auto i  = y*dims[0]+x;
@@ -350,8 +358,8 @@ namespace SceneEngine
                 const auto i1 = y*dims[0]+((x+dims[0]-1)%dims[0]);
                 const auto i2 = ((y+1)%dims[1])*dims[0]+x;
                 const auto i3 = ((y+dims[1]-1)%dims[1])*dims[0]+x;
-                (*velField._u)[i] -= .5f*velFieldScale[0] * (q[i0] - q[i1]);
-                (*velField._v)[i] -= .5f*velFieldScale[1] * (q[i2] - q[i3]);
+                (*velField._u)[i] -= .5f*velFieldScale[0] * (qBuffer._u[i0] - qBuffer._u[i1]);
+                (*velField._v)[i] -= .5f*velFieldScale[1] * (qBuffer._u[i2] - qBuffer._u[i3]);
             }
 
         LogInfo << "EnforceIncompressibility took: " << iterations << " iterations.";
@@ -561,6 +569,7 @@ namespace SceneEngine
         ReflectVBorder2D(velVT1, _pimpl->_dimsWithBorder, marginFlags);
         EnforceIncompressibility(
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
+            AsScalarField1D(_pimpl->_incompBuffers[0]), AsScalarField1D(_pimpl->_incompBuffers[1]),
             _pimpl->_poissonSolver, *_pimpl->_incompressibility,
             (PoissonSolver::Method)settings._enforceIncompressibilityMethod,
             marginFlags, wrapEdges);
@@ -662,6 +671,11 @@ namespace SceneEngine
             _pimpl->_temperature[c] = VectorX(N);
             _pimpl->_density[c].fill(0.f);
             _pimpl->_temperature[c].fill(0.f);
+        }
+
+        for (unsigned c=0; c<dimof(_pimpl->_incompBuffers); ++c) {
+            _pimpl->_incompBuffers[c] = VectorX(N);
+            _pimpl->_incompBuffers[c].fill(0.f);
         }
 
         // const float dt = 1.0f / 60.f;
@@ -980,6 +994,8 @@ namespace SceneEngine
         DiffusionOperation _vaporDiffusion;
         DiffusionOperation _condensedDiffusion;
         DiffusionOperation _temperatureDiffusion;
+
+        VectorX _incompBuffers[2];
     };
 
     static float PressureAtAltitude(float kilometers)
@@ -1194,6 +1210,7 @@ namespace SceneEngine
         ReflectVBorder2D(velVT1, _pimpl->_dimsWithBorder, ~0u);
         EnforceIncompressibility(
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
+            AsScalarField1D(_pimpl->_incompBuffers[0]), AsScalarField1D(_pimpl->_incompBuffers[1]),
             _pimpl->_poissonSolver, *_pimpl->_incompressibility,
             (PoissonSolver::Method)settings._enforceIncompressibilityMethod,
             ~0u, false);
@@ -1394,6 +1411,11 @@ namespace SceneEngine
             _pimpl->_velV[c] = VectorX(N);
             _pimpl->_velU[c].fill(0.f);
             _pimpl->_velV[c].fill(0.f);
+        }
+
+        for (unsigned c=0; c<dimof(_pimpl->_incompBuffers); ++c) {
+            _pimpl->_incompBuffers[c] = VectorX(N);
+            _pimpl->_incompBuffers[c].fill(0.f);
         }
 
         for (unsigned c=0; c<dimof(_pimpl->_vaporMixingRatio); ++c) {
