@@ -10,6 +10,11 @@
 Texture2D<float>	Field0 : register(t0);
 Texture2D<float>	Field1 : register(t1);
 
+cbuffer Constants
+{
+    float MinValue, MaxValue;
+}
+
 float3 GradColor(float input)
 {
     input = saturate(input);
@@ -22,6 +27,7 @@ float3 GradColor(float input)
 float4 ps_scalarfield(float4 position : SV_Position, float2 coords : TEXCOORD0) : SV_Target0
 {
     float value = Field0.SampleLevel(ClampingSampler, coords, 0);
+    value = (value - MinValue) / (MaxValue - MinValue);
     return float4(GradColor(value), 1.f);
 }
 

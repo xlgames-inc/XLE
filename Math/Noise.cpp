@@ -376,5 +376,26 @@ namespace XLEMath
   }
 #endif
 
+
+    template<typename Type>
+        float SimplexFBM(Type pos, float hgrid, float gain, float lacunarity, int octaves)
+    {
+        float total = 0.0f;
+	    float frequency = 1.0f/(float)hgrid;
+	    float amplitude = 1.f;
+        
+	    for (int i = 0; i < octaves; ++i) {
+		    total += SimplexNoise(Type(pos * frequency)) * amplitude;
+		    frequency *= lacunarity;
+		    amplitude *= gain;
+	    }
+        
+	    return total;
+    }
+
+
+    template float SimplexFBM(Float2, float, float, float, int);
+    template float SimplexFBM(Float3, float, float, float, int);
+    template float SimplexFBM(Float4, float, float, float, int);
   
 }

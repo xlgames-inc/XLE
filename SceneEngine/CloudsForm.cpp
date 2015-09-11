@@ -8,6 +8,7 @@
 #include "FluidHelper.h"
 #include "Fluid.h"
 #include "FluidAdvection.h"
+#include "../Math/Noise.h"
 #include "../Utility/Meta/ClassAccessorsImpl.h"
 
 namespace SceneEngine
@@ -167,6 +168,7 @@ namespace SceneEngine
         UInt2 _dimsWithoutBorder;
         UInt2 _dimsWithBorder;
         unsigned _N;
+        float _time;
 
         PoissonSolver _poissonSolver;
 
@@ -227,7 +229,7 @@ namespace SceneEngine
             // the referenceVirtualPotentialTemperature. So we can just the 
             // amount of bouyancy by changing this number.
         const auto zScale = _pimpl->_troposphere.ZScale();
-        const auto g = 9.81f / 1000.f / zScale;  // (in km/second then div by zScale)
+        const auto g = 9.81f / 1000.f;  // (in km/second)
 
             // Buoyancy force
         const UInt2 border(1,1);
@@ -310,6 +312,33 @@ namespace SceneEngine
             qcWorking[c] = qcT1[c]; //  + dt * qcSrc[c];
             qvWorking[c] = qvT1[c] + dt * qvSrc[c];
             potTempWorking[c] = potTempT1[c]; // + dt * temperatureSrc[c];
+        }
+
+            // Fill in the bottom row with vapor and temperature entering
+            // from landscape below
+            // up is +Y, so bottom most row is row 0
+        static Float2 v_scale = Float2(16.f, 5.f);
+        static float v_amp = 0.0001f;
+        static float v_gain = 0.55f;
+        static float v_lacunarity = 2.1042f;
+        static unsigned v_octaves = 4;
+        static Float2 t_scale = Float2(20.f, 4.5f);
+        static float t_amp = 10.f;
+        static float t_gain = 0.55f;
+        static float t_lacunarity = 2.1042f;
+        static unsigned t_octaves = 4;
+        for (unsigned x=1; x<_pimpl->_dimsWithBorder[0]-1; ++x) {
+            float vaporNoiseValue = SimplexFBM(
+                Float2(float(x) / v_scale[0], _pimpl->_time / v_scale[1]),
+                1.f, v_gain, v_lacunarity, v_octaves);
+            float tempNoiseValue = SimplexFBM(
+                Float2(float(x) / t_scale[0], _pimpl->_time / t_scale[1]),
+                1.f, t_gain, t_lacunarity, t_octaves);
+
+            qvWorking[x] = _pimpl->_troposphere.GetVaporMixingRatio(UInt2(x, 0));
+            qvWorking[x] += (0.5f + 0.5f * vaporNoiseValue) * v_amp;
+            potTempWorking[x] = _pimpl->_troposphere.GetPotentialTemperature(UInt2(x, 0));
+            potTempWorking[x] += (0.5f + 0.5f * tempNoiseValue) * t_amp;
         }
 
         _pimpl->_velocityDiffusion.Execute(
@@ -461,7 +490,7 @@ namespace SceneEngine
 
                 auto difference = vapourMixingRatio - equilibriumMixingRatio;
                 auto deltaCondensation = std::min(1.f, deltaTime * settings._condensationSpeed) * difference;
-                deltaCondensation = std::max(deltaCondensation, -condensationMixingRatio);
+                deltaCondensation = std::max(deltaCondensation, 0.f); // -condensationMixingRatio);
                 vapourMixingRatio -= deltaCondensation;
                 condensationMixingRatio += deltaCondensation;
 
@@ -485,6 +514,8 @@ namespace SceneEngine
             velVSrc[c] = 0.f;
             qvSrc[c] = 0.f;
         }
+
+        _pimpl->_time += deltaTime;
     }
 
     void CloudsForm2D::OldTick(float deltaTime, const Settings& settings)
@@ -812,26 +843,43 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         FluidDebuggingMode debuggingMode)
     {
+        static float qcMin = 0.f, qcMax = 1e-3f;
+        static float qvMin = 0.f, qvMax = 1e-2f;
+        static float tMin = CelsiusToKelvin(0.f), tMax = CelsiusToKelvin(45.f);
         switch (debuggingMode) {
         case FluidDebuggingMode::Density:
             RenderFluidDebugging2D(
                 metalContext, parserContext, RenderFluidMode::Scalar,
-                _pimpl->_dimsWithBorder, 
+                _pimpl->_dimsWithBorder, qcMin, qcMax,
                 { _pimpl->_condensedMixingRatio[1].data() });
             break;
 
         case FluidDebuggingMode::Velocity:
             RenderFluidDebugging2D(
                 metalContext, parserContext, RenderFluidMode::Vector,
-                _pimpl->_dimsWithBorder, 
+                _pimpl->_dimsWithBorder, 0.f, 1.f,
                 { _pimpl->_velU[1].data(), _pimpl->_velV[1].data() });
             break;
 
         case FluidDebuggingMode::Temperature:
             RenderFluidDebugging2D(
                 metalContext, parserContext, RenderFluidMode::Scalar,
-                _pimpl->_dimsWithBorder, 
+                _pimpl->_dimsWithBorder, tMin, tMax,
                 { _pimpl->_potentialTemperature[1].data() });
+            break;
+
+        case FluidDebuggingMode::Vapor:
+            RenderFluidDebugging2D(
+                metalContext, parserContext, RenderFluidMode::Scalar,
+                _pimpl->_dimsWithBorder, qvMin, qvMax,
+                { _pimpl->_vaporMixingRatio[1].data() });
+            break;
+
+        case FluidDebuggingMode::Divergence:
+            RenderFluidDebugging2D(
+                metalContext, parserContext, RenderFluidMode::Scalar,
+                _pimpl->_dimsWithBorder, 0.f, 1.f,
+                { _pimpl->_incompressibility.GetDivergence() });
             break;
         }
     }
@@ -845,6 +893,7 @@ namespace SceneEngine
         _pimpl->_dimsWithBorder = dimensions + UInt2(2, 2);
         auto N = _pimpl->_dimsWithBorder[0] * _pimpl->_dimsWithBorder[1];
         _pimpl->_N = N;
+        _pimpl->_time = 0.f;
 
         for (unsigned c=0; c<dimof(_pimpl->_velU); ++c) {
             _pimpl->_velU[c] = VectorX(N);
@@ -854,18 +903,13 @@ namespace SceneEngine
         }
 
         const float airTemp = CelsiusToKelvin(23.f);
-        const auto relativeHumidity = .75f; // 75%
+        const auto relativeHumidity = .95f;
         const float altitudeMinKm = 0.5f;
         const float altitudeMaxKm = 1.5f;
         _pimpl->_troposphere = Troposphere(_pimpl->_dimsWithBorder, altitudeMinKm, altitudeMaxKm, airTemp, relativeHumidity);
         
         for (unsigned c=0; c<dimof(_pimpl->_vaporMixingRatio); ++c) {
 
-                // It should be ok to start with constant (or near constant) for potential temperature
-                // this means that everything is adiabatic -- and that the temperature varies
-                // with altitude in a standard manner.
-                // Note that it might be better to start with a noise field -- just so we
-                // get some initial randomness into the simulation.
             _pimpl->_potentialTemperature[c] = VectorX(N);
             _pimpl->_condensedMixingRatio[c] = VectorX(N);
             _pimpl->_vaporMixingRatio[c] = VectorX(N);
@@ -881,7 +925,7 @@ namespace SceneEngine
             const auto& dims = _pimpl->_dimsWithBorder;
             for (unsigned y=0; y<dims[1]; ++y)
                 for (unsigned x=0; x<dims[0]; ++x) {
-                    auto i = x*dims[0]+y;
+                    auto i = y*dims[0]+x;
                     _pimpl->_potentialTemperature[c][i] = _pimpl->_troposphere.GetPotentialTemperature(UInt2(x, y));
                     _pimpl->_vaporMixingRatio[c][i] = _pimpl->_troposphere.GetVaporMixingRatio(UInt2(x, y));
 
@@ -899,20 +943,20 @@ namespace SceneEngine
 
     CloudsForm2D::Settings::Settings()
     {
-        _viscosity = 0.05f;
+        _viscosity = 1.0f;
         _condensedDiffusionRate = 0.f;
-        _vaporDiffusionRate = 0.f;
-        _temperatureDiffusionRate = 2.f;
+        _vaporDiffusionRate = 0.4f;
+        _temperatureDiffusionRate = 10.f;
         _diffusionMethod = 0;
         _advectionMethod = 3;
         _advectionSteps = 4;
         _enforceIncompressibilityMethod = 0;
-        _vorticityConfinement = 0.75f;
+        _vorticityConfinement = 0.1f;
         _interpolationMethod = 0;
         _buoyancyAlpha = 1.f;
         _buoyancyBeta = 1.f;
-        _condensationSpeed = 60.f;
-        _temperatureChangeSpeed = .25f;
+        _condensationSpeed = 5.f;
+        _temperatureChangeSpeed = 1.f;
     }
 }
 

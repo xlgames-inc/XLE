@@ -13,4 +13,7 @@ namespace XLEMath
     float SimplexNoise(Float2 input);
     float SimplexNoise(Float3 input);
     float SimplexNoise(Float4 input);
+
+    template<typename Type>
+        float SimplexFBM(Type pos, float hgrid, float gain, float lacunarity, int octaves);
 }

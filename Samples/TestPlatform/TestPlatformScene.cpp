@@ -64,22 +64,6 @@ namespace Sample
             std::shared_ptr<::Assets::DependencyValidation> _dependencyValidation;
         };
 
-        template<typename Type>
-            static float SimplexFBM(Type pos, float hgrid, float gain, float lacunarity, int octaves)
-        {
-            float total = 0.0f;
-	        float frequency = 1.0f/(float)hgrid;
-	        float amplitude = 1.f;
-        
-	        for (int i = 0; i < octaves; ++i) {
-		        total += SimplexNoise(Type(pos * frequency)) * amplitude;
-		        frequency *= lacunarity;
-		        amplitude *= gain;
-	        }
-        
-	        return total;
-        }
-
         class TestDensityFunction : public IVolumeDensityFunction
         {
         public:

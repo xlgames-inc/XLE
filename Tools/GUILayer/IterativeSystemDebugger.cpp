@@ -302,6 +302,8 @@ namespace GUILayer
         case P::Density: return SceneEngine::FluidDebuggingMode::Density;
         case P::Velocity: return SceneEngine::FluidDebuggingMode::Velocity;
         case P::Temperature: return SceneEngine::FluidDebuggingMode::Temperature;
+        case P::Vapor: return SceneEngine::FluidDebuggingMode::Vapor;
+        case P::Divergence: return SceneEngine::FluidDebuggingMode::Divergence;
         }
     }
 

@@ -151,7 +151,7 @@ namespace SceneEngine
             qBuffer, A, delwBuffer, 
             method, PoissonSolver::Flags::XContainsEstimate);
 
-        SmearBorder2D(qBuffer, dims, marginFlags);    // note -- perhaps this will polute the starting estimate for the next frame?
+        // SmearBorder2D(qBuffer, dims, marginFlags);    // note -- perhaps this will polute the starting estimate for the next frame?
         for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
             for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
                 const auto i  = y*dims[0]+x;
@@ -231,6 +231,11 @@ namespace SceneEngine
         EnforceIncompressibility(
             vectorField, AsScalarField1D(_buffers[0]), AsScalarField1D(_buffers[1]),
             solver, *_incompressibility, (PoissonSolver::Method)method, marginFlags, wrapEdges);
+    }
+
+    const float* EnforceIncompressibilityHelper::GetDivergence()
+    {
+        return _buffers[0].data();
     }
 
     EnforceIncompressibilityHelper::EnforceIncompressibilityHelper() 
@@ -333,7 +338,7 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext& metalContext,
         LightingParserContext& parserContext,
         RenderFluidMode debuggingMode,
-        UInt2 dimensions,
+        UInt2 dimensions, float minValue, float maxValue,
         std::initializer_list<const float*> data)
     {
         TRY {
@@ -355,6 +360,9 @@ namespace SceneEngine
                 auto tex = uploads.Transaction_Immediate(desc, pkt.get());
                 metalContext.BindPS(MakeResourceList(c, Metal::ShaderResourceView(tex->GetUnderlying())));
             }
+
+            float constants[4] = { minValue, maxValue, 0.f, 0.f };
+            metalContext.BindPS(MakeResourceList(Metal::ConstantBuffer(constants, sizeof(constants))));
 
             const ::Assets::ResChar* pixelShader = "";
             if (debuggingMode == RenderFluidMode::Scalar) {
@@ -402,7 +410,7 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext& metalContext,
         LightingParserContext& parserContext,
         RenderFluidMode debuggingMode,
-        UInt3 dimensions,
+        UInt3 dimensions, float minValue, float maxValue,
         std::initializer_list<const float*> data)
     {
         TRY {
@@ -426,6 +434,9 @@ namespace SceneEngine
                 auto tex = uploads.Transaction_Immediate(desc, pkt.get());
                 metalContext.BindPS(MakeResourceList(c, Metal::ShaderResourceView(tex->GetUnderlying())));
             }
+
+            float constants[4] = { minValue, maxValue, 0.f, 0.f };
+            metalContext.BindPS(MakeResourceList(Metal::ConstantBuffer(constants, sizeof(constants))));
 
             const ::Assets::ResChar* pixelShader = "";
             if (debuggingMode == RenderFluidMode::Scalar)       pixelShader = "game/xleres/cfd/debug3d.sh:ps_scalarfield:ps_*";

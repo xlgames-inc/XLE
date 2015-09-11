@@ -60,6 +60,7 @@ namespace SceneEngine
         void Execute(
             PoissonSolver& solver, VectorField2D vectorField,
             PoissonSolver::Method method = PoissonSolver::Method::PreconCG, unsigned marginFlags = ~0u, bool wrapEdges = false);
+        const float* GetDivergence();
 
         EnforceIncompressibilityHelper();
         ~EnforceIncompressibilityHelper();
@@ -94,14 +95,14 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext& metalContext,
         LightingParserContext& parserContext,
         RenderFluidMode debuggingMode,
-        UInt2 dimensions,
+        UInt2 dimensions, float minValue, float maxValue,
         std::initializer_list<const float*> data);
 
     void RenderFluidDebugging3D(
         RenderCore::Metal::DeviceContext& metalContext,
         LightingParserContext& parserContext,
         RenderFluidMode debuggingMode,
-        UInt3 dimensions,
+        UInt3 dimensions, float minValue, float maxValue,
         std::initializer_list<const float*> data);
 
 }

@@ -16,7 +16,7 @@ namespace SceneEngine
 
     enum class FluidDebuggingMode
     {
-        Density, Velocity, Temperature
+        Density, Velocity, Temperature, Vapor, Divergence
     };
 
     class ReferenceFluidSolver2D

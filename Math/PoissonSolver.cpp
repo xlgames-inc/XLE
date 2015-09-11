@@ -1350,6 +1350,10 @@ namespace XLEMath
             a1e = -diffusionAmount;
             a1r = wrapEdges?-diffusionAmount:0.f;
         }
+        if (!wrapEdges) {   // getting better results if we just keep the edges and corners at constant values
+            a0e = a0c = 1.f;
+            a1e = a1r = 0.f;
+        }
 
         AMat A = {
             _pimpl->_dimensionsWithBorders, _pimpl->_dimensionality, marginFlags, 
@@ -1414,6 +1418,10 @@ namespace XLEMath
             a0c = (wrapEdges?6.f:3.f);
             a1e = -1.f;
             a1r = wrapEdges?-1.f:0.f;
+        }
+        if (!wrapEdges) {   // getting better results if we just keep the edges and corners at constant values
+            a0e = a0c = 1.f;
+            a1e = a1r = 0.f;
         }
 
         AMat A = {
