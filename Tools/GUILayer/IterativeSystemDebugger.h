@@ -79,7 +79,7 @@ namespace GUILayer
         property IGetAndSetProperties^ SimulationSettings { IGetAndSetProperties^ get(); }
 
         virtual void Tick();
-        virtual void OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton);
+        virtual void OnMouseMove(float x, float y, float velX, float velY, unsigned mouseButton);
     };
 
     class CFDIterativeSystemPimpl;
@@ -95,7 +95,7 @@ namespace GUILayer
         property IGetAndSetProperties^ SimulationSettings { virtual IGetAndSetProperties^ get() { return _getAndSetProperties; } }
 
         virtual void Tick();
-        virtual void OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton);
+        virtual void OnMouseMove(float x, float y, float velX, float velY, unsigned mouseButton);
 
         CFDIterativeSystem(unsigned size);
         !CFDIterativeSystem();
@@ -118,7 +118,7 @@ namespace GUILayer
         property IGetAndSetProperties^ SimulationSettings { virtual IGetAndSetProperties^ get() { return _getAndSetProperties; } }
 
         virtual void Tick();
-        virtual void OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton);
+        virtual void OnMouseMove(float x, float y, float velX, float velY, unsigned mouseButton);
 
         CFD3DIterativeSystem(unsigned width, unsigned height, unsigned depth);
         !CFD3DIterativeSystem();
@@ -141,7 +141,7 @@ namespace GUILayer
         property IGetAndSetProperties^ SimulationSettings { virtual IGetAndSetProperties^ get() { return _getAndSetProperties; } }
 
         virtual void Tick();
-        virtual void OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton);
+        virtual void OnMouseMove(float x, float y, float velX, float velY, unsigned mouseButton);
 
         CFDRefIterativeSystem(unsigned size);
         !CFDRefIterativeSystem();
@@ -165,7 +165,7 @@ namespace GUILayer
         property IGetAndSetProperties^ SimulationSettings { virtual IGetAndSetProperties^ get() { return _getAndSetProperties; } }
 
         virtual void Tick();
-        virtual void OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton);
+        virtual void OnMouseMove(float x, float y, float velX, float velY, unsigned mouseButton);
 
         CloudsIterativeSystem(unsigned size);
         !CloudsIterativeSystem();

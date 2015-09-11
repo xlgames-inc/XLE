@@ -35,26 +35,30 @@ namespace IterativeSystemDebugger
             _hasOldMouse = false;
         }
 
+        private uint AsMouseButtonFlags(MouseButtons buttons)
+        {
+            var result = 0u;
+            if ((buttons & MouseButtons.Left) !=0) result |= 1<<0;
+            if ((buttons & MouseButtons.Right) != 0) result |= 1<<1;
+            if ((buttons & MouseButtons.Middle) != 0) result |= 1<<2;
+            return result;
+        }
+
         void _previewWindow_MouseMove(object sender, MouseEventArgs e)
         {
-            if (e.Button != System.Windows.Forms.MouseButtons.None)
-            {
-                float swipeX = 0.0f, swipeY = 0.0f;
-                if (_hasOldMouse) {
-                    swipeX = (float)(e.X - _oldMouse.X);
-                    swipeY = (float)(e.Y - _oldMouse.Y);
-                }
-
-                _system.OnMouseDown(
-                    e.X / (float)_previewWindow.ClientSize.Width,
-                    e.Y / (float)_previewWindow.ClientSize.Height,
-                    swipeX, swipeY,
-                    (e.Button == System.Windows.Forms.MouseButtons.Left) ? 0u
-                        : (e.Button == System.Windows.Forms.MouseButtons.Middle) ? 2u
-                        : 1u);
+            float swipeX = 0.0f, swipeY = 0.0f;
+            if (_hasOldMouse) {
+                swipeX = (float)(e.X - _oldMouse.X);
+                swipeY = (float)(e.Y - _oldMouse.Y);
             }
             _oldMouse = new Point(e.X, e.Y);
             _hasOldMouse = true;
+
+            _system.OnMouseMove(
+                e.X / (float)_previewWindow.ClientSize.Width,
+                e.Y / (float)_previewWindow.ClientSize.Height,
+                swipeX, swipeY,
+                AsMouseButtonFlags(e.Button));
         }
 
         protected override void Dispose(bool disposing)

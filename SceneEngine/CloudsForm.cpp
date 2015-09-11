@@ -34,9 +34,9 @@ namespace SceneEngine
             //  See here for more information:
             //      https://en.wikipedia.org/wiki/Atmospheric_pressure
             //
-        const float g = 9.81f / 1000.f; // (in km/second)
+        const float g = 9.81f;          // (in m/second)
         const float p0 = 101325.f;      // (in pascals, 1 standard atmosphere)
-        const float T0 = CelsiusToKelvin(23.0f);         // (in kelvin, base temperature) (about 20 degrees)
+        const float T0 = CelsiusToKelvin(15.0f);         // (in kelvin, standard sea level temperature)
         const float Rd = 287.058f;      // (in J . kg^-1 . K^-1. This is the "specific" gas constant for dry air. It is R / M, where R is the gas constant, and M is the ideal gas constant)
 
             //  We have a few choices for the lape rate here.
@@ -49,12 +49,11 @@ namespace SceneEngine
 
         // roughly: p0 * std::exp(kilometers * g / (1000.f * T0 * Rd));     (see wikipedia page)
         // see also the "hypsometric equation" equation, similar to above
-        return p0 * std::pow(1.f - kilometers * tempLapseRate / T0, g / (tempLapseRate * Rd));
+        return p0 * std::pow(1.f - kilometers * tempLapseRate / T0, g / (tempLapseRate / 1000.f * Rd));
     }
 
     static float ExnerFunction(float pressure)
     {
-
             //
             //  The potential temperature is defined based on the atmosphere pressure.
             //  So, we can go backwards as well and get the temperature from the potential
@@ -81,10 +80,12 @@ namespace SceneEngine
     class Troposphere
     {
     public:
-        float   GetVaporMixingRatio(UInt2 gridCoord) const;
-        float   GetPotentialTemperature(UInt2 gridCoord) const;
+        float   GetVaporMixingRatio(unsigned gridY) const;
+        float   GetPotentialTemperature(unsigned gridY) const;
         float   AltitudeKm(unsigned gridY) const;
         float   ZScale() const;
+        float   GetEquilibriumMixingRatio(float potentialTemp, unsigned gridY) const;
+        float   GetPotentialTemperatureRelease(unsigned gridY) const;
 
         Troposphere(
             UInt2 gridDims,
@@ -100,30 +101,108 @@ namespace SceneEngine
         float   _airTemperature;
     };
 
-    float Troposphere::GetVaporMixingRatio(UInt2 gridCoord) const
+    float Troposphere::GetVaporMixingRatio(unsigned gridY) const
     {
-        auto potentialTemp = GetPotentialTemperature(gridCoord);
-        auto altitudeKm = AltitudeKm(gridCoord[1]);            // simulating 2 km of atmosphere
-        auto pressure = PressureAtAltitude(altitudeKm);     // (precalculate these pressures)
-        auto exner = ExnerFunction(pressure);
-        auto T = KelvinToCelsius(potentialTemp * exner);
-        auto saturationPressure = 100.f * 6.1094f * XlExp((17.625f * T) / (T + 243.04f));
-        const auto Rd = 287.058f;  // in J . kg^-1 . K^-1. Gas constant for dry air
-        const auto Rv = 461.495f;  // in J . kg^-1 . K^-1. Gas constant for water vapor
-        const auto gasConstantRatio = Rd/Rv;   // ~0.622f;
-        auto equilibriumMixingRatio = 
-            gasConstantRatio * (pressure / (pressure-saturationPressure) - 1.f);
-        // RH = vaporMixingRatio/saturationMixingRatio
-        return _relativeHumidity * equilibriumMixingRatio;
+            // RH = vaporMixingRatio/saturationMixingRatio
+        return _relativeHumidity * GetEquilibriumMixingRatio(GetPotentialTemperature(gridY), gridY);
     }
 
-    float Troposphere::GetPotentialTemperature(UInt2 gridCoord) const
+    float Troposphere::GetPotentialTemperature(unsigned gridY) const
     {
-        const auto altitudeKm = AltitudeKm(gridCoord[1]);
+        const auto altitudeKm = AltitudeKm(gridY);
         auto pressure = PressureAtAltitude(altitudeKm);     // (precalculate these pressures)
         auto exner = ExnerFunction(pressure);
         const float tempLapseRate = 6.5f;
         return (_airTemperature - tempLapseRate * altitudeKm) / exner;
+    }
+
+    float Troposphere::GetEquilibriumMixingRatio(float potentialTemp, unsigned gridY) const
+    {
+        auto altitudeKm = AltitudeKm(gridY);
+        auto pressure = PressureAtAltitude(altitudeKm);     // (precalculate these pressures)
+        auto exner = ExnerFunction(pressure);
+        auto T = potentialTemp * exner;
+
+            // We can calculate the partial pressure for water vapor at saturation point.
+            // Note that this pressure value is much smaller than the pressure value
+            // calculated from PressureAtAltitude because it is a "partial" pressure.
+            // It is the pressure for the vapor part only.
+            //
+            // (Here the pressure is calculated assuming all air is dry air, 
+            // but it's not clear if that has a big impact). At this saturation
+            // point, condensation can start to occur. And condensation is what we're
+            // interested in!
+            //
+            // It would be useful if we could find a simplier relationship between
+            // this value and potentialTemp -- by precalculating any terms that are
+            // only dependent on the pressure (which is constant with altitude).
+            //
+            // See https://en.wikipedia.org/wiki/Clausius%E2%80%93Clapeyron_relation
+            // This is called the August-Roche-Magnus formula.
+            //
+            // Note that this is very slightly different from the Harris' paper.
+            // I'm using the equation from wikipedia, which gives a result in hectopascals.
+            //
+            // See also http://www.vaisala.com/Vaisala%20Documents/Application%20notes/Humidity_Conversion_Formulas_B210973EN-F.pdf
+            // ("HUMIDITY CONVERSION FORMULAS") for an alternative formula.
+            //
+            //      (in pascals)
+        // auto saturationPressure = 100.f * 6.1094f * XlExp((17.625f * T) / (T + 243.04f));
+            // using (x+b)/(x+b+c) == 1 - c/(x+b+c)
+            //  (17.625f * T) / (T + 243.04f) == 17.625f - 4283.58f / (T - 30.11)
+            // using c * exp(e) = exp(e + ln(c)),  for positive c
+        auto saturationPressure = XlExp(24.04f - 4283.58f / (T - 30.11f));
+        // auto saturationPressure = 27570129378.f / XlExp(4283.58f / (T - 30.11f));
+        // auto saturationPressure = 610.94f * std::pow(XlExp(1.f - 243.04f / (T - 30.11f)), 17.625f);
+
+        #if defined(_DEBUG)
+            auto Tc = KelvinToCelsius(potentialTemp * exner);
+            auto oldSaturationPressure = 100.f * 6.1094f * XlExp((17.625f * Tc) / (Tc + 243.04f));
+            assert(Equivalent(saturationPressure, oldSaturationPressure, oldSaturationPressure/1000.f));   // floating point inaccuracies put it a bit off
+        #endif
+
+            // We can use this to calculate the equilibrium point for the vapour mixing
+            // ratio. 
+            // However -- this might be a little inaccurate because it relies on our
+            // calculation of the pressure from PressureAtAltitude. And that doesn't
+            // take into account the humidity (which might be changing as a result of
+            // the condensating occuring?)
+                    
+            //      The following is derived from
+            //      ws  = es / (p - es) . Rd/Rv
+            //          = (-p / (es-p) - 1) . Rd/Rv
+            //          = c.(p / (p-es) - 1), where c = Rd/Rv ~= 0.622
+            //      (see http://www.geog.ucsb.edu/~joel/g266_s10/lecture_notes/chapt03/oh10_3_01/oh10_3_01.html)
+            //      It seems that a common approximation is just to ignore the es in
+            //      the denominator of the first equation (since it should be small compared to total
+            //      pressure). But that seems like a minor optimisation? Why not use the full equation?
+
+        const auto Rd = 287.058f;  // in J . kg^-1 . K^-1. Specific gas constant for dry air
+        const auto Rv = 461.495f;  // in J . kg^-1 . K^-1. Specific gas constant for water vapor
+        const auto gasConstantRatio = Rd/Rv;   // ~0.622f;
+        // return gasConstantRatio * (pressure / (pressure-saturationPressure) - 1.f);
+        return gasConstantRatio * saturationPressure/(pressure-saturationPressure);
+    }
+
+    float Troposphere::GetPotentialTemperatureRelease(unsigned gridY) const
+    {
+            // Returns the potential temperature released during condensation
+            // This is the temperature change when water vapor condenses.
+            // We know the latent "heat" that is released -- but we can convert
+            // that into temperature by using the heat capacity of dry air.
+        auto pressure = PressureAtAltitude(AltitudeKm(gridY));
+        auto exner = ExnerFunction(pressure);
+
+            // Note --  the "latentHeatOfVaporization" value in Harris' paper
+            //          maybe incorrect. It looks like it was using the wrong units
+            //          (kilojoules instead of joules)
+
+            // We need to calculate the exner function for this calculation, as well
+            // But the exner function is constant for each altitude -- so we could
+            // just precalculate it for every gridY
+        const auto latentHeatOfVaporization = 2260.f * 1000.f;  // in J . kg^-1 for water at 0 degrees celsius
+        const auto cp = 1005.f;                                 // in J . kg^-1 . K^-1. heat capacity of dry air at constant pressure
+        return (latentHeatOfVaporization / cp) / exner;
     }
 
     float Troposphere::AltitudeKm(unsigned gridY) const
@@ -169,6 +248,7 @@ namespace SceneEngine
         UInt2 _dimsWithBorder;
         unsigned _N;
         float _time;
+        Float2 _mouseHover;
 
         PoissonSolver _poissonSolver;
 
@@ -236,15 +316,35 @@ namespace SceneEngine
         for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
             for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
                 
-                    //
-                    // As described by Harris, we will ignore the effect of local
-                    // pressure changes, and use his equation (2.10)
-                    //
                 const auto i = y*dims[0]+x;
                 auto potentialTemp = potTempT1[i];
                 auto vapourMixingRatio = qvT1[i];
                 auto condensationMixingRatio = qcT1[i];
-
+                    
+                    //
+                    // We must calculate a buoyancy force for the parcel of air. We're going
+                    // to use an equation that calculates the buoyancy from the temperature
+                    // (relative to the ambient temperature). Our basic equation for buoyancy
+                    // will be:
+                    //      B = g * (T - T0) / T0
+                    //      where T is the temperature, and T0 is the ambient temperature
+                    //
+                    // This is slightly different from what Harris uses in his paper:
+                    //      B = g * T / T0
+                    //
+                    // Since temperature and potential temperature are proportional to each
+                    // other, they can be used interchangeable (in other words, the "Exner" function
+                    // factors out of the equation).
+                    //
+                    // T0 should be the temperature of the air that the parcel is "submerged" in.
+                    // We will use the starting ambient temperature for T0.
+                    //
+                    // see:
+                    //  http://www.iac.ethz.ch/edu/courses/bachelor/vertiefung/atmospheric_physics/Slides_2012/buoyancy.pdf
+                    //  http://storm.colorado.edu/~dcn/ATOC5050/lectures/06_ThermoStabilty.pdf
+                    //
+                    // The "g" value is calibrated for dry air. But we can use the "virtual temperature"
+                    // to get a result for moist air.
                     //
                     // In atmosphere thermodynamics, the "virtual temperature" of a parcel of air
                     // is a concept that allows us to simplify some equations. Given a "moist" packet
@@ -259,49 +359,25 @@ namespace SceneEngine
                     //
                     //  see also -- https://en.wikipedia.org/wiki/Virtual_temperature
                     //
-                    // The "potential temperature" of a parcel is proportional to the "temperature"
-                    // of that parcel.
-                    // and, since
-                    //  virtual temperature ~= T . (1 + 0.61qv)
-                    // we can apply the same equation to the potential temperature.
+                const auto ambientPotTemp = _pimpl->_troposphere.GetPotentialTemperature(y);
+
+                    // Our basic equation:
+                    //  B0 = (VT - T0) / T0
                     //
-                auto virtualPotentialTemp = 
-                    potentialTemp * (1.f + 0.61f * vapourMixingRatio);
-
-                auto altitudeKm = _pimpl->_troposphere.AltitudeKm(y);
-                auto pressure = PressureAtAltitude(altitudeKm);     // (precalculate these pressures)
-                auto exner = ExnerFunction(pressure);
-                const auto referenceVirtualPotentialTemperature = 295.f / exner;
-
-                    //
-                    // As per Harris, we use the condenstation mixing ratio for the "hydrometeors" mixing
-                    // ratio here. Note that this final equation is similar to our simple smoke buoyancy
-                    //  --  the force up is linear against temperatures and density of particles 
-                    //      in the air
-                    // We need to scale the velocity according the scaling system of our grid. In the CFD
-                    // system, coordinates are in grid units. 
-                    // 
-                // auto B = 
-                //     g * (virtualPotentialTemp / referenceVirtualPotentialTemperature - condensationMixingRatio);
-                // B /= zScale;
-                // 
-                //     // B is now our buoyant force per unit mass -- so it is just our acceleration.
-                // velVSrc[i] -= B;
-                (void)virtualPotentialTemp; (void)referenceVirtualPotentialTemperature; (void)condensationMixingRatio;
-
-                const auto temp = potentialTemp * exner;
-                const auto ambientTemperature = _pimpl->_troposphere.GetPotentialTemperature(UInt2(x, y)) * exner;
-
-                // VT = T * (1 + 0.61f * qv)
-                // TB = (VT - AT) / AT
-                // TB = VT / AT - 1
-                // TB = T/AT - 1 + 0.61f * T / AT * qv
-                // auto virtualTemperature = temp * (1.f + 0.61f * vapourMixingRatio);
-                // auto temperatureBuoyancy = (virtualTemperature - ambientTemperature) / ambientTemperature;
-                auto temperatureBuoyancy = (temp/ambientTemperature) * (1.f + 0.61f * vapourMixingRatio) - 1.f;
-                auto B = g * (temperatureBuoyancy * settings._buoyancyAlpha - condensationMixingRatio * settings._buoyancyBeta);
+                    // We can simplify this a little bit to:
+                    //  VT = T * (1 + 0.61 * qv)
+                    //  B0 = (VT - T0) / T0
+                    //     = VT / T0 - 1
+                    //     = T/T0 - 1 + 0.61 * T / T0 * qv
+                    //     = T/T0 * (1 + 0.61 * qv)  - 1
+                auto B0 = (potentialTemp/ambientPotTemp) * (1.f + 0.61f * vapourMixingRatio) - 1.f;
+                auto B = g * (B0 * settings._buoyancyAlpha - condensationMixingRatio * settings._buoyancyBeta);
                 velVSrc[i] += B / zScale;
+
             }
+
+        static float tempDissipate = 0.998f;
+        static float velDissipate = 0.97f; 
 
         for (unsigned c=0; c<N; ++c) {
             velUT0[c] = velUT1[c];
@@ -309,22 +385,52 @@ namespace SceneEngine
             velUWorking[c] = velUT1[c] + dt * velUSrc[c];
             velVWorking[c] = velVT1[c] + dt * velVSrc[c];
 
-            qcWorking[c] = qcT1[c]; //  + dt * qcSrc[c];
+            qcWorking[c] = qcT1[c];
             qvWorking[c] = qvT1[c] + dt * qvSrc[c];
-            potTempWorking[c] = potTempT1[c]; // + dt * temperatureSrc[c];
+            potTempWorking[c] = potTempT1[c];
+
+                // In theory, the diffusion is the only kind of dissipation we should have for these
+                // properties. But when we're wrapping around the edges, we will probably need some
+                // extra artifical dissipation to a cycling that just gets stronger and stronger.
+            const auto ambientPotTemp = _pimpl->_troposphere.GetPotentialTemperature(c/_pimpl->_dimsWithBorder[0]);
+            potTempWorking[c] = LinearInterpolate(ambientPotTemp, potTempWorking[c], tempDissipate);
+            velUWorking[c] *= velDissipate;
+            velVWorking[c] *= velDissipate;
         }
+
+        const unsigned marginFlags = 0;
+        const bool wrapEdges = true;
+        _pimpl->_velocityDiffusion.Execute(
+            _pimpl->_poissonSolver,
+            VectorField2D(&velUWorking, &velVWorking, _pimpl->_dimsWithBorder),
+            settings._viscosity, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, marginFlags, wrapEdges, "Velocity");
+
+        _pimpl->_condensedDiffusion.Execute(
+            _pimpl->_poissonSolver,
+            ScalarField2D(&qcWorking, _pimpl->_dimsWithBorder),
+            settings._condensedDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, marginFlags, wrapEdges, "Condensed");
+
+        _pimpl->_vaporDiffusion.Execute(
+            _pimpl->_poissonSolver,
+            ScalarField2D(&qvWorking, _pimpl->_dimsWithBorder),
+            settings._vaporDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, marginFlags, wrapEdges, "Vapor");
+
+        _pimpl->_temperatureDiffusion.Execute(
+            _pimpl->_poissonSolver,
+            ScalarField2D(&potTempWorking, _pimpl->_dimsWithBorder),
+            settings._temperatureDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, marginFlags, wrapEdges, "Temperature");
 
             // Fill in the bottom row with vapor and temperature entering
             // from landscape below
             // up is +Y, so bottom most row is row 0
-        static Float2 v_scale = Float2(16.f, 5.f);
-        static float v_amp = 0.0001f;
+        static Float2 v_scale = Float2(39.5f, 2.4f);
+        static float v_amp = 0.0025f;        // for reference 20g/kg is a very high value for qv, as you might find in the tropics (see Atmospheric Science: An Introductory Survey, pg 80)
         static float v_gain = 0.55f;
         static float v_lacunarity = 2.1042f;
         static unsigned v_octaves = 4;
-        static Float2 t_scale = Float2(20.f, 4.5f);
-        static float t_amp = 10.f;
-        static float t_gain = 0.55f;
+        static Float2 t_scale = Float2(32.3f, 3.5f);
+        static float t_amp = 12.5f;
+        static float t_gain = 0.45f;
         static float t_lacunarity = 2.1042f;
         static unsigned t_octaves = 4;
         for (unsigned x=1; x<_pimpl->_dimsWithBorder[0]-1; ++x) {
@@ -335,21 +441,30 @@ namespace SceneEngine
                 Float2(float(x) / t_scale[0], _pimpl->_time / t_scale[1]),
                 1.f, t_gain, t_lacunarity, t_octaves);
 
-            qvWorking[x] = _pimpl->_troposphere.GetVaporMixingRatio(UInt2(x, 0));
-            qvWorking[x] += (0.5f + 0.5f * vaporNoiseValue) * v_amp;
-            potTempWorking[x] = _pimpl->_troposphere.GetPotentialTemperature(UInt2(x, 0));
-            potTempWorking[x] += (0.5f + 0.5f * tempNoiseValue) * t_amp;
+            qvWorking[x] = _pimpl->_troposphere.GetVaporMixingRatio(0);
+            qvWorking[x] += std::max(0.f, vaporNoiseValue) * v_amp;
+            potTempWorking[x] = _pimpl->_troposphere.GetPotentialTemperature(0);
+            potTempWorking[x] += std::max(0.f, tempNoiseValue) * t_amp;
+            velUWorking[x] = 0.f;
+            velVWorking[x] = 0.f;
+            qcWorking[x] = 0.f;
+
+            qvT1[x] = qvWorking[x];
+            potTempT1[x] = potTempWorking[x];
+            velUT1[x] = velUWorking[x];
+            velVT1[x] = velVWorking[x];
+            qcT1[x] = qcWorking[x];
+
+            const auto i2 = (_pimpl->_dimsWithBorder[1]-1)*_pimpl->_dimsWithBorder[0]+x;
+            velUT1[x] = velUWorking[i2] = 0.f;
+            velVT1[x] = velVWorking[i2] = 0.f;
+            qcT1[x] = qcWorking[i2] = 0.f;
         }
-
-        _pimpl->_velocityDiffusion.Execute(
-            _pimpl->_poissonSolver,
-            VectorField2D(&velUWorking, &velVWorking, _pimpl->_dimsWithBorder),
-            settings._viscosity, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, ~0u, false, "Velocity");
-
+        
         AdvectionSettings advSettings {
             (AdvectionMethod)settings._advectionMethod, 
             (AdvectionInterp)settings._interpolationMethod, settings._advectionSteps,
-            AdvectionBorder::Margin, AdvectionBorder::Margin, AdvectionBorder::Margin
+            AdvectionBorder::Wrap, AdvectionBorder::None, AdvectionBorder::Margin
         };
         PerformAdvection(
             VectorField2D(&velUT1,      &velVT1,        _pimpl->_dimsWithBorder),
@@ -358,13 +473,13 @@ namespace SceneEngine
             VectorField2D(&velUWorking, &velVWorking,   _pimpl->_dimsWithBorder),
             deltaTime, advSettings);
         
-        ReflectUBorder2D(velUT1, _pimpl->_dimsWithBorder, ~0u);
-        ReflectVBorder2D(velVT1, _pimpl->_dimsWithBorder, ~0u);
+        ReflectUBorder2D(velUT1, _pimpl->_dimsWithBorder, marginFlags);
+        ReflectVBorder2D(velVT1, _pimpl->_dimsWithBorder, marginFlags);
         _pimpl->_incompressibility.Execute(
             _pimpl->_poissonSolver,
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
             (PoissonSolver::Method)settings._enforceIncompressibilityMethod,
-            ~0u, false);
+            marginFlags, true);
 
             // note -- advection of all 3 of these properties should be very
             // similar, since the velocity field doesn't change. Rather that 
@@ -374,32 +489,18 @@ namespace SceneEngine
             // while advecting velocity -- it's unclear how that would change
             // the result (especially since that advection happens before we
             // enforce incompressibility).
-        _pimpl->_condensedDiffusion.Execute(
-            _pimpl->_poissonSolver,
-            ScalarField2D(&qcWorking, _pimpl->_dimsWithBorder),
-            settings._condensedDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, ~0u, false, "Condensed");
         PerformAdvection(
             ScalarField2D(&qcT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&qcWorking, _pimpl->_dimsWithBorder),
             VectorField2D(&velUT0, &velVT0, _pimpl->_dimsWithBorder),
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
             deltaTime, advSettings);
-
-        _pimpl->_vaporDiffusion.Execute(
-            _pimpl->_poissonSolver,
-            ScalarField2D(&qvWorking, _pimpl->_dimsWithBorder),
-            settings._vaporDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, ~0u, false, "Vapor");
         PerformAdvection(
             ScalarField2D(&qvT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&qvWorking, _pimpl->_dimsWithBorder),
             VectorField2D(&velUT0, &velVT0, _pimpl->_dimsWithBorder),
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
             deltaTime, advSettings);
-
-        _pimpl->_temperatureDiffusion.Execute(
-            _pimpl->_poissonSolver,
-            ScalarField2D(&potTempWorking, _pimpl->_dimsWithBorder),
-            settings._temperatureDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, ~0u, false, "Temperature");
         PerformAdvection(
             ScalarField2D(&potTempT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&potTempWorking, _pimpl->_dimsWithBorder),
@@ -412,70 +513,24 @@ namespace SceneEngine
         for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
             for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
 
+                    //
                     // When the water vapour mixing ratio exceeds a certain point, condensation
-                    // may occur. This point is called the saturation point. It depends on
-                    // the temperature of the parcel.
+                    // may occur. This point is called the equilibrium point. It depends on
+                    // the temperature of the parcel. If any vapor condenses, we must release some
+                    // latent heat into surrounding the atmosphere.
+                    //
+                    // So there are 2 controlling variables here:
+                    //  * equilibrium mixing ratio -- the threshold at which vapor starts to condense
+                    //  * potential temperature release -- how much potential temperature is released on condensation
+                    //
 
                 const auto i = y*dims[0]+x;
                 auto& potentialTemp = potTempT1[i];
                 auto& vapourMixingRatio = qvT1[i];
                 auto& condensationMixingRatio = qcT1[i];
 
-                    // There are a lot of constants here... Maybe there is a better
-                    // way to express this equation?
-
-                auto altitudeKm = _pimpl->_troposphere.AltitudeKm(y);
-                auto pressure = PressureAtAltitude(altitudeKm);     // (precalculate these pressures)
-                auto exner = ExnerFunction(pressure);
-                auto T = KelvinToCelsius(potentialTemp * exner);
-
-                    // We can calculate the partial pressure for water vapor at saturation point.
-                    // Note that this pressure value is much smaller than the pressure value
-                    // calculated from PressureAtAltitude because it is a "partial" pressure.
-                    // It is the pressure for the vapor part only.
-                    //
-                    // (Here the pressure is calculated assuming all air is dry air, 
-                    // but it's not clear if that has a big impact). At this saturation
-                    // point, condensation can start to occur. And condensation is what we're
-                    // interested in!
-                    //
-                    // It would be useful if we could find a simplier relationship between
-                    // this value and potentialTemp -- by precalculating any terms that are
-                    // only dependent on the pressure (which is constant with altitude).
-                    //
-                    // See https://en.wikipedia.org/wiki/Clausius%E2%80%93Clapeyron_relation
-                    // This is called the August-Roche-Magnus formula.
-                    //
-                    // Note that this is very slightly different from the Harris' paper.
-                    // I'm using the equation from wikipedia, which gives a result in hectopascals.
-                    //
-                    // See also http://www.vaisala.com/Vaisala%20Documents/Application%20notes/Humidity_Conversion_Formulas_B210973EN-F.pdf
-                    // ("HUMIDITY CONVERSION FORMULAS") for an alternative formula.
-                    //
-                    //      (in pascals)
-                auto saturationPressure = 100.f * 6.1094f * XlExp((17.625f * T) / (T + 243.04f));
-
-                    // We can use this to calculate the equilibrium point for the vapour mixing
-                    // ratio. 
-                    // However -- this might be a little inaccurate because it relies on our
-                    // calculation of the pressure from PressureAtAltitude. And that doesn't
-                    // take into account the humidity (which might be changing as a result of
-                    // the condensating occuring?)
-                    
-                    //      The following is derived from
-                    //      ws  = es / (p - es) . Rd/Rv
-                    //          = (-p / (es-p) - 1) . Rd/Rv
-                    //          = c.(p / (p-es) - 1), where c = Rd/Rv ~= 0.622
-                    //      (see http://www.geog.ucsb.edu/~joel/g266_s10/lecture_notes/chapt03/oh10_3_01/oh10_3_01.html)
-                    //      It seems that a common approximation is just to ignore the es in
-                    //      the denominator of the first equation (since it should be small compared to total
-                    //      pressure). But that seems like a minor optimisation? Why not use the full equation?
-
-                const auto Rd = 287.058f;  // in J . kg^-1 . K^-1. Gas constant for dry air
-                const auto Rv = 461.495f;  // in J . kg^-1 . K^-1. Gas constant for water vapor
-                const auto gasConstantRatio = Rd/Rv;   // ~0.622f;
-                float equilibriumMixingRatio = 
-                    gasConstantRatio * (pressure / (pressure-saturationPressure) - 1.f);
+                auto equilibriumMixingRatio = _pimpl->_troposphere.GetEquilibriumMixingRatio(potentialTemp, y);
+                auto potTempRelease = _pimpl->_troposphere.GetPotentialTemperatureRelease(y);
 
                     // Once we know our mixing ratio is above the equilibrium point -- how quickly should we
                     // get condensation? Delta time should be a factor here, but the integration isn't very
@@ -486,7 +541,8 @@ namespace SceneEngine
                     // the other (given that they are ratios against all other substances in the mixture).
                     // But, then again, in this simple model the condensationMixingRatio doesn't effect the 
                     // equilibriumMixingRatio equation. Only the change in temperature (which is adjusted 
-                    // here) effects the equilibriumMixingRatio.
+                    // here) effects the equilibriumMixingRatio -- which can result in oscillation in some
+                    // cases.
 
                 auto difference = vapourMixingRatio - equilibriumMixingRatio;
                 auto deltaCondensation = std::min(1.f, deltaTime * settings._condensationSpeed) * difference;
@@ -495,17 +551,21 @@ namespace SceneEngine
                 condensationMixingRatio += deltaCondensation;
 
                     // Delta condensation should effect the temperature, as well
-                    // When water vapour condenses, it releases its latent heat.
+                    // When water vapour condenses, it releases its latent heat (this is heat
+                    // that was absorbed when the vapor was originally evaporated).
+                    //
                     // Note that the change in temperature will change the equilibrium
-                    // mixing ratio (for the next update).
-
-                    // Note -- "latentHeatOfVaporization" value comes from Harris' paper.
-                    //          But we should check this. It appears that the units may be
-                    //          out in that paper. It maybe should be 2.5 x 10^6, or thereabouts?
-
-                const auto latentHeatOfVaporization = 2260.f * 1000.f;  // in J . kg^-1 for water at 0 degrees celsius
-                const auto cp = 1005.f;                                 // in J . kg^-1 . K^-1. heat capacity of dry air at constant pressure
-                auto deltaPotTemp = latentHeatOfVaporization / (cp * exner) * deltaCondensation;
+                    // mixing ratio (for the next update). And it will also effect buoyancy.
+                    // So the heat change should have an important effect on the dynamics of
+                    // the system.
+                    //
+                    // We have to be careful, because this can make conversion from vapor to
+                    // condensed back to vapor unstable (which can cause rapid fluxuations back
+                    // and forth). To avoid this, we adjust the conversion points and maybe
+                    // leak some heat so that less heat is absorbed when cloud is evaporating
+                    // back into vapor.
+                                    
+                auto deltaPotTemp = potTempRelease * deltaCondensation;
                 potentialTemp += deltaPotTemp * settings._temperatureChangeSpeed;
             }
 
@@ -566,7 +626,7 @@ namespace SceneEngine
             // the referenceVirtualPotentialTemperature. So we can just the 
             // amount of bouyancy by changing this number.
         const auto g = 9.81f / 1000.f;  // (in km/second)
-        const auto ambientTemperature = CelsiusToKelvin(23.f);
+        const auto ambientTemperature = CelsiusToKelvin(15.f);
 
         const auto zScale = _pimpl->_troposphere.ZScale();
 
@@ -884,6 +944,11 @@ namespace SceneEngine
         }
     }
 
+    void CloudsForm2D::OnMouseMove(Float2 coords)
+    {
+        _pimpl->_mouseHover = coords;
+    }
+
     UInt2 CloudsForm2D::GetDimensions() const { return _pimpl->_dimsWithBorder; }
 
     CloudsForm2D::CloudsForm2D(UInt2 dimensions)
@@ -894,6 +959,7 @@ namespace SceneEngine
         auto N = _pimpl->_dimsWithBorder[0] * _pimpl->_dimsWithBorder[1];
         _pimpl->_N = N;
         _pimpl->_time = 0.f;
+        _pimpl->_mouseHover = Float2(0.f, 0.f);
 
         for (unsigned c=0; c<dimof(_pimpl->_velU); ++c) {
             _pimpl->_velU[c] = VectorX(N);
@@ -902,10 +968,10 @@ namespace SceneEngine
             _pimpl->_velV[c].fill(0.f);
         }
 
-        const float airTemp = CelsiusToKelvin(23.f);
-        const auto relativeHumidity = .95f;
-        const float altitudeMinKm = 0.5f;
-        const float altitudeMaxKm = 1.5f;
+        const float airTemp = CelsiusToKelvin(15.f);
+        const auto relativeHumidity = .75f;
+        const float altitudeMinKm = 1.5f;
+        const float altitudeMaxKm = 2.5f;
         _pimpl->_troposphere = Troposphere(_pimpl->_dimsWithBorder, altitudeMinKm, altitudeMaxKm, airTemp, relativeHumidity);
         
         for (unsigned c=0; c<dimof(_pimpl->_vaporMixingRatio); ++c) {
@@ -926,8 +992,8 @@ namespace SceneEngine
             for (unsigned y=0; y<dims[1]; ++y)
                 for (unsigned x=0; x<dims[0]; ++x) {
                     auto i = y*dims[0]+x;
-                    _pimpl->_potentialTemperature[c][i] = _pimpl->_troposphere.GetPotentialTemperature(UInt2(x, y));
-                    _pimpl->_vaporMixingRatio[c][i] = _pimpl->_troposphere.GetVaporMixingRatio(UInt2(x, y));
+                    _pimpl->_potentialTemperature[c][i] = _pimpl->_troposphere.GetPotentialTemperature(y);
+                    _pimpl->_vaporMixingRatio[c][i] = _pimpl->_troposphere.GetVaporMixingRatio(y);
 
                         // Starting with zero condensation... But we could initialise
                         // with with a noise field; just to get started.
@@ -947,16 +1013,137 @@ namespace SceneEngine
         _condensedDiffusionRate = 0.f;
         _vaporDiffusionRate = 0.4f;
         _temperatureDiffusionRate = 10.f;
-        _diffusionMethod = 0;
+        _diffusionMethod = 1;
         _advectionMethod = 3;
         _advectionSteps = 4;
-        _enforceIncompressibilityMethod = 0;
+        _enforceIncompressibilityMethod = 1;
         _vorticityConfinement = 0.1f;
         _interpolationMethod = 0;
-        _buoyancyAlpha = 1.f;
-        _buoyancyBeta = 1.f;
-        _condensationSpeed = 5.f;
+        _buoyancyAlpha = 200.f;
+        _buoyancyBeta = 200.f;
+        _condensationSpeed = 20.f;
         _temperatureChangeSpeed = 1.f;
+    }
+}
+
+#include "../RenderOverlays/OverlayContext.h"
+#include "../RenderOverlays/DebuggingDisplay.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../Utility/StringFormat.h"
+
+namespace SceneEngine
+{
+    class WidgetResources
+    {
+    public:
+        class Desc {};
+        intrusive_ptr<RenderOverlays::Font> _font;
+        WidgetResources(const Desc&);
+    };
+
+    WidgetResources::WidgetResources(const Desc&)
+    {
+        _font = RenderOverlays::GetX2Font("PoiretOne", 20u);
+    }
+
+    void CloudsForm2D::RenderWidgets(
+        RenderCore::IThreadContext* context, 
+        const RenderCore::Techniques::ProjectionDesc& projDesc)
+    {
+        using namespace RenderOverlays;
+        using namespace RenderOverlays::DebuggingDisplay;
+
+        auto overlayContext = std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>(
+			(ImmediateOverlayContext*)XlMemAlign(sizeof(ImmediateOverlayContext), 16));
+		#pragma push_macro("new")
+		#undef new
+			new(overlayContext.get()) ImmediateOverlayContext(context, projDesc);
+		#pragma pop_macro("new")
+
+        overlayContext->CaptureState();
+
+
+        TRY {
+
+            auto maxCoords = context->GetStateDesc()._viewportDimensions;
+            Rect rect(Coord2(0,0), maxCoords);
+            Layout completeLayout(rect);
+
+            auto& res = RenderCore::Techniques::FindCachedBox2<WidgetResources>();
+            TextStyle textStyle(*res._font);
+            const auto lineHeight = 20u;
+
+            UInt2 gridCoords(
+                Clamp(unsigned(_pimpl->_mouseHover[0]), 0u, _pimpl->_dimsWithBorder[0]-1),
+                Clamp(unsigned(_pimpl->_mouseHover[1]), 0u, _pimpl->_dimsWithBorder[1]-1));
+            DrawText(
+                overlayContext.get(),
+                completeLayout.AllocateFullWidth(lineHeight),
+                1.f, &textStyle, ColorB(0xffffffff),
+                StringMeld<256>() << "At coords: " << gridCoords[0] << ", " << gridCoords[1]);
+
+            const auto i = gridCoords[1]*_pimpl->_dimsWithBorder[0]+gridCoords[0];
+            const auto qv = _pimpl->_vaporMixingRatio[1][i];
+            const auto qc = _pimpl->_condensedMixingRatio[1][i];
+            const auto potTemp = _pimpl->_potentialTemperature[1][i];
+            const float equilibiriumVapor = _pimpl->_troposphere.GetEquilibriumMixingRatio(potTemp, gridCoords[1]);
+            const float ambientTheta = _pimpl->_troposphere.GetPotentialTemperature(gridCoords[1]);
+            const float ambientEquilib = _pimpl->_troposphere.GetEquilibriumMixingRatio(
+                _pimpl->_troposphere.GetPotentialTemperature(gridCoords[1]), gridCoords[1]);
+            DrawText(
+                overlayContext.get(),
+                completeLayout.AllocateFullWidth(lineHeight),
+                1.f, &textStyle, ColorB(0xffffffff),
+                StringMeld<256>() << "Vapour: " << qv << " Amb: " << _pimpl->_troposphere.GetVaporMixingRatio(gridCoords[1]));
+            DrawText(
+                overlayContext.get(),
+                completeLayout.AllocateFullWidth(lineHeight),
+                1.f, &textStyle, ColorB(0xffffffff),
+                StringMeld<256>() << "%Equilib: " << 100.f * qv / equilibiriumVapor << "% RH: " << 100.f * qv / ambientEquilib << "%");
+            DrawText(
+                overlayContext.get(),
+                completeLayout.AllocateFullWidth(lineHeight),
+                1.f, &textStyle, ColorB(0xffffffff),
+                StringMeld<256>() << "Condensed: " << qc);
+            DrawText(
+                overlayContext.get(),
+                completeLayout.AllocateFullWidth(lineHeight),
+                1.f, &textStyle, ColorB(0xffffffff),
+                StringMeld<256>() << "Theta: " << KelvinToCelsius(potTemp) << " Buoyancy: " << potTemp/ambientTheta-1.f);
+
+            DrawText(
+                overlayContext.get(),
+                completeLayout.AllocateFullWidth(lineHeight),
+                1.f, &textStyle, ColorB(0xffffffff),
+                StringMeld<256>() << "Altitude: " << _pimpl->_troposphere.AltitudeKm(gridCoords[1]));
+            DrawText(
+                overlayContext.get(),
+                completeLayout.AllocateFullWidth(lineHeight),
+                1.f, &textStyle, ColorB(0xffffffff),
+                StringMeld<256>() << "Equilibrium Vapor: " << equilibiriumVapor << " Amb: " << ambientEquilib);
+            DrawText(
+                overlayContext.get(),
+                completeLayout.AllocateFullWidth(lineHeight),
+                1.f, &textStyle, ColorB(0xffffffff),
+                StringMeld<256>() << "Temp Release: " << _pimpl->_troposphere.GetPotentialTemperatureRelease(gridCoords[1]));
+            DrawText(
+                overlayContext.get(),
+                completeLayout.AllocateFullWidth(lineHeight),
+                1.f, &textStyle, ColorB(0xffffffff),
+                StringMeld<256>() << "Ambient Theta: " << KelvinToCelsius(ambientTheta));
+            DrawText(
+                overlayContext.get(),
+                completeLayout.AllocateFullWidth(lineHeight),
+                1.f, &textStyle, ColorB(0xffffffff),
+                StringMeld<256>() 
+                    << "Pressure: " << PressureAtAltitude(_pimpl->_troposphere.AltitudeKm(gridCoords[1]))
+                    << " Exner: " << ExnerFunction(PressureAtAltitude(_pimpl->_troposphere.AltitudeKm(gridCoords[1]))));
+
+
+        } CATCH(const std::exception&) {
+        } CATCH_END
+
+        overlayContext->ReleaseState();
     }
 }
 

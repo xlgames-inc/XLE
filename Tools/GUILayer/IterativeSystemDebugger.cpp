@@ -282,15 +282,22 @@ namespace GUILayer
             RenderCore::Metal::DeviceContext&,
             SceneEngine::LightingParserContext&,
             void*)>;
+        using RenderWidgetsFn = std::function<void(
+            RenderCore::IThreadContext*,
+            const RenderCore::Techniques::ProjectionDesc&,
+            void*)>;
+
         CFDOverlay(
             std::shared_ptr<void> sim, 
             RenderFn&& renderFn,
+            RenderWidgetsFn&& renderWidgetsFn,
             Float2 dims);
         !CFDOverlay();
         ~CFDOverlay();
     private:
         clix::shared_ptr<void> _sim;
         clix::auto_ptr<RenderFn> _renderFn;
+        clix::auto_ptr<RenderWidgetsFn> _renderWidgetsFn;
         array<float>^ _worldDims;
     };
 
@@ -311,6 +318,8 @@ namespace GUILayer
         RenderCore::IThreadContext* device,
         SceneEngine::LightingParserContext& parserContext)
     {
+        if (!_renderFn) return;
+
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*device);
         Float2 worldDims = Float2(_worldDims[0], _worldDims[1]);
 
@@ -332,15 +341,20 @@ namespace GUILayer
     void CFDOverlay::RenderWidgets(
         RenderCore::IThreadContext* device,
         const RenderCore::Techniques::ProjectionDesc& projectionDesc)
-    {}
+    {
+        if (!_renderWidgetsFn) return;
+        (*_renderWidgetsFn)(device, projectionDesc, _sim.get());
+    }
 
     CFDOverlay::CFDOverlay(
         std::shared_ptr<void> sim,
         RenderFn&& renderFn,
+        RenderWidgetsFn&& renderWidgetsFn,
         Float2 dims)
     : _sim(sim)
     {
         _renderFn.reset(new RenderFn(std::move(renderFn)));
+        _renderWidgetsFn.reset(new RenderWidgetsFn(std::move(renderWidgetsFn)));
         _worldDims = gcnew array<float>(2);
         _worldDims[0] = dims[0];
         _worldDims[1] = dims[1];
@@ -363,6 +377,19 @@ namespace GUILayer
                 ((SimObject*)sim)->RenderDebugging(
                     device, parserContext, 
                     AsDebugMode(settings->ActivePreview));
+            };
+    }
+
+    template<typename SimObject>
+        static CFDOverlay::RenderWidgetsFn MakeRenderWidgetsFn()
+    {
+        return [](
+                RenderCore::IThreadContext* device,
+                const RenderCore::Techniques::ProjectionDesc& projDesc,
+                void* sim)
+            {
+                ((SimObject*)sim)->RenderWidgets(
+                    device, projDesc);
             };
     }
 
@@ -391,8 +418,10 @@ namespace GUILayer
         _pimpl->_sim->Tick(_settings->DeltaTime, *_pimpl->_settings);
     }
 
-    void CFDIterativeSystem::OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton)
+    void CFDIterativeSystem::OnMouseMove(float x, float y, float velX, float velY, unsigned mouseButton)
     {
+        if (!mouseButton) return;
+
         Float2 coords(
             _pimpl->_sim->GetDimensions()[0] * x,
             _pimpl->_sim->GetDimensions()[1] * (1.f-y));
@@ -405,13 +434,13 @@ namespace GUILayer
                 if (MagnitudeSquared(fo) <= radiusSq && x >= 0.f && y >= 0.f) {
 
                     auto c = UInt2(unsigned(x), unsigned(y));
-                    if (mouseButton == 0) {
+                    if (mouseButton & (1<<0)) {
                         _pimpl->_sim->AddDensity(c, _settings->AddDensity);
                         _pimpl->_sim->AddTemperature(c, _settings->AddTemperature);
-                    } else if (mouseButton == 2) {
+                    } else if (mouseButton & (1<<1)) {
                         _pimpl->_sim->AddDensity(c, -_settings->AddDensity);
                         _pimpl->_sim->AddTemperature(c, -_settings->AddTemperature);
-                    } else {
+                    } else if (mouseButton & (1<<2)) {
                         _pimpl->_sim->AddVelocity(c, 1.f * Float2(velX, -velY));
                     }
                 }
@@ -432,6 +461,7 @@ namespace GUILayer
         _overlay = gcnew CFDOverlay(
             _pimpl->_sim, 
             MakeRenderFn<FluidSolver>(_settings),
+            CFDOverlay::RenderWidgetsFn(),
             _pimpl->_sim->GetDimensions());
     }
 
@@ -465,11 +495,16 @@ namespace GUILayer
         _pimpl->_sim->Tick(_settings->DeltaTime, *_pimpl->_settings);
     }
 
-    void CloudsIterativeSystem::OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton)
+    void CloudsIterativeSystem::OnMouseMove(float x, float y, float velX, float velY, unsigned mouseButton)
     {
         Float2 coords(
             _pimpl->_sim->GetDimensions()[0] * x,
             _pimpl->_sim->GetDimensions()[1] * (1.f-y));
+
+        if (mouseButton == 0) {
+            _pimpl->_sim->OnMouseMove(coords);
+            return;
+        }
 
         auto radius = 4.f;
         auto radiusSq = radius*radius;
@@ -479,9 +514,9 @@ namespace GUILayer
                 if (MagnitudeSquared(fo) <= radiusSq && x >= 0.f && y >= 0.f) {
 
                     auto c = UInt2(unsigned(x), unsigned(y));
-                    if (mouseButton == 0) {
+                    if (mouseButton&(1<<0)) {
                         _pimpl->_sim->AddVapor(c, _settings->AddDensity);
-                    } else {
+                    } else if (mouseButton&(1<<1)) {
                         _pimpl->_sim->AddVelocity(c, _settings->AddVelocity * Float2(velX, -velY));
                     }
                 }
@@ -502,6 +537,7 @@ namespace GUILayer
         _overlay = gcnew CFDOverlay(
             _pimpl->_sim, 
             MakeRenderFn<CloudsForm2D>(_settings),
+            MakeRenderWidgetsFn<CloudsForm2D>(),
             _pimpl->_sim->GetDimensions());
     }
 
@@ -535,11 +571,10 @@ namespace GUILayer
         _pimpl->_sim->Tick(_settings->DeltaTime, *_pimpl->_settings);
     }
 
-    void CFD3DIterativeSystem::OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton)
+    void CFD3DIterativeSystem::OnMouseMove(float x, float y, float velX, float velY, unsigned mouseButton)
     {
-        auto dims = _pimpl->_sim->GetDimensions();
-        if (mouseButton == 0) {
-
+        if (mouseButton&(1<<0)) {
+            auto dims = _pimpl->_sim->GetDimensions();
             UInt2 coords((dims[0]*3/8)+rand()%(dims[0]/4), (dims[1]/4)+rand()%(dims[1]*3/8));
             auto radius = 3.f;
             auto radiusSq = radius*radius;
@@ -572,6 +607,7 @@ namespace GUILayer
         _overlay = gcnew CFDOverlay(
             _pimpl->_sim, 
             MakeRenderFn<FluidSolver3D>(_settings),
+            CFDOverlay::RenderWidgetsFn(),
             Truncate(_pimpl->_sim->GetDimensions()));
     }
 
@@ -605,8 +641,10 @@ namespace GUILayer
         _pimpl->_sim->Tick(*_pimpl->_settings);
     }
 
-    void CFDRefIterativeSystem::OnMouseDown(float x, float y, float velX, float velY, unsigned mouseButton)
+    void CFDRefIterativeSystem::OnMouseMove(float x, float y, float velX, float velY, unsigned mouseButton)
     {
+        if (!mouseButton) return;
+
         Float2 coords(
             _pimpl->_sim->GetDimensions()[0] * x,
             _pimpl->_sim->GetDimensions()[1] * (1.f-y));
@@ -619,11 +657,11 @@ namespace GUILayer
                 if (MagnitudeSquared(fo) <= radiusSq && x >= 0.f && y >= 0.f) {
 
                     auto c = UInt2(unsigned(x), unsigned(y));
-                    if (mouseButton == 0) {
+                    if (mouseButton & (1<<0)) {
                         _pimpl->_sim->AddDensity(c, 1.f);
-                    } else if (mouseButton == 2) {
+                    } else if (mouseButton & (1<<1)) {
                         _pimpl->_sim->AddDensity(c, -1.f);
-                    } else {
+                    } else if (mouseButton & (1<<2)) {
                         _pimpl->_sim->AddVelocity(c, 1.f * Float2(velX, -velY));
                     }
                 }
@@ -644,6 +682,7 @@ namespace GUILayer
         _overlay = gcnew CFDOverlay(
             _pimpl->_sim, 
             MakeRenderFn<RefFluidSolver>(_settings),
+            CFDOverlay::RenderWidgetsFn(),
             _pimpl->_sim->GetDimensions());
     }
 

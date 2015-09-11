@@ -8,7 +8,10 @@
 
 #include "Fluid.h"  // only for FluidDebuggingMode
 #include "../RenderCore/Metal/Forward.h"
+#include "../RenderCore/IThreadContext_Forward.h"
 #include "../Math/Vector.h"
+
+namespace RenderCore { namespace Techniques { class ProjectionDesc; }}
 
 namespace SceneEngine
 {
@@ -47,6 +50,7 @@ namespace SceneEngine
         void Tick(float deltaTime, const Settings& settings);
         void AddVapor(UInt2 coords, float amount);
         void AddVelocity(UInt2 coords, Float2 vel);
+        void OnMouseMove(Float2 coords);
 
         UInt2 GetDimensions() const;
 
@@ -54,6 +58,10 @@ namespace SceneEngine
             RenderCore::Metal::DeviceContext& metalContext,
             LightingParserContext& parserContext,
             FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
+
+        void RenderWidgets(
+            RenderCore::IThreadContext* context, 
+            const RenderCore::Techniques::ProjectionDesc& projDesc);
 
         CloudsForm2D(UInt2 dimensions);
         ~CloudsForm2D();
