@@ -94,6 +94,18 @@
 
         <scea.dom.editors.attribute category="Condensation" name="CondensationSpeed" displayName="CondensationSpeed"/>
         <scea.dom.editors.attribute category="Condensation" name="TemperatureChangeSpeed" displayName="TemperatureChangeSpeed"/>
+        <scea.dom.editors.attribute category="Condensation" name="EvaporateThreshold" displayName="EvaporateThreshold"/>
+      
+        <scea.dom.editors.attribute category="Inputs" name="CrossWindSpeed" displayName="CrossWindSpeed"/>
+        <scea.dom.editors.attribute category="Inputs" name="InputVapor" displayName="InputVapor"/>
+        <scea.dom.editors.attribute category="Inputs" name="InputTemperature" displayName="InputTemperature"/>
+        <scea.dom.editors.attribute category="Inputs" name="InputUpdraft" displayName="InputUpdraft"/>
+      
+        <scea.dom.editors.attribute category="Environment" name="AirTemperature" displayName="AirTemperature"/>
+        <scea.dom.editors.attribute category="Environment" name="RelativeHumidity" displayName="RelativeHumidity"/>
+        <scea.dom.editors.attribute category="Environment" name="AltitudeMin" displayName="AltitudeMin"/>
+        <scea.dom.editors.attribute category="Environment" name="AltitudeMax" displayName="AltitudeMax"/>
+        <scea.dom.editors.attribute category="Environment" name="LapseRate" displayName="LapseRate"/>
       </xs:appinfo>
     </xs:annotation>
     
@@ -111,9 +123,23 @@
     <xs:attribute name="VorticityConfinement" type="xs:float" default=".5"/>
     <xs:attribute name="BuoyancyAlpha" type="xs:float" default="1"/>
     <xs:attribute name="BuoyancyBeta" type="xs:float" default="1"/>
+    
+    <xs:attribute name="CrossWindSpeed" type="xs:float" default="1"/>
+    <xs:attribute name="InputVapor" type="xs:float" default="1"/>
+    <xs:attribute name="InputTemperature" type="xs:float" default="1"/>
+    <xs:attribute name="InputUpdraft" type="xs:float" default="1"/>
 
     <xs:attribute name="CondensationSpeed" type="xs:float" default="1"/>
     <xs:attribute name="TemperatureChangeSpeed" type="xs:float" default="1"/>
+    <xs:attribute name="EvaporateThreshold" type="xs:float" default="1"/>
+    
+    <xs:attribute name="AirTemperature" type="xs:float" default="1"/>
+    <xs:attribute name="RelativeHumidity" type="xs:float" default="1"/>
+    <xs:attribute name="AltitudeMin" type="xs:float" default="1"/>
+    <xs:attribute name="AltitudeMax" type="xs:float" default="1"/>
+    <xs:attribute name="LapseRate" type="xs:float" default="1"/>
+  
+
   </xs:complexType>
 
 </xs:schema>

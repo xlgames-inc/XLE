@@ -40,9 +40,23 @@ namespace SceneEngine
             float       _buoyancyAlpha;
             float       _buoyancyBeta;
 
+                // inputs
+            float       _crossWindSpeed;
+            float       _inputVapor;
+            float       _inputTemperature;
+            float       _inputUpdraft;
+
                 // condensation
             float       _condensationSpeed;
             float       _temperatureChangeSpeed;
+            float       _evaporateThreshold;
+
+                // environment
+            float       _airTemperature;    // Kelvin
+            float       _relativeHumidity;
+            float       _altitudeMin;       // KM
+            float       _altitudeMax;       // KM
+            float       _lapseRate;         // Kelvin/KM
 
             Settings();
         };

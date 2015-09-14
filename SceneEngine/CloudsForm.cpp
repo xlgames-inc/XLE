@@ -16,12 +16,15 @@ namespace SceneEngine
     static float KelvinToCelsius(float kelvin) { return kelvin - 273.15f; }
     static float CelsiusToKelvin(float celius) { return celius + 273.15f; }
 
-    static float PressureAtAltitude(float kilometers)
+    static float PressureAtAltitude(float kilometers, float lapseRate)
     {
             //
             //  Returns a value in pascals.
             //  For a given altitude, we can calculate the standard
             //  atmospheric pressure.
+            //
+            // "lapseRate" should be the temperature lapse rate in Kelvin per
+            // kilometer (usually a value between 4 and 9)
             //
             //  Actually the "wetness" of the air should affect the lapse
             //  rate... But we'll ignore that here, and assume all of the 
@@ -45,11 +48,10 @@ namespace SceneEngine
             //  see https://en.wikipedia.org/wiki/Lapse_rate
             //  The minimum value for lapse rate in the troposhere should be around 4
             //      (see http://www.iac.ethz.ch/edu/courses/bachelor/vertiefung/atmospheric_physics/Slides_2012/buoyancy.pdf)
-        const float tempLapseRate = 6.5f;
 
         // roughly: p0 * std::exp(kilometers * g / (1000.f * T0 * Rd));     (see wikipedia page)
         // see also the "hypsometric equation" equation, similar to above
-        return p0 * std::pow(1.f - kilometers * tempLapseRate / T0, g / (tempLapseRate / 1000.f * Rd));
+        return p0 * std::pow(1.f - kilometers * lapseRate / T0, g / (lapseRate / 1000.f * Rd));
     }
 
     static float ExnerFunction(float pressure)
@@ -87,11 +89,17 @@ namespace SceneEngine
         float   GetEquilibriumMixingRatio(float potentialTemp, unsigned gridY) const;
         float   GetPotentialTemperatureRelease(unsigned gridY) const;
 
+        float   AltitudeMinKm() const       { return _altitudeMin; }
+        float   AltitudeMaxKm() const       { return _altitudeMax; }
+        float   AirTemperature() const      { return _airTemperature; }
+        float   RelativeHumidity() const    { return _relativeHumidity; }
+        float   LapseRate() const           { return _lapseRate; }
+
         Troposphere(
             UInt2 gridDims,
             float altitudeMinKm, float altitudeMaxKm,
             float airTemperature,
-            float relativeHumidity);
+            float relativeHumidity, float lapseRate);
         Troposphere();
         ~Troposphere();
     private:
@@ -99,6 +107,7 @@ namespace SceneEngine
         float   _altitudeMin, _altitudeMax;
         float   _relativeHumidity;
         float   _airTemperature;
+        float   _lapseRate;
     };
 
     float Troposphere::GetVaporMixingRatio(unsigned gridY) const
@@ -110,16 +119,15 @@ namespace SceneEngine
     float Troposphere::GetPotentialTemperature(unsigned gridY) const
     {
         const auto altitudeKm = AltitudeKm(gridY);
-        auto pressure = PressureAtAltitude(altitudeKm);     // (precalculate these pressures)
+        auto pressure = PressureAtAltitude(altitudeKm, _lapseRate);     // (precalculate these pressures)
         auto exner = ExnerFunction(pressure);
-        const float tempLapseRate = 6.5f;
-        return (_airTemperature - tempLapseRate * altitudeKm) / exner;
+        return (_airTemperature - _lapseRate * altitudeKm) / exner;
     }
 
     float Troposphere::GetEquilibriumMixingRatio(float potentialTemp, unsigned gridY) const
     {
         auto altitudeKm = AltitudeKm(gridY);
-        auto pressure = PressureAtAltitude(altitudeKm);     // (precalculate these pressures)
+        auto pressure = PressureAtAltitude(altitudeKm, _lapseRate);     // (precalculate these pressures)
         auto exner = ExnerFunction(pressure);
         auto T = potentialTemp * exner;
 
@@ -190,7 +198,7 @@ namespace SceneEngine
             // This is the temperature change when water vapor condenses.
             // We know the latent "heat" that is released -- but we can convert
             // that into temperature by using the heat capacity of dry air.
-        auto pressure = PressureAtAltitude(AltitudeKm(gridY));
+        auto pressure = PressureAtAltitude(AltitudeKm(gridY), _lapseRate);
         auto exner = ExnerFunction(pressure);
 
             // Note --  the "latentHeatOfVaporization" value in Harris' paper
@@ -219,14 +227,14 @@ namespace SceneEngine
     Troposphere::Troposphere(
         UInt2 gridDims,
         float altitudeMin, float altitudeMax,
-        float airTemperature,
-        float relativeHumidity) 
+        float airTemperature, float relativeHumidity, float lapseRate)
     {
         _gridDims = gridDims;
         _altitudeMin = altitudeMin;
         _altitudeMax = altitudeMax;
         _airTemperature = airTemperature;
         _relativeHumidity = relativeHumidity;
+        _lapseRate = lapseRate;
     }
 
     Troposphere::Troposphere() {}
@@ -320,6 +328,19 @@ namespace SceneEngine
             // then the mixing ratio convergences on infinity.
             //
 
+            // (first, we need to recreate the Troposphere if the parameters have changed)
+        if (    _pimpl->_troposphere.AltitudeMinKm() != settings._altitudeMin 
+            ||  _pimpl->_troposphere.AltitudeMaxKm() != settings._altitudeMax
+            ||  _pimpl->_troposphere.AirTemperature() != settings._airTemperature 
+            ||  _pimpl->_troposphere.RelativeHumidity() != settings._relativeHumidity
+            ||  _pimpl->_troposphere.LapseRate() != settings._lapseRate) {
+
+            _pimpl->_troposphere = Troposphere(
+                _pimpl->_dimsWithoutBorder, 
+                settings._altitudeMin, settings._altitudeMax,
+                settings._airTemperature, settings._relativeHumidity, settings._lapseRate);
+        }
+
             // Vorticity confinement (additional) force
         VorticityConfinement(
             VectorField2D(&velUSrc, &velVSrc, _pimpl->_dimsWithBorder),
@@ -398,12 +419,15 @@ namespace SceneEngine
             }
 
         static float tempDissipate = 0.9985f;
-        static float vaporDissipate = 0.9985f;  // we're adding so much extra vapor into the system that we need to remove it sometimes too
-        static float velDissipate = 0.985f;
+        static float vaporDissipate = 0.95f;  // we're adding so much extra vapor into the system that we need to remove it sometimes too
+        // static float velDissipate = 0.985f;
 
-        static float zr = 100.f;
-        static float ur = 8.f; // in m/s
-        static float alpha = 1.f/7.f;
+        const float zr = 100.f;
+        const float alpha = 1.f/7.f;
+
+        static float gain = 0.55f;
+        static float lacunarity = 2.1042f;
+        static unsigned octaves = 4;
 
         for (unsigned c=0; c<N; ++c) {
             velUT0[c] = velUT1[c];
@@ -418,12 +442,12 @@ namespace SceneEngine
                 // In theory, the diffusion is the only kind of dissipation we should have for these
                 // properties. But when we're wrapping around the edges, we will probably need some
                 // extra artifical dissipation to a cycling that just gets stronger and stronger.
-            const unsigned gridY = c/_pimpl->_dimsWithBorder[0];
+            const auto gridY = c/_pimpl->_dimsWithBorder[0];
             const auto ambientPotTemp = _pimpl->_troposphere.GetPotentialTemperature(gridY);
             const auto ambientVapor = _pimpl->_troposphere.GetVaporMixingRatio(gridY);
             potTempWorking[c] = LinearInterpolate(ambientPotTemp, potTempWorking[c], tempDissipate);
             // velUWorking[c] *= velDissipate;
-            velVWorking[c] *= velDissipate;
+            // velVWorking[c] *= velDissipate;
             qvWorking[c] = LinearInterpolate(ambientVapor, qvWorking[c], vaporDissipate);
 
                 // Adjust velocity based on ambient wind
@@ -439,13 +463,18 @@ namespace SceneEngine
                 // roughness of the terrain (such as forests and hills)
 
             auto altitudeKm = _pimpl->_troposphere.AltitudeKm(gridY);
-            float windStrength = ur * std::pow(altitudeKm * 1000.f / zr, alpha);
-            windStrength *= 1.f + 0.5f * SimplexFBM(
+            auto windStrength = settings._crossWindSpeed * std::pow(altitudeKm * 1000.f / zr, alpha);
+            auto noiseValue = SimplexFBM(
                 Float2(float(gridY) / 60.f, _pimpl->_time / 5.f),
-                1.f, .55f, 2.1042f, 4);
-            windStrength = windStrength / 1000.f / zScale;      // assuming square grid -- using z scale for xy value
-            static float windFactor = 0.025f;
+                1.f, gain, lacunarity, octaves);
+            windStrength *= (0.5f + 0.5f * noiseValue) / 1000.f / zScale;      // assuming square grid -- using z scale for xy value
+            const auto windFactor = 0.025f;
             velUWorking[c] = LinearInterpolate(velUWorking[c], windStrength, windFactor);
+
+                // add a little random up/down movement as well
+            // velVWorking[c] += windStrength * 0.1f * SimplexFBM(
+            //     Float2(float(gridY) / 78.f, _pimpl->_time / 7.8f),
+            //     1.f, gain, lacunarity, octaves);
         }
 
         const auto marginFlags = 0u;
@@ -473,42 +502,44 @@ namespace SceneEngine
             // Fill in the bottom row with vapor and temperature entering
             // from landscape below
             // up is +Y, so bottom most row is row 0
-        static Float2 v_scale = Float2(39.5f, 1.6f);
-        static float v_amp = 0.005f;        // for reference 20g/kg is a very high value for qv, as you might find in the tropics (see Atmospheric Science: An Introductory Survey, pg 80)
-        static float v_gain = 0.55f;
-        static float v_lacunarity = 2.1042f;
-        static unsigned v_octaves = 4;
-        static Float2 t_scale = Float2(24.3f, 3.5f);
-        static float t_amp = 4.f;
-        static float t_gain = 0.45f;
-        static float t_lacunarity = 2.1042f;
-        static unsigned t_octaves = 4;
+        static Float2 v_scale = Float2(120.5f, 6.6f);
+        static Float2 t_scale = Float2(71.6f, 2.4f);
+        static Float2 u_scale = Float2(90.3f, 1.7f);
+
+            // for reference 20g/kg is a very high value for qv, as you might find in the tropics (see Atmospheric Science: An Introductory Survey, pg 80)
+        const auto v_amp = settings._inputVapor;
+        const auto u_amp = settings._inputUpdraft;
+        const auto t_amp = settings._inputTemperature;
         for (unsigned x=0; x<_pimpl->_dimsWithBorder[0]; ++x) {
-            float vaporNoiseValue = SimplexFBM(
+            auto vaporNoiseValue = SimplexFBM(
                 Float2(float(x) / v_scale[0], _pimpl->_time / v_scale[1]),
-                1.f, v_gain, v_lacunarity, v_octaves);
-            float tempNoiseValue = SimplexFBM(
+                1.f, gain, lacunarity, octaves);
+            auto tempNoiseValue = SimplexFBM(
                 Float2(float(x) / t_scale[0], _pimpl->_time / t_scale[1]),
-                1.f, t_gain, t_lacunarity, t_octaves);
+                1.f, gain, lacunarity, octaves);
+            auto updraftNoiseValue = SimplexFBM(
+                Float2(float(x) / u_scale[0], _pimpl->_time / u_scale[1]),
+                1.f, gain, lacunarity, octaves);
 
-            qvWorking[x] = _pimpl->_troposphere.GetVaporMixingRatio(0);
-            qvWorking[x] += std::max(0.f, vaporNoiseValue) * v_amp;
-            potTempWorking[x] = _pimpl->_troposphere.GetPotentialTemperature(0);
-            potTempWorking[x] += std::max(0.f, 0.5f + 0.5f * tempNoiseValue) * t_amp;
-            velUWorking[x] = 0.f;
-            velVWorking[x] = 0.f;
-            qcWorking[x] = 0.f;
+            qvWorking[x]  = _pimpl->_troposphere.GetVaporMixingRatio(0);
+            vaporNoiseValue -= 0.25f;
+            qvWorking[x] += std::max(0.f, vaporNoiseValue * vaporNoiseValue * vaporNoiseValue) * v_amp;
+            potTempWorking[x]  = _pimpl->_troposphere.GetPotentialTemperature(0);
+            potTempWorking[x] += tempNoiseValue * tempNoiseValue * tempNoiseValue * t_amp;
+            velUWorking[x]  = 0.f;
+            velVWorking[x] += updraftNoiseValue * updraftNoiseValue * u_amp;
+            qcWorking[x]    = 0.f;
 
-            qvT1[x] = qvWorking[x];
+            qvT1[x]   = qvWorking[x];
             potTempT1[x] = potTempWorking[x];
             velUT1[x] = velUWorking[x];
             velVT1[x] = velVWorking[x];
-            qcT1[x] = qcWorking[x];
+            qcT1[x]   = qcWorking[x];
 
             const auto i2 = (_pimpl->_dimsWithBorder[1]-1)*_pimpl->_dimsWithBorder[0]+x;
             velUT1[x] = velUWorking[i2] = 0.f;
             velVT1[x] = velVWorking[i2] = 0.f;
-            qcT1[x] = qcWorking[i2] = 0.f;
+              qcT1[x] =   qcWorking[i2] = 0.f;
 
             qvT1[i2] = qvWorking[i2] = _pimpl->_troposphere.GetVaporMixingRatio(_pimpl->_dimsWithBorder[1]-1);
             potTempT1[i2] = potTempWorking[i2] = _pimpl->_troposphere.GetPotentialTemperature(_pimpl->_dimsWithBorder[1]-1);
@@ -601,8 +632,8 @@ namespace SceneEngine
                 if (vapourMixingRatio > equilibriumMixingRatio) {
                     auto upperDifference = vapourMixingRatio - equilibriumMixingRatio;
                     deltaCondensation = std::min(1.f, settings._condensationSpeed) * upperDifference;
-                } else if (vapourMixingRatio < 0.9f * equilibriumMixingRatio) {
-                    auto lowerDifference = vapourMixingRatio - 0.9f * equilibriumMixingRatio;
+                } else if (vapourMixingRatio < settings._evaporateThreshold * equilibriumMixingRatio) {
+                    auto lowerDifference = vapourMixingRatio - settings._evaporateThreshold * equilibriumMixingRatio;
                     deltaCondensation = std::min(1.f, settings._condensationSpeed) * lowerDifference;
                     deltaCondensation = std::max(deltaCondensation, -condensationMixingRatio);
                 }
@@ -728,7 +759,8 @@ namespace SceneEngine
                     potentialTemp * (1.f + 0.61f * vapourMixingRatio);
 
                 auto altitudeKm = _pimpl->_troposphere.AltitudeKm(y);
-                auto pressure = PressureAtAltitude(altitudeKm);     // (precalculate these pressures)
+                auto lapseRate = _pimpl->_troposphere.LapseRate();
+                auto pressure = PressureAtAltitude(altitudeKm, lapseRate);     // (precalculate these pressures)
                 auto exner = ExnerFunction(pressure);
                 const auto referenceVirtualPotentialTemperature = 295.f / exner;
 
@@ -850,7 +882,8 @@ namespace SceneEngine
                     // way to express this equation?
 
                 auto altitudeKm = _pimpl->_troposphere.AltitudeKm(y);
-                auto pressure = PressureAtAltitude(altitudeKm);     // (precalculate these pressures)
+                auto lapseRate = _pimpl->_troposphere.LapseRate();
+                auto pressure = PressureAtAltitude(altitudeKm, lapseRate);     // (precalculate these pressures)
                 auto exner = ExnerFunction(pressure);
                 auto T = KelvinToCelsius(potentialTemp * exner);
 
@@ -965,7 +998,7 @@ namespace SceneEngine
     {
         static float qcMin = 0.f, qcMax = 1e-3f;
         static float qvMin = 0.f, qvMax = 1e-2f;
-        static float tMin = CelsiusToKelvin(0.f), tMax = CelsiusToKelvin(45.f);
+        static float tMin = CelsiusToKelvin(15.f), tMax = CelsiusToKelvin(32.f);
         switch (debuggingMode) {
         case FluidDebuggingMode::Density:
             RenderFluidDebugging2D(
@@ -1028,11 +1061,11 @@ namespace SceneEngine
             _pimpl->_velV[c].fill(0.f);
         }
 
-        const float airTemp = CelsiusToKelvin(15.f);
-        const auto relativeHumidity = .75f;
-        const float altitudeMinKm = 2.f;
-        const float altitudeMaxKm = 3.f;
-        _pimpl->_troposphere = Troposphere(_pimpl->_dimsWithBorder, altitudeMinKm, altitudeMaxKm, airTemp, relativeHumidity);
+        Settings defaults;
+        _pimpl->_troposphere = Troposphere(
+            _pimpl->_dimsWithBorder, 
+            defaults._altitudeMin, defaults._altitudeMax, 
+            defaults._airTemperature, defaults._relativeHumidity, defaults._lapseRate);
         
         for (unsigned c=0; c<dimof(_pimpl->_vaporMixingRatio); ++c) {
 
@@ -1079,10 +1112,22 @@ namespace SceneEngine
         _enforceIncompressibilityMethod = 1;
         _vorticityConfinement = 0.7f;
         _interpolationMethod = 0;
-        _buoyancyAlpha = 8000.f;
-        _buoyancyBeta = 350000.f;           // getting interesting results with about a 30:1 ratio with buoyancy alpha (but the ideal ratio depends on _temperatureChangeSpeed
+        _buoyancyAlpha = 1.f;
+        _buoyancyBeta = 1.f;                // getting interesting results with about a 30:1 ratio with buoyancy alpha (but the ideal ratio depends on _temperatureChangeSpeed
         _condensationSpeed = .25f;
         _temperatureChangeSpeed = 1.f;      // some interesting results when over-emphasing this effect
+
+        _crossWindSpeed = 30.f;
+        _inputVapor = 0.0001f;
+        _inputTemperature = .75f;
+        _inputUpdraft = 0.06f;
+        _evaporateThreshold = 0.95f;
+
+        _airTemperature = CelsiusToKelvin(15.f);
+        _relativeHumidity = .75f;
+        _altitudeMin = 2.f;
+        _altitudeMax = 4.f;
+        _lapseRate = 6.5f;
     }
 }
 
@@ -1196,8 +1241,8 @@ namespace SceneEngine
                 completeLayout.AllocateFullWidth(lineHeight),
                 1.f, &textStyle, ColorB(0xffffffff),
                 StringMeld<256>() 
-                    << "Pressure: " << PressureAtAltitude(_pimpl->_troposphere.AltitudeKm(gridCoords[1]))
-                    << " Exner: " << ExnerFunction(PressureAtAltitude(_pimpl->_troposphere.AltitudeKm(gridCoords[1]))));
+                    << "Pressure: " << PressureAtAltitude(_pimpl->_troposphere.AltitudeKm(gridCoords[1]), _pimpl->_troposphere.LapseRate())
+                    << " Exner: " << ExnerFunction(PressureAtAltitude(_pimpl->_troposphere.AltitudeKm(gridCoords[1]), _pimpl->_troposphere.LapseRate())));
 
 
         } CATCH(const std::exception&) {
@@ -1229,8 +1274,22 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::CloudsForm2D::Setting
         props.Add(u("BuoyancyAlpha"), DefaultGet(Obj, _buoyancyAlpha),  DefaultSet(Obj, _buoyancyAlpha));
         props.Add(u("BuoyancyBeta"), DefaultGet(Obj, _buoyancyBeta),  DefaultSet(Obj, _buoyancyBeta));
 
+        props.Add(u("CrossWindSpeed"), DefaultGet(Obj, _crossWindSpeed),  DefaultSet(Obj, _crossWindSpeed));
+        props.Add(u("InputVapor"), DefaultGet(Obj, _inputVapor),  DefaultSet(Obj, _inputVapor));
+        props.Add(u("InputTemperature"), DefaultGet(Obj, _inputTemperature),  DefaultSet(Obj, _inputTemperature));
+        props.Add(u("InputUpdraft"), DefaultGet(Obj, _inputUpdraft),  DefaultSet(Obj, _inputUpdraft));
+
         props.Add(u("CondensationSpeed"), DefaultGet(Obj, _condensationSpeed),  DefaultSet(Obj, _condensationSpeed));
         props.Add(u("TemperatureChangeSpeed"), DefaultGet(Obj, _temperatureChangeSpeed),  DefaultSet(Obj, _temperatureChangeSpeed));
+        props.Add(u("EvaporateThreshold"), DefaultGet(Obj, _evaporateThreshold),  DefaultSet(Obj, _evaporateThreshold));
+
+        props.Add(u("AirTemperature"), 
+            [](const Obj& obj) { return SceneEngine::KelvinToCelsius(obj._airTemperature); },  
+            [](Obj& obj, float value) { obj._airTemperature = SceneEngine::CelsiusToKelvin(value); });
+        props.Add(u("RelativeHumidity"), DefaultGet(Obj, _relativeHumidity),  DefaultSet(Obj, _relativeHumidity));
+        props.Add(u("AltitudeMin"), DefaultGet(Obj, _altitudeMin),  DefaultSet(Obj, _altitudeMin));
+        props.Add(u("AltitudeMax"), DefaultGet(Obj, _altitudeMax),  DefaultSet(Obj, _altitudeMax));
+        props.Add(u("LapseRate"), DefaultGet(Obj, _lapseRate),  DefaultSet(Obj, _lapseRate));
         
         init = true;
     }
