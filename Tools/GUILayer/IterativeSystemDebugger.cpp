@@ -318,7 +318,7 @@ namespace GUILayer
         RenderCore::IThreadContext* device,
         SceneEngine::LightingParserContext& parserContext)
     {
-        if (!_renderFn) return;
+        if (!(*_renderFn)) return;
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*device);
         Float2 worldDims = Float2(_worldDims[0], _worldDims[1]);
@@ -342,7 +342,7 @@ namespace GUILayer
         RenderCore::IThreadContext* device,
         const RenderCore::Techniques::ProjectionDesc& projectionDesc)
     {
-        if (!_renderWidgetsFn) return;
+        if (!(*_renderWidgetsFn)) return;
         (*_renderWidgetsFn)(device, projectionDesc, _sim.get());
     }
 

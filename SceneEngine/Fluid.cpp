@@ -203,10 +203,12 @@ namespace SceneEngine
             temperatureWorking[c] = temperatureT1[c] + dt * temperatureSrc[c];
         }
 
-        unsigned marginFlags = 0;
+        auto marginFlags = 0u;
         marginFlags |= (1<<0) * (settings._borderX == (int)AdvectionBorder::Margin);
         marginFlags |= (1<<1) * (settings._borderY == (int)AdvectionBorder::Margin);
-        bool wrapEdges = (settings._borderX == (int)AdvectionBorder::Wrap) || (settings._borderY == (int)AdvectionBorder::Wrap);
+        auto wrapEdges = 0u;
+        wrapEdges |= (1<<0) * (settings._borderX == (int)AdvectionBorder::Wrap);
+        wrapEdges |= (1<<1) * (settings._borderY == (int)AdvectionBorder::Wrap);
 
             //
             // Diffuse velocity! This is similar to other diffusion operations. 
@@ -228,7 +230,7 @@ namespace SceneEngine
             _pimpl->_poissonSolver, 
             VectorField2D(&velUWorking, &velVWorking, _pimpl->_dimsWithBorder),
             settings._viscosity, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, 
-            marginFlags, wrapEdges, "Velocity");
+            wrapEdges, "Velocity");
 
         AdvectionSettings advSettings {
             (AdvectionMethod)settings._advectionMethod, (AdvectionInterp)settings._interpolationMethod, settings._advectionSteps,
@@ -246,14 +248,14 @@ namespace SceneEngine
         _pimpl->_incompOp.Execute(
             _pimpl->_poissonSolver, 
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
-            (PoissonSolver::Method)settings._enforceIncompressibilityMethod, marginFlags, wrapEdges);
+            (PoissonSolver::Method)settings._enforceIncompressibilityMethod, wrapEdges);
 
         SmearBorder2D(densityWorking, _pimpl->_dimsWithBorder, marginFlags);
         _pimpl->_densityDiffusion.Execute(
             _pimpl->_poissonSolver, 
             ScalarField2D(&densityWorking, _pimpl->_dimsWithBorder),
             settings._diffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, 
-            marginFlags, wrapEdges, "Density");
+            wrapEdges, "Density");
         PerformAdvection(
             ScalarField2D(&densityT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&densityWorking, _pimpl->_dimsWithBorder),
@@ -266,7 +268,7 @@ namespace SceneEngine
             _pimpl->_poissonSolver, 
             ScalarField2D(&temperatureWorking, _pimpl->_dimsWithBorder),
             settings._tempDiffusion, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, 
-            marginFlags, wrapEdges, "Temperature");
+            wrapEdges, "Temperature");
         PerformAdvection(
             ScalarField2D(&temperatureT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&temperatureWorking, _pimpl->_dimsWithBorder),
@@ -583,7 +585,7 @@ namespace SceneEngine
 
     std::shared_ptr<PoissonSolver::PreparedMatrix> FluidSolver3D::Pimpl::BuildDiffusionMethod(float diffusion)
     {
-        return _poissonSolver.PrepareDiffusionMatrix(diffusion, PoissonSolver::Method::PreconCG, ~0u, false);
+        return _poissonSolver.PrepareDiffusionMatrix(diffusion, PoissonSolver::Method::PreconCG, 0u);
     }
 
     void FluidSolver3D::Pimpl::DensityDiffusion(float deltaTime, const Settings& settings)
@@ -644,7 +646,7 @@ namespace SceneEngine
         UInt3 fullDims(dimensions[0]+2, dimensions[1]+2, dimensions[2]+2);
         _pimpl->_poissonSolver = PoissonSolver(3, &fullDims[0]);
         _pimpl->_incompressibility = _pimpl->_poissonSolver.PrepareDivergenceMatrix(
-            PoissonSolver::Method::PreconCG, ~0u, false);
+            PoissonSolver::Method::PreconCG, 0u);
 
         _pimpl->_preparedDensityDiffusion = 0.f;
         _pimpl->_preparedVelocityDiffusion = 0.f;

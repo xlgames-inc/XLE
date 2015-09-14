@@ -74,9 +74,9 @@ namespace XLEMath
             Method method, Flags::BitField flags = 0u) const;
         
         std::shared_ptr<PreparedMatrix> PrepareDiffusionMatrix(
-            float diffusionAmount, Method method, unsigned marginFlags, bool wrapEdges) const;
+            float diffusionAmount, Method method, unsigned wrapEdgesFlags) const;
         std::shared_ptr<PreparedMatrix> PrepareDivergenceMatrix(
-            Method method, unsigned marginFlags, bool wrapEdges) const;
+            Method method, unsigned wrapEdgesFlags) const;
 
         PoissonSolver(unsigned dimensionality, unsigned dimensions[]);
         PoissonSolver(PoissonSolver&& moveFrom);

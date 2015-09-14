@@ -35,21 +35,20 @@ namespace SceneEngine
         void Execute(
             PoissonSolver& solver, VectorField2D vectorField,
             float diffusionAmount, float deltaTime,
-            PoissonSolver::Method method = PoissonSolver::Method::PreconCG, unsigned marginFlags = ~0u, bool wrapEdges = false,
+            PoissonSolver::Method method = PoissonSolver::Method::PreconCG, unsigned wrapEdges = 0u,
             const char name[] = nullptr);
 
         void Execute(
             PoissonSolver& solver, ScalarField2D field,
             float diffusionAmount, float deltaTime,
-            PoissonSolver::Method method = PoissonSolver::Method::PreconCG,  unsigned marginFlags = ~0u, bool wrapEdges = false,
+            PoissonSolver::Method method = PoissonSolver::Method::PreconCG,  unsigned wrapEdges = 0u,
             const char name[] = nullptr);
 
         DiffusionHelper();
         ~DiffusionHelper();
     private:
         float       _preparedValue;
-        unsigned    _preparedMarginFlags;
-        bool        _preparedWrapEdges;
+        unsigned    _preparedWrapEdges;
         PoissonSolver::Method _preparedMethod;
         std::shared_ptr<PoissonSolver::PreparedMatrix> _matrix;
     };
@@ -59,7 +58,7 @@ namespace SceneEngine
     public:
         void Execute(
             PoissonSolver& solver, VectorField2D vectorField,
-            PoissonSolver::Method method = PoissonSolver::Method::PreconCG, unsigned marginFlags = ~0u, bool wrapEdges = false);
+            PoissonSolver::Method method = PoissonSolver::Method::PreconCG, unsigned wrapEdges = 0u);
         const float* GetDivergence();
 
         EnforceIncompressibilityHelper();
@@ -67,8 +66,7 @@ namespace SceneEngine
     protected:
         std::shared_ptr<PoissonSolver::PreparedMatrix> _incompressibility;
 
-        unsigned    _preparedMarginFlags;
-        bool        _preparedWrapEdges;
+        unsigned    _preparedWrapEdges;
         PoissonSolver::Method _preparedMethod;
         unsigned    _preparedN;
         VectorX     _buffers[2];

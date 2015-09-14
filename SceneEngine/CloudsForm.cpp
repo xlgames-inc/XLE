@@ -286,9 +286,30 @@ namespace SceneEngine
         auto& qcWorking = _pimpl->_condensedMixingRatio[0];
 
             //
-            // Following Mark Jason Harris' PhD dissertation,
-            // we will simulate condensation and buoyancy of
-            // water vapour in the atmosphere.  
+            // We will simulate condensation and buoyancy of
+            // water vapour in the atmosphere.
+            //
+            // Here are our basic rules:
+            //  >>  When vapor content reaches a certain equilibrium
+            //      point, it starts to condense into clouds
+            //  >>  The equilibrium point is a function of temperature
+            //      and altitude (lower for higher altitudes and lower
+            //      temperatures)
+            //  >>  We add an upward force for temperatures higher than
+            //      ambient, and a downward gravititational force for
+            //      condensed water content
+            //  >>  When vapor condenses, temperature increases and
+            //      when condensation evaporates, temperature decreases
+            //
+            // There are some constants that affect the equilibrium point
+            // and amount of buoyancy:
+            //  >>  ambient temperature
+            //  >>  humidity
+            //  >>  temperature "lapse rate" (which is a measure of how fast
+            //      temperature decreases with altitude)
+            //
+            // We're following the basic principles in 
+            // Mark Jason Harris' PhD dissertation on cloud formation.
             //
             // We use a lot of "mixing ratios" here. The mixing ratio
             // is the ratio of a component in a mixture, relative to all
@@ -312,7 +333,7 @@ namespace SceneEngine
         const auto g = 9.81f / 1000.f;  // (in km/second)
 
             // Buoyancy force
-        const UInt2 border(1,1);
+        const UInt2 border(0,1);
         for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
             for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
                 
@@ -376,8 +397,13 @@ namespace SceneEngine
 
             }
 
-        static float tempDissipate = 0.998f;
-        static float velDissipate = 0.97f; 
+        static float tempDissipate = 0.9985f;
+        static float vaporDissipate = 0.9985f;  // we're adding so much extra vapor into the system that we need to remove it sometimes too
+        static float velDissipate = 0.985f;
+
+        static float zr = 100.f;
+        static float ur = 8.f; // in m/s
+        static float alpha = 1.f/7.f;
 
         for (unsigned c=0; c<N; ++c) {
             velUT0[c] = velUT1[c];
@@ -392,48 +418,72 @@ namespace SceneEngine
                 // In theory, the diffusion is the only kind of dissipation we should have for these
                 // properties. But when we're wrapping around the edges, we will probably need some
                 // extra artifical dissipation to a cycling that just gets stronger and stronger.
-            const auto ambientPotTemp = _pimpl->_troposphere.GetPotentialTemperature(c/_pimpl->_dimsWithBorder[0]);
+            const unsigned gridY = c/_pimpl->_dimsWithBorder[0];
+            const auto ambientPotTemp = _pimpl->_troposphere.GetPotentialTemperature(gridY);
+            const auto ambientVapor = _pimpl->_troposphere.GetVaporMixingRatio(gridY);
             potTempWorking[c] = LinearInterpolate(ambientPotTemp, potTempWorking[c], tempDissipate);
-            velUWorking[c] *= velDissipate;
+            // velUWorking[c] *= velDissipate;
             velVWorking[c] *= velDissipate;
+            qvWorking[c] = LinearInterpolate(ambientVapor, qvWorking[c], vaporDissipate);
+
+                // Adjust velocity based on ambient wind
+                // Rather than adding wind in any single part, we'll just blend the 
+                // simulated velocity value with the ambient wind value
+                //
+                // We will calculate the wind strength at altitude using the "power
+                // wind profile":
+                //      https://en.wikipedia.org/wiki/Wind_profile_power_law
+                //
+                // See also the "log wind profile" (which can be used to estimate
+                // the wind strength in the bottom 100 meters, and takes into account
+                // roughness of the terrain (such as forests and hills)
+
+            auto altitudeKm = _pimpl->_troposphere.AltitudeKm(gridY);
+            float windStrength = ur * std::pow(altitudeKm * 1000.f / zr, alpha);
+            windStrength *= 1.f + 0.5f * SimplexFBM(
+                Float2(float(gridY) / 60.f, _pimpl->_time / 5.f),
+                1.f, .55f, 2.1042f, 4);
+            windStrength = windStrength / 1000.f / zScale;      // assuming square grid -- using z scale for xy value
+            static float windFactor = 0.025f;
+            velUWorking[c] = LinearInterpolate(velUWorking[c], windStrength, windFactor);
         }
 
-        const unsigned marginFlags = 0;
-        const bool wrapEdges = true;
+        const auto marginFlags = 0u;
+        const auto wrapEdges = 1u<<0u;
         _pimpl->_velocityDiffusion.Execute(
             _pimpl->_poissonSolver,
             VectorField2D(&velUWorking, &velVWorking, _pimpl->_dimsWithBorder),
-            settings._viscosity, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, marginFlags, wrapEdges, "Velocity");
+            settings._viscosity, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, wrapEdges, "Velocity");
 
         _pimpl->_condensedDiffusion.Execute(
             _pimpl->_poissonSolver,
             ScalarField2D(&qcWorking, _pimpl->_dimsWithBorder),
-            settings._condensedDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, marginFlags, wrapEdges, "Condensed");
+            settings._condensedDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, wrapEdges, "Condensed");
 
         _pimpl->_vaporDiffusion.Execute(
             _pimpl->_poissonSolver,
             ScalarField2D(&qvWorking, _pimpl->_dimsWithBorder),
-            settings._vaporDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, marginFlags, wrapEdges, "Vapor");
+            settings._vaporDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, wrapEdges, "Vapor");
 
         _pimpl->_temperatureDiffusion.Execute(
             _pimpl->_poissonSolver,
             ScalarField2D(&potTempWorking, _pimpl->_dimsWithBorder),
-            settings._temperatureDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, marginFlags, wrapEdges, "Temperature");
+            settings._temperatureDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, wrapEdges, "Temperature");
 
             // Fill in the bottom row with vapor and temperature entering
             // from landscape below
             // up is +Y, so bottom most row is row 0
-        static Float2 v_scale = Float2(39.5f, 2.4f);
-        static float v_amp = 0.0025f;        // for reference 20g/kg is a very high value for qv, as you might find in the tropics (see Atmospheric Science: An Introductory Survey, pg 80)
+        static Float2 v_scale = Float2(39.5f, 1.6f);
+        static float v_amp = 0.005f;        // for reference 20g/kg is a very high value for qv, as you might find in the tropics (see Atmospheric Science: An Introductory Survey, pg 80)
         static float v_gain = 0.55f;
         static float v_lacunarity = 2.1042f;
         static unsigned v_octaves = 4;
-        static Float2 t_scale = Float2(32.3f, 3.5f);
-        static float t_amp = 12.5f;
+        static Float2 t_scale = Float2(24.3f, 3.5f);
+        static float t_amp = 4.f;
         static float t_gain = 0.45f;
         static float t_lacunarity = 2.1042f;
         static unsigned t_octaves = 4;
-        for (unsigned x=1; x<_pimpl->_dimsWithBorder[0]-1; ++x) {
+        for (unsigned x=0; x<_pimpl->_dimsWithBorder[0]; ++x) {
             float vaporNoiseValue = SimplexFBM(
                 Float2(float(x) / v_scale[0], _pimpl->_time / v_scale[1]),
                 1.f, v_gain, v_lacunarity, v_octaves);
@@ -444,7 +494,7 @@ namespace SceneEngine
             qvWorking[x] = _pimpl->_troposphere.GetVaporMixingRatio(0);
             qvWorking[x] += std::max(0.f, vaporNoiseValue) * v_amp;
             potTempWorking[x] = _pimpl->_troposphere.GetPotentialTemperature(0);
-            potTempWorking[x] += std::max(0.f, tempNoiseValue) * t_amp;
+            potTempWorking[x] += std::max(0.f, 0.5f + 0.5f * tempNoiseValue) * t_amp;
             velUWorking[x] = 0.f;
             velVWorking[x] = 0.f;
             qcWorking[x] = 0.f;
@@ -459,6 +509,9 @@ namespace SceneEngine
             velUT1[x] = velUWorking[i2] = 0.f;
             velVT1[x] = velVWorking[i2] = 0.f;
             qcT1[x] = qcWorking[i2] = 0.f;
+
+            qvT1[i2] = qvWorking[i2] = _pimpl->_troposphere.GetVaporMixingRatio(_pimpl->_dimsWithBorder[1]-1);
+            potTempT1[i2] = potTempWorking[i2] = _pimpl->_troposphere.GetPotentialTemperature(_pimpl->_dimsWithBorder[1]-1);
         }
         
         AdvectionSettings advSettings {
@@ -479,7 +532,7 @@ namespace SceneEngine
             _pimpl->_poissonSolver,
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
             (PoissonSolver::Method)settings._enforceIncompressibilityMethod,
-            marginFlags, true);
+            wrapEdges);
 
             // note -- advection of all 3 of these properties should be very
             // similar, since the velocity field doesn't change. Rather that 
@@ -544,9 +597,16 @@ namespace SceneEngine
                     // here) effects the equilibriumMixingRatio -- which can result in oscillation in some
                     // cases.
 
-                auto difference = vapourMixingRatio - equilibriumMixingRatio;
-                auto deltaCondensation = std::min(1.f, deltaTime * settings._condensationSpeed) * difference;
-                deltaCondensation = std::max(deltaCondensation, 0.f); // -condensationMixingRatio);
+                float deltaCondensation = 0.f;
+                if (vapourMixingRatio > equilibriumMixingRatio) {
+                    auto upperDifference = vapourMixingRatio - equilibriumMixingRatio;
+                    deltaCondensation = std::min(1.f, settings._condensationSpeed) * upperDifference;
+                } else if (vapourMixingRatio < 0.9f * equilibriumMixingRatio) {
+                    auto lowerDifference = vapourMixingRatio - 0.9f * equilibriumMixingRatio;
+                    deltaCondensation = std::min(1.f, settings._condensationSpeed) * lowerDifference;
+                    deltaCondensation = std::max(deltaCondensation, -condensationMixingRatio);
+                }
+
                 vapourMixingRatio -= deltaCondensation;
                 condensationMixingRatio += deltaCondensation;
 
@@ -709,7 +769,7 @@ namespace SceneEngine
         _pimpl->_velocityDiffusion.Execute(
             _pimpl->_poissonSolver,
             VectorField2D(&velUWorking, &velVWorking, _pimpl->_dimsWithBorder),
-            settings._viscosity, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, ~0u, false, "Velocity");
+            settings._viscosity, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, 0u, "Velocity");
 
         AdvectionSettings advSettings {
             (AdvectionMethod)settings._advectionMethod, 
@@ -729,7 +789,7 @@ namespace SceneEngine
             _pimpl->_poissonSolver,
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
             (PoissonSolver::Method)settings._enforceIncompressibilityMethod,
-            ~0u, false);
+            0u);
 
             // note -- advection of all 3 of these properties should be very
             // similar, since the velocity field doesn't change. Rather that 
@@ -742,7 +802,7 @@ namespace SceneEngine
         _pimpl->_condensedDiffusion.Execute(
             _pimpl->_poissonSolver,
             ScalarField2D(&qcWorking, _pimpl->_dimsWithBorder),
-            settings._condensedDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, ~0u, false, "Condensed");
+            settings._condensedDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, 0u, "Condensed");
         PerformAdvection(
             ScalarField2D(&qcT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&qcWorking, _pimpl->_dimsWithBorder),
@@ -753,7 +813,7 @@ namespace SceneEngine
         _pimpl->_vaporDiffusion.Execute(
             _pimpl->_poissonSolver,
             ScalarField2D(&qvWorking, _pimpl->_dimsWithBorder),
-            settings._vaporDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, ~0u, false, "Vapor");
+            settings._vaporDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, 0u, "Vapor");
         PerformAdvection(
             ScalarField2D(&qvT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&qvWorking, _pimpl->_dimsWithBorder),
@@ -764,7 +824,7 @@ namespace SceneEngine
         _pimpl->_temperatureDiffusion.Execute(
             _pimpl->_poissonSolver,
             ScalarField2D(&potTempWorking, _pimpl->_dimsWithBorder),
-            settings._temperatureDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, ~0u, false, "Temperature");
+            settings._temperatureDiffusionRate, deltaTime, (PoissonSolver::Method)settings._diffusionMethod, 0u, "Temperature");
         PerformAdvection(
             ScalarField2D(&potTempT1, _pimpl->_dimsWithBorder),
             ScalarField2D(&potTempWorking, _pimpl->_dimsWithBorder),
@@ -970,8 +1030,8 @@ namespace SceneEngine
 
         const float airTemp = CelsiusToKelvin(15.f);
         const auto relativeHumidity = .75f;
-        const float altitudeMinKm = 1.5f;
-        const float altitudeMaxKm = 2.5f;
+        const float altitudeMinKm = 2.f;
+        const float altitudeMaxKm = 3.f;
         _pimpl->_troposphere = Troposphere(_pimpl->_dimsWithBorder, altitudeMinKm, altitudeMaxKm, airTemp, relativeHumidity);
         
         for (unsigned c=0; c<dimof(_pimpl->_vaporMixingRatio); ++c) {
@@ -1009,20 +1069,20 @@ namespace SceneEngine
 
     CloudsForm2D::Settings::Settings()
     {
-        _viscosity = 1.0f;
+        _viscosity = .4f;
         _condensedDiffusionRate = 0.f;
-        _vaporDiffusionRate = 0.4f;
-        _temperatureDiffusionRate = 10.f;
+        _vaporDiffusionRate = 0.1f;
+        _temperatureDiffusionRate = 1.f;
         _diffusionMethod = 1;
         _advectionMethod = 3;
         _advectionSteps = 4;
         _enforceIncompressibilityMethod = 1;
-        _vorticityConfinement = 0.1f;
+        _vorticityConfinement = 0.7f;
         _interpolationMethod = 0;
-        _buoyancyAlpha = 200.f;
-        _buoyancyBeta = 200.f;
-        _condensationSpeed = 20.f;
-        _temperatureChangeSpeed = 1.f;
+        _buoyancyAlpha = 8000.f;
+        _buoyancyBeta = 350000.f;           // getting interesting results with about a 30:1 ratio with buoyancy alpha (but the ideal ratio depends on _temperatureChangeSpeed
+        _condensationSpeed = .25f;
+        _temperatureChangeSpeed = 1.f;      // some interesting results when over-emphasing this effect
     }
 }
 

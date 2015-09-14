@@ -39,7 +39,9 @@ namespace XLEMath
             unsigned    _dimensionality;
             unsigned    _marginFlags;
             float       _a0, _a1;
-            float       _a0e, _a0c, _a1e, _a1r;
+            float       _a0c;
+            float       _a0ex, _a0ey;
+            float       _a1e, _a1rx, _a1ry;
         };
     
         inline unsigned GetN(const AMat& A)             { return A._dims[0] * A._dims[1] * A._dims[2]; }
@@ -152,36 +154,36 @@ namespace XLEMath
                 const auto w = width, h = height;
                 #define XY(x,y) XY_WH(x,y,w)
                 for (unsigned i=1; i<w-1; ++i) {
-                    dst[XY(i, 0)]       = A._a0e *  b[XY(  i,   0)] 
-                                        + A._a1e * (b[XY(  i,   1)] + b[XY(i-1, 0)] + b[XY(i+1, 0)])
-                                        + A._a1r * (b[XY(  i, h-1)]);
-                    dst[XY(i, h-1)]     = A._a0e *  b[XY(  i, h-1)] 
-                                        + A._a1e * (b[XY(  i, h-2)] + b[XY(i-1, h-1)] + b[XY(i+1, h-1)])
-                                        + A._a1r * (b[XY(  i,   0)]);
+                    dst[XY(i, 0)]       = A._a0ey *  b[XY(  i,   0)] 
+                                        + A._a1e  * (b[XY(  i,   1)] + b[XY(i-1, 0)] + b[XY(i+1, 0)])
+                                        + A._a1ry * (b[XY(  i, h-1)]);
+                    dst[XY(i, h-1)]     = A._a0ey *  b[XY(  i, h-1)] 
+                                        + A._a1e  * (b[XY(  i, h-2)] + b[XY(i-1, h-1)] + b[XY(i+1, h-1)])
+                                        + A._a1ry * (b[XY(  i,   0)]);
                 }
 
                 for (unsigned i=1; i<h-1; ++i) {
-                    dst[XY(0, i)]       = A._a0e *  b[XY(  0,   i)] 
-                                        + A._a1e * (b[XY(  1,   i)] + b[XY(0, i-1)] + b[XY(0, i+1)])
-                                        + A._a1r * (b[XY(w-1,   i)]);
-                    dst[XY(w-1, i)]     = A._a0e *  b[XY(w-1,   i)] 
-                                        + A._a1e * (b[XY(w-2,   i)] + b[XY(w-1, i-1)] + b[XY(w-1, i+1)])
-                                        + A._a1r * (b[XY(  0,   i)]);
+                    dst[XY(0, i)]       = A._a0ex *  b[XY(  0,   i)] 
+                                        + A._a1e  * (b[XY(  1,   i)] + b[XY(0, i-1)] + b[XY(0, i+1)])
+                                        + A._a1rx * (b[XY(w-1,   i)]);
+                    dst[XY(w-1, i)]     = A._a0ex *  b[XY(w-1,   i)] 
+                                        + A._a1e  * (b[XY(w-2,   i)] + b[XY(w-1, i-1)] + b[XY(w-1, i+1)])
+                                        + A._a1rx * (b[XY(  0,   i)]);
                 }
                 
                 dst[XY(0, 0)]           = A._a0c *  b[XY(  0,   0)] 
                                         + A._a1e * (b[XY(  0,   1)] + b[XY(  1,   0)])
-                                        + A._a1r * (b[XY(w-1,   0)] + b[XY(  0, h-1)]);
+                                        + A._a1rx * b[XY(w-1,   0)] + A._a1ry * b[XY(  0, h-1)];
                 dst[XY(0, h-1)]         = A._a0c *  b[XY(  0, h-1)] 
                                         + A._a1e * (b[XY(  0, h-2)] + b[XY(  1, h-1)])
-                                        + A._a1r * (b[XY(w-1, h-1)] + b[XY(  0,   0)]);
+                                        + A._a1rx * b[XY(w-1, h-1)] + A._a1ry * b[XY(  0,   0)];
 
                 dst[XY(w-1, 0)]         = A._a0c *  b[XY(w-1,   0)] 
                                         + A._a1e * (b[XY(w-1,   1)] + b[XY(w-2,   0)])
-                                        + A._a1r * (b[XY(  0,   0)] + b[XY(w-1, h-1)]);
+                                        + A._a1rx * b[XY(  0,   0)] + A._a1ry * b[XY(w-1, h-1)];
                 dst[XY(w-1, h-1)]       = A._a0c *  b[XY(w-1, h-1)] 
                                         + A._a1e * (b[XY(w-1, h-2)] + b[XY(w-2, h-1)])
-                                        + A._a1r * (b[XY(w-1,   0)] + b[XY(  0, h-1)]);
+                                        + A._a1rx * b[XY(w-1,   0)] + A._a1ry * b[XY(  0, h-1)];
                 #undef XY
 
             } else {

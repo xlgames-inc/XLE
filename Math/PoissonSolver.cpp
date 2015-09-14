@@ -98,12 +98,12 @@ namespace XLEMath
     using MatrixX = Eigen::MatrixXf;
     static ScalarField1D AsScalarField1D(VectorX& v) { return ScalarField1D { v.data(), (unsigned)v.size() }; }
 
-    template<typename Vec>
-        static void ZeroBorder(Vec&x, const AMat& a)
-    {
-        if (a._dimensionality==2)   ZeroBorder2D(x, Truncate(a._dims), GetMarginFlags(a));
-        else                        ZeroBorder3D(x, a._dims);
-    }
+    // template<typename Vec>
+    //     static void ZeroBorder(Vec&x, const AMat& a)
+    // {
+    //     if (a._dimensionality==2)   ZeroBorder2D(x, Truncate(a._dims), GetMarginFlags(a));
+    //     else                        ZeroBorder3D(x, a._dims);
+    // }
 
     template<typename Vec>
         static void CopyBorder(Vec&dst, const Vec&src, const AMat& a)
@@ -373,12 +373,14 @@ namespace XLEMath
             // N quarters with every layer (width and height half)
         auto scale = std::pow(4.f, float(layer));
         auto result = i;
-        result._a0 /= scale;
-        result._a1 /= scale;
-        result._a0e /= scale;
-        result._a0c /= scale;
-        result._a1e /= scale;
-        result._a1r /= scale;
+        result._a0      /= scale;
+        result._a1      /= scale;
+        result._a0c     /= scale;
+        result._a0ex    /= scale;
+        result._a0ey    /= scale;
+        result._a1e     /= scale;
+        result._a1rx    /= scale;
+        result._a1ry    /= scale;
         return result;
     }
 
@@ -638,17 +640,25 @@ namespace XLEMath
             // the input matrix is prepared as a "diffusion matrix" type
             // A cheap inverse estimation like this allows us to calculate
             // a good starting estimate for iterative methods.
-        bool wrapEdges = A._a1r > 0.f;
+        bool wrapX = A._a1rx > 0.f;
+        bool wrapY = A._a1ry > 0.f;
         auto diffusionAmount = -estimationFactor * A._a1;
-        auto a0 = 1.f - 4.f * diffusionAmount;
-        auto a1 = diffusionAmount;
-        auto a0e = 1.f - (wrapEdges?4.f:3.f) * diffusionAmount;
-        auto a0c = 1.f - (wrapEdges?4.f:2.f) * diffusionAmount;
-        auto a1e = diffusionAmount;
-        auto a1r = wrapEdges?diffusionAmount:0.f;
+        const auto a0 = 1.f + 4.f * diffusionAmount;
+        const auto a1 = -diffusionAmount;
+
+        unsigned cornerInfl = 2u + unsigned(wrapX) + unsigned(wrapY);
+        const auto a0c = 1.f + cornerInfl * diffusionAmount;
+
+        const auto a0ex = 1.f + (3u + unsigned(wrapX)) * diffusionAmount;
+        const auto a0ey = 1.f + (3u + unsigned(wrapY)) * diffusionAmount;
+
+        const auto a1e = -diffusionAmount;
+        const auto a1rx = wrapX?-diffusionAmount:0.f;
+        const auto a1ry = wrapY?-diffusionAmount:0.f;
         return AMat { 
             A._dims, A._dimensionality, A._marginFlags, 
-            a0, a1, a0e, a0c, a1e, a1r };
+            a0, a1, a0c, a0ex, a0ey, a1e, a1rx, a1ry 
+        };
     }
 
     unsigned PoissonSolver::Solve(
@@ -1332,32 +1342,58 @@ namespace XLEMath
     }
 
     auto PoissonSolver::PrepareDiffusionMatrix(
-            float diffusionAmount, Method method, unsigned marginFlags, bool wrapEdges) const -> std::shared_ptr<PreparedMatrix>
+        float diffusionAmount, Method method, unsigned wrapEdgesFlags) const 
+            -> std::shared_ptr<PreparedMatrix>
     {
-        float a0, a1, a0e, a0c, a1e, a1r;
+            // Note that with some methods (multigrid, SOR) we require an 
+            // extra margin area. We have to consider how we set the margin
+            // flags value in the matrix.
+        float a0, a1;
+        float a0c;
+        float a0ex, a0ey;
+        float a1e, a1rx, a1ry;
+
+        const bool wrapX = !!(wrapEdgesFlags & (1<<0));
+        const bool wrapY = !!(wrapEdgesFlags & (1<<1));
+        const bool wrapZ = !!(wrapEdgesFlags & (1<<2));
+
         if (_pimpl->_dimensionality==2) {
             a0 = 1.f + 4.f * diffusionAmount;
             a1 = -diffusionAmount;
-            a0e = 1.f + (wrapEdges?4.f:3.f) * diffusionAmount;
-            a0c = 1.f + (wrapEdges?4.f:2.f) * diffusionAmount;
+
+            unsigned cornerInfl = 2u + unsigned(wrapX) + unsigned(wrapY);
+            a0c = 1.f + cornerInfl * diffusionAmount;
+
+            a0ex = 1.f + (3u + unsigned(wrapX)) * diffusionAmount;
+            a0ey = 1.f + (3u + unsigned(wrapY)) * diffusionAmount;
+
             a1e = -diffusionAmount;
-            a1r = wrapEdges?-diffusionAmount:0.f;
+            a1rx = wrapX?-diffusionAmount:0.f;
+            a1ry = wrapY?-diffusionAmount:0.f;
         } else {
             a0 = 1.f + 6.f * diffusionAmount;
             a1 = -diffusionAmount;
-            a0e = 1.f + (wrapEdges?6.f:4.f) * diffusionAmount;
-            a0c = 1.f + (wrapEdges?6.f:3.f) * diffusionAmount;
+
+            unsigned cornerInfl = 2u + unsigned(wrapX) + unsigned(wrapY) + unsigned(wrapZ);
+            a0c = 1.f + cornerInfl * diffusionAmount;
+
+            a0ex = 1.f + (4u + unsigned(wrapX) + unsigned(wrapY)) * diffusionAmount;
+            a0ey = 1.f + (4u + unsigned(wrapX) + unsigned(wrapY)) * diffusionAmount;
+
             a1e = -diffusionAmount;
-            a1r = wrapEdges?-diffusionAmount:0.f;
-        }
-        if (!wrapEdges) {   // getting better results if we just keep the edges and corners at constant values
-            a0e = a0c = 1.f;
-            a1e = a1r = 0.f;
+            a1rx = wrapX?-diffusionAmount:0.f;
+            a1ry = wrapY?-diffusionAmount:0.f;
         }
 
+        // if (!wrapEdges) {   // getting better results if we just keep the edges and corners at constant values
+        //     a0e = a0c = 1.f;
+        //     a1e = a1r = 0.f;
+        // }
+
+        const unsigned marginFlags = 0u;
         AMat A = {
             _pimpl->_dimensionsWithBorders, _pimpl->_dimensionality, marginFlags, 
-            a0, a1, a0e, a0c, a1e, a1r 
+            a0, a1, a0c, a0ex, a0ey, a1e, a1rx, a1ry
         };
         const auto N = 
               _pimpl->_dimensionsWithBorders[0] 
@@ -1401,32 +1437,52 @@ namespace XLEMath
         return std::move(result);
     }
 
-    auto PoissonSolver::PrepareDivergenceMatrix(Method method, unsigned marginFlags, bool wrapEdges) const -> std::shared_ptr<PreparedMatrix>
+    auto PoissonSolver::PrepareDivergenceMatrix(Method method, unsigned wrapEdgesFlags) const -> std::shared_ptr<PreparedMatrix>
     {
-        float a0, a1, a0e, a0c, a1e, a1r;
+        float a0, a1;
+        float a0c;
+        float a0ex, a0ey;
+        float a1e, a1rx, a1ry;
+
+        const bool wrapX = !!(wrapEdgesFlags & (1<<0));
+        const bool wrapY = !!(wrapEdgesFlags & (1<<1));
+        const bool wrapZ = !!(wrapEdgesFlags & (1<<2));
         if (_pimpl->_dimensionality==2) {
             a0 = 4.f;
             a1 = -1.f;
-            a0e = (wrapEdges?4.f:3.f);
-            a0c = (wrapEdges?4.f:2.f);
+            
+            unsigned cornerInfl = 2u + unsigned(wrapX) + unsigned(wrapY);
+            a0c = float(cornerInfl);
+
+            a0ex = float(3u + unsigned(wrapX));
+            a0ey = float(3u + unsigned(wrapY));
+            
             a1e = -1.f;
-            a1r = wrapEdges?-1.f:0.f;
+            a1rx = wrapX?-1.f:0.f;
+            a1ry = wrapY?-1.f:0.f;
         } else {
             a0 = 6.f;
             a1 = -1.f;
-            a0e = (wrapEdges?6.f:4.f);
-            a0c = (wrapEdges?6.f:3.f);
-            a1e = -1.f;
-            a1r = wrapEdges?-1.f:0.f;
-        }
-        if (!wrapEdges) {   // getting better results if we just keep the edges and corners at constant values
-            a0e = a0c = 1.f;
-            a1e = a1r = 0.f;
-        }
 
+            unsigned cornerInfl = 2u + unsigned(wrapX) + unsigned(wrapY) + unsigned(wrapZ);
+            a0c = float(cornerInfl);
+
+            a0ex = float(4u + unsigned(wrapX) + unsigned(wrapY));
+            a0ey = float(4u + unsigned(wrapX) + unsigned(wrapY));
+            
+            a1e = -1.f;
+            a1rx = wrapX?-1.f:0.f;
+            a1ry = wrapY?-1.f:0.f;
+        }
+        // if (!wrapEdges) {   // getting better results if we just keep the edges and corners at constant values
+        //     a0e = a0c = 1.f;
+        //     a1e = a1r = 0.f;
+        // }
+
+        const unsigned marginFlags = 0u;
         AMat A = {
             _pimpl->_dimensionsWithBorders, _pimpl->_dimensionality, marginFlags, 
-            a0, a1, a0e, a0c, a1e, a1r 
+            a0, a1, a0c, a0ex, a0ey, a1e, a1rx, a1ry
         };
         const auto N = 
               _pimpl->_dimensionsWithBorders[0] 

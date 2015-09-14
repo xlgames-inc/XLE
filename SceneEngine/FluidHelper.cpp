@@ -14,27 +14,26 @@ namespace SceneEngine
 
     static std::shared_ptr<PoissonSolver::PreparedMatrix> BuildDiffusionMethod(
         const PoissonSolver& solver, float diffusion, PoissonSolver::Method method,
-        unsigned marginFlags, bool wrapEdges)
+        unsigned wrapEdges)
     {
-        return solver.PrepareDiffusionMatrix(diffusion, method, marginFlags, wrapEdges);
+        return solver.PrepareDiffusionMatrix(diffusion, method, wrapEdges);
     }
 
     void DiffusionHelper::Execute(
         PoissonSolver& solver, VectorField2D vectorField,
         float diffusionAmount, float deltaTime,
-        PoissonSolver::Method method, unsigned marginFlags, bool wrapEdges,
+        PoissonSolver::Method method, unsigned wrapEdges,
         const char name[])
     {
         if (!diffusionAmount || !deltaTime) return;
 
-        if (    _preparedValue != deltaTime * diffusionAmount || method != _preparedMethod 
-            ||  marginFlags != _preparedMarginFlags || wrapEdges != _preparedWrapEdges) {
+        if (    !_matrix || _preparedValue != deltaTime * diffusionAmount || method != _preparedMethod 
+                || wrapEdges != _preparedWrapEdges) {
 
             _preparedValue = deltaTime * diffusionAmount;
             _preparedMethod = method;
-            _preparedMarginFlags = marginFlags;
             _preparedWrapEdges = wrapEdges;
-            _matrix = BuildDiffusionMethod(solver, _preparedValue, _preparedMethod, _preparedMarginFlags, _preparedWrapEdges);
+            _matrix = BuildDiffusionMethod(solver, _preparedValue, _preparedMethod, _preparedWrapEdges);
         }
 
         auto iterationsu = solver.Solve(
@@ -51,16 +50,15 @@ namespace SceneEngine
     void DiffusionHelper::Execute(
         PoissonSolver& solver, ScalarField2D field,
         float diffusionAmount, float deltaTime,
-        PoissonSolver::Method method, unsigned marginFlags, bool wrapEdges, const char name[])
+        PoissonSolver::Method method, unsigned wrapEdges, const char name[])
     {
         if (!diffusionAmount || !deltaTime) return;
 
-        if (_preparedValue != deltaTime * diffusionAmount || method != _preparedMethod) {
+        if (!_matrix || _preparedValue != deltaTime * diffusionAmount || method != _preparedMethod) {
             _preparedValue = deltaTime * diffusionAmount;
             _preparedMethod = method;
-            _preparedMarginFlags = marginFlags;
             _preparedWrapEdges = wrapEdges;
-            _matrix = BuildDiffusionMethod(solver, _preparedValue, _preparedMethod, _preparedMarginFlags, _preparedWrapEdges);
+            _matrix = BuildDiffusionMethod(solver, _preparedValue, _preparedMethod, _preparedWrapEdges);
         }
 
         auto iterationsu = solver.Solve(
@@ -71,7 +69,7 @@ namespace SceneEngine
             LogInfo << name << " diffusion took: (" << iterationsu << ") iterations.";
     }
 
-    DiffusionHelper::DiffusionHelper() { _preparedValue = 0.f; _preparedMethod = (PoissonSolver::Method)~0u; }
+    DiffusionHelper::DiffusionHelper() { _preparedValue = 0.f; _preparedMethod = (PoissonSolver::Method)~0u; _preparedWrapEdges = 0u; }
     DiffusionHelper::~DiffusionHelper() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +78,7 @@ namespace SceneEngine
         VectorField2D velField,
         ScalarField1D qBuffer, ScalarField1D delwBuffer,
         const PoissonSolver& solver, const PoissonSolver::PreparedMatrix& A,
-        PoissonSolver::Method method, unsigned marginFlags, bool wrapEdges)
+        PoissonSolver::Method method, unsigned wrapEdges)
     {
         //
         // Following Jos Stam's stable fluids, we'll use Helmholtz-Hodge Decomposition
@@ -120,8 +118,8 @@ namespace SceneEngine
 
         const auto dims = velField.Dimensions();
         UInt2 border(1,1);
-        if (!(marginFlags & 1<<0)) border[0] = 0u;
-        if (!(marginFlags & 1<<1)) border[1] = 0u;
+        if (wrapEdges & 1<<0) border[0] = 0u;
+        if (wrapEdges & 1<<1) border[1] = 0u;
 
             // note that the "velFieldScale" shouldn't really change the result here
             //      -- but maybe it can help avoid floating point creep?
@@ -142,7 +140,7 @@ namespace SceneEngine
                         + ((*velField._v)[i2] - (*velField._v)[i3]) / velFieldScale[1]
                     );
             }
-        SmearBorder2D(delwBuffer._u, dims, marginFlags);
+        SmearBorder2D(delwBuffer._u, dims, ~wrapEdges);
 
             // We're going to use the 'q' from the last frame as a 
             // starting estimate for this frame. The divergence shouldn't
@@ -210,13 +208,12 @@ namespace SceneEngine
     
     void EnforceIncompressibilityHelper::Execute(
         PoissonSolver& solver, VectorField2D vectorField,
-        PoissonSolver::Method method, unsigned marginFlags, bool wrapEdges)
+        PoissonSolver::Method method, unsigned wrapEdges)
     {
-        if (marginFlags != _preparedMarginFlags || wrapEdges != _preparedWrapEdges) {
-            _preparedMarginFlags = marginFlags;
+        if (!_incompressibility || wrapEdges != _preparedWrapEdges) {
             _preparedWrapEdges = wrapEdges;
             _incompressibility = solver.PrepareDivergenceMatrix(
-                PoissonSolver::Method::PreconCG, _preparedMarginFlags, _preparedWrapEdges);
+                PoissonSolver::Method::PreconCG, _preparedWrapEdges);
         }
 
         const auto N = vectorField._dims[0] * vectorField._dims[1];
@@ -230,7 +227,7 @@ namespace SceneEngine
 
         EnforceIncompressibility(
             vectorField, AsScalarField1D(_buffers[0]), AsScalarField1D(_buffers[1]),
-            solver, *_incompressibility, (PoissonSolver::Method)method, marginFlags, wrapEdges);
+            solver, *_incompressibility, (PoissonSolver::Method)method, wrapEdges);
     }
 
     const float* EnforceIncompressibilityHelper::GetDivergence()
@@ -240,8 +237,7 @@ namespace SceneEngine
 
     EnforceIncompressibilityHelper::EnforceIncompressibilityHelper() 
     {
-        _preparedWrapEdges = false;
-        _preparedMarginFlags = 0u;
+        _preparedWrapEdges = 0u;
         _preparedN = 0u;
         _preparedMethod = (PoissonSolver::Method)~0u;
     }
