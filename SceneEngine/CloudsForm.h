@@ -57,6 +57,7 @@ namespace SceneEngine
             float       _altitudeMin;       // KM
             float       _altitudeMax;       // KM
             float       _lapseRate;         // Kelvin/KM
+            int         _obstructionType;
 
             Settings();
         };

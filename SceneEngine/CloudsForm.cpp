@@ -419,13 +419,15 @@ namespace SceneEngine
             }
 
         static float tempDissipate = 0.9985f;
-        static float vaporDissipate = 0.95f;  // we're adding so much extra vapor into the system that we need to remove it sometimes too
+        static float vaporDissipate = 0.9985f;  // we're adding so much extra vapor into the system that we need to remove it sometimes too
         // static float velDissipate = 0.985f;
+        static float condensationDissipate = 0.9985f;
+        static float edgeDissipate = 0.f;
 
         const float zr = 100.f;
         const float alpha = 1.f/7.f;
 
-        static float gain = 0.55f;
+        static float gain = 0.5f;
         static float lacunarity = 2.1042f;
         static unsigned octaves = 4;
 
@@ -448,7 +450,9 @@ namespace SceneEngine
             potTempWorking[c] = LinearInterpolate(ambientPotTemp, potTempWorking[c], tempDissipate);
             // velUWorking[c] *= velDissipate;
             // velVWorking[c] *= velDissipate;
+                // when the vapor/condensation dissipates, what happens to it's latent heat? Let's just ignore that...
             qvWorking[c] = LinearInterpolate(ambientVapor, qvWorking[c], vaporDissipate);
+            qcWorking[c] = LinearInterpolate(0.f, qcWorking[c], condensationDissipate);
 
                 // Adjust velocity based on ambient wind
                 // Rather than adding wind in any single part, we'll just blend the 
@@ -468,7 +472,7 @@ namespace SceneEngine
                 Float2(float(gridY) / 60.f, _pimpl->_time / 5.f),
                 1.f, gain, lacunarity, octaves);
             windStrength *= (0.5f + 0.5f * noiseValue) / 1000.f / zScale;      // assuming square grid -- using z scale for xy value
-            const auto windFactor = 0.025f;
+            const auto windFactor = 0.075f;
             velUWorking[c] = LinearInterpolate(velUWorking[c], windStrength, windFactor);
 
                 // add a little random up/down movement as well
@@ -477,7 +481,7 @@ namespace SceneEngine
             //     1.f, gain, lacunarity, octaves);
         }
 
-        const auto marginFlags = 0u;
+        // const auto marginFlags = 0u;
         const auto wrapEdges = 1u<<0u;
         _pimpl->_velocityDiffusion.Execute(
             _pimpl->_poissonSolver,
@@ -502,9 +506,9 @@ namespace SceneEngine
             // Fill in the bottom row with vapor and temperature entering
             // from landscape below
             // up is +Y, so bottom most row is row 0
-        static Float2 v_scale = Float2(120.5f, 6.6f);
-        static Float2 t_scale = Float2(71.6f, 2.4f);
-        static Float2 u_scale = Float2(90.3f, 1.7f);
+        static Float2 v_scale = Float2(485.5f, 3.6f);
+        static Float2 t_scale = Float2(210.6f, 2.4f);
+        static Float2 u_scale = Float2(234.3f, 15.7f);
 
             // for reference 20g/kg is a very high value for qv, as you might find in the tropics (see Atmospheric Science: An Introductory Survey, pg 80)
         const auto v_amp = settings._inputVapor;
@@ -527,22 +531,54 @@ namespace SceneEngine
             potTempWorking[x]  = _pimpl->_troposphere.GetPotentialTemperature(0);
             potTempWorking[x] += tempNoiseValue * tempNoiseValue * tempNoiseValue * t_amp;
             velUWorking[x]  = 0.f;
-            velVWorking[x] += updraftNoiseValue * updraftNoiseValue * u_amp;
+            velVWorking[x] += std::max(0.f, std::pow(updraftNoiseValue, 5.f)) * u_amp;
             qcWorking[x]    = 0.f;
 
+                // shouldn't really need to set the "T1" values here
             qvT1[x]   = qvWorking[x];
             potTempT1[x] = potTempWorking[x];
             velUT1[x] = velUWorking[x];
             velVT1[x] = velVWorking[x];
             qcT1[x]   = qcWorking[x];
 
+                // We can set the top row to ambient values -- but that creates
+                // massive instability along the top of the simulation.
+                // It effectively locks the dynamic part of the simulation into the simulated 
+                // region -- the turbulence gets trapped inside
+                // Perhaps it is best just to fade to the ambient values -- in that
+                // way simulating a bit of diffusion and advection upwards.
+                // Ideally the simulation should be fairly stable in the upper part, before
+                // it gets to the edge
             const auto i2 = (_pimpl->_dimsWithBorder[1]-1)*_pimpl->_dimsWithBorder[0]+x;
-            velUT1[x] = velUWorking[i2] = 0.f;
-            velVT1[x] = velVWorking[i2] = 0.f;
-              qcT1[x] =   qcWorking[i2] = 0.f;
+            qcT1[i2] = qcWorking[i2] = 0.f; // LinearInterpolate(  qcWorking[i2], 0.f, 0.05f);
+            qvT1[i2] = qvWorking[i2] = 
+                // _pimpl->_troposphere.GetVaporMixingRatio(_pimpl->_dimsWithBorder[1]-1);
+                std::min(qvWorking[i2], LinearInterpolate(_pimpl->_troposphere.GetVaporMixingRatio(_pimpl->_dimsWithBorder[1]-1), qvWorking[i2], edgeDissipate));
+            potTempT1[i2] = potTempWorking[i2] = 
+                // _pimpl->_troposphere.GetPotentialTemperature(_pimpl->_dimsWithBorder[1]-1);
+                std::min(potTempWorking[i2], LinearInterpolate(_pimpl->_troposphere.GetPotentialTemperature(_pimpl->_dimsWithBorder[1]-1), potTempWorking[i2], edgeDissipate));
+        }
 
-            qvT1[i2] = qvWorking[i2] = _pimpl->_troposphere.GetVaporMixingRatio(_pimpl->_dimsWithBorder[1]-1);
-            potTempT1[i2] = potTempWorking[i2] = _pimpl->_troposphere.GetPotentialTemperature(_pimpl->_dimsWithBorder[1]-1);
+        if (settings._obstructionType != 0) {
+                // Simple obstruction simulation in the middle!
+                // This isn't very accurate because the advection and
+                // diffusion steps won't react properly with it. But
+                // it can add some interesting variation to the simulation.
+            const Float2 obsCenter = dims/2 + Float2(0.5f, 0.5f);; // Float2(dims[0]/2.f+.5f, dims[1]-.5f); // 
+            const float obsRadius = 8.f; // dims[0]/2.f; // 
+            for (unsigned y=border[1]; y<dims[1]-border[1]; ++y)
+                for (unsigned x=border[0]; x<dims[0]-border[0]; ++x) {
+                    auto offset = Float2(float(x) - obsCenter[0], float(y) - obsCenter[1]);
+                    auto mag = Magnitude(offset);
+                    if (mag < obsRadius) {
+                        const auto i = (y*_pimpl->_dimsWithBorder[0])+x;
+                        qcWorking[i] = 0.f;
+                        qvWorking[i] = _pimpl->_troposphere.GetVaporMixingRatio(y);
+                        potTempWorking[i] = _pimpl->_troposphere.GetPotentialTemperature(y) - 10.f;
+                        velUWorking[i] = 0.2f * float(offset[0])/mag;
+                        velVWorking[i] = 0.2f * float(offset[1])/mag;
+                    }
+                }
         }
         
         AdvectionSettings advSettings {
@@ -557,8 +593,13 @@ namespace SceneEngine
             VectorField2D(&velUWorking, &velVWorking,   _pimpl->_dimsWithBorder),
             deltaTime, advSettings);
         
-        ReflectUBorder2D(velUT1, _pimpl->_dimsWithBorder, marginFlags);
-        ReflectVBorder2D(velVT1, _pimpl->_dimsWithBorder, marginFlags);
+            // Apply reflection to "V" velocity along the top edge
+        for (unsigned x=0; x<_pimpl->_dimsWithBorder[0]; ++x) {
+            const auto i2 = (_pimpl->_dimsWithBorder[1]-1)*_pimpl->_dimsWithBorder[0]+x;
+            velUT1[i2] = velUWorking[i2] = LinearInterpolate(0.f, velUWorking[i2], edgeDissipate);
+            velVT1[i2] = velVWorking[i2] = LinearInterpolate(-velVWorking[i2-_pimpl->_dimsWithBorder[0]], velVWorking[i2], edgeDissipate);
+        }
+
         _pimpl->_incompressibility.Execute(
             _pimpl->_poissonSolver,
             VectorField2D(&velUT1, &velVT1, _pimpl->_dimsWithBorder),
@@ -1102,7 +1143,7 @@ namespace SceneEngine
 
     CloudsForm2D::Settings::Settings()
     {
-        _viscosity = .4f;
+        _viscosity = .8f;
         _condensedDiffusionRate = 0.f;
         _vaporDiffusionRate = 0.1f;
         _temperatureDiffusionRate = 1.f;
@@ -1110,17 +1151,17 @@ namespace SceneEngine
         _advectionMethod = 3;
         _advectionSteps = 4;
         _enforceIncompressibilityMethod = 1;
-        _vorticityConfinement = 0.7f;
+        _vorticityConfinement = 0.4f;
         _interpolationMethod = 0;
         _buoyancyAlpha = 1.f;
         _buoyancyBeta = 1.f;                // getting interesting results with about a 30:1 ratio with buoyancy alpha (but the ideal ratio depends on _temperatureChangeSpeed
-        _condensationSpeed = .25f;
+        _condensationSpeed = 1.f;
         _temperatureChangeSpeed = 1.f;      // some interesting results when over-emphasing this effect
 
-        _crossWindSpeed = 30.f;
-        _inputVapor = 0.0001f;
+        _crossWindSpeed = 5.f; // 30.f;
+        _inputVapor = 1e-6f; // 0.0001f;
         _inputTemperature = .75f;
-        _inputUpdraft = 0.06f;
+        _inputUpdraft = 1e-5f; // 0.06f;
         _evaporateThreshold = 0.95f;
 
         _airTemperature = CelsiusToKelvin(15.f);
@@ -1128,6 +1169,7 @@ namespace SceneEngine
         _altitudeMin = 2.f;
         _altitudeMax = 4.f;
         _lapseRate = 6.5f;
+        _obstructionType = 0;
     }
 }
 
@@ -1290,6 +1332,7 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::CloudsForm2D::Setting
         props.Add(u("AltitudeMin"), DefaultGet(Obj, _altitudeMin),  DefaultSet(Obj, _altitudeMin));
         props.Add(u("AltitudeMax"), DefaultGet(Obj, _altitudeMax),  DefaultSet(Obj, _altitudeMax));
         props.Add(u("LapseRate"), DefaultGet(Obj, _lapseRate),  DefaultSet(Obj, _lapseRate));
+        props.Add(u("ObstructionType"), DefaultGet(Obj, _obstructionType),  DefaultSet(Obj, _obstructionType));
         
         init = true;
     }

@@ -183,7 +183,7 @@ namespace XLEMath
                                         + A._a1rx * b[XY(  0,   0)] + A._a1ry * b[XY(w-1, h-1)];
                 dst[XY(w-1, h-1)]       = A._a0c *  b[XY(w-1, h-1)] 
                                         + A._a1e * (b[XY(w-1, h-2)] + b[XY(w-2, h-1)])
-                                        + A._a1rx * b[XY(w-1,   0)] + A._a1ry * b[XY(  0, h-1)];
+                                        + A._a1rx * b[XY(  0, h-1)] + A._a1ry * b[XY(w-1,   0)];
                 #undef XY
 
             } else {

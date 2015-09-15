@@ -106,6 +106,9 @@
         <scea.dom.editors.attribute category="Environment" name="AltitudeMin" displayName="AltitudeMin"/>
         <scea.dom.editors.attribute category="Environment" name="AltitudeMax" displayName="AltitudeMax"/>
         <scea.dom.editors.attribute category="Environment" name="LapseRate" displayName="LapseRate"/>
+        <scea.dom.editors.attribute category="Environment" name="ObstructionType" displayName="ObstructionType"
+          editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:None=0,CentralSphere=1"
+          converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:None=0,CentralSphere=1"/>
       </xs:appinfo>
     </xs:annotation>
     
@@ -138,7 +141,7 @@
     <xs:attribute name="AltitudeMin" type="xs:float" default="1"/>
     <xs:attribute name="AltitudeMax" type="xs:float" default="1"/>
     <xs:attribute name="LapseRate" type="xs:float" default="1"/>
-  
+    <xs:attribute name="ObstructionType" type="xs:int" default="0"/>
 
   </xs:complexType>
 
