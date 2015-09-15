@@ -57,8 +57,8 @@ namespace EntityInterface
     namespace Attribute
     {
         static const auto Flags = ParameterBox::MakeParameterNameHash("Flags");
-        static const auto ShadowFrustumSettings = ParameterBox::MakeParameterNameHash("ShadowFrustumSettings");
         static const auto Name = ParameterBox::MakeParameterNameHash("Name");
+        static const auto AttachedLight = ParameterBox::MakeParameterNameHash("Light");
     }
 
     PlatformRig::EnvironmentSettings
@@ -72,7 +72,7 @@ namespace EntityInterface
         const auto typeAmbient = flexGobInterface.GetTypeId(EntityTypeName::AmbientSettings);
         const auto typeDirectionalLight = flexGobInterface.GetTypeId(EntityTypeName::DirectionalLight);
         const auto typeToneMapSettings = flexGobInterface.GetTypeId(EntityTypeName::ToneMapSettings);
-        const auto shadowFrustumSettings = flexGobInterface.GetTypeId(EntityTypeName::ShadowFrustumSettings);
+        const auto typeShadowFrustumSettings = flexGobInterface.GetTypeId(EntityTypeName::ShadowFrustumSettings);
 
         EnvironmentSettings result;
         result._globalLightingDesc = DefaultGlobalLightingDesc();
@@ -95,14 +95,14 @@ namespace EntityInterface
 
                         // look for frustum settings that match the "name" parameter
                     auto frustumSettings = PlatformRig::DefaultShadowFrustumSettings();
-                    auto fsRef = props.GetString<char>(Attribute::ShadowFrustumSettings);
+                    auto fsRef = props.GetString<char>(Attribute::Name);
                     if (!fsRef.empty()) {
                         for (const auto& cid2 : obj._children) {
                             const auto* fsSetObj = flexGobInterface.GetEntity(obj._doc, cid2);
-                            if (!fsSetObj || fsSetObj->_type != shadowFrustumSettings) continue;
+                            if (!fsSetObj || fsSetObj->_type != typeShadowFrustumSettings) continue;
                             
-                            auto settingsName = fsSetObj->_properties.GetString<char>(Attribute::Name);
-                            if (XlCompareStringI(settingsName.c_str(), fsRef.c_str())!=0) continue;
+                            auto attachedLight = fsSetObj->_properties.GetString<char>(Attribute::AttachedLight);
+                            if (XlCompareStringI(attachedLight.c_str(), fsRef.c_str())!=0) continue;
 
                             frustumSettings = CreateFromParameters<PlatformRig::DefaultShadowFrustumSettings>(fsSetObj->_properties);
                             break;

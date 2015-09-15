@@ -298,9 +298,9 @@
 
         <scea.dom.editors.attribute category="Precision" name="TextureSize" displayName="Texture Size" description="Size of the shadow projection texture (use a power of 2, normally 1024, 2048 or 4096)"/>
         <scea.dom.editors.attribute category="Precision" name="ShadowSlopeScaledBias" displayName="Slope Scaled Bias factor" description="Raise to reduce 'acne' artefacts at glancing angles to the shadow projection"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2"/>
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
         <scea.dom.editors.attribute category="Precision" name="ShadowDepthBiasClamp" displayName="Depth Bias Clamp" description="Low-level depth bias clamp value"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:-100,100"/>
         <scea.dom.editors.attribute category="Precision" name="ShadowRasterDepthBias" displayName="Depth Bias" description="Low-level depth bias value (in integer zbuffer units)"/>
         <scea.dom.editors.attribute category="Precision" name="WorldSpaceResolveBias" displayName="World Space Resolve Bias" description="Resolve bias (world space)"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:-0.2,0.2"/>
