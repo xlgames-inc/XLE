@@ -78,6 +78,12 @@ namespace Utility
         explicit StringSection(const std::basic_string<CharType>& str);
     };
 
+    template<typename CharType>
+        inline StringSection<CharType> MakeStringSection(const CharType* start, const CharType* end)
+        {
+            return StringSection<CharType>(start, end);
+        }
+
         ////////////   S T R I N G   C O M P A R I S O N S   ////////////
     XL_UTILITY_API int      XlComparePrefix     (const char* x, const char* y, size_t size);
     XL_UTILITY_API int      XlComparePrefixI    (const char* x, const char* y, size_t size);
@@ -307,6 +313,12 @@ namespace Utility
         void XlCopyNString(CharType (&destination)[Count], const CharType source[], size_t length)
         {
             XlCopyNString(destination, Count, source, length);
+        }
+
+    template <int Count, typename CharType>
+        void XlCopyString(CharType (&destination)[Count], const StringSection<CharType>& source)
+        {
+            XlCopyNString(destination, Count, source._start, source.Length());
         }
 
     template<typename T>

@@ -102,6 +102,36 @@ namespace RenderCore { namespace ColladaConversion
         skeleton.GetTransformationMachine().Pop(pushCount);
     }
 
+    void FindReferencedGeometries(
+        const Node& node, 
+        std::vector<unsigned>& instancedGeometries,
+        std::vector<unsigned>& instancedControllers)
+    {
+            // Just collect all of the instanced geometries and instanced controllers
+            // that hang off this node (or any children).
+
+        const auto& scene = node.GetScene();
+        for (unsigned c=0; c<scene.GetInstanceGeometryCount(); ++c)
+            if (scene.GetInstanceGeometry_Attach(c).GetIndex() == node.GetIndex()) {
+                auto i = std::lower_bound(instancedGeometries.begin(), instancedGeometries.end(), c);
+                if (i == instancedGeometries.end() || *i != c)
+                    instancedGeometries.insert(i, c);
+            }
+
+        for (unsigned c=0; c<scene.GetInstanceControllerCount(); ++c)
+            if (scene.GetInstanceController_Attach(c).GetIndex() == node.GetIndex()) {
+                auto i = std::lower_bound(instancedControllers.begin(), instancedControllers.end(), c);
+                if (i == instancedControllers.end() || *i != c)
+                    instancedControllers.insert(i, c);
+            }
+
+        auto child = node.GetFirstChild();
+        while (child) {
+            FindReferencedGeometries(child, instancedGeometries, instancedControllers);
+            child = child.GetNextSibling();
+        }
+    }
+
     void RegisterNodeBindingNames(
         NascentSkeleton& skeleton,
         const SkeletonRegistry& registry)

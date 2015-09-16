@@ -480,9 +480,9 @@ namespace Assets
 
         while (i!=iend && s!=send) { *i = ConvertPathChar(*s, rules); ++i; ++s; }
         
-        if (!srcSplit.Parameters().Empty()) {
-            s = srcSplit.Parameters()._start;
-            send = srcSplit.Parameters()._end;
+        if (!srcSplit.ParametersWithDivider().Empty()) {
+            s = srcSplit.ParametersWithDivider()._start;
+            send = srcSplit.ParametersWithDivider()._end;
             while (i!=iend && s!=send) { *i = *s; ++i; ++s; }
         }
 

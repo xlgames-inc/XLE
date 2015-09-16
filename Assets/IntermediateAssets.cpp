@@ -46,6 +46,12 @@ namespace Assets { namespace IntermediateAssets
         } else {
             _snprintf_s(buffer, sizeof(ResChar)*bufferMaxCount, _TRUNCATE, "%s/%s", _baseDirectory.c_str(), firstInitializer);
         }
+        
+            // make filename that is safe for the filesystem.
+            //      replace ':' (which is sometimes used to deliminate parameters)
+            //      with '-'
+        for (ResChar* b = buffer; *b; ++b)
+            if (*b == ':') *b = '-';
     }
 
     template <int DestCount>
@@ -55,7 +61,7 @@ namespace Assets { namespace IntermediateAssets
             const ResChar* f = depFileName, *b = baseDirectory;
             while (ConvChar(*f) == ConvChar(*b) && *f != '\0') { ++f; ++b; }
             while (ConvChar(*f) == '/') { ++f; }
-            _snprintf_s(destination, DestCount, _TRUNCATE, "%s/.deps/%s", baseDirectory, f);
+            _snprintf_s(destination, sizeof(ResChar)*DestCount, _TRUNCATE, "%s/.deps/%s", baseDirectory, f);
         }
 
     class RetainedFileRecord : public DependencyValidation

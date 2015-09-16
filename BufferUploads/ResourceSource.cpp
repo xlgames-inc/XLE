@@ -995,9 +995,9 @@ namespace BufferUploads
     // {
     //     char buffer[2048];
     //     if (desc._type == BufferDesc::Type::Texture) {
-    //         _snprintf_s(buffer, dimof(buffer), "Tex (%ix%i) [%s]", desc._textureDesc._width, desc._textureDesc._height, desc._name);
+    //         _snprintf_s(buffer, _TRUNCATE, "Tex (%ix%i) [%s]", desc._textureDesc._width, desc._textureDesc._height, desc._name);
     //     } else if (desc._type == BufferDesc::Type::LinearBuffer) {
-    //         _snprintf_s(buffer, dimof(buffer), "Buffer (%.3fKB)", desc._linearBufferDesc._sizeInBytes/1024.f);
+    //         _snprintf_s(buffer, _TRUNCATE, "Buffer (%.3fKB)", desc._linearBufferDesc._sizeInBytes/1024.f);
     //     }
     //     return string(buffer);
     // }

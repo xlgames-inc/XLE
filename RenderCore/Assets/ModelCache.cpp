@@ -61,6 +61,17 @@ namespace RenderCore { namespace Assets
             const ::Assets::ResChar material[], 
             RenderCore::Assets::IModelFormat& modelFormat)
         {
+                // note --  we need to remove any parameters after ';' in the model name
+                //          these are references to sub-nodes within the model hierarchy
+                //          (which are irrelevant when dealing with materials, since the
+                //          materials are shared for the entire model file)
+            ::Assets::ResChar temp[MaxPath];
+            const auto paramStart = XlFindChar(model, (::Assets::ResChar)':');
+            if (paramStart) {
+                XlCopyString(temp, MakeStringSection(model, paramStart));
+                model = temp;
+            }
+
             auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
             auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
             const ::Assets::ResChar* inits[] = { material, model };

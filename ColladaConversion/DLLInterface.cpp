@@ -82,37 +82,36 @@ namespace RenderCore { namespace ColladaConversion
         NascentGeometryObjects _geoObjects;
         NascentSkeleton _skeleton;
 
-        PreparedSkinFile(const ColladaScaffold&);
+        PreparedSkinFile(const ColladaScaffold&, const VisualScene&, const Node&);
     };
 
-    PreparedSkinFile::PreparedSkinFile(const ColladaScaffold& input)
+    PreparedSkinFile::PreparedSkinFile(const ColladaScaffold& input, const VisualScene& scene, const Node& rootNode)
     {
         SkeletonRegistry jointRefs;
 
-        const auto* scene = input._doc->FindVisualScene(
-            GuidReference(input._doc->_visualScene)._id);
-        if (!scene)
-            Throw(::Assets::Exceptions::FormatError("No visual scene found"));
+        std::vector<unsigned> instancedGeometries;
+        std::vector<unsigned> instancedControllers;
+        FindReferencedGeometries(rootNode, instancedGeometries, instancedControllers);
 
-        for (unsigned c=0; c<scene->GetInstanceGeometryCount(); ++c) {
+        for (auto c:instancedGeometries) {
             TRY {
                 _cmdStream.Add(
                     RenderCore::ColladaConversion::InstantiateGeometry(
-                        scene->GetInstanceGeometry(c),
-                        scene->GetInstanceGeometry_Attach(c),
+                        scene.GetInstanceGeometry(c),
+                        scene.GetInstanceGeometry_Attach(c),
                         input._resolveContext, _geoObjects, jointRefs,
                         input._cfg));
             } CATCH(...) {
             } CATCH_END
         }
 
-        for (unsigned c=0; c<scene->GetInstanceControllerCount(); ++c) {
+        for (auto c:instancedControllers) {
             bool skinSuccessful = false;
             TRY {
                 _cmdStream.Add(
                     RenderCore::ColladaConversion::InstantiateController(
-                        scene->GetInstanceController(c),
-                        scene->GetInstanceController_Attach(c),
+                        scene.GetInstanceController(c),
+                        scene.GetInstanceController_Attach(c),
                         input._resolveContext, _geoObjects, jointRefs,
                         input._cfg));
                 skinSuccessful = true;
@@ -129,8 +128,8 @@ namespace RenderCore { namespace ColladaConversion
                 TRY {
                     _cmdStream.Add(
                         RenderCore::ColladaConversion::InstantiateGeometry(
-                            scene->GetInstanceController(c),
-                            scene->GetInstanceController_Attach(c),
+                            scene.GetInstanceController(c),
+                            scene.GetInstanceController_Attach(c),
                             input._resolveContext, _geoObjects, jointRefs,
                             input._cfg));
                 } CATCH(...) {
@@ -139,7 +138,7 @@ namespace RenderCore { namespace ColladaConversion
         }
 
         using namespace RenderCore::ColladaConversion;
-        BuildMinimalSkeleton(_skeleton, scene->GetRootNode(), jointRefs);
+        BuildMinimalSkeleton(_skeleton, rootNode, jointRefs);
         RegisterNodeBindingNames(_skeleton, jointRefs);
         RegisterNodeBindingNames(_cmdStream, jointRefs);
     }
@@ -167,13 +166,41 @@ namespace RenderCore { namespace ColladaConversion
             ::Serialize(serializer, objs._skinnedGeos.size());
         }
     }
+
+    static Node FindNodeByName(const Node& node, const utf8 name[])
+    {
+        if (XlEqString(node.GetName(), name)) return node;
+
+        auto child = node.GetFirstChild();
+        while (child) {
+            auto r = FindNodeByName(child, name);
+            if (r) return r;
+            child = child.GetNextSibling();
+        }
+
+        return Node();
+    }
   
-    NascentChunkArray SerializeSkin(const ColladaScaffold& model)
+    NascentChunkArray SerializeSkin(const ColladaScaffold& model, const char startingNode[])
     {
         Serialization::NascentBlockSerializer serializer;
         std::vector<uint8> largeResourcesBlock;
 
-        PreparedSkinFile skinFile(model);
+        const auto* scene = model._doc->FindVisualScene(
+            GuidReference(model._doc->_visualScene)._id);
+        if (!scene)
+            Throw(::Assets::Exceptions::FormatError("No visual scene found"));
+
+        auto rootNode = scene->GetRootNode();
+        if (startingNode && *startingNode) {
+                // Search for the given node, and use that as a root node.
+                // if it doesn't exist, we have to throw an exception
+            rootNode = FindNodeByName(rootNode, (const utf8*)startingNode);
+            if (!rootNode)
+                Throw(::Assets::Exceptions::FormatError("Could not find root node: %s", startingNode));
+        }
+
+        PreparedSkinFile skinFile(model, *scene, rootNode);
 
         auto i = skinFile._skeleton.GetTransformationMachine().GetCommandStream();
         Assets::TraceTransformationMachine(
@@ -279,7 +306,7 @@ namespace RenderCore { namespace ColladaConversion
         RegisterNodeBindingNames(_skeleton, jointRefs);
     }
 
-    NascentChunkArray SerializeSkeleton(const ColladaScaffold& model)
+    NascentChunkArray SerializeSkeleton(const ColladaScaffold& model, const char[])
     {
         Serialization::NascentBlockSerializer serializer;
 
@@ -334,7 +361,7 @@ namespace RenderCore { namespace ColladaConversion
         }
     }
 
-    NascentChunkArray SerializeMaterials(const ColladaScaffold& model)  
+    NascentChunkArray SerializeMaterials(const ColladaScaffold& model, const char[])  
     { 
         std::string matSettingsFile;
         {

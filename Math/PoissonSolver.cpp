@@ -1317,7 +1317,7 @@ namespace XLEMath
                 auto precon0 = CalculateIncompleteCholeskyFast(A, 8*8*8);
                 auto precon1 = CalculateIncompleteCholesky(A, 8*8*8, 0);
 
-                const auto rows = precon0.rows();
+                const auto rows = (unsigned)precon0.rows();
                 for (unsigned i=0; i<rows; ++i) {
                     LogInfo << "[" << i << "] " 
                         << precon0(i, 0) << ", "

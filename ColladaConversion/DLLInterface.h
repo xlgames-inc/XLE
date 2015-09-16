@@ -51,16 +51,16 @@ namespace RenderCore { namespace ColladaConversion
     using NascentChunkArray = std::shared_ptr<std::vector<NascentChunk>>;
 
     CONVERSION_API std::shared_ptr<ColladaScaffold> CreateColladaScaffold(const ::Assets::ResChar identifier[]);
-    CONVERSION_API NascentChunkArray SerializeSkin(const ColladaScaffold& model);
-    CONVERSION_API NascentChunkArray SerializeSkeleton(const ColladaScaffold& model);
-    CONVERSION_API NascentChunkArray SerializeMaterials(const ColladaScaffold& model);
+    CONVERSION_API NascentChunkArray SerializeSkin(const ColladaScaffold& model, const char startingNode[]);
+    CONVERSION_API NascentChunkArray SerializeSkeleton(const ColladaScaffold& model, const char startingNode[]);
+    CONVERSION_API NascentChunkArray SerializeMaterials(const ColladaScaffold& model, const char startingNode[]);
 
     CONVERSION_API std::shared_ptr<WorkingAnimationSet> CreateAnimationSet(const char name[]);
     CONVERSION_API void ExtractAnimations(WorkingAnimationSet& dest, const ColladaScaffold& model, const char animName[]);
     CONVERSION_API NascentChunkArray SerializeAnimationSet(const WorkingAnimationSet& animset);
 
     typedef std::shared_ptr<ColladaScaffold> CreateColladaScaffoldFn(const ::Assets::ResChar identifier[]);
-    typedef NascentChunkArray ModelSerializeFn(const ColladaScaffold&);
+    typedef NascentChunkArray ModelSerializeFn(const ColladaScaffold&, const char[]);
 
     typedef std::shared_ptr<WorkingAnimationSet> CreateAnimationSetFn(const char name[]);
     typedef void ExtractAnimationsFn(WorkingAnimationSet&, const ColladaScaffold&, const char[]);

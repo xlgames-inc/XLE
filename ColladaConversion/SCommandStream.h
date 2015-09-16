@@ -58,6 +58,11 @@ namespace RenderCore { namespace ColladaConversion
         SkeletonRegistry& nodeRefs,
         const ImportConfiguration& cfg);
 
+    void FindReferencedGeometries(
+        const ::ColladaConversion::Node& node, 
+        std::vector<unsigned>& instancedGeometries,
+        std::vector<unsigned>& instancedControllers);
+
     void RegisterNodeBindingNames(NascentSkeleton& skeleton, const SkeletonRegistry& registry);
     void RegisterNodeBindingNames(NascentModelCommandStream& stream, const SkeletonRegistry& registry);
 }}

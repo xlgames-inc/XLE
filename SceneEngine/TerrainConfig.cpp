@@ -43,11 +43,11 @@ namespace SceneEngine
         auto knownName = KnownCoverageNames(fileType);
         if (knownName) {
             _snprintf_s(
-                buffer, bufferCount, _TRUNCATE, "%sc%02i_%02i/%s.terr", 
+                buffer, sizeof(::Assets::ResChar)*bufferCount, _TRUNCATE, "%sc%02i_%02i/%s.terr", 
                 _cellsDirectory, cellIndex[0], cellIndex[1], knownName);
         } else {
             _snprintf_s(
-                buffer, bufferCount, _TRUNCATE, "%sc%02i_%02i/%08x.terr", 
+                buffer, sizeof(::Assets::ResChar)*bufferCount, _TRUNCATE, "%sc%02i_%02i/%08x.terr", 
                 _cellsDirectory, cellIndex[0], cellIndex[1], fileType);
         }
     }
@@ -60,11 +60,11 @@ namespace SceneEngine
         auto knownName = KnownCoverageNames(fileType);
         if (knownName) {
             _snprintf_s(
-                buffer, bufferCount, _TRUNCATE, "%s/%s.uber", 
+                buffer, sizeof(::Assets::ResChar)*bufferCount, _TRUNCATE, "%s/%s.uber", 
                 directory, knownName);
         } else {
             _snprintf_s(
-                buffer, bufferCount, _TRUNCATE, "%s/%08x.uber", 
+                buffer, sizeof(::Assets::ResChar)*bufferCount, _TRUNCATE, "%s/%08x.uber", 
                 directory, fileType);
         }
     }

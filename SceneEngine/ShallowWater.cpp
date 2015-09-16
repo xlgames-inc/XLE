@@ -469,7 +469,7 @@ namespace SceneEngine
             ShallowWaterSim::BorderMode::Enum borderMode = ShallowWaterSim::BorderMode::BaseHeight,
             bool useLookupTable = false)
     {
-        _snprintf_s(result, Count, 
+        _snprintf_s(result, _TRUNCATE,
             "SHALLOW_WATER_TILE_DIMENSION=%i;SHALLOW_WATER_BOUNDARY=%i;SURFACE_HEIGHTS_FLOAT=%i;USE_LOOKUP_TABLE=%i", 
             gridDimension, unsigned(borderMode), 
             surfaceHeightsProvider ? int(surfaceHeightsProvider->IsFloatFormat()) : 0,

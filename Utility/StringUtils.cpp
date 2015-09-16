@@ -240,6 +240,11 @@ void XlCopyString(char* dst, size_t count, const char* src)
 // count is buffer size in char
 void XlCopyNString(char* dst, size_t count, const char* src, size_t length)
 {
+    if (!length) {
+        if (count >= 1) dst[0] = '\0';
+        return;
+    }
+
     ++length;
 
     if (length > count) {

@@ -426,7 +426,7 @@ namespace SceneEngine
             context.BindCS(RenderCore::MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
             char fullShaderName[256];
-            _snprintf_s(fullShaderName, dimof(fullShaderName), "%s:cs_*", shaderName);
+            _snprintf_s(fullShaderName, _TRUNCATE, "%s:cs_*", shaderName);
 
             auto& cbBytecode = Assets::GetAssetDep<CompiledShaderByteCode>(fullShaderName);
             auto& cs = Assets::GetAssetDep<ComputeShader>(fullShaderName);

@@ -51,6 +51,9 @@ namespace GUILayer
             for each(auto c in _config)
                 searchRules.AddSearchDirectoryFromFilename(clix::marshalString<clix::E_UTF8>(c->Filename).c_str());
 
+                // also grab the directory with the preview model in it
+            searchRules.AddSearchDirectoryFromFilename(clix::marshalString<clix::E_UTF8>(_previewModel).c_str());
+
             for each(auto c in _config)
                 c->GetUnderlying()->Resolve(resMat, searchRules);
         }

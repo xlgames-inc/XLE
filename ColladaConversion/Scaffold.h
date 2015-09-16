@@ -515,6 +515,8 @@ namespace ColladaConversion
         Section GetName() const;
         const DocScopeId& GetId() const;
         Section GetSid() const;
+        VisualScene::IndexIntoNodes GetIndex() const    { return _index; }
+        const VisualScene& GetScene() const             { return *_scene; }
 
         Node FindBySid(const utf8* sidStart, const utf8* sidEnd);
         
