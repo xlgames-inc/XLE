@@ -50,6 +50,7 @@ namespace GUILayer
     public:
         std::shared_ptr<SceneEngine::LightingParserStandardPlugin> _stdPlugin;
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
+        bool _activePaint;
     };
 
 }

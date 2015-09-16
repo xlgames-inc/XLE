@@ -71,7 +71,8 @@ namespace RenderCore { namespace ColladaConversion
     void BuildMinimalSkeleton(
         NascentSkeleton& skeleton,
         const Node& node,
-        SkeletonRegistry& skeletonReferences)
+        SkeletonRegistry& skeletonReferences,
+        int ignoreTransforms)
     {
         if (!IsUseful(node, skeletonReferences)) return;
 
@@ -79,23 +80,32 @@ namespace RenderCore { namespace ColladaConversion
         auto bindingName = skeletonReferences.GetNode(nodeId)._bindingName;
         if (bindingName.empty()) bindingName = SkeletonBindingName(node);
 
-        unsigned pushCount = PushTransformations(
-            skeleton.GetTransformationMachine(),
-            node.GetFirstTransform(), bindingName.c_str(),
-            skeletonReferences);
+        auto pushCount = 0u;
+        if (ignoreTransforms <= 0) {
+                // Sometimes we will ignore the top most transform(s)
+                // so ignoreTransforms is a countdown on the depth of
+                // the node in the hierarchy.
+            pushCount = PushTransformations(
+                skeleton.GetTransformationMachine(),
+                node.GetFirstTransform(), bindingName.c_str(),
+                skeletonReferences);
+        }
 
         bool isReferenced = skeletonReferences.IsImportant(nodeId);
         if (isReferenced) {
-            auto thisOutputMatrix = skeletonReferences.GetOutputMatrixIndex(nodeId);
-            skeleton.GetTransformationMachine().MakeOutputMatrixMarker(thisOutputMatrix);
-            skeletonReferences.TryRegisterNode(nodeId, bindingName.c_str());
+                // (prevent a reference if the transformation machine is completely empty)
+            if (!skeleton.GetTransformationMachine().IsEmpty()) {
+                auto thisOutputMatrix = skeletonReferences.GetOutputMatrixIndex(nodeId);
+                skeleton.GetTransformationMachine().MakeOutputMatrixMarker(thisOutputMatrix);
+                skeletonReferences.TryRegisterNode(nodeId, bindingName.c_str());
+            }
         }
 
             // note -- also consider instance_nodes?
 
         auto child = node.GetFirstChild();
         while (child) {
-            BuildMinimalSkeleton(skeleton, child, skeletonReferences);
+            BuildMinimalSkeleton(skeleton, child, skeletonReferences, ignoreTransforms-1);
             child = child.GetNextSibling();
         }
 

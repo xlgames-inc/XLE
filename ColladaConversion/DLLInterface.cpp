@@ -138,7 +138,7 @@ namespace RenderCore { namespace ColladaConversion
         }
 
         using namespace RenderCore::ColladaConversion;
-        BuildMinimalSkeleton(_skeleton, rootNode, jointRefs);
+        BuildMinimalSkeleton(_skeleton, rootNode, jointRefs, (rootNode == scene.GetRootNode())?0:1);    // when extracting an internal node, we ignore the transform on that internal node
         RegisterNodeBindingNames(_skeleton, jointRefs);
         RegisterNodeBindingNames(_cmdStream, jointRefs);
     }

@@ -523,6 +523,11 @@ namespace ColladaConversion
         operator bool() const;
         bool operator!() const;
 
+        friend bool operator==(const Node& lhs, const Node& rhs)
+        {
+            return (lhs._index == rhs._index) && (lhs._scene == rhs._scene);
+        }
+
         Node();
         Node(nullptr_t);
     protected:

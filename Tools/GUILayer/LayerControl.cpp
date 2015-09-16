@@ -73,13 +73,27 @@ namespace GUILayer
 
     void LayerControl::Render(RenderCore::IThreadContext& threadContext, IWindowRig& windowRig)
     {
-        auto& frameRig = windowRig.GetFrameRig();
-        frameRig.ExecuteFrame(
-            threadContext, windowRig.GetPresentationChain().get(), 
-            nullptr, nullptr,
-            std::bind(
-                RenderFrame, std::placeholders::_1,
-                std::ref(*_pimpl), frameRig.GetMainOverlaySystem().get()));
+            // Rare cases can recursively start rendering
+            // (for example, if we attempt to call a Windows GUI function while in the middle of
+            // rendering)
+            // Re-entering rendering recursively can cause some bad problems, however
+            //  -- so we need to prevent it.
+        if (_pimpl->_activePaint)
+            return;
+
+        _pimpl->_activePaint = true;
+        TRY
+        {
+            auto& frameRig = windowRig.GetFrameRig();
+            frameRig.ExecuteFrame(
+                threadContext, windowRig.GetPresentationChain().get(), 
+                nullptr, nullptr,
+                std::bind(
+                    RenderFrame, std::placeholders::_1,
+                    std::ref(*_pimpl), frameRig.GetMainOverlaySystem().get()));
+        } CATCH (...) {
+        } CATCH_END
+        _pimpl->_activePaint = false;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -258,6 +272,7 @@ namespace GUILayer
         _pimpl->_stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
         _techContextWrapper = gcnew TechniqueContextWrapper(_pimpl->_globalTechniqueContext);
+        _pimpl->_activePaint = false;
     }
 
     LayerControl::~LayerControl() 

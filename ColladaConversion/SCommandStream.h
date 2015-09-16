@@ -23,7 +23,8 @@ namespace RenderCore { namespace ColladaConversion
     void BuildMinimalSkeleton(
         NascentSkeleton& skeleton,
         const ::ColladaConversion::Node& node,
-        SkeletonRegistry& skeletonReferences);
+        SkeletonRegistry& skeletonReferences,
+        int ignoreTransforms);
 
     class NascentGeometryObjects
     {
