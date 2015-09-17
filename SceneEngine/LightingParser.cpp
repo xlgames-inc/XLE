@@ -139,7 +139,7 @@ namespace SceneEngine
             //  texture matters... The scene parser doesn't know what we're rendering
             //  do, so can't know the complete rendering output.
         const float aspectRatio = viewportDims[0] / float(viewportDims[1]);
-        auto cameraToProjection = Techniques::PerspectiveProjection(sceneCamera, aspectRatio);
+        auto cameraToProjection = Techniques::Projection(sceneCamera, aspectRatio);
 
         if (specialProjectionMatrix) {
             cameraToProjection = *specialProjectionMatrix;

@@ -128,64 +128,67 @@ namespace SceneEngine
             auto roughIntersection = 
                 _placements->Find_RayIntersection(worldSpaceRay.first, worldSpaceRay.second, nullptr);
 
-                // we can improve the intersection by doing ray-vs-triangle tests
-                // on the roughIntersection geometry
+            if (!roughIntersection.empty()) {
 
-                //  we need to create a temporary transaction to get
-                //  at the information for these objects.
-            auto trans = _placements->Transaction_Begin(
-                AsPointer(roughIntersection.cbegin()), AsPointer(roughIntersection.cend()));
+                    // we can improve the intersection by doing ray-vs-triangle tests
+                    // on the roughIntersection geometry
 
-            TRY
-            {
-                float rayLength = Magnitude(worldSpaceRay.second - worldSpaceRay.first);
+                    //  we need to create a temporary transaction to get
+                    //  at the information for these objects.
+                auto trans = _placements->Transaction_Begin(
+                    AsPointer(roughIntersection.cbegin()), AsPointer(roughIntersection.cend()));
 
-                auto cam = context.GetCameraDesc();
-                ModelIntersectionStateContext stateContext(
-                    ModelIntersectionStateContext::RayTest,
-                    context.GetThreadContext(), context.GetTechniqueContext(), &cam);
-                stateContext.SetRay(worldSpaceRay);
+                TRY
+                {
+                    float rayLength = Magnitude(worldSpaceRay.second - worldSpaceRay.first);
 
-                // note --  we could do this all in a single render call, except that there
-                //          is no way to associate a low level intersection result with a specific
-                //          draw call.
-                auto count = trans->GetObjectCount();
-                for (unsigned c=0; c<count; ++c) {
-                    auto guid = trans->GetGuid(c);
-                    auto results = PlacementsIntersection(
-                        *metalContext.get(), stateContext, 
-                        *_placements, guid);
+                    auto cam = context.GetCameraDesc();
+                    ModelIntersectionStateContext stateContext(
+                        ModelIntersectionStateContext::RayTest,
+                        context.GetThreadContext(), context.GetTechniqueContext(), &cam);
+                    stateContext.SetRay(worldSpaceRay);
 
-                    bool gotGoodResult = false;
-                    unsigned drawCallIndex = 0;
-                    uint64 materialGuid = 0;
-                    float intersectionDistance = FLT_MAX;
-                    for (auto i=results.cbegin(); i!=results.cend(); ++i) {
-                        if (i->_intersectionDepth < intersectionDistance) {
-                            intersectionDistance = i->_intersectionDepth;
-                            drawCallIndex = i->_drawCallIndex;
-                            materialGuid = i->_materialGuid;
-                            gotGoodResult = true;
+                    // note --  we could do this all in a single render call, except that there
+                    //          is no way to associate a low level intersection result with a specific
+                    //          draw call.
+                    auto count = trans->GetObjectCount();
+                    for (unsigned c=0; c<count; ++c) {
+                        auto guid = trans->GetGuid(c);
+                        auto results = PlacementsIntersection(
+                            *metalContext.get(), stateContext, 
+                            *_placements, guid);
+
+                        bool gotGoodResult = false;
+                        unsigned drawCallIndex = 0;
+                        uint64 materialGuid = 0;
+                        float intersectionDistance = FLT_MAX;
+                        for (auto i=results.cbegin(); i!=results.cend(); ++i) {
+                            if (i->_intersectionDepth < intersectionDistance) {
+                                intersectionDistance = i->_intersectionDepth;
+                                drawCallIndex = i->_drawCallIndex;
+                                materialGuid = i->_materialGuid;
+                                gotGoodResult = true;
+                            }
+                        }
+
+                        if (gotGoodResult && intersectionDistance < result._distance) {
+                            result = Result();
+                            result._type = Type::Placement;
+                            result._worldSpaceCollision = 
+                                LinearInterpolate(worldSpaceRay.first, worldSpaceRay.second, intersectionDistance / rayLength);
+                            result._distance = intersectionDistance;
+                            result._objectGuid = guid;
+                            result._drawCallIndex = drawCallIndex;
+                            result._materialGuid = materialGuid;
+                            result._materialName = trans->GetMaterialName(c, materialGuid);
+                            result._modelName = trans->GetObject(c)._model;
                         }
                     }
+                } CATCH(...) {
+                } CATCH_END
 
-                    if (gotGoodResult && intersectionDistance < result._distance) {
-                        result = Result();
-                        result._type = Type::Placement;
-                        result._worldSpaceCollision = 
-                            LinearInterpolate(worldSpaceRay.first, worldSpaceRay.second, intersectionDistance / rayLength);
-                        result._distance = intersectionDistance;
-                        result._objectGuid = guid;
-                        result._drawCallIndex = drawCallIndex;
-                        result._materialGuid = materialGuid;
-                        result._materialName = trans->GetMaterialName(c, materialGuid);
-                        result._modelName = trans->GetObject(c)._model;
-                    }
-                }
-            } CATCH(...) {
-            } CATCH_END
-
-            trans->Cancel();
+                trans->Cancel();
+            }
         }
 
         unsigned firstExtraBit = IntegerLog2(uint32(Type::Extra));
@@ -312,7 +315,7 @@ namespace SceneEngine
     
     static Float4x4 CalculateWorldToProjection(const RenderCore::Techniques::CameraDesc& sceneCamera, float viewportAspect)
     {
-        auto projectionMatrix = RenderCore::Techniques::PerspectiveProjection(sceneCamera, viewportAspect);
+        auto projectionMatrix = RenderCore::Techniques::Projection(sceneCamera, viewportAspect);
         return Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
     }
 

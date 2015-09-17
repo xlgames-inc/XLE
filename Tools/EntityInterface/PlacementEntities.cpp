@@ -31,9 +31,11 @@ namespace EntityInterface
         StringMeld<MaxPath, ::Assets::ResChar> meld;
         meld << "[dyn] " << initializer << (_cellCounter++);
 
+            // todo -- boundary of this cell should be set to something reasonable
+            //          (or at least adapt as objects are added and removed)
         return (DocumentId)_editor->CreateCell(
             *_manager,
-            meld,  Float2(-1000.f, -1000.f), Float2( 1000.f,  1000.f));
+            meld,  Float2(-100000.f, -100000.f), Float2( 100000.f,  100000.f));
     }
 
     bool PlacementEntities::DeleteDocument(DocumentId doc, DocumentTypeId docType)

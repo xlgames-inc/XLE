@@ -32,7 +32,7 @@ namespace LevelEditorXLE
                    StandardMenu.View,
                    StandardCommandGroup.ViewCamera,
                    "camera".Localize() + "/" + "XLE".Localize(),
-                   "XLE orbit and plan camera".Localize(),
+                   "XLE orbit and pan camera".Localize(),
                    Sce.Atf.Input.Keys.None,
                    LevelEditorCore.Resources.MayaImage,
                    CommandVisibility.Menu);
@@ -48,14 +48,18 @@ namespace LevelEditorXLE
                 return true;
             }
 
-            if (Control.ModifierKeys.HasFlag(Keys.Control) && e.Button == MouseButtons.Left)
+            if (Control.ModifierKeys.HasFlag(Keys.Control) && Control.ModifierKeys.HasFlag(Keys.Shift) && e.Button == MouseButtons.Left)
             {
-                // "control + l click" repositions the "focus" point of the camera
+                // "shift + control + l click" repositions the "focus" point of the camera
                 //      -- it's just incredibly useful to be able to manually set the point, because it
                 //          allows the user to specify both the speed of the movement of the camera and
                 //          the orbit of the camera in a natural way
+                //
                 // We could expand "ActiveControlScheme" to allow this key binding to be rebound...
                 // but just using fixed binding for now.
+                // This is a very important key combination (it's just really useful to be able to move
+                // the focus around quickly) -- so it should be accessable with any easy combination from
+                // anywhere!
 
                 ViewControl c = sender as ViewControl;
                 if (c != null) {

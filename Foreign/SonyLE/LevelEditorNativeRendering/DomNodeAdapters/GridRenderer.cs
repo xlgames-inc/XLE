@@ -88,9 +88,10 @@ namespace RenderingInterop
                 gridXform = Matrix4F.Multiply(scale, trans);
             }
 
-            gridXform = Matrix4F.Multiply(gridXform, cam.AxisSystem);
-
             GameEngine.DrawPrimitive(PrimitiveType.LineList, m_gridVBId, 0, m_gridVertexCount, Color.LightGray,
+                                     Matrix4F.Multiply(gridXform, cam.AxisSystem));
+
+            GameEngine.DrawPrimitive(PrimitiveType.LineList, m_basisAxesVBId, 0, m_basisAxesVertexCount, Color.White,
                                      gridXform);
         }
 
@@ -107,7 +108,7 @@ namespace RenderingInterop
             int numLines = (m_subDiv + 1) * 2;
             int numVerts = numLines * 2;
 
-            m_vertices = new Vec3F[numVerts];
+            var vertices = new Vec3F[numVerts];
 
             int index = 0;
             float s = -corner;
@@ -115,8 +116,8 @@ namespace RenderingInterop
             // Create vertical lines
             for (int i = 0; i <= m_subDiv; i++)
             {
-                m_vertices[index] = new Vec3F(s, 0, corner);
-                m_vertices[index + 1] = new Vec3F(s, 0, -corner);
+                vertices[index] = new Vec3F(s, 0, corner);
+                vertices[index + 1] = new Vec3F(s, 0, -corner);
 
                 index += 2;
                 s += step;
@@ -126,16 +127,28 @@ namespace RenderingInterop
             s = -corner;
             for (int i = 0; i <= m_subDiv; i++)
             {
-                m_vertices[index] = new Vec3F(corner, 0, s);
-                m_vertices[index + 1] = new Vec3F(-corner, 0, s);
+                vertices[index] = new Vec3F(corner, 0, s);
+                vertices[index + 1] = new Vec3F(-corner, 0, s);
 
                 index += 2;
                 s += step;
             }
 
+            m_gridVBId = GameEngine.CreateVertexBuffer(vertices);
+            m_gridVertexCount = (uint)vertices.Length;
 
-            m_gridVBId = GameEngine.CreateVertexBuffer(m_vertices);
-            m_gridVertexCount = (uint)m_vertices.Length;
+            {
+                var vs = new VertexPC[6];
+                vs[0] = new VertexPC(  0.0f,   0.0f,   0.0f, 0xff0000ff);
+                vs[1] = new VertexPC(corner,   0.0f,   0.0f, 0xff0000ff);
+                vs[2] = new VertexPC(  0.0f,   0.0f,   0.0f, 0xff00ff00);
+                vs[3] = new VertexPC(  0.0f, corner,   0.0f, 0xff00ff00);
+                vs[4] = new VertexPC(  0.0f,   0.0f,   0.0f, 0xffff0000);
+                vs[5] = new VertexPC(  0.0f,   0.0f, corner, 0xffff0000);
+
+                m_basisAxesVBId = GameEngine.CreateVertexBuffer(vs);
+                m_basisAxesVertexCount = (uint)vs.Length;
+            }
         }
 
         public void DeleteVertexBuffer()
@@ -145,7 +158,14 @@ namespace RenderingInterop
                 GameEngine.DeleteBuffer(m_gridVBId);
                 m_gridVBId = 0;
                 m_gridVertexCount = 0;                
-            }            
+            }
+
+            if (m_basisAxesVBId > 0)
+            {
+                GameEngine.DeleteBuffer(m_basisAxesVBId);
+                m_basisAxesVBId = 0;
+                m_basisAxesVertexCount = 0;
+            }
         }
 
         private void DomNode_AttributeChanged(object sender, AttributeEventArgs e)
@@ -157,10 +177,12 @@ namespace RenderingInterop
         }
        
         private int m_subDiv;
-        private Vec3F[] m_vertices;
 
         private ulong m_gridVBId; // id for grid vertex buffer.
         private uint m_gridVertexCount;
+
+        private ulong m_basisAxesVBId; // id for basis axes vertex buffer.
+        private uint m_basisAxesVertexCount;
 
     }
 }

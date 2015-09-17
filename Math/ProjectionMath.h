@@ -44,5 +44,6 @@ namespace XLEMath
     }
 
     Float4 ExtractMinimalProjection(const Float4x4& projectionMatrix);
+    bool IsOrthogonalProjection(const Float4x4& projectionMatrix);
 }
 

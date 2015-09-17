@@ -21,6 +21,7 @@
 #include "../Utility/PtrUtils.h"
 #include "../Math/Matrix.h"
 #include "../Math/Transformations.h"
+#include "../Math/ProjectionMath.h"
 #include <algorithm>
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 
@@ -193,6 +194,10 @@ namespace SceneEngine
                                     ShaderResourceView* normalsBuffer,
                                     const ViewportDesc& mainViewport)
     {
+            // Not working for orthogonal projection matrices
+        if (IsOrthogonalProjection(parserContext.GetProjectionDesc()._cameraToProjection))
+            return;
+
         static float SceneScale = 1.f;
 
             //

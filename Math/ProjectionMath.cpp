@@ -391,5 +391,15 @@ namespace XLEMath
     {
         return Float4(projectionMatrix(0,0), projectionMatrix(1,1), projectionMatrix(2,2), projectionMatrix(2,3));
     }
+
+    bool IsOrthogonalProjection(const Float4x4& projectionMatrix)
+    {
+        // In an orthogonal projection matrix, the 'w' component should
+        // be constant for all inputs.
+        // Let's compare the bottom row to 0.f to check this
+        return      projectionMatrix(3,0) == 0.f
+                &&  projectionMatrix(3,1) == 0.f
+                &&  projectionMatrix(3,2) == 0.f;
+    }
 }
 

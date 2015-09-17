@@ -366,6 +366,13 @@ namespace GUILayer
                     materialGuid);
             }
         }
+
+        static void ClearDepthBuffer(SimpleRenderingContext^ context)
+        {
+            auto& metalContext = context->GetDevContext();
+            RenderCore::Metal::DepthStencilView dsv(metalContext);
+            metalContext.Clear(dsv, 1.f, 0u);
+        }
     };
 
 }

@@ -114,6 +114,14 @@ namespace RenderCore { namespace Metal_DX11
         _underlying = std::move(view);
     }
 
+    DepthStencilView::DepthStencilView(DeviceContext& context)
+    {
+        // get the currently bound depth stencil view from the context
+        ID3D::DepthStencilView* rawPtr = nullptr; 
+        context.GetUnderlying()->OMGetRenderTargets(0, nullptr, &rawPtr);
+        _underlying = moveptr(rawPtr);
+    }
+
     DepthStencilView::DepthStencilView(ID3D::DepthStencilView* resource)
     : _underlying(resource)
     {

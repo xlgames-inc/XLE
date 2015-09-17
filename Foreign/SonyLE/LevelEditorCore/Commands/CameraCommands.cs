@@ -25,14 +25,14 @@ namespace LevelEditorCore.Commands
         {
             // register a custom menu without any commands, so it won't appear in the main menu bar
             var cameraMenu = CommandService.RegisterMenu(this, "Camera", "Camera");
-            ToolStrip strip = cameraMenu.GetToolStrip();
+            // ToolStrip strip = cameraMenu.GetToolStrip();     disabling this tool strip to free up some room
             foreach (var cameraController in m_cameraControllers)
             {                
                 if (cameraController.CommandInfo != null)
                 {
                     CommandService.RegisterCommand(cameraController.CommandInfo, this);
-                    strip.Items.Add(cameraController.CommandInfo.GetButton());
-                }                    
+                    // strip.Items.Add(cameraController.CommandInfo.GetButton());
+                }
             }
 
             SettingsService.RegisterSettings(

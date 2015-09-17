@@ -33,4 +33,15 @@ namespace RenderingInterop
         public Vector2 Tex;
     }
 
+    public struct VertexPC
+    {
+        public VertexPC(float x, float y, float z, uint col)
+        {
+            Position = new Vector3(x, y, z);
+            Color = col;
+        }
+        public Vector3 Position;
+        public uint Color;
+    }
+
 }

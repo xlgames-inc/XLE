@@ -99,8 +99,7 @@ namespace GUILayer
         static void* CalculateWorldToProjection(
             CameraDescWrapper^ camera, float viewportAspect)
         {
-            auto proj = RenderCore::Techniques::PerspectiveProjection(
-                *camera->_native, viewportAspect);
+            auto proj = RenderCore::Techniques::Projection(*camera->_native, viewportAspect);
             auto temp = std::make_unique<Float4x4>(Combine(
                 InvertOrthonormalTransform(camera->_native->_cameraToWorld), proj));
             return temp.release();

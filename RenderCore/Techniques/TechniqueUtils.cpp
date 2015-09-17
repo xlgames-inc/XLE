@@ -18,6 +18,9 @@ namespace RenderCore { namespace Techniques
         _nearClip               = 0.1f;
         _farClip                = 100000.f;
         _verticalFieldOfView    = Deg2Rad(34.8246f);
+        _projection             = Projection::Perspective;
+        _left = _top = -1.f;
+        _right = _bottom = 1.f;
     }
 
 
@@ -131,13 +134,22 @@ namespace RenderCore { namespace Techniques
         #endif
     }
 
-    Float4x4 PerspectiveProjection(
-        const CameraDesc& sceneCamera, float viewportAspect)
+    Float4x4 Projection(const CameraDesc& sceneCamera, float viewportAspect)
     {
-        return PerspectiveProjection(
-            sceneCamera._verticalFieldOfView, viewportAspect,
-            sceneCamera._nearClip, sceneCamera._farClip, GeometricCoordinateSpace::RightHanded, 
-            GetDefaultClipSpaceType());
+        if (sceneCamera._projection == CameraDesc::Projection::Orthogonal) {
+            return OrthogonalProjection(
+                sceneCamera._left, sceneCamera._top, 
+                sceneCamera._right, sceneCamera._bottom, 
+                sceneCamera._nearClip, sceneCamera._farClip,
+                GeometricCoordinateSpace::RightHanded, 
+                GetDefaultClipSpaceType());
+        } else {
+            return PerspectiveProjection(
+                sceneCamera._verticalFieldOfView, viewportAspect,
+                sceneCamera._nearClip, sceneCamera._farClip, 
+                GeometricCoordinateSpace::RightHanded, 
+                GetDefaultClipSpaceType());
+        }
     }
 
     Float4x4 OrthogonalProjection(
@@ -153,8 +165,8 @@ namespace RenderCore { namespace Techniques
         result(0,0) =  2.f / (r-l);
         result(0,3) =  -(r+l) / (r-l);
 
-        result(1,1) =  2.f / (b-t);
-        result(1,3) =  -(t+b) / (b-t);
+        result(1,1) =  2.f / (t-b);
+        result(1,3) =  -(t+b) / (t-b);
 
         if (clipSpaceType == ClipSpaceType::Positive) {
                 //  This is the D3D view of clip space
@@ -290,7 +302,7 @@ namespace RenderCore { namespace Techniques
             //          mouse position
         Float3 frustumCorners[8];
         const float viewportAspect = (viewport.second[0] - viewport.first[0]) / float(viewport.second[1] - viewport.first[1]);
-        auto projectionMatrix = PerspectiveProjection(sceneCamera, viewportAspect);
+        auto projectionMatrix = Projection(sceneCamera, viewportAspect);
 
         auto worldToProjection = Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
         CalculateAbsFrustumCorners(frustumCorners, worldToProjection);

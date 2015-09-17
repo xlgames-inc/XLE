@@ -49,7 +49,7 @@ namespace LevelEditorXLE.Materials
             ManipulatorInfo = new ManipulatorInfo(
                 "Pick Material".Localize(),
                 "Eyedropper tool for selecting a material".Localize(),
-                LevelEditorCore.Resources.CubesImage,
+                "",
                 Keys.None);
         }
 

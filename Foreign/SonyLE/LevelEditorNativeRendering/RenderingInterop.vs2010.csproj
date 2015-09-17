@@ -92,6 +92,7 @@
     <Compile Include="Resolvers\ResourcePreview.cs" />
     <Compile Include="Resolvers\TextureThumbnailResolver.cs" />
     <Compile Include="Resolvers\ThumbnailResolver.cs" />
+    <Compile Include="Resources.cs" />
     <Compile Include="TextureRenderSurface.cs" />
     <Compile Include="Util3d.cs" />
   </ItemGroup>
@@ -108,6 +109,13 @@
       <Project>{7626c65e-8df3-42e0-b9cb-414561c50bc5}</Project>
       <Name>XLEBridgeUtils</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\MoveAcrossTerrain64.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\MoveAcrossTerrain16.png" />
+    <EmbeddedResource Include="Resources\MoveAcrossTerrain32.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

@@ -12,6 +12,8 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
+    class DeviceContext;
+
     class ArraySlice
     {
     public:
@@ -49,6 +51,7 @@ namespace RenderCore { namespace Metal_DX11
         DepthStencilView(UnderlyingResource resource, NativeFormat::Enum format = NativeFormat::Unknown, const ArraySlice& arraySlice = ArraySlice());
         DepthStencilView(ID3D::DepthStencilView* resource);
         DepthStencilView(MovePTRHelper<ID3D::DepthStencilView> resource);
+        DepthStencilView(DeviceContext& context);
         DepthStencilView();
         ~DepthStencilView();
 

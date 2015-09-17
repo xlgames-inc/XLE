@@ -70,6 +70,7 @@
     <Compile Include="Services\Commands.cs" />
     <Compile Include="Services\Patches.cs" />
     <Compile Include="Services\ResourceConverter.cs" />
+    <Compile Include="Services\Resources.cs" />
     <Compile Include="Services\Startup.cs" />
     <Compile Include="Manipulators\XLEManipCtrlWin.cs">
       <SubType>UserControl</SubType>
@@ -175,6 +176,16 @@
     <EmbeddedResource Include="Schema\xlemarkers.xsd">
       <SubType>Designer</SubType>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\TerrainManip16.png" />
+    <EmbeddedResource Include="Resources\TerrainManip32.png" />
+    <EmbeddedResource Include="Resources\TerrainManip64.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\ScatterPlace16.png" />
+    <EmbeddedResource Include="Resources\ScatterPlace32.png" />
+    <EmbeddedResource Include="Resources\ScatterPlace64.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

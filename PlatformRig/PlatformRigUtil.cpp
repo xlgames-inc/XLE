@@ -239,6 +239,7 @@ namespace PlatformRig
         Float3 cameraPos = ExtractTranslation(mainSceneProjectionDesc._cameraToWorld);
         Float3 focusPoint = cameraPos + settings._focusDistance * ExtractForward(mainSceneProjectionDesc._cameraToWorld);
         result._definitionViewMatrix = MakeWorldToLight(lightDesc._negativeLightDirection, focusPoint);
+        assert(std::isfinite(result._definitionViewMatrix(0,3)) && !std::isnan(result._definitionViewMatrix(0,3)));
         Float4x4 worldToLightProj = result._definitionViewMatrix;
 
             //  Calculate 4 vectors for the directions of the frustum corners, 

@@ -17,10 +17,19 @@ namespace ToolsRig
     class VisCameraSettings
     {
     public:
-        Float3  _position;
-        Float3  _focus;
-        float   _verticalFieldOfView;
-        float   _nearClip, _farClip;
+        Float3      _position;
+        Float3      _focus;
+        float       _nearClip, _farClip;
+
+        enum class Projection { Perspective, Orthogonal };
+        Projection  _projection;
+
+        // perspective settings
+        float       _verticalFieldOfView;
+
+        // orthogonal settings
+        float       _left, _top;
+        float       _right, _bottom;
 
         VisCameraSettings();
     };
@@ -58,9 +67,12 @@ namespace ToolsRig
     {
         _position = Zero<Float3>();
         _focus = Zero<Float3>();
-        _verticalFieldOfView = 40.f;
         _nearClip = 0.1f;
         _farClip = 1000.f;
+        _projection = Projection::Perspective;
+        _verticalFieldOfView = 40.f;
+        _left = _top = -1.f;
+        _right = _bottom = 1.f;
     }
 }
 

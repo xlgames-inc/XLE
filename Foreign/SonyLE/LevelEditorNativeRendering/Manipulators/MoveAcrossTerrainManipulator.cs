@@ -33,8 +33,8 @@ namespace RenderingInterop
             ManipulatorInfo = new ManipulatorInfo(
                 "Move Across Terrain".Localize(),
                 "Move objects across the surface of the terrain".Localize(),
-                LevelEditorCore.Resources.TranslateImage,
-                Keys.None);
+                RenderingInterop.Resources.MoveAcrossTerrain,
+                Keys.Z);
         }
 
         #region Implementation of IManipulator
@@ -85,7 +85,8 @@ namespace RenderingInterop
             Vec3F pos = normWorld.Translation;
             float s = Util.CalcAxisScale(vc.Camera, pos, AxisLength, vc.Height);
 
-            Color centerCubeColor = (m_hitRegion == HitRegion.XYSquare) ? Color.Gold : Color.White;
+            bool highlight = m_hitRegion == HitRegion.XYSquare;
+            Color centerCubeColor = highlight ? Color.Gold : Color.White;
 
             Vec3F sv = new Vec3F(s, s, s);
             Vec3F centerCubeScale = sv * CenterCubeSize;
@@ -93,6 +94,25 @@ namespace RenderingInterop
             scale.Scale(centerCubeScale);
             Matrix4F centerCubeXform = scale * normWorld;
             Util3D.DrawCube(centerCubeXform, centerCubeColor);
+
+            Matrix4F arrowScale = new Matrix4F();
+            arrowScale.Scale(0.75f);
+
+            Util3D.DrawArrowCap(
+                arrowScale * Matrix4F.CreateTranslation(new Vec3F(1.0f, 0.0f, -0.5f)) * centerCubeXform,
+                highlight ? Color.Gold : Color.Red);
+
+            Util3D.DrawArrowCap(
+                arrowScale * Matrix4F.RotAxisRH(Vec3F.ZAxis, Math.PI) * Matrix4F.CreateTranslation(new Vec3F(-1.0f, 0.0f, -0.5f)) * centerCubeXform,
+                highlight ? Color.Gold : Color.Red);
+
+            Util3D.DrawArrowCap(
+                arrowScale * Matrix4F.RotAxisRH(Vec3F.ZAxis, .5 * Math.PI) * Matrix4F.CreateTranslation(new Vec3F(0.0f, 1.0f, -0.5f)) * centerCubeXform,
+                highlight ? Color.Gold : Color.Green);
+
+            Util3D.DrawArrowCap(
+                arrowScale * Matrix4F.RotAxisRH(Vec3F.ZAxis, 1.5f * Math.PI) * Matrix4F.CreateTranslation(new Vec3F(0.0f, -1.0f, -0.5f)) * centerCubeXform,
+                highlight ? Color.Gold : Color.Green);
         }
 
         public override void OnBeginDrag()

@@ -17,10 +17,17 @@ namespace RenderCore { namespace Techniques
     {
     public:
         Float4x4    _cameraToWorld;
-        float       _verticalFieldOfView;
         float       _nearClip, _farClip;
 
-        Float4x4    _temporaryMatrix;       // (temporary placeholder for a hack)
+        enum class Projection { Perspective, Orthogonal };
+        Projection  _projection;
+
+        // perspective settings
+        float       _verticalFieldOfView;
+
+        // orthogonal settings
+        float       _left, _top;
+        float       _right, _bottom;
 
         CameraDesc();
     };
@@ -60,6 +67,12 @@ namespace RenderCore { namespace Techniques
         unsigned    _dummy1[2];
     };
 
+    Float4x4 Projection(const CameraDesc& sceneCamera, float viewportAspect);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //   B U I L D I N G   P R O J E C T I O N   M A T R I C E S
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     namespace GeometricCoordinateSpace      { enum Enum { LeftHanded,       RightHanded };  }
     namespace ClipSpaceType                 { enum Enum { StraddlingZero,   Positive };     }
     Float4x4 PerspectiveProjection(
@@ -73,9 +86,6 @@ namespace RenderCore { namespace Techniques
         float nearClipPlane, float farClipPlane,
         ClipSpaceType::Enum clipSpaceType);
 
-    Float4x4 PerspectiveProjection(
-        const CameraDesc& sceneCamera, float viewportAspect);
-
     Float4x4 OrthogonalProjection(
         float l, float t, float r, float b,
         float nearClipPlane, float farClipPlane,
@@ -87,6 +97,8 @@ namespace RenderCore { namespace Techniques
         float nearClipPlane, float farClipPlane);
 
     ClipSpaceType::Enum GetDefaultClipSpaceType();
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     std::pair<float, float> CalculateNearAndFarPlane(
         const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType);
@@ -103,6 +115,8 @@ namespace RenderCore { namespace Techniques
         const Float3& cameraPosition,
         float nearClip, float farClip,
         const std::pair<Float2, Float2>& viewport);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     GlobalTransformConstants BuildGlobalTransformConstants(const ProjectionDesc& projDesc);
 

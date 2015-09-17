@@ -377,6 +377,19 @@ namespace RenderingInterop
             return vbId;
         }
 
+        public static ulong CreateVertexBuffer(VertexPC[] buffer)
+        {
+            if (buffer == null || buffer.Length < 2)
+                return 0;
+
+            ulong vbId = 0;
+            fixed (float* ptr = &buffer[0].Position.X)
+            {
+                vbId = NativeCreateVertexBuffer(VertexFormat.VF_PC, ptr, (uint)buffer.Length);
+            }
+            return vbId;
+        }
+
 
         // create vertex buffer with given vertex format from user data.
         public static ulong CreateVertexBuffer(Vec3F[] buffer)

@@ -212,6 +212,19 @@ namespace RenderingInterop
 
         }
 
+        public static void DrawArrowCap(Matrix4F xform, Color color)
+        {
+            GameEngine.DrawIndexedPrimitive(PrimitiveType.TriangleList,
+               s_arrowCapVertId,
+               s_arrowCapIndexId,
+               0,
+               s_arrowCapIndexCount,
+               0,
+               color,
+               xform);
+
+        }
+
         public static void Init()
         {
             if (s_inited) return;
@@ -348,7 +361,14 @@ namespace RenderingInterop
             s_boxIndicesId = GameEngine.CreateIndexBuffer(boxIndices.ToArray());
             s_boxIndicesCount =(uint)boxIndices.Count;
 
-
+            List<Vec3F> arrowCapVerts = new List<Vec3F>();
+            List<Vec3F> arrowCapNormals = new List<Vec3F>();
+            List<uint> arrowCapIndices = new List<uint>();
+            GeometryHelper.CreateArrowCap(arrowCapVerts, arrowCapNormals, arrowCapIndices);
+            GeometryHelper.AssembleVertexPN(arrowCapVerts, arrowCapNormals, vertList);
+            s_arrowCapVertId = GameEngine.CreateVertexBuffer(vertList.ToArray());
+            s_arrowCapIndexId = GameEngine.CreateIndexBuffer(arrowCapIndices.ToArray());
+            s_arrowCapIndexCount = (uint)arrowCapIndices.Count;
 
             List<Vec3F> pivotVerts = new List<Vec3F>();
             GeometryHelper.CreateCircle(0.5f, 16, pivotVerts);
@@ -413,6 +433,9 @@ namespace RenderingInterop
         private static ulong s_boxIndicesId;
         private static uint  s_boxIndicesCount;
 
+        private static ulong s_arrowCapVertId;
+        private static ulong s_arrowCapIndexId;
+        private static uint  s_arrowCapIndexCount;
 
         private static ulong s_cubeVertId;
         private static ulong s_cubeIndexId;
@@ -974,6 +997,158 @@ namespace RenderingInterop
                 indices.Add(index[i]);
             }
 
+        }
+
+        private static Vector2 FindIntersection2D(Vector2 ptA, float mA, Vector2 ptB, float mB)
+        {
+            // High School algebra alert!
+            // ptA.Y = mA * ptA.X + cA
+            // cA = ptA.Y - mA * ptA.X
+            var cA = ptA.Y - mA * ptA.X;
+            var cB = ptB.Y - mB * ptB.X;
+            // y = mA * x + cA
+            // y = mB * x + cB
+            // mA * x + cA = mB * x + cB
+            // x * (mA - mB) = cB - cA
+            // x = (cB - cA) / (mA - mB)
+            float x = (cB - cA) / (mA - mB);
+            float y = mA * x + cA;
+            System.Diagnostics.Debug.Assert(Math.Abs((mB * x + cB) - y) < 0.001f);
+            return new Vector2(x, y);
+        }
+
+        public static void WritePolygon(
+            Vector3[] pts,
+            List<Vector3> pos, List<Vector3> normal, List<uint> indices)
+        {
+                // Calculate a normal for this face!
+                ///////////////////////////////////////
+                // We have good C++ code for fitting planes to faces.
+                // But we don't have access to it from this code!
+
+            var n = new Vector3(0.0f, 0.0f, 0.0f);
+            for (uint c=0; c<pts.Length - 2; ++c)
+                n += /*Vector3.Normalize*/(Vector3.Cross(pts[c] - pts[c + 1], pts[c + 2] - pts[c + 1]));
+
+                // note that if we don't do the above normalize, then the contribution of
+                // each triangle will be weighted by the length of the cross product (which is
+                // proportional to the triangle area -- effectively weighting by triangle area).
+            n = -Vector3.Normalize(n);
+
+            var firstIndex = pos.Count;
+            for (uint c = 0; c < pts.Length; ++c)
+            {
+                pos.Add(pts[c]);
+                normal.Add(n);
+            }
+
+            for (uint c = 2; c < pts.Length; ++c)
+            {
+                indices.Add((uint)(firstIndex));
+                indices.Add((uint)(firstIndex + c-1));
+                indices.Add((uint)(firstIndex + c));
+            }
+        }
+
+        public static void WritePolygonFlipY(
+            Vector3[] pts,
+            List<Vector3> pos, List<Vector3> normals, List<uint> indices)
+        {
+            var flippedPts = new Vector3[pts.Length];
+            for (int c = 0; c < pts.Length; ++c)
+            {
+                var p = pts[pts.Length - c - 1];
+                flippedPts[c] = new Vector3(p.X, -p.Y, p.Z);
+            }
+            WritePolygon(flippedPts, pos, normals, indices);
+        }
+
+        public static void CreateArrowCap(List<Vector3> pos, List<Vector3> normal, List<uint> indices)
+        {
+            const float bevelXY = 0.15f, bevelZ = 0.15f;
+            const float pointIndent = 0.35f;
+            
+            var intr = FindIntersection2D(
+                new Vector2(1.0f - bevelXY, 0.0f), -1.0f,
+                new Vector2(pointIndent + bevelXY, 0.0f), 1.0f/-pointIndent);
+
+            //---- middle top (+Y side)
+            WritePolygon(
+                new Vector3[] { new Vector3(1.0f - bevelXY, 0.0f, 1.0f), new Vector3(intr.X, intr.Y, 1.0f), new Vector3(pointIndent + bevelXY, 0.0f, 1.0f) },
+                pos, normal, indices);
+
+            //---- top bevel (+Y side)
+            WritePolygon(
+                new Vector3[] { new Vector3(1.0f - bevelXY, 0.0f, 1.0f), new Vector3(1.0f, 0.0f, 1.0f - bevelZ), new Vector3(0.0f, 1.0f, 1.0f - bevelZ), new Vector3(intr.X, intr.Y, 1.0f) },
+                pos, normal, indices);
+
+            WritePolygon(
+                new Vector3[] { new Vector3(intr.X, intr.Y, 1.0f), new Vector3(0.0f, 1.0f, 1.0f - bevelZ), new Vector3(pointIndent, 0.0f, 1.0f - bevelZ), new Vector3(pointIndent + bevelXY, 0.0f, 1.0f) },
+                pos, normal, indices);
+
+            //---- side 0 (+Y side)
+            WritePolygon(
+                new Vector3[] { new Vector3(0.0f, 1.0f, 1.0f - bevelZ), new Vector3(1.0f, 0.0f, 1.0f - bevelZ), new Vector3(1.0f, 0.0f, bevelZ), new Vector3(0.0f, 1.0f, bevelZ) },
+                pos, normal, indices);
+
+            //---- side 1 (+Y side)
+            WritePolygon(
+                new Vector3[] { new Vector3(pointIndent, 0.0f, 1.0f - bevelZ), new Vector3(0.0f, 1.0f, 1.0f - bevelZ), new Vector3(0.0f, 1.0f, bevelZ), new Vector3(pointIndent, 0.0f, bevelZ) },
+                pos, normal, indices);
+
+            //---- middle bottom (+Y side)
+            WritePolygon(
+                new Vector3[] { new Vector3(1.0f - bevelXY, 0.0f, 0.0f), new Vector3(pointIndent + bevelXY, 0.0f, 0.0f), new Vector3(intr.X, intr.Y, 0.0f) },
+                pos, normal, indices);
+
+            //---- top bevel (+Y side)
+            WritePolygon(
+                new Vector3[] { new Vector3(1.0f - bevelXY, 0.0f, 0.0f), new Vector3(intr.X, intr.Y, 0.0f), new Vector3(0.0f, 1.0f, 0.0f + bevelZ), new Vector3(1.0f, 0.0f, 0.0f + bevelZ) },
+                pos, normal, indices);
+
+            WritePolygon(
+                new Vector3[] { new Vector3(intr.X, intr.Y, 0.0f), new Vector3(pointIndent + bevelXY, 0.0f, 0.0f), new Vector3(pointIndent, 0.0f, 0.0f + bevelZ), new Vector3(0.0f, 1.0f, 0.0f + bevelZ) },
+                pos, normal, indices);
+
+
+
+            //---- middle top (-Y side)
+            WritePolygonFlipY(
+                new Vector3[] { new Vector3(1.0f - bevelXY, 0.0f, 1.0f), new Vector3(intr.X, intr.Y, 1.0f), new Vector3(pointIndent + bevelXY, 0.0f, 1.0f) },
+                pos, normal, indices);
+
+            //---- top bevel (-Y side)
+            WritePolygonFlipY(
+                new Vector3[] { new Vector3(1.0f - bevelXY, 0.0f, 1.0f), new Vector3(1.0f, 0.0f, 1.0f - bevelZ), new Vector3(0.0f, 1.0f, 1.0f - bevelZ), new Vector3(intr.X, intr.Y, 1.0f) },
+                pos, normal, indices);
+
+            WritePolygonFlipY(
+                new Vector3[] { new Vector3(intr.X, intr.Y, 1.0f), new Vector3(0.0f, 1.0f, 1.0f - bevelZ), new Vector3(pointIndent, 0.0f, 1.0f - bevelZ), new Vector3(pointIndent + bevelXY, 0.0f, 1.0f) },
+                pos, normal, indices);
+
+            //---- side 0 (-Y side)
+            WritePolygonFlipY(
+                new Vector3[] { new Vector3(0.0f, 1.0f, 1.0f - bevelZ), new Vector3(1.0f, 0.0f, 1.0f - bevelZ), new Vector3(1.0f, 0.0f, bevelZ), new Vector3(0.0f, 1.0f, bevelZ) },
+                pos, normal, indices);
+
+            //---- side 1 (-Y side)
+            WritePolygonFlipY(
+                new Vector3[] { new Vector3(pointIndent, 0.0f, 1.0f - bevelZ), new Vector3(0.0f, 1.0f, 1.0f - bevelZ), new Vector3(0.0f, 1.0f, bevelZ), new Vector3(pointIndent, 0.0f, bevelZ) },
+                pos, normal, indices);
+
+            //---- middle bottom (-Y side)
+            WritePolygonFlipY(
+                new Vector3[] { new Vector3(1.0f - bevelXY, 0.0f, 0.0f), new Vector3(pointIndent + bevelXY, 0.0f, 0.0f), new Vector3(intr.X, intr.Y, 0.0f) },
+                pos, normal, indices);
+
+            //---- top bevel (-Y side)
+            WritePolygonFlipY(
+                new Vector3[] { new Vector3(1.0f - bevelXY, 0.0f, 0.0f), new Vector3(intr.X, intr.Y, 0.0f), new Vector3(0.0f, 1.0f, 0.0f + bevelZ), new Vector3(1.0f, 0.0f, 0.0f + bevelZ) },
+                pos, normal, indices);
+
+            WritePolygonFlipY(
+                new Vector3[] { new Vector3(intr.X, intr.Y, 0.0f), new Vector3(pointIndent + bevelXY, 0.0f, 0.0f), new Vector3(pointIndent, 0.0f, 0.0f + bevelZ), new Vector3(0.0f, 1.0f, 0.0f + bevelZ) },
+                pos, normal, indices);
         }
         
     }

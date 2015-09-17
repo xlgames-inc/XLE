@@ -86,7 +86,7 @@ namespace LevelEditorXLE.Placements
             ManipulatorInfo = new ManipulatorInfo(
                 "Scatter Placer".Localize(),
                 "Scatter Placer manipulator".Localize(),
-                LevelEditorCore.Resources.CubesImage,
+                Resources.ScatterPlace,
                 Keys.None);
         }
 

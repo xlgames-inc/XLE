@@ -91,11 +91,22 @@ namespace XLEBridgeUtils
                 //  "_cameraSettings" should match the camera set in 
                 //  the view control
             auto camera = Camera;
-            _cameraSettings->GetUnderlyingRaw()->_position = AsFloat3(camera->WorldEye);
-            _cameraSettings->GetUnderlyingRaw()->_focus = AsFloat3(camera->WorldLookAtPoint);
-            _cameraSettings->GetUnderlyingRaw()->_verticalFieldOfView = camera->YFov * 180.f / gPI;
-            _cameraSettings->GetUnderlyingRaw()->_nearClip = camera->NearZ;
-            _cameraSettings->GetUnderlyingRaw()->_farClip = camera->FarZ;
+            auto& dstCam = *_cameraSettings->GetUnderlyingRaw();
+            dstCam._position = AsFloat3(camera->WorldEye);
+            dstCam._focus = AsFloat3(camera->WorldLookAtPoint);
+            dstCam._nearClip = camera->NearZ;
+            dstCam._farClip = camera->FarZ;
+
+            if (camera->ProjectionType == Sce::Atf::Rendering::ProjectionType::Orthographic) {
+                dstCam._projection = ToolsRig::VisCameraSettings::Projection::Orthogonal;
+                dstCam._left = camera->Frustum->Left;
+                dstCam._right = camera->Frustum->Right;
+                dstCam._top = camera->Frustum->Top;
+                dstCam._bottom = camera->Frustum->Bottom;
+            } else {
+                dstCam._projection = ToolsRig::VisCameraSettings::Projection::Perspective;
+                dstCam._verticalFieldOfView = camera->YFov * 180.f / gPI;
+            }
             _layerControl->Render();
 
                 // testing for agreement between SonyWWS camera code and XLE camera code
@@ -160,7 +171,8 @@ namespace XLEBridgeUtils
 
                     // disable depth write and depth read
                 auto context = gcnew GUILayer::SimpleRenderingContext(nullptr, ManipulatorOverlay::s_currentParsingContext);
-                context->InitState(false, false);
+                GUILayer::RenderingUtil::ClearDepthBuffer(context);
+                context->InitState(true, true);
                 delete context;
 
                 _designView->Manipulator->Render(_viewControl);

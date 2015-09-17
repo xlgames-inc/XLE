@@ -49,7 +49,7 @@ namespace LevelEditorXLE.Terrain
                 return new LevelEditorCore.ManipulatorInfo(
                     "Terrain".Localize(),
                     "Activate Terrain editing".Localize(),
-                    LevelEditorCore.Resources.TerrainManipImage,
+                    Resources.TerrainManip,
                     Keys.None);
             }
         }

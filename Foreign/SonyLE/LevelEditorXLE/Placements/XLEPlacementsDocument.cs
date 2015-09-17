@@ -196,6 +196,10 @@ namespace LevelEditorXLE.Placements
             return doc;
         }
 
+        private void DomNode_AttributeChanged(object sender, AttributeEventArgs e) { Dirty = true; }
+        private void DomNode_ChildInserted(object sender, ChildEventArgs e) { Dirty = true; }
+        private void DomNode_ChildRemoved(object sender, ChildEventArgs e) { Dirty = true; }
+
         public static void Release(XLEPlacementDocument doc)
         {
             // Multiple references to the same document might turn out to be awkward in C#.
@@ -224,6 +228,10 @@ namespace LevelEditorXLE.Placements
         protected override void OnNodeSet()
         {
             base.OnNodeSet();
+            DomNode.AttributeChanged += DomNode_AttributeChanged;
+            DomNode.ChildInserted += DomNode_ChildInserted;
+            DomNode.ChildRemoved += DomNode_ChildRemoved;
+
             UriChanged += delegate { m_uriChanged = true; };
         }
 

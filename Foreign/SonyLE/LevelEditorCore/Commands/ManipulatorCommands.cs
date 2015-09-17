@@ -219,9 +219,10 @@ namespace LevelEditorCore.Commands
             m_referenceCoordinateSystemComboBox.SelectedIndex = 0;
             m_referenceCoordinateSystemComboBox.SelectedIndexChanged += referenceCoordinateSystemComboBox_SelectedIndexChanged;
 
-            MenuInfo editMenuInfo = MenuInfo.Edit;
-            editMenuInfo.GetToolStrip().Items.Add(m_referenceCoordinateSystemComboBox);
-            editMenuInfo.GetToolStrip().Items.Add(m_snapFromModeComboBox);
+            // disabling these buttons to free up some space
+            // MenuInfo editMenuInfo = MenuInfo.Edit;
+            // editMenuInfo.GetToolStrip().Items.Add(m_referenceCoordinateSystemComboBox);
+            // editMenuInfo.GetToolStrip().Items.Add(m_snapFromModeComboBox);
         }
 
         void m_snapFromModeComboBox_SelectedIndexChanged(object sender, EventArgs e)

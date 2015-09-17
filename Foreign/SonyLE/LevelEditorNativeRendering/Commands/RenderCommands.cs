@@ -90,7 +90,7 @@ namespace RenderingInterop
         {
             // register a custom menu without any commands, so it won't appear in the main menu bar
             MenuInfo menuInfo = m_commandService.RegisterMenu(this, "RenderModes", "Rendering modes");
-            ToolStrip strip = menuInfo.GetToolStrip();
+            ToolStrip strip = null; // menuInfo.GetToolStrip(); (disabling this tool strip, because it feels a bit redundant)
           
              CommandInfo cmdInfo = m_commandService.RegisterCommand(                
                 Command.RenderSmooth,
@@ -99,10 +99,10 @@ namespace RenderingInterop
                 "Solid".Localize(),
                 "Solid rendering".Localize(),
                 Keys.None,
-                Resources.SmoothImage,
+                LevelEditorCore.Resources.SmoothImage,
                 CommandVisibility.Menu,
                 this);
-             strip.Items.Add(cmdInfo.GetButton());
+             if (strip != null) strip.Items.Add(cmdInfo.GetButton());
 
              cmdInfo = m_commandService.RegisterCommand(                
                 Command.RenderWireFrame,
@@ -111,10 +111,10 @@ namespace RenderingInterop
                 "Wireframe".Localize(),
                 "Wireframe rendering".Localize(),
                 Keys.None,
-                Resources.WireframeImage,
+                LevelEditorCore.Resources.WireframeImage,
                 CommandVisibility.Menu,
                 this);
-             strip.Items.Add(cmdInfo.GetButton());
+             if (strip != null) strip.Items.Add(cmdInfo.GetButton());
 
             cmdInfo = m_commandService.RegisterCommand(                
                 Command.RenderOutlined,
@@ -123,10 +123,10 @@ namespace RenderingInterop
                 "SolidOverWire",
                 "Solid over wireframe rendering".Localize(),
                 Keys.None,
-                Resources.OutlinedImage,
+                LevelEditorCore.Resources.OutlinedImage,
                 CommandVisibility.Menu,
                 this);
-            strip.Items.Add(cmdInfo.GetButton());
+            if (strip != null) strip.Items.Add(cmdInfo.GetButton());
 
             cmdInfo = m_commandService.RegisterCommand(                
                 Command.RenderTextured,
@@ -135,10 +135,10 @@ namespace RenderingInterop
                 "Textured".Localize(),
                 "Textured rendering".Localize(),
                 Keys.T,
-                Resources.TexturedImage,
+                LevelEditorCore.Resources.TexturedImage,
                 CommandVisibility.Menu,
                 this);
-            strip.Items.Add(cmdInfo.GetButton());
+            if (strip != null) strip.Items.Add(cmdInfo.GetButton());
 
 
             cmdInfo = m_commandService.RegisterCommand(                
@@ -148,10 +148,10 @@ namespace RenderingInterop
                 "Lighting".Localize(),
                 "Lighting".Localize(),
                 Keys.L,
-                Resources.LightImage,
+                LevelEditorCore.Resources.LightImage,
                 CommandVisibility.Menu,
                 this);
-            strip.Items.Add(cmdInfo.GetButton());
+            if (strip != null) strip.Items.Add(cmdInfo.GetButton());
 
             cmdInfo = m_commandService.RegisterCommand(                
                 Command.RenderBackFace,
@@ -160,10 +160,10 @@ namespace RenderingInterop
                 "BackFace".Localize(),
                 "Render back faces".Localize(),
                 Keys.B,
-                Resources.BackfaceImage,
+                LevelEditorCore.Resources.BackfaceImage,
                 CommandVisibility.Menu,
                 this);
-            strip.Items.Add(cmdInfo.GetButton());
+            if (strip != null) strip.Items.Add(cmdInfo.GetButton());
 
             cmdInfo = m_commandService.RegisterCommand(
                Command.RenderShadow,
@@ -172,10 +172,10 @@ namespace RenderingInterop
                "Shadow".Localize(),
                "Render shadow".Localize(),
                Keys.None,
-               Resources.ShadowImage,
+               LevelEditorCore.Resources.ShadowImage,
                CommandVisibility.Menu,
                this);
-            strip.Items.Add(cmdInfo.GetButton());
+            if (strip != null) strip.Items.Add(cmdInfo.GetButton());
 
 
             cmdInfo = m_commandService.RegisterCommand(
@@ -185,10 +185,10 @@ namespace RenderingInterop
              "Normals".Localize(),
              "Render Normals".Localize(),
              Keys.None,
-             Resources.NormalImage,
+             LevelEditorCore.Resources.NormalImage,
              CommandVisibility.Menu,
              this);
-            strip.Items.Add(cmdInfo.GetButton());
+            if (strip != null) strip.Items.Add(cmdInfo.GetButton());
 
             m_commandService.RegisterCommand(                
                 Command.RenderCycle,

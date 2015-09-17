@@ -709,7 +709,17 @@ namespace XLEMath
 
     Float4x4 MakeCameraToWorld(const Float3& forward, const Float3& up, const Float3& position)
     {
-        Float3 right            = Cross(forward, up);
+        Float3 right = Cross(forward, up);
+        if (XlAbs(MagnitudeSquared(right)) < 1e-10f) {
+                // If forward and up are perpendicular, right will be zero
+                // length (or close to zero).
+                // We need to pick another up in this case
+                //  -- ideally the caller would provide a better up vector
+            right = Cross(forward, Float3(0.f, 1.f, 0.f));
+            if (XlAbs(MagnitudeSquared(right)) < 1e-10f)
+                right = Cross(forward, Float3(1.f, 0.f, 0.f));
+        }
+
         Float3 adjustedUp       = Normalize(Cross(right, forward));
         Float3 adjustedRight    = Normalize(Cross(forward, adjustedUp));
 

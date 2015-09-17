@@ -21,7 +21,15 @@ namespace ToolsRig
         result._farClip = camSettings._farClip;
         result._nearClip = camSettings._nearClip;
         result._verticalFieldOfView = Deg2Rad(camSettings._verticalFieldOfView);
-        result._temporaryMatrix = Identity<Float4x4>();
+        result._left = camSettings._left;
+        result._top = camSettings._top;
+        result._right = camSettings._right;
+        result._bottom = camSettings._bottom;
+        result._projection = 
+            (camSettings._projection == VisCameraSettings::Projection::Orthogonal)
+             ? RenderCore::Techniques::CameraDesc::Projection::Orthogonal
+             : RenderCore::Techniques::CameraDesc::Projection::Perspective;
+        assert(std::isfinite(result._cameraToWorld(0,0)) && !std::isnan(result._cameraToWorld(0,0)));
         return result;
     }
 

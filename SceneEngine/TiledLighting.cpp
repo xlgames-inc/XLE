@@ -176,7 +176,6 @@ namespace SceneEngine
 
                 auto camera = lightingParserContext.GetSceneParser()->GetCameraDesc();
                 auto worldToView = InvertOrthonormalTransform(camera._cameraToWorld);
-                worldToView = InvertOrthonormalTransform(camera._temporaryMatrix);
                 auto coordinateFlipMatrix = Float4x4(
                     1.f, 0.f, 0.f, 0.f,
                     0.f, 0.f, -1.f, 0.f,
