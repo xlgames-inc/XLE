@@ -87,8 +87,9 @@ namespace GUILayer
     {
     public:
         virtual String^ GetSelectedModel() = 0;
+        virtual String^ GetSelectedMaterial() = 0;
         virtual void EnableSelectedModelDisplay(bool newState) = 0;
-        virtual void SelectModel(String^ newModelName) = 0;
+        virtual void SelectModel(String^ newModelName, String^ newMaterialName) = 0;
         virtual void SwitchToMode(unsigned newMode) = 0;
 
         ToolsRig::IPlacementManipulatorSettings* GetNative();

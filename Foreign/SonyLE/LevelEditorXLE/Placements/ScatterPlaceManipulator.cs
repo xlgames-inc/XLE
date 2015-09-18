@@ -26,11 +26,13 @@ namespace LevelEditorXLE.Placements
             public float Radius { get; set; }
             public float Density { get; set; }
             public string ModelName { get; set; }
+            public string MaterialName { get; set; }
 
             public ManipulatorSettings()
             {
                 Radius = 50.0f; Density = 0.1f;
                 ModelName = "Game/Model/Nature/BushTree/BushE";
+                MaterialName = "Game/Model/Nature/BushTree/BushE";
             }
 
             #region IPropertyEditingContext items
@@ -68,6 +70,13 @@ namespace LevelEditorXLE.Placements
                                 GetType(),
                                 "ModelName", "Model Name", category,
                                 "Name of the model to create and destroy",
+                                new Sce.Atf.Controls.PropertyEditing.FileUriEditor(),
+                                new AssetNameNoExtConverter()));
+                        _propertyDescriptors.Add(
+                            new UnboundPropertyDescriptor(
+                                GetType(),
+                                "MaterialName", "Material Name", category,
+                                "Material to use with newly created placements",
                                 new Sce.Atf.Controls.PropertyEditing.FileUriEditor(),
                                 new AssetNameNoExtConverter()));
                     }
@@ -139,7 +148,7 @@ namespace LevelEditorXLE.Placements
             {
                 resource = d.Resolve(new Uri(
                     new Uri(System.Environment.CurrentDirectory + "\\"),
-                    ManipulatorContext.ModelName + ".dae"));
+                    ManipulatorContext.ModelName + "<model"));
                 if (resource != null) break;
             }
 
@@ -160,6 +169,11 @@ namespace LevelEditorXLE.Placements
                         var transform = resGob.As<LevelEditorCore.ITransformable>();
                         transform.Translation = XLEBridgeUtils.Utils.AsVec3F(s);
                         transform.Rotation = new Sce.Atf.VectorMath.Vec3F(0.0f, 0.0f, (float)(m_rng.NextDouble()) * 2.0f * 3.14159f);
+
+                            // set the material name (if we can)
+                        var p = resGob.As<Placements.XLEPlacementObject>();
+                        if (p!=null)
+                            p.Material = ManipulatorContext.MaterialName;
                     }
                 }
             }

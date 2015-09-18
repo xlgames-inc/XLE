@@ -83,16 +83,19 @@ namespace LevelEditorXLE.Placements
         private class Settings : GUILayer.IPlacementManipulatorSettingsLayer
         {
             public override string GetSelectedModel() { return _selectedModel; }
-            public override void SelectModel(string newModelName) { _selectedModel = newModelName; }
+            public override string GetSelectedMaterial() { return _selectedMaterial; }
+            public override void SelectModel(string newModelName, string materialName) { _selectedModel = newModelName; _selectedMaterial = materialName; }
             public override void EnableSelectedModelDisplay(bool newState) {}
             public override void SwitchToMode(uint newMode) {}
 
             internal Settings()
             {
                 _selectedModel = "game/model/nature/bushtree/BushE";
+                _selectedMaterial = "game/model/nature/bushtree/BushE";
             }
 
             internal String _selectedModel;
+            internal String _selectedMaterial;
         };
 
         XLEBridgeUtils.NativeManipulatorLayer _nativeManip;
@@ -108,6 +111,7 @@ namespace LevelEditorXLE.Placements
             if (resourceUri != null) {
                 _manipSettings._selectedModel = 
                     _assetService.StripExtension(_assetService.AsAssetName(resourceUri));
+                _manipSettings._selectedMaterial = _manipSettings._selectedModel;
             }
         }
     };

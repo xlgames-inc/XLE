@@ -57,6 +57,7 @@ namespace ToolsRig
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
         bool            _browserActive;
         std::string     _selectedModel;
+        std::string     _selectedMaterial;
 
         std::vector<std::unique_ptr<IManipulator>> _manipulators;
         unsigned        _activeManipulatorIndex;
@@ -64,8 +65,9 @@ namespace ToolsRig
 
             // "IPlacementManipulatorSettings" interface
         virtual std::string GetSelectedModel() const;
+        virtual std::string GetSelectedMaterial() const;
         virtual void EnableSelectedModelDisplay(bool newState);
-        virtual void SelectModel(const char newModelName[]);
+        virtual void SelectModel(const char newModelName[], const char materialName[]);
         virtual void SwitchToMode(Mode::Enum newMode);
     };
 
@@ -452,7 +454,7 @@ namespace ToolsRig
                 if (hitTestResult._type == SceneEngine::IntersectionTestScene::Type::Placement) {
                     auto tempTrans = _editor->Transaction_Begin(&hitTestResult._objectGuid, &hitTestResult._objectGuid + 1);
                     if (tempTrans->GetObjectCount() == 1) {
-                        _manInterface->SelectModel(tempTrans->GetObject(0)._model.c_str());
+                        _manInterface->SelectModel(tempTrans->GetObject(0)._model.c_str(), tempTrans->GetObject(0)._model.c_str());
                         _manInterface->SwitchToMode(IPlacementManipulatorSettings::Mode::PlaceSingle);
                     }
                 }
@@ -811,8 +813,9 @@ namespace ToolsRig
         if (evnt.IsHeld_LButton()) {
             if (test._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
                 auto selectedModel = _manInterface->GetSelectedModel();
-                if (now >= (_spawnTimer + spawnTimeOut) && !selectedModel.empty()) {
-                    PerformScatter(hitTestScene, test._worldSpaceCollision, selectedModel.c_str(), selectedModel.c_str());
+                auto selectedMaterial = _manInterface->GetSelectedMaterial();
+                if (now >= (_spawnTimer + spawnTimeOut) && !selectedModel.empty() && !selectedMaterial.empty()) {
+                    PerformScatter(hitTestScene, test._worldSpaceCollision, selectedModel.c_str(), selectedMaterial.c_str());
                     _spawnTimer = now;
                 }
                 return true;
@@ -1426,15 +1429,18 @@ namespace ToolsRig
     }
 
     std::string PlacementsWidgets::GetSelectedModel() const { return _selectedModel; }
+    std::string PlacementsWidgets::GetSelectedMaterial() const { return _selectedMaterial; }
+
     void PlacementsWidgets::EnableSelectedModelDisplay(bool newState)
     {
         _drawSelectedModel = newState;
     }
 
-    void PlacementsWidgets::SelectModel(const char newModelName[])
+    void PlacementsWidgets::SelectModel(const char newModelName[], const char materialName[])
     {
-        if (newModelName) {
+        if (newModelName && materialName) {
             _selectedModel = newModelName;
+            _selectedMaterial = materialName;
         }
     }
 

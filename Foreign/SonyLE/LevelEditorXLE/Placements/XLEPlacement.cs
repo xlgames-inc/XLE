@@ -30,11 +30,13 @@ namespace LevelEditorXLE.Placements
         public string Model
         {
             get { return GetAttribute<string>(PlcmtST.modelAttribute); }
+            set { SetAttribute(PlcmtST.modelAttribute, value); }
         }
 
         public string Material
         {
             get { return GetAttribute<string>(PlcmtST.materialAttribute); }
+            set { SetAttribute(PlcmtST.materialAttribute, value); }
         }
 
         public static XLEPlacementObject Create()

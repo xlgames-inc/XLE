@@ -61,8 +61,9 @@ namespace ToolsRig
     {
     public:
         virtual std::string GetSelectedModel() const = 0;
+        virtual std::string GetSelectedMaterial() const = 0;
         virtual void EnableSelectedModelDisplay(bool newState) = 0;
-        virtual void SelectModel(const char newModelName[]) = 0;
+        virtual void SelectModel(const char newModelName[], const char materialName[]) = 0;
 
         struct Mode { enum Enum { Select, PlaceSingle }; };
         virtual void SwitchToMode(Mode::Enum newMode) = 0;

@@ -19,12 +19,29 @@ namespace RenderingInterop
 
         public IResource Resolve(Uri uri)
         {
+                // Very awkward here, because sometimes our "uri"s aren't
+                // really URIs. They are just string identifiers that can
+                // contain parameters extra information above just the 
+                // basic path.
+                // But the level editor stuff wants to work with URIs because
+                // it will switch back and forth between relative and absolute
+                // filenames.
             IResource resource = null;
             string fileName = uri.LocalPath;
-            string ext = Path.GetExtension(fileName).ToLower();
-            var res = m_gameEngine.Info.ResourceInfos.GetByType(ResourceTypes.Model);
-            if(res.IsSupported(ext))
-                resource = new ModelResource(uri,ResourceTypes.Model);                       
+
+            if (fileName.Substring(fileName.Length-6) == "<model")
+            {
+                resource = new ModelResource(
+                    new Uri(fileName.Substring(0, fileName.Length-6)),
+                    ResourceTypes.Model);
+            }
+            else
+            {
+                string ext = Path.GetExtension(fileName).ToLower();
+                var res = m_gameEngine.Info.ResourceInfos.GetByType(ResourceTypes.Model);
+                if (res.IsSupported(ext))
+                    resource = new ModelResource(uri, ResourceTypes.Model);
+            }
 
             return resource;
         }

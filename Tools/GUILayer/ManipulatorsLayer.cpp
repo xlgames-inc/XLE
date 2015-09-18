@@ -96,8 +96,9 @@ namespace GUILayer
         {
         public:
             virtual std::string GetSelectedModel() const;
+            virtual std::string GetSelectedMaterial() const;
             virtual void EnableSelectedModelDisplay(bool newState);
-            virtual void SelectModel(const char newModelName[]);
+            virtual void SelectModel(const char newModelName[], const char materialName[]);
             virtual void SwitchToMode(Mode::Enum newMode);
 
             PlacementManipulatorSettingsAdapter(IPlacementManipulatorSettingsLayer^ managed);
@@ -110,14 +111,19 @@ namespace GUILayer
         {
             return clix::marshalString<clix::E_UTF8>(_managed->GetSelectedModel());
         }
+        std::string PlacementManipulatorSettingsAdapter::GetSelectedMaterial() const
+        {
+            return clix::marshalString<clix::E_UTF8>(_managed->GetSelectedMaterial());
+        }
         void PlacementManipulatorSettingsAdapter::EnableSelectedModelDisplay(bool newState)
         {
             return _managed->EnableSelectedModelDisplay(newState);
         }
-        void PlacementManipulatorSettingsAdapter::SelectModel(const char newModelName[])
+        void PlacementManipulatorSettingsAdapter::SelectModel(const char newModelName[], const char materialname[])
         {
             _managed->SelectModel(
-                clix::marshalString<clix::E_UTF8>(newModelName));
+                clix::marshalString<clix::E_UTF8>(newModelName),
+                clix::marshalString<clix::E_UTF8>(materialname));
         }
         void PlacementManipulatorSettingsAdapter::SwitchToMode(Mode::Enum newMode)
         {
