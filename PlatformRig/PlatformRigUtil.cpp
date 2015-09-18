@@ -385,6 +385,12 @@ namespace PlatformRig
             result._resolveType = ShadowProjectionDesc::ResolveType::DepthTexture;
         }
 
+        if (settings._flags & DefaultShadowFrustumSettings::Flags::CullFrontFaces) {
+            result._windingCull = ShadowProjectionDesc::WindingCull::FrontFaces;
+        } else {
+            result._windingCull = ShadowProjectionDesc::WindingCull::BackFaces;
+        }
+
         result._shadowSlopeScaledBias = settings._shadowSlopeScaledBias;
         result._shadowDepthBiasClamp = settings._shadowDepthBiasClamp;
         result._shadowRasterDepthBias = settings._shadowRasterDepthBias;

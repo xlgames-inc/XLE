@@ -745,13 +745,12 @@ namespace SceneEngine
 
             /////////////////////////////////////////////
 
-        auto& targetsBox = Techniques::FindCachedBox<ShadowTargetsBox>(
-            ShadowTargetsBox::Desc(
-                frustum._width, frustum._height, MaxShadowTexturesPerLight, 
-                FormatStack(frustum._typelessFormat, frustum._readFormat, frustum._writeFormat)));
-        auto& resources = Techniques::FindCachedBox<ShadowWriteResources>(
-            ShadowWriteResources::Desc(
-                frustum._shadowSlopeScaledBias, frustum._shadowDepthBiasClamp, frustum._shadowRasterDepthBias));
+        auto& targetsBox = Techniques::FindCachedBox2<ShadowTargetsBox>(
+            frustum._width, frustum._height, MaxShadowTexturesPerLight, 
+            FormatStack(frustum._typelessFormat, frustum._readFormat, frustum._writeFormat));
+        auto& resources = Techniques::FindCachedBox2<ShadowWriteResources>(
+            frustum._shadowSlopeScaledBias, frustum._shadowDepthBiasClamp, 
+            frustum._shadowRasterDepthBias, unsigned(frustum._windingCull));
 
         preparedResult._shadowTextureSRV = targetsBox._shaderResource;
 

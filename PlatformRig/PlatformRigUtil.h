@@ -49,13 +49,14 @@ namespace PlatformRig
     {
     public:
         struct Flags 
-        { 
+        {
             enum Enum 
             { 
                 HighPrecisionDepths = 1<<0, 
                 ArbitraryCascades = 1<<1,
                 RayTraced = 1<<2,
-            }; 
+                CullFrontFaces = 1<<3       //< When set, cull front faces and leave back faces; when not set, cull back faces and leave front faces
+            };
             typedef unsigned BitField;
         };
         unsigned        _frustumCount;

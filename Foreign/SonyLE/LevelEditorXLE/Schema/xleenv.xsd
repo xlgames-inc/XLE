@@ -298,7 +298,7 @@
 
         <scea.dom.editors.attribute category="Precision" name="TextureSize" displayName="Texture Size" description="Size of the shadow projection texture (use a power of 2, normally 1024, 2048 or 4096)"/>
         <scea.dom.editors.attribute category="Precision" name="ShadowSlopeScaledBias" displayName="Slope Scaled Bias factor" description="Raise to reduce 'acne' artefacts at glancing angles to the shadow projection"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:-20,20"/>
         <scea.dom.editors.attribute category="Precision" name="ShadowDepthBiasClamp" displayName="Depth Bias Clamp" description="Low-level depth bias clamp value"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:-100,100"/>
         <scea.dom.editors.attribute category="Precision" name="ShadowRasterDepthBias" displayName="Depth Bias" description="Low-level depth bias value (in integer zbuffer units)"/>
@@ -306,8 +306,8 @@
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:-0.2,0.2"/>
         
         <scea.dom.editors.attribute category="Flags" name="Flags" displayName="Flags"
-          editor="Sce.Atf.Controls.PropertyEditing.FlagsUITypeEditor,Atf.Gui.WinForms:HighPrecisionDepths,ArbitraryCascades"
-          converter="Sce.Atf.Controls.PropertyEditing.FlagsTypeConverter:HighPrecisionDepths,ArbitraryCascades"/>
+          editor="Sce.Atf.Controls.PropertyEditing.FlagsUITypeEditor,Atf.Gui.WinForms:HighPrecisionDepths,ArbitraryCascades,RayTraced,CullFrontFaces"
+          converter="Sce.Atf.Controls.PropertyEditing.FlagsTypeConverter:HighPrecisionDepths,ArbitraryCascades,RayTraced,CullFrontFaces"/>
 
         <scea.dom.editors.attribute category="Resolve" name="BlurAngleDegrees" displayName="Blur Angle" description="Angle of the penumbra of the light (higher numbers mean softer shadows)"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>

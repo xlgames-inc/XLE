@@ -271,6 +271,7 @@ namespace SceneEngine
         _tanBlurAngle = 0.f;
         _minBlurSearch = _maxBlurSearch = 0.f;
         _resolveType = ResolveType::DepthTexture;
+        _windingCull = WindingCull::BackFaces;
         _lightId = ~0u;
     }
 

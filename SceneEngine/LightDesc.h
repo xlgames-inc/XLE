@@ -123,6 +123,9 @@ namespace SceneEngine
         enum class ResolveType { DepthTexture, RayTraced };
         ResolveType     _resolveType;
 
+        enum class WindingCull { BackFaces, FrontFaces, None };
+        WindingCull     _windingCull;
+
         LightId         _lightId;
 
         ShadowProjectionDesc();

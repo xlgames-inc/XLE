@@ -62,8 +62,9 @@ namespace SceneEngine
         public:
             float   _slopeScaledBias, _depthBiasClamp;
             int     _rasterDepthBias;
-            Desc(float slopeScaledBias, float depthBiasClamp, int rasterDepthBias) 
-                : _slopeScaledBias(slopeScaledBias), _depthBiasClamp(depthBiasClamp), _rasterDepthBias(rasterDepthBias) {}
+            unsigned    _windingCullMode;
+            Desc(float slopeScaledBias, float depthBiasClamp, int rasterDepthBias, unsigned windingCullMode) 
+                : _slopeScaledBias(slopeScaledBias), _depthBiasClamp(depthBiasClamp), _rasterDepthBias(rasterDepthBias), _windingCullMode(windingCullMode) {}
         };
 
         RenderCore::Metal::RasterizerState      _rasterizerState;
