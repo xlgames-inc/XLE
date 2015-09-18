@@ -48,9 +48,9 @@ namespace LevelEditorXLE
                 return true;
             }
 
-            if (Control.ModifierKeys.HasFlag(Keys.Control) && Control.ModifierKeys.HasFlag(Keys.Shift) && e.Button == MouseButtons.Left)
+            if (Control.ModifierKeys.HasFlag(Keys.Control) && !Control.ModifierKeys.HasFlag(Keys.Shift) && e.Button == MouseButtons.Left)
             {
-                // "shift + control + l click" repositions the "focus" point of the camera
+                // "control + l click" repositions the "focus" point of the camera
                 //      -- it's just incredibly useful to be able to manually set the point, because it
                 //          allows the user to specify both the speed of the movement of the camera and
                 //          the orbit of the camera in a natural way

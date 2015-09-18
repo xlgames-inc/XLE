@@ -202,7 +202,7 @@ namespace ToolsRig
     bool    ManipulatorStack::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
     {
         static auto ctrl = RenderOverlays::DebuggingDisplay::KeyId_Make("control");
-        if (evnt.IsPress_MButton() || (evnt.IsHeld(ctrl) && evnt.IsPress_LButton())) {
+        if (evnt.IsPress_MButton() || evnt.IsRelease_MButton() || (evnt.IsHeld(ctrl) && evnt.IsPress_LButton()) || evnt._wheelDelta) {
             auto i = LowerBound(_registeredManipulators, CameraManipulator);
             if (i!=_registeredManipulators.end() && i->first == CameraManipulator) {
                     // remove this manipulator if it already is on the active manipulators list...

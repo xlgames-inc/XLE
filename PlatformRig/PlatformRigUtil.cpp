@@ -166,15 +166,9 @@ namespace PlatformRig
             Float3 focusPoint = cameraPos + (projectionWidth * 0.45f) * shiftDirection;
             auto lightViewMatrix = MakeWorldToLight(
                 negativeLightDirection, focusPoint + (.5f * shadowProjectionDist) * negativeLightDirection);
-                
-
-                //  Note that the "flip" on the projection matrix is important here
-                //  we need to make sure the correct faces are back-faced culled. If
-                //  the wrong faces are culled, the results will still look close to being
-                //  correct in many places, but there will be light leakage
             p._projectionMatrix = RenderCore::Techniques::OrthogonalProjection(
-                -.5f * projectionWidth,  .5f * projectionWidth,
-                 .5f * projectionWidth, -.5f * projectionWidth,
+                -.5f * projectionWidth, -.5f * projectionWidth,
+                 .5f * projectionWidth,  .5f * projectionWidth,
                 shadowNearPlane, shadowFarPlane,
                 RenderCore::Techniques::GeometricCoordinateSpace::RightHanded,
                 RenderCore::Techniques::GetDefaultClipSpaceType());
@@ -321,10 +315,12 @@ namespace PlatformRig
         for (unsigned f=0; f<result._count; ++f) {
             result._fullProj[f]._viewMatrix = result._definitionViewMatrix;
 
+                // Note that we're flipping y here in order to keep
+                // the winding direction correct in the final projection
             const auto& mins = result._orthoSub[f]._projMins;
             const auto& maxs = result._orthoSub[f]._projMaxs;
             Float4x4 projMatrix = Techniques::OrthogonalProjection(
-                mins[0], mins[1], maxs[0], maxs[1], mins[2], maxs[2],
+                mins[0], maxs[1], maxs[0], mins[1], mins[2], maxs[2],
                 Techniques::GeometricCoordinateSpace::RightHanded, Techniques::GetDefaultClipSpaceType());
             result._fullProj[f]._projectionMatrix = projMatrix;
 
@@ -338,7 +334,7 @@ namespace PlatformRig
             //  mins and maxs into the projection matrix
 
         Float4x4 clippingProjMatrix = Techniques::OrthogonalProjection(
-            allCascadesMins[0], allCascadesMins[1], allCascadesMaxs[0], allCascadesMaxs[1], 
+            allCascadesMins[0], allCascadesMaxs[1], allCascadesMaxs[0], allCascadesMins[1], 
             shadowNearPlane, shadowFarPlane,
             Techniques::GeometricCoordinateSpace::RightHanded, Techniques::GetDefaultClipSpaceType());
 
