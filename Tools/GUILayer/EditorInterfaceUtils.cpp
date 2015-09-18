@@ -259,16 +259,24 @@ namespace GUILayer
         static ScatterPlaceOperation^ CalculateScatterOperation(
             PlacementsEditorWrapper^ placements,
             IntersectionTestSceneWrapper^ scene,
-            System::String^ modelName, 
+            IEnumerable<System::String^>^ modelName, 
             Vector3 centre, float radius, float density)
         {
             std::vector<SceneEngine::PlacementGUID> toBeDeleted;
             std::vector<Float3> spawnPositions;
 
+            std::vector<std::string> convertedNames;
+            std::vector<const char*> names;
+            for each(System::String^ n in modelName) {
+                auto str = clix::marshalString<clix::E_UTF8>(n);
+                convertedNames.push_back(str);
+                names.push_back(convertedNames[convertedNames.size()-1].c_str());
+            }
+
             ToolsRig::CalculateScatterOperation(
                 toBeDeleted, spawnPositions,
                 placements->GetNative(), scene->GetNative(), 
-                clix::marshalString<clix::E_UTF8>(modelName).c_str(),
+                AsPointer(names.cbegin()), (unsigned)names.size(),
                 AsFloat3(centre), radius, density);
 
             auto result = gcnew ScatterPlaceOperation();

@@ -46,6 +46,7 @@ namespace LevelEditorXLE.Manipulators
                 var t = m as Terrain.TerrainManipulator;
                 if (t!=null) {
                     var terrainCtrls = new XLENativeManipControls();
+                    terrainCtrls.Dock = DockStyle.Fill;
                     terrainCtrls.SetActiveContext(t.ManipulatorContext);
 
                     var terrainPage = new TabPage("Terrain");
@@ -56,9 +57,40 @@ namespace LevelEditorXLE.Manipulators
 
                 var s = m as Placements.ScatterPlaceManipulator;
                 if (s != null) {
-                    var properties = new Sce.Atf.Controls.PropertyEditing.PropertyGrid();
+                    var properties = new XLEScatterPlaceControls();
                     properties.Dock = DockStyle.Fill;
-                    properties.Bind(s.ManipulatorContext);
+                    properties.Object = s.ManipulatorContext;
+
+                    properties.SaveEvent = delegate(object o, string fn)
+                        {
+                            try
+                            {
+                                var settings = o as Placements.ScatterPlaceManipulator.ManipulatorSettings;
+                                if (settings != null)
+                                    settings.SaveModelList(fn);
+                            }
+                            catch { MessageBox.Show("Error while saving model list"); }
+                        };
+
+                    properties.LoadEvent = delegate(object o, string fn)
+                        {
+                            try
+                            {
+                                var settings = o as Placements.ScatterPlaceManipulator.ManipulatorSettings;
+                                if (settings != null)
+                                    settings.LoadModelList(fn);
+
+                                    // Hack! Problem when refreshing properties after a change
+                                    // So we need to change the object to something else, and then
+                                    // change it back.
+                                    // Note that this creates a hidden cyclic dependency
+                                    //      -- because we're keeping a reference on the "properties"
+                                    //          variable here
+                                properties.Object = new Placements.ScatterPlaceManipulator.ManipulatorSettings(); 
+                                properties.Object = settings;
+                            }
+                            catch { MessageBox.Show("Error while loading model list"); }
+                        };
 
                     var page = new TabPage("Scatter Placer");
                     page.Tag = m;

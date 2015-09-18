@@ -1060,10 +1060,15 @@ namespace ToolsRig
         std::vector<Float3>& _spawnPositions,
         SceneEngine::PlacementsEditor& editor,
         const SceneEngine::IntersectionTestScene& hitTestScene,
-        const char modelName[],
+        const char* const* modelName, unsigned modelCount,
         const Float3& centre, float radius, float density)
     {
-        uint64 modelGuid = Hash64(modelName);
+        if (!modelCount) return;
+
+        std::vector<uint64> modelGuids;
+        for (unsigned c=0; c<modelCount; ++c)
+            modelGuids.push_back(Hash64(modelName[c]));
+        std::sort(modelGuids.begin(), modelGuids.end());
 
             // Our scatter algorithm is a little unique
             //  * find the number of objects with the same model & material within 
@@ -1080,9 +1085,10 @@ namespace ToolsRig
         _toBeDeleted = editor.Find_BoxIntersection(
             centre - Float3(radius, radius, radius),
             centre + Float3(radius, radius, radius),
-            [radius, centre, modelGuid, &noisyPts](const SceneEngine::PlacementsEditor::ObjIntersectionDef& objectDef) -> bool
+            [radius, centre, &modelGuids, &noisyPts](const SceneEngine::PlacementsEditor::ObjIntersectionDef& objectDef) -> bool
             {
-                if (objectDef._model == modelGuid) {
+                auto i = std::lower_bound(modelGuids.cbegin(), modelGuids.cend(), objectDef._model);
+                if (i != modelGuids.cend() && *i == objectDef._model) {
                         // Make sure the object bounding box intersects with a cylinder around "centre"
                         // box vs cylinder is a little expensive. But since the cylinder axis is just +Z
                         // perhaps we could just treat this as a 2d problem, and just do circle vs rhomboid
@@ -1102,8 +1108,9 @@ namespace ToolsRig
             //  Note that the blur noise method we're using will probably not work 
             //  well with very small numbers of placements. So we're going to limit 
             //  the bottom range.
+            //  We will use the first model in the list to calibrate the scatter densitys
 
-        auto modelBoundingBox = editor.GetModelBoundingBox(modelName);
+        auto modelBoundingBox = editor.GetModelBoundingBox(modelName[0]);
         if (    modelBoundingBox.second[0] <= modelBoundingBox.first[0]
             ||  modelBoundingBox.second[1] <= modelBoundingBox.first[1]
             ||  modelBoundingBox.second[2] <= modelBoundingBox.first[2])
@@ -1146,7 +1153,8 @@ namespace ToolsRig
         CalculateScatterOperation(
             toBeDeleted, spawnPositions, 
             *_editor.get(), hitTestScene,
-            modelName, centre, _radius, _density);
+            &modelName, 1,
+            centre, _radius, _density);
 
             //  We have a list of placements using the same model, and within the placement area.
             //  We want to either add or remove one.

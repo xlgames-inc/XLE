@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Windows.Forms;
 using System.Drawing;
+using System.Linq;
 
 using Sce.Atf;
 using Sce.Atf.Adaptation;
@@ -15,6 +16,9 @@ using Sce.Atf.Controls.PropertyEditing;
 using LevelEditorCore;
 using Camera = Sce.Atf.Rendering.Camera;
 
+using System.ComponentModel;
+using System.Xml.Serialization;
+
 namespace LevelEditorXLE.Placements
 {
     [Export(typeof(IManipulator))]
@@ -25,14 +29,66 @@ namespace LevelEditorXLE.Placements
         {
             public float Radius { get; set; }
             public float Density { get; set; }
-            public string ModelName { get; set; }
-            public string MaterialName { get; set; }
+
+            public class Object
+            {
+                [EditorAttribute(typeof(FileUriEditor), typeof(System.Drawing.Design.UITypeEditor))]
+                [TypeConverter(typeof(AssetNameNoExtConverter))]
+                public string ModelName { get; set; }
+
+                [EditorAttribute(typeof(FileUriEditor), typeof(System.Drawing.Design.UITypeEditor))]
+                [TypeConverter(typeof(AssetNameNoExtConverter))]
+                public string MaterialName { get; set; }
+
+                public uint Weight { get; set; }
+
+                public Object()
+                {
+                    ModelName = "Game/Model/Nature/BushTree/BushE";
+                    MaterialName = "Game/Model/Nature/BushTree/BushE";
+                    Weight = 100;
+                }
+            };
+
+            public IList<Object> Objects { get { return _objects; } }
+
+            public Object SelectRandomObject(Random rng)
+            {
+                if (Objects.Count == 0) return new Object();
+                uint totalWeight = 0;
+                foreach (var o in _objects) totalWeight += o.Weight;
+
+                var r = rng.Next((int)totalWeight);
+                for (int c=0; c<_objects.Count; ++c) {
+                    if (r < _objects[c].Weight) return _objects[c];
+                    r -= (int)_objects[c].Weight;
+                }
+
+                return _objects[_objects.Count-1];
+            }
 
             public ManipulatorSettings()
             {
                 Radius = 50.0f; Density = 0.1f;
-                ModelName = "Game/Model/Nature/BushTree/BushE";
-                MaterialName = "Game/Model/Nature/BushTree/BushE";
+                Objects.Add(new Object());
+            }
+
+            private List<Object> _objects = new List<Object>();
+
+            public void SaveModelList(string fn)
+            {
+                var stream = new System.IO.FileStream(fn, System.IO.FileMode.CreateNew, System.IO.FileAccess.Write);
+                var serializer = new XmlSerializer(typeof(List<Object>));
+                serializer.Serialize(stream, _objects);
+            }
+
+            public void LoadModelList(string fn)
+            {
+                var stream = new System.IO.FileStream(fn, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+                var serializer = new XmlSerializer(typeof(List<Object>));
+                var newObjs = serializer.Deserialize(stream) as List<Object>;
+                _objects.Clear();
+                _objects.InsertRange(0, newObjs);
             }
 
             #region IPropertyEditingContext items
@@ -65,26 +121,81 @@ namespace LevelEditorXLE.Placements
                                 GetType(),
                                 "Density", "Density", category,
                                 "Higher numbers mean more objects are created within the same area"));
+                        // _propertyDescriptors.Add(
+                        //     new UnboundPropertyDescriptor(
+                        //         GetType(),
+                        //         "ModelName", "Model Name", category,
+                        //         "Name of the model to create and destroy",
+                        //         new Sce.Atf.Controls.PropertyEditing.FileUriEditor(),
+                        //         new AssetNameNoExtConverter()));
+                        // _propertyDescriptors.Add(
+                        //     new UnboundPropertyDescriptor(
+                        //         GetType(),
+                        //         "MaterialName", "Material Name", category,
+                        //         "Material to use with newly created placements",
+                        //         new Sce.Atf.Controls.PropertyEditing.FileUriEditor(),
+                        //         new AssetNameNoExtConverter()));
+
                         _propertyDescriptors.Add(
                             new UnboundPropertyDescriptor(
                                 GetType(),
-                                "ModelName", "Model Name", category,
-                                "Name of the model to create and destroy",
-                                new Sce.Atf.Controls.PropertyEditing.FileUriEditor(),
-                                new AssetNameNoExtConverter()));
-                        _propertyDescriptors.Add(
-                            new UnboundPropertyDescriptor(
-                                GetType(),
-                                "MaterialName", "Material Name", category,
-                                "Material to use with newly created placements",
-                                new Sce.Atf.Controls.PropertyEditing.FileUriEditor(),
-                                new AssetNameNoExtConverter()));
+                                "Objects", "Models", category,
+                                "Collection of models to place",
+                                CreateEmbeddedCollectionEditor()));
                     }
 
                     return _propertyDescriptors;
                 }
             }
             List<System.ComponentModel.PropertyDescriptor> _propertyDescriptors;
+
+            private static EmbeddedCollectionEditor CreateEmbeddedCollectionEditor()
+            {
+                var objectName = "Objects";
+                var result = new EmbeddedCollectionEditor();
+                result.GetItemInsertersFunc = (context) =>
+                {
+                    var list = context.GetValue() as IList<Object>;
+                    if (list == null) return EmptyArray<EmbeddedCollectionEditor.ItemInserter>.Instance;
+
+                    // create ItemInserter for each component type.
+                    var insertors = new EmbeddedCollectionEditor.ItemInserter[1]
+                    {
+                        new EmbeddedCollectionEditor.ItemInserter(objectName,
+                        delegate
+                        {
+                            var o = new Object();
+                            list.Add(o);
+                            return o;
+                        })
+                    };
+                    return insertors;
+                };
+
+                result.RemoveItemFunc = (context, item) =>
+                {
+                    var list = context.GetValue() as IList<Object>;
+                    if (list != null)
+                        list.Remove(item as Object);
+                };
+
+                result.MoveItemFunc = (context, item, delta) =>
+                {
+                    var list = context.GetValue() as IList<Object>;
+                    if (list != null)
+                    {
+                        var node = item as Object;
+                        int index = list.IndexOf(node);
+                        int insertIndex = index + delta;
+                        if (insertIndex < 0 || insertIndex >= list.Count)
+                            return;
+                        list.RemoveAt(index);
+                        list.Insert(insertIndex, node);
+                    }
+                };
+
+                return result;
+            }
             #endregion
         }
 
@@ -117,6 +228,8 @@ namespace LevelEditorXLE.Placements
             var game = nativeVC.DesignView.Context.As<IGame>();
             if (game == null) return;
 
+            if (ManipulatorContext.Objects.Count == 0) return;
+
             GUILayer.EditorInterfaceUtils.ScatterPlaceOperation op;
 
             var sceneManager = nativeVC.SceneManager;
@@ -126,7 +239,7 @@ namespace LevelEditorXLE.Placements
                 {
                     op = GUILayer.EditorInterfaceUtils.CalculateScatterOperation(
                         editor, scene,
-                        ManipulatorContext.ModelName,
+                        ManipulatorContext.Objects.Select(C => C.ModelName),
                         XLEBridgeUtils.Utils.AsVector3(m_hoverPt),
                         ManipulatorContext.Radius, ManipulatorContext.Density);
                 }
@@ -142,20 +255,23 @@ namespace LevelEditorXLE.Placements
             }
 
             var resourceResolvers = Globals.MEFContainer.GetExportedValues<IResourceResolver>();
-            IResource resource = null;
+            var resourceConverter = Globals.MEFContainer.GetExportedValue<ResourceConverterService>();
 
-            foreach (var d in resourceResolvers)
+            foreach (var s in op._creationPositions)
             {
-                resource = d.Resolve(new Uri(
-                    new Uri(System.Environment.CurrentDirectory + "\\"),
-                    ManipulatorContext.ModelName + "<model"));
-                if (resource != null) break;
-            }
+                // select a random entry from the list of objects
+                var o = ManipulatorContext.SelectRandomObject(m_rng);
 
-            if (resource != null)
-            {
-                var resourceConverter = Globals.MEFContainer.GetExportedValue<ResourceConverterService>();
-                foreach (var s in op._creationPositions)
+                IResource resource = null;
+                foreach (var d in resourceResolvers)
+                {
+                    resource = d.Resolve(new Uri(
+                        new Uri(System.Environment.CurrentDirectory + "\\"),
+                        o.ModelName + "<model"));
+                    if (resource != null) break;
+                }
+
+                if (resource != null)
                 {
                     var resGob = resourceConverter.Convert(resource);
                     if (resGob != null)
@@ -173,7 +289,7 @@ namespace LevelEditorXLE.Placements
                             // set the material name (if we can)
                         var p = resGob.As<Placements.XLEPlacementObject>();
                         if (p!=null)
-                            p.Material = ManipulatorContext.MaterialName;
+                            p.Material = o.MaterialName;
                     }
                 }
             }

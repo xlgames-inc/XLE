@@ -62,6 +62,12 @@
     <Compile Include="Environment\EnvUtility.cs" />
     <Compile Include="Environment\XLEEnvAdapter.cs" />
     <Compile Include="Game\GameExtensions.cs" />
+    <Compile Include="Manipulators\XLEScatterPlaceControls.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Manipulators\XLEScatterPlaceControls.Designer.cs">
+      <DependentUpon>XLEScatterPlaceControls.cs</DependentUpon>
+    </Compile>
     <Compile Include="Markers\TriMeshMarker.cs" />
     <Compile Include="Materials\PickMaterialManipulator.cs" />
     <Compile Include="Placements\Converter.cs" />
@@ -115,6 +121,9 @@
   <ItemGroup>
     <EmbeddedResource Include="Manipulators\XLENativeManipControls.resx">
       <DependentUpon>XLENativeManipControls.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Manipulators\XLEScatterPlaceControls.resx">
+      <DependentUpon>XLEScatterPlaceControls.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Placements\PlacementsConfig.resx">
       <DependentUpon>PlacementsConfig.cs</DependentUpon>

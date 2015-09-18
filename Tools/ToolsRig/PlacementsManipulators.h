@@ -80,7 +80,7 @@ namespace ToolsRig
         std::vector<Float3>& _spawnPositions,
         SceneEngine::PlacementsEditor& editor,
         const SceneEngine::IntersectionTestScene& hitTestScene,
-        const char modelName[],
+        const char* const* modelNames, unsigned modelCount,
         const Float3& centre, float radius, float density);
 }
 

@@ -62,9 +62,11 @@ namespace RenderingInterop
             {
                     // flip the orientation of the splitter based on the size of the window
                 var size = ClientSize;
+                m_splitContainer.SuspendLayout();
                 if (size.Width > size.Height)
                 {
-                    if (m_splitContainer.Orientation != Orientation.Vertical)
+                    if (m_splitContainer.Width > 0 && m_splitContainer.Height > 0
+                        && m_splitContainer.Orientation != Orientation.Vertical)
                     {
                         m_splitContainer.Orientation = Orientation.Vertical;
                         m_splitContainer.SplitterDistance = size.Width / 2; 
@@ -72,12 +74,14 @@ namespace RenderingInterop
                 }
                 else if (size.Width != 0 && size.Height != 0)
                 {
-                    if (m_splitContainer.Orientation != Orientation.Horizontal)
+                    if (m_splitContainer.Width > 0 && m_splitContainer.Height > 0
+                        && m_splitContainer.Orientation != Orientation.Horizontal)
                     {
                         m_splitContainer.Orientation = Orientation.Horizontal;
                         m_splitContainer.SplitterDistance = size.Height / 2; 
                     }
                 }
+                m_splitContainer.ResumeLayout();
             }
 
             private Sce.Atf.Controls.PropertyEditing.PropertyGrid[] m_propControls;
