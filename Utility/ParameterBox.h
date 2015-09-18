@@ -201,7 +201,9 @@ namespace Utility
         ParameterBox();
         ParameterBox(std::initializer_list<std::pair<const utf8*, const char*>>);
         template<typename CharType>
-            ParameterBox(InputStreamFormatter<CharType>& stream);
+            ParameterBox(InputStreamFormatter<CharType>& stream, 
+                const void* defaultValue = nullptr, 
+                const ImpliedTyping::TypeDesc& defaultValueType = ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Void, 0u));
         ParameterBox(ParameterBox&& moveFrom);
         ParameterBox& operator=(ParameterBox&& moveFrom);
         ~ParameterBox();
@@ -294,11 +296,6 @@ namespace Utility
     inline const utf8* ParameterBox::Iterator::Name() const
     {
         return &_box->_names[_box->_offsets[_index].first];
-    }
-
-    inline const void* ParameterBox::Iterator::RawValue() const
-    {
-        return &_box->_values[_box->_offsets[_index].second];
     }
 
     inline auto        ParameterBox::Iterator::Type() const -> const TypeDesc&

@@ -263,10 +263,10 @@ namespace GUILayer
         for each(auto i in input) {
                 //  We get items with null names when they are being added, but
                 //  not quite finished yet. We have to ignore in this case.
-            if (i->Name && i->Name->Length > 0 && i->Value) {
+            if (i->Name && i->Name->Length > 0) {
                 result.SetParameter(
                     (const utf8*)clix::marshalString<clix::E_UTF8>(i->Name).c_str(),
-                    clix::marshalString<clix::E_UTF8>(i->Value).c_str());
+                    i->Value ? clix::marshalString<clix::E_UTF8>(i->Value).c_str() : nullptr);
             }
         }
         return result;

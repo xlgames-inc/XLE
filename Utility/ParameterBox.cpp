@@ -29,17 +29,17 @@ namespace Utility
         uint32 TypeDesc::GetSize() const
         {
             switch (_type) {
-            case TypeCat::Bool: return sizeof(bool)*std::max(1u,unsigned(_arrayCount));
+            case TypeCat::Bool: return sizeof(bool)*unsigned(_arrayCount);
 
             case TypeCat::Int8:
-            case TypeCat::UInt8: return sizeof(uint8)*std::max(1u,unsigned(_arrayCount));
+            case TypeCat::UInt8: return sizeof(uint8)*unsigned(_arrayCount);
 
             case TypeCat::Int16:
-            case TypeCat::UInt16: return sizeof(uint16)*std::max(1u,unsigned(_arrayCount));
+            case TypeCat::UInt16: return sizeof(uint16)*unsigned(_arrayCount);
 
             case TypeCat::Int32:
             case TypeCat::UInt32:
-            case TypeCat::Float: return sizeof(unsigned)*std::max(1u,unsigned(_arrayCount));
+            case TypeCat::Float: return sizeof(unsigned)*unsigned(_arrayCount);
             case TypeCat::Void:
             default: return 0;
             }
@@ -468,7 +468,7 @@ namespace Utility
 
             std::stringstream result;
             assert(dataSize >= desc.GetSize());
-            auto arrayCount = std::max(unsigned(desc._arrayCount), 1u);
+            auto arrayCount = unsigned(desc._arrayCount);
             if (arrayCount > 1) result << "{";
 
             for (auto i=0u; i<arrayCount; ++i) {
@@ -484,7 +484,7 @@ namespace Utility
                     case TypeCat::Int32:    result << *(int32*)data << "i"; break;
                     case TypeCat::UInt32:   result << *(uint32*)data << "u"; break;
                     case TypeCat::Float:    result << *(float*)data << "f"; break;
-                    case TypeCat::Void:     result << "<<void>>"; break;
+                    case TypeCat::Void:     result << ""; break;
                     default:                result << "<<error>>"; break;
                     }
                 } else {
@@ -497,7 +497,7 @@ namespace Utility
                     case TypeCat::Int32:    result << *(int32*)data; break;
                     case TypeCat::UInt32:   result << *(uint32*)data; break;
                     case TypeCat::Float:    result << *(float*)data; break;
-                    case TypeCat::Void:     result << "<<void>>"; break;
+                    case TypeCat::Void:     result << ""; break;
                     default:                result << "<<error>>"; break;
                     }
                 }
@@ -566,13 +566,19 @@ namespace Utility
 
     void ParameterBox::SetParameter(const utf8 name[], const char* stringDataBegin, const char* stringDataEnd)
     {
+        using namespace ImpliedTyping;
+        if (!stringDataBegin || stringDataBegin == stringDataEnd) {
+                // null values or empty strings become "void" type parameters
+            SetParameter(name, nullptr, TypeDesc(TypeCat::Void, 0));
+            return;
+        }
+
         uint8 buffer[NativeRepMaxSize];
-        auto typeDesc = ImpliedTyping::Parse(stringDataBegin, stringDataEnd, buffer, sizeof(buffer));
-        if (typeDesc._type != ImpliedTyping::TypeCat::Void) {
+        auto typeDesc = Parse(stringDataBegin, stringDataEnd, buffer, sizeof(buffer));
+        if (typeDesc._type != TypeCat::Void) {
             SetParameter(name, buffer, typeDesc);
         } else {
             // no conversion... just store a string
-            using namespace ImpliedTyping;
             SetParameter(
                 name, stringDataBegin,
                 TypeDesc(TypeCat::UInt8, (uint16)(stringDataEnd-stringDataBegin), TypeHint::String));
@@ -581,7 +587,7 @@ namespace Utility
 
     void     ParameterBox::SetParameter(const utf8 name[], const char* stringDataBegin)
     {
-        SetParameter(name, stringDataBegin, &stringDataBegin[XlStringLen(stringDataBegin)]);
+        SetParameter(name, stringDataBegin, stringDataBegin ? &stringDataBegin[XlStringLen(stringDataBegin)] : nullptr);
     }
 
     void     ParameterBox::SetParameter(const utf8 name[], const std::string& stringData)
@@ -596,6 +602,16 @@ namespace Utility
         auto size = insertType.GetSize();
         assert(size == sizeof(Type)); (void)size;
         SetParameter(name, &value, insertType);
+    }
+
+    static uint8* ValueTableOffset(SerializableVector<uint8>& values, size_t offset)
+    {
+        return PtrAdd(AsPointer(values.begin()), offset);
+    }
+
+    static const uint8* ValueTableOffset(const SerializableVector<uint8>& values, size_t offset)
+    {
+        return PtrAdd(AsPointer(values.begin()), offset);
     }
 
     void ParameterBox::SetParameter(
@@ -661,7 +677,7 @@ namespace Utility
         if (existingType.GetSize() == valueSize) {
 
                 // same type, or type with the same size...
-            XlCopyMemory(&_values[offset.second], (uint8*)value, valueSize);
+            XlCopyMemory(ValueTableOffset(_values, offset.second), (uint8*)value, valueSize);
             _types[index] = insertType;
 
         } else {
@@ -702,7 +718,7 @@ namespace Utility
                 Type result;
                 if (ImpliedTyping::Cast(
                     &result, sizeof(result), ImpliedTyping::TypeOf<Type>(),
-                    &_values[offset.second], _types[index])) {
+                    ValueTableOffset(_values, offset.second), _types[index])) {
                     return std::make_pair(true, result);
                 }
             }
@@ -718,13 +734,13 @@ namespace Utility
             auto offset = _offsets[index];
 
             if (_types[index] == destType) {
-                XlCopyMemory(dest, &_values[offset.second], destType.GetSize());
+                XlCopyMemory(dest, ValueTableOffset(_values, offset.second), destType.GetSize());
                 return true;
             }
             else {
                 return ImpliedTyping::Cast(
                     dest, destType.GetSize(), destType,
-                    &_values[offset.second], _types[index]);
+                    ValueTableOffset(_values, offset.second), _types[index]);
             }
         }
         return false;
@@ -750,14 +766,14 @@ namespace Utility
         auto type = GetParameterType(name);
         if (type._type == ImpliedTyping::TypeCat::Int8 || type._type == ImpliedTyping::TypeCat::UInt8) {
             std::basic_string<char> result;
-            result.resize(std::max(1u, (unsigned)type._arrayCount));
+            result.resize((unsigned)type._arrayCount);
             GetParameter(name, AsPointer(result.begin()), type);
             return Conversion::Convert<std::basic_string<CharType>>(result);
         }
 
         if (type._type == ImpliedTyping::TypeCat::Int16 || type._type == ImpliedTyping::TypeCat::UInt16) {
             std::basic_string<wchar_t> wideResult;
-            wideResult.resize(std::max(1u, (unsigned)type._arrayCount));
+            wideResult.resize((unsigned)type._arrayCount);
             GetParameter(name, AsPointer(wideResult.begin()), type);
             return Conversion::Convert<std::basic_string<CharType>>(wideResult);
         }
@@ -770,7 +786,7 @@ namespace Utility
         auto type = GetParameterType(name);
         if (type._type == ImpliedTyping::TypeCat::Int8 || type._type == ImpliedTyping::TypeCat::UInt8) {
             std::basic_string<char> intermediate;
-            intermediate.resize(std::max(1u, (unsigned)type._arrayCount));
+            intermediate.resize((unsigned)type._arrayCount);
             GetParameter(name, AsPointer(intermediate.begin()), type);
 
             auto finalLength = Conversion::Convert(dest, destCount-1,
@@ -783,7 +799,7 @@ namespace Utility
 
         if (type._type == ImpliedTyping::TypeCat::Int16 || type._type == ImpliedTyping::TypeCat::UInt16) {
             std::basic_string<wchar_t> intermediate;
-            intermediate.resize(std::max(1u, (unsigned)type._arrayCount));
+            intermediate.resize((unsigned)type._arrayCount);
             GetParameter(name, AsPointer(intermediate.begin()), type);
 
             auto finalLength = Conversion::Convert(dest, destCount-1,
@@ -870,7 +886,7 @@ namespace Utility
     {
         if (index < _offsets.size()) {
             auto offset = _offsets[index].second;
-            return &_values[offset];
+            return ValueTableOffset(_values, offset);
         }
         return 0;    
     }
@@ -921,14 +937,14 @@ namespace Utility
                 if (typeDest == typeSrc) {
                     XlCopyMemory(
                         PtrAdd(temporaryValues, offsetDest), 
-                        PtrAdd(AsPointer(source._values.cbegin()), offsetSrc),
+                        ValueTableOffset(source._values, offsetSrc),
                         typeDest.GetSize());
                 } else {
                         // sometimes we get trival casting situations (like "unsigned int" to "int")
                         //  -- even in those cases, we execute the casting function, which will effect performance
                     bool castSuccess = ImpliedTyping::Cast(
                         PtrAdd(temporaryValues, offsetDest), sizeof(temporaryValues)-offsetDest, typeDest,
-                        PtrAdd(AsPointer(source._values.cbegin()), offsetSrc), typeSrc);
+                        ValueTableOffset(source._values, offsetSrc), typeSrc);
 
                     assert(castSuccess);  // type mis-match when attempting to build filtered hash value
                     (void)castSuccess;
@@ -979,7 +995,7 @@ namespace Utility
             const auto* name = &source._names[i->first];
             SetParameter(
                 name, 
-                &source._values[i->second],
+                ValueTableOffset(source._values, i->second),
                 source._types[std::distance(source._offsets.cbegin(), i)]);
         }
     }
@@ -999,7 +1015,7 @@ namespace Utility
 
         for (auto i=_offsets.cbegin(); i!=_offsets.cend(); ++i) {
             const auto* name = &_names[i->first];
-            const void* value = &_values[i->second];
+            const void* value = ValueTableOffset(_values, i->second);
             const auto& type = _types[std::distance(_offsets.begin(), i)];
 
             auto nameLen = XlStringLen(name);
@@ -1068,7 +1084,9 @@ namespace Utility
     }
 
     template<typename CharType>
-        ParameterBox::ParameterBox(InputStreamFormatter<CharType>& stream)
+        ParameterBox::ParameterBox(
+            InputStreamFormatter<CharType>& stream, 
+            const void* defaultValue, const ImpliedTyping::TypeDesc& defaultValueType)
     {
         using namespace ImpliedTyping;
 
@@ -1103,9 +1121,9 @@ namespace Utility
             }
 
             if (!value._start || !value._end) {
-                    // if there is no valid attached, we default to just "0u"
-                unsigned zero = 0;
-                SetParameter(AsPointer(nameBuffer.cbegin()), &zero, TypeOf<unsigned>());
+                    // if there is no value attached, we default to the value given us
+                    // (usually jsut void)
+                SetParameter(AsPointer(nameBuffer.cbegin()), defaultValue, defaultValueType);
                 continue;
             }
 
@@ -1176,9 +1194,9 @@ namespace Utility
     template void ParameterBox::Serialize<ucs2>(OutputStreamFormatter& stream) const;
     template void ParameterBox::Serialize<ucs4>(OutputStreamFormatter& stream) const;
 
-    template ParameterBox::ParameterBox(InputStreamFormatter<utf8>& stream);
-    template ParameterBox::ParameterBox(InputStreamFormatter<ucs2>& stream);
-    template ParameterBox::ParameterBox(InputStreamFormatter<ucs4>& stream);
+    template ParameterBox::ParameterBox(InputStreamFormatter<utf8>& stream, const void*, const ImpliedTyping::TypeDesc&);
+    template ParameterBox::ParameterBox(InputStreamFormatter<ucs2>& stream, const void*, const ImpliedTyping::TypeDesc&);
+    template ParameterBox::ParameterBox(InputStreamFormatter<ucs4>& stream, const void*, const ImpliedTyping::TypeDesc&);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1218,7 +1236,12 @@ namespace Utility
         }
     }
 
-    const void*         ParameterBox::Iterator::ValueTableEnd() const
+    const void* ParameterBox::Iterator::RawValue() const
+    {
+        return ValueTableOffset(_box->_values, _box->_offsets[_index].second);
+    }
+
+    const void* ParameterBox::Iterator::ValueTableEnd() const
     {
         return AsPointer(_box->_values.end());
     }

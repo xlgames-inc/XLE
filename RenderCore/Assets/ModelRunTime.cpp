@@ -272,6 +272,8 @@ namespace RenderCore { namespace Assets
                     stateSet = matData->_stateSet;
                 
                     for (auto param = matData->_bindings.Begin(); !param.IsEnd(); ++param) {
+                        if (param.Type().GetSize() == 0) continue;
+
                         materialParamBox.SetParameter(
                             (const utf8*)(StringMeld<64, utf8>() << "RES_HAS_" << param.Name()), 1);
                 
@@ -332,6 +334,8 @@ namespace RenderCore { namespace Assets
                 if (!matData) { continue; }
 
                 for (auto param=matData->_bindings.Begin(); !param.IsEnd(); ++param) {
+                    if (param.Type().GetSize() == 0) continue;
+
                     auto bindNameHash = Hash64((const char*)param.Name());
 
                     auto i = std::find(textureBindPoints.cbegin(), textureBindPoints.cend(), bindNameHash);

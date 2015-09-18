@@ -496,7 +496,11 @@ namespace RenderCore { namespace Techniques
             bool matched = false;
             for (unsigned q=0; q<dimof(s_parameterBoxNames); ++q)
                 if (Is(s_parameterBoxNames[q], eleName)) {
-                    dst[q].MergeIn(ParameterBox(source));
+                        // When a value is not specified, we should default to "0u"
+                        // This works well with the C preprocessor; it just means
+                        // things will generally default to off
+                    unsigned zero = 0u;
+                    dst[q].MergeIn(ParameterBox(source, &zero, ImpliedTyping::TypeOf<unsigned>()));
                     matched = true;
                 }
 

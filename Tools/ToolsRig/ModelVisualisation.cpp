@@ -123,9 +123,14 @@ namespace ToolsRig
                     _sharedStateSet->CaptureState(context);
                 }
 
-                RenderWithEmbeddedSkeleton(
-                    RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
-                    *_model, *_sharedStateSet, _modelScaffold);
+                TRY {
+                    RenderWithEmbeddedSkeleton(
+                        RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+                        *_model, *_sharedStateSet, _modelScaffold);
+                } 
+                CATCH (const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); } 
+                CATCH (const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); } 
+                CATCH_END
 
                 if (_sharedStateSet) {
                     _sharedStateSet->ReleaseState(context);
