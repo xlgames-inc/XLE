@@ -110,6 +110,22 @@ namespace RenderCore { namespace Assets
     class SkeletonBinding;
     class PreparedModelDrawCalls;
 
+    class MeshToModel
+    {
+    public:
+        const Float4x4*         _skeletonOutput;
+        unsigned                _skeletonOutputCount;
+        const SkeletonBinding*  _skeletonBinding;
+
+        Float4x4    GetMeshToModel(unsigned transformMarker) const;
+        bool        IsGood() const { return _skeletonOutput != nullptr; }
+
+        MeshToModel();
+        MeshToModel(const Float4x4 skeletonOutput[], unsigned skeletonOutputCount,
+                    const SkeletonBinding* binding = nullptr);
+        MeshToModel(const ModelScaffold&);
+    };
+
     /// <summary>Creates platform resources and renders a model<summary>
     /// ModelRenderer is used to render a model. Though the two classes work together, it is 
     /// a more heavy-weight object than ModelScaffold. When the ModelRenderer is created, it
@@ -125,25 +141,13 @@ namespace RenderCore { namespace Assets
     class ModelRenderer
     {
     public:
-        class MeshToModel
-        {
-        public:
-            const Float4x4*         _skeletonOutput;
-            unsigned                _skeletonOutputCount;
-            const SkeletonBinding*  _skeletonBinding;
-            Float4x4                GetMeshToModel(unsigned transformMarker) const;
-            MeshToModel();
-            MeshToModel(const Float4x4 skeletonOutput[], unsigned skeletonOutputCount,
-                        const SkeletonBinding* binding = nullptr);
-        };
-
             ////////////////////////////////////////////////////////////
         class PreparedAnimation;
         void Render(
             const ModelRendererContext& context,
             const SharedStateSet&   sharedStateSet,
             const Float4x4&         modelToWorld,
-            const MeshToModel*      transforms = nullptr,
+            const MeshToModel&      transforms = MeshToModel(),
             PreparedAnimation*      preparedAnimation = nullptr) const;
 
             ////////////////////////////////////////////////////////////
@@ -151,7 +155,7 @@ namespace RenderCore { namespace Assets
             DelayedDrawCallSet& dest, 
             const SharedStateSet& sharedStateSet, 
             const Float4x4& modelToWorld,
-            const MeshToModel* transforms = nullptr);
+            const MeshToModel& transforms = MeshToModel());
 
         static void RenderPrepared(
             const ModelRendererContext& context, const SharedStateSet& sharedStateSet,

@@ -397,14 +397,14 @@ namespace RenderCore { namespace Assets
         TechniqueInterface BeginGeoCall(
             const ModelRendererContext& context,
             Metal::ConstantBuffer&  localTransformBuffer,
-            const MeshToModel*      transforms,
+            const MeshToModel&      transforms,
             const Float4x4&         modelToWorld,
             unsigned                geoCallIndex) const;
 
         TechniqueInterface BeginSkinCall(
             const ModelRendererContext&     context,
             Metal::ConstantBuffer&  localTransformBuffer,
-            const MeshToModel*      transforms,
+            const MeshToModel&      transforms,
             const Float4x4&         modelToWorld,
             unsigned                geoCallIndex,
             PreparedAnimation*      preparedAnimation) const;

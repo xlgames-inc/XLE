@@ -119,11 +119,11 @@ namespace Sample
                         model.GetRenderer().PrepareAnimation(context, *si, model.GetPrepareMachine().GetSkeletonBinding());
 
                         for (auto i2=i->_instances.cbegin(); i2!=i->_instances.cend(); ++i2) {
-                            RenderCore::Assets::ModelRenderer::MeshToModel meshToModel(
+                            RenderCore::Assets::MeshToModel meshToModel(
                                 si->_finalMatrices.get(),
                                 model.GetPrepareMachine().GetSkeletonOutputCount(),
                                 &model.GetPrepareMachine().GetSkeletonBinding());
-                            model.GetRenderer().Render(modelContext, _pimpl->_charactersSharedStateSet, *i2, &meshToModel, AsPointer(si));
+                            model.GetRenderer().Render(modelContext, _pimpl->_charactersSharedStateSet, *i2, meshToModel, AsPointer(si));
                         }
                     } CATCH(const std::exception&) {
                     } CATCH_END
@@ -156,7 +156,8 @@ namespace Sample
                             //     &model.GetPrepareMachine().GetSkeletonBinding());
 
                             CPUProfileEvent pEvnt("CharacterModelRender", g_cpuProfiler);
-                            model.GetRenderer().Render(modelContext, _pimpl->_charactersSharedStateSet, *i2, /*&meshToModel*/ nullptr, AsPointer(si));
+                            model.GetRenderer().Render(modelContext, _pimpl->_charactersSharedStateSet, *i2, 
+                                /*&meshToModel*/ RenderCore::Assets::MeshToModel(), AsPointer(si));
                         }
                     } CATCH(const std::exception&) {
                     } CATCH_END

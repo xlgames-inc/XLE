@@ -698,15 +698,15 @@ namespace RenderCore { namespace Assets
     auto ModelRenderer::Pimpl::BeginGeoCall(
             const ModelRendererContext& context,
             Metal::ConstantBuffer&      localTransformBuffer,
-            const MeshToModel*          transforms,
+            const MeshToModel&          transforms,
             const Float4x4&             modelToWorld,
             unsigned                    geoCallIndex) const -> TechniqueInterface
     {
         auto& cmdStream = _scaffold->CommandStream();
         auto& geoCall = cmdStream.GetGeoCall(geoCallIndex);
 
-        if (transforms) {
-            auto localToModel = transforms->GetMeshToModel(geoCall._transformMarker);
+        if (transforms.IsGood()) {
+            auto localToModel = transforms.GetMeshToModel(geoCall._transformMarker);
             Techniques::LocalTransformConstants trans;
             trans = Techniques::MakeLocalTransform(Combine(localToModel, modelToWorld), ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
             localTransformBuffer.Update(*context._context, &trans, sizeof(trans));
@@ -726,7 +726,7 @@ namespace RenderCore { namespace Assets
     auto ModelRenderer::Pimpl::BeginSkinCall(
         const ModelRendererContext& context,
         Metal::ConstantBuffer&      localTransformBuffer,
-        const MeshToModel*          transforms,
+        const MeshToModel&          transforms,
         const Float4x4&             modelToWorld,
         unsigned                    geoCallIndex,
         PreparedAnimation*          preparedAnimation) const -> TechniqueInterface
@@ -738,8 +738,8 @@ namespace RenderCore { namespace Assets
             // have prepared animation
             //  (otherwise that information gets burned into the 
             //   prepared vertex positions)
-        if (!preparedAnimation && transforms) {
-            auto meshToWorld = Combine(transforms->GetMeshToModel(geoCall._transformMarker), modelToWorld);
+        if (!preparedAnimation && transforms.IsGood()) {
+            auto meshToWorld = Combine(transforms.GetMeshToModel(geoCall._transformMarker), modelToWorld);
             auto trans = Techniques::MakeLocalTransform(modelToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
             localTransformBuffer.Update(*context._context, &trans, sizeof(trans));
         }
@@ -928,7 +928,7 @@ namespace RenderCore { namespace Assets
             const ModelRendererContext& context,
             const SharedStateSet&   sharedStateSet,
             const Float4x4&     modelToWorld,
-            const MeshToModel*  transforms,
+            const MeshToModel&  transforms,
             PreparedAnimation*  preparedAnimation) const
     {
         auto& box = Techniques::FindCachedBox<ModelRenderingBox>(ModelRenderingBox::Desc());
@@ -941,7 +941,7 @@ namespace RenderCore { namespace Assets
         auto& scaffold = *_pimpl->_scaffold;
         auto& cmdStream = scaffold.CommandStream();
 
-        if (!transforms) {
+        if (!transforms.IsGood()) {
             Techniques::LocalTransformConstants trans;
             trans = Techniques::MakeLocalTransform(modelToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
             box._localTransformBuffer.Update(*context._context, &trans, sizeof(trans));
@@ -1060,10 +1060,10 @@ namespace RenderCore { namespace Assets
         DelayedDrawCallSet& dest, 
         const SharedStateSet& sharedStateSet, 
         const Float4x4& modelToWorld,
-        const MeshToModel* transforms)
+        const MeshToModel& transforms)
     {
         unsigned mainTransformIndex = ~unsigned(0x0);
-        if (!transforms) {
+        if (!transforms.IsGood()) {
             mainTransformIndex = (unsigned)dest._transforms.size();
             dest._transforms.push_back(modelToWorld);
         }
@@ -1092,9 +1092,9 @@ namespace RenderCore { namespace Assets
             DelayedDrawCall entry;
             entry._drawCallIndex = drawCallIndex;
             entry._renderer = this;
-            if (transforms) {
+            if (transforms.IsGood()) {
                 auto trans = Combine(
-                    transforms->GetMeshToModel(geoCall._transformMarker), 
+                    transforms.GetMeshToModel(geoCall._transformMarker), 
                     modelToWorld);
                 entry._meshToWorld = (unsigned)dest._transforms.size();
                 dest._transforms.push_back(trans);
@@ -1133,9 +1133,9 @@ namespace RenderCore { namespace Assets
             DelayedDrawCall entry;
             entry._drawCallIndex = drawCallIndex;
             entry._renderer = this;
-            if (transforms) {
+            if (transforms.IsGood()) {
                 auto trans = Combine(
-                    transforms->GetMeshToModel(geoCall._transformMarker), 
+                    transforms.GetMeshToModel(geoCall._transformMarker), 
                     modelToWorld);
                 entry._meshToWorld = (unsigned)dest._transforms.size();
                 dest._transforms.push_back(trans);
@@ -1344,7 +1344,7 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
 
-    Float4x4 ModelRenderer::MeshToModel::GetMeshToModel(unsigned transformMarker) const
+    Float4x4 MeshToModel::GetMeshToModel(unsigned transformMarker) const
     {
             //  The "skeleton binding" tells us how to map from the matrices that
             //  are output from the transformation machine to the input matrices
@@ -1369,20 +1369,33 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    ModelRenderer::MeshToModel::MeshToModel()
+    MeshToModel::MeshToModel()
     {
         _skeletonOutput = nullptr;
         _skeletonOutputCount = 0;
         _skeletonBinding = nullptr;
     }
 
-    ModelRenderer::MeshToModel::MeshToModel(
+    MeshToModel::MeshToModel(
         const Float4x4 skeletonOutput[], unsigned skeletonOutputCount,
         const SkeletonBinding* binding)
     {
         _skeletonOutput = skeletonOutput;
         _skeletonOutputCount = skeletonOutputCount;
         _skeletonBinding = binding;
+    }
+
+    MeshToModel::MeshToModel(const ModelScaffold& model)
+    {
+            // just get the default transforms stored in the model scaffold
+        _skeletonBinding = nullptr;
+        if (model.ImmutableData()._defaultTransformCount) {
+            _skeletonOutput = model.ImmutableData()._defaultTransforms;
+            _skeletonOutputCount = (unsigned)model.ImmutableData()._defaultTransformCount;
+        } else {
+            _skeletonOutput = nullptr;
+            _skeletonOutputCount = 0u;
+        }
     }
 
     template<unsigned Size>

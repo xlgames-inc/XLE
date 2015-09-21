@@ -93,12 +93,12 @@ namespace ToolsRig
                 transMachine.GetOutputInterface(),
                 scaffold->CommandStream().GetInputInterface());
 
-            ModelRenderer::MeshToModel transforms(
+            RenderCore::Assets::MeshToModel transforms(
                 skelTransforms.get(), transformCount, &binding);
 
             model.Render(
                 context, sharedStateSet,
-                Identity<Float4x4>(), &transforms);
+                Identity<Float4x4>(), transforms);
 
         } else {
 

@@ -48,48 +48,21 @@ namespace ToolsRig
 
         ResLocator  _miniLocator;
         UAV         _miniUAV;
+
+        const Metal::ComputeShader* _stepDownShader;
+        std::shared_ptr<::Assets::DependencyValidation> _depVal;
     };
 
-    AoGen::AoGen(const Desc& settings)
-    {
-            // _renderResolution must be a multiple of 4 -- this is required
-            // for the step-down compute shader to work correctly.
-        if ((settings._renderResolution%4)!=0)
-            Throw(::Exceptions::BasicLabel("Working texture in AOGen must have dimensions that are a multiple of 4"));
-
-        _pimpl = std::make_unique<Pimpl>();
-        _pimpl->_settings = settings;
-
-        const unsigned cubeFaces = 5;
-
-        using namespace BufferUploads;
-        auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
-        _pimpl->_cubeLocator = bufferUploads.Transaction_Immediate(
-            CreateDesc( 
-                BindFlag::DepthStencil | BindFlag::ShaderResource,
-                0, GPUAccess::Read|GPUAccess::Write,
-                TextureDesc::Plain2D(
-                    settings._renderResolution, settings._renderResolution, 
-                    Metal::NativeFormat::R24G8_TYPELESS, 1, cubeFaces),
-                "AoGen"));
-        _pimpl->_cubeDSV = Metal::DepthStencilView(_pimpl->_cubeLocator->GetUnderlying(), Metal::NativeFormat::D24_UNORM_S8_UINT, Metal::ArraySlice(cubeFaces));
-        _pimpl->_cubeSRV = Metal::ShaderResourceView(_pimpl->_cubeLocator->GetUnderlying(), Metal::NativeFormat::R24_UNORM_X8_TYPELESS, cubeFaces);
-
-        _pimpl->_miniLocator = bufferUploads.Transaction_Immediate(
-            CreateDesc( 
-                BindFlag::UnorderedAccess,
-                0, GPUAccess::Write,
-                TextureDesc::Plain2D(4, 4, Metal::NativeFormat::R32_FLOAT, 1, cubeFaces),
-                "AoGenMini"));
-        _pimpl->_miniUAV = Metal::UnorderedAccessView(_pimpl->_miniLocator->GetUnderlying());
-    }
-
-    AoGen::~AoGen() {}
+    static void SetupCubeMapShadowProjection(
+        Metal::DeviceContext& metalContext,
+        Techniques::ParsingContext& parserContext,
+        float nearClip, float farClip);
 
     float AoGen::CalculateSkyDomeOcclusion(
-        Metal::DeviceContext& devContext,
+        Metal::DeviceContext& metalContext,
         const ModelRenderer& renderer,
         RenderCore::Assets::SharedStateSet& sharedStates,
+        const RenderCore::Assets::MeshToModel& meshToModel,
         const Float3& samplePoint)
     {
             //
@@ -127,10 +100,10 @@ namespace ToolsRig
             //  -- and, after all, we are rendering a kind of shadow
             //
 
-        SceneEngine::SavedTargets savedTargets(&devContext);
+        SceneEngine::SavedTargets savedTargets(&metalContext);
 
-        devContext.Clear(_pimpl->_cubeDSV, 1.f, 0u);
-        devContext.Bind(ResourceList<Metal::RenderTargetView, 0>(), &_pimpl->_cubeDSV);
+        metalContext.Clear(_pimpl->_cubeDSV, 1.f, 0u);
+        metalContext.Bind(ResourceList<Metal::RenderTargetView, 0>(), &_pimpl->_cubeDSV);
 
             // configure rendering for the shadow shader
         const auto& settings = _pimpl->_settings;
@@ -138,34 +111,133 @@ namespace ToolsRig
         Metal::ViewportDesc viewport(
             0.f, 0.f, float(settings._renderResolution), float(settings._renderResolution), 
             0.f, 1.f);
-        devContext.Bind(viewport);
-        devContext.Bind(commonRes._defaultRasterizer);
+        metalContext.Bind(viewport);
+        metalContext.Bind(commonRes._defaultRasterizer);
 
         Techniques::TechniqueContext techniqueContext;
-        techniqueContext._runtimeState.SetParameter((const utf8*)"SHADOW_CASCADE_MODE", 1); // artbitrary projection
-        techniqueContext._runtimeState.SetParameter((const utf8*)"FRUSTUM_FILTER", 31);
+        techniqueContext._runtimeState.SetParameter((const utf8*)"SHADOW_CASCADE_MODE", 1u);            // arbitrary projection mode
+        techniqueContext._runtimeState.SetParameter((const utf8*)"FRUSTUM_FILTER", 31u);                // enable writing to 5 frustums
+        techniqueContext._runtimeState.SetParameter((const utf8*)"OUTPUT_SHADOW_PROJECTION_COUNT", 5u);
         Techniques::ParsingContext parserContext(techniqueContext);
 
-            // Our global transform needs local-to-world (but the projection
-            // matrix isn't important). We'll use the projection matrices in
-            // the shadow projection constant buffer
+            // We shouldn't need to fill in the "global transform" constant buffer
+            // The model renderer will manage local transform constant buffers internally,
+            // we should only need to set the shadow projection constants.
+        
+        SetupCubeMapShadowProjection(metalContext, parserContext, settings._minDistance, settings._maxDistance);
 
-        Techniques::ProjectionDesc projDesc;
-        projDesc._verticalFov = 0.f;
-        projDesc._aspectRatio = 1.f;
-        projDesc._nearClip = 0.f;
-        projDesc._farClip = 1.f;
-        projDesc._worldToProjection = Identity<Float4x4>();
-        projDesc._cameraToProjection = Identity<Float4x4>();
-        projDesc._cameraToWorld = Identity<Float4x4>();
-        auto globalTransform = BuildGlobalTransformConstants(projDesc);
-        parserContext.SetGlobalCB(
-            devContext, Techniques::TechniqueContext::CB_GlobalTransform,
-            &projDesc, sizeof(projDesc));
+            // Render the model onto our cube map surface
+        sharedStates.CaptureState(&metalContext);
+        TRY {
+            renderer.Render(
+                RenderCore::Assets::ModelRendererContext(
+                    &metalContext, parserContext, Techniques::TechniqueIndex::ShadowGen),
+                sharedStates, AsFloat4x4(Float3(-samplePoint)), meshToModel);
+        } CATCH(...) {
+            sharedStates.ReleaseState(&metalContext);
+            savedTargets.ResetToOldTargets(&metalContext);
+            throw;
+        } CATCH_END
+        sharedStates.ReleaseState(&metalContext);
+        savedTargets.ResetToOldTargets(&metalContext);
 
+            //
+            // Now we have to read-back the results from the cube map,
+            // and weight by the solid angle. Let's do this with a 
+            // compute shader. We'll split each face into 16 squares, and
+            // assign a separate thread to each. The output will be a 4x4x5
+            // texture of floats
+            //
+
+        metalContext.BindCS(MakeResourceList(_pimpl->_cubeSRV));
+        metalContext.BindCS(MakeResourceList(_pimpl->_miniUAV));
+
+        metalContext.Bind(*_pimpl->_stepDownShader);
+        metalContext.Dispatch(1u);
+
+        metalContext.UnbindCS<Metal::ShaderResourceView>(0, 1);
+        metalContext.UnbindCS<Metal::UnorderedAccessView>(0, 1);
+
+        auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
+        auto readback = bufferUploads.Resource_ReadBack(*_pimpl->_miniLocator);
+
+            // Note that we're currently using the full face for the side faces
+            // (as opposed to just half of the face, which would correspond to
+            // a hemisphere)
+            // We could ignore some of the texels in "readback" to only use
+            // the top half of the side faces.
+        const float solidAngleFace = 4.f * gPI / 6.f;
+        const float solidAngleTotal = 5.f * solidAngleFace;
+        float occlusionTotal = 0.f;
+        for (unsigned f=0; f<5; ++f) {
+            auto pitches = readback->GetPitches(f);
+            auto* d = (float*)readback->GetData(f);
+            for (unsigned y=0; y<4; ++y)
+                for (unsigned x=0; x<4; ++x)
+                    occlusionTotal += PtrAdd(d, y*pitches._rowPitch)[x];
+        }
+
+            // Our final result is a proportion of the sampled sphere that is 
+            // occluded.
+        return occlusionTotal / solidAngleTotal;
+    }
+
+    AoGen::AoGen(const Desc& settings)
+    {
+            // _renderResolution must be a multiple of 4 -- this is required
+            // for the step-down compute shader to work correctly.
+        if ((settings._renderResolution%4)!=0)
+            Throw(::Exceptions::BasicLabel("Working texture in AOGen must have dimensions that are a multiple of 4"));
+
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_settings = settings;
+
+        const unsigned cubeFaces = 5;
+
+        using namespace BufferUploads;
+        auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
+        _pimpl->_cubeLocator = bufferUploads.Transaction_Immediate(
+            CreateDesc( 
+                BindFlag::DepthStencil | BindFlag::ShaderResource,
+                0, GPUAccess::Read|GPUAccess::Write,
+                TextureDesc::Plain2D(
+                    settings._renderResolution, settings._renderResolution, 
+                    Metal::NativeFormat::R24G8_TYPELESS, 1, cubeFaces),
+                "AoGen"));
+        _pimpl->_cubeDSV = Metal::DepthStencilView(_pimpl->_cubeLocator->GetUnderlying(), Metal::NativeFormat::D24_UNORM_S8_UINT, Metal::ArraySlice(cubeFaces));
+        _pimpl->_cubeSRV = Metal::ShaderResourceView(_pimpl->_cubeLocator->GetUnderlying(), Metal::NativeFormat::R24_UNORM_X8_TYPELESS, cubeFaces);
+
+        _pimpl->_miniLocator = bufferUploads.Transaction_Immediate(
+            CreateDesc( 
+                BindFlag::UnorderedAccess,
+                0, GPUAccess::Write,
+                TextureDesc::Plain2D(4, 4, Metal::NativeFormat::R32_FLOAT, 1, cubeFaces),
+                "AoGenMini"));
+        _pimpl->_miniUAV = Metal::UnorderedAccessView(_pimpl->_miniLocator->GetUnderlying());
+
+        _pimpl->_stepDownShader = &::Assets::GetAssetDep<Metal::ComputeShader>(
+            "game/xleres/toolshelper/aogenprocess.sh:CubeMapStepDown:cs_*");
+
+        _pimpl->_depVal = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterAssetDependency(_pimpl->_depVal, _pimpl->_stepDownShader->GetDependencyValidation());
+    }
+
+    AoGen::~AoGen() {}
+    const std::shared_ptr<::Assets::DependencyValidation>& AoGen::GetDependencyValidation() const
+    {
+        return _pimpl->_depVal;
+    }
+
+
+
+    static void SetupCubeMapShadowProjection(
+        Metal::DeviceContext& metalContext,
+        Techniques::ParsingContext& parserContext,
+        float nearClip, float farClip)
+    {
+            // set 5 faces of the cubemap tr
         auto basicProj = PerspectiveProjection(
-            -1.f, -1.f, 1.f, 1.f,
-            settings._minDistance, settings._maxDistance,
+            -1.f, -1.f, 1.f, 1.f, nearClip, farClip,
             Techniques::GetDefaultClipSpaceType());
 
         Float4x4 cubeViewMatrices[6] = 
@@ -186,65 +258,8 @@ namespace ToolsRig
         }
 
         parserContext.SetGlobalCB(
-            devContext, Techniques::TechniqueContext::CB_ShadowProjection,
+            metalContext, Techniques::TechniqueContext::CB_ShadowProjection,
             &shadowProj, sizeof(shadowProj));
-
-            // Render the model onto our cube map surface
-            // Note that we should be using the internal skeleton here! But it's ignored currently.
-        sharedStates.CaptureState(&devContext);
-        TRY {
-            renderer.Render(
-                RenderCore::Assets::ModelRendererContext(
-                    &devContext, parserContext, Techniques::TechniqueIndex::ShadowGen),
-                sharedStates,
-                AsFloat4x4(Float3(-samplePoint)));
-        } CATCH(...) {
-            sharedStates.ReleaseState(&devContext);
-            savedTargets.ResetToOldTargets(&devContext);
-            throw;
-        } CATCH_END
-        sharedStates.ReleaseState(&devContext);
-        savedTargets.ResetToOldTargets(&devContext);
-
-            //
-            // Now we have to read-back the results from the cube map,
-            // and weight by the solid angle. Let's do this with a 
-            // compute shader. We'll split each face into 16 squares, and
-            // assign a separate thread to each. The output will be a 4x4x5
-            // texture of floats
-            //
-
-        devContext.BindCS(MakeResourceList(_pimpl->_cubeSRV));
-        devContext.BindCS(MakeResourceList(_pimpl->_miniUAV));
-
-        auto& shader = ::Assets::GetAssetDep<Metal::ComputeShader>(
-            "game/xleres/toolshelper/aogenprocess.sh:CubeMapStepDown:cs_*");
-        devContext.Bind(shader);
-        devContext.Dispatch(1u);
-
-        devContext.UnbindCS<Metal::ShaderResourceView>(0, 1);
-        devContext.UnbindCS<Metal::UnorderedAccessView>(0, 1);
-
-        auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
-        auto readback = bufferUploads.Resource_ReadBack(*_pimpl->_miniLocator);
-
-            // note that we're currently using the full face for the side faces
-            // (as opposed to just half of the face, which would correspond to
-            // a hemisphere)
-        const float solidAngleFace = 4.f * gPI / 6.f;
-        const float solidAngleTotal = 5.f * solidAngleFace;
-        float occlusionTotal = 0.f;
-        for (unsigned f=0; f<5; ++f) {
-            auto pitches = readback->GetPitches(f);
-            auto* d = (float*)readback->GetData(f);
-            for (unsigned y=0; y<4; ++y)
-                for (unsigned x=0; x<4; ++x)
-                    occlusionTotal += PtrAdd(d, y*pitches._rowPitch)[x];
-        }
-
-            // Our final result is a proportion of the sampled sphere that is 
-            // occluded.
-        return occlusionTotal / solidAngleTotal;
     }
 
 }

@@ -656,17 +656,11 @@ namespace SceneEngine
                 //  if we have internal transforms, we must use them.
                 //  But some models don't have any internal transforms -- in these
                 //  cases, the _defaultTransformCount will be zero
-            if (_current._model->ImmutableData()._defaultTransformCount) {
-                ModelRenderer::MeshToModel mtm(
-                    _current._model->ImmutableData()._defaultTransforms, 
-                    (unsigned)_current._model->ImmutableData()._defaultTransformCount);
-                _current._renderer->Prepare(
-                    delayedDrawCalls, 
-                    cache.GetSharedStateSet(), 
-                    AsFloat4x4(localToWorld), &mtm);
-            } else {
-                _current._renderer->Prepare(delayedDrawCalls, cache.GetSharedStateSet(), AsFloat4x4(localToWorld));
-            }
+            _current._renderer->Prepare(
+                delayedDrawCalls, 
+                cache.GetSharedStateSet(), 
+                AsFloat4x4(localToWorld), 
+                RenderCore::Assets::MeshToModel(*_current._model));
         }
     }
 
