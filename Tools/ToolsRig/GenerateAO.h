@@ -7,11 +7,16 @@
 #pragma once
 
 #include "../../Math/Vector.h"
+#include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Assets/AssetsCore.h"
 #include <memory>
 
-namespace RenderCore { namespace Assets { class ModelRenderer; class SharedStateSet; class MeshToModel; } }
+namespace RenderCore { namespace Assets 
+{ 
+    class ModelRenderer; class SharedStateSet; 
+    class MeshToModel; class ModelScaffold; class MaterialScaffold; 
+}}
 namespace Assets { class DependencyValidation; }
 
 namespace ToolsRig
@@ -45,6 +50,13 @@ namespace ToolsRig
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
-    }; 
+    };
+
+    void CalculateVertexAO(
+        RenderCore::IThreadContext& threadContext,
+        AoGen& gen,
+        const RenderCore::Assets::ModelScaffold& model,
+        const RenderCore::Assets::MaterialScaffold& material);
+
 }
 

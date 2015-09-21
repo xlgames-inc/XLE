@@ -11,6 +11,7 @@
 #include "../../SceneEngine/LightInternal.h"    // for shadow projection constants;
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
+#include "../../RenderCore/Assets/ModelRunTimeInternal.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Metal/ShaderResource.h"
@@ -22,6 +23,7 @@
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../Utility/Streams/FileUtils.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/ProjectionMath.h"
 
@@ -226,6 +228,95 @@ namespace ToolsRig
     const std::shared_ptr<::Assets::DependencyValidation>& AoGen::GetDependencyValidation() const
     {
         return _pimpl->_depVal;
+    }
+
+
+    void CalculateVertexAO(
+        RenderCore::IThreadContext& threadContext,
+        AoGen& gen,
+        const RenderCore::Assets::ModelScaffold& model,
+        const RenderCore::Assets::MaterialScaffold& material)
+    {
+        //
+        // For each vertex in the given model, calculate an ambient 
+        // occlusion value.
+        //
+        // Note that we might have problems here when a single mesh is
+        // repeated multiple times in the same model (eg, reflected
+        // left and right version). Since the ao values is tied to the
+        // vertex, the system will attempt to share the same value for
+        // each copy (but only one copy will be correct).
+        //
+        // Also note that there might be problems where there are multiple
+        // vertices at the same position. Ideally we want to do a single
+        // sample in these cases (even though we still need to store 
+        // separate values) because it would look strange if we saw large
+        // divergence in AO values at one point.
+        //
+        // We could push the sample points some distance long the vertex
+        // normals. We still want small variations in the surface to have an
+        // effect on the AO -- so we can't go to far. We also don't want to 
+        // push the same point into the inside of some other structure.
+        // Some geometry will be double-sided -- but there should still be
+        // a normal to push along.
+        //
+        // Also note that sometimes we may be generating the AO for vertices
+        // that are actually invisible (eg, pixels at that vertex are rejected
+        // by alpha testing). In those cases the vertex AO is only used by 
+        // interpolation (and is likely to be close to 1.f, anyway).
+        //
+
+        // Go through the geo calls in the input scaffold, and find the 
+        // mesh instances. We need to know the vertex positions and normals
+        // in those meshes.
+
+        MemoryMappedFile file(model.Filename().c_str(), 0ull, MemoryMappedFile::Access::Read);
+
+        const auto& cmdStream = model.CommandStream();
+        const auto& immData = model.ImmutableData();
+        for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
+            const auto& geoCall = cmdStream.GetGeoCall(c);
+            
+            auto& rawGeo = immData._geos[geoCall._geoId];
+            for (unsigned d = 0; d < rawGeo._drawCallsCount; ++d) {
+                const auto& drawCall = rawGeo._drawCalls[d];
+
+                auto vbStart = model.LargeBlocksOffset() + rawGeo._vb._offset;
+                auto vbEnd = vbStart + rawGeo._vb._size;
+
+                MeshDatabaseAdapter mesh;
+
+                    // Material & index buffer are irrelevant.
+                    // Find the normal and position streams, and add to
+                    // our mesh database adapter.
+                const auto& vbIA = rawGeo._vb._ia;
+                for (unsigned e=0; e<vbIA._elementCount; ++e) {
+                    const auto& ele = vbIA._elements[c];
+                    if (    (XlEqStringI(ele._semantic, "POSITION") && ele._semanticIndex == 0)
+                        ||  (XlEqStringI(ele._semantic, "NORMAL") && ele._semanticIndex == 0)) {
+                        mesh.AddStream(
+                            CreateRawDataSource(
+                                PtrAdd(file.GetData(), vbStart + ele._startOffset),
+                                PtrAdd(file.GetData(), vbEnd),
+                                vbIA._vertexStride, ele._format),
+                            std::vector<unsigned>(),
+                            vbIA._elements[c]._semantic, vbIA._elements[c]._semantic);
+                    }
+                }
+
+                    // Compress the positions stream so that identical positions are
+                    // combined into one. 
+                    // Once that is done, we need to be able to find all of the normals
+                    // associated with each point.
+
+                auto posElement = mesh.FindElement("POSITION");
+                if (posElement == ~0u) {
+                    LogWarning << "No vertex positions found in mesh! Cannot calculate AO for this mesh.";
+                    continue;
+                }
+
+            }
+        }
     }
 
 
