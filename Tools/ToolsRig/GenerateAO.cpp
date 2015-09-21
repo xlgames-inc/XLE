@@ -72,8 +72,8 @@ namespace ToolsRig
                     settings._renderResolution, settings._renderResolution, 
                     Metal::NativeFormat::R24G8_TYPELESS, 1, cubeFaces),
                 "AoGen"));
-        _pimpl->_cubeDSV = Metal::DepthStencilView(_pimpl->_cubeLocator->GetUnderlying(), Metal::NativeFormat::D24_UNORM_S8_UINT);
-        _pimpl->_cubeSRV = Metal::ShaderResourceView(_pimpl->_cubeLocator->GetUnderlying(), Metal::NativeFormat::R24_UNORM_X8_TYPELESS);
+        _pimpl->_cubeDSV = Metal::DepthStencilView(_pimpl->_cubeLocator->GetUnderlying(), Metal::NativeFormat::D24_UNORM_S8_UINT, Metal::ArraySlice(cubeFaces));
+        _pimpl->_cubeSRV = Metal::ShaderResourceView(_pimpl->_cubeLocator->GetUnderlying(), Metal::NativeFormat::R24_UNORM_X8_TYPELESS, cubeFaces);
 
         _pimpl->_miniLocator = bufferUploads.Transaction_Immediate(
             CreateDesc( 
@@ -181,7 +181,7 @@ namespace ToolsRig
         SceneEngine::CB_ArbitraryShadowProjection shadowProj;
         shadowProj._projectionCount = 5;
         for (unsigned c=0; c<dimof(cubeViewMatrices); ++c) {
-            shadowProj._worldToProj[c] = Combine(cubeViewMatrices[c], basicProj);
+            shadowProj._worldToProj[c] = Combine(InvertOrthonormalTransform(cubeViewMatrices[c]), basicProj);
             shadowProj._minimalProj[c] = ExtractMinimalProjection(shadowProj._worldToProj[c]);
         }
 
@@ -189,7 +189,8 @@ namespace ToolsRig
             devContext, Techniques::TechniqueContext::CB_ShadowProjection,
             &shadowProj, sizeof(shadowProj));
 
-            // render the model onto our cube map surface
+            // Render the model onto our cube map surface
+            // Note that we should be using the internal skeleton here! But it's ignored currently.
         sharedStates.CaptureState(&devContext);
         TRY {
             renderer.Render(
@@ -234,9 +235,11 @@ namespace ToolsRig
         const float solidAngleTotal = 5.f * solidAngleFace;
         float occlusionTotal = 0.f;
         for (unsigned f=0; f<5; ++f) {
+            auto pitches = readback->GetPitches(f);
             auto* d = (float*)readback->GetData(f);
-            for (unsigned c=0; c<16; ++c)
-                occlusionTotal += d[c];
+            for (unsigned y=0; y<4; ++y)
+                for (unsigned x=0; x<4; ++x)
+                    occlusionTotal += PtrAdd(d, y*pitches._rowPitch)[x];
         }
 
             // Our final result is a proportion of the sampled sphere that is 

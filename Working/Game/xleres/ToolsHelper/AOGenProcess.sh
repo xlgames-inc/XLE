@@ -9,7 +9,7 @@ RWTexture2DArray<float> OutputTexture : register(u0);
 
 float AreaElement(float x, float y)
 {
-    return atan2(x * y, sqrt(x * x + y * y + 1));
+    return atan2(x * y, sqrt(x * x + y * y + 1.f));
 }
 
 float TexelCoordSolidAngle(uint2 tc, uint2 dims)
