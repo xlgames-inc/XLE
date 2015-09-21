@@ -252,17 +252,17 @@
             _devContext->BeginCommandList();
         }
 
-        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::Map(const Underlying::Resource& resource, MapType::Enum mapType, unsigned lodLevel, unsigned arrayIndex)
+        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::Map(const Underlying::Resource& resource, MapType::Enum mapType, unsigned subResource)
         {
-            uint32 subResource = 0;
-            intrusive_ptr<ID3D::Texture2D> tex2D = QueryInterfaceCast<ID3D::Texture2D>(ResPtr(resource));
-            if (tex2D && arrayIndex > 0) {
-                D3D11_TEXTURE2D_DESC desc;
-                tex2D->GetDesc(&desc);
-                subResource = D3D11CalcSubresource(lodLevel, arrayIndex, desc.MipLevels);
-            } else {
-                subResource = D3D11CalcSubresource(lodLevel, 0, 0);
-            }
+            // uint32 subResource = 0;
+            // intrusive_ptr<ID3D::Texture2D> tex2D = QueryInterfaceCast<ID3D::Texture2D>(ResPtr(resource));
+            // if (tex2D && arrayIndex > 0) {
+            //     D3D11_TEXTURE2D_DESC desc;
+            //     tex2D->GetDesc(&desc);
+            //     subResource = D3D11CalcSubresource(lodLevel, arrayIndex, desc.MipLevels);
+            // } else {
+            //     subResource = D3D11CalcSubresource(lodLevel, 0, 0);
+            // }
             D3D11_MAPPED_SUBRESOURCE result;
             D3D11_MAP platformMap;
             switch (mapType) {
@@ -279,7 +279,7 @@
             return MappedBuffer();
         }
 
-        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::MapPartial(const Underlying::Resource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned lodLevel, unsigned arrayIndex)
+        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::MapPartial(const Underlying::Resource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned subResource)
         {
             assert(0);  // can't do partial maps in D3D11
             return MappedBuffer();

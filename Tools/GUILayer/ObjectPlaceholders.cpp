@@ -63,11 +63,11 @@ namespace GUILayer
     VisGeoBox::VisGeoBox(const Desc&)
     : _material(
         ToolsRig::Vertex3D_InputLayout, 
-        { ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants },
+        { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
         ParameterBox())
     , _materialP(
         Metal::GlobalInputLayouts::P,
-        { ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants },
+        { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
         ParameterBox())
     {
         auto cubeVertices = ToolsRig::BuildCube();

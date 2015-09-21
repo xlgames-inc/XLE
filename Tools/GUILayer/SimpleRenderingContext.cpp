@@ -124,7 +124,7 @@ namespace GUILayer
             static ParameterBox materialParameters({std::make_pair((const utf8*)"MAT_SKIP_LIGHTING_SCALE", "1")});
             Techniques::TechniqueMaterial material(
                 vf._inputLayout,
-                {Techniques::ObjectCBs::LocalTransform, Techniques::ObjectCBs::BasicMaterialConstants},
+                {Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants},
                 materialParameters);
 
             auto variation = material.FindVariation(parsingContext, techniqueIndex,"game/xleres/illum.txt");

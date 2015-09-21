@@ -290,7 +290,7 @@ namespace SceneEngine
         using namespace Techniques;
         pimpl->_basicMaterial = TechniqueMaterial(
             Metal::GlobalInputLayouts::PN, 
-            { ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants },
+            { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
             ParameterBox());
 
         const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
@@ -324,7 +324,7 @@ namespace SceneEngine
 
             TechniqueMaterial material(
                 Metal::GlobalInputLayouts::PN, 
-                { ObjectCBs::LocalTransform, ObjectCBs::BasicMaterialConstants },
+                { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
                 ParameterBox());
 
             auto shader = material.FindVariation(parserContext, techniqueIndex, "game/xleres/illum.txt");

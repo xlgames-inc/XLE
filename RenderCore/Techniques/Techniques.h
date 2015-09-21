@@ -196,6 +196,13 @@ namespace RenderCore { namespace Techniques
 
         static void     BindGlobalUniforms(TechniqueInterface&);
         static void     BindGlobalUniforms(Metal::BoundUniforms&);
+
+        static const unsigned CB_GlobalTransform = 0;
+        static const unsigned CB_GlobalState = 1;
+        static const unsigned CB_FogSettings = 2;
+        static const unsigned CB_ShadowProjection = 3;
+        static const unsigned CB_OrthoShadowProjection = 4;
+        static const unsigned CB_BasicLightingEnvironment = 5;
     };
 
 }}

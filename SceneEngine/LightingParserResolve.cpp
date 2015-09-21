@@ -18,6 +18,7 @@
 
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
@@ -600,7 +601,9 @@ namespace SceneEngine
                         0.f, 0.f, 0.f, { 0.f } };
             }
 
-        parserContext.SetGlobalCB(5, context, &env, sizeof(env));
+        parserContext.SetGlobalCB(
+            *context, Techniques::TechniqueContext::CB_BasicLightingEnvironment,
+            &env, sizeof(env));
     }
 
 }

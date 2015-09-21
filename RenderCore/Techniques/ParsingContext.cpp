@@ -13,7 +13,9 @@
 namespace RenderCore { namespace Techniques
 {
 
-    void ParsingContext::SetGlobalCB(unsigned index, RenderCore::Metal::DeviceContext* context, const void* newData, size_t dataSize)
+    void ParsingContext::SetGlobalCB(
+        RenderCore::Metal::DeviceContext& context, unsigned index, 
+        const void* newData, size_t dataSize)
     {
         if (index >= dimof(_globalCBs)) {
             return;
@@ -22,7 +24,7 @@ namespace RenderCore { namespace Techniques
         if (!_globalCBs[index].GetUnderlying()) {
             _globalCBs[index] = Metal::ConstantBuffer(newData, dataSize, false);
         } else {
-            _globalCBs[index].Update(*context, newData, dataSize);
+            _globalCBs[index].Update(context, newData, dataSize);
         }
     }
 

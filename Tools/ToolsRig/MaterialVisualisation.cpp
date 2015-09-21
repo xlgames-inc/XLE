@@ -227,7 +227,7 @@ namespace ToolsRig
         SceneEngine::LightingParserContext& parserContext,
         unsigned techniqueIndex) const
     {
-            // this mode is a little more complex than the others. We want to
+            // This mode is a little more complex than the others. We want to
             // load the geometry data for a model and render all the parts of
             // that model that match a certain material assignment.
             // We're going to do this without a ModelRenderer object... So

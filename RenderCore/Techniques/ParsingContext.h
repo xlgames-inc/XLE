@@ -27,9 +27,11 @@ namespace RenderCore { namespace Techniques
             //  ----------------- Working technique context -----------------
         TechniqueContext&               GetTechniqueContext()               { return *_techniqueContext.get(); }
         const Metal::UniformsStream&    GetGlobalUniformsStream() const     { return *_globalUniformsStream.get(); }
-        void                            SetGlobalCB(unsigned index, Metal::DeviceContext* context, const void* newData, size_t dataSize);
         Metal::ConstantBuffer&          GetGlobalTransformCB()              { return _globalCBs[0]; }
         Metal::ConstantBuffer&          GetGlobalStateCB()                  { return _globalCBs[1]; }
+        void    SetGlobalCB(
+            Metal::DeviceContext& context, unsigned index, 
+            const void* newData, size_t dataSize);
 
             //  ----------------- Exception reporting ----------------- 
         std::string                 _errorString;

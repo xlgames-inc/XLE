@@ -71,8 +71,8 @@ namespace BufferUploads { namespace PlatformInterface
             ////////   M A P   /   L O C K   ////////
         class MappedBuffer;
         struct MapType { enum Enum { Discard, NoOverwrite, ReadOnly, Write }; };
-        MappedBuffer Map(const Underlying::Resource& resource, MapType::Enum mapType, unsigned lodLevel = 0, unsigned arrayIndex = 0);
-        MappedBuffer MapPartial(const Underlying::Resource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned lodLevel = 0, unsigned arrayIndex = 0);
+        MappedBuffer Map(const Underlying::Resource& resource, MapType::Enum mapType, unsigned subResource = 0);
+        MappedBuffer MapPartial(const Underlying::Resource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned subResource = 0);
 
         class MappedBuffer
         {

@@ -2296,30 +2296,32 @@ namespace BufferUploads
 
         std::shared_ptr<Marker> BeginBackgroundLoad() { return nullptr; }
 
-        RawDataPacket_ReadBack(const ResourceLocator& locator, PlatformInterface::UnderlyingDeviceContext& context);
+        RawDataPacket_ReadBack(
+            const ResourceLocator& locator, 
+            PlatformInterface::UnderlyingDeviceContext& context);
         ~RawDataPacket_ReadBack();
 
     protected:
         unsigned _dataSize, _dataOffset;
-        PlatformInterface::UnderlyingDeviceContext::MappedBuffer _mappedBuffer;
+        std::vector<PlatformInterface::UnderlyingDeviceContext::MappedBuffer> _mappedBuffer;
     };
 
     void*     RawDataPacket_ReadBack::GetData(SubResource subRes)
     {
-        assert(subRes == 0);
-        return PtrAdd(_mappedBuffer.GetData(), _dataOffset);
+        assert(subRes < _mappedBuffer.size());
+        return PtrAdd(_mappedBuffer[subRes].GetData(), _dataOffset);
     }
 
     size_t          RawDataPacket_ReadBack::GetDataSize(SubResource subRes) const
     {
-        assert(subRes == 0);
+        assert(subRes < _mappedBuffer.size());
         return size_t(_dataSize);
     }
 
     TexturePitches RawDataPacket_ReadBack::GetPitches(SubResource subRes) const
     {
-        assert(subRes == 0);
-        return _mappedBuffer.GetPitches();
+        assert(subRes < _mappedBuffer.size());
+        return _mappedBuffer[subRes].GetPitches();
     }
 
     RawDataPacket_ReadBack::RawDataPacket_ReadBack(const ResourceLocator& locator, PlatformInterface::UnderlyingDeviceContext& context)
@@ -2330,13 +2332,20 @@ namespace BufferUploads
         auto resource = locator.GetUnderlying();
         intrusive_ptr<Underlying::Resource> stagingResource;
 
+        auto desc = PlatformInterface::ExtractDesc(*resource);
+        auto subResCount = 1u;
+        if (desc._type == BufferDesc::Type::Texture)
+            subResCount = 
+                  std::max(1u, unsigned(desc._textureDesc._mipCount))
+                * std::max(1u, unsigned(desc._textureDesc._arrayCount));
+
             //
             //      If we have to read back through a staging resource, then let's create
             //      a temporary resource and initialise it...
             //
         using namespace PlatformInterface;
         if (RequiresStagingResourceReadBack) {
-            BufferDesc stagingDesc = AsStagingDesc(PlatformInterface::ExtractDesc(*resource));
+            BufferDesc stagingDesc = AsStagingDesc(desc);
             ObjectFactory tempFactory(*resource);
             stagingResource = CreateResource(tempFactory, stagingDesc);
             if (stagingResource.get()) {
@@ -2344,11 +2353,18 @@ namespace BufferUploads
                 resource = stagingResource.get();
             }
         }
+
+        _mappedBuffer.reserve(subResCount);
         
         if (CanDoPartialMaps) {
-            _mappedBuffer = context.MapPartial(*resource, UnderlyingDeviceContext::MapType::ReadOnly, locator.Offset(), locator.Size());
+            for (unsigned c=0; c<subResCount; ++c)
+                _mappedBuffer.push_back(context.MapPartial(
+                    *resource, UnderlyingDeviceContext::MapType::ReadOnly, 
+                    locator.Offset(), locator.Size(), c));
         } else {
-            _mappedBuffer = context.Map(*resource, UnderlyingDeviceContext::MapType::ReadOnly);
+            for (unsigned c=0; c<subResCount; ++c)
+                _mappedBuffer.push_back(
+                    context.Map(*resource, UnderlyingDeviceContext::MapType::ReadOnly, c));
             _dataOffset = (locator.Offset() != ~unsigned(0x0))?locator.Offset():0;
         }
     }

@@ -27,19 +27,18 @@
 #include "../Metal/DeviceContextImpl.h"
 #include "../Resource.h"
 #include "../RenderUtils.h"
-#include "../../Assets/AssetUtils.h"
 
+#include "../../Assets/AssetUtils.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/ChunkFile.h"
 #include "../../Assets/IntermediateAssets.h"
-
-#include "../../Core/Exceptions.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Math/Transformations.h"
 #include "../../ConsoleRig/Console.h"
+#include "../../Core/Exceptions.h"
 
 #include <string>
 
@@ -1043,7 +1042,7 @@ namespace RenderCore { namespace Assets
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool CompareDrawCall(const DelayedDrawCall& lhs, const DelayedDrawCall& rhs)
+    static bool CompareDrawCall(const DelayedDrawCall& lhs, const DelayedDrawCall& rhs)
     {
         if (lhs._shaderVariationHash == rhs._shaderVariationHash) {
             if (lhs._renderer == rhs._renderer) {
@@ -1197,6 +1196,10 @@ namespace RenderCore { namespace Assets
         Metal::ConstantBuffer& localTransformBuffer = Techniques::CommonResources()._localTransformBuffer;
         const Metal::ConstantBuffer* pkts[] = { &localTransformBuffer, nullptr };
 
+            // This sort could turn out to be expensive (particularly as CompareDrawCall
+            // contains multiple comparisons).
+            // Perhaps we would be better of doing the sorting on insertion (or using
+            // a single sorting index value so that CompareDrawCall could be a single comparison)?
         std::sort(entries.begin(), entries.end(), CompareDrawCall);
 
         const ModelRenderer::Pimpl::Mesh* currentMesh = nullptr;
@@ -1232,13 +1235,13 @@ namespace RenderCore { namespace Assets
                 currentTextureSet = ~unsigned(0x0);
             }
 
-                // Note -- at the moment, shader variation hash is the sorting priority.
+                // Note --  At the moment, shader variation hash is the sorting priority.
                 //          This reduces the shader changes to a minimum. It also means we
                 //          do the work in "BeginVariation" to resolve the variation
                 //          as rarely as possible. However, we could pre-resolve all of the
                 //          variations that we're going to need and use another value as the
-                //          sorting priority instead... That might reduce the API thrashing
-                //          in some cases.
+                //          sorting priority instead... That might reduce the low-level API 
+                //          thrashing in some cases.
             if (currentVariationHash != d->_shaderVariationHash) {
                 auto& mesh = *(const Pimpl::Mesh*)d->_subMesh;
                 boundUniforms = sharedStateSet.BeginVariation(
@@ -1267,7 +1270,7 @@ namespace RenderCore { namespace Assets
             auto textureSet = drawCallRes._textureSet;
             auto constantBufferIndex = drawCallRes._constantBuffer;
 
-                //  sometimes the same render call may be rendered in several different locations. In these cases,
+                //  Sometimes the same render call may be rendered in several different locations. In these cases,
                 //  we can reduce the API thrashing to the minimum by avoiding re-setting resources and constants
             if (boundUniforms && (textureSet != currentTextureSet || constantBufferIndex != currentConstantBufferIndex)) {
                 renderer._pimpl->ApplyBoundUnforms(
@@ -1304,9 +1307,7 @@ namespace RenderCore { namespace Assets
 
 ////////////////////////////////////////////////////////////////////////////////
 
-        /// \todo --    this DestroyArray stuff is too awkward. Instead, let's create
-        ///             some "SerializeableArray" or "SerializeableBlock" or something --
-        ///             and have it deal with the internals (even if it means increasing memory size slightly)
+        /// This DestroyArray stuff is too awkward! We could use a serializable vector instead
     ModelCommandStream::~ModelCommandStream()
     {
         DestroyArray(_geometryInstances,        &_geometryInstances[_geometryInstanceCount]);

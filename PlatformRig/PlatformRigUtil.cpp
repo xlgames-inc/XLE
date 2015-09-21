@@ -166,11 +166,11 @@ namespace PlatformRig
             Float3 focusPoint = cameraPos + (projectionWidth * 0.45f) * shiftDirection;
             auto lightViewMatrix = MakeWorldToLight(
                 negativeLightDirection, focusPoint + (.5f * shadowProjectionDist) * negativeLightDirection);
-            p._projectionMatrix = RenderCore::Techniques::OrthogonalProjection(
+            p._projectionMatrix = OrthogonalProjection(
                 -.5f * projectionWidth, -.5f * projectionWidth,
                  .5f * projectionWidth,  .5f * projectionWidth,
                 shadowNearPlane, shadowFarPlane,
-                RenderCore::Techniques::GeometricCoordinateSpace::RightHanded,
+                GeometricCoordinateSpace::RightHanded,
                 RenderCore::Techniques::GetDefaultClipSpaceType());
             p._viewMatrix = lightViewMatrix;
 
@@ -319,9 +319,9 @@ namespace PlatformRig
                 // the winding direction correct in the final projection
             const auto& mins = result._orthoSub[f]._projMins;
             const auto& maxs = result._orthoSub[f]._projMaxs;
-            Float4x4 projMatrix = Techniques::OrthogonalProjection(
+            Float4x4 projMatrix = OrthogonalProjection(
                 mins[0], maxs[1], maxs[0], mins[1], mins[2], maxs[2],
-                Techniques::GeometricCoordinateSpace::RightHanded, Techniques::GetDefaultClipSpaceType());
+                GeometricCoordinateSpace::RightHanded, Techniques::GetDefaultClipSpaceType());
             result._fullProj[f]._projectionMatrix = projMatrix;
 
             result._minimalProjection[f] = ExtractMinimalProjection(projMatrix);
@@ -333,10 +333,10 @@ namespace PlatformRig
             //  orthogonal space that is actually used. We just have to incorporate these
             //  mins and maxs into the projection matrix
 
-        Float4x4 clippingProjMatrix = Techniques::OrthogonalProjection(
+        Float4x4 clippingProjMatrix = OrthogonalProjection(
             allCascadesMins[0], allCascadesMaxs[1], allCascadesMaxs[0], allCascadesMins[1], 
             shadowNearPlane, shadowFarPlane,
-            Techniques::GeometricCoordinateSpace::RightHanded, Techniques::GetDefaultClipSpaceType());
+            GeometricCoordinateSpace::RightHanded, Techniques::GetDefaultClipSpaceType());
 
         Float4x4 worldToClip = Combine(result._definitionViewMatrix, clippingProjMatrix);
         return std::make_pair(result, worldToClip);

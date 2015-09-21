@@ -366,7 +366,7 @@ namespace ToolsRig
         constantBufferPackets.push_back(
             Techniques::MakeLocalTransformPacket(
                 sysConstants._objectToWorld, ExtractTranslation(parsingContext.GetProjectionDesc()._cameraToWorld)));
-        boundLayout.BindConstantBuffer(Techniques::ObjectCBs::LocalTransform, 0, 1);
+        boundLayout.BindConstantBuffer(Techniques::ObjectCB::LocalTransform, 0, 1);
         for (auto i=materialConstants.cbegin(); i!=materialConstants.cend(); ++i) {
             boundLayout.BindConstantBuffer(i->first, unsigned(constantBufferPackets.size()), 1);
             constantBufferPackets.push_back(std::move(i->second));

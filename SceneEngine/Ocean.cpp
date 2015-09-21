@@ -418,7 +418,7 @@ namespace SceneEngine
             }
         }
 
-        auto gridPerspective = Techniques::PerspectiveProjection(
+        auto gridPerspective = PerspectiveProjection(
             maxX, minY, minX, maxY,     // note -- maxX, minX flipped (required to match handiness of normal projection transforms)
             1.0f, 100.f, Techniques::GetDefaultClipSpaceType());
 

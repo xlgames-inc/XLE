@@ -34,6 +34,9 @@
     <ClCompile Include="..\TerrainManipulatorsInterface.cpp">
       <Filter>Manipulators</Filter>
     </ClCompile>
+    <ClCompile Include="..\GenerateAO.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ModelVisualisation.h" />
@@ -75,6 +78,9 @@
     <ClInclude Include="..\TerrainManipulatorsInterface.h">
       <Filter>Manipulators</Filter>
     </ClInclude>
+    <ClInclude Include="..\GenerateAO.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Terrain">
@@ -82,6 +88,9 @@
     </Filter>
     <Filter Include="Manipulators">
       <UniqueIdentifier>{27a25d8b-6140-4116-ba20-0398e6d2f3b2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GeoProc">
+      <UniqueIdentifier>{8dab536a-9dbd-4a9a-8cf1-14415bd2d1ad}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

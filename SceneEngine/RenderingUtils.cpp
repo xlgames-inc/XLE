@@ -69,7 +69,7 @@ namespace SceneEngine
                                 sizeof(Vertex), 0);
 
             BoundUniforms boundLayout(shaderProgram);
-            boundLayout.BindConstantBuffer(ObjectCBs::LocalTransform, 0, 1);
+            boundLayout.BindConstantBuffer(ObjectCB::LocalTransform, 0, 1);
             TechniqueContext::BindGlobalUniforms(boundLayout);
             boundLayout.Apply(*context, 
                 parserContext.GetGlobalUniformsStream(),

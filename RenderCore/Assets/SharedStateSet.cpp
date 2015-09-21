@@ -69,8 +69,8 @@ namespace RenderCore { namespace Assets
             Techniques::TechniqueInterface techniqueInterface(
                 Metal::InputLayout(vertexElements, count));
 
-            techniqueInterface.BindConstantBuffer(Techniques::ObjectCBs::LocalTransform, 0, 1);
-            techniqueInterface.BindConstantBuffer(Techniques::ObjectCBs::BasicMaterialConstants, 1, 1);
+            techniqueInterface.BindConstantBuffer(Techniques::ObjectCB::LocalTransform, 0, 1);
+            techniqueInterface.BindConstantBuffer(Techniques::ObjectCB::BasicMaterialConstants, 1, 1);
             Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
             for (unsigned c=0; c<textureBindPointsCount; ++c) {
                 techniqueInterface.BindShaderResource(textureBindPoints[c], c, 1);

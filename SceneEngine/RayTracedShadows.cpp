@@ -190,8 +190,9 @@ namespace SceneEngine
 
         PreparedRTShadowFrustum preparedResult;
         preparedResult.InitialiseConstants(&metalContext, frustum._projections);
-        parserContext.SetGlobalCB(3, &metalContext, &preparedResult._arbitraryCBSource, sizeof(preparedResult._arbitraryCBSource));
-        parserContext.SetGlobalCB(4, &metalContext, &preparedResult._orthoCBSource, sizeof(preparedResult._orthoCBSource));
+        using TC = Techniques::TechniqueContext;
+        parserContext.SetGlobalCB(metalContext, TC::CB_ShadowProjection, &preparedResult._arbitraryCBSource, sizeof(preparedResult._arbitraryCBSource));
+        parserContext.SetGlobalCB(metalContext, TC::CB_OrthoShadowProjection, &preparedResult._orthoCBSource, sizeof(preparedResult._orthoCBSource));
 
         parserContext.GetTechniqueContext()._runtimeState.SetParameter(
             (const utf8*)StringShadowCascadeMode.c_str(), 

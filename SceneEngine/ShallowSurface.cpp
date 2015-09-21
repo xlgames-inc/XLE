@@ -450,14 +450,14 @@ namespace SceneEngine
         matParam.SetParameter((const utf8*)"SKY_PROJECTION", skyProjType);
         TechniqueMaterial simMaterial(
             Metal::InputLayout(nullptr, 0),
-            {   ObjectCBs::LocalTransform,
+            {   ObjectCB::LocalTransform,
                 Hash64("ShallowWaterCellConstants"), Hash64("ShallowWaterLighting") },
             matParam);
 
         matParam.SetParameter((const utf8*)"SHALLOW_WATER_IS_SIMULATED", 0);
         TechniqueMaterial unsimMaterial(
             Metal::InputLayout(nullptr, 0),
-            { ObjectCBs::LocalTransform, Hash64("ShallowWaterLighting") },
+            { ObjectCB::LocalTransform, Hash64("ShallowWaterLighting") },
             matParam);
 
             // set up basic render state

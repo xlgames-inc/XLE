@@ -164,7 +164,9 @@ namespace SceneEngine
         LightingParser_SetProjectionDesc(parserContext, sceneCamera, viewportDims, specialProjectionMatrix);
         auto& projDesc = parserContext.GetProjectionDesc();
         auto globalTransform = BuildGlobalTransformConstants(projDesc);
-        parserContext.SetGlobalCB(0, context, &globalTransform, sizeof(globalTransform));
+        parserContext.SetGlobalCB(
+            *context, Techniques::TechniqueContext::CB_GlobalTransform,
+            &globalTransform, sizeof(globalTransform));
     }
 
     void LightingParser_SetGlobalTransform(
@@ -174,7 +176,7 @@ namespace SceneEngine
         float l, float t, float r, float b,
         float nearClip, float farClip)
     {
-        auto cameraToProjection = Techniques::OrthogonalProjection(l, t, r, b, nearClip, farClip);
+        auto cameraToProjection = OrthogonalProjection(l, t, r, b, nearClip, farClip, Techniques::GetDefaultClipSpaceType());
 
         auto& projDesc = parserContext.GetProjectionDesc();
         projDesc._verticalFov = 0.f;
@@ -186,7 +188,9 @@ namespace SceneEngine
         projDesc._cameraToWorld = cameraToWorld;
 
         auto globalTransform = BuildGlobalTransformConstants(projDesc);
-        parserContext.SetGlobalCB(0, context, &globalTransform, sizeof(globalTransform));
+        parserContext.SetGlobalCB(
+            *context, Techniques::TechniqueContext::CB_GlobalTransform,
+            &globalTransform, sizeof(globalTransform));
     }
 
     void LightingParser_LateGBufferRender(  DeviceContext* context, 
@@ -728,8 +732,9 @@ namespace SceneEngine
 
         PreparedDMShadowFrustum preparedResult;
         preparedResult.InitialiseConstants(context, frustum._projections);
-        parserContext.SetGlobalCB(3, context, &preparedResult._arbitraryCBSource, sizeof(preparedResult._arbitraryCBSource));
-        parserContext.SetGlobalCB(4, context, &preparedResult._orthoCBSource, sizeof(preparedResult._orthoCBSource));
+        using TC = Techniques::TechniqueContext;
+        parserContext.SetGlobalCB(*context, TC::CB_ShadowProjection, &preparedResult._arbitraryCBSource, sizeof(preparedResult._arbitraryCBSource));
+        parserContext.SetGlobalCB(*context, TC::CB_OrthoShadowProjection, &preparedResult._orthoCBSource, sizeof(preparedResult._orthoCBSource));
         preparedResult._resolveParameters._worldSpaceBias = frustum._worldSpaceResolveBias;
         preparedResult._resolveParameters._tanBlurAngle = frustum._tanBlurAngle;
         preparedResult._resolveParameters._minBlurSearch = frustum._minBlurSearch;
@@ -854,7 +859,9 @@ namespace SceneEngine
             Float4 time(0.f, 0.f, 0.f, 0.f);
             if (sceneParser)
                 time[0] = sceneParser->GetTimeValue();
-            parserContext.SetGlobalCB(1, context, &time, sizeof(time));
+            parserContext.SetGlobalCB(
+                *context, Techniques::TechniqueContext::CB_GlobalState,
+                &time, sizeof(time));
 
             if (sceneParser)
                 LightingParser_InitBasicLightEnv(context, parserContext, *sceneParser);
