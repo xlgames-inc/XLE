@@ -9,12 +9,12 @@
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/InputLayout.h"
 
+namespace RenderCore { namespace Assets { namespace GeoProc { class MeshDatabase; }}}
+
 namespace RenderCore { namespace ColladaConversion
 {
-    class MeshDatabaseAdapter;
-
     void GenerateNormalsAndTangents( 
-        MeshDatabaseAdapter& mesh, 
+        RenderCore::Assets::GeoProc::MeshDatabase& mesh, 
         unsigned normalMapTextureCoordinateSemanticIndex,
         const void* rawIb, size_t indexCount, Metal::NativeFormat::Enum ibFormat);
 

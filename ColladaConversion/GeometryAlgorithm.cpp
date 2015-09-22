@@ -5,12 +5,13 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "GeometryAlgorithm.h"
-#include "MeshDatabaseAdapter.h"
+#include "../RenderCore/Assets/MeshDatabase.h"
 #include "../Math/Geometry.h"
 #include "../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace ColladaConversion
 {
+    using namespace RenderCore::Assets::GeoProc;
 
     Float3 CorrectAxisDirection(const Float3& input, const Float3& p0, const Float3& p1, const Float3& p2, float t0, float t1, float t2)
     {
@@ -34,7 +35,7 @@ namespace RenderCore { namespace ColladaConversion
     }
 
     void GenerateNormalsAndTangents( 
-        MeshDatabaseAdapter& mesh, 
+        MeshDatabase& mesh, 
         unsigned normalMapTextureCoordinateSemanticIndex,
         const void* rawIb, size_t indexCount, Metal::NativeFormat::Enum ibFormat)
 	{
@@ -76,9 +77,9 @@ namespace RenderCore { namespace ColladaConversion
             //      Some other methods will weight the influence of triangles such
             //      that larger or more important triangles have a larger influence.
             //
-        std::vector<Float3> normals(mesh._unifiedVertexCount, Zero<Float3>());
-		std::vector<Float4> tangents(mesh._unifiedVertexCount, Zero<Float4>());
-		std::vector<Float3> bitangents(mesh._unifiedVertexCount, Zero<Float3>());
+        std::vector<Float3> normals(mesh.GetUnifiedVertexCount(), Zero<Float3>());
+		std::vector<Float4> tangents(mesh.GetUnifiedVertexCount(), Zero<Float4>());
+		std::vector<Float3> bitangents(mesh.GetUnifiedVertexCount(), Zero<Float3>());
 
         unsigned indexStride = 2;
         unsigned indexMask = 0xffff;
@@ -165,7 +166,7 @@ namespace RenderCore { namespace ColladaConversion
             //  If we already have tangents or normals, don't write the new ones
 
         if (!hasNormals) {
-            for (size_t c=0; c<mesh._unifiedVertexCount; c++)
+            for (size_t c=0; c<mesh.GetUnifiedVertexCount(); c++)
                 normals[c] = Normalize(normals[c]);
         
             mesh.AddStream(
@@ -186,7 +187,7 @@ namespace RenderCore { namespace ColladaConversion
                 //  Note that we don't need to touch the bitangent here... We're not going to write the bitangent
                 //  to the output, so it doesn't matter right now. All we need to do is calculate the "handiness"
                 //  value and write it to the "w" part of the tangent vector.
-            for (size_t c=0; c<mesh._unifiedVertexCount; c++) {
+            for (size_t c=0; c<mesh.GetUnifiedVertexCount(); c++) {
                 auto t3 = Truncate(tangents[c]);
                 auto handinessValue = 0.f;
 

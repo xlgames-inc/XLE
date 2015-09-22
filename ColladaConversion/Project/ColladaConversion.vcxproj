@@ -89,7 +89,6 @@
     <ClCompile Include="..\ColladaDocument.cpp" />
     <ClCompile Include="..\ConversionUtil.cpp" />
     <ClCompile Include="..\GeometryAlgorithm.cpp" />
-    <ClCompile Include="..\MeshDatabaseAdapter.cpp" />
     <ClCompile Include="..\NascentAnimController.cpp" />
     <ClCompile Include="..\NascentCommandStream.cpp" />
     <ClCompile Include="..\NascentModel.cpp">
@@ -200,7 +199,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="..\ScaffoldParsingUtil.h" />
-    <ClInclude Include="..\MeshDatabaseAdapter.h" />
     <ClInclude Include="..\NascentRawGeometry.h" />
     <ClInclude Include="..\SAnimation.h" />
     <ClInclude Include="..\Scaffold.h" />

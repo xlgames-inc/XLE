@@ -11,9 +11,9 @@
 #include "ScaffoldParsingUtil.h"
 #include "NascentRawGeometry.h"
 #include "NascentAnimController.h"
-#include "MeshDatabaseAdapter.h"
 #include "GeometryAlgorithm.h"
 #include "ConversionUtil.h"
+#include "../RenderCore/Assets/MeshDatabase.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/IteratorUtils.h"
@@ -24,11 +24,14 @@ namespace ColladaConversion
 {
     using namespace RenderCore;
     using namespace RenderCore::ColladaConversion;
+    using namespace RenderCore::Assets::GeoProc;
 
     static const std::string DefaultSemantic_Weights         = "WEIGHTS";
     static const std::string DefaultSemantic_JointIndices    = "JOINTINDICES";
 
     static const unsigned AbsoluteMaxJointInfluenceCount = 256;
+
+    const NativeVBSettings NativeSettings = { true };       // use 16 bit floats
 
     std::shared_ptr<std::vector<uint8>> GetParseDataSource();
 
@@ -279,11 +282,11 @@ namespace ColladaConversion
     ComposingUnifiedVertices::ComposingUnifiedVertices(size_t attributesPerVertex) : _attributesPerVertex(attributesPerVertex) {}
     ComposingUnifiedVertices::~ComposingUnifiedVertices() {}
 
-    std::shared_ptr<MeshDatabaseAdapter> BuildMeshDatabaseAdapter(
+    std::shared_ptr<MeshDatabase> BuildMeshDatabaseAdapter(
         ComposingVertex& composingVert,
         ComposingUnifiedVertices& unifiedVerts)
     {
-        auto result = std::make_shared<MeshDatabaseAdapter>();
+        auto result = std::make_shared<MeshDatabase>();
 
         auto attribCount = composingVert._finalVertexElements.size();
         if (!attribCount || attribCount != unifiedVerts._attributesPerVertex) return nullptr;
@@ -448,7 +451,7 @@ namespace ColladaConversion
             }
 
             size_t triangleCount = CreateTriangleWindingFromPolygon(
-                v, AsPointer(windingRemap.begin()), windingRemap.size());
+                AsPointer(windingRemap.begin()), windingRemap.size(), v);
             assert((triangleCount*3) <= windingRemap.size());
 
                 // Remap from arbitrary polygon order into triange list order
@@ -522,7 +525,7 @@ namespace ColladaConversion
             }
 
             size_t triangleCount = CreateTriangleWindingFromPolygon(
-                polyVerts, AsPointer(windingRemap.begin()), windingRemap.size());
+                AsPointer(windingRemap.begin()), windingRemap.size(), polyVerts);
             assert((triangleCount*3) <= windingRemap.size());
 
             for (auto q=0u; q<triangleCount*3; ++q) {
@@ -808,7 +811,7 @@ namespace ColladaConversion
                 finalIndexBuffer.get(), finalIndexCount, indexFormat);
         }
 
-        NativeVBLayout vbLayout = BuildDefaultLayout(*database);
+        NativeVBLayout vbLayout = BuildDefaultLayout(*database, NativeSettings);
         auto nativeVB = database->BuildNativeVertexBuffer(vbLayout);
 
             // note -- this should actually be the mapping onto the input with the semantic "VERTEX" in the primitives' input array
@@ -825,12 +828,12 @@ namespace ColladaConversion
             //
 
         return NascentRawGeometry(
-            DynamicArray<uint8>(std::move(nativeVB), vbLayout._vertexStride * database->_unifiedVertexCount), 
+            DynamicArray<uint8>(std::move(nativeVB), vbLayout._vertexStride * database->GetUnifiedVertexCount()), 
             DynamicArray<uint8>(std::move(finalIndexBuffer), finalIndexBufferSize),
             GeometryInputAssembly(std::move(vbLayout._elements), (unsigned)vbLayout._vertexStride),
             indexFormat,
             std::move(finalDrawOperations),
-            DynamicArray<uint32>(std::move(unifiedVertexIndexToPositionIndex), database->_unifiedVertexCount),
+            DynamicArray<uint32>(std::move(unifiedVertexIndexToPositionIndex), database->GetUnifiedVertexCount()),
             std::vector<uint64>(matBindingSymbols.cbegin(), matBindingSymbols.cend()));
     }
 

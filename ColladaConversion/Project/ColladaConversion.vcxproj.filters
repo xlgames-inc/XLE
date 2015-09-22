@@ -31,9 +31,6 @@
     <ClCompile Include="..\GeometryAlgorithm.cpp">
       <Filter>GeoProcessing</Filter>
     </ClCompile>
-    <ClCompile Include="..\MeshDatabaseAdapter.cpp">
-      <Filter>GeoProcessing</Filter>
-    </ClCompile>
     <ClCompile Include="..\SkeletonRegistry.cpp">
       <Filter>Core</Filter>
     </ClCompile>
@@ -94,9 +91,6 @@
       <Filter>NascentObjects</Filter>
     </ClInclude>
     <ClInclude Include="..\GeometryAlgorithm.h">
-      <Filter>GeoProcessing</Filter>
-    </ClInclude>
-    <ClInclude Include="..\MeshDatabaseAdapter.h">
       <Filter>GeoProcessing</Filter>
     </ClInclude>
     <ClInclude Include="..\SkeletonRegistry.h">

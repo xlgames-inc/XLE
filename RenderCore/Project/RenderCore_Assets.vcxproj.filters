@@ -4,6 +4,9 @@
     <Filter Include="Assets">
       <UniqueIdentifier>{80580aee-0551-47f0-bee7-55b8c97df241}</UniqueIdentifier>
     </Filter>
+    <Filter Include="GeoProc">
+      <UniqueIdentifier>{7530ac72-3667-4879-9cb5-e10f8e998d43}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets\ModelRunTime.cpp">
@@ -37,6 +40,9 @@
       <Filter>Assets</Filter>
     </ClCompile>
     <ClCompile Include="..\Assets\ModelCache.cpp" />
+    <ClCompile Include="..\Assets\MeshDatabase.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\ModelRunTime.h">
@@ -76,5 +82,8 @@
       <Filter>Assets</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\ModelCache.h" />
+    <ClInclude Include="..\Assets\MeshDatabase.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

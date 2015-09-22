@@ -4,13 +4,13 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "MeshDatabaseAdapter.h"
-#include "../RenderCore/Metal/Format.h"
-#include "../Utility/StringUtils.h"
-#include "../Utility/MemoryUtils.h"
-#include "../Foreign/half-1.9.2/include/half.hpp"
+#include "MeshDatabase.h"
+#include "../Metal/Format.h"
+#include "../../Utility/StringUtils.h"
+#include "../../Utility/MemoryUtils.h"
+#include "../../Foreign/half-1.9.2/include/half.hpp"
 
-namespace RenderCore { namespace ColladaConversion
+namespace RenderCore { namespace Assets { namespace GeoProc
 {
     using ::Assets::Exceptions::FormatError;
 
@@ -20,27 +20,27 @@ namespace RenderCore { namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    unsigned    MeshDatabaseAdapter::HasElement(const char name[]) const
+    unsigned    MeshDatabase::HasElement(const char name[]) const
     {
         unsigned result = 0;
         for (auto i = _streams.cbegin(); i != _streams.cend(); ++i) {
-            if (!XlCompareStringI(i->_semanticName.c_str(), name)) {
-                assert((result & (1 << i->_semanticIndex)) == 0);
-                result |= (1 << i->_semanticIndex);
+            if (!XlCompareStringI(i->GetSemanticName().c_str(), name)) {
+                assert((result & (1 << i->GetSemanticIndex())) == 0);
+                result |= (1 << i->GetSemanticIndex());
             }
         }
         return result;
     }
 
-    unsigned    MeshDatabaseAdapter::FindElement(const char name[], unsigned semanticIndex) const
+    unsigned    MeshDatabase::FindElement(const char name[], unsigned semanticIndex) const
     {
         for (auto i = _streams.cbegin(); i != _streams.cend(); ++i)
-            if (i->_semanticIndex == semanticIndex && !XlCompareStringI(i->_semanticName.c_str(), name))
+            if (i->GetSemanticIndex() == semanticIndex && !XlCompareStringI(i->GetSemanticName().c_str(), name))
                 return unsigned(std::distance(_streams.cbegin(), i));
         return ~0u;
     }
 
-    void        MeshDatabaseAdapter::RemoveStream(unsigned elementIndex)
+    void        MeshDatabase::RemoveStream(unsigned elementIndex)
     {
         if (elementIndex < _streams.size())
             _streams.erase(_streams.begin() + elementIndex);
@@ -73,13 +73,11 @@ namespace RenderCore { namespace ColladaConversion
         }
     }
 
-    template<> Float3 MeshDatabaseAdapter::GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const
+    template<> Float3 MeshDatabase::GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const
     {
         auto& stream = _streams[elementIndex];
-        auto indexInStream = stream._vertexMap[vertexIndex];
-        auto& sourceData = *stream._sourceData;
-        // assert(((indexInStream+1) * sourceData._stride) <= sourceData._vertexData->getFloatValues()->getCount());
-        // const auto* sourceStart = &sourceData._vertexData->getFloatValues()->getData()[indexInStream * sourceData._stride];
+        auto indexInStream = stream.GetVertexMap()[vertexIndex];
+        auto& sourceData = stream.GetSourceData();
         auto stride = sourceData.GetStride();
         const auto* sourceStart = PtrAdd(sourceData.GetData(), indexInStream * stride);
         
@@ -88,13 +86,11 @@ namespace RenderCore { namespace ColladaConversion
         return Float3(input[0], input[1], input[2]);
     }
 
-    template<> Float2 MeshDatabaseAdapter::GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const
+    template<> Float2 MeshDatabase::GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const
     {
         auto& stream = _streams[elementIndex];
-        auto indexInStream = stream._vertexMap[vertexIndex];
-        auto& sourceData = *stream._sourceData;
-        // assert(((indexInStream+1) * sourceData._stride) <= sourceData._vertexData->getFloatValues()->getCount());
-        // const auto* sourceStart = &sourceData._vertexData->getFloatValues()->getData()[indexInStream * sourceData._stride];
+        auto indexInStream = stream.GetVertexMap()[vertexIndex];
+        auto& sourceData = stream.GetSourceData();
         auto stride = sourceData.GetStride();
         const auto* sourceStart = PtrAdd(sourceData.GetData(), indexInStream * stride);
 
@@ -103,7 +99,7 @@ namespace RenderCore { namespace ColladaConversion
         return Float2(input[0], input[1]);
     }
 
-    std::unique_ptr<uint32[]> MeshDatabaseAdapter::BuildUnifiedVertexIndexToPositionIndex() const
+    std::unique_ptr<uint32[]> MeshDatabase::BuildUnifiedVertexIndexToPositionIndex() const
     {
             //      Collada has this idea of "vertex index"; which is used to map
             //      on the vertex weight information. But that seems to be lost in OpenCollada.
@@ -111,10 +107,10 @@ namespace RenderCore { namespace ColladaConversion
 
         auto unifiedVertexIndexToPositionIndex = std::make_unique<uint32[]>(_unifiedVertexCount);
         
-        if (!_streams[0]._vertexMap.empty()) {
+        if (!_streams[0].GetVertexMap().empty()) {
             for (size_t v=0; v<_unifiedVertexCount; ++v) {
                 // assuming the first element is the position
-                auto attributeIndex = _streams[0]._vertexMap[v];
+                auto attributeIndex = _streams[0].GetVertexMap()[v];
                 // assert(!_streams[0]._sourceData.IsValid() || attributeIndex < _mesh->getPositions().getValuesCount());
                 unifiedVertexIndexToPositionIndex[v] = (uint32)attributeIndex;
             }
@@ -189,19 +185,19 @@ namespace RenderCore { namespace ColladaConversion
         }
     }
 
-    void MeshDatabaseAdapter::WriteStream(
+    void MeshDatabase::WriteStream(
         const Stream& stream,
         const void* dst, Metal::NativeFormat::Enum dstFormat, size_t dstStride) const
     {
-        const auto& sourceData = *stream._sourceData;
+        const auto& sourceData = stream.GetSourceData();
         auto stride = sourceData.GetStride();
         CopyVertexData(
             dst, dstFormat, dstStride,
             sourceData.GetData(), sourceData.GetFormat(), stride, sourceData.GetDataSize(),
-            stream._vertexMap, (unsigned)_unifiedVertexCount, sourceData.GetProcessingFlags());
+            stream.GetVertexMap(), (unsigned)_unifiedVertexCount, sourceData.GetProcessingFlags());
     }
 
-    std::unique_ptr<uint8[]>  MeshDatabaseAdapter::BuildNativeVertexBuffer(const NativeVBLayout& outputLayout) const
+    std::unique_ptr<uint8[]>  MeshDatabase::BuildNativeVertexBuffer(const NativeVBLayout& outputLayout) const
     {
             //
             //      Write the data into the vertex buffer
@@ -219,7 +215,7 @@ namespace RenderCore { namespace ColladaConversion
         return std::move(finalVertexBuffer);
     }
 
-    void    MeshDatabaseAdapter::AddStream(
+    void    MeshDatabase::AddStream(
         std::shared_ptr<IVertexSourceData> dataSource,
         std::vector<unsigned>&& vertexMap,
         const char semantic[], unsigned semanticIndex)
@@ -230,19 +226,48 @@ namespace RenderCore { namespace ColladaConversion
         else _unifiedVertexCount = std::min(_unifiedVertexCount, count);
 
         _streams.push_back(
-            Stream{std::move(dataSource), std::move(vertexMap), semantic, semanticIndex});
+            Stream { std::move(dataSource), std::move(vertexMap), semantic, semanticIndex });
     }
 
-    MeshDatabaseAdapter::MeshDatabaseAdapter()
+    MeshDatabase::MeshDatabase()
     {
         _unifiedVertexCount = 0;
     }
 
-    MeshDatabaseAdapter::~MeshDatabaseAdapter() {}
+    MeshDatabase::~MeshDatabase() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-        static RenderCore::Metal::NativeFormat::Enum CalculateFinalVBFormat(const IVertexSourceData& source)
+    MeshDatabase::Stream::Stream() { _semanticIndex = 0; }
+    MeshDatabase::Stream::Stream(
+        std::shared_ptr<IVertexSourceData> sourceData, std::vector<unsigned> vertexMap, 
+        const std::string& semanticName, unsigned semanticIndex)
+    : _sourceData(std::move(sourceData)), _vertexMap(std::move(vertexMap))
+    , _semanticName(semanticName), _semanticIndex(semanticIndex)
+    {}
+
+    MeshDatabase::Stream::Stream(Stream&& moveFrom) never_throws
+    : _sourceData(std::move(moveFrom._sourceData))
+    , _vertexMap(std::move(moveFrom._vertexMap))
+    , _semanticName(std::move(moveFrom._semanticName))
+    , _semanticIndex(moveFrom._semanticIndex)
+    {
+    }
+
+    auto MeshDatabase::Stream::operator=(Stream&& moveFrom) never_throws -> Stream&
+    {
+        _sourceData = std::move(moveFrom._sourceData);
+        _vertexMap = std::move(moveFrom._vertexMap);
+        _semanticName = std::move(moveFrom._semanticName);
+        _semanticIndex = moveFrom._semanticIndex;
+        return *this;
+    }
+
+    MeshDatabase::Stream::~Stream() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static RenderCore::Metal::NativeFormat::Enum CalculateFinalVBFormat(const IVertexSourceData& source, const NativeVBSettings& settings)
     {
             //
             //      Calculate a native format that matches this source data.
@@ -288,7 +313,7 @@ namespace RenderCore { namespace ColladaConversion
             else                            return Metal::NativeFormat::R8G8B8A8_UNORM;
         }
 
-        if (constant_expression<Use16BitFloats>::result()) {
+        if (settings._use16BitFloats) {
             if (parameterCount == 1)        return Metal::NativeFormat::R16_FLOAT;
             else if (parameterCount == 2)   return Metal::NativeFormat::R16G16_FLOAT;
             else                            return Metal::NativeFormat::R16G16B16A16_FLOAT;
@@ -300,18 +325,18 @@ namespace RenderCore { namespace ColladaConversion
         }
     }
 
-    NativeVBLayout BuildDefaultLayout(MeshDatabaseAdapter& mesh)
+    NativeVBLayout BuildDefaultLayout(MeshDatabase& mesh, const NativeVBSettings& settings)
     {
         unsigned accumulatingOffset = 0;
 
         NativeVBLayout result;
-        result._elements.resize(mesh._streams.size());
+        result._elements.resize(mesh.GetStreamCount());
 
-        for (size_t c = 0; c<mesh._streams.size(); ++c) {
+        for (unsigned c = 0; c<mesh.GetStreamCount(); ++c) {
             auto& nativeElement = result._elements[c];
-            auto& stream = mesh._streams[c];
-            nativeElement._semanticName         = stream._semanticName;
-            nativeElement._semanticIndex        = stream._semanticIndex;
+            auto& stream = mesh.GetStream(c);
+            nativeElement._semanticName         = stream.GetSemanticName();
+            nativeElement._semanticIndex        = stream.GetSemanticIndex();
 
                 // Note --  There's a problem here with texture coordinates. Sometimes texture coordinates
                 //          have 3 components in the Collada file. But only 2 components are actually used
@@ -320,7 +345,7 @@ namespace RenderCore { namespace ColladaConversion
                 //          is used, and how this vertex element is bound to materials. But in this function
                 //          call we only have access to the "Geometry" object, without any context information.
                 //          We don't yet know how it will be bound to materials.
-            nativeElement._nativeFormat         = CalculateFinalVBFormat(*stream._sourceData);
+            nativeElement._nativeFormat         = CalculateFinalVBFormat(stream.GetSourceData(), settings);
             nativeElement._inputSlot            = 0;
             nativeElement._alignedByteOffset    = accumulatingOffset;
             nativeElement._inputSlotClass       = Metal::InputClassification::PerVertex;
@@ -338,21 +363,26 @@ namespace RenderCore { namespace ColladaConversion
     class RawVertexSourceDataAdapter : public IVertexSourceData
     {
     public:
-        std::vector<uint8>              _rawData;
-        Metal::NativeFormat::Enum       _fmt;
-
         const void* GetData() const     { return AsPointer(_rawData.cbegin()); }
         size_t GetDataSize() const      { return _rawData.size(); }
-        size_t GetStride() const        { return RenderCore::Metal::BitsPerPixel(_fmt) / 8; }
-        size_t GetCount() const         { return GetDataSize() / GetStride(); }
+        size_t GetStride() const        { return _stride; } // RenderCore::Metal::BitsPerPixel(_fmt) / 8; }
+        size_t GetCount() const         { return _count; } // GetDataSize() / GetStride(); }
 
         RenderCore::Metal::NativeFormat::Enum GetFormat() const     { return _fmt; }
-        ProcessingFlags::BitField GetProcessingFlags() const        { return 0; }
-        FormatHint::BitField GetFormatHint() const                  { return 0; }
+        ProcessingFlags::BitField   GetProcessingFlags() const      { return 0; }
+        FormatHint::BitField        GetFormatHint() const           { return 0; }
 
-        RawVertexSourceDataAdapter()    { _fmt = Metal::NativeFormat::Unknown; }
-        RawVertexSourceDataAdapter(const void* start, const void* end, Metal::NativeFormat::Enum fmt)
+        RawVertexSourceDataAdapter()    { _fmt = Metal::NativeFormat::Unknown; _count = _stride = 0; }
+        RawVertexSourceDataAdapter(
+            const void* start, const void* end, 
+            size_t count, size_t stride,
+            Metal::NativeFormat::Enum fmt)
         : _fmt(fmt), _rawData((const uint8*)start, (const uint8*)end) {}
+
+    protected:
+        std::vector<uint8>              _rawData;
+        Metal::NativeFormat::Enum       _fmt;
+        size_t                          _count, _stride;
     };
 
     IVertexSourceData::~IVertexSourceData() {}
@@ -360,14 +390,25 @@ namespace RenderCore { namespace ColladaConversion
     std::shared_ptr<IVertexSourceData>
         CreateRawDataSource(
             const void* dataBegin, const void* dataEnd, 
+            size_t count, size_t stride,
             Metal::NativeFormat::Enum srcFormat)
     {
-        return std::make_shared<RawVertexSourceDataAdapter>(dataBegin, dataEnd, srcFormat);
+        return std::make_shared<RawVertexSourceDataAdapter>(dataBegin, dataEnd, count, stride, srcFormat);
+    }
+
+    std::shared_ptr<IVertexSourceData>
+        CreateRawDataSource(
+            const void* dataBegin, const void* dataEnd, 
+            Metal::NativeFormat::Enum srcFormat)
+    {
+        auto stride = RenderCore::Metal::BitsPerPixel(srcFormat) / 8;
+        auto count = (size_t(dataEnd) - size_t(dataBegin)) / stride;
+        return CreateRawDataSource(dataBegin, dataEnd, count, stride, srcFormat);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    size_t CreateTriangleWindingFromPolygon(size_t polygonVertexCount, unsigned buffer[], size_t bufferCount)
+    size_t CreateTriangleWindingFromPolygon(unsigned buffer[], size_t bufferCount, size_t polygonVertexCount)
     {
             //
             //      Assuming simple convex polygon
@@ -465,5 +506,5 @@ namespace RenderCore { namespace ColladaConversion
     //     return fltInt16;
     // }
 
-}}
+}}}
 
