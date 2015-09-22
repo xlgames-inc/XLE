@@ -147,10 +147,9 @@ namespace RenderCore { namespace Assets
 
         static bool HasElement(const GeoInputAssembly& ia, const char name[])
         {
-            auto end = &ia._elements[ia._elementCount];
             return std::find_if(
-                ia._elements, end, 
-                [=](const VertexElement& ele) { return !XlCompareString(ele._semantic, name); }) != end;
+                ia._elements.cbegin(), ia._elements.cend(), 
+                [=](const VertexElement& ele) { return !XlCompareString(ele._semantic, name); }) != ia._elements.cend();
         }
 
         #if defined(_DEBUG)
@@ -414,7 +413,7 @@ namespace RenderCore { namespace Assets
                     // in some cases we need multiple "slots". When we have multiple slots, the vertex data 
                     //  should be one after another in the vb (that is, not interleaved)
                 dst[vertexElementCount++] = Metal::InputElementDesc(
-                    sourceElement._semantic, sourceElement._semanticIndex,
+                    sourceElement._semanticName, sourceElement._semanticIndex,
                     Metal::NativeFormat::Enum(sourceElement._format), lowLevelSlot, sourceElement._startOffset);
             }
         }
@@ -823,7 +822,7 @@ namespace RenderCore { namespace Assets
         Metal::InputElementDesc inputDesc[12];
         unsigned vertexElementCount = BuildLowLevelInputAssembly(
             inputDesc, dimof(inputDesc),
-            geo._vb._ia._elements, geo._vb._ia._elementCount);
+            AsPointer(geo._vb._ia._elements.cbegin()), (unsigned)geo._vb._ia._elements.size());
         result._techniqueInterface = sharedStateSet.InsertTechniqueInterface(
             inputDesc, vertexElementCount, textureBindPoints, textureBindPointsCnt);
 
@@ -882,14 +881,14 @@ namespace RenderCore { namespace Assets
             unsigned eleCount = 
                 BuildLowLevelInputAssembly(
                     inputDescForRender, dimof(inputDescForRender),
-                    geo._animatedVertexElements._ia._elements, 
-                    geo._animatedVertexElements._ia._elementCount);
+                    AsPointer(geo._animatedVertexElements._ia._elements.cbegin()), 
+                    unsigned(geo._animatedVertexElements._ia._elements.size()));
 
                 // (add the unanimated part)
             eleCount += 
                 BuildLowLevelInputAssembly(
                     &inputDescForRender[eleCount], dimof(inputDescForRender) - eleCount,
-                    geo._vb._ia._elements, geo._vb._ia._elementCount, 1);
+                    AsPointer(geo._vb._ia._elements.cbegin()), unsigned(geo._vb._ia._elements.size()), 1);
 
             result._skinnedTechniqueInterface = sharedStateSet.InsertTechniqueInterface(
                 inputDescForRender, eleCount, 
@@ -1313,11 +1312,6 @@ namespace RenderCore { namespace Assets
         DestroyArray(_skinControllerInstances,  &_skinControllerInstances[_skinControllerInstanceCount]);
     }
 
-    GeoInputAssembly::~GeoInputAssembly()
-    {
-        DestroyArray(_elements, &_elements[_elementCount]);
-    }
-
     RawGeometry::~RawGeometry() {}
     BoundSkinnedGeometry::~BoundSkinnedGeometry() {}
 
@@ -1336,9 +1330,41 @@ namespace RenderCore { namespace Assets
             //  noise from characters in the left-over space in the
             //  semantic names. Do to this right, we should make sure
             //  that left over space has no effect.
-        auto elementsHash = Hash64(_elements, PtrAdd(_elements, _elementCount * sizeof(VertexElement)));
+        auto elementsHash = Hash64(AsPointer(_elements.cbegin()), AsPointer(_elements.cend()));
         elementsHash ^= uint64(_vertexStride);
         return elementsHash;
+    }
+
+    GeoInputAssembly::GeoInputAssembly() { _vertexStride = 0; }
+    GeoInputAssembly::GeoInputAssembly(GeoInputAssembly&& moveFrom)
+    :   _elements(std::move(moveFrom._elements))
+    ,   _vertexStride(moveFrom._vertexStride)
+    {}
+    GeoInputAssembly& GeoInputAssembly::operator=(GeoInputAssembly&& moveFrom)
+    {
+        _elements = std::move(moveFrom._elements);
+        _vertexStride = moveFrom._vertexStride;
+        return *this;
+    }
+    GeoInputAssembly::~GeoInputAssembly() {}
+
+    VertexElement::VertexElement()
+    {
+        _nativeFormat = 0; _startOffset = 0; _semanticIndex = 0;
+        XlZeroMemory(_semanticName);
+    }
+
+    VertexElement::VertexElement(const VertexElement& ele)
+    {
+        _nativeFormat = ele._nativeFormat; _startOffset = ele._startOffset; _semanticIndex = ele._semanticIndex;
+        XlCopyMemory(_semanticName, ele._semanticName, sizeof(_semanticName));
+    }
+
+    VertexElement& VertexElement::operator=(const VertexElement& ele)
+    {
+        _nativeFormat = ele._nativeFormat; _startOffset = ele._startOffset; _semanticIndex = ele._semanticIndex;
+        XlCopyMemory(_semanticName, ele._semanticName, sizeof(_semanticName));
+        return *this;
     }
 
         ////////////////////////////////////////////////////////////

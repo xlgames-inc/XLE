@@ -12,8 +12,9 @@ namespace RenderCore { namespace ColladaConversion
 {
     class NascentSkeleton;
     class SkeletonRegistry;
-    class TableOfObjects;
     class ImportConfiguration;
+    class NascentRawGeometry;
+    class NascentBoundSkinnedGeometry;
 
     void BuildFullSkeleton(
         NascentSkeleton& skeleton,
@@ -40,7 +41,7 @@ namespace RenderCore { namespace ColladaConversion
                 const NascentModelCommandStream& scene,
                 const Float4x4* transformsBegin, 
                 const Float4x4* transformsEnd
-            );
+            ) const;
     };
 
     NascentModelCommandStream::GeometryInstance InstantiateGeometry(

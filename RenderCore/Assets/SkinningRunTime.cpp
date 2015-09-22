@@ -391,9 +391,9 @@ namespace RenderCore { namespace Assets
                 //  be a 3D format. This will break if the format is intended to truly be
                 //  4D).
             if (    GetComponentType(Metal::NativeFormat::Enum(dst[c]._format)) == FormatComponentType::Float
-                &&  GetComponentPrecision(Metal::NativeFormat::Enum(dst[c]._format)) == 16) {
+                &&  GetComponentPrecision(Metal::NativeFormat::Enum(dst[c]._nativeFormat)) == 16) {
 
-                auto components = GetComponents(Metal::NativeFormat::Enum(dst[c]._format));
+                auto components = GetComponents(Metal::NativeFormat::Enum(dst[c]._nativeFormat));
                 if (components == FormatComponents::RGBAlpha) {
                     components = FormatComponents::RGB;
                 }
@@ -402,7 +402,7 @@ namespace RenderCore { namespace Assets
                     components, FormatComponentType::Float,
                     32);
                 if (recastFormat != NativeFormat::Unknown) {
-                    dst[c]._format = recastFormat;
+                    dst[c]._nativeFormat = recastFormat;
                 }
             }
         }

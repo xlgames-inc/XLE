@@ -380,7 +380,7 @@ namespace RenderCore { namespace ColladaConversion
             const NascentModelCommandStream& scene,
             const Float4x4* transformsBegin, 
             const Float4x4* transformsEnd
-        )
+        ) const
     {
             //
             //      For all the parts of the model, calculate the bounding box.
@@ -411,9 +411,9 @@ namespace RenderCore { namespace ColladaConversion
             const void*         vertexBuffer = geo->_vertices.get();
             const unsigned      vertexStride = geo->_mainDrawInputAssembly._vertexStride;
 
-            Metal::InputElementDesc positionDesc = FindPositionElement(
-                AsPointer(geo->_mainDrawInputAssembly._vertexInputLayout.begin()),
-                geo->_mainDrawInputAssembly._vertexInputLayout.size());
+            auto positionDesc = FindPositionElement(
+                AsPointer(geo->_mainDrawInputAssembly._elements.begin()),
+                geo->_mainDrawInputAssembly._elements.size());
 
             if (positionDesc._nativeFormat != Metal::NativeFormat::Unknown && vertexStride) {
                 AddToBoundingBox(

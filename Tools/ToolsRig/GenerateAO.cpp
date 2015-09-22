@@ -310,7 +310,7 @@ namespace ToolsRig
             for (unsigned e=0; e<vbIA._elementCount; ++e) {
                 const auto& ele = vbIA._elements[c];
                 if (    (XlEqStringI(ele._semantic, "POSITION") && ele._semanticIndex == 0)
-                    ||  (XlEqStringI(ele._semantic, "NORMAL") && ele._semanticIndex == 0)) {
+                    ||  (XlEqStringI(ele._semanticName, "NORMAL") && ele._semanticIndex == 0)) {
 
                     auto rawSource = CreateRawDataSource(
                         PtrAdd(file.GetData(), vbStart + ele._startOffset),
@@ -321,7 +321,7 @@ namespace ToolsRig
                     mesh.AddStream(
                         std::move(rawSource),
                         std::vector<unsigned>(),
-                        vbIA._elements[c]._semantic, vbIA._elements[c]._semanticIndex);
+                        vbIA._elements[c]._semanticName, vbIA._elements[c]._semanticIndex);
                 }
             }
 

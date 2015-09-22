@@ -14,6 +14,7 @@
 #include "GeometryAlgorithm.h"
 #include "ConversionUtil.h"
 #include "../RenderCore/Assets/MeshDatabase.h"
+#include "../RenderCore/Metal/DeviceContext.h"      // for Topology...!
 #include "../ConsoleRig/Log.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/IteratorUtils.h"
@@ -745,7 +746,7 @@ namespace ColladaConversion
             //      The end result is 1 vertex buffer and 1 index buffer.
             //
 
-        std::vector<NascentDrawCallDesc> finalDrawOperations;
+        std::vector<DrawCallDesc> finalDrawOperations;
         finalDrawOperations.reserve(drawOperations.size());
 
         std::set<uint64> matBindingSymbols;
@@ -756,7 +757,7 @@ namespace ColladaConversion
         for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i) {
             assert(i->_topology == Metal::Topology::TriangleList);  // tangent generation assumes triangle list currently... We need to modify GenerateNormalsAndTangents() to support other types
             finalDrawOperations.push_back(
-                NascentDrawCallDesc(
+                DrawCallDesc(
                     (unsigned)finalIndexCount, (unsigned)i->_indexBuffer.size(), 0, 
                     (unsigned)std::distance(matBindingSymbols.begin(), matBindingSymbols.find(i->_materialBinding)),
                     i->_topology));
@@ -830,7 +831,7 @@ namespace ColladaConversion
         return NascentRawGeometry(
             DynamicArray<uint8>(std::move(nativeVB), vbLayout._vertexStride * database->GetUnifiedVertexCount()), 
             DynamicArray<uint8>(std::move(finalIndexBuffer), finalIndexBufferSize),
-            GeometryInputAssembly(std::move(vbLayout._elements), (unsigned)vbLayout._vertexStride),
+            CreateGeoInputAssembly(vbLayout._elements, (unsigned)vbLayout._vertexStride),
             indexFormat,
             std::move(finalDrawOperations),
             DynamicArray<uint32>(std::move(unifiedVertexIndexToPositionIndex), database->GetUnifiedVertexCount()),

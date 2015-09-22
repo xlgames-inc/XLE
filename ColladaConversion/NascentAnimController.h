@@ -9,6 +9,7 @@
 #include "NascentRawGeometry.h"
 #include "SkeletonRegistry.h"
 #include "../RenderCore/Metal/Format.h"
+#include "../RenderCore/Metal/InputLayout.h"
 #include "../Math/Matrix.h"
 #include "../Math/Vector.h"
 #include "../Utility/UTFUtils.h"
@@ -27,10 +28,10 @@ namespace RenderCore { namespace ColladaConversion
         DynamicArray<uint8>         _indices;
 
         Metal::NativeFormat::Enum   _indexFormat;        
-        GeometryInputAssembly       _mainDrawUnanimatedIA;
-        GeometryInputAssembly       _mainDrawAnimatedIA;
+        GeoInputAssembly       _mainDrawUnanimatedIA;
+        GeoInputAssembly       _mainDrawAnimatedIA;
 
-        std::vector<NascentDrawCallDesc>    _mainDrawCalls;
+        std::vector<DrawCallDesc>    _mainDrawCalls;
 
         DynamicArray<uint8>         _animatedVertexElements;
         DynamicArray<uint8>         _skeletonBinding;
@@ -41,8 +42,8 @@ namespace RenderCore { namespace ColladaConversion
         DynamicArray<uint16>        _jointMatrices;         // (uint16 or uint8 for this array)
         Float4x4                    _bindShapeMatrix;
             
-        std::vector<NascentDrawCallDesc>    _preskinningDrawCalls;
-        GeometryInputAssembly               _preskinningIA;
+        std::vector<DrawCallDesc>   _preskinningDrawCalls;
+        GeoInputAssembly            _preskinningIA;
 
         std::pair<Float3, Float3>           _localBoundingBox;
 

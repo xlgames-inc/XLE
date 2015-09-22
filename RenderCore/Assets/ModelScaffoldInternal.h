@@ -20,7 +20,7 @@ namespace RenderCore { namespace Assets
     #pragma pack(push)
     #pragma pack(1)
 
-////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
     //      g e o m e t r y         //
 
     class ModelCommandStream
@@ -47,13 +47,13 @@ namespace RenderCore { namespace Assets
         };
 
             /////   -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-   /////
-        const GeoCall&      GetGeoCall(size_t index) const;
-        size_t              GetGeoCallCount() const;
+        const GeoCall&  GetGeoCall(size_t index) const;
+        size_t          GetGeoCallCount() const;
 
-        const GeoCall&      GetSkinCall(size_t index) const;
-        size_t              GetSkinCallCount() const;
+        const GeoCall&  GetSkinCall(size_t index) const;
+        size_t          GetSkinCallCount() const;
 
-        const InputInterface&   GetInputInterface() const { return _inputInterface; }
+        auto            GetInputInterface() const -> const InputInterface& { return _inputInterface; }
 
         ~ModelCommandStream();
     private:
@@ -71,6 +71,8 @@ namespace RenderCore { namespace Assets
     inline size_t       ModelCommandStream::GetGeoCallCount() const                             { return _geometryInstanceCount; }
     inline auto         ModelCommandStream::GetSkinCall(size_t index) const -> const GeoCall&   { return _skinControllerInstances[index]; }
     inline size_t       ModelCommandStream::GetSkinCallCount() const                            { return _skinControllerInstanceCount; }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class DrawCallDesc
     {
@@ -90,25 +92,27 @@ namespace RenderCore { namespace Assets
     class VertexElement
     {
     public:
-        char            _semantic[16];  // limited max size for semantic name (only alternative is to use a hash value)
+        char            _semanticName[16];  // limited max size for semantic name (only alternative is to use a hash value)
         unsigned        _semanticIndex;
-        NativeFormatPlaceholder    _format;
+        NativeFormatPlaceholder    _nativeFormat;
         unsigned        _startOffset;
 
-        VertexElement() {}
-        VertexElement(const VertexElement&) = delete;
-        VertexElement& operator=(const VertexElement&) = delete;
+        VertexElement();
+        VertexElement(const VertexElement&);
+        VertexElement& operator=(const VertexElement&);
     };
 
     class GeoInputAssembly
     {
     public:
-        VertexElement*  _elements;
-        unsigned        _elementCount;
-        unsigned        _vertexStride;
+        SerializableVector<VertexElement>   _elements;
+        unsigned                            _vertexStride;
 
         uint64 BuildHash() const;
 
+        GeoInputAssembly();
+        GeoInputAssembly(GeoInputAssembly&& moveFrom);
+        GeoInputAssembly& operator=(GeoInputAssembly&& moveFrom);
         ~GeoInputAssembly();
     };
 
@@ -122,9 +126,11 @@ namespace RenderCore { namespace Assets
     class IndexData
     {
     public:
-        NativeFormatPlaceholder        _format;
-        unsigned            _offset, _size;
+        NativeFormatPlaceholder _format;
+        unsigned                _offset, _size;
     };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class RawGeometry
     {
@@ -171,6 +177,8 @@ namespace RenderCore { namespace Assets
     private:
         BoundSkinnedGeometry();
     };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     #pragma pack(pop)
 

@@ -180,6 +180,63 @@ namespace RenderCore { namespace ColladaConversion
 
         return Node();
     }
+
+    class DefaultPoseData
+    {
+    public:
+        std::vector<Float4x4>       _defaultTransforms;
+        std::pair<Float3, Float3>   _boundingBox;
+    };
+
+    static DefaultPoseData CalculateDefaultPoseData(
+        const NascentSkeleton::NascentTransformationMachine& transMachine,
+        const NascentModelCommandStream& cmdStream,
+        const NascentGeometryObjects& geoObjects)
+    {
+        DefaultPoseData result;
+
+        auto skeletonOutput = transMachine.GenerateOutputTransforms(
+            transMachine.GetDefaultParameters());
+
+        auto skelOutputInterface = transMachine.GetOutputInterface();
+        auto streamInputInterface = cmdStream.GetInputInterface();
+        RenderCore::Assets::SkeletonBinding skelBinding(
+            RenderCore::Assets::TransformationMachine::OutputInterface
+                {AsPointer(skelOutputInterface.first.begin()), AsPointer(skelOutputInterface.second.begin()), skelOutputInterface.first.size()},
+            RenderCore::Assets::ModelCommandStream::InputInterface
+                {AsPointer(streamInputInterface.begin()), streamInputInterface.size()});
+
+        auto finalMatrixCount = streamInputInterface.size(); // immData->_visualScene.GetInputInterface()._jointCount;
+        result._defaultTransforms.resize(finalMatrixCount);
+        for (size_t c = 0; c < finalMatrixCount; ++c) {
+            auto machineOutputIndex = skelBinding._modelJointIndexToMachineOutput[c];
+            if (machineOutputIndex == ~unsigned(0x0)) {
+                result._defaultTransforms[c] = Identity<Float4x4>();
+            } else {
+                result._defaultTransforms[c] = skeletonOutput[machineOutputIndex];
+            }
+        }
+
+            // if we have any non-identity internal transforms, then we should 
+            // write a default set of transformations. But many models don't have any
+            // internal transforms -- in this case all of the generated transforms
+            // will be identity. If we find this case, they we should write zero
+            // default transforms.
+        bool hasNonIdentity = false;
+        const float tolerance = 1e-6f;
+        for (unsigned c=0; c<finalMatrixCount; ++c)
+            hasNonIdentity |= !Equivalent(result._defaultTransforms[c], Identity<Float4x4>(), tolerance);
+        if (!hasNonIdentity) {
+            finalMatrixCount = 0;
+            result._defaultTransforms.clear();
+        }
+
+        result._boundingBox = geoObjects.CalculateBoundingBox(
+            cmdStream, 
+            AsPointer(result._defaultTransforms.cbegin()), AsPointer(result._defaultTransforms.cend()));
+
+        return result;
+    }
   
     NascentChunkArray SerializeSkin(const ColladaScaffold& model, const char startingNode[])
     {
@@ -220,48 +277,17 @@ namespace RenderCore { namespace ColladaConversion
             // run-time types
         {
             const auto& transMachine = skinFile._skeleton.GetTransformationMachine();
-            auto skeletonOutput = transMachine.GenerateOutputTransforms(
-                transMachine.GetDefaultParameters());
-
-            auto skelOutputInterface = transMachine.GetOutputInterface();
-            auto streamInputInterface = skinFile._cmdStream.GetInputInterface();
-            RenderCore::Assets::SkeletonBinding skelBinding(
-                RenderCore::Assets::TransformationMachine::OutputInterface
-                    {AsPointer(skelOutputInterface.first.begin()), AsPointer(skelOutputInterface.second.begin()), skelOutputInterface.first.size()},
-                RenderCore::Assets::ModelCommandStream::InputInterface
-                    {AsPointer(streamInputInterface.begin()), streamInputInterface.size()});
-
-            auto finalMatrixCount = streamInputInterface.size(); // immData->_visualScene.GetInputInterface()._jointCount;
-            auto reordered = std::make_unique<Float4x4[]>(finalMatrixCount);
-            for (size_t c = 0; c < finalMatrixCount; ++c) {
-                auto machineOutputIndex = skelBinding._modelJointIndexToMachineOutput[c];
-                if (machineOutputIndex == ~unsigned(0x0)) {
-                    reordered[c] = Identity<Float4x4>();
-                } else {
-                    reordered[c] = skeletonOutput[machineOutputIndex];
-                }
-            }
-
-                // if we have any non-identity internal transforms, then we should 
-                // write a default set of transformations. But many models don't have any
-                // internal transforms -- in this case all of the generated transforms
-                // will be identity. If we find this case, they we should write zero
-                // default transforms.
-            bool hasNonIdentity = false;
-            const float tolerance = 1e-6f;
-            for (unsigned c=0; c<finalMatrixCount; ++c)
-                hasNonIdentity |= !Equivalent(reordered[c], Identity<Float4x4>(), tolerance);
-            if (!hasNonIdentity)
-                finalMatrixCount = 0;
-
-            serializer.SerializeSubBlock(reordered.get(), &reordered[finalMatrixCount]);
-            serializer.SerializeValue(finalMatrixCount);
-
-            auto boundingBox = skinFile._geoObjects.CalculateBoundingBox(
-                skinFile._cmdStream, reordered.get(), &reordered[finalMatrixCount]);
-            ::Serialize(serializer, boundingBox.first);
-            ::Serialize(serializer, boundingBox.second);
+            const auto& cmdStream = skinFile._cmdStream;
+            const auto& geoObjects = skinFile._geoObjects;
             
+            auto defaultPoseData = CalculateDefaultPoseData(transMachine, cmdStream, geoObjects);
+            serializer.SerializeSubBlock(
+                AsPointer(defaultPoseData._defaultTransforms.cbegin()), 
+                AsPointer(defaultPoseData._defaultTransforms.cend()));
+            serializer.SerializeValue(unsigned(defaultPoseData._defaultTransforms.size()));
+            ::Serialize(serializer, defaultPoseData._boundingBox.first);
+            ::Serialize(serializer, defaultPoseData._boundingBox.second);
+
             // immData->~ModelImmutableData();
         }
 

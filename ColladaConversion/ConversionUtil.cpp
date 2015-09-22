@@ -177,7 +177,7 @@ namespace RenderCore { namespace ColladaConversion
 
     void AddToBoundingBox(  std::pair<Float3, Float3>& boundingBox,
                             const void* vertexData, size_t vertexStride, size_t vertexCount,
-                            const Metal::InputElementDesc& elementDesc, 
+                            const Assets::VertexElement& elementDesc, 
                             const Float4x4& localToWorld)
     {
             //
@@ -185,10 +185,10 @@ namespace RenderCore { namespace ColladaConversion
             //      pass in ~unsigned(0x0), it means "pack tightly after the previous element",
             //      But since we don't know the previous elements, we can't be sure
             //
-        assert(elementDesc._alignedByteOffset != ~unsigned(0x0));
+        assert(elementDesc._startOffset != ~unsigned(0x0));
         for (size_t c=0; c<vertexCount; ++c) {
-            const void* v    = PtrAdd(vertexData, vertexStride*c + elementDesc._alignedByteOffset);
-            Float3 position  = Truncate(AsFloat4(v, elementDesc._nativeFormat));
+            const void* v    = PtrAdd(vertexData, vertexStride*c + elementDesc._startOffset);
+            Float3 position  = Truncate(AsFloat4(v, Metal::NativeFormat::Enum(elementDesc._nativeFormat)));
             assert(!isinf(position[0]) && !isinf(position[1]) && !isinf(position[2]));
             AddToBoundingBox(boundingBox, position, localToWorld);
         }
@@ -205,12 +205,12 @@ namespace RenderCore { namespace ColladaConversion
         return std::make_pair(mins, maxs);
     }
 
-    Metal::InputElementDesc FindPositionElement(const Metal::InputElementDesc elements[], size_t elementCount)
+    Assets::VertexElement FindPositionElement(const Assets::VertexElement elements[], size_t elementCount)
     {
         for (unsigned c=0; c<elementCount; ++c)
-            if (elements[c]._semanticIndex == 0 && !XlCompareString(elements[c]._semanticName.c_str(), "POSITION"))
+            if (elements[c]._semanticIndex == 0 && !XlCompareStringI(elements[c]._semanticName, "POSITION"))
                 return elements[c];
-        return Metal::InputElementDesc();
+        return Assets::VertexElement();
     }
 
 }}

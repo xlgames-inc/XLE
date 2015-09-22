@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/InputLayout.h"
 #include "../Assets/AssetsCore.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
@@ -23,6 +22,7 @@ namespace Utility
     template<typename Type> class InputStreamFormatter;
 }
 
+namespace RenderCore { namespace Assets { class VertexElement; }}
 namespace RenderCore { namespace ColladaConversion
 {
     class BindingConfig
@@ -81,9 +81,9 @@ namespace RenderCore { namespace ColladaConversion
                             const Float3& localPosition, const Float4x4& localToWorld);
     void AddToBoundingBox(  std::pair<Float3, Float3>& boundingBox,
                             const void* vertexData, size_t vertexStride, size_t vertexCount,
-                            const Metal::InputElementDesc& elementDesc, 
+                            const Assets::VertexElement& elementDesc, 
                             const Float4x4& localToWorld);
     std::pair<Float3, Float3>   InvalidBoundingBox();
 
-    Metal::InputElementDesc     FindPositionElement(const Metal::InputElementDesc elements[], size_t elementCount);
+    Assets::VertexElement FindPositionElement(const Assets::VertexElement elements[], size_t elementCount);
 }}

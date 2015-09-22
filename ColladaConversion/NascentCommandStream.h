@@ -6,15 +6,14 @@
 
 #pragma once
 
-#include "ColladaConversion.h"
-#include "TableOfObjects.h"
+#include "ConversionCore.h"  // for ObjectGuid
 #include "../RenderCore/Assets/TransformationCommands.h"
 #include "../RenderCore/Assets/NascentTransformationMachine.h"
 #include "../Utility/Mixins.h"
 #include <vector>
 
 namespace Serialization { class NascentBlockSerializer; }
-namespace RenderCore { namespace Assets { class NascentTransformationMachine; }}
+namespace RenderCore { namespace Assets { class NascentTransformationMachine; class RawAnimationCurve; }}
 
 namespace RenderCore { namespace ColladaConversion
 {

@@ -6,42 +6,22 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/Format.h"
-#include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/Metal/DeviceContext.h"  // for topology
+#include "../RenderCore/Assets/ModelScaffoldInternal.h"
+#include "../RenderCore/Metal/Forward.h"    // for Metal::InputElementDesc
+#include "../Utility/PtrUtils.h"            // for DynamicArray
 #include <vector>
 
 namespace Serialization { class NascentBlockSerializer; }
 
 namespace RenderCore { namespace ColladaConversion
 {
-    class GeometryInputAssembly
-    {
-    public:
-        std::vector<Metal::InputElementDesc>    _vertexInputLayout;
-        unsigned                                _vertexStride;
+    using GeoInputAssembly = RenderCore::Assets::GeoInputAssembly;
+    using DrawCallDesc = RenderCore::Assets::DrawCallDesc;
+    using NativeFormatPlaceholder = RenderCore::Assets::NativeFormatPlaceholder;
 
-        void    Serialize(Serialization::NascentBlockSerializer& outputSerializer, unsigned slotFilter = ~unsigned(0x0)) const;
-
-        GeometryInputAssembly();
-        GeometryInputAssembly(std::vector<Metal::InputElementDesc>&& vertexInputLayout, unsigned vertexStride);
-    };
-
-        ////////////////////////////////////////////////////////
-
-    class NascentDrawCallDesc
-    {
-    public:
-        unsigned    _firstIndex, _indexCount;
-        unsigned    _firstVertex;
-        unsigned    _boundMaterialIndex;    // index into the array of materials in the GeometryInstance
-        Metal::Topology::Enum   _topology;
-
-        void    Serialize(Serialization::NascentBlockSerializer& outputSerializer) const;
-
-        NascentDrawCallDesc(unsigned firstIndex, unsigned indexCount, unsigned firstVertex, unsigned boundMaterialIndex, Metal::Topology::Enum topology) 
-        : _firstIndex(firstIndex), _indexCount(indexCount), _firstVertex(firstVertex), _boundMaterialIndex(boundMaterialIndex), _topology(topology) {}
-    };
+    GeoInputAssembly CreateGeoInputAssembly(   
+        const std::vector<Metal::InputElementDesc>& vertexInputLayout,
+        unsigned vertexStride);
 
         ////////////////////////////////////////////////////////
 
@@ -52,27 +32,27 @@ namespace RenderCore { namespace ColladaConversion
             Serialization::NascentBlockSerializer& outputSerializer, 
             std::vector<uint8>& largeResourcesBlock) const;
 
-        NascentRawGeometry(     
+        NascentRawGeometry(
             DynamicArray<uint8>&& vb, DynamicArray<uint8>&& ib,
-            GeometryInputAssembly&&             mainDrawInputAssembly,
-            Metal::NativeFormat::Enum           indexFormat,
-            std::vector<NascentDrawCallDesc>&&  mainDrawCalls,
-            DynamicArray<uint32>&&              unifiedVertexIndexToPositionIndex,
-            std::vector<uint64>&&               matBindingSymbols);
+            GeoInputAssembly&&              mainDrawInputAssembly,
+            NativeFormatPlaceholder         indexFormat,
+            std::vector<DrawCallDesc>&&     mainDrawCalls,
+            DynamicArray<uint32>&&          unifiedVertexIndexToPositionIndex,
+            std::vector<uint64>&&           matBindingSymbols);
         NascentRawGeometry(NascentRawGeometry&& moveFrom);
         NascentRawGeometry& operator=(NascentRawGeometry&& moveFrom);
         NascentRawGeometry();
 
-        DynamicArray<uint8>     _vertices;
-        DynamicArray<uint8>     _indices;
+        DynamicArray<uint8>         _vertices;
+        DynamicArray<uint8>         _indices;
 
-        GeometryInputAssembly               _mainDrawInputAssembly;
-        Metal::NativeFormat::Enum           _indexFormat;
-        std::vector<NascentDrawCallDesc>    _mainDrawCalls;
-        std::vector<uint64>                 _matBindingSymbols;
+        GeoInputAssembly            _mainDrawInputAssembly;
+        NativeFormatPlaceholder     _indexFormat;
+        std::vector<DrawCallDesc>   _mainDrawCalls;
+        std::vector<uint64>         _matBindingSymbols;
 
             //  Only required during processing
-        DynamicArray<uint32>    _unifiedVertexIndexToPositionIndex;
+        DynamicArray<uint32>        _unifiedVertexIndexToPositionIndex;
 
         NascentRawGeometry(NascentRawGeometry&) = delete;
         NascentRawGeometry& operator=(const NascentRawGeometry&) = delete;
