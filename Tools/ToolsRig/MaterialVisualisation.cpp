@@ -20,7 +20,9 @@
 #include "../../RenderCore/Metal/InputLayout.h"
 
 #include "../../RenderCore/Assets/ModelRunTime.h"
-#include "../../RenderCore/Assets/ModelRunTimeInternal.h"
+#include "../../RenderCore/Assets/ModelScaffoldInternal.h"
+#include "../../RenderCore/Assets/ModelImmutableData.h"
+#include "../../RenderCore/Assets/ModelRendererInternal.h"      // for BuildLowLevelInputAssembly
 
 #include "../../Assets/IntermediateAssets.h"
 

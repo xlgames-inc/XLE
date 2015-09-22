@@ -1,0 +1,92 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#pragma once
+
+#include "TransformationCommands.h"
+#include "../../Math/Vector.h"
+#include "../../Math/Matrix.h"
+#include "../../Utility/Streams/Serialization.h"
+#include "../../Core/Types.h"
+
+namespace RenderCore { namespace Assets 
+{
+    class SkinningBindingBox;
+    class TransformationParameterSet;
+    class RawAnimationCurve;
+
+    #pragma pack(push)
+    #pragma pack(1)
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+    //      s k e l e t o n         //
+
+    class TransformationMachine
+    {
+    public:
+        unsigned                            GetOutputMatrixCount() const        { return _outputMatrixCount; }
+        const TransformationParameterSet&   GetDefaultParameters() const        { return _defaultParameters; }
+
+        void GenerateOutputTransforms   (   Float4x4 output[], unsigned outputCount,
+                                            const TransformationParameterSet*   parameterSet) const;
+
+        typedef void DebugIterator(const Float4x4& parent, const Float4x4& child, const void* userData);
+        void GenerateOutputTransforms   (   Float4x4 output[], unsigned outputCount,
+                                            const TransformationParameterSet*   parameterSet,
+                                            DebugIterator*  debugIterator,
+                                            const void*     iteratorUserData) const;
+
+        class InputInterface
+        {
+        public:
+            struct Parameter
+            {
+                uint64  _name;
+                uint32  _index;
+                TransformationParameterSet::Type::Enum  _type;
+            };
+
+            Parameter*  _parameters;
+            size_t      _parameterCount;
+        };
+
+        class OutputInterface
+        {
+        public:
+            uint64*     _outputMatrixNames;
+            Float4x4*   _skeletonInverseBindMatrices;
+            size_t      _outputMatrixNameCount;
+        };
+
+        const InputInterface&   GetInputInterface() const   { return _inputInterface; }
+        const OutputInterface&  GetOutputInterface() const  { return _outputInterface; }
+
+        TransformationMachine();
+        ~TransformationMachine();
+    protected:
+        uint32*                         _commandStream;
+        size_t                          _commandStreamSize;
+        unsigned                        _outputMatrixCount;
+        TransformationParameterSet      _defaultParameters;
+
+        InputInterface      _inputInterface;
+        OutputInterface     _outputInterface;
+
+        const uint32*   GetCommandStream()      { return _commandStream; }
+        const size_t    GetCommandStreamSize()  { return _commandStreamSize; }
+
+        template<typename IteratorType>
+            void GenerateOutputTransformsInternal(
+                Float4x4 output[], unsigned outputCount,
+                const TransformationParameterSet*   parameterSet,
+                IteratorType                        debugIterator,
+                const void*                         iteratorUserData) const;
+    };
+
+    #pragma pack(pop)
+
+}}
+

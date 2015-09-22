@@ -16,11 +16,11 @@
 #include "../../PlatformRig/OverlaySystem.h"
 
 #include "../../RenderCore/IDevice.h"
-#include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Metal/GPUProfiler.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Assets/Services.h"
+#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
 #include "../../BufferUploads/IBufferUploads.h"
@@ -29,13 +29,15 @@
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/LightingParserContext.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
+#include "../../Assets/AssetServices.h"
+#include "../../Assets/AssetSetManager.h"
 
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
+#include "../../Utility/Streams/FileSystemMonitor.h"
 
 #include <functional>
 

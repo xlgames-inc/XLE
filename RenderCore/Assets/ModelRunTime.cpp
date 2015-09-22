@@ -5,10 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ModelRunTime.h"
-#include "ModelRunTimeInternal.h"
+#include "ModelRendererInternal.h"
 #include "DelayedDrawCall.h"
-#include "MaterialScaffold.h"
-#include "TransformationCommands.h"
+#include "ModelImmutableData.h"
 #include "AssetUtils.h"     // maybe only needed for chunk ids
 #include "Material.h"
 #include "RawAnimationCurve.h"

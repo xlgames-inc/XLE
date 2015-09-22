@@ -7,83 +7,101 @@
     <Filter Include="GeoProc">
       <UniqueIdentifier>{7530ac72-3667-4879-9cb5-e10f8e998d43}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Assets\Material">
+      <UniqueIdentifier>{afa106b7-44a0-491a-9369-5a7a905fc5c9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Assets\Model">
+      <UniqueIdentifier>{b35e81c8-662a-43c3-92ae-05dc79c96342}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Assets\Anim">
+      <UniqueIdentifier>{461b1f63-5475-4f83-ada6-eb841d79acef}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Assets\ModelRunTime.cpp">
-      <Filter>Assets</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Assets\NascentTransformationMachine.cpp">
-      <Filter>Assets</Filter>
-    </ClCompile>
     <ClCompile Include="..\Assets\SharedStateSet.cpp" />
-    <ClCompile Include="..\Assets\SkinningRunTime.cpp">
-      <Filter>Assets</Filter>
-    </ClCompile>
     <ClCompile Include="..\Assets\AssetUtils.cpp" />
-    <ClCompile Include="..\Assets\ColladaCompilerInterface.cpp">
-      <Filter>Assets</Filter>
-    </ClCompile>
     <ClCompile Include="..\Assets\ModelFormatPlugins.cpp" />
-    <ClCompile Include="..\Assets\Material.cpp">
-      <Filter>Assets</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Assets\MaterialScaffold.cpp">
-      <Filter>Assets</Filter>
-    </ClCompile>
     <ClCompile Include="..\Assets\DeferredShaderResource.cpp" />
     <ClCompile Include="..\Assets\DelayedDrawCall.cpp">
       <Filter>Assets</Filter>
     </ClCompile>
     <ClCompile Include="..\Assets\Services.cpp" />
     <ClCompile Include="..\Assets\LocalCompiledShaderSource.cpp" />
-    <ClCompile Include="..\Assets\RawAnimationCurve.cpp">
-      <Filter>Assets</Filter>
-    </ClCompile>
     <ClCompile Include="..\Assets\ModelCache.cpp" />
     <ClCompile Include="..\Assets\MeshDatabase.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
+    <ClCompile Include="..\Assets\Material.cpp">
+      <Filter>Assets\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\MaterialCompiler.cpp">
+      <Filter>Assets\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\ColladaCompilerInterface.cpp">
+      <Filter>Assets\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\ModelRunTime.cpp">
+      <Filter>Assets\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\NascentTransformationMachine.cpp">
+      <Filter>Assets\Anim</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\RawAnimationCurve.cpp">
+      <Filter>Assets\Anim</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\SkinningRunTime.cpp">
+      <Filter>Assets\Anim</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Assets\ModelRunTime.h">
-      <Filter>Assets</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Assets\TransformationCommands.h">
-      <Filter>Assets</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Assets\NascentTransformationMachine.h">
-      <Filter>Assets</Filter>
-    </ClInclude>
     <ClInclude Include="..\Assets\SharedStateSet.h" />
-    <ClInclude Include="..\Assets\ModelRunTimeInternal.h">
-      <Filter>Assets</Filter>
-    </ClInclude>
     <ClInclude Include="..\Assets\AssetUtils.h" />
-    <ClInclude Include="..\Assets\ColladaCompilerInterface.h">
-      <Filter>Assets</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Assets\AnimationRunTime.h">
-      <Filter>Assets</Filter>
-    </ClInclude>
     <ClInclude Include="..\Assets\ModelFormatPlugins.h" />
-    <ClInclude Include="..\Assets\Material.h">
-      <Filter>Assets</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Assets\MaterialScaffold.h">
-      <Filter>Assets</Filter>
-    </ClInclude>
     <ClInclude Include="..\Assets\DeferredShaderResource.h" />
     <ClInclude Include="..\Assets\DelayedDrawCall.h">
       <Filter>Assets</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\Services.h" />
     <ClInclude Include="..\Assets\LocalCompiledShaderSource.h" />
-    <ClInclude Include="..\Assets\RawAnimationCurve.h">
-      <Filter>Assets</Filter>
-    </ClInclude>
     <ClInclude Include="..\Assets\ModelCache.h" />
     <ClInclude Include="..\Assets\MeshDatabase.h">
       <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\Material.h">
+      <Filter>Assets\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\MaterialCompiler.h">
+      <Filter>Assets\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\ColladaCompilerInterface.h">
+      <Filter>Assets\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\ModelRunTime.h">
+      <Filter>Assets\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\ModelScaffoldInternal.h">
+      <Filter>Assets\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\NascentTransformationMachine.h">
+      <Filter>Assets\Anim</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\RawAnimationCurve.h">
+      <Filter>Assets\Anim</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\TransformationCommands.h">
+      <Filter>Assets\Anim</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\SkeletonScaffoldInternal.h">
+      <Filter>Assets\Anim</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\AnimationScaffoldInternal.h">
+      <Filter>Assets\Anim</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\ModelRendererInternal.h">
+      <Filter>Assets\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\ModelImmutableData.h">
+      <Filter>Assets\Model</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

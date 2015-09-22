@@ -4,8 +4,9 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "ModelRunTime.h"
-#include "ModelRunTimeInternal.h"
+#include "ModelRendererInternal.h"
+#include "SkeletonScaffoldInternal.h"
+#include "ModelImmutableData.h"
 #include "RawAnimationCurve.h"
 #include "SharedStateSet.h"
 #include "AssetUtils.h"     // actually just needed for chunk id

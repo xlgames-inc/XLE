@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "AnimationDecisionTree.h"
-#include "../../RenderCore/Assets/AnimationRunTime.h"
+#include "../../RenderCore/Assets/AnimationScaffoldInternal.h"
 #include "../../RenderCore/Assets/RawAnimationCurve.h"
 #include "../../Utility/MemoryUtils.h"
 

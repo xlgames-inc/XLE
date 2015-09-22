@@ -12,7 +12,6 @@
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../../RenderCore/Assets/Material.h"
-#include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../Assets/DivergentAsset.h"
 #include "../../Assets/AssetUtils.h"

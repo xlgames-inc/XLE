@@ -9,7 +9,7 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
-#include "../../RenderCore/Assets/MaterialScaffold.h"
+#include "../../RenderCore/Assets/Material.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/Tonemap.h"
@@ -319,9 +319,10 @@ namespace Sample
                 //  low level resource (like a vertex buffer), it will throw an
                 //  exception.
             const unsigned levelOfDetail = 0;
-            _modelRenderer = std::make_unique<ModelRenderer>(
-                std::ref(scaffold), std::ref(matScaffold), std::ref(*_sharedStateSet), 
-                &searchRules, levelOfDetail);
+            _modelRenderer = std::unique_ptr<ModelRenderer>(
+                new ModelRenderer(
+                    scaffold, matScaffold, *_sharedStateSet, 
+                    &searchRules, levelOfDetail));
         }
 
             //  Before using SharedStateSet for the first time, we need to capture the device 

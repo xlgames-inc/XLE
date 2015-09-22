@@ -7,9 +7,9 @@
 #include "PlacementsManager.h"
 #include "PlacementsQuadTree.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
-
+#include "../RenderCore/Assets/Material.h"
 #include "../RenderCore/Assets/ModelRunTime.h"
-#include "../RenderCore/Assets/ModelRunTimeInternal.h"
+
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../Assets/IntermediateAssets.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"
@@ -22,8 +22,6 @@
 #include "../Assets/AssetUtils.h"
 #include "../Assets/InvalidAssetManager.h"
 
-#include "../RenderCore/Assets/ModelRunTime.h"
-#include "../RenderCore/Assets/MaterialScaffold.h"
 #include "../RenderCore/RenderUtils.h"
 
 #include "../ConsoleRig/Log.h"

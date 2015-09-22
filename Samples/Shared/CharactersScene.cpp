@@ -10,7 +10,6 @@
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
-#include "../../RenderCore/Assets/AnimationRunTime.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/GPUProfiler.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
@@ -391,8 +390,9 @@ namespace Sample
             inputFiles._skin.c_str(), inputFiles._skeleton.c_str(), inputFiles._animationSet.c_str(), 
             std::ref(pimpl->_charactersSharedStateSet));
 
-        pimpl->_mainAnimDecisionTree = std::make_shared<AnimationDecisionTree>(
-            std::ref(pimpl->_characterModel->GetAnimationData()), CharactersScale);
+        pimpl->_mainAnimDecisionTree = std::shared_ptr<AnimationDecisionTree>(
+            new AnimationDecisionTree(
+                pimpl->_characterModel->GetAnimationData(), CharactersScale));
 
         #if defined(_DEBUG)
             const unsigned npcCount = 5;

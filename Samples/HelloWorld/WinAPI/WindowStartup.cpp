@@ -110,7 +110,7 @@ static void TestParser()
 }
 
 #include "../../RenderCore/Assets/ModelRunTime.h"
-#include "../../RenderCore/Assets/ModelRunTimeInternal.h"
+#include "../../RenderCore/Assets/ModelRendererInternal.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/Assets.h"

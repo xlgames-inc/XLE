@@ -7,7 +7,7 @@
 #include "UnitTestHelper.h"
 #include "../RenderCore/Metal/Shader.h"		// for CreateCompileAndAsyncManager
 #include "../RenderCore/Assets/ModelRunTime.h"
-#include "../RenderCore/Assets/ModelRunTimeInternal.h"
+#include "../RenderCore/Assets/ModelImmutableData.h"
 #include "../RenderCore/Assets/Services.h"
 #include "../ColladaConversion/DLLInterface.h"
 #include "../ColladaConversion/NascentModel.h"

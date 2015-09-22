@@ -19,7 +19,7 @@
 
 #include "ConversionUtil.h"
 
-#include "../RenderCore/Assets/ModelRunTimeInternal.h"      // just for RenderCore::Assets::SkeletonBinding
+#include "../RenderCore/Assets/ModelImmutableData.h"      // just for RenderCore::Assets::SkeletonBinding
 #include "../RenderCore/Assets/AssetUtils.h"
 
 #include "../Utility/Streams/FileUtils.h"

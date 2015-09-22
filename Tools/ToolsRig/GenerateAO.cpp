@@ -11,7 +11,7 @@
 #include "../../SceneEngine/LightInternal.h"    // for shadow projection constants;
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
-#include "../../RenderCore/Assets/ModelRunTimeInternal.h"
+#include "../../RenderCore/Assets/ModelImmutableData.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/MeshDatabase.h"
@@ -394,7 +394,7 @@ namespace ToolsRig
                         *metalContext, 
                         *renderer, sharedStates, meshToModel,
                         *p);
-                auto finalValue = uint8(Clamp(skyDomeOcc * float(0xff), 0.f, float(0xff)));
+                auto finalValue = (uint8)Clamp(skyDomeOcc * float(0xff), 0.f, float(0xff));
                 aoValues.push_back(finalValue);
             }
 

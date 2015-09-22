@@ -4,9 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "MaterialScaffold.h"
-#include "ModelRunTime.h"
-#include "ModelRunTimeInternal.h"
+#include "MaterialCompiler.h"
+#include "ModelImmutableData.h"     // for MaterialImmutableData
 #include "Material.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/BlockSerializer.h"

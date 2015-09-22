@@ -16,6 +16,9 @@ namespace RenderCore { namespace Assets
     class AnimationState;
     class TransformationMachine;
 
+    #pragma pack(push)
+    #pragma pack(1)
+
     class AnimationSet : noncopyable
     {
     public:
@@ -93,6 +96,8 @@ namespace RenderCore { namespace Assets
 
         ~AnimationImmutableData();
     };
+
+    #pragma pack(pop)
 
 }}
 

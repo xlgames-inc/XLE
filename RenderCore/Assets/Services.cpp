@@ -6,7 +6,8 @@
 
 #include "Services.h"
 #include "LocalCompiledShaderSource.h"
-#include "MaterialScaffold.h"
+#include "MaterialCompiler.h"
+#include "Material.h"   // just for MaterialScaffold::CompileProcessType
 #include "ColladaCompilerInterface.h"
 #include "../Metal/Shader.h"            // (for Metal::CreateLowLevelShaderCompiler)
 #include "../ShaderService.h"

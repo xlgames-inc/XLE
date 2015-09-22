@@ -11,13 +11,15 @@
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/Mixins.h"
+#include <memory>
 
-
-namespace Assets { class DependencyValidation; class DirectorySearchRules; }
+namespace Assets { class DependencyValidation; class DirectorySearchRules; class PendingCompileMarker; }
 namespace Utility { class Data; }
 
 namespace RenderCore { namespace Assets
 {
+    typedef uint64 MaterialGuid;
+
     #pragma pack(push)
     #pragma pack(1)
 
@@ -124,8 +126,6 @@ namespace RenderCore { namespace Assets
         RenderStateSet();
     };
 
-    typedef uint64 MaterialGuid;
-
     /// <summary>Final material settings</summary>
     /// These are some material parameters that can be attached to a 
     /// ModelRunTime. This is the "resolved" format. Material settings
@@ -164,6 +164,31 @@ namespace RenderCore { namespace Assets
     };
 
     #pragma pack(pop)
+
+    class MaterialImmutableData;
+
+    /// <summary>An asset containing compiled material settings</summary>
+    /// This is the equivalent of other scaffold objects (like ModelScaffold
+    /// and AnimationSetScaffold). It contains the processed and ready-to-use
+    /// material information.
+    class MaterialScaffold
+    {
+    public:
+        const MaterialImmutableData&    ImmutableData() const       { return *_data; };
+        const ResolvedMaterial*         GetMaterial(MaterialGuid guid) const;
+        const char*                     GetMaterialName(MaterialGuid guid) const;
+
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
+
+        static const auto CompileProcessType = ConstHash64<'ResM', 'at'>::Value;
+
+        MaterialScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+        ~MaterialScaffold();
+    protected:
+        std::unique_ptr<uint8[]> _rawMemoryBlock;
+        const MaterialImmutableData* _data;
+        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
+    };
 
     /// <summary>Pre-resolved material settings</summary>
     /// Materials are a hierachical set of properties. Each RawMaterial
@@ -229,7 +254,6 @@ namespace RenderCore { namespace Assets
         ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
         const ::Assets::DirectorySearchRules& searchRules, const char baseMatName[]);
     uint64 MakeMaterialGuid(const utf8* nameStart, const utf8* nameEnd);
-
 
     template<typename Serializer>
         void ResolvedMaterial::Serialize(Serializer& serializer) const

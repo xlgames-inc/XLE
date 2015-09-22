@@ -28,7 +28,7 @@
 
 #include "../../RenderCore/Assets/ModelCache.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
-#include "../../RenderCore/Assets/ModelRunTimeInternal.h"
+#include "../../RenderCore/Assets/ModelImmutableData.h"
 
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Shader.h"

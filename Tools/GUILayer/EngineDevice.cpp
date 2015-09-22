@@ -14,7 +14,6 @@
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
-#include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../BufferUploads/IBufferUploads.h"

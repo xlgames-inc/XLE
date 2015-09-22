@@ -159,7 +159,7 @@
     <ClCompile Include="..\Assets\ColladaCompilerInterface.cpp" />
     <ClCompile Include="..\Assets\DeferredShaderResource.cpp" />
     <ClCompile Include="..\Assets\Material.cpp" />
-    <ClCompile Include="..\Assets\MaterialScaffold.cpp" />
+    <ClCompile Include="..\Assets\MaterialCompiler.cpp" />
     <ClCompile Include="..\Assets\ModelFormatPlugins.cpp" />
     <ClCompile Include="..\Assets\ModelRunTime.cpp" />
     <ClCompile Include="..\Assets\NascentTransformationMachine.cpp" />
@@ -169,23 +169,26 @@
     <ClCompile Include="..\Assets\SkinningRunTime.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Assets\AnimationRunTime.h" />
+    <ClInclude Include="..\Assets\AnimationScaffoldInternal.h" />
     <ClInclude Include="..\Assets\AssetUtils.h" />
     <ClInclude Include="..\Assets\MeshDatabase.h" />
     <ClInclude Include="..\Assets\ModelCache.h" />
+    <ClInclude Include="..\Assets\ModelImmutableData.h" />
+    <ClInclude Include="..\Assets\ModelScaffoldInternal.h" />
     <ClInclude Include="..\Assets\RawAnimationCurve.h" />
     <ClInclude Include="..\Assets\Services.h" />
     <ClInclude Include="..\Assets\ColladaCompilerInterface.h" />
     <ClInclude Include="..\Assets\DeferredShaderResource.h" />
     <ClInclude Include="..\Assets\Material.h" />
-    <ClInclude Include="..\Assets\MaterialScaffold.h" />
+    <ClInclude Include="..\Assets\MaterialCompiler.h" />
     <ClInclude Include="..\Assets\ModelFormatPlugins.h" />
-    <ClInclude Include="..\Assets\ModelRunTimeInternal.h" />
+    <ClInclude Include="..\Assets\ModelRendererInternal.h" />
     <ClInclude Include="..\Assets\ModelRunTime.h" />
     <ClInclude Include="..\Assets\NascentTransformationMachine.h" />
     <ClInclude Include="..\Assets\DelayedDrawCall.h" />
     <ClInclude Include="..\Assets\LocalCompiledShaderSource.h" />
     <ClInclude Include="..\Assets\SharedStateSet.h" />
+    <ClInclude Include="..\Assets\SkeletonScaffoldInternal.h" />
     <ClInclude Include="..\Assets\TransformationCommands.h" />
   </ItemGroup>
   <ItemGroup>
