@@ -366,13 +366,11 @@ namespace RenderCore { namespace Assets
             Metal::InputElementDesc inputDesc[12];
             unsigned vertexElementCount = BuildLowLevelInputAssembly(
                 inputDesc, dimof(inputDesc),
-                scaffoldGeo._animatedVertexElements._ia._elements, 
-                scaffoldGeo._animatedVertexElements._ia._elementCount);
+                scaffoldGeo._animatedVertexElements._ia._elements);
 
             vertexElementCount += BuildLowLevelInputAssembly(
                 &inputDesc[vertexElementCount], dimof(inputDesc) - vertexElementCount,
-                scaffoldGeo._skeletonBinding._ia._elements, 
-                scaffoldGeo._skeletonBinding._ia._elementCount, 1);
+                scaffoldGeo._skeletonBinding._ia._elements, 1);
 
             iaBox._elements.insert(iaBox._elements.begin(), inputDesc, &inputDesc[vertexElementCount]);
         }
@@ -383,14 +381,14 @@ namespace RenderCore { namespace Assets
         using namespace Metal;
         for (unsigned c=0; c<count; ++c) {
             XlCopyMemory(&dst[c], &src[c], sizeof(VertexElement));
-            dst[c]._startOffset = ~unsigned(0x0);   // have to reset all of the offsets (because elements might change size)
+            dst[c]._alignedByteOffset = ~unsigned(0x0);   // have to reset all of the offsets (because elements might change size)
 
                 // change 16 bit precision formats into 32 bit
                 //  (also change 4 dimensional vectors into 3 dimension vectors. Since there
                 //  isn't a 4D float16 format, most of the time the 4D format is intended to
                 //  be a 3D format. This will break if the format is intended to truly be
                 //  4D).
-            if (    GetComponentType(Metal::NativeFormat::Enum(dst[c]._format)) == FormatComponentType::Float
+            if (    GetComponentType(Metal::NativeFormat::Enum(dst[c]._nativeFormat)) == FormatComponentType::Float
                 &&  GetComponentPrecision(Metal::NativeFormat::Enum(dst[c]._nativeFormat)) == 16) {
 
                 auto components = GetComponents(Metal::NativeFormat::Enum(dst[c]._nativeFormat));
@@ -418,10 +416,11 @@ namespace RenderCore { namespace Assets
         VertexElement convertedElements[16];
         unsigned convertedCount = 
             std::min( dstCount, 
-                std::min((unsigned)dimof(convertedElements), 
-                    scaffoldGeo._animatedVertexElements._ia._elementCount));
+                (unsigned)std::min(dimof(convertedElements), 
+                    scaffoldGeo._animatedVertexElements._ia._elements.size()));
         ApplyConversionFromStreamOutput(
-            convertedElements, scaffoldGeo._animatedVertexElements._ia._elements, convertedCount);
+            convertedElements, 
+            AsPointer(scaffoldGeo._animatedVertexElements._ia._elements.cbegin()), convertedCount);
 
         unsigned eleCount = BuildLowLevelInputAssembly(
             dst, dstCount, convertedElements, convertedCount);
@@ -429,7 +428,7 @@ namespace RenderCore { namespace Assets
             // (add the unanimated part)
         eleCount += BuildLowLevelInputAssembly(
             &dst[eleCount], dstCount - eleCount, 
-            scaffoldGeo._vb._ia._elements, scaffoldGeo._vb._ia._elementCount, 1);
+            scaffoldGeo._vb._ia._elements, 1);
 
         return eleCount;
     }

@@ -10,6 +10,7 @@
 #include "ModelScaffoldInternal.h"
 #include "../Metal/Forward.h"
 #include "../../Utility/Streams/Serialization.h"
+#include "../../Utility/PtrUtils.h"
 
 namespace RenderCore { namespace Assets 
 {
@@ -196,6 +197,16 @@ namespace RenderCore { namespace Assets
         Metal::InputElementDesc dst[], unsigned dstMaxCount,
         const VertexElement* source, unsigned sourceCount,
         unsigned lowLevelSlot = 0);
+
+    inline unsigned BuildLowLevelInputAssembly(
+        Metal::InputElementDesc dst[], unsigned dstMaxCount,
+        const SerializableVector<VertexElement>& source,
+        unsigned lowLevelSlot = 0)
+    {
+        return BuildLowLevelInputAssembly(
+            dst, dstMaxCount,
+            AsPointer(source.cbegin()), (unsigned)source.size(), lowLevelSlot);
+    }
 
     template <typename Type>
         void DestroyArray(const Type* begin, const Type* end)

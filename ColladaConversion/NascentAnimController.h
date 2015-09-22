@@ -27,9 +27,9 @@ namespace RenderCore { namespace ColladaConversion
         DynamicArray<uint8>         _unanimatedVertexElements;
         DynamicArray<uint8>         _indices;
 
-        Metal::NativeFormat::Enum   _indexFormat;        
-        GeoInputAssembly       _mainDrawUnanimatedIA;
-        GeoInputAssembly       _mainDrawAnimatedIA;
+        NativeFormatPlaceholder     _indexFormat;        
+        GeoInputAssembly            _mainDrawUnanimatedIA;
+        GeoInputAssembly            _mainDrawAnimatedIA;
 
         std::vector<DrawCallDesc>    _mainDrawCalls;
 

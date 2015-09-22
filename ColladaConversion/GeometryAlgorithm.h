@@ -8,6 +8,7 @@
 
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/Assets/ModelScaffoldInternal.h"
 
 namespace RenderCore { namespace Assets { namespace GeoProc { class MeshDatabase; }}}
 
@@ -21,9 +22,13 @@ namespace RenderCore { namespace ColladaConversion
     void CopyVertexElements(
         void* destinationBuffer,            size_t destinationVertexStride,
         const void* sourceBuffer,           size_t sourceVertexStride,
-        const Metal::InputElementDesc* destinationLayoutBegin,  const Metal::InputElementDesc* destinationLayoutEnd,
-        const Metal::InputElementDesc* sourceLayoutBegin,       const Metal::InputElementDesc* sourceLayoutEnd,
+        const Assets::VertexElement* destinationLayoutBegin,  const Assets::VertexElement* destinationLayoutEnd,
+        const Assets::VertexElement* sourceLayoutBegin,       const Assets::VertexElement* sourceLayoutEnd,
         const uint16* reorderingBegin,      const uint16* reorderingEnd );
+
+    unsigned CalculateVertexSize(
+        const Assets::VertexElement* layoutBegin,  
+        const Assets::VertexElement* layoutEnd);
 
     unsigned CalculateVertexSize(
         const Metal::InputElementDesc* layoutBegin,  

@@ -247,8 +247,8 @@ namespace RenderCore { namespace ColladaConversion
     void CopyVertexElements(     
         void* destinationBuffer,            size_t destinationVertexStride,
         const void* sourceBuffer,           size_t sourceVertexStride,
-        const Metal::InputElementDesc* destinationLayoutBegin,  const Metal::InputElementDesc* destinationLayoutEnd,
-        const Metal::InputElementDesc* sourceLayoutBegin,       const Metal::InputElementDesc* sourceLayoutEnd,
+        const Assets::VertexElement* destinationLayoutBegin,  const Assets::VertexElement* destinationLayoutEnd,
+        const Assets::VertexElement* sourceLayoutBegin,       const Assets::VertexElement* sourceLayoutEnd,
         const uint16* reorderingBegin,      const uint16* reorderingEnd )
     {
         uint32      elementReordering[32];
@@ -284,10 +284,10 @@ namespace RenderCore { namespace ColladaConversion
             const void* sourceVertexStart    = PtrAdd(sourceBuffer, sourceIndex*sourceVertexStride);
             for (unsigned c=0; c<=(unsigned)maxSourceLayout; ++c) {
                 if (elementReordering[c] != ~uint16(0x0)) {
-                    const Metal::InputElementDesc& destinationElement = destinationLayoutBegin[elementReordering[c]]; assert(&destinationElement < destinationLayoutEnd);
-                    const Metal::InputElementDesc& sourceElement = sourceLayoutBegin[c]; assert(&sourceElement < sourceLayoutEnd);
-                    size_t elementSize = Metal::BitsPerPixel(destinationElement._nativeFormat)/8;
-                    assert(elementSize == Metal::BitsPerPixel(sourceElement._nativeFormat)/8);
+                    const auto& destinationElement = destinationLayoutBegin[elementReordering[c]]; assert(&destinationElement < destinationLayoutEnd);
+                    const auto& sourceElement = sourceLayoutBegin[c]; assert(&sourceElement < sourceLayoutEnd);
+                    size_t elementSize = Metal::BitsPerPixel(Metal::NativeFormat::Enum(destinationElement._nativeFormat))/8;
+                    assert(elementSize == Metal::BitsPerPixel(Metal::NativeFormat::Enum(sourceElement._nativeFormat))/8);
                     assert(destinationElement._alignedByteOffset + elementSize <= destinationVertexStride);
                     assert(sourceElement._alignedByteOffset + elementSize <= sourceVertexStride);
                     assert(PtrAdd(destinationVertexStart, destinationElement._alignedByteOffset+elementSize) <= PtrAdd(destinationVertexStart, vertexCount*destinationVertexStride));
@@ -303,12 +303,22 @@ namespace RenderCore { namespace ColladaConversion
     }
 
     unsigned CalculateVertexSize(
+        const Assets::VertexElement* layoutBegin,  
+        const Assets::VertexElement* layoutEnd)
+    {
+        unsigned result = 0;
+        for (auto l=layoutBegin; l!=layoutEnd; ++l)
+            result += Metal::BitsPerPixel(Metal::NativeFormat::Enum(l->_nativeFormat));
+        return result/8;
+    }
+
+    unsigned CalculateVertexSize(
         const Metal::InputElementDesc* layoutBegin,  
         const Metal::InputElementDesc* layoutEnd)
     {
         unsigned result = 0;
         for (auto l=layoutBegin; l!=layoutEnd; ++l)
-            result += Metal::BitsPerPixel(l->_nativeFormat);
+            result += Metal::BitsPerPixel(Metal::NativeFormat::Enum(l->_nativeFormat));
         return result/8;
     }
 

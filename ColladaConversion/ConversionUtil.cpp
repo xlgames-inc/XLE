@@ -185,9 +185,9 @@ namespace RenderCore { namespace ColladaConversion
             //      pass in ~unsigned(0x0), it means "pack tightly after the previous element",
             //      But since we don't know the previous elements, we can't be sure
             //
-        assert(elementDesc._startOffset != ~unsigned(0x0));
+        assert(elementDesc._alignedByteOffset != ~unsigned(0x0));
         for (size_t c=0; c<vertexCount; ++c) {
-            const void* v    = PtrAdd(vertexData, vertexStride*c + elementDesc._startOffset);
+            const void* v    = PtrAdd(vertexData, vertexStride*c + elementDesc._alignedByteOffset);
             Float3 position  = Truncate(AsFloat4(v, Metal::NativeFormat::Enum(elementDesc._nativeFormat)));
             assert(!isinf(position[0]) && !isinf(position[1]) && !isinf(position[2]));
             AddToBoundingBox(boundingBox, position, localToWorld);

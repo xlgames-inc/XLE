@@ -95,7 +95,7 @@ namespace RenderCore { namespace Assets
         char            _semanticName[16];  // limited max size for semantic name (only alternative is to use a hash value)
         unsigned        _semanticIndex;
         NativeFormatPlaceholder    _nativeFormat;
-        unsigned        _startOffset;
+        unsigned        _alignedByteOffset;
 
         VertexElement();
         VertexElement(const VertexElement&);

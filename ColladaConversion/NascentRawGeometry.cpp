@@ -10,18 +10,6 @@
 #include "../Utility/StringUtils.h"
 #include "../Utility/MemoryUtils.h"
 
-void Serialize( Serialization::NascentBlockSerializer& serializer, 
-                const RenderCore::Metal::InputElementDesc&  object)
-{
-    ::Serialize(serializer, object._semanticName);
-    ::Serialize(serializer, object._semanticIndex);
-    ::Serialize(serializer, unsigned(object._nativeFormat));
-    ::Serialize(serializer, object._inputSlot);
-    ::Serialize(serializer, object._alignedByteOffset);
-    ::Serialize(serializer, unsigned(object._inputSlotClass));
-    ::Serialize(serializer, object._instanceDataStepRate);
-}
-
 void Serialize(
     Serialization::NascentBlockSerializer& outputSerializer,
     const RenderCore::Assets::DrawCallDesc& drawCall)
@@ -51,6 +39,14 @@ void Serialize(
     Serialize(outputSerializer, indexData._size);
 }
 
+void Serialize(
+    Serialization::NascentBlockSerializer& outputSerializer,
+    const RenderCore::Assets::GeoInputAssembly& ia)
+{
+    outputSerializer.SerializeRaw(ia._elements);
+    Serialize(outputSerializer, ia._vertexStride);
+}
+
 namespace RenderCore { namespace ColladaConversion
 {
     GeoInputAssembly CreateGeoInputAssembly(   
@@ -67,7 +63,7 @@ namespace RenderCore { namespace ColladaConversion
             ele._semanticName[dimof(ele._semanticName)-1] = '\0';
             ele._semanticIndex = i->_semanticIndex;
             ele._nativeFormat = i->_nativeFormat;
-            ele._startOffset = i->_alignedByteOffset;
+            ele._alignedByteOffset = i->_alignedByteOffset;
             result._elements.push_back(ele);
         }
         return std::move(result);

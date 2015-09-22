@@ -307,16 +307,16 @@ namespace ToolsRig
                 // Find the normal and position streams, and add to
                 // our mesh database adapter.
             const auto& vbIA = rawGeo._vb._ia;
-            for (unsigned e=0; e<vbIA._elementCount; ++e) {
+            for (unsigned e=0; e<unsigned(vbIA._elements.size()); ++e) {
                 const auto& ele = vbIA._elements[c];
-                if (    (XlEqStringI(ele._semantic, "POSITION") && ele._semanticIndex == 0)
+                if (    (XlEqStringI(ele._semanticName, "POSITION") && ele._semanticIndex == 0)
                     ||  (XlEqStringI(ele._semanticName, "NORMAL") && ele._semanticIndex == 0)) {
 
                     auto rawSource = CreateRawDataSource(
-                        PtrAdd(file.GetData(), vbStart + ele._startOffset),
+                        PtrAdd(file.GetData(), vbStart + ele._alignedByteOffset),
                         PtrAdd(file.GetData(), vbEnd),
                         vertexCount, vbIA._vertexStride, 
-                        Metal::NativeFormat::Enum(ele._format));
+                        Metal::NativeFormat::Enum(ele._nativeFormat));
 
                     mesh.AddStream(
                         std::move(rawSource),

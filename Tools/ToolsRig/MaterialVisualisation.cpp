@@ -287,7 +287,7 @@ namespace ToolsRig
 
                 Metal::InputElementDesc metalVertInput[16];
                 unsigned eleCount = BuildLowLevelInputAssembly(metalVertInput, dimof(metalVertInput),
-                    rawGeo._vb._ia._elements, rawGeo._vb._ia._elementCount);
+                    rawGeo._vb._ia._elements);
 
                 IMaterialBinder::SystemConstants sysContants = _object->_systemConstants;
                 sysContants._objectToWorld = skelTransforms[
@@ -329,10 +329,10 @@ namespace ToolsRig
 
                 Metal::InputElementDesc metalVertInput[16];
                 unsigned eleCount = BuildLowLevelInputAssembly(metalVertInput, dimof(metalVertInput),
-                    rawGeo._vb._ia._elements, rawGeo._vb._ia._elementCount, 0);
+                    rawGeo._vb._ia._elements, 0);
                 eleCount += BuildLowLevelInputAssembly(
                     metalVertInput + eleCount, dimof(metalVertInput) - eleCount,
-                    rawGeo._animatedVertexElements._ia._elements, rawGeo._animatedVertexElements._ia._elementCount, 1);
+                    rawGeo._animatedVertexElements._ia._elements, 1);
 
                 IMaterialBinder::SystemConstants sysContants = _object->_systemConstants;
                 sysContants._objectToWorld = skelTransforms[

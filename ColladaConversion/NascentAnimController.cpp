@@ -10,6 +10,7 @@
 #include "NascentRawGeometry.h"
 #include "GeometryAlgorithm.h"
 #include "ConversionUtil.h"
+#include "../RenderCore/Metal/DeviceContext.h"  // for Topology!
 #include "../Assets/BlockSerializer.h"
 #include "../ConsoleRig/Log.h"
 #include "../Assets/Assets.h"
@@ -122,13 +123,13 @@ namespace RenderCore { namespace ColladaConversion
             //      least "POSITION" will be skinned. But actually this is defined by the particular
             //      shader. We could wait until binding with the material to make this decision...?
             //
-        std::vector<Metal::InputElementDesc> unanimatedVertexLayout = sourceGeo._mainDrawInputAssembly._vertexInputLayout;
-        std::vector<Metal::InputElementDesc> animatedVertexLayout;
+        auto unanimatedVertexLayout = sourceGeo._mainDrawInputAssembly._elements;
+        decltype(unanimatedVertexLayout) animatedVertexLayout;
 
         for (auto i=unanimatedVertexLayout.begin(); i!=unanimatedVertexLayout.end();) {
             const bool mustBeSkinned = 
                 std::find_if(   elementsToBeSkinned.begin(), elementsToBeSkinned.end(), 
-                                [&](const std::string& s){ return !XlCompareStringI(i->_semanticName.c_str(), s.c_str()); }) 
+                                [&](const std::string& s){ return !XlCompareStringI(i->_semanticName, s.c_str()); }) 
                         != elementsToBeSkinned.end();
             if (mustBeSkinned) {
                 animatedVertexLayout.push_back(*i);
@@ -140,12 +141,12 @@ namespace RenderCore { namespace ColladaConversion
             unsigned elementOffset = 0;     // reset the _alignedByteOffset members in the vertex layout
             for (auto i=unanimatedVertexLayout.begin(); i!=unanimatedVertexLayout.end();++i) {
                 i->_alignedByteOffset = elementOffset;
-                elementOffset += Metal::BitsPerPixel(i->_nativeFormat)/8;
+                elementOffset += Metal::BitsPerPixel(Metal::NativeFormat::Enum(i->_nativeFormat))/8;
             }
             elementOffset = 0;
             for (auto i=animatedVertexLayout.begin(); i!=animatedVertexLayout.end();++i) {
                 i->_alignedByteOffset = elementOffset;
-                elementOffset += Metal::BitsPerPixel(i->_nativeFormat)/8;
+                elementOffset += Metal::BitsPerPixel(Metal::NativeFormat::Enum(i->_nativeFormat))/8;
             }
         }
 
@@ -163,13 +164,13 @@ namespace RenderCore { namespace ColladaConversion
         CopyVertexElements( unanimatedVertexBuffer.get(),                   unanimatedVertexStride, 
                             sourceGeo._vertices.get(),                      sourceGeo._mainDrawInputAssembly._vertexStride,
                             AsPointer(unanimatedVertexLayout.begin()),      AsPointer(unanimatedVertexLayout.end()),
-                            AsPointer(sourceGeo._mainDrawInputAssembly._vertexInputLayout.begin()), AsPointer(sourceGeo._mainDrawInputAssembly._vertexInputLayout.end()),
+                            AsPointer(sourceGeo._mainDrawInputAssembly._elements.begin()), AsPointer(sourceGeo._mainDrawInputAssembly._elements.end()),
                             AsPointer(unifiedVertexReordering.begin()),     AsPointer(unifiedVertexReordering.end()));
 
         CopyVertexElements( animatedVertexBuffer.get(),                     animatedVertexStride,
                             sourceGeo._vertices.get(),                      sourceGeo._mainDrawInputAssembly._vertexStride,
                             AsPointer(animatedVertexLayout.begin()),        AsPointer(animatedVertexLayout.end()),
-                            AsPointer(sourceGeo._mainDrawInputAssembly._vertexInputLayout.begin()), AsPointer(sourceGeo._mainDrawInputAssembly._vertexInputLayout.end()),
+                            AsPointer(sourceGeo._mainDrawInputAssembly._elements.begin()), AsPointer(sourceGeo._mainDrawInputAssembly._elements.end()),
                             AsPointer(unifiedVertexReordering.begin()),     AsPointer(unifiedVertexReordering.end()));
 
             //      We have to remap the index buffer, also.
@@ -190,19 +191,19 @@ namespace RenderCore { namespace ColladaConversion
                                 
             //      We have to define the draw calls that perform the pre-skinning step
 
-        std::vector<NascentDrawCallDesc> preskinningDrawCalls;
+        std::vector<DrawCallDesc> preskinningDrawCalls;
         if (bucketEnd[0] > bucketStart[0]) {
-            preskinningDrawCalls.push_back(NascentDrawCallDesc(
+            preskinningDrawCalls.push_back(DrawCallDesc(
                 ~unsigned(0x0), bucketEnd[0] - bucketStart[0], bucketStart[0],
                 4, Metal::Topology::PointList));
         }
         if (bucketEnd[1] > bucketStart[1]) {
-            preskinningDrawCalls.push_back(NascentDrawCallDesc(
+            preskinningDrawCalls.push_back(DrawCallDesc(
                 ~unsigned(0x0), bucketEnd[1] - bucketStart[1], bucketStart[1],
                 2, Metal::Topology::PointList));
         }
         if (bucketEnd[2] > bucketStart[2]) {
-            preskinningDrawCalls.push_back(NascentDrawCallDesc(
+            preskinningDrawCalls.push_back(DrawCallDesc(
                 ~unsigned(0x0), bucketEnd[2] - bucketStart[2], bucketStart[2],
                 1, Metal::Topology::PointList));
         }
@@ -333,7 +334,7 @@ namespace RenderCore { namespace ColladaConversion
             //      Calculate the local space bounding box for the input vertex buffer
             //      (assuming the position will appear in the animated vertex buffer)
         auto boundingBox = InvalidBoundingBox();
-        Metal::InputElementDesc positionDesc = FindPositionElement(
+        auto positionDesc = FindPositionElement(
             AsPointer(animatedVertexLayout.begin()),
             animatedVertexLayout.size());
         if (positionDesc._nativeFormat != Metal::NativeFormat::Unknown) {
@@ -359,17 +360,17 @@ namespace RenderCore { namespace ColladaConversion
 
         result._mainDrawCalls = sourceGeo._mainDrawCalls;
         result._mainDrawUnanimatedIA._vertexStride = unanimatedVertexStride;
-        result._mainDrawUnanimatedIA._vertexInputLayout = std::move(unanimatedVertexLayout);
+        result._mainDrawUnanimatedIA._elements = std::move(unanimatedVertexLayout);
         result._indexFormat = sourceGeo._indexFormat;
 
         result._mainDrawAnimatedIA._vertexStride = animatedVertexStride;
-        result._mainDrawAnimatedIA._vertexInputLayout = std::move(animatedVertexLayout);
+        result._mainDrawAnimatedIA._elements = std::move(animatedVertexLayout);
 
         result._preskinningDrawCalls = preskinningDrawCalls;
 
         if (finalWeightBufferFormat) {
-            result._preskinningIA._vertexInputLayout = *finalWeightBufferFormat;
-            result._preskinningIA._vertexStride = (unsigned)destinationWeightVertexStride;
+            result._preskinningIA = CreateGeoInputAssembly(
+                *finalWeightBufferFormat, (unsigned)destinationWeightVertexStride);
         }
 
         result._localBoundingBox = boundingBox;
@@ -380,8 +381,9 @@ namespace RenderCore { namespace ColladaConversion
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-        void    NascentBoundSkinnedGeometry::Serialize( Serialization::NascentBlockSerializer& outputSerializer, 
-                                                    std::vector<uint8>& largeResourcesBlock) const
+    void NascentBoundSkinnedGeometry::Serialize( 
+        Serialization::NascentBlockSerializer& outputSerializer, 
+        std::vector<uint8>& largeResourcesBlock) const
     {
         using namespace Serialization;
 
@@ -402,23 +404,28 @@ namespace RenderCore { namespace ColladaConversion
         largeResourcesBlock.insert(largeResourcesBlock.end(), _indices.begin(), _indices.end());
 
             // first part is just like "NascentRawGeometry::Serialize"
-        _mainDrawUnanimatedIA.Serialize(outputSerializer);
-        outputSerializer.SerializeValue(unsigned(vbOffset0));
-        outputSerializer.SerializeValue(unsigned(vbSize0));
-        outputSerializer.SerializeValue(unsigned(_indexFormat));
-        outputSerializer.SerializeValue(unsigned(ibOffset));
-        outputSerializer.SerializeValue(unsigned(ibSize));
-        
+        ::Serialize(
+            outputSerializer, 
+            RenderCore::Assets::VertexData 
+                { _mainDrawUnanimatedIA, unsigned(vbOffset0), unsigned(vbSize0) });
+
+        ::Serialize(
+            outputSerializer, 
+            RenderCore::Assets::IndexData 
+                { unsigned(_indexFormat), unsigned(ibOffset), unsigned(ibSize) });
+
         outputSerializer.SerializeSubBlock(AsPointer(_mainDrawCalls.begin()), AsPointer(_mainDrawCalls.end()));
         outputSerializer.SerializeValue(_mainDrawCalls.size());
 
             // append skinning related information
-        _mainDrawAnimatedIA.Serialize(outputSerializer);
-        outputSerializer.SerializeValue(unsigned(vbOffset1));
-        outputSerializer.SerializeValue(unsigned(vbSize1));
-        _preskinningIA.Serialize(outputSerializer);
-        outputSerializer.SerializeValue(unsigned(vbOffset2));
-        outputSerializer.SerializeValue(unsigned(vbSize2));
+        ::Serialize(
+            outputSerializer, 
+            RenderCore::Assets::VertexData 
+                { _mainDrawAnimatedIA, unsigned(vbOffset1), unsigned(vbSize1) });
+        ::Serialize(
+            outputSerializer, 
+            RenderCore::Assets::VertexData 
+                { _preskinningIA, unsigned(vbOffset2), unsigned(vbSize2) });
 
         outputSerializer.SerializeSubBlock(_inverseBindMatrices.begin(), _inverseBindMatrices.end());
         outputSerializer.SerializeValue(_inverseBindMatrices.size());

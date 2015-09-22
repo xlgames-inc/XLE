@@ -58,6 +58,9 @@ namespace Serialization
         template<typename Type, typename Deletor>
             void    SerializeValue  ( const std::unique_ptr<Type, Deletor>& value, size_t count );
 
+        template<typename Type, typename Allocator>
+            void    SerializeRaw    ( const std::vector<Type, Allocator>& value );
+
         template<typename Type>
             void    SerializeRaw    ( Type      type );
 
@@ -121,6 +124,15 @@ namespace Serialization
         NascentBlockSerializer temporaryBlock;
         Serialize(temporaryBlock, type);
         SerializeSubBlock(temporaryBlock, SpecialBuffer::Unknown);
+    }
+
+    template<typename Type, typename Allocator>
+        void    NascentBlockSerializer::SerializeRaw(const std::vector<Type, Allocator>& vector)
+    {
+            // serialize the vector using just a raw copy of the contents
+        SerializeRawSubBlock(
+            AsPointer(vector.cbegin()), AsPointer(vector.cend()),
+            Serialization::NascentBlockSerializer::SpecialBuffer::Vector);
     }
 
     template<typename Type>

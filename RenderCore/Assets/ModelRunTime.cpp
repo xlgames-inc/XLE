@@ -149,7 +149,7 @@ namespace RenderCore { namespace Assets
         {
             return std::find_if(
                 ia._elements.cbegin(), ia._elements.cend(), 
-                [=](const VertexElement& ele) { return !XlCompareString(ele._semantic, name); }) != ia._elements.cend();
+                [=](const VertexElement& ele) { return !XlCompareString(ele._semanticName, name); }) != ia._elements.cend();
         }
 
         #if defined(_DEBUG)
@@ -414,7 +414,7 @@ namespace RenderCore { namespace Assets
                     //  should be one after another in the vb (that is, not interleaved)
                 dst[vertexElementCount++] = Metal::InputElementDesc(
                     sourceElement._semanticName, sourceElement._semanticIndex,
-                    Metal::NativeFormat::Enum(sourceElement._format), lowLevelSlot, sourceElement._startOffset);
+                    Metal::NativeFormat::Enum(sourceElement._nativeFormat), lowLevelSlot, sourceElement._alignedByteOffset);
             }
         }
         return vertexElementCount;
@@ -821,8 +821,7 @@ namespace RenderCore { namespace Assets
 
         Metal::InputElementDesc inputDesc[12];
         unsigned vertexElementCount = BuildLowLevelInputAssembly(
-            inputDesc, dimof(inputDesc),
-            AsPointer(geo._vb._ia._elements.cbegin()), (unsigned)geo._vb._ia._elements.size());
+            inputDesc, dimof(inputDesc), geo._vb._ia._elements);
         result._techniqueInterface = sharedStateSet.InsertTechniqueInterface(
             inputDesc, vertexElementCount, textureBindPoints, textureBindPointsCnt);
 
@@ -881,14 +880,13 @@ namespace RenderCore { namespace Assets
             unsigned eleCount = 
                 BuildLowLevelInputAssembly(
                     inputDescForRender, dimof(inputDescForRender),
-                    AsPointer(geo._animatedVertexElements._ia._elements.cbegin()), 
-                    unsigned(geo._animatedVertexElements._ia._elements.size()));
+                    geo._animatedVertexElements._ia._elements);
 
                 // (add the unanimated part)
             eleCount += 
                 BuildLowLevelInputAssembly(
                     &inputDescForRender[eleCount], dimof(inputDescForRender) - eleCount,
-                    AsPointer(geo._vb._ia._elements.cbegin()), unsigned(geo._vb._ia._elements.size()), 1);
+                    geo._vb._ia._elements, 1);
 
             result._skinnedTechniqueInterface = sharedStateSet.InsertTechniqueInterface(
                 inputDescForRender, eleCount, 
@@ -1350,19 +1348,19 @@ namespace RenderCore { namespace Assets
 
     VertexElement::VertexElement()
     {
-        _nativeFormat = 0; _startOffset = 0; _semanticIndex = 0;
+        _nativeFormat = 0; _alignedByteOffset = 0; _semanticIndex = 0;
         XlZeroMemory(_semanticName);
     }
 
     VertexElement::VertexElement(const VertexElement& ele)
     {
-        _nativeFormat = ele._nativeFormat; _startOffset = ele._startOffset; _semanticIndex = ele._semanticIndex;
+        _nativeFormat = ele._nativeFormat; _alignedByteOffset = ele._alignedByteOffset; _semanticIndex = ele._semanticIndex;
         XlCopyMemory(_semanticName, ele._semanticName, sizeof(_semanticName));
     }
 
     VertexElement& VertexElement::operator=(const VertexElement& ele)
     {
-        _nativeFormat = ele._nativeFormat; _startOffset = ele._startOffset; _semanticIndex = ele._semanticIndex;
+        _nativeFormat = ele._nativeFormat; _alignedByteOffset = ele._alignedByteOffset; _semanticIndex = ele._semanticIndex;
         XlCopyMemory(_semanticName, ele._semanticName, sizeof(_semanticName));
         return *this;
     }
