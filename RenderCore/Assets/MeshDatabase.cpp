@@ -8,6 +8,7 @@
 #include "../Metal/Format.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/IteratorUtils.h"
 #include "../../Foreign/half-1.9.2/include/half.hpp"
 
 namespace RenderCore { namespace Assets { namespace GeoProc
@@ -80,9 +81,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         auto& sourceData = stream.GetSourceData();
         auto stride = sourceData.GetStride();
         const auto* sourceStart = PtrAdd(sourceData.GetData(), indexInStream * stride);
-        
+        auto componentCount = Metal::GetComponentCount(Metal::GetComponents(stream.GetSourceData().GetFormat()));
+
         float input[4];
-        GetVertData(input, (const float*)sourceStart, unsigned(stride), sourceData.GetProcessingFlags());
+        GetVertData(input, (const float*)sourceStart, componentCount, sourceData.GetProcessingFlags());
         return Float3(input[0], input[1], input[2]);
     }
 
@@ -93,9 +95,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         auto& sourceData = stream.GetSourceData();
         auto stride = sourceData.GetStride();
         const auto* sourceStart = PtrAdd(sourceData.GetData(), indexInStream * stride);
+        auto componentCount = Metal::GetComponentCount(Metal::GetComponents(stream.GetSourceData().GetFormat()));
 
         float input[4];
-        GetVertData(input, (const float*)sourceStart, unsigned(stride), sourceData.GetProcessingFlags());
+        GetVertData(input, (const float*)sourceStart, componentCount, sourceData.GetProcessingFlags());
         return Float2(input[0], input[1]);
     }
 
@@ -377,7 +380,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             const void* start, const void* end, 
             size_t count, size_t stride,
             Metal::NativeFormat::Enum fmt)
-        : _fmt(fmt), _rawData((const uint8*)start, (const uint8*)end) {}
+        : _fmt(fmt), _rawData((const uint8*)start, (const uint8*)end), _count(count), _stride(stride) {}
+
+        RawVertexSourceDataAdapter(
+            std::vector<uint8>&& rawData, 
+            size_t count, size_t stride,
+            Metal::NativeFormat::Enum fmt)
+        : _rawData(std::move(rawData)), _fmt(fmt), _count(count), _stride(stride) {}
 
     protected:
         std::vector<uint8>              _rawData;
@@ -404,6 +413,256 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         auto stride = RenderCore::Metal::BitsPerPixel(srcFormat) / 8;
         auto count = (size_t(dataEnd) - size_t(dataBegin)) / stride;
         return CreateRawDataSource(dataBegin, dataEnd, count, stride, srcFormat);
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static std::vector<std::pair<Int3, unsigned>> BuildQuantizedCoords(
+        const IVertexSourceData& sourceStream,
+        Float3 quantization, Float3 offset)
+    {
+        std::vector<std::pair<Int3, unsigned>> result;
+        result.resize(sourceStream.GetCount());
+
+        auto stride = sourceStream.GetStride();
+        auto componentCount = Metal::GetComponentCount(Metal::GetComponents(sourceStream.GetFormat()));
+
+        Float3 precisionMin(float(INT_MIN) * quantization[0], float(INT_MIN) * quantization[1], float(INT_MIN) * quantization[2]);
+        Float3 precisionMax(float(INT_MAX) * quantization[0], float(INT_MAX) * quantization[1], float(INT_MAX) * quantization[2]);
+
+        for (unsigned c=0; c<sourceStream.GetCount(); ++c) {
+            const auto* sourceStart = PtrAdd(sourceStream.GetData(), c * stride);
+        
+            float input[4];
+            GetVertData(input, (const float*)sourceStart, componentCount, sourceStream.GetProcessingFlags());
+            
+                // note that if we're using very small values for quantization,
+                // or if the source data is very large numbers, we could run into
+                // integer precision problems here. We could use uint64 instead?
+            assert(input[0] > precisionMin[0] && input[0] < precisionMax[0]);
+            assert(input[1] > precisionMin[1] && input[1] < precisionMax[1]);
+            assert(input[2] > precisionMin[2] && input[2] < precisionMax[2]);
+            Int3 q( int((input[0] + offset[0]) / quantization[0]),
+                    int((input[1] + offset[1]) / quantization[1]),
+                    int((input[2] + offset[2]) / quantization[2]));
+
+            result[c] = std::make_pair(q, c);
+        }
+
+        return std::move(result);
+    }
+
+    static bool SortQuantizedSet(
+        const std::pair<Int3, unsigned>& lhs,
+        const std::pair<Int3, unsigned>& rhs)
+    {
+        if (lhs.first[0] < rhs.first[0]) return true;
+        if (lhs.first[0] > rhs.first[0]) return false;
+        if (lhs.first[1] < rhs.first[1]) return true;
+        if (lhs.first[1] > rhs.first[1]) return false;
+        if (lhs.first[2] < rhs.first[2]) return true;
+        if (lhs.first[2] > rhs.first[2]) return false;
+            // when the quantized coordinates are equal, sort by
+            // vertex index.
+        return lhs.second < rhs.second; 
+    }
+    
+    static bool CompareVertexPair(
+        const std::pair<unsigned, unsigned>& lhs,
+        const std::pair<unsigned, unsigned>& rhs)
+    {
+        if (lhs.first < rhs.first) return true;
+        if (lhs.first > rhs.first) return false;
+        if (lhs.second < rhs.second) return true;
+        return false;
+    }
+
+    static void FindVertexPairs(
+        std::vector<std::pair<unsigned, unsigned>>& closeVertices,
+        std::vector<std::pair<Int3, unsigned>> & quantizedSet,
+        const IVertexSourceData& sourceStream, float threshold)
+    {
+        auto stride = sourceStream.GetStride();
+        auto componentCount = Metal::GetComponentCount(Metal::GetComponents(sourceStream.GetFormat()));
+
+        const float tsq = threshold*threshold;
+        for (auto c=quantizedSet.cbegin(); c!=quantizedSet.cend(); ) {
+            auto c2 = c+1;
+            while (c2!=quantizedSet.cend() && c2->first == c->first) ++c2;
+
+            // Every vertex in the range [c..c2) has equal quantized coordinates
+            // We can now use a brute-force test to find if they are truly "close"
+            float vert0[4], vert1[4];
+            for (auto ct0=c; ct0<c2; ++ct0) {
+                GetVertData(
+                    vert0, (const float*)PtrAdd(sourceStream.GetData(), ct0->second * stride), 
+                    componentCount, sourceStream.GetProcessingFlags());
+                for (auto ct1=ct0+1; ct1<c2; ++ct1) {
+                    GetVertData(
+                        vert1, (const float*)PtrAdd(sourceStream.GetData(), ct1->second * stride), 
+                        componentCount, sourceStream.GetProcessingFlags());
+
+                    auto off = Float3(vert1[0]-vert0[0], vert1[1]-vert0[1], vert1[2]-vert0[2]);
+                    float dstSq = MagnitudeSquared(off);
+
+                    if (dstSq < tsq) {
+                        assert(ct0->second < ct1->second); // first index should always be smaller
+                        auto p = std::make_pair(ct0->second, ct1->second);
+                        auto i = std::lower_bound(closeVertices.begin(), closeVertices.end(), p, CompareVertexPair);
+                        if (i == closeVertices.end() || *i != p)
+                            closeVertices.insert(i, p);
+                    }
+
+                }
+            }
+
+            c = c2;
+        }
+    }
+
+    static unsigned FindClosestToAverage(
+        const IVertexSourceData& sourceStream,
+        const unsigned* chainStart, const unsigned* chainEnd)
+    {
+        if (chainEnd <= chainStart) { assert(0); return ~0u; }
+
+        auto stride = sourceStream.GetStride();
+        auto componentCount = Metal::GetComponentCount(Metal::GetComponents(sourceStream.GetFormat()));
+
+        float ave[4] = {0.f, 0.f, 0.f, 0.f};
+        for (auto c=chainStart; c!=chainEnd; ++c) {
+            float b[4];
+            GetVertData(
+                b, (const float*)PtrAdd(sourceStream.GetData(), (*c) * stride), 
+                componentCount, sourceStream.GetProcessingFlags());
+            for (unsigned q=0; q<dimof(ave); ++q)
+                ave[q] += b[q];
+        }
+
+        auto count = chainEnd - chainStart;
+        for (unsigned q=0; q<dimof(ave); ++q)
+            ave[q] /= float(count);
+
+        float closestDifference = FLT_MAX;
+        auto bestIndex = ~0u;
+        for (auto c=chainStart; c!=chainEnd; ++c) {
+            float b[4];
+            GetVertData(
+                b, (const float*)PtrAdd(sourceStream.GetData(), (*c) * stride), 
+                componentCount, sourceStream.GetProcessingFlags());
+            float dstSq = 0.f;
+            for (unsigned q=0; q<dimof(ave); ++q) {
+                float a = b[q] - ave[q];
+                dstSq += a * a;
+            }
+            if (dstSq < closestDifference) {
+                closestDifference = dstSq;
+                bestIndex = *c;
+            }
+        }
+        return bestIndex;
+    }
+
+    std::shared_ptr<IVertexSourceData>
+        RemoveDuplicates(
+            std::vector<unsigned>& outputMapping,
+            const IVertexSourceData& sourceStream,
+            const std::vector<unsigned>& originalMapping,
+            float threshold)
+    {
+            // We need to find vertices that are close together...
+            // The easiest way to do this is to quantize space into grids of size 2 * threshold.
+            // 2 vertices that have the same quantized position may be "close".
+            // We do this twice -- once with a offset of half the grid size.
+            // We will keep a record of all vertices that are found to be "close". Afterwards,
+            // we should combine these pairs into chains of vertices. These chains get combined
+            // into a single vertex, which is the one that is closest to the averaged vertex.
+        auto quant = Float3(2.f*threshold, 2.f*threshold, 2.f*threshold);
+        auto quantizedSet0 = BuildQuantizedCoords(sourceStream, quant, Zero<Float3>());
+        auto quantizedSet1 = BuildQuantizedCoords(sourceStream, quant, Float3(threshold, threshold, threshold));
+
+            // sort our quantized vertices to make it easier to find duplicates
+            // note that duplicates will be sorted with the lowest vertex index first,
+            // which is important when building the pairs.
+        std::sort(quantizedSet0.begin(), quantizedSet0.end(), SortQuantizedSet);
+        std::sort(quantizedSet1.begin(), quantizedSet1.end(), SortQuantizedSet);
+        
+            // Find the pairs of close vertices
+            // Note that in these pairs, the first index will always be smaller 
+            // than the second index.
+        std::vector<std::pair<unsigned, unsigned>> closeVertices;
+        FindVertexPairs(closeVertices, quantizedSet0, sourceStream, threshold);
+        FindVertexPairs(closeVertices, quantizedSet1, sourceStream, threshold);
+
+            // We want to convert our pairs into chains of interacting vertices
+            // Each chain will get merged into a single vertex.
+            // While doing this, we will create a new IVertexSourceData
+            // We want to try to keep the ordering in this new source data to be
+            // similar to the old ordering.
+        const auto vertexSize = Metal::BitsPerPixel(sourceStream.GetFormat()) / 8;
+        std::vector<uint8> finalVB;
+        finalVB.reserve(vertexSize * sourceStream.GetCount());
+        size_t finalVBCount = 0;
+
+        std::vector<unsigned> oldOrderingToNewOrdering(sourceStream.GetCount(), ~0u);
+
+        std::vector<unsigned> chainBuffer;
+        chainBuffer.reserve(32);
+
+        auto i = closeVertices.cbegin();
+        for (unsigned c=0; c<sourceStream.GetCount(); c++) {
+            if (oldOrderingToNewOrdering[c] != ~0u) continue;
+
+            while (i != closeVertices.end() && i->first < c) ++i;
+            if (i != closeVertices.end() && i->first == c) {
+
+                    // We have a chain of at least 2 vertices. We must
+                    // follow the pairs to find the full chain
+                chainBuffer.clear();    // clear without deallocate
+                chainBuffer.push_back(c);
+                chainBuffer.push_back(i->second);
+
+                auto chainEnd = i->second;
+                for (;;) {
+                    auto i2 = LowerBound(closeVertices, chainEnd);
+                    if (i2 == closeVertices.end() || i2->first != chainEnd) break;
+                    chainBuffer.push_back(i2->second);
+                    chainEnd = i2->second;
+                }
+
+                auto m = FindClosestToAverage(sourceStream, AsPointer(chainBuffer.cbegin()), AsPointer(chainBuffer.cend()));
+
+                const auto* sourceVertex = PtrAdd(sourceStream.GetData(), m * sourceStream.GetStride());
+                finalVB.insert(finalVB.end(), (const uint8*)sourceVertex, (const uint8*)PtrAdd(sourceVertex, vertexSize));
+
+                    // the new median vertex will replace the first vertex in the chain
+                for (auto q=chainBuffer.cbegin(); q!=chainBuffer.cend(); ++q)
+                    oldOrderingToNewOrdering[*q] = (unsigned)finalVBCount;
+                ++finalVBCount;
+
+            } else {
+                    // This vertex is not part of a chain.
+                    // Just append to the finalVB
+                const auto* sourceVertex = PtrAdd(sourceStream.GetData(), c * sourceStream.GetStride());
+                finalVB.insert(finalVB.end(), (const uint8*)sourceVertex, (const uint8*)PtrAdd(sourceVertex, vertexSize));
+                oldOrderingToNewOrdering[c] = (unsigned)finalVBCount;
+                ++finalVBCount;
+            }
+        }
+
+            // Build the new mapping -- we need to use oldOrderingToNewOrdering,
+            // which represents how the vertex ordering has changed.
+        outputMapping.clear();
+        outputMapping.reserve(originalMapping.size());
+        std::transform(
+            originalMapping.begin(), originalMapping.end(),
+            std::back_inserter(outputMapping),
+            [&oldOrderingToNewOrdering](const unsigned i) { return oldOrderingToNewOrdering[i]; });
+
+            // finally, return the source data adapter
+        return std::make_shared<RawVertexSourceDataAdapter>(
+            std::move(finalVB), finalVBCount, vertexSize,  
+            sourceStream.GetFormat());
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

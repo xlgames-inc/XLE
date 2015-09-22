@@ -14,6 +14,7 @@
 #include "../../RenderCore/Assets/ModelRunTimeInternal.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
+#include "../../RenderCore/Assets/MeshDatabase.h"
 #include "../../RenderCore/Metal/ShaderResource.h"
 #include "../../RenderCore/Metal/RenderTargetView.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -34,6 +35,7 @@ namespace ToolsRig
     using MaterialScaffold = RenderCore::Assets::MaterialScaffold;
     using ModelRenderer = RenderCore::Assets::ModelRenderer;
     using SharedStateSet = RenderCore::Assets::SharedStateSet;
+    using namespace RenderCore::Assets::GeoProc;
 
     class AoGen::Pimpl
     {
@@ -278,44 +280,52 @@ namespace ToolsRig
             const auto& geoCall = cmdStream.GetGeoCall(c);
             
             auto& rawGeo = immData._geos[geoCall._geoId];
-            for (unsigned d = 0; d < rawGeo._drawCallsCount; ++d) {
-                const auto& drawCall = rawGeo._drawCalls[d];
 
-                auto vbStart = model.LargeBlocksOffset() + rawGeo._vb._offset;
-                auto vbEnd = vbStart + rawGeo._vb._size;
+            auto vbStart = model.LargeBlocksOffset() + rawGeo._vb._offset;
+            auto vbEnd = vbStart + rawGeo._vb._size;
+            auto vertexCount = rawGeo._vb._size / rawGeo._vb._ia._vertexStride;
 
-                MeshDatabaseAdapter mesh;
+            MeshDatabase mesh;
 
-                    // Material & index buffer are irrelevant.
-                    // Find the normal and position streams, and add to
-                    // our mesh database adapter.
-                const auto& vbIA = rawGeo._vb._ia;
-                for (unsigned e=0; e<vbIA._elementCount; ++e) {
-                    const auto& ele = vbIA._elements[c];
-                    if (    (XlEqStringI(ele._semantic, "POSITION") && ele._semanticIndex == 0)
-                        ||  (XlEqStringI(ele._semantic, "NORMAL") && ele._semanticIndex == 0)) {
-                        mesh.AddStream(
-                            CreateRawDataSource(
-                                PtrAdd(file.GetData(), vbStart + ele._startOffset),
-                                PtrAdd(file.GetData(), vbEnd),
-                                vbIA._vertexStride, ele._format),
-                            std::vector<unsigned>(),
-                            vbIA._elements[c]._semantic, vbIA._elements[c]._semantic);
-                    }
+                // Material & index buffer are irrelevant.
+                // Find the normal and position streams, and add to
+                // our mesh database adapter.
+            const auto& vbIA = rawGeo._vb._ia;
+            for (unsigned e=0; e<vbIA._elementCount; ++e) {
+                const auto& ele = vbIA._elements[c];
+                if (    (XlEqStringI(ele._semantic, "POSITION") && ele._semanticIndex == 0)
+                    ||  (XlEqStringI(ele._semantic, "NORMAL") && ele._semanticIndex == 0)) {
+
+                    auto rawSource = CreateRawDataSource(
+                        PtrAdd(file.GetData(), vbStart + ele._startOffset),
+                        PtrAdd(file.GetData(), vbEnd),
+                        vertexCount, vbIA._vertexStride, 
+                        Metal::NativeFormat::Enum(ele._format));
+
+                    mesh.AddStream(
+                        std::move(rawSource),
+                        std::vector<unsigned>(),
+                        vbIA._elements[c]._semantic, vbIA._elements[c]._semanticIndex);
                 }
-
-                    // Compress the positions stream so that identical positions are
-                    // combined into one. 
-                    // Once that is done, we need to be able to find all of the normals
-                    // associated with each point.
-
-                auto posElement = mesh.FindElement("POSITION");
-                if (posElement == ~0u) {
-                    LogWarning << "No vertex positions found in mesh! Cannot calculate AO for this mesh.";
-                    continue;
-                }
-
             }
+
+                // Compress the positions stream so that identical positions are
+                // combined into one. 
+                // Once that is done, we need to be able to find all of the normals
+                // associated with each point.
+
+            auto posElement = mesh.FindElement("POSITION");
+            if (posElement == ~0u) {
+                LogWarning << "No vertex positions found in mesh! Cannot calculate AO for this mesh.";
+                continue;
+            }
+
+            const auto& stream = mesh.GetStream(posElement);
+            const float duplicatesThreshold = 0.01f;        // 1cm
+            std::vector<unsigned> remapping;
+            auto newSource = RemoveDuplicates(
+                remapping, stream.GetSourceData(), 
+                stream.GetVertexMap(), duplicatesThreshold);
         }
     }
 

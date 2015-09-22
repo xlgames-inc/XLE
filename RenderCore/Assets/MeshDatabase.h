@@ -130,6 +130,27 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             const void* dataBegin, const void* dataEnd, 
             Metal::NativeFormat::Enum srcFormat);
 
+    /// <summary>Remove duplicates from a stream</summary>
+    /// Searches for duplicate elements in a stream, and combines them into
+    /// one. Will generate a new vertex mapping in which the duplicates have been
+    /// combined to share the same element.
+    ///
+    /// Many algorithms work on the set of unique vertex positions (as opposed to
+    /// unique unified vertices). This method is useful to find the unique vertex
+    /// positions.
+    ///
+    /// The algorithm finds all pairs of vertices within the given threshold. Sometimes
+    /// this results in chains of vertices (eg, A is close to B and B is close to C).
+    /// All chains will be combined into a single vertex (even if A is not close to C).
+    /// The resulting vertex will be the one that is closest to the average of all 
+    /// of the vertices in the chain.
+    std::shared_ptr<IVertexSourceData>
+        RemoveDuplicates(
+            std::vector<unsigned>& outputMapping,
+            const IVertexSourceData& sourceStream,
+            const std::vector<unsigned>& originalMapping,
+            float threshold);
+
     class NativeVBSettings
     {
     public:
