@@ -47,60 +47,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             _streams.erase(_streams.begin() + elementIndex);
     }
 
-    static inline void GetVertData(
-        float* dst, 
-        const float* src, unsigned srcComponentCount,
-        ProcessingFlags::BitField processingFlags)
-    {
-            // In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
-        dst[0] = (srcComponentCount > 0) ? src[0] : 0.f;
-        dst[1] = (srcComponentCount > 1) ? src[1] : 0.f;
-        dst[2] = (srcComponentCount > 2) ? src[2] : 0.f;
-        dst[3] = (srcComponentCount > 3) ? src[3] : 1.f;
-        if (processingFlags & ProcessingFlags::Renormalize) {
-            float scale;
-            if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
-                dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
-        }
-
-        if (processingFlags & ProcessingFlags::TexCoordFlip) {
-            dst[1] = 1.0f - dst[1];
-        } else if (processingFlags & ProcessingFlags::BitangentFlip) {
-            dst[0] = -dst[0];
-            dst[1] = -dst[1];
-            dst[2] = -dst[2];
-        } else if (processingFlags & ProcessingFlags::TangentHandinessFlip) {
-            dst[3] = -dst[3];
-        }
-    }
-
-    template<> Float3 MeshDatabase::GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const
+    template<typename Type> 
+        Type MeshDatabase::GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const
     {
         auto& stream = _streams[elementIndex];
         auto indexInStream = stream.GetVertexMap()[vertexIndex];
         auto& sourceData = stream.GetSourceData();
-        auto stride = sourceData.GetStride();
-        const auto* sourceStart = PtrAdd(sourceData.GetData(), indexInStream * stride);
-        auto componentCount = Metal::GetComponentCount(Metal::GetComponents(stream.GetSourceData().GetFormat()));
-
-        float input[4];
-        GetVertData(input, (const float*)sourceStart, componentCount, sourceData.GetProcessingFlags());
-        return Float3(input[0], input[1], input[2]);
+        return GetVertex<Type>(sourceData, indexInStream);
     }
 
-    template<> Float2 MeshDatabase::GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const
-    {
-        auto& stream = _streams[elementIndex];
-        auto indexInStream = stream.GetVertexMap()[vertexIndex];
-        auto& sourceData = stream.GetSourceData();
-        auto stride = sourceData.GetStride();
-        const auto* sourceStart = PtrAdd(sourceData.GetData(), indexInStream * stride);
-        auto componentCount = Metal::GetComponentCount(Metal::GetComponents(stream.GetSourceData().GetFormat()));
-
-        float input[4];
-        GetVertData(input, (const float*)sourceStart, componentCount, sourceData.GetProcessingFlags());
-        return Float2(input[0], input[1]);
-    }
+    template Float3 MeshDatabase::GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const;
+    template Float2 MeshDatabase::GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const;
 
     std::unique_ptr<uint32[]> MeshDatabase::BuildUnifiedVertexIndexToPositionIndex() const
     {
@@ -130,63 +87,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         const void* dst, Metal::NativeFormat::Enum dstFmt, size_t dstStride,
         const void* src, Metal::NativeFormat::Enum srcFmt, size_t srcStride, size_t srcDataSize,
         std::vector<unsigned> mapping,
-        unsigned count, ProcessingFlags::BitField processingFlags)
-    {
-        auto dstFormat = BreakdownFormat(dstFmt);
-        auto srcFormat = BreakdownFormat(srcFmt);
-
-            //      This could be be made more efficient with a smarter loop..
-        if (srcFormat.first == ComponentType::Float32) {
-
-            if (dstFormat.first == ComponentType::Float32) {  ////////////////////////////////////////////////
-
-                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
-                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
-                    assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
-                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
-
-                    float input[4];
-                    GetVertData(input, (const float*)srcV, srcFormat.second, processingFlags);
-
-                    for (unsigned c=0; c<dstFormat.second; ++c)
-                        ((float*)dst)[c] = input[c];
-                }
-
-            } else if (dstFormat.first == ComponentType::Float16) {  ////////////////////////////////////////////////
-
-                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
-                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
-                    assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
-                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
-
-                    float input[4];
-                    GetVertData(input, (const float*)srcV, srcFormat.second, processingFlags);
-
-                    for (unsigned c=0; c<dstFormat.second; ++c)
-                        ((unsigned short*)dst)[c] = AsFloat16(input[c]);
-                }
-
-            } else if (dstFormat.first == ComponentType::UNorm8) {  ////////////////////////////////////////////////
-
-                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
-                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
-                    assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
-                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
-
-                    float input[4];
-                    GetVertData(input, (const float*)srcV, srcFormat.second, processingFlags);
-
-                    for (unsigned c=0; c<dstFormat.second; ++c)
-                        ((unsigned char*)dst)[c] = (unsigned char)Clamp(((float*)input)[c]*255.f, 0.f, 255.f);
-                }
-
-            } else {
-                Throw(FormatError("Error while copying vertex data. Unexpected format for destination parameter."));
-            }
-        } else {
-            Throw(FormatError("Error while copying vertex data. Only float type data is supported."));
-        }
-    }
+        unsigned count, ProcessingFlags::BitField processingFlags);
 
     void MeshDatabase::WriteStream(
         const Stream& stream,
@@ -218,7 +119,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return std::move(finalVertexBuffer);
     }
 
-    void    MeshDatabase::AddStream(
+    unsigned    MeshDatabase::AddStream(
         std::shared_ptr<IVertexSourceData> dataSource,
         std::vector<unsigned>&& vertexMap,
         const char semantic[], unsigned semanticIndex)
@@ -230,6 +131,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         _streams.push_back(
             Stream { std::move(dataSource), std::move(vertexMap), semantic, semanticIndex });
+        return unsigned(_streams.size()-1);
     }
 
     MeshDatabase::MeshDatabase()
@@ -413,6 +315,129 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         auto stride = RenderCore::Metal::BitsPerPixel(srcFormat) / 8;
         auto count = (size_t(dataEnd) - size_t(dataBegin)) / stride;
         return CreateRawDataSource(dataBegin, dataEnd, count, stride, srcFormat);
+    }
+
+    std::shared_ptr<IVertexSourceData>
+        CreateRawDataSource(
+            std::vector<uint8>&& data, 
+            size_t count, size_t stride,
+            Metal::NativeFormat::Enum srcFormat)
+    {
+        return std::make_shared<RawVertexSourceDataAdapter>(std::move(data), count, stride, srcFormat);
+    }
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static inline void GetVertData(
+        float* dst, 
+        const float* src, unsigned srcComponentCount,
+        ProcessingFlags::BitField processingFlags)
+    {
+            // In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
+        dst[0] = (srcComponentCount > 0) ? src[0] : 0.f;
+        dst[1] = (srcComponentCount > 1) ? src[1] : 0.f;
+        dst[2] = (srcComponentCount > 2) ? src[2] : 0.f;
+        dst[3] = (srcComponentCount > 3) ? src[3] : 1.f;
+        if (processingFlags & ProcessingFlags::Renormalize) {
+            float scale;
+            if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
+                dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
+        }
+
+        if (processingFlags & ProcessingFlags::TexCoordFlip) {
+            dst[1] = 1.0f - dst[1];
+        } else if (processingFlags & ProcessingFlags::BitangentFlip) {
+            dst[0] = -dst[0];
+            dst[1] = -dst[1];
+            dst[2] = -dst[2];
+        } else if (processingFlags & ProcessingFlags::TangentHandinessFlip) {
+            dst[3] = -dst[3];
+        }
+    }
+
+    template<> Float3 GetVertex(const IVertexSourceData& sourceData, size_t index)
+    {
+        auto stride = sourceData.GetStride();
+        const auto* sourceStart = PtrAdd(sourceData.GetData(), index * stride);
+        auto componentCount = Metal::GetComponentCount(Metal::GetComponents(sourceData.GetFormat()));
+
+        float input[4];
+        GetVertData(input, (const float*)sourceStart, componentCount, sourceData.GetProcessingFlags());
+        return Float3(input[0], input[1], input[2]);
+    }
+
+    template<> Float2 GetVertex(const IVertexSourceData& sourceData, size_t index)
+    {
+        auto stride = sourceData.GetStride();
+        const auto* sourceStart = PtrAdd(sourceData.GetData(), index * stride);
+        auto componentCount = Metal::GetComponentCount(Metal::GetComponents(sourceData.GetFormat()));
+
+        float input[4];
+        GetVertData(input, (const float*)sourceStart, componentCount, sourceData.GetProcessingFlags());
+        return Float2(input[0], input[1]);
+    }
+
+    static void CopyVertexData(
+        const void* dst, Metal::NativeFormat::Enum dstFmt, size_t dstStride,
+        const void* src, Metal::NativeFormat::Enum srcFmt, size_t srcStride, size_t srcDataSize,
+        std::vector<unsigned> mapping,
+        unsigned count, ProcessingFlags::BitField processingFlags)
+    {
+        auto dstFormat = BreakdownFormat(dstFmt);
+        auto srcFormat = BreakdownFormat(srcFmt);
+
+            //      This could be be made more efficient with a smarter loop..
+        if (srcFormat.first == ComponentType::Float32) {
+
+            if (dstFormat.first == ComponentType::Float32) {  ////////////////////////////////////////////////
+
+                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
+                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
+                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
+
+                    float input[4];
+                    GetVertData(input, (const float*)srcV, srcFormat.second, processingFlags);
+
+                    for (unsigned c=0; c<dstFormat.second; ++c)
+                        ((float*)dst)[c] = input[c];
+                }
+
+            } else if (dstFormat.first == ComponentType::Float16) {  ////////////////////////////////////////////////
+
+                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
+                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
+                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
+
+                    float input[4];
+                    GetVertData(input, (const float*)srcV, srcFormat.second, processingFlags);
+
+                    for (unsigned c=0; c<dstFormat.second; ++c)
+                        ((unsigned short*)dst)[c] = AsFloat16(input[c]);
+                }
+
+            } else if (dstFormat.first == ComponentType::UNorm8) {  ////////////////////////////////////////////////
+
+                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
+                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    assert(srcIndex * srcStride + sizeof(float) <= srcDataSize);
+                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
+
+                    float input[4];
+                    GetVertData(input, (const float*)srcV, srcFormat.second, processingFlags);
+
+                    for (unsigned c=0; c<dstFormat.second; ++c)
+                        ((unsigned char*)dst)[c] = (unsigned char)Clamp(((float*)input)[c]*255.f, 0.f, 255.f);
+                }
+
+            } else {
+                Throw(FormatError("Error while copying vertex data. Unexpected format for destination parameter."));
+            }
+        } else {
+            Throw(FormatError("Error while copying vertex data. Only float type data is supported."));
+        }
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

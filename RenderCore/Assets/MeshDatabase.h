@@ -49,7 +49,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         auto    BuildNativeVertexBuffer(const NativeVBLayout& outputLayout) const   -> std::unique_ptr<uint8[]>;
         auto    BuildUnifiedVertexIndexToPositionIndex() const                      -> std::unique_ptr<uint32[]>;
 
-        void    AddStream(
+        unsigned    AddStream(
             std::shared_ptr<IVertexSourceData> dataSource,
             std::vector<unsigned>&& vertexMap,
             const char semantic[], unsigned semanticIndex);
@@ -110,6 +110,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         virtual ~IVertexSourceData();
     };
 
+    template<typename OutputType>
+        OutputType GetVertex(const IVertexSourceData& sourceData, size_t index);
+
     class NativeVBLayout
     {
     public:
@@ -128,6 +131,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     std::shared_ptr<IVertexSourceData>
         CreateRawDataSource(
             const void* dataBegin, const void* dataEnd, 
+            Metal::NativeFormat::Enum srcFormat);
+
+    std::shared_ptr<IVertexSourceData>
+        CreateRawDataSource(
+            std::vector<uint8>&& data, 
+            size_t count, size_t stride,
             Metal::NativeFormat::Enum srcFormat);
 
     /// <summary>Remove duplicates from a stream</summary>

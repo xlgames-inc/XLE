@@ -21,6 +21,11 @@ namespace Assets { class DependencyValidation; }
 
 namespace ToolsRig
 {
+    /// <summary>Generates pre-calculated AO information for a model</summary>
+    /// Actually, more specifically this can be used for calculating the fraction
+    /// of the sky dome that is internally occluded by a static model. This can be
+    /// used for blocking direct light from the skydome (which should be similar 
+    /// to blocking indirect light bounced off nearby sources).
     class AoGen
     {
     public:

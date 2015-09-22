@@ -237,7 +237,8 @@ namespace ToolsRig
         RenderCore::IThreadContext& threadContext,
         AoGen& gen,
         const RenderCore::Assets::ModelScaffold& model,
-        const RenderCore::Assets::MaterialScaffold& material)
+        const RenderCore::Assets::MaterialScaffold& material,
+        const ::Assets::DirectorySearchRules* searchRules)
     {
         //
         // For each vertex in the given model, calculate an ambient 
@@ -272,6 +273,21 @@ namespace ToolsRig
         // mesh instances. We need to know the vertex positions and normals
         // in those meshes.
 
+        const float duplicatesThreshold = 0.01f;        // 1cm
+        const float normalsPushOut      = 0.05f;        // 5cm
+
+            // Setup the rendering objects we'll need
+            // We're going to be use a ModelRenderer to do the rendering
+            // for calculating the AO -- so we have to create that now.
+        SharedStateSet sharedStates;
+        auto metalContext = Metal::DeviceContext::Get(threadContext);
+        auto renderer = std::make_unique<ModelRenderer>(
+            model, material, sharedStates, searchRules);
+        RenderCore::Assets::MeshToModel meshToModel(model);
+
+            // We're going to be reading the vertex data directly from the
+            // file on disk. We'll use a memory mapped file to access that
+            // so we need to open that now...
         MemoryMappedFile file(model.Filename().c_str(), 0ull, MemoryMappedFile::Access::Read);
 
         const auto& cmdStream = model.CommandStream();
@@ -309,23 +325,88 @@ namespace ToolsRig
                 }
             }
 
-                // Compress the positions stream so that identical positions are
-                // combined into one. 
-                // Once that is done, we need to be able to find all of the normals
-                // associated with each point.
-
             auto posElement = mesh.FindElement("POSITION");
             if (posElement == ~0u) {
                 LogWarning << "No vertex positions found in mesh! Cannot calculate AO for this mesh.";
                 continue;
             }
 
+                // Compress the positions stream so that identical positions are
+                // combined into one. 
+                // Once that is done, we need to be able to find all of the normals
+                // associated with each point.
+
             const auto& stream = mesh.GetStream(posElement);
-            const float duplicatesThreshold = 0.01f;        // 1cm
             std::vector<unsigned> remapping;
             auto newSource = RemoveDuplicates(
                 remapping, stream.GetSourceData(), 
                 stream.GetVertexMap(), duplicatesThreshold);
+
+            mesh.RemoveStream(posElement);
+            posElement = mesh.AddStream(newSource, std::move(remapping), "POSITION", 0);
+
+            auto nEle = mesh.FindElement("NORMAL");
+            if (nEle == ~0u) {
+                LogWarning << "No vertex normals found in mesh! Cannot calculate AO for this mesh.";
+                continue;
+            }
+
+            const auto& pStream = mesh.GetStream(posElement);
+            const auto& nStream = mesh.GetStream(nEle);
+            std::vector<std::pair<unsigned, unsigned>> pn;
+            pn.reserve(mesh.GetUnifiedVertexCount());
+            for (unsigned c=0; c<mesh.GetUnifiedVertexCount(); ++c)
+                pn.push_back(
+                    std::make_pair(pStream.GetVertexMap()[c], nStream.GetVertexMap()[c]));
+            
+                // sort by position index
+            std::sort(pn.begin(), pn.end(), CompareFirst<unsigned, unsigned>());
+
+                // find the final sample points
+            std::vector<Float3> samplePoints;
+            samplePoints.resize(pStream.GetSourceData().GetCount(), Float3(FLT_MAX, FLT_MAX, FLT_MAX));
+
+            for (auto p=pn.cbegin(); p!=pn.cend();) {
+                auto p2 = p+1;
+                while (p2!=pn.cend() && p2->first == p->first) ++p2;
+
+                auto n = Zero<Float3>();
+                for (auto q=p; q<p2; ++q)
+                    n += GetVertex<Float3>(nStream.GetSourceData(), q->second);
+                n = Normalize(n);
+
+                auto baseSamplePoint = GetVertex<Float3>(pStream.GetSourceData(), p->first);
+                auto samplePoint = baseSamplePoint + normalsPushOut * n;
+                samplePoints[p->first] = samplePoint;
+
+                p2 = p;
+            }
+
+                // Now we can actually perform the AO 
+                // calculation to generate the final occlusion values
+                // This should be the most expensive part.
+            std::vector<uint8> aoValues;
+            aoValues.reserve(samplePoints.size());
+            
+            for (auto p=samplePoints.cbegin(); p!=samplePoints.cend(); ++p) {
+                float skyDomeOcc = 
+                    gen.CalculateSkyDomeOcclusion(
+                        *metalContext, 
+                        *renderer, sharedStates, meshToModel,
+                        *p);
+                auto finalValue = uint8(Clamp(skyDomeOcc * float(0xff), 0.f, float(0xff)));
+                aoValues.push_back(finalValue);
+            }
+
+            auto aoSource = CreateRawDataSource(
+                std::move(aoValues),
+                samplePoints.size(), sizeof(uint8),
+                Metal::NativeFormat::R8_UNORM);
+            mesh.AddStream(
+                aoSource, 
+                std::vector<unsigned>(pStream.GetVertexMap()), // shares the same vertex map
+                "AMBIENTOCCLUSION", 0);
+
         }
     }
 
