@@ -10,43 +10,6 @@
 #include "../Utility/StringUtils.h"
 #include "../Utility/MemoryUtils.h"
 
-void Serialize(
-    Serialization::NascentBlockSerializer& outputSerializer,
-    const RenderCore::Assets::DrawCallDesc& drawCall)
-{
-    outputSerializer.SerializeValue(drawCall._firstIndex);
-    outputSerializer.SerializeValue(drawCall._indexCount);
-    outputSerializer.SerializeValue(drawCall._firstVertex);
-    outputSerializer.SerializeValue(drawCall._subMaterialIndex);
-    outputSerializer.SerializeValue(drawCall._topology);
-}
-
-void Serialize(
-    Serialization::NascentBlockSerializer& outputSerializer,
-    const RenderCore::Assets::VertexData& vertexData)
-{
-    Serialize(outputSerializer, vertexData._ia);
-    Serialize(outputSerializer, vertexData._offset);
-    Serialize(outputSerializer, vertexData._size);
-}
-
-void Serialize(
-    Serialization::NascentBlockSerializer& outputSerializer,
-    const RenderCore::Assets::IndexData& indexData)
-{
-    Serialize(outputSerializer, indexData._format);
-    Serialize(outputSerializer, indexData._offset);
-    Serialize(outputSerializer, indexData._size);
-}
-
-void Serialize(
-    Serialization::NascentBlockSerializer& outputSerializer,
-    const RenderCore::Assets::GeoInputAssembly& ia)
-{
-    outputSerializer.SerializeRaw(ia._elements);
-    Serialize(outputSerializer, ia._vertexStride);
-}
-
 namespace RenderCore { namespace ColladaConversion
 {
     GeoInputAssembly CreateGeoInputAssembly(   
@@ -144,8 +107,7 @@ namespace RenderCore { namespace ColladaConversion
             RenderCore::Assets::IndexData 
                 { unsigned(_indexFormat), unsigned(ibOffset), unsigned(ibSize) });
         
-        outputSerializer.SerializeSubBlock(AsPointer(_mainDrawCalls.begin()), AsPointer(_mainDrawCalls.end()));
-        outputSerializer.SerializeValue(_mainDrawCalls.size());
+        ::Serialize(outputSerializer, _mainDrawCalls);
     }
 
 

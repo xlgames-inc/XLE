@@ -271,7 +271,7 @@ namespace ToolsRig
             const auto& geoCall = cmdStream.GetGeoCall(c);
             
             auto& rawGeo = immData._geos[geoCall._geoId];
-            for (unsigned d = 0; d < rawGeo._drawCallsCount; ++d) {
+            for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
 
                     // reject geometry that doesn't match the material
@@ -313,7 +313,7 @@ namespace ToolsRig
             const auto& geoCall = cmdStream.GetSkinCall(c);
             
             auto& rawGeo = immData._boundSkinnedControllers[geoCall._geoId];
-            for (unsigned d = 0; d < rawGeo._drawCallsCount; ++d) {
+            for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
 
                     // reject geometry that doesn't match the material

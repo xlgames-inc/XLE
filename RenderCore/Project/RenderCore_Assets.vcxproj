@@ -154,6 +154,7 @@
     <ClCompile Include="..\Assets\AssetUtils.cpp" />
     <ClCompile Include="..\Assets\MeshDatabase.cpp" />
     <ClCompile Include="..\Assets\ModelCache.cpp" />
+    <ClCompile Include="..\Assets\ModelScaffoldSerialization.cpp" />
     <ClCompile Include="..\Assets\RawAnimationCurve.cpp" />
     <ClCompile Include="..\Assets\Services.cpp" />
     <ClCompile Include="..\Assets\ColladaCompilerInterface.cpp" />

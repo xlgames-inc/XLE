@@ -414,8 +414,7 @@ namespace RenderCore { namespace ColladaConversion
             RenderCore::Assets::IndexData 
                 { unsigned(_indexFormat), unsigned(ibOffset), unsigned(ibSize) });
 
-        outputSerializer.SerializeSubBlock(AsPointer(_mainDrawCalls.begin()), AsPointer(_mainDrawCalls.end()));
-        outputSerializer.SerializeValue(_mainDrawCalls.size());
+        ::Serialize(outputSerializer, _mainDrawCalls);
 
             // append skinning related information
         ::Serialize(

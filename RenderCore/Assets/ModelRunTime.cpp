@@ -99,7 +99,7 @@ namespace RenderCore { namespace Assets
 
         static unsigned GetDrawCallCount(const ModelScaffold& scaffold, unsigned geoCallIndex)
         {
-            return (unsigned)GetGeo(scaffold, geoCallIndex)._drawCallsCount;
+            return (unsigned)GetGeo(scaffold, geoCallIndex)._drawCalls.size();
         }
 
         static MaterialGuid ScaffoldMaterialIndex(const ModelScaffold& scaffold, unsigned geoCallIndex, unsigned drawCallIndex)
@@ -125,7 +125,7 @@ namespace RenderCore { namespace Assets
                 //  look for at least one valid draw call in this geo instance
                 //  a valid draw call should have got shader and material information bound
             bool atLeastOneValidDrawCall = false;
-            for (unsigned di=0; di<geo._drawCallsCount; ++di) {
+            for (unsigned di=0; di<unsigned(geo._drawCalls.size()); ++di) {
                 auto& d = geo._drawCalls[di];
                 if (d._indexCount) {
                     auto subMatIndex = ScaffoldMaterialIndex(scaffold, geoCallIndex, di);
@@ -227,7 +227,7 @@ namespace RenderCore { namespace Assets
 
                     //  Lookup the mesh geometry and material information from their respective inputs.
                 auto& geo = (gi < geoCallCount) ? meshData._geos[geoInst._geoId] : (RawGeometry&)meshData._boundSkinnedControllers[geoInst._geoId];
-                for (unsigned di=0; di<geo._drawCallsCount; ++di) {
+                for (unsigned di=0; di<unsigned(geo._drawCalls.size()); ++di) {
                     auto scaffoldMatIndex = ScaffoldMaterialIndex(scaffold, gi, di);
                     auto existing = LowerBound(materialResources, scaffoldMatIndex);
                     if (existing == materialResources.cend() || existing->first != scaffoldMatIndex) {
@@ -498,7 +498,7 @@ namespace RenderCore { namespace Assets
             }
 
                 // setup the "Draw call" objects next
-            for (unsigned di=0; di<geo._drawCallsCount; ++di) {
+            for (unsigned di=0; di<unsigned(geo._drawCalls.size()); ++di) {
                 auto& d = geo._drawCalls[di];
                 if (!d._indexCount) { continue; }
 
@@ -555,7 +555,7 @@ namespace RenderCore { namespace Assets
                 mesh = skinnedMeshes.end()-1;
             }
 
-            for (unsigned di=0; di<geo._drawCallsCount; ++di) {
+            for (unsigned di=0; di<unsigned(geo._drawCalls.size()); ++di) {
                 auto& d = geo._drawCalls[di];
                 if (!d._indexCount) { continue; }
                 
@@ -1310,7 +1310,6 @@ namespace RenderCore { namespace Assets
         DestroyArray(_skinControllerInstances,  &_skinControllerInstances[_skinControllerInstanceCount]);
     }
 
-    RawGeometry::~RawGeometry() {}
     BoundSkinnedGeometry::~BoundSkinnedGeometry() {}
 
     ModelImmutableData::~ModelImmutableData()
@@ -1364,6 +1363,23 @@ namespace RenderCore { namespace Assets
         XlCopyMemory(_semanticName, ele._semanticName, sizeof(_semanticName));
         return *this;
     }
+
+    RawGeometry::RawGeometry() {}
+    RawGeometry::RawGeometry(RawGeometry&& geo) never_throws
+    : _vb(std::move(geo._vb))
+    , _ib(std::move(geo._ib))
+    , _drawCalls(std::move(geo._drawCalls))
+    {}
+
+    RawGeometry& RawGeometry::operator=(RawGeometry&& geo) never_throws
+    {
+        _vb = std::move(geo._vb);
+        _ib = std::move(geo._ib);
+        _drawCalls = std::move(geo._drawCalls);
+        return *this;
+    }
+
+    RawGeometry::~RawGeometry() {}
 
         ////////////////////////////////////////////////////////////
 

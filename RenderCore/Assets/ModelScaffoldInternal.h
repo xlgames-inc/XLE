@@ -98,8 +98,8 @@ namespace RenderCore { namespace Assets
         unsigned        _alignedByteOffset;
 
         VertexElement();
-        VertexElement(const VertexElement&);
-        VertexElement& operator=(const VertexElement&);
+        VertexElement(const VertexElement&) never_throws;
+        VertexElement& operator=(const VertexElement&) never_throws;
     };
 
     class GeoInputAssembly
@@ -111,8 +111,8 @@ namespace RenderCore { namespace Assets
         uint64 BuildHash() const;
 
         GeoInputAssembly();
-        GeoInputAssembly(GeoInputAssembly&& moveFrom);
-        GeoInputAssembly& operator=(GeoInputAssembly&& moveFrom);
+        GeoInputAssembly(GeoInputAssembly&& moveFrom) never_throws;
+        GeoInputAssembly& operator=(GeoInputAssembly&& moveFrom) never_throws;
         ~GeoInputAssembly();
     };
 
@@ -135,19 +135,14 @@ namespace RenderCore { namespace Assets
     class RawGeometry
     {
     public:
-        VertexData      _vb;
-        IndexData       _ib;
+        VertexData  _vb;
+        IndexData   _ib;
+        SerializableVector<DrawCallDesc>   _drawCalls;
 
-            // Draw calls
-        DrawCallDesc*   _drawCalls;
-        size_t          _drawCallsCount;
-
-        ~RawGeometry();
-    private:
         RawGeometry();
-
-        RawGeometry(const RawGeometry&) = delete;
-        RawGeometry& operator=(const RawGeometry&) = delete;
+        RawGeometry(RawGeometry&&) never_throws;
+        RawGeometry& operator=(RawGeometry&&) never_throws;
+        ~RawGeometry();
     };
 
     class BoundSkinnedGeometry : public RawGeometry
