@@ -26,13 +26,16 @@ namespace RenderCore { namespace Assets
 {
     class SharedStateSet;
     class ModelCommandStream;
-    class ModelImmutableData;
-    class MaterialImmutableData;
     class TransformationMachine;
-    class ResolvedMaterial;
-    class MaterialScaffold;
     class ModelRendererContext;
-    class DelayedDrawCallSet;
+    class SkeletonBinding;
+    
+    class MaterialScaffold;
+    class ModelSupplementScaffold;
+
+    class AnimationImmutableData;
+    class ModelImmutableData;
+    class ModelSupplementImmutableData;
 
     typedef uint64 MaterialGuid;
 
@@ -50,6 +53,38 @@ namespace RenderCore { namespace Assets
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////
+
+    class ScaffoldBase
+    {
+    public:
+        const std::string&          Filename() const            { return _filename; }
+        unsigned                    LargeBlocksOffset() const;
+
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
+
+        void Resolve() const;
+        ::Assets::AssetState TryResolve();
+        ::Assets::AssetState StallAndResolve();
+
+        ScaffoldBase(const ::Assets::ResChar filename[]);
+        ScaffoldBase(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+        ScaffoldBase(ScaffoldBase&& moveFrom);
+        ScaffoldBase& operator=(ScaffoldBase&& moveFrom);
+        ~ScaffoldBase();
+    protected:
+        const void*     FirstObject() const;
+        const void*     TryFirstObject() const;
+
+    private:
+        std::unique_ptr<uint8[]>    _rawMemoryBlock;
+        std::string                 _filename;
+        unsigned                    _largeBlocksOffset;
+
+        mutable std::shared_ptr<::Assets::PendingCompileMarker>     _marker;
+        std::shared_ptr<::Assets::DependencyValidation>     _validationCallback;
+
+        void CompleteFromMarker(::Assets::PendingCompileMarker& marker);
+    };
     
     /// <summary>Structural data describing a model<summary>
     /// The "scaffold" of a model contains the structural data of a model, without the large
@@ -70,22 +105,14 @@ namespace RenderCore { namespace Assets
     /// namespace for information about chunk files.
     ///
     /// <seealso cref="ModelRenderer"/>
-    class ModelScaffold
+    class ModelScaffold : public ScaffoldBase
     {
     public:
-        const std::string&          Filename() const            { return _filename; }
-        unsigned                    LargeBlocksOffset() const;
         const ModelCommandStream&   CommandStream() const;
         const ModelImmutableData&   ImmutableData() const;
         const TransformationMachine& EmbeddedSkeleton() const;
         std::pair<Float3, Float3>   GetStaticBoundingBox(unsigned lodIndex = 0) const;
         unsigned                    GetMaxLOD() const { return 0; }
-
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
-
-        void Resolve() const;
-        ::Assets::AssetState TryResolve();
-        ::Assets::AssetState StallAndResolve();
 
         static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
 
@@ -94,22 +121,8 @@ namespace RenderCore { namespace Assets
         ModelScaffold(ModelScaffold&& moveFrom);
         ModelScaffold& operator=(ModelScaffold&& moveFrom);
         ~ModelScaffold();
-    protected:
-        std::unique_ptr<uint8[]>    _rawMemoryBlock;
-        const ModelImmutableData*   _data;
-        std::string                 _filename;
-        unsigned                    _largeBlocksOffset;
-
-        mutable std::shared_ptr<::Assets::PendingCompileMarker>     _marker;
-        std::shared_ptr<::Assets::DependencyValidation>     _validationCallback;
-
-        void CompleteFromMarker(::Assets::PendingCompileMarker& marker);
     };
-
-    class AnimationImmutableData;
-    class SkeletonBinding;
-    class PreparedModelDrawCalls;
-
+    
     class MeshToModel
     {
     public:
@@ -197,9 +210,19 @@ namespace RenderCore { namespace Assets
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
 
+        class Supplements
+        {
+        public:
+            const ModelSupplementScaffold* _begin;
+            const ModelSupplementScaffold* _end;
+
+            Supplements() : _begin(nullptr), _end(nullptr) {}
+        };
+
             ////////////////////////////////////////////////////////////
         ModelRenderer(
             const ModelScaffold& scaffold, const MaterialScaffold& matScaffold,
+            const Supplements& supplements,
             SharedStateSet& sharedStateSet, 
             const ::Assets::DirectorySearchRules* searchRules = nullptr, unsigned levelOfDetail = 0);
         ~ModelRenderer();
@@ -214,6 +237,38 @@ namespace RenderCore { namespace Assets
                 const ModelRendererContext&, const SharedStateSet&,
                 DelayedDrawCallSet&, DelayStep, 
                 const std::function<void(unsigned, unsigned, unsigned)>*);
+    };
+
+////////////////////////////////////////////////////////////////////////////////////////////
+    
+    /// <summary>Supplemental vertex data associated with a model<summary>
+    /// Some techniques require adding extra vertex data onto a model.
+    /// For example, internal model static ambient occlusion might add another
+    /// vertex element for each vertex.
+    ///
+    /// A ModelSupplement is a separate file that contains extra vertex 
+    /// streams associated with some separate model file.
+    ///
+    /// This is especially useful for vertex elements that are only required
+    /// in some quality modes. In the example mode, low quality mode might 
+    /// disable the internal ambient occlusion -- and in this case we might
+    /// skip loading the model supplement.
+    ///
+    /// The supplement can only add extra vertex elements to vertices that 
+    /// already exist in the main model. It can't add new vertices.
+    ///
+    /// <seealso cref="ModelScaffold"/>
+    /// <seealso cref="ModelRenderer"/>
+    class ModelSupplementScaffold : public ScaffoldBase
+    {
+    public:
+        const ModelSupplementImmutableData& ImmutableData() const;
+
+        ModelSupplementScaffold(const ::Assets::ResChar filename[]);
+        ModelSupplementScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+        ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom);
+        ModelSupplementScaffold& operator=(ModelSupplementScaffold&& moveFrom);
+        ~ModelSupplementScaffold();
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////

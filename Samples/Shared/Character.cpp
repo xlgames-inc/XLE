@@ -88,7 +88,7 @@ namespace Sample
         auto& matScaffold = Assets::GetAssetComp<MaterialScaffold>(skin, skin);
 
         const unsigned levelOfDetail = 0;
-        auto renderer = std::make_unique<ModelRenderer>(std::ref(*_model), std::ref(matScaffold), std::ref(sharedStates), &searchRules, levelOfDetail);
+        auto renderer = std::make_unique<ModelRenderer>(std::ref(*_model), std::ref(matScaffold), ModelRenderer::Supplements(), std::ref(sharedStates), &searchRules, levelOfDetail);
         auto prepareMachine = std::make_unique<SkinPrepareMachine>(std::ref(*_model), std::ref(*_animationSet), std::ref(*_skeleton));
 
         _renderer = std::move(renderer);

@@ -282,7 +282,7 @@ namespace ToolsRig
         SharedStateSet sharedStates;
         auto metalContext = Metal::DeviceContext::Get(threadContext);
         auto renderer = std::make_unique<ModelRenderer>(
-            model, material, sharedStates, searchRules);
+            model, material, ModelRenderer::Supplements(), sharedStates, searchRules);
         RenderCore::Assets::MeshToModel meshToModel(model);
 
             // We're going to be reading the vertex data directly from the

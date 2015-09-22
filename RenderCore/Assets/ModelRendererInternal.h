@@ -160,6 +160,7 @@ namespace RenderCore { namespace Assets
         static auto BuildMesh(
             const ModelCommandStream::GeoCall& geoInst,
             const RawGeometry& geo,
+            std::vector<VertexData*>& supplements,
             ModelConstruction::BuffersUnderConstruction& workingBuffers,
             SharedStateSet& sharedStateSet,
             const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
@@ -169,6 +170,7 @@ namespace RenderCore { namespace Assets
         static auto BuildMesh(
             const ModelCommandStream::GeoCall& geoInst,
             const BoundSkinnedGeometry& geo,
+            std::vector<VertexData*>& supplements,
             ModelConstruction::BuffersUnderConstruction& workingBuffers,
             SharedStateSet& sharedStateSet,
             const uint64 textureBindPoints[], unsigned textureBindPointsCnt,

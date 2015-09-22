@@ -133,6 +133,7 @@ namespace RenderCore { namespace Assets
             searchRules.AddSearchDirectoryFromFilename(materialFilename);
             renderer = std::make_shared<ModelRenderer>(
                 std::ref(*scaffold._model), std::ref(*scaffold._material), 
+                ModelRenderer::Supplements(),
                 std::ref(*_pimpl->_sharedStateSet), &searchRules, LOD);
 
             _pimpl->_modelRenderers.Insert(hashedModel, renderer);

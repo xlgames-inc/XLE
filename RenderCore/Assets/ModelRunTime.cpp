@@ -149,7 +149,15 @@ namespace RenderCore { namespace Assets
         {
             return std::find_if(
                 ia._elements.cbegin(), ia._elements.cend(), 
-                [=](const VertexElement& ele) { return !XlCompareString(ele._semanticName, name); }) != ia._elements.cend();
+                [=](const VertexElement& ele) { return !XlCompareStringI(ele._semanticName, name); }) != ia._elements.cend();
+        }
+
+        static bool HasElement(const Metal::InputLayout& ia, const char name[])
+        {
+            auto end = &ia.first[ia.second];
+            return std::find_if(
+                ia.first, end, 
+                [=](const Metal::InputElementDesc& ele) { return !XlCompareStringI(ele._semanticName.c_str(), name); }) != end;
         }
 
         #if defined(_DEBUG)
@@ -186,7 +194,8 @@ namespace RenderCore { namespace Assets
         #endif
 
         static unsigned BuildGeoParamBox(
-            const GeoInputAssembly& ia, SharedStateSet& sharedStateSet, 
+            const Metal::InputLayout& ia, 
+            SharedStateSet& sharedStateSet, 
             ModelConstruction::ParamBoxDescriptions& paramBoxDesc, bool normalFromSkinning)
         {
                 //  Build a parameter box for this geometry configuration. The input assembly
@@ -398,6 +407,20 @@ namespace RenderCore { namespace Assets
 
             BuffersUnderConstruction() : _vbSize(0), _ibSize(0) {}
         };
+
+        static void FindSupplementGeo(
+            std::vector<VertexData*>& result,
+            const ModelRenderer::Supplements& supplements,
+            unsigned geoId)
+        {
+            result.clear();
+            for (auto c=supplements._begin; c!=supplements._end; ++c) {
+                auto& immData = c->ImmutableData();
+                for (size_t g=0; g<immData._geoCount; ++g)
+                    if (immData._geos[g]._geoId == geoId)
+                        result.push_back(&immData._geos[g]._vb);
+            }
+        }
     }
 
     unsigned BuildLowLevelInputAssembly(
@@ -422,6 +445,7 @@ namespace RenderCore { namespace Assets
 
     ModelRenderer::ModelRenderer(
         const ModelScaffold& scaffold, const MaterialScaffold& matScaffold,
+        const Supplements& supplements,
         SharedStateSet& sharedStateSet, 
         const ::Assets::DirectorySearchRules* searchRules, unsigned levelOfDetail)
     {
@@ -445,6 +469,7 @@ namespace RenderCore { namespace Assets
 
         auto& cmdStream = scaffold.CommandStream();
         auto& meshData = scaffold.ImmutableData();
+        std::vector<VertexData*> supplementGeo;
 
             //  First we need to bind each draw call to a material in our
             //  material scaffold. Then we need to find the superset of all bound textures
@@ -489,9 +514,10 @@ namespace RenderCore { namespace Assets
                 // if we encounter the same mesh multiple times, we don't need to store it every time
             auto mesh = FindIf(meshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoInst._geoId; });
             if (mesh == meshes.end()) {
+                FindSupplementGeo(supplementGeo, supplements, geoInst._geoId);
                 meshes.push_back(
                     Pimpl::BuildMesh(
-                        geoInst, geo, workingBuffers, sharedStateSet,
+                        geoInst, geo, supplementGeo, workingBuffers, sharedStateSet,
                         AsPointer(textureBindPoints.cbegin()), (unsigned)textureBindPoints.size(),
                         paramBoxDesc));
                 mesh = meshes.end()-1;
@@ -543,8 +569,9 @@ namespace RenderCore { namespace Assets
                 // if we encounter the same mesh multiple times, we don't need to store it every time
             auto mesh = FindIf(skinnedMeshes, [=](const Pimpl::SkinnedMesh& mesh) { return mesh._id == geoInst._geoId; });
             if (mesh == skinnedMeshes.end()) {
+                FindSupplementGeo(supplementGeo, supplements, unsigned(meshData._geoCount) + geoInst._geoId);
                 skinnedMeshes.push_back(
-                    Pimpl::BuildMesh(geoInst, geo, workingBuffers, sharedStateSet, 
+                    Pimpl::BuildMesh(geoInst, geo, supplementGeo, workingBuffers, sharedStateSet, 
                         AsPointer(textureBindPoints.cbegin()), (unsigned)textureBindPoints.size(),
                         paramBoxDesc));
                 skinnedBindings.push_back(
@@ -797,6 +824,7 @@ namespace RenderCore { namespace Assets
     auto ModelRenderer::Pimpl::BuildMesh(
         const ModelCommandStream::GeoCall& geoInst,
         const RawGeometry& geo,
+        std::vector<VertexData*>& supplements,
         ModelConstruction::BuffersUnderConstruction& workingBuffers,
         SharedStateSet& sharedStateSet,
         const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
@@ -807,21 +835,33 @@ namespace RenderCore { namespace Assets
         result._id = geoInst._geoId;
         result._indexFormat = geo._ib._format;
         result._vertexStride = geo._vb._ia._vertexStride;
-        result._geoParamBox = ModelConstruction::BuildGeoParamBox(geo._vb._ia, sharedStateSet, paramBoxDesc, normalFromSkinning);
 
-            // (source file locators)
+            // source file locators & vb/ib allocations
         result._sourceFileIBOffset = geo._ib._offset;
         result._sourceFileIBSize = geo._ib._size;
         result._sourceFileVBOffset = geo._vb._offset;
         result._sourceFileVBSize = geo._vb._size;
-
-            // (vb, ib allocations)
         result._ibOffset = workingBuffers.AllocateIB(result._sourceFileIBSize, Metal::NativeFormat::Enum(result._indexFormat));
         result._vbOffset = workingBuffers.AllocateVB(result._sourceFileVBSize);
 
+            // todo --  we also need to schedule vb upload from
+            //          supplements! That means extra vb offsets & sizes
+
+            // build vertex input layout desc
         Metal::InputElementDesc inputDesc[12];
         unsigned vertexElementCount = BuildLowLevelInputAssembly(
             inputDesc, dimof(inputDesc), geo._vb._ia._elements);
+        for (unsigned s=0; s!=supplements.size(); ++s)
+            vertexElementCount += BuildLowLevelInputAssembly(
+                &inputDesc[vertexElementCount], dimof(inputDesc) - vertexElementCount,
+                supplements[s]->_ia._elements, 1+s);
+
+            // setup the geo param box and the technique interface
+            // from the vertex input layout
+        result._geoParamBox = ModelConstruction::BuildGeoParamBox(
+            Metal::InputLayout(inputDesc, vertexElementCount),
+            sharedStateSet, paramBoxDesc, normalFromSkinning);
+
         result._techniqueInterface = sharedStateSet.InsertTechniqueInterface(
             inputDesc, vertexElementCount, textureBindPoints, textureBindPointsCnt);
 
@@ -831,6 +871,7 @@ namespace RenderCore { namespace Assets
     auto ModelRenderer::Pimpl::BuildMesh(
         const ModelCommandStream::GeoCall& geoInst,
         const BoundSkinnedGeometry& geo,
+        std::vector<VertexData*>& supplements,
         ModelConstruction::BuffersUnderConstruction& workingBuffers,
         SharedStateSet& sharedStateSet,
         const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
@@ -843,7 +884,7 @@ namespace RenderCore { namespace Assets
         bool skinnedNormal = ModelConstruction::HasElement(geo._animatedVertexElements._ia, "NORMAL");
         Pimpl::SkinnedMesh result;
         (Pimpl::Mesh&)result = BuildMesh(
-            geoInst, (const RawGeometry&)geo, workingBuffers, sharedStateSet,
+            geoInst, (const RawGeometry&)geo, supplements, workingBuffers, sharedStateSet,
             textureBindPoints, textureBindPointsCnt,
             paramBoxDesc, skinnedNormal);
 
@@ -1601,14 +1642,13 @@ namespace RenderCore { namespace Assets
         return std::make_pair(std::move(rawMemoryBlock), largeBlocksChunk._fileOffset);
     }
 
-    ModelScaffold::ModelScaffold(const ResChar filename[])
+    ScaffoldBase::ScaffoldBase(const ResChar filename[])
     {
         std::unique_ptr<uint8[]> rawMemoryBlock;
         unsigned largeBlocksOffset = 0;
         std::tie(rawMemoryBlock, largeBlocksOffset) = LoadRawData(filename);
         
         Serialization::Block_Initialize(rawMemoryBlock.get());        
-        _data = (const ModelImmutableData*)Serialization::Block_GetFirstObject(rawMemoryBlock.get());
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         RegisterFileDependency(_validationCallback, filename);
@@ -1618,9 +1658,8 @@ namespace RenderCore { namespace Assets
         _largeBlocksOffset = largeBlocksOffset;
     }
     
-    ModelScaffold::ModelScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
+    ScaffoldBase::ScaffoldBase(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
     {
-        _data = nullptr;
         _largeBlocksOffset = 0;
 
         if (marker->GetState() == ::Assets::AssetState::Ready) {
@@ -1631,22 +1670,18 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    ModelScaffold::ModelScaffold(ModelScaffold&& moveFrom)
+    ScaffoldBase::ScaffoldBase(ScaffoldBase&& moveFrom)
     : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
     , _filename(std::move(moveFrom._filename))
     , _marker(std::move(moveFrom._marker))
     , _validationCallback(std::move(moveFrom._validationCallback))
     {
-        _data = moveFrom._data;
-        moveFrom._data = nullptr;
         _largeBlocksOffset = moveFrom._largeBlocksOffset;
     }
 
-    ModelScaffold& ModelScaffold::operator=(ModelScaffold&& moveFrom)
+    ScaffoldBase& ScaffoldBase::operator=(ScaffoldBase&& moveFrom)
     {
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
-        _data = moveFrom._data;
-        moveFrom._data = nullptr;
         _largeBlocksOffset = moveFrom._largeBlocksOffset;
         _filename = std::move(moveFrom._filename);
         _marker = std::move(moveFrom._marker);
@@ -1654,13 +1689,21 @@ namespace RenderCore { namespace Assets
         return *this;
     }
 
-    ModelScaffold::~ModelScaffold()
+    ScaffoldBase::~ScaffoldBase() {}
+
+    const void*     ScaffoldBase::FirstObject() const
     {
-        if (_data)
-            _data->~ModelImmutableData();
+        Resolve();
+        return Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
-    void ModelScaffold::Resolve() const
+    const void*     ScaffoldBase::TryFirstObject() const
+    {
+        if (!_rawMemoryBlock) return nullptr;
+        return Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
+    }
+
+    void ScaffoldBase::Resolve() const
     {
         if (_marker) {
             if (_marker->GetState() == ::Assets::AssetState::Invalid) {
@@ -1674,12 +1717,12 @@ namespace RenderCore { namespace Assets
                 // hack --  Resolve needs to be called by const methods (like "GetStaticBoundingBox")
                 //          but Resolve() must change all the internal pointers... It's an awkward
                 //          case for const-correctness
-            const_cast<ModelScaffold*>(this)->CompleteFromMarker(*_marker);
+            const_cast<ScaffoldBase*>(this)->CompleteFromMarker(*_marker);
             _marker.reset();
         }
     }
 
-    ::Assets::AssetState ModelScaffold::TryResolve()
+    ::Assets::AssetState ScaffoldBase::TryResolve()
     {
         if (_marker) {
             auto markerState = _marker->GetState();
@@ -1692,7 +1735,7 @@ namespace RenderCore { namespace Assets
         return ::Assets::AssetState::Ready;
     }
 
-    ::Assets::AssetState ModelScaffold::StallAndResolve()
+    ::Assets::AssetState ScaffoldBase::StallAndResolve()
     {
         if (_marker) {
             auto markerState = _marker->StallWhilePending();
@@ -1705,7 +1748,7 @@ namespace RenderCore { namespace Assets
         return ::Assets::AssetState::Ready;
     }
 
-    void ModelScaffold::CompleteFromMarker(::Assets::PendingCompileMarker& marker)
+    void ScaffoldBase::CompleteFromMarker(::Assets::PendingCompileMarker& marker)
     {
         std::unique_ptr<uint8[]> rawMemoryBlock;
         unsigned largeBlocksOffset = 0;
@@ -1713,7 +1756,6 @@ namespace RenderCore { namespace Assets
         std::tie(rawMemoryBlock, largeBlocksOffset) = LoadRawData(marker._sourceID0);
 
         Serialization::Block_Initialize(rawMemoryBlock.get());        
-        _data = (const ModelImmutableData*)Serialization::Block_GetFirstObject(rawMemoryBlock.get());
 
         _filename = marker._sourceID0;
         if (!_validationCallback) {
@@ -1724,11 +1766,54 @@ namespace RenderCore { namespace Assets
         _largeBlocksOffset = largeBlocksOffset;
     }
 
-    unsigned                        ModelScaffold::LargeBlocksOffset() const            { Resolve(); return _largeBlocksOffset; }
-    const ModelImmutableData&       ModelScaffold::ImmutableData() const                { Resolve(); return *_data; };
-    const ModelCommandStream&       ModelScaffold::CommandStream() const                { Resolve(); return _data->_visualScene; }
-    const TransformationMachine&    ModelScaffold::EmbeddedSkeleton() const             { Resolve(); return _data->_embeddedSkeleton; }
-    std::pair<Float3, Float3>       ModelScaffold::GetStaticBoundingBox(unsigned) const { Resolve(); return _data->_boundingBox; }
+    unsigned                        ScaffoldBase::LargeBlocksOffset() const            { Resolve(); return _largeBlocksOffset; }
+
+
+    const ModelImmutableData&       ModelScaffold::ImmutableData() const                { return *(const ModelImmutableData*)FirstObject(); };
+    const ModelCommandStream&       ModelScaffold::CommandStream() const                { return ImmutableData()._visualScene; }
+    const TransformationMachine&    ModelScaffold::EmbeddedSkeleton() const             { return ImmutableData()._embeddedSkeleton; }
+    std::pair<Float3, Float3>       ModelScaffold::GetStaticBoundingBox(unsigned) const { return ImmutableData()._boundingBox; }
+
+    ModelScaffold::ModelScaffold(const ::Assets::ResChar filename[])
+    : ScaffoldBase(filename) {}
+    ModelScaffold::ModelScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
+    : ScaffoldBase(std::move(marker)) {}
+    ModelScaffold::ModelScaffold(ModelScaffold&& moveFrom)
+    : ScaffoldBase(std::move(moveFrom)) {}
+    ModelScaffold& ModelScaffold::operator=(ModelScaffold&& moveFrom)
+    {
+        ScaffoldBase::operator=(std::move(moveFrom));
+        return *this;
+    }
+    ModelScaffold::~ModelScaffold()
+    {
+        auto* data = (ModelImmutableData*)TryFirstObject();
+        if (data)
+            data->~ModelImmutableData();
+    }
+
+
+
+    const ModelSupplementImmutableData&       ModelSupplementScaffold::ImmutableData() const                { return *(const ModelSupplementImmutableData*)FirstObject(); };
+
+    ModelSupplementScaffold::ModelSupplementScaffold(const ::Assets::ResChar filename[])
+    : ScaffoldBase(filename) {}
+    ModelSupplementScaffold::ModelSupplementScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
+    : ScaffoldBase(std::move(marker)) {}
+    ModelSupplementScaffold::ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom)
+    : ScaffoldBase(std::move(moveFrom)) {}
+    ModelSupplementScaffold& ModelSupplementScaffold::operator=(ModelSupplementScaffold&& moveFrom)
+    {
+        ScaffoldBase::operator=(std::move(moveFrom));
+        return *this;
+    }
+    ModelSupplementScaffold::~ModelSupplementScaffold()
+    {
+        auto* data = (ModelSupplementImmutableData*)TryFirstObject();
+        if (data)
+            data->~ModelSupplementImmutableData();
+    }
+
 
 }}
 

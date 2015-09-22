@@ -173,6 +173,13 @@ namespace RenderCore { namespace Assets
         BoundSkinnedGeometry();
     };
 
+    class SupplementGeo
+    {
+    public:
+        unsigned    _geoId;
+        VertexData  _vb;
+    };
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     #pragma pack(pop)

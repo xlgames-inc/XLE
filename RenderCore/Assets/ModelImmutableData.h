@@ -49,6 +49,13 @@ namespace RenderCore { namespace Assets
         SerializableVector<std::pair<MaterialGuid, std::string>> _materialNames;
     };
 
+    class ModelSupplementImmutableData
+    {
+    public:
+        SupplementGeo*  _geos;
+        size_t          _geoCount;
+    };
+
     #pragma pack(pop)
 
 ////////////////////////////////////////////////////////////////////////////////////////////
