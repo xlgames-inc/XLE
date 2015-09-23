@@ -51,26 +51,51 @@ namespace RenderCore { namespace Assets
             : _context(context), _parserContext(&parserContext), _techniqueIndex(techniqueIndex) {}
     };
 
+    namespace Internal
+    {
+        template<int UniqueIndex>
+            class SharedStateIndex
+            {
+            public:
+                static const unsigned Invalid = ~0u;
+                
+                unsigned Value() const { return _value; }
+                SharedStateIndex(unsigned value) : _value(value) {}
+                SharedStateIndex() : _value(Invalid) {}
+
+                friend bool operator==(const SharedStateIndex& lhs, const SharedStateIndex& rhs)    { return lhs._value == rhs._value; }
+                friend bool operator!=(const SharedStateIndex& lhs, const SharedStateIndex& rhs)    { return lhs._value != rhs._value; }
+                friend bool operator<(const SharedStateIndex& lhs, const SharedStateIndex& rhs)     { return lhs._value < rhs._value; }
+            private:
+                unsigned _value;
+            };
+    }
+
+    using SharedShaderName = Internal::SharedStateIndex<0>;
+    using SharedParameterBox = Internal::SharedStateIndex<1>;
+    using SharedTechniqueInterface = Internal::SharedStateIndex<2>;
+    using SharedRenderStateSet = Internal::SharedStateIndex<3>;
+
     class SharedStateSet
     {
     public:
-        unsigned InsertTechniqueInterface(
+        SharedTechniqueInterface InsertTechniqueInterface(
             const RenderCore::Metal::InputElementDesc vertexElements[], unsigned count,
             const uint64 textureBindPoints[], unsigned textureBindPointsCount);
 
-        unsigned InsertShaderName(const std::string& shaderName);
-        unsigned InsertParameterBox(const Utility::ParameterBox& box);
+        SharedShaderName InsertShaderName(const std::string& shaderName);
+        SharedParameterBox InsertParameterBox(const Utility::ParameterBox& box);
         unsigned InsertRenderStateSet(const RenderStateSet& states);
 
         Metal::BoundUniforms* BeginVariation(
             const ModelRendererContext& context, 
-            unsigned shaderName, unsigned techniqueInterface,
-            unsigned geoParamBox, unsigned materialParamBox) const;
+            SharedShaderName shaderName, SharedTechniqueInterface techniqueInterface,
+            SharedParameterBox geoParamBox, SharedParameterBox materialParamBox) const;
 
         void BeginRenderState(
             const ModelRendererContext& context, 
             const Utility::ParameterBox& globalStates,
-            unsigned renderStateSetIndex) const;
+            SharedRenderStateSet renderStateSetIndex) const;
 
         void CaptureState(Metal::DeviceContext* context);
         void ReleaseState(Metal::DeviceContext* context);
@@ -81,11 +106,11 @@ namespace RenderCore { namespace Assets
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
 
-        mutable unsigned _currentShaderName;
-        mutable unsigned _currentTechniqueInterface;
-        mutable unsigned _currentMaterialParamBox;
-        mutable unsigned _currentGeoParamBox;
-        mutable unsigned _currentRenderState;
+        mutable SharedShaderName _currentShaderName;
+        mutable SharedTechniqueInterface _currentTechniqueInterface;
+        mutable SharedParameterBox _currentMaterialParamBox;
+        mutable SharedParameterBox _currentGeoParamBox;
+        mutable SharedRenderStateSet _currentRenderState;
         mutable uint64 _currentGlobalRenderState;
         mutable Metal::BoundUniforms* _currentBoundUniforms;
     };

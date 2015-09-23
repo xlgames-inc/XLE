@@ -8,6 +8,7 @@
 
 #include "ModelRunTime.h"
 #include "ModelScaffoldInternal.h"
+#include "SharedStateSet.h" // for SharedShaderName, SharedParameterBox, etc
 #include "../Metal/Forward.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/PtrUtils.h"
@@ -26,7 +27,6 @@ namespace RenderCore { namespace Assets
     class ModelRenderer::Pimpl
     {
     public:
-        typedef unsigned TechniqueInterface;
         typedef unsigned UnifiedBufferOffset;
 
         class Mesh
@@ -45,8 +45,8 @@ namespace RenderCore { namespace Assets
                 // geo params & technique interface
                 // each mesh within the model can have a different vertex input interface
                 //  (and so needs a different technique interface)
-            unsigned _geoParamBox;
-            TechniqueInterface _techniqueInterface;
+            SharedParameterBox _geoParamBox;
+            SharedTechniqueInterface _techniqueInterface;
 
                 // used during upload
             unsigned _sourceFileVBOffset, _sourceFileVBSize;
@@ -61,23 +61,23 @@ namespace RenderCore { namespace Assets
         class DrawCallResources
         {
         public:
-            unsigned _shaderName;
-            unsigned _geoParamBox;
-            unsigned _materialParamBox;
+            SharedShaderName _shaderName;
+            SharedParameterBox _geoParamBox;
+            SharedParameterBox _materialParamBox;
 
             unsigned _textureSet;
             unsigned _constantBuffer;
-            unsigned _renderStateSet;
+            SharedRenderStateSet _renderStateSet;
 
             DelayStep _delayStep;
             MaterialGuid _materialBindingGuid;
 
             DrawCallResources();
             DrawCallResources(
-                unsigned shaderName,
-                unsigned geoParamBox, unsigned matParamBox,
+                SharedShaderName shaderName,
+                SharedParameterBox geoParamBox, SharedParameterBox matParamBox,
                 unsigned textureSet, unsigned constantBuffer,
-                unsigned renderStateSet, DelayStep delayStep, MaterialGuid materialBindingIndex);
+                SharedRenderStateSet renderStateSet, DelayStep delayStep, MaterialGuid materialBindingIndex);
         };
         std::vector<DrawCallResources>   _drawCallRes;
 
@@ -98,7 +98,7 @@ namespace RenderCore { namespace Assets
         #if defined(_DEBUG)
             unsigned _vbSize, _ibSize;
             std::vector<::Assets::rstring> _boundTextureNames;
-            std::vector<std::pair<unsigned,std::string>> _paramBoxDesc;
+            std::vector<std::pair<SharedParameterBox,std::string>> _paramBoxDesc;
         #endif
 
         ///////////////////////////////////////////////////////////////////////////////
@@ -106,9 +106,9 @@ namespace RenderCore { namespace Assets
         ~Pimpl() {}
 
         Metal::BoundUniforms* BeginVariation(
-            const ModelRendererContext&, const SharedStateSet&, unsigned, TechniqueInterface) const;
+            const ModelRendererContext&, const SharedStateSet&, unsigned, SharedTechniqueInterface) const;
 
-        TechniqueInterface BeginGeoCall(
+        SharedTechniqueInterface BeginGeoCall(
             const ModelRendererContext& context,
             Metal::ConstantBuffer&  localTransformBuffer,
             const MeshToModel&      transforms,
@@ -148,11 +148,11 @@ namespace RenderCore { namespace Assets
                 //  The base class "Mesh" members contain the static geometry elements.
 
             struct VertexStreams { enum Enum { AnimatedGeo, SkeletonBinding, Max }; };
-            UnifiedBufferOffset     _extraVbOffset[VertexStreams::Max];
-            unsigned                _extraVbStride[VertexStreams::Max];
-            UnifiedBufferOffset     _sourceFileExtraVBOffset[VertexStreams::Max];
-            unsigned                _sourceFileExtraVBSize[VertexStreams::Max];
-            TechniqueInterface      _skinnedTechniqueInterface;
+            UnifiedBufferOffset         _extraVbOffset[VertexStreams::Max];
+            unsigned                    _extraVbStride[VertexStreams::Max];
+            UnifiedBufferOffset         _sourceFileExtraVBOffset[VertexStreams::Max];
+            unsigned                    _sourceFileExtraVBSize[VertexStreams::Max];
+            SharedTechniqueInterface    _skinnedTechniqueInterface;
         };
 
         class SkinnedMeshAnimBinding
@@ -161,15 +161,15 @@ namespace RenderCore { namespace Assets
             uint64      _iaAnimationHash;
             const BoundSkinnedGeometry* _scaffold;
 
-            TechniqueInterface  _techniqueInterface;
-            unsigned            _vertexStride;
+            SharedTechniqueInterface    _techniqueInterface;
+            unsigned                    _vertexStride;
         };
 
         std::vector<SkinnedMesh>            _skinnedMeshes;
         std::vector<SkinnedMeshAnimBinding> _skinnedBindings;
         std::vector<MeshAndDrawCall>        _skinnedDrawCalls;
 
-        TechniqueInterface BeginSkinCall(
+        SharedTechniqueInterface BeginSkinCall(
             const ModelRendererContext&     context,
             Metal::ConstantBuffer&  localTransformBuffer,
             const MeshToModel&      transforms,

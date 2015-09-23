@@ -47,7 +47,7 @@ namespace RenderCore { namespace Assets
         return t;
     }
 
-    unsigned SharedStateSet::InsertTechniqueInterface(
+    SharedTechniqueInterface SharedStateSet::InsertTechniqueInterface(
         const RenderCore::Metal::InputElementDesc vertexElements[], unsigned count,
         const uint64 textureBindPoints[], unsigned textureBindPointsCount)
     {
@@ -86,7 +86,7 @@ namespace RenderCore { namespace Assets
         return techniqueInterfaceIndex;
     }
 
-    unsigned SharedStateSet::InsertShaderName(const std::string& shaderName)
+    SharedShaderName SharedStateSet::InsertShaderName(const std::string& shaderName)
     {
         auto& shaderNames = _pimpl->_shaderNames;
         auto n = std::find(shaderNames.cbegin(), shaderNames.cend(), shaderName);
@@ -98,7 +98,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    unsigned SharedStateSet::InsertParameterBox(const ParameterBox& box)
+    SharedParameterBox SharedStateSet::InsertParameterBox(const ParameterBox& box)
     {
         auto& paramBoxes = _pimpl->_parameterBoxes;
         auto boxHash = box.GetHash();
@@ -147,8 +147,8 @@ namespace RenderCore { namespace Assets
 
     RenderCore::Metal::BoundUniforms* SharedStateSet::BeginVariation(
             const ModelRendererContext& context,
-            unsigned shaderName, unsigned techniqueInterface, 
-            unsigned geoParamBox, unsigned materialParamBox) const
+            SharedShaderName shaderName, SharedTechniqueInterface techniqueInterface, 
+            SharedParameterBox geoParamBox, SharedParameterBox materialParamBox) const
     {
         if (    shaderName == _currentShaderName && techniqueInterface == _currentTechniqueInterface 
             &&  geoParamBox == _currentGeoParamBox && materialParamBox == _currentMaterialParamBox) {
@@ -158,25 +158,25 @@ namespace RenderCore { namespace Assets
             // we need to check both the "xleres" and "xleres_cry" folders for material files
         char buffer[MaxPath];
         XlCopyString(buffer, "game/xleres/");
-        XlCatString(buffer, dimof(buffer), _pimpl->_shaderNames[shaderName].c_str());
+        XlCatString(buffer, dimof(buffer), _pimpl->_shaderNames[shaderName.Value()].c_str());
         XlCatString(buffer, dimof(buffer), ".txt");
 
         if (!DoesFileExist(buffer)) {
             XlCopyString(buffer, "game/xleres_cry/");
-            XlCatString(buffer, dimof(buffer), _pimpl->_shaderNames[shaderName].c_str());
+            XlCatString(buffer, dimof(buffer), _pimpl->_shaderNames[shaderName.Value()].c_str());
             XlCatString(buffer, dimof(buffer), ".txt");
         }
 
         auto& techniqueContext = context._parserContext->GetTechniqueContext();
         auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(buffer);
         const ParameterBox* state[] = {
-            &_pimpl->_parameterBoxes[geoParamBox],
+            &_pimpl->_parameterBoxes[geoParamBox.Value()],
             &techniqueContext._globalEnvironmentState,
             &techniqueContext._runtimeState,
-            &_pimpl->_parameterBoxes[materialParamBox]
+            &_pimpl->_parameterBoxes[materialParamBox.Value()]
         };
 
-        auto& techniqueInterfaceObj = _pimpl->_techniqueInterfaces[techniqueInterface];
+        auto& techniqueInterfaceObj = _pimpl->_techniqueInterfaces[techniqueInterface.Value()];
 
             // (FindVariation can throw pending/invalid resource)
         auto variation = shaderType.FindVariation(context._techniqueIndex, state, techniqueInterfaceObj);
@@ -291,7 +291,7 @@ namespace RenderCore { namespace Assets
         const ModelRendererContext& context,
         // IRenderStateSetResolver& resolver,
         const Utility::ParameterBox& globalStates,
-        unsigned renderStateSetIndex) const
+        SharedRenderStateSet renderStateSetIndex) const
     {
         assert(_pimpl->_capturedContext == context._context);
 
@@ -303,7 +303,7 @@ namespace RenderCore { namespace Assets
             DefaultRenderStateSetResolver::Desc());
 
         auto compiled = resolver.Compile(
-            _pimpl->_renderStateSets[renderStateSetIndex].second, globalStates, context._techniqueIndex);
+            _pimpl->_renderStateSets[renderStateSetIndex.Value()].second, globalStates, context._techniqueIndex);
         if (compiled) {
             context._context->Bind(compiled->_blendState);
             context._context->Bind(compiled->_rasterizerState);
@@ -317,12 +317,12 @@ namespace RenderCore { namespace Assets
     {
         assert(context);
         assert(!_pimpl->_capturedContext);
-        _currentShaderName = ~unsigned(0x0);
-        _currentTechniqueInterface = ~unsigned(0x0);
-        _currentMaterialParamBox = ~unsigned(0x0);
-        _currentGeoParamBox = ~unsigned(0x0);
-        _currentRenderState = ~unsigned(0x0);
-        _currentGlobalRenderState = ~unsigned(0x0);
+        _currentShaderName = SharedShaderName::Invalid;
+        _currentTechniqueInterface = SharedTechniqueInterface::Invalid;
+        _currentMaterialParamBox = SharedParameterBox::Invalid;
+        _currentGeoParamBox = SharedParameterBox::Invalid;
+        _currentRenderState = SharedRenderStateSet::Invalid;
+        _currentGlobalRenderState = SharedRenderStateSet::Invalid;
         _currentBoundUniforms = nullptr;
         _pimpl->_capturedContext = context;
     }
@@ -339,12 +339,12 @@ namespace RenderCore { namespace Assets
     {
         auto pimpl = std::make_unique<Pimpl>();
 
-        _currentShaderName = ~unsigned(0x0);
-        _currentTechniqueInterface = ~unsigned(0x0);
-        _currentMaterialParamBox = ~unsigned(0x0);
-        _currentGeoParamBox = ~unsigned(0x0);
-        _currentRenderState = ~unsigned(0x0);
-        _currentGlobalRenderState = ~unsigned(0x0);
+        _currentShaderName = SharedShaderName::Invalid;
+        _currentTechniqueInterface = SharedTechniqueInterface::Invalid;
+        _currentMaterialParamBox = SharedParameterBox::Invalid;
+        _currentGeoParamBox = SharedParameterBox::Invalid;
+        _currentRenderState = SharedRenderStateSet::Invalid;
+        _currentGlobalRenderState = SharedRenderStateSet::Invalid;
         _currentBoundUniforms = nullptr;
 
         pimpl->_capturedContext = nullptr;

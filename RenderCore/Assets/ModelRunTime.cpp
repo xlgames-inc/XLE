@@ -68,11 +68,11 @@ namespace RenderCore { namespace Assets
 
         struct SubMatResources
         { 
-            unsigned _shaderName; 
-            unsigned _matParams; 
+            SharedShaderName _shaderName; 
+            SharedParameterBox _matParams; 
             unsigned _constantBuffer; 
             unsigned _texturesIndex; 
-            unsigned _renderStateSet;
+            SharedRenderStateSet _renderStateSet;
             DelayStep _delayStep;
         };
 
@@ -176,14 +176,14 @@ namespace RenderCore { namespace Assets
             class ParamBoxDescriptions
             {
             public:
-                void Add(unsigned index, const ParameterBox& box)
+                void Add(SharedParameterBox index, const ParameterBox& box)
                 {
                     auto existing = LowerBound(_descriptions, index);
                     if (existing == _descriptions.end() || existing->first != index) {
                         _descriptions.insert(existing, std::make_pair(index, MakeDescription(box)));
                     }
                 }
-                std::vector<std::pair<unsigned,std::string>> _descriptions;
+                std::vector<std::pair<SharedParameterBox,std::string>> _descriptions;
             };
         #else
             class ParamBoxDescriptions
@@ -193,7 +193,7 @@ namespace RenderCore { namespace Assets
             };
         #endif
 
-        static unsigned BuildGeoParamBox(
+        static SharedParameterBox BuildGeoParamBox(
             const Metal::InputLayout& ia, 
             SharedStateSet& sharedStateSet, 
             ModelConstruction::ParamBoxDescriptions& paramBoxDesc, bool normalFromSkinning)
@@ -710,7 +710,7 @@ namespace RenderCore { namespace Assets
             const ModelRendererContext& context,
             const SharedStateSet&   sharedStateSet,
             unsigned                drawCallIndex,
-            TechniqueInterface      techniqueInterface) const
+            SharedTechniqueInterface      techniqueInterface) const
     {
         static Utility::ParameterBox tempGlobalStatesBox;
 
@@ -725,7 +725,7 @@ namespace RenderCore { namespace Assets
             Metal::ConstantBuffer&      localTransformBuffer,
             const MeshToModel&          transforms,
             const Float4x4&             modelToWorld,
-            unsigned                    geoCallIndex) const -> TechniqueInterface
+            unsigned                    geoCallIndex) const -> SharedTechniqueInterface
     {
         auto& cmdStream = _scaffold->CommandStream();
         auto& geoCall = cmdStream.GetGeoCall(geoCallIndex);
@@ -754,7 +754,7 @@ namespace RenderCore { namespace Assets
         const MeshToModel&          transforms,
         const Float4x4&             modelToWorld,
         unsigned                    geoCallIndex,
-        PreparedAnimation*          preparedAnimation) const -> TechniqueInterface
+        PreparedAnimation*          preparedAnimation) const -> SharedTechniqueInterface
     {
         auto& cmdStream = _scaffold->CommandStream();
         auto& geoCall = cmdStream.GetSkinCall(geoCallIndex);
@@ -939,17 +939,19 @@ namespace RenderCore { namespace Assets
 
     ModelRenderer::Pimpl::DrawCallResources::DrawCallResources()
     {
-        _shaderName = _geoParamBox = _materialParamBox = 0;
-        _textureSet = _constantBuffer = _renderStateSet = 0;
+        _shaderName = SharedShaderName::Invalid;
+        _geoParamBox = _materialParamBox = SharedParameterBox::Invalid;
+        _textureSet = _constantBuffer = ~0u;
+        _renderStateSet = SharedRenderStateSet::Invalid;
         _delayStep = DelayStep::OpaqueRender;
         _materialBindingGuid = 0;
     }
 
     ModelRenderer::Pimpl::DrawCallResources::DrawCallResources(
-        unsigned shaderName,
-        unsigned geoParamBox, unsigned matParamBox,
+        SharedShaderName shaderName,
+        SharedParameterBox geoParamBox, SharedParameterBox matParamBox,
         unsigned textureSet, unsigned constantBuffer,
-        unsigned renderStateSet, DelayStep delayStep, MaterialGuid materialBindingGuid)
+        SharedRenderStateSet renderStateSet, DelayStep delayStep, MaterialGuid materialBindingGuid)
     {
         _shaderName = shaderName;
         _geoParamBox = geoParamBox;
@@ -972,7 +974,7 @@ namespace RenderCore { namespace Assets
         const Metal::ConstantBuffer* pkts[] = { &box._localTransformBuffer, nullptr };
 
         unsigned currTextureSet = ~unsigned(0x0), currCB = ~unsigned(0x0), currGeoCall = ~unsigned(0x0);
-        Pimpl::TechniqueInterface currTechniqueInterface = ~Pimpl::TechniqueInterface(0x0);
+        SharedTechniqueInterface currTechniqueInterface = SharedTechniqueInterface::Invalid;
         Metal::BoundUniforms* currUniforms = nullptr;
         auto& devContext = *context._context;
         auto& scaffold = *_pimpl->_scaffold;
@@ -1138,8 +1140,8 @@ namespace RenderCore { namespace Assets
             } else {
                 entry._meshToWorld = mainTransformIndex;
             }
-            unsigned techniqueInterface = mesh->_techniqueInterface;
-            entry._shaderVariationHash = techniqueInterface ^ (geoParamIndex << 12) ^ (matParamIndex << 15) ^ (shaderNameIndex << 24);  // simple hash of these indices. Note that collisions might be possible
+            auto techniqueInterface = mesh->_techniqueInterface;
+            entry._shaderVariationHash = techniqueInterface.Value() ^ (geoParamIndex.Value() << 12) ^ (matParamIndex.Value() << 15) ^ (shaderNameIndex.Value() << 24);  // simple hash of these indices. Note that collisions might be possible
             entry._indexCount = d._indexCount;
             entry._firstIndex = d._firstIndex;
             entry._firstVertex = d._firstVertex;
@@ -1179,8 +1181,8 @@ namespace RenderCore { namespace Assets
             } else {
                 entry._meshToWorld = mainTransformIndex;
             }
-            unsigned techniqueInterface = mesh->_skinnedTechniqueInterface;
-            entry._shaderVariationHash = techniqueInterface ^ (geoParamIndex << 12) ^ (matParamIndex << 15) ^ (shaderNameIndex << 24);  // simple hash of these indices. Note that collisions might be possible
+            auto techniqueInterface = mesh->_skinnedTechniqueInterface;
+            entry._shaderVariationHash = techniqueInterface.Value() ^ (geoParamIndex.Value() << 12) ^ (matParamIndex.Value() << 15) ^ (shaderNameIndex.Value() << 24);  // simple hash of these indices. Note that collisions might be possible
             entry._indexCount = d._indexCount;
             entry._firstIndex = d._firstIndex;
             entry._firstVertex = d._firstVertex;
@@ -1244,7 +1246,7 @@ namespace RenderCore { namespace Assets
         unsigned currentVariationHash = ~unsigned(0x0);
         unsigned currentTextureSet = ~unsigned(0x0);
         unsigned currentConstantBufferIndex = ~unsigned(0x0);
-        unsigned currentTechniqueInterface = ~unsigned(0x0);
+        SharedTechniqueInterface currentTechniqueInterface = SharedTechniqueInterface::Invalid;
 
         for (auto d=entries.cbegin(); d!=entries.cend(); ++d) {
             auto& renderer = *(const ModelRenderer*)d->_renderer;
@@ -1534,12 +1536,12 @@ namespace RenderCore { namespace Assets
                 << "  [" << Width<3>(c) << "] (M)  |"
                 << Width<7>(d._indexCount) << " |"
                 << Width<5>(m) << " |"
-                << Width<5>(r._shaderName) << " |"
-                << Width<5>(r._geoParamBox) << " |"
-                << Width<5>(r._materialParamBox) << " |"
+                << Width<5>(r._shaderName.Value()) << " |"
+                << Width<5>(r._geoParamBox.Value()) << " |"
+                << Width<5>(r._materialParamBox.Value()) << " |"
                 << Width<5>(r._textureSet) << " |"
                 << Width<5>(r._constantBuffer) << " |"
-                << Width<5>(r._renderStateSet);
+                << Width<5>(r._renderStateSet.Value());
         }
 
         for (unsigned c=0; c<_pimpl->_skinnedDrawCalls.size(); ++c) {
@@ -1550,12 +1552,12 @@ namespace RenderCore { namespace Assets
                 << "  [" << Width<3>(c) << "] (S)  |"
                 << Width<7>(d._indexCount) << " |"
                 << Width<5>(m) << " |"
-                << Width<5>(r._shaderName) << " |"
-                << Width<5>(r._geoParamBox) << " |"
-                << Width<5>(r._materialParamBox) << " |"
+                << Width<5>(r._shaderName.Value()) << " |"
+                << Width<5>(r._geoParamBox.Value()) << " |"
+                << Width<5>(r._materialParamBox.Value()) << " |"
                 << Width<5>(r._textureSet) << " |"
                 << Width<5>(r._constantBuffer) << " |"
-                << Width<5>(r._renderStateSet);
+                << Width<5>(r._renderStateSet.Value());
         }
 
         LogInfo << "  Meshes     | GeoC |  SrcVB |  SrcIB | VtxS | TchI | GeoP | IdxF";
@@ -1568,8 +1570,8 @@ namespace RenderCore { namespace Assets
                 << Width<6>(m._sourceFileVBSize/1024) << "k |"
                 << Width<6>(m._sourceFileIBSize/1024) << "k |"
                 << Width<5>(m._vertexStride) << " |"
-                << Width<5>(m._techniqueInterface) << " |"
-                << Width<5>(m._geoParamBox) << " |"
+                << Width<5>(m._techniqueInterface.Value()) << " |"
+                << Width<5>(m._geoParamBox.Value()) << " |"
                 << Width<5>(m._indexFormat);
         }
         for (unsigned c=0; c<_pimpl->_skinnedMeshes.size(); ++c) {
@@ -1580,8 +1582,8 @@ namespace RenderCore { namespace Assets
                 << Width<6>(m._sourceFileVBSize/1024) << "k |"
                 << Width<6>(m._sourceFileIBSize/1024) << "k |"
                 << Width<5>(m._vertexStride) << " |"
-                << Width<5>(m._techniqueInterface) << " |"
-                << Width<5>(m._geoParamBox) << " |"
+                << Width<5>(m._techniqueInterface.Value()) << " |"
+                << Width<5>(m._geoParamBox.Value()) << " |"
                 << Width<5>(m._indexFormat);
         }
 
@@ -1601,7 +1603,7 @@ namespace RenderCore { namespace Assets
             LogInfo << "  Parameter Boxes";
             for (unsigned c=0; c<_pimpl->_paramBoxDesc.size(); ++c) {
                 auto& i = _pimpl->_paramBoxDesc[c];
-                LogInfo << "  [" << Width<3>(i.first) << "] " << i.second;
+                LogInfo << "  [" << Width<3>(i.first.Value()) << "] " << i.second;
             }
         #endif
     }
