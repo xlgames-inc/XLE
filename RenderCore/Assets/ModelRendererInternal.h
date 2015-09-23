@@ -12,6 +12,7 @@
 #include "../Metal/Forward.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/PtrUtils.h"
+#include "../../Utility/IteratorUtils.h"
 
 namespace RenderCore { namespace Assets 
 {
@@ -24,33 +25,42 @@ namespace RenderCore { namespace Assets
 
     class DeferredShaderResource;
 
+    class PendingGeoUpload
+    {
+    public:
+        unsigned _sourceFileOffset, _size;
+        unsigned _bufferDestination;
+    };
+
     class ModelRenderer::Pimpl
     {
     public:
         typedef unsigned UnifiedBufferOffset;
+        static const auto MaxVertexStreams = 3u;
 
         class Mesh
         {
         public:
-            unsigned _id;
+            unsigned    _id;
 
                 // indices
-            UnifiedBufferOffset _ibOffset;
+            UnifiedBufferOffset     _ibOffset;
             NativeFormatPlaceholder _indexFormat;
 
                 // vertices
-            UnifiedBufferOffset _vbOffset;
-            unsigned _vertexStride;
+            UnifiedBufferOffset _vbOffsets[MaxVertexStreams];
+            unsigned    _vertexStrides[MaxVertexStreams];
+            unsigned    _vertexStreamCount;
 
                 // geo params & technique interface
                 // each mesh within the model can have a different vertex input interface
                 //  (and so needs a different technique interface)
-            SharedParameterBox _geoParamBox;
-            SharedTechniqueInterface _techniqueInterface;
+            SharedParameterBox          _geoParamBox;
+            SharedTechniqueInterface    _techniqueInterface;
 
-                // used during upload
-            unsigned _sourceFileVBOffset, _sourceFileVBSize;
-            unsigned _sourceFileIBOffset, _sourceFileIBSize;
+            #if defined(_DEBUG)
+                unsigned _vbSize, _ibSize;  // used for metrics
+            #endif
         };
 
         std::vector<const DeferredShaderResource*> _boundTextures;
@@ -61,16 +71,16 @@ namespace RenderCore { namespace Assets
         class DrawCallResources
         {
         public:
-            SharedShaderName _shaderName;
-            SharedParameterBox _geoParamBox;
-            SharedParameterBox _materialParamBox;
+            SharedShaderName    _shaderName;
+            SharedParameterBox  _geoParamBox;
+            SharedParameterBox  _materialParamBox;
 
-            unsigned _textureSet;
-            unsigned _constantBuffer;
+            unsigned        _textureSet;
+            unsigned        _constantBuffer;
             SharedRenderStateSet _renderStateSet;
 
-            DelayStep _delayStep;
-            MaterialGuid _materialBindingGuid;
+            DelayStep       _delayStep;
+            MaterialGuid    _materialBindingGuid;
 
             DrawCallResources();
             DrawCallResources(
@@ -82,9 +92,9 @@ namespace RenderCore { namespace Assets
         std::vector<DrawCallResources>   _drawCallRes;
 
         ///////////////////////////////////////////////////////////////////////////////
-        Metal::VertexBuffer                 _vertexBuffer;
-        Metal::IndexBuffer                  _indexBuffer;
-        std::vector<Mesh>                   _meshes;
+        Metal::VertexBuffer     _vertexBuffer;
+        Metal::IndexBuffer      _indexBuffer;
+        std::vector<Mesh>       _meshes;
         std::vector<Metal::ConstantBuffer>  _constantBuffers;
 
         ///////////////////////////////////////////////////////////////////////////////
@@ -93,6 +103,10 @@ namespace RenderCore { namespace Assets
 
         const ModelScaffold*    _scaffold;
         unsigned                _levelOfDetail;
+
+        ///////////////////////////////////////////////////////////////////////////////
+        std::vector<PendingGeoUpload>  _vbUploads;
+        std::vector<PendingGeoUpload>  _ibUploads;
 
         ///////////////////////////////////////////////////////////////////////////////
         #if defined(_DEBUG)
@@ -129,7 +143,7 @@ namespace RenderCore { namespace Assets
         static auto BuildMesh(
             const ModelCommandStream::GeoCall& geoInst,
             const RawGeometry& geo,
-            std::vector<VertexData*>& supplements,
+            IteratorRange<VertexData**> supplements,
             ModelConstruction::BuffersUnderConstruction& workingBuffers,
             SharedStateSet& sharedStateSet,
             const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
@@ -193,7 +207,7 @@ namespace RenderCore { namespace Assets
         static auto BuildMesh(
             const ModelCommandStream::GeoCall& geoInst,
             const BoundSkinnedGeometry& geo,
-            std::vector<VertexData*>& supplements,
+            IteratorRange<VertexData**> supplements,
             ModelConstruction::BuffersUnderConstruction& workingBuffers,
             SharedStateSet& sharedStateSet,
             const uint64 textureBindPoints[], unsigned textureBindPointsCnt,

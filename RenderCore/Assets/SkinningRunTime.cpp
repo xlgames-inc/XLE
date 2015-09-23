@@ -1062,8 +1062,7 @@ namespace RenderCore { namespace Assets
             &params, &RenderSkeleton_DebugIterator, &workingVertices);
 
         VertexBuffer vertexBuffer(AsPointer(workingVertices.begin()), workingVertices.size()*sizeof(Vertex_PC));
-        context->Bind(     ResourceList<VertexBuffer, 1>(std::make_tuple(std::ref(vertexBuffer))), 
-                            sizeof(Vertex_PC), 0);
+        context->Bind(MakeResourceList(vertexBuffer), sizeof(Vertex_PC), 0);
         context->Bind(Topology::LineList);
         context->Draw((unsigned)workingVertices.size());
     }

@@ -383,6 +383,9 @@ namespace RenderCore { namespace Assets
             unsigned _vbSize;
             unsigned _ibSize;
 
+            std::vector<PendingGeoUpload>  _vbUploads;
+            std::vector<PendingGeoUpload>  _ibUploads;
+
             unsigned AllocateIB(unsigned size, RenderCore::Metal::NativeFormat::Enum format)
             {
                 unsigned allocation = _ibSize;
@@ -517,7 +520,9 @@ namespace RenderCore { namespace Assets
                 FindSupplementGeo(supplementGeo, supplements, geoInst._geoId);
                 meshes.push_back(
                     Pimpl::BuildMesh(
-                        geoInst, geo, supplementGeo, workingBuffers, sharedStateSet,
+                        geoInst, geo,
+                        MakeIteratorRange(supplementGeo), 
+                        workingBuffers, sharedStateSet,
                         AsPointer(textureBindPoints.cbegin()), (unsigned)textureBindPoints.size(),
                         paramBoxDesc));
                 mesh = meshes.end()-1;
@@ -571,7 +576,7 @@ namespace RenderCore { namespace Assets
             if (mesh == skinnedMeshes.end()) {
                 FindSupplementGeo(supplementGeo, supplements, unsigned(meshData._geoCount) + geoInst._geoId);
                 skinnedMeshes.push_back(
-                    PimplWithSkinning::BuildMesh(geoInst, geo, supplementGeo, workingBuffers, sharedStateSet, 
+                    PimplWithSkinning::BuildMesh(geoInst, geo, MakeIteratorRange(supplementGeo), workingBuffers, sharedStateSet, 
                         AsPointer(textureBindPoints.cbegin()), (unsigned)textureBindPoints.size(),
                         paramBoxDesc));
                 skinnedBindings.push_back(
@@ -614,20 +619,19 @@ namespace RenderCore { namespace Assets
         nascentVB.resize(workingBuffers._vbSize);
         nascentIB.resize(workingBuffers._ibSize);
 
-        BasicFile file(scaffold.Filename().c_str(), "rb");
-        auto largeBlocksOffset = scaffold.LargeBlocksOffset();
+        {
+            BasicFile file(scaffold.Filename().c_str(), "rb");
+            auto largeBlocksOffset = scaffold.LargeBlocksOffset();
 
-        for (auto m=meshes.begin(); m!=meshes.end(); ++m) {
-            LoadBlock(file, &nascentIB[m->_ibOffset], largeBlocksOffset + m->_sourceFileIBOffset, m->_sourceFileIBSize);
-            LoadBlock(file, &nascentVB[m->_vbOffset], largeBlocksOffset + m->_sourceFileVBOffset, m->_sourceFileVBSize);
-        }
+            for (auto u=workingBuffers._ibUploads.cbegin(); u!=workingBuffers._ibUploads.cend(); ++u)
+                LoadBlock(
+                    file, &nascentIB[u->_bufferDestination], 
+                    largeBlocksOffset + u->_sourceFileOffset, u->_size);
 
-        for (auto m=skinnedMeshes.begin(); m!=skinnedMeshes.end(); ++m) {
-            LoadBlock(file, &nascentIB[m->_ibOffset], largeBlocksOffset + m->_sourceFileIBOffset, m->_sourceFileIBSize);
-            LoadBlock(file, &nascentVB[m->_vbOffset], largeBlocksOffset + m->_sourceFileVBOffset, m->_sourceFileVBSize);
-            for (unsigned s=0; s<PimplWithSkinning::SkinnedMesh::VertexStreams::Max; ++s) {
-                LoadBlock(file, &nascentVB[m->_extraVbOffset[s]], largeBlocksOffset + m->_sourceFileExtraVBOffset[s], m->_sourceFileExtraVBSize[s]);
-            }
+            for (auto u=workingBuffers._vbUploads.cbegin(); u!=workingBuffers._vbUploads.cend(); ++u)
+                LoadBlock(
+                    file, &nascentVB[u->_bufferDestination], 
+                    largeBlocksOffset + u->_sourceFileOffset, u->_size);
         }
 
             ////////////////////////////////////////////////////////////////////////
@@ -743,7 +747,13 @@ namespace RenderCore { namespace Assets
 
         auto& devContext = *context._context;
         devContext.Bind(_indexBuffer, Metal::NativeFormat::Enum(mesh->_indexFormat), mesh->_ibOffset);
-        devContext.Bind(ResourceList<Metal::VertexBuffer, 1>(std::make_tuple(std::ref(_vertexBuffer))), mesh->_vertexStride, mesh->_vbOffset);
+
+        const Metal::VertexBuffer* vbs[] = { &_vertexBuffer, &_vertexBuffer, &_vertexBuffer };
+        static_assert(dimof(vbs) == MaxVertexStreams, "Vertex buffer array size doesn't match vertex streams");
+        assert(mesh->_vertexStreamCount <= MaxVertexStreams);
+        devContext.Bind(
+            0, mesh->_vertexStreamCount, vbs,
+            mesh->_vertexStrides, mesh->_vbOffsets);
 
         return mesh->_techniqueInterface;
     }
@@ -779,13 +789,10 @@ namespace RenderCore { namespace Assets
         devContext.Bind(_indexBuffer, Metal::NativeFormat::Enum(cm->_indexFormat), cm->_ibOffset);
 
         auto animGeo = SkinnedMesh::VertexStreams::AnimatedGeo;
-        UINT strides[2], offsets[2];
-        ID3D::Buffer* underlyingVBs[2];
-        strides[0] = cm->_extraVbStride[animGeo];
-        offsets[0] = cm->_extraVbOffset[animGeo];
-        strides[1] = cm->_vertexStride;
-        offsets[1] = cm->_vbOffset;
-        underlyingVBs[0] = underlyingVBs[1] = _vertexBuffer.GetUnderlying();
+        UINT strides[] = { cm->_extraVbStride[animGeo], cm->_vertexStrides[0], cm->_vertexStrides[1], cm->_vertexStrides[2] };
+        UINT offsets[] = { cm->_extraVbOffset[animGeo], cm->_vbOffsets[0], cm->_vbOffsets[1], cm->_vbOffsets[2] };
+        ID3D::Buffer* underlyingVBs[] = { _vertexBuffer.GetUnderlying(), _vertexBuffer.GetUnderlying(), _vertexBuffer.GetUnderlying(), _vertexBuffer.GetUnderlying() };
+        static_assert(dimof(underlyingVBs) == (MaxVertexStreams+1), "underlyingVBs doesn't match MaxVertexStreams");
 
             //  If we have a prepared animation, we have to replace the bindings
             //  with the data from there.
@@ -824,7 +831,7 @@ namespace RenderCore { namespace Assets
     auto ModelRenderer::Pimpl::BuildMesh(
         const ModelCommandStream::GeoCall& geoInst,
         const RawGeometry& geo,
-        std::vector<VertexData*>& supplements,
+        IteratorRange<VertexData**> supplements,
         ModelConstruction::BuffersUnderConstruction& workingBuffers,
         SharedStateSet& sharedStateSet,
         const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
@@ -833,21 +840,42 @@ namespace RenderCore { namespace Assets
     {
         Mesh result;
         result._id = geoInst._geoId;
+
+            // Source file locators & vb/ib allocations
         result._indexFormat = geo._ib._format;
-        result._vertexStride = geo._vb._ia._vertexStride;
+        result._ibOffset = workingBuffers.AllocateIB(
+            geo._ib._size, Metal::NativeFormat::Enum(result._indexFormat));
+        workingBuffers._ibUploads.push_back(
+            PendingGeoUpload { geo._ib._offset, geo._ib._size, result._ibOffset });
 
-            // source file locators & vb/ib allocations
-        result._sourceFileIBOffset = geo._ib._offset;
-        result._sourceFileIBSize = geo._ib._size;
-        result._sourceFileVBOffset = geo._vb._offset;
-        result._sourceFileVBSize = geo._vb._size;
-        result._ibOffset = workingBuffers.AllocateIB(result._sourceFileIBSize, Metal::NativeFormat::Enum(result._indexFormat));
-        result._vbOffset = workingBuffers.AllocateVB(result._sourceFileVBSize);
+        result._vbOffsets[0] = workingBuffers.AllocateVB(geo._vb._size);
+        result._vertexStrides[0] = geo._vb._ia._vertexStride;
+        result._vertexStreamCount = 1;
+        workingBuffers._vbUploads.push_back(
+            PendingGeoUpload { geo._vb._offset, geo._vb._size, result._vbOffsets[0] });
 
-            // todo --  we also need to schedule vb upload from
-            //          supplements! That means extra vb offsets & sizes
+        #if defined(_DEBUG)
+            result._vbSize = geo._vb._size;
+            result._ibSize = geo._ib._size;
+        #endif
 
-            // build vertex input layout desc
+            // Also set up vertex data from the supplements
+            // (supplemental vertex data gets uploaded into the same vertex buffer)
+        unsigned s=0;
+        for (; s<supplements.size(); ++s) {
+            const auto& vb = *supplements[s];
+            result._vbOffsets[1+s] = workingBuffers.AllocateVB(vb._size);
+            result._vertexStrides[1+s] = vb._ia._vertexStride;
+            ++result._vertexStreamCount;
+            workingBuffers._vbUploads.push_back(
+                PendingGeoUpload { vb._offset, vb._size, result._vbOffsets[1+s] });
+        }
+        for (; s<MaxVertexStreams-1; ++s) {
+            result._vbOffsets[1+s] = 0;
+            result._vertexStrides[1+s] = 0;
+        }
+
+            // Build vertex input layout desc
         Metal::InputElementDesc inputDesc[12];
         unsigned vertexElementCount = BuildLowLevelInputAssembly(
             inputDesc, dimof(inputDesc), geo._vb._ia._elements);
@@ -856,7 +884,7 @@ namespace RenderCore { namespace Assets
                 &inputDesc[vertexElementCount], dimof(inputDesc) - vertexElementCount,
                 supplements[s]->_ia._elements, 1+s);
 
-            // setup the geo param box and the technique interface
+            // Setup the geo param box and the technique interface
             // from the vertex input layout
         result._geoParamBox = ModelConstruction::BuildGeoParamBox(
             Metal::InputLayout(inputDesc, vertexElementCount),
@@ -871,7 +899,7 @@ namespace RenderCore { namespace Assets
     auto ModelRenderer::PimplWithSkinning::BuildMesh(
         const ModelCommandStream::GeoCall& geoInst,
         const BoundSkinnedGeometry& geo,
-        std::vector<VertexData*>& supplements,
+        IteratorRange<VertexData**> supplements,
         ModelConstruction::BuffersUnderConstruction& workingBuffers,
         SharedStateSet& sharedStateSet,
         const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
@@ -1253,24 +1281,27 @@ namespace RenderCore { namespace Assets
             const auto& drawCallRes = renderer._pimpl->_drawCallRes[d->_drawCallIndex];
 
             if (currentMesh != d->_subMesh) {
+                const Pimpl::Mesh* mesh;
+                const Metal::VertexBuffer* vbs[] = { &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer };
+                static_assert(dimof(vbs) == (Pimpl::MaxVertexStreams+1), "Vertex buffer array size doesn't match vertex streams");
+
                 if (d->_topology > 0xff) {
-                    auto& mesh = *(const PimplWithSkinning::SkinnedMesh*)d->_subMesh;
-                    context._context->Bind(renderer._pimpl->_indexBuffer, Metal::NativeFormat::Enum(mesh._indexFormat), mesh._ibOffset);
-
-                    const Metal::VertexBuffer* vbs[] = { &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer };
-                    unsigned strides[] = { mesh._extraVbStride[0], mesh._vertexStride };
-                    unsigned offsets[] = { mesh._extraVbOffset[0], mesh._vbOffset };
-                    context._context->Bind(0, 2, vbs, strides, offsets);
-                    currentMesh = &mesh;
-
-                    currentTechniqueInterface = mesh._skinnedTechniqueInterface;
+                    auto& sknmesh = *(const PimplWithSkinning::SkinnedMesh*)d->_subMesh;
+                    unsigned strides[] = { sknmesh._extraVbStride[0], sknmesh._vertexStrides[0], sknmesh._vertexStrides[1], sknmesh._vertexStrides[2] };
+                    unsigned offsets[] = { sknmesh._extraVbOffset[0], sknmesh._vbOffsets[0], sknmesh._vbOffsets[1], sknmesh._vbOffsets[2] };
+                    assert(sknmesh._vertexStreamCount <= Pimpl::MaxVertexStreams);
+                    context._context->Bind(0, 1+sknmesh._vertexStreamCount, vbs, strides, offsets);
+                    mesh = &sknmesh;
                 } else {
-                    auto& mesh = *(const Pimpl::Mesh*)d->_subMesh;
-                    context._context->Bind(renderer._pimpl->_indexBuffer, Metal::NativeFormat::Enum(mesh._indexFormat), mesh._ibOffset);
-                    context._context->Bind(MakeResourceList(renderer._pimpl->_vertexBuffer), mesh._vertexStride, mesh._vbOffset);
-                    currentMesh = &mesh;
-                    currentTechniqueInterface = mesh._techniqueInterface;
+                    mesh = (const Pimpl::Mesh*)d->_subMesh;
+                    assert(mesh->_vertexStreamCount <= Pimpl::MaxVertexStreams);
+                    context._context->Bind(
+                        0, mesh->_vertexStreamCount, vbs,
+                        mesh->_vertexStrides, mesh->_vbOffsets);
                 }
+                context._context->Bind(renderer._pimpl->_indexBuffer, Metal::NativeFormat::Enum(mesh->_indexFormat), mesh->_ibOffset);
+                currentMesh = mesh;
+                currentTechniqueInterface = mesh->_techniqueInterface;
                 currentTextureSet = ~unsigned(0x0);
             }
 
@@ -1567,9 +1598,13 @@ namespace RenderCore { namespace Assets
             LogInfo
                 << "  [" << Width<3>(c) << "] (M)  |"
                 << Width<5>(m._id) << " |"
-                << Width<6>(m._sourceFileVBSize/1024) << "k |"
-                << Width<6>(m._sourceFileIBSize/1024) << "k |"
-                << Width<5>(m._vertexStride) << " |"
+                #if defined(_DEBUG)
+                    << Width<6>(m._vbSize/1024) << "k |"
+                    << Width<6>(m._ibSize/1024) << "k |"
+                #else
+                    << "      ? |      ? |"
+                #endif
+                << Width<5>(m._vertexStrides[0]) << " |"
                 << Width<5>(m._techniqueInterface.Value()) << " |"
                 << Width<5>(m._geoParamBox.Value()) << " |"
                 << Width<5>(m._indexFormat);
@@ -1579,9 +1614,13 @@ namespace RenderCore { namespace Assets
             LogInfo
                 << "  [" << Width<3>(c) << "] (S)  |"
                 << Width<5>(m._id) << " |"
-                << Width<6>(m._sourceFileVBSize/1024) << "k |"
-                << Width<6>(m._sourceFileIBSize/1024) << "k |"
-                << Width<5>(m._vertexStride) << " |"
+                #if defined(_DEBUG)
+                    << Width<6>(m._vbSize/1024) << "k |"
+                    << Width<6>(m._ibSize/1024) << "k |"
+                #else
+                    << "      ? |      ? |"
+                #endif
+                << Width<5>(m._vertexStrides[0]) << " |"
                 << Width<5>(m._techniqueInterface.Value()) << " |"
                 << Width<5>(m._geoParamBox.Value()) << " |"
                 << Width<5>(m._indexFormat);

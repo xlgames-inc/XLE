@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DeviceContext.h"
+#include "DeviceContextImpl.h"
 #include "InputLayout.h"
 #include "Shader.h"
 #include "State.h"
@@ -347,6 +348,10 @@ namespace RenderCore { namespace Metal_DX11
         }
         return nullptr;
     }
+
+    template void DeviceContext::Bind<1>(const ResourceList<VertexBuffer, 1>&, unsigned, unsigned);
+    template void DeviceContext::Bind<2>(const ResourceList<VertexBuffer, 2>&, unsigned, unsigned);
+    template void DeviceContext::Bind<3>(const ResourceList<VertexBuffer, 3>&, unsigned, unsigned);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

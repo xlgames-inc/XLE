@@ -99,6 +99,32 @@ namespace Utility
             }
             return searchEnd;
         }
+
+    template<typename Iterator>
+        class IteratorRange : public std::pair<Iterator, Iterator>
+        {
+        public:
+            Iterator begin()        { return first; }
+            Iterator end()          { return second; }
+            Iterator cbegin() const { return first; }
+            Iterator cend() const   { return second; }
+            size_t size() const     { return std::distance(first, second); }
+
+            decltype(*std::declval<Iterator>()) operator[](size_t index) const { return first[index]; }
+
+            template<typename Container>
+                IteratorRange(Container& container)
+                    : std::pair<Iterator, Iterator>(container.cbegin(), container.cend()) {}
+            IteratorRange() : std::pair<Iterator, Iterator>(nullptr, nullptr) {}
+            IteratorRange(const std::pair<Iterator, Iterator>& copyFrom) : std::pair<Iterator, Iterator>(copyFrom) {}
+            IteratorRange(Iterator f, Iterator s) : std::pair<Iterator, Iterator>(f, s) {}
+        };
+
+    template<typename Container>
+        IteratorRange<typename Container::value_type*> MakeIteratorRange(Container& c)
+        {
+            return IteratorRange<typename Container::value_type*>(AsPointer(c.begin()), AsPointer(c.end()));
+        }
 }
 
 using namespace Utility;

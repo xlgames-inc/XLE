@@ -152,6 +152,9 @@
     <ProjectReference Include="..\..\BufferUploads\Project\BufferUploads.vcxproj">
       <Project>{e4d5cfa9-07d2-5a61-9991-2186eb30f680}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\Foreign\FreeType\builds\windows\vc2010\freetype.vcxproj">
+      <Project>{78b079bd-9fc7-4b9e-b4a6-96da0f00248b}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\Foreign\Project\Foreign.vcxproj">
       <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
     </ProjectReference>
