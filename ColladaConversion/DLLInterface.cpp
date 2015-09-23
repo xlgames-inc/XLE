@@ -284,7 +284,7 @@ namespace RenderCore { namespace ColladaConversion
             serializer.SerializeSubBlock(
                 AsPointer(defaultPoseData._defaultTransforms.cbegin()), 
                 AsPointer(defaultPoseData._defaultTransforms.cend()));
-            serializer.SerializeValue(unsigned(defaultPoseData._defaultTransforms.size()));
+            serializer.SerializeValue(size_t(defaultPoseData._defaultTransforms.size()));
             ::Serialize(serializer, defaultPoseData._boundingBox.first);
             ::Serialize(serializer, defaultPoseData._boundingBox.second);
 

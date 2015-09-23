@@ -27,45 +27,30 @@ namespace RenderCore { namespace Assets
     {
     public:
         typedef unsigned TechniqueInterface;
+        typedef unsigned UnifiedBufferOffset;
+
         class Mesh
         {
         public:
+            unsigned _id;
+
+                // indices
+            UnifiedBufferOffset _ibOffset;
+            NativeFormatPlaceholder _indexFormat;
+
+                // vertices
+            UnifiedBufferOffset _vbOffset;
+            unsigned _vertexStride;
+
+                // geo params & technique interface
                 // each mesh within the model can have a different vertex input interface
                 //  (and so needs a different technique interface)
-            unsigned _id;
-            unsigned _vbOffset, _ibOffset;
-            unsigned _vertexStride;
-            NativeFormatPlaceholder _indexFormat;
             unsigned _geoParamBox;
             TechniqueInterface _techniqueInterface;
 
+                // used during upload
             unsigned _sourceFileVBOffset, _sourceFileVBSize;
             unsigned _sourceFileIBOffset, _sourceFileIBSize;
-        };
-
-        class SkinnedMesh : public Mesh
-        {
-        public:
-                //  Vertex data is separated into several "streams". 
-                //  These match the low level api streams.
-                //  The base class "Mesh" members contain the static geometry elements.
-
-            struct VertexStreams { enum Enum { AnimatedGeo, SkeletonBinding, Max }; };
-            unsigned    _extraVbOffset[VertexStreams::Max];
-            unsigned    _extraVbStride[VertexStreams::Max];
-            unsigned    _sourceFileExtraVBOffset[VertexStreams::Max];
-            unsigned    _sourceFileExtraVBSize[VertexStreams::Max];
-            TechniqueInterface    _skinnedTechniqueInterface;
-        };
-
-        class SkinnedMeshAnimBinding
-        {
-        public:
-            uint64      _iaAnimationHash;
-            const BoundSkinnedGeometry* _scaffold;
-
-            TechniqueInterface    _techniqueInterface;
-            unsigned    _vertexStride;
         };
 
         std::vector<const DeferredShaderResource*> _boundTextures;
@@ -97,20 +82,17 @@ namespace RenderCore { namespace Assets
         std::vector<DrawCallResources>   _drawCallRes;
 
         ///////////////////////////////////////////////////////////////////////////////
-        Metal::VertexBuffer         _vertexBuffer;
-        Metal::IndexBuffer          _indexBuffer;
-        std::vector<Mesh>           _meshes;
-        std::vector<SkinnedMesh>            _skinnedMeshes;
-        std::vector<SkinnedMeshAnimBinding> _skinnedBindings;
+        Metal::VertexBuffer                 _vertexBuffer;
+        Metal::IndexBuffer                  _indexBuffer;
+        std::vector<Mesh>                   _meshes;
         std::vector<Metal::ConstantBuffer>  _constantBuffers;
 
         ///////////////////////////////////////////////////////////////////////////////
         typedef std::pair<unsigned, DrawCallDesc> MeshAndDrawCall;
         std::vector<MeshAndDrawCall>    _drawCalls;
-        std::vector<MeshAndDrawCall>    _skinnedDrawCalls;
 
-        const ModelScaffold*  _scaffold;
-        unsigned        _levelOfDetail;
+        const ModelScaffold*    _scaffold;
+        unsigned                _levelOfDetail;
 
         ///////////////////////////////////////////////////////////////////////////////
         #if defined(_DEBUG)
@@ -133,14 +115,6 @@ namespace RenderCore { namespace Assets
             const Float4x4&         modelToWorld,
             unsigned                geoCallIndex) const;
 
-        TechniqueInterface BeginSkinCall(
-            const ModelRendererContext&     context,
-            Metal::ConstantBuffer&  localTransformBuffer,
-            const MeshToModel&      transforms,
-            const Float4x4&         modelToWorld,
-            unsigned                geoCallIndex,
-            PreparedAnimation*      preparedAnimation) const;
-
         void ApplyBoundUnforms(
             const ModelRendererContext&     context,
             Metal::BoundUniforms&           boundUniforms,
@@ -148,14 +122,9 @@ namespace RenderCore { namespace Assets
             unsigned                        constantsIndex,
             const Metal::ConstantBuffer*    cbs[2]);
 
-        void BuildSkinnedBuffer(
-            Metal::DeviceContext*   context,
-            const SkinnedMesh&      mesh,
-            const SkinnedMeshAnimBinding& preparedAnimBinding, 
-            const Float4x4          transformationMachineResult[],
-            const SkeletonBinding&  skeletonBinding,
-            Metal::VertexBuffer&    outputResult,
-            unsigned                outputOffset) const;
+    ///////////////////////////////////////////////////////////////////////////////
+        //   B U I L D I N G   A N D   I N I T I A L I Z A T I O N   //
+    ///////////////////////////////////////////////////////////////////////////////
 
         static auto BuildMesh(
             const ModelCommandStream::GeoCall& geoInst,
@@ -166,6 +135,60 @@ namespace RenderCore { namespace Assets
             const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
             ModelConstruction::ParamBoxDescriptions& paramBoxDesc,
             bool normalFromSkinning = false) -> Mesh;
+    };
+
+    class ModelRenderer::PimplWithSkinning : public Pimpl
+    {
+    public:
+        class SkinnedMesh : public Mesh
+        {
+        public:
+                //  Vertex data is separated into several "streams". 
+                //  These match the low level api streams.
+                //  The base class "Mesh" members contain the static geometry elements.
+
+            struct VertexStreams { enum Enum { AnimatedGeo, SkeletonBinding, Max }; };
+            UnifiedBufferOffset     _extraVbOffset[VertexStreams::Max];
+            unsigned                _extraVbStride[VertexStreams::Max];
+            UnifiedBufferOffset     _sourceFileExtraVBOffset[VertexStreams::Max];
+            unsigned                _sourceFileExtraVBSize[VertexStreams::Max];
+            TechniqueInterface      _skinnedTechniqueInterface;
+        };
+
+        class SkinnedMeshAnimBinding
+        {
+        public:
+            uint64      _iaAnimationHash;
+            const BoundSkinnedGeometry* _scaffold;
+
+            TechniqueInterface  _techniqueInterface;
+            unsigned            _vertexStride;
+        };
+
+        std::vector<SkinnedMesh>            _skinnedMeshes;
+        std::vector<SkinnedMeshAnimBinding> _skinnedBindings;
+        std::vector<MeshAndDrawCall>        _skinnedDrawCalls;
+
+        TechniqueInterface BeginSkinCall(
+            const ModelRendererContext&     context,
+            Metal::ConstantBuffer&  localTransformBuffer,
+            const MeshToModel&      transforms,
+            const Float4x4&         modelToWorld,
+            unsigned                geoCallIndex,
+            PreparedAnimation*      preparedAnimation) const;
+
+    ///////////////////////////////////////////////////////////////////////////////
+        //   B U I L D I N G   A N D   I N I T I A L I Z A T I O N   //
+    ///////////////////////////////////////////////////////////////////////////////
+
+        void BuildSkinnedBuffer(
+            Metal::DeviceContext*   context,
+            const SkinnedMesh&      mesh,
+            const SkinnedMeshAnimBinding& preparedAnimBinding, 
+            const Float4x4          transformationMachineResult[],
+            const SkeletonBinding&  skeletonBinding,
+            Metal::VertexBuffer&    outputResult,
+            unsigned                outputOffset) const;
 
         static auto BuildMesh(
             const ModelCommandStream::GeoCall& geoInst,
@@ -190,6 +213,10 @@ namespace RenderCore { namespace Assets
             Metal::InputElementDesc dst[],
             unsigned dstCount,
             const BoundSkinnedGeometry& scaffoldGeo);
+
+        ///////////////////////////////////////////////////////////////////////////////
+            //   S K I N N I N G   S E T U P   //
+        ///////////////////////////////////////////////////////////////////////////////
 
         void StartBuildingSkinning(Metal::DeviceContext& context, SkinningBindingBox& bindingBox) const;
         void EndBuildingSkinning(Metal::DeviceContext& context) const;

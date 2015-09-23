@@ -228,7 +228,8 @@ namespace RenderCore { namespace Assets
         ~ModelRenderer();
     protected:
         class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
+        class PimplWithSkinning;
+        std::unique_ptr<PimplWithSkinning> _pimpl;
 
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
 

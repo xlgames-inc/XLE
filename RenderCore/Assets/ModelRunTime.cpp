@@ -552,9 +552,9 @@ namespace RenderCore { namespace Assets
 
             ////////////////////////////////////////////////////////////////////////
                 //          s k i n n e d   g e o                           //
-        std::vector<Pimpl::SkinnedMesh> skinnedMeshes;
+        std::vector<PimplWithSkinning::SkinnedMesh> skinnedMeshes;
         std::vector<Pimpl::MeshAndDrawCall> skinnedDrawCalls;
-        std::vector<Pimpl::SkinnedMeshAnimBinding> skinnedBindings;
+        std::vector<PimplWithSkinning::SkinnedMeshAnimBinding> skinnedBindings;
 
         for (unsigned gi=0; gi<skinCallCount; ++gi) {
             auto& geoInst = cmdStream.GetSkinCall(gi);
@@ -567,15 +567,15 @@ namespace RenderCore { namespace Assets
             if (!AtLeastOneValidDrawCall(geo, scaffold, unsigned(geoCallCount + gi), materialResources)) { continue; }
 
                 // if we encounter the same mesh multiple times, we don't need to store it every time
-            auto mesh = FindIf(skinnedMeshes, [=](const Pimpl::SkinnedMesh& mesh) { return mesh._id == geoInst._geoId; });
+            auto mesh = FindIf(skinnedMeshes, [=](const PimplWithSkinning::SkinnedMesh& mesh) { return mesh._id == geoInst._geoId; });
             if (mesh == skinnedMeshes.end()) {
                 FindSupplementGeo(supplementGeo, supplements, unsigned(meshData._geoCount) + geoInst._geoId);
                 skinnedMeshes.push_back(
-                    Pimpl::BuildMesh(geoInst, geo, supplementGeo, workingBuffers, sharedStateSet, 
+                    PimplWithSkinning::BuildMesh(geoInst, geo, supplementGeo, workingBuffers, sharedStateSet, 
                         AsPointer(textureBindPoints.cbegin()), (unsigned)textureBindPoints.size(),
                         paramBoxDesc));
                 skinnedBindings.push_back(
-                    Pimpl::BuildAnimBinding(
+                    PimplWithSkinning::BuildAnimBinding(
                         geoInst, geo, sharedStateSet, 
                         AsPointer(textureBindPoints.cbegin()), (unsigned)textureBindPoints.size()));
 
@@ -625,7 +625,7 @@ namespace RenderCore { namespace Assets
         for (auto m=skinnedMeshes.begin(); m!=skinnedMeshes.end(); ++m) {
             LoadBlock(file, &nascentIB[m->_ibOffset], largeBlocksOffset + m->_sourceFileIBOffset, m->_sourceFileIBSize);
             LoadBlock(file, &nascentVB[m->_vbOffset], largeBlocksOffset + m->_sourceFileVBOffset, m->_sourceFileVBSize);
-            for (unsigned s=0; s<Pimpl::SkinnedMesh::VertexStreams::Max; ++s) {
+            for (unsigned s=0; s<PimplWithSkinning::SkinnedMesh::VertexStreams::Max; ++s) {
                 LoadBlock(file, &nascentVB[m->_extraVbOffset[s]], largeBlocksOffset + m->_sourceFileExtraVBOffset[s], m->_sourceFileExtraVBSize[s]);
             }
         }
@@ -657,7 +657,7 @@ namespace RenderCore { namespace Assets
         ::Assets::RegisterAssetDependency(_validationCallback, cbLayout.GetDependencyValidation());
         for (const auto& t:boundTextures) if (t) ::Assets::RegisterAssetDependency(_validationCallback, t->GetDependencyValidation());       // rebuild the entire renderer if any texture changes
 
-        auto pimpl = std::make_unique<Pimpl>();
+        auto pimpl = std::make_unique<PimplWithSkinning>();
 
         pimpl->_vertexBuffer = std::move(vb);
         pimpl->_indexBuffer = std::move(ib);
@@ -748,7 +748,7 @@ namespace RenderCore { namespace Assets
         return mesh->_techniqueInterface;
     }
 
-    auto ModelRenderer::Pimpl::BeginSkinCall(
+    auto ModelRenderer::PimplWithSkinning::BeginSkinCall(
         const ModelRendererContext& context,
         Metal::ConstantBuffer&      localTransformBuffer,
         const MeshToModel&          transforms,
@@ -769,7 +769,7 @@ namespace RenderCore { namespace Assets
             localTransformBuffer.Update(*context._context, &trans, sizeof(trans));
         }
 
-        auto cm = FindIf(_skinnedMeshes, [=](const Pimpl::SkinnedMesh& mesh) { return mesh._id == geoCall._geoId; });
+        auto cm = FindIf(_skinnedMeshes, [=](const PimplWithSkinning::SkinnedMesh& mesh) { return mesh._id == geoCall._geoId; });
         assert(cm != _skinnedMeshes.end());
         auto meshIndex = std::distance(_skinnedMeshes.cbegin(), cm);
 
@@ -868,7 +868,7 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    auto ModelRenderer::Pimpl::BuildMesh(
+    auto ModelRenderer::PimplWithSkinning::BuildMesh(
         const ModelCommandStream::GeoCall& geoInst,
         const BoundSkinnedGeometry& geo,
         std::vector<VertexData*>& supplements,
@@ -882,14 +882,14 @@ namespace RenderCore { namespace Assets
             //  (there a sort-of "slice" here... It's a bit of a hack)
 
         bool skinnedNormal = ModelConstruction::HasElement(geo._animatedVertexElements._ia, "NORMAL");
-        Pimpl::SkinnedMesh result;
-        (Pimpl::Mesh&)result = BuildMesh(
+        PimplWithSkinning::SkinnedMesh result;
+        (Mesh&)result = Pimpl::BuildMesh(
             geoInst, (const RawGeometry&)geo, supplements, workingBuffers, sharedStateSet,
             textureBindPoints, textureBindPointsCnt,
             paramBoxDesc, skinnedNormal);
 
-        auto animGeo = Pimpl::SkinnedMesh::VertexStreams::AnimatedGeo;
-        auto skelBind = Pimpl::SkinnedMesh::VertexStreams::SkeletonBinding;
+        auto animGeo = PimplWithSkinning::SkinnedMesh::VertexStreams::AnimatedGeo;
+        auto skelBind = PimplWithSkinning::SkinnedMesh::VertexStreams::SkeletonBinding;
         const VertexData* vd[2];
         vd[animGeo] = &geo._animatedVertexElements;
         vd[skelBind] = &geo._skeletonBinding;
@@ -1252,7 +1252,7 @@ namespace RenderCore { namespace Assets
 
             if (currentMesh != d->_subMesh) {
                 if (d->_topology > 0xff) {
-                    auto& mesh = *(const Pimpl::SkinnedMesh*)d->_subMesh;
+                    auto& mesh = *(const PimplWithSkinning::SkinnedMesh*)d->_subMesh;
                     context._context->Bind(renderer._pimpl->_indexBuffer, Metal::NativeFormat::Enum(mesh._indexFormat), mesh._ibOffset);
 
                     const Metal::VertexBuffer* vbs[] = { &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer };

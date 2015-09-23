@@ -273,7 +273,7 @@ namespace RenderCore { namespace Assets
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void ModelRenderer::Pimpl::StartBuildingSkinning(
+    void ModelRenderer::PimplWithSkinning::StartBuildingSkinning(
         Metal::DeviceContext& context, SkinningBindingBox& bindingBox) const
     {
         context.Bind(bindingBox._boundInputLayout);
@@ -283,7 +283,7 @@ namespace RenderCore { namespace Assets
         context.Bind(Metal::Topology::PointList);
     }
 
-    void ModelRenderer::Pimpl::EndBuildingSkinning(Metal::DeviceContext& context) const
+    void ModelRenderer::PimplWithSkinning::EndBuildingSkinning(Metal::DeviceContext& context) const
     {
         context.GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
         context.Unbind<Metal::GeometryShader>();
@@ -354,7 +354,7 @@ namespace RenderCore { namespace Assets
     static TBufferTemporaryTexture AllocateNewTBufferTemporaryTexture(const void* bufferData, size_t bufferSize);
     static void PushTBufferTemporaryTexture(Metal::DeviceContext* context, TBufferTemporaryTexture& tex);
 
-    void ModelRenderer::Pimpl::InitialiseSkinningVertexAssembly(
+    void ModelRenderer::PimplWithSkinning::InitialiseSkinningVertexAssembly(
         uint64 inputAssemblyHash,
         const BoundSkinnedGeometry& scaffoldGeo)
     {
@@ -406,7 +406,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    unsigned ModelRenderer::Pimpl::BuildPostSkinInputAssembly(
+    unsigned ModelRenderer::PimplWithSkinning::BuildPostSkinInputAssembly(
         Metal::InputElementDesc dst[], unsigned dstCount,
         const BoundSkinnedGeometry& scaffoldGeo)
     {
@@ -433,7 +433,7 @@ namespace RenderCore { namespace Assets
         return eleCount;
     }
 
-    auto ModelRenderer::Pimpl::BuildAnimBinding(
+    auto ModelRenderer::PimplWithSkinning::BuildAnimBinding(
         const ModelCommandStream::GeoCall& geoInst,
         const BoundSkinnedGeometry& geo,
         SharedStateSet& sharedStateSet,
@@ -451,7 +451,7 @@ namespace RenderCore { namespace Assets
 
         Metal::InputElementDesc inputDescForRender[12];
         auto vertexElementForRenderCount = 
-            Pimpl::BuildPostSkinInputAssembly(
+            PimplWithSkinning::BuildPostSkinInputAssembly(
                 inputDescForRender, dimof(inputDescForRender), geo);
 
         result._techniqueInterface = 
@@ -468,7 +468,7 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    void ModelRenderer::Pimpl::BuildSkinnedBuffer(  
+    void ModelRenderer::PimplWithSkinning::BuildSkinnedBuffer(  
                 Metal::DeviceContext*       context,
                 const SkinnedMesh&          mesh,
                 const SkinnedMeshAnimBinding& preparedAnimBinding, 
@@ -642,7 +642,7 @@ namespace RenderCore { namespace Assets
         for (auto m=_pimpl->_skinnedMeshes.cbegin(); m!=_pimpl->_skinnedMeshes.cend(); ++m, ++b) {
             offsets.push_back(vbSize);
 
-            const auto stream = Pimpl::SkinnedMesh::VertexStreams::AnimatedGeo;
+            const auto stream = PimplWithSkinning::SkinnedMesh::VertexStreams::AnimatedGeo;
             unsigned size =     // (size post conversion might not be the same as the input data)
                 m->_sourceFileExtraVBSize[stream] / m->_extraVbStride[stream] * b->_vertexStride;
             vbSize += size;
