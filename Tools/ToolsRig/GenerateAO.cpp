@@ -28,6 +28,15 @@
 #include "../../Math/Transformations.h"
 #include "../../Math/ProjectionMath.h"
 
+#include "../../Assets/ChunkFile.h"
+#include "../../ConsoleRig/AttachableLibrary.h"
+#include "../../RenderCore/Assets/AssetUtils.h"
+
+namespace RenderCore { 
+    extern char VersionString[];
+    extern char BuildDateString[];
+}
+
 namespace ToolsRig
 {
     using namespace RenderCore;
@@ -63,7 +72,7 @@ namespace ToolsRig
         float nearClip, float farClip);
 
     float AoGen::CalculateSkyDomeOcclusion(
-        Metal::DeviceContext& metalContext,
+        RenderCore::IThreadContext& threadContext,
         const ModelRenderer& renderer,
         RenderCore::Assets::SharedStateSet& sharedStates,
         const RenderCore::Assets::MeshToModel& meshToModel,
@@ -104,6 +113,8 @@ namespace ToolsRig
             //  -- and, after all, we are rendering a kind of shadow
             //
 
+        auto metalContextPtr = Metal::DeviceContext::Get(threadContext);
+        auto& metalContext = *metalContextPtr;
         SceneEngine::SavedTargets savedTargets(&metalContext);
 
         metalContext.Clear(_pimpl->_cubeDSV, 1.f, 0u);
@@ -232,9 +243,31 @@ namespace ToolsRig
         return _pimpl->_depVal;
     }
 
+    std::vector<unsigned> GetGeoList(const RenderCore::Assets::ModelImmutableData& immData)
+    {
+        std::vector<unsigned> result;
+        const auto& cmdStream = immData._visualScene;
+        for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
+            const auto& geoCall = cmdStream.GetGeoCall(c);
+            result.push_back(geoCall._geoId);
+        }
+
+            // remove duplicates
+        std::sort(result.begin(), result.end());
+        auto newEnd = std::unique(result.begin(), result.end());
+        result.erase(newEnd, result.end());
+
+        return std::move(result);
+    }
+    
+    static void WriteSupplementalModel(
+        const ::Assets::ResChar destinationFile[],
+        IteratorRange<std::pair<unsigned, MeshDatabase>*> meshes,
+        const NativeVBSettings& nativeVbSettings);
 
     void CalculateVertexAO(
         RenderCore::IThreadContext& threadContext,
+        const ::Assets::ResChar destinationFile[],
         AoGen& gen,
         const RenderCore::Assets::ModelScaffold& model,
         const RenderCore::Assets::MaterialScaffold& material,
@@ -280,136 +313,221 @@ namespace ToolsRig
             // We're going to be use a ModelRenderer to do the rendering
             // for calculating the AO -- so we have to create that now.
         SharedStateSet sharedStates;
-        auto metalContext = Metal::DeviceContext::Get(threadContext);
         auto renderer = std::make_unique<ModelRenderer>(
             model, material, ModelRenderer::Supplements(), sharedStates, searchRules);
+
+            // we need to stall while pending...
+        auto& asyncMan = ::Assets::Services::GetAsyncMan();
+        auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
+        for (;;) {
+            auto state = renderer->TryResolve();
+            if (state == ::Assets::AssetState::Ready) break;
+            if (state == ::Assets::AssetState::Invalid)
+                Throw(::Assets::Exceptions::InvalidAsset(model.Filename().c_str(), "Got invalid asset while performing AO gen"));
+            
+                // stall...!
+            asyncMan.Update();
+            bufferUploads.Update(threadContext);
+        }
+
         RenderCore::Assets::MeshToModel meshToModel(model);
 
             // We're going to be reading the vertex data directly from the
             // file on disk. We'll use a memory mapped file to access that
             // so we need to open that now...
-        MemoryMappedFile file(model.Filename().c_str(), 0ull, MemoryMappedFile::Access::Read);
+        std::vector<std::pair<unsigned, MeshDatabase>> meshes;
+        
+        {
+            MemoryMappedFile file(model.Filename().c_str(), 0ull, MemoryMappedFile::Access::Read);
 
-        const auto& cmdStream = model.CommandStream();
-        const auto& immData = model.ImmutableData();
-        for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
-            const auto& geoCall = cmdStream.GetGeoCall(c);
-            
-            auto& rawGeo = immData._geos[geoCall._geoId];
+            const auto& immData = model.ImmutableData();
+            auto geoIndicies = GetGeoList(immData);
+            for (auto c=geoIndicies.cbegin(); c!=geoIndicies.cend(); ++c) {
+                auto& rawGeo = immData._geos[*c];
+                if (rawGeo._drawCalls.empty() || rawGeo._vb._size==0 || rawGeo._vb._ia._vertexStride==0) continue;
 
-            auto vbStart = model.LargeBlocksOffset() + rawGeo._vb._offset;
-            auto vbEnd = vbStart + rawGeo._vb._size;
-            auto vertexCount = rawGeo._vb._size / rawGeo._vb._ia._vertexStride;
+                auto vbStart = model.LargeBlocksOffset() + rawGeo._vb._offset;
+                auto vbEnd = vbStart + rawGeo._vb._size;
+                auto vertexCount = rawGeo._vb._size / rawGeo._vb._ia._vertexStride;
 
-            MeshDatabase mesh;
+                MeshDatabase mesh;
 
-                // Material & index buffer are irrelevant.
-                // Find the normal and position streams, and add to
-                // our mesh database adapter.
-            const auto& vbIA = rawGeo._vb._ia;
-            for (unsigned e=0; e<unsigned(vbIA._elements.size()); ++e) {
-                const auto& ele = vbIA._elements[c];
-                if (    (XlEqStringI(ele._semanticName, "POSITION") && ele._semanticIndex == 0)
-                    ||  (XlEqStringI(ele._semanticName, "NORMAL") && ele._semanticIndex == 0)) {
+                    // Material & index buffer are irrelevant.
+                    // Find the normal and position streams, and add to
+                    // our mesh database adapter.
+                const auto& vbIA = rawGeo._vb._ia;
+                for (unsigned e=0; e<unsigned(vbIA._elements.size()); ++e) {
+                    const auto& ele = vbIA._elements[e];
+                    if (    (XlEqStringI(ele._semanticName, "POSITION") && ele._semanticIndex == 0)
+                        ||  (XlEqStringI(ele._semanticName, "NORMAL") && ele._semanticIndex == 0)) {
 
-                    auto rawSource = CreateRawDataSource(
-                        PtrAdd(file.GetData(), vbStart + ele._alignedByteOffset),
-                        PtrAdd(file.GetData(), vbEnd),
-                        vertexCount, vbIA._vertexStride, 
-                        Metal::NativeFormat::Enum(ele._nativeFormat));
+                        auto rawSource = CreateRawDataSource(
+                            PtrAdd(file.GetData(), vbStart + ele._alignedByteOffset),
+                            PtrAdd(file.GetData(), vbEnd),
+                            vertexCount, vbIA._vertexStride, 
+                            Metal::NativeFormat::Enum(ele._nativeFormat));
 
-                    mesh.AddStream(
-                        std::move(rawSource),
-                        std::vector<unsigned>(),
-                        vbIA._elements[c]._semanticName, vbIA._elements[c]._semanticIndex);
+                        mesh.AddStream(
+                            std::move(rawSource),
+                            std::vector<unsigned>(),
+                            vbIA._elements[e]._semanticName, vbIA._elements[e]._semanticIndex);
+                    }
                 }
-            }
 
-            auto posElement = mesh.FindElement("POSITION");
-            if (posElement == ~0u) {
-                LogWarning << "No vertex positions found in mesh! Cannot calculate AO for this mesh.";
-                continue;
-            }
+                auto posElement = mesh.FindElement("POSITION");
+                if (posElement == ~0u) {
+                    LogWarning << "No vertex positions found in mesh! Cannot calculate AO for this mesh.";
+                    continue;
+                }
 
-                // Compress the positions stream so that identical positions are
-                // combined into one. 
-                // Once that is done, we need to be able to find all of the normals
-                // associated with each point.
+                    // Compress the positions stream so that identical positions are
+                    // combined into one. 
+                    // Once that is done, we need to be able to find all of the normals
+                    // associated with each point.
 
-            const auto& stream = mesh.GetStream(posElement);
-            std::vector<unsigned> remapping;
-            auto newSource = RemoveDuplicates(
-                remapping, stream.GetSourceData(), 
-                stream.GetVertexMap(), duplicatesThreshold);
+                const auto& stream = mesh.GetStream(posElement);
+                std::vector<unsigned> remapping;
+                auto newSource = RemoveDuplicates(
+                    remapping, stream.GetSourceData(), 
+                    stream.GetVertexMap(), duplicatesThreshold);
 
-            mesh.RemoveStream(posElement);
-            posElement = mesh.AddStream(newSource, std::move(remapping), "POSITION", 0);
+                mesh.RemoveStream(posElement);
+                posElement = mesh.AddStream(newSource, std::move(remapping), "POSITION", 0);
 
-            auto nEle = mesh.FindElement("NORMAL");
-            if (nEle == ~0u) {
-                LogWarning << "No vertex normals found in mesh! Cannot calculate AO for this mesh.";
-                continue;
-            }
+                auto nEle = mesh.FindElement("NORMAL");
+                if (nEle == ~0u) {
+                    LogWarning << "No vertex normals found in mesh! Cannot calculate AO for this mesh.";
+                    continue;
+                }
 
-            const auto& pStream = mesh.GetStream(posElement);
-            const auto& nStream = mesh.GetStream(nEle);
-            std::vector<std::pair<unsigned, unsigned>> pn;
-            pn.reserve(mesh.GetUnifiedVertexCount());
-            for (unsigned c=0; c<mesh.GetUnifiedVertexCount(); ++c)
-                pn.push_back(
-                    std::make_pair(pStream.GetVertexMap()[c], nStream.GetVertexMap()[c]));
+                const auto& pStream = mesh.GetStream(posElement);
+                const auto& nStream = mesh.GetStream(nEle);
+                std::vector<std::pair<unsigned, unsigned>> pn;
+                pn.reserve(mesh.GetUnifiedVertexCount());
+                for (unsigned q=0; q<mesh.GetUnifiedVertexCount(); ++q)
+                    pn.push_back(
+                        std::make_pair(pStream.UnifiedToStream(q), nStream.UnifiedToStream(q)));
             
-                // sort by position index
-            std::sort(pn.begin(), pn.end(), CompareFirst<unsigned, unsigned>());
+                    // sort by position index
+                std::sort(pn.begin(), pn.end(), CompareFirst<unsigned, unsigned>());
 
-                // find the final sample points
-            std::vector<Float3> samplePoints;
-            samplePoints.resize(pStream.GetSourceData().GetCount(), Float3(FLT_MAX, FLT_MAX, FLT_MAX));
+                    // find the final sample points
+                std::vector<Float3> samplePoints;
+                samplePoints.resize(pStream.GetSourceData().GetCount(), Float3(FLT_MAX, FLT_MAX, FLT_MAX));
 
-            for (auto p=pn.cbegin(); p!=pn.cend();) {
-                auto p2 = p+1;
-                while (p2!=pn.cend() && p2->first == p->first) ++p2;
+                for (auto p=pn.cbegin(); p!=pn.cend();) {
+                    auto p2 = p+1;
+                    while (p2!=pn.cend() && p2->first == p->first) ++p2;
 
-                auto n = Zero<Float3>();
-                for (auto q=p; q<p2; ++q)
-                    n += GetVertex<Float3>(nStream.GetSourceData(), q->second);
-                n = Normalize(n);
+                    auto n = Zero<Float3>();
+                    for (auto q=p; q<p2; ++q)
+                        n += GetVertex<Float3>(nStream.GetSourceData(), q->second);
+                    n = Normalize(n);
 
-                auto baseSamplePoint = GetVertex<Float3>(pStream.GetSourceData(), p->first);
-                auto samplePoint = baseSamplePoint + normalsPushOut * n;
-                samplePoints[p->first] = samplePoint;
+                    auto baseSamplePoint = GetVertex<Float3>(pStream.GetSourceData(), p->first);
+                    auto samplePoint = baseSamplePoint + normalsPushOut * n;
+                    samplePoints[p->first] = samplePoint;
 
-                p2 = p;
-            }
+                    p = p2;
+                }
 
-                // Now we can actually perform the AO 
-                // calculation to generate the final occlusion values
-                // This should be the most expensive part.
-            std::vector<uint8> aoValues;
-            aoValues.reserve(samplePoints.size());
+                    // Now we can actually perform the AO 
+                    // calculation to generate the final occlusion values
+                    // This should be the most expensive part.
+                std::vector<uint8> aoValues;
+                aoValues.reserve(samplePoints.size());
             
-            for (auto p=samplePoints.cbegin(); p!=samplePoints.cend(); ++p) {
-                float skyDomeOcc = 
-                    gen.CalculateSkyDomeOcclusion(
-                        *metalContext, 
-                        *renderer, sharedStates, meshToModel,
-                        *p);
-                auto finalValue = (uint8)Clamp(skyDomeOcc * float(0xff), 0.f, float(0xff));
-                aoValues.push_back(finalValue);
+                LogInfo << "Starting AO gen of " << samplePoints.size() << " pts";
+                for (size_t p=0; p!=samplePoints.size(); ++p) {
+                    float skyDomeOcc =
+                        gen.CalculateSkyDomeOcclusion(
+                            threadContext, 
+                            *renderer, sharedStates, meshToModel,
+                            samplePoints[p]);
+                    auto finalValue = (uint8)Clamp(skyDomeOcc * float(0xff), 0.f, float(0xff));
+                    aoValues.push_back(finalValue);
+
+                    if ((p % 100)==0)
+                        LogInfo << "Generated " << p << "/" << samplePoints.size() << " AO sample points";
+                }
+                LogInfo << "Finished AO gen";
+
+                    // Note that when we using the vertex map here, it should 
+                    // guaranteed us a final VB that matches the vertices from the input
+                MeshDatabase meshSupp;
+                meshSupp.AddStream(
+                    CreateRawDataSource(
+                        std::move(aoValues),
+                        samplePoints.size(), sizeof(uint8),
+                        Metal::NativeFormat::R8_UNORM),
+                    std::vector<unsigned>(pStream.GetVertexMap()), // shares the same vertex map
+                    "PER_VERTEX_AO", 0);
+
+                meshes.push_back(std::make_pair(*c, std::move(meshSupp)));
             }
-
-            auto aoSource = CreateRawDataSource(
-                std::move(aoValues),
-                samplePoints.size(), sizeof(uint8),
-                Metal::NativeFormat::R8_UNORM);
-            mesh.AddStream(
-                aoSource, 
-                std::vector<unsigned>(pStream.GetVertexMap()), // shares the same vertex map
-                "AMBIENTOCCLUSION", 0);
-
         }
+
+        // Now we have a list of meshes containing supplemental vertex streams
+        // we need to write these to a ModelSupplementImmutableData asset
+
+        WriteSupplementalModel(destinationFile, MakeIteratorRange(meshes), NativeVBSettings { true });
     }
 
+    static void WriteSupplementalModel(
+        const ::Assets::ResChar destinationFile[],
+        IteratorRange<std::pair<unsigned, MeshDatabase>*> meshes,
+        const NativeVBSettings& nativeVbSettings)
+    {
+        std::vector<uint8> largeResourcesChunk;
+        std::unique_ptr<uint8[]> scaffoldChunk;
+        size_t scaffoldChunkSize = 0;
+
+        {
+            Serialization::NascentBlockSerializer suppArray;
+            for (auto m=meshes.begin(); m!=meshes.end(); ++m) {
+                ::Serialize(suppArray, m->first);
+
+                NativeVBLayout vbLayout = BuildDefaultLayout(m->second, nativeVbSettings);
+                auto nativeVB = m->second.BuildNativeVertexBuffer(vbLayout);
+
+                auto vbOffset = largeResourcesChunk.size();
+                auto vbSize = nativeVB.size();
+                largeResourcesChunk.insert(largeResourcesChunk.end(), nativeVB.begin(), nativeVB.end());
+
+                auto inputAssembly = RenderCore::Assets::CreateGeoInputAssembly(
+                    vbLayout._elements, (unsigned)vbLayout._vertexStride);
+                ::Serialize(
+                    suppArray, 
+                    RenderCore::Assets::VertexData { inputAssembly, unsigned(vbOffset), unsigned(vbSize) });
+            }
+
+            Serialization::NascentBlockSerializer supplementImmutableData;
+            supplementImmutableData.SerializeSubBlock(suppArray);
+            ::Serialize(supplementImmutableData, size_t(meshes.size()));
+
+            scaffoldChunk = supplementImmutableData.AsMemoryBlock();
+            scaffoldChunkSize = supplementImmutableData.Size();
+        }
+    
+        {
+            using namespace Serialization::ChunkFile;
+            SimpleChunkFileWriter file(
+                2, RenderCore::VersionString, RenderCore::BuildDateString,
+                std::make_tuple(destinationFile, "wb", 0));
+
+            file.BeginChunk(
+                RenderCore::Assets::ChunkType_ModelScaffold, 
+                0, "AOSupplement");
+            file.Write(scaffoldChunk.get(), scaffoldChunkSize, 1);
+            file.FinishCurrentChunk();
+
+            file.BeginChunk(
+                RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, 
+                0, "AOSupplement");
+            file.Write(AsPointer(largeResourcesChunk.cbegin()), largeResourcesChunk.size(), 1);
+            file.FinishCurrentChunk();
+        }
+    }
 
 
     static void SetupCubeMapShadowProjection(

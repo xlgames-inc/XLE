@@ -85,6 +85,13 @@ struct VSInput //////////////////////////////////////////////////////
         // float4 instanceOffset : INSTANCE_OFFSET;
         uint instanceId : SV_InstanceID;
     #endif
+
+    #if GEO_HAS_PER_VERTEX_AO
+        float ambientOcclusion : PER_VERTEX_AO;
+        #if !defined(OUTPUT_PER_VERTEX_AO)
+            #define OUTPUT_PER_VERTEX_AO 1
+        #endif
+    #endif
 }; //////////////////////////////////////////////////////////////////
 
 #if (MAT_DO_PARTICLE_LIGHTING==1) && (GEO_HAS_TEXCOORD==1) && (RES_HAS_NormalsTexture==1)

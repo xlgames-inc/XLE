@@ -12,26 +12,6 @@
 
 namespace RenderCore { namespace ColladaConversion
 {
-    GeoInputAssembly CreateGeoInputAssembly(   
-        const std::vector<Metal::InputElementDesc>& vertexInputLayout,
-        unsigned vertexStride)
-    { 
-        GeoInputAssembly result;
-        result._vertexStride = vertexStride;
-        result._elements.reserve(vertexInputLayout.size());
-        for (auto i=vertexInputLayout.begin(); i!=vertexInputLayout.end(); ++i) {
-            RenderCore::Assets::VertexElement ele;
-            XlZeroMemory(ele);     // make sure unused space is 0
-            XlCopyNString(ele._semanticName, AsPointer(i->_semanticName.begin()), i->_semanticName.size());
-            ele._semanticName[dimof(ele._semanticName)-1] = '\0';
-            ele._semanticIndex = i->_semanticIndex;
-            ele._nativeFormat = i->_nativeFormat;
-            ele._alignedByteOffset = i->_alignedByteOffset;
-            result._elements.push_back(ele);
-        }
-        return std::move(result);
-    }
-
     NascentRawGeometry::NascentRawGeometry(
         DynamicArray<uint8>&&       vb,
         DynamicArray<uint8>&&       ib,

@@ -208,6 +208,8 @@ namespace RenderCore { namespace Assets
             if (HasElement(ia, "TEXBITANGENT"))    { geoParameters.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1); }
             if (HasElement(ia, "BONEINDICES") && HasElement(ia, "BONEWEIGHTS"))
                 { geoParameters.SetParameter((const utf8*)"GEO_HAS_SKIN_WEIGHTS", 1); }
+            if (HasElement(ia, "PER_VERTEX_AO"))
+                { geoParameters.SetParameter((const utf8*)"GEO_HAS_PER_VERTEX_AO", 1); }
             auto result = sharedStateSet.InsertParameterBox(geoParameters);
             paramBoxDesc.Add(result, geoParameters);
             return result;
@@ -413,16 +415,28 @@ namespace RenderCore { namespace Assets
 
         static void FindSupplementGeo(
             std::vector<VertexData*>& result,
-            const ModelRenderer::Supplements& supplements,
+            IteratorRange<const ModelSupplementScaffold**> supplements,
             unsigned geoId)
         {
             result.clear();
-            for (auto c=supplements._begin; c!=supplements._end; ++c) {
-                auto& immData = c->ImmutableData();
+            for (auto c=supplements.cbegin(); c!=supplements.cend(); ++c) {
+                auto& immData = (*c)->ImmutableData();
                 for (size_t g=0; g<immData._geoCount; ++g)
                     if (immData._geos[g]._geoId == geoId)
                         result.push_back(&immData._geos[g]._vb);
             }
+        }
+
+        static void ReadImmediately(
+            std::vector<uint8>& nascentBuffer,
+            BasicFile& file, unsigned largeBlocksOffset,
+            IteratorRange<PendingGeoUpload*> uploads, unsigned supplementIndex = ~0u)
+        {
+            for (auto u=uploads.cbegin(); u!=uploads.cend(); ++u)
+                if (u->_supplementIndex==supplementIndex)
+                    LoadBlock(
+                        file, &nascentBuffer[u->_bufferDestination], 
+                        largeBlocksOffset + u->_sourceFileOffset, u->_size);
         }
     }
 
@@ -448,7 +462,7 @@ namespace RenderCore { namespace Assets
 
     ModelRenderer::ModelRenderer(
         const ModelScaffold& scaffold, const MaterialScaffold& matScaffold,
-        const Supplements& supplements,
+        Supplements supplements,
         SharedStateSet& sharedStateSet, 
         const ::Assets::DirectorySearchRules* searchRules, unsigned levelOfDetail)
     {
@@ -621,17 +635,13 @@ namespace RenderCore { namespace Assets
 
         {
             BasicFile file(scaffold.Filename().c_str(), "rb");
-            auto largeBlocksOffset = scaffold.LargeBlocksOffset();
+            ReadImmediately(nascentIB, file, scaffold.LargeBlocksOffset(), MakeIteratorRange(workingBuffers._ibUploads));
+            ReadImmediately(nascentVB, file, scaffold.LargeBlocksOffset(), MakeIteratorRange(workingBuffers._vbUploads));
+        }
 
-            for (auto u=workingBuffers._ibUploads.cbegin(); u!=workingBuffers._ibUploads.cend(); ++u)
-                LoadBlock(
-                    file, &nascentIB[u->_bufferDestination], 
-                    largeBlocksOffset + u->_sourceFileOffset, u->_size);
-
-            for (auto u=workingBuffers._vbUploads.cbegin(); u!=workingBuffers._vbUploads.cend(); ++u)
-                LoadBlock(
-                    file, &nascentVB[u->_bufferDestination], 
-                    largeBlocksOffset + u->_sourceFileOffset, u->_size);
+        for (unsigned s=0; s<supplements.size(); ++s) {
+            BasicFile file(supplements[s]->Filename().c_str(), "rb");
+            ReadImmediately(nascentVB, file, supplements[s]->LargeBlocksOffset(), MakeIteratorRange(workingBuffers._vbUploads), s);
         }
 
             ////////////////////////////////////////////////////////////////////////
@@ -846,13 +856,13 @@ namespace RenderCore { namespace Assets
         result._ibOffset = workingBuffers.AllocateIB(
             geo._ib._size, Metal::NativeFormat::Enum(result._indexFormat));
         workingBuffers._ibUploads.push_back(
-            PendingGeoUpload { geo._ib._offset, geo._ib._size, result._ibOffset });
+            PendingGeoUpload { geo._ib._offset, geo._ib._size, ~0u, result._ibOffset });
 
         result._vbOffsets[0] = workingBuffers.AllocateVB(geo._vb._size);
         result._vertexStrides[0] = geo._vb._ia._vertexStride;
         result._vertexStreamCount = 1;
         workingBuffers._vbUploads.push_back(
-            PendingGeoUpload { geo._vb._offset, geo._vb._size, result._vbOffsets[0] });
+            PendingGeoUpload { geo._vb._offset, geo._vb._size, ~0u, result._vbOffsets[0] });
 
         #if defined(_DEBUG)
             result._vbSize = geo._vb._size;
@@ -868,7 +878,7 @@ namespace RenderCore { namespace Assets
             result._vertexStrides[1+s] = vb._ia._vertexStride;
             ++result._vertexStreamCount;
             workingBuffers._vbUploads.push_back(
-                PendingGeoUpload { vb._offset, vb._size, result._vbOffsets[1+s] });
+                PendingGeoUpload { vb._offset, vb._size, s, result._vbOffsets[1+s] });
         }
         for (; s<MaxVertexStreams-1; ++s) {
             result._vbOffsets[1+s] = 0;
@@ -923,10 +933,12 @@ namespace RenderCore { namespace Assets
         vd[skelBind] = &geo._skeletonBinding;
 
         for (unsigned c=0; c<2; ++c) {
-            result._sourceFileExtraVBOffset[c] = vd[c]->_offset;
-            result._sourceFileExtraVBSize[c] = vd[c]->_size;
-            result._extraVbOffset[c] = workingBuffers.AllocateVB(result._sourceFileExtraVBSize[c]);
+            result._extraVbOffset[c] = workingBuffers.AllocateVB(vd[c]->_size);
             result._extraVbStride[c] = vd[c]->_ia._vertexStride;
+            result._vertexCount[c] = vd[c]->_size / vd[c]->_ia._vertexStride;
+
+            workingBuffers._vbUploads.push_back(
+                PendingGeoUpload { vd[c]->_offset, vd[c]->_size, ~0u, result._extraVbOffset[c] });
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -1543,6 +1555,35 @@ namespace RenderCore { namespace Assets
         if (drawCallIndex < _pimpl->_drawCallRes.size())
             return _pimpl->_drawCallRes[drawCallIndex]._materialBindingGuid;
         return ~0ull;
+    }
+
+    ::Assets::AssetState ModelRenderer::GetState() const
+    {
+            // If any of our dependencies is not ready, then we must return that state
+            // Note that we can't check shaders because that depends on the global state
+            // (eg the global technique state).
+            // So even if we return "ready" from here, we should still throw pending/invalid
+            // during rendering.
+        bool gotPending = false;
+        for (auto t=_pimpl->_boundTextures.cbegin(); t!=_pimpl->_boundTextures.cend(); ++t) {
+            if (!*t) continue;
+            auto tState = (*t)->GetState();
+            if (tState == ::Assets::AssetState::Invalid) return ::Assets::AssetState::Invalid;
+            gotPending |= tState == ::Assets::AssetState::Pending;
+        }
+        return gotPending ? ::Assets::AssetState::Pending : ::Assets::AssetState::Ready;
+    }
+
+    ::Assets::AssetState ModelRenderer::TryResolve() const
+    {
+        bool gotPending = false;
+        for (auto t=_pimpl->_boundTextures.cbegin(); t!=_pimpl->_boundTextures.cend(); ++t) {
+            if (!*t) continue;
+            auto tState = (*t)->TryResolve();
+            if (tState == ::Assets::AssetState::Invalid) return ::Assets::AssetState::Invalid;
+            gotPending |= tState == ::Assets::AssetState::Pending;
+        }
+        return gotPending ? ::Assets::AssetState::Pending : ::Assets::AssetState::Ready;
     }
 
     void ModelRenderer::LogReport() const

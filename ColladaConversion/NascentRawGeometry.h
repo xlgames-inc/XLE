@@ -19,10 +19,6 @@ namespace RenderCore { namespace ColladaConversion
     using DrawCallDesc = RenderCore::Assets::DrawCallDesc;
     using NativeFormatPlaceholder = RenderCore::Assets::NativeFormatPlaceholder;
 
-    GeoInputAssembly CreateGeoInputAssembly(   
-        const std::vector<Metal::InputElementDesc>& vertexInputLayout,
-        unsigned vertexStride);
-
         ////////////////////////////////////////////////////////
 
     class NascentRawGeometry

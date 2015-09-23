@@ -9,6 +9,7 @@
 #include "AssetUtils.h"
 #include "TransformationCommands.h"
 #include "DeferredShaderResource.h"
+#include "ModelScaffoldInternal.h"
 #include "../RenderUtils.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/OutputStream.h"
@@ -309,6 +310,26 @@ namespace RenderCore { namespace Assets
 
         return      i->second >= RenderCore::Metal::NativeFormat::BC1_TYPELESS
                 &&  i->second <= RenderCore::Metal::NativeFormat::BC1_UNORM_SRGB;
+    }
+
+    GeoInputAssembly CreateGeoInputAssembly(   
+        const std::vector<Metal::InputElementDesc>& vertexInputLayout,
+        unsigned vertexStride)
+    { 
+        GeoInputAssembly result;
+        result._vertexStride = vertexStride;
+        result._elements.reserve(vertexInputLayout.size());
+        for (auto i=vertexInputLayout.begin(); i!=vertexInputLayout.end(); ++i) {
+            RenderCore::Assets::VertexElement ele;
+            XlZeroMemory(ele);     // make sure unused space is 0
+            XlCopyNString(ele._semanticName, AsPointer(i->_semanticName.begin()), i->_semanticName.size());
+            ele._semanticName[dimof(ele._semanticName)-1] = '\0';
+            ele._semanticIndex = i->_semanticIndex;
+            ele._nativeFormat = i->_nativeFormat;
+            ele._alignedByteOffset = i->_alignedByteOffset;
+            result._elements.push_back(ele);
+        }
+        return std::move(result);
     }
 }}
 

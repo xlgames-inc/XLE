@@ -70,8 +70,15 @@ VSOutput main(VSInput input)
 		output.worldViewVector = WorldSpaceView.xyz - worldPosition.xyz;
 	#endif
 
-	#if (OUTPUT_PER_VERTEX_AO==1) && (GEO_HAS_INSTANCE_ID==1)
-		output.ambientOcclusion =  GetInstanceShadowing(input);
+	#if (OUTPUT_PER_VERTEX_AO==1)
+		output.ambientOcclusion =  1.f;
+		#if (GEO_HAS_PER_VERTEX_AO==1)
+			output.ambientOcclusion = input.ambientOcclusion;
+		#endif
+
+		#if (GEO_HAS_INSTANCE_ID==1)
+			output.ambientOcclusion *= GetInstanceShadowing(input);
+		#endif
 	#endif
 
 	return output;

@@ -29,6 +29,7 @@ namespace RenderCore { namespace Assets
     {
     public:
         unsigned _sourceFileOffset, _size;
+        unsigned _supplementIndex;
         unsigned _bufferDestination;
     };
 
@@ -164,8 +165,7 @@ namespace RenderCore { namespace Assets
             struct VertexStreams { enum Enum { AnimatedGeo, SkeletonBinding, Max }; };
             UnifiedBufferOffset         _extraVbOffset[VertexStreams::Max];
             unsigned                    _extraVbStride[VertexStreams::Max];
-            UnifiedBufferOffset         _sourceFileExtraVBOffset[VertexStreams::Max];
-            unsigned                    _sourceFileExtraVBSize[VertexStreams::Max];
+            unsigned                    _vertexCount[VertexStreams::Max];
             SharedTechniqueInterface    _skinnedTechniqueInterface;
         };
 

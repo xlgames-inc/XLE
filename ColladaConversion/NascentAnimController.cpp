@@ -11,6 +11,7 @@
 #include "GeometryAlgorithm.h"
 #include "ConversionUtil.h"
 #include "../RenderCore/Metal/DeviceContext.h"  // for Topology!
+#include "../RenderCore/Assets/AssetUtils.h"
 #include "../Assets/BlockSerializer.h"
 #include "../ConsoleRig/Log.h"
 #include "../Assets/Assets.h"
@@ -369,7 +370,7 @@ namespace RenderCore { namespace ColladaConversion
         result._preskinningDrawCalls = preskinningDrawCalls;
 
         if (finalWeightBufferFormat) {
-            result._preskinningIA = CreateGeoInputAssembly(
+            result._preskinningIA = RenderCore::Assets::CreateGeoInputAssembly(
                 *finalWeightBufferFormat, (unsigned)destinationWeightVertexStride);
         }
 

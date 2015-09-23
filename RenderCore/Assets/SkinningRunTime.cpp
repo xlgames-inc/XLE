@@ -644,7 +644,7 @@ namespace RenderCore { namespace Assets
 
             const auto stream = PimplWithSkinning::SkinnedMesh::VertexStreams::AnimatedGeo;
             unsigned size =     // (size post conversion might not be the same as the input data)
-                m->_sourceFileExtraVBSize[stream] / m->_extraVbStride[stream] * b->_vertexStride;
+                m->_vertexCount[stream] * b->_vertexStride;
             vbSize += size;
         }
 

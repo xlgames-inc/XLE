@@ -14,6 +14,7 @@
 #include "GeometryAlgorithm.h"
 #include "ConversionUtil.h"
 #include "../RenderCore/Assets/MeshDatabase.h"
+#include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Metal/DeviceContext.h"      // for Topology...!
 #include "../ConsoleRig/Log.h"
 #include "../Utility/MemoryUtils.h"
@@ -829,9 +830,9 @@ namespace ColladaConversion
             //
 
         return NascentRawGeometry(
-            DynamicArray<uint8>(std::move(nativeVB), vbLayout._vertexStride * database->GetUnifiedVertexCount()), 
+            std::move(nativeVB), 
             DynamicArray<uint8>(std::move(finalIndexBuffer), finalIndexBufferSize),
-            CreateGeoInputAssembly(vbLayout._elements, (unsigned)vbLayout._vertexStride),
+            RenderCore::Assets::CreateGeoInputAssembly(vbLayout._elements, (unsigned)vbLayout._vertexStride),
             indexFormat,
             std::move(finalDrawOperations),
             DynamicArray<uint32>(std::move(unifiedVertexIndexToPositionIndex), database->GetUnifiedVertexCount()),

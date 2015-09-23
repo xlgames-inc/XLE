@@ -15,6 +15,7 @@
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/IteratorUtils.h"    // for IteratorRange
 #include "../../Core/Types.h"
 #include "../../Core/SelectConfiguration.h"
 #include <vector>
@@ -204,25 +205,21 @@ namespace RenderCore { namespace Assets
 
         static bool CanDoPrepareAnimation(Metal::DeviceContext* context);
 
-        std::vector<MaterialGuid> DrawCallToMaterialBinding() const;
-        MaterialGuid GetMaterialBindingForDrawCall(unsigned drawCallIndex) const;
-        void LogReport() const;
+        auto            DrawCallToMaterialBinding() const -> std::vector<MaterialGuid>;
+        MaterialGuid    GetMaterialBindingForDrawCall(unsigned drawCallIndex) const;
+        void            LogReport() const;
+
+        ::Assets::AssetState GetState() const;
+        ::Assets::AssetState TryResolve() const;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
 
-        class Supplements
-        {
-        public:
-            const ModelSupplementScaffold* _begin;
-            const ModelSupplementScaffold* _end;
-
-            Supplements() : _begin(nullptr), _end(nullptr) {}
-        };
+        using Supplements = IteratorRange<const ModelSupplementScaffold**>;
 
             ////////////////////////////////////////////////////////////
         ModelRenderer(
             const ModelScaffold& scaffold, const MaterialScaffold& matScaffold,
-            const Supplements& supplements,
+            Supplements supplements,
             SharedStateSet& sharedStateSet, 
             const ::Assets::DirectorySearchRules* searchRules = nullptr, unsigned levelOfDetail = 0);
         ~ModelRenderer();
@@ -409,6 +406,7 @@ namespace RenderCore { namespace Assets
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
+
 
 }}
 

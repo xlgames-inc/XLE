@@ -46,7 +46,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             OutputType GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const;
         size_t GetUnifiedVertexCount() const { return _unifiedVertexCount; }
 
-        auto    BuildNativeVertexBuffer(const NativeVBLayout& outputLayout) const   -> std::unique_ptr<uint8[]>;
+        auto    BuildNativeVertexBuffer(const NativeVBLayout& outputLayout) const   -> DynamicArray<uint8>;
         auto    BuildUnifiedVertexIndexToPositionIndex() const                      -> std::unique_ptr<uint32[]>;
 
         unsigned    AddStream(
@@ -59,6 +59,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         unsigned            GetStreamCount() const          { return (unsigned)_streams.size(); }
 
         MeshDatabase();
+        MeshDatabase(MeshDatabase&& moveFrom) never_throws;
+        MeshDatabase& operator=(MeshDatabase&& moveFrom) never_throws;
         ~MeshDatabase();
 
         class Stream
@@ -68,6 +70,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             const std::vector<unsigned>& GetVertexMap() const   { return _vertexMap; }
             const std::string& GetSemanticName() const          { return _semanticName; }
             const unsigned GetSemanticIndex() const             { return _semanticIndex; }
+
+            unsigned UnifiedToStream(unsigned input) const
+            {
+                if (!_vertexMap.empty()) return _vertexMap[input];
+                return input;
+            }
 
             Stream();
             Stream(
@@ -84,8 +92,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         };
 
     private:
-        size_t  _unifiedVertexCount;
-
+        size_t _unifiedVertexCount;
         std::vector<Stream> _streams;
 
         void WriteStream(

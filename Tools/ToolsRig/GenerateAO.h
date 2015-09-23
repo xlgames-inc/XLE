@@ -17,7 +17,7 @@ namespace RenderCore { namespace Assets
     class ModelRenderer; class SharedStateSet; 
     class MeshToModel; class ModelScaffold; class MaterialScaffold; 
 }}
-namespace Assets { class DependencyValidation; }
+namespace Assets { class DependencyValidation; class DirectorySearchRules; }
 
 namespace ToolsRig
 {
@@ -30,7 +30,7 @@ namespace ToolsRig
     {
     public:
         float CalculateSkyDomeOcclusion(
-            RenderCore::Metal::DeviceContext& devContext,
+            RenderCore::IThreadContext& threadContext,
             const RenderCore::Assets::ModelRenderer& renderer, 
             RenderCore::Assets::SharedStateSet& sharedStates, 
             const RenderCore::Assets::MeshToModel& meshToModel,
@@ -59,9 +59,11 @@ namespace ToolsRig
 
     void CalculateVertexAO(
         RenderCore::IThreadContext& threadContext,
+        const ::Assets::ResChar destinationFile[],
         AoGen& gen,
         const RenderCore::Assets::ModelScaffold& model,
-        const RenderCore::Assets::MaterialScaffold& material);
+        const RenderCore::Assets::MaterialScaffold& material,
+        const ::Assets::DirectorySearchRules* searchRules);
 
 }
 

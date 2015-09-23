@@ -183,7 +183,7 @@ namespace RenderCore { namespace Assets
 
     const Metal::ShaderResourceView&       DeferredShaderResource::GetShaderResource() const
     {
-        if (!_pimpl->_srv.GetUnderlying()) {
+        if (!_pimpl->_srv.IsGood()) {
             if (_pimpl->_transaction == ~BufferUploads::TransactionID(0))
                 Throw(::Assets::Exceptions::InvalidAsset(Initializer(), "Unknown error during loading"));
 
@@ -191,45 +191,76 @@ namespace RenderCore { namespace Assets
             if (!bu.IsCompleted(_pimpl->_transaction))
                 Throw(::Assets::Exceptions::PendingAsset(Initializer(), ""));
 
-            _pimpl->_locator = bu.GetResource(_pimpl->_transaction);
-            bu.Transaction_End(_pimpl->_transaction);
-            _pimpl->_transaction = ~BufferUploads::TransactionID(0);
-
-            if (!_pimpl->_locator || !_pimpl->_locator->GetUnderlying())
+            auto state = TryResolve();
+            if (state == ::Assets::AssetState::Invalid) {
                 Throw(::Assets::Exceptions::InvalidAsset(Initializer(), "Unknown error during loading"));
+            } else if (state == ::Assets::AssetState::Pending)
+                Throw(::Assets::Exceptions::PendingAsset(Initializer(), ""));
 
-            auto desc = BufferUploads::ExtractDesc(*_pimpl->_locator->GetUnderlying());
-            if (desc._type != BufferUploads::BufferDesc::Type::Texture)
-                Throw(::Assets::Exceptions::InvalidAsset(Initializer(), "Unknown error during loading"));
-
-                // calculate the color space to use (resolving the defaults, request string and metadata)
-            auto colSpace = SourceColorSpace::SRGB;
-            if (_pimpl->_colSpaceRequestString != SourceColorSpace::Unspecified) colSpace = _pimpl->_colSpaceRequestString;
-            else {
-                if (_pimpl->_colSpaceDefault != SourceColorSpace::Unspecified) colSpace = _pimpl->_colSpaceDefault;
-
-                if (_pimpl->_metadataMarker) {
-                    auto state = _pimpl->_metadataMarker->GetState();
-                    if (state == ::Assets::AssetState::Pending)
-                        Throw(::Assets::Exceptions::PendingAsset(Initializer(), ""));
-
-                    if (state == ::Assets::AssetState::Ready && _pimpl->_metadataMarker->_colorSpace != SourceColorSpace::Unspecified) {
-                        colSpace = _pimpl->_metadataMarker->_colorSpace;
-                    }
-                }
-            }
-
-            auto format = (Metal::NativeFormat::Enum)desc._textureDesc._nativePixelFormat;
-            if (colSpace == SourceColorSpace::SRGB) format = Metal::AsSRGBFormat(format);
-            else if (colSpace == SourceColorSpace::Linear) format = Metal::AsLinearFormat(format);
-
-            _pimpl->_srv = Metal::ShaderResourceView(_pimpl->_locator->GetUnderlying(), format);
+            assert(_pimpl->_srv.IsGood());
         }
 
         return _pimpl->_srv;
     }
 
-    const char*                     DeferredShaderResource::Initializer() const
+    ::Assets::AssetState DeferredShaderResource::GetState() const
+    {
+        if (_pimpl->_srv.IsGood())
+            return ::Assets::AssetState::Ready;
+        if (_pimpl->_transaction == ~BufferUploads::TransactionID(0))
+            return ::Assets::AssetState::Invalid;
+        return ::Assets::AssetState::Pending;
+    }
+
+    ::Assets::AssetState DeferredShaderResource::TryResolve() const
+    {
+        if (_pimpl->_srv.IsGood())
+            return ::Assets::AssetState::Ready;
+
+        if (_pimpl->_transaction == ~BufferUploads::TransactionID(0))
+            return ::Assets::AssetState::Invalid;
+
+        auto& bu = Services::GetBufferUploads();
+        if (!bu.IsCompleted(_pimpl->_transaction))
+            return ::Assets::AssetState::Pending;
+
+        _pimpl->_locator = bu.GetResource(_pimpl->_transaction);
+        bu.Transaction_End(_pimpl->_transaction);
+        _pimpl->_transaction = ~BufferUploads::TransactionID(0);
+
+        if (!_pimpl->_locator || !_pimpl->_locator->GetUnderlying())
+            return ::Assets::AssetState::Invalid;
+
+        auto desc = BufferUploads::ExtractDesc(*_pimpl->_locator->GetUnderlying());
+        if (desc._type != BufferUploads::BufferDesc::Type::Texture)
+            return ::Assets::AssetState::Invalid;
+
+            // calculate the color space to use (resolving the defaults, request string and metadata)
+        auto colSpace = SourceColorSpace::SRGB;
+        if (_pimpl->_colSpaceRequestString != SourceColorSpace::Unspecified) colSpace = _pimpl->_colSpaceRequestString;
+        else {
+            if (_pimpl->_colSpaceDefault != SourceColorSpace::Unspecified) colSpace = _pimpl->_colSpaceDefault;
+
+            if (_pimpl->_metadataMarker) {
+                auto state = _pimpl->_metadataMarker->GetState();
+                if (state == ::Assets::AssetState::Pending)
+                    return ::Assets::AssetState::Pending;
+
+                if (state == ::Assets::AssetState::Ready && _pimpl->_metadataMarker->_colorSpace != SourceColorSpace::Unspecified) {
+                    colSpace = _pimpl->_metadataMarker->_colorSpace;
+                }
+            }
+        }
+
+        auto format = (Metal::NativeFormat::Enum)desc._textureDesc._nativePixelFormat;
+        if (colSpace == SourceColorSpace::SRGB) format = Metal::AsSRGBFormat(format);
+        else if (colSpace == SourceColorSpace::Linear) format = Metal::AsLinearFormat(format);
+
+        _pimpl->_srv = Metal::ShaderResourceView(_pimpl->_locator->GetUnderlying(), format);
+        return ::Assets::AssetState::Ready;
+    }
+
+    const char* DeferredShaderResource::Initializer() const
     {
         #if defined(_DEBUG)
             return _initializer;
