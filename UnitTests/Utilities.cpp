@@ -12,6 +12,7 @@
 #include "../Utility/Streams/StreamTypes.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/FunctionUtils.h"
+#include "../Utility/MemoryUtils.h"
 #include "../Math/Vector.h"
 #include <CppUnitTest.h>
 #include <stdexcept>
@@ -246,6 +247,17 @@ namespace UnitTests
 				std::string("source/sourcefile.cpp"),
 				MakeRelativePath(SplitPath<char>("D:\\LM\\Code\\SomeOtherDirectory\\Another\\../.."), SplitPath<char>("D:\\LM\\Code\\SomeDir\\../.\\Source\\./SourceFile.cpp")));
 		}
+
+        TEST_METHOD(MiscHashTest)
+        {
+            StringSection<> s0("somestring"), s1("1234567890qwerty");
+            Assert::AreEqual(
+                ConstHash64<'some', 'stri', 'ng'>::Value,
+                ConstHash64FromString(s0.begin(), s0.end()));
+            Assert::AreEqual(
+                ConstHash64<'1234', '5678', '90qw', 'erty'>::Value,
+                ConstHash64FromString(s1.begin(), s1.end()));
+        }
     };
 }
 

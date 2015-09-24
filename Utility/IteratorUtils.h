@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "PtrUtils.h"       // for AsPointer
 #include <vector>
 #include <algorithm>
 

@@ -203,7 +203,7 @@ namespace RenderCore { namespace Assets
             PreparedAnimation& state, 
             const SkeletonBinding& skeletonBinding) const;
 
-        static bool CanDoPrepareAnimation(Metal::DeviceContext* context);
+        static bool     CanDoPrepareAnimation(Metal::DeviceContext* context);
 
         auto            DrawCallToMaterialBinding() const -> std::vector<MaterialGuid>;
         MaterialGuid    GetMaterialBindingForDrawCall(unsigned drawCallIndex) const;
@@ -212,7 +212,8 @@ namespace RenderCore { namespace Assets
         ::Assets::AssetState GetState() const;
         ::Assets::AssetState TryResolve() const;
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const
+            { return _validationCallback; }
 
         using Supplements = IteratorRange<const ModelSupplementScaffold**>;
 

@@ -644,6 +644,7 @@ namespace SceneEngine
                 _current = cache.GetModel(
                     (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64)),
                     (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64)),
+                    IteratorRange<ModelCache::SupplementGUID*>(),
                     LOD);
                 _currentModel = modelHash;
                 _currentMaterial = materialHash;

@@ -10,6 +10,7 @@
 #include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Assets/AssetsCore.h"
+#include "../../Assets/IntermediateAssets.h"
 #include <memory>
 
 namespace RenderCore { namespace Assets 
@@ -41,12 +42,22 @@ namespace ToolsRig
         public:
             float       _minDistance, _maxDistance;
             unsigned    _renderResolution;
+            float       _powerExaggerate;       // power applied to the final value to exaggerate the effect
+            float       _duplicatesThreshold;   // typically around 1cm; vertices within this threshold are combined
+            float       _samplePushOut;         // sample points are pushed out along the normal this distance
 
-            Desc(float minDistance, float maxDistance, unsigned renderRes)
+            Desc(   float minDistance, float maxDistance, 
+                    unsigned renderRes, 
+                    float powerExaggerate,
+                    float duplicatesThreshold,
+                    float samplePushOut)
                 : _minDistance(minDistance), _maxDistance(maxDistance)
-                , _renderResolution(renderRes) {}
+                , _renderResolution(renderRes), _powerExaggerate(powerExaggerate)
+                , _duplicatesThreshold(duplicatesThreshold), _samplePushOut(samplePushOut) {}
             Desc() {}
         };
+
+        const Desc& GetSettings() const;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const;
         
@@ -64,6 +75,24 @@ namespace ToolsRig
         const RenderCore::Assets::ModelScaffold& model,
         const RenderCore::Assets::MaterialScaffold& material,
         const ::Assets::DirectorySearchRules* searchRules);
+
+    class AOSupplementCompiler : public ::Assets::IntermediateAssets::IAssetCompiler
+    {
+    public:
+        std::shared_ptr<::Assets::PendingCompileMarker> PrepareAsset(
+            uint64 typeCode, 
+            const ::Assets::ResChar* initializers[], unsigned initializerCount,
+            const ::Assets::IntermediateAssets::Store& destinationStore);
+        void StallOnPendingOperations(bool cancelAll);
+
+        static const uint64 CompilerType = ConstHash64<'PER_', 'VERT', 'EX_A', 'O'>::Value;
+
+        AOSupplementCompiler(std::shared_ptr<RenderCore::IThreadContext> threadContext);
+        ~AOSupplementCompiler();
+    protected:
+        class Pimpl;
+        std::shared_ptr<Pimpl> _pimpl;
+    };
 
 }
 

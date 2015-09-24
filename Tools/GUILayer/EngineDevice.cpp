@@ -24,6 +24,8 @@
 #include "../../Utility/SystemUtils.h"
 #include "../../Utility/StringFormat.h"
 
+#include "../../Tools/ToolsRig/GenerateAO.h"
+
 namespace GUILayer
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -98,6 +100,14 @@ namespace GUILayer
     void NativeEngineDevice::AttachDefaultCompilers()
     {
         _renderAssetsServices->InitColladaCompilers();
+
+            // add compiler for precalculated internal AO
+        auto& asyncMan = ::Assets::Services::GetAsyncMan();
+        auto& compilers = asyncMan.GetIntermediateCompilers();
+        auto aoGeoCompiler = std::make_shared<ToolsRig::AOSupplementCompiler>(_immediateContext);
+        compilers.AddCompiler(
+            ToolsRig::AOSupplementCompiler::CompilerType,
+            std::move(aoGeoCompiler));
     }
 
     BufferUploads::IManager*    NativeEngineDevice::GetBufferUploads()

@@ -54,6 +54,7 @@ namespace ToolsRig
     public:
         std::string _modelName;
         std::string _materialName;
+        std::string _supplements;
         std::shared_ptr<VisCameraSettings> _camera;
         bool _pendingCameraAlignToModel;
 

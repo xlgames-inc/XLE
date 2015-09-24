@@ -72,6 +72,9 @@ namespace Utility
         bool Empty() const                              { return _end <= _start; }
         std::basic_string<CharType> AsString() const    { return std::basic_string<CharType>(_start, _end); }
 
+        const CharType* begin() const   { return _start; }
+        const CharType* end() const     { return _end; }
+
         StringSection(const CharType* start, const CharType* end) : _start(start), _end(end) {}
         StringSection() : _start(nullptr), _end(nullptr) {}
         explicit StringSection(const CharType* nullTerm) : _start(nullTerm), _end(&_start[XlStringLen(nullTerm)]) {}

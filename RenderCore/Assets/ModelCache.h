@@ -8,6 +8,7 @@
 
 #include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
+#include "../../Utility/IteratorUtils.h"
 #include "../../Core/Types.h"
 #include <utility>
 
@@ -60,10 +61,12 @@ namespace RenderCore { namespace Assets
         };
 
         using ResChar = ::Assets::ResChar;
+        using SupplementGUID = uint64;
 
         Model GetModel(
             const ResChar modelFilename[], 
             const ResChar materialFilename[],
+            IteratorRange<SupplementGUID*> supplements = IteratorRange<SupplementGUID*>(),
             unsigned LOD = 0);
         Scaffolds GetScaffolds(
             const ResChar modelFilename[], 

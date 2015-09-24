@@ -31,12 +31,20 @@ namespace RenderCore { namespace Assets
 
         Pimpl(const ModelCache::Config& cfg);
         ~Pimpl();
+
+        LRUCache<ModelSupplementScaffold>   _supplements;
+        std::vector<const ModelSupplementScaffold*> 
+            LoadSupplementScaffolds(
+                const ResChar modelFilename[], 
+                const ResChar materialFilename[],
+                IteratorRange<const SupplementGUID*> supplements);
     };
         
     ModelCache::Pimpl::Pimpl(const ModelCache::Config& cfg)
     : _modelScaffolds(cfg._modelScaffoldCount)
     , _materialScaffolds(cfg._materialScaffoldCount)
     , _modelRenderers(cfg._rendererCount)
+    , _supplements(100)
     {
     }
 
@@ -114,9 +122,47 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
+    namespace Internal
+    {
+        static std::shared_ptr<ModelSupplementScaffold> CreateSupplement(
+            uint64 compilerHash,
+            const ::Assets::ResChar modelFilename[],
+            const ::Assets::ResChar materialFilename[])
+        {
+            auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+            auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
+            const ::Assets::ResChar* inits[] = { modelFilename, materialFilename };
+            auto marker = compilers.PrepareAsset(
+                compilerHash, // ConstHash64<'PER_', 'VERT', 'EX_A', 'O'>::Value, 
+                inits, dimof(inits), store);
+            if (!marker) return nullptr;
+
+            return std::make_shared<ModelSupplementScaffold>(std::move(marker));
+        }
+    }
+
+    std::vector<const ModelSupplementScaffold*> ModelCache::Pimpl::LoadSupplementScaffolds(
+        const ResChar modelFilename[], const ResChar materialFilename[],
+        IteratorRange<const SupplementGUID*> supplements)
+    {
+        std::vector<const ModelSupplementScaffold*> result;
+        for (auto s=supplements.cbegin(); s!=supplements.cend(); ++s) {
+            auto hashName = HashCombine(HashCombine(Hash64(modelFilename), Hash64(materialFilename)), *s);
+            auto supp = _supplements.Get(hashName);
+            if (!supp || supp->GetDependencyValidation()->GetValidationIndex() > 0) {
+                supp = Internal::CreateSupplement(*s, modelFilename, materialFilename);
+                if (supp)
+                    _supplements.Insert(hashName, supp);
+            }
+            if (supp)
+                result.push_back(supp.get());
+        }
+        return std::move(result);
+    }
+
     auto ModelCache::GetModel(
-        const ResChar modelFilename[], 
-        const ResChar materialFilename[],
+        const ResChar modelFilename[], const ResChar materialFilename[],
+        IteratorRange<SupplementGUID*> supplements,
         unsigned LOD) -> Model
     {
         auto scaffold = GetScaffolds(modelFilename, materialFilename);
@@ -126,14 +172,21 @@ namespace RenderCore { namespace Assets
         auto maxLOD = scaffold._model->GetMaxLOD();
         LOD = std::min(LOD, maxLOD);
 
+            // we also need to load supplements, for any that are requested
+        std::vector<const ModelSupplementScaffold*> supplementScaffolds;
+
         uint64 hashedModel = (uint64(scaffold._model) << 2ull) | (uint64(scaffold._material) << 48ull) | uint64(LOD);
+        for (auto s=supplements.begin(); s!=supplements.end(); ++s)
+            hashedModel |= *s;
+
         auto renderer = _pimpl->_modelRenderers.Get(hashedModel);
         if (!renderer) {
             auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
             searchRules.AddSearchDirectoryFromFilename(materialFilename);
+            auto suppScaff = _pimpl->LoadSupplementScaffolds(modelFilename, materialFilename, supplements);
             renderer = std::make_shared<ModelRenderer>(
                 std::ref(*scaffold._model), std::ref(*scaffold._material), 
-                ModelRenderer::Supplements(),
+                MakeIteratorRange(suppScaff),
                 std::ref(*_pimpl->_sharedStateSet), &searchRules, LOD);
 
             _pimpl->_modelRenderers.Insert(hashedModel, renderer);

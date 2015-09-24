@@ -147,6 +147,8 @@ namespace Utility
         static const uint64 Value = Calc<S3, Calc<S2, Calc<S1, Calc<S0, Seed>::Value>::Value>::Value>::Value;
     };
 
+    uint64 ConstHash64FromString(const char* begin, const char* end);
+
         ////////////   I N L I N E   I M P L E M E N T A T I O N S   ////////////
 
     inline void XlClearMemory(void* p, size_t size)                     { memset(p, 0, size); }

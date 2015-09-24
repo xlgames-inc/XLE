@@ -135,6 +135,8 @@ namespace SceneEngine
         UInt2 viewportDims,
         const Float4x4* specialProjectionMatrix = nullptr);
 
+    void SetFrameGlobalStates(MetalContext& context);
+
         ///////////////////////////////////////////////////////////////////////////
 
     class MainTargetsBox;

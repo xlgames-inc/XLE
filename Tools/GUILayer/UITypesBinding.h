@@ -114,6 +114,18 @@ namespace GUILayer
             void set(String^ value);
         }
 
+        [Category("Model")]
+        [Description("Supplements")]
+        property String^ Supplements
+        {
+            String^ get()
+            {
+                return clix::marshalString<clix::E_UTF8>(_object->_supplements);
+            }
+
+            void set(String^ value);
+        }
+
         enum class ColourByMaterialType { None, All, MouseOver };
 
         [Category("Visualisation")]

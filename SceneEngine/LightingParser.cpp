@@ -69,33 +69,28 @@ namespace SceneEngine
         //          VS s0, s1, s2, s4 -- default sampler, clamping sampler, anisotropic wrapping sampler, point sampler
         //          PS s6 -- samplerWrapU
         //
-    void SetFrameGlobalStates(DeviceContext* context, LightingParserContext& parserContext)
+    void SetFrameGlobalStates(DeviceContext& context)
     {
-        TRY {
-            SamplerState samplerDefault, 
-                samplerClamp(FilterMode::Trilinear, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp), 
-                samplerAnisotrophic(FilterMode::Anisotropic),
-                samplerPoint(FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp),
-                samplerWrapU(FilterMode::Trilinear, AddressMode::Wrap, AddressMode::Clamp);
-            context->BindPS(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
-            context->BindVS(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
-            context->BindPS(RenderCore::MakeResourceList(6, samplerWrapU));
+        SamplerState samplerDefault, 
+            samplerClamp(FilterMode::Trilinear, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp), 
+            samplerAnisotrophic(FilterMode::Anisotropic),
+            samplerPoint(FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp),
+            samplerWrapU(FilterMode::Trilinear, AddressMode::Wrap, AddressMode::Clamp);
+        context.BindPS(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
+        context.BindVS(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
+        context.BindPS(RenderCore::MakeResourceList(6, samplerWrapU));
 
-            auto normalsFittingResource = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/normalsfitting.dds:LT").GetShaderResource();
-            context->BindPS(RenderCore::MakeResourceList(14, normalsFittingResource));
-            context->BindCS(RenderCore::MakeResourceList(14, normalsFittingResource));
+        auto normalsFittingResource = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/normalsfitting.dds:LT").GetShaderResource();
+        context.BindPS(RenderCore::MakeResourceList(14, normalsFittingResource));
+        context.BindCS(RenderCore::MakeResourceList(14, normalsFittingResource));
 
-                // perlin noise resources in standard slots
-            auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
-            context->BindPS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
+            // perlin noise resources in standard slots
+        auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
+        context.BindPS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
-                // procedural scratch texture for scratches test
-            // context->BindPS(MakeResourceList(17, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchnorm.dds:L").GetShaderResource()));
-            // context->BindPS(MakeResourceList(18, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchocc.dds:L").GetShaderResource()));
-        }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+            // procedural scratch texture for scratches test
+        // context.BindPS(MakeResourceList(17, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchnorm.dds:L").GetShaderResource()));
+        // context.BindPS(MakeResourceList(18, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchocc.dds:L").GetShaderResource()));
     }
 
     void ReturnToSteadyState(DeviceContext* context)
@@ -852,8 +847,12 @@ namespace SceneEngine
                                     const RenderCore::Techniques::CameraDesc& camera,
                                     const RenderingQualitySettings& qualitySettings)
     {
+        TRY { SetFrameGlobalStates(*context); }
+        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
+        CATCH_END
+
         TRY {
-            SetFrameGlobalStates(context, parserContext);
             ReturnToSteadyState(context);
 
             Float4 time(0.f, 0.f, 0.f, 0.f);

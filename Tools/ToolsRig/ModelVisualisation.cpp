@@ -195,7 +195,24 @@ namespace ToolsRig
     {
         using namespace SceneEngine;
 
-        auto model = _pimpl->_cache->GetModel(_pimpl->_settings->_modelName.c_str(), _pimpl->_settings->_materialName.c_str());
+        std::vector<ModelCache::SupplementGUID> supplements;
+        {
+            const auto& s = _pimpl->_settings->_supplements;
+            size_t offset = 0;
+            for (;;) {
+                auto comma = s.find_first_of(',', offset);
+                if (comma == std::string::npos) comma = s.size();
+                if (offset == comma) break;
+                auto hash = ConstHash64FromString(AsPointer(s.begin()) + offset, AsPointer(s.begin()) + comma);
+                supplements.push_back(hash);
+                offset = comma;
+            }
+        }
+
+        auto model = _pimpl->_cache->GetModel(
+            _pimpl->_settings->_modelName.c_str(), 
+            _pimpl->_settings->_materialName.c_str(),
+            MakeIteratorRange(supplements));
         assert(model._renderer && model._sharedStateSet);
 
         if (_pimpl->_settings->_pendingCameraAlignToModel) {

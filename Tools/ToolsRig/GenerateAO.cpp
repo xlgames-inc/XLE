@@ -10,6 +10,7 @@
 #include "../../BufferUploads/DataPacket.h"
 #include "../../SceneEngine/LightInternal.h"    // for shadow projection constants;
 #include "../../SceneEngine/SceneEngineUtils.h"
+#include "../../SceneEngine/LightingParser.h"   // for SetFrameGlobalStates
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/ModelImmutableData.h"
 #include "../../RenderCore/Assets/Services.h"
@@ -25,6 +26,7 @@
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
+#include "../../Utility/Streams/PathUtils.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/ProjectionMath.h"
 
@@ -135,6 +137,8 @@ namespace ToolsRig
         techniqueContext._runtimeState.SetParameter((const utf8*)"OUTPUT_SHADOW_PROJECTION_COUNT", 5u);
         Techniques::ParsingContext parserContext(techniqueContext);
 
+        SceneEngine::SetFrameGlobalStates(metalContext);
+
             // We shouldn't need to fill in the "global transform" constant buffer
             // The model renderer will manage local transform constant buffers internally,
             // we should only need to set the shadow projection constants.
@@ -237,7 +241,10 @@ namespace ToolsRig
         ::Assets::RegisterAssetDependency(_pimpl->_depVal, _pimpl->_stepDownShader->GetDependencyValidation());
     }
 
+    auto AoGen::GetSettings() const -> const Desc& { return _pimpl->_settings; }
+
     AoGen::~AoGen() {}
+
     const std::shared_ptr<::Assets::DependencyValidation>& AoGen::GetDependencyValidation() const
     {
         return _pimpl->_depVal;
@@ -306,8 +313,10 @@ namespace ToolsRig
         // mesh instances. We need to know the vertex positions and normals
         // in those meshes.
 
-        const float duplicatesThreshold = 0.01f;        // 1cm
-        const float normalsPushOut      = 0.05f;        // 5cm
+        const auto& settings = gen.GetSettings();
+        const float duplicatesThreshold = settings._duplicatesThreshold;
+        const float normalsPushOut      = settings._samplePushOut;
+        const float powerExaggerate     = settings._powerExaggerate;
 
             // Setup the rendering objects we'll need
             // We're going to be use a ModelRenderer to do the rendering
@@ -444,6 +453,12 @@ namespace ToolsRig
                             threadContext, 
                             *renderer, sharedStates, meshToModel,
                             samplePoints[p]);
+
+                        // CalculateSkyDomeOcclusion returned the quantity of the skydome that is occluded
+                        // We want to write the complement of this value (1.0f - occlusion) to the vertex
+                        // buffer.
+                    skyDomeOcc = 1.f-skyDomeOcc;
+                    skyDomeOcc = std::pow(skyDomeOcc, powerExaggerate);
                     auto finalValue = (uint8)Clamp(skyDomeOcc * float(0xff), 0.f, float(0xff));
                     aoValues.push_back(finalValue);
 
@@ -561,6 +576,80 @@ namespace ToolsRig
             metalContext, Techniques::TechniqueContext::CB_ShadowProjection,
             &shadowProj, sizeof(shadowProj));
     }
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class AOSupplementCompiler::Pimpl
+    {
+    public:
+        std::shared_ptr<RenderCore::IThreadContext> _threadContext;
+        std::unique_ptr<AoGen> _aoGen;
+    };
+
+    std::shared_ptr<::Assets::PendingCompileMarker> 
+        AOSupplementCompiler::PrepareAsset(
+            uint64 typeCode, 
+            const ::Assets::ResChar* initializers[], unsigned initializerCount,
+            const ::Assets::IntermediateAssets::Store& destinationStore)
+    {
+        if (initializerCount != 2 || !initializers[0][0] || !initializers[1][0]) 
+            Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in AOSupplementCompiler. Model filename first, then material filename"));
+
+        const auto* modelFilename = initializers[0];
+        const auto* materialFilename = initializers[1];
+
+        auto& store = ::Assets::Services::GetInstance().GetAsyncMan().GetIntermediateStore();
+        ::Assets::ResChar intermediateName[MaxPath];
+        store.MakeIntermediateName(intermediateName, dimof(intermediateName), modelFilename);
+        FileNameSplitter<::Assets::ResChar> splitter(materialFilename);
+        XlCatString(intermediateName, dimof(intermediateName), "-");
+        XlCatString(intermediateName, dimof(intermediateName), splitter.File().AsString().c_str());
+        XlCatString(intermediateName, dimof(intermediateName), "-ao");
+        
+        std::shared_ptr<::Assets::DependencyValidation> depVal;
+        if (!DoesFileExist(intermediateName)) {
+            const auto& model = ::Assets::GetAssetComp<ModelScaffold>(modelFilename);
+            const auto& material = ::Assets::GetAssetComp<MaterialScaffold>(materialFilename, modelFilename);
+            auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
+
+            CalculateVertexAO(
+                *_pimpl->_threadContext, intermediateName,
+                *_pimpl->_aoGen, model, material, &searchRules);
+
+            std::vector<::Assets::DependentFileState> deps;
+            deps.push_back(destinationStore.GetDependentFileState(modelFilename));
+            deps.push_back(destinationStore.GetDependentFileState(materialFilename));
+
+            char baseDir[MaxPath];
+            XlDirname(baseDir, dimof(baseDir), modelFilename);
+            depVal = destinationStore.WriteDependencies(
+                intermediateName, baseDir, AsPointer(deps.cbegin()), AsPointer(deps.cend()));
+        } else {
+            depVal = destinationStore.MakeDependencyValidation(intermediateName);
+        }
+        
+        return std::make_shared<::Assets::PendingCompileMarker>(
+            ::Assets::AssetState::Ready, intermediateName, 0, std::move(depVal));
+    }
+
+    void AOSupplementCompiler::StallOnPendingOperations(bool)
+    {
+        // everything is done in the foreground in this compiler; so nothing
+        // to stall for
+    }
+
+    AOSupplementCompiler::AOSupplementCompiler(std::shared_ptr<RenderCore::IThreadContext> threadContext)
+    {
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_threadContext = threadContext;
+        ToolsRig::AoGen::Desc settings(
+            0.001f, 10.f, 128,
+            4.f, 0.01f, 0.02f);
+        _pimpl->_aoGen = std::make_unique<ToolsRig::AoGen>(settings);
+    }
+
+    AOSupplementCompiler::~AOSupplementCompiler() {}
 
 }
 

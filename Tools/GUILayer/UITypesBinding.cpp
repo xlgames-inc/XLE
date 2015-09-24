@@ -100,6 +100,12 @@ namespace GUILayer
         _object->_changeEvent.Trigger(); 
     }
 
+    void ModelVisSettings::Supplements::set(String^ value)
+    {
+        _object->_supplements = clix::marshalString<clix::E_UTF8>(value);
+        _object->_changeEvent.Trigger(); 
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     System::String^ VisMouseOver::IntersectionPt::get()

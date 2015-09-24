@@ -205,7 +205,8 @@ namespace RenderCore { namespace Assets
         const ::Assets::ResChar* initializers[], unsigned initializerCount,
         const ::Assets::IntermediateAssets::Store& destinationStore)
     {
-        if (initializerCount < 2 || !initializers[0][0] || !initializers[1][0]) return nullptr;
+        if (initializerCount != 2 || !initializers[0][0] || !initializers[1][0]) 
+            Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in MaterialScaffoldCompiler. Material filename first, then model filename"));
 
         ::Assets::ResChar materialBaseName[MaxPath];
         XlBasename(materialBaseName, dimof(materialBaseName), initializers[1]);
