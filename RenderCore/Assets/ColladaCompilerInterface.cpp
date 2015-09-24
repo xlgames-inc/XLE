@@ -441,7 +441,7 @@ namespace RenderCore { namespace Assets
         if (DoesFileExist(outputName)) {
                 // MakeDependencyValidation returns an object only if dependencies are currently good
              auto depVal = destinationStore.MakeDependencyValidation(outputName);
-             if (depVal) {
+             if (depVal && depVal->GetValidationIndex() == 0) {
                     // already exists -- just return "ready"
                 return std::make_unique<::Assets::PendingCompileMarker>(
                     ::Assets::AssetState::Ready, outputName, ~0ull, std::move(depVal));

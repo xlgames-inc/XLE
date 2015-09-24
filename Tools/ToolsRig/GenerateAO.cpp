@@ -607,28 +607,33 @@ namespace ToolsRig
         XlCatString(intermediateName, dimof(intermediateName), splitter.File().AsString().c_str());
         XlCatString(intermediateName, dimof(intermediateName), "-ao");
         
-        auto depVal = destinationStore.MakeDependencyValidation(intermediateName);
-        if (!depVal || depVal->GetValidationIndex() != 0) {
-            const auto& model = ::Assets::GetAssetComp<ModelScaffold>(modelFilename);
-            const auto& material = ::Assets::GetAssetComp<MaterialScaffold>(materialFilename, modelFilename);
-            auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
-
-            CalculateVertexAO(
-                *_pimpl->_threadContext, intermediateName,
-                *_pimpl->_aoGen, model, material, &searchRules);
-
-            std::vector<::Assets::DependentFileState> deps;
-            deps.push_back(destinationStore.GetDependentFileState(model.Filename().c_str()));
-                // It depends on the material as well, but we don't have a way to get the true 
-                // filename of the material file from here!
-
-            char baseDir[MaxPath];
-            XlDirname(baseDir, dimof(baseDir), modelFilename);
-            depVal = destinationStore.WriteDependencies(
-                intermediateName, baseDir, AsPointer(deps.cbegin()), AsPointer(deps.cend()));
+            // check if there is an existing one we can use...
+        if (DoesFileExist(intermediateName)) {
+            auto depVal = destinationStore.MakeDependencyValidation(intermediateName);
+            if (depVal && depVal->GetValidationIndex() == 0)
+                return std::make_shared<::Assets::PendingCompileMarker>(
+                    ::Assets::AssetState::Ready, intermediateName, 0, std::move(depVal));
         }
+        
+        const auto& model = ::Assets::GetAssetComp<ModelScaffold>(modelFilename);
+        const auto& material = ::Assets::GetAssetComp<MaterialScaffold>(materialFilename, modelFilename);
+        auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
 
+        CalculateVertexAO(
+            *_pimpl->_threadContext, intermediateName,
+            *_pimpl->_aoGen, model, material, &searchRules);
+
+        std::vector<::Assets::DependentFileState> deps;
+        deps.push_back(destinationStore.GetDependentFileState(model.Filename().c_str()));
+            // It depends on the material as well, but we don't have a way to get the true 
+            // filename of the material file from here!
+
+        char baseDir[MaxPath];
+        XlDirname(baseDir, dimof(baseDir), model.Filename().c_str());
+        auto depVal = destinationStore.WriteDependencies(
+            intermediateName, baseDir, AsPointer(deps.cbegin()), AsPointer(deps.cend()));
         assert(depVal);
+
         return std::make_shared<::Assets::PendingCompileMarker>(
             ::Assets::AssetState::Ready, intermediateName, 0, std::move(depVal));
     }

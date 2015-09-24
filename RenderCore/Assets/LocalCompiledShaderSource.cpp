@@ -455,7 +455,7 @@ namespace RenderCore { namespace Assets
             auto archive = _shaderCacheSet->GetArchive(archiveName, destinationStore);
             if (archive->HasItem(archiveId)) {
                 auto depVal = destinationStore.MakeDependencyValidation(depName);
-                if (depVal) {
+                if (depVal && depVal->GetValidationIndex() == 0) {
                     marker = std::make_shared<::Assets::PendingCompileMarker>(::Assets::AssetState::Ready, archiveName, archiveId, std::move(depVal));
                     marker->_archive = std::move(archive);
                 }

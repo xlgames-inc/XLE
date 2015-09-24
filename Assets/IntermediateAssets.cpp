@@ -140,63 +140,54 @@ namespace Assets { namespace IntermediateAssets
 
         ResChar buffer[MaxPath];
         MakeDepFileName(buffer, _baseDirectory.c_str(), intermediateFileName);
-        TRY {
+        if (!DoesFileExist(buffer)) return nullptr;
 
-            Data data;
-            data.LoadFromFile(buffer);
+        Data data;
+        data.LoadFromFile(buffer);
 
-            auto* basePath = data.StrAttribute("BasePath");
-            auto validation = std::make_shared<DependencyValidation>();
-            auto* dependenciesBlock = data.ChildWithValue("Dependencies");
-            if (dependenciesBlock) {
-                for (auto* dependency = dependenciesBlock->child; dependency; dependency = dependency->next) {
-                    auto* depName = dependency->value;
-                    if (!depName || !depName[0]) continue;
+        auto* basePath = data.StrAttribute("BasePath");
+        auto validation = std::make_shared<DependencyValidation>();
+        auto* dependenciesBlock = data.ChildWithValue("Dependencies");
+        if (dependenciesBlock) {
+            for (auto* dependency = dependenciesBlock->child; dependency; dependency = dependency->next) {
+                auto* depName = dependency->value;
+                if (!depName || !depName[0]) continue;
 
-                    auto dateLow = (unsigned)dependency->IntAttribute("ModTimeL");
-                    auto dateHigh = (unsigned)dependency->IntAttribute("ModTimeH");
+                auto dateLow = (unsigned)dependency->IntAttribute("ModTimeL");
+                auto dateHigh = (unsigned)dependency->IntAttribute("ModTimeH");
                     
-                    const RetainedFileRecord* record;
-                    if (basePath && basePath[0]) {
-                        XlConcatPath(buffer, dimof(buffer), basePath, depName, &depName[XlStringLen(depName)]);
-                        auto& ptr = GetRetainedFileRecord(buffer);
-                        RegisterAssetDependency(validation, ptr);
-                        record = ptr.get();
-                    } else {
-                        auto& ptr = GetRetainedFileRecord(depName);
-                        RegisterAssetDependency(validation, ptr);
-                        record = ptr.get();
-                    }
+                const RetainedFileRecord* record;
+                if (basePath && basePath[0]) {
+                    XlConcatPath(buffer, dimof(buffer), basePath, depName, &depName[XlStringLen(depName)]);
+                    auto& ptr = GetRetainedFileRecord(buffer);
+                    RegisterAssetDependency(validation, ptr);
+                    record = ptr.get();
+                } else {
+                    auto& ptr = GetRetainedFileRecord(depName);
+                    RegisterAssetDependency(validation, ptr);
+                    record = ptr.get();
+                }
 
-                    if (record->_state._status == DependentFileState::Status::Shadowed) {
-                        LogInfo << "Asset (" << intermediateFileName << ") is invalidated because dependency (" << depName << ") is marked shadowed";
-                        return nullptr;
-                    }
+                if (record->_state._status == DependentFileState::Status::Shadowed) {
+                    LogInfo << "Asset (" << intermediateFileName << ") is invalidated because dependency (" << depName << ") is marked shadowed";
+                    return nullptr;
+                }
 
-                    if (!record->_state._timeMarker) {
-                        LogInfo
-                            << "Asset (" << intermediateFileName 
-                            << ") is invalidated because of missing dependency (" << depName << ")";
-                        return nullptr;
-                    } else if (record->_state._timeMarker != ((uint64(dateHigh) << 32ull) | uint64(dateLow))) {
-                        LogInfo
-                            << "Asset (" << intermediateFileName 
-                            << ") is invalidated because of file data on dependency (" << depName << ")";
-                        return nullptr;
-                    }
+                if (!record->_state._timeMarker) {
+                    LogInfo
+                        << "Asset (" << intermediateFileName 
+                        << ") is invalidated because of missing dependency (" << depName << ")";
+                    return nullptr;
+                } else if (record->_state._timeMarker != ((uint64(dateHigh) << 32ull) | uint64(dateLow))) {
+                    LogInfo
+                        << "Asset (" << intermediateFileName 
+                        << ") is invalidated because of file data on dependency (" << depName << ")";
+                    return nullptr;
                 }
             }
+        }
 
-            return validation;
-
-        } CATCH(const std::exception&) {
-
-                // If there is no dependencies file, let's assume there are
-                //  no dependencies at all
-                // ... though maybe this exception could have come from a badly formatted file?
-            return std::make_shared<DependencyValidation>();
-
-        } CATCH_END
+        return validation;
     }
 
     std::shared_ptr<DependencyValidation> Store::WriteDependencies(
