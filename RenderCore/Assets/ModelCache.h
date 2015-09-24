@@ -62,11 +62,12 @@ namespace RenderCore { namespace Assets
 
         using ResChar = ::Assets::ResChar;
         using SupplementGUID = uint64;
+        using SupplementRange = IteratorRange<const SupplementGUID*>;
 
         Model GetModel(
             const ResChar modelFilename[], 
             const ResChar materialFilename[],
-            IteratorRange<SupplementGUID*> supplements = IteratorRange<SupplementGUID*>(),
+            SupplementRange supplements = SupplementRange(),
             unsigned LOD = 0);
         Scaffolds GetScaffolds(
             const ResChar modelFilename[], 

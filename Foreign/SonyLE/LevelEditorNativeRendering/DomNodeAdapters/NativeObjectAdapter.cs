@@ -237,21 +237,18 @@ namespace RenderingInterop
             IList<PropertyInitializer> properties,
             System.IO.UnmanagedMemoryStream stream)
         {
-            if (!string.IsNullOrEmpty(str))
-            {
-                var length = str.Length;
-                properties.Add(GameEngine.CreateInitializer(
-                    propId, stream.PositionPointer,
-                    typeof(char), (uint)length, true));
+            var length = str.Length;
+            properties.Add(GameEngine.CreateInitializer(
+                propId, stream.PositionPointer,
+                typeof(char), (uint)length, true));
 
-                    // copy in string data with no string formatting or changes to encoding
-                fixed (char* raw = str)
-                    for (uint c = 0; c < length; ++c)
-                        ((char*)stream.PositionPointer)[c] = raw[c];
+                // copy in string data with no string formatting or changes to encoding
+            fixed (char* raw = str)
+                for (uint c = 0; c < length; ++c)
+                    ((char*)stream.PositionPointer)[c] = raw[c];
 
-                    // just advance the stream position over what we've just written
-                stream.Position += sizeof(char) * length;
-            }
+                // just advance the stream position over what we've just written
+            stream.Position += sizeof(char) * length;
         }
 
         unsafe private static void SetBasicProperty<T>(

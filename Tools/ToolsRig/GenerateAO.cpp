@@ -607,8 +607,8 @@ namespace ToolsRig
         XlCatString(intermediateName, dimof(intermediateName), splitter.File().AsString().c_str());
         XlCatString(intermediateName, dimof(intermediateName), "-ao");
         
-        std::shared_ptr<::Assets::DependencyValidation> depVal;
-        if (!DoesFileExist(intermediateName)) {
+        auto depVal = destinationStore.MakeDependencyValidation(intermediateName);
+        if (!depVal || depVal->GetValidationIndex() != 0) {
             const auto& model = ::Assets::GetAssetComp<ModelScaffold>(modelFilename);
             const auto& material = ::Assets::GetAssetComp<MaterialScaffold>(materialFilename, modelFilename);
             auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
@@ -618,17 +618,17 @@ namespace ToolsRig
                 *_pimpl->_aoGen, model, material, &searchRules);
 
             std::vector<::Assets::DependentFileState> deps;
-            deps.push_back(destinationStore.GetDependentFileState(modelFilename));
-            deps.push_back(destinationStore.GetDependentFileState(materialFilename));
+            deps.push_back(destinationStore.GetDependentFileState(model.Filename().c_str()));
+                // It depends on the material as well, but we don't have a way to get the true 
+                // filename of the material file from here!
 
             char baseDir[MaxPath];
             XlDirname(baseDir, dimof(baseDir), modelFilename);
             depVal = destinationStore.WriteDependencies(
                 intermediateName, baseDir, AsPointer(deps.cbegin()), AsPointer(deps.cend()));
-        } else {
-            depVal = destinationStore.MakeDependencyValidation(intermediateName);
         }
-        
+
+        assert(depVal);
         return std::make_shared<::Assets::PendingCompileMarker>(
             ::Assets::AssetState::Ready, intermediateName, 0, std::move(depVal));
     }
@@ -645,7 +645,7 @@ namespace ToolsRig
         _pimpl->_threadContext = threadContext;
         ToolsRig::AoGen::Desc settings(
             0.001f, 10.f, 128,
-            4.f, 0.01f, 0.02f);
+            2.f, 0.01f, 0.02f);
         _pimpl->_aoGen = std::make_unique<ToolsRig::AoGen>(settings);
     }
 

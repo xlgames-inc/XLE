@@ -60,6 +60,8 @@ namespace SceneEngine
     using RenderCore::Assets::DelayedDrawCall;
     using RenderCore::Assets::DelayedDrawCallSet;
 
+    using SupplementRange = ModelCache::SupplementRange;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
         // Note that "placements" that interface methods in Placements are actually
@@ -77,12 +79,14 @@ namespace SceneEngine
             BoundingBox _cellSpaceBoundary;
             unsigned    _modelFilenameOffset;       // note -- hash values should be stored with the filenames
             unsigned    _materialFilenameOffset;
+            unsigned    _supplementsOffset;
             uint64      _guid;
         };
         
         const ObjectReference*  GetObjectReferences() const;
         unsigned                GetObjectReferenceCount() const;
         const void*             GetFilenamesBuffer() const;
+        const uint64*           GetSupplementsBuffer() const;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _dependencyValidation; }
 
@@ -95,14 +99,16 @@ namespace SceneEngine
     protected:
         std::vector<ObjectReference>    _objects;
         std::vector<uint8>              _filenamesBuffer;
+        std::vector<uint64>             _supplementsBuffer;
 
         std::shared_ptr<::Assets::DependencyValidation>   _dependencyValidation;
         void ReplaceString(const char oldString[], const char newString[]);
     };
 
-    auto        Placements::GetObjectReferences() const -> const ObjectReference*   { return AsPointer(_objects.begin()); }
-    unsigned    Placements::GetObjectReferenceCount() const                         { return unsigned(_objects.size()); }
-    const void* Placements::GetFilenamesBuffer() const                              { return AsPointer(_filenamesBuffer.begin()); }
+    auto            Placements::GetObjectReferences() const -> const ObjectReference*   { return AsPointer(_objects.begin()); }
+    unsigned        Placements::GetObjectReferenceCount() const                         { return unsigned(_objects.size()); }
+    const void*     Placements::GetFilenamesBuffer() const                              { return AsPointer(_filenamesBuffer.begin()); }
+    const uint64*   Placements::GetSupplementsBuffer() const                            { return AsPointer(_supplementsBuffer.begin()); }
 
     static const uint64 ChunkType_Placements = ConstHash64<'Plac','emen','ts'>::Value;
 
@@ -112,6 +118,7 @@ namespace SceneEngine
         unsigned _version;
         unsigned _objectRefCount;
         unsigned _filenamesBufferSize;
+        unsigned _supplementsBufferSize;
         unsigned _dummy;
     };
 
@@ -127,14 +134,17 @@ namespace SceneEngine
         hdr._version = 0;
         hdr._objectRefCount = (unsigned)_objects.size();
         hdr._filenamesBufferSize = unsigned(_filenamesBuffer.size());
+        hdr._supplementsBufferSize = unsigned(_supplementsBuffer.size() * sizeof(uint64));
         hdr._dummy = 0;
         auto writeResult0 = fileWriter.Write(&hdr, sizeof(hdr), 1);
         auto writeResult1 = fileWriter.Write(AsPointer(_objects.begin()), sizeof(ObjectReference), hdr._objectRefCount);
         auto writeResult2 = fileWriter.Write(AsPointer(_filenamesBuffer.begin()), 1, hdr._filenamesBufferSize);
+        auto writeResult3 = fileWriter.Write(AsPointer(_supplementsBuffer.begin()), 1, hdr._supplementsBufferSize);
 
         if (    writeResult0 != 1
             ||  writeResult1 != hdr._objectRefCount
-            ||  writeResult2 != hdr._filenamesBufferSize)
+            ||  writeResult2 != hdr._filenamesBufferSize
+            ||  writeResult3 != hdr._supplementsBufferSize)
             Throw(::Exceptions::BasicLabel("Failure in file write while saving placements"));
     }
 
@@ -148,7 +158,10 @@ namespace SceneEngine
         auto i = _objects.cbegin();
         while (i != _objects.cend()) {
             auto starti = i;
-            while (i != _objects.cend() && i->_materialFilenameOffset == starti->_materialFilenameOffset && i->_modelFilenameOffset == starti->_modelFilenameOffset) { ++i; }
+            while (i != _objects.cend() 
+                && i->_materialFilenameOffset == starti->_materialFilenameOffset 
+                && i->_modelFilenameOffset == starti->_modelFilenameOffset
+                && i->_supplementsOffset == starti->_supplementsOffset) { ++i; }
             ++configCount;
         }
         LogInfo << "    (" << configCount << ") configurations";
@@ -156,11 +169,15 @@ namespace SceneEngine
         i = _objects.cbegin();
         while (i != _objects.cend()) {
             auto starti = i;
-            while (i != _objects.cend() && i->_materialFilenameOffset == starti->_materialFilenameOffset && i->_modelFilenameOffset == starti->_modelFilenameOffset) { ++i; }
+            while (i != _objects.cend() 
+                && i->_materialFilenameOffset == starti->_materialFilenameOffset 
+                && i->_modelFilenameOffset == starti->_modelFilenameOffset
+                && i->_supplementsOffset == starti->_supplementsOffset) { ++i; }
 
             auto modelName = (const ResChar*)PtrAdd(AsPointer(_filenamesBuffer.begin()), starti->_modelFilenameOffset + sizeof(uint64));
             auto materialName = (const ResChar*)PtrAdd(AsPointer(_filenamesBuffer.begin()), starti->_materialFilenameOffset + sizeof(uint64));
-            LogInfo << "    [" << (i-starti) << "] objects (" << modelName << "), (" << materialName << ")";
+            auto supplementCount = _supplementsBuffer[starti->_supplementsOffset];
+            LogInfo << "    [" << (i-starti) << "] objects (" << modelName << "), (" << materialName << "), (" << supplementCount << ")";
         }
     }
 
@@ -585,6 +602,14 @@ namespace SceneEngine
         CATCH_END
     }
 
+    static SupplementRange AsSupplements(const uint64* supplementsBuffer, unsigned supplementsOffset)
+    {
+        if (!supplementsOffset) return SupplementRange();
+        return SupplementRange(
+            supplementsBuffer+supplementsOffset+1, 
+            supplementsBuffer+supplementsOffset+1+supplementsBuffer[supplementsOffset]);
+    }
+
     namespace Internal
     {
         class RendererHelper
@@ -594,6 +619,7 @@ namespace SceneEngine
                 ModelCache& cache,
                 DelayedDrawCallSet& delayedDrawCalls,
                 const void* filenamesBuffer,
+                const uint64* supplementsBuffer,
                 const Placements::ObjectReference& obj,
                 const Float3x4& cellToWorld,
                 const Float3& cameraPosition);
@@ -601,9 +627,11 @@ namespace SceneEngine
             RendererHelper()
             {
                 _currentModel = _currentMaterial = 0ull;
+                _currentSupplements = 0u;
             }
         protected:
             uint64 _currentModel, _currentMaterial;
+            unsigned _currentSupplements;
             ModelCache::Model _current;
         };
 
@@ -611,6 +639,7 @@ namespace SceneEngine
             ModelCache& cache,
             DelayedDrawCallSet& delayedDrawCalls,
             const void* filenamesBuffer,
+            const uint64* supplementsBuffer,
             const Placements::ObjectReference& obj,
             const Float3x4& cellToWorld,
             const Float3& cameraPosition)
@@ -640,14 +669,16 @@ namespace SceneEngine
             auto LOD = unsigned(distanceSq / (150.f*150.f));
 
             if (    modelHash != _currentModel || materialHash != _currentMaterial 
+                ||  obj._supplementsOffset != _currentSupplements
                 ||  std::min(_current._maxLOD, LOD) != _current._selectedLOD) {
                 _current = cache.GetModel(
                     (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64)),
                     (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64)),
-                    IteratorRange<ModelCache::SupplementGUID*>(),
+                    AsSupplements(supplementsBuffer, obj._supplementsOffset),
                     LOD);
                 _currentModel = modelHash;
                 _currentMaterial = materialHash;
+                _currentSupplements = obj._supplementsOffset;
             }
                 
             auto localToWorld = Combine(obj._localToCell, cellToWorld);
@@ -719,6 +750,7 @@ namespace SceneEngine
         Internal::RendererHelper helper;
         
         const auto* filenamesBuffer = placements.GetFilenamesBuffer();
+        const auto* supplementsBuffer = placements.GetSupplementsBuffer();
         const auto* objRef = placements.GetObjectReferences();
         
         if (quadTree) {
@@ -743,7 +775,7 @@ namespace SceneEngine
 
                 helper.Render(
                     *_cache, _preparedRenders, 
-                    filenamesBuffer, obj, cellToWorld, cameraPosition);
+                    filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
             }
 
         } else {
@@ -765,7 +797,7 @@ namespace SceneEngine
 
                 helper.Render(
                     *_cache, _preparedRenders, 
-                    filenamesBuffer, obj, cellToWorld, cameraPosition);
+                    filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
             }
         }
     }
@@ -915,12 +947,14 @@ namespace SceneEngine
             const Float3x4& objectToCell, 
             const std::pair<Float3, Float3>& cellSpaceBoundary,
             const ResChar modelFilename[], const ResChar materialFilename[],
+            SupplementRange supplements,
             uint64 objectGuid);
 
         std::vector<ObjectReference>& GetObjects() { return _objects; }
         bool HasObject(uint64 guid);
 
         unsigned AddString(const ResChar str[]);
+        unsigned AddSupplements(SupplementRange supplements);
 
         DynamicPlacements(const Placements& copyFrom);
         DynamicPlacements();
@@ -967,10 +1001,34 @@ namespace SceneEngine
         return result;
     }
 
+    unsigned DynamicPlacements::AddSupplements(SupplementRange supplements)
+    {
+        if (supplements.empty()) return 0;
+
+        auto* start = AsPointer(_supplementsBuffer.begin());
+        auto* end = AsPointer(_supplementsBuffer.end());
+        
+        for (auto i=start; i<end;) {
+            const auto count = *i;
+            if (count == supplements.size() && !XlCompareMemory(i+1, supplements.begin(), count*sizeof(uint64)))
+                return unsigned(i-start);
+            i += 1+count;
+        }
+
+        if (_supplementsBuffer.empty())
+            _supplementsBuffer.push_back(0);    // sentinal in place 0 (since an offset of '0' is used to mean no supplements)
+
+        auto r = _supplementsBuffer.size();
+        _supplementsBuffer.push_back(supplements.size());
+        _supplementsBuffer.insert(_supplementsBuffer.end(), supplements.begin(), supplements.end());
+        return unsigned(r);
+    }
+
     uint64 DynamicPlacements::AddPlacement(
         const Float3x4& objectToCell,
         const std::pair<Float3, Float3>& cellSpaceBoundary,
         const ResChar modelFilename[], const ResChar materialFilename[],
+        SupplementRange supplements,
         uint64 objectGuid)
     {
         ObjectReference newReference;
@@ -978,6 +1036,7 @@ namespace SceneEngine
         newReference._cellSpaceBoundary = cellSpaceBoundary;
         newReference._modelFilenameOffset = AddString(modelFilename);
         newReference._materialFilenameOffset = AddString(materialFilename);
+        newReference._supplementsOffset = AddSupplements(supplements);
         newReference._guid = objectGuid;
 
             // Insert the new object in sorted order
@@ -1502,6 +1561,44 @@ namespace SceneEngine
         auto modelAndMaterialHash = Hash64(model, Hash64(material));
         return uint64(EverySecondBit(modelAndMaterialHash)) << 32ull;
     }
+    
+    static std::vector<ModelCache::SupplementGUID> StringToSupplementGuids(const char stringNames[])
+    {
+        if (!stringNames || !*stringNames) return std::vector<uint64>();
+
+        std::vector<uint64> result;
+        const auto* i = stringNames;
+        const auto* end = &stringNames[XlStringLen(stringNames)];
+        for (;;) {
+            auto comma = XlFindChar(i, ',');
+            if (!comma) comma = end;
+            if (i == comma) break;
+
+                // if the string is exactly a hex number, then
+                // will we just use that value. (otherwise we
+                // need to hash the string)
+            const char* parseEnd = nullptr;
+            auto hash = XlAtoUI64(i, &parseEnd, 16);
+            if (parseEnd != comma)
+                hash = ConstHash64FromString(i, comma);
+
+            result.push_back(hash);
+            i = comma;
+        }
+        return std::move(result);
+    }
+
+    static std::string SupplementsGuidsToString(SupplementRange guids)
+    {
+        if (guids.empty()) return std::string();
+
+        std::stringstream str;
+        const auto* i = guids.begin();
+        str << std::hex << *i++;
+        for (;i<guids.end(); ++i)
+            str << ',' << std::hex << *i;
+        return str.str();
+    }
 
     bool    Transaction::Create(const ObjTransDef& newState)
     {
@@ -1558,9 +1655,11 @@ namespace SceneEngine
                     if (!dynPlacements->HasObject(id)) { break; }
                 }
 
+                auto suppGuid = StringToSupplementGuids(newState._supplements.c_str());
                 dynPlacements->AddPlacement(
                     localToCell, TransformBoundingBox(localToCell, boundingBox),
-                    newState._model.c_str(), materialFilename.c_str(), id);
+                    newState._model.c_str(), materialFilename.c_str(), 
+                    MakeIteratorRange(suppGuid), id);
 
                 guid = PlacementGUID(i->_filenameHash, id);
                 break;
@@ -1617,9 +1716,11 @@ namespace SceneEngine
                     return false;
                 }
 
+                auto supp = StringToSupplementGuids(newState._supplements.c_str());
                 dynPlacements->AddPlacement(
                     localToCell, TransformBoundingBox(localToCell, boundingBox),
-                    newState._model.c_str(), materialFilename.c_str(), id);
+                    newState._model.c_str(), materialFilename.c_str(), 
+                    MakeIteratorRange(supp), id);
 
                 guid.second = id;
                 foundCell = true;
@@ -1712,16 +1813,18 @@ namespace SceneEngine
         } 
         
         if (!isDeleteOp) {
+            auto suppGuids = StringToSupplementGuids(newState._supplements.c_str());
             if (hasExisting) {
                 dst->_localToCell = localToCell;
                 dst->_modelFilenameOffset = dynPlacements->AddString(newState._model.c_str());
                 dst->_materialFilenameOffset = dynPlacements->AddString(materialFilename.c_str());
+                dst->_supplementsOffset = dynPlacements->AddSupplements(MakeIteratorRange(suppGuids));
                 dst->_cellSpaceBoundary = cellSpaceBoundary;
             } else {
                 dynPlacements->AddPlacement(
                     localToCell, cellSpaceBoundary, 
                     newState._model.c_str(), materialFilename.c_str(), 
-                    guid.second);
+                    MakeIteratorRange(suppGuids), guid.second);
             }
         }
     }
@@ -1797,6 +1900,7 @@ namespace SceneEngine
                         def._localToWorld = Combine(pIterator->_localToCell, cellToWorld);
                         def._model = (const ResChar*)PtrAdd(placements->GetFilenamesBuffer(), sizeof(uint64) + pIterator->_modelFilenameOffset);
                         def._material = (const ResChar*)PtrAdd(placements->GetFilenamesBuffer(), sizeof(uint64) + pIterator->_materialFilenameOffset);
+                        def._supplements = SupplementsGuidsToString(AsSupplements(placements->GetSupplementsBuffer(), pIterator->_supplementsOffset));
                         def._transaction = ObjTransDef::Unchanged;
                         originalState.push_back(def);
                     } else {
@@ -1820,6 +1924,7 @@ namespace SceneEngine
                         def._localToWorld = Combine(pIterator->_localToCell, cellToWorld);
                         def._model = (const ResChar*)PtrAdd(placements->GetFilenamesBuffer(), sizeof(uint64) + pIterator->_modelFilenameOffset);
                         def._material = (const ResChar*)PtrAdd(placements->GetFilenamesBuffer(), sizeof(uint64) + pIterator->_materialFilenameOffset);
+                        def._supplements = SupplementsGuidsToString(AsSupplements(placements->GetSupplementsBuffer(), pIterator->_supplementsOffset));
                         def._transaction = ObjTransDef::Unchanged;
                         originalState.push_back(def);
                     } else {
@@ -2087,8 +2192,11 @@ namespace SceneEngine
         for (unsigned c=0; c<count;) {
             auto model = refs[c]._modelFilenameOffset;
             auto material = refs[c]._materialFilenameOffset;
+            auto supp = refs[c]._supplementsOffset;
             unsigned cend = c+1;
-            while (cend < count && refs[cend]._modelFilenameOffset == model && refs[cend]._materialFilenameOffset == material)
+            while (cend < count 
+                && refs[cend]._modelFilenameOffset == model && refs[cend]._materialFilenameOffset == material
+                && refs[cend]._supplementsOffset == supp)
                 ++cend;
 
             result << "[" << PtrAdd(fns, model + sizeof(uint64)) << "] [" << PtrAdd(fns, material + sizeof(uint64)) << "] " << (cend - c) << std::endl;

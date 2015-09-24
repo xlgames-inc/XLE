@@ -162,7 +162,7 @@ namespace RenderCore { namespace Assets
 
     auto ModelCache::GetModel(
         const ResChar modelFilename[], const ResChar materialFilename[],
-        IteratorRange<SupplementGUID*> supplements,
+        IteratorRange<const SupplementGUID*> supplements,
         unsigned LOD) -> Model
     {
         auto scaffold = GetScaffolds(modelFilename, materialFilename);
@@ -177,7 +177,7 @@ namespace RenderCore { namespace Assets
 
         uint64 hashedModel = (uint64(scaffold._model) << 2ull) | (uint64(scaffold._material) << 48ull) | uint64(LOD);
         for (auto s=supplements.begin(); s!=supplements.end(); ++s)
-            hashedModel |= *s;
+            hashedModel = HashCombine(hashedModel, *s);
 
         auto renderer = _pimpl->_modelRenderers.Get(hashedModel);
         if (!renderer) {

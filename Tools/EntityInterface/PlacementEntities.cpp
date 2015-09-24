@@ -20,8 +20,9 @@ namespace EntityInterface
     static const PropertyId Property_Visible = 101;
     static const PropertyId Property_Model = 102;
     static const PropertyId Property_Material = 103;
-    static const PropertyId Property_Bounds = 104;
-    static const PropertyId Property_LocalBounds = 105;
+    static const PropertyId Property_Supplements = 104;
+    static const PropertyId Property_Bounds = 105;
+    static const PropertyId Property_LocalBounds = 106;
 
 
     DocumentId PlacementEntities::CreateDocument(DocumentTypeId docType, const char initializer[])
@@ -62,7 +63,7 @@ namespace EntityInterface
                 return true;
             }
 
-        } else if (prop._prop == Property_Model || prop._prop == Property_Material) {
+        } else if (prop._prop == Property_Model || prop._prop == Property_Material || prop._prop == Property_Supplements) {
             Assets::ResChar buffer[MaxPath];
             ucs2_2_utf8(
                 (const ucs2*)prop._src, prop._arrayCount,
@@ -70,6 +71,8 @@ namespace EntityInterface
 
             if (prop._prop == Property_Model) {
                 obj._model = buffer;
+            } else if (prop._prop == Property_Supplements) {
+                obj._supplements = buffer;
             } else {
                 obj._material = buffer;
             }
@@ -230,6 +233,7 @@ namespace EntityInterface
         if (!XlCompareString(name, "visible"))      return Property_Visible;
         if (!XlCompareString(name, "model"))        return Property_Model;
         if (!XlCompareString(name, "material"))     return Property_Material;
+        if (!XlCompareString(name, "supplements"))  return Property_Supplements;
         if (!XlCompareString(name, "Bounds"))       return Property_Bounds;
         if (!XlCompareString(name, "LocalBounds"))  return Property_LocalBounds;
         return 0;

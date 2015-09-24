@@ -110,21 +110,35 @@ namespace Utility
             Iterator cbegin() const { return first; }
             Iterator cend() const   { return second; }
             size_t size() const     { return std::distance(first, second); }
+            bool empty() const      { return first == second; }
 
             decltype(*std::declval<Iterator>()) operator[](size_t index) const { return first[index]; }
 
-            template<typename Container>
-                IteratorRange(Container& container)
-                    : std::pair<Iterator, Iterator>(container.cbegin(), container.cend()) {}
             IteratorRange() : std::pair<Iterator, Iterator>(nullptr, nullptr) {}
-            IteratorRange(const std::pair<Iterator, Iterator>& copyFrom) : std::pair<Iterator, Iterator>(copyFrom) {}
             IteratorRange(Iterator f, Iterator s) : std::pair<Iterator, Iterator>(f, s) {}
+
+            IteratorRange(const std::pair<Iterator, Iterator>& copyFrom) : std::pair<Iterator, Iterator>(copyFrom) {}
+
+            template<typename OtherIterator>
+                operator IteratorRange<OtherIterator>() const { return IteratorRange<OtherIterator>(cbegin(), cend()); }
         };
+
+    template<typename Container>
+        IteratorRange<const typename Container::value_type*> MakeIteratorRange(const Container& c)
+        {
+            return IteratorRange<const typename Container::value_type*>(AsPointer(c.cbegin()), AsPointer(c.cend()));
+        }
 
     template<typename Container>
         IteratorRange<typename Container::value_type*> MakeIteratorRange(Container& c)
         {
             return IteratorRange<typename Container::value_type*>(AsPointer(c.begin()), AsPointer(c.end()));
+        }
+    
+    template<typename Iterator>
+        IteratorRange<Iterator> MakeIteratorRange(Iterator begin, Iterator end)
+        {
+            return IteratorRange<Iterator>(begin, end);
         }
 }
 

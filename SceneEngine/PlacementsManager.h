@@ -106,10 +106,11 @@ namespace SceneEngine
             Float3x4        _localToWorld;
             std::string     _model;
             std::string     _material;
+            std::string     _supplements;
 
             ObjTransDef() {}
-            ObjTransDef(const Float3x4& localToWorld, const std::string& model, const std::string& material)
-                : _localToWorld(localToWorld), _model(model), _material(material), _transaction(Error) {}
+            ObjTransDef(const Float3x4& localToWorld, const std::string& model, const std::string& material, const std::string& supplements)
+                : _localToWorld(localToWorld), _model(model), _material(material), _supplements(supplements), _transaction(Error) {}
 
             enum TransactionType { Unchanged, Created, Deleted, Modified, Error };
             TransactionType _transaction;

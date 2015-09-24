@@ -628,7 +628,7 @@ namespace ToolsRig
         }
 
         SceneEngine::PlacementsEditor::ObjTransDef newState(
-            AsFloat3x4(newLocation), _manInterface->GetSelectedModel(), materialName);
+            AsFloat3x4(newLocation), _manInterface->GetSelectedModel(), materialName, nullptr);
         if (_doRandomRotation) {
             Combine_InPlace_(RotationZ(_placementRotation), newState._localToWorld);
         }
@@ -1169,7 +1169,7 @@ namespace ToolsRig
             auto objectToWorld = AsFloat4x4(*p);
             Combine_InPlace(RotationZ(rand() * 2.f * gPI / float(RAND_MAX)), objectToWorld);
             trans->Create(SceneEngine::PlacementsEditor::ObjTransDef(
-                AsFloat3x4(objectToWorld), modelName, materialName));
+                AsFloat3x4(objectToWorld), modelName, materialName, nullptr));
         }
 
         trans->Commit();
