@@ -296,7 +296,20 @@ float3 GetNormal(VSOutput geo)
         return normalize(geo.normal);
 
 	#else
-		return 1.0.xxx;
+		return 0.0.xxx;
+	#endif
+}
+
+float3 GetVertexNormal(VSOutput geo)
+{
+	#if OUTPUT_TANGENT_FRAME==1
+		return normalize(geo.normal);
+	#elif OUTPUT_LOCAL_TANGENT_FRAME==1
+		return BuildLocalTangentFrameFromGeo(geo).normal;
+	#elif (OUTPUT_NORMAL==1)
+		return normalize(geo.normal);
+	#else
+		return 0.0.xxx;
 	#endif
 }
 

@@ -147,7 +147,18 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
         result.worldSpaceNormal = GetNormal(geo);
 
         #if (MAT_DOUBLE_SIDED_LIGHTING==1) && (OUTPUT_WORLD_VIEW_VECTOR==1)
-            if (dot(result.worldSpaceNormal, geo.worldViewVector) < 0.f) {
+                // We can use either the per-pixel normal or the vertex normal
+                // in this calculation.
+                // Using the vertex normal might add some complication to the shader
+                // (because in some cases the vertex normal has to be calculated from
+                // shader inputs). But using the vertex normal better preserves detail
+                // in the normal map (which otherwise might be factored out by the flipping)
+                //
+                // Actually, there are 2 ways we can do this flip -- we can just flip the normal
+                // directly. Or we can flip the vertex normal that is used in the normal map
+                // algorithm. Each way will express a different kind of underlying shape to the
+                // geometry.
+            if (dot(GetVertexNormal(geo), geo.worldViewVector) < 0.f) {
                 result.worldSpaceNormal *= -1.f;
             }
         #endif

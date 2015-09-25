@@ -5,21 +5,21 @@
 	
 	~ToneMapSettings; BloomDesaturationFactor=0.5f; BloomRampingFactor=0.33f; SceneKey=0.18f
 		BloomBlurStdDev=2.2f; Flags=3i; BloomBrightness=20f; LuminanceMax=1f; WhitePoint=8f
-		BloomThreshold=4.5f; LuminanceMin=0.06f; BloomScale=-1i
+		BloomThreshold=14f; LuminanceMin=0.06f; BloomScale=-1i
 	
 	~AmbientSettings; RangeFogThicknessScale=1f; AtmosBlurStart=1000f; AmbientLight=-1i
-		AmbientBrightness=0.25f; SkyReflectionBlurriness=2f; AtmosBlurStdDev=1.3f
+		AmbientBrightness=0.4f; SkyReflectionBlurriness=2f; AtmosBlurStdDev=1.3f
 		SkyTexture=Game/xleres/DefaultResources/sky/desertsky.dds; Flags=0i
 		RangeFogInscatterScale=1f; SkyReflectionScale=1f; SkyBrightness=1f; RangeFogInscatter=0i
 		AtmosBlurEnd=1500f; RangeFogThickness=0i
 	
-	~ShadowFrustumSettings; FrustumCount=5i; ShadowRasterDepthBias=500i; FrustumSizeFactor=3.8f
-		ShadowSlopeScaledBias=5f; Flags=1i; Light=Sun; ShadowDepthBiasClamp=0f; MaxBlurSearch=25f
+	~ShadowFrustumSettings; FrustumCount=5i; ShadowRasterDepthBias=200i; FrustumSizeFactor=3.8f
+		ShadowSlopeScaledBias=-1f; Flags=9i; Light=Sun; ShadowDepthBiasClamp=0f; MaxBlurSearch=25f
 		MinBlurSearch=0.5f; MaxDistanceFromCamera=1000f; WorldSpaceResolveBias=0f; FocusDistance=3f
 		BlurAngleDegrees=0.25f; Name=shadows; TextureSize=1024i
 	
-	~DirectionalLight; DiffuseModel=1i; DiffuseBrightness=3.2f; Diffuse=-1i; Specular=-1i; Flags=1i
-		SpecularBrightness=1f; DiffuseWideningMin=0.3f
+	~DirectionalLight; DiffuseModel=0i; DiffuseBrightness=4.1f; Diffuse=-1i; Specular=-1i; Flags=1i
+		SpecularBrightness=40f; DiffuseWideningMin=0.3f
 		Transform={1f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f, 0f, 78.3603f, 45.2414f, 42.5779f, 1f}
-		ShadowResolveModel=0i; SpecularNonMetalBrightness=1f; DiffuseWideningMax=1.1f; Name=Sun
+		ShadowResolveModel=0i; SpecularNonMetalBrightness=40f; DiffuseWideningMax=1.1f; Name=Sun
 		Visible=1u
