@@ -140,6 +140,12 @@ namespace Utility
         {
             return IteratorRange<Iterator>(begin, end);
         }
+
+    template<typename ArrayElement, int Count>
+        IteratorRange<ArrayElement*> MakeIteratorRange(ArrayElement (&c)[Count])
+        {
+            return IteratorRange<ArrayElement*>(&c[0], &c[Count]);
+        }
 }
 
 using namespace Utility;

@@ -107,6 +107,10 @@ namespace Utility
         Section     _fullFilename;
 	};
 
+    template<typename CharType> FileNameSplitter<CharType> MakeFileNameSplitter(const CharType rawString[])                     { return FileNameSplitter<CharType>(rawString); }
+    template<typename CharType> FileNameSplitter<CharType> MakeFileNameSplitter(const std::basic_string<CharType>& rawString)   { return FileNameSplitter<CharType>(rawString); }
+    template<typename CharType> FileNameSplitter<CharType> MakeFileNameSplitter(StringSection<CharType> rawString)              { return FileNameSplitter<CharType>(rawString); }
+
 	//////////////////////////////////////////////////////////////////////////////
 	/// <summary>Split a path into its component directories</summary>
 	/// This is a starting point when simplifying a path, converting separators,

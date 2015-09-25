@@ -10,6 +10,7 @@
 #include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Assets/AssetsCore.h"
+#include "../../Assets/CompilerHelper.h"
 #include "../../Assets/IntermediateAssets.h"
 #include <memory>
 
@@ -76,6 +77,7 @@ namespace ToolsRig
         const RenderCore::Assets::MaterialScaffold& material,
         const ::Assets::DirectorySearchRules* searchRules);
 
+    /// <summary>Compiler type for generating per-vertex AO supplement</summary>
     class AOSupplementCompiler : public ::Assets::IntermediateAssets::IAssetCompiler
     {
     public:
@@ -85,6 +87,14 @@ namespace ToolsRig
             const ::Assets::IntermediateAssets::Store& destinationStore);
         void StallOnPendingOperations(bool cancelAll);
 
+        using CompileResult = ::Assets::CompilerHelper::CompileResult;
+        CompileResult PerformCompile(
+            const ::Assets::ResChar modelFilename[], const ::Assets::ResChar materialFilename[],
+            const ::Assets::ResChar destinationFile[]);
+
+            // When using with placements, this hash value is referenced by the
+            // "supplements" string in data. If the hash value changes, the data
+            // must also change.
         static const uint64 CompilerType = ConstHash64<'PER_', 'VERT', 'EX_A', 'O'>::Value;
 
         AOSupplementCompiler(std::shared_ptr<RenderCore::IThreadContext> threadContext);

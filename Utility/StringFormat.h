@@ -10,6 +10,7 @@
 #include "../Core/Exceptions.h"
 #include "../Core/Types.h"
 #include "Detail/API.h"
+#include "MemoryUtils.h"
 #include <string>
 #include <stdarg.h>
 
@@ -60,9 +61,9 @@ namespace Utility
             struct FixedMemoryBuffer : public std::streambuf 
         {
             uint8 _buffer[SizeInBytes];
-            FixedMemoryBuffer() 
+            FixedMemoryBuffer(size_t charSize)
             {
-                this->setp((char*)_buffer, (char*)PtrAdd(_buffer, sizeof(_buffer) - 1));
+                this->setp((char*)_buffer, (char*)PtrAdd(_buffer, sizeof(_buffer) - charSize));
                 std::fill_n(_buffer, dimof(_buffer), 0);
             }
         };
@@ -83,9 +84,8 @@ namespace Utility
     public:
         mutable std::ostream _stream;
         
-        StringMeld() : _stream(&_buffer)
+        StringMeld() : _stream(&_buffer), _buffer(sizeof(CharType))
         {
-            ((CharType*)_buffer._buffer)[0] = (CharType)'\0';
         }
 
         operator const CharType*() const
@@ -113,6 +113,112 @@ namespace Utility
                 meld._stream << type;
                 return meld;
             }
+    }
+
+    namespace Internal
+    {
+        class StreamBufInPlace : public std::streambuf
+        {
+        public:
+            StreamBufInPlace(uint8* start, uint8* end, size_t charSize) 
+            { 
+                this->setp((char*)start, (char*)PtrAdd(end, -ptrdiff_t(charSize))); 
+                XlSetMemory(start, 0, end-start);
+            }
+            ~StreamBufInPlace() {}
+
+            StreamBufInPlace(StreamBufInPlace&& moveFrom) never_throws
+            : std::streambuf(std::move(moveFrom))
+            {}
+
+            StreamBufInPlace& operator=(StreamBufInPlace&& moveFrom)
+            {
+                std::streambuf::operator=(moveFrom);
+                return *this;
+            }
+
+            uint8* Begin() { return (uint8*)pbase(); }
+        };
+
+        /// <summary>Dynamic string formatting utility<summary>
+        /// This version of StringMeld can work on an externally allocated buffer. It's useful
+        /// when appending some formatted text onto an existing string (often it's an effective
+        /// alternative to multiple string cats)
+        ///
+        /// <example>
+        ///     <code>\code
+        ///         char filename[MaxPath];
+        ///         object.GetFilename(filename, dimof(filename));
+        ///         StringMeldAppend(filename) << "-appendedtext";
+        ///     \endcode</code>
+        /// </example>
+        template<typename CharType> class StringMeldInPlace
+        {
+        public:
+            mutable std::ostream _stream;
+
+            operator const CharType*() const
+            {
+                return (const CharType*)_buffer._buffer;
+            }
+
+            const CharType* get() const
+            {
+                return (const CharType*)_buffer._buffer;
+            }
+
+            StringMeldInPlace(CharType* bufferStart, CharType* bufferEnd)
+            : _stream(&_buffer)
+            , _buffer((uint8*)bufferStart, (uint8*)bufferEnd, sizeof(CharType))
+            {
+                if ((bufferEnd - bufferStart) > 0)
+                    ((CharType*)_buffer.Begin())[0] = (CharType)'\0';
+            }
+
+            ~StringMeldInPlace() {}
+
+            StringMeldInPlace(StringMeldInPlace&& moveFrom) never_throws
+            : _stream(std::move(moveFrom._stream))
+            , _buffer(std::move(moveFrom._buffer))
+            {}
+
+            StringMeldInPlace& operator=(StringMeldInPlace&& moveFrom)
+            {
+                _stream = std::move(moveFrom._stream);
+                _buffer = std::move(moveFrom._buffer);
+                return *this;
+            }
+
+        protected:
+            StreamBufInPlace _buffer;
+
+            StringMeldInPlace(const StringMeldInPlace&) = delete;
+            StringMeldInPlace& operator=(const StringMeldInPlace&) = delete;
+        };
+    }
+
+    namespace
+    {
+        template<typename Type, typename CharType> 
+            const Internal::StringMeldInPlace<CharType>& 
+                operator<<(const Internal::StringMeldInPlace<CharType>& meld, const Type& type)
+            {
+                meld._stream << type;
+                return meld;
+            }
+    }
+    
+    template<typename CharType, int Count>
+        Internal::StringMeldInPlace<CharType> StringMeldInPlace(CharType (&buffer)[Count])
+    {
+        return Internal::StringMeldInPlace<CharType>(buffer, &buffer[Count]);
+    }
+
+    template<typename CharType, int Count>
+        Internal::StringMeldInPlace<CharType> StringMeldAppend(CharType (&buffer)[Count])
+    {
+        auto len = XlStringLen(buffer);
+        return Internal::StringMeldInPlace<CharType>(&buffer[len], &buffer[Count-len]);
     }
 
 }

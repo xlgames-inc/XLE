@@ -496,8 +496,8 @@ namespace RenderCore { namespace Assets
     {
             // we need to call "GetDependentFileState" first, because this can change the
             // format of the filename. String compares alone aren't working well for us here
-        auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-        auto depState = store.GetDependentFileState(splitName._concreteFilename.c_str());
+        auto depState = ::Assets::IntermediateAssets::Store::GetDependentFileState(
+            splitName._concreteFilename.c_str());
 
         auto existing = std::find_if(deps.cbegin(), deps.cend(),
             [&](const ::Assets::DependentFileState& test) 

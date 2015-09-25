@@ -108,7 +108,7 @@ namespace Assets { namespace IntermediateAssets
         }
     }
 
-    const DependentFileState& Store::GetDependentFileState(const ResChar filename[]) const
+    const DependentFileState& Store::GetDependentFileState(const ResChar filename[])
     {
         return GetRetainedFileRecord(filename)->_state;
     }
@@ -192,7 +192,7 @@ namespace Assets { namespace IntermediateAssets
 
     std::shared_ptr<DependencyValidation> Store::WriteDependencies(
         const ResChar intermediateFileName[], const ResChar baseDir[], 
-        const DependentFileState* depsBegin, const DependentFileState* depsEnd,
+        IteratorRange<const DependentFileState*> deps,
         bool makeDepValidation) const
     {
         Data data;
@@ -209,20 +209,20 @@ namespace Assets { namespace IntermediateAssets
         SplitPath<ResChar> baseSplitPath(baseDir);
 
         auto dependenciesBlock = std::make_unique<Data>("Dependencies");
-        for (auto s=depsBegin; s!=depsEnd; ++s) {
+        for (auto& s:deps) {
             auto c = std::make_unique<Data>();
 
             auto relPath = MakeRelativePath(
                 baseSplitPath, 
-                SplitPath<ResChar>(s->_filename));
+                SplitPath<ResChar>(s._filename));
             c->SetValue(relPath.c_str());
 
-            if (s->_status != DependentFileState::Status::Shadowed) {
-                c->SetAttribute("ModTimeH", (int)(s->_timeMarker>>32ull));
-                c->SetAttribute("ModTimeL", (int)(s->_timeMarker));
+            if (s._status != DependentFileState::Status::Shadowed) {
+                c->SetAttribute("ModTimeH", (int)(s._timeMarker>>32ull));
+                c->SetAttribute("ModTimeL", (int)(s._timeMarker));
             }
             dependenciesBlock->Add(c.release());
-            if (makeDepValidation) RegisterFileDependency(result, s->_filename.c_str());
+            if (makeDepValidation) RegisterFileDependency(result, s._filename.c_str());
         }
         data.Add(dependenciesBlock.release());
 

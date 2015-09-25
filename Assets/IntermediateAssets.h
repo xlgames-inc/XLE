@@ -50,22 +50,34 @@ namespace Assets { namespace IntermediateAssets
     class Store
     {
     public:
-        std::shared_ptr<DependencyValidation>    MakeDependencyValidation(const ResChar intermediateFileName[]) const;
-        std::shared_ptr<DependencyValidation>    WriteDependencies(
+        using DepVal = std::shared_ptr<DependencyValidation>;
+
+        DepVal MakeDependencyValidation(
+            const ResChar intermediateFileName[]) const;
+
+        DepVal WriteDependencies(
             const ResChar intermediateFileName[], const ResChar baseDir[], 
-            const DependentFileState* depsBegin, const DependentFileState* depsEnd,
+            IteratorRange<const DependentFileState*> deps,
             bool makeDepValidation = true) const;
 
-        void    MakeIntermediateName(ResChar buffer[], unsigned bufferMaxCount, const ResChar firstInitializer[]) const;
+        void    MakeIntermediateName(
+            ResChar buffer[], unsigned bufferMaxCount, 
+            const ResChar firstInitializer[]) const;
 
-        const DependentFileState& GetDependentFileState(const ResChar filename[]) const;
-        void    ShadowFile(const ResChar filename[]);
+        template<int Count>
+            void    MakeIntermediateName(ResChar (&buffer)[Count], const ResChar firstInitializer[]) const
+            {
+                MakeIntermediateName(buffer, Count, firstInitializer);
+            }
+
+        static auto GetDependentFileState(const ResChar filename[]) -> const DependentFileState&;
+        static void ShadowFile(const ResChar filename[]);
 
         Store(const ResChar baseDirectory[], const ResChar versionString[]);
         ~Store();
-
         Store(const Store&) = delete;
         Store& operator=(const Store&) = delete;
+
     protected:
         std::string _baseDirectory;
     };

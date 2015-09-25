@@ -27,6 +27,7 @@
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/StringFormat.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/ProjectionMath.h"
 
@@ -587,55 +588,57 @@ namespace ToolsRig
         std::unique_ptr<AoGen> _aoGen;
     };
 
+    auto AOSupplementCompiler::PerformCompile(
+        const ::Assets::ResChar modelFilename[], const ::Assets::ResChar materialFilename[],
+        const ::Assets::ResChar destinationFile[]) -> CompileResult
+    {
+        const auto& model    = ::Assets::GetAssetComp<ModelScaffold>(modelFilename);
+        const auto& material = ::Assets::GetAssetComp<MaterialScaffold>(materialFilename, modelFilename);
+        auto searchRules     = ::Assets::DefaultDirectorySearchRules(modelFilename);
+
+        CalculateVertexAO(
+            *_pimpl->_threadContext, destinationFile,
+            *_pimpl->_aoGen, model, material, &searchRules);
+
+        using Store = ::Assets::IntermediateAssets::Store;
+        return CompileResult 
+            {
+                std::vector<::Assets::DependentFileState>
+                    {
+                        Store::GetDependentFileState(model.Filename().c_str())
+                            // It depends on the material as well, but we don't have a way 
+                            // to get the true filename of the material file from here!
+                    },
+                MakeFileNameSplitter(model.Filename()).DriveAndPath().AsString()
+            };
+    }
+    
     std::shared_ptr<::Assets::PendingCompileMarker> 
         AOSupplementCompiler::PrepareAsset(
             uint64 typeCode, 
             const ::Assets::ResChar* initializers[], unsigned initializerCount,
-            const ::Assets::IntermediateAssets::Store& destinationStore)
+            const ::Assets::IntermediateAssets::Store& store)
     {
         if (initializerCount != 2 || !initializers[0][0] || !initializers[1][0]) 
             Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in AOSupplementCompiler. Model filename first, then material filename"));
 
-        const auto* modelFilename = initializers[0];
-        const auto* materialFilename = initializers[1];
+        const auto* modelFilename = initializers[0], *materialFilename = initializers[1];
 
-        auto& store = ::Assets::Services::GetInstance().GetAsyncMan().GetIntermediateStore();
-        ::Assets::ResChar intermediateName[MaxPath];
-        store.MakeIntermediateName(intermediateName, dimof(intermediateName), modelFilename);
-        FileNameSplitter<::Assets::ResChar> splitter(materialFilename);
-        XlCatString(intermediateName, dimof(intermediateName), "-");
-        XlCatString(intermediateName, dimof(intermediateName), splitter.File().AsString().c_str());
-        XlCatString(intermediateName, dimof(intermediateName), "-ao");
-        
-            // check if there is an existing one we can use...
-        if (DoesFileExist(intermediateName)) {
-            auto depVal = destinationStore.MakeDependencyValidation(intermediateName);
-            if (depVal && depVal->GetValidationIndex() == 0)
-                return std::make_shared<::Assets::PendingCompileMarker>(
-                    ::Assets::AssetState::Ready, intermediateName, 0, std::move(depVal));
-        }
-        
-        const auto& model = ::Assets::GetAssetComp<ModelScaffold>(modelFilename);
-        const auto& material = ::Assets::GetAssetComp<MaterialScaffold>(materialFilename, modelFilename);
-        auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
+            // build the intermediate name from our initializers
+        using namespace ::Assets;
+        ResChar intermediateName[MaxPath];
+        store.MakeIntermediateName(intermediateName, modelFilename);
+        StringMeldAppend(intermediateName)
+            << "-" << MakeFileNameSplitter(materialFilename).File().AsString() << "-ao";
 
-        CalculateVertexAO(
-            *_pimpl->_threadContext, intermediateName,
-            *_pimpl->_aoGen, model, material, &searchRules);
+            // check for an existing asset that is up-to-date and can be used immediately...
+        auto marker = CompilerHelper::CheckExistingAsset(store, intermediateName);
+        if (marker) return marker;
 
-        std::vector<::Assets::DependentFileState> deps;
-        deps.push_back(destinationStore.GetDependentFileState(model.Filename().c_str()));
-            // It depends on the material as well, but we don't have a way to get the true 
-            // filename of the material file from here!
-
-        char baseDir[MaxPath];
-        XlDirname(baseDir, dimof(baseDir), model.Filename().c_str());
-        auto depVal = destinationStore.WriteDependencies(
-            intermediateName, baseDir, AsPointer(deps.cbegin()), AsPointer(deps.cend()));
-        assert(depVal);
-
-        return std::make_shared<::Assets::PendingCompileMarker>(
-            ::Assets::AssetState::Ready, intermediateName, 0, std::move(depVal));
+            // if it doesn't exist, we have to perform a compile
+            // then return a marker for the new asset
+        auto deps = PerformCompile(modelFilename, materialFilename, intermediateName);
+        return CompilerHelper::PrepareCompileMarker(store, intermediateName, deps);
     }
 
     void AOSupplementCompiler::StallOnPendingOperations(bool)

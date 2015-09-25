@@ -350,7 +350,7 @@ namespace RenderCore { namespace Assets
                     // write new dependencies
                 std::vector<::Assets::DependentFileState> deps;
                 deps.push_back(op._destinationStore->GetDependentFileState(colladaFile));
-                op._dependencyValidation = op._destinationStore->WriteDependencies(op._sourceID0, baseDir, AsPointer(deps.cbegin()), AsPointer(deps.cend()));
+                op._dependencyValidation = op._destinationStore->WriteDependencies(op._sourceID0, baseDir, MakeIteratorRange(deps));
         
                 op.SetState(::Assets::AssetState::Ready);
             }
@@ -413,7 +413,7 @@ namespace RenderCore { namespace Assets
                     #endif
                 }
 
-                op._dependencyValidation = op._destinationStore->WriteDependencies(op._sourceID0, baseDir, AsPointer(deps.cbegin()), AsPointer(deps.cend()));
+                op._dependencyValidation = op._destinationStore->WriteDependencies(op._sourceID0, baseDir, MakeIteratorRange(deps));
                 op.SetState(::Assets::AssetState::Ready);
             }
         } CATCH(...) {

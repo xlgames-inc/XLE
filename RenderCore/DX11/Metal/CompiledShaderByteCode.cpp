@@ -415,8 +415,8 @@ namespace RenderCore { namespace Metal_DX11
         }
 
         dependencies = includeHandler.GetIncludeFiles();
-        auto& intStore = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-        dependencies.push_back(intStore.GetDependentFileState(shaderPath._filename));   // also need a dependency for the base file
+        dependencies.push_back(
+            ::Assets::IntermediateAssets::Store::GetDependentFileState(shaderPath._filename));   // also need a dependency for the base file
 
         if (SUCCEEDED(hresult)) {
             MarkValid(shaderPath);

@@ -55,34 +55,43 @@ namespace RenderCore { namespace Assets
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+    class AssetChunkRequest;
+    class AssetChunkResult;
+
     class ScaffoldBase
     {
     public:
-        const std::string&          Filename() const            { return _filename; }
-        unsigned                    LargeBlocksOffset() const;
-
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
+        const ::Assets::rstring& Filename() const       { return _filename; }
+         
+        auto GetDependencyValidation() const -> const std::shared_ptr<::Assets::DependencyValidation>& { return _validationCallback; }
 
         void Resolve() const;
         ::Assets::AssetState TryResolve();
         ::Assets::AssetState StallAndResolve();
 
-        ScaffoldBase(const ::Assets::ResChar filename[]);
-        ScaffoldBase(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
-        ScaffoldBase(ScaffoldBase&& moveFrom);
-        ScaffoldBase& operator=(ScaffoldBase&& moveFrom);
+        ScaffoldBase(ScaffoldBase&& moveFrom) never_throws;
+        ScaffoldBase& operator=(ScaffoldBase&& moveFrom) never_throws;
         ~ScaffoldBase();
+
     protected:
-        const void*     FirstObject() const;
-        const void*     TryFirstObject() const;
+        using ResolveFn = void(void*, IteratorRange<AssetChunkResult*>);
+        std::vector<AssetChunkResult> _pendingResult;
 
+        ScaffoldBase(
+            const ::Assets::ResChar filename[], 
+            IteratorRange<const AssetChunkRequest*> requests,
+            ResolveFn* resolveFn);
+        ScaffoldBase(
+            std::shared_ptr<::Assets::PendingCompileMarker>&& marker,
+            IteratorRange<const AssetChunkRequest*> requests,
+            ResolveFn* resolveFn);
     private:
-        std::unique_ptr<uint8[]>    _rawMemoryBlock;
-        std::string                 _filename;
-        unsigned                    _largeBlocksOffset;
-
+        ::Assets::rstring                                           _filename;
         mutable std::shared_ptr<::Assets::PendingCompileMarker>     _marker;
-        std::shared_ptr<::Assets::DependencyValidation>     _validationCallback;
+        std::shared_ptr<::Assets::DependencyValidation>             _validationCallback;
+
+        IteratorRange<const AssetChunkRequest*>                     _requests;
+        ResolveFn*                                                  _resolveFn;
 
         void CompleteFromMarker(::Assets::PendingCompileMarker& marker);
     };
@@ -109,19 +118,27 @@ namespace RenderCore { namespace Assets
     class ModelScaffold : public ScaffoldBase
     {
     public:
-        const ModelCommandStream&   CommandStream() const;
-        const ModelImmutableData&   ImmutableData() const;
-        const TransformationMachine& EmbeddedSkeleton() const;
-        std::pair<Float3, Float3>   GetStaticBoundingBox(unsigned lodIndex = 0) const;
-        unsigned                    GetMaxLOD() const { return 0; }
+        unsigned                        LargeBlocksOffset() const;
+        const ModelCommandStream&       CommandStream() const;
+        const ModelImmutableData&       ImmutableData() const;
+        const TransformationMachine&    EmbeddedSkeleton() const;
+        std::pair<Float3, Float3>       GetStaticBoundingBox(unsigned lodIndex = 0) const;
+        unsigned                        GetMaxLOD() const { return 0; }
 
         static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
 
         ModelScaffold(const ::Assets::ResChar filename[]);
         ModelScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
-        ModelScaffold(ModelScaffold&& moveFrom);
-        ModelScaffold& operator=(ModelScaffold&& moveFrom);
+        ModelScaffold(ModelScaffold&& moveFrom) never_throws;
+        ModelScaffold& operator=(ModelScaffold&& moveFrom) never_throws;
         ~ModelScaffold();
+
+    private:
+        std::unique_ptr<uint8[]>    _rawMemoryBlock;
+        unsigned                    _largeBlocksOffset;
+
+        static void Resolver(void*, IteratorRange<AssetChunkResult*>);
+        const ModelImmutableData*   TryImmutableData() const;
     };
     
     class MeshToModel
@@ -261,13 +278,21 @@ namespace RenderCore { namespace Assets
     class ModelSupplementScaffold : public ScaffoldBase
     {
     public:
+        unsigned LargeBlocksOffset() const;
         const ModelSupplementImmutableData& ImmutableData() const;
 
         ModelSupplementScaffold(const ::Assets::ResChar filename[]);
         ModelSupplementScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
-        ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom);
-        ModelSupplementScaffold& operator=(ModelSupplementScaffold&& moveFrom);
+        ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom) never_throws;
+        ModelSupplementScaffold& operator=(ModelSupplementScaffold&& moveFrom) never_throws;
         ~ModelSupplementScaffold();
+
+    private:
+        std::unique_ptr<uint8[]>    _rawMemoryBlock;
+        unsigned                    _largeBlocksOffset;
+
+        static void Resolver(void*, IteratorRange<AssetChunkResult*>);
+        const ModelSupplementImmutableData*   TryImmutableData() const;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////

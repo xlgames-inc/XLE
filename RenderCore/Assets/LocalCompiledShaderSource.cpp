@@ -522,7 +522,7 @@ namespace RenderCore { namespace Assets
                                         // can just write them now -- but it causes problems if we a
                                         // crash or use End Debugging before we flush the archive
                                 [deps, depNameAsString, baseDirAsString, &destinationStore]()
-                                    { destinationStore.WriteDependencies(depNameAsString.c_str(), baseDirAsString.c_str(), AsPointer(deps.cbegin()), AsPointer(deps.cend()), false); });
+                                    { destinationStore.WriteDependencies(depNameAsString.c_str(), baseDirAsString.c_str(), MakeIteratorRange(deps), false); });
                             (void)archiveCacheAttachment;
                         }
 

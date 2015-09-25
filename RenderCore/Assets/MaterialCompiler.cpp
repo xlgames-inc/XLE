@@ -12,6 +12,7 @@
 #include "../../Assets/ChunkFile.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/ConfigFileContainer.h"
+#include "../../Assets/CompilerHelper.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -74,9 +75,7 @@ namespace RenderCore { namespace Assets
     {
             // we need to call "GetDependentFileState" first, because this can change the
             // format of the filename. String compares alone aren't working well for us here
-        auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-        auto depState = store.GetDependentFileState(newDep);
-
+        auto depState = ::Assets::IntermediateAssets::Store::GetDependentFileState(newDep);
         auto existing = std::find_if(deps.cbegin(), deps.cend(),
             [&](const ::Assets::DependentFileState& test) 
             {
@@ -87,10 +86,9 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    static void CompileMaterialScaffold(
+    static ::Assets::CompilerHelper::CompileResult CompileMaterialScaffold(
         const char sourceMaterial[], const char sourceModel[],
-        const char destination[], 
-        std::vector<::Assets::DependentFileState>* outDeps)
+        const char destination[])
     {
         RawMatConfigurations modelMat(sourceModel);
             
@@ -193,9 +191,11 @@ namespace RenderCore { namespace Assets
             output.FinishCurrentChunk();
         }
 
-        if (outDeps) {
-            *outDeps = std::move(deps);
-        }
+        return ::Assets::CompilerHelper::CompileResult
+            {
+                std::move(deps),
+                std::string()
+            };
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -203,36 +203,25 @@ namespace RenderCore { namespace Assets
     std::shared_ptr<::Assets::PendingCompileMarker> MaterialScaffoldCompiler::PrepareAsset(
         uint64 typeCode, 
         const ::Assets::ResChar* initializers[], unsigned initializerCount,
-        const ::Assets::IntermediateAssets::Store& destinationStore)
+        const ::Assets::IntermediateAssets::Store& store)
     {
         if (initializerCount != 2 || !initializers[0][0] || !initializers[1][0]) 
             Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in MaterialScaffoldCompiler. Material filename first, then model filename"));
 
-        ::Assets::ResChar materialBaseName[MaxPath];
-        XlBasename(materialBaseName, dimof(materialBaseName), initializers[1]);
+        const auto* materialFilename = initializers[0], *modelFilename = initializers[1];
 
-        ::Assets::ResChar outputName[MaxPath];
-        destinationStore.MakeIntermediateName(
-            outputName, dimof(outputName), 
-            StringMeld<MaxPath, ::Assets::ResChar>() << initializers[0] << "-" << materialBaseName);
-        XlCatString(outputName, dimof(outputName), "-resmat");
+        using namespace ::Assets;
+        ResChar intermediateName[MaxPath];
+        store.MakeIntermediateName(intermediateName, materialFilename);
+        StringMeldAppend(intermediateName)
+            << "-" << MakeFileNameSplitter(modelFilename).FileAndExtension().AsString() << "-resmat";
 
-        if (DoesFileExist(outputName)) {
-                // MakeDependencyValidation returns an object only if dependencies are currently good
-             auto depVal = destinationStore.MakeDependencyValidation(outputName);
-             if (depVal && depVal->GetValidationIndex() == 0) {
-                    // already exists -- just return "ready"
-                return std::make_unique<::Assets::PendingCompileMarker>(
-                    ::Assets::AssetState::Ready, outputName, ~0ull, std::move(depVal));
-             }
-        }
+            // now either return an existing asset, or compile a new one
+        auto marker = CompilerHelper::CheckExistingAsset(store, intermediateName);
+        if (marker) return marker;
 
-        std::vector<::Assets::DependentFileState> deps;
-        CompileMaterialScaffold(initializers[0], initializers[1], outputName, &deps);
-
-        auto newDepVal = destinationStore.WriteDependencies(outputName, "", AsPointer(deps.cbegin()), AsPointer(deps.cend()));
-        return std::make_unique<::Assets::PendingCompileMarker>(
-            ::Assets::AssetState::Ready, outputName, ~0ull, std::move(newDepVal));
+        auto deps = CompileMaterialScaffold(materialFilename, modelFilename, intermediateName);
+        return CompilerHelper::PrepareCompileMarker(store, intermediateName, deps);
     }
 
     void MaterialScaffoldCompiler::StallOnPendingOperations(bool cancelAll)
