@@ -8,6 +8,7 @@
 
 #include "../Metal/Forward.h"       // for Metal::Blend
 #include "../../Assets/Assets.h"
+#include "../../Assets/ChunkFileAsset.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/Mixins.h"
@@ -171,23 +172,24 @@ namespace RenderCore { namespace Assets
     /// This is the equivalent of other scaffold objects (like ModelScaffold
     /// and AnimationSetScaffold). It contains the processed and ready-to-use
     /// material information.
-    class MaterialScaffold
+    class MaterialScaffold : public ::Assets::ChunkFileAsset
     {
     public:
-        const MaterialImmutableData&    ImmutableData() const       { return *_data; };
+        const MaterialImmutableData&    ImmutableData() const;
         const ResolvedMaterial*         GetMaterial(MaterialGuid guid) const;
         const char*                     GetMaterialName(MaterialGuid guid) const;
-
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
 
         static const auto CompileProcessType = ConstHash64<'ResM', 'at'>::Value;
 
         MaterialScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+        MaterialScaffold(MaterialScaffold&& moveFrom) never_throws;
+        MaterialScaffold& operator=(MaterialScaffold&& moveFrom) never_throws;
         ~MaterialScaffold();
     protected:
         std::unique_ptr<uint8[]> _rawMemoryBlock;
-        const MaterialImmutableData* _data;
-        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
+
+        static void Resolver(void*, IteratorRange<::Assets::AssetChunkResult*>);
+        const MaterialImmutableData*   TryImmutableData() const;
     };
 
     /// <summary>Pre-resolved material settings</summary>

@@ -237,63 +237,72 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    const MaterialImmutableData& MaterialScaffold::ImmutableData() const
+    {
+        Resolve(); 
+        return *(const MaterialImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
+    }
+
+    const MaterialImmutableData*   MaterialScaffold::TryImmutableData() const
+    {
+        if (!_rawMemoryBlock) return nullptr;
+        return (const MaterialImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
+    }
+
     const ResolvedMaterial* MaterialScaffold::GetMaterial(MaterialGuid guid) const
     {
-        auto i = LowerBound(_data->_materials, guid);
-        if (i!=_data->_materials.end() && i->first==guid){
+        const auto& data = ImmutableData();
+        auto i = LowerBound(data._materials, guid);
+        if (i!=data._materials.end() && i->first==guid)
             return &i->second;
-        }
         return nullptr;
     }
 
     const char* MaterialScaffold::GetMaterialName(MaterialGuid guid) const
     {
-        auto i = LowerBound(_data->_materialNames, guid);
-        if (i!=_data->_materialNames.end() && i->first==guid){
+        const auto& data = ImmutableData();
+        auto i = LowerBound(data._materialNames, guid);
+        if (i!=data._materialNames.end() && i->first==guid)
             return i->second.c_str();
-        }
         return nullptr;
     }
 
+    static const ::Assets::AssetChunkRequest MaterialScaffoldChunkRequests[]
+    {
+        ::Assets::AssetChunkRequest { 
+            "Scaffold", ChunkType_ResolvedMat, 0, 
+            ::Assets::AssetChunkRequest::DataType::BlockSerializer 
+        }
+    };
+
     MaterialScaffold::MaterialScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
     {
-        if (!marker || marker->GetState() == ::Assets::AssetState::Invalid) {
-            Throw(::Assets::Exceptions::InvalidAsset("", "MaterialScaffold not ready"));
-        }
+        Prepare(std::move(marker), MakeIteratorRange(MaterialScaffoldChunkRequests), &Resolver); 
+    }
 
-        const auto* filename = marker->_sourceID0;
-        BasicFile file(filename, "rb");
+    MaterialScaffold::MaterialScaffold(MaterialScaffold&& moveFrom) never_throws
+    :   ::Assets::ChunkFileAsset(std::move(moveFrom))
+    ,   _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
+    {}
 
-        auto chunks = Serialization::ChunkFile::LoadChunkTable(file);
-
-        Serialization::ChunkFile::ChunkHeader scaffoldChunk;
-        for (auto i=chunks.begin(); i!=chunks.end(); ++i) {
-            if (i->_type == ChunkType_ResolvedMat) {
-                scaffoldChunk = *i;
-                break;
-            }
-        }
-
-        if (!scaffoldChunk._fileOffset)
-            throw ::Assets::Exceptions::FormatError("Missing material scaffold chunk: %s", filename);
-
-        _rawMemoryBlock = std::make_unique<uint8[]>(scaffoldChunk._size);
-        file.Seek(scaffoldChunk._fileOffset, SEEK_SET);
-        file.Read(_rawMemoryBlock.get(), 1, scaffoldChunk._size);
-
-        Serialization::Block_Initialize(_rawMemoryBlock.get());        
-        _data = (const MaterialImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
-
-        if (marker->_dependencyValidation) {
-            _validationCallback = marker->_dependencyValidation;
-        } else {
-            _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        }
+    MaterialScaffold& MaterialScaffold::operator=(MaterialScaffold&& moveFrom) never_throws
+    {
+        ::Assets::ChunkFileAsset::operator=(std::move(moveFrom));
+        _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
+        return *this;
     }
 
     MaterialScaffold::~MaterialScaffold()
     {
-        _data->~MaterialImmutableData();
+        auto* data = TryImmutableData();
+        if (data)
+            data->~MaterialImmutableData();
+    }
+
+    void MaterialScaffold::Resolver(void* obj, IteratorRange<::Assets::AssetChunkResult*> chunks)
+    {
+        assert(chunks.size() == 1);
+        ((MaterialScaffold*)obj)->_rawMemoryBlock = std::move(chunks[0]._buffer);
     }
 
 }}

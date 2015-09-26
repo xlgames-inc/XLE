@@ -1688,192 +1688,6 @@ namespace RenderCore { namespace Assets
         #endif
     }
 
-        ////////////////////////////////////////////////////////////
-
-    class AssetChunkRequest
-    {
-    public:
-        const char*     _name;
-        Serialization::ChunkFile::TypeIdentifier _type;
-        unsigned        _expectedVersion;
-        
-        enum class DataType
-        {
-            DontLoad, Raw, BlockSerializer
-        };
-        DataType        _dataType;
-    };
-
-    class AssetChunkResult
-    {
-    public:
-        Serialization::ChunkFile::SizeType  _offset;
-        std::unique_ptr<uint8[]> _buffer;
-        size_t _size;
-
-        AssetChunkResult() : _offset(0), _size(0) {}
-        AssetChunkResult(AssetChunkResult&& moveFrom)
-        : _offset(moveFrom._offset)
-        , _buffer(std::move(moveFrom._buffer))
-        , _size(moveFrom._size)
-        {}
-        AssetChunkResult& operator=(AssetChunkResult&& moveFrom)
-        {
-            _offset = moveFrom._offset;
-            _buffer = std::move(moveFrom._buffer);
-            _size = moveFrom._size;
-            return *this;
-        }
-    };
-
-    static std::vector<AssetChunkResult> LoadRawData(
-        const char filename[],
-        IteratorRange<const AssetChunkRequest*> requests)
-    {
-        BasicFile file(filename, "rb");
-        auto chunks = Serialization::ChunkFile::LoadChunkTable(file);
-
-        std::vector<AssetChunkResult> result;
-        result.reserve(requests.size());
-
-        using ChunkHeader = Serialization::ChunkFile::ChunkHeader;
-        for (const auto& r:requests) {
-            auto i = std::find_if(chunks.begin(), chunks.end(), 
-                [&r](const ChunkHeader& c) { return c._type == r._type; });
-            if (i == chunks.end())
-                throw ::Assets::Exceptions::FormatError(
-                    StringMeld<128>() << "Missing chunk (" << r._name << ")", filename);
-
-            if (i->_chunkVersion != r._expectedVersion) {
-                throw ::Assets::Exceptions::FormatError(
-                    StringMeld<256>() << 
-                        "Data chunk is incorrect version for chunk (" 
-                        << r._name << ") expected: " << r._expectedVersion << ", got: " << i->_chunkVersion, 
-                    filename);
-            }
-
-            AssetChunkResult chunkResult;
-            chunkResult._offset = i->_fileOffset;
-            chunkResult._size = i->_size;
-
-            if (r._dataType != AssetChunkRequest::DataType::DontLoad) {
-                chunkResult._buffer = std::make_unique<uint8[]>(i->_size);
-                file.Seek(i->_fileOffset, SEEK_SET);
-                file.Read(chunkResult._buffer.get(), 1, i->_size);
-
-                // initialize with the block serializer (if requested)
-                if (r._dataType == AssetChunkRequest::DataType::BlockSerializer)
-                    Serialization::Block_Initialize(chunkResult._buffer.get());
-            }
-
-            result.emplace_back(std::move(chunkResult));
-        }
-
-        return std::move(result);
-    }
-
-    ScaffoldBase::ScaffoldBase(
-        const ResChar filename[], 
-        IteratorRange<const AssetChunkRequest*> requests, 
-        ResolveFn* resolveFn)
-    : _filename(filename), _requests(requests), _resolveFn(nullptr)
-    {
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        RegisterFileDependency(_validationCallback, filename);
-        _pendingResult = LoadRawData(filename, requests);
-    }
-    
-    ScaffoldBase::ScaffoldBase(
-        std::shared_ptr<::Assets::PendingCompileMarker>&& marker,
-        IteratorRange<const AssetChunkRequest*> requests,
-        ResolveFn* resolveFn)
-    : _requests(requests), _resolveFn(resolveFn)
-    {
-        if (marker->GetState() == ::Assets::AssetState::Ready) {
-            _filename = marker->_sourceID0;
-            _validationCallback = marker->_dependencyValidation;
-            _pendingResult = LoadRawData(marker->_sourceID0, _requests);
-        } else {
-            _marker = std::move(marker);
-            _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        }
-    }
-
-    ScaffoldBase::ScaffoldBase(ScaffoldBase&& moveFrom) never_throws
-    : _filename(std::move(moveFrom._filename))
-    , _requests(moveFrom._requests)
-    , _resolveFn(std::move(moveFrom._resolveFn))
-    , _marker(std::move(moveFrom._marker))
-    , _validationCallback(std::move(moveFrom._validationCallback))
-    {}
-
-    ScaffoldBase& ScaffoldBase::operator=(ScaffoldBase&& moveFrom) never_throws
-    {
-        _filename = std::move(moveFrom._filename);
-        _requests = moveFrom._requests;
-        _resolveFn = std::move(moveFrom._resolveFn);
-        _marker = std::move(moveFrom._marker);
-        _validationCallback = std::move(moveFrom._validationCallback);
-        return *this;
-    }
-
-    ScaffoldBase::~ScaffoldBase() {}
-
-    void ScaffoldBase::Resolve() const
-    {
-        if (_marker) {
-            if (_marker->GetState() == ::Assets::AssetState::Invalid) {
-                Throw(::Assets::Exceptions::InvalidAsset(_marker->Initializer(), ""));
-            } else if (_marker->GetState() == ::Assets::AssetState::Pending) {
-                    // we need to throw immediately on pending resource
-                    // this object is useless while it's pending.
-                Throw(::Assets::Exceptions::PendingAsset(_marker->Initializer(), ""));
-            }
-
-                // hack --  Resolve needs to be called by const methods (like "GetStaticBoundingBox")
-                //          but Resolve() must change all the internal pointers... It's an awkward
-                //          case for const-correctness
-            const_cast<ScaffoldBase*>(this)->CompleteFromMarker(*_marker);
-            _marker.reset();
-        }
-    }
-
-    ::Assets::AssetState ScaffoldBase::TryResolve()
-    {
-        if (_marker) {
-            auto markerState = _marker->GetState();
-            if (markerState != ::Assets::AssetState::Ready) return markerState;
-
-            CompleteFromMarker(*_marker);
-            _marker.reset();
-        }
-
-        return ::Assets::AssetState::Ready;
-    }
-
-    ::Assets::AssetState ScaffoldBase::StallAndResolve()
-    {
-        if (_marker) {
-            auto markerState = _marker->StallWhilePending();
-            if (markerState != ::Assets::AssetState::Ready) return markerState;
-
-            CompleteFromMarker(*_marker);
-            _marker.reset();
-        }
-
-        return ::Assets::AssetState::Ready;
-    }
-
-    void ScaffoldBase::CompleteFromMarker(::Assets::PendingCompileMarker& marker)
-    {
-        _filename = marker._sourceID0;
-        if (!_validationCallback) _validationCallback = marker._dependencyValidation;
-        else ::Assets::RegisterAssetDependency(_validationCallback, marker._dependencyValidation);
-
-        auto chunks = LoadRawData(marker._sourceID0, _requests);
-        _resolveFn(this, MakeIteratorRange(chunks));
-    }
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     unsigned    ModelScaffold::LargeBlocksOffset() const            
@@ -1898,31 +1712,33 @@ namespace RenderCore { namespace Assets
     const TransformationMachine&    ModelScaffold::EmbeddedSkeleton() const             { return ImmutableData()._embeddedSkeleton; }
     std::pair<Float3, Float3>       ModelScaffold::GetStaticBoundingBox(unsigned) const { return ImmutableData()._boundingBox; }
 
-    static const AssetChunkRequest ModelScaffoldChunkRequests[]
+    static const ::Assets::AssetChunkRequest ModelScaffoldChunkRequests[]
     {
-        AssetChunkRequest { "Scaffold", ChunkType_ModelScaffold, 0, AssetChunkRequest::DataType::BlockSerializer },
-        AssetChunkRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, 0, AssetChunkRequest::DataType::DontLoad }
+        ::Assets::AssetChunkRequest { "Scaffold", ChunkType_ModelScaffold, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
+        ::Assets::AssetChunkRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, 0, ::Assets::AssetChunkRequest::DataType::DontLoad }
     };
     
     ModelScaffold::ModelScaffold(const ::Assets::ResChar filename[])
-    : ScaffoldBase(filename, MakeIteratorRange(ModelScaffoldChunkRequests), &Resolver) 
     {
-        if (!_pendingResult.empty())
-            Resolver(this, MakeIteratorRange(_pendingResult));
+        Prepare(filename, MakeIteratorRange(ModelScaffoldChunkRequests), &Resolver);
     }
 
     ModelScaffold::ModelScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
-    : ScaffoldBase(std::move(marker), MakeIteratorRange(ModelScaffoldChunkRequests), &Resolver) 
     {
-        if (!_pendingResult.empty())
-            Resolver(this, MakeIteratorRange(_pendingResult));
+        Prepare(std::move(marker), MakeIteratorRange(ModelScaffoldChunkRequests), &Resolver); 
     }
 
     ModelScaffold::ModelScaffold(ModelScaffold&& moveFrom) never_throws
-    : ScaffoldBase(std::move(moveFrom)) {}
+    : ::Assets::ChunkFileAsset(std::move(moveFrom)) 
+    , _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
+    , _largeBlocksOffset(moveFrom._largeBlocksOffset)
+    {}
+
     ModelScaffold& ModelScaffold::operator=(ModelScaffold&& moveFrom) never_throws
     {
-        ScaffoldBase::operator=(std::move(moveFrom));
+        ::Assets::ChunkFileAsset::operator=(std::move(moveFrom));
+        _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
+        _largeBlocksOffset = moveFrom._largeBlocksOffset;
         return *this;
     }
 
@@ -1933,7 +1749,7 @@ namespace RenderCore { namespace Assets
             data->~ModelImmutableData();
     }
 
-    void ModelScaffold::Resolver(void* obj, IteratorRange<AssetChunkResult*> chunks)
+    void ModelScaffold::Resolver(void* obj, IteratorRange<::Assets::AssetChunkResult*> chunks)
     {
         auto* scaffold = (ModelScaffold*)obj;
         if (scaffold) {
@@ -1962,32 +1778,33 @@ namespace RenderCore { namespace Assets
         return (const ModelSupplementImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
-    static const AssetChunkRequest ModelSupplementScaffoldChunkRequests[]
+    static const ::Assets::AssetChunkRequest ModelSupplementScaffoldChunkRequests[]
     {
-        AssetChunkRequest { "Scaffold", ChunkType_ModelScaffold, 0, AssetChunkRequest::DataType::BlockSerializer },
-        AssetChunkRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, 0, AssetChunkRequest::DataType::DontLoad }
+        ::Assets::AssetChunkRequest { "Scaffold", ChunkType_ModelScaffold, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
+        ::Assets::AssetChunkRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, 0, ::Assets::AssetChunkRequest::DataType::DontLoad }
     };
     
     ModelSupplementScaffold::ModelSupplementScaffold(const ::Assets::ResChar filename[])
-    : ScaffoldBase(filename, MakeIteratorRange(ModelSupplementScaffoldChunkRequests), &Resolver) 
     {
-        if (!_pendingResult.empty())
-            Resolver(this, MakeIteratorRange(_pendingResult));
+        Prepare(filename, MakeIteratorRange(ModelSupplementScaffoldChunkRequests), &Resolver);
     }
 
     ModelSupplementScaffold::ModelSupplementScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
-    : ScaffoldBase(std::move(marker), MakeIteratorRange(ModelSupplementScaffoldChunkRequests), &Resolver) 
     {
-        if (!_pendingResult.empty())
-            Resolver(this, MakeIteratorRange(_pendingResult));
+        Prepare(std::move(marker), MakeIteratorRange(ModelSupplementScaffoldChunkRequests), &Resolver);
     }
 
     ModelSupplementScaffold::ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom)
-    : ScaffoldBase(std::move(moveFrom)) {}
+    : ::Assets::ChunkFileAsset(std::move(moveFrom)) 
+    , _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
+    , _largeBlocksOffset(moveFrom._largeBlocksOffset)
+    {}
 
     ModelSupplementScaffold& ModelSupplementScaffold::operator=(ModelSupplementScaffold&& moveFrom)
     {
-        ScaffoldBase::operator=(std::move(moveFrom));
+        ::Assets::ChunkFileAsset::operator=(std::move(moveFrom));
+        _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
+        _largeBlocksOffset = moveFrom._largeBlocksOffset;
         return *this;
     }
 
@@ -1998,7 +1815,7 @@ namespace RenderCore { namespace Assets
             data->~ModelSupplementImmutableData();
     }
 
-    void ModelSupplementScaffold::Resolver(void* obj, IteratorRange<AssetChunkResult*> chunks)
+    void ModelSupplementScaffold::Resolver(void* obj, IteratorRange<::Assets::AssetChunkResult*> chunks)
     {
         auto* scaffold = (ModelSupplementScaffold*)obj;
         if (scaffold) {

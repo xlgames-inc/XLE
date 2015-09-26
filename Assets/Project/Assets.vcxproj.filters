@@ -16,6 +16,7 @@
     <ClInclude Include="..\IntermediateAssets.h" />
     <ClInclude Include="..\ConfigFileContainer.h" />
     <ClInclude Include="..\CompilerHelper.h" />
+    <ClInclude Include="..\ChunkFileAsset.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets.cpp" />
@@ -31,6 +32,7 @@
     <ClCompile Include="..\AsyncLoadOperation.cpp" />
     <ClCompile Include="..\IntermediateAssets.cpp" />
     <ClCompile Include="..\CompilerHelper.cpp" />
+    <ClCompile Include="..\ChunkFileAsset.cpp" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>

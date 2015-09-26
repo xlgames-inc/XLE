@@ -12,6 +12,7 @@
 #include "../Resource.h"
 
 #include "../../Assets/AssetsCore.h"
+#include "../../Assets/ChunkFileAsset.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Utility/MemoryUtils.h"
@@ -55,47 +56,6 @@ namespace RenderCore { namespace Assets
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-    class AssetChunkRequest;
-    class AssetChunkResult;
-
-    class ScaffoldBase
-    {
-    public:
-        const ::Assets::rstring& Filename() const       { return _filename; }
-         
-        auto GetDependencyValidation() const -> const std::shared_ptr<::Assets::DependencyValidation>& { return _validationCallback; }
-
-        void Resolve() const;
-        ::Assets::AssetState TryResolve();
-        ::Assets::AssetState StallAndResolve();
-
-        ScaffoldBase(ScaffoldBase&& moveFrom) never_throws;
-        ScaffoldBase& operator=(ScaffoldBase&& moveFrom) never_throws;
-        ~ScaffoldBase();
-
-    protected:
-        using ResolveFn = void(void*, IteratorRange<AssetChunkResult*>);
-        std::vector<AssetChunkResult> _pendingResult;
-
-        ScaffoldBase(
-            const ::Assets::ResChar filename[], 
-            IteratorRange<const AssetChunkRequest*> requests,
-            ResolveFn* resolveFn);
-        ScaffoldBase(
-            std::shared_ptr<::Assets::PendingCompileMarker>&& marker,
-            IteratorRange<const AssetChunkRequest*> requests,
-            ResolveFn* resolveFn);
-    private:
-        ::Assets::rstring                                           _filename;
-        mutable std::shared_ptr<::Assets::PendingCompileMarker>     _marker;
-        std::shared_ptr<::Assets::DependencyValidation>             _validationCallback;
-
-        IteratorRange<const AssetChunkRequest*>                     _requests;
-        ResolveFn*                                                  _resolveFn;
-
-        void CompleteFromMarker(::Assets::PendingCompileMarker& marker);
-    };
-    
     /// <summary>Structural data describing a model<summary>
     /// The "scaffold" of a model contains the structural data of a model, without the large
     /// assets and without any platform-api resources.
@@ -115,7 +75,7 @@ namespace RenderCore { namespace Assets
     /// namespace for information about chunk files.
     ///
     /// <seealso cref="ModelRenderer"/>
-    class ModelScaffold : public ScaffoldBase
+    class ModelScaffold : public ::Assets::ChunkFileAsset
     {
     public:
         unsigned                        LargeBlocksOffset() const;
@@ -137,7 +97,7 @@ namespace RenderCore { namespace Assets
         std::unique_ptr<uint8[]>    _rawMemoryBlock;
         unsigned                    _largeBlocksOffset;
 
-        static void Resolver(void*, IteratorRange<AssetChunkResult*>);
+        static void Resolver(void*, IteratorRange<::Assets::AssetChunkResult*>);
         const ModelImmutableData*   TryImmutableData() const;
     };
     
@@ -275,7 +235,7 @@ namespace RenderCore { namespace Assets
     ///
     /// <seealso cref="ModelScaffold"/>
     /// <seealso cref="ModelRenderer"/>
-    class ModelSupplementScaffold : public ScaffoldBase
+    class ModelSupplementScaffold : public ::Assets::ChunkFileAsset
     {
     public:
         unsigned LargeBlocksOffset() const;
@@ -291,7 +251,7 @@ namespace RenderCore { namespace Assets
         std::unique_ptr<uint8[]>    _rawMemoryBlock;
         unsigned                    _largeBlocksOffset;
 
-        static void Resolver(void*, IteratorRange<AssetChunkResult*>);
+        static void Resolver(void*, IteratorRange<::Assets::AssetChunkResult*>);
         const ModelSupplementImmutableData*   TryImmutableData() const;
     };
 

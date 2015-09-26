@@ -608,9 +608,8 @@ namespace ToolsRig
             {
                 std::vector<::Assets::DependentFileState>
                     {
-                        Store::GetDependentFileState(model.Filename().c_str())
-                            // It depends on the material as well, but we don't have a way 
-                            // to get the true filename of the material file from here!
+                        Store::GetDependentFileState(model.Filename().c_str()),
+                        Store::GetDependentFileState(material.Filename().c_str())
                     },
                 MakeFileNameSplitter(model.Filename()).DriveAndPath().AsString()
             };
