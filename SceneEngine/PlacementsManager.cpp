@@ -67,7 +67,7 @@ namespace SceneEngine
         // Note that "placements" that interface methods in Placements are actually
         // very rarely called. So it should be fine to make those methods into virtual
         // methods, and use an abstract base class.
-    class Placements
+    class Placements : public ::Assets::ChunkFileAsset
     {
     public:
         typedef std::pair<Float3, Float3> BoundingBox;
@@ -88,8 +88,6 @@ namespace SceneEngine
         const void*             GetFilenamesBuffer() const;
         const uint64*           GetSupplementsBuffer() const;
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _dependencyValidation; }
-
         void Write(const Assets::ResChar destinationFile[]) const;
         void LogDetails(const char title[]) const;
 
@@ -103,6 +101,8 @@ namespace SceneEngine
 
         std::shared_ptr<::Assets::DependencyValidation>   _dependencyValidation;
         void ReplaceString(const char oldString[], const char newString[]);
+
+        static void Resolver(void*, IteratorRange<::Assets::AssetChunkResult*>);
     };
 
     auto            Placements::GetObjectReferences() const -> const ObjectReference*   { return AsPointer(_objects.begin()); }
@@ -240,8 +240,24 @@ namespace SceneEngine
         }
     }
 
+    static const ::Assets::AssetChunkRequest PlacementsChunkRequests[]
+    {
+        ::Assets::AssetChunkRequest { 
+            "Placements", ChunkType_Placements, 0, 
+            ::Assets::AssetChunkRequest::DataType::Raw 
+        }
+    };
+
     Placements::Placements(const ResChar filename[])
     {
+        Prepare(filename, MakeIteratorRange(PlacementsChunkRequests), Resolver);
+    }
+
+    void Placements::Resolver(void* obj, IteratorRange<::Assets::AssetChunkResult*> chunks)
+    {
+        assert(chunks.size() == 1);
+        auto* plc = (Placements*)obj;
+
             //
             //      Extremely simple file format for placements
             //      We just need 2 blocks:
@@ -252,46 +268,35 @@ namespace SceneEngine
             //      times. It just helps reduce file size.
             //
 
-        using namespace Serialization::ChunkFile;
-        std::vector<ObjectReference> objects;
-        std::vector<uint8> filenamesBuffer;
+        const auto* filename = plc->Filename().c_str();
 
-        TRY {
-            BasicFile file(filename, "rb");
-            auto chunks = LoadChunkTable(file);
-            auto i = std::find_if(
-                chunks.begin(), chunks.end(), 
-                [](const ChunkHeader& hdr) { return hdr._type == ChunkType_Placements; });
-            if (i == chunks.end()) {
-                Throw(::Assets::Exceptions::InvalidAsset(filename, "Missing correct chunks"));
-            }
+        void const* i = chunks[0]._buffer.get();
+        const auto& hdr = *(const PlacementsHeader*)i;
+        if (hdr._version != 0) {
+            Throw(::Exceptions::BasicLabel(
+                StringMeld<128>() << "Unexpected version number (" << hdr._version << ")"));
+        }
+        i = PtrAdd(i, sizeof(PlacementsHeader));
 
-            file.Seek(i->_fileOffset, SEEK_SET);
-            PlacementsHeader hdr;
-            file.Read(&hdr, sizeof(hdr), 1);
-            if (hdr._version != 0) {
-                Throw(::Assets::Exceptions::InvalidAsset(filename, 
-                    StringMeld<128>() << "Unexpected version number (" << hdr._version << ")"));
-            }
+        plc->_objects.clear();
+        plc->_filenamesBuffer.clear();
+        plc->_supplementsBuffer.clear();
 
-            objects.resize(hdr._objectRefCount);
-            filenamesBuffer.resize(hdr._filenamesBufferSize);
-            file.Read(AsPointer(objects.begin()), sizeof(ObjectReference), hdr._objectRefCount);
-            file.Read(AsPointer(filenamesBuffer.begin()), 1, hdr._filenamesBufferSize);
-        } CATCH (const Utility::Exceptions::IOException&) { // catch file errors
-        } CATCH_END
+        plc->_objects.insert(plc->_objects.end(),
+            (const ObjectReference*)i, (const ObjectReference*)i + hdr._objectRefCount);
+        i = (const ObjectReference*)i + hdr._objectRefCount;
 
-        auto depValidation = std::make_shared<Assets::DependencyValidation>();
-        RegisterFileDependency(depValidation, filename);
+        plc->_filenamesBuffer.insert(plc->_filenamesBuffer.end(),
+            (const uint8*)i, (const uint8*)i + hdr._filenamesBufferSize);
+        i = (const uint8*)i + hdr._filenamesBufferSize;
 
-        _objects = std::move(objects);
-        _filenamesBuffer = std::move(filenamesBuffer);
-        _dependencyValidation = std::move(depValidation);
+        plc->_supplementsBuffer.insert(plc->_supplementsBuffer.end(),
+            (const uint64*)i, (const uint64*)PtrAdd(i, hdr._supplementsBufferSize));
+        i = PtrAdd(i, hdr._supplementsBufferSize);
 
         #if defined(_DEBUG)
-            if (!_objects.empty()) {
-                LogDetails(filename);
-            }
+            if (!plc->_objects.empty())
+                plc->LogDetails(filename);
         #endif
     }
 

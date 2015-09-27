@@ -83,7 +83,7 @@ namespace Assets
             IteratorRange<const AssetChunkRequest*> requests,
             ResolveFn* resolveFn);
     private:
-        ::Assets::rstring                               _filename;
+        rstring                                         _filename;
         mutable std::shared_ptr<PendingCompileMarker>   _marker;
         std::shared_ptr<DependencyValidation>           _validationCallback;
 
@@ -91,6 +91,7 @@ namespace Assets
         ResolveFn*                                  _resolveFn;
 
         void CompleteFromMarker(::Assets::PendingCompileMarker& marker);
+        static void ExecuteResolve(ResolveFn*, void*, IteratorRange<AssetChunkResult*>, const ResChar filename[]);
     };
 
 }

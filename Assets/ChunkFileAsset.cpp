@@ -64,6 +64,23 @@ namespace Assets
     : _resolveFn(nullptr)
     {}
 
+    void ChunkFileAsset::ExecuteResolve(
+        ResolveFn* resolveFn, void* obj, 
+        IteratorRange<AssetChunkResult*> chunks, const ResChar filename[])
+    {
+            // Just run the resolve function, and convert any exceptions into
+            // InvalidAsset type exceptions
+        if (resolveFn) {
+            TRY { (*resolveFn)(obj, chunks); } 
+            CATCH(const Exceptions::InvalidAsset&) { throw; }
+            CATCH(const std::exception& e) {
+                throw Exceptions::InvalidAsset(filename, StringMeld<1024>() << "Exception during chunk file resolve:" << e.what());
+            } CATCH(...) {
+                throw Exceptions::InvalidAsset(filename, StringMeld<1024>() << "Unknown exception during chunk file resolve");
+            } CATCH_END
+        }
+    }
+
     void ChunkFileAsset::Prepare(
         const ResChar filename[], 
         IteratorRange<const AssetChunkRequest*> requests, 
@@ -75,7 +92,7 @@ namespace Assets
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         RegisterFileDependency(_validationCallback, filename);
         auto pendingResult = LoadRawData(filename, requests);
-        (*resolveFn)(this, MakeIteratorRange(pendingResult));
+        ExecuteResolve(resolveFn, this, MakeIteratorRange(pendingResult), filename);
     }
     
     void ChunkFileAsset::Prepare(
@@ -168,7 +185,7 @@ namespace Assets
         else ::Assets::RegisterAssetDependency(_validationCallback, marker._dependencyValidation);
 
         auto chunks = LoadRawData(marker._sourceID0, _requests);
-        _resolveFn(this, MakeIteratorRange(chunks));
+        ExecuteResolve(_resolveFn, this, MakeIteratorRange(chunks), _filename.c_str());
         _resolveFn = nullptr;
     }
 
