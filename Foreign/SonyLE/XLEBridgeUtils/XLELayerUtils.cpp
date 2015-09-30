@@ -134,25 +134,67 @@ namespace XLEBridgeUtils
             }
         }
 
+        ref class LoggingRedirectDelegate
+        {
+        public:
+            static void Callback(Object^ obj)
+            {
+                LoggingRedirectDelegate^ del = (LoggingRedirectDelegate^)obj;
+                Sce::Atf::Outputs::Write(del->Type, del->Msg);
+            }
+
+            property System::String^ Msg;
+            property Sce::Atf::OutputMessageType Type;
+        };
+
         class LoggingRedirectHelper : public ConsoleRig::LogCallback
         {
         public:
             virtual void OnDispatch(ConsoleRig::LogLevel level, const std::string& str)
             {
+                    // Note -- it is not safe to handle this message immediately
+                    //  Calling Sce::Atf::Outputs::Write can invoke a windows events (such as WM_PAINT)
+                    //  This is a problem because we can enter this function at any time. 
+                    //  If we are currently in the middle of one paint operation, this can effectively
+                    //  cause us to paint recursively. 
+                    //
+                    //  But there's another worse issue. This thread will currently have the logging mutex
+                    //  locked. So if any paint or other operations cause a log operation, then the logging
+                    //  system will attempt a recursive lock on it's mutex -- which results in an exception
+                    //  and ends up causing a call to std::abort()
+                    //
+                    // We have to delay handling the message by invoking a delegate in the main message loop.
+                    // However; note that this could cause the log messages to end up in the wrong order
+                    // (if we are getting log messages from different sources)
+
                 if (!str.empty()) {
                     auto s = clix::marshalString<clix::E_UTF8>(str);
-                        // we must append a new line if one isn't already there!
+                        // We must append a new line if one isn't already there!
                         // this falls in line with the behaviour of easylogging++,
                         // which will automatically add a new line at the end of each
                         // message.
                     if (!s->EndsWith(System::Environment::NewLine))
                         s += System::Environment::NewLine;
-                    Sce::Atf::Outputs::Write(AsOutputMessageType(level), s);
+                    
+                    LoggingRedirectDelegate^ del = gcnew LoggingRedirectDelegate;
+                    del->Msg = s;
+                    del->Type = AsOutputMessageType(level);
+                    _context->Post(
+                        gcnew System::Threading::SendOrPostCallback(&LoggingRedirectDelegate::Callback), 
+                        del);
                 }
             }
 
-            LoggingRedirectHelper() {}
+            LoggingRedirectHelper() 
+            {
+                    // note -- expecting to be called from the main thread.
+                _context = System::Threading::SynchronizationContext::Current;
+            }
+
             ~LoggingRedirectHelper() {}
+
+        protected:
+            gcroot<System::Threading::SynchronizationContext^> _context;
         };
     }
 
