@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../../RenderCore/IThreadContext_Forward.h"
+#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include <memory>
 

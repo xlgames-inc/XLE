@@ -39,6 +39,9 @@ namespace GUILayer
         auto* renderDevice = engineDevice->GetNative().GetRenderDevice();
         auto immediateContext = renderDevice->GetImmediateContext();
         Render(*immediateContext.get(), *_pimpl->_windowRig.get());
+
+            // perform our delayed deletes now (in the main thread)
+        DelayedDeleteQueue::FlushQueue();
     }
 
     void EngineControl::OnResize(System::EventArgs^ e)

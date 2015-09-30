@@ -50,7 +50,8 @@ namespace clix
         !auto_ptr() /*throw()*/
         {
             System::Diagnostics::Debugger::Log(0, "clix::auto_ptr<>", "Finalizer used! The variable deleted in non-deterministic way.");
-            delete p_;
+            // delete p_;
+            GUILayer::DelayedDeleteQueue::Add(p_, gcnew GUILayer::DelayedDeleteQueue::DeletionCallback(DeleteFn));
         }
  
         template<class T2>
@@ -116,6 +117,8 @@ namespace clix
  
     private:
         T *p_;
+
+        static void DeleteFn(void* ptr) { delete (T*)ptr; }
     };
 
     template<typename T>
@@ -163,7 +166,8 @@ namespace clix
         !shared_ptr() 
         {
             System::Diagnostics::Debugger::Log(0, "clix::shared_ptr<>", "Finalizer used! The variable deleted in non-deterministic way.");
-            delete pPtr;
+            // delete pPtr;
+            GUILayer::DelayedDeleteQueue::Add(pPtr, gcnew GUILayer::DelayedDeleteQueue::DeletionCallback(DeleteFn));
         }
 
         ~shared_ptr() 
@@ -239,6 +243,8 @@ namespace clix
 
     private:
         std::shared_ptr<T>* pPtr;
+
+        static void DeleteFn(void* ptr) { delete (std::shared_ptr<T>*)ptr; }
     };
 
 }

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include "MathLayer.h"
 #include "../../SceneEngine/TerrainConfig.h"

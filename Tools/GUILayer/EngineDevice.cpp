@@ -177,6 +177,7 @@ namespace GUILayer
             // before we go through the shutdown steps
         System::GC::Collect();
         System::GC::WaitForPendingFinalizers();
+        DelayedDeleteQueue::FlushQueue();
         
         RenderCore::Techniques::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();

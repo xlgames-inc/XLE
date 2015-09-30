@@ -80,6 +80,7 @@
   <ItemGroup>
     <ClCompile Include="..\AssemblyInfo.cpp" />
     <ClCompile Include="..\CustomDataGridEditor.cpp" />
+    <ClCompile Include="..\DelayedDeleteQueue.cpp" />
     <ClCompile Include="..\DivergentAssetList.cpp" />
     <ClCompile Include="..\EditorInterfaceUtils.cpp" />
     <ClCompile Include="..\EditorSceneParser.cpp" />
@@ -103,6 +104,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\CLIXAutoPtr.h" />
+    <ClInclude Include="..\DelayedDeleteQueue.h" />
     <ClInclude Include="..\DivergentAssetList.h" />
     <ClInclude Include="..\EditorInterfaceUtils.h" />
     <ClInclude Include="..\EngineDevice.h" />

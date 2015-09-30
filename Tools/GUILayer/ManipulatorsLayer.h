@@ -7,6 +7,7 @@
 #pragma once
 
 #include "ManipulatorUtils.h"
+#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include <string>
 #include <memory>

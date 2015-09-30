@@ -81,7 +81,17 @@ namespace GUILayer
         if (_pimpl->_activePaint)
             return;
 
+            // Check for cases where a paint operation can be begun on one window
+            // while another window is in the middle of rendering.
+        static bool activePaintCheck2 = false;
+        if (activePaintCheck2) {
+            assert(0);
+            return;
+        }
+
         _pimpl->_activePaint = true;
+        activePaintCheck2 = true;
+        
         TRY
         {
             auto& frameRig = windowRig.GetFrameRig();
@@ -93,6 +103,7 @@ namespace GUILayer
                     std::ref(*_pimpl), frameRig.GetMainOverlaySystem().get()));
         } CATCH (...) {
         } CATCH_END
+        activePaintCheck2 = false;
         _pimpl->_activePaint = false;
     }
 

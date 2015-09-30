@@ -53,6 +53,9 @@
     <ClCompile Include="..\IterativeSystemDebugger.cpp">
       <Filter>IterativeSystem</Filter>
     </ClCompile>
+    <ClCompile Include="..\DelayedDeleteQueue.cpp">
+      <Filter>Fundamental</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -115,6 +118,9 @@
     </ClInclude>
     <ClInclude Include="..\IterativeSystemDebugger.h">
       <Filter>IterativeSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DelayedDeleteQueue.h">
+      <Filter>Fundamental</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

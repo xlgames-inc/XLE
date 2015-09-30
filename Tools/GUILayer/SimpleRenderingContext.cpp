@@ -10,6 +10,7 @@
 #include "GUILayerUtil.h"
 #include "LevelEditorScene.h"
 #include "MathLayer.h"
+#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/ManipulatorsUtil.h"
