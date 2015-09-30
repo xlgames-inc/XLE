@@ -146,16 +146,18 @@ namespace RenderCore { namespace Assets
             DelayedDrawCallSet& dest, 
             const SharedStateSet& sharedStateSet, 
             const Float4x4& modelToWorld,
-            const MeshToModel& transforms = MeshToModel());
+            const MeshToModel& transforms = MeshToModel()) const;
 
         static void RenderPrepared(
             const ModelRendererContext& context, const SharedStateSet& sharedStateSet,
-            DelayedDrawCallSet& drawCalls, DelayStep delayStep);
+            const DelayedDrawCallSet& drawCalls, DelayStep delayStep);
 
         static void RenderPrepared(
             const ModelRendererContext& context, const SharedStateSet& sharedStateSet,
-            DelayedDrawCallSet& drawCalls, DelayStep delayStep,
+            const DelayedDrawCallSet& drawCalls, DelayStep delayStep,
             const std::function<void(unsigned, unsigned, unsigned)>& callback);
+
+        static void Sort(DelayedDrawCallSet& drawCalls);
 
             ////////////////////////////////////////////////////////////
         class PreparedAnimation
@@ -211,7 +213,7 @@ namespace RenderCore { namespace Assets
         template<bool HasCallback>
             static void RenderPreparedInternal(
                 const ModelRendererContext&, const SharedStateSet&,
-                DelayedDrawCallSet&, DelayStep, 
+                const DelayedDrawCallSet&, DelayStep, 
                 const std::function<void(unsigned, unsigned, unsigned)>*);
     };
 

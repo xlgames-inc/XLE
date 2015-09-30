@@ -123,9 +123,14 @@ namespace GUILayer
         const SceneParseSettings& parseSettings,
         unsigned index, unsigned techniqueIndex) const
     {
-            // disable terrain rendering when writing shadow
+            // Disable terrain rendering when writing shadow
         auto newSettings = parseSettings;
         newSettings._toggles &= ~SceneParseSettings::Toggles::Terrain;
+        ExecuteScene(context, parserContext, newSettings, techniqueIndex);
+
+            // We also have to render some of the transparent stuff
+        newSettings._batchFilter = SceneParseSettings::BatchFilter::Transparent;
+        newSettings._toggles &= ~SceneParseSettings::Toggles::NonTerrain;
         ExecuteScene(context, parserContext, newSettings, techniqueIndex);
     }
 

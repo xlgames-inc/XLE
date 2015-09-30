@@ -563,6 +563,7 @@ namespace SceneEngine
                 auto model = cache.GetModel(bkt._modelName.c_str(), bkt._materialName.c_str());
                 preparedDrawCalls.Reset();
                 model._renderer->Prepare(preparedDrawCalls, sharedStates, Identity<Float4x4>());
+                ModelRenderer::Sort(preparedDrawCalls);
                 ModelRenderer::RenderPrepared(
                     ModelRendererContext(context, parserContext, techniqueIndex),
                     sharedStates, preparedDrawCalls, DelayStep::OpaqueRender,

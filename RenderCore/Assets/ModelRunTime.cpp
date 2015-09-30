@@ -1139,7 +1139,7 @@ namespace RenderCore { namespace Assets
         DelayedDrawCallSet& dest, 
         const SharedStateSet& sharedStateSet, 
         const Float4x4& modelToWorld,
-        const MeshToModel& transforms)
+        const MeshToModel& transforms) const
     {
         unsigned mainTransformIndex = ~unsigned(0x0);
         if (!transforms.IsGood()) {
@@ -1257,10 +1257,22 @@ namespace RenderCore { namespace Assets
         }
     }
 
+    void ModelRenderer::Sort(DelayedDrawCallSet& drawCalls)
+    {
+            // This sort could turn out to be expensive (particularly as CompareDrawCall
+            // contains multiple comparisons).
+            // Perhaps we would be better of doing the sorting on insertion (or using
+            // a single sorting index value so that CompareDrawCall could be a single comparison)?
+        for (unsigned c=0; c<(unsigned)DelayStep::Max; ++c) {
+            auto& entries = drawCalls._entries[c];
+            std::sort(entries.begin(), entries.end(), CompareDrawCall);
+        }
+    }
+
     template<bool HasCallback>
         void ModelRenderer::RenderPreparedInternal(
             const ModelRendererContext& context, const SharedStateSet& sharedStateSet,
-            DelayedDrawCallSet& drawCalls, DelayStep delayStep,
+            const DelayedDrawCallSet& drawCalls, DelayStep delayStep,
             const std::function<void(unsigned, unsigned, unsigned)>* callback)
     {
         if (drawCalls.GetRendererGUID() != typeid(ModelRenderer).hash_code())
@@ -1274,12 +1286,6 @@ namespace RenderCore { namespace Assets
         
         Metal::ConstantBuffer& localTransformBuffer = Techniques::CommonResources()._localTransformBuffer;
         const Metal::ConstantBuffer* pkts[] = { &localTransformBuffer, nullptr };
-
-            // This sort could turn out to be expensive (particularly as CompareDrawCall
-            // contains multiple comparisons).
-            // Perhaps we would be better of doing the sorting on insertion (or using
-            // a single sorting index value so that CompareDrawCall could be a single comparison)?
-        std::sort(entries.begin(), entries.end(), CompareDrawCall);
 
         const ModelRenderer::Pimpl::Mesh* currentMesh = nullptr;
         RenderCore::Metal::BoundUniforms* boundUniforms = nullptr;
@@ -1373,14 +1379,14 @@ namespace RenderCore { namespace Assets
 
     void ModelRenderer::RenderPrepared(
         const ModelRendererContext& context, const SharedStateSet& sharedStateSet,
-        DelayedDrawCallSet& drawCalls, DelayStep delayStep)
+        const DelayedDrawCallSet& drawCalls, DelayStep delayStep)
     {
         RenderPreparedInternal<false>(context, sharedStateSet, drawCalls, delayStep, nullptr);
     }
 
     void ModelRenderer::RenderPrepared(
         const ModelRendererContext& context, const SharedStateSet& sharedStateSet,
-        DelayedDrawCallSet& drawCalls, DelayStep delayStep,
+        const DelayedDrawCallSet& drawCalls, DelayStep delayStep,
         const std::function<void(unsigned, unsigned, unsigned)>& callback)
     {
         assert(callback);

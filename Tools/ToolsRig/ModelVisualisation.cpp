@@ -45,6 +45,7 @@ namespace ToolsRig
     using RenderCore::Assets::SharedStateSet;
     using RenderCore::Assets::ModelCache;
     using RenderCore::Assets::TransformationMachine;
+    using RenderCore::Assets::DelayedDrawCallSet;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -106,6 +107,39 @@ namespace ToolsRig
 
         }
     }
+
+    static void PrepareWithEmbeddedSkeleton(
+        DelayedDrawCallSet& dest, 
+        const ModelRenderer& model,
+        const SharedStateSet& sharedStateSet,
+        const ModelScaffold* scaffold)
+    {
+        if (scaffold) {
+
+            auto& transMachine = scaffold->EmbeddedSkeleton();
+            auto transformCount = transMachine.GetOutputMatrixCount();
+            auto skelTransforms = std::make_unique<Float4x4[]>(transformCount);
+            transMachine.GenerateOutputTransforms(
+                skelTransforms.get(), transformCount,
+                &transMachine.GetDefaultParameters());
+
+            RenderCore::Assets::SkeletonBinding binding(
+                transMachine.GetOutputInterface(),
+                scaffold->CommandStream().GetInputInterface());
+
+            RenderCore::Assets::MeshToModel transforms(
+                skelTransforms.get(), transformCount, &binding);
+
+            model.Prepare(
+                dest, sharedStateSet,
+                Identity<Float4x4>(), transforms);
+
+        } else {
+
+            model.Prepare(dest, sharedStateSet, Identity<Float4x4>());
+
+        }
+    }
     
     class ModelSceneParser : public VisSceneParser
     {
@@ -117,16 +151,25 @@ namespace ToolsRig
         {
             if (    parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::Depth
                 ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::General
-                ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::RayTracedShadows) {
+                ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::RayTracedShadows
+                ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::Transparent) {
 
                 if (_sharedStateSet) {
                     _sharedStateSet->CaptureState(context);
                 }
 
                 TRY {
-                    RenderWithEmbeddedSkeleton(
+                        // todo -- use the callback version to write the material id to the stencil buffer
+                    ModelRenderer::RenderPrepared(
                         RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
-                        *_model, *_sharedStateSet, _modelScaffold);
+                        *_sharedStateSet, _delayedDrawCalls,
+                        (parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::Transparent)
+                            ? RenderCore::Assets::DelayStep::PostDeferred
+                            : RenderCore::Assets::DelayStep::OpaqueRender);
+
+                    // RenderWithEmbeddedSkeleton(
+                    //     RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+                    //     *_model, *_sharedStateSet, _modelScaffold);
                 } 
                 CATCH (const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); } 
                 CATCH (const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); } 
@@ -153,7 +196,15 @@ namespace ToolsRig
             const ModelScaffold* modelScaffold = nullptr)
             : VisSceneParser(settings._camera, envSettings)
             , _model(&model), _boundingBox(boundingBox), _sharedStateSet(&sharedStateSet)
-            , _settings(&settings), _modelScaffold(modelScaffold) {}
+            , _settings(&settings), _modelScaffold(modelScaffold) 
+            , _delayedDrawCalls(typeid(ModelRenderer).hash_code())
+        {
+            PrepareWithEmbeddedSkeleton(
+                _delayedDrawCalls, *_model,
+                *_sharedStateSet, modelScaffold);
+            ModelRenderer::Sort(_delayedDrawCalls);
+        }
+
         ~ModelSceneParser() {}
 
     protected:
@@ -162,6 +213,7 @@ namespace ToolsRig
         std::pair<Float3, Float3> _boundingBox;
         const ModelVisSettings* _settings;
         const ModelScaffold* _modelScaffold;
+        DelayedDrawCallSet _delayedDrawCalls;
     };
 
     std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const ModelCache::Model& model)

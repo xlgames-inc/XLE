@@ -594,14 +594,31 @@ namespace SceneEngine
                     BindShadowsForForwardResolve(*context, parserContext, parserContext._preparedDMShadows[0].second);
 
                 SceneParseSettings sceneParseSettings(SceneParseSettings::BatchFilter::Transparent, ~SceneParseSettings::Toggles::BitField(0));
-                {
+                
+                const auto useOrderIndependentTransparency = Tweakable("UseOrderIndependentTransparency", false) && (sampling._sampleCount <= 1);
+                ShaderResourceView duplicatedDepthBuffer;
+                if (!useOrderIndependentTransparency) {
                     GPUProfiler::DebugAnnotation anno(*context, L"MainScene-PostGBuffer");
                     parserContext.GetSceneParser()->ExecuteScene(
                         context, parserContext, sceneParseSettings, TechniqueIndex_General);
+                } else {
+                    GPUProfiler::DebugAnnotation anno(*context, L"MainScene-PostGBuffer-OI");
+
+                    duplicatedDepthBuffer = 
+                        BuildDuplicatedDepthBuffer(context, mainTargets._msaaDepthBufferTexture.get());
+
+                    OrderIndependentTransparency_Prepare(context, parserContext, duplicatedDepthBuffer);
+
+                    parserContext.GetSceneParser()->ExecuteScene(
+                        context, parserContext, sceneParseSettings, TechniqueIndex_OrderIndependentTransparency);
                 }
+
                 for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p) {
                     (*p)->OnPostSceneRender(context, parserContext, sceneParseSettings, TechniqueIndex_General);
                 }
+
+                if (useOrderIndependentTransparency)
+                    OrderIndependentTransparency_Resolve(context, parserContext, duplicatedDepthBuffer);
 
                 context->UnbindPS<Metal::ShaderResourceView>(3,1);   // unbind shadow textures
             } 

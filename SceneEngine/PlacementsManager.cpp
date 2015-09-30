@@ -477,6 +477,7 @@ namespace SceneEngine
             // we can commit the opaque-render part now...
         TRY
         {
+            ModelRenderer::Sort(_preparedRenders);
             ModelRenderer::RenderPrepared(
                 RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
                 _cache->GetSharedStateSet(), _preparedRenders, RenderCore::Assets::DelayStep::OpaqueRender);

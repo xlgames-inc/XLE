@@ -52,6 +52,7 @@
         ~Material
             MAT_ALPHA_TEST
             MAT_VCOLOR_IS_ANIM_PARAM
+            MAT_ALPHA_DITHER_SHADOWS
         ~Runtime
             FRUSTUM_FILTER=63
             SHADOW_CASCADE_MODE

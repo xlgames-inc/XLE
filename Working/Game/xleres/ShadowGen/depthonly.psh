@@ -7,8 +7,34 @@
 #include "GeometryConfiguration.h"
 #include "../MainGeometry.h"
 #include "../Surface.h"
+#include "../Utility/Misc.h"
 
-void main(VSOutput geo)
+void DoDitherAlphaTest(VSOutput geo, int2 pixelCoords)
 {
-	DoAlphaTest(geo);
+		// This kind of dithering is going to sometimes produce some
+		// wierd artefacts (and anyway, it will shake around a lot).
+		// It's only really viable if there is a lot of blurring happening
+		// in the shadow resolve stage.
+		// It can create streaks up close, as well as blurring in the distance.
+		//
+		// We can also write a translucency value to a second bound render
+		// target (perhaps with a "max" blend). This could be used to soften
+		// the shadows cast by translucent geometry.
+	#if (OUTPUT_TEXCOORD==1)
+		float alphaValue = DiffuseTexture.Sample(DefaultSampler, geo.texCoord.xy).a;
+		float ditherBias = DitherPatternValue(pixelCoords);
+		clip(alphaValue - .75f * ditherBias - 1e-6f);
+	#endif
+}
+
+#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_DITHER_SHADOWS==1)))
+	[earlydepthstencil]
+#endif
+void main(float4 position : SV_Position, VSOutput geo)
+{
+	#if (OUTPUT_TEXCOORD==1) && (MAT_ALPHA_DITHER_SHADOWS==1)
+		DoDitherAlphaTest(geo, int2(position.xy));
+	#else
+		DoAlphaTest(geo);
+	#endif
 }
