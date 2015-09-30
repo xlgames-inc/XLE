@@ -32,7 +32,7 @@ float4 ResolveLightUnshadowed(	float4 position : SV_Position,
 	float3 specular = LightResolve_Specular(sample, directionToEye, Light);
 
 	const float lightScale = LightingScale;
-	return float4((lightScale*sample.cookedAmbientOcclusion)*(diffuse + specular), 1.f);
+	return float4(lightScale*(diffuse + specular), 1.f);
 }
 
 float4 ResolvePointLightUnshadowed(	float4 position : SV_Position,

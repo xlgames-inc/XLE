@@ -12,6 +12,7 @@
 #include "../Core/Types.h"
 
 namespace RenderCore { class SharedPkt; }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
@@ -83,6 +84,7 @@ namespace SceneEngine
     public:
         SRV                         _shadowTextureSRV;
         CB_ShadowResolveParameters  _resolveParameters;
+        CB                          _resolveParametersCB;
 
         bool IsReady() const;
 
@@ -118,5 +120,10 @@ namespace SceneEngine
         const CB_ArbitraryShadowProjection& arbitraryCB,
         const CB_OrthoShadowProjection& orthoCB,
         const Float4x4& cameraToWorld);
+
+    void BindShadowsForForwardResolve(
+        RenderCore::Metal::DeviceContext& metalContext,
+        RenderCore::Techniques::ParsingContext& parsingContext,
+        const PreparedDMShadowFrustum& dominantLight);
 
 }

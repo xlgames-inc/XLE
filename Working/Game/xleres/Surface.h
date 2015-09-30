@@ -26,11 +26,23 @@ float3 GetWorldViewVector(VSOutput geo)
 {
 	#if OUTPUT_WORLD_VIEW_VECTOR==1
 		return geo.worldViewVector;
+	#elif OUTPUT_WORLD_POSITION==1
+		return WorldSpaceView.xyz - geo.worldPosition;	// if we have either the world-view-world or world-position it's a bit redundant to have the other
 	#else
 		return 0.0.xxx;
 	#endif
 }
 
+float3 GetWorldPosition(VSOutput geo)
+{
+	#if OUTPUT_WORLD_POSITION==1
+		return geo.worldPosition;
+	#elif OUTPUT_WORLD_VIEW_VECTOR==1
+		return WorldSpaceView.xyz - geo.worldViewVector;	// if we have either the world-view-world or world-position it's a bit redundant to have the other
+	#else
+		return 0.0.xxx;
+	#endif
+}
 
 float3 TransformVector_Q(float4 q, float3 inputDirectionVector)
 {

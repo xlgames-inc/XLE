@@ -7,10 +7,6 @@
 #if !defined(DIFFUSE_METHODS_H)
 #define DIFFUSE_METHODS_H
 
-#if !defined(DIFFUSE_METHOD)
-    #define DIFFUSE_METHOD 1
-#endif
-
 float Sq(float x) { return x*x; }
 float RaiseTo5(float x) { float x2 = x*x; return x2*x2*x; }
 

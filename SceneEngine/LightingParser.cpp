@@ -13,7 +13,7 @@
 #include "LightInternal.h"
 #include "Tonemap.h"
 #include "VolumetricFog.h"
-#include "Shadows.h"
+#include "ShadowResources.h"
 #include "MetricsBox.h"
 #include "Ocean.h"
 #include "DeepOceanSim.h"
@@ -590,6 +590,9 @@ namespace SceneEngine
                 LightingParser_PostGBuffer(context, parserContext, mainTargets._msaaDepthBufferSRV, mainTargets._gbufferRTVsSRV[1]);
 
                 ReturnToSteadyState(context);
+                if (!parserContext._preparedDMShadows.empty())
+                    BindShadowsForForwardResolve(*context, parserContext, parserContext._preparedDMShadows[0].second);
+
                 SceneParseSettings sceneParseSettings(SceneParseSettings::BatchFilter::Transparent, ~SceneParseSettings::Toggles::BitField(0));
                 {
                     GPUProfiler::DebugAnnotation anno(*context, L"MainScene-PostGBuffer");
@@ -600,6 +603,7 @@ namespace SceneEngine
                     (*p)->OnPostSceneRender(context, parserContext, sceneParseSettings, TechniqueIndex_General);
                 }
 
+                context->UnbindPS<Metal::ShaderResourceView>(3,1);   // unbind shadow textures
             } 
             CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(context); }
             CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(context); }
@@ -627,6 +631,9 @@ namespace SceneEngine
             context->Bind(
                 MakeResourceList(lightingResTargets._lightingResolveRTV),
                 &mainTargets._msaaDepthBuffer);
+
+            if (!parserContext._preparedDMShadows.empty())
+                BindShadowsForForwardResolve(*context, parserContext, parserContext._preparedDMShadows[0].second);
 
             ForwardLightingModel_Render(context, parserContext, mainTargets, sampling._sampleCount);
 
@@ -736,6 +743,7 @@ namespace SceneEngine
         preparedResult._resolveParameters._maxBlurSearch = frustum._maxBlurSearch;
         preparedResult._resolveParameters._shadowTextureSize = (float)std::min(frustum._width, frustum._height);
         XlZeroMemory(preparedResult._resolveParameters._dummy);
+        preparedResult._resolveParametersCB = ConstantBuffer(&preparedResult._resolveParameters, sizeof(preparedResult._resolveParameters));
 
             //  we need to set the "shadow cascade mode" settings to the right
             //  mode for this prepare step;

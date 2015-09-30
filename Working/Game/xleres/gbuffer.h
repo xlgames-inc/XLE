@@ -126,6 +126,7 @@ struct GBufferValues
     float blendingAlpha;
     float normalMapAccuracy;
     float cookedAmbientOcclusion;
+    float cookedLightOcclusion; // this is precalculated occlusion of the dominant light source
 };
 
 PerPixelMaterialParam PerPixelMaterialParam_Default()
@@ -145,9 +146,10 @@ GBufferValues GBufferValues_Default()
 
     result.material = PerPixelMaterialParam_Default();
 
-    result.blendingAlpha     = 1.f;
+    result.blendingAlpha = 1.f;
     result.normalMapAccuracy = 1.f;
     result.cookedAmbientOcclusion = 1.f;
+    result.cookedLightOcclusion = 1.f;
     return result;
 }
 
@@ -175,7 +177,7 @@ GBufferEncoded Encode(GBufferValues values)
     #if HAS_PROPERTIES_BUFFER == 1
         result.propertiesBuffer.r = values.material.metal;
         result.propertiesBuffer.g = values.cookedAmbientOcclusion;
-        result.propertiesBuffer.b = 0.f;
+        result.propertiesBuffer.b = values.cookedLightOcclusion;
         result.propertiesBuffer.a = values.blendingAlpha;
     #endif
 
@@ -197,6 +199,7 @@ GBufferValues Decode(GBufferEncoded values)
 	#if HAS_PROPERTIES_BUFFER==1
         result.material.metal = values.propertiesBuffer.r;
 		result.cookedAmbientOcclusion = values.propertiesBuffer.g;
+        result.cookedLightOcclusion = values.propertiesBuffer.b;
         result.blendingAlpha = values.propertiesBuffer.a;
 	#endif
 	return result;

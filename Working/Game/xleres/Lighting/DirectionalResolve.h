@@ -25,6 +25,7 @@ float3 LightResolve_Diffuse(
 
     float metal = Material_GetMetal(sample);
 	float result = Material_GetDiffuseScale(sample) * rawDiffuse * (1.0f - metal);
+	result *= sample.cookedLightOcclusion;
 	return result * light.Color.diffuse * sample.diffuseAlbedo.rgb;
 }
 
@@ -60,9 +61,8 @@ float3 LightResolve_Specular(
 
 		////////////////////////////////////////////////
 
-	float scale = sample.cookedAmbientOcclusion;
 	float3 result =
-		(saturate(spec0) * scale)
+		(saturate(spec0) * sample.cookedLightOcclusion)
 		* lerp(light.Color.nonMetalSpecularBrightness.xxx * sample.diffuseAlbedo, light.Color.specular, Material_GetMetal(sample));
 	// result += (saturate(spec1) * scale) * specularColor1;
 	return result;

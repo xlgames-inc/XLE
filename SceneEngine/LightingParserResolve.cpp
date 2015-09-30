@@ -9,7 +9,7 @@
 #include "LightingTargets.h"
 #include "SceneParser.h"
 #include "SceneEngineUtils.h"
-#include "Shadows.h"
+#include "ShadowResources.h"
 #include "LightInternal.h"
 
 #include "Sky.h"
@@ -151,6 +151,52 @@ namespace SceneEngine
         context->BindPS(MakeResourceList(
             mainTargets._gbufferRTVsSRV[0], mainTargets._gbufferRTVsSRV[1], mainTargets._gbufferRTVsSRV[2], 
             Metal::ShaderResourceView(), mainTargets._msaaDepthBufferSRV));
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void BindShadowsForForwardResolve(
+        DeviceContext& metalContext,
+        Techniques::ParsingContext& parsingContext,
+        const PreparedDMShadowFrustum& dominantLight)
+    {
+        // Bind the settings in "dominantLight" to the pipeline, so they
+        // can be used by forward lighting shaders. Note that this is a different
+        // path from deferred lighting -- which binds elsewhere.
+        //
+        // Resources
+        //  3: ShadowTextures
+        // 10: NoiseTexture     (this is bound by LightingParser_BindLightResolveResources)
+        // 
+        // Samplers
+        //  4: ShadowSampler
+        //  5: ShadowDepthSampler
+        // 
+        // CBs
+        // 11: ShadowResolveParameters
+        // 12: ShadowParameters
+
+        metalContext.BindPS(MakeResourceList( 3, dominantLight._shadowTextureSRV));
+
+        auto samplingCount = 1; // ...?
+        auto& resolveRes = Techniques::FindCachedBoxDep2<LightingResolveResources>(samplingCount);
+        metalContext.BindPS(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
+
+        metalContext.BindPS(MakeResourceList(11, 
+            dominantLight._resolveParametersCB,
+            Techniques::FindCachedBox2<ShadowResourcesBox>()._sampleKernel32));
+
+        parsingContext.SetGlobalCB(
+            metalContext, Techniques::TechniqueContext::CB_ShadowProjection, 
+            &dominantLight._arbitraryCBSource, sizeof(dominantLight._arbitraryCBSource));
+        
+        parsingContext.SetGlobalCB(
+            metalContext, Techniques::TechniqueContext::CB_OrthoShadowProjection, 
+            &dominantLight._orthoCBSource, sizeof(dominantLight._orthoCBSource));
+
+        parsingContext.GetTechniqueContext()._runtimeState.SetParameter(
+            u("SHADOW_CASCADE_MODE"),
+            dominantLight._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -435,7 +481,7 @@ namespace SceneEngine
                     context->BindPS(MakeResourceList(3, preparedShadows._shadowTextureSRV));
                     prebuiltConstantBuffers[CB::ShadowProj_Arbit] = &preparedShadows._arbitraryCB;
                     prebuiltConstantBuffers[CB::ShadowProj_Ortho] = &preparedShadows._orthoCB;
-                    constantBufferPackets[CB::ShadowResolveParam] = MakeSharedPkt(preparedShadows._resolveParameters);
+                    prebuiltConstantBuffers[CB::ShadowResolveParam] = &preparedShadows._resolveParametersCB;
 
                         //
                         //      We need an accurate way to get from screen coords into 

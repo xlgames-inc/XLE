@@ -25,9 +25,6 @@
     <ClCompile Include="..\OrderIndependentTransparency.cpp">
       <Filter>Lighting And Processing</Filter>
     </ClCompile>
-    <ClCompile Include="..\Shadows.cpp">
-      <Filter>Lighting And Processing</Filter>
-    </ClCompile>
     <ClCompile Include="..\RefractionsBuffer.cpp">
       <Filter>Fundamentals</Filter>
     </ClCompile>
@@ -142,6 +139,9 @@
     <ClCompile Include="..\CloudsForm.cpp">
       <Filter>Objects</Filter>
     </ClCompile>
+    <ClCompile Include="..\ShadowResources.cpp">
+      <Filter>Lighting And Processing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -167,9 +167,6 @@
       <Filter>Fundamentals</Filter>
     </ClInclude>
     <ClInclude Include="..\OrderIndependentTransparency.h">
-      <Filter>Lighting And Processing</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Shadows.h">
       <Filter>Lighting And Processing</Filter>
     </ClInclude>
     <ClInclude Include="..\RefractionsBuffer.h">
@@ -295,6 +292,9 @@
     </ClInclude>
     <ClInclude Include="..\CloudsForm.h">
       <Filter>Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ShadowResources.h">
+      <Filter>Lighting And Processing</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

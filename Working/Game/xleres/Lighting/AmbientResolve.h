@@ -93,7 +93,7 @@ float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float
     float3 reflSampl = ReadSkyReflectionTexture(worldSpaceReflection, roughness, blurriness);
     reflSampl += Material_GetReflectionBoost(sample).xxx;
 
-    return reflSampl * (specular * fresnel * sample.cookedAmbientOcclusion);
+    return reflSampl * (specular * fresnel);
 }
 
 /////////////////////////////////////////
@@ -125,7 +125,7 @@ float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample
 /////////////////////////////////////////
 
 #if CALCULATE_SCREENSPACE_REFLECTIONS==1
-    float4 CalculateScreenSpaceReflections(float2 texCoord, float fresnel, float cookedAmbientOcclusion, float ambientColor)
+    float4 CalculateScreenSpaceReflections(float2 texCoord, float fresnel, float ambientColor)
     {
             //	the screen space refl sampler should contain a texture coordinate
             //	and an alpha value. We need a copy of the "lighting buffer"
@@ -146,7 +146,7 @@ float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample
         litSample += CalcBasicAmbient(int2(samplePosition.xy), SystemInputs_Default(), sample, ambientColor);
 
         return float4(
-            litSample.rgb * (fresnel * cookedAmbientOcclusion / LightingScale),
+            litSample.rgb * (fresnel / LightingScale),
             min(1.f, intersectionQuality * pixelReflectivity));
     }
 #endif
@@ -170,13 +170,14 @@ float3 LightResolve_Ambient(
             //	to blend from the sky reflection colour into that colour.
             // note... if we want fogging on the reflections, we need to perform the fog calculations here, on the
             // reflected pixel
-        float4 dynamicReflections = CalculateScreenSpaceReflections(texCoord, fresnel, sample.cookedAmbientOcclusion, ambient.Color);
+        float4 dynamicReflections = CalculateScreenSpaceReflections(texCoord, fresnel, ambient.Color);
         float3 finalReflection = lerp(skyReflections, dynamicReflections.rgb, dynamicReflections.a);
     #else
         float3 finalReflection = skyReflections;
     #endif
 
     finalReflection *= lerp(sample.diffuseAlbedo, 1.0.xxx, Material_GetMetal(sample));
+    finalReflection *= sample.cookedAmbientOcclusion;
     result += Material_GetReflectionScale(sample) * finalReflection;
 
     return result;

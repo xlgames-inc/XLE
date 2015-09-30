@@ -212,13 +212,7 @@ TerrainPixel CalculateTerrainPixel(PSInput geo)
     output.material.roughness = 0.85f;
     output.material.metal = 0.f;
     output.cookedAmbientOcclusion = p.cookedAmbientOcclusion;
-
-        // shadowing is being emulated via ambient occlusion currently...
-        //      but this isn't correct! we don't actually want to adjust the intensity
-        //      of ambient light, just the intensity of the main directional light source
-        // We should be writing mainLightOcclusion to a special-case light mask render target
-    output.cookedAmbientOcclusion =
-        min(output.cookedAmbientOcclusion, lerp(0.5f, 1.f, p.mainLightOcclusion));
+    output.cookedLightOcclusion = p.mainLightOcclusion;
 
     return Encode(output);
 }

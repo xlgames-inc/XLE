@@ -163,6 +163,7 @@ namespace SceneEngine
     : PreparedShadowFrustum(std::move(moveFrom))
     , _shadowTextureSRV(std::move(moveFrom._shadowTextureSRV))
     , _resolveParameters(moveFrom._resolveParameters)
+    , _resolveParametersCB(std::move(moveFrom._resolveParametersCB))
     {}
 
     PreparedDMShadowFrustum& PreparedDMShadowFrustum::operator=(PreparedDMShadowFrustum&& moveFrom) never_throws
@@ -170,6 +171,7 @@ namespace SceneEngine
         PreparedShadowFrustum::operator=(std::move(moveFrom));
         _shadowTextureSRV = std::move(moveFrom._shadowTextureSRV);
         _resolveParameters = moveFrom._resolveParameters;
+        _resolveParametersCB = std::move(moveFrom._resolveParametersCB);
         return *this;
     }
 

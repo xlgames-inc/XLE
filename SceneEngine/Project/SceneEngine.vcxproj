@@ -233,7 +233,7 @@
     <ClCompile Include="..\RenderingUtils.cpp" />
     <ClCompile Include="..\SceneEngineUtils.cpp" />
     <ClCompile Include="..\ScreenspaceReflections.cpp" />
-    <ClCompile Include="..\Shadows.cpp" />
+    <ClCompile Include="..\ShadowResources.cpp" />
     <ClCompile Include="..\ShallowSurface.cpp" />
     <ClCompile Include="..\ShallowWater.cpp" />
     <ClCompile Include="..\Sky.cpp" />
@@ -286,7 +286,7 @@
     <ClInclude Include="..\SceneParser.h" />
     <ClInclude Include="..\ScreenspaceReflections.h" />
     <ClInclude Include="..\LightDesc.h" />
-    <ClInclude Include="..\Shadows.h" />
+    <ClInclude Include="..\ShadowResources.h" />
     <ClInclude Include="..\ShallowSurface.h" />
     <ClInclude Include="..\ShallowWater.h" />
     <ClInclude Include="..\SimplePatchBox.h" />

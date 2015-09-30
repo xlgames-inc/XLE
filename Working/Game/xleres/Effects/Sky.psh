@@ -107,12 +107,6 @@ float4 main(float4 position : SV_Position, float2 oTexCoord : TEXCOORD0, float3 
 	float2 GetTexCoord(VSOutput input) { return 1.0.xx; }
 #endif
 
-#if OUTPUT_WORLD_POSITION==1
-	float3 GetWorldPosition(VSOutput input) { return input.worldPosition; }
-#else
-	float3 GetWorldPosition(VSOutput input) { return 0.0.xxx; }
-#endif
-
 float4 ps_HalfCube(VSOutput geo) : SV_Target0
 {
 	return CalculateColour0(GetTexCoord(geo), normalize(GetWorldPosition(geo) - WorldSpaceView), GetWorldPosition(geo));
