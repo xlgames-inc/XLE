@@ -295,10 +295,12 @@ namespace ToolsRig
                     if (!XlCompareString(bindDesc.Name, "GGXTable")) continue;
 
                     auto str = bindings.GetString<::Assets::ResChar>(ParameterBox::MakeParameterNameHash(bindDesc.Name));
+                    bool isDefaultRes = false;
                     if (str.empty()) {
                             //  It's not mentioned in the material resources. try to look
                             //  for a default resource for this bind point
                         str = ::Assets::rstring("game/xleres/DefaultResources/") + bindDesc.Name + ".dds";
+                        isDefaultRes = true;
                     }
 
                     auto bindingHash = Hash64(bindDesc.Name, &bindDesc.Name[XlStringLen(bindDesc.Name)]);
@@ -314,13 +316,14 @@ namespace ToolsRig
                                 resolvedFile, dimof(resolvedFile),
                                 str.c_str());
 
-                            const RenderCore::Assets::DeferredShaderResource& texture = 
-                                ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(resolvedFile);
+                                // check DoesFileExist (but only for default resources)
+                            if (!isDefaultRes || DoesFileExist(resolvedFile)) {
+                                const RenderCore::Assets::DeferredShaderResource& texture = 
+                                    ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(resolvedFile);
 
-                            result.push_back(&texture.GetShaderResource());
-                            boundUniforms.BindShaderResource(
-                                bindingHash,
-                                unsigned(result.size()-1), 1);
+                                result.push_back(&texture.GetShaderResource());
+                                boundUniforms.BindShaderResource(bindingHash, unsigned(result.size()-1), 1);
+                            }
                         }
                         CATCH (const ::Assets::Exceptions::InvalidAsset&) {}
                         CATCH_END
