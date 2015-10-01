@@ -152,10 +152,17 @@ namespace RenderCore { namespace Assets
             const ModelRendererContext& context, const SharedStateSet& sharedStateSet,
             const DelayedDrawCallSet& drawCalls, DelayStep delayStep);
 
+        class DrawCallEvent
+        {
+        public:
+            unsigned _indexCount, _firstIndex;
+            unsigned _firstVertex, _drawCallIndex;
+        };
+
         static void RenderPrepared(
             const ModelRendererContext& context, const SharedStateSet& sharedStateSet,
             const DelayedDrawCallSet& drawCalls, DelayStep delayStep,
-            const std::function<void(unsigned, unsigned, unsigned)>& callback);
+            const std::function<void(DrawCallEvent)>& callback);
 
         static void Sort(DelayedDrawCallSet& drawCalls);
 
@@ -214,7 +221,7 @@ namespace RenderCore { namespace Assets
             static void RenderPreparedInternal(
                 const ModelRendererContext&, const SharedStateSet&,
                 const DelayedDrawCallSet&, DelayStep, 
-                const std::function<void(unsigned, unsigned, unsigned)>*);
+                const std::function<void(DrawCallEvent)>*);
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////

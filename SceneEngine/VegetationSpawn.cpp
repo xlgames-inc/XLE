@@ -567,11 +567,11 @@ namespace SceneEngine
                 ModelRenderer::RenderPrepared(
                     ModelRendererContext(context, parserContext, techniqueIndex),
                     sharedStates, preparedDrawCalls, DelayStep::OpaqueRender,
-                    [context, b, resources](uint32 indexCount, uint32 startIndexLoc, uint32 baseVertexLoc)
+                    [context, b, resources](ModelRenderer::DrawCallEvent evnt)
                     {
                         VegetationSpawn_DrawInstances(
                             context, *resources, b, 
-                            indexCount, startIndexLoc, baseVertexLoc);
+                            evnt._indexCount, evnt._firstIndex, evnt._firstVertex);
                     });
             } CATCH(...) {
             } CATCH_END

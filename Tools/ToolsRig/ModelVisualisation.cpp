@@ -159,17 +159,25 @@ namespace ToolsRig
                 }
 
                 TRY {
-                        // todo -- use the callback version to write the material id to the stencil buffer
+                    using namespace RenderCore;
+                    Metal::ConstantBuffer drawCallIndexBuffer(nullptr, sizeof(unsigned)*4);
+                    context->BindGS(MakeResourceList(drawCallIndexBuffer));
+                    auto& dss = Techniques::CommonResources()._dssReadWriteWriteStencil;
+
                     ModelRenderer::RenderPrepared(
                         RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
                         *_sharedStateSet, _delayedDrawCalls,
                         (parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::Transparent)
                             ? RenderCore::Assets::DelayStep::PostDeferred
-                            : RenderCore::Assets::DelayStep::OpaqueRender);
+                            : RenderCore::Assets::DelayStep::OpaqueRender,
+                        [context, &drawCallIndexBuffer, &dss](ModelRenderer::DrawCallEvent evnt)
+                        {
+                            context->Bind(dss, 1+evnt._drawCallIndex);  // write stencil buffer with draw index
+                            unsigned drawCallIndexB[4] = { evnt._drawCallIndex, 0, 0, 0 };
+                            drawCallIndexBuffer.Update(*context, drawCallIndexB, sizeof(drawCallIndexB));
 
-                    // RenderWithEmbeddedSkeleton(
-                    //     RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
-                    //     *_model, *_sharedStateSet, _modelScaffold);
+                            context->DrawIndexed(evnt._indexCount, evnt._firstIndex, evnt._firstVertex);
+                        });
                 } 
                 CATCH (const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); } 
                 CATCH (const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); } 

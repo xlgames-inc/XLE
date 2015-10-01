@@ -1273,7 +1273,7 @@ namespace RenderCore { namespace Assets
         void ModelRenderer::RenderPreparedInternal(
             const ModelRendererContext& context, const SharedStateSet& sharedStateSet,
             const DelayedDrawCallSet& drawCalls, DelayStep delayStep,
-            const std::function<void(unsigned, unsigned, unsigned)>* callback)
+            const std::function<void(DrawCallEvent)>* callback)
     {
         if (drawCalls.GetRendererGUID() != typeid(ModelRenderer).hash_code())
             Throw(::Exceptions::BasicLabel("Delayed draw call set matched with wrong renderer type"));
@@ -1371,7 +1371,7 @@ namespace RenderCore { namespace Assets
 
             context._context->Bind((Metal::Topology::Enum)(d->_topology & 0xff));
             if (constant_expression<HasCallback>::result()) {
-                (*callback)(d->_indexCount, d->_firstIndex, d->_firstVertex);
+                (*callback)(DrawCallEvent { d->_indexCount, d->_firstIndex, d->_firstVertex, d->_drawCallIndex });
             } else
                 context._context->DrawIndexed(d->_indexCount, d->_firstIndex, d->_firstVertex);
         }
@@ -1387,7 +1387,7 @@ namespace RenderCore { namespace Assets
     void ModelRenderer::RenderPrepared(
         const ModelRendererContext& context, const SharedStateSet& sharedStateSet,
         const DelayedDrawCallSet& drawCalls, DelayStep delayStep,
-        const std::function<void(unsigned, unsigned, unsigned)>& callback)
+        const std::function<void(DrawCallEvent)>& callback)
     {
         assert(callback);
         RenderPreparedInternal<true>(context, sharedStateSet, drawCalls, delayStep, &callback);
