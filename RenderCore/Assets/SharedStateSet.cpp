@@ -313,9 +313,8 @@ namespace RenderCore { namespace Assets
         _currentGlobalRenderState = globalHash;
     }
 
-    void SharedStateSet::CaptureState(Metal::DeviceContext* context)
+    auto SharedStateSet::CaptureState(Metal::DeviceContext& context) -> CaptureMarker
     {
-        assert(context);
         assert(!_pimpl->_capturedContext);
         _currentShaderName = SharedShaderName::Invalid;
         _currentTechniqueInterface = SharedTechniqueInterface::Invalid;
@@ -324,13 +323,14 @@ namespace RenderCore { namespace Assets
         _currentRenderState = SharedRenderStateSet::Invalid;
         _currentGlobalRenderState = SharedRenderStateSet::Invalid;
         _currentBoundUniforms = nullptr;
-        _pimpl->_capturedContext = context;
+        _pimpl->_capturedContext = &context;
+
+        return CaptureMarker(context, *this);
     }
 
-    void SharedStateSet::ReleaseState(Metal::DeviceContext* context)
+    void SharedStateSet::ReleaseState(Metal::DeviceContext& context)
     {
-        assert(context);
-        assert(_pimpl->_capturedContext==context);
+        assert(_pimpl->_capturedContext==&context);
         _pimpl->_capturedContext = nullptr;
     }
 

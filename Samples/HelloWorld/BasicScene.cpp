@@ -328,15 +328,13 @@ namespace Sample
             //  Before using SharedStateSet for the first time, we need to capture the device 
             //  context state. If we were rendering multiple models with the same shared state, we would 
             //  capture once and render multiple times with the same capture.
-        _sharedStateSet->CaptureState(context);
+        auto captureMarker = _sharedStateSet->CaptureState(*context);
 
             //  Finally, we can render the object!
         const float x2ScaleFactor = 100.f;
         _modelRenderer->Render(
             RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
             *_sharedStateSet, AsFloat4x4(UniformScale(1.f/x2ScaleFactor)));
-
-        _sharedStateSet->ReleaseState(context);
     }
 
 }

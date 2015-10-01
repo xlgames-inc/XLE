@@ -547,7 +547,7 @@ namespace SceneEngine
         auto& cache = *_pimpl->_modelCache;
         
         auto& sharedStates = cache.GetSharedStateSet();
-        sharedStates.CaptureState(context);
+        auto captureMarker = sharedStates.CaptureState(*context);
         parserContext.GetTechniqueContext()._runtimeState.SetParameter((const utf8*)"SPAWNED_INSTANCE", 1);
         
         auto* resources = _pimpl->_resources.get();
@@ -574,7 +574,6 @@ namespace SceneEngine
         }
 
         parserContext.GetTechniqueContext()._runtimeState.SetParameter((const utf8*)"SPAWNED_INSTANCE", 0);
-        sharedStates.ReleaseState(context);
     }
 
     void VegetationSpawnManager::Load(const VegetationSpawnConfig& cfg)

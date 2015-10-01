@@ -147,19 +147,19 @@ namespace ToolsRig
         SetupCubeMapShadowProjection(metalContext, parserContext, settings._minDistance, settings._maxDistance);
 
             // Render the model onto our cube map surface
-        sharedStates.CaptureState(&metalContext);
-        TRY {
-            renderer.Render(
-                RenderCore::Assets::ModelRendererContext(
-                    &metalContext, parserContext, Techniques::TechniqueIndex::ShadowGen),
-                sharedStates, AsFloat4x4(Float3(-samplePoint)), meshToModel);
-        } CATCH(...) {
-            sharedStates.ReleaseState(&metalContext);
+        {
+            auto captureMarker = sharedStates.CaptureState(metalContext);
+            TRY {
+                renderer.Render(
+                    RenderCore::Assets::ModelRendererContext(
+                        &metalContext, parserContext, Techniques::TechniqueIndex::ShadowGen),
+                    sharedStates, AsFloat4x4(Float3(-samplePoint)), meshToModel);
+            } CATCH(...) {
+                savedTargets.ResetToOldTargets(&metalContext);
+                throw;
+            } CATCH_END
             savedTargets.ResetToOldTargets(&metalContext);
-            throw;
-        } CATCH_END
-        sharedStates.ReleaseState(&metalContext);
-        savedTargets.ResetToOldTargets(&metalContext);
+        }
 
             //
             // Now we have to read-back the results from the cube map,

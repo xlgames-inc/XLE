@@ -466,7 +466,6 @@ namespace SceneEngine
     void PlacementsRenderer::BeginRender(RenderCore::Metal::DeviceContext* devContext)
     {
         _preparedRenders.Reset();
-        _cache->GetSharedStateSet().CaptureState(devContext);
     }
 
     void PlacementsRenderer::EndRender(
@@ -474,14 +473,17 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex)
     {
-            // we can commit the opaque-render part now...
-        CATCH_ASSETS_BEGIN
-            ModelRenderer::Sort(_preparedRenders);
-            ModelRenderer::RenderPrepared(
-                RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
-                _cache->GetSharedStateSet(), _preparedRenders, RenderCore::Assets::DelayStep::OpaqueRender);
-        CATCH_ASSETS_END(parserContext)
-        _cache->GetSharedStateSet().ReleaseState(context);
+            // We can commit the opaque part now... However the translucent 
+            // part won't come until the caller also calls CommitTranslucent
+            //
+            // Sort by render state first, then capture the state and commit 
+            // the opaque parts...
+        ModelRenderer::Sort(_preparedRenders);
+        
+        auto capture = _cache->GetSharedStateSet().CaptureState(*context);
+        ModelRenderer::RenderPrepared(
+            RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+            _cache->GetSharedStateSet(), _preparedRenders, RenderCore::Assets::DelayStep::OpaqueRender);
     }
 
     void PlacementsRenderer::CommitTranslucent(
@@ -489,14 +491,11 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep)
     {
-            // draw the translucent parts of models that were previously prepared
-        _cache->GetSharedStateSet().CaptureState(context);
-        CATCH_ASSETS_BEGIN
-            ModelRenderer::RenderPrepared(
-                RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
-                _cache->GetSharedStateSet(), _preparedRenders, delayStep);
-        CATCH_ASSETS_END(parserContext)
-        _cache->GetSharedStateSet().ReleaseState(context);
+            // Draw the translucent parts of models that were previously prepared
+        auto capture = _cache->GetSharedStateSet().CaptureState(*context);
+        ModelRenderer::RenderPrepared(
+            RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+            _cache->GetSharedStateSet(), _preparedRenders, delayStep);
     }
 
     void PlacementsRenderer::FilterDrawCalls(
@@ -561,42 +560,36 @@ namespace SceneEngine
             //  We need to look in the "_cellOverride" list first.
             //  The overridden cells are actually designed for tools. When authoring 
             //  placements, we need a way to render them before they are flushed to disk.
-        TRY 
-        {
-            auto i = LowerBound(_cellOverrides, cell._filenameHash);
-            if (i != _cellOverrides.end() && i->first == cell._filenameHash) {
-                Render(context, parserContext, *i->second.get(), nullptr, cell._cellToWorld, filterStart, filterEnd);
-            } else {
-                auto i2 = LowerBound(_cells, cell._filenameHash);
-                if (i2 == _cells.end() || i2->first != cell._filenameHash) {
-                    CellRenderInfo newRenderInfo;
-                    newRenderInfo._placements = _placementsCache->Get(cell._filenameHash, cell._filename);
-                    i2 = _cells.insert(i2, std::make_pair(cell._filenameHash, std::move(newRenderInfo)));
-                }
-
-                    // check if we need to reload placements
-                if (i2->second._placements->_placements->GetDependencyValidation()->GetValidationIndex() != 0) {
-                    i2->second._placements->Reload();
-                    i2->second._quadTree.reset();
-                }
-
-                if (!i2->second._quadTree) {
-                    i2->second._quadTree = std::make_unique<PlacementsQuadTree>(
-                        &i2->second._placements->_placements->GetObjectReferences()->_cellSpaceBoundary,
-                        sizeof(Placements::ObjectReference), 
-                        i2->second._placements->_placements->GetObjectReferenceCount());
-                }
-
-                Render(
-                    context, parserContext, 
-                    *i2->second._placements->_placements, 
-                    i2->second._quadTree.get(),
-                    cell._cellToWorld, filterStart, filterEnd);
+        auto i = LowerBound(_cellOverrides, cell._filenameHash);
+        if (i != _cellOverrides.end() && i->first == cell._filenameHash) {
+            Render(context, parserContext, *i->second.get(), nullptr, cell._cellToWorld, filterStart, filterEnd);
+        } else {
+            auto i2 = LowerBound(_cells, cell._filenameHash);
+            if (i2 == _cells.end() || i2->first != cell._filenameHash) {
+                CellRenderInfo newRenderInfo;
+                newRenderInfo._placements = _placementsCache->Get(cell._filenameHash, cell._filename);
+                i2 = _cells.insert(i2, std::make_pair(cell._filenameHash, std::move(newRenderInfo)));
             }
-        } 
-        CATCH_ASSETS(parserContext)
-        CATCH (...) {} 
-        CATCH_END
+
+                // check if we need to reload placements
+            if (i2->second._placements->_placements->GetDependencyValidation()->GetValidationIndex() != 0) {
+                i2->second._placements->Reload();
+                i2->second._quadTree.reset();
+            }
+
+            if (!i2->second._quadTree) {
+                i2->second._quadTree = std::make_unique<PlacementsQuadTree>(
+                    &i2->second._placements->_placements->GetObjectReferences()->_cellSpaceBoundary,
+                    sizeof(Placements::ObjectReference), 
+                    i2->second._placements->_placements->GetObjectReferenceCount());
+            }
+
+            Render(
+                context, parserContext, 
+                *i2->second._placements->_placements, 
+                i2->second._quadTree.get(),
+                cell._cellToWorld, filterStart, filterEnd);
+        }
     }
 
     static SupplementRange AsSupplements(const uint64* supplementsBuffer, unsigned supplementsOffset)
@@ -818,14 +811,20 @@ namespace SceneEngine
     {
         if (!Tweakable("DoPlacements", true)) return;
 
-        CATCH_ASSETS_BEGIN
-                // render every registered cell
-            _pimpl->_renderer->BeginRender(context);
-            for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
-                _pimpl->_renderer->Render(context, parserContext, *i);
-            }
-        CATCH_ASSETS_END(parserContext)
+        _pimpl->_renderer->BeginRender(context);
 
+            // Render every registered cell
+            // We catch exceptions on a cell based level (so pending cells won't
+            // cause other cells to flicker)
+            // non-asset exceptions will throw back to the caller and bypass EndRender()
+        for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
+            CATCH_ASSETS_BEGIN
+                _pimpl->_renderer->Render(context, parserContext, *i);
+            CATCH_ASSETS_END(parserContext)
+        }
+
+            // note that exceptions that occur inside the EndRender will throw
+            // back to the caller.
         _pimpl->_renderer->EndRender(context, parserContext, techniqueIndex);
     }
 
@@ -1093,6 +1092,24 @@ namespace SceneEngine
 
         ::Assets::AssetState TryGetBoundingBox(
             Placements::BoundingBox& result, const ResChar modelFilename[], unsigned LOD = 0, bool stallWhilePending = false) const;
+
+        void Find_RayIntersection(
+            std::vector<PlacementGUID>& result,
+            const RegisteredCell& cell,
+            const std::pair<Float3, Float3>& cellSpaceRay,
+            const std::function<bool(const ObjIntersectionDef&)>& predicate);
+
+        void Find_FrustumIntersection(
+            std::vector<PlacementGUID>& result,
+            const RegisteredCell& cell,
+            const Float4x4& cellToProjection,
+            const std::function<bool(const ObjIntersectionDef&)>& predicate);
+
+        void Find_BoxIntersection(
+            std::vector<PlacementGUID>& result,
+            const RegisteredCell& cell,
+            const std::pair<Float3, Float3>& cellSpaceBB,
+            const std::function<bool(const ObjIntersectionDef&)>& predicate);
     };
 
     const ResChar* PlacementsEditor::Pimpl::GetCellName(uint64 cellGuid)
@@ -1128,10 +1145,7 @@ namespace SceneEngine
         assert(cellName && cellName[0]);
 
         TRY {
-            auto& sourcePlacements = Assets::GetAsset<Placements>(cellName);
-            return &sourcePlacements;
-        } CATCH (const Assets::Exceptions::PendingAsset&) {
-            throw;
+            return &Assets::GetAsset<Placements>(cellName);
         } CATCH (const std::exception& e) {
             LogWarning << "Got invalid resource while loading placements file (" << cellName << "). Error: (" << e.what() << ").";
             return nullptr;
@@ -1153,8 +1167,6 @@ namespace SceneEngine
             TRY {
                 auto& sourcePlacements = Assets::GetAsset<Placements>(cellName);
                 placements = std::make_shared<DynamicPlacements>(sourcePlacements);
-            } CATCH (const Assets::Exceptions::PendingAsset&) {
-                throw;
             } CATCH (const std::exception& e) {
                 LogWarning << "Got invalid resource while loading placements file (" << cellName << "). If this file exists, but is corrupted, the next save will overwrite it. Error: (" << e.what() << ").";
             } CATCH_END
@@ -1184,6 +1196,153 @@ namespace SceneEngine
         return ::Assets::AssetState::Ready;
     }
 
+    void PlacementsEditor::Pimpl::Find_RayIntersection(
+        std::vector<PlacementGUID>& result,
+        const RegisteredCell& cell,
+        const std::pair<Float3, Float3>& cellSpaceRay,
+        const std::function<bool(const ObjIntersectionDef&)>& predicate)
+    {
+        auto* p = GetPlacements(cell._filenameHash);
+        if (!p) return;
+
+        for (unsigned c=0; c<p->GetObjectReferenceCount(); ++c) {
+            auto& obj = p->GetObjectReferences()[c];
+                //  We're only doing a very rough world space bounding box vs ray test here...
+                //  Ideally, we should follow up with a more accurate test using the object loca
+                //  space bounding box
+            if (!RayVsAABB(cellSpaceRay, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second)) {
+                continue;
+            }
+
+            Placements::BoundingBox localBoundingBox;
+            auto assetState = TryGetBoundingBox(
+                localBoundingBox, 
+                (const ResChar*)PtrAdd(p->GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
+
+                // When assets aren't yet ready, we can't perform any intersection tests on them
+            if (assetState != ::Assets::AssetState::Ready)
+                continue;
+
+            if (!RayVsAABB( cellSpaceRay, AsFloat4x4(obj._localToCell), 
+                            localBoundingBox.first, localBoundingBox.second)) {
+                continue;
+            }
+
+            if (predicate) {
+                ObjIntersectionDef def;
+                def._localToWorld = Combine(obj._localToCell, cell._cellToWorld);
+
+                    // note -- we have access to the cell space bounding box. But the local
+                    //          space box would be better.
+                def._localSpaceBoundingBox = localBoundingBox;
+                def._model = *(uint64*)PtrAdd(p->GetFilenamesBuffer(), obj._modelFilenameOffset);
+                def._material = *(uint64*)PtrAdd(p->GetFilenamesBuffer(), obj._materialFilenameOffset);
+
+                    // allow the predicate to exclude this item
+                if (!predicate(def)) { continue; }
+            }
+
+            result.push_back(std::make_pair(cell._filenameHash, obj._guid));
+        }
+    }
+
+    void PlacementsEditor::Pimpl::Find_FrustumIntersection(
+        std::vector<PlacementGUID>& result,
+        const RegisteredCell& cell,
+        const Float4x4& cellToProjection,
+        const std::function<bool(const ObjIntersectionDef&)>& predicate)
+    {
+        auto* p = GetPlacements(cell._filenameHash);
+        if (!p) return;
+
+        for (unsigned c=0; c<p->GetObjectReferenceCount(); ++c) {
+            auto& obj = p->GetObjectReferences()[c];
+                //  We're only doing a very rough world space bounding box vs ray test here...
+                //  Ideally, we should follow up with a more accurate test using the object loca
+                //  space bounding box
+            if (CullAABB(cellToProjection, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second)) {
+                continue;
+            }
+
+            Placements::BoundingBox localBoundingBox;
+            auto assetState = TryGetBoundingBox(
+                localBoundingBox, 
+                (const ResChar*)PtrAdd(p->GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
+
+                // When assets aren't yet ready, we can't perform any intersection tests on them
+            if (assetState != ::Assets::AssetState::Ready)
+                continue;
+
+            if (CullAABB(Combine(AsFloat4x4(obj._localToCell), cellToProjection), localBoundingBox.first, localBoundingBox.second)) {
+                continue;
+            }
+
+            if (predicate) {
+                ObjIntersectionDef def;
+                def._localToWorld = Combine(obj._localToCell, cell._cellToWorld);
+
+                    // note -- we have access to the cell space bounding box. But the local
+                    //          space box would be better.
+                def._localSpaceBoundingBox = localBoundingBox;
+                def._model = *(uint64*)PtrAdd(p->GetFilenamesBuffer(), obj._modelFilenameOffset);
+                def._material = *(uint64*)PtrAdd(p->GetFilenamesBuffer(), obj._materialFilenameOffset);
+
+                    // allow the predicate to exclude this item
+                if (!predicate(def)) { continue; }
+            }
+
+            result.push_back(std::make_pair(cell._filenameHash, obj._guid));
+        }
+    }
+
+    void PlacementsEditor::Pimpl::Find_BoxIntersection(
+        std::vector<PlacementGUID>& result,
+        const RegisteredCell& cell,
+        const std::pair<Float3, Float3>& cellSpaceBB,
+        const std::function<bool(const ObjIntersectionDef&)>& predicate)
+    {
+        auto* p = GetPlacements(cell._filenameHash);
+        if (!p) return;
+
+        for (unsigned c=0; c<p->GetObjectReferenceCount(); ++c) {
+            auto& obj = p->GetObjectReferences()[c];
+            if (   cellSpaceBB.second[0] < obj._cellSpaceBoundary.first[0]
+                || cellSpaceBB.second[1] < obj._cellSpaceBoundary.first[1]
+                || cellSpaceBB.second[2] < obj._cellSpaceBoundary.first[2]
+                || cellSpaceBB.first[0]  > obj._cellSpaceBoundary.second[0]
+                || cellSpaceBB.first[1]  > obj._cellSpaceBoundary.second[1]
+                || cellSpaceBB.first[2]  > obj._cellSpaceBoundary.second[2]) {
+                continue;
+            }
+
+            if (predicate) {
+                ObjIntersectionDef def;
+                def._localToWorld = Combine(obj._localToCell, cell._cellToWorld);
+
+                Placements::BoundingBox localBoundingBox;
+                auto assetState = TryGetBoundingBox(
+                    localBoundingBox, 
+                    (const ResChar*)PtrAdd(p->GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
+
+                    // When assets aren't yet ready, we can't perform any intersection tests on them
+                if (assetState != ::Assets::AssetState::Ready)
+                    continue;
+
+                    // note -- we have access to the cell space bounding box. But the local
+                    //          space box would be better.
+                def._localSpaceBoundingBox = localBoundingBox;
+                def._model = *(uint64*)PtrAdd(p->GetFilenamesBuffer(), obj._modelFilenameOffset);
+                def._material = *(uint64*)PtrAdd(p->GetFilenamesBuffer(), obj._materialFilenameOffset);
+                        
+
+                    // allow the predicate to exclude this item
+                if (!predicate(def)) { continue; }
+            }
+
+            result.push_back(std::make_pair(cell._filenameHash, obj._guid));
+        }
+    }
+
     std::vector<PlacementGUID> PlacementsEditor::Find_RayIntersection(
         const Float3& rayStart, const Float3& rayEnd,
         const std::function<bool(const ObjIntersectionDef&)>& predicate)
@@ -1197,57 +1356,20 @@ namespace SceneEngine
                 continue;
             }
 
+                // We need to suppress any exception that occurs (we can get invalid/pending assets here)
+                // \todo -- we need to prepare all shaders and assets required here. It's better to stall
+                //      and load the asset than it is to miss an intersection
             auto worldToCell = InvertOrthonormalTransform(i->_cellToWorld);
-            auto cellSpaceRay = std::make_pair(
-                TransformPoint(worldToCell, rayStart),
-                TransformPoint(worldToCell, rayEnd));
-
             TRY {
-                auto* p = _pimpl->GetPlacements(i->_filenameHash);
-                if (!p) continue;
-
-                for (unsigned c=0; c<p->GetObjectReferenceCount(); ++c) {
-                    auto& obj = p->GetObjectReferences()[c];
-                        //  We're only doing a very rough world space bounding box vs ray test here...
-                        //  Ideally, we should follow up with a more accurate test using the object loca
-                        //  space bounding box
-                    if (!RayVsAABB(cellSpaceRay, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second)) {
-                        continue;
-                    }
-
-                    Placements::BoundingBox localBoundingBox;
-                    auto assetState = _pimpl->TryGetBoundingBox(
-                        localBoundingBox, 
-                        (const ResChar*)PtrAdd(p->GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
-
-                        // When assets aren't yet ready, we can't perform any intersection tests on them
-                    if (assetState != ::Assets::AssetState::Ready)
-                        continue;
-
-                    if (!RayVsAABB( cellSpaceRay, AsFloat4x4(obj._localToCell), 
-                                    localBoundingBox.first, localBoundingBox.second)) {
-                        continue;
-                    }
-
-                    if (predicate) {
-                        ObjIntersectionDef def;
-                        def._localToWorld = Combine(obj._localToCell, i->_cellToWorld);
-
-                            // note -- we have access to the cell space bounding box. But the local
-                            //          space box would be better.
-                        def._localSpaceBoundingBox = localBoundingBox;
-                        def._model = *(uint64*)PtrAdd(p->GetFilenamesBuffer(), obj._modelFilenameOffset);
-                        def._material = *(uint64*)PtrAdd(p->GetFilenamesBuffer(), obj._materialFilenameOffset);
-
-                            // allow the predicate to exclude this item
-                        if (!predicate(def)) { continue; }
-                    }
-
-                    result.push_back(std::make_pair(i->_filenameHash, obj._guid));
-                }
-
-            } CATCH (...) {
-            } CATCH_END
+                _pimpl->Find_RayIntersection(
+                    result, *i, 
+                    std::make_pair(
+                        TransformPoint(worldToCell, rayStart),
+                        TransformPoint(worldToCell, rayEnd)), 
+                    predicate);
+            } 
+            CATCH (const ::Assets::Exceptions::AssetException&) {} 
+            CATCH_END
         }
 
         return std::move(result);
@@ -1268,51 +1390,9 @@ namespace SceneEngine
 
             auto cellToProjection = Combine(i->_cellToWorld, worldToProjection);
 
-            TRY {
-                auto* p = _pimpl->GetPlacements(i->_filenameHash);
-                if (!p) continue;
-
-                for (unsigned c=0; c<p->GetObjectReferenceCount(); ++c) {
-                    auto& obj = p->GetObjectReferences()[c];
-                        //  We're only doing a very rough world space bounding box vs ray test here...
-                        //  Ideally, we should follow up with a more accurate test using the object loca
-                        //  space bounding box
-                    if (CullAABB(cellToProjection, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second)) {
-                        continue;
-                    }
-
-                    Placements::BoundingBox localBoundingBox;
-                    auto assetState = _pimpl->TryGetBoundingBox(
-                        localBoundingBox, 
-                        (const ResChar*)PtrAdd(p->GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
-
-                        // When assets aren't yet ready, we can't perform any intersection tests on them
-                    if (assetState != ::Assets::AssetState::Ready)
-                        continue;
-
-                    if (CullAABB(Combine(AsFloat4x4(obj._localToCell), cellToProjection), localBoundingBox.first, localBoundingBox.second)) {
-                        continue;
-                    }
-
-                    if (predicate) {
-                        ObjIntersectionDef def;
-                        def._localToWorld = Combine(obj._localToCell, i->_cellToWorld);
-
-                            // note -- we have access to the cell space bounding box. But the local
-                            //          space box would be better.
-                        def._localSpaceBoundingBox = localBoundingBox;
-                        def._model = *(uint64*)PtrAdd(p->GetFilenamesBuffer(), obj._modelFilenameOffset);
-                        def._material = *(uint64*)PtrAdd(p->GetFilenamesBuffer(), obj._materialFilenameOffset);
-
-                            // allow the predicate to exclude this item
-                        if (!predicate(def)) { continue; }
-                    }
-
-                    result.push_back(std::make_pair(i->_filenameHash, obj._guid));
-                }
-
-            } CATCH (...) {
-            } CATCH_END
+            TRY { _pimpl->Find_FrustumIntersection(result, *i, cellToProjection, predicate); } 
+            CATCH (const ::Assets::Exceptions::AssetException&) {} 
+            CATCH_END
         }
 
         return std::move(result);
@@ -1353,50 +1433,9 @@ namespace SceneEngine
                 //  We need to use the renderer to get either the asset or the 
                 //  override placements associated with this cell. It's a little awkward
                 //  Note that we could use the quad tree to acceleration these tests.
-            TRY {
-                auto* p = _pimpl->GetPlacements(i->_filenameHash);
-                if (!p) continue;
-
-                for (unsigned c=0; c<p->GetObjectReferenceCount(); ++c) {
-                    auto& obj = p->GetObjectReferences()[c];
-                    if (   cellSpaceBB.second[0] < obj._cellSpaceBoundary.first[0]
-                        || cellSpaceBB.second[1] < obj._cellSpaceBoundary.first[1]
-                        || cellSpaceBB.second[2] < obj._cellSpaceBoundary.first[2]
-                        || cellSpaceBB.first[0]  > obj._cellSpaceBoundary.second[0]
-                        || cellSpaceBB.first[1]  > obj._cellSpaceBoundary.second[1]
-                        || cellSpaceBB.first[2]  > obj._cellSpaceBoundary.second[2]) {
-                        continue;
-                    }
-
-                    if (predicate) {
-                        ObjIntersectionDef def;
-                        def._localToWorld = Combine(obj._localToCell, i->_cellToWorld);
-
-                        Placements::BoundingBox localBoundingBox;
-                        auto assetState = _pimpl->TryGetBoundingBox(
-                            localBoundingBox, 
-                            (const ResChar*)PtrAdd(p->GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
-
-                            // When assets aren't yet ready, we can't perform any intersection tests on them
-                        if (assetState != ::Assets::AssetState::Ready)
-                            continue;
-
-                            // note -- we have access to the cell space bounding box. But the local
-                            //          space box would be better.
-                        def._localSpaceBoundingBox = localBoundingBox;
-                        def._model = *(uint64*)PtrAdd(p->GetFilenamesBuffer(), obj._modelFilenameOffset);
-                        def._material = *(uint64*)PtrAdd(p->GetFilenamesBuffer(), obj._materialFilenameOffset);
-                        
-
-                            // allow the predicate to exclude this item
-                        if (!predicate(def)) { continue; }
-                    }
-
-                    result.push_back(std::make_pair(i->_filenameHash, obj._guid));
-                }
-
-            } CATCH (...) {
-            } CATCH_END
+            TRY { _pimpl->Find_BoxIntersection(result, *i, cellSpaceBB, predicate); } 
+            CATCH (const ::Assets::Exceptions::AssetException&) {} 
+            CATCH_END
         }
 
         return std::move(result);
@@ -2003,46 +2042,47 @@ namespace SceneEngine
     {
         _pimpl->_renderer->BeginRender(context);
 
-        CATCH_ASSETS_BEGIN
-                //  We need to take a copy, so we don't overwrite
-                //  and reorder the caller's version.
-            if (begin || end) {
-                std::vector<PlacementGUID> copy(begin, end);
-                std::sort(copy.begin(), copy.end());
+            //  We need to take a copy, so we don't overwrite
+            //  and reorder the caller's version.
+        if (begin || end) {
+            std::vector<PlacementGUID> copy(begin, end);
+            std::sort(copy.begin(), copy.end());
 
-                auto ci = _pimpl->_cells.begin();
-                for (auto i=copy.begin(); i!=copy.end();) {
-                    auto i2 = i+1;
-                    for (; i2!=copy.end() && i2->first == i->first; ++i2) {}
+            auto ci = _pimpl->_cells.begin();
+            for (auto i=copy.begin(); i!=copy.end();) {
+                auto i2 = i+1;
+                for (; i2!=copy.end() && i2->first == i->first; ++i2) {}
 
-			        while (ci != _pimpl->_cells.end() && ci->_filenameHash < i->first) { ++ci; }
+			    while (ci != _pimpl->_cells.end() && ci->_filenameHash < i->first) { ++ci; }
 
-                    if (ci != _pimpl->_cells.end() && ci->_filenameHash == i->first) {
+                if (ci != _pimpl->_cells.end() && ci->_filenameHash == i->first) {
 
-                            // re-write the object guids for the renderer's convenience
-                        uint64* tStart = &i->first;
-                        uint64* t = tStart;
-                        while (i < i2) { *t++ = i->second; i++; }
+                        // re-write the object guids for the renderer's convenience
+                    uint64* tStart = &i->first;
+                    uint64* t = tStart;
+                    while (i < i2) { *t++ = i->second; i++; }
 
+                    CATCH_ASSETS_BEGIN
                         _pimpl->_renderer->Render(
                             context, parserContext,
                             *ci, tStart, t);
+                    CATCH_ASSETS_END(parserContext)
 
-                    } else {
-                        i = i2;
-                    }
+                } else {
+                    i = i2;
                 }
-            } else {
-                    // in this case we're not filtering by object GUID (though we may apply a predicate on the prepared draw calls)
-                for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
+            }
+        } else {
+                // in this case we're not filtering by object GUID (though we may apply a predicate on the prepared draw calls)
+            for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
+                CATCH_ASSETS_BEGIN
                     _pimpl->_renderer->Render(context, parserContext, *i);
-                }
+                CATCH_ASSETS_END(parserContext)
             }
+        }
 
-            if (predicate) {
-                _pimpl->_renderer->FilterDrawCalls(predicate);
-            }
-        CATCH_ASSETS_END(parserContext)
+        if (predicate)
+            _pimpl->_renderer->FilterDrawCalls(predicate);
 
         _pimpl->_renderer->EndRender(context, parserContext, techniqueIndex);
 

@@ -154,8 +154,9 @@ namespace ToolsRig
                 ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::RayTracedShadows
                 ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::Transparent) {
 
+                RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
                 if (_sharedStateSet) {
-                    _sharedStateSet->CaptureState(context);
+                    captureMarker = _sharedStateSet->CaptureState(*context);
                 }
 
                 CATCH_ASSETS_BEGIN
@@ -179,10 +180,6 @@ namespace ToolsRig
                             context->DrawIndexed(evnt._indexCount, evnt._firstIndex, evnt._firstVertex);
                         });
                 CATCH_ASSETS_END(parserContext)
-
-                if (_sharedStateSet) {
-                    _sharedStateSet->ReleaseState(context);
-                }
             }
         }
 
@@ -388,19 +385,15 @@ namespace ToolsRig
                 auto model = _pimpl->_cache->GetModel(_pimpl->_settings->_modelName.c_str(), _pimpl->_settings->_materialName.c_str());
                 assert(model._renderer && model._sharedStateSet);
 
-                if (model._sharedStateSet) {
-                    model._sharedStateSet->CaptureState(metalContext.get());
-                }
+                RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
+                if (model._sharedStateSet)
+                    captureMarker = model._sharedStateSet->CaptureState(*metalContext);
 
                 const auto techniqueIndex = 8u;
 
                 RenderWithEmbeddedSkeleton(
                     RenderCore::Assets::ModelRendererContext(metalContext.get(), parserContext, techniqueIndex),
                     *model._renderer, *model._sharedStateSet, model._model);
-
-                if (model._sharedStateSet) {
-                    model._sharedStateSet->ReleaseState(metalContext.get());
-                }
             CATCH_ASSETS_END(parserContext)
         }
 
@@ -413,19 +406,15 @@ namespace ToolsRig
                 auto model = _pimpl->_cache->GetModel(_pimpl->_settings->_modelName.c_str(), _pimpl->_settings->_materialName.c_str());
                 assert(model._renderer && model._sharedStateSet);
 
-                if (model._sharedStateSet) {
-                    model._sharedStateSet->CaptureState(metalContext.get());
-                }
+                RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
+                if (model._sharedStateSet)
+                    captureMarker = model._sharedStateSet->CaptureState(*metalContext);
 
                 const auto techniqueIndex = 7u;
 
                 RenderWithEmbeddedSkeleton(
                     RenderCore::Assets::ModelRendererContext(metalContext.get(), parserContext, techniqueIndex),
                     *model._renderer, *model._sharedStateSet, model._model);
-
-                if (model._sharedStateSet) {
-                    model._sharedStateSet->ReleaseState(metalContext.get());
-                }
             CATCH_ASSETS_END(parserContext)
         }
     }
@@ -494,11 +483,12 @@ namespace ToolsRig
         LightingParserContext parserContext(context.GetTechniqueContext());
         stateContext.SetRay(worldSpaceRay);
 
-        model._sharedStateSet->CaptureState(metalContext.get());
-        RenderWithEmbeddedSkeleton(
-            RenderCore::Assets::ModelRendererContext(metalContext.get(), parserContext, 6),
-            *model._renderer, *model._sharedStateSet, model._model);
-        model._sharedStateSet->ReleaseState(metalContext.get());
+        {
+            auto captureMarker = model._sharedStateSet->CaptureState(*metalContext);
+            RenderWithEmbeddedSkeleton(
+                RenderCore::Assets::ModelRendererContext(metalContext.get(), parserContext, 6),
+                *model._renderer, *model._sharedStateSet, model._model);
+        }
 
         auto results = stateContext.GetResults();
         if (!results.empty()) {

@@ -98,7 +98,7 @@ namespace Sample
         auto& techEnv = parserContext.GetTechniqueContext()._globalEnvironmentState;
         techEnv.SetParameter(StringAutoCotangent.c_str(), 1);
 
-        _pimpl->_charactersSharedStateSet.CaptureState(context);
+        auto captureMarker = _pimpl->_charactersSharedStateSet.CaptureState(*context);
 
         RenderCore::Assets::ModelRendererContext modelContext(
             context, parserContext, techniqueIndex);
@@ -187,8 +187,6 @@ namespace Sample
             }
 
         }
-
-        _pimpl->_charactersSharedStateSet.ReleaseState(context);
 
         techEnv.SetParameter(StringAutoCotangent.c_str(), 0);
     }
