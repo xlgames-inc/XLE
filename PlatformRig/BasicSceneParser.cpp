@@ -15,7 +15,11 @@ namespace PlatformRig
 {
     using namespace SceneEngine;
 
-    unsigned BasicSceneParser::GetShadowProjectionCount() const { return (unsigned)GetEnvSettings()._shadowProj.size(); }
+    unsigned BasicSceneParser::GetShadowProjectionCount() const 
+    { 
+        return (unsigned)GetEnvSettings()._shadowProj.size(); 
+    }
+
     auto BasicSceneParser::GetShadowProjectionDesc(
         unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
         -> ShadowProjectionDesc
@@ -27,7 +31,11 @@ namespace PlatformRig
             GetEnvSettings()._shadowProj[index]._shadowFrustumSettings);
     }
 
-    unsigned BasicSceneParser::GetLightCount() const { return (unsigned)GetEnvSettings()._lights.size(); }
+    unsigned BasicSceneParser::GetLightCount() const 
+    { 
+        return (unsigned)GetEnvSettings()._lights.size(); 
+    }
+
     auto BasicSceneParser::GetLightDesc(unsigned index) const -> const LightDesc&
     {
         return GetEnvSettings()._lights[index];
@@ -43,7 +51,7 @@ namespace PlatformRig
         return GetEnvSettings()._toneMapSettings;
     }
 
-
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     SceneEngine::LightDesc DefaultDominantLight()
     {

@@ -42,6 +42,7 @@ namespace SceneEngine
 {
     using namespace RenderCore;
     using namespace RenderCore::Metal;
+    using SPS = SceneParseSettings;
 
     DeepOceanSimSettings GlobalOceanSettings; 
     OceanLightingSettings GlobalOceanLightingSettings; 
@@ -358,6 +359,20 @@ namespace SceneEngine
 
     void LightingParser_PrepareShadows(DeviceContext* context, LightingParserContext& parserContext);
 
+    static void ExecuteScene(
+        DeviceContext& metalContext, 
+        LightingParserContext& parserContext,
+        const SPS& parseSettings,
+        unsigned techniqueIndex,
+        const wchar_t* name)
+    {
+        CATCH_ASSETS_BEGIN
+            GPUProfiler::DebugAnnotation anno(metalContext, name);
+            parserContext.GetSceneParser()->ExecuteScene(
+                &metalContext, parserContext, parseSettings, techniqueIndex);
+        CATCH_ASSETS_END(parserContext)
+    }
+
     static void ForwardLightingModel_Render(    DeviceContext& context, 
                                                 LightingParserContext& parserContext,
                                                 ForwardTargetsBox& targetsBox,
@@ -369,20 +384,16 @@ namespace SceneEngine
             //  Order independent transparency disabled when
             //  using MSAA modes... Still some problems in related to MSAA buffers
         const bool useOrderIndependentTransparency = Tweakable("UseOITrans", false) && (sampleCount <= 1);
-        SceneParseSettings::Toggles::BitField normalRenderToggles = ~SceneParseSettings::Toggles::BitField(0);
+        auto normalRenderToggles = ~SPS::Toggles::BitField(0);
         if (useOrderIndependentTransparency) {
                 // Skip non-terrain during normal render (this will be rendered later using OIT mode)
             normalRenderToggles &= ~SceneParseSettings::Toggles::NonTerrain;
         }
 
         ReturnToSteadyState(context);
-        {
-            GPUProfiler::DebugAnnotation anno(context, L"MainScene-DepthOnly");
-            parserContext.GetSceneParser()->ExecuteScene(
-                &context, parserContext, 
-                SceneParseSettings(SceneParseSettings::BatchFilter::PreDepth, normalRenderToggles),
-                TechniqueIndex_DepthOnly);
-        }
+        ExecuteScene(
+            context, parserContext, SPS(SPS::BatchFilter::PreDepth, normalRenderToggles),
+            TechniqueIndex_DepthOnly, L"MainScene-DepthOnly");
 
             /////
 
@@ -397,13 +408,9 @@ namespace SceneEngine
 
             /////
             
-        {
-            GPUProfiler::DebugAnnotation anno(context, L"MainScene-General");
-            parserContext.GetSceneParser()->ExecuteScene(
-                &context, parserContext, 
-                SceneParseSettings(SceneParseSettings::BatchFilter::General, normalRenderToggles),
-                TechniqueIndex_General);
-        }
+        ExecuteScene(
+            context, parserContext, SPS(SPS::BatchFilter::General, normalRenderToggles),
+            TechniqueIndex_General, L"MainScene-General");
 
             /////
 
@@ -425,10 +432,9 @@ namespace SceneEngine
                 //          scene parser.
                 //
             ReturnToSteadyState(context);
-            parserContext.GetSceneParser()->ExecuteScene(
-                &context, parserContext, 
-                SceneParseSettings(SceneParseSettings::BatchFilter::OITransparent, ~0u),
-                TechniqueIndex_OrderIndependentTransparency);
+            ExecuteScene(
+                context, parserContext, SPS::BatchFilter::OITransparent,
+                TechniqueIndex_OrderIndependentTransparency, L"MainScene-OITrans");
         }
 
             /////
@@ -473,30 +479,23 @@ namespace SceneEngine
                 [&context, &parserContext]() 
                 { UnbindShadowsForForwardResolve(context, parserContext); });
         }
-
-        using SPS = SceneParseSettings;
-        SPS sps(SPS::BatchFilter::Transparent, ~SPS::Toggles::BitField(0));
         
         //////////////////////////////////////////////////////////////////////////////////////////////////
-        {
-            GPUProfiler::DebugAnnotation anno(context, L"MainScene-PostGBuffer");
-            parserContext.GetSceneParser()->ExecuteScene(
-                &context, parserContext, sps, TechniqueIndex_General);
-        }
+        ExecuteScene(
+            context, parserContext, SPS::BatchFilter::Transparent,
+            TechniqueIndex_General, L"MainScene-PostGBuffer");
 
         const auto enableOrderIndependentTransparency = 
             Tweakable("UseOITrans", false)
             && (mainTargets._desc._sampling._sampleCount <= 1);
         if (enableOrderIndependentTransparency) {
-            GPUProfiler::DebugAnnotation anno(context, L"MainScene-PostGBuffer-OI");
 
             auto duplicatedDepthBuffer = BuildDuplicatedDepthBuffer(&context, mainTargets._msaaDepthBufferTexture.get());
             auto* transTargets = OrderIndependentTransparency_Prepare(context, parserContext, duplicatedDepthBuffer);
 
-            parserContext.GetSceneParser()->ExecuteScene(
-                &context, parserContext, 
-                SPS(SPS::BatchFilter::OITransparent, ~SPS::Toggles::BitField(0)),
-                TechniqueIndex_OrderIndependentTransparency);
+            ExecuteScene(
+                context, parserContext, SPS::BatchFilter::OITransparent,
+                TechniqueIndex_OrderIndependentTransparency, L"MainScene-PostGBuffer-OI");
 
                 // note; we use the main depth buffer for this call (not the duplicated buffer)
             OrderIndependentTransparency_Resolve(context, parserContext, *transTargets, mainTargets._msaaDepthBufferSRV);
@@ -504,7 +503,7 @@ namespace SceneEngine
 
         //////////////////////////////////////////////////////////////////////////////////////////////////
         for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p) {
-            (*p)->OnPostSceneRender(&context, parserContext, sps, TechniqueIndex_General);
+            (*p)->OnPostSceneRender(&context, parserContext, SPS::BatchFilter::Transparent, TechniqueIndex_General);
         }
     }
 
@@ -612,15 +611,11 @@ namespace SceneEngine
                     //
 
                 ReturnToSteadyState(context);
-                SceneParseSettings sceneParseSettings( 
-                    SceneParseSettings::BatchFilter::General, ~SceneParseSettings::Toggles::BitField(0));
-                {
-                    GPUProfiler::DebugAnnotation anno(context, L"MainScene-OpaqueGBuffer");
-                    parserContext.GetSceneParser()->ExecuteScene(
-                        &context, parserContext, sceneParseSettings, TechniqueIndex_Deferred);
-                }
+                ExecuteScene(
+                    context, parserContext, SPS::BatchFilter::General,
+                    TechniqueIndex_Deferred, L"MainScene-OpaqueGBuffer");
                 for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p) {
-                    (*p)->OnPostSceneRender(&context, parserContext, sceneParseSettings, TechniqueIndex_Deferred);
+                    (*p)->OnPostSceneRender(&context, parserContext, SPS::BatchFilter::General, TechniqueIndex_Deferred);
                 }
                 LightingParser_LateGBufferRender(context, parserContext, mainTargets);
                 LightingParser_ResolveGBuffer(context, parserContext, mainTargets, lightingResTargets);
@@ -817,9 +812,13 @@ namespace SceneEngine
             Float4x4 savedWorldToProjection = parserContext.GetProjectionDesc()._worldToProjection;
             parserContext.GetProjectionDesc()._worldToProjection = frustum._worldToClip;
 
-            SceneParseSettings sceneParseSettings(SceneParseSettings::BatchFilter::General, ~SceneParseSettings::Toggles::BitField(0));
-            parserContext.GetSceneParser()->ExecuteShadowScene(
-                &context, parserContext, sceneParseSettings, shadowFrustumIndex, TechniqueIndex_ShadowGen);
+            SPS sceneParseSettings(
+                SPS::BatchFilter::DMShadows, 
+                ~SPS::Toggles::BitField(0),
+                shadowFrustumIndex);
+            ExecuteScene(
+                context, parserContext, sceneParseSettings,
+                TechniqueIndex_ShadowGen, L"ShadowGen-Prepare");
 
             for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p) {
                 (*p)->OnPostSceneRender(&context, parserContext, sceneParseSettings, TechniqueIndex_ShadowGen);

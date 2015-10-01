@@ -225,10 +225,11 @@ namespace SceneEngine
 
             SceneParseSettings sceneParseSettings(
                 SceneParseSettings::BatchFilter::RayTracedShadows, 
-                ~SceneParseSettings::Toggles::BitField(0));
-            parserContext.GetSceneParser()->ExecuteShadowScene(
+                ~SceneParseSettings::Toggles::BitField(0),
+                shadowFrustumIndex);
+            parserContext.GetSceneParser()->ExecuteScene(
                 &metalContext, parserContext, sceneParseSettings, 
-                shadowFrustumIndex, TechniqueIndex_RTShadowGen);
+                TechniqueIndex_RTShadowGen);
 
             projDesc._worldToProjection = savedWorldToProjection;
         CATCH_ASSETS_END(parserContext)

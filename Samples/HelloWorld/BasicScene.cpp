@@ -67,7 +67,9 @@ namespace Sample
             //  enabling and disabling certain types of geometry. The scene parser
             //  should be careful to check the flags and only render the correct geometry.
         if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth) {
+            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth
+            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::DMShadows
+            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::RayTracedShadows) {
 
                 //  Our scene is just a single model. So it's really simple here.
                 //
@@ -91,22 +93,6 @@ namespace Sample
             }
 
         }
-    }
-
-    void BasicSceneParser::ExecuteShadowScene( 
-        RenderCore::Metal::DeviceContext* context, 
-        LightingParserContext& parserContext, 
-        const SceneParseSettings& parseSettings,
-        unsigned frustumIndex, unsigned techniqueIndex) const 
-    {
-            //  "ExecuteShadowScene" is very similar to ExecuteScene,
-            //  except that is used while rendering the shadows. 
-            //
-            //  In this particularly case, we just reuse ExecuteScene,
-            //  A more complex implementation of ExecuteShadowScene should
-            //  perform culling against all of the shadow frustums, as
-            //  appropriate.
-        ExecuteScene(context, parserContext, parseSettings, techniqueIndex);
     }
 
     RenderCore::Techniques::CameraDesc BasicSceneParser::GetCameraDesc() const 

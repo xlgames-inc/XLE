@@ -48,11 +48,6 @@ namespace GUILayer
             LightingParserContext& parserContext, 
             const SceneParseSettings& parseSettings,
             unsigned techniqueIndex) const;
-        void ExecuteShadowScene(    
-            DeviceContext* context, 
-            LightingParserContext& parserContext, 
-            const SceneParseSettings& parseSettings,
-            unsigned index, unsigned techniqueIndex) const;
 
         float GetTimeValue() const;
         void PrepareEnvironmentalSettings(const char envSettings[]);
@@ -72,62 +67,49 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    static ISurfaceHeightsProvider* GetSurfaceHeights(EditorScene& scene)
+    {
+        return scene._terrainManager ? scene._terrainManager->GetHeightsProvider().get() : nullptr;
+    }
+
     void EditorSceneParser::ExecuteScene(  
         DeviceContext* metalContext, 
         LightingParserContext& parserContext, 
         const SceneParseSettings& parseSettings,
         unsigned techniqueIndex) const
     {
-        if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth) {
+        using BF = SceneParseSettings::BatchFilter;
+        auto batchFilter = parseSettings._batchFilter;
+        auto& scene = *_editorScene;
 
-			if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && _editorScene->_terrainManager) {
+        if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && _editorScene->_terrainManager) {
+            if (batchFilter == BF::General) {
 				CATCH_ASSETS_BEGIN
-                    _editorScene->_terrainManager->Render(metalContext, parserContext, techniqueIndex);
+                    scene._terrainManager->Render(metalContext, parserContext, techniqueIndex);
                 CATCH_ASSETS_END(parserContext)
 			}
-
-            if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
-                _editorScene->_placementsManager->Render(metalContext, parserContext, techniqueIndex);
-                _editorScene->_vegetationSpawnManager->Render(metalContext, parserContext, techniqueIndex);
-            }
         }
-        else 
-        if (parseSettings._batchFilter == SceneParseSettings::BatchFilter::Transparent)
-        {
-            _editorScene->_placementsManager->RenderTransparent(metalContext, parserContext, techniqueIndex);
 
-            if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
+        if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
+            if (batchFilter == BF::General || batchFilter == BF::PreDepth || batchFilter == BF::DMShadows) {
                 CATCH_ASSETS_BEGIN
+                    scene._placementsManager->Render(metalContext, parserContext, techniqueIndex);
+                    scene._vegetationSpawnManager->Render(metalContext, parserContext, techniqueIndex);
 
-                    _editorScene->_placeholders->Render(*metalContext, parserContext, techniqueIndex);
-
-                    std::shared_ptr<ISurfaceHeightsProvider> surfaceHeights;
-                    if (_editorScene->_terrainManager)
-                        surfaceHeights = _editorScene->_terrainManager->GetHeightsProvider();
-                    _editorScene->_shallowSurfaceManager->RenderDebugging(
-                        *metalContext, parserContext, techniqueIndex, surfaceHeights.get());
-
+                    if (batchFilter == BF::DMShadows)
+                        scene._placementsManager->RenderTransparent(metalContext, parserContext, techniqueIndex);
+                CATCH_ASSETS_END(parserContext)
+            }
+        
+            if (batchFilter == BF::Transparent || batchFilter == BF::TransparentPreDepth) {
+                CATCH_ASSETS_BEGIN
+                    scene._placementsManager->RenderTransparent(metalContext, parserContext, techniqueIndex);
+                    scene._placeholders->Render(*metalContext, parserContext, techniqueIndex);
+                    scene._shallowSurfaceManager->RenderDebugging(
+                        *metalContext, parserContext, techniqueIndex, GetSurfaceHeights(*_editorScene));
                 CATCH_ASSETS_END(parserContext)
             }
         }
-    }
-
-    void EditorSceneParser::ExecuteShadowScene(    
-        DeviceContext* context, 
-        LightingParserContext& parserContext, 
-        const SceneParseSettings& parseSettings,
-        unsigned index, unsigned techniqueIndex) const
-    {
-            // Disable terrain rendering when writing shadow
-        auto newSettings = parseSettings;
-        newSettings._toggles &= ~SceneParseSettings::Toggles::Terrain;
-        ExecuteScene(context, parserContext, newSettings, techniqueIndex);
-
-            // We also have to render some of the transparent stuff
-        newSettings._batchFilter = SceneParseSettings::BatchFilter::Transparent;
-        newSettings._toggles &= ~SceneParseSettings::Toggles::NonTerrain;
-        ExecuteScene(context, parserContext, newSettings, techniqueIndex);
     }
 
     float EditorSceneParser::GetTimeValue() const { return _editorScene->_currentTime; }

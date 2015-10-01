@@ -60,22 +60,23 @@ namespace PlatformRig
     class BasicSceneParser : public SceneEngine::ISceneParser
     {
     public:
-        unsigned GetShadowProjectionCount() const;
-        SceneEngine::ShadowProjectionDesc GetShadowProjectionDesc(
-            unsigned index, 
-            const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const;
+        unsigned    GetShadowProjectionCount() const;
+        auto        GetShadowProjectionDesc(
+            ShadowProjIndex index, 
+            const ProjectionDesc& mainSceneProj) const
+            -> SceneEngine::ShadowProjectionDesc;
 
-        unsigned                            GetLightCount() const;
-        const SceneEngine::LightDesc&       GetLightDesc(unsigned index) const;
-        SceneEngine::GlobalLightingDesc     GetGlobalLightingDesc() const;
-        SceneEngine::ToneMapSettings        GetToneMapSettings() const;
+        unsigned    GetLightCount() const;
+        auto        GetLightDesc(unsigned index) const -> const SceneEngine::LightDesc&;
+        auto        GetGlobalLightingDesc() const -> SceneEngine::GlobalLightingDesc;
+        auto        GetToneMapSettings() const -> SceneEngine::ToneMapSettings;
 
     protected:
         virtual const EnvironmentSettings&  GetEnvSettings() const = 0;
     };
 
-    SceneEngine::LightDesc DefaultDominantLight();
+    SceneEngine::LightDesc          DefaultDominantLight();
     SceneEngine::GlobalLightingDesc DefaultGlobalLightingDesc();
-    EnvironmentSettings DefaultEnvironmentSettings();
+    EnvironmentSettings             DefaultEnvironmentSettings();
 }
 

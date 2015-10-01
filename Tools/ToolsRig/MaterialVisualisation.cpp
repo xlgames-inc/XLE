@@ -67,83 +67,75 @@ namespace ToolsRig
                             const SceneEngine::SceneParseSettings& parseSettings,
                             unsigned techniqueIndex) const 
         {
-            if (    parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::PreDepth
-                ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::General) {
+            using BF = SceneEngine::SceneParseSettings::BatchFilter;
+            if (    parseSettings._batchFilter == BF::PreDepth
+                ||  parseSettings._batchFilter == BF::General
+                ||  parseSettings._batchFilter == BF::DMShadows) {
 
-                    // draw here
                 Draw(*context, parserContext, techniqueIndex);
             }
         }
 
-        void ExecuteShadowScene(    Metal::DeviceContext* context, 
-                                    SceneEngine::LightingParserContext& parserContext, 
-                                    const SceneEngine::SceneParseSettings& parseSettings,
-                                    unsigned index, unsigned techniqueIndex) const
-        {
-            ExecuteScene(context, parserContext, parseSettings, techniqueIndex);
-        }
 
         void Draw(  Metal::DeviceContext& metalContext, 
                     SceneEngine::LightingParserContext& parserContext,
                     unsigned techniqueIndex) const
         {
-            CATCH_ASSETS_BEGIN
-                if (techniqueIndex!=3)
-                    metalContext.Bind(Techniques::CommonResources()._defaultRasterizer);
+            if (techniqueIndex!=3)
+                metalContext.Bind(Techniques::CommonResources()._defaultRasterizer);
 
-                    // disable blending to avoid problem when rendering single component stuff 
-                    //  (ie, nodes that output "float", not "float4")
-                metalContext.Bind(Techniques::CommonResources()._blendOpaque);
+                // disable blending to avoid problem when rendering single component stuff 
+                //  (ie, nodes that output "float", not "float4")
+            metalContext.Bind(Techniques::CommonResources()._blendOpaque);
             
-                auto geoType = _settings->_geometryType;
-                if (geoType == MaterialVisSettings::GeometryType::Plane2D) {
+            auto geoType = _settings->_geometryType;
+            if (geoType == MaterialVisSettings::GeometryType::Plane2D) {
 
-                    auto shaderProgram = _object->_materialBinder->Apply(
-                        metalContext, parserContext, techniqueIndex,
-                        _object->_parameters, _object->_systemConstants, 
-                        _object->_searchRules, Vertex2D_InputLayout);
-                    if (!shaderProgram) return;
+                auto shaderProgram = _object->_materialBinder->Apply(
+                    metalContext, parserContext, techniqueIndex,
+                    _object->_parameters, _object->_systemConstants, 
+                    _object->_searchRules, Vertex2D_InputLayout);
+                if (!shaderProgram) return;
 
-                    const Internal::Vertex2D    vertices[] = 
-                    {
-                        { Float2(-1.f, -1.f),  Float2(0.f, 0.f) },
-                        { Float2( 1.f, -1.f),  Float2(1.f, 0.f) },
-                        { Float2(-1.f,  1.f),  Float2(0.f, 1.f) },
-                        { Float2( 1.f,  1.f),  Float2(1.f, 1.f) }
-                    };
+                const Internal::Vertex2D    vertices[] = 
+                {
+                    { Float2(-1.f, -1.f),  Float2(0.f, 0.f) },
+                    { Float2( 1.f, -1.f),  Float2(1.f, 0.f) },
+                    { Float2(-1.f,  1.f),  Float2(0.f, 1.f) },
+                    { Float2( 1.f,  1.f),  Float2(1.f, 1.f) }
+                };
 
-                    Metal::VertexBuffer vertexBuffer(vertices, sizeof(vertices));
-                    metalContext.Bind(MakeResourceList(vertexBuffer), sizeof(Internal::Vertex2D), 0);
-                    metalContext.Bind(Metal::Topology::TriangleStrip);
-                    metalContext.Draw(dimof(vertices));
+                Metal::VertexBuffer vertexBuffer(vertices, sizeof(vertices));
+                metalContext.Bind(MakeResourceList(vertexBuffer), sizeof(Internal::Vertex2D), 0);
+                metalContext.Bind(Metal::Topology::TriangleStrip);
+                metalContext.Draw(dimof(vertices));
 
-                } else if (geoType == MaterialVisSettings::GeometryType::Model) {
+            } else if (geoType == MaterialVisSettings::GeometryType::Model) {
 
-                    DrawModel(metalContext, parserContext, techniqueIndex);
+                DrawModel(metalContext, parserContext, techniqueIndex);
 
-                } else {
+            } else {
 
-                    auto shaderProgram = _object->_materialBinder->Apply(
-                        metalContext, parserContext, techniqueIndex,
-                        _object->_parameters, _object->_systemConstants, 
-                        _object->_searchRules, Vertex3D_InputLayout);
-                    if (!shaderProgram) return;
+                auto shaderProgram = _object->_materialBinder->Apply(
+                    metalContext, parserContext, techniqueIndex,
+                    _object->_parameters, _object->_systemConstants, 
+                    _object->_searchRules, Vertex3D_InputLayout);
+                if (!shaderProgram) return;
             
-                    unsigned count;
-                    const auto& cachedGeo = Techniques::FindCachedBox2<CachedVisGeo>();
-                    if (geoType == MaterialVisSettings::GeometryType::Sphere) {
-                        metalContext.Bind(MakeResourceList(cachedGeo._sphereBuffer), sizeof(Internal::Vertex3D), 0);    
-                        count = cachedGeo._sphereVCount;
-                    } else if (geoType == MaterialVisSettings::GeometryType::Cube) {
-                        metalContext.Bind(MakeResourceList(cachedGeo._cubeBuffer), sizeof(Internal::Vertex3D), 0);    
-                        count = cachedGeo._cubeVCount;
-                    } else return;
+                unsigned count;
+                const auto& cachedGeo = Techniques::FindCachedBox2<CachedVisGeo>();
+                if (geoType == MaterialVisSettings::GeometryType::Sphere) {
+                    metalContext.Bind(MakeResourceList(cachedGeo._sphereBuffer), sizeof(Internal::Vertex3D), 0);    
+                    count = cachedGeo._sphereVCount;
+                } else if (geoType == MaterialVisSettings::GeometryType::Cube) {
+                    metalContext.Bind(MakeResourceList(cachedGeo._cubeBuffer), sizeof(Internal::Vertex3D), 0);    
+                    count = cachedGeo._cubeVCount;
+                } else return;
                 
-                    metalContext.Bind(Metal::Topology::TriangleList);
-                    metalContext.Draw(count);
+                metalContext.Bind(Metal::Topology::TriangleList);
+                metalContext.Draw(count);
 
-                }
-            CATCH_ASSETS_END(parserContext)
+            }
         }
 
         void DrawModel(
@@ -363,53 +355,48 @@ namespace ToolsRig
         const VisEnvSettings& envSettings,
         const MaterialVisObject& object)
     {
-        CATCH_ASSETS_BEGIN
-
-                // if we need to reset the camera, do so now...
-            if (settings._pendingCameraAlignToModel) {
-                if (settings._geometryType == MaterialVisSettings::GeometryType::Model && !object._previewModelFile.empty()) {
-                        // this is more tricky... when using a model, we have to get the bounding box for the model
-                    using namespace RenderCore::Assets;
-                    auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-                    auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-                    const ::Assets::ResChar* modelFile = object._previewModelFile.c_str();
-                    auto skinMarker = compilers.PrepareAsset(RenderCore::Assets::ModelScaffold::CompileProcessType, &modelFile, 1, store);
-                    const auto& model = ::Assets::GetAsset<ModelScaffold>(skinMarker->_sourceID0);
-                    *settings._camera = AlignCameraToBoundingBox(settings._camera->_verticalFieldOfView, model.GetStaticBoundingBox());
-                } else {
-                        // just reset camera to the default
-                    *settings._camera = VisCameraSettings();
-                    settings._camera->_position = Float3(-5.f, 0.f, 0.f);
-                }
-
-                settings._pendingCameraAlignToModel = false;
+            // if we need to reset the camera, do so now...
+        if (settings._pendingCameraAlignToModel) {
+            if (settings._geometryType == MaterialVisSettings::GeometryType::Model && !object._previewModelFile.empty()) {
+                    // this is more tricky... when using a model, we have to get the bounding box for the model
+                using namespace RenderCore::Assets;
+                auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+                auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
+                const ::Assets::ResChar* modelFile = object._previewModelFile.c_str();
+                auto skinMarker = compilers.PrepareAsset(RenderCore::Assets::ModelScaffold::CompileProcessType, &modelFile, 1, store);
+                const auto& model = ::Assets::GetAsset<ModelScaffold>(skinMarker->_sourceID0);
+                *settings._camera = AlignCameraToBoundingBox(settings._camera->_verticalFieldOfView, model.GetStaticBoundingBox());
+            } else {
+                    // just reset camera to the default
+                *settings._camera = VisCameraSettings();
+                settings._camera->_position = Float3(-5.f, 0.f, 0.f);
             }
 
-            MaterialSceneParser sceneParser(settings, envSettings, object);
-            sceneParser.Prepare();
-            SceneEngine::RenderingQualitySettings qualSettings(context.GetStateDesc()._viewportDimensions);
+            settings._pendingCameraAlignToModel = false;
+        }
 
-            if (settings._lightingType == MaterialVisSettings::LightingType::NoLightingParser) {
+        MaterialSceneParser sceneParser(settings, envSettings, object);
+        sceneParser.Prepare();
+        SceneEngine::RenderingQualitySettings qualSettings(context.GetStateDesc()._viewportDimensions);
+
+        if (settings._lightingType == MaterialVisSettings::LightingType::NoLightingParser) {
                 
-                auto metalContext = Metal::DeviceContext::Get(context);
-                SceneEngine::LightingParser_SetupScene(
-                    *metalContext.get(), parserContext, 
-                    &sceneParser, sceneParser.GetCameraDesc(),
-                    qualSettings);
-                sceneParser.Draw(*metalContext.get(), parserContext, 0);
+            auto metalContext = Metal::DeviceContext::Get(context);
+            SceneEngine::LightingParser_SetupScene(
+                *metalContext.get(), parserContext, 
+                &sceneParser, sceneParser.GetCameraDesc(),
+                qualSettings);
+            sceneParser.Draw(*metalContext.get(), parserContext, 0);
                 
-            } else if (settings._lightingType == MaterialVisSettings::LightingType::Deferred) {
-                qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Deferred;
-                SceneEngine::LightingParser_ExecuteScene(context, parserContext, sceneParser, qualSettings);
-            } else if (settings._lightingType == MaterialVisSettings::LightingType::Forward) {
-                qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Forward;
-                SceneEngine::LightingParser_ExecuteScene(context, parserContext, sceneParser, qualSettings);
-            }
+        } else if (settings._lightingType == MaterialVisSettings::LightingType::Deferred) {
+            qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Deferred;
+            SceneEngine::LightingParser_ExecuteScene(context, parserContext, sceneParser, qualSettings);
+        } else if (settings._lightingType == MaterialVisSettings::LightingType::Forward) {
+            qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Forward;
+            SceneEngine::LightingParser_ExecuteScene(context, parserContext, sceneParser, qualSettings);
+        }
 
-            return true;
-        CATCH_ASSETS_END(parserContext)
-
-        return false;
+        return true;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

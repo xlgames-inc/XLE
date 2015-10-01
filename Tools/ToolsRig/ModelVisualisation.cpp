@@ -140,6 +140,14 @@ namespace ToolsRig
 
         }
     }
+
+    static bool IsTransparentBatch(SceneEngine::SceneParseSettings::BatchFilter filter)
+    {
+        using BF = SceneEngine::SceneParseSettings::BatchFilter;
+        return filter == BF::Transparent 
+            || filter == BF::OITransparent 
+            || filter == BF::TransparentPreDepth;
+    }
     
     class ModelSceneParser : public VisSceneParser
     {
@@ -149,50 +157,39 @@ namespace ToolsRig
                             const SceneEngine::SceneParseSettings& parseSettings,
                             unsigned techniqueIndex) const 
         {
-            if (    parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::PreDepth
-                ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::General
-                ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::RayTracedShadows
-                ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::Transparent) {
+            using BF = SceneEngine::SceneParseSettings::BatchFilter;
+            if (    parseSettings._batchFilter == BF::PreDepth
+                ||  parseSettings._batchFilter == BF::General
+                ||  parseSettings._batchFilter == BF::DMShadows
+                ||  parseSettings._batchFilter == BF::RayTracedShadows
+                ||  parseSettings._batchFilter == BF::Transparent
+                ||  parseSettings._batchFilter == BF::OITransparent) {
 
                 RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
                 if (_sharedStateSet) {
                     captureMarker = _sharedStateSet->CaptureState(*context);
                 }
 
-                CATCH_ASSETS_BEGIN
-                    using namespace RenderCore;
-                    Metal::ConstantBuffer drawCallIndexBuffer(nullptr, sizeof(unsigned)*4);
-                    context->BindGS(MakeResourceList(drawCallIndexBuffer));
-                    auto& dss = Techniques::CommonResources()._dssReadWriteWriteStencil;
+                using namespace RenderCore;
+                Metal::ConstantBuffer drawCallIndexBuffer(nullptr, sizeof(unsigned)*4);
+                context->BindGS(MakeResourceList(drawCallIndexBuffer));
+                auto& dss = Techniques::CommonResources()._dssReadWriteWriteStencil;
 
-                    ModelRenderer::RenderPrepared(
-                        RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
-                        *_sharedStateSet, _delayedDrawCalls,
-                        (parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::Transparent)
-                            ? RenderCore::Assets::DelayStep::PostDeferred
-                            : RenderCore::Assets::DelayStep::OpaqueRender,
-                        [context, &drawCallIndexBuffer, &dss](ModelRenderer::DrawCallEvent evnt)
-                        {
-                            context->Bind(dss, 1+evnt._drawCallIndex);  // write stencil buffer with draw index
-                            unsigned drawCallIndexB[4] = { evnt._drawCallIndex, 0, 0, 0 };
-                            drawCallIndexBuffer.Update(*context, drawCallIndexB, sizeof(drawCallIndexB));
+                ModelRenderer::RenderPrepared(
+                    RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+                    *_sharedStateSet, _delayedDrawCalls,
+                    IsTransparentBatch(parseSettings._batchFilter)
+                        ? RenderCore::Assets::DelayStep::PostDeferred
+                        : RenderCore::Assets::DelayStep::OpaqueRender,
+                    [context, &drawCallIndexBuffer, &dss](ModelRenderer::DrawCallEvent evnt)
+                    {
+                        context->Bind(dss, 1+evnt._drawCallIndex);  // write stencil buffer with draw index
+                        unsigned drawCallIndexB[4] = { evnt._drawCallIndex, 0, 0, 0 };
+                        drawCallIndexBuffer.Update(*context, drawCallIndexB, sizeof(drawCallIndexB));
 
-                            context->DrawIndexed(evnt._indexCount, evnt._firstIndex, evnt._firstVertex);
-                        });
-                CATCH_ASSETS_END(parserContext)
+                        context->DrawIndexed(evnt._indexCount, evnt._firstIndex, evnt._firstVertex);
+                    });
             }
-        }
-
-        void ExecuteShadowScene(    RenderCore::Metal::DeviceContext* context, 
-                                    SceneEngine::LightingParserContext& parserContext, 
-                                    const SceneEngine::SceneParseSettings& parseSettings,
-                                    unsigned index, unsigned techniqueIndex) const
-        {
-            ExecuteScene(context, parserContext, parseSettings, techniqueIndex);
-
-            SceneEngine::SceneParseSettings newParseSettings = parseSettings;
-            newParseSettings._batchFilter = SceneEngine::SceneParseSettings::BatchFilter::Transparent;
-            ExecuteScene(context, parserContext, newParseSettings, techniqueIndex);
         }
 
         ModelSceneParser(

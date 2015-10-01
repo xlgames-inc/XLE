@@ -37,12 +37,6 @@ namespace Sample
 
         unsigned GetShadowProjectionCount() const;
         ShadowProjectionDesc GetShadowProjectionDesc(unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const;
-        void ExecuteShadowScene( 
-            RenderCore::Metal::DeviceContext* context, 
-            LightingParserContext& parserContext, 
-            const SceneParseSettings& parseSettings,
-            unsigned frustumIndex, unsigned techniqueIndex) const;
-
         unsigned GetLightCount() const;
         const LightDesc& GetLightDesc(unsigned index) const;
 
