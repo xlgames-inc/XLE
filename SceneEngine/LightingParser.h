@@ -95,7 +95,7 @@ namespace SceneEngine
     /// Note -- don't call this if you're using LightingParser_Execute.
     /// <seealso cref="LightingParser_Execute"/>
     void LightingParser_SetupScene(
-        MetalContext* context,
+        MetalContext& context,
         LightingParserContext& parserContext,
         ISceneParser* sceneParser,
         const RenderCore::Techniques::CameraDesc& camera,
@@ -110,14 +110,14 @@ namespace SceneEngine
     /// far clip distance)
     /// <seealso cref="LightingParser_SetupScene"/>
     void LightingParser_SetGlobalTransform( 
-        MetalContext* context, 
+        MetalContext& context, 
         LightingParserContext& parserContext, 
         const RenderCore::Techniques::CameraDesc& sceneCamera,
         UInt2 viewportDims,
         const Float4x4* specialProjectionMatrix = nullptr);
 
     void LightingParser_SetGlobalTransform(
-        MetalContext* context,
+        MetalContext& context,
         LightingParserContext& parserContext,
         const Float4x4& cameraToWorld,
         float l, float t, float r, float b,

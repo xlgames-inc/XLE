@@ -397,7 +397,7 @@ namespace ToolsRig
                 
                 auto metalContext = Metal::DeviceContext::Get(context);
                 SceneEngine::LightingParser_SetupScene(
-                    metalContext.get(), parserContext, 
+                    *metalContext.get(), parserContext, 
                     &sceneParser, sceneParser.GetCameraDesc(),
                     qualSettings);
                 sceneParser.Draw(*metalContext.get(), parserContext, 0);

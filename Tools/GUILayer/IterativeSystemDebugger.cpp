@@ -74,7 +74,7 @@ namespace GUILayer
             Float3(0.f, 1.f, 0.f),
             Float3(0.f, 0.f, 0.f));
         SceneEngine::LightingParser_SetGlobalTransform(
-            metalContext.get(), parserContext, camToWorld, 
+            *metalContext.get(), parserContext, camToWorld, 
             0.f, 0.f, worldDims[0], worldDims[1], 
             -4096.f, 4096.f);
 
@@ -328,7 +328,7 @@ namespace GUILayer
             Float3(0.f, 1.f, 0.f),
             Float3(0.f, 0.f, 0.f));
         SceneEngine::LightingParser_SetGlobalTransform(
-            metalContext.get(), parserContext, camToWorld, 
+            *metalContext.get(), parserContext, camToWorld, 
             0.f, worldDims[1], worldDims[0], 0.f, 
             -4096.f, 4096.f);
 

@@ -381,7 +381,7 @@ namespace SceneEngine
 
 
     #if defined(_DEBUG)
-        void SaveGBuffer(RenderCore::Metal::DeviceContext* context, MainTargetsBox& mainTargets)
+        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, MainTargetsBox& mainTargets)
         {
             #if 0
                 using namespace BufferUploads;

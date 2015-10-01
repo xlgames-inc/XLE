@@ -264,7 +264,7 @@ namespace SceneEngine
                 //  Ideally there would be a cleaner way to automatically update the constants
                 //  when the bound camera changes...
             LightingParser_SetGlobalTransform(
-                context, parserContext, cameraDesc, 
+                *context, parserContext, cameraDesc, 
                 UInt2(unsigned(viewport.Width), unsigned(viewport.Height)));
 
             ID3D::Buffer* targets[2] = { res._streamOutputBuffers[0].get(), res._streamOutputBuffers[1].get() };
@@ -351,7 +351,7 @@ namespace SceneEngine
 
             // (reset the camera transform if it's changed)
         LightingParser_SetGlobalTransform(
-            context, parserContext, oldCamera, 
+            *context, parserContext, oldCamera, 
             UInt2(unsigned(viewport.Width), unsigned(viewport.Height)));
 
         context->GetUnderlying()->SOSetTargets(0, nullptr, nullptr);

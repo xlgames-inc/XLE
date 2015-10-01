@@ -11,10 +11,12 @@
 namespace SceneEngine
 {
     class LightingParserContext;
-    void OrderIndependentTransparency_Prepare(  RenderCore::Metal::DeviceContext* context, 
-                                                LightingParserContext& parserContext,
-                                                const RenderCore::Metal::ShaderResourceView& depthBufferDupe);
-    void OrderIndependentTransparency_Resolve(  RenderCore::Metal::DeviceContext* context,
-                                                LightingParserContext& parserContext,
-                                                const RenderCore::Metal::ShaderResourceView& originalDepthStencilSRV);
+    void OrderIndependentTransparency_Prepare(
+        RenderCore::Metal::DeviceContext& context, 
+        LightingParserContext& parserContext,
+        const RenderCore::Metal::ShaderResourceView& depthBufferDupe);
+    void OrderIndependentTransparency_Resolve(  
+        RenderCore::Metal::DeviceContext& context,
+        LightingParserContext& parserContext,
+        const RenderCore::Metal::ShaderResourceView& originalDepthStencilSRV);
 }

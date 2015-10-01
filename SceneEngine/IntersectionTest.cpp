@@ -69,7 +69,7 @@ namespace SceneEngine
 
         LightingParserContext parserContext(context.GetTechniqueContext());
         LightingParser_SetupScene(
-            devContext, parserContext, nullptr,
+            *devContext, parserContext, nullptr,
             context.GetCameraDesc(), RenderingQualitySettings(viewportDims));
 
         return FindTerrainIntersection(devContext, parserContext, terrainManager, worldSpaceRay);

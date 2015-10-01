@@ -10,6 +10,8 @@
 #include "../RenderCore/Metal/RenderTargetView.h"
 #include "../RenderCore/Metal/State.h"
 
+namespace BufferUploads { class ResourceLocator; }
+
 namespace SceneEngine
 {
     class TransparencyTargetsBox
@@ -26,18 +28,21 @@ namespace SceneEngine
         TransparencyTargetsBox(const Desc& desc);
         ~TransparencyTargetsBox();
 
-        Desc _desc;
-        intrusive_ptr<ID3D::Resource> _fragmentIdsTexture;
-        intrusive_ptr<ID3D::Resource> _nodeListBuffer;
+        using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
+        using UAV = RenderCore::Metal::UnorderedAccessView;
+        using SRV = RenderCore::Metal::ShaderResourceView;
 
-        RenderCore::Metal::UnorderedAccessView  _fragmentIdsTextureUAV;
-        RenderCore::Metal::UnorderedAccessView  _nodeListBufferUAV;
-        RenderCore::Metal::ShaderResourceView   _fragmentIdsTextureSRV;
-        RenderCore::Metal::ShaderResourceView   _nodeListBufferSRV;
+        Desc        _desc;
+        ResLocator  _fragmentIdsTexture;
+        ResLocator  _nodeListBuffer;
+        UAV         _fragmentIdsTextureUAV;
+        UAV         _nodeListBufferUAV;
+        SRV         _fragmentIdsTextureSRV;
+        SRV         _nodeListBufferSRV;
     };
 
     void OrderIndependentTransparency_ClearAndBind(
-        RenderCore::Metal::DeviceContext* context, 
+        RenderCore::Metal::DeviceContext& context, 
         TransparencyTargetsBox& transparencyTargets, 
         const RenderCore::Metal::ShaderResourceView& depthBufferDupe);
 }

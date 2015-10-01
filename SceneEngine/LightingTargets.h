@@ -263,7 +263,7 @@ namespace SceneEngine
 
  
     #if defined(_DEBUG)
-        void SaveGBuffer(RenderCore::Metal::DeviceContext* context, MainTargetsBox& mainTargets);
+        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, MainTargetsBox& mainTargets);
     #endif
 
     class LightingParserContext;

@@ -15,6 +15,7 @@
 #include "Sky.h"
 
 #include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -24,10 +25,10 @@
 namespace SceneEngine
 {
     using namespace RenderCore;
-    using namespace RenderCore::Metal;
 
     TransparencyTargetsBox::Desc::Desc(unsigned width, unsigned height, bool storeColour)
     {
+        XlZeroMemory(*this);
         _width = width; _height = height;
         _storeColour = storeColour;
     }
@@ -35,50 +36,40 @@ namespace SceneEngine
     TransparencyTargetsBox::TransparencyTargetsBox(const Desc& desc) 
     : _desc(desc)
     {
-        using namespace RenderCore;
-        using namespace RenderCore::Metal;
         using namespace BufferUploads;
 
         auto& uploads = GetBufferUploads();
         auto textureIdsDesc = BuildRenderTargetDesc(
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_UINT),
+            TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R32_UINT),
             "Trans");
-        auto fragmentIdsTexture = uploads.Transaction_Immediate(textureIdsDesc)->AdoptUnderlying();
+        _fragmentIdsTexture = uploads.Transaction_Immediate(textureIdsDesc);
 
-        BufferUploads::BufferDesc nodeListBufferDesc;
-        nodeListBufferDesc._type = BufferUploads::BufferDesc::Type::LinearBuffer;
-        nodeListBufferDesc._bindFlags = BindFlag::UnorderedAccess|BindFlag::StructuredBuffer|BindFlag::ShaderResource;
-        nodeListBufferDesc._cpuAccess = 0;
-        nodeListBufferDesc._gpuAccess = GPUAccess::Read|GPUAccess::Write;
-        nodeListBufferDesc._allocationRules = 0;
-        nodeListBufferDesc._linearBufferDesc._structureByteSize = (desc._storeColour)?(sizeof(float)*3):(sizeof(float)*2);
-        nodeListBufferDesc._linearBufferDesc._sizeInBytes = 16*1024*1024*nodeListBufferDesc._linearBufferDesc._structureByteSize;
-        auto nodeListBuffer = uploads.Transaction_Immediate(nodeListBufferDesc)->AdoptUnderlying();
+        unsigned structureSize = (desc._storeColour)?(sizeof(float)*3):(sizeof(float)*2);
+        auto nodeListBufferDesc = CreateDesc(
+            BindFlag::UnorderedAccess|BindFlag::StructuredBuffer|BindFlag::ShaderResource,
+            0, GPUAccess::Read|GPUAccess::Write,
+            LinearBufferDesc::Create(16*1024*1024*structureSize, structureSize),
+            "OI-NodeBuffer");
+        _nodeListBuffer = uploads.Transaction_Immediate(nodeListBufferDesc);
 
-        RenderCore::Metal::UnorderedAccessView fragmentIdsTextureUAV(fragmentIdsTexture.get());
-        RenderCore::Metal::UnorderedAccessView nodeListBufferUAV(nodeListBuffer.get(),
-            RenderCore::Metal::UnorderedAccessView::Flags::AttachedCounter);
+        _fragmentIdsTextureUAV = Metal::UnorderedAccessView(_fragmentIdsTexture->GetUnderlying());
+        _nodeListBufferUAV = Metal::UnorderedAccessView(
+            _nodeListBuffer->GetUnderlying(),
+            Metal::UnorderedAccessView::Flags::AttachedCounter);
 
-        RenderCore::Metal::ShaderResourceView fragmentIdsTextureSRV(fragmentIdsTexture.get());
-        RenderCore::Metal::ShaderResourceView nodeListBufferSRV(nodeListBuffer.get());
-
-        _fragmentIdsTexture      = std::move(fragmentIdsTexture);
-        _nodeListBuffer          = std::move(nodeListBuffer);
-        _fragmentIdsTextureUAV   = std::move(fragmentIdsTextureUAV);
-        _nodeListBufferUAV       = std::move(nodeListBufferUAV);
-        _fragmentIdsTextureSRV   = std::move(fragmentIdsTextureSRV);
-        _nodeListBufferSRV       = std::move(nodeListBufferSRV);
+        _fragmentIdsTextureSRV = Metal::ShaderResourceView(_fragmentIdsTexture->GetUnderlying());
+        _nodeListBufferSRV = Metal::ShaderResourceView(_nodeListBuffer->GetUnderlying());
     }
 
     TransparencyTargetsBox::~TransparencyTargetsBox() {}
 
     void OrderIndependentTransparency_ClearAndBind(
-        RenderCore::Metal::DeviceContext* context, 
+        RenderCore::Metal::DeviceContext& metalContext, 
         TransparencyTargetsBox& transparencyTargets, 
         const RenderCore::Metal::ShaderResourceView& depthBufferDupe)
     {
-        SavedTargets prevTargets(context);
+        SavedTargets prevTargets(&metalContext);
 
         ID3D::UnorderedAccessView* uavs[] = {
             transparencyTargets._fragmentIdsTextureUAV.GetUnderlying(),
@@ -86,18 +77,20 @@ namespace SceneEngine
         UINT initialCounts[] = { 0, 0 };
 
         UINT clearValues[4] = { UINT(~0), UINT(~0), UINT(~0), UINT(~0) };
-        context->Clear(transparencyTargets._fragmentIdsTextureUAV, clearValues);
+        metalContext.Clear(transparencyTargets._fragmentIdsTextureUAV, clearValues);
 
-        context->GetUnderlying()->OMSetRenderTargetsAndUnorderedAccessViews(
+        metalContext.GetUnderlying()->OMSetRenderTargetsAndUnorderedAccessViews(
             1, prevTargets.GetRenderTargets(), prevTargets.GetDepthStencilView(),
             1, dimof(uavs), uavs, initialCounts);
 
-        context->BindPS(MakeResourceList(17, depthBufferDupe));
+        metalContext.BindPS(MakeResourceList(17, depthBufferDupe));
     }
 
-    void OrderIndependentTransparency_Prepare(RenderCore::Metal::DeviceContext* context, LightingParserContext&, const ShaderResourceView& depthBufferDupe)
+    void OrderIndependentTransparency_Prepare(
+        Metal::DeviceContext& metalContext, 
+        LightingParserContext&, const Metal::ShaderResourceView& depthBufferDupe)
     {
-        ViewportDesc mainViewport(*context);
+        Metal::ViewportDesc mainViewport(metalContext);
 
         auto& transparencyTargets = Techniques::FindCachedBox<TransparencyTargetsBox>(
             TransparencyTargetsBox::Desc(unsigned(mainViewport.Width), unsigned(mainViewport.Height), true));
@@ -108,7 +101,7 @@ namespace SceneEngine
             //      will write to the uav (instead of the normal render target)
             //
         
-        OrderIndependentTransparency_ClearAndBind(context, transparencyTargets, depthBufferDupe);
+        OrderIndependentTransparency_ClearAndBind(metalContext, transparencyTargets, depthBufferDupe);
 
             //
             //      Bind some resources required by the glass shader
@@ -131,15 +124,15 @@ namespace SceneEngine
             //
     }
 
-    void OrderIndependentTransparency_Resolve(  RenderCore::Metal::DeviceContext* context,
+    void OrderIndependentTransparency_Resolve(  RenderCore::Metal::DeviceContext& metalContext,
                                                 LightingParserContext& parserContext,
-                                                const ShaderResourceView& originalDepthStencilSRV)
+                                                const Metal::ShaderResourceView& originalDepthStencilSRV)
     {
-        ViewportDesc mainViewport(*context);
-        SavedTargets savedTargets(context);
+        Metal::ViewportDesc mainViewport(metalContext);
+        SavedTargets savedTargets(&metalContext);
 
         auto metricsUAV = parserContext.GetMetricsBox()->_metricsBufferUAV.GetUnderlying();
-        context->GetUnderlying()->OMSetRenderTargetsAndUnorderedAccessViews(
+        metalContext.GetUnderlying()->OMSetRenderTargetsAndUnorderedAccessViews(
             1, savedTargets.GetRenderTargets(), nullptr,
             1, 1, &metricsUAV, nullptr);
 
@@ -152,25 +145,26 @@ namespace SceneEngine
             auto& transparencyTargets = Techniques::FindCachedBox<TransparencyTargetsBox>(
                 TransparencyTargetsBox::Desc(unsigned(mainViewport.Width), unsigned(mainViewport.Height), true));
 
-            context->BindPS(MakeResourceList(
-                transparencyTargets._fragmentIdsTextureSRV, transparencyTargets._nodeListBufferSRV, originalDepthStencilSRV));
-            context->Bind(Metal::BlendState(
-                Metal::BlendOp::Add, Metal::Blend::One, Metal::Blend::InvSrcAlpha));
-            context->Bind(Metal::DepthStencilState(false));
+            metalContext.BindPS(MakeResourceList(
+                transparencyTargets._fragmentIdsTextureSRV, 
+                transparencyTargets._nodeListBufferSRV, 
+                originalDepthStencilSRV));
+            metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+            metalContext.Bind(Techniques::CommonResources()._dssDisable);
             auto& resolveShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                 "game/xleres/forward/transparency/resolve.psh:main:ps_*");
-            context->Bind(resolveShader);
-            SetupVertexGeneratorShader(context);
-            context->Draw(4);
+            metalContext.Bind(resolveShader);
+            SetupVertexGeneratorShader(&metalContext);
+            metalContext.Draw(4);
 
-            context->UnbindPS<Metal::ShaderResourceView>(0, 3);
-        } 
+            metalContext.UnbindPS<Metal::ShaderResourceView>(0, 3);
+        }
         CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
 
-        savedTargets.ResetToOldTargets(context);
+        savedTargets.ResetToOldTargets(&metalContext);
     }
 
 

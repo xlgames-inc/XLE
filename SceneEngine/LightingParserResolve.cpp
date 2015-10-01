@@ -33,7 +33,6 @@
 namespace SceneEngine
 {
     using namespace RenderCore;
-    using namespace RenderCore::Metal;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -49,12 +48,12 @@ namespace SceneEngine
             Desc(unsigned samplingCount) : _samplingCount(samplingCount) {}
         };
 
-        DepthStencilState       _alwaysWriteToStencil;
-        DepthStencilState       _writePixelFrequencyPixels;
-        const ShaderProgram*    _perSampleMask;
+        Metal::DepthStencilState       _alwaysWriteToStencil;
+        Metal::DepthStencilState       _writePixelFrequencyPixels;
+        const Metal::ShaderProgram*    _perSampleMask;
 
-        SamplerState            _shadowComparisonSampler;
-        SamplerState            _shadowDepthSampler;
+        Metal::SamplerState            _shadowComparisonSampler;
+        Metal::SamplerState            _shadowDepthSampler;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
 
@@ -118,37 +117,38 @@ namespace SceneEngine
     static unsigned FindDMShadowFrustum(LightingParserContext& parserContext, unsigned lightId);
     static unsigned FindRTShadowFrustum(LightingParserContext& parserContext, unsigned lightId);
 
-    static ConstantBufferPacket BuildLightConstants(const LightDesc& light);
-    static void ResolveLights(  DeviceContext* context,
+    static Metal::ConstantBufferPacket BuildLightConstants(const LightDesc& light);
+    static void ResolveLights(  Metal::DeviceContext& context,
                                 LightingParserContext& parserContext,
                                 MainTargetsBox& mainTargets,
                                 LightingResolveContext& resolveContext);
 
-    static void SetupStateForDeferredLightingResolve(   DeviceContext* context, 
-                                                MainTargetsBox& mainTargets, 
-                                                LightingResolveTextureBox& lightingResTargets,
-                                                LightingResolveResources& resolveRes,
-                                                bool doSampleFrequencyOptimisation)
+    static void SetupStateForDeferredLightingResolve(   
+        Metal::DeviceContext& context, 
+        MainTargetsBox& mainTargets, 
+        LightingResolveTextureBox& lightingResTargets,
+        LightingResolveResources& resolveRes,
+        bool doSampleFrequencyOptimisation)
     {
         const unsigned samplingCount = mainTargets._desc._sampling._sampleCount;
 
-        SetupVertexGeneratorShader(context);
-        context->Bind(Techniques::CommonResources()._blendOneSrcAlpha);
+        SetupVertexGeneratorShader(&context);
+        context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
 
                 //      Bind lighting resolve texture
                 //      (in theory, in LDR/non-MSAA modes we could write directly to the 
                 //      default back buffer now)
-        context->Bind(
+        context.Bind(
             MakeResourceList(lightingResTargets._lightingResolveRTV), 
             (doSampleFrequencyOptimisation && samplingCount>1)?&mainTargets._secondaryDepthBuffer:nullptr);
         if (doSampleFrequencyOptimisation && samplingCount > 1) {
-            context->Bind(Techniques::CommonResources()._cullDisable);
-            context->Bind(resolveRes._writePixelFrequencyPixels, 0xff);
+            context.Bind(Techniques::CommonResources()._cullDisable);
+            context.Bind(resolveRes._writePixelFrequencyPixels, 0xff);
         } else {
-            context->Bind(Techniques::CommonResources()._dssDisable);
+            context.Bind(Techniques::CommonResources()._dssDisable);
         }
 
-        context->BindPS(MakeResourceList(
+        context.BindPS(MakeResourceList(
             mainTargets._gbufferRTVsSRV[0], mainTargets._gbufferRTVsSRV[1], mainTargets._gbufferRTVsSRV[2], 
             Metal::ShaderResourceView(), mainTargets._msaaDepthBufferSRV));
     }
@@ -156,7 +156,7 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void BindShadowsForForwardResolve(
-        DeviceContext& metalContext,
+        Metal::DeviceContext& metalContext,
         Techniques::ParsingContext& parsingContext,
         const PreparedDMShadowFrustum& dominantLight)
     {
@@ -200,7 +200,7 @@ namespace SceneEngine
     }
 
     void UnbindShadowsForForwardResolve(
-        DeviceContext& metalContext,
+        Metal::DeviceContext& metalContext,
         Techniques::ParsingContext& parsingContext)
     {
         metalContext.UnbindPS<Metal::ShaderResourceView>(3,1);   // unbind shadow textures
@@ -212,7 +212,7 @@ namespace SceneEngine
     static unsigned GBufferType(MainTargetsBox& mainTargets) { return (mainTargets._gbufferTextures[2]) ? 1 : 2; }
 
     unsigned LightingParser_BindLightResolveResources( 
-        DeviceContext* context,
+        Metal::DeviceContext& context,
         LightingParserContext& parserContext)
     {
             // bind resources and constants that are required for lighting resolve operations
@@ -223,27 +223,27 @@ namespace SceneEngine
         unsigned skyTextureProjection = 0;
         if (skyTexture[0]) {
             SkyTextureParts parts(skyTexture);
-            skyTextureProjection = SkyTexture_BindPS(context, parserContext, parts, 11);
+            skyTextureProjection = SkyTexture_BindPS(&context, parserContext, parts, 11);
         }
 
         TRY {
-            context->BindPS(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
-            context->BindPS(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
+            context.BindPS(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
+            context.BindPS(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
         }
         CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
 
-        context->BindPS(MakeResourceList(9, ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
+        context.BindPS(MakeResourceList(9, Metal::ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
 
         return skyTextureProjection;
     }
 
     void LightingParser_ResolveGBuffer(
-        DeviceContext* context, LightingParserContext& parserContext,
+        Metal::DeviceContext& context, LightingParserContext& parserContext,
         MainTargetsBox& mainTargets, LightingResolveTextureBox& lightingResTargets)
     {
-        GPUProfiler::DebugAnnotation anno(*context, L"ResolveGBuffer");
+        Metal::GPUProfiler::DebugAnnotation anno(context, L"ResolveGBuffer");
 
         const bool doSampleFrequencyOptimisation = Tweakable("SampleFrequencyOptimisation", true);
 
@@ -259,17 +259,17 @@ namespace SceneEngine
             //
 
         if (doSampleFrequencyOptimisation && samplingCount>1) {
-            context->Bind(resolveRes._alwaysWriteToStencil, 0xff);
+            context.Bind(resolveRes._alwaysWriteToStencil, 0xff);
 
                 // todo --  instead of clearing the stencil every time, how 
                 //          about doing a progressive walk through all of the bits!
-            context->ClearStencil(mainTargets._secondaryDepthBuffer, 0);
-            context->Bind(ResourceList<Metal::RenderTargetView, 0>(), &mainTargets._secondaryDepthBuffer);
-            context->BindPS(MakeResourceList(mainTargets._msaaDepthBufferSRV, mainTargets._gbufferRTVsSRV[1]));
-            SetupVertexGeneratorShader(context);
+            context.ClearStencil(mainTargets._secondaryDepthBuffer, 0);
+            context.Bind(ResourceList<Metal::RenderTargetView, 0>(), &mainTargets._secondaryDepthBuffer);
+            context.BindPS(MakeResourceList(mainTargets._msaaDepthBufferSRV, mainTargets._gbufferRTVsSRV[1]));
+            SetupVertexGeneratorShader(&context);
             TRY {
-                context->Bind(*resolveRes._perSampleMask);
-                context->Draw(4);
+                context.Bind(*resolveRes._perSampleMask);
+                context.Draw(4);
             } 
             CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
             CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
@@ -277,10 +277,10 @@ namespace SceneEngine
         }
 
         {
-            GPUProfiler::DebugAnnotation anno(*context, L"Prepare");
+            Metal::GPUProfiler::DebugAnnotation anno(context, L"Prepare");
             for (auto i=parserContext._plugins.cbegin(); i!=parserContext._plugins.cend(); ++i) {
                 TRY {
-                    (*i)->OnLightingResolvePrepare(context, parserContext, lightingResolveContext);
+                    (*i)->OnLightingResolvePrepare(&context, parserContext, lightingResolveContext);
                 } 
                 CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
                 CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
@@ -326,11 +326,11 @@ namespace SceneEngine
             SetupStateForDeferredLightingResolve(context, mainTargets, lightingResTargets, resolveRes, doSampleFrequencyOptimisation);
             auto skyTextureProjection = LightingParser_BindLightResolveResources(context, parserContext);
 
-            context->BindPS(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
+            context.BindPS(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
 
                 // note -- if we do ambient first, we can avoid this clear (by rendering the ambient opaque)
             float clearColour[] = { 0.f, 0.f, 0.f, 1.f };
-            context->Clear(lightingResTargets._lightingResolveRTV, clearColour);
+            context.Clear(lightingResTargets._lightingResolveRTV, clearColour);
                        
             const unsigned passCount = (doSampleFrequencyOptimisation && samplingCount > 1)?2:1;
             for (unsigned c=0; c<passCount; ++c) {
@@ -347,7 +347,7 @@ namespace SceneEngine
                 CATCH_END
 
                 TRY {
-                    GPUProfiler::DebugAnnotation anno(*context, L"Ambient");
+                    Metal::GPUProfiler::DebugAnnotation anno(context, L"Ambient");
 
                     auto globalLightDesc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
 
@@ -363,24 +363,24 @@ namespace SceneEngine
 
                     auto ambientLightPacket = MakeSharedPkt(AsShaderDesc(globalLightDesc));
                     ambientResolveShaders._ambientLightUniforms->Apply(
-                        *context, parserContext.GetGlobalUniformsStream(),
-                        UniformsStream(&ambientLightPacket, nullptr, 1));
+                        context, parserContext.GetGlobalUniformsStream(),
+                        Metal::UniformsStream(&ambientLightPacket, nullptr, 1));
 
                         //  When screen space reflections are enabled, we need to take a copy of the lighting
                         //  resolve target. This is because we want to reflect the post-lighting resolve pixels.
                     if (lightingResolveContext._screenSpaceReflectionsResult.IsGood())
-                        context->GetUnderlying()->CopyResource(
+                        context.GetUnderlying()->CopyResource(
                             lightingResTargets._lightingResolveCopy.get(), 
                             lightingResTargets._lightingResolveTexture.get());
 
-                    context->BindPS(MakeResourceList(5, 
+                    context.BindPS(MakeResourceList(5, 
                         lightingResolveContext._tiledLightingResult, 
                         lightingResolveContext._ambientOcclusionResult,
                         lightingResolveContext._screenSpaceReflectionsResult,
                         lightingResTargets._lightingResolveCopySRV));
 
-                    context->Bind(*ambientResolveShaders._ambientLight);
-                    context->Draw(4);
+                    context.Bind(*ambientResolveShaders._ambientLight);
+                    context.Draw(4);
                 }
                 CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
                 CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
@@ -388,16 +388,16 @@ namespace SceneEngine
 
                     //-------- do sky --------
                 if (Tweakable("DoSky", true)) {
-                    GPUProfiler::DebugAnnotation anno(*context, L"Sky");
+                    Metal::GPUProfiler::DebugAnnotation anno(context, L"Sky");
 
                         //  Hack -- stop and render the sky at this point!
                         //          we have to change all of the render states. We need
                         //          a better way to manage render states during lighting resolve
                         //          (pending refactoring)
-                    context->Bind(Techniques::CommonResources()._dssReadOnly);
-                    context->UnbindPS<ShaderResourceView>(4, 1);
-                    context->Bind(MakeResourceList(lightingResTargets._lightingResolveRTV), &mainTargets._msaaDepthBuffer);
-                    Sky_Render(context, parserContext, false);     // we do a first pass of the sky here, and then follow up with a second pass after lighting resolve
+                    context.Bind(Techniques::CommonResources()._dssReadOnly);
+                    context.UnbindPS<Metal::ShaderResourceView>(4, 1);
+                    context.Bind(MakeResourceList(lightingResTargets._lightingResolveRTV), &mainTargets._msaaDepthBuffer);
+                    Sky_Render(&context, parserContext, false);     // we do a first pass of the sky here, and then follow up with a second pass after lighting resolve
 
                         // have to reset our state (because Sky_Render changed everything)
                     SetupStateForDeferredLightingResolve(
@@ -406,7 +406,7 @@ namespace SceneEngine
 
                 for (auto i=lightingResolveContext._queuedResolveFunctions.cbegin();
                     i!=lightingResolveContext._queuedResolveFunctions.cend(); ++i) {
-                    (*i)(context, parserContext, lightingResolveContext, c);
+                    (*i)(&context, parserContext, lightingResolveContext, c);
                 }
 
                     // -------- -------- -------- -------- -------- --------
@@ -417,11 +417,11 @@ namespace SceneEngine
         CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
         CATCH_END
 
-        context->UnbindPS<ShaderResourceView>(0, 9);
+        context.UnbindPS<Metal::ShaderResourceView>(0, 9);
 
             // reset some of the states to more common defaults...
-        context->Bind(Techniques::CommonResources()._defaultRasterizer);
-        context->Bind(Techniques::CommonResources()._dssReadWrite);
+        context.Bind(Techniques::CommonResources()._defaultRasterizer);
+        context.Bind(Techniques::CommonResources()._dssReadWrite);
         
         if (Tweakable("DeferredDebugging", false)) {
             parserContext._pendingOverlays.push_back(
@@ -434,19 +434,19 @@ namespace SceneEngine
         }
     }
 
-    static void ResolveLights(  DeviceContext* context,
+    static void ResolveLights(  Metal::DeviceContext& context,
                                 LightingParserContext& parserContext,
                                 MainTargetsBox& mainTargets,
                                 LightingResolveContext& resolveContext)
     {
-        GPUProfiler::DebugAnnotation anno(*context, L"Lights");
+        Metal::GPUProfiler::DebugAnnotation anno(context, L"Lights");
 
         const unsigned samplingCount = resolveContext.GetSamplingCount();
         const bool useMsaaSamplers = resolveContext.UseMsaaSamplers();
 
         using CB = LightingResolveShaders::CB;
         using SR = LightingResolveShaders::SR;
-        ConstantBufferPacket constantBufferPackets[CB::Max];
+        Metal::ConstantBufferPacket constantBufferPackets[CB::Max];
         const Metal::ConstantBuffer* prebuiltConstantBuffers[] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
         static_assert(dimof(prebuiltConstantBuffers)==CB::Max, "Prebuilt constant buffer array incorrect size");
 
@@ -486,7 +486,7 @@ namespace SceneEngine
                     assert(parserContext._preparedDMShadows[shadowFrustumIndex].second.IsReady());
 
                     const auto& preparedShadows = parserContext._preparedDMShadows[shadowFrustumIndex].second;
-                    context->BindPS(MakeResourceList(3, preparedShadows._shadowTextureSRV));
+                    context.BindPS(MakeResourceList(3, preparedShadows._shadowTextureSRV));
                     prebuiltConstantBuffers[CB::ShadowProj_Arbit] = &preparedShadows._arbitraryCB;
                     prebuiltConstantBuffers[CB::ShadowProj_Ortho] = &preparedShadows._orthoCB;
                     prebuiltConstantBuffers[CB::ShadowResolveParam] = &preparedShadows._resolveParametersCB;
@@ -536,10 +536,10 @@ namespace SceneEngine
                 assert(shader && shader->_shader);
 
                 shader->_uniforms.Apply(
-                    *context, parserContext.GetGlobalUniformsStream(), 
-                    UniformsStream(constantBufferPackets, prebuiltConstantBuffers, srvs));
-                context->Bind(*shader->_shader);
-                context->Draw(4);
+                    context, parserContext.GetGlobalUniformsStream(), 
+                    Metal::UniformsStream(constantBufferPackets, prebuiltConstantBuffers, srvs));
+                context.Bind(*shader->_shader);
+                context.Draw(4);
             } 
             CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
             CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
@@ -551,23 +551,23 @@ namespace SceneEngine
 
     LightingResolveResources::LightingResolveResources(const Desc& desc)
     {
-        DepthStencilState alwaysWriteToStencil(
-            false, false, 0x0, 0xff, StencilMode::AlwaysWrite, StencilMode::AlwaysWrite);
+        Metal::DepthStencilState alwaysWriteToStencil(
+            false, false, 0x0, 0xff, Metal::StencilMode::AlwaysWrite, Metal::StencilMode::AlwaysWrite);
 
-        DepthStencilState writePixelFrequencyPixels(
+        Metal::DepthStencilState writePixelFrequencyPixels(
             false, false, 0xff, 0xff, 
-            StencilMode(Comparison::Equal, StencilOp::DontWrite),
-            StencilMode(Comparison::NotEqual, StencilOp::DontWrite));
+            Metal::StencilMode(Metal::Comparison::Equal, Metal::StencilOp::DontWrite),
+            Metal::StencilMode(Metal::Comparison::NotEqual, Metal::StencilOp::DontWrite));
 
-        SamplerState shadowComparisonSampler(
-            FilterMode::ComparisonBilinear, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp,
-            Comparison::LessEqual);
-        SamplerState shadowDepthSampler(
-            FilterMode::Bilinear, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp);
+        Metal::SamplerState shadowComparisonSampler(
+            Metal::FilterMode::ComparisonBilinear, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp,
+            Metal::Comparison::LessEqual);
+        Metal::SamplerState shadowDepthSampler(
+            Metal::FilterMode::Bilinear, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp);
 
         char definesTable[256];
         Utility::XlFormatString(definesTable, dimof(definesTable), "MSAA_SAMPLES=%i", desc._samplingCount);
-        auto* perSampleMask = &::Assets::GetAssetDep<ShaderProgram>(
+        auto* perSampleMask = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", 
             "game/xleres/deferred/persamplemask.psh:main:ps_*", definesTable);
 
@@ -624,7 +624,7 @@ namespace SceneEngine
         return ~0u;
     }
 
-    static ConstantBufferPacket BuildLightConstants(const LightDesc& light)
+    static Metal::ConstantBufferPacket BuildLightConstants(const LightDesc& light)
     {
         return MakeSharedPkt(AsShaderDesc(light));
     }
@@ -632,7 +632,7 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void LightingParser_InitBasicLightEnv(  
-        DeviceContext* context,
+        Metal::DeviceContext& context,
         LightingParserContext& parserContext,
         ISceneParser& sceneParser)
     {
@@ -656,7 +656,7 @@ namespace SceneEngine
             }
 
         parserContext.SetGlobalCB(
-            *context, Techniques::TechniqueContext::CB_BasicLightingEnvironment,
+            context, Techniques::TechniqueContext::CB_BasicLightingEnvironment,
             &env, sizeof(env));
     }
 

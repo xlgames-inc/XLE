@@ -205,7 +205,7 @@ namespace SceneEngine
             auto& transparencyTargets = 
                 Techniques::FindCachedBox<TransparencyTargetsBox>(
                     TransparencyTargetsBox::Desc(unsigned(mainViewport.Width), unsigned(mainViewport.Height), false));
-            OrderIndependentTransparency_ClearAndBind(context, transparencyTargets, duplicatedDepthBuffer);
+            OrderIndependentTransparency_ClearAndBind(*context, transparencyTargets, duplicatedDepthBuffer);
             context->Bind(Techniques::CommonResources()._dssReadOnly);  // never write to depth (even for very opaque pixels)
             context->Bind(Techniques::CommonResources()._cullDisable);  // we need to write both front and back faces (but the pixel shader will treat them differently)
             MainRender(context, parserContext, 4, pimpl);
