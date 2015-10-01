@@ -126,4 +126,8 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parsingContext,
         const PreparedDMShadowFrustum& dominantLight);
 
+    void UnbindShadowsForForwardResolve(
+        RenderCore::Metal::DeviceContext& metalContext,
+        RenderCore::Techniques::ParsingContext& parsingContext);
+
 }

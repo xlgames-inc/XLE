@@ -77,7 +77,7 @@
             BASIC_LIGHT_COUNT=1
             SHADOW_CASCADE_MODE=2
     VertexShader=game/xleres/forward/illum.vsh:main
-    PixelShader=game/xleres/forward/transparency/illum.psh:main
+    PixelShader=game/xleres/forward/transparency/illum.psh:main_oi
 ~PrepareVegetationSpawn
 ~RayTest
     ~Inherit; Shared:Skinnable; Shared:VegetationSpawn

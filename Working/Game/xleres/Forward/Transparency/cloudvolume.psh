@@ -20,7 +20,7 @@ struct FragmentListNode
 
 RWTexture2D<uint>						FragmentIds : register(u1);
 RWStructuredBuffer<FragmentListNode>	NodesList : register(u2);
-Texture2D<float>						DuplicateOfDepthBuffer : register(t11);
+Texture2D<float>						DuplicateOfDepthBuffer : register(t17);
 
 void OutputFragmentNode(uint2 position, float4 color, float depth)
 {
@@ -34,7 +34,7 @@ void OutputFragmentNode(uint2 position, float4 color, float depth)
 		//
 	uint newNodeId = NodesList.IncrementCounter();
 	uint oldNodeId;
-	InterlockedExchange(FragmentIds[position], newNodeId, oldNodeId); 
+	InterlockedExchange(FragmentIds[position], newNodeId, oldNodeId);
 
 	FragmentListNode newNode;
 	newNode.next = oldNodeId;
@@ -58,4 +58,3 @@ void OutputFragmentNode(uint2 position, float4 color, float depth)
 	discard;
 	return result;
 }
-

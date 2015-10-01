@@ -199,6 +199,14 @@ namespace SceneEngine
             dominantLight._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
     }
 
+    void UnbindShadowsForForwardResolve(
+        DeviceContext& metalContext,
+        Techniques::ParsingContext& parsingContext)
+    {
+        metalContext.UnbindPS<Metal::ShaderResourceView>(3,1);   // unbind shadow textures
+        parsingContext.GetTechniqueContext()._runtimeState.SetParameter(u("SHADOW_CASCADE_MODE"), 0);
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     
     static unsigned GBufferType(MainTargetsBox& mainTargets) { return (mainTargets._gbufferTextures[2]) ? 1 : 2; }

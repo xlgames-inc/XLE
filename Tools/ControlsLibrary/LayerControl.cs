@@ -59,6 +59,12 @@ namespace ControlsLibrary
             base.OnResize(pe);
         }
 
+        protected override bool IsInputKey(Keys keyData)
+        {
+            if (layerControl != null) return layerControl.IsInputKey(keyData);
+            return false;
+        }
+
         private LayerControlHack layerControl;
     }
 }

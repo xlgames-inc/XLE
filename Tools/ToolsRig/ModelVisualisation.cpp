@@ -195,6 +195,10 @@ namespace ToolsRig
                                     unsigned index, unsigned techniqueIndex) const
         {
             ExecuteScene(context, parserContext, parseSettings, techniqueIndex);
+
+            SceneEngine::SceneParseSettings newParseSettings = parseSettings;
+            newParseSettings._batchFilter = SceneEngine::SceneParseSettings::BatchFilter::Transparent;
+            ExecuteScene(context, parserContext, newParseSettings, techniqueIndex);
         }
 
         ModelSceneParser(

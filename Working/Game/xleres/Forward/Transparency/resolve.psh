@@ -10,7 +10,7 @@
 #include "../../Utility/Metrics.h"
 #include "../../Colour.h"
 
-#define LIMIT_LAYER_COUNT 0
+#define LIMIT_LAYER_COUNT 1
 
 struct FragmentListNode
 {
@@ -58,14 +58,15 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0, SystemIn
 	[branch] if (firstId == 0xffffffff) {
 		return float4(0.0.xxx, 0);
 	} else {
+		// return float4(1.0.xxx, 1);
 
 			//
-			//		Follow the linked list of 
+			//		Follow the linked list of
 			//		nodes. Sort into a final array, and then combine in
 			//		back to front order...
-			//	
-			//			What's the best sort for this? 
-			//				*	An insertion sort while travelling through 
+			//
+			//			What's the best sort for this?
+			//				*	An insertion sort while travelling through
 			//					the linked list?
 			//				*	Quick sort?
 			//
@@ -98,7 +99,7 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0, SystemIn
 			//		If "FixedSampleCount" is very small, perhaps we should
 			//		consider alternatives to Quicksort. Maybe some basic
 			//		sorting methods would work better for very small buffers.
-			//	
+			//
 		bool valid = true;
 		const bool useQuicksort = true;
 		if (useQuicksort) {
@@ -112,7 +113,7 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0, SystemIn
 				//	This insertion sort method will merge in
 				//	more samples, but keep the final number of samples
 				//	limited into a single buffer. So some samples will
-				//	be excluded and ignored. Works best with when 
+				//	be excluded and ignored. Works best with when
 				//	"FixedSampleCount" is small (eg, 4 or 6)
 
 			[loop] while (nodeId != 0xffffffff) {
@@ -126,7 +127,7 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0, SystemIn
 		#endif
 
 		uint sampleCountMetric = sampleCount;
-			
+
 		float4 combinedColor = float4(0.0.xxx,1);
 		[branch] if (nodeId == 0xffffffff) {
 
@@ -143,14 +144,14 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0, SystemIn
 			// return float4(1,0,0,.5);
 
 				//
-				//		We need to do a partial sort... Only 
+				//		We need to do a partial sort... Only
 				//		sort the first "FixedSampleCount" items
-				//		
+				//
 				//		There are 2 possible ways to do this:
 				//			 - using an insertion sort
 				//			 - use a select algorithm to
 				//				find item at position 'k' first,
-				//				and then sort all of the items 
+				//				and then sort all of the items
 				//				smaller than that.
 				//
 				//		Insertion sort method...
@@ -192,5 +193,3 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0, SystemIn
 		return float4(LightingScale * combinedColor.rgb, 1.f-combinedColor.a);
 	}
 }
-
-

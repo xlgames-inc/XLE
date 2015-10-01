@@ -92,7 +92,7 @@ namespace SceneEngine
             1, prevTargets.GetRenderTargets(), prevTargets.GetDepthStencilView(),
             1, dimof(uavs), uavs, initialCounts);
 
-        context->BindPS(MakeResourceList(11, depthBufferDupe));
+        context->BindPS(MakeResourceList(17, depthBufferDupe));
     }
 
     void OrderIndependentTransparency_Prepare(RenderCore::Metal::DeviceContext* context, LightingParserContext&, const ShaderResourceView& depthBufferDupe)
@@ -114,13 +114,13 @@ namespace SceneEngine
             //      Bind some resources required by the glass shader
             //
 
-        auto box5   = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_5.dds").GetShaderResource();
-        auto box12  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_12.dds").GetShaderResource();
-        auto box34  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_34.dds").GetShaderResource();
-        context->BindPS(MakeResourceList(8, box12, box34, box5));
+        // auto box5   = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_5.dds").GetShaderResource();
+        // auto box12  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_12.dds").GetShaderResource();
+        // auto box34  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_34.dds").GetShaderResource();
+        // context->BindPS(MakeResourceList(8, box12, box34, box5));
 
-        auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
-        context->BindPS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
+        // auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
+        // context->BindPS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
             //
             //      We need to disable multisample antialiasing while rendering
@@ -144,10 +144,10 @@ namespace SceneEngine
             1, 1, &metricsUAV, nullptr);
 
         TRY {
-            auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
-            if (skyTexture[0]) {
-                SkyTexture_BindPS(context, parserContext, skyTexture, 7);
-            }
+            // auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
+            // if (skyTexture[0]) {
+            //     SkyTexture_BindPS(context, parserContext, skyTexture, 7);
+            // }
 
             auto& transparencyTargets = Techniques::FindCachedBox<TransparencyTargetsBox>(
                 TransparencyTargetsBox::Desc(unsigned(mainViewport.Width), unsigned(mainViewport.Height), true));

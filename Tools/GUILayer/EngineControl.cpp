@@ -145,6 +145,24 @@ namespace GUILayer
         return *_pimpl->_windowRig;
     }
 
+    bool EngineControl::IsInputKey(Keys keyData)
+    {
+            // return true for any keys we want to handle as a normal (non-system)
+            // key event
+        switch (keyData)
+        {
+        case Keys::Left:
+        case Keys::Right:
+        case Keys::Up:
+        case Keys::Down:
+        case Keys::Tab:
+            return true;
+
+        default:
+            return false;
+        }
+    }
+
     EngineControl::EngineControl(Control^ control)
         : _control(control)
     {

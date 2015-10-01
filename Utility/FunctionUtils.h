@@ -395,6 +395,29 @@ namespace Utility
         Add(id, (typename FunctionTraits<L>::f_type)(l));
     }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class AutoCleanup
+    {
+    public:
+        AutoCleanup() {}
+        AutoCleanup(std::function<void()>&& fn) : _fn(std::move(fn)) {}
+        AutoCleanup(AutoCleanup&& moveFrom) : _fn(std::move(moveFrom._fn)) {}
+        AutoCleanup& operator=(AutoCleanup&& moveFrom) { _fn = std::move(moveFrom._fn); return *this; }
+        ~AutoCleanup() { if (_fn) (_fn)(); }
+    protected:
+        std::function<void()> _fn;
+
+        AutoCleanup(const AutoCleanup& ) = delete;
+        AutoCleanup& operator=(const AutoCleanup& ) = delete;
+    };
+        
+    template<typename Fn>
+        auto MakeAutoCleanup(Fn&& fn) -> AutoCleanup
+        {
+            return AutoCleanup(MakeFunction(fn));
+        }
+
 }
 
 using namespace Utility;

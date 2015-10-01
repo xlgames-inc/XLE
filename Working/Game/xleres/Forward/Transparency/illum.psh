@@ -4,12 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../../MainGeometry.h"
-#include "../../CommonResources.h"
-#include "../../Surface.h"
-#include "../../Colour.h"
-#include "../../Utility/perlinnoise.h"
-#include "../../Lighting/LightingAlgorithm.h"
+#include "../illum.psh"
 
 struct FragmentListNode
 {
@@ -31,7 +26,7 @@ uint FragmentListNode_PackColor(float4 color)
 RWTexture2D<uint>						FragmentIds : register(u1);
 RWStructuredBuffer<FragmentListNode>	NodesList	: register(u2);
 
-Texture2D<float>						DuplicateOfDepthBuffer : register(t11);
+Texture2D<float>						DuplicateOfDepthBuffer : register(t17);
 
 void OutputFragmentNode(uint2 position, float4 color, float depth)
 {
@@ -54,150 +49,64 @@ void OutputFragmentNode(uint2 position, float4 color, float depth)
 	NodesList[newNodeId] = newNode;
 }
 
-static const float SqrtHalf = 0.70710678f;
-static const float3 NegativeLightDirection = float3(SqrtHalf, 0.f, SqrtHalf);
-
-// float Square(float x) { return x*x; }
-
-// float SchlickFresnel(float3 viewDirection, float3 halfVector, float refractiveIndex)
-// {
-// 		// (note -- the 1.f here assumes one side of the interface is air)
-// 	float f0 = Square((1.f - refractiveIndex) / (1.f + refractiveIndex));
-//
-// 	float A = 1.0f - saturate(dot(viewDirection, halfVector));
-// 	float sq = A*A;
-// 	float cb = sq*sq;
-// 	float q = cb*A;
-//
-// 	return f0 + (1.f - f0) * q;	// (note, use lerp for this..?)
-// }
-
-float FresnelForReflection_Local(VSOutput geo, float refractiveIndex)
-{
-	float3 localSpaceNormal = normalize(geo.localNormal);
-	float3 localViewDirection = normalize(geo.localViewVector);
-	float3 localSpaceReflection = reflect(-localViewDirection, localSpaceNormal);
-
-	// float3 halfVector = normalize(NegativeLightDirection + localViewDirection);
-	float3 halfVector = normalize(localSpaceReflection + localViewDirection);
-	return SchlickFresnel(localViewDirection, halfVector, refractiveIndex);
-}
-
-float FresnelForReflection_World(VSOutput geo, float refractiveIndex)
-{
-	float3 worldSpaceNormal = GetNormal(geo);
-	float3 worldViewDirection = normalize(geo.worldViewVector);
-	float3 worldSpaceReflection = reflect(-worldViewDirection, worldSpaceNormal);
-
-	float3 halfVector = normalize(worldSpaceReflection + worldViewDirection);
-	return SchlickFresnel(worldViewDirection, halfVector, refractiveIndex);
-}
-
-// Texture2D ReflectionBox12	: register(t8);
-// Texture2D ReflectionBox34	: register(t9);
-// Texture2D ReflectionBox5	: register(t10);
-
-Texture2D SkyReflectionTexture[3] : register(t7);
-
-void GlassShader(VSOutput geo)
-{
-	float3 worldSpaceNormal = GetNormal(geo);
-	// worldSpaceNormal = normalize(worldSpaceNormal);
-
-	// float noiseValue2 = PerlinNoise3D(45.f * geo.worldPosition);
-	// noiseValue2 = .5 + .5 * noiseValue2;
-	// OutputFragmentNode(uint2(geo.position.xy), float4(1,1,1,noiseValue2), geo.position.z);
-	// return;
-
-	float3 noiseDerivative;
-	float noiseValue = PerlinNoise3DDev(
-		/*45.f * */ 15.f * geo.worldPosition, noiseDerivative);
-	noiseValue = 0.5f + 0.5f * noiseValue;
-	worldSpaceNormal += 0.075f * (noiseDerivative);
-	worldSpaceNormal = normalize(worldSpaceNormal);
-
-	const float refractiveIndex = 1.9f;
-	float d = FresnelForReflection_World(geo, refractiveIndex);
-
-	uint2 reflectionTextureDims;
-	// ReflectionBox12.GetDimensions(reflectionTextureDims.x, reflectionTextureDims.y);
-	SkyReflectionTexture[0].GetDimensions(reflectionTextureDims.x, reflectionTextureDims.y);
-
-	float3 worldViewDirection = normalize(geo.worldViewVector);
-	float3 worldSpaceReflection = reflect(-worldViewDirection, worldSpaceNormal);
-	//float4 reflectionLookup = ReadReflectionHemiBox(
-	//	worldSpaceReflection,
-	//	ReflectionBox12, ReflectionBox34, ReflectionBox5,
-	//	reflectionTextureDims, 4);
-	float2 skyReflectionCoord = HemisphericalMappingCoord(worldSpaceReflection);
-	float4 reflectionLookup = SkyReflectionTexture[0].Load(
-		int3(skyReflectionCoord.xy * float2(reflectionTextureDims.xy), 0));
-
-	// float3 localSpaceNormal = normalize(geo.localNormal);
-	// float3 localViewDirection = normalize(geo.localViewVector);
-	// float3 localSpaceReflection = reflect(-localViewDirection, localSpaceNormal);
-	//
-	// // float3 halfVector = normalize(NegativeLightDirection + localViewDirection);
-	// float3 halfVector = normalize(localSpaceReflection + localViewDirection);
-	// const float refractiveIndex = 1.05f;
-	// float d = SchlickFresnel(localViewDirection, halfVector, refractiveIndex);
-
-	// d = 1.f-abs(dot(localViewDirection,localSpaceNormal));
-	// d = saturate(dot(halfVector, localSpaceNormal));
-
-	// localSpaceReflection = reflect(-localViewDirection, localSpaceNormal);
-	// d = saturate(dot(localSpaceReflection, NegativeLightDirection));
-	// d = pow(d,32.f);
-
-	reflectionLookup.rgb = 5.f * pow(reflectionLookup.rgb, 4.f);
-	reflectionLookup.rgb = lerp(SRGBLuminance(reflectionLookup.rgb).xxx, reflectionLookup.rgb, 0.25f);
-	reflectionLookup.rgb += 8.0.xxx * pow(saturate(dot(worldSpaceReflection, NegativeLightDirection)), 128.f);
-
-	float alpha = 0.5f; // lerp(0.15f, 1.f, d);
-	const float minAlpha =   4.f / 255.f;
-	if (alpha > minAlpha) {
-		// const float3 baseColor = 0.75.xxx;
-		alpha *= reflectionLookup.a;
-		const float3 baseColor = reflectionLookup.rgb;
-		float4 finalColor = float4(baseColor*lerp(0.1f, 1.f, d), alpha);
-
-		// finalColor = float4(0.5f + 0.5f * worldSpaceNormal.xyz, 1);
-		OutputFragmentNode(uint2(geo.position.xy), finalColor, geo.position.z);
-	}
-}
-
-
-
 //#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
 //	[earlydepthstencil]	// (this has a big effect, because otherwise UAV output wouldn't be occluded by depth buffer)
 //#endif
-float4 main(VSOutput geo) : SV_Target
+float4 main_oi(VSOutput geo, SystemInputs sys) : SV_Target
 {
-	#if !(MAT_ALPHA_TEST==1)
-		GlassShader(geo);
+		// Do depth rejection against the depth buffer duplicate early.
+		// This prevents us having to do the lighting calculations (which might
+		// be expensive) on hidden fragments.
+		//
+		// Note -- currently we're using a duplicate of the depth buffer here.
+		//		but, maybe it would be better to unbind the depth buffer completely
+		//		and just use the main depth buffer.
+		//		Or, alternatively, keep the main depth buffer bound and disable
+		//		writing, and use earlydepthstencil.
+		//		But, if we do that we can't write depth information for opaque
+		//		parts... that would only work well if we have a pre-depth
+		//		pass for the fully opaque parts.
+
+	float destinationDepth = DuplicateOfDepthBuffer[uint2(geo.position.xy)];
+	float ndcComparison = geo.position.z; // / geo.position.w;
+	if (ndcComparison >= destinationDepth)
 		discard;
-	#endif
 
-	// DoAlphaTest(geo);
+	DoAlphaTest(geo);
 
-	float4 result = 1.0.xxxx;
-	#if GEO_HAS_TEXCOORD==1
-		result = DiffuseTexture.Sample(MaybeAnisotropicSampler, geo.texCoord);
-	#endif
-	#if OUTPUT_COLOUR==1
-		result *= float4(geo.colour.rgb,1);
-	#endif
+	GBufferValues sample = IllumShader_PerPixel(geo);
 
-		// basic stand-in lighting
-	result.rgb *= .25f + 0.75f * saturate(dot(GetNormal(geo), NegativeDominantLightDirection));
-
-	// result.a *= 0.65f;
-
-	const float minAlpha =   4.f / 255.f;
+	const float minAlpha =   1.f / 255.f;
 	const float maxAlpha = 254.f / 255.f;
-	if (result.a < minAlpha) {
+	if (sample.blendingAlpha < minAlpha) {
 		discard;
 	}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+		// Do the full lighting here --
+		// 	actually, it might be better to do some of the lighting after resolve
+		//	If we do a shadow lookup here (for example), it will mean doing a
+		//	separate shadow lookup on each layer. But we might only really need
+		//	that for the top-most few layers.
+		//	One way to deal with this is to do an early depth pass that would set
+		//	the depth buffer depth for fully opaque parts; or just after a fixed
+		//	number of layers...?
+	float3 directionToEye = 0.0.xxx;
+	#if (OUTPUT_WORLD_VIEW_VECTOR==1)
+		directionToEye = normalize(geo.worldViewVector);
+	#endif
+
+	float4 result = float4(
+		ResolveLitColor(
+			sample, directionToEye, GetWorldPosition(geo),
+			int2(geo.position.xy), GetSampleIndex(sys)), 1.f);
+
+	#if OUTPUT_FOG_COLOR == 1
+		result.rgb = lerp(geo.fogColor.rgb, result.rgb, geo.fogColor.a);
+	#endif
+
+	result.a = sample.blendingAlpha;
+//////////////////////////////////////////////////////////////////////////////////////////////////
 
 		//
 		//	Note -- we have to do a manual depth occlusion step here
@@ -215,23 +124,13 @@ float4 main(VSOutput geo) : SV_Target
 		// InterlockedExchange(FragmentIds[uint2(geo.position.xy)], ~0, oldValue);
 		return float4(LightingScale * result.rgb, result.a);
 	} else {
-
-		float destinationDepth = DuplicateOfDepthBuffer[uint2(geo.position.xy)];
-			// note -- check this -- should this be "geo.position.z / geo.position.w"
-			//			I always forget if the system has already done the perspective divide
-			//			before passing position to the shader
-		if (geo.position.z >= destinationDepth) {
-			discard;
-		}
-
 			//	Multiply in alpha (if we're not using
 			//	a premultiplied texture)
 		#if !MAT_PREMULTIPLIED_ALPHA
 			result.rgb *= result.a;
 		#endif
 
-		float depth = geo.position.z;		// maybe should be "geo.position.z / geo.position.w"
-		OutputFragmentNode(uint2(geo.position.xy), result, depth);
+		OutputFragmentNode(uint2(geo.position.xy), result, ndcComparison);
 		discard;
 		return 0.0.xxxx;
 	}

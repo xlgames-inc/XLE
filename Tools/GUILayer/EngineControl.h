@@ -26,6 +26,7 @@ namespace GUILayer
         void Render();
         void OnPaint(PaintEventArgs^);
         void OnResize(System::EventArgs^ e);
+        bool IsInputKey(Keys keyData);
 
         IWindowRig& GetWindowRig();
 

@@ -19,8 +19,8 @@
 #include "../BasicMaterial.h"
 
 Texture2D<float>	CustomTexture;
-Texture2D<float2>	ScratchMap : register(t17);		// high res procedural scratches
-Texture2D<float>	ScratchOccl : register(t18);
+Texture2D<float2>	ScratchMap : register(t18);		// high res procedural scratches
+Texture2D<float>	ScratchOccl : register(t19);
 
 PerPixelMaterialParam DecodeParametersTexture_RMS(float4 paramTextureSample);
 PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(float4 paramTexSample, float4 diffuseSample);
@@ -34,6 +34,12 @@ PerPixelMaterialParam DefaultMaterialValues();
 GBufferValues IllumShader_PerPixel(VSOutput geo)
 {
     GBufferValues result = GBufferValues_Default();
+
+    //#if (OUTPUT_PER_VERTEX_AO==1)
+    //    result.diffuseAlbedo = geo.ambientOcclusion.xxx;
+    //    result.worldSpaceNormal = GetNormal(geo);
+    //    return result;
+    //#endif
 
     float4 diffuseTextureSample = 1.0.xxxx;
     #if (OUTPUT_TEXCOORD==1) && (RES_HAS_DiffuseTexture!=0)

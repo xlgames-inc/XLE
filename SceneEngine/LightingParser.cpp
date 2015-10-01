@@ -36,6 +36,7 @@
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
+#include "../Utility/FunctionUtils.h"
 
 namespace SceneEngine
 {
@@ -89,8 +90,8 @@ namespace SceneEngine
         context.BindPS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
             // procedural scratch texture for scratches test
-        // context.BindPS(MakeResourceList(17, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchnorm.dds:L").GetShaderResource()));
-        // context.BindPS(MakeResourceList(18, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchocc.dds:L").GetShaderResource()));
+        // context.BindPS(MakeResourceList(18, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchnorm.dds:L").GetShaderResource()));
+        // context.BindPS(MakeResourceList(19, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchocc.dds:L").GetShaderResource()));
     }
 
     void ReturnToSteadyState(DeviceContext* context)
@@ -590,8 +591,13 @@ namespace SceneEngine
                 LightingParser_PostGBuffer(context, parserContext, mainTargets._msaaDepthBufferSRV, mainTargets._gbufferRTVsSRV[1]);
 
                 ReturnToSteadyState(context);
-                if (!parserContext._preparedDMShadows.empty())
+                AutoCleanup bindShadowsCleanup;
+                if (!parserContext._preparedDMShadows.empty()) {
                     BindShadowsForForwardResolve(*context, parserContext, parserContext._preparedDMShadows[0].second);
+                    bindShadowsCleanup = MakeAutoCleanup(
+                        [context, &parserContext]() 
+                        { UnbindShadowsForForwardResolve(*context, parserContext); });
+                }
 
                 SceneParseSettings sceneParseSettings(SceneParseSettings::BatchFilter::Transparent, ~SceneParseSettings::Toggles::BitField(0));
                 
@@ -617,10 +623,9 @@ namespace SceneEngine
                     (*p)->OnPostSceneRender(context, parserContext, sceneParseSettings, TechniqueIndex_General);
                 }
 
+                    // note; we use the main depth buffer for this call (not the duplicated buffer)
                 if (useOrderIndependentTransparency)
-                    OrderIndependentTransparency_Resolve(context, parserContext, duplicatedDepthBuffer);
-
-                context->UnbindPS<Metal::ShaderResourceView>(3,1);   // unbind shadow textures
+                    OrderIndependentTransparency_Resolve(context, parserContext, mainTargets._msaaDepthBufferSRV);
             } 
             CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(context); }
             CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(context); }
