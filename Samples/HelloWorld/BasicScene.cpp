@@ -197,7 +197,7 @@ namespace Sample
             //  Specialised scenes may some specialised algorithm for calculating shadow
             //  cascades.
         if (index >= GetShadowProjectionCount()) {
-            throw Exceptions::BasicLabel("Bad shadow frustum index");
+            throw ::Exceptions::BasicLabel("Bad shadow frustum index");
         }
 
         return PlatformRig::CalculateDefaultShadowCascades(
@@ -321,8 +321,8 @@ namespace Sample
             const unsigned levelOfDetail = 0;
             _modelRenderer = std::unique_ptr<ModelRenderer>(
                 new ModelRenderer(
-                    scaffold, matScaffold, *_sharedStateSet, 
-                    &searchRules, levelOfDetail));
+                    scaffold, matScaffold, ModelRenderer::Supplements(),
+                    *_sharedStateSet, &searchRules, levelOfDetail));
         }
 
             //  Before using SharedStateSet for the first time, we need to capture the device 
