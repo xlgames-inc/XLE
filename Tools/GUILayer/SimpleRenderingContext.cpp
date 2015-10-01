@@ -117,8 +117,7 @@ namespace GUILayer
         const float color[], const float xform[],
         const VertexFormatRecord& vf)
     {
-        TRY
-        {
+        CATCH_ASSETS_BEGIN
             using namespace RenderCore;
             const auto techniqueIndex = 0u;
 
@@ -146,10 +145,7 @@ namespace GUILayer
                     cbLayout.BuildCBDataAsPkt(matConstants)
                 });
             return true;
-        }
-        CATCH (const ::Assets::Exceptions::InvalidAsset&) {}
-        CATCH (const ::Assets::Exceptions::PendingAsset&) {}
-        CATCH_END
+        CATCH_ASSETS_END(parsingContext)
         return false;
     }
 
@@ -341,7 +337,7 @@ namespace GUILayer
             ObjectSet^ highlight, uint64 materialGuid)
         {
             if (highlight == nullptr) {
-                TRY {
+                CATCH_ASSETS_BEGIN
                     auto& metalContext = context->GetDevContext();
                     ToolsRig::BinaryHighlight highlight(metalContext);
                     ToolsRig::Placements_RenderFiltered(
@@ -352,10 +348,7 @@ namespace GUILayer
                     const unsigned overlayCol = 2;
 
                     highlight.FinishWithOutlineAndOverlay(metalContext, highlightCol, overlayCol);
-                }
-                CATCH (const ::Assets::Exceptions::InvalidAsset&) {} 
-                CATCH (const ::Assets::Exceptions::PendingAsset&) {} 
-                CATCH_END
+                CATCH_ASSETS_END(context->GetParsingContext())
 
             } else {
                 if (highlight->IsEmpty()) return;

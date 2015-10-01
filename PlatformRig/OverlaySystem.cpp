@@ -146,12 +146,9 @@ namespace PlatformRig
         SceneEngine::LightingParserContext& parserContext) 
     {
         for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i) {
-            TRY {
+            CATCH_ASSETS_BEGIN
                 (*i)->RenderToScene(device, parserContext);
-            } 
-            CATCH (::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-            CATCH (::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-            CATCH_END
+            CATCH_ASSETS_END(parserContext)
         }
     }
 

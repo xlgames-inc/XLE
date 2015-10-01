@@ -244,7 +244,7 @@ namespace PreviewRender
                 visSettings, VisEnvSettings(), visObject);
 
             if (result) return DrawPreviewResult_Success;
-            if (!parserContext._pendingResources.empty()) return DrawPreviewResult_Pending;
+            if (!parserContext._pendingAssets.empty()) return DrawPreviewResult_Pending;
         } catch (::Assets::Exceptions::InvalidAsset&) { return DrawPreviewResult_Error; }
         catch (::Assets::Exceptions::PendingAsset&) { return DrawPreviewResult_Pending; }
 

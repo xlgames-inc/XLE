@@ -218,8 +218,7 @@ namespace SceneEngine
             // We can also choose to reject backfacing triangles at this point, as well as 
             // removing triangles that are culled from the frustum.
             //
-        TRY
-        {
+        CATCH_ASSETS_BEGIN
             auto savedWorldToProjection = parserContext.GetProjectionDesc()._worldToProjection;
             auto& projDesc = parserContext.GetProjectionDesc();
             projDesc._worldToProjection = frustum._worldToClip;
@@ -232,10 +231,7 @@ namespace SceneEngine
                 shadowFrustumIndex, TechniqueIndex_RTShadowGen);
 
             projDesc._worldToProjection = savedWorldToProjection;
-        }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         metalContext.GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
         Metal::GeometryShader::SetDefaultStreamOutputInitializers(oldSO);
@@ -251,8 +247,7 @@ namespace SceneEngine
             // primitive ids.
             //
             // todo -- also calculate min/max for each grid during this step
-        TRY
-        {
+        CATCH_ASSETS_BEGIN
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/shadowgen/rtwritetiles.sh:vs_passthrough:vs_*",
                 "game/xleres/shadowgen/consraster.sh:gs_conservativeRasterization:gs_*",
@@ -283,10 +278,7 @@ namespace SceneEngine
                 dimof(rtv), dimof(uavs), uavs, initialCounts);
 
             metalContext.GetUnderlying()->DrawAuto();
-        }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         metalContext.Bind(Metal::Topology::TriangleList);
         savedTargets.ResetToOldTargets(&metalContext);
@@ -305,7 +297,7 @@ namespace SceneEngine
     {
         SavedTargets savedTargets(context);
 
-        TRY {
+        CATCH_ASSETS_BEGIN
             context->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
 
             context->BindPS(MakeResourceList(5, mainTargets._gbufferRTVsSRV[0], mainTargets._gbufferRTVsSRV[1], mainTargets._gbufferRTVsSRV[2], mainTargets._msaaDepthBufferSRV));
@@ -344,10 +336,7 @@ namespace SceneEngine
             }
 
             context->Draw(4);
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         savedTargets.ResetToOldTargets(context);
     }

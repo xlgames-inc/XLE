@@ -268,10 +268,11 @@ namespace SceneEngine
         ToneMap_Execute(&context, parserContext, inputHDR, samplingCount);
     }
 
-    void LightingParser_PostGBuffer(    DeviceContext& context, 
-                                        LightingParserContext& parserContext,
-                                        ShaderResourceView& depthsSRV,
-                                        ShaderResourceView& normalsSRV)
+    void LightingParser_PostGBufferEffects(    
+        DeviceContext& context, 
+        LightingParserContext& parserContext,
+        ShaderResourceView& depthsSRV,
+        ShaderResourceView& normalsSRV)
     {
         GPUProfiler::DebugAnnotation anno(context, L"PostGBuffer");
 
@@ -326,7 +327,7 @@ namespace SceneEngine
         }
 
         if (Tweakable("MetricsRender", false) && parserContext.GetMetricsBox()) {
-            TRY {
+            CATCH_ASSETS_BEGIN
 
                 using namespace RenderCore;
                 using namespace RenderCore::Metal;
@@ -351,10 +352,7 @@ namespace SceneEngine
                 context->UnbindPS<ShaderResourceView>(3, 1);
                 context->UnbindVS<ShaderResourceView>(0, 1);
 
-            } 
-            CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-            CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-            CATCH_END
+            CATCH_ASSETS_END(parserContext)
         }
     }
 
@@ -370,7 +368,7 @@ namespace SceneEngine
 
             //  Order independent transparency disabled when
             //  using MSAA modes... Still some problems in related to MSAA buffers
-        const bool useOrderIndependentTransparency = Tweakable("UseOrderIndependentTransparency", false) && (sampleCount <= 1);
+        const bool useOrderIndependentTransparency = Tweakable("UseOITrans", false) && (sampleCount <= 1);
         SceneParseSettings::Toggles::BitField normalRenderToggles = ~SceneParseSettings::Toggles::BitField(0);
         if (useOrderIndependentTransparency) {
                 // Skip non-terrain during normal render (this will be rendered later using OIT mode)
@@ -382,7 +380,7 @@ namespace SceneEngine
             GPUProfiler::DebugAnnotation anno(context, L"MainScene-DepthOnly");
             parserContext.GetSceneParser()->ExecuteScene(
                 &context, parserContext, 
-                SceneParseSettings(SceneParseSettings::BatchFilter::Depth, normalRenderToggles),
+                SceneParseSettings(SceneParseSettings::BatchFilter::PreDepth, normalRenderToggles),
                 TechniqueIndex_DepthOnly);
         }
 
@@ -410,11 +408,12 @@ namespace SceneEngine
             /////
 
         ShaderResourceView duplicatedDepthBuffer;
+        TransparencyTargetsBox* oiTransTargets = nullptr;
         if (useOrderIndependentTransparency) {
             duplicatedDepthBuffer = 
                 BuildDuplicatedDepthBuffer(&context, targetsBox._msaaDepthBufferTexture.get());
                 
-            OrderIndependentTransparency_Prepare(context, parserContext, duplicatedDepthBuffer);
+            oiTransTargets = OrderIndependentTransparency_Prepare(context, parserContext, duplicatedDepthBuffer);
 
                 //
                 //      (render the parts of the scene that we want to use
@@ -428,9 +427,7 @@ namespace SceneEngine
             ReturnToSteadyState(context);
             parserContext.GetSceneParser()->ExecuteScene(
                 &context, parserContext, 
-                SceneParseSettings(
-                    SceneParseSettings::BatchFilter::General, 
-                    SceneParseSettings::Toggles::NonTerrain|SceneParseSettings::Toggles::Opaque|SceneParseSettings::Toggles::Transparent),
+                SceneParseSettings(SceneParseSettings::BatchFilter::OITransparent, ~0u),
                 TechniqueIndex_OrderIndependentTransparency);
         }
 
@@ -452,7 +449,62 @@ namespace SceneEngine
                 //  this a non-MSAA blend over a MSAA buffer; so it might kill the samples information.
                 //  We can try to do this after the MSAA resolve... But we do the luminance sample
                 //  before MSAA resolve, so transluent objects don't contribute to the luminance sampling.
-            OrderIndependentTransparency_Resolve(context, parserContext, duplicatedDepthBuffer); // mainTargets._msaaDepthBufferSRV);
+            OrderIndependentTransparency_Resolve(context, parserContext, *oiTransTargets, duplicatedDepthBuffer); // mainTargets._msaaDepthBufferSRV);
+        }
+    }
+
+    static void LightingParser_DeferredPostGBuffer(
+        Metal::DeviceContext& context, 
+        LightingParserContext& parserContext,
+        MainTargetsBox& mainTargets)
+    {
+        //////////////////////////////////////////////////////////////////////////////////////////////////
+            //  Render translucent objects (etc)
+            //  everything after the gbuffer resolve
+        LightingParser_PostGBufferEffects(
+            context, parserContext, 
+            mainTargets._msaaDepthBufferSRV, mainTargets._gbufferRTVsSRV[1]);
+
+        ReturnToSteadyState(context);
+        AutoCleanup bindShadowsCleanup;
+        if (!parserContext._preparedDMShadows.empty()) {
+            BindShadowsForForwardResolve(context, parserContext, parserContext._preparedDMShadows[0].second);
+            bindShadowsCleanup = MakeAutoCleanup(
+                [&context, &parserContext]() 
+                { UnbindShadowsForForwardResolve(context, parserContext); });
+        }
+
+        using SPS = SceneParseSettings;
+        SPS sps(SPS::BatchFilter::Transparent, ~SPS::Toggles::BitField(0));
+        
+        //////////////////////////////////////////////////////////////////////////////////////////////////
+        {
+            GPUProfiler::DebugAnnotation anno(context, L"MainScene-PostGBuffer");
+            parserContext.GetSceneParser()->ExecuteScene(
+                &context, parserContext, sps, TechniqueIndex_General);
+        }
+
+        const auto enableOrderIndependentTransparency = 
+            Tweakable("UseOITrans", false)
+            && (mainTargets._desc._sampling._sampleCount <= 1);
+        if (enableOrderIndependentTransparency) {
+            GPUProfiler::DebugAnnotation anno(context, L"MainScene-PostGBuffer-OI");
+
+            auto duplicatedDepthBuffer = BuildDuplicatedDepthBuffer(&context, mainTargets._msaaDepthBufferTexture.get());
+            auto* transTargets = OrderIndependentTransparency_Prepare(context, parserContext, duplicatedDepthBuffer);
+
+            parserContext.GetSceneParser()->ExecuteScene(
+                &context, parserContext, 
+                SPS(SPS::BatchFilter::OITransparent, ~SPS::Toggles::BitField(0)),
+                TechniqueIndex_OrderIndependentTransparency);
+
+                // note; we use the main depth buffer for this call (not the duplicated buffer)
+            OrderIndependentTransparency_Resolve(context, parserContext, *transTargets, mainTargets._msaaDepthBufferSRV);
+        }
+
+        //////////////////////////////////////////////////////////////////////////////////////////////////
+        for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p) {
+            (*p)->OnPostSceneRender(&context, parserContext, sps, TechniqueIndex_General);
         }
     }
 
@@ -585,48 +637,8 @@ namespace SceneEngine
             context.Bind(Techniques::CommonResources()._dssReadOnly);
 
             TRY {
-
-                    //  Render translucent objects (etc)
-                    //  everything after the gbuffer resolve
-                LightingParser_PostGBuffer(context, parserContext, mainTargets._msaaDepthBufferSRV, mainTargets._gbufferRTVsSRV[1]);
-
-                ReturnToSteadyState(context);
-                AutoCleanup bindShadowsCleanup;
-                if (!parserContext._preparedDMShadows.empty()) {
-                    BindShadowsForForwardResolve(context, parserContext, parserContext._preparedDMShadows[0].second);
-                    bindShadowsCleanup = MakeAutoCleanup(
-                        [&context, &parserContext]() 
-                        { UnbindShadowsForForwardResolve(context, parserContext); });
-                }
-
-                SceneParseSettings sceneParseSettings(SceneParseSettings::BatchFilter::Transparent, ~SceneParseSettings::Toggles::BitField(0));
-                
-                const auto useOrderIndependentTransparency = Tweakable("UseOrderIndependentTransparency", false) && (sampling._sampleCount <= 1);
-                ShaderResourceView duplicatedDepthBuffer;
-                if (!useOrderIndependentTransparency) {
-                    GPUProfiler::DebugAnnotation anno(context, L"MainScene-PostGBuffer");
-                    parserContext.GetSceneParser()->ExecuteScene(
-                        &context, parserContext, sceneParseSettings, TechniqueIndex_General);
-                } else {
-                    GPUProfiler::DebugAnnotation anno(context, L"MainScene-PostGBuffer-OI");
-
-                    duplicatedDepthBuffer = 
-                        BuildDuplicatedDepthBuffer(&context, mainTargets._msaaDepthBufferTexture.get());
-
-                    OrderIndependentTransparency_Prepare(context, parserContext, duplicatedDepthBuffer);
-
-                    parserContext.GetSceneParser()->ExecuteScene(
-                        &context, parserContext, sceneParseSettings, TechniqueIndex_OrderIndependentTransparency);
-                }
-
-                for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p) {
-                    (*p)->OnPostSceneRender(&context, parserContext, sceneParseSettings, TechniqueIndex_General);
-                }
-
-                    // note; we use the main depth buffer for this call (not the duplicated buffer)
-                if (useOrderIndependentTransparency)
-                    OrderIndependentTransparency_Resolve(context, parserContext, mainTargets._msaaDepthBufferSRV);
-            } 
+                LightingParser_DeferredPostGBuffer(context, parserContext, mainTargets);
+            }
             CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(&context); }
             CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(&context); }
             CATCH_END
@@ -789,8 +801,7 @@ namespace SceneEngine
         using namespace RenderCore::Metal;
         SavedTargets savedTargets(&context);
 
-        TRY
-        {
+        CATCH_ASSETS_BEGIN
             context.Bind(RenderCore::ResourceList<RenderTargetView,0>(), &targetsBox._depthStencilView);
             context.Bind(newViewport[0]);
             context.Bind(resources._rasterizerState);
@@ -817,10 +828,7 @@ namespace SceneEngine
             parserContext.GetProjectionDesc()._worldToProjection = savedWorldToProjection;
    
                 /////////////////////////////////////////////
-        }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         savedTargets.ResetToOldTargets(&context);
         context.Bind(Techniques::CommonResources()._defaultRasterizer);
@@ -877,12 +885,11 @@ namespace SceneEngine
                                     const RenderCore::Techniques::CameraDesc& camera,
                                     const RenderingQualitySettings& qualitySettings)
     {
-        TRY { SetFrameGlobalStates(context); }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_BEGIN
+            SetFrameGlobalStates(context);
+        CATCH_ASSETS_END(parserContext)
 
-        TRY {
+        CATCH_ASSETS_BEGIN
             ReturnToSteadyState(context);
 
             Float4 time(0.f, 0.f, 0.f, 0.f);
@@ -902,10 +909,7 @@ namespace SceneEngine
 
             LightingParser_SetGlobalTransform(
                 context, parserContext, camera, qualitySettings._dimensions);
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
     }
 
     void LightingParser_ExecuteScene(
@@ -921,23 +925,17 @@ namespace SceneEngine
         {
             GPUProfiler::DebugAnnotation anno(*metalContext.get(), L"Prepare");
             for (auto i=parserContext._plugins.cbegin(); i!=parserContext._plugins.cend(); ++i) {
-                TRY {
+                CATCH_ASSETS_BEGIN
                     (*i)->OnPreScenePrepare(metalContext.get(), parserContext);
-                }
-                CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-                CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-                CATCH_END
+                CATCH_ASSETS_END(parserContext)
             }
 
             LightingParser_PrepareShadows(*metalContext.get(), parserContext);
         }
 
-        TRY {
+        CATCH_ASSETS_BEGIN
             LightingParser_MainScene(*metalContext.get(), parserContext, qualitySettings);
-        }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         parserContext.SetSceneParser(nullptr);
     }

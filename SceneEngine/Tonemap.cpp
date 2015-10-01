@@ -546,7 +546,7 @@ namespace SceneEngine
             }
         }
 
-        TRY {
+        CATCH_ASSETS_BEGIN
             context->BindPS(MakeResourceList(inputResource));
             SetupVertexGeneratorShader(context);
             context->Bind(Techniques::CommonResources()._blendOpaque);
@@ -584,9 +584,8 @@ namespace SceneEngine
                                 std::bind(&ToneMapping_DrawDebugging, std::placeholders::_1, std::ref(toneMapRes)));
                         }
 
-                    } 
-                    CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-                    CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
+                    }
+                    CATCH_ASSETS(parserContext)
                     CATCH(...) {
                         // (in this case, we'll fall back to using a copy shader)
                     } CATCH_END
@@ -604,10 +603,7 @@ namespace SceneEngine
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/basic.psh:fake_tonemap:ps_*"));
             }
             context->Draw(4);
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         savedStates.ResetToOldStates(context);
     }

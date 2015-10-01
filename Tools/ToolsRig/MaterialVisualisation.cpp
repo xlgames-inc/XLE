@@ -67,7 +67,7 @@ namespace ToolsRig
                             const SceneEngine::SceneParseSettings& parseSettings,
                             unsigned techniqueIndex) const 
         {
-            if (    parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::Depth
+            if (    parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::PreDepth
                 ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::General) {
 
                     // draw here
@@ -87,8 +87,7 @@ namespace ToolsRig
                     SceneEngine::LightingParserContext& parserContext,
                     unsigned techniqueIndex) const
         {
-            TRY
-            {
+            CATCH_ASSETS_BEGIN
                 if (techniqueIndex!=3)
                     metalContext.Bind(Techniques::CommonResources()._defaultRasterizer);
 
@@ -144,10 +143,7 @@ namespace ToolsRig
                     metalContext.Draw(count);
 
                 }
-            } 
-            CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-            CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-            CATCH_END
+            CATCH_ASSETS_END(parserContext)
         }
 
         void DrawModel(
@@ -367,7 +363,7 @@ namespace ToolsRig
         const VisEnvSettings& envSettings,
         const MaterialVisObject& object)
     {
-        TRY {
+        CATCH_ASSETS_BEGIN
 
                 // if we need to reset the camera, do so now...
             if (settings._pendingCameraAlignToModel) {
@@ -411,10 +407,7 @@ namespace ToolsRig
             }
 
             return true;
-        }
-        CATCH (::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH (::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         return false;
     }

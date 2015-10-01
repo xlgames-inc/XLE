@@ -226,13 +226,10 @@ namespace SceneEngine
             skyTextureProjection = SkyTexture_BindPS(&context, parserContext, parts, 11);
         }
 
-        TRY {
+        CATCH_ASSETS_BEGIN
             context.BindPS(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
             context.BindPS(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
-        }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         context.BindPS(MakeResourceList(9, Metal::ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
 
@@ -267,24 +264,18 @@ namespace SceneEngine
             context.Bind(ResourceList<Metal::RenderTargetView, 0>(), &mainTargets._secondaryDepthBuffer);
             context.BindPS(MakeResourceList(mainTargets._msaaDepthBufferSRV, mainTargets._gbufferRTVsSRV[1]));
             SetupVertexGeneratorShader(&context);
-            TRY {
+            CATCH_ASSETS_BEGIN
                 context.Bind(*resolveRes._perSampleMask);
                 context.Draw(4);
-            } 
-            CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-            CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-            CATCH_END
+            CATCH_ASSETS_END(parserContext)
         }
 
         {
             Metal::GPUProfiler::DebugAnnotation anno(context, L"Prepare");
             for (auto i=parserContext._plugins.cbegin(); i!=parserContext._plugins.cend(); ++i) {
-                TRY {
+                CATCH_ASSETS_BEGIN
                     (*i)->OnLightingResolvePrepare(&context, parserContext, lightingResolveContext);
-                } 
-                CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-                CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-                CATCH_END
+                CATCH_ASSETS_END(parserContext)
             }
         }
 
@@ -322,7 +313,7 @@ namespace SceneEngine
                 //          Also, we should remain in "vertex generator mode" (ie, no bound vertex inputs)
                 //
 
-        TRY {
+        CATCH_ASSETS_BEGIN
             SetupStateForDeferredLightingResolve(context, mainTargets, lightingResTargets, resolveRes, doSampleFrequencyOptimisation);
             auto skyTextureProjection = LightingParser_BindLightResolveResources(context, parserContext);
 
@@ -339,14 +330,11 @@ namespace SceneEngine
 
                     // -------- -------- -------- -------- -------- --------
 
-                TRY {
+                CATCH_ASSETS_BEGIN
                     ResolveLights(context, parserContext, mainTargets, lightingResolveContext);
-                }
-                CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-                CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-                CATCH_END
+                CATCH_ASSETS_END(parserContext)
 
-                TRY {
+                CATCH_ASSETS_BEGIN
                     Metal::GPUProfiler::DebugAnnotation anno(context, L"Ambient");
 
                     auto globalLightDesc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
@@ -381,10 +369,7 @@ namespace SceneEngine
 
                     context.Bind(*ambientResolveShaders._ambientLight);
                     context.Draw(4);
-                }
-                CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-                CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-                CATCH_END
+                CATCH_ASSETS_END(parserContext)
 
                     //-------- do sky --------
                 if (Tweakable("DoSky", true)) {
@@ -412,10 +397,7 @@ namespace SceneEngine
                     // -------- -------- -------- -------- -------- --------
 
             }
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         context.UnbindPS<Metal::ShaderResourceView>(0, 9);
 
@@ -471,7 +453,7 @@ namespace SceneEngine
             auto& i = parserContext.GetSceneParser()->GetLightDesc(l);
             constantBufferPackets[1] = BuildLightConstants(i);
 
-            TRY {
+            CATCH_ASSETS_BEGIN
                 LightingResolveShaders::LightShaderType shaderType;
                 shaderType._projection = 
                     (i._type == LightDesc::Directional) 
@@ -540,10 +522,7 @@ namespace SceneEngine
                     Metal::UniformsStream(constantBufferPackets, prebuiltConstantBuffers, srvs));
                 context.Bind(*shader->_shader);
                 context.Draw(4);
-            } 
-            CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-            CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-            CATCH_END
+            CATCH_ASSETS_END(parserContext)
         }
     }
 

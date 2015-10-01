@@ -25,30 +25,25 @@ namespace SceneEngine
         {
             enum Enum
             {
-                Opaque              = 1<<0, 
-                Transparent         = 1<<1,
-                NonTerrain          = 1<<2,
-                Terrain             = 1<<3,
-                TerrainLayers       = 1<<4
+                NonTerrain  = 1<<0,
+                Terrain     = 1<<1
             };
             typedef unsigned BitField;
         };
 
-        struct BatchFilter
+        enum class BatchFilter
         {
-            enum Enum
-            {
-                General,
-                Depth,
-                Transparent,
-                RayTracedShadows
-            };
+            General,            // general rendering batch
+            PreDepth,           // objects that should get a pre-depth pass
+            Transparent,        // transparent objects (particularly those that require some object based sorting)
+            OITransparent,      // order independent transparent
+            RayTracedShadows    // objects enabled for rendering into ray traced shadows
         };
 
-        BatchFilter::Enum       _batchFilter;
-        Toggles::BitField       _toggles;
+        BatchFilter         _batchFilter;
+        Toggles::BitField   _toggles;
 
-        SceneParseSettings(BatchFilter::Enum batchFilter, Toggles::BitField toggles)
+        SceneParseSettings(BatchFilter batchFilter, Toggles::BitField toggles)
             : _batchFilter(batchFilter), _toggles(toggles) {}
     };
 

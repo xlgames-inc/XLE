@@ -1028,8 +1028,7 @@ namespace RenderCore { namespace Assets
 
         if (Tweakable("SkinnedAsStatic", false)) { preparedAnimation = nullptr; }
 
-        TRY
-        {
+        CATCH_ASSETS_BEGIN
 
                 // skinned and unskinned geometry are almost the same, except for
                 // "BeginGeoCall" / "BeginSkinCall". Never the less, we need to split
@@ -1113,10 +1112,7 @@ namespace RenderCore { namespace Assets
                 devContext.DrawIndexed(d._indexCount, d._firstIndex, d._firstVertex);
             }
 
-        } 
-        CATCH(::Assets::Exceptions::InvalidAsset& e) { context._parserContext->Process(e); }
-        CATCH(::Assets::Exceptions::PendingAsset& e) { context._parserContext->Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(*context._parserContext)
     }
 
 ////////////////////////////////////////////////////////////////////////////////

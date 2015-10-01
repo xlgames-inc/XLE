@@ -133,8 +133,7 @@ namespace SceneEngine
                 context->DrawIndexed(pimpl->_indexCount);
             }
         }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
+        CATCH_ASSETS(parserContext)
         CATCH(...) {} 
         CATCH_END
     }
@@ -150,7 +149,7 @@ namespace SceneEngine
             //  through the volume, and use that to occlude and bounce 
             //  light.
 
-        TRY {
+        CATCH_ASSETS_BEGIN
             context->BindPS(MakeResourceList(
                 targets._fragmentIdsTextureSRV, 
                 targets._nodeListBufferSRV, duplicatedDepthBuffer));
@@ -166,10 +165,7 @@ namespace SceneEngine
             SetupVertexGeneratorShader(context);
             context->Draw(4);
             context->UnbindPS<RenderCore::Metal::ShaderResourceView>(0, 3);
-        }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
     }
 
     static void RenderMainSceneViaOIT(
@@ -231,8 +227,7 @@ namespace SceneEngine
 
             prevTargets.ResetToOldTargets(context);        // (rebind the depth buffer)
         }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
+        CATCH_ASSETS(parserContext)
         CATCH(...) {} 
         CATCH_END
     }
@@ -360,8 +355,7 @@ namespace SceneEngine
                 context->DrawIndexed(unsigned(ibDataCount));
             }
         }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
+        CATCH_ASSETS(parserContext)
         CATCH(...) {} 
         CATCH_END
     }

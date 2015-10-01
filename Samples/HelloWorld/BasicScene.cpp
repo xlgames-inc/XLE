@@ -67,7 +67,7 @@ namespace Sample
             //  enabling and disabling certain types of geometry. The scene parser
             //  should be careful to check the flags and only render the correct geometry.
         if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::Depth) {
+            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth) {
 
                 //  Our scene is just a single model. So it's really simple here.
                 //

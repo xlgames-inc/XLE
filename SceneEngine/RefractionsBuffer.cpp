@@ -69,7 +69,8 @@ namespace SceneEngine
         LightingParserContext& parserContext, 
         float standardDeviationForBlur)
     {
-        TRY {
+        CATCH_ASSETS_BEGIN
+
                 // Build a refractions texture
             SavedTargets oldTargets(&metalContext);
             ViewportDesc newViewport(0, 0, float(_width), float(_height), 0.f, 1.f);
@@ -124,10 +125,8 @@ namespace SceneEngine
                         
             metalContext.UnbindPS<ShaderResourceView>(0, 1);
             oldTargets.ResetToOldTargets(&metalContext);
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        
+        CATCH_ASSETS_END(parserContext)
     }
 
     static NativeFormat::Enum AsResolvableFormat(NativeFormat::Enum format)

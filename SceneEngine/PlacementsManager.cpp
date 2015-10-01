@@ -475,16 +475,12 @@ namespace SceneEngine
         unsigned techniqueIndex)
     {
             // we can commit the opaque-render part now...
-        TRY
-        {
+        CATCH_ASSETS_BEGIN
             ModelRenderer::Sort(_preparedRenders);
             ModelRenderer::RenderPrepared(
                 RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
                 _cache->GetSharedStateSet(), _preparedRenders, RenderCore::Assets::DelayStep::OpaqueRender);
-        }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
         _cache->GetSharedStateSet().ReleaseState(context);
     }
 
@@ -495,15 +491,11 @@ namespace SceneEngine
     {
             // draw the translucent parts of models that were previously prepared
         _cache->GetSharedStateSet().CaptureState(context);
-        TRY
-        {
+        CATCH_ASSETS_BEGIN
             ModelRenderer::RenderPrepared(
                 RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
                 _cache->GetSharedStateSet(), _preparedRenders, delayStep);
-        }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
         _cache->GetSharedStateSet().ReleaseState(context);
     }
 
@@ -602,8 +594,7 @@ namespace SceneEngine
                     cell._cellToWorld, filterStart, filterEnd);
             }
         } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
+        CATCH_ASSETS(parserContext)
         CATCH (...) {} 
         CATCH_END
     }
@@ -827,17 +818,13 @@ namespace SceneEngine
     {
         if (!Tweakable("DoPlacements", true)) return;
 
-        TRY 
-        {
+        CATCH_ASSETS_BEGIN
                 // render every registered cell
             _pimpl->_renderer->BeginRender(context);
             for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
                 _pimpl->_renderer->Render(context, parserContext, *i);
             }
-        }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         _pimpl->_renderer->EndRender(context, parserContext, techniqueIndex);
     }
@@ -2016,8 +2003,7 @@ namespace SceneEngine
     {
         _pimpl->_renderer->BeginRender(context);
 
-        TRY
-        {
+        CATCH_ASSETS_BEGIN
                 //  We need to take a copy, so we don't overwrite
                 //  and reorder the caller's version.
             if (begin || end) {
@@ -2056,10 +2042,7 @@ namespace SceneEngine
             if (predicate) {
                 _pimpl->_renderer->FilterDrawCalls(predicate);
             }
-        }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         _pimpl->_renderer->EndRender(context, parserContext, techniqueIndex);
 

@@ -79,15 +79,12 @@ namespace GUILayer
         unsigned techniqueIndex) const
     {
         if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::Depth) {
+            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth) {
 
 			if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && _editorScene->_terrainManager) {
-				TRY {
+				CATCH_ASSETS_BEGIN
                     _editorScene->_terrainManager->Render(metalContext, parserContext, techniqueIndex);
-                }
-                CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-                CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-                CATCH_END
+                CATCH_ASSETS_END(parserContext)
 			}
 
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
@@ -101,7 +98,8 @@ namespace GUILayer
             _editorScene->_placementsManager->RenderTransparent(metalContext, parserContext, techniqueIndex);
 
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
-                TRY {
+                CATCH_ASSETS_BEGIN
+
                     _editorScene->_placeholders->Render(*metalContext, parserContext, techniqueIndex);
 
                     std::shared_ptr<ISurfaceHeightsProvider> surfaceHeights;
@@ -109,10 +107,8 @@ namespace GUILayer
                         surfaceHeights = _editorScene->_terrainManager->GetHeightsProvider();
                     _editorScene->_shallowSurfaceManager->RenderDebugging(
                         *metalContext, parserContext, techniqueIndex, surfaceHeights.get());
-                }
-                CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-                CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-                CATCH_END
+
+                CATCH_ASSETS_END(parserContext)
             }
         }
     }

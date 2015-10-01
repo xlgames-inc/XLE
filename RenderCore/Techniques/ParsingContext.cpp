@@ -28,32 +28,24 @@ namespace RenderCore { namespace Techniques
         }
     }
 
-    void ParsingContext::Process(const ::Assets::Exceptions::InvalidAsset& e)
+    void ParsingContext::Process(const ::Assets::Exceptions::AssetException& e)
     {
-            //  Handle a "invalid resource" exception that 
+            //  Handle a "invalid asset" and "pending asset" exception that 
             //  occurred during rendering. Normally this will just mean
-            //  reporting the invalid resource to the screen.
-        std::string id = e.Initializer();
-        auto i = std::lower_bound(_invalidResources.begin(), _invalidResources.end(), id);
-        if (i == _invalidResources.end() || *i != id) {
-            _invalidResources.insert(i, id);
-        }
-    }
-
-    void ParsingContext::Process(const ::Assets::Exceptions::PendingAsset& e)
-    {
-            //  Handle a "pending resource" exception that 
-            //  occurred during rendering. Normally this will just mean
-            //  reporting the invalid resource to the screen.
-            //  These happen fairly often -- particularly when just starting up, or
+            //  reporting the assert to the screen.
+            //
+            // These happen fairly often -- particularly when just starting up, or
             //  when changing rendering settings.
             //  at the moment, this will result in a bunch of allocations -- that's not
             //  ideal during error processing.
         std::string id = e.Initializer();
-        auto i = std::lower_bound(_pendingResources.begin(), _pendingResources.end(), id);
-        if (i == _pendingResources.end() || *i != id) {
-            _pendingResources.insert(i, id);
-        }
+        std::vector<std::string>* set = &_pendingAssets;
+        if (e.State() == ::Assets::AssetState::Invalid)
+            set = &_invalidAssets;
+
+        auto i = std::lower_bound(set->begin(), set->end(), id);
+        if (i == set->end() || *i != id)
+            set->insert(i, id);
     }
 
     ParsingContext::ParsingContext(const TechniqueContext& techniqueContext)

@@ -18,8 +18,6 @@ namespace RenderCore { namespace Techniques
     class TechniqueInterface;
 }}
 
-namespace Assets { namespace Exceptions { class InvalidAsset; class PendingAsset; } }
-
 namespace SceneEngine
 {
     class MetricsBox;

@@ -428,7 +428,7 @@ namespace SceneEngine
                                                         RenderCore::Metal::ShaderResourceView* gbufferParam,
                                                         RenderCore::Metal::ShaderResourceView* depthsSRV)
     {
-        TRY {
+        CATCH_ASSETS_BEGIN
             char definesBuffer[256];
             sprintf_s(definesBuffer, dimof(definesBuffer), "%sDOWNSAMPLE_SCALE=%i;INTERPOLATE_SAMPLES=%i", 
                 resources._desc._useMsaaSamplers?"MSAA_SAMPLERS=1;":"", resources._desc._downsampleScale, int(resources._desc._interpolateSamples));
@@ -468,10 +468,7 @@ namespace SceneEngine
             context->Draw(4);
 
             context->UnbindPS<ShaderResourceView>(0, 9);
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
     }
 }
 

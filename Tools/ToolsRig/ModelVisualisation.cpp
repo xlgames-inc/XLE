@@ -149,7 +149,7 @@ namespace ToolsRig
                             const SceneEngine::SceneParseSettings& parseSettings,
                             unsigned techniqueIndex) const 
         {
-            if (    parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::Depth
+            if (    parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::PreDepth
                 ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::General
                 ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::RayTracedShadows
                 ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::Transparent) {
@@ -158,7 +158,7 @@ namespace ToolsRig
                     _sharedStateSet->CaptureState(context);
                 }
 
-                TRY {
+                CATCH_ASSETS_BEGIN
                     using namespace RenderCore;
                     Metal::ConstantBuffer drawCallIndexBuffer(nullptr, sizeof(unsigned)*4);
                     context->BindGS(MakeResourceList(drawCallIndexBuffer));
@@ -178,10 +178,7 @@ namespace ToolsRig
 
                             context->DrawIndexed(evnt._indexCount, evnt._firstIndex, evnt._firstVertex);
                         });
-                } 
-                CATCH (const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); } 
-                CATCH (const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); } 
-                CATCH_END
+                CATCH_ASSETS_END(parserContext)
 
                 if (_sharedStateSet) {
                     _sharedStateSet->ReleaseState(context);
@@ -344,8 +341,7 @@ namespace ToolsRig
                 return;
             }
 
-            TRY 
-            {
+            CATCH_ASSETS_BEGIN
                 using namespace RenderCore;
                 auto metalContext = Metal::DeviceContext::Get(*context);
 
@@ -380,16 +376,12 @@ namespace ToolsRig
                 metalContext->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
                 ExecuteHighlightByStencil(*metalContext, depthSrv, settings, _pimpl->_settings->_colourByMaterial==2);
                 savedTargets.ResetToOldTargets(metalContext.get());
-            }
-            CATCH (const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); } 
-            CATCH (const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); } 
-            CATCH_END
+            CATCH_ASSETS_END(parserContext)
         }
 
         if (_pimpl->_settings->_drawWireframe) {
 
-            TRY 
-            {
+            CATCH_ASSETS_BEGIN
                 using namespace RenderCore;
                 auto metalContext = Metal::DeviceContext::Get(*context);
 
@@ -409,17 +401,12 @@ namespace ToolsRig
                 if (model._sharedStateSet) {
                     model._sharedStateSet->ReleaseState(metalContext.get());
                 }
-
-            }
-            CATCH (const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); } 
-            CATCH (const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); } 
-            CATCH_END
+            CATCH_ASSETS_END(parserContext)
         }
 
         if (_pimpl->_settings->_drawNormals) {
 
-            TRY 
-            {
+            CATCH_ASSETS_BEGIN
                 using namespace RenderCore;
                 auto metalContext = Metal::DeviceContext::Get(*context);
 
@@ -439,11 +426,7 @@ namespace ToolsRig
                 if (model._sharedStateSet) {
                     model._sharedStateSet->ReleaseState(metalContext.get());
                 }
-
-            }
-            CATCH (const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); } 
-            CATCH (const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); } 
-            CATCH_END
+            CATCH_ASSETS_END(parserContext)
         }
     }
 

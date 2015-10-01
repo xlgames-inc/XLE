@@ -61,6 +61,7 @@ namespace RenderCore { namespace Assets
             auto marker = compilers.PrepareAsset(
                 ModelScaffold::CompileProcessType, 
                 (const char**)&filename, 1, store);
+            if (!marker) return nullptr;
             return std::make_shared<ModelScaffold>(std::move(marker));
         }
 
@@ -86,6 +87,7 @@ namespace RenderCore { namespace Assets
             auto marker = compilers.PrepareAsset(
                 MaterialScaffold::CompileProcessType, 
                 inits, dimof(inits), store);
+            if (!marker) return nullptr;
             return std::make_shared<MaterialScaffold>(std::move(marker));
         }
     }
@@ -136,7 +138,6 @@ namespace RenderCore { namespace Assets
                 compilerHash, // ConstHash64<'PER_', 'VERT', 'EX_A', 'O'>::Value, 
                 inits, dimof(inits), store);
             if (!marker) return nullptr;
-
             return std::make_shared<ModelSupplementScaffold>(std::move(marker));
         }
     }

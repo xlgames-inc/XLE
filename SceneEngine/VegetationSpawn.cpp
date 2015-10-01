@@ -172,8 +172,7 @@ namespace SceneEngine
         auto oldCamera = parserContext.GetSceneParser()->GetCameraDesc();
         Metal::ViewportDesc viewport(*context);
 
-        TRY 
-        {
+        CATCH_ASSETS_BEGIN
             auto& perlinNoiseRes = Techniques::FindCachedBox2<SceneEngine::PerlinNoiseResources>();
             context->BindGS(RenderCore::MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
             context->BindGS(RenderCore::MakeResourceList(RenderCore::Metal::SamplerState()));
@@ -340,10 +339,7 @@ namespace SceneEngine
 
             res._isPrepared = true;
 
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         if (begunQuery) {
             context->GetUnderlying()->End(begunQuery);

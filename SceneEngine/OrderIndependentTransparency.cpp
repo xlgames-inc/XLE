@@ -86,7 +86,7 @@ namespace SceneEngine
         metalContext.BindPS(MakeResourceList(17, depthBufferDupe));
     }
 
-    void OrderIndependentTransparency_Prepare(
+    TransparencyTargetsBox* OrderIndependentTransparency_Prepare(
         Metal::DeviceContext& metalContext, 
         LightingParserContext&, const Metal::ShaderResourceView& depthBufferDupe)
     {
@@ -122,13 +122,16 @@ namespace SceneEngine
             //      render to an MSAA buffer... We just need to disable the rasterizer
             //      state flag (so that every pixel write is complete coverage)
             //
+
+        return &transparencyTargets;
     }
 
-    void OrderIndependentTransparency_Resolve(  RenderCore::Metal::DeviceContext& metalContext,
-                                                LightingParserContext& parserContext,
-                                                const Metal::ShaderResourceView& originalDepthStencilSRV)
+    void OrderIndependentTransparency_Resolve(  
+        RenderCore::Metal::DeviceContext& metalContext,
+        LightingParserContext& parserContext,
+        TransparencyTargetsBox& transparencyTargets,
+        const Metal::ShaderResourceView& originalDepthStencilSRV)
     {
-        Metal::ViewportDesc mainViewport(metalContext);
         SavedTargets savedTargets(&metalContext);
 
         auto metricsUAV = parserContext.GetMetricsBox()->_metricsBufferUAV.GetUnderlying();
@@ -136,14 +139,9 @@ namespace SceneEngine
             1, savedTargets.GetRenderTargets(), nullptr,
             1, 1, &metricsUAV, nullptr);
 
-        TRY {
-            // auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
-            // if (skyTexture[0]) {
-            //     SkyTexture_BindPS(context, parserContext, skyTexture, 7);
-            // }
-
-            auto& transparencyTargets = Techniques::FindCachedBox<TransparencyTargetsBox>(
-                TransparencyTargetsBox::Desc(unsigned(mainViewport.Width), unsigned(mainViewport.Height), true));
+        CATCH_ASSETS_BEGIN
+            // auto& transparencyTargets = Techniques::FindCachedBox<TransparencyTargetsBox>(
+            //     TransparencyTargetsBox::Desc(unsigned(mainViewport.Width), unsigned(mainViewport.Height), true));
 
             metalContext.BindPS(MakeResourceList(
                 transparencyTargets._fragmentIdsTextureSRV, 
@@ -159,10 +157,7 @@ namespace SceneEngine
             metalContext.Draw(4);
 
             metalContext.UnbindPS<Metal::ShaderResourceView>(0, 3);
-        }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         savedTargets.ResetToOldTargets(&metalContext);
     }

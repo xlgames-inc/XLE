@@ -591,8 +591,7 @@ namespace SceneEngine
         if (Tweakable("ShallowSurfaceWireframe", false))
             techniqueIndex = 8;
 
-        TRY 
-        {
+        CATCH_ASSETS_BEGIN
             for (auto i : _pimpl->_surfaces)
                 i->UpdateSimulation(metalContext, parserContext, surfaceHeights);
 
@@ -630,10 +629,7 @@ namespace SceneEngine
 
                 // unbind refractions
             metalContext.UnbindPS<Metal::ShaderResourceView>(9, 2);
-        }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
     }
 
     ShallowSurfaceManager::ShallowSurfaceManager() 

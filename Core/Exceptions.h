@@ -50,6 +50,7 @@ namespace Exceptions
         BasicLabel(const char format[], va_list args) never_throws;
         BasicLabel(const BasicLabel& copyFrom) never_throws;
         BasicLabel& operator=(const BasicLabel& copyFrom) never_throws;
+        virtual ~BasicLabel();
     protected:
         BasicLabel() never_throws;
         char _buffer[512];
@@ -83,6 +84,8 @@ namespace Exceptions
         memcpy(_buffer, copyFrom._buffer, sizeof(_buffer));
         return *this;
     }
+
+    inline BasicLabel::~BasicLabel() {}
 }
 
 namespace Utility

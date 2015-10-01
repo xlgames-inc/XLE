@@ -763,7 +763,7 @@ namespace SceneEngine
     {
         if (!settings._enable) return;
 
-        TRY {
+        CATCH_ASSETS_BEGIN
 
                 //      We need to take a copy of the back buffer for refractions
                 //      we could blur it here -- but is it better blurred or sharp?
@@ -814,10 +814,7 @@ namespace SceneEngine
 
             ++OceanBufferCounter;
 
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

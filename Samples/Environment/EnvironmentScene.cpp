@@ -142,7 +142,7 @@ namespace Sample
         CPUProfileEvent pEvnt("ExecuteScene", g_cpuProfiler);
 
         if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::Depth) {
+            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth) {
 
             #if defined(ENABLE_TERRAIN)
                 if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain) {

@@ -152,7 +152,7 @@ namespace Sample
         auto& box = RenderCore::Techniques::FindCachedBoxDep2<Test::DualContourTest>(Tweakable("GridDims", 256));
 
         if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::Depth) {
+            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth) {
 
             if (!renderAsCloud)
                 box._renderer->Render(context, parserContext, techniqueIndex);

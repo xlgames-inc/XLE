@@ -19,6 +19,17 @@ namespace Assets
     /// <summary>Exceptions related to rendering</summary>
     namespace Exceptions
     {
+        class AssetException : public ::Exceptions::BasicLabel
+        {
+        public:
+            const ResChar* Initializer() const { return _initializer; }
+            virtual AssetState State() const = 0;
+
+            AssetException(const ResChar initializer[], const char what[]);
+        private:
+            ResChar _initializer[512];
+        };
+
         /// <summaryAn asset can't be loaded</summary>
         /// This exception means a asset failed during loading, and can
         /// never be loaded. It might mean that the resource is corrupted on
@@ -26,15 +37,13 @@ namespace Assets
         /// The most common cause is due to a compile error in a shader. 
         /// If we attempt to use a shader with a compile error, it will throw
         /// a InvalidAsset exception.
-        class InvalidAsset : public ::Exceptions::BasicLabel
+        class InvalidAsset : public AssetException
         {
         public: 
-            const ResChar* Initializer() const { return _initializer; }
             virtual bool CustomReport() const;
+            virtual AssetState State() const;
 
             InvalidAsset(const ResChar initializer[], const char what[]);
-        private:
-            ResChar _initializer[512];
         };
 
         /// <summary>An asset is still being loaded</summary>
@@ -44,15 +53,13 @@ namespace Assets
         /// For example, shader resources can take some time to compile. If we attempt
         /// to use the shader while it's still compiling, we'll get a PendingAsset
         /// exception.
-        class PendingAsset : public ::Exceptions::BasicLabel
+        class PendingAsset : public AssetException
         {
         public: 
-            const ResChar* Initializer() const { return _initializer; }
             virtual bool CustomReport() const;
+            virtual AssetState State() const;
 
             PendingAsset(const ResChar initializer[], const char what[]);
-        private:
-            ResChar _initializer[512];
         };
 
         class FormatError : public ::Exceptions::BasicLabel

@@ -352,30 +352,38 @@ namespace Assets
 
     namespace Exceptions
     {
-        InvalidAsset::InvalidAsset(const char initializer[], const char what[]) 
+        AssetException::AssetException(const ResChar initializer[], const char what[])
         : ::Exceptions::BasicLabel(what) 
         {
             XlCopyString(_initializer, dimof(_initializer), initializer); 
+        }
+
+        InvalidAsset::InvalidAsset(const char initializer[], const char what[]) 
+        : AssetException(initializer, what) 
+        {
         }
 
         bool InvalidAsset::CustomReport() const
         {
-            LogAlwaysError << "Invalid asset: " << _initializer << ". More information:";
-            LogAlwaysError << what();
+            LogAlwaysError 
+                << "Invalid asset: " << Initializer() << ". More information:" 
+                << std::endl << what();
             return true;
         }
 
+        auto InvalidAsset::State() const -> AssetState { return AssetState::Invalid; }
+
         PendingAsset::PendingAsset(const char initializer[], const char what[]) 
-        : ::Exceptions::BasicLabel(what) 
-        {
-            XlCopyString(_initializer, dimof(_initializer), initializer); 
-        }
+        : AssetException(initializer, what) 
+        {}
 
         bool PendingAsset::CustomReport() const
         {
-            LogAlwaysWarning << "Pending asset: " << _initializer;
+            LogAlwaysWarning << "Pending asset: " << Initializer();
             return true;
         }
+
+        auto PendingAsset::State() const -> AssetState { return AssetState::Pending; }
 
         FormatError::FormatError(const char format[], ...) never_throws
         {

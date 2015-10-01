@@ -52,15 +52,12 @@ namespace ToolsRig
         const SceneEngine::PlacementGUID* filterEnd,
         uint64 materialGuid)
     {
-        TRY {
+        CATCH_ASSETS_BEGIN
             auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
             BinaryHighlight highlight(metalContext);
             Placements_RenderFiltered(metalContext, parserContext, editor, filterBegin, filterEnd, materialGuid);
             highlight.FinishWithOutline(metalContext, Float3(.65f, .8f, 1.5f));
-        }
-        CATCH (const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); } 
-        CATCH (const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); } 
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
     }
 
     void RenderCylinderHighlight(
@@ -125,8 +122,7 @@ namespace ToolsRig
             ID3D::ShaderResourceView* srv = nullptr;
             metalContext.GetUnderlying()->PSSetShaderResources(3, 1, &srv);
         } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
+        CATCH_ASSETS(parserContext)
         CATCH(...) {} 
         CATCH_END
 
@@ -197,8 +193,7 @@ namespace ToolsRig
             ID3D::ShaderResourceView* srv = nullptr;
             metalContext.GetUnderlying()->PSSetShaderResources(3, 1, &srv);
         } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
+        CATCH_ASSETS(parserContext)
         CATCH(...) {} 
         CATCH_END
 

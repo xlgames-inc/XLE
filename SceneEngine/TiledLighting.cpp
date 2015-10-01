@@ -135,7 +135,7 @@ namespace SceneEngine
         LightingParserContext& lightingParserContext,
         TileLightingResources& tileLightingResources)
     {
-        TRY {
+        CATCH_ASSETS_BEGIN
             context->BindPS(MakeResourceList(tileLightingResources._lightOutputTextureSRV));
             context->BindPS(MakeResourceList(1, tileLightingResources._debuggingTextureSRV[0], tileLightingResources._debuggingTextureSRV[1], tileLightingResources._debuggingTextureSRV[2]));
             context->BindPS(MakeResourceList(4, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/digits.dds:T").GetShaderResource()));
@@ -147,10 +147,7 @@ namespace SceneEngine
             SetupVertexGeneratorShader(context);
             context->Draw(4);
             context->UnbindPS<ShaderResourceView>(0, 4);
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { lightingParserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { lightingParserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(lightingParserContext)
     }
 
     RenderCore::Metal::ShaderResourceView TiledLighting_CalculateLighting(
@@ -167,7 +164,7 @@ namespace SceneEngine
         const bool pause                            = Tweakable("Pause", false);
 
         if (doTiledRenderingTest && !tiledBeams) {
-            TRY {
+            CATCH_ASSETS_BEGIN
                 TextureDesc2D tDesc(depthsSRV.GetUnderlying());
                 unsigned width = tDesc.Width, height = tDesc.Height, sampleCount = tDesc.SampleDesc.Count;
 
@@ -317,10 +314,7 @@ namespace SceneEngine
                 }
 
                 return tileLightingResources._lightOutputTextureSRV;
-            } 
-            CATCH(const ::Assets::Exceptions::InvalidAsset& e) { lightingParserContext.Process(e); }
-            CATCH(const ::Assets::Exceptions::PendingAsset& e) { lightingParserContext.Process(e); }
-            CATCH_END
+            CATCH_ASSETS_END(lightingParserContext)
         }
 
         return ShaderResourceView();
@@ -339,7 +333,7 @@ namespace SceneEngine
     {
         static bool lastActive = false;
         if (active) {
-            TRY {
+            CATCH_ASSETS_BEGIN
                 static Metal::ConstantBuffer savedGlobalTransform;
                 if (lastActive != active) {
                     if (!lightingParserContext.GetGlobalTransformCB().GetUnderlying()) {
@@ -407,10 +401,7 @@ namespace SceneEngine
                 }
 
                 context->UnbindVS<ShaderResourceView>(0, 2);
-            } 
-            CATCH(const ::Assets::Exceptions::InvalidAsset& e) { lightingParserContext.Process(e); }
-            CATCH(const ::Assets::Exceptions::PendingAsset& e) { lightingParserContext.Process(e); }
-            CATCH_END
+            CATCH_ASSETS_END(lightingParserContext)
         }
 
         lastActive = active;

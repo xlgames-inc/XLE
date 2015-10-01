@@ -48,7 +48,7 @@ namespace Sample
         using Toggles = SceneEngine::SceneParseSettings::Toggles;
 
         if (    parseSettings._batchFilter == BatchFilter::General
-            ||  parseSettings._batchFilter == BatchFilter::Depth) {
+            ||  parseSettings._batchFilter == BatchFilter::PreDepth) {
 
             if (parseSettings._toggles & Toggles::NonTerrain) {
                 _vegetationSpawnManager->Render(context, parserContext, techniqueIndex);

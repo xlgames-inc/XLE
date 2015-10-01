@@ -551,7 +551,7 @@ namespace SceneEngine
         if (!_pimpl->_gpucache[0])
             return;
 
-        TRY {
+        CATCH_ASSETS_BEGIN
             using namespace RenderCore;
             Metal::ShaderResourceView  gpuCacheSRV(_pimpl->_gpucache[0]->GetUnderlying());
             context->BindPS(MakeResourceList(5, gpuCacheSRV));
@@ -563,10 +563,7 @@ namespace SceneEngine
             context->Bind(Techniques::CommonResources()._blendStraightAlpha);
             SetupVertexGeneratorShader(context);
             context->Draw(4);
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         context->UnbindPS<RenderCore::Metal::ShaderResourceView>(5, 1);
     }

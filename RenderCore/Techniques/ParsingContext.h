@@ -10,13 +10,26 @@
 #include "../Metal/Forward.h"
 #include "../Metal/Buffer.h"
 #include "../../Utility/MemoryUtils.h"
+#include <vector>
+#include <memory>
 
-namespace Assets { namespace Exceptions { class InvalidAsset; class PendingAsset; }}
+namespace Assets { namespace Exceptions { class AssetException; }}
 
 namespace RenderCore { namespace Techniques 
 {
     class TechniqueContext;
     
+    /// <summary>Manages critical shader state</summary>
+    /// Certain system variables are bound to the shaders, and managed by higher
+    /// level code. The simpliest example is the global transform; but there are
+    /// other global resources required by many shaders.
+    ///
+    /// Technique selection also involves some state information -- called the
+    /// run-time technique state and the global technique state.
+    ///
+    /// This context object manages this kind of global state information.
+    /// It also captures error information (such as invalid assets), which can
+    /// be reported to the user after parsing.
     class ParsingContext
     {
     public:
@@ -35,10 +48,9 @@ namespace RenderCore { namespace Techniques
 
             //  ----------------- Exception reporting ----------------- 
         std::string                 _errorString;
-        std::vector<std::string>    _pendingResources;
-        std::vector<std::string>    _invalidResources;
-        void                        Process(const ::Assets::Exceptions::InvalidAsset& e);
-        void                        Process(const ::Assets::Exceptions::PendingAsset& e);
+        std::vector<std::string>    _pendingAssets;
+        std::vector<std::string>    _invalidAssets;
+        void Process(const ::Assets::Exceptions::AssetException& e);
 
         ParsingContext(const TechniqueContext& techniqueContext);
         ~ParsingContext();
@@ -50,11 +62,38 @@ namespace RenderCore { namespace Techniques
         Metal::ConstantBuffer   _globalCBs[6];
 
         std::unique_ptr<TechniqueContext>   _techniqueContext;
-        std::unique_ptr<ProjectionDesc, AlignedDeletor<ProjectionDesc>> _projectionDesc;
+        AlignedUniquePtr<ProjectionDesc>    _projectionDesc;
 
         std::unique_ptr<Metal::UniformsStream>      _globalUniformsStream;
         std::vector<const Metal::ConstantBuffer*>   _globalUniformsConstantBuffers;
     };
+
+    /// <summary>Utility macros for catching asset exceptions</summary>
+    /// Invalid and pending assets are common exceptions during rendering.
+    /// This macros assist in creating firewalls for these exceptions
+    /// (by passing them along to a ParsingContext to be recorded).
+    /// 
+    /// <example>
+    ///     <code>\code
+    ///     CATCH_ASSETS_BEGIN
+    ///         DoRenderOperation(parserContext);
+    ///     CATCH_ASSETS_END(parserContext)
+    ///
+    ///     // or:
+    ///     TRY { DoRenderOperation(parserContext); } 
+    ///     CATCH_ASSETS(parserContext)
+    ///     CATCH (...) { HandleOtherException(); }
+    ///     CATCH_END
+    ///     \endcode</code>
+    /// </example>
+    /// @{
+    #define CATCH_ASSETS(parserContext)                                                             \
+        CATCH(const ::Assets::Exceptions::AssetException& e) { (parserContext).Process(e); }        \
+        /**/
+
+    #define CATCH_ASSETS_BEGIN TRY {
+    #define CATCH_ASSETS_END(parserContext) } CATCH_ASSETS(parserContext) CATCH_END
+    /// @}
 
 }}
 

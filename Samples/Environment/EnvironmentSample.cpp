@@ -332,7 +332,7 @@ namespace Sample
             overlaySys->RenderWidgets(&context, lightingParserContext.GetProjectionDesc());
         }
 
-        return PlatformRig::FrameRig::RenderResult(!lightingParserContext._pendingResources.empty());
+        return PlatformRig::FrameRig::RenderResult(!lightingParserContext._pendingAssets.empty());
     }
 }
 
