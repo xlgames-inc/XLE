@@ -327,7 +327,7 @@ float3 GetVertexNormal(VSOutput geo)
 
 void DoAlphaTest(VSOutput geo)
 {
-	#if (OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1)
+	#if (OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1))
         AlphaTestAlgorithm(DiffuseTexture, DefaultSampler, geo.texCoord, AlphaThreshold);
 	#endif
 }

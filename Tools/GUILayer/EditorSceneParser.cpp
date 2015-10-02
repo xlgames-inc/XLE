@@ -25,6 +25,7 @@
 #include "../../SceneEngine/VegetationSpawn.h"
 #include "../../SceneEngine/VolumetricFog.h"
 #include "../../SceneEngine/ShallowSurface.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
 
 #include "../../RenderCore/IThreadContext.h"
 #include "../../Utility/StringUtils.h"
@@ -48,6 +49,7 @@ namespace GUILayer
             LightingParserContext& parserContext, 
             const SceneParseSettings& parseSettings,
             unsigned techniqueIndex) const;
+        bool HasContent(const SceneParseSettings& parseSettings) const;
 
         float GetTimeValue() const;
         void PrepareEnvironmentalSettings(const char envSettings[]);
@@ -91,25 +93,47 @@ namespace GUILayer
         }
 
         if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
+            CATCH_ASSETS_BEGIN
+                auto delaySteps = SceneEngine::AsDelaySteps(batchFilter);
+                for (auto i:delaySteps)
+                    if (batchFilter == BF::Transparent || batchFilter == BF::TransparentPreDepth || batchFilter == BF::OITransparent) {
+                        scene._placementsManager->RenderTransparent(metalContext, parserContext, techniqueIndex, i);
+                    } else {
+                        scene._placementsManager->Render(metalContext, parserContext, techniqueIndex);
+                    }
+            CATCH_ASSETS_END(parserContext)
+
             if (batchFilter == BF::General || batchFilter == BF::PreDepth || batchFilter == BF::DMShadows) {
                 CATCH_ASSETS_BEGIN
-                    scene._placementsManager->Render(metalContext, parserContext, techniqueIndex);
                     scene._vegetationSpawnManager->Render(metalContext, parserContext, techniqueIndex);
-
-                    if (batchFilter == BF::DMShadows)
-                        scene._placementsManager->RenderTransparent(metalContext, parserContext, techniqueIndex);
                 CATCH_ASSETS_END(parserContext)
             }
         
-            if (batchFilter == BF::Transparent || batchFilter == BF::TransparentPreDepth) {
+            if (batchFilter == BF::Transparent) {
                 CATCH_ASSETS_BEGIN
-                    scene._placementsManager->RenderTransparent(metalContext, parserContext, techniqueIndex);
                     scene._placeholders->Render(*metalContext, parserContext, techniqueIndex);
                     scene._shallowSurfaceManager->RenderDebugging(
                         *metalContext, parserContext, techniqueIndex, GetSurfaceHeights(*_editorScene));
                 CATCH_ASSETS_END(parserContext)
             }
         }
+    }
+
+    bool EditorSceneParser::HasContent(const SceneParseSettings& parseSettings) const
+    {
+        using BF = SceneParseSettings::BatchFilter;
+        auto batchFilter = parseSettings._batchFilter;
+        if (batchFilter == BF::Transparent || batchFilter == BF::TransparentPreDepth || batchFilter == BF::OITransparent) {
+            if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
+                auto delaySteps = SceneEngine::AsDelaySteps(batchFilter);
+                for (auto i:delaySteps)
+                    if (_editorScene->_placementsManager->HasPrepared(i))
+                        return true;
+            }
+            return false;
+        }
+     
+        return true;
     }
 
     float EditorSceneParser::GetTimeValue() const { return _editorScene->_currentTime; }

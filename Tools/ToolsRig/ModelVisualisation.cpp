@@ -109,14 +109,6 @@ namespace ToolsRig
             model.Prepare(dest, sharedStateSet, Identity<Float4x4>());
         }
     }
-
-    static bool IsTransparentBatch(SceneEngine::SceneParseSettings::BatchFilter filter)
-    {
-        using BF = SceneEngine::SceneParseSettings::BatchFilter;
-        return filter == BF::Transparent 
-            || filter == BF::OITransparent 
-            || filter == BF::TransparentPreDepth;
-    }
     
     class ModelSceneParser : public VisSceneParser
     {
@@ -126,30 +118,22 @@ namespace ToolsRig
                             const SceneEngine::SceneParseSettings& parseSettings,
                             unsigned techniqueIndex) const 
         {
-            using BF = SceneEngine::SceneParseSettings::BatchFilter;
-            if (    parseSettings._batchFilter == BF::PreDepth
-                ||  parseSettings._batchFilter == BF::General
-                ||  parseSettings._batchFilter == BF::DMShadows
-                ||  parseSettings._batchFilter == BF::RayTracedShadows
-                ||  parseSettings._batchFilter == BF::Transparent
-                ||  parseSettings._batchFilter == BF::OITransparent) {
+            auto delaySteps = SceneEngine::AsDelaySteps(parseSettings._batchFilter);
+            if (delaySteps.empty()) return;
 
-                RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
-                if (_sharedStateSet) {
-                    captureMarker = _sharedStateSet->CaptureState(*context);
-                }
+            RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
+            if (_sharedStateSet)
+                captureMarker = _sharedStateSet->CaptureState(*context);
 
-                using namespace RenderCore;
-                Metal::ConstantBuffer drawCallIndexBuffer(nullptr, sizeof(unsigned)*4);
-                context->BindGS(MakeResourceList(drawCallIndexBuffer));
-                auto& dss = Techniques::CommonResources()._dssReadWriteWriteStencil;
+            using namespace RenderCore;
+            Metal::ConstantBuffer drawCallIndexBuffer(nullptr, sizeof(unsigned)*4);
+            context->BindGS(MakeResourceList(drawCallIndexBuffer));
+            auto& dss = Techniques::CommonResources()._dssReadWriteWriteStencil;
 
+            for (auto i:delaySteps)
                 ModelRenderer::RenderPrepared(
                     RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
-                    *_sharedStateSet, _delayedDrawCalls,
-                    IsTransparentBatch(parseSettings._batchFilter)
-                        ? RenderCore::Assets::DelayStep::PostDeferred
-                        : RenderCore::Assets::DelayStep::OpaqueRender,
+                    *_sharedStateSet, _delayedDrawCalls, i,
                     [context, &drawCallIndexBuffer, &dss](ModelRenderer::DrawCallEvent evnt)
                     {
                         context->Bind(dss, 1+evnt._drawCallIndex);  // write stencil buffer with draw index
@@ -158,7 +142,16 @@ namespace ToolsRig
 
                         context->DrawIndexed(evnt._indexCount, evnt._firstIndex, evnt._firstVertex);
                     });
-            }
+        }
+
+        bool HasContent(const SceneEngine::SceneParseSettings& parseSettings) const
+        {
+            auto delaySteps = AsDelaySteps(parseSettings._batchFilter);
+            if (delaySteps.empty()) return false;
+            for (auto i:delaySteps)
+                if (!_delayedDrawCalls.IsEmpty(i))
+                    return true;
+            return false;
         }
 
         ModelSceneParser(
@@ -166,10 +159,10 @@ namespace ToolsRig
             const VisEnvSettings& envSettings,
             ModelRenderer& model, const std::pair<Float3, Float3>& boundingBox, SharedStateSet& sharedStateSet,
             const ModelScaffold* modelScaffold = nullptr)
-            : VisSceneParser(settings._camera, envSettings)
-            , _model(&model), _boundingBox(boundingBox), _sharedStateSet(&sharedStateSet)
-            , _settings(&settings), _modelScaffold(modelScaffold) 
-            , _delayedDrawCalls(typeid(ModelRenderer).hash_code())
+        : VisSceneParser(settings._camera, envSettings)
+        , _model(&model), _boundingBox(boundingBox), _sharedStateSet(&sharedStateSet)
+        , _settings(&settings), _modelScaffold(modelScaffold) 
+        , _delayedDrawCalls(typeid(ModelRenderer).hash_code())
         {
             PrepareWithEmbeddedSkeleton(
                 _delayedDrawCalls, *_model,

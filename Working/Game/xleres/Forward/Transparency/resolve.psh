@@ -10,7 +10,7 @@
 #include "../../Utility/Metrics.h"
 #include "../../Colour.h"
 
-#define LIMIT_LAYER_COUNT 1
+#define LIMIT_LAYER_COUNT 0
 
 struct FragmentListNode
 {

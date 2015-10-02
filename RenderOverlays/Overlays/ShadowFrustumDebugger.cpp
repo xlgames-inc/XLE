@@ -42,16 +42,16 @@ namespace Overlays
         const ShaderProgram*  _shader;
         BoundUniforms   _uniforms;
         
-        const std::shared_ptr<Assets::DependencyValidation>& GetDependencyValidation() const   { return _depVal; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _depVal; }
         SFDResources(const Desc&);
         ~SFDResources();
     protected:
-        std::shared_ptr<Assets::DependencyValidation> _depVal;
+        std::shared_ptr<::Assets::DependencyValidation> _depVal;
     };
 
     SFDResources::SFDResources(const Desc& desc)
     {
-        _shader = &Assets::GetAssetDep<ShaderProgram>(
+        _shader = &::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*",
             "game/xleres/deferred/debugging/cascadevis.psh:main:ps_*",
             (const ::Assets::ResChar*)(StringMeld<128, ::Assets::ResChar>() << "SHADOW_CASCADE_MODE=" << desc._cascadeMode));
@@ -63,7 +63,7 @@ namespace Overlays
         _uniforms.BindConstantBuffer(Hash64("ScreenToShadowProjection"), 2, 1);
         _uniforms.BindShaderResource(Hash64("DepthTexture"), 0, 1);
         
-        _depVal = std::make_shared<Assets::DependencyValidation>();
+        _depVal = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(_depVal, _shader->GetDependencyValidation());
     }
 

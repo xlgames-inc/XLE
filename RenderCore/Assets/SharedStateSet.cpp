@@ -246,8 +246,8 @@ namespace RenderCore { namespace Assets
             CompiledRenderStateSet result;
             if (techniqueIndex == 2) {
                 bool deferredDecal = 
-                    (states._flag & RenderStateSet::Flag::DeferredBlend)
-                    && (states._deferredBlend == RenderStateSet::DeferredBlend::Decal);
+                       (states._flag & RenderStateSet::Flag::BlendType)
+                    && (states._blendType == RenderStateSet::BlendType::DeferredDecal);
 
                 if (deferredDecal) {
                     result._blendState = Metal::BlendState(

@@ -62,6 +62,7 @@ namespace SceneEngine
             LightingParserContext& parserContext, 
             const SceneParseSettings& parseSettings,
             unsigned techniqueIndex) const = 0;
+        virtual bool HasContent(const SceneParseSettings& parseSettings) const = 0;
 
         using ProjectionDesc    = RenderCore::Techniques::ProjectionDesc;
         using ShadowProjIndex   = unsigned;

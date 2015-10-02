@@ -572,8 +572,8 @@ namespace GUILayer
         auto dst = stateSet._forwardBlendDst;
 
         if (!(stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::ForwardBlend)) {
-            if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::DeferredBlend) {
-                if (stateSet._deferredBlend == RenderCore::Assets::RenderStateSet::DeferredBlend::Decal)
+            if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::BlendType) {
+                if (stateSet._blendType == RenderCore::Assets::RenderStateSet::BlendType::DeferredDecal)
                     return StandardBlendModes::Decal;
                 return StandardBlendModes::NoBlending;
             }
@@ -582,8 +582,8 @@ namespace GUILayer
         }
 
         if (op == BlendOp::NoBlending) {
-            if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::DeferredBlend)
-                if (stateSet._deferredBlend == RenderCore::Assets::RenderStateSet::DeferredBlend::Decal)
+            if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::BlendType)
+                if (stateSet._blendType == RenderCore::Assets::RenderStateSet::BlendType::DeferredDecal)
                     return StandardBlendModes::Decal;
             return StandardBlendModes::NoBlending;
         }
@@ -614,9 +614,9 @@ namespace GUILayer
             stateSet._forwardBlendOp = BlendOp::NoBlending;
             stateSet._forwardBlendSrc = One;
             stateSet._forwardBlendDst = RenderCore::Metal::Blend::Zero;
-            stateSet._deferredBlend = RenderCore::Assets::RenderStateSet::DeferredBlend::Opaque;
+            stateSet._blendType = RenderCore::Assets::RenderStateSet::BlendType::Opaque;
             stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::ForwardBlend;
-            stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::DeferredBlend;
+            stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::BlendType;
             NotifyPropertyChanged("StandardBlendMode");
             transaction->Commit();
             return;
@@ -630,13 +630,13 @@ namespace GUILayer
                 stateSet._forwardBlendOp = s_standardBlendDefs[c]._op;
                 stateSet._forwardBlendSrc = s_standardBlendDefs[c]._src;
                 stateSet._forwardBlendDst = s_standardBlendDefs[c]._dst;
-                stateSet._deferredBlend = RenderCore::Assets::RenderStateSet::DeferredBlend::Opaque;
+                stateSet._blendType = RenderCore::Assets::RenderStateSet::BlendType::Opaque;
                 stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::ForwardBlend;
-                stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::DeferredBlend;
+                stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::BlendType;
 
                 if (newMode == StandardBlendModes::Decal) {
-                    stateSet._deferredBlend = RenderCore::Assets::RenderStateSet::DeferredBlend::Decal;
-                    stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::DeferredBlend;
+                    stateSet._blendType = RenderCore::Assets::RenderStateSet::BlendType::DeferredDecal;
+                    stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::BlendType;
                 }
 
                 transaction->Commit();

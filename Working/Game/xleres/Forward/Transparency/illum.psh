@@ -69,15 +69,18 @@ float4 main_oi(VSOutput geo, SystemInputs sys) : SV_Target
 
 	float destinationDepth = DuplicateOfDepthBuffer[uint2(geo.position.xy)];
 	float ndcComparison = geo.position.z; // / geo.position.w;
-	if (ndcComparison >= destinationDepth)
+	if (ndcComparison > destinationDepth)
 		discard;
 
 	DoAlphaTest(geo);
 
 	GBufferValues sample = IllumShader_PerPixel(geo);
 
+		// note --  At alpha threshold, we just consider
+		//			it opaque. It's a useful optimisation
+		//			that goes hand in hand with the pre-depth pass.
 	const float minAlpha =   1.f / 255.f;
-	const float maxAlpha = 254.f / 255.f;
+	const float maxAlpha = AlphaThreshold; // 254.f / 255.f;
 	if (sample.blendingAlpha < minAlpha) {
 		discard;
 	}
@@ -122,7 +125,7 @@ float4 main_oi(VSOutput geo, SystemInputs sys) : SV_Target
 	if (result.a >= maxAlpha) {
 		// uint oldValue;
 		// InterlockedExchange(FragmentIds[uint2(geo.position.xy)], ~0, oldValue);
-		return float4(LightingScale * result.rgb, result.a);
+		return float4(LightingScale * result.rgb, 1.f); // result.a);
 	} else {
 			//	Multiply in alpha (if we're not using
 			//	a premultiplied texture)

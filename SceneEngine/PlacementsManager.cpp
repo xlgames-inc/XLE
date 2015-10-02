@@ -385,15 +385,15 @@ namespace SceneEngine
     class PlacementsRenderer
     {
     public:
-        void BeginRender(RenderCore::Metal::DeviceContext* context);
-        void EndRender(
-            RenderCore::Metal::DeviceContext* context, 
-            RenderCore::Techniques::ParsingContext& parserContext, unsigned techniqueIndex);
-        void CommitTranslucent(
+        void BeginPrepare();
+        void EndPrepare();
+        void ClearPrepared();
+        void CommitPrepared(
             RenderCore::Metal::DeviceContext* context,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep);
         void FilterDrawCalls(const std::function<bool(const DelayedDrawCall&)>& predicate);
+        bool HasPrepared(RenderCore::Assets::DelayStep delayStep) const;
 
         void Render(
             RenderCore::Metal::DeviceContext* context,
@@ -463,30 +463,22 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void PlacementsRenderer::BeginRender(RenderCore::Metal::DeviceContext* devContext)
+    void PlacementsRenderer::BeginPrepare()
     {
         _preparedRenders.Reset();
     }
 
-    void PlacementsRenderer::EndRender(
-        RenderCore::Metal::DeviceContext* context,
-        RenderCore::Techniques::ParsingContext& parserContext,
-        unsigned techniqueIndex)
+    void PlacementsRenderer::EndPrepare()
     {
-            // We can commit the opaque part now... However the translucent 
-            // part won't come until the caller also calls CommitTranslucent
-            //
-            // Sort by render state first, then capture the state and commit 
-            // the opaque parts...
         ModelRenderer::Sort(_preparedRenders);
-        
-        auto capture = _cache->GetSharedStateSet().CaptureState(*context);
-        ModelRenderer::RenderPrepared(
-            RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
-            _cache->GetSharedStateSet(), _preparedRenders, RenderCore::Assets::DelayStep::OpaqueRender);
     }
 
-    void PlacementsRenderer::CommitTranslucent(
+    void PlacementsRenderer::ClearPrepared()
+    {
+        _preparedRenders.Reset();
+    }
+
+    void PlacementsRenderer::CommitPrepared(
         RenderCore::Metal::DeviceContext* context,
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep)
@@ -502,6 +494,11 @@ namespace SceneEngine
         const std::function<bool(const RenderCore::Assets::DelayedDrawCall&)>& predicate)
     {
         _preparedRenders.Filter(predicate);
+    }
+
+    bool PlacementsRenderer::HasPrepared(RenderCore::Assets::DelayStep delayStep) const
+    {
+        return !_preparedRenders.IsEmpty(delayStep);
     }
 
     auto PlacementsRenderer::GetCachedQuadTree(uint64 cellFilenameHash) const -> const PlacementsQuadTree*
@@ -809,9 +806,12 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex)
     {
-        if (!Tweakable("DoPlacements", true)) return;
+        if (!Tweakable("DoPlacements", true)) {
+            _pimpl->_renderer->ClearPrepared();
+            return;
+        }
 
-        _pimpl->_renderer->BeginRender(context);
+        _pimpl->_renderer->BeginPrepare();
 
             // Render every registered cell
             // We catch exceptions on a cell based level (so pending cells won't
@@ -825,24 +825,30 @@ namespace SceneEngine
 
             // note that exceptions that occur inside the EndRender will throw
             // back to the caller.
-        _pimpl->_renderer->EndRender(context, parserContext, techniqueIndex);
+        _pimpl->_renderer->EndPrepare();
+
+            // Commit opaque now
+        _pimpl->_renderer->CommitPrepared(context, parserContext, techniqueIndex, 
+            RenderCore::Assets::DelayStep::OpaqueRender);
     }
 
     void PlacementsManager::RenderTransparent(
         RenderCore::Metal::DeviceContext* context, 
         RenderCore::Techniques::ParsingContext& parserContext,
-        unsigned techniqueIndex)
+        unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep)
     {
-        if (!Tweakable("DoPlacements", true)) return;
-
-            // assuming that we previously called "Render" to render
+            // Assuming that we previously called "Render" to render
             // the main opaque part of the placements, let's now go
             // over each cell and render the transluent parts.
             // we don't need to cull the cells again, because the previous
             // render should have prepared a list of all the draw calls we
             // need for this step
-        _pimpl->_renderer->CommitTranslucent(
-            context, parserContext, techniqueIndex, RenderCore::Assets::DelayStep::PostDeferred);
+        _pimpl->_renderer->CommitPrepared(context, parserContext, techniqueIndex, delayStep);
+    }
+
+    bool PlacementsManager::HasPrepared(RenderCore::Assets::DelayStep delayStep)
+    {
+        return _pimpl->_renderer->HasPrepared(delayStep);
     }
 
     auto PlacementsManager::GetVisibleQuadTrees(const Float4x4& worldToClip) const
@@ -2040,7 +2046,7 @@ namespace SceneEngine
         const PlacementGUID* begin, const PlacementGUID* end,
         const std::function<bool(const RenderCore::Assets::DelayedDrawCall&)>& predicate)
     {
-        _pimpl->_renderer->BeginRender(context);
+        _pimpl->_renderer->BeginPrepare();
 
             //  We need to take a copy, so we don't overwrite
             //  and reorder the caller's version.
@@ -2084,11 +2090,11 @@ namespace SceneEngine
         if (predicate)
             _pimpl->_renderer->FilterDrawCalls(predicate);
 
-        _pimpl->_renderer->EndRender(context, parserContext, techniqueIndex);
+        _pimpl->_renderer->EndPrepare();
 
             // we also have to commit translucent steps. We must use the geometry from all translucent steps
-        for (unsigned c=unsigned(RenderCore::Assets::DelayStep::OpaqueRender)+1; c<unsigned(RenderCore::Assets::DelayStep::Max); ++c)
-            _pimpl->_renderer->CommitTranslucent(context, parserContext, techniqueIndex, RenderCore::Assets::DelayStep(c));
+        for (unsigned c=unsigned(RenderCore::Assets::DelayStep::OpaqueRender); c<unsigned(RenderCore::Assets::DelayStep::Max); ++c)
+            _pimpl->_renderer->CommitPrepared(context, parserContext, techniqueIndex, RenderCore::Assets::DelayStep(c));
     }
 
 	void PlacementsEditor::PerformGUIDFixup(PlacementGUID* begin, PlacementGUID* end) const

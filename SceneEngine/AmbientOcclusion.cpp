@@ -277,7 +277,7 @@ namespace SceneEngine
 
         SetupVertexGeneratorShader(context);
         context->BindPS(MakeResourceList(resources._aoSRV));
-        context->Bind(Assets::GetAssetDep<ShaderProgram>(
+        context->Bind(::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/postprocess/debugging.psh:AODebugging:ps_*"));
         context->Draw(4);
     }

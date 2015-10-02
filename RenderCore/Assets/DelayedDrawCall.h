@@ -72,9 +72,10 @@ namespace RenderCore { namespace Assets
 
         using Predicate = std::function<bool(const DelayedDrawCall&)>;
         
-        void        Reset();
-        void        Filter(const Predicate& predicate);
-        size_t      GetRendererGUID() const;
+        void    Reset();
+        void    Filter(const Predicate& predicate);
+        size_t  GetRendererGUID() const;
+        bool    IsEmpty(DelayStep step) const { return _entries[unsigned(step)].empty(); }
             
         DelayedDrawCallSet(size_t rendererGuid);
         ~DelayedDrawCallSet();

@@ -76,6 +76,13 @@ namespace ToolsRig
             }
         }
 
+        bool HasContent(const SceneEngine::SceneParseSettings& parseSettings) const
+        {
+            using BF = SceneEngine::SceneParseSettings::BatchFilter;
+            return (    parseSettings._batchFilter == BF::PreDepth
+                ||      parseSettings._batchFilter == BF::General
+                ||      parseSettings._batchFilter == BF::DMShadows);
+        }
 
         void Draw(  Metal::DeviceContext& metalContext, 
                     SceneEngine::LightingParserContext& parserContext,

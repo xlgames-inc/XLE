@@ -313,8 +313,19 @@ namespace RenderCore { namespace Assets
                 i->second._matParams = sharedStateSet.InsertParameterBox(materialParamBox);
                 i->second._renderStateSet = sharedStateSet.InsertRenderStateSet(stateSet);
 
-                i->second._delayStep = 
-                    (stateSet._forwardBlendOp == Metal::BlendOp::NoBlending) ? DelayStep::OpaqueRender : DelayStep::PostDeferred;
+                if (stateSet._forwardBlendOp == Metal::BlendOp::NoBlending) {
+                    i->second._delayStep = DelayStep::OpaqueRender;
+                } else {
+                    if (stateSet._flag & RenderStateSet::Flag::BlendType) {
+                        switch (stateSet._blendType) {
+                        case RenderStateSet::BlendType::DeferredDecal: i->second._delayStep = DelayStep::OpaqueRender; break;
+                        case RenderStateSet::BlendType::OrderedTranslucent: i->second._delayStep = DelayStep::SortedBlending; break;
+                        default: i->second._delayStep = DelayStep::PostDeferred; break;
+                        }
+                    } else {
+                        i->second._delayStep = DelayStep::PostDeferred;
+                    }
+                }
 
                 paramBoxDesc.Add(i->second._matParams, materialParamBox);
             }

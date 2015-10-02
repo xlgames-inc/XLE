@@ -6,6 +6,7 @@
 
 #pragma once 
 
+#include "SceneParser.h"    // for SceneParseSettings
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Format.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
@@ -14,6 +15,12 @@
 
 namespace RenderOverlays { class Font; }
 namespace BufferUploads { struct BufferDesc; struct TextureDesc; namespace BindFlag { typedef unsigned BitField; }}
+namespace RenderCore { namespace Assets { enum class DelayStep : unsigned; }}
+
+namespace Utility
+{
+    template<typename Type> class IteratorRange;
+}
 
 namespace SceneEngine
 {
@@ -144,6 +151,9 @@ namespace SceneEngine
             (float)((packedColor >>  8) & 0xff) / 255.f,
             (float)(packedColor & 0xff) / 255.f);
     }
+
+    IteratorRange<RenderCore::Assets::DelayStep*> AsDelaySteps(
+        SceneParseSettings::BatchFilter filter);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

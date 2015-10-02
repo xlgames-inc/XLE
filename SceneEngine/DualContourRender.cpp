@@ -157,7 +157,7 @@ namespace SceneEngine
             context->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
             context->Bind(Techniques::CommonResources()._dssReadOnly);
 
-            auto& resolveShader = Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& resolveShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                 "game/xleres/forward/transparency/cloudresolve.psh:main:ps_*");
             context->Bind(resolveShader);

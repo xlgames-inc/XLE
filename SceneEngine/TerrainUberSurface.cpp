@@ -428,8 +428,8 @@ namespace SceneEngine
             char fullShaderName[256];
             _snprintf_s(fullShaderName, _TRUNCATE, "%s:cs_*", shaderName);
 
-            auto& cbBytecode = Assets::GetAssetDep<CompiledShaderByteCode>(fullShaderName);
-            auto& cs = Assets::GetAssetDep<ComputeShader>(fullShaderName);
+            auto& cbBytecode = ::Assets::GetAssetDep<CompiledShaderByteCode>(fullShaderName);
+            auto& cs = ::Assets::GetAssetDep<ComputeShader>(fullShaderName);
             struct Parameters
             {
                 Float2 _center;
@@ -555,7 +555,7 @@ namespace SceneEngine
             using namespace RenderCore;
             Metal::ShaderResourceView  gpuCacheSRV(_pimpl->_gpucache[0]->GetUnderlying());
             context->BindPS(MakeResourceList(5, gpuCacheSRV));
-            auto& debuggingShader = Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                 "game/xleres/ui/terrainmodification.sh:GpuCacheDebugging:ps_*",
                 "");

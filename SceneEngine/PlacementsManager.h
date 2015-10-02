@@ -15,7 +15,7 @@
 #include <string>
 #include <functional>
 
-namespace RenderCore { namespace Assets { class ModelCache; class DelayedDrawCall; } }
+namespace RenderCore { namespace Assets { class ModelCache; class DelayedDrawCall; enum class DelayStep : unsigned; } }
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
 namespace Utility { class OutputStream; template<typename CharType> class InputStreamFormatter; }
 namespace Assets { class DirectorySearchRules; }
@@ -58,7 +58,8 @@ namespace SceneEngine
         void RenderTransparent(
             RenderCore::Metal::DeviceContext* context,
             RenderCore::Techniques::ParsingContext& parserContext,
-            unsigned techniqueIndex);
+            unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep);
+        bool HasPrepared(RenderCore::Assets::DelayStep delayStep);
 
         auto GetVisibleQuadTrees(const Float4x4& worldToClip) const
             -> std::vector<std::pair<Float3x4, const PlacementsQuadTree*>>;

@@ -31,7 +31,7 @@ namespace RenderCore { namespace Assets
         _doubleSided = false;
         _wireframe = false;
         _writeMask = 0xf;
-        _deferredBlend = DeferredBlend::Opaque;
+        _blendType = BlendType::Opaque;
         _depthBias = 0;
         _flag = 0;
         
@@ -157,14 +157,18 @@ namespace RenderCore { namespace Assets
             }
         }
         {
-            auto child = doc.Attribute(u("DeferredBlend"));
+            auto child = doc.Attribute(u("BlendType"));
             if (child) {
                 if (XlEqStringI(child.RawValue(), u("decal"))) {
-                    result._deferredBlend = RenderStateSet::DeferredBlend::Decal;
+                    result._blendType = RenderStateSet::BlendType::DeferredDecal;
+                } else if (XlEqStringI(child.RawValue(), u("translucent"))) {
+                    result._blendType = RenderStateSet::BlendType::Translucent;
+                } else if (XlEqStringI(child.RawValue(), u("orderedtranslucent"))) {
+                    result._blendType = RenderStateSet::BlendType::OrderedTranslucent;
                 } else {
-                    result._deferredBlend = RenderStateSet::DeferredBlend::Opaque;
+                    result._blendType = RenderStateSet::BlendType::Opaque;
                 }
-                result._flag |= RenderStateSet::Flag::DeferredBlend;
+                result._flag |= RenderStateSet::Flag::BlendType;
             }
         }
         {
@@ -186,12 +190,14 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    static const utf8* AsString(RenderStateSet::DeferredBlend::Enum blend)
+    static const utf8* AsString(RenderStateSet::BlendType blend)
     {
         switch (blend) {
-        case RenderStateSet::DeferredBlend::Decal: return u("decal");
+        case RenderStateSet::BlendType::DeferredDecal: return u("decal");
+        case RenderStateSet::BlendType::Translucent: return u("translucent");
+        case RenderStateSet::BlendType::OrderedTranslucent: return u("orderedtranslucent");
         default:
-        case RenderStateSet::DeferredBlend::Opaque: return u("opaque");
+        case RenderStateSet::BlendType::Opaque: return u("opaque");
         }
     }
 
@@ -233,8 +239,8 @@ namespace RenderCore { namespace Assets
         if (stateSet._flag & RenderStateSet::Flag::WriteMask)
             formatter.WriteAttribute(u("WriteMask"), AutoAsString(stateSet._writeMask));
 
-        if (stateSet._flag & RenderStateSet::Flag::DeferredBlend)
-            formatter.WriteAttribute(u("DeferredBlend"), AsString(stateSet._deferredBlend));
+        if (stateSet._flag & RenderStateSet::Flag::BlendType)
+            formatter.WriteAttribute(u("BlendType"), AsString(stateSet._blendType));
 
         if (stateSet._flag & RenderStateSet::Flag::DepthBias)
             formatter.WriteAttribute(u("DepthBias"), AutoAsString(stateSet._depthBias));
@@ -266,9 +272,9 @@ namespace RenderCore { namespace Assets
             result._writeMask = override._writeMask;
             result._flag |= StateSet::Flag::WriteMask;
         }
-        if (override._flag & StateSet::Flag::DeferredBlend) {
-            result._deferredBlend = override._deferredBlend;
-            result._flag |= StateSet::Flag::DeferredBlend;
+        if (override._flag & StateSet::Flag::BlendType) {
+            result._blendType = override._blendType;
+            result._flag |= StateSet::Flag::BlendType;
         }
         if (override._flag & StateSet::Flag::ForwardBlend) {
             result._forwardBlendSrc = override._forwardBlendSrc;

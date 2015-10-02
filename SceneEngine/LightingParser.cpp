@@ -373,6 +373,11 @@ namespace SceneEngine
         CATCH_ASSETS_END(parserContext)
     }
 
+    static bool BatchHasContent(LightingParserContext& parserContext, const SPS& parseSettings)
+    {
+        return parserContext.GetSceneParser()->HasContent(parseSettings);
+    }
+
     static void ForwardLightingModel_Render(    DeviceContext& context, 
                                                 LightingParserContext& parserContext,
                                                 ForwardTargetsBox& targetsBox,
@@ -481,15 +486,29 @@ namespace SceneEngine
         }
         
         //////////////////////////////////////////////////////////////////////////////////////////////////
-        ExecuteScene(
-            context, parserContext, SPS::BatchFilter::Transparent,
-            TechniqueIndex_General, L"MainScene-PostGBuffer");
-
         const auto enableOrderIndependentTransparency = 
             Tweakable("UseOITrans", false)
-            && (mainTargets._desc._sampling._sampleCount <= 1);
-        if (enableOrderIndependentTransparency) {
+            && (mainTargets._desc._sampling._sampleCount <= 1)
+            && BatchHasContent(parserContext, SPS::BatchFilter::OITransparent);
 
+            //  When enable OI transparency is enabled, we do a pre-depth pass
+            //  on all transparent geometry.
+            //  This pass should only draw in the opaque (or very close to opaque)
+            //  parts of the geometry we draw. This is important for occluding
+            //  transparent fragments from the sorting algorithm. For scenes with a
+            //  lot of sortable vegetation, it should reduce the total number of 
+            //  sortable fragments significantly.
+        if (enableOrderIndependentTransparency)
+            ExecuteScene(
+                context, parserContext, SPS::BatchFilter::TransparentPreDepth,
+                TechniqueIndex_DepthOnly, L"MainScene-TransPreDepth");
+        
+        if (BatchHasContent(parserContext, SPS::BatchFilter::Transparent))
+            ExecuteScene(
+                context, parserContext, SPS::BatchFilter::Transparent,
+                TechniqueIndex_General, L"MainScene-PostGBuffer");
+        
+        if (enableOrderIndependentTransparency) {
             auto duplicatedDepthBuffer = BuildDuplicatedDepthBuffer(&context, mainTargets._msaaDepthBufferTexture.get());
             auto* transTargets = OrderIndependentTransparency_Prepare(context, parserContext, duplicatedDepthBuffer);
 
@@ -750,6 +769,13 @@ namespace SceneEngine
         if (!projectionCount)
             return PreparedDMShadowFrustum();
 
+        SPS sceneParseSettings(
+            SPS::BatchFilter::DMShadows, 
+            ~SPS::Toggles::BitField(0),
+            shadowFrustumIndex);
+        if (!BatchHasContent(parserContext, sceneParseSettings))
+            return PreparedDMShadowFrustum();
+
         ViewportDesc newViewport[MaxShadowTexturesPerLight];
         for (unsigned c=0; c<frustum._projections._count; ++c) {
             newViewport[c].TopLeftX = newViewport[c].TopLeftY = 0;
@@ -809,11 +835,6 @@ namespace SceneEngine
 
             Float4x4 savedWorldToProjection = parserContext.GetProjectionDesc()._worldToProjection;
             parserContext.GetProjectionDesc()._worldToProjection = frustum._worldToClip;
-
-            SPS sceneParseSettings(
-                SPS::BatchFilter::DMShadows, 
-                ~SPS::Toggles::BitField(0),
-                shadowFrustumIndex);
             ExecuteScene(
                 context, parserContext, sceneParseSettings,
                 TechniqueIndex_ShadowGen, L"ShadowGen-Prepare");

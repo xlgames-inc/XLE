@@ -117,7 +117,9 @@ namespace Utility
             IteratorRange() : std::pair<Iterator, Iterator>(nullptr, nullptr) {}
             IteratorRange(Iterator f, Iterator s) : std::pair<Iterator, Iterator>(f, s) {}
 
-            IteratorRange(const std::pair<Iterator, Iterator>& copyFrom) : std::pair<Iterator, Iterator>(copyFrom) {}
+            template<typename OtherIterator>
+                IteratorRange(const std::pair<OtherIterator, OtherIterator>& copyFrom)
+                    : std::pair<Iterator, Iterator>(copyFrom) {}
 
             template<typename OtherIterator>
                 operator IteratorRange<OtherIterator>() const { return IteratorRange<OtherIterator>(cbegin(), cend()); }

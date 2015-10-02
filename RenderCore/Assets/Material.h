@@ -94,14 +94,15 @@ namespace RenderCore { namespace Assets
     class RenderStateSet
     {
     public:
-        struct DeferredBlend
+        enum class BlendType : unsigned
         {
-            enum Enum { Opaque, Decal };
+            Opaque, DeferredDecal, 
+            Translucent, OrderedTranslucent
         };
-        unsigned                _doubleSided : 1;
-        unsigned                _wireframe : 1;
-        unsigned                _writeMask : 4;
-        DeferredBlend::Enum     _deferredBlend : 2;
+        unsigned    _doubleSided : 1;
+        unsigned    _wireframe : 1;
+        unsigned    _writeMask : 4;
+        BlendType   _blendType : 2;
 
             //  These "blend" values may not be completely portable across all platforms
             //  (either because blend modes aren't supported, or because we need to
@@ -114,14 +115,14 @@ namespace RenderCore { namespace Assets
         {
             enum Enum {
                 DoubleSided = 1<<0, Wireframe = 1<<1, WriteMask = 1<<2, 
-                DeferredBlend = 1<<3, ForwardBlend = 1<<4, DepthBias = 1<<5 
+                BlendType = 1<<3, ForwardBlend = 1<<4, DepthBias = 1<<5 
             };
             typedef unsigned BitField;
         };
-        Flag::BitField          _flag : 6;
-        unsigned                _padding : 3;   // 8 + 15 + 32 + 5 = 60 bits... pad to 64 bits
+        Flag::BitField  _flag : 6;
+        unsigned        _padding : 3;   // 8 + 15 + 32 + 5 = 60 bits... pad to 64 bits
 
-        int                     _depthBias;     // do we need all of the bits for this?
+        int             _depthBias;     // do we need all of the bits for this?
 
         uint64 GetHash() const;
         RenderStateSet();

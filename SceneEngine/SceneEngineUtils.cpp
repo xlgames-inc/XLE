@@ -11,7 +11,9 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Assets/Services.h"
+#include "../RenderCore/Assets/DelayedDrawCall.h"
 #include "../RenderOverlays/Font.h"
+#include "../Utility/IteratorUtils.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
@@ -205,6 +207,50 @@ namespace SceneEngine
                 0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
             textPosition[1] += lineHeight;
         }
+    }
+
+    IteratorRange<RenderCore::Assets::DelayStep*> AsDelaySteps(
+        SceneParseSettings::BatchFilter filter)
+    {
+        using BF = SceneEngine::SceneParseSettings::BatchFilter;
+        using V = std::vector<RenderCore::Assets::DelayStep>;
+        using DelayStep = RenderCore::Assets::DelayStep;
+
+        switch (filter) {
+        case BF::General:
+        case BF::PreDepth:
+            {
+                static DelayStep result[] { DelayStep::OpaqueRender };
+                return MakeIteratorRange(result);
+            }
+
+        case BF::Transparent:
+            {
+                static DelayStep result[] { DelayStep::PostDeferred };
+                return MakeIteratorRange(result);
+            }
+        
+        case BF::TransparentPreDepth:
+            {
+                static DelayStep result[] { DelayStep::PostDeferred, DelayStep::SortedBlending };
+                return MakeIteratorRange(result);
+            }
+        
+        case BF::OITransparent:
+            {
+                static DelayStep result[] { DelayStep::SortedBlending };
+                return MakeIteratorRange(result);
+            }
+        
+        case BF::DMShadows:
+        case BF::RayTracedShadows:
+            {
+                static DelayStep result[] { DelayStep::OpaqueRender, DelayStep::PostDeferred, DelayStep::SortedBlending };
+                return MakeIteratorRange(result);
+            }
+        }
+
+        return IteratorRange<RenderCore::Assets::DelayStep*>();
     }
 }
 

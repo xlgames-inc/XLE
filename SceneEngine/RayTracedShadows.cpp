@@ -146,6 +146,13 @@ namespace SceneEngine
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex)
     {
+        SceneParseSettings sceneParseSettings(
+            SceneParseSettings::BatchFilter::RayTracedShadows, 
+            ~SceneParseSettings::Toggles::BitField(0),
+            shadowFrustumIndex);
+        if (!parserContext.GetSceneParser()->HasContent(sceneParseSettings))
+            return PreparedRTShadowFrustum();
+
         Metal::GPUProfiler::DebugAnnotation anno(metalContext, L"Prepare-RTShadows");
 
         auto& box = Techniques::FindCachedBox2<RTShadowsBox>(256, 256, 1024*1024, 32, 64*1024);
@@ -223,10 +230,6 @@ namespace SceneEngine
             auto& projDesc = parserContext.GetProjectionDesc();
             projDesc._worldToProjection = frustum._worldToClip;
 
-            SceneParseSettings sceneParseSettings(
-                SceneParseSettings::BatchFilter::RayTracedShadows, 
-                ~SceneParseSettings::Toggles::BitField(0),
-                shadowFrustumIndex);
             parserContext.GetSceneParser()->ExecuteScene(
                 &metalContext, parserContext, sceneParseSettings, 
                 TechniqueIndex_RTShadowGen);
