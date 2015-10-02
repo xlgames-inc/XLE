@@ -21,14 +21,33 @@ namespace SceneEngine
     class SavedTargets
     {
     public:
-        SavedTargets(RenderCore::Metal::DeviceContext* context);
+        SavedTargets(RenderCore::Metal::DeviceContext& context);
         ~SavedTargets();
-        void        ResetToOldTargets(RenderCore::Metal::DeviceContext* context);
+
+        void        ResetToOldTargets(RenderCore::Metal::DeviceContext& context);
         ID3D::DepthStencilView*     GetDepthStencilView() { return _oldDepthTarget; }
         ID3D::RenderTargetView**    GetRenderTargets() { return _oldTargets; }
         const RenderCore::Metal::ViewportDesc*       GetViewports() { return _oldViewports; }
         
         void SetDepthStencilView(ID3D::DepthStencilView* dsv);
+
+        class ResetMarker
+        {
+        public:
+            ~ResetMarker();
+            ResetMarker(ResetMarker&&);
+            ResetMarker& operator=(ResetMarker&&);
+
+        private:
+            ResetMarker(SavedTargets& targets, RenderCore::Metal::DeviceContext& context);
+            ResetMarker(const ResetMarker&) = delete;
+            ResetMarker& operator=(const ResetMarker&) = delete;
+            SavedTargets* _targets;
+            RenderCore::Metal::DeviceContext* _context;
+            friend class SavedTargets;
+        };
+
+        ResetMarker MakeResetMarker(RenderCore::Metal::DeviceContext& context) { return ResetMarker(*this, context); }
 
         static const unsigned MaxSimultaneousRenderTargetCount = 8; // D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT
         static const unsigned MaxViewportAndScissorRectCount = 16;  // D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE
@@ -42,8 +61,8 @@ namespace SceneEngine
     class SavedBlendAndRasterizerState
     {
     public:
-        void ResetToOldStates(RenderCore::Metal::DeviceContext* context);
-        SavedBlendAndRasterizerState(RenderCore::Metal::DeviceContext* context);
+        void ResetToOldStates(RenderCore::Metal::DeviceContext& context);
+        SavedBlendAndRasterizerState(RenderCore::Metal::DeviceContext& context);
         ~SavedBlendAndRasterizerState();
     protected:
         intrusive_ptr<ID3D::RasterizerState> _oldRasterizerState;
@@ -125,5 +144,31 @@ namespace SceneEngine
             (float)((packedColor >>  8) & 0xff) / 255.f,
             (float)(packedColor & 0xff) / 255.f);
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    inline SavedTargets::ResetMarker::~ResetMarker()
+    {
+        if (_targets && _context)
+            _targets->ResetToOldTargets(*_context);
+    }
+
+    inline SavedTargets::ResetMarker::ResetMarker(ResetMarker&& moveFrom)
+    {
+        _targets = moveFrom._targets; moveFrom._targets = nullptr;
+        _context = moveFrom._context; moveFrom._context = nullptr;
+    }
+
+    inline auto SavedTargets::ResetMarker::operator=(ResetMarker&& moveFrom) -> ResetMarker&
+    {
+        _targets = moveFrom._targets; moveFrom._targets = nullptr;
+        _context = moveFrom._context; moveFrom._context = nullptr;
+        return *this;
+    }
+
+    inline SavedTargets::ResetMarker::ResetMarker(SavedTargets& targets, RenderCore::Metal::DeviceContext& context)
+    : _targets(&targets), _context(&context)
+    {}
+    
 }
 

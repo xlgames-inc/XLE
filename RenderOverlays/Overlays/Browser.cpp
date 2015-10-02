@@ -284,7 +284,7 @@ namespace Overlays
         context->ReleaseState();        // (drawing directly to the device context -- so we must get the overlay context to release the state)
 
         auto devContext = RenderCore::Metal::DeviceContext::Get(*context->GetDeviceContext());
-        SceneEngine::SavedTargets oldTargets(devContext.get());
+        SceneEngine::SavedTargets oldTargets(*devContext.get());
 
         std::vector<std::pair<std::string, Rect>> labels;
 
@@ -326,7 +326,7 @@ namespace Overlays
                 auto srv = GetSRV(*context->GetDeviceContext(), i->_filename);
 
                     // return to the main render target viewport & viewport -- and copy the offscreen image we've just rendered
-                oldTargets.ResetToOldTargets(devContext.get());
+                oldTargets.ResetToOldTargets(*devContext.get());
                 Copy2DTexture(devContext.get(), *srv.first, 
                     Float2(float(outputRect._topLeft[0]), float(outputRect._topLeft[1])), 
                     Float2(float(outputRect._bottomRight[0]), float(outputRect._bottomRight[1])),
@@ -492,7 +492,7 @@ namespace Overlays
 
         auto model = _pimpl->_cache->GetModel((const ::Assets::ResChar*)utf8Filename, (const ::Assets::ResChar*)utf8Filename);
 
-        SceneEngine::SavedTargets savedTargets(metalContext.get());
+        SceneEngine::SavedTargets savedTargets(*metalContext.get());
 
             // draw this object to our off screen buffer
         const unsigned offscreenDims = ModelBrowserItemDimensions;
@@ -503,7 +503,7 @@ namespace Overlays
         metalContext->Bind(RenderCore::Metal::Topology::TriangleList);
         RenderModel(context, model);
 
-        savedTargets.ResetToOldTargets(metalContext.get());
+        savedTargets.ResetToOldTargets(*metalContext.get());
 
         return std::make_pair(&_pimpl->_srv, hashedName);   // note, here, the hashedName only considered the model name, not the material name
     }

@@ -22,12 +22,12 @@ namespace SceneEngine
         return RenderCore::Assets::Services::GetBufferUploads();
     }
 
-    SavedTargets::SavedTargets(RenderCore::Metal::DeviceContext* context)
+    SavedTargets::SavedTargets(RenderCore::Metal::DeviceContext& context)
     {
         _oldViewportCount = dimof(_oldViewports);
         std::fill(_oldTargets, &_oldTargets[dimof(_oldTargets)], nullptr);
-        context->GetUnderlying()->OMGetRenderTargets(dimof(_oldTargets), _oldTargets, &_oldDepthTarget);
-        context->GetUnderlying()->RSGetViewports(&_oldViewportCount, (D3D11_VIEWPORT*)_oldViewports);
+        context.GetUnderlying()->OMGetRenderTargets(dimof(_oldTargets), _oldTargets, &_oldDepthTarget);
+        context.GetUnderlying()->RSGetViewports(&_oldViewportCount, (D3D11_VIEWPORT*)_oldViewports);
     }
 
     SavedTargets::~SavedTargets()
@@ -51,24 +51,24 @@ namespace SceneEngine
         _oldDepthTarget->AddRef();
     }
 
-    void        SavedTargets::ResetToOldTargets(RenderCore::Metal::DeviceContext* context)
+    void        SavedTargets::ResetToOldTargets(RenderCore::Metal::DeviceContext& context)
     {
-        context->GetUnderlying()->OMSetRenderTargets(dimof(_oldTargets), _oldTargets, _oldDepthTarget);
-        context->GetUnderlying()->RSSetViewports(_oldViewportCount, (D3D11_VIEWPORT*)_oldViewports);
+        context.GetUnderlying()->OMSetRenderTargets(dimof(_oldTargets), _oldTargets, _oldDepthTarget);
+        context.GetUnderlying()->RSSetViewports(_oldViewportCount, (D3D11_VIEWPORT*)_oldViewports);
     }
 
-    void SavedBlendAndRasterizerState::ResetToOldStates(RenderCore::Metal::DeviceContext* context)
+    void SavedBlendAndRasterizerState::ResetToOldStates(RenderCore::Metal::DeviceContext& context)
     {
-        context->GetUnderlying()->RSSetState(_oldRasterizerState.get());
-        context->GetUnderlying()->OMSetBlendState(_oldBlendState.get(), _oldBlendFactor, _oldSampleMask);
+        context.GetUnderlying()->RSSetState(_oldRasterizerState.get());
+        context.GetUnderlying()->OMSetBlendState(_oldBlendState.get(), _oldBlendFactor, _oldSampleMask);
     }
 
-    SavedBlendAndRasterizerState::SavedBlendAndRasterizerState(RenderCore::Metal::DeviceContext* context)
+    SavedBlendAndRasterizerState::SavedBlendAndRasterizerState(RenderCore::Metal::DeviceContext& context)
     {
         ID3D::RasterizerState* rs = nullptr;
         ID3D::BlendState* bs = nullptr;
-        context->GetUnderlying()->RSGetState(&rs);
-        context->GetUnderlying()->OMGetBlendState(&bs, _oldBlendFactor, &_oldSampleMask);
+        context.GetUnderlying()->RSGetState(&rs);
+        context.GetUnderlying()->OMGetBlendState(&bs, _oldBlendFactor, &_oldSampleMask);
 
         _oldRasterizerState = intrusive_ptr<ID3D::RasterizerState>(rs, false);
         _oldBlendState = intrusive_ptr<ID3D::BlendState>(bs, false);

@@ -203,7 +203,7 @@ namespace SceneEngine
             ||  (vAngle - flareAngle) >  .5f * projDesc._verticalFov)
             return;
 
-        SavedTargets savedTargets(context);
+        SavedTargets savedTargets(*context);
         Metal::ViewportDesc savedViewport(*context);
         
         TRY 
@@ -322,7 +322,7 @@ namespace SceneEngine
 
         context->Bind(Metal::Topology::TriangleList);
         context->Bind(Techniques::CommonResources()._dssReadWrite);
-        savedTargets.ResetToOldTargets(context);
+        savedTargets.ResetToOldTargets(*context);
         context->Bind(savedViewport);
     }
 }

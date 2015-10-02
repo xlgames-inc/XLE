@@ -118,7 +118,7 @@ namespace ToolsRig
 
         auto metalContextPtr = Metal::DeviceContext::Get(threadContext);
         auto& metalContext = *metalContextPtr;
-        SceneEngine::SavedTargets savedTargets(&metalContext);
+        SceneEngine::SavedTargets savedTargets(metalContext);
 
         metalContext.Clear(_pimpl->_cubeDSV, 1.f, 0u);
         metalContext.Bind(ResourceList<Metal::RenderTargetView, 0>(), &_pimpl->_cubeDSV);
@@ -155,10 +155,10 @@ namespace ToolsRig
                         &metalContext, parserContext, Techniques::TechniqueIndex::ShadowGen),
                     sharedStates, AsFloat4x4(Float3(-samplePoint)), meshToModel);
             } CATCH(...) {
-                savedTargets.ResetToOldTargets(&metalContext);
+                savedTargets.ResetToOldTargets(metalContext);
                 throw;
             } CATCH_END
-            savedTargets.ResetToOldTargets(&metalContext);
+            savedTargets.ResetToOldTargets(metalContext);
         }
 
             //

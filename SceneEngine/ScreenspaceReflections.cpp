@@ -307,8 +307,8 @@ namespace SceneEngine
         auto cfg = GetConfig(width, height, useMsaaSamplers);
         auto& res = Techniques::FindCachedBoxDep<ScreenSpaceReflectionsResources>(cfg);
 
-        SavedTargets oldTargets(context);
-        SavedBlendAndRasterizerState oldBlendAndRasterizer(context);
+        SavedTargets oldTargets(*context);
+        SavedBlendAndRasterizerState oldBlendAndRasterizer(*context);
 
         context->Bind(Techniques::CommonResources()._blendOpaque);
         context->Bind(Techniques::CommonResources()._cullDisable);
@@ -400,8 +400,8 @@ namespace SceneEngine
             context->Draw(4);
         }
 
-        oldTargets.ResetToOldTargets(context);
-        oldBlendAndRasterizer.ResetToOldStates(context);
+        oldTargets.ResetToOldTargets(*context);
+        oldBlendAndRasterizer.ResetToOldStates(*context);
 
         if (Tweakable("ScreenspaceReflectionDebugging", false)) {
             parserContext._pendingOverlays.push_back(

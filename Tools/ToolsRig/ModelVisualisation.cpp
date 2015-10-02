@@ -328,7 +328,7 @@ namespace ToolsRig
                     settings._highlightedMarker = UInt4(unsigned(guid), unsigned(guid), unsigned(guid), unsigned(guid));
                 }
 
-                SceneEngine::SavedTargets savedTargets(metalContext.get());
+                SceneEngine::SavedTargets savedTargets(*metalContext);
 
                 Metal::ShaderResourceView depthSrv;
                 if (savedTargets.GetDepthStencilView())
@@ -338,7 +338,7 @@ namespace ToolsRig
 
                 metalContext->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
                 ExecuteHighlightByStencil(*metalContext, depthSrv, settings, _pimpl->_settings->_colourByMaterial==2);
-                savedTargets.ResetToOldTargets(metalContext.get());
+                savedTargets.ResetToOldTargets(*metalContext);
             CATCH_ASSETS_END(parserContext)
         }
 

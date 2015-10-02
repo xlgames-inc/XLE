@@ -39,6 +39,10 @@ StructuredBuffer<FragmentListNode>		NodesList	 : register(t1);
 Texture2D<float>						DepthTexture : register(t2);
 RWStructuredBuffer<MetricsStructure>	MetricsObject;
 
+#if (DETECT_INFINITE_LISTS==1)
+	Texture2D<uint>		InfiniteListTexture :register(t3);
+#endif
+
 void BlendSamples(	SortingElement sortingBuffer[FixedSampleCount], uint sampleCount,
 					inout float4 combinedColor)
 {
@@ -54,6 +58,11 @@ void BlendSamples(	SortingElement sortingBuffer[FixedSampleCount], uint sampleCo
 
 float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0, SystemInputs sys) : SV_Target0
 {
+	#if (DETECT_INFINITE_LISTS==1)
+		uint isInfinite = InfiniteListTexture[uint2(position.xy)];
+		if (isInfinite) return float4(1, 0, 0, 1);
+	#endif
+
 	uint firstId = FragmentIds[uint2(position.xy)];
 	[branch] if (firstId == 0xffffffff) {
 		return float4(0.0.xxx, 0);
@@ -192,4 +201,25 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0, SystemIn
 
 		return float4(LightingScale * combinedColor.rgb, 1.f-combinedColor.a);
 	}
+}
+
+uint FindInfiniteLoops(float4 position : SV_Position, float2 texCoord : TEXCOORD0, SystemInputs sys) : SV_Target0
+{
+		// Check the input textures to look for infinite loops!
+		// if we hit an infinite loop in the main() function it will lock up the GPU
+		// To protect against this case, we can run this shader over the texture
+		// first to find any pixels that have an infinite loop attached.
+		// Ideally, if the writing shader is working correctly we should never get any
+		// infinite loops... But it's so hard to debug when we get them we just need
+		// some way to detect and prevent them
+
+	uint nodeId = FragmentIds[uint2(position.xy)];
+	[loop] while (nodeId != 0xffffffff) {
+		FragmentListNode node = NodesList[nodeId];
+		if (node.next == nodeId)
+			return 1;	// this is an infinite list -- because one link points to itself
+		nodeId = node.next;
+	}
+
+	return 0;
 }

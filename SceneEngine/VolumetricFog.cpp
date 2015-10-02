@@ -573,7 +573,7 @@ namespace SceneEngine
                 unsigned(shadowFrustum._resolveParameters._shadowTextureSize) / (blurredShadowSize*blurDownsample);
             const auto gridDims = rendererCfg._gridDimensions;
 
-            SavedTargets savedTargets(context);
+            SavedTargets savedTargets(*context);
             Metal::ViewportDesc newViewport(0, 0, float(blurredShadowSize), float(blurredShadowSize), 0.f, 1.f);
             context->Bind(newViewport);
             context->Bind(Techniques::CommonResources()._blendOpaque);
@@ -627,7 +627,7 @@ namespace SceneEngine
             ///////////////////////////////////////////////////////////////////////////////////////
 
             context->UnbindPS<Metal::ShaderResourceView>(0, 1);
-            savedTargets.ResetToOldTargets(context);
+            savedTargets.ResetToOldTargets(*context);
             context->Bind(Techniques::CommonResources()._blendStraightAlpha);
 
             ///////////////////////////////////////////////////////////////////////////////////////

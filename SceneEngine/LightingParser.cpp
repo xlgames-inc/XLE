@@ -542,7 +542,7 @@ namespace SceneEngine
         DepthStencilView sceneDepthsDSV;
         ID3D::Resource* postLightingResolveTexture = nullptr;
 
-        SavedTargets savedTargets(&context);
+        SavedTargets savedTargets(context);
 
         ViewportDesc mainViewport(  
             0.f, 0.f, float(qualitySettings._dimensions[0]), float(qualitySettings._dimensions[1]), 0.f, 1.f);
@@ -620,8 +620,7 @@ namespace SceneEngine
                 LightingParser_LateGBufferRender(context, parserContext, mainTargets);
                 LightingParser_ResolveGBuffer(context, parserContext, mainTargets, lightingResTargets);
             } 
-            CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(&context); }
-            CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(&context); }
+            CATCH(const ::Assets::Exceptions::AssetException& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(context); }
             CATCH_END
 
                 // Post lighting resolve operations... (must rebind the depth buffer)
@@ -634,8 +633,7 @@ namespace SceneEngine
             TRY {
                 LightingParser_DeferredPostGBuffer(context, parserContext, mainTargets);
             }
-            CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(&context); }
-            CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(&context); }
+            CATCH(const ::Assets::Exceptions::AssetException& e) { parserContext.Process(e); savedTargets.ResetToOldTargets(context); }
             CATCH_END
 
             sceneDepthsSRV              = mainTargets._msaaDepthBufferSRV;
@@ -725,7 +723,7 @@ namespace SceneEngine
                     context.GetUnderlying()->OMSetRenderTargets(1, &drtv, savedTargets.GetDepthStencilView());
                 }
             } else {
-                savedTargets.ResetToOldTargets(&context);
+                savedTargets.ResetToOldTargets(context);
             }
 
             LightingParser_ResolveHDR(context, parserContext, postLightingResolveSRV, qualitySettings._samplingCount);
@@ -735,7 +733,7 @@ namespace SceneEngine
             if (qualitySettings._samplingCount >= 1) {
                 savedTargets.SetDepthStencilView(sceneDepthsDSV.GetUnderlying());
             }
-            savedTargets.ResetToOldTargets(&context);
+            savedTargets.ResetToOldTargets(context);
         }
 
         LightingParser_Overlays(&context, parserContext);
@@ -794,7 +792,7 @@ namespace SceneEngine
             /////////////////////////////////////////////
 
         using namespace RenderCore::Metal;
-        SavedTargets savedTargets(&context);
+        SavedTargets savedTargets(context);
 
         CATCH_ASSETS_BEGIN
             context.Bind(RenderCore::ResourceList<RenderTargetView,0>(), &targetsBox._depthStencilView);
@@ -829,7 +827,7 @@ namespace SceneEngine
                 /////////////////////////////////////////////
         CATCH_ASSETS_END(parserContext)
 
-        savedTargets.ResetToOldTargets(&context);
+        savedTargets.ResetToOldTargets(context);
         context.Bind(Techniques::CommonResources()._defaultRasterizer);
 
         parserContext.GetTechniqueContext()._runtimeState.SetParameter((const utf8*)StringShadowCascadeMode.c_str(), 0);

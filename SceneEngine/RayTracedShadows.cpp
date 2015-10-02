@@ -182,7 +182,7 @@ namespace SceneEngine
         metalContext.GetUnderlying()->SOSetTargets(bufferCount, targets, offsets);
 
             // set up the render state for writing into the grid buffer
-        SavedTargets savedTargets(&metalContext);
+        SavedTargets savedTargets(metalContext);
         metalContext.Bind(box._gridBufferViewport);
         metalContext.Unbind<Metal::RenderTargetView>();
         metalContext.Bind(Techniques::CommonResources()._blendOpaque);
@@ -282,7 +282,7 @@ namespace SceneEngine
         CATCH_ASSETS_END(parserContext)
 
         metalContext.Bind(Metal::Topology::TriangleList);
-        savedTargets.ResetToOldTargets(&metalContext);
+        savedTargets.ResetToOldTargets(metalContext);
         parserContext.GetTechniqueContext()._runtimeState.SetParameter((const utf8*)StringShadowCascadeMode.c_str(), 0);
 
         preparedResult._listHeadSRV = box._gridBufferSRV;
@@ -296,7 +296,7 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext* context, 
         LightingParserContext& parserContext, MainTargetsBox& mainTargets)
     {
-        SavedTargets savedTargets(context);
+        SavedTargets savedTargets(*context);
 
         CATCH_ASSETS_BEGIN
             context->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
@@ -339,7 +339,7 @@ namespace SceneEngine
             context->Draw(4);
         CATCH_ASSETS_END(parserContext)
 
-        savedTargets.ResetToOldTargets(context);
+        savedTargets.ResetToOldTargets(*context);
     }
 
 }

@@ -70,7 +70,7 @@ namespace ToolsRig
         auto& metalContext = *DeviceContext::Get(threadContext);
 
             // unbind the depth buffer
-        SceneEngine::SavedTargets savedTargets(&metalContext);
+        SceneEngine::SavedTargets savedTargets(metalContext);
         metalContext.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
 
             // create shader resource view for the depth buffer
@@ -126,7 +126,7 @@ namespace ToolsRig
         CATCH(...) {} 
         CATCH_END
 
-        savedTargets.ResetToOldTargets(&metalContext);
+        savedTargets.ResetToOldTargets(metalContext);
     }
 
     void RenderRectangleHighlight(
@@ -138,7 +138,7 @@ namespace ToolsRig
         auto& metalContext = *DeviceContext::Get(threadContext);
                 
             // unbind the depth buffer
-        SceneEngine::SavedTargets savedTargets(&metalContext);
+        SceneEngine::SavedTargets savedTargets(metalContext);
         metalContext.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
 
             // create shader resource view for the depth buffer
@@ -197,7 +197,7 @@ namespace ToolsRig
         CATCH(...) {} 
         CATCH_END
 
-        savedTargets.ResetToOldTargets(&metalContext);
+        savedTargets.ResetToOldTargets(metalContext);
     }
 
     void DrawQuadDirect(

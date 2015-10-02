@@ -297,7 +297,7 @@ namespace SceneEngine
             //      We might use a log-average method for this, but we have to
             //      be careful about floating point accuracy.
             //
-        SavedTargets savedTargets(context);
+        SavedTargets savedTargets(*context);
         context->Bind(ResourceList<RenderTargetView, 0>(), nullptr);
 
         TRY {
@@ -440,7 +440,7 @@ namespace SceneEngine
         CATCH(...) { resources._calculateInputsSucceeded = false; }
         CATCH_END
 
-        savedTargets.ResetToOldTargets(context);
+        savedTargets.ResetToOldTargets(*context);
     }
 
     ToneMappingResources& GetResources(ShaderResourceView& inputResource, int sampleCount)
@@ -531,14 +531,14 @@ namespace SceneEngine
 
     void ToneMap_Execute(DeviceContext* context, LightingParserContext& parserContext, ShaderResourceView& inputResource, int sampleCount)
     {
-        SavedBlendAndRasterizerState savedStates(context);
+        SavedBlendAndRasterizerState savedStates(*context);
         context->Bind(Techniques::CommonResources()._cullDisable);
 
         bool hardwareSRGBDisabled = false;
         {
                     //  Query the destination render target to
                     //  see if SRGB conversion is enabled when writing out
-            SavedTargets destinationTargets(context);
+            SavedTargets destinationTargets(*context);
             D3D11_RENDER_TARGET_VIEW_DESC rtv;
             if (destinationTargets.GetRenderTargets()[0]) {
                 destinationTargets.GetRenderTargets()[0]->GetDesc(&rtv);
@@ -605,7 +605,7 @@ namespace SceneEngine
             context->Draw(4);
         CATCH_ASSETS_END(parserContext)
 
-        savedStates.ResetToOldStates(context);
+        savedStates.ResetToOldStates(*context);
     }
 
     static void    ToneMapping_DrawDebugging(   RenderCore::Metal::DeviceContext* context,
@@ -760,7 +760,7 @@ namespace SceneEngine
 
         using namespace RenderCore::Metal;
         ViewportDesc viewport(*context);
-        SavedTargets savedTargets(context);
+        SavedTargets savedTargets(*context);
 
         TRY {
 
@@ -836,7 +836,7 @@ namespace SceneEngine
         } CATCH(...) {
         } CATCH_END
 
-        savedTargets.ResetToOldTargets(context);    //(also resets viewport)
+        savedTargets.ResetToOldTargets(*context);    //(also resets viewport)
     }
 
         //////////////////////////////////////////////////////////////////////////////

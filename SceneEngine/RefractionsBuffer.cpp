@@ -72,7 +72,7 @@ namespace SceneEngine
         CATCH_ASSETS_BEGIN
 
                 // Build a refractions texture
-            SavedTargets oldTargets(&metalContext);
+            SavedTargets oldTargets(metalContext);
             ViewportDesc newViewport(0, 0, float(_width), float(_height), 0.f, 1.f);
             metalContext.Bind(newViewport);
 
@@ -124,7 +124,7 @@ namespace SceneEngine
             metalContext.Draw(4);
                         
             metalContext.UnbindPS<ShaderResourceView>(0, 1);
-            oldTargets.ResetToOldTargets(&metalContext);
+            oldTargets.ResetToOldTargets(metalContext);
         
         CATCH_ASSETS_END(parserContext)
     }

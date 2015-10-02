@@ -197,7 +197,7 @@ namespace SceneEngine
                 //  we need to run a compute shader to update the position of these particles
                 //  first, we have to unbind the depth buffer and create a shader resource view for it
 
-            SavedTargets oldTargets(context);
+            SavedTargets oldTargets(*context);
             if (!oldTargets.GetDepthStencilView()) {
                 Throw(::Exceptions::BasicLabel("Missing depth stencil view when drawing rain particles"));
             }
@@ -276,7 +276,7 @@ namespace SceneEngine
 
             context->UnbindCS<Metal::UnorderedAccessView>(0, 1);
             context->UnbindCS<Metal::ShaderResourceView>(4, 2);
-            oldTargets.ResetToOldTargets(context);
+            oldTargets.ResetToOldTargets(*context);
 
                 // After updating the particles, we can render them
                 //  shader here is very similar to the non-sim rain. But we use a 
@@ -336,7 +336,7 @@ namespace SceneEngine
                 //  we need to run a compute shader to update the position of these particles
                 //  first, we have to unbind the depth buffer and create a shader resource view for it
 
-            SavedTargets oldTargets(context);
+            SavedTargets oldTargets(*context);
             if (!oldTargets.GetDepthStencilView()) {
                 Throw(::Exceptions::BasicLabel("Missing depth stencil view when drawing rain particles"));
             }
@@ -429,7 +429,7 @@ namespace SceneEngine
 
             context->UnbindCS<Metal::UnorderedAccessView>(0, 1);
             context->UnbindCS<Metal::ShaderResourceView>(4, 2);
-            oldTargets.ResetToOldTargets(context);
+            oldTargets.ResetToOldTargets(*context);
 
                 // After updating the particles, we can render them
                 //  shader here is very similar to the non-sim rain. But we use a 

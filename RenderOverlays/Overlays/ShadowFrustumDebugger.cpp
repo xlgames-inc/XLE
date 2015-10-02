@@ -78,7 +78,7 @@ namespace Overlays
         devContext.Bind(Techniques::CommonResources()._dssDisable);
         devContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
-        SceneEngine::SavedTargets savedTargets(&devContext);
+        SceneEngine::SavedTargets savedTargets(devContext);
         devContext.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
 
         ShaderResourceView depthSrv;
@@ -115,7 +115,7 @@ namespace Overlays
         devContext.Draw(4);
 
         devContext.UnbindPS<ShaderResourceView>(4, 1);
-        savedTargets.ResetToOldTargets(&devContext);
+        savedTargets.ResetToOldTargets(devContext);
     }
 
     void ShadowFrustumDebugger::Render( 

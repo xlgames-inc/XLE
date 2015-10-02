@@ -167,7 +167,7 @@ namespace ToolsRig
         RenderCore::Metal::ShaderResourceView _srv;
 
         Pimpl(RenderCore::Metal::DeviceContext& metalContext)
-            : _savedTargets(&metalContext)
+            : _savedTargets(metalContext)
         {}
         ~Pimpl() {}
     };
@@ -206,7 +206,7 @@ namespace ToolsRig
         overlayColor = overlayColO;
 
         using namespace RenderCore;
-        _pimpl->_savedTargets.ResetToOldTargets(&metalContext);
+        _pimpl->_savedTargets.ResetToOldTargets(metalContext);
 
         HighlightByStencilSettings settings;
         settings._outlineColor = outlineColor;
@@ -218,7 +218,7 @@ namespace ToolsRig
     void BinaryHighlight::FinishWithOutline(RenderCore::Metal::DeviceContext& metalContext, Float3 outlineColor)
     {
         using namespace RenderCore;
-        _pimpl->_savedTargets.ResetToOldTargets(&metalContext);
+        _pimpl->_savedTargets.ResetToOldTargets(metalContext);
 
             //  now we can render these objects over the main image, 
             //  using some filtering

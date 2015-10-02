@@ -181,7 +181,7 @@ namespace SceneEngine
                 //  our OIT targets (maybe just depth). By
 
             Metal::ViewportDesc mainViewport(*context);
-            SavedTargets prevTargets(context);
+            SavedTargets prevTargets(*context);
             Metal::ShaderResourceView duplicatedDepthBuffer;
 
                 // note that we have to duplicate the depth buffer here.
@@ -199,8 +199,8 @@ namespace SceneEngine
             // }
 
             auto& transparencyTargets = 
-                Techniques::FindCachedBox<TransparencyTargetsBox>(
-                    TransparencyTargetsBox::Desc(unsigned(mainViewport.Width), unsigned(mainViewport.Height), false));
+                Techniques::FindCachedBox2<TransparencyTargetsBox>(
+                    unsigned(mainViewport.Width), unsigned(mainViewport.Height), false, true);
             OrderIndependentTransparency_ClearAndBind(*context, transparencyTargets, duplicatedDepthBuffer);
             context->Bind(Techniques::CommonResources()._dssReadOnly);  // never write to depth (even for very opaque pixels)
             context->Bind(Techniques::CommonResources()._cullDisable);  // we need to write both front and back faces (but the pixel shader will treat them differently)
@@ -225,7 +225,7 @@ namespace SceneEngine
                 //  bounding volume.
             ResolveOIT(context, parserContext, transparencyTargets, duplicatedDepthBuffer);
 
-            prevTargets.ResetToOldTargets(context);        // (rebind the depth buffer)
+            prevTargets.ResetToOldTargets(*context);        // (rebind the depth buffer)
         }
         CATCH_ASSETS(parserContext)
         CATCH(...) {} 

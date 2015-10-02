@@ -20,9 +20,11 @@ namespace SceneEngine
         class Desc
         {
         public:
-            Desc(unsigned width, unsigned height, bool storeColour);
             unsigned _width, _height;
             bool _storeColour;
+            bool _checkInfiniteLoops;
+            Desc(   unsigned width, unsigned height, 
+                    bool storeColour, bool checkInfiniteLoops);
         };
 
         TransparencyTargetsBox(const Desc& desc);
@@ -31,14 +33,20 @@ namespace SceneEngine
         using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
         using UAV = RenderCore::Metal::UnorderedAccessView;
         using SRV = RenderCore::Metal::ShaderResourceView;
+        using RTV = RenderCore::Metal::RenderTargetView;
 
         Desc        _desc;
+
         ResLocator  _fragmentIdsTexture;
         ResLocator  _nodeListBuffer;
         UAV         _fragmentIdsTextureUAV;
         UAV         _nodeListBufferUAV;
         SRV         _fragmentIdsTextureSRV;
         SRV         _nodeListBufferSRV;
+        
+        ResLocator  _infiniteLoopTexture;
+        RTV         _infiniteLoopRTV;
+        SRV         _infiniteLoopSRV;
     };
 
     void OrderIndependentTransparency_ClearAndBind(

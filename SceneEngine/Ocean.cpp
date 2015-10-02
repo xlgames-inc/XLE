@@ -64,7 +64,7 @@ namespace SceneEngine
         const unsigned dimensions = 256;
         auto& box = Techniques::FindCachedBox2<DeepOceanSim>(dimensions,dimensions, false, true);
 
-        SavedTargets savedTargets(context);
+        SavedTargets savedTargets(*context);
         ViewportDesc oldViewport(*context);
 
         ViewportDesc newViewport( 0, 0, float(dimensions), float(dimensions), 0.f, 1.f );
@@ -76,7 +76,7 @@ namespace SceneEngine
         context->BindPS(MakeResourceList(::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/objects/env/nature/grassland/plant/co_gland_weed_a_df.dds").GetShaderResource()));
         SetupVertexGeneratorShader(context);
         context->Draw(4);
-        savedTargets.ResetToOldTargets(context);
+        savedTargets.ResetToOldTargets(*context);
         context->Bind(oldViewport);
 
         auto& fft1 = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/FFT.csh:FFT2D_1:cs_*");

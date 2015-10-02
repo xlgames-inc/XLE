@@ -614,7 +614,7 @@ namespace PlatformRig { namespace Overlays
     {
         auto& box = Techniques::FindCachedBox2<CRTBox>();
         auto metalContext = Metal::DeviceContext::Get(*context->GetDeviceContext());
-        SceneEngine::SavedTargets savedTargets(metalContext.get());
+        SceneEngine::SavedTargets savedTargets(*metalContext);
 
         //
         //  we're going to test the conversative rasterization geometry shader
@@ -698,7 +698,7 @@ namespace PlatformRig { namespace Overlays
         } CATCH (...) {
         } CATCH_END
 
-        savedTargets.ResetToOldTargets(metalContext.get());
+        savedTargets.ResetToOldTargets(*metalContext);
 
         // now render this texture onto the main render target
         TRY
