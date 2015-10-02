@@ -60,7 +60,7 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0, SystemIn
 {
 	#if (DETECT_INFINITE_LISTS==1)
 		uint isInfinite = InfiniteListTexture[uint2(position.xy)];
-		if (isInfinite) return float4(1, 0, 0, 1);
+		if (isInfinite) return float4(LightingScale, 0, 0, 1);
 	#endif
 
 	uint firstId = FragmentIds[uint2(position.xy)];
@@ -101,7 +101,8 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0, SystemIn
 			if (node.depth < baseLineDepth) {
 				sortingBuffer[sampleCount++] = uint2(nodeId, asuint(node.depth));
 			}
-			nodeId = NodesList[nodeId].next;
+			// if (node.next == nodeId) return float4(0, LightingScale, 0, 1);
+			nodeId = node.next;
 		} while(nodeId != 0xffffffff && sampleCount < FixedSampleCount);
 
 			//
@@ -130,6 +131,7 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0, SystemIn
 				if (node.depth < baseLineDepth) {
 					SortedInsert_LimitedBuffer(sortingBuffer, uint2(nodeId, asuint(node.depth)));
 				}
+				// if (node.next == nodeId) return float4(0, 0, LightingScale, 1);
 				nodeId = node.next;
 			}
 

@@ -36,6 +36,7 @@ namespace SceneEngine
         using RTV = RenderCore::Metal::RenderTargetView;
 
         Desc        _desc;
+        bool        _pendingInitialClear;
 
         ResLocator  _fragmentIdsTexture;
         ResLocator  _nodeListBuffer;

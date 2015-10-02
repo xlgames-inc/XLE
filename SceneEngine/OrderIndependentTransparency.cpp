@@ -43,8 +43,9 @@ namespace SceneEngine
         using namespace BufferUploads;
 
         auto& uploads = GetBufferUploads();
-        auto textureIdsDesc = BuildRenderTargetDesc(
+        auto textureIdsDesc = CreateDesc(
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
+            0, GPUAccess::Read|GPUAccess::Write,
             TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R32_UINT),
             "Trans");
         _fragmentIdsTexture = uploads.Transaction_Immediate(textureIdsDesc);
@@ -64,6 +65,19 @@ namespace SceneEngine
 
         _fragmentIdsTextureSRV = Metal::ShaderResourceView(_fragmentIdsTexture->GetUnderlying());
         _nodeListBufferSRV = Metal::ShaderResourceView(_nodeListBuffer->GetUnderlying());
+        _pendingInitialClear = true;
+
+        if (desc._checkInfiniteLoops) {
+            _infiniteLoopTexture = uploads.Transaction_Immediate(
+                CreateDesc(
+                    BindFlag::RenderTarget|BindFlag::ShaderResource,
+                    0, GPUAccess::Read|GPUAccess::Write,
+                    TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R32_UINT),
+                    "Trans"));
+
+            _infiniteLoopRTV = RTV(_infiniteLoopTexture->GetUnderlying());
+            _infiniteLoopSRV = SRV(_infiniteLoopTexture->GetUnderlying());
+        }
     }
 
     TransparencyTargetsBox::~TransparencyTargetsBox() {}
@@ -82,6 +96,11 @@ namespace SceneEngine
 
         UINT clearValues[4] = { UINT(~0), UINT(~0), UINT(~0), UINT(~0) };
         metalContext.Clear(transparencyTargets._fragmentIdsTextureUAV, clearValues);
+
+        if (transparencyTargets._pendingInitialClear) {
+            metalContext.Clear(transparencyTargets._nodeListBufferUAV, clearValues);
+            transparencyTargets._pendingInitialClear = false;
+        }
 
         metalContext.GetUnderlying()->OMSetRenderTargetsAndUnorderedAccessViews(
             1, prevTargets.GetRenderTargets(), prevTargets.GetDepthStencilView(),
@@ -142,11 +161,15 @@ namespace SceneEngine
         auto resetMarker = savedTargets.MakeResetMarker(metalContext);
 
         CATCH_ASSETS_BEGIN
+            auto metricsUAV = parserContext.GetMetricsBox()->_metricsBufferUAV.GetUnderlying();
+            metalContext.GetUnderlying()->OMSetRenderTargetsAndUnorderedAccessViews(
+                1, savedTargets.GetRenderTargets(), nullptr,
+                1, 1, &metricsUAV, nullptr);
+
             metalContext.BindPS(MakeResourceList(
                 transparencyTargets._fragmentIdsTextureSRV, 
                 transparencyTargets._nodeListBufferSRV, 
                 originalDepthStencilSRV));
-            metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
             metalContext.Bind(Techniques::CommonResources()._dssDisable);
             SetupVertexGeneratorShader(&metalContext);
 
@@ -156,21 +179,23 @@ namespace SceneEngine
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                     "game/xleres/forward/transparency/resolve.psh:FindInfiniteLoops:ps_*"));
                 metalContext.Bind(MakeResourceList(transparencyTargets._infiniteLoopRTV), nullptr);
+                metalContext.Bind(Techniques::CommonResources()._blendOpaque);
                 metalContext.Draw(4);
+
+                metalContext.GetUnderlying()->OMSetRenderTargetsAndUnorderedAccessViews(
+                    1, savedTargets.GetRenderTargets(), nullptr,
+                    1, 1, &metricsUAV, nullptr);
+                metalContext.BindPS(MakeResourceList(3, transparencyTargets._infiniteLoopSRV));
             }
 
-            auto metricsUAV = parserContext.GetMetricsBox()->_metricsBufferUAV.GetUnderlying();
-            metalContext.GetUnderlying()->OMSetRenderTargetsAndUnorderedAccessViews(
-                1, savedTargets.GetRenderTargets(), nullptr,
-                1, 1, &metricsUAV, nullptr);
-            metalContext.BindPS(MakeResourceList(3, transparencyTargets._infiniteLoopSRV));
+            metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
             auto& resolveShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                 "game/xleres/forward/transparency/resolve.psh:main:ps_*",
                 checkForInfiniteLoops ? "DETECT_INFINITE_LISTS=1" : nullptr);
-
             metalContext.Bind(resolveShader);
+
             metalContext.Draw(4);
 
             metalContext.UnbindPS<Metal::ShaderResourceView>(0, 4);
