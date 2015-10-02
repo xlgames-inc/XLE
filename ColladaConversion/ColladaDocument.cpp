@@ -2333,7 +2333,7 @@ namespace ColladaConversion
         return _scene->_nodes[_index]._sid;
     }
 
-    Node Node::FindBySid(const utf8* sidStart, const utf8* sidEnd)
+    Node Node::FindBreadthFirst(std::function<bool(const Node&)>&& predicate)
     {
         // Search through the child nodes to look for a node with a 
         // "sid" that matches the given.
@@ -2347,10 +2347,7 @@ namespace ColladaConversion
         while (!workingQueue.empty()) {
             Node front(*_scene, workingQueue.front());
             workingQueue.pop();
-
-            if (Equivalent(front.GetSid(), Section(sidStart, sidEnd)))
-                return front;
-
+            if (predicate(front)) return front;
             for (auto child = front.GetFirstChild(); child; child = child.GetNextSibling())
                 workingQueue.push(child._index);
         }

@@ -279,7 +279,11 @@ namespace RenderCore { namespace ColladaConversion
         auto count = unboundController._jointNames.size();
         DynamicArray<uint16> result(std::make_unique<uint16[]>(count), count);
         for (unsigned c=0; c<count; ++c) {
-            Node node = skeleton.FindBySid(AsPointer(jointNames[c].cbegin()), AsPointer(jointNames[c].cend()));
+            
+            auto compareSection = MakeStringSection(jointNames[c]);
+            Node node = skeleton.FindBreadthFirst(
+                [&compareSection](const Node& compare) { return XlEqString(compare.GetSid(), compareSection); });
+
             if (node) {
                 auto bindingMatIndex = nodeRefs.GetOutputMatrixIndex(AsObjectGuid(node));
                 nodeRefs.TryRegisterNode(AsObjectGuid(node), SkeletonBindingName(node).c_str());
@@ -378,8 +382,7 @@ namespace RenderCore { namespace ColladaConversion
     std::pair<Float3, Float3> NascentGeometryObjects::CalculateBoundingBox
         (
             const NascentModelCommandStream& scene,
-            const Float4x4* transformsBegin, 
-            const Float4x4* transformsEnd
+            IteratorRange<const Float4x4*> transforms
         ) const
     {
             //
@@ -405,8 +408,8 @@ namespace RenderCore { namespace ColladaConversion
             const auto* geo = &_rawGeos[inst._id].second;
 
             Float4x4 localToWorld = Identity<Float4x4>();
-            if ((transformsBegin + inst._localToWorldId) < transformsEnd)
-                localToWorld = *(transformsBegin + inst._localToWorldId);
+            if (inst._localToWorldId < transforms.size())
+                localToWorld = transforms[inst._localToWorldId];
 
             const void*         vertexBuffer = geo->_vertices.get();
             const unsigned      vertexStride = geo->_mainDrawInputAssembly._vertexStride;
@@ -436,8 +439,8 @@ namespace RenderCore { namespace ColladaConversion
             if (!controller) continue;
 
             Float4x4 localToWorld = Identity<Float4x4>();
-            if ((transformsBegin + inst._localToWorldId) < transformsEnd)
-                localToWorld = *(transformsBegin + inst._localToWorldId);
+            if (inst._localToWorldId < transforms.size())
+                localToWorld = transforms[inst._localToWorldId];
 
                 //  We can't get the vertex position data directly from the vertex buffer, because
                 //  the "bound" object is already using an opaque hardware object. However, we can

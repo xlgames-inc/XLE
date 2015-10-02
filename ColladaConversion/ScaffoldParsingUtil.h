@@ -11,7 +11,11 @@
 
 namespace ColladaConversion
 {
-    bool Is(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[]);
+    inline bool Is(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
+    {
+        return XlEqString(section, match);
+    }
+
     bool BeginsWith(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[]);
     bool EndsWith(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[]);
 
@@ -81,10 +85,6 @@ namespace ColladaConversion
         return Conversion::Convert<std::string>(
             std::basic_string<CharType>(section._start, section._end));
     }
-
-    bool Equivalent(
-        const XmlInputStreamFormatter<utf8>::InteriorSection& lhs, 
-        const XmlInputStreamFormatter<utf8>::InteriorSection& rhs);
 
     template<typename Type>
         static Type Parse(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const Type& def)

@@ -13,6 +13,7 @@
 #include "../Utility/Streams/StreamDom.h"
 #include <vector>
 #include <memory>
+#include <functional>
 
 namespace ColladaConversion
 {
@@ -508,17 +509,24 @@ namespace ColladaConversion
     class Node
     {
     public:
-        Node GetNextSibling() const;
-        Node GetFirstChild() const;
-        Node GetParent() const;
-        Transformation GetFirstTransform() const;
-        Section GetName() const;
-        const DocScopeId& GetId() const;
-        Section GetSid() const;
+            // ------------ Hierarchy --------------
+        Node                GetNextSibling() const;
+        Node                GetFirstChild() const;
+        Node                GetParent() const;
+
+            // ------------ Transforms --------------
+        Transformation      GetFirstTransform() const;
+
+            // ------------ ID --------------
+        Section             GetName() const;
+        const DocScopeId&   GetId() const;
+        Section             GetSid() const;
         VisualScene::IndexIntoNodes GetIndex() const    { return _index; }
+
         const VisualScene& GetScene() const             { return *_scene; }
 
-        Node FindBySid(const utf8* sidStart, const utf8* sidEnd);
+            // ------------ Utilities --------------
+        Node FindBreadthFirst(std::function<bool(const Node&)>&& predicate);
         
         operator bool() const;
         bool operator!() const;

@@ -1211,7 +1211,7 @@ namespace RenderCore { namespace ColladaConversion
             auto finalMatrixCount = immData->_visualScene.GetInputInterface()._jointCount;
             auto reordered = std::make_unique<Float4x4[]>(finalMatrixCount);
             for (size_t c = 0; c < finalMatrixCount; ++c) {
-                auto machineOutputIndex = skelBinding._modelJointIndexToMachineOutput[c];
+                auto machineOutputIndex = skelBinding.ModelJointToMachineOutput(c);
                 if (machineOutputIndex == ~unsigned(0x0)) {
                     reordered[c] = Identity<Float4x4>();
                 } else {

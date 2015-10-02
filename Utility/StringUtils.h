@@ -87,6 +87,12 @@ namespace Utility
             return StringSection<CharType>(start, end);
         }
 
+    template<typename CharType>
+        inline StringSection<CharType> MakeStringSection(const std::basic_string<CharType>& str)
+        {
+            return StringSection<CharType>(AsPointer(str.cbegin()), AsPointer(str.cend()));
+        }
+
         ////////////   S T R I N G   C O M P A R I S O N S   ////////////
     XL_UTILITY_API int      XlComparePrefix     (const char* x, const char* y, size_t size);
     XL_UTILITY_API int      XlComparePrefixI    (const char* x, const char* y, size_t size);

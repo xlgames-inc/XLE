@@ -265,7 +265,7 @@ namespace RenderCore { namespace ColladaConversion
             while (i < end && !IsWhitespace(*i)) ++i;
             Section newSection(start, i);
 
-            if (type._end > type._start && !Equivalent(type, newSection))
+            if (type._end > type._start && !XlEqString(type, newSection))
                 Throw(FormatException("Found animation sampler with inconsistant interpolation types", src.GetLocation()));
             type = newSection;
         }

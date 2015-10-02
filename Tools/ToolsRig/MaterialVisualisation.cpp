@@ -279,7 +279,7 @@ namespace ToolsRig
 
                 IMaterialBinder::SystemConstants sysContants = _object->_systemConstants;
                 sysContants._objectToWorld = skelTransforms[
-                    skelBinding._modelJointIndexToMachineOutput[geoCall._transformMarker]];
+                    skelBinding.ModelJointToMachineOutput(geoCall._transformMarker)];
 
                 auto shaderProgram = _object->_materialBinder->Apply(
                     metalContext, parserContext, techniqueIndex,
@@ -324,7 +324,7 @@ namespace ToolsRig
 
                 IMaterialBinder::SystemConstants sysContants = _object->_systemConstants;
                 sysContants._objectToWorld = skelTransforms[
-                    skelBinding._modelJointIndexToMachineOutput[geoCall._transformMarker]];
+                    skelBinding.ModelJointToMachineOutput(geoCall._transformMarker)];
 
                 auto shaderProgram = _object->_materialBinder->Apply(
                     metalContext, parserContext, techniqueIndex,

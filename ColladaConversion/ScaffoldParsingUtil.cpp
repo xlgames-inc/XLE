@@ -10,19 +10,6 @@
 
 namespace ColladaConversion
 {
-    bool Is(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
-    {
-        const auto* a = section._start;
-        const auto* b = match;
-        for (;;) {
-            if (a == section._end)
-                return !(*b);   // success if both strings have terminated at the same time
-            if (*b != *a) return false;
-            assert(*b); // potentially hit this assert if there are null characters in "section"... that isn't supported
-            ++b; ++a;
-        }
-    }
-
     bool BeginsWith(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
     {
         auto matchLen = XlStringLen(match);
@@ -36,23 +23,6 @@ namespace ColladaConversion
         if ((section._end - section._start) < ptrdiff_t(matchLen)) return false;
         return Is(XmlInputStreamFormatter<utf8>::InteriorSection(section._end - matchLen, section._end), match);
     }
-
-    bool Equivalent(
-        const XmlInputStreamFormatter<utf8>::InteriorSection& lhs, 
-        const XmlInputStreamFormatter<utf8>::InteriorSection& rhs)
-    {
-        if ((lhs._end - lhs._start) != (rhs._end - rhs._start)) return false;
-        if (lhs._start == rhs._start) return true;
-
-        const auto* a = lhs._start;
-        const auto* b = rhs._start;
-        for (;;) {
-            if (a == lhs._end) return true;
-            if (*b != *a) return false;
-            ++b; ++a;
-        }
-    }
-
 
     template<typename CharType>
         __forceinline bool IsWhitespace(CharType chr)

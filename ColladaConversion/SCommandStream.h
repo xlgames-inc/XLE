@@ -39,8 +39,7 @@ namespace RenderCore { namespace ColladaConversion
         std::pair<Float3, Float3> CalculateBoundingBox
             (
                 const NascentModelCommandStream& scene,
-                const Float4x4* transformsBegin, 
-                const Float4x4* transformsEnd
+                IteratorRange<const Float4x4*> transforms
             ) const;
     };
 

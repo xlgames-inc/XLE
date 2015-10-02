@@ -75,6 +75,31 @@ namespace RenderCore { namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    static NascentChunkArray MakeNascentChunkArray(
+        const std::initializer_list<NascentChunk>& inits)
+    {
+        return NascentChunkArray(
+            new std::vector<NascentChunk>(inits),
+            &DestroyChunkArray);
+    }
+
+    std::vector<uint8> AsVector(const Serialization::NascentBlockSerializer& serializer)
+    {
+        auto block = serializer.AsMemoryBlock();
+        size_t size = Serialization::Block_GetSize(block.get());
+        return std::vector<uint8>(block.get(), PtrAdd(block.get(), size));
+    }
+
+    template<typename Type>
+        static std::vector<uint8> SerializeToVector(const Type& obj)
+    {
+        Serialization::NascentBlockSerializer serializer;
+        ::Serialize(serializer, obj);
+        return AsVector(serializer);
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     class PreparedSkinFile
     {
     public:
@@ -167,20 +192,6 @@ namespace RenderCore { namespace ColladaConversion
         }
     }
 
-    static Node FindNodeByName(const Node& node, const utf8 name[])
-    {
-        if (XlEqString(node.GetName(), name)) return node;
-
-        auto child = node.GetFirstChild();
-        while (child) {
-            auto r = FindNodeByName(child, name);
-            if (r) return r;
-            child = child.GetNextSibling();
-        }
-
-        return Node();
-    }
-
     class DefaultPoseData
     {
     public:
@@ -206,10 +217,10 @@ namespace RenderCore { namespace ColladaConversion
             RenderCore::Assets::ModelCommandStream::InputInterface
                 {AsPointer(streamInputInterface.begin()), streamInputInterface.size()});
 
-        auto finalMatrixCount = streamInputInterface.size(); // immData->_visualScene.GetInputInterface()._jointCount;
+        auto finalMatrixCount = (unsigned)streamInputInterface.size(); // immData->_visualScene.GetInputInterface()._jointCount;
         result._defaultTransforms.resize(finalMatrixCount);
-        for (size_t c = 0; c < finalMatrixCount; ++c) {
-            auto machineOutputIndex = skelBinding._modelJointIndexToMachineOutput[c];
+        for (unsigned c = 0; c < finalMatrixCount; ++c) {
+            auto machineOutputIndex = skelBinding.ModelJointToMachineOutput(c);
             if (machineOutputIndex == ~unsigned(0x0)) {
                 result._defaultTransforms[c] = Identity<Float4x4>();
             } else {
@@ -227,17 +238,16 @@ namespace RenderCore { namespace ColladaConversion
         for (unsigned c=0; c<finalMatrixCount; ++c)
             hasNonIdentity |= !Equivalent(result._defaultTransforms[c], Identity<Float4x4>(), tolerance);
         if (!hasNonIdentity) {
-            finalMatrixCount = 0;
+            finalMatrixCount = 0u;
             result._defaultTransforms.clear();
         }
 
         result._boundingBox = geoObjects.CalculateBoundingBox(
-            cmdStream, 
-            AsPointer(result._defaultTransforms.cbegin()), AsPointer(result._defaultTransforms.cend()));
+            cmdStream, MakeIteratorRange(result._defaultTransforms));
 
         return result;
     }
-  
+      
     NascentChunkArray SerializeSkin(const ColladaScaffold& model, const char startingNode[])
     {
         Serialization::NascentBlockSerializer serializer;
@@ -252,7 +262,8 @@ namespace RenderCore { namespace ColladaConversion
         if (startingNode && *startingNode) {
                 // Search for the given node, and use that as a root node.
                 // if it doesn't exist, we have to throw an exception
-            rootNode = FindNodeByName(rootNode, (const utf8*)startingNode);
+            rootNode = rootNode.FindBreadthFirst(
+                [startingNode](const Node& node) { return XlEqString(node.GetName(), (const utf8*)startingNode); });
             if (!rootNode)
                 Throw(::Assets::Exceptions::FormatError("Could not find root node: %s", startingNode));
         }
@@ -263,7 +274,6 @@ namespace RenderCore { namespace ColladaConversion
         Assets::TraceTransformationMachine(
             ConsoleRig::GetWarningStream(), 
             AsPointer(i.begin()), AsPointer(i.end()));
-        ConsoleRig::GetWarningStream().Flush();
 
         ::Serialize(serializer, skinFile._cmdStream);
         SerializeSkin(serializer, largeResourcesBlock, skinFile._geoObjects);
@@ -291,21 +301,18 @@ namespace RenderCore { namespace ColladaConversion
             // immData->~ModelImmutableData();
         }
 
-        ConsoleRig::GetWarningStream().Flush();
-
-        auto block = serializer.AsMemoryBlock();
-        size_t size = Serialization::Block_GetSize(block.get());
+        auto block = AsVector(serializer);
 
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-            RenderCore::Assets::ChunkType_ModelScaffold, 0, model._name.c_str(), unsigned(size));
+            RenderCore::Assets::ChunkType_ModelScaffold, 0, model._name.c_str(), unsigned(block.size()));
         Serialization::ChunkFile::ChunkHeader largeBlockChunk(
             RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, 0, model._name.c_str(), (unsigned)largeResourcesBlock.size());
 
-        NascentChunkArray result(new std::vector<NascentChunk>, &DestroyChunkArray);
-        result->push_back(NascentChunk(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size))));
-        result->push_back(NascentChunk(largeBlockChunk, std::move(largeResourcesBlock)));
-
-        return std::move(result);
+        return MakeNascentChunkArray(
+            {
+                NascentChunk(scaffoldChunk, std::move(block)),
+                NascentChunk(largeBlockChunk, std::move(largeResourcesBlock))
+            });
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -334,23 +341,16 @@ namespace RenderCore { namespace ColladaConversion
 
     NascentChunkArray SerializeSkeleton(const ColladaScaffold& model, const char[])
     {
-        Serialization::NascentBlockSerializer serializer;
-
         PreparedSkeletonFile skeleFile(model);
-
-        ::Serialize(serializer, skeleFile._skeleton);
-        ConsoleRig::GetWarningStream().Flush();
-
-        auto block = serializer.AsMemoryBlock();
-        size_t size = Serialization::Block_GetSize(block.get());
+        auto block = SerializeToVector(skeleFile._skeleton);
 
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
             RenderCore::Assets::ChunkType_Skeleton, 0, 
-            model._name.c_str(), unsigned(size));
+            model._name.c_str(), unsigned(block.size()));
 
-        NascentChunkArray result(new std::vector<NascentChunk>, &DestroyChunkArray);
-        result->push_back(NascentChunk(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size))));
-        return std::move(result);
+        return MakeNascentChunkArray({
+            NascentChunk(scaffoldChunk, std::move(block))
+            });
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -389,14 +389,14 @@ namespace RenderCore { namespace ColladaConversion
 
     NascentChunkArray SerializeMaterials(const ColladaScaffold& model, const char[])  
     { 
-        std::string matSettingsFile;
-        {
-            ::Assets::ResChar settingsName[MaxPath];
-            XlBasename(settingsName, dimof(settingsName), model._name.c_str());
-            XlChopExtension(settingsName);
-            XlCatString(settingsName, dimof(settingsName), ".material");
-            matSettingsFile = settingsName;
-        }
+        // std::string matSettingsFile;
+        // {
+        //     ::Assets::ResChar settingsName[MaxPath];
+        //     XlBasename(settingsName, dimof(settingsName), model._name.c_str());
+        //     XlChopExtension(settingsName);
+        //     XlCatString(settingsName, dimof(settingsName), ".material");
+        //     matSettingsFile = settingsName;
+        // }
 
         MemoryOutputStream<uint8> strm;
         SerializeMatTable(strm, model);
@@ -409,11 +409,11 @@ namespace RenderCore { namespace ColladaConversion
             RenderCore::Assets::ChunkType_RawMat, 0, 
             model._name.c_str(), Serialization::ChunkFile::SizeType(finalSize));
 
-        NascentChunkArray result(new std::vector<NascentChunk>(), &DestroyChunkArray);
-        result->push_back(NascentChunk(
-            scaffoldChunk, 
-            std::vector<uint8>(strm.GetBuffer().Begin(), strm.GetBuffer().End())));
-        return std::move(result);
+        return MakeNascentChunkArray({
+            NascentChunk(
+                scaffoldChunk, 
+                std::vector<uint8>(strm.GetBuffer().Begin(), strm.GetBuffer().End()))
+            });
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -475,17 +475,12 @@ namespace RenderCore { namespace ColladaConversion
         serializer.SerializeSubBlock(AsPointer(animSet._curves.begin()), AsPointer(animSet._curves.end()));
         serializer.SerializeValue(animSet._curves.size());
 
-        ConsoleRig::GetWarningStream().Flush();
-
-        auto block = serializer.AsMemoryBlock();
-        size_t size = Serialization::Block_GetSize(block.get());
+        auto block = AsVector(serializer);
 
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-            RenderCore::Assets::ChunkType_AnimationSet, 0, animSet._name.c_str(), unsigned(size));
+            RenderCore::Assets::ChunkType_AnimationSet, 0, animSet._name.c_str(), unsigned(block.size()));
 
-        NascentChunkArray result(new std::vector<NascentChunk>(), &DestroyChunkArray);
-        result->push_back(NascentChunk(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size))));
-        return std::move(result);
+        return MakeNascentChunkArray({NascentChunk(scaffoldChunk, std::move(block))});
     }
 
     void ExtractAnimations(WorkingAnimationSet& dest, const ColladaScaffold& source, const char animationName[])

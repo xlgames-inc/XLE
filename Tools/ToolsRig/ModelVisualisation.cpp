@@ -21,6 +21,7 @@
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
+#include "../../RenderCore/Assets/ModelUtils.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/HeapUtils.h"
@@ -49,12 +50,16 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    VisCameraSettings AlignCameraToBoundingBox(float verticalFieldOfView, const std::pair<Float3, Float3>& boxIn)
+    VisCameraSettings AlignCameraToBoundingBox(
+        float verticalFieldOfView, 
+        const std::pair<Float3, Float3>& boxIn)
     {
         auto box = boxIn;
 
             // convert empty/inverted boxes into something rational...
-        if (box.first[0] >= box.second[0] || box.first[1] >= box.second[1] || box.first[1] >= box.second[1]) {
+        if (    box.first[0] >= box.second[0] 
+            ||  box.first[1] >= box.second[1] 
+            ||  box.first[2] >= box.second[2]) {
             box.first = Float3(-10.f, -10.f, -10.f);
             box.second = Float3( 10.f,  10.f,  10.f);
         }
@@ -82,29 +87,11 @@ namespace ToolsRig
         const ModelScaffold* scaffold)
     {
         if (scaffold) {
-
-            auto& transMachine = scaffold->EmbeddedSkeleton();
-            auto transformCount = transMachine.GetOutputMatrixCount();
-            auto skelTransforms = std::make_unique<Float4x4[]>(transformCount);
-            transMachine.GenerateOutputTransforms(
-                skelTransforms.get(), transformCount,
-                &transMachine.GetDefaultParameters());
-
-            RenderCore::Assets::SkeletonBinding binding(
-                transMachine.GetOutputInterface(),
-                scaffold->CommandStream().GetInputInterface());
-
-            RenderCore::Assets::MeshToModel transforms(
-                skelTransforms.get(), transformCount, &binding);
-
             model.Render(
-                context, sharedStateSet,
-                Identity<Float4x4>(), transforms);
-
+                context, sharedStateSet, Identity<Float4x4>(), 
+                RenderCore::Assets::EmbeddedSkeletonPose(*scaffold).GetMeshToModel());
         } else {
-
             model.Render(context, sharedStateSet, Identity<Float4x4>());
-
         }
     }
 
@@ -115,29 +102,11 @@ namespace ToolsRig
         const ModelScaffold* scaffold)
     {
         if (scaffold) {
-
-            auto& transMachine = scaffold->EmbeddedSkeleton();
-            auto transformCount = transMachine.GetOutputMatrixCount();
-            auto skelTransforms = std::make_unique<Float4x4[]>(transformCount);
-            transMachine.GenerateOutputTransforms(
-                skelTransforms.get(), transformCount,
-                &transMachine.GetDefaultParameters());
-
-            RenderCore::Assets::SkeletonBinding binding(
-                transMachine.GetOutputInterface(),
-                scaffold->CommandStream().GetInputInterface());
-
-            RenderCore::Assets::MeshToModel transforms(
-                skelTransforms.get(), transformCount, &binding);
-
             model.Prepare(
-                dest, sharedStateSet,
-                Identity<Float4x4>(), transforms);
-
+                dest, sharedStateSet, Identity<Float4x4>(), 
+                RenderCore::Assets::EmbeddedSkeletonPose(*scaffold).GetMeshToModel());
         } else {
-
             model.Prepare(dest, sharedStateSet, Identity<Float4x4>());
-
         }
     }
 

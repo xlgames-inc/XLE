@@ -55,6 +55,9 @@
     <ClCompile Include="..\Assets\ModelScaffoldSerialization.cpp">
       <Filter>Assets\Model</Filter>
     </ClCompile>
+    <ClCompile Include="..\Assets\ModelUtils.cpp">
+      <Filter>Assets\Model</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\SharedStateSet.h" />
@@ -104,6 +107,9 @@
       <Filter>Assets\Model</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\ModelImmutableData.h">
+      <Filter>Assets\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\ModelUtils.h">
       <Filter>Assets\Model</Filter>
     </ClInclude>
   </ItemGroup>

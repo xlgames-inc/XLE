@@ -90,33 +90,37 @@ namespace Exceptions
 
 namespace Utility
 {
-    #if FEATURE_EXCEPTIONS
-        typedef void (*OnThrowCallback)(const ::Exceptions::BasicLabel&);
-        inline OnThrowCallback& GlobalOnThrowCallback()
-        {
-            static OnThrowCallback s_result = nullptr;
-            return s_result;
-        }
-
-        template <class E, typename std::enable_if<std::is_base_of<::Exceptions::BasicLabel, E>::value>::type* = nullptr>
-            inline __declspec(noreturn) void Throw(const E& e)
-        {
-            auto* callback = GlobalOnThrowCallback();
-            if (callback) (*callback)(e);
-            throw e; 
-        }
-
-        template <class E, typename std::enable_if<!std::is_base_of<::Exceptions::BasicLabel, E>::value>::type* = nullptr>
-            inline __declspec(noreturn) void Throw(const E& e)
-        {
-            throw e;
-        }
+    #if defined(__INTELLISENSE__)
+        inline void Throw(...) {}
     #else
-        template <class E> inline void Throw(const E& e)
-        {
-            // OutputDebugString("Suppressed thrown exception");
-            exit(-1);
-        }
+        #if FEATURE_EXCEPTIONS
+            typedef void (*OnThrowCallback)(const ::Exceptions::BasicLabel&);
+            inline OnThrowCallback& GlobalOnThrowCallback()
+            {
+                static OnThrowCallback s_result = nullptr;
+                return s_result;
+            }
+
+            template <class E, typename std::enable_if<std::is_base_of<::Exceptions::BasicLabel, E>::value>::type* = nullptr>
+                inline __declspec(noreturn) void Throw(const E& e)
+            {
+                auto* callback = GlobalOnThrowCallback();
+                if (callback) (*callback)(e);
+                throw e; 
+            }
+
+            template <class E, typename std::enable_if<!std::is_base_of<::Exceptions::BasicLabel, E>::value>::type* = nullptr>
+                inline __declspec(noreturn) void Throw(const E& e)
+            {
+                throw e;
+            }
+        #else
+            template <class E> inline void Throw(const E& e)
+            {
+                // OutputDebugString("Suppressed thrown exception");
+                exit(-1);
+            }
+        #endif
     #endif
 }
 

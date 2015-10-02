@@ -185,6 +185,17 @@ namespace RenderCore { namespace Assets
         _animDriverToMachineParameter = std::move(result);
     }
 
+    AnimationSetBinding::AnimationSetBinding() {}
+    AnimationSetBinding::AnimationSetBinding(AnimationSetBinding&& moveFrom) never_throws
+    : _animDriverToMachineParameter(std::move(moveFrom._animDriverToMachineParameter))
+    {}
+    AnimationSetBinding& AnimationSetBinding::operator=(AnimationSetBinding&& moveFrom) never_throws
+    {
+        _animDriverToMachineParameter = std::move(moveFrom._animDriverToMachineParameter);
+        return *this;
+    }
+    AnimationSetBinding::~AnimationSetBinding() {}
+
     SkeletonBinding::SkeletonBinding(   const TransformationMachine::OutputInterface&   output,
                                         const ModelCommandStream::InputInterface&       input)
     {
@@ -217,6 +228,19 @@ namespace RenderCore { namespace Assets
         _modelJointIndexToInverseBindMatrix = std::move(inverseBindMatrices);
     }
 
+    SkeletonBinding::SkeletonBinding() {}
+    SkeletonBinding::SkeletonBinding(SkeletonBinding&& moveFrom) never_throws
+    : _modelJointIndexToMachineOutput(std::move(moveFrom._modelJointIndexToMachineOutput))
+    , _modelJointIndexToInverseBindMatrix(std::move(moveFrom._modelJointIndexToInverseBindMatrix))
+    {}
+    SkeletonBinding& SkeletonBinding::operator=(SkeletonBinding&& moveFrom) never_throws
+    {
+        _modelJointIndexToMachineOutput = std::move(moveFrom._modelJointIndexToMachineOutput);
+        _modelJointIndexToInverseBindMatrix = std::move(moveFrom._modelJointIndexToInverseBindMatrix);
+        return *this;
+    }
+    SkeletonBinding::~SkeletonBinding() {}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename IteratorType>
@@ -243,18 +267,18 @@ namespace RenderCore { namespace Assets
     static void NullTransformIterator(const Float4x4& parent, const Float4x4& child, const void* userData) {}
 
     void TransformationMachine::GenerateOutputTransforms(   
-            Float4x4 output[], unsigned outputCount,
-            const TransformationParameterSet*   parameterSet) const
+        Float4x4 output[], unsigned outputCount,
+        const TransformationParameterSet*   parameterSet) const
     {
         GenerateOutputTransformsInternal(
             output, outputCount, parameterSet, NullTransformIterator, nullptr);
     }
 
     void TransformationMachine::GenerateOutputTransforms(   
-            Float4x4 output[], unsigned outputCount,
-            const TransformationParameterSet*   parameterSet,
-            DebugIterator*  debugIterator,
-            const void*     iteratorUserData) const
+        Float4x4 output[], unsigned outputCount,
+        const TransformationParameterSet*   parameterSet,
+        DebugIterator*  debugIterator,
+        const void*     iteratorUserData) const
     {
         return GenerateOutputTransformsInternal(
             output, outputCount, parameterSet, debugIterator, iteratorUserData);
@@ -306,8 +330,8 @@ namespace RenderCore { namespace Assets
                                         const SkeletonBinding&      skeletonBinding)
     {
         for (unsigned c=0; c<std::min(controller._jointMatrixCount, destinationCount); ++c) {
-            unsigned jointMatrixIndex = controller._jointMatrices[c];
-            unsigned transMachineOutput = skeletonBinding._modelJointIndexToMachineOutput[jointMatrixIndex];
+            auto jointMatrixIndex = controller._jointMatrices[c];
+            auto transMachineOutput = skeletonBinding.ModelJointToMachineOutput(jointMatrixIndex);
             if (transMachineOutput != ~unsigned(0x0)) {
                 Float4x4 inverseBindByBindShapeMatrix = controller._inverseBindByBindShapeMatrices[c];
                 Float4x4 finalMatrix = 
@@ -744,7 +768,7 @@ namespace RenderCore { namespace Assets
             = transformationMachine.GetInputInterface();
         for (size_t c=driverStart; c<driverEnd; ++c) {
             const AnimationDriver& driver = _animationDrivers[c];
-            unsigned transInputIndex = binding._animDriverToMachineParameter[driver._parameterIndex];
+            unsigned transInputIndex = binding.AnimDriverToMachineParameter(driver._parameterIndex);
             if (transInputIndex == ~unsigned(0x0)) {
                 continue;   // (unbound output)
             }
@@ -801,7 +825,7 @@ namespace RenderCore { namespace Assets
 
         for (   size_t c=constantDriverStartIndex; c<constantDriverEndIndex; ++c) {
             const ConstantDriver& driver = _constantDrivers[c];
-            unsigned transInputIndex = binding._animDriverToMachineParameter[driver._parameterIndex];
+            unsigned transInputIndex = binding.AnimDriverToMachineParameter(driver._parameterIndex);
             if (transInputIndex == ~unsigned(0x0)) {
                 continue;   // (unbound output)
             }

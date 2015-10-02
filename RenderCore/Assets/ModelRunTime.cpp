@@ -1477,8 +1477,8 @@ namespace RenderCore { namespace Assets
             //  are output from the transformation machine to the input matrices
             //  expected by the "transformMarker" index scheme
         if (_skeletonBinding) {
-            assert(transformMarker < _skeletonBinding->_modelJointIndexToMachineOutput.size());
-            auto machineOutputIndex = _skeletonBinding->_modelJointIndexToMachineOutput[transformMarker];
+            assert(transformMarker < _skeletonBinding->GetModelJointCount());
+            auto machineOutputIndex = _skeletonBinding->ModelJointToMachineOutput(transformMarker);
             if (machineOutputIndex == ~unsigned(0x0)) {
                     // no mapping... we just have to assume identity mesh-to-model
                 return Identity<Float4x4>();
