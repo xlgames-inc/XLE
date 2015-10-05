@@ -330,7 +330,7 @@ namespace SceneEngine
             "StochasticBlendingTexture");
 
         _secondPassBlend = Metal::BlendState(
-            Metal::BlendOp::Add, Metal::Blend::One, Metal::Blend::InvSrcAlpha,
+            Metal::BlendOp::Add, Metal::Blend::One, Metal::Blend::One,
             Metal::BlendOp::Add, Metal::Blend::Zero, Metal::Blend::InvSrcAlpha);
     }
 

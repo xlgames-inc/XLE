@@ -5,6 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../../Colour.h"
+#include "../../Transform.h"
+#include "../../TransformAlgorithm.h"
 
 Texture2DMS<float> DepthsTexture;
 
@@ -18,5 +20,6 @@ float4 ps_depthave(float4 position : SV_Position) : SV_Target
         aveDepthValue += DepthsTexture.Load(uint2(position.xy), c);
     aveDepthValue /= float(sampleCount);
     if (aveDepthValue >= 1.f) discard;
-    return float4(LightingScale * aveDepthValue.xxx, 0.f);
+    aveDepthValue = NDCDepthToWorldSpace_Perspective(aveDepthValue, GlobalMiniProjZW());
+    return float4(LightingScale * aveDepthValue.xxx / 100.f, 0.f);
 }

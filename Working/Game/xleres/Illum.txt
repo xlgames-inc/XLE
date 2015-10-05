@@ -22,14 +22,17 @@
     ~Inherit; Shared:Skinnable; Shared:VegetationSpawn
     ~Parameters
         ~Geometry
+            GEO_HAS_COLOUR
             GEO_HAS_TEXCOORD
+            GEO_HAS_NORMAL
         ~Material
             MAT_ALPHA_TEST
             MAT_ALPHA_TEST_PREDEPTH
             RES_HAS_DiffuseTexture
+            MAT_VCOLOR_IS_ANIM_PARAM
         ~Runtime
             STOCHASTIC_TRANS
-    VertexShader=game/xleres/forward/depthonly.vsh:main
+    VertexShader=game/xleres/forward/illum.vsh:main
     PixelShader=game/xleres/forward/depthonly.psh:main
 ~Deferred
     ~Inherit; Shared:CommonMaterial; Shared:Skinnable; Shared:VegetationSpawn; Shared:System; Shared:Deferred

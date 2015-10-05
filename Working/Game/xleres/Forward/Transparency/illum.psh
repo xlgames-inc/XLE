@@ -166,17 +166,29 @@ Texture2DMS<float> StochasticOcclusionDepths : register(t9);
 	// is noisy, but it will give us a rough idea.
 
 	float ndcComparison = geo.position.z; // / geo.position.w;
+	// ndcComparison = NDCDepthToWorldSpace_Perspective(ndcComparison, GlobalMiniProjZW());
 
 	float occlusion = 0.f;
 	for (uint s=0; s<STOCHASTIC_SAMPLE_COUNT; ++s) {
 		float sampleDepth = StochasticOcclusionDepths.Load(uint2(geo.position.xy), s);
-		if (sampleDepth < ndcComparison) // (ndcComparison - 1e-4f))
-			occlusion += 1.f;
+		// sampleDepth = NDCDepthToWorldSpace_Perspective(sampleDepth, GlobalMiniProjZW());
 
-		// if (ndcComparison < sampleDepth) discard;
+			// Maybe getting self-occlusion here?
+			// If the depth values written to the depth buffer are evaluated at
+			// the MSAA sample position, then they will not exactly equal the ndcComparison
+			// value here. It would cause some self occlusion based on the orientation
+			// of the fragment
+		if (sampleDepth < ndcComparison)
+			occlusion += 1.f;
+	}
+	[branch] if (occlusion == float(STOCHASTIC_SAMPLE_COUNT)) {
+		// (discard would be much cheaper here. But sometimes all of the fragments on
+		// the top have a very low alpha values -- which means that the final blending
+		// alpha value becomes incorrect)
+		return float4(0.0.xxx,
+			IllumShader_PerPixel(geo).blendingAlpha);
 	}
 	occlusion /= float(STOCHASTIC_SAMPLE_COUNT);
-	// occlusion = 0.f;
 
 	GBufferValues sample = IllumShader_PerPixel(geo);
 	// if (sample.blendingAlpha == 1.f) discard;
