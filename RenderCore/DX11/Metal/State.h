@@ -12,6 +12,7 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
+    class DeviceContext;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -193,9 +194,12 @@ namespace RenderCore { namespace Metal_DX11
         RasterizerState& operator=(RasterizerState&& moveFrom);
         RasterizerState(const RasterizerState& copyFrom);
         RasterizerState& operator=(const RasterizerState& copyFrom);
+        RasterizerState(intrusive_ptr<ID3D::RasterizerState>&& moveFrom);
 
         typedef ID3D::RasterizerState*  UnderlyingType;
         UnderlyingType                  GetUnderlying() const  { return _underlying.get(); }
+
+        static RasterizerState Null();
 
     private:
         intrusive_ptr<ID3D::RasterizerState>  _underlying;
@@ -297,8 +301,13 @@ namespace RenderCore { namespace Metal_DX11
     public:
         BlendState( BlendOp::Enum blendingOperation = BlendOp::Add, 
                     Blend::Enum srcBlend = Blend::SrcAlpha,
-                    Blend::Enum dstBlend = Blend::InvSrcAlpha,
-                    bool terrainLayer = false);
+                    Blend::Enum dstBlend = Blend::InvSrcAlpha);
+        BlendState( BlendOp::Enum blendingOperation, 
+                    Blend::Enum srcBlend,
+                    Blend::Enum dstBlend,
+                    BlendOp::Enum alphaBlendingOperation, 
+                    Blend::Enum alphaSrcBlend,
+                    Blend::Enum alphaDstBlend);
         ~BlendState();
 
         BlendState(BlendState&& moveFrom);
@@ -308,6 +317,7 @@ namespace RenderCore { namespace Metal_DX11
         BlendState(intrusive_ptr<ID3D::BlendState>&& moveFrom);
 
         static BlendState OutputDisabled();
+        static BlendState Null();
 
         typedef ID3D::BlendState*   UnderlyingType;
         UnderlyingType              GetUnderlying() const  { return _underlying.get(); }
@@ -396,6 +406,7 @@ namespace RenderCore { namespace Metal_DX11
             unsigned stencilReadMask, unsigned stencilWriteMask,
             const StencilMode& frontFaceStencil = StencilMode::NoEffect,
             const StencilMode& backFaceStencil = StencilMode::NoEffect);
+        DepthStencilState(DeviceContext& context);
         DepthStencilState(DepthStencilState&& moveFrom);
         DepthStencilState& operator=(DepthStencilState&& moveFrom);
         ~DepthStencilState();

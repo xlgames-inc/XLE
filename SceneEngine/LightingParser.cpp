@@ -527,16 +527,20 @@ namespace SceneEngine
                     SavedTargets savedTargets(context);
                     auto resetMarker = savedTargets.MakeResetMarker(context);
 
-                    box = StochasticTransparency_Prepare(context, parserContext);
-
                     parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("STOCHASTIC_TRANS"), 1u);
                     auto cleanup = MakeAutoCleanup(
                         [&parserContext]() 
                         { parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("STOCHASTIC_TRANS"), 0u); });
 
+                    box = StochasticTransparency_Prepare(context, parserContext);
                     ExecuteScene(
                         context, parserContext, SPS::BatchFilter::OITransparent,
                         TechniqueIndex_DepthOnly, L"MainScene-PostGBuffer-OI");
+
+                    StochasticTransparencyBox_PrepareSecondPass(context, parserContext, *box, mainTargets._msaaDepthBuffer);
+                    ExecuteScene(
+                        context, parserContext, SPS::BatchFilter::OITransparent,
+                        TechniqueIndex_StochasticTransparency, L"MainScene-PostGBuffer-OI-Res");
                 }
 
                 StochasticTransparencyBox_Resolve(context, parserContext, *box);

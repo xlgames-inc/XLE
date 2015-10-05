@@ -69,6 +69,8 @@ namespace SceneEngine
     {
     public:
         void ResetToOldStates(RenderCore::Metal::DeviceContext& context);
+        ID3D::BlendState* GetBlendState() { return _oldBlendState.get(); }
+        ID3D::RasterizerState* GetRasterizerState() { return _oldRasterizerState.get(); }
         SavedBlendAndRasterizerState(RenderCore::Metal::DeviceContext& context);
         ~SavedBlendAndRasterizerState();
     protected:
@@ -118,6 +120,7 @@ namespace SceneEngine
 
     static const unsigned TechniqueIndex_OrderIndependentTransparency = 4;
     static const unsigned TechniqueIndex_RTShadowGen = 9;
+    static const unsigned TechniqueIndex_StochasticTransparency = 10;
 
     typedef intrusive_ptr<ID3D::Resource>      ResourcePtr;
     ResourcePtr         CreateResourceImmediate(const BufferUploads::BufferDesc& desc);

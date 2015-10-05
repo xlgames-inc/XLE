@@ -126,7 +126,16 @@ namespace RenderCore { namespace Metal_DX11
         _underlying = ObjectFactory().CreateRasterizerState(&rasterizerDesc);
     }
 
+    RasterizerState::RasterizerState(intrusive_ptr<ID3D::RasterizerState>&& moveFrom)
+    : _underlying(std::move(moveFrom))
+    {}
+
     RasterizerState::~RasterizerState() {}
+
+    RasterizerState RasterizerState::Null()
+    {
+        return RasterizerState(intrusive_ptr<ID3D::RasterizerState>());
+    }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -154,7 +163,7 @@ namespace RenderCore { namespace Metal_DX11
         return *this;
     }
 
-    BlendState::BlendState(BlendOp::Enum blendingOperation, Blend::Enum srcBlend, Blend::Enum dstBlend, bool terrainLayer)
+    BlendState::BlendState(BlendOp::Enum blendingOperation, Blend::Enum srcBlend, Blend::Enum dstBlend)
     {
         D3D11_BLEND_DESC blendStateDesc;
         blendStateDesc.AlphaToCoverageEnable = false;
@@ -171,14 +180,43 @@ namespace RenderCore { namespace Metal_DX11
                 blendStateDesc.RenderTarget[c].DestBlend = (D3D11_BLEND)dstBlend;
                 blendStateDesc.RenderTarget[c].BlendOp = (D3D11_BLEND_OP)blendingOperation;
             }
-            if (!terrainLayer) {
-                blendStateDesc.RenderTarget[c].SrcBlendAlpha = D3D11_BLEND_ONE;
-                blendStateDesc.RenderTarget[c].DestBlendAlpha = D3D11_BLEND_ZERO;
-            } else {
-                blendStateDesc.RenderTarget[c].SrcBlendAlpha = D3D11_BLEND_ZERO;
-                blendStateDesc.RenderTarget[c].DestBlendAlpha = D3D11_BLEND_ONE;    // hack -- when drawing terrain layer, we need to leave the alpha channel unchanged
-            }
+            blendStateDesc.RenderTarget[c].SrcBlendAlpha = D3D11_BLEND_ONE;
+            blendStateDesc.RenderTarget[c].DestBlendAlpha = D3D11_BLEND_ZERO;
             blendStateDesc.RenderTarget[c].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+            blendStateDesc.RenderTarget[c].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+        }
+
+        _underlying = ObjectFactory().CreateBlendState(&blendStateDesc);
+    }
+
+    BlendState::BlendState( 
+        BlendOp::Enum blendingOperation, 
+        Blend::Enum srcBlend,
+        Blend::Enum dstBlend,
+        BlendOp::Enum alphaBlendingOperation, 
+        Blend::Enum alphaSrcBlend,
+        Blend::Enum alphaDstBlend)
+    {
+        D3D11_BLEND_DESC blendStateDesc;
+        blendStateDesc.AlphaToCoverageEnable = false;
+        blendStateDesc.IndependentBlendEnable = false;
+        for (unsigned c=0; c<dimof(blendStateDesc.RenderTarget); ++c) {
+            if (blendingOperation == BlendOp::NoBlending) {
+                blendStateDesc.RenderTarget[c].BlendEnable = false;
+                blendStateDesc.RenderTarget[c].SrcBlend = D3D11_BLEND_ONE;
+                blendStateDesc.RenderTarget[c].DestBlend = D3D11_BLEND_ZERO;
+                blendStateDesc.RenderTarget[c].BlendOp = D3D11_BLEND_OP_ADD;
+            } else {
+                blendStateDesc.RenderTarget[c].BlendEnable = true;
+                blendStateDesc.RenderTarget[c].SrcBlend = (D3D11_BLEND)srcBlend;
+                blendStateDesc.RenderTarget[c].DestBlend = (D3D11_BLEND)dstBlend;
+                blendStateDesc.RenderTarget[c].BlendOp = (D3D11_BLEND_OP)blendingOperation;
+            }
+
+            blendStateDesc.RenderTarget[c].SrcBlendAlpha = (D3D11_BLEND)alphaSrcBlend;
+            blendStateDesc.RenderTarget[c].DestBlendAlpha = (D3D11_BLEND)alphaDstBlend;
+            blendStateDesc.RenderTarget[c].BlendOpAlpha = (D3D11_BLEND_OP)alphaBlendingOperation;
+
             blendStateDesc.RenderTarget[c].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
         }
 
@@ -202,6 +240,11 @@ namespace RenderCore { namespace Metal_DX11
         }
 
         return BlendState(ObjectFactory().CreateBlendState(&blendStateDesc));
+    }
+
+    BlendState BlendState::Null()
+    {
+        return BlendState(intrusive_ptr<ID3D::BlendState>());
     }
 
     BlendState::~BlendState() {}
@@ -255,6 +298,13 @@ namespace RenderCore { namespace Metal_DX11
         depthStencilStateDesc.BackFace.StencilFunc = (D3D11_COMPARISON_FUNC)backFaceStencil._comparison;
 
         _underlying = ObjectFactory().CreateDepthStencilState(&depthStencilStateDesc);
+    }
+
+    DepthStencilState::DepthStencilState(DeviceContext& context)
+    {
+        ID3D::DepthStencilState* rawdss = nullptr; UINT originalStencil = 0;
+        context.GetUnderlying()->OMGetDepthStencilState(&rawdss, &originalStencil);
+        _underlying = moveptr(rawdss);
     }
 
     DepthStencilState::DepthStencilState(DepthStencilState&& moveFrom)

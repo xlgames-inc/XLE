@@ -127,3 +127,22 @@
     VertexShader=game/xleres/shadowgen/rtwritetiles.sh:vs_writetris
     GeometryShader=game/xleres/shadowgen/rtwritetiles.sh:gs_writetris
     PixelShader=null
+~StochasticTransparency
+    ~Inherit; Shared:CommonMaterial; Shared:Skinnable; Shared:VegetationSpawn; Shared:System
+    ~Parameters
+        ~Geometry
+            GEO_HAS_COLOUR
+            GEO_HAS_TEXCOORD
+            GEO_HAS_TANGENT_FRAME
+            GEO_HAS_BITANGENT
+            GEO_HAS_NORMAL
+            OUTPUT_LOCAL_NORMAL=1
+            OUTPUT_LOCAL_VIEW_VECTOR=1
+            OUTPUT_WORLD_VIEW_VECTOR=1
+            OUTPUT_WORLD_POSITION=1
+        ~Runtime
+            BASIC_LIGHT_COUNT=1
+            SHADOW_CASCADE_MODE=2
+            STOCHASTIC_SAMPLE_COUNT
+    VertexShader=game/xleres/forward/illum.vsh:main
+    PixelShader=game/xleres/forward/transparency/illum.psh:main_stochastic

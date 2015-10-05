@@ -203,8 +203,8 @@ namespace RenderCore { namespace Assets
             //  constructor, otherwise they'll build the new
             //  underlying state objects
         CompiledRenderStateSet()
-            : _blendState(Techniques::CommonResources()._blendOpaque)
-            , _rasterizerState(Techniques::CommonResources()._defaultRasterizer)
+            : _blendState(Metal::BlendState::Null()) // Techniques::CommonResources()._blendOpaque)
+            , _rasterizerState(Metal::RasterizerState::Null()) // Techniques::CommonResources()._defaultRasterizer)
         {}
     };
 
@@ -236,8 +236,8 @@ namespace RenderCore { namespace Assets
             //          This is because shadow rendering conflicts with some of the states
             //          in the RasterizerState object. We need to merge local states and
             //          global states together to get the final true rasterizer state
-        if (techniqueIndex == 0 || techniqueIndex == 4 || techniqueIndex == 2) {
-            auto hash = states.GetHash();
+        if (techniqueIndex == 0 || techniqueIndex == 4 || techniqueIndex == 2 || techniqueIndex == 10 || techniqueIndex == 1 || techniqueIndex == 9) {
+            auto hash = HashCombine(states.GetHash(), techniqueIndex);
             auto i = LowerBound(_forwardStates, hash);
             if (i != _forwardStates.end() && i->first == hash) {
                 return &i->second;
@@ -251,7 +251,7 @@ namespace RenderCore { namespace Assets
 
                 if (deferredDecal) {
                     result._blendState = Metal::BlendState(
-                        Metal::BlendOp::Add, Metal::Blend::SrcAlpha, Metal::Blend::InvSrcAlpha, true);
+                        Metal::BlendOp::Add, Metal::Blend::SrcAlpha, Metal::Blend::InvSrcAlpha);
                 } else {
                     result._blendState = Techniques::CommonResources()._blendOpaque;
                 }
@@ -305,7 +305,8 @@ namespace RenderCore { namespace Assets
         auto compiled = resolver.Compile(
             _pimpl->_renderStateSets[renderStateSetIndex.Value()].second, globalStates, context._techniqueIndex);
         if (compiled) {
-            context._context->Bind(compiled->_blendState);
+            if (compiled->_blendState.GetUnderlying())
+                context._context->Bind(compiled->_blendState);
             context._context->Bind(compiled->_rasterizerState);
         }
 

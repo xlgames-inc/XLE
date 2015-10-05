@@ -85,7 +85,11 @@
 	uint main(VSOutput geo, uint primitiveID : SV_PrimitiveID) : SV_Coverage
 	{
 		float alpha = IllumShader_PerPixel(geo).blendingAlpha;
+		// if (alpha == 1.f) discard;
 		return StochasticTransMask(uint2(geo.position.xy), alpha, primitiveID);
+
+		// if (alpha == 0.f) discard;
+		// return 0xff;
 	}
 
 #else

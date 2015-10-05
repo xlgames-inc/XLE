@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "../../Colour.h"
+
 Texture2DMS<float> DepthsTexture;
 
 float4 ps_depthave(float4 position : SV_Position) : SV_Target
@@ -16,5 +18,5 @@ float4 ps_depthave(float4 position : SV_Position) : SV_Target
         aveDepthValue += DepthsTexture.Load(uint2(position.xy), c);
     aveDepthValue /= float(sampleCount);
     if (aveDepthValue >= 1.f) discard;
-    return aveDepthValue;
+    return float4(LightingScale * aveDepthValue.xxx, 0.f);
 }

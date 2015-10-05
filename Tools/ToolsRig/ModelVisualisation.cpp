@@ -128,7 +128,8 @@ namespace ToolsRig
             using namespace RenderCore;
             Metal::ConstantBuffer drawCallIndexBuffer(nullptr, sizeof(unsigned)*4);
             context->BindGS(MakeResourceList(drawCallIndexBuffer));
-            auto& dss = Techniques::CommonResources()._dssReadWriteWriteStencil;
+
+            Metal::DepthStencilState dss(*context);
 
             for (auto i:delaySteps)
                 ModelRenderer::RenderPrepared(

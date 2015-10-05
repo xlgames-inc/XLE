@@ -17,6 +17,7 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../ConsoleRig/Console.h"
 #include <tuple>
 #include <type_traits>
@@ -104,7 +105,6 @@ namespace SceneEngine
 
         GestaltResource();
         GestaltResource(
-            BufferUploads::IManager& bufferUploads,
             const BufferUploads::TextureDesc& desc,
             const char name[], BufferUploads::DataPacket* initialData = nullptr);
         GestaltResource(GestaltResource&& moveFrom) never_throws;
@@ -129,8 +129,8 @@ namespace SceneEngine
 
         static bool NeedTypelessFormat(Metal::NativeFormat::Enum fmt)
         {
-            return  fmt >= Metal::NativeFormat::R24G8_TYPELESS
-                &&  fmt <= Metal::NativeFormat::X24_TYPELESS_G8_UINT;
+            return (fmt >= Metal::NativeFormat::R24G8_TYPELESS && fmt <= Metal::NativeFormat::X24_TYPELESS_G8_UINT)
+                || (fmt >= Metal::NativeFormat::R32_TYPELESS && fmt <= Metal::NativeFormat::R32_SINT);
         }
 
         template<typename View>
@@ -143,6 +143,10 @@ namespace SceneEngine
                     &&  fmt <= Metal::NativeFormat::X24_TYPELESS_G8_UINT) {
                     return Metal::NativeFormat::R24_UNORM_X8_TYPELESS;      // only the depth parts are accessible in this way
                 }
+                else if (   fmt >= Metal::NativeFormat::R32_TYPELESS
+                    &&      fmt <= Metal::NativeFormat::R32_SINT) {
+                    return Metal::NativeFormat::R32_FLOAT;
+                }
                 return fmt;
             }
 
@@ -152,6 +156,10 @@ namespace SceneEngine
                 if (    fmt >= Metal::NativeFormat::R24G8_TYPELESS
                     &&  fmt <= Metal::NativeFormat::X24_TYPELESS_G8_UINT) {
                     return Metal::NativeFormat::D24_UNORM_S8_UINT;
+                }
+                else if (   fmt >= Metal::NativeFormat::R32_TYPELESS
+                    &&      fmt <= Metal::NativeFormat::R32_SINT) {
+                    return Metal::NativeFormat::D32_FLOAT;
                 }
                 return fmt;
             }
@@ -181,12 +189,12 @@ namespace SceneEngine
 
     template<typename... Views>
         GestaltResource<Views...>::GestaltResource(
-            BufferUploads::IManager& bufferUploads,
             const BufferUploads::TextureDesc& tdesc,
             const char name[],
             BufferUploads::DataPacket* initialData)
     {
         using namespace BufferUploads;
+        auto& uploads = GetBufferUploads();
 
         auto tdescCopy = tdesc;
 
@@ -198,7 +206,7 @@ namespace SceneEngine
             Internal::MakeBindFlags<Views...>(),
             0, GPUAccess::Read|GPUAccess::Write,
             tdescCopy, name);
-        _locator = bufferUploads.Transaction_Immediate(desc, initialData);
+        _locator = uploads.Transaction_Immediate(desc, initialData);
 
         if (needTypelessFmt) {
             Internal::InitViews<std::tuple<Views...>, 0, Views...>(_views, *_locator, (Metal::NativeFormat::Enum)tdesc._nativePixelFormat);
@@ -224,10 +232,14 @@ namespace SceneEngine
     template<typename... Views> GestaltResource<Views...>::GestaltResource() {}
     template<typename... Views> GestaltResource<Views...>::~GestaltResource() {}
 
-    using RTVSRV = GestaltResource<Metal::RenderTargetView, Metal::ShaderResourceView>;
-    using SRV = GestaltResource<Metal::ShaderResourceView>;
-    using DSV = GestaltResource<Metal::DepthStencilView>;
-    using DSVSRV = GestaltResource<Metal::DepthStencilView, Metal::ShaderResourceView>;
+    namespace GestaltTypes
+    {
+        using RTVSRV = GestaltResource<Metal::RenderTargetView, Metal::ShaderResourceView>;
+        using SRV = GestaltResource<Metal::ShaderResourceView>;
+        using DSV = GestaltResource<Metal::DepthStencilView>;
+        using DSVSRV = GestaltResource<Metal::DepthStencilView, Metal::ShaderResourceView>;
+    }
+    using namespace GestaltTypes;
 
     class StochasticTransparencyBox
     {
@@ -238,9 +250,11 @@ namespace SceneEngine
             unsigned _width, _height;
             Desc(unsigned width, unsigned height) : _width(width), _height(height) {}
         };
-        RTVSRV _res;
-        SRV _masksTable;
-        DSVSRV _stochasticDepths;
+        SRV     _masksTable;
+        DSVSRV  _stochasticDepths;
+        RTVSRV  _blendingTexture;
+
+        Metal::BlendState _secondPassBlend;
 
         StochasticTransparencyBox(const Desc& desc);
     };
@@ -296,26 +310,28 @@ namespace SceneEngine
 
     StochasticTransparencyBox::StochasticTransparencyBox(const Desc& desc)
     {
-        auto& uploads = GetBufferUploads();
-        _res = RTVSRV(
-            uploads,
-            BufferUploads::TextureDesc::Plain2D(1024, 1024, Metal::NativeFormat::R8_UINT),
-            "StochasticTransparency");
-
         const auto alphaValues = 256u;
         const auto masksPerAlphaValue = 2048u;
         auto masksTableData = BufferUploads::CreateBasicPacket(alphaValues*masksPerAlphaValue, nullptr, BufferUploads::TexturePitches(masksPerAlphaValue, alphaValues*masksPerAlphaValue));
         CreateCoverageMasks((uint8*)masksTableData->GetData(), masksTableData->GetDataSize(), alphaValues, masksPerAlphaValue);
         _masksTable = SRV(
-            uploads,
             BufferUploads::TextureDesc::Plain2D(masksPerAlphaValue, alphaValues, Metal::NativeFormat::R8_UINT),
             "StochasticTransMasks", masksTableData.get());
 
         auto samples = BufferUploads::TextureSamples::Create(8, 0);
         _stochasticDepths = DSVSRV(
-            uploads,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::D24_UNORM_S8_UINT, 1, 0, samples),
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::D32_FLOAT, 1, 0, samples),
             "StochasticDepths");
+
+            // note --  perhaps we could re-use one of the deferred rendering MRT textures for this..?
+            //          we may need 16 bit precision because this receives post-lit values 
+        _blendingTexture = RTVSRV(
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R16G16B16A16_FLOAT),
+            "StochasticBlendingTexture");
+
+        _secondPassBlend = Metal::BlendState(
+            Metal::BlendOp::Add, Metal::Blend::One, Metal::Blend::InvSrcAlpha,
+            Metal::BlendOp::Add, Metal::Blend::Zero, Metal::Blend::InvSrcAlpha);
     }
 
     StochasticTransparencyBox* StochasticTransparency_Prepare(
@@ -327,11 +343,28 @@ namespace SceneEngine
         auto& box = Techniques::FindCachedBox2<StochasticTransparencyBox>(
             unsigned(viewport.Width), unsigned(viewport.Height));
 
+            // should we bind the main dss, so we can manually reject occluded samples?
+            // or perhaps we should initialize box._stochasticDepths to the main scene depth values?
         context.Clear(box._stochasticDepths.DSV(), 1.f, 0u);
         context.BindPS(MakeResourceList(18, box._masksTable.SRV()));
         context.Bind(ResourceList<Metal::RenderTargetView, 0>(), &box._stochasticDepths.DSV());
+        context.Bind(Techniques::CommonResources()._dssReadWrite);
 
         return &box;
+    }
+
+    void StochasticTransparencyBox_PrepareSecondPass(  
+        RenderCore::Metal::DeviceContext& context,
+        LightingParserContext& parserContext,
+        StochasticTransparencyBox& box,
+        Metal::DepthStencilView& mainDSV)
+    {
+        float clearValues[] = {0.f, 0.f, 0.f, 1.f};
+        context.Clear(box._blendingTexture.RTV(), clearValues); 
+        context.Bind(MakeResourceList(box._blendingTexture.RTV()), &mainDSV);
+        context.BindPS(MakeResourceList(9, box._stochasticDepths.SRV()));
+        context.Bind(box._secondPassBlend);
+        context.Bind(Techniques::CommonResources()._dssReadOnly);
     }
 
     void StochasticTransparencyBox_Resolve(  
@@ -339,9 +372,27 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         StochasticTransparencyBox& box)
     {
-        if (Tweakable("StochTransDebug", true)) {
+        context.UnbindPS<Metal::ShaderResourceView>(9, 1); // unbind box._stochasticDepths
+
+        {
             SetupVertexGeneratorShader(context);
-            context.BindPS(MakeResourceList(box._stochasticDepths.SRV()));
+            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                "game/xleres/basic2d.vsh:fullscreen:vs_*",
+                "game/xleres/basic.psh:copy:ps_*");
+            Metal::BoundUniforms uniforms(shader);
+            Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
+            uniforms.BindShaderResources(1, {"DiffuseTexture"});
+            uniforms.Apply(
+                context, parserContext.GetGlobalUniformsStream(),
+                Metal::UniformsStream({}, {&box._blendingTexture.SRV()}));
+
+            context.Bind(Techniques::CommonResources()._dssDisable);
+            context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
+            context.Bind(shader);
+            context.Draw(4);
+        }
+
+        if (Tweakable("StochTransDebug", false)) {
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2d.vsh:fullscreen:vs_*",
                 "game/xleres/forward/transparency/stochasticdebug.sh:ps_depthave:ps_*");
@@ -358,4 +409,5 @@ namespace SceneEngine
     }
 
 }
+
 
