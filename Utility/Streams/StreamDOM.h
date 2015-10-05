@@ -64,6 +64,7 @@ namespace Utility
         
         std::vector<ElementDesc>    _elements;
         std::vector<AttributeDesc>  _attributes;
+        unsigned                    _firstRootAttribute;
 
         unsigned ParseElement(Formatter& formatter);
 

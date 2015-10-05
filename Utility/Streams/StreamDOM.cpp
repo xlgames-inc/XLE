@@ -107,8 +107,8 @@ namespace Utility
     template<typename Formatter>
         DocAttributeHelper<Formatter> Document<Formatter>::FirstAttribute() const
     {
-        if (_attributes.empty()) return DocAttributeHelper<Formatter>();
-        return DocAttributeHelper<Formatter>(0, *this);
+        if (_firstRootAttribute==~0u) return DocAttributeHelper<Formatter>();
+        return DocAttributeHelper<Formatter>(_firstRootAttribute, *this);
     }
 
     template<typename Formatter>
@@ -117,7 +117,7 @@ namespace Utility
         if (_attributes.empty()) return ~0u;
 
         auto expectedNameLen = nameEnd - nameStart;
-        for (unsigned a=0; a!=~0u;) {
+        for (auto a=_firstRootAttribute; a!=~0u;) {
             const auto& attrib = _attributes[a];
             auto nameLen = attrib._name._end - attrib._name._start;
             if (nameLen == expectedNameLen && !XlComparePrefix(attrib._name._start, nameStart, nameLen))
@@ -140,6 +140,7 @@ namespace Utility
     {
         _elements.reserve(32);
         _attributes.reserve(64);
+        _firstRootAttribute = ~0u;
 
             // Parse the input formatter, building a tree
             // of elements and a list of attributes.
@@ -153,8 +154,11 @@ namespace Utility
                     Formatter::InteriorSection name, value;
                     if (formatter.TryAttribute(name, value)) {
                         _attributes.push_back(AttributeDesc{name, value, ~0u});
-                        if (lastAttrib != ~0u)
+                        if (lastAttrib != ~0u) {
                             _attributes[lastAttrib]._nextSibling = unsigned(_attributes.size()-1);
+                        } else {
+                            _firstRootAttribute = unsigned(_attributes.size()-1);
+                        }
                         lastAttrib = unsigned(_attributes.size()-1);
                     }
                 }
@@ -185,7 +189,9 @@ namespace Utility
 
     template <typename Formatter>
         Document<Formatter>::Document() 
-    {}
+    {
+        _firstRootAttribute = ~0u;
+    }
 
     template <typename Formatter>
         Document<Formatter>::~Document()
@@ -196,6 +202,7 @@ namespace Utility
     {
         _elements = std::move(moveFrom._elements);
         _attributes = std::move(moveFrom._attributes);
+        _firstRootAttribute = moveFrom._firstRootAttribute; moveFrom._firstRootAttribute = ~0u;
     }
 
     template <typename Formatter>
@@ -203,6 +210,7 @@ namespace Utility
     {
         _elements = std::move(moveFrom._elements);
         _attributes = std::move(moveFrom._attributes);
+        _firstRootAttribute = moveFrom._firstRootAttribute; moveFrom._firstRootAttribute = ~0u;
         return *this;
     }
 
