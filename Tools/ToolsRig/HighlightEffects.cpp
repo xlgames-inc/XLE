@@ -50,11 +50,8 @@ namespace ToolsRig
         if (desc._type != BufferUploads::BufferDesc::Type::Texture) return;
 
         bool stencilInput = 
-                desc._textureDesc._nativePixelFormat == Metal::NativeFormat::R24G8_TYPELESS
-            ||  desc._textureDesc._nativePixelFormat == Metal::NativeFormat::D24_UNORM_S8_UINT
-            ||  desc._textureDesc._nativePixelFormat == Metal::NativeFormat::R24_UNORM_X8_TYPELESS
-            ||  desc._textureDesc._nativePixelFormat == Metal::NativeFormat::X24_TYPELESS_G8_UINT
-            ;
+            Metal::AsTypelessFormat((Metal::NativeFormat::Enum)desc._textureDesc._nativePixelFormat) 
+            == Metal::NativeFormat::R24G8_TYPELESS;
                 
         StringMeld<64, ::Assets::ResChar> params;
         params << "ONLY_HIGHLIGHTED=" << unsigned(onlyHighlighted);

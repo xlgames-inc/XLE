@@ -548,7 +548,7 @@ namespace SceneEngine
 
         CATCH_ASSETS_BEGIN
             context->BindPS(MakeResourceList(inputResource));
-            SetupVertexGeneratorShader(context);
+            SetupVertexGeneratorShader(*context);
             context->Bind(Techniques::CommonResources()._blendOpaque);
             bool bindCopyShader = true;
             auto settings = parserContext.GetSceneParser()->GetToneMapSettings();
@@ -611,7 +611,7 @@ namespace SceneEngine
     static void    ToneMapping_DrawDebugging(   RenderCore::Metal::DeviceContext* context,
                                                 ToneMappingResources& resources)
     {
-        SetupVertexGeneratorShader(context);
+        SetupVertexGeneratorShader(*context);
         context->Bind(BlendState(BlendOp::Add, Blend::One, Blend::InvSrcAlpha));
         context->BindPS(MakeResourceList(resources._propertiesBufferSRV));
         for (unsigned c=0; c<std::min(size_t(3),resources._luminanceBufferSRV.size()); ++c) {
@@ -777,7 +777,7 @@ namespace SceneEngine
             context->Bind(newViewport);
             context->Bind(MakeResourceList(resources._blurBufferRTV[1]), nullptr);
             context->Bind(resources._noBlending);
-            SetupVertexGeneratorShader(context);
+            SetupVertexGeneratorShader(*context);
 
             auto depths = ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView());
             ShaderResourceView depthsSRV(depths.get(), (RenderCore::Metal::NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);

@@ -195,10 +195,10 @@ namespace RenderCore { namespace Metal_DX11
         template<int Count> void    BindHS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
         template<int Count> void    BindDS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
 
-        template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, DepthStencilView* depthStencil);
+        template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil);
         template<int Count> void    BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess);
 
-        template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess);
+        template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess);
 
         void        Bind(unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], const unsigned strides[], const unsigned offsets[]);
         void        Bind(const IndexBuffer& ib, NativeFormat::Enum indexFormat, unsigned offset=0);
@@ -229,11 +229,11 @@ namespace RenderCore { namespace Metal_DX11
         void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
         void        Dispatch(unsigned countX, unsigned countY=1, unsigned countZ=1);
 
-        void        Clear(RenderTargetView& renderTargets, const Float4& clearColour);
-        void        Clear(DepthStencilView& depthStencil, float depth, unsigned stencil);
-        void        Clear(UnorderedAccessView& unorderedAccess, unsigned values[4]);
-        void        Clear(UnorderedAccessView& unorderedAccess, float values[4]);
-        void        ClearStencil(DepthStencilView& depthStencil, unsigned stencil);
+        void        Clear(const RenderTargetView& renderTargets, const Float4& clearColour);
+        void        Clear(const DepthStencilView& depthStencil, float depth, unsigned stencil);
+        void        Clear(const UnorderedAccessView& unorderedAccess, unsigned values[4]);
+        void        Clear(const UnorderedAccessView& unorderedAccess, float values[4]);
+        void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil);
 
         void                        BeginCommandList();
         intrusive_ptr<CommandList>  ResolveCommandList();

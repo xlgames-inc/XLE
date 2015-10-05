@@ -561,7 +561,7 @@ namespace SceneEngine
                 "");
             context->Bind(debuggingShader);
             context->Bind(Techniques::CommonResources()._blendStraightAlpha);
-            SetupVertexGeneratorShader(context);
+            SetupVertexGeneratorShader(*context);
             context->Draw(4);
         CATCH_ASSETS_END(parserContext)
 

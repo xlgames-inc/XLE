@@ -424,7 +424,7 @@ namespace SceneEngine
                 useMsaaSamplers?"MSAA_SAMPLERS=1":"");
             context->Bind(debuggingShader);
             context->Bind(Techniques::CommonResources()._blendStraightAlpha);
-            SetupVertexGeneratorShader(context);
+            SetupVertexGeneratorShader(*context);
             context->Draw(4);
         CATCH_ASSETS_END(parserContext)
 

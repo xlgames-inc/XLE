@@ -74,7 +74,7 @@ namespace SceneEngine
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/Ocean/FFTDebugging.psh:copy:ps_*"));
         context->Bind(MakeResourceList(box._workingTextureRealRTV, box._workingTextureImaginaryRTV), nullptr);
         context->BindPS(MakeResourceList(::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/objects/env/nature/grassland/plant/co_gland_weed_a_df.dds").GetShaderResource()));
-        SetupVertexGeneratorShader(context);
+        SetupVertexGeneratorShader(*context);
         context->Draw(4);
         savedTargets.ResetToOldTargets(*context);
         context->Bind(oldViewport);
@@ -734,7 +734,7 @@ namespace SceneEngine
         context->BindVS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
         context->Bind(Techniques::CommonResources()._dssReadWrite);    // make sure depth read and write are enabled
-        SetupVertexGeneratorShader(context);        // (disable vertex input)
+        SetupVertexGeneratorShader(*context);        // (disable vertex input)
         context->Bind(Topology::TriangleList);
         context->DrawIndexed(simplePatchBox._simplePatchIndexCount);
 

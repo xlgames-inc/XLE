@@ -110,7 +110,7 @@ namespace SceneEngine
             context->Bind(Metal::CullMode::None);   // some particles will get a flipped winding order (because the projection is relatively simple... So disable back face culling)
             context->Bind(Metal::DepthStencilState(true, false));
 
-            SetupVertexGeneratorShader(context);
+            SetupVertexGeneratorShader(*context);
             context->Bind(Metal::Topology::PointList);
 
             for (unsigned b=0; b<culledBoxCount; ++b) {
@@ -300,7 +300,7 @@ namespace SceneEngine
                 Metal::UniformsStream(nullptr, cbs, dimof(cbs), srvs, dimof(srvs)));
             context->Bind(shader);
 
-            SetupVertexGeneratorShader(context);
+            SetupVertexGeneratorShader(*context);
             context->Bind(Metal::BlendState(Metal::BlendOp::Add, Metal::Blend::SrcAlpha, Metal::Blend::InvSrcAlpha));
             context->Bind(Metal::CullMode::None);
             context->Bind(Metal::Topology::PointList);
@@ -453,7 +453,7 @@ namespace SceneEngine
                 Metal::UniformsStream(nullptr, cbs, dimof(cbs), srvs, dimof(srvs)));
             context->Bind(shader);
 
-            SetupVertexGeneratorShader(context);
+            SetupVertexGeneratorShader(*context);
             context->Bind(Metal::BlendState(Metal::BlendOp::Add, Metal::Blend::One, Metal::Blend::One));
             context->Bind(Metal::CullMode::None);
             context->Bind(Metal::Topology::PointList);

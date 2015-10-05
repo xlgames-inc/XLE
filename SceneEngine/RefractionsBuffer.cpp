@@ -85,7 +85,7 @@ namespace SceneEngine
                         
             metalContext.Bind(MakeResourceList(_refractionsFrontTarget), nullptr);
             metalContext.BindPS(MakeResourceList(sourceSRV)); // mainTargets._postResolveSRV));
-            SetupVertexGeneratorShader(&metalContext);
+            SetupVertexGeneratorShader(metalContext);
             
             bool needStepDown = 
                 _width != textureDesc.Width || _height != textureDesc.Height || textureDesc.SampleDesc.Count > 1;

@@ -275,7 +275,7 @@ namespace SceneEngine
         using namespace RenderCore;
         using namespace RenderCore::Metal;
 
-        SetupVertexGeneratorShader(context);
+        SetupVertexGeneratorShader(*context);
         context->BindPS(MakeResourceList(resources._aoSRV));
         context->Bind(::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/postprocess/debugging.psh:AODebugging:ps_*"));

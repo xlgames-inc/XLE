@@ -259,6 +259,10 @@ namespace RenderCore { namespace Metal_DX11
         case B8G8R8A8_UNORM_SRGB: return B8G8R8A8_TYPELESS;
         case B8G8R8X8_UNORM:
         case B8G8R8X8_UNORM_SRGB: return B8G8R8X8_TYPELESS;
+
+        case D24_UNORM_S8_UINT:
+        case R24_UNORM_X8_TYPELESS:
+        case X24_TYPELESS_G8_UINT: return R24G8_TYPELESS;
         }
         return inputFormat; // no linear/srgb version of this format exists
     }

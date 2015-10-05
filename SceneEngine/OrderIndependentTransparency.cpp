@@ -171,7 +171,7 @@ namespace SceneEngine
                 transparencyTargets._nodeListBufferSRV, 
                 originalDepthStencilSRV));
             metalContext.Bind(Techniques::CommonResources()._dssDisable);
-            SetupVertexGeneratorShader(&metalContext);
+            SetupVertexGeneratorShader(metalContext);
 
             const auto checkForInfiniteLoops = transparencyTargets._desc._checkInfiniteLoops;
             if (checkForInfiniteLoops) {

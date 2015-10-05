@@ -1049,7 +1049,7 @@ namespace SceneEngine
 
         metalContext.Bind(patchRender);
 
-        SetupVertexGeneratorShader(&metalContext);
+        SetupVertexGeneratorShader(metalContext);
         metalContext.BindVS(MakeResourceList(3, _simulationGrid->_waterHeightsSRV[thisFrameBuffer]));
         metalContext.Bind(Metal::Topology::TriangleList);
         metalContext.Bind(Techniques::CommonResources()._dssReadWrite);
@@ -1101,7 +1101,7 @@ namespace SceneEngine
 
         metalContext.Bind(patchRender);
 
-        SetupVertexGeneratorShader(&metalContext);
+        SetupVertexGeneratorShader(metalContext);
         metalContext.BindVS(MakeResourceList(1, 
             _simulationGrid->_waterHeightsSRV[thisFrameBuffer]));
 

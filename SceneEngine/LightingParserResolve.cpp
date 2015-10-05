@@ -132,7 +132,7 @@ namespace SceneEngine
     {
         const unsigned samplingCount = mainTargets._desc._sampling._sampleCount;
 
-        SetupVertexGeneratorShader(&context);
+        SetupVertexGeneratorShader(context);
         context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
 
                 //      Bind lighting resolve texture
@@ -263,7 +263,7 @@ namespace SceneEngine
             context.ClearStencil(mainTargets._secondaryDepthBuffer, 0);
             context.Bind(ResourceList<Metal::RenderTargetView, 0>(), &mainTargets._secondaryDepthBuffer);
             context.BindPS(MakeResourceList(mainTargets._msaaDepthBufferSRV, mainTargets._gbufferRTVsSRV[1]));
-            SetupVertexGeneratorShader(&context);
+            SetupVertexGeneratorShader(context);
             CATCH_ASSETS_BEGIN
                 context.Bind(*resolveRes._perSampleMask);
                 context.Draw(4);

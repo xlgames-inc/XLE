@@ -237,6 +237,7 @@
     <ClCompile Include="..\ShallowSurface.cpp" />
     <ClCompile Include="..\ShallowWater.cpp" />
     <ClCompile Include="..\Sky.cpp" />
+    <ClCompile Include="..\StochasticTransparency.cpp" />
     <ClCompile Include="..\SunFlare.cpp" />
     <ClCompile Include="..\Terrain.cpp" />
     <ClCompile Include="..\TerrainCollisions.cpp" />
@@ -291,6 +292,7 @@
     <ClInclude Include="..\ShallowWater.h" />
     <ClInclude Include="..\SimplePatchBox.h" />
     <ClInclude Include="..\Sky.h" />
+    <ClInclude Include="..\StochasticTransparency.h" />
     <ClInclude Include="..\SunFlare.h" />
     <ClInclude Include="..\SurfaceHeightsProvider.h" />
     <ClInclude Include="..\Terrain.h" />

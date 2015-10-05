@@ -577,7 +577,7 @@ namespace SceneEngine
             Metal::ViewportDesc newViewport(0, 0, float(blurredShadowSize), float(blurredShadowSize), 0.f, 1.f);
             context->Bind(newViewport);
             context->Bind(Techniques::CommonResources()._blendOpaque);
-            SetupVertexGeneratorShader(context);
+            SetupVertexGeneratorShader(*context);
             context->Bind(*fogShaders._buildExponentialShadowMap);
             context->BindPS(MakeResourceList(2, shadowFrustum._shadowTextureSRV));
 
@@ -985,7 +985,7 @@ namespace SceneEngine
                 "");
             context->Bind(debuggingShader);
             context->Bind(Techniques::CommonResources()._blendStraightAlpha);
-            SetupVertexGeneratorShader(context);
+            SetupVertexGeneratorShader(*context);
             context->Draw(4);
         } 
         CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }

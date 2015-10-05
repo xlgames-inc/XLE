@@ -84,7 +84,7 @@ namespace SceneEngine
         const BufferUploads::TextureDesc& textureDesc,
         const char name[]);
 
-    void SetupVertexGeneratorShader(RenderCore::Metal::DeviceContext* context);
+    void SetupVertexGeneratorShader(RenderCore::Metal::DeviceContext& context);
     void BuildGaussianFilteringWeights(float result[], float standardDeviation, unsigned weightsCount);
     float PowerForHalfRadius(float halfRadius, float powerFraction=0.5f);
 

@@ -7,12 +7,95 @@
 #undef GEO_HAS_COLOUR
 
 #include "../MainGeometry.h"
+#include "../Objects/IllumShader/PerPixel.h"
 #include "../Surface.h"
 
-#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
-	[earlydepthstencil]
+#if (STOCHASTIC_TRANS)
+
+	Texture2D<uint> StochasticTransMasks : register(t18);
+
+	// GetLayerSeed & StochasticTransMask implementations are from
+	// the directX sample (described in the paper, "Stochastic Transparency")
+
+	uint IntegerHash(uint seed)
+	{
+			// From http://www.concentric.net/~Ttwang/tech/inthash.htm
+			// This produces an output integer from an input integer,
+			// where the bits of the output are generally unrelated to
+			// the input, but there is a near 1:1 mapping from input to
+			// output.
+			// So if the input numbers have some ordering, this output
+			// will be scrambled in the output.
+			// In our case, the input seed numbers have a clear arrangement
+			// in screen space XY. This could result in noticeable patterns.
+			// When we scramble them through this hashing function, we should
+			// remove patterns.
+			//
+			// We can find potentially cheaper implementations of the same
+			// concept here:
+			//		https://gist.github.com/badboy/6267743
+			// Note that the constants below may not have a big effect on the
+			// algorithm; but it's possible that there is some ideal set of
+			// numbers that are least likely to produce patterns.
+		seed = (seed+0x7ed55d16u) + (seed<<12);
+		seed = (seed^0xc761c23cu) ^ (seed>>19);
+		seed = (seed+0x165667b1u) + (seed<<5);
+		seed = (seed+0xd3a2646cu) ^ (seed<<9);
+		seed = (seed+0xfd7046c5u) + (seed<<3);
+		seed = (seed^0xb55a4f09u) ^ (seed>>16);
+		return seed;
+	}
+
+	uint GetLayerSeed(uint2 pixelPos, int primID)
+	{
+		// Calculate a random seed based on the pixel position
+		// and primitive id.
+
+		// Seeding by primitive id, as described in Section 5 of the paper.
+		uint layerseed = primID * 32;
+
+		// For simulating more than 8 samples per pixel, the algorithm
+		// can be run in multiple passes with different random offsets.
+		// layerseed += g_randomOffset;
+
+		layerseed += (pixelPos.x << 10) + (pixelPos.y << 20);
+		return layerseed;
+	}
+
+	static const uint RandMaskAlphaValues = 0xff;
+	static const uint RandMaskSizePowOf2MinusOne = 2048-1;
+
+	uint StochasticTransMask(uint2 pixelPos, float alpha, int primID)
+	{
+		// We're going to calculate a coverage mask that suits this alpha
+		// value. We want to use a random mask based on the screen position
+		// and primitive id.
+		// First, we calculate a seed to select a random mask. But we hash
+		// this to prevent any screen space patterns showing up.
+		uint seed = GetLayerSeed(pixelPos, primID);
+		seed = IntegerHash(seed);
+
+		// Clamping texture coordinates (bit fiddling because the texture
+		// has power of 2 dimensions)
+		seed &= RandMaskSizePowOf2MinusOne;
+
+		return StochasticTransMasks.Load(int3(seed, alpha * RandMaskAlphaValues, 0));
+	}
+
+	uint main(VSOutput geo, uint primitiveID : SV_PrimitiveID) : SV_Coverage
+	{
+		float alpha = IllumShader_PerPixel(geo).blendingAlpha;
+		return StochasticTransMask(uint2(geo.position.xy), alpha, primitiveID);
+	}
+
+#else
+
+	#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
+		[earlydepthstencil]
+	#endif
+	void main(VSOutput geo)
+	{
+		DoAlphaTest(geo);
+	}
+
 #endif
-void main(VSOutput geo)
-{
-	DoAlphaTest(geo);
-}

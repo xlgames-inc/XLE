@@ -322,7 +322,7 @@ namespace SceneEngine
 
             context->Bind(debuggingShader);
             context->Bind(Techniques::CommonResources()._blendStraightAlpha);
-            SetupVertexGeneratorShader(context);
+            SetupVertexGeneratorShader(*context);
 
             for (const auto& p:parserContext._preparedRTShadows) {
                 const Metal::ShaderResourceView* srvs[] = 

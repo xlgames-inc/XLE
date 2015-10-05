@@ -145,27 +145,27 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->DrawIndexed(indexCount, startIndexLocation, baseVertexLocation);
     }
 
-    void DeviceContext::Clear(RenderTargetView& renderTargets, const Float4& clearColour)
+    void DeviceContext::Clear(const RenderTargetView& renderTargets, const Float4& clearColour)
     {
         _underlying->ClearRenderTargetView(renderTargets.GetUnderlying(), &clearColour[0]);
     }
 
-    void DeviceContext::Clear(DepthStencilView& depthStencil, float depth, unsigned stencil)
+    void DeviceContext::Clear(const DepthStencilView& depthStencil, float depth, unsigned stencil)
     {
         _underlying->ClearDepthStencilView(depthStencil.GetUnderlying(), D3D11_CLEAR_DEPTH|D3D11_CLEAR_STENCIL, depth, (UINT8)stencil);
     }
 
-    void DeviceContext::Clear(UnorderedAccessView& unorderedAccess, unsigned values[4])
+    void DeviceContext::Clear(const UnorderedAccessView& unorderedAccess, unsigned values[4])
     {
         _underlying->ClearUnorderedAccessViewUint(unorderedAccess.GetUnderlying(), values);
     }
 
-    void DeviceContext::Clear(UnorderedAccessView& unorderedAccess, float values[4])
+    void DeviceContext::Clear(const UnorderedAccessView& unorderedAccess, float values[4])
     {
         _underlying->ClearUnorderedAccessViewFloat(unorderedAccess.GetUnderlying(), values);
     }
 
-    void DeviceContext::ClearStencil(DepthStencilView& depthStencil, unsigned stencil)
+    void DeviceContext::ClearStencil(const DepthStencilView& depthStencil, unsigned stencil)
     {
         _underlying->ClearDepthStencilView(depthStencil.GetUnderlying(), D3D11_CLEAR_STENCIL, 1.f, (UINT8)stencil);
     }

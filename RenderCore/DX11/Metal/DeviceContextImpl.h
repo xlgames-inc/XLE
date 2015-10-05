@@ -131,7 +131,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->DSSetConstantBuffers(constantBuffers._startingPoint, Count, constantBuffers._buffers);
     }
 
-    template<int Count> void DeviceContext::Bind(const ResourceList<RenderTargetView, Count>& renderTargets, DepthStencilView* depthStencil)
+    template<int Count> void DeviceContext::Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil)
     {
         assert(renderTargets._startingPoint == 0);
         _underlying->OMSetRenderTargets(Count, renderTargets._buffers, depthStencil?depthStencil->GetUnderlying():nullptr);
@@ -144,7 +144,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->CSSetUnorderedAccessViews(unorderedAccess._startingPoint, Count, unorderedAccess._buffers, initialCounts);
     }
 
-    template<int Count1, int Count2> void    DeviceContext::Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess)
+    template<int Count1, int Count2> void    DeviceContext::Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess)
     {
         const UINT initialCounts[16] = { UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1) };
         assert(Count2 <= dimof(initialCounts));

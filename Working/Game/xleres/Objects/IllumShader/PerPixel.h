@@ -19,8 +19,8 @@
 #include "../BasicMaterial.h"
 
 Texture2D<float>	CustomTexture;
-Texture2D<float2>	ScratchMap : register(t18);		// high res procedural scratches
-Texture2D<float>	ScratchOccl : register(t19);
+// Texture2D<float2>	ScratchMap : register(t19);		// high res procedural scratches
+// Texture2D<float>	ScratchOccl : register(t20);
 
 PerPixelMaterialParam DecodeParametersTexture_RMS(float4 paramTextureSample);
 PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(float4 paramTexSample, float4 diffuseSample);
@@ -120,34 +120,34 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
     #endif
 
     #if (OUTPUT_TANGENT_FRAME==1) && (OUTPUT_WORLD_VIEW_VECTOR==1)
-        const bool scratchMapTest = false;
-        if (scratchMapTest) {
-
-            float3 worldPosition = WorldSpaceView - geo.worldViewVector;
-            float noiseSample = fbmNoise3D(worldPosition, 1.f/11.63f, .5f, 2.1042, 1);
-            float scratchiness = saturate(noiseSample + .25f); // saturate(lerp(0.0f, 1.f, noiseSample));
-
-                // blend the normal map with a high res scratches map
-                // use the anisotropic sampler, because we want to emphasize detail
-                //
-                //		blending normal maps is tricky... But let's just take the average of the xy components
-                //		of each normal map. Then the z component can be extrapolated from the others
-            float2 mainNormals = NormalsTexture.Sample(MaybeAnisotropicSampler, geo.texCoord).xy * 2.f - 1.0.xx;
-            float2 scratchTexCoords = 6.13f * geo.texCoord;
-            float2 scratchNormals = ScratchMap.Sample(MaybeAnisotropicSampler, scratchTexCoords).xy * 2.f - 1.0.xx;
-            float2 blendedNormals = mainNormals + (scratchiness) * scratchNormals;
-            float3 finalNormal = float3(blendedNormals, sqrt(saturate(1.f + dot(blendedNormals.xy, -blendedNormals.xy))));
-
-            TangentFrameStruct tangentFrame = BuildTangentFrameFromGeo(geo);
-            float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent, tangentFrame.bitangent, tangentFrame.normal);
-            result.worldSpaceNormal = mul(finalNormal, normalsTextureToWorld);
-
-            result.material.roughness = 1.f - scratchiness;
-
-            float scratchOcc = ScratchOccl.Sample(MaybeAnisotropicSampler, scratchTexCoords).r;
-            result.cookedAmbientOcclusion *= lerp(1.f, scratchOcc, .5f * scratchiness);
-
-        } else
+        // const bool scratchMapTest = false;
+        // if (scratchMapTest) {
+        //
+        //     float3 worldPosition = WorldSpaceView - geo.worldViewVector;
+        //     float noiseSample = fbmNoise3D(worldPosition, 1.f/11.63f, .5f, 2.1042, 1);
+        //     float scratchiness = saturate(noiseSample + .25f); // saturate(lerp(0.0f, 1.f, noiseSample));
+        //
+        //         // blend the normal map with a high res scratches map
+        //         // use the anisotropic sampler, because we want to emphasize detail
+        //         //
+        //         //		blending normal maps is tricky... But let's just take the average of the xy components
+        //         //		of each normal map. Then the z component can be extrapolated from the others
+        //     float2 mainNormals = NormalsTexture.Sample(MaybeAnisotropicSampler, geo.texCoord).xy * 2.f - 1.0.xx;
+        //     float2 scratchTexCoords = 6.13f * geo.texCoord;
+        //     float2 scratchNormals = ScratchMap.Sample(MaybeAnisotropicSampler, scratchTexCoords).xy * 2.f - 1.0.xx;
+        //     float2 blendedNormals = mainNormals + (scratchiness) * scratchNormals;
+        //     float3 finalNormal = float3(blendedNormals, sqrt(saturate(1.f + dot(blendedNormals.xy, -blendedNormals.xy))));
+        //
+        //     TangentFrameStruct tangentFrame = BuildTangentFrameFromGeo(geo);
+        //     float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent, tangentFrame.bitangent, tangentFrame.normal);
+        //     result.worldSpaceNormal = mul(finalNormal, normalsTextureToWorld);
+        //
+        //     result.material.roughness = 1.f - scratchiness;
+        //
+        //     float scratchOcc = ScratchOccl.Sample(MaybeAnisotropicSampler, scratchTexCoords).r;
+        //     result.cookedAmbientOcclusion *= lerp(1.f, scratchOcc, .5f * scratchiness);
+        //
+        // } else
     #endif
     {
         result.worldSpaceNormal = GetNormal(geo);

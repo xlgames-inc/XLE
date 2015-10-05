@@ -19,6 +19,7 @@
 #include "DeepOceanSim.h"
 #include "RefractionsBuffer.h"
 #include "OrderIndependentTransparency.h"
+#include "StochasticTransparency.h"
 #include "Sky.h"
 #include "SunFlare.h"
 #include "Rain.h"
@@ -346,7 +347,7 @@ namespace SceneEngine
                 unsigned dimensions[4] = { unsigned(mainViewportDesc.Width), unsigned(mainViewportDesc.Height), 0, 0 };
                 context->BindVS(MakeResourceList(ConstantBuffer(dimensions, sizeof(dimensions))));
                 context->BindGS(MakeResourceList(ConstantBuffer(dimensions, sizeof(dimensions))));
-                SetupVertexGeneratorShader(context);
+                SetupVertexGeneratorShader(*context);
                 context->Bind(Topology::PointList);
                 context->Draw(9);
 
@@ -486,10 +487,11 @@ namespace SceneEngine
         }
         
         //////////////////////////////////////////////////////////////////////////////////////////////////
-        const auto enableOrderIndependentTransparency = 
+        const bool hasOITrans = BatchHasContent(parserContext, SPS::BatchFilter::OITransparent);
+        const auto enabledSortedTrans = 
             Tweakable("UseOITrans", false)
             && (mainTargets._desc._sampling._sampleCount <= 1)
-            && BatchHasContent(parserContext, SPS::BatchFilter::OITransparent);
+            && hasOITrans;
 
             //  When enable OI transparency is enabled, we do a pre-depth pass
             //  on all transparent geometry.
@@ -498,7 +500,7 @@ namespace SceneEngine
             //  transparent fragments from the sorting algorithm. For scenes with a
             //  lot of sortable vegetation, it should reduce the total number of 
             //  sortable fragments significantly.
-        if (enableOrderIndependentTransparency)
+        if (enabledSortedTrans)
             ExecuteScene(
                 context, parserContext, SPS::BatchFilter::TransparentPreDepth,
                 TechniqueIndex_DepthOnly, L"MainScene-TransPreDepth");
@@ -508,16 +510,37 @@ namespace SceneEngine
                 context, parserContext, SPS::BatchFilter::Transparent,
                 TechniqueIndex_General, L"MainScene-PostGBuffer");
         
-        if (enableOrderIndependentTransparency) {
-            auto duplicatedDepthBuffer = BuildDuplicatedDepthBuffer(&context, mainTargets._msaaDepthBufferTexture.get());
-            auto* transTargets = OrderIndependentTransparency_Prepare(context, parserContext, duplicatedDepthBuffer);
+        if (hasOITrans) {
+            if (enabledSortedTrans) {
+                auto duplicatedDepthBuffer = BuildDuplicatedDepthBuffer(&context, mainTargets._msaaDepthBufferTexture.get());
+                auto* transTargets = OrderIndependentTransparency_Prepare(context, parserContext, duplicatedDepthBuffer);
 
-            ExecuteScene(
-                context, parserContext, SPS::BatchFilter::OITransparent,
-                TechniqueIndex_OrderIndependentTransparency, L"MainScene-PostGBuffer-OI");
+                ExecuteScene(
+                    context, parserContext, SPS::BatchFilter::OITransparent,
+                    TechniqueIndex_OrderIndependentTransparency, L"MainScene-PostGBuffer-OI");
 
-                // note; we use the main depth buffer for this call (not the duplicated buffer)
-            OrderIndependentTransparency_Resolve(context, parserContext, *transTargets, mainTargets._msaaDepthBufferSRV);
+                    // note; we use the main depth buffer for this call (not the duplicated buffer)
+                OrderIndependentTransparency_Resolve(context, parserContext, *transTargets, mainTargets._msaaDepthBufferSRV);
+            } else if (Tweakable("UseStochasticTrans", true)) {
+                StochasticTransparencyBox* box;
+                {
+                    SavedTargets savedTargets(context);
+                    auto resetMarker = savedTargets.MakeResetMarker(context);
+
+                    box = StochasticTransparency_Prepare(context, parserContext);
+
+                    parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("STOCHASTIC_TRANS"), 1u);
+                    auto cleanup = MakeAutoCleanup(
+                        [&parserContext]() 
+                        { parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("STOCHASTIC_TRANS"), 0u); });
+
+                    ExecuteScene(
+                        context, parserContext, SPS::BatchFilter::OITransparent,
+                        TechniqueIndex_DepthOnly, L"MainScene-PostGBuffer-OI");
+                }
+
+                StochasticTransparencyBox_Resolve(context, parserContext, *box);
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////////////////////////////

@@ -162,7 +162,7 @@ namespace SceneEngine
                 "game/xleres/forward/transparency/cloudresolve.psh:main:ps_*");
             context->Bind(resolveShader);
             context->BindPS(MakeResourceList(0, parserContext.GetGlobalTransformCB()));
-            SetupVertexGeneratorShader(context);
+            SetupVertexGeneratorShader(*context);
             context->Draw(4);
             context->UnbindPS<RenderCore::Metal::ShaderResourceView>(0, 3);
         CATCH_ASSETS_END(parserContext)

@@ -26,6 +26,9 @@
         ~Material
             MAT_ALPHA_TEST
             MAT_ALPHA_TEST_PREDEPTH
+            RES_HAS_DiffuseTexture
+        ~Runtime
+            STOCHASTIC_TRANS
     VertexShader=game/xleres/forward/depthonly.vsh:main
     PixelShader=game/xleres/forward/depthonly.psh:main
 ~Deferred

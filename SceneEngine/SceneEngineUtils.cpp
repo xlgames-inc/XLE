@@ -89,12 +89,12 @@ namespace SceneEngine
             textureDesc, name);
     }
 
-    void SetupVertexGeneratorShader(RenderCore::Metal::DeviceContext* context)
+    void SetupVertexGeneratorShader(RenderCore::Metal::DeviceContext& context)
     {
         using namespace RenderCore::Metal;
-        context->Bind(Topology::TriangleStrip);
-        context->Unbind<VertexBuffer>();
-        context->Unbind<BoundInputLayout>();
+        context.Bind(Topology::TriangleStrip);
+        context.Unbind<VertexBuffer>();
+        context.Unbind<BoundInputLayout>();
     }
 
     void BuildGaussianFilteringWeights(float result[], float standardDeviation, unsigned weightsCount)

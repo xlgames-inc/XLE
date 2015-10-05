@@ -323,7 +323,7 @@ namespace SceneEngine
         context->BindPS(MakeResourceList(3, depthsSRV));
         context->BindPS(MakeResourceList(parserContext.GetGlobalTransformCB()));
         context->Bind(*res._downsampleTargets);
-        SetupVertexGeneratorShader(context);
+        SetupVertexGeneratorShader(*context);
         context->Draw(4);
 
         auto& projDesc = parserContext.GetProjectionDesc();
@@ -464,7 +464,7 @@ namespace SceneEngine
                 parserContext.GetGlobalUniformsStream(),
                 UniformsStream(nullptr, prebuiltBuffers, dimof(prebuiltBuffers)));
 
-            SetupVertexGeneratorShader(context);
+            SetupVertexGeneratorShader(*context);
             context->Draw(4);
 
             context->UnbindPS<ShaderResourceView>(0, 9);

@@ -144,7 +144,7 @@ namespace SceneEngine
                 "game/xleres/deferred/debugging.psh:DepthsDebuggingTexture:ps_*");
             context->Bind(debuggingShader);
             context->Bind(Techniques::CommonResources()._blendStraightAlpha);
-            SetupVertexGeneratorShader(context);
+            SetupVertexGeneratorShader(*context);
             context->Draw(4);
             context->UnbindPS<ShaderResourceView>(0, 4);
         CATCH_ASSETS_END(lightingParserContext)
@@ -372,7 +372,7 @@ namespace SceneEngine
                                 
                 context->BindVS(MakeResourceList(tileLightingResources._debuggingTextureSRV[0], tileLightingResources._debuggingTextureSRV[1]));
                 context->Bind(Techniques::CommonResources()._dssReadWrite);
-                SetupVertexGeneratorShader(context);
+                SetupVertexGeneratorShader(*context);
                 context->Bind(Metal::Topology::PointList);
 
                 if (!isShadowsPass && Tweakable("TiledBeamsTransparent", false)) {

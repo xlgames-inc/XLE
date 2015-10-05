@@ -151,11 +151,15 @@ namespace RenderCore { namespace Metal_DX11
             UniformsStream( ConstantBufferPacket (&packets)[Count0],
                             const ConstantBuffer* (&prebuiltBuffers)[Count1],
                             const ShaderResourceView* (&resources)[Count2]);
+
+        UniformsStream(
+            std::initializer_list<const ConstantBufferPacket> cbs,
+            std::initializer_list<const ShaderResourceView*> srvs);
     protected:
         const ConstantBufferPacket*     _packets;
-        const ConstantBuffer**          _prebuiltBuffers;
+        const ConstantBuffer*const*     _prebuiltBuffers;
         size_t                          _packetCount;
-        const ShaderResourceView**      _resources;
+        const ShaderResourceView*const* _resources;
         size_t                          _resourceCount;
 
         friend class BoundUniforms;
@@ -327,6 +331,24 @@ namespace RenderCore { namespace Metal_DX11
             _packetCount = Count0;
             _resources = resources;
             _resourceCount = Count2;
+    }
+
+    inline UniformsStream::UniformsStream(
+        std::initializer_list<const ConstantBufferPacket> cbs,
+        std::initializer_list<const ShaderResourceView*> srvs)
+    {
+            // note -- this is really dangerous!
+            //      we're taking pointers into the initializer_lists. This is fine
+            //      if the lifetime of UniformsStream is longer than the initializer_list
+            //      (which is common in many use cases of this class).
+            //      But there is no protection to make sure that the memory here is valid
+            //      when it is used!
+            // Use at own risk!
+        _packets = cbs.begin();
+        _prebuiltBuffers = nullptr;
+        _packetCount = cbs.size();
+        _resources = srvs.begin();
+        _resourceCount = srvs.size();
     }
 
 }}
