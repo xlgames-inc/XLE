@@ -494,7 +494,7 @@ namespace SceneEngine
 
     VolumetricFogDensityTable::~VolumetricFogDensityTable() {}
 
-    static void VolumetricFog_DrawDebugging(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, VolumetricFogResources& res);
+    static void VolumetricFog_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, VolumetricFogResources& res);
     static bool UseESMShadowMaps() { return Tweakable("VolFogESM", false); }
     static unsigned GetShadowCascadeMode(PreparedShadowFrustum& shadowFrustum)
     {
@@ -973,26 +973,20 @@ namespace SceneEngine
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    void VolumetricFog_DrawDebugging(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, VolumetricFogResources& res)
+    void VolumetricFog_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, VolumetricFogResources& res)
     {
             // draw debugging for blurred shadows texture
         using namespace RenderCore;
-        TRY {
-            context->BindPS(MakeResourceList(0, res._shadowMapSRV, res._inscatterFinalsValuesSRV, res._transmissionValuesSRV, res._inscatterShadowingValuesSRV, res._densityValuesSRV));
-            auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                "game/xleres/volumetriceffect/debugging.psh:VolumeShadows:ps_*",
-                "");
-            context->Bind(debuggingShader);
-            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
-            SetupVertexGeneratorShader(*context);
-            context->Draw(4);
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
-
-        context->UnbindPS<RenderCore::Metal::ShaderResourceView>(0, 1);
+        auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+            "game/xleres/volumetriceffect/debugging.psh:VolumeShadows:ps_*",
+            "");
+        context.Bind(debuggingShader);
+        context.BindPS(MakeResourceList(0, res._shadowMapSRV, res._inscatterFinalsValuesSRV, res._transmissionValuesSRV, res._inscatterShadowingValuesSRV, res._densityValuesSRV));
+        context.Bind(Techniques::CommonResources()._blendStraightAlpha);
+        SetupVertexGeneratorShader(context);
+        context.Draw(4);
+        context.UnbindPS<RenderCore::Metal::ShaderResourceView>(0, 1);
     }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////

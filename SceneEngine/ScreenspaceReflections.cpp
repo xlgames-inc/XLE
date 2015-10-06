@@ -271,7 +271,7 @@ namespace SceneEngine
 
         ////////////////////////////////
 
-    static void ScreenSpaceReflections_DrawDebugging(   RenderCore::Metal::DeviceContext* context, 
+    static void ScreenSpaceReflections_DrawDebugging(   RenderCore::Metal::DeviceContext& context, 
                                                         LightingParserContext& parserContext,
                                                         ScreenSpaceReflectionsResources& resources,
                                                         RenderCore::Metal::ShaderResourceView* gbufferDiffuse,
@@ -420,7 +420,7 @@ namespace SceneEngine
         return Int2(cursorPos.x, cursorPos.y);
     }
 
-    static void ScreenSpaceReflections_DrawDebugging(   RenderCore::Metal::DeviceContext* context, 
+    static void ScreenSpaceReflections_DrawDebugging(   RenderCore::Metal::DeviceContext& context, 
                                                         LightingParserContext& parserContext,
                                                         ScreenSpaceReflectionsResources& resources,
                                                         RenderCore::Metal::ShaderResourceView* gbufferDiffuse,
@@ -428,47 +428,45 @@ namespace SceneEngine
                                                         RenderCore::Metal::ShaderResourceView* gbufferParam,
                                                         RenderCore::Metal::ShaderResourceView* depthsSRV)
     {
-        CATCH_ASSETS_BEGIN
-            char definesBuffer[256];
-            sprintf_s(definesBuffer, dimof(definesBuffer), "%sDOWNSAMPLE_SCALE=%i;INTERPOLATE_SAMPLES=%i", 
-                resources._desc._useMsaaSamplers?"MSAA_SAMPLERS=1;":"", resources._desc._downsampleScale, int(resources._desc._interpolateSamples));
-            auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*", 
-                "game/xleres/screenspacerefl/debugging.psh:main:ps_*",
-                definesBuffer);
-            context->Bind(debuggingShader);
-            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
+        char definesBuffer[256];
+        sprintf_s(definesBuffer, dimof(definesBuffer), "%sDOWNSAMPLE_SCALE=%i;INTERPOLATE_SAMPLES=%i", 
+            resources._desc._useMsaaSamplers?"MSAA_SAMPLERS=1;":"", resources._desc._downsampleScale, int(resources._desc._interpolateSamples));
+        auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*", 
+            "game/xleres/screenspacerefl/debugging.psh:main:ps_*",
+            definesBuffer);
+        context.Bind(debuggingShader);
+        context.Bind(Techniques::CommonResources()._blendStraightAlpha);
 
-            context->BindPS(MakeResourceList(5, resources._maskShaderResource, resources._downsampledNormalsShaderResource));
-            context->BindPS(MakeResourceList(10, resources._downsampledDepthShaderResource, resources._reflectionsShaderResource));
-            auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
-            if (skyTexture[0]) {
-                SkyTexture_BindPS(context, parserContext, skyTexture, 7);
-            }
+        context.BindPS(MakeResourceList(5, resources._maskShaderResource, resources._downsampledNormalsShaderResource));
+        context.BindPS(MakeResourceList(10, resources._downsampledDepthShaderResource, resources._reflectionsShaderResource));
+        auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
+        if (skyTexture[0]) {
+            SkyTexture_BindPS(&context, parserContext, skyTexture, 7);
+        }
 
-                // todo -- we have to bind the gbuffer here!
-            context->BindPS(MakeResourceList(*gbufferDiffuse, *gbufferNormals, *gbufferParam, *depthsSRV));
+            // todo -- we have to bind the gbuffer here!
+        context.BindPS(MakeResourceList(*gbufferDiffuse, *gbufferNormals, *gbufferParam, *depthsSRV));
 
-            ViewportDesc mainViewportDesc(*context);
+        ViewportDesc mainViewportDesc(context);
                             
-            auto cursorPos = GetCursorPos();
-            unsigned globalConstants[4] = { unsigned(mainViewportDesc.Width), unsigned(mainViewportDesc.Height), cursorPos[0], cursorPos[1] };
-            Metal::ConstantBuffer globalConstantsBuffer(globalConstants, sizeof(globalConstants));
-            // context->BindPS(MakeResourceList(globalConstantsBuffer, res._samplingPatternConstants));
-            Metal::BoundUniforms boundUniforms(debuggingShader);
-            boundUniforms.BindConstantBuffer(Hash64("BasicGlobals"), 0, 1);
-            boundUniforms.BindConstantBuffer(Hash64("SamplingPattern"), 1, 1);
-            Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
-            const Metal::ConstantBuffer* prebuiltBuffers[] = { &globalConstantsBuffer, &resources._samplingPatternConstants };
-            boundUniforms.Apply(*context, 
-                parserContext.GetGlobalUniformsStream(),
-                UniformsStream(nullptr, prebuiltBuffers, dimof(prebuiltBuffers)));
+        auto cursorPos = GetCursorPos();
+        unsigned globalConstants[4] = { unsigned(mainViewportDesc.Width), unsigned(mainViewportDesc.Height), cursorPos[0], cursorPos[1] };
+        Metal::ConstantBuffer globalConstantsBuffer(globalConstants, sizeof(globalConstants));
+        // context->BindPS(MakeResourceList(globalConstantsBuffer, res._samplingPatternConstants));
+        Metal::BoundUniforms boundUniforms(debuggingShader);
+        boundUniforms.BindConstantBuffer(Hash64("BasicGlobals"), 0, 1);
+        boundUniforms.BindConstantBuffer(Hash64("SamplingPattern"), 1, 1);
+        Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
+        const Metal::ConstantBuffer* prebuiltBuffers[] = { &globalConstantsBuffer, &resources._samplingPatternConstants };
+        boundUniforms.Apply(context, 
+            parserContext.GetGlobalUniformsStream(),
+            UniformsStream(nullptr, prebuiltBuffers, dimof(prebuiltBuffers)));
 
-            SetupVertexGeneratorShader(*context);
-            context->Draw(4);
+        SetupVertexGeneratorShader(context);
+        context.Draw(4);
 
-            context->UnbindPS<ShaderResourceView>(0, 9);
-        CATCH_ASSETS_END(parserContext)
+        context.UnbindPS<ShaderResourceView>(0, 9);
     }
 }
 

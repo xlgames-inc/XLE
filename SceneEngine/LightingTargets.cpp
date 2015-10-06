@@ -412,23 +412,21 @@ namespace SceneEngine
     #endif
 
 
-    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, MainTargetsBox& mainTargets)
+    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, MainTargetsBox& mainTargets)
     {
         using namespace RenderCore;
-        CATCH_ASSETS_BEGIN
-            context->BindPS(MakeResourceList(5, mainTargets._gbufferRTVsSRV[0], mainTargets._gbufferRTVsSRV[1], mainTargets._gbufferRTVsSRV[2], mainTargets._msaaDepthBufferSRV));
-            const bool useMsaaSamplers = mainTargets._desc._sampling._sampleCount > 1;
-            auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                "game/xleres/deferred/debugging.psh:GBufferDebugging:ps_*",
-                useMsaaSamplers?"MSAA_SAMPLERS=1":"");
-            context->Bind(debuggingShader);
-            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
-            SetupVertexGeneratorShader(*context);
-            context->Draw(4);
-        CATCH_ASSETS_END(parserContext)
+        const bool useMsaaSamplers = mainTargets._desc._sampling._sampleCount > 1;
+        auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+            "game/xleres/deferred/debugging.psh:GBufferDebugging:ps_*",
+            useMsaaSamplers?"MSAA_SAMPLERS=1":"");
+        context.Bind(debuggingShader);
+        context.BindPS(MakeResourceList(5, mainTargets._gbufferRTVsSRV[0], mainTargets._gbufferRTVsSRV[1], mainTargets._gbufferRTVsSRV[2], mainTargets._msaaDepthBufferSRV));
+        context.Bind(Techniques::CommonResources()._blendStraightAlpha);
+        SetupVertexGeneratorShader(context);
+        context.Draw(4);
 
-        context->UnbindPS<RenderCore::Metal::ShaderResourceView>(5, 4);
+        context.UnbindPS<RenderCore::Metal::ShaderResourceView>(5, 4);
     }
 
 }

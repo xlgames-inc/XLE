@@ -96,8 +96,7 @@ namespace RenderCore { namespace Assets
     public:
         enum class BlendType : unsigned
         {
-            Opaque, DeferredDecal, 
-            Translucent, OrderedTranslucent
+            Basic, DeferredDecal, Ordered
         };
         unsigned    _doubleSided : 1;
         unsigned    _wireframe : 1;

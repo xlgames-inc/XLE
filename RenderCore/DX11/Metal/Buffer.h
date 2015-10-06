@@ -12,6 +12,7 @@
 namespace RenderCore { namespace Metal_DX11
 {
     class ObjectFactory;
+    class DeviceContext;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -49,6 +50,7 @@ namespace RenderCore { namespace Metal_DX11
         IndexBuffer(IndexBuffer&& moveFrom) never_throws;
         IndexBuffer& operator=(const IndexBuffer& cloneFrom);
         IndexBuffer& operator=(IndexBuffer&& moveFrom) never_throws;
+        explicit IndexBuffer(DeviceContext& context);
 
         typedef ID3D::Buffer*       UnderlyingType;
         UnderlyingType              GetUnderlying() const { return _underlying.get(); }

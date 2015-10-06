@@ -315,6 +315,7 @@ namespace RenderCore { namespace Metal_DX11
         BlendState(const BlendState& copyFrom);
         BlendState& operator=(const BlendState& copyFrom);
         BlendState(intrusive_ptr<ID3D::BlendState>&& moveFrom);
+        BlendState(DeviceContext& context);
 
         static BlendState OutputDisabled();
         static BlendState Null();
@@ -400,7 +401,7 @@ namespace RenderCore { namespace Metal_DX11
     class DepthStencilState
     {
     public:
-        explicit DepthStencilState(bool enabled=true, bool writeEnabled=true);
+        explicit DepthStencilState(bool enabled=true, bool writeEnabled=true, Comparison::Enum comparison = Comparison::LessEqual);
         DepthStencilState(
             bool depthTestEnabled, bool writeEnabled, 
             unsigned stencilReadMask, unsigned stencilWriteMask,

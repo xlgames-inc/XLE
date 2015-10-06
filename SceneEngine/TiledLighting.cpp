@@ -131,23 +131,21 @@ namespace SceneEngine
     {}
 
     void TiledLighting_DrawDebugging(
-        RenderCore::Metal::DeviceContext* context, 
+        RenderCore::Metal::DeviceContext& context, 
         LightingParserContext& lightingParserContext,
         TileLightingResources& tileLightingResources)
     {
-        CATCH_ASSETS_BEGIN
-            context->BindPS(MakeResourceList(tileLightingResources._lightOutputTextureSRV));
-            context->BindPS(MakeResourceList(1, tileLightingResources._debuggingTextureSRV[0], tileLightingResources._debuggingTextureSRV[1], tileLightingResources._debuggingTextureSRV[2]));
-            context->BindPS(MakeResourceList(4, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/digits.dds:T").GetShaderResource()));
-            auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                "game/xleres/deferred/debugging.psh:DepthsDebuggingTexture:ps_*");
-            context->Bind(debuggingShader);
-            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
-            SetupVertexGeneratorShader(*context);
-            context->Draw(4);
-            context->UnbindPS<ShaderResourceView>(0, 4);
-        CATCH_ASSETS_END(lightingParserContext)
+        context.BindPS(MakeResourceList(tileLightingResources._lightOutputTextureSRV));
+        context.BindPS(MakeResourceList(1, tileLightingResources._debuggingTextureSRV[0], tileLightingResources._debuggingTextureSRV[1], tileLightingResources._debuggingTextureSRV[2]));
+        context.BindPS(MakeResourceList(4, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/digits.dds:T").GetShaderResource()));
+        auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+            "game/xleres/deferred/debugging.psh:DepthsDebuggingTexture:ps_*");
+        context.Bind(debuggingShader);
+        context.Bind(Techniques::CommonResources()._blendStraightAlpha);
+        SetupVertexGeneratorShader(context);
+        context.Draw(4);
+        context.UnbindPS<ShaderResourceView>(0, 4);
     }
 
     RenderCore::Metal::ShaderResourceView TiledLighting_CalculateLighting(

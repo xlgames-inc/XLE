@@ -183,7 +183,7 @@ namespace SceneEngine
         }
     }
 
-    static void AmbientOcclusion_DrawDebugging( DeviceContext* context,
+    static void AmbientOcclusion_DrawDebugging( DeviceContext& context,
                                                 AmbientOcclusionResources& resources);
 
 
@@ -270,16 +270,16 @@ namespace SceneEngine
     }
 
     static void AmbientOcclusion_DrawDebugging(
-        DeviceContext* context, AmbientOcclusionResources& resources)
+        DeviceContext& context, AmbientOcclusionResources& resources)
     {
         using namespace RenderCore;
         using namespace RenderCore::Metal;
 
-        SetupVertexGeneratorShader(*context);
-        context->BindPS(MakeResourceList(resources._aoSRV));
-        context->Bind(::Assets::GetAssetDep<ShaderProgram>(
+        SetupVertexGeneratorShader(context);
+        context.BindPS(MakeResourceList(resources._aoSRV));
+        context.Bind(::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/postprocess/debugging.psh:AODebugging:ps_*"));
-        context->Draw(4);
+        context.Draw(4);
     }
 
 }

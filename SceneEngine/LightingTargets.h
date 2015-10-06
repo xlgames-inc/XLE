@@ -267,7 +267,7 @@ namespace SceneEngine
     #endif
 
     class LightingParserContext;
-    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, MainTargetsBox& mainTargets);
+    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, MainTargetsBox& mainTargets);
 
 }
 

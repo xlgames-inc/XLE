@@ -44,7 +44,7 @@ namespace SceneEngine
         std::vector<std::pair<LightId, PreparedRTShadowFrustum>>    _preparedRTShadows;
 
             //  ----------------- Overlays for late rendering -----------------
-        typedef std::function<void(RenderCore::Metal::DeviceContext*, LightingParserContext&)> PendingOverlay;
+        typedef std::function<void(RenderCore::Metal::DeviceContext&, LightingParserContext&)> PendingOverlay;
         std::vector<PendingOverlay> _pendingOverlays;
 
             //  ----------------- Plugins -----------------

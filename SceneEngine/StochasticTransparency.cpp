@@ -7,14 +7,16 @@
 #include "StochasticTransparency.h"
 #include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
+#include "GestaltResource.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
-#include "../RenderCore/Metal/RenderTargetView.h"
-#include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/Metal/RenderTargetView.h"
+#include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
@@ -24,221 +26,17 @@
 #include <random>
 #include <algorithm>
 
+#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../Utility/StringFormat.h"
+#include "MetricsBox.h"
+#include "../RenderCore/DX11/Metal/DX11Utils.h"
+
 namespace SceneEngine
 {
     using namespace RenderCore;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-        // this implementation from stack overflow:
-        //      http://stackoverflow.com/questions/25958259/how-do-i-find-out-if-a-tuple-contains-a-type
-    template <typename T, typename Tuple>
-    struct HasType;
-
-    template <typename T>
-    struct HasType<T, std::tuple<>> : std::false_type {};
-
-    template <typename T, typename U, typename... Ts>
-    struct HasType<T, std::tuple<U, Ts...>> : HasType<T, std::tuple<Ts...>> {};
-
-    template <typename T, typename... Ts>
-    struct HasType<T, std::tuple<T, Ts...>> : std::true_type {};
-///////////////////////////////////////////////////////////////////////////////////////////////////
-    namespace Internal
-    {
-        template <class T, std::size_t N, class... Args>
-            struct IndexOfType
-        {
-            static const auto value = N;
-        };
-
-        template <class T, std::size_t N, class... Args>
-            struct IndexOfType<T, N, T, Args...>
-        {
-            static const auto value = N;
-        };
-
-        template <class T, std::size_t N, class U, class... Args>
-            struct IndexOfType<T, N, U, Args...>
-        {
-            static const auto value = IndexOfType<T, N + 1, Args...>::value;
-        };
-    }
-
-    template <class T, class... Args>
-        const T& GetByType(const std::tuple<Args...>& t)
-    {
-        return std::get<Internal::IndexOfType<T, 0, Args...>::value>(t);
-    }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    template<typename... Views>
-        class GestaltResource
-    {
-    public:
-        std::tuple<Views...> _views;
-        intrusive_ptr<BufferUploads::ResourceLocator> _locator;
-
-        template<typename = std::enable_if<HasType<Metal::ShaderResourceView, std::tuple<Views...>>::value>>
-            const Metal::ShaderResourceView& SRV() const
-        {
-            return GetByType<Metal::ShaderResourceView>(_views); // using c++14 lookup by type
-        }
-
-        template<typename = std::enable_if<HasType<Metal::RenderTargetView, std::tuple<Views...>>::value>>
-            const Metal::RenderTargetView& RTV() const
-        {
-            return GetByType<Metal::RenderTargetView>(_views); // using c++14 lookup by type
-        }
-
-        template<typename = std::enable_if<HasType<Metal::DepthStencilView, std::tuple<Views...>>::value>>
-            const Metal::DepthStencilView& DSV() const
-        {
-            return GetByType<Metal::DepthStencilView>(_views); // using c++14 lookup by type
-        }
-
-        template<typename Type, typename = std::enable_if<HasType<Type, std::tuple<Views...>>::value>>
-            operator const Type&() const
-        {
-            return std::get<Type>(_views); // using c++14 lookup by type
-        }
-
-        GestaltResource();
-        GestaltResource(
-            const BufferUploads::TextureDesc& desc,
-            const char name[], BufferUploads::DataPacket* initialData = nullptr);
-        GestaltResource(GestaltResource&& moveFrom) never_throws;
-        GestaltResource& operator=(GestaltResource&& moveFrom) never_throws;
-        ~GestaltResource();
-
-        GestaltResource(const GestaltResource&) = delete;
-        GestaltResource& operator=(const GestaltResource&) = delete;
-    };
-
-    namespace Internal
-    {
-        template<typename Tuple, int Index>
-            static void InitViews(Tuple& tuple, BufferUploads::ResourceLocator& loc) {}
-
-        template<typename Tuple, int Index, typename Top, typename... V>
-            static void InitViews(Tuple& tuple, BufferUploads::ResourceLocator& loc)
-            {
-                std::get<Index>(tuple) = Top(loc.GetUnderlying());
-                InitViews<Tuple, Index+1, V...>(tuple, loc);
-            }
-
-        static bool NeedTypelessFormat(Metal::NativeFormat::Enum fmt)
-        {
-            return (fmt >= Metal::NativeFormat::R24G8_TYPELESS && fmt <= Metal::NativeFormat::X24_TYPELESS_G8_UINT)
-                || (fmt >= Metal::NativeFormat::R32_TYPELESS && fmt <= Metal::NativeFormat::R32_SINT);
-        }
-
-        template<typename View>
-            static Metal::NativeFormat::Enum SpecializeFormat(Metal::NativeFormat::Enum fmt) { return fmt; }
-
-        template<>
-            static Metal::NativeFormat::Enum SpecializeFormat<Metal::ShaderResourceView>(Metal::NativeFormat::Enum fmt)
-            { 
-                if (    fmt >= Metal::NativeFormat::R24G8_TYPELESS
-                    &&  fmt <= Metal::NativeFormat::X24_TYPELESS_G8_UINT) {
-                    return Metal::NativeFormat::R24_UNORM_X8_TYPELESS;      // only the depth parts are accessible in this way
-                }
-                else if (   fmt >= Metal::NativeFormat::R32_TYPELESS
-                    &&      fmt <= Metal::NativeFormat::R32_SINT) {
-                    return Metal::NativeFormat::R32_FLOAT;
-                }
-                return fmt;
-            }
-
-        template<>
-            static Metal::NativeFormat::Enum SpecializeFormat<Metal::DepthStencilView>(Metal::NativeFormat::Enum fmt)
-            { 
-                if (    fmt >= Metal::NativeFormat::R24G8_TYPELESS
-                    &&  fmt <= Metal::NativeFormat::X24_TYPELESS_G8_UINT) {
-                    return Metal::NativeFormat::D24_UNORM_S8_UINT;
-                }
-                else if (   fmt >= Metal::NativeFormat::R32_TYPELESS
-                    &&      fmt <= Metal::NativeFormat::R32_SINT) {
-                    return Metal::NativeFormat::D32_FLOAT;
-                }
-                return fmt;
-            }
-
-        template<typename Tuple, int Index>
-            static void InitViews(Tuple&, BufferUploads::ResourceLocator&, Metal::NativeFormat::Enum) {}
-
-        template<typename Tuple, int Index, typename Top, typename... V>
-            static void InitViews(Tuple& tuple, BufferUploads::ResourceLocator& loc, Metal::NativeFormat::Enum fmt)
-            {
-                std::get<Index>(tuple) = Top(loc.GetUnderlying(), SpecializeFormat<Top>(fmt));
-                InitViews<Tuple, Index+1, V...>(tuple, loc, fmt);
-            }
-
-        using BindFlags = BufferUploads::BindFlag::BitField;
-        template<typename... V>
-            static BindFlags MakeBindFlags()
-            {
-                using namespace BufferUploads;
-                return (HasType< Metal::ShaderResourceView, std::tuple<V...>>::value ? BindFlag::ShaderResource : 0)
-                    |  (HasType<   Metal::RenderTargetView, std::tuple<V...>>::value ? BindFlag::RenderTarget : 0)
-                    |  (HasType<Metal::UnorderedAccessView, std::tuple<V...>>::value ? BindFlag::UnorderedAccess : 0)
-                    |  (HasType<   Metal::DepthStencilView, std::tuple<V...>>::value ? BindFlag::DepthStencil : 0)
-                    ;
-            }
-    }
-
-    template<typename... Views>
-        GestaltResource<Views...>::GestaltResource(
-            const BufferUploads::TextureDesc& tdesc,
-            const char name[],
-            BufferUploads::DataPacket* initialData)
-    {
-        using namespace BufferUploads;
-        auto& uploads = GetBufferUploads();
-
-        auto tdescCopy = tdesc;
-
-        const bool needTypelessFmt = Internal::NeedTypelessFormat((Metal::NativeFormat::Enum)tdescCopy._nativePixelFormat);
-        if (needTypelessFmt)
-            tdescCopy._nativePixelFormat = Metal::AsTypelessFormat((Metal::NativeFormat::Enum)tdescCopy._nativePixelFormat);
-
-        auto desc = CreateDesc(
-            Internal::MakeBindFlags<Views...>(),
-            0, GPUAccess::Read|GPUAccess::Write,
-            tdescCopy, name);
-        _locator = uploads.Transaction_Immediate(desc, initialData);
-
-        if (needTypelessFmt) {
-            Internal::InitViews<std::tuple<Views...>, 0, Views...>(_views, *_locator, (Metal::NativeFormat::Enum)tdesc._nativePixelFormat);
-        } else {
-            Internal::InitViews<std::tuple<Views...>, 0, Views...>(_views, *_locator);
-        }
-    }
-
-    template<typename... Views>
-        GestaltResource<Views...>::GestaltResource(GestaltResource&& moveFrom) never_throws
-        : _views(std::move(moveFrom._views))
-        , _locator(std::move(moveForm._locator))
-    {}
-
-    template<typename... Views>
-        GestaltResource<Views...>& GestaltResource<Views...>::operator=(GestaltResource&& moveFrom) never_throws
-    {
-        _views = std::move(moveFrom._views);
-        _locator = std::move(moveFrom._locator);
-        return *this;
-    }
-
-    template<typename... Views> GestaltResource<Views...>::GestaltResource() {}
-    template<typename... Views> GestaltResource<Views...>::~GestaltResource() {}
-
-    namespace GestaltTypes
-    {
-        using RTVSRV = GestaltResource<Metal::RenderTargetView, Metal::ShaderResourceView>;
-        using SRV = GestaltResource<Metal::ShaderResourceView>;
-        using DSV = GestaltResource<Metal::DepthStencilView>;
-        using DSVSRV = GestaltResource<Metal::DepthStencilView, Metal::ShaderResourceView>;
-    }
+    
     using namespace GestaltTypes;
 
     class StochasticTransparencyBox
@@ -248,11 +46,15 @@ namespace SceneEngine
         {
         public:
             unsigned _width, _height;
-            Desc(unsigned width, unsigned height) : _width(width), _height(height) {}
+            bool _recordMetrics;
+            Desc(unsigned width, unsigned height, bool recordMetrics)
+                : _width(width), _height(height), _recordMetrics(recordMetrics) {}
         };
         SRV     _masksTable;
         DSVSRV  _stochasticDepths;
         RTVSRV  _blendingTexture;
+
+        UAVSRV  _metricsTexture;
 
         Metal::BlendState _secondPassBlend;
 
@@ -332,20 +134,232 @@ namespace SceneEngine
         _secondPassBlend = Metal::BlendState(
             Metal::BlendOp::Add, Metal::Blend::One, Metal::Blend::One,
             Metal::BlendOp::Add, Metal::Blend::Zero, Metal::Blend::InvSrcAlpha);
+
+        if (desc._recordMetrics)
+            _metricsTexture = UAVSRV(
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R32_UINT),
+                "StochasticMetrics");
+    }
+
+    /// <summary>Low-level save and restore of state information</summary>
+    /// 
+    class ProtectState
+    {
+    public:
+        struct States
+        {
+            enum Enum : unsigned
+            {
+                RenderTargets       = 1<<0,
+                Viewports           = 1<<1,
+                DepthStencilState   = 1<<2,
+                BlendState          = 1<<3,
+                Topology            = 1<<4,
+                InputLayout         = 1<<5,
+                VertexBuffer        = 1<<6,
+                IndexBuffer         = 1<<7
+            };
+            using BitField = unsigned;
+        };
+
+        ProtectState(RenderCore::Metal::DeviceContext& context, States::BitField states);
+        ~ProtectState();
+
+    private:
+        RenderCore::Metal::DeviceContext* _context;
+        SavedTargets        _targets;
+        States::BitField    _states;
+        
+        RenderCore::Metal::DepthStencilState    _depthStencilState;
+        RenderCore::Metal::BoundInputLayout     _inputLayout;
+
+        intrusive_ptr<ID3D::Buffer> _indexBuffer;
+        DXGI_FORMAT _ibFormat;
+        UINT        _ibOffset;
+
+        static const auto s_vbCount = D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
+        intrusive_ptr<ID3D::Buffer> _vertexBuffers[s_vbCount];
+        UINT        _vbStrides[s_vbCount];
+        UINT        _vbOffsets[s_vbCount];
+
+        intrusive_ptr<ID3D::BlendState> _blendState;
+        float       _blendFactor[4];
+        unsigned    _blendSampleMask;
+
+        RenderCore::Metal::ViewportDesc _viewports;
+
+        D3D11_PRIMITIVE_TOPOLOGY _topology;
+    };
+
+    ProtectState::ProtectState(RenderCore::Metal::DeviceContext& context, States::BitField states)
+    : _context(&context), _states(states)
+    {
+        using namespace RenderCore::Metal;
+
+        if (_states & States::RenderTargets || _states & States::Viewports)
+            _targets = SavedTargets(context);
+        if (_states & States::DepthStencilState)
+            _depthStencilState = DepthStencilState(context);
+        if (_states & States::BlendState) {
+            ID3D::BlendState* rawptr = nullptr;
+            context.GetUnderlying()->OMGetBlendState(&rawptr, _blendFactor, &_blendSampleMask);
+            _blendState = moveptr(rawptr);
+        }
+        if (_states & States::InputLayout)
+            _inputLayout = BoundInputLayout(context);
+
+        if (_states & States::VertexBuffer) {
+            ID3D::Buffer* rawptrs[s_vbCount];
+            context.GetUnderlying()->IAGetVertexBuffers(0, s_vbCount, rawptrs, _vbStrides, _vbOffsets);
+            for (unsigned c=0; c<s_vbCount; ++c)
+                _vertexBuffers[c] = moveptr(rawptrs[c]);
+        }
+
+        if (_states & States::IndexBuffer) {
+            ID3D::Buffer* rawptr = nullptr;
+            context.GetUnderlying()->IAGetIndexBuffer(&rawptr, &_ibFormat, &_ibOffset);
+            _indexBuffer = moveptr(rawptr);
+        }
+
+        if (_states & States::Topology) {
+            context.GetUnderlying()->IAGetPrimitiveTopology(&_topology);
+        }
+    }
+
+    ProtectState::~ProtectState()
+    {
+        if (_states & States::RenderTargets|| _states & States::Viewports)
+            _targets.ResetToOldTargets(*_context);
+        if (_states & States::DepthStencilState)
+            _context->Bind(_depthStencilState);
+        if (_states & States::BlendState)
+            _context->GetUnderlying()->OMSetBlendState(_blendState.get(), _blendFactor, _blendSampleMask);
+        if (_states & States::InputLayout)
+            _context->Bind(_inputLayout);
+
+        if (_states & States::VertexBuffer) {
+            ID3D::Buffer* rawptrs[s_vbCount];
+            for (unsigned c=0; c<s_vbCount; ++c)
+                rawptrs[c] = _vertexBuffers[c].get();
+            _context->GetUnderlying()->IASetVertexBuffers(0, s_vbCount, rawptrs, _vbStrides, _vbOffsets);
+        }
+
+        if (_states & States::IndexBuffer)
+            _context->GetUnderlying()->IASetIndexBuffer(_indexBuffer.get(), _ibFormat, _ibOffset);
+        if (_states & States::Topology)
+            _context->GetUnderlying()->IASetPrimitiveTopology(_topology);
+    }
+
+    static void ShaderBasedCopy(
+        RenderCore::Metal::DeviceContext& context,
+        const Metal::DepthStencilView& dest,
+        const Metal::ShaderResourceView& src,
+        ProtectState::States::BitField protectStates = ~0u)
+    {
+        using States = ProtectState::States;
+        const States::BitField effectedStates = 
+            States::RenderTargets | States::Viewports | States::DepthStencilState 
+            | States::Topology | States::InputLayout | States::VertexBuffer
+            ;
+        ProtectState savedStates(context, effectedStates & protectStates);
+
+        context.Bind(ResourceList<Metal::RenderTargetView, 0>(), &dest);
+        context.Bind(Techniques::CommonResources()._dssWriteOnly);
+        context.Bind(
+            ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                "game/xleres/basic2d.vsh:fullscreen:vs_*",
+                "game/xleres/basic.psh:copy_depth:ps_*"));
+        context.BindPS(MakeResourceList(src));
+        SetupVertexGeneratorShader(context);
+        context.Draw(4);
+    }
+
+    static void RenderGPUMetrics(
+        RenderCore::Metal::DeviceContext& context,
+        LightingParserContext& parsingContext,
+        const ::Assets::ResChar shaderName[],
+        std::initializer_list<const ::Assets::ResChar*> valueSources,
+        ProtectState::States::BitField protectStates = ~0u)
+    {
+        using States = ProtectState::States;
+        const States::BitField effectedStates = 
+            States::DepthStencilState | States::BlendState
+            | States::Topology | States::InputLayout | States::VertexBuffer
+            ;
+        ProtectState savedStates(context, effectedStates & protectStates);
+
+            // Utility function for writing GPU metrics values to the screen.
+            // This is useful when we have metrics values that don't reach the
+            // CPU. Ie, they are written to UAV resources (or other resources)
+            // and then read back on the GPU during the same frame. The geometry
+            // shader converts the numbers into a string, and textures appropriately.
+            // So a final value can be written to the screen without ever touching
+            // the CPU.
+        const auto& shader = ::Assets::GetAssetDep<Metal::DeepShaderProgram>(
+            (StringMeld<MaxPath, ::Assets::ResChar>() << shaderName << ":metricsrig_main:!vs_*").get(),
+            "game/xleres/utility/metricsrender.gsh:main:gs_*",
+            "game/xleres/utility/metricsrender.psh:main:ps_*",
+            "", "", 
+            (StringMeld<64>() << "VALUE_SOURCE_COUNT=" << valueSources.size()).get());
+        Metal::BoundClassInterfaces boundInterfaces(shader);
+        for (unsigned c=0; c<valueSources.size(); ++c)
+            boundInterfaces.Bind(Hash64("ValueSource"), c, valueSources.begin()[c]);
+        context.Bind(shader, boundInterfaces);
+
+        const auto* metricsDigits = "game/xleres/DefaultResources/metricsdigits.dds:T";
+        context.BindPS(MakeResourceList(3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(metricsDigits).GetShaderResource()));
+
+        Metal::BoundUniforms uniforms(shader);
+        Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
+        uniforms.BindConstantBuffers(1, {"$Globals"});
+        uniforms.BindShaderResources(1, {"MetricsObject"});
+
+        Metal::ViewportDesc viewport(context);
+        unsigned globalCB[4] = { unsigned(viewport.Width), unsigned(viewport.Height), 0, 0 };
+        uniforms.Apply(
+            context, parsingContext.GetGlobalUniformsStream(),
+            Metal::UniformsStream(
+                { MakeSharedPkt(globalCB) }, 
+                { &parsingContext.GetMetricsBox()->_metricsBufferSRV }));
+
+        context.Unbind<Metal::VertexBuffer>();
+        context.Unbind<Metal::BoundInputLayout>();
+        context.Bind(Metal::Topology::PointList);
+        context.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+        context.Bind(Techniques::CommonResources()._dssDisable);
+        context.Draw((unsigned)valueSources.size());
+
+        uniforms.UnbindShaderResources(context, 1);
     }
 
     StochasticTransparencyBox* StochasticTransparency_Prepare(
         RenderCore::Metal::DeviceContext& context, 
-        LightingParserContext& parserContext)
+        LightingParserContext& parserContext,
+        Metal::ShaderResourceView& mainDSV)
     {
-            // bind the resources we'll need for the initial passes
+            // Bind the resources we'll need for the initial passes
         Metal::ViewportDesc viewport(context);
+        #if defined(_DEBUG)
+            const auto enableMetrics = true;
+        #else
+            const auto enableMetrics = false;
+        #endif
         auto& box = Techniques::FindCachedBox2<StochasticTransparencyBox>(
-            unsigned(viewport.Width), unsigned(viewport.Height));
+            unsigned(viewport.Width), unsigned(viewport.Height), enableMetrics);
 
-            // should we bind the main dss, so we can manually reject occluded samples?
-            // or perhaps we should initialize box._stochasticDepths to the main scene depth values?
-        context.Clear(box._stochasticDepths.DSV(), 1.f, 0u);
+            // Copy the main depth buffer onto the multisample depth buffer
+            // we'll be using for the stochastic depths. This should help
+            // by rejecting samples that are occluded by opaque geometry.
+        const bool copyMainDepths = Tweakable("Stochastic_CopyMainDepths", true);
+        if (copyMainDepths) {
+            using States = ProtectState::States;
+            ShaderBasedCopy(
+                context, box._stochasticDepths.DSV(), mainDSV, 
+                ~(States::RenderTargets | States::Viewports));
+        } else {
+            context.Clear(box._stochasticDepths.DSV(), 1.f, 0u);    // (if we don't copy any opaque depths, just clear)
+        }
+
         context.BindPS(MakeResourceList(18, box._masksTable.SRV()));
         context.Bind(ResourceList<Metal::RenderTargetView, 0>(), &box._stochasticDepths.DSV());
         context.Bind(Techniques::CommonResources()._dssReadWrite);
@@ -361,7 +375,14 @@ namespace SceneEngine
     {
         float clearValues[] = {0.f, 0.f, 0.f, 1.f};
         context.Clear(box._blendingTexture.RTV(), clearValues); 
-        context.Bind(MakeResourceList(box._blendingTexture.RTV()), &mainDSV);
+        if (box._metricsTexture.IsGood()) {
+            unsigned uavClear[] = {0,0,0,0};
+            context.Clear(box._metricsTexture.UAV(), uavClear);
+            context.Bind(
+                MakeResourceList(box._blendingTexture.RTV()), &mainDSV, 
+                MakeResourceList(parserContext.GetMetricsBox()->_metricsBufferUAV, box._metricsTexture.UAV()));
+        } else
+            context.Bind(MakeResourceList(box._blendingTexture.RTV()), &mainDSV);
         context.BindPS(MakeResourceList(9, box._stochasticDepths.SRV()));
         context.Bind(box._secondPassBlend);
         context.Bind(Techniques::CommonResources()._dssReadOnly);
@@ -387,9 +408,38 @@ namespace SceneEngine
                 Metal::UniformsStream({}, {&box._blendingTexture.SRV()}));
 
             context.Bind(Techniques::CommonResources()._dssDisable);
-            context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
+            if (Tweakable("Stochastic_BlendBuffer", true)) {
+                context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
+            } else {
+                context.Bind(Techniques::CommonResources()._blendOpaque);
+            }
             context.Bind(shader);
             context.Draw(4);
+        }
+
+        if (Tweakable("StochTransMetrics", false) && box._metricsTexture.IsGood()) {
+            parserContext._pendingOverlays.push_back(
+                [&box](RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext)
+                {
+                    auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                        "game/xleres/basic2d.vsh:fullscreen:vs_*",
+                        "game/xleres/forward/transparency/stochasticdebug.sh:ps_pixelmetrics:ps_*");
+                    Metal::BoundUniforms uniforms(shader);
+                    Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
+                    uniforms.BindShaderResources(1, {"DepthsTexture", "LitSamplesMetrics"});
+                    uniforms.Apply(
+                        context, parserContext.GetGlobalUniformsStream(),
+                        Metal::UniformsStream({}, {&box._stochasticDepths.SRV(), &box._metricsTexture.SRV()}));
+
+                    context.Bind(shader);
+                    context.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+                    context.Draw(4);
+
+                    RenderGPUMetrics(
+                        context, parserContext,
+                        "game/xleres/forward/transparency/stochasticdebug.sh",
+                        {"LitFragmentCount", "AveLitFragment"});
+                });
         }
 
         if (Tweakable("StochTransDebug", false)) {

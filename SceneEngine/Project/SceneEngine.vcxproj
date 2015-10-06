@@ -213,6 +213,7 @@
     <ClCompile Include="..\Fluid.cpp" />
     <ClCompile Include="..\FluidAdvection.cpp" />
     <ClCompile Include="..\FluidHelper.cpp" />
+    <ClCompile Include="..\GestaltResource.cpp" />
     <ClCompile Include="..\IntersectionTest.cpp" />
     <ClCompile Include="..\LightingTargets.cpp" />
     <ClCompile Include="..\LightingParserResolve.cpp" />
@@ -263,6 +264,7 @@
     <ClInclude Include="..\Fluid.h" />
     <ClInclude Include="..\FluidAdvection.h" />
     <ClInclude Include="..\FluidHelper.h" />
+    <ClInclude Include="..\GestaltResource.h" />
     <ClInclude Include="..\IntersectionTest.h" />
     <ClInclude Include="..\LightingTargets.h" />
     <ClInclude Include="..\LightingParserContext.h" />

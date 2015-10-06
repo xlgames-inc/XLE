@@ -12,6 +12,7 @@
 	// support up to 6 output frustums (for cube map point light source projections)
 [maxvertexcount(18)]
 	void main(	triangle VSShadowOutput input[3],
+				uint primitiveId : SV_PrimitiveID,
 				inout TriangleStream<VSOutput> outputStream)
 {
 	uint count = min(GetShadowSubProjectionCount(), OUTPUT_SHADOW_PROJECTION_COUNT);
@@ -70,6 +71,9 @@
 			output.colour = input[0].colour;
 		#endif
 		output.renderTargetIndex = c;
+		#if (OUTPUT_PRIMITIVE_ID==1)
+			output.primitiveId = primitiveId;
+		#endif
 		outputStream.Append(output);
 
 		output.position = p1;
@@ -80,6 +84,9 @@
 			output.colour = input[1].colour;
 		#endif
 		output.renderTargetIndex = c;
+		#if (OUTPUT_PRIMITIVE_ID==1)
+			output.primitiveId = primitiveId;
+		#endif
 		outputStream.Append(output);
 
 		output.position = p2;
@@ -90,6 +97,9 @@
 			output.colour = input[2].colour;
 		#endif
 		output.renderTargetIndex = c;
+		#if (OUTPUT_PRIMITIVE_ID==1)
+			output.primitiveId = primitiveId;
+		#endif
 		outputStream.Append(output);
 		outputStream.RestartStrip();
 

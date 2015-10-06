@@ -78,6 +78,15 @@ namespace RenderCore { namespace Metal_DX11
         : IndexBuffer(ObjectFactory(), data, byteCount)
     {}
 
+    IndexBuffer::IndexBuffer(DeviceContext& context)
+    {
+        ID3D::Buffer* rawPtr = nullptr;
+        DXGI_FORMAT fmt = DXGI_FORMAT_UNKNOWN;
+        unsigned offset = 0;
+        context.GetUnderlying()->IAGetIndexBuffer(&rawPtr, &fmt, &offset);
+        _underlying = moveptr(rawPtr);
+    }
+
     IndexBuffer::~IndexBuffer() {}
 
     IndexBuffer::IndexBuffer(const IndexBuffer& cloneFrom) : _underlying(cloneFrom._underlying) {}

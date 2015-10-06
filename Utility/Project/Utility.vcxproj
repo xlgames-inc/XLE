@@ -133,6 +133,7 @@
     <ClInclude Include="..\MiniHeap.h" />
     <ClInclude Include="..\Mixins.h" />
     <ClInclude Include="..\ParameterBox.h" />
+    <ClInclude Include="..\ParameterPackUtils.h" />
     <ClInclude Include="..\Profiling\CPUProfiler.h" />
     <ClInclude Include="..\PtrUtils.h" />
     <ClInclude Include="..\IntrusivePtr.h" />

@@ -321,7 +321,9 @@ namespace SceneEngine
         context->BindPS(MakeResourceList(12, refractionBox.GetSRV()));
 
         for (auto i=parserContext._pendingOverlays.cbegin(); i!=parserContext._pendingOverlays.cend(); ++i) {
-            (*i)(context, parserContext);
+            CATCH_ASSETS_BEGIN
+                (*i)(*context, parserContext);
+            CATCH_ASSETS_END(parserContext)
         }
                     
         if (Tweakable("FFTDebugging", false)) {
@@ -532,7 +534,7 @@ namespace SceneEngine
                         [&parserContext]() 
                         { parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("STOCHASTIC_TRANS"), 0u); });
 
-                    box = StochasticTransparency_Prepare(context, parserContext);
+                    box = StochasticTransparency_Prepare(context, parserContext, mainTargets._msaaDepthBufferSRV);
                     ExecuteScene(
                         context, parserContext, SPS::BatchFilter::OITransparent,
                         TechniqueIndex_DepthOnly, L"MainScene-PostGBuffer-OI");

@@ -14,6 +14,10 @@
     #define VSOUTPUT_EXTRA
 #endif
 
+#if !defined(VSSHADOWOUTPUT_EXTRA)
+    #define VSSHADOWOUTPUT_EXTRA
+#endif
+
 #if (SPAWNED_INSTANCE==1)
     #define GEO_HAS_INSTANCE_ID 1
     #if (PER_INSTANCE_AO==1)
@@ -176,8 +180,12 @@ struct VSOutput /////////////////////////////////////////////////////
         float3 worldViewVector : WORLDVIEWVECTOR;
     #endif
 
+    #if (OUTPUT_PRIMITIVE_ID==1)
+        nointerpolation uint primitiveId : SV_PrimitiveID;
+    #endif
+
     #if (OUTPUT_RENDER_TARGET_INDEX==1)
-        uint renderTargetIndex : SV_RenderTargetArrayIndex;
+        nointerpolation uint renderTargetIndex : SV_RenderTargetArrayIndex;
     #endif
 
     #if (OUTPUT_WORLD_POSITION==1)
@@ -221,7 +229,7 @@ struct VSShadowOutput /////////////////////////////////////////////////////
         uint shadowFrustumFlags : SHADOWFLAGS;
     #endif
 
-    VSOUTPUT_EXTRA
+    VSSHADOWOUTPUT_EXTRA
 }; //////////////////////////////////////////////////////////////////
 
 

@@ -43,10 +43,14 @@ namespace RenderCore { namespace Metal_DX11
 
     VertexShader::VertexShader(const CompiledShaderByteCode& compiledShader)
     {
+        ObjectFactory objFactory;
+        if (compiledShader.DynamicLinkingEnabled())
+            _classLinkage = objFactory.CreateClassLinkage();
+
         if (compiledShader.GetStage() != ShaderStage::Null) {
             assert(compiledShader.GetStage() == ShaderStage::Vertex);
             auto byteCode = compiledShader.GetByteCode();
-            _underlying = ObjectFactory().CreateVertexShader(byteCode.first, byteCode.second);
+            _underlying = objFactory.CreateVertexShader(byteCode.first, byteCode.second, _classLinkage.get());
         }
     }
 

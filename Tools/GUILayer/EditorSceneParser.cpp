@@ -96,7 +96,7 @@ namespace GUILayer
             CATCH_ASSETS_BEGIN
                 auto delaySteps = SceneEngine::AsDelaySteps(batchFilter);
                 for (auto i:delaySteps)
-                    if (batchFilter == BF::Transparent || batchFilter == BF::TransparentPreDepth || batchFilter == BF::OITransparent) {
+                    if (i != RenderCore::Assets::DelayStep::OpaqueRender) {
                         scene._placementsManager->RenderTransparent(metalContext, parserContext, techniqueIndex, i);
                     } else {
                         scene._placementsManager->Render(metalContext, parserContext, techniqueIndex);

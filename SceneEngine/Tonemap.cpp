@@ -276,7 +276,7 @@ namespace SceneEngine
     ToneMappingResources::~ToneMappingResources()
     {}
 
-    static void    ToneMapping_DrawDebugging(   RenderCore::Metal::DeviceContext* context,
+    static void    ToneMapping_DrawDebugging(   RenderCore::Metal::DeviceContext& context,
                                                 ToneMappingResources& resources);
 
         //////////////////////////////////////////////////////////////////////////////
@@ -608,33 +608,33 @@ namespace SceneEngine
         savedStates.ResetToOldStates(*context);
     }
 
-    static void    ToneMapping_DrawDebugging(   RenderCore::Metal::DeviceContext* context,
+    static void    ToneMapping_DrawDebugging(   RenderCore::Metal::DeviceContext& context,
                                                 ToneMappingResources& resources)
     {
-        SetupVertexGeneratorShader(*context);
-        context->Bind(BlendState(BlendOp::Add, Blend::One, Blend::InvSrcAlpha));
-        context->BindPS(MakeResourceList(resources._propertiesBufferSRV));
+        SetupVertexGeneratorShader(context);
+        context.Bind(BlendState(BlendOp::Add, Blend::One, Blend::InvSrcAlpha));
+        context.BindPS(MakeResourceList(resources._propertiesBufferSRV));
         for (unsigned c=0; c<std::min(size_t(3),resources._luminanceBufferSRV.size()); ++c) {
-            context->BindPS(MakeResourceList(1+c, resources._luminanceBufferSRV[c]));
+            context.BindPS(MakeResourceList(1+c, resources._luminanceBufferSRV[c]));
         }
         for (unsigned c=0; c<std::min(size_t(3),resources._bloomBuffers.size()); ++c) {
-            context->BindPS(MakeResourceList(4+c, resources._bloomBuffers[c]._bloomBufferSRV));
+            context.BindPS(MakeResourceList(4+c, resources._bloomBuffers[c]._bloomBufferSRV));
         }
-        context->Bind(::Assets::GetAssetDep<ShaderProgram>(
+        context.Bind(::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/postprocess/debugging.psh:HDRDebugging:ps_*"));
-        context->Draw(4);
+        context.Draw(4);
 
-        context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
+        context.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/postprocess/debugging.psh:LuminanceValue:vs_*", 
             "game/xleres/utility/metricsrender.gsh:main:gs_*",
             "game/xleres/utility/metricsrender.psh:main:ps_*", ""));
-        ViewportDesc mainViewportDesc(*context);
+        ViewportDesc mainViewportDesc(context);
         unsigned dimensions[4] = { (unsigned)mainViewportDesc.Width, (unsigned)mainViewportDesc.Height, 0, 0 };
-        context->BindGS(MakeResourceList(ConstantBuffer(dimensions, sizeof(dimensions))));
-        context->BindVS(MakeResourceList(resources._propertiesBufferSRV));
-        context->BindPS(MakeResourceList(3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/metricsdigits.dds:T").GetShaderResource()));
-        context->Bind(Topology::PointList);
-        context->Draw(1);
+        context.BindGS(MakeResourceList(ConstantBuffer(dimensions, sizeof(dimensions))));
+        context.BindVS(MakeResourceList(resources._propertiesBufferSRV));
+        context.BindPS(MakeResourceList(3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/metricsdigits.dds:T").GetShaderResource()));
+        context.Bind(Topology::PointList);
+        context.Draw(1);
     }
 
         //////////////////////////////////////////////////////////////////////////////

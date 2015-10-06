@@ -31,7 +31,7 @@ namespace RenderCore { namespace Assets
         _doubleSided = false;
         _wireframe = false;
         _writeMask = 0xf;
-        _blendType = BlendType::Opaque;
+        _blendType = BlendType::Basic;
         _depthBias = 0;
         _flag = 0;
         
@@ -161,12 +161,10 @@ namespace RenderCore { namespace Assets
             if (child) {
                 if (XlEqStringI(child.RawValue(), u("decal"))) {
                     result._blendType = RenderStateSet::BlendType::DeferredDecal;
-                } else if (XlEqStringI(child.RawValue(), u("translucent"))) {
-                    result._blendType = RenderStateSet::BlendType::Translucent;
-                } else if (XlEqStringI(child.RawValue(), u("orderedtranslucent"))) {
-                    result._blendType = RenderStateSet::BlendType::OrderedTranslucent;
+                } else if (XlEqStringI(child.RawValue(), u("ordered"))) {
+                    result._blendType = RenderStateSet::BlendType::Ordered;
                 } else {
-                    result._blendType = RenderStateSet::BlendType::Opaque;
+                    result._blendType = RenderStateSet::BlendType::Basic;
                 }
                 result._flag |= RenderStateSet::Flag::BlendType;
             }
@@ -194,10 +192,9 @@ namespace RenderCore { namespace Assets
     {
         switch (blend) {
         case RenderStateSet::BlendType::DeferredDecal: return u("decal");
-        case RenderStateSet::BlendType::Translucent: return u("translucent");
-        case RenderStateSet::BlendType::OrderedTranslucent: return u("orderedtranslucent");
+        case RenderStateSet::BlendType::Ordered: return u("ordered");
         default:
-        case RenderStateSet::BlendType::Opaque: return u("opaque");
+        case RenderStateSet::BlendType::Basic: return u("basic");
         }
     }
 

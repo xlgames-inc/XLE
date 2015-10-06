@@ -191,7 +191,7 @@ namespace SceneEngine
     }
 
     void DeepOceanSim::DrawDebugging(   
-        RenderCore::Metal::DeviceContext* context, 
+        RenderCore::Metal::DeviceContext& context, 
         LightingParserContext& parserContext,
         const DeepOceanSimSettings& oceanSettings)
     {
@@ -209,15 +209,15 @@ namespace SceneEngine
             StartingSpectrumBox::Desc(  dimensions,dimensions, physicalDimensions, strongWindVector, 
                                         oceanSettings._scaleAgainstWind[1], oceanSettings._suppressionFactor[1]));
 
-        SetupVertexGeneratorShader(*context);
-        context->Bind(Techniques::CommonResources()._blendStraightAlpha);
-        context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
+        SetupVertexGeneratorShader(context);
+        context.Bind(Techniques::CommonResources()._blendStraightAlpha);
+        context.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/Ocean/FFTDebugging.psh:main:ps_*"));
-        context->BindPS(MakeResourceList(
+        context.BindPS(MakeResourceList(
             _workingTextureRealSRV, _workingTextureImaginarySRV,
             calmSpectrum._inputRealShaderResource, calmSpectrum._inputImaginaryShaderResource,
             strongSpectrum._inputRealShaderResource, strongSpectrum._inputImaginaryShaderResource));
-        context->Draw(4);
+        context.Draw(4);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -9,7 +9,7 @@
 #include "../Surface.h"
 #include "../Utility/Misc.h"
 
-void DoDitherAlphaTest(VSOutput geo, int2 pixelCoords)
+void DoDitherAlphaTest(VSOutput geo, int2 pixelCoords, uint primitiveID)
 {
 		// This kind of dithering is going to sometimes produce some
 		// wierd artefacts (and anyway, it will shake around a lot).
@@ -22,7 +22,14 @@ void DoDitherAlphaTest(VSOutput geo, int2 pixelCoords)
 		// the shadows cast by translucent geometry.
 	#if (OUTPUT_TEXCOORD==1)
 		float alphaValue = DiffuseTexture.Sample(DefaultSampler, geo.texCoord.xy).a;
+
+			// integrating in the primitive id here gives us a better result when many
+			// layers are on top of each other (otherwise each layer would all get the same mask)
+		pixelCoords.x += primitiveID;
+		pixelCoords.y += primitiveID>>2;
 		float ditherBias = DitherPatternValue(pixelCoords);
+		//float ditherBias =
+		//	IntegerHash(primitiveID + pixelCoords.x<<10 + pixelCoords.y<<20) / float(0xffffffff);
 		clip(alphaValue - .75f * ditherBias - 1e-6f);
 	#endif
 }
@@ -30,10 +37,10 @@ void DoDitherAlphaTest(VSOutput geo, int2 pixelCoords)
 #if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_DITHER_SHADOWS==1)))
 	[earlydepthstencil]
 #endif
-void main(float4 position : SV_Position, VSOutput geo)
+void main(VSOutput geo) //, uint primitiveID : SV_PrimitiveID)
 {
 	#if (OUTPUT_TEXCOORD==1) && (MAT_ALPHA_DITHER_SHADOWS==1)
-		DoDitherAlphaTest(geo, int2(position.xy));
+		DoDitherAlphaTest(geo, int2(geo.position.xy), geo.primitiveId);
 	#else
 		DoAlphaTest(geo);
 	#endif

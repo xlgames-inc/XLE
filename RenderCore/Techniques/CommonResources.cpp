@@ -23,6 +23,7 @@ namespace RenderCore { namespace Techniques
         _dssReadOnly = DepthStencilState(true, false);
         _dssDisable = DepthStencilState(false, false);
         _dssReadWriteWriteStencil = DepthStencilState(true, true, 0xff, 0xff, StencilMode::AlwaysWrite, StencilMode::AlwaysWrite);
+        _dssWriteOnly = DepthStencilState(true, true, Comparison::Always);
 
         _blendStraightAlpha = BlendState(BlendOp::Add, Blend::SrcAlpha, Blend::InvSrcAlpha);
         _blendAlphaPremultiplied = BlendState(BlendOp::Add, Blend::One, Blend::InvSrcAlpha);

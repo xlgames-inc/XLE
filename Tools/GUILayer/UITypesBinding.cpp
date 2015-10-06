@@ -309,8 +309,7 @@ namespace GUILayer
         return _materialParameterBox;
     }
 
-    BindingList<StringStringPair^>^ 
-        RawMaterial::ShaderConstants::get()
+    BindingList<StringStringPair^>^ RawMaterial::ShaderConstants::get()
     {
         if (!_underlying) { return nullptr; }
         if (!_shaderConstants) {
@@ -324,8 +323,7 @@ namespace GUILayer
         return _shaderConstants;
     }
 
-    BindingList<StringStringPair^>^ 
-        RawMaterial::ResourceBindings::get()
+    BindingList<StringStringPair^>^ RawMaterial::ResourceBindings::get()
     {
         if (!_underlying) { return nullptr; }
         if (!_resourceBindings) {
@@ -525,43 +523,41 @@ namespace GUILayer
         NotifyPropertyChanged("Wireframe");
     }
 
-    auto RenderStateSet::DeferredBlend::get() -> DeferredBlendState
-    {
-        return DeferredBlendState::Unset;
-    }
-    
-    void RenderStateSet::DeferredBlend::set(DeferredBlendState)
-    {
-        NotifyPropertyChanged("DeferredBlend");
-    }
+    auto RenderStateSet::DeferredBlend::get() -> DeferredBlendState     { return DeferredBlendState::Unset; }
+    void RenderStateSet::DeferredBlend::set(DeferredBlendState)         { NotifyPropertyChanged("DeferredBlend"); }
+
+    namespace BlendOp = RenderCore::Metal::BlendOp;
+    using namespace RenderCore::Metal::Blend;
+    using BlendType = RenderCore::Assets::RenderStateSet::BlendType;
 
     class StandardBlendDef
     {
     public:
         StandardBlendModes _standardMode;
-        RenderCore::Metal::BlendOp::Enum    _op;
-        RenderCore::Metal::Blend::Enum      _src;
-        RenderCore::Metal::Blend::Enum      _dst;
+        BlendType _blendType;
+        RenderCore::Metal::BlendOp::Enum _op;
+        RenderCore::Metal::Blend::Enum _src;
+        RenderCore::Metal::Blend::Enum _dst;
     };
-
-    namespace BlendOp = RenderCore::Metal::BlendOp;
-    using namespace RenderCore::Metal::Blend;
 
     static const StandardBlendDef s_standardBlendDefs[] = 
     {
-        { StandardBlendModes::NoBlending, BlendOp::NoBlending, One, RenderCore::Metal::Blend::Zero },
-        { StandardBlendModes::Decal, BlendOp::NoBlending, One, RenderCore::Metal::Blend::Zero },
+        { StandardBlendModes::NoBlending, BlendType::Basic, BlendOp::NoBlending, One, RenderCore::Metal::Blend::Zero },
         
-        { StandardBlendModes::Transparent, BlendOp::Add, SrcAlpha, InvSrcAlpha },
-        { StandardBlendModes::TransparentPremultiplied, BlendOp::Add, One, InvSrcAlpha },
+        { StandardBlendModes::Transparent, BlendType::Basic, BlendOp::Add, SrcAlpha, InvSrcAlpha },
+        { StandardBlendModes::TransparentPremultiplied, BlendType::Basic, BlendOp::Add, One, InvSrcAlpha },
 
-        { StandardBlendModes::Add, BlendOp::Add, One, One },
-        { StandardBlendModes::AddAlpha, BlendOp::Add, SrcAlpha, One },
-        { StandardBlendModes::Subtract, BlendOp::Subtract, One, One },
-        { StandardBlendModes::SubtractAlpha, BlendOp::Subtract, SrcAlpha, One },
+        { StandardBlendModes::Add, BlendType::Basic, BlendOp::Add, One, One },
+        { StandardBlendModes::AddAlpha, BlendType::Basic, BlendOp::Add, SrcAlpha, One },
+        { StandardBlendModes::Subtract, BlendType::Basic, BlendOp::Subtract, One, One },
+        { StandardBlendModes::SubtractAlpha, BlendType::Basic, BlendOp::Subtract, SrcAlpha, One },
 
-        { StandardBlendModes::Min, BlendOp::Min, One, One },
-        { StandardBlendModes::Max, BlendOp::Max, One, One }
+        { StandardBlendModes::Min, BlendType::Basic, BlendOp::Min, One, One },
+        { StandardBlendModes::Max, BlendType::Basic, BlendOp::Max, One, One },
+
+        { StandardBlendModes::OrderedTransparent, BlendType::Ordered, BlendOp::Add, SrcAlpha, InvSrcAlpha },
+        { StandardBlendModes::OrderedTransparentPremultiplied, BlendType::Ordered, BlendOp::Add, One, InvSrcAlpha },
+        { StandardBlendModes::Decal, BlendType::DeferredDecal, BlendOp::NoBlending, One, RenderCore::Metal::Blend::Zero }
     };
 
     StandardBlendModes AsStandardBlendMode(
@@ -572,26 +568,28 @@ namespace GUILayer
         auto dst = stateSet._forwardBlendDst;
 
         if (!(stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::ForwardBlend)) {
-            if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::BlendType) {
-                if (stateSet._blendType == RenderCore::Assets::RenderStateSet::BlendType::DeferredDecal)
-                    return StandardBlendModes::Decal;
-                return StandardBlendModes::NoBlending;
-            }
-
+            if (    stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::BlendType
+                &&  stateSet._blendType == BlendType::DeferredDecal)
+                return StandardBlendModes::Decal;
             return StandardBlendModes::Inherit;
         }
 
         if (op == BlendOp::NoBlending) {
-            if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::BlendType)
-                if (stateSet._blendType == RenderCore::Assets::RenderStateSet::BlendType::DeferredDecal)
+            if (    stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::BlendType
+                &&  stateSet._blendType == BlendType::DeferredDecal)
                     return StandardBlendModes::Decal;
             return StandardBlendModes::NoBlending;
         }
 
+        auto blendType = BlendType::Basic;
+        if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::BlendType)
+            blendType = stateSet._blendType;
+
         for (unsigned c=0; c<dimof(s_standardBlendDefs); ++c)
             if (    op == s_standardBlendDefs[c]._op
                 &&  src == s_standardBlendDefs[c]._src
-                &&  dst == s_standardBlendDefs[c]._dst)
+                &&  dst == s_standardBlendDefs[c]._dst
+                &&  blendType == s_standardBlendDefs[c]._blendType)
                 return s_standardBlendDefs[c]._standardMode;
 
         return StandardBlendModes::Complex;
@@ -614,7 +612,7 @@ namespace GUILayer
             stateSet._forwardBlendOp = BlendOp::NoBlending;
             stateSet._forwardBlendSrc = One;
             stateSet._forwardBlendDst = RenderCore::Metal::Blend::Zero;
-            stateSet._blendType = RenderCore::Assets::RenderStateSet::BlendType::Opaque;
+            stateSet._blendType = RenderCore::Assets::RenderStateSet::BlendType::Basic;
             stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::ForwardBlend;
             stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::BlendType;
             NotifyPropertyChanged("StandardBlendMode");
@@ -630,12 +628,12 @@ namespace GUILayer
                 stateSet._forwardBlendOp = s_standardBlendDefs[c]._op;
                 stateSet._forwardBlendSrc = s_standardBlendDefs[c]._src;
                 stateSet._forwardBlendDst = s_standardBlendDefs[c]._dst;
-                stateSet._blendType = RenderCore::Assets::RenderStateSet::BlendType::Opaque;
                 stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::ForwardBlend;
-                stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::BlendType;
 
-                if (newMode == StandardBlendModes::Decal) {
-                    stateSet._blendType = RenderCore::Assets::RenderStateSet::BlendType::DeferredDecal;
+                stateSet._blendType = s_standardBlendDefs[c]._blendType;
+                if (s_standardBlendDefs[c]._blendType == BlendType::Basic) {
+                    stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::BlendType;
+                } else {
                     stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::BlendType;
                 }
 

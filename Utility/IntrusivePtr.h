@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../Core/Exceptions.h"
 #include <utility>      // (for std::forward)
 
 namespace Utility

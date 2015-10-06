@@ -15,7 +15,8 @@ namespace SceneEngine
 
     StochasticTransparencyBox* StochasticTransparency_Prepare(
         RenderCore::Metal::DeviceContext& context, 
-        LightingParserContext& parserContext);
+        LightingParserContext& parserContext,
+        RenderCore::Metal::ShaderResourceView& mainDSV);
 
     void StochasticTransparencyBox_PrepareSecondPass(  
         RenderCore::Metal::DeviceContext& context,

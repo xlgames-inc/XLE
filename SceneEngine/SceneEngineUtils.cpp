@@ -32,6 +32,38 @@ namespace SceneEngine
         context.GetUnderlying()->RSGetViewports(&_oldViewportCount, (D3D11_VIEWPORT*)_oldViewports);
     }
 
+    SavedTargets::SavedTargets()
+    {
+        _oldViewportCount = 0;
+        std::fill(_oldTargets, &_oldTargets[dimof(_oldTargets)], nullptr);
+        _oldDepthTarget = nullptr;
+    }
+
+    SavedTargets::SavedTargets(SavedTargets&& moveFrom) never_throws
+    {
+        _oldViewportCount = moveFrom._oldViewportCount; moveFrom._oldViewportCount = 0;
+        for (unsigned c=0; c<MaxSimultaneousRenderTargetCount; ++c) {
+            _oldTargets[c] = moveFrom._oldTargets[c];
+            _oldViewports[c] = moveFrom._oldViewports[c];
+            moveFrom._oldTargets[c] = nullptr;
+            moveFrom._oldViewports[c] = RenderCore::Metal::ViewportDesc();
+        }
+        _oldDepthTarget = moveFrom._oldDepthTarget; moveFrom._oldDepthTarget = nullptr;
+    }
+
+    SavedTargets& SavedTargets::operator=(SavedTargets&& moveFrom) never_throws
+    {
+        _oldViewportCount = moveFrom._oldViewportCount; moveFrom._oldViewportCount = 0;
+        for (unsigned c=0; c<MaxSimultaneousRenderTargetCount; ++c) {
+            _oldTargets[c] = moveFrom._oldTargets[c];
+            _oldViewports[c] = moveFrom._oldViewports[c];
+            moveFrom._oldTargets[c] = nullptr;
+            moveFrom._oldViewports[c] = RenderCore::Metal::ViewportDesc();
+        }
+        _oldDepthTarget = moveFrom._oldDepthTarget; moveFrom._oldDepthTarget = nullptr;
+        return *this;
+    }
+
     SavedTargets::~SavedTargets()
     {
          for (unsigned c=0; c<dimof(_oldTargets); ++c) {

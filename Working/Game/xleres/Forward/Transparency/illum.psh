@@ -150,6 +150,12 @@ float4 main_oi(VSOutput geo, SystemInputs sys) : SV_Target
 
 Texture2DMS<float> StochasticOcclusionDepths : register(t9);
 
+#include "../../Utility/metrics.h"
+#if defined(_METRICS)
+	RWStructuredBuffer<MetricsStructure> MetricsObject : register(u1);
+	RWTexture2D<uint> LitSamplesMetrics : register(u2);
+#endif
+
 #define STOCHASTIC_SAMPLE_COUNT 8
 
 [earlydepthstencil]
@@ -166,12 +172,10 @@ Texture2DMS<float> StochasticOcclusionDepths : register(t9);
 	// is noisy, but it will give us a rough idea.
 
 	float ndcComparison = geo.position.z; // / geo.position.w;
-	// ndcComparison = NDCDepthToWorldSpace_Perspective(ndcComparison, GlobalMiniProjZW());
 
 	float occlusion = 0.f;
 	for (uint s=0; s<STOCHASTIC_SAMPLE_COUNT; ++s) {
 		float sampleDepth = StochasticOcclusionDepths.Load(uint2(geo.position.xy), s);
-		// sampleDepth = NDCDepthToWorldSpace_Perspective(sampleDepth, GlobalMiniProjZW());
 
 			// Maybe getting self-occlusion here?
 			// If the depth values written to the depth buffer are evaluated at
@@ -185,13 +189,17 @@ Texture2DMS<float> StochasticOcclusionDepths : register(t9);
 		// (discard would be much cheaper here. But sometimes all of the fragments on
 		// the top have a very low alpha values -- which means that the final blending
 		// alpha value becomes incorrect)
-		return float4(0.0.xxx,
-			IllumShader_PerPixel(geo).blendingAlpha);
+		return float4(0.0.xxx, IllumShader_PerPixel(geo).blendingAlpha);
 	}
 	occlusion /= float(STOCHASTIC_SAMPLE_COUNT);
 
+	#if defined(_METRICS)
+		uint buffer;
+		InterlockedAdd(MetricsObject[0].StocasticTransLitFragmentCount, 1, buffer);
+		InterlockedAdd(LitSamplesMetrics[uint2(geo.position.xy)], 1, buffer);
+	#endif
+
 	GBufferValues sample = IllumShader_PerPixel(geo);
-	// if (sample.blendingAlpha == 1.f) discard;
 	float4 litValue = LightSample(sample, geo, sys);
 
 	return float4((LightingScale * (1.f - occlusion) * litValue.a) * litValue.rgb, litValue.a);

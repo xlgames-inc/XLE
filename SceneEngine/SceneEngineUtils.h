@@ -29,6 +29,9 @@ namespace SceneEngine
     {
     public:
         SavedTargets(RenderCore::Metal::DeviceContext& context);
+        SavedTargets();
+        SavedTargets(SavedTargets&& moveFrom) never_throws;
+        SavedTargets& operator=(SavedTargets&& moveFrom) never_throws;
         ~SavedTargets();
 
         void        ResetToOldTargets(RenderCore::Metal::DeviceContext& context);

@@ -110,6 +110,7 @@
       <Filter>Meta</Filter>
     </ClInclude>
     <ClInclude Include="..\Documentation.h" />
+    <ClInclude Include="..\ParameterPackUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\StringFormat.cpp" />

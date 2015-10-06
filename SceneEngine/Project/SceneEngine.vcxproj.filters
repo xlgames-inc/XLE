@@ -145,6 +145,9 @@
     <ClCompile Include="..\StochasticTransparency.cpp">
       <Filter>Lighting And Processing</Filter>
     </ClCompile>
+    <ClCompile Include="..\GestaltResource.cpp">
+      <Filter>Fundamentals</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -301,6 +304,9 @@
     </ClInclude>
     <ClInclude Include="..\StochasticTransparency.h">
       <Filter>Lighting And Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GestaltResource.h">
+      <Filter>Fundamentals</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

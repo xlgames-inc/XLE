@@ -30,6 +30,13 @@ namespace RenderCore { namespace Metal_DX11
         _underlying = BuildInputLayout(layout, shader);
     }
 
+    BoundInputLayout::BoundInputLayout(DeviceContext& context)
+    {
+        ID3D::InputLayout* rawptr = nullptr;
+        context.GetUnderlying()->IAGetInputLayout(&rawptr);
+        _underlying = moveptr(rawptr);
+    }
+
     BoundInputLayout::BoundInputLayout() {}
     BoundInputLayout::~BoundInputLayout() {}
 
@@ -661,6 +668,37 @@ namespace RenderCore { namespace Metal_DX11
                         lowestShaderSlot, highestShaderSlot-lowestShaderSlot+1,
                         &currentSRVs[lowestShaderSlot]);
                 }
+            }
+        }
+    }
+
+    void BoundUniforms::UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const
+    {
+        for (const auto& b:_stageBindings[ShaderStage::Vertex]._shaderResourceBindings) {
+            if ((b._inputInterfaceSlot >> 16)==streamIndex) {
+                context.UnbindVS<ShaderResourceView>(b._shaderSlot, 1);
+                context._currentSRVs[ShaderStage::Vertex][b._shaderSlot] = nullptr;
+            }
+        }
+
+        for (const auto& b:_stageBindings[ShaderStage::Pixel]._shaderResourceBindings) {
+            if ((b._inputInterfaceSlot >> 16)==streamIndex) {
+                context.UnbindPS<ShaderResourceView>(b._shaderSlot, 1);
+                context._currentSRVs[ShaderStage::Pixel][b._shaderSlot] = nullptr;
+            }
+        }
+
+        for (const auto& b:_stageBindings[ShaderStage::Geometry]._shaderResourceBindings) {
+            if ((b._inputInterfaceSlot >> 16)==streamIndex) {
+                context.UnbindGS<ShaderResourceView>(b._shaderSlot, 1);
+                context._currentSRVs[ShaderStage::Geometry][b._shaderSlot] = nullptr;
+            }
+        }
+
+        for (const auto& b:_stageBindings[ShaderStage::Compute]._shaderResourceBindings) {
+            if ((b._inputInterfaceSlot >> 16)==streamIndex) {
+                context.UnbindCS<ShaderResourceView>(b._shaderSlot, 1);
+                context._currentSRVs[ShaderStage::Compute][b._shaderSlot] = nullptr;
             }
         }
     }

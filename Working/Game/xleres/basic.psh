@@ -12,6 +12,11 @@ float4 copy(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Tar
 	return DiffuseTexture.Load(int3(position.xy, 0));
 }
 
+float copy_depth(float4 position : SV_Position) : SV_Depth
+{
+	return DiffuseTexture.Load(int3(position.xy, 0));
+}
+
 float4 fake_tonemap(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
 	return float4(DiffuseTexture.Load(int3(position.xy, 0)).rgb / LightingScale, 1.f);
@@ -29,7 +34,7 @@ float4 copy_point(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : 
 
 float4 PCT_Text( float4 input : SV_Position, float4 color : COLOR0, float2 texCoord : TEXCOORD0 ) : SV_Target0
 {
-	return float4(	color.rgb, 
+	return float4(	color.rgb,
 					color.a * DiffuseTexture.Sample(DefaultSampler, texCoord).r);
 }
 

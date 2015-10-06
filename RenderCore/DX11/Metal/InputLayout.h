@@ -78,6 +78,7 @@ namespace RenderCore { namespace Metal_DX11
     public:
         BoundInputLayout(const InputLayout& layout, const CompiledShaderByteCode& shader);
         BoundInputLayout(const InputLayout& layout, const ShaderProgram& shader);
+        explicit BoundInputLayout(DeviceContext& context);
         BoundInputLayout();
         ~BoundInputLayout();
 
@@ -194,6 +195,7 @@ namespace RenderCore { namespace Metal_DX11
 
         void Apply( DeviceContext& context, 
                     const UniformsStream& stream0, const UniformsStream& stream1) const;
+        void UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const;
     private:
 
         class StageBinding

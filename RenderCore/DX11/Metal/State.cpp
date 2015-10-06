@@ -247,16 +247,24 @@ namespace RenderCore { namespace Metal_DX11
         return BlendState(intrusive_ptr<ID3D::BlendState>());
     }
 
+    BlendState::BlendState(DeviceContext& context)
+    {
+        ID3D::BlendState* rawptr = nullptr;
+        float blendFactor[4]; unsigned sampleMask = 0;
+        context.GetUnderlying()->OMGetBlendState(&rawptr, blendFactor, &sampleMask);
+        _underlying = moveptr(rawptr);
+    }
+
     BlendState::~BlendState() {}
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    DepthStencilState::DepthStencilState(bool enabled, bool writeEnabled)
+    DepthStencilState::DepthStencilState(bool enabled, bool writeEnabled, Comparison::Enum comparison)
     {
         D3D11_DEPTH_STENCIL_DESC depthStencilStateDesc;
         depthStencilStateDesc.DepthEnable = enabled;
         depthStencilStateDesc.DepthWriteMask = (enabled&&writeEnabled)?D3D11_DEPTH_WRITE_MASK_ALL:D3D11_DEPTH_WRITE_MASK_ZERO;
-        depthStencilStateDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+        depthStencilStateDesc.DepthFunc = (D3D11_COMPARISON_FUNC)comparison;
         depthStencilStateDesc.StencilEnable = false;
         depthStencilStateDesc.StencilReadMask = 0x0;
         depthStencilStateDesc.StencilWriteMask = 0x0;

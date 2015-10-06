@@ -68,7 +68,7 @@ namespace SceneEngine
             unsigned bufferCounter);
 
         void DrawDebugging(   
-            MetalContext* context, 
+            MetalContext& context, 
             LightingParserContext& parserContext,
             const DeepOceanSimSettings& oceanSettings);
 

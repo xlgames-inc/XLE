@@ -239,7 +239,6 @@ namespace GUILayer
             std::shared_ptr<RenderCore::Assets::ModelCache> cache);
         VisMouseOver();
         ~VisMouseOver();
-
         !VisMouseOver()
         {
             System::Diagnostics::Debug::Assert(false, "Non deterministic delete of ModelVisSettings");
@@ -287,6 +286,8 @@ namespace GUILayer
         SubtractAlpha,
         Min, 
         Max,
+        OrderedTransparent,
+        OrderedTransparentPremultiplied,
         Complex     // some mode other than one of the standard modes
     };
 
@@ -307,11 +308,11 @@ namespace GUILayer
         using NativeConfig = ::Assets::DivergentAsset<::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial, InputStreamFormatter<utf8>>>;
         RenderStateSet(std::shared_ptr<NativeConfig> underlying);
         ~RenderStateSet();
-
         !RenderStateSet()
         {
             System::Diagnostics::Debug::Assert(false, "Non deterministic delete of RenderStateSet");
         }
+
     protected:
         clix::shared_ptr<NativeConfig> _underlying;
 

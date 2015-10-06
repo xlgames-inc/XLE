@@ -352,6 +352,7 @@ namespace RenderCore { namespace Metal_DX11
     template void DeviceContext::Bind<1>(const ResourceList<VertexBuffer, 1>&, unsigned, unsigned);
     template void DeviceContext::Bind<2>(const ResourceList<VertexBuffer, 2>&, unsigned, unsigned);
     template void DeviceContext::Bind<3>(const ResourceList<VertexBuffer, 3>&, unsigned, unsigned);
+    template void DeviceContext::Bind<1,1>(const ResourceList<RenderTargetView, 1>&, const DepthStencilView*, const ResourceList<UnorderedAccessView, 1>&);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
