@@ -498,6 +498,7 @@ namespace SceneEngine
 
     bool PlacementsRenderer::HasPrepared(RenderCore::Assets::DelayStep delayStep) const
     {
+        assert(unsigned(delayStep) < unsigned(RenderCore::Assets::DelayStep::Max));
         return !_preparedRenders.IsEmpty(delayStep);
     }
 

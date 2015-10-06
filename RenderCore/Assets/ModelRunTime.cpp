@@ -1285,6 +1285,7 @@ namespace RenderCore { namespace Assets
         if (drawCalls.GetRendererGUID() != typeid(ModelRenderer).hash_code())
             Throw(::Exceptions::BasicLabel("Delayed draw call set matched with wrong renderer type"));
 
+        assert(unsigned(delayStep)<unsigned(DelayStep::Max));
         auto& entries = drawCalls._entries[(unsigned)delayStep];
         if (entries.empty()) return;
 

@@ -10,12 +10,12 @@
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Format.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
+#include "../RenderCore/Assets/DelayedDrawCall.h"   // for DelayStep -- a forward declaration here confuses c++/cli
 
 #include "../RenderCore/DX11/Metal/DX11.h"
 
 namespace RenderOverlays { class Font; }
 namespace BufferUploads { struct BufferDesc; struct TextureDesc; namespace BindFlag { typedef unsigned BitField; }}
-namespace RenderCore { namespace Assets { enum class DelayStep : unsigned; }}
 
 namespace Utility
 {
