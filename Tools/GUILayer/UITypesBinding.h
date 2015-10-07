@@ -20,7 +20,7 @@ using namespace System::Windows::Forms;
 using namespace System::Drawing::Design;
 using namespace System::Collections::Generic;
 
-namespace RenderCore { namespace Assets { class RawMaterial; class RenderStateSet; }}
+namespace RenderCore { namespace Assets { class RawMaterial; }}
 namespace Assets
 {
     template<typename Type, typename Formatter>

@@ -14,10 +14,12 @@
 #include <memory>
 
 namespace Assets { namespace Exceptions { class AssetException; }}
+namespace Utility { class ParameterBox; }
 
 namespace RenderCore { namespace Techniques 
 {
     class TechniqueContext;
+    class IStateSetResolver;
     
     /// <summary>Manages critical shader state</summary>
     /// Certain system variables are bound to the shaders, and managed by higher
@@ -45,6 +47,10 @@ namespace RenderCore { namespace Techniques
         void    SetGlobalCB(
             Metal::DeviceContext& context, unsigned index, 
             const void* newData, size_t dataSize);
+        std::shared_ptr<IStateSetResolver> SetStateSetResolver(
+            std::shared_ptr<IStateSetResolver> stateSetResolver);
+        const std::shared_ptr<IStateSetResolver>& GetStateSetResolver()            { return _stateSetResolver; }
+        const std::shared_ptr<Utility::ParameterBox>& GetStateSetEnvironment();
 
             //  ----------------- Exception reporting ----------------- 
         std::string                 _errorString;
@@ -63,6 +69,7 @@ namespace RenderCore { namespace Techniques
 
         std::unique_ptr<TechniqueContext>   _techniqueContext;
         AlignedUniquePtr<ProjectionDesc>    _projectionDesc;
+        std::shared_ptr<IStateSetResolver>  _stateSetResolver;
 
         std::unique_ptr<Metal::UniformsStream>      _globalUniformsStream;
         std::vector<const Metal::ConstantBuffer*>   _globalUniformsConstantBuffers;

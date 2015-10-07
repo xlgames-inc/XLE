@@ -26,26 +26,6 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     
-    RenderStateSet::RenderStateSet()
-    {
-        _doubleSided = false;
-        _wireframe = false;
-        _writeMask = 0xf;
-        _blendType = BlendType::Basic;
-        _depthBias = 0;
-        _flag = 0;
-        
-        _forwardBlendSrc = Metal::Blend::One;
-        _forwardBlendDst = Metal::Blend::Zero;
-        _forwardBlendOp = Metal::BlendOp::NoBlending;
-    }
-
-    uint64 RenderStateSet::GetHash() const
-    {
-        static_assert(sizeof(*this) == sizeof(uint64), "expecting StateSet to be 64 bits long");
-        return *(const uint64*)this;
-    }
-
     ResolvedMaterial::ResolvedMaterial() {}
 
     ResolvedMaterial::ResolvedMaterial(ResolvedMaterial&& moveFrom)
@@ -129,8 +109,9 @@ namespace RenderCore { namespace Assets
         return Metal::BlendOp::NoBlending;
     }
 
-    static RenderStateSet DeserializeStateSet(InputStreamFormatter<utf8>& formatter)
+    static Techniques::RenderStateSet DeserializeStateSet(InputStreamFormatter<utf8>& formatter)
     {
+        using RenderStateSet = Techniques::RenderStateSet;
         RenderStateSet result;
 
         Document<InputStreamFormatter<utf8>> doc(formatter);
@@ -188,13 +169,13 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    static const utf8* AsString(RenderStateSet::BlendType blend)
+    static const utf8* AsString(Techniques::RenderStateSet::BlendType blend)
     {
         switch (blend) {
-        case RenderStateSet::BlendType::DeferredDecal: return u("decal");
-        case RenderStateSet::BlendType::Ordered: return u("ordered");
+        case Techniques::RenderStateSet::BlendType::DeferredDecal: return u("decal");
+        case Techniques::RenderStateSet::BlendType::Ordered: return u("ordered");
         default:
-        case RenderStateSet::BlendType::Basic: return u("basic");
+        case Techniques::RenderStateSet::BlendType::Basic: return u("basic");
         }
     }
 
@@ -225,8 +206,9 @@ namespace RenderCore { namespace Assets
                 ImpliedTyping::AsString(type, true));
         }
 
-    void SerializeStateSet(OutputStreamFormatter& formatter, const RenderStateSet& stateSet)
+    void SerializeStateSet(OutputStreamFormatter& formatter, const Techniques::RenderStateSet& stateSet)
     {
+        using RenderStateSet = Techniques::RenderStateSet;
         if (stateSet._flag & RenderStateSet::Flag::DoubleSided)
             formatter.WriteAttribute(u("DoubleSided"), AutoAsString(stateSet._doubleSided));
 
@@ -251,11 +233,11 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    static Assets::RenderStateSet Merge(
-        Assets::RenderStateSet underride,
-        Assets::RenderStateSet override)
+    static Techniques::RenderStateSet Merge(
+        Techniques::RenderStateSet underride,
+        Techniques::RenderStateSet override)
     {
-        typedef Assets::RenderStateSet StateSet;
+        using StateSet = Techniques::RenderStateSet;
         StateSet result = underride;
         if (override._flag & StateSet::Flag::DoubleSided) {
             result._doubleSided = override._doubleSided;

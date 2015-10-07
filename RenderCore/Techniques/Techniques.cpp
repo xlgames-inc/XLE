@@ -6,6 +6,7 @@
 
 #include "Techniques.h"
 #include "ParsingContext.h"
+#include "RenderStateResolver.h"
 #include "../Metal/Shader.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
@@ -889,6 +890,11 @@ namespace RenderCore { namespace Techniques
         binding.BindConstantBuffer(HashShadowProjection, CB_ShadowProjection, 0);
         binding.BindConstantBuffer(HashOrthoShadowProjection, CB_OrthoShadowProjection, 0);
         binding.BindConstantBuffer(HashBasicLightingEnvironment, CB_BasicLightingEnvironment, 0);
+    }
+
+    TechniqueContext::TechniqueContext()
+    {
+        _defaultStateSetResolver = std::make_shared<StateSetResolver_Default>();
     }
 
 }}

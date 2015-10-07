@@ -9,6 +9,8 @@
     <ClInclude Include="..\Techniques\TechniqueMaterial.h" />
     <ClInclude Include="..\Techniques\CommonBindings.h" />
     <ClInclude Include="..\Techniques\PredefinedCBLayout.h" />
+    <ClInclude Include="..\Techniques\RenderStateResolver.h" />
+    <ClInclude Include="..\Techniques\CompiledRenderStateSet.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Techniques\Techniques.cpp" />
@@ -17,5 +19,6 @@
     <ClCompile Include="..\Techniques\TechniqueUtils.cpp" />
     <ClCompile Include="..\Techniques\TechniqueMaterial.cpp" />
     <ClCompile Include="..\Techniques\PredefinedCBLayout.cpp" />
+    <ClCompile Include="..\Techniques\RenderStateResolver.cpp" />
   </ItemGroup>
 </Project>

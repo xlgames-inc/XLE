@@ -20,6 +20,8 @@ namespace Assets { class DependencyValidation; class DirectorySearchRules; }
 
 namespace RenderCore { namespace Techniques
 {
+    class IStateSetResolver;
+
     class ShaderParameters
     {
     public:
@@ -194,6 +196,10 @@ namespace RenderCore { namespace Techniques
         ParameterBox   _globalEnvironmentState;
         ParameterBox   _runtimeState;
 
+        std::shared_ptr<ParameterBox> _stateSetEnvironment;
+        std::shared_ptr<IStateSetResolver> _defaultStateSetResolver;
+
+        TechniqueContext();
         static void     BindGlobalUniforms(TechniqueInterface&);
         static void     BindGlobalUniforms(Metal::BoundUniforms&);
 

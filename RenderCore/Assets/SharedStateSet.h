@@ -11,32 +11,16 @@
 #include <string>
 #include <memory>
 
-namespace RenderCore { namespace Techniques { class TechniqueContext; class ParsingContext; } }
+namespace RenderCore { namespace Techniques 
+{ 
+    class TechniqueContext; class ParsingContext; 
+    class IStateSetResolver;
+    class RenderStateSet;
+}}
 namespace Utility { class ParameterBox; }
 
 namespace RenderCore { namespace Assets
 {
-    class RenderStateSet;
-    class CompiledRenderStateSet;
-
-    class IRenderStateSetResolver
-    {
-    public:
-        /// <summary>Given the current global state settings and a technique, build the low-level states for draw call<summary>
-        /// There are only 3 influences on render states while rendering models:
-        /// <list>
-        ///     <item>Local states set on the draw call object
-        ///     <item>The global state settings (eg, perhaps set by the lighting parser)
-        ///     <item>The technique index/guid (ie, the type of rendering being performed)
-        /// </list>
-        /// These should be combined together to generate the low level state objects.
-        virtual const CompiledRenderStateSet* Compile(
-            const RenderStateSet& states, 
-            const Utility::ParameterBox& globalStates,
-            unsigned techniqueIndex) = 0;
-        virtual ~IRenderStateSetResolver();
-    };
-
     class ModelRendererContext
     {
     public:
@@ -48,7 +32,7 @@ namespace RenderCore { namespace Assets
             Metal::DeviceContext* context, 
             Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex)
-            : _context(context), _parserContext(&parserContext), _techniqueIndex(techniqueIndex) {}
+        : _context(context), _parserContext(&parserContext), _techniqueIndex(techniqueIndex) {}
     };
 
     namespace Internal
@@ -85,7 +69,7 @@ namespace RenderCore { namespace Assets
 
         SharedShaderName InsertShaderName(const std::string& shaderName);
         SharedParameterBox InsertParameterBox(const Utility::ParameterBox& box);
-        unsigned InsertRenderStateSet(const RenderStateSet& states);
+        unsigned InsertRenderStateSet(const Techniques::RenderStateSet& states);
 
         Metal::BoundUniforms* BeginVariation(
             const ModelRendererContext& context, 
@@ -94,7 +78,6 @@ namespace RenderCore { namespace Assets
 
         void BeginRenderState(
             const ModelRendererContext& context, 
-            const Utility::ParameterBox& globalStates,
             SharedRenderStateSet renderStateSetIndex) const;
 
         class CaptureMarker
@@ -116,7 +99,10 @@ namespace RenderCore { namespace Assets
             friend class SharedStateSet;
         };
         
-        CaptureMarker CaptureState(Metal::DeviceContext& context);
+        CaptureMarker CaptureState(
+            Metal::DeviceContext& context,
+            std::shared_ptr<Techniques::IStateSetResolver> stateResolver,
+            std::shared_ptr<Utility::ParameterBox> environment);
         void ReleaseState(Metal::DeviceContext& context);
 
         SharedStateSet();
@@ -130,7 +116,6 @@ namespace RenderCore { namespace Assets
         mutable SharedParameterBox _currentMaterialParamBox;
         mutable SharedParameterBox _currentGeoParamBox;
         mutable SharedRenderStateSet _currentRenderState;
-        mutable uint64 _currentGlobalRenderState;
         mutable Metal::BoundUniforms* _currentBoundUniforms;
     };
 

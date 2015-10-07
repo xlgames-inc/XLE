@@ -484,7 +484,7 @@ namespace SceneEngine
         unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep)
     {
             // Draw the translucent parts of models that were previously prepared
-        auto capture = _cache->GetSharedStateSet().CaptureState(*context);
+        auto capture = _cache->GetSharedStateSet().CaptureState(*context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
         ModelRenderer::RenderPrepared(
             RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
             _cache->GetSharedStateSet(), _preparedRenders, delayStep);

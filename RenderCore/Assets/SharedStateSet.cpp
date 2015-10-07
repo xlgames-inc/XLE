@@ -10,6 +10,8 @@
 #include "../Techniques/CommonResources.h"
 #include "../Techniques/ParsingContext.h"
 #include "../Techniques/CommonBindings.h"
+#include "../Techniques/RenderStateResolver.h"
+#include "../Techniques/CompiledRenderStateSet.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/Buffer.h"
@@ -25,13 +27,21 @@ namespace RenderCore { namespace Assets
     class SharedStateSet::Pimpl
     {
     public:
-        std::vector<std::string>                        _shaderNames;
-        std::vector<Techniques::TechniqueInterface>     _techniqueInterfaces;
-        std::vector<ParameterBox>                       _parameterBoxes;
-        std::vector<uint64>                             _techniqueInterfaceHashes;
-        std::vector<std::pair<uint64, RenderStateSet>>  _renderStateSets;
+        using TechInterface = Techniques::TechniqueInterface;
+        std::vector<std::string>    _shaderNames;
+        std::vector<TechInterface>  _techniqueInterfaces;
+        std::vector<ParameterBox>   _parameterBoxes;
+        std::vector<uint64>         _techniqueInterfaceHashes;
+
+        std::vector<Techniques::RenderStateSet> _renderStateSets;
+        std::vector<uint64>         _renderStateHashes;
+
+        std::vector<std::pair<uint64, Techniques::CompiledRenderStateSet>>  _compiledStates;
 
         Metal::DeviceContext* _capturedContext;
+        uint64 _currentGlobalRenderState;
+        std::shared_ptr<Techniques::IStateSetResolver> _currentStateResolver;
+        std::shared_ptr<ParameterBox> _environment;
     };
 
     static uint64 Hash(const Metal::InputElementDesc& desc)
@@ -117,7 +127,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    unsigned SharedStateSet::InsertRenderStateSet(const RenderStateSet& states)
+    unsigned SharedStateSet::InsertRenderStateSet(const Techniques::RenderStateSet& states)
     {
         //  The RenderStateSet has parameters that influence the BlendState 
         //  and RasteriserState low level graphics API objects.
@@ -135,13 +145,12 @@ namespace RenderCore { namespace Assets
         //  a combination of the global state settings and these local states)
 
         auto hash = states.GetHash();
-        for (auto i=_pimpl->_renderStateSets.begin(); i!=_pimpl->_renderStateSets.end(); ++i) {
-            if (i->first == hash) {
-                return unsigned(std::distance(_pimpl->_renderStateSets.begin(), i));
-            }
-        }
+        auto i = std::find(_pimpl->_renderStateHashes.begin(), _pimpl->_renderStateHashes.end(), hash);
+        if (i != _pimpl->_renderStateHashes.end())
+            return unsigned(std::distance(_pimpl->_renderStateHashes.begin(), i));
 
-        _pimpl->_renderStateSets.push_back(std::make_pair(hash, states));
+        _pimpl->_renderStateSets.push_back(states);
+        _pimpl->_renderStateHashes.push_back(hash);
         return unsigned(_pimpl->_renderStateSets.size()-1);
     }
 
@@ -193,128 +202,41 @@ namespace RenderCore { namespace Assets
         return _currentBoundUniforms;
     }
 
-    class CompiledRenderStateSet
-    {
-    public:
-        Metal::BlendState _blendState;
-        Metal::RasterizerState _rasterizerState;
-
-            //  We need to initialise the members in the default
-            //  constructor, otherwise they'll build the new
-            //  underlying state objects
-        CompiledRenderStateSet()
-            : _blendState(Metal::BlendState::Null()) // Techniques::CommonResources()._blendOpaque)
-            , _rasterizerState(Metal::RasterizerState::Null()) // Techniques::CommonResources()._defaultRasterizer)
-        {}
-    };
-
-    IRenderStateSetResolver::~IRenderStateSetResolver() {}
-
-    class DefaultRenderStateSetResolver
-    {
-    public:
-        class Desc {};
-
-        auto Compile(
-            const RenderStateSet& states, 
-            const Utility::ParameterBox& globalStates,
-            unsigned techniqueIndex) -> const CompiledRenderStateSet*;
-
-        DefaultRenderStateSetResolver(const Desc&) {}
-    protected:
-        std::vector<std::pair<uint64, CompiledRenderStateSet>> _forwardStates;
-        std::vector<std::pair<uint64, CompiledRenderStateSet>> _deferredStates;
-    };
-
-    auto DefaultRenderStateSetResolver::Compile(
-        const RenderStateSet& states, 
-        const Utility::ParameterBox& globalStates,
-        unsigned techniqueIndex) -> const CompiledRenderStateSet*
-    {
-            // HACK --  when rendering shadows we can't do this.
-            //          (techniqueIndex == 3)
-            //          This is because shadow rendering conflicts with some of the states
-            //          in the RasterizerState object. We need to merge local states and
-            //          global states together to get the final true rasterizer state
-        if (techniqueIndex == 0 || techniqueIndex == 4 || techniqueIndex == 2 || techniqueIndex == 10 || techniqueIndex == 1 || techniqueIndex == 9) {
-            auto hash = HashCombine(states.GetHash(), techniqueIndex);
-            auto i = LowerBound(_forwardStates, hash);
-            if (i != _forwardStates.end() && i->first == hash) {
-                return &i->second;
-            }
-
-            CompiledRenderStateSet result;
-            if (techniqueIndex == 2) {
-                bool deferredDecal = 
-                       (states._flag & RenderStateSet::Flag::BlendType)
-                    && (states._blendType == RenderStateSet::BlendType::DeferredDecal);
-
-                if (deferredDecal) {
-                    result._blendState = Metal::BlendState(
-                        Metal::BlendOp::Add, Metal::Blend::SrcAlpha, Metal::Blend::InvSrcAlpha);
-                } else {
-                    result._blendState = Techniques::CommonResources()._blendOpaque;
-                }
-            } else if (techniqueIndex == 0 || techniqueIndex == 4) {
-                if (states._flag & RenderStateSet::Flag::ForwardBlend) {
-                    result._blendState = Metal::BlendState(
-                        states._forwardBlendOp, states._forwardBlendSrc, states._forwardBlendDst);
-                } else {
-                    result._blendState = Techniques::CommonResources()._blendOpaque;
-                }
-            }
-
-            Metal::CullMode::Enum cullMode = Metal::CullMode::Back;
-            Metal::FillMode::Enum fillMode = Metal::FillMode::Solid;
-            unsigned depthBias = 0;
-            if (states._flag & RenderStateSet::Flag::DoubleSided) {
-                cullMode = states._doubleSided ? Metal::CullMode::None : Metal::CullMode::Back;
-            }
-            if (states._flag & RenderStateSet::Flag::DepthBias) {
-                depthBias = states._depthBias;
-            }
-            if (states._flag & RenderStateSet::Flag::Wireframe) {
-                fillMode = states._wireframe ? Metal::FillMode::Wireframe : Metal::FillMode::Solid;
-            }
-
-            result._rasterizerState = Metal::RasterizerState(
-                cullMode, true, fillMode, depthBias, 0.f, 0.f);
-
-            i = _forwardStates.insert(i, std::make_pair(hash, result));
-            return &i->second;
-        }
-
-        return nullptr;
-    }
-
     void SharedStateSet::BeginRenderState(
         const ModelRendererContext& context,
-        // IRenderStateSetResolver& resolver,
-        const Utility::ParameterBox& globalStates,
         SharedRenderStateSet renderStateSetIndex) const
     {
         assert(_pimpl->_capturedContext == context._context);
 
-        auto globalHash = globalStates.GetHash() ^ globalStates.GetParameterNamesHash();
-        if (    _currentRenderState == renderStateSetIndex
-            &&  _currentGlobalRenderState == globalHash) { return; }
+        if (_currentRenderState == renderStateSetIndex) { return; }
 
-        auto& resolver = Techniques::FindCachedBox<DefaultRenderStateSetResolver>(
-            DefaultRenderStateSetResolver::Desc());
+        const Techniques::CompiledRenderStateSet* compiled = nullptr;
+        auto statesHash = _pimpl->_renderStateHashes[renderStateSetIndex.Value()];
 
-        auto compiled = resolver.Compile(
-            _pimpl->_renderStateSets[renderStateSetIndex.Value()].second, globalStates, context._techniqueIndex);
-        if (compiled) {
-            if (compiled->_blendState.GetUnderlying())
-                context._context->Bind(compiled->_blendState);
-            context._context->Bind(compiled->_rasterizerState);
+        auto hash = HashCombine(statesHash, _pimpl->_currentGlobalRenderState);
+        auto i = LowerBound(_pimpl->_compiledStates, hash);
+        if (i != _pimpl->_compiledStates.end() && i->first == hash) {
+            compiled = &i->second;
+        } else {
+            const auto& states = _pimpl->_renderStateSets[renderStateSetIndex.Value()];
+            auto newlyCompiled = _pimpl->_currentStateResolver->Resolve(
+                states, *_pimpl->_environment, context._techniqueIndex);
+            compiled = &_pimpl->_compiledStates.insert(
+                i, std::make_pair(hash, std::move(newlyCompiled)))->second;
         }
-
+        
+        assert(compiled);
+        if (compiled->_blendState.GetUnderlying())
+            context._context->Bind(compiled->_blendState);
+        context._context->Bind(compiled->_rasterizerState);
+        
         _currentRenderState = renderStateSetIndex;
-        _currentGlobalRenderState = globalHash;
     }
 
-    auto SharedStateSet::CaptureState(Metal::DeviceContext& context) -> CaptureMarker
+    auto SharedStateSet::CaptureState(
+        Metal::DeviceContext& context,
+        std::shared_ptr<Techniques::IStateSetResolver> stateResolver,
+        std::shared_ptr<Utility::ParameterBox> environment) -> CaptureMarker
     {
         assert(!_pimpl->_capturedContext);
         _currentShaderName = SharedShaderName::Invalid;
@@ -322,9 +244,17 @@ namespace RenderCore { namespace Assets
         _currentMaterialParamBox = SharedParameterBox::Invalid;
         _currentGeoParamBox = SharedParameterBox::Invalid;
         _currentRenderState = SharedRenderStateSet::Invalid;
-        _currentGlobalRenderState = SharedRenderStateSet::Invalid;
         _currentBoundUniforms = nullptr;
         _pimpl->_capturedContext = &context;
+        _pimpl->_currentGlobalRenderState = stateResolver->GetHash();
+        if (environment) {
+            _pimpl->_currentGlobalRenderState = HashCombine(
+                _pimpl->_currentGlobalRenderState,
+                HashCombine(environment->GetHash(), environment->GetParameterNamesHash()));
+        }
+
+        _pimpl->_currentStateResolver = std::move(stateResolver);
+        _pimpl->_environment = std::move(environment);
 
         return CaptureMarker(context, *this);
     }
@@ -333,6 +263,8 @@ namespace RenderCore { namespace Assets
     {
         assert(_pimpl->_capturedContext==&context);
         _pimpl->_capturedContext = nullptr;
+        _pimpl->_currentStateResolver.reset();
+        _pimpl->_environment.reset();
     }
 
 
@@ -345,9 +277,9 @@ namespace RenderCore { namespace Assets
         _currentMaterialParamBox = SharedParameterBox::Invalid;
         _currentGeoParamBox = SharedParameterBox::Invalid;
         _currentRenderState = SharedRenderStateSet::Invalid;
-        _currentGlobalRenderState = SharedRenderStateSet::Invalid;
         _currentBoundUniforms = nullptr;
 
+        pimpl->_currentGlobalRenderState = SharedRenderStateSet::Invalid;
         pimpl->_capturedContext = nullptr;
         _pimpl = std::move(pimpl);
     }

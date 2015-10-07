@@ -314,7 +314,7 @@ namespace Sample
             //  Before using SharedStateSet for the first time, we need to capture the device 
             //  context state. If we were rendering multiple models with the same shared state, we would 
             //  capture once and render multiple times with the same capture.
-        auto captureMarker = _sharedStateSet->CaptureState(*context);
+        auto captureMarker = _sharedStateSet->CaptureState(*context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
             //  Finally, we can render the object!
         const float x2ScaleFactor = 100.f;

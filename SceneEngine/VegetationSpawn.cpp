@@ -547,7 +547,8 @@ namespace SceneEngine
         auto& cache = *_pimpl->_modelCache;
         
         auto& sharedStates = cache.GetSharedStateSet();
-        auto captureMarker = sharedStates.CaptureState(*context);
+        auto captureMarker = sharedStates.CaptureState(
+            *context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
         parserContext.GetTechniqueContext()._runtimeState.SetParameter((const utf8*)"SPAWNED_INSTANCE", 1);
         
         auto* resources = _pimpl->_resources.get();

@@ -268,7 +268,7 @@ namespace RenderCore { namespace Assets
                 // configure the texture bind points array & material parameters box
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 ParameterBox materialParamBox;
-                RenderStateSet stateSet;
+                Techniques::RenderStateSet stateSet;
 
                     //  we need to create a list of all of the texture bind points that are referenced
                     //  by all of the materials used here. They will end up in sorted order
@@ -316,10 +316,10 @@ namespace RenderCore { namespace Assets
                 if (stateSet._forwardBlendOp == Metal::BlendOp::NoBlending) {
                     i->second._delayStep = DelayStep::OpaqueRender;
                 } else {
-                    if (stateSet._flag & RenderStateSet::Flag::BlendType) {
-                        switch (RenderStateSet::BlendType(stateSet._blendType)) {
-                        case RenderStateSet::BlendType::DeferredDecal: i->second._delayStep = DelayStep::OpaqueRender; break;
-                        case RenderStateSet::BlendType::Ordered: i->second._delayStep = DelayStep::SortedBlending; break;
+                    if (stateSet._flag & Techniques::RenderStateSet::Flag::BlendType) {
+                        switch (Techniques::RenderStateSet::BlendType(stateSet._blendType)) {
+                        case Techniques::RenderStateSet::BlendType::DeferredDecal: i->second._delayStep = DelayStep::OpaqueRender; break;
+                        case Techniques::RenderStateSet::BlendType::Ordered: i->second._delayStep = DelayStep::SortedBlending; break;
                         default: i->second._delayStep = DelayStep::PostDeferred; break;
                         }
                     } else {
@@ -737,10 +737,8 @@ namespace RenderCore { namespace Assets
             unsigned                drawCallIndex,
             SharedTechniqueInterface      techniqueInterface) const
     {
-        static Utility::ParameterBox tempGlobalStatesBox;
-
         const auto& res = _drawCallRes[drawCallIndex];
-        sharedStateSet.BeginRenderState(context, tempGlobalStatesBox, res._renderStateSet);
+        sharedStateSet.BeginRenderState(context, res._renderStateSet);
         return sharedStateSet.BeginVariation(
             context, res._shaderName, techniqueInterface, res._geoParamBox, res._materialParamBox);
     }
@@ -1349,8 +1347,7 @@ namespace RenderCore { namespace Assets
 
             if (!boundUniforms) continue;
 
-            static Utility::ParameterBox tempGlobalStatesBox;
-            sharedStateSet.BeginRenderState(context, tempGlobalStatesBox, drawCallRes._renderStateSet);
+            sharedStateSet.BeginRenderState(context, drawCallRes._renderStateSet);
 
                 // We have to do this transform update very frequently! isn't there a better way?
             {

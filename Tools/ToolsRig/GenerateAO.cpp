@@ -148,7 +148,7 @@ namespace ToolsRig
 
             // Render the model onto our cube map surface
         {
-            auto captureMarker = sharedStates.CaptureState(metalContext);
+            auto captureMarker = sharedStates.CaptureState(metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
             TRY {
                 renderer.Render(
                     RenderCore::Assets::ModelRendererContext(

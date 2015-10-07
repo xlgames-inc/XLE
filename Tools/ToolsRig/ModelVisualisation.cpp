@@ -123,7 +123,7 @@ namespace ToolsRig
 
             RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
             if (_sharedStateSet)
-                captureMarker = _sharedStateSet->CaptureState(*context);
+                captureMarker = _sharedStateSet->CaptureState(*context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
             using namespace RenderCore;
             Metal::ConstantBuffer drawCallIndexBuffer(nullptr, sizeof(unsigned)*4);
@@ -347,7 +347,7 @@ namespace ToolsRig
 
                 RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
                 if (model._sharedStateSet)
-                    captureMarker = model._sharedStateSet->CaptureState(*metalContext);
+                    captureMarker = model._sharedStateSet->CaptureState(*metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
                 const auto techniqueIndex = 8u;
 
@@ -368,7 +368,7 @@ namespace ToolsRig
 
                 RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
                 if (model._sharedStateSet)
-                    captureMarker = model._sharedStateSet->CaptureState(*metalContext);
+                    captureMarker = model._sharedStateSet->CaptureState(*metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
                 const auto techniqueIndex = 7u;
 
@@ -444,7 +444,7 @@ namespace ToolsRig
         stateContext.SetRay(worldSpaceRay);
 
         {
-            auto captureMarker = model._sharedStateSet->CaptureState(*metalContext);
+            auto captureMarker = model._sharedStateSet->CaptureState(*metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
             RenderWithEmbeddedSkeleton(
                 RenderCore::Assets::ModelRendererContext(metalContext.get(), parserContext, 6),
                 *model._renderer, *model._sharedStateSet, model._model);

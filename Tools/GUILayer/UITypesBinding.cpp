@@ -18,6 +18,7 @@
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/InvalidAssetManager.h"
 #include "../../Assets/ConfigFileContainer.h"
+#include "../../RenderCore/Techniques/RenderStateResolver.h"
 #include "../../Utility/StringFormat.h"
 #include <msclr/auto_gcroot.h>
 #include <iomanip>
@@ -478,7 +479,7 @@ namespace GUILayer
     auto RenderStateSet::DoubleSided::get() -> CheckState
     {
         auto& stateSet = _underlying->GetAsset()._asset._stateSet;
-        if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::DoubleSided) {
+        if (stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::DoubleSided) {
             if (stateSet._doubleSided) return CheckState::Checked;
             else return CheckState::Unchecked;
         }
@@ -490,9 +491,9 @@ namespace GUILayer
         auto transaction = _underlying->Transaction_Begin("RenderState");
         auto& stateSet = transaction->GetAsset()._asset._stateSet;
         if (checkState == CheckState::Indeterminate) {
-            stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::DoubleSided;
+            stateSet._flag &= ~RenderCore::Techniques::RenderStateSet::Flag::DoubleSided;
         } else {
-            stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::DoubleSided;
+            stateSet._flag |= RenderCore::Techniques::RenderStateSet::Flag::DoubleSided;
             stateSet._doubleSided = (checkState == CheckState::Checked);
         }
         transaction->Commit();
@@ -502,7 +503,7 @@ namespace GUILayer
     CheckState RenderStateSet::Wireframe::get()
     {
         auto& stateSet = _underlying->GetAsset()._asset._stateSet;
-        if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::Wireframe) {
+        if (stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::Wireframe) {
             if (stateSet._wireframe) return CheckState::Checked;
             else return CheckState::Unchecked;
         }
@@ -514,9 +515,9 @@ namespace GUILayer
         auto transaction = _underlying->Transaction_Begin("RenderState");
         auto& stateSet = transaction->GetAsset()._asset._stateSet;
         if (checkState == CheckState::Indeterminate) {
-            stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::Wireframe;
+            stateSet._flag &= ~RenderCore::Techniques::RenderStateSet::Flag::Wireframe;
         } else {
-            stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::Wireframe;
+            stateSet._flag |= RenderCore::Techniques::RenderStateSet::Flag::Wireframe;
             stateSet._wireframe = (checkState == CheckState::Checked);
         }
         transaction->Commit();
@@ -528,7 +529,7 @@ namespace GUILayer
 
     namespace BlendOp = RenderCore::Metal::BlendOp;
     using namespace RenderCore::Metal::Blend;
-    using BlendType = RenderCore::Assets::RenderStateSet::BlendType;
+    using BlendType = RenderCore::Techniques::RenderStateSet::BlendType;
 
     class StandardBlendDef
     {
@@ -561,28 +562,28 @@ namespace GUILayer
     };
 
     StandardBlendModes AsStandardBlendMode(
-        const RenderCore::Assets::RenderStateSet& stateSet)
+        const RenderCore::Techniques::RenderStateSet& stateSet)
     {
         auto op = stateSet._forwardBlendOp;
         auto src = stateSet._forwardBlendSrc;
         auto dst = stateSet._forwardBlendDst;
 
-        if (!(stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::ForwardBlend)) {
-            if (    stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::BlendType
+        if (!(stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::ForwardBlend)) {
+            if (    stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::BlendType
                 &&  stateSet._blendType == BlendType::DeferredDecal)
                 return StandardBlendModes::Decal;
             return StandardBlendModes::Inherit;
         }
 
         if (op == BlendOp::NoBlending) {
-            if (    stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::BlendType
+            if (    stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::BlendType
                 &&  stateSet._blendType == BlendType::DeferredDecal)
                     return StandardBlendModes::Decal;
             return StandardBlendModes::NoBlending;
         }
 
         auto blendType = BlendType::Basic;
-        if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::BlendType)
+        if (stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::BlendType)
             blendType = stateSet._blendType;
 
         for (unsigned c=0; c<dimof(s_standardBlendDefs); ++c)
@@ -612,9 +613,9 @@ namespace GUILayer
             stateSet._forwardBlendOp = BlendOp::NoBlending;
             stateSet._forwardBlendSrc = One;
             stateSet._forwardBlendDst = RenderCore::Metal::Blend::Zero;
-            stateSet._blendType = RenderCore::Assets::RenderStateSet::BlendType::Basic;
-            stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::ForwardBlend;
-            stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::BlendType;
+            stateSet._blendType = RenderCore::Techniques::RenderStateSet::BlendType::Basic;
+            stateSet._flag &= ~RenderCore::Techniques::RenderStateSet::Flag::ForwardBlend;
+            stateSet._flag &= ~RenderCore::Techniques::RenderStateSet::Flag::BlendType;
             NotifyPropertyChanged("StandardBlendMode");
             transaction->Commit();
             return;
@@ -628,13 +629,13 @@ namespace GUILayer
                 stateSet._forwardBlendOp = s_standardBlendDefs[c]._op;
                 stateSet._forwardBlendSrc = s_standardBlendDefs[c]._src;
                 stateSet._forwardBlendDst = s_standardBlendDefs[c]._dst;
-                stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::ForwardBlend;
+                stateSet._flag |= RenderCore::Techniques::RenderStateSet::Flag::ForwardBlend;
 
                 stateSet._blendType = s_standardBlendDefs[c]._blendType;
                 if (s_standardBlendDefs[c]._blendType == BlendType::Basic) {
-                    stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::BlendType;
+                    stateSet._flag &= ~RenderCore::Techniques::RenderStateSet::Flag::BlendType;
                 } else {
-                    stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::BlendType;
+                    stateSet._flag |= RenderCore::Techniques::RenderStateSet::Flag::BlendType;
                 }
 
                 transaction->Commit();

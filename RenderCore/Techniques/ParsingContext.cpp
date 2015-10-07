@@ -48,9 +48,23 @@ namespace RenderCore { namespace Techniques
             set->insert(i, id);
     }
 
+    std::shared_ptr<IStateSetResolver> ParsingContext::SetStateSetResolver(
+        std::shared_ptr<IStateSetResolver> stateSetResolver)
+    {
+        std::shared_ptr<IStateSetResolver> oldResolver = std::move(_stateSetResolver);
+        _stateSetResolver = std::move(stateSetResolver);
+        return std::move(oldResolver);
+    }
+
+    const std::shared_ptr<Utility::ParameterBox>& ParsingContext::GetStateSetEnvironment()
+    {
+        return _techniqueContext->_stateSetEnvironment;
+    }
+
     ParsingContext::ParsingContext(const TechniqueContext& techniqueContext)
     {
         _techniqueContext = std::make_unique<TechniqueContext>(techniqueContext);
+        _stateSetResolver = _techniqueContext->_defaultStateSetResolver;
 
         _projectionDesc.reset((ProjectionDesc*)XlMemAlign(sizeof(ProjectionDesc), 16));
         #pragma push_macro("new")
