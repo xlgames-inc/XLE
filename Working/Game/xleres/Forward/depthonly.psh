@@ -54,10 +54,28 @@
 		return StochasticTransMasks.Load(int3(seed, alpha * RandMaskAlphaValues, 0));
 	}
 
-	uint main(VSOutput geo, uint primitiveID : SV_PrimitiveID) : SV_Coverage
+	void main(
+		VSOutput geo, uint primitiveID : SV_PrimitiveID,
+		out uint oCoverage : SV_Coverage
+		#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
+			, out uint oPrimId : SV_Target0
+			#if (STOCHASTIC_TRANS_OPACITY==1)
+				, out float oOpacity : SV_Target1
+			#endif
+		#elif (STOCHASTIC_TRANS_OPACITY==1)
+			, out float oOpacity : SV_Target0
+		#endif
+
+		)
 	{
 		float alpha = IllumShader_PerPixel(geo).blendingAlpha;
-		return StochasticTransMask(uint2(geo.position.xy), alpha, primitiveID);
+		oCoverage = StochasticTransMask(uint2(geo.position.xy), alpha, primitiveID);
+		#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
+			oPrimId = primitiveID;
+		#endif
+		#if (STOCHASTIC_TRANS_OPACITY==1)
+			oOpacity = alpha;
+		#endif
 	}
 
 #else

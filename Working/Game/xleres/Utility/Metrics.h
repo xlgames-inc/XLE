@@ -20,8 +20,9 @@ struct MetricsStructure
     uint    ClusterErrorCount;
 
     uint    StocasticTransLitFragmentCount;
+    uint    StocasticTransPartialLitFragmentCount;
 
-    uint    Placeholder[7];
+    uint    Placeholder[6];
 };
 
 #define _METRICS

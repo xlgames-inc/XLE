@@ -502,7 +502,7 @@ namespace SceneEngine
             //  transparent fragments from the sorting algorithm. For scenes with a
             //  lot of sortable vegetation, it should reduce the total number of 
             //  sortable fragments significantly.
-        if (enabledSortedTrans)
+        if (hasOITrans && Tweakable("TransPrePass", false)) // enabledSortedTrans)
             ExecuteScene(
                 context, parserContext, SPS::BatchFilter::TransparentPreDepth,
                 TechniqueIndex_DepthOnly, L"MainScene-TransPreDepth");

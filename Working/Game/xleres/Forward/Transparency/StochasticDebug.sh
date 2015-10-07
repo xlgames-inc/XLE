@@ -47,3 +47,8 @@ class AveLitFragment : IGetValue { uint GetValue()
 {
     return uint(MetricsObject[0].StocasticTransLitFragmentCount / float(ScreenDimensions.x * ScreenDimensions.y));
 }};
+
+class PartialLitFragment : IGetValue { uint GetValue()
+{
+    return uint(MetricsObject[0].StocasticTransPartialLitFragmentCount);
+}};

@@ -46,14 +46,24 @@ namespace SceneEngine
         {
         public:
             unsigned _width, _height;
-            bool _recordMetrics;
-            Desc(unsigned width, unsigned height, bool recordMetrics)
-                : _width(width), _height(height), _recordMetrics(recordMetrics) {}
+            bool _recordMetrics, _recordPrimIds;
+            bool _recordOpacity;
+            Desc(unsigned width, unsigned height, bool recordPrimIds, bool recordOpacity, bool recordMetrics)
+            {
+                XlZeroMemory(*this);
+                _width = width;
+                _height = height;
+                _recordPrimIds = recordPrimIds;
+                _recordMetrics = recordMetrics;
+                _recordOpacity = recordOpacity;
+            }
         };
         SRV     _masksTable;
         DSVSRV  _stochasticDepths;
         RTVSRV  _blendingTexture;
 
+        RTVSRV  _opacitiesTexture;
+        RTVSRV  _primIdsTexture;
         UAVSRV  _metricsTexture;
 
         Metal::BlendState _secondPassBlend;
@@ -134,6 +144,16 @@ namespace SceneEngine
         _secondPassBlend = Metal::BlendState(
             Metal::BlendOp::Add, Metal::Blend::One, Metal::Blend::One,
             Metal::BlendOp::Add, Metal::Blend::Zero, Metal::Blend::InvSrcAlpha);
+
+        if (desc._recordPrimIds)
+            _primIdsTexture = RTVSRV(
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R32_UINT, 1, 0, samples),
+                "StochasticPrimitiveIds");
+
+        if (desc._recordOpacity)
+            _opacitiesTexture = RTVSRV(
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R8_UNORM, 1, 0, samples),
+                "StochasticOpacities");
 
         if (desc._recordMetrics)
             _metricsTexture = UAVSRV(
@@ -344,8 +364,11 @@ namespace SceneEngine
         #else
             const auto enableMetrics = false;
         #endif
+        const auto enablePrimitiveIds = Tweakable("Stochastic_PrimIds", true);
+        const auto enableOpacity = Tweakable("Stochastic_Opacity", false);
         auto& box = Techniques::FindCachedBox2<StochasticTransparencyBox>(
-            unsigned(viewport.Width), unsigned(viewport.Height), enableMetrics);
+            unsigned(viewport.Width), unsigned(viewport.Height), 
+            enablePrimitiveIds, enableOpacity, enableMetrics);
 
             // Copy the main depth buffer onto the multisample depth buffer
             // we'll be using for the stochastic depths. This should help
@@ -361,8 +384,22 @@ namespace SceneEngine
         }
 
         context.BindPS(MakeResourceList(18, box._masksTable.SRV()));
-        context.Bind(ResourceList<Metal::RenderTargetView, 0>(), &box._stochasticDepths.DSV());
         context.Bind(Techniques::CommonResources()._dssReadWrite);
+        context.Bind(Techniques::CommonResources()._blendOpaque);
+
+        parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("STOCHASTIC_TRANS_PRIMITIVEID"), box._primIdsTexture.IsGood());
+        parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("STOCHASTIC_TRANS_OPACITY"), box._opacitiesTexture.IsGood());
+            // do we need to clear the opacity and primitive ids textures? Maybe it's ok
+        if (box._primIdsTexture.IsGood()) {
+            if (box._opacitiesTexture.IsGood()) {
+                context.Bind(MakeResourceList(box._primIdsTexture.RTV(), box._opacitiesTexture.RTV()), &box._stochasticDepths.DSV());
+            } else 
+                context.Bind(MakeResourceList(box._primIdsTexture.RTV()), &box._stochasticDepths.DSV());
+        } else if (box._opacitiesTexture.IsGood()) {
+            context.Bind(MakeResourceList(box._opacitiesTexture.RTV()), &box._stochasticDepths.DSV());
+        } else {
+            context.Bind(ResourceList<Metal::RenderTargetView, 0>(), &box._stochasticDepths.DSV());
+        }
 
         return &box;
     }
@@ -383,6 +420,8 @@ namespace SceneEngine
                 MakeResourceList(parserContext.GetMetricsBox()->_metricsBufferUAV, box._metricsTexture.UAV()));
         } else
             context.Bind(MakeResourceList(box._blendingTexture.RTV()), &mainDSV);
+        if (box._primIdsTexture.IsGood()) context.BindPS(MakeResourceList(8, box._primIdsTexture.SRV()));
+        if (box._opacitiesTexture.IsGood()) context.BindPS(MakeResourceList(7, box._opacitiesTexture.SRV()));
         context.BindPS(MakeResourceList(9, box._stochasticDepths.SRV()));
         context.Bind(box._secondPassBlend);
         context.Bind(Techniques::CommonResources()._dssReadOnly);
@@ -438,7 +477,7 @@ namespace SceneEngine
                     RenderGPUMetrics(
                         context, parserContext,
                         "game/xleres/forward/transparency/stochasticdebug.sh",
-                        {"LitFragmentCount", "AveLitFragment"});
+                        {"LitFragmentCount", "AveLitFragment", "PartialLitFragment"});
                 });
         }
 

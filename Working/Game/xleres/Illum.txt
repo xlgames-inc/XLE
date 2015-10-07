@@ -32,6 +32,8 @@
             MAT_VCOLOR_IS_ANIM_PARAM
         ~Runtime
             STOCHASTIC_TRANS
+            STOCHASTIC_TRANS_PRIMITIVEID
+            STOCHASTIC_TRANS_OPACITY
     VertexShader=game/xleres/forward/illum.vsh:main
     PixelShader=game/xleres/forward/depthonly.psh:main
 ~Deferred
@@ -147,5 +149,7 @@
             BASIC_LIGHT_COUNT=1
             SHADOW_CASCADE_MODE=2
             STOCHASTIC_SAMPLE_COUNT
+            STOCHASTIC_TRANS_PRIMITIVEID
+            STOCHASTIC_TRANS_OPACITY
     VertexShader=game/xleres/forward/illum.vsh:main
     PixelShader=game/xleres/forward/transparency/illum.psh:main_stochastic
