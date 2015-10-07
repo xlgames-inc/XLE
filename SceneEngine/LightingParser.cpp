@@ -495,14 +495,17 @@ namespace SceneEngine
             && (mainTargets._desc._sampling._sampleCount <= 1)
             && hasOITrans;
 
-            //  When enable OI transparency is enabled, we do a pre-depth pass
-            //  on all transparent geometry.
-            //  This pass should only draw in the opaque (or very close to opaque)
-            //  parts of the geometry we draw. This is important for occluding
-            //  transparent fragments from the sorting algorithm. For scenes with a
-            //  lot of sortable vegetation, it should reduce the total number of 
-            //  sortable fragments significantly.
-        if (hasOITrans && Tweakable("TransPrePass", false)) // enabledSortedTrans)
+            // When enable OI transparency is enabled, we do a pre-depth pass
+            // on all transparent geometry.
+            // This pass should only draw in the opaque (or very close to opaque)
+            // parts of the geometry we draw. This is important for occluding
+            // transparent fragments from the sorting algorithm. For scenes with a
+            // lot of sortable vegetation, it should reduce the total number of 
+            // sortable fragments significantly.
+            //
+            // The depth pre-pass helps a little bit for stochastic transparency,
+            // but it's not clear that it helps overall.
+        if (enabledSortedTrans && Tweakable("TransPrePass", false))
             ExecuteScene(
                 context, parserContext, SPS::BatchFilter::TransparentPreDepth,
                 TechniqueIndex_DepthOnly, L"MainScene-TransPreDepth");
@@ -524,28 +527,29 @@ namespace SceneEngine
                     // note; we use the main depth buffer for this call (not the duplicated buffer)
                 OrderIndependentTransparency_Resolve(context, parserContext, *transTargets, mainTargets._msaaDepthBufferSRV);
             } else if (Tweakable("UseStochasticTrans", true)) {
-                StochasticTransparencyBox* box;
-                {
-                    SavedTargets savedTargets(context);
-                    auto resetMarker = savedTargets.MakeResetMarker(context);
+                SavedTargets savedTargets(context);
+                auto resetMarker = savedTargets.MakeResetMarker(context);
 
-                    parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("STOCHASTIC_TRANS"), 1u);
-                    auto cleanup = MakeAutoCleanup(
-                        [&parserContext]() 
-                        { parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("STOCHASTIC_TRANS"), 0u); });
+                StochasticTransparencyOp stochTransOp(context, parserContext);
 
-                    box = StochasticTransparency_Prepare(context, parserContext, mainTargets._msaaDepthBufferSRV);
-                    ExecuteScene(
-                        context, parserContext, SPS::BatchFilter::OITransparent,
-                        TechniqueIndex_DepthOnly, L"MainScene-PostGBuffer-OI");
+                    // We do 2 passes through the ordered transparency geometry
+                    //  1) we write the multi-sample occlusion buffer
+                    //  2) we draw the pixels, out of order, using a forward-lighting approach  
+                    //
+                    // Note that we may need to modify this a little bit while rendering with
+                    // MSAA
+                stochTransOp.PrepareFirstPass(mainTargets._msaaDepthBufferSRV);
+                ExecuteScene(
+                    context, parserContext, SPS::BatchFilter::OITransparent,
+                    TechniqueIndex_DepthOnly, L"MainScene-PostGBuffer-OI");
 
-                    StochasticTransparencyBox_PrepareSecondPass(context, parserContext, *box, mainTargets._msaaDepthBuffer);
-                    ExecuteScene(
-                        context, parserContext, SPS::BatchFilter::OITransparent,
-                        TechniqueIndex_StochasticTransparency, L"MainScene-PostGBuffer-OI-Res");
-                }
+                stochTransOp.PrepareSecondPass(mainTargets._msaaDepthBuffer);
+                ExecuteScene(
+                    context, parserContext, SPS::BatchFilter::OITransparent,
+                    TechniqueIndex_StochasticTransparency, L"MainScene-PostGBuffer-OI-Res");
 
-                StochasticTransparencyBox_Resolve(context, parserContext, *box);
+                resetMarker = SavedTargets::ResetMarker();  // back to normal targets now
+                stochTransOp.Resolve();
             }
         }
 

@@ -10,21 +10,26 @@
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Assets/Services.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"
 #include "../RenderOverlays/Font.h"
+#include "../Assets/Assets.h"
 #include "../Utility/IteratorUtils.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
 namespace SceneEngine
 {
+    using namespace RenderCore;
+
     BufferUploads::IManager& GetBufferUploads()
     {
         return RenderCore::Assets::Services::GetBufferUploads();
     }
 
-    SavedTargets::SavedTargets(RenderCore::Metal::DeviceContext& context)
+    SavedTargets::SavedTargets(Metal::DeviceContext& context)
     {
         _oldViewportCount = dimof(_oldViewports);
         std::fill(_oldTargets, &_oldTargets[dimof(_oldTargets)], nullptr);
@@ -46,7 +51,7 @@ namespace SceneEngine
             _oldTargets[c] = moveFrom._oldTargets[c];
             _oldViewports[c] = moveFrom._oldViewports[c];
             moveFrom._oldTargets[c] = nullptr;
-            moveFrom._oldViewports[c] = RenderCore::Metal::ViewportDesc();
+            moveFrom._oldViewports[c] = Metal::ViewportDesc();
         }
         _oldDepthTarget = moveFrom._oldDepthTarget; moveFrom._oldDepthTarget = nullptr;
     }
@@ -58,7 +63,7 @@ namespace SceneEngine
             _oldTargets[c] = moveFrom._oldTargets[c];
             _oldViewports[c] = moveFrom._oldViewports[c];
             moveFrom._oldTargets[c] = nullptr;
-            moveFrom._oldViewports[c] = RenderCore::Metal::ViewportDesc();
+            moveFrom._oldViewports[c] = Metal::ViewportDesc();
         }
         _oldDepthTarget = moveFrom._oldDepthTarget; moveFrom._oldDepthTarget = nullptr;
         return *this;
@@ -85,19 +90,19 @@ namespace SceneEngine
         _oldDepthTarget->AddRef();
     }
 
-    void        SavedTargets::ResetToOldTargets(RenderCore::Metal::DeviceContext& context)
+    void        SavedTargets::ResetToOldTargets(Metal::DeviceContext& context)
     {
         context.GetUnderlying()->OMSetRenderTargets(dimof(_oldTargets), _oldTargets, _oldDepthTarget);
         context.GetUnderlying()->RSSetViewports(_oldViewportCount, (D3D11_VIEWPORT*)_oldViewports);
     }
 
-    void SavedBlendAndRasterizerState::ResetToOldStates(RenderCore::Metal::DeviceContext& context)
+    void SavedBlendAndRasterizerState::ResetToOldStates(Metal::DeviceContext& context)
     {
         context.GetUnderlying()->RSSetState(_oldRasterizerState.get());
         context.GetUnderlying()->OMSetBlendState(_oldBlendState.get(), _oldBlendFactor, _oldSampleMask);
     }
 
-    SavedBlendAndRasterizerState::SavedBlendAndRasterizerState(RenderCore::Metal::DeviceContext& context)
+    SavedBlendAndRasterizerState::SavedBlendAndRasterizerState(Metal::DeviceContext& context)
     {
         ID3D::RasterizerState* rs = nullptr;
         ID3D::BlendState* bs = nullptr;
@@ -121,12 +126,11 @@ namespace SceneEngine
             textureDesc, name);
     }
 
-    void SetupVertexGeneratorShader(RenderCore::Metal::DeviceContext& context)
+    void SetupVertexGeneratorShader(Metal::DeviceContext& context)
     {
-        using namespace RenderCore::Metal;
-        context.Bind(Topology::TriangleStrip);
-        context.Unbind<VertexBuffer>();
-        context.Unbind<BoundInputLayout>();
+        context.Bind(Metal::Topology::TriangleStrip);
+        context.Unbind<Metal::VertexBuffer>();
+        context.Unbind<Metal::BoundInputLayout>();
     }
 
     void BuildGaussianFilteringWeights(float result[], float standardDeviation, unsigned weightsCount)
@@ -177,7 +181,7 @@ namespace SceneEngine
         };
 
     void DrawPendingResources(   
-        RenderCore::Metal::DeviceContext* context, 
+        Metal::DeviceContext* context, 
         SceneEngine::LightingParserContext& parserContext, 
         RenderOverlays::Font* font)
     {
@@ -186,7 +190,7 @@ namespace SceneEngine
             &&  parserContext._errorString.empty())
             return;
 
-        context->Bind(RenderCore::Techniques::CommonResources()._blendStraightAlpha);
+        context->Bind(Techniques::CommonResources()._blendStraightAlpha);
 
         using namespace RenderOverlays;
         TextStyle   style(*font); 
@@ -241,6 +245,8 @@ namespace SceneEngine
         }
     }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     IteratorRange<RenderCore::Assets::DelayStep*> AsDelaySteps(
         SceneParseSettings::BatchFilter filter)
     {
@@ -284,5 +290,165 @@ namespace SceneEngine
 
         return IteratorRange<RenderCore::Assets::DelayStep*>();
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    ProtectState::ProtectState(Metal::DeviceContext& context, States::BitField states)
+    : _context(&context), _states(states)
+    {
+        if (_states & States::RenderTargets || _states & States::Viewports)
+            _targets = SavedTargets(context);
+        if (_states & States::DepthStencilState)
+            _depthStencilState = Metal::DepthStencilState(context);
+        if (_states & States::BlendState) {
+            ID3D::BlendState* rawptr = nullptr;
+            context.GetUnderlying()->OMGetBlendState(&rawptr, _blendFactor, &_blendSampleMask);
+            _blendState = moveptr(rawptr);
+        }
+        if (_states & States::InputLayout)
+            _inputLayout = Metal::BoundInputLayout(context);
+
+        if (_states & States::VertexBuffer) {
+            ID3D::Buffer* rawptrs[s_vbCount];
+            context.GetUnderlying()->IAGetVertexBuffers(0, s_vbCount, rawptrs, _vbStrides, _vbOffsets);
+            for (unsigned c=0; c<s_vbCount; ++c)
+                _vertexBuffers[c] = moveptr(rawptrs[c]);
+        }
+
+        if (_states & States::IndexBuffer) {
+            ID3D::Buffer* rawptr = nullptr;
+            context.GetUnderlying()->IAGetIndexBuffer(&rawptr, (DXGI_FORMAT*)&_ibFormat, &_ibOffset);
+            _indexBuffer = moveptr(rawptr);
+        }
+
+        if (_states & States::Topology) {
+            context.GetUnderlying()->IAGetPrimitiveTopology((D3D11_PRIMITIVE_TOPOLOGY*)&_topology);
+        }
+    }
+
+    ProtectState::ProtectState()
+    {
+        _context = nullptr;
+        _states = 0;
+        _ibFormat = DXGI_FORMAT_UNKNOWN;
+        _ibOffset = 0;
+        _topology = (D3D11_PRIMITIVE_TOPOLOGY)0;
+    }
+
+    ProtectState::ProtectState(ProtectState&& moveFrom)
+    : _targets(std::move(moveFrom._targets))
+    , _depthStencilState(std::move(moveFrom._depthStencilState))
+    , _inputLayout(std::move(moveFrom._inputLayout))
+    , _indexBuffer(std::move(moveFrom._indexBuffer))
+    , _blendState(std::move(moveFrom._blendState))
+    {
+        _context = moveFrom._context; moveFrom._context = nullptr;
+        _states = moveFrom._states; moveFrom._states = 0;
+        
+        _ibFormat = moveFrom._ibFormat;
+        _ibOffset = moveFrom._ibOffset;
+
+        for (unsigned s=0; s<s_vbCount; ++s) {
+            _vertexBuffers[s] = std::move(moveFrom._vertexBuffers[s]);
+            _vbStrides[s] = moveFrom._vbStrides[s];
+            _vbOffsets[s] = moveFrom._vbOffsets[s];
+        }
+
+        for (unsigned c=0; c<4; ++c)
+            _blendFactor[c] = moveFrom._blendFactor[c];
+        _blendSampleMask = moveFrom._blendSampleMask;
+
+        _viewports = moveFrom._viewports;
+        _topology = moveFrom._topology;
+    }
+
+    ProtectState& ProtectState::operator=(ProtectState&& moveFrom)
+    {
+        _context = moveFrom._context; moveFrom._context = nullptr;
+        _targets = std::move(moveFrom._targets);
+        _states = moveFrom._states; moveFrom._states = 0;
+
+        _depthStencilState = std::move(moveFrom._depthStencilState);
+        _inputLayout = std::move(moveFrom._inputLayout);
+
+        _indexBuffer = std::move(moveFrom._indexBuffer);
+        _ibFormat = moveFrom._ibFormat;
+        _ibOffset = moveFrom._ibOffset;
+
+        for (unsigned s=0; s<s_vbCount; ++s) {
+            _vertexBuffers[s] = std::move(moveFrom._vertexBuffers[s]);
+            _vbStrides[s] = moveFrom._vbStrides[s];
+            _vbOffsets[s] = moveFrom._vbOffsets[s];
+        }
+
+        _blendState = std::move(moveFrom._blendState);
+        for (unsigned c=0; c<4; ++c)
+            _blendFactor[c] = moveFrom._blendFactor[c];
+        _blendSampleMask = moveFrom._blendSampleMask;
+
+        _viewports = moveFrom._viewports;
+        _topology = moveFrom._topology;
+        return *this;
+    }
+
+    void ProtectState::ResetStates()
+    {
+        if (_context) {
+            if (_states & States::RenderTargets|| _states & States::Viewports)
+                _targets.ResetToOldTargets(*_context);
+            if (_states & States::DepthStencilState)
+                _context->Bind(_depthStencilState);
+            if (_states & States::BlendState)
+                _context->GetUnderlying()->OMSetBlendState(_blendState.get(), _blendFactor, _blendSampleMask);
+            if (_states & States::InputLayout)
+                _context->Bind(_inputLayout);
+
+            if (_states & States::VertexBuffer) {
+                ID3D::Buffer* rawptrs[s_vbCount];
+                for (unsigned c=0; c<s_vbCount; ++c)
+                    rawptrs[c] = _vertexBuffers[c].get();
+                _context->GetUnderlying()->IASetVertexBuffers(0, s_vbCount, rawptrs, _vbStrides, _vbOffsets);
+            }
+
+            if (_states & States::IndexBuffer)
+                _context->GetUnderlying()->IASetIndexBuffer(_indexBuffer.get(), (DXGI_FORMAT)_ibFormat, _ibOffset);
+            if (_states & States::Topology)
+                _context->GetUnderlying()->IASetPrimitiveTopology((D3D11_PRIMITIVE_TOPOLOGY)_topology);
+
+            _states = 0;
+        }
+    }
+
+    ProtectState::~ProtectState()
+    {
+        ResetStates();
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void ShaderBasedCopy(
+        Metal::DeviceContext& context,
+        const Metal::DepthStencilView& dest,
+        const Metal::ShaderResourceView& src,
+        ProtectState::States::BitField protectStates)
+    {
+        using States = ProtectState::States;
+        const States::BitField effectedStates = 
+            States::RenderTargets | States::Viewports | States::DepthStencilState 
+            | States::Topology | States::InputLayout | States::VertexBuffer
+            ;
+        ProtectState savedStates(context, effectedStates & protectStates);
+
+        context.Bind(ResourceList<Metal::RenderTargetView, 0>(), &dest);
+        context.Bind(Techniques::CommonResources()._dssWriteOnly);
+        context.Bind(
+            ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                "game/xleres/basic2d.vsh:fullscreen:vs_*",
+                "game/xleres/basic.psh:copy_depth:ps_*"));
+        context.BindPS(MakeResourceList(src));
+        SetupVertexGeneratorShader(context);
+        context.Draw(4);
+    }
+
 }
 

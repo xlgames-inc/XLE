@@ -8,8 +8,7 @@
 #include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
 #include "GestaltResource.h"
-#include "../BufferUploads/ResourceLocator.h"
-#include "../BufferUploads/IBufferUploads.h"
+#include "MetricsBox.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
@@ -25,11 +24,6 @@
 #include <type_traits>
 #include <random>
 #include <algorithm>
-
-#include "../RenderCore/Assets/DeferredShaderResource.h"
-#include "../Utility/StringFormat.h"
-#include "MetricsBox.h"
-#include "../RenderCore/DX11/Metal/DX11Utils.h"
 
 namespace SceneEngine
 {
@@ -89,6 +83,9 @@ namespace SceneEngine
         //
         // We will quantize alpha values down to a limited resolution, and for each unique 
         // alpha value we will calculate a number of different coverage masks.
+        //
+        // Note -- this function is a little expensive to run. We should precalculate this
+        // texture and just load it from disk.
 
         std::mt19937 rng(0);
         for (unsigned y=0; y<alphaValues; y++) {
@@ -161,204 +158,28 @@ namespace SceneEngine
                 "StochasticMetrics");
     }
 
-    /// <summary>Low-level save and restore of state information</summary>
-    /// 
-    class ProtectState
-    {
-    public:
-        struct States
-        {
-            enum Enum : unsigned
-            {
-                RenderTargets       = 1<<0,
-                Viewports           = 1<<1,
-                DepthStencilState   = 1<<2,
-                BlendState          = 1<<3,
-                Topology            = 1<<4,
-                InputLayout         = 1<<5,
-                VertexBuffer        = 1<<6,
-                IndexBuffer         = 1<<7
-            };
-            using BitField = unsigned;
-        };
-
-        ProtectState(RenderCore::Metal::DeviceContext& context, States::BitField states);
-        ~ProtectState();
-
-    private:
-        RenderCore::Metal::DeviceContext* _context;
-        SavedTargets        _targets;
-        States::BitField    _states;
-        
-        RenderCore::Metal::DepthStencilState    _depthStencilState;
-        RenderCore::Metal::BoundInputLayout     _inputLayout;
-
-        intrusive_ptr<ID3D::Buffer> _indexBuffer;
-        DXGI_FORMAT _ibFormat;
-        UINT        _ibOffset;
-
-        static const auto s_vbCount = D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
-        intrusive_ptr<ID3D::Buffer> _vertexBuffers[s_vbCount];
-        UINT        _vbStrides[s_vbCount];
-        UINT        _vbOffsets[s_vbCount];
-
-        intrusive_ptr<ID3D::BlendState> _blendState;
-        float       _blendFactor[4];
-        unsigned    _blendSampleMask;
-
-        RenderCore::Metal::ViewportDesc _viewports;
-
-        D3D11_PRIMITIVE_TOPOLOGY _topology;
-    };
-
-    ProtectState::ProtectState(RenderCore::Metal::DeviceContext& context, States::BitField states)
-    : _context(&context), _states(states)
-    {
-        using namespace RenderCore::Metal;
-
-        if (_states & States::RenderTargets || _states & States::Viewports)
-            _targets = SavedTargets(context);
-        if (_states & States::DepthStencilState)
-            _depthStencilState = DepthStencilState(context);
-        if (_states & States::BlendState) {
-            ID3D::BlendState* rawptr = nullptr;
-            context.GetUnderlying()->OMGetBlendState(&rawptr, _blendFactor, &_blendSampleMask);
-            _blendState = moveptr(rawptr);
-        }
-        if (_states & States::InputLayout)
-            _inputLayout = BoundInputLayout(context);
-
-        if (_states & States::VertexBuffer) {
-            ID3D::Buffer* rawptrs[s_vbCount];
-            context.GetUnderlying()->IAGetVertexBuffers(0, s_vbCount, rawptrs, _vbStrides, _vbOffsets);
-            for (unsigned c=0; c<s_vbCount; ++c)
-                _vertexBuffers[c] = moveptr(rawptrs[c]);
-        }
-
-        if (_states & States::IndexBuffer) {
-            ID3D::Buffer* rawptr = nullptr;
-            context.GetUnderlying()->IAGetIndexBuffer(&rawptr, &_ibFormat, &_ibOffset);
-            _indexBuffer = moveptr(rawptr);
-        }
-
-        if (_states & States::Topology) {
-            context.GetUnderlying()->IAGetPrimitiveTopology(&_topology);
-        }
-    }
-
-    ProtectState::~ProtectState()
-    {
-        if (_states & States::RenderTargets|| _states & States::Viewports)
-            _targets.ResetToOldTargets(*_context);
-        if (_states & States::DepthStencilState)
-            _context->Bind(_depthStencilState);
-        if (_states & States::BlendState)
-            _context->GetUnderlying()->OMSetBlendState(_blendState.get(), _blendFactor, _blendSampleMask);
-        if (_states & States::InputLayout)
-            _context->Bind(_inputLayout);
-
-        if (_states & States::VertexBuffer) {
-            ID3D::Buffer* rawptrs[s_vbCount];
-            for (unsigned c=0; c<s_vbCount; ++c)
-                rawptrs[c] = _vertexBuffers[c].get();
-            _context->GetUnderlying()->IASetVertexBuffers(0, s_vbCount, rawptrs, _vbStrides, _vbOffsets);
-        }
-
-        if (_states & States::IndexBuffer)
-            _context->GetUnderlying()->IASetIndexBuffer(_indexBuffer.get(), _ibFormat, _ibOffset);
-        if (_states & States::Topology)
-            _context->GetUnderlying()->IASetPrimitiveTopology(_topology);
-    }
-
-    static void ShaderBasedCopy(
-        RenderCore::Metal::DeviceContext& context,
-        const Metal::DepthStencilView& dest,
-        const Metal::ShaderResourceView& src,
-        ProtectState::States::BitField protectStates = ~0u)
-    {
-        using States = ProtectState::States;
-        const States::BitField effectedStates = 
-            States::RenderTargets | States::Viewports | States::DepthStencilState 
-            | States::Topology | States::InputLayout | States::VertexBuffer
-            ;
-        ProtectState savedStates(context, effectedStates & protectStates);
-
-        context.Bind(ResourceList<Metal::RenderTargetView, 0>(), &dest);
-        context.Bind(Techniques::CommonResources()._dssWriteOnly);
-        context.Bind(
-            ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2d.vsh:fullscreen:vs_*",
-                "game/xleres/basic.psh:copy_depth:ps_*"));
-        context.BindPS(MakeResourceList(src));
-        SetupVertexGeneratorShader(context);
-        context.Draw(4);
-    }
-
-    static void RenderGPUMetrics(
-        RenderCore::Metal::DeviceContext& context,
-        LightingParserContext& parsingContext,
-        const ::Assets::ResChar shaderName[],
-        std::initializer_list<const ::Assets::ResChar*> valueSources,
-        ProtectState::States::BitField protectStates = ~0u)
-    {
-        using States = ProtectState::States;
-        const States::BitField effectedStates = 
-            States::DepthStencilState | States::BlendState
-            | States::Topology | States::InputLayout | States::VertexBuffer
-            ;
-        ProtectState savedStates(context, effectedStates & protectStates);
-
-            // Utility function for writing GPU metrics values to the screen.
-            // This is useful when we have metrics values that don't reach the
-            // CPU. Ie, they are written to UAV resources (or other resources)
-            // and then read back on the GPU during the same frame. The geometry
-            // shader converts the numbers into a string, and textures appropriately.
-            // So a final value can be written to the screen without ever touching
-            // the CPU.
-        const auto& shader = ::Assets::GetAssetDep<Metal::DeepShaderProgram>(
-            (StringMeld<MaxPath, ::Assets::ResChar>() << shaderName << ":metricsrig_main:!vs_*").get(),
-            "game/xleres/utility/metricsrender.gsh:main:gs_*",
-            "game/xleres/utility/metricsrender.psh:main:ps_*",
-            "", "", 
-            (StringMeld<64>() << "VALUE_SOURCE_COUNT=" << valueSources.size()).get());
-        Metal::BoundClassInterfaces boundInterfaces(shader);
-        for (unsigned c=0; c<valueSources.size(); ++c)
-            boundInterfaces.Bind(Hash64("ValueSource"), c, valueSources.begin()[c]);
-        context.Bind(shader, boundInterfaces);
-
-        const auto* metricsDigits = "game/xleres/DefaultResources/metricsdigits.dds:T";
-        context.BindPS(MakeResourceList(3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(metricsDigits).GetShaderResource()));
-
-        Metal::BoundUniforms uniforms(shader);
-        Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
-        uniforms.BindConstantBuffers(1, {"$Globals"});
-        uniforms.BindShaderResources(1, {"MetricsObject"});
-
-        Metal::ViewportDesc viewport(context);
-        unsigned globalCB[4] = { unsigned(viewport.Width), unsigned(viewport.Height), 0, 0 };
-        uniforms.Apply(
-            context, parsingContext.GetGlobalUniformsStream(),
-            Metal::UniformsStream(
-                { MakeSharedPkt(globalCB) }, 
-                { &parsingContext.GetMetricsBox()->_metricsBufferSRV }));
-
-        context.Unbind<Metal::VertexBuffer>();
-        context.Unbind<Metal::BoundInputLayout>();
-        context.Bind(Metal::Topology::PointList);
-        context.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
-        context.Bind(Techniques::CommonResources()._dssDisable);
-        context.Draw((unsigned)valueSources.size());
-
-        uniforms.UnbindShaderResources(context, 1);
-    }
-
-    StochasticTransparencyBox* StochasticTransparency_Prepare(
+    StochasticTransparencyOp::StochasticTransparencyOp(
         RenderCore::Metal::DeviceContext& context, 
-        LightingParserContext& parserContext,
-        Metal::ShaderResourceView& mainDSV)
+        LightingParserContext& parserContext) 
+    : _context(&context)
+    , _parserContext(&parserContext)
+    , _box(nullptr)
+    {}
+
+    StochasticTransparencyOp::~StochasticTransparencyOp() 
+    {
+        if (_parserContext) {
+            auto& runtimeState = _parserContext->GetTechniqueContext()._runtimeState;
+            runtimeState.SetParameter(u("STOCHASTIC_TRANS_PRIMITIVEID"), 0u);
+            runtimeState.SetParameter(u("STOCHASTIC_TRANS_OPACITY"), 0u);
+            runtimeState.SetParameter(u("STOCHASTIC_TRANS"), 1u);
+        }
+    }
+
+    void StochasticTransparencyOp::PrepareFirstPass(Metal::ShaderResourceView& mainDSV)
     {
             // Bind the resources we'll need for the initial passes
-        Metal::ViewportDesc viewport(context);
+        Metal::ViewportDesc viewport(*_context);
         #if defined(_DEBUG)
             const auto enableMetrics = true;
         #else
@@ -377,65 +198,65 @@ namespace SceneEngine
         if (copyMainDepths) {
             using States = ProtectState::States;
             ShaderBasedCopy(
-                context, box._stochasticDepths.DSV(), mainDSV, 
+                *_context, box._stochasticDepths.DSV(), mainDSV, 
                 ~(States::RenderTargets | States::Viewports));
         } else {
-            context.Clear(box._stochasticDepths.DSV(), 1.f, 0u);    // (if we don't copy any opaque depths, just clear)
+            _context->Clear(box._stochasticDepths.DSV(), 1.f, 0u);    // (if we don't copy any opaque depths, just clear)
         }
 
-        context.BindPS(MakeResourceList(18, box._masksTable.SRV()));
-        context.Bind(Techniques::CommonResources()._dssReadWrite);
-        context.Bind(Techniques::CommonResources()._blendOpaque);
+        _context->BindPS(MakeResourceList(18, box._masksTable.SRV()));
+        _context->Bind(Techniques::CommonResources()._dssReadWrite);
+        _context->Bind(Techniques::CommonResources()._blendOpaque);
 
-        parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("STOCHASTIC_TRANS_PRIMITIVEID"), box._primIdsTexture.IsGood());
-        parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("STOCHASTIC_TRANS_OPACITY"), box._opacitiesTexture.IsGood());
+        auto& runtimeState = _parserContext->GetTechniqueContext()._runtimeState;
+        runtimeState.SetParameter(u("STOCHASTIC_TRANS_PRIMITIVEID"), box._primIdsTexture.IsGood());
+        runtimeState.SetParameter(u("STOCHASTIC_TRANS_OPACITY"), box._opacitiesTexture.IsGood());
+        runtimeState.SetParameter(u("STOCHASTIC_TRANS"), 1u);
+
             // do we need to clear the opacity and primitive ids textures? Maybe it's ok
         if (box._primIdsTexture.IsGood()) {
             if (box._opacitiesTexture.IsGood()) {
-                context.Bind(MakeResourceList(box._primIdsTexture.RTV(), box._opacitiesTexture.RTV()), &box._stochasticDepths.DSV());
+                _context->Bind(MakeResourceList(box._primIdsTexture.RTV(), box._opacitiesTexture.RTV()), &box._stochasticDepths.DSV());
             } else 
-                context.Bind(MakeResourceList(box._primIdsTexture.RTV()), &box._stochasticDepths.DSV());
+                _context->Bind(MakeResourceList(box._primIdsTexture.RTV()), &box._stochasticDepths.DSV());
         } else if (box._opacitiesTexture.IsGood()) {
-            context.Bind(MakeResourceList(box._opacitiesTexture.RTV()), &box._stochasticDepths.DSV());
+            _context->Bind(MakeResourceList(box._opacitiesTexture.RTV()), &box._stochasticDepths.DSV());
         } else {
-            context.Bind(ResourceList<Metal::RenderTargetView, 0>(), &box._stochasticDepths.DSV());
+            _context->Bind(ResourceList<Metal::RenderTargetView, 0>(), &box._stochasticDepths.DSV());
         }
 
-        return &box;
+        _box = &box;
     }
 
-    void StochasticTransparencyBox_PrepareSecondPass(  
-        RenderCore::Metal::DeviceContext& context,
-        LightingParserContext& parserContext,
-        StochasticTransparencyBox& box,
-        Metal::DepthStencilView& mainDSV)
+    void StochasticTransparencyOp::PrepareSecondPass(Metal::DepthStencilView& mainDSV)
     {
+        if (!_box) return;
+
         float clearValues[] = {0.f, 0.f, 0.f, 1.f};
-        context.Clear(box._blendingTexture.RTV(), clearValues); 
-        if (box._metricsTexture.IsGood()) {
+        _context->Clear(_box->_blendingTexture.RTV(), clearValues); 
+        if (_box->_metricsTexture.IsGood()) {
             unsigned uavClear[] = {0,0,0,0};
-            context.Clear(box._metricsTexture.UAV(), uavClear);
-            context.Bind(
-                MakeResourceList(box._blendingTexture.RTV()), &mainDSV, 
-                MakeResourceList(parserContext.GetMetricsBox()->_metricsBufferUAV, box._metricsTexture.UAV()));
+            _context->Clear(_box->_metricsTexture.UAV(), uavClear);
+            _context->Bind(
+                MakeResourceList(_box->_blendingTexture.RTV()), &mainDSV, 
+                MakeResourceList(_parserContext->GetMetricsBox()->_metricsBufferUAV, _box->_metricsTexture.UAV()));
         } else
-            context.Bind(MakeResourceList(box._blendingTexture.RTV()), &mainDSV);
-        if (box._primIdsTexture.IsGood()) context.BindPS(MakeResourceList(8, box._primIdsTexture.SRV()));
-        if (box._opacitiesTexture.IsGood()) context.BindPS(MakeResourceList(7, box._opacitiesTexture.SRV()));
-        context.BindPS(MakeResourceList(9, box._stochasticDepths.SRV()));
-        context.Bind(box._secondPassBlend);
-        context.Bind(Techniques::CommonResources()._dssReadOnly);
+            _context->Bind(MakeResourceList(_box->_blendingTexture.RTV()), &mainDSV);
+        if (_box->_primIdsTexture.IsGood()) _context->BindPS(MakeResourceList(8, _box->_primIdsTexture.SRV()));
+        if (_box->_opacitiesTexture.IsGood()) _context->BindPS(MakeResourceList(7, _box->_opacitiesTexture.SRV()));
+        _context->BindPS(MakeResourceList(9, _box->_stochasticDepths.SRV()));
+        _context->Bind(_box->_secondPassBlend);
+        _context->Bind(Techniques::CommonResources()._dssReadOnly);
     }
 
-    void StochasticTransparencyBox_Resolve(  
-        RenderCore::Metal::DeviceContext& context,
-        LightingParserContext& parserContext,
-        StochasticTransparencyBox& box)
+    void StochasticTransparencyOp::Resolve()
     {
-        context.UnbindPS<Metal::ShaderResourceView>(9, 1); // unbind box._stochasticDepths
+        if (!_box) return;
+
+        _context->UnbindPS<Metal::ShaderResourceView>(7, 3); // unbind box._stochasticDepths, opacities texture, prim ids texture
 
         {
-            SetupVertexGeneratorShader(context);
+            SetupVertexGeneratorShader(*_context);
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2d.vsh:fullscreen:vs_*",
                 "game/xleres/basic.psh:copy:ps_*");
@@ -443,22 +264,21 @@ namespace SceneEngine
             Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
             uniforms.BindShaderResources(1, {"DiffuseTexture"});
             uniforms.Apply(
-                context, parserContext.GetGlobalUniformsStream(),
-                Metal::UniformsStream({}, {&box._blendingTexture.SRV()}));
+                *_context, _parserContext->GetGlobalUniformsStream(),
+                Metal::UniformsStream({}, {&_box->_blendingTexture.SRV()}));
 
-            context.Bind(Techniques::CommonResources()._dssDisable);
-            if (Tweakable("Stochastic_BlendBuffer", true)) {
-                context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
-            } else {
-                context.Bind(Techniques::CommonResources()._blendOpaque);
-            }
-            context.Bind(shader);
-            context.Draw(4);
+            _context->Bind(Techniques::CommonResources()._dssDisable);
+            _context->Bind(Tweakable("Stochastic_BlendBuffer", true)
+                ? Techniques::CommonResources()._blendOneSrcAlpha
+                : Techniques::CommonResources()._blendOpaque);
+            _context->Bind(shader);
+            _context->Draw(4);
         }
 
-        if (Tweakable("StochTransMetrics", false) && box._metricsTexture.IsGood()) {
-            parserContext._pendingOverlays.push_back(
-                [&box](RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext)
+        if (Tweakable("StochTransMetrics", false) && _box->_metricsTexture.IsGood()) {
+            auto* box = _box;
+            _parserContext->_pendingOverlays.push_back(
+                [box](RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext)
                 {
                     auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                         "game/xleres/basic2d.vsh:fullscreen:vs_*",
@@ -468,7 +288,7 @@ namespace SceneEngine
                     uniforms.BindShaderResources(1, {"DepthsTexture", "LitSamplesMetrics"});
                     uniforms.Apply(
                         context, parserContext.GetGlobalUniformsStream(),
-                        Metal::UniformsStream({}, {&box._stochasticDepths.SRV(), &box._metricsTexture.SRV()}));
+                        Metal::UniformsStream({}, {&box->_stochasticDepths.SRV(), &box->_metricsTexture.SRV()}));
 
                     context.Bind(shader);
                     context.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
@@ -489,11 +309,11 @@ namespace SceneEngine
             Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
             uniforms.BindShaderResources(1, {"DepthsTexture"});
             uniforms.Apply(
-                context, parserContext.GetGlobalUniformsStream(),
-                Metal::UniformsStream({}, {&box._stochasticDepths.SRV()}));
+                *_context, _parserContext->GetGlobalUniformsStream(),
+                Metal::UniformsStream({}, {&_box->_stochasticDepths.SRV()}));
 
-            context.Bind(shader);
-            context.Draw(4);
+            _context->Bind(shader);
+            _context->Draw(4);
         }
     }
 

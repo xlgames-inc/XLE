@@ -13,19 +13,24 @@ namespace SceneEngine
     class LightingParserContext;
     class StochasticTransparencyBox;
 
-    StochasticTransparencyBox* StochasticTransparency_Prepare(
-        RenderCore::Metal::DeviceContext& context, 
-        LightingParserContext& parserContext,
-        RenderCore::Metal::ShaderResourceView& mainDSV);
+    class StochasticTransparencyOp
+    {
+    public:
+        void PrepareFirstPass(RenderCore::Metal::ShaderResourceView& mainDSV);
+        void PrepareSecondPass(RenderCore::Metal::DepthStencilView& mainDSV);
+        void Resolve();
 
-    void StochasticTransparencyBox_PrepareSecondPass(  
-        RenderCore::Metal::DeviceContext& context,
-        LightingParserContext& parserContext,
-        StochasticTransparencyBox& box,
-        RenderCore::Metal::DepthStencilView& mainDSV);
+        StochasticTransparencyOp(
+            RenderCore::Metal::DeviceContext& context, 
+            LightingParserContext& parserContext);
+        ~StochasticTransparencyOp();
 
-    void StochasticTransparencyBox_Resolve(  
-        RenderCore::Metal::DeviceContext& context,
-        LightingParserContext& parserContext,
-        StochasticTransparencyBox& targets);
+        StochasticTransparencyOp(const StochasticTransparencyOp&) = delete;
+        StochasticTransparencyOp& operator=(const StochasticTransparencyOp&) = delete;
+
+    protected:
+        StochasticTransparencyBox*          _box;
+        RenderCore::Metal::DeviceContext*   _context;
+        LightingParserContext*              _parserContext;
+    };
 }

@@ -9,6 +9,7 @@
 #include "SceneParser.h"    // for SceneParseSettings
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Format.h"
+#include "../RenderCore/Metal/InputLayout.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"   // for DelayStep -- a forward declaration here confuses c++/cli
 
@@ -44,6 +45,7 @@ namespace SceneEngine
         class ResetMarker
         {
         public:
+            ResetMarker();
             ~ResetMarker();
             ResetMarker(ResetMarker&&);
             ResetMarker& operator=(ResetMarker&&);
@@ -163,6 +165,85 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    /// <summary>Low-level save and restore of state information</summary>
+    /// Handy utility for functions that want to restore the low-level GFX API
+    /// state back to it's original state. 
+    ///
+    /// Often rendering utility functions need to change certain states on a temporary
+    /// basis. This can be confusing to the caller, because it's often not clear what
+    /// states will be affected.
+    ///
+    /// 
+    class ProtectState
+    {
+    public:
+        struct States
+        {
+            enum Enum : unsigned
+            {
+                RenderTargets       = 1<<0,
+                Viewports           = 1<<1,
+                DepthStencilState   = 1<<2,
+                BlendState          = 1<<3,
+                Topology            = 1<<4,
+                InputLayout         = 1<<5,
+                VertexBuffer        = 1<<6,
+                IndexBuffer         = 1<<7
+            };
+            using BitField = unsigned;
+        };
+
+        ProtectState();
+        ProtectState(RenderCore::Metal::DeviceContext& context, States::BitField states);
+        ~ProtectState();
+        ProtectState(ProtectState&& moveFrom);
+        ProtectState& operator=(ProtectState&& moveFrom);
+
+    private:
+        RenderCore::Metal::DeviceContext* _context;
+        SavedTargets        _targets;
+        States::BitField    _states;
+        
+        RenderCore::Metal::DepthStencilState    _depthStencilState;
+        RenderCore::Metal::BoundInputLayout     _inputLayout;
+
+        intrusive_ptr<ID3D::Buffer> _indexBuffer;
+        unsigned    _ibFormat; // DXGI_FORMAT
+        unsigned    _ibOffset;
+
+        static const auto s_vbCount = 32; // D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
+        intrusive_ptr<ID3D::Buffer> _vertexBuffers[s_vbCount];
+        unsigned    _vbStrides[s_vbCount];
+        unsigned    _vbOffsets[s_vbCount];
+
+        intrusive_ptr<ID3D::BlendState> _blendState;
+        float       _blendFactor[4];
+        unsigned    _blendSampleMask;
+
+        RenderCore::Metal::ViewportDesc _viewports;
+
+        unsigned _topology;     // D3D11_PRIMITIVE_TOPOLOGY
+
+        void ResetStates();
+    };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /// <summary>Copy from a shader resource onto a depth buffer, using a Draw operation<summary>
+    void ShaderBasedCopy(
+        RenderCore::Metal::DeviceContext& context,
+        const RenderCore::Metal::DepthStencilView& dest,
+        const RenderCore::Metal::ShaderResourceView& src,
+        ProtectState::States::BitField protectStates = ~0u);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    inline SavedTargets::ResetMarker::ResetMarker()
+    {
+        _targets = nullptr;
+        _context = nullptr;
+    }
+
     inline SavedTargets::ResetMarker::~ResetMarker()
     {
         if (_targets && _context)
@@ -177,6 +258,9 @@ namespace SceneEngine
 
     inline auto SavedTargets::ResetMarker::operator=(ResetMarker&& moveFrom) -> ResetMarker&
     {
+        if (_targets && _context)
+            _targets->ResetToOldTargets(*_context);
+
         _targets = moveFrom._targets; moveFrom._targets = nullptr;
         _context = moveFrom._context; moveFrom._context = nullptr;
         return *this;

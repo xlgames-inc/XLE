@@ -9,6 +9,7 @@
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Metal/RenderTargetView.h"
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
+#include "../Assets/AssetsCore.h"
 
 namespace SceneEngine
 {
@@ -28,4 +29,13 @@ namespace SceneEngine
         RenderCore::Metal::UnorderedAccessView  _metricsBufferUAV;
         RenderCore::Metal::ShaderResourceView   _metricsBufferSRV;
     };
+
+    class LightingParserContext;
+
+    void RenderGPUMetrics(
+        RenderCore::Metal::DeviceContext& context,
+        LightingParserContext& parsingContext,
+        const ::Assets::ResChar shaderName[],
+        std::initializer_list<const ::Assets::ResChar*> valueSources,
+        unsigned protectStates = ~0u);       // ProtectState::States::BitField
 }
