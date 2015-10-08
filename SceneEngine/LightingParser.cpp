@@ -311,13 +311,12 @@ namespace SceneEngine
         ToneMap_Execute(&context, parserContext, inputHDR, samplingCount);
     }
 
-    void LightingParser_PostGBufferEffects(    
+    void LightingParser_PreTranslucency(    
         DeviceContext& context, 
         LightingParserContext& parserContext,
-        ShaderResourceView& depthsSRV,
-        ShaderResourceView& normalsSRV)
+        ShaderResourceView& depthsSRV)
     {
-        GPUProfiler::DebugAnnotation anno(context, L"PostGBuffer");
+        GPUProfiler::DebugAnnotation anno(context, L"PreTranslucency");
 
             // note --  these things can be executed by the scene parser? Are they better
             //          off handled by the scene parser, or the lighting parser?
@@ -328,6 +327,15 @@ namespace SceneEngine
         if (Tweakable("DoSky", true)) {
             Sky_RenderPostFog(&context, parserContext);
         }
+    }
+        
+    void LightingParser_PostGBufferEffects(    
+        DeviceContext& context, 
+        LightingParserContext& parserContext,
+        ShaderResourceView& depthsSRV,
+        ShaderResourceView& normalsSRV)
+    {
+        GPUProfiler::DebugAnnotation anno(context, L"PostGBuffer");
 
         auto gblLighting = parserContext.GetSceneParser()->GetGlobalLightingDesc();
         if (Tweakable("DoAtmosBlur", true) && gblLighting._doAtmosphereBlur) {
@@ -521,9 +529,9 @@ namespace SceneEngine
         //////////////////////////////////////////////////////////////////////////////////////////////////
             //  Render translucent objects (etc)
             //  everything after the gbuffer resolve
-        LightingParser_PostGBufferEffects(
+        LightingParser_PreTranslucency(
             context, parserContext, 
-            mainTargets._msaaDepthBufferSRV, mainTargets._gbufferRTVsSRV[1]);
+            mainTargets._msaaDepthBufferSRV);
 
         ReturnToSteadyState(context);
         AutoCleanup bindShadowsCleanup;
@@ -605,6 +613,10 @@ namespace SceneEngine
         }
 
         //////////////////////////////////////////////////////////////////////////////////////////////////
+        LightingParser_PostGBufferEffects(
+            context, parserContext, 
+            mainTargets._msaaDepthBufferSRV, mainTargets._gbufferRTVsSRV[1]);
+
         for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p) {
             (*p)->OnPostSceneRender(&context, parserContext, SPS::BatchFilter::Transparent, TechniqueIndex_General);
         }

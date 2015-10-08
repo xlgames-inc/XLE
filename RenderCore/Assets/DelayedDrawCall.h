@@ -76,6 +76,7 @@ namespace RenderCore { namespace Assets
         void    Filter(const Predicate& predicate);
         size_t  GetRendererGUID() const;
         bool    IsEmpty(DelayStep step) const { return _entries[unsigned(step)].empty(); }
+        bool    IsEmpty() const;
             
         DelayedDrawCallSet(size_t rendererGuid);
         ~DelayedDrawCallSet();

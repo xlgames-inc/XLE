@@ -133,7 +133,7 @@ namespace ToolsRig
 
             for (auto i:delaySteps)
                 ModelRenderer::RenderPrepared(
-                    RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+                    RenderCore::Assets::ModelRendererContext(*context, parserContext, techniqueIndex),
                     *_sharedStateSet, _delayedDrawCalls, i,
                     [context, &drawCallIndexBuffer, &dss](ModelRenderer::DrawCallEvent evnt)
                     {
@@ -352,7 +352,7 @@ namespace ToolsRig
                 const auto techniqueIndex = 8u;
 
                 RenderWithEmbeddedSkeleton(
-                    RenderCore::Assets::ModelRendererContext(metalContext.get(), parserContext, techniqueIndex),
+                    RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, techniqueIndex),
                     *model._renderer, *model._sharedStateSet, model._model);
             CATCH_ASSETS_END(parserContext)
         }
@@ -373,7 +373,7 @@ namespace ToolsRig
                 const auto techniqueIndex = 7u;
 
                 RenderWithEmbeddedSkeleton(
-                    RenderCore::Assets::ModelRendererContext(metalContext.get(), parserContext, techniqueIndex),
+                    RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, techniqueIndex),
                     *model._renderer, *model._sharedStateSet, model._model);
             CATCH_ASSETS_END(parserContext)
         }
@@ -446,7 +446,7 @@ namespace ToolsRig
         {
             auto captureMarker = model._sharedStateSet->CaptureState(*metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
             RenderWithEmbeddedSkeleton(
-                RenderCore::Assets::ModelRendererContext(metalContext.get(), parserContext, 6),
+                RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, 6),
                 *model._renderer, *model._sharedStateSet, model._model);
         }
 

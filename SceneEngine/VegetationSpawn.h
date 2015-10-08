@@ -8,6 +8,7 @@
 
 #include "LightingParser.h"
 #include "../RenderCore/Metal/Forward.h"
+#include "../RenderCore/Assets/DelayedDrawCall.h"       // for DelayStep
 #include "../Assets/AssetsCore.h"
 #include "../Assets/AssetUtils.h"
 #include "../Utility/UTFUtils.h"
@@ -89,9 +90,10 @@ namespace SceneEngine
     {
     public:
         void Render(
-            RenderCore::Metal::DeviceContext* context, 
+            RenderCore::Metal::DeviceContext& context, 
             LightingParserContext& lightingParserContext,
-            unsigned techniqueIndex);
+            unsigned techniqueIndex,
+            RenderCore::Assets::DelayStep delayStep);
 
         std::shared_ptr<ILightingParserPlugin> GetParserPlugin();
 

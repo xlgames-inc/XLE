@@ -27,6 +27,7 @@
 
 #include "../ConsoleRig/Console.h"
 #include "../Utility/StringFormat.h"
+#include "../Utility/FunctionUtils.h"
 
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 
@@ -365,7 +366,7 @@ namespace SceneEngine
     }
 
     bool VegetationSpawn_DrawInstances(
-        RenderCore::Metal::DeviceContext* context,
+        RenderCore::Metal::DeviceContext& context,
         VegetationSpawnResources& res,
         unsigned instanceId, unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
@@ -383,7 +384,7 @@ namespace SceneEngine
             return false;
 
         D3D11_MAPPED_SUBRESOURCE mappedSub;
-        auto hresult = context->GetUnderlying()->Map(res._indirectArgsBuffer.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSub);
+        auto hresult = context.GetUnderlying()->Map(res._indirectArgsBuffer.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSub);
         if (!SUCCEEDED(hresult))
             return false;
 
@@ -453,7 +454,7 @@ namespace SceneEngine
         args.InstanceCount = 0;
 
         if (primitiveCountMethod == FromQuery) {
-            auto primitiveCount = GetSOPrimitives(context, res._streamOutputCountsQuery.get());
+            auto primitiveCount = GetSOPrimitives(&context, res._streamOutputCountsQuery.get());
             args.InstanceCount = (UINT)primitiveCount;
         }
 
@@ -461,11 +462,11 @@ namespace SceneEngine
             //          in cases where there is zero vegetation generated. Possibly a GPU
             //          predicate can help avoid a CPU sync when doing that.
 
-        context->GetUnderlying()->Unmap(res._indirectArgsBuffer.get(), 0);
+        context.GetUnderlying()->Unmap(res._indirectArgsBuffer.get(), 0);
 
         if (primitiveCountMethod == FromUAV) {
                 // copy the "structure count" from the UAV into the indirect args buffer
-            context->GetUnderlying()->CopyStructureCount(
+            context.GetUnderlying()->CopyStructureCount(
                 res._indirectArgsBuffer.get(), unsigned(&((DrawIndexedInstancedIndirectArgs*)nullptr)->InstanceCount), res._instanceBufferUAVs[instanceId].GetUnderlying());
         }
 
@@ -475,10 +476,10 @@ namespace SceneEngine
         // auto* buffer = res._instanceBuffers[instanceId].get();
         // const unsigned slotForVertexInput = 3;
         // context->GetUnderlying()->IASetVertexBuffers(slotForVertexInput, 1, &buffer, &stride, &offset);
-        context->BindVS(RenderCore::MakeResourceList(15, res._instanceBufferSRVs[instanceId]));
+        context.BindVS(RenderCore::MakeResourceList(15, res._instanceBufferSRVs[instanceId]));
 
             // finally -- draw
-        context->GetUnderlying()->DrawIndexedInstancedIndirect(res._indirectArgsBuffer.get(), 0);
+        context.GetUnderlying()->DrawIndexedInstancedIndirect(res._indirectArgsBuffer.get(), 0);
 
         return true;
     }
@@ -486,10 +487,16 @@ namespace SceneEngine
     class VegetationSpawnManager::Pimpl
     {
     public:
-        std::shared_ptr<RenderCore::Assets::ModelCache> _modelCache;
-        std::shared_ptr<VegetationSpawnPlugin> _parserPlugin;
-        std::unique_ptr<VegetationSpawnResources> _resources;
+        std::shared_ptr<RenderCore::Assets::ModelCache>     _modelCache;
+        std::shared_ptr<VegetationSpawnPlugin>              _parserPlugin;
+        std::unique_ptr<VegetationSpawnResources>           _resources;
         VegetationSpawnConfig _cfg;
+
+        using DepVal = std::shared_ptr<::Assets::DependencyValidation>;
+        std::vector<RenderCore::Assets::DelayedDrawCallSet> _drawCallSets;
+        std::vector<DepVal> _drawCallSetDepVals;
+
+        void FillInDrawCallSets();
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -536,45 +543,66 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    using DelayedDrawCallSet = RenderCore::Assets::DelayedDrawCallSet;
+    using ModelRenderer = RenderCore::Assets::ModelRenderer;
+
+    void VegetationSpawnManager::Pimpl::FillInDrawCallSets()
+    {
+        auto& cache = *_modelCache;
+        auto& sharedStates = cache.GetSharedStateSet();
+
+        if (_drawCallSets.size() != _cfg._objectTypes.size()) {
+            _drawCallSets.resize(
+                _cfg._objectTypes.size(),
+                DelayedDrawCallSet(typeid(ModelRenderer).hash_code()));
+            _drawCallSetDepVals.resize(_cfg._objectTypes.size());
+        }
+
+            // We need to create a separate DelayedDrawCallSet for each
+            // model. They must be separate because of the way we assign transforms
+            // from the spawning shader.
+        for (unsigned b=0; b<unsigned(_cfg._objectTypes.size()); ++b) {
+            if (_drawCallSetDepVals[b] && _drawCallSetDepVals[b]->GetValidationIndex()==0) continue;
+
+            TRY {
+                const auto& bkt = _cfg._objectTypes[b];
+                auto model = cache.GetModel(bkt._modelName.c_str(), bkt._materialName.c_str());
+
+                model._renderer->Prepare(_drawCallSets[b], sharedStates, Identity<Float4x4>());
+                ModelRenderer::Sort(_drawCallSets[b]);
+                _drawCallSetDepVals[b] = model._renderer->GetDependencyValidation();
+            } CATCH(const ::Assets::Exceptions::AssetException&) {}
+            CATCH_END
+        }
+    }
+
     void VegetationSpawnManager::Render(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext,
-        unsigned techniqueIndex)
+        RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext,
+        unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep)
     {
         if (_pimpl->_cfg._objectTypes.empty()) return;
 
-        using namespace RenderCore;
-        using namespace RenderCore::Assets;
-        auto& cache = *_pimpl->_modelCache;
-        
-        auto& sharedStates = cache.GetSharedStateSet();
+        _pimpl->FillInDrawCallSets();
+
+        auto& sharedStates = _pimpl->_modelCache->GetSharedStateSet();
         auto captureMarker = sharedStates.CaptureState(
-            *context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
-        parserContext.GetTechniqueContext()._runtimeState.SetParameter((const utf8*)"SPAWNED_INSTANCE", 1);
-        
-        auto* resources = _pimpl->_resources.get();
+            context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+        auto& state = parserContext.GetTechniqueContext()._runtimeState;
+        state.SetParameter(u("SPAWNED_INSTANCE"), 1);
+        auto cleanup = MakeAutoCleanup(
+            [&state]() { state.SetParameter(u("SPAWNED_INSTANCE"), 0); });
 
-        DelayedDrawCallSet preparedDrawCalls(typeid(ModelRenderer).hash_code());
-        for (unsigned b=0; b<unsigned(_pimpl->_cfg._objectTypes.size()); ++b) {
-            TRY {
-                const auto& bkt = _pimpl->_cfg._objectTypes[b];
-                auto model = cache.GetModel(bkt._modelName.c_str(), bkt._materialName.c_str());
-                preparedDrawCalls.Reset();
-                model._renderer->Prepare(preparedDrawCalls, sharedStates, Identity<Float4x4>());
-                ModelRenderer::Sort(preparedDrawCalls);
-                ModelRenderer::RenderPrepared(
-                    ModelRendererContext(context, parserContext, techniqueIndex),
-                    sharedStates, preparedDrawCalls, DelayStep::OpaqueRender,
-                    [context, b, resources](ModelRenderer::DrawCallEvent evnt)
-                    {
-                        VegetationSpawn_DrawInstances(
-                            context, *resources, b, 
-                            evnt._indexCount, evnt._firstIndex, evnt._firstVertex);
-                    });
-            } CATCH(...) {
-            } CATCH_END
-        }
-
-        parserContext.GetTechniqueContext()._runtimeState.SetParameter((const utf8*)"SPAWNED_INSTANCE", 0);
+        auto& resources = *_pimpl->_resources;
+        for (unsigned b=0; b<unsigned(_pimpl->_drawCallSets.size()); ++b)
+            ModelRenderer::RenderPrepared(
+                RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+                sharedStates, _pimpl->_drawCallSets[b], delayStep,
+                [&context, b, &resources](ModelRenderer::DrawCallEvent evnt)
+                {
+                    VegetationSpawn_DrawInstances(
+                        context, resources, b, 
+                        evnt._indexCount, evnt._firstIndex, evnt._firstVertex);
+                });
     }
 
     void VegetationSpawnManager::Load(const VegetationSpawnConfig& cfg)

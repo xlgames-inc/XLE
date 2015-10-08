@@ -29,6 +29,13 @@ namespace RenderCore { namespace Assets
             _entries[c].reserve(10*1000);
     }
 
+    bool DelayedDrawCallSet::IsEmpty() const
+    {
+        for (auto i:_entries)
+            if (!i.empty()) return false;
+        return true;
+    }
+
     DelayedDrawCallSet::~DelayedDrawCallSet() {}
 
     void DelayedDrawCallSet::Filter(const Predicate& predicate)

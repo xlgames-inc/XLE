@@ -29,10 +29,10 @@ namespace RenderCore { namespace Assets
         unsigned _techniqueIndex;
 
         ModelRendererContext(
-            Metal::DeviceContext* context, 
+            Metal::DeviceContext& context, 
             Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex)
-        : _context(context), _parserContext(&parserContext), _techniqueIndex(techniqueIndex) {}
+        : _context(&context), _parserContext(&parserContext), _techniqueIndex(techniqueIndex) {}
     };
 
     namespace Internal

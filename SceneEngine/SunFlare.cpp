@@ -194,6 +194,7 @@ namespace SceneEngine
         float hAngle = XlATan2(sunView[0], -sunView[2]);
         float vAngle = XlATan2(sunView[1], -sunView[2]);
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
             // Cull the sunflare when it's off screen
             // It's not perfectly accurate, because the projection of the sprite is a little primitive -- but it works ok.
         float horizFov = projDesc._verticalFov * aspect;
@@ -206,9 +207,7 @@ namespace SceneEngine
         SavedTargets savedTargets(*context);
         Metal::ViewportDesc savedViewport(*context);
         
-        TRY 
-        {
-///////////////////////////////////////////////////////////////////////////////////////////////////
+        CATCH_ASSETS_BEGIN
 
             Float2 aspectCompen(flareAngle / (0.5f * horizFov), flareAngle / (0.5f * projDesc._verticalFov));
 
@@ -315,10 +314,8 @@ namespace SceneEngine
                 }
                 
             }
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+
+        CATCH_ASSETS_END(parserContext)
 
         context->Bind(Metal::Topology::TriangleList);
         context->Bind(Techniques::CommonResources()._dssReadWrite);

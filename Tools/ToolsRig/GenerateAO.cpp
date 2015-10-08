@@ -152,7 +152,7 @@ namespace ToolsRig
             TRY {
                 renderer.Render(
                     RenderCore::Assets::ModelRendererContext(
-                        &metalContext, parserContext, Techniques::TechniqueIndex::ShadowGen),
+                        metalContext, parserContext, Techniques::TechniqueIndex::ShadowGen),
                     sharedStates, AsFloat4x4(Float3(-samplePoint)), meshToModel);
             } CATCH(...) {
                 savedTargets.ResetToOldTargets(metalContext);

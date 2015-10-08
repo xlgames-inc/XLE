@@ -93,8 +93,8 @@ namespace GUILayer
         }
 
         if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
+            auto delaySteps = SceneEngine::AsDelaySteps(batchFilter);
             CATCH_ASSETS_BEGIN
-                auto delaySteps = SceneEngine::AsDelaySteps(batchFilter);
                 for (auto i:delaySteps)
                     if (i != RenderCore::Assets::DelayStep::OpaqueRender) {
                         scene._placementsManager->RenderTransparent(metalContext, parserContext, techniqueIndex, i);
@@ -103,11 +103,10 @@ namespace GUILayer
                     }
             CATCH_ASSETS_END(parserContext)
 
-            if (batchFilter == BF::General || batchFilter == BF::PreDepth || batchFilter == BF::DMShadows) {
-                CATCH_ASSETS_BEGIN
-                    scene._vegetationSpawnManager->Render(metalContext, parserContext, techniqueIndex);
-                CATCH_ASSETS_END(parserContext)
-            }
+            CATCH_ASSETS_BEGIN
+                for (auto i:delaySteps)
+                    scene._vegetationSpawnManager->Render(*metalContext, parserContext, techniqueIndex, i);
+            CATCH_ASSETS_END(parserContext)
         
             if (batchFilter == BF::Transparent) {
                 CATCH_ASSETS_BEGIN
@@ -125,6 +124,10 @@ namespace GUILayer
         auto batchFilter = parseSettings._batchFilter;
         if (batchFilter == BF::Transparent || batchFilter == BF::TransparentPreDepth || batchFilter == BF::OITransparent) {
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
+                
+                    // always something in "transparent"
+                if (batchFilter == BF::Transparent) return true;
+
                 auto delaySteps = SceneEngine::AsDelaySteps(batchFilter);
                 for (auto i:delaySteps)
                     if (_editorScene->_placementsManager->HasPrepared(i))
