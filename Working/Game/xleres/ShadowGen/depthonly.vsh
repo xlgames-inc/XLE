@@ -19,15 +19,16 @@ VSShadowOutput main(VSInput input)
 
 	#if GEO_HAS_INSTANCE_ID==1
 		float3 objectCentreWorld;
-		float3 worldPosition = InstanceWorldPosition(input, objectCentreWorld);
+		float3 worldNormal;
+		float3 worldPosition = InstanceWorldPosition(input, worldNormal, objectCentreWorld);
 	#else
 		float3 worldPosition = mul(LocalToWorld, float4(localPosition,1)).xyz;
 		float3 objectCentreWorld = float3(LocalToWorld[0][3], LocalToWorld[1][3], LocalToWorld[2][3]);
+		float3 worldNormal = LocalToWorldUnitVector(GetLocalNormal(input));
 	#endif
 
 		// note that when rendering shadows, we actually only need the normal
 		// for doing the vertex wind animation
-	float3 worldNormal = LocalToWorldUnitVector(GetLocalNormal(input));
 	#if (GEO_HAS_NORMAL==0) && (GEO_HAS_TANGENT_FRAME==1)
 		worldNormal =  BuildWorldSpaceTangentFrame(input).normal;
 	#endif

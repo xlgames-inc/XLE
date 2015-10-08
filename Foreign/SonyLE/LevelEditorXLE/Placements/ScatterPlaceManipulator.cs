@@ -23,7 +23,7 @@ namespace LevelEditorXLE.Placements
 {
     [Export(typeof(IManipulator))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class ScatterPlaceManipulator : IManipulator
+    public class ScatterPlaceManipulator : IManipulator, XLEBridgeUtils.IManipulatorExtra
     {
         public class ManipulatorSettings : IPropertyEditingContext
         {
@@ -209,6 +209,8 @@ namespace LevelEditorXLE.Placements
                 Resources.ScatterPlace,
                 Keys.None);
         }
+
+        public bool ClearBeforeDraw() { return false; }
 
         public bool Pick(ViewControl vc, Point scrPt)
         {

@@ -568,7 +568,9 @@ namespace SceneEngine
                 const auto& bkt = _cfg._objectTypes[b];
                 auto model = cache.GetModel(bkt._modelName.c_str(), bkt._materialName.c_str());
 
-                model._renderer->Prepare(_drawCallSets[b], sharedStates, Identity<Float4x4>());
+                model._renderer->Prepare(
+                    _drawCallSets[b], sharedStates, Identity<Float4x4>(), 
+                    RenderCore::Assets::MeshToModel(*model._model));
                 ModelRenderer::Sort(_drawCallSets[b]);
                 _drawCallSetDepVals[b] = model._renderer->GetDependencyValidation();
             } CATCH(const ::Assets::Exceptions::AssetException&) {}
@@ -608,6 +610,8 @@ namespace SceneEngine
     void VegetationSpawnManager::Load(const VegetationSpawnConfig& cfg)
     {
         _pimpl->_cfg = cfg;
+        _pimpl->_drawCallSets.clear();
+        _pimpl->_drawCallSetDepVals.clear();
         _pimpl->_resources = std::make_unique<VegetationSpawnResources>(
             VegetationSpawnResources::Desc((unsigned)cfg._objectTypes.size()));
     }
@@ -615,6 +619,8 @@ namespace SceneEngine
     void VegetationSpawnManager::Reset()
     {
         _pimpl->_cfg = VegetationSpawnConfig();
+        _pimpl->_drawCallSets.clear();
+        _pimpl->_drawCallSetDepVals.clear();
         _pimpl->_resources.reset();
     }
 

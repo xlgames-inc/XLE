@@ -48,11 +48,12 @@ VSOutput vs_main(uint vertexId : SV_VertexId)
     #if SHALLOW_WATER_IS_SIMULATED==1
         int3 coord = NormalizeRelativeGridCoord(p);
         if (coord.z >= 0)
-            localPosition.z = ShallowWaterHeights.Load(uint4(coord, 0));
+            localPosition.z = ShallowWaterHeights.Load(uint4(coord, 0)) - 3e-1f;
     #endif
 
     #if GEO_HAS_INSTANCE_ID==1
-        float3 worldPosition = InstanceWorldPosition(input, objectCentreWorld);
+        float3 worldNormal;
+        float3 worldPosition = InstanceWorldPosition(input, worldNormal, objectCentreWorld);
     #else
         float3 worldPosition = mul(LocalToWorld, float4(localPosition,1)).xyz;
     #endif

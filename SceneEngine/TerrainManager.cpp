@@ -412,7 +412,7 @@ namespace SceneEngine
                     //  or just those that are within the limited area we're going to load?
                 for (auto cell=_cells.cbegin(); cell!=_cells.cend(); ++cell) {
                     ci._interface->RegisterCell(
-                        cell->_coverageFilename[c], cell->_coverageToUber[c]._mins, cell->_coverageToUber[c]._maxs, cfg.NodeOverlap(),
+                        cell->_coverageFilename[c], cell->_coverageToUber[c]._mins, cell->_coverageToUber[c]._maxs, l._overlap,
                         std::bind(
                             &DoShortCircuitUpdate, cell->BuildHash(), l._id, _renderer, 
                             cell->_coverageToUber[c], std::placeholders::_1));

@@ -8,6 +8,7 @@
 
 #include "ManipulatorOverlay.h"
 #include "XLELayerUtils.h"
+#include "NativeManipulators.h"
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
 #include "../../Tools/GUILayer/NativeEngineDevice.h"
 #include "../../Tools/GUILayer/CLIXAutoPtr.h"
@@ -157,6 +158,12 @@ namespace XLEBridgeUtils
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    public interface class IManipulatorExtra
+    {
+    public:
+        virtual bool ClearBeforeDraw() = 0;
+    };
+
     void ManipulatorOverlay::RenderToScene(
         RenderCore::IThreadContext* device, 
         SceneEngine::LightingParserContext& parserContext)
@@ -169,11 +176,18 @@ namespace XLEBridgeUtils
             OnRender(_designView, _viewControl->Camera);
             if (_designView->Manipulator != nullptr) {
 
-                    // disable depth write and depth read
-                auto context = gcnew GUILayer::SimpleRenderingContext(nullptr, ManipulatorOverlay::s_currentParsingContext);
-                GUILayer::RenderingUtil::ClearDepthBuffer(context);
-                context->InitState(true, true);
-                delete context;
+                bool clearBeforeDraw = true;
+                IManipulatorExtra^ extra = dynamic_cast<IManipulatorExtra^>(_designView->Manipulator);
+                if (extra)
+                    clearBeforeDraw = extra->ClearBeforeDraw();
+
+                if (clearBeforeDraw) {
+                        // disable depth write and depth read
+                    auto context = gcnew GUILayer::SimpleRenderingContext(nullptr, ManipulatorOverlay::s_currentParsingContext);
+                    GUILayer::RenderingUtil::ClearDepthBuffer(context);
+                    context->InitState(true, true);
+                    delete context;
+                }
 
                 _designView->Manipulator->Render(_viewControl);
             }

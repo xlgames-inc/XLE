@@ -189,7 +189,7 @@ namespace RenderCore { namespace Assets
             class ParamBoxDescriptions
             {
             public:
-                void Add(unsigned index, const ParameterBox& box) {}
+                void Add(SharedParameterBox index, const ParameterBox& box) {}
             };
         #endif
 
@@ -679,6 +679,8 @@ namespace RenderCore { namespace Assets
             ////////////////////////////////////////////////////////////////////////
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterAssetDependency(_validationCallback, scaffold.GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, matScaffold.GetDependencyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, cbLayout.GetDependencyValidation());
         for (const auto& t:boundTextures) if (t) ::Assets::RegisterAssetDependency(_validationCallback, t->GetDependencyValidation());       // rebuild the entire renderer if any texture changes
 

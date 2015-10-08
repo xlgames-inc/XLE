@@ -361,9 +361,13 @@ namespace Assets { namespace IntermediateAssets
             TRY {
                 return i->second->PrepareAsset(typeCode, initializers, initializerCount, store);
             } CATCH (const std::exception& e) {
+                    // we must send back an Invalid marker if we hit an exception
+                    // (otherwise we can end up in an infinite compile operation)
                 LogAlwaysError << "Exception during processing of (" << initializers[0] << "). Exception details: (" << e.what() << ")";
+                return std::make_shared<PendingCompileMarker>(AssetState::Invalid, nullptr, 0, nullptr);
             } CATCH (...) {
                 LogAlwaysError << "Unknown exception during processing of (" << initializers[0] << ").";
+                return std::make_shared<PendingCompileMarker>(AssetState::Invalid, nullptr, 0, nullptr);
             } CATCH_END
 
         } else {

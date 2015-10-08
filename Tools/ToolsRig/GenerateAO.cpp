@@ -150,10 +150,17 @@ namespace ToolsRig
         {
             auto captureMarker = sharedStates.CaptureState(metalContext, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
             TRY {
-                renderer.Render(
-                    RenderCore::Assets::ModelRendererContext(
-                        metalContext, parserContext, Techniques::TechniqueIndex::ShadowGen),
-                    sharedStates, AsFloat4x4(Float3(-samplePoint)), meshToModel);
+                RenderCore::Assets::DelayedDrawCallSet delayedDraws(typeid(ModelRenderer).hash_code());
+                renderer.Prepare(
+                    delayedDraws, sharedStates, AsFloat4x4(Float3(-samplePoint)), meshToModel);
+
+                ModelRenderer::Sort(delayedDraws);
+                for (unsigned c=0; c<unsigned(RenderCore::Assets::DelayStep::Max); ++c)
+                    ModelRenderer::RenderPrepared(
+                        RenderCore::Assets::ModelRendererContext(
+                            metalContext, parserContext, Techniques::TechniqueIndex::ShadowGen),
+                        sharedStates, delayedDraws, RenderCore::Assets::DelayStep(c));
+
             } CATCH(...) {
                 savedTargets.ResetToOldTargets(metalContext);
                 throw;

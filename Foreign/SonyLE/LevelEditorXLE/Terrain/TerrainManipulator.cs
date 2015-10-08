@@ -18,7 +18,7 @@ namespace LevelEditorXLE.Terrain
     [Export(typeof(IInitializable))]
     [Export(typeof(XLEBridgeUtils.IShutdownWithEngine))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class TerrainManipulator : LevelEditorCore.IManipulator, IInitializable, XLEBridgeUtils.IShutdownWithEngine, IDisposable
+    public class TerrainManipulator : LevelEditorCore.IManipulator, IInitializable, XLEBridgeUtils.IShutdownWithEngine, IDisposable, XLEBridgeUtils.IManipulatorExtra
     {
         public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc, scrPt); }
         public void Render(LevelEditorCore.ViewControl vc)                     { _nativeManip.Render(vc); }
@@ -41,6 +41,8 @@ namespace LevelEditorXLE.Terrain
 			// m_tmpOps.Clear();
 		}
         public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc, scrPt, delta); }
+
+        public bool ClearBeforeDraw() { return false; }
 
         public LevelEditorCore.ManipulatorInfo ManipulatorInfo
         {
