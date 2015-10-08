@@ -138,7 +138,7 @@ namespace SceneEngine
     RTShadowsBox::~RTShadowsBox() {}
 
 
-    static const std::string StringShadowCascadeMode = "SHADOW_CASCADE_MODE";
+    static const utf8* StringShadowCascadeMode = u("SHADOW_CASCADE_MODE");
 
     PreparedRTShadowFrustum PrepareRTShadows(
         Metal::DeviceContext& metalContext, 
@@ -202,7 +202,7 @@ namespace SceneEngine
         parserContext.SetGlobalCB(metalContext, TC::CB_OrthoShadowProjection, &preparedResult._orthoCBSource, sizeof(preparedResult._orthoCBSource));
 
         parserContext.GetTechniqueContext()._runtimeState.SetParameter(
-            (const utf8*)StringShadowCascadeMode.c_str(), 
+            StringShadowCascadeMode, 
             preparedResult._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
 
             // Now, we need to transform the object's triangle buffer into shadow
@@ -286,7 +286,7 @@ namespace SceneEngine
 
         metalContext.Bind(Metal::Topology::TriangleList);
         savedTargets.ResetToOldTargets(metalContext);
-        parserContext.GetTechniqueContext()._runtimeState.SetParameter((const utf8*)StringShadowCascadeMode.c_str(), 0);
+        parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringShadowCascadeMode, 0);
 
         preparedResult._listHeadSRV = box._gridBufferSRV;
         preparedResult._linkedListsSRV = box._listsBufferSRV;

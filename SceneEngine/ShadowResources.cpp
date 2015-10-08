@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ShadowResources.h"
+#include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../BufferUploads/ResourceLocator.h"
 
 namespace SceneEngine
@@ -111,6 +112,9 @@ namespace SceneEngine
             Metal::FillMode::Solid,
             desc._rasterDepthBias, desc._depthBiasClamp, desc._slopeScaledBias);
         _rasterizerState = std::move(rasterizerState);
+
+        _stateResolver = Techniques::CreateStateSetResolver_DepthOnly(
+            desc._rasterDepthBias, desc._depthBiasClamp, desc._slopeScaledBias, cullMode);
     }
 
     ShadowWriteResources::~ShadowWriteResources() {}

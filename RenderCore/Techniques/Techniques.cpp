@@ -894,7 +894,7 @@ namespace RenderCore { namespace Techniques
 
     TechniqueContext::TechniqueContext()
     {
-        _defaultStateSetResolver = std::make_shared<StateSetResolver_Default>();
+        _defaultStateSetResolver = CreateStateSetResolver_Default();
     }
 
 }}

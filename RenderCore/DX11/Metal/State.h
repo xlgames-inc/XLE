@@ -452,7 +452,7 @@ namespace RenderCore { namespace Metal_DX11
 
         ViewportDesc(ID3D::DeviceContext* context);
         ViewportDesc(const DeviceContext& context);
-        ViewportDesc(float topLeftX, float topLeftY, float width, float height, float minDepth, float maxDepth)
+        ViewportDesc(float topLeftX, float topLeftY, float width, float height, float minDepth=0.f, float maxDepth=1.f)
             : TopLeftX(topLeftX), TopLeftY(topLeftY), Width(width), Height(height)
             , MinDepth(minDepth), MaxDepth(maxDepth) {}
         ViewportDesc() {}

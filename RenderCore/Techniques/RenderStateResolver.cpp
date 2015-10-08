@@ -54,15 +54,22 @@ namespace RenderCore { namespace Techniques
         return Metal::RasterizerState(cullMode, true, fillMode, depthBias, 0.f, 0.f);
     }
 
-    auto StateSetResolver_Default::Resolve(
-        const RenderStateSet& states, 
-        const Utility::ParameterBox& globalStates,
-        unsigned techniqueIndex) -> CompiledRenderStateSet
+    class StateSetResolver_Default : public IStateSetResolver
     {
-        return CompiledRenderStateSet(Metal::BlendState(CommonResources()._blendOpaque), BuildRastizerState(states));
-    }
+    public:
+        auto Resolve(
+            const RenderStateSet& states, 
+            const Utility::ParameterBox& globalStates,
+            unsigned techniqueIndex) -> CompiledRenderStateSet
+        {
+            return CompiledRenderStateSet(Metal::BlendState(CommonResources()._blendOpaque), BuildRastizerState(states));
+        }
 
-    uint64 StateSetResolver_Default::GetHash() { return typeid(StateSetResolver_Default).hash_code(); }
+        virtual uint64 GetHash()
+        {
+            return typeid(StateSetResolver_Default).hash_code();
+        }
+    };
 
     class StateSetResolver_Deferred : public IStateSetResolver
     {
@@ -109,7 +116,7 @@ namespace RenderCore { namespace Techniques
         virtual uint64 GetHash() { return typeid(StateSetResolver_Forward).hash_code(); }
     };
 
-    class StateSetResolver_Shadows : public IStateSetResolver
+    class StateSetResolver_DepthOnly : public IStateSetResolver
     {
     public:
         auto Resolve(
@@ -131,22 +138,35 @@ namespace RenderCore { namespace Techniques
 
         virtual uint64 GetHash() { return _hashCode; }
 
-        StateSetResolver_Shadows(int depthBias, float depthBiasClamp, float slopeScaledBias)
+        StateSetResolver_DepthOnly(
+            int depthBias, float depthBiasClamp, 
+            float slopeScaledBias, Metal::CullMode::Enum cullMode)
         {
             using namespace Metal;
-            _rs[0x0] = RasterizerState(CullMode::Back, true, FillMode::Solid, depthBias, depthBiasClamp, slopeScaledBias);
+            _rs[0x0] = RasterizerState(cullMode, true, FillMode::Solid, depthBias, depthBiasClamp, slopeScaledBias);
             _rs[0x1] = RasterizerState(CullMode::None, true, FillMode::Solid, depthBias, depthBiasClamp, slopeScaledBias);
-            _rs[0x2] = RasterizerState(CullMode::Back, true, FillMode::Wireframe, depthBias, depthBiasClamp, slopeScaledBias);
+            _rs[0x2] = RasterizerState(cullMode, true, FillMode::Wireframe, depthBias, depthBiasClamp, slopeScaledBias);
             _rs[0x3] = RasterizerState(CullMode::None, true, FillMode::Wireframe, depthBias, depthBiasClamp, slopeScaledBias);
             _hashCode = HashCombine(
-                typeid(StateSetResolver_Shadows).hash_code(),
-                HashCombine(HashCombine(depthBias, *(unsigned*)&depthBiasClamp), *(unsigned*)&slopeScaledBias));
+                typeid(StateSetResolver_DepthOnly).hash_code(),
+                HashCombine(HashCombine(HashCombine(depthBias, *(unsigned*)&depthBiasClamp), *(unsigned*)&slopeScaledBias), cullMode));
         }
 
     protected:
         Metal::RasterizerState _rs[4];
         uint64 _hashCode;
     };
+
+    std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Default()     { return std::make_shared<StateSetResolver_Default>(); }
+    std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Forward()     { return std::make_shared<StateSetResolver_Forward>(); }
+    std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Deferred()    { return std::make_shared<StateSetResolver_Deferred>(); }
+    std::shared_ptr<IStateSetResolver> CreateStateSetResolver_DepthOnly(
+        int depthBias, float depthBiasClamp, 
+        float slopeScaledBias, Metal::CullMode::Enum cullMode)
+    { 
+        return std::make_shared<StateSetResolver_DepthOnly>(
+            depthBias, depthBiasClamp, slopeScaledBias, cullMode); 
+    }
 
 }}
 

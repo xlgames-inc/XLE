@@ -30,6 +30,7 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
@@ -57,6 +58,46 @@ namespace SceneEngine
     unsigned LightingParser_BindLightResolveResources( 
         DeviceContext& context,
         LightingParserContext& parserContext);
+
+    class StateSetResolvers
+    {
+    public:
+        class Desc {};
+
+        using Resolver = std::shared_ptr<Techniques::IStateSetResolver>;
+        Resolver _forward, _deferred, _depthOnly;
+
+        StateSetResolvers(const Desc&)
+        {
+            _forward = Techniques::CreateStateSetResolver_Forward();
+            _deferred = Techniques::CreateStateSetResolver_Deferred();
+            _depthOnly = Techniques::CreateStateSetResolver_DepthOnly();
+        }
+    };
+
+    StateSetResolvers& GetStateSetResolvers() { return Techniques::FindCachedBox2<StateSetResolvers>(); }
+
+    class StateSetChangeMarker
+    {
+    public:
+        StateSetChangeMarker(
+            Techniques::ParsingContext& parsingContext,
+            std::shared_ptr<Techniques::IStateSetResolver> newResolver)
+        {
+            _parsingContext = &parsingContext;
+            _oldResolver = parsingContext.SetStateSetResolver(std::move(newResolver));
+        }
+        ~StateSetChangeMarker()
+        {
+            if (_parsingContext)
+                _parsingContext->SetStateSetResolver(std::move(_oldResolver));
+        }
+        StateSetChangeMarker(const StateSetChangeMarker&);
+        StateSetChangeMarker& operator=(const StateSetChangeMarker&);
+    private:
+        std::shared_ptr<Techniques::IStateSetResolver> _oldResolver;
+        Techniques::ParsingContext* _parsingContext;
+    };
 
         //
         //      Reserve some states as global states
@@ -399,13 +440,18 @@ namespace SceneEngine
         }
 
         ReturnToSteadyState(context);
-        ExecuteScene(
-            context, parserContext, SPS(SPS::BatchFilter::PreDepth, normalRenderToggles),
-            TechniqueIndex_DepthOnly, L"MainScene-DepthOnly");
+        {
+            StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
+            ExecuteScene(
+                context, parserContext, SPS(SPS::BatchFilter::PreDepth, normalRenderToggles),
+                TechniqueIndex_DepthOnly, L"MainScene-DepthOnly");
+        }
 
             /////
 
         ReturnToSteadyState(context);
+        StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._forward);
+
             //  We must disable z write (so all shaders can be early-depth-stencil)
             //      (this is because early-depth-stencil will normally write to the depth
             //      buffer before the alpha test has been performed. The pre-depth pass
@@ -505,17 +551,22 @@ namespace SceneEngine
             //
             // The depth pre-pass helps a little bit for stochastic transparency,
             // but it's not clear that it helps overall.
-        if (enabledSortedTrans && Tweakable("TransPrePass", false))
+        if (enabledSortedTrans && Tweakable("TransPrePass", false)) {
+            StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
             ExecuteScene(
                 context, parserContext, SPS::BatchFilter::TransparentPreDepth,
                 TechniqueIndex_DepthOnly, L"MainScene-TransPreDepth");
-        
-        if (BatchHasContent(parserContext, SPS::BatchFilter::Transparent))
+        }
+
+        if (BatchHasContent(parserContext, SPS::BatchFilter::Transparent)) {
+            StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._forward);
             ExecuteScene(
                 context, parserContext, SPS::BatchFilter::Transparent,
                 TechniqueIndex_General, L"MainScene-PostGBuffer");
+        }
         
         if (hasOITrans) {
+            StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
             if (enabledSortedTrans) {
                 auto duplicatedDepthBuffer = BuildDuplicatedDepthBuffer(&context, mainTargets._msaaDepthBufferTexture.get());
                 auto* transTargets = OrderIndependentTransparency_Prepare(context, parserContext, duplicatedDepthBuffer);
@@ -663,6 +714,8 @@ namespace SceneEngine
                     //
 
                 ReturnToSteadyState(context);
+                StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._deferred);
+
                 ExecuteScene(
                     context, parserContext, SPS::BatchFilter::General,
                     TechniqueIndex_Deferred, L"MainScene-OpaqueGBuffer");
@@ -791,7 +844,7 @@ namespace SceneEngine
         LightingParser_Overlays(&context, parserContext);
     }
 
-    static const std::string StringShadowCascadeMode = "SHADOW_CASCADE_MODE";
+    static const utf8* StringShadowCascadeMode = u("SHADOW_CASCADE_MODE");
 
     PreparedDMShadowFrustum LightingParser_PrepareDMShadow(
         DeviceContext& context, LightingParserContext& parserContext, 
@@ -802,21 +855,9 @@ namespace SceneEngine
         if (!projectionCount)
             return PreparedDMShadowFrustum();
 
-        SPS sceneParseSettings(
-            SPS::BatchFilter::DMShadows, 
-            ~SPS::Toggles::BitField(0),
-            shadowFrustumIndex);
+        SPS sceneParseSettings(SPS::BatchFilter::DMShadows, ~SPS::Toggles::BitField(0), shadowFrustumIndex);
         if (!BatchHasContent(parserContext, sceneParseSettings))
             return PreparedDMShadowFrustum();
-
-        ViewportDesc newViewport[MaxShadowTexturesPerLight];
-        for (unsigned c=0; c<frustum._projections._count; ++c) {
-            newViewport[c].TopLeftX = newViewport[c].TopLeftY = 0;
-            newViewport[c].Width = float(frustum._width);
-            newViewport[c].Height = float(frustum._height);
-            newViewport[c].MinDepth = 0.f;
-            newViewport[c].MaxDepth = 1.f;
-        }
 
         PreparedDMShadowFrustum preparedResult;
         preparedResult.InitialiseConstants(&context, frustum._projections);
@@ -834,8 +875,12 @@ namespace SceneEngine
             //  we need to set the "shadow cascade mode" settings to the right
             //  mode for this prepare step;
         parserContext.GetTechniqueContext()._runtimeState.SetParameter(
-            (const utf8*)StringShadowCascadeMode.c_str(), 
+            StringShadowCascadeMode, 
             preparedResult._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
+        auto cleanup = MakeAutoCleanup(
+            [&parserContext]() {
+                parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringShadowCascadeMode, 0);
+            });
 
             /////////////////////////////////////////////
 
@@ -850,42 +895,36 @@ namespace SceneEngine
 
             /////////////////////////////////////////////
 
-        using namespace RenderCore::Metal;
         SavedTargets savedTargets(context);
+        auto resetMarker = savedTargets.MakeResetMarker(context);
+        context.Bind(RenderCore::ResourceList<RenderTargetView,0>(), &targetsBox._depthStencilView);
+        context.Bind(Metal::ViewportDesc(0.f, 0.f, float(frustum._width), float(frustum._height)));
 
-        CATCH_ASSETS_BEGIN
-            context.Bind(RenderCore::ResourceList<RenderTargetView,0>(), &targetsBox._depthStencilView);
-            context.Bind(newViewport[0]);
-            context.Bind(resources._rasterizerState);
-            for (unsigned c=0; c<projectionCount; ++c) {
-                    // note --  do we need to clear each slice individually? Or can we clear a single DSV 
-                    //          representing the whole thing? What if we don't need every slice for this 
-                    //          frame? Is there a benefit to skipping unnecessary slices?
-                context.Clear(targetsBox._dsvBySlice[c], 1.f, 0);  
-            }
+        for (unsigned c=0; c<projectionCount; ++c) {
+                // note --  do we need to clear each slice individually? Or can we clear a single DSV 
+                //          representing the whole thing? What if we don't need every slice for this 
+                //          frame? Is there a benefit to skipping unnecessary slices?
+            context.Clear(targetsBox._dsvBySlice[c], 1.f, 0);  
+        }
 
-                /////////////////////////////////////////////
+        Float4x4 savedWorldToProjection = parserContext.GetProjectionDesc()._worldToProjection;
+        parserContext.GetProjectionDesc()._worldToProjection = frustum._worldToClip;
+        auto cleanup2 = MakeAutoCleanup(
+            [&parserContext, &savedWorldToProjection]() {
+                parserContext.GetProjectionDesc()._worldToProjection = savedWorldToProjection;
+            });
 
-            Float4x4 savedWorldToProjection = parserContext.GetProjectionDesc()._worldToProjection;
-            parserContext.GetProjectionDesc()._worldToProjection = frustum._worldToClip;
-            ExecuteScene(
-                context, parserContext, sceneParseSettings,
-                TechniqueIndex_ShadowGen, L"ShadowGen-Prepare");
+            /////////////////////////////////////////////
 
-            for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p) {
-                (*p)->OnPostSceneRender(&context, parserContext, sceneParseSettings, TechniqueIndex_ShadowGen);
-            }
+        StateSetChangeMarker stateMarker(parserContext, resources._stateResolver);
+        context.Bind(resources._rasterizerState);
+        ExecuteScene(
+            context, parserContext, sceneParseSettings,
+            TechniqueIndex_ShadowGen, L"ShadowGen-Prepare");
 
-            parserContext.GetProjectionDesc()._worldToProjection = savedWorldToProjection;
-   
-                /////////////////////////////////////////////
-        CATCH_ASSETS_END(parserContext)
-
-        savedTargets.ResetToOldTargets(context);
-        context.Bind(Techniques::CommonResources()._defaultRasterizer);
-
-        parserContext.GetTechniqueContext()._runtimeState.SetParameter((const utf8*)StringShadowCascadeMode.c_str(), 0);
-
+        for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p)
+            (*p)->OnPostSceneRender(&context, parserContext, sceneParseSettings, TechniqueIndex_ShadowGen);
+        
         return std::move(preparedResult);
     }
 
@@ -909,19 +948,21 @@ namespace SceneEngine
             auto frustum = parserContext.GetSceneParser()->GetShadowProjectionDesc(
                 c, parserContext.GetProjectionDesc());
 
-            if (frustum._resolveType == ShadowProjectionDesc::ResolveType::DepthTexture) {
+            CATCH_ASSETS_BEGIN
+                if (frustum._resolveType == ShadowProjectionDesc::ResolveType::DepthTexture) {
 
-                auto shadow = LightingParser_PrepareDMShadow(context, parserContext, frustum, c);
-                if (shadow.IsReady())
-                    parserContext._preparedDMShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
+                    auto shadow = LightingParser_PrepareDMShadow(context, parserContext, frustum, c);
+                    if (shadow.IsReady())
+                        parserContext._preparedDMShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
 
-            } else if (frustum._resolveType == ShadowProjectionDesc::ResolveType::RayTraced) {
+                } else if (frustum._resolveType == ShadowProjectionDesc::ResolveType::RayTraced) {
 
-                auto shadow = LightingParser_PrepareRTShadow(context, parserContext, frustum, c);
-                if (shadow.IsReady())
-                    parserContext._preparedRTShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
+                    auto shadow = LightingParser_PrepareRTShadow(context, parserContext, frustum, c);
+                    if (shadow.IsReady())
+                        parserContext._preparedRTShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
 
-            }
+                }
+            CATCH_ASSETS_END(parserContext)
         }
     }
 

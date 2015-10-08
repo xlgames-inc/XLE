@@ -8,6 +8,7 @@
 
 #include "../Metal/Forward.h"       // for Metal::Blend
 #include "../../Core/Types.h"
+#include <memory>
 
 namespace Utility { class ParameterBox; }
 
@@ -142,15 +143,12 @@ namespace RenderCore { namespace Techniques
         virtual ~IStateSetResolver();
     };
 
+    std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Default();
+    std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Forward();
+    std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Deferred();
+    std::shared_ptr<IStateSetResolver> CreateStateSetResolver_DepthOnly(
+        int depthBias=0, float depthBiasClamp=0, float slopeScaledBias=0.f,
+        Metal::CullMode::Enum cullMode = Metal::CullMode::Enum(3));
 
-    class StateSetResolver_Default : public IStateSetResolver
-    {
-    public:
-        auto Resolve(
-            const RenderStateSet& states, 
-            const Utility::ParameterBox& globalStates,
-            unsigned techniqueIndex) -> CompiledRenderStateSet;
-        virtual uint64 GetHash();
-    };
 }}
 
