@@ -8,6 +8,7 @@
 #include "../RenderCore/Assets/MeshDatabase.h"
 #include "../Math/Geometry.h"
 #include "../Utility/MemoryUtils.h"
+#include "../Utility/StringUtils.h"
 
 namespace RenderCore { namespace ColladaConversion
 {
@@ -257,7 +258,7 @@ namespace RenderCore { namespace ColladaConversion
                 //      look for the same element in the destination layout (or put ~uint16(0x0) if it's not there)
             elementReordering[source-sourceLayoutBegin] = ~uint32(0x0);
             for (auto destination=destinationLayoutBegin; destination!=destinationLayoutEnd; ++destination) {
-                if (    destination->_semanticName   == source->_semanticName 
+                if (    !XlCompareString(destination->_semanticName, source->_semanticName)
                     &&  destination->_semanticIndex  == source->_semanticIndex
                     &&  destination->_nativeFormat   == source->_nativeFormat) {
 
