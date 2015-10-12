@@ -295,7 +295,7 @@ namespace SceneEngine
                         auto& airLight = FindCachedBox<AirLightResources>(AirLightResources::Desc());
                         
                         context->BindCS(MakeResourceList(3, fogRes._inscatterPointLightsValuesUnorderedAccess));
-                        context->BindCS(MakeResourceList(13, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds").GetShaderResource()));
+                        context->BindCS(MakeResourceList(13, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
                         context->BindCS(MakeResourceList(1, airLight._lookupShaderResource));
                         context->Bind(*fogShaders._injectPointLightSources);
                         context->Dispatch(160/10, 90/10, 128/8);

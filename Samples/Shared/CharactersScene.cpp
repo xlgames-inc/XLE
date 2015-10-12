@@ -110,7 +110,7 @@ namespace Sample
 
                 auto si = _pimpl->_preallocatedState.begin();
                 for (auto i=_pimpl->_stateCache.begin(); i!=_pimpl->_stateCache.end(); ++i, ++si) {
-                    TRY {
+                    CATCH_ASSETS_BEGIN
                         const auto& model = *i->_model;
 
                         si->_animState = RenderCore::Assets::AnimationState(i->_time, i->_animation);
@@ -124,8 +124,7 @@ namespace Sample
                                 &model.GetPrepareMachine().GetSkeletonBinding());
                             model.GetRenderer().Render(modelContext, _pimpl->_charactersSharedStateSet, *i2, meshToModel, AsPointer(si));
                         }
-                    } CATCH(const std::exception&) {
-                    } CATCH_END
+                    CATCH_ASSETS_END(parserContext)
                 }
 
             } else {
@@ -146,7 +145,7 @@ namespace Sample
 
                 auto si = _pimpl->_preallocatedState.begin();
                 for (auto i=_pimpl->_stateCache.begin(); i!=_pimpl->_stateCache.end(); ++i, ++si) {
-                    TRY {
+                    CATCH_ASSETS_BEGIN
                         const auto& model = *i->_model;
                         for (auto i2=i->_instances.cbegin(); i2!=i->_instances.cend(); ++i2) {
                             // RenderCore::Assets::ModelRenderer::MeshToModel meshToModel(
@@ -158,8 +157,7 @@ namespace Sample
                             model.GetRenderer().Render(modelContext, _pimpl->_charactersSharedStateSet, *i2, 
                                 /*&meshToModel*/ RenderCore::Assets::MeshToModel(), AsPointer(si));
                         }
-                    } CATCH(const std::exception&) {
-                    } CATCH_END
+                    CATCH_ASSETS_END(parserContext)
                 }
 
                 GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "RenderCharacters", GPUProfiler::End);
@@ -177,13 +175,12 @@ namespace Sample
                 //
 
             for (auto i=_pimpl->_stateCache.begin(); i!=_pimpl->_stateCache.end(); ++i) {
-                TRY {
+                CATCH_ASSETS_BEGIN
                     const auto& model = *i->_model;
                     for (auto i2=i->_instances.cbegin(); i2!=i->_instances.cend(); ++i2) {
                         model.GetRenderer().Render(modelContext, _pimpl->_charactersSharedStateSet, *i2);
                     }
-                } CATCH(const std::exception&) {
-                } CATCH_END
+                CATCH_ASSETS_END(parserContext)
             }
 
         }
@@ -229,7 +226,7 @@ namespace Sample
                 si->_animState = RenderCore::Assets::AnimationState(i->_time, i->_animation);
                 model.GetPrepareMachine().PrepareAnimation(context, *si);
                 model.GetRenderer().PrepareAnimation(context, *si, model.GetPrepareMachine().GetSkeletonBinding());
-            } CATCH(const std::exception&) {
+            } CATCH(const ::Assets::Exceptions::AssetException&) {
             } CATCH_END
         }
 

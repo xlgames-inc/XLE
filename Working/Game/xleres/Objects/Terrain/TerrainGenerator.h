@@ -113,7 +113,7 @@ float SampleCoverageTileSet_Int(Texture2DArray<uint> tileSet, uint tileSetIndex,
 		+ samples[2] * w[2] + samples[3] * w[3] );
 }
 
-float SampleCoverageTileSet_Int(Texture2DArray<float2> tileSet, uint tileSetIndex, float2 texCoord)
+float2 SampleCoverageTileSet_Int(Texture2DArray<float2> tileSet, uint tileSetIndex, float2 texCoord)
 {
 	float2 finalTexCoord = lerp(CoverageCoordMins[tileSetIndex].xy, CoverageCoordMaxs[tileSetIndex].xy, texCoord);
 

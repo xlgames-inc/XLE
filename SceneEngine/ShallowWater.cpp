@@ -1150,7 +1150,7 @@ namespace SceneEngine
             _lookupTableSRV));
         metalContext.BindPS(MakeResourceList(5, _simulationGrid->_normalsTextureShaderResource));
         if (_simulationGrid->_foamQuantitySRV[bufferCounter&1].IsGood())
-            metalContext.BindPS(MakeResourceList(11, _simulationGrid->_foamQuantitySRV[bufferCounter&1]));
+            metalContext.BindPS(MakeResourceList(14, _simulationGrid->_foamQuantitySRV[bufferCounter&1]));
         metalContext.BindPS(MakeResourceList(15, _lookupTableSRV));
     }
 
@@ -1158,8 +1158,7 @@ namespace SceneEngine
     {
         metalContext.UnbindVS<Metal::ShaderResourceView>(3, 2);
         metalContext.UnbindPS<Metal::ShaderResourceView>(5, 1);
-        metalContext.UnbindPS<Metal::ShaderResourceView>(11, 1);
-        metalContext.UnbindPS<Metal::ShaderResourceView>(15, 1);
+        metalContext.UnbindPS<Metal::ShaderResourceView>(14, 2);
     }
 
     void ShallowWaterSim::BindForErosionSimulation(MetalContext& metalContext, unsigned bufferCounter)

@@ -37,10 +37,11 @@ void DoDitherAlphaTest(VSOutput geo, int2 pixelCoords, uint primitiveID)
 #if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_DITHER_SHADOWS==1)))
 	[earlydepthstencil]
 #endif
-void main(VSOutput geo) //, uint primitiveID : SV_PrimitiveID)
+void main(VSOutput geo)
 {
 	#if (OUTPUT_TEXCOORD==1) && (MAT_ALPHA_DITHER_SHADOWS==1)
 		DoDitherAlphaTest(geo, int2(geo.position.xy), geo.primitiveId);
+		// AlphaTestAlgorithm(DiffuseTexture, DefaultSampler, geo.texCoord, AlphaThreshold);
 	#else
 		DoAlphaTest(geo);
 	#endif

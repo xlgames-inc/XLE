@@ -408,7 +408,11 @@ namespace Assets
     PendingCompileMarker::PendingCompileMarker(AssetState state, const char sourceID0[], uint64 sourceID1, std::shared_ptr<Assets::DependencyValidation> depVal)
     : PendingOperationMarker(state, std::move(depVal)), _sourceID1(sourceID1)
     {
-        XlCopyString(_sourceID0, sourceID0);
+        if (sourceID0) {
+            XlCopyString(_sourceID0, sourceID0);
+        } else {
+            _sourceID0[0] = '\0';
+        }
     }
 
     PendingCompileMarker::~PendingCompileMarker() {}

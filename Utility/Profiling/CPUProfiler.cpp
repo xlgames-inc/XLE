@@ -42,9 +42,11 @@ namespace Utility
 
     static bool CompareParentAndChildLink(const ParentAndChildLink& lhs, const ParentAndChildLink& rhs)
     {
-            //  sort by parent first, and then label, and finally child
+            //  Sort by parent first, and then label, and finally child
             //  This will resolve in a breadth-first ordering, and all
             //  children with the same label will be sequential.
+            //  Note that by sorting by label will knock the output out
+            //  of chronological order.
         if (lhs._parent == rhs._parent) {
             if (lhs._label == rhs._label) {
                 return lhs._child < rhs._child;
@@ -54,11 +56,18 @@ namespace Utility
         return lhs._parent < rhs._parent;
     }
 
+    struct CompareParent
+    {
+        bool operator()(const ParentAndChildLink& lhs, const uint64* rhs) { return lhs._parent < rhs; }
+        bool operator()(const uint64* lhs, const ParentAndChildLink& rhs) { return lhs < rhs._parent; }
+        bool operator()(const ParentAndChildLink& lhs, const ParentAndChildLink& rhs) { return lhs._parent < rhs._parent; }
+    };
+
     static HierarchicalCPUProfiler::ResolvedEvent BlankEvent(const char label[])
     {
         HierarchicalCPUProfiler::ResolvedEvent evnt;
         evnt._label = label;
-        evnt._inclusiveTime = evnt._exclusiveTime =0 ;
+        evnt._inclusiveTime = evnt._exclusiveTime = 0;
         evnt._eventCount = 0;
         evnt._firstChild = HierarchicalCPUProfiler::ResolvedEvent::s_id_Invalid;
         evnt._sibling = HierarchicalCPUProfiler::ResolvedEvent::s_id_Invalid;
@@ -76,7 +85,7 @@ namespace Utility
         parentsAndChildren.reserve(_events[1].size()/2);    // Approximation of events count
 
         unsigned workingStack[s_maxStackDepth];
-        unsigned _workingStackIndex = 0;
+        unsigned _workingStackDepth = 0;
         auto workingId = _idAtEventsStart[1];
 
         auto i=_events[1].cbegin();
@@ -89,10 +98,10 @@ namespace Utility
                     //  then we've popped too many times!
 
                 time &= ~(1ull << 63ull);
-                if (!_workingStackIndex) {
+                if (!_workingStackDepth) {
                     assert(0);
                 } else {
-                    auto entryIndex = workingStack[_workingStackIndex-1];
+                    auto entryIndex = workingStack[_workingStackDepth-1];
                     assert(entryIndex < parentsAndChildren.size());
                     auto& entry = parentsAndChildren[entryIndex];
 
@@ -100,10 +109,10 @@ namespace Utility
                     assert(time >= startTime);
                     uint64 inclusiveTime = time - startTime;
                     entry._resolvedInclusiveTime = inclusiveTime;
-                    --_workingStackIndex;
+                    --_workingStackDepth;
 
-                    if (_workingStackIndex > 0) {
-                        auto parentIndex = workingStack[_workingStackIndex-1];
+                    if (_workingStackDepth > 0) {
+                        auto parentIndex = workingStack[_workingStackDepth-1];
                         assert(parentIndex < parentsAndChildren.size());
                         auto& parentEntry = parentsAndChildren[parentIndex];
                         parentEntry._resolvedChildrenTime += entry._resolvedInclusiveTime;
@@ -112,13 +121,13 @@ namespace Utility
 
             } else {
 
-                assert((_workingStackIndex+1) <= dimof(workingStack));
+                assert((_workingStackDepth+1) <= dimof(workingStack));
 
                     // create a new parent and child link, and add to our list
                 ParentAndChildLink link;
                 link._parent = nullptr;
-                if (_workingStackIndex > 0) {
-                    link._parent = parentsAndChildren[workingStack[_workingStackIndex-1]]._child;
+                if (_workingStackDepth > 0) {
+                    link._parent = parentsAndChildren[workingStack[_workingStackDepth-1]]._child;
                 }
                 link._child = AsPointer(i);
                 link._label = (const char*)*(i+1);
@@ -126,7 +135,7 @@ namespace Utility
                 link._resolvedChildrenTime = link._resolvedInclusiveTime = 0;
                 ++i;
 
-                workingStack[_workingStackIndex++] = (unsigned)parentsAndChildren.size();
+                workingStack[_workingStackDepth++] = (unsigned)parentsAndChildren.size();
                 parentsAndChildren.push_back(link);
 
             }
@@ -134,7 +143,7 @@ namespace Utility
 
             //  Sort into breadth first order. Note that it really is breadth first order.
             //  the first sorting term is a pointer into the event list, and this will
-            //  always work out to put children immediately after their children.
+            //  always work out to put children immediately after their parent.
         std::sort(parentsAndChildren.begin(), parentsAndChildren.end(), CompareParentAndChildLink);
 
             //  Now we have to go through and generate breadth-first output
@@ -151,20 +160,15 @@ namespace Utility
             const uint64* _parentLinkSearch;
         };
 
-        std::stack<PreResolveEvent> finalResolveQueue;
+        std::queue<PreResolveEvent> finalResolveQueue;
         // finalResolveQueue.reserve(s_maxStackDepth);
-
-        auto inputI = parentsAndChildren.cbegin();
-        auto rootEventsStart = inputI++;
-        while (inputI->_parent == nullptr) { ++inputI; }
-        auto rootEventsEnd = inputI;
 
         auto lastRootEventOutputId = ResolvedEvent::s_id_Invalid;
 
             //  For each root event, we must start the tree, and queue the children
             //  Note that we're not merging root events here! Merging occurs for every
             //  other events, just not the root events
-        for (auto root = rootEventsStart; root < rootEventsEnd; ++root) {
+        for (auto root=parentsAndChildren.cbegin(); root<parentsAndChildren.cend() && root->_parent==nullptr; ++root) {
             auto outputId = (ResolvedEvent::Id)result.size();
             if (lastRootEventOutputId != ResolvedEvent::s_id_Invalid) {
                     // attach the new root event as a sibling of the last one added
@@ -200,19 +204,18 @@ namespace Utility
             //  identical labels occur at the same tree depth, they get merged to 
             //  become a single event.
         while (!finalResolveQueue.empty()) {
-            const auto w = finalResolveQueue.top();
+            const auto w = finalResolveQueue.front();
             finalResolveQueue.pop();
             auto& parentOutput = result[w._parentOutput];
 
-            auto childrenStart = inputI;
-            while (inputI < parentsAndChildren.cend() && inputI->_parent == w._parentLinkSearch) { ++inputI; }
-            auto childrenEnd = inputI;
+            auto childrenRange = std::equal_range(
+                parentsAndChildren.cbegin(), parentsAndChildren.cend(), w._parentLinkSearch, CompareParent());
 
-            auto childIterator = childrenStart;
-            while (childIterator < childrenEnd) {
+            auto childIterator = childrenRange.first;
+            while (childIterator < childrenRange.second) {
                 auto mergedChildStart = childIterator;
                 auto mergedChildEnd = mergedChildStart+1;
-                while (mergedChildEnd < parentsAndChildren.cend() && mergedChildEnd->_label == mergedChildStart->_label) { ++mergedChildEnd; }
+                while (mergedChildEnd < childrenRange.second && mergedChildEnd->_label == mergedChildStart->_label) { ++mergedChildEnd; }
 
                     //  All of these children will be collapsed into a single
                     //  resolved event. But first we need to check if there
@@ -260,10 +263,6 @@ namespace Utility
             }
         }
 
-            //  We should always get to the end of this array. If we don't get all the way through, it means that
-            //  the ordering must off. It means we're going to loose the results of some children
-        assert(inputI == parentsAndChildren.cend());
-        
         return result;
     }
 

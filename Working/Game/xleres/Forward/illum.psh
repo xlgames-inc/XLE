@@ -35,7 +35,9 @@ float3 ResolveLitColor(
 				uint cascade; float4 fc;
 				FindCascade_FromWorldPosition(cascade, fc, worldPosition);
 				if (cascade < min(GetShadowSubProjectionCount(), ShadowMaxSubProjections)) {
-					shadowing[0] = ResolveShadows_Cascade(cascade, fc, pixelCoords, sampleIndex);
+					shadowing[0] = ResolveShadows_Cascade(
+						cascade, fc, pixelCoords, sampleIndex,
+						ShadowResolveConfig_NoFilter());
 				}
 			#endif
 		}

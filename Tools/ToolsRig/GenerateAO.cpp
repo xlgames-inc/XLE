@@ -459,11 +459,25 @@ namespace ToolsRig
             
                 LogInfo << "Starting AO gen of " << samplePoints.size() << " pts";
                 for (size_t p=0; p!=samplePoints.size(); ++p) {
-                    float skyDomeOcc =
-                        gen.CalculateSkyDomeOcclusion(
-                            threadContext, 
-                            *renderer, sharedStates, meshToModel,
-                            samplePoints[p]);
+                    float skyDomeOcc;
+
+                        // unfortunately we have to attempt in an infinite loop
+                        // while we have pending assets...
+                        // It would be much better if we could just collect the 
+                        // assets we're going to use, and prepare them all
+                        //  -- but currently we don't have a method to do that.
+                    for (;;) {
+                        TRY
+                        {
+                            skyDomeOcc = gen.CalculateSkyDomeOcclusion(
+                                threadContext, 
+                                *renderer, sharedStates, meshToModel,
+                                samplePoints[p]);
+                        } CATCH (::Assets::Exceptions::PendingAsset&) {
+                            continue;
+                        } CATCH_END
+                        break;
+                    }
 
                         // CalculateSkyDomeOcclusion returned the quantity of the skydome that is occluded
                         // We want to write the complement of this value (1.0f - occlusion) to the vertex

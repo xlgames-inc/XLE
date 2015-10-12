@@ -38,7 +38,7 @@ float4 DebugShadows(float2 texCoord)
 	return float4(shadowSample.xxx, 1.f);
 }
 
-float ResolvePointLightShadows(float3 worldPosition, int2 randomizerValue, uint msaaSampleIndex)
+float ResolvePointLightShadows(float3 worldPosition, int2 randomizerValue, uint msaaSampleIndex, ShadowResolveConfig config)
 {
 		// simplified version of ResolveShadows for point lights
 	float4 frustumCoordinates;
@@ -75,10 +75,10 @@ float ResolvePointLightShadows(float3 worldPosition, int2 randomizerValue, uint 
 			AsMiniProjZW(miniProj));
 	}
 
-	if (DoShadowFiltering) {
+	if (config._doFiltering) {
 		return CalculateFilteredShadows(
 			texCoords, biasedDepth, c, casterDistance, randomizerValue,
-			miniProj.xy, msaaSampleIndex);
+			miniProj.xy, msaaSampleIndex, config);
 	} else {
 		return TestShadow(texCoords, c, biasedDepth);
 	}
@@ -144,7 +144,8 @@ float4 ResolveLight(	float4 position : SV_Position,
 	float shadow = 1.f;		// area outside of all cascades is considered outside of shadow...
 	if (finalCascadeIndex < min(GetShadowSubProjectionCount(), ShadowMaxSubProjections)) {
 		shadow = ResolveShadows_Cascade(
-			finalCascadeIndex, cascadeNormCoords, pixelCoords, GetSampleIndex(sys));
+			finalCascadeIndex, cascadeNormCoords, pixelCoords, GetSampleIndex(sys),
+			ShadowResolveConfig_Default());
 	}
 
 	GBufferValues sample = LoadGBuffer(position, sys);
@@ -166,7 +167,7 @@ float4 ResolvePointLight(	float4 position : SV_Position,
 
 	int2 pixelCoords = position.xy;
 	float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
-	float shadow = ResolvePointLightShadows(worldPosition, pixelCoords, GetSampleIndex(sys));
+	float shadow = ResolvePointLightShadows(worldPosition, pixelCoords, GetSampleIndex(sys), ShadowResolveConfig_Default());
 	GBufferValues sample = LoadGBuffer(position, sys);
 
 	float3 lightVector = (Light.NegativeDirection - worldPosition);

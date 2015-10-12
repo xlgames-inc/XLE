@@ -5,19 +5,23 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "EnvFeatures.h"
+#include "SampleGlobals.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/VolumetricFog.h"
 #include "../../SceneEngine/ShallowSurface.h"
 #include "../../SceneEngine/VegetationSpawn.h"
 #include "../../SceneEngine/SceneEngineUtils.h" // for AsDelaySteps
+#include "../../RenderCore/Metal/GPUProfiler.h"
 #include "../../Tools/EntityInterface/EnvironmentSettings.h"
 #include "../../Tools/EntityInterface/RetainedEntities.h"
 #include "../../Assets/ConfigFileContainer.h"
+#include "../../Utility/Profiling/CPUProfiler.h"
 
 namespace Sample
 {
     static const ::Assets::ResChar VegetationSpawnCfg[] = "vegetationspawn.cfg";
+    namespace GPUProfiler = RenderCore::Metal::GPUProfiler;
 
     void ScenePlugin_EnvironmentFeatures::LoadingPhase()
     {
@@ -39,6 +43,21 @@ namespace Sample
         parserContext._plugins.push_back(_volumetricFogMan->GetParserPlugin());
     }
 
+    static const char* VegetationSpawnName(SceneEngine::SceneParseSettings::BatchFilter batchFilter)
+    {
+        using BF = SceneEngine::SceneParseSettings::BatchFilter;
+        switch (batchFilter) {
+        case BF::General: return "VegetationSpawn-General";
+        case BF::Transparent:
+        case BF::OITransparent: return "VegetationSpawn-Transparent";
+        case BF::PreDepth:
+        case BF::TransparentPreDepth: return "VegetationSpawn-PreDepth";
+        case BF::DMShadows:
+        case BF::RayTracedShadows: return "VegetationSpawn-Shadows";
+        default: return "VegetationSpawn-Unknown";
+        }
+    }
+
     void ScenePlugin_EnvironmentFeatures::ExecuteScene(   
         RenderCore::Metal::DeviceContext* context, 
         SceneEngine::LightingParserContext& parserContext, 
@@ -49,16 +68,25 @@ namespace Sample
         using Toggles = SceneEngine::SceneParseSettings::Toggles;
 
         if (parseSettings._toggles & Toggles::NonTerrain) {
-
             auto delaySteps = SceneEngine::AsDelaySteps(parseSettings._batchFilter);
-            CATCH_ASSETS_BEGIN
-                for (auto i:delaySteps)
-                    _vegetationSpawnManager->Render(*context, parserContext, techniqueIndex, i);
-            CATCH_ASSETS_END(parserContext)
+
+            if (!delaySteps.empty()) {
+                auto* name = VegetationSpawnName(parseSettings._batchFilter);
+                CPUProfileEvent pEvnt(name, g_cpuProfiler);
+                GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), name, GPUProfiler::Begin);
+                CATCH_ASSETS_BEGIN
+                    for (auto i:delaySteps)
+                        _vegetationSpawnManager->Render(*context, parserContext, techniqueIndex, i);
+                CATCH_ASSETS_END(parserContext)
+                GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), name, GPUProfiler::End);
+            }
 
             if (parseSettings._batchFilter == BF::Transparent) {
+                CPUProfileEvent pEvnt("ShallowSurface", g_cpuProfiler);
+                GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "ShallowSurface", GPUProfiler::Begin);
                 if (_shallowSurfaces)
                     _shallowSurfaces->RenderDebugging(*context, parserContext, techniqueIndex, _surfaceHeights.get());
+                GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "ShallowSurface", GPUProfiler::End);
             }
         }
     }

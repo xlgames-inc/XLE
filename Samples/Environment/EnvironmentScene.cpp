@@ -20,6 +20,7 @@
 #include "../../SceneEngine/TerrainMaterial.h"
 #include "../../SceneEngine/SceneEngineUtils.h"     // for AsDelaySteps
 
+#include "../../RenderCore/Metal/GPUProfiler.h"
 #include "../../RenderCore/Assets/ModelCache.h"
 #include "../../Tools/EntityInterface/RetainedEntities.h"
 
@@ -30,11 +31,11 @@
 
 namespace Sample
 {
-    static const char* WorldDirectory = "game/demworld";
-
     std::shared_ptr<SceneEngine::ITerrainFormat>     MainTerrainFormat;
     SceneEngine::TerrainCoordinateSystem             MainTerrainCoords;
     SceneEngine::TerrainConfig                       MainTerrainConfig;
+
+    namespace GPUProfiler = RenderCore::Metal::GPUProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -134,6 +135,21 @@ namespace Sample
             p->PrepareFrame(context, parserContext);
     }
 
+    static const char* PlacementsRenderName(SceneEngine::SceneParseSettings::BatchFilter batchFilter)
+    {
+        using BF = SceneEngine::SceneParseSettings::BatchFilter;
+        switch (batchFilter) {
+        case BF::General: return "PlacementsRender-General";
+        case BF::Transparent:
+        case BF::OITransparent: return "PlacementsRender-Transparent";
+        case BF::PreDepth:
+        case BF::TransparentPreDepth: return "PlacementsRender-PreDepth";
+        case BF::DMShadows:
+        case BF::RayTracedShadows: return "PlacementsRender-Shadows";
+        default: return "PlacementsRender-Unknown";
+        }
+    }
+
     void EnvironmentSceneParser::ExecuteScene(   
         RenderCore::Metal::DeviceContext* context, 
         LightingParserContext& parserContext, 
@@ -149,15 +165,17 @@ namespace Sample
                 &&  parseSettings._batchFilter == BF::General) {
                 if (Tweakable("DoTerrain", true)) {
                     CPUProfileEvent pEvnt("TerrainRender", g_cpuProfiler);
+                    GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "TerrainRender", GPUProfiler::Begin);
                     CATCH_ASSETS_BEGIN
                         _pimpl->_terrainManager->Render(context, parserContext, techniqueIndex);
                     CATCH_ASSETS_END(parserContext)
+                    GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "TerrainRender", GPUProfiler::End);
                 }
             }
         #endif
 
         if (parseSettings._toggles & Toggles::NonTerrain) {
-            if (_pimpl->_characters && (parseSettings._batchFilter == BF::General || parseSettings._batchFilter == BF::PreDepth)) {
+            if (_pimpl->_characters && (parseSettings._batchFilter == BF::General || parseSettings._batchFilter == BF::PreDepth || parseSettings._batchFilter == BF::DMShadows)) {
                 CATCH_ASSETS_BEGIN
                     _pimpl->_characters->Render(context, parserContext, techniqueIndex);
                 CATCH_ASSETS_END(parserContext)
@@ -165,6 +183,9 @@ namespace Sample
 
             if (_pimpl->_placementsManager) {
                 auto delaySteps = SceneEngine::AsDelaySteps(parseSettings._batchFilter);
+                auto* name = PlacementsRenderName(parseSettings._batchFilter);
+                CPUProfileEvent pEvnt(name, g_cpuProfiler);
+                GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), name, GPUProfiler::Begin);
                 CATCH_ASSETS_BEGIN
                     for (auto i:delaySteps)
                         if (i != RenderCore::Assets::DelayStep::OpaqueRender) {
@@ -173,6 +194,7 @@ namespace Sample
                             _pimpl->_placementsManager->Render(context, parserContext, techniqueIndex);
                         }
                 CATCH_ASSETS_END(parserContext)
+                GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), name, GPUProfiler::End);
             }
         }
 

@@ -813,6 +813,14 @@ namespace ColladaConversion
                 finalIndexBuffer.get(), finalIndexCount, indexFormat);
         }
 
+            // If we have normals, tangents & bitangents... then we can remove one of them
+            // (it will be implied by the remaining two). We can choose to remove the 
+            // normal or the bitangent... Lets' remove the binormal, because it makes it 
+            // easier to do low quality rendering with normal maps turned off.
+        const bool removeRedundantBitangents = true;
+        if (constant_expression<removeRedundantBitangents>::result())
+            RemoveRedundantBitangents(*database);
+
         NativeVBLayout vbLayout = BuildDefaultLayout(*database, NativeSettings);
         auto nativeVB = database->BuildNativeVertexBuffer(vbLayout);
 

@@ -243,6 +243,17 @@ namespace RenderCore { namespace ColladaConversion
         // }
 	}
 
+    void RemoveRedundantBitangents(MeshDatabase& mesh)
+    {
+        bool hasNormals = !!(mesh.HasElement("NORMAL") & 0x1);
+        bool hasTangents = !!(mesh.HasElement("TEXTANGENT") & 0x1);
+        if (hasNormals && hasTangents) {
+            auto bitan = mesh.FindElement("TEXBITANGENT");
+            if (bitan != ~0u)
+                mesh.RemoveStream(bitan);
+        }
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void CopyVertexElements(     

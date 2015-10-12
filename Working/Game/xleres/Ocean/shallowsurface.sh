@@ -15,7 +15,7 @@
 
 Texture2D					Foam_Diffuse : register(t4);
 Texture2DArray<float2>		ShallowDerivatives : register(t5);
-Texture2DArray<float>		ShallowFoamQuantity : register(t11);
+Texture2DArray<float>		ShallowFoamQuantity : register(t14);
 
 Texture2DArray<float>       ShallowWaterHeights : register(t3);
 

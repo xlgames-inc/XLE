@@ -569,6 +569,8 @@ namespace SceneEngine
         refractionBox.Build(metalContext, parserContext, refractionStdDev);
 
         SavedTargets targets(metalContext);
+        if (!targets.GetDepthStencilView()) return false;
+
         auto duplicatedDepthBuffer = Metal::DuplicateResource(
             metalContext.GetUnderlying(), 
             Metal::ExtractResource<ID3D::Resource>(targets.GetDepthStencilView()).get());

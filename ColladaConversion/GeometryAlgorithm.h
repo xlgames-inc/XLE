@@ -19,6 +19,9 @@ namespace RenderCore { namespace ColladaConversion
         unsigned normalMapTextureCoordinateSemanticIndex,
         const void* rawIb, size_t indexCount, Metal::NativeFormat::Enum ibFormat);
 
+    void RemoveRedundantBitangents(
+        RenderCore::Assets::GeoProc::MeshDatabase& mesh);
+
     void CopyVertexElements(
         void* destinationBuffer,            size_t destinationVertexStride,
         const void* sourceBuffer,           size_t sourceVertexStride,

@@ -27,3 +27,10 @@
 #if !defined(OUTPUT_SHADOW_PROJECTION_COUNT)
 	#define OUTPUT_SHADOW_PROJECTION_COUNT 6
 #endif
+
+// Normal is only required when wind animation is enabled
+// So disable when we can
+#if !((MAT_VCOLOR_IS_ANIM_PARAM!=0) && (GEO_HAS_COLOUR!=0))
+	#undef GEO_HAS_NORMAL
+	#define GEO_HAS_NORMAL 1
+#endif

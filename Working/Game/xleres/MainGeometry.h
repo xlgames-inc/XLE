@@ -51,13 +51,15 @@ struct VSInput //////////////////////////////////////////////////////
 
     #if GEO_HAS_TANGENT_FRAME==1
         float4 tangent : TEXTANGENT;
-        #if TANGENT_PROCESS_IN_PS==1
-            #if !defined(OUTPUT_LOCAL_TANGENT_FRAME)
-                #define OUTPUT_LOCAL_TANGENT_FRAME 1
-            #endif
-        #else
-            #if !defined(OUTPUT_TANGENT_FRAME)
-                #define OUTPUT_TANGENT_FRAME 1
+        #if RES_HAS_NormalsTexture==1
+            #if TANGENT_PROCESS_IN_PS==1
+                #if !defined(OUTPUT_LOCAL_TANGENT_FRAME)
+                    #define OUTPUT_LOCAL_TANGENT_FRAME 1
+                #endif
+            #else
+                #if !defined(OUTPUT_TANGENT_FRAME)
+                    #define OUTPUT_TANGENT_FRAME 1
+                #endif
             #endif
         #endif
     #endif

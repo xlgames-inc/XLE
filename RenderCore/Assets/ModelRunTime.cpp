@@ -1076,7 +1076,7 @@ namespace RenderCore { namespace Assets
                 }
             
                 const auto& d = md->second;
-                devContext.Bind(Metal::Topology::Enum(d._topology));  // do we really need to set the topology every time?
+                devContext.Bind(Metal::Topology::Enum(d._topology));
 
                     // -- this draw call index stuff is only required in some cases --
                     //      we need some way to customise the model rendering method for different purposes
@@ -1302,6 +1302,8 @@ namespace RenderCore { namespace Assets
         unsigned currentConstantBufferIndex = ~unsigned(0x0);
         SharedTechniqueInterface currentTechniqueInterface = SharedTechniqueInterface::Invalid;
 
+        unsigned currentTopology = ~0u;
+
         for (auto d=entries.cbegin(); d!=entries.cend(); ++d) {
             auto& renderer = *(const ModelRenderer*)d->_renderer;
             const auto& drawCallRes = renderer._pimpl->_drawCallRes[d->_drawCallIndex];
@@ -1376,7 +1378,10 @@ namespace RenderCore { namespace Assets
                 currentConstantBufferIndex = constantBufferIndex;
             }
 
-            context._context->Bind((Metal::Topology::Enum)(d->_topology & 0xff));
+            if ((d->_topology & 0xff) != currentTopology) {
+                currentTopology = d->_topology & 0xff;
+                context._context->Bind(Metal::Topology::Enum(currentTopology));
+            }
             if (constant_expression<HasCallback>::result()) {
                 (*callback)(DrawCallEvent { d->_indexCount, d->_firstIndex, d->_firstVertex, d->_drawCallIndex });
             } else

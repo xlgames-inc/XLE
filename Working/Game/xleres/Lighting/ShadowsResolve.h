@@ -48,6 +48,33 @@ cbuffer ShadowResolveParameters : register(b11)
     float ShadowTextureSize;
 }
 
+struct ShadowResolveConfig
+{
+    bool _doFiltering;
+
+        // "Percentage Closer" configuration
+    bool _pcUsePoissonDiskMethod;
+    bool _pcDoFilterRotation;
+};
+
+ShadowResolveConfig ShadowResolveConfig_Default()
+{
+    ShadowResolveConfig result;
+    result._doFiltering = true;
+    result._pcUsePoissonDiskMethod = SHADOW_RESOLVE_MODEL == 0;
+    result._pcDoFilterRotation = true;
+    return result;
+}
+
+ShadowResolveConfig ShadowResolveConfig_NoFilter()
+{
+    ShadowResolveConfig result;
+    result._doFiltering = false;
+    result._pcUsePoissonDiskMethod = false;
+    result._pcDoFilterRotation = false;
+    return result;
+}
+
 float2 GetRawShadowSampleFilter(uint index)
 {
 #if MSAA_SAMPLES > 1		// hack -- shader optimiser causes a problem with shadow filtering...
@@ -155,10 +182,9 @@ float TestShadow(float2 texCoord, uint arrayIndex, float comparisonDistance)
 float CalculateFilteredShadows(
     float2 texCoords, float comparisonDistance, uint arrayIndex,
     float casterDistance, int2 randomizerValue,
-    float2 projectionScale, uint msaaSampleIndex)
+    float2 projectionScale, uint msaaSampleIndex,
+    ShadowResolveConfig config)
 {
-    const bool usePoissonDiskMethod = SHADOW_RESOLVE_MODEL == 0;
-
         //	In "ShadowsPerspectiveProjection", casterDistance is the difference between 2 NDC depths
         //	Otherwise, casterDistance is world space distance between the sample and caster.
     float filterSize, filterSizePixels;
@@ -179,7 +205,7 @@ float CalculateFilteredShadows(
         filterSize = filterSizePixels / ShadowTextureSize;
     }
 
-    if (usePoissonDiskMethod) {
+    if (config._pcUsePoissonDiskMethod) {
 
         float noiseValue = NoiseTexture.Load(int3(randomizerValue.x & 0xff, randomizerValue.y & 0xff, 0)).r;
         float2 filterRotation;
@@ -252,10 +278,9 @@ float CalculateFilteredShadows(
     //   R E S O L V E
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-static const bool DoShadowFiltering = true;
-
 float ResolveDMShadows(	uint projection, float2 shadowTexCoord, float comparisonDistance,
-                        int2 randomizerValue, uint msaaSampleIndex)
+                        int2 randomizerValue, uint msaaSampleIndex,
+                        ShadowResolveConfig config)
 {
     float casterDistanceComparison = comparisonDistance;
     float biasedDepth;
@@ -288,16 +313,18 @@ float ResolveDMShadows(	uint projection, float2 shadowTexCoord, float comparison
         casterDistance = -NDCDepthDifferenceToWorldSpace_Ortho(casterDistance, miniP);
     }
 
-    if (DoShadowFiltering) {
+    if (config._doFiltering) {
         return CalculateFilteredShadows(
             shadowTexCoord, biasedDepth, projection, casterDistance, randomizerValue,
-            ShadowProjection_GetMiniProj(projection).xy, msaaSampleIndex);
+            ShadowProjection_GetMiniProj(projection).xy, msaaSampleIndex, config);
     } else {
         return TestShadow(shadowTexCoord, projection, biasedDepth);
     }
 }
 
-float ResolveShadows_Cascade(uint cascadeIndex, float4 cascadeNormCoords, int2 randomizerValue, uint msaaSampleIndex)
+float ResolveShadows_Cascade(
+    uint cascadeIndex, float4 cascadeNormCoords, int2 randomizerValue, uint msaaSampleIndex,
+    ShadowResolveConfig config)
 {
     float2 texCoords;
     float comparisonDistance;
@@ -317,7 +344,7 @@ float ResolveShadows_Cascade(uint cascadeIndex, float4 cascadeNormCoords, int2 r
         }
     #endif
 
-    return ResolveDMShadows(cascadeIndex, texCoords, comparisonDistance, randomizerValue, msaaSampleIndex);
+    return ResolveDMShadows(cascadeIndex, texCoords, comparisonDistance, randomizerValue, msaaSampleIndex, config);
 }
 
 

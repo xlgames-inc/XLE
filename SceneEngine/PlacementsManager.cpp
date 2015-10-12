@@ -268,8 +268,6 @@ namespace SceneEngine
             //      times. It just helps reduce file size.
             //
 
-        const auto* filename = plc->Filename().c_str();
-
         void const* i = chunks[0]._buffer.get();
         const auto& hdr = *(const PlacementsHeader*)i;
         if (hdr._version != 0) {
@@ -295,6 +293,7 @@ namespace SceneEngine
         i = PtrAdd(i, hdr._supplementsBufferSize);
 
         #if defined(_DEBUG)
+            const auto* filename = plc->Filename().c_str();
             if (!plc->_objects.empty())
                 plc->LogDetails(filename);
         #endif

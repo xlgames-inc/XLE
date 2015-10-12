@@ -54,8 +54,8 @@ float TerrainResolve_AngleBasedShadows(PSInput geo)
         #if defined(COVERAGE_2)
             float2 shadowSample = SampleCoverageTileSet(COVERAGE_2, geo.texCoord.xy);
             return
-                = saturate(ShadowSoftness * (SunAngle + shadowSample.r))
-                * saturate(ShadowSoftness * (shadowSample.g - SunAngle));
+                   saturate(ShadowSoftness * (SunAngle + shadowSample.r))
+                 * saturate(ShadowSoftness * (shadowSample.g - SunAngle));
         #endif
 
     #endif
@@ -67,6 +67,8 @@ float TerrainResolve_AmbientOcclusion(PSInput geo)
 {
     #if defined(COVERAGE_3)
         return SampleCoverageTileSet(COVERAGE_3, geo.texCoord.xy) / float(0xff);
+    #else
+        return 1;
     #endif
 }
 

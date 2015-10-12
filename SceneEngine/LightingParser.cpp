@@ -534,6 +534,12 @@ namespace SceneEngine
             mainTargets._msaaDepthBufferSRV);
 
         ReturnToSteadyState(context);
+
+            // We must bind all of the lighting resolve resources here
+            //  -- because we'll be doing lighting operations in the pixel
+            //      shaders in a forward-lit way
+        LightingParser_BindLightResolveResources(context, parserContext);
+
         AutoCleanup bindShadowsCleanup;
         if (!parserContext._preparedDMShadows.empty()) {
             BindShadowsForForwardResolve(context, parserContext, parserContext._preparedDMShadows[0].second);
@@ -541,7 +547,7 @@ namespace SceneEngine
                 [&context, &parserContext]() 
                 { UnbindShadowsForForwardResolve(context, parserContext); });
         }
-        
+                    
         //////////////////////////////////////////////////////////////////////////////////////////////////
         const bool hasOITrans = BatchHasContent(parserContext, SPS::BatchFilter::OITransparent);
         const auto enabledSortedTrans = 
