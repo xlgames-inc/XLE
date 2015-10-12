@@ -101,7 +101,7 @@ namespace Sample
         auto captureMarker = _pimpl->_charactersSharedStateSet.CaptureState(*context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
         RenderCore::Assets::ModelRendererContext modelContext(
-            context, parserContext, techniqueIndex);
+            *context, parserContext, techniqueIndex);
 
         if (!_pimpl->_preallocatedState.empty()) {
 

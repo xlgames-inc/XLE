@@ -94,6 +94,7 @@ namespace SceneEngine
             LightingParserContext& lightingParserContext,
             unsigned techniqueIndex,
             RenderCore::Assets::DelayStep delayStep);
+        bool HasContent(RenderCore::Assets::DelayStep delayStep) const;
 
         std::shared_ptr<ILightingParserPlugin> GetParserPlugin();
 

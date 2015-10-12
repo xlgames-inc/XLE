@@ -41,6 +41,7 @@ namespace Sample
             SceneEngine::LightingParserContext& parserContext, 
             const SceneEngine::SceneParseSettings& parseSettings,
             unsigned techniqueIndex) const;
+        bool HasContent(const SceneEngine::SceneParseSettings& parseSettings) const;
 
         ScenePlugin_EnvironmentFeatures(
             const ::Assets::rstring& cfgDir,

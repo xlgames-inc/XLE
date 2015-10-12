@@ -40,6 +40,8 @@
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 
+#include "../../Tools/ToolsRig/GenerateAO.h"
+
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/GlobalServices.h"
@@ -135,6 +137,20 @@ namespace Sample
         return std::move(mainInputHandler);
     }
 
+    static void SetupCompilers(PrimaryManagers& primMan)
+    {
+        primMan._renderAssetServices->InitColladaCompilers();
+
+            // Add compiler for precalculated internal AO
+            // (note -- requires ToolsRig library for this)
+        auto& asyncMan = ::Assets::Services::GetAsyncMan();
+        auto& compilers = asyncMan.GetIntermediateCompilers();
+        auto aoGeoCompiler = std::make_shared<ToolsRig::AOSupplementCompiler>(primMan._rDevice->GetImmediateContext());
+        compilers.AddCompiler(
+            ToolsRig::AOSupplementCompiler::CompilerType,
+            std::move(aoGeoCompiler));
+    }
+
     static PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
         SceneEngine::LightingParserContext& lightingParserContext, EnvironmentSceneParser* scene,
@@ -157,7 +173,7 @@ namespace Sample
         PrimaryManagers primMan;
 
             // Some secondary initalisation:
-        primMan._renderAssetServices->InitColladaCompilers();
+        SetupCompilers(primMan);
         g_gpuProfiler = RenderCore::Metal::GPUProfiler::CreateProfiler();
         RenderOverlays::InitFontSystem(
             primMan._rDevice.get(), 
@@ -165,7 +181,7 @@ namespace Sample
 
             // main scene
         LogInfo << "Creating main scene";
-        auto mainScene = std::make_shared<EnvironmentSceneParser>("demoworld2/finals");
+        auto mainScene = std::make_shared<EnvironmentSceneParser>("wmtest/finals");
         
         {
                 //  Create the debugging system, and add any "displays"

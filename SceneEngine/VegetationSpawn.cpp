@@ -607,6 +607,16 @@ namespace SceneEngine
                 });
     }
 
+    bool VegetationSpawnManager::HasContent(RenderCore::Assets::DelayStep delayStep) const
+    {
+        if (_pimpl->_cfg._objectTypes.empty()) return false;
+
+        bool hasContent = false;
+        for (unsigned b=0; b<unsigned(_pimpl->_drawCallSets.size()); ++b)
+            hasContent |= !_pimpl->_drawCallSets[b].IsEmpty(delayStep);
+        return hasContent;
+    }
+
     void VegetationSpawnManager::Load(const VegetationSpawnConfig& cfg)
     {
         _pimpl->_cfg = cfg;

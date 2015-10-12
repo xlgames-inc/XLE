@@ -18,6 +18,7 @@
 #include "../../SceneEngine/TerrainFormat.h"
 #include "../../SceneEngine/TerrainConfig.h"
 #include "../../SceneEngine/TerrainMaterial.h"
+#include "../../SceneEngine/SceneEngineUtils.h"     // for AsDelaySteps
 
 #include "../../RenderCore/Assets/ModelCache.h"
 #include "../../Tools/EntityInterface/RetainedEntities.h"
@@ -141,46 +142,64 @@ namespace Sample
     {
         CPUProfileEvent pEvnt("ExecuteScene", g_cpuProfiler);
 
-        if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth) {
-
-            #if defined(ENABLE_TERRAIN)
-                if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain) {
-                    if (Tweakable("DoTerrain", true)) {
-                        CPUProfileEvent pEvnt("TerrainRender", g_cpuProfiler);
+        using Toggles = SceneParseSettings::Toggles;
+        using BF = SceneParseSettings::BatchFilter;
+        #if defined(ENABLE_TERRAIN)
+            if (    parseSettings._toggles & Toggles::Terrain
+                &&  parseSettings._batchFilter == BF::General) {
+                if (Tweakable("DoTerrain", true)) {
+                    CPUProfileEvent pEvnt("TerrainRender", g_cpuProfiler);
+                    CATCH_ASSETS_BEGIN
                         _pimpl->_terrainManager->Render(context, parserContext, techniqueIndex);
-                    }
-                }
-            #endif
-            
-            if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
-                _pimpl->_characters->Render(context, parserContext, techniqueIndex);
-
-                if (_pimpl->_placementsManager) {
-                    CPUProfileEvent pEvnt("PlacementsRender", g_cpuProfiler);
-                    _pimpl->_placementsManager->Render(context, parserContext, techniqueIndex);
+                    CATCH_ASSETS_END(parserContext)
                 }
             }
+        #endif
 
+        if (parseSettings._toggles & Toggles::NonTerrain) {
+            if (_pimpl->_characters && (parseSettings._batchFilter == BF::General || parseSettings._batchFilter == BF::PreDepth)) {
+                CATCH_ASSETS_BEGIN
+                    _pimpl->_characters->Render(context, parserContext, techniqueIndex);
+                CATCH_ASSETS_END(parserContext)
+            }
+
+            if (_pimpl->_placementsManager) {
+                auto delaySteps = SceneEngine::AsDelaySteps(parseSettings._batchFilter);
+                CATCH_ASSETS_BEGIN
+                    for (auto i:delaySteps)
+                        if (i != RenderCore::Assets::DelayStep::OpaqueRender) {
+                            _pimpl->_placementsManager->RenderTransparent(context, parserContext, techniqueIndex, i);
+                        } else {
+                            _pimpl->_placementsManager->Render(context, parserContext, techniqueIndex);
+                        }
+                CATCH_ASSETS_END(parserContext)
+            }
         }
 
         for (const auto&p:_pimpl->_scenePlugins)
             p->ExecuteScene(context, parserContext, parseSettings, techniqueIndex);
     }
 
-    void EnvironmentSceneParser::ExecuteShadowScene( 
-        RenderCore::Metal::DeviceContext* context, 
-        LightingParserContext& parserContext, 
-        const SceneParseSettings& parseSettings,
-        unsigned frustumIndex, unsigned techniqueIndex) const 
+    bool EnvironmentSceneParser::HasContent(const SceneParseSettings& parseSettings) const
     {
-        CPUProfileEvent pEvnt("ExecuteShadowScene", g_cpuProfiler);
+        using BF = SceneParseSettings::BatchFilter;
+        auto batchFilter = parseSettings._batchFilter;
+        if (batchFilter == BF::Transparent || batchFilter == BF::TransparentPreDepth || batchFilter == BF::OITransparent) {
+            if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
+                auto delaySteps = SceneEngine::AsDelaySteps(batchFilter);
+                for (auto i:delaySteps)
+                    if (_pimpl->_placementsManager->HasPrepared(i))
+                        return true;
+            }
 
-        if (Tweakable("DoShadows", true)) {
-            SceneParseSettings settings = parseSettings;
-            settings._toggles &= ~SceneParseSettings::Toggles::Terrain;
-            ExecuteScene(context, parserContext, settings, techniqueIndex);
+            for (const auto&p:_pimpl->_scenePlugins)
+                if (p->HasContent(parseSettings))
+                    return true;
+
+            return false;
         }
+     
+        return true;
     }
 
     RenderCore::Techniques::CameraDesc EnvironmentSceneParser::GetCameraDesc() const 
@@ -234,7 +253,7 @@ namespace Sample
     static const ::Assets::ResChar GameObjectsCfg[] = "gameobjects.txt";
 
     // static const Float3 WorldOffset(-11200.f - 7000.f, -11200.f + 700.f, 0.f);
-    static const Float3 WorldOffset(-100.f, -100.f, 0.f);
+    static const Float3 WorldOffset(0.f, 0.f, 0.f);
 
     void EnvironmentSceneParser::FlushLoading()
     {

@@ -10,6 +10,7 @@
 #include "../../SceneEngine/VolumetricFog.h"
 #include "../../SceneEngine/ShallowSurface.h"
 #include "../../SceneEngine/VegetationSpawn.h"
+#include "../../SceneEngine/SceneEngineUtils.h" // for AsDelaySteps
 #include "../../Tools/EntityInterface/EnvironmentSettings.h"
 #include "../../Tools/EntityInterface/RetainedEntities.h"
 #include "../../Assets/ConfigFileContainer.h"
@@ -44,21 +45,39 @@ namespace Sample
         const SceneEngine::SceneParseSettings& parseSettings,
         unsigned techniqueIndex) const
     {
-        using BatchFilter = SceneEngine::SceneParseSettings::BatchFilter;
+        using BF = SceneEngine::SceneParseSettings::BatchFilter;
         using Toggles = SceneEngine::SceneParseSettings::Toggles;
 
-        if (    parseSettings._batchFilter == BatchFilter::General
-            ||  parseSettings._batchFilter == BatchFilter::PreDepth) {
+        if (parseSettings._toggles & Toggles::NonTerrain) {
 
-            if (parseSettings._toggles & Toggles::NonTerrain) {
-                _vegetationSpawnManager->Render(context, parserContext, techniqueIndex);
-            }
-        } else if (parseSettings._batchFilter == BatchFilter::Transparent) {
-            if (parseSettings._toggles & Toggles::NonTerrain) {
+            auto delaySteps = SceneEngine::AsDelaySteps(parseSettings._batchFilter);
+            CATCH_ASSETS_BEGIN
+                for (auto i:delaySteps)
+                    _vegetationSpawnManager->Render(*context, parserContext, techniqueIndex, i);
+            CATCH_ASSETS_END(parserContext)
+
+            if (parseSettings._batchFilter == BF::Transparent) {
                 if (_shallowSurfaces)
                     _shallowSurfaces->RenderDebugging(*context, parserContext, techniqueIndex, _surfaceHeights.get());
             }
         }
+    }
+
+    bool ScenePlugin_EnvironmentFeatures::HasContent(const SceneEngine::SceneParseSettings& parseSettings) const
+    {
+        using BF = SceneEngine::SceneParseSettings::BatchFilter;
+        using Toggles = SceneEngine::SceneParseSettings::Toggles;
+        if (parseSettings._toggles & Toggles::NonTerrain) {
+            if ((parseSettings._batchFilter == BF::Transparent) && _shallowSurfaces)
+                return true;
+
+            if (_vegetationSpawnManager) {
+                auto delaySteps = SceneEngine::AsDelaySteps(parseSettings._batchFilter);
+                for (auto i:delaySteps)
+                    if (_vegetationSpawnManager->HasContent(i)) return true;
+            }
+        }
+        return false;
     }
 
     ScenePlugin_EnvironmentFeatures::ScenePlugin_EnvironmentFeatures(

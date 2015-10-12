@@ -344,6 +344,9 @@ namespace SceneEngine
             //  Even though we have a cached heights addressing, we should recalculate height addressing to 
             //  match new uploads, etc...
             //  Note that if the terrain is edited, it can change the height scale & offset
+            //
+            // Note that there might be a problem with the terrain offset here -- it can throw
+            // the terrain out of alignment with how we divide up our terrain.
         Float2 gridMins = context._physicalMins + Float2(float(gridCoords[0]) * context._gridPhysicalDimension, float(gridCoords[1]) * context._gridPhysicalDimension);
         Float2 gridMaxs = context._physicalMins + Float2(float(gridCoords[0]+1) * context._gridPhysicalDimension, float(gridCoords[1]+1) * context._gridPhysicalDimension);
         auto surfaceAddressing = context._surfaceHeightsProvider->GetAddress(gridMins, gridMaxs);

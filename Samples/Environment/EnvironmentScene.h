@@ -38,12 +38,7 @@ namespace Sample
             LightingParserContext& parserContext, 
             const SceneParseSettings& parseSettings,
             unsigned techniqueIndex) const;
-
-        void ExecuteShadowScene( 
-            RenderCore::Metal::DeviceContext* context, 
-            LightingParserContext& parserContext, 
-            const SceneParseSettings& parseSettings,
-            unsigned frustumIndex, unsigned techniqueIndex) const;
+        bool HasContent(const SceneParseSettings& parseSettings) const;
 
         float GetTimeValue() const;
 

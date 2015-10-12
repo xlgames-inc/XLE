@@ -32,6 +32,7 @@ namespace Sample
             SceneEngine::LightingParserContext& parserContext, 
             const SceneEngine::SceneParseSettings& parseSettings,
             unsigned techniqueIndex) const = 0;
+        virtual bool HasContent(const SceneEngine::SceneParseSettings& parseSettings) const = 0;
         virtual ~IScenePlugin();
     };
 }
