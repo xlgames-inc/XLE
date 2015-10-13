@@ -45,6 +45,7 @@ uint IntegerHash(uint seed)
 		// Note that the constants below may not have a big effect on the
 		// algorithm; but it's possible that there is some ideal set of
 		// numbers that are least likely to produce patterns.
+#if 1
 	seed = (seed+0x7ed55d16u) + (seed<<12);
 	seed = (seed^0xc761c23cu) ^ (seed>>19);
 	seed = (seed+0x165667b1u) + (seed<<5);
@@ -52,6 +53,15 @@ uint IntegerHash(uint seed)
 	seed = (seed+0xfd7046c5u) + (seed<<3);
 	seed = (seed^0xb55a4f09u) ^ (seed>>16);
 	return seed;
+#else
+	uint c2=0x27d4eb2d; // a prime or an odd constant
+	seed = (seed ^ 61) ^ (seed >> 16);
+	seed = seed + (seed << 3);
+	seed = seed ^ (seed >> 4);
+	seed = seed * c2;
+	seed = seed ^ (seed >> 15);
+	return seed;
+#endif
 }
 
 #endif

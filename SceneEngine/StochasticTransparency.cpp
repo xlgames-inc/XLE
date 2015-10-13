@@ -185,7 +185,7 @@ namespace SceneEngine
         #else
             const auto enableMetrics = false;
         #endif
-        const auto enablePrimitiveIds = Tweakable("Stochastic_PrimIds", true);
+        const auto enablePrimitiveIds = Tweakable("Stochastic_PrimIds", false);
         const auto enableOpacity = Tweakable("Stochastic_Opacity", false);
         auto& box = Techniques::FindCachedBox2<StochasticTransparencyBox>(
             unsigned(viewport.Width), unsigned(viewport.Height), 
