@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../../RenderOverlays/DebuggingDisplay.h"
+#include <memory>
 
 namespace PlatformRig { namespace Overlays
 {
@@ -44,6 +45,19 @@ namespace PlatformRig { namespace Overlays
 
         ConservativeRasterTest();
         ~ConservativeRasterTest();
+    };
+
+    class RectanglePackerTest : public IWidget ///////////////////////////////////////////////////////////
+    {
+    public:
+        void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
+
+        RectanglePackerTest();
+        ~RectanglePackerTest();
+    protected:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
     };
 }}
 

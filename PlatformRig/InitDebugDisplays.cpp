@@ -48,6 +48,7 @@ namespace PlatformRig
         auto volFogDisplay                  = std::make_shared<::Overlays::VolumetricFogSettings>(std::ref(GlobalVolumetricFogMaterial));
         auto dualContouringTest             = std::make_shared<PlatformRig::Overlays::DualContouringTest>();
         auto constRasterTest                = std::make_shared<PlatformRig::Overlays::ConservativeRasterTest>();
+        auto rectPackingTest                = std::make_shared<PlatformRig::Overlays::RectanglePackerTest>();
         debugSystem.Register(modelBrowser, "[Browser] Model browser");
         debugSystem.Register(textureBrowser, "[Browser] Texture browser");
 
@@ -61,6 +62,7 @@ namespace PlatformRig
         debugSystem.Register(gridIteratorDisplay, "[Test] Grid iterator test");
         debugSystem.Register(dualContouringTest, "[Test] Dual Contouring Test");
         debugSystem.Register(constRasterTest, "[Test] Conservative Raster");
+        debugSystem.Register(rectPackingTest, "[Test] Rectangle Packing");
 
         if (RenderCore::Assets::Services::HasInstance()) {
             auto bufferUploadDisplay = std::make_shared<PlatformRig::Overlays::BufferUploadDisplay>(&RenderCore::Assets::Services::GetBufferUploads());

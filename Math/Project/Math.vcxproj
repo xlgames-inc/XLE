@@ -101,6 +101,7 @@
     <ClInclude Include="..\PoissonSolverDetail.h" />
     <ClInclude Include="..\ProjectionMath.h" />
     <ClInclude Include="..\Quaternion.h" />
+    <ClInclude Include="..\RectanglePacking.h" />
     <ClInclude Include="..\RegularNumberField.h" />
     <ClInclude Include="..\Transformations.h" />
     <ClInclude Include="..\Vector.h" />
@@ -113,6 +114,7 @@
     <ClCompile Include="..\Noise.cpp" />
     <ClCompile Include="..\PoissonSolver.cpp" />
     <ClCompile Include="..\ProjectionMath.cpp" />
+    <ClCompile Include="..\RectanglePacking.cpp" />
     <ClCompile Include="..\RegularNumberField.cpp" />
     <ClCompile Include="..\Transformations.cpp" />
   </ItemGroup>

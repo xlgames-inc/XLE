@@ -8,7 +8,11 @@
 #include "../../Math/Geometry.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Noise.h"
+#include "../../Math/RectanglePacking.h"
 #include "../../Utility/PtrUtils.h"
+#include "../../Utility/MemoryUtils.h"
+#include "../../Utility/BitUtils.h"
+#include <random>
 
 #pragma warning(disable:4714)
 #pragma push_macro("new")
@@ -553,6 +557,165 @@ namespace PlatformRig { namespace Overlays
 
     DualContouringTest::~DualContouringTest()
     {}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static UInt2 RectPackerSize(512, 512);
+
+    class RectanglePackerTest::Pimpl
+    {
+    public:
+        RectanglePacker _packer;
+
+        using Rectangle = std::pair<UInt2, UInt2>;
+        std::vector<Rectangle> _rects;
+
+        Pimpl() : _packer(RectPackerSize) {}
+
+        UInt2 BuildRandomSize()
+        {
+            static std::mt19937 generator(std::random_device().operator()());
+            // const UInt2 minSize( 32,  32);
+            // const UInt2 maxSize(128, 128);
+            // return UInt2(
+            //     std::uniform_int_distribution<>(minSize[0], maxSize[0])(generator),
+            //     std::uniform_int_distribution<>(minSize[1], maxSize[1])(generator));
+            return UInt2(
+                unsigned(std::normal_distribution<>(64, 16)(generator)),
+                unsigned(std::normal_distribution<>(64, 16)(generator)));
+            // return UInt2(
+            //     1<<IntegerLog2(unsigned(std::normal_distribution<>(64, 16)(generator))),
+            //     1<<IntegerLog2(unsigned(std::normal_distribution<>(64, 16)(generator))));
+        }
+
+        void FillRandomly()
+        {
+            const unsigned rects = 128;
+            _packer = RectanglePacker(RectPackerSize);
+            _rects.clear();
+            
+            for (unsigned c=0; c<rects; ++c) {
+                auto rect = _packer.Add(BuildRandomSize());
+                if (rect.second[0] > rect.first[0] && rect.second[1] > rect.first[1])
+                    _rects.push_back(rect);
+            }
+        }
+
+        void FillEfficiently()
+        {
+            const unsigned rects = 128;
+            _packer = RectanglePacker(RectPackerSize);
+            _rects.clear();
+
+            std::vector<UInt2> rectsToAdd; rectsToAdd.reserve(rects);
+            for (unsigned c=0; c<rects; ++c)
+                rectsToAdd.push_back(BuildRandomSize());
+
+            std::sort(rectsToAdd.begin(), rectsToAdd.end(),
+                [](const UInt2& lhs, const UInt2& rhs)
+                {
+                    return std::max(lhs[0], lhs[1]) > std::max(rhs[0], rhs[1]);
+                });
+
+            for (const auto& size:rectsToAdd) {
+                auto rect = _packer.Add(size);
+                if (rect.second[0] > rect.first[0] && rect.second[1] > rect.first[1])
+                    _rects.push_back(rect);
+            }
+        }
+    };
+
+    class ButtonFormatting
+    {
+    public:
+        ColorB  _background;
+        ColorB  _foreground;
+        ButtonFormatting(ColorB background, ColorB foreground) : _background(background), _foreground(foreground) {}
+    };
+
+    static void DrawButtonBasic(IOverlayContext* context, const Rect& rect, const char label[], ButtonFormatting formatting)
+    {
+        DrawRectangle(context, rect, formatting._background);
+        DrawRectangleOutline(context, rect, 0.f, formatting._foreground);
+        context->DrawText(
+            std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
+            1.f, nullptr, formatting._foreground, TextAlignment::Center, label, nullptr);
+    }
+
+    template<typename T> inline const T& FormatButton(InterfaceState& interfaceState, InteractableId id, const T& normalState, const T& mouseOverState, const T& pressedState)
+    {
+        if (interfaceState.HasMouseOver(id))
+            return interfaceState.IsMouseButtonHeld(0)?pressedState:mouseOverState;
+        return normalState;
+    }
+
+    void RectanglePackerTest::Render(
+        IOverlayContext* context, Layout& layout, 
+        Interactables&interactables, InterfaceState& interfaceState)
+    {
+        static ButtonFormatting buttonNormalState(ColorB(127, 192, 127, 64), ColorB(164, 192, 164, 255));
+        static ButtonFormatting buttonMouseOverState(ColorB(127, 192, 127, 64), ColorB(255, 255, 255, 160));
+        static ButtonFormatting buttonPressedState(ColorB(127, 192, 127, 64), ColorB(255, 255, 255, 96));
+
+        Layout toolbar = layout.AllocateFullWidth(32);
+        {
+            auto buttonRect = toolbar.Allocate(UInt2(256, 32));
+            DrawButtonBasic(
+                context, buttonRect,
+                "Randomize", 
+                FormatButton(interfaceState, Hash64("Randomize"), buttonNormalState, buttonMouseOverState, buttonPressedState));
+            interactables.Register(Interactables::Widget(buttonRect, Hash64("Randomize")));
+        }
+        {
+            auto buttonRect = toolbar.Allocate(UInt2(256, 32));
+            DrawButtonBasic(
+                context, buttonRect,
+                "FillEfficiently", 
+                FormatButton(interfaceState, Hash64("FillEfficiently"), buttonNormalState, buttonMouseOverState, buttonPressedState));
+            interactables.Register(Interactables::Widget(buttonRect, Hash64("FillEfficiently")));
+        }
+
+        auto remainingSpace = layout.AllocateFullHeightFraction(1.f);
+
+        unsigned colors[] = 
+        {
+            0xffFDFD96, 0xff03C03C, 0xff836953, 0xffB19CD9, 0xffFFB347, 0xffFF6961, 
+            0xffCB99C9, 0xffFFD1DC, 0xff779ECB, 0xffAEC6CF
+        };
+        unsigned c=0;
+        
+            // draw each rectangle within the remaining space
+        for (const auto&r:_pimpl->_rects) {
+            UInt2 mins = remainingSpace._topLeft + UInt2(
+                 unsigned(r.first[0] * float(remainingSpace.Width()) / float(RectPackerSize[0])),
+                 unsigned(r.first[1] * float(remainingSpace.Height()) / float(RectPackerSize[1])));
+            UInt2 maxs = remainingSpace._topLeft + UInt2(
+                 unsigned(r.second[0] * float(remainingSpace.Width()) / float(RectPackerSize[0])),
+                 unsigned(r.second[1] * float(remainingSpace.Height()) / float(RectPackerSize[1])));
+            DrawRectangle(context, Rect(mins, maxs), ColorB(colors[(++c)%dimof(colors)]));
+        }
+    }
+
+    bool    RectanglePackerTest::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    {
+        if (input.IsRelease_LButton() && interfaceState.TopMostId() == Hash64("Randomize")) {
+            _pimpl->FillRandomly();
+            return true;
+        } else if (input.IsRelease_LButton() && interfaceState.TopMostId() == Hash64("FillEfficiently")) {
+            _pimpl->FillEfficiently();
+            return true;
+        }
+        return false;
+    }
+
+    RectanglePackerTest::RectanglePackerTest() 
+    {
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->FillRandomly();
+    }
+
+    RectanglePackerTest::~RectanglePackerTest() {}
 
 }}
 
