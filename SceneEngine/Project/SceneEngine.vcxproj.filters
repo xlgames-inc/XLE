@@ -148,6 +148,9 @@
     <ClCompile Include="..\GestaltResource.cpp">
       <Filter>Fundamentals</Filter>
     </ClCompile>
+    <ClCompile Include="..\DynamicImposters.cpp">
+      <Filter>Lighting And Processing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -307,6 +310,9 @@
     </ClInclude>
     <ClInclude Include="..\GestaltResource.h">
       <Filter>Fundamentals</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DynamicImposters.h">
+      <Filter>Lighting And Processing</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

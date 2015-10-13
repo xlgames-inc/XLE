@@ -71,5 +71,17 @@ namespace XLEMath
         return *this;
     }
 
+    RectanglePacker::RectanglePacker(const RectanglePacker& cloneFrom)
+    : _nodes(cloneFrom._nodes)
+    {}
+
+    RectanglePacker& RectanglePacker::operator=(const RectanglePacker& cloneFrom)
+    {
+        _nodes = cloneFrom._nodes;
+        return *this;
+    }
+
+    RectanglePacker::RectanglePacker() {}
+
 }
 

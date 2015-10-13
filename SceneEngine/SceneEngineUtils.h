@@ -173,7 +173,8 @@ namespace SceneEngine
     /// basis. This can be confusing to the caller, because it's often not clear what
     /// states will be affected.
     ///
-    /// 
+    /// States captured in the constructor will be restored to their previous values in the
+    /// destructor.
     class ProtectState
     {
     public:

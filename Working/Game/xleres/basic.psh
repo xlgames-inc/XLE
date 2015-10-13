@@ -32,6 +32,11 @@ float4 copy_point(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : 
 	return DiffuseTexture.SampleLevel(PointClampSampler, texCoord, 0);
 }
 
+float4 fill_gradient(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	return float4(texCoord, 0, 1);
+}
+
 float4 PCT_Text( float4 input : SV_Position, float4 color : COLOR0, float2 texCoord : TEXCOORD0 ) : SV_Target0
 {
 	return float4(	color.rgb,

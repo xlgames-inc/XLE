@@ -52,13 +52,14 @@ namespace XLEMath
 
         Rectangle Add(UInt2 dims);
 
+        RectanglePacker();
         RectanglePacker(const UInt2 dimensions);
-        RectanglePacker(RectanglePacker&& moveFrom);
-        RectanglePacker& operator=(RectanglePacker&& moveFrom);
+        RectanglePacker(RectanglePacker&& moveFrom) never_throws;
+        RectanglePacker& operator=(RectanglePacker&& moveFrom) never_throws;
         ~RectanglePacker();
 
-        RectanglePacker(const RectanglePacker&) = delete;
-        RectanglePacker& operator=(const RectanglePacker&) = delete;
+        RectanglePacker(const RectanglePacker&);
+        RectanglePacker& operator=(const RectanglePacker&);
 
     private:
         static const size_t s_invalidNode = ~size_t(0x0);
