@@ -491,25 +491,24 @@ namespace SceneEngine
 
                     if (preparedShadows._mode == ShadowProjectionDesc::Projections::Mode::Ortho && allowOrthoShadowResolve) {
                         shaderType._shadows = LightingResolveShaders::OrthShadows;
-
-                        auto rtShadowIndex = FindRTShadowFrustum(parserContext, l);
-                        if (rtShadowIndex < parserContext._preparedRTShadows.size()) {
-                            const auto& preparedRTShadows = parserContext._preparedRTShadows[rtShadowIndex].second;
-                            constantBufferPackets[CB::ScreenToRTShadow] = BuildScreenToShadowConstants(
-                                preparedRTShadows, parserContext.GetProjectionDesc()._cameraToWorld);
-
-                            srvs[SR::RTShadow_ListHead] = &preparedRTShadows._listHeadSRV;
-                            srvs[SR::RTShadow_LinkedLists] = &preparedRTShadows._linkedListsSRV;
-                            srvs[SR::RTShadow_Triangles] = &preparedRTShadows._trianglesSRV;
-
-                            shaderType._shadows = LightingResolveShaders::OrthHybridShadows;
-                        }
-
                     } else 
                         shaderType._shadows = LightingResolveShaders::PerspectiveShadows;
 
-                } else
-                    shaderType._shadows = LightingResolveShaders::NoShadows;
+                } else {
+                    auto rtShadowIndex = FindRTShadowFrustum(parserContext, l);
+                    if (rtShadowIndex < parserContext._preparedRTShadows.size()) {
+                        const auto& preparedRTShadows = parserContext._preparedRTShadows[rtShadowIndex].second;
+                        constantBufferPackets[CB::ScreenToRTShadow] = BuildScreenToShadowConstants(
+                            preparedRTShadows, parserContext.GetProjectionDesc()._cameraToWorld);
+
+                        srvs[SR::RTShadow_ListHead] = &preparedRTShadows._listHeadSRV;
+                        srvs[SR::RTShadow_LinkedLists] = &preparedRTShadows._linkedListsSRV;
+                        srvs[SR::RTShadow_Triangles] = &preparedRTShadows._trianglesSRV;
+
+                        shaderType._shadows = LightingResolveShaders::OrthHybridShadows;
+                    } else
+                        shaderType._shadows = LightingResolveShaders::NoShadows;
+                }
 
                 shaderType._diffuseModel = (uint8)i._diffuseModel;
                 shaderType._shadowResolveModel = (uint8)i._shadowResolveModel;
@@ -598,7 +597,7 @@ namespace SceneEngine
     static unsigned FindRTShadowFrustum(LightingParserContext& parserContext, unsigned lightId)
     {
         for (unsigned c=0; c<unsigned(parserContext._preparedRTShadows.size()); ++c)
-            if (parserContext._preparedDMShadows[c].first==lightId)
+            if (parserContext._preparedRTShadows[c].first==lightId)
                 return c;
         return ~0u;
     }

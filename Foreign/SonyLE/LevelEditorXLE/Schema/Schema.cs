@@ -343,6 +343,7 @@ namespace LevelEditorXLE
             placementObjectType.IDAttribute = placementObjectType.Type.GetAttributeInfo("ID");
             placementObjectType.modelAttribute = placementObjectType.Type.GetAttributeInfo("model");
             placementObjectType.materialAttribute = placementObjectType.Type.GetAttributeInfo("material");
+            placementObjectType.supplementsAttribute = placementObjectType.Type.GetAttributeInfo("supplements");
 
             abstractTerrainMaterialDescType.Type = getNodeType("gap", "abstractTerrainMaterialDescType");
             abstractTerrainMaterialDescType.MaterialIdAttribute = abstractTerrainMaterialDescType.Type.GetAttributeInfo("MaterialId");
@@ -917,6 +918,7 @@ namespace LevelEditorXLE
             public static AttributeInfo IDAttribute;
             public static AttributeInfo modelAttribute;
             public static AttributeInfo materialAttribute;
+            public static AttributeInfo supplementsAttribute;
         }
 
         public static class abstractTerrainMaterialDescType

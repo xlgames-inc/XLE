@@ -241,6 +241,8 @@ namespace SceneEngine
                 projZOffset = -(f*n) / (f-n);
             }
 
+            static unsigned s_timeRandomizer = 0;
+            ++s_timeRandomizer;
             struct SimulationParameters
             {
                 Float4x4    _worldToView;
@@ -249,13 +251,14 @@ namespace SceneEngine
 	            Float3	    _averageRainVelocity;
 	            float	    _elapsedTime;
 	            int		    _particleCountWidth;
-                float       _dummy[3];
+                unsigned    _timeRandomizer;
+                float       _dummy[2];
             } simParam = {
                 InvertOrthonormalTransform(projDesc._cameraToWorld),
                 projScale, projZOffset,
-                Float3(8.1f, 0.1f, -12.f),
+                .5f * Float3(8.1f, 0.1f, -12.f),
                 1.0f / 60.f, particleCountWidth,
-                0.f, 0.f, 0.f
+                s_timeRandomizer, 0.f, 0.f
             };
             Metal::ConstantBuffer cb0(&simParam, sizeof(simParam));
 

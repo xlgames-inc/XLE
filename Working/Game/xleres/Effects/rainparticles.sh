@@ -98,7 +98,7 @@ VStoGS vs_main(uint particleId : SV_VertexID)
 	result.positions[1].xy			= quantStartMidPoint.xy + frac((result.positions[1].xy - quantStartMidPoint) / SpawnWidth) * SpawnWidth;
 
 	result.positions[0]				= result.positions[1] - length * fallingSpeed;
-	result.radius					= 0.002f;
+	result.radius					= 0.0012f;
 	result.brightness				= .5f + .5f * brightnessRandom;
 
 	return result;
@@ -147,6 +147,6 @@ float4 ps_main(GStoPS input) : SV_Target0
 	// brightness *= brightness; brightness *= brightness;
 	// brightness = 1.0f - brightness;
 	return float4(
-		LightingScale * 2.f * float3(.33f, .35f, .37f),
-		(.5f + 0.5f * brightness) * .33f * input.brightness);
+		LightingScale * 8.f * float3(.33f, .35f, .37f),
+		(.5f + 0.5f * brightness) * .25f * .33f * input.brightness);
 }

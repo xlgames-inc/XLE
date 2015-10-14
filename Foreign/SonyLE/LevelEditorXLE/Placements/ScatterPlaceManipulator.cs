@@ -40,12 +40,15 @@ namespace LevelEditorXLE.Placements
                 [TypeConverter(typeof(AssetNameNoExtConverter))]
                 public string MaterialName { get; set; }
 
+                public string Supplements { get; set; }
+
                 public uint Weight { get; set; }
 
                 public Object()
                 {
                     ModelName = "Game/Model/Nature/BushTree/BushE";
                     MaterialName = "Game/Model/Nature/BushTree/BushE";
+                    Supplements = "";
                     Weight = 100;
                 }
             };
@@ -290,8 +293,11 @@ namespace LevelEditorXLE.Placements
 
                             // set the material name (if we can)
                         var p = resGob.As<Placements.XLEPlacementObject>();
-                        if (p!=null)
+                        if (p != null)
+                        {
                             p.Material = o.MaterialName;
+                            p.Supplements = o.Supplements;
+                        }
                     }
                 }
             }

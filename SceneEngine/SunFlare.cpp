@@ -186,7 +186,7 @@ namespace SceneEngine
         Float3 sunWorld(cameraPos + 10000.f * sunDesc._negativeLightDirection);
         Float4 sunPos = projDesc._worldToProjection * Expand(sunWorld, 1.f);
         float aspect = projDesc._aspectRatio;
-        float flareAngle = Tweakable("SunFlareAngle", 20.f) * .5f * gPI / 180.f;
+        float flareAngle = Tweakable("SunFlareAngle", 25.f) * .5f * gPI / 180.f;
 
         Float3 sunView = TransformPoint(worldToView, sunWorld);
         if (sunView[2] >= 0.f) return;

@@ -26,7 +26,7 @@ cbuffer Settings
 
 float4 ReturnColor(float flareBrightness)
 {
-    return float4((10.f * flareBrightness).xxx, 0.f);
+    return float4((25.f * flareBrightness).xxx, 0.f);
 }
 
 float4 ps_sunflare_directblur(float4 pos : SV_Position, float2 projPos : PROJPOS) : SV_Target0

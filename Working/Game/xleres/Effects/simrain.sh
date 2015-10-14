@@ -7,6 +7,7 @@
 #include "../Transform.h"
 #include "../Utility/perlinnoise.h"
 #include "../Utility/ProjectionMath.h"
+#include "../Utility/misc.h"
 #include "../CommonResources.h"
 #include "../gbuffer.h"
 
@@ -29,6 +30,7 @@ cbuffer SimulationParameters
 	float3				AverageRainVelocity;
 	float				ElapsedTime;
 	int					ParticleCountWidth;
+	uint				TimeRandomizer;
 }
 
 // static const float3 AverageRainVelocity = .5f * float3(8.1f, 0.1f, -12.f);	// slower movement means more accurate collision detection
@@ -50,18 +52,22 @@ float3 TransformViewToWorld(float3 viewSpacePosition)
 	return WorldSpaceView + mul(transpose(worldToViewPartial), viewSpacePosition);
 }
 
-float3 RandomPointInFrustum(float2 seed)
+float3 RandomPointInFrustum(uint seed)
 {
 		//	we need to add a little bit of noise to seed, otherwise we
 		//	get grid like patterns when we spawn particles
-	float2 s = seed;
-	seed.x = frac(seed.x + 47.74f * s.y);
-	seed.y = frac(seed.y + 61.23f * s.x);
+	//float2 s = seed;
+	//seed.x = frac(seed.x + 47.74f * s.y);
+	//seed.y = frac(seed.y + 61.23f * s.x);
+	uint s = IntegerHash(seed);
+	float2 pos = float2(
+		(s >> 16) / float(0xffff),
+		(s & 0xffff) / float(0xffff));
 
 		//	find a camera point that's inside the camera frustum, from a given seed value
-	float depth = 20.f * RandomValue(seed);
+	float depth = 20.f * RandomValue(pos);
 	float3 viewSpaceRandom = float3(
-		-1.f + 2.f * seed.xy,
+		-1.f + 2.f * pos.xy,
 		-depth);
 
 	viewSpaceRandom.xy *= (1.0f/ProjScale.xy) * depth;
@@ -129,7 +135,7 @@ bool FindCollision(float3 startPosition, float3 endPosition, out float3 collisio
 	float velocityMagSquared = dot(input.velocity, input.velocity);
 	float4 projectedPoint = mul(WorldToClip, float4(input.position, 1.f));
 	if (!InsideFrustum(projectedPoint) || velocityMagSquared < 0.7f) {
-		input.position = RandomPointInFrustum(randomSeed);
+		input.position = RandomPointInFrustum((TimeRandomizer << 20) ^ (dispatchThreadId.x << 10) ^ (dispatchThreadId.y));
 		input.velocity = (0.5f + RandomValue(randomSeed)) * AverageRainVelocity;
 	}
 
@@ -144,7 +150,7 @@ bool FindCollision(float3 startPosition, float3 endPosition, out float3 collisio
 			// just do a reflect to simulation a basic collision & bounce off
 		float4 rawNormal = NormalsBuffer.Load(int3(collisionTexCoords,0));
 		float3 worldSpaceNormal = DecompressGBufferNormal(rawNormal);
-		input.velocity = 0.33f * reflect(input.velocity, worldSpaceNormal);
+		input.velocity = .75f * reflect(input.velocity, worldSpaceNormal);
 		input.velocity.z *= 0.5f;
 		input.position = collisionPoint + (1.f/60.f) * input.velocity;
 
@@ -170,12 +176,12 @@ StructuredBuffer<RainParticle>		ParticlesInput;
 VStoGS vs_main(uint particleId : SV_VertexID)
 {
 	RainParticle input		= ParticlesInput[particleId];
-	const float length		= 4.0f/60.f;
+	const float length		= 2.0f/60.f;
 
 	VStoGS output;
 	output.positions[0]		= input.position;
 	output.positions[1]		= input.position - length * input.velocity;
-	output.radius			= 0.002f;
+	output.radius			= 0.001f;
 	output.brightness		= 1.f;
 	return output;
 }

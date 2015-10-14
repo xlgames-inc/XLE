@@ -39,6 +39,12 @@ namespace LevelEditorXLE.Placements
             set { SetAttribute(PlcmtST.materialAttribute, value); }
         }
 
+        public string Supplements
+        {
+            get { return GetAttribute<string>(PlcmtST.supplementsAttribute); }
+            set { SetAttribute(PlcmtST.supplementsAttribute, value); }
+        }
+
         public static XLEPlacementObject Create()
         {
             return new DomNode(PlcmtST.Type).As<XLEPlacementObject>();
