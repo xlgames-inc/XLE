@@ -49,5 +49,31 @@ namespace Utility
         MurmurHash3_x86_32(begin, int(size_t(end)-size_t(begin)), seed, &temp);
         return temp;
     }
+
+    uint32 IntegerHash32(uint32 key)
+    {
+            // taken from https://gist.github.com/badboy/6267743
+            // See also http://burtleburtle.net/bob/hash/integer.html
+        key = (key+0x7ed55d16) + (key<<12);
+        key = (key^0xc761c23c) ^ (key>>19);
+        key = (key+0x165667b1) + (key<<5);
+        key = (key+0xd3a2646c) ^ (key<<9);
+        key = (key+0xfd7046c5) + (key<<3);
+        key = (key^0xb55a4f09) ^ (key>>16);
+        return key;
+    }
+    
+    uint64 IntegerHash64(uint64 key)
+    {
+            // taken from https://gist.github.com/badboy/6267743
+        key = (~key) + (key << 21); // key = (key << 21) - key - 1;
+        key = key ^ (key >> 24);
+        key = (key + (key << 3)) + (key << 8); // key * 265
+        key = key ^ (key >> 14);
+        key = (key + (key << 2)) + (key << 4); // key * 21
+        key = key ^ (key >> 28);
+        key = key + (key << 31);
+        return key;
+    }
 }
 

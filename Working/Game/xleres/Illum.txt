@@ -78,6 +78,7 @@
             GEO_HAS_TANGENT_FRAME
             GEO_HAS_BITANGENT
             GEO_HAS_NORMAL
+            OUTPUT_WORLD_VIEW_VECTOR=1
         ~Runtime
             BASIC_LIGHT_COUNT=1
             SHADOW_CASCADE_MODE=2
@@ -137,6 +138,7 @@
             GEO_HAS_TANGENT_FRAME
             GEO_HAS_BITANGENT
             GEO_HAS_NORMAL
+            OUTPUT_WORLD_VIEW_VECTOR=1
         ~Runtime
             BASIC_LIGHT_COUNT=1
             SHADOW_CASCADE_MODE=2

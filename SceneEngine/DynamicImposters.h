@@ -32,7 +32,7 @@ namespace SceneEngine
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex);
 
-        void Queue(const ModelRenderer& renderer, const ModelScaffold& scaffold, const Float4x4& localToWorld);
+        void Queue(const ModelRenderer& renderer, const ModelScaffold& scaffold, const Float3x4& localToWorld);
         void Reset();
 
         DynamicImposters(const SharedStateSet& sharedStateSet);

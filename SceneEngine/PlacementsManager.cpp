@@ -6,6 +6,7 @@
 
 #include "PlacementsManager.h"
 #include "PlacementsQuadTree.h"
+#include "DynamicImposters.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
 #include "../RenderCore/Assets/Material.h"
 #include "../RenderCore/Assets/ModelRunTime.h"
@@ -442,6 +443,8 @@ namespace SceneEngine
 
         std::shared_ptr<RenderCore::Assets::IModelFormat> _modelFormat;
 
+        DynamicImposters _imposters;
+
         void Render(
             RenderCore::Metal::DeviceContext* context,
             RenderCore::Techniques::ParsingContext& parserContext,
@@ -465,6 +468,7 @@ namespace SceneEngine
     void PlacementsRenderer::BeginPrepare()
     {
         _preparedRenders.Reset();
+        _imposters.Reset();
     }
 
     void PlacementsRenderer::EndPrepare()
@@ -482,12 +486,16 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep)
     {
-            // Draw the translucent parts of models that were previously prepared
+            // Draw the opaque & translucent parts of models that were previously prepared
         auto capture = _cache->GetSharedStateSet().CaptureState(
             *context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
         ModelRenderer::RenderPrepared(
             RenderCore::Assets::ModelRendererContext(*context, parserContext, techniqueIndex),
             _cache->GetSharedStateSet(), _preparedRenders, delayStep);
+
+        if (delayStep == RenderCore::Assets::DelayStep::OpaqueRender) {
+            _imposters.Render(*context, parserContext, techniqueIndex);
+        }
     }
 
     void PlacementsRenderer::FilterDrawCalls(
@@ -606,6 +614,7 @@ namespace SceneEngine
             void Render(
                 ModelCache& cache,
                 DelayedDrawCallSet& delayedDrawCalls,
+                DynamicImposters& imposters,
                 const void* filenamesBuffer,
                 const uint64* supplementsBuffer,
                 const Placements::ObjectReference& obj,
@@ -626,6 +635,7 @@ namespace SceneEngine
         void RendererHelper::Render(
             ModelCache& cache,
             DelayedDrawCallSet& delayedDrawCalls,
+            DynamicImposters& imposters,
             const void* filenamesBuffer,
             const uint64* supplementsBuffer,
             const Placements::ObjectReference& obj,
@@ -638,7 +648,6 @@ namespace SceneEngine
             float distanceSq = MagnitudeSquared(
                 .5f * (obj._cellSpaceBoundary.first + obj._cellSpaceBoundary.second) - cameraPosition);
             const float maxDistanceSq = 1000.f * 1000.f;
-            if (distanceSq > maxDistanceSq) { return; }
 
                 //  Objects should be sorted by model & material. This is important for
                 //  reducing the work load in "_cache". Typically cells will only refer
@@ -670,6 +679,11 @@ namespace SceneEngine
             }
                 
             auto localToWorld = Combine(obj._localToCell, cellToWorld);
+
+            if (distanceSq > maxDistanceSq) { 
+                imposters.Queue(*_current._renderer, *_current._model, localToWorld);
+                return; 
+            }
 
                 //  if we have internal transforms, we must use them.
                 //  But some models don't have any internal transforms -- in these
@@ -762,7 +776,7 @@ namespace SceneEngine
                 }
 
                 helper.Render(
-                    *_cache, _preparedRenders, 
+                    *_cache, _preparedRenders, _imposters,
                     filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
             }
 
@@ -784,7 +798,7 @@ namespace SceneEngine
                 }
 
                 helper.Render(
-                    *_cache, _preparedRenders, 
+                    *_cache, _preparedRenders, _imposters,
                     filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
             }
         }
@@ -796,6 +810,7 @@ namespace SceneEngine
     : _placementsCache(std::move(placementsCache))
     , _cache(std::move(modelCache))
     , _preparedRenders(typeid(ModelRenderer).hash_code())
+    , _imposters(_cache->GetSharedStateSet())
     {}
 
     PlacementsRenderer::~PlacementsRenderer() {}

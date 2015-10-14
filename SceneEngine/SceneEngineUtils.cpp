@@ -9,6 +9,7 @@
 #include "LightingParserContext.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/ShaderResource.h"
@@ -445,6 +446,67 @@ namespace SceneEngine
             ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2d.vsh:fullscreen:vs_*",
                 "game/xleres/basic.psh:copy_depth:ps_*"));
+        context.BindPS(MakeResourceList(src));
+        SetupVertexGeneratorShader(context);
+        context.Draw(4);
+    }
+
+    class ShaderBasedCopyRes
+    {
+    public:
+        class Desc {};
+
+        const Metal::ShaderProgram* _shader;
+        Metal::BoundUniforms _uniforms;
+
+        ShaderBasedCopyRes(const Desc&)
+        {
+            _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                "game/xleres/basic2d.vsh:screenspacerect:vs_*",
+                "game/xleres/basic.psh:copy_bilinear:ps_*");
+            _uniforms = Metal::BoundUniforms(*_shader);
+            _uniforms.BindConstantBuffers(1, {"ScreenSpaceOutput"});
+
+            _validationCallback = _shader->GetDependencyValidation();
+        }
+
+        ~ShaderBasedCopyRes() {}
+
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     
+            { return _validationCallback; }
+
+    private:
+        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
+    };
+
+    void ShaderBasedCopy(
+        Metal::DeviceContext& context,
+        const RenderCore::Metal::RenderTargetView& dest,
+        const RenderCore::Metal::ShaderResourceView& src,
+        std::pair<UInt2, UInt2> destination,
+        std::pair<UInt2, UInt2> source,
+        ProtectState::States::BitField protectStates)
+    {
+        using States = ProtectState::States;
+        const States::BitField effectedStates = 
+            States::RenderTargets | States::Viewports | States::DepthStencilState 
+            | States::Topology | States::InputLayout | States::VertexBuffer
+            ;
+        ProtectState savedStates(context, effectedStates & protectStates);
+
+        auto& res = Techniques::FindCachedBox2<ShaderBasedCopyRes>();
+
+        Float2 coords[4] = 
+        {
+            Float2(destination.first), Float2(destination.second),
+            Float2(source.first), Float2(source.second)
+        };
+
+        context.Bind(MakeResourceList(dest), nullptr);
+        context.Bind(Techniques::CommonResources()._dssWriteOnly);
+        context.Bind(*res._shader);
+        res._uniforms.Apply(context, Metal::UniformsStream(), 
+            Metal::UniformsStream({MakeSharedPkt(coords)}, {}));
         context.BindPS(MakeResourceList(src));
         SetupVertexGeneratorShader(context);
         context.Draw(4);

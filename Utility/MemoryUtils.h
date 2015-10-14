@@ -110,6 +110,9 @@ namespace Utility
 		return b;
 	}
 
+    uint32 IntegerHash32(uint32 key);
+    uint64 IntegerHash64(uint64 key);
+
         ////////////   C O M P I L E  -  T I M E  -  H A S H I N G   ////////////
 
     /// <summary>Generate a hash value at compile time</summary>

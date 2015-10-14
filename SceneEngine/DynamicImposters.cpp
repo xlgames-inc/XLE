@@ -13,6 +13,7 @@
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Assets/Assets.h"
@@ -27,7 +28,7 @@ namespace SceneEngine
 {
     using namespace RenderCore;
 
-    static unsigned GetXYAngle(const Float4x4& localToWorld, unsigned angleQuant)
+    static unsigned GetXYAngle(const Float3x4& localToWorld, unsigned angleQuant)
     {
             // We're going to get a rough XY angle value from 
             // this matrix... We could decompose the matrix into
@@ -40,6 +41,7 @@ namespace SceneEngine
             // -pi and pi...
         float range = 2.f * gPI / float(angleQuant);
         auto result = (unsigned)XlFloor((angle + gPI + .5f * range) / range);
+        result = result % angleQuant;
         assert(result >= 0 && result < angleQuant);
         return result;
     }
@@ -124,19 +126,6 @@ namespace SceneEngine
     SpriteAtlas::SpriteAtlas() {}
     SpriteAtlas::~SpriteAtlas() {}
 
-    static uint64 IntegerHash64(uint64 key)
-    {
-            // taken from https://gist.github.com/badboy/6267743
-        key = (~key) + (key << 21); // key = (key << 21) - key - 1;
-        key = key ^ (key >> 24);
-        key = (key + (key << 3)) + (key << 8); // key * 265
-        key = key ^ (key >> 14);
-        key = (key + (key << 2)) + (key << 4); // key * 21
-        key = key ^ (key >> 28);
-        key = key + (key << 31);
-        return key;
-    }
-
     class DynamicImposters::Pimpl
     {
     public:
@@ -152,7 +141,7 @@ namespace SceneEngine
             uint64 MakeHash() const { return HashCombine(IntegerHash64(size_t(_renderer)), _XYangle); }
         };
         std::vector<std::pair<uint64, QueuedObject>> _queuedObjects;
-        std::vector<std::pair<uint64, Float4x4>> _queuedInstances;
+        std::vector<std::pair<uint64, Float3>> _queuedInstances;
 
         class Config
         {
@@ -181,6 +170,8 @@ namespace SceneEngine
         {
         public:
             Rectangle _rect[MipMapCount];
+            Float3 _projectionCentre;
+            Float2 _worldSpaceHalfSize;
             uint64 _lastUsed;
         };
         std::vector<std::pair<uint64, PreparedSprite>> _preparedSprites;
@@ -209,6 +200,20 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex)
     {
+        Metal::InputElementDesc il[] = 
+        {
+            Metal::InputElementDesc("POSITION", 0, Metal::NativeFormat::R32G32B32_FLOAT),
+            Metal::InputElementDesc("TEXCOORD", 0, Metal::NativeFormat::R32G32_FLOAT),
+            Metal::InputElementDesc("SPRITEINDEX", 0, Metal::NativeFormat::R32_UINT)
+        };
+
+        Techniques::TechniqueMaterial material(
+            Metal::InputLayout(il, dimof(il)),
+            {Hash64("SpriteTable")}, ParameterBox());
+        auto shader = material.FindVariation(
+            parserContext, techniqueIndex, "game/xleres/vegetation/impostermaterial.txt");
+        if (!shader._shaderProgram) return;
+
             // For each object here, we should look to see if we have a prepared
             // imposter already available. If not, we have to build the imposter.
         
@@ -221,13 +226,11 @@ namespace SceneEngine
                 | ProtectState::States::BlendState;
             bool initProtectState = false;
 
-            std::vector<Pimpl::PreparedSprite> toPreparedSprite;
-            toPreparedSprite.reserve(_pimpl->_queuedObjects.size());
+            auto preparedSpritesI = _pimpl->_preparedSprites.begin();
             for (const auto& o:_pimpl->_queuedObjects) {
                 uint64 hash = o.first;
-                auto existing = LowerBound(_pimpl->_preparedSprites, hash);
-                if (existing != _pimpl->_preparedSprites.end() && existing->first == hash) {
-                    toPreparedSprite.push_back(existing->second);
+                preparedSpritesI = std::lower_bound(preparedSpritesI, _pimpl->_preparedSprites.end(), hash, CompareFirst<uint64, Pimpl::PreparedSprite>());
+                if (preparedSpritesI != _pimpl->_preparedSprites.end() && preparedSpritesI->first == hash) {
                 } else {
                     if (!initProtectState) {
                         protectState = ProtectState(context, volatileStates);
@@ -236,17 +239,85 @@ namespace SceneEngine
 
                     TRY {
                         auto newSprite = _pimpl->BuildSprite(context, parserContext, o.second);
-                        _pimpl->_preparedSprites.insert(existing, std::make_pair(hash, newSprite));
-                        toPreparedSprite.push_back(newSprite);
+                        preparedSpritesI = _pimpl->_preparedSprites.insert(preparedSpritesI, std::make_pair(hash, newSprite));
                     } CATCH(const ::Assets::Exceptions::AssetException&e) {
                         parserContext.Process(e);
-                        toPreparedSprite.push_back(Pimpl::PreparedSprite());
                     } CATCH_END
                 }
             }
         }
 
-            
+        class Vertex
+        {
+        public:
+            Float3 _pos; Float2 _tc;
+            unsigned _spriteIndex;
+        };
+        std::vector<Vertex> vertices;
+        vertices.reserve(_pimpl->_queuedInstances.size() * 6);
+
+        auto& projDesc = parserContext.GetProjectionDesc();
+        auto cameraRight = ExtractRight_Cam(projDesc._cameraToWorld);
+        auto cameraUp = ExtractUp_Cam(projDesc._cameraToWorld);
+
+           // Now just render a sprite for each instance requested
+        auto preparedSpritesI = _pimpl->_preparedSprites.begin();
+        for (auto i=_pimpl->_queuedInstances.cbegin(); i!=_pimpl->_queuedInstances.cend();) {
+            uint64 hash = i->first;
+            auto start = i++;
+            while (i < _pimpl->_queuedInstances.cend() && i->first == hash) ++i;
+
+            preparedSpritesI = std::lower_bound(preparedSpritesI, _pimpl->_preparedSprites.end(), hash, CompareFirst<uint64, Pimpl::PreparedSprite>());
+            if (preparedSpritesI == _pimpl->_preparedSprites.end() || preparedSpritesI->first != hash)
+                continue;
+
+            // We should have a number of sprites of the same instance. Expand the sprite into 
+            // triangles here, on the CPU. 
+            // We'll do the projection here because we need to use the parameters from how the
+            // sprite was originally projected.
+
+            unsigned spriteIndex = (unsigned)std::distance(_pimpl->_preparedSprites.begin(), preparedSpritesI);
+            Float3 projectionCenter = preparedSpritesI->second._projectionCentre;
+            Float2 projectionSize = preparedSpritesI->second._worldSpaceHalfSize;
+
+            for (auto s=start; s<i; ++s) {
+                Float3 A = s->second + projectionCenter - cameraRight * projectionSize[0] + cameraUp * projectionSize[1];
+                Float3 B = s->second + projectionCenter + cameraRight * projectionSize[0] + cameraUp * projectionSize[1];
+                Float3 C = s->second + projectionCenter - cameraRight * projectionSize[0] - cameraUp * projectionSize[1];
+                Float3 D = s->second + projectionCenter + cameraRight * projectionSize[0] - cameraUp * projectionSize[1];
+
+                vertices.push_back(Vertex {A, Float2(0.f, 0.f), spriteIndex});
+                vertices.push_back(Vertex {B, Float2(1.f, 0.f), spriteIndex});
+                vertices.push_back(Vertex {C, Float2(0.f, 1.f), spriteIndex});
+                vertices.push_back(Vertex {C, Float2(0.f, 1.f), spriteIndex});
+                vertices.push_back(Vertex {B, Float2(1.f, 0.f), spriteIndex});
+                vertices.push_back(Vertex {D, Float2(1.f, 1.f), spriteIndex});
+            }
+        }
+
+            // We don't really have to rebuild this every time. We should only need to 
+            // rebuild this table when the prepared sprites array changes.
+        class SpriteTableElement
+        {
+        public:
+            UInt4 _coords[Pimpl::MipMapCount];
+        };
+        auto spriteTable = MakeSharedPktSize(sizeof(SpriteTableElement) * _pimpl->_preparedSprites.size());
+        for (unsigned c=0; c<unsigned(_pimpl->_preparedSprites.size()); ++c) {
+            auto& e = ((SpriteTableElement*)spriteTable.get())[c];
+            for (unsigned m=0; m<Pimpl::MipMapCount; ++m) {
+                const auto &r = _pimpl->_preparedSprites[c].second._rect[m];
+                e._coords[m] = UInt4(r.first[0], r.first[1], r.second[0], r.second[1]);
+            }
+        }
+
+        shader.Apply(context, parserContext, 
+            {std::move(spriteTable)});
+        SetupVertexGeneratorShader(context);
+        Metal::VertexBuffer tempvb(AsPointer(vertices.begin()), vertices.size()*sizeof(Vertex));
+        context.Bind(MakeResourceList(tempvb), sizeof(Vertex), 0);
+        context.Bind(Metal::Topology::TriangleList);
+        context.Draw((unsigned)vertices.size());
     }
 
     auto DynamicImposters::Pimpl::BuildSprite(
@@ -358,12 +429,11 @@ namespace SceneEngine
 
             // Now we want to copy the rendered sprite into the atlas
             // We should generate the mip-maps in this step as well.
-        for (unsigned c=0; c<MipMapCount; ++c) {
+        for (unsigned c=0; c<MipMapCount; ++c)
             CopyToAltas(
                 context,
                 reservedSpace[c],
                 Rectangle(UInt2(0, 0), maxCoords - minCoords));
-        }
 
             // once everything is complete (and there is no further possibility of an exception,
             // we should commit our changes to the rectangle packer)
@@ -373,6 +443,8 @@ namespace SceneEngine
         for (unsigned c=0; c<MipMapCount; ++c)
             result._rect[c] = reservedSpace[c];
         result._lastUsed = 0;
+        result._projectionCentre = centre;
+        result._worldSpaceHalfSize = Float2(5.f, 15.f);     // todo -- calculate properly
         return result;
     }
 
@@ -391,6 +463,13 @@ namespace SceneEngine
         // nVidia has some cuda-based texture compressors that could
         // presumedly compress the texture on the GPU (without needing
         // CPU involvement)
+        for (unsigned c=0; c<unsigned(_atlas._layers.size()); ++c) {
+            const auto& l = _atlas._layers[c];
+            ShaderBasedCopy(
+                context,
+                l._atlas.RTV(), l._tempRTV.SRV(),
+                destination, source, 0);
+        }
     }
 
     void DynamicImposters::Pimpl::RenderObject(
@@ -432,7 +511,7 @@ namespace SceneEngine
     void DynamicImposters::Queue(
         const ModelRenderer& renderer, 
         const ModelScaffold& scaffold,
-        const Float4x4& localToWorld)
+        const Float3x4& localToWorld)
     {
         auto qo = Pimpl::QueuedObject { &renderer, &scaffold, GetXYAngle(localToWorld, _pimpl->_config._angleQuant) };
         auto hash = qo.MakeHash();
@@ -441,7 +520,7 @@ namespace SceneEngine
         if (existing == _pimpl->_queuedObjects.end() || existing->first != hash)
             _pimpl->_queuedObjects.insert(existing, std::make_pair(hash, qo));
                 
-        _pimpl->_queuedInstances.push_back(std::make_pair(hash, localToWorld));
+        _pimpl->_queuedInstances.push_back(std::make_pair(hash, ExtractTranslation(localToWorld)));
     }
 
     DynamicImposters::DynamicImposters(const SharedStateSet& sharedStateSet)

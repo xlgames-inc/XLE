@@ -61,6 +61,19 @@ void fullscreen_flip_viewfrustumvector(uint vertexId : SV_VertexID, out float4 o
 	oPosition = float4(2.f * coord.x - 1.f, -2.f * coord.y + 1.f, 0.f, 1.f);
 }
 
+cbuffer ScreenSpaceOutput
+{
+	float2 OutputMin, OutputMax;
+	float2 InputMin, InputMax;
+}
+
+void screenspacerect(uint vertexId : SV_VertexID, out float4 oPosition : SV_Position, out float2 oTexCoord : TEXCOORD0)
+{
+	float2 coord = float2((float)(vertexId / 2), (float)(vertexId % 2));
+	oTexCoord = lerp(InputMin, InputMax, coord);
+	coord = lerp(OutputMin, OutputMax, coord);
+	oPosition = float4(2.f * coord.x - 1.f, -2.f * coord.y + 1.f, 0.f, 1.f);
+}
 
 
 //////////////
