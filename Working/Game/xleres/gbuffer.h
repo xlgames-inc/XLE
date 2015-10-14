@@ -164,7 +164,11 @@ GBufferEncoded Encode(GBufferValues values)
     result.diffuseBuffer.rgb = values.diffuseAlbedo;
     result.normalBuffer.xyz = CompressGBufferNormal(values.worldSpaceNormal.xyz).xyz;
 
-    const bool decalBlend = false;
+    #if defined(DECAL_BLEND)
+        const bool decalBlend = (DECAL_BLEND == 1);
+    #else
+        const bool decalBlend = false;
+    #endif
     if (decalBlend) {
         result.diffuseBuffer.a = values.blendingAlpha;
         result.normalBuffer.a = values.blendingAlpha;

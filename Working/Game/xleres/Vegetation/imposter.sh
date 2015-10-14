@@ -81,9 +81,6 @@ float4 LoadImposterAltas(
     return ImposterAltas[atlasIndex].Load(uint3(ftc, 0));
 }
 
-#if !(MAT_ALPHA_TEST==1)
-    [earlydepthstencil]
-#endif
 GBufferEncoded ps_deferred(VSOutput geo)
 {
     if (0) {
@@ -114,6 +111,20 @@ GBufferEncoded ps_deferred(VSOutput geo)
 
     float4 diffuse = LoadImposterAltas(0, coords[mip], tc);
     float4 normal = LoadImposterAltas(1, coords[mip], tc);
+
+    if (diffuse.a == 0.f) discard;
+
+    #if 0
+        float3 mipColors[MipMapCount] =
+        {
+            float3(1, 1, 1),
+            float3(0, 1, 1),
+            float3(1, 1, 0),
+            float3(0, 0, 1),
+            float3(0, 1, 0)
+        };
+        diffuse.xyz = mipColors[mip];
+    #endif
 
         // we can't use the normal Encode() call for the gbuffer
         // because the normal is already compressed into it's 8 bit format

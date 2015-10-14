@@ -487,11 +487,13 @@ namespace SceneEngine
         unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep)
     {
             // Draw the opaque & translucent parts of models that were previously prepared
-        auto capture = _cache->GetSharedStateSet().CaptureState(
-            *context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
-        ModelRenderer::RenderPrepared(
-            RenderCore::Assets::ModelRendererContext(*context, parserContext, techniqueIndex),
-            _cache->GetSharedStateSet(), _preparedRenders, delayStep);
+        {
+            auto capture = _cache->GetSharedStateSet().CaptureState(
+                *context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+            ModelRenderer::RenderPrepared(
+                RenderCore::Assets::ModelRendererContext(*context, parserContext, techniqueIndex),
+                _cache->GetSharedStateSet(), _preparedRenders, delayStep);
+        }
 
         if (delayStep == RenderCore::Assets::DelayStep::OpaqueRender) {
             _imposters.Render(*context, parserContext, techniqueIndex);
@@ -625,11 +627,14 @@ namespace SceneEngine
             {
                 _currentModel = _currentMaterial = 0ull;
                 _currentSupplements = 0u;
+                const auto imposterDistance = Tweakable("ImposterDistance", 650.f);
+                _maxDistanceSq = imposterDistance * imposterDistance;
             }
         protected:
             uint64 _currentModel, _currentMaterial;
             unsigned _currentSupplements;
             ModelCache::Model _current;
+            float _maxDistanceSq;
         };
 
         void RendererHelper::Render(
@@ -647,8 +652,6 @@ namespace SceneEngine
 
             float distanceSq = MagnitudeSquared(
                 .5f * (obj._cellSpaceBoundary.first + obj._cellSpaceBoundary.second) - cameraPosition);
-            const auto imposterDistance = TweakableUnique("ImposterDistance", 500.f);
-            const auto maxDistanceSq = imposterDistance * imposterDistance;
 
                 //  Objects should be sorted by model & material. This is important for
                 //  reducing the work load in "_cache". Typically cells will only refer
@@ -681,8 +684,8 @@ namespace SceneEngine
                 
             auto localToWorld = Combine(obj._localToCell, cellToWorld);
 
-            if (distanceSq > maxDistanceSq) { 
-                imposters.Queue(*_current._renderer, *_current._model, localToWorld);
+            if (distanceSq > _maxDistanceSq) {
+                imposters.Queue(*_current._renderer, *_current._model, localToWorld, cameraPosition);
                 return; 
             }
 

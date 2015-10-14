@@ -32,10 +32,12 @@ namespace SceneEngine
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex);
 
-        void Queue(const ModelRenderer& renderer, const ModelScaffold& scaffold, const Float3x4& localToWorld);
+        void Queue(
+            const ModelRenderer& renderer, const ModelScaffold& scaffold, 
+            const Float3x4& localToWorld, const Float3& cameraPosition);
         void Reset();
 
-        DynamicImposters(const SharedStateSet& sharedStateSet);
+        DynamicImposters(SharedStateSet& sharedStateSet);
         ~DynamicImposters();
     private:
         class Pimpl;

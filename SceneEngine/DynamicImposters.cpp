@@ -14,8 +14,12 @@
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/TechniqueMaterial.h"
+#include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Assets/ModelRunTime.h"
+#include "../RenderCore/Assets/DelayedDrawCall.h"
+#include "../RenderCore/Assets/SharedStateSet.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
@@ -23,6 +27,7 @@
 #include "../Math/RectanglePacking.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/MemoryUtils.h"
+#include "../Utility/FunctionUtils.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
@@ -30,17 +35,28 @@ namespace SceneEngine
 {
     using namespace RenderCore;
 
-    static unsigned GetXYAngle(const Float3x4& localToWorld, unsigned angleQuant)
+    static unsigned GetXYAngle(
+        const RenderCore::Assets::ModelScaffold& scaffold,
+        const Float3x4& localToWorld, const Float3& cameraPosition, 
+        unsigned angleQuant)
     {
             // We're going to get a rough XY angle value from 
-            // this matrix... We could decompose the matrix into
-            // euler angles. But it may be better just to get the
-            // "forward" direction, and extract a rotation around
-            // the Z axis from that.
-        auto forward = ExtractForward(localToWorld);
-        float angle = XlATan2(forward[1], forward[0]);
+            // this matrix... We just want an angle based on the 
+            // direction between the center of the object and the
+            // camera.
+            // Note that we could just use the origin of local space
+            // to skip some steps here for a faster result.
+        const auto& bb = scaffold.GetStaticBoundingBox();
+        Float3 bbCenter = (bb.first + bb.second) * 0.5f;
+        
+        Float3 worldCenter = TransformPoint(localToWorld, bbCenter);
+        Float3 offset = cameraPosition - worldCenter;
+        float angle = XlATan2(offset[1], offset[0]);        // note -- z ignored.
+
             // assuming out atan implementation returns a value between
             // -pi and pi...
+            // Note the offset by half our range to make sure that 0.f
+            // is right in the middle of one quantized range.
         float range = 2.f * gPI / float(angleQuant);
         auto result = (unsigned)XlFloor((angle + gPI + .5f * range) / range);
         result = result % angleQuant;
@@ -52,7 +68,8 @@ namespace SceneEngine
     {
             // get a "forward" vector that corresponds to the given xy angle.
         const auto factor = float(2.f * gPI) / float(angleQuant);
-        return Float2(XlCos(xyAngle * factor), XlSin(xyAngle * factor));
+        const auto angle = float(xyAngle) * factor - gPI;
+        return Float2(XlCos(angle), XlSin(angle));
     }
 
     static UInt2 MipMapDims(UInt2 dims, unsigned mipMapLevel)
@@ -131,7 +148,8 @@ namespace SceneEngine
     class DynamicImposters::Pimpl
     {
     public:
-        const SharedStateSet* _sharedStateSet;
+        SharedStateSet* _sharedStateSet;
+        std::shared_ptr<Techniques::IStateSetResolver> _stateResolver;
 
         class QueuedObject
         {
@@ -158,9 +176,9 @@ namespace SceneEngine
             Config()
             {
                 _angleQuant = 8;
-                _calibrationDistance = 400.f;
-                _calibrationFov = Deg2Rad(60.f);
-                _calibrationPixels = 512;
+                _calibrationDistance = 500.f;
+                _calibrationFov = Deg2Rad(40.f);
+                _calibrationPixels = 256;
                 _minDims = UInt2(32, 32);
                 _maxDims = UInt2(128, 128);
             }
@@ -189,7 +207,8 @@ namespace SceneEngine
             Techniques::ParsingContext& parserContext,
             const QueuedObject& ob, 
             const Float4x4& cameraToWorld,
-            const Metal::ViewportDesc& viewport) const;
+            const Metal::ViewportDesc& viewport,
+            Float2 fov) const;
         void CopyToAltas(
             Metal::DeviceContext& context,
             const Rectangle& destination,
@@ -233,6 +252,9 @@ namespace SceneEngine
                 | ProtectState::States::BlendState;
             bool initProtectState = false;
 
+            const unsigned maxPreparePerFrame = Tweakable("ImpostersReset", false) ? INT_MAX : 3;
+            unsigned preparedThisFrame = 0;
+
             auto preparedSpritesI = _pimpl->_preparedSprites.begin();
             for (const auto& o:_pimpl->_queuedObjects) {
                 uint64 hash = o.first;
@@ -243,6 +265,8 @@ namespace SceneEngine
                         protectState = ProtectState(context, volatileStates);
                         initProtectState = true;
                     }
+
+                    if (preparedThisFrame++ >= maxPreparePerFrame) continue;
 
                     TRY {
                         auto newSprite = _pimpl->BuildSprite(context, parserContext, o.second);
@@ -391,23 +415,37 @@ namespace SceneEngine
 
         const auto camToWorld = MakeCameraToWorld(Expand(cameraForward, 0.f), Float3(0.f, 0.f, 1.f), camera);
         const auto worldToCam = InvertOrthonormalTransform(camToWorld);
+        float worldSpaceHalfSizeX = 0.f;
 
         for (unsigned c=0; c<dimof(corners); ++c) {
             Float3 camSpace = TransformPoint(worldToCam, corners[c]);
-            float verticalAngle = XlATan2(camSpace[1], -camSpace[2]);
             float horizontalAngle = XlATan2(camSpace[0], -camSpace[2]);
-            angleMins[0] = std::min(angleMins[0], horizontalAngle);
-            angleMaxs[0] = std::max(angleMaxs[0], horizontalAngle);
+            if (horizontalAngle < angleMins[0]) {
+                angleMins[0] = horizontalAngle;
+                worldSpaceHalfSizeX = Magnitude(Truncate(corners[c]) - Truncate(centre));
+            }
+            if (horizontalAngle > angleMaxs[0]) {
+                angleMaxs[0] = horizontalAngle;
+                worldSpaceHalfSizeX = Magnitude(Truncate(corners[c]) - Truncate(centre));
+            }
+            float verticalAngle = XlATan2(camSpace[1], -camSpace[2]);
             angleMins[1] = std::min(angleMins[1], verticalAngle);
             angleMaxs[1] = std::max(angleMaxs[1], verticalAngle);
         }
 
+            // We can adjust the angleToPixels ration to try to get a projection
+            // size that is similar to the main scene.
+            // A perfect result would mean there is a 1:1 ratio between sprite texels
+            // and screen pixels at the point the object becomes an imposter. But given
+            // the approximations involved, that might not be possible.
+        const float angleToPixels = cfg._calibrationPixels / (0.5f * cfg._calibrationFov);
+        const float pixelRatio = 16.f/9.f;    // Adjust the pixel ratio for standard 16:9
         Int2 minCoords(
-            (int)XlFloor(angleMins[0] / cfg._calibrationFov * cfg._calibrationPixels),
-            (int)XlFloor(angleMins[1] / cfg._calibrationFov * cfg._calibrationPixels));
+            (int)XlFloor(angleMins[0] * angleToPixels * pixelRatio),
+            (int)XlFloor(angleMins[1] * angleToPixels));
         Int2 maxCoords(
-            (int)XlFloor(angleMaxs[0] / cfg._calibrationFov * cfg._calibrationPixels),
-            (int)XlFloor(angleMaxs[1] / cfg._calibrationFov * cfg._calibrationPixels));
+            (int)XlFloor(angleMaxs[0] * angleToPixels * pixelRatio),
+            (int)XlFloor(angleMaxs[1] * angleToPixels));
 
             // If the object is too big, we need to constrain the dimensions
             // note that we should adjust the projection matrix as well, to
@@ -464,7 +502,8 @@ namespace SceneEngine
             // approximation than an orthogonal camera.
         RenderObject(
             context, parserContext, ob,
-            camToWorld, Metal::ViewportDesc(0.f, 0.f, float(maxCoords[0] - minCoords[0]), float(maxCoords[1] - minCoords[1])));
+            camToWorld, Metal::ViewportDesc(0.f, 0.f, float(maxCoords[0] - minCoords[0]), float(maxCoords[1] - minCoords[1])),
+            Float2(angleMaxs[0] - angleMins[0], angleMaxs[1] - angleMins[1]));
 
             // Now we want to copy the rendered sprite into the atlas
             // We should generate the mip-maps in this step as well.
@@ -482,7 +521,12 @@ namespace SceneEngine
             result._rect[c] = reservedSpace[c];
         result._lastUsed = 0;
         result._projectionCentre = centre;
-        result._worldSpaceHalfSize = Float2(5.f, 15.f);     // todo -- calculate properly
+            // We can get the world space half size directly
+            // from the bounding box. If we built the projection correctly (and 
+            // if the camera is reasonably far from the object), then it should
+            // be a simple calculation.
+        result._worldSpaceHalfSize[0] = 0.5f * std::max(bb.second[0] - bb.first[0], bb.second[1] - bb.first[1]); // worldSpaceHalfSizeX;
+        result._worldSpaceHalfSize[1] = 0.5f * (bb.second[2] - bb.first[2]);
         return result;
     }
 
@@ -518,7 +562,8 @@ namespace SceneEngine
         Techniques::ParsingContext& parserContext,
         const QueuedObject& ob, 
         const Float4x4& cameraToWorld,
-        const Metal::ViewportDesc& viewport) const
+        const Metal::ViewportDesc& viewport,
+        Float2 fov) const
     {
         context.Clear(_atlas._tempDSV.DSV(), 1.f, 0u);
 
@@ -534,14 +579,83 @@ namespace SceneEngine
         context.Bind(viewport);
         context.Bind(Techniques::CommonResources()._blendOpaque);
         context.Bind(Techniques::CommonResources()._dssReadWrite);
-        context.Bind(Techniques::CommonResources()._cullDisable);
-        context.Bind(
-            ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2d.vsh:fullscreen:vs_*",
-                "game/xleres/basic.psh:fill_gradient:ps_*",
-                ""));
-        SetupVertexGeneratorShader(context);
-        context.Draw(4);
+
+        // context.Bind(Techniques::CommonResources()._cullDisable);
+        // context.Bind(
+        //     ::Assets::GetAssetDep<Metal::ShaderProgram>(
+        //         "game/xleres/basic2d.vsh:fullscreen:vs_*",
+        //         "game/xleres/basic.psh:fill_gradient:ps_*",
+        //         ""));
+        // SetupVertexGeneratorShader(context);
+        // context.Draw(4);
+
+            // We have to adjust the projection desc and the
+            // main transform constant buffer...
+            // We will squish the FOV to align the object perfectly within our
+            // perspective frustum
+        auto oldProjDesc = parserContext.GetProjectionDesc();
+
+        auto& projDesc = parserContext.GetProjectionDesc();
+        projDesc._verticalFov = fov[1];
+        projDesc._aspectRatio = fov[0] / fov[1];
+
+        auto cameraToProjection = PerspectiveProjection(
+            projDesc._verticalFov, projDesc._aspectRatio,
+            projDesc._nearClip, projDesc._farClip,
+            GeometricCoordinateSpace::RightHanded,
+            Techniques::GetDefaultClipSpaceType());
+
+        projDesc._worldToProjection = Combine(InvertOrthonormalTransform(cameraToWorld), cameraToProjection);
+        projDesc._cameraToProjection = cameraToProjection;
+        projDesc._cameraToWorld = cameraToWorld;
+
+        auto cleanup = MakeAutoCleanup(
+            [&projDesc, &oldProjDesc, &context, &parserContext]() 
+            { 
+                projDesc = oldProjDesc;
+                auto globalTransform = BuildGlobalTransformConstants(projDesc);
+                parserContext.SetGlobalCB(
+                    context, Techniques::TechniqueContext::CB_GlobalTransform,
+                    &globalTransform, sizeof(globalTransform));
+                parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("DECAL_BLEND"), 0u);
+            });
+
+        auto globalTransform = BuildGlobalTransformConstants(projDesc);
+        parserContext.SetGlobalCB(
+            context, Techniques::TechniqueContext::CB_GlobalTransform,
+            &globalTransform, sizeof(globalTransform));
+
+            // We need to use the "DECAL_BLEND" mode.
+            // This writes the blending alpha to the destination target
+        parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("DECAL_BLEND"), 1u);
+
+            // Now we can just render the object.
+            // Let's use a temporary DelayedDrawCallSet
+            // todo -- it might be ideal to use an MSAA target for this step
+
+        RenderCore::Assets::DelayedDrawCallSet drawCalls(typeid(ModelRenderer).hash_code());
+        ob._renderer->Prepare(
+            drawCalls, *_sharedStateSet,
+            Identity<Float4x4>(),
+            RenderCore::Assets::MeshToModel(*ob._scaffold));
+        ModelRenderer::Sort(drawCalls);
+
+            // todo -- Note that we're rendering world space normals here currently. It's not correct.
+            // We want to render view space normals; and then convert them into world space
+            // in the sprite shader.
+        auto marker = _sharedStateSet->CaptureState(context, _stateResolver, nullptr);
+        ModelRenderer::RenderPrepared(
+            RenderCore::Assets::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
+            *_sharedStateSet, drawCalls, RenderCore::Assets::DelayStep::OpaqueRender);
+
+            // we also have to render the rest of the geometry (using the same technique)
+            // otherwise this geometry will never be rendered.
+        ModelRenderer::RenderPrepared(
+            RenderCore::Assets::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
+            *_sharedStateSet, drawCalls, RenderCore::Assets::DelayStep::PostDeferred);
+        ModelRenderer::RenderPrepared(
+            RenderCore::Assets::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
+            *_sharedStateSet, drawCalls, RenderCore::Assets::DelayStep::SortedBlending);
     }
 
     void DynamicImposters::Reset()
@@ -558,9 +672,14 @@ namespace SceneEngine
     void DynamicImposters::Queue(
         const ModelRenderer& renderer, 
         const ModelScaffold& scaffold,
-        const Float3x4& localToWorld)
+        const Float3x4& localToWorld,
+        const Float3& cameraPosition)
     {
-        auto qo = Pimpl::QueuedObject { &renderer, &scaffold, GetXYAngle(localToWorld, _pimpl->_config._angleQuant) };
+            // Note that we're ignoring most of the rotation information in the local-to-world
+            // For objects that are incorrectly exported (eg wrong up vector), we will sometimes 
+            // rotate all instances to compenstate. But that will be ignored when we get to this 
+            // point!
+        auto qo = Pimpl::QueuedObject { &renderer, &scaffold, GetXYAngle(scaffold, localToWorld, cameraPosition, _pimpl->_config._angleQuant) };
         auto hash = qo.MakeHash();
         auto existing = LowerBound(_pimpl->_queuedObjects, hash);
 
@@ -570,12 +689,13 @@ namespace SceneEngine
         _pimpl->_queuedInstances.push_back(std::make_pair(hash, ExtractTranslation(localToWorld)));
     }
 
-    DynamicImposters::DynamicImposters(const SharedStateSet& sharedStateSet)
+    DynamicImposters::DynamicImposters(SharedStateSet& sharedStateSet)
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_sharedStateSet = &sharedStateSet;
+        _pimpl->_stateResolver = Techniques::CreateStateSetResolver_Deferred();
 
-        UInt2 altasSize(1024, 1024);
+        UInt2 altasSize(4096, 2048);
 
         _pimpl->_packer = RectanglePacker(altasSize);
 

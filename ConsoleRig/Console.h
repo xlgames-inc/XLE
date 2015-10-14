@@ -92,14 +92,15 @@ namespace ConsoleRig
             })()                                                                                \
         /**/
 
-    #define TweakableUnique(name, defaultValue)                                     \
-        ([&]() -> decltype(defaultValue)&                                            \
-            {                                                                       \
-                static auto value = defaultValue;                                   \
-                static ::ConsoleRig::ConsoleVariable<decltype(value)>(name, value); \
-                return value;                                                       \
-            })()                                                                    \
-        /**/
+    // not currently working! The static within the lamdba gets destroyed
+    // #define TweakableUnique(name, defaultValue)                                     \
+    //     ([&]() -> decltype(defaultValue)&                                            \
+    //         {                                                                       \
+    //             static auto value = defaultValue;                                   \
+    //             static ::ConsoleRig::ConsoleVariable<decltype(value)>(name, value); \
+    //             return value;                                                       \
+    //         })()                                                                    \
+    //     /**/
 
 #else
 
