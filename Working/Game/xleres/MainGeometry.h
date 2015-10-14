@@ -10,6 +10,10 @@
 #define SHADOW_CASCADE_MODE_ARBITRARY 1
 #define SHADOW_CASCADE_MODE_ORTHOGONAL 2
 
+#if !defined(VSINPUT_EXTRA)
+    #define VSINPUT_EXTRA
+#endif
+
 #if !defined(VSOUTPUT_EXTRA)
     #define VSOUTPUT_EXTRA
 #endif
@@ -98,6 +102,8 @@ struct VSInput //////////////////////////////////////////////////////
             #define OUTPUT_PER_VERTEX_AO 1
         #endif
     #endif
+
+    VSINPUT_EXTRA
 }; //////////////////////////////////////////////////////////////////
 
 #if (MAT_DO_PARTICLE_LIGHTING==1) && (GEO_HAS_TEXCOORD==1) && (RES_HAS_NormalsTexture==1)

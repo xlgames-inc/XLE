@@ -51,6 +51,7 @@ namespace XLEMath
         using Rectangle = std::pair<UInt2, UInt2>;
 
         Rectangle Add(UInt2 dims);
+        UInt2 TotalSize() const { return _totalSize; }
 
         RectanglePacker();
         RectanglePacker(const UInt2 dimensions);
@@ -74,7 +75,7 @@ namespace XLEMath
         };
 
         std::vector<Node> _nodes;
-        
+        UInt2 _totalSize;
 
         size_t SearchNodes(size_t startingNode, UInt2 dims) const;
     };

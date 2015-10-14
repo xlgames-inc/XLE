@@ -19,6 +19,8 @@ namespace XLEMath
             assert(!n.IsAllocated());
             n._children = _nodes.size();
 
+            auto result = std::make_pair(n._space.first, UInt2(n._space.first + dims));
+
                 // note that the order we push the children in here will determine
                 // how they are searched. We will push in the "right" space first,
                 // and then the "down" space.
@@ -31,7 +33,7 @@ namespace XLEMath
             _nodes.push_back(Node { rightSpace, s_invalidNode });
             _nodes.push_back(Node { downSpace, s_invalidNode });
 
-            return std::make_pair(n._space.first, n._space.first + dims);
+            return result;
         }
 
         return std::make_pair(UInt2(0,0), UInt2(0,0));
@@ -57,27 +59,32 @@ namespace XLEMath
         _nodes.reserve(128);
         _nodes.push_back(
             Node { std::make_pair(UInt2(0,0), dimensions), s_invalidNode });
+        _totalSize = dimensions;
     }
 
     RectanglePacker::~RectanglePacker() {}
 
     RectanglePacker::RectanglePacker(RectanglePacker&& moveFrom)
     : _nodes(std::move(moveFrom._nodes))
+    , _totalSize(moveFrom._totalSize)
     {}
      
     RectanglePacker& RectanglePacker::operator=(RectanglePacker&& moveFrom)
     {
         _nodes = std::move(moveFrom._nodes);
+        _totalSize = moveFrom._totalSize;
         return *this;
     }
 
     RectanglePacker::RectanglePacker(const RectanglePacker& cloneFrom)
     : _nodes(cloneFrom._nodes)
+    , _totalSize(cloneFrom._totalSize)
     {}
 
     RectanglePacker& RectanglePacker::operator=(const RectanglePacker& cloneFrom)
     {
         _nodes = cloneFrom._nodes;
+        _totalSize = cloneFrom._totalSize;
         return *this;
     }
 

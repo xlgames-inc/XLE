@@ -11,12 +11,14 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/ShaderResource.h"
+#include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Assets/Assets.h"
+#include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"
 #include "../Math/RectanglePacking.h"
 #include "../Utility/IteratorUtils.h"
@@ -150,6 +152,7 @@ namespace SceneEngine
             float _calibrationDistance;
             float _calibrationFov;
             unsigned _calibrationPixels;
+            UInt2 _minDims;
             UInt2 _maxDims;
 
             Config()
@@ -158,6 +161,7 @@ namespace SceneEngine
                 _calibrationDistance = 400.f;
                 _calibrationFov = Deg2Rad(60.f);
                 _calibrationPixels = 512;
+                _minDims = UInt2(32, 32);
                 _maxDims = UInt2(128, 128);
             }
         };
@@ -200,6 +204,9 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex)
     {
+        if (_pimpl->_queuedInstances.empty() || _pimpl->_queuedObjects.empty())
+            return;
+
         Metal::InputElementDesc il[] = 
         {
             Metal::InputElementDesc("POSITION", 0, Metal::NativeFormat::R32G32B32_FLOAT),
@@ -258,9 +265,18 @@ namespace SceneEngine
 
         auto& projDesc = parserContext.GetProjectionDesc();
         auto cameraRight = ExtractRight_Cam(projDesc._cameraToWorld);
-        auto cameraUp = ExtractUp_Cam(projDesc._cameraToWorld);
+        auto cameraUp = Float3(0.f, 0.f, 1.f); // ExtractUp_Cam(projDesc._cameraToWorld);
 
-           // Now just render a sprite for each instance requested
+            // Now just render a sprite for each instance requested
+            // Here, we can choose to sort the instances by sprite id,
+            // or just leave them in their original order. All of the
+            // sprite textures at in the same atlas; so it's ok to mix
+            // the instances up together.
+            // In some cases we might want to sort the sprites back-to-front
+            // (since they are close to camera facing, we should get correct
+            // sorting when sorting on a per-sprite basis)
+        std::sort(_pimpl->_queuedInstances.begin(), _pimpl->_queuedInstances.end(), CompareFirst<uint64, Float3>());
+
         auto preparedSpritesI = _pimpl->_preparedSprites.begin();
         for (auto i=_pimpl->_queuedInstances.cbegin(); i!=_pimpl->_queuedInstances.cend();) {
             uint64 hash = i->first;
@@ -287,13 +303,15 @@ namespace SceneEngine
                 Float3 D = s->second + projectionCenter + cameraRight * projectionSize[0] - cameraUp * projectionSize[1];
 
                 vertices.push_back(Vertex {A, Float2(0.f, 0.f), spriteIndex});
-                vertices.push_back(Vertex {B, Float2(1.f, 0.f), spriteIndex});
-                vertices.push_back(Vertex {C, Float2(0.f, 1.f), spriteIndex});
                 vertices.push_back(Vertex {C, Float2(0.f, 1.f), spriteIndex});
                 vertices.push_back(Vertex {B, Float2(1.f, 0.f), spriteIndex});
+                vertices.push_back(Vertex {B, Float2(1.f, 0.f), spriteIndex});
+                vertices.push_back(Vertex {C, Float2(0.f, 1.f), spriteIndex});
                 vertices.push_back(Vertex {D, Float2(1.f, 1.f), spriteIndex});
             }
         }
+
+        if (vertices.empty()) return;
 
             // We don't really have to rebuild this every time. We should only need to 
             // rebuild this table when the prepared sprites array changes.
@@ -302,8 +320,9 @@ namespace SceneEngine
         public:
             UInt4 _coords[Pimpl::MipMapCount];
         };
-        auto spriteTable = MakeSharedPktSize(sizeof(SpriteTableElement) * _pimpl->_preparedSprites.size());
-        for (unsigned c=0; c<unsigned(_pimpl->_preparedSprites.size()); ++c) {
+        auto spriteTable = MakeSharedPktSize(sizeof(UInt4)*512); // sizeof(SpriteTableElement) * _pimpl->_preparedSprites.size());
+        const unsigned maxSprites = 512 / Pimpl::MipMapCount;
+        for (unsigned c=0; c<std::min(unsigned(_pimpl->_preparedSprites.size()), maxSprites); ++c) {
             auto& e = ((SpriteTableElement*)spriteTable.get())[c];
             for (unsigned m=0; m<Pimpl::MipMapCount; ++m) {
                 const auto &r = _pimpl->_preparedSprites[c].second._rect[m];
@@ -311,12 +330,18 @@ namespace SceneEngine
             }
         }
 
-        shader.Apply(context, parserContext, 
-            {std::move(spriteTable)});
-        SetupVertexGeneratorShader(context);
+            // bind the atlas textures to the find slots (eg, over DiffuseTexture, NormalsTexture, etc)
+        for (unsigned c=0; c<_pimpl->_atlas._layers.size(); ++c)
+            context.BindPS(MakeResourceList(c, _pimpl->_atlas._layers[c]._atlas.SRV()));
+
+        shader.Apply(context, parserContext, {std::move(spriteTable)});
+        
         Metal::VertexBuffer tempvb(AsPointer(vertices.begin()), vertices.size()*sizeof(Vertex));
         context.Bind(MakeResourceList(tempvb), sizeof(Vertex), 0);
         context.Bind(Metal::Topology::TriangleList);
+        context.Bind(Techniques::CommonResources()._blendOpaque);
+        context.Bind(Techniques::CommonResources()._dssReadWrite);
+        context.Bind(Techniques::CommonResources()._defaultRasterizer);
         context.Draw((unsigned)vertices.size());
     }
 
@@ -325,6 +350,8 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext,
         const QueuedObject& ob) -> PreparedSprite
     {
+        Metal::GPUProfiler::DebugAnnotation annon(context, L"Imposter-Prepare");
+
             // First we need to calculate the correct size for the sprite required
             // for this object. Because we're using a generic rectangle packing
             // algorithm, we can choose any size.
@@ -350,7 +377,7 @@ namespace SceneEngine
         Float3 camera = centre + cfg._calibrationDistance * -Expand(cameraForward, 0.f);
         
             // Find the vertical and horizontal angles for each corner of the bounding box.
-        Float2 angleMins(-FLT_MAX, -FLT_MAX), angleMaxs(FLT_MAX, FLT_MAX);
+        Float2 angleMins(FLT_MAX, FLT_MAX), angleMaxs(-FLT_MAX, -FLT_MAX);
         Float3 corners[] = {
             Float3( bb.first[0],  bb.first[1],  bb.first[2]),
             Float3(bb.second[0],  bb.first[1],  bb.first[2]),
@@ -367,8 +394,8 @@ namespace SceneEngine
 
         for (unsigned c=0; c<dimof(corners); ++c) {
             Float3 camSpace = TransformPoint(worldToCam, corners[c]);
-            float verticalAngle = XlATan2(camSpace[1], camSpace[2]);
-            float horizontalAngle = XlATan2(camSpace[0], camSpace[2]);
+            float verticalAngle = XlATan2(camSpace[1], -camSpace[2]);
+            float horizontalAngle = XlATan2(camSpace[0], -camSpace[2]);
             angleMins[0] = std::min(angleMins[0], horizontalAngle);
             angleMaxs[0] = std::max(angleMaxs[0], horizontalAngle);
             angleMins[1] = std::min(angleMins[1], verticalAngle);
@@ -376,11 +403,11 @@ namespace SceneEngine
         }
 
         Int2 minCoords(
-            (int)XlFloor(angleMins[0] * cfg._calibrationPixels),
-            (int)XlFloor(angleMins[1] * cfg._calibrationPixels));
+            (int)XlFloor(angleMins[0] / cfg._calibrationFov * cfg._calibrationPixels),
+            (int)XlFloor(angleMins[1] / cfg._calibrationFov * cfg._calibrationPixels));
         Int2 maxCoords(
-            (int)XlFloor(angleMaxs[0] * cfg._calibrationPixels),
-            (int)XlFloor(angleMaxs[1] * cfg._calibrationPixels));
+            (int)XlFloor(angleMaxs[0] / cfg._calibrationFov * cfg._calibrationPixels),
+            (int)XlFloor(angleMaxs[1] / cfg._calibrationFov * cfg._calibrationPixels));
 
             // If the object is too big, we need to constrain the dimensions
             // note that we should adjust the projection matrix as well, to
@@ -388,15 +415,27 @@ namespace SceneEngine
         UInt2 dims = maxCoords - minCoords;
         if (dims[0] > cfg._maxDims[0]) {
             minCoords[0] += (dims[0] - cfg._maxDims[0]) / 2;
-            minCoords[0] -= (dims[0] - cfg._maxDims[0]) / 2;
+            maxCoords[0] -= (dims[0] - cfg._maxDims[0]) / 2 + 1;
             dims[0] = maxCoords[0] - minCoords[0];
             assert(dims[0] <= cfg._maxDims[0]);
         }
+        if (dims[0] < cfg._minDims[0]) {
+            minCoords[0] -= (cfg._minDims[0] - dims[0]) / 2;
+            maxCoords[0] += (cfg._minDims[0] - dims[0]) / 2 + 1;
+            dims[0] = maxCoords[0] - minCoords[0];
+            assert(dims[0] >= cfg._minDims[0]);
+        }
         if (dims[1] > cfg._maxDims[1]) {
             minCoords[1] += (dims[1] - cfg._maxDims[1]) / 2;
-            minCoords[1] -= (dims[1] - cfg._maxDims[1]) / 2;
+            maxCoords[1] -= (dims[1] - cfg._maxDims[1]) / 2 + 1;
             dims[1] = maxCoords[1] - minCoords[1];
             assert(dims[1] <= cfg._maxDims[1]);
+        }
+        if (dims[1] < cfg._minDims[1]) {
+            minCoords[1] -= (cfg._minDims[1] - dims[1]) / 2;
+            maxCoords[1] += (cfg._minDims[1] - dims[1]) / 2 + 1;
+            dims[1] = maxCoords[1] - minCoords[1];
+            assert(dims[1] >= cfg._minDims[1]);
         }
 
             // Reserve some space before we render
@@ -410,9 +449,9 @@ namespace SceneEngine
 
         Rectangle reservedSpace[MipMapCount];
         for (unsigned c=0; c<MipMapCount; ++c) {
-            auto reservedTopMost = newPacker.Add(MipMapDims(dims, c));
-            if (    reservedTopMost.first[0] >= reservedTopMost.second[0]
-                ||  reservedTopMost.first[1] >= reservedTopMost.second[1]) {
+            reservedSpace[c] = newPacker.Add(MipMapDims(dims, c));
+            if (    reservedSpace[c].first[0] >= reservedSpace[c].second[0]
+                ||  reservedSpace[c].first[1] >= reservedSpace[c].second[1]) {
                 return PreparedSprite();
             }
         }
@@ -425,14 +464,13 @@ namespace SceneEngine
             // approximation than an orthogonal camera.
         RenderObject(
             context, parserContext, ob,
-            camToWorld, Metal::ViewportDesc(float(minCoords[0]), float(minCoords[1]), float(maxCoords[0]), float(maxCoords[1])));
+            camToWorld, Metal::ViewportDesc(0.f, 0.f, float(maxCoords[0] - minCoords[0]), float(maxCoords[1] - minCoords[1])));
 
             // Now we want to copy the rendered sprite into the atlas
             // We should generate the mip-maps in this step as well.
         for (unsigned c=0; c<MipMapCount; ++c)
             CopyToAltas(
-                context,
-                reservedSpace[c],
+                context, reservedSpace[c],
                 Rectangle(UInt2(0, 0), maxCoords - minCoords));
 
             // once everything is complete (and there is no further possibility of an exception,
@@ -464,6 +502,9 @@ namespace SceneEngine
         // presumedly compress the texture on the GPU (without needing
         // CPU involvement)
         for (unsigned c=0; c<unsigned(_atlas._layers.size()); ++c) {
+
+                // note that this function isn't ideal currently
+                //      -- mipmaps aren't made well (too few samples are used, it's not a proper filter)
             const auto& l = _atlas._layers[c];
             ShaderBasedCopy(
                 context,
@@ -493,6 +534,7 @@ namespace SceneEngine
         context.Bind(viewport);
         context.Bind(Techniques::CommonResources()._blendOpaque);
         context.Bind(Techniques::CommonResources()._dssReadWrite);
+        context.Bind(Techniques::CommonResources()._cullDisable);
         context.Bind(
             ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2d.vsh:fullscreen:vs_*",
@@ -506,6 +548,11 @@ namespace SceneEngine
     {
         _pimpl->_queuedObjects.clear();
         _pimpl->_queuedInstances.clear();
+
+        if (Tweakable("ImpostersReset", false)) {
+            _pimpl->_preparedSprites.clear();
+            _pimpl->_packer = RectanglePacker(_pimpl->_packer.TotalSize());
+        }
     }
 
     void DynamicImposters::Queue(

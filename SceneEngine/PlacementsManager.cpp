@@ -647,7 +647,8 @@ namespace SceneEngine
 
             float distanceSq = MagnitudeSquared(
                 .5f * (obj._cellSpaceBoundary.first + obj._cellSpaceBoundary.second) - cameraPosition);
-            const float maxDistanceSq = 1000.f * 1000.f;
+            const auto imposterDistance = TweakableUnique("ImposterDistance", 500.f);
+            const auto maxDistanceSq = imposterDistance * imposterDistance;
 
                 //  Objects should be sorted by model & material. This is important for
                 //  reducing the work load in "_cache". Typically cells will only refer

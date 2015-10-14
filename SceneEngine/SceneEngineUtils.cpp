@@ -20,6 +20,7 @@
 #include "../Utility/IteratorUtils.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
+#include "../RenderCore/DX11/Metal/DX11Utils.h" // for TextureDesc
 
 namespace SceneEngine
 {
@@ -440,6 +441,9 @@ namespace SceneEngine
             ;
         ProtectState savedStates(context, effectedStates & protectStates);
 
+        Metal::TextureDesc2D desc(dest.GetUnderlying());
+        context.Bind(Metal::ViewportDesc(0.f, 0.f, float(desc.Width), float(desc.Height)));
+
         context.Bind(ResourceList<Metal::RenderTargetView, 0>(), &dest);
         context.Bind(Techniques::CommonResources()._dssWriteOnly);
         context.Bind(
@@ -449,6 +453,7 @@ namespace SceneEngine
         context.BindPS(MakeResourceList(src));
         SetupVertexGeneratorShader(context);
         context.Draw(4);
+        context.UnbindPS<Metal::ShaderResourceView>(0, 1);
     }
 
     class ShaderBasedCopyRes
@@ -496,10 +501,17 @@ namespace SceneEngine
 
         auto& res = Techniques::FindCachedBox2<ShaderBasedCopyRes>();
 
+        Metal::TextureDesc2D desc(dest.GetUnderlying());
+        context.Bind(Metal::ViewportDesc(0.f, 0.f, float(desc.Width), float(desc.Height)));
+
+        Metal::TextureDesc2D srcDesc(src.GetUnderlying());
+
         Float2 coords[4] = 
         {
-            Float2(destination.first), Float2(destination.second),
-            Float2(source.first), Float2(source.second)
+            Float2(destination.first[0] / float(desc.Width), destination.first[1] / float(desc.Height)), 
+            Float2(destination.second[0] / float(desc.Width), destination.second[1] / float(desc.Height)),
+            Float2(source.first[0] / float(srcDesc.Width), source.first[1] / float(srcDesc.Height)), 
+            Float2(source.second[0] / float(srcDesc.Width), source.second[1] / float(srcDesc.Height))
         };
 
         context.Bind(MakeResourceList(dest), nullptr);
@@ -510,6 +522,7 @@ namespace SceneEngine
         context.BindPS(MakeResourceList(src));
         SetupVertexGeneratorShader(context);
         context.Draw(4);
+        context.UnbindPS<Metal::ShaderResourceView>(0, 1);
     }
 
 }

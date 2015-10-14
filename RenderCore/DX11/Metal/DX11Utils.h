@@ -50,6 +50,7 @@ namespace RenderCore { namespace Metal_DX11
     public:
         TextureDesc( ID3D::RenderTargetView * rtv );
         TextureDesc( ID3D::ShaderResourceView * srv );
+        TextureDesc( ID3D::DepthStencilView * srv );
         TextureDesc( ID3D::Resource * srv );
         TextureDesc( TextureType * t2d );
     };
@@ -120,6 +121,15 @@ namespace RenderCore { namespace Metal_DX11
     {
         assert(srv);
         intrusive_ptr<TextureType> texture = ExtractResource<TextureType>( srv );
+        if (texture) { texture->GetDesc( this ); }
+        else         { XlZeroMemory( *this ); }
+    }
+
+    template <typename TextureType>
+        TextureDesc<TextureType>::TextureDesc( ID3D::DepthStencilView * dsv )
+    {
+        assert(dsv);
+        intrusive_ptr<TextureType> texture = ExtractResource<TextureType>( dsv );
         if (texture) { texture->GetDesc( this ); }
         else         { XlZeroMemory( *this ); }
     }

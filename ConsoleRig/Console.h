@@ -39,7 +39,25 @@ namespace ConsoleRig
         static Console*     s_instance;
     };
 
-    template <typename Type> class ConsoleVariable;
+    // template <typename Type> class ConsoleVariable;
+
+    template <typename Type> class ConsoleVariable : noncopyable
+    {
+    public:
+        ConsoleVariable(const std::string& name, Type& attachedValue, const char cvarNamespace[] = nullptr);
+        ConsoleVariable();
+        ~ConsoleVariable();
+
+        ConsoleVariable(ConsoleVariable&& moveFrom);
+        ConsoleVariable& operator=(ConsoleVariable&& moveFrom);
+
+        const std::string& Name() const { return _name; }
+
+        Type*           _attachedValue;
+    private:
+        std::string     _name;
+        std::string     _cvarNamespace;
+    };
 
     namespace Detail
     {
