@@ -28,6 +28,7 @@
 #include "../ConsoleRig/Console.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/ParameterBox.h"
+#include "../Utility/StringFormat.h"
 
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 
@@ -591,9 +592,8 @@ namespace SceneEngine
                     } CATCH_END
                 }
 
-                if (bindCopyShader) {
-                    parserContext._errorString += "Tonemap -- falling back to copy shader\n";
-                }
+                if (bindCopyShader)
+                    StringMeldAppend(parserContext._stringHelpers->_errorString) << "Tonemap -- falling back to copy shader\n";
             } 
         
             if (bindCopyShader) {

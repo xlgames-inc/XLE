@@ -56,7 +56,7 @@ namespace GUILayer
         }
 
         ///////////////////////////////////////////////////////////////////////
-        bool hasPendingResources = !lightingParserContext._pendingAssets.empty() || !lightingParserContext._invalidAssets.empty();
+        bool hasPendingResources = lightingParserContext.HasPendingAssets() || lightingParserContext.HasInvalidAssets() || lightingParserContext.HasErrorString();
         if (hasPendingResources) {
             auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
             auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);

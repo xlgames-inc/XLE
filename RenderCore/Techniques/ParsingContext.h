@@ -52,11 +52,22 @@ namespace RenderCore { namespace Techniques
         const std::shared_ptr<IStateSetResolver>& GetStateSetResolver()            { return _stateSetResolver; }
         const std::shared_ptr<Utility::ParameterBox>& GetStateSetEnvironment();
 
-            //  ----------------- Exception reporting ----------------- 
-        std::string                 _errorString;
-        std::vector<std::string>    _pendingAssets;
-        std::vector<std::string>    _invalidAssets;
+            //  ----------------- Exception reporting -----------------
+        class StringHelpers
+        {
+        public:
+            char _errorString[1024];
+            char _pendingAssets[1024];
+            char _invalidAssets[1024];
+            char _quickMetrics[4096];
+
+            StringHelpers();
+        };
+        std::unique_ptr<StringHelpers> _stringHelpers;
         void Process(const ::Assets::Exceptions::AssetException& e);
+        bool HasPendingAssets() const { return _stringHelpers->_pendingAssets[0] != '\0'; }
+        bool HasInvalidAssets() const { return _stringHelpers->_invalidAssets[0] != '\0'; }
+        bool HasErrorString() const { return _stringHelpers->_errorString[0] != '\0'; }
 
         ParsingContext(const TechniqueContext& techniqueContext);
         ~ParsingContext();

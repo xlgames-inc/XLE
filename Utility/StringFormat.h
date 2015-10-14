@@ -221,6 +221,19 @@ namespace Utility
         return Internal::StringMeldInPlace<CharType>(&buffer[len], &buffer[Count-len]);
     }
 
+    template<typename CharType>
+        Internal::StringMeldInPlace<CharType> StringMeldInPlace(CharType *bufferStart, CharType* bufferEnd)
+    {
+        return Internal::StringMeldInPlace<CharType>(bufferStart, bufferEnd);
+    }
+
+    template<typename CharType>
+        Internal::StringMeldInPlace<CharType> StringMeldAppend(CharType *bufferStart, CharType* bufferEnd)
+    {
+        auto len = XlStringLen(bufferStart);
+        return Internal::StringMeldInPlace<CharType>(&bufferStart[len], bufferEnd);
+    }
+
 }
 
 using namespace Utility;

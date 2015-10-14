@@ -623,18 +623,37 @@ namespace SceneEngine
                 const Float3x4& cellToWorld,
                 const Float3& cameraPosition);
 
+            class Metrics
+            {
+            public:
+                unsigned _instancesPrepared;
+                unsigned _uniqueModelsPrepared;
+                unsigned _impostersQueued;
+
+                Metrics()
+                {
+                    _instancesPrepared = 0;
+                    _uniqueModelsPrepared = 0;
+                    _impostersQueued = 0;
+                }
+            };
+
+            Metrics _metrics;
+
             RendererHelper()
             {
                 _currentModel = _currentMaterial = 0ull;
                 _currentSupplements = 0u;
                 const auto imposterDistance = Tweakable("ImposterDistance", 650.f);
                 _maxDistanceSq = imposterDistance * imposterDistance;
+                _currentModelRendered = false;
             }
         protected:
             uint64 _currentModel, _currentMaterial;
             unsigned _currentSupplements;
             ModelCache::Model _current;
             float _maxDistanceSq;
+            bool _currentModelRendered;
         };
 
         void RendererHelper::Render(
@@ -680,12 +699,14 @@ namespace SceneEngine
                 _currentModel = modelHash;
                 _currentMaterial = materialHash;
                 _currentSupplements = obj._supplementsOffset;
+                _currentModelRendered = false;
             }
                 
             auto localToWorld = Combine(obj._localToCell, cellToWorld);
 
             if (distanceSq > _maxDistanceSq) {
                 imposters.Queue(*_current._renderer, *_current._model, localToWorld, cameraPosition);
+                ++_metrics._impostersQueued;
                 return; 
             }
 
@@ -697,7 +718,16 @@ namespace SceneEngine
                 cache.GetSharedStateSet(), 
                 AsFloat4x4(localToWorld), 
                 RenderCore::Assets::MeshToModel(*_current._model));
+
+            ++_metrics._instancesPrepared;
+            _metrics._uniqueModelsPrepared += !_currentModelRendered;
+            _currentModelRendered = true;
         }
+    }
+
+    static Utility::Internal::StringMeldInPlace<char> QuickMetrics(RenderCore::Techniques::ParsingContext& parserContext)
+    {
+        return StringMeldAppend(parserContext._stringHelpers->_quickMetrics);
     }
 
     void PlacementsRenderer::Render(
@@ -763,10 +793,14 @@ namespace SceneEngine
 
             unsigned visibleObjs[10*1024];
             unsigned visibleObjCount = 0;
+            PlacementsQuadTree::Metrics metrics;
             quadTree->CalculateVisibleObjects(
                 AsFloatArray(cellToCullSpace), &objRef->_cellSpaceBoundary,
                 sizeof(Placements::ObjectReference),
-                visibleObjs, visibleObjCount, dimof(visibleObjs));
+                visibleObjs, visibleObjCount, dimof(visibleObjs),
+                &metrics);
+
+            QuickMetrics(parserContext) << "Cull placements cell... AABB test: (" << metrics._nodeAabbTestCount << ") nodes + (" << metrics._payloadAabbTestCount << ") payloads\n";
 
                 // we have to sort to return to our expected order
             std::sort(visibleObjs, &visibleObjs[visibleObjCount]);
@@ -806,6 +840,8 @@ namespace SceneEngine
                     filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
             }
         }
+
+        QuickMetrics(parserContext) << "Placements cell: (" << helper._metrics._instancesPrepared << ") instances from (" << helper._metrics._uniqueModelsPrepared << ") models. Imposters: (" << helper._metrics._impostersQueued << ")\n";
     }
 
     PlacementsRenderer::PlacementsRenderer(

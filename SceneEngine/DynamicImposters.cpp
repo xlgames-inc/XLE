@@ -28,6 +28,7 @@
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/FunctionUtils.h"
+#include "../Utility/StringFormat.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
@@ -218,6 +219,11 @@ namespace SceneEngine
         SpriteAtlas _atlas;
     };
 
+    static Utility::Internal::StringMeldInPlace<char> QuickMetrics(RenderCore::Techniques::ParsingContext& parserContext)
+    {
+        return StringMeldAppend(parserContext._stringHelpers->_quickMetrics);
+    }
+
     void DynamicImposters::Render(
         RenderCore::Metal::DeviceContext& context,
         RenderCore::Techniques::ParsingContext& parserContext,
@@ -367,6 +373,8 @@ namespace SceneEngine
         context.Bind(Techniques::CommonResources()._dssReadWrite);
         context.Bind(Techniques::CommonResources()._defaultRasterizer);
         context.Draw((unsigned)vertices.size());
+
+        QuickMetrics(parserContext) << "Imposters: Drawing (" << (vertices.size() / 6) << ") instances from (" << _pimpl->_queuedObjects.size() << ") unique types.\n";
     }
 
     auto DynamicImposters::Pimpl::BuildSprite(
@@ -565,6 +573,9 @@ namespace SceneEngine
         const Metal::ViewportDesc& viewport,
         Float2 fov) const
     {
+        StringMeldAppend(parserContext._stringHelpers->_errorString)
+            << "Building dynamic imposter: (" << ob._scaffold->Filename() << ") angle (" << ob._XYangle << ")\n";
+
         context.Clear(_atlas._tempDSV.DSV(), 1.f, 0u);
 
         Metal::RenderTargetView::UnderlyingType rtvs[3];

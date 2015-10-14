@@ -174,6 +174,10 @@ namespace SceneEngine
             {
                 utf8_2_ucs4((const utf8*)input, XlStringLen(input), _buffer, dimof(_buffer));
             }
+            UCS4Buffer(const char* start, const char* end)
+            {
+                utf8_2_ucs4((const utf8*)start, end-start, _buffer, dimof(_buffer));
+            }
             UCS4Buffer(const std::string& input)
             {
                 utf8_2_ucs4((const utf8*)input.c_str(), input.size(), _buffer, dimof(_buffer));
@@ -187,9 +191,9 @@ namespace SceneEngine
         SceneEngine::LightingParserContext& parserContext, 
         RenderOverlays::Font* font)
     {
-        if (    parserContext._pendingAssets.empty()
-            &&  parserContext._invalidAssets.empty()
-            &&  parserContext._errorString.empty())
+        if (    !parserContext._stringHelpers->_pendingAssets[0]
+            &&  !parserContext._stringHelpers->_invalidAssets[0]
+            &&  !parserContext._stringHelpers->_errorString[0])
             return;
 
         context->Bind(Techniques::CommonResources()._blendStraightAlpha);
@@ -201,7 +205,7 @@ namespace SceneEngine
         const UiAlign alignment = UIALIGN_TOP_LEFT;
         const unsigned colour = 0xff7f7f7fu;
 
-        if (!parserContext._pendingAssets.empty()) {
+        if (parserContext._stringHelpers->_pendingAssets[0]) {
             UCS4Buffer<64> text("Pending assets:");
             Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text);
             style.Draw(
@@ -209,8 +213,14 @@ namespace SceneEngine
                 0.f, 1.f, 0.f, 0.f, 0xffff7f7f, UI_TEXT_STATE_NORMAL, true, nullptr);
             textPosition[1] += lineHeight;
 
-            for (auto i=parserContext._pendingAssets.cbegin(); i!=parserContext._pendingAssets.cend(); ++i) {
-                UCS4Buffer<256> text(*i);
+            auto i = parserContext._stringHelpers->_pendingAssets;
+            for (;;) {
+                while (*i && *i == ',') ++i;
+                auto* start = i;
+                while (*i && *i != ',') ++i;
+                if (start == i) break;
+
+                UCS4Buffer<256> text(start, i);
                 Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition + Float2(32.f, 0.f), Float2(1024.f, 1024.f)), alignment, text);
                 style.Draw(
                     context, alignedPosition[0], alignedPosition[1], text, -1,
@@ -219,7 +229,7 @@ namespace SceneEngine
             }
         }
 
-        if (!parserContext._invalidAssets.empty()) {
+        if (parserContext._stringHelpers->_invalidAssets[0]) {
             UCS4Buffer<64> text("Invalid assets:");
             Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text);
             style.Draw(
@@ -227,8 +237,14 @@ namespace SceneEngine
                 0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
             textPosition[1] += lineHeight;
 
-            for (auto i=parserContext._invalidAssets.cbegin(); i!=parserContext._invalidAssets.cend(); ++i) {
-                UCS4Buffer<256> text(*i);
+            auto i = parserContext._stringHelpers->_invalidAssets;
+            for (;;) {
+                while (*i && *i == ',') ++i;
+                auto* start = i;
+                while (*i && *i != ',') ++i;
+                if (start == i) break;
+
+                UCS4Buffer<256> text(start, i);
                 Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition + Float2(32.f, 0.f), Float2(1024.f, 1024.f)), alignment, text);
                 style.Draw(
                     context, alignedPosition[0], alignedPosition[1], text, -1,
@@ -237,8 +253,8 @@ namespace SceneEngine
             }
         }
 
-        if (!parserContext._errorString.empty()) {
-            UCS4Buffer<512> text(parserContext._errorString);
+        if (parserContext._stringHelpers->_errorString[0]) {
+            UCS4Buffer<512> text(parserContext._stringHelpers->_errorString);
             Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text);
             style.Draw(
                 context, alignedPosition[0], alignedPosition[1], text, -1,

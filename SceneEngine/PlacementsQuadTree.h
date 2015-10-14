@@ -33,10 +33,20 @@ namespace SceneEngine
     public:
         typedef std::pair<Float3, Float3> BoundingBox;
 
+        class Metrics
+        {
+        public:
+            unsigned _nodeAabbTestCount;
+            unsigned _payloadAabbTestCount;
+
+            Metrics() : _nodeAabbTestCount(0), _payloadAabbTestCount(0) {}
+        };
+
         bool CalculateVisibleObjects(
             const float cellToClipAligned[],
             const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,
-            unsigned visObjs[], unsigned& visObjsCount, unsigned visObjMaxCount) const;
+            unsigned visObjs[], unsigned& visObjsCount, unsigned visObjMaxCount,
+            Metrics* metrics = nullptr) const;
 
         PlacementsQuadTree(
             const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,

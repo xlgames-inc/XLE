@@ -361,7 +361,8 @@ namespace SceneEngine
     bool PlacementsQuadTree::CalculateVisibleObjects(
         const float cellToClipAligned[], 
         const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,
-        unsigned visObjs[], unsigned& visObjsCount, unsigned visObjMaxCount) const
+        unsigned visObjs[], unsigned& visObjsCount, unsigned visObjMaxCount,
+        Metrics* metrics) const
     {
         visObjsCount = 0;
         assert((size_t(cellToClipAligned) & 0xf) == 0);
@@ -372,6 +373,7 @@ namespace SceneEngine
             //  culling on each object
         static std::stack<unsigned> workingStack;
         static std::stack<unsigned> entirelyVisibleStack;
+        assert(workingStack.empty() && entirelyVisibleStack.empty());
         workingStack.push(0);
         while (!workingStack.empty()) {
             auto nodeIndex = workingStack.top();
@@ -386,8 +388,8 @@ namespace SceneEngine
 
             if (test == AABBIntersection::Within) {
 
-                    //  this node and all children are "visible" without any further
-                    //  culling tests
+                    //  this node and all children are "visible" without
+                    //  any further culling tests
                 entirelyVisibleStack.push(nodeIndex);
 
             } else {
@@ -452,7 +454,10 @@ namespace SceneEngine
         }
 
         assert(visObjsCount <= visObjMaxCount);
-        (void)nodeAabbTestCount; (void)payloadAabbTestCount;
+        if (metrics) {
+            metrics->_nodeAabbTestCount = nodeAabbTestCount; 
+            metrics->_payloadAabbTestCount = payloadAabbTestCount;
+        }
 
         return true;
     }

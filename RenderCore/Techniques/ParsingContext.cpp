@@ -8,6 +8,7 @@
 #include "Techniques.h"
 #include "../../Assets/AssetUtils.h"
 #include "../Metal/InputLayout.h"
+#include "../../Utility/StringFormat.h"
 #include <memory>
 
 namespace RenderCore { namespace Techniques
@@ -38,14 +39,18 @@ namespace RenderCore { namespace Techniques
             //  when changing rendering settings.
             //  at the moment, this will result in a bunch of allocations -- that's not
             //  ideal during error processing.
-        std::string id = e.Initializer();
-        std::vector<std::string>* set = &_pendingAssets;
+        auto* id = e.Initializer();
+        
+        auto* bufferStart = _stringHelpers->_pendingAssets;
         if (e.State() == ::Assets::AssetState::Invalid)
-            set = &_invalidAssets;
+            bufferStart = _stringHelpers->_invalidAssets;
 
-        auto i = std::lower_bound(set->begin(), set->end(), id);
-        if (i == set->end() || *i != id)
-            set->insert(i, id);
+        static_assert(
+            dimof(_stringHelpers->_pendingAssets) == dimof(_stringHelpers->_invalidAssets),
+            "Assuming pending and invalid asset buffers are the same length");
+
+        if (!XlFindStringI(bufferStart, id))
+            StringMeldAppend(bufferStart, bufferStart + dimof(_stringHelpers->_pendingAssets)) << "," << id;
     }
 
     std::shared_ptr<IStateSetResolver> ParsingContext::SetStateSetResolver(
@@ -65,6 +70,7 @@ namespace RenderCore { namespace Techniques
     {
         _techniqueContext = std::make_unique<TechniqueContext>(techniqueContext);
         _stateSetResolver = _techniqueContext->_defaultStateSetResolver;
+        _stringHelpers = std::make_unique<StringHelpers>();
 
         _projectionDesc.reset((ProjectionDesc*)XlMemAlign(sizeof(ProjectionDesc), 16));
         #pragma push_macro("new")
@@ -80,6 +86,11 @@ namespace RenderCore { namespace Techniques
     }
 
     ParsingContext::~ParsingContext() {}
+
+    ParsingContext::StringHelpers::StringHelpers()
+    {
+        _errorString[0] = _pendingAssets[0] = _invalidAssets[0] = _quickMetrics[0] = '\0';
+    }
 
 }}
 

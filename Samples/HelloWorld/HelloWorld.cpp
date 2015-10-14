@@ -256,7 +256,7 @@ namespace Sample
 
             //  The lighting parser will tell us if there where any pending resources
             //  during the render. Here, we can render them as a short list...
-        bool hasPendingResources = !lightingParserContext._pendingAssets.empty();
+        bool hasPendingResources = lightingParserContext.HasPendingAssets() != '/0';
         auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
         DrawPendingResources(metalContext.get(), lightingParserContext, defaultFont0.get());
 
