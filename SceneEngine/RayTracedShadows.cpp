@@ -29,6 +29,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Resource.h"
 #include "../Utility/StringFormat.h"
+#include "../Utility/FunctionUtils.h"
 
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 
@@ -203,7 +204,7 @@ namespace SceneEngine
 
         parserContext.GetTechniqueContext()._runtimeState.SetParameter(
             StringShadowCascadeMode, 
-            preparedResult._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
+            (preparedResult._mode == ShadowProjectionDesc::Projections::Mode::Ortho)?2:1);
 
             // Now, we need to transform the object's triangle buffer into shadow
             // projection space during this step (also applying skinning, wind bending, and
@@ -225,16 +226,18 @@ namespace SceneEngine
             // We can also choose to reject backfacing triangles at this point, as well as 
             // removing triangles that are culled from the frustum.
             //
-        CATCH_ASSETS_BEGIN
-            auto savedWorldToProjection = parserContext.GetProjectionDesc()._worldToProjection;
-            auto& projDesc = parserContext.GetProjectionDesc();
-            projDesc._worldToProjection = frustum._worldToClip;
+        Float4x4 savedWorldToProjection = parserContext.GetProjectionDesc()._worldToProjection;
+        parserContext.GetProjectionDesc()._worldToProjection = frustum._worldToClip;
+        auto cleanup = MakeAutoCleanup(
+            [&parserContext, &savedWorldToProjection]() {
+                parserContext.GetProjectionDesc()._worldToProjection = savedWorldToProjection;
+                parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringShadowCascadeMode, 0);
+            });
 
+        CATCH_ASSETS_BEGIN
             parserContext.GetSceneParser()->ExecuteScene(
                 &metalContext, parserContext, sceneParseSettings, 
                 TechniqueIndex_RTShadowGen);
-
-            projDesc._worldToProjection = savedWorldToProjection;
         CATCH_ASSETS_END(parserContext)
 
         metalContext.GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
@@ -286,7 +289,6 @@ namespace SceneEngine
 
         metalContext.Bind(Metal::Topology::TriangleList);
         savedTargets.ResetToOldTargets(metalContext);
-        parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringShadowCascadeMode, 0);
 
         preparedResult._listHeadSRV = box._gridBufferSRV;
         preparedResult._linkedListsSRV = box._listsBufferSRV;

@@ -459,6 +459,7 @@ namespace SceneEngine
                     (i._type == LightDesc::Directional) 
                     ? LightingResolveShaders::Directional 
                     : LightingResolveShaders::Point;
+                shaderType._shadows = LightingResolveShaders::NoShadows;
 
                     //  We only support a limited set of different light types so far.
                     //  Perhaps this will be extended to support more lights with custom
@@ -494,7 +495,10 @@ namespace SceneEngine
                     } else 
                         shaderType._shadows = LightingResolveShaders::PerspectiveShadows;
 
-                } else {
+                }
+
+                    // check for additional RT shadows
+                {
                     auto rtShadowIndex = FindRTShadowFrustum(parserContext, l);
                     if (rtShadowIndex < parserContext._preparedRTShadows.size()) {
                         const auto& preparedRTShadows = parserContext._preparedRTShadows[rtShadowIndex].second;
@@ -506,8 +510,7 @@ namespace SceneEngine
                         srvs[SR::RTShadow_Triangles] = &preparedRTShadows._trianglesSRV;
 
                         shaderType._shadows = LightingResolveShaders::OrthHybridShadows;
-                    } else
-                        shaderType._shadows = LightingResolveShaders::NoShadows;
+                    }
                 }
 
                 shaderType._diffuseModel = (uint8)i._diffuseModel;
