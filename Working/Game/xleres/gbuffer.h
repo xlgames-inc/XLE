@@ -91,11 +91,18 @@ float3 DecompressGBufferNormal(float3 gBufferNormalSample)
     return rangeAdj * rsqrt(lengthSq);
 }
 
-#if GBUFFER_TYPE == 1
+#if GBUFFER_TYPE & 1
     #define HAS_PROPERTIES_BUFFER 1
 #else
     #define HAS_PROPERTIES_BUFFER 0
 #endif
+
+#if GBUFFER_TYPE & 2
+    #define NORMAL_BUFFER_8BIT 0
+#else
+    #define NORMAL_BUFFER_8BIT 1
+#endif
+
 
 struct GBufferEncoded
 {
@@ -162,7 +169,11 @@ GBufferEncoded Encode(GBufferValues values)
         //
     GBufferEncoded result;
     result.diffuseBuffer.rgb = values.diffuseAlbedo;
-    result.normalBuffer.xyz = CompressGBufferNormal(values.worldSpaceNormal.xyz).xyz;
+    #if NORMAL_BUFFER_8BIT == 1
+        result.normalBuffer.xyz = CompressGBufferNormal(values.worldSpaceNormal.xyz).xyz;
+    #else
+        result.normalBuffer.xyz = values.worldSpaceNormal.xyz;
+    #endif
 
     #if defined(DECAL_BLEND)
         const bool decalBlend = (DECAL_BLEND == 1);

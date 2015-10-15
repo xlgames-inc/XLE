@@ -22,13 +22,15 @@
         ~Runtime
     VertexShader=game/xleres/vegetation/imposter.sh:vs_main
     PixelShader=game/xleres/vegetation/imposter.sh:ps_depthonly
+    GeometryShader=game/xleres/vegetation/imposter.sh:gs_main
 ~Deferred
-    ~Inherit;
+    ~Inherit; ../Shared:Deferred
     ~Parameters
         ~Geometry
         ~GlobalEnvironment
     VertexShader=game/xleres/vegetation/imposter.sh:vs_main
     PixelShader=game/xleres/vegetation/imposter.sh:ps_deferred
+    GeometryShader=game/xleres/vegetation/imposter.sh:gs_main
 ~ShadowGen
 ~OrderIndependentTransparency
 ~PrepareVegetationSpawn
@@ -42,13 +44,4 @@
     GeometryShader=game/xleres/solidwireframe.gsh:main
     PixelShader=game/xleres/solidwireframe.psh:main
 ~WriteTriangleIndex
-    ~Inherit;
-    ~Parameters
-        ~Geometry
-            OUTPUT_WORLD_POSITION=0
-        ~Runtime
-            SHADOW_CASCADE_MODE
-    VertexShader=game/xleres/shadowgen/rtwritetiles.sh:vs_writetris
-    GeometryShader=game/xleres/shadowgen/rtwritetiles.sh:gs_writetris
-    PixelShader=null
 ~StochasticTransparency

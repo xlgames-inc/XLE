@@ -116,12 +116,13 @@ bool FindCollision(float3 startPosition, float3 endPosition, out float3 collisio
 	float4 projectedPoint = mul(WorldToClip, float4(input.position, 1.f));
 	if (!InsideFrustum(projectedPoint) || velocityMagSquared < 0.7f) {
 		input.position = SpawnPosition;
-		input.velocity = 5.f * SpawnVelocity;
+		input.velocity = 2.5f * SpawnVelocity;
 		//input.velocity.x *= (0.25f + RandomValue(randomSeed));
 		//input.velocity.y *= (0.25f + RandomValue(1.0.xx - randomSeed));
 		//input.velocity.z *= (0.25f + RandomValue(randomSeed.yx));
-		input.velocity.x += 8.f * (2.f * RandomValue(randomSeed) - 1.f);
-		input.velocity.y += 8.f * (2.f * RandomValue(randomSeed.yx) - 1.f);
+		input.velocity.x += 4.f * (2.f * RandomValue(randomSeed) - 1.f);
+		input.velocity.y += 4.f * (2.f * RandomValue(randomSeed.yx) - 1.f);
+		input.velocity.z += 4.f * RandomValue(1.0.xx - randomSeed);
 		input.position += RandomValue(1.0.xx - randomSeed) * ElapsedTime * input.velocity;
 	}
 
@@ -232,7 +233,7 @@ float4 ps_main(GStoPS input) : SV_Target0
 	float brightness =
 		min(1, exp(1.f - abs(2.f * (input.texCoord.x - 0.5f))) - 1.f);
 
-	brightness = 25.f * (exp(-3.f * (1.f-brightness)) - 0.05f);
+	brightness = 35.f * (exp(-3.f * (1.f-brightness)) - 0.05f);
 
 	float3 baseColour = float3(.7f, 0.3f, .9f);
 	return float4(brightness * baseColour, 1.f);

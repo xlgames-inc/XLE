@@ -5,6 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #define OUTPUT_TEXCOORD 1
+#define OUTPUT_TANGENT_FRAME 1
+#define OUTPUT_NORMAL 1
 #define GEO_HAS_TEXCOORD 1
 #define VSINPUT_EXTRA uint spriteIndex : SPRITEINDEX;
 #define VSOUTPUT_EXTRA uint spriteIndex : SPRITEINDEX;
@@ -19,38 +21,79 @@
 
 Texture2D ImposterAltas[2] : register(t0);
 
-VSOutput vs_main(VSInput input)
+struct VSSprite
+{
+    float3 position : POSITION0;
+    float3 xAxis : XAXIS;
+    float3 yAxis : YAXIS;
+    float2 size : SIZE;
+    uint spriteIndex : SPRITEINDEX;
+};
+
+VSSprite vs_main(VSSprite input)
+{
+    return input;
+}
+
+[maxvertexcount(4)]
+    void gs_main(point VSSprite input[1], inout TriangleStream<VSOutput> outputStream)
 {
     VSOutput output;
-    float3 localPosition	= GetLocalPosition(input);
-    float3 worldPosition = localPosition; // mul(LocalToWorld, float4(localPosition,1)).xyz;
-
-    #if OUTPUT_TEXCOORD==1
-        output.texCoord = GetTexCoord(input);
-    #endif
-
-    output.position = mul(WorldToClip, float4(worldPosition,1));
-
-    #if OUTPUT_LOCAL_VIEW_VECTOR==1
-        output.localViewVector = LocalSpaceView.xyz - localPosition.xyz;
-    #endif
-
-    #if OUTPUT_WORLD_VIEW_VECTOR==1
-        output.worldViewVector = WorldSpaceView.xyz - worldPosition.xyz;
-    #endif
-
-    #if OUTPUT_WORLD_POSITION==1
-        output.worldPosition = worldPosition.xyz;
-    #endif
-
     #if OUTPUT_FOG_COLOR == 1
         // output.fogColor = CalculateFog(worldPosition.z, WorldSpaceView - worldPosition, NegativeDominantLightDirection);
         output.fogColor = float4(0.0.xxx, 1.f);
     #endif
 
-    output.spriteIndex = input.spriteIndex;
+    output.spriteIndex = input[0].spriteIndex;
 
-    return output;
+    float2 texCoord[4] =
+    {
+        float2(0.f, 0.f),
+        float2(0.f, 1.f),
+        float2(1.f, 0.f),
+        float2(1.f, 1.f)
+    };
+
+    float3 tangent = input[0].xAxis;
+    float3 bitangent = input[0].yAxis;
+    float3 normal = NormalFromTangents(tangent, bitangent, -1.f);    // (assuming orthogonal tangent & bitangent)
+
+    #if OUTPUT_TANGENT_FRAME==1
+        output.tangent = tangent;
+        output.bitangent = bitangent;
+    #endif
+
+    #if OUTPUT_NORMAL==1
+        output.normal = normal;
+    #endif
+
+    float3 xAxis = input[0].xAxis * input[0].size.x;
+    float3 yAxis = input[0].yAxis * -input[0].size.y;
+    for (uint c=0; c<4; ++c) {
+        float2 o = texCoord[c] * 2.f - 1.0.xx;
+        float3 localPosition = input[0].position + o.x * xAxis + o.y * yAxis;
+        float3 worldPosition = localPosition; // mul(LocalToWorld, float4(localPosition,1)).xyz;
+
+        #if OUTPUT_TEXCOORD==1
+            output.texCoord = texCoord[c];
+        #endif
+
+        output.position = mul(WorldToClip, float4(worldPosition,1));
+
+        #if OUTPUT_LOCAL_VIEW_VECTOR==1
+            output.localViewVector = LocalSpaceView.xyz - localPosition.xyz;
+        #endif
+
+        #if OUTPUT_WORLD_VIEW_VECTOR==1
+            output.worldViewVector = WorldSpaceView.xyz - worldPosition.xyz;
+        #endif
+
+        #if OUTPUT_WORLD_POSITION==1
+            output.worldPosition = worldPosition.xyz;
+        #endif
+
+        outputStream.Append(output);
+    }
 }
 
 void ps_depthonly(float4 pos : SV_Position) {}
@@ -114,6 +157,23 @@ GBufferEncoded ps_deferred(VSOutput geo)
 
     if (diffuse.a == 0.f) discard;
 
+        // Normals are stored in the view space that was originally
+        // used to render the sprite.
+        // It's equivalent to the tangent space of the sprite.
+    TangentFrameStruct tangentFrame = BuildTangentFrameFromGeo(geo);
+    float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent.xyz, tangentFrame.bitangent, tangentFrame.normal);
+
+        // note that we can skip the decompression step here if we use
+        // a higher precision output format for the normal buffer (ie, writing
+        // to a float buffer instead of a compressed 8 bit buffer)
+        // But we always have to do the final compression step
+        //      -- the only way to avoid that would be if the normals where
+        //          in view space in the gbuffer
+    float3 tempNormal = DecompressGBufferNormal(normal.xyz);
+    normal.xyz = mul(tempNormal.xyz, normalsTextureToWorld);
+    normal.xyz = CompressGBufferNormal(normal.xyz);
+
+
     #if 0
         float3 mipColors[MipMapCount] =
         {
@@ -132,7 +192,7 @@ GBufferEncoded ps_deferred(VSOutput geo)
     result.diffuseBuffer = diffuse;
     result.normalBuffer = normal;
     #if HAS_PROPERTIES_BUFFER == 1
-        result.propertiesBuffer = 1.0.xxxx;
+        result.propertiesBuffer = float4(0, 1, 1, 1);
     #endif
     return result;
 }

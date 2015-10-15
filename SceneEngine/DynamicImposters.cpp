@@ -182,6 +182,9 @@ namespace SceneEngine
                 _calibrationPixels = 256;
                 _minDims = UInt2(32, 32);
                 _maxDims = UInt2(128, 128);
+
+                // _calibrationPixels = 1024;
+                // _maxDims = UInt2(1024, 1024);
             }
         };
         Config _config;
@@ -234,8 +237,13 @@ namespace SceneEngine
 
         Metal::InputElementDesc il[] = 
         {
+            // Metal::InputElementDesc("POSITION", 0, Metal::NativeFormat::R32G32B32_FLOAT),
+            // Metal::InputElementDesc("TEXCOORD", 0, Metal::NativeFormat::R32G32_FLOAT),
+            // Metal::InputElementDesc("SPRITEINDEX", 0, Metal::NativeFormat::R32_UINT)
             Metal::InputElementDesc("POSITION", 0, Metal::NativeFormat::R32G32B32_FLOAT),
-            Metal::InputElementDesc("TEXCOORD", 0, Metal::NativeFormat::R32G32_FLOAT),
+            Metal::InputElementDesc("XAXIS", 0, Metal::NativeFormat::R32G32B32_FLOAT),
+            Metal::InputElementDesc("YAXIS", 0, Metal::NativeFormat::R32G32B32_FLOAT),
+            Metal::InputElementDesc("SIZE", 0, Metal::NativeFormat::R32G32_FLOAT),
             Metal::InputElementDesc("SPRITEINDEX", 0, Metal::NativeFormat::R32_UINT)
         };
 
@@ -287,11 +295,13 @@ namespace SceneEngine
         class Vertex
         {
         public:
-            Float3 _pos; Float2 _tc;
+            Float3 _pos; 
+            Float3 _xAxis, _uAxis;
+            Float2 _size;
             unsigned _spriteIndex;
         };
         std::vector<Vertex> vertices;
-        vertices.reserve(_pimpl->_queuedInstances.size() * 6);
+        vertices.reserve(_pimpl->_queuedInstances.size());
 
         auto& projDesc = parserContext.GetProjectionDesc();
         auto cameraRight = ExtractRight_Cam(projDesc._cameraToWorld);
@@ -327,17 +337,19 @@ namespace SceneEngine
             Float2 projectionSize = preparedSpritesI->second._worldSpaceHalfSize;
 
             for (auto s=start; s<i; ++s) {
-                Float3 A = s->second + projectionCenter - cameraRight * projectionSize[0] + cameraUp * projectionSize[1];
-                Float3 B = s->second + projectionCenter + cameraRight * projectionSize[0] + cameraUp * projectionSize[1];
-                Float3 C = s->second + projectionCenter - cameraRight * projectionSize[0] - cameraUp * projectionSize[1];
-                Float3 D = s->second + projectionCenter + cameraRight * projectionSize[0] - cameraUp * projectionSize[1];
-
-                vertices.push_back(Vertex {A, Float2(0.f, 0.f), spriteIndex});
-                vertices.push_back(Vertex {C, Float2(0.f, 1.f), spriteIndex});
-                vertices.push_back(Vertex {B, Float2(1.f, 0.f), spriteIndex});
-                vertices.push_back(Vertex {B, Float2(1.f, 0.f), spriteIndex});
-                vertices.push_back(Vertex {C, Float2(0.f, 1.f), spriteIndex});
-                vertices.push_back(Vertex {D, Float2(1.f, 1.f), spriteIndex});
+                // Float3 A = s->second + projectionCenter - cameraRight * projectionSize[0] + cameraUp * projectionSize[1];
+                // Float3 B = s->second + projectionCenter + cameraRight * projectionSize[0] + cameraUp * projectionSize[1];
+                // Float3 C = s->second + projectionCenter - cameraRight * projectionSize[0] - cameraUp * projectionSize[1];
+                // Float3 D = s->second + projectionCenter + cameraRight * projectionSize[0] - cameraUp * projectionSize[1];
+                // 
+                // vertices.push_back(Vertex {A, Float2(0.f, 0.f), spriteIndex});
+                // vertices.push_back(Vertex {C, Float2(0.f, 1.f), spriteIndex});
+                // vertices.push_back(Vertex {B, Float2(1.f, 0.f), spriteIndex});
+                // vertices.push_back(Vertex {B, Float2(1.f, 0.f), spriteIndex});
+                // vertices.push_back(Vertex {C, Float2(0.f, 1.f), spriteIndex});
+                // vertices.push_back(Vertex {D, Float2(1.f, 1.f), spriteIndex});
+                Float3 A = s->second + projectionCenter;
+                vertices.push_back(Vertex {A, cameraRight, cameraUp, projectionSize, spriteIndex});
             }
         }
 
@@ -368,13 +380,13 @@ namespace SceneEngine
         
         Metal::VertexBuffer tempvb(AsPointer(vertices.begin()), vertices.size()*sizeof(Vertex));
         context.Bind(MakeResourceList(tempvb), sizeof(Vertex), 0);
-        context.Bind(Metal::Topology::TriangleList);
+        context.Bind(Metal::Topology::PointList);
         context.Bind(Techniques::CommonResources()._blendOpaque);
         context.Bind(Techniques::CommonResources()._dssReadWrite);
         context.Bind(Techniques::CommonResources()._defaultRasterizer);
         context.Draw((unsigned)vertices.size());
 
-        QuickMetrics(parserContext) << "Imposters: Drawing (" << (vertices.size() / 6) << ") instances from (" << _pimpl->_queuedObjects.size() << ") unique types.\n";
+        QuickMetrics(parserContext) << "Imposters: Drawing (" << vertices.size() << ") instances from (" << _pimpl->_queuedObjects.size() << ") unique types.\n";
     }
 
     auto DynamicImposters::Pimpl::BuildSprite(
@@ -616,9 +628,25 @@ namespace SceneEngine
             GeometricCoordinateSpace::RightHanded,
             Techniques::GetDefaultClipSpaceType());
 
-        projDesc._worldToProjection = Combine(InvertOrthonormalTransform(cameraToWorld), cameraToProjection);
-        projDesc._cameraToProjection = cameraToProjection;
-        projDesc._cameraToWorld = cameraToWorld;
+
+        Float4x4 modelToWorld = Identity<Float4x4>();
+        const bool viewSpaceNormals = true;
+
+            // Normally the deferred shader writes out world space normals.
+            // However, we can cause it to write view space normals by
+            // defining world space to be the same as view space.
+            // That is, model->world actually transforms into camera space.
+            // So, worldToProjection becomes just cameraToProjection
+        if (constant_expression<viewSpaceNormals>::result()) {
+            projDesc._worldToProjection = cameraToProjection;
+            projDesc._cameraToProjection = cameraToProjection;
+            projDesc._cameraToWorld = Identity<Float4x4>();
+            modelToWorld = InvertOrthonormalTransform(cameraToWorld);
+        } else {
+            projDesc._worldToProjection = Combine(InvertOrthonormalTransform(cameraToWorld), cameraToProjection);
+            projDesc._cameraToProjection = cameraToProjection;
+            projDesc._cameraToWorld = cameraToWorld;
+        }
 
         auto cleanup = MakeAutoCleanup(
             [&projDesc, &oldProjDesc, &context, &parserContext]() 
@@ -647,8 +675,7 @@ namespace SceneEngine
         RenderCore::Assets::DelayedDrawCallSet drawCalls(typeid(ModelRenderer).hash_code());
         ob._renderer->Prepare(
             drawCalls, *_sharedStateSet,
-            Identity<Float4x4>(),
-            RenderCore::Assets::MeshToModel(*ob._scaffold));
+            modelToWorld, RenderCore::Assets::MeshToModel(*ob._scaffold));
         ModelRenderer::Sort(drawCalls);
 
             // todo -- Note that we're rendering world space normals here currently. It's not correct.

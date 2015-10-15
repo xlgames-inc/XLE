@@ -129,7 +129,13 @@ namespace ToolsRig
             Metal::ConstantBuffer drawCallIndexBuffer(nullptr, sizeof(unsigned)*4);
             context->BindGS(MakeResourceList(drawCallIndexBuffer));
 
+                // note -- if the depth stencil state used here doesn't
+                //          have the stencil buffer enabled, the material
+                //          highlight behaviour won't work.
             Metal::DepthStencilState dss(*context);
+            // Metal::DepthStencilState dss(
+            //     true, true, ~0u, ~0u,
+            //     Metal::StencilMode::AlwaysWrite);
 
             for (auto i:delaySteps)
                 ModelRenderer::RenderPrepared(
