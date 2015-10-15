@@ -7,6 +7,7 @@
 #include "../Transform.h"
 #include "../Utility/perlinnoise.h"
 #include "../Utility/ProjectionMath.h"
+#include "../Utility/Misc.h"
 #include "../CommonResources.h"
 #include "../gbuffer.h"
 
@@ -30,6 +31,7 @@ cbuffer SimulationParameters
 	float3				SpawnVelocity;
 	float				ElapsedTime;
 	int					ParticleCountWidth;
+	uint				TimeRandomizer;
 }
 
 static const float3 Accel = float3(0.f, 0.f, -9.8f);
@@ -48,25 +50,6 @@ float3 TransformViewToWorld(float3 viewSpacePosition)
 	float3x3 worldToViewPartial =
 		float3x3( WorldToView[0].xyz, WorldToView[1].xyz, WorldToView[2].xyz);
 	return WorldSpaceView + mul(transpose(worldToViewPartial), viewSpacePosition);
-}
-
-float3 RandomPointInFrustum(float2 seed)
-{
-		//	we need to add a little bit of noise to seed, otherwise we
-		//	get grid like patterns when we spawn particles
-	float2 s = seed;
-	seed.x = frac(seed.x + 47.74f * s.y);
-	seed.y = frac(seed.y + 61.23f * s.x);
-
-		//	find a camera point that's inside the camera frustum, from a given seed value
-	float depth = 20.f * RandomValue(seed);
-	float3 viewSpaceRandom = float3(
-		-1.f + 2.f * seed.xy,
-		-depth);
-
-	viewSpaceRandom.xy *= (1.0f/ProjScale.xy) * depth;
-
-	return TransformViewToWorld(viewSpaceRandom);
 }
 
 Texture2D<float>	DepthBuffer;
@@ -112,7 +95,7 @@ bool FindCollision(float3 startPosition, float3 endPosition, out float3 collisio
 			foundCollision = true;
 		}
 	}
-	
+
 	collisionPosition = TransformViewToWorld(lerp(startViewSpace, endViewSpace, collisionStep/float(stepCount)));
 	return foundCollision;
 }
@@ -122,18 +105,24 @@ bool FindCollision(float3 startPosition, float3 endPosition, out float3 collisio
 {
 	uint particleIndex = dispatchThreadId.y * ParticleCountWidth + dispatchThreadId.x;
 	RainParticle input = Particles[particleIndex];
-	float2 randomSeed = float2(dispatchThreadId.xy) / float2(ParticleCountWidth.xx);
+	// float2 randomSeed = float2(dispatchThreadId.xy) / float2(ParticleCountWidth.xx);
+	float2 randomSeed = float2(
+		IntegerHash((dispatchThreadId.x << 10) ^ TimeRandomizer) / float(0xffffffff),
+		IntegerHash((dispatchThreadId.y << 10) ^ TimeRandomizer) / float(0xffffffff));
 
-		//	If this particle begins outside of the camera frustum, then cull it and 
+		//	If this particle begins outside of the camera frustum, then cull it and
 		//	find a new starting point inside the frustum
 	float velocityMagSquared = dot(input.velocity, input.velocity);
 	float4 projectedPoint = mul(WorldToClip, float4(input.position, 1.f));
 	if (!InsideFrustum(projectedPoint) || velocityMagSquared < 0.7f) {
 		input.position = SpawnPosition;
-		input.velocity = 15.f * SpawnVelocity;
-		input.velocity.x *= (0.25f + RandomValue(randomSeed));
-		input.velocity.y *= (0.25f + RandomValue(1.0.xx - randomSeed));
-		input.velocity.z *= (0.25f + RandomValue(randomSeed.yx));
+		input.velocity = 5.f * SpawnVelocity;
+		//input.velocity.x *= (0.25f + RandomValue(randomSeed));
+		//input.velocity.y *= (0.25f + RandomValue(1.0.xx - randomSeed));
+		//input.velocity.z *= (0.25f + RandomValue(randomSeed.yx));
+		input.velocity.x += 8.f * (2.f * RandomValue(randomSeed) - 1.f);
+		input.velocity.y += 8.f * (2.f * RandomValue(randomSeed.yx) - 1.f);
+		input.position += RandomValue(1.0.xx - randomSeed) * ElapsedTime * input.velocity;
 	}
 
 	float3 newPosition = input.position + input.velocity * ElapsedTime + .5f * ElapsedTime * ElapsedTime * Accel;
@@ -176,7 +165,8 @@ StructuredBuffer<RainParticle>		ParticlesInput;
 VStoGS vs_main(uint particleId : SV_VertexID)
 {
 	RainParticle input		= ParticlesInput[particleId];
-	const float length		= 4.0f/60.f;
+	float length		= 2.0f/60.f;
+	length += 1.f/60.f * ((particleId % 20) / 20.f);
 
 	VStoGS output;
 	output.positions[0]		= input.position;
@@ -208,7 +198,7 @@ struct GStoPS
 	float4 projected1 = mul(WorldToClip, float4(input[0].positions[1],1));
 	if (InsideFrustum(projected0) || InsideFrustum(projected1)) {
 		float width = input[0].radius * projected0.w;
-	
+
 		GStoPS output;
 		output.brightness = input[0].brightness;
 
@@ -235,13 +225,15 @@ float4 ps_main(GStoPS input) : SV_Target0
 {
 	// return 1.0.xxxx;
 
-	float brightness = 
-			(1.f - input.texCoord.x) * input.texCoord.x
-		*	(1.f - input.texCoord.y) * input.texCoord.y;
-	brightness = 5.f * (exp(-3.f * (1.f-brightness)) - 0.05f);
+	//float brightness =
+	//		(1.f - input.texCoord.x) * input.texCoord.x
+	//	*	(1.f - input.texCoord.y) * input.texCoord.y;
 
-	float3 baseColour = float3(1.0f, 0.75f, 0.85f);
+	float brightness =
+		min(1, exp(1.f - abs(2.f * (input.texCoord.x - 0.5f))) - 1.f);
+
+	brightness = 25.f * (exp(-3.f * (1.f-brightness)) - 0.05f);
+
+	float3 baseColour = float3(.7f, 0.3f, .9f);
 	return float4(brightness * baseColour, 1.f);
 }
-
-

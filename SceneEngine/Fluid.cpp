@@ -433,10 +433,10 @@ namespace SceneEngine
         _viscosity = 0.05f;
         _diffusionRate = 0.05f;
         _tempDiffusion = 2.f;
-        _diffusionMethod = 0;
+        _diffusionMethod = 1;
         _advectionMethod = 3;
         _advectionSteps = 4;
-        _enforceIncompressibilityMethod = 0;
+        _enforceIncompressibilityMethod = 1;
         _buoyancyAlpha = 2.f;
         _buoyancyBeta = 2.2f;
         _vorticityConfinement = 0.75f;

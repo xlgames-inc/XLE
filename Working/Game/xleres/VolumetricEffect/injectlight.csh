@@ -10,7 +10,7 @@
 #include "../Utility/perlinnoise.h"
 #include "../Utility/Misc.h"
 
-Texture2DArray<float>	ShadowTextures	 			: register(t2);
+Texture2DArray<float>	ILShadowTextures	 		: register(t2);
 
 RWTexture3D<float>		InscatterShadowingValues	: register(u0);
 RWTexture3D<float>		DensityValues				: register(u1);
@@ -58,11 +58,11 @@ float ResolveShadows(float3 worldPosition)
 
 		float comparisonDistance = MakeComparisonDistance(d, cascadeIndex);
 		#if ESM_SHADOW_MAPS==1
-			float texSample = ShadowTextures.SampleLevel(ClampingSampler, float3(tc, float(cascadeIndex)), 0);
+			float texSample = ILShadowTextures.SampleLevel(ClampingSampler, float3(tc, float(cascadeIndex)), 0);
 					//	As per esm resolve equations...
 			return saturate(exp(ESM_C*(comparisonDistance + ShadowsBias)) * texSample);
 		#else
-			float4 texSample = ShadowTextures.GatherRed(ClampingSampler, float3(tc, float(cascadeIndex)), 0);
+			float4 texSample = ILShadowTextures.GatherRed(ClampingSampler, float3(tc, float(cascadeIndex)), 0);
 
 			bool4 isInShadow = comparisonDistance < texSample;
 			return dot(isInShadow, 0.25.xxxx);

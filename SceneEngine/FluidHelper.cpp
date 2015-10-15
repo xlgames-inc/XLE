@@ -375,10 +375,10 @@ namespace SceneEngine
             struct Vertex { Float3 position; Float2 texCoord; } 
             vertices[] = 
             {
-                { Float3(0.f, 0.f, 0.f), Float2(0.f, 1.f) },
-                { Float3(wsDims[0], 0.f, 0.f), Float2(1.f, 1.f) },
-                { Float3(0.f, wsDims[1], 0.f), Float2(0.f, 0.f) },
-                { Float3(wsDims[0], wsDims[1], 0.f), Float2(1.f, 0.f) }
+                { Float3(0.f, 0.f, 0.f), Float2(0.f, 0.f) },
+                { Float3(wsDims[0], 0.f, 0.f), Float2(1.f, 0.f) },
+                { Float3(0.f, wsDims[1], 0.f), Float2(0.f, 1.f) },
+                { Float3(wsDims[0], wsDims[1], 0.f), Float2(1.f, 1.f) }
             };
 
             Metal::BoundInputLayout inputLayout(Metal::GlobalInputLayouts::PT, shader);

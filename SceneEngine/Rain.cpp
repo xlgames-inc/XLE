@@ -20,6 +20,7 @@
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../Utility/MemoryUtils.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../ConsoleRig/Console.h"
@@ -258,7 +259,7 @@ namespace SceneEngine
                 projScale, projZOffset,
                 .5f * Float3(8.1f, 0.1f, -12.f),
                 1.0f / 60.f, particleCountWidth,
-                s_timeRandomizer, 0.f, 0.f
+                IntegerHash32(s_timeRandomizer), 0.f, 0.f
             };
             Metal::ConstantBuffer cb0(&simParam, sizeof(simParam));
 
@@ -394,6 +395,8 @@ namespace SceneEngine
                 XlCos(spawnAngle0) * XlSin(spawnAngle1),
                 XlSin(spawnAngle0));
 
+            static unsigned s_timeRandomizer = 0;
+            ++s_timeRandomizer;
             struct SimulationParameters
             {
                 Float4x4    _worldToView;
@@ -404,14 +407,15 @@ namespace SceneEngine
 	            Float3	    _spawnVelocity;
 	            float	    _elapsedTime;
 	            int		    _particleCountWidth;
-                float       _dummy1[3];
+                unsigned    _timeRandomizer;
+                float       _dummy1[2];
             } simParam = {
                 InvertOrthonormalTransform(projDesc._cameraToWorld),
                 projScale, projZOffset,
                 spawnPosition, 0.f,
                 spawnDirection,
                 1.0f / 60.f, particleCountWidth,
-                0.f, 0.f, 0.f
+                IntegerHash32(s_timeRandomizer), 0.f, 0.f
             };
             Metal::ConstantBuffer cb0(&simParam, sizeof(simParam));
 

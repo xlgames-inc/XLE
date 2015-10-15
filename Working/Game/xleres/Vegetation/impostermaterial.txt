@@ -10,8 +10,8 @@
         ~Runtime
             BASIC_LIGHT_COUNT=1
             SHADOW_CASCADE_MODE=2
-    VertexShader=game/xleres/vegetation/imposter.sh:vs_main
-    PixelShader=game/xleres/vegetation/imposter.sh:ps_illum
+    VertexShader0=game/xleres/vegetation/imposter.sh:vs_main
+    PixelShader0=game/xleres/vegetation/imposter.sh:ps_illum
 ~DepthOnly
     ~Inherit;
     ~Parameters
