@@ -106,8 +106,8 @@ namespace Sample
 
         UsefulFonts(const Desc&)
         {
-            _defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
-            _defaultFont1 = RenderOverlays::GetX2Font("Vera", 16);
+            _defaultFont0 = RenderOverlays::GetX2Font("Raleway", 18);
+            _defaultFont1 = RenderOverlays::GetX2Font("Vera", 18);
         }
     };
 
@@ -343,6 +343,9 @@ namespace Sample
         auto& usefulFonts = RenderCore::Techniques::FindCachedBox<UsefulFonts>(UsefulFonts::Desc());
         auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
         DrawPendingResources(metalContext.get(), lightingParserContext, usefulFonts._defaultFont0.get());
+
+        if (Tweakable("QuickMetrics", false))
+            DrawQuickMetrics(metalContext.get(), lightingParserContext, usefulFonts._defaultFont1.get());
 
         if (overlaySys) {
             overlaySys->RenderWidgets(&context, lightingParserContext.GetProjectionDesc());

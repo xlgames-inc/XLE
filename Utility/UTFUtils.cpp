@@ -145,7 +145,7 @@ int utf8_2_ucs4(const utf8* src, size_t sl, ucs4* dst, size_t dl)
     ucs_conv_error err = UCE_OK;
 
     while (s < se) {
-        nb = _trailing_bytes[*src];
+        nb = _trailing_bytes[*s];
         if (s + nb >= se) {
             err = UCE_SRC_EXHAUSTED;
             break;
@@ -158,10 +158,10 @@ int utf8_2_ucs4(const utf8* src, size_t sl, ucs4* dst, size_t dl)
 
         ch = 0;
         switch (nb) {
-        case 3: ch += *src++; ch <<= 6;
-        case 2: ch += *src++; ch <<= 6;
-        case 1: ch += *src++; ch <<= 6;
-        case 0: ch += *src++;
+        case 3: ch += *s++; ch <<= 6;
+        case 2: ch += *s++; ch <<= 6;
+        case 1: ch += *s++; ch <<= 6;
+        case 0: ch += *s++;
         }
 
         ch -= _offsets_magic[nb];

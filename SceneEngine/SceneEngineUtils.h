@@ -100,6 +100,10 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext* context, 
         LightingParserContext& parserContext, 
         RenderOverlays::Font* font);
+    void DrawQuickMetrics(   
+        RenderCore::Metal::DeviceContext* context, 
+        SceneEngine::LightingParserContext& parserContext, 
+        RenderOverlays::Font* font);
 
     class FormatStack
     {

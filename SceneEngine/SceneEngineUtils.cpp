@@ -172,15 +172,15 @@ namespace SceneEngine
             ucs4 _buffer[Count];
             UCS4Buffer(const char input[])
             {
-                utf8_2_ucs4((const utf8*)input, XlStringLen(input), _buffer, dimof(_buffer));
+                utf8_2_ucs4((const utf8*)input, XlStringLen(input), _buffer, dimof(_buffer)-1);
             }
             UCS4Buffer(const char* start, const char* end)
             {
-                utf8_2_ucs4((const utf8*)start, end-start, _buffer, dimof(_buffer));
+                utf8_2_ucs4((const utf8*)start, end-start, _buffer, dimof(_buffer)-1);
             }
             UCS4Buffer(const std::string& input)
             {
-                utf8_2_ucs4((const utf8*)input.c_str(), input.size(), _buffer, dimof(_buffer));
+                utf8_2_ucs4((const utf8*)input.c_str(), input.size(), _buffer, dimof(_buffer)-1);
             }
 
             operator const ucs4*() const { return _buffer; }
@@ -200,7 +200,7 @@ namespace SceneEngine
 
         using namespace RenderOverlays;
         TextStyle   style(*font); 
-        Float2 textPosition(8.f, 8.f);
+        Float2 textPosition(16.f, 16.f);
         float lineHeight = font->LineHeight();
         const UiAlign alignment = UIALIGN_TOP_LEFT;
         const unsigned colour = 0xff7f7f7fu;
@@ -220,10 +220,10 @@ namespace SceneEngine
                 while (*i && *i != ',') ++i;
                 if (start == i) break;
 
-                UCS4Buffer<256> text(start, i);
-                Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition + Float2(32.f, 0.f), Float2(1024.f, 1024.f)), alignment, text);
+                UCS4Buffer<256> text2(start, i);
+                Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition + Float2(32.f, 0.f), Float2(1024.f, 1024.f)), alignment, text2);
                 style.Draw(
-                    context, alignedPosition[0], alignedPosition[1], text, -1,
+                    context, alignedPosition[0], alignedPosition[1], text2, -1,
                     0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
                 textPosition[1] += lineHeight;
             }
@@ -244,22 +244,62 @@ namespace SceneEngine
                 while (*i && *i != ',') ++i;
                 if (start == i) break;
 
-                UCS4Buffer<256> text(start, i);
-                Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition + Float2(32.f, 0.f), Float2(1024.f, 1024.f)), alignment, text);
+                UCS4Buffer<256> text2(start, i);
+                Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition + Float2(32.f, 0.f), Float2(1024.f, 1024.f)), alignment, text2);
                 style.Draw(
-                    context, alignedPosition[0], alignedPosition[1], text, -1,
+                    context, alignedPosition[0], alignedPosition[1], text2, -1,
                     0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
                 textPosition[1] += lineHeight;
             }
         }
 
         if (parserContext._stringHelpers->_errorString[0]) {
-            UCS4Buffer<512> text(parserContext._stringHelpers->_errorString);
-            Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text);
-            style.Draw(
-                context, alignedPosition[0], alignedPosition[1], text, -1,
-                0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
-            textPosition[1] += lineHeight;
+            auto i = parserContext._stringHelpers->_errorString;
+            for (;;) {
+                while (*i && (*i == '\n' || *i == '\r')) ++i;
+                auto* start = i;
+                while (*i && *i != '\n' && *i != '\r') ++i;
+                if (start == i) break;
+
+                UCS4Buffer<512> text2(start, i);
+                Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text2);
+                style.Draw(
+                    context, alignedPosition[0], alignedPosition[1], text2, -1,
+                    0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
+                textPosition[1] += lineHeight;
+            }
+        }
+    }
+
+    void DrawQuickMetrics(   
+        Metal::DeviceContext* context, 
+        SceneEngine::LightingParserContext& parserContext, 
+        RenderOverlays::Font* font)
+    {
+        if (parserContext._stringHelpers->_quickMetrics[0]) {
+            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
+
+            using namespace RenderOverlays;
+            TextStyle style(*font);
+            Float2 textPosition(16.f, 150.f);
+            float lineHeight = font->LineHeight();
+            const UiAlign alignment = UIALIGN_TOP_LEFT;
+            const unsigned colour = 0xffcfcfcfu;
+
+            auto i = parserContext._stringHelpers->_quickMetrics;
+            for (;;) {
+                while (*i && (*i == '\n' || *i == '\r')) ++i;
+                auto* start = i;
+                while (*i && *i != '\n' && *i != '\r') ++i;
+                if (start == i) break;
+
+                UCS4Buffer<512> text2(start, i);
+                Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text2);
+                style.Draw(
+                    context, alignedPosition[0], alignedPosition[1], text2, -1,
+                    0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
+                textPosition[1] += lineHeight;
+            }
         }
     }
 
