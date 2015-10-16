@@ -95,6 +95,20 @@ namespace Sample
         }
     }
 
+    bool BasicSceneParser::HasContent(const SceneParseSettings& parseSettings) const
+    {
+        if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
+            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth
+            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::DMShadows
+            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::RayTracedShadows) {
+
+            if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     RenderCore::Techniques::CameraDesc BasicSceneParser::GetCameraDesc() const 
     { 
             //  The scene parser provides some global rendering properties
@@ -319,7 +333,7 @@ namespace Sample
             //  Finally, we can render the object!
         const float x2ScaleFactor = 100.f;
         _modelRenderer->Render(
-            RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+            RenderCore::Assets::ModelRendererContext(*context, parserContext, techniqueIndex),
             *_sharedStateSet, AsFloat4x4(UniformScale(1.f/x2ScaleFactor)));
     }
 

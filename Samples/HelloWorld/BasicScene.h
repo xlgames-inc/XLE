@@ -34,6 +34,7 @@ namespace Sample
             LightingParserContext& parserContext, 
             const SceneParseSettings& parseSettings,
             unsigned techniqueIndex) const;
+        bool HasContent(const SceneParseSettings& parseSettings) const;
 
         unsigned GetShadowProjectionCount() const;
         ShadowProjectionDesc GetShadowProjectionDesc(unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const;

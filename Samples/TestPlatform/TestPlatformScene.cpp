@@ -152,7 +152,9 @@ namespace Sample
         auto& box = RenderCore::Techniques::FindCachedBoxDep2<Test::DualContourTest>(Tweakable("GridDims", 256));
 
         if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth) {
+            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth
+            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::DMShadows
+            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::RayTracedShadows) {
 
             if (!renderAsCloud)
                 box._renderer->Render(context, parserContext, techniqueIndex);
@@ -166,19 +168,16 @@ namespace Sample
         }
     }
 
-    void TestPlatformSceneParser::ExecuteShadowScene( 
-        RenderCore::Metal::DeviceContext* context, 
-        LightingParserContext& parserContext, 
-        const SceneParseSettings& parseSettings,
-        unsigned frustumIndex, unsigned techniqueIndex) const 
+    bool TestPlatformSceneParser::HasContent(const SceneParseSettings& parseSettings) const
     {
-        CPUProfileEvent pEvnt("ExecuteShadowScene", g_cpuProfiler);
-
-        if (Tweakable("DoShadows", true)) {
-            SceneParseSettings settings = parseSettings;
-            settings._toggles &= ~SceneParseSettings::Toggles::Terrain;
-            ExecuteScene(context, parserContext, settings, techniqueIndex);
-        }
+        if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
+            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth
+            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::DMShadows
+            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::RayTracedShadows)
+            return true;
+        if (parseSettings._batchFilter == SceneParseSettings::BatchFilter::Transparent)
+            return true;
+        return false;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -171,7 +171,7 @@ static void ParserPerformanceTest()
 
         for (;;) {
             auto scaffold = (*newCreateScaffold)(testFile);
-            auto chunks = (*newSerializeSkin)(*scaffold);
+            auto chunks = (*newSerializeSkin)(*scaffold, "");
         }
 
     #endif
