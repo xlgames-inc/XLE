@@ -29,6 +29,7 @@
 #include "../../SceneEngine/VegetationSpawn.h"
 #include "../../SceneEngine/VolumetricFog.h"
 #include "../../SceneEngine/ShallowSurface.h"
+#include "../../SceneEngine/DynamicImposters.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -82,6 +83,8 @@ namespace GUILayer
         _shallowSurfaceManager = std::make_shared<SceneEngine::ShallowSurfaceManager>();
         _flexObjects = std::make_shared<EntityInterface::RetainedEntities>();
         _placeholders = std::make_shared<ObjectPlaceholders>(_flexObjects);
+        _dynamicImposters = std::make_shared<SceneEngine::DynamicImposters>(modelCache->GetSharedStateSet());
+        _placementsManager->SetImposters(_dynamicImposters);
         _currentTime = 0.f;
     }
 
@@ -429,6 +432,8 @@ namespace GUILayer
         _terrainInterface = terrainEditor;
         RegisterTerrainFlexObjects(*_scene->_flexObjects, _scene->_terrainManager);
         RegisterVegetationSpawnFlexObjects(*_scene->_flexObjects, _scene->_vegetationSpawnManager);
+
+        RegisterDynamicImpostersFlexObjects(*_scene->_flexObjects, _scene->_dynamicImposters);
 
         auto envEntitiesManager = std::make_shared<::EntityInterface::EnvEntitiesManager>(_scene->_flexObjects);
         envEntitiesManager->RegisterVolumetricFogFlexObjects(_scene->_volumeFogManager);

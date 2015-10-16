@@ -43,6 +43,7 @@ namespace SceneEngine
     class PlacementsRenderer;
     class PlacementsEditor;
     class PlacementsQuadTree;
+    class DynamicImposters;
 
     /// <summary>Manages stream and organization of object placements</summary>
     /// In this context, placements are static objects placed in the world. Most
@@ -70,6 +71,8 @@ namespace SceneEngine
 
         std::shared_ptr<PlacementsRenderer> GetRenderer();
         std::shared_ptr<PlacementsEditor> CreateEditor();
+
+        void SetImposters(std::shared_ptr<DynamicImposters> imposters);
 
         PlacementsManager(
             const WorldPlacementsConfig& cfg,

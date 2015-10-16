@@ -118,4 +118,60 @@
     </xs:complexContent>
   </xs:complexType>
 
+
+    <!-- D Y N A M I C   I M P O S T E R S   C O N F I G -->
+  <xs:complexType name="dynamicImpostersConfig">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="DynamicImpostersConfig"/>
+
+        <LeGe.NativeProperty name="ThresholdDistance" nativeName="ThresholdDistance"/>
+        <LeGe.NativeProperty name="AngleQuant" nativeName="AngleQuant"/>
+        <LeGe.NativeProperty name="CalibrationDistance" nativeName="CalibrationDistance"/>
+        <LeGe.NativeProperty name="CalibrationFov" nativeName="CalibrationFov"/>
+        <LeGe.NativeProperty name="CalibrationPixels" nativeName="CalibrationPixels"/>
+        <LeGe.NativeProperty name="MinDims" nativeName="MinDims"/>
+        <LeGe.NativeProperty name="MaxDims" nativeName="MaxDims"/>
+        <LeGe.NativeProperty name="AltasSize" nativeName="AltasSize"/>
+
+        <scea.dom.editors.attribute category="Basic" name="ThresholdDistance" displayName="Threshold Distance"
+                                    description="Distance at which to start using imposters."/>
+        
+        <scea.dom.editors.attribute category="Generation" name="AngleQuant" displayName="Angle Count"
+                                    description="Number of sprites to generate for different angles."/>
+        <scea.dom.editors.attribute category="Generation" name="CalibrationDistance" displayName="Calibration Distance"
+                                    description="Distance to the camera when generating sprites"/>
+        <scea.dom.editors.attribute category="Generation" name="CalibrationFov" displayName="Calibration FOV"
+                                    description="Approximate field of view to use when generating sprites"/>
+        <scea.dom.editors.attribute category="Generation" name="CalibrationPixels" displayName="Calibration Size"
+                                    description="Increase or decrease to adjust the resolution of the generated sprites"/>
+
+        <scea.dom.editors.attribute category="Atlas" name="MinDims" displayName="Min Sprite Size"
+                                    description="Minimum size for the generated sprite"/>
+        <scea.dom.editors.attribute category="Atlas" name="MaxDims" displayName="Max Sprite Size"
+                                    description="Maximum size for the generated sprite (larger objects will tend to create larger sprites)"/>
+        <scea.dom.editors.attribute category="Atlas" name="AltasSize" displayName="Atlas Size"
+                                    description="Size of the texture reserved for sprites"/>
+
+        <scea.dom.editors category="Placements" name="DynamicImpostersConfig" menuText="Placements/DynamicImpostersConfig" 
+                          description="Configuration for dynamic imposters"/>
+        <LeGe.OpaqueListable label="Dynamic Imposters Config"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:complexContent>
+      <xs:extension base="gameObjectType">
+        <xs:attribute name="ThresholdDistance" type="xs:float" default="650"/>
+        <xs:attribute name="AngleQuant" type="xs:unsignedInt" default="8"/>
+        <xs:attribute name="CalibrationDistance" type="xs:float" default="650"/>
+        <xs:attribute name="CalibrationFov" type="xs:float" default="40"/>
+        <xs:attribute name="CalibrationPixels" type="xs:unsignedInt" default="256"/>
+        <xs:attribute name="MinDims" type="int2Type" default="32 32"/>
+        <xs:attribute name="MaxDims" type="int2Type" default="128 128"/>
+        <xs:attribute name="AltasSize" type="int3Type" default="4096 2048 1"/>
+      </xs:extension>
+    </xs:complexContent>
+
+  </xs:complexType>
+
 </xs:schema>

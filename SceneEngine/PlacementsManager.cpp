@@ -405,6 +405,8 @@ namespace SceneEngine
         auto GetCachedQuadTree(uint64 cellFilenameHash) const -> const PlacementsQuadTree*;
         ModelCache& GetModelCache() { return *_cache; }
 
+        void SetImposters(std::shared_ptr<DynamicImposters> imposters);
+
         PlacementsRenderer(std::shared_ptr<PlacementsCache> placementsCache, std::shared_ptr<ModelCache> modelCache);
         ~PlacementsRenderer();
     protected:
@@ -442,8 +444,7 @@ namespace SceneEngine
         DelayedDrawCallSet _preparedRenders;
 
         std::shared_ptr<RenderCore::Assets::IModelFormat> _modelFormat;
-
-        DynamicImposters _imposters;
+        std::shared_ptr<DynamicImposters> _imposters;
 
         void Render(
             RenderCore::Metal::DeviceContext* context,
@@ -468,7 +469,8 @@ namespace SceneEngine
     void PlacementsRenderer::BeginPrepare()
     {
         _preparedRenders.Reset();
-        _imposters.Reset();
+        if (_imposters)
+            _imposters->Reset();
     }
 
     void PlacementsRenderer::EndPrepare()
@@ -496,7 +498,8 @@ namespace SceneEngine
         }
 
         if (delayStep == RenderCore::Assets::DelayStep::OpaqueRender) {
-            _imposters.Render(*context, parserContext, techniqueIndex);
+            if (_imposters)
+                _imposters->Render(*context, parserContext, techniqueIndex);
         }
     }
 
@@ -613,15 +616,15 @@ namespace SceneEngine
         class RendererHelper
         {
         public:
-            void Render(
-                ModelCache& cache,
-                DelayedDrawCallSet& delayedDrawCalls,
-                DynamicImposters& imposters,
-                const void* filenamesBuffer,
-                const uint64* supplementsBuffer,
-                const Placements::ObjectReference& obj,
-                const Float3x4& cellToWorld,
-                const Float3& cameraPosition);
+            template<bool UseImposters = true>
+                void Render(
+                    ModelCache& cache,
+                    DelayedDrawCallSet& delayedDrawCalls,
+                    const void* filenamesBuffer,
+                    const uint64* supplementsBuffer,
+                    const Placements::ObjectReference& obj,
+                    const Float3x4& cellToWorld,
+                    const Float3& cameraPosition);
 
             class Metrics
             {
@@ -640,12 +643,17 @@ namespace SceneEngine
 
             Metrics _metrics;
 
-            RendererHelper()
+            RendererHelper(DynamicImposters* imposters)
             {
                 _currentModel = _currentMaterial = 0ull;
                 _currentSupplements = 0u;
-                const auto imposterDistance = Tweakable("ImposterDistance", 650.f);
-                _maxDistanceSq = imposterDistance * imposterDistance;
+
+                auto maxDistance = 1000.f;
+                if (imposters && imposters->IsEnabled())
+                    maxDistance = imposters->GetThresholdDistance();
+                _maxDistanceSq = maxDistance * maxDistance;
+
+                _imposters = imposters;
                 _currentModelRendered = false;
             }
         protected:
@@ -654,23 +662,27 @@ namespace SceneEngine
             ModelCache::Model _current;
             float _maxDistanceSq;
             bool _currentModelRendered;
+            DynamicImposters* _imposters;
         };
 
-        void RendererHelper::Render(
-            ModelCache& cache,
-            DelayedDrawCallSet& delayedDrawCalls,
-            DynamicImposters& imposters,
-            const void* filenamesBuffer,
-            const uint64* supplementsBuffer,
-            const Placements::ObjectReference& obj,
-            const Float3x4& cellToWorld,
-            const Float3& cameraPosition)
+        template<bool UseImposters>
+            void RendererHelper::Render(
+                ModelCache& cache,
+                DelayedDrawCallSet& delayedDrawCalls,
+                const void* filenamesBuffer,
+                const uint64* supplementsBuffer,
+                const Placements::ObjectReference& obj,
+                const Float3x4& cellToWorld,
+                const Float3& cameraPosition)
         {
                 // Basic draw distance calculation
                 // many objects don't need to render out to the far clip
 
             float distanceSq = MagnitudeSquared(
                 .5f * (obj._cellSpaceBoundary.first + obj._cellSpaceBoundary.second) - cameraPosition);
+
+            if (constant_expression<!UseImposters>::result() && distanceSq > _maxDistanceSq)
+                return; 
 
                 //  Objects should be sorted by model & material. This is important for
                 //  reducing the work load in "_cache". Typically cells will only refer
@@ -704,8 +716,9 @@ namespace SceneEngine
                 
             auto localToWorld = Combine(obj._localToCell, cellToWorld);
 
-            if (distanceSq > _maxDistanceSq) {
-                imposters.Queue(*_current._renderer, *_current._model, localToWorld, cameraPosition);
+            if (constant_expression<UseImposters>::result() && distanceSq > _maxDistanceSq) {
+                assert(_imposters);
+                _imposters->Queue(*_current._renderer, *_current._model, localToWorld, cameraPosition);
                 ++_metrics._impostersQueued;
                 return; 
             }
@@ -783,7 +796,7 @@ namespace SceneEngine
 
         const uint64* filterIterator = filterStart;
         const bool doFilter = filterStart != filterEnd;
-        Internal::RendererHelper helper;
+        Internal::RendererHelper helper(_imposters.get());
         
         const auto* filenamesBuffer = placements.GetFilenamesBuffer();
         const auto* supplementsBuffer = placements.GetSupplementsBuffer();
@@ -805,17 +818,32 @@ namespace SceneEngine
                 // we have to sort to return to our expected order
             std::sort(visibleObjs, &visibleObjs[visibleObjCount]);
 
-            for (unsigned c=0; c<visibleObjCount; ++c) {
-                auto& obj = objRef[visibleObjs[c]];
+            if (_imposters && _imposters->IsEnabled()) {
+                for (unsigned c=0; c<visibleObjCount; ++c) {
+                    auto& obj = objRef[visibleObjs[c]];
 
-                if (doFilter) {
-                    while (filterIterator != filterEnd && *filterIterator < obj._guid) { ++filterIterator; }
-                    if (filterIterator == filterEnd || *filterIterator != obj._guid) { continue; }
+                    if (doFilter) {
+                        while (filterIterator != filterEnd && *filterIterator < obj._guid) { ++filterIterator; }
+                        if (filterIterator == filterEnd || *filterIterator != obj._guid) { continue; }
+                    }
+
+                    helper.Render<true>(
+                        *_cache, _preparedRenders,
+                        filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
                 }
+            } else {
+                for (unsigned c=0; c<visibleObjCount; ++c) {
+                    auto& obj = objRef[visibleObjs[c]];
 
-                helper.Render(
-                    *_cache, _preparedRenders, _imposters,
-                    filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
+                    if (doFilter) {
+                        while (filterIterator != filterEnd && *filterIterator < obj._guid) { ++filterIterator; }
+                        if (filterIterator == filterEnd || *filterIterator != obj._guid) { continue; }
+                    }
+
+                    helper.Render<false>(
+                        *_cache, _preparedRenders,
+                        filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
+                }
             }
 
         } else {
@@ -835,13 +863,24 @@ namespace SceneEngine
                     if (filterIterator == filterEnd || *filterIterator != obj._guid) { continue; }
                 }
 
-                helper.Render(
-                    *_cache, _preparedRenders, _imposters,
-                    filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
+                if (_imposters && _imposters->IsEnabled()) {
+                    helper.Render<true>(
+                        *_cache, _preparedRenders,
+                        filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
+                } else {
+                    helper.Render<false>(
+                        *_cache, _preparedRenders,
+                        filenamesBuffer, supplementsBuffer, obj, cellToWorld, cameraPosition);
+                }
             }
         }
 
         QuickMetrics(parserContext) << "Placements cell: (" << helper._metrics._instancesPrepared << ") instances from (" << helper._metrics._uniqueModelsPrepared << ") models. Imposters: (" << helper._metrics._impostersQueued << ")\n";
+    }
+
+    void PlacementsRenderer::SetImposters(std::shared_ptr<DynamicImposters> imposters)
+    {
+        _imposters = std::move(imposters);
     }
 
     PlacementsRenderer::PlacementsRenderer(
@@ -850,7 +889,6 @@ namespace SceneEngine
     : _placementsCache(std::move(placementsCache))
     , _cache(std::move(modelCache))
     , _preparedRenders(typeid(ModelRenderer).hash_code())
-    , _imposters(_cache->GetSharedStateSet())
     {}
 
     PlacementsRenderer::~PlacementsRenderer() {}
@@ -955,6 +993,11 @@ namespace SceneEngine
                 Truncate(i->_aabbMin), Truncate(i->_aabbMax));
         }
         return editor;
+    }
+
+    void PlacementsManager::SetImposters(std::shared_ptr<DynamicImposters> imposters)
+    {
+        _pimpl->_renderer->SetImposters(std::move(imposters));
     }
 
     PlacementsManager::PlacementsManager(

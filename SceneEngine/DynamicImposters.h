@@ -27,6 +27,21 @@ namespace SceneEngine
         using ModelRenderer = RenderCore::Assets::ModelRenderer;
         using ModelScaffold = RenderCore::Assets::ModelScaffold;
 
+        class Config
+        {
+        public:
+            float       _thresholdDistance;
+            unsigned    _angleQuant;
+            float       _calibrationDistance;
+            float       _calibrationFov;
+            unsigned    _calibrationPixels;
+            UInt2       _minDims;
+            UInt2       _maxDims;
+            UInt3       _altasSize;
+
+            Config();
+        };
+
         void Render(
             RenderCore::Metal::DeviceContext& context,
             RenderCore::Techniques::ParsingContext& parserContext,
@@ -36,6 +51,12 @@ namespace SceneEngine
             const ModelRenderer& renderer, const ModelScaffold& scaffold, 
             const Float3x4& localToWorld, const Float3& cameraPosition);
         void Reset();
+
+        void Load(const Config& config);
+        void Disable();
+
+        float GetThresholdDistance() const;
+        bool IsEnabled() const;
 
         DynamicImposters(SharedStateSet& sharedStateSet);
         ~DynamicImposters();

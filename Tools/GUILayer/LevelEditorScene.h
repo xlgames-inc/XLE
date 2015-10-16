@@ -24,6 +24,7 @@ namespace SceneEngine
     class VegetationSpawnManager;
     class VolumetricFogManager;
     class ShallowSurfaceManager;
+    class DynamicImposters;
 }
 namespace Tools { class IManipulator; }
 
@@ -50,15 +51,16 @@ namespace GUILayer
     class EditorScene
     {
     public:
-        std::shared_ptr<SceneEngine::PlacementsManager> _placementsManager;
-        std::shared_ptr<SceneEngine::PlacementsEditor> _placementsEditor;
-        std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
-        std::shared_ptr<SceneEngine::VegetationSpawnManager> _vegetationSpawnManager;
-        std::shared_ptr<SceneEngine::VolumetricFogManager> _volumeFogManager;
-        std::shared_ptr<SceneEngine::ShallowSurfaceManager> _shallowSurfaceManager;
-        std::shared_ptr<EntityInterface::RetainedEntities> _flexObjects;
-        std::shared_ptr<ObjectPlaceholders> _placeholders;
-        std::vector<std::function<void()>> _prepareSteps;
+        std::shared_ptr<SceneEngine::PlacementsManager>         _placementsManager;
+        std::shared_ptr<SceneEngine::PlacementsEditor>          _placementsEditor;
+        std::shared_ptr<SceneEngine::TerrainManager>            _terrainManager;
+        std::shared_ptr<SceneEngine::VegetationSpawnManager>    _vegetationSpawnManager;
+        std::shared_ptr<SceneEngine::VolumetricFogManager>      _volumeFogManager;
+        std::shared_ptr<SceneEngine::ShallowSurfaceManager>     _shallowSurfaceManager;
+        std::shared_ptr<SceneEngine::DynamicImposters>          _dynamicImposters;
+        std::shared_ptr<EntityInterface::RetainedEntities>      _flexObjects;
+        std::shared_ptr<ObjectPlaceholders>     _placeholders;
+        std::vector<std::function<void()>>      _prepareSteps;
 
         void    IncrementTime(float increment) { _currentTime += increment; }
         float   _currentTime;

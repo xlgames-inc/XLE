@@ -12,6 +12,7 @@ namespace SceneEngine
 {
     class PlacementsManager;
     class PlacementsEditor;
+    class DynamicImposters;
 }
 
 namespace EntityInterface
@@ -45,5 +46,10 @@ namespace EntityInterface
 
         unsigned _cellCounter;
     };
+
+    class RetainedEntities;
+    void RegisterDynamicImpostersFlexObjects(
+        RetainedEntities& flexSys, 
+        std::shared_ptr<SceneEngine::DynamicImposters> imposters);
 }
 

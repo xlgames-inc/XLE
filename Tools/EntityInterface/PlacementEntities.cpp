@@ -5,11 +5,14 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PlacementEntities.h"
+#include "RetainedEntities.h"
 #include "../../SceneEngine/PlacementsManager.h"
+#include "../../SceneEngine/DynamicImposters.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/UTFUtils.h"
 #include "../../Utility/StringUtils.h"
+#include "../../Utility/Meta/AccessorSerialize.h"
 #include "../../Math/Transformations.h"
 
 namespace EntityInterface
@@ -253,5 +256,34 @@ namespace EntityInterface
     {}
 
     PlacementEntities::~PlacementEntities() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void RegisterDynamicImpostersFlexObjects(
+        RetainedEntities& flexSys, 
+        std::shared_ptr<SceneEngine::DynamicImposters> imposters)
+    {
+        std::weak_ptr<SceneEngine::DynamicImposters> weakPtrToManager = imposters;
+        flexSys.RegisterCallback(
+            flexSys.GetTypeId((const utf8*)"DynamicImpostersConfig"),
+            [weakPtrToManager](
+                const RetainedEntities& flexSys, const Identifier& obj,
+                RetainedEntities::ChangeType changeType)
+            {
+                auto mgr = weakPtrToManager.lock();
+                if (!mgr) return;
+
+                if (changeType == RetainedEntities::ChangeType::Delete) {
+                    mgr->Disable();
+                    return;
+                }
+
+                auto* object = flexSys.GetEntity(obj);
+                if (object)
+                    mgr->Load(
+                        CreateFromParameters<SceneEngine::DynamicImposters::Config>(object->_properties));
+            }
+        );
+    }
 
 }

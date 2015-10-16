@@ -29,6 +29,9 @@
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/FunctionUtils.h"
 #include "../Utility/StringFormat.h"
+#include "../Utility/Meta/ClassAccessors.h"
+#include "../Utility/Meta/ClassAccessorsImpl.h"
+#include "../Utility/Meta/AccessorSerialize.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
@@ -80,7 +83,7 @@ namespace SceneEngine
             std::max(dims[1] >> mipMapLevel, 1u));
     }
 
-    class SpriteAtlas
+    class ImposterSpriteAtlas
     {
     public:
             // We have 2 options for our altas
@@ -111,14 +114,14 @@ namespace SceneEngine
         std::vector<Layer>  _layers;
         GestaltTypes::DSV   _tempDSV;
 
-        SpriteAtlas(UInt2 dims, UInt2 tempSurfaceDims, std::initializer_list<Metal::NativeFormat::Enum> layers);
-        SpriteAtlas(SpriteAtlas&& moveFrom) never_throws;
-        SpriteAtlas& operator=(SpriteAtlas&& moveFrom) never_throws;
-        SpriteAtlas();
-        ~SpriteAtlas();
+        ImposterSpriteAtlas(UInt2 dims, UInt2 tempSurfaceDims, std::initializer_list<Metal::NativeFormat::Enum> layers);
+        ImposterSpriteAtlas(ImposterSpriteAtlas&& moveFrom) never_throws;
+        ImposterSpriteAtlas& operator=(ImposterSpriteAtlas&& moveFrom) never_throws;
+        ImposterSpriteAtlas();
+        ~ImposterSpriteAtlas();
     };
 
-    SpriteAtlas::SpriteAtlas(UInt2 dims, UInt2 tempSurfaceDims, std::initializer_list<Metal::NativeFormat::Enum> layers)
+    ImposterSpriteAtlas::ImposterSpriteAtlas(UInt2 dims, UInt2 tempSurfaceDims, std::initializer_list<Metal::NativeFormat::Enum> layers)
     {
         using namespace BufferUploads;
         _tempDSV = GestaltTypes::DSV(
@@ -131,20 +134,29 @@ namespace SceneEngine
                 GestaltTypes::RTVSRV(TextureDesc::Plain2D(tempSurfaceDims[0], tempSurfaceDims[1], (unsigned)l), "SpriteAtlasTemp")));
     }
 
-    SpriteAtlas::SpriteAtlas(SpriteAtlas&& moveFrom) never_throws
+    ImposterSpriteAtlas::ImposterSpriteAtlas(ImposterSpriteAtlas&& moveFrom) never_throws
     : _layers(std::move(moveFrom._layers))
     , _tempDSV(std::move(moveFrom._tempDSV))
     {}
 
-    SpriteAtlas& SpriteAtlas::operator=(SpriteAtlas&& moveFrom) never_throws
+    ImposterSpriteAtlas& ImposterSpriteAtlas::operator=(ImposterSpriteAtlas&& moveFrom) never_throws
     {
         _layers = std::move(moveFrom._layers);
         _tempDSV = std::move(moveFrom._tempDSV);
         return *this;
     }
 
-    SpriteAtlas::SpriteAtlas() {}
-    SpriteAtlas::~SpriteAtlas() {}
+    ImposterSpriteAtlas::ImposterSpriteAtlas() {}
+    ImposterSpriteAtlas::~ImposterSpriteAtlas() {}
+
+    static const Metal::InputElementDesc s_inputLayout[] = 
+    {
+        Metal::InputElementDesc("POSITION", 0, Metal::NativeFormat::R32G32B32_FLOAT),
+        Metal::InputElementDesc("XAXIS", 0, Metal::NativeFormat::R32G32B32_FLOAT),
+        Metal::InputElementDesc("YAXIS", 0, Metal::NativeFormat::R32G32B32_FLOAT),
+        Metal::InputElementDesc("SIZE", 0, Metal::NativeFormat::R32G32_FLOAT),
+        Metal::InputElementDesc("SPRITEINDEX", 0, Metal::NativeFormat::R32_UINT)
+    };
 
     class DynamicImposters::Pimpl
     {
@@ -164,29 +176,6 @@ namespace SceneEngine
         std::vector<std::pair<uint64, QueuedObject>> _queuedObjects;
         std::vector<std::pair<uint64, Float3>> _queuedInstances;
 
-        class Config
-        {
-        public:
-            unsigned _angleQuant;
-            float _calibrationDistance;
-            float _calibrationFov;
-            unsigned _calibrationPixels;
-            UInt2 _minDims;
-            UInt2 _maxDims;
-
-            Config()
-            {
-                _angleQuant = 8;
-                _calibrationDistance = 500.f;
-                _calibrationFov = Deg2Rad(40.f);
-                _calibrationPixels = 256;
-                _minDims = UInt2(32, 32);
-                _maxDims = UInt2(128, 128);
-
-                // _calibrationPixels = 1024;
-                // _maxDims = UInt2(1024, 1024);
-            }
-        };
         Config _config;
 
         static const unsigned MipMapCount = 5;
@@ -202,6 +191,13 @@ namespace SceneEngine
         };
         std::vector<std::pair<uint64, PreparedSprite>> _preparedSprites;
 
+        RectanglePacker _packer;
+        ImposterSpriteAtlas _atlas;
+        Techniques::TechniqueMaterial _material;
+
+        void BuildNewSprites(
+            Metal::DeviceContext& context,
+            Techniques::ParsingContext& parserContext);
         PreparedSprite BuildSprite(
             Metal::DeviceContext& context,
             Techniques::ParsingContext& parserContext,
@@ -217,14 +213,50 @@ namespace SceneEngine
             Metal::DeviceContext& context,
             const Rectangle& destination,
             const Rectangle& source);
-
-        RectanglePacker _packer;
-        SpriteAtlas _atlas;
     };
 
-    static Utility::Internal::StringMeldInPlace<char> QuickMetrics(RenderCore::Techniques::ParsingContext& parserContext)
+    static Utility::Internal::StringMeldInPlace<char> QuickMetrics(
+        Techniques::ParsingContext& parserContext)
     {
         return StringMeldAppend(parserContext._stringHelpers->_quickMetrics);
+    }
+
+    void DynamicImposters::Pimpl::BuildNewSprites(
+        Metal::DeviceContext& context,
+        Techniques::ParsingContext& parserContext)
+    {
+        ProtectState protectState;
+        const ProtectState::States::BitField volatileStates =
+                ProtectState::States::RenderTargets
+            | ProtectState::States::Viewports
+            | ProtectState::States::DepthStencilState
+            | ProtectState::States::BlendState;
+        bool initProtectState = false;
+
+        const unsigned maxPreparePerFrame = Tweakable("ImpostersReset", false) ? INT_MAX : 3;
+        unsigned preparedThisFrame = 0;
+
+        auto preparedSpritesI = _preparedSprites.begin();
+        for (const auto& o:_queuedObjects) {
+            uint64 hash = o.first;
+            preparedSpritesI = std::lower_bound(preparedSpritesI, _preparedSprites.end(), hash, CompareFirst<uint64, Pimpl::PreparedSprite>());
+            if (preparedSpritesI != _preparedSprites.end() && preparedSpritesI->first == hash) {
+            } else {
+                if (!initProtectState) {
+                    protectState = ProtectState(context, volatileStates);
+                    initProtectState = true;
+                }
+
+                if (preparedThisFrame++ >= maxPreparePerFrame) continue;
+
+                TRY {
+                    auto newSprite = BuildSprite(context, parserContext, o.second);
+                    preparedSpritesI = _preparedSprites.insert(preparedSpritesI, std::make_pair(hash, newSprite));
+                } CATCH(const ::Assets::Exceptions::AssetException&e) {
+                    parserContext.Process(e);
+                } CATCH_END
+            }
+        }
     }
 
     void DynamicImposters::Render(
@@ -235,62 +267,13 @@ namespace SceneEngine
         if (_pimpl->_queuedInstances.empty() || _pimpl->_queuedObjects.empty())
             return;
 
-        Metal::InputElementDesc il[] = 
-        {
-            // Metal::InputElementDesc("POSITION", 0, Metal::NativeFormat::R32G32B32_FLOAT),
-            // Metal::InputElementDesc("TEXCOORD", 0, Metal::NativeFormat::R32G32_FLOAT),
-            // Metal::InputElementDesc("SPRITEINDEX", 0, Metal::NativeFormat::R32_UINT)
-            Metal::InputElementDesc("POSITION", 0, Metal::NativeFormat::R32G32B32_FLOAT),
-            Metal::InputElementDesc("XAXIS", 0, Metal::NativeFormat::R32G32B32_FLOAT),
-            Metal::InputElementDesc("YAXIS", 0, Metal::NativeFormat::R32G32B32_FLOAT),
-            Metal::InputElementDesc("SIZE", 0, Metal::NativeFormat::R32G32_FLOAT),
-            Metal::InputElementDesc("SPRITEINDEX", 0, Metal::NativeFormat::R32_UINT)
-        };
-
-        Techniques::TechniqueMaterial material(
-            Metal::InputLayout(il, dimof(il)),
-            {Hash64("SpriteTable")}, ParameterBox());
-        auto shader = material.FindVariation(
+        auto shader = _pimpl->_material.FindVariation(
             parserContext, techniqueIndex, "game/xleres/vegetation/impostermaterial.txt");
         if (!shader._shaderProgram) return;
 
             // For each object here, we should look to see if we have a prepared
             // imposter already available. If not, we have to build the imposter.
-        
-        {
-            ProtectState protectState;
-            const ProtectState::States::BitField volatileStates =
-                  ProtectState::States::RenderTargets
-                | ProtectState::States::Viewports
-                | ProtectState::States::DepthStencilState
-                | ProtectState::States::BlendState;
-            bool initProtectState = false;
-
-            const unsigned maxPreparePerFrame = Tweakable("ImpostersReset", false) ? INT_MAX : 3;
-            unsigned preparedThisFrame = 0;
-
-            auto preparedSpritesI = _pimpl->_preparedSprites.begin();
-            for (const auto& o:_pimpl->_queuedObjects) {
-                uint64 hash = o.first;
-                preparedSpritesI = std::lower_bound(preparedSpritesI, _pimpl->_preparedSprites.end(), hash, CompareFirst<uint64, Pimpl::PreparedSprite>());
-                if (preparedSpritesI != _pimpl->_preparedSprites.end() && preparedSpritesI->first == hash) {
-                } else {
-                    if (!initProtectState) {
-                        protectState = ProtectState(context, volatileStates);
-                        initProtectState = true;
-                    }
-
-                    if (preparedThisFrame++ >= maxPreparePerFrame) continue;
-
-                    TRY {
-                        auto newSprite = _pimpl->BuildSprite(context, parserContext, o.second);
-                        preparedSpritesI = _pimpl->_preparedSprites.insert(preparedSpritesI, std::make_pair(hash, newSprite));
-                    } CATCH(const ::Assets::Exceptions::AssetException&e) {
-                        parserContext.Process(e);
-                    } CATCH_END
-                }
-            }
-        }
+        _pimpl->BuildNewSprites(context, parserContext);
 
         class Vertex
         {
@@ -327,30 +310,17 @@ namespace SceneEngine
             if (preparedSpritesI == _pimpl->_preparedSprites.end() || preparedSpritesI->first != hash)
                 continue;
 
-            // We should have a number of sprites of the same instance. Expand the sprite into 
-            // triangles here, on the CPU. 
-            // We'll do the projection here because we need to use the parameters from how the
-            // sprite was originally projected.
+                // We should have a number of sprites of the same instance. Expand the sprite into 
+                // triangles here, on the CPU. 
+                // We'll do the projection here because we need to use the parameters from how the
+                // sprite was originally projected.
 
             unsigned spriteIndex = (unsigned)std::distance(_pimpl->_preparedSprites.begin(), preparedSpritesI);
             Float3 projectionCenter = preparedSpritesI->second._projectionCentre;
             Float2 projectionSize = preparedSpritesI->second._worldSpaceHalfSize;
 
-            for (auto s=start; s<i; ++s) {
-                // Float3 A = s->second + projectionCenter - cameraRight * projectionSize[0] + cameraUp * projectionSize[1];
-                // Float3 B = s->second + projectionCenter + cameraRight * projectionSize[0] + cameraUp * projectionSize[1];
-                // Float3 C = s->second + projectionCenter - cameraRight * projectionSize[0] - cameraUp * projectionSize[1];
-                // Float3 D = s->second + projectionCenter + cameraRight * projectionSize[0] - cameraUp * projectionSize[1];
-                // 
-                // vertices.push_back(Vertex {A, Float2(0.f, 0.f), spriteIndex});
-                // vertices.push_back(Vertex {C, Float2(0.f, 1.f), spriteIndex});
-                // vertices.push_back(Vertex {B, Float2(1.f, 0.f), spriteIndex});
-                // vertices.push_back(Vertex {B, Float2(1.f, 0.f), spriteIndex});
-                // vertices.push_back(Vertex {C, Float2(0.f, 1.f), spriteIndex});
-                // vertices.push_back(Vertex {D, Float2(1.f, 1.f), spriteIndex});
-                Float3 A = s->second + projectionCenter;
-                vertices.push_back(Vertex {A, cameraRight, cameraUp, projectionSize, spriteIndex});
-            }
+            for (auto s=start; s<i; ++s)
+                vertices.push_back(Vertex {s->second + projectionCenter, cameraRight, cameraUp, projectionSize, spriteIndex});
         }
 
         if (vertices.empty()) return;
@@ -727,23 +697,80 @@ namespace SceneEngine
         _pimpl->_queuedInstances.push_back(std::make_pair(hash, ExtractTranslation(localToWorld)));
     }
 
+    void DynamicImposters::Load(const Config& config)
+    {
+        Reset();
+        _pimpl->_preparedSprites.clear();
+
+        _pimpl->_config = config;
+
+        auto atlasSize = Truncate(config._altasSize);
+        _pimpl->_packer = RectanglePacker(atlasSize);
+
+            // the formats we initialize for the atlas really depend on whether we're going
+            // to be writing pre-lighting or post-lighting parameters to the sprites.
+        _pimpl->_atlas = ImposterSpriteAtlas(
+            atlasSize, config._maxDims, { Metal::NativeFormat::R8G8B8A8_UNORM_SRGB, Metal::NativeFormat::R8G8B8A8_UNORM});
+    }
+
+    void DynamicImposters::Disable()
+    {
+        Reset();
+        _pimpl->_preparedSprites.clear();
+        _pimpl->_config = Config();
+        _pimpl->_packer = RectanglePacker();
+        _pimpl->_atlas = ImposterSpriteAtlas();
+    }
+
+    float DynamicImposters::GetThresholdDistance() const { return _pimpl->_config._thresholdDistance; }
+    bool DynamicImposters::IsEnabled() const { return !_pimpl->_atlas._layers.empty(); }
+
     DynamicImposters::DynamicImposters(SharedStateSet& sharedStateSet)
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_sharedStateSet = &sharedStateSet;
         _pimpl->_stateResolver = Techniques::CreateStateSetResolver_Deferred();
 
-        UInt2 altasSize(4096, 2048);
-
-        _pimpl->_packer = RectanglePacker(altasSize);
-
-            // the formats we initialize for the atlas really depend on whether we're going
-            // to be writing pre-lighting or post-lighting parameters to the sprites.
-        _pimpl->_atlas = SpriteAtlas(
-            altasSize, _pimpl->_config._maxDims, { Metal::NativeFormat::R8G8B8A8_UNORM_SRGB, Metal::NativeFormat::R8G8B8A8_UNORM});
+        _pimpl->_material = Techniques::TechniqueMaterial(
+            Metal::InputLayout(s_inputLayout, dimof(s_inputLayout)),
+            {Hash64("SpriteTable")}, ParameterBox());
     }
 
     DynamicImposters::~DynamicImposters()
     {
     }
+
+    DynamicImposters::Config::Config()
+    {
+        _thresholdDistance = 650.f;
+        _angleQuant = 8;
+        _calibrationDistance = 650.f;
+        _calibrationFov = Deg2Rad(40.f);
+        _calibrationPixels = 256;
+        _minDims = UInt2(32, 32);
+        _maxDims = UInt2(128, 128);
+        _altasSize = UInt3(4096, 2048, 1);
+    }
+}
+
+template<> const ClassAccessors& GetAccessors<SceneEngine::DynamicImposters::Config>()
+{
+    using Obj = SceneEngine::DynamicImposters::Config;
+    static ClassAccessors props(typeid(Obj).hash_code());
+    static bool init = false;
+    if (!init) {
+        props.Add(u("ThresholdDistance"), DefaultGet(Obj, _thresholdDistance),  DefaultSet(Obj, _thresholdDistance));
+        props.Add(u("AngleQuant"), DefaultGet(Obj, _angleQuant),  DefaultSet(Obj, _angleQuant));
+        props.Add(u("CalibrationDistance"), DefaultGet(Obj, _calibrationDistance),  DefaultSet(Obj, _calibrationDistance));
+        props.Add(u("CalibrationFov"), 
+            [](const Obj& obj) { return Rad2Deg(obj._calibrationFov); }, 
+            [](Obj& obj, float value) { obj._calibrationFov = Deg2Rad(value); });
+        props.Add(u("CalibrationPixels"), DefaultGet(Obj, _calibrationPixels),  DefaultSet(Obj, _calibrationPixels));
+        props.Add(u("MinDims"), DefaultGet(Obj, _minDims),  DefaultSet(Obj, _minDims));
+        props.Add(u("MaxDims"), DefaultGet(Obj, _maxDims),  DefaultSet(Obj, _maxDims));
+        props.Add(u("AltasSize"), DefaultGet(Obj, _altasSize),  DefaultSet(Obj, _altasSize));
+
+        init = true;
+    }
+    return props;
 }
