@@ -188,12 +188,24 @@ namespace SceneEngine
             Float3 _projectionCentre;
             Float2 _worldSpaceHalfSize;
             uint64 _lastUsed;
+
+            PreparedSprite()
+            {
+                XlZeroMemory(_rect);
+                _projectionCentre = Zero<Float3>();
+                _worldSpaceHalfSize = Zero<Float2>();
+                _lastUsed = 0;
+            }
         };
         std::vector<std::pair<uint64, PreparedSprite>> _preparedSprites;
 
         RectanglePacker _packer;
         ImposterSpriteAtlas _atlas;
         Techniques::TechniqueMaterial _material;
+
+        unsigned _overflowCounter;
+        unsigned _pendingCounter;
+        unsigned _copyCounter;
 
         void BuildNewSprites(
             Metal::DeviceContext& context,
@@ -247,13 +259,21 @@ namespace SceneEngine
                     initProtectState = true;
                 }
 
-                if (preparedThisFrame++ >= maxPreparePerFrame) continue;
+                if (preparedThisFrame++ >= maxPreparePerFrame) {
+                    ++_pendingCounter;
+                    continue;
+                }
 
                 TRY {
                     auto newSprite = BuildSprite(context, parserContext, o.second);
-                    preparedSpritesI = _preparedSprites.insert(preparedSpritesI, std::make_pair(hash, newSprite));
+                    if (newSprite._rect[0].second[0] > newSprite._rect[0].first[0]) {
+                        preparedSpritesI = _preparedSprites.insert(preparedSpritesI, std::make_pair(hash, newSprite));
+                    } else {
+                        ++_overflowCounter;
+                    }
                 } CATCH(const ::Assets::Exceptions::AssetException&e) {
                     parserContext.Process(e);
+                    ++_pendingCounter;
                 } CATCH_END
             }
         }
@@ -497,14 +517,21 @@ namespace SceneEngine
 
             // Now we want to copy the rendered sprite into the atlas
             // We should generate the mip-maps in this step as well.
-        for (unsigned c=0; c<MipMapCount; ++c)
+        for (unsigned c=0; c<MipMapCount; ++c) {
             CopyToAltas(
                 context, reservedSpace[c],
                 Rectangle(UInt2(0, 0), maxCoords - minCoords));
+        }
 
             // once everything is complete (and there is no further possibility of an exception,
             // we should commit our changes to the rectangle packer)
         _packer = newPacker;
+
+        for (unsigned c=0; c<MipMapCount; ++c)
+            _copyCounter += 
+                    (reservedSpace[c].second[0] - reservedSpace[c].first[0])
+                *   (reservedSpace[c].second[1] - reservedSpace[c].first[1])
+                ;
 
         PreparedSprite result;
         for (unsigned c=0; c<MipMapCount; ++c)
@@ -670,10 +697,13 @@ namespace SceneEngine
     {
         _pimpl->_queuedObjects.clear();
         _pimpl->_queuedInstances.clear();
+        _pimpl->_overflowCounter = 0;
+        _pimpl->_pendingCounter = 0;
 
         if (Tweakable("ImpostersReset", false)) {
             _pimpl->_preparedSprites.clear();
             _pimpl->_packer = RectanglePacker(_pimpl->_packer.TotalSize());
+            _pimpl->_copyCounter = 0;
         }
     }
 
@@ -706,6 +736,7 @@ namespace SceneEngine
 
         auto atlasSize = Truncate(config._altasSize);
         _pimpl->_packer = RectanglePacker(atlasSize);
+        _pimpl->_copyCounter = 0;
 
             // the formats we initialize for the atlas really depend on whether we're going
             // to be writing pre-lighting or post-lighting parameters to the sprites.
@@ -725,20 +756,53 @@ namespace SceneEngine
     float DynamicImposters::GetThresholdDistance() const { return _pimpl->_config._thresholdDistance; }
     bool DynamicImposters::IsEnabled() const { return !_pimpl->_atlas._layers.empty(); }
 
+    auto DynamicImposters::GetMetrics() const -> Metrics
+    {
+        Metrics result;
+        result._spriteCount = (unsigned)_pimpl->_preparedSprites.size();
+        result._pixelsAllocated = 0;
+        for (const auto&i:_pimpl->_preparedSprites) {
+            for (unsigned m=0; m<dimof(i.second._rect); ++m) {
+                const auto& r = i.second._rect[m];
+                result._pixelsAllocated += (r.second[0] - r.first[0]) * (r.second[1] - r.first[1]);
+            }
+        }
+        result._pixelsTotal = 
+              _pimpl->_config._altasSize[0]
+            * _pimpl->_config._altasSize[1]
+            * _pimpl->_config._altasSize[2]
+            ;
+        result._overflowCounter = _pimpl->_overflowCounter;
+        result._pendingCounter = _pimpl->_pendingCounter;
+        std::tie(result._largestFreeBlockArea, result._largestFreeBlockSide) 
+            = _pimpl->_packer.LargestFreeBlock();
+        
+        result._bytesPerPixel = 
+            (Metal::BitsPerPixel(Metal::NativeFormat::R8G8B8A8_UNORM_SRGB) + Metal::BitsPerPixel(Metal::NativeFormat::R8G8B8A8_UNORM)) / 8;
+        result._layerCount = (unsigned)_pimpl->_atlas._layers.size();
+        return result;
+    }
+
+    Metal::ShaderResourceView DynamicImposters::GetAtlasResource(unsigned layer)
+    {
+        return _pimpl->_atlas._layers[layer]._atlas.SRV();
+    }
+
     DynamicImposters::DynamicImposters(SharedStateSet& sharedStateSet)
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_sharedStateSet = &sharedStateSet;
         _pimpl->_stateResolver = Techniques::CreateStateSetResolver_Deferred();
+        _pimpl->_overflowCounter = 0;
+        _pimpl->_pendingCounter = 0;
+        _pimpl->_copyCounter = 0;
 
         _pimpl->_material = Techniques::TechniqueMaterial(
             Metal::InputLayout(s_inputLayout, dimof(s_inputLayout)),
             {Hash64("SpriteTable")}, ParameterBox());
     }
 
-    DynamicImposters::~DynamicImposters()
-    {
-    }
+    DynamicImposters::~DynamicImposters() {}
 
     DynamicImposters::Config::Config()
     {
@@ -749,7 +813,20 @@ namespace SceneEngine
         _calibrationPixels = 256;
         _minDims = UInt2(32, 32);
         _maxDims = UInt2(128, 128);
-        _altasSize = UInt3(4096, 2048, 1);
+        _altasSize = UInt3(256, 256, 1); // UInt3(4096, 2048, 1);
+    }
+
+    DynamicImposters::Metrics::Metrics()
+    {
+        _spriteCount = 0;
+        _pixelsAllocated = 0;
+        _pixelsTotal = 0;
+        _largestFreeBlockArea = UInt2(0,0);
+        _largestFreeBlockSide = UInt2(0,0);
+        _overflowCounter = 0;
+        _pendingCounter = 0;
+        _bytesPerPixel = 0;
+        _layerCount = 0;
     }
 }
 

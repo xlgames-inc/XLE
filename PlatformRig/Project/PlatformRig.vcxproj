@@ -152,6 +152,7 @@
     <ClCompile Include="..\DebuggingDisplays\BufferUploadDisplay.cpp" />
     <ClCompile Include="..\DebuggingDisplays\ConsoleDisplay.cpp" />
     <ClCompile Include="..\DebuggingDisplays\CPUProfileDisplay.cpp" />
+    <ClCompile Include="..\DebuggingDisplays\DynamicImpostersDisplay.cpp" />
     <ClCompile Include="..\DebuggingDisplays\GPUProfileDisplay.cpp" />
     <ClCompile Include="..\DebuggingDisplays\PlacementsDisplay.cpp" />
     <ClCompile Include="..\DebuggingDisplays\TestDisplays.cpp" />
@@ -228,6 +229,7 @@
     <ClInclude Include="..\DebuggingDisplays\BufferUploadDisplay.h" />
     <ClInclude Include="..\DebuggingDisplays\ConsoleDisplay.h" />
     <ClInclude Include="..\DebuggingDisplays\CPUProfileDisplay.h" />
+    <ClInclude Include="..\DebuggingDisplays\DynamicImpostersDisplay.h" />
     <ClInclude Include="..\DebuggingDisplays\GPUProfileDisplay.h" />
     <ClInclude Include="..\DebuggingDisplays\PlacementsDisplay.h" />
     <ClInclude Include="..\DebuggingDisplays\TestDisplays.h" />

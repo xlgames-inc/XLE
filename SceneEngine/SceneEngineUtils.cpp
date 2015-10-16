@@ -555,7 +555,7 @@ namespace SceneEngine
             ;
         ProtectState savedStates(context, effectedStates & protectStates);
 
-        auto& res = Techniques::FindCachedBox2<ShaderBasedCopyRes>();
+        auto& res = Techniques::FindCachedBoxDep2<ShaderBasedCopyRes>();
 
         Metal::TextureDesc2D desc(dest.GetUnderlying());
         context.Bind(Metal::ViewportDesc(0.f, 0.f, float(desc.Width), float(desc.Height)));

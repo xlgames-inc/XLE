@@ -50,8 +50,10 @@ namespace XLEMath
     public:
         using Rectangle = std::pair<UInt2, UInt2>;
 
-        Rectangle Add(UInt2 dims);
-        UInt2 TotalSize() const { return _totalSize; }
+        Rectangle   Add(UInt2 dims);
+        UInt2       TotalSize() const { return _totalSize; }
+
+        std::pair<UInt2, UInt2> LargestFreeBlock() const;
 
         RectanglePacker();
         RectanglePacker(const UInt2 dimensions);
@@ -78,6 +80,7 @@ namespace XLEMath
         UInt2 _totalSize;
 
         size_t SearchNodes(size_t startingNode, UInt2 dims) const;
+        std::pair<Rectangle, Rectangle> SearchLargestFree(size_t startingNode) const;
     };
 }
 

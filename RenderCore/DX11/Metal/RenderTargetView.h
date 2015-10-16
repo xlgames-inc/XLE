@@ -29,6 +29,7 @@ namespace RenderCore { namespace Metal_DX11
         RenderTargetView(UnderlyingResource resource, NativeFormat::Enum format = NativeFormat::Unknown, const ArraySlice& arraySlice = ArraySlice());
         RenderTargetView(ID3D::RenderTargetView* resource);
         RenderTargetView(MovePTRHelper<ID3D::RenderTargetView> resource);
+        RenderTargetView(DeviceContext& context);
         RenderTargetView();
         ~RenderTargetView();
 

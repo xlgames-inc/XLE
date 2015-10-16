@@ -62,6 +62,13 @@ namespace RenderCore { namespace Metal_DX11
     {
     }
 
+    RenderTargetView::RenderTargetView(DeviceContext& context)
+    {
+        ID3D::RenderTargetView* rawPtr = nullptr; 
+        context.GetUnderlying()->OMGetRenderTargets(1, &rawPtr, nullptr);
+        _underlying = moveptr(rawPtr);
+    }
+
     RenderTargetView::RenderTargetView() {}
 
     RenderTargetView::~RenderTargetView() {}

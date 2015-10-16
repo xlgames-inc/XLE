@@ -17,6 +17,7 @@
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../PlatformRig/DebuggingDisplays/GPUProfileDisplay.h"
 #include "../../PlatformRig/DebuggingDisplays/CPUProfileDisplay.h"
+#include "../../PlatformRig/DebuggingDisplays/DynamicImpostersDisplay.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/PlatformRigUtil.h"
 #include "../../PlatformRig/OverlaySystem.h"
@@ -206,6 +207,10 @@ namespace Sample
             frameRig.GetDebugSystem()->Register(
                 std::make_shared<SceneEngine::PlacementsQuadTreeDebugger>(mainScene->GetPlacementManager()),
                 "[Placements] Culling");
+
+            frameRig.GetDebugSystem()->Register(
+                std::make_shared<::PlatformRig::Overlays::DynamicImpostersDisplay>(mainScene->GetDynamicImposters()),
+                "[Placements] Imposters");
 
             auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
                 primMan._rDevice->GetImmediateContext(), mainScene, 

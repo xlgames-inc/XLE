@@ -18,6 +18,7 @@
 #include "../../SceneEngine/TerrainFormat.h"
 #include "../../SceneEngine/TerrainConfig.h"
 #include "../../SceneEngine/TerrainMaterial.h"
+#include "../../SceneEngine/DynamicImposters.h"
 #include "../../SceneEngine/SceneEngineUtils.h"     // for AsDelaySteps
 
 #include "../../RenderCore/Metal/GPUProfiler.h"
@@ -47,6 +48,7 @@ namespace Sample
         std::shared_ptr<SceneEngine::PlacementsManager>     _placementsManager;
         std::shared_ptr<RenderCore::Techniques::CameraDesc> _cameraDesc;
         std::shared_ptr<RenderCore::Assets::ModelCache>     _modelCache;
+        std::shared_ptr<SceneEngine::DynamicImposters>      _imposters;
         PlatformRig::EnvironmentSettings                    _envSettings;
 
         std::shared_ptr<::Assets::DependencyValidation>     _terrainCfgVal;
@@ -263,6 +265,11 @@ namespace Sample
         return _pimpl->_cameraDesc;
     }
 
+    std::shared_ptr<SceneEngine::DynamicImposters> EnvironmentSceneParser::GetDynamicImposters()
+    {
+        return _pimpl->_imposters;
+    }
+
     const PlatformRig::EnvironmentSettings& EnvironmentSceneParser::GetEnvSettings() const 
     { 
         return _pimpl->_envSettings; 
@@ -308,6 +315,11 @@ namespace Sample
             _pimpl->_placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
                 container._asset, _pimpl->_modelCache, WorldOffset);
             _pimpl->_placementsCfgVal = container.GetDependencyValidation();
+
+            _pimpl->_imposters = std::make_shared<SceneEngine::DynamicImposters>(
+                _pimpl->_modelCache->GetSharedStateSet());
+            _pimpl->_placementsManager->SetImposters(_pimpl->_imposters);
+            _pimpl->_imposters->Load(SceneEngine::DynamicImposters::Config());
         }
 
         if (!_pimpl->_environmentCfgVal || _pimpl->_environmentCfgVal->GetValidationIndex() != 0) {
