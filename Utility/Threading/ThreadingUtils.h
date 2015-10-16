@@ -119,7 +119,7 @@
             /* note -- "_InterlockedIncrement" will not return the correct result on Win95 and earlier! Expect crashes and leaks on that platform! */
         force_inline Value Increment(Value volatile* target)              { return _InterlockedIncrement(target)-1; }
         force_inline Value Decrement(Value volatile* target)              { return _InterlockedDecrement(target)+1; }
-        force_inline Value Add(Value volatile* target, Value addition)    { return _InterlockedExchangeAdd(target, addition) - addition; }
+        force_inline Value Add(Value volatile* target, Value addition)    { return _InterlockedExchangeAdd(target, addition); }
 
         force_inline Value Load(Value volatile* target)                   { return *target; }
         force_inline Value64 Load64(Value64 volatile const* target)       { return *target; }

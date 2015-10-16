@@ -938,6 +938,9 @@ namespace BufferUploads
             auto& spanningHeap = isLongTerm ? _transactionsHeap_LongTerm : _transactionsHeap;
             auto& transactions = isLongTerm ? _transactions_LongTerm : _transactions;
 
+            if (spanningHeap.CalculateHeapSize() + (1<<4) > 0xffff)
+                Throw(::Exceptions::BasicLabel("Buffer uploads spanning heap reached maximium size. Aborting transaction."));
+
             result = spanningHeap.Allocate(1<<4);
             if (result == ~unsigned(0x0)) {
                 result = spanningHeap.AppendNewBlock(1<<4);
