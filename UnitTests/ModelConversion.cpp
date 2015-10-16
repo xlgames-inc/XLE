@@ -258,7 +258,7 @@ namespace UnitTests
                     auto newPathStart = GetPerformanceCounter();
                     for (unsigned c=0; c<iterations; ++c) {
                         auto scaffold = (*newCreateScaffold)(testFile);
-                        auto chunks = (*newSerializeSkin)(*scaffold);
+                        auto chunks = (*newSerializeSkin)(*scaffold, "name");
                     }
                     auto newPathEnd = GetPerformanceCounter();
 

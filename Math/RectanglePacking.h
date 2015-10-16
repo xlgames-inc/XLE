@@ -72,6 +72,7 @@ namespace XLEMath
         public:
             Rectangle   _space;
             size_t      _children;
+            unsigned    _depth;
 
             bool IsAllocated() const { return _children != s_invalidNode; }
         };

@@ -26,14 +26,26 @@ namespace XLEMath
                 // note that the order we push the children in here will determine
                 // how they are searched. We will push in the "right" space first,
                 // and then the "down" space.
-            auto rightSpace = std::make_pair(
-                UInt2(n._space.first[0] + dims[0], n._space.first[1]),
-                UInt2(n._space.second[0], n._space.first[1] + dims[1]));
-            auto downSpace = std::make_pair(
-                UInt2(n._space.first[0], n._space.first[1] + dims[1]),
-                UInt2(n._space.second[0], n._space.second[1]));
-            _nodes.push_back(Node { rightSpace, s_invalidNode });
-            _nodes.push_back(Node { downSpace, s_invalidNode });
+            const bool alternateDivision = false;
+            if ((n._depth & 1) || !constant_expression<alternateDivision>::result()) {
+                auto rightSpace = std::make_pair(
+                    UInt2(n._space.first[0] + dims[0], n._space.first[1]),
+                    UInt2(n._space.second[0], n._space.first[1] + dims[1]));
+                auto downSpace = std::make_pair(
+                    UInt2(n._space.first[0], n._space.first[1] + dims[1]),
+                    UInt2(n._space.second[0], n._space.second[1]));
+                _nodes.push_back(Node { rightSpace, s_invalidNode, n._depth+1 });
+                _nodes.push_back(Node { downSpace, s_invalidNode, n._depth+1 });
+            } else {
+                auto rightSpace = std::make_pair(
+                    UInt2(n._space.first[0] + dims[0], n._space.first[1]),
+                    UInt2(n._space.second[0], n._space.second[1]));
+                auto downSpace = std::make_pair(
+                    UInt2(n._space.first[0], n._space.first[1] + dims[1]),
+                    UInt2(n._space.first[0] + dims[0], n._space.second[1]));
+                _nodes.push_back(Node { downSpace, s_invalidNode, n._depth+1 });
+                _nodes.push_back(Node { rightSpace, s_invalidNode, n._depth+1 });
+            }
 
             return result;
         }
@@ -106,7 +118,7 @@ namespace XLEMath
     {
         _nodes.reserve(128);
         _nodes.push_back(
-            Node { std::make_pair(UInt2(0,0), dimensions), s_invalidNode });
+            Node { std::make_pair(UInt2(0,0), dimensions), s_invalidNode, 0 });
         _totalSize = dimensions;
     }
 

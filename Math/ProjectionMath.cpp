@@ -589,6 +589,25 @@ namespace XLEMath
         }
     }
 
+    std::pair<float, float> CalculateFov(
+        const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType)
+    {
+        // calculate the vertical field of view and aspect ration from the given
+        // standard projection matrix;
+        float n, f;
+        std::tie(n, f) = CalculateNearAndFarPlane(minimalProjection, clipSpaceType);
+
+        // M(1,1) =  (2.f * n) / (t-b);
+        float tmb = (2.f * n) / minimalProjection[1];
+        // tmb = 2 * h
+        // h = n * XlTan(.5f * verticalFOV);
+        // XlTan(.5f * verticalFOV) = h/n
+        // verticalFOV = 2.f * XlATan(h/n);
+        float verticalFOV = 2.f * XlATan2(tmb/2.f, n);
+        float aspect = minimalProjection[1] / minimalProjection[0];
+        return std::make_pair(verticalFOV, aspect);
+    }
+
     std::pair<float, float> CalculateNearAndFarPlane_Ortho(
         const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType)
     {

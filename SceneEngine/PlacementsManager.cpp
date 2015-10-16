@@ -1106,8 +1106,8 @@ namespace SceneEngine
         auto* end = AsPointer(_supplementsBuffer.end());
         
         for (auto i=start; i<end;) {
-            const auto count = *i;
-            if (count == supplements.size() && !XlCompareMemory(i+1, supplements.begin(), count*sizeof(uint64)))
+            const auto count = size_t(*i);
+            if ((count == supplements.size()) && !XlCompareMemory(i+1, supplements.begin(), count*sizeof(uint64)))
                 return unsigned(i-start);
             i += 1+count;
         }

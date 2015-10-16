@@ -220,7 +220,7 @@ namespace SceneEngine
             const QueuedObject& ob, 
             const Float4x4& cameraToWorld,
             const Metal::ViewportDesc& viewport,
-            Float2 fov) const;
+            const Float4x4& projMatrix) const;
         void CopyToAltas(
             Metal::DeviceContext& context,
             const Rectangle& destination,
@@ -411,7 +411,6 @@ namespace SceneEngine
         Float3 camera = centre + cfg._calibrationDistance * -Expand(cameraForward, 0.f);
         
             // Find the vertical and horizontal angles for each corner of the bounding box.
-        Float2 angleMins(FLT_MAX, FLT_MAX), angleMaxs(-FLT_MAX, -FLT_MAX);
         Float3 corners[] = {
             Float3( bb.first[0],  bb.first[1],  bb.first[2]),
             Float3(bb.second[0],  bb.first[1],  bb.first[2]),
@@ -425,37 +424,36 @@ namespace SceneEngine
 
         const auto camToWorld = MakeCameraToWorld(Expand(cameraForward, 0.f), Float3(0.f, 0.f, 1.f), camera);
         const auto worldToCam = InvertOrthonormalTransform(camToWorld);
-        float worldSpaceHalfSizeX = 0.f;
 
+        const float pixelRatio = 16.f/9.f;    // Adjust the pixel ratio for standard 16:9
+        auto virtualProj = PerspectiveProjection(
+            cfg._calibrationFov, pixelRatio,
+            0.01f, 1000.f, GeometricCoordinateSpace::RightHanded,
+            Techniques::GetDefaultClipSpaceType());
+        Float2 screenSpaceMin(FLT_MAX, FLT_MAX), screenSpaceMax(-FLT_MAX, -FLT_MAX);
         for (unsigned c=0; c<dimof(corners); ++c) {
-            Float3 camSpace = TransformPoint(worldToCam, corners[c]);
-            float horizontalAngle = XlATan2(camSpace[0], -camSpace[2]);
-            if (horizontalAngle < angleMins[0]) {
-                angleMins[0] = horizontalAngle;
-                worldSpaceHalfSizeX = Magnitude(Truncate(corners[c]) - Truncate(centre));
-            }
-            if (horizontalAngle > angleMaxs[0]) {
-                angleMaxs[0] = horizontalAngle;
-                worldSpaceHalfSizeX = Magnitude(Truncate(corners[c]) - Truncate(centre));
-            }
-            float verticalAngle = XlATan2(camSpace[1], -camSpace[2]);
-            angleMins[1] = std::min(angleMins[1], verticalAngle);
-            angleMaxs[1] = std::max(angleMaxs[1], verticalAngle);
+            Float4 proj = virtualProj * worldToCam * Expand(corners[c], 1.f);
+            Float2 d(proj[0] / proj[3], proj[1] / proj[3]);
+
+            screenSpaceMin[0] = std::min(screenSpaceMin[0], d[0]);
+            screenSpaceMin[1] = std::min(screenSpaceMin[1], d[1]);
+            screenSpaceMax[0] = std::max(screenSpaceMax[0], d[0]);
+            screenSpaceMax[1] = std::max(screenSpaceMax[1], d[1]);
         }
 
-            // We can adjust the angleToPixels ration to try to get a projection
-            // size that is similar to the main scene.
-            // A perfect result would mean there is a 1:1 ratio between sprite texels
-            // and screen pixels at the point the object becomes an imposter. But given
-            // the approximations involved, that might not be possible.
-        const float angleToPixels = cfg._calibrationPixels / (0.5f * cfg._calibrationFov);
-        const float pixelRatio = 16.f/9.f;    // Adjust the pixel ratio for standard 16:9
+        Float2 c(.5f * (screenSpaceMax[0] + screenSpaceMin[0]), .5f * (screenSpaceMax[1] + screenSpaceMin[1]));
+        Float4x4 adjustmentMatrix(
+            2.f / (screenSpaceMax[0] - screenSpaceMin[0]), 0.f, 0.f, (2.f * c[0]) / (screenSpaceMax[0] - screenSpaceMin[0]),
+            0.f, 2.f / (screenSpaceMax[1] - screenSpaceMin[1]), 0.f, (2.f * c[1]) / (screenSpaceMax[1] - screenSpaceMin[1]),
+            0.f, 0.f, 1.f, 0.f,
+            0.f, 0.f, 0.f, 1.f);
+
         Int2 minCoords(
-            (int)XlFloor(angleMins[0] * angleToPixels * pixelRatio),
-            (int)XlFloor(angleMins[1] * angleToPixels));
+            (int)XlFloor((screenSpaceMin[0] * .5f + .5f) * cfg._calibrationPixels),
+            (int)XlFloor((screenSpaceMin[1] * .5f + .5f) * cfg._calibrationPixels));
         Int2 maxCoords(
-            (int)XlFloor(angleMaxs[0] * angleToPixels * pixelRatio),
-            (int)XlFloor(angleMaxs[1] * angleToPixels));
+            (int)XlFloor((screenSpaceMax[0] * .5f + .5f) * cfg._calibrationPixels),
+            (int)XlFloor((screenSpaceMax[1] * .5f + .5f) * cfg._calibrationPixels));
 
             // If the object is too big, we need to constrain the dimensions
             // note that we should adjust the projection matrix as well, to
@@ -513,7 +511,7 @@ namespace SceneEngine
         RenderObject(
             context, parserContext, ob,
             camToWorld, Metal::ViewportDesc(0.f, 0.f, float(maxCoords[0] - minCoords[0]), float(maxCoords[1] - minCoords[1])),
-            Float2(angleMaxs[0] - angleMins[0], angleMaxs[1] - angleMins[1]));
+            adjustmentMatrix * virtualProj);
 
             // Now we want to copy the rendered sprite into the atlas
             // We should generate the mip-maps in this step as well.
@@ -580,7 +578,7 @@ namespace SceneEngine
         const QueuedObject& ob, 
         const Float4x4& cameraToWorld,
         const Metal::ViewportDesc& viewport,
-        Float2 fov) const
+        const Float4x4& cameraToProjection) const
     {
         StringMeldAppend(parserContext._stringHelpers->_errorString)
             << "Building dynamic imposter: (" << ob._scaffold->Filename() << ") angle (" << ob._XYangle << ")\n";
@@ -600,15 +598,6 @@ namespace SceneEngine
         context.Bind(Techniques::CommonResources()._blendOpaque);
         context.Bind(Techniques::CommonResources()._dssReadWrite);
 
-        // context.Bind(Techniques::CommonResources()._cullDisable);
-        // context.Bind(
-        //     ::Assets::GetAssetDep<Metal::ShaderProgram>(
-        //         "game/xleres/basic2d.vsh:fullscreen:vs_*",
-        //         "game/xleres/basic.psh:fill_gradient:ps_*",
-        //         ""));
-        // SetupVertexGeneratorShader(context);
-        // context.Draw(4);
-
             // We have to adjust the projection desc and the
             // main transform constant buffer...
             // We will squish the FOV to align the object perfectly within our
@@ -616,15 +605,8 @@ namespace SceneEngine
         auto oldProjDesc = parserContext.GetProjectionDesc();
 
         auto& projDesc = parserContext.GetProjectionDesc();
-        projDesc._verticalFov = fov[1];
-        projDesc._aspectRatio = fov[0] / fov[1];
-
-        auto cameraToProjection = PerspectiveProjection(
-            projDesc._verticalFov, projDesc._aspectRatio,
-            projDesc._nearClip, projDesc._farClip,
-            GeometricCoordinateSpace::RightHanded,
-            Techniques::GetDefaultClipSpaceType());
-
+        std::tie(projDesc._verticalFov, projDesc._aspectRatio) = 
+            CalculateFov(ExtractMinimalProjection(cameraToProjection), Techniques::GetDefaultClipSpaceType());
 
         Float4x4 modelToWorld = Identity<Float4x4>();
         const bool viewSpaceNormals = true;
@@ -675,9 +657,6 @@ namespace SceneEngine
             modelToWorld, RenderCore::Assets::MeshToModel(*ob._scaffold));
         ModelRenderer::Sort(drawCalls);
 
-            // todo -- Note that we're rendering world space normals here currently. It's not correct.
-            // We want to render view space normals; and then convert them into world space
-            // in the sprite shader.
         auto marker = _sharedStateSet->CaptureState(context, _stateResolver, nullptr);
         ModelRenderer::RenderPrepared(
             RenderCore::Assets::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
@@ -809,11 +788,11 @@ namespace SceneEngine
         _thresholdDistance = 650.f;
         _angleQuant = 8;
         _calibrationDistance = 650.f;
-        _calibrationFov = Deg2Rad(40.f);
-        _calibrationPixels = 256;
+        _calibrationFov = Deg2Rad(30.f);
+        _calibrationPixels = 512;
         _minDims = UInt2(32, 32);
         _maxDims = UInt2(128, 128);
-        _altasSize = UInt3(256, 256, 1); // UInt3(4096, 2048, 1);
+        _altasSize = UInt3(512, 512, 1); // UInt3(4096, 2048, 1);
     }
 
     DynamicImposters::Metrics::Metrics()

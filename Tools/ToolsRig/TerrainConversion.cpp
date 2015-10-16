@@ -127,7 +127,7 @@ namespace ToolsRig
             {
                 for (;;) {
                     auto i = Interlocked::Increment(&queueLoc);
-                    if (i >= cells.size()) return;
+                    if (i >= (int)cells.size()) return;
 
                     const auto& c = cells[i];
                     char heightMapFile[MaxPath];

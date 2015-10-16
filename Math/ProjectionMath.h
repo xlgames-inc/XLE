@@ -78,6 +78,8 @@ namespace XLEMath
 
     std::pair<float, float> CalculateNearAndFarPlane(
         const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType);
+    std::pair<float, float> CalculateFov(
+        const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType);
     Float2 CalculateDepthProjRatio_Ortho(
         const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType);
 

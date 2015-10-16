@@ -5,7 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../Math/Transformations.h"
+#include "../Math/ProjectionMath.h"
 #include <CppUnitTest.h>
+#include <random>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -78,6 +80,36 @@ namespace UnitTests
 			}
 
 		}
+
+        TEST_METHOD(ProjectionMath)
+        {
+            std::mt19937 rng(std::random_device().operator()());
+            const unsigned tests = 500;
+            const float tolerance = 1e-4f;
+            for (unsigned c=0; c<tests; ++c) {
+                float fov = Deg2Rad((float)std::uniform_real_distribution<>(15.f, 80.f)(rng));
+                float aspect = (float)std::uniform_real_distribution<>(.5f, 3.f)(rng);
+                float near = (float)std::uniform_real_distribution<>(0.01f, 1.f)(rng);
+                float far = (float)std::uniform_real_distribution<>(100.f, 1000.f)(rng);
+
+                auto proj = PerspectiveProjection(
+                    fov, aspect, near, far,
+                    GeometricCoordinateSpace::RightHanded,
+                    ClipSpaceType::Positive);
+
+                float outNear, outFar;
+                float outFOV, outAspect;
+                std::tie(outNear, outFar) = CalculateNearAndFarPlane(
+                    ExtractMinimalProjection(proj), ClipSpaceType::Positive);
+                std::tie(outFOV, outAspect) = CalculateFov(
+                    ExtractMinimalProjection(proj), ClipSpaceType::Positive);
+
+                Assert::AreEqual(fov, outFOV, fov * tolerance, L"Extracted FOV");
+                Assert::AreEqual(aspect, outAspect, aspect * tolerance, L"Extracted aspect");
+                Assert::AreEqual(near, outNear, near * tolerance, L"Extracted near clip");
+                Assert::AreEqual(far, outFar, 3.f, L"Extracted far clip");   // for some reason the "far" value is less accurate...?
+            }
+        }
 
 	};
 }
