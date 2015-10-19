@@ -606,7 +606,8 @@ float TextStyle::CharWidth(ucs4 ch, ucs4 prev)
     return _font->CharWidth(ch, prev);
 }
 
-TextStyle::TextStyle(Font& font) : _font(&font)
+TextStyle::TextStyle(Font& font, const DrawTextOptions& options) 
+: _font(&font), _options(options)
 {
 }
     

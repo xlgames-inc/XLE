@@ -112,6 +112,13 @@ namespace RenderOverlays
             outline = 0;
             colorSetIndex = 0;
         }
+        DrawTextOptions(bool iShadow, bool iOutline)
+        {
+            shadow = iShadow;
+            snap = 1;
+            outline = iOutline;
+            colorSetIndex = 0;
+        }
     };
 
     enum UiAlign 
@@ -139,7 +146,7 @@ namespace RenderOverlays
         DrawTextOptions     _options;
         intrusive_ptr<Font>    _font;
 
-        TextStyle(Font& font);
+        TextStyle(Font& font, const DrawTextOptions& options = DrawTextOptions());
         ~TextStyle();
 
         float       Draw(   RenderCore::Metal::DeviceContext* renderer, 

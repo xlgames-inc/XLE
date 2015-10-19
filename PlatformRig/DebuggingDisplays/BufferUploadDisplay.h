@@ -65,6 +65,8 @@ namespace PlatformRig { namespace Overlays
         unsigned        _graphsMode;
         bool            _drawHistory;
 
+        uint64          _openGraphMenu;
+
         GPUMetrics      CalculateGPUMetrics();
         void            AddCommandListToFrame(unsigned frameId, unsigned commandListIndex);
         void            AddGPUToCostToFrame(unsigned frameId, float gpuCost);
@@ -73,6 +75,8 @@ namespace PlatformRig { namespace Overlays
         void            ProcessGPUEvents_MT(const void* eventsBufferStart, const void* eventsBufferEnd);
         static void     GPUEventListener(const void* eventsBufferStart, const void* eventsBufferEnd);
         static BufferUploadDisplay* s_gpuListenerDisplay;
+
+        void            DrawMenuBar(IOverlayContext* context, Layout& layout, Interactables& interactables, InterfaceState& interfaceState);
     };
 
     class ResourcePoolDisplay : public IWidget ///////////////////////////////////////////////////////////

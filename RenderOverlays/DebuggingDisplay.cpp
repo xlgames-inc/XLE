@@ -219,6 +219,10 @@ namespace RenderOverlays { namespace DebuggingDisplay
     Float3 AsPixelCoords(Coord2 input, float depth) { return Float3(float(input[0]), float(input[1]), depth); }
     Float3 AsPixelCoords(Float2 input)              { return Expand(input, 0.f); }
     Float3 AsPixelCoords(Float3 input)              { return input; }
+    std::tuple<Float3, Float3> AsPixelCoords(const Rect& rect)
+    {
+        return std::make_tuple(AsPixelCoords(rect._topLeft), AsPixelCoords(rect._bottomRight));
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////
 
@@ -385,26 +389,22 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
     Coord DrawText(IOverlayContext* context, const Rect& rect, float scale, TextStyle* textStyle, ColorB colour, const char text[])
     {
-        auto r = std::make_tuple(AsPixelCoords(rect._topLeft), AsPixelCoords(rect._bottomRight));
-        return (Coord)context->DrawText(r, 1.f, textStyle, colour, TextAlignment::Left, text, nullptr);
+        return (Coord)context->DrawText(AsPixelCoords(rect), 1.f, textStyle, colour, TextAlignment::Left, text, nullptr);
     }
 
     Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, float scale, TextStyle* textStyle, ColorB colour, const char text[])
     {
-        auto r = std::make_tuple(AsPixelCoords(rect._topLeft, depth), AsPixelCoords(rect._bottomRight, depth));
-        return (Coord)context->DrawText(r, 1.f, textStyle, colour, TextAlignment::Left, text, nullptr);
+        return (Coord)context->DrawText(AsPixelCoords(rect), 1.f, textStyle, colour, TextAlignment::Left, text, nullptr);
     }
 
     Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, float scale, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[])
     {
-        auto r = std::make_tuple(AsPixelCoords(rect._topLeft, depth), AsPixelCoords(rect._bottomRight, depth));
-        return (Coord)context->DrawText(r, 1.f, textStyle, colour, alignment, text, nullptr);
+        return (Coord)context->DrawText(AsPixelCoords(rect), 1.f, textStyle, colour, alignment, text, nullptr);
     }
 
     Coord DrawFormatText(IOverlayContext* context, const Rect& rect, float depth, float scale, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[], va_list args)
     {
-        auto r = std::make_tuple(AsPixelCoords(rect._topLeft), AsPixelCoords(rect._bottomRight));
-        return (Coord)context->DrawText(r, 1.f, textStyle, colour, alignment, text, args);
+        return (Coord)context->DrawText(AsPixelCoords(rect), 1.f, textStyle, colour, alignment, text, args);
     }
 
     Coord DrawFormatText(IOverlayContext* context, const Rect & rect, float scale, TextStyle* textStyle, ColorB colour, const char text[], ...)

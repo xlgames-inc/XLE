@@ -5,7 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "BufferUploadDisplay.h"
+#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderOverlays/OverlayUtils.h"
+#include "../../RenderOverlays/Font.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -51,6 +53,7 @@ namespace PlatformRig { namespace Overlays
         _mostRecentGPUFrameId = 0;
         _lockedFrameId = ~unsigned(0x0);
         _drawHistory = false;
+        _openGraphMenu = 0;
 
         #if defined(WIN32) || defined(WIN64)
             int64 timerFrequency;
@@ -121,9 +124,140 @@ namespace PlatformRig { namespace Overlays
         static const char* Names[] = {
             "Uploads (MB)", "Creates (MB)", "Creates (count)", "Device creates (count)", "Latency (ms)", "Pending Buffers (MB)", "Command List Count", "GPU Cost", "GPU bytes/second", "Ave GPU cost", "Thread Activity", "Batched copy", "Frame Priority Stalls"
         };
+
+        std::pair<const char*, std::vector<Enum>> Groups[] = 
+        {
+            std::pair<const char*, std::vector<Enum>>("Uploads", { Uploads }),
+            std::pair<const char*, std::vector<Enum>>("Creations", { CreatesMB, CreatesCount, DeviceCreatesCount }),
+            std::pair<const char*, std::vector<Enum>>("Latency", { Latency, PendingBuffers, CommandListCount }),
+            std::pair<const char*, std::vector<Enum>>("GPU Cost", { GPUCost, GPUBytesPerSecond, AveGPUCost }),
+            std::pair<const char*, std::vector<Enum>>("Threading", { ThreadActivity, BatchedCopy, FramePriorityStall })
+        };
     }
 
     static const unsigned s_MaxGraphSegments = 256;
+
+    class FontBox
+    {
+    public:
+        class Desc {};
+        intrusive_ptr<RenderOverlays::Font> _font;
+        intrusive_ptr<RenderOverlays::Font> _smallFont;
+        FontBox(const Desc&) 
+            : _font(RenderOverlays::GetX2Font("OrbitronBlack", 18))
+            , _smallFont(RenderOverlays::GetX2Font("Vera", 16)) {}
+    };
+
+    static void DrawTopLeftRight(IOverlayContext* context, const Rect& rect, const ColorB& col)
+    {
+        Float3 coords[] = {
+            AsPixelCoords(rect._topLeft), AsPixelCoords(Coord2(rect._topLeft[0], rect._bottomRight[1])),
+            AsPixelCoords(rect._topLeft), AsPixelCoords(Coord2(rect._bottomRight[0], rect._topLeft[1])),
+            AsPixelCoords(Coord2(rect._bottomRight[0], rect._topLeft[1])), AsPixelCoords(rect._bottomRight)
+        };
+        ColorB cols[] = { col, col, col, col, col, col };
+        context->DrawLines(ProjectionMode::P2D, coords, dimof(coords), cols);
+    }
+
+    static void DrawBottomLeftRight(IOverlayContext* context, const Rect& rect, const ColorB& col)
+    {
+        Float3 coords[] = {
+            AsPixelCoords(rect._topLeft), AsPixelCoords(Coord2(rect._topLeft[0], rect._bottomRight[1])),
+            AsPixelCoords(Coord2(rect._topLeft[0], rect._bottomRight[1])), AsPixelCoords(rect._bottomRight),
+            AsPixelCoords(Coord2(rect._bottomRight[0], rect._topLeft[1])), AsPixelCoords(rect._bottomRight)
+        };
+        ColorB cols[] = { col, col, col, col, col, col };
+        context->DrawLines(ProjectionMode::P2D, coords, dimof(coords), cols);
+    }
+
+    void    BufferUploadDisplay::DrawMenuBar(IOverlayContext* context, Layout& layout, Interactables& interactables, InterfaceState& interfaceState)
+    {
+        static const ColorB edge(60, 60, 60, 0xcf);
+        static const ColorB middle(32, 32, 32, 0xcf);
+        static const ColorB mouseOver(20, 20, 20, 0xff);
+        static const ColorB text(220, 220, 220, 0xff);
+        static const ColorB smallText(170, 170, 170, 0xff);
+        auto fullSize = layout.GetMaximumSize();
+
+            // bkgrnd
+        DrawRectangle(
+            context, 
+            Rect(fullSize._topLeft, Coord2(fullSize._bottomRight[0], fullSize._topLeft[1]+layout._paddingInternalBorder)),
+            edge);
+        DrawRectangle(
+            context, 
+            Rect(Coord2(fullSize._topLeft[0], fullSize._bottomRight[1]-layout._paddingInternalBorder), fullSize._bottomRight),
+            edge);
+        DrawRectangle(
+            context, 
+            Rect(Coord2(fullSize._topLeft[0], fullSize._topLeft[1]+layout._paddingInternalBorder), Coord2(fullSize._bottomRight[0], fullSize._bottomRight[1]-layout._paddingInternalBorder)),
+            middle);
+
+        layout.AllocateFullHeight(75);
+
+        const std::vector<GraphTabs::Enum>* dropDown = nullptr;
+        Rect dropDownRect;
+        static const unsigned dropDownInternalBorder = 10;
+
+        for (const auto& g:GraphTabs::Groups) {
+            auto rect = layout.AllocateFullHeight(150);
+
+            auto hash = Hash64(g.first);
+            if (interfaceState.HasMouseOver(hash) || _openGraphMenu == hash) {
+                DrawRectangle(context, rect, mouseOver);
+                DrawTopLeftRight(context, rect, ColorB::White);
+                dropDown = &g.second;
+                
+                unsigned count = (unsigned)g.second.size();
+                Coord2 dropDownSize(
+                    300,
+                    count * 20 + (count-1) * layout._paddingBetweenAllocations + 2 * dropDownInternalBorder);
+                dropDownRect._topLeft = Coord2(rect._topLeft[0], rect._bottomRight[1]);
+                dropDownRect._bottomRight = dropDownRect._topLeft + dropDownSize;
+                interactables.Register(Interactables::Widget(dropDownRect, hash));
+            }
+
+            TextStyle style(
+                *RenderCore::Techniques::FindCachedBox2<FontBox>()._font,
+                DrawTextOptions(false, true));
+            context->DrawText(
+                AsPixelCoords(rect), 1.f, &style, text, 
+                TextAlignment::Center, g.first, nullptr);
+
+            interactables.Register(Interactables::Widget(rect, hash));
+        }
+
+        if (dropDown) {
+            DrawRectangle(context, dropDownRect, mouseOver);
+            DrawBottomLeftRight(context, dropDownRect, ColorB::White);
+
+            Layout dd(dropDownRect);
+            dd._paddingInternalBorder = dropDownInternalBorder;
+            for (unsigned c=0; c<dropDown->size(); ++c) {
+                auto rect = dd.AllocateFullWidth(20);
+                auto col = smallText;
+
+                const auto* name = GraphTabs::Names[unsigned((*dropDown)[c])];
+                auto hash = Hash64(name);
+                if (interfaceState.HasMouseOver(hash))
+                    col = ColorB::White;
+
+                TextStyle style(
+                    *RenderCore::Techniques::FindCachedBox2<FontBox>()._smallFont,
+                    DrawTextOptions(false, true));
+                context->DrawText(
+                    AsPixelCoords(rect), 1.f, &style, col, 
+                    TextAlignment::Left, name, nullptr);
+
+                if ((c+1) != dropDown->size())
+                    context->DrawLine(ProjectionMode::P2D,
+                        AsPixelCoords(Coord2(rect._topLeft[0], rect._bottomRight[1])), col,
+                        AsPixelCoords(rect._bottomRight), col);
+
+                interactables.Register(Interactables::Widget(rect, hash));
+            }
+        }
+    }
 
     void    BufferUploadDisplay::Render(IOverlayContext* context, Layout& layout, Interactables& interactables, InterfaceState& interfaceState)
     {
@@ -164,10 +298,13 @@ namespace PlatformRig { namespace Overlays
 
             //      Present these frame by frame results visually.
             //      But also show information about the recent history (retired textures, etc)
+        layout.AllocateFullWidthFraction(0.01f);
+        Layout menuBar   = layout.AllocateFullWidthFraction(.125f);
         Rect topThird    = layout.AllocateFullWidthFraction(.25f+(_drawHistory?0.f:.4f));
-        Rect buttons     = layout.AllocateFullWidthFraction(.05f);
-        Rect middleThird = layout.AllocateFullWidthFraction(.2f);
+        Rect middleThird = layout.AllocateFullWidthFraction(.1f);
         Rect bottomThird = layout.AllocateFullWidthFraction(.1f+(_drawHistory?.4f:.0f));
+
+        DrawMenuBar(context, menuBar, interactables, interfaceState);
 
             //      Top part is a few graphs of the bytes uploaded/frame (or other statistics)
         {
@@ -321,13 +458,13 @@ namespace PlatformRig { namespace Overlays
         }
 
             //      a few buttons in the middle to control the data in the graphs
-        {
-            Layout buttonsArea(buttons);
-            for (unsigned c=0; c<dimof(GraphTabs::Names); ++c) {
-                Rect buttonRect = buttonsArea.AllocateFullHeightFraction( 1.f/float(dimof(GraphTabs::Names)) );
-                DrawButton(context, GraphTabs::Names[c], buttonRect, interactables, interfaceState);
-            }
-        }
+        // {
+        //     Layout buttonsArea(buttons);
+        //     for (unsigned c=0; c<dimof(GraphTabs::Names); ++c) {
+        //         Rect buttonRect = buttonsArea.AllocateFullHeightFraction( 1.f/float(dimof(GraphTabs::Names)) );
+        //         DrawButton(context, GraphTabs::Names[c], buttonRect, interactables, interfaceState);
+        //     }
+        // }
 
         const Coord rowHeight    = 6;
         const Coord rowHeight2   = 12;

@@ -225,6 +225,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     Float3      AsPixelCoords(Coord2 input, float depth);
     Float3      AsPixelCoords(Float2 input);
     Float3      AsPixelCoords(Float3 input);
+    std::tuple<Float3, Float3> AsPixelCoords(const Rect& rect);
 
     ///////////////////////////////////////////////////////////////////////////////////
     typedef std::tuple<Float3, Float3>      AABoundingBox;
