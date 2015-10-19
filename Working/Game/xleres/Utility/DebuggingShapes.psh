@@ -11,14 +11,14 @@ float4 ScrollBarShader(
 	float4 color		: COLOR0,
 	float2 texCoord0	: TEXCOORD0,
 	float2 texCoord1	: TEXCOORD1,
-    nointerpolation float2 outputDimensions : OUTPUTDIMENSIONS) : SV_Target0
+	nointerpolation float2 outputDimensions : OUTPUTDIMENSIONS) : SV_Target0
 {
-    float4 result = 0.0.xxxx;
+	float4 result = 0.0.xxxx;
 	RenderScrollBar(
 		0.0.xx, 1.0.xx, texCoord1.x,
 		DebuggingShapesCoords_Make(position, texCoord0, outputDimensions),
 		result);
-    return result;
+	return result;
 }
 
 float4 TagShader(
@@ -26,14 +26,11 @@ float4 TagShader(
 	float4 color		: COLOR0,
 	float2 texCoord0	: TEXCOORD0,
 	float2 texCoord1	: TEXCOORD1,
-    nointerpolation float2 outputDimensions : OUTPUTDIMENSIONS) : SV_Target0
+	nointerpolation float2 outputDimensions : OUTPUTDIMENSIONS) : SV_Target0
 {
-    float4 result = 0.0.xxxx;
-	RenderTag(
+	return RenderTag(
 		0.0.xx, 1.0.xx,
-		DebuggingShapesCoords_Make(position, texCoord0, outputDimensions),
-		result);
-    return result;
+		DebuggingShapesCoords_Make(position, texCoord0, outputDimensions));
 }
 
 float4 SmallGridBackground(

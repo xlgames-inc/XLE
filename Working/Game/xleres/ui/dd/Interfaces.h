@@ -110,7 +110,8 @@ interface IShape2D
 
 interface IBrush
 {
-    float4 Calculate(DebuggingShapesCoords coords, float4 baseColor);
+    float4 Calculate(DebuggingShapesCoords coords, float4 baseColor, float2 dhdp);
+    bool NeedsDerivatives();
 };
 
 

@@ -6,6 +6,7 @@
 
 #include "CommonShapes.h"
 #include "CommonBrushes.h"
+#include "BrushUtils.h"
 
 IShape2D Shape;
 IBrush Fill;
@@ -22,10 +23,14 @@ float4 Paint(
         DebuggingShapesCoords_Make(position, texCoord0, outputDimensions);
 
     ShapeDesc shapeDesc = MakeShapeDesc(0.0.xx, 1.0.xx, texCoord1.x, texCoord1.y);
-    ShapeResult shape = Shape.Calculate(coords, shapeDesc);
 
-    float4 fill = Fill.Calculate(coords, color); fill.a *= shape._fill;
-    float4 outline = Outline.Calculate(coords, color); outline.a *= shape._border;
+    float2 dhdp = 0.0.xx;
+    [branch] if (Fill.NeedsDerivatives() || Outline.NeedsDerivatives())
+        dhdp = ScreenSpaceDerivatives(Shape, coords, shapeDesc);
+
+    ShapeResult shape = Shape.Calculate(coords, shapeDesc);
+    float4 fill = Fill.Calculate(coords, color, dhdp); fill.a *= shape._fill;
+    float4 outline = Outline.Calculate(coords, color, dhdp); outline.a *= shape._border;
 
     float3 A = fill.rgb * fill.a;
     float a = 1.f - fill.a;

@@ -10,12 +10,8 @@
 #include "../CommonResources.h"
 #include "../ui/dd/Interfaces.h"
 #include "../ui/dd/CommonShapes.h"
-#include "EdgeDetection.h"
-
-Texture2D				RefractionsBuffer : register(t12);
-
-static const float SqrtHalf = 0.70710678f;
-static const float3 BasicShapesLightDirection = normalize(float3(SqrtHalf, SqrtHalf, -0.25f));
+#include "../ui/dd/CommonBrushes.h"
+#include "../ui/dd/BrushUtils.h"
 
 class TagShape : IShape2D
 {
@@ -67,32 +63,7 @@ class TagShape : IShape2D
 	}
 };
 
-float2 ScreenSpaceDerivatives(IShape2D shape, DebuggingShapesCoords coords, ShapeDesc shapeDesc)
-{
-		//
-		//		Using "sharr" filter to find image gradient. We can use
-		//		this to create a 3D effect for any basic shape.
-		//		See:
-		//			http://www.hlevkin.com/articles/SobelScharrGradients5x5.pdf
-		//
-	float2 dhdp = 0.0.xx;
-	[unroll] for (uint y=0; y<5; ++y) {
-		[unroll] for (uint x=0; x<5; ++x) {
-				//  Note that we want the sharr offsets to be in units of screen space pixels
-				//  So, we can use screen space derivatives to calculate the correct offsets
-				//  in texture coordinate space
-			float2 texCoordOffset = ((x-2.f) * GetUDDS(coords)) + ((y-2.f) * GetVDDS(coords));
-			DebuggingShapesCoords offsetCoords = coords;
-			offsetCoords.texCoord += texCoordOffset;
-			float t = shape.Calculate(offsetCoords, shapeDesc)._fill;
-			dhdp.x += SharrHoriz5x5[x][y] * t;
-			dhdp.y += SharrVert5x5[x][y] * t;
-		}
-	}
-	return dhdp;
-}
-
-void RenderTag(float2 minCoords, float2 maxCoords, DebuggingShapesCoords coords, inout float4 result)
+float4 RenderTag(float2 minCoords, float2 maxCoords, DebuggingShapesCoords coords)
 {
     const float border = 1.f;
     float2 tagMin = minCoords + border * GetUDDS(coords) + border * GetVDDS(coords);
@@ -104,24 +75,14 @@ void RenderTag(float2 minCoords, float2 maxCoords, DebuggingShapesCoords coords,
 
 	float t = shape.Calculate(coords, shapeDesc)._fill;
 	if (t > 0.f) {
-		float3 u = float3(1.f, 0.f, dhdp.x);
-		float3 v = float3(0.f, 1.f, dhdp.y);
-		float3 normal = normalize(cross(v, u));
-
-		float d = saturate(dot(BasicShapesLightDirection, normal));
-		float A = 7.5f * pow(d, 2.f);
-
-		result = float4(A * 2.f * float3(0.125f, 0.2f, .25f) + 0.1.xxx, 1.f);
-
-        result.rgb += RefractionsBuffer.SampleLevel(ClampingSampler, GetRefractionCoords(coords), 0).rgb;
-
+		RaisedRefactiveFill fill;
+		const float3 baseColor = 2.f * float3(0.125f, 0.2f, .25f);
+		return fill.Calculate(coords, float4(baseColor, 1.f), dhdp);
 	} else {
-		float b = max(abs(dhdp.x), abs(dhdp.y));
 		const float borderSize = .125f;
-		if (b >= borderSize) {
-			result = float4(0.0.xxx, b/borderSize);
-		}
+		return float4(0.0.xxx, BorderFromDerivatives(dhdp, borderSize));
 	}
+	return 0.0.xxxx;
 }
 
 void RenderScrollBar(   float2 minCoords, float2 maxCoords, float thumbPosition,
@@ -142,18 +103,17 @@ void RenderScrollBar(   float2 minCoords, float2 maxCoords, float thumbPosition,
 
 		if (t > 0.75f) {
 			result = float4(A * 2.f * float3(0.125f, 0.2f, .25f) + 0.1.xxx, 1.f);
-            result.rgb += RefractionsBuffer.SampleLevel(ClampingSampler, GetRefractionCoords(coords), 0).rgb;
+			result.rgb += RefractionsBuffer.SampleLevel(ClampingSampler, GetRefractionCoords(coords), 0).rgb;
 		} else {
 			// result = float4(A * float3(0.125f, 0.1f, .1f) + 0.1.xxx, 1.f);
-            result = float4(A * float3(1.1f, .9f, .5f) + 0.1.xxx, 1.f);
-            result.rgb += 0.5f * RefractionsBuffer.SampleLevel(ClampingSampler, GetRefractionCoords(coords), 0).rgb;
+			result = float4(A * float3(1.1f, .9f, .5f) + 0.1.xxx, 1.f);
+			result.rgb += 0.5f * RefractionsBuffer.SampleLevel(ClampingSampler, GetRefractionCoords(coords), 0).rgb;
 		}
 	} else {
-        float b = max(abs(dhdp.x), abs(dhdp.y));
 		const float borderSize = .125f;
-		if (b >= borderSize) {
-			result = float4(0.0.xxx, b/borderSize);
-		}
+		float border = BorderFromDerivatives(dhdp, borderSize);
+		if (border > 0.f)
+			result = float4(0.0.xxx, border);
 	}
 }
 
