@@ -409,6 +409,11 @@ namespace RenderCore { namespace Metal_DX11
 
     ShaderProgram::~ShaderProgram() {}
 
+    bool ShaderProgram::DynamicLinkingEnabled() const
+    {
+        return _compiledVertexShader.DynamicLinkingEnabled() || _compiledPixelShader.DynamicLinkingEnabled();
+    }
+
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     DeepShaderProgram::DeepShaderProgram(  
@@ -429,11 +434,6 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     DeepShaderProgram::~DeepShaderProgram() {}
-
-    bool DeepShaderProgram::DynamicLinkingEnabled() const
-    {
-        return _compiledVertexShader.DynamicLinkingEnabled() || _compiledPixelShader.DynamicLinkingEnabled();
-    }
 
     template intrusive_ptr<ID3D::ShaderReflection>;
 }}

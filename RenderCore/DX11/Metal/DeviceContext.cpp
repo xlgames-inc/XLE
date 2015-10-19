@@ -82,6 +82,19 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->PSSetShader(shaderProgram.GetPixelShader().GetUnderlying(), nullptr, 0);
     }
 
+    void DeviceContext::Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage)
+    {
+        auto& vsDyn = dynLinkage.GetClassInstances(ShaderStage::Vertex);
+        _underlying->VSSetShader(shaderProgram.GetVertexShader().GetUnderlying(), 
+            (ID3D::ClassInstance*const*)AsPointer(vsDyn.cbegin()), (unsigned)vsDyn.size());
+
+        auto& psDyn = dynLinkage.GetClassInstances(ShaderStage::Pixel);
+        _underlying->PSSetShader(shaderProgram.GetPixelShader().GetUnderlying(), 
+            (ID3D::ClassInstance*const*)AsPointer(psDyn.cbegin()), (unsigned)psDyn.size());
+
+        _underlying->GSSetShader(shaderProgram.GetGeometryShader().GetUnderlying(), nullptr, 0);
+    }
+
     void DeviceContext::Bind(const DeepShaderProgram& shaderProgram)
     {
         _underlying->VSSetShader(shaderProgram.GetVertexShader().GetUnderlying(), nullptr, 0);

@@ -217,6 +217,7 @@ namespace RenderCore { namespace Metal_DX11
         void        Bind(const DepthStencilState& depthStencilState, unsigned stencilRef = 0x0);
         void        Bind(const ViewportDesc& viewport);
 
+        void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage);
         void        Bind(const DeepShaderProgram& deepShaderProgram, const BoundClassInterfaces& dynLinkage);
 
         template<typename Type> void  UnbindVS(unsigned startSlot, unsigned count);

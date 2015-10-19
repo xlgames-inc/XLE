@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "BufferUploadDisplay.h"
+#include "../../RenderOverlays/OverlayUtils.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -18,13 +19,7 @@ namespace PlatformRig { namespace Overlays
     static void DrawButton(IOverlayContext* context, const char name[], const Rect&buttonRect, Interactables&interactables, InterfaceState& interfaceState)
     {
         InteractableId id = InteractableId_Make(name);
-        if (interfaceState.HasMouseOver(id)) {
-            DrawElipse(context, buttonRect, ColorB(0xff000000u));
-            DrawText(context, buttonRect, (interfaceState.IsMouseButtonHeld())?2.f:1.25f, nullptr, ColorB(0xff000000u), name);
-        } else {
-            DrawElipse(context, buttonRect, ColorB(0xffffffffu));
-            DrawText(context, buttonRect, 1.25f, nullptr, ColorB(0xffffffffu), name);
-        }
+        DrawButtonBasic(context, buttonRect, name, FormatButton(interfaceState, id));
         interactables.Register(Interactables::Widget(buttonRect, id));
     }
 
@@ -111,7 +106,11 @@ namespace PlatformRig { namespace Overlays
     {
         enum Enum
         {
-            Uploads, CreatesMB, CreatesCount, DeviceCreatesCount, Latency, PendingBuffers, CommandListCount, GPUCost, GPUBytesPerSecond, AveGPUCost, ThreadActivity, BatchedCopy, FramePriorityStall
+            Uploads, 
+            CreatesMB, CreatesCount, DeviceCreatesCount, 
+            Latency, PendingBuffers, CommandListCount, 
+            GPUCost, GPUBytesPerSecond, AveGPUCost, 
+            ThreadActivity, BatchedCopy, FramePriorityStall
         };
         static const char* Names[] = {
             "Uploads (MB)", "Creates (MB)", "Creates (count)", "Device creates (count)", "Latency (ms)", "Pending Buffers (MB)", "Command List Count", "GPU Cost", "GPU bytes/second", "Ave GPU cost", "Thread Activity", "Batched copy", "Frame Priority Stalls"
@@ -170,7 +169,7 @@ namespace PlatformRig { namespace Overlays
             unsigned graphCount = (_graphsMode<=GraphTabs::PendingBuffers)?UploadDataType::Max:1;
             for (unsigned c=0; c<graphCount; ++c) {
                 Rect graphArea = topArea.AllocateFullHeightFraction(1.f/float(graphCount));
-                DrawRoundedRectangle(context, graphArea);
+                DrawRectangleOutline(context, graphArea);
 
                 //  Copy the recent history into an array of floats, so we can graph the results...
                 float valuesBuffer[s_MaxGraphSegments];
@@ -411,7 +410,7 @@ namespace PlatformRig { namespace Overlays
                 Layout(bottomArea.AllocateFullHeightFraction(1.0f/float(dimof(columns))))
             };
             for (unsigned c=0; c<dimof(columns); ++c) {
-                DrawRoundedRectangle(context, columns[c].GetMaximumSize());
+                DrawRectangleOutline(context, columns[c].GetMaximumSize());
             }
             {
                 Rect buttonRect = columns[0].AllocateFullWidth(rowHeight);
@@ -820,7 +819,7 @@ namespace PlatformRig { namespace Overlays
                 Rect outsideRect = layout.AllocateFullWidth(DebuggingDisplay::Coord(metrics._heaps.size()*lineHeight + layout._paddingInternalBorder*2));
                 Rect heapAllocationDisplay = Layout(outsideRect).AllocateFullWidthFraction(100.f);
 
-                DrawRoundedRectangle(context, outsideRect);
+                DrawRectangleOutline(context, outsideRect);
 
                 std::vector<Float3> lines;
                 std::vector<ColorB> lineColors;

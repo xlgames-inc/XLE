@@ -203,7 +203,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     void        DrawRoundedRectangleOutline(IOverlayContext* context, const Rect & rect, unsigned width, ColorB colour, unsigned cornerSize = ~unsigned(0x0));
     void        DrawRectangle(IOverlayContext* context, const Rect& rect, ColorB colour);
     void        DrawRectangle(IOverlayContext* context, const Rect& rect, float depth, ColorB colour);
-    void        DrawRectangleOutline(IOverlayContext* context, const Rect& rect, float depth, ColorB colour);
+    void        DrawRectangleOutline(IOverlayContext* context, const Rect& rect, float depth = 0.f, ColorB colour = ColorB(0xff000000));
 
     Coord       DrawText(IOverlayContext* context, const Rect& rect, float scale, TextStyle* textStyle, ColorB colour, const char text[]);
     Coord       DrawText(IOverlayContext* context, const Rect& rect, float depth, float scale, TextStyle* textStyle, ColorB colour, const char text[]);

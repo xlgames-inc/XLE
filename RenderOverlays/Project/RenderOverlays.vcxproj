@@ -192,6 +192,7 @@
     <ClCompile Include="..\Overlays\TestMaterialSettings.cpp" />
     <ClCompile Include="..\Overlays\ToneMapSettings.cpp" />
     <ClCompile Include="..\Overlays\VolFogSettings.cpp" />
+    <ClCompile Include="..\OverlayUtils.cpp" />
     <ClCompile Include="..\TextStyle.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -211,6 +212,7 @@
     <ClInclude Include="..\Overlays\TestMaterialSettings.h" />
     <ClInclude Include="..\Overlays\ToneMapSettings.h" />
     <ClInclude Include="..\Overlays\VolFogSettings.h" />
+    <ClInclude Include="..\OverlayUtils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

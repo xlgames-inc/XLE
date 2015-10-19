@@ -11,6 +11,7 @@
 #include "../../Tools/ToolsRig/IManipulator.h"
 #include "../../Tools/ToolsRig/ManipulatorsUtil.h"
 #include "../../RenderOverlays/Font.h"
+#include "../../RenderOverlays/OverlayUtils.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../Utility/IntrusivePtr.h"
 
@@ -178,10 +179,6 @@ namespace ToolsRig
         Coord desiredHeight = 
             parameterCount * lineHeight + (std::max(0u, parameterCount-1) * layout._paddingBetweenAllocations)
             + 25 + layout._paddingBetweenAllocations + 2 * layout._paddingInternalBorder;
-
-        static ButtonFormatting buttonNormalState   (ColorB(127, 192, 127,  64), ColorB(164, 192, 164, 255));
-        static ButtonFormatting buttonMouseOverState(ColorB(127, 192, 127,  64), ColorB(255, 255, 255, 160));
-        static ButtonFormatting buttonPressedState  (ColorB(127, 192, 127,  64), ColorB(255, 255, 255,  96));
         
         Coord width = unsigned(mainLayoutSize.Width() * desiredWidthPercentage);
         Rect controlsRect(
@@ -211,7 +208,7 @@ namespace ToolsRig
             float* p = (float*)PtrAdd(&manipulator, parameter._valueOffset);
 
             interactables.Register(Interactables::Widget(rect, Id_CurFloatParameters+c));
-            auto formatting = FormatButton(interfaceState, Id_CurFloatParameters+c, buttonNormalState, buttonMouseOverState, buttonPressedState);
+            auto formatting = FormatButton(interfaceState, Id_CurFloatParameters+c);
 
                 // background (with special shader)
             float alpha;
@@ -249,7 +246,7 @@ namespace ToolsRig
             bool value = !!((*p) & (1<<parameter._bitIndex));
 
             interactables.Register(Interactables::Widget(rect, Id_CurBoolParameters+c));
-            auto formatting = FormatButton(interfaceState, Id_CurBoolParameters+c, buttonNormalState, buttonMouseOverState, buttonPressedState);
+            auto formatting = FormatButton(interfaceState, Id_CurBoolParameters+c);
 
             char buffer[256];
             if (value) {
@@ -282,7 +279,7 @@ namespace ToolsRig
         interactables.Register(Interactables::Widget(selectedManipulatorRect, Id_SelectedManipulator));
         DrawButtonBasic(
             context, selectedManipulatorRect, manipulator.GetName(),
-            FormatButton(interfaceState, Id_SelectedManipulator, buttonNormalState, buttonMouseOverState, buttonPressedState));
+            FormatButton(interfaceState, Id_SelectedManipulator));
 
             //  this button is a left/right selector. Create interactable rectangles for the left and right sides
         DrawAndRegisterLeftRight(

@@ -242,6 +242,8 @@ namespace RenderCore { namespace Metal_DX11
         const CompiledShaderByteCode*       GetCompiledGeometryShader() const   { return _compiledGeometryShader; }
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
 
+        bool DynamicLinkingEnabled() const;
+
     protected:
         const CompiledShaderByteCode&           _compiledVertexShader;
         const CompiledShaderByteCode&           _compiledPixelShader;
@@ -277,8 +279,6 @@ namespace RenderCore { namespace Metal_DX11
         const DomainShader&                 GetDomainShader() const             { return _domainShader; }
         const CompiledShaderByteCode&       GetCompiledHullShader() const       { return _compiledHullShader; }
         const CompiledShaderByteCode&       GetCompiledDomainShader() const     { return _compiledDomainShader; }
-
-        bool DynamicLinkingEnabled() const;
 
     private:
         const CompiledShaderByteCode&   _compiledHullShader;

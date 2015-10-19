@@ -107,7 +107,7 @@ namespace PlatformRig { namespace Overlays
             Float2(0.f, 0.f), Float2(1.f, 1.f), 
             Float2(settings._barBorderSize, settings._barRoundedProportion), 
             Float2(settings._barBorderSize, settings._barRoundedProportion),
-            "Utility\\DebuggingShapes.psh:CrossHatchRoundedRectShader");
+            "Utility\\DebuggingShapes.psh:CrossHatchRoundedRectShader,Shape=RoundedRectShape2,Fill=CrossHatchFill,Outline=WhiteOutline");
     }
 
     static const char g_InteractableIdTopPartStr[] = "CPUProfiler";

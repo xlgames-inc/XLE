@@ -17,29 +17,48 @@ static const float3 BasicShapesLightDirection = normalize(float3(SqrtHalf, SqrtH
 
 struct DebuggingShapesCoords
 {
-    float aspectRatio;
+    float4 position;
     float2 outputDimensions;
-    float2 refractionCoords;
     float2 texCoord;
-    float2 udds;
-    float2 vdds;
+
+    // float aspectRatio;
+    // float2 refractionCoords;
+    // float2 udds;
+    // float2 vdds;
 };
+
+float4 GetPosition(DebuggingShapesCoords coords) { return coords.position; }
+float2 GetOutputDimensions(DebuggingShapesCoords coords) { return coords.outputDimensions; }
+float2 GetTexCoord(DebuggingShapesCoords coords) { return coords.texCoord; }
+float2 GetUDDS(DebuggingShapesCoords coords) { return float2(ddx(GetTexCoord(coords).x), ddy(GetTexCoord(coords).x)); }
+float2 GetVDDS(DebuggingShapesCoords coords) { return float2(ddx(GetTexCoord(coords).y), ddy(GetTexCoord(coords).y)); }
+
+float GetAspectRatio(DebuggingShapesCoords coords)
+{
+    float a = length(GetUDDS(coords));
+    if (a == 0.f) return 1.f;       //right on the edge we're not getting an accurate result for this...?
+    float texCoordAspect = length(GetVDDS(coords))/a;
+    return 1.0f / texCoordAspect;
+}
+
+float2 GetRefractionCoords(DebuggingShapesCoords coords) { return coords.position.xy/coords.outputDimensions.xy; }
 
 DebuggingShapesCoords DebuggingShapesCoords_Make(float4 position, float2 texCoord, float2 outputDimensions)
 {
     DebuggingShapesCoords result;
-    // result.aspectRatio = outputDimensions.y/outputDimensions.x;
     result.outputDimensions = outputDimensions;
-    result.refractionCoords = position.xy/outputDimensions.xy;
+    // result.refractionCoords = position.xy/outputDimensions.xy;
     result.texCoord = texCoord;
 
-    result.udds = float2(ddx(texCoord.x), ddy(texCoord.x));
-    result.vdds = float2(ddx(texCoord.y), ddy(texCoord.y));
+    // result.udds = float2(ddx(texCoord.x), ddy(texCoord.x));
+    // result.vdds = float2(ddx(texCoord.y), ddy(texCoord.y));
+
+    result.position = position;
 
         //  We can calculate the aspect ratio of tex coordinate mapping
         //  by looking at the screen space derivatives
-    float texCoordAspect = length(result.vdds)/length(result.udds);
-    result.aspectRatio = 1.f/texCoordAspect;
+    // float texCoordAspect = length(result.vdds)/length(result.udds);
+    // result.aspectRatio = 1.f/texCoordAspect;
 
     return result;
 }
@@ -97,14 +116,14 @@ void RenderTag(float2 minCoords, float2 maxCoords, DebuggingShapesCoords coords,
 		//
 
     const float border = 1.f;
-    float2 tagMin = minCoords + border * coords.udds + border * coords.vdds;
-    float2 tagMax = maxCoords - border * coords.vdds - border * coords.vdds;
+    float2 tagMin = minCoords + border * GetUDDS(coords) + border * GetVDDS(coords);
+    float2 tagMax = maxCoords - border * GetUDDS(coords) - border * GetVDDS(coords);
 
 	float2 dhdp = 0.0.xx;
 	for (uint y=0; y<5; ++y) {
 		for (uint x=0; x<5; ++x) {
-			float2 texCoordOffset = ((x-2.f) * coords.udds) + ((y-2.f) * coords.vdds);
-			float t = TagShape(tagMin, tagMax, coords.texCoord + texCoordOffset, coords.aspectRatio);
+			float2 texCoordOffset = ((x-2.f) * GetUDDS(coords)) + ((y-2.f) * GetVDDS(coords));
+			float t = TagShape(tagMin, tagMax, GetTexCoord(coords) + texCoordOffset, GetAspectRatio(coords));
 			dhdp.x += SharrHoriz5x5[x][y] * t;
 			dhdp.y += SharrVert5x5[x][y] * t;
 		}
@@ -112,7 +131,7 @@ void RenderTag(float2 minCoords, float2 maxCoords, DebuggingShapesCoords coords,
 
 	// result = float4(0.5f + 0.5f * dhdp.xy, 0.1, 1.f);
 
-	float t = TagShape(tagMin, tagMax, coords.texCoord, coords.aspectRatio);
+	float t = TagShape(tagMin, tagMax, GetTexCoord(coords), GetAspectRatio(coords));
 	if (t > 0.f) {
 		float3 u = float3(1.f, 0.f, dhdp.x);
 		float3 v = float3(0.f, 1.f, dhdp.y);
@@ -123,7 +142,7 @@ void RenderTag(float2 minCoords, float2 maxCoords, DebuggingShapesCoords coords,
 
 		result = float4(A * 2.f * float3(0.125f, 0.2f, .25f) + 0.1.xxx, 1.f);
 
-        result.rgb += RefractionsBuffer.SampleLevel(ClampingSampler, coords.refractionCoords, 0).rgb;
+        result.rgb += RefractionsBuffer.SampleLevel(ClampingSampler, GetRefractionCoords(coords), 0).rgb;
 
 	} else {
 		float b = max(abs(dhdp.x), abs(dhdp.y));
@@ -159,56 +178,100 @@ float RoundedRectShape(
 	return 1.f;
 }
 
-float2 RoundedRectShape2(
-    float2 minCoords, float2 maxCoords,
-    DebuggingShapesCoords coords, float borderSizePix, float roundedProportion)
+struct ShapeResult
 {
-    float2 texCoord = coords.texCoord;
-	if (	texCoord.x < minCoords.x || texCoord.x > maxCoords.x
-		||	texCoord.y < minCoords.y || texCoord.y > maxCoords.y) {
-		return 0.0.xx;
-	}
+        // strength (0-1) of the "border" and "fill" parts of this shape
+    float _fill;
+    float _border;
+};
 
-    float2 pixelSize = float2(coords.udds.x, coords.vdds.y);
-    float2 borderSize = borderSizePix * pixelSize;
+ShapeResult ShapeResult_Empty() { ShapeResult temp; temp._border = temp._fill = 0.f; return temp; }
+ShapeResult MakeShapeResult(float fill, float border)  { ShapeResult temp; temp._fill = fill; temp._border = border; return temp; }
 
-	float roundedHeight = (maxCoords.y - minCoords.y) * roundedProportion;
-    float roundedWidth = roundedHeight * coords.aspectRatio;
+struct ShapeDesc
+{
+    // float2 _minCoords, _maxCoords;
+    float _borderSizePix;
+    float _param0;
+};
 
-        // mirror coords so we only have to consider the top/left quadrant
-    float2 r = float2(
-        min(maxCoords.x - texCoord.x, texCoord.x) - minCoords.x,
-        min(maxCoords.y - texCoord.y, texCoord.y) - minCoords.y);
-
-	if (r.x < roundedWidth && r.y < roundedHeight) {
-		float2 centre = float2(roundedWidth, roundedHeight);
-
-        ////////////////
-            //  To get a anti-aliased look to the edges, we need to make
-            //  several samples. Lets just use a simple pattern aligned
-            //  to the pixel edges...
-        float2 samplePts[4] =
-        {
-            float2(.5f, .2f), float2(.5f, .8f),
-            float2(.2f, .5f), float2(.8f, .5f),
-        };
-
-        float2 result = 0.0.xx;
-        for (uint c=0; c<4; ++c) {
-		    float2 o = r - centre + samplePts[c] * pixelSize;
-            o.x /= coords.aspectRatio;
-            float dist = roundedHeight - length(o);
-            result.x += .25f * (dist >= 0.f && dist < borderSize.y);
-            result.y = max(result.y, dist >= borderSize.y);
-        }
-        return result;
-	}
-    if (r.x < borderSize.x || r.y < borderSize.y) {
-        return 1.0.xx;
-    }
-
-	return float2(0.f, 1.f);
+ShapeDesc MakeShapeDesc(float borderSizePix, float param0)
+{
+    ShapeDesc result;
+    // result._minCoords = minCoords;
+    // result._maxCoords = maxCoords;
+    result._borderSizePix = borderSizePix;
+    result._param0 = param0;
+    return result;
 }
+
+interface IShape2D
+{
+    ShapeResult Calculate(
+        DebuggingShapesCoords coords,
+        ShapeDesc shapeDesc);
+};
+
+class RoundedRectShape2 : IShape2D
+{
+    ShapeResult Calculate(
+        DebuggingShapesCoords coords,
+        ShapeDesc desc)
+    {
+        float2 texCoord = GetTexCoord(coords);
+        // float2 minCoords = desc._minCoords, maxCoords = desc._maxCoords;
+        float2 minCoords = 0.0.xx, maxCoords = 1.0.xx;
+    	[branch] if (
+                texCoord.x < minCoords.x || texCoord.x > maxCoords.x
+    		||	texCoord.y < minCoords.y || texCoord.y > maxCoords.y) {
+    		return ShapeResult_Empty();
+    	}
+
+        float borderSizePix = desc._borderSizePix;
+        float roundedProportion = desc._param0;
+
+        float2 pixelSize = float2(GetUDDS(coords).x, GetVDDS(coords).y);
+        float2 borderSize = borderSizePix * pixelSize;
+
+    	float roundedHeight = (maxCoords.y - minCoords.y) * roundedProportion;
+        float roundedWidth = roundedHeight * GetAspectRatio(coords);
+
+            // mirror coords so we only have to consider the top/left quadrant
+        float2 r = float2(
+            min(maxCoords.x - texCoord.x, texCoord.x) - minCoords.x,
+            min(maxCoords.y - texCoord.y, texCoord.y) - minCoords.y);
+
+    	[branch] if (r.x < roundedWidth && r.y < roundedHeight) {
+    		float2 centre = float2(roundedWidth, roundedHeight);
+
+            ////////////////
+                //  To get a anti-aliased look to the edges, we need to make
+                //  several samples. Lets just use a simple pattern aligned
+                //  to the pixel edges...
+            float2 samplePts[4] =
+            {
+                float2(.5f, .2f), float2(.5f, .8f),
+                float2(.2f, .5f), float2(.8f, .5f),
+            };
+
+            ShapeResult result = ShapeResult_Empty();
+            [unroll] for (uint c=0; c<4; ++c) {
+    		    float2 o = r - centre + samplePts[c] * pixelSize;
+                o.x /= GetAspectRatio(coords);
+                float dist = roundedHeight - length(o);
+                result._border += .25f * (dist >= 0.f && dist < borderSize.y);
+                // result._fill = max(result._fill, dist >= borderSize.y);
+                result._fill +=  .25f * (dist >= 0.f);
+            }
+            return result;
+    	}
+        if (r.x <= borderSize.x || r.y <= borderSize.y) {
+            return MakeShapeResult(1.f, 1.f);
+        }
+
+    	return MakeShapeResult(1.f, 0.f);
+    }
+};
 
 float CircleShape(float2 centrePoint, float radius, float2 texCoord, float aspectRatio)
 {
@@ -258,14 +321,14 @@ void RenderScrollBar(   float2 minCoords, float2 maxCoords, float thumbPosition,
 			    //  Note that we want the sharr offsets to be in units of screen space pixels
                 //  So, we can use screen space derivatives to calculate the correct offsets
                 //  in texture coordinate space
-            float2 texCoordOffset = ((x-2.f) * coords.udds) + ((y-2.f) * coords.vdds);
-			float t = ScrollBarShape(minCoords, maxCoords, thumbPosition, coords.texCoord + texCoordOffset, coords.aspectRatio);
+            float2 texCoordOffset = ((x-2.f) * GetUDDS(coords)) + ((y-2.f) * GetVDDS(coords));
+			float t = ScrollBarShape(minCoords, maxCoords, thumbPosition, GetTexCoord(coords) + texCoordOffset, GetAspectRatio(coords));
 			dhdp.x += SharrHoriz5x5[x][y] * t;
 			dhdp.y += SharrVert5x5[x][y] * t;
 		}
 	}
 
-	float t = ScrollBarShape(minCoords, maxCoords, thumbPosition, coords.texCoord, coords.aspectRatio);
+	float t = ScrollBarShape(minCoords, maxCoords, thumbPosition, GetTexCoord(coords), GetAspectRatio(coords));
 	if (t > 0.f) {
 		float3 u = float3(1.f, 0.f, dhdp.x);
 		float3 v = float3(0.f, 1.f, dhdp.y);
@@ -276,11 +339,11 @@ void RenderScrollBar(   float2 minCoords, float2 maxCoords, float thumbPosition,
 
 		if (t > 0.75f) {
 			result = float4(A * 2.f * float3(0.125f, 0.2f, .25f) + 0.1.xxx, 1.f);
-            result.rgb += RefractionsBuffer.SampleLevel(ClampingSampler, coords.refractionCoords, 0).rgb;
+            result.rgb += RefractionsBuffer.SampleLevel(ClampingSampler, GetRefractionCoords(coords), 0).rgb;
 		} else {
 			// result = float4(A * float3(0.125f, 0.1f, .1f) + 0.1.xxx, 1.f);
             result = float4(A * float3(1.1f, .9f, .5f) + 0.1.xxx, 1.f);
-            result.rgb += 0.5f * RefractionsBuffer.SampleLevel(ClampingSampler, coords.refractionCoords, 0).rgb;
+            result.rgb += 0.5f * RefractionsBuffer.SampleLevel(ClampingSampler, GetRefractionCoords(coords), 0).rgb;
 		}
 
 

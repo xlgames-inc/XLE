@@ -21,7 +21,38 @@ float4 ScrollBarShader(
     return result;
 }
 
-float4 RoundedRectShader(
+interface IFill
+{
+	float4 Calculate(DebuggingShapesCoords coords, float4 baseColor);
+};
+
+IShape2D Shape;
+
+class SolidFill : IFill
+{
+	float4 Calculate(DebuggingShapesCoords coords, float4 baseColor)
+	{
+		// ShapeResult s = Shape.Calculate(coords, shapeDesc);
+		// return baseColor; // * saturate(s._fill);
+		// return lerp(0.0.xxxx, baseColor, saturate(s._fill));
+		return baseColor;
+	}
+};
+
+class WhiteOutline : IFill
+{
+	float4 Calculate(DebuggingShapesCoords coords, float4 baseColor)
+	{
+		// ShapeResult s = Shape.Calculate(coords, shapeDesc);
+		// return float4(1.0.xxx, saturate(s._border * baseColor.a));
+		return 1.0.xxxx;
+	}
+};
+
+IFill Fill;
+IFill Outline;
+
+float4 GenericShape(
 	float4 position	    : SV_Position,
 	float4 color		: COLOR0,
 	float2 texCoord0	: TEXCOORD0,
@@ -31,15 +62,39 @@ float4 RoundedRectShader(
 	DebuggingShapesCoords coords =
 		DebuggingShapesCoords_Make(position, texCoord0, outputDimensions);
 
-	float2 shape = RoundedRectShape2(
-		0.0.xx, 1.0.xx, coords,
-		texCoord1.x, texCoord1.y);
-	if (shape.y <= 0.f && shape.x <= 0.f) { discard; }
+	ShapeDesc shapeDesc = MakeShapeDesc(texCoord1.x, texCoord1.y);
+	ShapeResult shape = Shape.Calculate(coords, shapeDesc);
 
-	float4 borderColor = float4(1.0.xxx, 1.f);
-	float4 nonBorderColor = lerp(0.0.xxxx, color, shape.y);
-	return lerp(nonBorderColor, borderColor, shape.x);
+	float4 fill = Fill.Calculate(coords, color); fill.a *= shape._fill;
+	float4 outline = Outline.Calculate(coords, color); outline.a *= shape._border;
+
+	float3 A = fill.rgb * fill.a;
+	float a = 1.f - fill.a;
+	A = A * (1.f - outline.a) + outline.rgb * outline.a;
+	a = a * (1.f - outline.a);
+	return float4(A, 1.f - a);
 }
+
+class CrossHatchFill : IFill
+{
+	float4 Calculate(
+		DebuggingShapesCoords coords,
+		float4 baseColor)
+	{
+		// ShapeResult s = Shape.Calculate(coords, shapeDesc);
+		// float4 color = lerp(0.0.xxxx, baseColor, s._fill);
+		// float4 color = s._fill.xxxx;
+		float4 color = baseColor;
+
+			// cross hatch pattern -- (bright:dark == 1:1)
+		uint p = uint(coords.position.x) + uint(coords.position.y);
+		if (((p/4) % 2) != 0) {
+			color.rgb *= 0.66f;
+		}
+
+		return color;
+	}
+};
 
 float4 CrossHatchRoundedRectShader(
 	float4 position	    : SV_Position,
@@ -48,23 +103,39 @@ float4 CrossHatchRoundedRectShader(
 	float2 texCoord1	: TEXCOORD1,
     nointerpolation float2 outputDimensions : OUTPUTDIMENSIONS) : SV_Target0
 {
-	DebuggingShapesCoords coords =
-		DebuggingShapesCoords_Make(position, texCoord0, outputDimensions);
+	if (1) {
+		DebuggingShapesCoords coords =
+			DebuggingShapesCoords_Make(position, texCoord0, outputDimensions);
 
-	float2 shape = RoundedRectShape2(
-		0.0.xx, 1.0.xx, coords,
-		texCoord1.x, texCoord1.y);
-	if (shape.y <= 0.f && shape.x <= 0.f) { discard; }
+		ShapeDesc shapeDesc = MakeShapeDesc(texCoord1.x, texCoord1.y);
+		ShapeResult shape = Shape.Calculate(coords, shapeDesc);
 
-		// cross hatch pattern -- (bright:dark == 1:1)
-	uint p = uint(position.x) + uint(position.y);
-	if (((p/4) % 2) != 0) {
-		color.rgb *= 0.66f;
+		float4 fill = Fill.Calculate(coords, color); fill.a *= shape._fill;
+		float4 outline = Outline.Calculate(coords, color); outline.a *= shape._border;
+
+		float3 A = fill.rgb * fill.a;
+		float a = 1.f - fill.a;
+		A = A * (1.f - outline.a) + outline.rgb * outline.a;
+		a = a * (1.f - outline.a);
+		return float4(A, 1.f - a);
+	} else {
+		DebuggingShapesCoords coords =
+			DebuggingShapesCoords_Make(position, texCoord0, outputDimensions);
+
+		ShapeDesc shapeDesc = MakeShapeDesc(texCoord1.x, texCoord1.y);
+		ShapeResult shape = Shape.Calculate(coords, shapeDesc);
+		if (shape._fill <= 0.f && shape._border <= 0.f) { discard; }
+
+			// cross hatch pattern -- (bright:dark == 1:1)
+		uint p = uint(position.x) + uint(position.y);
+		if (((p/4) % 2) != 0) {
+			color.rgb *= 0.66f;
+		}
+
+		float4 borderColor = float4(1.0.xxx, 1.f);
+		float4 nonBorderColor = lerp(0.0.xxxx, color, shape._fill);
+		return lerp(nonBorderColor, borderColor, shape._border);
 	}
-
-	float4 borderColor = float4(1.0.xxx, 1.f);
-	float4 nonBorderColor = lerp(0.0.xxxx, color, shape.y);
-	return lerp(nonBorderColor, borderColor, shape.x);
 }
 
 float4 TagShader(
@@ -92,29 +163,29 @@ float4 SmallGridBackground(
 	DebuggingShapesCoords coords = DebuggingShapesCoords_Make(position, texCoord0, outputDimensions);
 
 		// outline rectangle
-	if (texCoord0.x <= coords.udds.x || texCoord0.x >= (1.f-coords.udds.x) || texCoord0.y <= coords.vdds.y || texCoord0.y >= (1.f-coords.vdds.y)) {
+	if (texCoord0.x <= GetUDDS(coords).x || texCoord0.x >= (1.f-GetUDDS(coords).x) || texCoord0.y <= GetVDDS(coords).y || texCoord0.y >= (1.f-GetVDDS(coords).y)) {
 		return float4(.5f*float3(0.35f, 0.5f, 0.35f), 1.f);
 	}
 
-	float xPixels = coords.texCoord.x / coords.udds.x;
-	float yPixels = coords.texCoord.y / coords.vdds.y;
+	float xPixels = GetTexCoord(coords).x / GetUDDS(coords).x;
+	float yPixels = GetTexCoord(coords).y / GetVDDS(coords).y;
 
-	uint pixelsFromThumb = uint(abs(texCoord0.x - texCoord1.x) / coords.udds.x + 0.5f);
+	uint pixelsFromThumb = uint(abs(texCoord0.x - texCoord1.x) / GetUDDS(coords).x + 0.5f);
 	if (pixelsFromThumb < 3) {
 		return float4(1.0.xxx, 0.5f);
 	}
 
 	float4 gridColor = float4(0.125f, 0.35f, 0.125f, 0.f);
 
-	if (xPixels > 20 && texCoord0.x < (1.0f - 20 * coords.udds.x)) {
+	if (xPixels > 20 && texCoord0.x < (1.0f - 20 * GetUDDS(coords).x)) {
 
-		float pixelsFromCenterY = abs(texCoord0.y - 0.5f) / coords.vdds.y;
+		float pixelsFromCenterY = abs(texCoord0.y - 0.5f) / GetVDDS(coords).y;
 		if (pixelsFromCenterY <= 1.f) {
 				// middle line
 			return gridColor;
 		}
 
-		uint pixelsFromCenterX = uint(abs(texCoord0.x - 0.5f) / coords.udds.x + 0.5f);
+		uint pixelsFromCenterX = uint(abs(texCoord0.x - 0.5f) / GetUDDS(coords).x + 0.5f);
 		if (pixelsFromCenterX % 4 == 0) {
 			uint height = ((pixelsFromCenterX % 32) == 0) ? 7 : 4;
 			if (uint(pixelsFromCenterY) < height) {
@@ -135,20 +206,20 @@ float4 GridBackgroundShader(
 {
 	DebuggingShapesCoords coords = DebuggingShapesCoords_Make(position, texCoord0, outputDimensions);
 
-	if (texCoord0.x >= (1.f-coords.udds.x) || texCoord0.y <= coords.vdds.y || texCoord0.y >= (1.f-coords.vdds.y)) {
+	if (texCoord0.x >= (1.f-GetUDDS(coords).x) || texCoord0.y <= GetVDDS(coords).y || texCoord0.y >= (1.f-GetVDDS(coords).y)) {
 		return float4(0.0.xxx, 1.f);
 	}
 
 	float brightness = 0.f;
 
-	float xPixels = coords.texCoord.x / coords.udds.x;
+	float xPixels = GetTexCoord(coords).x / GetUDDS(coords).x;
 	if (uint(xPixels)%64==63) {
 		brightness = 1.f;
 	} else if (uint(xPixels)%8==7) {
 		brightness = 0.5f;
 	}
 
-	float yPixels = coords.texCoord.y / coords.vdds.y;
+	float yPixels = GetTexCoord(coords).y / GetVDDS(coords).y;
 	if (uint(yPixels)%64==63) {
 		brightness = max(brightness, 1.f);
 	} else if (uint(yPixels)%8==7) {

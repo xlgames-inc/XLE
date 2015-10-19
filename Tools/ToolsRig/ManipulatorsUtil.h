@@ -23,33 +23,6 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template<typename T> inline const T& FormatButton(InterfaceState& interfaceState, InteractableId id, const T& normalState, const T& mouseOverState, const T& pressedState)
-    {
-        if (interfaceState.HasMouseOver(id))
-            return interfaceState.IsMouseButtonHeld(0)?pressedState:mouseOverState;
-        return normalState;
-    }
-
-    class ButtonFormatting
-    {
-    public:
-        ColorB  _background;
-        ColorB  _foreground;
-        ButtonFormatting(ColorB background, ColorB foreground) : _background(background), _foreground(foreground) {}
-    };
-
-    inline void DrawButtonBasic(IOverlayContext* context, const Rect& rect, const char label[], ButtonFormatting formatting)
-    {
-        DrawRectangle(context, rect, formatting._background);
-        DrawRectangleOutline(context, rect, 0.f, formatting._foreground);
-        // DrawText(context, rect, 0.f, nullptr, formatting._foreground, manipulatorName);
-        context->DrawText(
-            std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-            1.f, nullptr, formatting._foreground, TextAlignment::Center, label, nullptr);
-    }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
     class IManipulator;
 
     Rect DrawManipulatorControls(

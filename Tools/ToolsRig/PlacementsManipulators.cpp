@@ -18,6 +18,7 @@
 #include "../../RenderOverlays/IOverlayContext.h"
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderOverlays/Overlays/Browser.h"
+#include "../../RenderOverlays/OverlayUtils.h"
 
 #include "../../Utility/TimeUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -1239,10 +1240,6 @@ namespace ToolsRig
     static const auto Id_SelectedModel = InteractableId_Make("SelectedModel");
     static const auto Id_PlacementsSave = InteractableId_Make("PlacementsSave");
 
-    static ButtonFormatting ButtonNormalState    ( ColorB(127, 192, 127,  64), ColorB(164, 192, 164, 255) );
-    static ButtonFormatting ButtonMouseOverState ( ColorB(127, 192, 127,  64), ColorB(255, 255, 255, 160) );
-    static ButtonFormatting ButtonPressedState   ( ColorB(127, 192, 127,  64), ColorB(255, 255, 255,  96) );
-
     void PlacementsWidgets::Render(
         IOverlayContext* context, Layout& layout, 
         Interactables& interactables, InterfaceState& interfaceState)
@@ -1351,8 +1348,7 @@ namespace ToolsRig
                     } else if (errorMsg) {
                         DrawButtonBasic(
                             context, previewRect, errorMsg,
-                            FormatButton(interfaceState, Id_SelectedModel, 
-                                ButtonNormalState, ButtonMouseOverState, ButtonPressedState));
+                            FormatButton(interfaceState, Id_SelectedModel));
                     }
                 }
 
