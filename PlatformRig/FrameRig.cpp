@@ -395,7 +395,7 @@ namespace PlatformRig
             AsPixelCoords(rect._topLeft),
             AsPixelCoords(rect._bottomRight),
             color, Float2(0.f, 0.f), Float2(1.f, 1.f), Float2(borderSize, roundedProportion), Float2(borderSize, roundedProportion),
-            "Utility\\DebuggingShapes.psh:GenericShape,Shape=RoundedRectShape2,Fill=SolidFill,Outline=WhiteOutline");
+            "ui\\dd\\shapes.sh:Paint,Shape=RoundedRectShape,Fill=SolidFill,Outline=WhiteOutline");
     }
 
     static const InteractableId Id_FrameRigDisplayMain = InteractableId_Make("FrameRig");
