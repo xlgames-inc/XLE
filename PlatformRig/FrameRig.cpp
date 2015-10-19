@@ -385,19 +385,6 @@ namespace PlatformRig
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    static void DrawRoundedRectangle2(
-        IOverlayContext* context, const Rect& rect,
-        ColorB color,
-        float borderSize = 0.f, float roundedProportion = 1.f / 4.f)
-    {
-        context->DrawQuad(
-            ProjectionMode::P2D,
-            AsPixelCoords(rect._topLeft),
-            AsPixelCoords(rect._bottomRight),
-            color, Float2(0.f, 0.f), Float2(1.f, 1.f), Float2(borderSize, roundedProportion), Float2(borderSize, roundedProportion),
-            "ui\\dd\\shapes.sh:Paint,Shape=RoundedRectShape,Fill=SolidFill,Outline=WhiteOutline");
-    }
-
     static const InteractableId Id_FrameRigDisplayMain = InteractableId_Make("FrameRig");
     static const InteractableId Id_FrameRigDisplaySubMenu = InteractableId_Make("FrameRigSubMenu");
 
@@ -437,9 +424,10 @@ namespace PlatformRig
         static ColorB normalColor = ColorB(70, 31, 0, 0x9f);
         static ColorB mouseOverColor = ColorB(70, 31, 0, 0xff);
         static ColorB pressed = ColorB(128, 50, 0, 0xff);
-        DrawRoundedRectangle2(context, displayRect, 
+        DrawRoundedRectangle(context, displayRect, 
             FormatButton(interfaceState, Id_FrameRigDisplayMain, normalColor, mouseOverColor, pressed), 
-            (interfaceState.HasMouseOver(Id_FrameRigDisplayMain))?4.f:2.f);
+            ColorB::White,
+            (interfaceState.HasMouseOver(Id_FrameRigDisplayMain))?4.f:2.f, 1.f / 4.f);
 
         static ColorB menuBkgrnd(128, 96, 64, 64);
         static ColorB menuBkgrndHigh(128, 96, 64, 192);

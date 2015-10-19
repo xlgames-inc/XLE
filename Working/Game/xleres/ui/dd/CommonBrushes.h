@@ -16,9 +16,9 @@ class SolidFill : IBrush
     bool NeedsDerivatives() { return false; }
 };
 
-class WhiteOutline : IBrush
+class None : IBrush
 {
-    float4 Calculate(DebuggingShapesCoords coords, float4 baseColor, float2 fillDerivatives) { return 1.0.xxxx; }
+    float4 Calculate(DebuggingShapesCoords coords, float4 baseColor, float2 fillDerivatives) { return 0.0.xxxx; }
     bool NeedsDerivatives() { return false; }
 };
 

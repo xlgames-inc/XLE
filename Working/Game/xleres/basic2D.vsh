@@ -154,4 +154,25 @@ void P2CTT(	float2 iPosition	: POSITION0,
 	oOutputDimensions = 1.0f / ReciprocalViewportDimensions.xy;
 }
 
+void P2CCTT(float2 iPosition	: POSITION0,
+			float4 iColor0		: COLOR0,
+			float4 iColor1		: COLOR1,
+			float2 iTexCoord0	: TEXCOORD0,
+			float2 iTexCoord1	: TEXCOORD1,
+
+			out float4 oPosition	: SV_Position,
+			out float4 oColor0		: COLOR0,
+			out float2 oTexCoord0	: TEXCOORD0,
+			out float4 oColor1		: COLOR1,		// note the flip in ordering here -- makes it easier when using a PCT pixel shader
+			out float2 oTexCoord1	: TEXCOORD1,
+			nointerpolation out float2 oOutputDimensions : OUTPUTDIMENSIONS )
+{
+	oPosition	= PixelCoordToSVPosition(iPosition);
+	oColor0		= iColor0;
+	oColor1		= iColor1;
+	oTexCoord0	= iTexCoord0;
+	oTexCoord1	= iTexCoord1;
+	oOutputDimensions = 1.0f / ReciprocalViewportDimensions.xy;
+}
+
 #endif

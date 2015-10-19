@@ -34,6 +34,13 @@ namespace RenderOverlays
             return ColorB(  uint8(Clamp(r_, 0.f, 1.f) * 255.f + 0.5f), uint8(Clamp(g_, 0.f, 1.f) * 255.f + 0.5f), 
                             uint8(Clamp(b_, 0.f, 1.f) * 255.f + 0.5f), uint8(Clamp(a_, 0.f, 1.f) * 255.f + 0.5f));
         }
+
+        static const ColorB White;
+        static const ColorB Black;
+        static const ColorB Red;
+        static const ColorB Green;
+        static const ColorB Blue;
+        static const ColorB Zero;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +110,7 @@ namespace RenderOverlays
         virtual void    DrawQuad(
             ProjectionMode::Enum proj, 
             const Float3& mins, const Float3& maxs, 
-            ColorB color,
+            ColorB color0, ColorB color1,
             const Float2& minTex0, const Float2& maxTex0, 
             const Float2& minTex1, const Float2& maxTex1,
             const std::string& pixelShader = std::string()) = 0;

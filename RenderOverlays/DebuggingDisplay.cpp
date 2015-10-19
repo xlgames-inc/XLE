@@ -159,20 +159,6 @@ namespace RenderOverlays { namespace DebuggingDisplay
         _pendingDelta = 0.f;
     }
 
-    void DrawScrollBar_Old(IOverlayContext* context, const ScrollBar::Coordinates& coordinates, float thumbPosition, ColorB scrollBarColour, ColorB thumbColour)
-    {
-        const Rect rect = coordinates.ScrollArea();
-        const Rect thumbRect = coordinates.Thumb(thumbPosition);
-        
-        DrawRoundedRectangleOutline(context, rect, 2, scrollBarColour, rect.Width()/2);
-        DrawRectangle(context, thumbRect, thumbColour);
-        DrawRoundedRectangleOutline(
-            context, 
-            Rect(   Coord2(thumbRect._topLeft[0]+1, thumbRect._topLeft[1]+1), 
-                    Coord2(thumbRect._bottomRight[0]-1, thumbRect._bottomRight[1]-1)), 
-            1, scrollBarColour);
-    }
-
     void DrawScrollBar(IOverlayContext* context, const ScrollBar::Coordinates& coordinates, float thumbPosition, ColorB fillColour, ColorB outlineColour)
     {
 
@@ -224,7 +210,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         DrawLines(context, lines, lineColours, dimof(lines)/2);
         
         const Rect thumbRect = coordinates.Thumb(thumbPosition);
-        DrawRoundedRectangle(context, thumbRect, scrollArea.Width()/2.7f, fillColour, outlineColour);
+        DrawRoundedRectangle(context, thumbRect, fillColour, outlineColour, 1.f/2.7f);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
@@ -233,7 +219,6 @@ namespace RenderOverlays { namespace DebuggingDisplay
     Float3 AsPixelCoords(Coord2 input, float depth) { return Float3(float(input[0]), float(input[1]), depth); }
     Float3 AsPixelCoords(Float2 input)              { return Expand(input, 0.f); }
     Float3 AsPixelCoords(Float3 input)              { return input; }
-    unsigned GetFrameID() { return 0; }
 
     ///////////////////////////////////////////////////////////////////////////////////
 
@@ -304,177 +289,42 @@ namespace RenderOverlays { namespace DebuggingDisplay
         context->DrawTriangles(ProjectionMode::P2D, triangles, dimof(triangles), colour);
     }
 
-    unsigned DefaultCornerSize(const Rect& rect)
-    {
-        int minDimension = std::min( rect._bottomRight[0] - rect._topLeft[0], rect._bottomRight[1] - rect._topLeft[1] );
-        int cornerSize = minDimension/8;
-        return cornerSize;
-    }
-
-    static void DrawCornerOutline(IOverlayContext* context, const Rect& rect, unsigned width, ColorB colour)
-    {
-        const unsigned quadCount = 32;
-        Float3 positions[quadCount*2*3];
-        const float innerRadius = 1.f - width / float(std::min(abs(rect._bottomRight[0]-rect._topLeft[0]), abs(rect._bottomRight[1]-rect._topLeft[1])));
-        for (unsigned c=0; c<quadCount; ++c) {
-            const float angle0   =     c/float(quadCount) * gPI / 2.f;
-            const float angle1   = (c+1)/float(quadCount) * gPI / 2.f;
-            float sin0, cos0, sin1, cos1;
-            std::tie(sin0, cos0) = XlSinCos(angle0);
-            std::tie(sin1, cos1) = XlSinCos(angle1);
-            const float ox0      = LinearInterpolate(float(rect._bottomRight[0]), float(rect._topLeft[0]), cos0);
-            const float ox1      = LinearInterpolate(float(rect._bottomRight[0]), float(rect._topLeft[0]), cos1);
-            const float ix0      = LinearInterpolate(float(rect._bottomRight[0]), float(ox0), innerRadius);
-            const float ix1      = LinearInterpolate(float(rect._bottomRight[0]), float(ox1), innerRadius);
-            const float oy0      = LinearInterpolate(float(rect._bottomRight[1]), float(rect._topLeft[1]), sin0);
-            const float oy1      = LinearInterpolate(float(rect._bottomRight[1]), float(rect._topLeft[1]), sin1);
-            const float iy0      = LinearInterpolate(float(rect._bottomRight[1]), float(oy0), innerRadius);
-            const float iy1      = LinearInterpolate(float(rect._bottomRight[1]), float(oy1), innerRadius);
-
-            positions[c*2*3 + 0] = AsPixelCoords(Float2(ox0, oy0));
-            positions[c*2*3 + 1] = AsPixelCoords(Float2(ox1, oy1));
-            positions[c*2*3 + 2] = AsPixelCoords(Float2(ix0, iy0));
-
-            positions[c*2*3 + 3] = AsPixelCoords(Float2(ix0, iy0));
-            positions[c*2*3 + 4] = AsPixelCoords(Float2(ox1, oy1));
-            positions[c*2*3 + 5] = AsPixelCoords(Float2(ix1, iy1));
-        }
-
-        context->DrawTriangles(ProjectionMode::P2D, positions, dimof(positions), colour);
-    }
-
-    void DrawRoundedRectangleOutline(IOverlayContext* context, const Rect & rect, unsigned width, ColorB colour, unsigned cornerSize)
+    void DrawRoundedRectangleOutline(
+        IOverlayContext* context, const Rect & rect, 
+        ColorB colour, 
+        float width, float roundedProportion)
     {
         if (rect._bottomRight[0] <= rect._topLeft[0] || rect._bottomRight[1] <= rect._topLeft[1]) {
             return;
         }
 
-        if (cornerSize == ~unsigned(0x0)) {
-            cornerSize = DefaultCornerSize(rect);
-        }
-
-        const Rect topLeft    (Coord2(rect._topLeft[0], rect._topLeft[1]),           Coord2(rect._topLeft[0]+cornerSize, rect._topLeft[1]+cornerSize)        );
-        const Rect topRight   (Coord2(rect._bottomRight[0], rect._topLeft[1]),       Coord2(rect._bottomRight[0]-cornerSize, rect._topLeft[1]+cornerSize)    );
-        const Rect bottomLeft (Coord2(rect._topLeft[0], rect._bottomRight[1]),       Coord2(rect._topLeft[0]+cornerSize, rect._bottomRight[1]-cornerSize)    );
-        const Rect bottomRight(Coord2(rect._bottomRight[0], rect._bottomRight[1]),   Coord2(rect._bottomRight[0]-cornerSize, rect._bottomRight[1]-cornerSize));
-        DrawCornerOutline(context, topLeft, width, colour);
-        DrawCornerOutline(context, topRight, width, colour);
-        DrawCornerOutline(context, bottomLeft, width, colour);
-        DrawCornerOutline(context, bottomRight, width, colour);
-
-        if (rect._topLeft[0]+cornerSize < rect._bottomRight[0]-cornerSize) {
-            context->DrawTriangle(  ProjectionMode::P2D, 
-                                    AsPixelCoords(Coord2(rect._topLeft[0]+cornerSize,         rect._topLeft[1]          )), colour,
-                                    AsPixelCoords(Coord2(rect._bottomRight[0]-cornerSize,     rect._topLeft[1]          )), colour,
-                                    AsPixelCoords(Coord2(rect._topLeft[0]+cornerSize,         rect._topLeft[1]+width    )), colour);
-            context->DrawTriangle(  ProjectionMode::P2D, 
-                                    AsPixelCoords(Coord2(rect._bottomRight[0]-cornerSize,     rect._topLeft[1]          )), colour,
-                                    AsPixelCoords(Coord2(rect._bottomRight[0]-cornerSize,     rect._topLeft[1]+width    )), colour,
-                                    AsPixelCoords(Coord2(rect._topLeft[0]+cornerSize,         rect._topLeft[1]+width    )), colour);
-
-            context->DrawTriangle(  ProjectionMode::P2D, 
-                                    AsPixelCoords(Coord2(rect._topLeft[0]+cornerSize,         rect._bottomRight[1]      )), colour,
-                                    AsPixelCoords(Coord2(rect._bottomRight[0]-cornerSize,     rect._bottomRight[1]      )), colour,
-                                    AsPixelCoords(Coord2(rect._topLeft[0]+cornerSize,         rect._bottomRight[1]-width)), colour);
-            context->DrawTriangle(  ProjectionMode::P2D, 
-                                    AsPixelCoords(Coord2(rect._bottomRight[0]-cornerSize,     rect._bottomRight[1]      )), colour,
-                                    AsPixelCoords(Coord2(rect._bottomRight[0]-cornerSize,     rect._bottomRight[1]-width)), colour,
-                                    AsPixelCoords(Coord2(rect._topLeft[0]+cornerSize,         rect._bottomRight[1]-width)), colour);
-        }
-
-        if (rect._topLeft[1]+cornerSize < rect._bottomRight[1]-cornerSize) {
-            context->DrawTriangle(  ProjectionMode::P2D, 
-                                    AsPixelCoords(Coord2(rect._topLeft[0],                 rect._topLeft[1]+cornerSize      )), colour,
-                                    AsPixelCoords(Coord2(rect._topLeft[0],                 rect._bottomRight[1]-cornerSize  )), colour,
-                                    AsPixelCoords(Coord2(rect._topLeft[0]+width,           rect._topLeft[1]+cornerSize      )), colour);
-            context->DrawTriangle(  ProjectionMode::P2D, 
-                                    AsPixelCoords(Coord2(rect._topLeft[0],                 rect._bottomRight[1]-cornerSize  )), colour,
-                                    AsPixelCoords(Coord2(rect._topLeft[0]+width,           rect._bottomRight[1]-cornerSize  )), colour,
-                                    AsPixelCoords(Coord2(rect._topLeft[0]+width,           rect._topLeft[1]+cornerSize      )), colour);
-
-            context->DrawTriangle(  ProjectionMode::P2D, 
-                                    AsPixelCoords(Coord2(rect._bottomRight[0],             rect._topLeft[1]+cornerSize     )), colour,
-                                    AsPixelCoords(Coord2(rect._bottomRight[0],             rect._bottomRight[1]-cornerSize )), colour,
-                                    AsPixelCoords(Coord2(rect._bottomRight[0]-width,       rect._topLeft[1]+cornerSize     )), colour);
-            context->DrawTriangle(  ProjectionMode::P2D, 
-                                    AsPixelCoords(Coord2(rect._bottomRight[0],             rect._bottomRight[1]-cornerSize )), colour,
-                                    AsPixelCoords(Coord2(rect._bottomRight[0]-width,       rect._bottomRight[1]-cornerSize )), colour,
-                                    AsPixelCoords(Coord2(rect._bottomRight[0]-width,       rect._topLeft[1]+cornerSize     )), colour);
-        }
+        context->DrawQuad(
+            ProjectionMode::P2D,
+            AsPixelCoords(rect._topLeft),
+            AsPixelCoords(rect._bottomRight),
+            ColorB::Zero, colour,
+            Float2(0.f, 0.f), Float2(1.f, 1.f), 
+            Float2(width, roundedProportion), Float2(width, roundedProportion),
+            "ui\\dd\\shapes.sh:Paint,Shape=RoundedRectShape,Fill=None,Outline=SolidFill");
     }
 
-    void DrawRoundedRectangle(IOverlayContext* context, const Rect & rect, Coord cornerSize, ColorB backgroundColour, ColorB outlineColour)
+    void DrawRoundedRectangle(
+        IOverlayContext* context, 
+        const Rect & rect,
+        ColorB backgroundColour, ColorB outlineColour,
+        float borderWidth, float roundedProportion)
     {
-        if (rect._bottomRight[0] <= rect._topLeft[0] || rect._bottomRight[1] <= rect._topLeft[1]) {
+        if (rect._bottomRight[0] <= rect._topLeft[0] || rect._bottomRight[1] <= rect._topLeft[1])
             return;
-        }
 
-        if (cornerSize == ~Coord(0x0)) {
-            cornerSize = DefaultCornerSize(rect);
-        }
-
-            ///////
-            //  Render basic left, right, top, bottom lines first...
-        Float3 baseLines[] = 
-        {
-            AsPixelCoords(Coord2(rect._topLeft[0] + cornerSize, rect._topLeft[1])),
-            AsPixelCoords(Coord2(rect._bottomRight[0] - cornerSize, rect._topLeft[1])),
-
-            AsPixelCoords(Coord2(rect._topLeft[0] + cornerSize, rect._bottomRight[1])),
-            AsPixelCoords(Coord2(rect._bottomRight[0] - cornerSize, rect._bottomRight[1])),
-
-            AsPixelCoords(Coord2(rect._topLeft[0], rect._topLeft[1] + cornerSize)),
-            AsPixelCoords(Coord2(rect._topLeft[0], rect._bottomRight[1] - cornerSize)),
-
-            AsPixelCoords(Coord2(rect._bottomRight[0], rect._topLeft[1] + cornerSize)),
-            AsPixelCoords(Coord2(rect._bottomRight[0], rect._bottomRight[1] - cornerSize))
-        };
-        context->DrawLines(ProjectionMode::P2D, baseLines, dimof(baseLines), outlineColour);
-
-            ///////
-            //  Render the main internal area..
-        context->DrawTriangle(
-            ProjectionMode::P2D, 
-            AsPixelCoords(Coord2(rect._topLeft[0], rect._topLeft[1] + cornerSize)), backgroundColour,
-            AsPixelCoords(Coord2(rect._topLeft[0], rect._bottomRight[1] - cornerSize-1)), backgroundColour,
-            AsPixelCoords(Coord2(rect._bottomRight[0] - 1, rect._topLeft[1] + cornerSize)), backgroundColour );
-
-        context->DrawTriangle(
-            ProjectionMode::P2D, 
-            AsPixelCoords(Coord2(rect._bottomRight[0] - 1, rect._topLeft[1] + cornerSize)), backgroundColour,
-            AsPixelCoords(Coord2(rect._topLeft[0], rect._bottomRight[1] - cornerSize-1)), backgroundColour,
-            AsPixelCoords(Coord2(rect._bottomRight[0] - 1, rect._bottomRight[1] - cornerSize-1)), backgroundColour );
-
-            ///////
-            //  Render each corner as a set of dots
-            //      (and also render lines for the background in the curved part of the rectangle)
-            //      Note that this isn't a perfect circle drawing method, and might miss some cases
-            //      where we should draw 2 pixels on a single line
-        for (unsigned c=1; c<=unsigned(cornerSize); ++c) {
-            float y = 1.f - c/float(cornerSize);
-            float x = sqrt(1.0f-y*y);
-            Coord xCoord = Coord(x * cornerSize + 0.5f);
-            context->DrawLine(
-                ProjectionMode::P2D, 
-                AsPixelCoords(Coord2(rect._topLeft[0] + cornerSize - xCoord,         rect._topLeft[1] + c)), backgroundColour,
-                AsPixelCoords(Coord2(rect._bottomRight[0] - cornerSize + xCoord - 1, rect._topLeft[1] + c)), backgroundColour );
-            context->DrawLine(
-                ProjectionMode::P2D, 
-                AsPixelCoords(Coord2(rect._topLeft[0] + cornerSize - xCoord,         rect._bottomRight[1] - c)), backgroundColour,
-                AsPixelCoords(Coord2(rect._bottomRight[0] - cornerSize + xCoord - 1, rect._bottomRight[1] - c)), backgroundColour );
-        }
-
-        for (unsigned c=1; c<=unsigned(cornerSize); ++c) {
-            float y = 1.f - c/float(cornerSize);
-            float x = sqrt(1.0f-y*y);
-            Coord xCoord = Coord(x * cornerSize + 0.5f);
-
-            //  Outline is drawn as points around the curve
-            context->DrawPoint( ProjectionMode::P2D, AsPixelCoords(Coord2(rect._topLeft[0] + cornerSize - xCoord,      rect._topLeft[1] + c       )), outlineColour );
-            context->DrawPoint( ProjectionMode::P2D, AsPixelCoords(Coord2(rect._bottomRight[0] - cornerSize + xCoord,  rect._topLeft[1] + c       )), outlineColour );
-            context->DrawPoint( ProjectionMode::P2D, AsPixelCoords(Coord2(rect._topLeft[0] + cornerSize - xCoord,      rect._bottomRight[1] - c   )), outlineColour );
-            context->DrawPoint( ProjectionMode::P2D, AsPixelCoords(Coord2(rect._bottomRight[0] - cornerSize + xCoord,  rect._bottomRight[1] - c   )), outlineColour );
-        }
+        context->DrawQuad(
+            ProjectionMode::P2D,
+            AsPixelCoords(rect._topLeft),
+            AsPixelCoords(rect._bottomRight),
+            backgroundColour, outlineColour,
+            Float2(0.f, 0.f), Float2(1.f, 1.f), 
+            Float2(borderWidth, roundedProportion), Float2(borderWidth, roundedProportion),
+            "ui\\dd\\shapes.sh:Paint,Shape=RoundedRectShape,Fill=SolidFill,Outline=SolidFill");
     }
 
     void DrawRectangle(IOverlayContext* context, const Rect& rect, ColorB colour)
@@ -586,9 +436,6 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
     void DrawHistoryGraph(IOverlayContext* context, const Rect & rect, float values[], unsigned valuesCount, unsigned maxValuesCount, float& minValueHistory, float& maxValueHistory)
     {
-            //      Within the rectangle, draw a histogram graph showing the history of these values
-            //      see also IRenderer::Graph().. it's a graph drawing function built right into the renderer
-            //      object itself!
         context->DrawLine(
             ProjectionMode::P2D, 
             AsPixelCoords(Coord2(rect._topLeft[0],     rect._bottomRight[1])), HistoryGraphAxisColour,
@@ -770,23 +617,6 @@ namespace RenderOverlays { namespace DebuggingDisplay
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
-    void DrawGenericButton(IOverlayContext* context, const char text[], const Rect& rect, Interactables& interactables, InterfaceState& interfaceState)
-    {
-        const ColorB BkNormal            = RandomPaletteColorTable[5];
-        const ColorB BkMouseOver         = RandomPaletteColorTable[6];
-        const ColorB TextNormal          = ColorB(0xffffffff);
-        const ColorB OutlineMouseDown    = RandomPaletteColorTable[7];
-
-        InteractableId id = InteractableId_Make(text);
-        DrawRectangle(context, rect, 0.f, interfaceState.HasMouseOver(id)?BkMouseOver:BkNormal);
-        if (interfaceState.IsMouseButtonHeld()) {
-            DrawRectangleOutline(context, rect, 0.f, OutlineMouseDown);
-        }
-        DrawFormatText(context, rect, 0.f, 1.f, nullptr, TextNormal, "%s", text);
-        interactables.Register(Interactables::Widget(rect, id));
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////
     static void SetQuadPts(Float3 destination[], const Float3& A, const Float3& B, const Float3& C, const Float3& D)
     {
         destination[0] = A; destination[1] = B; destination[2] = C;
@@ -898,6 +728,44 @@ namespace RenderOverlays { namespace DebuggingDisplay
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
+    static float Saturate(float value) { return std::max(std::min(value, 1.f), 0.f); }
+
+    void HScrollBar_Draw(IOverlayContext* context, const ScrollBar::Coordinates& coordinates, float thumbPosition)
+    {
+        const auto r = coordinates.InteractableRect();
+        float t = Saturate((thumbPosition - coordinates.MinValue()) / float(coordinates.MaxValue() - coordinates.MinValue()));
+        context->DrawQuad(
+            ProjectionMode::P2D,
+            AsPixelCoords(Coord2(r._topLeft[0], r._topLeft[1])),
+            AsPixelCoords(Coord2(r._bottomRight[0], r._bottomRight[1])),
+            ColorB(0xffffffff), ColorB(0xffffffff),
+            Float2(0.f, 0.f), Float2(1.f, 1.f), Float2(t, 0.f), Float2(t, 0.f),
+            "Utility\\DebuggingShapes.psh:ScrollBarShader");
+    }
+
+    void HScrollBar_DrawLabel(IOverlayContext* context, const Rect& rect)
+    {
+        context->DrawQuad(
+            ProjectionMode::P2D,
+            AsPixelCoords(Coord2(rect._topLeft[0], rect._topLeft[1])),
+            AsPixelCoords(Coord2(rect._bottomRight[0], rect._bottomRight[1])),
+            ColorB(0xffffffff), ColorB(0xffffffff),
+            Float2(0.f, 0.f), Float2(1.f, 1.f), Float2(0.f, 0.f), Float2(0.f, 0.f),
+            "Utility\\DebuggingShapes.psh:TagShader");
+    }
+
+    void HScrollBar_DrawGridBackground(IOverlayContext* context, const Rect& rect)
+    {
+        context->DrawQuad(
+            ProjectionMode::P2D,
+            AsPixelCoords(Coord2(rect._topLeft[0], rect._topLeft[1])),
+            AsPixelCoords(Coord2(rect._bottomRight[0], rect._bottomRight[1])),
+            ColorB(0xffffffff), ColorB(0xffffffff),
+            Float2(0.f, 0.f), Float2(1.f, 1.f), Float2(0.f, 0.f), Float2(0.f, 0.f),
+            "Utility\\DebuggingShapes.psh:GridBackgroundShader");
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////
     IInputListener::~IInputListener() {}
 
     IWidget::~IWidget() {}
@@ -972,7 +840,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
             //      panel controls are only visible when we've got a mouse over...
         if (interfaceState.HasMouseOver(panelControlsId) || interfaceState.HasMouseOver(nameDropDownId)) {
-            DrawRoundedRectangle(context, buttonsRect);
+            DrawRoundedRectangle(context, buttonsRect, RoundedRectBackgroundColour, RoundedRectOutlineColour);
 
             Layout buttonsLayout(buttonsRect);
             buttonsLayout._paddingBetweenAllocations = buttonsLayout._paddingInternalBorder = buttonPadding;
@@ -1032,7 +900,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             interactables.Register(Interactables::Widget(backButtonRect, backButtonId));
             const bool mouseOver = interfaceState.HasMouseOver(backButtonId);
             if (mouseOver) {
-                DrawRoundedRectangle(context, backButtonRect, ~unsigned(0x0), RoundedRectBackgroundColour, RoundedRectOutlineColour);
+                DrawRoundedRectangle(context, backButtonRect, RoundedRectBackgroundColour, RoundedRectOutlineColour);
                 ColorB colour = ColorB(0x7fffffffu);
                 if (interfaceState.IsMouseButtonHeld()) {
                     colour = ColorB(0xffffffffu);

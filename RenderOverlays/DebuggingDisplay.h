@@ -190,17 +190,21 @@ namespace RenderOverlays { namespace DebuggingDisplay
     };
 
     ///////////////////////////////////////////////////////////////////////////////////
-    extern const ColorB   RoundedRectOutlineColour;
-    extern const ColorB   RoundedRectBackgroundColour;
     extern const ColorB   RandomPaletteColorTable[];
     extern const size_t   RandomPaletteColorTable_Size;
 
     void        DrawElipse(IOverlayContext* context, const Rect& rect, ColorB colour);
     void        DrawFilledElipse(IOverlayContext* context, const Rect& rect, ColorB colour);
 
-    unsigned    DefaultCornerSize(IOverlayContext* context, const Rect& rect);
-    void        DrawRoundedRectangle(IOverlayContext* context, const Rect& rect, Coord cornerSize = ~unsigned(0x0), ColorB backgroundColour = RoundedRectBackgroundColour, ColorB outlineColour = RoundedRectOutlineColour);
-    void        DrawRoundedRectangleOutline(IOverlayContext* context, const Rect & rect, unsigned width, ColorB colour, unsigned cornerSize = ~unsigned(0x0));
+    void DrawRoundedRectangle(
+        IOverlayContext* context, const Rect& rect, 
+        ColorB backgroundColour, ColorB outlineColour,
+        float borderWidth = 1.f, float roundedProportion = 1.f / 8.f);
+    void DrawRoundedRectangleOutline(
+        IOverlayContext* context, const Rect& rect, 
+        ColorB colour, 
+        float width, float roundedProportion = 1.f / 8.f);
+
     void        DrawRectangle(IOverlayContext* context, const Rect& rect, ColorB colour);
     void        DrawRectangle(IOverlayContext* context, const Rect& rect, float depth, ColorB colour);
     void        DrawRectangleOutline(IOverlayContext* context, const Rect& rect, float depth = 0.f, ColorB colour = ColorB(0xff000000));
@@ -217,13 +221,10 @@ namespace RenderOverlays { namespace DebuggingDisplay
     void        DrawTriangles(IOverlayContext* context, const Coord2 triangleCoordinates[], const ColorB triangleColours[], unsigned triangleCount);
     void        DrawLines(IOverlayContext* context, const Coord2 lineCoordinates[], const ColorB lineColours[], unsigned lineCount);
 
-    void        DrawGenericButton(const char text[], const Rect& rect, Interactables& interactables, InterfaceState& interfaceState);
-
     Float3      AsPixelCoords(Coord2 input);
     Float3      AsPixelCoords(Coord2 input, float depth);
     Float3      AsPixelCoords(Float2 input);
     Float3      AsPixelCoords(Float3 input);
-    unsigned    GetFrameID();
 
     ///////////////////////////////////////////////////////////////////////////////////
     typedef std::tuple<Float3, Float3>      AABoundingBox;
@@ -303,7 +304,10 @@ namespace RenderOverlays { namespace DebuggingDisplay
     };
 
     void DrawScrollBar(IOverlayContext* context, const ScrollBar::Coordinates& coordinates, float thumbPosition, ColorB fillColour = ColorB(0xffffffff), ColorB outlineColour = ColorB(0xff000000));
-    void DrawScrollBar_Old(IOverlayContext* context, const ScrollBar::Coordinates& coordinates, float thumbPosition, ColorB scrollBarColour, ColorB thumbColour);
+
+    void HScrollBar_Draw(IOverlayContext* context, const ScrollBar::Coordinates& coordinates, float thumbPosition);
+    void HScrollBar_DrawLabel(IOverlayContext* context, const Rect& rect);
+    void HScrollBar_DrawGridBackground(IOverlayContext* context, const Rect& rect);
 
     ///////////////////////////////////////////////////////////////////////////////////
     //          T A B L E S

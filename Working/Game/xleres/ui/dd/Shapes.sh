@@ -14,8 +14,9 @@ IBrush Outline;
 
 float4 Paint(
     float4 position	    : SV_Position,
-    float4 color		: COLOR0,
+    float4 color0		: COLOR0,
     float2 texCoord0	: TEXCOORD0,
+    float4 color1		: COLOR1,
     float2 texCoord1	: TEXCOORD1,
     nointerpolation float2 outputDimensions : OUTPUTDIMENSIONS) : SV_Target0
 {
@@ -29,8 +30,8 @@ float4 Paint(
         dhdp = ScreenSpaceDerivatives(Shape, coords, shapeDesc);
 
     ShapeResult shape = Shape.Calculate(coords, shapeDesc);
-    float4 fill = Fill.Calculate(coords, color, dhdp); fill.a *= shape._fill;
-    float4 outline = Outline.Calculate(coords, color, dhdp); outline.a *= shape._border;
+    float4 fill = Fill.Calculate(coords, color0, dhdp); fill.a *= shape._fill;
+    float4 outline = Outline.Calculate(coords, color1, dhdp); outline.a *= shape._border;
 
     float3 A = fill.rgb * fill.a;
     float a = 1.f - fill.a;

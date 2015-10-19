@@ -28,10 +28,10 @@ namespace RenderOverlays
 {
     using namespace RenderCore;
 
-    class Vertex_PC     { public: Float3 _position; unsigned _colour;                                           Vertex_PC(Float3 position, unsigned colour) : _position(position), _colour(colour) {};                                          static Metal::InputElementDesc inputElements[]; };
-    class Vertex_PCR    { public: Float3 _position; unsigned _colour; float _radius;                            Vertex_PCR(Float3 position, unsigned colour, float radius) : _position(position), _colour(colour), _radius(radius) {};          static Metal::InputElementDesc inputElements[]; };
-    class Vertex_PCT    { public: Float3 _position; unsigned _colour; Float2 _texCoord;                         Vertex_PCT(Float3 position, unsigned colour, Float2 texCoord) : _position(position), _colour(colour), _texCoord(texCoord) {};   static Metal::InputElementDesc inputElements[]; };
-    class Vertex_PCTT   { public: Float3 _position; unsigned _colour; Float2 _texCoord0; Float2 _texCoord1;    Vertex_PCTT(Float3 position, unsigned colour, Float2 texCoord0, Float2 texCoord1) : _position(position), _colour(colour), _texCoord0(texCoord0), _texCoord1(texCoord1) {};   static Metal::InputElementDesc inputElements[]; };
+    class Vertex_PC     { public: Float3 _position; unsigned _colour;                                                               Vertex_PC(Float3 position, unsigned colour) : _position(position), _colour(colour) {};                                          static Metal::InputElementDesc inputElements[]; };
+    class Vertex_PCR    { public: Float3 _position; unsigned _colour; float _radius;                                                Vertex_PCR(Float3 position, unsigned colour, float radius) : _position(position), _colour(colour), _radius(radius) {};          static Metal::InputElementDesc inputElements[]; };
+    class Vertex_PCT    { public: Float3 _position; unsigned _colour; Float2 _texCoord;                                             Vertex_PCT(Float3 position, unsigned colour, Float2 texCoord) : _position(position), _colour(colour), _texCoord(texCoord) {};   static Metal::InputElementDesc inputElements[]; };
+    class Vertex_PCCTT  { public: Float3 _position; unsigned _colour0; unsigned _colour1; Float2 _texCoord0; Float2 _texCoord1;     Vertex_PCCTT(Float3 position, unsigned colour0, unsigned colour1, Float2 texCoord0, Float2 texCoord1) : _position(position), _colour0(colour0), _colour1(colour1), _texCoord0(texCoord0), _texCoord1(texCoord1) {};   static Metal::InputElementDesc inputElements[]; };
 
     static inline unsigned  HardwareColor(ColorB input)
     {
@@ -58,10 +58,11 @@ namespace RenderOverlays
         Metal::InputElementDesc( "TEXCOORD",   0, Metal::NativeFormat::R32G32_FLOAT    )
     };
 
-    Metal::InputElementDesc Vertex_PCTT::inputElements[] = 
+    Metal::InputElementDesc Vertex_PCCTT::inputElements[] = 
     {
         Metal::InputElementDesc( "POSITION",   0, Metal::NativeFormat::R32G32B32_FLOAT ),
         Metal::InputElementDesc( "COLOR",      0, Metal::NativeFormat::R8G8B8A8_UNORM  ),
+        Metal::InputElementDesc( "COLOR",      1, Metal::NativeFormat::R8G8B8A8_UNORM  ),
         Metal::InputElementDesc( "TEXCOORD",   0, Metal::NativeFormat::R32G32_FLOAT    ),
         Metal::InputElementDesc( "TEXCOORD",   1, Metal::NativeFormat::R32G32_FLOAT    )
     };
@@ -69,7 +70,7 @@ namespace RenderOverlays
     template<> auto ImmediateOverlayContext::AsVertexFormat<Vertex_PC>() const -> VertexFormat      { return PC ; }
     template<> auto ImmediateOverlayContext::AsVertexFormat<Vertex_PCR>() const -> VertexFormat     { return PCR; }
     template<> auto ImmediateOverlayContext::AsVertexFormat<Vertex_PCT>() const -> VertexFormat     { return PCT; }
-    template<> auto ImmediateOverlayContext::AsVertexFormat<Vertex_PCTT>() const -> VertexFormat    { return PCTT; }
+    template<> auto ImmediateOverlayContext::AsVertexFormat<Vertex_PCCTT>() const -> VertexFormat   { return PCCTT; }
     
     void ImmediateOverlayContext::DrawPoint      (ProjectionMode::Enum proj, const Float3& v,     const ColorB& col,      uint8 size)
     {
@@ -206,24 +207,25 @@ namespace RenderOverlays
     void    ImmediateOverlayContext::DrawQuad(
         ProjectionMode::Enum proj,
         const Float3& mins, const Float3& maxs, 
-        ColorB color,
+        ColorB color0, ColorB color1,
         const Float2& minTex0, const Float2& maxTex0, 
         const Float2& minTex1, const Float2& maxTex1,
         const std::string& pixelShader)
     {
-        typedef Vertex_PCTT Vertex;
+        typedef Vertex_PCCTT Vertex;
         if ((_writePointer + 6 * sizeof(Vertex)) > _workingBufferSize) {
             Flush();
         }
 
         PushDrawCall(DrawCall(unsigned(Metal::Topology::TriangleList), _writePointer, 6, AsVertexFormat<Vertex>(), proj, pixelShader));
-        auto col = HardwareColor(color);
-        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col, Float2(minTex0[0], minTex0[1]), Float2(minTex1[0], minTex1[1])); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, Float2(minTex0[0], maxTex0[1]), Float2(minTex1[0], maxTex1[1])); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col, Float2(maxTex0[0], minTex0[1]), Float2(maxTex1[0], minTex1[1])); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col, Float2(maxTex0[0], minTex0[1]), Float2(maxTex1[0], minTex1[1])); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, Float2(minTex0[0], maxTex0[1]), Float2(minTex1[0], maxTex1[1])); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], maxs[1], mins[2]), col, Float2(maxTex0[0], maxTex0[1]), Float2(maxTex1[0], maxTex1[1])); _writePointer += sizeof(Vertex);
+        auto col0 = HardwareColor(color0);
+        auto col1 = HardwareColor(color1);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col0, col1, Float2(minTex0[0], minTex0[1]), Float2(minTex1[0], minTex1[1])); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col0, col1, Float2(minTex0[0], maxTex0[1]), Float2(minTex1[0], maxTex1[1])); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col0, col1, Float2(maxTex0[0], minTex0[1]), Float2(maxTex1[0], minTex1[1])); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col0, col1, Float2(maxTex0[0], minTex0[1]), Float2(maxTex1[0], minTex1[1])); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col0, col1, Float2(minTex0[0], maxTex0[1]), Float2(minTex1[0], maxTex1[1])); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], maxs[1], mins[2]), col0, col1, Float2(maxTex0[0], maxTex0[1]), Float2(maxTex1[0], maxTex1[1])); _writePointer += sizeof(Vertex);
     }
 
     void    ImmediateOverlayContext::DrawQuad(
@@ -253,19 +255,19 @@ namespace RenderOverlays
         const std::string& texture,
         ColorB color, const Float2& minTex0, const Float2& maxTex0)
     {
-        typedef Vertex_PCTT Vertex;
+        typedef Vertex_PCCTT Vertex;
         if ((_writePointer + 6 * sizeof(Vertex)) > _workingBufferSize) {
             Flush();
         }
 
         PushDrawCall(DrawCall(unsigned(Metal::Topology::TriangleList), _writePointer, 6, AsVertexFormat<Vertex>(), proj, std::string(), texture));
         auto col = HardwareColor(color);
-        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col, Float2(minTex0[0], minTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, Float2(minTex0[0], maxTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col, Float2(maxTex0[0], minTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col, Float2(maxTex0[0], minTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, Float2(minTex0[0], maxTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], maxs[1], mins[2]), col, Float2(maxTex0[0], maxTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col, col, Float2(minTex0[0], minTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, col, Float2(minTex0[0], maxTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col, col, Float2(maxTex0[0], minTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col, col, Float2(maxTex0[0], minTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, col, Float2(minTex0[0], maxTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], maxs[1], mins[2]), col, col, Float2(maxTex0[0], maxTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
     }
 
     static UiAlign AsUiAlign(TextAlignment::Enum alignment)
@@ -429,7 +431,7 @@ namespace RenderOverlays
         case PC:    return sizeof(Vertex_PC);
         case PCT:   return sizeof(Vertex_PCT);
         case PCR:   return sizeof(Vertex_PCR);
-        case PCTT:  return sizeof(Vertex_PCTT);
+        case PCCTT: return sizeof(Vertex_PCCTT);
         }
         return 0;
     }
@@ -509,10 +511,10 @@ namespace RenderOverlays
                 vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"game/xleres/basic2D.vsh:P2CT:vs_*":"game/xleres/basic3D.vsh:PCT:vs_*";
                 pixelShaderDefault = "game/xleres/basic.psh:PCT:ps_*";
                 inputLayout = std::make_pair(Vertex_PCT::inputElements, dimof(Vertex_PCT::inputElements));
-            } else if (desc._format == PCTT) {
-                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"game/xleres/basic2D.vsh:P2CTT:vs_*":"game/xleres/basic3D.vsh:PCTT:vs_*";
+            } else if (desc._format == PCCTT) {
+                vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"game/xleres/basic2D.vsh:P2CCTT:vs_*":"game/xleres/basic3D.vsh:PCCTT:vs_*";
                 pixelShaderDefault = "game/xleres/basic.psh:PCT:ps_*";
-                inputLayout = std::make_pair(Vertex_PCTT::inputElements, dimof(Vertex_PCTT::inputElements));
+                inputLayout = std::make_pair(Vertex_PCCTT::inputElements, dimof(Vertex_PCCTT::inputElements));
             }
 
         }
@@ -658,6 +660,14 @@ namespace RenderOverlays
 
     IOverlayContext::~IOverlayContext() {}
 
+
+
+    const ColorB ColorB::White(0xff, 0xff, 0xff, 0xff);
+    const ColorB ColorB::Black(0x0, 0x0, 0x0, 0xff);
+    const ColorB ColorB::Red(0xff, 0x0, 0x0, 0xff);
+    const ColorB ColorB::Green(0x0, 0xff, 0x0, 0xff);
+    const ColorB ColorB::Blue(0x0, 0x0, 0xff, 0xff);
+    const ColorB ColorB::Zero(0x0, 0x0, 0x0, 0x0);
 }
 
 namespace RenderCore { namespace Techniques

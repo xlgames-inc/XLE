@@ -102,6 +102,12 @@ namespace PlatformRig { namespace Overlays
         return std::string(buffer);
     }
 
+    static unsigned& GetFrameID() 
+    { 
+        static unsigned s_frameId = 0;
+        return s_frameId; 
+    }
+
     namespace GraphTabs
     {
         enum Enum

@@ -103,11 +103,11 @@ namespace PlatformRig { namespace Overlays
             ProjectionMode::P2D,
             AsPixelCoords(Coord2(middleX - barHalfWidth, rect._topLeft[1])),
             AsPixelCoords(Coord2(middleX + barHalfWidth, rect._bottomRight[1])),
-            highlighted ? settings._highlightBarColor0 : settings._barColor0,
+            highlighted ? settings._highlightBarColor0 : settings._barColor0, ColorB::White,
             Float2(0.f, 0.f), Float2(1.f, 1.f), 
             Float2(settings._barBorderSize, settings._barRoundedProportion), 
             Float2(settings._barBorderSize, settings._barRoundedProportion),
-            "ui\\dd\\shapes.sh:Paint,Shape=RoundedRectShape,Fill=CrossHatchFill,Outline=WhiteOutline");
+            "ui\\dd\\shapes.sh:Paint,Shape=RoundedRectShape,Fill=CrossHatchFill,Outline=SolidFill");
     }
 
     static const char g_InteractableIdTopPartStr[] = "CPUProfiler";

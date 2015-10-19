@@ -10,6 +10,7 @@ float4 ScrollBarShader(
 	float4 position	    : SV_Position,
 	float4 color		: COLOR0,
 	float2 texCoord0	: TEXCOORD0,
+	float4 color1		: COLOR1,
 	float2 texCoord1	: TEXCOORD1,
 	nointerpolation float2 outputDimensions : OUTPUTDIMENSIONS) : SV_Target0
 {
@@ -25,6 +26,7 @@ float4 TagShader(
 	float4 position	    : SV_Position,
 	float4 color		: COLOR0,
 	float2 texCoord0	: TEXCOORD0,
+	float4 color1		: COLOR1,
 	float2 texCoord1	: TEXCOORD1,
 	nointerpolation float2 outputDimensions : OUTPUTDIMENSIONS) : SV_Target0
 {
@@ -37,6 +39,7 @@ float4 SmallGridBackground(
 	float4 position	    : SV_Position,
 	float4 color		: COLOR0,
 	float2 texCoord0	: TEXCOORD0,
+	float4 color1		: COLOR1,
 	float2 texCoord1	: TEXCOORD1,
 	nointerpolation float2 outputDimensions : OUTPUTDIMENSIONS) : SV_Target0
 {
@@ -81,6 +84,7 @@ float4 GridBackgroundShader(
 	float4 position	    : SV_Position,
 	float4 color		: COLOR0,
 	float2 texCoord0	: TEXCOORD0,
+	float4 color1		: COLOR1,
 	float2 texCoord1	: TEXCOORD1,
 	nointerpolation float2 outputDimensions : OUTPUTDIMENSIONS) : SV_Target0
 {

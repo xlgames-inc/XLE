@@ -194,7 +194,7 @@ namespace PlatformRig { namespace Overlays
                     break;
                 }
 
-                DrawRoundedRectangle(context, sectionRect);
+                DrawRoundedRectangle(context, sectionRect, ColorB(180,200,255,128), ColorB(255,255,255,128));
 
                 Layout sectionLayout(sectionRect);
                 Rect labelRect = sectionLayout.AllocateFullHeightFraction( .25f );

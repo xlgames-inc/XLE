@@ -37,7 +37,7 @@ namespace RenderOverlays
 
         void    DrawQuad       (ProjectionMode::Enum proj, 
                                 const Float3& mins, const Float3& maxs, 
-                                ColorB color,
+                                ColorB color0, ColorB color1,
                                 const Float2& minTex0, const Float2& maxTex0, 
                                 const Float2& minTex1, const Float2& maxTex1,
                                 const std::string& pixelShader);
@@ -89,7 +89,7 @@ namespace RenderOverlays
 
         RenderCore::Techniques::ProjectionDesc _projDesc;
 
-        enum VertexFormat { PC, PCT, PCR, PCTT };
+        enum VertexFormat { PC, PCT, PCR, PCCTT };
         class DrawCall
         {
         public:
