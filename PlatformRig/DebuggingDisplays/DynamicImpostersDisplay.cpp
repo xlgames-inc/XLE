@@ -43,34 +43,34 @@ namespace PlatformRig { namespace Overlays
         DrawFormatText(
             context, 
             statsArea.AllocateFullWidth(lineHeight),
-            1.f, nullptr, ColorB(0xffffffff),
+            nullptr, ColorB(0xffffffff),
             "SpriteCount: %i", metrics._spriteCount);
         statsArea.AllocateFullWidth(lineHeight);
         DrawFormatText(
             context, 
             statsArea.AllocateFullWidth(lineHeight),
-            1.f, nullptr, ColorB(0xffffffff),
+            nullptr, ColorB(0xffffffff),
             "Pixels allocated: %.1f%%", 100.f * metrics._pixelsAllocated / float(metrics._pixelsTotal));
         DrawFormatText(
             context, 
             statsArea.AllocateFullWidth(lineHeight),
-            1.f, nullptr, ColorB(0xffffffff),
+            nullptr, ColorB(0xffffffff),
             "Largest free 0: (%i, %i)", metrics._largestFreeBlockArea[0], metrics._largestFreeBlockArea[1]);
         DrawFormatText(
             context, 
             statsArea.AllocateFullWidth(lineHeight),
-            1.f, nullptr, ColorB(0xffffffff),
+            nullptr, ColorB(0xffffffff),
             "Largest free 1: (%i, %i)", metrics._largestFreeBlockSide[0], metrics._largestFreeBlockSide[1]);
         DrawFormatText(
             context, 
             statsArea.AllocateFullWidth(lineHeight),
-            1.f, nullptr, ColorB(0xffffffff),
+            nullptr, ColorB(0xffffffff),
             "Overflow: (%i), Pending: (%i)", metrics._overflowCounter, metrics._pendingCounter);
         statsArea.AllocateFullWidth(lineHeight);
         DrawFormatText(
             context, 
             statsArea.AllocateFullWidth(lineHeight),
-            1.f, nullptr, ColorB(0xffffffff),
+            nullptr, ColorB(0xffffffff),
             "Bytes/pixel (%i) in (%i) layers", metrics._bytesPerPixel, metrics._layerCount);
         
         {

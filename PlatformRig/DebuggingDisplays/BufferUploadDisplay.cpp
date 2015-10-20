@@ -54,8 +54,6 @@ namespace PlatformRig { namespace Overlays
         _mostRecentGPUCost = 0.f;
         _mostRecentGPUFrameId = 0;
         _lockedFrameId = ~unsigned(0x0);
-        _drawHistory = false;
-        _openGraphMenu = 0;
 
         auto timerFrequency = GetPerformanceCounterFrequency();
         _reciprocalTimerFrequency = 1./double(timerFrequency);
@@ -81,30 +79,40 @@ namespace PlatformRig { namespace Overlays
         }
     };
 
-#if 0
+    static const char* TypeString(const BufferUploads::BufferDesc& desc)
+    {
+        using namespace BufferUploads;
+        if (desc._type == BufferDesc::Type::Texture) {
+            const TextureDesc& tDesc = desc._textureDesc;
+            switch (tDesc._dimensionality) {
+            case TextureDesc::Dimensionality::T1D: return "Tex1D";
+            case TextureDesc::Dimensionality::T2D: return "Tex2D";
+            case TextureDesc::Dimensionality::T3D: return "Tex3D";
+            case TextureDesc::Dimensionality::CubeMap: return "TexCube";
+            }
+        } else if (desc._type == BufferDesc::Type::LinearBuffer) {
+            if (desc._bindFlags & BindFlag::VertexBuffer) return "VB";
+            else if (desc._bindFlags & BindFlag::IndexBuffer) return "IB";
+        }
+        return "Unknown";
+    }
+
     static std::string BuildDescription(const BufferUploads::BufferDesc& desc)
     {
         using namespace BufferUploads;
         char buffer[2048];
         if (desc._type == BufferDesc::Type::Texture) {
             const TextureDesc& tDesc = desc._textureDesc;
-            xl_snprintf(buffer, dimof(buffer), "[%s] Tex(%s) (%4ix%4i) mips:(%i)", 
-                desc._name, (tDesc._dimensionality==TextureDesc::Dimensionality::T2D)?"  2D":"Cube",
-                tDesc._width, tDesc._height, tDesc._mipCount);
+            xl_snprintf(buffer, dimof(buffer), "(%4ix%4i) mips:(%i), array:(%i)", 
+                tDesc._width, tDesc._height, tDesc._mipCount, tDesc._arrayCount);
         } else if (desc._type == BufferDesc::Type::LinearBuffer) {
-            if (desc._bindFlags & BindFlag::VertexBuffer) {
-                xl_snprintf(buffer, dimof(buffer), "[%s] VB (%6.2fkb)", 
-                    desc._name, desc._linearBufferDesc._sizeInBytes/1024.f);
-            } else if (desc._bindFlags & BindFlag::IndexBuffer) {
-                xl_snprintf(buffer, dimof(buffer), "[%s] IB (%6.2fkb)", 
-                    desc._name, desc._linearBufferDesc._sizeInBytes/1024.f);
-            }
+            xl_snprintf(buffer, dimof(buffer), "%6.2fkb", 
+                desc._linearBufferDesc._sizeInBytes/1024.f);
         } else {
-            xl_snprintf(buffer, dimof(buffer), "Unknown");
+            buffer[0] = '\0';
         }
         return std::string(buffer);
     }
-#endif
 
     static unsigned& GetFrameID() 
     { 
@@ -121,10 +129,10 @@ namespace PlatformRig { namespace Overlays
             Latency, PendingBuffers, CommandListCount, 
             GPUCost, GPUBytesPerSecond, AveGPUCost, 
             ThreadActivity, BatchedCopy, FramePriorityStall,
-            Statistics
+            Statistics, RecentRetirements
         };
         static const char* Names[] = {
-            "Uploads (MB)", "Creates (MB)", "Creates (count)", "Device creates (count)", "Latency (ms)", "Pending Buffers (MB)", "Command List Count", "GPU Cost", "GPU bytes/second", "Ave GPU cost", "Thread Activity", "Batched copy", "Frame Priority Stalls", "Statistics"
+            "Uploads (MB)", "Creates (MB)", "Creates (count)", "Device creates (count)", "Latency (ms)", "Pending Buffers (MB)", "Command List Count", "GPU Cost", "GPU bytes/second", "Ave GPU cost", "Thread Activity", "Batched copy", "Frame Priority Stalls", "Statistics", "Recent Retirements"
         };
 
         std::pair<const char*, std::vector<Enum>> Groups[] = 
@@ -133,7 +141,7 @@ namespace PlatformRig { namespace Overlays
             std::pair<const char*, std::vector<Enum>>("Creations",  { CreatesMB, CreatesCount, DeviceCreatesCount }),
             std::pair<const char*, std::vector<Enum>>("GPU",        { GPUCost, GPUBytesPerSecond, AveGPUCost }),
             std::pair<const char*, std::vector<Enum>>("Threading",  { Latency, PendingBuffers, CommandListCount, ThreadActivity, BatchedCopy, FramePriorityStall }),
-            std::pair<const char*, std::vector<Enum>>("Extra",      { Statistics }),
+            std::pair<const char*, std::vector<Enum>>("Extra",      { Statistics, RecentRetirements }),
         };
     }
 
@@ -205,7 +213,7 @@ namespace PlatformRig { namespace Overlays
             auto rect = layout.AllocateFullHeight(150);
 
             auto hash = Hash64(g.first);
-            if (interfaceState.HasMouseOver(hash) || _openGraphMenu == hash) {
+            if (interfaceState.HasMouseOver(hash)) {
                 DrawRectangle(context, rect, mouseOver);
                 DrawTopLeftRight(context, rect, ColorB::White);
                 dropDown = &g.second;
@@ -223,7 +231,7 @@ namespace PlatformRig { namespace Overlays
                 *RenderCore::Techniques::FindCachedBox2<FontBox>()._font,
                 DrawTextOptions(false, true));
             context->DrawText(
-                AsPixelCoords(rect), 1.f, &style, text, 
+                AsPixelCoords(rect), &style, text, 
                 TextAlignment::Center, g.first, nullptr);
 
             interactables.Register(Interactables::Widget(rect, hash));
@@ -248,7 +256,7 @@ namespace PlatformRig { namespace Overlays
                     *RenderCore::Techniques::FindCachedBox2<FontBox>()._smallFont,
                     DrawTextOptions(false, true));
                 context->DrawText(
-                    AsPixelCoords(rect), 1.f, &style, col, 
+                    AsPixelCoords(rect), &style, col, 
                     TextAlignment::Left, name, nullptr);
 
                 if ((c+1) != dropDown->size())
@@ -359,19 +367,19 @@ namespace PlatformRig { namespace Overlays
 
             if (graphCount == UploadDataType::Max) {
                 context->DrawText(
-                    AsPixelCoords(labelRect), 1.5f, nullptr, ColorB(0xffffffffu), 
+                    AsPixelCoords(labelRect), nullptr, ColorB(0xffffffffu), 
                     TextAlignment::Left,
                     StringMeld<256>() << GraphTabs::Names[_graphsMode] << " (" << AsString(UploadDataType::Enum(c)) << ")", nullptr);
             } else {
                 context->DrawText(
-                    AsPixelCoords(labelRect), 1.5f, nullptr, ColorB(0xffffffffu), 
+                    AsPixelCoords(labelRect), nullptr, ColorB(0xffffffffu), 
                     TextAlignment::Left,
                     GraphTabs::Names[_graphsMode], nullptr);
             }
 
 			if (valuesCount > 0) {
 				float mostRecentValue = valuesBuffer[dimof(valuesBuffer) - valuesCount];
-				context->DrawText(AsPixelCoords(historyRect), 1.f, nullptr, ColorB(0xffffffffu), 
+				context->DrawText(AsPixelCoords(historyRect), nullptr, ColorB(0xffffffffu), 
                     TextAlignment::Top,
                     XlDynFormatString("%6.3f", mostRecentValue).c_str(), nullptr);
 			}
@@ -436,15 +444,12 @@ namespace PlatformRig { namespace Overlays
     {
         using namespace BufferUploads;
 
-            //      Middle part is some written statics
         GPUMetrics gpuMetrics = CalculateGPUMetrics();
 
             //////
-        TimeMarker transactionLatencySum = 0;
-        unsigned transactionLatencyCount = 0;
-        TimeMarker commandListLatencySum = 0;
-        unsigned commandListLatencyCount = 0;
-        for (   std::deque<CommandListMetrics>::const_reverse_iterator i =_recentHistory.rbegin();i!=_recentHistory.rend(); ++i) {
+        TimeMarker transactionLatencySum = 0, commandListLatencySum = 0;
+        unsigned transactionLatencyCount = 0, commandListLatencyCount = 0;
+        for (auto i =_recentHistory.rbegin();i!=_recentHistory.rend(); ++i) {
             for (unsigned i2=0; i2<i->RetirementCount(); ++i2) {
                 const AssemblyLineRetirement& retire = i->Retirement(i2);
                 transactionLatencySum += retire._retirementTime - retire._requestTime;
@@ -478,7 +483,7 @@ namespace PlatformRig { namespace Overlays
         const auto lineHeight = 20u;
         const ColorB headerColor = ColorB::Blue;
         std::pair<std::string, unsigned> headers0[] = { std::make_pair("Name", 300), std::make_pair("Value", 3000) };
-        std::pair<std::string, unsigned> headers1[] = { std::make_pair("Name", 150), std::make_pair("Tex", 300), std::make_pair("VB", 300), std::make_pair("IB", 300) };
+        std::pair<std::string, unsigned> headers1[] = { std::make_pair("Name", 300), std::make_pair("Tex", 150), std::make_pair("VB", 150), std::make_pair("IB", 300) };
             
         DrawTableHeaders(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers0), headerColor, &interactables);
         DrawTableEntry(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers0), 
@@ -548,36 +553,39 @@ namespace PlatformRig { namespace Overlays
                 std::make_pair("Tex", XlDynFormatString("%8.3f MB", _accumulatedUploadBytes[UploadDataType::Texture] / (1024.f*1024.f))),
                 std::make_pair("VB", XlDynFormatString("%8.3f MB", _accumulatedUploadBytes[UploadDataType::Vertex] / (1024.f*1024.f))),
                 std::make_pair("IB", XlDynFormatString("%8.3f MB", _accumulatedUploadBytes[UploadDataType::Index] / (1024.f*1024.f))) });
+    }
 
-#if 0
-        DrawFormatText(context, columnZero.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Ave latency: (%6.2f)ms", averageTransactionLatency * 1000.f);
-        DrawFormatText(context, columnZero.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Command list latency: (%6.2f)ms", averageCommandListLatency * 1000.f);
-        DrawFormatText(context, columnZero.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "GPU theoretical MB/second: (%6.2f)MB", gpuMetrics._slidingAverageBytesPerSecond/float(1024.f*1024.f));
-        DrawFormatText(context, columnZero.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "GPU ave cost: (%6.2f)ms", gpuMetrics._slidingAverageCostMS);
+    void    BufferUploadDisplay::DrawRecentRetirements(
+        IOverlayContext* context, Layout& layout, 
+        Interactables& interactables, InterfaceState& interfaceState)
+    {
+        const auto lineHeight = 20u;
+        const ColorB headerColor = ColorB::Blue;
+        std::pair<std::string, unsigned> headers[] = { std::make_pair("Name", 500), std::make_pair("Latency (ms)", 160), std::make_pair("Type", 80), std::make_pair("Description", 3000) };
+            
+        DrawTableHeaders(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers), headerColor, &interactables);
 
-        DrawFormatText(context, columnZero.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Creates: T(%i)V(%i)I(%i)", 
-            mostRecentResults._countCreations[UploadDataType::Texture], mostRecentResults._countCreations[UploadDataType::Vertex], mostRecentResults._countCreations[UploadDataType::Index]);
+        unsigned frameCounter = 0;
+        for (auto i=_frames.rbegin(); i!=_frames.rend(); ++i, ++frameCounter) {
+            if (_lockedFrameId != ~unsigned(0x0) && i->_frameId != _lockedFrameId) {
+                continue;
+            }
+            for (int cl=int(i->_commandListEnd)-1; cl>=int(i->_commandListStart); --cl) {
+                const auto& commandList = _recentHistory[cl];
+                for (unsigned i2=0; i2<commandList.RetirementCount(); ++i2) {
+                    Rect rect = layout.AllocateFullWidth(lineHeight);
+                    if (!(IsGood(rect) && rect._bottomRight[1] < layout._maximumSize._bottomRight[1] && rect._topLeft[1] >= layout._maximumSize._topLeft[1]))
+                        break;
 
-            //////
-        DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "AccumulatedValues");
-        DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Creates: (T%i) (V%i) (I%i)", 
-            _accumulatedCreateCount[UploadDataType::Texture], _accumulatedCreateCount[UploadDataType::Vertex], _accumulatedCreateCount[UploadDataType::Index]);
-        DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Creates (MB): (T%8.3f) (V%8.3f) (I%8.3f)", 
-            _accumulatedCreateBytes[UploadDataType::Texture] / (1024.f*1024.f), _accumulatedCreateBytes[UploadDataType::Vertex] / (1024.f*1024.f), _accumulatedCreateBytes[UploadDataType::Index] / (1024.f*1024.f));
-        DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Uploads: (T%i) (V%i) (I%i)", 
-            _accumulatedUploadCount[UploadDataType::Texture], _accumulatedUploadCount[UploadDataType::Vertex], _accumulatedUploadCount[UploadDataType::Index]);
-        DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Uploads (MB): (T%8.3f) (V%8.3f) (I%8.3f)", 
-            _accumulatedUploadBytes[UploadDataType::Texture] / (1024.f*1024.f), _accumulatedUploadBytes[UploadDataType::Vertex] / (1024.f*1024.f), _accumulatedUploadBytes[UploadDataType::Index] / (1024.f*1024.f));
-        DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Thread activity (%6.3f)%% (%i)", 
-            (float(processingTimeSum))?(100.f * (1.0f-(waitTimeSum/float(processingTimeSum)))):0.f, wakeCountSum);
-
-
-            //////
-        DrawFormatText(context, columnTwo.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Pending creates: (%i/%i)", mostRecentResults._assemblyLineMetrics._queuedCreates, mostRecentResults._assemblyLineMetrics._queuedPeakCreates);
-        DrawFormatText(context, columnTwo.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Pending uploads: (%i/%i)", mostRecentResults._assemblyLineMetrics._queuedUploads, mostRecentResults._assemblyLineMetrics._queuedPeakUploads);
-        DrawFormatText(context, columnTwo.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Pending staging creates: (%i/%i)", mostRecentResults._assemblyLineMetrics._queuedStagingCreates, mostRecentResults._assemblyLineMetrics._queuedPeakStagingCreates);
-        DrawFormatText(context, columnTwo.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Transaction count: (%i/%i/%i)", mostRecentResults._assemblyLineMetrics._transactionCount, mostRecentResults._assemblyLineMetrics._temporaryTransactionsAllocated, mostRecentResults._assemblyLineMetrics._longTermTransactionsAllocated);
-#endif
+                    const auto& retire = commandList.Retirement(i2);
+                    DrawTableEntry(context, rect, MakeIteratorRange(headers), 
+                        {   std::make_pair("Name", retire._desc._name), 
+                            std::make_pair("Latency (ms)", XlDynFormatString("%6.2f", float(double(retire._retirementTime-retire._requestTime)*_reciprocalTimerFrequency*1000.))),
+                            std::make_pair("Type", TypeString(retire._desc)),
+                            std::make_pair("Description", BuildDescription(retire._desc)) });
+                }
+            }
+        }
     }
 
     void    BufferUploadDisplay::Render(IOverlayContext* context, Layout& layout, Interactables& interactables, InterfaceState& interfaceState)
@@ -622,159 +630,15 @@ namespace PlatformRig { namespace Overlays
         layout.AllocateFullWidthFraction(0.01f);
         Layout menuBar = layout.AllocateFullWidthFraction(.125f);
         Layout displayArea = layout.AllocateFullWidthFraction(1.f);
-        // Rect topThird    = layout.AllocateFullWidthFraction(.25f+(_drawHistory?0.f:.4f));
-        // Rect middleThird = layout.AllocateFullWidthFraction(.1f);
-        // Rect bottomThird = layout.AllocateFullWidthFraction(.1f+(_drawHistory?.4f:.0f));
 
         if (_graphsMode == GraphTabs::Statistics) {
             DrawStatistics(context, displayArea, interactables, interfaceState, mostRecentResults);
+        } else if (_graphsMode == GraphTabs::RecentRetirements) {
+            DrawRecentRetirements(context, displayArea, interactables, interfaceState);
         } else {
             DrawDisplay(context, displayArea, interactables, interfaceState);
         }
         DrawMenuBar(context, menuBar, interactables, interfaceState);
-
-#if 0
-            //      Top part is a few graphs of the bytes uploaded/frame (or other statistics)
-        {
-            Layout topArea(topThird);
-            unsigned graphCount = (_graphsMode<=GraphTabs::PendingBuffers)?UploadDataType::Max:1;
-            for (unsigned c=0; c<graphCount; ++c) {
-                Rect graphArea = topArea.AllocateFullHeightFraction(1.f/float(graphCount));
-                DrawRectangleOutline(context, graphArea);
-
-                //  Copy the recent history into an array of floats, so we can graph the results...
-                float valuesBuffer[s_MaxGraphSegments];
-                size_t valuesCount = 0;
-                
-
-                Rect sectionNameRect( 
-                    Coord2(graphArea._topLeft[0], graphArea._topLeft[1]),
-                    Coord2(graphArea._bottomRight[0], LinearInterpolate(graphArea._topLeft[1], graphArea._bottomRight[1], 0.2f)) );
-                if (graphCount == UploadDataType::Max) {
-                    DrawFormatText(
-                        context, sectionNameRect, 2.5f, nullptr, ColorB(0xffffffffu), "%s (%s)", 
-                        AsString(UploadDataType::Enum(c)), GraphTabs::Names[_graphsMode]);
-                } else {
-                    DrawText(context, sectionNameRect, 2.5f, nullptr, ColorB(0xffffffffu), GraphTabs::Names[_graphsMode]);
-                }
-
-				if (valuesCount > 0) {
-					float mostRecentValue = valuesBuffer[dimof(valuesBuffer) - valuesCount];
-					Rect valueRect(
-						Coord2(graphArea._topLeft[0], graphArea._topLeft[1]),
-						Coord2(sectionNameRect._bottomRight[0], LinearInterpolate(graphArea._topLeft[1], graphArea._bottomRight[1], 0.4f)));
-					DrawFormatText(context, valueRect, 2.f, nullptr, ColorB(0xffffffffu), "%6.3f", mostRecentValue);
-				}
-
-                Rect realGraphRect(
-                    Coord2(graphArea._topLeft[0], LinearInterpolate(graphArea._topLeft[1], graphArea._bottomRight[1], 0.333f)),
-                    Coord2(graphArea._bottomRight[0], graphArea._bottomRight[1]) );
-
-                DrawHistoryGraph(   context, realGraphRect, &valuesBuffer[dimof(valuesBuffer)-valuesCount], (unsigned)valuesCount, (unsigned)dimof(valuesBuffer), 
-                                    _graphMinValueHistory, _graphMaxValueHistory);
-
-                if (_graphsMode == GraphTabs::GPUCost) {
-                        // GPU cost graph should also have the total bytes uploaded draw in
-                    size_t valuesCount = 0;
-                    for (std::deque<FrameRecord>::const_reverse_iterator i =_frames.rbegin(); i!=_frames.rend(); ++i) {
-                        if (valuesCount>=dimof(valuesBuffer)) {
-                            break;
-                        }
-                        ++valuesCount;
-                        valuesBuffer[dimof(valuesBuffer)-valuesCount] = 0;
-                        for (unsigned cl=i->_commandListStart; cl<i->_commandListEnd; ++cl) {
-                            BufferUploads::CommandListMetrics& commandList = _recentHistory[cl];
-                            for (unsigned c2=0; c2<UploadDataType::Max; ++c2) {
-                                valuesBuffer[dimof(valuesBuffer)-valuesCount] += (commandList._bytesUploaded[c2] + commandList._bytesUploadedDuringCreation[c2]) / (1024.f*1024.f);
-                            }
-                        }
-                    }
-
-                    DrawHistoryGraph_ExtraLine( context, realGraphRect, &valuesBuffer[dimof(valuesBuffer)-valuesCount], (unsigned)valuesCount, (unsigned)dimof(valuesBuffer), 
-                                                _graphMinValueHistory, _graphMaxValueHistory);
-                }
-
-                {
-                    const InteractableId framePicker = InteractableId_Make("FramePicker");
-                    size_t newValuesCount = 0;
-                    for (std::deque<FrameRecord>::const_reverse_iterator i =_frames.rbegin(); i!=_frames.rend(); ++i) {
-                        if (newValuesCount>=dimof(valuesBuffer)) {
-                            break;
-                        }
-                        int graphPartIndex = int(dimof(valuesBuffer)-newValuesCount-1);
-                        Rect graphPart( Coord2(LinearInterpolate(graphArea._topLeft[0], graphArea._bottomRight[0], (graphPartIndex)/float(dimof(valuesBuffer))), graphArea._topLeft[1]),
-                                        Coord2(LinearInterpolate(graphArea._topLeft[0], graphArea._bottomRight[0], (graphPartIndex+1)/float(dimof(valuesBuffer))), graphArea._bottomRight[1]));
-                        InteractableId id = framePicker + newValuesCount;
-                        if (interfaceState.HasMouseOver(id)) {
-                            DrawRectangle(context, graphPart, ColorB(0x3f7f7f7fu));
-                        } else if (i->_frameId == _lockedFrameId) {
-                            DrawRectangle(context, graphPart, ColorB(0x3f7f3f7fu));
-                        }
-                        interactables.Register(Interactables::Widget(graphPart, id));
-                        ++newValuesCount;
-                    }
-                }
-            }
-        }
-
-            //      a few buttons in the middle to control the data in the graphs
-        // {
-        //     Layout buttonsArea(buttons);
-        //     for (unsigned c=0; c<dimof(GraphTabs::Names); ++c) {
-        //         Rect buttonRect = buttonsArea.AllocateFullHeightFraction( 1.f/float(dimof(GraphTabs::Names)) );
-        //         DrawButton(context, GraphTabs::Names[c], buttonRect, interactables, interfaceState);
-        //     }
-        // }
-
-
-
-
-            //      Bottom part is a list of recent retirements
-        {
-            Layout bottomArea(bottomThird);
-            Layout columns[4] = {
-                Layout(bottomArea.AllocateFullHeightFraction(1.0f/float(dimof(columns)))),
-                Layout(bottomArea.AllocateFullHeightFraction(1.0f/float(dimof(columns)))),
-                Layout(bottomArea.AllocateFullHeightFraction(1.0f/float(dimof(columns)))),
-                Layout(bottomArea.AllocateFullHeightFraction(1.0f/float(dimof(columns))))
-            };
-            for (unsigned c=0; c<dimof(columns); ++c) {
-                DrawRectangleOutline(context, columns[c].GetMaximumSize());
-            }
-            {
-                Rect buttonRect = columns[0].AllocateFullWidth(rowHeight);
-                InteractableId id = InteractableId_Make("ShowUploadHistory");
-                DrawText(context, buttonRect, 1.25f, nullptr, interfaceState.HasMouseOver(id)?ColorB(0xff000000u):ColorB(0xffffffffu), _drawHistory?"Hide":"Show");
-                interactables.Register(Interactables::Widget(buttonRect, id));
-            }
-            if (_drawHistory) {
-                unsigned columnIndex = 0;
-                unsigned frameCounter = 0;
-                for (std::deque<FrameRecord>::const_reverse_iterator i=_frames.rbegin(); (i!=_frames.rend())&&(columnIndex<dimof(columns)); ++i, ++frameCounter) {
-                    if (_lockedFrameId != ~unsigned(0x0) && i->_frameId != _lockedFrameId) {
-                        continue;
-                    }
-                    for (unsigned cl=i->_commandListEnd-1; (cl>=i->_commandListStart)&&(columnIndex<dimof(columns)); --cl) {
-                        const BufferUploads::CommandListMetrics& commandList = _recentHistory[cl];
-                        for (unsigned i2=0; i2<commandList.RetirementCount(); ++i2) {
-                            Rect rect = columns[columnIndex].AllocateFullWidth(rowHeight);
-                            if (!(IsGood(rect) && rect._bottomRight[1] < bottomThird._bottomRight[1] && rect._topLeft[1] >= bottomThird._topLeft[1])) {
-                                ++columnIndex;
-                                if (columnIndex >= dimof(columns)) {
-                                    break;
-                                }
-                                rect = columns[columnIndex].AllocateFullWidth(rowHeight);
-                            }
-
-                            const AssemblyLineRetirement& retire = commandList.Retirement(i2);
-                            DrawFormatText(context, rect, 1.f, nullptr, (frameCounter&0x1)?ColorB(0xff7f7fffu):ColorB(0xffffffffu), "%s Latency:%6.2f", 
-                                BuildDescription(retire._desc).c_str(), float(double(retire._retirementTime-retire._requestTime)*_reciprocalTimerFrequency*1000.));
-                        }
-                    }
-                }
-            }
-        }
-#endif
     }
 
     bool    BufferUploadDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
@@ -788,11 +652,6 @@ namespace PlatformRig { namespace Overlays
                         _graphMinValueHistory = _graphMaxValueHistory = 0.f;
                         return true;
                     }
-                }
-
-                if (topMostWidget == InteractableId_Make("ShowUploadHistory")) {
-                    _drawHistory = !_drawHistory;
-                    return true;
                 }
 
                 const InteractableId framePicker = InteractableId_Make("FramePicker");
@@ -1036,18 +895,18 @@ namespace PlatformRig { namespace Overlays
                             const BufferDesc& desc = i->_desc;
                             if (desc._type == BufferDesc::Type::LinearBuffer) {
                                 if (desc._bindFlags & BindFlag::IndexBuffer) {
-                                    DrawFormatText(context, textRect, 1.f, nullptr, textColour, "IB %6.2fk", desc._linearBufferDesc._sizeInBytes / 1024.f);
+                                    DrawFormatText(context, textRect, nullptr, textColour, "IB %6.2fk", desc._linearBufferDesc._sizeInBytes / 1024.f);
                                 } else if (desc._bindFlags & BindFlag::VertexBuffer) {
-                                    DrawFormatText(context, textRect, 1.f, nullptr, textColour, "VB %6.2fk", desc._linearBufferDesc._sizeInBytes / 1024.f);
+                                    DrawFormatText(context, textRect, nullptr, textColour, "VB %6.2fk", desc._linearBufferDesc._sizeInBytes / 1024.f);
                                 } else {
-                                    DrawFormatText(context, textRect, 1.f, nullptr, textColour, "B %6.2fk", desc._linearBufferDesc._sizeInBytes / 1024.f);
+                                    DrawFormatText(context, textRect, nullptr, textColour, "B %6.2fk", desc._linearBufferDesc._sizeInBytes / 1024.f);
                                 }
                             } else if (desc._type == BufferDesc::Type::Texture) {
-                                DrawFormatText(context, textRect, 1.f, nullptr, textColour, "Tex %ix%i", desc._textureDesc._width, desc._textureDesc._height);
+                                DrawFormatText(context, textRect, nullptr, textColour, "Tex %ix%i", desc._textureDesc._width, desc._textureDesc._height);
                             }
                             textRect._topLeft[1] += 16; textRect._bottomRight[1] += 16;
                             if (i->_currentSize) {
-                                DrawFormatText(context, textRect, 1.f, nullptr, textColour, "%i (%6.3fMB)", 
+                                DrawFormatText(context, textRect, nullptr, textColour, "%i (%6.3fMB)", 
                                     i->_currentSize, (i->_currentSize * manager->ByteCount(i->_desc)) / (1024.f*1024.f));
                             }
                         }
@@ -1064,7 +923,7 @@ namespace PlatformRig { namespace Overlays
                 if (detailsMetrics) {
                     _detailsHistory.push_back(*detailsMetrics);
                     Rect textRect = layout.AllocateFullWidth(32);
-                    DrawFormatText(context, textRect, 2.f, nullptr, textColour, "Real size: %6.2fMB, Created size: %6.2fMB, Padding overhead: %6.2fMB, Count: %i",
+                    DrawFormatText(context, textRect, nullptr, textColour, "Real size: %6.2fMB, Created size: %6.2fMB, Padding overhead: %6.2fMB, Count: %i",
                         detailsMetrics->_totalRealSize/(1024.f*1024.f), detailsMetrics->_totalCreateSize/(1024.f*1024.f), (detailsMetrics->_totalCreateSize-detailsMetrics->_totalRealSize)/(1024.f*1024.f),
                         detailsMetrics->_totalCreateCount);
 
@@ -1135,11 +994,11 @@ namespace PlatformRig { namespace Overlays
             }
 
             {
-                DrawFormatText(context, layout.AllocateFullWidth(16), 1.5f, nullptr, textColour, "Heap count: %i / Total allocated: %7.3fMb / Total unallocated: %7.3fMb",
+                DrawFormatText(context, layout.AllocateFullWidth(16), nullptr, textColour, "Heap count: %i / Total allocated: %7.3fMb / Total unallocated: %7.3fMb",
                     metrics._heaps.size(), allocatedSpace/(1024.f*1024.f), unallocatedSpace/(1024.f*1024.f));
-                DrawFormatText(context, layout.AllocateFullWidth(16), 1.5f, nullptr, textColour, "Largest free block: %7.3fKb / Average unallocated: %7.3fKb",
+                DrawFormatText(context, layout.AllocateFullWidth(16), nullptr, textColour, "Largest free block: %7.3fKb / Average unallocated: %7.3fKb",
                     largestFreeBlock/1024.f, unallocatedSpace/(float(metrics._heaps.size())*1024.f));
-                DrawFormatText(context, layout.AllocateFullWidth(16), 1.5f, nullptr, textColour, "Block count: %i / Ave block size: %7.3fKb",
+                DrawFormatText(context, layout.AllocateFullWidth(16), nullptr, textColour, "Block count: %i / Ave block size: %7.3fKb",
                     totalBlockCount, allocatedSpace/float(totalBlockCount*1024.f));
             }
 

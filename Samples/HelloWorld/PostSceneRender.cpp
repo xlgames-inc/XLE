@@ -94,7 +94,7 @@ namespace Sample
                 std::make_tuple(
                     Float3(0.f, 0.f, 0.f), 
                     Float3(float(contextStateDesc._viewportDimensions[0]), float(contextStateDesc._viewportDimensions[1]), 0.f)),
-                1.f, &style, col, TextAlignment::Center, text, nullptr);
+                &style, col, TextAlignment::Center, text, nullptr);
 
         } else {
 

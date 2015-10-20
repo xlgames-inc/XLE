@@ -180,7 +180,7 @@ namespace Overlays
         // DrawText(context, rect, 0.f, nullptr, formatting._foreground, manipulatorName);
         context->DrawText(
             std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-            1.f, nullptr, formatting._foreground, TextAlignment::Center, label, nullptr);
+            nullptr, formatting._foreground, TextAlignment::Center, label, nullptr);
     }
 
     template<typename T> inline const T& FormatButton(InterfaceState& interfaceState, InteractableId id, const T& normalState, const T& mouseOverState, const T& pressedState)
@@ -228,7 +228,7 @@ namespace Overlays
             TextStyle font(*_pimpl->_headingFont);
             context->DrawText(
                 std::make_tuple(Float3(float(headingRect._topLeft[0]), float(headingRect._topLeft[1]), 0.f), Float3(float(headingRect._bottomRight[0]), float(headingRect._bottomRight[1]), 0.f)),
-                1.f, &font, interfaceState.HasMouseOver(Id_TotalRect)?headerColourHighlight:headerColourNormal, TextAlignment::Center, 
+                &font, interfaceState.HasMouseOver(Id_TotalRect)?headerColourHighlight:headerColourNormal, TextAlignment::Center, 
                     _pimpl->_headerName.c_str(), nullptr);
         }
 
@@ -237,7 +237,7 @@ namespace Overlays
         auto curDirRect = toolBoxLayout.AllocateFullWidth(textHeight);
         context->DrawText(
             std::make_tuple(Float3(float(curDirRect._topLeft[0]), float(curDirRect._topLeft[1]), 0.f), Float3(float(curDirRect._bottomRight[0]), float(curDirRect._bottomRight[1]), 0.f)),
-            1.f, nullptr, headerColourNormal, TextAlignment::Center, _pimpl->_currentDirectory.c_str(), nullptr);
+            nullptr, headerColourNormal, TextAlignment::Center, _pimpl->_currentDirectory.c_str(), nullptr);
 
         {
             auto border = toolBoxLayout.AllocateFullWidth(2); // small border to reset current line
@@ -357,7 +357,7 @@ namespace Overlays
 
             context->DrawText(
                 std::make_tuple(Float3(float(labelRect._topLeft[0]), float(labelRect._topLeft[1]), 0.f), Float3(float(labelRect._bottomRight[0]), float(labelRect._bottomRight[1]), 0.f)),
-                1.f, nullptr, ColorB(0xffffffff), TextAlignment::Center, i->first.c_str(), nullptr);
+                nullptr, ColorB(0xffffffff), TextAlignment::Center, i->first.c_str(), nullptr);
         }
 
             // draw the scroll bar over the top on the right size

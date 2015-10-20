@@ -54,7 +54,7 @@ namespace PlatformRig { namespace Overlays
         for (auto i=lines.cbegin(); i!=lines.cend(); ++i) {
             char buffer[1024];
             ucs2_2_utf8(AsPointer(i->begin()), i->size(), (utf8*)buffer, dimof(buffer));
-            DrawText(context, historyAreaLayout.AllocateFullWidth(Coord(textHeight)), 0.f, 1.f, nullptr,
+            DrawText(context, historyAreaLayout.AllocateFullWidth(Coord(textHeight)), 0.f, nullptr,
                 textColor, TextAlignment::Left, buffer);
         }
 
@@ -92,7 +92,7 @@ namespace PlatformRig { namespace Overlays
 
             ucs2_2_utf8(AsPointer(_currentLine.begin()), _currentLine.size(), (utf8*)buffer, dimof(buffer));
             buffer[dimof(buffer)-1] = '\0';
-            DrawText(context, entryBoxArea, 0.f, 1.f, nullptr, textColor, TextAlignment::Left, buffer);
+            DrawText(context, entryBoxArea, 0.f, nullptr, textColor, TextAlignment::Left, buffer);
 
         }
 

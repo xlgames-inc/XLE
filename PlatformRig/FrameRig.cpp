@@ -437,19 +437,19 @@ namespace PlatformRig
 
         TextStyle bigStyle(*res._frameRateFont);
         DrawFormatText(
-            context, innerLayout.Allocate(Coord2(80, bigLineHeight)), 1.f, 
+            context, innerLayout.Allocate(Coord2(80, bigLineHeight)),
             &bigStyle, ColorB(0xffffffff), "%.1f", 1000.f / std::get<0>(f));
 
         TextStyle smallStyle(*res._smallFrameRateFont);
         DrawFormatText(
-            context, innerLayout.Allocate(Coord2(rectWidth - 80 - innerLayout._paddingInternalBorder*2 - innerLayout._paddingBetweenAllocations, smallLineHeight * 2)), 1.f, 
+            context, innerLayout.Allocate(Coord2(rectWidth - 80 - innerLayout._paddingInternalBorder*2 - innerLayout._paddingBetweenAllocations, smallLineHeight * 2)),
             &smallStyle, ColorB(0xffffffff), "%.1f-%.1f", 1000.f / std::get<2>(f), 1000.f / std::get<1>(f));
 
         auto heapMetrics = AccumulatedAllocations::GetCurrentHeapMetrics();
         auto frameAllocations = _prevFrameAllocationCount->_allocationCount;
 
         DrawFormatText(
-            context, innerLayout.AllocateFullWidth(smallLineHeight), 0.f, 1.f, 
+            context, innerLayout.AllocateFullWidth(smallLineHeight), 0.f,
             &smallStyle, ColorB(0xffffffff), TextAlignment::Center,
             "%.2fM (%i)", heapMetrics._usage / (1024.f*1024.f), frameAllocations);
 
@@ -494,7 +494,7 @@ namespace PlatformRig
                             AsPixelCoords(iconRect._bottomRight),
                             String_IconBegin + categories[c] + String_IconEnd);
                         DrawText(
-                            context, rect, 0.f, 1.f, 
+                            context, rect, 0.f,
                             &tabHeader, tabHeaderColor, TextAlignment::Bottom,
                             categories[c]);
 
@@ -538,7 +538,7 @@ namespace PlatformRig
                             AsPixelCoords(Coord2(rect._topLeft[0]-margin, rect._bottomRight[1])),
                             String_IconBegin + categories[_subMenuOpen-1] + String_IconEnd);
                         DrawText(
-                            context, rect, 0.f, 1.f, 
+                            context, rect, 0.f,
                             &tabHeader, tabHeaderColor, TextAlignment::Left,
                             i->_name.c_str());
 

@@ -286,7 +286,7 @@ namespace RenderOverlays
         }
     }
 
-    float ImmediateOverlayContext::DrawText      (  const std::tuple<Float3, Float3>& quad, float scale, TextStyle* textStyle, ColorB col, 
+    float ImmediateOverlayContext::DrawText      (  const std::tuple<Float3, Float3>& quad, TextStyle* textStyle, ColorB col, 
                                                     TextAlignment::Enum alignment, const char text[], va_list args)
     {
             //

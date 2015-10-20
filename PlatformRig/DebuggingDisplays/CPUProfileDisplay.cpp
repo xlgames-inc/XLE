@@ -184,11 +184,11 @@ namespace PlatformRig { namespace Overlays
 
             context->DrawText(
                 std::make_tuple(AsPixelCoords(leftPart._topLeft), AsPixelCoords(Coord2(leftPart._bottomRight - Coord2(treeDepth * 16, 0)))),
-                1.f, &leftStyle, settings._leftColor, TextAlignment::Right, evnt._label, nullptr);
+                &leftStyle, settings._leftColor, TextAlignment::Right, evnt._label, nullptr);
 
             context->DrawText(
                 std::make_tuple(AsPixelCoords(middlePart._topLeft), AsPixelCoords(middlePart._bottomRight)),
-                1.f, &middleStyle, settings._middleColor, TextAlignment::Center, 
+                &middleStyle, settings._middleColor, TextAlignment::Center, 
                 StringMeld<32>() << std::setprecision(settings._precision) << AsMilliseconds(evnt._inclusiveTime),
                 nullptr);
 
@@ -207,7 +207,7 @@ namespace PlatformRig { namespace Overlays
 
             context->DrawText(
                 std::make_tuple(AsPixelCoords(rightPart._topLeft), AsPixelCoords(rightPart._bottomRight)),
-                1.f, &rightStyle, settings._rightColor, TextAlignment::Left, 
+                &rightStyle, settings._rightColor, TextAlignment::Left, 
                 workingBuffer, nullptr);
 
             if ((divingLinesIterator+2) <= &dividingLines[dimof(dividingLines)]) {

@@ -54,7 +54,7 @@ namespace RenderOverlays
             const std::string& texture,
             ColorB color, const Float2& minTex0, const Float2& maxTex0);
 
-        float   DrawText       (const std::tuple<Float3, Float3>& quad, float scale, TextStyle* textStyle, ColorB col, TextAlignment::Enum alignment, const char text[], va_list args);
+        float   DrawText       (const std::tuple<Float3, Float3>& quad, TextStyle* textStyle, ColorB col, TextAlignment::Enum alignment, const char text[], va_list args);
         float   StringWidth    (float scale, TextStyle* textStyle, const char text[], va_list args);
         float   TextHeight     (TextStyle* textStyle);
 

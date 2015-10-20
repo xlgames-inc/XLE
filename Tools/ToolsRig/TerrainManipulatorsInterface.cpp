@@ -195,7 +195,7 @@ namespace ToolsRig
         const auto headingRect = internalLayout.AllocateFullWidth(25);
         context->DrawText(
             std::make_tuple(Float3(float(headingRect._topLeft[0]), float(headingRect._topLeft[1]), 0.f), Float3(float(headingRect._bottomRight[0]), float(headingRect._bottomRight[1]), 0.f)),
-            1.f, &font, interfaceState.HasMouseOver(Id_TotalRect)?headerColourHighlight:headerColourNormal, TextAlignment::Center, 
+            &font, interfaceState.HasMouseOver(Id_TotalRect)?headerColourHighlight:headerColourNormal, TextAlignment::Center, 
             title, nullptr);
 
             //
@@ -230,7 +230,7 @@ namespace ToolsRig
             _snprintf_s(buffer, _TRUNCATE, "%s = %5.1f", parameter._name, *p);
             context->DrawText(
                 std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-                1.f, nullptr, formatting._foreground, TextAlignment::Center, buffer, nullptr);
+                nullptr, formatting._foreground, TextAlignment::Center, buffer, nullptr);
             
             DrawAndRegisterLeftRight(context, interactables, interfaceState, rect, Id_CurFloatParametersLeft+c, Id_CurFloatParametersRight+c);
         }
@@ -256,7 +256,7 @@ namespace ToolsRig
 
             context->DrawText(
                 std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-                1.f, nullptr, formatting._foreground, TextAlignment::Center, buffer, nullptr);
+                nullptr, formatting._foreground, TextAlignment::Center, buffer, nullptr);
         }
 
             //
@@ -266,7 +266,7 @@ namespace ToolsRig
         if (!statusText.empty()) {
             const auto rect = internalLayout.AllocateFullWidth(lineHeight);
             context->DrawText(
-                std::make_tuple(AsPixelCoords(rect._topLeft), AsPixelCoords(rect._bottomRight)), 1.f, 
+                std::make_tuple(AsPixelCoords(rect._topLeft), AsPixelCoords(rect._bottomRight)),
                 nullptr, headerColourNormal, TextAlignment::Center, statusText.c_str(), nullptr);
         }
 

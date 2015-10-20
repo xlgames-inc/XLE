@@ -213,12 +213,12 @@ namespace PlatformRig { namespace Overlays
 
                     float recentCost = section._durationHistory[section._durationHistoryLength-1];
                     float smoothedCost = smoothedSectionCosts[c].first;
-                    DrawFormatText(context, durationRect, 1.5f, nullptr, ColorB(0xffffffffu), "%.2fms (%.2fms)", smoothedCost, recentCost);
+                    DrawFormatText(context, durationRect, nullptr, ColorB(0xffffffffu), "%.2fms (%.2fms)", smoothedCost, recentCost);
 
                     Rect varianceRect( 
                         Coord2(labelRect._topLeft[0], durationRect._bottomRight[1]),
                         Coord2(labelRect._bottomRight[0], labelRect._bottomRight[1]) );
-                    DrawFormatText(context, varianceRect, 1.5f, nullptr, ColorB(0xffffffffu), "%.2fms variance", sectionVariances[c]);
+                    DrawFormatText(context, varianceRect, nullptr, ColorB(0xffffffffu), "%.2fms variance", sectionVariances[c]);
                 }
 
                 //  Then draw the graph in the main part of the widget
@@ -253,10 +253,10 @@ namespace PlatformRig { namespace Overlays
                             InteractableId id = baseButtonIds[c]+sectionIndex;
                             if (interfaceState.HasMouseOver(id)) {
                                 DrawElipse(context, buttonRect, ColorB(0xff000000u));
-                                DrawText(context, buttonRect, (interfaceState.IsMouseButtonHeld())?2.f:1.25f, nullptr, ColorB(0xff000000u), buttonNames[c]);
+                                DrawText(context, buttonRect, nullptr, ColorB(0xff000000u), buttonNames[c]);
                             } else {
                                 DrawElipse(context, buttonRect, ColorB(0xffffffffu));
-                                DrawText(context, buttonRect, 1.25f, nullptr, ColorB(0xffffffffu), buttonNames[c]);
+                                DrawText(context, buttonRect, nullptr, ColorB(0xffffffffu), buttonNames[c]);
                             }
                             interactables.Register(Interactables::Widget(buttonRect, id));
                         }

@@ -210,12 +210,12 @@ namespace RenderOverlays { namespace DebuggingDisplay
     void        DrawRectangle(IOverlayContext* context, const Rect& rect, float depth, ColorB colour);
     void        DrawRectangleOutline(IOverlayContext* context, const Rect& rect, float depth = 0.f, ColorB colour = ColorB(0xff000000));
 
-    Coord       DrawText(IOverlayContext* context, const Rect& rect, float scale, TextStyle* textStyle, ColorB colour, const char text[]);
-    Coord       DrawText(IOverlayContext* context, const Rect& rect, float depth, float scale, TextStyle* textStyle, ColorB colour, const char text[]);
-    Coord       DrawText(IOverlayContext* context, const Rect& rect, float depth, float scale, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[]);
-    Coord       DrawFormatText(IOverlayContext* context, const Rect& rect, float scale, TextStyle* textStyle, ColorB colour, const char text[], ...);
-    Coord       DrawFormatText(IOverlayContext* context, const Rect& rect, float depth, float scale, TextStyle* textStyle, ColorB colour, const char text[], ...);
-    Coord       DrawFormatText(IOverlayContext* context, const Rect& rect, float depth, float scale, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[], ...);
+    Coord       DrawText(IOverlayContext* context, const Rect& rect, TextStyle* textStyle, ColorB colour, const char text[]);
+    Coord       DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, const char text[]);
+    Coord       DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[]);
+    Coord       DrawFormatText(IOverlayContext* context, const Rect& rect, TextStyle* textStyle, ColorB colour, const char text[], ...);
+    Coord       DrawFormatText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, const char text[], ...);
+    Coord       DrawFormatText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[], ...);
     void        DrawHistoryGraph(IOverlayContext* context, const Rect& rect, float values[], unsigned valuesCount, unsigned maxValuesCount, float& minValueHistory, float& maxValueHistory);
     void        DrawHistoryGraph_ExtraLine(IOverlayContext* context, const Rect& rect, float values[], unsigned valuesCount, unsigned maxValuesCount, float minValue, float maxValue);
 

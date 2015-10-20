@@ -129,7 +129,7 @@ namespace RenderOverlays
             const Float2& minTex0 = Float2(0.f, 0.f), const Float2& maxTex0 = Float2(1.0f, 1.f)) = 0;
 
         virtual float   DrawText(
-            const std::tuple<Float3, Float3>& quad, float scale, 
+            const std::tuple<Float3, Float3>& quad,
             TextStyle* textStyle, ColorB col, TextAlignment::Enum alignment, const char text[], va_list args) = 0;
 
         virtual float   StringWidth     (float scale, TextStyle* textStyle, const char text[], va_list args) = 0;

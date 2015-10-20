@@ -640,7 +640,7 @@ namespace PlatformRig { namespace Overlays
         DrawRectangleOutline(context, rect, 0.f, formatting._foreground);
         context->DrawText(
             std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-            1.f, nullptr, formatting._foreground, TextAlignment::Center, label, nullptr);
+            nullptr, formatting._foreground, TextAlignment::Center, label, nullptr);
     }
 
     template<typename T> inline const T& FormatButton(InterfaceState& interfaceState, InteractableId id, const T& normalState, const T& mouseOverState, const T& pressedState)

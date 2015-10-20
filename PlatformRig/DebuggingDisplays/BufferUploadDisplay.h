@@ -63,9 +63,6 @@ namespace PlatformRig { namespace Overlays
 
         double          _reciprocalTimerFrequency;
         unsigned        _graphsMode;
-        bool            _drawHistory;
-
-        uint64          _openGraphMenu;
 
         GPUMetrics      CalculateGPUMetrics();
         void            AddCommandListToFrame(unsigned frameId, unsigned commandListIndex);
@@ -79,6 +76,7 @@ namespace PlatformRig { namespace Overlays
         void    DrawMenuBar(IOverlayContext* context, Layout& layout, Interactables& interactables, InterfaceState& interfaceState);
         void    DrawDisplay(IOverlayContext* context, Layout& layout, Interactables& interactables, InterfaceState& interfaceState);
         void    DrawStatistics(IOverlayContext* context, Layout& layout, Interactables& interactables, InterfaceState& interfaceState, const BufferUploads::CommandListMetrics& mostRecentResults);
+        void    DrawRecentRetirements(IOverlayContext* context, Layout& layout, Interactables& interactables, InterfaceState& interfaceState);
         size_t  FillValuesBuffer(unsigned graphType, unsigned uploadType, float valuesBuffer[], size_t valuesMaxCount);
     };
 

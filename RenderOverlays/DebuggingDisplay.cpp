@@ -10,6 +10,7 @@
 #include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/State.h"
+#include "../RenderCore/Techniques/ResourceBox.h"       // for FindCachedBox
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
@@ -387,49 +388,49 @@ namespace RenderOverlays { namespace DebuggingDisplay
         context->DrawLines(ProjectionMode::P2D, lines, dimof(lines), colour);
     }
 
-    Coord DrawText(IOverlayContext* context, const Rect& rect, float scale, TextStyle* textStyle, ColorB colour, const char text[])
+    Coord DrawText(IOverlayContext* context, const Rect& rect, TextStyle* textStyle, ColorB colour, const char text[])
     {
-        return (Coord)context->DrawText(AsPixelCoords(rect), 1.f, textStyle, colour, TextAlignment::Left, text, nullptr);
+        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, TextAlignment::Left, text, nullptr);
     }
 
-    Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, float scale, TextStyle* textStyle, ColorB colour, const char text[])
+    Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, const char text[])
     {
-        return (Coord)context->DrawText(AsPixelCoords(rect), 1.f, textStyle, colour, TextAlignment::Left, text, nullptr);
+        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, TextAlignment::Left, text, nullptr);
     }
 
-    Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, float scale, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[])
+    Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[])
     {
-        return (Coord)context->DrawText(AsPixelCoords(rect), 1.f, textStyle, colour, alignment, text, nullptr);
+        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, alignment, text, nullptr);
     }
 
-    Coord DrawFormatText(IOverlayContext* context, const Rect& rect, float depth, float scale, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[], va_list args)
+    Coord DrawFormatText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[], va_list args)
     {
-        return (Coord)context->DrawText(AsPixelCoords(rect), 1.f, textStyle, colour, alignment, text, args);
+        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, alignment, text, args);
     }
 
-    Coord DrawFormatText(IOverlayContext* context, const Rect & rect, float scale, TextStyle* textStyle, ColorB colour, const char text[], ...)
+    Coord DrawFormatText(IOverlayContext* context, const Rect & rect, TextStyle* textStyle, ColorB colour, const char text[], ...)
     {
         va_list args;
         va_start(args, text);
-        auto result = DrawFormatText(context, rect, 0.f, scale, textStyle, colour, TextAlignment::Left, text, args);
+        auto result = DrawFormatText(context, rect, 0.f, textStyle, colour, TextAlignment::Left, text, args);
         va_end(args);
         return result;
     }
 
-    Coord DrawFormatText(IOverlayContext* context, const Rect & rect, float depth, float scale, TextStyle* textStyle, ColorB colour, const char text[], ...)
+    Coord DrawFormatText(IOverlayContext* context, const Rect & rect, float depth, TextStyle* textStyle, ColorB colour, const char text[], ...)
     {
         va_list args;
         va_start(args, text);
-        auto result = DrawFormatText(context, rect, depth, scale, textStyle, colour, TextAlignment::Left, text, args);
+        auto result = DrawFormatText(context, rect, depth, textStyle, colour, TextAlignment::Left, text, args);
         va_end(args);
         return result;
     }
 
-    Coord DrawFormatText(IOverlayContext* context, const Rect & rect, float depth, float scale, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[], ...)
+    Coord DrawFormatText(IOverlayContext* context, const Rect & rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[], ...)
     {
         va_list args;
         va_start(args, text);
-        auto result = DrawFormatText(context, rect, depth, scale, textStyle, colour, alignment, text, args);
+        auto result = DrawFormatText(context, rect, depth, textStyle, colour, alignment, text, args);
         va_end(args);
         return result;
     }
@@ -515,9 +516,9 @@ namespace RenderOverlays { namespace DebuggingDisplay
                 Coord2 maxPos(graphArea._topLeft[0] + 14, graphArea._topLeft[1] + 8);
                 Coord2 minPos(graphArea._topLeft[0] + 14, graphArea._bottomRight[1] - 18);
 
-                DrawFormatText(context, Rect(peakPos, peakPos),  1.f, nullptr, GraphLabel, "%6.2f", values[peakIndex]);
-                DrawFormatText(context, Rect(minPos, minPos),    1.f, nullptr, GraphLabel, "%6.2f", minValue);
-                DrawFormatText(context, Rect(maxPos, maxPos),    1.f, nullptr, GraphLabel, "%6.2f", maxValue);
+                DrawFormatText(context, Rect(peakPos, peakPos),  nullptr, GraphLabel, "%6.2f", values[peakIndex]);
+                DrawFormatText(context, Rect(minPos, minPos),    nullptr, GraphLabel, "%6.2f", minValue);
+                DrawFormatText(context, Rect(maxPos, maxPos),    nullptr, GraphLabel, "%6.2f", maxValue);
             }
         }
     }
@@ -572,24 +573,55 @@ namespace RenderOverlays { namespace DebuggingDisplay
         context->DrawLines(ProjectionMode::P2D, AsPointer(pixelCoords.begin()), lineCount*2, lineColours);
     }
 
+    class TableFontBox
+    {
+    public:
+        class Desc {};
+        intrusive_ptr<RenderOverlays::Font> _headerFont;
+        intrusive_ptr<RenderOverlays::Font> _valuesFont;
+        TableFontBox(const Desc&) 
+            : _headerFont(RenderOverlays::GetX2Font("DosisExtraBold", 20))
+            , _valuesFont(RenderOverlays::GetX2Font("Raleway", 20)) {}
+    };
 
     ///////////////////////////////////////////////////////////////////////////////////
     void DrawTableHeaders(IOverlayContext* context, const Rect& rect, const IteratorRange<std::pair<std::string, unsigned>*>& fieldHeaders, ColorB bkColor, Interactables* interactables)
     {
-        const ColorB HeaderTextColor  ( 255, 255, 255, 255 );
+        static const ColorB HeaderTextColor     ( 255, 255, 255, 255 );
+        static const ColorB HeaderBkColor       (  96,  96,  96, 196 );
+        static const ColorB HeaderBkOutColor    ( 255, 255, 255, 255 );
+        static const ColorB SepColor            ( 255, 255, 255, 255 );
+
+        context->DrawQuad(
+            ProjectionMode::P2D, AsPixelCoords(rect._topLeft), AsPixelCoords(rect._bottomRight),
+            HeaderBkColor, HeaderBkOutColor, 
+            Float2(0.f, 0.f), Float2(1.f, 1.f),
+            Float2(0.f, 0.f), Float2(0.f, 0.f),
+            "ui\\dd\\shapes.sh:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
+
+        TextStyle style(
+            *RenderCore::Techniques::FindCachedBox2<TableFontBox>()._headerFont,
+            DrawTextOptions(false, true));
+
         Layout tempLayout(rect);
         tempLayout._paddingInternalBorder = 0;
         for (auto i=fieldHeaders.begin(); i!=fieldHeaders.end(); ++i) {
-            const Rect r = tempLayout.AllocateFullHeight(i->second);
+            Rect r = tempLayout.AllocateFullHeight(i->second);
             if (!i->first.empty() && i->second) {
-                const float scale        = 2.f;
-                const ColorB colour      = HeaderTextColor;
-                DrawRectangle(context, r, bkColor);
-                DrawText(context, r, scale, nullptr, colour, i->first.c_str());
+                // DrawRectangle(context, r, bkColor);
 
-                if (interactables) {
+                if (i != fieldHeaders.begin())
+                    context->DrawLine(ProjectionMode::P2D,
+                        AsPixelCoords(Coord2(r._topLeft[0], r._topLeft[1]+2)), SepColor,
+                        AsPixelCoords(Coord2(r._topLeft[0], r._bottomRight[1]-2)), SepColor,
+                        1.f);
+                r._topLeft[0] += 8;
+
+                const ColorB colour = HeaderTextColor;
+                context->DrawText(AsPixelCoords(r), &style, colour, TextAlignment::Left, i->first.c_str(), nullptr);
+
+                if (interactables)
                     interactables->Register(Interactables::Widget(r, InteractableId_Make(i->first.c_str())));
-                }
             }
         }
     }
@@ -599,18 +631,41 @@ namespace RenderOverlays { namespace DebuggingDisplay
                                 const IteratorRange<std::pair<std::string, unsigned>*>& fieldHeaders, 
                                 const std::map<std::string, TableElement>& entry)
     {
-        const ColorB TextColor        ( 255, 255, 255, 255 );
+        static const ColorB TextColor   ( 255, 255, 255, 255 );
+        static const ColorB BkColor     (   0,   0,   0,  20 );
+        static const ColorB BkOutColor  ( 255, 255, 255, 255 );
+        static const ColorB SepColor    ( 255, 255, 255, 255 );
+
+        context->DrawQuad(
+            ProjectionMode::P2D, AsPixelCoords(rect._topLeft), AsPixelCoords(rect._bottomRight),
+            BkColor, BkOutColor, 
+            Float2(0.f, 0.f), Float2(1.f, 1.f),
+            Float2(0.f, 0.f), Float2(0.f, 0.f),
+            "ui\\dd\\shapes.sh:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
+
+        TextStyle style(
+            *RenderCore::Techniques::FindCachedBox2<TableFontBox>()._valuesFont,
+            DrawTextOptions(true, false));
+
         Layout tempLayout(rect);
         tempLayout._paddingInternalBorder = 0;
         for (auto i=fieldHeaders.begin(); i!=fieldHeaders.end(); ++i) {
             if (i->second) {
                 auto s = entry.find(i->first);
-                const Rect r = tempLayout.AllocateFullHeight(i->second);
+                Rect r = tempLayout.AllocateFullHeight(i->second);
                 if (s != entry.end() && !s->second._label.empty()) {
-                    const float scale        = 2.f;
-                    const ColorB colour      = TextColor;
-                    DrawRectangle(context, r, s->second._bkColour);
-                    DrawText(context, r, scale, nullptr, colour, s->second._label.c_str());
+
+                    if (i != fieldHeaders.begin())
+                        context->DrawLine(ProjectionMode::P2D,
+                            AsPixelCoords(Coord2(r._topLeft[0], r._topLeft[1]+2)), SepColor,
+                            AsPixelCoords(Coord2(r._topLeft[0], r._bottomRight[1]-2)), SepColor,
+                            1.f);
+                    r._topLeft[0] += 8;
+
+
+                    const ColorB colour = TextColor;
+                    // DrawRectangle(context, r, s->second._bkColour);
+                    context->DrawText(AsPixelCoords(r), &style, colour, TextAlignment::Left, s->second._label.c_str(), nullptr);
                 }
             }
         }
@@ -849,16 +904,16 @@ namespace RenderOverlays { namespace DebuggingDisplay
                 InteractableId id = InteractableId_Make(s_PanelControlsButtons[c])+panelIndex;
                 if (interfaceState.HasMouseOver(id)) {
                     DrawElipse(context, buttonRect, ColorB(0xff000000u));
-                    DrawText(context, buttonRect, (interfaceState.IsMouseButtonHeld())?2.f:1.25f, nullptr, ColorB(0xff000000u), s_PanelControlsButtons[c]);
+                    DrawText(context, buttonRect, nullptr, ColorB(0xff000000u), s_PanelControlsButtons[c]);
                 } else {
                     DrawElipse(context, buttonRect, ColorB(0xffffffffu));
-                    DrawText(context, buttonRect, 1.25f, nullptr, ColorB(0xffffffffu), s_PanelControlsButtons[c]);
+                    DrawText(context, buttonRect, nullptr, ColorB(0xffffffffu), s_PanelControlsButtons[c]);
                 }
                 interactables.Register(Interactables::Widget(buttonRect, id));
             }
 
             Rect nameRect = buttonsLayout.Allocate(Coord2(nameSize, buttonSize));
-            DrawText(context, nameRect, 1.75f, nullptr, ColorB(0xffffffffu), name.c_str());
+            DrawText(context, nameRect, nullptr, ColorB(0xffffffffu), name.c_str());
 
                 //
                 //      If the mouse is over the name rect, we get a drop list list
@@ -885,7 +940,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
                     if (mouseOver) {
                         DrawRectangle(context, partRect, ColorB(180, 200, 255, 64));
                     }
-                    DrawText(context, partRect, 1.5f, nullptr, ColorB(0xffffffffu), i->_name.c_str());
+                    DrawText(context, partRect, nullptr, ColorB(0xffffffffu), i->_name.c_str());
                     y += buttonSize + buttonPadding;
                     interactables.Register(Interactables::Widget(partRect, thisId));
                 }
@@ -905,7 +960,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
                 if (interfaceState.IsMouseButtonHeld()) {
                     colour = ColorB(0xffffffffu);
                 }
-                DrawFormatText(context, backButtonRect, 1.5f, nullptr, colour, "%s", "Back");
+                DrawFormatText(context, backButtonRect, nullptr, colour, "%s", "Back");
             }
         }
     }
