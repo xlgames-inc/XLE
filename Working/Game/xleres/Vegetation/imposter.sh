@@ -112,16 +112,28 @@ cbuffer SpriteTable
     uint4 SpriteCoords[512];
 }
 
-float4 LoadImposterAltas(
-    uint atlasIndex,
-    uint4 coords,
-    float2 tc)
+float4 LoadImposterAltas(uint atlasIndex, uint4 coords, float2 tc)
 {
     float2 ftc;
     ftc.x = lerp((float)coords[0], (float)coords[2], tc.x);
     ftc.y = lerp((float)coords[1], (float)coords[3], tc.y);
-    // return ImposterAltas[atlasIndex].SampleLevel(ClampingSampler, ftc, 0);
-    return ImposterAltas[atlasIndex].Load(uint3(ftc, 0));
+
+    // return ImposterAltas[atlasIndex].Load(uint3(ftc, 0));
+
+        // Custom implemented bilinear -- so we can clamp against the
+        // limited window
+        // Actually, just using a point filter seems to work fine
+        // most of the time -- mipmapping should keep us close to 1:1 ratio
+        // (because the sprites are roughly aligned to the screen)
+    uint2 A = (uint2)floor(ftc);
+    uint2 B = uint2(min(A.x+1, coords[2]-1), min(A.y+1, coords[3]-1));
+    float2 w = ftc.xy - A.xy;
+    return
+          (1.0f - w.x) * (1.0f - w.y) * ImposterAltas[atlasIndex].Load(uint3(A.x, A.y, 0))
+        + (       w.x) * (1.0f - w.y) * ImposterAltas[atlasIndex].Load(uint3(B.x, A.y, 0))
+        + (1.0f - w.x) * (       w.y) * ImposterAltas[atlasIndex].Load(uint3(A.x, B.y, 0))
+        + (       w.x) * (       w.y) * ImposterAltas[atlasIndex].Load(uint3(B.x, B.y, 0))
+        ;
 }
 
 GBufferEncoded ps_deferred(VSOutput geo)

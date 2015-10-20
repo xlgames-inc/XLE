@@ -515,16 +515,38 @@ namespace SceneEngine
     class ShaderBasedCopyRes
     {
     public:
-        class Desc {};
+        class Desc 
+        {
+        public:
+            CopyFilter _filter;
+            Desc(CopyFilter filter) : _filter(filter) {}
+        };
 
         const Metal::ShaderProgram* _shader;
         Metal::BoundUniforms _uniforms;
 
-        ShaderBasedCopyRes(const Desc&)
+        ShaderBasedCopyRes(const Desc& desc)
         {
-            _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2d.vsh:screenspacerect:vs_*",
-                "game/xleres/basic.psh:copy_bilinear:ps_*");
+            switch (desc._filter) {
+            case CopyFilter::BoxFilter:
+                    // The box filter is designed for generating
+                    // mip-maps. And it can work even when building
+                    // very small mip-maps from the top-most level.
+                    // It will sample all of the pixels in
+                    // the source (unlike bilinear filter, which will
+                    // only sample some pixels in large downsampling 
+                    // operations)
+                _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    "game/xleres/basic2d.vsh:screenspacerect:vs_*",
+                    "game/xleres/basic.psh:copy_boxfilter:ps_*");
+                break;
+
+            default:
+                _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    "game/xleres/basic2d.vsh:screenspacerect:vs_*",
+                    "game/xleres/basic.psh:copy_bilinear:ps_*");
+                break;
+            }
             _uniforms = Metal::BoundUniforms(*_shader);
             _uniforms.BindConstantBuffers(1, {"ScreenSpaceOutput"});
 
@@ -546,7 +568,7 @@ namespace SceneEngine
         const RenderCore::Metal::ShaderResourceView& src,
         std::pair<UInt2, UInt2> destination,
         std::pair<UInt2, UInt2> source,
-        ProtectState::States::BitField protectStates)
+        CopyFilter filter, ProtectState::States::BitField protectStates)
     {
         using States = ProtectState::States;
         const States::BitField effectedStates = 
@@ -555,25 +577,28 @@ namespace SceneEngine
             ;
         ProtectState savedStates(context, effectedStates & protectStates);
 
-        auto& res = Techniques::FindCachedBoxDep2<ShaderBasedCopyRes>();
+        auto& res = Techniques::FindCachedBoxDep2<ShaderBasedCopyRes>(filter);
 
         Metal::TextureDesc2D desc(dest.GetUnderlying());
         context.Bind(Metal::ViewportDesc(0.f, 0.f, float(desc.Width), float(desc.Height)));
 
         Metal::TextureDesc2D srcDesc(src.GetUnderlying());
 
-        Float2 coords[4] = 
+        Float2 coords[6] = 
         {
-            Float2(destination.first[0] / float(desc.Width), destination.first[1] / float(desc.Height)), 
-            Float2(destination.second[0] / float(desc.Width), destination.second[1] / float(desc.Height)),
+            Float2(float(destination.first[0]), float(destination.first[1])), 
+            Float2(float(destination.second[0]), float(destination.second[1])),
             Float2(source.first[0] / float(srcDesc.Width), source.first[1] / float(srcDesc.Height)), 
-            Float2(source.second[0] / float(srcDesc.Width), source.second[1] / float(srcDesc.Height))
+            Float2(source.second[0] / float(srcDesc.Width), source.second[1] / float(srcDesc.Height)),
+            Float2(float(desc.Width), float(desc.Height)),
+            Zero<Float2>()
         };
 
         context.Bind(MakeResourceList(dest), nullptr);
         context.Bind(Techniques::CommonResources()._dssWriteOnly);
         context.Bind(*res._shader);
-        res._uniforms.Apply(context, Metal::UniformsStream(), 
+        res._uniforms.Apply(
+            context, Metal::UniformsStream(), 
             Metal::UniformsStream({MakeSharedPkt(coords)}, {}));
         context.BindPS(MakeResourceList(src));
         SetupVertexGeneratorShader(context);

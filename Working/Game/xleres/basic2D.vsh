@@ -65,14 +65,21 @@ cbuffer ScreenSpaceOutput
 {
 	float2 OutputMin, OutputMax;
 	float2 InputMin, InputMax;
+	float2 OutputDimensions;
 }
 
-void screenspacerect(uint vertexId : SV_VertexID, out float4 oPosition : SV_Position, out float2 oTexCoord : TEXCOORD0)
+void screenspacerect(
+	uint vertexId : SV_VertexID,
+	out float4 oPosition : SV_Position,
+	out float2 oTexCoord0 : TEXCOORD0)
 {
 	float2 coord = float2((float)(vertexId / 2), (float)(vertexId % 2));
-	oTexCoord = lerp(InputMin, InputMax, coord);
+	oTexCoord0 = lerp(InputMin, InputMax, coord);
 	coord = lerp(OutputMin, OutputMax, coord);
-	oPosition = float4(2.f * coord.x - 1.f, -2.f * coord.y + 1.f, 0.f, 1.f);
+	oPosition = float4(
+		 2.f * coord.x / OutputDimensions.x - 1.f,
+		-2.f * coord.y / OutputDimensions.y + 1.f,
+		 0.f, 1.f);
 }
 
 

@@ -14,7 +14,7 @@ float4 copy(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Tar
 
 float copy_depth(float4 position : SV_Position) : SV_Depth
 {
-	return DiffuseTexture.Load(int3(position.xy, 0));
+	return DiffuseTexture.Load(int3(position.xy, 0)).r;
 }
 
 float4 fake_tonemap(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
@@ -25,6 +25,29 @@ float4 fake_tonemap(float4 position : SV_Position, float2 texCoord : TEXCOORD0) 
 float4 copy_bilinear(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
 	return DiffuseTexture.SampleLevel(ClampingSampler, texCoord, 0);
+}
+
+cbuffer ScreenSpaceOutput
+{
+	float2 OutputMin, OutputMax;
+	float2 InputMin, InputMax;
+	float2 OutputDimensions;
+}
+
+float4 copy_boxfilter(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	uint2 dims;
+	DiffuseTexture.GetDimensions(dims.x, dims.y);
+
+	uint2 zero = (uint2)floor((position.xy - OutputMin) * dims * (InputMax - InputMin) / (OutputMax - OutputMin) + dims * InputMin);
+	uint2 one = (uint2)ceil((position.xy + 1.0.xx - OutputMin) * dims * (InputMax - InputMin) / (OutputMax - OutputMin) + dims * InputMin);
+
+	float4 result = 0.0.xxxx;
+	for (uint y=zero.y; y<one.y; ++y)
+		for (uint x=zero.x; x<one.x; ++x)
+			result += DiffuseTexture.Load(uint3(x,y,0));
+
+	return result / float((one.x - zero.x) * (one.y - zero.y));
 }
 
 float4 copy_point(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0

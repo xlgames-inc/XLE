@@ -552,25 +552,22 @@ namespace SceneEngine
         const Rectangle& destination,
         const Rectangle& source)
     {
-        // Copy from the temporary render surface of the altas into
-        // the final sprite destination. This will sometimes require
-        // re-sampling (for mipmap generation).
-        //
-        // Let's use a shader-based copy.
-        //
-        // In an ideal world we would do compression in this step.
-        // nVidia has some cuda-based texture compressors that could
-        // presumedly compress the texture on the GPU (without needing
-        // CPU involvement)
+            // Copy from the temporary render surface of the altas into
+            // the final sprite destination. This will sometimes require
+            // re-sampling (for mipmap generation).
+            //
+            // Let's use a shader-based copy.
+            //
+            // In an ideal world we would do compression in this step.
+            // nVidia has some cuda-based texture compressors that could
+            // presumedly compress the texture on the GPU (without needing
+            // CPU involvement)
         for (unsigned c=0; c<unsigned(_atlas._layers.size()); ++c) {
-
-                // note that this function isn't ideal currently
-                //      -- mipmaps aren't made well (too few samples are used, it's not a proper filter)
             const auto& l = _atlas._layers[c];
             ShaderBasedCopy(
                 context,
                 l._atlas.RTV(), l._tempRTV.SRV(),
-                destination, source, 0);
+                destination, source, CopyFilter::BoxFilter, 0);
         }
     }
 

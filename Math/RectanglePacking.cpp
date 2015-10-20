@@ -213,10 +213,10 @@ namespace XLEMath
             }
         }
 
-        const bool allowFlipped = true;
+        const bool allowFlipped = false;
         if (constant_expression<!allowFlipped>::result()) {
             best1 = _freeRectangles.end();
-            best1Score = UINT_MAX;
+            best1Score = INT_MAX;
         }
 
         if (best0 == _freeRectangles.end() && best1 == _freeRectangles.end())

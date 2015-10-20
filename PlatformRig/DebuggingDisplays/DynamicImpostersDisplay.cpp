@@ -88,6 +88,7 @@ namespace PlatformRig { namespace Overlays
                 *metalContext, rtv, srv,
                 std::make_pair(textureArea._topLeft, textureArea._bottomRight),
                 std::make_pair(UInt2(0,0), UInt2(desc.Width, desc.Height)),
+                SceneEngine::CopyFilter::Bilinear,
                 SceneEngine::ProtectState::States::RenderTargets);
         }
     }
