@@ -240,6 +240,10 @@ namespace RenderCore
     {
         PresentationChain* swapChain = checked_cast<PresentationChain*>(presentationChain);
         swapChain->AttachToContext(_immediateContext.get(), _underlying.get());
+
+        if (!_immediateThreadContext)
+            _immediateThreadContext = std::make_shared<ThreadContextDX11>(_immediateContext, shared_from_this());
+        _immediateThreadContext->IncrFrameId();
     }
 
     std::shared_ptr<IThreadContext> Device::GetImmediateContext()
@@ -509,6 +513,7 @@ namespace RenderCore
 
         ThreadContextStateDesc result;
         result._viewportDimensions = Int2(int(viewport.Width), int(viewport.Height));
+        result._frameId = _frameId;
         return result;
     }
 
@@ -516,6 +521,7 @@ namespace RenderCore
     : _device(std::move(device))
     {
         _underlying = std::make_shared<Metal_DX11::DeviceContext>(std::move(devContext));
+        _frameId = 0;
     }
 
     ThreadContext::~ThreadContext() {}
@@ -554,6 +560,11 @@ namespace RenderCore
                 dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
             dsv->Release();
         }
+    }
+
+    void ThreadContext::IncrFrameId()
+    {
+        ++_frameId;
     }
 
     void*   ThreadContextDX11::QueryInterface(const GUID& guid)

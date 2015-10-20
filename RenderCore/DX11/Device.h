@@ -55,12 +55,14 @@ namespace RenderCore
         ThreadContextStateDesc      GetStateDesc() const;
         std::shared_ptr<IDevice>    GetDevice() const;
         void                        ClearAllBoundTargets() const;
+        void                        IncrFrameId();
 
         ThreadContext(intrusive_ptr<ID3D::DeviceContext> devContext, std::shared_ptr<Device> device);
         ~ThreadContext();
     protected:
         std::shared_ptr<Metal_DX11::DeviceContext> _underlying;
-        std::weak_ptr<Device> _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
+        std::weak_ptr<Device>   _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
+        unsigned                _frameId;
     };
 
     class ThreadContextDX11 : public ThreadContext, public Base_ThreadContextDX11
@@ -94,7 +96,7 @@ namespace RenderCore
         intrusive_ptr<ID3D::DeviceContext>  _immediateContext;
         D3D_FEATURE_LEVEL                   _featureLevel;
 
-        std::shared_ptr<IThreadContext>     _immediateThreadContext;
+        std::shared_ptr<ThreadContextDX11>  _immediateThreadContext;
 
         intrusive_ptr<IDXGI::Factory>       GetDXGIFactory();
     };

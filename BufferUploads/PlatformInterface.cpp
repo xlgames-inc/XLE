@@ -157,13 +157,6 @@ namespace BufferUploads { namespace PlatformInterface
     {
         return Utility::GetPerformanceCounter();
     }
-  
-    int GetFrameID()
-    {
-            //  This should return an index for currently rendering frame. To support this
-            //  we need to maintain a frame count in some globally accessable location.
-        return 0;
-    }
 
         //////////////////////////////////////////////////////////////////////////////////////////////
 

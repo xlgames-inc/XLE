@@ -29,7 +29,6 @@ namespace BufferUploads { namespace PlatformInterface
     unsigned        ByteCount(const TextureDesc& desc);
     unsigned        TextureDataSize(unsigned nWidth, unsigned nHeight, unsigned nDepth, unsigned mipCount, NativeFormat::Enum format);
     int64           QueryPerformanceCounter();
-    int             GetFrameID();
 
     TextureDesc     CalculateMipMapDesc(const TextureDesc& topMostMipDesc, unsigned mipMapIndex);
     void            CopyMipLevel(   void* destination, size_t destinationDataSize,

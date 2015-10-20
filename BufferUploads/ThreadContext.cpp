@@ -55,7 +55,7 @@ namespace BufferUploads
                     // immediate resolve -- skip the render thread resolve step...
             _commitStepUnderConstruction.CommitToImmediate_PreCommandList(*_underlyingContext);
             _commitStepUnderConstruction.CommitToImmediate_PostCommandList(*_underlyingContext);
-            newCommandList._metrics._frameId = PlatformInterface::GetFrameID();
+            newCommandList._metrics._frameId = _underlyingContext->GetStateDesc()._frameId;
             newCommandList._metrics._commitTime = currentTime;
             #if defined(XL_BUFFER_UPLOAD_RECORD_THREAD_CONTEXT_METRICS)
                 while (!_recentRetirements.push(newCommandList._metrics)) {
@@ -109,7 +109,7 @@ namespace BufferUploads
                     _commandListIDCommittedToImmediate   = std::max(_commandListIDCommittedToImmediate, commandList->_id);
                     gpuEventStack.TriggerEvent(immContext.get(), commandList->_id);
                 
-                    commandList->_metrics._frameId                  = PlatformInterface::GetFrameID();
+                    commandList->_metrics._frameId                  = commitTo.GetStateDesc()._frameId;
                     commandList->_metrics._commitTime               = PlatformInterface::QueryPerformanceCounter();
                     commandList->_metrics._framePriorityStallTime   = stallEnd - stallStart;    // this should give us very small numbers, when we're not actually stalling for frame priority commits
                     #if defined(XL_BUFFER_UPLOAD_RECORD_THREAD_CONTEXT_METRICS)

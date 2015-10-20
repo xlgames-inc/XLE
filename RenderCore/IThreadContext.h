@@ -26,6 +26,7 @@ namespace RenderCore
     {
     public:
         Int2 _viewportDimensions;
+        unsigned _frameId;
     };
 
 #define FLEX_INTERFACE ThreadContext

@@ -144,7 +144,7 @@ namespace BufferUploads
             #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
                 unsigned _heapIndex;
             #endif
-            int _creationFrameID;
+            // int _creationFrameID;
 
             Transaction(unsigned idTopPart, unsigned heapIndex, const BufferDesc& desc);
             Transaction();
@@ -449,7 +449,7 @@ namespace BufferUploads
 
         // flags |= TransactionOptions::FramePriority;
         transaction->_creationOptions = flags;
-        transaction->_creationFrameID = PlatformInterface::GetFrameID();
+        // transaction->_creationFrameID = PlatformInterface::GetFrameID();
         
         const bool allowInitialisationOnConstruction = PlatformInterface::SupportsResourceInitialisation || _resourceSource.WillBeBatched(desc);
         if (initialisationData) {
@@ -558,7 +558,7 @@ namespace BufferUploads
         transaction->_finalResource = locator;
         assert(transaction->_finalResource.get());
         transaction->_creationQueued = true;
-        transaction->_creationFrameID = PlatformInterface::GetFrameID();
+        // transaction->_creationFrameID = PlatformInterface::GetFrameID();
         return result;
     }
 
@@ -727,18 +727,16 @@ namespace BufferUploads
     
             PlatformInterface::UnderlyingDeviceContext deviceContext(*_device->GetImmediateContext());
             for (unsigned l=part._lodLevelMin; l<=part._lodLevelMax; ++l) {
-                for (unsigned a=0; a<std::max(1u,part._arrayIndex); ++a) {
-                    auto size = initialisationData->GetDataSize(SubR(l, a));
-                    const void* data = initialisationData->GetData(SubR(l, a));
-                    if (data) {
-                        deviceContext.PushToStagingResource(
-                            *stagingConstruction._identifier->GetUnderlying(), 
-                            ApplyLODOffset(desc, actualisedStagingLODOffset), 0,
-                            data, size, 
-                            initialisationData->GetPitches(SubR(l, a)),
-                            Box2D(),
-                            l - actualisedStagingLODOffset, part._arrayIndex);
-                    }
+                auto size = initialisationData->GetDataSize(SubR(l, part._arrayIndex));
+                const void* data = initialisationData->GetData(SubR(l, part._arrayIndex));
+                if (data) {
+                    deviceContext.PushToStagingResource(
+                        *stagingConstruction._identifier->GetUnderlying(), 
+                        ApplyLODOffset(desc, actualisedStagingLODOffset), 0,
+                        data, size, 
+                        initialisationData->GetPitches(SubR(l, part._arrayIndex)),
+                        Box2D(),
+                        l - actualisedStagingLODOffset, part._arrayIndex);
                 }
             }
     
@@ -785,11 +783,14 @@ namespace BufferUploads
             Interlocked::Value referenceCount = transaction->_referenceCount;
                 // note --  This must return the frame index for the current thread (if there are threads working on
                 //          different frames). 
-            const int currentRenderThreadFrameId = PlatformInterface::GetFrameID(); 
+            // const int currentRenderThreadFrameId = PlatformInterface::GetFrameID(); 
+            // return  ((referenceCount & 0x00ffffff) == 0)
+            //     &&  (transaction->_completionCommandList <= lastCommandList_CommittedToImmediate)
+            //     &&  (transaction->_creationFrameID <= currentRenderThreadFrameId)       // prevent the transaction from completing on a frame earlier than it's creation
+            //     ;
             return  ((referenceCount & 0x00ffffff) == 0)
-                &&  (transaction->_completionCommandList <= lastCommandList_CommittedToImmediate)
-                &&  (transaction->_creationFrameID <= currentRenderThreadFrameId)       // prevent the transaction from completing on a frame earlier than it's creation
-                ;
+                    &&  (transaction->_completionCommandList <= lastCommandList_CommittedToImmediate)
+                    ;
         } else {
             return false;
         }
@@ -812,7 +813,7 @@ namespace BufferUploads
         _requestedStagingLODOffset = _actualisedStagingLODOffset = ~unsigned(0x0);
         _completionCommandList = ~unsigned(0x0);
         _creationOptions = 0;
-        _creationFrameID = 0;
+        // _creationFrameID = 0;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
             _heapIndex = heapIndex;
         #endif
@@ -827,7 +828,7 @@ namespace BufferUploads
         _requestedStagingLODOffset = _actualisedStagingLODOffset = ~unsigned(0x0);
         _completionCommandList = ~unsigned(0x0);
         _creationOptions = 0;
-        _creationFrameID = 0;
+        // _creationFrameID = 0;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
             _heapIndex = ~unsigned(0x0);
         #endif
@@ -853,7 +854,7 @@ namespace BufferUploads
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
             _heapIndex = moveFrom._heapIndex;
         #endif
-        _creationFrameID = moveFrom._creationFrameID;
+        // _creationFrameID = moveFrom._creationFrameID;
     }
 
     auto AssemblyLine::Transaction::operator=(Transaction&& moveFrom) never_throws -> Transaction&
@@ -875,7 +876,7 @@ namespace BufferUploads
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
             _heapIndex = moveFrom._heapIndex;
         #endif
-        _creationFrameID = moveFrom._creationFrameID;
+        // _creationFrameID = moveFrom._creationFrameID;
 
         Interlocked::Value lockRelease = Interlocked::Exchange(&_statusLock, 0);
         assert(lockRelease==1); (void)lockRelease;
@@ -1471,17 +1472,20 @@ namespace BufferUploads
             Transaction* transaction = GetTransaction(resourceCreateStep._id);
             assert(transaction && !transaction->_finalResource);
 
-            if (!(transaction->_referenceCount & 0xff000000)) {
-                    //  If there are no client references, we can consider this cancelled...
-                ReleaseTransaction(transaction, context, true);
-                return true;
-            }
-
             unsigned uploadRequestSize = 0;
             const unsigned objectSize = PlatformInterface::ByteCount(transaction->_desc);
             const UploadDataType::Enum uploadDataType = AsUploadDataType(transaction->_desc);
             if (resourceCreateStep._initialisationData) {
                 uploadRequestSize = objectSize;
+            }
+            
+            if (!(transaction->_referenceCount & 0xff000000)) {
+                    //  If there are no client references, we can consider this cancelled...
+                ReleaseTransaction(transaction, context, true);
+                if (uploadRequestSize) {
+                    Interlocked::Add(&_currentQueuedBytes[uploadDataType], -Interlocked::Value(uploadRequestSize));
+                }
+                return true;
             }
 
             if (((metricsUnderConstruction._bytesUploadTotal+uploadRequestSize) <= budgetUnderConstruction._limit_BytesUploaded || !metricsUnderConstruction._bytesUploadTotal)) {
@@ -1586,19 +1590,22 @@ namespace BufferUploads
             Transaction* transaction = GetTransaction(uploadStep._id);
             assert(transaction);
 
+            unsigned uploadRequestSize = 0;
+            for (unsigned l=uploadStep._lodLevelMin; l<=uploadStep._lodLevelMax; ++l) {
+                uploadRequestSize += (unsigned)uploadStep._rawData->GetDataSize(SubR(l, uploadStep._arrayIndex));
+            }
+                
             if (!(transaction->_referenceCount & 0xff000000) && (!transaction->_finalResource.get() || transaction->_finalResource->IsEmpty())) {
                 ReleaseTransaction(transaction, context, true);
+                if (uploadRequestSize) {
+                    Interlocked::Add(&_currentQueuedBytes[AsUploadDataType(transaction->_desc)], -Interlocked::Value(uploadRequestSize));
+                }
                 return true;
             }
 
             const bool readyToUpload = transaction->_finalResource && !transaction->_finalResource->IsEmpty()
                 && ((transaction->_stagingResource&&uploadStep._lodLevelMin>=transaction->_actualisedStagingLODOffset)||!transaction->_stagingQueued);
             if (readyToUpload) {
-
-                unsigned uploadRequestSize = 0;
-                for (unsigned l=uploadStep._lodLevelMin; l<=uploadStep._lodLevelMax; ++l) {
-                    uploadRequestSize += (unsigned)uploadStep._rawData->GetDataSize(SubR(l, uploadStep._arrayIndex));
-                }
 
                 if ((metricsUnderConstruction._bytesUploadTotal+uploadRequestSize) <= budgetUnderConstruction._limit_BytesUploaded || !metricsUnderConstruction._bytesUploadTotal) {
 
@@ -2183,13 +2190,9 @@ namespace BufferUploads
         }
 
         Interlocked::Value size = 0;
-		if (rawData) {
-			for (unsigned l = part._lodLevelMin; l <= part._lodLevelMax; ++l) {
-				for (unsigned a = 0; a < std::max(1u, part._arrayIndex); ++a) {
-					size += (unsigned)rawData->GetDataSize(SubR(l, a));
-				}
-			}
-		}
+		if (rawData)
+			for (unsigned l = part._lodLevelMin; l <= part._lodLevelMax; ++l)
+				size += (unsigned)rawData->GetDataSize(SubR(l, part._arrayIndex));
 
         if (transaction._desc._type == BufferDesc::Type::LinearBuffer) {
             assert(PlatformInterface::ByteCount(transaction._desc)==unsigned(size));

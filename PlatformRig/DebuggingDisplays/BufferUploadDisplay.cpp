@@ -12,6 +12,8 @@
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/StringUtils.h"
+#include "../../Utility/IteratorUtils.h"
+#include "../../Utility/TimeUtils.h"
 #include <assert.h>
 
 #pragma warning(disable:4127)       // warning C4127: conditional expression is constant
@@ -55,11 +57,8 @@ namespace PlatformRig { namespace Overlays
         _drawHistory = false;
         _openGraphMenu = 0;
 
-        #if defined(WIN32) || defined(WIN64)
-            int64 timerFrequency;
-            QueryPerformanceFrequency((LARGE_INTEGER*)&timerFrequency);
-            _reciprocalTimerFrequency = 1./double(timerFrequency);
-        #endif
+        auto timerFrequency = GetPerformanceCounterFrequency();
+        _reciprocalTimerFrequency = 1./double(timerFrequency);
 
         assert(s_gpuListenerDisplay==0);
         s_gpuListenerDisplay = this;
@@ -82,6 +81,7 @@ namespace PlatformRig { namespace Overlays
         }
     };
 
+#if 0
     static std::string BuildDescription(const BufferUploads::BufferDesc& desc)
     {
         using namespace BufferUploads;
@@ -104,6 +104,7 @@ namespace PlatformRig { namespace Overlays
         }
         return std::string(buffer);
     }
+#endif
 
     static unsigned& GetFrameID() 
     { 
@@ -119,19 +120,20 @@ namespace PlatformRig { namespace Overlays
             CreatesMB, CreatesCount, DeviceCreatesCount, 
             Latency, PendingBuffers, CommandListCount, 
             GPUCost, GPUBytesPerSecond, AveGPUCost, 
-            ThreadActivity, BatchedCopy, FramePriorityStall
+            ThreadActivity, BatchedCopy, FramePriorityStall,
+            Statistics
         };
         static const char* Names[] = {
-            "Uploads (MB)", "Creates (MB)", "Creates (count)", "Device creates (count)", "Latency (ms)", "Pending Buffers (MB)", "Command List Count", "GPU Cost", "GPU bytes/second", "Ave GPU cost", "Thread Activity", "Batched copy", "Frame Priority Stalls"
+            "Uploads (MB)", "Creates (MB)", "Creates (count)", "Device creates (count)", "Latency (ms)", "Pending Buffers (MB)", "Command List Count", "GPU Cost", "GPU bytes/second", "Ave GPU cost", "Thread Activity", "Batched copy", "Frame Priority Stalls", "Statistics"
         };
 
         std::pair<const char*, std::vector<Enum>> Groups[] = 
         {
-            std::pair<const char*, std::vector<Enum>>("Uploads", { Uploads }),
-            std::pair<const char*, std::vector<Enum>>("Creations", { CreatesMB, CreatesCount, DeviceCreatesCount }),
-            std::pair<const char*, std::vector<Enum>>("Latency", { Latency, PendingBuffers, CommandListCount }),
-            std::pair<const char*, std::vector<Enum>>("GPU Cost", { GPUCost, GPUBytesPerSecond, AveGPUCost }),
-            std::pair<const char*, std::vector<Enum>>("Threading", { ThreadActivity, BatchedCopy, FramePriorityStall })
+            std::pair<const char*, std::vector<Enum>>("Uploads",    { Uploads }),
+            std::pair<const char*, std::vector<Enum>>("Creations",  { CreatesMB, CreatesCount, DeviceCreatesCount }),
+            std::pair<const char*, std::vector<Enum>>("GPU",        { GPUCost, GPUBytesPerSecond, AveGPUCost }),
+            std::pair<const char*, std::vector<Enum>>("Threading",  { Latency, PendingBuffers, CommandListCount, ThreadActivity, BatchedCopy, FramePriorityStall }),
+            std::pair<const char*, std::vector<Enum>>("Extra",      { Statistics }),
         };
     }
 
@@ -237,7 +239,7 @@ namespace PlatformRig { namespace Overlays
                 auto rect = dd.AllocateFullWidth(20);
                 auto col = smallText;
 
-                const auto* name = GraphTabs::Names[unsigned((*dropDown)[c])];
+                const auto* name = GraphTabs::Names[unsigned(dropDown->begin()[c])];
                 auto hash = Hash64(name);
                 if (interfaceState.HasMouseOver(hash))
                     col = ColorB::White;
@@ -257,6 +259,325 @@ namespace PlatformRig { namespace Overlays
                 interactables.Register(Interactables::Widget(rect, hash));
             }
         }
+    }
+
+    size_t  BufferUploadDisplay::FillValuesBuffer(unsigned graphType, unsigned uploadType, float valuesBuffer[], size_t valuesMaxCount)
+    {
+        using namespace BufferUploads;
+        size_t valuesCount = 0;
+        for (std::deque<FrameRecord>::const_reverse_iterator i =_frames.rbegin(); i!=_frames.rend(); ++i) {
+            if (valuesCount>=valuesMaxCount) {
+                break;
+            }
+            ++valuesCount;
+            using namespace GraphTabs;
+            float& value = valuesBuffer[valuesMaxCount-valuesCount];
+            value = 0.f;
+
+                // Calculate the requested value ... 
+
+            if (graphType == Latency) { // latency (ms)
+                TimeMarker transactionLatencySum = 0;
+                unsigned transactionLatencyCount = 0;
+                for (unsigned cl=i->_commandListStart; cl<i->_commandListEnd; ++cl) {
+                    BufferUploads::CommandListMetrics& commandList = _recentHistory[cl];
+                    for (unsigned i2=0; i2<commandList.RetirementCount(); ++i2) {
+                        const AssemblyLineRetirement& retirement = commandList.Retirement(i2);
+                        transactionLatencySum += retirement._retirementTime - retirement._requestTime;
+                        ++transactionLatencyCount;
+                    }
+                }
+
+                float averageTransactionLatency = transactionLatencyCount?float(double(transactionLatencySum/TimeMarker(transactionLatencyCount)) * _reciprocalTimerFrequency):0.f;
+                value = averageTransactionLatency;
+            } else if (graphType == PendingBuffers) { // pending buffers
+                if (i->_commandListStart!=i->_commandListEnd) {
+                    value = _recentHistory[i->_commandListEnd-1]._assemblyLineMetrics._queuedBytes[uploadType] / (1024.f*1024.f);
+                }
+            } else if (graphType >= Uploads && graphType <= FramePriorityStall) {
+                for (unsigned cl=i->_commandListStart; cl<i->_commandListEnd; ++cl) {
+                    BufferUploads::CommandListMetrics& commandList = _recentHistory[cl];
+                    if (_graphsMode == Uploads) { // bytes uploaded
+                        value += (commandList._bytesUploaded[uploadType] + commandList._bytesUploadedDuringCreation[uploadType]) / (1024.f*1024.f);
+                    } else if (_graphsMode == CreatesMB) { // creations (bytes)
+                        value += commandList._bytesCreated[uploadType] / (1024.f*1024.f);
+                    } else if (_graphsMode == CreatesCount) { // creations (count)
+                        value += commandList._countCreations[uploadType];
+                    } else if (_graphsMode == DeviceCreatesCount) {
+                        value += commandList._countDeviceCreations[uploadType];
+                    } else if (_graphsMode == FramePriorityStall) {
+                        value += float(commandList._framePriorityStallTime * _reciprocalTimerFrequency * 1000.f);
+                    }
+                }
+            } else if (_graphsMode == CommandListCount) {
+                value = float(i->_commandListEnd-i->_commandListStart);
+            } else if (_graphsMode == GPUCost) {
+                value = i->_gpuCost;
+            } else if (_graphsMode == GPUBytesPerSecond) {
+                value = i->_gpuMetrics._slidingAverageBytesPerSecond / (1024.f * 1024.f);
+            } else if (_graphsMode == AveGPUCost) {
+                value = i->_gpuMetrics._slidingAverageCostMS;
+            } else if (_graphsMode == ThreadActivity) {
+                TimeMarker processingTimeSum = 0, waitTimeSum = 0;
+                for (unsigned cl=i->_commandListStart; cl<i->_commandListEnd; ++cl) {
+                    BufferUploads::CommandListMetrics& commandList = _recentHistory[cl];
+                    processingTimeSum += commandList._processingEnd - commandList._processingStart;
+                    waitTimeSum += commandList._waitTime;
+                }
+                value = (float(processingTimeSum))?(100.f * (1.0f-(waitTimeSum/float(processingTimeSum)))):0.f;
+            } else if (_graphsMode == BatchedCopy) {
+                value = 0;
+                for (unsigned cl=i->_commandListStart; cl<i->_commandListEnd; ++cl) {
+                    BufferUploads::CommandListMetrics& commandList = _recentHistory[cl];
+                    value += commandList._batchedCopyBytes;
+                }
+            }
+        }
+        return valuesCount;
+    }
+
+    void    BufferUploadDisplay::DrawDisplay(IOverlayContext* context, Layout& layout, Interactables& interactables, InterfaceState& interfaceState)
+    {
+        using namespace BufferUploads;
+
+        static ColorB graphBk(180,200,255,128);
+        static ColorB graphOutline(255,255,255,128);
+
+        float valuesBuffer[s_MaxGraphSegments];
+        XlZeroMemory(valuesBuffer);
+
+        unsigned graphCount = (_graphsMode<=GraphTabs::PendingBuffers)?UploadDataType::Max:1;
+        for (unsigned c=0; c<graphCount; ++c) {
+            Layout section = layout.AllocateFullWidthFraction(1.f/float(graphCount));
+            Rect labelRect = section.AllocateFullHeightFraction( .25f );
+            Rect historyRect = section.AllocateFullHeightFraction( .75f );
+
+            // DrawRectangleOutline(context, section._maximumSize);
+            DrawRoundedRectangle(context, section._maximumSize, ColorB(180,200,255,128), ColorB(255,255,255,128));
+
+            size_t valuesCount = FillValuesBuffer(_graphsMode, c, valuesBuffer, dimof(valuesBuffer));
+
+            if (graphCount == UploadDataType::Max) {
+                context->DrawText(
+                    AsPixelCoords(labelRect), 1.5f, nullptr, ColorB(0xffffffffu), 
+                    TextAlignment::Left,
+                    StringMeld<256>() << GraphTabs::Names[_graphsMode] << " (" << AsString(UploadDataType::Enum(c)) << ")", nullptr);
+            } else {
+                context->DrawText(
+                    AsPixelCoords(labelRect), 1.5f, nullptr, ColorB(0xffffffffu), 
+                    TextAlignment::Left,
+                    GraphTabs::Names[_graphsMode], nullptr);
+            }
+
+			if (valuesCount > 0) {
+				float mostRecentValue = valuesBuffer[dimof(valuesBuffer) - valuesCount];
+				context->DrawText(AsPixelCoords(historyRect), 1.f, nullptr, ColorB(0xffffffffu), 
+                    TextAlignment::Top,
+                    XlDynFormatString("%6.3f", mostRecentValue).c_str(), nullptr);
+			}
+
+            DrawHistoryGraph(
+                context, historyRect, &valuesBuffer[dimof(valuesBuffer)-valuesCount], (unsigned)valuesCount, (unsigned)dimof(valuesBuffer), 
+                _graphMinValueHistory, _graphMaxValueHistory);
+
+            /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                //  extra graph functionality....
+
+            if (_graphsMode == GraphTabs::GPUCost) {
+                    // GPU cost graph should also have the total bytes uploaded draw in
+                size_t valuesCount = 0;
+                for (std::deque<FrameRecord>::const_reverse_iterator i =_frames.rbegin(); i!=_frames.rend(); ++i) {
+                    if (valuesCount>=dimof(valuesBuffer)) {
+                        break;
+                    }
+                    ++valuesCount;
+                    valuesBuffer[dimof(valuesBuffer)-valuesCount] = 0;
+                    for (unsigned cl=i->_commandListStart; cl<i->_commandListEnd; ++cl) {
+                        BufferUploads::CommandListMetrics& commandList = _recentHistory[cl];
+                        for (unsigned c2=0; c2<UploadDataType::Max; ++c2) {
+                            valuesBuffer[dimof(valuesBuffer)-valuesCount] += (commandList._bytesUploaded[c2] + commandList._bytesUploadedDuringCreation[c2]) / (1024.f*1024.f);
+                        }
+                    }
+                }
+
+                DrawHistoryGraph_ExtraLine( 
+                    context, historyRect, &valuesBuffer[dimof(valuesBuffer)-valuesCount], (unsigned)valuesCount, (unsigned)dimof(valuesBuffer), 
+                    _graphMinValueHistory, _graphMaxValueHistory);
+            }
+
+            {
+                const InteractableId framePicker = InteractableId_Make("FramePicker");
+                size_t newValuesCount = 0;
+                for (std::deque<FrameRecord>::const_reverse_iterator i =_frames.rbegin(); i!=_frames.rend(); ++i) {
+                    if (newValuesCount>=dimof(valuesBuffer)) {
+                        break;
+                    }
+                    int graphPartIndex = int(dimof(valuesBuffer)-newValuesCount-1);
+                    Rect graphPart( 
+                        Coord2(LinearInterpolate(historyRect._topLeft[0], historyRect._bottomRight[0], (graphPartIndex)/float(dimof(valuesBuffer))), historyRect._topLeft[1]),
+                        Coord2(LinearInterpolate(historyRect._topLeft[0], historyRect._bottomRight[0], (graphPartIndex+1)/float(dimof(valuesBuffer))), historyRect._bottomRight[1]));
+                    InteractableId id = framePicker + newValuesCount;
+                    if (interfaceState.HasMouseOver(id)) {
+                        DrawRectangle(context, graphPart, ColorB(0x3f7f7f7fu));
+                    } else if (i->_frameId == _lockedFrameId) {
+                        DrawRectangle(context, graphPart, ColorB(0x3f7f3f7fu));
+                    }
+                    interactables.Register(Interactables::Widget(graphPart, id));
+                    ++newValuesCount;
+                }
+            }
+        }
+    }
+
+    void    BufferUploadDisplay::DrawStatistics(
+        IOverlayContext* context, Layout& layout, 
+        Interactables& interactables, InterfaceState& interfaceState,
+        const BufferUploads::CommandListMetrics& mostRecentResults)
+    {
+        using namespace BufferUploads;
+
+            //      Middle part is some written statics
+        GPUMetrics gpuMetrics = CalculateGPUMetrics();
+
+            //////
+        TimeMarker transactionLatencySum = 0;
+        unsigned transactionLatencyCount = 0;
+        TimeMarker commandListLatencySum = 0;
+        unsigned commandListLatencyCount = 0;
+        for (   std::deque<CommandListMetrics>::const_reverse_iterator i =_recentHistory.rbegin();i!=_recentHistory.rend(); ++i) {
+            for (unsigned i2=0; i2<i->RetirementCount(); ++i2) {
+                const AssemblyLineRetirement& retire = i->Retirement(i2);
+                transactionLatencySum += retire._retirementTime - retire._requestTime;
+                ++transactionLatencyCount;
+            }
+            commandListLatencySum += i->_commitTime - i->_resolveTime;
+            ++commandListLatencyCount;
+        }
+
+        TimeMarker processingTimeSum = 0, waitTimeSum = 0;
+        unsigned wakeCountSum = 0;
+            
+        size_t validFrameIndex = _frames.size()-1;
+        for (std::deque<FrameRecord>::reverse_iterator i=_frames.rbegin(); i!=_frames.rend(); ++i, --validFrameIndex) {
+            if (i->_gpuCost != 0.f && i->_commandListStart != i->_commandListEnd) {
+                break;
+            }
+        }
+        if (validFrameIndex < _frames.size()) {
+            for (unsigned cl=_frames[validFrameIndex]._commandListStart; cl<_frames[validFrameIndex]._commandListEnd; ++cl) {
+                BufferUploads::CommandListMetrics& commandList = _recentHistory[cl];
+                processingTimeSum += commandList._processingEnd - commandList._processingStart;
+                waitTimeSum += commandList._waitTime;
+                wakeCountSum += commandList._wakeCount;
+            }
+        }
+
+        float averageTransactionLatency = transactionLatencyCount?float(double(transactionLatencySum/TimeMarker(transactionLatencyCount)) * _reciprocalTimerFrequency):0.f;
+        float averageCommandListLatency = commandListLatencyCount?float(double(commandListLatencySum/TimeMarker(commandListLatencyCount)) * _reciprocalTimerFrequency):0.f;
+
+        const auto lineHeight = 20u;
+        const ColorB headerColor = ColorB::Blue;
+        std::pair<std::string, unsigned> headers0[] = { std::make_pair("Name", 300), std::make_pair("Value", 3000) };
+        std::pair<std::string, unsigned> headers1[] = { std::make_pair("Name", 150), std::make_pair("Tex", 300), std::make_pair("VB", 300), std::make_pair("IB", 300) };
+            
+        DrawTableHeaders(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers0), headerColor, &interactables);
+        DrawTableEntry(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers0), 
+            {   std::make_pair("Name", "Ave latency"), 
+                std::make_pair("Value", XlDynFormatString("%6.2f ms", averageTransactionLatency * 1000.f)) });
+
+        DrawTableEntry(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers0), 
+            {   std::make_pair("Name", "Command list latency"), 
+                std::make_pair("Value", XlDynFormatString("%6.2f ms", averageCommandListLatency * 1000.f)) });
+
+        DrawTableEntry(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers0), 
+            {   std::make_pair("Name", "GPU theoretical MB/second"), 
+                std::make_pair("Value", XlDynFormatString("%6.2f MB/s", gpuMetrics._slidingAverageBytesPerSecond/float(1024.f*1024.f))) });
+
+        DrawTableEntry(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers0), 
+            {   std::make_pair("Name", "GPU ave cost"), 
+                std::make_pair("Value", XlDynFormatString("%6.2f ms", gpuMetrics._slidingAverageCostMS)) });
+
+        DrawTableEntry(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers0), 
+            {   std::make_pair("Name", "Thread activity"), 
+                std::make_pair("Value", XlDynFormatString("%6.3f%% (%i)", (float(processingTimeSum))?(100.f * (1.0f-(waitTimeSum/float(processingTimeSum)))):0.f, wakeCountSum)) });
+
+        DrawTableEntry(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers0), 
+            {   std::make_pair("Name", "Pending creates (peak)"), 
+                std::make_pair("Value", XlDynFormatString("%i (%i)", mostRecentResults._assemblyLineMetrics._queuedCreates, mostRecentResults._assemblyLineMetrics._queuedPeakCreates)) });
+
+        DrawTableEntry(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers0), 
+            {   std::make_pair("Name", "Pending uploads (peak)"),
+                std::make_pair("Value", XlDynFormatString("%i (%i)", mostRecentResults._assemblyLineMetrics._queuedUploads, mostRecentResults._assemblyLineMetrics._queuedPeakUploads)) });
+
+        DrawTableEntry(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers0), 
+            {   std::make_pair("Name", "Pending staging creates (peak)"),
+                std::make_pair("Value", XlDynFormatString("%i (%i)", mostRecentResults._assemblyLineMetrics._queuedStagingCreates, mostRecentResults._assemblyLineMetrics._queuedPeakStagingCreates)) });
+
+        DrawTableEntry(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers0), 
+            {   std::make_pair("Name", "Transaction count"),
+                std::make_pair("Value", XlDynFormatString("%i/%i/%i", mostRecentResults._assemblyLineMetrics._transactionCount, mostRecentResults._assemblyLineMetrics._temporaryTransactionsAllocated, mostRecentResults._assemblyLineMetrics._longTermTransactionsAllocated)) });
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        DrawTableHeaders(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers1), headerColor, &interactables);
+        DrawTableEntry(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers1), 
+            {   std::make_pair("Name", "Recent creates"), 
+                std::make_pair("Tex", XlDynFormatString("%i", mostRecentResults._countCreations[UploadDataType::Texture])),
+                std::make_pair("VB", XlDynFormatString("%i", mostRecentResults._countCreations[UploadDataType::Vertex])),
+                std::make_pair("IB", XlDynFormatString("%i", mostRecentResults._countCreations[UploadDataType::Index])) });
+
+        DrawTableEntry(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers1), 
+            {   std::make_pair("Name", "Acc creates"), 
+                std::make_pair("Tex", XlDynFormatString("%i", _accumulatedCreateCount[UploadDataType::Texture])),
+                std::make_pair("VB", XlDynFormatString("%i", _accumulatedCreateCount[UploadDataType::Vertex])),
+                std::make_pair("IB", XlDynFormatString("%i", _accumulatedCreateCount[UploadDataType::Index])) });
+
+        DrawTableEntry(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers1), 
+            {   std::make_pair("Name", "Acc creates (MB)"), 
+                std::make_pair("Tex", XlDynFormatString("%8.3f MB", _accumulatedCreateBytes[UploadDataType::Texture] / (1024.f*1024.f))),
+                std::make_pair("VB", XlDynFormatString("%8.3f MB", _accumulatedCreateBytes[UploadDataType::Vertex] / (1024.f*1024.f))),
+                std::make_pair("IB", XlDynFormatString("%8.3f MB", _accumulatedCreateBytes[UploadDataType::Index] / (1024.f*1024.f))) });
+
+        DrawTableEntry(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers1), 
+            {   std::make_pair("Name", "Acc uploads"), 
+                std::make_pair("Tex", XlDynFormatString("%i", _accumulatedUploadCount[UploadDataType::Texture])),
+                std::make_pair("VB", XlDynFormatString("%i", _accumulatedUploadCount[UploadDataType::Vertex])),
+                std::make_pair("IB", XlDynFormatString("%i", _accumulatedUploadCount[UploadDataType::Index])) });
+
+        DrawTableEntry(context, layout.AllocateFullWidth(lineHeight), MakeIteratorRange(headers1), 
+            {   std::make_pair("Name", "Acc uploads (MB)"), 
+                std::make_pair("Tex", XlDynFormatString("%8.3f MB", _accumulatedUploadBytes[UploadDataType::Texture] / (1024.f*1024.f))),
+                std::make_pair("VB", XlDynFormatString("%8.3f MB", _accumulatedUploadBytes[UploadDataType::Vertex] / (1024.f*1024.f))),
+                std::make_pair("IB", XlDynFormatString("%8.3f MB", _accumulatedUploadBytes[UploadDataType::Index] / (1024.f*1024.f))) });
+
+#if 0
+        DrawFormatText(context, columnZero.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Ave latency: (%6.2f)ms", averageTransactionLatency * 1000.f);
+        DrawFormatText(context, columnZero.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Command list latency: (%6.2f)ms", averageCommandListLatency * 1000.f);
+        DrawFormatText(context, columnZero.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "GPU theoretical MB/second: (%6.2f)MB", gpuMetrics._slidingAverageBytesPerSecond/float(1024.f*1024.f));
+        DrawFormatText(context, columnZero.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "GPU ave cost: (%6.2f)ms", gpuMetrics._slidingAverageCostMS);
+
+        DrawFormatText(context, columnZero.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Creates: T(%i)V(%i)I(%i)", 
+            mostRecentResults._countCreations[UploadDataType::Texture], mostRecentResults._countCreations[UploadDataType::Vertex], mostRecentResults._countCreations[UploadDataType::Index]);
+
+            //////
+        DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "AccumulatedValues");
+        DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Creates: (T%i) (V%i) (I%i)", 
+            _accumulatedCreateCount[UploadDataType::Texture], _accumulatedCreateCount[UploadDataType::Vertex], _accumulatedCreateCount[UploadDataType::Index]);
+        DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Creates (MB): (T%8.3f) (V%8.3f) (I%8.3f)", 
+            _accumulatedCreateBytes[UploadDataType::Texture] / (1024.f*1024.f), _accumulatedCreateBytes[UploadDataType::Vertex] / (1024.f*1024.f), _accumulatedCreateBytes[UploadDataType::Index] / (1024.f*1024.f));
+        DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Uploads: (T%i) (V%i) (I%i)", 
+            _accumulatedUploadCount[UploadDataType::Texture], _accumulatedUploadCount[UploadDataType::Vertex], _accumulatedUploadCount[UploadDataType::Index]);
+        DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Uploads (MB): (T%8.3f) (V%8.3f) (I%8.3f)", 
+            _accumulatedUploadBytes[UploadDataType::Texture] / (1024.f*1024.f), _accumulatedUploadBytes[UploadDataType::Vertex] / (1024.f*1024.f), _accumulatedUploadBytes[UploadDataType::Index] / (1024.f*1024.f));
+        DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Thread activity (%6.3f)%% (%i)", 
+            (float(processingTimeSum))?(100.f * (1.0f-(waitTimeSum/float(processingTimeSum)))):0.f, wakeCountSum);
+
+
+            //////
+        DrawFormatText(context, columnTwo.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Pending creates: (%i/%i)", mostRecentResults._assemblyLineMetrics._queuedCreates, mostRecentResults._assemblyLineMetrics._queuedPeakCreates);
+        DrawFormatText(context, columnTwo.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Pending uploads: (%i/%i)", mostRecentResults._assemblyLineMetrics._queuedUploads, mostRecentResults._assemblyLineMetrics._queuedPeakUploads);
+        DrawFormatText(context, columnTwo.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Pending staging creates: (%i/%i)", mostRecentResults._assemblyLineMetrics._queuedStagingCreates, mostRecentResults._assemblyLineMetrics._queuedPeakStagingCreates);
+        DrawFormatText(context, columnTwo.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Transaction count: (%i/%i/%i)", mostRecentResults._assemblyLineMetrics._transactionCount, mostRecentResults._assemblyLineMetrics._temporaryTransactionsAllocated, mostRecentResults._assemblyLineMetrics._longTermTransactionsAllocated);
+#endif
     }
 
     void    BufferUploadDisplay::Render(IOverlayContext* context, Layout& layout, Interactables& interactables, InterfaceState& interfaceState)
@@ -299,13 +620,20 @@ namespace PlatformRig { namespace Overlays
             //      Present these frame by frame results visually.
             //      But also show information about the recent history (retired textures, etc)
         layout.AllocateFullWidthFraction(0.01f);
-        Layout menuBar   = layout.AllocateFullWidthFraction(.125f);
-        Rect topThird    = layout.AllocateFullWidthFraction(.25f+(_drawHistory?0.f:.4f));
-        Rect middleThird = layout.AllocateFullWidthFraction(.1f);
-        Rect bottomThird = layout.AllocateFullWidthFraction(.1f+(_drawHistory?.4f:.0f));
+        Layout menuBar = layout.AllocateFullWidthFraction(.125f);
+        Layout displayArea = layout.AllocateFullWidthFraction(1.f);
+        // Rect topThird    = layout.AllocateFullWidthFraction(.25f+(_drawHistory?0.f:.4f));
+        // Rect middleThird = layout.AllocateFullWidthFraction(.1f);
+        // Rect bottomThird = layout.AllocateFullWidthFraction(.1f+(_drawHistory?.4f:.0f));
 
+        if (_graphsMode == GraphTabs::Statistics) {
+            DrawStatistics(context, displayArea, interactables, interfaceState, mostRecentResults);
+        } else {
+            DrawDisplay(context, displayArea, interactables, interfaceState);
+        }
         DrawMenuBar(context, menuBar, interactables, interfaceState);
 
+#if 0
             //      Top part is a few graphs of the bytes uploaded/frame (or other statistics)
         {
             Layout topArea(topThird);
@@ -317,75 +645,7 @@ namespace PlatformRig { namespace Overlays
                 //  Copy the recent history into an array of floats, so we can graph the results...
                 float valuesBuffer[s_MaxGraphSegments];
                 size_t valuesCount = 0;
-                for (std::deque<FrameRecord>::const_reverse_iterator i =_frames.rbegin(); i!=_frames.rend(); ++i) {
-                    if (valuesCount>=dimof(valuesBuffer)) {
-                        break;
-                    }
-                    ++valuesCount;
-                    using namespace GraphTabs;
-                    float& value = valuesBuffer[dimof(valuesBuffer)-valuesCount];
-                    value = 0.f;
-                    if (graphCount == UploadDataType::Max) {
-                        if (_graphsMode == Latency) { // latency (ms)
-                            TimeMarker transactionLatencySum = 0;
-                            unsigned transactionLatencyCount = 0;
-                            for (unsigned cl=i->_commandListStart; cl<i->_commandListEnd; ++cl) {
-                                BufferUploads::CommandListMetrics& commandList = _recentHistory[cl];
-                                for (unsigned i2=0; i2<commandList.RetirementCount(); ++i2) {
-                                    const AssemblyLineRetirement& retirement = commandList.Retirement(i2);
-                                    transactionLatencySum += retirement._retirementTime - retirement._requestTime;
-                                    ++transactionLatencyCount;
-                                }
-                            }
-
-                            float averageTransactionLatency = transactionLatencyCount?float(double(transactionLatencySum/TimeMarker(transactionLatencyCount)) * _reciprocalTimerFrequency):0.f;
-                            value = averageTransactionLatency;
-                        } else if (_graphsMode == PendingBuffers) { // pending buffers
-                            if (i->_commandListStart!=i->_commandListEnd) {
-                                value = _recentHistory[i->_commandListEnd-1]._assemblyLineMetrics._queuedBytes[c] / (1024.f*1024.f);
-                            }
-                        } else {
-                            for (unsigned cl=i->_commandListStart; cl<i->_commandListEnd; ++cl) {
-                                BufferUploads::CommandListMetrics& commandList = _recentHistory[cl];
-                                if (_graphsMode == Uploads) { // bytes uploaded
-                                    value += (commandList._bytesUploaded[c] + commandList._bytesUploadedDuringCreation[c]) / (1024.f*1024.f);
-                                } else if (_graphsMode == CreatesMB) { // creations (bytes)
-                                    value += commandList._bytesCreated[c] / (1024.f*1024.f);
-                                } else if (_graphsMode == CreatesCount) { // creations (count)
-                                    value += commandList._countCreations[c];
-                                } else if (_graphsMode == DeviceCreatesCount) {
-                                    value += commandList._countDeviceCreations[c];
-                                } else if (_graphsMode == FramePriorityStall) {
-                                    value += float(commandList._framePriorityStallTime * _reciprocalTimerFrequency * 1000.f);
-                                }
-                            }
-                        }
-                    } else {
-                        if (_graphsMode == CommandListCount) {
-                            value = float(i->_commandListEnd-i->_commandListStart);
-                        } else if (_graphsMode == GPUCost) {
-                            value = i->_gpuCost;
-                        } else if (_graphsMode == GPUBytesPerSecond) {
-                            value = i->_gpuMetrics._slidingAverageBytesPerSecond / (1024.f * 1024.f);
-                        } else if (_graphsMode == AveGPUCost) {
-                            value = i->_gpuMetrics._slidingAverageCostMS;
-                        } else if (_graphsMode == ThreadActivity) {
-                            TimeMarker processingTimeSum = 0, waitTimeSum = 0;
-                            for (unsigned cl=i->_commandListStart; cl<i->_commandListEnd; ++cl) {
-                                BufferUploads::CommandListMetrics& commandList = _recentHistory[cl];
-                                processingTimeSum += commandList._processingEnd - commandList._processingStart;
-                                waitTimeSum += commandList._waitTime;
-                            }
-                            value = (float(processingTimeSum))?(100.f * (1.0f-(waitTimeSum/float(processingTimeSum)))):0.f;
-                        } else if (_graphsMode == BatchedCopy) {
-                            value = 0;
-                            for (unsigned cl=i->_commandListStart; cl<i->_commandListEnd; ++cl) {
-                                BufferUploads::CommandListMetrics& commandList = _recentHistory[cl];
-                                value += commandList._batchedCopyBytes;
-                            }
-                        }
-                    }
-                }
+                
 
                 Rect sectionNameRect( 
                     Coord2(graphArea._topLeft[0], graphArea._topLeft[1]),
@@ -466,81 +726,7 @@ namespace PlatformRig { namespace Overlays
         //     }
         // }
 
-        const Coord rowHeight    = 6;
-        const Coord rowHeight2   = 12;
 
-            //      Middle part is some written statics
-        {
-            Layout middleArea(middleThird);
-            Layout columnZero(middleArea.AllocateFullHeightFraction(.333f));
-            Layout columnOne (middleArea.AllocateFullHeightFraction(.333f));
-            Layout columnTwo (middleArea.AllocateFullHeightFraction(.333f));
-
-            GPUMetrics gpuMetrics = CalculateGPUMetrics();
-
-                //////
-            TimeMarker transactionLatencySum = 0;
-            unsigned transactionLatencyCount = 0;
-            TimeMarker commandListLatencySum = 0;
-            unsigned commandListLatencyCount = 0;
-            for (   std::deque<CommandListMetrics>::const_reverse_iterator i =_recentHistory.rbegin();i!=_recentHistory.rend(); ++i) {
-                for (unsigned i2=0; i2<i->RetirementCount(); ++i2) {
-                    const AssemblyLineRetirement& retire = i->Retirement(i2);
-                    transactionLatencySum += retire._retirementTime - retire._requestTime;
-                    ++transactionLatencyCount;
-                }
-                commandListLatencySum += i->_commitTime - i->_resolveTime;
-                ++commandListLatencyCount;
-            }
-
-            TimeMarker processingTimeSum = 0, waitTimeSum = 0;
-            unsigned wakeCountSum = 0;
-            
-            size_t validFrameIndex = _frames.size()-1;
-            for (std::deque<FrameRecord>::reverse_iterator i=_frames.rbegin(); i!=_frames.rend(); ++i, --validFrameIndex) {
-                if (i->_gpuCost != 0.f && i->_commandListStart != i->_commandListEnd) {
-                    break;
-                }
-            }
-            if (validFrameIndex < _frames.size()) {
-                for (unsigned cl=_frames[validFrameIndex]._commandListStart; cl<_frames[validFrameIndex]._commandListEnd; ++cl) {
-                    BufferUploads::CommandListMetrics& commandList = _recentHistory[cl];
-                    processingTimeSum += commandList._processingEnd - commandList._processingStart;
-                    waitTimeSum += commandList._waitTime;
-                    wakeCountSum += commandList._wakeCount;
-                }
-            }
-
-            float averageTransactionLatency = transactionLatencyCount?float(double(transactionLatencySum/TimeMarker(transactionLatencyCount)) * _reciprocalTimerFrequency):0.f;
-            float averageCommandListLatency = commandListLatencyCount?float(double(commandListLatencySum/TimeMarker(commandListLatencyCount)) * _reciprocalTimerFrequency):0.f;
-
-            DrawFormatText(context, columnZero.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Ave latency: (%6.2f)ms", averageTransactionLatency * 1000.f);
-            DrawFormatText(context, columnZero.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Creates: T(%i)V(%i)I(%i)", 
-                mostRecentResults._countCreations[UploadDataType::Texture], mostRecentResults._countCreations[UploadDataType::Vertex], mostRecentResults._countCreations[UploadDataType::Index]);
-            DrawFormatText(context, columnZero.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Command list latency: (%6.2f)ms", averageCommandListLatency * 1000.f);
-            DrawFormatText(context, columnZero.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "GPU theoretical MB/second: (%6.2f)MB", gpuMetrics._slidingAverageBytesPerSecond/float(1024.f*1024.f));
-            DrawFormatText(context, columnZero.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "GPU ave cost: (%6.2f)ms", gpuMetrics._slidingAverageCostMS);
-
-                //////
-            DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "AccumulatedValues");
-            DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Creates: (T%i) (V%i) (I%i)", 
-                _accumulatedCreateCount[UploadDataType::Texture], _accumulatedCreateCount[UploadDataType::Vertex], _accumulatedCreateCount[UploadDataType::Index]);
-            DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Creates (MB): (T%8.3f) (V%8.3f) (I%8.3f)", 
-                _accumulatedCreateBytes[UploadDataType::Texture] / (1024.f*1024.f), _accumulatedCreateBytes[UploadDataType::Vertex] / (1024.f*1024.f), _accumulatedCreateBytes[UploadDataType::Index] / (1024.f*1024.f));
-            DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Uploads: (T%i) (V%i) (I%i)", 
-                _accumulatedUploadCount[UploadDataType::Texture], _accumulatedUploadCount[UploadDataType::Vertex], _accumulatedUploadCount[UploadDataType::Index]);
-            DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Uploads (MB): (T%8.3f) (V%8.3f) (I%8.3f)", 
-                _accumulatedUploadBytes[UploadDataType::Texture] / (1024.f*1024.f), _accumulatedUploadBytes[UploadDataType::Vertex] / (1024.f*1024.f), _accumulatedUploadBytes[UploadDataType::Index] / (1024.f*1024.f));
-            DrawFormatText(context, columnOne.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Thread activity (%6.3f)%% (%i)", 
-                (float(processingTimeSum))?(100.f * (1.0f-(waitTimeSum/float(processingTimeSum)))):0.f, wakeCountSum);
-
-
-                //////
-            DrawFormatText(context, columnTwo.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Pending creates: (%i/%i)", mostRecentResults._assemblyLineMetrics._queuedCreates, mostRecentResults._assemblyLineMetrics._queuedPeakCreates);
-            DrawFormatText(context, columnTwo.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Pending uploads: (%i/%i)", mostRecentResults._assemblyLineMetrics._queuedUploads, mostRecentResults._assemblyLineMetrics._queuedPeakUploads);
-            DrawFormatText(context, columnTwo.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Pending staging creates: (%i/%i)", mostRecentResults._assemblyLineMetrics._queuedStagingCreates, mostRecentResults._assemblyLineMetrics._queuedPeakStagingCreates);
-            DrawFormatText(context, columnTwo.AllocateFullWidth(rowHeight2), 2.f, nullptr, ColorB(0xffffffffu), "Transaction count: (%i/%i/%i)", mostRecentResults._assemblyLineMetrics._transactionCount, mostRecentResults._assemblyLineMetrics._temporaryTransactionsAllocated, mostRecentResults._assemblyLineMetrics._longTermTransactionsAllocated);
-        }
 
 
             //      Bottom part is a list of recent retirements
@@ -588,6 +774,7 @@ namespace PlatformRig { namespace Overlays
                 }
             }
         }
+#endif
     }
 
     bool    BufferUploadDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
@@ -598,6 +785,7 @@ namespace PlatformRig { namespace Overlays
                 for (unsigned c=0; c<dimof(GraphTabs::Names); ++c) {
                     if (topMostWidget == InteractableId_Make(GraphTabs::Names[c])) {
                         _graphsMode = c;
+                        _graphMinValueHistory = _graphMaxValueHistory = 0.f;
                         return true;
                     }
                 }

@@ -8,13 +8,14 @@
 #define _DEBUGGING_DISPLAY_H_
 #pragma once
 
-#include "../Core/Types.h"
-#include "../Math/Vector.h"
-#include "../Math/Matrix.h"
-#include "../Utility/UTFUtils.h"
 #include "IOverlayContext.h"
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
+#include "../Math/Vector.h"
+#include "../Math/Matrix.h"
+#include "../Utility/UTFUtils.h"
+#include "../Utility/IteratorUtils.h"
+#include "../Core/Types.h"
 #include <vector>
 #include <map>
 
@@ -319,8 +320,8 @@ namespace RenderOverlays { namespace DebuggingDisplay
         TableElement(const char label[],  ColorB bkColour = ColorB(0xff000000)) : _label(label), _bkColour(bkColour) {}
         TableElement() : _bkColour(0xff000000) {}
     };
-    void DrawTableHeaders(const Rect& rect, const std::vector<std::pair<std::string, unsigned>>& fieldHeaders, ColorB bkColor, Interactables* interactables=NULL);
-    void DrawTableEntry(const Rect& rect, const std::vector<std::pair<std::string, unsigned>>& fieldHeaders, std::map<std::string, TableElement>& entry);
+    void DrawTableHeaders(IOverlayContext* context, const Rect& rect, const IteratorRange<std::pair<std::string, unsigned>*>& fieldHeaders, ColorB bkColor, Interactables* interactables=NULL);
+    void DrawTableEntry(IOverlayContext* context, const Rect& rect, const IteratorRange<std::pair<std::string, unsigned>*>& fieldHeaders, const std::map<std::string, TableElement>& entry);
 
     ///////////////////////////////////////////////////////////////////////////////////
     class DebugScreensSystem : public IInputListener

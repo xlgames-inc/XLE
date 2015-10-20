@@ -574,12 +574,12 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
 
     ///////////////////////////////////////////////////////////////////////////////////
-    void DrawTableHeaders(IOverlayContext* context, const Rect& rect, const std::vector<std::pair<std::string, unsigned>>& fieldHeaders, ColorB bkColor, Interactables* interactables)
+    void DrawTableHeaders(IOverlayContext* context, const Rect& rect, const IteratorRange<std::pair<std::string, unsigned>*>& fieldHeaders, ColorB bkColor, Interactables* interactables)
     {
         const ColorB HeaderTextColor  ( 255, 255, 255, 255 );
         Layout tempLayout(rect);
         tempLayout._paddingInternalBorder = 0;
-        for (std::vector<std::pair<std::string, unsigned>>::const_iterator i=fieldHeaders.begin(); i!=fieldHeaders.end(); ++i) {
+        for (auto i=fieldHeaders.begin(); i!=fieldHeaders.end(); ++i) {
             const Rect r = tempLayout.AllocateFullHeight(i->second);
             if (!i->first.empty() && i->second) {
                 const float scale        = 2.f;
@@ -596,21 +596,21 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
     void DrawTableEntry(        IOverlayContext* context,
                                 const Rect& rect, 
-                                const std::vector<std::pair<std::string, unsigned>>& fieldHeaders, 
-                                std::map<std::string, TableElement>& entry)
+                                const IteratorRange<std::pair<std::string, unsigned>*>& fieldHeaders, 
+                                const std::map<std::string, TableElement>& entry)
     {
         const ColorB TextColor        ( 255, 255, 255, 255 );
         Layout tempLayout(rect);
         tempLayout._paddingInternalBorder = 0;
-        for (std::vector<std::pair<std::string, unsigned>>::const_iterator i=fieldHeaders.begin(); i!=fieldHeaders.end(); ++i) {
+        for (auto i=fieldHeaders.begin(); i!=fieldHeaders.end(); ++i) {
             if (i->second) {
-                const TableElement& s    = entry[i->first];
+                auto s = entry.find(i->first);
                 const Rect r = tempLayout.AllocateFullHeight(i->second);
-                if (!s._label.empty()) {
+                if (s != entry.end() && !s->second._label.empty()) {
                     const float scale        = 2.f;
                     const ColorB colour      = TextColor;
-                    DrawRectangle(context, r, s._bkColour);
-                    DrawText(context, r, scale, nullptr, colour, s._label.c_str());
+                    DrawRectangle(context, r, s->second._bkColour);
+                    DrawText(context, r, scale, nullptr, colour, s->second._label.c_str());
                 }
             }
         }
