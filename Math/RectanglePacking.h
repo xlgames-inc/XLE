@@ -50,9 +50,9 @@ namespace XLEMath
     public:
         using Rectangle = std::pair<UInt2, UInt2>;
 
-        Rectangle   Add(UInt2 dims);
-        UInt2       TotalSize() const { return _totalSize; }
+        Rectangle   Allocate(UInt2 dims);
 
+        UInt2       TotalSize() const { return _totalSize; }
         std::pair<UInt2, UInt2> LargestFreeBlock() const;
 
         RectanglePacker();
@@ -82,6 +82,29 @@ namespace XLEMath
 
         size_t SearchNodes(size_t startingNode, UInt2 dims) const;
         std::pair<Rectangle, Rectangle> SearchLargestFree(size_t startingNode) const;
+    };
+
+    class RectanglePacker_MaxRects
+    {
+    public:
+        using Rectangle = std::pair<UInt2, UInt2>;
+
+        Rectangle   Allocate(UInt2 dims);
+        void        Deallocate(const Rectangle& rect);
+
+        std::pair<UInt2, UInt2> LargestFreeBlock() const;
+
+        RectanglePacker_MaxRects();
+        RectanglePacker_MaxRects(UInt2 initialSpace);
+        RectanglePacker_MaxRects(RectanglePacker_MaxRects&& moveFrom) never_throws;
+        RectanglePacker_MaxRects& operator=(RectanglePacker_MaxRects&& moveFrom) never_throws;
+        ~RectanglePacker_MaxRects();
+
+        RectanglePacker_MaxRects(const RectanglePacker_MaxRects&);
+        RectanglePacker_MaxRects& operator=(const RectanglePacker_MaxRects&);
+
+    private:
+        std::vector<Rectangle> _freeRectangles;
     };
 }
 

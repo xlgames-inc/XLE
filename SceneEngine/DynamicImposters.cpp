@@ -39,6 +39,8 @@ namespace SceneEngine
 {
     using namespace RenderCore;
 
+    using Packer = RectanglePacker_MaxRects;
+
     static unsigned GetXYAngle(
         const RenderCore::Assets::ModelScaffold& scaffold,
         const Float3x4& localToWorld, const Float3& cameraPosition, 
@@ -199,7 +201,7 @@ namespace SceneEngine
         };
         std::vector<std::pair<uint64, PreparedSprite>> _preparedSprites;
 
-        RectanglePacker _packer;
+        Packer _packer;
         ImposterSpriteAtlas _atlas;
         Techniques::TechniqueMaterial _material;
 
@@ -491,11 +493,11 @@ namespace SceneEngine
             // to revert to our previous state.
             // Note that copying the packer here results in an allocation... It would
             // be good if we could avoid this allocation!
-        RectanglePacker newPacker = _packer;
+        Packer newPacker = _packer;
 
         Rectangle reservedSpace[MipMapCount];
         for (unsigned c=0; c<MipMapCount; ++c) {
-            reservedSpace[c] = newPacker.Add(MipMapDims(dims, c));
+            reservedSpace[c] = newPacker.Allocate(MipMapDims(dims, c));
             if (    reservedSpace[c].first[0] >= reservedSpace[c].second[0]
                 ||  reservedSpace[c].first[1] >= reservedSpace[c].second[1]) {
                 return PreparedSprite();
@@ -523,7 +525,7 @@ namespace SceneEngine
 
             // once everything is complete (and there is no further possibility of an exception,
             // we should commit our changes to the rectangle packer)
-        _packer = newPacker;
+        _packer = std::move(newPacker);
 
         for (unsigned c=0; c<MipMapCount; ++c)
             _copyCounter += 
@@ -681,7 +683,7 @@ namespace SceneEngine
 
         if (Tweakable("ImpostersReset", false)) {
             _pimpl->_preparedSprites.clear();
-            _pimpl->_packer = RectanglePacker(_pimpl->_packer.TotalSize());
+            _pimpl->_packer = Packer(Truncate(_pimpl->_config._altasSize));
             _pimpl->_copyCounter = 0;
         }
     }
@@ -714,7 +716,7 @@ namespace SceneEngine
         _pimpl->_config = config;
 
         auto atlasSize = Truncate(config._altasSize);
-        _pimpl->_packer = RectanglePacker(atlasSize);
+        _pimpl->_packer = Packer(atlasSize);
         _pimpl->_copyCounter = 0;
 
             // the formats we initialize for the atlas really depend on whether we're going
@@ -728,7 +730,7 @@ namespace SceneEngine
         Reset();
         _pimpl->_preparedSprites.clear();
         _pimpl->_config = Config();
-        _pimpl->_packer = RectanglePacker();
+        _pimpl->_packer = Packer();
         _pimpl->_atlas = ImposterSpriteAtlas();
     }
 

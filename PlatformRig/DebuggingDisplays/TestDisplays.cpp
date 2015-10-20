@@ -566,12 +566,12 @@ namespace PlatformRig { namespace Overlays
     class RectanglePackerTest::Pimpl
     {
     public:
-        RectanglePacker _packer;
+        RectanglePacker_MaxRects _packer;
 
         using Rectangle = std::pair<UInt2, UInt2>;
         std::vector<Rectangle> _rects;
 
-        Pimpl() : _packer(RectPackerSize) {}
+        Pimpl() {}
 
         UInt2 BuildRandomSize()
         {
@@ -592,11 +592,12 @@ namespace PlatformRig { namespace Overlays
         void FillRandomly()
         {
             const unsigned rects = 128;
-            _packer = RectanglePacker(RectPackerSize);
+            _packer = RectanglePacker_MaxRects();
+            _packer.Deallocate(std::make_pair(UInt2(0,0), RectPackerSize));
             _rects.clear();
             
             for (unsigned c=0; c<rects; ++c) {
-                auto rect = _packer.Add(BuildRandomSize());
+                auto rect = _packer.Allocate(BuildRandomSize());
                 if (rect.second[0] > rect.first[0] && rect.second[1] > rect.first[1])
                     _rects.push_back(rect);
             }
@@ -605,7 +606,8 @@ namespace PlatformRig { namespace Overlays
         void FillEfficiently()
         {
             const unsigned rects = 128;
-            _packer = RectanglePacker(RectPackerSize);
+            _packer = RectanglePacker_MaxRects();
+            _packer.Deallocate(std::make_pair(UInt2(0,0), RectPackerSize));
             _rects.clear();
 
             std::vector<UInt2> rectsToAdd; rectsToAdd.reserve(rects);
@@ -619,7 +621,7 @@ namespace PlatformRig { namespace Overlays
                 });
 
             for (const auto& size:rectsToAdd) {
-                auto rect = _packer.Add(size);
+                auto rect = _packer.Allocate(size);
                 if (rect.second[0] > rect.first[0] && rect.second[1] > rect.first[1])
                     _rects.push_back(rect);
             }
@@ -712,7 +714,7 @@ namespace PlatformRig { namespace Overlays
     RectanglePackerTest::RectanglePackerTest() 
     {
         _pimpl = std::make_unique<Pimpl>();
-        _pimpl->FillRandomly();
+        // _pimpl->FillRandomly();
     }
 
     RectanglePackerTest::~RectanglePackerTest() {}

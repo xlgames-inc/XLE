@@ -13,7 +13,7 @@ namespace XLEMath
 
     const auto s_emptyRect = std::make_pair(UInt2(0,0), UInt2(0,0));
 
-    auto RectanglePacker::Add(UInt2 dims) -> Rectangle
+    auto RectanglePacker::Allocate(UInt2 dims) -> Rectangle
     {
         auto i = SearchNodes(0, dims);
         if (i != s_invalidNode) {
@@ -149,6 +149,215 @@ namespace XLEMath
     }
 
     RectanglePacker::RectanglePacker() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static int Score(const std::pair<UInt2, UInt2>& rect, UInt2 dims)
+    {
+        auto width = rect.second[0] - rect.first[0];
+        auto height = rect.second[1] - rect.first[1];
+        // if (dims[0] > width || dims[1] > height) return -1; (similar result is achieved by the below equation)
+        return std::min(int(width) - int(dims[0]), int(height) - int(dims[1]));
+    }
+
+    static bool Intersects(std::pair<UInt2, UInt2>& lhs, std::pair<UInt2, UInt2>& rhs)
+    {
+        return 
+            !(  lhs.second[0] <= rhs.first[0]
+            ||  lhs.second[1] <= rhs.first[1]
+            ||  lhs.first[0] >= rhs.second[0]
+            ||  lhs.first[1] >= rhs.second[1]);
+    }
+
+    static bool Contains(
+        const std::pair<UInt2, UInt2>& bigger, 
+        const std::pair<UInt2, UInt2>& smaller)
+    {
+        return
+            (   smaller.first[0]  >= bigger.first[0]
+            &&  smaller.first[1]  >= bigger.first[1]
+            &&  smaller.second[0] <= bigger.second[0]
+            &&  smaller.second[1] <= bigger.second[1]);
+    }
+
+    static bool IsGood(const std::pair<UInt2, UInt2>& rect)
+    {
+        return (rect.second[0] > rect.first[0]) && (rect.second[1] > rect.first[1]);
+    }
+
+    auto    RectanglePacker_MaxRects::Allocate(UInt2 dims) -> Rectangle
+    {
+            // Search through to find the best free rectangle that can contain
+            // this dimension.
+            // As described here -- http://clb.demon.fi/files/RectangleBinPack.pdf 
+            //      -- there are a number of different predicates we can used to 
+            //      determine which free rectangle is ideal.
+
+        auto best0 = _freeRectangles.end();
+        int best0Score = INT_MAX;
+        auto best1 = _freeRectangles.end();
+        int best1Score = INT_MAX;
+
+        UInt2 flippedDims(dims[1], dims[0]);
+        for (auto i=_freeRectangles.begin(); i!=_freeRectangles.end(); ++i) {
+            auto score0 = Score(*i, dims);
+            if (score0 >= 0 && score0 < best0Score) {
+                best0Score = score0;
+                best0 = i;
+            }
+
+            auto score1 = Score(*i, flippedDims);
+            if (score1 >= 0 && score1 < best1Score) {
+                best1Score = score1;
+                best1 = i;
+            }
+        }
+
+        const bool allowFlipped = true;
+        if (constant_expression<!allowFlipped>::result()) {
+            best1 = _freeRectangles.end();
+            best1Score = UINT_MAX;
+        }
+
+        if (best0 == _freeRectangles.end() && best1 == _freeRectangles.end())
+            return s_emptyRect; // couldn't fit it in!
+
+        Rectangle result;
+        if (best0Score <= best1Score) {
+                // fit it within the top-left of the given space
+            result.first = best0->first;
+            result.second = result.first + dims;
+            assert(Contains(*best0, result));
+        } else {
+            result.first = best1->first;
+            result.second = result.first + flippedDims;
+            assert(Contains(*best1, result));
+        }
+
+            // Go through every free rectangle and split every rectangle that
+            // intersects with the one we just cut out. We will build the
+            // "maximal rectangle" created by the split
+        for (auto i=_freeRectangles.begin(); i!=_freeRectangles.end();) {
+            if (Intersects(result, *i)) {
+                Rectangle splits[4];
+                unsigned splitsCount = 0;
+
+                Rectangle left(i->first, UInt2(result.first[0], i->second[1]));
+                Rectangle right(UInt2(result.second[0], i->first[1]), i->second);
+                Rectangle top(i->first, UInt2(i->second[0], result.first[1]));
+                Rectangle bottom(UInt2(i->first[0], result.second[1]), i->second);
+
+                if (IsGood(left))   splits[splitsCount++] = left;
+                if (IsGood(right))  splits[splitsCount++] = right;
+                if (IsGood(top))    splits[splitsCount++] = top;
+                if (IsGood(bottom)) splits[splitsCount++] = bottom;
+
+                #if defined(_DEBUG)
+                    for (unsigned c=0; c<splitsCount; ++c)
+                        assert(!Intersects(result, splits[c]));
+                #endif
+
+                if (splitsCount > 0) {
+                    auto originalIndex = std::distance(_freeRectangles.begin(), i);
+                    *i = splits[0];
+                    _freeRectangles.insert(_freeRectangles.end(), &splits[1], &splits[splitsCount]);
+                    i = _freeRectangles.begin() + (originalIndex+1);
+                } else {
+                    i = _freeRectangles.erase(i);
+                }
+            } else 
+                ++i;
+        }
+
+            // We need to remove rectangles that are completely contained within other
+            // rectangles. Go through and search for any cases like this. Note that it
+            // might be more efficient to sort the list before doing this.
+        for (auto i=_freeRectangles.begin(); i!=_freeRectangles.end(); ++i) {
+            const auto r = *i;
+            auto newEnd = _freeRectangles.end();
+            for (auto i2=i+1; i2<newEnd; ++i2) {
+                assert(i!=i2);
+                if (Contains(*i, *i2)) {
+                    std::swap(*i2, *(newEnd-1));
+                    --newEnd;
+                } else if (Contains(*i2, *i)) {
+                        // i2 is bigger; therefore keep i2 and erase i.
+                    std::swap(*i2, *i);
+                    std::swap(*i2, *(newEnd-1));
+                    --newEnd;
+                        // But we need to compare i2 against all of the
+                        // rectangles that preceed it... That means reset
+                        // i2 to the start of the list of rectangles
+                    i2 = i;
+                }
+            }
+
+                // do an erase to remove the rectangles that were
+                // shifted to the end. This should not invalidate 'i'
+            _freeRectangles.erase(newEnd, _freeRectangles.end());
+        }
+
+        #if defined(_DEBUG)
+            for (auto i=_freeRectangles.begin(); i!=_freeRectangles.end();++i)
+                assert(!Intersects(result, *i));
+        #endif
+
+        return result;
+    }
+
+    void    RectanglePacker_MaxRects::Deallocate(const Rectangle& rect)
+    {
+        if (IsGood(rect))
+            _freeRectangles.push_back(rect);
+        // look for intersect/containing rectangles...?
+    }
+
+    std::pair<UInt2, UInt2> RectanglePacker_MaxRects::LargestFreeBlock() const
+    {
+        UInt2 bestForArea(0, 0);
+        UInt2 bestForSide(0, 0);
+        unsigned bestArea = 0, bestSide = 0;
+        for (auto i=_freeRectangles.begin(); i!=_freeRectangles.end();++i) {
+            auto area = (i->second[0] - i->first[0]) * (i->second[1] - i->first[1]);
+            if (area > bestArea) {
+                bestForArea = i->second - i->first;
+                bestArea = area;
+            }
+            auto side = std::max(i->second[0] - i->first[0], i->second[1] - i->first[1]);
+            if (side > bestSide) {
+                bestForSide = i->second - i->first;
+                bestSide = side;
+            }
+        }
+        return std::make_pair(bestForArea, bestForSide);
+    }
+
+    RectanglePacker_MaxRects::RectanglePacker_MaxRects() {}
+    RectanglePacker_MaxRects::RectanglePacker_MaxRects(UInt2 initialSpace)
+    {
+        Deallocate(std::make_pair(UInt2(0,0), initialSpace));
+    }
+    RectanglePacker_MaxRects::RectanglePacker_MaxRects(RectanglePacker_MaxRects&& moveFrom) never_throws
+    : _freeRectangles(std::move(moveFrom._freeRectangles))
+    {
+    }
+    RectanglePacker_MaxRects& RectanglePacker_MaxRects::operator=(RectanglePacker_MaxRects&& moveFrom) never_throws
+    {
+        _freeRectangles = std::move(moveFrom._freeRectangles);
+        return *this;
+    }
+    RectanglePacker_MaxRects::~RectanglePacker_MaxRects() {}
+
+    RectanglePacker_MaxRects::RectanglePacker_MaxRects(const RectanglePacker_MaxRects& copyFrom)
+    : _freeRectangles(copyFrom._freeRectangles)
+    {
+    }
+
+    RectanglePacker_MaxRects& RectanglePacker_MaxRects::operator=(const RectanglePacker_MaxRects& copyFrom)
+    {
+        _freeRectangles = copyFrom._freeRectangles;
+        return *this;
+    }
 
 }
 
