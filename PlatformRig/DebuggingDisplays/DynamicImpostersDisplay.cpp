@@ -10,6 +10,7 @@
 #include "../../RenderCore/Metal/RenderTargetView.h"
 #include "../../RenderCore/Metal/ShaderResource.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../Utility/FunctionUtils.h"
 
 #include "../../RenderCore/DX11/Metal/DX11Utils.h"
@@ -84,6 +85,7 @@ namespace PlatformRig { namespace Overlays
             RenderCore::Metal::RenderTargetView rtv(*metalContext);
             auto srv = m->GetAtlasResource(visibleLayer);
             RenderCore::Metal::TextureDesc2D desc(srv.GetUnderlying());
+            metalContext->Bind(RenderCore::Techniques::CommonResources()._blendOneSrcAlpha);
             SceneEngine::ShaderBasedCopy(
                 *metalContext, rtv, srv,
                 std::make_pair(textureArea._topLeft, textureArea._bottomRight),

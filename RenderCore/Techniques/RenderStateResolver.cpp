@@ -36,7 +36,7 @@ namespace RenderCore { namespace Techniques
 
     IStateSetResolver::~IStateSetResolver() {}
 
-    static Metal::RasterizerState BuildRastizerState(const RenderStateSet& states)
+    Metal::RasterizerState BuildDefaultRastizerState(const RenderStateSet& states)
     {
         Metal::CullMode::Enum cullMode = Metal::CullMode::Back;
         Metal::FillMode::Enum fillMode = Metal::FillMode::Solid;
@@ -62,7 +62,7 @@ namespace RenderCore { namespace Techniques
             const Utility::ParameterBox& globalStates,
             unsigned techniqueIndex) -> CompiledRenderStateSet
         {
-            return CompiledRenderStateSet(Metal::BlendState(CommonResources()._blendOpaque), BuildRastizerState(states));
+            return CompiledRenderStateSet(Metal::BlendState(CommonResources()._blendOpaque), BuildDefaultRastizerState(states));
         }
 
         virtual uint64 GetHash()
@@ -87,7 +87,7 @@ namespace RenderCore { namespace Techniques
                 ? CommonResources()._blendStraightAlpha
                 : CommonResources()._blendOpaque;
 
-            return CompiledRenderStateSet(Metal::BlendState(blendState), BuildRastizerState(states));
+            return CompiledRenderStateSet(Metal::BlendState(blendState), BuildDefaultRastizerState(states));
         }
 
         virtual uint64 GetHash() { return typeid(StateSetResolver_Deferred).hash_code(); }
@@ -109,7 +109,7 @@ namespace RenderCore { namespace Techniques
                 result._blendState = Techniques::CommonResources()._blendOpaque;
             }
 
-            result._rasterizerState = BuildRastizerState(states);
+            result._rasterizerState = BuildDefaultRastizerState(states);
             return result;
         }
 

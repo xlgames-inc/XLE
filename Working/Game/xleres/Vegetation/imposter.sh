@@ -136,6 +136,7 @@ float4 LoadImposterAltas(uint atlasIndex, uint4 coords, float2 tc)
         ;
 }
 
+// [earlydepthstencil]
 GBufferEncoded ps_deferred(VSOutput geo)
 {
     if (0) {
@@ -161,13 +162,16 @@ GBufferEncoded ps_deferred(VSOutput geo)
         // the sprite. So we could probably calculate it in the vertex shader
         // (or even in a geometry shader)
     float2 tc = geo.texCoord;
-    uint mip = (uint)CalculateMipmapLevel(tc, uint2(coords[0][2] - coords[0][0], coords[0][3] - coords[0][1]));
-    mip = min(mip, MipMapCount-1);
+    float mipf = CalculateMipmapLevel(tc, uint2(coords[0][2] - coords[0][0], coords[0][3] - coords[0][1]));
+    const bool mipBias = -.5f;  // seem to get a much better result if we bias the mip-map a bit
+    mipf += mipBias;
+    mipf = clamp(mipf, 0, MipMapCount-1);
+    uint mip = (uint)mipf;
 
     float4 diffuse = LoadImposterAltas(0, coords[mip], tc);
     float4 normal = LoadImposterAltas(1, coords[mip], tc);
 
-    if (diffuse.a == 0.f) discard;
+    if (diffuse.a > 254.f/255.f) discard;    // prevent depth write
 
         // Normals are stored in the view space that was originally
         // used to render the sprite.
@@ -202,9 +206,10 @@ GBufferEncoded ps_deferred(VSOutput geo)
         // because the normal is already compressed into it's 8 bit format
     GBufferEncoded result;
     result.diffuseBuffer = diffuse;
-    result.normalBuffer = normal;
+    // result.normalBuffer = float4(normal.xyz * (1.0f - normal.a), normal.a);
+    result.normalBuffer = float4(normal.xyz, normal.a);
     #if HAS_PROPERTIES_BUFFER == 1
-        result.propertiesBuffer = float4(0, 1, 1, 1);
+        result.propertiesBuffer = float4(float3(0, 1, 1) * (1.f-diffuse.a), diffuse.a);
     #endif
     return result;
 }

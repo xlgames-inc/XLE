@@ -17,6 +17,7 @@
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../RenderCore/Techniques/RenderStateResolver.h"
+#include "../RenderCore/Techniques/CompiledRenderStateSet.h"
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
@@ -209,6 +210,9 @@ namespace SceneEngine
         unsigned _pendingCounter;
         unsigned _copyCounter;
 
+        std::shared_ptr<Techniques::IStateSetResolver> _stateResOpaque;
+        std::shared_ptr<Techniques::IStateSetResolver> _stateResBlending;
+
         void BuildNewSprites(
             Metal::DeviceContext& context,
             Techniques::ParsingContext& parserContext);
@@ -304,6 +308,7 @@ namespace SceneEngine
             Float3 _xAxis, _uAxis;
             Float2 _size;
             unsigned _spriteIndex;
+            float _sortingDistance;
         };
         std::vector<Vertex> vertices;
         vertices.reserve(_pimpl->_queuedInstances.size());
@@ -311,6 +316,7 @@ namespace SceneEngine
         auto& projDesc = parserContext.GetProjectionDesc();
         auto cameraRight = ExtractRight_Cam(projDesc._cameraToWorld);
         auto cameraUp = Float3(0.f, 0.f, 1.f); // ExtractUp_Cam(projDesc._cameraToWorld);
+        auto cameraPos = ExtractTranslation(projDesc._cameraToWorld);
 
             // Now just render a sprite for each instance requested
             // Here, we can choose to sort the instances by sprite id,
@@ -341,11 +347,19 @@ namespace SceneEngine
             Float3 projectionCenter = preparedSpritesI->second._projectionCentre;
             Float2 projectionSize = preparedSpritesI->second._worldSpaceHalfSize;
 
-            for (auto s=start; s<i; ++s)
-                vertices.push_back(Vertex {s->second + projectionCenter, cameraRight, cameraUp, projectionSize, spriteIndex});
+            for (auto s=start; s<i; ++s) {
+                float sortingDistance = MagnitudeSquared(s->second + projectionCenter - cameraPos);
+                vertices.push_back(Vertex {s->second + projectionCenter, cameraRight, cameraUp, projectionSize, spriteIndex, sortingDistance});
+            }
         }
 
         if (vertices.empty()) return;
+
+            // sort back-to-front
+            // Since the sprites are mostly camera-aligned, this should give us a good
+            // approximation of pixel-accurate sorting
+        std::sort(vertices.begin(), vertices.end(),
+            [](const Vertex& lhs, const Vertex& rhs) { return lhs._sortingDistance > rhs._sortingDistance; });
 
             // We don't really have to rebuild this every time. We should only need to 
             // rebuild this table when the prepared sprites array changes.
@@ -373,7 +387,7 @@ namespace SceneEngine
         Metal::VertexBuffer tempvb(AsPointer(vertices.begin()), vertices.size()*sizeof(Vertex));
         context.Bind(MakeResourceList(tempvb), sizeof(Vertex), 0);
         context.Bind(Metal::Topology::PointList);
-        context.Bind(Techniques::CommonResources()._blendOpaque);
+        context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
         context.Bind(Techniques::CommonResources()._dssReadWrite);
         context.Bind(Techniques::CommonResources()._defaultRasterizer);
         context.Draw((unsigned)vertices.size());
@@ -571,6 +585,31 @@ namespace SceneEngine
         }
     }
 
+    class CustomStateResolver : public Techniques::IStateSetResolver
+    {
+    public:
+        auto Resolve(
+            const Techniques::RenderStateSet& states, 
+            const Utility::ParameterBox& globalStates,
+            unsigned techniqueIndex) -> Techniques::CompiledRenderStateSet
+        {
+            return Techniques::CompiledRenderStateSet(
+                Metal::BlendState(_blendState), 
+                Techniques::BuildDefaultRastizerState(states));
+        }
+
+        virtual uint64 GetHash() { return typeid(CustomStateResolver).hash_code(); }
+
+        CustomStateResolver()
+        {
+            _blendState = Metal::BlendState(
+                Metal::BlendOp::Add, Metal::Blend::SrcAlpha, Metal::Blend::InvSrcAlpha,
+                Metal::BlendOp::Add, Metal::Blend::Zero, Metal::Blend::InvSrcAlpha);
+        }
+    private:
+        Metal::BlendState _blendState;
+    };
+
     void DynamicImposters::Pimpl::RenderObject(
         Metal::DeviceContext& context,
         Techniques::ParsingContext& parserContext,
@@ -588,7 +627,9 @@ namespace SceneEngine
         auto layerCount = std::min(dimof(rtvs), _atlas._layers.size());
         for (unsigned c=0; c<layerCount; ++c) {
             const auto& l = _atlas._layers[c];
-            context.Clear(l._tempRTV.RTV(), {0.f, 0.f, 0.f, 0.f});
+                // note --  alpha starts out as 1.f
+                //          With the _blendOneSrcAlpha blend, this how no effect
+            context.Clear(l._tempRTV.RTV(), {0.f, 0.f, 0.f, 1.f});  
             rtvs[c] = l._tempRTV.RTV().GetUnderlying();
         }
         
@@ -626,8 +667,10 @@ namespace SceneEngine
             projDesc._cameraToWorld = cameraToWorld;
         }
 
+        auto oldStateResolver = parserContext.SetStateSetResolver(_stateResOpaque);
+
         auto cleanup = MakeAutoCleanup(
-            [&projDesc, &oldProjDesc, &context, &parserContext]() 
+            [&projDesc, &oldProjDesc, &context, &parserContext, &oldStateResolver]() 
             { 
                 projDesc = oldProjDesc;
                 auto globalTransform = BuildGlobalTransformConstants(projDesc);
@@ -635,6 +678,7 @@ namespace SceneEngine
                     context, Techniques::TechniqueContext::CB_GlobalTransform,
                     &globalTransform, sizeof(globalTransform));
                 parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("DECAL_BLEND"), 0u);
+                parserContext.SetStateSetResolver(std::move(oldStateResolver));
             });
 
         auto globalTransform = BuildGlobalTransformConstants(projDesc);
@@ -661,8 +705,14 @@ namespace SceneEngine
             RenderCore::Assets::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
             *_sharedStateSet, drawCalls, RenderCore::Assets::DelayStep::OpaqueRender);
 
-            // we also have to render the rest of the geometry (using the same technique)
+            // We also have to render the rest of the geometry (using the same technique)
             // otherwise this geometry will never be rendered.
+            // Since the imposters are mostly used in the distance, we're going to use
+            // unsorted translucency as a rough approximation of sorted blending.
+
+        parserContext.SetStateSetResolver(_stateResBlending);
+        context.Bind(Techniques::CommonResources()._dssReadOnly);
+
         ModelRenderer::RenderPrepared(
             RenderCore::Assets::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
             *_sharedStateSet, drawCalls, RenderCore::Assets::DelayStep::PostDeferred);
@@ -778,6 +828,7 @@ namespace SceneEngine
         _pimpl->_material = Techniques::TechniqueMaterial(
             Metal::InputLayout(s_inputLayout, dimof(s_inputLayout)),
             {Hash64("SpriteTable")}, ParameterBox());
+        _pimpl->_stateResOpaque = _pimpl->_stateResBlending = std::make_shared<CustomStateResolver>();
     }
 
     DynamicImposters::~DynamicImposters() {}
@@ -788,7 +839,7 @@ namespace SceneEngine
         _angleQuant = 8;
         _calibrationDistance = 650.f;
         _calibrationFov = Deg2Rad(30.f);
-        _calibrationPixels = 512;
+        _calibrationPixels = 1024;
         _minDims = UInt2(32, 32);
         _maxDims = UInt2(128, 128);
         _altasSize = UInt3(512, 512, 1); // UInt3(4096, 2048, 1);

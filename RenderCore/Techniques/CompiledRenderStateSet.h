@@ -40,5 +40,7 @@ namespace RenderCore { namespace Techniques
         CompiledRenderStateSet(const CompiledRenderStateSet&) = delete;
         CompiledRenderStateSet& operator=(const CompiledRenderStateSet&) = delete;
     };
+
+    Metal::RasterizerState BuildDefaultRastizerState(const RenderStateSet& states);
 }}
 

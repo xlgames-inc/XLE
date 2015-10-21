@@ -46,8 +46,6 @@
             GEO_HAS_BITANGENT
             GEO_HAS_NORMAL
             GEO_HAS_PER_VERTEX_AO
-        ~Runtime
-            DECAL_BLEND
         ~GlobalEnvironment
             CLASSIFY_NORMAL_MAP
             SKIP_MATERIAL_DIFFUSE=0
