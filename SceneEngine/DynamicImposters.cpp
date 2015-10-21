@@ -789,7 +789,7 @@ namespace SceneEngine
             // the formats we initialize for the atlas really depend on whether we're going
             // to be writing pre-lighting or post-lighting parameters to the sprites.
         _pimpl->_atlas = ImposterSpriteAtlas(
-            atlasSize, config._maxDims, { Metal::NativeFormat::R8G8B8A8_UNORM_SRGB, Metal::NativeFormat::R8G8B8A8_UNORM});
+            atlasSize, config._maxDims, { Metal::NativeFormat::R8G8B8A8_UNORM_SRGB, Metal::NativeFormat::R8G8B8A8_SNORM});
     }
 
     void DynamicImposters::Disable()
@@ -826,7 +826,7 @@ namespace SceneEngine
             = _pimpl->_packer.LargestFreeBlock();
         
         result._bytesPerPixel = 
-            (Metal::BitsPerPixel(Metal::NativeFormat::R8G8B8A8_UNORM_SRGB) + Metal::BitsPerPixel(Metal::NativeFormat::R8G8B8A8_UNORM)) / 8;
+            (Metal::BitsPerPixel(Metal::NativeFormat::R8G8B8A8_UNORM_SRGB) + Metal::BitsPerPixel(Metal::NativeFormat::R8G8B8A8_SNORM)) / 8;
         result._layerCount = (unsigned)_pimpl->_atlas._layers.size();
         return result;
     }

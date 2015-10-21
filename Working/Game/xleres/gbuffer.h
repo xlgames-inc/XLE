@@ -9,6 +9,8 @@
 
 #include "CommonResources.h"
 
+static const bool SignedNormalOutput = true;
+
 float ManualInterpolate(Texture2D tex, float2 texCoords)
 {
     uint2 dims; tex.GetDimensions(dims.x, dims.y);
@@ -72,7 +74,8 @@ float3 GBuffer_CalculateBestFitNormal(float3 inputNormal)
 	// scale the normal to get the best fit
 	result.rgb *= fFittingScale;
 	// wrap to [0;1] unsigned form
-	result.rgb = result.rgb * .5f + .5f;
+	if (!SignedNormalOutput)
+        result.rgb = result.rgb * .5f + .5f;
 	return result;
 }
 
@@ -83,7 +86,13 @@ float4 CompressGBufferNormal(float3 inputNormal)
 
 float3 DecompressGBufferNormal(float3 gBufferNormalSample)
 {
-    float3 rangeAdj = -1.0.xxx + 2.f * gBufferNormalSample;
+    float3 rangeAdj;
+    if (!SignedNormalOutput) {
+        rangeAdj = -1.0.xxx + 2.f * gBufferNormalSample;
+    } else {
+        rangeAdj = gBufferNormalSample;
+    }
+    
     float lengthSq = dot(rangeAdj, rangeAdj);
     // if (lengthSq < 0.001f)
     //     return rangeAdj;

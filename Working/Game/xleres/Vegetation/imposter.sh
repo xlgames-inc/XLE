@@ -128,12 +128,39 @@ float4 LoadImposterAltas(uint atlasIndex, uint4 coords, float2 tc)
     uint2 A = (uint2)floor(ftc);
     uint2 B = uint2(min(A.x+1, coords[2]-1), min(A.y+1, coords[3]-1));
     float2 w = ftc.xy - A.xy;
-    return
-          (1.0f - w.x) * (1.0f - w.y) * ImposterAltas[atlasIndex].Load(uint3(A.x, A.y, 0))
-        + (       w.x) * (1.0f - w.y) * ImposterAltas[atlasIndex].Load(uint3(B.x, A.y, 0))
-        + (1.0f - w.x) * (       w.y) * ImposterAltas[atlasIndex].Load(uint3(A.x, B.y, 0))
-        + (       w.x) * (       w.y) * ImposterAltas[atlasIndex].Load(uint3(B.x, B.y, 0))
-        ;
+
+        // we can use an alpha weighted blend here to counteract
+        // blending to uninitialized surrounding pixels. We can also
+        // pre-burn this weighting into the texture by blurring out
+        // to surrounding pixels.
+    const bool doAlphaWeight = true;
+    if (doAlphaWeight) {
+        float4 s0 = ImposterAltas[atlasIndex].Load(uint3(A.x, A.y, 0));
+        float4 s1 = ImposterAltas[atlasIndex].Load(uint3(B.x, A.y, 0));
+        float4 s2 = ImposterAltas[atlasIndex].Load(uint3(A.x, B.y, 0));
+        float4 s3 = ImposterAltas[atlasIndex].Load(uint3(B.x, B.y, 0));
+        float4 fw = float4(
+            (1.0f - w.x) * (1.0f - w.y) * (1.f-s0.a),
+            (       w.x) * (1.0f - w.y) * (1.f-s1.a),
+            (1.0f - w.x) * (       w.y) * (1.f-s2.a),
+            (       w.x) * (       w.y) * (1.f-s3.a));
+        float4 c = fw.x * s0 + fw.y * s1 + fw.z * s2 + fw.w * s3;
+        float aw = fw.x + fw.y + fw.z + fw.w;
+        float a =
+              (1.0f - w.x) * (1.0f - w.y) * s0.a
+            + (       w.x) * (1.0f - w.y) * s1.a
+            + (1.0f - w.x) * (       w.y) * s2.a
+            + (       w.x) * (       w.y) * s3.a
+            ;
+        return float4(c.rgb / aw, a);   // note -- possibility of a divide by zero here
+    } else {
+        return
+              (1.0f - w.x) * (1.0f - w.y) * ImposterAltas[atlasIndex].Load(uint3(A.x, A.y, 0))
+            + (       w.x) * (1.0f - w.y) * ImposterAltas[atlasIndex].Load(uint3(B.x, A.y, 0))
+            + (1.0f - w.x) * (       w.y) * ImposterAltas[atlasIndex].Load(uint3(A.x, B.y, 0))
+            + (       w.x) * (       w.y) * ImposterAltas[atlasIndex].Load(uint3(B.x, B.y, 0))
+            ;
+    }
 }
 
 // [earlydepthstencil]
@@ -161,7 +188,11 @@ GBufferEncoded ps_deferred(VSOutput geo)
         // (or even in a geometry shader)
     float2 tc = geo.texCoord;
     float mipf = CalculateMipmapLevel(tc, uint2(coordsTopMip[2] - coordsTopMip[0], coordsTopMip[3] - coordsTopMip[1]));
-    const bool mipBias = -.5f;  // seem to get a much better result if we bias the mip-map a bit
+
+        // seem to get a much better result if we bias the mip-map a bit
+        // the mip-maps seem to bleed out the detail a lot...
+        // maybe we need a better filter?
+    const bool mipBias = -.5f;
     mipf += mipBias;
     mipf = clamp(mipf, 0, MipMapCount-1);
     uint mip = (uint)mipf;
@@ -170,7 +201,8 @@ GBufferEncoded ps_deferred(VSOutput geo)
     float4 diffuse = LoadImposterAltas(0, coords, tc);
     float4 normal = LoadImposterAltas(1, coords, tc);
 
-    if (diffuse.a > 254.f/255.f) discard;    // prevent depth write
+    // if (diffuse.a > 254.f/255.f) discard;    // prevent depth write
+    if (diffuse.a > 164.f/255.f) discard;    // prevent depth write
 
         // Normals are stored in the view space that was originally
         // used to render the sprite.
@@ -187,7 +219,7 @@ GBufferEncoded ps_deferred(VSOutput geo)
     float3 tempNormal = DecompressGBufferNormal(normal.xyz);
     normal.xyz = mul(tempNormal.xyz, normalsTextureToWorld);
     normal.xyz = CompressGBufferNormal(normal.xyz);
-
+    // normal.xyz = lerp(0.5.xxx, normal.xyz, normal.a);
 
     #if 0
         float3 mipColors[MipMapCount] =
@@ -205,8 +237,8 @@ GBufferEncoded ps_deferred(VSOutput geo)
         // because the normal is already compressed into it's 8 bit format
     GBufferEncoded result;
     result.diffuseBuffer = diffuse;
-    // result.normalBuffer = float4(normal.xyz * (1.0f - normal.a), normal.a);
-    result.normalBuffer = float4(normal.xyz, normal.a);
+    result.normalBuffer = float4(normal.xyz * (1.0f - normal.a), normal.a);
+    // result.normalBuffer = float4(normal.xyz, 0.f); // normal.a);
     #if HAS_PROPERTIES_BUFFER == 1
         result.propertiesBuffer = float4(float3(0, 1, 1) * (1.f-diffuse.a), diffuse.a);
     #endif

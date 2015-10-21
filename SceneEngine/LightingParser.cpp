@@ -702,7 +702,7 @@ namespace SceneEngine
                 MainTargetsBox::Desc(
                     unsigned(mainViewport.Width), unsigned(mainViewport.Height),
                     (!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_UNORM_SRGB) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
-                    (!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_UNORM) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
+                    (!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_SNORM) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
                     FormatStack(enableParametersBuffer ? ((!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_UNORM) : FormatStack(NativeFormat::R32G32B32A32_FLOAT)) : NativeFormat::Unknown),
                     FormatStack(
                         NativeFormat(DXGI_FORMAT_R24G8_TYPELESS), 
