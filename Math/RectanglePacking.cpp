@@ -305,11 +305,68 @@ namespace XLEMath
         return result;
     }
 
-    void    RectanglePacker_MaxRects::Deallocate(const Rectangle& rect)
+    void    RectanglePacker_MaxRects::Deallocate(const Rectangle& iRect)
     {
-        if (IsGood(rect))
-            _freeRectangles.push_back(rect);
-        // look for intersect/containing rectangles...?
+        if (IsGood(iRect)) {
+
+                // We should expand this rectangle when it shares a boundary with any
+                // other free rectangles.
+                // Note that we can expand in 2 ways -- top & bottom, or left & right.
+                // So in some cases, we need to add 2 new rects (one for expansion in
+                // each direction)
+            auto xRect = iRect; // (expand in +/- x direction)
+            auto yRect = iRect; // (expand in +/- y direction)
+            bool xExpand = false, yExpand = false;
+
+            for (auto i=_freeRectangles.begin(); i!=_freeRectangles.end(); ++i) {
+                if (i->second[0] == xRect.first[0]) {
+                        // i is on the left of xRect. If the full edge is shared, then expand...
+                    if (i->first[1] <= xRect.first[1] && i->second[1] >= xRect.second[1])
+                        xRect.first[0] = i->first[0];
+                }
+
+                if (i->first[0] == xRect.second[0]) {
+                        // i is on the right of xRect. If the full edge is shared, then expand...
+                    if (i->first[1] <= xRect.first[1] && i->second[1] >= xRect.second[1])
+                        xRect.second[0] = i->second[0];
+                }
+
+                if (i->second[1] == yRect.first[1]) {
+                        // i is on the top of yRect. If the full edge is shared, then expand...
+                    if (i->first[0] <= yRect.first[0] && i->second[0] >= yRect.second[0])
+                        xRect.first[1] = i->first[1];
+                }
+
+                if (i->first[1] == yRect.second[1]) {
+                        // i is on the bottom of yRect. If the full edge is shared, then expand...
+                    if (i->first[0] <= yRect.first[0] && i->second[0] >= yRect.second[0])
+                        xRect.second[1] = i->second[1];
+                }
+            }
+
+            if (xExpand) {
+                    // remove any rectangles that are fully contained within xRect first
+                _freeRectangles.erase(
+                    std::remove_if(
+                        _freeRectangles.begin(), _freeRectangles.end(),
+                        [&xRect](const Rectangle& r) { return Contains(xRect, r); }),
+                    _freeRectangles.end());
+                _freeRectangles.push_back(xRect);
+            }
+            if (yExpand) {
+                   // remove any rectangles that are fully contained within yRect first
+                _freeRectangles.erase(
+                    std::remove_if(
+                        _freeRectangles.begin(), _freeRectangles.end(),
+                        [&yRect](const Rectangle& r) { return Contains(yRect, r); }),
+                    _freeRectangles.end());
+                _freeRectangles.push_back(yRect);
+            }
+            if (!xExpand && !yExpand) {
+                    // unexpanded rects should not contain any other rects
+                _freeRectangles.push_back(iRect);
+            }
+        }
     }
 
     std::pair<UInt2, UInt2> RectanglePacker_MaxRects::LargestFreeBlock() const

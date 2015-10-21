@@ -25,6 +25,11 @@ namespace Utility
         LRUQueue(unsigned maxValues);
         LRUQueue();
         ~LRUQueue();
+
+        LRUQueue(LRUQueue&& moveFrom) never_throws;
+        LRUQueue& operator=(LRUQueue&& moveFrom) never_throws;
+        LRUQueue(const LRUQueue& copyFrom);
+        LRUQueue& operator=(const LRUQueue& copyFrom);
     protected:
         std::vector<std::pair<unsigned, unsigned>>  _lruQueue;
         unsigned    _oldestBlock;
@@ -162,10 +167,14 @@ namespace Utility
 
         std::pair<std::unique_ptr<uint8[]>, size_t> Flatten() const;
 
+        SpanningHeap();
         SpanningHeap(unsigned size);
-        SpanningHeap(const SpanningHeap& cloneFrom);
         SpanningHeap(const uint8 flattened[], size_t flattenedSize);
         ~SpanningHeap();
+
+        SpanningHeap(SpanningHeap&& moveFrom) never_throws;
+        const SpanningHeap& operator=(SpanningHeap&& moveFrom) never_throws;
+        SpanningHeap(const SpanningHeap& cloneFrom);
         const SpanningHeap& operator=(const SpanningHeap& cloneFrom);
     protected:
         std::vector<Marker>         _markers;

@@ -30,6 +30,7 @@
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/FunctionUtils.h"
 #include "../Utility/StringFormat.h"
+#include "../Utility/HeapUtils.h"
 #include "../Utility/Meta/ClassAccessors.h"
 #include "../Utility/Meta/ClassAccessorsImpl.h"
 #include "../Utility/Meta/AccessorSerialize.h"
@@ -165,7 +166,9 @@ namespace SceneEngine
     class DynamicImposters::Pimpl
     {
     public:
-        SharedStateSet* _sharedStateSet;
+        Config _config;
+
+        using SpriteHash = uint64;
 
         class QueuedObject
         {
@@ -174,12 +177,10 @@ namespace SceneEngine
             const ModelScaffold*    _scaffold;
             unsigned                _XYangle;
 
-            uint64 MakeHash() const { return HashCombine(IntegerHash64(size_t(_renderer)), _XYangle); }
+            SpriteHash MakeHash() const { return HashCombine(IntegerHash64(size_t(_renderer)), _XYangle); }
         };
-        std::vector<std::pair<uint64, QueuedObject>> _queuedObjects;
-        std::vector<std::pair<uint64, Float3>> _queuedInstances;
-
-        Config _config;
+        std::vector<std::pair<SpriteHash, QueuedObject>>    _queuedObjects;
+        std::vector<std::pair<SpriteHash, Float3>>          _queuedInstances;
 
         static const unsigned MipMapCount = 5;
 
@@ -190,29 +191,41 @@ namespace SceneEngine
             Rectangle _rect[MipMapCount];
             Float3 _projectionCentre;
             Float2 _worldSpaceHalfSize;
-            uint64 _lastUsed;
+            unsigned _createFrame;
 
             PreparedSprite()
             {
                 XlZeroMemory(_rect);
                 _projectionCentre = Zero<Float3>();
                 _worldSpaceHalfSize = Zero<Float2>();
-                _lastUsed = 0;
+                _createFrame = 0;
             }
         };
-        std::vector<std::pair<uint64, PreparedSprite>> _preparedSprites;
 
-        Packer _packer;
-        ImposterSpriteAtlas _atlas;
-        Techniques::TechniqueMaterial _material;
-        Metal::ConstantBuffer _spriteTableCB;
+            //// //// //// //// Prepared Sprites Table //// //// //// ////
+        LRUQueue                        _lruQueue;
+        std::vector<PreparedSprite>     _preparedSprites;
+        std::vector<std::pair<SpriteHash, unsigned>> _preparedSpritesLookup;
+        SpanningHeap<uint16>            _preparedSpritesHeap;
 
-        unsigned _overflowCounter;
-        unsigned _pendingCounter;
-        unsigned _copyCounter;
+            //// //// //// //// Atlas //// //// //// ////
+        Packer                          _packer;
+        ImposterSpriteAtlas             _atlas;
 
-        std::shared_ptr<Techniques::IStateSetResolver> _stateResOpaque;
-        std::shared_ptr<Techniques::IStateSetResolver> _stateResBlending;
+            //// //// //// //// Rendering //// //// //// ////
+        Techniques::TechniqueMaterial   _material;
+        Metal::ConstantBuffer           _spriteTableCB;
+        SharedStateSet*                 _sharedStateSet;
+        std::shared_ptr<Techniques::IStateSetResolver> _stateRes;
+
+            //// //// //// //// Metrics //// //// //// ////
+        unsigned    _overflowCounter;
+        unsigned    _overflowMaxSpritesCounter;
+        unsigned    _pendingCounter;
+        unsigned    _copyCounter;
+        unsigned    _evictionCounter;
+
+        unsigned    _frameCounter;
 
         void BuildNewSprites(
             Metal::DeviceContext& context,
@@ -221,6 +234,7 @@ namespace SceneEngine
             Metal::DeviceContext& context,
             Techniques::ParsingContext& parserContext,
             const QueuedObject& ob);
+        bool AttemptEviction();
         void RenderObject(
             Metal::DeviceContext& context,
             Techniques::ParsingContext& parserContext,
@@ -240,51 +254,141 @@ namespace SceneEngine
         return StringMeldAppend(parserContext._stringHelpers->_quickMetrics);
     }
 
+    static bool IsGood(const std::pair<UInt2, UInt2>& rect)
+    {
+        return rect.second[0] > rect.first[0]
+            && rect.second[1] > rect.first[1];
+    }
+
+    static const unsigned MaxPreparePerFrame = 3;
+    static const unsigned MaxEvictionPerFrame = 3;
+    static const unsigned EvictionGracePeriod = 60; // don't evict sprites within this many frames from their creation
+
     void DynamicImposters::Pimpl::BuildNewSprites(
         Metal::DeviceContext& context,
         Techniques::ParsingContext& parserContext)
     {
         ProtectState protectState;
         const ProtectState::States::BitField volatileStates =
-                ProtectState::States::RenderTargets
+              ProtectState::States::RenderTargets
             | ProtectState::States::Viewports
             | ProtectState::States::DepthStencilState
             | ProtectState::States::BlendState;
         bool initProtectState = false;
 
-        const unsigned maxPreparePerFrame = Tweakable("ImpostersReset", false) ? INT_MAX : 3;
+        const unsigned maxPreparePerFrame = Tweakable("ImpostersReset", false) ? INT_MAX : MaxPreparePerFrame;
         unsigned preparedThisFrame = 0;
 
-        auto preparedSpritesI = _preparedSprites.begin();
+        _overflowCounter = 0;
+        _overflowMaxSpritesCounter = 0;
+        _pendingCounter = 0;
+        _evictionCounter = 0;
+        ++_frameCounter;
+
+        auto preparedSpritesI = _preparedSpritesLookup.begin();
         for (const auto& o:_queuedObjects) {
             uint64 hash = o.first;
-            preparedSpritesI = std::lower_bound(preparedSpritesI, _preparedSprites.end(), hash, CompareFirst<uint64, Pimpl::PreparedSprite>());
-            if (preparedSpritesI != _preparedSprites.end() && preparedSpritesI->first == hash) {
+            preparedSpritesI = std::lower_bound(preparedSpritesI, _preparedSpritesLookup.end(), hash, CompareFirst<Pimpl::SpriteHash, unsigned>());
+            if (preparedSpritesI != _preparedSpritesLookup.end() && preparedSpritesI->first == hash) {
             } else {
-                if (!initProtectState) {
-                    protectState = ProtectState(context, volatileStates);
-                    initProtectState = true;
-                }
-
                 if (preparedThisFrame++ >= maxPreparePerFrame) {
                     ++_pendingCounter;
                     continue;
                 }
 
+                unsigned newIndex = _preparedSpritesHeap.Allocate(1<<4)>>4;
+                if (newIndex == ~0x0u) {
+                    ++_overflowMaxSpritesCounter;
+                    continue;
+                }
+
+                if (!initProtectState) {
+                    protectState = ProtectState(context, volatileStates);
+                    initProtectState = true;
+                }
+                
                 TRY {
-                    auto newSprite = BuildSprite(context, parserContext, o.second);
-                    if (    newSprite._rect[0].second[0] > newSprite._rect[0].first[0]
-                        &&  newSprite._rect[0].second[1] > newSprite._rect[0].first[1]) {
-                        preparedSpritesI = _preparedSprites.insert(preparedSpritesI, std::make_pair(hash, newSprite));
+                    auto& newSprite = _preparedSprites[newIndex];
+                    newSprite = BuildSprite(context, parserContext, o.second);
+                    if (!IsGood(newSprite._rect[0])) {
+                        if (AttemptEviction()) {
+                            newSprite = BuildSprite(context, parserContext, o.second);
+
+                                // reset preparedSpritesI, because _preparedSpritesLookup
+                                // may have changed in AttemptEviction!
+                            preparedSpritesI = std::lower_bound(
+                                _preparedSpritesLookup.begin(), _preparedSpritesLookup.end(), 
+                                hash, CompareFirst<Pimpl::SpriteHash, unsigned>());
+                        }
+                    }
+
+                    if (IsGood(newSprite._rect[0])) {
+                        preparedSpritesI = _preparedSpritesLookup.insert(preparedSpritesI, std::make_pair(hash, newIndex));
+                        _lruQueue.BringToFront(newIndex);
                     } else {
                         ++_overflowCounter;
+                        _preparedSpritesHeap.Deallocate(newIndex<<4, 1<<4);
                     }
                 } CATCH(const ::Assets::Exceptions::AssetException&e) {
                     parserContext.Process(e);
                     ++_pendingCounter;
+                    _preparedSpritesHeap.Deallocate(newIndex<<4, 1<<4);
+                } CATCH(...) {
+                    _preparedSpritesHeap.Deallocate(newIndex<<4, 1<<4);
+                    throw;
                 } CATCH_END
             }
         }
+    }
+
+    bool DynamicImposters::Pimpl::AttemptEviction()
+    {
+            // Attempt to evict the oldest sprites from the list to free
+            // up some more space in the altas.
+            // Note that the oldest sprites are not guaranteed to be 
+            // contiguous, nor are they guaranteed to be large (relative
+            // to the new sprite we want to insert).
+            //
+            // So it's quite possible that evicting some sprites may not
+            // free up enough room to insert the new sprite we want.
+            //
+            // It may take a few frames of eviction before we can insert
+            // the particular new sprite we want.
+        if (_evictionCounter != 0) return false;
+
+        const unsigned evictionCount = MaxEvictionPerFrame;
+        unsigned evicted=0;
+        for (evicted; evicted<evictionCount; evicted++) {
+            if (_preparedSpritesHeap.IsEmpty()) break;
+
+            auto oldest = _lruQueue.GetOldestValue();
+
+                // \todo -- we should have a "grace" period for
+                //  new sprites. After they've been added to the 
+                //  atlas, it should be impossible to evict them for
+                //  a few frames.
+
+            const auto& sprite = _preparedSprites[oldest];
+            auto age = _frameCounter - sprite._createFrame;
+            if (age < EvictionGracePeriod) break;   // too soon to evict this sprite!
+
+            for (unsigned c=0; c<dimof(sprite._rect); ++c)
+                _packer.Deallocate(sprite._rect[c]);        // return rectangle to the packer
+
+            _preparedSpritesHeap.Deallocate(oldest<<4, 1<<4);
+            auto i = std::find_if(
+                _preparedSpritesLookup.cbegin(), _preparedSpritesLookup.cend(),
+                [oldest](const std::pair<SpriteHash, unsigned>& p) { return p.second == oldest; });
+            assert(i!=_preparedSpritesLookup.cend());
+            _preparedSpritesLookup.erase(i);
+
+                // we have to bring it to the front in order to
+                // get a new oldest value
+            _lruQueue.BringToFront(oldest);
+        }
+
+        _evictionCounter = evicted;
+        return evicted > 0;
     }
 
     void DynamicImposters::Render(
@@ -330,32 +434,35 @@ namespace SceneEngine
             // sorting when sorting on a per-sprite basis)
         std::sort(_pimpl->_queuedInstances.begin(), _pimpl->_queuedInstances.end(), CompareFirst<uint64, Float3>());
 
-        auto preparedSpritesI = _pimpl->_preparedSprites.begin();
+        auto preparedSpritesI = _pimpl->_preparedSpritesLookup.begin();
         for (auto i=_pimpl->_queuedInstances.cbegin(); i!=_pimpl->_queuedInstances.cend();) {
             uint64 hash = i->first;
             auto start = i++;
             while (i < _pimpl->_queuedInstances.cend() && i->first == hash) ++i;
 
-            preparedSpritesI = std::lower_bound(preparedSpritesI, _pimpl->_preparedSprites.end(), hash, CompareFirst<uint64, Pimpl::PreparedSprite>());
-            if (preparedSpritesI == _pimpl->_preparedSprites.end() || preparedSpritesI->first != hash)
+            preparedSpritesI = std::lower_bound(preparedSpritesI, _pimpl->_preparedSpritesLookup.end(), hash, CompareFirst<Pimpl::SpriteHash, unsigned>());
+            if (preparedSpritesI == _pimpl->_preparedSpritesLookup.end() || preparedSpritesI->first != hash)
                 continue;
 
-            assert(preparedSpritesI->second._rect[0].second[0] > preparedSpritesI->second._rect[0].first[0]
-                && preparedSpritesI->second._rect[0].second[1] > preparedSpritesI->second._rect[0].first[1]);
+            unsigned spriteIndex = preparedSpritesI->second;
+            const auto& sprite = _pimpl->_preparedSprites[spriteIndex];
+            assert(sprite._rect[0].second[0] > sprite._rect[0].first[0]
+                && sprite._rect[0].second[1] > sprite._rect[0].first[1]);
 
                 // We should have a number of sprites of the same instance. Expand the sprite into 
                 // triangles here, on the CPU. 
                 // We'll do the projection here because we need to use the parameters from how the
                 // sprite was originally projected.
 
-            unsigned spriteIndex = (unsigned)std::distance(_pimpl->_preparedSprites.begin(), preparedSpritesI);
-            Float3 projectionCenter = preparedSpritesI->second._projectionCentre;
-            Float2 projectionSize = preparedSpritesI->second._worldSpaceHalfSize;
+            Float3 projectionCenter = sprite._projectionCentre;
+            Float2 projectionSize = sprite._worldSpaceHalfSize;
 
             for (auto s=start; s<i; ++s) {
                 float sortingDistance = MagnitudeSquared(s->second + projectionCenter - cameraPos);
                 vertices.push_back(Vertex {s->second + projectionCenter, cameraRight, cameraUp, projectionSize, spriteIndex, sortingDistance});
             }
+
+            _pimpl->_lruQueue.BringToFront(spriteIndex);
         }
 
         if (vertices.empty()) return;
@@ -379,7 +486,7 @@ namespace SceneEngine
         for (unsigned c=0; c<std::min(unsigned(_pimpl->_preparedSprites.size()), maxSprites); ++c) {
             auto& e = buffer[c];
             for (unsigned m=0; m<Pimpl::MipMapCount; ++m) {
-                const auto &r = _pimpl->_preparedSprites[c].second._rect[m];
+                const auto &r = _pimpl->_preparedSprites[c]._rect[m];
                 e._coords[m] = UInt4(r.first[0], r.first[1], r.second[0], r.second[1]);
             }
         }
@@ -566,7 +673,6 @@ namespace SceneEngine
         PreparedSprite result;
         for (unsigned c=0; c<MipMapCount; ++c)
             result._rect[c] = reservedSpace[c];
-        result._lastUsed = 0;
         result._projectionCentre = centre;
 
             // Get the world space sprite rectangle for the plane through a point exactly
@@ -581,6 +687,8 @@ namespace SceneEngine
             result._worldSpaceHalfSize[1] = cfg._calibrationDistance * XlTan(.5f * fov);
             result._worldSpaceHalfSize[0] = aspect * result._worldSpaceHalfSize[1];
         }
+
+        result._createFrame = _frameCounter;
 
         return result;
     }
@@ -721,7 +829,7 @@ namespace SceneEngine
             modelToWorld, RenderCore::Assets::MeshToModel(*ob._scaffold));
         ModelRenderer::Sort(drawCalls);
 
-        auto marker = _sharedStateSet->CaptureState(context, _stateResOpaque, nullptr);
+        auto marker = _sharedStateSet->CaptureState(context, _stateRes, nullptr);
         ModelRenderer::RenderPrepared(
             RenderCore::Assets::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
             *_sharedStateSet, drawCalls, RenderCore::Assets::DelayStep::OpaqueRender);
@@ -745,13 +853,17 @@ namespace SceneEngine
     {
         _pimpl->_queuedObjects.clear();
         _pimpl->_queuedInstances.clear();
-        _pimpl->_overflowCounter = 0;
-        _pimpl->_pendingCounter = 0;
 
         if (Tweakable("ImpostersReset", false)) {
-            _pimpl->_preparedSprites.clear();
             _pimpl->_packer = Packer(Truncate(_pimpl->_config._altasSize));
             _pimpl->_copyCounter = 0;
+
+            _pimpl->_preparedSprites.clear();
+            _pimpl->_preparedSpritesLookup.clear();
+            _pimpl->_lruQueue = LRUQueue(_pimpl->_config._maxSpriteCount);
+            _pimpl->_preparedSprites.resize(_pimpl->_config._maxSpriteCount);
+            _pimpl->_preparedSpritesLookup.reserve(_pimpl->_config._maxSpriteCount);
+            _pimpl->_preparedSpritesHeap = SpanningHeap<uint16>(_pimpl->_config._maxSpriteCount<<4);
         }
     }
 
@@ -778,7 +890,6 @@ namespace SceneEngine
     void DynamicImposters::Load(const Config& config)
     {
         Reset();
-        _pimpl->_preparedSprites.clear();
 
         _pimpl->_config = config;
 
@@ -790,6 +901,14 @@ namespace SceneEngine
             // to be writing pre-lighting or post-lighting parameters to the sprites.
         _pimpl->_atlas = ImposterSpriteAtlas(
             atlasSize, config._maxDims, { Metal::NativeFormat::R8G8B8A8_UNORM_SRGB, Metal::NativeFormat::R8G8B8A8_SNORM});
+
+            // allocate the sprite table 
+        _pimpl->_preparedSprites.clear();
+        _pimpl->_preparedSpritesLookup.clear();
+        _pimpl->_lruQueue = LRUQueue(config._maxSpriteCount);
+        _pimpl->_preparedSprites.resize(config._maxSpriteCount);
+        _pimpl->_preparedSpritesLookup.reserve(config._maxSpriteCount);
+        _pimpl->_preparedSpritesHeap = SpanningHeap<uint16>(_pimpl->_config._maxSpriteCount<<4);
     }
 
     void DynamicImposters::Disable()
@@ -799,6 +918,10 @@ namespace SceneEngine
         _pimpl->_config = Config();
         _pimpl->_packer = Packer();
         _pimpl->_atlas = ImposterSpriteAtlas();
+        _pimpl->_lruQueue = LRUQueue();
+        _pimpl->_preparedSprites = decltype(_pimpl->_preparedSprites)();
+        _pimpl->_preparedSpritesLookup = decltype(_pimpl->_preparedSpritesLookup)();
+        _pimpl->_preparedSpritesHeap = decltype(_pimpl->_preparedSpritesHeap)();
     }
 
     float DynamicImposters::GetThresholdDistance() const { return _pimpl->_config._thresholdDistance; }
@@ -807,11 +930,11 @@ namespace SceneEngine
     auto DynamicImposters::GetMetrics() const -> Metrics
     {
         Metrics result;
-        result._spriteCount = (unsigned)_pimpl->_preparedSprites.size();
+        result._spriteCount = _pimpl->_preparedSpritesHeap.CalculateAllocatedSpace() >> 4;
         result._pixelsAllocated = 0;
         for (const auto&i:_pimpl->_preparedSprites) {
-            for (unsigned m=0; m<dimof(i.second._rect); ++m) {
-                const auto& r = i.second._rect[m];
+            for (unsigned m=0; m<dimof(i._rect); ++m) {
+                const auto& r = i._rect[m];
                 result._pixelsAllocated += (r.second[0] - r.first[0]) * (r.second[1] - r.first[1]);
             }
         }
@@ -820,7 +943,7 @@ namespace SceneEngine
             * _pimpl->_config._altasSize[1]
             * _pimpl->_config._altasSize[2]
             ;
-        result._overflowCounter = _pimpl->_overflowCounter;
+        result._overflowCounter = _pimpl->_overflowCounter + _pimpl->_overflowMaxSpritesCounter;
         result._pendingCounter = _pimpl->_pendingCounter;
         std::tie(result._largestFreeBlockArea, result._largestFreeBlockSide) 
             = _pimpl->_packer.LargestFreeBlock();
@@ -841,13 +964,16 @@ namespace SceneEngine
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_sharedStateSet = &sharedStateSet;
         _pimpl->_overflowCounter = 0;
+        _pimpl->_overflowMaxSpritesCounter = 0;
         _pimpl->_pendingCounter = 0;
         _pimpl->_copyCounter = 0;
+        _pimpl->_evictionCounter = 0;
+        _pimpl->_frameCounter = 0;
 
         _pimpl->_material = Techniques::TechniqueMaterial(
             Metal::InputLayout(s_inputLayout, dimof(s_inputLayout)),
             {Hash64("SpriteTable")}, ParameterBox());
-        _pimpl->_stateResOpaque = _pimpl->_stateResBlending = std::make_shared<CustomStateResolver>();
+        _pimpl->_stateRes = std::make_shared<CustomStateResolver>();
 
         _pimpl->_spriteTableCB = Metal::ConstantBuffer(nullptr, sizeof(UInt4)*2048);
     }
@@ -863,7 +989,8 @@ namespace SceneEngine
         _calibrationPixels = 1000;
         _minDims = UInt2(32, 32);
         _maxDims = UInt2(128, 128);
-        _altasSize = UInt3(1024, 512, 1); // UInt3(4096, 2048, 1);
+        _altasSize = UInt3(256, 256, 1); // UInt3(4096, 2048, 1);
+        _maxSpriteCount = 256;
     }
 
     DynamicImposters::Metrics::Metrics()
@@ -879,6 +1006,7 @@ namespace SceneEngine
         _layerCount = 0;
     }
 }
+
 
 template<> const ClassAccessors& GetAccessors<SceneEngine::DynamicImposters::Config>()
 {
@@ -896,6 +1024,7 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::DynamicImposters::Con
         props.Add(u("MinDims"), DefaultGet(Obj, _minDims),  DefaultSet(Obj, _minDims));
         props.Add(u("MaxDims"), DefaultGet(Obj, _maxDims),  DefaultSet(Obj, _maxDims));
         props.Add(u("AltasSize"), DefaultGet(Obj, _altasSize),  DefaultSet(Obj, _altasSize));
+        props.Add(u("MaxSpriteCount"), DefaultGet(Obj, _maxSpriteCount),  DefaultSet(Obj, _maxSpriteCount));
 
         init = true;
     }

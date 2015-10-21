@@ -62,6 +62,36 @@ namespace Utility
         _lruQueue = std::move(lruQueue);
     }
 
+    LRUQueue::LRUQueue(LRUQueue&& moveFrom) never_throws
+    : _lruQueue(std::move(moveFrom._lruQueue))
+    {
+        _oldestBlock = moveFrom._oldestBlock;
+        _newestBlock = moveFrom._newestBlock;
+    }
+
+    LRUQueue& LRUQueue::operator=(LRUQueue&& moveFrom) never_throws
+    {
+        _lruQueue = std::move(moveFrom._lruQueue);
+        _oldestBlock = moveFrom._oldestBlock;
+        _newestBlock = moveFrom._newestBlock;
+        return *this;
+    }
+
+    LRUQueue::LRUQueue(const LRUQueue& copyFrom)
+    : _lruQueue(copyFrom._lruQueue)
+    {
+        _oldestBlock = copyFrom._oldestBlock;
+        _newestBlock = copyFrom._newestBlock;
+    }
+
+    LRUQueue& LRUQueue::operator=(const LRUQueue& copyFrom)
+    {
+        _lruQueue = copyFrom._lruQueue;
+        _oldestBlock = copyFrom._oldestBlock;
+        _newestBlock = copyFrom._newestBlock;
+        return *this;
+    }
+
     LRUQueue::LRUQueue()
     {
         _oldestBlock = _newestBlock = ~unsigned(0x0);
@@ -540,11 +570,27 @@ namespace Utility
     }
 
     template <typename Marker>
-        SpanningHeap<Marker>::SpanningHeap(const SpanningHeap<Marker>& cloneFrom) 
-    : _markers(cloneFrom._markers), _largestFreeBlock(cloneFrom._largestFreeBlock), _largestFreeBlockValid(cloneFrom._largestFreeBlockValid) {}
+        SpanningHeap<Marker>::SpanningHeap(SpanningHeap&& moveFrom) never_throws
+    : _markers(std::move(moveFrom._markers))
+    , _largestFreeBlock(moveFrom._largestFreeBlock)
+    , _largestFreeBlockValid(moveFrom._largestFreeBlockValid) 
+    {
+    }
 
     template <typename Marker>
-        SpanningHeap<Marker>::~SpanningHeap()
+        auto SpanningHeap<Marker>::operator=(SpanningHeap&& moveFrom) never_throws -> const SpanningHeap&
+    {
+        _markers = std::move(moveFrom._markers);
+        _largestFreeBlock = moveFrom._largestFreeBlock;
+        _largestFreeBlockValid = moveFrom._largestFreeBlockValid;
+        return *this;
+    }
+
+    template <typename Marker>
+        SpanningHeap<Marker>::SpanningHeap(const SpanningHeap<Marker>& cloneFrom) 
+    : _markers(cloneFrom._markers)
+    , _largestFreeBlock(cloneFrom._largestFreeBlock)
+    , _largestFreeBlockValid(cloneFrom._largestFreeBlockValid) 
     {}
 
     template <typename Marker>
@@ -555,6 +601,13 @@ namespace Utility
         _largestFreeBlockValid = cloneFrom._largestFreeBlockValid;
         return *this;
     }
+
+    template <typename Marker>
+        SpanningHeap<Marker>::SpanningHeap() : _largestFreeBlock(0), _largestFreeBlockValid(false) {}
+
+    template <typename Marker>
+        SpanningHeap<Marker>::~SpanningHeap()
+    {}
 
     template SpanningHeap<uint16>;
     template SpanningHeap<uint32>;

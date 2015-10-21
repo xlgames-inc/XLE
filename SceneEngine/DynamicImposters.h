@@ -51,6 +51,7 @@ namespace SceneEngine
             UInt2       _minDims;
             UInt2       _maxDims;
             UInt3       _altasSize;
+            unsigned    _maxSpriteCount;
 
             Config();
         };
