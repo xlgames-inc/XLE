@@ -36,10 +36,15 @@ float SchlickFresnel(float3 viewDirection, float3 halfVector, float refractiveIn
 
 float CalculateMipmapLevel(float2 texCoord, uint2 textureSize)
 {
-	float2 dx = ddx(texCoord * float(textureSize.x));
-	float2 dy = ddy(texCoord * float(textureSize.y));
+		// Based on OpenGL 4.2 spec chapter 3.9.11 equation 3.21
+		// This won't automatically match the results given by all
+		// hardware -- but it should be a good alternative to the
+		// built in hardware mipmap calculation when an explicit
+		// formula is required.
+	float2 et = abs(texCoord * textureSize);
+	float2 dx = ddx(et), dy = ddy(et);
 	float d = max(dot(dx, dx), dot(dy, dy));
-	return 0.5f*log2(d);
+	return 0.5f*log2(d); // == log2(sqrt(d))
 }
 
 void OrenNayar_CalculateInputs(float roughness, out float rho, out float shininess)

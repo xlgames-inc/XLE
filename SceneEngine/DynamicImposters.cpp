@@ -55,9 +55,10 @@ namespace SceneEngine
             // to skip some steps here for a faster result.
         const auto& bb = scaffold.GetStaticBoundingBox();
         Float3 bbCenter = (bb.first + bb.second) * 0.5f;
-        
-        Float3 worldCenter = TransformPoint(localToWorld, bbCenter);
-        Float3 offset = cameraPosition - worldCenter;
+
+            // we need to transform the camera position into local space in
+            // order to take into account an XY transforms on the local-to-world
+        Float3 offset = TransformPointByOrthonormalInverse(localToWorld, cameraPosition);
         float angle = XlATan2(offset[1], offset[0]);        // note -- z ignored.
 
             // assuming out atan implementation returns a value between
@@ -165,7 +166,6 @@ namespace SceneEngine
     {
     public:
         SharedStateSet* _sharedStateSet;
-        std::shared_ptr<Techniques::IStateSetResolver> _stateResolver;
 
         class QueuedObject
         {
@@ -205,6 +205,7 @@ namespace SceneEngine
         Packer _packer;
         ImposterSpriteAtlas _atlas;
         Techniques::TechniqueMaterial _material;
+        Metal::ConstantBuffer _spriteTableCB;
 
         unsigned _overflowCounter;
         unsigned _pendingCounter;
@@ -272,7 +273,8 @@ namespace SceneEngine
 
                 TRY {
                     auto newSprite = BuildSprite(context, parserContext, o.second);
-                    if (newSprite._rect[0].second[0] > newSprite._rect[0].first[0]) {
+                    if (    newSprite._rect[0].second[0] > newSprite._rect[0].first[0]
+                        &&  newSprite._rect[0].second[1] > newSprite._rect[0].first[1]) {
                         preparedSpritesI = _preparedSprites.insert(preparedSpritesI, std::make_pair(hash, newSprite));
                     } else {
                         ++_overflowCounter;
@@ -338,6 +340,9 @@ namespace SceneEngine
             if (preparedSpritesI == _pimpl->_preparedSprites.end() || preparedSpritesI->first != hash)
                 continue;
 
+            assert(preparedSpritesI->second._rect[0].second[0] > preparedSpritesI->second._rect[0].first[0]
+                && preparedSpritesI->second._rect[0].second[1] > preparedSpritesI->second._rect[0].first[1]);
+
                 // We should have a number of sprites of the same instance. Expand the sprite into 
                 // triangles here, on the CPU. 
                 // We'll do the projection here because we need to use the parameters from how the
@@ -368,21 +373,30 @@ namespace SceneEngine
         public:
             UInt4 _coords[Pimpl::MipMapCount];
         };
-        auto spriteTable = MakeSharedPktSize(sizeof(UInt4)*512); // sizeof(SpriteTableElement) * _pimpl->_preparedSprites.size());
-        const unsigned maxSprites = 512 / Pimpl::MipMapCount;
+        const unsigned maxSprites = 2048 / Pimpl::MipMapCount;
+        SpriteTableElement buffer[maxSprites];
+        assert(unsigned(_pimpl->_preparedSprites.size()) <= maxSprites);
         for (unsigned c=0; c<std::min(unsigned(_pimpl->_preparedSprites.size()), maxSprites); ++c) {
-            auto& e = ((SpriteTableElement*)spriteTable.get())[c];
+            auto& e = buffer[c];
             for (unsigned m=0; m<Pimpl::MipMapCount; ++m) {
                 const auto &r = _pimpl->_preparedSprites[c].second._rect[m];
                 e._coords[m] = UInt4(r.first[0], r.first[1], r.second[0], r.second[1]);
             }
         }
+        _pimpl->_spriteTableCB.Update(context, buffer, sizeof(buffer));
 
             // bind the atlas textures to the find slots (eg, over DiffuseTexture, NormalsTexture, etc)
         for (unsigned c=0; c<_pimpl->_atlas._layers.size(); ++c)
             context.BindPS(MakeResourceList(c, _pimpl->_atlas._layers[c]._atlas.SRV()));
 
-        shader.Apply(context, parserContext, {std::move(spriteTable)});
+        // shader.Apply(context, parserContext, {std::move(spriteTable)});
+        const Metal::ConstantBuffer* cbs[] = {&_pimpl->_spriteTableCB};
+        shader._boundUniforms->Apply(
+            context, 
+            parserContext.GetGlobalUniformsStream(),
+            Metal::UniformsStream(nullptr, cbs, dimof(cbs)));
+        context.Bind(*shader._boundLayout);
+        context.Bind(*shader._shaderProgram);
         
         Metal::VertexBuffer tempvb(AsPointer(vertices.begin()), vertices.size()*sizeof(Vertex));
         context.Bind(MakeResourceList(tempvb), sizeof(Vertex), 0);
@@ -524,13 +538,15 @@ namespace SceneEngine
             // Because the sprite is used at different distances, the perspective
             // is not fixed... But a fixed perspective camera might still be a better
             // approximation than an orthogonal camera.
+        Float4x4 finalProj = adjustmentMatrix * virtualProj;
         RenderObject(
             context, parserContext, ob,
             camToWorld, Metal::ViewportDesc(0.f, 0.f, float(maxCoords[0] - minCoords[0]), float(maxCoords[1] - minCoords[1])),
-            adjustmentMatrix * virtualProj);
+            finalProj);
 
             // Now we want to copy the rendered sprite into the atlas
             // We should generate the mip-maps in this step as well.
+        context.Bind(Techniques::CommonResources()._blendOpaque);
         for (unsigned c=0; c<MipMapCount; ++c) {
             CopyToAltas(
                 context, reservedSpace[c],
@@ -552,12 +568,20 @@ namespace SceneEngine
             result._rect[c] = reservedSpace[c];
         result._lastUsed = 0;
         result._projectionCentre = centre;
-            // We can get the world space half size directly
-            // from the bounding box. If we built the projection correctly (and 
-            // if the camera is reasonably far from the object), then it should
-            // be a simple calculation.
-        result._worldSpaceHalfSize[0] = 0.5f * std::max(bb.second[0] - bb.first[0], bb.second[1] - bb.first[1]); // worldSpaceHalfSizeX;
-        result._worldSpaceHalfSize[1] = 0.5f * (bb.second[2] - bb.first[2]);
+
+            // Get the world space sprite rectangle for the plane through a point exactly
+            // cfg._calibrationDistance in front of the camera
+            // Note that with a bit more math, we could calculate the intersection of an
+            // arbitrary plane with the projection... This would allow us to generate a 
+            // sprite that is not exactly camera-aligned (so we could rotate the sprite 
+            // geometry slightly in 3D as the camera spins around it)
+        {
+            float fov, aspect;
+            std::tie(fov, aspect) = CalculateFov(ExtractMinimalProjection(finalProj), Techniques::GetDefaultClipSpaceType());
+            result._worldSpaceHalfSize[1] = cfg._calibrationDistance * XlTan(.5f * fov);
+            result._worldSpaceHalfSize[0] = aspect * result._worldSpaceHalfSize[1];
+        }
+
         return result;
     }
 
@@ -667,10 +691,8 @@ namespace SceneEngine
             projDesc._cameraToWorld = cameraToWorld;
         }
 
-        auto oldStateResolver = parserContext.SetStateSetResolver(_stateResOpaque);
-
         auto cleanup = MakeAutoCleanup(
-            [&projDesc, &oldProjDesc, &context, &parserContext, &oldStateResolver]() 
+            [&projDesc, &oldProjDesc, &context, &parserContext]() 
             { 
                 projDesc = oldProjDesc;
                 auto globalTransform = BuildGlobalTransformConstants(projDesc);
@@ -678,7 +700,6 @@ namespace SceneEngine
                     context, Techniques::TechniqueContext::CB_GlobalTransform,
                     &globalTransform, sizeof(globalTransform));
                 parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("DECAL_BLEND"), 0u);
-                parserContext.SetStateSetResolver(std::move(oldStateResolver));
             });
 
         auto globalTransform = BuildGlobalTransformConstants(projDesc);
@@ -700,7 +721,7 @@ namespace SceneEngine
             modelToWorld, RenderCore::Assets::MeshToModel(*ob._scaffold));
         ModelRenderer::Sort(drawCalls);
 
-        auto marker = _sharedStateSet->CaptureState(context, _stateResolver, nullptr);
+        auto marker = _sharedStateSet->CaptureState(context, _stateResOpaque, nullptr);
         ModelRenderer::RenderPrepared(
             RenderCore::Assets::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
             *_sharedStateSet, drawCalls, RenderCore::Assets::DelayStep::OpaqueRender);
@@ -710,7 +731,6 @@ namespace SceneEngine
             // Since the imposters are mostly used in the distance, we're going to use
             // unsorted translucency as a rough approximation of sorted blending.
 
-        parserContext.SetStateSetResolver(_stateResBlending);
         context.Bind(Techniques::CommonResources()._dssReadOnly);
 
         ModelRenderer::RenderPrepared(
@@ -820,7 +840,6 @@ namespace SceneEngine
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_sharedStateSet = &sharedStateSet;
-        _pimpl->_stateResolver = Techniques::CreateStateSetResolver_Deferred();
         _pimpl->_overflowCounter = 0;
         _pimpl->_pendingCounter = 0;
         _pimpl->_copyCounter = 0;
@@ -829,6 +848,8 @@ namespace SceneEngine
             Metal::InputLayout(s_inputLayout, dimof(s_inputLayout)),
             {Hash64("SpriteTable")}, ParameterBox());
         _pimpl->_stateResOpaque = _pimpl->_stateResBlending = std::make_shared<CustomStateResolver>();
+
+        _pimpl->_spriteTableCB = Metal::ConstantBuffer(nullptr, sizeof(UInt4)*2048);
     }
 
     DynamicImposters::~DynamicImposters() {}
@@ -837,12 +858,12 @@ namespace SceneEngine
     {
         _thresholdDistance = 650.f;
         _angleQuant = 8;
-        _calibrationDistance = 650.f;
-        _calibrationFov = Deg2Rad(30.f);
-        _calibrationPixels = 1024;
+        _calibrationDistance = 1000.f;
+        _calibrationFov = Deg2Rad(45.f);
+        _calibrationPixels = 1000;
         _minDims = UInt2(32, 32);
         _maxDims = UInt2(128, 128);
-        _altasSize = UInt3(512, 512, 1); // UInt3(4096, 2048, 1);
+        _altasSize = UInt3(1024, 512, 1); // UInt3(4096, 2048, 1);
     }
 
     DynamicImposters::Metrics::Metrics()

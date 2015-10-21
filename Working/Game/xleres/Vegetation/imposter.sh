@@ -109,7 +109,7 @@ float4 main(VSOutput geo) : SV_Target0
 static const uint MipMapCount = 5;
 cbuffer SpriteTable
 {
-    uint4 SpriteCoords[512];
+    uint4 SpriteCoords[2048];
 }
 
 float4 LoadImposterAltas(uint atlasIndex, uint4 coords, float2 tc)
@@ -148,9 +148,7 @@ GBufferEncoded ps_deferred(VSOutput geo)
         return Encode(result);
     }
 
-    uint4 coords[MipMapCount];
-    for (uint c=0; c<MipMapCount; ++c)
-        coords[c] = SpriteCoords[geo.spriteIndex*MipMapCount+c];
+    uint4 coordsTopMip = SpriteCoords[geo.spriteIndex*MipMapCount];
 
         // We must do custom interpolation, for two reasons:
         //  1) our mip-maps are scattered about the atlas
@@ -162,14 +160,15 @@ GBufferEncoded ps_deferred(VSOutput geo)
         // the sprite. So we could probably calculate it in the vertex shader
         // (or even in a geometry shader)
     float2 tc = geo.texCoord;
-    float mipf = CalculateMipmapLevel(tc, uint2(coords[0][2] - coords[0][0], coords[0][3] - coords[0][1]));
+    float mipf = CalculateMipmapLevel(tc, uint2(coordsTopMip[2] - coordsTopMip[0], coordsTopMip[3] - coordsTopMip[1]));
     const bool mipBias = -.5f;  // seem to get a much better result if we bias the mip-map a bit
     mipf += mipBias;
     mipf = clamp(mipf, 0, MipMapCount-1);
     uint mip = (uint)mipf;
 
-    float4 diffuse = LoadImposterAltas(0, coords[mip], tc);
-    float4 normal = LoadImposterAltas(1, coords[mip], tc);
+    uint4 coords = SpriteCoords[geo.spriteIndex*MipMapCount+mip];
+    float4 diffuse = LoadImposterAltas(0, coords, tc);
+    float4 normal = LoadImposterAltas(1, coords, tc);
 
     if (diffuse.a > 254.f/255.f) discard;    // prevent depth write
 

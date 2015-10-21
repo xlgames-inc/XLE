@@ -36,16 +36,24 @@ cbuffer ScreenSpaceOutput
 
 float4 copy_boxfilter(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
+	// return DiffuseTexture.SampleLevel(ClampingSampler, texCoord, 0);
+
 	uint2 dims;
 	DiffuseTexture.GetDimensions(dims.x, dims.y);
 
-	uint2 zero = (uint2)floor((position.xy - OutputMin) * dims * (InputMax - InputMin) / (OutputMax - OutputMin) + dims * InputMin);
-	uint2 one = (uint2)ceil((position.xy + 1.0.xx - OutputMin) * dims * (InputMax - InputMin) / (OutputMax - OutputMin) + dims * InputMin);
+	uint2 inputMin = uint2(InputMin * dims);
+	uint2 inputMax = uint2(InputMax * dims);
+	uint2 zero = (uint2)floor((position.xy - OutputMin) * (inputMax - inputMin) / (OutputMax - OutputMin) + dims * inputMin);
+	uint2 one = (uint2)floor((position.xy + 1.0.xx - OutputMin) * (inputMax - inputMin) / (OutputMax - OutputMin) + dims * inputMin);
 
 	float4 result = 0.0.xxxx;
 	for (uint y=zero.y; y<one.y; ++y)
-		for (uint x=zero.x; x<one.x; ++x)
-			result += DiffuseTexture.Load(uint3(x,y,0));
+		for (uint x=zero.x; x<one.x; ++x) {
+			uint3 coord = uint3(x,y,0);
+			coord.x = clamp(coord.x, inputMin.x, inputMax.x-1);
+			coord.y = clamp(coord.y, inputMin.y, inputMax.y-1);
+			result += DiffuseTexture.Load(coord);
+		}
 
 	return result / float((one.x - zero.x) * (one.y - zero.y));
 }

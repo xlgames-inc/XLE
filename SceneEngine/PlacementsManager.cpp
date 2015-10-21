@@ -575,6 +575,8 @@ namespace SceneEngine
         if (i != _cellOverrides.end() && i->first == cell._filenameHash) {
             Render(context, parserContext, *i->second.get(), nullptr, cell._cellToWorld, filterStart, filterEnd);
         } else {
+            if (cell._filename[0] == '[') return;   // hack -- if the cell filename begins with '[', it is a cell from the editor (and should be using _cellOverrides)
+
             auto i2 = LowerBound(_cells, cell._filenameHash);
             if (i2 == _cells.end() || i2->first != cell._filenameHash) {
                 CellRenderInfo newRenderInfo;
