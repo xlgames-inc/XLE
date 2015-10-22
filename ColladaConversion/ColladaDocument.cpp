@@ -452,7 +452,7 @@ namespace ColladaConversion
             // them into something practical.
 
             if (Is(eleName, u("extra"))) {
-                _extra = SubDoc(formatter);
+                _techniqueExtra = SubDoc(formatter);
             } else if (Is(eleName, u("asset")) || Is(eleName, u("annotate")) || Is(eleName, u("pass"))) {
                 LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
                 formatter.SkipElement();

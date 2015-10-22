@@ -77,6 +77,37 @@ namespace RenderCore { namespace ColladaConversion
         }
     }
 
+    static void ParseExtraForTextures(
+        RenderCore::Assets::RawMaterial& matSettings,
+        const Utility::Document<Formatter>& extra, const ParameterSet& params,
+        const URIResolveContext& pubEles,
+        const ImportConfiguration& cfg, const std::string& effectName)
+    {
+        auto extraValues = extra.Element(u("technique"));
+        if (extraValues) {
+            auto techValue = extraValues.FirstChild();
+            for (;techValue; techValue=techValue.NextSibling()) {
+                auto n = techValue.Name();
+                if (cfg.GetResourceBindings().IsSuppressed(AsPointer(n.cbegin()), AsPointer(n.cend()))) continue;
+
+                auto texture = techValue.Element(u("texture"));
+                if (texture) {
+                    auto samplerRef = texture.Attribute(u("texture")).Value();
+                    if (!samplerRef.empty()) {
+                        auto binding = cfg.GetResourceBindings().AsNative(AsPointer(n.cbegin()), AsPointer(n.cend()));
+                        AddSamplerBinding(
+                            matSettings, params, 
+                            binding.c_str(), 
+                            AsPointer(samplerRef.cbegin()), AsPointer(samplerRef.cend()),
+                            pubEles);
+                    }
+                } else if (techValue.Element(u("color")) || techValue.Element(u("float")) || techValue.Element(u("param"))) {
+                    LogWarning << "Color, float and param type technique values not supported in <extra> part in effect (" << effectName << ")";
+                }
+            }
+        }
+    }
+
     RenderCore::Assets::RawMaterial Convert(
         const Effect& effect, const URIResolveContext& pubEles,
         const ImportConfiguration& cfg)
@@ -134,32 +165,12 @@ namespace RenderCore { namespace ColladaConversion
             }
         }
             
-            //  Max exporter writes some extra texture information into the <extra> part of the
+            //  Many exporters write some extra texture information into the <extra> part of the
             //  profile. We should get some more texture and parameter binding information from there
+            //  We have to parse the "extra" section both in the "profile" element and in the "technique" element
 
-        auto extraValues = profile->_extra.Element(u("technique"));
-        if (extraValues) {
-            auto techValue = extraValues.FirstChild();
-            for (;techValue; techValue=techValue.NextSibling()) {
-                auto n = techValue.Name();
-                if (cfg.GetResourceBindings().IsSuppressed(AsPointer(n.cbegin()), AsPointer(n.cend()))) continue;
-
-                auto texture = techValue.Element(u("texture"));
-                if (texture) {
-                    auto samplerRef = texture.Attribute(u("texture")).Value();
-                    if (!samplerRef.empty()) {
-                        auto binding = cfg.GetResourceBindings().AsNative(AsPointer(n.cbegin()), AsPointer(n.cend()));
-                        AddSamplerBinding(
-                            matSettings, profile->GetParams(), 
-                            binding.c_str(), 
-                            AsPointer(samplerRef.cbegin()), AsPointer(samplerRef.cend()),
-                            pubEles);
-                    }
-                } else if (techValue.Element(u("color")) || techValue.Element(u("float")) || techValue.Element(u("param"))) {
-                    LogWarning << "Color, float and param type technique values not supported in <extra> part in effect (" << AsString(effect.GetName()) << ")";
-                }
-            }
-        }
+        ParseExtraForTextures(matSettings, profile->_techniqueExtra, profile->GetParams(), pubEles, cfg, AsString(effect.GetName()));
+        ParseExtraForTextures(matSettings, profile->_extra, profile->GetParams(), pubEles, cfg, AsString(effect.GetName()));
         
         return std::move(matSettings);
     }
