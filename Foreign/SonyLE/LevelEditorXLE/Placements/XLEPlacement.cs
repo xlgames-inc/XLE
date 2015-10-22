@@ -93,8 +93,8 @@ namespace LevelEditorXLE.Placements
                 var resService = Globals.MEFContainer.GetExportedValue<IXLEAssetService>();
                 var referenceName = resService.StripExtension(resService.AsAssetName(value.Uri));
 
-                SetAttribute(PlcmtST.modelAttribute, referenceName);
-                SetAttribute(PlcmtST.materialAttribute, referenceName); 
+                Model = referenceName;
+                Material = referenceName; 
             }
         }
         public static bool CanReferenceStatic(IResource resource)

@@ -102,7 +102,16 @@ namespace LevelEditorXLE
             int sep1 = input.LastIndexOf('\\');
             if (dot > 0 && dot > sep0 && dot > sep1)
             {
-                return input.Substring(0, dot);
+                    // don't remove the params (after ":") if they exist...
+                int param = input.IndexOf(':', dot);
+                if (param >= 0)
+                {
+                    return input.Substring(0, dot) + input.Substring(param);
+                }
+                else
+                {
+                    return input.Substring(0, dot);
+                }
             }
             return input;
         }

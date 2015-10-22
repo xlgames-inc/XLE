@@ -40,7 +40,14 @@ namespace RenderingInterop
                 string ext = Path.GetExtension(fileName).ToLower();
                 var res = m_gameEngine.Info.ResourceInfos.GetByType(ResourceTypes.Model);
                 if (res.IsSupported(ext))
+                {
                     resource = new ModelResource(uri, ResourceTypes.Model);
+                } 
+                else
+                if (m_gameEngine.Info.ResourceInfos.GetByType("ModelBookmark").IsSupported(ext))
+                {
+                    resource = new ModelBookmarkResource(uri);
+                }
             }
 
             return resource;
@@ -83,6 +90,22 @@ namespace RenderingInterop
             #endregion
             private string m_type;
             private Uri m_uri;            
+        }
+
+        private class ModelBookmarkResource : IResource
+        {
+            public ModelBookmarkResource(Uri uri) { m_uri = uri; }
+            public string Type { get { return "ModelBookmark"; } }
+
+            public Uri Uri
+            {
+                get { return m_uri; }
+                set { throw new InvalidOperationException(); }
+            }
+
+            public event EventHandler<UriChangedEventArgs> UriChanged = delegate { };
+
+            private Uri m_uri;
         }
 
         [Import(AllowDefault=false)]

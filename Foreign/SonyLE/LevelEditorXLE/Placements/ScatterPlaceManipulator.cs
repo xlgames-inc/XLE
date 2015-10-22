@@ -34,11 +34,11 @@ namespace LevelEditorXLE.Placements
             {
                 [EditorAttribute(typeof(FileUriEditor), typeof(System.Drawing.Design.UITypeEditor))]
                 [TypeConverter(typeof(AssetNameNoExtConverter))]
-                public string ModelName { get; set; }
+                public string Model { get; set; }
 
                 [EditorAttribute(typeof(FileUriEditor), typeof(System.Drawing.Design.UITypeEditor))]
                 [TypeConverter(typeof(AssetNameNoExtConverter))]
-                public string MaterialName { get; set; }
+                public string Material { get; set; }
 
                 public string Supplements { get; set; }
 
@@ -46,8 +46,8 @@ namespace LevelEditorXLE.Placements
 
                 public Object()
                 {
-                    ModelName = "Game/Model/Nature/BushTree/BushE";
-                    MaterialName = "Game/Model/Nature/BushTree/BushE";
+                    Model = "Game/Model/Nature/BushTree/BushE";
+                    Material = "Game/Model/Nature/BushTree/BushE";
                     Supplements = "";
                     Weight = 100;
                 }
@@ -244,7 +244,7 @@ namespace LevelEditorXLE.Placements
                 {
                     op = GUILayer.EditorInterfaceUtils.CalculateScatterOperation(
                         editor, scene,
-                        ManipulatorContext.Objects.Select(C => C.ModelName),
+                        ManipulatorContext.Objects.Select(C => C.Model),
                         XLEBridgeUtils.Utils.AsVector3(m_hoverPt),
                         ManipulatorContext.Radius, ManipulatorContext.Density);
                 }
@@ -272,7 +272,7 @@ namespace LevelEditorXLE.Placements
                 {
                     resource = d.Resolve(new Uri(
                         new Uri(System.Environment.CurrentDirectory + "\\"),
-                        o.ModelName + "<model"));
+                        o.Model + "<model"));
                     if (resource != null) break;
                 }
 
@@ -295,7 +295,7 @@ namespace LevelEditorXLE.Placements
                         var p = resGob.As<Placements.XLEPlacementObject>();
                         if (p != null)
                         {
-                            p.Material = o.MaterialName;
+                            p.Material = o.Material;
                             p.Supplements = o.Supplements;
                         }
                     }

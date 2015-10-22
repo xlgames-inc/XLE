@@ -75,7 +75,6 @@
     <Compile Include="Placements\ScatterPlaceManipulator.cs" />
     <Compile Include="Services\Commands.cs" />
     <Compile Include="Services\Patches.cs" />
-    <Compile Include="Services\ResourceConverter.cs" />
     <Compile Include="Services\Resources.cs" />
     <Compile Include="Services\Startup.cs" />
     <Compile Include="Manipulators\XLEManipCtrlWin.cs">
