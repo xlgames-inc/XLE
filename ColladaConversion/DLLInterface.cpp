@@ -100,6 +100,48 @@ namespace RenderCore { namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    static Float4x4 BuildCoordinateTransform(const AssetDesc& assetDesc)
+    {
+        // When the "up" vector, or the units specified in the collada header
+        // don't match our expectations, we can apply an extra transform.
+        // This should transform some given input coordinates into our expected
+        // final output.
+        // Here, we will convert to 1.f unit == 1.f meter, with +Z being up.
+        float scale = assetDesc._metersPerUnit;
+        Float3x3 axisTransform;
+        switch (assetDesc._upAxis) {
+        case AssetDesc::UpAxis::X:
+                // -Y --> +X
+                // +Z --> -Y
+                // +X --> +Z
+            axisTransform = Float3x3(
+                 0.f, -1.f,  0.f,
+                 0.f,  0.f, -1.f,
+                 1.f,  0.f,  0.f);
+            break;
+
+        case AssetDesc::UpAxis::Y:
+                // +X --> +X
+                // +Z --> -Y
+                // +Y --> +Z
+                //  hmm... winding flip...?
+            axisTransform = Float3x3(
+                 1.f,  0.f,   0.f,
+                 0.f,  0.f,  -1.f,
+                 0.f,  1.f,   0.f);
+            break;
+
+        default:
+        case AssetDesc::UpAxis::Z:
+            axisTransform = Identity<Float3x3>();
+            break;
+        }
+
+        return AsFloat4x4(Float3x3(scale * axisTransform));
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     class PreparedSkinFile
     {
     public:
@@ -112,13 +154,39 @@ namespace RenderCore { namespace ColladaConversion
 
     PreparedSkinFile::PreparedSkinFile(const ColladaScaffold& input, const VisualScene& scene, const Node& rootNode)
     {
+        using namespace RenderCore::ColladaConversion;
+
         SkeletonRegistry jointRefs;
 
-        std::vector<unsigned> instancedGeometries;
-        std::vector<unsigned> instancedControllers;
-        FindReferencedGeometries(rootNode, instancedGeometries, instancedControllers);
+        ReferencedGeometries refGeos;
+        refGeos.Gather(rootNode, jointRefs);
 
-        for (auto c:instancedGeometries) {
+            // We can now build the skeleton (because ReferencedGeometries::Gather 
+            // has initialised jointRefs.
+
+        unsigned topLevelPops = 0;
+        auto coordinateTransform = BuildCoordinateTransform(input._doc->GetAssetDesc());
+        if (!Equivalent(coordinateTransform, Identity<Float4x4>(), 1e-5f)) {
+                // Push on the coordinate transform (if there is one)
+                // This should be optimised into other matrices (or even into
+                // the geometry) when we perform the skeleton optimisation steps.
+            topLevelPops = _skeleton.GetTransformationMachine().PushTransformation(
+                coordinateTransform);
+        }
+
+            // When extracting an internal node, we ignore the transform 
+            // on that internal node
+        BuildSkeleton(_skeleton, rootNode, jointRefs, (rootNode == scene.GetRootNode())?0:1, false);
+        _skeleton.GetTransformationMachine().Pop(topLevelPops);
+
+            // We can try to optimise the skeleton here. We should collect the list
+            // of meshes that we can optimise transforms into (ie, meshes that aren't
+            // used in multiple places, and that aren't skinned).
+            // We need to collect that list of transforms before we actually instantiate
+            // the geometry -- so that merging in the changes can be done in the instantiate
+            // step.
+
+        for (auto c:refGeos._meshes) {
             TRY {
                 _cmdStream.Add(
                     RenderCore::ColladaConversion::InstantiateGeometry(
@@ -130,7 +198,7 @@ namespace RenderCore { namespace ColladaConversion
             } CATCH_END
         }
 
-        for (auto c:instancedControllers) {
+        for (auto c:refGeos._skinControllers) {
             bool skinSuccessful = false;
             TRY {
                 _cmdStream.Add(
@@ -162,8 +230,7 @@ namespace RenderCore { namespace ColladaConversion
             }
         }
 
-        using namespace RenderCore::ColladaConversion;
-        BuildMinimalSkeleton(_skeleton, rootNode, jointRefs, (rootNode == scene.GetRootNode())?0:1);    // when extracting an internal node, we ignore the transform on that internal node
+            // register the names so the skeleton and command stream can be bound together
         RegisterNodeBindingNames(_skeleton, jointRefs);
         RegisterNodeBindingNames(_cmdStream, jointRefs);
     }
@@ -335,7 +402,7 @@ namespace RenderCore { namespace ColladaConversion
             Throw(::Assets::Exceptions::FormatError("No visual scene found"));
 
         using namespace RenderCore::ColladaConversion;
-        BuildFullSkeleton(_skeleton, scene->GetRootNode(), jointRefs);
+        BuildSkeleton(_skeleton, scene->GetRootNode(), jointRefs, 0, true);
         RegisterNodeBindingNames(_skeleton, jointRefs);
     }
 

@@ -23,7 +23,7 @@ namespace RenderCore { namespace ColladaConversion
         return i != _importantNodes.end() && i->_id == node;
     }
 
-    unsigned SkeletonRegistry::GetOutputMatrixIndex(ObjectGuid node)
+    auto SkeletonRegistry::GetOutputMatrixIndex(ObjectGuid node) -> TransformMarker
     {
         auto i = std::lower_bound(_importantNodes.begin(), _importantNodes.end(), node, CompareId());
         if (i != _importantNodes.end() && i->_id == node) {
@@ -68,15 +68,9 @@ namespace RenderCore { namespace ColladaConversion
         }
     }
 
-    unsigned        SkeletonRegistry::GetImportantNodesCount() const
+    auto    SkeletonRegistry::GetImportantNodes() const -> IteratorRange<const ImportantNode*>
     {
-        return (unsigned)_importantNodes.size();
-    }
-
-    auto SkeletonRegistry::GetImportantNode(unsigned index) const -> ImportantNode
-    {
-        if (index < _importantNodes.size()) return _importantNodes[index];
-        return ImportantNode();
+        return MakeIteratorRange(_importantNodes);
     }
 
     auto SkeletonRegistry::GetNode(ObjectGuid node) const -> ImportantNode

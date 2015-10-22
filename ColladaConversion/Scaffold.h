@@ -687,6 +687,7 @@ namespace ColladaConversion
         const Sampler*          FindSampler(uint64 guid) const;
 
         Section GetMainVisualScene() const { return _visualScene; }
+        const AssetDesc& GetAssetDesc() const { return _rootAsset; }
 
     // protected:
         AssetDesc _rootAsset;

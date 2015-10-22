@@ -16,16 +16,11 @@ namespace RenderCore { namespace ColladaConversion
     class NascentRawGeometry;
     class NascentBoundSkinnedGeometry;
 
-    void BuildFullSkeleton(
-        NascentSkeleton& skeleton,
-        const ::ColladaConversion::Node& node,
-        SkeletonRegistry& skeletonReferences);
-
-    void BuildMinimalSkeleton(
+    void BuildSkeleton(
         NascentSkeleton& skeleton,
         const ::ColladaConversion::Node& node,
         SkeletonRegistry& skeletonReferences,
-        int ignoreTransforms);
+        int ignoreTransforms, bool fullSkeleton);
 
     class NascentGeometryObjects
     {
@@ -59,10 +54,14 @@ namespace RenderCore { namespace ColladaConversion
         SkeletonRegistry& nodeRefs,
         const ImportConfiguration& cfg);
 
-    void FindReferencedGeometries(
-        const ::ColladaConversion::Node& node, 
-        std::vector<unsigned>& instancedGeometries,
-        std::vector<unsigned>& instancedControllers);
+    class ReferencedGeometries
+    {
+    public:
+        std::vector<unsigned>   _meshes;
+        std::vector<unsigned>   _skinControllers;
+
+        void Gather(const ::ColladaConversion::Node& node, SkeletonRegistry& nodeRefs);
+    };
 
     void RegisterNodeBindingNames(NascentSkeleton& skeleton, const SkeletonRegistry& registry);
     void RegisterNodeBindingNames(NascentModelCommandStream& stream, const SkeletonRegistry& registry);

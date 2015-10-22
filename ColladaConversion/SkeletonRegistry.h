@@ -8,6 +8,7 @@
 
 #include "ConversionCore.h"
 #include "../Math/Matrix.h"
+#include "../Utility/IteratorUtils.h"
 #include <vector>
 #include <algorithm>
 
@@ -44,17 +45,17 @@ namespace RenderCore { namespace ColladaConversion
             , _hasInverseBind(hasInverseBind) {}
         };
 
-        unsigned        GetImportantNodesCount() const;
-        ImportantNode   GetImportantNode(unsigned index) const;
-        ImportantNode   GetNode(ObjectGuid node) const;
+        IteratorRange<const ImportantNode*>     GetImportantNodes() const;
+        ImportantNode                           GetNode(ObjectGuid node) const;
         
         bool            TryRegisterNode(ObjectGuid node, const char bindingName[]);
-        unsigned        GetOutputMatrixIndex(ObjectGuid node);
+        TransformMarker GetOutputMatrixIndex(ObjectGuid node);
 
-        void            AttachInverseBindMatrix(ObjectGuid node, const Float4x4& inverseBind);
+        void    AttachInverseBindMatrix(ObjectGuid node, const Float4x4& inverseBind);
+        void    AttachMergeGeometry(ObjectGuid node, const Float4x4& mergeToGeometry);
 
-        void            MarkParameterAnimated(const std::string& paramName);
-        bool            IsAnimated(const std::string& paramName) const;
+        void    MarkParameterAnimated(const std::string& paramName);
+        bool    IsAnimated(const std::string& paramName) const;
 
         SkeletonRegistry();
         ~SkeletonRegistry();

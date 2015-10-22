@@ -88,6 +88,17 @@ namespace XLEMath
             return result;
         }
 
+        template<> const Float3x3& Identity<Float3x3>()
+        {
+            const Float3x3::value_type one = Float3x3::value_type(1);
+            const Float3x3::value_type zero = Float3x3::value_type(0);
+            static Float3x3 result(
+                one, zero, zero,
+                zero, one, zero,
+                zero, zero, one );
+            return result;
+        }
+
         template<> const Float3x3& Zero<Float3x3>()
         {
             const Float3x3::value_type zero = Float3x3::value_type(0);

@@ -26,53 +26,17 @@ namespace RenderCore { namespace ColladaConversion
 {
     using namespace ::ColladaConversion;
 
-    static std::string SkeletonBindingName(const Node& node);
-    static ObjectGuid AsObjectGuid(const Node& node);
-
-    static bool IsUseful(const Node& node, const SkeletonRegistry& skeletonReferences);
+    static std::string  SkeletonBindingName(const Node& node);
+    static ObjectGuid   AsObjectGuid(const Node& node);
+    static bool         IsUseful(const Node& node, const SkeletonRegistry& skeletonReferences);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void BuildFullSkeleton(
-        NascentSkeleton& skeleton,
-        const Node& node,
-        SkeletonRegistry& skeletonReferences)
-    {
-        auto nodeId = AsObjectGuid(node);
-        auto bindingName = skeletonReferences.GetNode(nodeId)._bindingName;
-        if (bindingName.empty()) bindingName = SkeletonBindingName(node);
-
-        unsigned pushCount = PushTransformations(
-            skeleton.GetTransformationMachine(),
-            node.GetFirstTransform(), bindingName.c_str(),
-            skeletonReferences, true);
-
-            // DavidJ -- hack! -- 
-            //      When writing a "skeleton" file we need to include all nodes, even those that aren't
-            //      referenced within the same file. This is because the node might become an output-interface
-            //      node... Maybe there is a better way to do this. Perhaps we could identify which nodes are
-            //      output interface transforms / bones... Or maybe we could just include everything when
-            //      compiling a skeleton...?
-        auto thisOutputMatrix = skeletonReferences.GetOutputMatrixIndex(nodeId);
-        skeleton.GetTransformationMachine().MakeOutputMatrixMarker(thisOutputMatrix);
-        skeletonReferences.TryRegisterNode(nodeId, bindingName.c_str());
-
-            // note -- also consider instance_nodes?
-
-        auto child = node.GetFirstChild();
-        while (child) {
-            BuildFullSkeleton(skeleton, child, skeletonReferences);
-            child = child.GetNextSibling();
-        }
-
-        skeleton.GetTransformationMachine().Pop(pushCount);
-    }
-
-    void BuildMinimalSkeleton(
+    void BuildSkeleton(
         NascentSkeleton& skeleton,
         const Node& node,
         SkeletonRegistry& skeletonReferences,
-        int ignoreTransforms)
+        int ignoreTransforms, bool fullSkeleton)
     {
         if (!IsUseful(node, skeletonReferences)) return;
 
@@ -91,7 +55,7 @@ namespace RenderCore { namespace ColladaConversion
                 skeletonReferences);
         }
 
-        bool isReferenced = skeletonReferences.IsImportant(nodeId);
+        bool isReferenced = fullSkeleton || skeletonReferences.IsImportant(nodeId);
         if (isReferenced) {
                 // (prevent a reference if the transformation machine is completely empty)
             if (!skeleton.GetTransformationMachine().IsEmpty()) {
@@ -105,39 +69,50 @@ namespace RenderCore { namespace ColladaConversion
 
         auto child = node.GetFirstChild();
         while (child) {
-            BuildMinimalSkeleton(skeleton, child, skeletonReferences, ignoreTransforms-1);
+            BuildSkeleton(skeleton, child, skeletonReferences, ignoreTransforms-1, fullSkeleton);
             child = child.GetNextSibling();
         }
 
         skeleton.GetTransformationMachine().Pop(pushCount);
     }
 
-    void FindReferencedGeometries(
-        const Node& node, 
-        std::vector<unsigned>& instancedGeometries,
-        std::vector<unsigned>& instancedControllers)
+    void ReferencedGeometries::Gather(
+        const ::ColladaConversion::Node& node,
+        SkeletonRegistry& nodeRefs)
     {
             // Just collect all of the instanced geometries and instanced controllers
             // that hang off this node (or any children).
-
+        bool gotAttachment = false;
         const auto& scene = node.GetScene();
         for (unsigned c=0; c<scene.GetInstanceGeometryCount(); ++c)
             if (scene.GetInstanceGeometry_Attach(c).GetIndex() == node.GetIndex()) {
-                auto i = std::lower_bound(instancedGeometries.begin(), instancedGeometries.end(), c);
-                if (i == instancedGeometries.end() || *i != c)
-                    instancedGeometries.insert(i, c);
+                auto i = std::lower_bound(_meshes.begin(), _meshes.end(), c);
+                if (i == _meshes.end() || *i != c)
+                    _meshes.insert(i, c);
+                _meshes.push_back(c);
+                gotAttachment = true;
             }
 
         for (unsigned c=0; c<scene.GetInstanceControllerCount(); ++c)
             if (scene.GetInstanceController_Attach(c).GetIndex() == node.GetIndex()) {
-                auto i = std::lower_bound(instancedControllers.begin(), instancedControllers.end(), c);
-                if (i == instancedControllers.end() || *i != c)
-                    instancedControllers.insert(i, c);
+                auto i = std::lower_bound(_skinControllers.begin(), _skinControllers.end(), c);
+                if (i == _skinControllers.end() || *i != c)
+                    _skinControllers.insert(i, c);
+                gotAttachment = true;
             }
+
+            // Register the names with attachments node -- early on
+            // Note that if we get a resolve failure (or compile failure) then the
+            // node will remain registered in the skeleton
+        if (gotAttachment) {
+            auto nodeAsGuid = AsObjectGuid(node);
+            nodeRefs.GetOutputMatrixIndex(nodeAsGuid);
+            nodeRefs.TryRegisterNode(nodeAsGuid, SkeletonBindingName(node).c_str());
+        }
 
         auto child = node.GetFirstChild();
         while (child) {
-            FindReferencedGeometries(child, instancedGeometries, instancedControllers);
+            Gather(child, nodeRefs);
             child = child.GetNextSibling();
         }
     }
@@ -146,9 +121,7 @@ namespace RenderCore { namespace ColladaConversion
         NascentSkeleton& skeleton,
         const SkeletonRegistry& registry)
     {
-        auto importantNodesCount = registry.GetImportantNodesCount();
-        for (unsigned c=0; c<importantNodesCount; ++c) {
-            auto nodeDesc = registry.GetImportantNode(c);
+        for (const auto& nodeDesc:registry.GetImportantNodes()) {
             auto success = skeleton.GetTransformationMachine().TryRegisterJointName(
                 nodeDesc._bindingName, nodeDesc._inverseBind, nodeDesc._transformMarker);
             if (!success)
@@ -160,12 +133,9 @@ namespace RenderCore { namespace ColladaConversion
         NascentModelCommandStream& stream,
         const SkeletonRegistry& registry)
     {
-        auto importantNodesCount = registry.GetImportantNodesCount();
-        for (unsigned c=0; c<importantNodesCount; ++c) {
-            auto nodeDesc = registry.GetImportantNode(c);
+        for (const auto& nodeDesc:registry.GetImportantNodes())
             stream.RegisterTransformationMachineOutput(
                 nodeDesc._bindingName, nodeDesc._id, nodeDesc._transformMarker);
-        }
     }
 
     static auto BuildMaterialTable(
@@ -211,6 +181,7 @@ namespace RenderCore { namespace ColladaConversion
 
 
                 if (materialGuids[index] != invalidGuid && materialGuids[index] != newMaterialGuid) {
+
                         // Some collada files can actually have multiple instance_material elements for
                         // the same binding symbol. Let's throw an exception in this case (but only
                         // if the bindings don't agree)
@@ -234,28 +205,27 @@ namespace RenderCore { namespace ColladaConversion
     {
         GuidReference refGuid(instGeo._reference);
         ObjectGuid geoId(refGuid._id, refGuid._fileHash);
-        auto geo = objects.GetGeo(geoId);
-        if (geo == ~unsigned(0x0)) {
+         auto geo = objects.GetGeo(geoId);
+         if (geo == ~unsigned(0x0)) {
             auto* scaffoldGeo = FindElement(refGuid, resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
             if (!scaffoldGeo)
                 Throw(::Assets::Exceptions::FormatError("Could not found geometry object to instantiate (%s)",
                     AsString(instGeo._reference).c_str()));
             objects._rawGeos.push_back(std::make_pair(geoId, Convert(*scaffoldGeo, resolveContext, cfg)));
             geo = (unsigned)(objects._rawGeos.size()-1);
-        }
-
+         }
+        
         auto materials = BuildMaterialTable(
             AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
             objects._rawGeos[geo].second._matBindingSymbols, resolveContext);
 
-        auto bindingMatIndex = nodeRefs.GetOutputMatrixIndex(AsObjectGuid(attachedNode));
-        nodeRefs.TryRegisterNode(AsObjectGuid(attachedNode), SkeletonBindingName(attachedNode).c_str());
+        auto bindingTransformIndex = nodeRefs.GetOutputMatrixIndex(AsObjectGuid(attachedNode));
 
         return NascentModelCommandStream::GeometryInstance(
-            geo, bindingMatIndex, std::move(materials), 0);
+            geo, bindingTransformIndex, std::move(materials), 0);
     }
 
-    DynamicArray<uint16> BuildJointArray(
+    static DynamicArray<uint16> BuildJointArray(
         const GuidReference skeletonRef,
         const UnboundSkinController& unboundController,
         const URIResolveContext& resolveContext,
@@ -356,7 +326,6 @@ namespace RenderCore { namespace ColladaConversion
                     AsString(instGeo._reference).c_str())));
 
         auto bindingMatIndex = nodeRefs.GetOutputMatrixIndex(AsObjectGuid(attachedNode));
-        nodeRefs.TryRegisterNode(AsObjectGuid(attachedNode), SkeletonBindingName(attachedNode).c_str());
 
         return NascentModelCommandStream::SkinControllerInstance(
             (unsigned)(objects._skinnedGeos.size()-1), 

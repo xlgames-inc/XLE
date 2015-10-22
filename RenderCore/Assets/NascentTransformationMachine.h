@@ -26,7 +26,7 @@ namespace RenderCore { namespace Assets
     class NascentTransformationMachine : noncopyable
     {
     public:
-        unsigned        PushTransformation(const Float4x4& localToParent, const char nodeName[]);
+        unsigned        PushTransformation(const Float4x4& localToParent);
         void            Pop                     (   unsigned popCount);
         unsigned        GetOutputMatrixMarker   ();
         void            MakeOutputMatrixMarker  (unsigned marker);

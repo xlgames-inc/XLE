@@ -363,7 +363,7 @@ namespace RenderCore { namespace Assets
         return c.i;
     }
 
-    unsigned    NascentTransformationMachine::PushTransformation(const Float4x4& localToParent, const char nodeName[])
+    unsigned    NascentTransformationMachine::PushTransformation(const Float4x4& localToParent)
     {
         ResolvePendingPops();
 
