@@ -1320,16 +1320,17 @@ namespace RenderCore { namespace Assets
                     assert(sknmesh._vertexStreamCount <= Pimpl::MaxVertexStreams);
                     context._context->Bind(0, 1+sknmesh._vertexStreamCount, vbs, strides, offsets);
                     mesh = &sknmesh;
+                    currentTechniqueInterface = sknmesh._skinnedTechniqueInterface;
                 } else {
                     mesh = (const Pimpl::Mesh*)d->_subMesh;
                     assert(mesh->_vertexStreamCount <= Pimpl::MaxVertexStreams);
                     context._context->Bind(
                         0, mesh->_vertexStreamCount, vbs,
                         mesh->_vertexStrides, mesh->_vbOffsets);
+                    currentTechniqueInterface = mesh->_techniqueInterface;
                 }
                 context._context->Bind(renderer._pimpl->_indexBuffer, Metal::NativeFormat::Enum(mesh->_indexFormat), mesh->_ibOffset);
                 currentMesh = mesh;
-                currentTechniqueInterface = mesh->_techniqueInterface;
                 currentTextureSet = ~unsigned(0x0);
             }
 
