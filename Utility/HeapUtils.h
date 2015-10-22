@@ -21,6 +21,7 @@ namespace Utility
     public:
         unsigned GetOldestValue() const;
         void BringToFront(unsigned value);
+        void DisconnectOldest();
 
         LRUQueue(unsigned maxValues);
         LRUQueue();

@@ -188,10 +188,11 @@ namespace SceneEngine
         class PreparedSprite
         {
         public:
-            Rectangle _rect[MipMapCount];
-            Float3 _projectionCentre;
-            Float2 _worldSpaceHalfSize;
-            unsigned _createFrame;
+            Rectangle   _rect[MipMapCount];
+            Float3      _projectionCentre;
+            Float2      _worldSpaceHalfSize;
+            unsigned    _createFrame;
+            unsigned    _usageFrame;
 
             PreparedSprite()
             {
@@ -199,6 +200,7 @@ namespace SceneEngine
                 _projectionCentre = Zero<Float3>();
                 _worldSpaceHalfSize = Zero<Float2>();
                 _createFrame = 0;
+                _usageFrame = 0;
             }
         };
 
@@ -262,7 +264,8 @@ namespace SceneEngine
 
     static const unsigned MaxPreparePerFrame = 3;
     static const unsigned MaxEvictionPerFrame = 3;
-    static const unsigned EvictionGracePeriod = 60; // don't evict sprites within this many frames from their creation
+    static const unsigned EvictionCreateGracePeriod = 60;   // don't evict sprites within this many frames from their creation
+    static const unsigned EvictionUsageGracePeriod = 5;     // don't evict sprites within this many frames of being used
 
     void DynamicImposters::Pimpl::BuildNewSprites(
         Metal::DeviceContext& context,
@@ -283,7 +286,6 @@ namespace SceneEngine
         _overflowMaxSpritesCounter = 0;
         _pendingCounter = 0;
         _evictionCounter = 0;
-        ++_frameCounter;
 
         auto preparedSpritesI = _preparedSpritesLookup.begin();
         for (const auto& o:_queuedObjects) {
@@ -363,17 +365,18 @@ namespace SceneEngine
 
             auto oldest = _lruQueue.GetOldestValue();
 
-                // \todo -- we should have a "grace" period for
-                //  new sprites. After they've been added to the 
-                //  atlas, it should be impossible to evict them for
-                //  a few frames.
+            auto& sprite = _preparedSprites[oldest];
 
-            const auto& sprite = _preparedSprites[oldest];
-            auto age = _frameCounter - sprite._createFrame;
-            if (age < EvictionGracePeriod) break;   // too soon to evict this sprite!
+                // Check the grace period... prevent sprites from being evicted too
+                // soon after being created or used. We will tend to hit these breaks
+                // when the atlas is saturated and we can't fit in any more sprites...
+            if ((_frameCounter - sprite._createFrame) < EvictionCreateGracePeriod) break;
+            if ((_frameCounter - sprite._usageFrame) < EvictionUsageGracePeriod) break;
 
-            for (unsigned c=0; c<dimof(sprite._rect); ++c)
+            for (unsigned c=0; c<dimof(sprite._rect); ++c) {
                 _packer.Deallocate(sprite._rect[c]);        // return rectangle to the packer
+                sprite._rect[c] = std::make_pair(UInt2(0,0), UInt2(0,0));
+            }
 
             _preparedSpritesHeap.Deallocate(oldest<<4, 1<<4);
             auto i = std::find_if(
@@ -384,7 +387,7 @@ namespace SceneEngine
 
                 // we have to bring it to the front in order to
                 // get a new oldest value
-            _lruQueue.BringToFront(oldest);
+            _lruQueue.DisconnectOldest();
         }
 
         _evictionCounter = evicted;
@@ -396,6 +399,8 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex)
     {
+        ++_pimpl->_frameCounter;
+
         if (_pimpl->_queuedInstances.empty() || _pimpl->_queuedObjects.empty())
             return;
 
@@ -445,7 +450,7 @@ namespace SceneEngine
                 continue;
 
             unsigned spriteIndex = preparedSpritesI->second;
-            const auto& sprite = _pimpl->_preparedSprites[spriteIndex];
+            auto& sprite = _pimpl->_preparedSprites[spriteIndex];
             assert(sprite._rect[0].second[0] > sprite._rect[0].first[0]
                 && sprite._rect[0].second[1] > sprite._rect[0].first[1]);
 
@@ -463,6 +468,7 @@ namespace SceneEngine
             }
 
             _pimpl->_lruQueue.BringToFront(spriteIndex);
+            sprite._usageFrame = _pimpl->_frameCounter;
         }
 
         if (vertices.empty()) return;
@@ -931,6 +937,7 @@ namespace SceneEngine
     {
         Metrics result;
         result._spriteCount = _pimpl->_preparedSpritesHeap.CalculateAllocatedSpace() >> 4;
+        result._maxSpriteCount = (unsigned)_pimpl->_preparedSprites.size();
         result._pixelsAllocated = 0;
         for (const auto&i:_pimpl->_preparedSprites) {
             for (unsigned m=0; m<dimof(i._rect); ++m) {
@@ -945,18 +952,37 @@ namespace SceneEngine
             ;
         result._overflowCounter = _pimpl->_overflowCounter + _pimpl->_overflowMaxSpritesCounter;
         result._pendingCounter = _pimpl->_pendingCounter;
+        result._evictionCounter = _pimpl->_evictionCounter;
         std::tie(result._largestFreeBlockArea, result._largestFreeBlockSide) 
             = _pimpl->_packer.LargestFreeBlock();
         
         result._bytesPerPixel = 
             (Metal::BitsPerPixel(Metal::NativeFormat::R8G8B8A8_UNORM_SRGB) + Metal::BitsPerPixel(Metal::NativeFormat::R8G8B8A8_SNORM)) / 8;
         result._layerCount = (unsigned)_pimpl->_atlas._layers.size();
+
+        auto oldest = _pimpl->_lruQueue.GetOldestValue();
+        if (oldest != unsigned(0x0)) {
+            result._mostStaleCounter = _pimpl->_frameCounter - _pimpl->_preparedSprites[oldest]._usageFrame;
+        } else {
+            result._mostStaleCounter = 0;
+        }
         return result;
     }
 
     Metal::ShaderResourceView DynamicImposters::GetAtlasResource(unsigned layer)
     {
         return _pimpl->_atlas._layers[layer]._atlas.SRV();
+    }
+
+    auto DynamicImposters::GetSpriteMetrics(unsigned spriteIndex) -> SpriteMetrics
+    {
+        const auto& sprite = _pimpl->_preparedSprites[spriteIndex];
+        SpriteMetrics result;
+        for (unsigned c=0; c<dimof(result._mipMaps); ++c)
+            result._mipMaps[c] = sprite._rect[c];
+        result._age = _pimpl->_frameCounter - sprite._createFrame;
+        result._timeSinceUsage = _pimpl->_frameCounter - sprite._usageFrame;
+        return result;
     }
 
     DynamicImposters::DynamicImposters(SharedStateSet& sharedStateSet)
@@ -989,7 +1015,7 @@ namespace SceneEngine
         _calibrationPixels = 1000;
         _minDims = UInt2(32, 32);
         _maxDims = UInt2(128, 128);
-        _altasSize = UInt3(256, 256, 1); // UInt3(4096, 2048, 1);
+        _altasSize = UInt3(1024, 256, 1); // UInt3(4096, 2048, 1);
         _maxSpriteCount = 256;
     }
 

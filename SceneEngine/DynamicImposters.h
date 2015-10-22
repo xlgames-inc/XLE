@@ -67,6 +67,8 @@ namespace SceneEngine
         class Metrics;
         Metrics GetMetrics() const;
         RenderCore::Metal::ShaderResourceView GetAtlasResource(unsigned layer);
+        class SpriteMetrics;
+        SpriteMetrics GetSpriteMetrics(unsigned spriteIndex);
 
         DynamicImposters(SharedStateSet& sharedStateSet);
         ~DynamicImposters();
@@ -80,6 +82,7 @@ namespace SceneEngine
     {
     public:
         unsigned    _spriteCount;
+        unsigned    _maxSpriteCount;
 
             // allocation stats
         unsigned    _pixelsAllocated;
@@ -88,12 +91,21 @@ namespace SceneEngine
         UInt2       _largestFreeBlockSide;
         unsigned    _overflowCounter;
         unsigned    _pendingCounter;
+        unsigned    _evictionCounter;
+        unsigned    _mostStaleCounter;  // how many frames since the "most stale" sprite was used
 
             // atlas config
         unsigned    _bytesPerPixel;
         unsigned    _layerCount;
 
         Metrics();
+    };
+
+    class DynamicImposters::SpriteMetrics
+    {
+    public:
+        std::pair<UInt2, UInt2> _mipMaps[5];
+        unsigned _age, _timeSinceUsage;
     };
 }
 

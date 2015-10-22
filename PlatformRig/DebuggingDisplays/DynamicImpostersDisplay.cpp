@@ -45,7 +45,7 @@ namespace PlatformRig { namespace Overlays
             context, 
             statsArea.AllocateFullWidth(lineHeight),
             nullptr, ColorB(0xffffffff),
-            "SpriteCount: %i", metrics._spriteCount);
+            "SpriteCount: %i/%i", metrics._spriteCount, metrics._maxSpriteCount);
         statsArea.AllocateFullWidth(lineHeight);
         DrawFormatText(
             context, 
@@ -67,6 +67,11 @@ namespace PlatformRig { namespace Overlays
             statsArea.AllocateFullWidth(lineHeight),
             nullptr, ColorB(0xffffffff),
             "Overflow: (%i), Pending: (%i)", metrics._overflowCounter, metrics._pendingCounter);
+        DrawFormatText(
+            context, 
+            statsArea.AllocateFullWidth(lineHeight),
+            nullptr, ColorB(0xffffffff),
+            "Evictions: (%i)", metrics._evictionCounter);
         statsArea.AllocateFullWidth(lineHeight);
         DrawFormatText(
             context, 
@@ -74,6 +79,7 @@ namespace PlatformRig { namespace Overlays
             nullptr, ColorB(0xffffffff),
             "Bytes/pixel (%i) in (%i) layers", metrics._bytesPerPixel, metrics._layerCount);
         
+        UInt2 atlasSize(0,0);
         {
             unsigned visibleLayer = 0;
             context->ReleaseState();
@@ -92,6 +98,32 @@ namespace PlatformRig { namespace Overlays
                 std::make_pair(UInt2(0,0), UInt2(desc.Width, desc.Height)),
                 SceneEngine::CopyFilter::Bilinear,
                 SceneEngine::ProtectState::States::RenderTargets);
+            atlasSize = UInt2(desc.Width, desc.Height);
+        }
+
+        {
+                // Draw rectangles showing the "heat-map" for the sprites
+                // This is how long it's been since this sprite has been used
+            for (unsigned sprite=0; sprite<metrics._maxSpriteCount; ++sprite) {
+                auto sm = m->GetSpriteMetrics(sprite);
+                for (unsigned m=0; m<dimof(sm._mipMaps); ++m) {
+                    if (sm._mipMaps[m].second[0] > sm._mipMaps[m].first[0]) {
+                        const auto& r = sm._mipMaps[m];
+                        UInt2 topLeft(
+                            (unsigned)LinearInterpolate(textureArea._topLeft[0], textureArea._bottomRight[0], r.first[0] / float(atlasSize[0])),
+                            (unsigned)LinearInterpolate(textureArea._topLeft[1], textureArea._bottomRight[1], r.first[1] / float(atlasSize[1])));
+                        UInt2 bottomRight(
+                            (unsigned)LinearInterpolate(textureArea._topLeft[0], textureArea._bottomRight[0], r.second[0] / float(atlasSize[0])),
+                            (unsigned)LinearInterpolate(textureArea._topLeft[1], textureArea._bottomRight[1], r.second[1] / float(atlasSize[1])));
+                            
+                        float age = Clamp(sm._timeSinceUsage/60.f, 0.f, 1.f);
+                        DrawRoundedRectangleOutline(
+                            context, Rect(topLeft, bottomRight),
+                            ColorB::FromNormalized(LinearInterpolate(0.f, 1.f, age), 0.f, LinearInterpolate(1.f, 0.f, age), 1.f),
+                            2.f, 0.05f);
+                    }
+                }
+            }
         }
     }
 

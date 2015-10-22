@@ -54,6 +54,31 @@ namespace Utility
         _newestBlock = linearAddress;
     }
 
+    void LRUQueue::DisconnectOldest()
+    {
+            // Disconnect the oldest block from the linked
+            // list.
+            // It will no longer be returned from GetOldestValue()
+            // until it is added back with BringToFront()
+        if (_oldestBlock != ~unsigned(0x0)) {
+            auto blockToRemove = _oldestBlock;
+            _oldestBlock = _lruQueue[blockToRemove].first;
+            if (_oldestBlock != ~unsigned(0x0)) {
+                assert(_newestBlock != blockToRemove);
+                assert(_lruQueue[_oldestBlock].second == blockToRemove);
+                _lruQueue[_oldestBlock].second = ~unsigned(0x0);
+            } else if (_newestBlock == blockToRemove) {    
+                    // when disconnecting the last block, both _oldestBlock
+                    // and _newestBlock should end up invalid
+                    // This is the only case in which we should touch _newestBlock
+                assert(_oldestBlock == ~unsigned(0x0));
+                _newestBlock = ~unsigned(0x0);
+            }
+
+            _lruQueue[blockToRemove] = std::make_pair(~unsigned(0x0), ~unsigned(0x0));
+        }
+    }
+
     LRUQueue::LRUQueue(unsigned maxValues)
     {
         _oldestBlock = _newestBlock = ~unsigned(0x0);
