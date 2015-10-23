@@ -7,22 +7,11 @@
 #pragma once
 
 #include "../Metal/Forward.h"
-#include "../Metal/InputLayout.h"
 #include "../../Utility/MemoryUtils.h"      // (for ConstHash64)
-
-namespace RenderCore { namespace Techniques { class CameraDesc; class GlobalTransformConstants; } }
+#include <vector>
 
 namespace RenderCore { namespace Assets
 {
-    extern Metal::ConstantBufferLayoutElement   GlobalTransform_Elements[];
-    extern size_t                               GlobalTransform_ElementsCount;
-
-    extern Metal::ConstantBufferLayoutElement   MaterialProperties_Elements[];
-    extern size_t                               MaterialProperties_ElementsCount;
-
-    extern Metal::ConstantBufferLayoutElement   LocalTransform_Elements[];
-    extern size_t                               LocalTransform_ElementsCount;
-
     bool IsDXTNormalMap(const std::string& textureName);
 
     static const uint64 ChunkType_ModelScaffold = ConstHash64<'Mode', 'lSca', 'fold'>::Value;
@@ -30,10 +19,16 @@ namespace RenderCore { namespace Assets
     static const uint64 ChunkType_AnimationSet = ConstHash64<'Anim', 'Set'>::Value;
     static const uint64 ChunkType_Skeleton = ConstHash64<'Skel', 'eton'>::Value;
     static const uint64 ChunkType_RawMat = ConstHash64<'RawM', 'at'>::Value;
+    static const uint64 ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
 
     class GeoInputAssembly;
+    class DrawCallDesc;
     GeoInputAssembly CreateGeoInputAssembly(   
         const std::vector<Metal::InputElementDesc>& vertexInputLayout,
         unsigned vertexStride);
-}}
+    
+    std::ostream& StreamOperator(std::ostream& stream, const GeoInputAssembly& ia);
+    std::ostream& StreamOperator(std::ostream& stream, const DrawCallDesc& dc);
 
+    #include "../../Utility/ExposeStreamOp.h"
+}}

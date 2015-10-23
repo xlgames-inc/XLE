@@ -53,7 +53,7 @@ namespace RenderCore { namespace Assets
         const std::vector<uint32>&  GetCommandStream() const { return _commandStream; }
         std::pair<std::vector<uint64>, std::vector<Float4x4>> GetOutputInterface() const;
 
-        friend std::ostream& operator<<(std::ostream& stream, const NascentTransformationMachine& transMachine);
+        friend std::ostream& StreamOperator(std::ostream& stream, const NascentTransformationMachine& transMachine);
 
         template<typename Type> uint32 AddParameter(Type defaultValue, AnimationParameterId HashedColladaUniqueId, const char nodeName[]);
         template<typename Type> bool TryAddParameter(uint32& paramIndex, Type defaultValue, AnimationParameterId HashedColladaUniqueId, const char nodeName[]);

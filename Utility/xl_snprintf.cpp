@@ -1036,7 +1036,7 @@ repeat:
             }
             s = number(numbuf, (unsigned long) va_arg(args, void *), 16, field_width, precision, flags);
             *s = '\0';
-            stream.WriteNullTerm((const utf8*)numbuf);
+            stream.Write((const utf8*)numbuf);
             continue;
 
         case 'n':
@@ -1059,11 +1059,11 @@ repeat:
             if (qualifier == 'l') {
                 s = eaddr(numbuf, va_arg(args, unsigned char *), field_width, precision, flags);
                 *s = '\0';
-                stream.WriteNullTerm((const utf8*)numbuf);
+                stream.Write((const utf8*)numbuf);
             } else {
                 s = iaddr(numbuf, va_arg(args, unsigned char *), field_width, precision, flags);
                 *s = '\0';
-                stream.WriteNullTerm((const utf8*)numbuf);
+                stream.Write((const utf8*)numbuf);
             }
             continue;
 
@@ -1093,7 +1093,7 @@ repeat:
         case 'g':
             s = flt(numbuf, va_arg(args, double), field_width, precision, *fmt, flags | SIGN);
             *s = '\0';
-            stream.WriteNullTerm((const utf8*)numbuf); 
+            stream.Write((const utf8*)numbuf); 
             continue;
 
         default:
@@ -1118,7 +1118,7 @@ repeat:
             num64 = va_arg(args, uint64);
             s = number64(numbuf, num64, base, field_width, precision, flags);
             *s = '\0';
-            stream.WriteNullTerm((const utf8*)numbuf); 
+            stream.Write((const utf8*)numbuf); 
             continue;
         } else if (flags & SIGN)
             num = va_arg(args, int);
@@ -1127,7 +1127,7 @@ repeat:
 
         s = number(numbuf, num, base, field_width, precision, flags);
         *s = '\0';
-        stream.WriteNullTerm((const utf8*)numbuf); 
+        stream.Write((const utf8*)numbuf); 
     }
 
     stream.WriteChar(utf8(0));

@@ -38,7 +38,7 @@ namespace RenderCore { namespace ColladaConversion
         SkeletonRegistry& skeletonReferences,
         int ignoreTransforms, bool fullSkeleton)
     {
-        if (!IsUseful(node, skeletonReferences)) return;
+        if (!fullSkeleton && !IsUseful(node, skeletonReferences)) return;
 
         auto nodeId = AsObjectGuid(node);
         auto bindingName = skeletonReferences.GetNode(nodeId)._bindingName;
@@ -52,7 +52,7 @@ namespace RenderCore { namespace ColladaConversion
             pushCount = PushTransformations(
                 skeleton.GetTransformationMachine(),
                 node.GetFirstTransform(), bindingName.c_str(),
-                skeletonReferences);
+                skeletonReferences, fullSkeleton);
         }
 
         bool isReferenced = fullSkeleton || skeletonReferences.IsImportant(nodeId);
@@ -89,7 +89,6 @@ namespace RenderCore { namespace ColladaConversion
                 auto i = std::lower_bound(_meshes.begin(), _meshes.end(), c);
                 if (i == _meshes.end() || *i != c)
                     _meshes.insert(i, c);
-                _meshes.push_back(c);
                 gotAttachment = true;
             }
 
@@ -211,7 +210,8 @@ namespace RenderCore { namespace ColladaConversion
             if (!scaffoldGeo)
                 Throw(::Assets::Exceptions::FormatError("Could not found geometry object to instantiate (%s)",
                     AsString(instGeo._reference).c_str()));
-            objects._rawGeos.push_back(std::make_pair(geoId, Convert(*scaffoldGeo, resolveContext, cfg)));
+            auto covertedMesh = Convert(*scaffoldGeo, resolveContext, cfg);
+            objects._rawGeos.push_back(std::make_pair(geoId, std::move(covertedMesh)));
             geo = (unsigned)(objects._rawGeos.size()-1);
          }
         
@@ -220,7 +220,6 @@ namespace RenderCore { namespace ColladaConversion
             objects._rawGeos[geo].second._matBindingSymbols, resolveContext);
 
         auto bindingTransformIndex = nodeRefs.GetOutputMatrixIndex(AsObjectGuid(attachedNode));
-
         return NascentModelCommandStream::GeometryInstance(
             geo, bindingTransformIndex, std::move(materials), 0);
     }
@@ -325,11 +324,10 @@ namespace RenderCore { namespace ColladaConversion
                     *source, controller, std::move(jointMatrices),
                     AsString(instGeo._reference).c_str())));
 
-        auto bindingMatIndex = nodeRefs.GetOutputMatrixIndex(AsObjectGuid(attachedNode));
-
+        auto bindingTransformIndex = nodeRefs.GetOutputMatrixIndex(AsObjectGuid(attachedNode));
         return NascentModelCommandStream::SkinControllerInstance(
             (unsigned)(objects._skinnedGeos.size()-1), 
-            bindingMatIndex, std::move(materials), 0);
+            bindingTransformIndex, std::move(materials), 0);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -456,6 +454,26 @@ namespace RenderCore { namespace ColladaConversion
             child = child.GetNextSibling();
         }
         return false;
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    #include "../Utility/ExposeStreamOp.h"
+
+    std::ostream& operator<<(std::ostream& stream, const NascentGeometryObjects& geos)
+    {
+        using namespace Operators;
+
+        stream << " --- Geos:" << std::endl;
+        unsigned c=0;
+        for (const auto& g:geos._rawGeos)
+            stream << "[" << c++ << "] (0x" << std::hex << g.first._objectId << std::dec << ") Geo --- " << std::endl << g.second << std::endl;
+
+        stream << " --- Skinned Geos:" << std::endl;
+        c=0;
+        for (const auto& g:geos._skinnedGeos)
+            stream << "[" << c++ << "] (0x" << std::hex << g.first._objectId << std::dec << ") Skinned geo --- " << std::endl << g.second << std::endl;
+        return stream;
     }
 
 }}

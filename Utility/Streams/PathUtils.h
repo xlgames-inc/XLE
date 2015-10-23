@@ -9,6 +9,7 @@
 #include "../UTFUtils.h"
 #include "../Detail/API.h"
 #include "../StringUtils.h"
+#include "../IteratorUtils.h"   // for IteratorRange
 #include <string>
 #include <vector>
 #include <utility>
@@ -141,6 +142,8 @@ namespace Utility
 
         String      Rebuild(const FilenameRules& rules = s_defaultFilenameRules) const; 
         void        Rebuild(CharType dest[], size_t destCount, const FilenameRules& rules = s_defaultFilenameRules) const;
+
+        IteratorRange<const Section*> GetSections() const { return MakeIteratorRange(_sections); }
 
         template <int Count>
             void Rebuild(CharType (&dest)[Count], const FilenameRules& rules = s_defaultFilenameRules) const 

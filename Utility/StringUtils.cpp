@@ -1328,6 +1328,9 @@ char XlToUpper(char c)
 	return (char)__upper_table[(uint8)c];
 }
 
+wchar_t XlToLower(wchar_t c) { return std::tolower(c, std::locale()); }
+wchar_t XlToUpper(wchar_t c) { return std::toupper(c, std::locale()); }
+
 // remark_todo("remove branching!")
 ucs2 XlToLower(ucs2 c)
 {

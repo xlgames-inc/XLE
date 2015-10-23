@@ -32,12 +32,12 @@ namespace RenderCore { namespace ColladaConversion
             const Serialization::ChunkFile::ChunkHeader& hdr, 
             std::vector<uint8>&& data)
             : _hdr(hdr), _data(std::forward<std::vector<uint8>>(data)) {}
-        NascentChunk(NascentChunk&& moveFrom)
+        NascentChunk(NascentChunk&& moveFrom) never_throws
         : _hdr(moveFrom._hdr)
         , _data(std::move(moveFrom._data))
         {}
         NascentChunk() {}
-        NascentChunk& operator=(NascentChunk&& moveFrom)
+        NascentChunk& operator=(NascentChunk&& moveFrom) never_throws
         {
             _hdr = moveFrom._hdr;
             _data = std::move(moveFrom._data);

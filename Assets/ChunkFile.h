@@ -62,6 +62,7 @@ namespace Serialization { namespace ChunkFile
         unsigned    _chunkCount;
     };
 
+    ChunkFileHeader MakeChunkFileHeader(unsigned chunkCount, const char buildVersionString[], const char buildDateString[]);
     std::vector<ChunkHeader> LoadChunkTable(Utility::BasicFile& file);
 
     ChunkHeader FindChunk(
@@ -92,7 +93,7 @@ namespace Serialization { namespace ChunkFile
                 typename Writer::Initializer init);
             ~SimpleChunkFileWriterT();
 
-            void BeginChunk(    
+            void BeginChunk(
                 Serialization::ChunkFile::TypeIdentifier type,
                 unsigned version, const char name[]);
             void FinishCurrentChunk();

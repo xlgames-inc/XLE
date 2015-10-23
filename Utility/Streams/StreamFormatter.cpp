@@ -43,7 +43,7 @@ namespace Utility
     template<typename CharType, int Count> 
         static void WriteConst(OutputStream& stream, const CharType (&cnst)[Count], unsigned& lineLength)
     {
-        stream.WriteString(cnst, &cnst[Count]);
+        stream.Write(StringSection<CharType>(cnst, &cnst[Count]));
         lineLength += Count;
     }
 
@@ -88,10 +88,10 @@ namespace Utility
             // in simple cases, we just write the name without extra formatting 
             //  (otherwise we have to write a string prefix and string postfix
         if (IsSimpleString(nameStart, nameEnd)) {
-            _stream->WriteString(nameStart, nameEnd);
+            _stream->Write(StringSection<CharType>(nameStart, nameEnd));
         } else {
             WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePrefix, _currentLineLength);
-            _stream->WriteString(nameStart, nameEnd);
+            _stream->Write(StringSection<CharType>(nameStart, nameEnd));
             WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePostfix, _currentLineLength);
         }
 
@@ -115,7 +115,7 @@ namespace Utility
             WriteConst(*_stream, FormatterConstants<CharType>::HeaderPrefix, _currentLineLength);
             StringMeld<128, CharType> buffer;
             buffer << "Format=1; Tab=" << TabWidth;
-            _stream->WriteNullTerm(buffer.get());
+            _stream->Write(buffer.get());
 
             _hotLine = true;
             _pendingHeader = false;
@@ -128,7 +128,7 @@ namespace Utility
             if (_currentIndentLevel > dimof(tabBuffer))
                 Throw(::Exceptions::BasicLabel("Excessive indent level found in OutputStreamFormatter (%i)", _currentIndentLevel));
             std::fill(tabBuffer, &tabBuffer[_currentIndentLevel], FormatterConstants<CharType>::Tab);
-            _stream->WriteString(tabBuffer, &tabBuffer[_currentIndentLevel]);
+            _stream->Write(StringSection<CharType>(tabBuffer, &tabBuffer[_currentIndentLevel]));
             _hotLine = false;
             _currentLineLength = _currentIndentLevel * TabWidth;
         }
@@ -153,10 +153,10 @@ namespace Utility
         }
 
         if (IsSimpleString(nameStart, nameEnd)) {
-            _stream->WriteString(nameStart, nameEnd);
+            _stream->Write(StringSection<CharType>(nameStart, nameEnd));
         } else {
             WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePrefix, _currentLineLength);
-            _stream->WriteString(nameStart, nameEnd);
+            _stream->Write(StringSection<CharType>(nameStart, nameEnd));
             WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePostfix, _currentLineLength);
         }
 
@@ -164,10 +164,10 @@ namespace Utility
             _stream->WriteChar((CharType)'=');
 
             if (IsSimpleString(valueStart, valueEnd)) {
-                _stream->WriteString(valueStart, valueEnd);
+                _stream->Write(StringSection<CharType>(valueStart, valueEnd));
             } else {
                 WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePrefix, _currentLineLength);
-                _stream->WriteString(valueStart, valueEnd);
+                _stream->Write(StringSection<CharType>(valueStart, valueEnd));
                 WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePostfix, _currentLineLength);
             }
         }

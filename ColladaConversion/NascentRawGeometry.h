@@ -52,6 +52,8 @@ namespace RenderCore { namespace ColladaConversion
 
         NascentRawGeometry(NascentRawGeometry&) = delete;
         NascentRawGeometry& operator=(const NascentRawGeometry&) = delete;
+
+        friend std::ostream& StreamOperator(std::ostream&, const NascentRawGeometry&);
     };
 
 }}

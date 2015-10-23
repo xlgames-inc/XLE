@@ -6,9 +6,11 @@
 
 #include "NascentRawGeometry.h"
 #include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/Assets/AssetUtils.h"
 #include "../Assets/BlockSerializer.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/MemoryUtils.h"
+#include "../Utility/StreamUtils.h"
 
 namespace RenderCore { namespace ColladaConversion
 {
@@ -90,8 +92,27 @@ namespace RenderCore { namespace ColladaConversion
         ::Serialize(outputSerializer, _mainDrawCalls);
     }
 
+    std::ostream& StreamOperator(std::ostream& stream, const NascentRawGeometry& geo)
+    {
+        using namespace RenderCore::Assets::Operators;
+        stream << "Vertex bytes: " << ByteCount(geo._vertices.size()) << std::endl;
+        stream << "Index bytes: " << ByteCount(geo._indices.size()) << std::endl;
+        stream << "IA: " << geo._mainDrawInputAssembly << std::endl;
+        stream << "Index fmt: " << Metal::AsString((Metal::NativeFormat::Enum)geo._indexFormat) << std::endl;
+        unsigned c=0;
+        for(const auto& dc:geo._mainDrawCalls) {
+            stream << "Draw [" << c++ << "] " << dc << std::endl;
+        }
+        
+        stream << "Material binding: ";
+        for (size_t q=0; q<geo._matBindingSymbols.size(); ++q) {
+            if (q != 0) stream << ", ";
+            stream << geo._matBindingSymbols[q];
+        }
+        stream << std::endl;
 
-
+        return stream;
+    }
 
     
 

@@ -100,5 +100,7 @@ namespace RenderCore { namespace Metal_DX11
     NativeFormat::Enum      AsNativeFormat(
         const Utility::ImpliedTyping::TypeDesc& type,
         ShaderNormalizationMode::Enum norm = ShaderNormalizationMode::Integer);
+
+    const char* AsString(NativeFormat::Enum);
 }}
 

@@ -328,8 +328,8 @@ namespace RenderCore { namespace Assets
     }
 
     void TraceTransformationMachine(
-            Utility::OutputStream&      outputStream,
-            const uint32*               commandStreamBegin,
-            const uint32*               commandStreamEnd);
+            std::ostream&   outputStream,
+            const uint32*   commandStreamBegin,
+            const uint32*   commandStreamEnd);
 }}
 

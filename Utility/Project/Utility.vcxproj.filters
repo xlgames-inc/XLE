@@ -111,6 +111,8 @@
     </ClInclude>
     <ClInclude Include="..\Documentation.h" />
     <ClInclude Include="..\ParameterPackUtils.h" />
+    <ClInclude Include="..\StreamUtils.h" />
+    <ClInclude Include="..\ExposeStreamOp.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\StringFormat.cpp" />

@@ -9,6 +9,7 @@
 #include "../Detail/API.h"
 #include "../../Core/Exceptions.h"
 #include "../../Core/Types.h"
+#include "../StringUtils.h" // for StringSection
 #include "../Mixins.h"
 #include <memory>       // for std::unique_ptr
 
@@ -90,7 +91,7 @@ namespace Utility
     XL_UTILITY_API bool DoesFileExist(const char filename[]);
     XL_UTILITY_API bool DoesDirectoryExist(const char filename[]);
     XL_UTILITY_API std::unique_ptr<uint8[]> LoadFileAsMemoryBlock(const char sourceFileName[], size_t* sizeResult = nullptr);
-    XL_UTILITY_API void CreateDirectoryRecursive(const char filename[]);
+    XL_UTILITY_API void CreateDirectoryRecursive(const StringSection<char> filename);
     XL_UTILITY_API uint64 GetFileModificationTime(const char filename[]);
     XL_UTILITY_API uint64 GetFileSize(const char filename[]);
 

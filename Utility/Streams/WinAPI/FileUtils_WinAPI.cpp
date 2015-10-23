@@ -8,6 +8,7 @@
 #include "../PathUtils.h"
 #include "../../StringUtils.h"
 #include <assert.h>
+#include <utility>
 
 #include "../../Core/WinAPI/IncludeWindows.h"
 
@@ -192,29 +193,31 @@ namespace Utility
         return (dwAttrib != INVALID_FILE_ATTRIBUTES) && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
     }
 
-    void CreateDirectoryRecursive(const char filename[])
+    void CreateDirectory_Int(const char* dn)    { CreateDirectoryA(dn, nullptr); }
+    void CreateDirectory_Int(const wchar_t* dn) { CreateDirectoryW(dn, nullptr); }
+
+    template<typename Char>
+        void CreateDirectoryRecursive_Int(StringSection<Char> filename)
     {
-        const char delims[] = "/\\";
+                // note that because our input string may not have a null 
+                // terminator at the very end, we have to copy at least
+                // once... So might as well copy and then we can safely
+                // modify the copy as we go through
+        Char buffer[MaxPath];
+        XlCopyString(buffer, filename);
 
-        char filenameCopy[MaxPath];
-        XlCopyString(filenameCopy, filename);
-        
-        char* start = XlFindNot(filenameCopy, delims);
-        char* i = start;
-        while (i) {
-            char* t = XlFindAnyChar(i, delims);
-
-            if (t) {
-                char q = 0;
-                std::swap(q, *t);
-                CreateDirectory(filenameCopy, nullptr);
-                std::swap(q, *t);
-                i = XlFindNot(t, delims);
-            } else {
-                CreateDirectory(filenameCopy, nullptr);
-                i = t;
-            }
+        SplitPath<Char> split(buffer);
+        for (const auto& section:split.GetSections()) {
+            Char q = 0;
+            std::swap(q, *const_cast<Char*>(section.end()));
+            CreateDirectory_Int(buffer);
+            std::swap(q, *const_cast<Char*>(section.end()));
         }
+    }
+
+    void CreateDirectoryRecursive(const StringSection<char> filename)
+    {
+        CreateDirectoryRecursive_Int(filename);
     }
 
     uint64 GetFileModificationTime(const char filename[])

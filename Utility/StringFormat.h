@@ -84,19 +84,10 @@ namespace Utility
     public:
         mutable std::ostream _stream;
         
-        StringMeld() : _stream(&_buffer), _buffer(sizeof(CharType))
-        {
-        }
+        StringMeld() : _stream(&_buffer), _buffer(sizeof(CharType)) {}
 
-        operator const CharType*() const
-        {
-            return (const CharType*)_buffer._buffer;
-        }
-
-        const CharType* get() const
-        {
-            return (const CharType*)_buffer._buffer;
-        }
+        operator const CharType*() const    { return (const CharType*)_buffer._buffer; }
+        const CharType* get() const         { return (const CharType*)_buffer._buffer; }
 
     protected:
         Internal::FixedMemoryBuffer<Count*sizeof(CharType)> _buffer;
@@ -105,7 +96,7 @@ namespace Utility
         StringMeld& operator=(const StringMeld&);
     };
 
-    namespace
+    namespace Operators
     {
         template<typename Type, int Count, typename CharType> 
             const StringMeld<Count, CharType>& operator<<(const StringMeld<Count, CharType>& meld, const Type& type)
@@ -114,6 +105,7 @@ namespace Utility
                 return meld;
             }
     }
+    using namespace Operators;
 
     namespace Internal
     {
@@ -157,15 +149,8 @@ namespace Utility
         public:
             mutable std::ostream _stream;
 
-            operator const CharType*() const
-            {
-                return (const CharType*)_buffer._buffer;
-            }
-
-            const CharType* get() const
-            {
-                return (const CharType*)_buffer._buffer;
-            }
+            operator const CharType*() const    { return (const CharType*)_buffer._buffer; }
+            const CharType* get() const         { return (const CharType*)_buffer._buffer; }
 
             StringMeldInPlace(CharType* bufferStart, CharType* bufferEnd)
             : _stream(&_buffer)

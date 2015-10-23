@@ -10,6 +10,7 @@
 #include "../StringUtils.h"
 #include "../Detail/API.h"
 #include "../UTFUtils.h"
+#include "../StringUtils.h"
 #include <memory>
 #include <assert.h>
 
@@ -32,21 +33,16 @@ namespace Utility
     class XL_UTILITY_API OutputStream 
     {
     public:
-        virtual int64 Tell() = 0;
-        virtual int64 Write(const void* p, int len) = 0;
-        virtual void WriteChar(utf8 ch) = 0;
-        virtual void WriteChar(ucs2 ch) = 0;
-        virtual void WriteChar(ucs4 ch) = 0;
-
-        virtual void WriteString(const utf8* start, const utf8* end) = 0;
-        virtual void WriteString(const ucs2* start, const ucs2* end) = 0;
-        virtual void WriteString(const ucs4* start, const ucs4* end) = 0;
-
-        inline void WriteNullTerm(const utf8* nullTerm) { assert(nullTerm); WriteString(nullTerm, &nullTerm[XlStringLen(nullTerm)]); }
-        inline void WriteNullTerm(const ucs2* nullTerm) { assert(nullTerm); WriteString(nullTerm, &nullTerm[XlStringLen(nullTerm)]); }
-        inline void WriteNullTerm(const ucs4* nullTerm) { assert(nullTerm); WriteString(nullTerm, &nullTerm[XlStringLen(nullTerm)]); }
-
-        virtual void Flush() = 0;
+        using size_type = size_t;
+        virtual size_type   Tell() = 0;
+        virtual void        Write(const void*, size_type) = 0;
+        virtual void        Write(StringSection<utf8>) = 0;
+        virtual void        Write(StringSection<ucs2>) = 0;
+        virtual void        Write(StringSection<ucs4>) = 0;
+        virtual void        WriteChar(utf8) = 0;
+        virtual void        WriteChar(ucs2) = 0;
+        virtual void        WriteChar(ucs4) = 0;
+        virtual void        Flush() = 0;
 
         virtual ~OutputStream() {}
     };

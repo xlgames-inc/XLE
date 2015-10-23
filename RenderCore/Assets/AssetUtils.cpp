@@ -40,12 +40,12 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
 
-    Metal::ConstantBufferLayoutElement Assets::LocalTransform_Elements[] = {
+    Metal::ConstantBufferLayoutElement LocalTransform_Elements[] = {
         { "LocalToWorld",                   Metal::NativeFormat::Matrix3x4,        offsetof(Techniques::LocalTransformConstants, _localToWorld), 0      },
         { "LocalSpaceView",                 Metal::NativeFormat::R32G32B32_FLOAT,  offsetof(Techniques::LocalTransformConstants, _localSpaceView), 0    }
     };
 
-    size_t Assets::LocalTransform_ElementsCount = dimof(Assets::LocalTransform_Elements);
+    size_t LocalTransform_ElementsCount = dimof(LocalTransform_Elements);
 
         ///////////////////////////////////////////////////////
 
@@ -56,12 +56,11 @@ namespace RenderCore { namespace Assets
     }
 
     void TraceTransformationMachine(
-            Utility::OutputStream&      outputStream,
-            const uint32*               commandStreamBegin,
-            const uint32*               commandStreamEnd)
+            std::ostream&   stream,
+            const uint32*   commandStreamBegin,
+            const uint32*   commandStreamEnd)
     {
-        PrintFormat(&outputStream, "Transformation machine size: (%i) bytes\n", 
-            commandStreamEnd - commandStreamBegin);
+        stream << "Transformation machine size: (" << commandStreamEnd - commandStreamBegin << ") bytes" << std::endl;
 
         char indentBuffer[32];
         signed indentLevel = 2;
@@ -71,7 +70,7 @@ namespace RenderCore { namespace Assets
             auto commandIndex = *i++;
             switch (commandIndex) {
             case TransformStackCommand::PushLocalToWorld:
-                PrintFormat(&outputStream, "%sPushLocalToWorld\n", indentBuffer);
+                stream << indentBuffer << "PushLocalToWorld" << std::endl;
                 ++indentLevel;
                 MakeIndentBuffer(indentBuffer, dimof(indentBuffer), indentLevel);
                 break;
@@ -79,7 +78,7 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::PopLocalToWorld:
                 {
                     auto popCount = *i++;
-                    PrintFormat(&outputStream, "%sPopLocalToWorld (%i)\n", indentBuffer, popCount);
+                    stream << indentBuffer << "PopLocalToWorld (" << popCount << ")" << std::endl;
                     indentLevel -= popCount;
                     MakeIndentBuffer(indentBuffer, dimof(indentBuffer), indentLevel);
                 }
@@ -88,7 +87,8 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::TransformFloat4x4_Static:
                 {
                     auto trans = *reinterpret_cast<const Float4x4*>(AsPointer(i));
-                    PrintFormat(&outputStream, "%sTransformFloat4x4_Static (diag: %f, %f, %f, %f)\n", indentBuffer, trans(0,0), trans(1,1), trans(2,2), trans(3,3));
+                    stream << indentBuffer << "TransformFloat4x4_Static (diag:" 
+                        << trans(0,0) << ", " << trans(1,1) << ", " << trans(2,2) << ", " << trans(3,3) << ")" << std::endl;
                     i += 16;
                 }
                 break;
@@ -96,23 +96,23 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::Translate_Static:
                 {
                     auto trans = AsFloat3(reinterpret_cast<const float*>(AsPointer(i)));
-                    PrintFormat(&outputStream, "%sTranslate_Static (%f, %f, %f)\n", indentBuffer, trans[0], trans[1], trans[2]);
+                    stream << indentBuffer << "Translate_Static (" << trans[0] << ", " << trans[1] << ", " << trans[2] << ")" << std::endl;
                     i += 3;
                 }
                 break;
 
             case TransformStackCommand::RotateX_Static:
-                PrintFormat(&outputStream, "%sRotateX_Static (%f)\n", indentBuffer, *reinterpret_cast<const float*>(AsPointer(i)));
+                stream << indentBuffer << "RotateX_Static (" << *reinterpret_cast<const float*>(AsPointer(i)) << ")" << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::RotateY_Static:
-                PrintFormat(&outputStream, "%sRotateY_Static (%f)\n", indentBuffer, *reinterpret_cast<const float*>(AsPointer(i)));
+                stream << indentBuffer << "RotateY_Static (" << *reinterpret_cast<const float*>(AsPointer(i)) << ")" << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::RotateZ_Static:
-                PrintFormat(&outputStream, "%sRotateZ_Static (%f)\n", indentBuffer, *reinterpret_cast<const float*>(AsPointer(i)));
+                stream << indentBuffer << "RotateZ_Static (" << *reinterpret_cast<const float*>(AsPointer(i)) << ")" << std::endl;
                 i++;
                 break;
 
@@ -120,66 +120,66 @@ namespace RenderCore { namespace Assets
                 {
                     auto a = AsFloat3(reinterpret_cast<const float*>(AsPointer(i)));
                     float r = *reinterpret_cast<const float*>(AsPointer(i+3));
-                    PrintFormat(&outputStream, "%sRotate_Static (%f, %f, %f)(%f)\n", indentBuffer, a[0], a[1], a[2], r);
+                    stream << indentBuffer << "Rotate_Static (" << a[0] << ", " << a[1] << ", " << a[2] << ")(" << r << ")" << std::endl;
                     i += 4;
                 }
                 break;
 
             case TransformStackCommand::UniformScale_Static:
-                PrintFormat(&outputStream, "%sUniformScale_Static (%f)\n", indentBuffer, *reinterpret_cast<const float*>(AsPointer(i)));
+                stream << indentBuffer << "UniformScale_Static (" << *reinterpret_cast<const float*>(AsPointer(i)) << ")" << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::ArbitraryScale_Static:
                 {
                     auto trans = AsFloat3(reinterpret_cast<const float*>(AsPointer(i)));
-                    PrintFormat(&outputStream, "%sArbitraryScale_Static (%f, %f, %f)\n", indentBuffer, trans[0], trans[1], trans[2]);
+                    stream << indentBuffer << "ArbitraryScale_Static (" << trans[0] << ", " << trans[1] << ", " << trans[2] << ")" << std::endl;
                 }
                 i+=3;
                 break;
 
             case TransformStackCommand::TransformFloat4x4_Parameter:
-                PrintFormat(&outputStream, "%sTransformFloat4x4_Parameter (%i)\n", indentBuffer, *i);
+                stream << indentBuffer << "TransformFloat4x4_Parameter (" << *i << ")" << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::Translate_Parameter:
-                PrintFormat(&outputStream, "%sTranslate_Parameter (%i)\n", indentBuffer, *i);
+                stream << indentBuffer << "Translate_Parameter (" << *i << ")" << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::RotateX_Parameter:
-                PrintFormat(&outputStream, "%sRotateX_Parameter (%i)\n", indentBuffer, *i);
+                stream << indentBuffer << "RotateX_Parameter (" << *i << ")" << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::RotateY_Parameter:
-                PrintFormat(&outputStream, "%sRotateY_Parameter (%i)\n", indentBuffer, *i);
+                stream << indentBuffer << "RotateY_Parameter (" << *i << ")" << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::RotateZ_Parameter:
-                PrintFormat(&outputStream, "%sRotateZ_Parameter (%i)\n", indentBuffer, *i);
+                stream << indentBuffer << "RotateZ_Parameter (" << *i << ")" << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::Rotate_Parameter:
-                PrintFormat(&outputStream, "%sRotate_Parameter (%i)\n", indentBuffer, *i);
+                stream << indentBuffer << "Rotate_Parameter (" << *i << ")" << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::UniformScale_Parameter:
-                PrintFormat(&outputStream, "%sUniformScale_Parameter (%i)\n", indentBuffer, *i);
+                stream << indentBuffer << "UniformScale_Parameter (" << *i << ")" << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::ArbitraryScale_Parameter:
-                PrintFormat(&outputStream, "%sArbitraryScale_Parameter (%i)\n", indentBuffer, *i);
+                stream << indentBuffer << "ArbitraryScale_Parameter (" << *i << ")" << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::WriteOutputMatrix:
-                PrintFormat(&outputStream, "%sWriteOutputMatrix (%i)\n", indentBuffer, *i);
+                stream << indentBuffer << "WriteOutputMatrix (" << *i << ")" << std::endl;
                 i++;
                 break;
             }
@@ -235,6 +235,24 @@ namespace RenderCore { namespace Assets
         ::Serialize(outputSerializer, _float4Parameters);
         ::Serialize(outputSerializer, _float3Parameters);
         ::Serialize(outputSerializer, _float1Parameters);
+    }
+
+        ////////////////////////////////////////////////////////////
+
+    std::ostream& StreamOperator(std::ostream& stream, const GeoInputAssembly& ia)
+    {
+        stream << "Stride: " << ia._vertexStride << ": ";
+        for (size_t c=0; c<ia._elements.size(); c++) {
+            if (c != 0) stream << ", ";
+            const auto& e = ia._elements[c];
+            stream << e._semanticName << "[" << e._semanticIndex << "] " << Metal::AsString((Metal::NativeFormat::Enum)e._nativeFormat);
+        }
+        return stream;
+    }
+
+    std::ostream& StreamOperator(std::ostream& stream, const DrawCallDesc& dc)
+    {
+        return stream << "Mat: " << dc._subMaterialIndex << ", DrawIndexed(" << dc._indexCount << ", " << dc._firstIndex << ", " << dc._firstVertex << ")";
     }
 
         ////////////////////////////////////////////////////////////

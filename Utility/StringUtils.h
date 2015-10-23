@@ -77,7 +77,7 @@ namespace Utility
 
         StringSection(const CharType* start, const CharType* end) : _start(start), _end(end) {}
         StringSection() : _start(nullptr), _end(nullptr) {}
-        explicit StringSection(const CharType* nullTerm) : _start(nullTerm), _end(&_start[XlStringLen(nullTerm)]) {}
+        StringSection(const CharType* nullTerm) : _start(nullTerm), _end(&_start[XlStringLen(nullTerm)]) {}
         explicit StringSection(const std::basic_string<CharType>& str);
     };
 
@@ -152,7 +152,7 @@ namespace Utility
 
     XL_UTILITY_API size_t   XlTokenizeString    (ucs2* buf, size_t count, const ucs2* delimiters, ucs2** tokens, size_t numMaxToken);
 
-        ////////////   U N I C H A R   O V E R R I D E S   ////////////
+        ////////////   U C S 4   O V E R R I D E S   ////////////
     XL_UTILITY_API size_t   XlStringSize        (const ucs4* str);
     XL_UTILITY_API size_t   XlStringSizeSafe    (const ucs4* str, const ucs4* end);
     XL_UTILITY_API size_t   XlStringLen         (const ucs4* str);
@@ -260,6 +260,8 @@ namespace Utility
 
     XL_UTILITY_API char     XlToLower(char c);
     XL_UTILITY_API char     XlToUpper(char c);
+    XL_UTILITY_API wchar_t  XlToLower(wchar_t c);
+    XL_UTILITY_API wchar_t  XlToUpper(wchar_t c);
 
     inline utf8     XlToLower(utf8 c) { return (utf8)XlToLower((char)c); }
     inline utf8     XlToUpper(utf8 c) { return (utf8)XlToLower((char)c); }

@@ -1066,7 +1066,7 @@ namespace RenderCore { namespace Assets
 
         BoundUniforms boundLayout(shaderProgram);
         static const auto HashLocalTransform = Hash64("LocalTransform");
-        boundLayout.BindConstantBuffer( HashLocalTransform, 0, 1, Assets::LocalTransform_Elements, Assets::LocalTransform_ElementsCount);
+        boundLayout.BindConstantBuffer(HashLocalTransform, 0, 1);
         Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
         boundLayout.Apply(*context, 
             parserContext.GetGlobalUniformsStream(),

@@ -123,6 +123,7 @@
     <ClInclude Include="..\Conversion.h" />
     <ClInclude Include="..\Documentation.h" />
     <ClInclude Include="..\ExceptionLogging.h" />
+    <ClInclude Include="..\ExposeStreamOp.h" />
     <ClInclude Include="..\FunctionUtils.h" />
     <ClInclude Include="..\HeapUtils.h" />
     <ClInclude Include="..\IteratorUtils.h" />
@@ -132,6 +133,7 @@
     <ClInclude Include="..\Meta\ClassAccessorsImpl.h" />
     <ClInclude Include="..\MiniHeap.h" />
     <ClInclude Include="..\Mixins.h" />
+    <ClInclude Include="..\StreamUtils.h" />
     <ClInclude Include="..\ParameterBox.h" />
     <ClInclude Include="..\ParameterPackUtils.h" />
     <ClInclude Include="..\Profiling\CPUProfiler.h" />

@@ -61,16 +61,15 @@ class FileOutputStream : public OutputStream, noncopyable
 public:
     FileOutputStream(const char filename[], const char openMode[]);
 
-    virtual int64 Tell();
-    virtual int64 Write(const void* p, int len);
+    virtual size_type Tell();
+    virtual void Write(const void* p, size_type len);
 
     virtual void WriteChar(utf8 ch);
     virtual void WriteChar(ucs2 ch);
     virtual void WriteChar(ucs4 ch);
-    virtual void WriteString(const utf8* s, const utf8* e);
-    virtual void WriteString(const ucs2* s, const ucs2* e);
-    virtual void WriteString(const ucs4* s, const ucs4* e);
-
+    virtual void Write(StringSection<utf8> s);
+    virtual void Write(StringSection<ucs2> s);
+    virtual void Write(StringSection<ucs4> s);
 
     virtual void Flush();
 
@@ -83,14 +82,14 @@ FileOutputStream::FileOutputStream(const char filename[], const char openMode[])
 {
 }
 
-int64 FileOutputStream::Tell()
+auto FileOutputStream::Tell() -> size_type
 {
-    return (int64)_file.TellP();
+    return (size_type)_file.TellP();
 }
 
-int64 FileOutputStream::Write(const void* p, int len)
+void FileOutputStream::Write(const void* p, size_type len)
 {
-    return (int64)_file.Write(p, 1, len);
+    _file.Write(p, 1, len);
 }
 
 void FileOutputStream::WriteChar(utf8 ch)
@@ -112,19 +111,19 @@ void FileOutputStream::WriteChar(ucs4 ch)
     _file.Write(&ch, sizeof(ch), 1);
 }
 
-void FileOutputStream::WriteString(const utf8* s, const utf8* e)
+void FileOutputStream::Write(StringSection<utf8> s)
 {
-    _file.Write(s, sizeof(*s), e-s);
+    _file.Write(s.begin(), sizeof(*s.begin()), s.Length());
 }
 
-void FileOutputStream::WriteString(const ucs2* s, const ucs2* e)
+void FileOutputStream::Write(StringSection<ucs2> s)
 {
-    _file.Write(s, sizeof(*s), e-s);
+    _file.Write(s.begin(), sizeof(*s.begin()), s.Length());
 }
 
-void FileOutputStream::WriteString(const ucs4* s, const ucs4* e)
+void FileOutputStream::Write(StringSection<ucs4> s)
 {
-    _file.Write(s, sizeof(*s), e-s);
+    _file.Write(s.begin(), sizeof(*s.begin()), s.Length());
 }
 
 void FileOutputStream::Flush()
@@ -173,17 +172,16 @@ std::unique_ptr<InputStream> OpenMemoryInput(const void* s, int len)
 }
 
 template<typename BufferType>
-    int64 StreamBuf<BufferType>::Tell()
+    auto StreamBuf<BufferType>::Tell() -> size_type
 {
     return _buffer.pubseekoff(0, std::ios_base::cur, std::ios_base::out);
 }
 
 template<typename BufferType>
-    int64 StreamBuf<BufferType>::Write(const void* p, int len)
+    void StreamBuf<BufferType>::Write(const void* p, size_type len)
 {
     assert((len % sizeof(typename BufferType::char_type)) == 0);
     _buffer.sputn((const typename BufferType::char_type*)p, len / sizeof(BufferType::char_type));
-    return len;
 }
 
 template<typename BufferType>
@@ -223,39 +221,38 @@ template<> struct CompatibleCharTypes<ucs2, wchar_t> { static const bool compati
 template<typename OutChar, typename InChar, typename std::enable_if<CompatibleCharTypes<OutChar, InChar>::compatible>::type* = nullptr>
     void PushString(
         std::basic_streambuf<OutChar>& stream,
-        const InChar inputStart[], const InChar inputEnd[])
+        StringSection<InChar> input)
     {
-        stream.sputn((const OutChar*)inputStart, inputEnd - inputStart);
+        stream.sputn((const OutChar*)input.begin(), input.Length());
     }
 
 template<typename OutChar, typename InChar, typename typename std::enable_if<!CompatibleCharTypes<OutChar, InChar>::compatible>::type* = nullptr>
     void PushString(
         std::basic_streambuf<OutChar>& stream,
-        const InChar inputStart[], const InChar inputEnd[])
+        StringSection<InChar> input)
     {
             //  String conversion process results in several redundant allocations. It's not perfectly
             //  efficient
-        using InputString = std::basic_string<InChar>;
         using OutputString = std::basic_string<OutChar>;
-        auto converted = Conversion::Convert<OutputString>(InputString(inputStart, inputEnd));
+        auto converted = Conversion::Convert<OutputString>(input.AsString());
         stream.sputn(AsPointer(converted.begin()), converted.size());    
     }
 
 template<typename BufferType>
-    void StreamBuf<BufferType>::WriteString(const utf8* s, const utf8* e)
+    void StreamBuf<BufferType>::Write(StringSection<utf8> s)
 {
-    PushString(_buffer, s, e);
+    PushString(_buffer, s);
 }
 template<typename BufferType>
-    void StreamBuf<BufferType>::WriteString(const ucs2* s, const ucs2* e)
+    void StreamBuf<BufferType>::Write(StringSection<ucs2> s)
 {
-    PushString(_buffer, s, e);
+    PushString(_buffer, s);
 }
 
 template<typename BufferType>
-    void StreamBuf<BufferType>::WriteString(const ucs4* s, const ucs4* e)
+    void StreamBuf<BufferType>::Write(StringSection<ucs4> s)
 {
-    PushString(_buffer, s, e);
+    PushString(_buffer, s);
 }
 
 template<typename BufferType>

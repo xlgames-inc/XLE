@@ -301,7 +301,7 @@ namespace GUILayer
                 {
                     auto metrics = _placements->GetMetricsString(_doc);
                     auto output = OpenFileOutput((nativeDestFile + ".metrics").c_str(), "wb");
-                    output->WriteString((const utf8*)AsPointer(metrics.cbegin()), (const utf8*)AsPointer(metrics.cend()));
+                    output->Write(MakeStringSection(Conversion::Convert<std::basic_string<utf8>>(metrics)));
                 }
 
                 result._success = true;

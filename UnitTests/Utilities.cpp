@@ -99,8 +99,8 @@ namespace UnitTests
             {
                 stream.WriteChar((utf8)'B');
                 stream.WriteChar((ucs2)L'D');
-                stream.WriteNullTerm((const utf8*)"<<StringB>>");
-                stream.WriteNullTerm((const ucs2*)L"<<StringD>>");
+                stream.Write((const utf8*)"<<StringB>>");
+                stream.Write((const ucs2*)L"<<StringD>>");
             }
 
         TEST_METHOD(MemoryStreamTest)

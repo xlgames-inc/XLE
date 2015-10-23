@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#pragma once
+
 #include "NascentCommandStream.h"
 
 namespace ColladaConversion { class Node; class VisualScene; class URIResolveContext; class InstanceGeometry; class InstanceController; }
@@ -36,6 +38,8 @@ namespace RenderCore { namespace ColladaConversion
                 const NascentModelCommandStream& scene,
                 IteratorRange<const Float4x4*> transforms
             ) const;
+
+        friend std::ostream& operator<<(std::ostream&, const NascentGeometryObjects& geos);
     };
 
     NascentModelCommandStream::GeometryInstance InstantiateGeometry(

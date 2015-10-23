@@ -55,6 +55,8 @@ namespace RenderCore { namespace ColladaConversion
                                     DynamicArray<uint8>&&   indices);
         NascentBoundSkinnedGeometry(NascentBoundSkinnedGeometry&& moveFrom);
         NascentBoundSkinnedGeometry& operator=(NascentBoundSkinnedGeometry&& moveFrom);
+
+        friend std::ostream& StreamOperator(std::ostream&, const NascentBoundSkinnedGeometry&);
     };
 
         ////////////////////////////////////////////////////////

@@ -22,6 +22,7 @@
 
 #include "../Metal/Buffer.h"
 #include "../Metal/State.h"
+#include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/DeviceContextImpl.h"
 #include "../Resource.h"

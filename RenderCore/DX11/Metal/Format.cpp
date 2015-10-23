@@ -397,6 +397,18 @@ namespace RenderCore { namespace Metal_DX11
 
         return Unknown;
     }
+
+    const char* AsString(NativeFormat::Enum format)
+    {
+        switch (format) {
+            #define _EXP(X, Y, Z, U)    case NativeFormat::X##_##Y: return #X;
+            #include "../../Metal/Detail/DXGICompatibleFormats.h"
+        #undef _EXP
+        case NativeFormat::Matrix4x4: return "Matrix4x4";
+        case NativeFormat::Matrix3x4: return "Matrix3x4";
+        default: return "Unknown";
+        }
+    }
 }}
 
 

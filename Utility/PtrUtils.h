@@ -330,11 +330,11 @@ namespace Utility
         Type*           begin() never_throws                            { return _elements.get(); }
         Type*           end() never_throws                              { return &_elements[_count]; }
         size_t          size() const never_throws                       { return _count; }
-        Type&           operator[](unsigned index) never_throws         { assert(index < _count); return _elements[index]; }
+        Type&           operator[](size_t index) never_throws           { assert(index < _count); return _elements[index]; }
 
         const Type*     begin() const never_throws                      { return _elements.get(); }
         const Type*     end() const never_throws                        { return &_elements[_count]; }
-        const Type&     operator[](unsigned index) const never_throws   { assert(index < _count); return _elements[index]; }
+        const Type&     operator[](size_t index) const never_throws     { assert(index < _count); return _elements[index]; }
 
         Type*           get() never_throws                              { return _elements.get(); }
         const Type*     get() const never_throws                        { return _elements.get(); }

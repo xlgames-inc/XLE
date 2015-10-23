@@ -14,6 +14,7 @@
 
 namespace Serialization { class NascentBlockSerializer; }
 namespace RenderCore { namespace Assets { class NascentTransformationMachine; class RawAnimationCurve; }}
+namespace Utility { class OutputStream; }
 
 namespace RenderCore { namespace ColladaConversion
 {

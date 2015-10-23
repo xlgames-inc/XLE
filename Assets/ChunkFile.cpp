@@ -15,6 +15,18 @@ namespace Serialization { namespace ChunkFile
 {
     using Assets::Exceptions::FormatError;
 
+    ChunkFileHeader MakeChunkFileHeader(unsigned chunkCount, const char buildVersionString[], const char buildDateString[])
+    {
+        ChunkFileHeader header;
+        XlZeroMemory(header);
+        header._magic = MagicHeader;
+        header._fileVersionNumber = ChunkFileVersion;
+        XlCopyString(header._buildVersion, buildVersionString);
+        XlCopyString(header._buildDate, buildDateString);
+        header._chunkCount = chunkCount;
+        return header;
+    }
+
     std::vector<ChunkHeader> LoadChunkTable(BasicFile& file)
     {
         ChunkFileHeader fileHeader;
@@ -95,20 +107,12 @@ namespace Serialization { namespace ChunkFile
             : Writer(init)
             , _chunkCount(chunkCount)
         {
-            using namespace Serialization::ChunkFile;
-
             _activeChunkStart = 0;
             _hasActiveChunk = false;
             _activeChunkIndex = 0;
             
-            ChunkFileHeader fileHeader;
-            XlZeroMemory(fileHeader);
-            fileHeader._magic = MagicHeader;
-            fileHeader._fileVersionNumber = 0;
-            XlCopyString(fileHeader._buildVersion, dimof(fileHeader._buildVersion), buildVersionString);
-            XlCopyString(fileHeader._buildDate, dimof(fileHeader._buildDate), buildDateString);
-            fileHeader._chunkCount = chunkCount;
-            
+            ChunkFileHeader fileHeader = MakeChunkFileHeader(
+                chunkCount, buildVersionString, buildDateString);
             Write(&fileHeader, sizeof(fileHeader), 1);
             for (unsigned c=0; c<chunkCount; ++c) {
                 ChunkHeader t;

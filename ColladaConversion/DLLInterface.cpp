@@ -16,6 +16,7 @@
 #include "SEffect.h"
 #include "SCommandStream.h"
 #include "SAnimation.h"
+#include "SCommandStream.h"
 
 #include "ConversionUtil.h"
 
@@ -90,6 +91,19 @@ namespace RenderCore { namespace ColladaConversion
         return std::vector<uint8>(block.get(), PtrAdd(block.get(), size));
     }
 
+    // static std::vector<uint8> AsVector(MemoryOutputStream<>& stream)
+    // {
+    //     auto& buffer = stream.GetBuffer();
+    //     return std::vector<uint8>((const uint8*)buffer.Begin(), (const uint8*)buffer.End());
+    // }
+
+    template<typename Char>
+        static std::vector<uint8> AsVector(std::basic_stringstream<Char>& stream)
+    {
+        auto str = stream.str();
+        return std::vector<uint8>((const uint8*)AsPointer(str.begin()), (const uint8*)AsPointer(str.end()));
+    }
+
     template<typename Type>
         static std::vector<uint8> SerializeToVector(const Type& obj)
     {
@@ -161,6 +175,43 @@ namespace RenderCore { namespace ColladaConversion
         ReferencedGeometries refGeos;
         refGeos.Gather(rootNode, jointRefs);
 
+            // We have to instantiate the skin controllers early...
+            // These will fill in the jointRefs with joints used by the controllers
+            // Unfortunately it means splitting the instantiation of unanimated
+            // geometry and the skin controllers instantiation into two separate
+            // parts!
+        for (auto c:refGeos._skinControllers) {
+            bool skinSuccessful = false;
+            TRY {
+                _cmdStream.Add(
+                    RenderCore::ColladaConversion::InstantiateController(
+                        scene.GetInstanceController(c),
+                        scene.GetInstanceController_Attach(c),
+                        input._resolveContext, _geoObjects, jointRefs,
+                        input._cfg));
+                skinSuccessful = true;
+            } CATCH(...) {
+            } CATCH_END
+
+            if (!skinSuccessful) {
+                    // if we failed to instantiate this object as a skinned controller,
+                    // we can try to fall back to a static geometry object. This fallback
+                    // can be required for some controller objects that use rigid animation
+                    //  -- they can have a skin controller with no joints (meaning at the 
+                    //      only transform that can affect them is the parent node -- or maybe the skeleton root?)
+                LogWarning << "Could not instantiate controller as a skinned object. Falling back to rigid object.";
+                TRY {
+                    _cmdStream.Add(
+                        RenderCore::ColladaConversion::InstantiateGeometry(
+                            scene.GetInstanceController(c),
+                            scene.GetInstanceController_Attach(c),
+                            input._resolveContext, _geoObjects, jointRefs,
+                            input._cfg));
+                } CATCH(...) {
+                } CATCH_END
+            }
+        }
+
             // We can now build the skeleton (because ReferencedGeometries::Gather 
             // has initialised jointRefs.
 
@@ -196,38 +247,6 @@ namespace RenderCore { namespace ColladaConversion
                         input._cfg));
             } CATCH(...) {
             } CATCH_END
-        }
-
-        for (auto c:refGeos._skinControllers) {
-            bool skinSuccessful = false;
-            TRY {
-                _cmdStream.Add(
-                    RenderCore::ColladaConversion::InstantiateController(
-                        scene.GetInstanceController(c),
-                        scene.GetInstanceController_Attach(c),
-                        input._resolveContext, _geoObjects, jointRefs,
-                        input._cfg));
-                skinSuccessful = true;
-            } CATCH(...) {
-            } CATCH_END
-
-            if (!skinSuccessful) {
-                    // if we failed to instantiate this object as a skinned controller,
-                    // we can try to fall back to a static geometry object. This fallback
-                    // can be required for some controller objects that use rigid animation
-                    //  -- they can have a skin controller with no joints (meaning at the 
-                    //      only transform that can affect them is the parent node -- or maybe the skeleton root?)
-                LogWarning << "Could not instantiate controller as a skinned object. Falling back to rigid object.";
-                TRY {
-                    _cmdStream.Add(
-                        RenderCore::ColladaConversion::InstantiateGeometry(
-                            scene.GetInstanceController(c),
-                            scene.GetInstanceController_Attach(c),
-                            input._resolveContext, _geoObjects, jointRefs,
-                            input._cfg));
-                } CATCH(...) {
-                } CATCH_END
-            }
         }
 
             // register the names so the skeleton and command stream can be bound together
@@ -286,7 +305,7 @@ namespace RenderCore { namespace ColladaConversion
 
         auto finalMatrixCount = (unsigned)streamInputInterface.size(); // immData->_visualScene.GetInputInterface()._jointCount;
         result._defaultTransforms.resize(finalMatrixCount);
-        for (unsigned c = 0; c < finalMatrixCount; ++c) {
+        for (unsigned c=0; c<finalMatrixCount; ++c) {
             auto machineOutputIndex = skelBinding.ModelJointToMachineOutput(c);
             if (machineOutputIndex == ~unsigned(0x0)) {
                 result._defaultTransforms[c] = Identity<Float4x4>();
@@ -314,6 +333,18 @@ namespace RenderCore { namespace ColladaConversion
 
         return result;
     }
+
+    static void TraceMetrics(std::ostream& stream, const PreparedSkinFile& skinFile)
+    {
+        stream << "============== Geometry Objects ==============" << std::endl;
+        stream << skinFile._geoObjects;
+        stream << std::endl;
+        stream << "============== Command stream ==============" << std::endl;
+        stream << skinFile._cmdStream;
+        stream << std::endl;
+        stream << "============== Transformation Machine ==============" << std::endl;
+        StreamOperator(stream, skinFile._skeleton.GetTransformationMachine());
+    }
       
     NascentChunkArray SerializeSkin(const ColladaScaffold& model, const char startingNode[])
     {
@@ -337,14 +368,10 @@ namespace RenderCore { namespace ColladaConversion
 
         PreparedSkinFile skinFile(model, *scene, rootNode);
 
-        auto i = skinFile._skeleton.GetTransformationMachine().GetCommandStream();
-        Assets::TraceTransformationMachine(
-            ConsoleRig::GetWarningStream(), 
-            AsPointer(i.begin()), AsPointer(i.end()));
+            // Serialize the prepared skin file data to a BlockSerializer
 
         ::Serialize(serializer, skinFile._cmdStream);
         SerializeSkin(serializer, largeResourcesBlock, skinFile._geoObjects);
-
         ::Serialize(serializer, skinFile._skeleton);
 
             // Generate the default transforms and serialize them out
@@ -368,17 +395,25 @@ namespace RenderCore { namespace ColladaConversion
             // immData->~ModelImmutableData();
         }
 
-        auto block = AsVector(serializer);
+            // Serialize human-readable metrics information
+        std::stringstream metricsStream;
+        TraceMetrics(metricsStream, skinFile);
+
+        auto scaffoldBlock = AsVector(serializer);
+        auto metricsBlock = AsVector(metricsStream);
 
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-            RenderCore::Assets::ChunkType_ModelScaffold, 0, model._name.c_str(), unsigned(block.size()));
+            RenderCore::Assets::ChunkType_ModelScaffold, 0, model._name.c_str(), unsigned(scaffoldBlock.size()));
         Serialization::ChunkFile::ChunkHeader largeBlockChunk(
             RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, 0, model._name.c_str(), (unsigned)largeResourcesBlock.size());
+        Serialization::ChunkFile::ChunkHeader metricsChunk(
+            RenderCore::Assets::ChunkType_Metrics, 0, "metrics", (unsigned)metricsBlock.size());
 
         return MakeNascentChunkArray(
             {
-                NascentChunk(scaffoldChunk, std::move(block)),
-                NascentChunk(largeBlockChunk, std::move(largeResourcesBlock))
+                NascentChunk(scaffoldChunk, std::move(scaffoldBlock)),
+                NascentChunk(largeBlockChunk, std::move(largeResourcesBlock)),
+                NascentChunk(metricsChunk, std::move(metricsBlock))
             });
     }
 
@@ -394,16 +429,20 @@ namespace RenderCore { namespace ColladaConversion
 
     PreparedSkeletonFile::PreparedSkeletonFile(const ColladaScaffold& input)
     {
-        SkeletonRegistry jointRefs;
-
         const auto* scene = input._doc->FindVisualScene(
             GuidReference(input._doc->_visualScene)._id);
         if (!scene)
             Throw(::Assets::Exceptions::FormatError("No visual scene found"));
 
         using namespace RenderCore::ColladaConversion;
+        SkeletonRegistry jointRefs;
         BuildSkeleton(_skeleton, scene->GetRootNode(), jointRefs, 0, true);
         RegisterNodeBindingNames(_skeleton, jointRefs);
+    }
+
+    static void TraceMetrics(std::ostream& stream, const PreparedSkeletonFile& file)
+    {
+        StreamOperator(stream, file._skeleton.GetTransformationMachine());
     }
 
     NascentChunkArray SerializeSkeleton(const ColladaScaffold& model, const char[])
@@ -411,12 +450,18 @@ namespace RenderCore { namespace ColladaConversion
         PreparedSkeletonFile skeleFile(model);
         auto block = SerializeToVector(skeleFile._skeleton);
 
+        std::stringstream metricsStream;
+        TraceMetrics(metricsStream, skeleFile);
+        auto metricsBlock = AsVector(metricsStream);
+
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-            RenderCore::Assets::ChunkType_Skeleton, 0, 
-            model._name.c_str(), unsigned(block.size()));
+            RenderCore::Assets::ChunkType_Skeleton, 0, model._name.c_str(), unsigned(block.size()));
+        Serialization::ChunkFile::ChunkHeader metricsChunk(
+            RenderCore::Assets::ChunkType_Metrics, 0, "metrics", (unsigned)metricsBlock.size());
 
         return MakeNascentChunkArray({
-            NascentChunk(scaffoldChunk, std::move(block))
+            NascentChunk(scaffoldChunk, std::move(block)),
+            NascentChunk(metricsChunk, std::move(metricsBlock))
             });
     }
 

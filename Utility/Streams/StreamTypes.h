@@ -37,15 +37,15 @@ namespace Utility
         class XL_UTILITY_API StreamBuf : public OutputStream 
     {
     public:
-        virtual int64 Tell();
-        virtual int64 Write(const void* p, int len);
+        virtual size_type Tell();
+        virtual void Write(const void* p, size_type len);
 
         virtual void WriteChar(utf8 ch);
         virtual void WriteChar(ucs2 ch);
         virtual void WriteChar(ucs4 ch);
-        virtual void WriteString(const utf8* s, const utf8* e);
-        virtual void WriteString(const ucs2* s, const ucs2* e);
-        virtual void WriteString(const ucs4* s, const ucs4* e);
+        virtual void Write(StringSection<utf8>);
+        virtual void Write(StringSection<ucs2>);
+        virtual void Write(StringSection<ucs4>);
 
         virtual void Flush();
 
@@ -63,15 +63,13 @@ namespace Utility
             //  If the "BufferType" type has a method called str(), then we
             //  should have an AsString() method that calls str(). 
             //  if str() is missing, then AsString() is also missing.
+            //  (likewise for IsFull)
         
         template<
             typename Buffer = BufferType,
             typename std::enable_if<(sizeof(StrTest<Buffer>(0)) > 1)>::type* = nullptr>
         auto AsString() const -> decltype(((Buffer*)nullptr)->str()) { return _buffer.str(); }
 
-            //  If the "BufferType" type has a method called str(), then we
-            //  should have an AsString() method that calls str(). 
-            //  if str() is missing, then AsString() is also missing.
         template<
             typename Buffer = BufferType,
             typename std::enable_if<(sizeof(IsFullTest<Buffer>(0)) > 1)>::type* = nullptr>

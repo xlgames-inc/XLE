@@ -129,12 +129,52 @@ namespace RenderCore { namespace Assets
         return std::make_pair(std::move(jointHashNames), std::move(jointInverseBindMatrices));
     }
 
-    std::ostream& operator<<(std::ostream& stream, const NascentTransformationMachine& transMachine)
+    std::ostream& StreamOperator(std::ostream& stream, const NascentTransformationMachine& transMachine)
     {
-        stream << "Transformation Machine output interface:" << std::endl;
+        stream << "Output matrices: " << transMachine._outputMatrixCount << std::endl;
+        stream << "Command stream size: " << transMachine._commandStream.size() * sizeof(uint32) << std::endl;
+
+        stream << " --- Animation parameters (" << transMachine._stringNameMapping.size() << ") :" << std::endl;
+        for (const auto& p:transMachine._stringNameMapping) {
+            stream << "[" << p.first << "] (0x" << std::hex << p.second << std::dec << ") ";
+            auto paramIndex = transMachine.GetParameterIndex(p.second);
+            switch (paramIndex.first) {
+            case AnimSamplerType::Float1:
+                stream << "Float1[" << paramIndex.second << "], default: " << transMachine.GetDefaultParameters().GetFloat1Parameters()[paramIndex.second];
+                break;
+            case AnimSamplerType::Float3:
+                {
+                    auto& f3 = transMachine.GetDefaultParameters().GetFloat3Parameters()[paramIndex.second];
+                    stream << "Float3[" << paramIndex.second << "], default: " << f3[0] << ", " << f3[1] << ", " << f3[2];
+                }
+                break;
+            case AnimSamplerType::Float4:
+                {
+                    auto& f4 = transMachine.GetDefaultParameters().GetFloat4Parameters()[paramIndex.second];
+                    stream << "Float4[" << paramIndex.second << "], default: " << f4[0] << ", " << f4[1] << ", " << f4[2] << ", " << f4[3];
+                }
+                break;
+            case AnimSamplerType::Float4x4:
+                {
+                    auto& f4x4 = transMachine.GetDefaultParameters().GetFloat4x4Parameters()[paramIndex.second];
+                    stream << "Float4x4[" << paramIndex.second << "], default diag: " << f4x4(0,0) << ", " << f4x4(1,1) << ", " << f4x4(2,2) << ", " << f4x4(3,3);
+                }
+                break;
+            default:
+                stream << "unknown type";
+            }
+            stream << std::endl;
+        }
+
+        stream << " --- Output interface:" << std::endl;
         for (auto i=transMachine._jointTags.begin(); i!=transMachine._jointTags.end(); ++i)
             if (i->_outputMatrixIndex < transMachine._outputMatrixCount)
                 stream << "  [" << std::distance(transMachine._jointTags.begin(), i) << "] " << i->_name << std::endl;
+
+        stream << " --- Command stream:" << std::endl;
+        auto cmds = transMachine._commandStream;
+        TraceTransformationMachine(stream, AsPointer(cmds.begin()), AsPointer(cmds.end()));
+
         return stream;
     }
 
@@ -224,33 +264,25 @@ namespace RenderCore { namespace Assets
     auto NascentTransformationMachine::GetParameterIndex(AnimationParameterId parameterName) const -> std::pair<Assets::TransformationParameterSet::Type::Enum, uint32>
     {
         {
-            auto i = std::lower_bound(
-                _float1ParameterNames.begin(), _float1ParameterNames.end(), 
-                parameterName, CompareFirst<AnimationParameterId, uint32>());
+            auto i = LowerBound(_float1ParameterNames, parameterName);
             if (i!=_float1ParameterNames.end() && i->first == parameterName) {
                 return std::make_pair(Assets::TransformationParameterSet::Type::Float1, i->second);
             }
         }
         {
-            auto i = std::lower_bound(
-                _float3ParameterNames.begin(), _float3ParameterNames.end(), 
-                parameterName, CompareFirst<AnimationParameterId, uint32>());
+            auto i = LowerBound(_float3ParameterNames, parameterName);
             if (i!=_float3ParameterNames.end() && i->first == parameterName) {
                 return std::make_pair(Assets::TransformationParameterSet::Type::Float3, i->second);
             }
         }
         {
-            auto i = std::lower_bound(
-                _float4ParameterNames.begin(), _float4ParameterNames.end(), 
-                parameterName, CompareFirst<AnimationParameterId, uint32>());
+            auto i = LowerBound(_float4ParameterNames, parameterName);
             if (i!=_float4ParameterNames.end() && i->first == parameterName) {
                 return std::make_pair(Assets::TransformationParameterSet::Type::Float4, i->second);
             }
         }
         {
-            auto i = std::lower_bound(
-                _float4x4ParameterNames.begin(), _float4x4ParameterNames.end(), 
-                parameterName, CompareFirst<AnimationParameterId, uint32>());
+            auto i = LowerBound(_float4x4ParameterNames, parameterName);
             if (i!=_float4x4ParameterNames.end() && i->first == parameterName) {
                 return std::make_pair(Assets::TransformationParameterSet::Type::Float4x4, i->second);
             }

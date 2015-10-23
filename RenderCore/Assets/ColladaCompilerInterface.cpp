@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ColladaCompilerInterface.h"
+// #include "AssetUtils.h" // for ChunkType_Metrics
 #include "../../ColladaConversion/NascentModel.h"
 #include "../../ColladaConversion/DLLInterface.h"
 #include "../../Assets/AssetUtils.h"
@@ -13,6 +14,7 @@
 #include "../../Utility/Threading/ThreadObject.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
+#include "../../Utility/StringFormat.h"
 
 #define SUPPORT_OLD_PATH
 
@@ -97,42 +99,64 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    static void BuildChunkFile(
+        BasicFile& file,
+        ColladaConversion::NascentChunkArray chunks,
+        const ConsoleRig::LibVersionDesc& versionInfo,
+        std::function<bool(const ColladaConversion::NascentChunk&)> predicate)
+    {
+        unsigned chunksForMainFile = 0;
+        for (const auto& c:*chunks)
+            if (predicate(c))
+                ++chunksForMainFile;
+
+        using namespace Serialization::ChunkFile;
+        auto header = MakeChunkFileHeader(
+            chunksForMainFile, 
+            versionInfo._versionString, versionInfo._buildDateString);
+        file.Write(&header, sizeof(header), 1);
+
+        unsigned trackingOffset = unsigned(file.TellP() + sizeof(ChunkHeader) * chunksForMainFile);
+        for (const auto& c:*chunks)
+            if (predicate(c)) {
+                auto hdr = c._hdr;
+                hdr._fileOffset = trackingOffset;
+                file.Write(&hdr, sizeof(c._hdr), 1);
+                trackingOffset += hdr._size;
+            }
+
+        for (const auto& c:*chunks)
+            if (predicate(c))
+                file.Write(AsPointer(c._data.begin()), c._data.size(), 1);
+    }
+
+    static const auto ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
+
     static void SerializeToFile(
         ColladaConversion::NascentChunkArray chunks,
         const char destinationFilename[],
         const ConsoleRig::LibVersionDesc& versionInfo)
     {
-            // (create the directory if we need to)
-        char dirName[MaxPath];
-        XlDirname(dirName, dimof(dirName), destinationFilename);
-        CreateDirectoryRecursive(dirName);
+            // Create the directory if we need to...
+        CreateDirectoryRecursive(MakeFileNameSplitter(destinationFilename).DriveAndPath());
 
-        using namespace Serialization::ChunkFile;
-        ChunkFileHeader header;
+            // We need to separate out chunks that will be written to
+            // the main output file from chunks that will be written to
+            // a metrics file.
 
-        XlZeroMemory(header);
-        header._magic = MagicHeader;
-        header._fileVersionNumber = 0;
-        XlCopyString(header._buildVersion, dimof(header._buildVersion), versionInfo._versionString);
-        XlCopyString(header._buildDate, dimof(header._buildDate), versionInfo._buildDateString);
-        header._chunkCount = (unsigned)chunks->size();
-            
-        BasicFile outputFile(destinationFilename, "wb");
-        outputFile.Write(&header, sizeof(header), 1);
-
-        unsigned trackingOffset = unsigned(outputFile.TellP() + sizeof(ChunkHeader) * chunks->size());
-        for (unsigned i=0; i<(unsigned)chunks->size(); ++i) {
-            auto& c = (*chunks)[i];
-            auto hdr = c._hdr;
-            hdr._fileOffset = trackingOffset;
-            outputFile.Write(&hdr, sizeof(c._hdr), 1);
-            trackingOffset += hdr._size;
+        {
+            BasicFile outputFile(destinationFilename, "wb");
+            BuildChunkFile(outputFile, chunks, versionInfo,
+                [](const ColladaConversion::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
         }
 
-        for (unsigned i=0; i<(unsigned)chunks->size(); ++i) {
-            auto& c = (*chunks)[i];
-            outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
-        }
+        for (const auto& c:*chunks)
+            if (c._hdr._type == ChunkType_Metrics) {
+                BasicFile outputFile(
+                    StringMeld<MaxPath>() << destinationFilename << "-" << c._hdr._name,
+                    "wb");
+                outputFile.Write((const void*)AsPointer(c._data.cbegin()), 1, c._data.size());
+            }
     }
 
     static void SerializeToFileJustChunk(
@@ -171,36 +195,11 @@ namespace RenderCore { namespace Assets
         auto chunks = (model.*fn)();
     
             // (create the directory if we need to)
-        char dirName[MaxPath];
-        XlDirname(dirName, dimof(dirName), destinationFilename);
-        CreateDirectoryRecursive(dirName);
+        CreateDirectoryRecursive(MakeFileNameSplitter(destinationFilename).DriveAndPath());
     
-        using namespace Serialization::ChunkFile;
-        ChunkFileHeader header;
-    
-        XlZeroMemory(header);
-        header._magic = MagicHeader;
-        header._fileVersionNumber = 0;
-        XlCopyString(header._buildVersion, dimof(header._buildVersion), versionInfo._versionString);
-        XlCopyString(header._buildDate, dimof(header._buildDate), versionInfo._buildDateString);
-        header._chunkCount = (unsigned)chunks->size();
-            
         BasicFile outputFile(destinationFilename, "wb");
-        outputFile.Write(&header, sizeof(header), 1);
-    
-        unsigned trackingOffset = unsigned(outputFile.TellP() + sizeof(ChunkHeader) * chunks->size());
-        for (unsigned i=0; i<(unsigned)chunks->size(); ++i) {
-            auto& c = (*chunks)[i];
-            auto hdr = c._hdr;
-            hdr._fileOffset = trackingOffset;
-            outputFile.Write(&hdr, sizeof(c._hdr), 1);
-            trackingOffset += hdr._size;
-        }
-    
-        for (unsigned i=0; i<(unsigned)chunks->size(); ++i) {
-            auto& c = (*chunks)[i];
-            outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
-        }
+        BuildChunkFile(outputFile, chunks, versionInfo,
+            [](const ColladaConversion::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
     }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -304,10 +303,10 @@ namespace RenderCore { namespace Assets
 
                 if (_newPathOk) {
 
+                    auto model = (*_createColladaScaffold)(colladaFile);
                     if (op._typeCode == Type_Model) {
-                        auto model2 = (*_createColladaScaffold)(colladaFile);
                         SerializeToFile(
-                            (*_serializeSkinFunction)(*model2, rootNode),
+                            (*_serializeSkinFunction)(*model, rootNode),
                             op._sourceID0, libVersionDesc);
 
                         char matName[MaxPath];
@@ -315,10 +314,9 @@ namespace RenderCore { namespace Assets
                         XlChopExtension(matName);
                         XlCatString(matName, dimof(matName), "-rawmat");
                         SerializeToFileJustChunk(
-                            (*_serializeMaterialsFunction)(*model2, rootNode), 
+                            (*_serializeMaterialsFunction)(*model, rootNode), 
                             matName, libVersionDesc);
                     } else {
-                        auto model = (*_createColladaScaffold)(colladaFile);
                         SerializeToFile(
                             (*_serializeSkeletonFunction)(*model, rootNode),
                             op._sourceID0, libVersionDesc);

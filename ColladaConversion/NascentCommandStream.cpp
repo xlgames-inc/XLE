@@ -401,10 +401,39 @@ namespace RenderCore { namespace ColladaConversion
 
     std::ostream& operator<<(std::ostream& stream, const NascentModelCommandStream& cmdStream)
     {
-        stream << "Command stream input interface:" << std::endl;
+        stream << " --- Geometry instances:" << std::endl;
         unsigned c=0;
-        for (auto i=cmdStream._transformationMachineOutputs.begin(); i!=cmdStream._transformationMachineOutputs.end(); ++i, ++c)
-            stream << "  [" << c << "] " << i->_name << std::endl;
+        for (const auto& i:cmdStream._geometryInstances) {
+            stream << "  [" << c++ << "] GeoId: " << i._id << " Transform: " << i._localToWorldId << std::endl;
+            stream << "     Materials: " << std::hex;
+            for (size_t q=0; q<i._materials.size(); ++q) {
+                if (q != 0) stream << ", ";
+                stream << i._materials[q];
+            }
+            stream << std::dec << std::endl;
+        }
+
+        stream << " --- Skin controller instances:" << std::endl;
+        c=0;
+        for (const auto& i:cmdStream._skinControllerInstances) {
+            stream << "  [" << c++ << "] GeoId: " << i._id << " Transform: " << i._localToWorldId << std::endl;
+            stream << "     Materials: " << std::hex;
+            for (size_t q=0; q<i._materials.size(); ++q) {
+                if (q != 0) stream << ", ";
+                stream << i._materials[q];
+            }
+            stream << std::dec << std::endl;
+        }
+
+        stream << " --- Camera instances:" << std::endl;
+        c=0;
+        for (const auto& i:cmdStream._cameraInstances)
+            stream << "  [" << c++ << "] Transform: " << i._localToWorldId << std::endl;
+
+        stream << " --- Input interface:" << std::endl;
+        c=0;
+        for (const auto& i:cmdStream._transformationMachineOutputs)
+            stream << "  [" << c++ << "] " << i._name << std::endl;
         return stream;
     }
 
