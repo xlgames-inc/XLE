@@ -175,11 +175,52 @@ namespace RenderCore { namespace ColladaConversion
         ReferencedGeometries refGeos;
         refGeos.Gather(rootNode, jointRefs);
 
-            // We have to instantiate the skin controllers early...
-            // These will fill in the jointRefs with joints used by the controllers
-            // Unfortunately it means splitting the instantiation of unanimated
-            // geometry and the skin controllers instantiation into two separate
-            // parts!
+            // We can now build the skeleton (because ReferencedGeometries::Gather 
+            // has initialised jointRefs.
+            // Note that when we build the skeleton, it won't contain the joints 
+            // referenced by skin controllers. This is because we haven't built the
+            // skin controllers yet (so the skin controller joints haven't been registered)
+            // This means that the transformation machine built into the skin file will only
+            // output transforms between the skin call root and model space.
+
+        unsigned topLevelPops = 0;
+        auto coordinateTransform = BuildCoordinateTransform(input._doc->GetAssetDesc());
+        NascentSkeleton preOptSkel;
+        if (!Equivalent(coordinateTransform, Identity<Float4x4>(), 1e-5f)) {
+                // Push on the coordinate transform (if there is one)
+                // This should be optimised into other matrices (or even into
+                // the geometry) when we perform the skeleton optimisation steps.
+            topLevelPops = preOptSkel.GetTransformationMachine().PushTransformation(
+                coordinateTransform);
+        }
+
+            // When extracting an internal node, we ignore the transform 
+            // on that internal node
+        BuildSkeleton(preOptSkel, rootNode, jointRefs, (rootNode == scene.GetRootNode())?0:1, false);
+        preOptSkel.GetTransformationMachine().Pop(topLevelPops);
+
+        _skeleton = std::move(preOptSkel); // Optimize(preOptSkel);
+        _skeleton.GetTransformationMachine().Optimize();
+
+            // We can try to optimise the skeleton here. We should collect the list
+            // of meshes that we can optimise transforms into (ie, meshes that aren't
+            // used in multiple places, and that aren't skinned).
+            // We need to collect that list of transforms before we actually instantiate
+            // the geometry -- so that merging in the changes can be done in the instantiate
+            // step.
+
+        for (auto c:refGeos._meshes) {
+            TRY {
+                _cmdStream.Add(
+                    RenderCore::ColladaConversion::InstantiateGeometry(
+                        scene.GetInstanceGeometry(c),
+                        scene.GetInstanceGeometry_Attach(c),
+                        input._resolveContext, _geoObjects, jointRefs,
+                        input._cfg));
+            } CATCH(...) {
+            } CATCH_END
+        }
+
         for (auto c:refGeos._skinControllers) {
             bool skinSuccessful = false;
             TRY {
@@ -210,43 +251,6 @@ namespace RenderCore { namespace ColladaConversion
                 } CATCH(...) {
                 } CATCH_END
             }
-        }
-
-            // We can now build the skeleton (because ReferencedGeometries::Gather 
-            // has initialised jointRefs.
-
-        unsigned topLevelPops = 0;
-        auto coordinateTransform = BuildCoordinateTransform(input._doc->GetAssetDesc());
-        if (!Equivalent(coordinateTransform, Identity<Float4x4>(), 1e-5f)) {
-                // Push on the coordinate transform (if there is one)
-                // This should be optimised into other matrices (or even into
-                // the geometry) when we perform the skeleton optimisation steps.
-            topLevelPops = _skeleton.GetTransformationMachine().PushTransformation(
-                coordinateTransform);
-        }
-
-            // When extracting an internal node, we ignore the transform 
-            // on that internal node
-        BuildSkeleton(_skeleton, rootNode, jointRefs, (rootNode == scene.GetRootNode())?0:1, false);
-        _skeleton.GetTransformationMachine().Pop(topLevelPops);
-
-            // We can try to optimise the skeleton here. We should collect the list
-            // of meshes that we can optimise transforms into (ie, meshes that aren't
-            // used in multiple places, and that aren't skinned).
-            // We need to collect that list of transforms before we actually instantiate
-            // the geometry -- so that merging in the changes can be done in the instantiate
-            // step.
-
-        for (auto c:refGeos._meshes) {
-            TRY {
-                _cmdStream.Add(
-                    RenderCore::ColladaConversion::InstantiateGeometry(
-                        scene.GetInstanceGeometry(c),
-                        scene.GetInstanceGeometry_Attach(c),
-                        input._resolveContext, _geoObjects, jointRefs,
-                        input._cfg));
-            } CATCH(...) {
-            } CATCH_END
         }
 
             // register the names so the skeleton and command stream can be bound together
@@ -438,6 +442,7 @@ namespace RenderCore { namespace ColladaConversion
         SkeletonRegistry jointRefs;
         BuildSkeleton(_skeleton, scene->GetRootNode(), jointRefs, 0, true);
         RegisterNodeBindingNames(_skeleton, jointRefs);
+        _skeleton.GetTransformationMachine().Optimize();
     }
 
     static void TraceMetrics(std::ostream& stream, const PreparedSkeletonFile& file)

@@ -243,45 +243,28 @@ namespace RenderCore { namespace Assets
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template<typename IteratorType>
-        void TransformationMachine::GenerateOutputTransformsInternal(   
-            Float4x4 output[], unsigned outputCount,
-            const TransformationParameterSet*   parameterSet,
-            IteratorType    debugIterator,
-            const void*     iteratorUserData) const
-    {
-            //
-            //      Follow the commands in our command list, and output
-            //      the resulting transformations.
-            //
-
-        if (outputCount < _outputMatrixCount) {
-            Throw(::Exceptions::BasicLabel("Output buffer to TransformationMachine::GenerateOutputTransforms is too small"));
-        }
-        GenerateOutputTransformsFree(
-            output, outputCount, parameterSet, 
-            _commandStream, _commandStream + _commandStreamSize, 
-            debugIterator, iteratorUserData);
-    }
-
-    static void NullTransformIterator(const Float4x4& parent, const Float4x4& child, const void* userData) {}
-
     void TransformationMachine::GenerateOutputTransforms(   
         Float4x4 output[], unsigned outputCount,
         const TransformationParameterSet*   parameterSet) const
     {
-        GenerateOutputTransformsInternal(
-            output, outputCount, parameterSet, NullTransformIterator, nullptr);
+        if (outputCount < _outputMatrixCount)
+            Throw(::Exceptions::BasicLabel("Output buffer to TransformationMachine::GenerateOutputTransforms is too small"));
+        GenerateOutputTransformsFree(
+            output, outputCount, parameterSet, 
+            MakeIteratorRange(_commandStream, _commandStream + _commandStreamSize));
     }
 
     void TransformationMachine::GenerateOutputTransforms(   
         Float4x4 output[], unsigned outputCount,
         const TransformationParameterSet*   parameterSet,
-        DebugIterator*  debugIterator,
-        const void*     iteratorUserData) const
+        const DebugIterator& debugIterator) const
     {
-        return GenerateOutputTransformsInternal(
-            output, outputCount, parameterSet, debugIterator, iteratorUserData);
+        if (outputCount < _outputMatrixCount)
+            Throw(::Exceptions::BasicLabel("Output buffer to TransformationMachine::GenerateOutputTransforms is too small"));
+        GenerateOutputTransformsFree(
+            output, outputCount, parameterSet, 
+            MakeIteratorRange(_commandStream, _commandStream + _commandStreamSize), 
+            debugIterator);
     }
 
     TransformationMachine::TransformationMachine()
@@ -1081,9 +1064,11 @@ namespace RenderCore { namespace Assets
                 animState, skeleton, *_pimpl->_animationSetBinding.get(), 
                 animData._curves, animData._curvesCount);
         auto temp = std::make_unique<Float4x4[]>(skeleton.GetOutputMatrixCount());
+        using namespace std::placeholders;
         skeleton.GenerateOutputTransforms(
             temp.get(), skeleton.GetOutputMatrixCount(),
-            &params, &RenderSkeleton_DebugIterator, &workingVertices);
+            &params, 
+            std::bind(&RenderSkeleton_DebugIterator, _1, _2, &workingVertices));
 
         VertexBuffer vertexBuffer(AsPointer(workingVertices.begin()), workingVertices.size()*sizeof(Vertex_PC));
         context->Bind(MakeResourceList(vertexBuffer), sizeof(Vertex_PC), 0);

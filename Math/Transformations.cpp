@@ -652,6 +652,41 @@ namespace XLEMath
             0.f, 0.f, 0.f, 1.f);
     }
 
+    Float4x4    AsFloat4x4(const RotationX& input)
+    {
+        auto result = Identity<Float4x4>();
+        Combine_InPlace(result, input);
+        return result;
+    }
+
+    Float4x4    AsFloat4x4(const RotationY& input)
+    {
+        auto result = Identity<Float4x4>();
+        Combine_InPlace(result, input);
+        return result;
+    }
+
+    Float4x4    AsFloat4x4(const RotationZ& input)
+    {
+        auto result = Identity<Float4x4>();
+        Combine_InPlace(result, input);
+        return result;
+    }
+
+    Float4x4    AsFloat4x4(const ArbitraryRotation& input)
+    {
+        return AsFloat4x4(MakeRotationMatrix(input._axis, input._angle));
+    }
+
+    Float4x4    AsFloat4x4(const ArbitraryScale& input)
+    {
+        return Float4x4(
+            input._scale[0], 0.f, 0.f, 0.f,
+            0.f, input._scale[1], 0.f, 0.f,
+            0.f, 0.f, input._scale[2], 0.f,
+            0.f, 0.f, 0.f, 1.f);
+    }
+
     Float3x4    MakeFloat3x4(
         float e00, float e10, float e20, float e30,
         float e01, float e11, float e21, float e31,

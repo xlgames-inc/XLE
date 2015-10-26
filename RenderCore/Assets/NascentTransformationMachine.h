@@ -59,8 +59,11 @@ namespace RenderCore { namespace Assets
         template<typename Type> bool TryAddParameter(uint32& paramIndex, Type defaultValue, AnimationParameterId HashedColladaUniqueId, const char nodeName[]);
 
         void    PushCommand(uint32 cmd);
+        void    PushCommand(TransformStackCommand cmd);
         void    PushCommand(const void* ptr, size_t size);
         void    ResolvePendingPops();
+
+        void    Optimize();
 
         NascentTransformationMachine();
         NascentTransformationMachine(NascentTransformationMachine&& machine);

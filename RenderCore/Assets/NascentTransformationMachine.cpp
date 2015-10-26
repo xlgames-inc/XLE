@@ -169,7 +169,7 @@ namespace RenderCore { namespace Assets
         stream << " --- Output interface:" << std::endl;
         for (auto i=transMachine._jointTags.begin(); i!=transMachine._jointTags.end(); ++i)
             if (i->_outputMatrixIndex < transMachine._outputMatrixCount)
-                stream << "  [" << std::distance(transMachine._jointTags.begin(), i) << "] " << i->_name << std::endl;
+                stream << "  [" << std::distance(transMachine._jointTags.begin(), i) << "] " << i->_name << ", Output transform index: (" << i->_outputMatrixIndex << ")" << std::endl;
 
         stream << " --- Command stream:" << std::endl;
         auto cmds = transMachine._commandStream;
@@ -273,7 +273,7 @@ namespace RenderCore { namespace Assets
             return _lastReturnedOutputMatrixMarker;
 
         unsigned result = _outputMatrixCount++;
-        _commandStream.push_back(Assets::TransformStackCommand::WriteOutputMatrix);
+        _commandStream.push_back((uint32)Assets::TransformStackCommand::WriteOutputMatrix);
         _commandStream.push_back(result);
         _lastReturnedOutputMatrixMarker = result;
         return result;
@@ -281,7 +281,7 @@ namespace RenderCore { namespace Assets
 
     void            NascentTransformationMachine::MakeOutputMatrixMarker(unsigned marker)
     {
-        _commandStream.push_back(Assets::TransformStackCommand::WriteOutputMatrix);
+        _commandStream.push_back((uint32)Assets::TransformStackCommand::WriteOutputMatrix);
         _commandStream.push_back(marker);
         _lastReturnedOutputMatrixMarker = marker;
         _outputMatrixCount = std::max(_outputMatrixCount, marker+1);
@@ -399,8 +399,6 @@ namespace RenderCore { namespace Assets
 //             return input;
 //         }
 
-    static void NullTransformIterator(const Float4x4& parent, const Float4x4& child, const void* userData) {}
-    
     std::unique_ptr<Float4x4[]>           NascentTransformationMachine::GenerateOutputTransforms(
         const Assets::TransformationParameterSet&   parameterSet) const
     {
@@ -408,8 +406,7 @@ namespace RenderCore { namespace Assets
         GenerateOutputTransformsFree(
             result.get(), _outputMatrixCount,
             &parameterSet, 
-            AsPointer(_commandStream.begin()), AsPointer(_commandStream.end()),
-            NullTransformIterator, nullptr);
+            MakeIteratorRange(_commandStream));
         return result;
     }
 
@@ -428,8 +425,8 @@ namespace RenderCore { namespace Assets
             // push a basic, unanimatable transform
             //  see also NascentTransformationMachine_Collada::PushTransformations for a complex
             //  version of this
-        _commandStream.push_back(Assets::TransformStackCommand::PushLocalToWorld);
-        _commandStream.push_back(Assets::TransformStackCommand::TransformFloat4x4_Static);
+        _commandStream.push_back((uint32)Assets::TransformStackCommand::PushLocalToWorld);
+        _commandStream.push_back((uint32)Assets::TransformStackCommand::TransformFloat4x4_Static);
         _commandStream.push_back(FloatBits(localToParent(0, 0)));
         _commandStream.push_back(FloatBits(localToParent(0, 1)));
         _commandStream.push_back(FloatBits(localToParent(0, 2)));
@@ -460,6 +457,12 @@ namespace RenderCore { namespace Assets
         _lastReturnedOutputMatrixMarker = ~unsigned(0);
     }
 
+    void NascentTransformationMachine::PushCommand(TransformStackCommand cmd)
+    {
+        _commandStream.push_back((uint32)cmd);
+        _lastReturnedOutputMatrixMarker = ~unsigned(0);
+    }
+
     void NascentTransformationMachine::PushCommand(const void* ptr, size_t size)
     {
         assert((size % sizeof(uint32)) == 0);
@@ -470,11 +473,18 @@ namespace RenderCore { namespace Assets
     void NascentTransformationMachine::ResolvePendingPops()
     {
         if (_pendingPops) {
-            _commandStream.push_back(Assets::TransformStackCommand::PopLocalToWorld);
+            _commandStream.push_back((uint32)Assets::TransformStackCommand::PopLocalToWorld);
             _commandStream.push_back(_pendingPops);
             _pendingPops = 0;
             _lastReturnedOutputMatrixMarker = ~unsigned(0);
         }
+    }
+
+    void NascentTransformationMachine::Optimize()
+    {
+        ResolvePendingPops();
+        auto optimized = OptimizeTransformationMachine(MakeIteratorRange(_commandStream));
+        _commandStream = std::move(optimized);
     }
 
 }}

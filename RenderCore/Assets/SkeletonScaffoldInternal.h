@@ -33,11 +33,10 @@ namespace RenderCore { namespace Assets
         void GenerateOutputTransforms   (   Float4x4 output[], unsigned outputCount,
                                             const TransformationParameterSet*   parameterSet) const;
 
-        typedef void DebugIterator(const Float4x4& parent, const Float4x4& child, const void* userData);
+        using DebugIterator = std::function<void(const Float4x4&, const Float4x4&)>;
         void GenerateOutputTransforms   (   Float4x4 output[], unsigned outputCount,
                                             const TransformationParameterSet*   parameterSet,
-                                            DebugIterator*  debugIterator,
-                                            const void*     iteratorUserData) const;
+                                            const DebugIterator& debugIterator) const;
 
         class InputInterface
         {
@@ -77,13 +76,6 @@ namespace RenderCore { namespace Assets
 
         const uint32*   GetCommandStream()      { return _commandStream; }
         const size_t    GetCommandStreamSize()  { return _commandStreamSize; }
-
-        template<typename IteratorType>
-            void GenerateOutputTransformsInternal(
-                Float4x4 output[], unsigned outputCount,
-                const TransformationParameterSet*   parameterSet,
-                IteratorType                        debugIterator,
-                const void*                         iteratorUserData) const;
     };
 
     #pragma pack(pop)

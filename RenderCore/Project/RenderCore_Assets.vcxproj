@@ -169,6 +169,7 @@
     <ClCompile Include="..\Assets\LocalCompiledShaderSource.cpp" />
     <ClCompile Include="..\Assets\SharedStateSet.cpp" />
     <ClCompile Include="..\Assets\SkinningRunTime.cpp" />
+    <ClCompile Include="..\Assets\TransformationCommands.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\AnimationScaffoldInternal.h" />

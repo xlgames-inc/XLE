@@ -58,6 +58,9 @@
     <ClCompile Include="..\Assets\ModelUtils.cpp">
       <Filter>Assets\Model</Filter>
     </ClCompile>
+    <ClCompile Include="..\Assets\TransformationCommands.cpp">
+      <Filter>Assets\Anim</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\SharedStateSet.h" />
