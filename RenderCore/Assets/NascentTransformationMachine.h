@@ -19,7 +19,7 @@
 
 namespace RenderCore { namespace Assets
 {
-    typedef Assets::TransformationParameterSet::Type::Enum AnimSamplerType;
+    typedef TransformationParameterSet::Type::Enum AnimSamplerType;
 
     using AnimationParameterId = uint32;
 
@@ -33,7 +33,7 @@ namespace RenderCore { namespace Assets
         unsigned        GetOutputMatrixCount    () const        { return _outputMatrixCount; }
         bool            IsEmpty                 () const        { return _commandStream.empty(); }
 
-        const Assets::TransformationParameterSet&       GetDefaultParameters() const { return _defaultParameters; }
+        const TransformationParameterSet&       GetDefaultParameters() const { return _defaultParameters; }
 
         std::pair<AnimSamplerType, uint32>  GetParameterIndex(AnimationParameterId parameterName) const;
         AnimationParameterId                GetParameterName(AnimSamplerType type, uint32 index) const;
@@ -48,7 +48,7 @@ namespace RenderCore { namespace Assets
             void    Serialize(Serializer& outputSerializer) const;
 
         std::unique_ptr<Float4x4[]>
-            GenerateOutputTransforms(const Assets::TransformationParameterSet&   parameterSet) const;
+            GenerateOutputTransforms(const TransformationParameterSet&   parameterSet) const;
 
         const std::vector<uint32>&  GetCommandStream() const { return _commandStream; }
         std::pair<std::vector<uint64>, std::vector<Float4x4>> GetOutputInterface() const;
@@ -68,9 +68,9 @@ namespace RenderCore { namespace Assets
         ~NascentTransformationMachine();
 
     protected:
-        std::vector<uint32>                     _commandStream;
-        unsigned                                _outputMatrixCount;
-        Assets::TransformationParameterSet      _defaultParameters;
+        std::vector<uint32>         _commandStream;
+        unsigned                    _outputMatrixCount;
+        TransformationParameterSet  _defaultParameters;
 
             // ... parameters required only during construction ... 
         std::vector<std::pair<AnimationParameterId, uint32>>    _float1ParameterNames;

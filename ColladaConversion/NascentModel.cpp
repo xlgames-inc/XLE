@@ -1174,11 +1174,14 @@ namespace RenderCore { namespace ColladaConversion
         Serialization::NascentBlockSerializer serializer;
         std::vector<uint8> largeResourcesBlock;
 
-        auto i = _skeleton.GetTransformationMachine().GetCommandStream();
-        Assets::TraceTransformationMachine(
-            ConsoleRig::GetWarningStream(), 
-            AsPointer(i.begin()), AsPointer(i.end()));
-        ConsoleRig::GetWarningStream().Flush();
+        const bool traceSkeleton = false;
+        if (constant_expression<traceSkeleton>::result()) {
+            auto i = _skeleton.GetTransformationMachine().GetCommandStream();
+            Assets::TraceTransformationMachine(
+                ConsoleRig::GetWarningStream(), 
+                AsPointer(i.begin()), AsPointer(i.end()));
+            ConsoleRig::GetWarningStream().Flush();
+        }
 
         Serialization::Serialize(serializer, _visualScene);
         _objects.SerializeSkin(serializer, largeResourcesBlock);

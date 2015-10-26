@@ -328,8 +328,10 @@ namespace RenderCore { namespace Assets
     }
 
     void TraceTransformationMachine(
-            std::ostream&   outputStream,
-            const uint32*   commandStreamBegin,
-            const uint32*   commandStreamEnd);
+        std::ostream&   outputStream,
+        const uint32*   commandStreamBegin,
+        const uint32*   commandStreamEnd,
+        std::function<std::string(unsigned)> outputMatrixToName,
+        std::function<std::string(TransformationParameterSet::Type::Enum, unsigned)> parameterToName);
 }}
 

@@ -757,9 +757,8 @@ namespace RenderCore { namespace Assets
         auto& geoCall = cmdStream.GetGeoCall(geoCallIndex);
 
         if (transforms.IsGood()) {
-            auto localToModel = transforms.GetMeshToModel(geoCall._transformMarker);
-            Techniques::LocalTransformConstants trans;
-            trans = Techniques::MakeLocalTransform(Combine(localToModel, modelToWorld), ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
+            auto meshToWorld = Combine(transforms.GetMeshToModel(geoCall._transformMarker), modelToWorld);
+            auto trans = Techniques::MakeLocalTransform(meshToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
             localTransformBuffer.Update(*context._context, &trans, sizeof(trans));
         }
 
@@ -791,13 +790,9 @@ namespace RenderCore { namespace Assets
         auto& cmdStream = _scaffold->CommandStream();
         auto& geoCall = cmdStream.GetSkinCall(geoCallIndex);
 
-            // We only need to use the "transforms" array when we don't 
-            // have prepared animation
-            //  (otherwise that information gets burned into the 
-            //   prepared vertex positions)
-        if (!preparedAnimation && transforms.IsGood()) {
+        if (transforms.IsGood()) {
             auto meshToWorld = Combine(transforms.GetMeshToModel(geoCall._transformMarker), modelToWorld);
-            auto trans = Techniques::MakeLocalTransform(modelToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
+            auto trans = Techniques::MakeLocalTransform(meshToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
             localTransformBuffer.Update(*context._context, &trans, sizeof(trans));
         }
 

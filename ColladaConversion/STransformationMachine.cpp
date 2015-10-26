@@ -96,10 +96,19 @@ namespace RenderCore { namespace ColladaConversion
                 ParameterType_Animated
             } parameterType;
 
+                // Note -- in Collada, we can assume that any transform without a "sid" is not
+                //  animated (because normally the animation controller should use the sid to
+                //  reference it)
             auto paramName = std::string(nodeName) + "/" + AsString(trans.GetSid());
-            const bool isAnimated = assumeEverythingAnimated || nodeRefs.IsAnimated(paramName);
+            const bool isAnimated = !trans.GetSid().Empty() && (assumeEverythingAnimated || nodeRefs.IsAnimated(paramName));
             parameterType = isAnimated ? ParameterType_Animated : ParameterType_Embedded;
             auto parameterId = Hash32(AsPointer(paramName.cbegin()), AsPointer(paramName.cend()));
+
+                // We ignore transforms that are too close to their identity...
+            const auto transformThreshold   = 1e-3f;
+            const auto translationThreshold = 1e-3f;
+            const auto rotationThreshold    = 1e-3f;    // (in radians)
+            const auto scaleThreshold       = 1e-3f;
 
             if  (type == TransformationSet::Type::Matrix4x4) {
 
@@ -113,7 +122,7 @@ namespace RenderCore { namespace ColladaConversion
                     dst.PushCommand(Assets::TransformStackCommand::TransformFloat4x4_Parameter);
                     dst.PushCommand(paramIndex);
                 } else {
-                    if (Equivalent(*(Float4x4*)trans.GetUnionData(), Identity<Float4x4>(), 1e-5f)) {
+                    if (Equivalent(*(Float4x4*)trans.GetUnionData(), Identity<Float4x4>(), transformThreshold)) {
                         // ignore transform by identity
                     } else {
                         dst.PushCommand(Assets::TransformStackCommand::TransformFloat4x4_Static);
@@ -130,7 +139,7 @@ namespace RenderCore { namespace ColladaConversion
                     dst.PushCommand(Assets::TransformStackCommand::Translate_Parameter);
                     dst.PushCommand(paramIndex);
                 } else {
-                    if (Equivalent(*(Float3*)trans.GetUnionData(), Float3(0.f, 0.f, 0.f), 1e-5f)) {
+                    if (Equivalent(*(Float3*)trans.GetUnionData(), Float3(0.f, 0.f, 0.f), translationThreshold)) {
                         // ignore translate by zero
                     } else {
                         dst.PushCommand(Assets::TransformStackCommand::Translate_Static);
@@ -153,7 +162,7 @@ namespace RenderCore { namespace ColladaConversion
 
                 } else {
 
-                    if (Equivalent(rot._angle, 0.f, 1e-5f)) {
+                    if (Equivalent(rot._angle, 0.f, rotationThreshold)) {
                         // the angle is too small -- just ignore it
                     } else if (signed x = rot.IsRotationX()) {
                         dst.PushCommand(Assets::TransformStackCommand::RotateX_Static);
@@ -183,7 +192,7 @@ namespace RenderCore { namespace ColladaConversion
                     //      But, let's just ignore that possibility for the moment.
                     //
                 auto scale = *(const Float3*)trans.GetUnionData();
-                bool isUniform = Equivalent(scale[0], scale[1], 0.001f) && Equivalent(scale[0], scale[2], 0.001f);
+                bool isUniform = Equivalent(scale[0], scale[1], scaleThreshold) && Equivalent(scale[0], scale[2], scaleThreshold);
                 bool writeEmbedded = true;
 
                 if (parameterType != ParameterType_Embedded) {
@@ -204,7 +213,7 @@ namespace RenderCore { namespace ColladaConversion
                 }
 
                 if (writeEmbedded) {
-                    if (Equivalent(scale, Float3(1.f, 1.f, 1.f), 1e-5f)) {
+                    if (Equivalent(scale, Float3(1.f, 1.f, 1.f), scaleThreshold)) {
                         // scaling by 1 -- just ignore
                     } else if (isUniform) {
                         dst.PushCommand(Assets::TransformStackCommand::UniformScale_Static);

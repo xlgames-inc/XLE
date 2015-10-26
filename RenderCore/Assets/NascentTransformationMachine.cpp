@@ -173,7 +173,33 @@ namespace RenderCore { namespace Assets
 
         stream << " --- Command stream:" << std::endl;
         auto cmds = transMachine._commandStream;
-        TraceTransformationMachine(stream, AsPointer(cmds.begin()), AsPointer(cmds.end()));
+        TraceTransformationMachine(
+            stream, AsPointer(cmds.begin()), AsPointer(cmds.end()),
+            [&transMachine](unsigned outputMatrixIndex) -> std::string
+            {
+                auto i = std::find_if(
+                    transMachine._jointTags.cbegin(), transMachine._jointTags.cend(),
+                    [outputMatrixIndex](const NascentTransformationMachine::Joint& j) { return j._outputMatrixIndex == outputMatrixIndex; });
+                if (i != transMachine._jointTags.cend())
+                    return i->_name;
+                return std::string();
+            },
+            [&transMachine](AnimSamplerType samplerType, unsigned parameterIndex) -> std::string
+            {
+                using T = std::vector<std::pair<AnimationParameterId, uint32>>;
+                std::pair<const T*, Assets::TransformationParameterSet::Type::Enum> tables[] = {
+                    std::make_pair(&transMachine._float1ParameterNames,      Assets::TransformationParameterSet::Type::Float1),
+                    std::make_pair(&transMachine._float3ParameterNames,      Assets::TransformationParameterSet::Type::Float3),
+                    std::make_pair(&transMachine._float4ParameterNames,      Assets::TransformationParameterSet::Type::Float4),
+                    std::make_pair(&transMachine._float4x4ParameterNames,    Assets::TransformationParameterSet::Type::Float4x4)
+                };
+                
+                auto& names = *tables[unsigned(samplerType)].first;
+                auto i = std::find_if(names.cbegin(), names.cend(), 
+                    [parameterIndex](const std::pair<AnimationParameterId, uint32>& param) { return param.second == parameterIndex; });
+                if (i == names.cend()) return std::string();
+                return transMachine.HashedIdToStringId(i->first);
+            });
 
         return stream;
     }

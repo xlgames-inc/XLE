@@ -51,16 +51,18 @@ namespace RenderCore { namespace Assets
 
     static void MakeIndentBuffer(char buffer[], unsigned bufferSize, signed identLevel)
     {
-        std::fill(buffer, &buffer[std::min(std::max(0,identLevel), signed(bufferSize-1))], ' ');
-        buffer[std::min(std::max(0,identLevel), signed(bufferSize-1))] = '\0';
+        std::fill(buffer, &buffer[std::min(std::max(0,identLevel*2), signed(bufferSize-1))], ' ');
+        buffer[std::min(std::max(0,identLevel*2), signed(bufferSize-1))] = '\0';
     }
 
     void TraceTransformationMachine(
-            std::ostream&   stream,
-            const uint32*   commandStreamBegin,
-            const uint32*   commandStreamEnd)
+        std::ostream&   stream,
+        const uint32*   commandStreamBegin,
+        const uint32*   commandStreamEnd,
+        std::function<std::string(unsigned)> outputMatrixToName,
+        std::function<std::string(TransformationParameterSet::Type::Enum, unsigned)> parameterToName)
     {
-        stream << "Transformation machine size: (" << commandStreamEnd - commandStreamBegin << ") bytes" << std::endl;
+        stream << "Transformation machine size: (" << (commandStreamEnd - commandStreamBegin) * sizeof(uint32) << ") bytes" << std::endl;
 
         char indentBuffer[32];
         signed indentLevel = 2;
@@ -139,47 +141,74 @@ namespace RenderCore { namespace Assets
                 break;
 
             case TransformStackCommand::TransformFloat4x4_Parameter:
-                stream << indentBuffer << "TransformFloat4x4_Parameter (" << *i << ")" << std::endl;
+                stream << indentBuffer << "TransformFloat4x4_Parameter [" << *i << "]";
+                if (parameterToName)
+                    stream << " (" << parameterToName(TransformationParameterSet::Type::Float4x4, *i) << ")";
+                stream << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::Translate_Parameter:
-                stream << indentBuffer << "Translate_Parameter (" << *i << ")" << std::endl;
+                stream << indentBuffer << "Translate_Parameter [" << *i << "]";
+                if (parameterToName)
+                    stream << " (" << parameterToName(TransformationParameterSet::Type::Float3, *i) << ")";
+                stream << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::RotateX_Parameter:
-                stream << indentBuffer << "RotateX_Parameter (" << *i << ")" << std::endl;
+                stream << indentBuffer << "RotateX_Parameter [" << *i << "]";
+                if (parameterToName)
+                    stream << " (" << parameterToName(TransformationParameterSet::Type::Float1, *i) << ")";
+                stream << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::RotateY_Parameter:
-                stream << indentBuffer << "RotateY_Parameter (" << *i << ")" << std::endl;
+                stream << indentBuffer << "RotateY_Parameter [" << *i << "]";
+                if (parameterToName)
+                    stream << " (" << parameterToName(TransformationParameterSet::Type::Float1, *i) << ")";
+                stream << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::RotateZ_Parameter:
-                stream << indentBuffer << "RotateZ_Parameter (" << *i << ")" << std::endl;
+                stream << indentBuffer << "RotateZ_Parameter [" << *i << "]";
+                if (parameterToName)
+                    stream << " (" << parameterToName(TransformationParameterSet::Type::Float1, *i) << ")";
+                stream << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::Rotate_Parameter:
-                stream << indentBuffer << "Rotate_Parameter (" << *i << ")" << std::endl;
+                stream << indentBuffer << "Rotate_Parameter [" << *i << "]";
+                if (parameterToName)
+                    stream << " (" << parameterToName(TransformationParameterSet::Type::Float4, *i) << ")";
+                stream << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::UniformScale_Parameter:
-                stream << indentBuffer << "UniformScale_Parameter (" << *i << ")" << std::endl;
+                stream << indentBuffer << "UniformScale_Parameter [" << *i << "]";
+                if (parameterToName)
+                    stream << " (" << parameterToName(TransformationParameterSet::Type::Float1, *i) << ")";
+                stream << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::ArbitraryScale_Parameter:
-                stream << indentBuffer << "ArbitraryScale_Parameter (" << *i << ")" << std::endl;
+                stream << indentBuffer << "ArbitraryScale_Parameter [" << *i << "]";
+                if (parameterToName)
+                    stream << " (" << parameterToName(TransformationParameterSet::Type::Float3, *i) << ")";
+                stream << std::endl;
                 i++;
                 break;
 
             case TransformStackCommand::WriteOutputMatrix:
-                stream << indentBuffer << "WriteOutputMatrix (" << *i << ")" << std::endl;
+                stream << indentBuffer << "WriteOutputMatrix [" << *i << "]";
+                if (outputMatrixToName)
+                    stream << " (" << outputMatrixToName(*i) << ")";
+                stream << std::endl;
                 i++;
                 break;
             }

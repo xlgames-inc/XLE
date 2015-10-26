@@ -148,14 +148,9 @@ namespace Sample
                     CATCH_ASSETS_BEGIN
                         const auto& model = *i->_model;
                         for (auto i2=i->_instances.cbegin(); i2!=i->_instances.cend(); ++i2) {
-                            // RenderCore::Assets::ModelRenderer::MeshToModel meshToModel(
-                            //     si->_finalMatrices.get(),
-                            //     model.GetPrepareMachine().GetSkeletonOutputCount(),
-                            //     &model.GetPrepareMachine().GetSkeletonBinding());
-
                             CPUProfileEvent pEvnt("CharacterModelRender", g_cpuProfiler);
                             model.GetRenderer().Render(modelContext, _pimpl->_charactersSharedStateSet, *i2, 
-                                /*&meshToModel*/ RenderCore::Assets::MeshToModel(), AsPointer(si));
+                                RenderCore::Assets::MeshToModel(model.GetModelScaffold()), AsPointer(si));
                         }
                     CATCH_ASSETS_END(parserContext)
                 }
@@ -271,7 +266,6 @@ namespace Sample
                     for (auto i2=blockStart; i2<i; ++i2) {
                         Float4x4 final = i2->_localToWorld;
                         Combine_InPlace(i2->_animState._motionCompensation * newState._time, final);
-                        Combine_InPlace(UniformScale(1.f/CharactersScale), final);
 
                         __declspec(align(16)) auto localToCulling = Combine(i2->_localToWorld, worldToProjection);
                         if (!CullAABB_Aligned(AsFloatArray(localToCulling), roughBoundingBox.first, roughBoundingBox.second)) {
@@ -298,7 +292,6 @@ namespace Sample
     
             Float4x4 final      = i->_localToWorld;
             Combine_InPlace(i->_animState._motionCompensation * i->_animState._time, final);
-            Combine_InPlace(UniformScale(1.0f/CharactersScale), final);
 
             __declspec(align(16)) auto localToCulling = Combine(i->_localToWorld, worldToProjection);
             if (!CullAABB_Aligned(AsFloatArray(localToCulling), roughBoundingBox.first, roughBoundingBox.second)) {
@@ -314,7 +307,6 @@ namespace Sample
     
         Float4x4 final = _pimpl->_playerCharacter->_localToWorld;
         Combine_InPlace(_pimpl->_playerCharacter->_animState._motionCompensation * _pimpl->_playerCharacter->_animState._time, final);
-        Combine_InPlace(UniformScale(1.0f/CharactersScale), final);
     
         __declspec(align(16)) auto localToCulling = Combine(_pimpl->_playerCharacter->_localToWorld, worldToProjection);
         if (!CullAABB_Aligned(AsFloatArray(localToCulling), roughBoundingBox.first, roughBoundingBox.second)) {
