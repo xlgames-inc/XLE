@@ -83,31 +83,25 @@ namespace RenderCore { namespace ColladaConversion
             // Just collect all of the instanced geometries and instanced controllers
             // that hang off this node (or any children).
         bool gotAttachment = false;
+        auto nodeAsGuid = AsObjectGuid(node);
         const auto& scene = node.GetScene();
         for (unsigned c=0; c<scene.GetInstanceGeometryCount(); ++c)
             if (scene.GetInstanceGeometry_Attach(c).GetIndex() == node.GetIndex()) {
-                auto i = std::lower_bound(_meshes.begin(), _meshes.end(), c);
-                if (i == _meshes.end() || *i != c)
-                    _meshes.insert(i, c);
+                _meshes.push_back(AttachedObject{nodeRefs.GetOutputMatrixIndex(nodeAsGuid), c});
                 gotAttachment = true;
             }
 
         for (unsigned c=0; c<scene.GetInstanceControllerCount(); ++c)
             if (scene.GetInstanceController_Attach(c).GetIndex() == node.GetIndex()) {
-                auto i = std::lower_bound(_skinControllers.begin(), _skinControllers.end(), c);
-                if (i == _skinControllers.end() || *i != c)
-                    _skinControllers.insert(i, c);
+                _skinControllers.push_back(AttachedObject{nodeRefs.GetOutputMatrixIndex(nodeAsGuid), c});
                 gotAttachment = true;
             }
 
             // Register the names with attachments node -- early on
             // Note that if we get a resolve failure (or compile failure) then the
             // node will remain registered in the skeleton
-        if (gotAttachment) {
-            auto nodeAsGuid = AsObjectGuid(node);
-            nodeRefs.GetOutputMatrixIndex(nodeAsGuid);
+        if (gotAttachment)
             nodeRefs.TryRegisterNode(nodeAsGuid, SkeletonBindingName(node).c_str());
-        }
 
         auto child = node.GetFirstChild();
         while (child) {
@@ -196,7 +190,7 @@ namespace RenderCore { namespace ColladaConversion
 
     NascentModelCommandStream::GeometryInstance InstantiateGeometry(
         const ::ColladaConversion::InstanceGeometry& instGeo,
-        const ::ColladaConversion::Node& attachedNode,
+        unsigned outputTransformIndex, const Float4x4& mergedTransform,
         const URIResolveContext& resolveContext,
         NascentGeometryObjects& objects,
         SkeletonRegistry& nodeRefs,
@@ -210,7 +204,7 @@ namespace RenderCore { namespace ColladaConversion
             if (!scaffoldGeo)
                 Throw(::Assets::Exceptions::FormatError("Could not found geometry object to instantiate (%s)",
                     AsString(instGeo._reference).c_str()));
-            auto covertedMesh = Convert(*scaffoldGeo, resolveContext, cfg);
+            auto covertedMesh = Convert(*scaffoldGeo, mergedTransform, resolveContext, cfg);
             objects._rawGeos.push_back(std::make_pair(geoId, std::move(covertedMesh)));
             geo = (unsigned)(objects._rawGeos.size()-1);
          }
@@ -219,9 +213,8 @@ namespace RenderCore { namespace ColladaConversion
             AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
             objects._rawGeos[geo].second._matBindingSymbols, resolveContext);
 
-        auto bindingTransformIndex = nodeRefs.GetOutputMatrixIndex(AsObjectGuid(attachedNode));
         return NascentModelCommandStream::GeometryInstance(
-            geo, bindingTransformIndex, std::move(materials), 0);
+            geo, outputTransformIndex, std::move(materials), 0);
     }
 
     static DynamicArray<uint16> BuildJointArray(
@@ -272,7 +265,7 @@ namespace RenderCore { namespace ColladaConversion
 
     NascentModelCommandStream::SkinControllerInstance InstantiateController(
         const ::ColladaConversion::InstanceController& instGeo,
-        const ::ColladaConversion::Node& attachedNode,
+        unsigned outputTransformIndex,
         const URIResolveContext& resolveContext,
         NascentGeometryObjects& objects,
         SkeletonRegistry& nodeRefs,
@@ -306,7 +299,7 @@ namespace RenderCore { namespace ColladaConversion
                 if (!scaffoldGeo)
                     Throw(::Assets::Exceptions::FormatError("Could not find geometry object to instantiate (%s)",
                         AsString(instGeo._reference).c_str()));
-                tempBuffer = Convert(*scaffoldGeo, resolveContext, cfg);
+                tempBuffer = Convert(*scaffoldGeo, Identity<Float4x4>(), resolveContext, cfg);
                 source = &tempBuffer;
             } else {
                 source = &objects._rawGeos[geo].second;
@@ -324,10 +317,9 @@ namespace RenderCore { namespace ColladaConversion
                     *source, controller, std::move(jointMatrices),
                     AsString(instGeo._reference).c_str())));
 
-        auto bindingTransformIndex = nodeRefs.GetOutputMatrixIndex(AsObjectGuid(attachedNode));
         return NascentModelCommandStream::SkinControllerInstance(
             (unsigned)(objects._skinnedGeos.size()-1), 
-            bindingTransformIndex, std::move(materials), 0);
+            outputTransformIndex, std::move(materials), 0);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

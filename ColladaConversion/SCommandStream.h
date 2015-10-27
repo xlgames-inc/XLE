@@ -44,7 +44,7 @@ namespace RenderCore { namespace ColladaConversion
 
     NascentModelCommandStream::GeometryInstance InstantiateGeometry(
         const ::ColladaConversion::InstanceGeometry& instGeo,
-        const ::ColladaConversion::Node& attachedNode,
+        unsigned outputTransformIndex, const Float4x4& mergedTransform,
         const ::ColladaConversion::URIResolveContext& resolveContext,
         NascentGeometryObjects& objects,
         SkeletonRegistry& nodeRefs,
@@ -52,7 +52,7 @@ namespace RenderCore { namespace ColladaConversion
 
     NascentModelCommandStream::SkinControllerInstance InstantiateController(
         const ::ColladaConversion::InstanceController& instGeo,
-        const ::ColladaConversion::Node& attachedNode,
+        unsigned outputTransformIndex,
         const ::ColladaConversion::URIResolveContext& resolveContext,
         NascentGeometryObjects& objects,
         SkeletonRegistry& nodeRefs,
@@ -61,8 +61,14 @@ namespace RenderCore { namespace ColladaConversion
     class ReferencedGeometries
     {
     public:
-        std::vector<unsigned>   _meshes;
-        std::vector<unsigned>   _skinControllers;
+        class AttachedObject
+        {
+        public:
+            unsigned    _outputMatrixIndex;
+            unsigned    _objectIndex;
+        };
+        std::vector<AttachedObject>   _meshes;
+        std::vector<AttachedObject>   _skinControllers;
 
         void Gather(const ::ColladaConversion::Node& node, SkeletonRegistry& nodeRefs);
     };

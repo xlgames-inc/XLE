@@ -63,7 +63,7 @@ namespace RenderCore { namespace Assets
         void    PushCommand(const void* ptr, size_t size);
         void    ResolvePendingPops();
 
-        void    Optimize();
+        void    Optimize(ITransformationMachineOptimizer& optimizer);
 
         NascentTransformationMachine();
         NascentTransformationMachine(NascentTransformationMachine&& machine);

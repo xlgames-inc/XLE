@@ -156,6 +156,84 @@ namespace RenderCore { namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    class TransMachineOptimizer : public Assets::ITransformationMachineOptimizer
+    {
+    public:
+        bool CanMergeIntoOutputMatrix(unsigned outputMatrixIndex) const;
+        void MergeIntoOutputMatrix(unsigned outputMatrixIndex, const Float4x4& transform);
+        Float4x4 GetMergedOutputMatrix(unsigned outputMatrixIndex) const;
+
+        TransMachineOptimizer(ReferencedGeometries& refGeos, unsigned outputMatrixCount);
+        TransMachineOptimizer();
+        ~TransMachineOptimizer();
+    protected:
+        std::vector<bool>       _canMergeIntoTransform;
+        std::vector<Float4x4>   _mergedTransforms;
+    };
+
+    bool TransMachineOptimizer::CanMergeIntoOutputMatrix(unsigned outputMatrixIndex) const
+    {
+        if (outputMatrixIndex < unsigned(_canMergeIntoTransform.size()))
+            return _canMergeIntoTransform[outputMatrixIndex];
+        return false;
+    }
+
+    void TransMachineOptimizer::MergeIntoOutputMatrix(unsigned outputMatrixIndex, const Float4x4& transform)
+    {
+        assert(CanMergeIntoOutputMatrix(outputMatrixIndex));
+        _mergedTransforms[outputMatrixIndex] = Combine(
+            transform, _mergedTransforms[outputMatrixIndex]);
+    }
+
+    Float4x4 TransMachineOptimizer::GetMergedOutputMatrix(unsigned outputMatrixIndex) const
+    {
+        if (outputMatrixIndex < unsigned(_mergedTransforms.size()))
+            return _mergedTransforms[outputMatrixIndex];
+        return Identity<Float4x4>();
+    }
+
+    TransMachineOptimizer::TransMachineOptimizer(ReferencedGeometries& refGeos, unsigned outputMatrixCount)
+    {
+        _canMergeIntoTransform.resize(outputMatrixCount, false);
+        _mergedTransforms.resize(outputMatrixCount, Identity<Float4x4>());
+
+        for (unsigned c=0; c<outputMatrixCount; ++c) {
+                // if we've got a skin controller attached, we can't do any merging
+            auto skinI = std::find_if(
+                refGeos._skinControllers.cbegin(), refGeos._skinControllers.cend(),
+                [c](const ReferencedGeometries::AttachedObject& obj) { return obj._outputMatrixIndex == c; });
+            if (skinI != refGeos._skinControllers.cend()) continue;
+
+                // check to see if we have at least one mesh attached...
+            auto geoI = std::find_if(
+                refGeos._meshes.cbegin(), refGeos._meshes.cend(),
+                [c](const ReferencedGeometries::AttachedObject& obj) { return obj._outputMatrixIndex == c; });
+            if (geoI == refGeos._meshes.cend()) continue;
+
+                // find all of the meshes attached, and check if any are attached in
+                // multiple places
+            bool doublyAttachedObject = false;
+            for (auto i=refGeos._meshes.cbegin(); i!=refGeos._meshes.cend() && !doublyAttachedObject; ++i)
+                if (i->_outputMatrixIndex == c) {
+                    for (auto i2=refGeos._meshes.cbegin(); i2!=refGeos._meshes.cend(); ++i2) {
+                        if (i2->_objectIndex == i->_objectIndex && i2->_outputMatrixIndex != i->_outputMatrixIndex) {
+                            doublyAttachedObject = true;
+                            break;
+                        }
+                    }
+                }
+
+            _canMergeIntoTransform[c] = !doublyAttachedObject;
+        }
+    }
+
+    TransMachineOptimizer::TransMachineOptimizer() {}
+
+    TransMachineOptimizer::~TransMachineOptimizer()
+    {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     class PreparedSkinFile
     {
     public:
@@ -185,22 +263,28 @@ namespace RenderCore { namespace ColladaConversion
 
         unsigned topLevelPops = 0;
         auto coordinateTransform = BuildCoordinateTransform(input._doc->GetAssetDesc());
-        NascentSkeleton preOptSkel;
         if (!Equivalent(coordinateTransform, Identity<Float4x4>(), 1e-5f)) {
                 // Push on the coordinate transform (if there is one)
                 // This should be optimised into other matrices (or even into
                 // the geometry) when we perform the skeleton optimisation steps.
-            topLevelPops = preOptSkel.GetTransformationMachine().PushTransformation(
+            topLevelPops = _skeleton.GetTransformationMachine().PushTransformation(
                 coordinateTransform);
         }
 
             // When extracting an internal node, we ignore the transform 
             // on that internal node
-        BuildSkeleton(preOptSkel, rootNode, jointRefs, (rootNode == scene.GetRootNode())?0:1, false);
-        preOptSkel.GetTransformationMachine().Pop(topLevelPops);
+        BuildSkeleton(_skeleton, rootNode, jointRefs, (rootNode == scene.GetRootNode())?0:1, false);
+        _skeleton.GetTransformationMachine().Pop(topLevelPops);
 
-        _skeleton = std::move(preOptSkel); // Optimize(preOptSkel);
-        _skeleton.GetTransformationMachine().Optimize();
+            // For each output matrix, we want to know if we can merge a transformation into it.
+            // We can only do this if (unskinned) geometry instances are attached -- and those
+            // geometry instances must be attached in only one place. If the output transform does
+            // not have a geometry instance attached, or if any of the geometry instances are
+            // attached to more than one matrix, or if something other than a geometry instance is
+            // attached, then we cannot do any merging.
+        
+        TransMachineOptimizer optimizer(refGeos, _skeleton.GetTransformationMachine().GetOutputMatrixCount());
+        _skeleton.GetTransformationMachine().Optimize(optimizer);
 
             // We can try to optimise the skeleton here. We should collect the list
             // of meshes that we can optimise transforms into (ie, meshes that aren't
@@ -213,8 +297,8 @@ namespace RenderCore { namespace ColladaConversion
             TRY {
                 _cmdStream.Add(
                     RenderCore::ColladaConversion::InstantiateGeometry(
-                        scene.GetInstanceGeometry(c),
-                        scene.GetInstanceGeometry_Attach(c),
+                        scene.GetInstanceGeometry(c._objectIndex),
+                        c._outputMatrixIndex, optimizer.GetMergedOutputMatrix(c._outputMatrixIndex),
                         input._resolveContext, _geoObjects, jointRefs,
                         input._cfg));
             } CATCH(...) {
@@ -226,8 +310,8 @@ namespace RenderCore { namespace ColladaConversion
             TRY {
                 _cmdStream.Add(
                     RenderCore::ColladaConversion::InstantiateController(
-                        scene.GetInstanceController(c),
-                        scene.GetInstanceController_Attach(c),
+                        scene.GetInstanceController(c._objectIndex),
+                        c._outputMatrixIndex,
                         input._resolveContext, _geoObjects, jointRefs,
                         input._cfg));
                 skinSuccessful = true;
@@ -244,8 +328,8 @@ namespace RenderCore { namespace ColladaConversion
                 TRY {
                     _cmdStream.Add(
                         RenderCore::ColladaConversion::InstantiateGeometry(
-                            scene.GetInstanceController(c),
-                            scene.GetInstanceController_Attach(c),
+                            scene.GetInstanceController(c._objectIndex),
+                            c._outputMatrixIndex, Identity<Float4x4>(),
                             input._resolveContext, _geoObjects, jointRefs,
                             input._cfg));
                 } CATCH(...) {
@@ -442,7 +526,8 @@ namespace RenderCore { namespace ColladaConversion
         SkeletonRegistry jointRefs;
         BuildSkeleton(_skeleton, scene->GetRootNode(), jointRefs, 0, true);
         RegisterNodeBindingNames(_skeleton, jointRefs);
-        _skeleton.GetTransformationMachine().Optimize();
+        TransMachineOptimizer optimizer;
+        _skeleton.GetTransformationMachine().Optimize(optimizer);
     }
 
     static void TraceMetrics(std::ostream& stream, const PreparedSkeletonFile& file)

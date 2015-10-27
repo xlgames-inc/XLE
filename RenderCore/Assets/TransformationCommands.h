@@ -120,7 +120,17 @@ namespace RenderCore { namespace Assets
         std::function<std::string(unsigned)> outputMatrixToName,
         std::function<std::string(TransformationParameterSet::Type::Enum, unsigned)> parameterToName);
 
-    std::vector<uint32> OptimizeTransformationMachine(IteratorRange<const uint32*> input);
+    class ITransformationMachineOptimizer
+    {
+    public:
+        virtual bool CanMergeIntoOutputMatrix(unsigned outputMatrixIndex) const = 0;
+        virtual void MergeIntoOutputMatrix(unsigned outputMatrixIndex, const Float4x4& transform) = 0;
+        virtual ~ITransformationMachineOptimizer();
+    };
+
+    std::vector<uint32> OptimizeTransformationMachine(
+        IteratorRange<const uint32*> input,
+        ITransformationMachineOptimizer& optimizer);
 
 }}
 

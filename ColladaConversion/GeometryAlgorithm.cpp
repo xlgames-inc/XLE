@@ -7,6 +7,7 @@
 #include "GeometryAlgorithm.h"
 #include "../RenderCore/Assets/MeshDatabase.h"
 #include "../Math/Geometry.h"
+#include "../Math/Transformations.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
 
@@ -242,6 +243,163 @@ namespace RenderCore { namespace ColladaConversion
         // 
         // }
 	}
+
+    template<typename Type>
+        RenderCore::Metal::NativeFormat::Enum AsNativeFormat();
+
+    template<> RenderCore::Metal::NativeFormat::Enum AsNativeFormat<float>() 
+        { return RenderCore::Metal::NativeFormat::R32_FLOAT; }
+    template<> RenderCore::Metal::NativeFormat::Enum AsNativeFormat<Float2>() 
+        { return RenderCore::Metal::NativeFormat::R32G32_FLOAT; }
+    template<> RenderCore::Metal::NativeFormat::Enum AsNativeFormat<Float3>() 
+        { return RenderCore::Metal::NativeFormat::R32G32B32_FLOAT; }
+    template<> RenderCore::Metal::NativeFormat::Enum AsNativeFormat<Float4>() 
+        { return RenderCore::Metal::NativeFormat::R32G32B32A32_FLOAT; }
+
+    template<typename PivotType, typename TransformFn>
+        std::shared_ptr<IVertexSourceData> TransformStream(
+            const IVertexSourceData& src,
+            const TransformFn& transform)
+        {
+            std::vector<uint8> tempBuffer;
+            tempBuffer.resize(src.GetCount() * sizeof(PivotType));
+            auto* dst = (PivotType*)AsPointer(tempBuffer.begin());
+            for (unsigned c=0; c<src.GetCount(); ++c)
+                dst[c] = GetVertex<PivotType>(src, c);
+            transform(dst, &dst[src.GetCount()]);
+
+                // Let's make sure the new stream data is in the same format
+                // as the old one.
+            auto finalStride = Metal::BitsPerPixel(src.GetFormat())/8;
+            auto finalFormat = src.GetFormat();
+            auto pivotFormat = AsNativeFormat<PivotType>();
+            if (finalFormat != pivotFormat) {
+                assert(finalStride <= sizeof(PivotType));  // we can do this in-place so long as the destination stride isn't bigger
+                CopyVertexData(
+                    AsPointer(tempBuffer.begin()), finalFormat, finalStride, tempBuffer.size(),
+                    AsPointer(tempBuffer.begin()), pivotFormat, sizeof(PivotType), tempBuffer.size(),
+                    unsigned(src.GetCount()));
+            }
+
+            return CreateRawDataSource(
+                std::move(tempBuffer), src.GetCount(), finalStride, finalFormat);
+        }
+
+    template<typename PivotType, typename TransformFn>
+        void TransformStream(
+            RenderCore::Assets::GeoProc::MeshDatabase& mesh, 
+            unsigned streamIndex,
+            const TransformFn& transform)
+    {
+        const auto& stream = mesh.GetStreams()[streamIndex];
+        auto newStream = TransformStream<PivotType>(stream.GetSourceData(), transform);
+
+            // swap the old stream with the new one.
+        auto semanticName = stream.GetSemanticName();
+        auto semanticIndex = stream.GetSemanticIndex();
+        auto vertexMap = stream.GetVertexMap();
+        mesh.RemoveStream(streamIndex);
+        mesh.InsertStream(
+            streamIndex, std::move(newStream),
+            std::move(vertexMap), semanticName.c_str(), semanticIndex);
+    }
+
+    void Transform(
+        RenderCore::Assets::GeoProc::MeshDatabase& mesh, 
+        const Float4x4& transform)
+    {
+        // For each stream in the mesh, we need to decide how to transform it.
+        // We have 3 typical options:
+        //      TransformPoint -- 
+        //          This uses the full 4x4 transform
+        //          (ie, this should be applied to POSITION)
+        //      TransformUnitVector -- 
+        //          This uses only the rotational element of the transform,
+        //          with the scale and translation removed.
+        //          (ie, this should be applied to NORMAL, TEXTANGENT, etc)
+        //      None --
+        //          No transform at all
+        //          (ie, this should be applied to TEXCOORD)
+        //
+        // In the case of TransformUnitVector, we're going to assume a
+        // well behaved 4x4 transform -- with no skew or wierd non-orthogonal
+        // behaviour. Actually, we can get an arbitrarily complex 4x4 transform
+        // from Collada... But let's just assume it's simple.
+
+        for (unsigned s=0; s<mesh.GetStreams().size(); s++) {
+            const auto& stream = mesh.GetStreams()[s];
+
+            auto semanticName = stream.GetSemanticName();
+            enum Type { Point, UnitVector, None } type = None;
+
+                // todo -- semantic names are hard coded here. But we
+                // could make this data-driven by using a configuration
+                // file to select the transform type.
+            if (semanticName == "POSITION") {
+                type = Point;
+            } else if (
+                    semanticName == "NORMAL" 
+                ||  semanticName == "TEXTANGENT"
+                ||  semanticName == "TEXBITANGENT"
+                ||  semanticName == "TEXBINORMAL"
+                ||  semanticName == "TANGENT"
+                ||  semanticName == "BITANGENT"
+                ||  semanticName == "BINORMAL") {
+                type = UnitVector;
+            }
+            if (type == None) continue;
+
+            const auto& src = stream.GetSourceData();
+            auto componentCount = Metal::GetComponentCount(Metal::GetComponents(src.GetFormat()));
+            if (type == Point) {
+                    // We can support both 3d and 2d pretty easily here. Collada generalizes to 2d well,
+                    // so we might as well support it (though maybe the 3d case is by far the most common
+                    // case)
+                if (componentCount==3) {
+                    TransformStream<Float3>(
+                        mesh, s, 
+                        [&transform](Float3* begin, Float3* end)
+                            { for (auto i=begin; i!=end; ++i) *i = TransformPoint(transform, *i); });
+                } else if (componentCount==4) {
+                    TransformStream<Float4>(
+                        mesh, s, 
+                        [&transform](Float4* begin, Float4* end)
+                            { for (auto i=begin; i!=end; ++i) *i = transform * (*i); });
+                } else if (componentCount==2) {
+                    TransformStream<Float2>(
+                        mesh, s, 
+                        [&transform](Float2* begin, Float2* end)
+                            { for (auto i=begin; i!=end; ++i) *i = Truncate(TransformPoint(transform, Expand(*i, 0.f))); });
+                } else if (componentCount==1) {
+                    TransformStream<float>(
+                        mesh, s, 
+                        [&transform](float* begin, float* end)
+                            { for (auto i=begin; i!=end; ++i) *i = TransformPoint(transform, Float3(*i, 0.f, 0.f))[0]; });
+                }
+            } else if (type == UnitVector) {
+                // We can do this in two ways... We can create a version of the matrix that
+                // has the scale removed. This would be fine for uniform scale. 
+                // But in the nonuniform scale, the normal should get deformed.
+                // Alternatively, we can transform with the scale part there, and just renormalize
+                // afterwards.
+                auto truncated = Truncate3x3(transform);
+                if (componentCount==3) {
+                    TransformStream<Float3>(
+                        mesh, s, 
+                        [&truncated](Float3* begin, Float3* end)
+                            { for (auto i=begin; i!=end; ++i) *i = Normalize(truncated * (*i)); });
+                } else if (componentCount==4) {
+                    // note that the "tangent" stream can be 4D if the "handiness" flag is already attached.
+                    Throw(::Exceptions::BasicLabel("Attempting to apply 3D transform to 4D vector. Perhaps the final component is the tangent handiness flag?"));
+                } else if (componentCount==2) {
+                    TransformStream<Float2>(
+                        mesh, s, 
+                        [&truncated](Float2* begin, Float2* end)
+                            { for (auto i=begin; i!=end; ++i) *i = Truncate(Normalize(truncated * Expand(*i, 0.f))); });
+                }
+            }
+        }
+    }
 
     void RemoveRedundantBitangents(MeshDatabase& mesh)
     {

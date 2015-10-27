@@ -480,10 +480,10 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    void NascentTransformationMachine::Optimize()
+    void NascentTransformationMachine::Optimize(ITransformationMachineOptimizer& optimizer)
     {
         ResolvePendingPops();
-        auto optimized = OptimizeTransformationMachine(MakeIteratorRange(_commandStream));
+        auto optimized = OptimizeTransformationMachine(MakeIteratorRange(_commandStream), optimizer);
         _commandStream = std::move(optimized);
     }
 

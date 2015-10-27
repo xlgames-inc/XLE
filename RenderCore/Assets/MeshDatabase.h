@@ -8,6 +8,7 @@
 
 #include "../Metal/Format.h"
 #include "../Metal/InputLayout.h"
+#include "../../Utility/IteratorUtils.h"
 #include <utility>
 #include <memory>
 #include <vector>
@@ -53,10 +54,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             std::shared_ptr<IVertexSourceData> dataSource,
             std::vector<unsigned>&& vertexMap,
             const char semantic[], unsigned semanticIndex);
+        unsigned    InsertStream(
+            unsigned insertionPosition,
+            std::shared_ptr<IVertexSourceData> dataSource,
+            std::vector<unsigned>&& vertexMap,
+            const char semantic[], unsigned semanticIndex);
 
         class Stream;
-        const Stream&       GetStream(unsigned index) const { return _streams[index]; }
-        unsigned            GetStreamCount() const          { return (unsigned)_streams.size(); }
+        IteratorRange<const Stream*> GetStreams() const     { return MakeIteratorRange(_streams); }
 
         MeshDatabase();
         MeshDatabase(MeshDatabase&& moveFrom) never_throws;
@@ -97,7 +102,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         void WriteStream(
             const Stream& stream, const void* dst, 
-            Metal::NativeFormat::Enum dstFormat, size_t dstStride) const;
+            Metal::NativeFormat::Enum dstFormat, size_t dstStride, size_t dstSize) const;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -180,6 +185,16 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     /// However, note that if the polygon is concave, then some bad triangles will be created.
     size_t CreateTriangleWindingFromPolygon(
         unsigned buffer[], size_t bufferCount, size_t polygonVertexCount);
+
+    /// <summary>Copy vertex data with format conversion</summary>
+    /// This is typically used for copying vertex data between similar formats
+    /// (for example, 32 bit floats to 16 bit floats)
+    void CopyVertexData(
+        const void* dst, Metal::NativeFormat::Enum dstFmt, size_t dstStride, size_t dstDataSize,
+        const void* src, Metal::NativeFormat::Enum srcFmt, size_t srcStride, size_t srcDataSize,
+        unsigned count, 
+        std::vector<unsigned> mapping = std::vector<unsigned>(),
+        ProcessingFlags::BitField processingFlags = 0);
 
 }}}
 

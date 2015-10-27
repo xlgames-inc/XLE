@@ -218,9 +218,10 @@ namespace RenderCore { namespace Assets
         return i;
     }
 
-    static bool ShouldDoMerge(IteratorRange<const uint32**> influences)
+    static bool ShouldDoMerge(
+        IteratorRange<const uint32**> influences, 
+        ITransformationMachineOptimizer& optimizer)
     {
-        const bool canMergeIntoOutputMatrix = true;
         signed commandAdjustment = -1;
         for (const auto& c:influences) {
             switch (AsMergeType(TransformStackCommand(*c))) {
@@ -233,7 +234,8 @@ namespace RenderCore { namespace Assets
                 ++commandAdjustment;
                 break;
             case MergeType::OutputMatrix:
-                if (!canMergeIntoOutputMatrix) ++commandAdjustment;
+                if (!optimizer.CanMergeIntoOutputMatrix(*(c+1)))
+                    ++commandAdjustment;
                 break;
 
             default:
@@ -371,7 +373,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    static void MergeSequentialTransforms(std::vector<uint32>& cmdStream)
+    static void MergeSequentialTransforms(std::vector<uint32>& cmdStream, ITransformationMachineOptimizer& optimizer)
     {
         // Where we have multiple static transforms in a row, we can choose
         // to merge them together.
@@ -465,14 +467,14 @@ namespace RenderCore { namespace Assets
                     FindDownstreamInfluences(
                         influences[0], AsPointer(cmdStream.end()),
                         secondaryInfluences, finalIdentLevel);
-                    isSpecialCase = !ShouldDoMerge(MakeIteratorRange(secondaryInfluences));
+                    isSpecialCase = !ShouldDoMerge(MakeIteratorRange(secondaryInfluences), optimizer);
                 }
 
                 bool doMerge = false;
                 if (isSpecialCase) {
                     doMerge = ShouldDoSimpleMerge(TransformStackCommand(*i), TransformStackCommand(*influences[0]));
                 } else {
-                    doMerge = ShouldDoMerge(MakeIteratorRange(influences));
+                    doMerge = ShouldDoMerge(MakeIteratorRange(influences), optimizer);
                 }
 
                 if (doMerge) {
@@ -491,18 +493,24 @@ namespace RenderCore { namespace Assets
                         } else if (type == MergeType::Blocker) {
                             // this case always involves pushing a duplicate of the original command
                             cmdStream.insert(i2, i, next);
+                            i = cmdStream.begin()+iPos; next = cmdStream.begin()+nextPos;
                         } else if (type == MergeType::OutputMatrix) {
                             // We must either record this transform to be merged into
                             // this output transform, or we have to insert a push into here
-                            const bool canMergeIntoOutputMatrix = true;
-                            if (canMergeIntoOutputMatrix) {
-                            } else
+                            auto outputMatrixIndex = *((*r)+1);
+                            bool canMerge = optimizer.CanMergeIntoOutputMatrix(outputMatrixIndex);
+                            if (canMerge) {
+                                auto transform = PromoteToFloat4x4(AsPointer(i));
+                                optimizer.MergeIntoOutputMatrix(outputMatrixIndex, transform);
+                            } else {
                                 cmdStream.insert(i2, i, next);
+                                i = cmdStream.begin()+iPos; next = cmdStream.begin()+nextPos;
+                            }
                         }
                     }
 
                         // remove the original...
-                    i = cmdStream.erase(cmdStream.begin()+iPos, cmdStream.begin()+nextPos);
+                    i = cmdStream.erase(i, next);
                     continue;
                 }
             }
@@ -511,7 +519,9 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    std::vector<uint32> OptimizeTransformationMachine(IteratorRange<const uint32*> input)
+    std::vector<uint32> OptimizeTransformationMachine(
+        IteratorRange<const uint32*> input,
+        ITransformationMachineOptimizer& optimizer)
     {
         // Create an optimzied version of the given transformation machine.
         // We want to parse through the command stream, and optimize out redundancies.
@@ -533,10 +543,12 @@ namespace RenderCore { namespace Assets
 
         std::vector<uint32> result(input.cbegin(), input.cend());
         RemoveRedundantPushes(result);
-        MergeSequentialTransforms(result);
+        MergeSequentialTransforms(result, optimizer);
         RemoveRedundantPushes(result);
         return std::move(result);
     }
+
+    ITransformationMachineOptimizer::~ITransformationMachineOptimizer() {}
 
     inline Float3 AsFloat3(const float input[])     { return Float3(input[0], input[1], input[2]); }
 

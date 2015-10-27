@@ -205,7 +205,6 @@ namespace XLEMath
 
     RotationScaleTranslation    SphericalInterpolate(const RotationScaleTranslation& lhs, const RotationScaleTranslation& rhs, float alpha);
 
-    Float3x3    AsFloat3x3(const Quaternion& input);
     Float4x4    AsFloat4x4(const ScaleTranslation& input);
     Float4x4    AsFloat4x4(const RotationScaleTranslation& input);
     Float4x4    AsFloat4x4(const UniformScale& input);
@@ -220,6 +219,8 @@ namespace XLEMath
 	Float4x4    AsFloat4x4(const Float3x3& rotationMatrix); 
 	Float4x4    AsFloat4x4(const Quaternion& input);
 	Float4x4    AsFloat4x4(const Float3x4& orthonormalTransform);
+
+    Float3x3    AsFloat3x3(const Quaternion& input);
     Float3x4    AsFloat3x4(const Float4x4& orthonormalTransform);
 
     Float4x4    AsFloat4x4(const Float2x3& input);

@@ -85,22 +85,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return std::move(unifiedVertexIndexToPositionIndex);
     }
 
-    static void CopyVertexData(
-        const void* dst, Metal::NativeFormat::Enum dstFmt, size_t dstStride,
-        const void* src, Metal::NativeFormat::Enum srcFmt, size_t srcStride, size_t srcDataSize,
-        std::vector<unsigned> mapping,
-        unsigned count, ProcessingFlags::BitField processingFlags);
-
     void MeshDatabase::WriteStream(
         const Stream& stream,
-        const void* dst, Metal::NativeFormat::Enum dstFormat, size_t dstStride) const
+        const void* dst, Metal::NativeFormat::Enum dstFormat, size_t dstStride, size_t dstSize) const
     {
         const auto& sourceData = stream.GetSourceData();
         auto stride = sourceData.GetStride();
         CopyVertexData(
-            dst, dstFormat, dstStride,
+            dst, dstFormat, dstStride, dstSize,
             sourceData.GetData(), sourceData.GetFormat(), stride, sourceData.GetDataSize(),
-            stream.GetVertexMap(), (unsigned)_unifiedVertexCount, sourceData.GetProcessingFlags());
+            (unsigned)_unifiedVertexCount, 
+            stream.GetVertexMap(), sourceData.GetProcessingFlags());
     }
 
     DynamicArray<uint8>  MeshDatabase::BuildNativeVertexBuffer(const NativeVBLayout& outputLayout) const
@@ -117,7 +112,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             const auto& stream            = _streams[elementIndex];
             WriteStream(
                 stream, PtrAdd(finalVertexBuffer.get(), nativeElement._alignedByteOffset),
-                nativeElement._nativeFormat, outputLayout._vertexStride);
+                nativeElement._nativeFormat, outputLayout._vertexStride,
+                size - nativeElement._alignedByteOffset);
         }
 
         return DynamicArray<uint8>(std::move(finalVertexBuffer), size);
@@ -128,14 +124,30 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::vector<unsigned>&& vertexMap,
         const char semantic[], unsigned semanticIndex)
     {
+        return InsertStream(~0u, dataSource, std::move(vertexMap), semantic, semanticIndex);
+    }
+
+    unsigned    MeshDatabase::InsertStream(
+        unsigned insertionPosition,
+        std::shared_ptr<IVertexSourceData> dataSource,
+        std::vector<unsigned>&& vertexMap,
+        const char semantic[], unsigned semanticIndex)
+    {
         auto count = vertexMap.size() ? vertexMap.size() : dataSource->GetCount();
         assert(count > 0);
         if (!_unifiedVertexCount) { _unifiedVertexCount = count; }
         else _unifiedVertexCount = std::min(_unifiedVertexCount, count);
 
-        _streams.push_back(
+        if (insertionPosition == ~0u) {
+            _streams.push_back(
             Stream { std::move(dataSource), std::move(vertexMap), semantic, semanticIndex });
-        return unsigned(_streams.size()-1);
+            return unsigned(_streams.size()-1);
+        } else {
+            _streams.insert(
+                _streams.begin()+insertionPosition,
+                Stream { std::move(dataSource), std::move(vertexMap), semantic, semanticIndex });
+            return insertionPosition;
+        }
     }
 
     MeshDatabase::MeshDatabase()
@@ -257,11 +269,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         unsigned accumulatingOffset = 0;
 
         NativeVBLayout result;
-        result._elements.resize(mesh.GetStreamCount());
+        result._elements.resize(mesh.GetStreams().size());
 
-        for (unsigned c = 0; c<mesh.GetStreamCount(); ++c) {
-            auto& nativeElement = result._elements[c];
-            auto& stream = mesh.GetStream(c);
+        unsigned c=0;
+        for (const auto&stream : mesh.GetStreams()) {
+            auto& nativeElement = result._elements[c++];
             nativeElement._semanticName         = stream.GetSemanticName();
             nativeElement._semanticIndex        = stream.GetSemanticIndex();
 
@@ -449,11 +461,32 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return Float2(input[0], input[1]);
     }
 
-    static void CopyVertexData(
-        const void* dst, Metal::NativeFormat::Enum dstFmt, size_t dstStride,
+    template<> Float4 GetVertex(const IVertexSourceData& sourceData, size_t index)
+    {
+        auto stride = sourceData.GetStride();
+        const auto* sourceStart = PtrAdd(sourceData.GetData(), index * stride);
+
+        float input[4];
+        GetVertData(input, (const float*)sourceStart, BreakdownFormat(sourceData.GetFormat()), sourceData.GetProcessingFlags());
+        return Float4(input[0], input[1], input[2], input[3]);
+    }
+
+    template<> float GetVertex(const IVertexSourceData& sourceData, size_t index)
+    {
+        auto stride = sourceData.GetStride();
+        const auto* sourceStart = PtrAdd(sourceData.GetData(), index * stride);
+
+        float input[4];
+        GetVertData(input, (const float*)sourceStart, BreakdownFormat(sourceData.GetFormat()), sourceData.GetProcessingFlags());
+        return input[0];
+    }
+
+    void CopyVertexData(
+        const void* dst, Metal::NativeFormat::Enum dstFmt, size_t dstStride, size_t dstDataSize,
         const void* src, Metal::NativeFormat::Enum srcFmt, size_t srcStride, size_t srcDataSize,
+        unsigned count, 
         std::vector<unsigned> mapping,
-        unsigned count, ProcessingFlags::BitField processingFlags)
+        ProcessingFlags::BitField processingFlags)
     {
         auto dstFormat = BreakdownFormat(dstFmt);
         auto srcFormat = BreakdownFormat(srcFmt);
@@ -471,8 +504,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                     float input[4];
                     GetVertDataF32(input, (const float*)srcV, srcFormat.second, processingFlags);
 
-                    for (unsigned c=0; c<dstFormat.second; ++c)
+                    for (unsigned c=0; c<dstFormat.second; ++c) {
+                        assert(&((float*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
                         ((float*)dst)[c] = input[c];
+                    }
                 }
 
             } else if (dstFormat.first == ComponentType::Float16) {  ////////////////////////////////////////////////
@@ -485,8 +520,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                     float input[4];
                     GetVertDataF32(input, (const float*)srcV, srcFormat.second, processingFlags);
 
-                    for (unsigned c=0; c<dstFormat.second; ++c)
+                    for (unsigned c=0; c<dstFormat.second; ++c) {
+                        assert(&((unsigned short*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
                         ((unsigned short*)dst)[c] = AsFloat16(input[c]);
+                    }
                 }
 
             } else if (dstFormat.first == ComponentType::UNorm8) {  ////////////////////////////////////////////////
@@ -499,8 +536,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                     float input[4];
                     GetVertDataF32(input, (const float*)srcV, srcFormat.second, processingFlags);
 
-                    for (unsigned c=0; c<dstFormat.second; ++c)
+                    for (unsigned c=0; c<dstFormat.second; ++c) {
+                        assert(&((unsigned char*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
                         ((unsigned char*)dst)[c] = (unsigned char)Clamp(((float*)input)[c]*255.f, 0.f, 255.f);
+                    }
                 }
 
             } else {
@@ -515,8 +554,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
                 assert(srcIndex * srcStride + sizeof(uint8) * dstFormat.second <= srcDataSize);
                 auto* srcV = (uint8*)PtrAdd(src, srcIndex * srcStride);
-                for (unsigned c=0; c<dstFormat.second; ++c)
+                for (unsigned c=0; c<dstFormat.second; ++c) {
+                    assert(&((uint8*)dst)[c+1] <= PtrAdd(dst, dstDataSize));
                     ((uint8*)dst)[c] = srcV[c];
+                }
             }
 
         } else {

@@ -25,13 +25,13 @@ namespace RenderCore { namespace ColladaConversion
         class ImportantNode
         {
         public:
-            ObjectGuid _id;
-            std::string _bindingName;
+            ObjectGuid      _id;
+            std::string     _bindingName;
             TransformMarker _transformMarker;
-            Float4x4 _inverseBind;
-            bool _hasInverseBind;
+            Float4x4        _inverseBind;
+            bool            _hasInverseBind;
 
-            ImportantNode() 
+            ImportantNode()
             : _inverseBind(Identity<Float4x4>())
             , _hasInverseBind(false)
             , _transformMarker(TransformMarker_UnSet) {}
@@ -45,17 +45,17 @@ namespace RenderCore { namespace ColladaConversion
             , _hasInverseBind(hasInverseBind) {}
         };
 
-        IteratorRange<const ImportantNode*>     GetImportantNodes() const;
-        ImportantNode                           GetNode(ObjectGuid node) const;
+        auto            GetImportantNodes() const -> IteratorRange<const ImportantNode*>;
+        ImportantNode   GetNode(ObjectGuid node) const;
         
         bool            TryRegisterNode(ObjectGuid node, const char bindingName[]);
         TransformMarker GetOutputMatrixIndex(ObjectGuid node);
 
-        void    AttachInverseBindMatrix(ObjectGuid node, const Float4x4& inverseBind);
-        void    AttachMergeGeometry(ObjectGuid node, const Float4x4& mergeToGeometry);
+        void            AttachInverseBindMatrix(ObjectGuid node, const Float4x4& inverseBind);
+        void            AttachMergeGeometry(ObjectGuid node, const Float4x4& mergeToGeometry);
 
-        void    MarkParameterAnimated(const std::string& paramName);
-        bool    IsAnimated(const std::string& paramName) const;
+        void            MarkParameterAnimated(const std::string& paramName);
+        bool            IsAnimated(const std::string& paramName) const;
 
         SkeletonRegistry();
         ~SkeletonRegistry();

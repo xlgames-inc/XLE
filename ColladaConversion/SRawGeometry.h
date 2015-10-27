@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "../Math/Matrix.h"
+
 namespace RenderCore { namespace ColladaConversion
 {
     class NascentRawGeometry;
@@ -19,7 +21,7 @@ namespace ColladaConversion
     class SkinController;
     class URIResolveContext;
 
-    auto Convert(const MeshGeometry& mesh, const URIResolveContext& pubEles, const RenderCore::ColladaConversion::ImportConfiguration& cfg)
+    auto Convert(const MeshGeometry& mesh, const Float4x4& mergedTransform, const URIResolveContext& pubEles, const RenderCore::ColladaConversion::ImportConfiguration& cfg)
         -> RenderCore::ColladaConversion::NascentRawGeometry;
 
     auto Convert(const SkinController& controller, const URIResolveContext& pubEles, const RenderCore::ColladaConversion::ImportConfiguration& cfg)

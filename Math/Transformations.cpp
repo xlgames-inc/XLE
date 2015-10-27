@@ -575,6 +575,10 @@ namespace XLEMath
 
     RotationScaleTranslation::RotationScaleTranslation(const Float4x4& copyFrom)
     {
+            // todo -- use a better method for decompositing scale and rotation!
+            //          Perhaps use polar decomposition
+            //          See reference here:
+            //              http://callumhay.blogspot.com/2010/10/decomposing-affine-transforms.html
         Float3 scale(
             Magnitude(Float3(copyFrom(0,0), copyFrom(1,0), copyFrom(2,0))),
             Magnitude(Float3(copyFrom(0,1), copyFrom(1,1), copyFrom(2,1))),

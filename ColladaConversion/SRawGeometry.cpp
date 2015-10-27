@@ -99,7 +99,7 @@ namespace ColladaConversion
         using namespace Metal::NativeFormat;
         unsigned parsedTypeSize;
         Metal::NativeFormat::Enum finalFormat;
-        if (sourceType == DataFlow::ArrayType::Int) {
+        if (sourceType == DataFlow::ArrayType::Float) {
             switch (paramCount) {
             case 1: finalFormat = R32_FLOAT; break;
             case 2: finalFormat = R32G32_FLOAT; break;
@@ -107,12 +107,12 @@ namespace ColladaConversion
             default: finalFormat = R32G32B32A32_FLOAT; break;
             }
             parsedTypeSize = sizeof(float);
-        } else if (sourceType == DataFlow::ArrayType::Float) {
+        } else if (sourceType == DataFlow::ArrayType::Int) {
             switch (paramCount) {
-            case 1: finalFormat = R32_UINT; break;
-            case 2: finalFormat = R32G32_UINT; break;
-            case 3: finalFormat = R32G32B32_UINT; break;
-            default: finalFormat = R32G32B32A32_UINT; break;
+            case 1: finalFormat = R32_SINT; break;
+            case 2: finalFormat = R32G32_SINT; break;
+            case 3: finalFormat = R32G32B32_SINT; break;
+            default: finalFormat = R32G32B32A32_SINT; break;
             }
             parsedTypeSize = sizeof(unsigned);
         } else
@@ -545,6 +545,7 @@ namespace ColladaConversion
 
     NascentRawGeometry Convert(
         const MeshGeometry& mesh, 
+        const Float4x4& mergedTransform,
         const URIResolveContext& pubEles, 
         const ImportConfiguration& cfg)
     {
@@ -802,6 +803,13 @@ namespace ColladaConversion
             assert(accumulatingIndexCount==finalIndexCount);
 
         }
+
+            // If we have a merged transform, we need to transform the geometry through
+            // that transform. This means affecting the positions... but also normals and
+            // tangents and other 3d vertex parameters. But texture coordinates and colors
+            // should not be transformed!
+        if (!Equivalent(mergedTransform, Identity<Float4x4>(), 1e-5f))
+            Transform(*database, mergedTransform);
 
             //  Once we have the index buffer, we can generate tangent vectors (if we need to)
             //  We need the triangulation in order to build the tangents, so it must be done

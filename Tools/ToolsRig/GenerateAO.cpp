@@ -405,7 +405,7 @@ namespace ToolsRig
                     // Once that is done, we need to be able to find all of the normals
                     // associated with each point.
 
-                const auto& stream = mesh.GetStream(posElement);
+                const auto& stream = mesh.GetStreams()[posElement];
                 std::vector<unsigned> remapping;
                 auto newSource = RemoveDuplicates(
                     remapping, stream.GetSourceData(), 
@@ -420,8 +420,8 @@ namespace ToolsRig
                     continue;
                 }
 
-                const auto& pStream = mesh.GetStream(posElement);
-                const auto& nStream = mesh.GetStream(nEle);
+                const auto& pStream = mesh.GetStreams()[posElement];
+                const auto& nStream = mesh.GetStreams()[nEle];
                 std::vector<std::pair<unsigned, unsigned>> pn;
                 pn.reserve(mesh.GetUnifiedVertexCount());
                 for (unsigned q=0; q<mesh.GetUnifiedVertexCount(); ++q)

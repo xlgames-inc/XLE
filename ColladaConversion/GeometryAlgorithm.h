@@ -19,6 +19,10 @@ namespace RenderCore { namespace ColladaConversion
         unsigned normalMapTextureCoordinateSemanticIndex,
         const void* rawIb, size_t indexCount, Metal::NativeFormat::Enum ibFormat);
 
+    void Transform(
+        RenderCore::Assets::GeoProc::MeshDatabase& mesh, 
+        const Float4x4& transform);
+
     void RemoveRedundantBitangents(
         RenderCore::Assets::GeoProc::MeshDatabase& mesh);
 
