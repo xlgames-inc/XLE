@@ -182,7 +182,7 @@ namespace RenderCore { namespace ColladaConversion
     {
         assert(CanMergeIntoOutputMatrix(outputMatrixIndex));
         _mergedTransforms[outputMatrixIndex] = Combine(
-            transform, _mergedTransforms[outputMatrixIndex]);
+            _mergedTransforms[outputMatrixIndex], transform);
     }
 
     Float4x4 TransMachineOptimizer::GetMergedOutputMatrix(unsigned outputMatrixIndex) const

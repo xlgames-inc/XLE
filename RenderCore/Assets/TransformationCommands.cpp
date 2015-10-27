@@ -359,7 +359,7 @@ namespace RenderCore { namespace Assets
 
             auto& dstTrans = *(Float4x4*)AsPointer(dst+1);
             auto& mergeTrans = *(Float4x4*)AsPointer(mergingCmd+1);
-            dstTrans = Combine(mergeTrans, dstTrans);
+            dstTrans = Combine(dstTrans, mergeTrans);
         } else {
             // Otherwise we need to promote both transforms into Float4x4, and we will push
             // a new Float4x4 transform into the space in "dst"
@@ -368,7 +368,7 @@ namespace RenderCore { namespace Assets
             auto t = cmdStream.erase(dst+1, dst+CommandSize(TransformStackCommand(*dst)));
             assert(t==dst+1);
             *dst = (uint32)TransformStackCommand::TransformFloat4x4_Static;
-            auto finalTransform = Combine(mergeTransform, dstTransform);
+            auto finalTransform = Combine(dstTransform, mergeTransform);
             cmdStream.insert(dst+1, (uint32*)&finalTransform, (uint32*)(&finalTransform + 1));
         }
     }
