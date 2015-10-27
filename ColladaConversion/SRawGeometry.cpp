@@ -550,7 +550,10 @@ namespace ColladaConversion
         const ImportConfiguration& cfg)
     {
             // some exports can have empty meshes -- ideally, we just want to ignore them
-        if (!mesh.GetPrimitivesCount()) return NascentRawGeometry();
+        if (!mesh.GetPrimitivesCount()) {
+            LogWarning << "Geometry object with no primitives: " << mesh.GetName();
+            return NascentRawGeometry();
+        }
 
             //
             //      In Collada format, we have a separate index buffer per input

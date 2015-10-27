@@ -331,6 +331,7 @@ namespace Utility
         Type*           end() never_throws                              { return &_elements[_count]; }
         size_t          size() const never_throws                       { return _count; }
         Type&           operator[](size_t index) never_throws           { assert(index < _count); return _elements[index]; }
+        bool            empty() never_throws                            { return !_count; }
 
         const Type*     begin() const never_throws                      { return _elements.get(); }
         const Type*     end() const never_throws                        { return &_elements[_count]; }

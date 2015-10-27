@@ -20,6 +20,7 @@ namespace ColladaConversion
     public:
         uint64 GetHash() const          { return _hash; }
         Section GetOriginal() const     { return _section; }
+        bool IsEmpty() const            { return _section.Empty(); }
 
         DocScopeId(Section section);
         DocScopeId() : _hash(0) {}

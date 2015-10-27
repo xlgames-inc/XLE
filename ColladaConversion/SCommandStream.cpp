@@ -19,6 +19,7 @@
 #include "ConversionUtil.h"
 #include "../RenderCore/Assets/Material.h"  // for MakeMaterialGuid
 #include "../Utility/MemoryUtils.h"
+#include "../Utility/StringFormat.h"
 #include "ConversionCore.h"
 #include <string>
 
@@ -204,8 +205,21 @@ namespace RenderCore { namespace ColladaConversion
             if (!scaffoldGeo)
                 Throw(::Assets::Exceptions::FormatError("Could not found geometry object to instantiate (%s)",
                     AsString(instGeo._reference).c_str()));
-            auto covertedMesh = Convert(*scaffoldGeo, mergedTransform, resolveContext, cfg);
-            objects._rawGeos.push_back(std::make_pair(geoId, std::move(covertedMesh)));
+
+            auto convertedMesh = Convert(*scaffoldGeo, mergedTransform, resolveContext, cfg);
+            if (convertedMesh._mainDrawCalls.empty()) {
+                    
+                    // everything else should be empty as well...
+                assert(convertedMesh._vertices.empty());
+                assert(convertedMesh._indices.empty());
+                assert(convertedMesh._matBindingSymbols.empty());
+                assert(convertedMesh._unifiedVertexIndexToPositionIndex.empty());
+                
+                Throw(::Assets::Exceptions::FormatError(
+                    "Geometry object is empty (%s)", AsString(instGeo._reference).c_str()));
+            }
+
+            objects._rawGeos.push_back(std::make_pair(geoId, std::move(convertedMesh)));
             geo = (unsigned)(objects._rawGeos.size()-1);
          }
         
@@ -432,9 +446,23 @@ namespace RenderCore { namespace ColladaConversion
             //  -- if it exists. If there is no name, we'll fall back to "id"
         if (node.GetName()._end > node.GetName()._start)
             return AsString(node.GetName()); 
-        return AsString(node.GetId().GetOriginal());
+        if (!node.GetId().IsEmpty())
+            return AsString(node.GetId().GetOriginal());
+        return XlDynFormatString("Unnamed%i", (unsigned)node.GetIndex());
     }
-    static ObjectGuid AsObjectGuid(const Node& node)            { return node.GetId().GetHash(); }
+
+    static ObjectGuid AsObjectGuid(const Node& node)
+    { 
+        if (!node.GetId().IsEmpty())
+            return node.GetId().GetHash(); 
+        if (!node.GetName().Empty())
+            return Hash64(node.GetName().begin(), node.GetName().end());
+
+        // If we have no name & no id -- it is truly anonymous. 
+        // We can just use the index of the node, it's the only unique
+        // thing we have.
+        return ObjectGuid(node.GetIndex());
+    }
 
     static bool IsUseful(const Node& node, const SkeletonRegistry& skeletonReferences)
     {

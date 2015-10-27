@@ -500,6 +500,16 @@ namespace RenderCore { namespace Assets
                             auto outputMatrixIndex = *((*r)+1);
                             bool canMerge = optimizer.CanMergeIntoOutputMatrix(outputMatrixIndex);
                             if (canMerge) {
+                                    // If the same output matrix appears multiple times in our influences
+                                    // list, then it will cause problems... We don't want to merge the same
+                                    // transform into the same output matrix multiple times. But a single 
+                                    // command list should write to each output matrix only once -- so this
+                                    // should never happen.
+                                for (auto r2=influences.rbegin(); r2<r; ++r2)
+                                    if (    AsMergeType(TransformStackCommand(**r2)) == MergeType::OutputMatrix
+                                        &&  *((*r2)+1) == outputMatrixIndex)
+                                        Throw(::Exceptions::BasicLabel("Writing to the same output matrix multiple times in transformation machine. Output matrix index: %u", outputMatrixIndex));
+
                                 auto transform = PromoteToFloat4x4(AsPointer(i));
                                 optimizer.MergeIntoOutputMatrix(outputMatrixIndex, transform);
                             } else {

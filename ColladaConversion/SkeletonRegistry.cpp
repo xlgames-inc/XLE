@@ -19,12 +19,14 @@ namespace RenderCore { namespace ColladaConversion
 
     bool SkeletonRegistry::IsImportant(ObjectGuid node) const
     {
+        if (node == ObjectGuid()) return false;
         auto i = std::lower_bound(_importantNodes.begin(), _importantNodes.end(), node, CompareId());
         return i != _importantNodes.end() && i->_id == node;
     }
 
     auto SkeletonRegistry::GetOutputMatrixIndex(ObjectGuid node) -> TransformMarker
     {
+        if (node == ObjectGuid()) return ~0u;
         auto i = std::lower_bound(_importantNodes.begin(), _importantNodes.end(), node, CompareId());
         if (i != _importantNodes.end() && i->_id == node) {
             if (i->_transformMarker == TransformMarker_UnSet)
@@ -39,6 +41,7 @@ namespace RenderCore { namespace ColladaConversion
 
     bool SkeletonRegistry::TryRegisterNode(ObjectGuid node, const char bindingName[])
     {
+        if (node == ObjectGuid()) return false;
         // look for other nodes bound to the same name
         for(const auto&i:_importantNodes)
             if (i._bindingName == bindingName)
@@ -59,6 +62,7 @@ namespace RenderCore { namespace ColladaConversion
 
     void SkeletonRegistry::AttachInverseBindMatrix(ObjectGuid node, const Float4x4& inverseBind)
     {
+        if (node == ObjectGuid()) return;
         auto i = std::lower_bound(_importantNodes.begin(), _importantNodes.end(), node, CompareId());
         if (i != _importantNodes.end() && i->_id == node) {
             i->_inverseBind = inverseBind;
