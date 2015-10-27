@@ -37,6 +37,9 @@ namespace RenderCore { namespace Assets
         case TransformStackCommand::WriteOutputMatrix:
             return 1;
 
+        case TransformStackCommand::TransformFloat4x4AndWrite_Static: return 1+16;
+        case TransformStackCommand::TransformFloat4x4AndWrite_Parameter: return 1+1;
+
         default: return 0;
         }
     }
@@ -120,29 +123,6 @@ namespace RenderCore { namespace Assets
             // Now look for push operations that are redundant
         for (auto i=cmdStream.begin(); i!=cmdStream.end();) {
             if (*i == (uint32)TransformStackCommand::PushLocalToWorld) {
-                    // let's scan forward to find the pop operation that matches
-                    // this push...
-                #if 0
-                    signed finalIdentLevel = 0;
-                    auto pop = SkipUntilPop(i+1, cmdStream.end(), finalIdentLevel);
-
-                    // If finalIdentLevel < 0, it means our push was popped in a multi-pop sequence. 
-                    // But it wasn't the last pop in that sequence. Therefore it was not used 
-                    // after pop -- and so is redundant.
-                    // Alternatively, if the pop is the very last thing in the command stream, it 
-                    // is also redundant.
-                    if (pop == cmdStream.end()) {
-                        i = cmdStream.erase(i); // no pop found!
-                    } else if (finalIdentLevel < 0) {
-                        assert(*(pop+1) > 1);
-                        (*(pop+1))--; // reduce the pop count
-                        i = cmdStream.erase(i);
-                    } else if ((pop+2) == cmdStream.end()) {
-                        cmdStream.erase(pop, pop+2);    // erase both the push & the pop
-                        i = cmdStream.erase(i);
-                    } else ++i;
-                #endif
-
                 bool isRedundant = false;
                 auto pop = IsRedundantPush(i, cmdStream.end(), isRedundant);
                 if (isRedundant) {
@@ -155,6 +135,7 @@ namespace RenderCore { namespace Assets
                         }
                     }
                     i = cmdStream.erase(i);
+                    continue;
                 }
             } 
 
@@ -183,20 +164,22 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    static const uint32* FindDownstreamInfluences(const uint32* i, const uint32* end, std::vector<const uint32*>& result, signed& finalIdentLevel)
+    static const uint32* FindDownstreamInfluences(
+        const uint32* i, IteratorRange<const uint32*> range, 
+        std::vector<size_t>& result, signed& finalIdentLevel)
     {
             // Search forward and find the commands that are going to directly 
             // effected by the transform before i
-        for (;i<end;) {
+        for (;i<range.end();) {
             auto type = AsMergeType(TransformStackCommand(*i));
             if (type == MergeType::StaticTransform || type == MergeType::Blocker) {
                 // Hitting a static transform blocks any further searches
                 // We can just skip until we pop out of this block
-                result.push_back(i);
-                i = SkipUntilPop(i, end, finalIdentLevel);
+                result.push_back(i-range.begin());
+                i = SkipUntilPop(i, range.end(), finalIdentLevel);
                 return i+1+CommandSize((TransformStackCommand)*i);
             } else if (type == MergeType::OutputMatrix) {
-                result.push_back(i);
+                result.push_back(i-range.begin());
                 i += 1 + CommandSize((TransformStackCommand)*i);
             } else if (type == MergeType::Pop) {
                 auto popCount = *(i+1);
@@ -207,7 +190,7 @@ namespace RenderCore { namespace Assets
                 // Here, we must find all of the influences in the
                 // pushed branch, and then continue on from the next
                 // pop
-                i = FindDownstreamInfluences(i+1, end, result, finalIdentLevel);
+                i = FindDownstreamInfluences(i+1, range, result, finalIdentLevel);
                 if (finalIdentLevel < 0) {
                     ++finalIdentLevel;
                     return i;
@@ -219,12 +202,13 @@ namespace RenderCore { namespace Assets
     }
 
     static bool ShouldDoMerge(
-        IteratorRange<const uint32**> influences, 
+        IteratorRange<size_t*> influences, 
+        IteratorRange<const uint32*> cmdStream,
         ITransformationMachineOptimizer& optimizer)
     {
         signed commandAdjustment = -1;
-        for (const auto& c:influences) {
-            switch (AsMergeType(TransformStackCommand(*c))) {
+        for (auto c:influences) {
+            switch (AsMergeType(TransformStackCommand(cmdStream[c]))) {
             case MergeType::StaticTransform:
                     // This other transform might be merged away, also -- if it can be merged further.
                     // so let's consider it another dropped command
@@ -234,7 +218,7 @@ namespace RenderCore { namespace Assets
                 ++commandAdjustment;
                 break;
             case MergeType::OutputMatrix:
-                if (!optimizer.CanMergeIntoOutputMatrix(*(c+1)))
+                if (!optimizer.CanMergeIntoOutputMatrix(cmdStream[c+1]))
                     ++commandAdjustment;
                 break;
 
@@ -436,9 +420,9 @@ namespace RenderCore { namespace Assets
             auto next = i + 1 + CommandSize(TransformStackCommand(*i));
             if (type == MergeType::StaticTransform) {
                     // Search forward & find influences
-                std::vector<const uint32*> influences; signed finalIdentLevel = 0;
+                std::vector<size_t> influences; signed finalIdentLevel = 0;
                 FindDownstreamInfluences(
-                    AsPointer(next), AsPointer(cmdStream.end()),
+                    AsPointer(next), MakeIteratorRange(cmdStream),
                     influences, finalIdentLevel);
 
                     // We need to decide whether to merge or not.
@@ -460,21 +444,21 @@ namespace RenderCore { namespace Assets
                 } 
                 
                 bool isSpecialCase = false;
-                if (influences.size() == 1 && AsMergeType(TransformStackCommand(*influences[0])) == MergeType::StaticTransform) {
+                if (influences.size() == 1 && AsMergeType(TransformStackCommand(cmdStream[influences[0]])) == MergeType::StaticTransform) {
                         // we have a single static transform influence. Let's check the influences for
                         // the other transform.
-                    std::vector<const uint32*> secondaryInfluences; 
+                    std::vector<size_t> secondaryInfluences; 
                     FindDownstreamInfluences(
-                        influences[0], AsPointer(cmdStream.end()),
+                        &cmdStream[influences[0]], MakeIteratorRange(cmdStream),
                         secondaryInfluences, finalIdentLevel);
-                    isSpecialCase = !ShouldDoMerge(MakeIteratorRange(secondaryInfluences), optimizer);
+                    isSpecialCase = !ShouldDoMerge(MakeIteratorRange(secondaryInfluences), MakeIteratorRange(cmdStream), optimizer);
                 }
 
                 bool doMerge = false;
                 if (isSpecialCase) {
-                    doMerge = ShouldDoSimpleMerge(TransformStackCommand(*i), TransformStackCommand(*influences[0]));
+                    doMerge = ShouldDoSimpleMerge(TransformStackCommand(*i), TransformStackCommand(cmdStream[influences[0]]));
                 } else {
-                    doMerge = ShouldDoMerge(MakeIteratorRange(influences), optimizer);
+                    doMerge = ShouldDoMerge(MakeIteratorRange(influences), MakeIteratorRange(cmdStream), optimizer);
                 }
 
                 if (doMerge) {
@@ -486,18 +470,24 @@ namespace RenderCore { namespace Assets
                         // command). Let's walk through the influences in reverse order, to avoid screwing up
                         // our iterators immediately
                     for (auto r=influences.rbegin(); r!=influences.rend(); ++r) {
-                        auto i2 = cmdStream.begin() + (*r - AsPointer(cmdStream.begin()));
-                        auto type = AsMergeType(TransformStackCommand(**r));
+                        auto i2 = cmdStream.begin() + *r;
+                        auto type = AsMergeType(TransformStackCommand(*i2));
                         if (type == MergeType::StaticTransform) {
                             DoTransformMerge(cmdStream, i2, i);
+                            i = cmdStream.begin()+iPos; next = cmdStream.begin()+nextPos;
                         } else if (type == MergeType::Blocker) {
                             // this case always involves pushing a duplicate of the original command
-                            cmdStream.insert(i2, i, next);
+                            // plus, we need a push/pop pair surrounding it
+                            auto insertSize = next-i;
+                            i2 = cmdStream.insert(i2, i, next);
+                            i2 = cmdStream.insert(i2, (uint32)TransformStackCommand::PushLocalToWorld);
+                            uint32 popIntr[] = { (uint32)TransformStackCommand::PopLocalToWorld, 1 };
+                            i2 = cmdStream.insert(i2+1+insertSize, &popIntr[0], &popIntr[2]);
                             i = cmdStream.begin()+iPos; next = cmdStream.begin()+nextPos;
                         } else if (type == MergeType::OutputMatrix) {
                             // We must either record this transform to be merged into
                             // this output transform, or we have to insert a push into here
-                            auto outputMatrixIndex = *((*r)+1);
+                            auto outputMatrixIndex = *(i2+1);
                             bool canMerge = optimizer.CanMergeIntoOutputMatrix(outputMatrixIndex);
                             if (canMerge) {
                                     // If the same output matrix appears multiple times in our influences
@@ -506,14 +496,18 @@ namespace RenderCore { namespace Assets
                                     // command list should write to each output matrix only once -- so this
                                     // should never happen.
                                 for (auto r2=influences.rbegin(); r2<r; ++r2)
-                                    if (    AsMergeType(TransformStackCommand(**r2)) == MergeType::OutputMatrix
-                                        &&  *((*r2)+1) == outputMatrixIndex)
+                                    if (    AsMergeType(TransformStackCommand(cmdStream[*r2])) == MergeType::OutputMatrix
+                                        &&  cmdStream[*r2+1] == outputMatrixIndex)
                                         Throw(::Exceptions::BasicLabel("Writing to the same output matrix multiple times in transformation machine. Output matrix index: %u", outputMatrixIndex));
 
                                 auto transform = PromoteToFloat4x4(AsPointer(i));
                                 optimizer.MergeIntoOutputMatrix(outputMatrixIndex, transform);
                             } else {
-                                cmdStream.insert(i2, i, next);
+                                auto insertSize = next-i;
+                                i2 = cmdStream.insert(i2, i, next);
+                                i2 = cmdStream.insert(i2, (uint32)TransformStackCommand::PushLocalToWorld);
+                                uint32 popIntr[] = { (uint32)TransformStackCommand::PopLocalToWorld, 1 };
+                                i2 = cmdStream.insert(i2+1+insertSize, &popIntr[0], &popIntr[2]);
                                 i = cmdStream.begin()+iPos; next = cmdStream.begin()+nextPos;
                             }
                         }
@@ -523,6 +517,52 @@ namespace RenderCore { namespace Assets
                     i = cmdStream.erase(i, next);
                     continue;
                 }
+            }
+
+            i += 1 + CommandSize(TransformStackCommand(*i));
+        }
+    }
+
+    static void OptimizePatterns(std::vector<uint32>& cmdStream)
+    {
+        // Replace certain common patterns in the stream with a "macro" command.
+        // This is like macro instructions for intel processors... they are a single
+        // command that expands to multiple simplier instructions.
+        //
+        // Patterns:
+        //    * Push, TransformFloat4x4_Static, WriteOutputMatrix, Pop
+        //          -> TransformFloat4x4AndWrite_Static
+        //    * Push, TransformFloat4x4_Parameter, WriteOutputMatrix, Pop
+        //          -> TransformFloat4x4AndWrite_Parameter
+        
+        for (auto i=cmdStream.begin(); i!=cmdStream.end();) {
+            std::pair<TransformStackCommand, std::vector<uint32>::iterator> nextInstructions[4];
+            auto i2 = i;
+            for (unsigned c=0; c<dimof(nextInstructions); ++c) {
+                if (i2 < cmdStream.end()) {
+                    nextInstructions[c] = std::make_pair(TransformStackCommand(*i2), i2);
+                    i2 += 1 + CommandSize(TransformStackCommand(*i2));
+                } else {
+                    nextInstructions[c] = std::make_pair(TransformStackCommand(~0u), i2);
+                }
+            }
+
+            if (    nextInstructions[0].first == TransformStackCommand::PushLocalToWorld
+                &&  (nextInstructions[1].first == TransformStackCommand::TransformFloat4x4_Static || nextInstructions[1].first == TransformStackCommand::TransformFloat4x4_Parameter)
+                &&  nextInstructions[2].first == TransformStackCommand::WriteOutputMatrix
+                &&  nextInstructions[3].first == TransformStackCommand::PopLocalToWorld) {
+
+                    // Remove instructions 2 & 3
+                    //  -- and merge 0 & 1 into a single TransformFloat4x4AndWrite_Static
+                auto endOf4Instructions = nextInstructions[3].second + 1 + CommandSize(nextInstructions[3].first);
+                auto outputIndex = *(nextInstructions[2].second+1);
+                cmdStream.erase(nextInstructions[2].second, endOf4Instructions);
+                if (nextInstructions[1].first == TransformStackCommand::TransformFloat4x4_Static)
+                    *nextInstructions[0].second = (uint32)TransformStackCommand::TransformFloat4x4AndWrite_Static;
+                else 
+                    *nextInstructions[0].second = (uint32)TransformStackCommand::TransformFloat4x4AndWrite_Parameter;
+                *nextInstructions[1].second = outputIndex;
+                continue;
             }
 
             i += 1 + CommandSize(TransformStackCommand(*i));
@@ -546,6 +586,8 @@ namespace RenderCore { namespace Assets
         //  (4) Where a push is followed immediately by a pop, we can remove both.
         //  (5) We can convert static transformations into equivalent simplier types
         //      (eg, replace a matrix 4x4 transforms with an equivalent translate transform)
+        //  (6) Replace certain patterns with optimized simplier patterns 
+        //      (eg, "push, transform, output, pop" can become a single optimised command)
         //
         // Note that the order in which we consider each optimisation will effect the final
         // result (because some optimisation will create new cases for other optimisations to
@@ -555,6 +597,8 @@ namespace RenderCore { namespace Assets
         RemoveRedundantPushes(result);
         MergeSequentialTransforms(result, optimizer);
         RemoveRedundantPushes(result);
+        OptimizePatterns(result);
+
         return std::move(result);
     }
 
@@ -772,9 +816,38 @@ namespace RenderCore { namespace Assets
 
                         if (constant_expression<UseDebugIterator>::result() && workingTransform != workingStack)
                             debugIterator(*(workingTransform-1), *workingTransform);
-                    } else {
+                    } else
                         LogWarning << "Warning -- bad output matrix index (" << outputIndex << ")";
-                    }
+                }
+                break;
+
+            case TransformStackCommand::TransformFloat4x4AndWrite_Static:
+                {
+                    uint32 outputIndex = *i++;
+                    const Float4x4& transformMatrix = *reinterpret_cast<const Float4x4*>(AsPointer(i)); 
+                    i += 16;
+                    if (outputIndex < resultCount) {
+                        result[outputIndex] = Combine(transformMatrix, *workingTransform);
+                        if (constant_expression<UseDebugIterator>::result() && workingTransform != workingStack)
+                            debugIterator(*workingTransform, result[outputIndex]);
+                    } else
+                        LogWarning << "Warning -- bad output matrix index in TransformFloat4x4AndWrite_Static (" << outputIndex << ")";
+                }
+                break;
+
+            case TransformStackCommand::TransformFloat4x4AndWrite_Parameter:
+                {
+                    uint32 outputIndex = *i++;
+                    uint32 parameterIndex = *i++;
+                    if (parameterIndex < float4x4Count) {
+                        if (outputIndex < resultCount) {
+                            result[outputIndex] = Combine(float4x4s[parameterIndex], *workingTransform);
+                            if (constant_expression<UseDebugIterator>::result() && workingTransform != workingStack)
+                                debugIterator(*workingTransform, result[outputIndex]);
+                        } else
+                            LogWarning << "Warning -- bad output matrix index in TransformFloat4x4AndWrite_Parameter (" << outputIndex << ")";
+                    } else
+                        LogWarning << "Warning -- bad parameter index for TransformFloat4x4AndWrite_Parameter command (" << parameterIndex << ")";
                 }
                 break;
             }
@@ -968,6 +1041,27 @@ namespace RenderCore { namespace Assets
                     stream << " (" << outputMatrixToName(*i) << ")";
                 stream << std::endl;
                 i++;
+                break;
+
+            case TransformStackCommand::TransformFloat4x4AndWrite_Static:
+                {
+                    stream << indentBuffer << "TransformFloat4x4AndWrite_Static [" << *i << "]";
+                    if (outputMatrixToName)
+                        stream << " (" << outputMatrixToName(*i) << ")";
+                    auto trans = *reinterpret_cast<const Float4x4*>(AsPointer(i+1));
+                    stream << indentBuffer << " trans diag: (" 
+                        << trans(0,0) << ", " << trans(1,1) << ", " << trans(2,2) << ", " << trans(3,3) << ")" << std::endl;
+                    i+=1+16;
+                }
+                break;
+
+            case TransformStackCommand::TransformFloat4x4AndWrite_Parameter:
+                stream << indentBuffer << "TransformFloat4x4AndWrite_Parameter [" << *i << "]";
+                if (outputMatrixToName)
+                    stream << " (" << outputMatrixToName(*i) << ")";
+                stream << indentBuffer << " param: (" 
+                    << parameterToName(TransformationParameterSet::Type::Float4x4, *(i+1)) << ")" << std::endl;
+                i+=2;
                 break;
             }
 

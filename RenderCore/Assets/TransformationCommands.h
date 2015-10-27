@@ -53,7 +53,9 @@ namespace RenderCore { namespace Assets
         UniformScale_Parameter,         // scalar (float)
         ArbitraryScale_Parameter,       // X, Y, Z scales (float)
 
-        WriteOutputMatrix
+        WriteOutputMatrix,
+        TransformFloat4x4AndWrite_Static,
+        TransformFloat4x4AndWrite_Parameter
     };
 
             //////////////////////////////////////////////////////////
