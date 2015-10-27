@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Transformations.h"
+#include "EigenVector.h"
 #include <assert.h>
 
 namespace XLEMath
@@ -593,6 +594,52 @@ namespace XLEMath
         cml::quaternion_rotation_matrix(_rotation, rotationAsMatrix);
         _scale = scale;
         _translation = translation;
+    }
+
+    Float3x3ScaleTranslation::Float3x3ScaleTranslation(const Float4x4& copyFrom)
+    {
+        // Using RU decomposition to separate the rotation and scale part.
+        // See reference here:
+        // http://www.continuummechanics.org/cm/polardecomposition.html
+        // & http://callumhay.blogspot.com/2010/10/decomposing-affine-transforms.html
+        // However note that this method calculates the eigen vectors for
+        // one matrix, and then inverts another matrix. It seems like the 
+        // quantity of calculations could introduce some floating point creep.
+        // It might be better if we could find a way to calculate R without the 
+        // matrix invert.
+
+        Float3x3 F = Truncate3x3(copyFrom);
+        auto utu = Transpose(F) * F;
+
+        Eigen<float> kES(3);
+		kES(0,0) = utu(0,0);
+		kES(0,1) = utu(0,1);
+		kES(0,2) = utu(0,2);
+		kES(1,0) = utu(1,0);
+		kES(1,1) = utu(1,1);
+		kES(1,2) = utu(1,2);
+		kES(2,0) = utu(2,0);
+		kES(2,1) = utu(2,1);
+		kES(2,2) = utu(2,2);
+		kES.EigenStuff3();
+
+        auto* eigenValues = kES.GetEigenvalues();
+        Float3x3 Udash(
+            XlSqrt(eigenValues[0]), 0.f, 0.f,
+            0.f, XlSqrt(eigenValues[1]), 0.f,
+            0.f, 0.f, XlSqrt(eigenValues[2]));
+        auto Q = Truncate3x3(kES.GetEigenvectors());
+        auto U = Transpose(Q) * Udash * Q;
+        auto R = F * Inverse(U);
+
+        // U and R are our decomposed scale & rotation parts.
+        // U should be orthonormal, now.
+        // If the off-diagonal parts of R are not zero, it means the matrix
+        // must have some skew.
+
+        _translation = ExtractTranslation(copyFrom);
+        _rotation = R;
+        _scale = Float3(U(0,0), U(1,1), U(2,2));
     }
 
     RotationScaleTranslation SphericalInterpolate(

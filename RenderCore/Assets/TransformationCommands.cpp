@@ -569,6 +569,70 @@ namespace RenderCore { namespace Assets
         }
     }
 
+    static bool IsUniformScale(Float3 scale, float threshold)
+    {
+            // expensive, but balanced way to do this...
+        float diff1 = XlAbs(scale[0] - scale[1]);
+        if (diff1 > std::max(XlAbs(scale[0]), XlAbs(scale[1])) * threshold)
+            return false;
+        float diff2 = XlAbs(scale[0] - scale[2]);
+        if (diff2 > std::max(XlAbs(scale[0]), XlAbs(scale[2])) * threshold)
+            return false;
+        float diff3 = XlAbs(scale[1] - scale[2]);
+        if (diff3 > std::max(XlAbs(scale[1]), XlAbs(scale[2])) * threshold)
+            return false;
+        return true;
+    }
+
+    static float GetMedianElement(Float3 input)
+    {
+        Float3 absv(XlAbs(input[0]), XlAbs(input[1]), XlAbs(input[2]));
+        if (absv[0] < absv[1]) {
+            if (absv[2] < absv[0]) return absv[0];
+            if (absv[2] < absv[1]) return absv[2];
+            return absv[1];
+        } else {
+            if (absv[2] > absv[0]) return absv[0];
+            if (absv[2] > absv[1]) return absv[2];
+            return absv[1];
+        }
+    }
+
+    static void SimplifyTransformTypes(std::vector<uint32>& cmdStream)
+    {
+        // In some cases we can simplify the transformation type used in a command. 
+        // For example, if the command is a Float4x4 transform, but that matrix only 
+        // performs a translation, we can simplify this to just a "translate" operation.
+        // Of course, we can only do this for static transform types.
+
+        const float scaleThreshold = 1e-5f;
+        // const float identityThreshold = 1e-5f;
+
+        for (auto i=cmdStream.begin(); i!=cmdStream.end();) {
+            auto type = TransformStackCommand(*i);
+            if (type == TransformStackCommand::TransformFloat4x4_Static) {
+
+                    // Let's try to decompose our matrix into its component
+                    // parts. If we get a very simple result, we should 
+                    // replace the transform
+                auto transform = *(Float4x4*)AsPointer(i+1);
+
+
+            } else if (type == TransformStackCommand::ArbitraryScale_Static) {
+                    // if our arbitrary scale factor is actually a uniform scale,
+                    // we should definitely change it!
+                auto scale = *(Float3*)AsPointer(i+1);
+                if (IsUniformScale(scale, scaleThreshold)) {
+                    *i = (uint32)TransformStackCommand::UniformScale_Static;
+                    cmdStream.erase(i+1, i+3);
+                    *(float*)AsPointer(i+1) = GetMedianElement(scale);
+                }
+            }
+
+            i += 1 + CommandSize(TransformStackCommand(*i));
+        }
+    }
+
     std::vector<uint32> OptimizeTransformationMachine(
         IteratorRange<const uint32*> input,
         ITransformationMachineOptimizer& optimizer)
@@ -597,6 +661,7 @@ namespace RenderCore { namespace Assets
         RemoveRedundantPushes(result);
         MergeSequentialTransforms(result, optimizer);
         RemoveRedundantPushes(result);
+        SimplifyTransformTypes(result);
         OptimizePatterns(result);
 
         return std::move(result);

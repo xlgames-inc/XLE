@@ -99,6 +99,16 @@ namespace XLEMath
         RotationScaleTranslation(const Quaternion& rotation, Float3 scale, Float3 translation);
     };
 
+    class Float3x3ScaleTranslation
+    {
+    public:
+        Float3x3    _rotation;
+        Float3      _scale;
+        Float3      _translation;
+
+        explicit Float3x3ScaleTranslation(const Float4x4& copyFrom);
+    };
+
     class ScaleTranslation
     {
     public:
