@@ -574,6 +574,16 @@ namespace XLEMath
 
         ////////////////////////////////////////////////////////////////
 
+    ArbitraryRotation::ArbitraryRotation(const Float3x3& rotationMatrix)
+    {
+        // Assuming the input is a orthonormal rotation matrix, let's extract
+        // the axis/angle form.
+        assert(IsOrthonormal(rotationMatrix));
+        cml::matrix_to_axis_angle(rotationMatrix, _axis, _angle);
+    }
+
+        ////////////////////////////////////////////////////////////////
+
     static Float3x3 SqRootSymmetric(const Float3x3& usq)
     {
         // Find the squareroot of the input matrix
@@ -615,6 +625,14 @@ namespace XLEMath
             return result;
         }
 
+    static bool AssumingSymmetricIsDiagonal(const Float3x3& input, float threshold)
+    {
+        // assuming the input is symmetric, is it diagonal?
+        return  XlAbs(input(0,1)) < threshold
+            &&  XlAbs(input(0,2)) < threshold
+            &&  XlAbs(input(1,2)) < threshold;
+    }
+
     template<typename RotationType>
         ScaleRotationTranslation<RotationType>::ScaleRotationTranslation(
             const Float4x4& copyFrom)
@@ -642,12 +660,7 @@ namespace XLEMath
             // (taking the squareroot becomes trivial, as does building the inverse)
 
         const float diagThreshold = 1e-4f;  // we can give a little leaway here
-        const bool isDiagonal = 
-                XlAbs(usq(0,1)) < diagThreshold
-            &&  XlAbs(usq(0,2)) < diagThreshold
-            &&  XlAbs(usq(1,2)) < diagThreshold;
-
-        if (isDiagonal) {
+        if (AssumingSymmetricIsDiagonal(usq, diagThreshold)) {
                 // To take the square root of a diagonal matrix, we just have to
                 // take the square root of the diagonal elements.
                 // Since the diagonal parts of usq are the dot products of the 
@@ -673,6 +686,38 @@ namespace XLEMath
             auto U = SqRootSymmetric(usq); // U is our decomposed scale part.
             _rotation = Convert<RotationType>(F * Inverse(U));
             _scale = Float3(U(0,0), U(1,1), U(2,2));
+        }
+
+        _translation = ExtractTranslation(copyFrom);
+    }
+
+    template<typename RotationType>
+        ScaleRotationTranslation<RotationType>::ScaleRotationTranslation(
+            const Float4x4& copyFrom, bool& goodDecomposition)
+    {
+        Float3x3 F = Truncate3x3(copyFrom);
+        auto usq = LeftMultiplyByTranspose(F);
+
+        const float diagThreshold = 1e-4f;
+        if (AssumingSymmetricIsDiagonal(usq, diagThreshold)) {
+            _scale = Float3(XlSqrt(usq(0,0)), XlSqrt(usq(1,1)), XlSqrt(usq(2,2)));
+            Float3x3 rotPart(
+                F(0,0)/_scale[0], F(0,1)/_scale[1], F(0,2)/_scale[2],
+                F(1,0)/_scale[0], F(1,1)/_scale[1], F(1,2)/_scale[2],
+                F(2,0)/_scale[0], F(2,1)/_scale[1], F(2,2)/_scale[2]);
+            _rotation = Convert<RotationType>(rotPart);
+            goodDecomposition = true;
+        } else {
+            auto U = SqRootSymmetric(usq); // U is our decomposed scale part.
+            _rotation = Convert<RotationType>(F * Inverse(U));
+            _scale = Float3(U(0,0), U(1,1), U(2,2));
+
+                // Do a final test for skew... Sometimes when we get here,
+                // the skew is insignificant.
+                // U should be symmetric, as well. We just want to see if
+                // it is diagonal.
+            const float skewThreshold = 1e-5f;
+            goodDecomposition = AssumingSymmetricIsDiagonal(U, skewThreshold);
         }
 
         _translation = ExtractTranslation(copyFrom);

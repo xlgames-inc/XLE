@@ -606,17 +606,80 @@ namespace RenderCore { namespace Assets
         // Of course, we can only do this for static transform types.
 
         const float scaleThreshold = 1e-5f;
-        // const float identityThreshold = 1e-5f;
+        const float identityThreshold = 1e-5f;
 
         for (auto i=cmdStream.begin(); i!=cmdStream.end();) {
             auto type = TransformStackCommand(*i);
             if (type == TransformStackCommand::TransformFloat4x4_Static) {
 
+                auto cmdEnd = i+1+CommandSize(type);
+
                     // Let's try to decompose our matrix into its component
                     // parts. If we get a very simple result, we should 
                     // replace the transform
                 auto transform = *(Float4x4*)AsPointer(i+1);
+                bool goodDecomposition = false;
+                ScaleRotationTranslationM decomposed(transform, goodDecomposition);
+                if (goodDecomposition) {
+                    bool hasRotation    = !Equivalent(decomposed._rotation, Identity<Float3x3>(), identityThreshold);
+                    bool hasScale       = !Equivalent(decomposed._scale, Float3(1.f, 1.f, 1.f), identityThreshold);
+                    bool hasTranslation = !Equivalent(decomposed._translation, Float3(0.f, 0.f, 0.f), identityThreshold);
 
+                    // If we have only a single type of transform, we will decompose.
+                    // If we have just scale & translation, we will also decompose.
+                    if (hasRotation && !hasScale && !hasTranslation) {
+                        // What's the best form for rotation here? We have lots of options:
+                        //  Float3x3
+                        //  euler angles
+                        //  axis, angle
+                        //  quaternion
+                        //  (in some cases, explicit RotateX, RotateY, RotateZ)
+                        //  Collada normally prefers axis, angle -- so we'll use that.
+                        ArbitraryRotation rot(decomposed._rotation);
+                        if (signed rotX = rot.IsRotationX()) {
+                            *i = (uint32)TransformStackCommand::RotateX_Static;
+                            *(float*)AsPointer(i+1) = Rad2Deg(float(rotX) * rot._angle);
+                            cmdStream.erase(i+2, cmdEnd);
+                        } else if (signed rotY = rot.IsRotationY()) {
+                            *i = (uint32)TransformStackCommand::RotateY_Static;
+                            *(float*)AsPointer(i+1) = Rad2Deg(float(rotY) * rot._angle);
+                            cmdStream.erase(i+2, cmdEnd);
+                        } else if (signed rotZ = rot.IsRotationZ()) {
+                            *i = (uint32)TransformStackCommand::RotateZ_Static;
+                            *(float*)AsPointer(i+1) = Rad2Deg(float(rotZ) * rot._angle);
+                            cmdStream.erase(i+2, cmdEnd);
+                        } else {
+                            *i = (uint32)TransformStackCommand::RotateZ_Static;
+                            *(Float3*)AsPointer(i+1) = rot._axis;
+                            *(float*)AsPointer(i+4) = Rad2Deg(rot._angle);
+                            cmdStream.erase(i+5, cmdEnd);
+                        }
+                    } else if (hasTranslation && !hasRotation && !hasScale) {
+                        // just translation
+                        *i = (uint32)TransformStackCommand::Translate_Static;
+                        *(Float3*)AsPointer(i+1) = decomposed._translation;
+                        cmdStream.erase(i+4, cmdEnd);
+                    } else if (hasScale && !hasRotation) {
+                        // scale (and maybe translation)
+                        auto scaleEnd = i;
+                        if (IsUniformScale(decomposed._scale, scaleThreshold)) {
+                            *i = (uint32)TransformStackCommand::UniformScale_Static;
+                            *(float*)AsPointer(i+1) = GetMedianElement(decomposed._scale);
+                            scaleEnd = i+2;
+                        } else {
+                            *i = (uint32)TransformStackCommand::ArbitraryScale_Static;
+                            *(Float3*)AsPointer(i+1) = decomposed._scale;
+                            scaleEnd = i+4;
+                        }
+                        if (hasTranslation) {
+                            *scaleEnd = (uint32)TransformStackCommand::Translate_Static;
+                            *(Float3*)AsPointer(scaleEnd+1) = decomposed._translation;
+                            cmdStream.erase(scaleEnd+4, cmdEnd);
+                        } else {
+                            cmdStream.erase(scaleEnd, cmdEnd);
+                        }
+                    }
+                }
 
             } else if (type == TransformStackCommand::ArbitraryScale_Static) {
                     // if our arbitrary scale factor is actually a uniform scale,

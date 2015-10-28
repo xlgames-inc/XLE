@@ -44,6 +44,7 @@ namespace XLEMath
 
         ArbitraryRotation() {}
         ArbitraryRotation(Float3 axis, float angle) : _axis(axis), _angle(angle) {}
+        ArbitraryRotation(const Float3x3& rotationMatrix);
     };
 
     class LookAt
@@ -97,6 +98,7 @@ namespace XLEMath
         Float3          _translation;
 
         explicit ScaleRotationTranslation(const Float4x4& copyFrom);
+        ScaleRotationTranslation(const Float4x4& copyFrom, bool& goodDecomposition);
         ScaleRotationTranslation(Float3 scale, const RotationType& rotation, Float3 translation)
             : _rotation(rotation), _scale(scale), _translation(translation) {}
     };
