@@ -43,7 +43,7 @@ namespace UnitTests
         {
             ParameterBox test(
                 {
-                    std::make_pair((const utf8*)"SomeParam", "1ul"),
+                    std::make_pair((const utf8*)"SomeParam", "1u"),
                     std::make_pair((const utf8*)"SomeParam1", ".4f"),
                     std::make_pair((const utf8*)"SomeParam2", "344.f"),
                     std::make_pair((const utf8*)"SomeParam3", ".56f"),
@@ -68,10 +68,10 @@ namespace UnitTests
             std::vector<std::pair<const utf8*, std::string>> stringTable;
             BuildStringTable(stringTable, test);
 
-            for (auto i=stringTable.begin(); i!=stringTable.end(); ++i) {
-                XlOutputDebugString(
-                    StringMeld<256>() << i->first << " = " << i->second << "\n");
-            }
+            // for (auto i=stringTable.begin(); i!=stringTable.end(); ++i) {
+            //     XlOutputDebugString(
+            //         StringMeld<256>() << i->first << " = " << i->second << "\n");
+            // }
 
         }
 

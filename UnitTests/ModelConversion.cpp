@@ -102,7 +102,7 @@ namespace UnitTests
 				for (;;) {
 					TRY {
 						auto& scaffold = Assets::GetAssetComp<ModelScaffold>(sampleAsset);
-						Assert::AreEqual(scaffold.ImmutableData()._geoCount, size_t(9));
+						Assert::AreEqual(scaffold.ImmutableData()._geoCount, size_t(8));
 						break;
 					} CATCH(Assets::Exceptions::PendingAsset&) {}
 					CATCH_END
