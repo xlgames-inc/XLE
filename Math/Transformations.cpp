@@ -574,53 +574,22 @@ namespace XLEMath
 
         ////////////////////////////////////////////////////////////////
 
-    RotationScaleTranslation::RotationScaleTranslation(const Float4x4& copyFrom)
+    static Float3x3 SqRootSymmetric(const Float3x3& usq)
     {
-            // todo -- use a better method for decompositing scale and rotation!
-            //          Perhaps use polar decomposition
-            //          See reference here:
-            //              http://callumhay.blogspot.com/2010/10/decomposing-affine-transforms.html
-        Float3 scale(
-            Magnitude(Float3(copyFrom(0,0), copyFrom(1,0), copyFrom(2,0))),
-            Magnitude(Float3(copyFrom(0,1), copyFrom(1,1), copyFrom(2,1))),
-            Magnitude(Float3(copyFrom(0,2), copyFrom(1,2), copyFrom(2,2))));
-        Float3 translation(copyFrom(0,3), copyFrom(1,3), copyFrom(2,3));
-        Float3x3 rotationAsMatrix(
-            copyFrom(0,0)/scale[0], copyFrom(0,1)/scale[1], copyFrom(0,2)/scale[2],
-            copyFrom(1,0)/scale[0], copyFrom(1,1)/scale[1], copyFrom(1,2)/scale[2],
-            copyFrom(2,0)/scale[0], copyFrom(2,1)/scale[1], copyFrom(2,2)/scale[2]);
-        assert(IsOrthonormal(rotationAsMatrix));
-
-        cml::quaternion_rotation_matrix(_rotation, rotationAsMatrix);
-        _scale = scale;
-        _translation = translation;
-    }
-
-    Float3x3ScaleTranslation::Float3x3ScaleTranslation(const Float4x4& copyFrom)
-    {
-        // Using RU decomposition to separate the rotation and scale part.
-        // See reference here:
-        // http://www.continuummechanics.org/cm/polardecomposition.html
-        // & http://callumhay.blogspot.com/2010/10/decomposing-affine-transforms.html
-        // However note that this method calculates the eigen vectors for
-        // one matrix, and then inverts another matrix. It seems like the 
-        // quantity of calculations could introduce some floating point creep.
-        // It might be better if we could find a way to calculate R without the 
-        // matrix invert.
-
-        Float3x3 F = Truncate3x3(copyFrom);
-        auto utu = Transpose(F) * F;
+        // Find the squareroot of the input matrix
+        // This only works correctly for symmetric matrices (nonsymmetic
+        // matrices will have complex values in their square root)
 
         Eigen<float> kES(3);
-		kES(0,0) = utu(0,0);
-		kES(0,1) = utu(0,1);
-		kES(0,2) = utu(0,2);
-		kES(1,0) = utu(1,0);
-		kES(1,1) = utu(1,1);
-		kES(1,2) = utu(1,2);
-		kES(2,0) = utu(2,0);
-		kES(2,1) = utu(2,1);
-		kES(2,2) = utu(2,2);
+		kES(0,0) = usq(0,0);
+		kES(0,1) = usq(0,1);
+		kES(0,2) = usq(0,2);
+		kES(1,0) = usq(1,0);
+		kES(1,1) = usq(1,1);
+		kES(1,2) = usq(1,2);
+		kES(2,0) = usq(2,0);
+		kES(2,1) = usq(2,1);
+		kES(2,2) = usq(2,2);
 		kES.EigenStuff3();
 
         auto* eigenValues = kES.GetEigenvalues();
@@ -630,24 +599,94 @@ namespace XLEMath
             0.f, 0.f, XlSqrt(eigenValues[2]));
         auto Q = Truncate3x3(kES.GetEigenvectors());
         auto U = Transpose(Q) * Udash * Q;
-        auto R = F * Inverse(U);
-
-        // U and R are our decomposed scale & rotation parts.
-        // U should be orthonormal, now.
-        // If the off-diagonal parts of R are not zero, it means the matrix
-        // must have some skew.
-
-        _translation = ExtractTranslation(copyFrom);
-        _rotation = R;
-        _scale = Float3(U(0,0), U(1,1), U(2,2));
+        return U;
     }
 
-    RotationScaleTranslation SphericalInterpolate(
-        const RotationScaleTranslation& lhs, const RotationScaleTranslation& rhs, float alpha)
+    template<typename DestType> DestType Convert(const Float3x3& input);
+
+    template<> 
+        static Float3x3 Convert(const Float3x3& input) { return input; }
+
+    template<> 
+        static Quaternion Convert(const Float3x3& input)
+        {
+            Quaternion result;
+            cml::quaternion_rotation_matrix(result, input);
+            return result;
+        }
+
+    template<typename RotationType>
+        ScaleRotationTranslation<RotationType>::ScaleRotationTranslation(
+            const Float4x4& copyFrom)
     {
-        return RotationScaleTranslation(
-            SphericalInterpolate(lhs._rotation, rhs._rotation, alpha),
+        // Using RU decomposition to separate the rotation and scale part.
+        // See reference here:
+        // http://www.continuummechanics.org/cm/polardecomposition.html
+        // & http://callumhay.blogspot.com/2010/10/decomposing-affine-transforms.html
+        //
+        // Since RU decomposition is quite expensive, we will check for 
+        // a simple case when there is no skew. When there is no skew,
+        // the calculations collapse to something much simplier.
+        //
+        // However note that this method calculates the eigen vectors for
+        // one matrix, and then inverts another matrix. It seems like the 
+        // quantity of calculations could introduce some floating point creep.
+        // It might be better if we could find a way to calculate R without the 
+        // matrix invert.
+
+        Float3x3 F = Truncate3x3(copyFrom);
+        auto usq = LeftMultiplyByTranspose(F);      // usq = Transpose(F) * F;
+
+            // Here, usq should always be symmetric
+            // If it is diagonal, we can simply the math greatly
+            // (taking the squareroot becomes trivial, as does building the inverse)
+
+        const float diagThreshold = 1e-4f;  // we can give a little leaway here
+        const bool isDiagonal = 
+                XlAbs(usq(0,1)) < diagThreshold
+            &&  XlAbs(usq(0,2)) < diagThreshold
+            &&  XlAbs(usq(1,2)) < diagThreshold;
+
+        if (isDiagonal) {
+                // To take the square root of a diagonal matrix, we just have to
+                // take the square root of the diagonal elements.
+                // Since the diagonal parts of usq are the dot products of the 
+                // columns of F, this means that calculating _scale is the same as
+                // 3 vector magnitude calculations -- which is perfectly logical!
+                //
+                // And to make the inverse of a diagonal matrix, we just have to
+                // take the reciprocals of the diagonal elements. So, we end up
+                // normalizing the columns of the rotation matrix.
+                //
+                // So this case factors out into a much simplier result --
+            _scale = Float3(XlSqrt(usq(0,0)), XlSqrt(usq(1,1)), XlSqrt(usq(2,2)));
+            Float3x3 rotPart(
+                F(0,0)/_scale[0], F(0,1)/_scale[1], F(0,2)/_scale[2],
+                F(1,0)/_scale[0], F(1,1)/_scale[1], F(1,2)/_scale[2],
+                F(2,0)/_scale[0], F(2,1)/_scale[1], F(2,2)/_scale[2]);
+            _rotation = Convert<RotationType>(rotPart);
+        } else {
+                // This path is much more complex... The matrix has some skew on it.
+                // After we extract the skew, we just ignore it. But by separating
+                // it from scale & rotation, it means we up with a well formed final
+                // result.
+            auto U = SqRootSymmetric(usq); // U is our decomposed scale part.
+            _rotation = Convert<RotationType>(F * Inverse(U));
+            _scale = Float3(U(0,0), U(1,1), U(2,2));
+        }
+
+        _translation = ExtractTranslation(copyFrom);
+    }
+
+    template class ScaleRotationTranslation<Quaternion>;
+    template class ScaleRotationTranslation<Float3x3>;
+
+    ScaleRotationTranslationQ SphericalInterpolate(
+        const ScaleRotationTranslationQ& lhs, const ScaleRotationTranslationQ& rhs, float alpha)
+    {
+        return ScaleRotationTranslationQ(
             LinearInterpolate(lhs._scale, rhs._scale, alpha),
+            SphericalInterpolate(lhs._rotation, rhs._rotation, alpha),
             LinearInterpolate(lhs._translation, rhs._translation, alpha));
     }
 
@@ -669,20 +708,30 @@ namespace XLEMath
         return result;
     }
 
-    Float4x4   AsFloat4x4(const RotationScaleTranslation& input)
+    template<> Float4x4   AsFloat4x4(const ScaleRotationTranslationQ& input)
     {
             //
             //          Convert from our separate rotation/scale/translation representation to
             //          a general 4x4 matrix
             //
         Float3x3 rotationPart = AsFloat3x3(input._rotation);
-        Float3 s = input._scale;
-        Float4x4 result(
+        const Float3& s = input._scale;
+        return Float4x4(
             rotationPart(0,0) * s[0], rotationPart(0,1) * s[1], rotationPart(0,2) * s[2], input._translation[0],
             rotationPart(1,0) * s[0], rotationPart(1,1) * s[1], rotationPart(1,2) * s[2], input._translation[1],
             rotationPart(2,0) * s[0], rotationPart(2,1) * s[1], rotationPart(2,2) * s[2], input._translation[2],
             0.f, 0.f, 0.f, 1.f);
-        return result;
+    }
+
+    template<> Float4x4   AsFloat4x4(const ScaleRotationTranslationM& input)
+    {
+        const Float3x3& rotationPart = input._rotation;
+        const Float3& s = input._scale;
+        return Float4x4(
+            rotationPart(0,0) * s[0], rotationPart(0,1) * s[1], rotationPart(0,2) * s[2], input._translation[0],
+            rotationPart(1,0) * s[0], rotationPart(1,1) * s[1], rotationPart(1,2) * s[2], input._translation[1],
+            rotationPart(2,0) * s[0], rotationPart(2,1) * s[1], rotationPart(2,2) * s[2], input._translation[2],
+            0.f, 0.f, 0.f, 1.f);
     }
 
     Float4x4   AsFloat4x4(const UniformScale& input)

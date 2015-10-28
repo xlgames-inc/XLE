@@ -6,13 +6,39 @@
 
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
+#include "../Math/Geometry.h"
 #include <CppUnitTest.h>
 #include <random>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace UnitTests
-{		
+{
+    static Float3 RandomUnitVector(std::mt19937& rng)
+    {
+        return SphericalToCartesian(Float3(
+            Deg2Rad((float)std::uniform_real_distribution<>(-180.f, 180.f)(rng)),
+            Deg2Rad((float)std::uniform_real_distribution<>(-180.f, 180.f)(rng)),
+            1.f));
+    }
+
+    static float RandomSign(std::mt19937& rng) { return ((std::uniform_real_distribution<>(-1.f, 1.f)(rng) < 0.f) ? -1.f : 1.f); }
+    static Float3 RandomScaleVector(std::mt19937& rng)
+    {
+        return Float3(
+            RandomSign(rng) * (float)std::uniform_real_distribution<>(0.1f, 10.f)(rng),
+            RandomSign(rng) * (float)std::uniform_real_distribution<>(0.1f, 10.f)(rng),
+            RandomSign(rng) * (float)std::uniform_real_distribution<>(0.1f, 10.f)(rng));
+    }
+
+    static Float3 RandomTranslationVector(std::mt19937& rng)
+    {
+        return Float3(
+            (float)std::uniform_real_distribution<>(-10000.f, 10000.f)(rng),
+            (float)std::uniform_real_distribution<>(-10000.f, 10000.f)(rng),
+            (float)std::uniform_real_distribution<>(-10000.f, 10000.f)(rng));
+    }
+
 	TEST_CLASS(BasicMaths)
 	{
 	public:
@@ -63,23 +89,56 @@ namespace UnitTests
 
 				Assert::IsTrue(Equivalent(AsFloat4x4(quat), AsFloat4x4(rotMat), tolerance));
 			}
-
-				// Test RotationScaleTranslation 
-			{
-				RotationScaleTranslation rst(
-					MakeRotationQuaternion(Normalize(Float3(1.f, 2.f, 3.f)), .6f * gPI),
-					Float3(4.5f, 5.f, -6.f), Float3(30.f, 5.f, -10.f));
-
-				Float4x4 accumulativeMatrix = Identity<Float4x4>();
-				Combine_InPlace(accumulativeMatrix, ArbitraryScale(Float3(4.5f, 5.f, -6.f)));
-				accumulativeMatrix = Combine(accumulativeMatrix, AsFloat4x4(MakeRotationMatrix(Normalize(Float3(1.f, 2.f, 3.f)), .6f * gPI)));
-				Combine_InPlace(accumulativeMatrix, Float3(30.f, 5.f, -10.f));
-				
-				auto rstMatrix = AsFloat4x4(rst);
-				Assert::IsTrue(Equivalent(rstMatrix, accumulativeMatrix, tolerance));
-			}
-
 		}
+
+        TEST_METHOD(MatrixAccumulationAndDecomposition)
+        {
+                // Compare 2 method of building scale/rotation/translation matrices
+                // Also check the decomposition is accurate
+            std::mt19937 rng(std::random_device().operator()());
+            const unsigned tests = 500;
+            const float tolerance = 1e-4f;
+            for (unsigned c=0; c<tests; ++c) {
+                auto rotationAxis = RandomUnitVector(rng);
+                auto rotationAngle = Deg2Rad((float)std::uniform_real_distribution<>(-180.f, 180.f)(rng));
+                auto scale = RandomScaleVector(rng);
+                auto translation = RandomTranslationVector(rng);
+
+                ScaleRotationTranslationQ srt(
+                    scale, 
+				    MakeRotationQuaternion(rotationAxis, rotationAngle),
+				    translation);
+
+			    Float4x4 accumulativeMatrix = Identity<Float4x4>();
+			    Combine_InPlace(accumulativeMatrix, ArbitraryScale(scale));
+                auto rotMat = MakeRotationMatrix(rotationAxis, rotationAngle);
+			    accumulativeMatrix = Combine(accumulativeMatrix, AsFloat4x4(rotMat));
+			    Combine_InPlace(accumulativeMatrix, translation);
+				
+			    auto srtMatrix = AsFloat4x4(srt);
+			    Assert::IsTrue(Equivalent(srtMatrix, accumulativeMatrix, tolerance), L"Acculumated matrix does not match ScaleRotationTranslationQ version");
+
+                    // note that sometimes the decomposition will be different from the 
+                    // original scale/rotation values... But the final result will be the same.
+                    // We can compenstate for this by pushing sign differences in the scale
+                    // values into the rotation matrix
+                ScaleRotationTranslationM decomposed(accumulativeMatrix);
+                auto signCompScale = decomposed._scale;
+                auto signCompRot = decomposed._rotation;
+                for (unsigned c=0; c<3; ++c)
+                    if (signCompScale[c]<0.f != scale[c]<0.f) {
+                        signCompScale[c] *= -1.f;
+                        signCompRot(0, c) *= -1.f; signCompRot(1, c) *= -1.f; signCompRot(2, c) *= -1.f;
+                    }
+
+                Assert::IsTrue(Equivalent(signCompScale, scale, tolerance), L"Scale in decomposed matrix doesn't match");
+                Assert::IsTrue(Equivalent(decomposed._translation, translation, tolerance), L"Translation in decomposed matrix doesn't match");
+                Assert::IsTrue(Equivalent(signCompRot, rotMat, tolerance), L"Rotation in decomposed matrix doesn't match");
+
+                auto rebuilt = AsFloat4x4(decomposed);
+                Assert::IsTrue(Equivalent(srtMatrix, rebuilt, tolerance), L"Rebuilt matrix doesn't match ScaleRotationTranslationQ matrix");
+            }
+        }
 
         TEST_METHOD(ProjectionMath)
         {
@@ -107,7 +166,12 @@ namespace UnitTests
                 Assert::AreEqual(fov, outFOV, fov * tolerance, L"Extracted FOV");
                 Assert::AreEqual(aspect, outAspect, aspect * tolerance, L"Extracted aspect");
                 Assert::AreEqual(near, outNear, near * tolerance, L"Extracted near clip");
-                Assert::AreEqual(far, outFar, 3.f, L"Extracted far clip");   // for some reason the "far" value is less accurate...?
+                    // Calculations for the far clip are much less accurate. It seems that depth precision
+                    // right on the far clip plane is just very low.
+                    // The calculations appear to be correct (& they match the shader code).
+                    // It's just that we're reached the bottom of floating point precision.
+                    // It's interesting that the uncertainty can be this large, though.
+                Assert::AreEqual(far, outFar, 3.f, L"Extracted far clip");  
             }
         }
 

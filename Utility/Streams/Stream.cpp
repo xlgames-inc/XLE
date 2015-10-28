@@ -174,7 +174,7 @@ std::unique_ptr<InputStream> OpenMemoryInput(const void* s, int len)
 template<typename BufferType>
     auto StreamBuf<BufferType>::Tell() -> size_type
 {
-    return _buffer.pubseekoff(0, std::ios_base::cur, std::ios_base::out);
+    return (size_type)_buffer.pubseekoff(0, std::ios_base::cur, std::ios_base::out);
 }
 
 template<typename BufferType>

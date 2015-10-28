@@ -78,7 +78,8 @@ namespace XLEMath
 		}
     #endif
 
-    class RotationScaleTranslation
+    template<typename RotationType>
+        class ScaleRotationTranslation
     {
     public:
             //
@@ -91,23 +92,17 @@ namespace XLEMath
 			//			2) rotation
 			//			3) translation
             //
-        Quaternion      _rotation;
+        RotationType    _rotation;
         Float3          _scale;
         Float3          _translation;
 
-        explicit RotationScaleTranslation(const Float4x4& copyFrom);
-        RotationScaleTranslation(const Quaternion& rotation, Float3 scale, Float3 translation);
+        explicit ScaleRotationTranslation(const Float4x4& copyFrom);
+        ScaleRotationTranslation(Float3 scale, const RotationType& rotation, Float3 translation)
+            : _rotation(rotation), _scale(scale), _translation(translation) {}
     };
 
-    class Float3x3ScaleTranslation
-    {
-    public:
-        Float3x3    _rotation;
-        Float3      _scale;
-        Float3      _translation;
-
-        explicit Float3x3ScaleTranslation(const Float4x4& copyFrom);
-    };
+    using ScaleRotationTranslationQ = ScaleRotationTranslation<Quaternion>;
+    using ScaleRotationTranslationM = ScaleRotationTranslation<Float3x3>;
 
     class ScaleTranslation
     {
@@ -213,10 +208,10 @@ namespace XLEMath
     inline void SetTranslation(Float4x4& matrix, const Float3& position)  { matrix(0,3) = position[0]; matrix(1,3) = position[1]; matrix(2,3) = position[2]; }
 
 
-    RotationScaleTranslation    SphericalInterpolate(const RotationScaleTranslation& lhs, const RotationScaleTranslation& rhs, float alpha);
+    ScaleRotationTranslationQ    SphericalInterpolate(const ScaleRotationTranslationQ& lhs, const ScaleRotationTranslationQ& rhs, float alpha);
 
     Float4x4    AsFloat4x4(const ScaleTranslation& input);
-    Float4x4    AsFloat4x4(const RotationScaleTranslation& input);
+    T1(RotationType) Float4x4    AsFloat4x4(const RotationType& input);
     Float4x4    AsFloat4x4(const UniformScale& input);
     Float4x4    AsFloat4x4(const RotationX& input);
     Float4x4    AsFloat4x4(const RotationY& input);
@@ -250,10 +245,7 @@ namespace XLEMath
     Float3x4    Combine(const Float3x4& firstTransform, const Float3x4& secondTransform);
 
     Float4x4    MakeCameraToWorld(const Float3& forward, const Float3& up, const Float3& position);
-    
-    inline RotationScaleTranslation::RotationScaleTranslation(const Quaternion& rotation, Float3 scale, Float3 translation)
-    : _rotation(rotation), _scale(scale), _translation(translation) {}
- 
+
     inline void CopyTransform(Float3x4& destination, const Float4x4& localToWorld)
     {
         destination(0, 0)    = localToWorld(0, 0);

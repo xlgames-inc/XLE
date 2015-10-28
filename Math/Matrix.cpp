@@ -68,6 +68,38 @@ namespace XLEMath
             a[12], a[13], a[14], a[15]);
     }
 
+    // Float3x3 matrix multiplication:
+    //      result(0,0) = lhs(0,0) * rhs(0,0) + lhs(0,1) * rhs(1,0) + lhs(0,2) * rhs(2,0)
+    //      result(1,0) = lhs(1,0) * rhs(0,0) + lhs(1,1) * rhs(1,0) + lhs(1,2) * rhs(2,0)
+    //      result(2,0) = lhs(2,0) * rhs(0,0) + lhs(2,1) * rhs(1,0) + lhs(2,2) * rhs(2,0)
+    //
+    //      result(0,1) = lhs(0,0) * rhs(0,1) + lhs(0,1) * rhs(1,1) + lhs(0,2) * rhs(2,1)
+    //      result(1,1) = lhs(1,0) * rhs(0,1) + lhs(1,1) * rhs(1,1) + lhs(1,2) * rhs(2,1)
+    //      result(2,1) = lhs(2,0) * rhs(0,1) + lhs(2,1) * rhs(1,1) + lhs(2,2) * rhs(2,1)
+    //
+    //      result(0,2) = lhs(0,0) * rhs(0,2) + lhs(0,1) * rhs(1,2) + lhs(0,2) * rhs(2,2)
+    //      result(1,2) = lhs(1,0) * rhs(0,2) + lhs(1,1) * rhs(1,2) + lhs(1,2) * rhs(2,2)
+    //      result(2,2) = lhs(2,0) * rhs(0,2) + lhs(2,1) * rhs(1,2) + lhs(2,2) * rhs(2,2)
+
+
+    Float3x3        LeftMultiplyByTranspose(Float3x3& input)
+    {
+            // Multiply the transpose of input
+            // eg; result = Tranpose(input) * input
+            // The result is symmetric, which means we can reduce the number of multiplications slightly...
+            // Also note that the diagonal parts are just the dot products of the columns.
+        Float3x3 result;
+        result(0,0) = input(0,0) * input(0,0) + input(1,0) * input(1,0) + input(2,0) * input(2,0);
+        result(0,1) = result(1,0) = input(0,1) * input(0,0) + input(1,1) * input(1,0) + input(2,1) * input(2,0);
+        result(0,2) = result(2,0) = input(0,2) * input(0,0) + input(1,2) * input(1,0) + input(2,2) * input(2,0);
+        
+        result(1,1) = input(0,1) * input(0,1) + input(1,1) * input(1,1) + input(2,1) * input(2,1);
+        result(1,2) = result(2,1) = input(0,2) * input(0,1) + input(1,2) * input(1,1) + input(2,2) * input(2,1);
+        
+        result(2,2) = input(0,2) * input(0,2) + input(1,2) * input(1,2) + input(2,2) * input(2,2);
+        return result;
+    }
+
     #if MATHLIBRARY_ACTIVE == MATHLIBRARY_CML
         static Float3x4 MakeIdentity3x4() { Float3x4 temp; temp.identity(); return temp; }
         template<> const Float3x4& Identity<Float3x4>()

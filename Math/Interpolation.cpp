@@ -76,7 +76,9 @@ namespace XLEMath
     {
             //  We're assuming that this input matrix is an affine geometry transform. So we can convert it
             //  into a format that can be slerped!
-        RotationScaleTranslation result = SphericalInterpolate(RotationScaleTranslation(A), RotationScaleTranslation(B), alpha);
+        auto result = SphericalInterpolate(
+            ScaleRotationTranslationQ(A), 
+            ScaleRotationTranslationQ(B), alpha);
         return AsFloat4x4(result);
     }
         
