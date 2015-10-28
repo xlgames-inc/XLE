@@ -40,6 +40,8 @@ namespace RenderCore { namespace Assets
         case TransformStackCommand::TransformFloat4x4AndWrite_Static: return 1+16;
         case TransformStackCommand::TransformFloat4x4AndWrite_Parameter: return 1+1;
 
+        case TransformStackCommand::Comment: return 64/4;
+
         default: return 0;
         }
     }
@@ -588,13 +590,13 @@ namespace RenderCore { namespace Assets
     {
         Float3 absv(XlAbs(input[0]), XlAbs(input[1]), XlAbs(input[2]));
         if (absv[0] < absv[1]) {
-            if (absv[2] < absv[0]) return absv[0];
-            if (absv[2] < absv[1]) return absv[2];
-            return absv[1];
+            if (absv[2] < absv[0]) return input[0];
+            if (absv[2] < absv[1]) return input[2];
+            return input[1];
         } else {
-            if (absv[2] > absv[0]) return absv[0];
-            if (absv[2] > absv[1]) return absv[2];
-            return absv[1];
+            if (absv[2] > absv[0]) return input[0];
+            if (absv[2] > absv[1]) return input[2];
+            return input[1];
         }
     }
 
@@ -605,8 +607,8 @@ namespace RenderCore { namespace Assets
         // performs a translation, we can simplify this to just a "translate" operation.
         // Of course, we can only do this for static transform types.
 
-        const float scaleThreshold = 1e-5f;
-        const float identityThreshold = 1e-5f;
+        const float scaleThreshold = 1e-4f;
+        const float identityThreshold = 1e-4f;
 
         for (auto i=cmdStream.begin(); i!=cmdStream.end();) {
             auto type = TransformStackCommand(*i);
@@ -649,18 +651,30 @@ namespace RenderCore { namespace Assets
                             *(float*)AsPointer(i+1) = Rad2Deg(float(rotZ) * rot._angle);
                             cmdStream.erase(i+2, cmdEnd);
                         } else {
-                            *i = (uint32)TransformStackCommand::RotateZ_Static;
+                            *i = (uint32)TransformStackCommand::Rotate_Static;
                             *(Float3*)AsPointer(i+1) = rot._axis;
                             *(float*)AsPointer(i+4) = Rad2Deg(rot._angle);
                             cmdStream.erase(i+5, cmdEnd);
                         }
-                    } else if (hasTranslation && !hasRotation && !hasScale) {
-                        // just translation
+                    } else if (hasTranslation && !hasRotation) {
+                        // translation (and maybe scale)
                         *i = (uint32)TransformStackCommand::Translate_Static;
                         *(Float3*)AsPointer(i+1) = decomposed._translation;
-                        cmdStream.erase(i+4, cmdEnd);
+                        auto transEnd = i+4;
+                        if (hasScale) {
+                            if (IsUniformScale(decomposed._scale, scaleThreshold)) {
+                                *transEnd = (uint32)TransformStackCommand::UniformScale_Static;
+                                *(float*)AsPointer(transEnd+1) = GetMedianElement(decomposed._scale);
+                                cmdStream.erase(transEnd+2, cmdEnd);
+                            } else {
+                                *transEnd = (uint32)TransformStackCommand::ArbitraryScale_Static;
+                                *(Float3*)AsPointer(transEnd+1) = decomposed._scale;
+                                cmdStream.erase(transEnd+4, cmdEnd);
+                            }
+                        } else
+                            cmdStream.erase(transEnd, cmdEnd);
                     } else if (hasScale && !hasRotation) {
-                        // scale (and maybe translation)
+                        // just scale
                         auto scaleEnd = i;
                         if (IsUniformScale(decomposed._scale, scaleThreshold)) {
                             *i = (uint32)TransformStackCommand::UniformScale_Static;
@@ -671,13 +685,7 @@ namespace RenderCore { namespace Assets
                             *(Float3*)AsPointer(i+1) = decomposed._scale;
                             scaleEnd = i+4;
                         }
-                        if (hasTranslation) {
-                            *scaleEnd = (uint32)TransformStackCommand::Translate_Static;
-                            *(Float3*)AsPointer(scaleEnd+1) = decomposed._translation;
-                            cmdStream.erase(scaleEnd+4, cmdEnd);
-                        } else {
-                            cmdStream.erase(scaleEnd, cmdEnd);
-                        }
+                        cmdStream.erase(scaleEnd, cmdEnd);
                     }
                 }
 
@@ -691,6 +699,10 @@ namespace RenderCore { namespace Assets
                     *(float*)AsPointer(i+1) = GetMedianElement(scale);
                 }
             }
+
+            // note -- there's some more things we could do:
+            //  * remove identity transforms (eg, scale by 1.f, translate by zero)
+            //  * simplify Rotate_Static to RotateX_Static, RotateY_Static, RotateZ_Static
 
             i += 1 + CommandSize(TransformStackCommand(*i));
         }
@@ -978,6 +990,10 @@ namespace RenderCore { namespace Assets
                         LogWarning << "Warning -- bad parameter index for TransformFloat4x4AndWrite_Parameter command (" << parameterIndex << ")";
                 }
                 break;
+
+            case TransformStackCommand::Comment:
+                i+=64/4;
+                break;
             }
         }
     }
@@ -1016,18 +1032,17 @@ namespace RenderCore { namespace Assets
 
     void TraceTransformationMachine(
         std::ostream&   stream,
-        const uint32*   commandStreamBegin,
-        const uint32*   commandStreamEnd,
+        IteratorRange<const uint32*>    commandStream,
         std::function<std::string(unsigned)> outputMatrixToName,
         std::function<std::string(TransformationParameterSet::Type::Enum, unsigned)> parameterToName)
     {
-        stream << "Transformation machine size: (" << (commandStreamEnd - commandStreamBegin) * sizeof(uint32) << ") bytes" << std::endl;
+        stream << "Transformation machine size: (" << (commandStream.size()) * sizeof(uint32) << ") bytes" << std::endl;
 
         char indentBuffer[32];
         signed indentLevel = 2;
         MakeIndentBuffer(indentBuffer, dimof(indentBuffer), indentLevel);
 
-        for (auto i=commandStreamBegin; i!=commandStreamEnd;) {
+        for (auto i=commandStream.begin(); i!=commandStream.end();) {
             auto commandIndex = *i++;
             switch ((TransformStackCommand)commandIndex) {
             case TransformStackCommand::PushLocalToWorld:
@@ -1191,9 +1206,18 @@ namespace RenderCore { namespace Assets
                     << parameterToName(TransformationParameterSet::Type::Float4x4, *(i+1)) << ")" << std::endl;
                 i+=2;
                 break;
+
+            case TransformStackCommand::Comment:
+                {
+                    std::string str((const char*)AsPointer(i), (const char*)AsPointer(i+64/4));
+                    str = str.substr(0, str.find_first_of('\0'));
+                    stream << indentBuffer << "Comment: " << str << std::endl;
+                    i += 64/4;
+                }
+                break;
             }
 
-            assert(i <= commandStreamEnd);  // make sure we haven't jumped past the end marker
+            assert(i <= commandStream.end());  // make sure we haven't jumped past the end marker
         }
     }
 

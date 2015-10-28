@@ -92,6 +92,7 @@
     <ClCompile Include="..\StartupShutdown.cpp" />
     <ClCompile Include="..\StreamFormatter.cpp" />
     <ClCompile Include="..\Threading.cpp" />
+    <ClCompile Include="..\TransformationMachineOpt.cpp" />
     <ClCompile Include="..\Utilities.cpp" />
   </ItemGroup>
   <ItemGroup>

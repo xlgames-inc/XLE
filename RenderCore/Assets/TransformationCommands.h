@@ -12,6 +12,8 @@
 #include "../../Utility/Mixins.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/IteratorUtils.h"
+#include <vector>
+#include <functional>
 
 namespace Utility { class OutputStream; }
 
@@ -55,7 +57,9 @@ namespace RenderCore { namespace Assets
 
         WriteOutputMatrix,
         TransformFloat4x4AndWrite_Static,
-        TransformFloat4x4AndWrite_Parameter
+        TransformFloat4x4AndWrite_Parameter,
+
+        Comment
     };
 
             //////////////////////////////////////////////////////////
@@ -116,9 +120,8 @@ namespace RenderCore { namespace Assets
         const std::function<void(const Float4x4&, const Float4x4&)>&     debugIterator);
 
     void TraceTransformationMachine(
-        std::ostream&   outputStream,
-        const uint32*   commandStreamBegin,
-        const uint32*   commandStreamEnd,
+        std::ostream&                   outputStream,
+        IteratorRange<const uint32*>    commandStream,
         std::function<std::string(unsigned)> outputMatrixToName,
         std::function<std::string(TransformationParameterSet::Type::Enum, unsigned)> parameterToName);
 

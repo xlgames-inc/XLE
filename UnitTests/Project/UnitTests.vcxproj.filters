@@ -8,6 +8,7 @@
     <ClCompile Include="..\Utilities.cpp" />
     <ClCompile Include="..\Threading.cpp" />
     <ClCompile Include="..\StreamFormatter.cpp" />
+    <ClCompile Include="..\TransformationMachineOpt.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\UnitTestHelper.h" />

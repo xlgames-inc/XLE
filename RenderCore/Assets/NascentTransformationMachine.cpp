@@ -174,7 +174,7 @@ namespace RenderCore { namespace Assets
         stream << " --- Command stream:" << std::endl;
         auto cmds = transMachine._commandStream;
         TraceTransformationMachine(
-            stream, AsPointer(cmds.begin()), AsPointer(cmds.end()),
+            stream, MakeIteratorRange(cmds),
             [&transMachine](unsigned outputMatrixIndex) -> std::string
             {
                 auto i = std::find_if(

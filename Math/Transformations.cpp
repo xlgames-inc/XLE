@@ -132,9 +132,11 @@ namespace XLEMath
 
     void Combine_InPlace(const ArbitraryScale& scale, Float4x4& transform)
     {
-        transform(0,0) *= scale._scale[0]; transform(0,1) *= scale._scale[0]; transform(0,2) *= scale._scale[0];
-        transform(1,0) *= scale._scale[1]; transform(1,1) *= scale._scale[1]; transform(1,2) *= scale._scale[1];
-        transform(2,0) *= scale._scale[2]; transform(2,1) *= scale._scale[2]; transform(2,2) *= scale._scale[2];
+        auto& lhs = transform;
+		const auto& rhs = scale._scale;
+        lhs(0,0) *= rhs[0]; lhs(1,0) *= rhs[0]; lhs(2,0) *= rhs[0];
+        lhs(0,1) *= rhs[1]; lhs(1,1) *= rhs[1]; lhs(2,1) *= rhs[1];
+        lhs(0,2) *= rhs[2]; lhs(1,2) *= rhs[2]; lhs(2,2) *= rhs[2];
     }
 
     Float4x4 Combine(const Float3x3& rotation, const Float4x4& transform)
@@ -144,7 +146,7 @@ namespace XLEMath
             //      input 3x3 rotation matrix.
 
         Float4x4 result;
-        const Float4x4& lhs          = transform;
+        const Float4x4& lhs = transform;
 		const Float3x3& rhs = rotation;
         result(0,0) = lhs(0,0) * rhs(0,0) + lhs(0,1) * rhs(1,0) + lhs(0,2) * rhs(2,0) ;
         result(0,1) = lhs(0,0) * rhs(0,1) + lhs(0,1) * rhs(1,1) + lhs(0,2) * rhs(2,1) ;
@@ -659,6 +661,7 @@ namespace XLEMath
             // If it is diagonal, we can simply the math greatly
             // (taking the squareroot becomes trivial, as does building the inverse)
 
+        Float3x3 rotPart;
         const float diagThreshold = 1e-4f;  // we can give a little leaway here
         if (AssumingSymmetricIsDiagonal(usq, diagThreshold)) {
                 // To take the square root of a diagonal matrix, we just have to
@@ -673,21 +676,37 @@ namespace XLEMath
                 //
                 // So this case factors out into a much simplier result --
             _scale = Float3(XlSqrt(usq(0,0)), XlSqrt(usq(1,1)), XlSqrt(usq(2,2)));
-            Float3x3 rotPart(
+            rotPart = Float3x3(
                 F(0,0)/_scale[0], F(0,1)/_scale[1], F(0,2)/_scale[2],
                 F(1,0)/_scale[0], F(1,1)/_scale[1], F(1,2)/_scale[2],
                 F(2,0)/_scale[0], F(2,1)/_scale[1], F(2,2)/_scale[2]);
-            _rotation = Convert<RotationType>(rotPart);
         } else {
                 // This path is much more complex... The matrix has some skew on it.
                 // After we extract the skew, we just ignore it. But by separating
                 // it from scale & rotation, it means we up with a well formed final
                 // result.
             auto U = SqRootSymmetric(usq); // U is our decomposed scale part.
-            _rotation = Convert<RotationType>(F * Inverse(U));
+            rotPart = F * Inverse(U);
             _scale = Float3(U(0,0), U(1,1), U(2,2));
         }
 
+            // If "rotPart" is equal to identity, apart from sign values, then 
+            // we should move the sign into "scale"
+            // This is required for common cases where we want to extract the
+            // scale from a matrix that has no rotation.
+        const float identityThreshold = 1e-4f;
+        if (    Equivalent(rotPart(0,1), 0.f, identityThreshold)
+            &&  Equivalent(rotPart(0,2), 0.f, identityThreshold)
+            &&  Equivalent(rotPart(1,0), 0.f, identityThreshold)
+            &&  Equivalent(rotPart(1,2), 0.f, identityThreshold)
+            &&  Equivalent(rotPart(2,0), 0.f, identityThreshold)
+            &&  Equivalent(rotPart(2,1), 0.f, identityThreshold)) {
+            if (rotPart(0,0)<0.f) { _scale[0] *= -1.f; rotPart(0,0) *= -1.f; }
+            if (rotPart(1,1)<0.f) { _scale[1] *= -1.f; rotPart(1,1) *= -1.f; }
+            if (rotPart(2,2)<0.f) { _scale[2] *= -1.f; rotPart(2,2) *= -1.f; }
+        }
+
+        _rotation = Convert<RotationType>(rotPart);
         _translation = ExtractTranslation(copyFrom);
     }
 
@@ -698,28 +717,41 @@ namespace XLEMath
         Float3x3 F = Truncate3x3(copyFrom);
         auto usq = LeftMultiplyByTranspose(F);
 
+        Float3x3 rotPart;
         const float diagThreshold = 1e-4f;
         if (AssumingSymmetricIsDiagonal(usq, diagThreshold)) {
             _scale = Float3(XlSqrt(usq(0,0)), XlSqrt(usq(1,1)), XlSqrt(usq(2,2)));
-            Float3x3 rotPart(
+            rotPart = Float3x3(
                 F(0,0)/_scale[0], F(0,1)/_scale[1], F(0,2)/_scale[2],
                 F(1,0)/_scale[0], F(1,1)/_scale[1], F(1,2)/_scale[2],
                 F(2,0)/_scale[0], F(2,1)/_scale[1], F(2,2)/_scale[2]);
-            _rotation = Convert<RotationType>(rotPart);
             goodDecomposition = true;
         } else {
             auto U = SqRootSymmetric(usq); // U is our decomposed scale part.
-            _rotation = Convert<RotationType>(F * Inverse(U));
+            rotPart = F * Inverse(U);
             _scale = Float3(U(0,0), U(1,1), U(2,2));
 
                 // Do a final test for skew... Sometimes when we get here,
                 // the skew is insignificant.
                 // U should be symmetric, as well. We just want to see if
                 // it is diagonal.
-            const float skewThreshold = 1e-5f;
+            const float skewThreshold = 1e-4f;
             goodDecomposition = AssumingSymmetricIsDiagonal(U, skewThreshold);
         }
 
+        const float identityThreshold = 1e-4f;
+        if (    Equivalent(rotPart(0,1), 0.f, identityThreshold)
+            &&  Equivalent(rotPart(0,2), 0.f, identityThreshold)
+            &&  Equivalent(rotPart(1,0), 0.f, identityThreshold)
+            &&  Equivalent(rotPart(1,2), 0.f, identityThreshold)
+            &&  Equivalent(rotPart(2,0), 0.f, identityThreshold)
+            &&  Equivalent(rotPart(2,1), 0.f, identityThreshold)) {
+            if (rotPart(0,0)<0.f) { _scale[0] *= -1.f; rotPart(0,0) *= -1.f; }
+            if (rotPart(1,1)<0.f) { _scale[1] *= -1.f; rotPart(1,1) *= -1.f; }
+            if (rotPart(2,2)<0.f) { _scale[2] *= -1.f; rotPart(2,2) *= -1.f; }
+        }
+
+        _rotation = Convert<RotationType>(rotPart);
         _translation = ExtractTranslation(copyFrom);
     }
 
