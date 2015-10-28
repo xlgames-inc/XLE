@@ -163,7 +163,7 @@ namespace RenderCore { namespace ColladaConversion
         void MergeIntoOutputMatrix(unsigned outputMatrixIndex, const Float4x4& transform);
         Float4x4 GetMergedOutputMatrix(unsigned outputMatrixIndex) const;
 
-        TransMachineOptimizer(ReferencedGeometries& refGeos, unsigned outputMatrixCount);
+        TransMachineOptimizer(ReferencedGeometries& refGeos, unsigned outputMatrixCount, const VisualScene& scene);
         TransMachineOptimizer();
         ~TransMachineOptimizer();
     protected:
@@ -192,7 +192,7 @@ namespace RenderCore { namespace ColladaConversion
         return Identity<Float4x4>();
     }
 
-    TransMachineOptimizer::TransMachineOptimizer(ReferencedGeometries& refGeos, unsigned outputMatrixCount)
+    TransMachineOptimizer::TransMachineOptimizer(ReferencedGeometries& refGeos, unsigned outputMatrixCount, const VisualScene& scene)
     {
         _canMergeIntoTransform.resize(outputMatrixCount, false);
         _mergedTransforms.resize(outputMatrixCount, Identity<Float4x4>());
@@ -213,15 +213,18 @@ namespace RenderCore { namespace ColladaConversion
                 // find all of the meshes attached, and check if any are attached in
                 // multiple places
             bool doublyAttachedObject = false;
-            for (auto i=refGeos._meshes.cbegin(); i!=refGeos._meshes.cend() && !doublyAttachedObject; ++i)
+            for (auto i=refGeos._meshes.cbegin(); i!=refGeos._meshes.cend() && !doublyAttachedObject; ++i) {
                 if (i->_outputMatrixIndex == c) {
+                    GuidReference refGuid(scene.GetInstanceGeometry(i->_objectIndex)._reference);
                     for (auto i2=refGeos._meshes.cbegin(); i2!=refGeos._meshes.cend(); ++i2) {
-                        if (i2->_objectIndex == i->_objectIndex && i2->_outputMatrixIndex != i->_outputMatrixIndex) {
+                        GuidReference refGuid2(scene.GetInstanceGeometry(i2->_objectIndex)._reference);
+                        if (refGuid == refGuid2 && i2->_outputMatrixIndex != i->_outputMatrixIndex) {
                             doublyAttachedObject = true;
                             break;
                         }
                     }
                 }
+            }
 
             _canMergeIntoTransform[c] = !doublyAttachedObject;
         }
@@ -283,7 +286,7 @@ namespace RenderCore { namespace ColladaConversion
             // attached to more than one matrix, or if something other than a geometry instance is
             // attached, then we cannot do any merging.
         
-        TransMachineOptimizer optimizer(refGeos, _skeleton.GetTransformationMachine().GetOutputMatrixCount());
+        TransMachineOptimizer optimizer(refGeos, _skeleton.GetTransformationMachine().GetOutputMatrixCount(), scene);
         _skeleton.GetTransformationMachine().Optimize(optimizer);
 
             // We can try to optimise the skeleton here. We should collect the list

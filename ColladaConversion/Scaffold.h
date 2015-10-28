@@ -641,6 +641,11 @@ namespace ColladaConversion
 
         GuidReference(Section uri);
         GuidReference(uint64 id, uint64 fileHash) : _id(id), _fileHash(fileHash) {}
+
+        friend bool operator==(const GuidReference& lhs, const GuidReference& rhs)
+        {
+            return (lhs._id == rhs._id) && (lhs._fileHash == rhs._fileHash);
+        }
     };
 
     class URIResolveContext

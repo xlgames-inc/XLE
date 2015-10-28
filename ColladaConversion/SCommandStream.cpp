@@ -199,8 +199,8 @@ namespace RenderCore { namespace ColladaConversion
     {
         GuidReference refGuid(instGeo._reference);
         ObjectGuid geoId(refGuid._id, refGuid._fileHash);
-         auto geo = objects.GetGeo(geoId);
-         if (geo == ~unsigned(0x0)) {
+        auto geo = objects.GetGeo(geoId);
+        if (geo == ~unsigned(0x0)) {
             auto* scaffoldGeo = FindElement(refGuid, resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
             if (!scaffoldGeo)
                 Throw(::Assets::Exceptions::FormatError("Could not found geometry object to instantiate (%s)",
@@ -221,7 +221,7 @@ namespace RenderCore { namespace ColladaConversion
 
             objects._rawGeos.push_back(std::make_pair(geoId, std::move(convertedMesh)));
             geo = (unsigned)(objects._rawGeos.size()-1);
-         }
+        }
         
         auto materials = BuildMaterialTable(
             AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
