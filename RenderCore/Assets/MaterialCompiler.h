@@ -28,6 +28,10 @@ namespace RenderCore { namespace Assets
 
         MaterialScaffoldCompiler();
         ~MaterialScaffoldCompiler();
+
+    protected:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
     };
 
 }}

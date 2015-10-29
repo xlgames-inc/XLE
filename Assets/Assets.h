@@ -23,9 +23,14 @@
     #define ASSETS_STORE_NAMES
 #endif
 #define ASSETS_STORE_DIVERGENT		// divergent assets are intended for tools (not in-game). But we can't selectively disable this feature
+#define ASSETS_MULTITHREADED        // allow GetAsset, GetAssetComp (and variants) to be used from multiple threads
 
 #if defined(ASSETS_STORE_DIVERGENT)
 	#include "DivergentAsset.h"
+#endif
+
+#if defined(ASSETS_MULTITHREADED)
+    #include "../Utility/Threading/Mutex.h"
 #endif
 
 namespace Assets
@@ -65,7 +70,43 @@ namespace Assets
             #if defined(ASSETS_STORE_NAMES)
                 static std::vector<std::pair<uint64, std::string>> _assetNames;
             #endif
+
+            #if defined(ASSETS_MULTITHREADED)
+                Threading::Mutex _lock;
+            #endif
         };
+
+        #if defined(ASSETS_MULTITHREADED)
+            template <typename AssetType>
+                class AssetSetPtr : public std::unique_lock<Threading::Mutex>
+            {
+            public:
+                AssetSet<AssetType>* operator->() const never_throws { return _assetSet; }
+                AssetSet<AssetType>& operator*() const never_throws { return *_assetSet; }
+                AssetSet<AssetType>* get() const never_throws { return *_assetSet; }
+
+                AssetSetPtr(AssetSet<AssetType>& assetSet)
+                    : std::unique_lock<Threading::Mutex>(assetSet._lock)
+                    , _assetSet(&assetSet) {}
+                ~AssetSetPtr() {}
+
+                AssetSetPtr(AssetSetPtr&& moveFrom) never_throws
+                    : std::unique_lock<Threading::Mutex>(std::move(moveFrom))
+                    , _assetSet(moveFrom._assetSet) {}
+
+                AssetSetPtr& operator=(AssetSetPtr&& moveFrom) never_throws
+                {
+                    std::unique_lock<Threading::Mutex>::operator=(std::move(moveFrom));
+                    _assetSet = moveFrom._assetSet;
+                    return *this;
+                }
+            private:
+                AssetSet<AssetType>* _assetSet;
+            };
+        #else
+            template<typename AssetType>
+                using AssetSetPtr = AssetSet<AssetType>*;
+        #endif
 
             // (utility functions pulled out-of-line)
         void LogHeader(unsigned count, const char typeName[]);
@@ -78,18 +119,25 @@ namespace Assets
             uint64 hash, const std::string& name);
 
         template<typename AssetType>
-            AssetSet<AssetType>& GetAssetSet() 
+            AssetSetPtr<AssetType> GetAssetSet() 
         {
             static AssetSet<AssetType>* set = nullptr;
             if (!set)
                 set = Services::GetAssetSets().GetSetForType<AssetType>();
             
-            assert(Services::GetAssetSets().IsBoundThread());  // currently not thread safe; we have to check the thread ids
             #if defined(ASSETS_STORE_NAMES)
                     // These should agree. If there's a mismatch, there may be a threading problem
                 assert(set->_assets.size() == set->_assetNames.size());
             #endif
-            return *set;
+
+            #if defined(ASSETS_MULTITHREADED)
+                return AssetSetPtr<AssetType>(*set);
+            #else
+                    //  When not multithreaded, check the thread ids for safety.
+                    //  We have to check the thread ids
+                assert(Services::GetAssetSets().IsBoundThread());  
+                return *set;
+            #endif
         }
 
         template<typename AssetType> using Ptr = std::unique_ptr<AssetType>;
@@ -139,25 +187,30 @@ namespace Assets
                     //      * otherwise we build a new asset
                     //
 				auto hash = BuildHash(initialisers...);
-				auto& assetSet = GetAssetSet<AssetType>();
+				auto assetSet = GetAssetSet<AssetType>();
 				(void)assetSet;	// (is this a compiler problem? It thinks this is unreferenced?)
 
 				#if defined(ASSETS_STORE_DIVERGENT)
 						// divergent assets will always shadow normal assets
 						// we also don't do a dependency check for these assets
-					auto di = LowerBound(assetSet._divergentAssets, hash);
-					if (di != assetSet._divergentAssets.end() && di->first == hash) {
+					auto di = LowerBound(assetSet->_divergentAssets, hash);
+					if (di != assetSet->_divergentAssets.end() && di->first == hash) {
 						return di->second->GetAsset();
 					}
 				#endif
 
-                auto& assets = assetSet._assets;
+                auto& assets = assetSet->_assets;
 				auto i = LowerBound(assets, hash);
 				if (i != assets.end() && i->first == hash) {
                     if (CheckDependancy<DoCheckDependancy>::NeedsRefresh(i->second.get())) {
                             // note --  old resource will stay in memory until the new one has been constructed
                             //          If we get an exception during construct, we'll be left with a null ptr
                             //          in this asset set
+                            //
+                            //  There is a problem here whereby we retain the lock on the asset set while we are
+                            //  initializing this create/compile operation. If it expensive, we could keep it
+                            //  locked for awhile. Or, even worse, we could try for a recursive lock on the same
+                            //  asset set.
                         auto oldResource = std::move(i->second);
                         i->second = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(std::forward<Params>(initialisers)...);
                     }
@@ -174,7 +227,7 @@ namespace Assets
                         // attach a name to this hash value, so we can query the contents
                         // of an asset set and get meaningful values
                         //  (only insert after we've completed creation; because creation can throw an exception)
-					InsertAssetName(assetSet._assetNames, hash, name);
+					InsertAssetName(assetSet->_assetNames, hash, name);
                 #endif
 
                     // we have to search again for the insertion point
@@ -198,10 +251,9 @@ namespace Assets
 				#else
 
 					auto hash = BuildHash(initialisers...);
-					auto& assetSet = GetAssetSet<AssetType>();
-                    (void)assetSet;
-					auto di = LowerBound(assetSet._divergentAssets, hash);
-					if (di != assetSet._divergentAssets.end() && di->first == hash) {
+					auto assetSet = GetAssetSet<AssetType>();
+					auto di = LowerBound(assetSet->_divergentAssets, hash);
+					if (di != assetSet->_divergentAssets.end() && di->first == hash) {
 						return di->second;
 					}
 
@@ -216,7 +268,7 @@ namespace Assets
                     TRY {
                         newDivAsset = std::make_shared<typename AssetTraits<AssetType>::DivAsset>(
                             GetAsset<true, DoBackgroundCompile, AssetType>(std::forward<Params>(initialisers)...), 
-                            hash, assetSet.GetTypeCode(), 
+                            hash, assetSet->GetTypeCode(), 
                             identifier, undoQueue);
                     } CATCH (const Assets::Exceptions::InvalidAsset&) {
                         constructNewAsset = true;
@@ -233,25 +285,23 @@ namespace Assets
                             //  and assign it in place.
                         auto newBlankAsset = AssetType::CreateNew(initialisers...);
 
-                        auto& assetSet = GetAssetSet<AssetType>();
-                        auto& assets = assetSet._assets;
-
+                        auto& assets = assetSet->_assets;
                         #if defined(ASSETS_STORE_NAMES)
-					        InsertAssetNameNoCollision(assetSet._assetNames, hash, name);
+					        InsertAssetNameNoCollision(assetSet->_assetNames, hash, name);
                         #endif
 
                         auto i = LowerBound(assets, hash);
                         newDivAsset = std::make_shared<typename AssetTraits<AssetType>::DivAsset>(
                             *assets.insert(i, std::make_pair(hash, std::move(newBlankAsset)))->second, 
-                            hash, assetSet.GetTypeCode(), 
+                            hash, assetSet->GetTypeCode(), 
                             identifier, undoQueue);
                     }
 
 						// Do we have to search for an insertion point here again?
 						// is it possible that constructing an asset could create a new divergent
 						// asset of the same type? It seems unlikely
-					assert(di == LowerBound(assetSet._divergentAssets, hash));
-					return assetSet._divergentAssets.insert(di, std::make_pair(hash, std::move(newDivAsset)))->second;
+					assert(di == LowerBound(assetSet->_divergentAssets, hash));
+					return assetSet->_divergentAssets.insert(di, std::make_pair(hash, std::move(newDivAsset)))->second;
 
 				#endif
 			}

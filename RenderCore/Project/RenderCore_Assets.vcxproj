@@ -152,6 +152,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets\AssetUtils.cpp" />
+    <ClCompile Include="..\Assets\CompilationThread.cpp" />
     <ClCompile Include="..\Assets\MeshDatabase.cpp" />
     <ClCompile Include="..\Assets\ModelCache.cpp" />
     <ClCompile Include="..\Assets\ModelScaffoldSerialization.cpp" />
@@ -174,6 +175,7 @@
   <ItemGroup>
     <ClInclude Include="..\Assets\AnimationScaffoldInternal.h" />
     <ClInclude Include="..\Assets\AssetUtils.h" />
+    <ClInclude Include="..\Assets\CompilationThread.h" />
     <ClInclude Include="..\Assets\MeshDatabase.h" />
     <ClInclude Include="..\Assets\ModelCache.h" />
     <ClInclude Include="..\Assets\ModelImmutableData.h" />

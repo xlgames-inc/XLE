@@ -5,10 +5,12 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ColladaCompilerInterface.h"
+#include "CompilationThread.h"
 // #include "AssetUtils.h" // for ChunkType_Metrics
 #include "../../ColladaConversion/NascentModel.h"
 #include "../../ColladaConversion/DLLInterface.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/CompilerHelper.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../Utility/Threading/LockFree.h"
 #include "../../Utility/Threading/ThreadObject.h"
@@ -23,15 +25,6 @@
 namespace RenderCore { namespace Assets 
 {
     static const auto* ColladaLibraryName = "ColladaConversion.dll";
-
-    class QueuedCompileOperation : public ::Assets::PendingCompileMarker
-    {
-    public:
-        uint64 _typeCode;
-        ::Assets::ResChar _initializer[MaxPath];
-
-        const ::Assets::IntermediateAssets::Store* _destinationStore;
-    };
 
     class ColladaCompiler::Pimpl
     {
@@ -65,7 +58,6 @@ namespace RenderCore { namespace Assets
         void PerformCompile(QueuedCompileOperation& op);
         void AttachLibrary();
 
-        class CompilationThread;
         Threading::Mutex _threadLock;   // (used while initialising _thread for the first time)
         std::unique_ptr<CompilationThread> _thread;
 
@@ -203,80 +195,11 @@ namespace RenderCore { namespace Assets
     }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class ColladaCompiler::Pimpl::CompilationThread
-    {
-    public:
-        void Push(std::shared_ptr<QueuedCompileOperation> op);
-        void StallOnPendingOperations(bool cancelAll);
-
-        CompilationThread(ColladaCompiler::Pimpl* pimpl);
-        ~CompilationThread();
-    protected:
-        std::thread _thread;
-        XlHandle _events[2];
-        volatile bool _workerQuit;
-        LockFree::FixedSizeQueue<std::weak_ptr<QueuedCompileOperation>, 256> _queue;
-
-        ColladaCompiler::Pimpl* _pimpl; // (unprotected because it owns us)
-
-        void ThreadFunction();
-    };
-
-    void ColladaCompiler::Pimpl::CompilationThread::StallOnPendingOperations(bool cancelAll)
-    {
-        if (!_workerQuit) {
-            _workerQuit = true;
-            XlSetEvent(_events[1]);   // trigger a manual reset event should wake all threads (and keep them awake)
-            _thread.join();
-        }
-    }
-    
-    void ColladaCompiler::Pimpl::CompilationThread::Push(std::shared_ptr<QueuedCompileOperation> op)
-    {
-        if (!_workerQuit) {
-            _queue.push_overflow(std::move(op));
-            XlSetEvent(_events[0]);
-        }
-    }
-
-    void ColladaCompiler::Pimpl::CompilationThread::ThreadFunction()
-    {
-        while (!_workerQuit) {
-            std::weak_ptr<QueuedCompileOperation>* op;
-            if (_queue.try_front(op)) {
-                auto o = op->lock();
-                if (o) _pimpl->PerformCompile(*o);
-                _queue.pop();
-            } else {
-                XlWaitForMultipleSyncObjects(
-                    2, this->_events,
-                    false, XL_INFINITE, true);
-            }
-        }
-    }
-
-    ColladaCompiler::Pimpl::CompilationThread::CompilationThread(ColladaCompiler::Pimpl* pimpl)
-    : _pimpl(pimpl)
-    {
-        _events[0] = XlCreateEvent(false);
-        _events[1] = XlCreateEvent(true);
-        _workerQuit = false;
-
-        _thread = std::thread(std::bind(&CompilationThread::ThreadFunction, this));
-    }
-
-    ColladaCompiler::Pimpl::CompilationThread::~CompilationThread()
-    {
-        StallOnPendingOperations(true);
-        XlCloseSyncObject(_events[0]);
-        XlCloseSyncObject(_events[1]);
-    }
-
     void ColladaCompiler::Pimpl::PerformCompile(QueuedCompileOperation& op)
     {
         TRY
         {
-            auto splitName = MakeFileNameSplitter(op._initializer);
+            auto splitName = MakeFileNameSplitter(op._initializer0);
 
             AttachLibrary();
 
@@ -346,7 +269,7 @@ namespace RenderCore { namespace Assets
                             SerializeToFile(*model, _ocSerializeSkinFunction, destinationFile, libVersionDesc);
 
                             char matName[MaxPath];
-                            op._destinationStore->MakeIntermediateName(matName, dimof(matName), op._initializer);
+                            op._destinationStore->MakeIntermediateName(matName, dimof(matName), op._initializer0);
                             XlChopExtension(matName);
                             XlCatString(matName, dimof(matName), "-rawmat");
                             SerializeToFileJustChunk(*model, _ocSerializeMaterialsFunction, matName, libVersionDesc);
@@ -369,7 +292,7 @@ namespace RenderCore { namespace Assets
             if (op._typeCode == Type_AnimationSet) {
                     //  source for the animation set should actually be a directory name, and
                     //  we'll use all of the dae files in that directory as animation inputs
-                auto sourceFiles = FindFiles(std::string(op._initializer) + "/*.dae");
+                auto sourceFiles = FindFiles(std::string(op._initializer0) + "/*.dae");
                 std::vector<::Assets::DependentFileState> deps;
 
                 if (_newPathOk) {
@@ -456,16 +379,10 @@ namespace RenderCore { namespace Assets
             return nullptr;   // unknown asset type!
         }
 
-        if (DoesFileExist(outputName)) {
-                // MakeDependencyValidation returns an object only if dependencies are currently good
-             auto depVal = destinationStore.MakeDependencyValidation(outputName);
-             if (depVal && depVal->GetValidationIndex() == 0) {
-                    // already exists -- just return "ready"
-                 if (typeCode == Type_RawMat)
-                    XlCatString(outputName, MakeFileNameSplitter(initializers[0]).ParametersWithDivider());
-                return std::make_unique<::Assets::PendingCompileMarker>(
-                    ::Assets::AssetState::Ready, outputName, ~0ull, std::move(depVal));
-             }
+        if (auto existing = ::Assets::CompilerHelper::CheckExistingAsset(destinationStore, outputName)) {
+            if (typeCode == Type_RawMat)
+                XlCatString(existing->_sourceID0, MakeFileNameSplitter(initializers[0]).ParametersWithDivider());
+            return existing;
         }
 
             // Queue this compilation operation to occur in the background thread.
@@ -476,7 +393,7 @@ namespace RenderCore { namespace Assets
             // However, with the new implementation, we could use one of the global thread pools
             // and it should be ok to queue up multiple compilations at the same time.
         auto backgroundOp = std::make_shared<QueuedCompileOperation>();
-        XlCopyString(backgroundOp->_initializer, initializers[0]);
+        XlCopyString(backgroundOp->_initializer0, initializers[0]);
         XlCopyString(backgroundOp->_sourceID0, outputName);
         if (typeCode == Type_RawMat)
             XlCatString(backgroundOp->_sourceID0, MakeFileNameSplitter(initializers[0]).ParametersWithDivider());
@@ -485,8 +402,11 @@ namespace RenderCore { namespace Assets
 
         {
             ScopedLock(_pimpl->_threadLock);
-            if (!_pimpl->_thread)
-                _pimpl->_thread = std::make_unique<Pimpl::CompilationThread>(_pimpl.get());
+            if (!_pimpl->_thread) {
+                auto* p =_pimpl.get();
+                _pimpl->_thread = std::make_unique<CompilationThread>(
+                    [p](QueuedCompileOperation& op) { p->PerformCompile(op); });
+            }
         }
         _pimpl->_thread->Push(backgroundOp);
         

@@ -7,6 +7,7 @@
 #include "MaterialCompiler.h"
 #include "ModelImmutableData.h"     // for MaterialImmutableData
 #include "Material.h"
+#include "CompilationThread.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/ChunkFile.h"
@@ -201,14 +202,32 @@ namespace RenderCore { namespace Assets
             output.FinishCurrentChunk();
         }
 
-        return ::Assets::CompilerHelper::CompileResult
-            {
-                std::move(deps),
-                std::string()
-            };
+        return ::Assets::CompilerHelper::CompileResult { std::move(deps), std::string() };
+    }
+
+    static void DoCompileMaterialScaffold(QueuedCompileOperation& op)
+    {
+        TRY
+        {
+            auto compileResult = CompileMaterialScaffold(op._initializer0, op._initializer1, op._sourceID0);
+            op._dependencyValidation = op._destinationStore->WriteDependencies(
+                op._sourceID0, MakeStringSection(compileResult._baseDir), 
+                MakeIteratorRange(compileResult._dependencies));
+            assert(op._dependencyValidation);
+            op.SetState(::Assets::AssetState::Ready);
+        } CATCH(...) {
+            op.SetState(::Assets::AssetState::Invalid);
+        } CATCH_END
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class MaterialScaffoldCompiler::Pimpl
+    {
+    public:
+        Threading::Mutex _threadLock;
+        std::unique_ptr<CompilationThread> _thread;
+    };
 
     std::shared_ptr<::Assets::PendingCompileMarker> MaterialScaffoldCompiler::PrepareAsset(
         uint64 typeCode, 
@@ -230,17 +249,41 @@ namespace RenderCore { namespace Assets
         auto marker = CompilerHelper::CheckExistingAsset(store, intermediateName);
         if (marker) return marker;
 
-        auto deps = CompileMaterialScaffold(materialFilename, modelFilename, intermediateName);
-        return CompilerHelper::PrepareCompileMarker(store, intermediateName, deps);
+            // Compile can throw "pending"...
+            // So we need to keep a queue of active work operations.
+            // We can push the compilation work into the background (but, actually, it's
+            // probably not a lot of work)
+        auto backgroundOp = std::make_shared<QueuedCompileOperation>();
+        XlCopyString(backgroundOp->_initializer0, materialFilename);
+        XlCopyString(backgroundOp->_initializer1, modelFilename);
+        XlCopyString(backgroundOp->_sourceID0, intermediateName);
+        backgroundOp->_destinationStore = &store;
+        backgroundOp->_typeCode = typeCode;
+
+        {
+            ScopedLock(_pimpl->_threadLock);
+            if (!_pimpl->_thread)
+                _pimpl->_thread = std::make_unique<CompilationThread>(
+                    [](QueuedCompileOperation& op) { DoCompileMaterialScaffold(op); });
+        }
+        _pimpl->_thread->Push(backgroundOp);
+
+        return std::move(backgroundOp);
     }
 
     void MaterialScaffoldCompiler::StallOnPendingOperations(bool cancelAll)
     {
-        // processing occurs in the foreground. So nothing to stall on
+        {
+            ScopedLock(_pimpl->_threadLock);
+            if (!_pimpl->_thread) return;
+        }
+        _pimpl->_thread->StallOnPendingOperations(cancelAll);
     }
 
     MaterialScaffoldCompiler::MaterialScaffoldCompiler()
-    {}
+    {
+        _pimpl = std::make_unique<Pimpl>();
+    }
 
     MaterialScaffoldCompiler::~MaterialScaffoldCompiler()
     {}
