@@ -11,11 +11,14 @@
 #include "InvalidAssetManager.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/FileUtils.h"
+#include "../Utility/Streams/PathUtils.h"
 #include "../Utility/StringFormat.h"
 #include <memory>
 
 namespace Assets
 {
+    class PendingCompileMarker;
+
     /// <summary>Container file with with one child that is initialized via InputStreamFormatter</summary>
     ///
     /// Represents a file that contains a single serialized item. That item must be a type that
@@ -54,40 +57,40 @@ namespace Assets
     public:
         Type _asset;
 
-        ConfigFileContainer(const ::Assets::ResChar initializer[]);
+        ConfigFileContainer(const ResChar initializer[]);
         ~ConfigFileContainer();
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+        const std::shared_ptr<DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
     protected:
-        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
+        std::shared_ptr<DependencyValidation>  _validationCallback;
     };
 
     template<typename Type, typename Formatter>
-        ConfigFileContainer<Type, Formatter>::ConfigFileContainer(const ::Assets::ResChar initializer[])
+        ConfigFileContainer<Type, Formatter>::ConfigFileContainer(const ResChar initializer[])
     {
         size_t fileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(initializer, &fileSize);
         
         TRY
         {
-            auto searchRules = ::Assets::DefaultDirectorySearchRules(initializer);
+            auto searchRules = DefaultDirectorySearchRules(initializer);
 
             Formatter formatter(
                 MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
 
             _asset = Type(formatter, searchRules);
 
-            ::Assets::Services::GetInvalidAssetMan().MarkValid(initializer);
+            Services::GetInvalidAssetMan().MarkValid(initializer);
         } CATCH (const std::exception& e) {
-            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(initializer, e.what());
+            Services::GetInvalidAssetMan().MarkInvalid(initializer, e.what());
             throw;
         } CATCH(...) {
-            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(initializer, "Unknown error");
+            Services::GetInvalidAssetMan().MarkInvalid(initializer, "Unknown error");
             throw;
         } CATCH_END
 
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterFileDependency(_validationCallback, initializer);
+        _validationCallback = std::make_shared<DependencyValidation>();
+        RegisterFileDependency(_validationCallback, initializer);
     }
 
     template<typename Type, typename Formatter> 
@@ -106,36 +109,36 @@ namespace Assets
         Type _asset;
         DirectorySearchRules _searchRules;
 
-        ConfigFileListContainer(const ::Assets::ResChar initializer[]);
+        ConfigFileListContainer(const ResChar initializer[]);
+        ConfigFileListContainer(std::shared_ptr<PendingCompileMarker>&& marker);
         ConfigFileListContainer();
         ~ConfigFileListContainer();
 
-        static std::unique_ptr<ConfigFileListContainer> CreateNew(const ::Assets::ResChar initialiser[]);
+        static std::unique_ptr<ConfigFileListContainer> CreateNew(const ResChar initialiser[]);
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+        const std::shared_ptr<DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
     protected:
-        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
+        std::shared_ptr<DependencyValidation>  _validationCallback;
+
+        void Construct(const ResChar initializer[]);
     };
 
     template<typename Type, typename Formatter>
-        ConfigFileListContainer<Type, Formatter>::ConfigFileListContainer(const ::Assets::ResChar initializer[])
+        void ConfigFileListContainer<Type, Formatter>::Construct(const ResChar initializer[])
     {
-        ::Assets::ResChar filename[MaxPath];
-        const auto* divider = XlFindChar(initializer, ':');
-        const ::Assets::ResChar* configName = "default";
-        if (divider) {
-            XlCopyNString(filename, dimof(filename), initializer, divider - initializer);
-            configName = divider+1;
-        } else {
-            XlCopyString(filename, initializer);
-        }
+        ResChar filename[MaxPath];
+        FileNameSplitter<ResChar> splitName(initializer);
+        XlCopyString(filename, splitName.AllExceptParameters());
+        StringSection<ResChar> configName;
+        if (!splitName.ParametersWithDivider().Empty()) configName = splitName.Parameters();
+        else configName = "default";
 
         size_t fileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(filename, &fileSize);
 
         TRY
         {
-            _searchRules = ::Assets::DefaultDirectorySearchRules(initializer);
+            _searchRules = DefaultDirectorySearchRules(initializer);
 
             Formatter formatter(
                 MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
@@ -152,9 +155,7 @@ namespace Assets
                         if (!formatter.TryBeginElement(eleName))
                             Throw(Utility::FormatException("Poorly formed begin element in config file", formatter.GetLocation()));
 
-                        if (    size_t(eleName._end - eleName._start) == XlStringLen(configName)
-                            &&  !XlComparePrefixI((const ::Assets::ResChar*)eleName._start, configName, size_t(eleName._end - eleName._start))) {
-
+                        if (XlEqStringI(StringSection<ResChar>((const ResChar*)eleName.begin(), (const ResChar*)eleName.end()), configName)) {
                             _asset = Type(formatter, _searchRules);
                             gotConfig = true;
                         } else {
@@ -184,17 +185,37 @@ namespace Assets
             // if (!gotConfig)
             //     Throw(::Exceptions::BasicLabel(StringMeld<256>() << "Configuration setting (" << initializer << ") is missing"));
 
-            ::Assets::Services::GetInvalidAssetMan().MarkValid(initializer);
+            Services::GetInvalidAssetMan().MarkValid(initializer);
         } CATCH (const std::exception& e) {
-            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(initializer, e.what());
+            Services::GetInvalidAssetMan().MarkInvalid(initializer, e.what());
             throw;
         } CATCH(...) {
-            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(initializer, "Unknown error");
+            Services::GetInvalidAssetMan().MarkInvalid(initializer, "Unknown error");
             throw;
         } CATCH_END
 
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterFileDependency(_validationCallback, filename);
+        _validationCallback = std::make_shared<DependencyValidation>();
+        RegisterFileDependency(_validationCallback, filename);
+    }
+
+    template<typename Type, typename Formatter>
+        ConfigFileListContainer<Type, Formatter>::ConfigFileListContainer(const ResChar initializer[])
+    {
+        Construct(initializer);
+    }
+
+    template<typename Type, typename Formatter>
+        ConfigFileListContainer<Type, Formatter>::ConfigFileListContainer(
+            std::shared_ptr<PendingCompileMarker>&& marker)
+    {
+        auto state = marker->GetState();
+        if (state == AssetState::Ready) {
+            Construct(marker->_sourceID0);
+        } else if (state == AssetState::Pending) {
+            Throw(Exceptions::PendingAsset(marker->Initializer(), "Asset pending when loading through ConfigFileListContainer"));
+        } else {
+            Throw(Exceptions::PendingAsset(marker->Initializer(), "Asset invlaid when loading through ConfigFileListContainer"));
+        }
     }
 
     template<typename Type, typename Formatter>
@@ -204,7 +225,7 @@ namespace Assets
         ConfigFileListContainer<Type, Formatter>::~ConfigFileListContainer() {}
 
     template<typename Type, typename Formatter>
-        auto ConfigFileListContainer<Type, Formatter>::CreateNew(const ::Assets::ResChar initialiser[]) -> std::unique_ptr < ConfigFileListContainer >
+        auto ConfigFileListContainer<Type, Formatter>::CreateNew(const ResChar initialiser[]) -> std::unique_ptr < ConfigFileListContainer >
         {
             return std::make_unique<ConfigFileListContainer>();
         }

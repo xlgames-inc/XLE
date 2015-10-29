@@ -11,6 +11,7 @@
 #include "../Core/Types.h"
 #include "Detail/API.h"
 #include "MemoryUtils.h"
+#include "StringUtils.h"        // just for StringSection
 #include <string>
 #include <stdarg.h>
 
@@ -66,6 +67,9 @@ namespace Utility
                 this->setp((char*)_buffer, (char*)PtrAdd(_buffer, sizeof(_buffer) - charSize));
                 std::fill_n(_buffer, dimof(_buffer), 0);
             }
+
+            const void* begin() const { return pbase(); }
+            const void* end() const { return pptr(); }
         };
     }
 
@@ -88,6 +92,11 @@ namespace Utility
 
         operator const CharType*() const    { return (const CharType*)_buffer._buffer; }
         const CharType* get() const         { return (const CharType*)_buffer._buffer; }
+        StringSection<CharType> AsStringSection() const
+        {
+            return StringSection<CharType>((const CharType*)_buffer.begin(), (const CharType*)_buffer.end());
+        }
+        operator StringSection<CharType>() const { return AsStringSection(); }
 
     protected:
         Internal::FixedMemoryBuffer<Count*sizeof(CharType)> _buffer;

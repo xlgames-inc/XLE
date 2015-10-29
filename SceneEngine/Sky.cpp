@@ -196,8 +196,7 @@ namespace SceneEngine
 
     void    Sky_Render(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, bool blendFog)
     {
-        TRY 
-        {
+        CATCH_ASSETS_BEGIN
             using namespace RenderCore;
             auto globalLightingDesc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
             auto skyTextureName = globalLightingDesc._skyTexture;
@@ -227,10 +226,7 @@ namespace SceneEngine
                 context->Bind(Metal::Topology::TriangleList);
                 RenderHalfCubeGeometry(context, textureParts, *res._shader);
             }
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         context->Bind(RenderCore::Metal::Topology::TriangleList);
     }
@@ -238,8 +234,7 @@ namespace SceneEngine
     void    Sky_RenderPostFog(  RenderCore::Metal::DeviceContext* context, 
                                 LightingParserContext& parserContext)
     {
-        TRY 
-        {
+        CATCH_ASSETS_BEGIN
             using namespace RenderCore;
             auto skyTextureName = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
             if (!skyTextureName[0]) return;
@@ -281,10 +276,7 @@ namespace SceneEngine
                 context->Bind(Metal::Topology::TriangleList);
                 RenderHalfCubeGeometry(context, textureParts, *res._postFogShader);
             }
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         context->Bind(RenderCore::Metal::Topology::TriangleList);
     }

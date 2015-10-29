@@ -89,7 +89,7 @@ namespace Assets
 
     /// <summary>Container for a asset filename in string format<summary>
     /// Just a simple generalisation of a path and file name in char array form.
-    /// Avoids scattering references to ::Assets::ResChar and MaxPath about
+    /// Avoids scattering references to ResChar and MaxPath about
     /// the code (and provide some future-proof-ness).
     ///
     /// Note that in this form there is a strict limit on the max length of 
@@ -100,10 +100,10 @@ namespace Assets
     class ResolvedAssetFile
     {
     public:
-        ::Assets::ResChar _fn[MaxPath];
+        ResChar _fn[MaxPath];
 
-        const ::Assets::ResChar* get() const    { return _fn; }
-        const bool IsGood() const               { return _fn[0] != '\0'; }
+        const ResChar* get() const  { return _fn; }
+        const bool IsGood() const   { return _fn[0] != '\0'; }
 
         ResolvedAssetFile() { _fn[0] = '\0'; }
     };
@@ -113,8 +113,8 @@ namespace Assets
     /// This includes converting absolute filenames into relative format (relative to the
     /// primary mount point).
     /// This is intended for GUI tools that allow the user to enter filenames of any form.
-    void MakeAssetName(ResolvedAssetFile& dest, const ::Assets::ResChar src[]);
-    void MakeAssetName(ResolvedAssetFile& dest, const utf8 src[]);
+    void MakeAssetName(ResolvedAssetFile& dest, const StringSection<ResChar> src);
+    void MakeAssetName(ResolvedAssetFile& dest, const StringSection<utf8> src);
     /// @}
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

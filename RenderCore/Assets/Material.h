@@ -14,7 +14,11 @@
 #include "../../Utility/Mixins.h"
 #include <memory>
 
-namespace Assets { class DependencyValidation; class DirectorySearchRules; class PendingCompileMarker; }
+namespace Assets { 
+    class DependencyValidation; class DirectorySearchRules; 
+    class PendingCompileMarker; 
+    template<typename T, typename F> class ConfigFileListContainer;
+}
 namespace Utility { class Data; }
 
 namespace RenderCore { namespace Assets
@@ -128,18 +132,9 @@ namespace RenderCore { namespace Assets
             const ::Assets::DirectorySearchRules&);
         ~RawMaterial();
 
-        // static std::unique_ptr<RawMaterial> CreateNew(const ::Assets::ResChar initialiser[]);
-
-        class RawMatSplitName
-        {
-        public:
-            ResString _settingName;
-            ResString _concreteFilename;
-            ResString _initializerName;
-
-            RawMatSplitName();
-            RawMatSplitName(const ::Assets::ResChar initialiser[]);
-        };
+        using Container = ::Assets::ConfigFileListContainer<RawMaterial, InputStreamFormatter<utf8>>;
+        static const Container& GetAsset(const ::Assets::ResChar initializer[]);
+        static const std::shared_ptr<::Assets::DivergentAsset<Container>>& GetDivergentAsset(const ::Assets::ResChar initializer[]);
 
     private:
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
@@ -147,8 +142,6 @@ namespace RenderCore { namespace Assets
         void MergeInto(ResolvedMaterial& dest) const;
     };
 
-    void MakeConcreteRawMaterialFilename(
-        ::Assets::ResChar dest[], unsigned dstCount, const ::Assets::ResChar inputName[]);
     void ResolveMaterialFilename(
         ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
         const ::Assets::DirectorySearchRules& searchRules, const char baseMatName[]);

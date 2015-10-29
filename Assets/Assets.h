@@ -190,7 +190,7 @@ namespace Assets
 				return *assets.insert(i, std::make_pair(hash, std::move(newAsset)))->second;
             }
 
-		template <typename AssetType, typename... Params>
+		template <typename AssetType, bool DoBackgroundCompile, typename... Params>
 			std::shared_ptr<typename AssetTraits<AssetType>::DivAsset>& GetDivergentAsset(Params... initialisers)
 			{
 				#if !defined(ASSETS_STORE_DIVERGENT)
@@ -215,7 +215,7 @@ namespace Assets
                     bool constructNewAsset = false;
                     TRY {
                         newDivAsset = std::make_shared<typename AssetTraits<AssetType>::DivAsset>(
-                            GetAsset<true, false, AssetType>(std::forward<Params>(initialisers)...), 
+                            GetAsset<true, DoBackgroundCompile, AssetType>(std::forward<Params>(initialisers)...), 
                             hash, assetSet.GetTypeCode(), 
                             identifier, undoQueue);
                     } CATCH (const Assets::Exceptions::InvalidAsset&) {
@@ -366,7 +366,11 @@ namespace Assets
 
     template<typename AssetType, typename... Params> 
         std::shared_ptr<typename Internal::AssetTraits<AssetType>::DivAsset>& GetDivergentAsset(Params... initialisers)	
-            { return Internal::GetDivergentAsset<AssetType>(std::forward<Params>(initialisers)...); }
+            { return Internal::GetDivergentAsset<AssetType, false>(std::forward<Params>(initialisers)...); }
+
+    template<typename AssetType, typename... Params> 
+        std::shared_ptr<typename Internal::AssetTraits<AssetType>::DivAsset>& GetDivergentAssetComp(Params... initialisers)	
+            { return Internal::GetDivergentAsset<AssetType, true>(std::forward<Params>(initialisers)...); }
 
         ////////////////////////////////////////////////////////////////////////
 

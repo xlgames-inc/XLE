@@ -33,30 +33,35 @@ namespace RenderCore { namespace Assets
     class RawMatConfigurations
     {
     public:
-        SerializableVector<std::basic_string<utf8>> _configurations;
-        ::Assets::ResChar _rawModelMaterial[MaxPath];
+        std::vector<std::basic_string<utf8>> _configurations;
 
-        RawMatConfigurations(const ::Assets::ResChar sourceModel[]);
+        RawMatConfigurations(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+
+        static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
+
+        auto GetDependencyValidation() const -> const std::shared_ptr<::Assets::DependencyValidation>& { return _validationCallback; }
+    protected:
+        std::shared_ptr<::Assets::DependencyValidation> _validationCallback;
     };
 
-    RawMatConfigurations::RawMatConfigurations(const ::Assets::ResChar sourceModel[])
+    RawMatConfigurations::RawMatConfigurations(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
     {
-            //  get associated "raw" material information. This is should contain the material information attached
-            //  to the geometry export (eg, .dae file). Note -- maybe the name of the raw file should come
-            //  from the .material name (ie, to make it easier to have multiple material files with the same dae file)
-        XlCopyString(_rawModelMaterial, dimof(_rawModelMaterial), sourceModel);
-        XlChopExtension(_rawModelMaterial);
-        MakeConcreteRawMaterialFilename(_rawModelMaterial, dimof(_rawModelMaterial), _rawModelMaterial);
+        auto state = marker->GetState();
+        if (state == ::Assets::AssetState::Pending)
+            Throw(::Assets::Exceptions::PendingAsset(marker->Initializer(), "Pending asset in RawMatConfigurations"));
+        if (state == ::Assets::AssetState::Invalid)
+            Throw(::Assets::Exceptions::PendingAsset(marker->Initializer(), "Invalid asset in RawMatConfigurations"));
+
+            //  Get associated "raw" material information. This is should contain the material information attached
+            //  to the geometry export (eg, .dae file).
+
+        size_t sourceFileSize = 0;
+        auto sourceFile = LoadFileAsMemoryBlock(marker->_sourceID0, &sourceFileSize);
+        if (!sourceFile)
+            Throw(::Assets::Exceptions::InvalidAsset(marker->Initializer(), 
+                StringMeld<128>() << "Missing or empty file: " << marker->_sourceID0));
 
         {
-                //  We need to load the "-rawmat" file first to get the list
-                //  of configurations within
-            size_t sourceFileSize = 0;
-            auto sourceFile = LoadFileAsMemoryBlock(_rawModelMaterial, &sourceFileSize);
-            if (!sourceFile)
-                Throw(::Assets::Exceptions::InvalidAsset(sourceModel, 
-                    StringMeld<128>() << "Missing or empty file: " << _rawModelMaterial));
-
             InputStreamFormatter<utf8> formatter(
                 MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), sourceFileSize)));
             Document<decltype(formatter)> doc(formatter);
@@ -67,6 +72,9 @@ namespace RenderCore { namespace Assets
                 _configurations.push_back(name);
             }
         }
+
+        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterFileDependency(_validationCallback, marker->_sourceID0);
     }
 
     static void AddDep(
@@ -90,7 +98,8 @@ namespace RenderCore { namespace Assets
         const char sourceMaterial[], const char sourceModel[],
         const char destination[])
     {
-        RawMatConfigurations modelMat(sourceModel);
+            // note -- we can throw pending & invalid from here...
+        auto& modelMat = ::Assets::GetAssetComp<RawMatConfigurations>(sourceModel);
             
         std::vector<::Assets::DependentFileState> deps;
 
@@ -105,6 +114,8 @@ namespace RenderCore { namespace Assets
         ::Assets::ResChar resolvedSourceMaterial[MaxPath];
         ResolveMaterialFilename(resolvedSourceMaterial, dimof(resolvedSourceMaterial), searchRules, sourceMaterial);
         searchRules.AddSearchDirectoryFromFilename(resolvedSourceMaterial);
+
+        AddDep(deps, sourceModel);        // we need need a dependency (even if it's a missing file)
 
         using Meld = StringMeld<MaxPath, ::Assets::ResChar>;
         for (auto i=modelMat._configurations.cbegin(); i!=modelMat._configurations.cend(); ++i) {
@@ -132,14 +143,13 @@ namespace RenderCore { namespace Assets
                 // etc). This provides a path for reusing the same model with
                 // different material settings (eg, when we want one thing to have
                 // a red version and a blue version)
-
-            AddDep(deps, modelMat._rawModelMaterial);        // we need need a dependency (even if it's a missing file)
             
             TRY {
                     // resolve in model:configuration
                 auto configName = Conversion::Convert<::Assets::rstring>(*i);
-                resName << sourceModel << ":" << configName;
-                auto& rawMat = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<RawMaterial>>((Meld() << modelMat._rawModelMaterial << ":" << configName).get());
+                Meld meld; meld << sourceModel << ":" << configName;
+                resName << meld;
+                auto& rawMat = RawMaterial::GetAsset(meld);
                 rawMat._asset.Resolve(resMat, searchRules, &deps);
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
             } CATCH_END
@@ -151,7 +161,7 @@ namespace RenderCore { namespace Assets
                         // resolve in material:*
                     Meld meld; meld << resolvedSourceMaterial << ":*";
                     resName << ";" << meld;
-                    auto& rawMat = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<RawMaterial>>(meld.get());
+                    auto& rawMat = RawMaterial::GetAsset(meld);
                     rawMat._asset.Resolve(resMat, searchRules, &deps);
                 } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
                 } CATCH_END
@@ -160,7 +170,7 @@ namespace RenderCore { namespace Assets
                         // resolve in material:configuration
                     Meld meld; meld << resolvedSourceMaterial << ":" << Conversion::Convert<::Assets::rstring>(*i);
                     resName << ";" << meld;
-                    auto& rawMat = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<RawMaterial>>(meld.get());
+                    auto& rawMat = RawMaterial::GetAsset(meld);
                     rawMat._asset.Resolve(resMat, searchRules, &deps);
                 } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
                 } CATCH_END

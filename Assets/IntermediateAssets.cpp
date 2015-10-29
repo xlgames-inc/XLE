@@ -31,20 +31,22 @@ namespace Assets { namespace IntermediateAssets
         return (ResChar)((input == '\\')?'/':tolower(input));
     }
 
-    void    Store::MakeIntermediateName(ResChar buffer[], unsigned bufferMaxCount, const ResChar firstInitializer[]) const
+    void    Store::MakeIntermediateName(ResChar buffer[], unsigned bufferMaxCount, StringSection<ResChar> firstInitializer) const
     {
             // calculate the intermediate file for this request name (normally just a file with the 
             //  same name in our branch directory
-        if (buffer == firstInitializer) {
+        if (buffer == firstInitializer.begin()) {
             assert(bufferMaxCount >= (_baseDirectory.size()+1));
-            auto length = XlStringLen(firstInitializer);
+            auto length = firstInitializer.Length();
             auto moveSize = std::min(unsigned(length), unsigned(bufferMaxCount-1-(_baseDirectory.size()+1)));
             XlMoveMemory(&buffer[_baseDirectory.size()+1], buffer, moveSize);
             buffer[_baseDirectory.size()+1+moveSize] = ResChar('\0');
             std::copy(_baseDirectory.begin(), _baseDirectory.end(), buffer);
             buffer[_baseDirectory.size()] = ResChar('/');
         } else {
-            _snprintf_s(buffer, sizeof(ResChar)*bufferMaxCount, _TRUNCATE, "%s/%s", _baseDirectory.c_str(), firstInitializer);
+            XlCopyString(buffer, bufferMaxCount, _baseDirectory.c_str());
+            XlCatString(buffer, bufferMaxCount, "/");
+            XlCatString(buffer, bufferMaxCount, firstInitializer);
         }
         
             // make filename that is safe for the filesystem.
@@ -83,7 +85,7 @@ namespace Assets { namespace IntermediateAssets
     static std::vector<std::pair<uint64, std::shared_ptr<RetainedFileRecord>>> RetainedRecords;
     static Threading::Mutex RetainedRecordsLock;
 
-    static std::shared_ptr<RetainedFileRecord>& GetRetainedFileRecord(const char filename[])
+    static std::shared_ptr<RetainedFileRecord>& GetRetainedFileRecord(StringSection<ResChar> filename)
     {
             //  We should normalize to avoid problems related to
             //  case insensitivity and slash differences
@@ -108,7 +110,7 @@ namespace Assets { namespace IntermediateAssets
         }
     }
 
-    const DependentFileState& Store::GetDependentFileState(const ResChar filename[])
+    const DependentFileState& Store::GetDependentFileState(StringSection<ResChar> filename)
     {
         return GetRetainedFileRecord(filename)->_state;
     }
@@ -191,7 +193,8 @@ namespace Assets { namespace IntermediateAssets
     }
 
     std::shared_ptr<DependencyValidation> Store::WriteDependencies(
-        const ResChar intermediateFileName[], const ResChar baseDir[], 
+        const ResChar intermediateFileName[], 
+        StringSection<ResChar> baseDir,
         IteratorRange<const DependentFileState*> deps,
         bool makeDepValidation) const
     {
@@ -204,7 +207,7 @@ namespace Assets { namespace IntermediateAssets
             //  we have to write the base directory to the dependencies file as well
             //  to keep it short, most filenames should be expressed as relative files
         char buffer[MaxPath];
-        data.SetAttribute("BasePath", baseDir);
+        data.SetAttribute("BasePath", baseDir.AsString().c_str());
 
         SplitPath<ResChar> baseSplitPath(baseDir);
 

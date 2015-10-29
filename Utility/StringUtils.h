@@ -332,6 +332,18 @@ namespace Utility
             XlCopyNString(destination, Count, source._start, source.Length());
         }
 
+    template <typename CharType>
+        void XlCatString(CharType destination[], size_t size, const StringSection<CharType>& source)
+        {
+            XlCatNString(destination, size, source.begin(), source.Length());
+        }
+
+    template <int Count, typename CharType>
+        void XlCatString(CharType (&destination)[Count], const StringSection<CharType>& source)
+        {
+            XlCatNString(destination, Count, source.begin(), source.Length());
+        }
+
     template<typename T>
         bool XlEqString(const T* a, const T* b)
         {

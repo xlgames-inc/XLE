@@ -468,7 +468,7 @@ namespace Assets
         return result;
     }
 
-    void MakeAssetName(ResolvedAssetFile& dest, const ::Assets::ResChar src[])
+    void MakeAssetName(ResolvedAssetFile& dest, StringSection<ResChar> src)
     {
         auto rules = s_defaultFilenameRules;
         FileNameSplitter<ResChar> srcSplit(src);
@@ -497,9 +497,13 @@ namespace Assets
         *std::min(i, iend-1) = '\0';
     }
 
-    void MakeAssetName(ResolvedAssetFile& dest, const utf8 src[])
+    void MakeAssetName(ResolvedAssetFile& dest, StringSection<utf8> src)
     {
-        MakeAssetName(dest, (const ::Assets::ResChar*)src);
+        MakeAssetName(
+            dest, 
+            StringSection<ResChar>(
+                (const ::Assets::ResChar*)src.begin(),
+                (const ::Assets::ResChar*)src.end()));
     }
 
 }

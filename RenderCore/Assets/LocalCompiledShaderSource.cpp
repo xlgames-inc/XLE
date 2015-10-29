@@ -504,9 +504,7 @@ namespace RenderCore { namespace Assets
                             #endif
 
                             std::vector<::Assets::DependentFileState> deps(depsBegin, depsEnd);
-                            char baseDir[MaxPath];
-                            XlDirname(baseDir, dimof(baseDir), marker->_sourceID0);
-                            std::string baseDirAsString = baseDir;
+                            std::string baseDirAsString = MakeFileNameSplitter(marker->_sourceID0).DriveAndPath().AsString();
 
                             marker->_archive->Commit(
                                 marker->_sourceID1, Payload(payload),
@@ -522,7 +520,7 @@ namespace RenderCore { namespace Assets
                                         // can just write them now -- but it causes problems if we a
                                         // crash or use End Debugging before we flush the archive
                                 [deps, depNameAsString, baseDirAsString, &destinationStore]()
-                                    { destinationStore.WriteDependencies(depNameAsString.c_str(), baseDirAsString.c_str(), MakeIteratorRange(deps), false); });
+                                    { destinationStore.WriteDependencies(depNameAsString.c_str(), StringSection<char>(baseDirAsString), MakeIteratorRange(deps), false); });
                             (void)archiveCacheAttachment;
                         }
 

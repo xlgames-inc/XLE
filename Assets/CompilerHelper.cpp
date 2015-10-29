@@ -31,7 +31,7 @@ namespace Assets
         const CompileResult& compileResult)
     {
         auto depVal = destinationStore.WriteDependencies(
-            intermediateName, compileResult._baseDir.c_str(),
+            intermediateName, MakeStringSection(compileResult._baseDir),
             MakeIteratorRange(compileResult._dependencies));
         assert(depVal);
 

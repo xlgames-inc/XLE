@@ -360,7 +360,7 @@ namespace SceneEngine
         RenderDebugMode mode,
         const Float2& worldSpaceOffset)
     {
-        TRY {
+        CATCH_ASSETS_BEGIN
             const float terrainScale = _pimpl->_worldSpaceSpacing;
             metalContext.BindPS(RenderCore::MakeResourceList(2, 
                 _pimpl->_hardMaterialsSRV, _pimpl->_softMaterialsSRV));
@@ -409,10 +409,7 @@ namespace SceneEngine
                 metalContext.Bind(Metal::Topology::TriangleStrip);
                 metalContext.Draw(4);
             }
-        } 
-        CATCH (const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH (const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
     }
 
     ErosionSimulation::ErosionSimulation(UInt2 dimensions, float worldSpaceSpacing)

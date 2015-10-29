@@ -132,7 +132,7 @@ static void TestParser3()
 		using ::Assets::ResChar;
 		ResChar intermediateFile[256];
 		asyncMan.GetIntermediateStore().MakeIntermediateName(
-			intermediateFile, dimof(intermediateFile),
+			intermediateFile,
 			StringMeld<256, ResChar>() << sampleAsset << "-skin");
 		XlDeleteFile((utf8*)intermediateFile);
 	}

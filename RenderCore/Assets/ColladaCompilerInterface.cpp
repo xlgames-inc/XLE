@@ -276,17 +276,14 @@ namespace RenderCore { namespace Assets
     {
         TRY
         {
-            char baseDir[MaxPath];
-            XlDirname(baseDir, dimof(baseDir), op._initializer);
+            auto splitName = MakeFileNameSplitter(op._initializer);
 
             AttachLibrary();
 
             ConsoleRig::LibVersionDesc libVersionDesc;
             _library.TryGetVersion(libVersionDesc);
 
-            if (op._typeCode == Type_Model || op._typeCode == Type_Skeleton) {
-
-                FileNameSplitter<::Assets::ResChar> splitName(op._initializer);
+            if (op._typeCode == Type_Model || op._typeCode == Type_Skeleton || op._typeCode == Type_RawMat) {
 
                     // We need to do some processing of the filename
                     // the filename should take this form:
@@ -301,25 +298,41 @@ namespace RenderCore { namespace Assets
                     XlCatString(colladaFile, dimof(colladaFile), ".dae");
                 XlCopyString(rootNode, splitName.Parameters());
 
+                const auto* destinationFile = op._sourceID0;
+                ::Assets::ResChar temp[MaxPath];
+                if (op._typeCode == Type_RawMat) {
+                        // When building rawmat, a material name could be on the op._sourceID0
+                        // string. But we need to remove it from the path to find the real output
+                        // name.
+                    XlCopyString(temp, MakeFileNameSplitter(op._sourceID0).AllExceptParameters());
+                    destinationFile = temp;
+                }
+
                 if (_newPathOk) {
 
                     auto model = (*_createColladaScaffold)(colladaFile);
-                    if (op._typeCode == Type_Model) {
+                    switch (op._typeCode) {
+                    case Type_Model:
                         SerializeToFile(
                             (*_serializeSkinFunction)(*model, rootNode),
-                            op._sourceID0, libVersionDesc);
+                            destinationFile, libVersionDesc);
 
-                        char matName[MaxPath];
-                        op._destinationStore->MakeIntermediateName(matName, dimof(matName), op._initializer);
-                        XlChopExtension(matName);
-                        XlCatString(matName, dimof(matName), "-rawmat");
+                            // Note that we could fall through to write rawmat as a freebee
+                            // But it has problems because the .deps file will only be written
+                            // for the model file (not the rawmat file)
+                        break;
+
+                    case Type_RawMat:
                         SerializeToFileJustChunk(
                             (*_serializeMaterialsFunction)(*model, rootNode), 
-                            matName, libVersionDesc);
-                    } else {
+                            destinationFile, libVersionDesc);
+                        break;
+
+                    case Type_Skeleton:
                         SerializeToFile(
                             (*_serializeSkeletonFunction)(*model, rootNode),
-                            op._sourceID0, libVersionDesc);
+                            destinationFile, libVersionDesc);
+                        break;
                     }
 
                 } else {
@@ -330,7 +343,7 @@ namespace RenderCore { namespace Assets
                     #if defined(SUPPORT_OLD_PATH)
                         if (op._typeCode == Type_Model) {
                             auto model = (*_ocCreateModel)(colladaFile);
-                            SerializeToFile(*model, _ocSerializeSkinFunction, op._sourceID0, libVersionDesc);
+                            SerializeToFile(*model, _ocSerializeSkinFunction, destinationFile, libVersionDesc);
 
                             char matName[MaxPath];
                             op._destinationStore->MakeIntermediateName(matName, dimof(matName), op._initializer);
@@ -339,7 +352,7 @@ namespace RenderCore { namespace Assets
                             SerializeToFileJustChunk(*model, _ocSerializeMaterialsFunction, matName, libVersionDesc);
                         } else {
                             auto model = (*_ocCreateModel)(colladaFile);
-                            SerializeToFile(*model, _ocSerializeSkeletonFunction, op._sourceID0, libVersionDesc);
+                            SerializeToFile(*model, _ocSerializeSkeletonFunction, destinationFile, libVersionDesc);
                         }
                     #endif
 
@@ -348,7 +361,7 @@ namespace RenderCore { namespace Assets
                     // write new dependencies
                 std::vector<::Assets::DependentFileState> deps;
                 deps.push_back(op._destinationStore->GetDependentFileState(colladaFile));
-                op._dependencyValidation = op._destinationStore->WriteDependencies(op._sourceID0, baseDir, MakeIteratorRange(deps));
+                op._dependencyValidation = op._destinationStore->WriteDependencies(destinationFile, splitName.DriveAndPath(), MakeIteratorRange(deps));
         
                 op.SetState(::Assets::AssetState::Ready);
             }
@@ -411,7 +424,7 @@ namespace RenderCore { namespace Assets
                     #endif
                 }
 
-                op._dependencyValidation = op._destinationStore->WriteDependencies(op._sourceID0, baseDir, MakeIteratorRange(deps));
+                op._dependencyValidation = op._destinationStore->WriteDependencies(op._sourceID0, splitName.DriveAndPath(), MakeIteratorRange(deps));
                 op.SetState(::Assets::AssetState::Ready);
             }
         } CATCH(...) {
@@ -425,11 +438,18 @@ namespace RenderCore { namespace Assets
         const ::Assets::IntermediateAssets::Store& destinationStore)
     {
         char outputName[MaxPath];
-        destinationStore.MakeIntermediateName(outputName, dimof(outputName), initializers[0]);
+        bool stripParams = typeCode == Type_RawMat;
+        if (stripParams) {
+            destinationStore.MakeIntermediateName(
+                outputName, MakeFileNameSplitter(initializers[0]).AllExceptParameters());
+        } else {
+            destinationStore.MakeIntermediateName(outputName, initializers[0]);
+        }
         switch (typeCode) {
         case Type_Model: XlCatString(outputName, dimof(outputName), "-skin"); break;
         case Type_Skeleton: XlCatString(outputName, dimof(outputName), "-skel"); break;
         case Type_AnimationSet: XlCatString(outputName, dimof(outputName), "-anim"); break;
+        case Type_RawMat: XlCatString(outputName, dimof(outputName), "-rawmat"); break;
 
         default:
             assert(0);
@@ -441,6 +461,8 @@ namespace RenderCore { namespace Assets
              auto depVal = destinationStore.MakeDependencyValidation(outputName);
              if (depVal && depVal->GetValidationIndex() == 0) {
                     // already exists -- just return "ready"
+                 if (typeCode == Type_RawMat)
+                    XlCatString(outputName, MakeFileNameSplitter(initializers[0]).ParametersWithDivider());
                 return std::make_unique<::Assets::PendingCompileMarker>(
                     ::Assets::AssetState::Ready, outputName, ~0ull, std::move(depVal));
              }
@@ -456,6 +478,8 @@ namespace RenderCore { namespace Assets
         auto backgroundOp = std::make_shared<QueuedCompileOperation>();
         XlCopyString(backgroundOp->_initializer, initializers[0]);
         XlCopyString(backgroundOp->_sourceID0, outputName);
+        if (typeCode == Type_RawMat)
+            XlCatString(backgroundOp->_sourceID0, MakeFileNameSplitter(initializers[0]).ParametersWithDivider());
         backgroundOp->_destinationStore = &destinationStore;
         backgroundOp->_typeCode = typeCode;
 

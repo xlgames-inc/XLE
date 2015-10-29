@@ -92,9 +92,10 @@ namespace clix {
     // Marshals to .NET from C++ strings
     template<> struct StringMarshaler<NetFromCxx> {
 
-        // using SFINAE to make 2 versions of "marshal" method
+        // using SFINAE to make 3 versions of "marshal" method
         //  1) for std::basic_string<> types
         //  2) for char* (wchar_t*, etc) types
+        //  3) for StringSection types
       template<Encoding encoding, typename SourceType, typename SourceType::value_type* = nullptr>
       static System::String ^marshal(const SourceType &string) {
         return marshalCxxString<encoding, SourceType::value_type>(AsPointer(string.begin()), AsPointer(string.end()));
@@ -104,6 +105,11 @@ namespace clix {
       static System::String ^marshal(const SourceType string) {
         typedef typename std::remove_const<typename std::remove_pointer<SourceType>::type>::type ValueType;
         return marshalCxxString<encoding, ValueType>(string, &string[XlStringLen(string)]);
+      }
+
+      template<Encoding encoding, typename SourceType, typename SourceCharType>
+      static System::String ^marshal(const StringSection<SourceCharType> &string) {
+        return marshalCxxString<encoding, SourceCharType>(string.begin(), string.end());
       }
 
       template<Encoding encoding, typename SourceValueType>

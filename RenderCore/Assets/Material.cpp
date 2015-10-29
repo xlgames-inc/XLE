@@ -20,6 +20,13 @@
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/Streams/PathUtils.h"
+
+namespace Assets
+{
+    template<> uint64 GetCompileProcessType<::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial>>() 
+        { return ConstHash64<'RawM', 'at'>::Value; }
+}
 
 namespace RenderCore { namespace Assets
 {
@@ -270,23 +277,6 @@ namespace RenderCore { namespace Assets
 
     RawMaterial::RawMaterial() {}
 
-    void MakeConcreteRawMaterialFilename(::Assets::ResChar dest[], unsigned dstCount, const ::Assets::ResChar inputName[])
-    {
-        if (dest != inputName) {
-            XlCopyString(dest, dstCount, inputName);
-        }
-
-            //  If we're attempting to load from a .dae file, then we need to
-            //  instead redirect the query towards the compiled version
-        auto ext = XlExtension(dest);
-        if (!XlFindStringI(dest, "-rawmat") && (!ext || !XlCompareStringI(ext, "dae"))) {
-            auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-            XlChopExtension(dest);
-            XlCatString(dest, dstCount, "-rawmat");
-            store.MakeIntermediateName(dest, dstCount, dest);
-        }
-    }
-
     void ResolveMaterialFilename(
         ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
         const ::Assets::DirectorySearchRules& searchRules, const char baseMatName[])
@@ -306,27 +296,6 @@ namespace RenderCore { namespace Assets
         uint64 hashId = XlAtoI64((const char*)nameStart, &parseEnd, 16);
         if (!parseEnd || parseEnd != (const char*)nameEnd) { hashId = Hash64(nameStart, nameEnd); }
         return hashId;
-    }
-
-    RawMaterial::RawMatSplitName::RawMatSplitName() {}
-
-    RawMaterial::RawMatSplitName::RawMatSplitName(const ::Assets::ResChar initialiser[])
-    {
-            // We're expecting an initialiser of the format "filename:setting"
-        auto colon = XlFindCharReverse(initialiser, ':');
-        if (!colon)
-            Throw(::Assets::Exceptions::InvalidAsset(initialiser, ""));
-
-        ::Assets::ResChar rawFilename[MaxPath];
-        XlCopyNString(rawFilename, initialiser, colon - initialiser);
-
-        ::Assets::ResChar concreteFilename[MaxPath];
-        MakeConcreteRawMaterialFilename(concreteFilename, dimof(concreteFilename), rawFilename);
-
-        _initializerName = ::Assets::rstring(concreteFilename) + colon;
-
-        _settingName = colon+1;
-        _concreteFilename  = concreteFilename;
     }
 
     std::vector<::Assets::rstring> 
@@ -477,20 +446,55 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    static void AddDep(std::vector<::Assets::DependentFileState>& deps, const RawMaterial::RawMatSplitName& splitName)
+    static void AddDep(
+        std::vector<::Assets::DependentFileState>& deps, 
+        const StringSection<::Assets::ResChar> filename)
     {
             // we need to call "GetDependentFileState" first, because this can change the
             // format of the filename. String compares alone aren't working well for us here
-        auto depState = ::Assets::IntermediateAssets::Store::GetDependentFileState(
-            splitName._concreteFilename.c_str());
-
+        auto depState = ::Assets::IntermediateAssets::Store::GetDependentFileState(filename);
         auto existing = std::find_if(deps.cbegin(), deps.cend(),
             [&](const ::Assets::DependentFileState& test) 
             {
                 return !XlCompareStringI(test._filename.c_str(), depState._filename.c_str());
             });
-        if (existing == deps.cend()) {
+        if (existing == deps.cend())
             deps.push_back(depState);
+    }
+
+    static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
+    
+    auto RawMaterial::GetAsset(const ::Assets::ResChar initializer[]) -> const Container& 
+    {
+        // There are actually 2 paths here... Normally the requested file is a
+        // .material file -- in which case we can load it with a  
+        // ::Assets::ConfigFileListContainer.
+        //
+        // However, it could alternatively be a model file. For a model file, we
+        // invoke the model compiler to create the "rawmat" file... And then we 
+        // can load the rawmat file using ::Assets::ConfigFileListContainer.
+        //
+        // How can we tell which one it is...? Well, it would be nice if there was
+        // some good way to do this -- but all we can do is check the extension
+        // currently.
+        //
+        // Note that when loading from a model file, we can throw "pending". But
+        // loading from a .material file should never be pending
+
+        if (!IsMaterialFile(FileNameSplitter<::Assets::ResChar>(initializer).Extension())) {
+            return ::Assets::GetAssetComp<Container>(initializer);
+        } else {
+            return ::Assets::GetAssetDep<Container>(initializer);
+        }
+    }
+
+    auto RawMaterial::GetDivergentAsset(const ::Assets::ResChar initializer[])
+        -> const std::shared_ptr<::Assets::DivergentAsset<Container>>&
+    {
+        if (!IsMaterialFile(FileNameSplitter<::Assets::ResChar>(initializer).Extension())) {
+            return ::Assets::GetDivergentAssetComp<Container>(initializer);
+        } else {
+            return ::Assets::GetDivergentAsset<Container>(initializer);
         }
     }
 
@@ -505,15 +509,13 @@ namespace RenderCore { namespace Assets
 
         auto inheritted = ResolveInherited(searchRules);
         for (auto i=inheritted.cbegin(); i!=inheritted.cend(); ++i) {
-            RawMaterial::RawMatSplitName splitName(i->c_str());
+            FileNameSplitter<::Assets::ResChar> splitName(i->c_str());
             
                 // we still need to add a dependency, even if it's a missing file
-            if (deps) AddDep(*deps, splitName);
+            if (deps) AddDep(*deps, splitName.FullFilename());
 
             TRY {
-                auto& rawParams = ::Assets::GetAssetDep<
-                    ::Assets::ConfigFileListContainer<RawMaterial>>(
-                        splitName._initializerName.c_str());
+                auto& rawParams = GetAsset(i->c_str());
 
                 ::Assets::DirectorySearchRules newSearchRules = searchRules;
                 newSearchRules.Merge(rawParams._searchRules);

@@ -301,6 +301,7 @@ namespace GUILayer
     }
 #endif
 
+#if 0
     static auto DeserializeAllMaterials(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules)
         -> std::vector<std::pair<::Assets::rstring, RenderCore::Assets::RawMaterial>>
     {
@@ -378,6 +379,7 @@ namespace GUILayer
 
         SerializeAllMaterials(output, preMats);
     }
+#endif
 
     PendingSaveList^ PendingSaveList::Create()
     {
@@ -391,7 +393,7 @@ namespace GUILayer
             //  should serialise quickly... But if we have many large
             //  assets, this could get expensive quickly!
 
-        #if defined(ASSETS_STORE_DIVERGENT)
+        #if 0 // defined(ASSETS_STORE_DIVERGENT)
 
                     // HACK -- special case for RawMaterial objects!
             using namespace RenderCore::Assets;
@@ -422,7 +424,7 @@ namespace GUILayer
 
     void PendingSaveList::Commit()
     {
-        #if defined(ASSETS_STORE_DIVERGENT)
+        #if 0 // defined(ASSETS_STORE_DIVERGENT)
 
             using namespace RenderCore::Assets;
             auto& materials = ::Assets::Internal::GetAssetSet<::Assets::ConfigFileListContainer<RawMaterial>>();

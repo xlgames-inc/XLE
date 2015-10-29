@@ -549,8 +549,8 @@ namespace SceneEngine
                                 const VolumetricFogConfig::Renderer& rendererCfg,
                                 const VolumetricFogConfig::FogVolume& cfg)
     {
-        TRY 
-        {
+        CATCH_ASSETS_BEGIN
+
             ///////////////////////////////////////////////////////////////////////////////////////
 
             auto& fogRes = Techniques::FindCachedBox2<VolumetricFogResources>(
@@ -674,10 +674,7 @@ namespace SceneEngine
                 lightingParserContext._pendingOverlays.push_back(
                     std::bind(&VolumetricFog_DrawDebugging, std::placeholders::_1, std::placeholders::_2, std::ref(fogRes)));
             }
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { lightingParserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { lightingParserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(lightingParserContext)
     }
 
     void VolumetricFog_Resolve( RenderCore::Metal::DeviceContext* context, 

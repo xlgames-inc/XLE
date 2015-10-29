@@ -337,7 +337,7 @@ namespace SceneEngine
         UInt2 dimensions, float minValue, float maxValue,
         std::initializer_list<const float*> data)
     {
-        TRY {
+        CATCH_ASSETS_BEGIN
             using namespace RenderCore;
             using namespace BufferUploads;
             auto& uploads = GetBufferUploads();
@@ -396,10 +396,7 @@ namespace SceneEngine
             metalContext.Bind(Techniques::CommonResources()._cullDisable);
             metalContext.Bind(Metal::Topology::TriangleStrip);
             metalContext.Draw(4);
-        } 
-        CATCH (const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH (const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
     }
 
     void RenderFluidDebugging3D(
@@ -409,7 +406,7 @@ namespace SceneEngine
         UInt3 dimensions, float minValue, float maxValue,
         std::initializer_list<const float*> data)
     {
-        TRY {
+        CATCH_ASSETS_BEGIN
             using namespace RenderCore;
             using namespace BufferUploads;
             auto& uploads = GetBufferUploads();
@@ -467,9 +464,6 @@ namespace SceneEngine
             metalContext.Bind(Techniques::CommonResources()._cullDisable);
             metalContext.Bind(Metal::Topology::TriangleStrip);
             metalContext.Draw(4);
-        } 
-        CATCH (const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH (const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
     }
 }

@@ -73,6 +73,7 @@ namespace RenderCore { namespace Assets
         compilers.AddCompiler(ColladaCompiler::Type_Model, colladaProcessor);
         compilers.AddCompiler(ColladaCompiler::Type_AnimationSet, colladaProcessor);
         compilers.AddCompiler(ColladaCompiler::Type_Skeleton, colladaProcessor);
+        compilers.AddCompiler(ColladaCompiler::Type_RawMat, colladaProcessor);
     }
 
     void Services::AttachCurrentModule()

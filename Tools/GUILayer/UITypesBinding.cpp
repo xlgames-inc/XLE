@@ -23,6 +23,7 @@
 #include <msclr/auto_gcroot.h>
 #include <iomanip>
 
+#if 0
 namespace Assets
 {
     template<>
@@ -32,6 +33,7 @@ namespace Assets
             return splitName._concreteFilename;
         }
 }
+#endif
 
 namespace GUILayer
 {
@@ -440,13 +442,12 @@ namespace GUILayer
     RawMaterial::RawMaterial(System::String^ initialiser)
     {
         auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
-        RenderCore::Assets::RawMaterial::RawMatSplitName splitName(nativeInit.c_str());
-        auto& source = ::Assets::GetDivergentAsset<
-            ::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial>>(splitName._initializerName.c_str());
-        _underlying = source;
+        _underlying = RenderCore::Assets::RawMaterial::GetDivergentAsset(nativeInit.c_str());
 
-        _filename = clix::marshalString<clix::E_UTF8>(splitName._concreteFilename);
-        _settingName = clix::marshalString<clix::E_UTF8>(splitName._settingName);
+        auto splitName = MakeFileNameSplitter(nativeInit);
+
+        _filename = clix::marshalString<clix::E_UTF8>(splitName.AllExceptParameters());
+        _settingName = clix::marshalString<clix::E_UTF8>(splitName.Parameters());
 
         _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
     }

@@ -56,21 +56,22 @@ namespace Assets { namespace IntermediateAssets
             const ResChar intermediateFileName[]) const;
 
         DepVal WriteDependencies(
-            const ResChar intermediateFileName[], const ResChar baseDir[], 
+            const ResChar intermediateFileName[], 
+            StringSection<ResChar> baseDir, 
             IteratorRange<const DependentFileState*> deps,
             bool makeDepValidation = true) const;
 
         void    MakeIntermediateName(
             ResChar buffer[], unsigned bufferMaxCount, 
-            const ResChar firstInitializer[]) const;
+            StringSection<ResChar> firstInitializer) const;
 
         template<int Count>
-            void    MakeIntermediateName(ResChar (&buffer)[Count], const ResChar firstInitializer[]) const
+            void    MakeIntermediateName(ResChar (&buffer)[Count], StringSection<ResChar> firstInitializer) const
             {
                 MakeIntermediateName(buffer, Count, firstInitializer);
             }
 
-        static auto GetDependentFileState(const ResChar filename[]) -> const DependentFileState&;
+        static auto GetDependentFileState(const StringSection<ResChar> filename) -> const DependentFileState&;
         static void ShadowFile(const ResChar filename[]);
 
         Store(const ResChar baseDirectory[], const ResChar versionString[]);

@@ -32,8 +32,7 @@ namespace SceneEngine
     void    Rain_Render(RenderCore::Metal::DeviceContext* context, 
                         LightingParserContext& parserContext)
     {
-        TRY 
-        {
+        CATCH_ASSETS_BEGIN
             using namespace RenderCore;
 
             auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld);
@@ -126,10 +125,7 @@ namespace SceneEngine
                 cb0.Update(*context, &rainSpawnConstaints, sizeof(rainSpawnConstaints));
                 context->Draw(rainSpawnConstaints.particleCountWidth*rainSpawnConstaints.particleCountWidth);
             }
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         context->Bind(RenderCore::Metal::Topology::TriangleList);
         context->Bind(RenderCore::Metal::CullMode::Back);
@@ -189,8 +185,7 @@ namespace SceneEngine
                                     RenderCore::Metal::ShaderResourceView& depthsSRV,
                                     RenderCore::Metal::ShaderResourceView& normalsSRV)
     {
-        TRY 
-        {
+        CATCH_ASSETS_BEGIN
             using namespace RenderCore;
             const unsigned particleCountWidth = 64;
             auto& resources = Techniques::FindCachedBox<SimRainResources>(SimRainResources::Desc(particleCountWidth));
@@ -312,11 +307,7 @@ namespace SceneEngine
 
             context->Draw(particleCountWidth*particleCountWidth);
             context->UnbindVS<Metal::ShaderResourceView>(3, 1);
-        }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH(...) {}
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         context->Bind(RenderCore::Metal::Topology::TriangleList);
         context->Bind(RenderCore::Metal::CullMode::Back);
@@ -331,8 +322,7 @@ namespace SceneEngine
                                                     RenderCore::Metal::ShaderResourceView& depthsSRV,
                                                     RenderCore::Metal::ShaderResourceView& normalsSRV)
     {
-        TRY 
-        {
+        CATCH_ASSETS_BEGIN
             using namespace RenderCore;
             const unsigned particleCountWidth = 128;
             auto& resources = Techniques::FindCachedBox<SimRainResources>(SimRainResources::Desc(particleCountWidth));
@@ -469,11 +459,7 @@ namespace SceneEngine
             context->Draw(particleCountWidth*particleCountWidth);
 
             context->UnbindVS<Metal::ShaderResourceView>(3, 1);
-        }
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); }
-        CATCH(...) {}
-        CATCH_END
+        CATCH_ASSETS_END(parserContext)
 
         context->Bind(RenderCore::Metal::Topology::TriangleList);
         context->Bind(RenderCore::Metal::CullMode::Back);
