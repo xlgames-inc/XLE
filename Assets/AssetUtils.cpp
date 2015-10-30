@@ -361,12 +361,17 @@ namespace Assets
         InvalidAsset::InvalidAsset(const char initializer[], const char what[]) 
         : AssetException(initializer, what) 
         {
+                // Highlight cases where parameters are not filled in
+                // We particularly want to include a lot of debugging information
+                // with InvalidAsset exceptions -- because the user almost always
+                // needs to do something in response to them.
+            assert(initializer[0] && what[0]);
         }
 
         bool InvalidAsset::CustomReport() const
         {
             LogAlwaysError 
-                << "Invalid asset: " << Initializer() << ". More information:" 
+                << "Invalid asset (" << Initializer() << ") More information:" 
                 << std::endl << what();
             return true;
         }

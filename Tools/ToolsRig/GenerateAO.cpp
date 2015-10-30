@@ -16,6 +16,7 @@
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/MeshDatabase.h"
+#include "../../RenderCore/Assets/CompilationThread.h"
 #include "../../RenderCore/Metal/ShaderResource.h"
 #include "../../RenderCore/Metal/RenderTargetView.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -34,6 +35,8 @@
 #include "../../Assets/ChunkFile.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
+
+#include <queue>
 
 namespace RenderCore { 
     extern char VersionString[];
@@ -333,13 +336,17 @@ namespace ToolsRig
             // We're going to be use a ModelRenderer to do the rendering
             // for calculating the AO -- so we have to create that now.
         SharedStateSet sharedStates;
-        auto renderer = std::make_unique<ModelRenderer>(
-            model, material, ModelRenderer::Supplements(), sharedStates, searchRules);
+        std::unique_ptr<ModelRenderer> renderer;
 
             // we need to stall while pending...
         auto& asyncMan = ::Assets::Services::GetAsyncMan();
         auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
         for (;;) {
+            if (!renderer)
+                renderer = std::make_unique<ModelRenderer>(
+                    model, material, ModelRenderer::Supplements(), 
+                    sharedStates, searchRules);
+
             auto state = renderer->TryResolve();
             if (state == ::Assets::AssetState::Ready) break;
             if (state == ::Assets::AssetState::Invalid)
@@ -610,19 +617,27 @@ namespace ToolsRig
     public:
         std::shared_ptr<RenderCore::IThreadContext> _threadContext;
         std::unique_ptr<AoGen> _aoGen;
+
+        using CompileResult = ::Assets::CompilerHelper::CompileResult;
+        CompileResult PerformCompile(
+            const ::Assets::ResChar modelFilename[], const ::Assets::ResChar materialFilename[],
+            const ::Assets::ResChar destinationFile[]);
     };
 
-    auto AOSupplementCompiler::PerformCompile(
+    auto AOSupplementCompiler::Pimpl::PerformCompile(
         const ::Assets::ResChar modelFilename[], const ::Assets::ResChar materialFilename[],
         const ::Assets::ResChar destinationFile[]) -> CompileResult
     {
+        ::Assets::ResChar modelFilenameNoParam[MaxPath];
+        XlCopyString(modelFilenameNoParam, MakeFileNameSplitter(modelFilename).AllExceptParameters());
+
         const auto& model    = ::Assets::GetAssetComp<ModelScaffold>(modelFilename);
-        const auto& material = ::Assets::GetAssetComp<MaterialScaffold>(materialFilename, modelFilename);
+        const auto& material = ::Assets::GetAssetComp<MaterialScaffold>(materialFilename, modelFilenameNoParam);
         auto searchRules     = ::Assets::DefaultDirectorySearchRules(modelFilename);
 
         CalculateVertexAO(
-            *_pimpl->_threadContext, destinationFile,
-            *_pimpl->_aoGen, model, material, &searchRules);
+            *_threadContext, destinationFile,
+            *_aoGen, model, material, &searchRules);
 
         using Store = ::Assets::IntermediateAssets::Store;
         return CompileResult 
@@ -635,6 +650,61 @@ namespace ToolsRig
                 MakeFileNameSplitter(model.Filename()).DriveAndPath().AsString()
             };
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class AOSupplementCompiler::PollingOp : public ::Assets::IPollingAsyncProcess
+    {
+    public:
+        Result::Enum Update();
+        using Op = RenderCore::Assets::QueuedCompileOperation;
+        PollingOp(std::shared_ptr<Pimpl> pimpl, std::shared_ptr<Op> queuedOp);
+        ~PollingOp();
+    private:
+        std::weak_ptr<Pimpl> _pimpl;
+        std::shared_ptr<Op> _queuedOp;
+    };
+
+    auto AOSupplementCompiler::PollingOp::Update() -> Result::Enum
+    {
+        auto p = _pimpl.lock();
+        if (!p) {
+            _queuedOp->SetState(::Assets::AssetState::Invalid);
+            return Result::Finish;
+        }
+
+        TRY
+        {
+            auto compileResult = p->PerformCompile(
+                _queuedOp->_initializer0, _queuedOp->_initializer1, 
+                _queuedOp->_sourceID0);
+            _queuedOp->_dependencyValidation = _queuedOp->_destinationStore->WriteDependencies(
+                _queuedOp->_sourceID0, MakeStringSection(compileResult._baseDir), 
+                MakeIteratorRange(compileResult._dependencies));
+            assert(_queuedOp->_dependencyValidation);
+            _queuedOp->SetState(::Assets::AssetState::Ready);
+        } CATCH(const ::Assets::Exceptions::PendingAsset&) {
+            return Result::KeepPolling;
+        } CATCH(const std::exception& e) {
+            LogAlwaysError << "Got exception while compiling AO supplement. Exception details: " << e.what() << std::endl;
+            _queuedOp->SetState(::Assets::AssetState::Invalid);
+        } CATCH(...) {
+            _queuedOp->SetState(::Assets::AssetState::Invalid);
+        } CATCH_END
+
+        return Result::Finish;
+    }
+
+    AOSupplementCompiler::PollingOp::PollingOp(
+        std::shared_ptr<Pimpl> pimpl,
+        std::shared_ptr<RenderCore::Assets::QueuedCompileOperation> queuedOp)
+    : _pimpl(std::move(pimpl))
+    , _queuedOp(std::move(queuedOp))
+    {}
+
+    AOSupplementCompiler::PollingOp::~PollingOp() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
     
     std::shared_ptr<::Assets::PendingCompileMarker> 
         AOSupplementCompiler::PrepareAsset(
@@ -654,25 +724,45 @@ namespace ToolsRig
         StringMeldAppend(intermediateName)
             << "-" << MakeFileNameSplitter(materialFilename).File().AsString() << "-ao";
 
+        StringMeld<256,ResChar> debugInitializer;
+        debugInitializer<< modelFilename << "(AO supplement)";
+
             // check for an existing asset that is up-to-date and can be used immediately...
-        auto marker = CompilerHelper::CheckExistingAsset(store, intermediateName);
+        auto marker = CompilerHelper::CheckExistingAsset(store, intermediateName, debugInitializer);
         if (marker) return marker;
 
-            // if it doesn't exist, we have to perform a compile
-            // then return a marker for the new asset
-        auto deps = PerformCompile(modelFilename, materialFilename, intermediateName);
-        return CompilerHelper::PrepareCompileMarker(store, intermediateName, deps);
+            // If it doesn't exist, we have to perform a compile
+            // then return a marker for the new asset.
+        // auto deps = PerformCompile(modelFilename, materialFilename, intermediateName);
+        // return CompilerHelper::PrepareCompileMarker(store, intermediateName, deps);
+
+        using QueuedOp = RenderCore::Assets::QueuedCompileOperation;
+
+            // Because the we're using the immediate context, we must run in a foreground
+            // thread. We can't push into a background thread here...
+
+        auto backgroundOp = std::make_shared<QueuedOp>();
+        backgroundOp->SetInitializer(debugInitializer);
+        XlCopyString(backgroundOp->_initializer0, modelFilename);
+        XlCopyString(backgroundOp->_initializer1, materialFilename);
+        XlCopyString(backgroundOp->_sourceID0, intermediateName);
+        backgroundOp->_destinationStore = &store;
+        backgroundOp->_typeCode = typeCode;
+
+        ::Assets::Services::GetAsyncMan().Add(
+            std::make_shared<PollingOp>(_pimpl, backgroundOp));
+        return std::move(backgroundOp);
     }
 
     void AOSupplementCompiler::StallOnPendingOperations(bool)
     {
-        // everything is done in the foreground in this compiler; so nothing
-        // to stall for
+        // Any remaining queued PollingOp's in the async man will be 
+        // cancelled automatically... so we don't need to stall for them.
     }
 
     AOSupplementCompiler::AOSupplementCompiler(std::shared_ptr<RenderCore::IThreadContext> threadContext)
     {
-        _pimpl = std::make_unique<Pimpl>();
+        _pimpl = std::make_shared<Pimpl>();
         _pimpl->_threadContext = threadContext;
         ToolsRig::AoGen::Desc settings(
             0.001f, 10.f, 128,

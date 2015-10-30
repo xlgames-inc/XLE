@@ -96,9 +96,14 @@ namespace RenderCore { namespace Assets
     }
 
     static ::Assets::CompilerHelper::CompileResult CompileMaterialScaffold(
-        const char sourceMaterial[], const char sourceModel[],
-        const char destination[])
+        const ::Assets::ResChar sourceMaterial[], const ::Assets::ResChar sourceModel[],
+        const ::Assets::ResChar destination[])
     {
+            // Parameters must be stripped off the source model filename before we get here.
+            // the parameters are irrelevant to the compiler -- so if they stay on the request
+            // name, will we end up with multiple assets that are equivalent
+        assert(MakeFileNameSplitter(sourceModel).ParametersWithDivider().Empty());
+
             // note -- we can throw pending & invalid from here...
         auto& modelMat = ::Assets::GetAssetComp<RawMatConfigurations>(sourceModel);
             
@@ -247,8 +252,11 @@ namespace RenderCore { namespace Assets
         StringMeldAppend(intermediateName)
             << "-" << MakeFileNameSplitter(modelFilename).FileAndExtension().AsString() << "-resmat";
 
+        StringMeld<256,ResChar> debugInitializer;
+        debugInitializer<< materialFilename << "(material scaffold)";
+
             // now either return an existing asset, or compile a new one
-        auto marker = CompilerHelper::CheckExistingAsset(store, intermediateName);
+        auto marker = CompilerHelper::CheckExistingAsset(store, intermediateName, debugInitializer);
         if (marker) return marker;
 
             // Compile can throw "pending"...
@@ -256,6 +264,7 @@ namespace RenderCore { namespace Assets
             // We can push the compilation work into the background (but, actually, it's
             // probably not a lot of work)
         auto backgroundOp = std::make_shared<QueuedCompileOperation>();
+        backgroundOp->SetInitializer(debugInitializer);
         XlCopyString(backgroundOp->_initializer0, materialFilename);
         XlCopyString(backgroundOp->_initializer1, modelFilename);
         XlCopyString(backgroundOp->_sourceID0, intermediateName);
@@ -331,6 +340,7 @@ namespace RenderCore { namespace Assets
     };
 
     MaterialScaffold::MaterialScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
+        : ChunkFileAsset("MaterialScaffold")
     {
         Prepare(std::move(marker), MakeIteratorRange(MaterialScaffoldChunkRequests), &Resolver); 
     }

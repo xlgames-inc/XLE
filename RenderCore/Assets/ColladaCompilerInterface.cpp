@@ -379,7 +379,7 @@ namespace RenderCore { namespace Assets
             return nullptr;   // unknown asset type!
         }
 
-        if (auto existing = ::Assets::CompilerHelper::CheckExistingAsset(destinationStore, outputName)) {
+        if (auto existing = ::Assets::CompilerHelper::CheckExistingAsset(destinationStore, outputName, initializers[0])) {
             if (typeCode == Type_RawMat)
                 XlCatString(existing->_sourceID0, MakeFileNameSplitter(initializers[0]).ParametersWithDivider());
             return existing;
@@ -393,6 +393,7 @@ namespace RenderCore { namespace Assets
             // However, with the new implementation, we could use one of the global thread pools
             // and it should be ok to queue up multiple compilations at the same time.
         auto backgroundOp = std::make_shared<QueuedCompileOperation>();
+        backgroundOp->SetInitializer(initializers[0]);
         XlCopyString(backgroundOp->_initializer0, initializers[0]);
         XlCopyString(backgroundOp->_sourceID0, outputName);
         if (typeCode == Type_RawMat)

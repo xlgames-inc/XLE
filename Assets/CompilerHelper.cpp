@@ -13,14 +13,18 @@ namespace Assets
 
     std::shared_ptr<::Assets::PendingCompileMarker> CompilerHelper::CheckExistingAsset(
         const ::Assets::IntermediateAssets::Store& destinationStore,
-        const ::Assets::ResChar intermediateName[])
+        const ::Assets::ResChar intermediateName[],
+        const ::Assets::ResChar initializer[])
     {
             // check if there is an existing one we can use...
         if (DoesFileExist(intermediateName)) {
             auto depVal = destinationStore.MakeDependencyValidation(intermediateName);
-            if (depVal && depVal->GetValidationIndex() == 0)
-                return std::make_shared<::Assets::PendingCompileMarker>(
+            if (depVal && depVal->GetValidationIndex() == 0) {
+                auto result = std::make_shared<::Assets::PendingCompileMarker>(
                     ::Assets::AssetState::Ready, intermediateName, 0, std::move(depVal));
+                result->SetInitializer(initializer);    // set initializer (for debugging only)
+                return result;
+            }
         }
         return std::shared_ptr<::Assets::PendingCompileMarker>();
     }

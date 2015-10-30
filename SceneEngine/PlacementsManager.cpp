@@ -250,6 +250,7 @@ namespace SceneEngine
     };
 
     Placements::Placements(const ResChar filename[])
+    : ChunkFileAsset("Placements")
     {
         Prepare(filename, MakeIteratorRange(PlacementsChunkRequests), Resolver);
     }
@@ -301,6 +302,7 @@ namespace SceneEngine
     }
 
     Placements::Placements()
+    : ChunkFileAsset("Placements")
     {
         auto depValidation = std::make_shared<Assets::DependencyValidation>();
         _dependencyValidation = std::move(depValidation);

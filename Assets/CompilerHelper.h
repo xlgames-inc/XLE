@@ -27,7 +27,8 @@ namespace Assets
 
         static std::shared_ptr<PendingCompileMarker> CheckExistingAsset(
             const IntermediateAssets::Store& destinationStore,
-            const ResChar intermediateName[]);
+            const ResChar intermediateName[],
+            const ResChar initializer[]);
 
         static std::shared_ptr<PendingCompileMarker> PrepareCompileMarker(
             const IntermediateAssets::Store& destinationStore,

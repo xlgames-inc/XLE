@@ -18,12 +18,7 @@ namespace Assets
 
         ////////////////////////////////////////////////////////////
 
-    void IPollingAsyncProcess::FireTrigger( AssetState newState,
-                                            const std::vector<Assets::DependentFileState>& dependencies) 
-    {
-        _fn(newState, dependencies); 
-    }
-    IPollingAsyncProcess::IPollingAsyncProcess(CallbackFn&& fn) : _fn(std::move(fn)) {}
+    IPollingAsyncProcess::IPollingAsyncProcess() {}
     IPollingAsyncProcess::~IPollingAsyncProcess() {}
 
     IThreadPump::~IThreadPump() {}
@@ -50,23 +45,30 @@ namespace Assets
 			_pimpl->_threadPump->Update();
         }
 
-		ScopedLock(_pimpl->_pollingProcessesLock);
+        if (_pimpl->_pollingProcessesLock.try_lock()) {
+            TRY
+            {
+                    //  Normally the polling processes will be waiting for the thread
+                    //  pump to complete something. So do this after the thread pump update
+		        for (auto i = _pimpl->_pollingProcesses.begin(); i != _pimpl->_pollingProcesses.end();) {
+                    bool remove = false;
+                    TRY {
+                        auto result = (*i)->Update();
+                        remove = result == IPollingAsyncProcess::Result::Finish;
+                    } CATCH(const std::exception& e) {
+                        LogWarning << "Got exception during polling process update: " << e.what();
+                        remove = true;
+                    } CATCH_END
 
-            //  Normally the polling processes will be waiting for the thread
-            //  pump to complete something. So do this after the thread pump update
-		for (auto i = _pimpl->_pollingProcesses.begin(); i != _pimpl->_pollingProcesses.end();) {
-            bool remove = false;
-            TRY {
-                auto result = (*i)->Update();
-                remove = result == IPollingAsyncProcess::Result::Finish;
-            } CATCH(const std::exception& e) {
-                LogWarning << "Got exception during polling process update: " << e.what();
-                remove = true;
+                            // remove if necessary...
+			        if (remove) { i = _pimpl->_pollingProcesses.erase(i); }
+                    else { ++i; }
+                }
+            } CATCH (...) {
+                _pimpl->_pollingProcessesLock.unlock();
+                throw;
             } CATCH_END
-
-                    // remove if necessary...
-			if (remove) { i = _pimpl->_pollingProcesses.erase(i); }
-            else { ++i; }
+            _pimpl->_pollingProcessesLock.unlock();
         }
     }
 

@@ -70,7 +70,7 @@ namespace RenderCore { namespace Assets
             const ::Assets::ResChar material[], 
             RenderCore::Assets::IModelFormat& modelFormat)
         {
-                // note --  we need to remove any parameters after ';' in the model name
+                // note --  we need to remove any parameters after ':' in the model name
                 //          these are references to sub-nodes within the model hierarchy
                 //          (which are irrelevant when dealing with materials, since the
                 //          materials are shared for the entire model file)

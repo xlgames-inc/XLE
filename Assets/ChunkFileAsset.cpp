@@ -60,13 +60,14 @@ namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ChunkFileAsset::ChunkFileAsset() 
-    : _resolveFn(nullptr)
+    ChunkFileAsset::ChunkFileAsset(const char assetTypeName[])
+    : _resolveFn(nullptr), _assetTypeName(assetTypeName)
     {}
 
     void ChunkFileAsset::ExecuteResolve(
         ResolveFn* resolveFn, void* obj, 
-        IteratorRange<AssetChunkResult*> chunks, const ResChar filename[])
+        IteratorRange<AssetChunkResult*> chunks, const ResChar filename[],
+        const char assetNameType[])
     {
             // Just run the resolve function, and convert any exceptions into
             // InvalidAsset type exceptions
@@ -74,9 +75,9 @@ namespace Assets
             TRY { (*resolveFn)(obj, chunks); } 
             CATCH(const Exceptions::InvalidAsset&) { throw; }
             CATCH(const std::exception& e) {
-                throw Exceptions::InvalidAsset(filename, StringMeld<1024>() << "Exception during chunk file resolve:" << e.what());
+                throw Exceptions::InvalidAsset(filename, StringMeld<1024>() << "Exception during chunk file resolve (asset type: " << assetNameType << ") Exception:" << e.what());
             } CATCH(...) {
-                throw Exceptions::InvalidAsset(filename, StringMeld<1024>() << "Unknown exception during chunk file resolve");
+                throw Exceptions::InvalidAsset(filename, StringMeld<1024>() << "Unknown exception during chunk file resolve (asset type: " << assetNameType << ")");
             } CATCH_END
         }
     }
@@ -92,7 +93,7 @@ namespace Assets
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         RegisterFileDependency(_validationCallback, filename);
         auto pendingResult = LoadRawData(filename, requests);
-        ExecuteResolve(resolveFn, this, MakeIteratorRange(pendingResult), filename);
+        ExecuteResolve(resolveFn, this, MakeIteratorRange(pendingResult), filename, _assetTypeName);
     }
     
     void ChunkFileAsset::Prepare(
@@ -121,6 +122,7 @@ namespace Assets
     , _resolveFn(std::move(moveFrom._resolveFn))
     , _marker(std::move(moveFrom._marker))
     , _validationCallback(std::move(moveFrom._validationCallback))
+    , _assetTypeName(moveFrom._assetTypeName)
     {}
 
     ChunkFileAsset& ChunkFileAsset::operator=(ChunkFileAsset&& moveFrom) never_throws
@@ -130,6 +132,7 @@ namespace Assets
         _resolveFn = std::move(moveFrom._resolveFn);
         _marker = std::move(moveFrom._marker);
         _validationCallback = std::move(moveFrom._validationCallback);
+        _assetTypeName = moveFrom._assetTypeName;
         return *this;
     }
 
@@ -139,11 +142,15 @@ namespace Assets
     {
         if (_marker) {
             if (_marker->GetState() == ::Assets::AssetState::Invalid) {
-                Throw(::Assets::Exceptions::InvalidAsset(_marker->Initializer(), ""));
+                Throw(::Assets::Exceptions::InvalidAsset(
+                    _marker->Initializer(), 
+                    StringMeld<256>() << "Pending compile failed in ChunkFileAsset (type: " << _assetTypeName << ")"));
             } else if (_marker->GetState() == ::Assets::AssetState::Pending) {
                     // we need to throw immediately on pending resource
                     // this object is useless while it's pending.
-                Throw(::Assets::Exceptions::PendingAsset(_marker->Initializer(), ""));
+                Throw(::Assets::Exceptions::PendingAsset(
+                    _marker->Initializer(), 
+                    StringMeld<256>() << "Compile still pending (type:" << _assetTypeName << ")"));
             }
 
                 // hack --  Resolve needs to be called by const methods (like "GetStaticBoundingBox")
@@ -185,7 +192,7 @@ namespace Assets
         else ::Assets::RegisterAssetDependency(_validationCallback, marker._dependencyValidation);
 
         auto chunks = LoadRawData(marker._sourceID0, _requests);
-        ExecuteResolve(_resolveFn, this, MakeIteratorRange(chunks), _filename.c_str());
+        ExecuteResolve(_resolveFn, this, MakeIteratorRange(chunks), _filename.c_str(), _assetTypeName);
         _resolveFn = nullptr;
     }
 

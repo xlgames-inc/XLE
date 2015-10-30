@@ -26,15 +26,8 @@ namespace Assets
         struct Result { enum Enum { KeepPolling, Finish }; };
         virtual Result::Enum Update() = 0;
 
-        typedef std::function<void(
-            AssetState newState,
-            const std::vector<DependentFileState>&)> CallbackFn;
-        IPollingAsyncProcess(CallbackFn&& fn);
+        IPollingAsyncProcess();
         virtual ~IPollingAsyncProcess();
-    protected:
-        void FireTrigger(AssetState, const std::vector<DependentFileState>& = std::vector<DependentFileState>());
-    private:
-        CallbackFn _fn;
     };
 
     class IThreadPump

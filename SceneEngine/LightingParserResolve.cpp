@@ -219,21 +219,23 @@ namespace SceneEngine
             // these are needed in both deferred and forward shading modes... But they are
             // bound at different times in different modes
 
-        auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
-        unsigned skyTextureProjection = 0;
-        if (skyTexture[0]) {
-            SkyTextureParts parts(skyTexture);
-            skyTextureProjection = SkyTexture_BindPS(&context, parserContext, parts, 11);
-        }
-
         CATCH_ASSETS_BEGIN
+            auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
+            unsigned skyTextureProjection = 0;
+            if (skyTexture[0]) {
+                SkyTextureParts parts(skyTexture);
+                skyTextureProjection = SkyTexture_BindPS(&context, parserContext, parts, 11);
+            }
+
             context.BindPS(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
             context.BindPS(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
+
+            context.BindPS(MakeResourceList(9, Metal::ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
+
+            return skyTextureProjection;
         CATCH_ASSETS_END(parserContext)
 
-        context.BindPS(MakeResourceList(9, Metal::ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
-
-        return skyTextureProjection;
+        return 0;
     }
 
     void LightingParser_ResolveGBuffer(

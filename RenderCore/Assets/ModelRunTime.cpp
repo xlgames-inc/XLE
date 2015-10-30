@@ -1734,11 +1734,13 @@ namespace RenderCore { namespace Assets
     };
     
     ModelScaffold::ModelScaffold(const ::Assets::ResChar filename[])
+    : ChunkFileAsset("ModelScaffold")
     {
         Prepare(filename, MakeIteratorRange(ModelScaffoldChunkRequests), &Resolver);
     }
 
     ModelScaffold::ModelScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
+    : ChunkFileAsset("ModelScaffold")
     {
         Prepare(std::move(marker), MakeIteratorRange(ModelScaffoldChunkRequests), &Resolver); 
     }
@@ -1800,11 +1802,13 @@ namespace RenderCore { namespace Assets
     };
     
     ModelSupplementScaffold::ModelSupplementScaffold(const ::Assets::ResChar filename[])
+    : ChunkFileAsset("ModelSupplementScaffold")
     {
         Prepare(filename, MakeIteratorRange(ModelSupplementScaffoldChunkRequests), &Resolver);
     }
 
     ModelSupplementScaffold::ModelSupplementScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
+    : ChunkFileAsset("ModelSupplementScaffold")
     {
         Prepare(std::move(marker), MakeIteratorRange(ModelSupplementScaffoldChunkRequests), &Resolver);
     }

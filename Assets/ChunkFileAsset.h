@@ -73,7 +73,7 @@ namespace Assets
     protected:
         using ResolveFn = void(void*, IteratorRange<AssetChunkResult*>);
 
-        ChunkFileAsset();
+        ChunkFileAsset(const char assetTypeName[]);
         void Prepare(
             const ::Assets::ResChar filename[], 
             IteratorRange<const AssetChunkRequest*> requests,
@@ -90,8 +90,12 @@ namespace Assets
         IteratorRange<const AssetChunkRequest*>     _requests;
         ResolveFn*                                  _resolveFn;
 
+        const char* _assetTypeName;
+
         void CompleteFromMarker(::Assets::PendingCompileMarker& marker);
-        static void ExecuteResolve(ResolveFn*, void*, IteratorRange<AssetChunkResult*>, const ResChar filename[]);
+        static void ExecuteResolve(
+            ResolveFn*, void*, IteratorRange<AssetChunkResult*>, 
+            const ResChar filename[], const char assetNameType[]);
     };
 
 }

@@ -87,11 +87,6 @@ namespace ToolsRig
             const ::Assets::IntermediateAssets::Store& destinationStore);
         void StallOnPendingOperations(bool cancelAll);
 
-        using CompileResult = ::Assets::CompilerHelper::CompileResult;
-        CompileResult PerformCompile(
-            const ::Assets::ResChar modelFilename[], const ::Assets::ResChar materialFilename[],
-            const ::Assets::ResChar destinationFile[]);
-
             // When using with placements, this hash value is referenced by the
             // "supplements" string in data. If the hash value changes, the data
             // must also change.
@@ -102,6 +97,7 @@ namespace ToolsRig
     protected:
         class Pimpl;
         std::shared_ptr<Pimpl> _pimpl;
+        class PollingOp;
     };
 
 }
