@@ -194,7 +194,7 @@ namespace Assets
         std::basic_string<ResChar> AsString();
 
 		template<bool DoCheckDependancy, bool DoBackgroundCompile, typename AssetType, typename... Params>
-			const AssetType& GetAsset(Params... initialisers)
+			const AssetType& GetAsset(AssetSetPtr<AssetType>& assetSet, Params... initialisers)
             {
                     //
                     //  This is the main bit of functionality in this file. Here we define
@@ -206,8 +206,6 @@ namespace Assets
                     //      * otherwise we build a new asset
                     //
 				auto hash = BuildHash(initialisers...);
-				auto assetSet = GetAssetSet<AssetType>();
-				(void)assetSet;	// (is this a compiler problem? It thinks this is unreferenced?)
 
 				#if defined(ASSETS_STORE_DIVERGENT)
 						// divergent assets will always shadow normal assets
@@ -262,6 +260,13 @@ namespace Assets
 				return *assets.insert(i, std::make_pair(hash, std::move(newAsset)))->second;
             }
 
+        template<bool DoCheckDependancy, bool DoBackgroundCompile, typename AssetType, typename... Params>
+			const AssetType& GetAsset(Params... initialisers)
+            {
+                auto assetSet = GetAssetSet<AssetType>();
+                return GetAsset<DoCheckDependancy, DoBackgroundCompile, AssetType, Params...>(assetSet, std::forward<Params>(initialisers)...);
+            }
+
 		template <typename AssetType, bool DoBackgroundCompile, typename... Params>
 			std::shared_ptr<typename AssetTraits<AssetType>::DivAsset>& GetDivergentAsset(Params... initialisers)
 			{
@@ -286,7 +291,7 @@ namespace Assets
                     bool constructNewAsset = false;
                     TRY {
                         newDivAsset = std::make_shared<typename AssetTraits<AssetType>::DivAsset>(
-                            GetAsset<true, DoBackgroundCompile, AssetType>(std::forward<Params>(initialisers)...), 
+                            GetAsset<true, DoBackgroundCompile, AssetType>(assetSet, std::forward<Params>(initialisers)...), 
                             hash, assetSet->GetTypeCode(), 
                             identifier, undoQueue);
                     } CATCH (const Assets::Exceptions::InvalidAsset&) {

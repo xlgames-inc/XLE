@@ -23,18 +23,6 @@
 #include <msclr/auto_gcroot.h>
 #include <iomanip>
 
-#if 0
-namespace Assets
-{
-    template<>
-        std::basic_string<ResChar> BuildTargetFilename<RenderCore::Assets::RawMaterial>(const char* init)
-        {
-            RenderCore::Assets::RawMaterial::RawMatSplitName splitName(init);
-            return splitName._concreteFilename;
-        }
-}
-#endif
-
 namespace GUILayer
 {
 

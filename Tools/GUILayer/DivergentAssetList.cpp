@@ -271,37 +271,6 @@ namespace GUILayer
         return result;
     }
 
-#if 0
-    static void SerializeInto(::Utility::Data& originalFile, const RenderCore::Assets::RawMaterial& material)
-    {
-        auto asData = material.SerializeAsData();
-                    
-        auto* replacedEntry = originalFile.ChildWithValue(asData->StrValue());
-        if (replacedEntry) { 
-            if (replacedEntry->prev)
-                replacedEntry->prev->next = asData.get();
-            else
-                replacedEntry->parent->child = asData.get();
-
-            if (replacedEntry->next)
-                replacedEntry->next->prev = asData.get();
-                        
-            asData->prev = replacedEntry->prev;
-            asData->next = replacedEntry->next;
-            asData->parent = replacedEntry->parent;
-
-            replacedEntry->next = nullptr;
-            replacedEntry->prev = nullptr;
-            replacedEntry->parent = nullptr;
-            delete replacedEntry;
-            asData.release();
-        } else {
-            originalFile.Add(asData.release());
-        }
-    }
-#endif
-
-#if 0
     static auto DeserializeAllMaterials(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules)
         -> std::vector<std::pair<::Assets::rstring, RenderCore::Assets::RawMaterial>>
     {
@@ -349,7 +318,8 @@ namespace GUILayer
     static void MergeAndSerialize(
         OutputStreamFormatter& output,
         array<Byte>^ originalFile,
-        const RenderCore::Assets::RawMaterial::RawMatSplitName& splitName,
+        StringSection<::Assets::ResChar> filename,
+        StringSection<::Assets::ResChar> section,
         const RenderCore::Assets::RawMaterial& mat)
     {
             //  Sometimes mutliple assets will write to different parts of the same
@@ -359,7 +329,7 @@ namespace GUILayer
 
         std::vector<std::pair<::Assets::rstring, RenderCore::Assets::RawMaterial>> preMats;
         if (originalFile->Length) {
-            auto searchRules = ::Assets::DefaultDirectorySearchRules(splitName._concreteFilename.c_str());
+            auto searchRules = ::Assets::DefaultDirectorySearchRules(filename);
             pin_ptr<uint8> pinnedAddress(&originalFile[0]);
             InputStreamFormatter<utf8> formatter(
                 MemoryMappedInputStream((const char*)pinnedAddress, PtrAdd((const char*)pinnedAddress, originalFile->Length)));
@@ -368,18 +338,17 @@ namespace GUILayer
 
         auto i = std::find_if(
             preMats.begin(), preMats.end(),
-            [&splitName](const std::pair<std::string, RenderCore::Assets::RawMaterial>& e)
-            { return e.first == splitName._settingName; });
+            [section](const std::pair<std::string, RenderCore::Assets::RawMaterial>& e)
+            { return XlEqString(MakeStringSection(e.first), section); });
 
         if (i != preMats.end()) {
             i->second = mat;
         } else {
-            preMats.push_back(std::make_pair(splitName._settingName, mat));
+            preMats.push_back(std::make_pair(section.AsString(), mat));
         }
 
         SerializeAllMaterials(output, preMats);
     }
-#endif
 
     PendingSaveList^ PendingSaveList::Create()
     {
@@ -393,27 +362,31 @@ namespace GUILayer
             //  should serialise quickly... But if we have many large
             //  assets, this could get expensive quickly!
 
-        #if 0 // defined(ASSETS_STORE_DIVERGENT)
+        #if defined(ASSETS_STORE_DIVERGENT)
 
                     // HACK -- special case for RawMaterial objects!
             using namespace RenderCore::Assets;
-            auto& materials = ::Assets::Internal::GetAssetSet<::Assets::ConfigFileListContainer<RawMaterial>>();
-            for (auto a = materials._divergentAssets.cbegin(); a!=materials._divergentAssets.cend(); ++a) {
-                if (!a->second->HasChanges()) continue;
+            auto materials = ::Assets::Internal::GetAssetSet<::Assets::ConfigFileListContainer<RawMaterial>>();
+            for (const auto& a:materials->_divergentAssets) {
+                auto asset = a.second;
+                auto hash = a.first;
+                if (!asset->HasChanges()) continue;
             
-                auto targetFilename = a->second->GetIdentifier()._targetFilename;
-                RawMaterial::RawMatSplitName splitName(targetFilename.c_str());
-                auto originalFile = LoadFileAsByteArray(splitName._concreteFilename.c_str());
+                auto targetFilename = asset->GetIdentifier()._targetFilename;
+                auto splitName = MakeFileNameSplitter(targetFilename);
+                auto originalFile = LoadFileAsByteArray(splitName.AllExceptParameters().AsString().c_str());
 
                 MemoryOutputStream<utf8> strm;
                 OutputStreamFormatter fmtter(strm);
-                MergeAndSerialize(fmtter, originalFile, splitName, a->second->GetAsset()._asset);
+                MergeAndSerialize(fmtter, originalFile, 
+                    splitName.AllExceptParameters(), splitName.Parameters(), 
+                    asset->GetAsset()._asset);
                 auto newFile = AsByteArray(strm.GetBuffer().Begin(), strm.GetBuffer().End());
 
                 result->Add(
-                    materials, a->first,
+                    *materials, hash,
                     gcnew PendingSaveList::Entry(
-                        clix::marshalString<clix::E_UTF8>(splitName._concreteFilename), 
+                        clix::marshalString<clix::E_UTF8>(splitName.AllExceptParameters()), 
                         originalFile, newFile));
             }
 
@@ -424,30 +397,34 @@ namespace GUILayer
 
     void PendingSaveList::Commit()
     {
-        #if 0 // defined(ASSETS_STORE_DIVERGENT)
+        #if defined(ASSETS_STORE_DIVERGENT)
 
             using namespace RenderCore::Assets;
-            auto& materials = ::Assets::Internal::GetAssetSet<::Assets::ConfigFileListContainer<RawMaterial>>();
-            for (auto a = materials._divergentAssets.cbegin(); a!=materials._divergentAssets.cend(); ++a) {
-                if (!a->second->HasChanges()) continue;
+            auto materials = ::Assets::Internal::GetAssetSet<::Assets::ConfigFileListContainer<RawMaterial>>();
+            for (const auto& a:materials->_divergentAssets) {
+                auto asset = a.second;
+                auto hash = a.first;
+                if (!asset->HasChanges()) continue;
 
-                auto entry = GetEntry(materials, a->first);
+                auto entry = GetEntry(*materials, hash);
                 if (!entry || !entry->_saveQueued) continue;
             
                     //  Sometimes mutliple assets will write to different parts of the same
                     //  file. It's a bit wierd, but we want the before and after parts to
                     //  only show changes related to this particular asset
-                auto targetFilename = a->second->GetIdentifier()._targetFilename;
-                RawMaterial::RawMatSplitName splitName(targetFilename.c_str());
-                auto originalFile = LoadFileAsByteArray(splitName._concreteFilename.c_str());
+                auto targetFilename = asset->GetIdentifier()._targetFilename;
+                auto splitName = MakeFileNameSplitter(targetFilename);
+                auto originalFile = LoadFileAsByteArray(splitName.AllExceptParameters().AsString().c_str());
             
                 MemoryOutputStream<utf8> strm;
                 OutputStreamFormatter fmtter(strm);
-                MergeAndSerialize(fmtter, originalFile, splitName, a->second->GetAsset()._asset);
+                MergeAndSerialize(fmtter, originalFile, 
+                    splitName.AllExceptParameters(), splitName.Parameters(), 
+                    asset->GetAsset()._asset);
 
                 TRY
                 {
-                    BasicFile outputFile(splitName._concreteFilename.c_str(), "wb");
+                    BasicFile outputFile(splitName.AllExceptParameters().AsString().c_str(), "wb");
                     outputFile.Write(strm.GetBuffer().Begin(), 1, size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin()));
                 } CATCH (...) {
                     // LogAlwaysError << "Problem when writing out to file: " << filename;
@@ -455,12 +432,12 @@ namespace GUILayer
             }
 
                 // reset all divergent assets... Underneath, the real file should have changed
-            for (auto a = materials._divergentAssets.cbegin(); a!=materials._divergentAssets.cend();) {
-                auto entry = GetEntry(materials, a->first);
+            for (auto a = materials->_divergentAssets.cbegin(); a!=materials->_divergentAssets.cend();) {
+                auto entry = GetEntry(*materials, a->first);
                 if (!entry || !entry->_saveQueued) { 
                     ++a; 
                 } else {
-                    a = materials._divergentAssets.erase(a);
+                    a = materials->_divergentAssets.erase(a);
                 }
             }
 

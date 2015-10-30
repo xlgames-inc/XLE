@@ -15,8 +15,8 @@ namespace Assets
     class DirectorySearchRules
     {
     public:
-        void AddSearchDirectory(const ResChar dir[]);
-        void AddSearchDirectoryFromFilename(const ResChar filename[]);
+        void AddSearchDirectory(StringSection<ResChar> dir);
+        void AddSearchDirectoryFromFilename(StringSection<ResChar> filename);
 
         void ResolveFile(
             ResChar destination[], unsigned destinationCount, 
@@ -24,7 +24,7 @@ namespace Assets
         void ResolveDirectory(
             ResChar destination[], unsigned destinationCount, 
             const ResChar baseName[]) const;
-        bool HasDirectory(const ResChar dir[]);
+        bool HasDirectory(StringSection<ResChar> dir);
 
         const ResChar* GetFirstSearchDir() const;
 
@@ -42,7 +42,7 @@ namespace Assets
         unsigned _startPointCount;
     };
 
-    DirectorySearchRules DefaultDirectorySearchRules(const ResChar baseFile[]);
+    DirectorySearchRules DefaultDirectorySearchRules(StringSection<ResChar> baseFile);
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 

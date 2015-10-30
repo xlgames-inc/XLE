@@ -14,7 +14,7 @@
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/FileUtils.h"
-#include "../Utility/SystemUtils.h"     // for XlGetCurrentDirectorys
+#include "../Utility/SystemUtils.h"     // for XlGetCurrentDirectory
 #include <vector>
 #include <algorithm>
 
@@ -145,7 +145,7 @@ namespace Assets
         dependentResource->RegisterDependency(dependency);
     }
 
-    void DirectorySearchRules::AddSearchDirectory(const ResChar dir[])
+    void DirectorySearchRules::AddSearchDirectory(StringSection<ResChar> dir)
     {
             //  Attempt to fit this directory into our buffer.
             //  note that we have limited space in the buffer, but we can't really
@@ -163,18 +163,21 @@ namespace Assets
             //  Duplicates are bad because they will increase the number of search operations
         if (HasDirectory(dir)) return;
 
-        unsigned allocationLength = (unsigned)XlStringLen(dir) + 1;
+        unsigned allocationLength = (unsigned)(dir.Length() + 1);
         if (_bufferOverflow.empty() && (_bufferUsed + allocationLength <= dimof(_buffer))) {
                 // just append this new string to our buffer, and add a new start offset
-            XlCopyMemory(&_buffer[_bufferUsed], dir, allocationLength * sizeof(ResChar));
+            XlCopyMemory(&_buffer[_bufferUsed], dir.begin(), (allocationLength-1) * sizeof(ResChar));
+            _buffer[_bufferUsed+allocationLength-1] = '\0';
         } else {
             if (_bufferOverflow.empty()) {
                 _bufferOverflow.resize(_bufferUsed + allocationLength);
                 XlCopyMemory(AsPointer(_bufferOverflow.begin()), _buffer, _bufferUsed * sizeof(ResChar));
-                XlCopyMemory(PtrAdd(AsPointer(_bufferOverflow.begin()), _bufferUsed * sizeof(ResChar)), dir, allocationLength * sizeof(ResChar));
+                XlCopyMemory(PtrAdd(AsPointer(_bufferOverflow.begin()), _bufferUsed * sizeof(ResChar)), dir.begin(), (allocationLength-1) * sizeof(ResChar));
+                _bufferOverflow[_bufferUsed+allocationLength-1] = '\0';
             } else {
                 assert(_bufferOverflow.size() == allocationLength);
-                _bufferOverflow.insert(_bufferOverflow.end(), dir, &dir[allocationLength]);
+                auto i = _bufferOverflow.insert(_bufferOverflow.end(), dir.begin(), dir.end());
+                _bufferOverflow.insert(i + dir.Length(), 0);
             }
         }
 
@@ -182,14 +185,12 @@ namespace Assets
         _bufferUsed += allocationLength;
     }
 
-    void DirectorySearchRules::AddSearchDirectoryFromFilename(const ResChar filename[])
+    void DirectorySearchRules::AddSearchDirectoryFromFilename(StringSection<ResChar> filename)
     {
-        char path[MaxPath];
-        XlDirname(path, dimof(path), filename);
-        AddSearchDirectory(path);
+        AddSearchDirectory(MakeFileNameSplitter(filename).DriveAndPath());
     }
 
-    bool DirectorySearchRules::HasDirectory(const ResChar dir[])
+    bool DirectorySearchRules::HasDirectory(StringSection<ResChar> dir)
     {
         const ResChar* b = _buffer;
         if (!_bufferOverflow.empty()) {
@@ -203,7 +204,7 @@ namespace Assets
             //          format that is more convenient for comparisons and combining
             //          paths.
         for (unsigned c=0; c<_startPointCount; ++c)
-            if (!XlCompareStringI(&b[_startOffsets[c]], dir)) 
+            if (XlEqStringI(dir, &b[_startOffsets[c]]))
                 return true;
 
         return false;
@@ -343,7 +344,7 @@ namespace Assets
         return *this;
     }
 
-    DirectorySearchRules DefaultDirectorySearchRules(const ResChar baseFile[])
+    DirectorySearchRules DefaultDirectorySearchRules(StringSection<ResChar> baseFile)
     {
         Assets::DirectorySearchRules searchRules;
         searchRules.AddSearchDirectoryFromFilename(baseFile);
