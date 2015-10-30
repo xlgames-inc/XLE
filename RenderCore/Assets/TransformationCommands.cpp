@@ -7,6 +7,7 @@
 #include "TransformationCommands.h"
 
 #pragma warning(disable:4127)
+#pragma warning(disable:4505)       // unreferenced function removed
 
 namespace RenderCore { namespace Assets
 {
@@ -350,8 +351,8 @@ namespace RenderCore { namespace Assets
             // Otherwise we need to promote both transforms into Float4x4, and we will push
             // a new Float4x4 transform into the space in "dst"
             auto dstTransform = PromoteToFloat4x4(AsPointer(dst));
-            auto mergeTransform = PromoteToFloat4x4(AsPointer(dst));
-            auto t = cmdStream.erase(dst+1, dst+CommandSize(TransformStackCommand(*dst)));
+            auto mergeTransform = PromoteToFloat4x4(AsPointer(mergingCmd));
+            auto t = cmdStream.erase(dst+1, dst+1+CommandSize(TransformStackCommand(*dst)));
             assert(t==dst+1);
             *dst = (uint32)TransformStackCommand::TransformFloat4x4_Static;
             auto finalTransform = Combine(dstTransform, mergeTransform);
