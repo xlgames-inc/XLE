@@ -161,24 +161,24 @@ namespace Assets
         }
     }
 
-    ::Assets::AssetState ChunkFileAsset::TryResolve()
+    ::Assets::AssetState ChunkFileAsset::TryResolve() const
     {
         if (_marker) {
             auto markerState = _marker->GetState();
             if (markerState != ::Assets::AssetState::Ready) return markerState;
-            CompleteFromMarker(*_marker);
+            const_cast<ChunkFileAsset*>(this)->CompleteFromMarker(*_marker);
             _marker.reset();
         }
 
         return ::Assets::AssetState::Ready;
     }
 
-    ::Assets::AssetState ChunkFileAsset::StallAndResolve()
+    ::Assets::AssetState ChunkFileAsset::StallAndResolve() const
     {
         if (_marker) {
             auto markerState = _marker->StallWhilePending();
             if (markerState != ::Assets::AssetState::Ready) return markerState;
-            CompleteFromMarker(*_marker);
+            const_cast<ChunkFileAsset*>(this)->CompleteFromMarker(*_marker);
             _marker.reset();
         }
 

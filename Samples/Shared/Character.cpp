@@ -9,7 +9,6 @@
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Assets/AnimationScaffoldInternal.h"
-#include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/AssetUtils.h"
@@ -58,41 +57,31 @@ namespace Sample
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    CharacterModel::CharacterModel(const char skin[], const char skeleton[], const char animationSet[], RenderCore::Assets::SharedStateSet& sharedStates)
+    CharacterModel::CharacterModel(
+        const ::Assets::ResChar skin[], const ::Assets::ResChar skeleton[], const ::Assets::ResChar animationSet[], 
+        RenderCore::Assets::SharedStateSet& sharedStates)
     {
-        std::string skinInitialiser = skin, skeletonInitialiser = skeleton, animationSetInitialiser = animationSet;
+        #if defined(_DEBUG)
+            _skinInitialiser = skin; _skeletonInitialiser = skeleton; _animationSetInitialiser = animationSet;
+        #endif
 
-            //  Process if we need to...
-            //  Note;   ideally this should happen in the background, and we would construct the
-            //          objects only after everything is ready
-        auto& compilers = Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-        auto& store = Assets::Services::GetAsyncMan().GetIntermediateStore();
-        auto skinMarker = compilers.PrepareAsset(RenderCore::Assets::ModelScaffold::CompileProcessType, &skin, 1, store);
-        auto skelMarker = compilers.PrepareAsset(RenderCore::Assets::SkeletonScaffold::CompileProcessType, &skeleton, 1, store);
-        auto animMarker = compilers.PrepareAsset(RenderCore::Assets::AnimationSetScaffold::CompileProcessType, &animationSet, 1, store);
-        skinMarker->StallWhilePending();
-        skelMarker->StallWhilePending();
-        animMarker->StallWhilePending();
-        assert(skinMarker->GetState() == Assets::AssetState::Ready);
-        assert(skelMarker->GetState() == Assets::AssetState::Ready);
-        assert(animMarker->GetState() == Assets::AssetState::Ready);
-
-        auto searchRules = Assets::DefaultDirectorySearchRules(skin);
-
-            // These scaffolds don't support GetResourceComp() currently...
         using namespace RenderCore::Assets;
-        _model = &Assets::GetAsset<ModelScaffold>(skinMarker->_sourceID0);
-        _skeleton = &Assets::GetAsset<SkeletonScaffold>(skelMarker->_sourceID0);
-        _animationSet = &Assets::GetAsset<AnimationSetScaffold>(animMarker->_sourceID0);
-
+        _model = &Assets::GetAssetComp<ModelScaffold>(skin);
+        _skeleton = &Assets::GetAssetComp<SkeletonScaffold>(skeleton);
+        _animationSet = &Assets::GetAssetComp<AnimationSetScaffold>(animationSet);
         auto& matScaffold = Assets::GetAssetComp<MaterialScaffold>(skin, skin);
 
+        auto searchRules = Assets::DefaultDirectorySearchRules(skin);
         const unsigned levelOfDetail = 0;
-        auto renderer = std::make_unique<ModelRenderer>(std::ref(*_model), std::ref(matScaffold), ModelRenderer::Supplements(), std::ref(sharedStates), &searchRules, levelOfDetail);
-        auto prepareMachine = std::make_unique<SkinPrepareMachine>(std::ref(*_model), std::ref(*_animationSet), std::ref(*_skeleton));
 
-        _renderer = std::move(renderer);
-        _prepareMachine = std::move(prepareMachine);
+            // stall here until our resources are full loaded
+        _model->StallAndResolve();
+        matScaffold.StallAndResolve();
+        _renderer = std::make_unique<ModelRenderer>(*_model, matScaffold, ModelRenderer::Supplements(), sharedStates, &searchRules, levelOfDetail);
+
+        _skeleton->StallAndResolve();
+        _animationSet->StallAndResolve();
+        _prepareMachine = std::make_unique<SkinPrepareMachine>(*_model, *_animationSet, *_skeleton);
     }
 
     CharacterModel::~CharacterModel()

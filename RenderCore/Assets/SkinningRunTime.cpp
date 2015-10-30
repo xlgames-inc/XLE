@@ -940,68 +940,120 @@ namespace RenderCore { namespace Assets
     SkinPrepareMachine::~SkinPrepareMachine()
     {}
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    SkeletonScaffold::SkeletonScaffold(const ::Assets::ResChar filename[])
+    const TransformationMachine&   SkeletonScaffold::GetTransformationMachine() const                
     {
-        auto memBlock = Serialization::ChunkFile::RawChunkAsMemoryBlock(filename, ChunkType_Skeleton, 0);
-        Serialization::Block_Initialize(memBlock.get());        
-        _data = (const TransformationMachine*)Serialization::Block_GetFirstObject(memBlock.get());
-        _filename = filename;
-        _rawMemoryBlock = std::move(memBlock);
+        Resolve(); 
+        return *(const TransformationMachine*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
+    }
+
+    const TransformationMachine*   SkeletonScaffold::TryImmutableData() const
+    {
+        if (!_rawMemoryBlock) return nullptr;
+        return (const TransformationMachine*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
+    }
+
+    static const ::Assets::AssetChunkRequest SkeletonScaffoldChunkRequests[]
+    {
+        ::Assets::AssetChunkRequest { "Scaffold", ChunkType_Skeleton, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
+    };
+    
+    SkeletonScaffold::SkeletonScaffold(const ::Assets::ResChar filename[])
+    : ChunkFileAsset("SkeletonScaffold")
+    {
+        Prepare(filename, MakeIteratorRange(SkeletonScaffoldChunkRequests), &Resolver);
+    }
+
+    SkeletonScaffold::SkeletonScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
+    : ChunkFileAsset("SkeletonScaffold")
+    {
+        Prepare(std::move(marker), MakeIteratorRange(SkeletonScaffoldChunkRequests), &Resolver);
     }
 
     SkeletonScaffold::SkeletonScaffold(SkeletonScaffold&& moveFrom)
-    : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
-    , _filename(std::move(moveFrom._filename))
-    {
-        _data = moveFrom._data;
-        moveFrom._data = nullptr;
-    }
+    : ::Assets::ChunkFileAsset(std::move(moveFrom)) 
+    , _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
+    {}
 
     SkeletonScaffold& SkeletonScaffold::operator=(SkeletonScaffold&& moveFrom)
     {
+        ::Assets::ChunkFileAsset::operator=(std::move(moveFrom));
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
-        _data = moveFrom._data;
-        moveFrom._data = nullptr;
-        _filename = std::move(moveFrom._filename);
         return *this;
     }
 
     SkeletonScaffold::~SkeletonScaffold()
     {
-        _data->~TransformationMachine();
+        auto* data = TryImmutableData();
+        if (data)
+            data->~TransformationMachine();
     }
 
-    AnimationSetScaffold::AnimationSetScaffold(const ::Assets::ResChar filename[])
+    void SkeletonScaffold::Resolver(void* obj, IteratorRange<::Assets::AssetChunkResult*> chunks)
     {
-        auto memBlock = Serialization::ChunkFile::RawChunkAsMemoryBlock(filename, ChunkType_AnimationSet, 0);
-        Serialization::Block_Initialize(memBlock.get());        
-        _data = (const AnimationImmutableData*)Serialization::Block_GetFirstObject(memBlock.get());
-        _filename = filename;
-        _rawMemoryBlock = std::move(memBlock);
+        auto* scaffold = (SkeletonScaffold*)obj;
+        if (scaffold) {
+            scaffold->_rawMemoryBlock = std::move(chunks[0]._buffer);
+        }
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    const AnimationImmutableData&   AnimationSetScaffold::ImmutableData() const                
+    {
+        Resolve(); 
+        return *(const AnimationImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
+    }
+
+    const AnimationImmutableData*   AnimationSetScaffold::TryImmutableData() const
+    {
+        if (!_rawMemoryBlock) return nullptr;
+        return (const AnimationImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
+    }
+
+    static const ::Assets::AssetChunkRequest AnimationSetScaffoldChunkRequests[]
+    {
+        ::Assets::AssetChunkRequest { "Scaffold", ChunkType_AnimationSet, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
+    };
+    
+    AnimationSetScaffold::AnimationSetScaffold(const ::Assets::ResChar filename[])
+    : ChunkFileAsset("AnimationSetScaffold")
+    {
+        Prepare(filename, MakeIteratorRange(AnimationSetScaffoldChunkRequests), &Resolver);
+    }
+
+    AnimationSetScaffold::AnimationSetScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
+    : ChunkFileAsset("AnimationSetScaffold")
+    {
+        Prepare(std::move(marker), MakeIteratorRange(AnimationSetScaffoldChunkRequests), &Resolver);
     }
 
     AnimationSetScaffold::AnimationSetScaffold(AnimationSetScaffold&& moveFrom)
-    : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
-    , _filename(std::move(moveFrom._filename))
-    {
-        _data = moveFrom._data;
-        moveFrom._data = nullptr;
-    }
+    : ::Assets::ChunkFileAsset(std::move(moveFrom)) 
+    , _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
+    {}
 
     AnimationSetScaffold& AnimationSetScaffold::operator=(AnimationSetScaffold&& moveFrom)
     {
+        ::Assets::ChunkFileAsset::operator=(std::move(moveFrom));
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
-        _data = moveFrom._data;
-        moveFrom._data = nullptr;
-        _filename = std::move(moveFrom._filename);
         return *this;
     }
 
     AnimationSetScaffold::~AnimationSetScaffold()
     {
-        _data->~AnimationImmutableData();
+        auto* data = TryImmutableData();
+        if (data)
+            data->~AnimationImmutableData();
+    }
+
+    void AnimationSetScaffold::Resolver(void* obj, IteratorRange<::Assets::AssetChunkResult*> chunks)
+    {
+        auto* scaffold = (AnimationSetScaffold*)obj;
+        if (scaffold) {
+            scaffold->_rawMemoryBlock = std::move(chunks[0]._buffer);
+        }
     }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

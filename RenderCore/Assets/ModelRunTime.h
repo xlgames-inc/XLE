@@ -292,22 +292,22 @@ namespace RenderCore { namespace Assets
     ///
     /// <seealso cref="ModelScaffold" />
     /// <seealso cref="AnimationSetScaffold" />
-    class SkeletonScaffold
+    class SkeletonScaffold : public ::Assets::ChunkFileAsset
     {
     public:
-        const std::string&              Filename() const                    { return _filename; }
-        const TransformationMachine&    GetTransformationMachine() const    { return *_data; };
+        const TransformationMachine&    GetTransformationMachine() const;
 
         static const auto CompileProcessType = ConstHash64<'Skel', 'eton'>::Value;
 
         SkeletonScaffold(const ::Assets::ResChar filename[]);
-        SkeletonScaffold(SkeletonScaffold&& moveFrom);
-        SkeletonScaffold& operator=(SkeletonScaffold&& moveFrom);
+        SkeletonScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+        SkeletonScaffold(SkeletonScaffold&& moveFrom) never_throws;
+        SkeletonScaffold& operator=(SkeletonScaffold&& moveFrom) never_throws;
         ~SkeletonScaffold();
-    protected:
-        std::unique_ptr<uint8[]>        _rawMemoryBlock;
-        const TransformationMachine*    _data;
-        std::string                     _filename;
+    private:
+        std::unique_ptr<uint8[]>    _rawMemoryBlock;
+        static void Resolver(void*, IteratorRange<::Assets::AssetChunkResult*>);
+        const TransformationMachine*   TryImmutableData() const;
     };
 
     /// <summary>Structural data for animation<summary>
@@ -317,22 +317,22 @@ namespace RenderCore { namespace Assets
     ///
     /// <seealso cref="ModelScaffold" />
     /// <seealso cref="SkeletonScaffold" />
-    class AnimationSetScaffold
+    class AnimationSetScaffold : public ::Assets::ChunkFileAsset
     {
     public:
-        const std::string&              Filename() const        { return _filename; }
-        const AnimationImmutableData&   ImmutableData() const   { return *_data; };
+        const AnimationImmutableData&   ImmutableData() const;
 
         static const auto CompileProcessType = ConstHash64<'Anim', 'Set'>::Value;
 
         AnimationSetScaffold(const ::Assets::ResChar filename[]);
-        AnimationSetScaffold(AnimationSetScaffold&& moveFrom);
-        AnimationSetScaffold& operator=(AnimationSetScaffold&& moveFrom);
+        AnimationSetScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+        AnimationSetScaffold(AnimationSetScaffold&& moveFrom) never_throws;
+        AnimationSetScaffold& operator=(AnimationSetScaffold&& moveFrom) never_throws;
         ~AnimationSetScaffold();
-    protected:
-        std::unique_ptr<uint8[]>        _rawMemoryBlock;
-        const AnimationImmutableData*   _data;
-        std::string                     _filename;
+    private:
+        std::unique_ptr<uint8[]>    _rawMemoryBlock;
+        static void Resolver(void*, IteratorRange<::Assets::AssetChunkResult*>);
+        const AnimationImmutableData*   TryImmutableData() const;
     };
 
     /// <summary>Bind together a model, animation set and skeleton for rendering<summary>

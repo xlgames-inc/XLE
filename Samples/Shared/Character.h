@@ -8,6 +8,7 @@
 
 #include "AnimationDecisionTree.h"
 #include "../../PlatformRig/CameraManager.h"
+#include "../../Assets/AssetsCore.h"
 
 namespace RenderCore { namespace Assets 
 {
@@ -31,7 +32,7 @@ namespace Sample
     {
     public:
         CharacterModel(
-            const char skin[], const char skeleton[], const char animationSet[], 
+            const ::Assets::ResChar skin[], const ::Assets::ResChar skeleton[], const ::Assets::ResChar animationSet[],
             RenderCore::Assets::SharedStateSet& sharedStates);
         ~CharacterModel();
 
@@ -51,16 +52,16 @@ namespace Sample
         std::unique_ptr<RenderCore::Assets::SkinPrepareMachine> _prepareMachine;
 
         #if defined(_DEBUG)
-            std::string _skinInitialiser;
-            std::string _skeletonInitialiser;
-            std::string _animationSetInitialiser;
-            const char* SkinInitialiser() const { return _skinInitialiser.c_str(); }
-            const char* SkeletonInitialiser() const { return _skeletonInitialiser.c_str(); }
-            const char* AnimationSetInitialiser() const { return _animationSetInitialiser.c_str(); }
+            Assets::rstring _skinInitialiser;
+            Assets::rstring _skeletonInitialiser;
+            Assets::rstring _animationSetInitialiser;
+            const ::Assets::ResChar* SkinInitialiser() const { return _skinInitialiser.c_str(); }
+            const ::Assets::ResChar* SkeletonInitialiser() const { return _skeletonInitialiser.c_str(); }
+            const ::Assets::ResChar* AnimationSetInitialiser() const { return _animationSetInitialiser.c_str(); }
         #else
-            const char* SkinInitialiser() const { return ""; }
-            const char* SkeletonInitialiser() const { return ""; }
-            const char* AnimationSetInitialiser() const { return ""; }
+            const ::Assets::ResChar* SkinInitialiser() const { return ""; }
+            const ::Assets::ResChar* SkeletonInitialiser() const { return ""; }
+            const ::Assets::ResChar* AnimationSetInitialiser() const { return ""; }
         #endif
     };
 

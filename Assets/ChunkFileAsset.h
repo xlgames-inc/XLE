@@ -63,8 +63,8 @@ namespace Assets
         auto GetDependencyValidation() const -> const std::shared_ptr<DependencyValidation>& { return _validationCallback; }
 
         void Resolve() const;
-        ::Assets::AssetState TryResolve();
-        ::Assets::AssetState StallAndResolve();
+        ::Assets::AssetState TryResolve() const;
+        ::Assets::AssetState StallAndResolve() const;
 
         ChunkFileAsset(ChunkFileAsset&& moveFrom) never_throws;
         ChunkFileAsset& operator=(ChunkFileAsset&& moveFrom) never_throws;
