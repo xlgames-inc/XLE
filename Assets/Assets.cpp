@@ -8,7 +8,14 @@
 
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
+#include "../Utility/Threading/Mutex.h"
 #include "../ConsoleRig/Log.h"
+
+namespace std 
+{
+        // this is related to the hack to remove <mutex> from Assets.h for C++/CLR
+    template unique_ptr<mutex>::~unique_ptr(); 
+}
 
 namespace Assets 
 {
@@ -48,6 +55,15 @@ namespace Assets
         }
 
         std::basic_string<ResChar> AsString() { return std::basic_string<ResChar>(); }
+
+
+        std::unique_ptr<Threading::Mutex> CreateMutexPtr()
+        {
+            return std::make_unique<Threading::Mutex>();
+        }
+
+        void LockMutex(Threading::Mutex& mutex) { mutex.lock(); }
+        void UnlockMutex(Threading::Mutex& mutex) { mutex.unlock(); }
 
     }
 }

@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CompilationThread.h"
+#include "../../ConsoleRig/Log.h"
 
 namespace RenderCore { namespace Assets 
 {
@@ -31,8 +32,58 @@ namespace RenderCore { namespace Assets
             std::weak_ptr<QueuedCompileOperation>* op;
             if (_queue.try_front(op)) {
                 auto o = op->lock();
-                if (o) _compileOp(*o);
-                _queue.pop();
+                TRY
+                {
+                    if (o) _compileOp(*o);
+                    _queue.pop();
+                }
+                CATCH (const ::Assets::Exceptions::PendingAsset&)
+                {
+                    // We need to stall on a pending asset while compiling
+                    // All we can do is delay the request, and try again later.
+                    // Let's move the request into a separate queue, so that
+                    // new request get processed first.
+                    _queue.pop();
+                    _delayedQueue.push(o);
+                }
+                CATCH (const std::exception& e)
+                {
+                    LogWarning << "Got exception while in asset compilation thread" << std::endl;
+                    LogWarning << "Asset: " << o->Initializer() << std::endl;
+                    LogWarning << "    " << e.what() << std::endl;
+                    _queue.pop();
+                }
+                CATCH_END
+            } else if (_delayedQueue.try_front(op)) {
+                
+                    // do a short sleep first, do avoid too much
+                    // trashing while processing delayed items. Note
+                    // that if any new request comes in during this Sleep,
+                    // then we won't handle that request in a prompt manner.
+                Sleep(1);
+                auto o = op->lock();
+                TRY
+                {
+                    if (o) _compileOp(*o);
+                    _delayedQueue.pop();
+                }
+                CATCH (const ::Assets::Exceptions::PendingAsset&)
+                {
+                    // We need to stall on a pending asset while compiling
+                    // All we can do is delay the request, and try again later.
+                    // Let's move the request into a separate queue, so that
+                    // new request get processed first.
+                    _delayedQueue.pop();
+                    _delayedQueue.push(o);
+                }
+                CATCH (const std::exception& e)
+                {
+                    LogWarning << "Got exception while in asset compilation thread" << std::endl;
+                    LogWarning << "Asset: " << o->Initializer() << std::endl;
+                    LogWarning << "    " << e.what() << std::endl;
+                    _delayedQueue.pop();
+                }
+                CATCH_END
             } else {
                 XlWaitForMultipleSyncObjects(
                     2, this->_events,

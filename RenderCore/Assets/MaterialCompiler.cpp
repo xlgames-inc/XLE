@@ -215,6 +215,8 @@ namespace RenderCore { namespace Assets
                 MakeIteratorRange(compileResult._dependencies));
             assert(op._dependencyValidation);
             op.SetState(::Assets::AssetState::Ready);
+        } CATCH(const ::Assets::Exceptions::PendingAsset&) {
+            throw;
         } CATCH(...) {
             op.SetState(::Assets::AssetState::Invalid);
         } CATCH_END

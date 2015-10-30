@@ -471,10 +471,9 @@ namespace GUILayer
     {
         #if defined(ASSETS_STORE_DIVERGENT)
 
-            auto& materials = ::Assets::Internal::GetAssetSet<::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial>>();
-            (void)materials; // compiler incorrectly thinking that this is unreferenced
-            for (auto a = materials._divergentAssets.cbegin(); a!=materials._divergentAssets.cend(); ++a)
-                if (a->second->HasChanges()) return true;
+            auto materials = ::Assets::Internal::GetAssetSet<::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial>>();
+            for (const auto&a:materials->_divergentAssets)
+                if (a.second->HasChanges()) return true;
 
         #endif
 

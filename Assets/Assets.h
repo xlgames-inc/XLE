@@ -30,7 +30,12 @@
 #endif
 
 #if defined(ASSETS_MULTITHREADED)
-    #include "../Utility/Threading/Mutex.h"
+        // note --  there is an unfortunate complication here.
+        //          .net code can't include the <mutex> header...
+        //          So we have to push all code that interacts with
+        //          the mutex class into the cpp file
+    namespace std { class mutex; extern template unique_ptr<mutex>::~unique_ptr(); }
+    namespace Utility { namespace Threading { using Mutex = std::mutex; }}
 #endif
 
 namespace Assets
@@ -50,6 +55,7 @@ namespace Assets
             class AssetSet : public IAssetSet
         {
         public:
+            AssetSet();
             ~AssetSet();
             void Clear();
             void LogReport() const;
@@ -72,13 +78,21 @@ namespace Assets
             #endif
 
             #if defined(ASSETS_MULTITHREADED)
-                Threading::Mutex _lock;
+                AssetSet& operator=(const AssetSet& cloneFrom) = delete;
+                AssetSet(const AssetSet& cloneFrom) = delete;
+                std::unique_ptr<Utility::Threading::Mutex> _lock;
             #endif
         };
 
         #if defined(ASSETS_MULTITHREADED)
+                // these functions exist in order to avoid the issue
+                // including <mutex> into C++/CLR files
+            std::unique_ptr<Utility::Threading::Mutex> CreateMutexPtr();
+            void LockMutex(Utility::Threading::Mutex&);
+            void UnlockMutex(Utility::Threading::Mutex&);
+
             template <typename AssetType>
-                class AssetSetPtr : public std::unique_lock<Threading::Mutex>
+                class AssetSetPtr // : public std::unique_lock<Utility::Threading::Mutex>
             {
             public:
                 AssetSet<AssetType>* operator->() const never_throws { return _assetSet; }
@@ -86,22 +100,27 @@ namespace Assets
                 AssetSet<AssetType>* get() const never_throws { return *_assetSet; }
 
                 AssetSetPtr(AssetSet<AssetType>& assetSet)
-                    : std::unique_lock<Threading::Mutex>(assetSet._lock)
-                    , _assetSet(&assetSet) {}
-                ~AssetSetPtr() {}
+                    : _assetSet(&assetSet) 
+                {
+                    LockMutex(*_assetSet->_lock);
+                }
+                ~AssetSetPtr() 
+                {
+                    if (_assetSet)
+                        UnlockMutex(*_assetSet->_lock);
+                }
 
                 AssetSetPtr(AssetSetPtr&& moveFrom) never_throws
-                    : std::unique_lock<Threading::Mutex>(std::move(moveFrom))
-                    , _assetSet(moveFrom._assetSet) {}
+                    : _assetSet(moveFrom._assetSet) { moveFrom._assetSet = nullptr; }
 
                 AssetSetPtr& operator=(AssetSetPtr&& moveFrom) never_throws
                 {
-                    std::unique_lock<Threading::Mutex>::operator=(std::move(moveFrom));
                     _assetSet = moveFrom._assetSet;
+                    moveFrom._assetSet = nullptr;
                     return *this;
                 }
             private:
-                AssetSet<AssetType>* _assetSet;
+                AssetSet<AssetType>*    _assetSet;
             };
         #else
             template<typename AssetType>
@@ -305,6 +324,11 @@ namespace Assets
 
 				#endif
 			}
+
+        template <typename AssetType>
+            AssetSet<AssetType>::AssetSet() 
+            : _lock(CreateMutexPtr())
+        {}
 
         template <typename AssetType>
             AssetSet<AssetType>::~AssetSet() {}

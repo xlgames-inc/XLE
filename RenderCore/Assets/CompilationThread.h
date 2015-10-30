@@ -38,7 +38,9 @@ namespace RenderCore { namespace Assets
         std::thread _thread;
         XlHandle _events[2];
         volatile bool _workerQuit;
-        LockFree::FixedSizeQueue<std::weak_ptr<QueuedCompileOperation>, 256> _queue;
+        using Queue = LockFree::FixedSizeQueue<std::weak_ptr<QueuedCompileOperation>, 256>;
+        Queue _queue;
+        Queue _delayedQueue;
         std::function<void(QueuedCompileOperation&)> _compileOp;
 
         void ThreadFunction();
