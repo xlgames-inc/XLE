@@ -331,10 +331,9 @@ namespace Sample
         auto captureMarker = _sharedStateSet->CaptureState(*context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
             //  Finally, we can render the object!
-        const float x2ScaleFactor = 100.f;
         _modelRenderer->Render(
             RenderCore::Assets::ModelRendererContext(*context, parserContext, techniqueIndex),
-            *_sharedStateSet, AsFloat4x4(UniformScale(1.f/x2ScaleFactor)));
+            *_sharedStateSet, Identity<Float4x4>());
     }
 
 }
