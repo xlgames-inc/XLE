@@ -305,6 +305,19 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    Int2 GetCursorPos()
+    {
+        POINT cursorPos;
+        GetCursorPos(&cursorPos);
+        ScreenToClient((HWND)::GetActiveWindow(), &cursorPos);
+        return Int2(cursorPos.x, cursorPos.y);
+    }
+
+    bool IsLButtonDown() { return GetKeyState(VK_LBUTTON)<0; }
+    bool IsShiftDown() { return GetKeyState(VK_LSHIFT)<0; }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     IteratorRange<RenderCore::Assets::DelayStep*> AsDelaySteps(
         SceneParseSettings::BatchFilter filter)
     {

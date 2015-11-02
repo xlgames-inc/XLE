@@ -20,7 +20,7 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/Metal/DeviceContextImpl.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/RenderUtils.h"
 

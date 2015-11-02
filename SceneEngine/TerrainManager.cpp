@@ -19,7 +19,6 @@
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/Resource.h"
 #include "../Math/Transformations.h"
 #include "../Math/Geometry.h"
@@ -34,8 +33,6 @@
 #include "LightingParserContext.h"  // for getting sun direction
 #include "LightDesc.h"              // for getting sun direction
 #include "SceneParser.h"            // for getting sun direction
-
-#include "../../RenderCore/DX11/Metal/DX11Utils.h"
 
 namespace SceneEngine
 {
@@ -595,7 +592,8 @@ namespace SceneEngine
 
         if (!_pimpl->_textures || _pimpl->_textures->GetDependencyValidation()->GetValidationIndex() > 0) {
             _pimpl->_textures.reset();
-            _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(_pimpl->_matCfg, _pimpl->_cfg.EncodedGradientFlags());
+            _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(
+                *context, _pimpl->_matCfg, _pimpl->_cfg.EncodedGradientFlags());
         }
 
         context->BindPS(MakeResourceList(8, 
@@ -704,41 +702,24 @@ namespace SceneEngine
 
         const unsigned resultsBufferSize = 4 * 1024;
 
-        intrusive_ptr<ID3D::Buffer> gpuOutput;
-        intrusive_ptr<ID3D::Buffer> stagingCopy;
+        Metal::VertexBuffer gpuOutput;
+        intrusive_ptr<BufferUploads::ResourceLocator> outputRes;
         {
             using namespace BufferUploads;
-            BufferDesc desc;
-            desc._type = BufferDesc::Type::LinearBuffer;
-            desc._bindFlags = BindFlag::StreamOutput;
-            desc._cpuAccess = 0;
-            desc._gpuAccess = GPUAccess::Write;
-            desc._allocationRules = 0;
-            desc._linearBufferDesc._sizeInBytes = resultsBufferSize;
-            desc._linearBufferDesc._structureByteSize = 0;
-            XlCopyString(desc._name, "TriangleResult");
+            auto desc = CreateDesc(
+                BindFlag::StreamOutput, 0, GPUAccess::Write,
+                LinearBufferDesc::Create(resultsBufferSize),
+                "TriangleResult");
 
             auto pkt = BufferUploads::CreateEmptyPacket(desc);
             XlSetMemory(pkt->GetData(), 0x0, pkt->GetDataSize());
 
             auto& uploads = GetBufferUploads();
-            auto resource = uploads.Transaction_Immediate(desc, pkt.get())->AdoptUnderlying();
+            outputRes = uploads.Transaction_Immediate(desc, pkt.get());
 
-            gpuOutput = Metal::QueryInterfaceCast<ID3D::Buffer>(resource.get());
-            if (gpuOutput) {
-                ID3D11Buffer* bufferPtr = gpuOutput.get();
-                unsigned offsets = 0;
-                context->GetUnderlying()->SOSetTargets(1, &bufferPtr, &offsets);
-
-                    //  make a staging buffer copy of this resource -- so we can access the
-                    //  results from the CPU
-                desc._cpuAccess = CPUAccess::Read;
-                desc._gpuAccess = 0;
-                desc._bindFlags = 0;
-                resource = uploads.Transaction_Immediate(desc, nullptr)->AdoptUnderlying();
-
-                stagingCopy = Metal::QueryInterfaceCast<ID3D::Buffer>(resource.get());
-            }
+            gpuOutput = Metal::VertexBuffer(outputRes->GetUnderlying());
+            if (gpuOutput.IsGood())
+                context->BindSO(MakeResourceList(gpuOutput));
         }
 
         struct RayTestBuffer
@@ -753,25 +734,19 @@ namespace SceneEngine
         _pimpl->_renderer->Render(context, parserContext, state);
         state.ExitState(context, parserContext);
 
-        {
-                // clear SO targets
-            ID3D11Buffer* bufferPtr = nullptr; unsigned offsets = 0;
-            context->GetUnderlying()->SOSetTargets(0, &bufferPtr, &offsets);
-        }
+        context->UnbindSO();
 
         unsigned resultCount = 0;
-        if (gpuOutput && stagingCopy) {
-            context->GetUnderlying()->CopyResource(stagingCopy.get(), gpuOutput.get());
-
-            D3D11_MAPPED_SUBRESOURCE subres;
-            auto hresult = context->GetUnderlying()->Map(stagingCopy.get(), 0, D3D11_MAP_READ, 0, &subres);
-            if (SUCCEEDED(hresult) && subres.pData) {
+        if (outputRes && gpuOutput.IsGood()) {
+            auto readback = GetBufferUploads().Resource_ReadBack(*outputRes);
+            if (readback->GetDataSize()) {
                     //  results are in the buffer we mapped... But how do we know how may
                     //  results there are? There is a counter associated with the buffer, but it's
                     //  inaccessible to us. Just read along until we get a zero.
-                Float4* resultArray = (Float4*)subres.pData;
-                Float4* res = resultArray;
-                while (res < PtrAdd(subres.pData, resultsBufferSize)) {
+                auto* resultArray = (Float4*)readback->GetData();
+                auto* resultEnd = (Float4*)PtrAdd(readback->GetData(), readback->GetDataSize());
+                auto* res = resultArray;
+                while (res < resultEnd) {
                     if ((*res)[0] == 0.f)
                         break;
                     ++res;
@@ -786,8 +761,6 @@ namespace SceneEngine
                     intersections[c]._cellCoordinates = Float2(resultArray[c][1], resultArray[c][2]);
                     intersections[c]._fullTerrainCoordinates = Float2(0.f, 0.f);    // (we don't actually know which node it hit yet)
                 }
-
-                context->GetUnderlying()->Unmap(stagingCopy.get(), 0);
             }
         }
 

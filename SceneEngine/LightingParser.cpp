@@ -33,7 +33,7 @@
 #include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
-#include "../RenderCore/Metal/DeviceContextImpl.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"

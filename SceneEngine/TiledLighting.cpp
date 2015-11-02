@@ -20,7 +20,7 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/Metal/DeviceContextImpl.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Math/Matrix.h"
@@ -29,8 +29,8 @@
 
 #include "../Utility/StringFormat.h"
 
+// #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
-
 
 namespace SceneEngine
 {

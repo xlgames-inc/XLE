@@ -115,6 +115,7 @@
     <ClCompile Include="..\DX11\Metal\GPUProfiler.cpp" />
     <ClCompile Include="..\DX11\Metal\InputLayout.cpp" />
     <ClCompile Include="..\DX11\Metal\RenderTargetView.cpp" />
+    <ClCompile Include="..\DX11\Metal\Resource.cpp" />
     <ClCompile Include="..\DX11\Metal\Shader.cpp" />
     <ClCompile Include="..\DX11\Metal\ShaderResource.cpp" />
     <ClCompile Include="..\DX11\Metal\State.cpp" />

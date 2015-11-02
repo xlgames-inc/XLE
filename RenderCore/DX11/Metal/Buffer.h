@@ -32,6 +32,7 @@ namespace RenderCore { namespace Metal_DX11
 
         typedef ID3D::Buffer*       UnderlyingType;
         UnderlyingType              GetUnderlying() const { return _underlying.get(); }
+        bool                        IsGood() const { return _underlying.get() != nullptr; }
     private:
         intrusive_ptr<ID3D::Buffer>    _underlying;
     };
@@ -54,6 +55,7 @@ namespace RenderCore { namespace Metal_DX11
 
         typedef ID3D::Buffer*       UnderlyingType;
         UnderlyingType              GetUnderlying() const { return _underlying.get(); }
+        bool                        IsGood() const { return _underlying.get() != nullptr; }
     private:
         intrusive_ptr<ID3D::Buffer>    _underlying;
     };
@@ -83,6 +85,7 @@ namespace RenderCore { namespace Metal_DX11
 
         typedef ID3D::Buffer*       UnderlyingType;
         UnderlyingType              GetUnderlying() const { return _underlying.get(); }
+        bool                        IsGood() const { return _underlying.get() != nullptr; }
     private:
         intrusive_ptr<ID3D::Buffer>    _underlying;
     };

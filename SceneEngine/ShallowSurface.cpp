@@ -571,9 +571,8 @@ namespace SceneEngine
         SavedTargets targets(metalContext);
         if (!targets.GetDepthStencilView()) return false;
 
-        auto duplicatedDepthBuffer = Metal::DuplicateResource(
-            metalContext.GetUnderlying(), 
-            Metal::ExtractResource<ID3D::Resource>(targets.GetDepthStencilView()).get());
+        auto duplicatedDepthBuffer = Metal::Duplicate(
+            metalContext, Metal::ExtractResource<ID3D::Resource>(targets.GetDepthStencilView()).get());
         Metal::ShaderResourceView secondaryDepthBufferSRV(
             duplicatedDepthBuffer.get(), (Metal::NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
 

@@ -2350,7 +2350,7 @@ namespace BufferUploads
             //      a temporary resource and initialise it...
             //
         using namespace PlatformInterface;
-        if (RequiresStagingResourceReadBack) {
+        if (RequiresStagingResourceReadBack && !(desc._cpuAccess & CPUAccess::Read)) {
             BufferDesc stagingDesc = AsStagingDesc(desc);
             ObjectFactory tempFactory(*resource);
             stagingResource = CreateResource(tempFactory, stagingDesc);

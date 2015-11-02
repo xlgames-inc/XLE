@@ -77,7 +77,7 @@ namespace XLEMath
                 typename cml::et::VectorXpr<ExprType>::value_type extra)
             {
                 return Expand(
-                    cml::vector<Type, cml::fixed<cml::et::VectorXpr<ExprType>::array_size>>(input),
+                    cml::vector<typename cml::et::VectorXpr<ExprType>::value_type, cml::fixed<cml::et::VectorXpr<ExprType>::array_size>>(input),
                     extra);
             }
 
@@ -256,3 +256,12 @@ namespace XLEMath
 
 }
 
+namespace std
+{
+        // override for std::size for XLEMath::VectorTT
+        // Note that std::size is part of the C++17. None of our compilers
+        // support it yet; but we can still make use of the syntax.
+    template<typename ValueType, size_t N>
+        /*constexpr*/ auto size(const XLEMath::VectorTT<ValueType, N>& c) 
+            -> decltype(c.dimension) { return c.dimension; }
+}

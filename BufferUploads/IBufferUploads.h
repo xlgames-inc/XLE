@@ -123,7 +123,7 @@ namespace BufferUploads
         unsigned _sizeInBytes;
         unsigned _structureByteSize;
 
-        static LinearBufferDesc Create(unsigned sizeInBytes, unsigned structureByteSize);
+        static LinearBufferDesc Create(unsigned sizeInBytes, unsigned structureByteSize=0);
     };
 
     struct TextureSamples

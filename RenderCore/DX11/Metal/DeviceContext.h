@@ -198,6 +198,8 @@ namespace RenderCore { namespace Metal_DX11
         template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil);
         template<int Count> void    BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess);
 
+        template<int Count> void    BindSO(const ResourceList<VertexBuffer, Count>& buffers, unsigned offset=0);
+
         template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess);
 
         void        Bind(unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], const unsigned strides[], const unsigned offsets[]);
@@ -220,14 +222,16 @@ namespace RenderCore { namespace Metal_DX11
         void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage);
         void        Bind(const DeepShaderProgram& deepShaderProgram, const BoundClassInterfaces& dynLinkage);
 
-        template<typename Type> void  UnbindVS(unsigned startSlot, unsigned count);
-        template<typename Type> void  UnbindGS(unsigned startSlot, unsigned count);
-        template<typename Type> void  UnbindPS(unsigned startSlot, unsigned count);
-        template<typename Type> void  UnbindCS(unsigned startSlot, unsigned count);
-        template<typename Type> void  Unbind();
+        T1(Type) void   UnbindVS(unsigned startSlot, unsigned count);
+        T1(Type) void   UnbindGS(unsigned startSlot, unsigned count);
+        T1(Type) void   UnbindPS(unsigned startSlot, unsigned count);
+        T1(Type) void   UnbindCS(unsigned startSlot, unsigned count);
+        T1(Type) void   Unbind();
+        void            UnbindSO();
 
         void        Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
+        void        DrawAuto();
         void        Dispatch(unsigned countX, unsigned countY=1, unsigned countZ=1);
 
         void        Clear(const RenderTargetView& renderTargets, const Float4& clearColour);
@@ -236,9 +240,9 @@ namespace RenderCore { namespace Metal_DX11
         void        Clear(const UnorderedAccessView& unorderedAccess, float values[4]);
         void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil);
 
-        void                        BeginCommandList();
-        intrusive_ptr<CommandList>  ResolveCommandList();
-        void                        CommitCommandList(CommandList& commandList);
+        void        BeginCommandList();
+        auto        ResolveCommandList() -> intrusive_ptr<CommandList>;
+        void        CommitCommandList(CommandList& commandList);
 
         static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
         static void PrepareForDestruction(IDevice* device, IPresentationChain* presentationChain);

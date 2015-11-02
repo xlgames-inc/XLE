@@ -21,12 +21,13 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/DeviceContextImpl.h"
-#include "../RenderCore/DX11/Metal/DX11Utils.h"
 #include "../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"
+
+// #include "../RenderCore/Metal/DeviceContextImpl.h"
+#include "../RenderCore/DX11/Metal/DX11Utils.h"
 
 namespace SceneEngine
 {

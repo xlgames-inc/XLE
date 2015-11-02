@@ -23,13 +23,11 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/Metal/DeviceContextImpl.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Math/Transformations.h"
 
 #include "../ConsoleRig/Console.h"
-
-#include "../Core/WinAPI/IncludeWindows.h"
 
 namespace SceneEngine
 {
@@ -410,14 +408,6 @@ namespace SceneEngine
         }
 
         return res._reflectionsShaderResource;
-    }
-
-    static Int2 GetCursorPos()
-    {
-        POINT cursorPos;
-        GetCursorPos(&cursorPos);
-        ScreenToClient((HWND)::GetActiveWindow(), &cursorPos);
-        return Int2(cursorPos.x, cursorPos.y);
     }
 
     static void ScreenSpaceReflections_DrawDebugging(   RenderCore::Metal::DeviceContext& context, 

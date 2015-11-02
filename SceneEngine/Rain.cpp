@@ -16,7 +16,7 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/ShaderResource.h"
-#include "../RenderCore/Metal/DeviceContextImpl.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -24,8 +24,6 @@
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../ConsoleRig/Console.h"
-
-#include "../RenderCore/DX11/Metal/DX11Utils.h"
 
 namespace SceneEngine
 {

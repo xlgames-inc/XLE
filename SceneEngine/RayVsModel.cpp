@@ -8,7 +8,6 @@
 #include "SceneEngineUtils.h"
 #include "LightingParser.h"
 #include "LightingParserContext.h"
-#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
@@ -19,21 +18,20 @@
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
 
-#include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/DX11/Metal/DX11Utils.h"
-
 namespace SceneEngine
 {
+    using namespace RenderCore;
+
     class ModelIntersectionStateContext::Pimpl
     {
     public:
-        std::shared_ptr<RenderCore::IThreadContext> _threadContext;
+        std::shared_ptr<IThreadContext> _threadContext;
         ModelIntersectionResources* _res;
-        RenderCore::Metal::GeometryShader::StreamOutputInitializers _oldSO;
+        Metal::GeometryShader::StreamOutputInitializers _oldSO;
 
         LightingParserContext _parserContext;
 
-        Pimpl(const RenderCore::Techniques::TechniqueContext& techniqueContext)
+        Pimpl(const Techniques::TechniqueContext& techniqueContext)
             : _parserContext(techniqueContext) {}
     };
 
@@ -47,16 +45,17 @@ namespace SceneEngine
             unsigned _elementCount;
             Desc(unsigned elementSize, unsigned elementCount) : _elementSize(elementSize), _elementCount(elementCount) {}
         };
-        intrusive_ptr<ID3D::Buffer> _streamOutputBuffer;
-        intrusive_ptr<ID3D::Resource> _clearedBuffer;
-        intrusive_ptr<ID3D::Resource> _cpuAccessBuffer;
+        using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
+
+        ResLocator _streamOutputBuffer;
+        ResLocator _clearedBuffer;
+        ResLocator _cpuAccessBuffer;
         ModelIntersectionResources(const Desc&);
     };
 
     ModelIntersectionResources::ModelIntersectionResources(const Desc& desc)
     {
         using namespace BufferUploads;
-        using namespace RenderCore::Metal;
         auto& uploads = SceneEngine::GetBufferUploads();
 
         LinearBufferDesc lbDesc;
@@ -67,11 +66,10 @@ namespace SceneEngine
             BindFlag::StreamOutput, 0, GPUAccess::Read | GPUAccess::Write,
             lbDesc, "ModelIntersectionBuffer");
         
-        auto soRes = uploads.Transaction_Immediate(bufferDesc)->AdoptUnderlying();
-        _streamOutputBuffer = QueryInterfaceCast<ID3D::Buffer>(soRes);
+        _streamOutputBuffer = uploads.Transaction_Immediate(bufferDesc);
 
         _cpuAccessBuffer = uploads.Transaction_Immediate(
-            CreateDesc(0, CPUAccess::Read, 0, lbDesc, "ModelIntersectionCopyBuffer"))->AdoptUnderlying();
+            CreateDesc(0, CPUAccess::Read, 0, lbDesc, "ModelIntersectionCopyBuffer"));
 
         auto pkt = CreateEmptyPacket(bufferDesc);
         XlSetMemory(pkt->GetData(), 0, pkt->GetDataSize());
@@ -79,29 +77,30 @@ namespace SceneEngine
             CreateDesc(
                 BindFlag::StreamOutput, 0, GPUAccess::Read | GPUAccess::Write,
                 lbDesc, "ModelIntersectionClearingBuffer"), 
-            pkt.get())->AdoptUnderlying();
+            pkt.get());
     }
 
     auto ModelIntersectionStateContext::GetResults() -> std::vector<ResultEntry>
     {
         std::vector<ResultEntry> result;
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*_pimpl->_threadContext);
+        auto metalContext = Metal::DeviceContext::Get(*_pimpl->_threadContext);
 
             // We must lock the stream output buffer, and look for results within it
-            // it seems that this kind of thing wasn't part of the original intentions
+            // It seems that this kind of thing wasn't part of the original intentions
             // for stream output. So the results can appear anywhere within the buffer.
             // We have to search for non-zero entries. Results that haven't been written
             // to will appear zeroed out.
-        metalContext->GetUnderlying()->CopyResource(
-            _pimpl->_res->_cpuAccessBuffer.get(), _pimpl->_res->_streamOutputBuffer.get());
+        Metal::Copy(
+            *metalContext,
+            _pimpl->_res->_cpuAccessBuffer->GetUnderlying(), 
+            _pimpl->_res->_streamOutputBuffer->GetUnderlying());
 
-        D3D11_MAPPED_SUBRESOURCE mappedSub;
-        auto hresult = metalContext->GetUnderlying()->Map(
-            _pimpl->_res->_cpuAccessBuffer.get(), 0, D3D11_MAP_READ, 0, &mappedSub);
-        if (SUCCEEDED(hresult)) {
-
-            const auto* mappedData = (const ResultEntry*)mappedSub.pData;
+        using namespace BufferUploads;
+        auto& uploads = SceneEngine::GetBufferUploads();
+        auto readback = uploads.Resource_ReadBack(*_pimpl->_res->_cpuAccessBuffer);
+        if (readback->GetData()) {
+            const auto* mappedData = (const ResultEntry*)readback->GetData();
             unsigned resultCount = 0;
             for (unsigned c=0; c<s_maxResultCount; ++c) {
                 if (mappedData[c]._depthAsInt) { ++resultCount; }
@@ -112,13 +111,32 @@ namespace SceneEngine
                     result.push_back(mappedData[c]);
                 }
             }
-
-            metalContext->GetUnderlying()->Unmap(_pimpl->_res->_cpuAccessBuffer.get(), 0);
-
             std::sort(result.begin(), result.end(), &ResultEntry::CompareDepth);
         }
 
-        return result;
+        // D3D11_MAPPED_SUBRESOURCE mappedSub;
+        // auto hresult = metalContext->GetUnderlying()->Map(
+        //     _pimpl->_res->_cpuAccessBuffer.get(), 0, D3D11_MAP_READ, 0, &mappedSub);
+        // if (SUCCEEDED(hresult)) {
+        // 
+        //     const auto* mappedData = (const ResultEntry*)mappedSub.pData;
+        //     unsigned resultCount = 0;
+        //     for (unsigned c=0; c<s_maxResultCount; ++c) {
+        //         if (mappedData[c]._depthAsInt) { ++resultCount; }
+        //     }
+        //     result.reserve(resultCount);
+        //     for (unsigned c=0; c<s_maxResultCount; ++c) {
+        //         if (mappedData[c]._depthAsInt) { 
+        //             result.push_back(mappedData[c]);
+        //         }
+        //     }
+        // 
+        //     metalContext->GetUnderlying()->Unmap(_pimpl->_res->_cpuAccessBuffer.get(), 0);
+        // 
+        //     std::sort(result.begin(), result.end(), &ResultEntry::CompareDepth);
+        // }
+
+        return std::move(result);
     }
 
     void ModelIntersectionStateContext::SetRay(const std::pair<Float3, Float3> worldSpaceRay)
@@ -136,10 +154,10 @@ namespace SceneEngine
             (worldSpaceRay.second - worldSpaceRay.first) / rayLength, 0
         };
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*_pimpl->_threadContext);
+        auto metalContext = Metal::DeviceContext::Get(*_pimpl->_threadContext);
         metalContext->BindGS(
-            RenderCore::MakeResourceList(
-                8, RenderCore::Metal::ConstantBuffer(&rayDefinitionCBuffer, sizeof(rayDefinitionCBuffer))));
+            MakeResourceList(
+                8, Metal::ConstantBuffer(&rayDefinitionCBuffer, sizeof(rayDefinitionCBuffer))));
     }
 
     void ModelIntersectionStateContext::SetFrustum(const Float4x4& frustum)
@@ -149,12 +167,10 @@ namespace SceneEngine
             Float4x4 _frustum;
         } frustumDefinitionCBuffer = { frustum };
 
-        using namespace RenderCore;
-        using namespace RenderCore::Metal;
-        auto metalContext = DeviceContext::Get(*_pimpl->_threadContext);
+        auto metalContext = Metal::DeviceContext::Get(*_pimpl->_threadContext);
         metalContext->BindGS(
             MakeResourceList(
-                9, ConstantBuffer(&frustumDefinitionCBuffer, sizeof(frustumDefinitionCBuffer))));
+                9, Metal::ConstantBuffer(&frustumDefinitionCBuffer, sizeof(frustumDefinitionCBuffer))));
     }
 
     LightingParserContext& ModelIntersectionStateContext::GetParserContext()
@@ -164,19 +180,17 @@ namespace SceneEngine
 
     ModelIntersectionStateContext::ModelIntersectionStateContext(
         TestType testType,
-        std::shared_ptr<RenderCore::IThreadContext> threadContext,
-        const RenderCore::Techniques::TechniqueContext& techniqueContext,
-        const RenderCore::Techniques::CameraDesc* cameraForLOD)
+        std::shared_ptr<IThreadContext> threadContext,
+        const Techniques::TechniqueContext& techniqueContext,
+        const Techniques::CameraDesc* cameraForLOD)
     {
-        using namespace RenderCore::Metal;
-
         _pimpl = std::make_unique<Pimpl>(techniqueContext);
         _pimpl->_threadContext = threadContext;
 
         _pimpl->_parserContext.GetTechniqueContext()._runtimeState.SetParameter(
             (const utf8*)"INTERSECTION_TEST", unsigned(testType));
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
+        auto metalContext = Metal::DeviceContext::Get(*threadContext);
 
             // We're doing the intersection test in the geometry shader. This means
             // we have to setup a projection transform to avoid removing any potential
@@ -186,7 +200,7 @@ namespace SceneEngine
             // The easiest way to prevent clipping would be use a projection matrix that
             // would transform all points into a single point in the center of the view
             // frustum.
-        ViewportDesc newViewport(0.f, 0.f, float(255.f), float(255.f), 0.f, 1.f);
+        Metal::ViewportDesc newViewport(0.f, 0.f, float(255.f), float(255.f), 0.f, 1.f);
         metalContext->Bind(newViewport);
 
         RenderingQualitySettings qualitySettings(UInt2(256, 256));
@@ -200,7 +214,7 @@ namespace SceneEngine
             // The camera settings can affect the LOD that objects a rendered with.
             // So, in some cases we need to initialise the camera to the same state
             // used in rendering. This will ensure that we get the right LOD behaviour.
-        RenderCore::Techniques::CameraDesc camera;
+        Techniques::CameraDesc camera;
         if (cameraForLOD) { camera = *cameraForLOD; }
 
         LightingParser_SetupScene(
@@ -209,43 +223,47 @@ namespace SceneEngine
             *metalContext.get(), _pimpl->_parserContext, camera, qualitySettings._dimensions,
             &specialProjMatrix);
 
-        _pimpl->_oldSO = RenderCore::Metal::GeometryShader::GetDefaultStreamOutputInitializers();
+        _pimpl->_oldSO = Metal::GeometryShader::GetDefaultStreamOutputInitializers();
 
-        static const InputElementDesc eles[] = {
-            InputElementDesc("INTERSECTIONDEPTH",   0, NativeFormat::R32_FLOAT),
-            InputElementDesc("POINT",               0, NativeFormat::R32G32B32A32_FLOAT),
-            InputElementDesc("POINT",               1, NativeFormat::R32G32B32A32_FLOAT),
-            InputElementDesc("POINT",               2, NativeFormat::R32G32B32A32_FLOAT),
-            InputElementDesc("DRAWCALLINDEX",       0, NativeFormat::R32_UINT),
-            InputElementDesc("MATERIALGUID",        0, NativeFormat::R32G32_UINT)
+        static const Metal::InputElementDesc eles[] = {
+            Metal::InputElementDesc("INTERSECTIONDEPTH",   0, Metal::NativeFormat::R32_FLOAT),
+            Metal::InputElementDesc("POINT",               0, Metal::NativeFormat::R32G32B32A32_FLOAT),
+            Metal::InputElementDesc("POINT",               1, Metal::NativeFormat::R32G32B32A32_FLOAT),
+            Metal::InputElementDesc("POINT",               2, Metal::NativeFormat::R32G32B32A32_FLOAT),
+            Metal::InputElementDesc("DRAWCALLINDEX",       0, Metal::NativeFormat::R32_UINT),
+            Metal::InputElementDesc("MATERIALGUID",        0, Metal::NativeFormat::R32G32_UINT)
         };
 
         static const unsigned strides[] = { sizeof(ResultEntry) };
-        GeometryShader::SetDefaultStreamOutputInitializers(
-            GeometryShader::StreamOutputInitializers(eles, dimof(eles), strides, dimof(strides)));
+        Metal::GeometryShader::SetDefaultStreamOutputInitializers(
+            Metal::GeometryShader::StreamOutputInitializers(
+                eles, dimof(eles), strides, dimof(strides)));
 
-        _pimpl->_res = &RenderCore::Techniques::FindCachedBox<ModelIntersectionResources>(
+        _pimpl->_res = &Techniques::FindCachedBox<ModelIntersectionResources>(
             ModelIntersectionResources::Desc(sizeof(ResultEntry), s_maxResultCount));
 
             // the only way to clear these things is copy from another buffer...
-        metalContext->GetUnderlying()->CopyResource(
-            _pimpl->_res->_streamOutputBuffer.get(), _pimpl->_res->_clearedBuffer.get());
+        Metal::Copy(
+            *metalContext,
+            _pimpl->_res->_streamOutputBuffer->GetUnderlying(),
+            _pimpl->_res->_clearedBuffer->GetUnderlying());
 
-        ID3D::Buffer* targets[] = { _pimpl->_res->_streamOutputBuffer.get() };
-        unsigned offsets[] = { 0 };
-        metalContext->GetUnderlying()->SOSetTargets(dimof(targets), targets, offsets);
+        Metal::VertexBuffer soBuffer(
+            _pimpl->_res->_streamOutputBuffer->GetUnderlying());
+        metalContext->BindSO(MakeResourceList(soBuffer));
 
-        metalContext->BindGS(RenderCore::MakeResourceList(RenderCore::Techniques::CommonResources()._defaultSampler));
+        auto& commonRes = Techniques::CommonResources();
+        metalContext->BindGS(MakeResourceList(commonRes._defaultSampler));
     }
 
     ModelIntersectionStateContext::~ModelIntersectionStateContext()
     {
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*_pimpl->_threadContext);
-        metalContext->GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
-        RenderCore::Metal::GeometryShader::SetDefaultStreamOutputInitializers(_pimpl->_oldSO);
+        auto metalContext = Metal::DeviceContext::Get(*_pimpl->_threadContext);
+        metalContext->UnbindSO();
+        Metal::GeometryShader::SetDefaultStreamOutputInitializers(_pimpl->_oldSO);
     }
-
-
 }
+
+
 
 

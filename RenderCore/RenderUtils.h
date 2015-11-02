@@ -8,7 +8,6 @@
 
 #include "../Utility/PtrUtils.h"
 #include "../Utility/MiniHeap.h"
-#include "../Math/Matrix.h"
 #include "../Core/Exceptions.h"
 #include "../Core/Types.h"
 

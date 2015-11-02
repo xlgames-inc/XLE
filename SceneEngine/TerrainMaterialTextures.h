@@ -8,6 +8,7 @@
 
 #include "../../RenderCore/Metal/ShaderResource.h"
 #include "../../RenderCore/Metal/Buffer.h"
+#include "../../BufferUploads/ResourceLocator.h"
 #include "../../Assets/Assets.h"
 
 namespace SceneEngine
@@ -18,7 +19,8 @@ namespace SceneEngine
     {
     public:
         enum Resources { Diffuse, Normal, Specularity, ResourceCount };
-        intrusive_ptr<ID3D::Resource> _textureArray[ResourceCount];
+        using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
+        ResLocator _textureArray[ResourceCount];
         RenderCore::Metal::ShaderResourceView _srv[ResourceCount];
         RenderCore::Metal::ConstantBuffer _texturingConstants;
         RenderCore::Metal::ConstantBuffer _procTexContsBuffer;
@@ -26,6 +28,7 @@ namespace SceneEngine
 
         TerrainMaterialTextures();
         TerrainMaterialTextures(
+            RenderCore::Metal::DeviceContext& devContext,
             const TerrainMaterialConfig& scaffold, 
             bool useGradFlagMaterials = true);
         ~TerrainMaterialTextures();

@@ -15,8 +15,6 @@
 #include "../BufferUploads/DataPacket.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/State.h"
-#include "../RenderCore/DX11/Metal/IncludeDX11.h"
-#include "../RenderCore/DX11/Metal/DX11Utils.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/IDevice.h"
 
@@ -24,7 +22,6 @@
 #include "../Math/Vector.h"
 #include "../Math/ProjectionMath.h"
 #include "../Utility/BitUtils.h"
-
 
 namespace SceneEngine
 {
@@ -88,7 +85,7 @@ namespace SceneEngine
             // immediate context can't be doing anything else in another thread.
             //
             // This will require more complex threading support in the future!
-        assert(metalContext.GetUnderlying()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE);
+        assert(metalContext.IsImmediate());
 
             //  We need to invoke the render for the given object
             //  now. Afterwards we can query the buffers for the result

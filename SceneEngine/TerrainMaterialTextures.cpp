@@ -24,14 +24,6 @@ namespace SceneEngine
 {
     using namespace RenderCore;
 
-    static Metal::DeviceContext GetImmediateContext()
-    {
-        ID3D::DeviceContext* immContextTemp = nullptr;
-        Metal::ObjectFactory().GetUnderlying()->GetImmediateContext(&immContextTemp);
-        intrusive_ptr<ID3D::DeviceContext> immContext = moveptr(immContextTemp);
-        return RenderCore::Metal::DeviceContext(std::move(immContext));
-    }
-
     template <typename Type>
         static const Type& GetAssetImmediate(const char initializer[])
     {
@@ -147,15 +139,17 @@ namespace SceneEngine
                     resamplingBuffer = compressedBuffer;   
                 }
 
-                context.GetUnderlying()->CopySubresourceRegion(
-                    destinationArray, D3D11CalcSubresource(m, arrayIndex, dstMipCount),
-                    0, 0, 0, resamplingBuffer->GetUnderlying(), 0, nullptr);
+                Metal::CopyPartial(
+                    context, 
+                    Metal::CopyPartial_Dest(destinationArray, D3D11CalcSubresource(m, arrayIndex, dstMipCount)),
+                    Metal::CopyPartial_Src(resamplingBuffer->GetUnderlying(), 0));
 
             } else {
 
-                context.GetUnderlying()->CopySubresourceRegion(
-                    destinationArray, D3D11CalcSubresource(m, arrayIndex, dstMipCount),
-                    0, 0, 0, inputRes.get(), D3D11CalcSubresource(sourceMip, 0, sourceDesc.MipLevels), nullptr);
+                Metal::CopyPartial(
+                    context,
+                    Metal::CopyPartial_Dest(destinationArray, D3D11CalcSubresource(m, arrayIndex, dstMipCount)),
+                    Metal::CopyPartial_Src(inputRes.get(), D3D11CalcSubresource(sourceMip, 0, sourceDesc.MipLevels)));
 
             }
         }
@@ -171,15 +165,10 @@ namespace SceneEngine
         for (unsigned m=0; m<mipCount; ++m) {
             const unsigned mipWidth = std::max(destinationDesc.Width >> m, 4u);
             const unsigned mipHeight = std::max(destinationDesc.Height >> m, 4u);
-
-            D3D11_BOX srcBox;
-            srcBox.left = srcBox.top = srcBox.front = 0;
-            srcBox.right = mipWidth;
-            srcBox.bottom = mipHeight;
-            srcBox.back = 1;
-            context.GetUnderlying()->CopySubresourceRegion(
-                destinationArray, D3D11CalcSubresource(m, arrayIndex, mipCount),
-                0, 0, 0, sourceResource, 0, &srcBox);
+            Metal::CopyPartial(
+                context,
+                Metal::CopyPartial_Dest(destinationArray, D3D11CalcSubresource(m, arrayIndex, mipCount)),
+                Metal::CopyPartial_Src(sourceResource, 0, Metal::PixelCoord(), Metal::PixelCoord(mipWidth, mipHeight, 1)));
         }
     }
 
@@ -312,6 +301,7 @@ namespace SceneEngine
     }
 
     TerrainMaterialTextures::TerrainMaterialTextures(
+        Metal::DeviceContext& metalContext,
         const TerrainMaterialConfig& scaffold, 
         bool useGradFlagMaterials)
     {
@@ -324,8 +314,6 @@ namespace SceneEngine
         std::vector<::Assets::rstring> procTextureNames;
         std::vector<uint8> texturingConstants;
         std::vector<uint8> procTextureConstants;
-
-        auto context = GetImmediateContext();
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -442,12 +430,12 @@ namespace SceneEngine
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._diffuseDims[0], scaffold._diffuseDims[1], Metal::NativeFormat::BC1_UNORM_SRGB, 
             (uint8)IntegerLog2(std::max(scaffold._diffuseDims[0], scaffold._diffuseDims[1]))-1, uint8(atlasTextureNames.size()));
-        auto diffuseTextureArray = GetBufferUploads().Transaction_Immediate(desc)->AdoptUnderlying();
+        auto diffuseTextureArray = GetBufferUploads().Transaction_Immediate(desc);
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._normalDims[0], scaffold._normalDims[1], Metal::NativeFormat::BC5_UNORM, 
             (uint8)IntegerLog2(std::max(scaffold._normalDims[0], scaffold._normalDims[1]))-1, uint8(atlasTextureNames.size()));
-        auto normalTextureArray = GetBufferUploads().Transaction_Immediate(desc)->AdoptUnderlying();
+        auto normalTextureArray = GetBufferUploads().Transaction_Immediate(desc);
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._normalDims[0], scaffold._normalDims[1], Metal::NativeFormat::BC5_UNORM);
@@ -456,7 +444,7 @@ namespace SceneEngine
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._paramDims[0], scaffold._paramDims[1], Metal::NativeFormat::BC1_UNORM, 
             (uint8)IntegerLog2(std::max(scaffold._paramDims[0], scaffold._paramDims[1]))-1, uint8(atlasTextureNames.size()));
-        auto specularityTextureArray = GetBufferUploads().Transaction_Immediate(desc)->AdoptUnderlying();
+        auto specularityTextureArray = GetBufferUploads().Transaction_Immediate(desc);
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._paramDims[0], scaffold._paramDims[1], Metal::NativeFormat::BC1_UNORM);
@@ -473,7 +461,7 @@ namespace SceneEngine
                 // --- Diffuse --->
             TRY {
                 if (texFiles._diffuse.get()[0]) {
-                    LoadTextureIntoArray(context, diffuseTextureArray.get(), texFiles._diffuse.get(), (unsigned)std::distance(atlasTextureNames.cbegin(), i));
+                    LoadTextureIntoArray(metalContext, diffuseTextureArray->GetUnderlying(), texFiles._diffuse.get(), (unsigned)std::distance(atlasTextureNames.cbegin(), i));
                     RegisterFileDependency(_validationCallback, texFiles._diffuse.get());
                 }
             } CATCH (const ::Assets::Exceptions::InvalidAsset&) {}
@@ -483,7 +471,7 @@ namespace SceneEngine
             bool fillInDummyNormals = true;
             TRY {
                 if (texFiles._normals.get()[0]) {
-                    LoadTextureIntoArray(context, normalTextureArray.get(), texFiles._normals.get(), (unsigned)std::distance(atlasTextureNames.cbegin(), i));
+                    LoadTextureIntoArray(metalContext, normalTextureArray->GetUnderlying(), texFiles._normals.get(), (unsigned)std::distance(atlasTextureNames.cbegin(), i));
                     RegisterFileDependency(_validationCallback, texFiles._normals.get());
                     fillInDummyNormals = false;
                 }
@@ -495,7 +483,7 @@ namespace SceneEngine
             auto index = (unsigned)std::distance(atlasTextureNames.cbegin(), i);
             TRY {
                 if (texFiles._params.get()[0]) {
-                    LoadTextureIntoArray(context, normalTextureArray.get(), texFiles._params.get(), index);
+                    LoadTextureIntoArray(metalContext, normalTextureArray->GetUnderlying(), texFiles._params.get(), index);
                     RegisterFileDependency(_validationCallback, texFiles._params.get());
                     fillInWhiteSpecular = false;
                 }
@@ -504,9 +492,9 @@ namespace SceneEngine
 
                 // on exception or missing files, we should fill in default
             if (fillInDummyNormals)
-                FillWhite(context, normalTextureArray.get(), bc5Dummy->GetUnderlying(), index);
+                FillWhite(metalContext, normalTextureArray->GetUnderlying(), bc5Dummy->GetUnderlying(), index);
             if (fillInWhiteSpecular)
-                FillWhite(context, specularityTextureArray.get(), bc1Dummy->GetUnderlying(), index);
+                FillWhite(metalContext, specularityTextureArray->GetUnderlying(), bc1Dummy->GetUnderlying(), index);
         }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -519,20 +507,15 @@ namespace SceneEngine
                 texturingConstants.resize(sizeof(Float4) * 32 * 5, 0);
         #endif
 
-        Metal::ShaderResourceView diffuseSrv(diffuseTextureArray.get());
-        Metal::ShaderResourceView normalSrv(normalTextureArray.get());
-        Metal::ShaderResourceView specularitySrv(specularityTextureArray.get());
-        Metal::ConstantBuffer texContBuffer(AsPointer(texturingConstants.cbegin()), texturingConstants.size());
-        Metal::ConstantBuffer procTexContsBuffer(AsPointer(procTextureConstants.cbegin()), procTextureConstants.size());
+        _srv[Diffuse] = Metal::ShaderResourceView(diffuseTextureArray->GetUnderlying());
+        _srv[Normal] = Metal::ShaderResourceView(normalTextureArray->GetUnderlying());
+        _srv[Specularity] = Metal::ShaderResourceView(specularityTextureArray->GetUnderlying());
+        _texturingConstants = Metal::ConstantBuffer(AsPointer(texturingConstants.cbegin()), texturingConstants.size());
+        _procTexContsBuffer = Metal::ConstantBuffer(AsPointer(procTextureConstants.cbegin()), procTextureConstants.size());
 
         _textureArray[Diffuse] = std::move(diffuseTextureArray);
         _textureArray[Normal] = std::move(normalTextureArray);
         _textureArray[Specularity] = std::move(specularityTextureArray);
-        _srv[Diffuse] = std::move(diffuseSrv);
-        _srv[Normal] = std::move(normalSrv);
-        _srv[Specularity] = std::move(specularitySrv);
-        _texturingConstants = std::move(texContBuffer);
-        _procTexContsBuffer = std::move(procTexContsBuffer);
     }
 
     TerrainMaterialTextures::~TerrainMaterialTextures() {}

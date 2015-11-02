@@ -17,6 +17,7 @@
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Shader.h"
+#include "../../RenderCore/Metal/Resource.h"
 #include "../../Math/Transformations.h"
 #include "../../RenderCore/DX11/Metal/IncludeDX11.h"
 #include "../../Utility/Conversion.h"
@@ -358,7 +359,7 @@ namespace PreviewRender
         readableTargetDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
         intrusive_ptr<ID3D::Texture2D> readableTarget = CreateTexture(Manager::Instance->GetDevice(), readableTargetDesc);
 
-        metalContext->GetUnderlying()->CopyResource(readableTarget.get(), targetTexture.get());
+        Metal::Copy(*metalContext, readableTarget.get(), targetTexture.get());
 
         D3D11_MAPPED_SUBRESOURCE mappedTexture;
         HRESULT hresult = metalContext->GetUnderlying()->Map(readableTarget.get(), 0, D3D11_MAP_READ, 0, &mappedTexture);

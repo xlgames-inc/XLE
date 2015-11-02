@@ -21,10 +21,11 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
-#include "../RenderCore/Metal/DeviceContextImpl.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/Metal/Resource.h"
 
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"
@@ -359,7 +360,8 @@ namespace SceneEngine
                         //  When screen space reflections are enabled, we need to take a copy of the lighting
                         //  resolve target. This is because we want to reflect the post-lighting resolve pixels.
                     if (lightingResolveContext._screenSpaceReflectionsResult.IsGood())
-                        context.GetUnderlying()->CopyResource(
+                        Metal::Copy(
+                            context,
                             lightingResTargets._lightingResolveCopy.get(), 
                             lightingResTargets._lightingResolveTexture.get());
 

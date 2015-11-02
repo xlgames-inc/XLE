@@ -23,8 +23,8 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/Meta/ClassAccessorsImpl.h"
 
-#include "..\RenderCore\DX11\Metal\DX11.h"
-#include "..\RenderCore\DX11\Metal\IncludeDX11.h"       // needed for CopySubresourceRegion
+// #include "..\RenderCore\DX11\Metal\DX11.h"
+// #include "..\RenderCore\DX11\Metal\IncludeDX11.h"       // needed for CopySubresourceRegion
 #include "..\RenderCore\DX11\Metal\DX11Utils.h"
 
 namespace SceneEngine
@@ -184,19 +184,12 @@ namespace SceneEngine
         metalContext.Clear(_pimpl->_softMaterialsUAV, clearValues);
         metalContext.Clear(_pimpl->_hardMaterialsUAV, clearValues);
 
-        // copy
-
+            // copy
         auto inputRes = Metal::ExtractResource<ID3D::Resource>(input.GetUnderlying());
-
-        D3D11_BOX srcBox;
-        srcBox.left = topLeft[0];
-        srcBox.top = topLeft[1];
-        srcBox.front = 0;
-        srcBox.right = bottomRight[0];
-        srcBox.bottom = bottomRight[1];
-        srcBox.back = 1;
-        metalContext.GetUnderlying()->CopySubresourceRegion(
-            _pimpl->_hardMaterials->GetUnderlying(), 0, 0, 0, 0, inputRes.get(), 0, &srcBox);
+        Metal::CopyPartial(
+            metalContext,
+            _pimpl->_hardMaterials->GetUnderlying(),
+            Metal::CopyPartial_Src(inputRes.get(), 0, topLeft, Expand(bottomRight, 1u)));
     }
 
     void ErosionSimulation::GetHeights(
@@ -205,16 +198,11 @@ namespace SceneEngine
         UInt2 topLeft, UInt2 bottomRight)
     {
         auto destRes = Metal::ExtractResource<ID3D::Resource>(dest.GetUnderlying());
-
-        D3D11_BOX srcBox;
-        srcBox.left = 0;
-        srcBox.top = 0;
-        srcBox.front = 0;
-        srcBox.right = bottomRight[0] - topLeft[0];
-        srcBox.bottom = bottomRight[1] - topLeft[1];
-        srcBox.back = 1;
-        metalContext.GetUnderlying()->CopySubresourceRegion(
-            destRes.get(), 0, topLeft[0], topLeft[1], 0, _pimpl->_hardMaterials->GetUnderlying(), 0, &srcBox);
+        Metal::CopyPartial(
+            metalContext,
+            destRes.get(),
+            Metal::CopyPartial_Src(_pimpl->_hardMaterials->GetUnderlying(), 0, Metal::PixelCoord(),
+                Expand(bottomRight - topLeft, 1)));
     }
 
     void    ErosionSimulation::Tick(
@@ -308,7 +296,7 @@ namespace SceneEngine
         metalContext.Dispatch(simSize[0]/16, simSize[1]/16, 1);
 
             // shift sediment
-        metalContext.GetUnderlying()->CopyResource(_pimpl->_softMaterialsCopy->GetUnderlying(), _pimpl->_softMaterials->GetUnderlying());
+        Metal::Copy(metalContext, _pimpl->_softMaterialsCopy->GetUnderlying(), _pimpl->_softMaterials->GetUnderlying());
         metalContext.BindCS(RenderCore::MakeResourceList(1, _pimpl->_softMaterialsCopySRV));
 
         auto& shiftShader = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/ocean/tickerosion.csh:ShiftSediment:cs_*", defines);
@@ -316,7 +304,7 @@ namespace SceneEngine
         metalContext.Dispatch(simSize[0]/16, simSize[1]/16, 1);
 
             // "thermal" erosion
-        metalContext.GetUnderlying()->CopyResource(_pimpl->_softMaterialsCopy->GetUnderlying(), _pimpl->_hardMaterials->GetUnderlying());
+        Metal::Copy(metalContext, _pimpl->_softMaterialsCopy->GetUnderlying(), _pimpl->_hardMaterials->GetUnderlying());
 
         auto& thermalShader = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/ocean/tickerosion.csh:ThermalErosion:cs_*", defines);
         metalContext.Bind(thermalShader);

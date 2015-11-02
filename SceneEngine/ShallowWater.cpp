@@ -18,7 +18,7 @@
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/Metal/DeviceContextImpl.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
 
 #include "../BufferUploads/IBufferUploads.h"
@@ -30,8 +30,6 @@
 #include "../ConsoleRig/Console.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/StringFormat.h"
-
-#include "../Core/WinAPI/IncludeWindows.h"
 
 #pragma warning(disable:4505)       // warning C4505: 'SceneEngine::BuildSurfaceHeightsTexture' : unreferenced local function has been removed
 
@@ -1188,14 +1186,6 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static Int2 GetCursorPos()
-    {
-        POINT cursorPos;
-        GetCursorPos(&cursorPos);
-        ScreenToClient((HWND)::GetActiveWindow(), &cursorPos);
-        return Int2(cursorPos.x, cursorPos.y);
-    }
-
     static std::pair<Float3, Float3> CalculateMouseOverRay(MetalContext& context, LightingParserContext& parserContext)
     {
             // calculate a world space ray underneath the mouse cursor
@@ -1227,7 +1217,7 @@ namespace SceneEngine
         float baseHeight, float compressionAmount, float compressionRadius)
     {
         static unsigned framesMouseDown = 0;
-        if (GetKeyState(VK_LBUTTON)<0 && GetKeyState(VK_LSHIFT)<0) {
+        if (IsLButtonDown() && IsShiftDown()) {
                 //  Find the mouse over ray, and find the intersection
                 //  point with the ocean water plane
             auto mouseOverRay = CalculateMouseOverRay(metalContext, parserContext);

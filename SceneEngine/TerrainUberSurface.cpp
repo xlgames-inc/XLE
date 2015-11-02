@@ -30,7 +30,7 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringFormat.h"
 
-#include "../RenderCore/DX11/Metal/IncludeDX11.h"
+// #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
 namespace SceneEngine
 {
@@ -441,7 +441,7 @@ namespace SceneEngine
             const auto InputSurfaceHash = Hash64("InputSurface");
             Metal::ShaderResourceView cacheCopySRV;
             if (uniforms.BindShaderResource(InputSurfaceHash, 0, 1)) {
-                context->GetUnderlying()->CopyResource(_pimpl->_gpucache[1]->GetUnderlying(), _pimpl->_gpucache[0]->GetUnderlying());
+                Metal::Copy(*context, _pimpl->_gpucache[1]->GetUnderlying(), _pimpl->_gpucache[0]->GetUnderlying());
                 cacheCopySRV = Metal::ShaderResourceView(_pimpl->_gpucache[1]->GetUnderlying());
             }
 

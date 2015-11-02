@@ -6,6 +6,8 @@
 
 #include "MeshDatabase.h"
 #include "../Metal/Format.h"
+#include "../../Math/Vector.h"
+#include "../../Math/Math.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/IteratorUtils.h"

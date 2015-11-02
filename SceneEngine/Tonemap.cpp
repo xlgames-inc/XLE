@@ -20,7 +20,7 @@
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/Metal/DeviceContextImpl.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
@@ -30,6 +30,7 @@
 #include "../Utility/ParameterBox.h"
 #include "../Utility/StringFormat.h"
 
+// #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 
 #pragma warning(disable:4127)       // conditional expression is constant

@@ -12,6 +12,7 @@
     <ClCompile Include="..\DX11\Metal\GPUProfiler.cpp" />
     <ClCompile Include="..\DX11\Metal\RenderTargetView.cpp" />
     <ClCompile Include="..\DX11\Metal\CompiledShaderByteCode.cpp" />
+    <ClCompile Include="..\DX11\Metal\Resource.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\DX11\Metal\DX11.h" />

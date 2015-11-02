@@ -24,7 +24,6 @@
 #include "../Metal/State.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
-#include "../Metal/DeviceContextImpl.h"
 #include "../Resource.h"
 #include "../RenderUtils.h"
 
@@ -41,6 +40,8 @@
 #include "../../Core/Exceptions.h"
 
 #include <string>
+
+#include "../Metal/DeviceContextImpl.h" // pulls in DX/Windows indirectly
 
 #pragma warning(disable:4189)
 

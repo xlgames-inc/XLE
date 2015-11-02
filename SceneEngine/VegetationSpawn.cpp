@@ -15,7 +15,7 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/State.h"
-#include "../RenderCore/Metal/DeviceContextImpl.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/RenderUtils.h"
 
@@ -29,19 +29,44 @@
 #include "../Utility/StringFormat.h"
 #include "../Utility/FunctionUtils.h"
 
-#include "../RenderCore/DX11/Metal/DX11Utils.h"
-
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
-#include "../RenderCore/Assets/ModelCache.h"
 #include "../RenderCore/Techniques/Techniques.h"
 
-#pragma warning(disable:4127)       // warning C4127: conditional expression is constant
+#include "../RenderCore/Metal/DeviceContextImpl.h"
+#include "../RenderCore/DX11/Metal/DX11Utils.h"
+
 
 namespace SceneEngine
 {
     using namespace RenderCore;
+
+    class IndirectDrawBuffer
+    {
+    public:
+        struct DrawIndexedInstancedIndirectArgs 
+        {
+            unsigned IndexCountPerInstance; 
+            unsigned InstanceCount;
+            unsigned StartIndexLocation;
+            int BaseVertexLocation;
+            unsigned StartInstanceLocation;
+        };
+
+        void Draw(Metal::DeviceContext& metalContext);
+        bool WriteParams(
+            Metal::DeviceContext& metalContext, 
+            unsigned indexCountPerinstance, unsigned startIndexLocation, 
+            unsigned baseVertexLocation, unsigned instanceCount);
+        void CopyInstanceCount(
+            Metal::DeviceContext& metalContext, Metal::UnorderedAccessView& src);
+
+        IndirectDrawBuffer();
+        ~IndirectDrawBuffer();
+    private:
+        Metal::VertexBuffer     _indirectArgsBuffer;
+    };
 
     class VegetationSpawnResources
     {
@@ -53,57 +78,53 @@ namespace SceneEngine
             Desc(unsigned bufferCount) : _bufferCount(bufferCount) {}
         };
 
-        intrusive_ptr<ID3D::Buffer> _streamOutputBuffers[2];
-        RenderCore::Metal::ShaderResourceView _streamOutputSRV[2];
-        intrusive_ptr<ID3D::Buffer> _indirectArgsBuffer;
-        intrusive_ptr<ID3D::Query> _streamOutputCountsQuery;
+        Metal::VertexBuffer         _streamOutputBuffers[2];
+        Metal::ShaderResourceView   _streamOutputSRV[2];
+        intrusive_ptr<ID3D::Query>  _streamOutputCountsQuery;
 
-        intrusive_ptr<ID3D::Resource> _clearedTypesResource;
+        using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
+        ResLocator  _clearedTypesResource;
+        ResLocator  _streamOutputResources[2];
 
-        std::vector<intrusive_ptr<ID3D::Buffer>> _instanceBuffers;
-        std::vector<RenderCore::Metal::UnorderedAccessView> _instanceBufferUAVs;
-        std::vector<RenderCore::Metal::ShaderResourceView> _instanceBufferSRVs;
-
-        bool _isPrepared;
-        unsigned _objectTypeCount;
+        using UAV = Metal::UnorderedAccessView;
+        using SRV = Metal::ShaderResourceView;
+        std::vector<UAV>    _instanceBufferUAVs;
+        std::vector<SRV>    _instanceBufferSRVs;
+        IndirectDrawBuffer  _indirectDrawBuffer;
+        bool                _isPrepared;
+        unsigned            _objectTypeCount;
 
         VegetationSpawnResources(const Desc&);
     };
 
-    const unsigned StreamOutputMaxCount = 16*1024;
-    const unsigned InstanceBufferMaxCount = 16*1024;
+    static const auto StreamOutputMaxCount = 16u*1024u;
+    static const auto InstanceBufferMaxCount = 16u*1024u;
+    static const auto Stream0VertexSize = 4*4;
+    static const auto Stream1VertexSize = 4;
 
     VegetationSpawnResources::VegetationSpawnResources(const Desc& desc)
     {
         _isPrepared = false;
 
         using namespace BufferUploads;
-        using namespace RenderCore::Metal;
         auto& uploads = GetBufferUploads();
 
-        BufferDesc bufferDesc;
-        bufferDesc._type = BufferDesc::Type::LinearBuffer;
-        bufferDesc._bindFlags = BindFlag::StreamOutput | BindFlag::ShaderResource | BindFlag::RawViews;
-        bufferDesc._cpuAccess = 0;
-        bufferDesc._gpuAccess = GPUAccess::Read | GPUAccess::Write;
-        bufferDesc._allocationRules = 0;
-        bufferDesc._linearBufferDesc._sizeInBytes = 4*4*StreamOutputMaxCount;
-        bufferDesc._linearBufferDesc._structureByteSize = 4*4;
-        XlCopyString(bufferDesc._name, dimof(bufferDesc._name), "SpawningInstancesBuffer");
+        auto bufferDesc = CreateDesc(
+            BindFlag::StreamOutput | BindFlag::ShaderResource | BindFlag::RawViews,
+            0, GPUAccess::Read | GPUAccess::Write,
+            LinearBufferDesc::Create(Stream0VertexSize*StreamOutputMaxCount, Stream0VertexSize),
+            "SpawningInstancesBuffer");
+        auto so0r = uploads.Transaction_Immediate(bufferDesc);
 
-        intrusive_ptr<ID3D::Resource> so0r = uploads.Transaction_Immediate(bufferDesc)->AdoptUnderlying();
-        intrusive_ptr<ID3D::Buffer> so0b = QueryInterfaceCast<ID3D::Buffer>(so0r);
-        bufferDesc._linearBufferDesc._sizeInBytes = 4*StreamOutputMaxCount;
-        bufferDesc._linearBufferDesc._structureByteSize = 4;
-        intrusive_ptr<ID3D::Resource> so1r = uploads.Transaction_Immediate(bufferDesc)->AdoptUnderlying();
-        intrusive_ptr<ID3D::Buffer> so1b = QueryInterfaceCast<ID3D::Buffer>(so1r);
+        bufferDesc._linearBufferDesc = LinearBufferDesc::Create(Stream1VertexSize*StreamOutputMaxCount, Stream1VertexSize);
+        auto so1r = uploads.Transaction_Immediate(bufferDesc);
 
         auto clearedBufferData = BufferUploads::CreateEmptyPacket(bufferDesc);
         XlSetMemory(clearedBufferData->GetData(), 0, clearedBufferData->GetDataSize());
-        intrusive_ptr<ID3D::Resource> clearedTypesResource = uploads.Transaction_Immediate(bufferDesc, clearedBufferData.get())->AdoptUnderlying();
+        auto clearedTypesResource = uploads.Transaction_Immediate(bufferDesc, clearedBufferData.get());
 
-        ShaderResourceView so0srv(so0r.get(), NativeFormat::R32_TYPELESS); // NativeFormat::R32G32B32A32_FLOAT);
-        ShaderResourceView so1srv(so1r.get(), NativeFormat::R32_TYPELESS); // NativeFormat::R32_UINT);
+        Metal::ShaderResourceView so0srv(so0r->GetUnderlying(), Metal::NativeFormat::R32_TYPELESS); // NativeFormat::R32G32B32A32_FLOAT);
+        Metal::ShaderResourceView so1srv(so1r->GetUnderlying(), Metal::NativeFormat::R32_TYPELESS); // NativeFormat::R32_UINT);
 
             // create the true instancing buffers
             //      Note that it might be ideal if these were vertex buffers! But we can't make a buffer that is both a vertex buffer and structured buffer
@@ -114,36 +135,26 @@ namespace SceneEngine
         
 
         std::vector<intrusive_ptr<ID3D::Buffer>> instanceBuffers; instanceBuffers.reserve(desc._bufferCount);
-        std::vector<RenderCore::Metal::UnorderedAccessView> instanceBufferUAVs; instanceBufferUAVs.reserve(desc._bufferCount);
-        std::vector<RenderCore::Metal::ShaderResourceView> instanceBufferSRVs; instanceBufferSRVs.reserve(desc._bufferCount);
+        std::vector<Metal::UnorderedAccessView> instanceBufferUAVs; instanceBufferUAVs.reserve(desc._bufferCount);
+        std::vector<Metal::ShaderResourceView> instanceBufferSRVs; instanceBufferSRVs.reserve(desc._bufferCount);
         for (unsigned c=0; c<desc._bufferCount; ++c) {
-            intrusive_ptr<ID3D::Resource> res = uploads.Transaction_Immediate(bufferDesc, nullptr)->AdoptUnderlying();
-            instanceBuffers.push_back(QueryInterfaceCast<ID3D::Buffer>(res));
-            instanceBufferUAVs.push_back(RenderCore::Metal::UnorderedAccessView(res.get(), RenderCore::Metal::NativeFormat::Unknown, 0, true));
-            instanceBufferSRVs.push_back(RenderCore::Metal::ShaderResourceView(res.get()));
+            auto res = uploads.Transaction_Immediate(bufferDesc);
+            instanceBufferUAVs.push_back(Metal::UnorderedAccessView(res->GetUnderlying(), Metal::NativeFormat::Unknown, 0, true));
+            instanceBufferSRVs.push_back(Metal::ShaderResourceView(res->GetUnderlying()));
         }
-
-        auto indirectArgsBufferDesc = bufferDesc;
-        indirectArgsBufferDesc._cpuAccess = CPUAccess::WriteDynamic;
-        indirectArgsBufferDesc._bindFlags = BindFlag::DrawIndirectArgs | BindFlag::VertexBuffer;
-        indirectArgsBufferDesc._linearBufferDesc._sizeInBytes = 4*5;
-        indirectArgsBufferDesc._linearBufferDesc._structureByteSize = 4*5;
-        XlCopyString(indirectArgsBufferDesc._name, dimof(bufferDesc._name), "IndirectArgsBuffer");
-        auto indirectArgsRes = uploads.Transaction_Immediate(indirectArgsBufferDesc, nullptr)->AdoptUnderlying();
-        auto indirectArgsBuffer = QueryInterfaceCast<ID3D::Buffer>(indirectArgsRes);
 
         D3D11_QUERY_DESC queryDesc;
         queryDesc.Query = D3D11_QUERY_SO_STATISTICS;
         queryDesc.MiscFlags = 0;
-        auto streamOutputCountsQuery = ObjectFactory().CreateQuery(&queryDesc);
+        auto streamOutputCountsQuery = Metal::ObjectFactory().CreateQuery(&queryDesc);
 
-        _streamOutputBuffers[0] = std::move(so0b);
-        _streamOutputBuffers[1] = std::move(so1b);
+        _streamOutputBuffers[0] = Metal::VertexBuffer(so0r->GetUnderlying());
+        _streamOutputBuffers[1] = Metal::VertexBuffer(so1r->GetUnderlying());
+        _streamOutputResources[0] = std::move(so0r);
+        _streamOutputResources[1] = std::move(so1r);
         _streamOutputSRV[0] = std::move(so0srv);
         _streamOutputSRV[1] = std::move(so1srv);
-        _clearedTypesResource = std::move(clearedTypesResource);
-        _instanceBuffers = std::move(instanceBuffers);
-        _indirectArgsBuffer = std::move(indirectArgsBuffer);
+        _clearedTypesResource = clearedTypesResource;
         _streamOutputCountsQuery = std::move(streamOutputCountsQuery);
         _instanceBufferUAVs = std::move(instanceBufferUAVs);
         _instanceBufferSRVs = std::move(instanceBufferSRVs);
@@ -151,7 +162,7 @@ namespace SceneEngine
     }
 
     void VegetationSpawn_Prepare(
-        RenderCore::Metal::DeviceContext* context,
+        Metal::DeviceContext* context,
         LightingParserContext& parserContext,
         const VegetationSpawnConfig& cfg,
         VegetationSpawnResources& res)
@@ -175,8 +186,8 @@ namespace SceneEngine
 
         CATCH_ASSETS_BEGIN
             auto& perlinNoiseRes = Techniques::FindCachedBox2<SceneEngine::PerlinNoiseResources>();
-            context->BindGS(RenderCore::MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
-            context->BindGS(RenderCore::MakeResourceList(RenderCore::Metal::SamplerState()));
+            context->BindGS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
+            context->BindGS(MakeResourceList(Metal::SamplerState()));
 
                 //  we have to clear vertex input "3", because this is the instancing input slot -- and 
                 //  we're going to be writing to buffers that will be used for instancing.
@@ -215,10 +226,10 @@ namespace SceneEngine
                 instanceSpawnConstants._suppressionNoiseParams[mi][2] = cfg._materials[mi]._suppressionLacunarity;
             }
 
-            context->BindGS(RenderCore::MakeResourceList(5, Metal::ConstantBuffer(&instanceSpawnConstants, sizeof(InstanceSpawnConstants))));
+            context->BindGS(MakeResourceList(5, Metal::ConstantBuffer(&instanceSpawnConstants, sizeof(InstanceSpawnConstants))));
 
             const bool needQuery = false;
-            if (needQuery) {
+            if (constant_expression<needQuery>::result()) {
                 begunQuery = res._streamOutputCountsQuery.get();
                 context->GetUnderlying()->Begin(begunQuery);
             }
@@ -241,10 +252,9 @@ namespace SceneEngine
 
                 //  How do we clear an SO buffer? We can't make it an unorderedaccess view or render target.
                 //  The only obvious way is to use CopyResource, and copy from a prepared "cleared" buffer
-            context->GetUnderlying()->CopyResource(res._streamOutputBuffers[1].get(), res._clearedTypesResource.get());
+            Metal::Copy(*context, res._streamOutputResources[1]->GetUnderlying(), res._clearedTypesResource->GetUnderlying());
 
-            unsigned strides[2] = { 4*4, 4 };
-            unsigned offsets[2] = { 0, 0 };
+            unsigned strides[2] = { Stream0VertexSize, Stream1VertexSize };
             Metal::GeometryShader::SetDefaultStreamOutputInitializers(
                 Metal::GeometryShader::StreamOutputInitializers(eles, dimof(eles), strides, 2));
 
@@ -267,18 +277,17 @@ namespace SceneEngine
                 *context, parserContext, cameraDesc, 
                 UInt2(unsigned(viewport.Width), unsigned(viewport.Height)));
 
-            ID3D::Buffer* targets[2] = { res._streamOutputBuffers[0].get(), res._streamOutputBuffers[1].get() };
-            context->GetUnderlying()->SOSetTargets(2, targets, offsets);
+            context->BindSO(MakeResourceList(res._streamOutputBuffers[0], res._streamOutputBuffers[1]));
 
             parserContext.GetSceneParser()->ExecuteScene(context, parserContext, parseSettings, 5);
 
-            context->GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
+            context->UnbindSO();
 
                 //  After the scene execute, we need to use a compute shader to separate the 
                 //  stream output data into it's bins.
             static const unsigned MaxOutputBinCount = 8;
             ID3D::UnorderedAccessView* outputBins[MaxOutputBinCount];
-            UINT initialCounts[MaxOutputBinCount];
+            unsigned initialCounts[MaxOutputBinCount];
             std::fill(outputBins, &outputBins[dimof(outputBins)], nullptr);
             std::fill(initialCounts, &initialCounts[dimof(initialCounts)], 0);
 
@@ -289,7 +298,7 @@ namespace SceneEngine
                 outputBins[c] = res._instanceBufferUAVs[c].GetUnderlying();
             }
 
-            context->BindCS(RenderCore::MakeResourceList(res._streamOutputSRV[0], res._streamOutputSRV[1]));
+            context->BindCS(MakeResourceList(res._streamOutputSRV[0], res._streamOutputSRV[1]));
             context->GetUnderlying()->CSSetUnorderedAccessViews(0, outputBinCount, outputBins, initialCounts);
 
             class InstanceSeparateConstants
@@ -351,12 +360,12 @@ namespace SceneEngine
             *context, parserContext, oldCamera, 
             UInt2(unsigned(viewport.Width), unsigned(viewport.Height)));
 
-        context->GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
+        context->UnbindSO();
         Metal::GeometryShader::SetDefaultStreamOutputInitializers(oldSO);
         // oldTargets.ResetToOldTargets(context);
     }
 
-    static unsigned GetSOPrimitives(RenderCore::Metal::DeviceContext* context, ID3D::Query* query)
+    static unsigned GetSOPrimitives(Metal::DeviceContext* context, ID3D::Query* query)
     {
         auto querySize = query->GetDataSize();
         uint8 soStatsBuffer[256];
@@ -366,7 +375,7 @@ namespace SceneEngine
     }
 
     bool VegetationSpawn_DrawInstances(
-        RenderCore::Metal::DeviceContext& context,
+        Metal::DeviceContext& context,
         VegetationSpawnResources& res,
         unsigned instanceId, unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
@@ -380,12 +389,7 @@ namespace SceneEngine
             //          INT BaseVertexLocation;
             //          UINT StartInstanceLocation;
             //      }
-        if (!res._isPrepared || instanceId > res._instanceBuffers.size())
-            return false;
-
-        D3D11_MAPPED_SUBRESOURCE mappedSub;
-        auto hresult = context.GetUnderlying()->Map(res._indirectArgsBuffer.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSub);
-        if (!SUCCEEDED(hresult))
+        if (!res._isPrepared || instanceId > res._instanceBufferSRVs.size())
             return false;
 
             //
@@ -400,7 +404,7 @@ namespace SceneEngine
             //      Using a compute shader would be more powerful. But we'd have to adjust the mesh rendering
             //      to support Dispatch()ing a compute shader instead of Draw() a shader program
             //
-            //      Write now, we can just use the "D3D11_QUERY_SO_STATISTICS" query. But this causes a CPU/GPU
+            //      Right now, we can just use the "D3D11_QUERY_SO_STATISTICS" query. But this causes a CPU/GPU
             //      sync! So it needs to be replaced.
             //
             //      Even with D3D11.1, there is a problem. We can't use interlocked instructions from the GS,
@@ -438,37 +442,17 @@ namespace SceneEngine
 
         enum PrimitiveCountMethod { FromQuery, FromUAV } primitiveCountMethod = FromUAV;
 
-        struct DrawIndexedInstancedIndirectArgs 
-        {
-            UINT IndexCountPerInstance; 
-            UINT InstanceCount;
-            UINT StartIndexLocation;
-            INT BaseVertexLocation;
-            UINT StartInstanceLocation;
-        };
-        auto& args = *(DrawIndexedInstancedIndirectArgs*)mappedSub.pData;
-        args.IndexCountPerInstance = indexCount;
-        args.StartIndexLocation = startIndexLocation;
-        args.BaseVertexLocation = baseVertexLocation;
-        args.StartInstanceLocation = 0;
-        args.InstanceCount = 0;
-
-        if (primitiveCountMethod == FromQuery) {
-            auto primitiveCount = GetSOPrimitives(&context, res._streamOutputCountsQuery.get());
-            args.InstanceCount = (UINT)primitiveCount;
-        }
+        unsigned instanceCount = 0;
+        if (primitiveCountMethod == FromQuery)
+            instanceCount = GetSOPrimitives(&context, res._streamOutputCountsQuery.get());
+        res._indirectDrawBuffer.WriteParams(context, indexCount, startIndexLocation, baseVertexLocation, instanceCount);
 
             // note --  we may be able to use the query to skip the compute shader step
             //          in cases where there is zero vegetation generated. Possibly a GPU
             //          predicate can help avoid a CPU sync when doing that.
 
-        context.GetUnderlying()->Unmap(res._indirectArgsBuffer.get(), 0);
-
-        if (primitiveCountMethod == FromUAV) {
-                // copy the "structure count" from the UAV into the indirect args buffer
-            context.GetUnderlying()->CopyStructureCount(
-                res._indirectArgsBuffer.get(), unsigned(&((DrawIndexedInstancedIndirectArgs*)nullptr)->InstanceCount), res._instanceBufferUAVs[instanceId].GetUnderlying());
-        }
+        if (primitiveCountMethod == FromUAV)
+            res._indirectDrawBuffer.CopyInstanceCount(context, res._instanceBufferUAVs[instanceId]);
 
             // bind the instancing buffer as an input vertex buffer
             //  This "instancing buffer" is the output from our separation compute shader
@@ -476,10 +460,10 @@ namespace SceneEngine
         // auto* buffer = res._instanceBuffers[instanceId].get();
         // const unsigned slotForVertexInput = 3;
         // context->GetUnderlying()->IASetVertexBuffers(slotForVertexInput, 1, &buffer, &stride, &offset);
-        context.BindVS(RenderCore::MakeResourceList(15, res._instanceBufferSRVs[instanceId]));
+        context.BindVS(MakeResourceList(15, res._instanceBufferSRVs[instanceId]));
 
             // finally -- draw
-        context.GetUnderlying()->DrawIndexedInstancedIndirect(res._indirectArgsBuffer.get(), 0);
+        res._indirectDrawBuffer.Draw(context);
 
         return true;
     }
@@ -505,12 +489,12 @@ namespace SceneEngine
     {
     public:
         virtual void OnPreScenePrepare(
-            RenderCore::Metal::DeviceContext* context, LightingParserContext&) const;
+            Metal::DeviceContext* context, LightingParserContext&) const;
         virtual void OnLightingResolvePrepare(
-            RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext,
+            Metal::DeviceContext* context, LightingParserContext& parserContext,
             LightingResolveContext& resolveContext) const;
         virtual void OnPostSceneRender(
-            RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
+            Metal::DeviceContext* context, LightingParserContext& parserContext, 
             const SceneParseSettings& parseSettings, unsigned techniqueIndex) const;
 
         VegetationSpawnPlugin(VegetationSpawnManager::Pimpl& pimpl);
@@ -521,7 +505,7 @@ namespace SceneEngine
     };
 
     void VegetationSpawnPlugin::OnPreScenePrepare(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext) const
+        Metal::DeviceContext* context, LightingParserContext& parserContext) const
     {
         if (_pimpl->_cfg._objectTypes.empty()) return;
 
@@ -530,11 +514,11 @@ namespace SceneEngine
     }
 
     void VegetationSpawnPlugin::OnLightingResolvePrepare(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext,
+        Metal::DeviceContext* context, LightingParserContext& parserContext,
         LightingResolveContext& resolveContext) const {}
 
     void VegetationSpawnPlugin::OnPostSceneRender(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
+        Metal::DeviceContext* context, LightingParserContext& parserContext, 
         const SceneParseSettings& parseSettings, unsigned techniqueIndex) const {}
 
     VegetationSpawnPlugin::VegetationSpawnPlugin(VegetationSpawnManager::Pimpl& pimpl)
@@ -579,7 +563,7 @@ namespace SceneEngine
     }
 
     void VegetationSpawnManager::Render(
-        RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext,
+        Metal::DeviceContext& context, LightingParserContext& parserContext,
         unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep)
     {
         if (_pimpl->_cfg._objectTypes.empty()) return;
@@ -657,3 +641,58 @@ namespace SceneEngine
 
 }
 
+
+namespace SceneEngine
+{
+    void IndirectDrawBuffer::Draw(Metal::DeviceContext& metalContext)
+    {
+        metalContext.GetUnderlying()->DrawIndexedInstancedIndirect(_indirectArgsBuffer.GetUnderlying(), 0);
+    }
+
+    bool IndirectDrawBuffer::WriteParams(
+        Metal::DeviceContext& metalContext, 
+        unsigned indexCountPerinstance, unsigned startIndexLocation, 
+        unsigned baseVertexLocation, unsigned instanceCount)
+    {
+        D3D11_MAPPED_SUBRESOURCE mappedSub;
+        auto hresult = metalContext.GetUnderlying()->Map(_indirectArgsBuffer.GetUnderlying(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSub);
+        if (!SUCCEEDED(hresult))
+            return false;
+
+        auto& args = *(DrawIndexedInstancedIndirectArgs*)mappedSub.pData;
+        args.IndexCountPerInstance = indexCountPerinstance;
+        args.StartIndexLocation = startIndexLocation;
+        args.BaseVertexLocation = baseVertexLocation;
+        args.StartInstanceLocation = 0;
+        args.InstanceCount = instanceCount;
+        metalContext.GetUnderlying()->Unmap(_indirectArgsBuffer.GetUnderlying(), 0);
+        return true;
+    }
+
+    void IndirectDrawBuffer::CopyInstanceCount(Metal::DeviceContext& metalContext, Metal::UnorderedAccessView& src)
+    {
+            // copy the "structure count" from the UAV into the indirect args buffer
+        metalContext.GetUnderlying()->CopyStructureCount(
+            _indirectArgsBuffer.GetUnderlying(), 
+            unsigned(&((DrawIndexedInstancedIndirectArgs*)nullptr)->InstanceCount), 
+            src.GetUnderlying());
+    }
+
+    IndirectDrawBuffer::IndirectDrawBuffer()
+    {
+        using namespace BufferUploads;
+        auto indirectArgsBufferDesc = CreateDesc(
+            BindFlag::DrawIndirectArgs | BindFlag::VertexBuffer,
+            CPUAccess::WriteDynamic, GPUAccess::Read | GPUAccess::Write,
+            LinearBufferDesc::Create(4*5, 4*5),
+            "IndirectArgsBuffer");
+
+        auto& uploads = GetBufferUploads();
+        auto indirectArgsRes = uploads.Transaction_Immediate(indirectArgsBufferDesc);
+        _indirectArgsBuffer = indirectArgsRes->AdoptUnderlying();
+    }
+
+    IndirectDrawBuffer::~IndirectDrawBuffer()
+    {
+    }
+}

@@ -20,7 +20,6 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../SceneEngine/LightingParserContext.h"
 
@@ -33,6 +32,8 @@
 #include "../Math/Transformations.h"
 
 #include <stack>
+
+#include "../Core/WinAPI/IncludeWindows.h"
 
 namespace SceneEngine
 {

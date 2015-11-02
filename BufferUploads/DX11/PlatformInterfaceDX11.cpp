@@ -190,18 +190,16 @@
 
         void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(const Underlying::Resource& finalResource, const Underlying::Resource& staging, const BufferDesc& destinationDesc, unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset)
         {
+            using namespace RenderCore;
             if ((lodLevelMin == ~unsigned(0x0) || lodLevelMax == ~unsigned(0x0)) && destinationDesc._type == BufferDesc::Type::Texture && !stagingLODOffset) {
-                _devContext->GetUnderlying()->CopyResource(ResPtr(finalResource), ResPtr(staging));
+                Metal::Copy(*_devContext, ResPtr(finalResource), ResPtr(staging));
             } else {
                 for (unsigned a=0; a<destinationDesc._textureDesc._arrayCount; ++a) {
                     for (unsigned c=lodLevelMin; c<=lodLevelMax; ++c) {
-                        _devContext->GetUnderlying()->CopySubresourceRegion(
-                            ResPtr(finalResource), 
-                            D3D11CalcSubresource(c, a, destinationDesc._textureDesc._mipCount),
-                            0, 0, 0,
-                            ResPtr(staging), 
-                            D3D11CalcSubresource(c-stagingLODOffset, a, destinationDesc._textureDesc._mipCount),
-                            NULL );
+                        Metal::CopyPartial(
+                            *_devContext,
+                            Metal::CopyPartial_Dest(ResPtr(finalResource), D3D11CalcSubresource(c, a, destinationDesc._textureDesc._mipCount)),
+                            Metal::CopyPartial_Src(ResPtr(staging), D3D11CalcSubresource(c-stagingLODOffset, a, destinationDesc._textureDesc._mipCount)));
                     }
                 }
             }
@@ -217,12 +215,11 @@
                     //
                 for (std::vector<DefragStep>::const_iterator i=steps.begin(); i!=steps.end(); ++i) {
                     assert(i->_sourceEnd > i->_sourceStart);
-                    D3D11_BOX sourceBox;
-                    sourceBox.left   = i->_sourceStart;
-                    sourceBox.right  = i->_sourceEnd;
-                    sourceBox.top    = sourceBox.front   = 0;
-                    sourceBox.bottom = sourceBox.back    = 1;
-                    _devContext->GetUnderlying()->CopySubresourceRegion(ResPtr(destination), 0, i->_destination, 0, 0, ResPtr(source), 0, &sourceBox);
+                    using namespace RenderCore;
+                    Metal::CopyPartial(
+                        *_devContext,
+                        Metal::CopyPartial_Dest(ResPtr(destination), 0, i->_destination),
+                        Metal::CopyPartial_Src(ResPtr(source), 0, i->_sourceStart, Metal::PixelCoord(i->_sourceEnd, 1, 1)));
                 }
             } else {
                 MappedBuffer sourceBuffer       = Map(source, MapType::ReadOnly);
@@ -239,7 +236,7 @@
 
         void UnderlyingDeviceContext::ResourceCopy(const Underlying::Resource& destination, const Underlying::Resource& source)
         {
-            _devContext->GetUnderlying()->CopyResource(ResPtr(destination), ResPtr(source));
+            RenderCore::Metal::Copy(*_devContext, ResPtr(destination), ResPtr(source));
         }
 
         intrusive_ptr<RenderCore::Metal::CommandList> UnderlyingDeviceContext::ResolveCommandList()

@@ -153,9 +153,14 @@ namespace RenderCore { namespace Metal_DX11
             Count1 + unorderedAccess._startingPoint, Count2, unorderedAccess._buffers, initialCounts);
     }
 
-    template<> inline void DeviceContext::Unbind<ComputeShader>()   { _underlying->CSSetShader(nullptr, nullptr, 0); }
-    template<> inline void DeviceContext::Unbind<HullShader>()      { _underlying->HSSetShader(nullptr, nullptr, 0); }
-    template<> inline void DeviceContext::Unbind<DomainShader>()    { _underlying->DSSetShader(nullptr, nullptr, 0); }
+    template<int Count> void DeviceContext::BindSO(const ResourceList<VertexBuffer, Count>& buffers, unsigned offset)
+    {
+        UINT offsets[Count];
+        std::fill(offsets, &offsets[dimof(offsets)], offset);
+        assert(buffers._startingPoint==0);
+        _underlying->SOSetTargets(Count, buffers._buffers, offsets);
+    }
+
 
 }}
 

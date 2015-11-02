@@ -21,7 +21,6 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
@@ -31,7 +30,7 @@
 #include "../Utility/StringFormat.h"
 #include "../Utility/FunctionUtils.h"
 
-#include "../RenderCore/DX11/Metal/DX11Utils.h"
+#include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
 namespace SceneEngine
 {
@@ -67,10 +66,9 @@ namespace SceneEngine
         RTV _dummyRTV;
         ResLocator _dummyTarget;
 
-        intrusive_ptr<ID3D::Buffer> _triangleBuffer;
-        ResLocator _triangleBufferRes;
-        Metal::VertexBuffer _triangleBufferVB;
-        SRV _triangleBufferSRV;
+        ResLocator              _triangleBufferRes;
+        Metal::VertexBuffer     _triangleBufferVB;
+        SRV                     _triangleBufferSRV;
 
         Metal::ViewportDesc _gridBufferViewport;
 
@@ -116,7 +114,6 @@ namespace SceneEngine
                 BufferUploads::LinearBufferDesc::Create(triangleSize*desc._triangleCount, triangleSize),
                 "RTShadowsTriangles"));
 
-        _triangleBuffer = Metal::QueryInterfaceCast<ID3D::Buffer>(_triangleBufferRes->GetUnderlying());
         _triangleBufferVB = Metal::VertexBuffer(_triangleBufferRes->GetUnderlying());
         _triangleBufferSRV = SRV::RawBuffer(_triangleBufferRes->GetUnderlying(), triangleSize*desc._triangleCount);
 
@@ -183,11 +180,9 @@ namespace SceneEngine
         Metal::GeometryShader::SetDefaultStreamOutputInitializers(
             Metal::GeometryShader::StreamOutputInitializers(soVertex, dimof(soVertex), strides, 1));
 
-        ID3D::Buffer* targets[] = { box._triangleBuffer.get() };
         static_assert(bufferCount == dimof(strides), "Stream output buffer count mismatch");
         static_assert(bufferCount == dimof(offsets), "Stream output buffer count mismatch");
-        static_assert(bufferCount == dimof(targets), "Stream output buffer count mismatch");
-        metalContext.GetUnderlying()->SOSetTargets(bufferCount, targets, offsets);
+        metalContext.BindSO(MakeResourceList(box._triangleBufferVB));
 
             // set up the render state for writing into the grid buffer
         SavedTargets savedTargets(metalContext);
@@ -240,7 +235,7 @@ namespace SceneEngine
                 TechniqueIndex_RTShadowGen);
         CATCH_ASSETS_END(parserContext)
 
-        metalContext.GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
+        metalContext.UnbindSO();
         Metal::GeometryShader::SetDefaultStreamOutputInitializers(oldSO);
 
             // We have the list of triangles. Let's render then into the final
@@ -276,15 +271,10 @@ namespace SceneEngine
             metalContext.Bind(Metal::Topology::PointList);
             metalContext.Bind(MakeResourceList(box._triangleBufferVB), strides[0], offsets[0]);
 
-            ID3D::RenderTargetView* rtv[] = { box._dummyRTV.GetUnderlying() };
-            ID3D::UnorderedAccessView* uavs[] = { box._gridBufferUAV.GetUnderlying(), box._listsBufferUAV.GetUnderlying() };
-            const UINT initialCounts[] = { UINT(0), UINT(0) };
-            static_assert(dimof(initialCounts) == dimof(uavs), "Initial count array size mismatch");
-            metalContext.GetUnderlying()->OMSetRenderTargetsAndUnorderedAccessViews(
-                dimof(rtv), rtv, nullptr,
-                dimof(rtv), dimof(uavs), uavs, initialCounts);
-
-            metalContext.GetUnderlying()->DrawAuto();
+            metalContext.Bind(
+                MakeResourceList(box._dummyRTV), nullptr,
+                MakeResourceList(box._gridBufferUAV, box._listsBufferUAV));
+            metalContext.DrawAuto();
         CATCH_ASSETS_END(parserContext)
 
         metalContext.Bind(Metal::Topology::TriangleList);

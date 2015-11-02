@@ -209,7 +209,7 @@ namespace SceneEngine
 
                 //  Copy into the new buffer
             auto& box = Techniques::FindCachedBox<DuplicateDepthBuffer>(d);
-            context->GetUnderlying()->CopyResource(box._resource.get(), sourceDepthBuffer);
+            Metal::Copy(*context, box._resource.get(), sourceDepthBuffer);
             return box._srv;
 
         }

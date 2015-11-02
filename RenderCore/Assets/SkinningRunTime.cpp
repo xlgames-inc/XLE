@@ -17,6 +17,7 @@
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/ShaderResource.h"
+#include "../Metal/Resource.h"
 
 #include "../Techniques/ResourceBox.h"
 #include "../Techniques/Techniques.h"
@@ -1235,7 +1236,7 @@ namespace RenderCore { namespace Assets
 
     static void PushTBufferTemporaryTexture(Metal::DeviceContext* context, TBufferTemporaryTexture& tex)
     {
-        context->GetUnderlying()->CopyResource(tex._resource.get(), tex._stagingResource.get());
+        Metal::Copy(*context, tex._resource.get(), tex._stagingResource.get());
     }
 }}
 
