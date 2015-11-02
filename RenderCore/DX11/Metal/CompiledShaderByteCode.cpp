@@ -589,7 +589,7 @@ namespace RenderCore { namespace Metal_DX11
         auto byteCode = shaderCode.GetByteCode();
 
         ID3D::ShaderReflection* reflectionTemp = nullptr;
-        auto interfaceGuid = __uuidof(ID3D::ShaderReflection); // IID_ID3D11ShaderReflection; // 
+        auto interfaceGuid = IID_ID3D11ShaderReflection; // __uuidof(ID3D::ShaderReflection); // 
         HRESULT hresult = compiler->D3DReflect_Wrapper(byteCode.first, byteCode.second, interfaceGuid, (void**)&reflectionTemp);
         if (!SUCCEEDED(hresult) || !reflectionTemp)
             Throw(::Assets::Exceptions::InvalidAsset(

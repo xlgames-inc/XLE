@@ -45,8 +45,36 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
-  <ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">
     <ClCompile />
+    <Lib>
+      <AdditionalDependencies>dxguid.lib</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|x64'">
+    <Lib>
+      <AdditionalDependencies>dxguid.lib</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">
+    <Lib>
+      <AdditionalDependencies>dxguid.lib</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">
+    <Lib>
+      <AdditionalDependencies>dxguid.lib</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|Win32'">
+    <Lib>
+      <AdditionalDependencies>dxguid.lib</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">
+    <Lib>
+      <AdditionalDependencies>dxguid.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Assets\Project\Assets.vcxproj">
