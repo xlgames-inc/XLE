@@ -26,6 +26,8 @@ namespace RenderCore { namespace Metal_DX11
 {
     using ::Assets::ResChar;
 
+    static const auto s_shaderReflectionInterfaceGuid = IID_ID3D11ShaderReflection; // __uuidof(ID3D::ShaderReflection); // 
+
     static HRESULT D3DCompile_Wrapper(
         LPCVOID pSrcData,
         SIZE_T SrcDataSize,
@@ -504,7 +506,7 @@ namespace RenderCore { namespace Metal_DX11
             // build some metrics information about the given shader, using the D3D
             //  reflections interface.
         ID3D::ShaderReflection* reflTemp = nullptr;
-        auto hresult = D3DReflect_Wrapper(data, dataSize, __uuidof(ID3D::ShaderReflection), (void**)&reflTemp);
+        auto hresult = D3DReflect_Wrapper(data, dataSize, s_shaderReflectionInterfaceGuid, (void**)&reflTemp);
         intrusive_ptr<ID3D::ShaderReflection> refl = moveptr(reflTemp);
         if (!SUCCEEDED(hresult) || !refl) {
             return "<Failure in D3DReflect>";
@@ -589,8 +591,7 @@ namespace RenderCore { namespace Metal_DX11
         auto byteCode = shaderCode.GetByteCode();
 
         ID3D::ShaderReflection* reflectionTemp = nullptr;
-        auto interfaceGuid = IID_ID3D11ShaderReflection; // __uuidof(ID3D::ShaderReflection); // 
-        HRESULT hresult = compiler->D3DReflect_Wrapper(byteCode.first, byteCode.second, interfaceGuid, (void**)&reflectionTemp);
+        HRESULT hresult = compiler->D3DReflect_Wrapper(byteCode.first, byteCode.second, s_shaderReflectionInterfaceGuid, (void**)&reflectionTemp);
         if (!SUCCEEDED(hresult) || !reflectionTemp)
             Throw(::Assets::Exceptions::InvalidAsset(
                 shaderCode.Initializer(), "Error while invoking low-level shader reflection"));
