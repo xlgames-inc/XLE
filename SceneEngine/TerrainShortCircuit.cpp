@@ -57,8 +57,6 @@ namespace SceneEngine
         UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, bool encodedGradientFlags,
         Float4x4& localToCell, const ShortCircuitUpdate& upd)
     {
-        auto& context = *upd._context;
-
         TRY 
         {
             unsigned format = 0;
@@ -127,10 +125,12 @@ namespace SceneEngine
             Metal::ConstantBufferPacket pkts[] = { RenderCore::MakeSharedPkt(parameters) };
             const Metal::ShaderResourceView* srv[] = { upd._srv.get(), &tileSet->GetShaderResource() };
 
+            auto context = RenderCore::Metal::DeviceContext::Get(*upd._context);
+
             Metal::BoundUniforms boundLayout(byteCode);
             boundLayout.BindConstantBuffers(1, {"Parameters"});
             boundLayout.BindShaderResources(1, {"Input", "OldHeights"});
-            boundLayout.Apply(context, Metal::UniformsStream(), Metal::UniformsStream(pkts, srv));
+            boundLayout.Apply(*context, Metal::UniformsStream(), Metal::UniformsStream(pkts, srv));
 
             const unsigned threadGroupWidth = 6;
             if (format == 0) {
@@ -143,17 +143,17 @@ namespace SceneEngine
                     RWTexture2DDesc(tile._width, tile._height, Metal::NativeFormat::R32_UINT))->AdoptUnderlying();
                 Metal::UnorderedAccessView midwayGradFlagsBufferUAV(midwayGradFlagsBuffer.get());
 
-                context.BindCS(MakeResourceList(1, midwayBufferUAV, midwayGradFlagsBufferUAV, tileCoordsUAV));
+                context->BindCS(MakeResourceList(1, midwayBufferUAV, midwayGradFlagsBufferUAV, tileCoordsUAV));
 
-                context.Bind(cs0);
-                context.Dispatch(   unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
+                context->Bind(cs0);
+                context->Dispatch(   unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
                                     unsigned(XlCeil(tile._height/float(threadGroupWidth))));
 
                     //  if everything is ok up to this point, we can commit to the final
                     //  output --
-                context.BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
-                context.Bind(cs1);
-                context.Dispatch(   unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
+                context->BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
+                context->Bind(cs1);
+                context->Dispatch(   unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
                                     unsigned(XlCeil(tile._height/float(threadGroupWidth))));
 
                     //  We need to read back the new min/max heights
@@ -169,13 +169,13 @@ namespace SceneEngine
                 }
             } else {
                     // just write directly
-                context.BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
-                context.Bind(cs2);
-                context.Dispatch(   unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
+                context->BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
+                context->Bind(cs2);
+                context->Dispatch(   unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
                                     unsigned(XlCeil(tile._height/float(threadGroupWidth))));
             }
 
-            context.UnbindCS<Metal::UnorderedAccessView>(0, 3);
+            context->UnbindCS<Metal::UnorderedAccessView>(0, 3);
         } CATCH (...) {
             // note, it's a real problem when we get a invalid resource get... 
             //  We should ideally stall until all the required resources are loaded

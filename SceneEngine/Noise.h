@@ -7,7 +7,6 @@
 #pragma once
 
 #include "../RenderCore/Metal/ShaderResource.h"
-#include "../RenderCore/DX11/Metal/DX11Utils.h"
 
 namespace SceneEngine
 {
@@ -19,11 +18,9 @@ namespace SceneEngine
         PerlinNoiseResources(const Desc& desc);
         ~PerlinNoiseResources();
 
-        intrusive_ptr<ID3D::Resource>                          _gradTexture;
-        RenderCore::Metal::ShaderResourceView               _gradShaderResource;
-
-        intrusive_ptr<ID3D::Resource>                          _permTexture;
-        RenderCore::Metal::ShaderResourceView               _permShaderResource;
+        using SRV = RenderCore::Metal::ShaderResourceView;
+        SRV _gradShaderResource;
+        SRV _permShaderResource;
     };
 }
 

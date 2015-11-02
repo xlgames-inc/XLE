@@ -35,8 +35,6 @@
 #include "../Utility/Meta/ClassAccessorsImpl.h"
 #include "../Utility/Meta/AccessorSerialize.h"
 
-#include "../RenderCore/DX11/Metal/IncludeDX11.h"
-
 namespace SceneEngine
 {
     using namespace RenderCore;
@@ -761,17 +759,21 @@ namespace SceneEngine
 
         context.Clear(_atlas._tempDSV.DSV(), 1.f, 0u);
 
-        Metal::RenderTargetView::UnderlyingType rtvs[3];
+        const Metal::RenderTargetView* rtvs[3];
         auto layerCount = std::min(dimof(rtvs), _atlas._layers.size());
         for (unsigned c=0; c<layerCount; ++c) {
             const auto& l = _atlas._layers[c];
                 // note --  alpha starts out as 1.f
                 //          With the _blendOneSrcAlpha blend, this how no effect
             context.Clear(l._tempRTV.RTV(), {0.f, 0.f, 0.f, 1.f});  
-            rtvs[c] = l._tempRTV.RTV().GetUnderlying();
+            rtvs[c] = &l._tempRTV.RTV();
         }
         
-        context.GetUnderlying()->OMSetRenderTargets((unsigned)layerCount, rtvs, _atlas._tempDSV.DSV().GetUnderlying());
+        context.Bind(
+            ResourceList<Metal::RenderTargetView, dimof(rtvs)>(
+                std::initializer_list<const Metal::RenderTargetView*>(
+                    rtvs, &rtvs[(unsigned)layerCount])), 
+            &_atlas._tempDSV.DSV());
         context.Bind(viewport);
         context.Bind(Techniques::CommonResources()._blendOpaque);
         context.Bind(Techniques::CommonResources()._dssReadWrite);

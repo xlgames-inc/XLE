@@ -125,7 +125,7 @@ namespace ToolsRig
             if (_currentWorldSpaceTarget.second && (Millisecond_Now() - _lastPerform) > 33 && (FrameRenderCount > _lastRenderCount1)) {
 
                 TRY {
-                    PerformAction(_currentWorldSpaceTarget.first, _size, shiftHeld?(-_strength):_strength);
+                    PerformAction(*hitTestContext.GetThreadContext(), _currentWorldSpaceTarget.first, _size, shiftHeld?(-_strength):_strength);
                 } CATCH (...) {
                 } CATCH_END
                 
@@ -138,7 +138,7 @@ namespace ToolsRig
     }
 
     void    CommonManipulator::Render(
-                    RenderCore::IThreadContext* context, 
+                    RenderCore::IThreadContext& context, 
                     SceneEngine::LightingParserContext& parserContext)
     {
             //  Draw a highlight on the area that we're going to modify. Since we want this to behave like a decal, 
@@ -146,10 +146,8 @@ namespace ToolsRig
             //  lighting buffer.
             //  In theory, we could stencil out the terrain, as well -- so we only actually draw onto terrain 
             //  geometry.
-        if (_currentWorldSpaceTarget.second) {
-            RenderCylinderHighlight(
-                *context, parserContext, _currentWorldSpaceTarget.first, _size);
-        }
+        if (_currentWorldSpaceTarget.second)
+            RenderCylinderHighlight(context, parserContext, _currentWorldSpaceTarget.first, _size);
 		++FrameRenderCount;
     }
 
@@ -206,7 +204,7 @@ namespace ToolsRig
                     Float2 fsWorld = TerrainToWorldSpace(RoundUpToInteger(terrainCoordsMaxs));
 
                     TRY {
-                        PerformAction(Expand(faWorld, 0.f), Expand(fsWorld, 0.f));
+                        PerformAction(*hitTestContext.GetThreadContext(), Expand(faWorld, 0.f), Expand(fsWorld, 0.f));
                     } CATCH(...) {
                     } CATCH_END
                 }
@@ -217,7 +215,7 @@ namespace ToolsRig
         return false;
     }
 
-    void    RectangleManipulator::Render(RenderCore::IThreadContext* context, SceneEngine::LightingParserContext& parserContext)
+    void    RectangleManipulator::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
     {
             //  while dragging, we should draw a rectangle highlight on the terrain
         using namespace RenderCore::Metal;
@@ -232,7 +230,7 @@ namespace ToolsRig
             Float2 fsWorld = TerrainToWorldSpace(RoundUpToInteger(terrainCoordsMaxs));
 
             RenderRectangleHighlight(
-                *context, parserContext,
+                context, parserContext,
                 Float3(std::min(faWorld[0], fsWorld[0]), std::min(faWorld[1], fsWorld[1]), 0.f),
                 Float3(std::max(faWorld[0], fsWorld[0]), std::max(faWorld[1], fsWorld[1]), 0.f));
         }

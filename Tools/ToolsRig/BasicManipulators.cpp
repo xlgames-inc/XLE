@@ -26,7 +26,7 @@ namespace ToolsRig
             const SceneEngine::IntersectionTestContext& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
-            RenderCore::IThreadContext* context, 
+            RenderCore::IThreadContext& context, 
             SceneEngine::LightingParserContext& parserContext);
 
         const char* GetName() const;
@@ -164,7 +164,7 @@ namespace ToolsRig
     }
 
     void CameraMovementManipulator::Render(
-        RenderCore::IThreadContext*, 
+        RenderCore::IThreadContext&, 
         SceneEngine::LightingParserContext&)
     {
         // we could draw some movement widgets here

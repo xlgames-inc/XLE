@@ -47,7 +47,7 @@ namespace ToolsRig
     class RaiseLowerManipulator : public CommonManipulator
     {
     public:
-        virtual void    PerformAction(const Float3& worldSpacePosition, float size, float strength);
+        virtual void    PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength);
         virtual const char* GetName() const { return "Raise and Lower"; }
 
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
@@ -59,7 +59,7 @@ namespace ToolsRig
         float _powerValue;
     };
 
-    void    RaiseLowerManipulator::PerformAction(const Float3& worldSpacePosition, float size, float strength)
+    void    RaiseLowerManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength)
     {
             //
             //      Use the uber surface interface to change these values
@@ -68,6 +68,7 @@ namespace ToolsRig
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             i->AdjustHeights(
+                context,
                 WorldSpaceToTerrain(Truncate(worldSpacePosition)), 
                 WorldSpaceDistanceToTerrainCoords(size), 
                 .05f * strength, _powerValue);
@@ -96,7 +97,7 @@ namespace ToolsRig
     class SmoothManipulator : public CommonManipulator
     {
     public:
-        virtual void    PerformAction(const Float3& worldSpacePosition, float size, float strength);
+        virtual void    PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength);
         virtual const char* GetName() const { return "Smooth"; }
 
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
@@ -110,11 +111,12 @@ namespace ToolsRig
         unsigned _flags;
     };
 
-    void    SmoothManipulator::PerformAction(const Float3& worldSpacePosition, float size, float strength)
+    void    SmoothManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength)
     {
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             i->Smooth(
+                context,
                 WorldSpaceToTerrain(Truncate(worldSpacePosition)), 
                 WorldSpaceDistanceToTerrainCoords(size),
                 unsigned(_filterRadius), 
@@ -157,7 +159,7 @@ namespace ToolsRig
     class NoiseManipulator : public CommonManipulator
     {
     public:
-        virtual void    PerformAction(const Float3& worldSpacePosition, float size, float strength);
+        virtual void    PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength);
         virtual const char* GetName() const { return "Add Noise"; }
 
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
@@ -167,11 +169,12 @@ namespace ToolsRig
         NoiseManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
     };
 
-    void    NoiseManipulator::PerformAction(const Float3& worldSpacePosition, float size, float strength)
+    void    NoiseManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength)
     {
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             i->AddNoise(
+                context,
                 WorldSpaceToTerrain(Truncate(worldSpacePosition)), 
                 WorldSpaceDistanceToTerrainCoords(size), 
                 .05f * strength);
@@ -197,7 +200,7 @@ namespace ToolsRig
     class CopyHeight : public CommonManipulator
     {
     public:
-        virtual void    PerformAction(const Float3& worldSpacePosition, float size, float strength);
+        virtual void    PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength);
         virtual const char* GetName() const { return "Copy Height"; }
 
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
@@ -210,11 +213,12 @@ namespace ToolsRig
         unsigned _flags;
     };
 
-    void CopyHeight::PerformAction(const Float3& worldSpacePosition, float size, float strength)
+    void CopyHeight::PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength)
     {
         auto *i = _terrainManager->GetHeightsInterface();
         if (i && _targetOnMouseDown.second) {
             i->CopyHeight(
+                context,
                 WorldSpaceToTerrain(Truncate(worldSpacePosition)), 
                 WorldSpaceToTerrain(Truncate(_targetOnMouseDown.first)), 
                 WorldSpaceDistanceToTerrainCoords(size), 
@@ -255,7 +259,7 @@ namespace ToolsRig
     class FillNoiseManipulator : public RectangleManipulator
     {
     public:
-        virtual void    PerformAction(const Float3& anchor0, const Float3& anchor1);
+        virtual void    PerformAction(RenderCore::IThreadContext& context, const Float3& anchor0, const Float3& anchor1);
         virtual const char* GetName() const { return "Fill noise"; }
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
@@ -267,11 +271,12 @@ namespace ToolsRig
         float _baseHeight, _noiseHeight, _roughness, _fractalDetail;
     };
 
-    void    FillNoiseManipulator::PerformAction(const Float3& anchor0, const Float3& anchor1)
+    void    FillNoiseManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& anchor0, const Float3& anchor1)
     {
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             i->FillWithNoise(
+                context,
                 WorldSpaceToTerrain(Truncate(anchor0)), 
                 WorldSpaceToTerrain(Truncate(anchor1)), 
                 _baseHeight, _noiseHeight, _roughness, _fractalDetail);
@@ -304,7 +309,7 @@ namespace ToolsRig
     class PaintCoverageManipulator : public CommonManipulator
     {
     public:
-        virtual void PerformAction(const Float3& worldSpacePosition, float size, float strength);
+        virtual void PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength);
         virtual const char* GetName() const { return "Paint Coverage"; }
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
@@ -325,11 +330,12 @@ namespace ToolsRig
     //     return ~unsigned(0x0);
     // }
 
-    void PaintCoverageManipulator::PerformAction(const Float3& worldSpacePosition, float size, float strength)
+    void PaintCoverageManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength)
     {
         auto* i = _terrainManager->GetCoverageInterface(_coverageLayer);
         if (i) {
             i->Paint(
+                context,
                 WorldSpaceToCoverage(_coverageLayer, Truncate(worldSpacePosition)), 
                 WorldSpaceToCoverageDistance(_coverageLayer, size),
                 _paintValue);
@@ -372,9 +378,9 @@ namespace ToolsRig
     class ErosionManipulator : public RectangleManipulator
     {
     public:
-        virtual void            PerformAction(const Float3& anchor0, const Float3& anchor1);
+        virtual void            PerformAction(RenderCore::IThreadContext& context, const Float3& anchor0, const Float3& anchor1);
         virtual const char*     GetName() const { return "Erosion simulation"; }
-        virtual void            Render(RenderCore::IThreadContext* context, SceneEngine::LightingParserContext& parserContext);
+        virtual void            Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext);
 
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
@@ -391,7 +397,7 @@ namespace ToolsRig
         size_t OffsetOf(const void* member) const;
     };
 
-    void    ErosionManipulator::PerformAction(const Float3& anchor0, const Float3& anchor1)
+    void    ErosionManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& anchor0, const Float3& anchor1)
     {
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
@@ -402,7 +408,7 @@ namespace ToolsRig
         }
     }
 
-    void    ErosionManipulator::Render(RenderCore::IThreadContext* context, SceneEngine::LightingParserContext& parserContext)
+    void    ErosionManipulator::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
     {
         RectangleManipulator::Render(context, parserContext);
 
@@ -480,7 +486,7 @@ namespace ToolsRig
     class RotateManipulator : public RectangleManipulator
     {
     public:
-        virtual void    PerformAction(const Float3& anchor0, const Float3& anchor1);
+        virtual void    PerformAction(RenderCore::IThreadContext& context, const Float3& anchor0, const Float3& anchor1);
         virtual const char* GetName() const { return "Rotate"; }
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
@@ -491,7 +497,7 @@ namespace ToolsRig
         float _rotationDegrees;
     };
 
-    void    RotateManipulator::PerformAction(const Float3&, const Float3&)
+    void    RotateManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3&, const Float3&)
     {
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
@@ -504,7 +510,7 @@ namespace ToolsRig
             float radius = Magnitude(rotationOrigin - farPoint);
             Float2 A(farPoint[0] - rotationOrigin[0], farPoint[1] - rotationOrigin[1]);
             Float3 rotationAxis = Normalize(Float3(A[1], -A[0], 0.f));
-            i->Rotate(rotationOrigin, radius, rotationAxis, float(_rotationDegrees * M_PI / 180.f));
+            i->Rotate(context, rotationOrigin, radius, rotationAxis, float(_rotationDegrees * M_PI / 180.f));
         }
     }
 

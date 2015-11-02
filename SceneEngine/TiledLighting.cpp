@@ -29,6 +29,8 @@
 
 #include "../Utility/StringFormat.h"
 
+#include "../RenderCore/DX11/Metal/DX11Utils.h"
+
 
 namespace SceneEngine
 {

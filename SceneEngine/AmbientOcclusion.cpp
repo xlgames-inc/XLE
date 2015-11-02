@@ -11,7 +11,6 @@
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/RenderTargetView.h"
 #include "../RenderCore/Metal/Shader.h"
-#include "../RenderCore/DX11/Metal/DX11.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -23,6 +22,7 @@
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include <algorithm>
+
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 
 

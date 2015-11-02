@@ -96,7 +96,7 @@ namespace SceneEngine
         std::unique_ptr<RenderCore::Metal::ShaderResourceView> _srv;
         UInt2 _updateAreaMins, _updateAreaMaxs;
         UInt2 _resourceMins, _resourceMaxs;
-        RenderCore::Metal::DeviceContext* _context;
+        RenderCore::IThreadContext* _context;
     };
 
     class TerrainCoordinateSystem;
@@ -128,10 +128,13 @@ namespace SceneEngine
         
         void    BuildGPUCache(UInt2 mins, UInt2 maxs);
         void    PrepareCache(UInt2 adjMin, UInt2 adjMax);
-        void    ApplyTool(  UInt2 adjMins, UInt2 adjMaxs, const char shaderName[],
-                            Float2 center, float radius, float adjustment, 
-                            std::tuple<uint64, void*, size_t> extraPackets[], unsigned extraPacketCount);
-        void    DoShortCircuitUpdate(RenderCore::Metal::DeviceContext* context, UInt2 adjMins, UInt2 adjMaxs);
+        void    ApplyTool(
+            RenderCore::IThreadContext& threadContext,
+            UInt2 adjMins, UInt2 adjMaxs, const char shaderName[],
+            Float2 center, float radius, float adjustment, 
+            std::tuple<uint64, void*, size_t> extraPackets[], unsigned extraPacketCount);
+        void    DoShortCircuitUpdate(
+            RenderCore::IThreadContext& context, UInt2 adjMins, UInt2 adjMaxs);
 
         virtual void CancelActiveOperations();
     };
@@ -139,20 +142,20 @@ namespace SceneEngine
     class HeightsUberSurfaceInterface : public GenericUberSurfaceInterface
     {
     public:
-        void    AdjustHeights(Float2 center, float radius, float adjustment, float powerValue);
-        void    Smooth(Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags);
-        void    AddNoise(Float2 center, float radius, float adjustment);
-        void    CopyHeight(Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags);
-        void    Rotate(Float2 center, float radius, Float3 rotationAxis, float rotationAngle);
+        void    AdjustHeights(RenderCore::IThreadContext& context, Float2 center, float radius, float adjustment, float powerValue);
+        void    Smooth(RenderCore::IThreadContext& context, Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags);
+        void    AddNoise(RenderCore::IThreadContext& context, Float2 center, float radius, float adjustment);
+        void    CopyHeight(RenderCore::IThreadContext& context, Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags);
+        void    Rotate(RenderCore::IThreadContext& context, Float2 center, float radius, Float3 rotationAxis, float rotationAngle);
 
-        void    FillWithNoise(Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail);
+        void    FillWithNoise(RenderCore::IThreadContext& context, Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail);
 
-        void    Erosion_Begin(RenderCore::IThreadContext* context, Float2 mins, Float2 maxs, const TerrainConfig& cfg);
-        void    Erosion_Tick(RenderCore::IThreadContext* context, const ErosionSimulation::Settings& params);
+        void    Erosion_Begin(RenderCore::IThreadContext& context, Float2 mins, Float2 maxs, const TerrainConfig& cfg);
+        void    Erosion_Tick(RenderCore::IThreadContext& context, const ErosionSimulation::Settings& params);
         void    Erosion_End();
         bool    Erosion_IsPrepared() const;
         void    Erosion_RenderDebugging(
-            RenderCore::IThreadContext* context,
+            RenderCore::IThreadContext& context,
             LightingParserContext& parserContext,
             const TerrainCoordinateSystem& coords);
 
@@ -171,7 +174,7 @@ namespace SceneEngine
     class CoverageUberSurfaceInterface : public GenericUberSurfaceInterface
     {
     public:
-        void Paint(Float2 centre, float radius, unsigned paintValue);
+        void Paint(RenderCore::IThreadContext& context, Float2 centre, float radius, unsigned paintValue);
 
         CoverageUberSurfaceInterface(
             TerrainUberSurfaceGeneric& uberSurface,

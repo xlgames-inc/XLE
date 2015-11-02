@@ -28,7 +28,7 @@ namespace ToolsRig
             const SceneEngine::IntersectionTestContext& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene) = 0;
         virtual void Render(
-            RenderCore::IThreadContext* context, 
+            RenderCore::IThreadContext& context, 
             SceneEngine::LightingParserContext& parserContext) = 0;
 
         virtual const char* GetName() const = 0;

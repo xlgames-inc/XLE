@@ -82,7 +82,7 @@ namespace ToolsRig
             const SceneEngine::IntersectionTestContext& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
-            RenderCore::IThreadContext* context,
+            RenderCore::IThreadContext& context,
             SceneEngine::LightingParserContext& parserContext);
 
         const char* GetName() const;
@@ -477,7 +477,7 @@ namespace ToolsRig
     }
 
     void SelectAndEdit::Render(
-        RenderCore::IThreadContext* context,
+        RenderCore::IThreadContext& context,
         SceneEngine::LightingParserContext& parserContext)
     {
         std::vector<std::pair<uint64, uint64>> activeSelection;
@@ -499,7 +499,7 @@ namespace ToolsRig
                 //  likely get the most efficient results by rendering
                 //  all of objects that require highlights in one go.
             Placements_RenderHighlight(
-                *context, parserContext, _editor.get(),
+                context, parserContext, _editor.get(),
                 AsPointer(activeSelection.begin()), AsPointer(activeSelection.end()));
         }
     }
@@ -583,7 +583,7 @@ namespace ToolsRig
             const SceneEngine::IntersectionTestContext& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
-            RenderCore::IThreadContext* context,
+            RenderCore::IThreadContext& context,
             SceneEngine::LightingParserContext& parserContext);
 
         const char* GetName() const;
@@ -699,7 +699,7 @@ namespace ToolsRig
     }
 
     void PlaceSingle::Render(
-        RenderCore::IThreadContext* context,
+        RenderCore::IThreadContext& context,
         SceneEngine::LightingParserContext& parserContext)
     {
         ++_rendersSinceHitTest;
@@ -711,7 +711,7 @@ namespace ToolsRig
             }
 
             Placements_RenderHighlight(
-                *context, parserContext, _editor.get(),
+                context, parserContext, _editor.get(),
                 AsPointer(objects.begin()), AsPointer(objects.end()));
         }
     }
@@ -763,7 +763,7 @@ namespace ToolsRig
             const SceneEngine::IntersectionTestContext& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
-            RenderCore::IThreadContext* context,
+            RenderCore::IThreadContext& context,
             SceneEngine::LightingParserContext& parserContext);
 
         const char* GetName() const;
@@ -1177,13 +1177,11 @@ namespace ToolsRig
     }
 
     void ScatterPlacements::Render(
-        RenderCore::IThreadContext* context,
+        RenderCore::IThreadContext& context,
         SceneEngine::LightingParserContext& parserContext)
     {
-        if (_hasHoverPoint) {
-            RenderCylinderHighlight(
-                *context, parserContext, _hoverPoint, _radius);
-        }
+        if (_hasHoverPoint)
+            RenderCylinderHighlight(context, parserContext, _hoverPoint, _radius);
     }
 
     const char* ScatterPlacements::GetName() const  { return "ScatterPlace"; }
@@ -1429,7 +1427,7 @@ namespace ToolsRig
     void PlacementsWidgets::RenderToScene(
         RenderCore::IThreadContext* context, SceneEngine::LightingParserContext& parserContext)
     {
-        _manipulators[_activeManipulatorIndex]->Render(context, parserContext);
+        _manipulators[_activeManipulatorIndex]->Render(*context, parserContext);
     }
 
     std::string PlacementsWidgets::GetSelectedModel() const { return _selectedModel; }

@@ -18,10 +18,9 @@
 
 namespace SceneEngine
 {
+    using namespace RenderCore;
     MetricsBox::MetricsBox(const Desc& desc) 
     {
-        using namespace RenderCore;
-        using namespace RenderCore::Metal;
         using namespace BufferUploads;
 
         auto& uploads = GetBufferUploads();
@@ -33,14 +32,10 @@ namespace SceneEngine
         metricsBufferDesc._allocationRules = 0;
         metricsBufferDesc._linearBufferDesc._structureByteSize = sizeof(unsigned)*16;
         metricsBufferDesc._linearBufferDesc._sizeInBytes = metricsBufferDesc._linearBufferDesc._structureByteSize;
-        auto metricsBuffer = uploads.Transaction_Immediate(metricsBufferDesc)->AdoptUnderlying();
+        auto metricsBuffer = uploads.Transaction_Immediate(metricsBufferDesc);
 
-        UnorderedAccessView  metricsBufferUAV(metricsBuffer.get());
-        ShaderResourceView   metricsBufferSRV(metricsBuffer.get());
-
-        _metricsBufferResource = std::move(metricsBuffer);
-        _metricsBufferUAV = std::move(metricsBufferUAV);
-        _metricsBufferSRV = std::move(metricsBufferSRV);
+        _metricsBufferUAV = Metal::UnorderedAccessView(metricsBuffer->GetUnderlying());
+        _metricsBufferSRV = Metal::ShaderResourceView(metricsBuffer->GetUnderlying());
     }
 
     MetricsBox::~MetricsBox() {}
@@ -53,7 +48,6 @@ namespace SceneEngine
         std::initializer_list<const ::Assets::ResChar*> valueSources,
         unsigned protectStates)
     {
-        using namespace RenderCore;
         using States = ProtectState::States;
         const States::BitField effectedStates = 
             States::DepthStencilState | States::BlendState

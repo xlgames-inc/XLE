@@ -47,8 +47,8 @@ namespace SceneEngine
         XlCopyMemory(gradPkt->GetData(), g, std::min(sizeof(g), gradPkt->GetDataSize()));
         auto permPkt = BufferUploads::CreateEmptyPacket(permDesc);
         XlCopyMemory(permPkt->GetData(), perm, std::min(sizeof(perm), permPkt->GetDataSize()));
-        auto gradTexture = uploads.Transaction_Immediate(gradDesc, gradPkt.get())->AdoptUnderlying();
-        auto permTexture = uploads.Transaction_Immediate(permDesc, permPkt.get())->AdoptUnderlying();
+        auto gradTexture = uploads.Transaction_Immediate(gradDesc, gradPkt.get());
+        auto permTexture = uploads.Transaction_Immediate(permDesc, permPkt.get());
 
         /*{
             auto device  = MainBridge::GetInstance()->GetDevice();
@@ -57,13 +57,8 @@ namespace SceneEngine
             D3DX11SaveTextureToFile(context->GetUnderlying(), permTexture.get(), D3DX11_IFF_DDS, "perlin_perm.dds");
         }*/
 
-        ShaderResourceView gradShaderResource(gradTexture.get(), NativeFormat::R32G32B32_FLOAT);
-        ShaderResourceView permShaderResource(permTexture.get(), NativeFormat::R8_UNORM);
-
-        _gradTexture = std::move(gradTexture);
-        _permTexture = std::move(permTexture);
-        _gradShaderResource = std::move(gradShaderResource);
-        _permShaderResource = std::move(permShaderResource);
+        _gradShaderResource = ShaderResourceView(gradTexture->GetUnderlying(), NativeFormat::R32G32B32_FLOAT);
+        _permShaderResource = ShaderResourceView(permTexture->GetUnderlying(), NativeFormat::R8_UNORM);
     }
 
     PerlinNoiseResources::~PerlinNoiseResources()

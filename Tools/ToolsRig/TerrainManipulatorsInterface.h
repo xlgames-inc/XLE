@@ -19,7 +19,7 @@ namespace ToolsRig
     class ManipulatorsInterface : public std::enable_shared_from_this<ManipulatorsInterface>
     {
     public:
-        void    Render( RenderCore::IThreadContext* context, 
+        void    Render( RenderCore::IThreadContext& context, 
                         SceneEngine::LightingParserContext& parserContext);
         void    Update();
 

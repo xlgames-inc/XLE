@@ -40,6 +40,8 @@
 #include "../Math/ProjectionMath.h"
 #include "../Utility/FunctionUtils.h"
 
+#include "../RenderCore/DX11/Metal/DX11Utils.h"
+
 namespace SceneEngine
 {
     using namespace RenderCore;

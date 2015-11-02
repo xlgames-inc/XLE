@@ -47,7 +47,7 @@ namespace Sample
             RenderCore::IThreadContext* devContext, 
             SceneEngine::LightingParserContext& parserContext)
         {
-            _manipulatorsInterface->Render(devContext, parserContext);
+            _manipulatorsInterface->Render(*devContext, parserContext);
         }
 
         void RenderWidgets(

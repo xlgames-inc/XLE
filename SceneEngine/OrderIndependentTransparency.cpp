@@ -23,6 +23,8 @@
 #include "../BufferUploads/ResourceLocator.h"
 #include "../ConsoleRig/Console.h"
 
+#include "../RenderCore/DX11/Metal/IncludeDX11.h"
+
 namespace SceneEngine
 {
     using namespace RenderCore;

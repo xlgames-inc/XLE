@@ -39,7 +39,7 @@ namespace XLEBridgeUtils
         if (!underlying) return;
 
         underlying->Render(
-            GUILayer::EngineDevice::GetInstance()->GetNativeImmediateContext(),
+            *GUILayer::EngineDevice::GetInstance()->GetNativeImmediateContext(),
             *ManipulatorOverlay::s_currentParsingContext);
     }
 

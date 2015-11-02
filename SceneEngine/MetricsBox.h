@@ -8,7 +8,6 @@
 
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Metal/RenderTargetView.h"
-#include "../RenderCore/DX11/Metal/DX11Utils.h"
 #include "../Assets/AssetsCore.h"
 
 namespace SceneEngine
@@ -25,7 +24,6 @@ namespace SceneEngine
         MetricsBox(const Desc& desc);
         ~MetricsBox();
 
-        intrusive_ptr<ID3D::Resource>              _metricsBufferResource;
         RenderCore::Metal::UnorderedAccessView  _metricsBufferUAV;
         RenderCore::Metal::ShaderResourceView   _metricsBufferSRV;
     };

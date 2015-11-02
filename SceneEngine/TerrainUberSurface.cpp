@@ -28,6 +28,9 @@
 
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/PtrUtils.h"
+#include "../Utility/StringFormat.h"
+
+#include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
 namespace SceneEngine
 {
@@ -395,18 +398,11 @@ namespace SceneEngine
         }
     }
 
-    static RenderCore::Metal::DeviceContext GetImmediateContext()
-    {
-        ID3D::DeviceContext* immContextTemp = nullptr;
-        RenderCore::Metal::ObjectFactory().GetUnderlying()->GetImmediateContext(&immContextTemp);
-        intrusive_ptr<ID3D::DeviceContext> immContext = moveptr(immContextTemp);
-        return RenderCore::Metal::DeviceContext(std::move(immContext));
-    }
-
     void GenericUberSurfaceInterface::CancelActiveOperations()
     {}
 
-    void    GenericUberSurfaceInterface::ApplyTool( 
+    void    GenericUberSurfaceInterface::ApplyTool(
+        RenderCore::IThreadContext& threadContext,
         UInt2 adjMins, UInt2 adjMaxs, const char shaderName[],
         Float2 center, float radius, float adjustment, 
         std::tuple<uint64, void*, size_t> extraPackets[], unsigned extraPacketCount)
@@ -414,22 +410,20 @@ namespace SceneEngine
         CancelActiveOperations();
         TRY 
         {
-            using namespace RenderCore::Metal;
-
                 // might be able to do this in a deferred context?
-            auto context = GetImmediateContext();
+            auto context = Metal::DeviceContext::Get(threadContext);
 
-            UnorderedAccessView uav(_pimpl->_gpucache[0]->GetUnderlying());
-            context.BindCS(RenderCore::MakeResourceList(uav));
+            Metal::UnorderedAccessView uav(_pimpl->_gpucache[0]->GetUnderlying());
+            context->BindCS(RenderCore::MakeResourceList(uav));
 
             auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
-            context.BindCS(RenderCore::MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
+            context->BindCS(RenderCore::MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
-            char fullShaderName[256];
-            _snprintf_s(fullShaderName, _TRUNCATE, "%s:cs_*", shaderName);
+            StringMeld<256, ::Assets::ResChar> fullShaderName;
+            fullShaderName << shaderName << ":cs_*";
 
-            auto& cbBytecode = ::Assets::GetAssetDep<CompiledShaderByteCode>(fullShaderName);
-            auto& cs = ::Assets::GetAssetDep<ComputeShader>(fullShaderName);
+            auto& cbBytecode = ::Assets::GetAssetDep<CompiledShaderByteCode>(fullShaderName.get());
+            auto& cs = ::Assets::GetAssetDep<Metal::ComputeShader>(fullShaderName.get());
             struct Parameters
             {
                 Float2 _center;
@@ -441,18 +435,18 @@ namespace SceneEngine
                 int _dummy[2];
             } parameters = { center, radius, adjustment, _pimpl->_gpuCacheMins, _pimpl->_gpuCacheMaxs, adjMins, 0, 0 };
 
-            BoundUniforms uniforms(cbBytecode);
+            Metal::BoundUniforms uniforms(cbBytecode);
             uniforms.BindConstantBuffer(Hash64("Parameters"), 0, 1);
 
             const auto InputSurfaceHash = Hash64("InputSurface");
-            ShaderResourceView cacheCopySRV;
+            Metal::ShaderResourceView cacheCopySRV;
             if (uniforms.BindShaderResource(InputSurfaceHash, 0, 1)) {
-                context.GetUnderlying()->CopyResource(_pimpl->_gpucache[1]->GetUnderlying(), _pimpl->_gpucache[0]->GetUnderlying());
-                cacheCopySRV = ShaderResourceView(_pimpl->_gpucache[1]->GetUnderlying());
+                context->GetUnderlying()->CopyResource(_pimpl->_gpucache[1]->GetUnderlying(), _pimpl->_gpucache[0]->GetUnderlying());
+                cacheCopySRV = Metal::ShaderResourceView(_pimpl->_gpucache[1]->GetUnderlying());
             }
 
-            const ShaderResourceView* resources[] = { &cacheCopySRV };
-            std::vector<ConstantBufferPacket> pkts;
+            const Metal::ShaderResourceView* resources[] = { &cacheCopySRV };
+            std::vector<Metal::ConstantBufferPacket> pkts;
             pkts.push_back(RenderCore::MakeSharedPkt(parameters));
             for (unsigned c=0; c<extraPacketCount; ++c) {
                 uniforms.BindConstantBuffer(std::get<0>(extraPackets[c]), 1+c, 1);
@@ -461,22 +455,22 @@ namespace SceneEngine
                 pkts.push_back(RenderCore::MakeSharedPkt(start, PtrAdd(start, size)));
             }
 
-            uniforms.Apply(context, UniformsStream(), UniformsStream(AsPointer(pkts.begin()), nullptr, pkts.size(), resources, dimof(resources)));   // no access to global uniforms here
-            context.Bind(cs);
+            uniforms.Apply(*context, Metal::UniformsStream(), Metal::UniformsStream(AsPointer(pkts.begin()), nullptr, pkts.size(), resources, dimof(resources)));   // no access to global uniforms here
+            context->Bind(cs);
             const unsigned threadGroupDim = 16;
-            context.Dispatch(
+            context->Dispatch(
                 (adjMaxs[0] - adjMins[0] + 1 + threadGroupDim - 1) / threadGroupDim,
                 (adjMaxs[1] - adjMins[1] + 1 + threadGroupDim - 1) / threadGroupDim);
-            context.UnbindCS<UnorderedAccessView>(0, 1);
+            context->UnbindCS<Metal::UnorderedAccessView>(0, 1);
 
-            DoShortCircuitUpdate(&context, adjMins, adjMaxs);
+            DoShortCircuitUpdate(threadContext, adjMins, adjMaxs);
         }
         CATCH (...) {}
         CATCH_END
     }
 
     void    GenericUberSurfaceInterface::DoShortCircuitUpdate(
-        RenderCore::Metal::DeviceContext* context, 
+        RenderCore::IThreadContext& context, 
         UInt2 adjMins, UInt2 adjMaxs)
     {
         TRY 
@@ -484,7 +478,7 @@ namespace SceneEngine
             using namespace RenderCore::Metal;
 
             ShortCircuitUpdate upd;
-            upd._context = context;
+            upd._context = &context;
             upd._updateAreaMins = adjMins;
             upd._updateAreaMaxs = adjMaxs;
             upd._resourceMins = _pimpl->_gpuCacheMins;
@@ -583,7 +577,7 @@ namespace SceneEngine
 
     #define baseShader "game/xleres/ui/terrainmodification.sh:"
 
-    void    HeightsUberSurfaceInterface::AdjustHeights(Float2 center, float radius, float adjustment, float powerValue)
+    void    HeightsUberSurfaceInterface::AdjustHeights(RenderCore::IThreadContext& threadContext, Float2 center, float radius, float adjustment, float powerValue)
     {
         if (!_pimpl || !_pimpl->_uberSurface)
             return;
@@ -607,10 +601,10 @@ namespace SceneEngine
             std::make_tuple(Hash64("RaiseLowerParameters"), &raiseLowerParameters, sizeof(RaiseLowerParameters))
         };
 
-        ApplyTool(adjMins, adjMaxs, baseShader "RaiseLower", center, radius, adjustment, extraPackets, dimof(extraPackets));
+        ApplyTool(threadContext, adjMins, adjMaxs, baseShader "RaiseLower", center, radius, adjustment, extraPackets, dimof(extraPackets));
     }
 
-    void    HeightsUberSurfaceInterface::AddNoise(Float2 center, float radius, float adjustment)
+    void    HeightsUberSurfaceInterface::AddNoise(RenderCore::IThreadContext& threadContext, Float2 center, float radius, float adjustment)
     {
         if (!_pimpl || !_pimpl->_uberSurface)
             return;
@@ -624,10 +618,10 @@ namespace SceneEngine
 
             //  run a shader that will modify the gpu-cached part of the uber surface as we need
 
-        ApplyTool(adjMins, adjMaxs, baseShader "AddNoise", center, radius, adjustment, nullptr, 0);
+        ApplyTool(threadContext, adjMins, adjMaxs, baseShader "AddNoise", center, radius, adjustment, nullptr, 0);
     }
 
-    void    HeightsUberSurfaceInterface::CopyHeight(Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags)
+    void    HeightsUberSurfaceInterface::CopyHeight(RenderCore::IThreadContext& threadContext, Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags)
     {
         if (!_pimpl || !_pimpl->_uberSurface)
             return;
@@ -652,10 +646,10 @@ namespace SceneEngine
             std::make_tuple(Hash64("CopyHeightParameters"), &copyHeightParameters, sizeof(CopyHeightParameters))
         };
 
-        ApplyTool(adjMins, adjMaxs, baseShader "CopyHeight", center, radius, adjustment, extraPackets, dimof(extraPackets));
+        ApplyTool(threadContext, adjMins, adjMaxs, baseShader "CopyHeight", center, radius, adjustment, extraPackets, dimof(extraPackets));
     }
 
-    void    HeightsUberSurfaceInterface::Rotate(Float2 center, float radius, Float3 rotationAxis, float rotationAngle)
+    void    HeightsUberSurfaceInterface::Rotate(RenderCore::IThreadContext& threadContext, Float2 center, float radius, Float3 rotationAxis, float rotationAngle)
     {
         if (!_pimpl || !_pimpl->_uberSurface)
             return;
@@ -682,10 +676,10 @@ namespace SceneEngine
             std::make_tuple(Hash64("RotateParameters"), &rotateParameters, sizeof(RotateParamaters))
         };
 
-        ApplyTool(adjMins, adjMaxs, baseShader "Rotate", center, radius, 1.f, extraPackets, dimof(extraPackets));
+        ApplyTool(threadContext, adjMins, adjMaxs, baseShader "Rotate", center, radius, 1.f, extraPackets, dimof(extraPackets));
     }
 
-    void    HeightsUberSurfaceInterface::Smooth(Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags)
+    void    HeightsUberSurfaceInterface::Smooth(RenderCore::IThreadContext& threadContext, Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags)
     {
         if (!_pimpl || !_pimpl->_uberSurface)
             return;
@@ -725,10 +719,10 @@ namespace SceneEngine
             std::make_tuple(Hash64("GaussianParameters"), &blurParameters, sizeof(BlurParameters))
         };
             
-        ApplyTool(adjMins, adjMaxs, baseShader "Smooth", center, radius, strength, extraPackets, dimof(extraPackets));
+        ApplyTool(threadContext, adjMins, adjMaxs, baseShader "Smooth", center, radius, strength, extraPackets, dimof(extraPackets));
     }
 
-    void    HeightsUberSurfaceInterface::FillWithNoise(Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail)
+    void    HeightsUberSurfaceInterface::FillWithNoise(RenderCore::IThreadContext& threadContext, Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail)
     {
         if (!_pimpl || !_pimpl->_uberSurface)
             return;
@@ -751,11 +745,11 @@ namespace SceneEngine
             std::make_tuple(Hash64("FillWithNoiseParameters"), &fillWithNoiseParameters, sizeof(FillWithNoiseParameters))
         };
             
-        ApplyTool(adjMins, adjMaxs, baseShader "FillWithNoise", LinearInterpolate(mins, maxs, 0.5f), 1.f, 1.f, extraPackets, dimof(extraPackets));
+        ApplyTool(threadContext, adjMins, adjMaxs, baseShader "FillWithNoise", LinearInterpolate(mins, maxs, 0.5f), 1.f, 1.f, extraPackets, dimof(extraPackets));
     }
 
     void    HeightsUberSurfaceInterface::Erosion_Begin(
-        RenderCore::IThreadContext* context,
+        RenderCore::IThreadContext& context,
         Float2 mins, Float2 maxs, const TerrainConfig& cfg)
     {
         Erosion_End();
@@ -794,7 +788,7 @@ namespace SceneEngine
         //     _pimpl->_gpuCacheMaxs - _pimpl->_gpuCacheMins + UInt2(1,1), 
         //     _pimpl->_gpucache[0]);
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
 
         UInt2 erosionSimSize = finalCacheMax - finalCacheMin + UInt2(1,1);
         auto erosionSim = std::make_unique<ErosionSimulation>(erosionSimSize, terrainScale);
@@ -810,14 +804,14 @@ namespace SceneEngine
     }
 
     void    HeightsUberSurfaceInterface::Erosion_Tick(
-        RenderCore::IThreadContext* context,
+        RenderCore::IThreadContext& context,
         const ErosionSimulation::Settings& params)
     {
         if (!Erosion_IsPrepared()) {
             return;     // no active sim
         }
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
         _pimpl->_erosionSim->Tick(*metalContext, params);
 
         auto gpuCacheOffset = _pimpl->_erosionSimGPUCacheOffset;
@@ -830,7 +824,7 @@ namespace SceneEngine
 
             //  Update the mesh with the changes
         DoShortCircuitUpdate(
-            metalContext.get(),
+            context,
             _pimpl->_gpuCacheMins + gpuCacheOffset, 
             _pimpl->_gpuCacheMins + gpuCacheOffset + size);
     }
@@ -848,13 +842,13 @@ namespace SceneEngine
     }
 
     void    HeightsUberSurfaceInterface::Erosion_RenderDebugging(
-        RenderCore::IThreadContext* context,
+        RenderCore::IThreadContext& context,
         LightingParserContext& parserContext,
         const TerrainCoordinateSystem& coords)
     {
         if (!Erosion_IsPrepared()) return;
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
         _pimpl->_erosionSim->RenderDebugging(
             *metalContext, parserContext, 
             ErosionSimulation::RenderDebugMode::WaterVelocity3D,
@@ -883,7 +877,7 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void CoverageUberSurfaceInterface::Paint(Float2 centre, float radius, unsigned paintValue)
+    void CoverageUberSurfaceInterface::Paint(RenderCore::IThreadContext& context, Float2 centre, float radius, unsigned paintValue)
     {
         if (!_pimpl || !_pimpl->_uberSurface)
             return;
@@ -907,7 +901,7 @@ namespace SceneEngine
             std::make_tuple(Hash64("PaintParameters"), &params, sizeof(params))
         };
 
-        ApplyTool(adjMins, adjMaxs, "game/xleres/ui/terrainmodification_int.sh:Paint", centre, radius, 0.f, extraPackets, dimof(extraPackets));
+        ApplyTool(context, adjMins, adjMaxs, "game/xleres/ui/terrainmodification_int.sh:Paint", centre, radius, 0.f, extraPackets, dimof(extraPackets));
     }
 
     void CoverageUberSurfaceInterface::CancelActiveOperations()
