@@ -589,7 +589,8 @@ namespace RenderCore { namespace Metal_DX11
         auto byteCode = shaderCode.GetByteCode();
 
         ID3D::ShaderReflection* reflectionTemp = nullptr;
-        HRESULT hresult = compiler->D3DReflect_Wrapper(byteCode.first, byteCode.second, __uuidof(ID3D::ShaderReflection), (void**)&reflectionTemp);
+        auto interfaceGuid = __uuidof(ID3D::ShaderReflection); // IID_ID3D11ShaderReflection; // 
+        HRESULT hresult = compiler->D3DReflect_Wrapper(byteCode.first, byteCode.second, interfaceGuid, (void**)&reflectionTemp);
         if (!SUCCEEDED(hresult) || !reflectionTemp)
             Throw(::Assets::Exceptions::InvalidAsset(
                 shaderCode.Initializer(), "Error while invoking low-level shader reflection"));

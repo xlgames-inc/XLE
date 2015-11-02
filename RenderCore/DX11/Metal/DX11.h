@@ -89,52 +89,52 @@ typedef struct D3D11_QUERY_DESC D3D11_QUERY_DESC;
 
 namespace ID3D
 {
-    typedef ID3D11Texture2D                         Texture2D;
-    typedef ID3D11Texture2D                         TextureCube;
-    typedef ID3D11RenderTargetView                  RenderTargetView;
-    typedef ID3D11ShaderResourceView                ShaderResourceView;
-    typedef ID3D11DepthStencilView                  DepthStencilView;
-    typedef ID3D11CommandList                       CommandList;
-    typedef ID3D11Buffer                            Buffer;
-    typedef ID3D11Texture1D                         Texture1D;
-    typedef ID3D11Texture3D                         Texture3D;
-    typedef ID3D11Query                             Query;
-    typedef ID3D11View                              View;
-    typedef ID3D10Blob                              Blob;
-    typedef ID3D11VertexShader                      VertexShader;
-    typedef ID3D11PixelShader                       PixelShader;
-    typedef ID3D11GeometryShader                    GeometryShader;
-    typedef ID3D11ComputeShader                     ComputeShader;
-    typedef ID3D11HullShader                        HullShader;
-    typedef ID3D11DomainShader                      DomainShader;
-    typedef ID3D11InputLayout                       InputLayout;
-    typedef ID3D11SamplerState                      SamplerState;
-    typedef ID3D11RasterizerState                   RasterizerState;
-    typedef ID3D11BlendState                        BlendState;
-    typedef ID3D11DepthStencilState                 DepthStencilState;
-    typedef ID3D11ShaderReflection                  ShaderReflection;
-    typedef ID3D11ShaderReflectionConstantBuffer    ShaderReflectionConstantBuffer;
-    typedef ID3D11ShaderReflectionVariable          ShaderReflectionVariable;
-    typedef ID3D11UnorderedAccessView               UnorderedAccessView;
-    typedef ID3D11ClassLinkage                      ClassLinkage;
-    typedef ID3D11ClassInstance                     ClassInstance;
+    using Texture2D             = ID3D11Texture2D;
+    using TextureCube           = ID3D11Texture2D;
+    using RenderTargetView      = ID3D11RenderTargetView;
+    using ShaderResourceView    = ID3D11ShaderResourceView;
+    using DepthStencilView      = ID3D11DepthStencilView;
+    using CommandList           = ID3D11CommandList;
+    using Buffer                = ID3D11Buffer;
+    using Texture1D             = ID3D11Texture1D;
+    using Texture3D             = ID3D11Texture3D;
+    using Query                 = ID3D11Query;
+    using View                  = ID3D11View;
+    using Blob                  = ID3D10Blob;
+    using VertexShader          = ID3D11VertexShader;
+    using PixelShader           = ID3D11PixelShader;
+    using GeometryShader        = ID3D11GeometryShader;
+    using ComputeShader         = ID3D11ComputeShader;
+    using HullShader            = ID3D11HullShader;
+    using DomainShader          = ID3D11DomainShader;
+    using InputLayout           = ID3D11InputLayout;
+    using SamplerState          = ID3D11SamplerState;
+    using RasterizerState       = ID3D11RasterizerState;
+    using BlendState            = ID3D11BlendState;
+    using DepthStencilState     = ID3D11DepthStencilState;
+    using ShaderReflection      = ID3D11ShaderReflection;
+    using ShaderReflectionConstantBuffer    = ID3D11ShaderReflectionConstantBuffer;
+    using ShaderReflectionVariable          = ID3D11ShaderReflectionVariable;
+    using UnorderedAccessView   = ID3D11UnorderedAccessView;
+    using ClassLinkage          = ID3D11ClassLinkage;
+    using ClassInstance         = ID3D11ClassInstance;
 
     #if DX_VERSION == DX_VERSION_11_1
-        typedef ID3D11DeviceContext1                DeviceContext1;
-        typedef ID3D11Device1                       Device1;
+        using DeviceContext1    = ID3D11DeviceContext1;
+        using Device1           = ID3D11Device1;
     #endif
 
-    typedef ID3D11DeviceContext                 DeviceContext;
-    typedef ID3D11Device                        Device;
-    typedef ID3D11DeviceChild                   DeviceChild;
-    typedef ID3D11Resource                      Resource;
-    typedef ID3DUserDefinedAnnotation           UserDefinedAnnotation;
+    using DeviceContext         = ID3D11DeviceContext;
+    using Device                = ID3D11Device;
+    using DeviceChild           = ID3D11DeviceChild;
+    using Resource              = ID3D11Resource;
+    using UserDefinedAnnotation = ID3DUserDefinedAnnotation;
 }
 
 namespace IDXGI
 {
-    typedef IDXGIDevice1                Device;
-    typedef IDXGISwapChain              SwapChain;
-    typedef IDXGIAdapter1               Adapter;
-    typedef IDXGIFactory1               Factory;
+    using Device        = IDXGIDevice1;
+    using SwapChain     = IDXGISwapChain;
+    using Adapter       = IDXGIAdapter1;
+    using Factory       = IDXGIFactory1;
 }
