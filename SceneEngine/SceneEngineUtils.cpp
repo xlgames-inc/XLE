@@ -98,25 +98,6 @@ namespace SceneEngine
         context.GetUnderlying()->RSSetViewports(_oldViewportCount, (D3D11_VIEWPORT*)_oldViewports);
     }
 
-    void SavedBlendAndRasterizerState::ResetToOldStates(Metal::DeviceContext& context)
-    {
-        context.GetUnderlying()->RSSetState(_oldRasterizerState.get());
-        context.GetUnderlying()->OMSetBlendState(_oldBlendState.get(), _oldBlendFactor, _oldSampleMask);
-    }
-
-    SavedBlendAndRasterizerState::SavedBlendAndRasterizerState(Metal::DeviceContext& context)
-    {
-        ID3D::RasterizerState* rs = nullptr;
-        ID3D::BlendState* bs = nullptr;
-        context.GetUnderlying()->RSGetState(&rs);
-        context.GetUnderlying()->OMGetBlendState(&bs, _oldBlendFactor, &_oldSampleMask);
-
-        _oldRasterizerState = intrusive_ptr<ID3D::RasterizerState>(rs, false);
-        _oldBlendState = intrusive_ptr<ID3D::BlendState>(bs, false);
-    }
-
-    SavedBlendAndRasterizerState::~SavedBlendAndRasterizerState() {}
-
     BufferUploads::BufferDesc BuildRenderTargetDesc( 
         BufferUploads::BindFlag::BitField bindFlags, 
         const BufferUploads::TextureDesc& textureDesc,
@@ -376,6 +357,8 @@ namespace SceneEngine
             context.GetUnderlying()->OMGetBlendState(&rawptr, _blendFactor, &_blendSampleMask);
             _blendState = moveptr(rawptr);
         }
+        if (_states & States::RasterizerState) 
+            _rasterizerState = Metal::RasterizerState(context);
         if (_states & States::InputLayout)
             _inputLayout = Metal::BoundInputLayout(context);
 
@@ -412,6 +395,7 @@ namespace SceneEngine
     , _inputLayout(std::move(moveFrom._inputLayout))
     , _indexBuffer(std::move(moveFrom._indexBuffer))
     , _blendState(std::move(moveFrom._blendState))
+    , _rasterizerState(std::move(moveFrom._rasterizerState))
     {
         _context = moveFrom._context; moveFrom._context = nullptr;
         _states = moveFrom._states; moveFrom._states = 0;
@@ -457,6 +441,8 @@ namespace SceneEngine
             _blendFactor[c] = moveFrom._blendFactor[c];
         _blendSampleMask = moveFrom._blendSampleMask;
 
+        _rasterizerState = std::move(moveFrom._rasterizerState);
+
         _viewports = moveFrom._viewports;
         _topology = moveFrom._topology;
         return *this;
@@ -471,6 +457,8 @@ namespace SceneEngine
                 _context->Bind(_depthStencilState);
             if (_states & States::BlendState)
                 _context->GetUnderlying()->OMSetBlendState(_blendState.get(), _blendFactor, _blendSampleMask);
+            if (_states & States::RasterizerState)
+                _context->Bind(_rasterizerState);
             if (_states & States::InputLayout)
                 _context->Bind(_inputLayout);
 

@@ -130,6 +130,13 @@ namespace RenderCore { namespace Metal_DX11
     : _underlying(std::move(moveFrom))
     {}
 
+    RasterizerState::RasterizerState(DeviceContext& context)
+    {
+        ID3D::RasterizerState* rawptr = nullptr;
+        context.GetUnderlying()->RSGetState(&rawptr);
+        _underlying = moveptr(rawptr);
+    }
+
     RasterizerState::~RasterizerState() {}
 
     RasterizerState RasterizerState::Null()

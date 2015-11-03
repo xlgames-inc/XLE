@@ -12,6 +12,7 @@
 #include "SceneParser.h"
 #include "Sky.h"
 #include "LightDesc.h"
+#include "GestaltResource.h"
 
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
@@ -26,13 +27,13 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Math/Transformations.h"
+#include "../Utility/StringFormat.h"
 
 #include "../ConsoleRig/Console.h"
 
 namespace SceneEngine
 {
     using namespace RenderCore;
-    using namespace RenderCore::Metal;
 
     class ScreenSpaceReflectionsResources
     {
@@ -40,43 +41,55 @@ namespace SceneEngine
         class Desc
         {
         public:
-            unsigned _width, _height;
-            unsigned _downsampleScale;
-            bool _useMsaaSamplers;
-            unsigned _maskJitterRadius;
-            bool _interpolateSamples;
-            Desc(unsigned width, unsigned height, unsigned downsampleScale, bool useMsaaSamplers, unsigned maskJitterRadius, bool interpolateSamples) 
-                : _useMsaaSamplers(useMsaaSamplers), _width(width), _height(height), _downsampleScale(downsampleScale), _maskJitterRadius(maskJitterRadius), _interpolateSamples(interpolateSamples) {}
+            unsigned    _width, _height;
+            unsigned    _downsampleScale;
+            bool        _useMsaaSamplers;
+            unsigned    _maskJitterRadius;
+            bool        _interpolateSamples;
+            Desc(   unsigned width, unsigned height, unsigned downsampleScale, bool useMsaaSamplers, 
+                    unsigned maskJitterRadius, bool interpolateSamples) 
+            : _useMsaaSamplers(useMsaaSamplers), _width(width), _height(height)
+            , _downsampleScale(downsampleScale), _maskJitterRadius(maskJitterRadius)
+            , _interpolateSamples(interpolateSamples) {}
         };
 
-        intrusive_ptr<ID3D::Resource> _maskTexture;
-        RenderCore::Metal::UnorderedAccessView _maskUnorderedAccess;
-        RenderCore::Metal::ShaderResourceView _maskShaderResource;
-        const RenderCore::Metal::ComputeShader* _buildMask;
+        using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
 
-        intrusive_ptr<ID3D::Resource> _reflectionsTexture;
-        RenderCore::Metal::RenderTargetView _reflectionsTarget;
-        RenderCore::Metal::UnorderedAccessView _reflectionsUnorderedAccess;
-        RenderCore::Metal::ShaderResourceView _reflectionsShaderResource;
-		const RenderCore::Metal::ComputeShader* _buildReflections;
+        // ResLocator                      _maskTexture;
+        // Metal::UnorderedAccessView      _maskUnorderedAccess;
+        // Metal::ShaderResourceView       _maskShaderResource;
+        GestaltTypes::UAVSRV            _mask;
+        const Metal::ComputeShader*     _buildMask;
 
-        intrusive_ptr<ID3D::Resource> _downsampledNormals;
-        intrusive_ptr<ID3D::Resource> _downsampledDepth;
-        RenderCore::Metal::RenderTargetView _downsampledNormalsTarget;
-        RenderCore::Metal::RenderTargetView _downsampledDepthTarget;
-        RenderCore::Metal::ShaderResourceView _downsampledNormalsShaderResource;
-        RenderCore::Metal::ShaderResourceView _downsampledDepthShaderResource;
+        // ResLocator                      _reflectionsTexture;
+        // Metal::RenderTargetView         _reflectionsTarget;
+        // Metal::UnorderedAccessView      _reflectionsUnorderedAccess;
+        // Metal::ShaderResourceView       _reflectionsShaderResource;
+        GestaltTypes::RTVUAVSRV         _reflections;
+		const Metal::ComputeShader*     _buildReflections;
 
-        const RenderCore::Metal::ShaderProgram* _downsampleTargets;
-        const RenderCore::Metal::ShaderProgram* _horizontalBlur;
-        const RenderCore::Metal::ShaderProgram* _verticalBlur;
+        // ResLocator                      _downsampledNormals;
+        // ResLocator                      _downsampledDepth;
+        // Metal::RenderTargetView         _downsampledNormalsTarget;
+        // Metal::RenderTargetView         _downsampledDepthTarget;
+        // Metal::ShaderResourceView       _downsampledNormalsShaderResource;
+        // Metal::ShaderResourceView       _downsampledDepthShaderResource;
+        GestaltTypes::RTVSRV            _downsampledNormals;
+        GestaltTypes::RTVSRV            _downsampledDepth;
 
-        RenderCore::Metal::ConstantBuffer _samplingPatternConstants;
+        const Metal::ShaderProgram*     _downsampleTargets;
+        const Metal::ShaderProgram*     _horizontalBlur;
+        const Metal::ShaderProgram*     _verticalBlur;
+
+        Metal::ConstantBuffer           _samplingPatternConstants;
 
         Desc _desc;
 
         ScreenSpaceReflectionsResources(const Desc& desc);
         ~ScreenSpaceReflectionsResources();
+
+        ScreenSpaceReflectionsResources(const ScreenSpaceReflectionsResources&) = delete;
+        ScreenSpaceReflectionsResources& operator=(const ScreenSpaceReflectionsResources&) = delete;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
     private:
@@ -86,40 +99,61 @@ namespace SceneEngine
     ScreenSpaceReflectionsResources::ScreenSpaceReflectionsResources(const Desc& desc)
     : _desc(desc)
     {
-        using namespace RenderCore;
-        using namespace RenderCore::Metal;
         using namespace BufferUploads;
-        auto& uploads = GetBufferUploads();
     
             ////////////
-        auto maskTexture = uploads.Transaction_Immediate(
-                BuildRenderTargetDesc(  BindFlag::ShaderResource|BindFlag::UnorderedAccess,
-                                        BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R8_UNORM), "SSReflMask")
-                )->AdoptUnderlying();
-        UnorderedAccessView maskUnorderedAccess(maskTexture.get());
-        ShaderResourceView maskShaderResource(maskTexture.get());
+        // auto maskTexture = uploads.Transaction_Immediate(
+        //     CreateDesc(  
+        //         BindFlag::ShaderResource|BindFlag::UnorderedAccess,
+        //         0, GPUAccess::Read|GPUAccess::Write,
+        //         TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R8_UNORM),
+        //         "SSReflMask"));
+        // Metal::UnorderedAccessView maskUnorderedAccess(maskTexture->GetUnderlying());
+        // Metal::ShaderResourceView maskShaderResource(maskTexture->GetUnderlying());
+        
+        // auto reflectionsTexture = uploads.Transaction_Immediate(
+        //     CreateDesc(
+        //         BindFlag::ShaderResource|BindFlag::UnorderedAccess|BindFlag::RenderTarget,
+        //         0, GPUAccess::Read|GPUAccess::Write,
+        //         TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R16G16B16A16_FLOAT), 
+        //         "SSRefl"));
+        // Metal::UnorderedAccessView reflectionsUnorderedAccess(reflectionsTexture->GetUnderlying());
+        // Metal::RenderTargetView reflectionsTarget(reflectionsTexture->GetUnderlying());
+        // Metal::ShaderResourceView reflectionsShaderResource(reflectionsTexture->GetUnderlying());
+        // 
+        // auto downsampledNormals = uploads.Transaction_Immediate(
+        //     CreateDesc(  
+        //         BindFlag::ShaderResource|BindFlag::RenderTarget,
+        //         0, GPUAccess::Read|GPUAccess::Write,
+        //         TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R16G16B16A16_FLOAT), //R11G11B10_FLOAT)), 
+        //         "SSLowNorms"));
+        // Metal::RenderTargetView downsampledNormalsTarget(downsampledNormals->GetUnderlying());
+        // Metal::ShaderResourceView downsampledNormalsShaderResource(downsampledNormals->GetUnderlying());
+        // 
+        // auto downsampledDepth = uploads.Transaction_Immediate(
+        //     CreateDesc( 
+        //         BindFlag::ShaderResource|BindFlag::RenderTarget,
+        //         0, GPUAccess::Read|GPUAccess::Write,
+        //         TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R32_FLOAT), // NativeFormat::R16_UNORM)), 
+        //         "SSLowDepths"));
+        // Metal::RenderTargetView downsampledDepthTarget(downsampledDepth->GetUnderlying());
+        // Metal::ShaderResourceView downsampledDepthShaderResource(downsampledDepth->GetUnderlying());
 
-        auto reflectionsTexture = uploads.Transaction_Immediate(
-                BuildRenderTargetDesc(  BindFlag::ShaderResource|BindFlag::UnorderedAccess|BindFlag::RenderTarget,
-                                        BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R16G16B16A16_FLOAT), "SSRefl")
-                )->AdoptUnderlying();
-        UnorderedAccessView reflectionsUnorderedAccess(reflectionsTexture.get());
-        RenderTargetView reflectionsTarget(reflectionsTexture.get());
-        ShaderResourceView reflectionsShaderResource(reflectionsTexture.get());
+        _mask = GestaltTypes::UAVSRV(
+            TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R8_UNORM),
+            "SSReflMask");
 
-        auto downsampledNormals = uploads.Transaction_Immediate(
-                BuildRenderTargetDesc(  BindFlag::ShaderResource|BindFlag::RenderTarget,
-                                        BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R16G16B16A16_FLOAT), "SSLowNorms") //R11G11B10_FLOAT)), 
-                )->AdoptUnderlying();
-        RenderTargetView downsampledNormalsTarget(downsampledNormals.get());
-        ShaderResourceView downsampledNormalsShaderResource(downsampledNormals.get());
+        _reflections = GestaltTypes::RTVUAVSRV(
+            TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R16G16B16A16_FLOAT), 
+            "SSRefl");
 
-        auto downsampledDepth = uploads.Transaction_Immediate(
-                BuildRenderTargetDesc(  BindFlag::ShaderResource|BindFlag::RenderTarget,
-                                        BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_FLOAT), "SSLowDepths") // NativeFormat::R16_UNORM)), 
-                )->AdoptUnderlying();
-        RenderTargetView downsampledDepthTarget(downsampledDepth.get());
-        ShaderResourceView downsampledDepthShaderResource(downsampledDepth.get());
+        _downsampledNormals = GestaltTypes::RTVSRV(
+            TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R16G16B16A16_FLOAT), //R11G11B10_FLOAT), 
+            "SSLowNorms");
+
+        _downsampledDepth = GestaltTypes::RTVSRV(
+            TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R32_FLOAT), // NativeFormat::R16_UNORM), 
+            "SSLowDepths");
 
             ////////////
 
@@ -202,80 +236,72 @@ namespace SceneEngine
             }
         }
 
-		ConstantBuffer samplingPatternConstants(samplingPattern.get(), sizeof(SamplingPattern));
+		Metal::ConstantBuffer samplingPatternConstants(samplingPattern.get(), sizeof(SamplingPattern));
 
             ////////////
-        auto* buildMask = &::Assets::GetAssetDep<ComputeShader>(
+        _buildMask = &::Assets::GetAssetDep<Metal::ComputeShader>(
             "game/xleres/screenspacerefl/buildmask.csh:BuildMask:cs_*");
 
-        char definesBuffer[256];
-        sprintf_s(definesBuffer, dimof(definesBuffer), "%sDOWNSAMPLE_SCALE=%i;INTERPOLATE_SAMPLES=%i", 
-            desc._useMsaaSamplers?"MSAA_SAMPLERS=1;":"", desc._downsampleScale, int(desc._interpolateSamples));
+        StringMeld<256> definesBuffer;
+        definesBuffer 
+            << (desc._useMsaaSamplers?"MSAA_SAMPLERS=1;":"") 
+            << "DOWNSAMPLE_SCALE=" << desc._downsampleScale 
+            << ";INTERPOLATE_SAMPLES=" << int(desc._interpolateSamples);
 
-        auto* buildReflections = &::Assets::GetAssetDep<ComputeShader>(
+        _buildReflections = &::Assets::GetAssetDep<Metal::ComputeShader>(
             "game/xleres/screenspacerefl/buildreflection.csh:BuildReflection:cs_*",
-            definesBuffer);
+            definesBuffer.get());
     
-        auto* downsampleTargets = &::Assets::GetAssetDep<ShaderProgram>(
+        _downsampleTargets = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*",
             "game/xleres/screenspacerefl/DownsampleStep.psh:main:ps_*",
-            definesBuffer);
+            definesBuffer.get());
 
-        auto* horizontalBlur = &::Assets::GetAssetDep<ShaderProgram>(
+        _horizontalBlur = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*",
             "game/xleres/screenspacerefl/BlurStep.psh:HorizontalBlur:ps_*",
-            definesBuffer);
+            definesBuffer.get());
 
-        auto* verticalBlur = &::Assets::GetAssetDep<ShaderProgram>(
+        _verticalBlur = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*",
             "game/xleres/screenspacerefl/BlurStep.psh:VerticalBlur:ps_*",
-            definesBuffer);
+            definesBuffer.get());
 
             ////////////
-        auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, buildMask->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, buildReflections->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, downsampleTargets->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, horizontalBlur->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, verticalBlur->GetDependencyValidation());
+        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterAssetDependency(_validationCallback, _buildMask->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, _buildReflections->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, _downsampleTargets->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, _horizontalBlur->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, _verticalBlur->GetDependencyValidation());
 
-        _maskTexture = std::move(maskTexture);
-        _maskUnorderedAccess = std::move(maskUnorderedAccess);
-        _maskShaderResource = std::move(maskShaderResource);
+        // _reflectionsTexture = std::move(reflectionsTexture);
+        // _reflectionsUnorderedAccess = std::move(reflectionsUnorderedAccess);
+        // _reflectionsShaderResource = std::move(reflectionsShaderResource);
+        // _reflectionsTarget = std::move(reflectionsTarget);
+        // 
+        // _downsampledNormals = std::move(downsampledNormals);
+        // _downsampledNormalsTarget = std::move(downsampledNormalsTarget);
+        // _downsampledNormalsShaderResource = std::move(downsampledNormalsShaderResource);
+        // 
+        // _downsampledDepth = std::move(downsampledDepth);
+        // _downsampledDepthTarget = std::move(downsampledDepthTarget);
+        // _downsampledDepthShaderResource = std::move(downsampledDepthShaderResource);
 
-        _reflectionsTexture = std::move(reflectionsTexture);
-        _reflectionsUnorderedAccess = std::move(reflectionsUnorderedAccess);
-        _reflectionsShaderResource = std::move(reflectionsShaderResource);
-        _reflectionsTarget = std::move(reflectionsTarget);
-
-        _downsampledNormals = std::move(downsampledNormals);
-        _downsampledNormalsTarget = std::move(downsampledNormalsTarget);
-        _downsampledNormalsShaderResource = std::move(downsampledNormalsShaderResource);
-
-        _downsampledDepth = std::move(downsampledDepth);
-        _downsampledDepthTarget = std::move(downsampledDepthTarget);
-        _downsampledDepthShaderResource = std::move(downsampledDepthShaderResource);
-
-        _buildMask = std::move(buildMask);
-        _buildReflections = std::move(buildReflections);
-        _downsampleTargets = std::move(downsampleTargets);
-        _horizontalBlur = std::move(horizontalBlur);
-        _verticalBlur = std::move(verticalBlur);
         _samplingPatternConstants = std::move(samplingPatternConstants);
-        _validationCallback = std::move(validationCallback);
     }
 
     ScreenSpaceReflectionsResources::~ScreenSpaceReflectionsResources() {}
 
         ////////////////////////////////
 
-    static void ScreenSpaceReflections_DrawDebugging(   RenderCore::Metal::DeviceContext& context, 
+    static void ScreenSpaceReflections_DrawDebugging(   Metal::DeviceContext& context, 
                                                         LightingParserContext& parserContext,
                                                         ScreenSpaceReflectionsResources& resources,
-                                                        RenderCore::Metal::ShaderResourceView* gbufferDiffuse,
-                                                        RenderCore::Metal::ShaderResourceView* gbufferNormals,
-                                                        RenderCore::Metal::ShaderResourceView* gbufferParam,
-                                                        RenderCore::Metal::ShaderResourceView* depthsSRV);
+                                                        Metal::ShaderResourceView* gbufferDiffuse,
+                                                        Metal::ShaderResourceView* gbufferNormals,
+                                                        Metal::ShaderResourceView* gbufferParam,
+                                                        Metal::ShaderResourceView* depthsSRV);
 
     ScreenSpaceReflectionsResources::Desc GetConfig(unsigned width, unsigned height, bool useMsaaSamplers)
     {
@@ -289,14 +315,14 @@ namespace SceneEngine
                 useMsaaSamplers, reflMaskJitterRadius, interpolateSamples);
     }
 
-    RenderCore::Metal::ShaderResourceView
-        ScreenSpaceReflections_BuildTextures(   RenderCore::Metal::DeviceContext* context, 
+    Metal::ShaderResourceView
+        ScreenSpaceReflections_BuildTextures(   Metal::DeviceContext* context, 
                                                 LightingParserContext& parserContext,
                                                 unsigned width, unsigned height, bool useMsaaSamplers, 
-                                                RenderCore::Metal::ShaderResourceView& gbufferDiffuse,
-                                                RenderCore::Metal::ShaderResourceView& gbufferNormals,
-                                                RenderCore::Metal::ShaderResourceView& gbufferParam,
-                                                RenderCore::Metal::ShaderResourceView& depthsSRV)
+                                                Metal::ShaderResourceView& gbufferDiffuse,
+                                                Metal::ShaderResourceView& gbufferNormals,
+                                                Metal::ShaderResourceView& gbufferParam,
+                                                Metal::ShaderResourceView& depthsSRV)
     {
             //
             //      Build textures and resources related to screen space textures
@@ -305,18 +331,20 @@ namespace SceneEngine
         auto cfg = GetConfig(width, height, useMsaaSamplers);
         auto& res = Techniques::FindCachedBoxDep<ScreenSpaceReflectionsResources>(cfg);
 
-        SavedTargets oldTargets(*context);
-        SavedBlendAndRasterizerState oldBlendAndRasterizer(*context);
+        ProtectState protectState(
+            *context,
+              ProtectState::States::RenderTargets | ProtectState::States::Viewports
+            | ProtectState::States::BlendState | ProtectState::States::RasterizerState);
 
         context->Bind(Techniques::CommonResources()._blendOpaque);
         context->Bind(Techniques::CommonResources()._cullDisable);
-        ViewportDesc newViewport(0, 0, float(cfg._width), float(cfg._height), 0.f, 1.f);
+        Metal::ViewportDesc newViewport(0, 0, float(cfg._width), float(cfg._height), 0.f, 1.f);
         context->Bind(newViewport);
 
             //  
             //      Downsample the normal & depth textures 
             //
-        context->Bind(MakeResourceList(res._downsampledDepthTarget, res._downsampledNormalsTarget), nullptr);
+        context->Bind(MakeResourceList(res._downsampledDepth.RTV(), res._downsampledNormals.RTV()), nullptr);
         context->BindPS(MakeResourceList(1, gbufferNormals));
         context->BindPS(MakeResourceList(3, depthsSRV));
         context->BindPS(MakeResourceList(parserContext.GetGlobalTransformCB()));
@@ -328,7 +356,7 @@ namespace SceneEngine
         Float3 projScale; float projZOffset;
         {
                 // this is a 4-parameter minimal projection transform
-                // see "RenderCore::Assets::PerspectiveProjection" for more detail
+                // see "PerspectiveProjection" for more detail
             const float n = projDesc._nearClip;
             const float f = projDesc._farClip;
             const float h = n * XlTan(.5f * projDesc._verticalFov);
@@ -354,10 +382,10 @@ namespace SceneEngine
             //
             //      Build the mask texture by sampling the downsampled textures
             //
-        context->Bind(ResourceList<RenderTargetView, 0>(), nullptr);
-        context->BindCS(MakeResourceList(gbufferDiffuse, res._downsampledNormalsShaderResource, res._downsampledDepthShaderResource));
+        context->Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
+        context->BindCS(MakeResourceList(gbufferDiffuse, res._downsampledNormals.SRV(), res._downsampledDepth.SRV()));
         context->BindCS(MakeResourceList(4, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
-        context->BindCS(MakeResourceList(res._maskUnorderedAccess));
+        context->BindCS(MakeResourceList(res._mask.UAV()));
         context->BindCS(MakeResourceList(parserContext.GetGlobalTransformCB(), Metal::ConstantBuffer(&viewProjParam, sizeof(viewProjParam)), res._samplingPatternConstants, parserContext.GetGlobalStateCB()));
         context->BindCS(MakeResourceList(   Metal::SamplerState(Metal::FilterMode::Trilinear, Metal::AddressMode::Wrap, Metal::AddressMode::Wrap, Metal::AddressMode::Wrap),
                                             Metal::SamplerState(Metal::FilterMode::Trilinear, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp)));
@@ -367,13 +395,13 @@ namespace SceneEngine
             //
             //      Now write the reflections texture
             //
-        context->BindCS(MakeResourceList(res._reflectionsUnorderedAccess));
-        context->BindCS(MakeResourceList(3, res._maskShaderResource));
+        context->BindCS(MakeResourceList(res._reflections.UAV()));
+        context->BindCS(MakeResourceList(3, res._mask.SRV()));
         context->Bind(*res._buildReflections);
         context->Dispatch((cfg._width + (16-1))/16, (cfg._height + (16-1))/16);
 
-        context->UnbindCS<UnorderedAccessView>(0, 1);
-        context->UnbindCS<ShaderResourceView>(0, 4);
+        context->UnbindCS<Metal::UnorderedAccessView>(0, 1);
+        context->UnbindCS<Metal::ShaderResourceView>(0, 4);
 
             //
             //      Blur the result in 2 steps
@@ -386,50 +414,49 @@ namespace SceneEngine
             BuildGaussianFilteringWeights(filteringWeights, standardDeviation, 7);
             context->BindPS(MakeResourceList(Metal::ConstantBuffer(filteringWeights, sizeof(filteringWeights))));
 
-            context->Bind(MakeResourceList(res._downsampledNormalsTarget), nullptr);
-            context->BindPS(MakeResourceList(0, res._reflectionsShaderResource));
+            context->Bind(MakeResourceList(res._downsampledNormals.RTV()), nullptr);
+            context->BindPS(MakeResourceList(0, res._reflections.SRV()));
             context->Bind(*res._horizontalBlur);
             context->Draw(4);
-            context->UnbindPS<ShaderResourceView>(0, 1);
+            context->UnbindPS<Metal::ShaderResourceView>(0, 1);
 
-            context->Bind(MakeResourceList(res._reflectionsTarget), nullptr);
-            context->BindPS(MakeResourceList(0, res._downsampledNormalsShaderResource));
+            context->Bind(MakeResourceList(res._reflections.RTV()), nullptr);
+            context->BindPS(MakeResourceList(0, res._downsampledNormals.SRV()));
             context->Bind(*res._verticalBlur);
             context->Draw(4);
         }
 
-        oldTargets.ResetToOldTargets(*context);
-        oldBlendAndRasterizer.ResetToOldStates(*context);
-
         if (Tweakable("ScreenspaceReflectionDebugging", false)) {
             parserContext._pendingOverlays.push_back(
                 std::bind(  &ScreenSpaceReflections_DrawDebugging, 
-                            std::placeholders::_1, std::placeholders::_2, res, &gbufferDiffuse, &gbufferNormals, &gbufferNormals, &depthsSRV));
+                            std::placeholders::_1, std::placeholders::_2, std::ref(res), &gbufferDiffuse, &gbufferNormals, &gbufferNormals, &depthsSRV));
         }
 
-        return res._reflectionsShaderResource;
+        return res._reflections.SRV();
     }
 
-    static void ScreenSpaceReflections_DrawDebugging(   RenderCore::Metal::DeviceContext& context, 
+    static void ScreenSpaceReflections_DrawDebugging(   Metal::DeviceContext& context, 
                                                         LightingParserContext& parserContext,
                                                         ScreenSpaceReflectionsResources& resources,
-                                                        RenderCore::Metal::ShaderResourceView* gbufferDiffuse,
-                                                        RenderCore::Metal::ShaderResourceView* gbufferNormals,
-                                                        RenderCore::Metal::ShaderResourceView* gbufferParam,
-                                                        RenderCore::Metal::ShaderResourceView* depthsSRV)
+                                                        Metal::ShaderResourceView* gbufferDiffuse,
+                                                        Metal::ShaderResourceView* gbufferNormals,
+                                                        Metal::ShaderResourceView* gbufferParam,
+                                                        Metal::ShaderResourceView* depthsSRV)
     {
-        char definesBuffer[256];
-        sprintf_s(definesBuffer, dimof(definesBuffer), "%sDOWNSAMPLE_SCALE=%i;INTERPOLATE_SAMPLES=%i", 
-            resources._desc._useMsaaSamplers?"MSAA_SAMPLERS=1;":"", resources._desc._downsampleScale, int(resources._desc._interpolateSamples));
+        StringMeld<256> definesBuffer;
+        definesBuffer 
+            << (resources._desc._useMsaaSamplers?"MSAA_SAMPLERS=1;":"") 
+            << "DOWNSAMPLE_SCALE=" << resources._desc._downsampleScale 
+            << ";INTERPOLATE_SAMPLES=" << int(resources._desc._interpolateSamples);
         auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*", 
             "game/xleres/screenspacerefl/debugging.psh:main:ps_*",
-            definesBuffer);
+            definesBuffer.get());
         context.Bind(debuggingShader);
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
 
-        context.BindPS(MakeResourceList(5, resources._maskShaderResource, resources._downsampledNormalsShaderResource));
-        context.BindPS(MakeResourceList(10, resources._downsampledDepthShaderResource, resources._reflectionsShaderResource));
+        context.BindPS(MakeResourceList(5, resources._mask.SRV(), resources._downsampledNormals.SRV()));
+        context.BindPS(MakeResourceList(10, resources._downsampledDepth.SRV(), resources._reflections.SRV()));
         auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
         if (skyTexture[0]) {
             SkyTexture_BindPS(&context, parserContext, skyTexture, 7);
@@ -438,7 +465,7 @@ namespace SceneEngine
             // todo -- we have to bind the gbuffer here!
         context.BindPS(MakeResourceList(*gbufferDiffuse, *gbufferNormals, *gbufferParam, *depthsSRV));
 
-        ViewportDesc mainViewportDesc(context);
+        Metal::ViewportDesc mainViewportDesc(context);
                             
         auto cursorPos = GetCursorPos();
         unsigned globalConstants[4] = { unsigned(mainViewportDesc.Width), unsigned(mainViewportDesc.Height), cursorPos[0], cursorPos[1] };
@@ -451,12 +478,12 @@ namespace SceneEngine
         const Metal::ConstantBuffer* prebuiltBuffers[] = { &globalConstantsBuffer, &resources._samplingPatternConstants };
         boundUniforms.Apply(context, 
             parserContext.GetGlobalUniformsStream(),
-            UniformsStream(nullptr, prebuiltBuffers, dimof(prebuiltBuffers)));
+            Metal::UniformsStream(nullptr, prebuiltBuffers, dimof(prebuiltBuffers)));
 
         SetupVertexGeneratorShader(context);
         context.Draw(4);
 
-        context.UnbindPS<ShaderResourceView>(0, 9);
+        context.UnbindPS<Metal::ShaderResourceView>(0, 9);
     }
 }
 

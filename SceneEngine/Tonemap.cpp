@@ -533,7 +533,8 @@ namespace SceneEngine
 
     void ToneMap_Execute(DeviceContext* context, LightingParserContext& parserContext, ShaderResourceView& inputResource, int sampleCount)
     {
-        SavedBlendAndRasterizerState savedStates(*context);
+        ProtectState protectState(
+            *context, ProtectState::States::BlendState | ProtectState::States::RasterizerState);
         context->Bind(Techniques::CommonResources()._cullDisable);
 
         bool hardwareSRGBDisabled = false;
@@ -605,8 +606,6 @@ namespace SceneEngine
             }
             context->Draw(4);
         CATCH_ASSETS_END(parserContext)
-
-        savedStates.ResetToOldStates(*context);
     }
 
     static void    ToneMapping_DrawDebugging(   RenderCore::Metal::DeviceContext& context,

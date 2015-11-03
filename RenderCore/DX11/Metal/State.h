@@ -188,6 +188,7 @@ namespace RenderCore { namespace Metal_DX11
             CullMode::Enum cullmode, bool frontCounterClockwise,
             FillMode::Enum fillmode,
             int depthBias, float depthBiasClamp, float slopeScaledBias);
+        RasterizerState(DeviceContext&);
         ~RasterizerState();
 
         RasterizerState(RasterizerState&& moveFrom);

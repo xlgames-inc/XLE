@@ -137,4 +137,5 @@ namespace SceneEngine
     template class GestaltResource<RenderCore::Metal::DepthStencilView, RenderCore::Metal::ShaderResourceView>;
     template class GestaltResource<RenderCore::Metal::UnorderedAccessView>;
     template class GestaltResource<RenderCore::Metal::UnorderedAccessView, RenderCore::Metal::ShaderResourceView>;
+    template class GestaltResource<RenderCore::Metal::RenderTargetView, RenderCore::Metal::UnorderedAccessView, RenderCore::Metal::ShaderResourceView>;
 }

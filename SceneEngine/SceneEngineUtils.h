@@ -70,20 +70,6 @@ namespace SceneEngine
         unsigned _oldViewportCount;
     };
 
-    class SavedBlendAndRasterizerState
-    {
-    public:
-        void ResetToOldStates(RenderCore::Metal::DeviceContext& context);
-        ID3D::BlendState* GetBlendState() { return _oldBlendState.get(); }
-        ID3D::RasterizerState* GetRasterizerState() { return _oldRasterizerState.get(); }
-        SavedBlendAndRasterizerState(RenderCore::Metal::DeviceContext& context);
-        ~SavedBlendAndRasterizerState();
-    protected:
-        intrusive_ptr<ID3D::RasterizerState> _oldRasterizerState;
-        intrusive_ptr<ID3D::BlendState> _oldBlendState;
-        float _oldBlendFactor[4]; unsigned _oldSampleMask;
-    };
-
     BufferUploads::IManager& GetBufferUploads();
 
     BufferUploads::BufferDesc BuildRenderTargetDesc( 
@@ -194,10 +180,11 @@ namespace SceneEngine
                 Viewports           = 1<<1,
                 DepthStencilState   = 1<<2,
                 BlendState          = 1<<3,
-                Topology            = 1<<4,
-                InputLayout         = 1<<5,
-                VertexBuffer        = 1<<6,
-                IndexBuffer         = 1<<7
+                RasterizerState     = 1<<4,
+                Topology            = 1<<5,
+                InputLayout         = 1<<6,
+                VertexBuffer        = 1<<7,
+                IndexBuffer         = 1<<8
             };
             using BitField = unsigned;
         };
@@ -228,6 +215,8 @@ namespace SceneEngine
         intrusive_ptr<ID3D::BlendState> _blendState;
         float       _blendFactor[4];
         unsigned    _blendSampleMask;
+
+        RenderCore::Metal::RasterizerState _rasterizerState;
 
         RenderCore::Metal::ViewportDesc _viewports;
 

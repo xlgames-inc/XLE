@@ -98,6 +98,7 @@ namespace SceneEngine
         using DSVSRV = GestaltResource<RenderCore::Metal::DepthStencilView, RenderCore::Metal::ShaderResourceView>;
         using UAV = GestaltResource<RenderCore::Metal::UnorderedAccessView>;
         using UAVSRV = GestaltResource<RenderCore::Metal::UnorderedAccessView, RenderCore::Metal::ShaderResourceView>;
+        using RTVUAVSRV = GestaltResource<RenderCore::Metal::RenderTargetView, RenderCore::Metal::UnorderedAccessView, RenderCore::Metal::ShaderResourceView>;
     }
 }
 

@@ -6,8 +6,8 @@
 
 #include "ParsingContext.h"
 #include "Techniques.h"
+#include "../Metal/InputLayout.h"   // (for UniformsStream)
 #include "../../Assets/AssetUtils.h"
-#include "../Metal/InputLayout.h"
 #include "../../Utility/StringFormat.h"
 #include <memory>
 
