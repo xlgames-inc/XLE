@@ -79,6 +79,7 @@ tokens
 
 @header
 {
+	#pragma warning(disable:4244)
 	void myDisplayRecognitionError (void * recognizer, void * tokenNames);
 }
 

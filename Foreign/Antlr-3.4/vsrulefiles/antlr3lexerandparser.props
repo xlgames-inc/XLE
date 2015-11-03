@@ -29,10 +29,11 @@
       <MaxRules>4</MaxRules>
       <MaxDFAEdges>65534</MaxDFAEdges>
       <DFATimeout>1000</DFATimeout>
-      <CommandLineTemplate>[java] [JavaOptions] [ANTLR3Jar] org.antlr.Tool [LibDir] -[Absolute]o [OutputDirectory]  -message-format vs2005 [DFA] [NFA] [Report] [Print] [Debug] [Profile] [AST] [TextDFA] [EBNFExits] [CollapseEdges] [DebugNFA] [MaxRules] [MaxDFAEdges] [DFATimeout] [inputs]</CommandLineTemplate>
+      <CommandLineTemplate>[java] [JavaOptions] [ANTLR3Jar] [LibDir] -[Absolute]o [OutputDirectory]  -message-format vs2005 [DFA] [NFA] [Report] [Print] [Debug] [Profile] [AST] [TextDFA] [EBNFExits] [CollapseEdges] [DebugNFA] [MaxRules] [MaxDFAEdges] [DFATimeout] [inputs]</CommandLineTemplate>
       <Outputs>%(OutputDirectory)%(Filename)Parser.c</Outputs>
       <ExecutionDescription>Translating to parser/lexer combination</ExecutionDescription>
       <ShowOnlyRuleProperties>false</ShowOnlyRuleProperties>
+	  <ANTLR3Jar>$(SolutionDir)/../Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
     </Antlr3ParserLexer>
   </ItemDefinitionGroup>
 </Project>
