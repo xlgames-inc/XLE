@@ -79,9 +79,13 @@ namespace PlatformRig
         _flags = Flags::HighPrecisionDepths;
         _textureSize = 2048;
 
-        _shadowSlopeScaledBias = Tweakable("ShadowSlopeScaledBias", 1.f);
-        _shadowDepthBiasClamp = Tweakable("ShadowDepthBiasClamp", 0.f);
-        _shadowRasterDepthBias = Tweakable("ShadowRasterDepthBias", 600);
+        _slopeScaledBias = Tweakable("ShadowSlopeScaledBias", 1.f);
+        _depthBiasClamp = Tweakable("ShadowDepthBiasClamp", 0.f);
+        _rasterDepthBias = Tweakable("ShadowRasterDepthBias", 600);
+
+        _dsSlopeScaledBias = _slopeScaledBias;
+        _dsDepthBiasClamp = _depthBiasClamp;
+        _dsRasterDepthBias = _rasterDepthBias;
 
         _worldSpaceResolveBias = 0.f;   // (-.3f)
         _tanBlurAngle = 0.00436f;
@@ -108,9 +112,12 @@ template<> const ClassAccessors& GetAccessors<PlatformRig::DefaultShadowFrustumS
         props.Add(u("Flags"),   DefaultGet(Obj, _flags),    DefaultSet(Obj, _flags));
         props.Add(u("TextureSize"),   DefaultGet(Obj, _textureSize),    
             [](Obj& obj, unsigned value) { obj._textureSize = 1<<(IntegerLog2(value-1)+1); });  // ceil to a power of two
-        props.Add(u("ShadowSlopeScaledBias"),   DefaultGet(Obj, _shadowSlopeScaledBias),    DefaultSet(Obj, _shadowSlopeScaledBias));
-        props.Add(u("ShadowDepthBiasClamp"),   DefaultGet(Obj, _shadowDepthBiasClamp),    DefaultSet(Obj, _shadowDepthBiasClamp));
-        props.Add(u("ShadowRasterDepthBias"),   DefaultGet(Obj, _shadowRasterDepthBias),    DefaultSet(Obj, _shadowRasterDepthBias));
+        props.Add(u("SingleSidedSlopeScaledBias"),   DefaultGet(Obj, _slopeScaledBias),    DefaultSet(Obj, _slopeScaledBias));
+        props.Add(u("SingleSidedDepthBiasClamp"),   DefaultGet(Obj, _depthBiasClamp),    DefaultSet(Obj, _depthBiasClamp));
+        props.Add(u("SingleSidedRasterDepthBias"),   DefaultGet(Obj, _rasterDepthBias),    DefaultSet(Obj, _rasterDepthBias));
+        props.Add(u("DoubleSidedSlopeScaledBias"),   DefaultGet(Obj, _dsSlopeScaledBias),    DefaultSet(Obj, _dsSlopeScaledBias));
+        props.Add(u("DoubleSidedDepthBiasClamp"),   DefaultGet(Obj, _dsDepthBiasClamp),    DefaultSet(Obj, _dsDepthBiasClamp));
+        props.Add(u("DoubleSidedRasterDepthBias"),   DefaultGet(Obj, _dsRasterDepthBias),    DefaultSet(Obj, _dsRasterDepthBias));
         props.Add(u("WorldSpaceResolveBias"),   DefaultGet(Obj, _worldSpaceResolveBias),    DefaultSet(Obj, _worldSpaceResolveBias));
         props.Add(u("BlurAngleDegrees"),   
             [](const Obj& obj) { return Rad2Deg(XlATan(obj._tanBlurAngle)); },
@@ -391,9 +398,12 @@ namespace PlatformRig
             result._windingCull = ShadowProjectionDesc::WindingCull::BackFaces;
         }
 
-        result._shadowSlopeScaledBias = settings._shadowSlopeScaledBias;
-        result._shadowDepthBiasClamp = settings._shadowDepthBiasClamp;
-        result._shadowRasterDepthBias = settings._shadowRasterDepthBias;
+        result._slopeScaledBias = settings._slopeScaledBias;
+        result._depthBiasClamp = settings._depthBiasClamp;
+        result._rasterDepthBias = settings._rasterDepthBias;
+        result._dsSlopeScaledBias = settings._dsSlopeScaledBias;
+        result._dsDepthBiasClamp = settings._dsDepthBiasClamp;
+        result._dsRasterDepthBias = settings._dsRasterDepthBias;
 
         result._worldSpaceResolveBias = settings._worldSpaceResolveBias;
         result._tanBlurAngle = settings._tanBlurAngle;

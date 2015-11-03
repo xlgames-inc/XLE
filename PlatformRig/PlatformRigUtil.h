@@ -66,9 +66,13 @@ namespace PlatformRig
         Flags::BitField _flags;
         unsigned        _textureSize;
 
-        float           _shadowSlopeScaledBias;
-        float           _shadowDepthBiasClamp;
-        unsigned        _shadowRasterDepthBias;
+        float           _slopeScaledBias;
+        float           _depthBiasClamp;
+        unsigned        _rasterDepthBias;
+
+        float           _dsSlopeScaledBias;
+        float           _dsDepthBiasClamp;
+        unsigned        _dsRasterDepthBias;
 
         float           _worldSpaceResolveBias;
         float           _tanBlurAngle;

@@ -112,9 +112,23 @@ namespace SceneEngine
         Projections     _projections;
         Float4x4        _worldToClip;   ///< Intended for use in CPU-side culling. Objects culled by this transform will be culled from all projections
 
-        float           _shadowSlopeScaledBias;
-        float           _shadowDepthBiasClamp;
-        unsigned        _shadowRasterDepthBias;
+            /// @{
+            /// single sided depth bias
+        float           _slopeScaledBias;
+        float           _depthBiasClamp;
+        int             _rasterDepthBias;
+            /// @}
+
+            /// @{
+            /// Double sided depth bias
+            /// This is useful when flipping the culling mode during shadow
+            /// gen. In this case single sided geometry doesn't cause acne
+            /// (so we can have very small bias values). But double sided 
+            /// geometry still gets acne, so needs a larger bias!
+        float           _dsSlopeScaledBias;
+        float           _dsDepthBiasClamp;
+        int             _dsRasterDepthBias;
+            /// @}
 
         float           _worldSpaceResolveBias;
         float           _tanBlurAngle;

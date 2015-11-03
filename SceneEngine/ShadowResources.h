@@ -7,6 +7,7 @@
 #pragma once 
 
 #include "SceneEngineUtils.h"
+#include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Metal/RenderTargetView.h"
 #include "../RenderCore/Metal/Buffer.h"
@@ -61,18 +62,23 @@ namespace SceneEngine
         class Desc
         {
         public:
-            float   _slopeScaledBias, _depthBiasClamp;
-            int     _rasterDepthBias;
-            unsigned    _windingCullMode;
-            Desc(float slopeScaledBias, float depthBiasClamp, int rasterDepthBias, unsigned windingCullMode) 
-                : _slopeScaledBias(slopeScaledBias), _depthBiasClamp(depthBiasClamp), _rasterDepthBias(rasterDepthBias), _windingCullMode(windingCullMode) {}
+            using RSDepthBias = RenderCore::Techniques::RSDepthBias;
+            RSDepthBias     _singleSidedBias;
+            RSDepthBias     _doubleSidedBias;
+            unsigned        _windingCullMode;
+
+            Desc(   const RSDepthBias& singleSidedBias,
+                    const RSDepthBias& doubleSidedBias,
+                    unsigned windingCullMode) 
+            : _singleSidedBias(singleSidedBias)
+            , _doubleSidedBias(doubleSidedBias)
+            , _windingCullMode(windingCullMode) {}
         };
 
-        RenderCore::Metal::RasterizerState      _rasterizerState;
+        RenderCore::Metal::RasterizerState _rasterizerState;
         std::shared_ptr<RenderCore::Techniques::IStateSetResolver> _stateResolver;
 
         ShadowWriteResources(const Desc& desc);
         ~ShadowWriteResources();
     };
-
 }

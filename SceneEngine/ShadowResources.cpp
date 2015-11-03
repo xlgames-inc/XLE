@@ -107,14 +107,15 @@ namespace SceneEngine
         case 2: cullMode = Metal::CullMode::None; break;
         }
 
-        Metal::RasterizerState rasterizerState(
+        _rasterizerState = Metal::RasterizerState(
             cullMode, true, 
             Metal::FillMode::Solid,
-            desc._rasterDepthBias, desc._depthBiasClamp, desc._slopeScaledBias);
-        _rasterizerState = std::move(rasterizerState);
+            desc._singleSidedBias._depthBias, 
+            desc._singleSidedBias._depthBiasClamp, 
+            desc._singleSidedBias._slopeScaledBias);
 
         _stateResolver = Techniques::CreateStateSetResolver_DepthOnly(
-            desc._rasterDepthBias, desc._depthBiasClamp, desc._slopeScaledBias, cullMode);
+            desc._singleSidedBias, desc._doubleSidedBias, cullMode);
     }
 
     ShadowWriteResources::~ShadowWriteResources() {}

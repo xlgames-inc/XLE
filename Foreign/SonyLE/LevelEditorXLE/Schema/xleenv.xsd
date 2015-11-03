@@ -126,9 +126,9 @@
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,.5"/>
 
         <scea.dom.editors.attribute category="Tonemap" name="LuminanceMin" displayName="Luminance Min" description="Clamps range of valid exposures"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
         <scea.dom.editors.attribute category="Tonemap" name="LuminanceMax" displayName="Luminance Max" description="Clamps range of valid exposures"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,5"/>
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
 
         <scea.dom.editors.attribute category="Tonemap" name="WhitePoint" displayName="White Point" description="This brightness value will appear true white after exposure"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
@@ -280,9 +280,12 @@
         <LeGe.NativeProperty name="FrustumSizeFactor" nativeName="FrustumSizeFactor"/>
         <LeGe.NativeProperty name="FocusDistance" nativeName="FocusDistance"/>
         <LeGe.NativeProperty name="TextureSize" nativeName="TextureSize"/>
-        <LeGe.NativeProperty name="ShadowSlopeScaledBias" nativeName="ShadowSlopeScaledBias"/>
-        <LeGe.NativeProperty name="ShadowDepthBiasClamp" nativeName="ShadowDepthBiasClamp"/>
-        <LeGe.NativeProperty name="ShadowRasterDepthBias" nativeName="ShadowRasterDepthBias"/>
+        <LeGe.NativeProperty name="SingleSidedSlopeScaledBias" nativeName="SingleSidedSlopeScaledBias"/>
+        <LeGe.NativeProperty name="SingleSidedDepthBiasClamp" nativeName="SingleSidedDepthBiasClamp"/>
+        <LeGe.NativeProperty name="SingleSidedRasterDepthBias" nativeName="SingleSidedRasterDepthBias"/>
+        <LeGe.NativeProperty name="DoubleSidedSlopeScaledBias" nativeName="DoubleSidedSlopeScaledBias"/>
+        <LeGe.NativeProperty name="DoubleSidedDepthBiasClamp" nativeName="DoubleSidedDepthBiasClamp"/>
+        <LeGe.NativeProperty name="DoubleSidedRasterDepthBias" nativeName="DoubleSidedRasterDepthBias"/>
         <LeGe.NativeProperty name="WorldSpaceResolveBias" nativeName="WorldSpaceResolveBias"/>
         <LeGe.NativeProperty name="BlurAngleDegrees" nativeName="BlurAngleDegrees"/>
         <LeGe.NativeProperty name="MinBlurSearch" nativeName="MinBlurSearch"/>
@@ -297,11 +300,19 @@
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
 
         <scea.dom.editors.attribute category="Precision" name="TextureSize" displayName="Texture Size" description="Size of the shadow projection texture (use a power of 2, normally 1024, 2048 or 4096)"/>
-        <scea.dom.editors.attribute category="Precision" name="ShadowSlopeScaledBias" displayName="Slope Scaled Bias factor" description="Raise to reduce 'acne' artefacts at glancing angles to the shadow projection"
+        
+        <scea.dom.editors.attribute category="Precision" name="SingleSidedSlopeScaledBias" displayName="Slope Scaled Bias Factor" description="Raise to reduce 'acne' artefacts at glancing angles to the shadow projection"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:-20,20"/>
-        <scea.dom.editors.attribute category="Precision" name="ShadowDepthBiasClamp" displayName="Depth Bias Clamp" description="Low-level depth bias clamp value"
+        <scea.dom.editors.attribute category="Precision" name="SingleSidedDepthBiasClamp" displayName="Depth Bias Clamp" description="Low-level depth bias clamp value"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:-100,100"/>
-        <scea.dom.editors.attribute category="Precision" name="ShadowRasterDepthBias" displayName="Depth Bias" description="Low-level depth bias value (in integer zbuffer units)"/>
+        <scea.dom.editors.attribute category="Precision" name="SingleSidedRasterDepthBias" displayName="Depth Bias" description="Low-level depth bias value (in integer zbuffer units)"/>
+
+        <scea.dom.editors.attribute category="Precision" name="DoubleSidedSlopeScaledBias" displayName="Double-sided Slope Scaled Bias factor" description="Same as Slope Scaled Bias Factor, but for double sided geometry"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:-20,20"/>
+        <scea.dom.editors.attribute category="Precision" name="DoubleSidedDepthBiasClamp" displayName="Double-sided Depth Bias Clamp" description="Same as Depth Bias Clamp, but for double sided geometry"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:-100,100"/>
+        <scea.dom.editors.attribute category="Precision" name="DoubleSidedRasterDepthBias" displayName="Double-sided Depth Bias" description="Same as Depth Bias, but for double sided geometry"/>
+        
         <scea.dom.editors.attribute category="Precision" name="WorldSpaceResolveBias" displayName="World Space Resolve Bias" description="Resolve bias (world space)"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:-0.2,0.2"/>
         
@@ -333,9 +344,12 @@
         <xs:attribute name="FrustumSizeFactor" type="xs:float" default="3.8"/>
         <xs:attribute name="FocusDistance" type="xs:float" default="3"/>
         <xs:attribute name="TextureSize" type="xs:int" default="1024"/>
-        <xs:attribute name="ShadowSlopeScaledBias" type="xs:float" default="1"/>
-        <xs:attribute name="ShadowDepthBiasClamp" type="xs:float" default="0"/>
-        <xs:attribute name="ShadowRasterDepthBias" type="xs:int" default="300"/>
+        <xs:attribute name="SingleSidedSlopeScaledBias" type="xs:float" default="1"/>
+        <xs:attribute name="SingleSidedDepthBiasClamp" type="xs:float" default="0"/>
+        <xs:attribute name="SingleSidedRasterDepthBias" type="xs:int" default="300"/>
+        <xs:attribute name="DoubleSidedSlopeScaledBias" type="xs:float" default="1"/>
+        <xs:attribute name="DoubleSidedDepthBiasClamp" type="xs:float" default="0"/>
+        <xs:attribute name="DoubleSidedRasterDepthBias" type="xs:int" default="300"/>
         <xs:attribute name="WorldSpaceResolveBias" type="xs:float" default="0"/>
         <xs:attribute name="BlurAngleDegrees" type="xs:float" default=".25"/>
         <xs:attribute name="MinBlurSearch" type="xs:float" default=".5"/>

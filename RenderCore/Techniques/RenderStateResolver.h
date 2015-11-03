@@ -146,8 +146,17 @@ namespace RenderCore { namespace Techniques
     std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Default();
     std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Forward();
     std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Deferred();
+
+    struct RSDepthBias
+    {
+    public:
+        int _depthBias; float _depthBiasClamp; float _slopeScaledBias;
+        RSDepthBias(int depthBias=0, float depthBiasClamp=0, float slopeScaledBias=0.f)
+            : _depthBias(depthBias), _depthBiasClamp(depthBiasClamp), _slopeScaledBias(slopeScaledBias) {}
+    };
     std::shared_ptr<IStateSetResolver> CreateStateSetResolver_DepthOnly(
-        int depthBias=0, float depthBiasClamp=0, float slopeScaledBias=0.f,
+        const RSDepthBias& singleSidedBias = RSDepthBias(),
+        const RSDepthBias& doubleSidedBias = RSDepthBias(),
         Metal::CullMode::Enum cullMode = Metal::CullMode::Enum(3));
 
 }}
