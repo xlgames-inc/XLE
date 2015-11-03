@@ -11,13 +11,6 @@
         ~GlobalEnvironment
     VertexShader=game/xleres/ocean/shallowsurface.sh:vs_main
     PixelShader=game/xleres/ocean/shallowsurface.sh:ps_main
-~DepthOnly
-~Deferred
-~ShadowGen
-~OrderIndependentTransparency
-~PrepareVegetationSpawn
-~RayTest
-~VisNormals
 ~VisWireframe
     ~Parameters
         ~Material

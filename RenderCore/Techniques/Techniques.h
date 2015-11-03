@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "CommonBindings.h"     // for TechniqueIndex::Max
 #include "../Metal/Forward.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/ParameterBox.h"
@@ -131,6 +132,8 @@ namespace RenderCore { namespace Techniques
             std::vector<const std::shared_ptr<::Assets::DependencyValidation>>* inherited = nullptr);
         Technique(Technique&& moveFrom);
         Technique& operator=(Technique&& moveFrom);
+        Technique();
+        ~Technique();
     protected:
         std::string         _name;
         ShaderParameters    _baseParameters;
@@ -175,15 +178,18 @@ namespace RenderCore { namespace Techniques
     class ShaderType
     {
     public:
-        ResolvedShader      FindVariation(int techniqueIndex, const ParameterBox* globalState[ShaderParameters::Source::Max], const TechniqueInterface& techniqueInterface) const;
-        ResolvedShader      FindVariationSuppressExcept(int techniqueIndex, const ParameterBox* globalState[ShaderParameters::Source::Max], const TechniqueInterface& techniqueInterface) const;
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
+        ResolvedShader  FindVariation(
+            int techniqueIndex, 
+            const ParameterBox* globalState[ShaderParameters::Source::Max], 
+            const TechniqueInterface& techniqueInterface) const;
+
+        auto GetDependencyValidation() const -> const ::Assets::DepValPtr& { return _validationCallback; }
 
         ShaderType(const char resourceName[]);
         ~ShaderType();
     private:
-        std::vector<Technique>      _technique;
-        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
+        Technique           _technique[size_t(TechniqueIndex::Max)];
+        ::Assets::DepValPtr _validationCallback;
     };
 
         //////////////////////////////////////////////////////////////////

@@ -10,11 +10,6 @@
     VertexShader=game/xleres/forward/illum.vsh:main
     GeometryShader=game/xleres/solidwireframe.gsh:main
     PixelShader=game/xleres/solidwireframe.psh:marker
-~DepthOnly
-~Deferred
-~ShadowGen
-~OrderIndependentTransparency
-~PrepareVegetationSpawn
 ~RayTest
     ~Parameters
         ~Geometry
@@ -24,5 +19,3 @@
     VertexShader=game/xleres/forward/illum.vsh:main
     GeometryShader=game/xleres/forward/raytest.gsh:triangles
     PixelShader=null
-~VisNormals
-~VisWireframe

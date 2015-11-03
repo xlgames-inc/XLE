@@ -55,25 +55,12 @@ namespace SceneEngine
 
         using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
 
-        // ResLocator                      _maskTexture;
-        // Metal::UnorderedAccessView      _maskUnorderedAccess;
-        // Metal::ShaderResourceView       _maskShaderResource;
         GestaltTypes::UAVSRV            _mask;
         const Metal::ComputeShader*     _buildMask;
 
-        // ResLocator                      _reflectionsTexture;
-        // Metal::RenderTargetView         _reflectionsTarget;
-        // Metal::UnorderedAccessView      _reflectionsUnorderedAccess;
-        // Metal::ShaderResourceView       _reflectionsShaderResource;
         GestaltTypes::RTVUAVSRV         _reflections;
 		const Metal::ComputeShader*     _buildReflections;
 
-        // ResLocator                      _downsampledNormals;
-        // ResLocator                      _downsampledDepth;
-        // Metal::RenderTargetView         _downsampledNormalsTarget;
-        // Metal::RenderTargetView         _downsampledDepthTarget;
-        // Metal::ShaderResourceView       _downsampledNormalsShaderResource;
-        // Metal::ShaderResourceView       _downsampledDepthShaderResource;
         GestaltTypes::RTVSRV            _downsampledNormals;
         GestaltTypes::RTVSRV            _downsampledDepth;
 
@@ -102,43 +89,6 @@ namespace SceneEngine
         using namespace BufferUploads;
     
             ////////////
-        // auto maskTexture = uploads.Transaction_Immediate(
-        //     CreateDesc(  
-        //         BindFlag::ShaderResource|BindFlag::UnorderedAccess,
-        //         0, GPUAccess::Read|GPUAccess::Write,
-        //         TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R8_UNORM),
-        //         "SSReflMask"));
-        // Metal::UnorderedAccessView maskUnorderedAccess(maskTexture->GetUnderlying());
-        // Metal::ShaderResourceView maskShaderResource(maskTexture->GetUnderlying());
-        
-        // auto reflectionsTexture = uploads.Transaction_Immediate(
-        //     CreateDesc(
-        //         BindFlag::ShaderResource|BindFlag::UnorderedAccess|BindFlag::RenderTarget,
-        //         0, GPUAccess::Read|GPUAccess::Write,
-        //         TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R16G16B16A16_FLOAT), 
-        //         "SSRefl"));
-        // Metal::UnorderedAccessView reflectionsUnorderedAccess(reflectionsTexture->GetUnderlying());
-        // Metal::RenderTargetView reflectionsTarget(reflectionsTexture->GetUnderlying());
-        // Metal::ShaderResourceView reflectionsShaderResource(reflectionsTexture->GetUnderlying());
-        // 
-        // auto downsampledNormals = uploads.Transaction_Immediate(
-        //     CreateDesc(  
-        //         BindFlag::ShaderResource|BindFlag::RenderTarget,
-        //         0, GPUAccess::Read|GPUAccess::Write,
-        //         TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R16G16B16A16_FLOAT), //R11G11B10_FLOAT)), 
-        //         "SSLowNorms"));
-        // Metal::RenderTargetView downsampledNormalsTarget(downsampledNormals->GetUnderlying());
-        // Metal::ShaderResourceView downsampledNormalsShaderResource(downsampledNormals->GetUnderlying());
-        // 
-        // auto downsampledDepth = uploads.Transaction_Immediate(
-        //     CreateDesc( 
-        //         BindFlag::ShaderResource|BindFlag::RenderTarget,
-        //         0, GPUAccess::Read|GPUAccess::Write,
-        //         TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R32_FLOAT), // NativeFormat::R16_UNORM)), 
-        //         "SSLowDepths"));
-        // Metal::RenderTargetView downsampledDepthTarget(downsampledDepth->GetUnderlying());
-        // Metal::ShaderResourceView downsampledDepthShaderResource(downsampledDepth->GetUnderlying());
-
         _mask = GestaltTypes::UAVSRV(
             TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R8_UNORM),
             "SSReflMask");
@@ -236,7 +186,7 @@ namespace SceneEngine
             }
         }
 
-		Metal::ConstantBuffer samplingPatternConstants(samplingPattern.get(), sizeof(SamplingPattern));
+		_samplingPatternConstants = Metal::ConstantBuffer(samplingPattern.get(), sizeof(SamplingPattern));
 
             ////////////
         _buildMask = &::Assets::GetAssetDep<Metal::ComputeShader>(
@@ -274,21 +224,6 @@ namespace SceneEngine
         ::Assets::RegisterAssetDependency(_validationCallback, _downsampleTargets->GetDependencyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, _horizontalBlur->GetDependencyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, _verticalBlur->GetDependencyValidation());
-
-        // _reflectionsTexture = std::move(reflectionsTexture);
-        // _reflectionsUnorderedAccess = std::move(reflectionsUnorderedAccess);
-        // _reflectionsShaderResource = std::move(reflectionsShaderResource);
-        // _reflectionsTarget = std::move(reflectionsTarget);
-        // 
-        // _downsampledNormals = std::move(downsampledNormals);
-        // _downsampledNormalsTarget = std::move(downsampledNormalsTarget);
-        // _downsampledNormalsShaderResource = std::move(downsampledNormalsShaderResource);
-        // 
-        // _downsampledDepth = std::move(downsampledDepth);
-        // _downsampledDepthTarget = std::move(downsampledDepthTarget);
-        // _downsampledDepthShaderResource = std::move(downsampledDepthShaderResource);
-
-        _samplingPatternConstants = std::move(samplingPatternConstants);
     }
 
     ScreenSpaceReflectionsResources::~ScreenSpaceReflectionsResources() {}

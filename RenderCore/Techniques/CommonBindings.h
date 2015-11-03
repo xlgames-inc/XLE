@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../../Math/Vector.h"
+#include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Techniques
 {
@@ -17,6 +18,11 @@ namespace RenderCore { namespace Techniques
         static const auto Globals = Hash64("$Globals");
     }
 
+    /// <summary>Technique type binding indicies</summary>
+    /// We use a hard coded set of technique indices. This non-ideal in the sense that it limits
+    /// the number of different ways we can render things. But it's also important for
+    /// performance, since technique lookups can happen very frequently. It's hard to
+    /// find a good balance between performance and flexibility for this case.
     namespace TechniqueIndex
     {
         static const auto Forward       = 0u;
@@ -29,6 +35,9 @@ namespace RenderCore { namespace Techniques
         static const auto VisNormals    = 7u;
         static const auto VisWireframe  = 8u;
         static const auto WriteTriangleIndex = 9u;
-    }
+        static const auto StochasticTransparency = 10u;
+
+        static const auto Max = 11u;
+    };
 }}
 

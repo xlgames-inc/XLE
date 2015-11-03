@@ -10,6 +10,7 @@
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/Techniques/CommonBindings.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"   // for DelayStep -- a forward declaration here confuses c++/cli
 
@@ -108,18 +109,14 @@ namespace SceneEngine
         FormatStack(Format resourceFormat, Format shaderReadFormat, Format writeFormat) : _resourceFormat(resourceFormat), _shaderReadFormat(shaderReadFormat), _writeFormat(writeFormat) {}
     };
 
-        // Note --  hard coded set of technique indices. This non-ideal in the sense that it limits
-        //          the number of different ways we can render things. But it's also important for
-        //          performance, since technique lookups can happen very frequently. It's hard to
-        //          find a good balance between performance and flexibility for this case.
-    static const unsigned TechniqueIndex_General   = 0;
-    static const unsigned TechniqueIndex_DepthOnly = 1;
-    static const unsigned TechniqueIndex_Deferred  = 2;
-    static const unsigned TechniqueIndex_ShadowGen = 3;
+    static const auto TechniqueIndex_General   = RenderCore::Techniques::TechniqueIndex::Forward;
+    static const auto TechniqueIndex_DepthOnly = RenderCore::Techniques::TechniqueIndex::DepthOnly;
+    static const auto TechniqueIndex_Deferred  = RenderCore::Techniques::TechniqueIndex::Deferred;
+    static const auto TechniqueIndex_ShadowGen = RenderCore::Techniques::TechniqueIndex::ShadowGen;
 
-    static const unsigned TechniqueIndex_OrderIndependentTransparency = 4;
-    static const unsigned TechniqueIndex_RTShadowGen = 9;
-    static const unsigned TechniqueIndex_StochasticTransparency = 10;
+    static const auto TechniqueIndex_OrderIndependentTransparency = RenderCore::Techniques::TechniqueIndex::OrderIndependentTransparency;
+    static const auto TechniqueIndex_RTShadowGen = RenderCore::Techniques::TechniqueIndex::WriteTriangleIndex;
+    static const auto TechniqueIndex_StochasticTransparency = RenderCore::Techniques::TechniqueIndex::StochasticTransparency;
 
     typedef intrusive_ptr<ID3D::Resource>      ResourcePtr;
     ResourcePtr         CreateResourceImmediate(const BufferUploads::BufferDesc& desc);

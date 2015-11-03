@@ -705,32 +705,57 @@ namespace RenderCore { namespace Techniques
         return *this;
     }
 
+    Technique::Technique() {}
+    Technique::~Technique() {}
 
 
 
     ///////////////////////   S H A D E R   T Y P E   ///////////////////////////
 
-    ResolvedShader      ShaderType::FindVariation(  
+    ResolvedShader ShaderType::FindVariation(  
 		int techniqueIndex, 
         const ParameterBox* globalState[ShaderParameters::Source::Max],
         const TechniqueInterface& techniqueInterface) const
     {
-        if (techniqueIndex >= int(_technique.size()) || !_technique[techniqueIndex].IsValid()) {
+        if (techniqueIndex >= dimof(_technique) || !_technique[techniqueIndex].IsValid())
             return ResolvedShader();
-        }
         return _technique[techniqueIndex].FindVariation(globalState, techniqueInterface);
     }
 
-    ResolvedShader      ShaderType::FindVariationSuppressExcept(  
-        int techniqueIndex, 
-        const ParameterBox* globalState[ShaderParameters::Source::Max],
-        const TechniqueInterface& techniqueInterface) const
+    T1(Pair) class CompareFirstString
     {
-        TRY {
-            return FindVariation(techniqueIndex, globalState, techniqueInterface);
-        } CATCH (...) {
-            return ResolvedShader();
-        } CATCH_END
+    public:
+        bool operator()(const Pair& lhs, const Pair& rhs) const { return XlCompareString(lhs.first, rhs.first) < 0; }
+        using Section = StringSection<
+            typename std::remove_const<typename std::remove_reference<decltype(*std::declval<typename Pair::first_type>())>::type>::type
+            >;
+        bool operator()(const Pair& lhs, const Section& rhs) const { return XlCompareString(lhs.first, rhs) < 0; }
+        bool operator()(const Section& lhs, const Pair& rhs) const { return XlCompareString(lhs, rhs.first) < 0; }
+    };
+
+    static unsigned AsTechniqueIndex(StringSection<utf8> name)
+    {
+        using Pair = std::pair<const utf8*, unsigned>;
+        const Pair bindingNames[] = 
+        {
+                // note -- lexographically sorted!
+            { u("Deferred"),                       unsigned(TechniqueIndex::Deferred) },
+            { u("DepthOnly"),                      unsigned(TechniqueIndex::DepthOnly) },
+            { u("Illum"),                          unsigned(TechniqueIndex::Forward) },
+            { u("OrderIndependentTransparency"),   unsigned(TechniqueIndex::OrderIndependentTransparency) },
+            { u("PrepareVegetationSpawn"),         unsigned(TechniqueIndex::PrepareVegetationSpawn) },
+            { u("RayTest"),                        unsigned(TechniqueIndex::RayTest) },
+            { u("ShadowGen"),                      unsigned(TechniqueIndex::ShadowGen) },
+            { u("StochasticTransparency"),         unsigned(TechniqueIndex::StochasticTransparency) },
+            { u("VisNormals"),                     unsigned(TechniqueIndex::VisNormals) },
+            { u("VisWireframe"),                   unsigned(TechniqueIndex::VisWireframe) },
+            { u("WriteTriangleIndex"),             unsigned(TechniqueIndex::WriteTriangleIndex) }
+        };
+
+        auto i = std::lower_bound(bindingNames, ArrayEnd(bindingNames), name, CompareFirstString<Pair>());
+        if (XlEqString(name, i->first))
+            return i->second;
+        return ~0u;
     }
 
     ShaderType::ShaderType(const char resourceName[])
@@ -756,11 +781,21 @@ namespace RenderCore { namespace Techniques
                             Formatter::InteriorSection eleName;
                             if (!formatter.TryBeginElement(eleName)) break;
 
-                            _technique.push_back(
-                                Technique(
-                                    formatter, 
-                                    Conversion::Convert<std::string>(AsString(eleName)),
-                                    &searchRules, &inheritedAssets));
+                            auto index = AsTechniqueIndex(eleName);
+                            if (index < dimof(_technique)) {
+                                if (_technique[index].IsValid())
+                                    Throw(FormatException(
+                                        "Same technique label is used more than once", formatter.GetLocation()));
+
+                                _technique[index] = 
+                                    Technique(
+                                        formatter, 
+                                        Conversion::Convert<std::string>(AsString(eleName)),
+                                        &searchRules, &inheritedAssets);
+                            } else {
+                                LogWarning << "Ignoring technique label (" << eleName.AsString().c_str() << ") because it is unrecognised";
+                                formatter.SkipElement();
+                            }
                             if (!formatter.TryEndElement()) break;
                         }
                         continue;

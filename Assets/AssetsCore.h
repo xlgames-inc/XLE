@@ -8,6 +8,7 @@
 
 #include "../Core/Exceptions.h"
 #include <string>
+#include <memory>
 
 namespace Assets
 {
@@ -15,6 +16,9 @@ namespace Assets
 	using rstring = std::basic_string<ResChar>;
 
     enum class AssetState { Pending, Ready, Invalid };
+
+    class DependencyValidation;
+    using DepValPtr = std::shared_ptr<DependencyValidation>;
 
     /// <summary>Exceptions related to rendering</summary>
     namespace Exceptions

@@ -64,7 +64,6 @@
             OUTPUT_WORLD_POSITION=1
     VertexShader=game/xleres/forward/illum.vsh:main
     PixelShader=game/xleres/forward/transparency/illum.psh:main
-~PrepareVegetationSpawn
 ~RayTest
     ~Inherit; Shared:Skinnable; Shared:VegetationSpawn
     ~Parameters
