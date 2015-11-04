@@ -178,7 +178,7 @@ namespace SceneEngine
             SpriteHash MakeHash() const { return HashCombine(IntegerHash64(size_t(_renderer)), _XYangle); }
         };
         std::vector<std::pair<SpriteHash, QueuedObject>>    _queuedObjects;
-        std::vector<std::pair<SpriteHash, Float3>>          _queuedInstances;
+        std::vector<std::pair<SpriteHash, Float4>>          _queuedInstances;
 
         static const unsigned MipMapCount = 5;
 
@@ -435,7 +435,7 @@ namespace SceneEngine
             // In some cases we might want to sort the sprites back-to-front
             // (since they are close to camera facing, we should get correct
             // sorting when sorting on a per-sprite basis)
-        std::sort(_pimpl->_queuedInstances.begin(), _pimpl->_queuedInstances.end(), CompareFirst<uint64, Float3>());
+        std::sort(_pimpl->_queuedInstances.begin(), _pimpl->_queuedInstances.end(), CompareFirst<uint64, Float4>());
 
         auto preparedSpritesI = _pimpl->_preparedSpritesLookup.begin();
         for (auto i=_pimpl->_queuedInstances.cbegin(); i!=_pimpl->_queuedInstances.cend();) {
@@ -461,8 +461,10 @@ namespace SceneEngine
             Float2 projectionSize = sprite._worldSpaceHalfSize;
 
             for (auto s=start; s<i; ++s) {
-                float sortingDistance = MagnitudeSquared(s->second + projectionCenter - cameraPos);
-                vertices.push_back(Vertex {s->second + projectionCenter, cameraRight, cameraUp, projectionSize, spriteIndex, sortingDistance});
+                Float3 center = Truncate(s->second);
+                float scale = s->second[3];
+                float sortingDistance = MagnitudeSquared(center + scale * projectionCenter - cameraPos);
+                vertices.push_back(Vertex {center + scale * projectionCenter, cameraRight, cameraUp, scale * projectionSize, spriteIndex, sortingDistance});
             }
 
             _pimpl->_lruQueue.BringToFront(spriteIndex);
@@ -892,7 +894,10 @@ namespace SceneEngine
         if (existing == _pimpl->_queuedObjects.end() || existing->first != hash)
             _pimpl->_queuedObjects.insert(existing, std::make_pair(hash, qo));
                 
-        _pimpl->_queuedInstances.push_back(std::make_pair(hash, ExtractTranslation(localToWorld)));
+        _pimpl->_queuedInstances.push_back(
+            std::make_pair(hash, Expand(
+                ExtractTranslation(localToWorld),
+                ExtractUniformScaleFast(localToWorld))));
     }
 
     void DynamicImposters::Load(const Config& config)

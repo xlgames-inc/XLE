@@ -206,6 +206,7 @@ namespace XLEMath
     inline Float3   ExtractForward_Cam(const Float4x4& matrix)      { return -Float3(matrix(0,2), matrix(1,2), matrix(2,2)); }
     inline Float3   ExtractUp_Cam(const Float4x4& matrix)           { return  Float3(matrix(0,1), matrix(1,1), matrix(2,1)); }
 
+    float ExtractUniformScaleFast(const Float3x4& matrix);
 
     inline void SetTranslation(Float4x4& matrix, const Float3& position)  { matrix(0,3) = position[0]; matrix(1,3) = position[1]; matrix(2,3) = position[2]; }
 

@@ -767,6 +767,34 @@ namespace XLEMath
             LinearInterpolate(lhs._translation, rhs._translation, alpha));
     }
 
+    static float GetMedianElement(Float3 input)
+    {
+        Float3 absv(XlAbs(input[0]), XlAbs(input[1]), XlAbs(input[2]));
+        if (absv[0] < absv[1]) {
+            if (absv[2] < absv[0]) return input[0];
+            if (absv[2] < absv[1]) return input[2];
+            return input[1];
+        } else {
+            if (absv[2] > absv[0]) return input[0];
+            if (absv[2] > absv[1]) return input[2];
+            return input[1];
+        }
+    }
+
+    float ExtractUniformScaleFast(const Float3x4& input)
+    {
+            // Get a uniform scale value from a given local to world matrix
+            // If we assume no skew, then we can get the scale value by taking
+            // the magnitude of the column vectors.
+            //      (see ScaleRotationTranslation for more information)
+            // If non-uniform, we will estimate with the median scale.
+        Float3 scaleSq(
+            input(0,0) * input(0,0) + input(1,0) * input(1,0) + input(2,0) * input(2,0),
+            input(0,1) * input(0,1) + input(1,1) * input(1,1) + input(2,1) * input(2,1),
+            input(0,2) * input(0,2) + input(1,2) * input(1,2) + input(2,2) * input(2,2));
+        return XlSqrt(GetMedianElement(scaleSq));
+    }
+
     Float3x3   AsFloat3x3(const Quaternion& input)
     {
         Float3x3 result;
