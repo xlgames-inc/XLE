@@ -133,6 +133,9 @@ float4 LoadImposterAltas(uint atlasIndex, uint4 coords, float2 tc)
         // blending to uninitialized surrounding pixels. We can also
         // pre-burn this weighting into the texture by blurring out
         // to surrounding pixels.
+        //
+        // Note that we weight by the complement of alpha (1.f-alpha)
+        // because of the way we write alpha to the imposter texture
     const bool doAlphaWeight = true;
     if (doAlphaWeight) {
         float4 s0 = ImposterAltas[atlasIndex].Load(uint3(A.x, A.y, 0));
@@ -233,11 +236,18 @@ GBufferEncoded ps_deferred(VSOutput geo)
         diffuse.xyz = mipColors[mip];
     #endif
 
+    // Blending normals just cause too many problems here.
+    // Using decal-style might be ok if the depth doesn't change too
+    // much... But with a significant depth change, it creates too
+    // many artefacts
+    normal.a = 0.f;
+
         // we can't use the normal Encode() call for the gbuffer
         // because the normal is already compressed into it's 8 bit format
     GBufferEncoded result;
     result.diffuseBuffer = diffuse;
     result.normalBuffer = float4(normal.xyz * (1.0f - normal.a), normal.a);
+    // result.normalBuffer = float4(normal.xyz * normal.a, normal.a);
     // result.normalBuffer = float4(normal.xyz, 0.f); // normal.a);
     #if HAS_PROPERTIES_BUFFER == 1
         result.propertiesBuffer = float4(float3(0, 1, 1) * (1.f-diffuse.a), diffuse.a);

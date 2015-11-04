@@ -297,7 +297,7 @@ namespace SceneEngine
                 }
 
                 unsigned newIndex = _preparedSpritesHeap.Allocate(1<<4)>>4;
-                if (newIndex == ~0x0u) {
+                if (newIndex == (~0x0u)>>4) {
                     ++_overflowMaxSpritesCounter;
                     continue;
                 }
@@ -571,7 +571,7 @@ namespace SceneEngine
         const float pixelRatio = 16.f/9.f;    // Adjust the pixel ratio for standard 16:9
         auto virtualProj = PerspectiveProjection(
             cfg._calibrationFov, pixelRatio,
-            0.01f, 1000.f, GeometricCoordinateSpace::RightHanded,
+            0.05f, 2000.f, GeometricCoordinateSpace::RightHanded,
             Techniques::GetDefaultClipSpaceType());
         Float2 screenSpaceMin(FLT_MAX, FLT_MAX), screenSpaceMax(-FLT_MAX, -FLT_MAX);
         for (unsigned c=0; c<dimof(corners); ++c) {
@@ -719,7 +719,7 @@ namespace SceneEngine
             ShaderBasedCopy(
                 context,
                 l._atlas.RTV(), l._tempRTV.SRV(),
-                destination, source, CopyFilter::BoxFilter, 0);
+                destination, source, CopyFilter::BoxFilterAlphaComplementWeight, 0);
         }
     }
 

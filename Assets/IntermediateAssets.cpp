@@ -367,10 +367,14 @@ namespace Assets { namespace IntermediateAssets
                     // we must send back an Invalid marker if we hit an exception
                     // (otherwise we can end up in an infinite compile operation)
                 LogAlwaysError << "Exception during processing of (" << initializers[0] << "). Exception details: (" << e.what() << ")";
-                return std::make_shared<PendingCompileMarker>(AssetState::Invalid, nullptr, 0, nullptr);
+                auto result = std::make_shared<PendingCompileMarker>(AssetState::Invalid, nullptr, 0, nullptr);
+                result->SetInitializer(initializers[0]);
+                return std::move(result);
             } CATCH (...) {
                 LogAlwaysError << "Unknown exception during processing of (" << initializers[0] << ").";
-                return std::make_shared<PendingCompileMarker>(AssetState::Invalid, nullptr, 0, nullptr);
+                auto result = std::make_shared<PendingCompileMarker>(AssetState::Invalid, nullptr, 0, nullptr);
+                result->SetInitializer(initializers[0]);
+                return std::move(result);
             } CATCH_END
 
         } else {

@@ -231,7 +231,7 @@ namespace SceneEngine
         const RenderCore::Metal::ShaderResourceView& src,
         ProtectState::States::BitField protectStates = ~0u);
 
-    enum class CopyFilter { Bilinear, BoxFilter };
+    enum class CopyFilter { Bilinear, BoxFilter, BoxFilterAlphaComplementWeight };
 
     void ShaderBasedCopy(
         RenderCore::Metal::DeviceContext& context,

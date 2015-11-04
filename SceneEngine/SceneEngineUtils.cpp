@@ -542,6 +542,12 @@ namespace SceneEngine
                     "game/xleres/basic.psh:copy_boxfilter:ps_*");
                 break;
 
+            case CopyFilter::BoxFilterAlphaComplementWeight:
+                _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    "game/xleres/basic2d.vsh:screenspacerect:vs_*",
+                    "game/xleres/basic.psh:copy_boxfilter_alphacomplementweight:ps_*");
+                break;
+
             default:
                 _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2d.vsh:screenspacerect:vs_*",
