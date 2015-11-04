@@ -11,6 +11,7 @@
 #include "../../ColladaConversion/DLLInterface.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/CompilerHelper.h"
+#include "../../Assets/InvalidAssetManager.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../Utility/Threading/LockFree.h"
 #include "../../Utility/Threading/ThreadObject.h"
@@ -348,9 +349,16 @@ namespace RenderCore { namespace Assets
                 }
 
                 op._dependencyValidation = op._destinationStore->WriteDependencies(op._sourceID0, splitName.DriveAndPath(), MakeIteratorRange(deps));
+                ::Assets::Services::GetInvalidAssetMan().MarkValid(op._initializer0);
                 op.SetState(::Assets::AssetState::Ready);
             }
+        } CATCH(const std::exception& e) {
+            LogAlwaysError << "Caught exception while performing Collada conversion. Exception details as follows:";
+            LogAlwaysError << e.what();
+            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(op._initializer0, e.what());
+            op.SetState(::Assets::AssetState::Invalid);
         } CATCH(...) {
+            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(op._initializer0, "Unknown error");
             op.SetState(::Assets::AssetState::Invalid);
         } CATCH_END
     }

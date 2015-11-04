@@ -107,7 +107,8 @@ namespace RenderCore { namespace Assets
 
             // We can't build the material properly until the material scaffold is ready
             // So don't even try unless we get a successful resolve
-        if (result._model->TryResolve() == ::Assets::AssetState::Ready) {
+        auto resolveResult = result._model->TryResolve();
+        if (resolveResult == ::Assets::AssetState::Ready) {
             result._hashedMaterialName = HashCombine(Hash64(materialFilename), result._hashedModelName);
             auto matNamePtr = materialFilename;
 
@@ -117,6 +118,8 @@ namespace RenderCore { namespace Assets
                 _pimpl->_materialScaffolds.Insert(result._hashedMaterialName, mat);
                 result._material = mat.get();
             }
+        } else if (resolveResult == ::Assets::AssetState::Invalid) {
+            Throw(::Assets::Exceptions::InvalidAsset(modelFilename, "Scaffolds invalid in ModelCache"));
         } else {
             result._material = nullptr;
         }
@@ -167,8 +170,8 @@ namespace RenderCore { namespace Assets
         unsigned LOD) -> Model
     {
         auto scaffold = GetScaffolds(modelFilename, materialFilename);
-        if (!scaffold._model || !scaffold._material)
-            Throw(::Assets::Exceptions::PendingAsset(modelFilename, "Scaffolds still pending in ModelVisCache"));
+        if (!scaffold._model)
+            Throw(::Assets::Exceptions::PendingAsset(modelFilename, "Scaffolds still pending in ModelCache"));
 
         auto maxLOD = scaffold._model->GetMaxLOD();
         LOD = std::min(LOD, maxLOD);

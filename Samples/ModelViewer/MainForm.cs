@@ -77,13 +77,12 @@ namespace ModelViewer
         protected void OnViewerMouseClick(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Right) {
-                if (visMouseOver.HasMouseOver) {
-                    ContextMenu cm = new ContextMenu();
+                ContextMenu cm = new ContextMenu();
+                cm.MenuItems.Add("Show Modifications", new EventHandler(ContextMenu_ShowModifications));
+                cm.MenuItems.Add("Show Invalid Assets", new EventHandler(ContextMenu_ShowInvalidAssets));
+                if (visMouseOver.HasMouseOver)
                     cm.MenuItems.Add("Edit &Material", new EventHandler(ContextMenu_EditMaterial));
-                    cm.MenuItems.Add("Show Modifications", new EventHandler(ContextMenu_ShowModifications));
-                    cm.MenuItems.Add("Show Invalid Assets", new EventHandler(ContextMenu_ShowInvalidAssets));
-                    cm.Show(this, e.Location);
-                }
+                cm.Show(this, e.Location);
             }
         }
 
