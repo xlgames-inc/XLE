@@ -213,7 +213,12 @@ namespace RenderCore { namespace Assets
                 ImpliedTyping::AsString(type, true));
         }
 
-    void SerializeStateSet(OutputStreamFormatter& formatter, const Techniques::RenderStateSet& stateSet)
+    static bool HasSomethingToSerialize(const Techniques::RenderStateSet& stateSet)
+    {
+        return stateSet._flag != 0;
+    }
+
+    static void SerializeStateSet(OutputStreamFormatter& formatter, const Techniques::RenderStateSet& stateSet)
     {
         using RenderStateSet = Techniques::RenderStateSet;
         if (stateSet._flag & RenderStateSet::Flag::DoubleSided)
@@ -388,25 +393,25 @@ namespace RenderCore { namespace Assets
             formatter.EndElement(ele);
         }
 
-        {
+        if (_matParamBox.GetCount() > 0) {
             auto ele = formatter.BeginElement(u("ShaderParams"));
             _matParamBox.Serialize<utf8>(formatter);
             formatter.EndElement(ele);
         }
 
-        {
+        if (_constants.GetCount() > 0) {
             auto ele = formatter.BeginElement(u("Constants"));
             _constants.Serialize<utf8>(formatter);
             formatter.EndElement(ele);
         }
 
-        {
+        if (_resourceBindings.GetCount() > 0) {
             auto ele = formatter.BeginElement(u("ResourceBindings"));
             _resourceBindings.Serialize<utf8>(formatter);
             formatter.EndElement(ele);
         }
 
-        {
+        if (HasSomethingToSerialize(_stateSet)) {
             auto ele = formatter.BeginElement(u("States"));
             SerializeStateSet(formatter, _stateSet);
             formatter.EndElement(ele);

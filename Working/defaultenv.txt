@@ -1,25 +1,22 @@
 ~~!Format=1; Tab=4
-
 ~environment
 	Name=environment
-	
-	~ToneMapSettings; BloomDesaturationFactor=0.5f; BloomRampingFactor=0.33f; SceneKey=0.18f
-		BloomBlurStdDev=2.2f; Flags=3i; BloomBrightness=20f; LuminanceMax=1f; WhitePoint=8f
-		BloomThreshold=14f; LuminanceMin=0.06f; BloomScale=-1i
-	
-	~AmbientSettings; RangeFogThicknessScale=1f; AtmosBlurStart=1000f; AmbientLight=-1i
-		AmbientBrightness=0.4f; SkyReflectionBlurriness=2f; AtmosBlurStdDev=1.3f
-		SkyTexture=Game/xleres/DefaultResources/sky/desertsky.dds; Flags=0i
-		RangeFogInscatterScale=1f; SkyReflectionScale=1f; SkyBrightness=1f; RangeFogInscatter=0i
-		AtmosBlurEnd=1500f; RangeFogThickness=0i
-	
-	~ShadowFrustumSettings; FrustumCount=5i; ShadowRasterDepthBias=200i; FrustumSizeFactor=3.8f
-		ShadowSlopeScaledBias=-1f; Flags=9i; Light=Sun; ShadowDepthBiasClamp=0f; MaxBlurSearch=25f
-		MinBlurSearch=0.5f; MaxDistanceFromCamera=1000f; WorldSpaceResolveBias=0f; FocusDistance=3f
-		BlurAngleDegrees=0.25f; Name=shadows; TextureSize=1024i
-	
-	~DirectionalLight; DiffuseModel=0i; DiffuseBrightness=4.1f; Diffuse=-1i; Specular=-1i; Flags=1i
-		SpecularBrightness=40f; DiffuseWideningMin=0.3f
-		Transform={1f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f, 0f, 78.3603f, 45.2414f, 42.5779f, 1f}
-		ShadowResolveModel=0i; SpecularNonMetalBrightness=40f; DiffuseWideningMax=1.1f; Name=Sun
+	~ToneMapSettings; BloomDesaturationFactor=0.5f; BloomRampingFactor=0.33f; SceneKey=0.175f
+		BloomBlurStdDev=2.2f; Flags=3i; BloomBrightness=4.16f; LuminanceMax=3f; WhitePoint=8f
+		BloomThreshold=13.8f; LuminanceMin=0.05f; BloomScale=-1i
+	~AmbientSettings; RangeFogThicknessScale=1f; AtmosBlurStart=1000f; AmbientLight=-5056769i
+		AmbientBrightness=0.3f; SkyReflectionBlurriness=2f; AtmosBlurStdDev=1.3f
+		SkyTexture=Game/xleres/DefaultResources/sky/samplesky.dds; Flags=0i; RangeFogInscatterScale=1f
+		SkyReflectionScale=3.4f; SkyBrightness=3f; RangeFogInscatter=0i; AtmosBlurEnd=1500f
+		RangeFogThickness=0i
+	~ShadowFrustumSettings; SingleSidedSlopeScaledBias=1.5f; FrustumCount=3i
+		DoubleSidedDepthBiasClamp=0f; SingleSidedRasterDepthBias=-2i; FrustumSizeFactor=3.8f
+		Flags=8i; Light=Sun; MaxBlurSearch=25f; MinBlurSearch=0.5f; DoubleSidedSlopeScaledBias=0.3f
+		MaxDistanceFromCamera=250f; WorldSpaceResolveBias=0f; FocusDistance=3f
+		SingleSidedDepthBiasClamp=0f; DoubleSidedRasterDepthBias=12i; BlurAngleDegrees=0.25f
+		Name=shadows; TextureSize=2048i
+	~DirectionalLight; DiffuseModel=0i; DiffuseBrightness=10f; Diffuse=-1i; Specular=-1i; Flags=1i
+		SpecularBrightness=15f; DiffuseWideningMin=0.3f
+		Transform={1f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f, 0f, 77.1634f, 44.5503f, 45.3991f, 1f}
+		ShadowResolveModel=0i; SpecularNonMetalBrightness=15f; DiffuseWideningMax=1.1f; Name=Sun
 		Visible=1u

@@ -79,7 +79,7 @@ namespace Utility
     {
         DoNewLine<CharType>();
 
-        _hotLine = true; DoNewLine<CharType>(); // (force extra new line before new element)
+        // _hotLine = true; DoNewLine<CharType>(); // (force extra new line before new element)
 
         assert(nameEnd > nameStart);
 

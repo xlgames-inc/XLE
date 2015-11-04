@@ -50,7 +50,7 @@ namespace RenderCore
             if (_marker->GetState() != ::Assets::AssetState::Pending) {
                 ResolveFromCompileMarker();
                 if (!_shader || _shader->empty())
-                    Throw(Assets::Exceptions::InvalidAsset(Initializer(), ""));
+                    Throw(Assets::Exceptions::InvalidAsset(Initializer(), "CompiledShaderByteCode invalid"));
             }
         }
     }
@@ -113,7 +113,7 @@ namespace RenderCore
 
         if (!_shader || _shader->empty()) {
             _shader.reset();
-            Throw(Assets::Exceptions::InvalidAsset(Initializer(), ""));
+            Throw(Assets::Exceptions::InvalidAsset(Initializer(), "CompiledShaderByteCode invalid"));
         }
     }
 
@@ -139,7 +139,7 @@ namespace RenderCore
             Assets::RegisterAssetDependency(_validationCallback, _marker->_dependencyValidation);
 
         if (_marker->GetState() == ::Assets::AssetState::Invalid)
-            Throw(Assets::Exceptions::InvalidAsset(Initializer(), ""));
+            Throw(Assets::Exceptions::InvalidAsset(Initializer(), "CompiledShaderByteCode invalid"));
 
         _marker.reset();
     }
