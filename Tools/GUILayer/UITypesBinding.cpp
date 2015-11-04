@@ -419,6 +419,20 @@ namespace GUILayer
         return result;
     }
 
+    void RawMaterial::AddInheritted(String^ item)
+    {
+            // we could consider converting the filename "item"
+            // into a path relative to the main material file here..?
+        auto transaction = _underlying->Transaction_Begin("Add inheritted");
+        if (transaction)
+            transaction->GetAsset()._asset._inherit.push_back(clix::marshalString<clix::E_UTF8>(item));
+    }
+
+    void RawMaterial::RemoveInheritted(String^ item)
+    {
+        assert(0); // not implemented!
+    }
+
     System::String^ RawMaterial::Filename::get() { return _filename; }
     System::String^ RawMaterial::SettingName::get() { return _settingName; }
 

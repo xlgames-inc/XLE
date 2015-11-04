@@ -344,6 +344,9 @@ namespace GUILayer
         List<String^>^ BuildInheritanceList();
         static List<String^>^ BuildInheritanceList(String^ topMost);
 
+        void AddInheritted(String^);
+        void RemoveInheritted(String^);
+
         property String^ Filename { String^ get(); }
         property String^ SettingName { String^ get(); }
 

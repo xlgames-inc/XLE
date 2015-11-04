@@ -39,6 +39,7 @@ namespace ControlsLibrary.MaterialEditor
                     _hierachyTree.SelectedNodeChanged += SubMatSelectedNodeChanged; 
                     _hierachyTree.SelectedNode = firstNode;
                 }
+                _activeObject = value;
             }
         }
 
@@ -88,5 +89,54 @@ namespace ControlsLibrary.MaterialEditor
                 AddComboBoxChildren(newNode, GUILayer.RawMaterial.BuildInheritanceList(mat));
             }
         }
+
+        public static class Prompt
+        {
+            public static string ShowDialog(string text, string caption)
+            {
+                // This little dialog biased on stack overflow article:
+                // http://stackoverflow.com/questions/5427020/prompt-dialog-in-windows-forms
+
+                Form prompt = new Form();
+                prompt.Width = 500;
+                prompt.Height = 150;
+                prompt.FormBorderStyle = FormBorderStyle.FixedDialog;
+                prompt.Text = caption;
+                prompt.StartPosition = FormStartPosition.CenterScreen;
+                Label textLabel = new Label() { Left = 50, Top = 20, Text = text };
+                TextBox textBox = new TextBox() { Left = 50, Top = 50, Width = 400 };
+                Button confirmation = new Button() { Text = "Ok", Left = 350, Width = 100, Top = 70, DialogResult = DialogResult.OK };
+                Button cancel = new Button() { Text = "Cancel", Left = 225, Width = 100, Top = 70, DialogResult = DialogResult.OK };
+                confirmation.Click += (sender, e) => { prompt.Close(); };
+                prompt.Controls.Add(textBox);
+                prompt.Controls.Add(confirmation);
+                prompt.Controls.Add(textLabel);
+                prompt.AcceptButton = confirmation;
+
+                return prompt.ShowDialog() == DialogResult.OK ? textBox.Text : "";
+            }
+        }
+
+        private void _addInherit_Click(object sender, EventArgs e)
+        {
+            var selectedMaterial = (_hierachyTree.SelectedNode != null) ? _hierachyTree.SelectedNode.Text : null;
+            if (selectedMaterial == null) return;
+
+            var result = Prompt.ShowDialog(
+                "Material configuration:", 
+                "Add Inheritted Material Settings");
+            if (result.Length > 0)
+            {
+                using (var mat = new GUILayer.RawMaterial(selectedMaterial))
+                    mat.AddInheritted(result);
+                // now we need to refresh this control with the new changes...
+                Object = _activeObject;
+            }
+        }
+
+        private void _removeInherit_Click(object sender, EventArgs e)
+        {}
+
+        private string _activeObject;
     }
 }
