@@ -6,6 +6,7 @@
 
 #include "../TextureAlgorithm.h"
 #include "tonemap.h"
+#include "../Colour.h"		// (for LightingScale)
 
 Texture2D_MaybeMS<float4>	InputTexture;
 RWTexture2D<float>			OutputLuminance : register(u0);
@@ -28,6 +29,15 @@ cbuffer LuminanceConstants
 	int		FrameIndex;
 	int		TotalSamplesCount;
 	float	ElapsedTime;
+}
+
+float3 LoadInputColor(int2 pos)
+{
+	#if MSAA_SAMPLERS != 0
+		return InputTexture.Load(int3(pos, 0), 0).rgb / LightingScale;
+	#else
+		return InputTexture.Load(int3(pos, 0)).rgb / LightingScale;
+	#endif
 }
 
 float CalculateLuminance(float3 colour)
@@ -123,11 +133,7 @@ float3 BrightPassFilter(float3 colour)
 	float2 readPosition = (float2(dispatchThreadId.xy) + float2(readOffset)/4.f) * sizeRatio;
 
 		// single tap, no bilinear filtering
-	#if MSAA_SAMPLERS != 0
-		float4 inputColour	= InputTexture.Load(int3(readPosition, 0), 0);
-	#else
-		float4 inputColour	= InputTexture.Load(int3(readPosition, 0));
-	#endif
+	float3 inputColour	= LoadInputColor(int2(readPosition));
 	float l = CalculateLuminance(inputColour.rgb);
 
 	#if USE_GEOMETRIC_MEAN==1
@@ -156,11 +162,7 @@ float3 BrightPassFilter(float3 colour)
 	float3 acculumatedColour = 0.0.xxx;
 	for (int y=inputMins.y; y<inputMaxs.y; ++y) {
 		for (int x=inputMins.x; x<inputMaxs.x; ++x) {
-			#if MSAA_SAMPLERS != 0
-				acculumatedColour += InputTexture.Load(int3(x,y,0), 0).rgb;
-			#else
-				acculumatedColour += InputTexture.Load(int3(x,y,0)).rgb;
-			#endif
+			acculumatedColour += LoadInputColor(int2(x, y));
 		}
 	}
 	int pixelSampleCount = (inputMaxs.x-inputMins.x)*(inputMaxs.y-inputMins.y);
