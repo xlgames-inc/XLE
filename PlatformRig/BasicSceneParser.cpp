@@ -72,7 +72,7 @@ namespace PlatformRig
     {
         SceneEngine::GlobalLightingDesc result;
         result._ambientLight = Float3(0.013921569f, 0.032941177f, 0.042745098f);
-        XlCopyString(result._skyTexture, "Game\\xleres\\defaultresources\\sky\\desertsky.dds");
+        XlCopyString(result._skyTexture, "Game\\xleres\\defaultresources\\sky\\samplesky.dds");
         result._skyReflectionScale = 8.f;
         result._skyReflectionBlurriness = 2.f;
         result._skyBrightness = 0.33f;

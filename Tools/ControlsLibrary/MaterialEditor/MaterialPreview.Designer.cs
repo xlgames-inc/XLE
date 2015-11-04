@@ -37,87 +37,64 @@ namespace ControlsLibrary.MaterialEditor
         /// </summary>
         private void InitializeComponent()
         {
-            this._settingsGroup = new System.Windows.Forms.GroupBox();
-            this._drawGridCheck = new System.Windows.Forms.CheckBox();
+            this._resetCamera = new System.Windows.Forms.Button();
             this._lightingType = new System.Windows.Forms.ComboBox();
             this._geoType = new System.Windows.Forms.ComboBox();
-            this._preview = new LayerControl(); 
-            this._resetCamera = new System.Windows.Forms.Button();
+            this._preview = new LayerControl();
             this._environment = new System.Windows.Forms.ComboBox();
-            this._settingsGroup.SuspendLayout();
             this.SuspendLayout();
-            // 
-            // groupBox1
-            // 
-            this._settingsGroup.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this._settingsGroup.Controls.Add(this._resetCamera);
-            this._settingsGroup.Controls.Add(this._drawGridCheck);
-            this._settingsGroup.Controls.Add(this._lightingType);
-            this._settingsGroup.Controls.Add(this._geoType);
-            this._settingsGroup.Controls.Add(this._environment);
-            this._settingsGroup.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this._settingsGroup.Location = new System.Drawing.Point(554, 3);
-            this._settingsGroup.Name = "groupBox1";
-            this._settingsGroup.Size = new System.Drawing.Size(166, 340);
-            this._settingsGroup.TabIndex = 0;
-            this._settingsGroup.TabStop = false;
-            this._settingsGroup.Text = "Settings";
-            // 
-            // checkBox1
-            // 
-            this._drawGridCheck.AutoSize = true;
-            this._drawGridCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this._drawGridCheck.Location = new System.Drawing.Point(6, 73);
-            this._drawGridCheck.Name = "checkBox1";
-            this._drawGridCheck.Size = new System.Drawing.Size(70, 17);
-            this._drawGridCheck.TabIndex = 2;
-            this._drawGridCheck.Text = "Draw Grid";
-            this._drawGridCheck.UseVisualStyleBackColor = true;
-            // 
-            // _lightingType
-            // 
-            this._lightingType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this._lightingType.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this._lightingType.FormattingEnabled = true;
-            this._lightingType.Location = new System.Drawing.Point(5, 46);
-            this._lightingType.Size = new System.Drawing.Size(155, 21);
-            this._lightingType.TabIndex = 1;
-            // 
-            // _geoType
-            // 
-            this._geoType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this._geoType.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this._geoType.FormattingEnabled = true;
-            this._geoType.Location = new System.Drawing.Point(5, 19);
-            this._geoType.Size = new System.Drawing.Size(155, 21);
-            this._geoType.TabIndex = 0;
-            // 
-            // preview
-            // 
-            this._preview.Location = new System.Drawing.Point(4, 4);
-            this._preview.Name = "preview";
-            this._preview.Size = new System.Drawing.Size(544, 339);
-            this._preview.TabIndex = 1;
-            this._preview.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right | System.Windows.Forms.AnchorStyles.Top)));
             // 
             // _resetCamera
             // 
-            this._resetCamera.Location = new System.Drawing.Point(5, 97);
+            this._resetCamera.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this._resetCamera.Location = new System.Drawing.Point(487, 422);
             this._resetCamera.Name = "_resetCamera";
-            this._resetCamera.Size = new System.Drawing.Size(155, 23);
+            this._resetCamera.Size = new System.Drawing.Size(85, 21);
             this._resetCamera.TabIndex = 3;
             this._resetCamera.Text = "Reset Camera";
             this._resetCamera.UseVisualStyleBackColor = true;
             this._resetCamera.Click += new System.EventHandler(this._resetCamera_Click);
             // 
+            // _lightingType
+            // 
+            this._lightingType.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this._lightingType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._lightingType.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._lightingType.FormattingEnabled = true;
+            this._lightingType.Location = new System.Drawing.Point(165, 422);
+            this._lightingType.Name = "_lightingType";
+            this._lightingType.Size = new System.Drawing.Size(155, 21);
+            this._lightingType.TabIndex = 1;
+            // 
+            // _geoType
+            // 
+            this._geoType.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this._geoType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._geoType.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._geoType.FormattingEnabled = true;
+            this._geoType.Location = new System.Drawing.Point(4, 422);
+            this._geoType.Name = "_geoType";
+            this._geoType.Size = new System.Drawing.Size(155, 21);
+            this._geoType.TabIndex = 0;
+            // 
+            // _preview
+            // 
+            this._preview.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this._preview.Location = new System.Drawing.Point(4, 4);
+            this._preview.Name = "_preview";
+            this._preview.Size = new System.Drawing.Size(567, 412);
+            this._preview.TabIndex = 1;
+            // 
             // _environment
             // 
+            this._environment.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this._environment.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this._environment.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._environment.FormattingEnabled = true;
-            this._environment.Location = new System.Drawing.Point(5, 123);
+            this._environment.Location = new System.Drawing.Point(326, 422);
+            this._environment.Name = "_environment";
             this._environment.Size = new System.Drawing.Size(155, 21);
             this._environment.TabIndex = 4;
             this._environment.Visible = false;
@@ -126,21 +103,20 @@ namespace ControlsLibrary.MaterialEditor
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.Controls.Add(this._environment);
+            this.Controls.Add(this._resetCamera);
             this.Controls.Add(this._preview);
-            this.Controls.Add(this._settingsGroup);
+            this.Controls.Add(this._lightingType);
+            this.Controls.Add(this._geoType);
             this.Name = "MaterialPreview";
-            this.Size = new System.Drawing.Size(723, 346);
-            this._settingsGroup.ResumeLayout(false);
-            this._settingsGroup.PerformLayout();
+            this.Size = new System.Drawing.Size(574, 446);
             this.ResumeLayout(false);
 
         }
 
         #endregion
 
-        private System.Windows.Forms.GroupBox _settingsGroup;
         private System.Windows.Forms.ComboBox _geoType;
-        private System.Windows.Forms.CheckBox _drawGridCheck;
         private System.Windows.Forms.ComboBox _lightingType;
         private LayerControl _preview;
         private System.Windows.Forms.Button _resetCamera;
