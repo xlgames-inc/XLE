@@ -26,6 +26,7 @@ namespace GUILayer
         void                        AttachDefaultCompilers();
         RenderCore::IThreadContext* GetImmediateContext();
         ConsoleRig::GlobalServices* GetGlobalServices() { return _services.get(); }
+        int                         GetCreationThreadId() { return _creationThreadId; }
 
         NativeEngineDevice();
         ~NativeEngineDevice();
@@ -37,5 +38,6 @@ namespace GUILayer
         std::unique_ptr<ConsoleRig::Console> _console;
         std::unique_ptr<RenderCore::Assets::Services> _renderAssetsServices;
         std::unique_ptr<ConsoleRig::GlobalServices> _services;
+        int _creationThreadId;
     };
 }

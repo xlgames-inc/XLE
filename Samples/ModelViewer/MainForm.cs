@@ -33,6 +33,7 @@ namespace ModelViewer
             visMouseOver.AttachCallback(mouseOverDetails);
 
             viewerControl.MouseClick += OnViewerMouseClick;
+            viewerControl.Underlying.SetUpdateAsyncMan(true);
         }
 
         protected void ContextMenu_EditMaterial(object sender, EventArgs e)

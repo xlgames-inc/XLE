@@ -43,48 +43,6 @@ namespace GUILayer
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-        //      hack to make it easy to spawn a thread to process
-        //      items in the background
-    ref class ResourceCompilerThread_Hack
-    {
-    public:
-        static System::Threading::Thread^ BackgroundThread = nullptr;
-
-        static void BackgroundThreadFunction()
-        {
-            while (Active) {
-                Assets::Services::GetAsyncMan().Update();
-                #undef Yield
-                // System::Threading::Thread::Yield();
-                System::Threading::Thread::Sleep(100);
-            }
-        }
-
-        static void Kick() 
-        {
-            Active = true;
-            if (!BackgroundThread) {
-                    //  this thread never dies -- and it keeps 
-                    //      the program alive after it's finished
-                BackgroundThread = gcnew System::Threading::Thread(gcnew System::Threading::ThreadStart(&BackgroundThreadFunction));
-                BackgroundThread->Start();
-            }
-        }
-
-        static void Shutdown()
-        {
-            Active = false;
-            BackgroundThread->Join();
-            delete BackgroundThread;
-            BackgroundThread = nullptr;
-        }
-
-    private:
-        static bool Active = true;
-    };
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
     std::unique_ptr<IWindowRig> NativeEngineDevice::CreateWindowRig(const void* nativeWindowHandle)
     {
         std::unique_ptr<WindowRig> result(new WindowRig(*_renderDevice.get(), nativeWindowHandle));
@@ -131,6 +89,7 @@ namespace GUILayer
 
         _assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
         _renderAssetsServices = std::make_unique<RenderCore::Assets::Services>(_renderDevice.get());
+        _creationThreadId = System::Threading::Thread::CurrentThread->ManagedThreadId;
     }
 
     NativeEngineDevice::~NativeEngineDevice()
@@ -154,16 +113,21 @@ namespace GUILayer
     {
         return _pimpl->GetImmediateContext();
     }
+
+    void EngineDevice::ForegroundUpdate()
+    {
+            // This is intended to be run in the foreground thread
+            // It can be run inconsistantly... But typically it is
+            // run approximately once per frame.
+        assert(System::Threading::Thread::CurrentThread->ManagedThreadId == _pimpl->GetCreationThreadId());
+        Assets::Services::GetAsyncMan().Update();
+    }
     
     EngineDevice::EngineDevice()
     {
         assert(s_instance == nullptr);
-
         _pimpl.reset(new NativeEngineDevice);
-        
         RenderOverlays::InitFontSystem(_pimpl->GetRenderDevice(), _pimpl->GetBufferUploads());
-        ResourceCompilerThread_Hack::Kick();
-
         s_instance = this;
     }
 
@@ -183,7 +147,6 @@ namespace GUILayer
         RenderOverlays::CleanupFontSystem();
         if (_pimpl->GetAssetServices())
             _pimpl->GetAssetServices()->GetAssetSets().Clear();
-        ResourceCompilerThread_Hack::Shutdown();
         Assets::Dependencies_Shutdown();
         _pimpl.reset();
         TerminateFileSystemMonitoring();

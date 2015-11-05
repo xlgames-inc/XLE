@@ -45,6 +45,7 @@ namespace PlatformRig
             const FrameRenderFunction& renderFunction);
 
         void SetFrameLimiter(unsigned maxFPS);
+        void SetUpdateAsyncMan(bool updateAsyncMan);
 
         typedef std::function<void(RenderCore::IThreadContext&)> PostPresentCallback;
         virtual void AddPostPresentCallback(const PostPresentCallback&);

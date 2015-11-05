@@ -269,20 +269,14 @@ namespace PlatformRig
         else { _pimpl->_frameLimiter = 0; }
     }
 
-    std::shared_ptr<OverlaySystemSet>& FrameRig::GetMainOverlaySystem()
-    {
-        return _pimpl->_mainOverlaySys;
-    }
-
-    std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& FrameRig::GetDebugSystem()
-    {
-        return _pimpl->_debugSystem;
-    }
-
     void FrameRig::AddPostPresentCallback(const PostPresentCallback& postPresentCallback)
     {
         _pimpl->_postPresentCallbacks.push_back(postPresentCallback);
     }
+
+    std::shared_ptr<OverlaySystemSet>& FrameRig::GetMainOverlaySystem() { return _pimpl->_mainOverlaySys; }
+    std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& FrameRig::GetDebugSystem() { return _pimpl->_debugSystem; }
+    void FrameRig::SetUpdateAsyncMan(bool updateAsyncMan) { _pimpl->_updateAsyncMan = updateAsyncMan; }
 
     FrameRig::FrameRig(bool isMainFrameRig)
     {
@@ -293,11 +287,10 @@ namespace PlatformRig
 
         {
             _pimpl->_debugSystem = std::make_shared<DebugScreensSystem>();
-            if (isMainFrameRig) {
-                auto display = std::make_shared<FrameRigDisplay>(
-                    _pimpl->_debugSystem, _pimpl->_prevFrameAllocationCount, _pimpl->_frameRate);
-                _pimpl->_debugSystem->Register(display, "FrameRig", DebugScreensSystem::SystemDisplay);
-            }
+            if (isMainFrameRig)
+                _pimpl->_debugSystem->Register(
+                    std::make_shared<FrameRigDisplay>(_pimpl->_debugSystem, _pimpl->_prevFrameAllocationCount, _pimpl->_frameRate),
+                    "FrameRig", DebugScreensSystem::SystemDisplay);
         }
 
         _pimpl->_mainOverlaySys->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem));
@@ -306,13 +299,11 @@ namespace PlatformRig
         auto accAlloc = AccumulatedAllocations::GetInstance();
         if (accAlloc) {
             auto acc = accAlloc->GetAndClear();
-            if (acc._allocationCount) {
+            if (acc._allocationCount)
                 LogInfo << "(" << acc._freeCount << ") frees and (" << acc._allocationCount << ") allocs during startup. Ave alloc: (" << acc._allocationsSize / acc._allocationCount << ").";
-            }
             auto metrics = accAlloc->GetCurrentHeapMetrics();
-            if (metrics._blockCount) {
+            if (metrics._blockCount)
                 LogInfo << "(" << metrics._blockCount << ") active normal block allocations in (" << metrics._usage / (1024.f*1024.f) << "M bytes). Ave: (" << metrics._usage / metrics._blockCount << ").";
-            }
         }
 
         if (isMainFrameRig) {

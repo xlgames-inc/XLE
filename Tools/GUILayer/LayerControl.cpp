@@ -213,6 +213,11 @@ namespace GUILayer
         return gcnew VisResources();
     }
 
+    void LayerControl::SetUpdateAsyncMan(bool updateAsyncMan)
+    {
+        GetWindowRig().GetFrameRig().SetUpdateAsyncMan(updateAsyncMan);
+    }
+
     namespace Internal
     {
         class OverlaySystemAdapter : public PlatformRig::IOverlaySystem

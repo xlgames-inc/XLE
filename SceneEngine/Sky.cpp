@@ -296,15 +296,18 @@ namespace SceneEngine
                 size_t beforePart = halfCubePart-skyTextureName;
                 XlCopyNString(nameBuffer, skyTextureName, beforePart);
                 XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_12");
-                XlCopyString(&nameBuffer[beforePart+3], MaxPath-beforePart-3, &skyTextureName[beforePart+3]);
+                if (*halfCubePart)
+                    XlCopyString(&nameBuffer[beforePart+3], MaxPath-beforePart-3, &skyTextureName[beforePart+3]);
                 _faces12 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
 
                 XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_34");
-                XlCopyString(&nameBuffer[beforePart+3], MaxPath-beforePart-3, &skyTextureName[beforePart+3]);
+                if (*halfCubePart)
+                    XlCopyString(&nameBuffer[beforePart+3], MaxPath-beforePart-3, &skyTextureName[beforePart+3]);
                 _faces34 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
 
                 XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_5");
-                XlCopyString(&nameBuffer[beforePart+2], MaxPath-beforePart-2, &skyTextureName[beforePart+3]);
+                if (*halfCubePart)
+                    XlCopyString(&nameBuffer[beforePart+2], MaxPath-beforePart-2, &skyTextureName[beforePart+3]);
                 _face5 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
             } else {
                 _projectionType = (resourceType == GlobalLightingDesc::SkyTextureType::HemiEquirectangular) ? 4 : 3;
