@@ -107,7 +107,7 @@ namespace Utility
 
                 formatter.WriteAttribute(
                     AsPointer(p._name.cbegin()), AsPointer(p._name.cend()), 
-                    buffer, &buffer[XlStringLen(buffer)]);
+                    buffer, XlStringEnd(buffer));
             }
 
             if (p._castToArray) {
@@ -155,7 +155,7 @@ namespace Utility
         // parameters in the parameter box
         for (auto i=paramBox.Begin(); !i.IsEnd(); ++i) {
             const auto nameStart = i.Name();
-            const auto nameEnd = &nameStart[XlStringLen(nameStart)];
+            const auto nameEnd = XlStringEnd(nameStart);
             auto arrayBracket = std::find(nameStart, nameEnd, '[');
             if (arrayBracket == nameEnd) {
                 accessors.TryOpaqueSet(

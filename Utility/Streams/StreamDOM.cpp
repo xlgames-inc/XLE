@@ -112,15 +112,13 @@ namespace Utility
     }
 
     template<typename Formatter>
-        unsigned Document<Formatter>::FindAttribute(const value_type* nameStart, const value_type* nameEnd) const
+        unsigned Document<Formatter>::FindAttribute(StringSection<value_type> name) const
     {
         if (_attributes.empty()) return ~0u;
 
-        auto expectedNameLen = nameEnd - nameStart;
         for (auto a=_firstRootAttribute; a!=~0u;) {
             const auto& attrib = _attributes[a];
-            auto nameLen = attrib._name._end - attrib._name._start;
-            if (nameLen == expectedNameLen && !XlComparePrefix(attrib._name._start, nameStart, nameLen))
+            if (XlEqString(attrib._name, name))
                 return a;
 
             a=attrib._nextSibling;
@@ -132,7 +130,7 @@ namespace Utility
     template<typename Formatter>
         DocAttributeHelper<Formatter> Document<Formatter>::Attribute(const value_type name[]) const
     {
-        return DocAttributeHelper<Formatter>(FindAttribute(name, &name[XlStringLen(name)]), *this);
+        return DocAttributeHelper<Formatter>(FindAttribute(name), *this);
     }
 
     template <typename Formatter>
@@ -239,7 +237,7 @@ namespace Utility
         DocAttributeHelper<Formatter> DocElementHelper<Formatter>::Attribute(const value_type name[]) const
     {
         if (_index == ~0u) DocAttributeHelper<Formatter>();
-        return DocAttributeHelper<Formatter>(FindAttribute(name, &name[XlStringLen(name)]), *_doc);
+        return DocAttributeHelper<Formatter>(FindAttribute(name), *_doc);
     }
 
     template<typename Formatter>
@@ -275,16 +273,13 @@ namespace Utility
     }
 
     template<typename Formatter>
-        unsigned DocElementHelper<Formatter>::FindAttribute(const value_type* nameStart, const value_type* nameEnd) const
+        unsigned DocElementHelper<Formatter>::FindAttribute(StringSection<value_type> name) const
     {
         assert(_index != ~0u);
         auto& ele = _doc->_elements[_index];
-        auto expectedNameLen = nameEnd - nameStart;
-
         for (unsigned a=ele._firstAttribute; a!=~0u;) {
             const auto& attrib = _doc->_attributes[a];
-            auto nameLen = attrib._name._end - attrib._name._start;
-            if (nameLen == expectedNameLen && !XlComparePrefix(attrib._name._start, nameStart, nameLen))
+            if (XlEqString(attrib._name, name))
                 return a;
 
             a=attrib._nextSibling;

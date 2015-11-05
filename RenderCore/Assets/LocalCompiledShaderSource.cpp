@@ -128,6 +128,7 @@ namespace RenderCore { namespace Assets
         const char entryPoint[], const char shaderModel[], const ResChar definesTable[])
     {
         size_t shaderBufferSize = XlStringLen(shaderInMemory);
+        assert(&shaderInMemory[shaderBufferSize] == XlStringEnd(shaderInMemory));
 
         _shaderPath = ResId(
             StringMeld<64>() << "ShaderInMemory_" << Hash64(shaderInMemory, &shaderInMemory[shaderBufferSize]), 
@@ -281,6 +282,7 @@ namespace RenderCore { namespace Assets
         char baseDir[MaxPath];
         intermediateStore.MakeIntermediateName(baseDir, dimof(baseDir), "");
         auto baseDirLen = XlStringLen(baseDir);
+        assert(&baseDir[baseDirLen] == XlStringEnd(baseDir));
         std::deque<std::string> dirs;
         dirs.push_back(std::string(baseDir));
 

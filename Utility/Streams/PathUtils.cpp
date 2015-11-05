@@ -226,7 +226,7 @@ void XlResolveRelPath(char* dst, int count, const char* base, const char* rel)
 {
     char tmp[MaxPath];
     XlDirname(tmp, dimof(tmp), base);
-    XlConcatPath(dst, count, tmp, rel, &rel[XlStringLen(rel)]);
+    XlConcatPath(dst, count, tmp, rel, XlStringEnd(rel));
 }
 
 #endif

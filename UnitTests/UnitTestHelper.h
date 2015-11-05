@@ -43,7 +43,7 @@ namespace UnitTests
     
     	XlGetCurrentDirectory(dimof(appDir), appDir);
          auto* catPath = a2n("..\\Working");
-    	XlConcatPath(workingDir, dimof(workingDir), appDir, catPath, &catPath[XlStringLen(catPath)]);
+    	XlConcatPath(workingDir, dimof(workingDir), appDir, catPath, XlStringEnd(catPath));
     	XlChDir(workingDir);
     }
     

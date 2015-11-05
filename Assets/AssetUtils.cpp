@@ -221,7 +221,7 @@ namespace Assets
             baseFileExist = DoesFileExist(tempBuffer);
         } else {
             baseFileExist = DoesFileExist(baseName);
-            colon = &baseName[XlStringLen(baseName)];
+            colon = XlStringEnd(baseName);
         }
 
             // by definition, we always check the unmodified file name first
@@ -281,7 +281,7 @@ namespace Assets
                 b = AsPointer(_bufferOverflow.begin());
             }
 
-            const auto* baseEnd = &baseName[XlStringLen(baseName)];
+            const auto* baseEnd = XlStringEnd(baseName);
             
             ResChar tempBuffer[MaxPath];
             ResChar* workingBuffer = (baseName!=destination) ? destination : tempBuffer;
@@ -486,7 +486,7 @@ namespace Assets
 
         XlCopyString(dest._fn, relPath.c_str());
 
-        auto* i = &dest._fn[XlStringLen(dest._fn)];
+        auto* i = XlStringEnd(dest._fn);
         auto* iend = ArrayEnd(dest._fn);
         auto fileAndExtension = srcSplit.FileAndExtension();
         auto* s = fileAndExtension._start;

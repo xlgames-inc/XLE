@@ -48,6 +48,14 @@ namespace Utility
     XL_UTILITY_API void     XlCopyString        (wchar_t* dst, size_t size, const wchar_t* src);
     XL_UTILITY_API void     XlCopyNString       (wchar_t* dst, size_t count, const wchar_t*src, size_t length);
 
+    template <typename CharType>
+        const CharType* XlStringEnd(const CharType nullTermStr[])
+            { return &nullTermStr[XlStringSize(nullTermStr)]; }
+
+    template <typename CharType>
+        CharType* XlStringEnd(CharType nullTermStr[])
+            { return &nullTermStr[XlStringSize(nullTermStr)]; }
+
         ////////////   S T R I N G   S E C T I O N   ////////////
 
     /// <summary>Pointers to the start and end of a string</summary>
@@ -80,7 +88,7 @@ namespace Utility
 
         StringSection(const CharType* start, const CharType* end) : _start(start), _end(end) {}
         StringSection() : _start(nullptr), _end(nullptr) {}
-        StringSection(const CharType* nullTerm) : _start(nullTerm), _end(&_start[XlStringLen(nullTerm)]) {}
+        StringSection(const CharType* nullTerm) : _start(nullTerm), _end(XlStringEnd(_start)) {}
         explicit StringSection(const std::basic_string<CharType>& str);
     };
 
@@ -181,6 +189,7 @@ namespace Utility
         ////////////   C H A R A C T E R   C O N V E R S I O N S   ////////////
     XL_UTILITY_API ucs4     XlGetChar(const char* str, size_t* size);
     XL_UTILITY_API void     XlGetChar(char* output, size_t count, const ucs4* uniStr, size_t* size);
+    
 
 #if 0   //  see also UTFUtils.h
             // utf8 <-> ucs4

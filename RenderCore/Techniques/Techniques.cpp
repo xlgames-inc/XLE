@@ -285,7 +285,7 @@ namespace RenderCore { namespace Techniques
         std::for_each(defines.cbegin(), defines.cend(), 
             [&combinedStrings](const std::pair<const utf8*, std::string>& object) 
             {
-                combinedStrings.insert(combinedStrings.end(), (const char*)object.first, (const char*)&object.first[XlStringLen(object.first)]); 
+                combinedStrings.insert(combinedStrings.end(), (const char*)object.first, (const char*)XlStringEnd(object.first)); 
                 combinedStrings.push_back('=');
                 combinedStrings.insert(combinedStrings.end(), object.second.cbegin(), object.second.cend()); 
                 combinedStrings.push_back(';');

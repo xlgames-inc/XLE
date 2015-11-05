@@ -151,7 +151,7 @@ size_t XlStringSizeSafe(const char* str, const char* end)
 
 size_t XlStringSize(const ucs4* str)
 {
-    return XlStringLen(str) * sizeof(ucs4);
+    return XlStringLen(str);
 }
 
 size_t XlStringSizeSafe(const ucs4* str, const ucs4* end)
@@ -911,7 +911,7 @@ bool XlSafeAtoi(const char* str, int* n)
             }
         }
     #else
-        char* end = const_cast<char*>(&str[XlStringLen(str)]);
+        char* end = const_cast<char*>(XlStringEnd(str));
         long result = strtol(str, &end, 10);   // GCC atoi doesn't handle ERANGE as expected... But! Sometimes strtol returns a 64 bit number, not a 32 bit number... trouble...?
         if (result == LONG_MAX || result == LONG_MIN) {
             if (errno == ERANGE) {
@@ -939,7 +939,7 @@ bool XlSafeAtoi64(const char* str, int64* n)
     #if CLIBRARIES_ACTIVE == CLIBRARIES_MSVC
         *n = _atoi64(str);
     #else
-        char* end = const_cast<char*>(&str[XlStringLen(str)]);
+        char* end = const_cast<char*>(XlStringEnd(str));
         *n = strtoll(str, &end, 10);
     #endif
     if (*n == MAX_INT64 || *n == MIN_INT64) {

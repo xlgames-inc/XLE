@@ -149,7 +149,7 @@ namespace PlatformRig { namespace Overlays
             const auto& evnt = resolvedEvents[items.top().first];
             items.pop();
 
-            const auto idLowerPart = evnt._label ? Hash32(evnt._label, &evnt._label[XlStringLen(evnt._label)]) : 0;
+            const auto idLowerPart = evnt._label ? Hash32(evnt._label, XlStringEnd(evnt._label)) : 0;
             const auto elementId = uint64(g_InteractableIdTopPart) << 32ull | uint64(idLowerPart);
 
             auto leftPart = layout.Allocate(Coord2(settings._leftPartWidth, settings._lineHeight));

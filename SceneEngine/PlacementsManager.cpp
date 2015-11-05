@@ -1709,7 +1709,7 @@ namespace SceneEngine
 
         std::vector<uint64> result;
         const auto* i = stringNames;
-        const auto* end = &stringNames[XlStringLen(stringNames)];
+        const auto* end = XlStringEnd(stringNames);
         for (;;) {
             auto comma = XlFindChar(i, ',');
             if (!comma) comma = end;

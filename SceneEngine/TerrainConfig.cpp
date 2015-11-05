@@ -104,6 +104,7 @@ namespace SceneEngine
         ::Assets::ResChar buffer[MaxPath];
         SplitPath<::Assets::ResChar>(input).Simplify().Rebuild(buffer, dimof(buffer));
         auto len = XlStringLen(buffer);
+        assert(&buffer[len] == XlStringEnd(buffer));
         std::transform(buffer, &buffer[len], buffer, &std::tolower);
         if (len && buffer[len-1] != '/' && (len+1) < dimof(buffer)) {
             buffer[len] = '/';

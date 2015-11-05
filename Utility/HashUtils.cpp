@@ -35,7 +35,7 @@ namespace Utility
 
     uint64 Hash64(const char str[], uint64 seed)
     {
-        return Hash64(str, &str[XlStringLen(str)], seed);
+        return Hash64(str, XlStringEnd(str), seed);
     }
 
     uint64 Hash64(const std::string& str, uint64 seed)

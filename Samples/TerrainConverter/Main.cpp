@@ -40,7 +40,7 @@ static void SetWorkingDirectory()
     XlGetProcessPath    (appPath, dimof(appPath));
     XlDirname           (appDir, dimof(appDir), appPath);
     const auto* fn = a2n("..\\Working");
-    XlConcatPath        (workingDir, dimof(workingDir), appDir, fn, &fn[XlStringLen(fn)]);
+    XlConcatPath        (workingDir, dimof(workingDir), appDir, fn, XlStringEnd(fn));
     XlChDir             (workingDir);
 }
 

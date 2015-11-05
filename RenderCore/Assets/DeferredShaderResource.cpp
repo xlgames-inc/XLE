@@ -110,7 +110,7 @@ namespace RenderCore { namespace Assets
                 if (*c == 't' || *c == 'T') { _generateMipmaps = false; }
             }
         } else
-            colon = &initializer[XlStringLen(initializer)];
+            colon = XlStringEnd(initializer);
 
         if (_colSpaceRequestString == SourceColorSpace::Unspecified) {
             if (XlFindStringI(initializer, "_ddn")) {

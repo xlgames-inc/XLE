@@ -135,7 +135,7 @@ namespace RenderCore { namespace ColladaConversion
 
                 char buffer[256];
                 xl_snprintf(buffer, dimof(buffer), "%s_%s(%i)", nodeName, AsString(type), typeIndex);
-                parameterHash = Hash32(buffer, &buffer[XlStringLen(buffer)]);
+                parameterHash = Hash32(buffer, XlStringEnd(buffer));
             }
 
             if  (type == Transformation::MATRIX) {

@@ -10,6 +10,7 @@
 #include "../../RenderUtils.h"
 #include "../../../Assets/IntermediateAssets.h"
 #include "../../../Utility/StringUtils.h"
+#include "../../../Utility/StringFormat.h"
 #include "../../../Core/Exceptions.h"
 
 #include "IncludeDX11.h"
@@ -29,9 +30,7 @@ namespace RenderCore { namespace Metal_DX11
             //
         ResChar temp[MaxPath];
         if (!XlFindStringI(initializer, "vs_")) {
-            XlCopyString(temp, initializer);
-            size_t len = XlStringLen(temp);
-            XlCopyString(&temp[len], dimof(temp)-len-1, ":" VS_DefShaderModel);
+            StringMeldInPlace(temp) << initializer << ":" VS_DefShaderModel;
             initializer = temp;
         }
 
@@ -68,9 +67,7 @@ namespace RenderCore { namespace Metal_DX11
             //
         ResChar temp[MaxPath];
         if (!XlFindStringI(initializer, "ps_")) {
-            XlCopyString(temp, initializer);
-            size_t len = XlStringLen(temp);
-            XlCopyString(&temp[len], dimof(temp)-len-1, ":" PS_DefShaderModel);
+            StringMeldInPlace(temp) << initializer << ":" PS_DefShaderModel;
             initializer = temp;
         }
 
@@ -128,9 +125,7 @@ namespace RenderCore { namespace Metal_DX11
             //
         ResChar temp[MaxPath];
         if (!XlFindStringI(initializer, "gs_")) {
-            XlCopyString(temp, initializer);
-            size_t len = XlStringLen(temp);
-            XlCopyString(&temp[len], dimof(temp)-len-1, ":" GS_DefShaderModel);
+            StringMeldInPlace(temp) << initializer << ":" GS_DefShaderModel;
             initializer = temp;
         }
 
@@ -235,9 +230,7 @@ namespace RenderCore { namespace Metal_DX11
     {
         ResChar temp[MaxPath];
         if (!XlFindStringI(initializer, "cs_")) {
-            XlCopyString(temp, initializer);
-            size_t len = XlStringLen(temp);
-            XlCopyString(&temp[len], dimof(temp)-len-1, ":" CS_DefShaderModel);
+            StringMeldInPlace(temp) << initializer << ":" CS_DefShaderModel;
             initializer = temp;
         }
 
@@ -270,9 +263,7 @@ namespace RenderCore { namespace Metal_DX11
     {
         ResChar temp[MaxPath];
         if (!XlFindStringI(initializer, "ds_")) {
-            XlCopyString(temp, initializer);
-            size_t len = XlStringLen(temp);
-            XlCopyString(&temp[len], dimof(temp)-len-1, ":" DS_DefShaderModel);
+            StringMeldInPlace(temp) << initializer << ":" DS_DefShaderModel;
             initializer = temp;
         }
 
@@ -305,9 +296,7 @@ namespace RenderCore { namespace Metal_DX11
     {
         ResChar temp[MaxPath];
         if (!XlFindStringI(initializer, "hs_")) {
-            XlCopyString(temp, initializer);
-            size_t len = XlStringLen(temp);
-            XlCopyString(&temp[len], dimof(temp)-len-1, ":" HS_DefShaderModel);
+            StringMeldInPlace(temp) << initializer << ":" HS_DefShaderModel;
             initializer = temp;
         }
 

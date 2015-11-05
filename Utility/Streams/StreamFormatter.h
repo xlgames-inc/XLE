@@ -38,7 +38,7 @@ namespace Utility
         template<typename CharType> 
             ElementId BeginElement(const CharType* nameNullTerm)
             {
-                return BeginElement(nameNullTerm, &nameNullTerm[XlStringLen(nameNullTerm)]);
+                return BeginElement(nameNullTerm, XlStringEnd(nameNullTerm));
             }
 
         template<typename CharType> 
@@ -51,8 +51,8 @@ namespace Utility
             void WriteAttribute(const CharType* nameNullTerm, const CharType* valueNullTerm)
             {
                 WriteAttribute(
-                    nameNullTerm, &nameNullTerm[XlStringLen(nameNullTerm)],
-                    valueNullTerm, &valueNullTerm[XlStringLen(valueNullTerm)]);
+                    nameNullTerm, XlStringEnd(nameNullTerm),
+                    valueNullTerm, XlStringEnd(valueNullTerm));
             }
 
         template<typename CharType> 

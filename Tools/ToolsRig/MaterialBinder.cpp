@@ -303,7 +303,7 @@ namespace ToolsRig
                         isDefaultRes = true;
                     }
 
-                    auto bindingHash = Hash64(bindDesc.Name, &bindDesc.Name[XlStringLen(bindDesc.Name)]);
+                    auto bindingHash = Hash64(bindDesc.Name, XlStringEnd(bindDesc.Name));
                     if (std::find(alreadyBound.cbegin(), alreadyBound.cend(), bindingHash) != alreadyBound.cend()) {
                         continue;
                     }

@@ -247,7 +247,7 @@ namespace RenderCore { namespace Metal_DX11
 					D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
 					HRESULT hresult = _stageBindings[s]._reflection->GetResourceBindingDesc(c, &bindingDesc);
 					if (SUCCEEDED(hresult)) {
-						const uint64 hash = Hash64(bindingDesc.Name, &bindingDesc.Name[XlStringLen(bindingDesc.Name)]);
+						const uint64 hash = Hash64(bindingDesc.Name, XlStringEnd(bindingDesc.Name));
 						if (hash == hashName) {
 							ID3D::ShaderReflectionConstantBuffer* cbReflection = _stageBindings[s]._reflection->GetConstantBufferByName(
 								bindingDesc.Name);
@@ -496,7 +496,7 @@ namespace RenderCore { namespace Metal_DX11
                 }
 
                 ConstantBufferLayoutElementHash newElement;
-                newElement._name = Hash64(variableDesc.Name, &variableDesc.Name[XlStringLen(variableDesc.Name)]);
+                newElement._name = Hash64(variableDesc.Name, XlStringEnd(variableDesc.Name));
                 newElement._offset = variableDesc.StartOffset;
                 newElement._arrayCount = typeDesc.Elements;
                 newElement._format = AsNativeFormat(typeDesc);
@@ -546,7 +546,7 @@ namespace RenderCore { namespace Metal_DX11
 					D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
 					HRESULT hresult = _stageBindings[s]._reflection->GetResourceBindingDesc(c, &bindingDesc);
 					if (SUCCEEDED(hresult)) {
-						const uint64 hash = Hash64(bindingDesc.Name, &bindingDesc.Name[XlStringLen(bindingDesc.Name)]);
+						const uint64 hash = Hash64(bindingDesc.Name, XlStringEnd(bindingDesc.Name));
 						if (hash == hashName) {
 							StageBinding::Binding newBinding = {bindingDesc.BindPoint, slot | (stream<<16)};
 							_stageBindings[s]._shaderResourceBindings.push_back(newBinding);
@@ -759,7 +759,7 @@ namespace RenderCore { namespace Metal_DX11
                                 hresult  = var->GetDesc(&varDesc);
                                 if (!SUCCEEDED(hresult)) continue;
 
-                                const uint64 hash = Hash64(varDesc.Name, &varDesc.Name[XlStringLen(varDesc.Name)]);
+                                const uint64 hash = Hash64(varDesc.Name, XlStringEnd(varDesc.Name));
 					            if (hash != hashName) continue;
 
                                 auto finalSlot = var->GetInterfaceSlot(bindingArrayIndex);

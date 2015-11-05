@@ -104,7 +104,7 @@ namespace clix {
       template<Encoding encoding, typename SourceType, typename std::enable_if<std::is_integral<typename std::remove_pointer<SourceType>::type>::value>::type* = nullptr>
       static System::String ^marshal(const SourceType string) {
         typedef typename std::remove_const<typename std::remove_pointer<SourceType>::type>::type ValueType;
-        return marshalCxxString<encoding, ValueType>(string, &string[XlStringLen(string)]);
+        return marshalCxxString<encoding, ValueType>(string, XlStringEnd(string));
       }
 
       template<Encoding encoding, typename SourceType, typename SourceCharType>

@@ -45,13 +45,9 @@ namespace SceneEngine
     uint64      TerrainCellId::BuildHash() const
     {
         uint64 result = Hash64(_heightMapFilename);
-        for (unsigned c=0; c<dimof(_coverageFilename); ++c) {
-            if (_coverageFilename[c] && _coverageFilename[c][0]) {
-                result = Hash64(
-                    _coverageFilename[c], &_coverageFilename[c][XlStringLen(_coverageFilename[c])], 
-                    result);
-            }
-        }
+        for (unsigned c=0; c<dimof(_coverageFilename); ++c)
+            if (_coverageFilename[c] && _coverageFilename[c][0])
+                result = HashCombine(Hash64(_coverageFilename[c], XlStringEnd(_coverageFilename[c])), result);
         return result;
     }
 

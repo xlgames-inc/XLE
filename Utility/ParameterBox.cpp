@@ -446,7 +446,7 @@ namespace Utility
 
         template <typename Type> std::pair<bool, Type> Parse(const char expression[]) 
         {
-            return Parse<Type>(expression, &expression[XlStringLen(expression)]);
+            return Parse<Type>(expression, XlStringEnd(expression));
         }
 
         template <typename Type>
@@ -556,7 +556,7 @@ namespace Utility
 
     ParameterBox::ParameterNameHash    ParameterBox::MakeParameterNameHash(const utf8 name[])
     {
-        return Hash32(name, &name[XlStringLen(name)]);
+        return Hash32(name, XlStringEnd(name));
     }
 
     ParameterBox::ParameterNameHash    ParameterBox::MakeParameterNameHash(const char name[])
@@ -587,7 +587,7 @@ namespace Utility
 
     void     ParameterBox::SetParameter(const utf8 name[], const char* stringDataBegin)
     {
-        SetParameter(name, stringDataBegin, stringDataBegin ? &stringDataBegin[XlStringLen(stringDataBegin)] : nullptr);
+        SetParameter(name, stringDataBegin, stringDataBegin ? XlStringEnd(stringDataBegin) : nullptr);
     }
 
     void     ParameterBox::SetParameter(const utf8 name[], const std::string& stringData)

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../PtrUtils.h"    // (for Default)
+#include "../StringUtils.h" // (for StringSection)
 #include <vector>
 #include <string>
 
@@ -68,7 +69,7 @@ namespace Utility
 
         unsigned ParseElement(Formatter& formatter);
 
-        unsigned FindAttribute(const value_type* nameStart, const value_type* nameEnd) const;
+        unsigned FindAttribute(StringSection<value_type> name) const;
 
         friend class DocElementHelper<Formatter>;
         friend class DocAttributeHelper<Formatter>;
@@ -105,7 +106,7 @@ namespace Utility
         DocElementHelper(unsigned elementIndex, const Document<Formatter>& doc);
         DocElementHelper();
 
-        unsigned FindAttribute(const value_type* nameStart, const value_type* nameEnd) const;
+        unsigned FindAttribute(StringSection<value_type> name) const;
 
         friend class Document<Formatter>;
     };
