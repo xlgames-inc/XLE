@@ -49,9 +49,13 @@ float3 ReadSkyReflectionTexture(float3 reflectionVector, float roughness, float 
             SkyReflectionTexture[0], SkyReflectionTexture[1], SkyReflectionTexture[2],
             reflectionTextureDims, uint(mipMap));
 
-    #elif SKY_PROJECTION == 3
+    #elif (SKY_PROJECTION == 3) || (SKY_PROJECTION == 4)
 
-        float2 skyReflectionCoord = HemisphericalMappingCoord(reflectionVector);
+        #if (SKY_PROJECTION == 3)
+            float2 skyReflectionCoord = EquirectangularMappingCoord(reflectionVector);
+        #else
+            float2 skyReflectionCoord = HemiEquirectangularMappingCoord(reflectionVector);
+        #endif
         mipMap = max(mipMap, CalculateMipmapLevel(skyReflectionCoord.xy, reflectionTextureDims));
 
         // #define DEBUG_REFLECTION_MIPMAPS 1

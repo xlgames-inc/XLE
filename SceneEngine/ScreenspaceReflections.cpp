@@ -392,10 +392,7 @@ namespace SceneEngine
 
         context.BindPS(MakeResourceList(5, resources._mask.SRV(), resources._downsampledNormals.SRV()));
         context.BindPS(MakeResourceList(10, resources._downsampledDepth.SRV(), resources._reflections.SRV()));
-        auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
-        if (skyTexture[0]) {
-            SkyTexture_BindPS(&context, parserContext, skyTexture, 7);
-        }
+        SkyTextureParts(parserContext.GetSceneParser()->GetGlobalLightingDesc()).BindPS(context, 7);
 
             // todo -- we have to bind the gbuffer here!
         context.BindPS(MakeResourceList(*gbufferDiffuse, *gbufferNormals, *gbufferParam, *depthsSRV));

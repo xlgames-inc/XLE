@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "LightDesc.h"
+#include "../Assets/AssetsCore.h"
 #include "../RenderCore/Metal/Forward.h"
 
 namespace RenderCore { namespace Assets { class DeferredShaderResource; } }
@@ -13,11 +15,13 @@ namespace RenderCore { namespace Assets { class DeferredShaderResource; } }
 namespace SceneEngine
 {
     class LightingParserContext;
-    void    Sky_Render( RenderCore::Metal::DeviceContext* context, 
-                        LightingParserContext& parserContext,
-                        bool blendFog);
-    void    Sky_RenderPostFog(  RenderCore::Metal::DeviceContext* context, 
-                                LightingParserContext& parserContext);
+    void    Sky_Render(
+        RenderCore::Metal::DeviceContext& context, 
+        LightingParserContext& parserContext,
+        bool blendFog);
+    void    Sky_RenderPostFog(
+        RenderCore::Metal::DeviceContext& context, 
+        LightingParserContext& parserContext);
 
     class SkyTextureParts
     {
@@ -25,14 +29,15 @@ namespace SceneEngine
         const RenderCore::Assets::DeferredShaderResource*      _faces12;
         const RenderCore::Assets::DeferredShaderResource*      _faces34;
         const RenderCore::Assets::DeferredShaderResource*      _face5;
-        int                                             _projectionType;
+        int _projectionType;
 
-        SkyTextureParts(const char skyTextureName[]);
+        bool IsGood() const { return _projectionType > 0; }
+        unsigned BindPS(RenderCore::Metal::DeviceContext& context, int bindSlot) const;
+
+        SkyTextureParts(
+            const ::Assets::ResChar assetName[], 
+            GlobalLightingDesc::SkyTextureType assetType);
+        SkyTextureParts(const GlobalLightingDesc& globalDesc);
     };
-
-    unsigned    SkyTexture_BindPS(  RenderCore::Metal::DeviceContext* context, 
-                                    LightingParserContext& parserContext,
-                                    const SkyTextureParts& skyTextureParts,
-                                    int bindSlot);
 }
 

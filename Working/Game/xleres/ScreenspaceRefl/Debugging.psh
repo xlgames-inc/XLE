@@ -24,7 +24,7 @@ float3 CalculateReflectionVector(uint2 pixelCoord, float3 viewFrustumVector, flo
 {
 	const uint msaaSampleIndex = 0;
 	const float linear0To1Depth = NDCDepthToLinear0To1(LoadFloat1(DepthTexture, pixelCoord, msaaSampleIndex));
-	float3 worldSpacePosition = 
+	float3 worldSpacePosition =
 		CalculateWorldPosition(viewFrustumVector, linear0To1Depth, WorldSpaceView);
 
 	float3 worldSpaceReflection = reflect(normalize(worldSpacePosition - WorldSpaceView), worldSpaceNormal);
@@ -46,7 +46,7 @@ float4 TilesDebugging(	float4 position				: SV_Position,
 #if 1
 	float4 reflectionColour = ReflectionsTexture.SampleLevel(ClampingSampler, texCoord, 0);
 
-	uint3 normalDim; 
+	uint3 normalDim;
 	#if defined(MSAA_SAMPLERS) && (MSAA_SAMPLERS != 0)
 		GBuffer_Normals.GetDimensions(normalDim.x, normalDim.y, normalDim.z);
 	#else
@@ -58,7 +58,7 @@ float4 TilesDebugging(	float4 position				: SV_Position,
 
 	float3 reflectionVector = CalculateReflectionVector(
 		uint2(texCoord.xy*normalDim.xy), viewFrustumVector, gbuffer.worldSpaceNormal);
-	float2 skyReflectionCoord = HemisphericalMappingCoord(reflectionVector);
+	float2 skyReflectionCoord = EquirectangularMappingCoord(reflectionVector);
 	float3 skyReflection = SkyReflectionTexture[0].Sample(DefaultSampler, skyReflectionCoord).rgb;
 	// return float4(skyReflection, 1.f);
 	// reflectivity = 1;
@@ -89,9 +89,9 @@ float4 TilesDebugging(	float4 position				: SV_Position,
 		return float4(diffuseSample.rgb, pixelReflectivity * intersectionQuality);
 
 		//return float4(
-		//	lerp(0.33f * skyReflection, 
-		//		lerp(0.0.xxx, diffuseSample.rgb, reflectionColour.z), 
-		//		reflectionColour.a), 
+		//	lerp(0.33f * skyReflection,
+		//		lerp(0.0.xxx, diffuseSample.rgb, reflectionColour.z),
+		//		reflectionColour.a),
 		//	2.f * reflectivity);
 	}
 #endif
@@ -104,7 +104,7 @@ float4 TilesDebugging(	float4 position				: SV_Position,
 				MaskTexture.SampleLevel(DefaultSampler, texCoord * 2.f, 0).xxx, 1.f);
 		} else {
 			return float4(
-				DownsampledNormalsTexture.SampleLevel(DefaultSampler, 
+				DownsampledNormalsTexture.SampleLevel(DefaultSampler,
 					float2((texCoord.x - 0.5f) * 2.f, texCoord.y * 2.f), 0), 1.f);
 		}
 	} else {
@@ -137,7 +137,7 @@ cbuffer SamplingPattern
 	uint4 ClosestSamples2[BlockDimension][BlockDimension/4];
 }
 
-float4 MaskSamplePattern(	float4 position		: SV_Position, 
+float4 MaskSamplePattern(	float4 position		: SV_Position,
 							float2 texCoord		: TEXCOORD0) : SV_Target0
 {
 //	uint2 pixelCoords = uint2(	ViewportDimensions.x * (-0.5f + 0.5f * position.x),
@@ -208,4 +208,3 @@ float4 main(	float4 position		: SV_Position,
 	return TilesDebugging(position, texCoord, viewFrustumVector);
 	// return MaskSamplePattern(position, texCoord);
 }
-

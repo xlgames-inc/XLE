@@ -23,91 +23,86 @@
 
 namespace SceneEngine
 {
-    static void    RenderHalfCubeGeometry(      RenderCore::Metal::DeviceContext* context, 
+    using namespace RenderCore;
+
+    static void    RenderHalfCubeGeometry(      RenderCore::Metal::DeviceContext& context, 
                                                 const SkyTextureParts& parts,
                                                 const RenderCore::Metal::ShaderProgram& shader)
     {
-        using namespace RenderCore;
-
-        TRY 
+        class Vertex
         {
-            class Vertex
-            {
-            public:
-                Float3      _position;
-                Float2      _texCoord;
-                Vertex(const Float3& position, const Float2& texCoord) : _position(position), _texCoord(texCoord) {}
-            };
+        public:
+            Float3      _position;
+            Float2      _texCoord;
+            Vertex(const Float3& position, const Float2& texCoord) : _position(position), _texCoord(texCoord) {}
+        };
 
-            const float scale       = 100.f;
-            const float halfScale   =    .5f * scale;
-            Vertex vertices[]       = 
-            {
-                    // ------- face 1 -------
-                Vertex(Float3( scale, -scale, 0.f),          Float2(1.f, 0.5f)),
-                Vertex(Float3( scale, -scale, halfScale),    Float2(1.f, 1.0f)),
-                Vertex(Float3( scale,  scale, 0.f),          Float2(0.f, 0.5f)),
+        const float scale       = 100.f;
+        const float halfScale   =    .5f * scale;
+        Vertex vertices[]       = 
+        {
+                // ------- face 1 -------
+            Vertex(Float3( scale, -scale, 0.f),          Float2(1.f, 0.5f)),
+            Vertex(Float3( scale, -scale, halfScale),    Float2(1.f, 1.0f)),
+            Vertex(Float3( scale,  scale, 0.f),          Float2(0.f, 0.5f)),
             
-                Vertex(Float3( scale,  scale, 0.f),          Float2(0.f, 0.5f)),
-                Vertex(Float3( scale, -scale, halfScale),    Float2(1.f, 1.0f)),
-                Vertex(Float3( scale,  scale, halfScale),    Float2(0.f, 1.0f)),
+            Vertex(Float3( scale,  scale, 0.f),          Float2(0.f, 0.5f)),
+            Vertex(Float3( scale, -scale, halfScale),    Float2(1.f, 1.0f)),
+            Vertex(Float3( scale,  scale, halfScale),    Float2(0.f, 1.0f)),
 
-                    // ------- face 2 -------
-                Vertex(Float3( scale,  scale, 0.f),          Float2(1.f, 0.5f)),
-                Vertex(Float3( scale,  scale, halfScale),    Float2(1.f, 0.0f)),
-                Vertex(Float3(-scale,  scale, 0.f),          Float2(0.f, 0.5f)),
+                // ------- face 2 -------
+            Vertex(Float3( scale,  scale, 0.f),          Float2(1.f, 0.5f)),
+            Vertex(Float3( scale,  scale, halfScale),    Float2(1.f, 0.0f)),
+            Vertex(Float3(-scale,  scale, 0.f),          Float2(0.f, 0.5f)),
 
-                Vertex(Float3(-scale,  scale, 0.f),          Float2(0.f, 0.5f)),
-                Vertex(Float3( scale,  scale, halfScale),    Float2(1.f, 0.0f)),
-                Vertex(Float3(-scale,  scale, halfScale),    Float2(0.f, 0.0f)),
+            Vertex(Float3(-scale,  scale, 0.f),          Float2(0.f, 0.5f)),
+            Vertex(Float3( scale,  scale, halfScale),    Float2(1.f, 0.0f)),
+            Vertex(Float3(-scale,  scale, halfScale),    Float2(0.f, 0.0f)),
 
-                    // ------- face 3 -------
-                Vertex(Float3(-scale,  scale, 0.f),          Float2(1.f, 0.5f)),
-                Vertex(Float3(-scale,  scale, halfScale),    Float2(1.f, 1.0f)),
-                Vertex(Float3(-scale, -scale, 0.f),          Float2(0.f, 0.5f)),
+                // ------- face 3 -------
+            Vertex(Float3(-scale,  scale, 0.f),          Float2(1.f, 0.5f)),
+            Vertex(Float3(-scale,  scale, halfScale),    Float2(1.f, 1.0f)),
+            Vertex(Float3(-scale, -scale, 0.f),          Float2(0.f, 0.5f)),
                 
-                Vertex(Float3(-scale, -scale, 0.f),          Float2(0.f, 0.5f)),
-                Vertex(Float3(-scale,  scale, halfScale),    Float2(1.f, 1.0f)),
-                Vertex(Float3(-scale, -scale, halfScale),    Float2(0.f, 1.0f)),
+            Vertex(Float3(-scale, -scale, 0.f),          Float2(0.f, 0.5f)),
+            Vertex(Float3(-scale,  scale, halfScale),    Float2(1.f, 1.0f)),
+            Vertex(Float3(-scale, -scale, halfScale),    Float2(0.f, 1.0f)),
 
-                    // ------- face 4 -------
-                Vertex(Float3( scale, -scale, 0.f),          Float2(0.f, 0.5f)),
-                Vertex(Float3(-scale, -scale, 0.f),          Float2(1.f, 0.5f)),
-                Vertex(Float3( scale, -scale, halfScale),    Float2(0.f, 0.0f)),
+                // ------- face 4 -------
+            Vertex(Float3( scale, -scale, 0.f),          Float2(0.f, 0.5f)),
+            Vertex(Float3(-scale, -scale, 0.f),          Float2(1.f, 0.5f)),
+            Vertex(Float3( scale, -scale, halfScale),    Float2(0.f, 0.0f)),
 
-                Vertex(Float3( scale, -scale, halfScale),    Float2(0.f, 0.0f)),
-                Vertex(Float3(-scale, -scale, 0.f),          Float2(1.f, 0.5f)),
-                Vertex(Float3(-scale, -scale, halfScale),    Float2(1.f, 0.0f)),
+            Vertex(Float3( scale, -scale, halfScale),    Float2(0.f, 0.0f)),
+            Vertex(Float3(-scale, -scale, 0.f),          Float2(1.f, 0.5f)),
+            Vertex(Float3(-scale, -scale, halfScale),    Float2(1.f, 0.0f)),
 
-                    // ------- face 5 -------
-                Vertex(Float3(-scale, -scale, halfScale),    Float2(0.f, 0.f)),
-                Vertex(Float3(-scale,  scale, halfScale),    Float2(0.f, 1.f)),
-                Vertex(Float3( scale, -scale, halfScale),    Float2(1.f, 0.f)),
+                // ------- face 5 -------
+            Vertex(Float3(-scale, -scale, halfScale),    Float2(0.f, 0.f)),
+            Vertex(Float3(-scale,  scale, halfScale),    Float2(0.f, 1.f)),
+            Vertex(Float3( scale, -scale, halfScale),    Float2(1.f, 0.f)),
 
-                Vertex(Float3( scale, -scale, halfScale),    Float2(1.f, 0.f)),
-                Vertex(Float3(-scale,  scale, halfScale),    Float2(0.f, 1.f)),
-                Vertex(Float3( scale,  scale, halfScale),    Float2(1.f, 1.f))
-            };
+            Vertex(Float3( scale, -scale, halfScale),    Float2(1.f, 0.f)),
+            Vertex(Float3(-scale,  scale, halfScale),    Float2(0.f, 1.f)),
+            Vertex(Float3( scale,  scale, halfScale),    Float2(1.f, 1.f))
+        };
 
-            Metal::BoundInputLayout inputLayout(Metal::GlobalInputLayouts::PT, shader);
-            context->Bind(inputLayout);
+        Metal::BoundInputLayout inputLayout(Metal::GlobalInputLayouts::PT, shader);
+        context.Bind(inputLayout);
 
-            Metal::VertexBuffer temporaryVB(&vertices, sizeof(vertices));
-            context->Bind(MakeResourceList(temporaryVB), sizeof(Vertex), 0);
+        Metal::VertexBuffer temporaryVB(&vertices, sizeof(vertices));
+        context.Bind(MakeResourceList(temporaryVB), sizeof(Vertex), 0);
 
-                //  render 2 faces at a time, switching the texture as we go
-                //  this would be more efficient if we could combine the shader
-                //  resources into 1 texture array... but we don't have support
-                //  for that currently.
-            context->BindPS(MakeResourceList(parts._faces12->GetShaderResource()));
-            context->Draw(6*2);
-            context->BindPS(MakeResourceList(parts._faces34->GetShaderResource()));
-            context->Draw(6*2, 6*2);
-            context->BindPS(MakeResourceList(parts._face5->GetShaderResource()));
-            context->Draw(  6, 6*2*2);
-
-        } CATCH(...) {
-        } CATCH_END
+            //  render 2 faces at a time, switching the texture as we go
+            //  this would be more efficient if we could combine the shader
+            //  resources into 1 texture array... but we don't have support
+            //  for that currently.
+        context.BindPS(MakeResourceList(parts._faces12->GetShaderResource()));
+        context.Draw(6*2);
+        context.BindPS(MakeResourceList(parts._faces34->GetShaderResource()));
+        context.Draw(6*2, 6*2);
+        context.BindPS(MakeResourceList(parts._face5->GetShaderResource()));
+        context.Draw(  6, 6*2*2);
     }
 
     enum SkyGeometryType { Plane, HalfCube };
@@ -133,14 +128,13 @@ namespace SceneEngine
 
         SkyShaderRes(const Desc& desc);
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+        const ::Assets::DepValPtr& GetDependencyValidation() const   { return _validationCallback; }
     private:
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        ::Assets::DepValPtr _validationCallback;
     };
 
     SkyShaderRes::SkyShaderRes(const Desc& desc)
     {
-        using namespace RenderCore;
         char definesBuffer[128];
 
         if (desc._geoType == Plane) {
@@ -194,54 +188,51 @@ namespace SceneEngine
         _validationCallback = std::move(validationCallback);
     }
 
-    void    Sky_Render(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, bool blendFog)
+    void    Sky_Render(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, bool blendFog)
     {
         CATCH_ASSETS_BEGIN
-            using namespace RenderCore;
-            auto globalLightingDesc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
-            auto skyTextureName = globalLightingDesc._skyTexture;
-            if (!skyTextureName[0]) return;
+            const auto& globalDesc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
+            SkyTextureParts textureParts = globalDesc;
+            if (!textureParts.IsGood()) return;
 
-            SkyTextureParts textureParts(skyTextureName);
             auto& res = Techniques::FindCachedBoxDep2<SkyShaderRes>(textureParts._projectionType, blendFog, CurrentSkyGeometryType);
 
-            struct SkyRenderSettings { float _brightness; unsigned _dummy[3]; } settings = { globalLightingDesc._skyBrightness };
+            struct SkyRenderSettings { float _brightness; unsigned _dummy[3]; } settings = { globalDesc._skyBrightness };
             RenderCore::SharedPkt pkts[] = { MakeSharedPkt(settings) };
 
             res._uniforms.Apply(
-                *context, parserContext.GetGlobalUniformsStream(), 
+                context, parserContext.GetGlobalUniformsStream(), 
                 Metal::UniformsStream(pkts, nullptr, dimof(pkts)));
-            context->Bind(*res._shader);
-            context->Bind(Techniques::CommonResources()._blendOpaque);
+            context.Bind(*res._shader);
+            context.Bind(Techniques::CommonResources()._blendOpaque);
 
-            SkyTexture_BindPS(context, parserContext, textureParts, 0);
+            textureParts.BindPS(context, 0);
 
             if (CurrentSkyGeometryType == Plane) {
-                context->Bind(RenderCore::Metal::Topology::TriangleStrip);
-                context->Unbind<RenderCore::Metal::VertexBuffer>();
-                context->Unbind<RenderCore::Metal::BoundInputLayout>();
+                context.Bind(RenderCore::Metal::Topology::TriangleStrip);
+                context.Unbind<RenderCore::Metal::VertexBuffer>();
+                context.Unbind<RenderCore::Metal::BoundInputLayout>();
 
-                context->Draw(4);
+                context.Draw(4);
             } else {
-                context->Bind(Metal::Topology::TriangleList);
+                context.Bind(Metal::Topology::TriangleList);
                 RenderHalfCubeGeometry(context, textureParts, *res._shader);
             }
         CATCH_ASSETS_END(parserContext)
 
-        context->Bind(RenderCore::Metal::Topology::TriangleList);
+        context.Bind(RenderCore::Metal::Topology::TriangleList);
     }
 
-    void    Sky_RenderPostFog(  RenderCore::Metal::DeviceContext* context, 
+    void    Sky_RenderPostFog(  RenderCore::Metal::DeviceContext& context, 
                                 LightingParserContext& parserContext)
     {
         CATCH_ASSETS_BEGIN
-            using namespace RenderCore;
-            auto skyTextureName = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
-            if (!skyTextureName[0]) return;
+            const auto& globalDesc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
+            SkyTextureParts textureParts(globalDesc);
+            if (!textureParts.IsGood()) return;
 
-            SkyTextureParts textureParts(skyTextureName);
-
-            auto& res = Techniques::FindCachedBoxDep<SkyShaderRes>(SkyShaderRes::Desc(textureParts._projectionType, false, CurrentSkyGeometryType));
+            auto& res = Techniques::FindCachedBoxDep2<SkyShaderRes>(
+                textureParts._projectionType, false, CurrentSkyGeometryType);
             if (!res._postFogShader)
                 return;
 
@@ -259,83 +250,90 @@ namespace SceneEngine
             const Metal::ConstantBuffer* constants[] = { &settingsConstants };
 
             res._postfogUniforms.Apply(
-                *context, 
+                context, 
                 parserContext.GetGlobalUniformsStream(),
                 Metal::UniformsStream(nullptr, constants, 1));
 
-            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
-            context->Bind(*res._postFogShader);
+            context.Bind(Techniques::CommonResources()._blendStraightAlpha);
+            context.Bind(*res._postFogShader);
 
             if (CurrentSkyGeometryType == Plane) {
-                context->Bind(Metal::Topology::TriangleStrip);
-                context->Unbind<RenderCore::Metal::VertexBuffer>();
-                context->Unbind<RenderCore::Metal::BoundInputLayout>();
+                context.Bind(Metal::Topology::TriangleStrip);
+                context.Unbind<RenderCore::Metal::VertexBuffer>();
+                context.Unbind<RenderCore::Metal::BoundInputLayout>();
 
-                context->Draw(4);
+                context.Draw(4);
             } else {
-                context->Bind(Metal::Topology::TriangleList);
+                context.Bind(Metal::Topology::TriangleList);
                 RenderHalfCubeGeometry(context, textureParts, *res._postFogShader);
             }
         CATCH_ASSETS_END(parserContext)
 
-        context->Bind(RenderCore::Metal::Topology::TriangleList);
+        context.Bind(RenderCore::Metal::Topology::TriangleList);
     }
 
     
 
-    SkyTextureParts::SkyTextureParts(const char skyTextureName[])
+    SkyTextureParts::SkyTextureParts(
+        const ::Assets::ResChar skyTextureName[], 
+        GlobalLightingDesc::SkyTextureType resourceType)
     {
-        using namespace RenderCore;
+        if (skyTextureName && skyTextureName[0]) {
+            if (resourceType == GlobalLightingDesc::SkyTextureType::HemiCube) {
+                auto* halfCubePart = XlFindString(skyTextureName, "_*");
+                if (!halfCubePart)
+                    halfCubePart = XlStringEnd(skyTextureName);
 
-        auto* halfCubePart = strstr(skyTextureName, "_*");
-        if (halfCubePart) {
-            _projectionType = 1;
+                _projectionType = 1;
 
-                //  This is a half-cube projection style (like Archeage).
-                //  We need to extract the names of 3 separate textures by
-                //  replacing the "_*" with "_12", "_34" & "_5"
-            char nameBuffer[MaxPath];
-            size_t beforePart = halfCubePart-skyTextureName;
-            XlCopyNString(nameBuffer, skyTextureName, beforePart);
-            XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_12");
-            XlCopyString(&nameBuffer[beforePart+3], MaxPath-beforePart-3, &skyTextureName[beforePart+3]);
-            _faces12 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
+                    //  This is a half-cube projection style (like Archeage).
+                    //  We need to extract the names of 3 separate textures by
+                    //  replacing the "_*" with "_12", "_34" & "_5"
+                    //
+                    // \todo -- ideally these source resources would be collapsed into a single
+                    //          texture array
+                char nameBuffer[MaxPath];
+                size_t beforePart = halfCubePart-skyTextureName;
+                XlCopyNString(nameBuffer, skyTextureName, beforePart);
+                XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_12");
+                XlCopyString(&nameBuffer[beforePart+3], MaxPath-beforePart-3, &skyTextureName[beforePart+3]);
+                _faces12 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
 
-            XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_34");
-            XlCopyString(&nameBuffer[beforePart+3], MaxPath-beforePart-3, &skyTextureName[beforePart+3]);
-            _faces34 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
+                XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_34");
+                XlCopyString(&nameBuffer[beforePart+3], MaxPath-beforePart-3, &skyTextureName[beforePart+3]);
+                _faces34 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
 
-            XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_5");
-            XlCopyString(&nameBuffer[beforePart+2], MaxPath-beforePart-2, &skyTextureName[beforePart+3]);
-            _face5 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
+                XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_5");
+                XlCopyString(&nameBuffer[beforePart+2], MaxPath-beforePart-2, &skyTextureName[beforePart+3]);
+                _face5 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
+            } else {
+                _projectionType = (resourceType == GlobalLightingDesc::SkyTextureType::HemiEquirectangular) ? 4 : 3;
+                _face5 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(skyTextureName);
+            }
         } else {
-            _projectionType = 3;
-            _face5 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(skyTextureName);
+            _faces12 = _faces34 = _face5 = nullptr;
+            _projectionType = -1;
         }
     }
 
-    unsigned    SkyTexture_BindPS(  RenderCore::Metal::DeviceContext* context, 
-                                    LightingParserContext& parserContext,
-                                    const SkyTextureParts& parts,
-                                    int bindSlot)
+    SkyTextureParts::SkyTextureParts(const GlobalLightingDesc& globalDesc)
+        : SkyTextureParts(globalDesc._skyTexture, globalDesc._skyTextureType) {}
+
+    unsigned    SkyTextureParts::BindPS(  
+        RenderCore::Metal::DeviceContext& context, 
+        int bindSlot) const
     {
-        using namespace RenderCore;
+        if (!IsGood()) return ~0u;
 
-        if (parts._projectionType==1) {
-
-            context->BindPS(MakeResourceList(
-                bindSlot, parts._faces12->GetShaderResource(), parts._faces34->GetShaderResource(), parts._face5->GetShaderResource()));
-
-            return 1;
-
-        } else {
-
-            context->BindPS(MakeResourceList(
+        if (_projectionType==1) {
+            context.BindPS(MakeResourceList(
+                bindSlot, _faces12->GetShaderResource(), _faces34->GetShaderResource(), _face5->GetShaderResource()));
+        } else
+            context.BindPS(MakeResourceList(
                 bindSlot,
-                parts._face5->GetShaderResource()));
-            return 3;
+                _face5->GetShaderResource()));
 
-        }
+        return _projectionType;
     }
 }
 

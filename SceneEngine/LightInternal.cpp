@@ -207,6 +207,7 @@ namespace SceneEngine
     , _rangeFogThickness(0.f, 0.f, 0.f)
     , _doRangeFog(false)
     , _atmosBlurStdDev(1.3f), _atmosBlurStart(1000.f), _atmosBlurEnd(1500.f)
+    , _skyTextureType(SkyTextureType::Equirectangular)
     {
         _skyTexture[0] = '\0';
     }
@@ -223,6 +224,7 @@ namespace SceneEngine
         static const auto ambientBrightnessHash = ParamHash("AmbientBrightness");
 
         static const auto skyTextureHash = ParamHash("SkyTexture");
+        static const auto skyTextureTypeHash = ParamHash("SkyTextureType");
         static const auto skyReflectionScaleHash = ParamHash("SkyReflectionScale");
         static const auto skyReflectionBlurriness = ParamHash("SkyReflectionBlurriness");
         static const auto skyBrightness = ParamHash("SkyBrightness");
@@ -244,6 +246,7 @@ namespace SceneEngine
         _skyReflectionScale = props.GetParameter(skyReflectionScaleHash, _skyReflectionScale);
         _skyReflectionBlurriness = props.GetParameter(skyReflectionBlurriness, _skyReflectionBlurriness);
         _skyBrightness = props.GetParameter(skyBrightness, _skyBrightness);
+        _skyTextureType = (SkyTextureType)props.GetParameter(skyTextureTypeHash, unsigned(_skyTextureType));
 
         _rangeFogInscatter = 1.f / std::max(1.f, props.GetParameter(rangeFogInscatterScaleHash, 1.f)) * AsFloat3Color(props.GetParameter(rangeFogInscatterHash, 0));
         _rangeFogThickness = 1.f / std::max(1.f, props.GetParameter(rangeFogThicknessScaleHash, 1.f)) * AsFloat3Color(props.GetParameter(rangeFogThicknessHash, 0));

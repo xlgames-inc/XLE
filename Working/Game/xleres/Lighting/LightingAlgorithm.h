@@ -115,7 +115,7 @@ float4 ReadReflectionHemiBox( float3 direction,
     }
 }
 
-float2 HemisphericalMappingCoord(float3 direction)
+float2 EquirectangularMappingCoord(float3 direction)
 {
 		// note -- 	the trigonometry here is a little inaccurate. It causes shaking
 		//			when the camera moves. We might need to replace it with more
@@ -124,9 +124,17 @@ float2 HemisphericalMappingCoord(float3 direction)
 	float inc = atan(direction.z * rsqrt(dot(direction.xy, direction.xy)));
 
 	float x = 0.5f + 0.5f*(theta / (1.f*pi));
-	float y = 1.f-(inc / (.5f*pi));
-	y /= 2.f;
+	float y = .5f-(inc / pi);
+	return float2(x, y);
+}
 
+float2 HemiEquirectangularMappingCoord(float3 direction)
+{
+	float theta = atan2(direction.x, direction.y);
+	float inc = atan(direction.z * rsqrt(dot(direction.xy, direction.xy)));
+
+	float x = 0.5f + 0.5f*(theta / (1.f*pi));
+	float y = 1.f-(inc / (.5f*pi));
 	return float2(x, y);
 }
 

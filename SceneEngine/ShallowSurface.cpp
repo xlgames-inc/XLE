@@ -615,10 +615,7 @@ namespace SceneEngine
             }
 
             unsigned skyProjectionType = 0;
-            auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
-            if (skyTexture[0]) {
-                skyProjectionType = SkyTexture_BindPS(&metalContext, parserContext, skyTexture, 11);
-            }
+            SkyTextureParts(parserContext.GetSceneParser()->GetGlobalLightingDesc()).BindPS(metalContext, 11);
 
             metalContext.BindPS(MakeResourceList(4,
                 Techniques::FindCachedBox2<WaterNoiseTexture>()._srv));

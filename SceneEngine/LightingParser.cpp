@@ -327,7 +327,7 @@ namespace SceneEngine
         }
 
         if (Tweakable("DoSky", true)) {
-            Sky_RenderPostFog(&context, parserContext);
+            Sky_RenderPostFog(context, parserContext);
         }
     }
         
@@ -513,8 +513,8 @@ namespace SceneEngine
             //          sky (because the prepare step will only write opaque stuff, 
             //          but the "resolve" step must come after sky rendering.
         if (Tweakable("DoSky", true)) {
-            Sky_Render(&context, parserContext, true);
-            Sky_RenderPostFog(&context, parserContext);
+            Sky_Render(context, parserContext, true);
+            Sky_RenderPostFog(context, parserContext);
         }
 
         if (useOrderIndependentTransparency) {

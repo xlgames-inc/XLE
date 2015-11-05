@@ -24,31 +24,29 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 			reflectionTextureDims.x,
 			reflectionTextureDims.y);
 
-		float4 result = ReadReflectionHemiBox(
+		return ReadReflectionHemiBox(
 			normalize(viewFrustumVector),
 			ReflectionBox[0], ReflectionBox[1], ReflectionBox[2],
-			reflectionTextureDims, 0);
-		result.rgb = SRGBToLinear(result.rgb);
-		return result;
+			reflectionTextureDims, 0).rgb;
 
 	#elif SKY_PROJECTION == 2
 
 			// projection is already in the texture coordinates. Just sample
 			// from the texture coordinate position
-		float4 result = DiffuseTexture.Sample(ClampingSampler, texCoord);
-		result.rgb = SRGBToLinear(result.rgb);
-		return result;
+		return DiffuseTexture.Sample(ClampingSampler, texCoord);
 
-	#elif SKY_PROJECTION == 3
+	#elif (SKY_PROJECTION == 3) || (SKY_PROJECTION == 4)
 
 			//	this is "panoramic projection."
-		float2 t = HemisphericalMappingCoord(viewFrustumVector);
-		// if (t.y < 1.f)
+		#if (SKY_PROJECTION == 3)
+			float2 t = EquirectangularMappingCoord(viewFrustumVector);
+		#else
+			float2 t = HemiEquirectangularMappingCoord(viewFrustumVector);
+		#endif
 		{
 
-				// 	Texture coordinates wrap strangely because of
-				//	the hemispherical projection. At the wrapping
-				//	point the "x" texture coordinate will approach 1,
+				// 	Texture coordinates wrap strangely in this mode.
+				// 	At the wrapping point the "x" texture coordinate will approach 1,
 				//	and then suddenly drop down to 0. This causes the
 				//	mipmapping algorithm to get the wrong result. We
 				//	can correct for this, though, compensating for
@@ -61,13 +59,7 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 			if (tddx.x >  0.5f) { tddx.x -= 1.f; }
 			if (tddy.x < -0.5f) { tddy.x += 1.f; }
 			if (tddy.x >  0.5f) { tddy.x -= 1.f; }
-			return 2.5f * DiffuseTexture.SampleGrad(WrapUSampler, t, tddx, tddy).rgb;
-
-			// int2 dimensions;
-			// DiffuseTexture.GetDimensions(dimensions.x, dimensions.y);
-			// float3 result = DiffuseTexture.Load(int3(t.xy * float2(dimensions.x, dimensions.y), 0)).rgb;
-			// result.rgb = SRGBToLinear(result.rgb);
-			// return result;
+			return DiffuseTexture.SampleGrad(WrapUSampler, t, tddx, tddy).rgb;
 		}
 
 		return 0.0.xxx;

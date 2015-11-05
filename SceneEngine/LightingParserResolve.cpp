@@ -221,12 +221,7 @@ namespace SceneEngine
             // bound at different times in different modes
 
         CATCH_ASSETS_BEGIN
-            auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
-            unsigned skyTextureProjection = 0;
-            if (skyTexture[0]) {
-                SkyTextureParts parts(skyTexture);
-                skyTextureProjection = SkyTexture_BindPS(&context, parserContext, parts, 11);
-            }
+            unsigned skyTextureProjection = SkyTextureParts(parserContext.GetSceneParser()->GetGlobalLightingDesc()).BindPS(context, 11);
 
             context.BindPS(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
             context.BindPS(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
@@ -386,7 +381,7 @@ namespace SceneEngine
                     context.Bind(Techniques::CommonResources()._dssReadOnly);
                     context.UnbindPS<Metal::ShaderResourceView>(4, 1);
                     context.Bind(MakeResourceList(lightingResTargets._lightingResolveRTV), &mainTargets._msaaDepthBuffer);
-                    Sky_Render(&context, parserContext, false);     // we do a first pass of the sky here, and then follow up with a second pass after lighting resolve
+                    Sky_Render(context, parserContext, false);     // we do a first pass of the sky here, and then follow up with a second pass after lighting resolve
 
                         // have to reset our state (because Sky_Render changed everything)
                     SetupStateForDeferredLightingResolve(

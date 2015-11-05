@@ -19,12 +19,15 @@
         <scea.dom.editors.attribute category="Sky" name="SkyTexture" displayName="Sky Texture"
           editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" 
           converter="LevelEditorXLE.AssetNameConverter,LevelEditorXLE"/>
+        <scea.dom.editors.attribute category="Sky" name="SkyTextureType" displayName="Mapping mode for the sky texture. HemiCube is the upper half of a cubemap. HemiEquirectangular is the upper half of a paranoramic map."
+          editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:HemiCube=0,Equirectangular=1,HemiEquirectangular=2"
+          converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:HemiCube=0,Equirectangular=1,HemiEquirectangular=2"/>
         <scea.dom.editors.attribute category="Sky" name="SkyReflectionScale" displayName="Sky Reflection Scale" description="Scale for the reflection of the static sky image"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
         <scea.dom.editors.attribute category="Sky" name="SkyReflectionBlurriness" displayName="Sky Reflection Blurriness" description="Blurriness of the reflection of the sky"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,6"/>
-        <scea.dom.editors.attribute category="Sky" name="SkyBrightness" displayName="Brightess of the sky"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,5"/>
+        <scea.dom.editors.attribute category="Sky" name="SkyBrightness" displayName="Brightness of the sky"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,200"/>
 
         <scea.dom.editors.attribute category="RangeFog" name="RangeFogInscatter" displayName="Inscatter"
           description="Color of inscattered light. This should be similar to the color of the sky (ie, blue)"
@@ -53,6 +56,7 @@
         <LeGe.NativeProperty name="AmbientBrightness" nativeName="AmbientBrightness"/>
         
         <LeGe.NativeProperty name="SkyTexture" nativeName="SkyTexture"/>
+        <LeGe.NativeProperty name="SkyTextureType" nativeName="SkyTextureType"/>
         <LeGe.NativeProperty name="SkyReflectionScale" nativeName="SkyReflectionScale"/>
         <LeGe.NativeProperty name="SkyReflectionBlurriness" nativeName="SkyReflectionBlurriness"/>
         <LeGe.NativeProperty name="SkyBrightness" nativeName="SkyBrightness"/>
@@ -76,6 +80,7 @@
     <xs:attribute name="AmbientBrightness" type="xs:float" default="1"/>
     
     <xs:attribute name="SkyTexture" type="xs:string"/>
+    <xs:attribute name="SkyTextureType" type="xs:int" default="0"/>
     <xs:attribute name="SkyReflectionScale" type="xs:float" default="1"/>
     <xs:attribute name="SkyReflectionBlurriness" type="xs:float" default="2"/>
     <xs:attribute name="SkyBrightness" type="xs:float" default="1"/>
