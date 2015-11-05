@@ -77,7 +77,7 @@
 
 namespace SceneEngine
 {
-    using namespace RenderCore::Metal;
+    using namespace RenderCore;
 
     static GFSDK_SSAO_Parameters_D3D11 BuildAOParameters()
     {
@@ -115,7 +115,7 @@ namespace SceneEngine
 
         GFSDK_SSAO_Status status;
         GFSDK_SSAO_Context_D3D11* tempPtr = nullptr;
-        status = GFSDK_SSAO_CreateContext_D3D11(ObjectFactory().GetUnderlying(), &tempPtr, &customHeap);
+        status = GFSDK_SSAO_CreateContext_D3D11(Metal::ObjectFactory().GetUnderlying(), &tempPtr, &customHeap);
         if (status != GFSDK_SSAO_OK || !tempPtr) {
             Throw(RenderCore::Exceptions::GenericFailure("Failure initializing GFSDK_SSAO"));
         }
@@ -137,23 +137,25 @@ namespace SceneEngine
         auto bufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::RenderTarget,
             BufferUploads::TextureDesc::Plain2D(
-                desc._width, desc._height, AsDXGIFormat(desc._destinationFormat)),
+                desc._width, desc._height, Metal::AsDXGIFormat(desc._destinationFormat)),
             "AOTarget");
 
         auto aoTexture = uploads.Transaction_Immediate(bufferUploadsDesc)->AdoptUnderlying();
-        RenderTargetView aoTarget(aoTexture.get());
-        ShaderResourceView aoSRV(aoTexture.get());
+        Metal::RenderTargetView aoTarget(aoTexture.get());
+        Metal::ShaderResourceView aoSRV(aoTexture.get());
 
         intrusive_ptr<ID3D::Resource>  resolvedNormals;
-        ShaderResourceView          resolvedNormalsSRV;
-        if (desc._useNormals && desc._normalsResolveFormat != NativeFormat::Unknown) {
+        Metal::ShaderResourceView resolvedNormalsSRV;
+        if (desc._useNormals && desc._normalsResolveFormat != Metal::NativeFormat::Unknown) {
             auto bufferUploadsDesc = BuildRenderTargetDesc(
                 BindFlag::ShaderResource,
-                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, AsDXGIFormat(desc._normalsResolveFormat)),
+                BufferUploads::TextureDesc::Plain2D(
+                    desc._width, desc._height, 
+                    Metal::AsDXGIFormat(desc._normalsResolveFormat)),
                 "AONormalResolve");
 
             resolvedNormals = uploads.Transaction_Immediate(bufferUploadsDesc, nullptr)->AdoptUnderlying();
-            resolvedNormalsSRV = ShaderResourceView(resolvedNormals.get());
+            resolvedNormalsSRV = Metal::ShaderResourceView(resolvedNormals.get());
         }
 
         _aoTexture = std::move(aoTexture);
@@ -183,16 +185,16 @@ namespace SceneEngine
         }
     }
 
-    static void AmbientOcclusion_DrawDebugging( DeviceContext& context,
+    static void AmbientOcclusion_DrawDebugging( Metal::DeviceContext& context,
                                                 AmbientOcclusionResources& resources);
 
 
-    void AmbientOcclusion_Render(   DeviceContext* context,
+    void AmbientOcclusion_Render(   Metal::DeviceContext* context,
                                     LightingParserContext& parserContext,
                                     AmbientOcclusionResources& resources,
-                                    ShaderResourceView& depthBuffer,
-                                    ShaderResourceView* normalsBuffer,
-                                    const ViewportDesc& mainViewport)
+                                    Metal::ShaderResourceView& depthBuffer,
+                                    Metal::ShaderResourceView* normalsBuffer,
+                                    const Metal::ViewportDesc& mainViewport)
     {
             // Not working for orthogonal projection matrices
         if (IsOrthogonalProjection(parserContext.GetProjectionDesc()._cameraToProjection))
@@ -224,18 +226,24 @@ namespace SceneEngine
         inputData.DepthData.Viewport.MaxDepth = mainViewport.MaxDepth;
 
         if (resources._useNormals && normalsBuffer) {
-            if (resources._normalsResolveFormat != NativeFormat::Unknown) {
+            if (resources._normalsResolveFormat != Metal::NativeFormat::Unknown) {
                 context->GetUnderlying()->ResolveSubresource(
                     resources._resolvedNormals.get(), 0,
-                    ExtractResource<ID3D::Resource>(normalsBuffer->GetUnderlying()).get(), 0,
-                    AsDXGIFormat(resources._normalsResolveFormat));
+                    Metal::ExtractResource<ID3D::Resource>(normalsBuffer->GetUnderlying()).get(), 0,
+                    Metal::AsDXGIFormat(resources._normalsResolveFormat));
                 inputData.NormalData.pFullResNormalTextureSRV = resources._resolvedNormalsSRV.GetUnderlying();
             } else {
                 inputData.NormalData.pFullResNormalTextureSRV = normalsBuffer->GetUnderlying();
             }
         
-            inputData.NormalData.DecodeScale =  2.f;
-            inputData.NormalData.DecodeBias  = -1.f;
+            //  when using UNORM normal data, use:
+            // inputData.NormalData.DecodeScale =  2.f;
+            // inputData.NormalData.DecodeBias  = -1.f;
+            assert(Metal::GetComponentType(
+                Metal::AsNativeFormat(Metal::TextureDesc2D(normalsBuffer->GetUnderlying()).Format))
+                == Metal::FormatComponentType::SNorm);
+            inputData.NormalData.DecodeScale =  1.f;
+            inputData.NormalData.DecodeBias  = 0.f;
 
             auto worldToView = InvertOrthonormalTransform(parserContext.GetProjectionDesc()._cameraToWorld);
             worldToView(2, 0) = -worldToView(2, 0);
@@ -270,14 +278,11 @@ namespace SceneEngine
     }
 
     static void AmbientOcclusion_DrawDebugging(
-        DeviceContext& context, AmbientOcclusionResources& resources)
+        Metal::DeviceContext& context, AmbientOcclusionResources& resources)
     {
-        using namespace RenderCore;
-        using namespace RenderCore::Metal;
-
         SetupVertexGeneratorShader(context);
         context.BindPS(MakeResourceList(resources._aoSRV));
-        context.Bind(::Assets::GetAssetDep<ShaderProgram>(
+        context.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/postprocess/debugging.psh:AODebugging:ps_*"));
         context.Draw(4);
     }

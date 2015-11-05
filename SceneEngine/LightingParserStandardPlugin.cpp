@@ -48,10 +48,9 @@ namespace SceneEngine
         if (Tweakable("DoAO", true)) {
             const bool useNormals = Tweakable("AO_UseNormals", true);
             auto& mainTargets = resolveContext.GetMainTargets();
-            auto& aoRes = Techniques::FindCachedBox<AmbientOcclusionResources>(
-                AmbientOcclusionResources::Desc(
-                    mainTargets._desc._width, mainTargets._desc._height, NativeFormat::R8_UNORM,
-                    useNormals, (useNormals && resolveContext.GetSamplingCount() > 1)?NativeFormat::R8G8B8A8_UNORM:NativeFormat::Unknown));
+            auto& aoRes = Techniques::FindCachedBox2<AmbientOcclusionResources>(
+                mainTargets._desc._width, mainTargets._desc._height, NativeFormat::R8_UNORM,
+                useNormals, (useNormals && resolveContext.GetSamplingCount() > 1)?NativeFormat::R8G8B8A8_SNORM:NativeFormat::Unknown);
             ViewportDesc mainViewportDesc(*context);
             AmbientOcclusion_Render(context, parserContext, aoRes, mainTargets._msaaDepthBufferSRV, &mainTargets._gbufferRTVsSRV[1], mainViewportDesc);
             resolveContext._ambientOcclusionResult = aoRes._aoSRV;
