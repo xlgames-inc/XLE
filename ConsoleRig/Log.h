@@ -124,12 +124,13 @@ namespace ConsoleRig
             {
             public:
                 template <typename T> 
-                    friend inline const Internal::DummyStream& operator<<(const Internal::DummyStream& stream, T&&) 
-                        { return stream; }
+                    inline const DummyStream& operator<<(T&&) const { return *this; }
 
                 template <typename T> 
-                    friend inline const Internal::DummyStream& operator<<(const Internal::DummyStream& stream, const T&) 
-                        { return stream; }
+                    inline const DummyStream& operator<<(const T&) const { return *this; }
+
+                using FakeOStream = std::basic_ostream<char>;
+                inline const DummyStream& operator<<(FakeOStream& (*fn)(FakeOStream&)) const { return *this; }
             };
         }
 
