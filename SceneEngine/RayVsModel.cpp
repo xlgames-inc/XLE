@@ -220,8 +220,8 @@ namespace SceneEngine
         LightingParser_SetupScene(
             *metalContext.get(), _pimpl->_parserContext, nullptr, camera, qualitySettings);
         LightingParser_SetGlobalTransform(
-            *metalContext.get(), _pimpl->_parserContext, camera, qualitySettings._dimensions,
-            &specialProjMatrix);
+            *metalContext.get(), _pimpl->_parserContext, 
+            BuildProjectionDesc(camera, qualitySettings._dimensions, &specialProjMatrix));
 
         _pimpl->_oldSO = Metal::GeometryShader::GetDefaultStreamOutputInitializers();
 

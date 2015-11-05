@@ -220,7 +220,7 @@ namespace GUILayer
 
             _sceneParser->AddLightingPlugins(parserContext);
             SceneEngine::LightingParser_ExecuteScene(
-                *threadContext, parserContext, *_sceneParser.get(), 
+                *threadContext, parserContext, *_sceneParser.get(), _sceneParser->GetCameraDesc(),
                 SceneEngine::RenderingQualitySettings(threadContext->GetStateDesc()._viewportDimensions));
         }
 

@@ -168,17 +168,22 @@ namespace SceneEngine
         context.Clear(mainTargets._msaaDepthBuffer, 1.f, 0);
     }
 
-    void LightingParser_SetProjectionDesc(  
+    void LightingParser_SetGlobalTransform( 
+        DeviceContext& context, 
         LightingParserContext& parserContext, 
-        const Techniques::CameraDesc& sceneCamera,
-        UInt2 viewportDims,
-        const Float4x4* specialProjectionMatrix)
+        const RenderCore::Techniques::ProjectionDesc& projDesc)
     {
-            //  Setup our projection matrix... Scene parser should give us some camera
-            //  parameters... But perhaps the projection matrix should be created here,
-            //  from the lighting parser. The reason is because the size of the output
-            //  texture matters... The scene parser doesn't know what we're rendering
-            //  do, so can't know the complete rendering output.
+        parserContext.GetProjectionDesc() = projDesc;
+        auto globalTransform = BuildGlobalTransformConstants(projDesc);
+        parserContext.SetGlobalCB(
+            context, Techniques::TechniqueContext::CB_GlobalTransform,
+            &globalTransform, sizeof(globalTransform));
+    }
+
+    RenderCore::Techniques::ProjectionDesc BuildProjectionDesc(
+        const RenderCore::Techniques::CameraDesc& sceneCamera,
+        UInt2 viewportDims, const Float4x4* specialProjectionMatrix)
+    {
         const float aspectRatio = viewportDims[0] / float(viewportDims[1]);
         auto cameraToProjection = Techniques::Projection(sceneCamera, aspectRatio);
 
@@ -186,7 +191,7 @@ namespace SceneEngine
             cameraToProjection = *specialProjectionMatrix;
         }
 
-        auto& projDesc = parserContext.GetProjectionDesc();
+        RenderCore::Techniques::ProjectionDesc projDesc;
         projDesc._verticalFov = sceneCamera._verticalFieldOfView;
         projDesc._aspectRatio = aspectRatio;
         projDesc._nearClip = sceneCamera._nearClip;
@@ -194,32 +199,17 @@ namespace SceneEngine
         projDesc._worldToProjection = Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), cameraToProjection);
         projDesc._cameraToProjection = cameraToProjection;
         projDesc._cameraToWorld = sceneCamera._cameraToWorld;
+        return projDesc;
     }
 
-    void LightingParser_SetGlobalTransform( DeviceContext& context, 
-                                            LightingParserContext& parserContext, 
-                                            const Techniques::CameraDesc& sceneCamera,
-                                            UInt2 viewportDims,
-                                            const Float4x4* specialProjectionMatrix)
-    {
-        LightingParser_SetProjectionDesc(parserContext, sceneCamera, viewportDims, specialProjectionMatrix);
-        auto& projDesc = parserContext.GetProjectionDesc();
-        auto globalTransform = BuildGlobalTransformConstants(projDesc);
-        parserContext.SetGlobalCB(
-            context, Techniques::TechniqueContext::CB_GlobalTransform,
-            &globalTransform, sizeof(globalTransform));
-    }
-
-    void LightingParser_SetGlobalTransform(
-        MetalContext& context,
-        LightingParserContext& parserContext,
+    RenderCore::Techniques::ProjectionDesc BuildProjectionDesc(
         const Float4x4& cameraToWorld,
         float l, float t, float r, float b,
         float nearClip, float farClip)
     {
         auto cameraToProjection = OrthogonalProjection(l, t, r, b, nearClip, farClip, Techniques::GetDefaultClipSpaceType());
 
-        auto& projDesc = parserContext.GetProjectionDesc();
+        RenderCore::Techniques::ProjectionDesc projDesc;
         projDesc._verticalFov = 0.f;
         projDesc._aspectRatio = 1.f;
         projDesc._nearClip = nearClip;
@@ -227,11 +217,7 @@ namespace SceneEngine
         projDesc._worldToProjection = Combine(InvertOrthonormalTransform(cameraToWorld), cameraToProjection);
         projDesc._cameraToProjection = cameraToProjection;
         projDesc._cameraToWorld = cameraToWorld;
-
-        auto globalTransform = BuildGlobalTransformConstants(projDesc);
-        parserContext.SetGlobalCB(
-            context, Techniques::TechniqueContext::CB_GlobalTransform,
-            &globalTransform, sizeof(globalTransform));
+        return projDesc;
     }
 
     void LightingParser_LateGBufferRender(  DeviceContext& context, 
@@ -998,11 +984,12 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         ISceneParser& sceneParser);
 
-    void LightingParser_SetupScene( DeviceContext& context, 
-                                    LightingParserContext& parserContext,
-                                    ISceneParser* sceneParser,
-                                    const RenderCore::Techniques::CameraDesc& camera,
-                                    const RenderingQualitySettings& qualitySettings)
+    void LightingParser_SetupScene(
+        DeviceContext& context, 
+        LightingParserContext& parserContext,
+        ISceneParser* sceneParser,
+        const RenderCore::Techniques::CameraDesc& camera,
+        const RenderingQualitySettings& qualitySettings)
     {
         CATCH_ASSETS_BEGIN
             SetFrameGlobalStates(context);
@@ -1027,7 +1014,8 @@ namespace SceneEngine
             parserContext.SetMetricsBox(&metricsBox);
 
             LightingParser_SetGlobalTransform(
-                context, parserContext, camera, qualitySettings._dimensions);
+                context, parserContext, 
+                BuildProjectionDesc(camera, qualitySettings._dimensions));
         CATCH_ASSETS_END(parserContext)
     }
 
@@ -1035,11 +1023,14 @@ namespace SceneEngine
         RenderCore::IThreadContext& context, 
         LightingParserContext& parserContext,
         ISceneParser& scene,
+        const RenderCore::Techniques::CameraDesc& camera,
         const RenderingQualitySettings& qualitySettings)
     {
         auto metalContext = DeviceContext::Get(context);
         parserContext.SetSceneParser(&scene);
-        LightingParser_SetupScene(*metalContext.get(), parserContext, &scene, scene.GetCameraDesc(), qualitySettings);
+        LightingParser_SetupScene(
+            *metalContext.get(), parserContext, 
+            &scene, camera, qualitySettings);
 
         {
             GPUProfiler::DebugAnnotation anno(*metalContext.get(), L"Prepare");

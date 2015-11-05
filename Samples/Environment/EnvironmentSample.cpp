@@ -331,14 +331,13 @@ namespace Sample
                 (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
                 Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0));
 
-            LightingParser_SetProjectionDesc(
-                lightingParserContext, scene->GetCameraDesc(), qualSettings._dimensions);
+            lightingParserContext.GetProjectionDesc() = BuildProjectionDesc(scene->GetCameraDesc(), qualSettings._dimensions);
 
                 //  some scene might need a "prepare" step to 
                 //  build some resources before the main render occurs.
             scene->PrepareFrame(context, lightingParserContext);
 
-            LightingParser_ExecuteScene(context, lightingParserContext, *scene, qualSettings);
+            LightingParser_ExecuteScene(context, lightingParserContext, *scene, scene->GetCameraDesc(), qualSettings);
         }
 
         if (overlaySys) {

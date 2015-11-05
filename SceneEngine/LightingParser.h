@@ -13,7 +13,7 @@
 #include "../Math/Matrix.h"
 #include <functional>
 
-namespace RenderCore { namespace Techniques { class CameraDesc; } }
+namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; } }
 
 namespace SceneEngine
 {
@@ -45,7 +45,7 @@ namespace SceneEngine
     class SceneParseSettings;
     class ISceneParser;
 
-    /// <summary>Execute rendering<summary>
+    /// <summary>Execute rendering</summary>
     /// This is the main entry point for rendering a scene.
     /// The lighting parser will organize buffers, perform lighting resolve
     /// operations and call out to the scene parser when parts of the scene
@@ -86,9 +86,10 @@ namespace SceneEngine
         RenderCore::IThreadContext& context,
         LightingParserContext& parserContext,
         ISceneParser& sceneParser,
+        const RenderCore::Techniques::CameraDesc& camera,
         const RenderingQualitySettings& qualitySettings);
 
-    /// <summary>Initialise basic states for scene rendering<summary>
+    /// <summary>Initialise basic states for scene rendering</summary>
     /// Some render operations don't want to use the full lighting parser structure.
     /// In these cases, you can use LightingParser_SetupScene() to initialise the
     /// global states that are normally managed by the lighting parser.
@@ -101,7 +102,7 @@ namespace SceneEngine
         const RenderCore::Techniques::CameraDesc& camera,
         const RenderingQualitySettings& qualitySettings);
 
-    /// <summary>Set camera related states after camera changes<summary>
+    /// <summary>Set camera related states after camera changes</summary>
     /// Normally this is called automatically by the system.
     /// But in cases where you need to change the camera settings, you can
     /// manually force an update of the shader constants related to projection
@@ -112,28 +113,19 @@ namespace SceneEngine
     void LightingParser_SetGlobalTransform( 
         MetalContext& context, 
         LightingParserContext& parserContext, 
-        const RenderCore::Techniques::CameraDesc& sceneCamera,
-        UInt2 viewportDims,
-        const Float4x4* specialProjectionMatrix = nullptr);
+        const RenderCore::Techniques::ProjectionDesc& projDesc);
 
-    void LightingParser_SetGlobalTransform(
-        MetalContext& context,
-        LightingParserContext& parserContext,
+    /// <summary>Build a projection desc with parameters from a standard camera</summary>
+    RenderCore::Techniques::ProjectionDesc BuildProjectionDesc(
+        const RenderCore::Techniques::CameraDesc& sceneCamera,
+        UInt2 viewportDims, 
+        const Float4x4* specialProjectionMatrix = nullptr);
+    
+    /// <summary>Build a projection desc for an orthogonal camera</summary>
+    RenderCore::Techniques::ProjectionDesc BuildProjectionDesc(
         const Float4x4& cameraToWorld,
         float l, float t, float r, float b,
         float nearClip, float farClip);
-
-    void LightingParser_SetProjectionDesc(  
-        LightingParserContext& parserContext, 
-        const RenderCore::Techniques::CameraDesc& sceneCamera,
-        UInt2 viewportDims,
-        const Float4x4* specialProjectionMatrix);
-
-    void LightingParser_SetProjectionDesc(  
-        LightingParserContext& parserContext, 
-        const RenderCore::Techniques::CameraDesc& sceneCamera,
-        UInt2 viewportDims,
-        const Float4x4* specialProjectionMatrix = nullptr);
 
     void SetFrameGlobalStates(MetalContext& context);
 

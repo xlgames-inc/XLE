@@ -219,7 +219,7 @@ namespace Sample
         if (scene) {
             auto presChainDims = presentationChain->GetViewportContext()->_dimensions;
             LightingParser_ExecuteScene(
-                context, lightingParserContext, *scene, 
+                context, lightingParserContext, *scene, scene->GetCameraDesc(),
                 RenderingQualitySettings(
                     presChainDims, 
                     (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,

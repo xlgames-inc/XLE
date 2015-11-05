@@ -28,6 +28,7 @@
 #include "../ConsoleRig/Console.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/FunctionUtils.h"
+#include "../Math/Transformations.h"
 
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"
@@ -161,11 +162,34 @@ namespace SceneEngine
         _objectTypeCount = desc._bufferCount;
     }
 
+    static RenderCore::Techniques::ProjectionDesc AdjustProjDesc(
+        const RenderCore::Techniques::ProjectionDesc& input,
+        float farClip)
+    {
+        auto result = input;
+        auto clipSpaceType = RenderCore::Techniques::GetDefaultClipSpaceType();
+
+        auto& proj = result._cameraToProjection;
+        auto n = CalculateNearAndFarPlane(
+            ExtractMinimalProjection(proj), clipSpaceType).first;
+
+            // this should work for perspective & orthogonal
+        auto n32 = -proj(3,2);
+        if (clipSpaceType == ClipSpaceType::Positive) {
+            proj(2,2) =     -LinearInterpolate(1.f, farClip, n32) / (farClip-n);
+            proj(2,3) = -n * LinearInterpolate(1.f, farClip, n32) / (farClip-n);
+        } else {
+            assert(0);  // not implemented
+        }
+
+        result._farClip = farClip;
+        result._cameraToProjection = Combine(result._cameraToWorld, proj);
+        return result;
+    }
+
     void VegetationSpawn_Prepare(
-        Metal::DeviceContext* context,
-        LightingParserContext& parserContext,
-        const VegetationSpawnConfig& cfg,
-        VegetationSpawnResources& res)
+        Metal::DeviceContext* context, LightingParserContext& parserContext,
+        const VegetationSpawnConfig& cfg, VegetationSpawnResources& res)
     {
             //  Prepare the scene for vegetation spawn
             //  This means binding our output buffers to the stream output slots,
@@ -174,15 +198,12 @@ namespace SceneEngine
             //
             //  If we use "GeometryShader::SetDefaultStreamOutputInitializers", then future
             //  geometry shaders will be created as stream-output shaders.
-            //
 
         using namespace RenderCore;
         auto oldSO = Metal::GeometryShader::GetDefaultStreamOutputInitializers();
-        // SavedTargets oldTargets(context);
         ID3D::Query* begunQuery = nullptr;
 
-        auto oldCamera = parserContext.GetSceneParser()->GetCameraDesc();
-        Metal::ViewportDesc viewport(*context);
+        auto oldCamera = parserContext.GetProjectionDesc();
 
         CATCH_ASSETS_BEGIN
             auto& perlinNoiseRes = Techniques::FindCachedBox2<SceneEngine::PerlinNoiseResources>();
@@ -267,15 +288,12 @@ namespace SceneEngine
                 // by moving the camera back a bit. This could help make
                 // sure that objects near the camera and on the edge of the screen
                 // get included
-            auto cameraDesc = oldCamera;
-            cameraDesc._farClip = maxDrawDistance;
+            auto newProjDesc = AdjustProjDesc(oldCamera, maxDrawDistance);
 
                 //  We have to call "SetGlobalTransform" to force the camera changes to have effect.
                 //  Ideally there would be a cleaner way to automatically update the constants
                 //  when the bound camera changes...
-            LightingParser_SetGlobalTransform(
-                *context, parserContext, cameraDesc, 
-                UInt2(unsigned(viewport.Width), unsigned(viewport.Height)));
+            LightingParser_SetGlobalTransform(*context, parserContext, newProjDesc);
 
             context->BindSO(MakeResourceList(res._streamOutputBuffers[0], res._streamOutputBuffers[1]));
 
@@ -356,9 +374,7 @@ namespace SceneEngine
         }
 
             // (reset the camera transform if it's changed)
-        LightingParser_SetGlobalTransform(
-            *context, parserContext, oldCamera, 
-            UInt2(unsigned(viewport.Width), unsigned(viewport.Height)));
+        LightingParser_SetGlobalTransform(*context, parserContext, oldCamera);
 
         context->UnbindSO();
         Metal::GeometryShader::SetDefaultStreamOutputInitializers(oldSO);

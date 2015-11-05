@@ -171,8 +171,8 @@ namespace SceneEngine
                 auto& tileLightingResources = Techniques::FindCachedBox<TileLightingResources>(
                     TileLightingResources::Desc(width, height, 16));
 
-                auto camera = lightingParserContext.GetSceneParser()->GetCameraDesc();
-                auto worldToView = InvertOrthonormalTransform(camera._cameraToWorld);
+                auto worldToView = InvertOrthonormalTransform(
+                    lightingParserContext.GetProjectionDesc()._cameraToWorld);
                 auto coordinateFlipMatrix = Float4x4(
                     1.f, 0.f, 0.f, 0.f,
                     0.f, 0.f, -1.f, 0.f,

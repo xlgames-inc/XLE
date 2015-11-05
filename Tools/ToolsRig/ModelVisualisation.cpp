@@ -256,7 +256,7 @@ namespace ToolsRig
             model._model);
         sceneParser.Prepare();
         LightingParser_ExecuteScene(
-            *context, parserContext, sceneParser,
+            *context, parserContext, sceneParser, sceneParser.GetCameraDesc(),
             RenderingQualitySettings(context->GetStateDesc()._viewportDimensions));
     }
 

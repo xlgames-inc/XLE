@@ -238,7 +238,7 @@ namespace Sample
             //      This is where most rendering actually happens.
         if (scene) {
             LightingParser_ExecuteScene(
-                context, lightingParserContext, *scene,
+                context, lightingParserContext, *scene, scene->GetCameraDesc(),
                 RenderingQualitySettings(
                     presChainDims, 
                     (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,

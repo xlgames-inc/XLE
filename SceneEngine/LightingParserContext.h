@@ -59,7 +59,7 @@ namespace SceneEngine
 
         void SetSceneParser(ISceneParser* sceneParser);
         friend void LightingParser_ExecuteScene(
-            RenderCore::IThreadContext&, LightingParserContext&, ISceneParser&, const RenderingQualitySettings&);
+            RenderCore::IThreadContext&, LightingParserContext&, ISceneParser&, const RenderCore::Techniques::CameraDesc&, const RenderingQualitySettings&);
     };
 }
 

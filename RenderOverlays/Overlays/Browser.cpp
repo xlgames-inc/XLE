@@ -469,7 +469,7 @@ namespace Overlays
         auto sceneParser = ToolsRig::CreateModelScene(model);
         Techniques::TechniqueContext techniqueContext;
         SceneEngine::LightingParserContext lightingParserContext(techniqueContext);
-        SceneEngine::LightingParser_ExecuteScene(context, lightingParserContext, *sceneParser.get(), qualitySettings);
+        SceneEngine::LightingParser_ExecuteScene(context, lightingParserContext, *sceneParser.get(), sceneParser->GetCameraDesc(), qualitySettings);
     }
 
     static const unsigned ModelBrowserItemDimensions = 196;

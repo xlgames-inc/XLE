@@ -397,10 +397,10 @@ namespace ToolsRig
                 
         } else if (settings._lightingType == MaterialVisSettings::LightingType::Deferred) {
             qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Deferred;
-            SceneEngine::LightingParser_ExecuteScene(context, parserContext, sceneParser, qualSettings);
+            SceneEngine::LightingParser_ExecuteScene(context, parserContext, sceneParser, sceneParser.GetCameraDesc(), qualSettings);
         } else if (settings._lightingType == MaterialVisSettings::LightingType::Forward) {
             qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Forward;
-            SceneEngine::LightingParser_ExecuteScene(context, parserContext, sceneParser, qualSettings);
+            SceneEngine::LightingParser_ExecuteScene(context, parserContext, sceneParser, sceneParser.GetCameraDesc(), qualSettings);
         }
 
         return true;

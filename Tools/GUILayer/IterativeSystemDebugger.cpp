@@ -17,12 +17,15 @@
 #include "../../SceneEngine/CloudsForm.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/IDevice.h"
+#include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../BufferUploads/ResourceLocator.h"
 #include "../../Math/Transformations.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/Meta/ClassAccessors.h"
 #include "../../Utility/MemoryUtils.h"
 #include <memory>
+
+#pragma warning(disable:4793) // 'GUILayer::`anonymous namespace'::SetGlobalTransform' : function compiled as native
 
 namespace GUILayer
 {
@@ -62,22 +65,30 @@ namespace GUILayer
         }
     }
 
+    static void SetGlobalTransform(
+        RenderCore::Metal::DeviceContext& metalContext,
+        SceneEngine::LightingParserContext& parserContext,
+        Float2 worldDims)
+    {
+        auto camToWorld = MakeCameraToWorld(
+            Float3(0.f, 0.f, -1.f),
+            Float3(0.f, 1.f, 0.f),
+            Float3(0.f, 0.f, 0.f));
+        SceneEngine::LightingParser_SetGlobalTransform(
+            metalContext, parserContext, 
+            SceneEngine::BuildProjectionDesc(
+                camToWorld, 
+                0.f, worldDims[1], worldDims[0], 0.f, 
+                -4096.f, 4096.f));
+    }
+
     void ErosionOverlay::RenderToScene(
         RenderCore::IThreadContext* device,
         SceneEngine::LightingParserContext& parserContext)
     {
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*device);
         Float2 worldDims = _sim->GetDimensions() * _sim->GetWorldSpaceSpacing();
-
-        auto camToWorld = MakeCameraToWorld(
-            Float3(0.f, 0.f, -1.f),
-            Float3(0.f, 1.f, 0.f),
-            Float3(0.f, 0.f, 0.f));
-        SceneEngine::LightingParser_SetGlobalTransform(
-            *metalContext.get(), parserContext, camToWorld, 
-            0.f, 0.f, worldDims[0], worldDims[1], 
-            -4096.f, 4096.f);
-
+        SetGlobalTransform(*metalContext, parserContext, worldDims);
         _sim->RenderDebugging(*metalContext, parserContext, AsDebugMode(_previewSettings->ActivePreview));
     }
 
@@ -322,15 +333,7 @@ namespace GUILayer
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*device);
         Float2 worldDims = Float2(_worldDims[0], _worldDims[1]);
-
-        auto camToWorld = MakeCameraToWorld(
-            Float3(0.f, 0.f, -1.f),
-            Float3(0.f, 1.f, 0.f),
-            Float3(0.f, 0.f, 0.f));
-        SceneEngine::LightingParser_SetGlobalTransform(
-            *metalContext.get(), parserContext, camToWorld, 
-            0.f, worldDims[1], worldDims[0], 0.f, 
-            -4096.f, 4096.f);
+        SetGlobalTransform(*metalContext, parserContext, worldDims);
 
         // _sim->RenderDebugging(*metalContext, parserContext, AsDebugMode(_previewSettings->ActivePreview));
         (*_renderFn)(

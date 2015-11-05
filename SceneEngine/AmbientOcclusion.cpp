@@ -237,7 +237,7 @@ namespace SceneEngine
             inputData.NormalData.DecodeScale =  2.f;
             inputData.NormalData.DecodeBias  = -1.f;
 
-            auto worldToView = InvertOrthonormalTransform(parserContext.GetSceneParser()->GetCameraDesc()._cameraToWorld);
+            auto worldToView = InvertOrthonormalTransform(parserContext.GetProjectionDesc()._cameraToWorld);
             worldToView(2, 0) = -worldToView(2, 0);
             worldToView(2, 1) = -worldToView(2, 1);
             worldToView(2, 2) = -worldToView(2, 2);
