@@ -59,6 +59,7 @@ namespace Sample
         SceneEngine::LightingParserContext& lightingParserContext, BasicSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* debugSystem);
+    static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys);
     void RenderPostScene(RenderCore::IThreadContext* context);
 
     void ExecuteSample()
@@ -131,17 +132,12 @@ namespace Sample
                 //  It just provides a convenient architecture for visualizing important information.
             LogInfo << "Setup tools and debugging";
             FrameRig frameRig;
-
             InitDebugDisplays(*frameRig.GetDebugSystem());
+            InitProfilerDisplays(*frameRig.GetDebugSystem());
 
-            if (g_gpuProfiler) {
-                auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(g_gpuProfiler.get());
-                frameRig.GetDebugSystem()->Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
-            }
-            frameRig.GetDebugSystem()->Register(
-                std::make_shared<PlatformRig::Overlays::CPUProfileDisplay>(&g_cpuProfiler), 
-                "[Profiler] CPU Profiler");
-
+            auto overlaySwitch = std::make_shared<PlatformRig::OverlaySystemSwitch>();
+            overlaySwitch->AddSystem(RenderOverlays::DebuggingDisplay::KeyId_Make("~"), PlatformRig::CreateConsoleOverlaySystem());
+            frameRig.GetMainOverlaySystem()->AddSystem(overlaySwitch);
 
                 //  Setup input:
                 //      * We create a main input handler, and tie that to the window to receive inputs
@@ -265,6 +261,18 @@ namespace Sample
         }
 
         return PlatformRig::FrameRig::RenderResult(hasPendingResources);
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+    static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys)
+    {
+        if (g_gpuProfiler) {
+            auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(g_gpuProfiler.get());
+            debugSys.Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
+        }
+        debugSys.Register(
+            std::make_shared<PlatformRig::Overlays::CPUProfileDisplay>(&g_cpuProfiler), 
+            "[Profiler] CPU Profiler");
     }
 }
 
