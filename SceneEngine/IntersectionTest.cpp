@@ -65,9 +65,10 @@ namespace SceneEngine
         devContext->Bind(newViewport);
 
         LightingParserContext parserContext(context.GetTechniqueContext());
-        LightingParser_SetupScene(
-            *devContext, parserContext, nullptr,
-            context.GetCameraDesc(), RenderingQualitySettings(viewportDims));
+        auto marker = LightingParser_SetupScene(*devContext, parserContext);
+        LightingParser_SetGlobalTransform(
+            *devContext, parserContext,
+            BuildProjectionDesc(context.GetCameraDesc(), viewportDims));
 
         return FindTerrainIntersection(devContext, parserContext, terrainManager, worldSpaceRay);
     }

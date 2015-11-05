@@ -951,16 +951,21 @@ namespace SceneEngine
 
     void LightingParser_PrepareShadows(DeviceContext& context, LightingParserContext& parserContext)
     {
+        auto* scene = parserContext.GetSceneParser();
+        if (!scene) {
+            parserContext._preparedDMShadows.clear();
+            parserContext._preparedRTShadows.clear();
+            return;
+        }
+
         GPUProfiler::DebugAnnotation anno(context, L"Prepare-Shadows");
 
             // todo --  we should be using a temporary frame heap for this vector
-        auto shadowFrustumCount = parserContext.GetSceneParser()->GetShadowProjectionCount();
+        auto shadowFrustumCount = scene->GetShadowProjectionCount();
         parserContext._preparedDMShadows.reserve(shadowFrustumCount);
 
         for (unsigned c=0; c<shadowFrustumCount; ++c) {
-            auto frustum = parserContext.GetSceneParser()->GetShadowProjectionDesc(
-                c, parserContext.GetProjectionDesc());
-
+            auto frustum = scene->GetShadowProjectionDesc(c, parserContext.GetProjectionDesc());
             CATCH_ASSETS_BEGIN
                 if (frustum._resolveType == ShadowProjectionDesc::ResolveType::DepthTexture) {
 
@@ -984,39 +989,31 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         ISceneParser& sceneParser);
 
-    void LightingParser_SetupScene(
+    AttachedSceneMarker LightingParser_SetupScene(
         DeviceContext& context, 
         LightingParserContext& parserContext,
-        ISceneParser* sceneParser,
-        const RenderCore::Techniques::CameraDesc& camera,
-        const RenderingQualitySettings& qualitySettings)
+        ISceneParser* sceneParser)
     {
         CATCH_ASSETS_BEGIN
             SetFrameGlobalStates(context);
         CATCH_ASSETS_END(parserContext)
 
-        CATCH_ASSETS_BEGIN
-            ReturnToSteadyState(context);
+        Float4 time(0.f, 0.f, 0.f, 0.f);
+        if (sceneParser)
+            time[0] = sceneParser->GetTimeValue();
+        parserContext.SetGlobalCB(
+            context, Techniques::TechniqueContext::CB_GlobalState,
+            &time, sizeof(time));
 
-            Float4 time(0.f, 0.f, 0.f, 0.f);
-            if (sceneParser)
-                time[0] = sceneParser->GetTimeValue();
-            parserContext.SetGlobalCB(
-                context, Techniques::TechniqueContext::CB_GlobalState,
-                &time, sizeof(time));
+        if (sceneParser)
+            LightingParser_InitBasicLightEnv(context, parserContext, *sceneParser);
 
-            if (sceneParser)
-                LightingParser_InitBasicLightEnv(context, parserContext, *sceneParser);
+        auto& metricsBox = Techniques::FindCachedBox<MetricsBox>(MetricsBox::Desc());
+        unsigned clearValues[] = {0,0,0,0};
+        context.Clear(metricsBox._metricsBufferUAV, clearValues);
+        parserContext.SetMetricsBox(&metricsBox);
 
-            auto& metricsBox = Techniques::FindCachedBox<MetricsBox>(MetricsBox::Desc());
-            unsigned clearValues[] = {0,0,0,0};
-            context.Clear(metricsBox._metricsBufferUAV, clearValues);
-            parserContext.SetMetricsBox(&metricsBox);
-
-            LightingParser_SetGlobalTransform(
-                context, parserContext, 
-                BuildProjectionDesc(camera, qualitySettings._dimensions));
-        CATCH_ASSETS_END(parserContext)
+        return parserContext.SetSceneParser(sceneParser);
     }
 
     void LightingParser_ExecuteScene(
@@ -1027,27 +1024,35 @@ namespace SceneEngine
         const RenderingQualitySettings& qualitySettings)
     {
         auto metalContext = DeviceContext::Get(context);
-        parserContext.SetSceneParser(&scene);
-        LightingParser_SetupScene(
+        auto marker = LightingParser_SetupScene(*metalContext.get(), parserContext, &scene);
+        LightingParser_SetGlobalTransform(
             *metalContext.get(), parserContext, 
-            &scene, camera, qualitySettings);
+            BuildProjectionDesc(camera, qualitySettings._dimensions));
+
+        LightingParser_ExecuteScene(*metalContext, parserContext, qualitySettings);
+    }
+
+    void LightingParser_ExecuteScene(
+        RenderCore::Metal::DeviceContext& metalContext, 
+        LightingParserContext& parserContext,
+        const RenderingQualitySettings& qualitySettings)
+    {
+        ReturnToSteadyState(metalContext);
 
         {
-            GPUProfiler::DebugAnnotation anno(*metalContext.get(), L"Prepare");
+            GPUProfiler::DebugAnnotation anno(metalContext, L"Prepare");
             for (auto i=parserContext._plugins.cbegin(); i!=parserContext._plugins.cend(); ++i) {
                 CATCH_ASSETS_BEGIN
-                    (*i)->OnPreScenePrepare(metalContext.get(), parserContext);
+                    (*i)->OnPreScenePrepare(&metalContext, parserContext);
                 CATCH_ASSETS_END(parserContext)
             }
 
-            LightingParser_PrepareShadows(*metalContext.get(), parserContext);
+            LightingParser_PrepareShadows(metalContext, parserContext);
         }
 
         CATCH_ASSETS_BEGIN
-            LightingParser_MainScene(*metalContext.get(), parserContext, qualitySettings);
+            LightingParser_MainScene(metalContext, parserContext, qualitySettings);
         CATCH_ASSETS_END(parserContext)
-
-        parserContext.SetSceneParser(nullptr);
     }
 
     void LightingParserContext::SetMetricsBox(MetricsBox* box)
@@ -1064,9 +1069,11 @@ namespace SceneEngine
 
     LightingParserContext::~LightingParserContext() {}
 
-    void LightingParserContext::SetSceneParser(ISceneParser* sceneParser)
+    AttachedSceneMarker LightingParserContext::SetSceneParser(ISceneParser* sceneParser)
     {
+        assert(_sceneParser == nullptr);
         _sceneParser = sceneParser;
+        return AttachedSceneMarker(*this);
     }
 
     RenderingQualitySettings::RenderingQualitySettings()

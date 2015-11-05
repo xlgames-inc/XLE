@@ -44,6 +44,7 @@ namespace SceneEngine
     class LightingParserContext;
     class SceneParseSettings;
     class ISceneParser;
+    class AttachedSceneMarker;
 
     /// <summary>Execute rendering</summary>
     /// This is the main entry point for rendering a scene.
@@ -89,18 +90,29 @@ namespace SceneEngine
         const RenderCore::Techniques::CameraDesc& camera,
         const RenderingQualitySettings& qualitySettings);
 
+    /// <summary>Executes the scene currently set to the parser context</summary>
+    /// The currently attached scene will be rendered.
+    /// Call LightingParser_SetupScene to attach a scene to the parser context before
+    /// calling this.
+    /// The other version of LightingParser_ExecuteScene is intended for most cases. But
+    /// this version can be used for special case purpose (for example, when a special
+    /// case projection matrix is required)
+    void LightingParser_ExecuteScene(
+        RenderCore::Metal::DeviceContext& metalContext, 
+        LightingParserContext& parserContext,
+        const RenderingQualitySettings& qualitySettings);
+
     /// <summary>Initialise basic states for scene rendering</summary>
     /// Some render operations don't want to use the full lighting parser structure.
     /// In these cases, you can use LightingParser_SetupScene() to initialise the
     /// global states that are normally managed by the lighting parser.
     /// Note -- don't call this if you're using LightingParser_Execute.
     /// <seealso cref="LightingParser_Execute"/>
-    void LightingParser_SetupScene(
+    auto LightingParser_SetupScene(
         MetalContext& context,
         LightingParserContext& parserContext,
-        ISceneParser* sceneParser,
-        const RenderCore::Techniques::CameraDesc& camera,
-        const RenderingQualitySettings& qualitySettings);
+        ISceneParser* sceneParser = nullptr)
+        -> AttachedSceneMarker;
 
     /// <summary>Set camera related states after camera changes</summary>
     /// Normally this is called automatically by the system.

@@ -389,10 +389,12 @@ namespace ToolsRig
         if (settings._lightingType == MaterialVisSettings::LightingType::NoLightingParser) {
                 
             auto metalContext = Metal::DeviceContext::Get(context);
-            SceneEngine::LightingParser_SetupScene(
+            auto marker = SceneEngine::LightingParser_SetupScene(
                 *metalContext.get(), parserContext, 
-                &sceneParser, sceneParser.GetCameraDesc(),
-                qualSettings);
+                &sceneParser);
+            SceneEngine::LightingParser_SetGlobalTransform(
+                *metalContext.get(), parserContext, 
+                SceneEngine::BuildProjectionDesc(sceneParser.GetCameraDesc(), qualSettings._dimensions));
             sceneParser.Draw(*metalContext.get(), parserContext, 0);
                 
         } else if (settings._lightingType == MaterialVisSettings::LightingType::Deferred) {

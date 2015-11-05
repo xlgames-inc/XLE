@@ -54,12 +54,34 @@ namespace SceneEngine
         ~LightingParserContext();
 
     private:
-        MetricsBox*                         _metricsBox;
-        ISceneParser*                       _sceneParser;
+        MetricsBox*         _metricsBox;
+        ISceneParser*       _sceneParser;
 
-        void SetSceneParser(ISceneParser* sceneParser);
-        friend void LightingParser_ExecuteScene(
-            RenderCore::IThreadContext&, LightingParserContext&, ISceneParser&, const RenderCore::Techniques::CameraDesc&, const RenderingQualitySettings&);
+        friend class AttachedSceneMarker;
+        AttachedSceneMarker SetSceneParser(ISceneParser* sceneParser);
+        friend AttachedSceneMarker LightingParser_SetupScene(RenderCore::Metal::DeviceContext&, LightingParserContext&, ISceneParser*);
+    };
+
+    class AttachedSceneMarker
+    {
+    public:
+        ~AttachedSceneMarker() { if (_parserContext) _parserContext->_sceneParser = nullptr; }
+        AttachedSceneMarker() : _parserContext(nullptr) {}
+        AttachedSceneMarker(const AttachedSceneMarker&) = delete;
+        const AttachedSceneMarker& operator=(const AttachedSceneMarker&) = delete;
+        AttachedSceneMarker(AttachedSceneMarker&& moveFrom) never_throws
+        : _parserContext(moveFrom._parserContext)
+        { moveFrom._parserContext = nullptr; }
+        const AttachedSceneMarker& operator=(AttachedSceneMarker&& moveFrom) never_throws
+        {
+            _parserContext = moveFrom._parserContext;
+            moveFrom._parserContext = nullptr;
+        }
+    private:
+        AttachedSceneMarker(LightingParserContext& parserContext) : _parserContext(&parserContext) {}
+        LightingParserContext* _parserContext;
+
+        friend class LightingParserContext;
     };
 }
 
