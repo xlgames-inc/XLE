@@ -64,7 +64,7 @@ float3 ApplyToneMap(float3 colour)
 			//			http://filmicgames.com/archives/75
 
 		float3 L = scale * colour;
-		const float whitepoint = Whitepoint;
+		const float whitepoint = scale * Whitepoint;
 		float4 postToneMap = Uncharted2Tonemap(float4(L,whitepoint));
 
 		const bool doWhiteAdjustment = true;
