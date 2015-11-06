@@ -30,7 +30,7 @@ namespace PlatformRig
     using namespace RenderCore;
     using namespace BufferUploads;
 
-    static void SaveScreenshot(
+    static void SaveImage(
         const char destinationFile[],
         const void* imageData,
         UInt2 dimensions,
@@ -49,18 +49,20 @@ namespace PlatformRig
 
         const GUID GUID_ContainerFormatTiff = 
             { 0x163bcc30, 0xe2e9, 0x4f0b, { 0x96, 0x1d, 0xa3, 0xe9, 0xfd, 0xb7, 0x88, 0xa3 }};
-        DirectX::SaveToWICFile(
+        auto hresult = DirectX::SaveToWICFile(
             image, DirectX::WIC_FLAGS_NONE,
             GUID_ContainerFormatTiff,
             fn.c_str());
+        assert(SUCCEEDED(hresult));
     }
 
-    void TiledScreenshot(
+    static intrusive_ptr<DataPacket> RenderTiled(
         IThreadContext& context,
         LightingParserContext& parserContext,
         ISceneParser& sceneParser,
         const Techniques::CameraDesc& camera,
-        const RenderingQualitySettings& qualitySettings)
+        const RenderingQualitySettings& qualitySettings,
+        Metal::NativeFormat::Enum format)
     {
         // We want to separate the view into several tiles, and render
         // each as a separate high-res render. Then we will stitch them
@@ -75,7 +77,6 @@ namespace PlatformRig
             // so that downsampling can be done in linear space
             // Because it's linear, we need a little extra precision
             // to avoid banding post gamma correction.
-        auto format = Metal::NativeFormat::R16G16B16A16_UNORM;
         using TargetType = GestaltTypes::RTVSRV;
         std::vector<TargetType> targets;
         targets.resize(tilesX*tilesY);
@@ -149,7 +150,9 @@ namespace PlatformRig
         UInt2 finalImageDims = qualitySettings._dimensions;
         auto bpp = Metal::BitsPerPixel(format);
         auto finalRowPitch = finalImageDims[0]*bpp/8;
-        auto rawData = std::make_unique<uint8[]>(finalImageDims[1]*finalRowPitch);
+        auto rawData = CreateBasicPacket(
+            finalImageDims[1]*finalRowPitch, nullptr,
+            TexturePitches(finalRowPitch, finalImageDims[1]*finalRowPitch));
 
         for (unsigned y=0; y<tilesY; ++y)
             for (unsigned x=0; x<tilesX; ++x) {
@@ -171,10 +174,83 @@ namespace PlatformRig
                 target = TargetType();
             }
 
-        SaveScreenshot(
-            "screenshot.tiff",
-            rawData.get(), finalImageDims, 
-            finalRowPitch, format);
+        return std::move(rawData);
+    }
+
+    static intrusive_ptr<DataPacket> BoxFilterR16G16B16A16(
+        DataPacket& highRes,
+        UInt2 srcDims, UInt2 downsample)
+    {
+        const auto bpp = unsigned(sizeof(uint16)*4*8);
+        UInt2 downsampledSize(
+            srcDims[0] / downsample[0], 
+            srcDims[1] / downsample[1]);
+        auto downsampledRowPitch = downsampledSize[0] * bpp;
+        auto rawData = CreateBasicPacket(
+            downsampledSize[1]*downsampledRowPitch, nullptr,
+            TexturePitches(downsampledRowPitch, downsampledSize[1]*downsampledRowPitch));
+
+        const uint16* srcData = (const uint16*)highRes.GetData();
+        const auto srcRowPitch = highRes.GetPitches()._rowPitch;
+
+        uint16* dstData = (uint16*)rawData->GetData();
+        const auto dstRowPitch = rawData->GetPitches()._rowPitch;
+
+            // note that we can do this in-place (or tile-by-tile) to save some memory
+        const unsigned weightDiv = downsample[0] * downsample[1];
+        for (unsigned y=0; y<downsampledSize[1]; ++y)
+            for (unsigned x=0; x<downsampledSize[0]; ++x) {
+                UInt4 dst(0, 0, 0, 0);
+                for (unsigned sy=0; sy<downsample[1]; ++sy)
+                    for (unsigned sx=0; sx<downsample[0]; ++sx) {
+                        UInt2 src(x*downsample[0]+sx, y*downsample[1]+sy);
+                        auto* s = PtrAdd(srcData, src[1] * srcRowPitch + src[0] * bpp / 8);
+                        dst[0] += s[0]; dst[1] += s[1]; dst[2] += s[2]; dst[3] += s[3];
+                    }
+
+                dst[0] /= weightDiv; assert(dst[0] <= 0xffff);
+                dst[1] /= weightDiv; assert(dst[0] <= 0xffff);
+                dst[2] /= weightDiv; assert(dst[0] <= 0xffff);
+                dst[3] /= weightDiv; assert(dst[0] <= 0xffff);
+
+                auto* d = PtrAdd(dstData, y*dstRowPitch+x*bpp/8);
+                d[0] = (uint16)dst[0]; d[1] = (uint16)dst[1]; d[2] = (uint16)dst[2]; d[3] = (uint16)dst[3];
+            }
+
+        return std::move(rawData);
+    }
+
+
+    void TiledScreenshot(
+        IThreadContext& context,
+        LightingParserContext& parserContext,
+        ISceneParser& sceneParser,
+        const Techniques::CameraDesc& camera,
+        const RenderingQualitySettings& qualitySettings)
+    {
+        auto preFilterFormat = Metal::NativeFormat::R16G16B16A16_UNORM;
+        auto image = RenderTiled(
+            context, parserContext, sceneParser,
+            camera, qualitySettings, preFilterFormat);
+
+            // Save the unfiltered image (this is a 16 bit depth linear image)
+            // We can use a program like "Luminance HDR" to run custom tonemapping
+            // on the unfiltered image...
+        SaveImage(
+            "screenshot_unfiltered.tiff",
+            image->GetData(), qualitySettings._dimensions, 
+            image->GetPitches()._rowPitch, preFilterFormat);
+
+            // Do a box filter on the CPU to shrink the result down to
+            // the output size. We could consider other filters. But (assuming
+            // we're doing an integer downsample) the box filter will mean that
+            // each sample point is equally weighted, and it will avoid any
+            // blurring to the image.
+        image = BoxFilterR16G16B16A16(*image, qualitySettings._dimensions, UInt2(4,4));
+
+            // Now we want to do HDR resolve (on the GPU)
+            // We should end up with an 8 bit SRGB image
+
     }
 
 }
