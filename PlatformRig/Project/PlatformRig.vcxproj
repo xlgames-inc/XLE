@@ -170,6 +170,7 @@
     </ClCompile>
     <ClCompile Include="..\OverlaySystem.cpp" />
     <ClCompile Include="..\PlatformRigUtil.cpp" />
+    <ClCompile Include="..\Screenshot.cpp" />
     <ClCompile Include="..\StatePropagation.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
@@ -247,6 +248,7 @@
     <ClInclude Include="..\OverlappedWindow.h" />
     <ClInclude Include="..\OverlaySystem.h" />
     <ClInclude Include="..\PlatformRigUtil.h" />
+    <ClInclude Include="..\Screenshot.h" />
     <ClInclude Include="..\StatePropagation.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>

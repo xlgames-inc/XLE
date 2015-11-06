@@ -45,6 +45,7 @@
     <ClCompile Include="..\DebuggingDisplays\DynamicImpostersDisplay.cpp">
       <Filter>DebuggingDisplays</Filter>
     </ClCompile>
+    <ClCompile Include="..\Screenshot.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="WinAPI">
@@ -94,5 +95,6 @@
     <ClInclude Include="..\DebuggingDisplays\DynamicImpostersDisplay.h">
       <Filter>DebuggingDisplays</Filter>
     </ClInclude>
+    <ClInclude Include="..\Screenshot.h" />
   </ItemGroup>
 </Project>

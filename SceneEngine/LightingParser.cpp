@@ -825,16 +825,22 @@ namespace SceneEngine
                 //  We have to be careful about whether "SRGB" is enabled
                 //  on the back buffer we're writing to. Depending on the
                 //  tone mapping method, sometimes we want the SRGB conversion,
-                //  other times we don't...
+                //  other times we don't (because some tone map operations produce
+                //  SRGB results, others give linear results)
 
             const bool hardwareSRGBDisabled = Tweakable("Tonemap_DisableHardwareSRGB", true);
             if (hardwareSRGBDisabled) {
                 auto res = ExtractResource<ID3D::Resource>(savedTargets.GetRenderTargets()[0]);
                 if (res) {
-                        // create a render target view with SRGB disabled (but the same colour format)
-                    Metal::RenderTargetView rtv(res.get(), Metal::NativeFormat::R8G8B8A8_UNORM);
-                    auto* drtv = rtv.GetUnderlying();
-                    context.GetUnderlying()->OMSetRenderTargets(1, &drtv, savedTargets.GetDepthStencilView());
+                    auto currentFormat = Metal::AsNativeFormat(Metal::TextureDesc2D(res.get()).Format);
+                    if (Metal::GetComponentType(currentFormat) == Metal::FormatComponentType::UNorm_SRGB) {
+                            // create a render target view with SRGB disabled (but the same colour format)
+                            // todo -- make sure we're using the correct format here -- 
+                        Metal::RenderTargetView rtv(res.get(), Metal::NativeFormat::R8G8B8A8_UNORM);
+                        auto* drtv = rtv.GetUnderlying();
+                        context.GetUnderlying()->OMSetRenderTargets(1, &drtv, savedTargets.GetDepthStencilView());
+                    } else
+                        savedTargets.ResetToOldTargets(context);
                 }
             } else {
                 savedTargets.ResetToOldTargets(context);

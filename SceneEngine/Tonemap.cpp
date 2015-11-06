@@ -240,12 +240,11 @@ namespace SceneEngine
         UnorderedAccessView propertiesBufferUAV(propertiesBuffer.get());
         ShaderResourceView propertiesBufferSRV(propertiesBuffer.get());
 
-        char shaderDefines[256]; 
-        sprintf_s(
-            shaderDefines, dimof(shaderDefines), "MSAA_SAMPLES=%i%s", 
-            desc._sampleCount, desc._useMSAASamplers?";MSAA_SAMPLERS=1":"");
+        StringMeld<256> shaderDefines; 
+        shaderDefines << "MSAA_SAMPLES=" << desc._sampleCount;
+        if (desc._useMSAASamplers) shaderDefines << ";MSAA_SAMPLERS=1";
 
-        auto* sampleInitialLuminance    = &::Assets::GetAssetDep<ComputeShader>("game/xleres/postprocess/hdrluminance.csh:SampleInitialLuminance:cs_*", shaderDefines);
+        auto* sampleInitialLuminance    = &::Assets::GetAssetDep<ComputeShader>("game/xleres/postprocess/hdrluminance.csh:SampleInitialLuminance:cs_*", shaderDefines.get());
         auto* luminanceStepDown         = &::Assets::GetAssetDep<ComputeShader>("game/xleres/postprocess/hdrluminance.csh:LuminanceStepDown:cs_*");
         auto* updateOverallLuminance    = &::Assets::GetAssetDep<ComputeShader>("game/xleres/postprocess/hdrluminance.csh:UpdateOverallLuminance:cs_*");
         auto* brightPassStepDown        = &::Assets::GetAssetDep<ComputeShader>("game/xleres/postprocess/hdrluminance.csh:BrightPassStepDown:cs_*");
@@ -491,9 +490,9 @@ namespace SceneEngine
         public:
             unsigned _operator;
             bool _enableBloom;
-            bool _hardwareSRGBDisabled, _doColorGrading, _doLevelsAdjustment, _doSelectiveColour, _doFilterColour;
-            Desc(unsigned opr, bool enableBloom, bool hardwareSRGBDisabled, bool doColorGrading, bool doLevelsAdjustments, bool doSelectiveColour, bool doFilterColour)
-                : _operator(opr), _enableBloom(enableBloom), _hardwareSRGBDisabled(hardwareSRGBDisabled), _doColorGrading(doColorGrading)
+            bool _hardwareSRGBEnabled, _doColorGrading, _doLevelsAdjustment, _doSelectiveColour, _doFilterColour;
+            Desc(unsigned opr, bool enableBloom, bool hardwareSRGBEnabled, bool doColorGrading, bool doLevelsAdjustments, bool doSelectiveColour, bool doFilterColour)
+                : _operator(opr), _enableBloom(enableBloom), _hardwareSRGBEnabled(hardwareSRGBEnabled), _doColorGrading(doColorGrading)
                 , _doLevelsAdjustment(doLevelsAdjustments), _doSelectiveColour(doSelectiveColour), _doFilterColour(doFilterColour) {}
         };
 
@@ -509,15 +508,21 @@ namespace SceneEngine
 
     ToneMapShaderBox::ToneMapShaderBox(const Desc& desc)
     {
-        char shaderDefines[256];
-        sprintf_s(
-            shaderDefines, dimof(shaderDefines), 
-            "OPERATOR=%i;ENABLE_BLOOM=%i;HARDWARE_SRGB_DISABLED=%i;DO_COLOR_GRADING=%i;MAT_LEVELS_ADJUSTMENT=%i;MAT_SELECTIVE_COLOR=%i;MAT_PHOTO_FILTER=%i",
-            Tweakable("ToneMapOperator", 1), desc._enableBloom, desc._hardwareSRGBDisabled, desc._doColorGrading, desc._doLevelsAdjustment, desc._doSelectiveColour, desc._doFilterColour);
+        StringMeld<256> shaderDefines;
+        shaderDefines 
+            << "OPERATOR=" << Tweakable("ToneMapOperator", 1)
+            << ";ENABLE_BLOOM=" << desc._enableBloom
+            << ";HARDWARE_SRGB_ENABLED=" << desc._hardwareSRGBEnabled
+            << ";DO_COLOR_GRADING=" << desc._doColorGrading
+            << ";MAT_LEVELS_ADJUSTMENT=" << desc._doLevelsAdjustment
+            << ";MAT_SELECTIVE_COLOR=" << desc._doSelectiveColour
+            << ";MAT_PHOTO_FILTER=" << desc._doFilterColour
+            ;
+
         auto& shaderProgram = ::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*",
             "game/xleres/postprocess/tonemap.psh:main:ps_*", 
-            shaderDefines);
+            shaderDefines.get());
 
         RenderCore::Metal::BoundUniforms uniforms(shaderProgram);
         uniforms.BindConstantBuffer(Hash64("ToneMapSettings"), 0, 1);
@@ -537,7 +542,7 @@ namespace SceneEngine
             *context, ProtectState::States::BlendState | ProtectState::States::RasterizerState);
         context->Bind(Techniques::CommonResources()._cullDisable);
 
-        bool hardwareSRGBDisabled = false;
+        bool hardwareSRGBEnabled = true;
         {
                     //  Query the destination render target to
                     //  see if SRGB conversion is enabled when writing out
@@ -545,7 +550,8 @@ namespace SceneEngine
             D3D11_RENDER_TARGET_VIEW_DESC rtv;
             if (destinationTargets.GetRenderTargets()[0]) {
                 destinationTargets.GetRenderTargets()[0]->GetDesc(&rtv);
-                hardwareSRGBDisabled = rtv.Format != DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+                hardwareSRGBEnabled = 
+                    Metal::GetComponentType(Metal::AsNativeFormat(rtv.Format)) == Metal::FormatComponentType::UNorm_SRGB;
             }
         }
 
@@ -566,11 +572,10 @@ namespace SceneEngine
                         bool doColorGrading = Tweakable("DoColorGrading", false);
                         auto colorGradingSettings = BuildColorGradingShaderConstants(GlobalColorGradingSettings);
 
-                        auto& box = Techniques::FindCachedBoxDep<ToneMapShaderBox>(
-                            ToneMapShaderBox::Desc(
-                                Tweakable("ToneMapOperator", 1), !!(settings._flags & ToneMapSettings::Flags::EnableBloom),
-                                hardwareSRGBDisabled, doColorGrading, !!(colorGradingSettings._doLevelsAdustment), 
-                                !!(colorGradingSettings._doSelectiveColor), !!(colorGradingSettings._doFilterColor)));
+                        auto& box = Techniques::FindCachedBoxDep2<ToneMapShaderBox>(
+                            Tweakable("ToneMapOperator", 1), !!(settings._flags & ToneMapSettings::Flags::EnableBloom),
+                            hardwareSRGBEnabled, doColorGrading, !!(colorGradingSettings._doLevelsAdustment), 
+                            !!(colorGradingSettings._doSelectiveColor), !!(colorGradingSettings._doFilterColor));
 
                         context->Bind(*box._shaderProgram);
                         context->BindPS(MakeResourceList(1, toneMapRes._propertiesBufferSRV, toneMapRes._bloomBuffers[0]._bloomBufferSRV));

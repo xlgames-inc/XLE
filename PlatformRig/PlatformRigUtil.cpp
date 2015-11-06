@@ -7,16 +7,14 @@
 #include "PlatformRigUtil.h"
 #include "../RenderCore/IDevice.h"
 #include "../SceneEngine/LightDesc.h"
-#include "../SceneEngine/LightingParserContext.h"   // just for ProjectionDesc
 #include "../RenderCore/Techniques/TechniqueUtils.h"
+#include "../RenderCore/Metal/Format.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/IncludeLUA.h"
 #include "../Utility/ParameterBox.h"
 #include "../Utility/BitUtils.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
-
-#include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
 namespace PlatformRig
 {
@@ -367,13 +365,13 @@ namespace PlatformRig
         result._width   = settings._textureSize;
         result._height  = settings._textureSize;
         if (settings._flags & DefaultShadowFrustumSettings::Flags::HighPrecisionDepths) {
-            result._typelessFormat  = (RenderCore::Metal::NativeFormat::Enum)DXGI_FORMAT_R24G8_TYPELESS;
-            result._writeFormat     = (RenderCore::Metal::NativeFormat::Enum)DXGI_FORMAT_D24_UNORM_S8_UINT;
-            result._readFormat      = (RenderCore::Metal::NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+            result._typelessFormat  = RenderCore::Metal::NativeFormat::R24G8_TYPELESS;
+            result._writeFormat     = RenderCore::Metal::NativeFormat::D24_UNORM_S8_UINT;
+            result._readFormat      = RenderCore::Metal::NativeFormat::R24_UNORM_X8_TYPELESS;
         } else {
-            result._typelessFormat  = (RenderCore::Metal::NativeFormat::Enum)DXGI_FORMAT_R16_TYPELESS;
-            result._writeFormat     = (RenderCore::Metal::NativeFormat::Enum)DXGI_FORMAT_D16_UNORM;
-            result._readFormat      = (RenderCore::Metal::NativeFormat::Enum)DXGI_FORMAT_R16_UNORM;
+            result._typelessFormat  = RenderCore::Metal::NativeFormat::R16_TYPELESS;
+            result._writeFormat     = RenderCore::Metal::NativeFormat::D16_UNORM;
+            result._readFormat      = RenderCore::Metal::NativeFormat::R16_UNORM;
         }
         
         if (settings._flags & DefaultShadowFrustumSettings::Flags::ArbitraryCascades) {
