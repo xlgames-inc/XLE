@@ -14,7 +14,6 @@
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/PlatformRigUtil.h"
 #include "../../PlatformRig/OverlaySystem.h"
-#include "../../PlatformRig/Screenshot.h"
 
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/GPUProfiler.h"
@@ -177,16 +176,6 @@ namespace Sample
                     // ------- Render ----------------------------------------
                 SceneEngine::LightingParserContext lightingParserContext(*globalTechniqueContext);
                 lightingParserContext._plugins.push_back(stdPlugin);
-
-                auto& screenshot = Tweakable("Screenshot", false);
-                if (screenshot) {
-                    TiledScreenshot(
-                        *context, lightingParserContext,
-                        *mainScene, mainScene->GetCameraDesc(),
-                        // UInt2(4 * presentationChain->GetViewportContext()->_dimensions));
-                        UInt2(4096, 4096));
-                    screenshot = false;
-                }
 
                 auto frameResult = frameRig.ExecuteFrame(
                     *context.get(), presentationChain.get(), 
