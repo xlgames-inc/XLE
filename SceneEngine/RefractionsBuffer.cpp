@@ -134,12 +134,12 @@ namespace SceneEngine
             //      Change a "typeless" format into the most logical format
             //      for MSAA Resolve operations
             //      special case for 24 bit depth buffers..
-        switch ((unsigned)format) {
-        case DXGI_FORMAT_R24G8_TYPELESS:
-        case DXGI_FORMAT_D24_UNORM_S8_UINT:
-        case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
-        case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
-            return (NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+        switch (format) {
+        case NativeFormat::R24G8_TYPELESS:
+        case NativeFormat::D24_UNORM_S8_UINT:
+        case NativeFormat::R24_UNORM_X8_TYPELESS:
+        case NativeFormat::X24_TYPELESS_G8_UINT:
+            return NativeFormat::R24_UNORM_X8_TYPELESS;
         }
 
         if (GetComponentType(format) != FormatComponentType::Typeless) {
@@ -191,7 +191,7 @@ namespace SceneEngine
         if (textureDesc.SampleDesc.Count > 1 && resolveMSAA) {
 
             DuplicateDepthBuffer::Desc d(
-                textureDesc.Width, textureDesc.Height, (NativeFormat::Enum)(textureDesc.Format),
+                textureDesc.Width, textureDesc.Height, AsNativeFormat(textureDesc.Format),
                 BufferUploads::TextureSamples::Create());
 
                 //  Resolve into the new buffer
@@ -204,7 +204,7 @@ namespace SceneEngine
         } else {
 
             DuplicateDepthBuffer::Desc d(
-                textureDesc.Width, textureDesc.Height, (NativeFormat::Enum)(textureDesc.Format),
+                textureDesc.Width, textureDesc.Height, AsNativeFormat(textureDesc.Format),
                 BufferUploads::TextureSamples::Create(uint8(textureDesc.SampleDesc.Count), uint8(textureDesc.SampleDesc.Quality)));
 
                 //  Copy into the new buffer

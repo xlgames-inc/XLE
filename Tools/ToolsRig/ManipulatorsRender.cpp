@@ -78,7 +78,7 @@ namespace ToolsRig
         if (savedTargets.GetDepthStencilView())
             depthSrv = ShaderResourceView(ExtractResource<ID3D::Resource>(
                 savedTargets.GetDepthStencilView()).get(), 
-                (NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);     // note -- assuming D24S8 depth buffer! We need a better way to get the depth srv
+                NativeFormat::Enum::R24_UNORM_X8_TYPELESS);     // note -- assuming D24S8 depth buffer! We need a better way to get the depth srv
 
         TRY
         {
@@ -146,7 +146,7 @@ namespace ToolsRig
         if (savedTargets.GetDepthStencilView())
             depthSrv = ShaderResourceView(ExtractResource<ID3D::Resource>(
                 savedTargets.GetDepthStencilView()).get(), 
-                (NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);     // note -- assuming D24S8 depth buffer! We need a better way to get the depth srv
+                NativeFormat::R24_UNORM_X8_TYPELESS);     // note -- assuming D24S8 depth buffer! We need a better way to get the depth srv
 
         TRY
         {

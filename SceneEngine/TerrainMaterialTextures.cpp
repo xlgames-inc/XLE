@@ -80,7 +80,7 @@ namespace SceneEngine
 
                 auto destFormat = destinationDesc.Format;
                 auto resamplingFormat = destFormat;
-                auto compressionType = RenderCore::Metal::GetCompressionType((RenderCore::Metal::NativeFormat::Enum)destFormat);
+                auto compressionType = RenderCore::Metal::GetCompressionType(RenderCore::Metal::AsNativeFormat(destFormat));
                 if (compressionType == RenderCore::Metal::FormatCompressionType::BlockCompression) {
                         // resampling via a higher precision buffer -- just for kicks.
                     resamplingFormat = (DXGI_FORMAT)RenderCore::Metal::NativeFormat::R16G16B16A16_FLOAT;

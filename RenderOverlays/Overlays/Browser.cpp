@@ -552,7 +552,7 @@ namespace Overlays
         offscreenDesc._textureDesc = TextureDesc::Plain2D(offscreenDims, offscreenDims, RenderCore::Metal::NativeFormat::R8G8B8A8_UNORM);
         auto offscreenResource = uploads.Transaction_Immediate(offscreenDesc)->AdoptUnderlying();
         offscreenDesc._bindFlags = BindFlag::DepthStencil;
-        offscreenDesc._textureDesc = TextureDesc::Plain2D(offscreenDims, offscreenDims, (RenderCore::Metal::NativeFormat::Enum)DXGI_FORMAT_D24_UNORM_S8_UINT);
+        offscreenDesc._textureDesc = TextureDesc::Plain2D(offscreenDims, offscreenDims, RenderCore::Metal::NativeFormat::D24_UNORM_S8_UINT);
         auto depthResource = uploads.Transaction_Immediate(offscreenDesc)->AdoptUnderlying();
         pimpl->_rtv =RenderCore::Metal::RenderTargetView(offscreenResource.get());
         pimpl->_dsv = RenderCore::Metal::DepthStencilView(depthResource.get());

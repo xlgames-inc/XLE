@@ -96,9 +96,9 @@ namespace SceneEngine
 
         auto tdescCopy = tdesc;
 
-        const bool needTypelessFmt = Internal::NeedTypelessFormat((Metal::NativeFormat::Enum)tdescCopy._nativePixelFormat);
+        const bool needTypelessFmt = Internal::NeedTypelessFormat(Metal::NativeFormat::Enum(tdescCopy._nativePixelFormat));
         if (needTypelessFmt)
-            tdescCopy._nativePixelFormat = Metal::AsTypelessFormat((Metal::NativeFormat::Enum)tdescCopy._nativePixelFormat);
+            tdescCopy._nativePixelFormat = Metal::AsTypelessFormat(Metal::NativeFormat::Enum(tdescCopy._nativePixelFormat));
 
         auto desc = CreateDesc(
             Internal::MakeBindFlags<Views...>(),
@@ -107,10 +107,28 @@ namespace SceneEngine
         _locator = uploads.Transaction_Immediate(desc, initialData);
 
         if (needTypelessFmt) {
-            Internal::InitViews<std::tuple<Views...>, 0, Views...>(_views, *_locator, (Metal::NativeFormat::Enum)tdesc._nativePixelFormat);
+            Internal::InitViews<std::tuple<Views...>, 0, Views...>(_views, *_locator, Metal::NativeFormat::Enum(tdesc._nativePixelFormat));
         } else {
             Internal::InitViews<std::tuple<Views...>, 0, Views...>(_views, *_locator);
         }
+    }
+
+    template<typename... Views>
+        GestaltResource<Views...>::GestaltResource(
+            const BufferUploads::LinearBufferDesc& lbDesc,
+            const char name[], BufferUploads::DataPacket* initialData,
+            BufferUploads::BindFlag::BitField extraBindFlags)
+    {
+        using namespace BufferUploads;
+        auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
+
+        auto desc = CreateDesc(
+            Internal::MakeBindFlags<Views...>() | extraBindFlags,
+            0, GPUAccess::Read|GPUAccess::Write,
+            lbDesc, name);
+        _locator = uploads.Transaction_Immediate(desc, initialData);
+
+        Internal::InitViews<std::tuple<Views...>, 0, Views...>(_views, *_locator);
     }
 
     template<typename... Views>

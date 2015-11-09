@@ -197,7 +197,7 @@ namespace SceneEngine
             }
 
             // auto depthBufferResource = Metal::ExtractResource<ID3D::Resource>(oldTargets.GetDepthStencilView());
-            // Metal::ShaderResourceView depthsSRV(depthBufferResource.get(), (Metal::NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
+            // Metal::ShaderResourceView depthsSRV(depthBufferResource.get(), Metal::NativeFormat::R24_UNORM_X8_TYPELESS);
 
             auto& simulationShaderByteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(
                 "game/xleres/effects/simrain.sh:SimulateDrops:cs_*", 
@@ -334,7 +334,7 @@ namespace SceneEngine
             }
 
             // auto depthBufferResource = Metal::ExtractResource<ID3D::Resource>(oldTargets.GetDepthStencilView());
-            // Metal::ShaderResourceView depthsSRV(depthBufferResource.get(), (Metal::NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
+            // Metal::ShaderResourceView depthsSRV(depthBufferResource.get(), NativeFormat::R24_UNORM_X8_TYPELESS);
 
             auto& simulationShaderByteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(
                 "game/xleres/effects/sparkparticlestest.sh:SimulateDrops:cs_*", 

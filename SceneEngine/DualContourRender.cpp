@@ -214,7 +214,7 @@ namespace SceneEngine
             if (prevTargets.GetDepthStencilView()) {
                 duplicatedDepthBuffer = Metal::ShaderResourceView(Metal::ExtractResource<ID3D::Resource>(
                     prevTargets.GetDepthStencilView()).get(), 
-                    (Metal::NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
+                    Metal::NativeFormat::R24_UNORM_X8_TYPELESS);
             }
 
                 //  Revert to the main scene targets, and "resolve" the

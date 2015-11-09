@@ -773,7 +773,7 @@ namespace SceneEngine
             auto duplicatedDepthBuffer = DuplicateResource(
                 context->GetUnderlying(), ExtractResource<ID3D::Resource>(depthBufferSRV.GetUnderlying()).get());
             ShaderResourceView secondaryDepthBufferSRV(
-                duplicatedDepthBuffer.get(), (NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
+                duplicatedDepthBuffer.get(), NativeFormat::R24_UNORM_X8_TYPELESS);
             // context->GetUnderlying()->CopyResource(
             //     mainTargets._secondaryDepthBufferTexture, mainTargets._msaaDepthBufferTexture);
 

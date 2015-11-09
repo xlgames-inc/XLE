@@ -131,7 +131,7 @@ namespace SceneEngine
         context.BindCS(RenderCore::MakeResourceList(14, normalsFittingResource));
 
             // perlin noise resources in standard slots
-        auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
+        auto& perlinNoiseRes = Techniques::FindCachedBox2<PerlinNoiseResources>();
         context.BindPS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
             // procedural scratch texture for scratches test
@@ -296,7 +296,7 @@ namespace SceneEngine
                                         ShaderResourceView& inputHDR,
                                         int samplingCount)
     {
-        ToneMap_Execute(&context, parserContext, inputHDR, samplingCount);
+        ToneMap_Execute(context, parserContext, inputHDR, samplingCount);
     }
 
     void LightingParser_PreTranslucency(    
@@ -329,7 +329,7 @@ namespace SceneEngine
         if (Tweakable("DoAtmosBlur", true) && gblLighting._doAtmosphereBlur) {
             float farClip = parserContext.GetProjectionDesc()._farClip;
             AtmosphereBlur_Execute(
-                &context, parserContext,
+                context, parserContext,
                 AtmosphereBlurSettings {
                     gblLighting._atmosBlurStdDev, 
                     gblLighting._atmosBlurStart / farClip, gblLighting._atmosBlurEnd / farClip
@@ -356,7 +356,7 @@ namespace SceneEngine
         GPUProfiler::DebugAnnotation anno(*context, L"Overlays");
 
         ViewportDesc mainViewportDesc(*context);
-        auto& refractionBox = Techniques::FindCachedBox<RefractionsBuffer>(RefractionsBuffer::Desc(unsigned(mainViewportDesc.Width/2), unsigned(mainViewportDesc.Height/2)));
+        auto& refractionBox = Techniques::FindCachedBox2<RefractionsBuffer>(unsigned(mainViewportDesc.Width/2), unsigned(mainViewportDesc.Height/2));
         refractionBox.Build(*context, parserContext, 4.f);
         context->BindPS(MakeResourceList(12, refractionBox.GetSRV()));
 
@@ -664,11 +664,10 @@ namespace SceneEngine
         typedef Metal::NativeFormat::Enum NativeFormat;
         auto sampling = BufferUploads::TextureSamples::Create(
             uint8(std::max(qualitySettings._samplingCount, 1u)), uint8(qualitySettings._samplingQuality));
-        auto& lightingResTargets = Techniques::FindCachedBox<LightingResolveTextureBox>(
-            LightingResolveTextureBox::Desc(
-                unsigned(mainViewport.Width), unsigned(mainViewport.Height),
-                (!precisionTargets) ? FormatStack(NativeFormat::R16G16B16A16_FLOAT) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
-                sampling));
+        auto& lightingResTargets = Techniques::FindCachedBox2<LightingResolveTextureBox>(
+            unsigned(mainViewport.Width), unsigned(mainViewport.Height),
+            (!precisionTargets) ? FormatStack(NativeFormat::R16G16B16A16_FLOAT) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
+            sampling);
 
         if (qualitySettings._lightingModel == RenderingQualitySettings::LightingModel::Deferred) {
 
@@ -686,17 +685,16 @@ namespace SceneEngine
                 //      .. however, it possible some clients might prefer 10 or 16 bit albedo textures
                 //      In these cases, the first buffer should be a matching format.
             const bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
-            auto& mainTargets = Techniques::FindCachedBox<MainTargetsBox>(
-                MainTargetsBox::Desc(
-                    unsigned(mainViewport.Width), unsigned(mainViewport.Height),
-                    (!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_UNORM_SRGB) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
-                    (!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_SNORM) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
-                    FormatStack(enableParametersBuffer ? ((!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_UNORM) : FormatStack(NativeFormat::R32G32B32A32_FLOAT)) : NativeFormat::Unknown),
-                    FormatStack(
-                        NativeFormat(DXGI_FORMAT_R24G8_TYPELESS), 
-                        NativeFormat(DXGI_FORMAT_R24_UNORM_X8_TYPELESS), 
-                        NativeFormat(DXGI_FORMAT_D24_UNORM_S8_UINT)),
-                    sampling));
+            auto& mainTargets = Techniques::FindCachedBox2<MainTargetsBox>(
+                unsigned(mainViewport.Width), unsigned(mainViewport.Height),
+                (!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_UNORM_SRGB) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
+                (!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_SNORM) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
+                FormatStack(enableParametersBuffer ? ((!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_UNORM) : FormatStack(NativeFormat::R32G32B32A32_FLOAT)) : NativeFormat::Unknown),
+                FormatStack(
+                    NativeFormat(DXGI_FORMAT_R24G8_TYPELESS), 
+                    NativeFormat(DXGI_FORMAT_R24_UNORM_X8_TYPELESS), 
+                    NativeFormat(DXGI_FORMAT_D24_UNORM_S8_UINT)),
+                sampling);
 
             auto& globalState = parserContext.GetTechniqueContext()._globalEnvironmentState;
             globalState.SetParameter((const utf8*)"GBUFFER_TYPE", enableParametersBuffer?1:2);
@@ -760,13 +758,12 @@ namespace SceneEngine
 
         } else if (qualitySettings._lightingModel == RenderingQualitySettings::LightingModel::Forward) {
 
-            auto& mainTargets = Techniques::FindCachedBox<ForwardTargetsBox>(
-                ForwardTargetsBox::Desc(
-                    unsigned(mainViewport.Width), unsigned(mainViewport.Height),
-                    FormatStack(NativeFormat(DXGI_FORMAT_R24G8_TYPELESS), 
-                                NativeFormat(DXGI_FORMAT_R24_UNORM_X8_TYPELESS), 
-                                NativeFormat(DXGI_FORMAT_D24_UNORM_S8_UINT)),
-                    sampling));
+            auto& mainTargets = Techniques::FindCachedBox2<ForwardTargetsBox>(
+                unsigned(mainViewport.Width), unsigned(mainViewport.Height),
+                FormatStack(NativeFormat(DXGI_FORMAT_R24G8_TYPELESS), 
+                            NativeFormat(DXGI_FORMAT_R24_UNORM_X8_TYPELESS), 
+                            NativeFormat(DXGI_FORMAT_D24_UNORM_S8_UINT)),
+                sampling);
 
             context.Clear(mainTargets._msaaDepthBuffer, 1.f, 0);
             context.Bind(
@@ -792,7 +789,10 @@ namespace SceneEngine
             GPUProfiler::DebugAnnotation anno(context, L"Resolve-MSAA-HDR");
 
             if (parserContext.GetSceneParser()->GetToneMapSettings()._flags & ToneMapSettings::Flags::EnableToneMap) {
-                ToneMap_SampleLuminance(&context, parserContext, postLightingResolveSRV, qualitySettings._samplingCount);   //  (must resolve luminance early, because we use it during the MSAA resolve)
+                    //  (must resolve luminance early, because we use it during the MSAA resolve)
+                ToneMap_SampleLuminance(
+                    context, parserContext, 
+                    postLightingResolveSRV, qualitySettings._samplingCount);
             }
 
                 //
@@ -804,13 +804,13 @@ namespace SceneEngine
                 //
             if (qualitySettings._samplingCount > 1) {
                 TextureDesc2D inputTextureDesc(postLightingResolveTexture);
-				auto& msaaResolveRes = Techniques::FindCachedBox<FinalResolveResources>(
-					FinalResolveResources::Desc(inputTextureDesc.Width, inputTextureDesc.Height, (Metal::NativeFormat::Enum)inputTextureDesc.Format));
+				auto& msaaResolveRes = Techniques::FindCachedBox2<FinalResolveResources>(
+					inputTextureDesc.Width, inputTextureDesc.Height, Metal::AsNativeFormat(inputTextureDesc.Format));
                 LightingParser_ResolveMSAA(
                     context, parserContext,
                     msaaResolveRes._postMsaaResolveTexture.get(),
                     postLightingResolveTexture,
-					(Metal::NativeFormat::Enum)inputTextureDesc.Format);
+					Metal::AsNativeFormat(inputTextureDesc.Format));
 
                     // todo -- also resolve the depth buffer...!
                     //      here; we switch the active textures to the msaa resolved textures
@@ -1014,7 +1014,7 @@ namespace SceneEngine
         if (sceneParser)
             LightingParser_InitBasicLightEnv(context, parserContext, *sceneParser);
 
-        auto& metricsBox = Techniques::FindCachedBox<MetricsBox>(MetricsBox::Desc());
+        auto& metricsBox = Techniques::FindCachedBox2<MetricsBox>();
         unsigned clearValues[] = {0,0,0,0};
         context.Clear(metricsBox._metricsBufferUAV, clearValues);
         parserContext.SetMetricsBox(&metricsBox);

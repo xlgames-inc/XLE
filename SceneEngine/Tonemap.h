@@ -16,11 +16,11 @@ namespace SceneEngine
     class LightingParserContext;
 
     void ToneMap_SampleLuminance(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
+        RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, 
         RenderCore::Metal::ShaderResourceView& inputResource, int sampleCount);
 
     void ToneMap_Execute(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
+        RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, 
         RenderCore::Metal::ShaderResourceView& inputResource, int sampleCount);
 
     class AtmosphereBlurSettings
@@ -32,7 +32,7 @@ namespace SceneEngine
     };
 
     void AtmosphereBlur_Execute(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext,
+        RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext,
         const AtmosphereBlurSettings& settings);
 
     class ToneMapSettings 
