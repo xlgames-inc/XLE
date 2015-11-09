@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../RenderCore/IThreadContext_Forward.h"
+#include "../Math/Vector.h"
 
 namespace SceneEngine
 {
@@ -24,6 +25,7 @@ namespace PlatformRig
         SceneEngine::LightingParserContext& parserContext,
         SceneEngine::ISceneParser& sceneParser,
         const RenderCore::Techniques::CameraDesc& camera,
-        const SceneEngine::RenderingQualitySettings& qualitySettings);
+        const SceneEngine::RenderingQualitySettings& qualitySettings,
+        UInt2 sampleCount);
 }
 

@@ -199,7 +199,7 @@ namespace PlatformRig
     static float Float16AsFloat32(unsigned short input) { return half_float::detail::half2float(input); }
     static unsigned short Float32AsFloat16(float input) { return half_float::detail::float2half<std::round_to_nearest>(input); }
 
-    static intrusive_ptr<DataPacket> BoxFilterR16G16B16A16(
+    static intrusive_ptr<DataPacket> BoxFilterR16G16B16A16F(
         DataPacket& highRes,
         UInt2 srcDims, UInt2 downsample)
     {
@@ -254,56 +254,32 @@ namespace PlatformRig
         return std::move(rawData);
     }
 
-
-    void TiledScreenshot(
+    static intrusive_ptr<DataPacket> DoToneMap(
         IThreadContext& context,
         LightingParserContext& parserContext,
-        ISceneParser& sceneParser,
-        const Techniques::CameraDesc& camera,
-        const RenderingQualitySettings& qualitySettings)
+        DataPacket& inputImage, UInt2 dimensions, 
+        Metal::NativeFormat::Enum preFilterFormat,
+        Metal::NativeFormat::Enum postFilterFormat,
+        const SceneEngine::ToneMapSettings& toneMapSettings)
     {
-        auto preFilterFormat = Metal::NativeFormat::R16G16B16A16_FLOAT;
-        auto postFilterFormat = Metal::NativeFormat::R8G8B8A8_UNORM_SRGB;
-        auto image = RenderTiled(
-            context, parserContext, sceneParser,
-            camera, qualitySettings, preFilterFormat);
-
-            // Save the unfiltered image (this is a 16 bit depth linear image)
-            // We can use a program like "Luminance HDR" to run custom tonemapping
-            // on the unfiltered image...
-        SaveImage(
-            "screenshot_unfiltered.tiff",
-            image->GetData(), qualitySettings._dimensions, 
-            image->GetPitches()._rowPitch, preFilterFormat);
-
-            // Do a box filter on the CPU to shrink the result down to
-            // the output size. We could consider other filters. But (assuming
-            // we're doing an integer downsample) the box filter will mean that
-            // each sample point is equally weighted, and it will avoid any
-            // blurring to the image.
-        image = BoxFilterR16G16B16A16(*image, qualitySettings._dimensions, UInt2(4,4));
-
-        UInt2 finalImageDims(qualitySettings._dimensions[0]/4, qualitySettings._dimensions[1]/4);
-
-            // Now we want to do HDR resolve (on the GPU)
+                    // Now we want to do HDR resolve (on the GPU)
             // We should end up with an 8 bit SRGB image.
             // We have to do both the luminance sample and final tone map on
             // the post-aa image (the operations would otherwise require special
             // 
         SceneEngine::GestaltTypes::SRV preToneMap(
-            BufferUploads::TextureDesc::Plain2D(finalImageDims[0], finalImageDims[1], preFilterFormat),
-            "SS-PreToneMap", image.get());
+            BufferUploads::TextureDesc::Plain2D(dimensions[0], dimensions[1], preFilterFormat),
+            "SS-PreToneMap", &inputImage);
         SceneEngine::GestaltTypes::RTV postToneMap(
-            BufferUploads::TextureDesc::Plain2D(finalImageDims[0], finalImageDims[1], postFilterFormat),
+            BufferUploads::TextureDesc::Plain2D(dimensions[0], dimensions[1], postFilterFormat),
             "SS-PostToneMap");
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
-        auto toneMapSettings = sceneParser.GetToneMapSettings();
         auto luminanceRes = 
             SceneEngine::ToneMap_SampleLuminance(
                 *metalContext, 
                 (RenderCore::Techniques::ParsingContext&)parserContext,
-                toneMapSettings, preToneMap.SRV());
+                toneMapSettings, preToneMap.SRV(), false);
 
         {
             SceneEngine::ProtectState protectState(
@@ -311,7 +287,7 @@ namespace PlatformRig
                 SceneEngine::ProtectState::States::RenderTargets | SceneEngine::ProtectState::States::Viewports);
 
             metalContext->Bind(MakeResourceList(postToneMap.RTV()), nullptr);
-            metalContext->Bind(Metal::ViewportDesc(0, 0, float(finalImageDims[0]), float(finalImageDims[1])));
+            metalContext->Bind(Metal::ViewportDesc(0, 0, float(dimensions[0]), float(dimensions[1])));
             ToneMap_Execute(
                 *metalContext, parserContext,
                 luminanceRes, toneMapSettings,
@@ -319,11 +295,49 @@ namespace PlatformRig
         }
 
         auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
-        auto postToneMapImage = uploads.Resource_ReadBack(postToneMap.Locator());
+        return uploads.Resource_ReadBack(postToneMap.Locator());
+    }
+
+    void TiledScreenshot(
+        IThreadContext& context,
+        LightingParserContext& parserContext,
+        ISceneParser& sceneParser,
+        const Techniques::CameraDesc& camera,
+        const RenderingQualitySettings& qualitySettings,
+        UInt2 sampleCount)
+    {
+        auto preFilterFormat = Metal::NativeFormat::R16G16B16A16_FLOAT;
+        auto postFilterFormat = Metal::NativeFormat::R8G8B8A8_UNORM_SRGB;
+        auto highResQual = qualitySettings;
+        highResQual._dimensions[0] *= sampleCount[0];
+        highResQual._dimensions[1] *= sampleCount[1];
+        auto image = RenderTiled(
+            context, parserContext, sceneParser,
+            camera, highResQual, preFilterFormat);
+
+            // Save the unfiltered image (this is a 16 bit depth linear image)
+            // We can use a program like "Luminance HDR" to run custom tonemapping
+            // on the unfiltered image...
+        SaveImage(
+            "screenshot_unfiltered.tiff",
+            image->GetData(), highResQual._dimensions, 
+            image->GetPitches()._rowPitch, preFilterFormat);
+
+            // Do a box filter on the CPU to shrink the result down to
+            // the output size. We could consider other filters. But (assuming
+            // we're doing an integer downsample) the box filter will mean that
+            // each sample point is equally weighted, and it will avoid any
+            // blurring to the image.
+        image = BoxFilterR16G16B16A16F(*image, highResQual._dimensions, sampleCount);
+
+        auto postToneMapImage = DoToneMap(
+            context, parserContext,
+            *image, qualitySettings._dimensions, preFilterFormat, postFilterFormat,
+            sceneParser.GetToneMapSettings());
 
         SaveImage(
             "screenshot.tiff",
-            postToneMapImage->GetData(), finalImageDims, 
+            postToneMapImage->GetData(), qualitySettings._dimensions, 
             postToneMapImage->GetPitches()._rowPitch, postFilterFormat);
     }
 }

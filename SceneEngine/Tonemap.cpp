@@ -143,6 +143,7 @@ namespace SceneEngine
         const Metal::ComputeShader*		_sampleInitialLuminance;
         const Metal::ComputeShader*		_luminanceStepDown;
         const Metal::ComputeShader*		_updateOverallLuminance;
+        const Metal::ComputeShader*		_updateOverallLuminanceNoAdapt;
         const Metal::ComputeShader*		_brightPassStepDown;
 
         unsigned    _firstStepWidth;
@@ -215,11 +216,14 @@ namespace SceneEngine
         _updateOverallLuminance    = &::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/postprocess/hdrluminance.csh:UpdateOverallLuminance:cs_*");
         _brightPassStepDown        = &::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/postprocess/hdrluminance.csh:BrightPassStepDown:cs_*");
 
+        _updateOverallLuminanceNoAdapt = &::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/postprocess/hdrluminance.csh:UpdateOverallLuminance:cs_*", "IMMEDIATE_ADAPT=1");
+
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(_validationCallback, _sampleInitialLuminance->GetDependencyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, _luminanceStepDown->GetDependencyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, _updateOverallLuminance->GetDependencyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, _brightPassStepDown->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, _updateOverallLuminanceNoAdapt->GetDependencyValidation());
 
         _firstStepWidth         = 1<<firstStep;
         _firstStepHeight        = 1<<(firstStep+heightDifference);
@@ -239,7 +243,8 @@ namespace SceneEngine
         Techniques::ParsingContext& parserContext,
         ToneMappingResources& resources,
         const ToneMapSettings& settings,
-        const Metal::ShaderResourceView& sourceTexture)
+        const Metal::ShaderResourceView& sourceTexture,
+        bool doAdapt)
     {
             //
             //      First step in tonemapping is always to calculate the overall
@@ -307,7 +312,8 @@ namespace SceneEngine
                 //
 
             context.BindCS(MakeResourceList(resources._luminanceBuffers[resources._luminanceBuffers.size()-1].SRV()));
-            context.Bind(*resources._updateOverallLuminance);
+            if (doAdapt)    context.Bind(*resources._updateOverallLuminance);
+            else            context.Bind(*resources._updateOverallLuminanceNoAdapt);
             context.Dispatch(1);
             context.UnbindCS<Metal::UnorderedAccessView>(0, 3);
 
@@ -422,13 +428,14 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext& context, 
         LightingParserContext& parserContext,
         const ToneMapSettings& settings,
-        const RenderCore::Metal::ShaderResourceView& inputResource)
+        const RenderCore::Metal::ShaderResourceView& inputResource,
+        bool doAdapt)
     {
         if (Tweakable("DoToneMap", true)) {
             auto& toneMapRes = GetResources(inputResource);
             bool success = TryCalculateInputs(
                 context, parserContext, 
-                toneMapRes, settings, inputResource);
+                toneMapRes, settings, inputResource, doAdapt);
 
             if (Tweakable("ToneMapDebugging", false)) {
                 parserContext._pendingOverlays.push_back(
@@ -445,12 +452,13 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext,
         const ToneMapSettings& settings,
-        const RenderCore::Metal::ShaderResourceView& inputResource)
+        const RenderCore::Metal::ShaderResourceView& inputResource,
+        bool doAdapt)
     {
         auto& toneMapRes = GetResources(inputResource);
         bool success = TryCalculateInputs(
             context, parserContext, 
-            toneMapRes, settings, inputResource);
+            toneMapRes, settings, inputResource, doAdapt);
         return LuminanceResult(toneMapRes._propertiesBuffer.SRV(), toneMapRes._bloomBuffers[0]._bloomBuffer.SRV(), success);
     }
 

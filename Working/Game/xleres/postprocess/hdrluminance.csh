@@ -22,7 +22,13 @@ RWStructuredBuffer<LuminanceBufferStruct>	OutputLuminanceBuffer : register(u2);
 
 	//		The "geometric mean" is slightly more expensive,
 	//		but might give a slightly nicer result
-#define USE_GEOMETRIC_MEAN 1
+#if !defined(USE_GEOMETRIC_MEAN)
+	#define USE_GEOMETRIC_MEAN 1
+#endif
+
+#if !defined(IMMEDIATE_ADAPT)
+	#define IMMEDIATE_ADAPT 0
+#endif
 
 cbuffer LuminanceConstants
 {
@@ -250,11 +256,15 @@ float3 BrightPassFilter(float3 colour)
 		result = 1.f;
 	}
 
-	float prevLum = OutputLuminanceBuffer[0]._currentLuminance;
-	if (isnan(prevLum) || isinf(prevLum)) {
-		prevLum = result;
-	}
-	prevLum = clamp(prevLum, LuminanceMin, LuminanceMax);		// clamp to prevent wierd values (eg, on first frame)
+	#if IMMEDIATE_ADAPT==0
+		float prevLum = OutputLuminanceBuffer[0]._currentLuminance;
+		if (isnan(prevLum) || isinf(prevLum)) {
+			prevLum = result;
+		}
+		prevLum = clamp(prevLum, LuminanceMin, LuminanceMax);		// clamp to prevent wierd values (eg, on first frame)
+	#else
+		float prevLum = result;
+	#endif
 	OutputLuminanceBuffer[0]._prevLuminance = prevLum;
 	OutputLuminanceBuffer[0]._currentLuminance = lerp(prevLum, result, 0.2f);
 }
