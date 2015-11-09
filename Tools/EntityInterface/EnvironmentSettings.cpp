@@ -76,7 +76,6 @@ namespace EntityInterface
 
         EnvironmentSettings result;
         result._globalLightingDesc = DefaultGlobalLightingDesc();
-        result._toneMapSettings = DefaultToneMapSettings();
         for (const auto& cid : obj._children) {
             const auto* child = flexGobInterface.GetEntity(obj._doc, cid);
             if (!child) continue;
@@ -117,7 +116,7 @@ namespace EntityInterface
             }
 
             if (child->_type == typeToneMapSettings) {
-                result._toneMapSettings = ToneMapSettings(child->_properties);
+                result._toneMapSettings = CreateFromParameters<ToneMapSettings>(child->_properties);
             }
         }
 

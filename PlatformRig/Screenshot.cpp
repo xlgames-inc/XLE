@@ -8,6 +8,9 @@
 #include "../SceneEngine/LightingParserContext.h"
 #include "../SceneEngine/LightingParser.h"
 #include "../SceneEngine/GestaltResource.h"
+#include "../SceneEngine/SceneParser.h"
+#include "../SceneEngine/Tonemap.h"
+#include "../SceneEngine/SceneEngineUtils.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -22,6 +25,7 @@
 
 #include "../Core/WinAPI/IncludeWindows.h"
 #include "../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
+#include "../Foreign/half-1.9.2/include/half.hpp"
 // #include <wincodec.h>        (avoiding an extra header from the winsdk by hard coding GUID_ContainerFormatTiff below)
 
 namespace PlatformRig
@@ -123,6 +127,17 @@ namespace PlatformRig
 
                     // We build a custom projection matrix that limits
                     // the frustum to the particular tile we're rendering.
+                    //
+                    // There are 2 basic ways we can do this... 
+                    //      1) We can render the scene in tiles (each tile being a rectangle of the final image)
+                    //      2) We can add a sub-pixel offset on each projection
+                    //          (so each render covers the whole image, but at a small offset each time)
+                    //
+                    // The results could be quite different... Particularly for things like mipmapping, or anything
+                    // that uses the screen space derivatives. Also LODs and shadows could come out differently in
+                    // some cases.
+                    // Also, with method 2, we don't have to just use a regular grid pattern for samples. We can
+                    // use a rotated pattern to try to catch certain triangle shapes better.
                 auto customProjectionMatrix = 
                     PerspectiveProjection(
                         LinearInterpolate(l, r, (x*tileDims             )/float(qualitySettings._dimensions[0])),
@@ -153,12 +168,14 @@ namespace PlatformRig
         auto rawData = CreateBasicPacket(
             finalImageDims[1]*finalRowPitch, nullptr,
             TexturePitches(finalRowPitch, finalImageDims[1]*finalRowPitch));
+        auto* rawDataEnd = PtrAdd(rawData->GetData(), rawData->GetDataSize());
 
         for (unsigned y=0; y<tilesY; ++y)
             for (unsigned x=0; x<tilesX; ++x) {
                 auto& target = targets[y*tilesX+x];
                 {
                     auto readback = uploads.Resource_ReadBack(target.Locator());
+                    auto* readbackEnd = PtrAdd(readback->GetData(), readback->GetDataSize());
 
                     auto viewWidth  = std::min((x+1)*tileDims, qualitySettings._dimensions[0]) - (x*tileDims);
                     auto viewHeight = std::min((y+1)*tileDims, qualitySettings._dimensions[1]) - (y*tileDims);
@@ -166,7 +183,9 @@ namespace PlatformRig
                         // copy each row of the tile into the correct spot in the output texture
                     for (unsigned r=0; r<viewHeight; ++r) {
                         const void* rowSrc = PtrAdd(readback->GetData(), r*readback->GetPitches()._rowPitch);
-                        void* rowDst = PtrAdd(rawData.get(), (y*tileDims+r)*finalRowPitch + x*tileDims*bpp/8);
+                        void* rowDst = PtrAdd(rawData->GetData(), (y*tileDims+r)*finalRowPitch + x*tileDims*bpp/8);
+                        assert(PtrAdd(rowDst, viewWidth*bpp/8) <= rawDataEnd);
+                        assert(PtrAdd(rowSrc, viewWidth*bpp/8) <= readbackEnd);
                         XlCopyMemory(rowDst, rowSrc, viewWidth*bpp/8);
                     }
                 }
@@ -176,6 +195,9 @@ namespace PlatformRig
 
         return std::move(rawData);
     }
+
+    static float Float16AsFloat32(unsigned short input) { return half_float::detail::half2float(input); }
+    static unsigned short Float32AsFloat16(float input) { return half_float::detail::float2half<std::round_to_nearest>(input); }
 
     static intrusive_ptr<DataPacket> BoxFilterR16G16B16A16(
         DataPacket& highRes,
@@ -200,21 +222,33 @@ namespace PlatformRig
         const unsigned weightDiv = downsample[0] * downsample[1];
         for (unsigned y=0; y<downsampledSize[1]; ++y)
             for (unsigned x=0; x<downsampledSize[0]; ++x) {
-                UInt4 dst(0, 0, 0, 0);
+                // UInt4 dst(0, 0, 0, 0);
+                Float4 dst(0, 0, 0, 0);
                 for (unsigned sy=0; sy<downsample[1]; ++sy)
                     for (unsigned sx=0; sx<downsample[0]; ++sx) {
                         UInt2 src(x*downsample[0]+sx, y*downsample[1]+sy);
                         auto* s = PtrAdd(srcData, src[1] * srcRowPitch + src[0] * bpp / 8);
-                        dst[0] += s[0]; dst[1] += s[1]; dst[2] += s[2]; dst[3] += s[3];
+                        // dst[0] += s[0]; dst[1] += s[1]; dst[2] += s[2]; dst[3] += s[3];
+                        dst[0] += Float16AsFloat32(s[0]);
+                        dst[1] += Float16AsFloat32(s[1]);
+                        dst[2] += Float16AsFloat32(s[2]);
                     }
 
-                dst[0] /= weightDiv; assert(dst[0] <= 0xffff);
-                dst[1] /= weightDiv; assert(dst[0] <= 0xffff);
-                dst[2] /= weightDiv; assert(dst[0] <= 0xffff);
-                dst[3] /= weightDiv; assert(dst[0] <= 0xffff);
+                // dst[0] /= weightDiv; assert(dst[0] <= 0xffff);
+                // dst[1] /= weightDiv; assert(dst[1] <= 0xffff);
+                // dst[2] /= weightDiv; assert(dst[2] <= 0xffff);
+                // dst[3] /= weightDiv; assert(dst[3] <= 0xffff);
+                dst[0] /= float(weightDiv);
+                dst[1] /= float(weightDiv);
+                dst[2] /= float(weightDiv);
+                dst[3] = 1.f;
 
                 auto* d = PtrAdd(dstData, y*dstRowPitch+x*bpp/8);
-                d[0] = (uint16)dst[0]; d[1] = (uint16)dst[1]; d[2] = (uint16)dst[2]; d[3] = (uint16)dst[3];
+                // d[0] = (uint16)dst[0]; d[1] = (uint16)dst[1]; d[2] = (uint16)dst[2]; d[3] = (uint16)dst[3];
+                d[0] = Float32AsFloat16(dst[0]);
+                d[1] = Float32AsFloat16(dst[1]);
+                d[2] = Float32AsFloat16(dst[2]);
+                d[3] = Float32AsFloat16(dst[3]);
             }
 
         return std::move(rawData);
@@ -228,7 +262,8 @@ namespace PlatformRig
         const Techniques::CameraDesc& camera,
         const RenderingQualitySettings& qualitySettings)
     {
-        auto preFilterFormat = Metal::NativeFormat::R16G16B16A16_UNORM;
+        auto preFilterFormat = Metal::NativeFormat::R16G16B16A16_FLOAT;
+        auto postFilterFormat = Metal::NativeFormat::R8G8B8A8_UNORM_SRGB;
         auto image = RenderTiled(
             context, parserContext, sceneParser,
             camera, qualitySettings, preFilterFormat);
@@ -248,10 +283,48 @@ namespace PlatformRig
             // blurring to the image.
         image = BoxFilterR16G16B16A16(*image, qualitySettings._dimensions, UInt2(4,4));
 
+        UInt2 finalImageDims(qualitySettings._dimensions[0]/4, qualitySettings._dimensions[1]/4);
+
             // Now we want to do HDR resolve (on the GPU)
-            // We should end up with an 8 bit SRGB image
+            // We should end up with an 8 bit SRGB image.
+            // We have to do both the luminance sample and final tone map on
+            // the post-aa image (the operations would otherwise require special
+            // 
+        SceneEngine::GestaltTypes::SRV preToneMap(
+            BufferUploads::TextureDesc::Plain2D(finalImageDims[0], finalImageDims[1], preFilterFormat),
+            "SS-PreToneMap", image.get());
+        SceneEngine::GestaltTypes::RTV postToneMap(
+            BufferUploads::TextureDesc::Plain2D(finalImageDims[0], finalImageDims[1], postFilterFormat),
+            "SS-PostToneMap");
 
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+        auto toneMapSettings = sceneParser.GetToneMapSettings();
+        auto luminanceRes = 
+            SceneEngine::ToneMap_SampleLuminance(
+                *metalContext, 
+                (RenderCore::Techniques::ParsingContext&)parserContext,
+                toneMapSettings, preToneMap.SRV());
+
+        {
+            SceneEngine::ProtectState protectState(
+                *metalContext, 
+                SceneEngine::ProtectState::States::RenderTargets | SceneEngine::ProtectState::States::Viewports);
+
+            metalContext->Bind(MakeResourceList(postToneMap.RTV()), nullptr);
+            metalContext->Bind(Metal::ViewportDesc(0, 0, float(finalImageDims[0]), float(finalImageDims[1])));
+            ToneMap_Execute(
+                *metalContext, parserContext,
+                luminanceRes, toneMapSettings,
+                preToneMap.SRV());
+        }
+
+        auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
+        auto postToneMapImage = uploads.Resource_ReadBack(postToneMap.Locator());
+
+        SaveImage(
+            "screenshot.tiff",
+            postToneMapImage->GetData(), finalImageDims, 
+            postToneMapImage->GetPitches()._rowPitch, postFilterFormat);
     }
-
 }
 

@@ -7,21 +7,54 @@
 #pragma once
 
 #include "../RenderCore/Metal/Forward.h"
+#include "../RenderCore/Metal/ShaderResource.h"
 #include "../Math/Vector.h"
 
 namespace Utility { class ParameterBox; }
+namespace RenderCore { namespace Techniques { class ParsingContext; } }
 
 namespace SceneEngine
 {
     class LightingParserContext;
+    class ToneMapSettings;
+    class ToneMapLuminanceResult;
 
-    void ToneMap_SampleLuminance(
-        RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, 
-        RenderCore::Metal::ShaderResourceView& inputResource, int sampleCount);
+    class LuminanceResult
+    {
+    public:
+        using SRV = RenderCore::Metal::ShaderResourceView;
+        SRV     _propertiesBuffer;
+        SRV     _bloomBuffer;
+        bool    _isGood;
+
+        LuminanceResult();
+        LuminanceResult(const SRV& propertiesBuffer, const SRV& bloomBuffer, bool isGood);
+        ~LuminanceResult();
+        LuminanceResult& operator=(LuminanceResult&&) never_throws;
+        LuminanceResult(LuminanceResult&&) never_throws;
+
+        LuminanceResult& operator=(const LuminanceResult&) = delete;
+        LuminanceResult(const LuminanceResult&) = delete;
+    };
+
+    LuminanceResult ToneMap_SampleLuminance(
+        RenderCore::Metal::DeviceContext& context, 
+        LightingParserContext& parserContext,
+        const ToneMapSettings& settings,
+        const RenderCore::Metal::ShaderResourceView& inputResource);
+
+    LuminanceResult ToneMap_SampleLuminance(
+        RenderCore::Metal::DeviceContext& context, 
+        RenderCore::Techniques::ParsingContext& parserContext,
+        const ToneMapSettings& settings,
+        const RenderCore::Metal::ShaderResourceView& inputResource);
 
     void ToneMap_Execute(
-        RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, 
-        RenderCore::Metal::ShaderResourceView& inputResource, int sampleCount);
+        RenderCore::Metal::DeviceContext& context, 
+        RenderCore::Techniques::ParsingContext& parserContext, 
+        const LuminanceResult& luminanceResult,
+        const ToneMapSettings& settings,
+        const RenderCore::Metal::ShaderResourceView& inputResource);
 
     class AtmosphereBlurSettings
     {
@@ -44,7 +77,8 @@ namespace SceneEngine
             typedef unsigned BitField;
         };
         Flags::BitField _flags;
-        Float3  _bloomScale;
+        Float3  _bloomColor;
+        float   _bloomBrightness;
         float   _bloomThreshold;
         float   _bloomRampingFactor;
         float   _bloomDesaturationFactor;
@@ -55,7 +89,6 @@ namespace SceneEngine
         float   _bloomBlurStdDev;
 
         ToneMapSettings();
-        ToneMapSettings(const Utility::ParameterBox&);
     };
 
     class ColorGradingSettings
@@ -79,8 +112,4 @@ namespace SceneEngine
         float _selectiveColorYellows;
         float _selectiveColorBlacks;
     };
-
-    extern ColorGradingSettings GlobalColorGradingSettings;
-
-    ToneMapSettings DefaultToneMapSettings();
 }

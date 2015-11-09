@@ -174,7 +174,7 @@ namespace Sample
 
     auto BasicSceneParser::GetToneMapSettings() const -> ToneMapSettings
     {
-        return SceneEngine::DefaultToneMapSettings();
+        return ToneMapSettings();
     }
 
     unsigned BasicSceneParser::GetShadowProjectionCount() const

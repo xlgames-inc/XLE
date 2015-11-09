@@ -151,6 +151,16 @@ namespace SceneEngine
             (float)(packedColor & 0xff) / 255.f);
     }
 
+    inline unsigned AsPackedColor(Float3 col)
+    {
+        return 
+            (unsigned(Clamp(col[0], 0.f, 1.f) * 255.f) << 16u)
+        |   (unsigned(Clamp(col[1], 0.f, 1.f) * 255.f) <<  8u)
+        |   (unsigned(Clamp(col[2], 0.f, 1.f) * 255.f) <<  0u)
+        |   0xff000000
+        ;
+    }
+
     IteratorRange<RenderCore::Assets::DelayStep*> AsDelaySteps(
         SceneParseSettings::BatchFilter filter);
 

@@ -30,18 +30,16 @@
 #include "../Utility/BitUtils.h"
 #include "../Utility/ParameterBox.h"
 #include "../Utility/StringFormat.h"
+#include "../Utility/Meta/ClassAccessorsImpl.h"
 
 // #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 
-#pragma warning(disable:4127)       // conditional expression is constant
+// #pragma warning(disable:4127)       // conditional expression is constant
 
 namespace SceneEngine
 {
     using namespace RenderCore;
-
-    ColorGradingSettings        DefaultColorGradingSettings();
-    extern ColorGradingSettings GlobalColorGradingSettings = DefaultColorGradingSettings();
 
     struct ColorGradingShaderConstants
     {
@@ -138,9 +136,7 @@ namespace SceneEngine
         using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
 
         std::vector<GestaltTypes::UAVSRV> _luminanceBuffers;
-
-        GestaltTypes::UAVSRV _propertiesBuffer;
-
+        GestaltTypes::UAVSRV            _propertiesBuffer;
         std::vector<BloomStepBuffer>    _bloomBuffers;
         BloomStepBuffer                 _bloomTempBuffer;
 
@@ -149,9 +145,8 @@ namespace SceneEngine
         const Metal::ComputeShader*		_updateOverallLuminance;
         const Metal::ComputeShader*		_brightPassStepDown;
 
-        unsigned _firstStepWidth;
-        unsigned _firstStepHeight;
-        bool _calculateInputsSucceeded;
+        unsigned    _firstStepWidth;
+        unsigned    _firstStepHeight;
 
         const ::Assets::DepValPtr&  GetDependencyValidation() const   { return _validationCallback; }
 
@@ -228,24 +223,23 @@ namespace SceneEngine
 
         _firstStepWidth         = 1<<firstStep;
         _firstStepHeight        = 1<<(firstStep+heightDifference);
-        _calculateInputsSucceeded = false;
     }
 
     ToneMappingResources::~ToneMappingResources()
     {}
 
-    static void    ToneMapping_DrawDebugging(   Metal::DeviceContext& context,
-                                                ToneMappingResources& resources);
+    static void DrawDebugging(Metal::DeviceContext& context, ToneMappingResources& resources);
 
         //////////////////////////////////////////////////////////////////////////////
             //      T O N E   M A P P I N G   I N P U T S                       //
         //////////////////////////////////////////////////////////////////////////////
 
-    void ToneMapping_CalculateInputs(   Metal::DeviceContext& context,
-                                        LightingParserContext& parserContext,
-                                        ToneMappingResources& resources, 
-                                        Metal::ShaderResourceView& sourceTexture, 
-                                        Metal::ShaderResourceView* sampleFrequencyMap)
+    static bool TryCalculateInputs(
+        Metal::DeviceContext& context,
+        Techniques::ParsingContext& parserContext,
+        ToneMappingResources& resources,
+        const ToneMapSettings& settings,
+        const Metal::ShaderResourceView& sourceTexture)
     {
             //
             //      First step in tonemapping is always to calculate the overall
@@ -269,8 +263,7 @@ namespace SceneEngine
                 int     _buffer;
             } luminanceConstants = { frameIndex, resources._firstStepWidth*resources._firstStepHeight, 1.0f/60.f, 0 };
 
-            auto toneMapSettings = parserContext.GetSceneParser()->GetToneMapSettings();;
-            auto toneMapConstants = AsConstants(toneMapSettings);
+            auto toneMapConstants = AsConstants(settings);
             context.BindCS(MakeResourceList(
                 Metal::ConstantBuffer(&toneMapConstants, sizeof(toneMapConstants)),
                 Metal::ConstantBuffer(&luminanceConstants, sizeof(luminanceConstants))));
@@ -325,10 +318,10 @@ namespace SceneEngine
                 //      We blur each one, and add it to the next higher resolution one
                 //
 
-            if (toneMapSettings._flags & ToneMapSettings::Flags::EnableBloom) {
+            if (settings._flags & ToneMapSettings::Flags::EnableBloom) {
                 float filteringWeights[12];
                 XlSetMemory(filteringWeights, 0, sizeof(filteringWeights));
-                BuildGaussianFilteringWeights(filteringWeights, toneMapSettings._bloomBlurStdDev, 11);
+                BuildGaussianFilteringWeights(filteringWeights, settings._bloomBlurStdDev, 11);
                 context.BindPS(MakeResourceList(Metal::ConstantBuffer(filteringWeights, sizeof(filteringWeights))));
 
                 context.Bind(Techniques::CommonResources()._dssDisable);
@@ -391,15 +384,16 @@ namespace SceneEngine
 
                 }
             }
-            resources._calculateInputsSucceeded = true;
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidAsset& e) { parserContext.Process(e); resources._calculateInputsSucceeded = false; }
-        CATCH(const ::Assets::Exceptions::PendingAsset& e) { parserContext.Process(e); resources._calculateInputsSucceeded = false; }
-        CATCH(...) { resources._calculateInputsSucceeded = false; }
+            return true;
+        }
+        CATCH_ASSETS(parserContext)
+        CATCH(...) {}
         CATCH_END
+
+        return false;
     }
 
-    ToneMappingResources& GetResources(Metal::ShaderResourceView& inputResource, int sampleCount)
+    static ToneMappingResources& GetResources(const Metal::ShaderResourceView& inputResource)
     {
             //  Before MSAA resolve, we must setup the tone mapping (first 
             //  step is to sample the luminance)
@@ -419,24 +413,64 @@ namespace SceneEngine
             bloomBufferFormat = Metal::NativeFormat::R16_FLOAT;
         }
         Metal::TextureDesc2D desc(inputResource.GetUnderlying());
-        ToneMappingResources& toneMapRes = Techniques::FindCachedBoxDep2<ToneMappingResources>(
+        auto sampleCount = desc.SampleDesc.Count;
+        return Techniques::FindCachedBoxDep2<ToneMappingResources>(
             desc.Width, desc.Height, bloomBufferFormat, sampleCount, sampleCount>1);
-        return toneMapRes;
     }
 
-    void ToneMap_SampleLuminance(
-        Metal::DeviceContext& context, LightingParserContext& parserContext, 
-        Metal::ShaderResourceView& inputResource, int sampleCount)
+    LuminanceResult ToneMap_SampleLuminance(
+        RenderCore::Metal::DeviceContext& context, 
+        LightingParserContext& parserContext,
+        const ToneMapSettings& settings,
+        const RenderCore::Metal::ShaderResourceView& inputResource)
     {
         if (Tweakable("DoToneMap", true)) {
-            auto& toneMapRes = GetResources(inputResource, sampleCount);
-            ToneMapping_CalculateInputs(context, parserContext, toneMapRes, inputResource, nullptr);
+            auto& toneMapRes = GetResources(inputResource);
+            bool success = TryCalculateInputs(
+                context, parserContext, 
+                toneMapRes, settings, inputResource);
 
             if (Tweakable("ToneMapDebugging", false)) {
                 parserContext._pendingOverlays.push_back(
-                    std::bind(&ToneMapping_DrawDebugging, std::placeholders::_1, std::ref(toneMapRes)));
+                    std::bind(&DrawDebugging, std::placeholders::_1, std::ref(toneMapRes)));
             }
+
+            return LuminanceResult(toneMapRes._propertiesBuffer.SRV(), toneMapRes._bloomBuffers[0]._bloomBuffer.SRV(), success);
         }
+
+        return LuminanceResult();
+    }
+
+    LuminanceResult ToneMap_SampleLuminance(
+        RenderCore::Metal::DeviceContext& context, 
+        RenderCore::Techniques::ParsingContext& parserContext,
+        const ToneMapSettings& settings,
+        const RenderCore::Metal::ShaderResourceView& inputResource)
+    {
+        auto& toneMapRes = GetResources(inputResource);
+        bool success = TryCalculateInputs(
+            context, parserContext, 
+            toneMapRes, settings, inputResource);
+        return LuminanceResult(toneMapRes._propertiesBuffer.SRV(), toneMapRes._bloomBuffers[0]._bloomBuffer.SRV(), success);
+    }
+
+    LuminanceResult::LuminanceResult() : _isGood(false) {}
+    LuminanceResult::LuminanceResult(const SRV& propertiesBuffer, const SRV& bloomBuffer, bool isGood)
+    : _propertiesBuffer(propertiesBuffer)
+    , _bloomBuffer(bloomBuffer)
+    , _isGood(isGood) {}
+
+    LuminanceResult::~LuminanceResult() {}
+    LuminanceResult::LuminanceResult(LuminanceResult&& moveFrom) never_throws
+    : _propertiesBuffer(std::move(moveFrom._propertiesBuffer))
+    , _bloomBuffer(std::move(moveFrom._bloomBuffer))
+    , _isGood(moveFrom._isGood) {}
+    LuminanceResult& LuminanceResult::operator=(LuminanceResult&& moveFrom) never_throws
+    {
+        _propertiesBuffer = std::move(moveFrom._propertiesBuffer);
+        _bloomBuffer = std::move(moveFrom._bloomBuffer);
+        _isGood = moveFrom._isGood;
+        return *this;
     }
 
         //////////////////////////////////////////////////////////////////////////////
@@ -462,16 +496,16 @@ namespace SceneEngine
 
         ToneMapShaderBox(const Desc& descs);
 
-        const std::shared_ptr<::Assets::DependencyValidation>&  GetDependencyValidation() const   { return _validationCallback; }
+        const ::Assets::DepValPtr&  GetDependencyValidation() const   { return _validationCallback; }
     private:
-        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
+        ::Assets::DepValPtr _validationCallback;
     };
 
     ToneMapShaderBox::ToneMapShaderBox(const Desc& desc)
     {
         StringMeld<256> shaderDefines;
         shaderDefines 
-            << "OPERATOR=" << Tweakable("ToneMapOperator", 1)
+            << "OPERATOR=" << desc._operator
             << ";ENABLE_BLOOM=" << desc._enableBloom
             << ";HARDWARE_SRGB_ENABLED=" << desc._hardwareSRGBEnabled
             << ";DO_COLOR_GRADING=" << desc._doColorGrading
@@ -480,73 +514,76 @@ namespace SceneEngine
             << ";MAT_PHOTO_FILTER=" << desc._doFilterColour
             ;
 
-        auto& shaderProgram = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+        _shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*",
             "game/xleres/postprocess/tonemap.psh:main:ps_*", 
             shaderDefines.get());
 
-        Metal::BoundUniforms uniforms(shaderProgram);
-        uniforms.BindConstantBuffer(Hash64("ToneMapSettings"), 0, 1);
-        uniforms.BindConstantBuffer(Hash64("ColorGradingSettings"), 1, 1);
+        _uniforms = Metal::BoundUniforms(*_shaderProgram);
+        _uniforms.BindConstantBuffers(1, {"ToneMapSettings", "ColorGradingSettings"});
+        _uniforms.BindShaderResources(1, {"LuminanceBuffer", "BloomMap"});
+        RenderCore::Techniques::TechniqueContext::BindGlobalUniforms(_uniforms);
 
-        auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, shaderProgram.GetDependencyValidation());
-
-        _shaderProgram = &shaderProgram;
-        _uniforms = std::move(uniforms);
-        _validationCallback = std::move(validationCallback);
+        _validationCallback = _shaderProgram->GetDependencyValidation();
     }
 
-    void ToneMap_Execute(Metal::DeviceContext& context, LightingParserContext& parserContext, Metal::ShaderResourceView& inputResource, int sampleCount)
+    static void ExecuteOpaqueFullScreenPass(Metal::DeviceContext& context)
     {
-        ProtectState protectState(
-            context, ProtectState::States::BlendState | ProtectState::States::RasterizerState);
-        context.Bind(Techniques::CommonResources()._cullDisable);
+        SetupVertexGeneratorShader(context);
+        context.Bind(Techniques::CommonResources()._blendOpaque);
+        context.Draw(4);
+    }
 
-        bool hardwareSRGBEnabled = true;
-        {
-                    //  Query the destination render target to
-                    //  see if SRGB conversion is enabled when writing out
-            SavedTargets destinationTargets(context);
-            D3D11_RENDER_TARGET_VIEW_DESC rtv;
-            if (destinationTargets.GetRenderTargets()[0]) {
-                destinationTargets.GetRenderTargets()[0]->GetDesc(&rtv);
-                hardwareSRGBEnabled = 
-                    Metal::GetComponentType(Metal::AsNativeFormat(rtv.Format)) == Metal::FormatComponentType::UNorm_SRGB;
-            }
+    static bool IsSRGBTargetBound(Metal::DeviceContext& context)
+    {
+            //  Query the destination render target to
+            //  see if SRGB conversion is enabled when writing out
+        SavedTargets destinationTargets(context);
+        D3D11_RENDER_TARGET_VIEW_DESC rtv;
+        if (destinationTargets.GetRenderTargets()[0]) {
+            destinationTargets.GetRenderTargets()[0]->GetDesc(&rtv);
+            return Metal::GetComponentType(Metal::AsNativeFormat(rtv.Format)) == Metal::FormatComponentType::UNorm_SRGB;
         }
+        return true;
+    }
+
+    void ToneMap_Execute(
+        Metal::DeviceContext& context, 
+        RenderCore::Techniques::ParsingContext& parserContext, 
+        const LuminanceResult& luminanceResult,
+        const ToneMapSettings& settings,
+        const Metal::ShaderResourceView& inputResource)
+    {
+        ProtectState protectState(context, ProtectState::States::BlendState);
+        bool hardwareSRGBEnabled = IsSRGBTargetBound(context);
 
         CATCH_ASSETS_BEGIN
-            context.BindPS(MakeResourceList(inputResource));
-            SetupVertexGeneratorShader(context);
-            context.Bind(Techniques::CommonResources()._blendOpaque);
             bool bindCopyShader = true;
-            auto settings = parserContext.GetSceneParser()->GetToneMapSettings();
-            if (Tweakable("DoToneMap", true) && (settings._flags & ToneMapSettings::Flags::EnableToneMap)) {
-                auto& toneMapRes = GetResources(inputResource, sampleCount);
-                if (toneMapRes._calculateInputsSucceeded) {
+            if (settings._flags & ToneMapSettings::Flags::EnableToneMap) {
+                if (luminanceResult._isGood) {
                         //  Bind a pixel shader that will do the tonemap operation
                         //  we do color grading operation in the same step... so make sure
                         //  we apply the correct color grading parameters a the same time.
                     TRY {
 
                         bool doColorGrading = Tweakable("DoColorGrading", false);
-                        auto colorGradingSettings = BuildColorGradingShaderConstants(GlobalColorGradingSettings);
+                        auto colorGradingSettings = BuildColorGradingShaderConstants(ColorGradingSettings());
 
                         auto& box = Techniques::FindCachedBoxDep2<ToneMapShaderBox>(
                             Tweakable("ToneMapOperator", 1), !!(settings._flags & ToneMapSettings::Flags::EnableBloom),
                             hardwareSRGBEnabled, doColorGrading, !!(colorGradingSettings._doLevelsAdustment), 
                             !!(colorGradingSettings._doSelectiveColor), !!(colorGradingSettings._doFilterColor));
 
-                        context.Bind(*box._shaderProgram);
-                        context.BindPS(MakeResourceList(1, toneMapRes._propertiesBuffer.SRV(), toneMapRes._bloomBuffers[0]._bloomBuffer.SRV()));
-                        bindCopyShader = false;
-
-                        const SharedPkt cbs[] = { 
+                        SharedPkt cbs[] = { 
                             MakeSharedPkt(AsConstants(settings)), 
                             MakeSharedPkt(colorGradingSettings) 
                         };
-                        box._uniforms.Apply(context, Metal::UniformsStream(), Metal::UniformsStream(cbs, nullptr, dimof(cbs)));
+                        const Metal::ShaderResourceView* srvs[] = {
+                            &luminanceResult._propertiesBuffer, &luminanceResult._bloomBuffer
+                        };
+                        box._uniforms.Apply(context, parserContext.GetGlobalUniformsStream(), Metal::UniformsStream(cbs, srvs));
+                        context.Bind(*box._shaderProgram);
+                        bindCopyShader = false;
                         
                     }
                     CATCH_ASSETS(parserContext)
@@ -565,12 +602,13 @@ namespace SceneEngine
                 context.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/basic.psh:fake_tonemap:ps_*"));
             }
-            context.Draw(4);
+            
+            context.BindPS(MakeResourceList(inputResource));
+            ExecuteOpaqueFullScreenPass(context);
         CATCH_ASSETS_END(parserContext)
     }
 
-    static void    ToneMapping_DrawDebugging(   Metal::DeviceContext& context,
-                                                ToneMappingResources& resources)
+    static void DrawDebugging(Metal::DeviceContext& context, ToneMappingResources& resources)
     {
         SetupVertexGeneratorShader(context);
         context.Bind(Metal::BlendState(Metal::BlendOp::Add, Metal::Blend::One, Metal::Blend::InvSrcAlpha));
@@ -801,22 +839,6 @@ namespace SceneEngine
             //      C O N F I G U R A T I O N   S E T T I N G S                 //
         //////////////////////////////////////////////////////////////////////////////
 
-    ToneMapSettings DefaultToneMapSettings()
-    {
-        ToneMapSettings result;
-        result._flags = ToneMapSettings::Flags::EnableToneMap | ToneMapSettings::Flags::EnableBloom;
-        result._bloomScale = Float3(19.087036f, 11.582731f, 6.6070509f);
-        result._bloomThreshold = 10.f;
-        result._bloomRampingFactor = .8f;
-        result._bloomDesaturationFactor = .6f;
-        result._sceneKey = .23f;
-        result._luminanceMin = 0.06f;
-        result._luminanceMax = 3.f;
-        result._whitepoint = 8.f;
-        result._bloomBlurStdDev = 1.32f;
-        return result;
-    }
-
     ColorGradingSettings DefaultColorGradingSettings()
     {
         ColorGradingSettings result;
@@ -848,9 +870,9 @@ namespace SceneEngine
     }
 
     ToneMapSettingsConstants AsConstants(const ToneMapSettings& settings)
-    { 
+    {
         ToneMapSettingsConstants result;
-        result._bloomScale = settings._bloomScale;
+        result._bloomScale = settings._bloomBrightness * settings._bloomColor;
         result._bloomThreshold = settings._bloomThreshold;
         result._bloomRampingFactor = settings._bloomRampingFactor;
         result._bloomDesaturationFactor = settings._bloomDesaturationFactor;
@@ -863,41 +885,44 @@ namespace SceneEngine
         return result;
     }
 
-    ToneMapSettings::ToneMapSettings() {}
-
-    ToneMapSettings::ToneMapSettings(const ParameterBox& paramBox)
+    ToneMapSettings::ToneMapSettings()
     {
-        auto defaults = DefaultToneMapSettings();
-
-        static const auto bloomScale = ParameterBox::MakeParameterNameHash("BloomScale");
-        static const auto bloomThreshold = ParameterBox::MakeParameterNameHash("BloomThreshold");
-        static const auto bloomRampingFactor = ParameterBox::MakeParameterNameHash("BloomRampingFactor");
-        static const auto bloomDesaturationFactor = ParameterBox::MakeParameterNameHash("BloomDesaturationFactor");
-        static const auto sceneKey = ParameterBox::MakeParameterNameHash("SceneKey");
-        static const auto luminanceMin = ParameterBox::MakeParameterNameHash("LuminanceMin");
-        static const auto luminanceMax = ParameterBox::MakeParameterNameHash("LuminanceMax");
-        static const auto whitePoint = ParameterBox::MakeParameterNameHash("WhitePoint");
-        static const auto bloomBlurStdDev = ParameterBox::MakeParameterNameHash("BloomBlurStdDev");
-        static const auto bloomBrightness = ParameterBox::MakeParameterNameHash("BloomBrightness");
-        static const auto flags = ParameterBox::MakeParameterNameHash("Flags");
-
-        auto flagsV = paramBox.GetParameter<unsigned>(flags);
-        if (flagsV.first) _flags = flagsV.second;
-        else              _flags = defaults._flags;
-
-        auto scale = paramBox.GetParameter<unsigned>(bloomScale);
-        if (scale.first)    _bloomScale = AsFloat3Color(scale.second) * paramBox.GetParameter<float>(bloomBrightness, 1.f);
-        else                _bloomScale = defaults._bloomScale;
-
-        _bloomThreshold = paramBox.GetParameter<float>(bloomThreshold, defaults._bloomThreshold);
-        _bloomRampingFactor = paramBox.GetParameter<float>(bloomRampingFactor, defaults._bloomRampingFactor);
-        _bloomDesaturationFactor = paramBox.GetParameter<float>(bloomDesaturationFactor, defaults._bloomDesaturationFactor);
-        _sceneKey = paramBox.GetParameter<float>(sceneKey, defaults._sceneKey);
-	    _luminanceMin = paramBox.GetParameter<float>(luminanceMin, defaults._luminanceMin);
-	    _luminanceMax = paramBox.GetParameter<float>(luminanceMax, defaults._luminanceMax);
-	    _whitepoint = paramBox.GetParameter<float>(whitePoint, defaults._whitepoint);
-        _bloomBlurStdDev = paramBox.GetParameter<float>(bloomBlurStdDev, defaults._bloomBlurStdDev);
+        _flags = ToneMapSettings::Flags::EnableToneMap | ToneMapSettings::Flags::EnableBloom;
+        _bloomColor = Float3(19.087036f, 11.582731f, 6.6070509f);
+        _bloomBrightness = 1.f;
+        _bloomThreshold = 10.f;
+        _bloomRampingFactor = .8f;
+        _bloomDesaturationFactor = .6f;
+        _sceneKey = .23f;
+        _luminanceMin = 0.06f;
+        _luminanceMax = 3.f;
+        _whitepoint = 8.f;
+        _bloomBlurStdDev = 1.32f;
     }
 
 }
 
+template<> const ClassAccessors& GetAccessors<SceneEngine::ToneMapSettings>()
+{
+    using Obj = SceneEngine::ToneMapSettings;
+    static ClassAccessors props(typeid(Obj).hash_code());
+    static bool init = false;
+    if (!init) {
+        props.Add(u("Flags"),                   DefaultGet(Obj, _flags),                    DefaultSet(Obj, _flags));
+        props.Add(u("BloomThreshold"),          DefaultGet(Obj, _bloomThreshold),           DefaultSet(Obj, _bloomThreshold));
+        props.Add(u("BloomRampingFactor"),      DefaultGet(Obj, _bloomRampingFactor),       DefaultSet(Obj, _bloomRampingFactor));
+        props.Add(u("BloomDesaturationFactor"), DefaultGet(Obj, _bloomDesaturationFactor),  DefaultSet(Obj, _bloomDesaturationFactor));
+        props.Add(u("SceneKey"),                DefaultGet(Obj, _sceneKey),                 DefaultSet(Obj, _sceneKey));
+        props.Add(u("LuminanceMin"),            DefaultGet(Obj, _luminanceMin),             DefaultSet(Obj, _luminanceMin));
+        props.Add(u("LuminanceMax"),            DefaultGet(Obj, _luminanceMax),             DefaultSet(Obj, _luminanceMax));
+        props.Add(u("WhitePoint"),              DefaultGet(Obj, _whitepoint),               DefaultSet(Obj, _whitepoint));
+        props.Add(u("BloomBlurStdDev"),         DefaultGet(Obj, _bloomBlurStdDev),          DefaultSet(Obj, _bloomBlurStdDev));
+        props.Add(u("BloomBrightness"),         DefaultGet(Obj, _bloomBrightness),          DefaultSet(Obj, _bloomBrightness));
+        props.Add(u("BloomScale"), 
+            [](const Obj& obj)              { return SceneEngine::AsPackedColor(obj._bloomColor); },
+            [](Obj& obj, unsigned value)    { obj._bloomColor = SceneEngine::AsFloat3Color(value); });
+        
+        init = true;
+    }
+    return props;
+}

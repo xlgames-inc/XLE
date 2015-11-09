@@ -24,7 +24,7 @@ namespace Overlays
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
     private:
-        ScrollBar   _scrollers[10];
+        ScrollBar   _scrollers[11];
         SceneEngine::ToneMapSettings* _settings;
     };
 

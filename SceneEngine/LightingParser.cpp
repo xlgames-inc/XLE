@@ -291,14 +291,6 @@ namespace SceneEngine
         // nothing here yet!
     }
 
-    void LightingParser_ResolveHDR(     DeviceContext& context, 
-                                        LightingParserContext& parserContext,
-                                        ShaderResourceView& inputHDR,
-                                        int samplingCount)
-    {
-        ToneMap_Execute(context, parserContext, inputHDR, samplingCount);
-    }
-
     void LightingParser_PreTranslucency(    
         DeviceContext& context, 
         LightingParserContext& parserContext,
@@ -788,11 +780,12 @@ namespace SceneEngine
         {
             GPUProfiler::DebugAnnotation anno(context, L"Resolve-MSAA-HDR");
 
+            auto toneMapSettings = parserContext.GetSceneParser()->GetToneMapSettings();
+            LuminanceResult luminanceResult;
             if (parserContext.GetSceneParser()->GetToneMapSettings()._flags & ToneMapSettings::Flags::EnableToneMap) {
                     //  (must resolve luminance early, because we use it during the MSAA resolve)
-                ToneMap_SampleLuminance(
-                    context, parserContext, 
-                    postLightingResolveSRV, qualitySettings._samplingCount);
+                luminanceResult = ToneMap_SampleLuminance(
+                    context, parserContext, toneMapSettings, postLightingResolveSRV);
             }
 
                 //
@@ -846,7 +839,7 @@ namespace SceneEngine
                 savedTargets.ResetToOldTargets(context);
             }
 
-            LightingParser_ResolveHDR(context, parserContext, postLightingResolveSRV, qualitySettings._samplingCount);
+            ToneMap_Execute(context, parserContext, luminanceResult, toneMapSettings, postLightingResolveSRV);
 
                 //  if we're not in MSAA mode, we can rebind the main depth buffer. But if we're in MSAA mode, we have to
                 //  resolve the depth buffer before we can do that...

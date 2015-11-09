@@ -28,9 +28,10 @@ namespace Overlays
 
         ScrollBarObj objects[dimof(ToneMapSettingsDisplay::_scrollers)] = 
         {
-            { &_settings->_bloomScale[0],           "BloomScale0",              0.f,  10.f },
-            { &_settings->_bloomScale[1],           "BloomScale1",              0.f,  10.f },
-            { &_settings->_bloomScale[2],           "BloomScale2",              0.f,  10.f },
+            { &_settings->_bloomColor[0],           "BloomScaleR",              0.f,   1.f },
+            { &_settings->_bloomColor[1],           "BloomScaleG",              0.f,   1.f },
+            { &_settings->_bloomColor[2],           "BloomScaleB",              0.f,   1.f },
+            { &_settings->_bloomBrightness,         "BloomBrightness",          0.f,  20.f },
             { &_settings->_bloomThreshold,          "BloomThreshold",           0.5f, 20.f },
             { &_settings->_bloomRampingFactor,      "BloomRampingFactor",       0.f,   1.f },
             { &_settings->_bloomDesaturationFactor, "BloomDesaturationFactor",  0.f,   1.f },

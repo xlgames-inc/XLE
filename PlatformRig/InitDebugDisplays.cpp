@@ -40,7 +40,7 @@ namespace PlatformRig
         auto oceanSettingsDisplay           = std::make_shared<::Overlays::OceanSettingsDisplay>(std::ref(SceneEngine::GlobalOceanSettings));
         auto oceanLightingSettingsDisplay   = std::make_shared<::Overlays::OceanLightingSettingsDisplay>(std::ref(SceneEngine::GlobalOceanLightingSettings));
         // auto tonemapSettingsDisplay         = std::make_shared<::Overlays::ToneMapSettingsDisplay>(std::ref(SceneEngine::GlobalToneMapSettings));
-        auto colorGradingSettingsDisplay    = std::make_shared<::Overlays::ColorGradingSettingsDisplay>(std::ref(SceneEngine::GlobalColorGradingSettings));
+        // auto colorGradingSettingsDisplay    = std::make_shared<::Overlays::ColorGradingSettingsDisplay>(std::ref(SceneEngine::GlobalColorGradingSettings));
         auto testMaterialSettings           = std::make_shared<::Overlays::TestMaterialSettings>(std::ref(SceneEngine::GlobalMaterialOverride));
         auto modelBrowser                   = std::make_shared<::Overlays::ModelBrowser>("game\\model");
         auto textureBrowser                 = std::make_shared<::Overlays::TextureBrowser>("game\\textures\\aa_terrain");
@@ -55,7 +55,7 @@ namespace PlatformRig
         debugSystem.Register(oceanSettingsDisplay, "[Settings] Ocean Settings");
         debugSystem.Register(oceanLightingSettingsDisplay, "[Settings] Ocean Lighting Settings");
         // debugSystem.Register(tonemapSettingsDisplay, "[Settings] Tone map settings");
-        debugSystem.Register(colorGradingSettingsDisplay, "[Settings] Color grading settings");
+        // debugSystem.Register(colorGradingSettingsDisplay, "[Settings] Color grading settings");
         debugSystem.Register(testMaterialSettings, "[Settings] Material override settings");
         debugSystem.Register(volFogDisplay, "[Settings] Volumetric Fog Settings");
 

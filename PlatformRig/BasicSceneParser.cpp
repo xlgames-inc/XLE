@@ -84,7 +84,6 @@ namespace PlatformRig
     {
         EnvironmentSettings result;
         result._globalLightingDesc = DefaultGlobalLightingDesc();
-        result._toneMapSettings = DefaultToneMapSettings();
 
         auto defLight = DefaultDominantLight();
         result._lights.push_back(defLight);
@@ -158,7 +157,6 @@ namespace PlatformRig
         using namespace SceneEngine;
 
         _globalLightingDesc = DefaultGlobalLightingDesc();
-        _toneMapSettings = DefaultToneMapSettings();
 
         std::vector<std::pair<uint64, DefaultShadowFrustumSettings>> shadowSettings;
         std::vector<uint64> lightNames;
@@ -177,7 +175,7 @@ namespace PlatformRig
                     if (!XlComparePrefix(EntityTypeName::AmbientSettings, name._start, name._end - name._start)) {
                         _globalLightingDesc = GlobalLightingDesc(ParameterBox(formatter));
                     } else if (!XlComparePrefix(EntityTypeName::ToneMapSettings, name._start, name._end - name._start)) {
-                        _toneMapSettings = ToneMapSettings(ParameterBox(formatter));
+                        AccessorDeserialize(formatter, _toneMapSettings);
                     } else if (!XlComparePrefix(EntityTypeName::DirectionalLight, name._start, name._end - name._start)) {
 
                         ParameterBox params(formatter);
