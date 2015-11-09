@@ -324,7 +324,8 @@ namespace SceneEngine
             const Metal::ConstantBuffer* prebuiltConstants[2] = {nullptr, nullptr};
             prebuiltConstants[0] = &p.second._orthoCB;
             constants[1] = BuildScreenToShadowConstants(
-                p.second, parserContext.GetProjectionDesc()._cameraToWorld);
+                p.second, parserContext.GetProjectionDesc()._cameraToWorld,
+                parserContext.GetProjectionDesc()._cameraToProjection);
 
             uniforms.Apply(
                 context, parserContext.GetGlobalUniformsStream(), 

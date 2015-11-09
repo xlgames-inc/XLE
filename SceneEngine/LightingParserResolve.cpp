@@ -486,8 +486,9 @@ namespace SceneEngine
                         //              are affected by this light.
                         //
                     
+                    auto& mainCamProjDesc = parserContext.GetProjectionDesc();
                     constantBufferPackets[CB::ScreenToShadow] = BuildScreenToShadowConstants(
-                        preparedShadows, parserContext.GetProjectionDesc()._cameraToWorld);
+                        preparedShadows, mainCamProjDesc._cameraToWorld, mainCamProjDesc._cameraToProjection);
 
                     if (preparedShadows._mode == ShadowProjectionDesc::Projections::Mode::Ortho && allowOrthoShadowResolve) {
                         shaderType._shadows = LightingResolveShaders::OrthShadows;
@@ -501,8 +502,9 @@ namespace SceneEngine
                     auto rtShadowIndex = FindRTShadowFrustum(parserContext, l);
                     if (rtShadowIndex < parserContext._preparedRTShadows.size()) {
                         const auto& preparedRTShadows = parserContext._preparedRTShadows[rtShadowIndex].second;
+                        auto& mainCamProjDesc = parserContext.GetProjectionDesc();
                         constantBufferPackets[CB::ScreenToRTShadow] = BuildScreenToShadowConstants(
-                            preparedRTShadows, parserContext.GetProjectionDesc()._cameraToWorld);
+                            preparedRTShadows, mainCamProjDesc._cameraToWorld, mainCamProjDesc._cameraToProjection);
 
                         srvs[SR::RTShadow_ListHead] = &preparedRTShadows._listHeadSRV;
                         srvs[SR::RTShadow_LinkedLists] = &preparedRTShadows._linkedListsSRV;

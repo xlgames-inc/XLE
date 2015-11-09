@@ -1059,6 +1059,12 @@ namespace SceneEngine
         _metricsBox = box;
     }
 
+    void LightingParserContext::Reset()
+    {
+        _preparedDMShadows.clear();
+        _preparedRTShadows.clear();
+    }
+
     LightingParserContext::LightingParserContext(const Techniques::TechniqueContext& techniqueContext)
     : ParsingContext(techniqueContext)
     , _sceneParser(nullptr)

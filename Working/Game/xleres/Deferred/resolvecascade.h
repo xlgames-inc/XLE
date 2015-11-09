@@ -52,25 +52,41 @@ float4 CameraCoordinateToShadow(float2 camCoordinate, float worldSpaceDepth, flo
         //		We'll be comparing to values in the shadow buffer, so we
         //		should try to use the most accurate transformation method
         //
-    float4x3 cameraToShadow4x3 = float4x3(
-        camToShadow[0].xyz,
-        camToShadow[1].xyz,
-        camToShadow[2].xyz,
-        camToShadow[3].xyz);
-    float4 offset = mul(cameraToShadow4x3, float3(camCoordinate, -1.f));
-    offset *= cameraCoordinateScale;	// try doing this scale here (maybe increase accuracy a bit?)
+    #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
+        float3x3 cameraToShadow3x3 = float3x3(
+            camToShadow[0].xyz,
+            camToShadow[1].xyz,
+            camToShadow[2].xyz);
 
-    float4 translatePart = float4(camToShadow[0].w, camToShadow[1].w, camToShadow[2].w, camToShadow[3].w);
-    return offset + translatePart;
+        float3 offset = mul(cameraToShadow3x3, float3(camCoordinate, -1.f));
+        offset *= cameraCoordinateScale;	// try doing this scale here (maybe increase accuracy a bit?)
+
+        float3 translatePart = float3(camToShadow[0].w, camToShadow[1].w, camToShadow[2].w);
+        return float4(offset + translatePart, 1.f);
+    #else
+        float4x3 cameraToShadow4x3 = float4x3(
+            camToShadow[0].xyz,
+            camToShadow[1].xyz,
+            camToShadow[2].xyz,
+            camToShadow[3].xyz);
+
+            // Note the "-1" here is due to our view of camera space, where -Z is into the screen.
+            // the scale by cameraCoordinateScale will later scale this up to the correct depth.
+        float4 offset = mul(cameraToShadow4x3, float3(camCoordinate, -1.f));
+        offset *= cameraCoordinateScale;	// try doing this scale here (maybe increase accuracy a bit?)
+
+        float4 translatePart = float4(camToShadow[0].w, camToShadow[1].w, camToShadow[2].w, camToShadow[3].w);
+        return offset + translatePart;
+    #endif
+
+    // return mul(camToShadow, float4(float3(camCoordinate, -1.f) * cameraCoordinateScale, 1.f));
 }
 
 void FindCascade_CameraToShadowMethod(
     out uint finalCascadeIndex, out float4 frustumCoordinates,
     float2 texCoord, float worldSpaceDepth)
 {
-    const float2 camCoordinate = float2(
-        ( 2.f * texCoord.x - 1.f) / MinimalProjection.x,
-        (-2.f * texCoord.y + 1.f) / MinimalProjection.y);
+    const float2 camCoordinate = XYScale * texCoord + XYTrans;
 
     uint projectionCount = min(GetShadowSubProjectionCount(), ShadowMaxSubProjections);
     finalCascadeIndex = projectionCount;

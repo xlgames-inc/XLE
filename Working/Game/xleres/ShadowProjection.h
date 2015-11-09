@@ -38,6 +38,8 @@ cbuffer ScreenToShadowProjection
 {
     row_major float4x4 CameraToShadow[ShadowMaxSubProjections];
 	row_major float4x4 OrthoCameraToShadow;	// the "definition" projection for cascades in ortho mode
+	float2 XYScale;
+	float2 XYTrans;
 }
 
 uint GetShadowSubProjectionCount()

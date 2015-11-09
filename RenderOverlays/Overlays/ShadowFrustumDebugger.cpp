@@ -102,7 +102,8 @@ namespace Overlays
         constantBufferPackets[2] = BuildScreenToShadowConstants(
             projectionDesc._projections._count,
             arbitraryCB, orthoCB, 
-            mainCameraProjectionDesc._cameraToWorld);
+            mainCameraProjectionDesc._cameraToWorld,
+            mainCameraProjectionDesc._cameraToProjection);
         const ShaderResourceView* srv[] = { &depthSrv };
 
         res._uniforms.Apply(

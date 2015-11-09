@@ -50,6 +50,8 @@ namespace SceneEngine
             //  ----------------- Plugins -----------------
         std::vector<std::shared_ptr<ILightingParserPlugin>> _plugins;
 
+        void Reset();
+
         LightingParserContext(const RenderCore::Techniques::TechniqueContext& techniqueContext);
         ~LightingParserContext();
 

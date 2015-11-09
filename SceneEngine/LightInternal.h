@@ -114,12 +114,15 @@ namespace SceneEngine
         const MultiProjection<MaxShadowTexturesPerLight>& desc);
 
     RenderCore::SharedPkt BuildScreenToShadowConstants(
-        const PreparedShadowFrustum& preparedFrustum, const Float4x4& cameraToWorld);
+        const PreparedShadowFrustum& preparedFrustum, 
+        const Float4x4& cameraToWorld, 
+        const Float4x4& cameraToProjection);
     RenderCore::SharedPkt BuildScreenToShadowConstants(
         unsigned frustumCount,
         const CB_ArbitraryShadowProjection& arbitraryCB,
         const CB_OrthoShadowProjection& orthoCB,
-        const Float4x4& cameraToWorld);
+        const Float4x4& cameraToWorld,
+        const Float4x4& cameraToProjection);
 
     void BindShadowsForForwardResolve(
         RenderCore::Metal::DeviceContext& metalContext,

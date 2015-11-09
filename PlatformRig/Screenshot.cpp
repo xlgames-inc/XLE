@@ -149,6 +149,7 @@ namespace PlatformRig
                 auto projDesc = BuildProjectionDesc(camera, UInt2(viewWidth, viewHeight), &customProjectionMatrix);
 
                     // now we can just render, using the normal process.
+                parserContext.Reset();
                 metalContext->Bind(MakeResourceList(target.RTV()), nullptr);
                 metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(viewWidth), float(viewHeight)));
                 LightingParser_SetGlobalTransform(*metalContext, parserContext, projDesc);
@@ -318,10 +319,10 @@ namespace PlatformRig
             // Save the unfiltered image (this is a 16 bit depth linear image)
             // We can use a program like "Luminance HDR" to run custom tonemapping
             // on the unfiltered image...
-        SaveImage(
-            "screenshot_unfiltered.tiff",
-            image->GetData(), highResQual._dimensions, 
-            image->GetPitches()._rowPitch, preFilterFormat);
+        // SaveImage(
+        //     "screenshot_unfiltered.tiff",
+        //     image->GetData(), highResQual._dimensions, 
+        //     image->GetPitches()._rowPitch, preFilterFormat);
 
             // Do a box filter on the CPU to shrink the result down to
             // the output size. We could consider other filters. But (assuming
