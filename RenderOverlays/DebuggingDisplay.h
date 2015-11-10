@@ -4,8 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#ifndef _DEBUGGING_DISPLAY_H_
-#define _DEBUGGING_DISPLAY_H_
 #pragma once
 
 #include "IOverlayContext.h"
@@ -15,6 +13,7 @@
 #include "../Math/Matrix.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/IteratorUtils.h"
+#include "../Utility/StringUtils.h"     // for StringSection
 #include "../Core/Types.h"
 #include <vector>
 #include <map>
@@ -59,10 +58,10 @@ namespace RenderOverlays { namespace DebuggingDisplay
     };
 
     typedef uint64 InteractableId;
-    InteractableId InteractableId_Make(const char name[]);
+    InteractableId InteractableId_Make(StringSection<char> name);
 
     typedef uint32 KeyId;
-    KeyId KeyId_Make(const char name[]);
+    KeyId KeyId_Make(StringSection<char> name);
 
     class InterfaceState;
 
@@ -414,7 +413,4 @@ namespace RenderOverlays { namespace DebuggingDisplay
     }
 
 }}
-
-
-#endif
 

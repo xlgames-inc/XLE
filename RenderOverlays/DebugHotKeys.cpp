@@ -9,8 +9,10 @@
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/Streams/FileUtils.h"
-#include "../Utility/Streams/Data.h"
+#include "../Utility/Streams/StreamDOM.h"
+#include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/PtrUtils.h"
+#include "../Utility/Conversion.h"
 
 namespace RenderOverlays
 {
@@ -20,23 +22,22 @@ namespace RenderOverlays
     public:
         bool    OnInputEvent(const DebuggingDisplay::InputSnapshot& evnt);
 
-        HotKeyInputHandler(const std::string& filename) : _filename(filename) {}
+        HotKeyInputHandler(const ::Assets::rstring& filename) : _filename(filename) {}
     protected:
-        std::string _filename;
+        ::Assets::rstring _filename;
     };
 
     class TableOfKeys
     {
     public:
-        TableOfKeys(const char filename[]);
         const std::vector<std::pair<uint32, std::string>>& GetTable() const { return _table; }
+        const ::Assets::DepValPtr& GetDependencyValidation() const { return _validationCallback; }
 
-        const std::shared_ptr<Assets::DependencyValidation>& GetDependencyValidation() const     
-            { return _validationCallback; }
-
+        TableOfKeys(const char filename[]);
+        ~TableOfKeys();
     private:
-        std::shared_ptr<Assets::DependencyValidation>   _validationCallback;
-        std::vector<std::pair<uint32, std::string>>         _table;
+        ::Assets::DepValPtr                             _validationCallback;
+        std::vector<std::pair<uint32, std::string>>     _table;
     };
 
     TableOfKeys::TableOfKeys(const char filename[])
@@ -44,31 +45,30 @@ namespace RenderOverlays
         size_t fileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(filename, &fileSize);
 
-        Data data;
-        data.Load((const char*)sourceFile.get(), int(fileSize));
+        InputStreamFormatter<utf8> formatter(
+                MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
+        Document<InputStreamFormatter<utf8>> doc(formatter);
 
-        std::vector<std::pair<uint32, std::string>> table;
-        for (int c=0; c<data.Size(); ++c) {
-            auto child = data.ChildAt(c);
-            if (!child) continue;
+        auto attrib = doc.FirstAttribute();
+        while (attrib) {
 
-            auto executeString = child->ChildAt(0);
-            if (executeString) {
-                const char* keyName = child->StrValue();
+            auto executeString = attrib.Value();
+            if (!executeString.Empty()) {
+                auto keyName = attrib.Name();
                 auto p = std::make_pair(
-                    RenderOverlays::DebuggingDisplay::KeyId_Make(keyName),
-                    std::string(executeString->StrValue()));
-                table.push_back(p);
+                    RenderOverlays::DebuggingDisplay::KeyId_Make(
+                        StringSection<char>((const char*)keyName.begin(), (const char*)keyName.end())),
+                    Conversion::Convert<std::string>(executeString.AsString()));
+                _table.push_back(p);
             }
+
+            attrib = attrib.Next();
         }
 
-
-        auto validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterFileDependency(validationCallback, filename);
-
-        _table = std::move(table);
-        _validationCallback = std::move(validationCallback);
+        _validationCallback = std::make_shared<Assets::DependencyValidation>();
+        Assets::RegisterFileDependency(_validationCallback, filename);
     }
+    TableOfKeys::~TableOfKeys() {}
 
     bool    HotKeyInputHandler::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
     {

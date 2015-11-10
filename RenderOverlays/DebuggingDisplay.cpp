@@ -822,18 +822,10 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
     ///////////////////////////////////////////////////////////////////////////////////
     IInputListener::~IInputListener() {}
-
     IWidget::~IWidget() {}
 
-    InteractableId  InteractableId_Make(const char name[])
-    {
-        return Hash64(name, PtrAdd(name, strlen(name)));
-    }
-
-    KeyId           KeyId_Make(const char name[])
-    {
-        return Hash32(name, PtrAdd(name, strlen(name)));
-    }
+    InteractableId  InteractableId_Make(StringSection<char> name)   { return Hash64(name.begin(), name.end()); }
+    KeyId           KeyId_Make(StringSection<char> name)            { return Hash32(name.begin(), name.end()); }
 
     bool DebugScreensSystem::OnInputEvent(const InputSnapshot& evnt)
     {
