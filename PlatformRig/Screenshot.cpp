@@ -57,6 +57,7 @@ namespace PlatformRig
             image, DirectX::WIC_FLAGS_NONE,
             GUID_ContainerFormatTiff,
             fn.c_str());
+        (void)hresult;
         assert(SUCCEEDED(hresult));
     }
 
@@ -170,6 +171,7 @@ namespace PlatformRig
             finalImageDims[1]*finalRowPitch, nullptr,
             TexturePitches(finalRowPitch, finalImageDims[1]*finalRowPitch));
         auto* rawDataEnd = PtrAdd(rawData->GetData(), rawData->GetDataSize());
+        (void)rawDataEnd;
 
         for (unsigned y=0; y<tilesY; ++y)
             for (unsigned x=0; x<tilesX; ++x) {
@@ -177,6 +179,7 @@ namespace PlatformRig
                 {
                     auto readback = uploads.Resource_ReadBack(target.Locator());
                     auto* readbackEnd = PtrAdd(readback->GetData(), readback->GetDataSize());
+                    (void)readbackEnd;
 
                     auto viewWidth  = std::min((x+1)*tileDims, qualitySettings._dimensions[0]) - (x*tileDims);
                     auto viewHeight = std::min((y+1)*tileDims, qualitySettings._dimensions[1]) - (y*tileDims);
