@@ -130,7 +130,7 @@ float4 ResolveLight(	float4 position : SV_Position,
 		//	In theory, by camera position might be a little more accurate,
 		//	because it skips the world position stage. The function has been
 		//	optimised for accuracy.
-	uint finalCascadeIndex;
+	int finalCascadeIndex;
 	float4 cascadeNormCoords;
 	const bool resolveByWorldPosition = false;
 	if (resolveByWorldPosition) {
@@ -142,7 +142,7 @@ float4 ResolveLight(	float4 position : SV_Position,
 	}
 
 	float shadow = 1.f;		// area outside of all cascades is considered outside of shadow...
-	if (finalCascadeIndex < min(GetShadowSubProjectionCount(), ShadowMaxSubProjections)) {
+	if (finalCascadeIndex >= 0) {
 		shadow = ResolveShadows_Cascade(
 			finalCascadeIndex, cascadeNormCoords, pixelCoords, GetSampleIndex(sys),
 			ShadowResolveConfig_Default());

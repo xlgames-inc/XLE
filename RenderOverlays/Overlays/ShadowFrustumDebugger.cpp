@@ -35,18 +35,21 @@ namespace Overlays
         class Desc 
         {
         public:
-            unsigned _cascadeMode;
-            Desc(unsigned cascadeMode) : _cascadeMode(cascadeMode) {}
+            unsigned    _cascadeMode;
+            bool        _enableNearCascade;
+
+            Desc(unsigned cascadeMode, bool enableNearCascade) 
+            : _cascadeMode(cascadeMode), _enableNearCascade(enableNearCascade) {}
         };
 
-        const ShaderProgram*  _shader;
-        BoundUniforms   _uniforms;
+        const ShaderProgram*    _shader;
+        BoundUniforms           _uniforms;
         
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _depVal; }
+        const ::Assets::DepValPtr& GetDependencyValidation() const   { return _depVal; }
         SFDResources(const Desc&);
         ~SFDResources();
     protected:
-        std::shared_ptr<::Assets::DependencyValidation> _depVal;
+        ::Assets::DepValPtr _depVal;
     };
 
     SFDResources::SFDResources(const Desc& desc)
@@ -54,7 +57,9 @@ namespace Overlays
         _shader = &::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*",
             "game/xleres/deferred/debugging/cascadevis.psh:main:ps_*",
-            (const ::Assets::ResChar*)(StringMeld<128, ::Assets::ResChar>() << "SHADOW_CASCADE_MODE=" << desc._cascadeMode));
+            (const ::Assets::ResChar*)(StringMeld<128, ::Assets::ResChar>() 
+                << "SHADOW_CASCADE_MODE=" << desc._cascadeMode 
+                << ";SHADOW_ENABLE_NEAR_CASCADE=" << (desc._enableNearCascade?1:0)));
 
         _uniforms = BoundUniforms(*_shader);
         Techniques::TechniqueContext::BindGlobalUniforms(_uniforms);
@@ -87,9 +92,9 @@ namespace Overlays
                 savedTargets.GetDepthStencilView()).get(), 
                 (NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
 
-        auto& res = Techniques::FindCachedBoxDep<SFDResources>(
-            SFDResources::Desc(
-                (projectionDesc._projections._mode == SceneEngine::ShadowProjectionDesc::Projections::Mode::Ortho)?2:1));
+        auto& res = Techniques::FindCachedBoxDep2<SFDResources>(
+            (projectionDesc._projections._mode == SceneEngine::ShadowProjectionDesc::Projections::Mode::Ortho)?2:1,
+            projectionDesc._projections._useNearProj);
         devContext.Bind(*res._shader);
 
         SceneEngine::CB_ArbitraryShadowProjection arbitraryCB;
@@ -100,7 +105,7 @@ namespace Overlays
         constantBufferPackets[0] = RenderCore::MakeSharedPkt(arbitraryCB);
         constantBufferPackets[1] = RenderCore::MakeSharedPkt(orthoCB);
         constantBufferPackets[2] = BuildScreenToShadowConstants(
-            projectionDesc._projections._count,
+            projectionDesc._projections._normalProjCount,
             arbitraryCB, orthoCB, 
             mainCameraProjectionDesc._cameraToWorld,
             mainCameraProjectionDesc._cameraToProjection);
@@ -157,16 +162,28 @@ namespace Overlays
         };
 
         const auto& projections = projectionDesc._projections;
-        for (unsigned c=0; c<projections._count; ++c) {
+        for (unsigned c=0; c<projections._normalProjCount; ++c) {
             DebuggingDisplay::DrawFrustum(
                 context, Combine(projections._fullProj[c]._viewMatrix, projections._fullProj[c]._projectionMatrix),
                 cols[std::min((unsigned)dimof(cols), c)], 0x1);
         }
 
-        for (unsigned c=0; c<projections._count; ++c) {
+        if (projections._useNearProj) {
+            DebuggingDisplay::DrawFrustum(
+                context, projections._specialNearProjection,
+                cols[std::min((unsigned)dimof(cols), projections._normalProjCount)], 0x1);
+        }
+
+        for (unsigned c=0; c<projections._normalProjCount; ++c) {
             DebuggingDisplay::DrawFrustum(
                 context, Combine(projections._fullProj[c]._viewMatrix, projections._fullProj[c]._projectionMatrix),
                 cols[std::min((unsigned)dimof(cols), c)], 0x2);
+        }
+
+        if (projections._useNearProj) {
+            DebuggingDisplay::DrawFrustum(
+                context, projections._specialNearProjection,
+                cols[std::min((unsigned)dimof(cols), projections._normalProjCount)], 0x2);
         }
     }
 

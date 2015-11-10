@@ -9,18 +9,27 @@
 
 #include "../Transform.h"
 #include "../ShadowProjection.h"
+#include "../Utility/ProjectionMath.h"
 
 void FindCascade_FromWorldPosition(
-    out uint finalCascadeIndex, out float4 frustumCoordinates,
+    out int finalCascadeIndex, out float4 frustumCoordinates,
     float3 worldPosition)
 {
         // find the first frustum we're within
     uint projectionCount = min(GetShadowSubProjectionCount(), ShadowMaxSubProjections);
 
-    finalCascadeIndex = projectionCount;
+    finalCascadeIndex = -1;
 
     #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
         float3 basePosition = mul(OrthoShadowWorldToProj, float4(worldPosition, 1));
+
+        #if SHADOW_ENABLE_NEAR_CASCADE
+            frustumCoordinates = float4(mul(OrthoNearCascade, float4(basePosition, 1)), 1.f);
+            if (PtInFrustum(frustumCoordinates)) {
+                finalCascadeIndex = projectionCount;
+                return;
+            }
+        #endif
     #endif
 
     for (uint c=0; c<projectionCount; c++) {
@@ -34,9 +43,7 @@ void FindCascade_FromWorldPosition(
             frustumCoordinates = float4(2.0.xxx, 1.f);
         #endif
 
-        if (max(max(abs(frustumCoordinates.x), abs(frustumCoordinates.y)),
-            max(frustumCoordinates.z, wPart-frustumCoordinates.z)) < wPart) {
-
+        if (PtInFrustum(frustumCoordinates)) {
             finalCascadeIndex = c;
             break;
         }
@@ -83,13 +90,13 @@ float4 CameraCoordinateToShadow(float2 camCoordinate, float worldSpaceDepth, flo
 }
 
 void FindCascade_CameraToShadowMethod(
-    out uint finalCascadeIndex, out float4 frustumCoordinates,
+    out int finalCascadeIndex, out float4 frustumCoordinates,
     float2 texCoord, float worldSpaceDepth)
 {
     const float2 camCoordinate = XYScale * texCoord + XYTrans;
 
     uint projectionCount = min(GetShadowSubProjectionCount(), ShadowMaxSubProjections);
-    finalCascadeIndex = projectionCount;
+    finalCascadeIndex = -1;
     frustumCoordinates = 0.0.xxxx;
 
         // 	Find the first frustum we're within
@@ -112,6 +119,15 @@ void FindCascade_CameraToShadowMethod(
         //	That seems like a good improvement.
 
     #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
+
+        #if SHADOW_ENABLE_NEAR_CASCADE
+            float3 nearCascadeCoord = CameraCoordinateToShadow(camCoordinate, worldSpaceDepth, OrthoNearCameraToShadow).xyz;
+            if (PtInFrustum(float4(nearCascadeCoord, 1.f))) {
+                finalCascadeIndex = projectionCount;
+                frustumCoordinates = float4(nearCascadeCoord, 1.f);
+                return;
+            }
+        #endif
 
             // in ortho mode, this is much simplier... Here is a
             // separate implementation to take advantage of that case!

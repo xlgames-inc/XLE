@@ -201,7 +201,7 @@ namespace SceneEngine
 
     unsigned LightingResolveShaders::LightShaderType::ReservedIndexCount()
     {
-        return 0x1F + 1;
+        return 0x3F + 1;
     }
 
     unsigned LightingResolveShaders::LightShaderType::AsIndex() const
@@ -217,9 +217,9 @@ namespace SceneEngine
 
         return 
               ((_projection & 0x1) << 0)
-            | ((shadows & 0x3) << 1)
-            | ((_diffuseModel & 0x1) << 3)
-            | ((shadowResolveModel & 0x1) << 4)
+            | ((shadows & 0x7) << 1)
+            | ((_diffuseModel & 0x1) << 4)
+            | ((shadowResolveModel & 0x1) << 5)
             ;
     }
 
@@ -231,7 +231,8 @@ namespace SceneEngine
         definesTable << "GBUFFER_TYPE=" << desc._gbufferType;
         definesTable << ";MSAA_SAMPLES=" << (desc._msaaSampleCount<=1)?0:desc._msaaSampleCount;
         if (desc._msaaSamplers) definesTable << ";MSAA_SAMPLERS=1";
-        definesTable << ";SHADOW_CASCADE_MODE=" << ((type._shadows == OrthShadows || type._shadows == OrthHybridShadows) ? 2u : 1u);
+        definesTable << ";SHADOW_CASCADE_MODE=" << ((type._shadows == OrthShadows || type._shadows == OrthShadowsNearCascade || type._shadows == OrthHybridShadows) ? 2u : 1u);
+        definesTable << ";SHADOW_ENABLE_NEAR_CASCADE=" << (type._shadows == OrthShadowsNearCascade ? 1u : 0u);
         definesTable << ";DIFFUSE_METHOD=" << unsigned(type._diffuseModel);
         definesTable << ";SHADOW_RESOLVE_MODEL=" << unsigned(type._shadowResolveModel);
         definesTable << ";SHADOW_RT_HYBRID=" << unsigned(type._shadows == OrthHybridShadows);
@@ -317,6 +318,10 @@ namespace SceneEngine
         BuildShader(desc, LightShaderType(Directional, OrthShadows, 1, 0));
         BuildShader(desc, LightShaderType(Directional, OrthShadows, 0, 1));
         BuildShader(desc, LightShaderType(Directional, OrthShadows, 1, 1));
+        BuildShader(desc, LightShaderType(Directional, OrthShadowsNearCascade, 0, 0));
+        BuildShader(desc, LightShaderType(Directional, OrthShadowsNearCascade, 1, 0));
+        BuildShader(desc, LightShaderType(Directional, OrthShadowsNearCascade, 0, 1));
+        BuildShader(desc, LightShaderType(Directional, OrthShadowsNearCascade, 1, 1));
         BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 0, 0));
         BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 1, 0));
         BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 0, 1));

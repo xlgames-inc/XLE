@@ -47,6 +47,8 @@
         ~Runtime
             FRUSTUM_FILTER=63
             SHADOW_CASCADE_MODE
+            OUTPUT_SHADOW_PROJECTION_COUNT=6
+            SHADOW_ENABLE_NEAR_CASCADE
     VertexShader=game/xleres/shadowgen/depthonly.vsh:main
     GeometryShader=game/xleres/shadowgen/depthonly.gsh:main
     PixelShader=game/xleres/shadowgen/depthonly.psh:main

@@ -6,6 +6,8 @@
 
 #include "../resolveutil.h"
 #include "../resolvecascade.h"
+#include "../../Colour.h"
+#include "../../Utility/ProjectionMath.h"
 
 float4 main(
     float4 position : SV_Position,
@@ -21,7 +23,7 @@ float4 main(
     bool B = ((pixelCoords.x - pixelCoords.y)/1)%8==0;
     if (!(A||B)) { opacity = 0.125f; }
 
-    uint finalCascadeIndex;
+    int finalCascadeIndex;
     float4 cascadeNormCoords;
     const bool resolveByWorldPosition = false;
     if (resolveByWorldPosition) {
@@ -32,7 +34,7 @@ float4 main(
             texCoord, GetWorldSpaceDepth(pixelCoords, GetSampleIndex(sys)));
     }
 
-    if (finalCascadeIndex < min(GetShadowSubProjectionCount(), ShadowMaxSubProjections)) {
+    if (finalCascadeIndex >= 0) {
         float4 cols[6]= {
             ByteColor(196, 230, 230, 0xff),
             ByteColor(255, 128, 128, 0xff),

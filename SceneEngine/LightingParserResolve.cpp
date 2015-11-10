@@ -195,9 +195,9 @@ namespace SceneEngine
             metalContext, Techniques::TechniqueContext::CB_OrthoShadowProjection, 
             &dominantLight._orthoCBSource, sizeof(dominantLight._orthoCBSource));
 
-        parsingContext.GetTechniqueContext()._runtimeState.SetParameter(
-            u("SHADOW_CASCADE_MODE"),
-            dominantLight._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
+        auto& rtState = parsingContext.GetTechniqueContext()._runtimeState;
+        rtState.SetParameter(u("SHADOW_CASCADE_MODE"), dominantLight._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
+        rtState.SetParameter(u("SHADOW_ENABLE_NEAR_CASCADE"), dominantLight._enableNearCascade?1:0);
     }
 
     void UnbindShadowsForForwardResolve(
@@ -205,7 +205,9 @@ namespace SceneEngine
         Techniques::ParsingContext& parsingContext)
     {
         metalContext.UnbindPS<Metal::ShaderResourceView>(3,1);   // unbind shadow textures
-        parsingContext.GetTechniqueContext()._runtimeState.SetParameter(u("SHADOW_CASCADE_MODE"), 0);
+        auto& rtState = parsingContext.GetTechniqueContext()._runtimeState;
+        rtState.SetParameter(u("SHADOW_CASCADE_MODE"), 0);
+        rtState.SetParameter(u("SHADOW_ENABLE_NEAR_CASCADE"), 0);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -491,7 +493,9 @@ namespace SceneEngine
                         preparedShadows, mainCamProjDesc._cameraToWorld, mainCamProjDesc._cameraToProjection);
 
                     if (preparedShadows._mode == ShadowProjectionDesc::Projections::Mode::Ortho && allowOrthoShadowResolve) {
-                        shaderType._shadows = LightingResolveShaders::OrthShadows;
+                        if (preparedShadows._enableNearCascade) {
+                            shaderType._shadows = LightingResolveShaders::OrthShadowsNearCascade;
+                        } else shaderType._shadows = LightingResolveShaders::OrthShadows;
                     } else 
                         shaderType._shadows = LightingResolveShaders::PerspectiveShadows;
 

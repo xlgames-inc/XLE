@@ -160,9 +160,9 @@ namespace PlatformRig
 
             //  Calculate a simple set of shadow frustums.
             //  This method is non-ideal, but it's just a place holder for now
-        result._count = 5;
+        result._normalProjCount = 5;
         result._mode = ShadowProjectionDesc::Projections::Mode::Arbitrary;
-        for (unsigned c=0; c<result._count; ++c) {
+        for (unsigned c=0; c<result._normalProjCount; ++c) {
             const float projectionWidth = shadowWidthScale * std::pow(projectionSizePower, float(c));
             auto& p = result._fullProj[c];
 
@@ -184,7 +184,7 @@ namespace PlatformRig
         
             //  Setup a single world-to-clip that contains all frustums within it. This will 
             //  be used for cull objects out of shadow casting.
-        auto& lastProj = result._fullProj[result._count-1];
+        auto& lastProj = result._fullProj[result._normalProjCount-1];
         auto worldToClip = Combine(lastProj._viewMatrix, lastProj._projectionMatrix);
 
         return std::make_pair(result, worldToClip);
@@ -209,6 +209,70 @@ namespace PlatformRig
         }
     }
 
+    static std::pair<Float4x4, Float4> BuildCameraAlignedOrthogonalShadowProjection(
+        const SceneEngine::LightDesc& lightDesc,
+        const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc,
+        float depth, float maxDistanceFromCamera)
+    {
+            // Build a special "camera aligned" shadow projection.
+            // This can be used to for especially high resolution shadows very close to the
+            // near clip plane.
+            // First, we build a rough projection-to-world based on the camera right direction...
+
+        auto projRight = ExtractRight(mainSceneProjectionDesc._cameraToWorld);
+        auto projForward = -lightDesc._negativeLightDirection;
+        auto projUp = Cross(projRight, projForward);
+        auto adjRight = Cross(projForward, projUp);
+
+        auto camPos = ExtractTranslation(mainSceneProjectionDesc._cameraToWorld);
+        auto projToWorld = MakeCameraToWorld(projForward, Normalize(projUp), Normalize(adjRight), camPos);
+        auto worldToLightProj = InvertOrthonormalTransform(projToWorld);
+
+            // Now we just have to fit the finsl projection around the frustum corners
+
+        auto miniProj = PerspectiveProjection(
+            mainSceneProjectionDesc._verticalFov, mainSceneProjectionDesc._aspectRatio,
+            mainSceneProjectionDesc._nearClip, depth,
+            GeometricCoordinateSpace::RightHanded, RenderCore::Techniques::GetDefaultClipSpaceType());
+
+        auto worldToMiniProj = Combine(
+            InvertOrthonormalTransform(mainSceneProjectionDesc._cameraToWorld), miniProj);
+
+        Float3 frustumCorners[8];
+        CalculateAbsFrustumCorners(frustumCorners, worldToMiniProj);
+
+        Float3 shadowViewSpace[8];
+		Float3 shadowViewMins( FLT_MAX,  FLT_MAX,  FLT_MAX);
+		Float3 shadowViewMaxs(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+		for (unsigned c = 0; c < 8; c++) {
+			shadowViewSpace[c] = TransformPoint(worldToLightProj, frustumCorners[c]);
+
+				//	In our right handed coordinate space, the z coordinate in view space should
+				//	be negative. But we always specify near & far in positive values. So
+				//	we have to swap the sign of z here
+
+			shadowViewSpace[c][2] = -shadowViewSpace[c][2];
+
+			shadowViewMins[0] = std::min(shadowViewMins[0], shadowViewSpace[c][0]);
+			shadowViewMins[1] = std::min(shadowViewMins[1], shadowViewSpace[c][1]);
+			shadowViewMins[2] = std::min(shadowViewMins[2], shadowViewSpace[c][2]);
+			shadowViewMaxs[0] = std::max(shadowViewMaxs[0], shadowViewSpace[c][0]);
+			shadowViewMaxs[1] = std::max(shadowViewMaxs[1], shadowViewSpace[c][1]);
+			shadowViewMaxs[2] = std::max(shadowViewMaxs[2], shadowViewSpace[c][2]);
+		}
+
+        const float shadowNearPlane = -maxDistanceFromCamera;
+        const float shadowFarPlane  =  maxDistanceFromCamera;
+
+        Float4x4 projMatrix = OrthogonalProjection(
+            shadowViewMins[0], shadowViewMaxs[1], shadowViewMaxs[0], shadowViewMins[1], 
+            shadowNearPlane, shadowFarPlane,
+            GeometricCoordinateSpace::RightHanded, RenderCore::Techniques::GetDefaultClipSpaceType());
+
+        auto result = Combine(worldToLightProj, projMatrix);
+        return std::make_pair(result, ExtractMinimalProjection(projMatrix));
+    }
+
     static std::pair<SceneEngine::ShadowProjectionDesc::Projections, Float4x4>  
         BuildSimpleOrthogonalShadowProjections(
             const SceneEngine::LightDesc& lightDesc,
@@ -226,14 +290,14 @@ namespace PlatformRig
         using namespace RenderCore;
 
         ShadowProjectionDesc::Projections result;
-        result._count = settings._frustumCount;
+        result._normalProjCount = settings._frustumCount;
         result._mode = ShadowProjectionDesc::Projections::Mode::Ortho;
 
         const float shadowNearPlane = -settings._maxDistanceFromCamera;
         const float shadowFarPlane = settings._maxDistanceFromCamera;
 
         float t = 0;
-        for (unsigned c=0; c<result._count; ++c) { t += std::pow(settings._frustumSizeFactor, float(c)); }
+        for (unsigned c=0; c<result._normalProjCount; ++c) { t += std::pow(settings._frustumSizeFactor, float(c)); }
 
         Float3 cameraPos = ExtractTranslation(mainSceneProjectionDesc._cameraToWorld);
         Float3 focusPoint = cameraPos + settings._focusDistance * ExtractForward(mainSceneProjectionDesc._cameraToWorld);
@@ -250,7 +314,7 @@ namespace PlatformRig
 		Float3 allCascadesMaxs(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 
 		float distanceFromCamera = 0.f;
-		for (unsigned f=0; f<result._count; ++f) {
+		for (unsigned f=0; f<result._normalProjCount; ++f) {
 
 			float camNearPlane = distanceFromCamera;
 			distanceFromCamera += std::pow(settings._frustumSizeFactor, float(f)) * settings._maxDistanceFromCamera / t;
@@ -317,7 +381,7 @@ namespace PlatformRig
             allCascadesMaxs[2] = std::max(allCascadesMaxs[2], shadowViewMaxs[2]);
         }
 
-        for (unsigned f=0; f<result._count; ++f) {
+        for (unsigned f=0; f<result._normalProjCount; ++f) {
             result._fullProj[f]._viewMatrix = result._definitionViewMatrix;
 
                 // Note that we're flipping y here in order to keep
@@ -342,10 +406,16 @@ namespace PlatformRig
             allCascadesMins[0], allCascadesMaxs[1], allCascadesMaxs[0], allCascadesMins[1], 
             shadowNearPlane, shadowFarPlane,
             GeometricCoordinateSpace::RightHanded, Techniques::GetDefaultClipSpaceType());
-
         Float4x4 worldToClip = Combine(result._definitionViewMatrix, clippingProjMatrix);
+
+        std::tie(result._specialNearProjection, result._specialNearMinimalProjection) = 
+            BuildCameraAlignedOrthogonalShadowProjection(lightDesc, mainSceneProjectionDesc, 2.5, 30.f);
+        result._useNearProj = true;
+
         return std::make_pair(result, worldToClip);
     }
+
+    
 
     SceneEngine::ShadowProjectionDesc 
         CalculateDefaultShadowCascades(

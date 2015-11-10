@@ -21,4 +21,4 @@ m=<:(cv.MetricsRender = not cv.MetricsRender;):>
 8=<:(SetI('OCEAN_SEPARATE', 8);):>
 9=<:(SetI('OCEAN_SEPARATE', 9);):>
 k=<:(cv.TerrainWireframe = not cv.TerrainWireframe;):>
-home=<:(cv.Screenshot=6):>
+home=<:(cv.Screenshot=9):>

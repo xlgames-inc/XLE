@@ -20,7 +20,7 @@ namespace SceneEngine
         CB_OrthoShadowProjection& orthoCBSource,
         const MultiProjection<MaxShadowTexturesPerLight>& desc)
     {
-        auto frustumCount = desc._count;
+        auto frustumCount = desc._normalProjCount;
 
         XlZeroMemory(arbitraryCBSource);   // unused array elements must be zeroed out
         XlZeroMemory(orthoCBSource);       // unused array elements must be zeroed out
@@ -55,12 +55,6 @@ namespace SceneEngine
                     // we don't really need to rebuild the projection
                     // matrix here. It should already be calcated in 
                     // _fullProj._projectionMatrix
-                // const auto& mins = desc._orthoSub[c]._projMins;
-                // const auto& maxs = desc._orthoSub[c]._projMaxs;
-                // using namespace RenderCore::Techniques;
-                // Float4x4 projMatrix = OrthogonalProjection(
-                //     mins[0], mins[1], maxs[0], maxs[1], mins[2], maxs[2],
-                //     GeometricCoordinateSpace::RightHanded, GetDefaultClipSpaceType());
                 const auto& projMatrix = desc._fullProj[c]._projectionMatrix;
                 assert(IsOrthogonalProjection(projMatrix));
 
@@ -95,6 +89,13 @@ namespace SceneEngine
             zComponentMerge(2,2) = p22;
             zComponentMerge(2,3) = p23;
             orthoCBSource._worldToProj = AsFloat3x4(Combine(baseWorldToProj, zComponentMerge));
+
+                // the special "near" cascade is reached via the main transform
+            orthoCBSource._nearCascade = 
+                AsFloat3x4(Combine(
+                    Inverse(AsFloat4x4(orthoCBSource._worldToProj)), 
+                    desc._specialNearProjection));
+            orthoCBSource._nearMinimalProjection = desc._specialNearMinimalProjection;
         }
     }
 
@@ -102,8 +103,9 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext* devContext,
         const MultiProjection<MaxShadowTexturesPerLight>& desc)
     {
-        _frustumCount = desc._count;
+        _frustumCount = desc._normalProjCount;
         _mode = desc._mode;
+        _enableNearCascade = desc._useNearProj;
 
         BuildShadowConstantBuffers(_arbitraryCBSource, _orthoCBSource, desc);
 
@@ -148,16 +150,12 @@ namespace SceneEngine
         return *this;
     }
 
-
     bool PreparedDMShadowFrustum::IsReady() const
     {
         return _shadowTextureSRV.GetUnderlying() && (_arbitraryCB.GetUnderlying() || _orthoCB.GetUnderlying());
     }
 
-    PreparedDMShadowFrustum::PreparedDMShadowFrustum()
-    {
-        
-    }
+    PreparedDMShadowFrustum::PreparedDMShadowFrustum() {}
 
     PreparedDMShadowFrustum::PreparedDMShadowFrustum(PreparedDMShadowFrustum&& moveFrom) never_throws
     : PreparedShadowFrustum(std::move(moveFrom))
@@ -338,6 +336,7 @@ namespace SceneEngine
             Float4x4    _orthoCameraToShadow;
             Float2      _xyScale;
             Float2      _xyTrans;
+            Float4x4    _orthoNearCameraToShadow;
         } basis;
         XlZeroMemory(basis);    // unused array elements must be zeroed out
 
@@ -374,6 +373,7 @@ namespace SceneEngine
         }
         auto& worldToShadowProj = orthoCB._worldToProj;
         basis._orthoCameraToShadow = Combine(cameraToWorld, worldToShadowProj);
+        basis._orthoNearCameraToShadow = Combine(basis._orthoCameraToShadow, orthoCB._nearCascade);
         return RenderCore::MakeSharedPkt(basis);
     }
 

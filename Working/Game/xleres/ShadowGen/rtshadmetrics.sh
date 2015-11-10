@@ -22,7 +22,7 @@ float4 ps_main(float4 position : SV_Position, float2 texCoord : TEXCOORD0, Syste
 {
     int2 pixelCoords = position.xy;
 
-    uint finalCascadeIndex;
+    int finalCascadeIndex;
     float4 cascadeNormCoords;
     FindCascade_CameraToShadowMethod(
         finalCascadeIndex, cascadeNormCoords,

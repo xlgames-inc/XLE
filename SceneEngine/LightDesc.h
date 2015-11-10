@@ -41,14 +41,17 @@ namespace SceneEngine
         class OrthoSubProjection
         {
         public:
-            Float3  _projMins;
-            Float3  _projMaxs;
+            Float3      _projMins;
+            Float3      _projMaxs;
         };
 
         struct Mode { enum Enum { Arbitrary, Ortho }; };
 
-        typename Mode::Enum  _mode;
-        unsigned    _count;
+        typename Mode::Enum     _mode;
+        unsigned                _normalProjCount;
+        bool                    _useNearProj;
+
+        unsigned Count() const { return _normalProjCount + (_useNearProj?1:0); }
 
             /// @{
         ///////////////////////////////////////////////////////////////////////
@@ -85,6 +88,9 @@ namespace SceneEngine
             /// depth values are in natural world space units).
         Float4      _minimalProjection[MaxProjections];
             /// @}
+
+        Float4x4    _specialNearProjection;
+        Float4      _specialNearMinimalProjection;
 
         MultiProjection();
     };
@@ -171,11 +177,8 @@ namespace SceneEngine
     {
     public:
         ::Assets::ResChar   _skyTexture[MaxPath];   ///< use "<texturename>_*" when using a half cube style sky texture. The system will fill in "_*" with appropriate characters
-        enum class SkyTextureType
-        {
-            HemiCube, Equirectangular, HemiEquirectangular
-        };
-        SkyTextureType _skyTextureType;
+        enum class SkyTextureType { HemiCube, Equirectangular, HemiEquirectangular };
+        SkyTextureType      _skyTextureType;
 
         Float3  _ambientLight;
         float   _skyBrightness;
@@ -200,7 +203,8 @@ namespace SceneEngine
         MultiProjection<MaxProjections>::MultiProjection()
     {
         _mode = Mode::Arbitrary;
-        _count = 0;
+        _normalProjCount = 0;
+        _useNearProj = false;
     }
 
 }

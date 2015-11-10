@@ -32,6 +32,8 @@ cbuffer OrthogonalShadowProjection
     uint OrthoShadowSubProjectionCount;
     float3 OrthoShadowCascadeScale[ShadowMaxSubProjections];
     float3 OrthoShadowCascadeTrans[ShadowMaxSubProjections];
+	row_major float3x4 OrthoNearCascade;
+	float4 OrthoShadowNearMinimalProjection;
 }
 
 cbuffer ScreenToShadowProjection
@@ -40,6 +42,7 @@ cbuffer ScreenToShadowProjection
 	row_major float4x4 OrthoCameraToShadow;	// the "definition" projection for cascades in ortho mode
 	float2 XYScale;
 	float2 XYTrans;
+	row_major float4x4 OrthoNearCameraToShadow;
 }
 
 uint GetShadowSubProjectionCount()
@@ -87,6 +90,8 @@ float4 ShadowProjection_GetMiniProj(uint cascadeIndex)
 	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
         return ShadowMinimalProjection[cascadeIndex];
     #elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
+		if (cascadeIndex == OrthoShadowSubProjectionCount)
+			return OrthoShadowNearMinimalProjection;
         float4 result = OrthoShadowMinimalProjection;
 		result.xy = OrthoShadowCascadeScale[cascadeIndex].xy;
 		return result;

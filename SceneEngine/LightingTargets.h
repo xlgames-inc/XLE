@@ -146,7 +146,7 @@ namespace SceneEngine
         using BoundUniforms = RenderCore::Metal::BoundUniforms;
 
         enum Projection : uint8 { Directional, Point };
-        enum Shadowing : uint8 { NoShadows, PerspectiveShadows, OrthShadows, OrthHybridShadows };
+        enum Shadowing : uint8 { NoShadows, PerspectiveShadows, OrthShadows, OrthShadowsNearCascade, OrthHybridShadows };
             
         class LightShaderType
         {

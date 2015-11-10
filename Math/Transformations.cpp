@@ -961,6 +961,15 @@ namespace XLEMath
             0.f, 0.f, 0.f, 1.f);
     }
 
+    Float4x4 MakeCameraToWorld(const Float3& forward, const Float3& up, const Float3& right, const Float3& position)
+    {
+        return Float4x4(
+            right[0], up[0], -forward[0], position[0],
+            right[1], up[1], -forward[1], position[1],
+            right[2], up[2], -forward[2], position[2],
+            0.f, 0.f, 0.f, 1.f);
+    }
+
     Float4x4 MakeCameraToWorld(const Float3& forward, const Float3& up, const Float3& position)
     {
         Float3 right = Cross(forward, up);
@@ -977,13 +986,8 @@ namespace XLEMath
         Float3 adjustedUp       = Normalize(Cross(right, forward));
         Float3 adjustedRight    = Normalize(Cross(forward, adjustedUp));
 
-        return Float4x4(
-            adjustedRight[0], adjustedUp[0], -forward[0], position[0],
-            adjustedRight[1], adjustedUp[1], -forward[1], position[1],
-            adjustedRight[2], adjustedUp[2], -forward[2], position[2],
-            0.f, 0.f, 0.f, 1.f);
+        return MakeCameraToWorld(forward, adjustedUp, adjustedRight, position);
     }
-
 
     signed ArbitraryRotation::IsRotationX() const
     {

@@ -36,6 +36,8 @@ namespace SceneEngine
         uint32      _dummy[3];
         Float4      _cascadeScale[MaxShadowTexturesPerLight];
         Float4      _cascadeTrans[MaxShadowTexturesPerLight];
+        Float3x4    _nearCascade;       // special projection for the area closest to the camera
+        Float4      _nearMinimalProjection;
     };
 
     class CB_ShadowResolveParameters
@@ -64,6 +66,7 @@ namespace SceneEngine
         CB          _arbitraryCB;
         CB          _orthoCB;
         unsigned    _frustumCount;
+        bool        _enableNearCascade;
 
         ShadowProjectionDesc::Projections::Mode::Enum _mode;
         CB_ArbitraryShadowProjection    _arbitraryCBSource;

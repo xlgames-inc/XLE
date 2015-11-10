@@ -853,13 +853,14 @@ namespace SceneEngine
     }
 
     static const utf8* StringShadowCascadeMode = u("SHADOW_CASCADE_MODE");
+    static const utf8* StringShadowEnableNearCascade = u("SHADOW_ENABLE_NEAR_CASCADE");
 
     PreparedDMShadowFrustum LightingParser_PrepareDMShadow(
         DeviceContext& context, LightingParserContext& parserContext, 
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex)
     {
-        auto projectionCount = std::min(frustum._projections._count, MaxShadowTexturesPerLight);
+        auto projectionCount = std::min(frustum._projections.Count(), MaxShadowTexturesPerLight);
         if (!projectionCount)
             return PreparedDMShadowFrustum();
 
@@ -885,9 +886,13 @@ namespace SceneEngine
         parserContext.GetTechniqueContext()._runtimeState.SetParameter(
             StringShadowCascadeMode, 
             preparedResult._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
+        parserContext.GetTechniqueContext()._runtimeState.SetParameter(
+            StringShadowEnableNearCascade,  preparedResult._enableNearCascade?1:0);
+
         auto cleanup = MakeAutoCleanup(
             [&parserContext]() {
                 parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringShadowCascadeMode, 0);
+                parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringShadowEnableNearCascade, 0);
             });
 
             /////////////////////////////////////////////
