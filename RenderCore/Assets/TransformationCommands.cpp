@@ -506,11 +506,11 @@ namespace RenderCore { namespace Assets
                                 auto transform = PromoteToFloat4x4(AsPointer(i));
                                 optimizer.MergeIntoOutputMatrix(outputMatrixIndex, transform);
                             } else {
-                                auto insertSize = next-i;
+                                auto insertSize = next-i; auto outputMatSize = 1+CommandSize(TransformStackCommand(*i2));
                                 i2 = cmdStream.insert(i2, i, next);
                                 i2 = cmdStream.insert(i2, (uint32)TransformStackCommand::PushLocalToWorld);
                                 uint32 popIntr[] = { (uint32)TransformStackCommand::PopLocalToWorld, 1 };
-                                i2 = cmdStream.insert(i2+1+insertSize, &popIntr[0], &popIntr[2]);
+                                i2 = cmdStream.insert(i2+1+insertSize+outputMatSize, popIntr, ArrayEnd(popIntr));
                                 i = cmdStream.begin()+iPos; next = cmdStream.begin()+nextPos;
                             }
                         }
@@ -539,7 +539,7 @@ namespace RenderCore { namespace Assets
         //          -> TransformFloat4x4AndWrite_Parameter
         
         for (auto i=cmdStream.begin(); i!=cmdStream.end();) {
-            std::pair<TransformStackCommand, std::vector<uint32>::iterator> nextInstructions[4];
+            std::pair<TransformStackCommand, std::vector<uint32>::iterator> nextInstructions[3];
             auto i2 = i;
             for (unsigned c=0; c<dimof(nextInstructions); ++c) {
                 if (i2 < cmdStream.end()) {
@@ -550,21 +550,19 @@ namespace RenderCore { namespace Assets
                 }
             }
 
-            if (    nextInstructions[0].first == TransformStackCommand::PushLocalToWorld
-                &&  (nextInstructions[1].first == TransformStackCommand::TransformFloat4x4_Static || nextInstructions[1].first == TransformStackCommand::TransformFloat4x4_Parameter)
-                &&  nextInstructions[2].first == TransformStackCommand::WriteOutputMatrix
-                &&  nextInstructions[3].first == TransformStackCommand::PopLocalToWorld) {
+            if (    (nextInstructions[0].first == TransformStackCommand::TransformFloat4x4_Static || nextInstructions[1].first == TransformStackCommand::TransformFloat4x4_Parameter)
+                &&  nextInstructions[1].first == TransformStackCommand::WriteOutputMatrix
+                &&  nextInstructions[2].first == TransformStackCommand::PopLocalToWorld) {
 
-                    // Remove instructions 2 & 3
-                    //  -- and merge 0 & 1 into a single TransformFloat4x4AndWrite_Static
-                auto endOf4Instructions = nextInstructions[3].second + 1 + CommandSize(nextInstructions[3].first);
-                auto outputIndex = *(nextInstructions[2].second+1);
-                cmdStream.erase(nextInstructions[2].second, endOf4Instructions);
-                if (nextInstructions[1].first == TransformStackCommand::TransformFloat4x4_Static)
+                    //  Merge 0 & 1 into a single TransformFloat4x4AndWrite_Static
+                    //  Note that the push/pop pair should be removed with RemoveRedundantPushes
+                auto outputIndex = *(nextInstructions[1].second+1);
+                cmdStream.erase(nextInstructions[1].second, nextInstructions[2].second);
+                if (nextInstructions[0].first == TransformStackCommand::TransformFloat4x4_Static)
                     *nextInstructions[0].second = (uint32)TransformStackCommand::TransformFloat4x4AndWrite_Static;
                 else 
                     *nextInstructions[0].second = (uint32)TransformStackCommand::TransformFloat4x4AndWrite_Parameter;
-                *nextInstructions[1].second = outputIndex;
+                i = cmdStream.insert(nextInstructions[0].second+1, outputIndex) - 1;
                 continue;
             }
 
@@ -739,6 +737,7 @@ namespace RenderCore { namespace Assets
         RemoveRedundantPushes(result);
         SimplifyTransformTypes(result);
         OptimizePatterns(result);
+        RemoveRedundantPushes(result);
 
         return std::move(result);
     }
@@ -1215,6 +1214,10 @@ namespace RenderCore { namespace Assets
                     stream << indentBuffer << "Comment: " << str << std::endl;
                     i += 64/4;
                 }
+                break;
+
+            default:
+                stream << "Error: " << i << std::endl;
                 break;
             }
 
