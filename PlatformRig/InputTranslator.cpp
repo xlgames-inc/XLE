@@ -153,7 +153,7 @@ namespace PlatformRig
         case VK_UP:         return "up";
         case VK_RIGHT:      return "right";
         case VK_DOWN:       return "down";
-        case VK_SNAPSHOT:   return "print screen";
+        case VK_SNAPSHOT:   return "prtsc";
         case VK_INSERT:     return "insert";
         case VK_DELETE:     return "delete";
         case VK_BACK:       return "backspace";

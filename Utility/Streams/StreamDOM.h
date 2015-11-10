@@ -88,8 +88,7 @@ namespace Utility
         DocAttributeHelper<Formatter> Attribute(const value_type name[]) const;
         DocAttributeHelper<Formatter> FirstAttribute() const;
 
-        std::basic_string<value_type> Name() const;
-        typename Formatter::InteriorSection RawName() const;
+        typename Formatter::InteriorSection Name() const;
 
         template<typename Type>
             Type Attribute(const value_type name[], const Type& def) const;
@@ -120,11 +119,8 @@ namespace Utility
         template<typename Type>
             std::pair<bool, Type> As() const;
 
-        std::basic_string<value_type> Name() const;
-        std::basic_string<value_type> Value() const;
-
-        typename Formatter::InteriorSection RawName() const;
-        typename Formatter::InteriorSection RawValue() const;
+        typename Formatter::InteriorSection Name() const;
+        typename Formatter::InteriorSection Value() const;
 
         DocAttributeHelper<Formatter> Next() const;
 

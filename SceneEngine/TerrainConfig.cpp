@@ -152,7 +152,7 @@ namespace SceneEngine
         _sunPathAngle           = doc(u("SunPathAngle"), _sunPathAngle);
         _encodedGradientFlags   = doc(u("EncodedGradientFlags"), _encodedGradientFlags);
 
-        auto cellsDirectory = Conversion::Convert<::Assets::rstring>(doc.Attribute(u("CellsDirectory")).Value());
+        auto cellsDirectory = Conversion::Convert<::Assets::rstring>(doc.Attribute(u("CellsDirectory")).Value().AsString());
         searchRules.ResolveDirectory(
             _cellsDirectory, dimof(_cellsDirectory), 
             cellsDirectory.c_str());
@@ -161,7 +161,7 @@ namespace SceneEngine
         if (coverage) {
             for (auto l = coverage.FirstChild(); l; l=l.NextSibling()) {
                 CoverageLayer layer;
-                layer._name             = l.Name();
+                layer._name             = l.Name().AsString();
                 layer._id               = l(u("Id"), 0);
                 layer._nodeDimensions   = l(u("Dims"), UInt2(32, 32));
                 layer._overlap          = l(u("Overlap"), 1);

@@ -142,6 +142,9 @@ namespace SceneEngine
 
     template<typename InputType>
         ::Assets::rstring AsRString(InputType input) { return Conversion::Convert<::Assets::rstring>(input); }
+
+    template<typename InputType>
+        ::Assets::rstring AsRString(StringSection<InputType> input) { return Conversion::Convert<::Assets::rstring>(input.AsString()); }
         
     static const utf8* TextureNames[] = { u("Texture0"), u("Texture1"), u("Slopes") };
 
@@ -168,8 +171,8 @@ namespace SceneEngine
                     StrataMaterial::Strata newStrata;
                     for (unsigned t=0; t<dimof(TextureNames); ++t) {
                         auto tName = c.Attribute(TextureNames[t]).Value();
-                        if (XlCompareStringI(tName.c_str(), u("null"))!=0)
-                            newStrata._texture[t] = Conversion::Convert<::Assets::rstring>(tName);
+                        if (XlCompareStringI(tName, u("null"))!=0)
+                            newStrata._texture[t] = Conversion::Convert<::Assets::rstring>(tName.AsString());
                     }
 
                     newStrata._endHeight = Deserialize(c, u("EndHeight"), 0.f);
@@ -197,7 +200,7 @@ namespace SceneEngine
                 char buffer[512];
                 auto mappingAttr = matCfg.Attribute(u("Mapping")).Value();
                 auto parsedType = ImpliedTyping::Parse(
-                    (const char*)AsPointer(mappingAttr.cbegin()), (const char*)AsPointer(mappingAttr.cend()),
+                    (const char*)AsPointer(mappingAttr.begin()), (const char*)AsPointer(mappingAttr.end()),
                     buffer, sizeof(buffer));
                 ImpliedTyping::Cast(
                     mat._mappingConstant, sizeof(mat._mappingConstant), 

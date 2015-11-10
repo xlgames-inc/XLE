@@ -173,9 +173,9 @@ namespace ColladaConversion
         {
             std::basic_string<utf8> semanticStr;
             if (_cfg) {
-                if (_cfg->GetVertexSemanticBindings().IsSuppressed(semantic._start, semantic._end))
+                if (_cfg->GetVertexSemanticBindings().IsSuppressed(semantic))
                     return ~size_t(0);
-                semanticStr = _cfg->GetVertexSemanticBindings().AsNative(semantic._start, semantic._end);
+                semanticStr = _cfg->GetVertexSemanticBindings().AsNative(semantic);
             } else {
                 semanticStr = std::basic_string<utf8>(semantic._start, semantic._end);
             }

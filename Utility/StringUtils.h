@@ -448,6 +448,18 @@ namespace Utility
         }
 
     template<typename T>
+        bool XlEqStringI(const StringSection<T>& a, const std::basic_string<T>& b)
+        {
+            return XlEqStringI(a, MakeStringSection(b));
+        }
+
+    template<typename T>
+        bool XlEqString(const StringSection<T>& a, const std::basic_string<T>& b)
+        {
+            return XlEqString(a, MakeStringSection(b));
+        }
+
+    template<typename T>
         int XlCompareString(const StringSection<T>& a, const T* b)
         {
             auto alen = a.Length();
@@ -498,6 +510,59 @@ namespace Utility
             if (alen == blen) return 0;
             if (alen < blen) return -int(b[alen]);
             return a[blen];
+        }
+
+    template<typename T>
+        int XlCompareStringI(const StringSection<T>& a, const T* b)
+        {
+            auto alen = a.Length();
+            auto blen = XlStringLen(b);
+            auto cmp = XlComparePrefixI(a.begin(), b, std::min(alen, blen));
+            if (cmp != 0) return cmp;
+
+                // Initial prefix is identical.
+                // If the length of both strings are identical, then they
+                // are identical. Otherwise we should emulate the result we 
+                // would get from expression "int(*x) - int(*y)" on two 
+                // null terminated strings
+            if (alen == blen) return 0;
+            if (alen < blen) return -int(XlToLower(b[alen]));
+            return XlToLower(a[blen]);
+        }
+
+    template<typename T>
+        int XlCompareStringI(const T* a, const StringSection<T>& b)
+        {
+            auto alen = XlStringLen(a);
+            auto blen = b.Length();
+            auto cmp = XlComparePrefixI(a, b.begin(), std::min(alen, blen));
+            if (cmp != 0) return cmp;
+
+                // Initial prefix is identical.
+                // If the length of both strings are identical, then they
+                // are identical. Otherwise we should emulate the result we 
+                // would get from expression "int(*x) - int(*y)" on two 
+                // null terminated strings
+            if (alen == blen) return 0;
+            if (alen < blen) return -int(XlToLower(b[alen]));
+            return XlToLower(a[blen]);
+        }
+
+    template<typename T>
+        int XlCompareStringI(const StringSection<T>& a, const StringSection<T>& b)
+        {
+            auto alen = a.Length(), blen = b.Length();
+            auto cmp = XlComparePrefixI(a.begin(), b.begin(), std::min(alen, blen));
+            if (cmp != 0) return cmp;
+
+                // Initial prefix is identical.
+                // If the length of both strings are identical, then they
+                // are identical. Otherwise we should emulate the result we 
+                // would get from expression "int(*x) - int(*y)" on two 
+                // null terminated strings
+            if (alen == blen) return 0;
+            if (alen < blen) return -int(XlToLower(b[alen]));
+            return XlToLower(a[blen]);
         }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

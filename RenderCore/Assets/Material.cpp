@@ -88,11 +88,11 @@ namespace RenderCore { namespace Assets
         if (ele) {
             auto child = ele.Attribute(name);
             if (child) {
-                auto value = child.RawValue();
+                auto value = child.Value();
                 for (unsigned c=0; c<dimof(s_blendNames); ++c)
                     if (XlEqStringI(value, s_blendNames[c].second))
                         return s_blendNames[c].first;
-                return (Metal::Blend::Enum)XlAtoI32((const char*)child.Value().c_str());
+                return (Metal::Blend::Enum)XlAtoI32((const char*)child.Value().AsString().c_str());
             }
         }
 
@@ -105,11 +105,11 @@ namespace RenderCore { namespace Assets
         if (ele) {
             auto child = ele.Attribute(name);
             if (child) {
-                auto value = child.RawValue();
+                auto value = child.Value();
                 for (unsigned c=0; c<dimof(s_blendOpNames); ++c)
                     if (XlEqStringI(value, s_blendOpNames[c].second))
                         return s_blendOpNames[c].first;
-                return (Metal::BlendOp::Enum)XlAtoI32((const char*)child.Value().c_str());
+                return (Metal::BlendOp::Enum)XlAtoI32((const char*)child.Value().AsString().c_str());
             }
         }
 
@@ -147,9 +147,9 @@ namespace RenderCore { namespace Assets
         {
             auto child = doc.Attribute(u("BlendType"));
             if (child) {
-                if (XlEqStringI(child.RawValue(), u("decal"))) {
+                if (XlEqStringI(child.Value(), u("decal"))) {
                     result._blendType = RenderStateSet::BlendType::DeferredDecal;
-                } else if (XlEqStringI(child.RawValue(), u("ordered"))) {
+                } else if (XlEqStringI(child.Value(), u("ordered"))) {
                     result._blendType = RenderStateSet::BlendType::Ordered;
                 } else {
                     result._blendType = RenderStateSet::BlendType::Basic;

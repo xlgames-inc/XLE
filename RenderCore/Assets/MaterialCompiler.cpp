@@ -69,8 +69,8 @@ namespace RenderCore { namespace Assets
             
             for (auto config=doc.FirstChild(); config; config=config.NextSibling()) {
                 auto name = config.Name();
-                if (name.empty()) continue;
-                _configurations.push_back(name);
+                if (name.Empty()) continue;
+                _configurations.push_back(name.AsString());
             }
         }
 

@@ -10,6 +10,7 @@
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 #include "../Utility/UTFUtils.h"
+#include "../Utility/StringUtils.h"
 #include <vector>
 #include <string>
 #include <memory>
@@ -30,8 +31,8 @@ namespace RenderCore { namespace ColladaConversion
     public:
         using String = std::basic_string<utf8>;
         
-        String AsNative(const utf8* inputStart, const utf8* inputEnd) const;
-        bool IsSuppressed(const utf8* inputStart, const utf8* inputEnd) const;
+        String AsNative(StringSection<utf8> input) const;
+        bool IsSuppressed(StringSection<utf8> input) const;
 
         BindingConfig(const DocElementHelper<InputStreamFormatter<utf8>>& source);
         BindingConfig();

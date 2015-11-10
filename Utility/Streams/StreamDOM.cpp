@@ -257,15 +257,7 @@ namespace Utility
     }
 
     template<typename Formatter>
-        auto DocElementHelper<Formatter>::Name() const -> std::basic_string<value_type>
-    {
-        if (_index == ~0u) return std::basic_string<value_type>();
-        auto& ele = _doc->_elements[_index];
-        return std::basic_string<value_type>(ele._name._start, ele._name._end);
-    }
-
-    template<typename Formatter>
-        auto DocElementHelper<Formatter>::RawName() const -> typename Formatter::InteriorSection
+        auto DocElementHelper<Formatter>::Name() const -> typename Formatter::InteriorSection
     {
         if (_index == ~0u) return typename Formatter::InteriorSection();
         auto& ele = _doc->_elements[_index];
@@ -313,32 +305,14 @@ namespace Utility
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename Formatter>
-        auto DocAttributeHelper<Formatter>::Name() const -> std::basic_string<value_type>
-    {
-        if (_index == ~unsigned(0)) return std::basic_string<value_type>();
-        return std::basic_string<value_type>(
-            _doc->_attributes[_index]._name._start,
-            _doc->_attributes[_index]._name._end);
-    }
-
-    template<typename Formatter>
-        auto DocAttributeHelper<Formatter>::Value() const -> std::basic_string<value_type>
-    {
-        if (_index == ~unsigned(0)) return std::basic_string<value_type>();
-        return std::basic_string<value_type>(
-            _doc->_attributes[_index]._value._start,
-            _doc->_attributes[_index]._value._end);
-    }
-
-    template<typename Formatter>
-        typename Formatter::InteriorSection DocAttributeHelper<Formatter>::RawName() const
+        typename Formatter::InteriorSection DocAttributeHelper<Formatter>::Name() const
     {
         if (_index == ~unsigned(0)) return typename Formatter::InteriorSection();
         return _doc->_attributes[_index]._name;
     }
 
     template<typename Formatter>
-        typename Formatter::InteriorSection DocAttributeHelper<Formatter>::RawValue() const
+        typename Formatter::InteriorSection DocAttributeHelper<Formatter>::Value() const
     {
         if (_index == ~unsigned(0)) return typename Formatter::InteriorSection();
         return _doc->_attributes[_index]._value;

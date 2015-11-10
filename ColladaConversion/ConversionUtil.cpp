@@ -56,21 +56,21 @@ namespace RenderCore { namespace ColladaConversion
             for (; child; child = child.Next())
                 if (child)
                     _exportNameToBinding.push_back(
-                        std::make_pair(child.Name(), child.Value()));
+                        std::make_pair(child.Name().AsString(), child.Value().AsString()));
         }
 
         auto bindingSuppress = source.Element(u("Suppress"));
         if (bindingSuppress) {
             auto child = bindingSuppress.FirstAttribute();
             for (; child; child = child.Next())
-                _bindingSuppressed.push_back(child.Name());
+                _bindingSuppressed.push_back(child.Name().AsString());
         }
     }
 
     BindingConfig::BindingConfig() {}
     BindingConfig::~BindingConfig() {}
 
-    std::basic_string<utf8> BindingConfig::AsNative(const utf8* inputStart, const utf8* inputEnd) const
+    std::basic_string<utf8> BindingConfig::AsNative(StringSection<utf8> input) const
     {
             //  we need to define a mapping between the names used by the max exporter
             //  and the native XLE shader names. The meaning might not match perfectly
@@ -78,25 +78,18 @@ namespace RenderCore { namespace ColladaConversion
         auto i = std::find_if(
             _exportNameToBinding.cbegin(), _exportNameToBinding.cend(),
             [=](const std::pair<String, String>& e) 
-            {
-                return  ptrdiff_t(e.first.size()) == (inputEnd - inputStart)
-                    &&  std::equal(e.first.cbegin(), e.first.cend(), inputStart);
-            });
+            { return XlEqString(input, e.first); });
 
         if (i != _exportNameToBinding.cend()) 
             return i->second;
-        return std::basic_string<utf8>(inputStart, inputEnd);
+        return input.AsString();
     }
 
-    bool BindingConfig::IsSuppressed(const utf8* inputStart, const utf8* inputEnd) const
+    bool BindingConfig::IsSuppressed(StringSection<utf8> input) const
     {
         auto i = std::find_if(
             _bindingSuppressed.cbegin(), _bindingSuppressed.cend(),
-            [=](const String& e) 
-            {
-                return  ptrdiff_t(e.size()) == (inputEnd - inputStart)
-                    &&  std::equal(e.cbegin(), e.cend(), inputStart);
-            });
+            [=](const String& e) { return XlEqString(input, e); });
 
         return (i != _bindingSuppressed.cend());
     }

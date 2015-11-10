@@ -2398,7 +2398,7 @@ namespace SceneEngine
             cell._maxs = c(u("Maxs"), Float3(0,0,0));
 
             auto baseFile = Conversion::Convert<::Assets::rstring>(
-                c.Attribute(u("NativeFile")).Value());
+                c.Attribute(u("NativeFile")).Value().AsString());
             searchRules.ResolveFile(
                 cell._file, dimof(cell._file),
                 baseFile.c_str());

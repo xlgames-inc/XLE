@@ -38,10 +38,10 @@ namespace RenderCore { namespace ColladaConversion
     void AddSamplerBinding(
         RenderCore::Assets::RawMaterial& dest,
         const ParameterSet& paramSet, const utf8 bindingName[], 
-        const utf8* samplerRefStart, const utf8* samplerRefEnd,
+        const StringSection<utf8> samplerRef,
         const URIResolveContext& resolveContext)
     {
-        auto* samplerParam = FindSamplerParameter(paramSet, Section(samplerRefStart, samplerRefEnd));
+        auto* samplerParam = FindSamplerParameter(paramSet, samplerRef);
         if (samplerParam) {
 
                 // the "init_from" member of <surface> seems to reference
@@ -73,7 +73,7 @@ namespace RenderCore { namespace ColladaConversion
     
             LogWarning << "Could not resolve surface reference (" << AsString(imageRef) << ")";
         } else {
-            LogWarning << "Could not resolve sampler reference (" << AsString(Section(samplerRefStart, samplerRefEnd)) << ")";
+            LogWarning << "Could not resolve sampler reference (" << AsString(samplerRef) << ")";
         }
     }
 
@@ -88,18 +88,16 @@ namespace RenderCore { namespace ColladaConversion
             auto techValue = extraValues.FirstChild();
             for (;techValue; techValue=techValue.NextSibling()) {
                 auto n = techValue.Name();
-                if (cfg.GetResourceBindings().IsSuppressed(AsPointer(n.cbegin()), AsPointer(n.cend()))) continue;
+                if (cfg.GetResourceBindings().IsSuppressed(n)) continue;
 
                 auto texture = techValue.Element(u("texture"));
                 if (texture) {
                     auto samplerRef = texture.Attribute(u("texture")).Value();
-                    if (!samplerRef.empty()) {
-                        auto binding = cfg.GetResourceBindings().AsNative(AsPointer(n.cbegin()), AsPointer(n.cend()));
+                    if (!samplerRef.Empty()) {
+                        auto binding = cfg.GetResourceBindings().AsNative(n);
                         AddSamplerBinding(
                             matSettings, params, 
-                            binding.c_str(), 
-                            AsPointer(samplerRef.cbegin()), AsPointer(samplerRef.cend()),
-                            pubEles);
+                            binding.c_str(), samplerRef, pubEles);
                     }
                 } else if (techValue.Element(u("color")) || techValue.Element(u("float")) || techValue.Element(u("param"))) {
                     LogWarning << "Color, float and param type technique values not supported in <extra> part in effect (" << effectName << ")";
@@ -133,8 +131,8 @@ namespace RenderCore { namespace ColladaConversion
             case TechniqueValue::Type::Color:
             case TechniqueValue::Type::Float:
                 {
-                    if (cfg.GetConstantBindings().IsSuppressed(t.first._start, t.first._end)) continue;
-                    auto binding = cfg.GetConstantBindings().AsNative(t.first._start, t.first._end);
+                    if (cfg.GetConstantBindings().IsSuppressed(t.first)) continue;
+                    auto binding = cfg.GetConstantBindings().AsNative(t.first);
 
                     if (value._type == TechniqueValue::Type::Color) {
                         matSettings._constants.SetParameter(
@@ -147,14 +145,12 @@ namespace RenderCore { namespace ColladaConversion
 
             case TechniqueValue::Type::Texture:
                 {
-                    if (cfg.GetResourceBindings().IsSuppressed(t.first._start, t.first._end)) continue;
-                    auto binding = cfg.GetResourceBindings().AsNative(t.first._start, t.first._end);
+                    if (cfg.GetResourceBindings().IsSuppressed(t.first)) continue;
+                    auto binding = cfg.GetResourceBindings().AsNative(t.first);
 
                     AddSamplerBinding(
                         matSettings, profile->GetParams(), 
-                        binding.c_str(),
-                        value._reference._start, value._reference._end,
-                        pubEles);
+                        binding.c_str(), value._reference, pubEles);
                     break;
                 }
 
