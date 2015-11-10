@@ -993,10 +993,6 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         ISceneParser* sceneParser)
     {
-        CATCH_ASSETS_BEGIN
-            SetFrameGlobalStates(context);
-        CATCH_ASSETS_END(parserContext)
-
         Float4 time(0.f, 0.f, 0.f, 0.f);
         if (sceneParser)
             time[0] = sceneParser->GetTimeValue();
@@ -1036,7 +1032,10 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         const RenderingQualitySettings& qualitySettings)
     {
-        ReturnToSteadyState(metalContext);
+        CATCH_ASSETS_BEGIN
+            ReturnToSteadyState(metalContext);
+            SetFrameGlobalStates(metalContext);
+        CATCH_ASSETS_END(parserContext)
 
         {
             GPUProfiler::DebugAnnotation anno(metalContext, L"Prepare");

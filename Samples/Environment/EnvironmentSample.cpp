@@ -21,6 +21,7 @@
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/PlatformRigUtil.h"
 #include "../../PlatformRig/OverlaySystem.h"
+#include "../../PlatformRig/Screenshot.h"
 
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/LightingParser.h"
@@ -277,6 +278,16 @@ namespace Sample
                 SceneEngine::LightingParserContext lightingParserContext(
                     *primMan._globalTechContext);
                 lightingParserContext._plugins.push_back(stdPlugin);
+
+                auto& screenshot = Tweakable("Screenshot", 0);
+                if (screenshot) {
+                    TiledScreenshot(
+                        *context, lightingParserContext,
+                        *mainScene, mainScene->GetCameraDesc(),
+                        primMan._presChain->GetViewportContext()->_dimensions,
+                        UInt2(screenshot, screenshot));
+                    screenshot = 0;
+                }
 
                 auto frameResult = frameRig.ExecuteFrame(
                     *context.get(), primMan._presChain.get(), 
