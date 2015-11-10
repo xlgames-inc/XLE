@@ -78,6 +78,12 @@ namespace SceneEngine
                 orthoCBSource._cascadeTrans[c][3] = 0.f;
             }
 
+                // prevent matches on the remaining frustums...
+            for (unsigned c=frustumCount; c<MaxShadowTexturesPerLight; ++c) {
+                orthoCBSource._cascadeTrans[c][0] = FLT_MAX;
+                orthoCBSource._cascadeTrans[c][1] = FLT_MAX;
+            }
+
                 //  Also fill in the constants for ortho projection mode
             orthoCBSource._projectionCount = frustumCount;
             orthoCBSource._minimalProjection = desc._minimalProjection[0];

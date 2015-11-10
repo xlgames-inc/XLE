@@ -32,11 +32,9 @@ void FindCascade_FromWorldPosition(
         #endif
     #endif
 
-    for (uint c=0; c<projectionCount; c++) {
-        float wPart = 1.f;
+    [unroll] for (uint c=0; c<ShadowMaxSubProjections; c++) {
         #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
             frustumCoordinates = mul(ShadowWorldToProj[c], float4(worldPosition, 1));
-            wPart = frustumCoordinates.w;
         #elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
             frustumCoordinates = float4(AdjustForCascade(basePosition, c), 1.f);
         #else

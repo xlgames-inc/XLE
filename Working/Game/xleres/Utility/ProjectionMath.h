@@ -9,8 +9,8 @@
 
 bool PtInFrustum(float4 pt)
 {
-	float wPart = pt.w;
-	return max(max(abs(pt.x), abs(pt.y)), max(pt.z, wPart-pt.z)) <= wPart;
+	float xyMax = max(abs(pt.x), abs(pt.y));
+	return max(xyMax, max(pt.z, pt.w-pt.z)) <= pt.w;
 }
 
 bool InsideFrustum(float4 clipSpacePosition) { return PtInFrustum(clipSpacePosition); }
