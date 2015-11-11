@@ -10,6 +10,7 @@
 #include "../Math/Transformations.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
+#include "../Utility/ArithmeticUtils.h"
 
 namespace RenderCore { namespace ColladaConversion
 {
@@ -403,12 +404,14 @@ namespace RenderCore { namespace ColladaConversion
 
     void RemoveRedundantBitangents(MeshDatabase& mesh)
     {
-        bool hasNormals = !!(mesh.HasElement("NORMAL") & 0x1);
-        bool hasTangents = !!(mesh.HasElement("TEXTANGENT") & 0x1);
-        if (hasNormals && hasTangents) {
-            auto bitan = mesh.FindElement("TEXBITANGENT");
-            if (bitan != ~0u)
-                mesh.RemoveStream(bitan);
+            // remove bitangents for every stream that has both normals and tangents
+        auto normAndTan = mesh.HasElement("NORMAL") & mesh.HasElement("TEXTANGENT");
+        if (normAndTan!=0) {
+            for (unsigned b=0; b<(32-xl_ctz4(normAndTan)); ++b) {
+                auto bitan = mesh.FindElement("TEXBITANGENT", b);
+                if (bitan != ~0u)
+                    mesh.RemoveStream(bitan);
+            }
         }
     }
 

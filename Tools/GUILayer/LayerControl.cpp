@@ -84,10 +84,7 @@ namespace GUILayer
             // Check for cases where a paint operation can be begun on one window
             // while another window is in the middle of rendering.
         static bool activePaintCheck2 = false;
-        if (activePaintCheck2) {
-            assert(0);
-            return;
-        }
+        if (activePaintCheck2) return;
 
         _pimpl->_activePaint = true;
         activePaintCheck2 = true;

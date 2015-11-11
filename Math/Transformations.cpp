@@ -942,10 +942,10 @@ namespace XLEMath
             //  Make sure the last row is the same as the last row
             //  that we assume when using Float3x4 as a transformation
             //  matrix.
-        assert(orthonormalTransform(3, 0) == 0.f);
-        assert(orthonormalTransform(3, 1) == 0.f);
-        assert(orthonormalTransform(3, 2) == 0.f);
-        assert(orthonormalTransform(3, 3) == 1.f);
+        assert(Equivalent(orthonormalTransform(3, 0), 0.f, 1e-6f));
+        assert(Equivalent(orthonormalTransform(3, 1), 0.f, 1e-6f));
+        assert(Equivalent(orthonormalTransform(3, 2), 0.f, 1e-6f));
+        assert(Equivalent(orthonormalTransform(3, 3), 1.f, 1e-6f));
         return MakeFloat3x4(
             orthonormalTransform(0,0), orthonormalTransform(0,1), orthonormalTransform(0,2), orthonormalTransform(0,3), 
             orthonormalTransform(1,0), orthonormalTransform(1,1), orthonormalTransform(1,2), orthonormalTransform(1,3), 

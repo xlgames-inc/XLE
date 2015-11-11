@@ -11,6 +11,7 @@
 #include "../../Utility/Threading/ThreadingUtils.h"
 #include <vector>
 #include <memory>
+#include <mutex>
 
 namespace RenderCore { namespace Assets 
 {
@@ -46,6 +47,7 @@ namespace RenderCore { namespace Assets
         std::unique_ptr<ShaderCacheSet> _shaderCacheSet;
         std::vector<std::shared_ptr<ShaderCompileMarker>> _activeCompileOperations;
         mutable Interlocked::Value _activeCompileCount;
+        Threading::Mutex _activeCompileOperationsLock;
     };
 }}
 

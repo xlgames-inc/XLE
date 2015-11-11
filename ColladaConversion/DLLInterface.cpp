@@ -304,7 +304,11 @@ namespace RenderCore { namespace ColladaConversion
                         c._outputMatrixIndex, optimizer.GetMergedOutputMatrix(c._outputMatrixIndex),
                         input._resolveContext, _geoObjects, jointRefs,
                         input._cfg));
+            } CATCH(const std::exception& e) {
+                LogWarning << "Got exception while instantiating geometry (" << scene.GetInstanceGeometry(c._objectIndex)._reference.AsString().c_str() << "). Exception details:";
+                LogWarning << e.what();
             } CATCH(...) {
+                LogWarning << "Got unknown exception while instantiating geometry (" << scene.GetInstanceGeometry(c._objectIndex)._reference.AsString().c_str() << ").";
             } CATCH_END
         }
 
@@ -318,7 +322,11 @@ namespace RenderCore { namespace ColladaConversion
                         input._resolveContext, _geoObjects, jointRefs,
                         input._cfg));
                 skinSuccessful = true;
+            } CATCH(const std::exception& e) {
+                LogWarning << "Got exception while instantiating controller (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << "). Exception details:";
+                LogWarning << e.what();
             } CATCH(...) {
+                LogWarning << "Got unknown exception while instantiating controller (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << ").";
             } CATCH_END
 
             if (!skinSuccessful) {
@@ -335,7 +343,11 @@ namespace RenderCore { namespace ColladaConversion
                             c._outputMatrixIndex, Identity<Float4x4>(),
                             input._resolveContext, _geoObjects, jointRefs,
                             input._cfg));
+                } CATCH(const std::exception& e) {
+                    LogWarning << "Got exception while instantiating geometry (after controller failed) (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << "). Exception details:";
+                    LogWarning << e.what();
                 } CATCH(...) {
+                    LogWarning << "Got unknown exception while instantiating geometry (after controller failed) (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << ").";
                 } CATCH_END
             }
         }

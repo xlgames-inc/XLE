@@ -32,7 +32,8 @@ float3 SampleNormalMap(Texture2D normalMap, SamplerState samplerObject, bool dxt
 
             // The following seems to give the best results on the "nyra" model currently...
             // It seems that maybe that model is using a wierd coordinate scheme in the normal map?
-        float2 coordTwiddle = float2(result.x, -result.y);
+        // float2 coordTwiddle = float2(result.x, -result.y);
+        float2 coordTwiddle = float2(result.x, result.y);
 		return float3(coordTwiddle, sqrt(saturate(1.f + dot(result.xy, -result.xy))));
         // return normalize(float3(coordTwiddle, 1.f - saturate(dot(result.xy, result.xy))));
     }

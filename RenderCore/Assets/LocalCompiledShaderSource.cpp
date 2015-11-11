@@ -487,7 +487,12 @@ namespace RenderCore { namespace Assets
                 auto compileHelper = std::make_shared<ShaderCompileMarker>();
 
                 Interlocked::Increment(&_activeCompileCount);
-                _activeCompileOperations.push_back(compileHelper);
+                {
+                        // unfortunately we need to lock this... because we search through it in
+                        // a background thread
+                    ScopedLock(_activeCompileOperationsLock);
+                    _activeCompileOperations.push_back(compileHelper);
+                }
                 auto tempPtr = compileHelper.get();
 
                 compileHelper->Enqueue(
@@ -533,12 +538,15 @@ namespace RenderCore { namespace Assets
                             // give the PendingCompileMarker object the same state
                         marker->SetState(newState);
 
-                        auto i = std::find_if(
-                            this->_activeCompileOperations.begin(), this->_activeCompileOperations.end(), 
-                            [tempPtr](std::shared_ptr<ShaderCompileMarker>& test) { return test.get() == tempPtr; });
-                        if (i != this->_activeCompileOperations.end()) {
-                            this->_activeCompileOperations.erase(i);
-                            Interlocked::Decrement(&this->_activeCompileCount);
+                        {
+                            ScopedLock(_activeCompileOperationsLock);
+                            auto i = std::find_if(
+                                this->_activeCompileOperations.begin(), this->_activeCompileOperations.end(), 
+                                [tempPtr](std::shared_ptr<ShaderCompileMarker>& test) { return test.get() == tempPtr; });
+                            if (i != this->_activeCompileOperations.end()) {
+                                this->_activeCompileOperations.erase(i);
+                                Interlocked::Decrement(&this->_activeCompileCount);
+                            }
                         }
                     });
             }

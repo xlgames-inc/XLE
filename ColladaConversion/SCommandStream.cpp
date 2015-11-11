@@ -202,25 +202,38 @@ namespace RenderCore { namespace ColladaConversion
         auto geo = objects.GetGeo(geoId);
         if (geo == ~unsigned(0x0)) {
             auto* scaffoldGeo = FindElement(refGuid, resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
-            if (!scaffoldGeo)
-                Throw(::Assets::Exceptions::FormatError("Could not found geometry object to instantiate (%s)",
-                    AsString(instGeo._reference).c_str()));
+            if (!scaffoldGeo) {
+                    // look for a skin controller instead... We will use the geometry object that is referenced
+                    // by the controller
+                auto* scaffoldController = FindElement(refGuid, resolveContext, &IDocScopeIdResolver::FindSkinController);
 
-            auto convertedMesh = Convert(*scaffoldGeo, mergedTransform, resolveContext, cfg);
-            if (convertedMesh._mainDrawCalls.empty()) {
-                    
-                    // everything else should be empty as well...
-                assert(convertedMesh._vertices.empty());
-                assert(convertedMesh._indices.empty());
-                assert(convertedMesh._matBindingSymbols.empty());
-                assert(convertedMesh._unifiedVertexIndexToPositionIndex.empty());
-                
-                Throw(::Assets::Exceptions::FormatError(
-                    "Geometry object is empty (%s)", AsString(instGeo._reference).c_str()));
+                GuidReference sourceMeshRefGuid(scaffoldController->GetBaseMesh());
+                geo = objects.GetGeo(ObjectGuid(sourceMeshRefGuid._id, refGuid._fileHash));
+                if (geo == ~unsigned(0x0))
+                    scaffoldGeo = FindElement(sourceMeshRefGuid, resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
             }
 
-            objects._rawGeos.push_back(std::make_pair(geoId, std::move(convertedMesh)));
-            geo = (unsigned)(objects._rawGeos.size()-1);
+            if (geo == ~unsigned(0x0)) {
+                if (!scaffoldGeo)
+                    Throw(::Assets::Exceptions::FormatError("Could not found geometry object to instantiate (%s)",
+                        AsString(instGeo._reference).c_str()));
+
+                auto convertedMesh = Convert(*scaffoldGeo, mergedTransform, resolveContext, cfg);
+                if (convertedMesh._mainDrawCalls.empty()) {
+                    
+                        // everything else should be empty as well...
+                    assert(convertedMesh._vertices.empty());
+                    assert(convertedMesh._indices.empty());
+                    assert(convertedMesh._matBindingSymbols.empty());
+                    assert(convertedMesh._unifiedVertexIndexToPositionIndex.empty());
+                
+                    Throw(::Assets::Exceptions::FormatError(
+                        "Geometry object is empty (%s)", AsString(instGeo._reference).c_str()));
+                }
+
+                objects._rawGeos.push_back(std::make_pair(geoId, std::move(convertedMesh)));
+                geo = (unsigned)(objects._rawGeos.size()-1);
+            }
         }
         
         auto materials = BuildMaterialTable(

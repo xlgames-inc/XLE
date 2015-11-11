@@ -239,26 +239,21 @@ namespace ToolsRig
         const ::Assets::ResChar* modelFile = _object->_previewModelFile.c_str();
         const uint64 boundMaterial = _object->_previewMaterialBinding;
 
-        auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-        auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-        auto skinMarker = compilers.PrepareAsset(RenderCore::Assets::ModelScaffold::CompileProcessType, &modelFile, 1, store);
-        auto skelMarker = compilers.PrepareAsset(RenderCore::Assets::SkeletonScaffold::CompileProcessType, &modelFile, 1, store);
+        const auto& model = ::Assets::GetAssetComp<ModelScaffold>(modelFile);
+        model.StallAndResolve();
 
-        skinMarker->StallWhilePending();
-        skelMarker->StallWhilePending();
-
-        const auto& model = ::Assets::GetAsset<ModelScaffold>(skinMarker->_sourceID0);
-        const auto& skeleton = ::Assets::GetAsset<SkeletonScaffold>(skelMarker->_sourceID0);
+        // const auto& skeletonScaff = ::Assets::GetAssetComp<SkeletonScaffold>(modelFile);
+        // skeletonScaff.StallAndResolve();
+        // const auto& skeleton = skeletonScaff.GetTransformationMachine();
+        const auto& skeleton = model.EmbeddedSkeleton();
 
         SkeletonBinding skelBinding(
-            skeleton.GetTransformationMachine().GetOutputInterface(),
+            skeleton.GetOutputInterface(),
             model.CommandStream().GetInputInterface());
 
-        auto transformCount = skeleton.GetTransformationMachine().GetOutputMatrixCount();
+        auto transformCount = skeleton.GetOutputMatrixCount();
         auto skelTransforms = std::make_unique<Float4x4[]>(transformCount);
-        skeleton.GetTransformationMachine().GenerateOutputTransforms(
-            skelTransforms.get(), transformCount,
-            &skeleton.GetTransformationMachine().GetDefaultParameters());
+        skeleton.GenerateOutputTransforms(skelTransforms.get(), transformCount, &skeleton.GetDefaultParameters());
 
         const auto& cmdStream = model.CommandStream();
         const auto& immData = model.ImmutableData();
@@ -285,8 +280,12 @@ namespace ToolsRig
                     rawGeo._vb._ia._elements);
 
                 IMaterialBinder::SystemConstants sysContants = _object->_systemConstants;
-                sysContants._objectToWorld = skelTransforms[
-                    skelBinding.ModelJointToMachineOutput(geoCall._transformMarker)];
+                auto machineOutput = skelBinding.ModelJointToMachineOutput(geoCall._transformMarker);
+                if (machineOutput < transformCount) {
+                    sysContants._objectToWorld = skelTransforms[machineOutput];
+                } else {
+                    sysContants._objectToWorld = Identity<Float4x4>();
+                }
 
                 auto shaderProgram = _object->_materialBinder->Apply(
                     metalContext, parserContext, techniqueIndex,
@@ -367,11 +366,9 @@ namespace ToolsRig
             if (settings._geometryType == MaterialVisSettings::GeometryType::Model && !object._previewModelFile.empty()) {
                     // this is more tricky... when using a model, we have to get the bounding box for the model
                 using namespace RenderCore::Assets;
-                auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-                auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
                 const ::Assets::ResChar* modelFile = object._previewModelFile.c_str();
-                auto skinMarker = compilers.PrepareAsset(RenderCore::Assets::ModelScaffold::CompileProcessType, &modelFile, 1, store);
-                const auto& model = ::Assets::GetAsset<ModelScaffold>(skinMarker->_sourceID0);
+                const auto& model = ::Assets::GetAssetComp<ModelScaffold>(modelFile);
+                model.StallAndResolve();
                 *settings._camera = AlignCameraToBoundingBox(settings._camera->_verticalFieldOfView, model.GetStaticBoundingBox());
             } else {
                     // just reset camera to the default
