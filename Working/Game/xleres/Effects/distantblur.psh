@@ -36,9 +36,7 @@ float4 integrate(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : S
 	// float linearDepth = NDCDepthToLinear0To1(DepthsInput.Load(int3(position.xy, 0)));
 	float4 blurSample = BlurredBufferInput.Sample(ClampingSampler, texCoord);
 	blurSample.rgb /= max(1e-5f, blurSample.a);
-	return float4(
-		blurSample.rgb,
-		blurSample.a); // * DistanceToBlurring(linearDepth));
+	return float4(blurSample.rgb, blurSample.a); // * DistanceToBlurring(linearDepth));
 }
 
 Texture2D_MaybeMS<float4>	InputTexture;
@@ -58,6 +56,13 @@ float LoadDepth(uint2 p)
 	float C = LoadFloat1(DepthsInput, p + uint2(0,1), 0);
 	float D = LoadFloat1(DepthsInput, p + uint2(1,1), 0);
 	return NDCDepthToLinear0To1(min(min(min(A, B), C), D));
+
+	//float A = LoadFloat1(DepthsInput, p + uint2( 0, 0), 0);
+	//float B = LoadFloat1(DepthsInput, p + uint2( 1, 0), 0);
+	//float C = LoadFloat1(DepthsInput, p + uint2( 0, 1), 0);
+	//float D = LoadFloat1(DepthsInput, p + uint2(-1, 0), 0);
+	//float E = LoadFloat1(DepthsInput, p + uint2( 0,-1), 0);
+	//return NDCDepthToLinear0To1(min(min(min(min(A, B), C), D), E));
 }
 
 float4 HorizontalBlur_DistanceWeighted(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
@@ -91,13 +96,15 @@ float4 HorizontalBlur_DistanceWeighted(float4 position : SV_Position, float2 tex
 	uint2 pixelCoord = uint2(position.xy);
 	[unroll] for (uint c=0; c<sampleCount; c++) {
 		uint2 p;
-		p.x = uint(max(0, min(inputDims.x-1, coordScale.x * (pixelCoord.x + offset[c]))) + .5f);
+		p.x = uint(clamp(
+			coordScale.x * (pixelCoord.x + offset[c]) + .5f,
+			0, inputDims.x-1));
 		p.y = uint(coordScale.y * pixelCoord.y + .5f);
 
 		float3 texSample = LoadFloat4(InputTexture, p, 0).rgb;
 		float distantWeight = DistanceToBlurring(LoadDepth(p));
 		result += texSample * FixedWeights[c] * distantWeight;
-		weightSum += distantWeight * FixedWeights[c];
+		weightSum += FixedWeights[c] * distantWeight;
 	}
 
 	float alpha = weightSum;
@@ -135,8 +142,10 @@ float4 VerticalBlur_DistanceWeighted(float4 position : SV_Position, float2 texCo
 	int2 pixelCoord = uint2(position.xy);
 	[unroll] for (uint c=0; c<sampleCount; c++) {
 		uint2 p;
-		p.x = uint(coordScale.x * pixelCoord.x + .5f);
-		p.y = uint(max(0, min(inputDims.y-1, coordScale.y * (pixelCoord.y+offset[c]))) + .5f);
+		p.x = uint(coordScale.x * pixelCoord.x); // + .5f);
+		p.y = uint(clamp(
+			coordScale.y * (pixelCoord.y+offset[c]), // + .5f,
+			0, inputDims.y-1));
 
 		float4 texSample = LoadFloat4(InputTexture, p, 0).rgba;
 		float distantWeight = texSample.a;

@@ -312,13 +312,14 @@ namespace SceneEngine
                     newSprite = BuildSprite(context, parserContext, o.second);
                     if (!IsGood(newSprite._rect[0])) {
                         if (AttemptEviction()) {
-                            newSprite = BuildSprite(context, parserContext, o.second);
-
                                 // reset preparedSpritesI, because _preparedSpritesLookup
                                 // may have changed in AttemptEviction!
+                                // (note that we have to do this before BuildSprite, because BuildSprite can throw)
                             preparedSpritesI = std::lower_bound(
                                 _preparedSpritesLookup.begin(), _preparedSpritesLookup.end(), 
                                 hash, CompareFirst<Pimpl::SpriteHash, unsigned>());
+
+                            newSprite = BuildSprite(context, parserContext, o.second);
                         }
                     }
 

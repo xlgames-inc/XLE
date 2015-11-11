@@ -307,15 +307,6 @@ namespace SceneEngine
         if (Tweakable("DoSky", true)) {
             Sky_RenderPostFog(context, parserContext);
         }
-    }
-        
-    void LightingParser_PostGBufferEffects(    
-        DeviceContext& context, 
-        LightingParserContext& parserContext,
-        ShaderResourceView& depthsSRV,
-        ShaderResourceView& normalsSRV)
-    {
-        GPUProfiler::DebugAnnotation anno(context, L"PostGBuffer");
 
         auto gblLighting = parserContext.GetSceneParser()->GetGlobalLightingDesc();
         if (Tweakable("DoAtmosBlur", true) && gblLighting._doAtmosphereBlur) {
@@ -327,7 +318,16 @@ namespace SceneEngine
                     gblLighting._atmosBlurStart / farClip, gblLighting._atmosBlurEnd / farClip
                 });
         }
-
+    }
+        
+    void LightingParser_PostGBufferEffects(    
+        DeviceContext& context, 
+        LightingParserContext& parserContext,
+        ShaderResourceView& depthsSRV,
+        ShaderResourceView& normalsSRV)
+    {
+        GPUProfiler::DebugAnnotation anno(context, L"PostGBuffer");
+        
         if (Tweakable("DoRain", false)) {
             Rain_Render(&context, parserContext);
             Rain_RenderSimParticles(&context, parserContext, depthsSRV, normalsSRV);

@@ -32,7 +32,7 @@ float3 ResolveLitColor(
 				shadowing[c] = 1.f;
 
 			#if SHADOW_CASCADE_MODE!=0
-				uint cascade; float4 fc;
+				int cascade; float4 fc;
 				FindCascade_FromWorldPosition(cascade, fc, worldPosition);
 				if (cascade >= 0) {
 					shadowing[0] = ResolveShadows_Cascade(
