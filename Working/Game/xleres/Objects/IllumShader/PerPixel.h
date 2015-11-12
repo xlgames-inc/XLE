@@ -75,15 +75,17 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
         if (result.blendingAlpha < AlphaThreshold) discard;
     #endif
 
-    #if (OUTPUT_TEXCOORD==1) && (RES_HAS_ParametersTexture!=0)
-            // 	We're expecting to find just roughness & specular in our parameter map.
-            //	We can't do colored specular in this way, except by using
-            //	the metal parameter.
-            //	Just using a trilinear sample for this. Anisotropy disabled.
-        result.material = DecodeParametersTexture(
-            ParametersTexture.Sample(DefaultSampler, geo.texCoord), diffuseTextureSample);
-    #else
-        result.material = DefaultMaterialValues();
+    result.material = DefaultMaterialValues();
+
+    #if (OUTPUT_TEXCOORD==1)
+        #if (RES_HAS_ParametersTexture!=0)
+                //	Just using a trilinear sample for this. Anisotropy disabled.
+            result.material = DecodeParametersTexture_RMS(
+                ParametersTexture.Sample(DefaultSampler, geo.texCoord));
+        #elif (RES_HAS_SpecularColorTexture!=0)
+            result.material = DecodeParametersTexture_ColoredSpecular(
+                SpecularColorTexture.Sample(DefaultSampler, geo.texCoord), diffuseTextureSample);
+        #endif
     #endif
 
     #if (OUTPUT_TEXCOORD==1) && (RES_HAS_CUSTOM_MAP==1)

@@ -10,6 +10,7 @@
 Texture2D		DiffuseTexture          : register(t0);
 Texture2D		NormalsTexture          : register(t1);
 Texture2D       ParametersTexture       : register(t2);
+Texture2D       SpecularColorTexture    : register(t3);
 
 SamplerState	DefaultSampler          : register(s0);
 SamplerState	ClampingSampler         : register(s1);
