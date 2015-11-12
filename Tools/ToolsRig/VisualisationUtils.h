@@ -38,10 +38,13 @@ namespace ToolsRig
     {
     public:
         PlatformRig::EnvironmentSettings _activeSetting;
+        const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 
         VisEnvSettings();
         VisEnvSettings(const ::Assets::ResChar filename[]);
         ~VisEnvSettings();
+    protected:
+        ::Assets::DepValPtr _depVal;
     };
 
     RenderCore::Techniques::CameraDesc AsCameraDesc(const VisCameraSettings& camSettings);

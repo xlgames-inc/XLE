@@ -57,6 +57,8 @@ namespace ToolsRig
     {
         TRY {
             _activeSetting = ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<PlatformRig::EnvironmentSettings>>(filename)._asset;
+            _depVal = std::make_shared<::Assets::DependencyValidation>();
+            ::Assets::RegisterFileDependency(_depVal, filename);
         } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
             _activeSetting = PlatformRig::DefaultEnvironmentSettings();
         } CATCH_END

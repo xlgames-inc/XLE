@@ -100,9 +100,11 @@ namespace ToolsRig
             const RenderCore::Techniques::ProjectionDesc& projectionDesc);
         virtual void SetActivationState(bool newState);
 
+        void SetEnvironment(std::shared_ptr<VisEnvSettings> envSettings);
+        void SetEnvironment(::Assets::ResChar envSettingsFile[]);
+
         ModelVisLayer(
             std::shared_ptr<ModelVisSettings> settings,
-            std::shared_ptr<VisEnvSettings> envSettings,
             std::shared_ptr<RenderCore::Assets::ModelCache> cache);
         ~ModelVisLayer();
     protected:
