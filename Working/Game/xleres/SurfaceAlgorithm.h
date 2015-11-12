@@ -26,7 +26,11 @@ TangentFrameStruct BuildTangentFrame(float3 tangent, float3 bitangent, float3 no
 float3 SampleNormalMap(Texture2D normalMap, SamplerState samplerObject, bool dxtFormatNormalMap, float2 texCoord)
 {
 	if (dxtFormatNormalMap) {
-		return normalMap.Sample(samplerObject, texCoord).xyz * 2.f - 1.0.xxx;
+		float3 rawNormal = normalMap.Sample(samplerObject, texCoord).xyz * 2.f - 1.0.xxx;
+            // note... we may have to do a normalize here; because the normal can
+            // become significantly denormalized after filtering.
+        rawNormal = normalize(rawNormal);
+        return rawNormal;
     } else {
 		float2 result = normalMap.Sample(samplerObject, texCoord).xy * 2.f - 1.0.xx;
 

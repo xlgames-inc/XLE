@@ -40,7 +40,7 @@ float3 ReadSkyReflectionTexture(float3 reflectionVector, float roughness, float 
 {
     uint2 reflectionTextureDims;
     SkyReflectionTexture[0].GetDimensions(reflectionTextureDims.x, reflectionTextureDims.y);
-    float mipMap = blurriness + saturate(roughness) * 5.f;
+    float mipMap = blurriness + saturate(roughness) * 3.f;
 
     #if SKY_PROJECTION == 1
 

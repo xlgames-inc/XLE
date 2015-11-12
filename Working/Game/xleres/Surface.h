@@ -125,9 +125,22 @@ float3 GetLocalPosition(VSInput input)
     TangentFrameStruct BuildTangentFrameFromGeo(VSOutput geo)
     {
         TangentFrameStruct result;
-        result.tangent = normalize(geo.tangent.xyz);
-        result.bitangent = normalize(geo.bitangent);
-        result.normal = normalize(geo.normal);
+		result.tangent = geo.tangent.xyz;
+        result.bitangent = geo.bitangent;
+        result.normal = geo.normal;
+
+		// note -- 	The denormalization caused by per vertex interpolation
+		// 			is fairly subtle. We could perhaps skip this on all but
+		//			the highest quality modes..?
+		//			Also, there are other options:
+		//				- higher order interpolation across the triangle using geometry shaders
+		//				- using cotangent stuff particularly with derivative maps
+		const bool doRenormalize = true;
+		if (doRenormalize) {
+	        result.tangent = normalize(result.tangent);
+	        result.bitangent = normalize(result.bitangent);
+	        result.normal = normalize(result.normal);
+		}
 		result.handiness = 1.f; // (handiness value is lost in this case)
         return result;
     }

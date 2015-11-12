@@ -227,16 +227,25 @@ PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(float4 paramTexSam
 		//	If the specular colour is not similar to the diffuse (and particularly if
 		//	the diffuse is dark), then we can take that as a hint of metallicness.
 		//	But this is very rough.
-	float specLength = length(paramTexSample.rgb);
-	float3 specDir = paramTexSample.rgb / specLength;
-	float d = dot(specDir, diffuseSample.rgb);
-	float3 diffuseDiverge = diffuseSample.rgb - d * specDir;
-
 	PerPixelMaterialParam result = PerPixelMaterialParam_Default();
 	result.roughness = RoughnessMin;
 	result.specular = lerp(SpecularMin, SpecularMax, SRGBLuminance(paramTexSample.rgb));
-	float div = dot(diffuseDiverge, diffuseDiverge);
-	result.metal = lerp(MetalMin, MetalMax, saturate(32.f * div * div));
+
+    // float specLength = length(paramTexSample.rgb);
+	// float3 specDir = paramTexSample.rgb / specLength;
+	// float d = dot(specDir, diffuseSample.rgb);
+	// float3 diffuseDiverge = diffuseSample.rgb - d * specDir;
+	// float div = dot(diffuseDiverge, diffuseDiverge);
+	// result.metal = lerp(MetalMin, MetalMax, saturate(32.f * div * div));
+
+    float dH = RGB2HSV(diffuseSample.rgb).x;
+    float sH = RGB2HSV(paramTexSample.rgb).x;
+    float diff = abs(dH - sH);
+    if (diff > 180) diff = 360 - diff;
+    result.metal = diff / 180.f;
+    result.metal *= result.metal;
+    result.metal = lerp(MetalMin, MetalMax, result.metal);
+
 	return result;
 }
 
