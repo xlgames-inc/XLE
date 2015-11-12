@@ -35,8 +35,18 @@ namespace TextureTransform
     {
         CompiledShaderByteCode compiledByteCode(name);
         auto state = compiledByteCode.StallWhilePending();
-        if (state == ::Assets::AssetState::Invalid)
-            Throw(::Assets::Exceptions::InvalidAsset(name, "Failure while loading or compiling shader byte code"));
+        if (state == ::Assets::AssetState::Invalid) {
+            std::string errorString;
+            auto errorBlob = compiledByteCode.GetErrors();
+            if (errorBlob && !errorBlob->empty()) {
+                errorString = std::string(
+                    (const char*)AsPointer(errorBlob->begin()),
+                    (const char*)AsPointer(errorBlob->end()));
+            } else {
+                errorString = "Failure while loading or compiling shader byte code";
+            }
+            Throw(::Assets::Exceptions::InvalidAsset(name, errorString.c_str()));
+        }
         return std::move(compiledByteCode);
     }
 

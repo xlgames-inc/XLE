@@ -25,11 +25,9 @@ namespace Samples
         class PendingMarker : public ShaderService::IPendingMarker
         {
         public:
-            const Payload& Resolve(
-                const char initializer[], const ::Assets::DepValPtr& depVal) const; 
-
-            ::Assets::AssetState TryResolve(
-                Payload& result, const ::Assets::DepValPtr& depVal) const;
+            const Payload& Resolve(const char initializer[], const ::Assets::DepValPtr& depVal) const; 
+            ::Assets::AssetState TryResolve(Payload& result, const ::Assets::DepValPtr& depVal) const;
+            Payload GetErrors() const;
 
             ::Assets::AssetState StallWhilePending() const;
             ShaderStage::Enum GetStage() const;
@@ -102,6 +100,8 @@ namespace Samples
         return ::Assets::AssetState::Ready;
     }
 
+    auto MinimalShaderSource::PendingMarker::GetErrors() const -> Payload { return _errors; }
+
     ::Assets::AssetState MinimalShaderSource::PendingMarker::StallWhilePending() const 
     {
         return _payload ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
@@ -115,7 +115,7 @@ namespace Samples
     : _payload(std::move(payload)), _deps(std::move(deps)), _stage(stage)
     {}
     MinimalShaderSource::PendingMarker::PendingMarker(Payload errors)
-    : _errors(std::move(errors)) {}
+    : _errors(std::move(errors)), _stage(ShaderStage::Null) {}
     MinimalShaderSource::PendingMarker::~PendingMarker() {}
 
     auto MinimalShaderSource::Compile(

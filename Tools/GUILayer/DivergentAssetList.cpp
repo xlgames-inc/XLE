@@ -250,11 +250,10 @@ namespace GUILayer
             size_t size = file.TellP();
             file.Seek(0, SEEK_SET);
 
-            auto block = gcnew array<Byte>(int(size+1));
+            auto block = gcnew array<Byte>(int(size));
             {
                 pin_ptr<unsigned char> pinned = &block[0];
                 file.Read((uint8*)pinned, 1, size);
-                pinned[size] = '\0';
             }
             return block;
         } CATCH(const std::exception& ) {

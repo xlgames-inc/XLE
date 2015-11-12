@@ -348,6 +348,9 @@ namespace Utility
                 ++_activeLineSpaces; 
                 break;
 
+            case 0: 
+                Throw(FormatException("Unexpected null character", GetLocation()));
+
                 // throw exception when using an extended unicode whitespace character
                 // let's just stick to the ascii whitespace characters for simplicity
             case 0x0B:  // (line tabulation)

@@ -94,28 +94,25 @@ namespace TextureTransform
         }
 
             // we can now construct basic services
-        {
-            auto device = RenderCore::CreateDevice();
-            Samples::MinimalAssetServices services(device.get());
+        auto cleanup = MakeAutoCleanup([]() { TerminateFileSystemMonitoring(); });
+        auto device = RenderCore::CreateDevice();
+        Samples::MinimalAssetServices services(device.get());
             
-                // We need to think about SRGB modes... do we want to do the processing in
-                // linear or SRGB space? So we want to write out a linear or SRB texture?
-            auto shaderParameters = CreateParameterBox(doc.Element("p"));
+            // We need to think about SRGB modes... do we want to do the processing in
+            // linear or SRGB space? So we want to write out a linear or SRB texture?
+        auto shaderParameters = CreateParameterBox(doc.Element("p"));
 
-            auto resultTexture = ExecuteTransform(
-                *device, MakeStringSection(xleDir), shader, shaderParameters);
-            if (!resultTexture._pkt) {
-                LogAlwaysError << "Error while performing texture transform";
-                return;
-            }
-        
-                // save "readback" as an output texture.
-                // We will write a uncompressed format; normally a second command line
-                // tool will be used to compress the result.
-            resultTexture.SaveTIFF(outputFile.AsString().c_str());
+        auto resultTexture = ExecuteTransform(
+            *device, MakeStringSection(xleDir), shader, shaderParameters);
+        if (!resultTexture._pkt) {
+            LogAlwaysError << "Error while performing texture transform";
+            return;
         }
-
-        TerminateFileSystemMonitoring();
+        
+            // save "readback" as an output texture.
+            // We will write a uncompressed format; normally a second command line
+            // tool will be used to compress the result.
+        resultTexture.SaveTIFF(outputFile.AsString().c_str());
     }
 }
 

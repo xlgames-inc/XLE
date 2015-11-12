@@ -64,11 +64,9 @@ namespace RenderCore
         public:
             using Payload = std::shared_ptr<std::vector<uint8>>;
 
-            virtual const Payload& Resolve(
-                const char initializer[], const ::Assets::DepValPtr& depVal) const = 0; 
-
-            virtual ::Assets::AssetState TryResolve(
-                Payload& result, const ::Assets::DepValPtr& depVal) const = 0; 
+            virtual const Payload& Resolve(const char initializer[], const ::Assets::DepValPtr& depVal) const = 0; 
+            virtual ::Assets::AssetState TryResolve(Payload& result, const ::Assets::DepValPtr& depVal) const = 0; 
+            virtual Payload GetErrors() const = 0;
 
             virtual ::Assets::AssetState StallWhilePending() const = 0;
             virtual ShaderStage::Enum GetStage() const = 0;
@@ -179,6 +177,8 @@ namespace RenderCore
         
         ShaderStage::Enum   GetStage() const                { return _stage; }
         bool                DynamicLinkingEnabled() const;
+
+        std::shared_ptr<std::vector<uint8>> GetErrors() const;
 
         explicit CompiledShaderByteCode(
             const ::Assets::ResChar initializer[], 

@@ -189,6 +189,13 @@ namespace RenderCore
         return ::Assets::AssetState::Ready;
     }
 
+    std::shared_ptr<std::vector<uint8>> CompiledShaderByteCode::GetErrors() const
+    {
+        if (_compileHelper)
+            return _compileHelper->GetErrors();
+        return std::shared_ptr<std::vector<uint8>>();
+    }
+
     ::Assets::AssetState CompiledShaderByteCode::StallWhilePending() const
     {
         if (_shader)

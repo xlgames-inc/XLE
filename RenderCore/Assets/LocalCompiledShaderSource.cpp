@@ -48,13 +48,12 @@ namespace RenderCore { namespace Assets
             ::Assets::AssetState, const Payload& payload,
             const ::Assets::DependentFileState*, const ::Assets::DependentFileState*)>;
 
-        const Payload& Resolve(
-            const char initializer[],
-            const std::shared_ptr<::Assets::DependencyValidation>& depVal = nullptr) const;
+        const Payload& Resolve(const char initializer[], const std::shared_ptr<::Assets::DependencyValidation>& depVal = nullptr) const;
 
         ::Assets::AssetState TryResolve(
             Payload& result,
             const std::shared_ptr<::Assets::DependencyValidation>& depVal) const;
+        Payload GetErrors() const;
 
         ::Assets::AssetState StallWhilePending() const;
 
@@ -237,6 +236,8 @@ namespace RenderCore { namespace Assets
         result = _payload;
         return ::Assets::AssetState::Ready;
     }
+
+    auto ShaderCompileMarker::GetErrors() const -> Payload { return Payload(); }
 
     ::Assets::AssetState ShaderCompileMarker::StallWhilePending() const
     {
