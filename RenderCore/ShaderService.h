@@ -70,6 +70,8 @@ namespace RenderCore
                 const char initializer[],
                 const std::shared_ptr<::Assets::DependencyValidation>& depVal) const = 0; 
 
+            virtual ::Assets::AssetState StallWhilePending() const = 0;
+
             virtual ~IPendingMarker();
         };
 
@@ -174,6 +176,7 @@ namespace RenderCore
     public:
         std::pair<const void*, size_t>  GetByteCode() const;
         ::Assets::AssetState            TryGetByteCode(void const*& byteCode, size_t& size);
+        ::Assets::AssetState            StallWhilePending() const;
         
         ShaderStage::Enum   GetStage() const                { return _stage; }
         bool                DynamicLinkingEnabled() const;

@@ -185,6 +185,20 @@ namespace RenderCore
         return ::Assets::AssetState::Ready;
     }
 
+    ::Assets::AssetState CompiledShaderByteCode::StallWhilePending() const
+    {
+        if (_shader)
+            return ::Assets::AssetState::Ready;
+
+        if (_compileHelper) {
+            return _compileHelper->StallWhilePending();
+        } else if (_marker) {
+            return _marker->StallWhilePending();
+        }
+
+        return ::Assets::AssetState::Invalid;
+    }
+
     bool CompiledShaderByteCode::DynamicLinkingEnabled() const
     {
         if (_stage == ShaderStage::Null) return false;

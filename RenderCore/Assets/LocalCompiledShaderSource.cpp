@@ -57,6 +57,8 @@ namespace RenderCore { namespace Assets
             const char initializer[], 
             const std::shared_ptr<::Assets::DependencyValidation>& depVal) const;
 
+        ::Assets::AssetState StallWhilePending() const;
+
         const std::vector<::Assets::DependentFileState>& GetDependencies() const;
 
         void Enqueue(
@@ -233,6 +235,11 @@ namespace RenderCore { namespace Assets
 
         result = _payload;
         return ::Assets::AssetState::Ready;
+    }
+
+    ::Assets::AssetState ShaderCompileMarker::StallWhilePending() const
+    {
+        return ::Assets::PendingOperationMarker::StallWhilePending();
     }
 
         ////////////////////////////////////////////////////////////

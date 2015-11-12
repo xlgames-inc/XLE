@@ -341,16 +341,19 @@ namespace Utility
     template class Document<InputStreamFormatter<utf8>>;
     template class Document<InputStreamFormatter<ucs2>>;
     template class Document<InputStreamFormatter<ucs4>>;
+    template class Document<InputStreamFormatter<char>>;
     template class Document<XmlInputStreamFormatter<utf8>>;
 
     template class DocElementHelper<InputStreamFormatter<utf8>>;
     template class DocElementHelper<InputStreamFormatter<ucs2>>;
     template class DocElementHelper<InputStreamFormatter<ucs4>>;
+    template class DocElementHelper<InputStreamFormatter<char>>;
     template class DocElementHelper<XmlInputStreamFormatter<utf8>>;
 
     template class DocAttributeHelper<InputStreamFormatter<utf8>>;
     template class DocAttributeHelper<InputStreamFormatter<ucs2>>;
     template class DocAttributeHelper<InputStreamFormatter<ucs4>>;
+    template class DocAttributeHelper<InputStreamFormatter<char>>;
     template class DocAttributeHelper<XmlInputStreamFormatter<utf8>>;
 
 }
