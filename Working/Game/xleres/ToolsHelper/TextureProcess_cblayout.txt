@@ -1,1 +1,11 @@
-float4 Scale = {1.f,1.f,1.f,1.f}c;
+float2 RSpecularRange   = {0.0f, 1.0f};
+float2 RRoughnessRange  = {0.0f, 1.0f};
+float2 RMetalRange      = {0.0f, 1.0f};
+
+float2 GSpecularRange   = {0.0f, 1.0f};
+float2 GRoughnessRange  = {0.0f, 1.0f};
+float2 GMetalRange      = {0.0f, 1.0f};
+
+float2 BSpecularRange   = {0.0f, 1.0f};
+float2 BRoughnessRange  = {0.0f, 1.0f};
+float2 BMetalRange      = {0.0f, 1.0f};
