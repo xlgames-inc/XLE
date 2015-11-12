@@ -14,6 +14,7 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../Assets/AssetUtils.h"
+#include "../ConsoleRig/Console.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringFormat.h"
 
@@ -426,8 +427,13 @@ namespace SceneEngine
             ps = "game/xleres/deferred/debugging.psh:GenericDebugging:!ps_*";
 
         const bool useMsaaSamplers = mainTargets._desc._sampling._sampleCount > 1;
+        StringMeld<256> meld;
+        meld << useMsaaSamplers?"MSAA_SAMPLERS=1":"";
+        bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
+        meld << ";GBUFFER_TYPE=" << enableParametersBuffer?1:2;
+        
         auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*", ps, useMsaaSamplers?"MSAA_SAMPLERS=1":"");
+            "game/xleres/basic2D.vsh:fullscreen:vs_*", ps, meld.get());
 
         if (debuggingType == 2) {
             Metal::BoundClassInterfaces boundInterfaces(debuggingShader);
