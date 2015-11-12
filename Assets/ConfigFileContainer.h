@@ -80,12 +80,15 @@ namespace Assets
 
             _asset = Type(formatter, searchRules);
 
-            Services::GetInvalidAssetMan().MarkValid(initializer);
+            if (Services::GetInvalidAssetMan())
+                Services::GetInvalidAssetMan()->MarkValid(initializer);
         } CATCH (const std::exception& e) {
-            Services::GetInvalidAssetMan().MarkInvalid(initializer, e.what());
+            if (Services::GetInvalidAssetMan())
+                Services::GetInvalidAssetMan()->MarkInvalid(initializer, e.what());
             throw;
         } CATCH(...) {
-            Services::GetInvalidAssetMan().MarkInvalid(initializer, "Unknown error");
+            if (Services::GetInvalidAssetMan())
+                Services::GetInvalidAssetMan()->MarkInvalid(initializer, "Unknown error");
             throw;
         } CATCH_END
 
@@ -185,12 +188,15 @@ namespace Assets
             // if (!gotConfig)
             //     Throw(::Exceptions::BasicLabel(StringMeld<256>() << "Configuration setting (" << initializer << ") is missing"));
 
-            Services::GetInvalidAssetMan().MarkValid(initializer);
+            if (Services::GetInvalidAssetMan())
+                Services::GetInvalidAssetMan()->MarkValid(initializer);
         } CATCH (const std::exception& e) {
-            Services::GetInvalidAssetMan().MarkInvalid(initializer, e.what());
+            if (Services::GetInvalidAssetMan())
+                Services::GetInvalidAssetMan()->MarkInvalid(initializer, e.what());
             throw;
         } CATCH(...) {
-            Services::GetInvalidAssetMan().MarkInvalid(initializer, "Unknown error");
+            if (Services::GetInvalidAssetMan())
+                Services::GetInvalidAssetMan()->MarkInvalid(initializer, "Unknown error");
             throw;
         } CATCH_END
 

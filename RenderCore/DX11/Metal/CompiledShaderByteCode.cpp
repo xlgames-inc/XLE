@@ -54,8 +54,8 @@ namespace RenderCore { namespace Metal_DX11
             /*out*/ Payload& errors,
             /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
             const void* sourceCode, size_t sourceCodeLength,
-            ShaderService::ResId& shaderPath,
-            const ::Assets::rstring& definesTable) const;
+            const ShaderService::ResId& shaderPath,
+            const ::Assets::ResChar definesTable[]) const;
 
         virtual std::string MakeShaderMetricsString(
             const void* byteCode, size_t byteCodeSize) const;
@@ -80,10 +80,14 @@ namespace RenderCore { namespace Metal_DX11
         D3DShaderCompiler();
         ~D3DShaderCompiler();
 
+        static D3DShaderCompiler& GetInstance() { return *s_instance; }
+
     protected:
         mutable Threading::Mutex _moduleLock;
         mutable HMODULE _module;
         HMODULE GetShaderCompileModule() const;
+
+        static D3DShaderCompiler* s_instance;
     };
 
         ////////////////////////////////////////////////////////////
@@ -309,12 +313,14 @@ namespace RenderCore { namespace Metal_DX11
 
         static void RegisterInvalidAsset(const ::Assets::ResChar assetName[], const std::basic_string<::Assets::ResChar>& errorString)
         {
-            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(assetName, errorString);
+            if (::Assets::Services::GetInvalidAssetMan())
+                ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(assetName, errorString);
         }
 
         static void RegisterValidAsset(const ::Assets::ResChar assetName[])
         {
-            ::Assets::Services::GetInvalidAssetMan().MarkValid(assetName);
+            if (::Assets::Services::GetInvalidAssetMan())
+                ::Assets::Services::GetInvalidAssetMan()->MarkValid(assetName);
         }
 
     #else
@@ -366,8 +372,8 @@ namespace RenderCore { namespace Metal_DX11
         /*out*/ std::shared_ptr<std::vector<uint8>>& errors,
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
-        ShaderService::ResId& shaderPath,
-        const ::Assets::rstring& definesTable) const
+        const ShaderService::ResId& shaderPath,
+        const ::Assets::ResChar definesTable[]) const
     {
             // This is called (typically in a background thread)
             // after the shader data has been loaded from disk.
@@ -377,7 +383,7 @@ namespace RenderCore { namespace Metal_DX11
         ID3DBlob* codeResult = nullptr, *errorResult = nullptr;
 
         std::string definesCopy;
-        auto arrayOfDefines = MakeDefinesTable(definesTable.c_str(), shaderPath._shaderModel, definesCopy);
+        auto arrayOfDefines = MakeDefinesTable(definesTable, shaderPath._shaderModel, definesCopy);
 
         ::Assets::ResChar directoryName[MaxPath];
         XlDirname(directoryName, dimof(directoryName), shaderPath._filename);
@@ -556,13 +562,21 @@ namespace RenderCore { namespace Metal_DX11
         return str.str();
     }
 
+    D3DShaderCompiler* D3DShaderCompiler::s_instance = nullptr;
+
     D3DShaderCompiler::D3DShaderCompiler() 
     {
         _module = (HMODULE)INVALID_HANDLE_VALUE;
+
+        assert(s_instance == nullptr);
+        s_instance = this;
     }
 
     D3DShaderCompiler::~D3DShaderCompiler()
     {
+        assert(s_instance == this);
+        s_instance = nullptr;
+
             // note --  we have to be careful when unloading this DLL!
             //          We may have created ID3D11Reflection objects using
             //          this dll. If any of them are still alive when we unload
@@ -576,22 +590,20 @@ namespace RenderCore { namespace Metal_DX11
         }
     }
 
-    intrusive_ptr<ID3D::ShaderReflection>  CreateReflection(const CompiledShaderByteCode& shaderCode)
+    intrusive_ptr<ID3D::ShaderReflection> CreateReflection(const CompiledShaderByteCode& shaderCode)
     {
         auto stage = shaderCode.GetStage();
         if (stage == ShaderStage::Null)
             return intrusive_ptr<ID3D::ShaderReflection>();
 
-            // awkward --   here we need to upcast to a d3d compiler in order to
-            //              get access to the "D3DReflect_Wrapper" function.
-            //              this is now the only part of the "CompiledShaderByteCode" that is platform specific
-        auto* compiler = checked_cast<const D3DShaderCompiler*>(
-            &ShaderService::GetInstance().GetLowLevelCompiler());
+            // awkward -- we have to use a singleton pattern to get access to the compiler here...
+            //          Otherwise, we could potentially have multiple instances of D3DShaderCompiler.
+        auto& compiler = D3DShaderCompiler::GetInstance();
 
         auto byteCode = shaderCode.GetByteCode();
 
         ID3D::ShaderReflection* reflectionTemp = nullptr;
-        HRESULT hresult = compiler->D3DReflect_Wrapper(byteCode.first, byteCode.second, s_shaderReflectionInterfaceGuid, (void**)&reflectionTemp);
+        HRESULT hresult = compiler.D3DReflect_Wrapper(byteCode.first, byteCode.second, s_shaderReflectionInterfaceGuid, (void**)&reflectionTemp);
         if (!SUCCEEDED(hresult) || !reflectionTemp)
             Throw(::Assets::Exceptions::InvalidAsset(
                 shaderCode.Initializer(), "Error while invoking low-level shader reflection"));

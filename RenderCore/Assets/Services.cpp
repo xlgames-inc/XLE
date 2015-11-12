@@ -23,9 +23,9 @@ namespace RenderCore { namespace Assets
     Services::Services(RenderCore::IDevice* device)
     {
         _shaderService = std::make_unique<ShaderService>();
-        _shaderService->SetLowLevelCompiler(Metal::CreateLowLevelShaderCompiler());
 
-        auto shaderSource = std::make_shared<LocalCompiledShaderSource>();
+        auto shaderSource = std::make_shared<LocalCompiledShaderSource>(
+            Metal::CreateLowLevelShaderCompiler());
         _shaderService->AddShaderSource(shaderSource);
 
         auto& asyncMan = ::Assets::Services::GetAsyncMan();

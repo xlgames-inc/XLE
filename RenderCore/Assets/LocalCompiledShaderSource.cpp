@@ -54,7 +54,6 @@ namespace RenderCore { namespace Assets
 
         ::Assets::AssetState TryResolve(
             Payload& result,
-            const char initializer[], 
             const std::shared_ptr<::Assets::DependencyValidation>& depVal) const;
 
         ::Assets::AssetState StallWhilePending() const;
@@ -69,7 +68,9 @@ namespace RenderCore { namespace Assets
             const char shaderInMemory[], const char entryPoint[], 
             const char shaderModel[], const ResChar definesTable[]);
 
-        ShaderCompileMarker();
+        ShaderStage::Enum GetStage() const { return _shaderPath.AsShaderStage(); }
+
+        ShaderCompileMarker(std::shared_ptr<ShaderService::ILowLevelCompiler>);
         ~ShaderCompileMarker();
 
         ShaderCompileMarker(ShaderCompileMarker&) = delete;
@@ -81,6 +82,7 @@ namespace RenderCore { namespace Assets
         Payload _payload;
         std::vector<::Assets::DependentFileState> _deps;
         ::Assets::rstring _definesTable;
+        std::shared_ptr<ShaderService::ILowLevelCompiler> _compiler;
 
         ChainFn _chain;
         ResId _shaderPath;
@@ -134,7 +136,7 @@ namespace RenderCore { namespace Assets
 
         _shaderPath = ResId(
             StringMeld<64>() << "ShaderInMemory_" << Hash64(shaderInMemory, &shaderInMemory[shaderBufferSize]), 
-            entryPoint, shaderModel);;
+            entryPoint, shaderModel);
         if (definesTable) _definesTable = definesTable;
         _chain = nullptr;
 
@@ -155,7 +157,8 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    ShaderCompileMarker::ShaderCompileMarker() {}
+    ShaderCompileMarker::ShaderCompileMarker(std::shared_ptr<ShaderService::ILowLevelCompiler> compiler)
+    : _compiler(compiler) {}
     ShaderCompileMarker::~ShaderCompileMarker() {}
 
     static bool CancelAllShaderCompiles = false;
@@ -172,11 +175,10 @@ namespace RenderCore { namespace Assets
         _payload.reset();
         _deps.clear();
 
-        auto& compiler = ShaderService::GetInstance().GetLowLevelCompiler();
-        auto success = compiler.DoLowLevelCompile(
+        auto success = _compiler->DoLowLevelCompile(
             _payload, errors, _deps,
             buffer, bufferSize, _shaderPath,
-            _definesTable);
+            _definesTable.c_str());
 
             // before we can finish the "complete" step, we need to commit
             // to archive output
@@ -215,14 +217,13 @@ namespace RenderCore { namespace Assets
 
         if (depVal)
             for (const auto& i:_deps)
-                RegisterFileDependency(depVal, i._filename.c_str());
+                RegisterFileDependency(depVal, MakeStringSection(i._filename));
 
         return _payload;
     }
 
     auto ShaderCompileMarker::TryResolve(
         Payload& result,
-        const char initializer[], 
         const std::shared_ptr<::Assets::DependencyValidation>& depVal) const -> ::Assets::AssetState
     {
         auto state = GetState();
@@ -231,7 +232,7 @@ namespace RenderCore { namespace Assets
 
         if (depVal)
             for (const auto& i:_deps)
-                RegisterFileDependency(depVal, i._filename.c_str());
+                RegisterFileDependency(depVal, MakeStringSection(i._filename));
 
         result = _payload;
         return ::Assets::AssetState::Ready;
@@ -436,7 +437,7 @@ namespace RenderCore { namespace Assets
             return nullptr; // can't start a new compile now. Probably we're shutting down
         }
 
-        auto shaderId = ShaderService::GetInstance().MakeResId(initializers[0]);
+        auto shaderId = ShaderService::MakeResId(initializers[0], *_compiler);
 
         char archiveName[MaxPath];
         _snprintf_s(archiveName, _TRUNCATE, "%s-%s", shaderId._filename, shaderId._shaderModel);
@@ -491,7 +492,7 @@ namespace RenderCore { namespace Assets
                 using Payload = ShaderCompileMarker::Payload;
 
                 std::string depNameAsString = depName;
-                auto compileHelper = std::make_shared<ShaderCompileMarker>();
+                auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler);
 
                 Interlocked::Increment(&_activeCompileCount);
                 {
@@ -513,7 +514,7 @@ namespace RenderCore { namespace Assets
 
                             #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
                                 auto metricsString = 
-                                    ShaderService::GetInstance().GetLowLevelCompiler().MakeShaderMetricsString(
+                                    _compiler->MakeShaderMetricsString(
                                         AsPointer(payload->cbegin()), payload->size());
                             #endif
 
@@ -565,10 +566,11 @@ namespace RenderCore { namespace Assets
     }
 
     auto LocalCompiledShaderSource::CompileFromFile(
-        const ResId& resId, 
+        const ::Assets::ResChar resource[], 
         const ResChar definesTable[]) const -> std::shared_ptr<IPendingMarker>
     {
-        auto compileHelper = std::make_shared<ShaderCompileMarker>();
+        auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler);
+        auto resId = ShaderService::MakeResId(resource, *_compiler);
         compileHelper->Enqueue(resId, definesTable, nullptr);
         return compileHelper;
     }
@@ -577,7 +579,7 @@ namespace RenderCore { namespace Assets
         const char shaderInMemory[], const char entryPoint[], 
         const char shaderModel[], const ResChar definesTable[]) const -> std::shared_ptr<IPendingMarker>
     {
-        auto compileHelper = std::make_shared<ShaderCompileMarker>();
+        auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler);
         compileHelper->Enqueue(shaderInMemory, entryPoint, shaderModel, definesTable); 
         return compileHelper;
     }
@@ -594,7 +596,8 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    LocalCompiledShaderSource::LocalCompiledShaderSource()
+    LocalCompiledShaderSource::LocalCompiledShaderSource(std::shared_ptr<ShaderService::ILowLevelCompiler> compiler)
+    : _compiler(std::move(compiler))
     {
         CancelAllShaderCompiles = false;
         _shaderCacheSet = std::make_unique<ShaderCacheSet>();

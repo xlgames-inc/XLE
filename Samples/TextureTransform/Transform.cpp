@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "MinimalAssetServices.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/ShaderService.h"
@@ -23,7 +24,7 @@
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Conversion.h"
 
-#include "../../RenderCore/DX11/Metal/DX11Utils.h"
+#include "../../Core/WinAPI/IncludeWindows.h"
 #include "../../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
 
 namespace TextureTransform
@@ -39,6 +40,54 @@ namespace TextureTransform
         return std::move(compiledByteCode);
     }
 
+    class InputResource
+    {
+    public:
+        Metal::ShaderResourceView _srv;
+        intrusive_ptr<BufferUploads::ResourceLocator> _resLocator;
+        BufferUploads::TextureDesc _desc;
+        Metal::NativeFormat::Enum _finalFormat;
+
+        InputResource(const ::Assets::ResChar initializer[]);
+        ~InputResource();
+    private:
+        enum class SourceColorSpace { SRGB, Linear, Unspecified };
+    };
+
+    InputResource::InputResource(const ::Assets::ResChar initializer[])
+    {
+        auto splitter = MakeFileNameSplitter(initializer);
+
+        SourceColorSpace colSpace = SourceColorSpace::Unspecified;
+        for (auto c:splitter.Parameters()) {
+            if (c == 'l' || c == 'L') { colSpace = SourceColorSpace::Linear; }
+            if (c == 's' || c == 'S') { colSpace = SourceColorSpace::SRGB; }
+        }
+
+        if (colSpace == SourceColorSpace::Unspecified)
+            colSpace = XlFindStringI(initializer, "_ddn") ? SourceColorSpace::Linear : SourceColorSpace::SRGB;
+        
+        using namespace BufferUploads;
+        auto& uploads = Samples::MinimalAssetServices::GetBufferUploads();
+        auto inputPacket = CreateStreamingTextureSource(splitter.AllExceptParameters());
+        _resLocator = uploads.Transaction_Immediate(
+            CreateDesc(
+                BindFlag::ShaderResource,
+                0, GPUAccess::Read,
+                TextureDesc::Empty(), "TextureProcessInput"),
+            inputPacket.get());
+
+        _desc = ExtractDesc(*_resLocator->GetUnderlying())._textureDesc;
+
+        auto format = (Metal::NativeFormat::Enum)_desc._nativePixelFormat;
+        if (colSpace == SourceColorSpace::SRGB) format = Metal::AsSRGBFormat(format);
+        else if (colSpace == SourceColorSpace::Linear) format = Metal::AsLinearFormat(format);
+        _srv = Metal::ShaderResourceView(_resLocator->GetUnderlying(), format);
+        _finalFormat = format;
+    }
+
+    InputResource::~InputResource(){}
+
     static Metal::NativeFormat::Enum AsRTFormat(Metal::NativeFormat::Enum input)
     {
         // Convert the input format into a format that we can write to.
@@ -50,12 +99,12 @@ namespace TextureTransform
                 Metal::FormatCompressionType::None,
                 Metal::GetComponents(input),
                 Metal::GetComponentType(input),
-                Metal::GetComponentPrecision(input));
+                Metal::GetDecompressedComponentPrecision(input));
         }
         return input;
     }
 
-    static ::Assets::rstring GetCBLayout(const ::Assets::ResChar input[])
+    static ::Assets::rstring GetCBLayoutName(const ::Assets::ResChar input[])
     {
         auto splitter = MakeFileNameSplitter(input);
         return splitter.DriveAndPath().AsString()
@@ -75,27 +124,27 @@ namespace TextureTransform
 
     TextureResult ExecuteTransform(
         IDevice& device,
-        BufferUploads::IManager& uploads,
-        BufferUploads::ResourceLocator& source,
-        StringSection<char> shader,
+        StringSection<char> sourceName,
+        StringSection<char> shaderName,
         const ParameterBox& shaderParameters)
     {
         using namespace BufferUploads;
 
-        auto psShaderName = shader.AsString();
+        auto psShaderName = shaderName.AsString();
         if (!XlFindStringI(psShaderName.c_str(), "ps_"))
             psShaderName += ":" PS_DefShaderModel;
 
         auto psByteCode = LoadShaderImmediate(psShaderName.c_str());
-        auto vsByteCode = LoadShaderImmediate("game/xleres/basic2D.vsh:fullscreen:" VS_DefShaderModel);
+        auto vsByteCode = LoadShaderImmediate("E:/XLE/Working/game/xleres/basic2D.vsh:fullscreen:" VS_DefShaderModel);
 
-        const auto& cbLayout = ::Assets::GetAsset<Techniques::PredefinedCBLayout>(
-            GetCBLayout(psShaderName.c_str()).c_str());
-        Metal::TextureDesc2D textureDesc(source.GetUnderlying());
-        auto rtFormat = AsRTFormat(Metal::AsNativeFormat(textureDesc.Format));
+        InputResource inputRes(sourceName.AsString().c_str());
 
-        UInt2 viewDims(textureDesc.Width, textureDesc.Height);
+        Techniques::PredefinedCBLayout cbLayout(GetCBLayoutName(psShaderName.c_str()).c_str());
+        auto rtFormat = AsRTFormat(inputRes._finalFormat);
 
+        UInt2 viewDims(inputRes._desc._width, inputRes._desc._height);
+
+        auto& uploads = Samples::MinimalAssetServices::GetBufferUploads();
         auto dstTexture = uploads.Transaction_Immediate(
             CreateDesc(
                 BindFlag::RenderTarget,
@@ -109,21 +158,21 @@ namespace TextureTransform
         metalContext->Bind(MakeResourceList(rtv), nullptr);
 
         auto& commonRes = Techniques::CommonResources();
-        metalContext->Bind(commonRes._defaultRasterizer);
+        metalContext->Bind(commonRes._cullDisable);
         metalContext->Bind(commonRes._blendOpaque);
+        metalContext->Bind(commonRes._dssDisable);
         metalContext->BindPS(MakeResourceList(commonRes._defaultSampler));
         
         Metal::ShaderProgram shaderProg(vsByteCode, psByteCode);
         Metal::BoundUniforms uniforms(shaderProg);
         uniforms.BindConstantBuffers(1, {"Material"});
-        uniforms.BindShaderResources(1, {"Input"});
+        uniforms.BindShaderResources(1, {"DiffuseTexture"});
 
-        Metal::ShaderResourceView inputSRV(source.GetUnderlying());
         uniforms.Apply(
             *metalContext, Metal::UniformsStream(),
             Metal::UniformsStream(
                 { cbLayout.BuildCBDataAsPkt(shaderParameters) },
-                { &inputSRV }));
+                { &inputRes._srv }));
         metalContext->Bind(shaderProg);
 
         metalContext->Bind(Metal::Topology::TriangleStrip);

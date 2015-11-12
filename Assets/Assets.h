@@ -521,7 +521,7 @@ namespace Assets
     /// <param name="filename">Normally formatted filename</param>
     void RegisterFileDependency(
         const std::shared_ptr<Utility::OnChangeCallback>& validationIndex, 
-        const ResChar filename[]);
+        StringSection<ResChar> filename);
 
     /// <summary>Registers a dependency on another resource</summary>
     /// Sometimes resources are dependent on other resources. This function helps registers a 

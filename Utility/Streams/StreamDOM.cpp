@@ -334,7 +334,7 @@ namespace Utility
     {}
 
     template<typename Formatter>
-        DocAttributeHelper<Formatter>::DocAttributeHelper() {}
+        DocAttributeHelper<Formatter>::DocAttributeHelper() : _doc(nullptr), _index(~0u) {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

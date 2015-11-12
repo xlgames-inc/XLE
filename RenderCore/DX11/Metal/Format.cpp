@@ -144,6 +144,23 @@ namespace RenderCore { namespace Metal_DX11
         return BitsPerPixel(format) / GetComponentCount(GetComponents(format));
     }
 
+    unsigned    GetDecompressedComponentPrecision(NativeFormat::Enum format)
+    {
+        FormatPrefix::Enum prefix = GetPrefix(format);
+        using namespace FormatPrefix;
+        switch (prefix) {
+        case BC1:
+        case BC2:
+        case BC3:
+        case BC4:
+        case BC5:   return 8;
+        case BC6H:  return 16;
+        case BC7:   return 8;   // (can be used for higher precision data)
+        default:
+            return GetComponentPrecision(format);
+        }
+    }
+
     unsigned    GetComponentCount(FormatComponents::Enum components)
     {
         using namespace FormatComponents;
@@ -181,6 +198,9 @@ namespace RenderCore { namespace Metal_DX11
             /**/
             #include "../../Metal/Detail/DXGICompatibleFormats.h"
         #undef _EXP
+
+        if (components == FormatComponents::RGB)
+            return FindFormat(compression, FormatComponents::RGBAlpha, componentType, precision);
 
         return NativeFormat::Unknown;
     }

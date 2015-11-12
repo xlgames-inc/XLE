@@ -681,17 +681,19 @@ namespace GUILayer
         _assetList = gcnew List<Tuple<String^, String^>^>();
 
             // get the list of assets from the underlying manager
-        auto list = ::Assets::Services::GetInvalidAssetMan().GetAssets();
-        for (const auto& i : list) {
-            _assetList->Add(gcnew Tuple<String^, String^>(
-                clix::marshalString<clix::E_UTF8>(i._name),
-                clix::marshalString<clix::E_UTF8>(i._errorString)));
+        if (::Assets::Services::GetInvalidAssetMan()) {
+            auto list = ::Assets::Services::GetInvalidAssetMan()->GetAssets();
+            for (const auto& i : list) {
+                _assetList->Add(gcnew Tuple<String^, String^>(
+                    clix::marshalString<clix::E_UTF8>(i._name),
+                    clix::marshalString<clix::E_UTF8>(i._errorString)));
+            }
         }
     }
 
     bool InvalidAssetList::HasInvalidAssets()
     {
-        return ::Assets::Services::GetInvalidAssetMan().HasInvalidAssets();
+        return ::Assets::Services::GetInvalidAssetMan() ? ::Assets::Services::GetInvalidAssetMan()->HasInvalidAssets() : false;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

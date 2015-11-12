@@ -7,6 +7,7 @@
 #pragma once
 
 #include <memory>
+#include <assert.h>
 
 namespace Assets
 {
@@ -19,9 +20,9 @@ namespace Assets
     public:
         static AssetSetManager& GetAssetSets() { return *GetInstance()._assetSets; }
         static CompileAndAsyncManager& GetAsyncMan() { return *GetInstance()._asyncMan; }
-        static InvalidAssetManager& GetInvalidAssetMan() { return *GetInstance()._invalidAssetMan; }
+        static InvalidAssetManager* GetInvalidAssetMan() { return s_instance?s_instance->_invalidAssetMan.get():nullptr; }
 
-        static Services& GetInstance() { return *s_instance; }
+        static Services& GetInstance() { assert(s_instance); return *s_instance; }
 
         struct Flags 
         {
@@ -29,7 +30,7 @@ namespace Assets
             typedef unsigned BitField;
         };
 
-        Services(Flags::BitField flags);
+        Services(Flags::BitField flags=0);
         ~Services();
 
         void AttachCurrentModule();

@@ -4,12 +4,14 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "MinimalAssetServices.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../BufferUploads/DataPacket.h"
 #include "../../BufferUploads/ResourceLocator.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
+#include "../../Assets/AssetServices.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
@@ -31,8 +33,7 @@ namespace TextureTransform
 
     TextureResult ExecuteTransform(
         RenderCore::IDevice& device,
-        BufferUploads::IManager& bufferUploads,
-        BufferUploads::ResourceLocator& source,
+        StringSection<char> sourceName,
         StringSection<char> shader,
         const ParameterBox& shaderParameters);
 
@@ -70,49 +71,37 @@ namespace TextureTransform
             return;
         }
 
-            // Attach the buffer uploads DLL
-        BufferUploads::AttachLibrary(ConsoleRig::GlobalServices::GetInstance());
-        auto cleanup = MakeAutoCleanup([](){ BufferUploads::DetachLibrary(); });
-
-            // we can now construct the render device & buffer uploads manager
-        auto device = RenderCore::CreateDevice();
-        auto bufferUploads = BufferUploads::CreateManager(device.get());
-        
-            // construct 
-        auto inputPacket = CreateStreamingTextureSource(inputFile.begin(), inputFile.end());
-        auto inputTexture = bufferUploads->Transaction_Immediate(
-            CreateDesc(
-                BindFlag::ShaderResource,
-                0, GPUAccess::Read,
-                TextureDesc::Empty(), "TextureProcessInput"),
-            inputPacket.get());
-
-        if (!inputTexture) {
-            LogAlwaysError << "Could not load input texture: (" << inputFile.AsString().c_str() << ")";
-            return;
-        }
+            // we can now construct basic services
+        {
+            auto device = RenderCore::CreateDevice();
+            Samples::MinimalAssetServices services(device.get());
             
-            // We need to think about SRGB modes... do we want to do the processing in
-            // linear or SRGB space? So we want to write out a linear or SRB texture?
-        auto shaderParameters = CreateParameterBox(doc.Element("p"));
+                // We need to think about SRGB modes... do we want to do the processing in
+                // linear or SRGB space? So we want to write out a linear or SRB texture?
+            auto shaderParameters = CreateParameterBox(doc.Element("p"));
 
-        auto resultTexture = ExecuteTransform(
-            *device, *bufferUploads, *inputTexture, shader, shaderParameters);
-        if (resultTexture._pkt) {
-            LogAlwaysError << "Error while performing texture transform";
-            return;
-        }
+            auto resultTexture = ExecuteTransform(
+                *device, inputFile, shader, shaderParameters);
+            if (!resultTexture._pkt) {
+                LogAlwaysError << "Error while performing texture transform";
+                return;
+            }
         
-            // save "readback" as an output texture.
-            // We will write a uncompressed format; normally a second command line
-            // tool will be used to compress the result.
-        resultTexture.SaveTIFF(outputFile.AsString().c_str());
+                // save "readback" as an output texture.
+                // We will write a uncompressed format; normally a second command line
+                // tool will be used to compress the result.
+            resultTexture.SaveTIFF(outputFile.AsString().c_str());
+        }
+
+        TerminateFileSystemMonitoring();
     }
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow)
 {
-    ConsoleRig::GlobalServices services("texturetransform");
+    ConsoleRig::StartupConfig cfg("texturetransform");
+    cfg._setWorkingDir = false;
+    ConsoleRig::GlobalServices services(cfg);
 
     TRY {
         TextureTransform::Execute(lpCmdLine);

@@ -10,6 +10,7 @@
 #include "../Assets/AssetUtils.h"                   // for ::Assets::PendingOperationMarker
 #include "../Utility/Threading/ThreadingUtils.h"    // for RefCountedObject
 #include "../Utility/MemoryUtils.h"
+#include "../Utility/StringUtils.h"                 // for StringSection
 
 namespace BufferUploads
 {
@@ -91,10 +92,9 @@ namespace BufferUploads
         typedef unsigned BitField;
     }
     buffer_upload_dll_export intrusive_ptr<DataPacket> CreateStreamingTextureSource(
-        const ::Assets::ResChar filename[], const ::Assets::ResChar filenameEnd[],
-        TextureLoadFlags::BitField flags = 0);
+        StringSection<::Assets::ResChar> filename, TextureLoadFlags::BitField flags = 0);
 
-    buffer_upload_dll_export TextureDesc LoadTextureFormat(const ::Assets::ResChar filename[], const ::Assets::ResChar filenameEnd[]);
+    buffer_upload_dll_export TextureDesc LoadTextureFormat(StringSection<::Assets::ResChar> filename);
 
     inline TexturePitches::TexturePitches(unsigned rowPitch, unsigned slicePitch)
     : _rowPitch(rowPitch), _slicePitch(slicePitch) {}

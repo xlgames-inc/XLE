@@ -12,6 +12,7 @@
 #include <memory>
 #include <vector>
 #include <utility>
+#include <assert.h>
 
 namespace Assets { class DependencyValidation; class DependentFileState; class PendingCompileMarker; }
 
@@ -44,6 +45,8 @@ namespace RenderCore
             ResId(const ResChar filename[], const ResChar entryPoint[], const ResChar shaderModel[]);
             ResId();
 
+            ShaderStage::Enum AsShaderStage() const;
+
         protected:
             ResId(const ResChar initializer[]);
         };
@@ -62,15 +65,13 @@ namespace RenderCore
             using Payload = std::shared_ptr<std::vector<uint8>>;
 
             virtual const Payload& Resolve(
-                const char initializer[],
-                const std::shared_ptr<::Assets::DependencyValidation>& depVal) const = 0; 
+                const char initializer[], const ::Assets::DepValPtr& depVal) const = 0; 
 
             virtual ::Assets::AssetState TryResolve(
-                Payload& result,
-                const char initializer[],
-                const std::shared_ptr<::Assets::DependencyValidation>& depVal) const = 0; 
+                Payload& result, const ::Assets::DepValPtr& depVal) const = 0; 
 
             virtual ::Assets::AssetState StallWhilePending() const = 0;
+            virtual ShaderStage::Enum GetStage() const = 0;
 
             virtual ~IPendingMarker();
         };
@@ -79,7 +80,7 @@ namespace RenderCore
         {
         public:
             virtual std::shared_ptr<IPendingMarker> CompileFromFile(
-                const ResId& resId, 
+                const ::Assets::ResChar resId[], 
                 const ::Assets::ResChar definesTable[]) const = 0;
             
             virtual std::shared_ptr<IPendingMarker> CompileFromMemory(
@@ -104,8 +105,8 @@ namespace RenderCore
                 /*out*/ Payload& errors,
                 /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
                 const void* sourceCode, size_t sourceCodeLength,
-                ResId& shaderPath,
-                const ::Assets::rstring& definesTable) const = 0;
+                const ResId& shaderPath,
+                const ::Assets::ResChar definesTable[]) const = 0;
 
             virtual std::string MakeShaderMetricsString(
                 const void* byteCode, size_t byteCodeSize) const = 0;
@@ -114,7 +115,7 @@ namespace RenderCore
         };
 
         std::shared_ptr<IPendingMarker> CompileFromFile(
-            const ResId& resId, 
+            const ::Assets::ResChar resId[], 
             const ::Assets::ResChar definesTable[]) const;
 
         std::shared_ptr<IPendingMarker> CompileFromMemory(
@@ -122,14 +123,13 @@ namespace RenderCore
             const char entryPoint[], const char shaderModel[], 
             const ::Assets::ResChar definesTable[]) const;
 
-        const ILowLevelCompiler& GetLowLevelCompiler() const { return *_compiler; }
-
         void AddShaderSource(std::shared_ptr<IShaderSource> shaderSource);
-        void SetLowLevelCompiler(std::shared_ptr<ILowLevelCompiler> compiler);
 
-        ResId MakeResId(const char initializer[]);
+        static ResId MakeResId(
+            const ::Assets::ResChar initializer[], 
+            ILowLevelCompiler& compiler);
 
-        static ShaderService& GetInstance() { return *s_instance; }
+        static ShaderService& GetInstance() { assert(s_instance); return *s_instance; }
         static void SetInstance(ShaderService*);
 
         ShaderService();
@@ -138,7 +138,6 @@ namespace RenderCore
     protected:
         static ShaderService* s_instance;
         std::vector<std::shared_ptr<IShaderSource>> _shaderSources;
-        std::shared_ptr<ILowLevelCompiler> _compiler;
     };
 
     /// <summary>Represents a chunk of compiled shader code</summary>

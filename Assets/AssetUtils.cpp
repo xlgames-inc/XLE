@@ -125,10 +125,10 @@ namespace Assets
 
     void RegisterFileDependency(
         const std::shared_ptr<Utility::OnChangeCallback>& validationIndex, 
-        const ResChar filename[])
+        StringSection<ResChar> filename)
     {
             // try to prevent unoptimisated path names from getting here!
-        assert(!XlFindString(filename, "../") && !XlFindString(filename, "./"));
+        // assert(!XlFindString(filename, "../") && !XlFindString(filename, "./"));
 
         ResChar directoryName[MaxPath];
         FileNameSplitter<ResChar> splitter(filename);

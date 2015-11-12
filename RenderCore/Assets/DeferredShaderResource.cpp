@@ -86,8 +86,7 @@ namespace RenderCore { namespace Assets
     class DecodedInitializer
     {
     public:
-        const ResChar*      _filenameStart;
-        const ResChar*      _filenameEnd;
+        FileNameSplitter<ResChar> _splitter;
 
         SourceColorSpace    _colSpaceRequestString;
         SourceColorSpace    _colSpaceDefault;
@@ -97,20 +96,17 @@ namespace RenderCore { namespace Assets
     };
 
     DecodedInitializer::DecodedInitializer(const ResChar initializer[])
+    : _splitter(initializer)
     {
         _generateMipmaps = true;
         _colSpaceRequestString = SourceColorSpace::Unspecified;
         _colSpaceDefault = SourceColorSpace::Unspecified;
 
-        auto* colon = XlFindCharReverse(initializer, ':');
-        if (colon) {
-            for (auto* c = colon + 1; *c; ++c) {
-                if (*c == 'l' || *c == 'L') { _colSpaceRequestString = SourceColorSpace::Linear; }
-                if (*c == 's' || *c == 'S') { _colSpaceRequestString = SourceColorSpace::SRGB; }
-                if (*c == 't' || *c == 'T') { _generateMipmaps = false; }
-            }
-        } else
-            colon = XlStringEnd(initializer);
+        for (auto c:_splitter.Parameters()) {
+            if (c == 'l' || c == 'L') { _colSpaceRequestString = SourceColorSpace::Linear; }
+            if (c == 's' || c == 'S') { _colSpaceRequestString = SourceColorSpace::SRGB; }
+            if (c == 't' || c == 'T') { _generateMipmaps = false; }
+        }
 
         if (_colSpaceRequestString == SourceColorSpace::Unspecified) {
             if (XlFindStringI(initializer, "_ddn")) {
@@ -119,9 +115,6 @@ namespace RenderCore { namespace Assets
                 _colSpaceDefault = SourceColorSpace::SRGB;
             }
         }
-
-        _filenameStart = initializer;
-        _filenameEnd = colon;
     }
 
     DeferredShaderResource::DeferredShaderResource(const ResChar initializer[])
@@ -153,9 +146,8 @@ namespace RenderCore { namespace Assets
                 // trigger a load of the metadata file (which should proceed in the background)
             
             ::Assets::ResChar filename[MaxPath];
-            XlCopyNString(filename, dimof(filename), 
-                init._filenameStart, init._filenameEnd - init._filenameStart);
-            XlCatString(filename, dimof(filename), ".metadata");
+            XlCopyString(filename, init._splitter.AllExceptParameters());
+            XlCatString(filename, ".metadata");
             RegisterFileDependency(_validationCallback, filename);
 
             _pimpl->_metadataMarker = std::make_shared<MetadataLoadMarker>();
@@ -164,7 +156,7 @@ namespace RenderCore { namespace Assets
 
         using namespace BufferUploads;
         TextureLoadFlags::BitField flags = init._generateMipmaps ? TextureLoadFlags::GenerateMipmaps : 0;
-        auto pkt = CreateStreamingTextureSource(init._filenameStart, init._filenameEnd, flags);
+        auto pkt = CreateStreamingTextureSource(init._splitter.AllExceptParameters(), flags);
         _pimpl->_transaction = Services::GetBufferUploads().Transaction_Begin(
             CreateDesc(
                 BindFlag::ShaderResource,
@@ -279,8 +271,8 @@ namespace RenderCore { namespace Assets
             if (finalColSpace == SourceColorSpace::Unspecified) {
                     // need to load the metadata file to get SRGB settings!
                 ::Assets::ResChar metadataFile[MaxPath];
-                XlCopyNString(metadataFile, dimof(metadataFile), init._filenameStart, init._filenameEnd - init._filenameStart);
-                XlCatString(metadataFile, dimof(metadataFile), ".metadata");
+                XlCopyString(metadataFile, init._splitter.AllExceptParameters());
+                XlCatString(metadataFile, ".metadata");
 
                 size_t filesize = 0;
                 auto rawFile = LoadFileAsMemoryBlock(metadataFile, &filesize);
@@ -300,7 +292,7 @@ namespace RenderCore { namespace Assets
     Metal::NativeFormat::Enum DeferredShaderResource::LoadFormat(const ::Assets::ResChar initializer[])
     {
         DecodedInitializer init(initializer);
-        auto result = (Metal::NativeFormat::Enum)BufferUploads::LoadTextureFormat(init._filenameStart, init._filenameEnd)._nativePixelFormat;
+        auto result = (Metal::NativeFormat::Enum)BufferUploads::LoadTextureFormat(init._splitter.AllExceptParameters())._nativePixelFormat;
         return ResolveFormatImmediate(result, init);
     }
 
@@ -310,7 +302,7 @@ namespace RenderCore { namespace Assets
 
         using namespace BufferUploads;
         TextureLoadFlags::BitField flags = init._generateMipmaps ? TextureLoadFlags::GenerateMipmaps : 0;
-        auto pkt = CreateStreamingTextureSource(init._filenameStart, init._filenameEnd, flags);
+        auto pkt = CreateStreamingTextureSource(init._splitter.AllExceptParameters(), flags);
         auto result = Services::GetBufferUploads().Transaction_Immediate(
             CreateDesc(
                 BindFlag::ShaderResource,

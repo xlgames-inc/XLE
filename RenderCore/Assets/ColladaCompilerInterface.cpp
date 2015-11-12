@@ -349,16 +349,19 @@ namespace RenderCore { namespace Assets
                 }
 
                 op._dependencyValidation = op._destinationStore->WriteDependencies(op._sourceID0, splitName.DriveAndPath(), MakeIteratorRange(deps));
-                ::Assets::Services::GetInvalidAssetMan().MarkValid(op._initializer0);
+                if (::Assets::Services::GetInvalidAssetMan())
+                    ::Assets::Services::GetInvalidAssetMan()->MarkValid(op._initializer0);
                 op.SetState(::Assets::AssetState::Ready);
             }
         } CATCH(const std::exception& e) {
             LogAlwaysError << "Caught exception while performing Collada conversion. Exception details as follows:";
             LogAlwaysError << e.what();
-            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(op._initializer0, e.what());
+            if (::Assets::Services::GetInvalidAssetMan())
+                ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(op._initializer0, e.what());
             op.SetState(::Assets::AssetState::Invalid);
         } CATCH(...) {
-            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(op._initializer0, "Unknown error");
+            if (::Assets::Services::GetInvalidAssetMan())
+                ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(op._initializer0, "Unknown error");
             op.SetState(::Assets::AssetState::Invalid);
         } CATCH_END
     }

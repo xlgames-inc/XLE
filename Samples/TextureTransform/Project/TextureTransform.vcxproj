@@ -31,6 +31,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Main.cpp" />
+    <ClCompile Include="..\MinimalAssetServices.cpp" />
     <ClCompile Include="..\Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -52,6 +53,9 @@
     <ProjectReference Include="..\..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\MinimalAssetServices.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <RootNamespace>TestPlatform</RootNamespace>

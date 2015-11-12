@@ -435,16 +435,15 @@ namespace BufferUploads
     {}
 
     intrusive_ptr<DataPacket> CreateStreamingTextureSource(
-        const ::Assets::ResChar filename[], const ::Assets::ResChar filenameEnd[],
-        TextureLoadFlags::BitField flags)
+        StringSection<::Assets::ResChar> filename, TextureLoadFlags::BitField flags)
     {
-        return make_intrusive<StreamingTexture>(filename, filenameEnd, flags);
+        return make_intrusive<StreamingTexture>(filename.begin(), filename.end(), flags);
     }
 
-    TextureDesc LoadTextureFormat(const ::Assets::ResChar filename[], const ::Assets::ResChar filenameEnd[])
+    TextureDesc LoadTextureFormat(StringSection<::Assets::ResChar> filename)
     {
         ucs2 wfilename[MaxPath];
-        Conversion::Convert(wfilename, dimof(wfilename), filename, filenameEnd);
+        Conversion::Convert(wfilename, dimof(wfilename), filename.begin(), filename.end());
 
         auto fmt = GetTexFmt(wfilename);
                 
@@ -459,7 +458,7 @@ namespace BufferUploads
         } else if (fmt == TexFmt::WIC) {
             hresult = GetMetadataFromWICFile((const wchar_t*)wfilename, WIC_FLAGS_NONE, metadata);
         } else {
-            LogWarning << "Texture format not apparent from filename (" << filename << ")";
+            LogWarning << "Texture format not apparent from filename (" << filename.AsString().c_str() << ")";
         }
 
         if (SUCCEEDED(hresult)) {

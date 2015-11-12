@@ -212,9 +212,6 @@ namespace Utility
     unsigned int xl_thread_call MonitoringEntryPoint(void*)
     {
         while (!MonitoringQuit) {
-            std::vector<XlHandle> events;
-            events.push_back(RestartMonitoringEvent);
-
             {
                 ScopedLock(MonitoredDirectoriesLock);
                 auto newId = CreationOrderId_Background;
@@ -229,7 +226,7 @@ namespace Utility
             }
 
             XlWaitForMultipleSyncObjects(
-                uint32(events.size()), (XlHandle*)AsPointer(events.cbegin()), 
+                1, &RestartMonitoringEvent, 
                 false, XL_INFINITE, true);
         }
 

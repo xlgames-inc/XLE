@@ -351,6 +351,12 @@ namespace Utility
         }
 
     template <int Count, typename CharType>
+        void XlCatString(CharType (&destination)[Count], const CharType source[])
+        {
+            XlCatString(destination, Count, source);
+        }
+
+    template <int Count, typename CharType>
         void XlCatString(CharType (&destination)[Count], const StringSection<CharType>& source)
         {
             XlCatNString(destination, Count, source.begin(), source.Length());

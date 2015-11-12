@@ -30,7 +30,7 @@ namespace RenderCore { namespace Assets
 
         using IPendingMarker = ShaderService::IPendingMarker;
         std::shared_ptr<IPendingMarker> CompileFromFile(
-            const ShaderService::ResId& resId, 
+            const ::Assets::ResChar resId[], 
             const ::Assets::ResChar definesTable[]) const;
             
         std::shared_ptr<IPendingMarker> CompileFromMemory(
@@ -41,13 +41,14 @@ namespace RenderCore { namespace Assets
 
         ShaderCacheSet& GetCacheSet() { return *_shaderCacheSet; }
 
-        LocalCompiledShaderSource();
+        LocalCompiledShaderSource(std::shared_ptr<ShaderService::ILowLevelCompiler> compiler);
         ~LocalCompiledShaderSource();
     protected:
         std::unique_ptr<ShaderCacheSet> _shaderCacheSet;
         std::vector<std::shared_ptr<ShaderCompileMarker>> _activeCompileOperations;
         mutable Interlocked::Value _activeCompileCount;
         Threading::Mutex _activeCompileOperationsLock;
+        std::shared_ptr<ShaderService::ILowLevelCompiler> _compiler;
     };
 }}
 

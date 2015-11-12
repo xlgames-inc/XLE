@@ -12,6 +12,7 @@
 #include "../ConsoleRig/Log.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/PtrUtils.h"
+#include "../Utility/Streams/PathUtils.h"
 #include <assert.h>
 
 namespace RenderCore
@@ -19,7 +20,7 @@ namespace RenderCore
 
         ////////////////////////////////////////////////////////////
 
-    static ShaderStage::Enum AsShaderStage(const char shaderModel[])
+    static ShaderStage::Enum AsShaderStage(const ::Assets::ResChar shaderModel[])
     {
         switch (shaderModel[0]) {
         case 'v':   return ShaderStage::Vertex;
@@ -31,6 +32,8 @@ namespace RenderCore
         default:    return ShaderStage::Null;
         }
     }
+
+    ShaderStage::Enum ShaderService::ResId::AsShaderStage() const { return RenderCore::AsShaderStage(_shaderModel); }
 
     CompiledShaderByteCode::CompiledShaderByteCode(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
     {
@@ -63,14 +66,15 @@ namespace RenderCore
         DEBUG_ONLY(XlCopyString(_initializer, initializer);)
 
         if (initializer && initializer[0] != '\0') {
-            auto shaderPath = ShaderService::GetInstance().MakeResId(initializer);
-            if (XlCompareStringI(shaderPath._filename, "null")!=0) {
-                _stage = AsShaderStage(shaderPath._shaderModel);
+            if (XlCompareStringI(initializer, "null")!=0) {
                 compileHelper = 
                     ShaderService::GetInstance().CompileFromFile(
-                        shaderPath, definesTable);
+                        initializer, definesTable);
 
-                RegisterFileDependency(validationCallback, shaderPath._filename);
+                if (compileHelper != nullptr)
+                    _stage = compileHelper->GetStage();
+
+                RegisterFileDependency(validationCallback, MakeFileNameSplitter(initializer).AllExceptParameters());
             }
         }
 
@@ -162,7 +166,7 @@ namespace RenderCore
         }
 
         if (_compileHelper) {
-            auto resolveRes = _compileHelper->TryResolve(_shader, Initializer(), _validationCallback);
+            auto resolveRes = _compileHelper->TryResolve(_shader, _validationCallback);
             if (resolveRes != ::Assets::AssetState::Ready)
                 return resolveRes;
 
@@ -265,25 +269,25 @@ namespace RenderCore
     }
 
 
-    auto ShaderService::MakeResId(const char initializer[]) -> ResId
+    auto ShaderService::MakeResId(
+        const ::Assets::ResChar initializer[],
+        ILowLevelCompiler& compiler) -> ResId
     {
         ResId shaderId;
-        
-                    // (convert unicode string -> single width char for entrypoint & shadermodel)
 
-        const ::Assets::ResChar* endFileName = Utility::XlFindChar(initializer, ':');
         const ::Assets::ResChar* startShaderModel = nullptr;
-        if (!endFileName) {
-            XlCopyString(shaderId._filename, initializer);
+        auto splitter = MakeFileNameSplitter(initializer);
+        XlCopyString(shaderId._filename, splitter.AllExceptParameters());
+
+        if (splitter.Parameters().Empty()) {
             XlCopyString(shaderId._entryPoint, "main");
         } else {
-            XlCopyNString(shaderId._filename, initializer, endFileName - initializer);
-            startShaderModel = Utility::XlFindChar(endFileName+1, ':');
+            startShaderModel = XlFindChar(splitter.Parameters().begin(), ':');
 
             if (!startShaderModel) {
-                XlCopyString(shaderId._entryPoint, endFileName+1);
+                XlCopyString(shaderId._entryPoint, splitter.Parameters().begin());
             } else {
-                XlCopyNString(shaderId._entryPoint, endFileName+1, startShaderModel - endFileName - 1);
+                XlCopyNString(shaderId._entryPoint, splitter.Parameters().begin(), startShaderModel - splitter.Parameters().begin());
                 if (*(startShaderModel+1) == '!') {
                     shaderId._dynamicLinkageEnabled = true;
                     ++startShaderModel;
@@ -298,13 +302,13 @@ namespace RenderCore
             //  we have to do the "AdaptShaderModel" shader model here to convert
             //  the default shader model string (etc, "vs_*) to a resolved shader model
             //  this is because we want the archive name to be correct
-        _compiler->AdaptShaderModel(shaderId._shaderModel, dimof(shaderId._shaderModel), shaderId._shaderModel);
+        compiler.AdaptShaderModel(shaderId._shaderModel, dimof(shaderId._shaderModel), shaderId._shaderModel);
 
         return std::move(shaderId);
     }
 
     auto ShaderService::CompileFromFile(
-        const ResId& resId, 
+        const ::Assets::ResChar resId[], 
         const ::Assets::ResChar definesTable[]) const -> std::shared_ptr<IPendingMarker>
     {
         for (const auto& i:_shaderSources) {
@@ -329,11 +333,6 @@ namespace RenderCore
     void ShaderService::AddShaderSource(std::shared_ptr<IShaderSource> shaderSource)
     {
         _shaderSources.push_back(shaderSource);
-    }
-
-    void ShaderService::SetLowLevelCompiler(std::shared_ptr<ILowLevelCompiler> compiler)
-    {
-        _compiler = std::move(compiler);
     }
 
     ShaderService* ShaderService::s_instance = nullptr;

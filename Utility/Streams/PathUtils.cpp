@@ -621,7 +621,7 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 			if (type == SectionType::CurrentDir) {
 				i = result.erase(i);
 			} else if (type == SectionType::BackOne) {
-				if (i != result.begin()) {
+				if (i != result.begin() && AsSectionType(*(i-1)) == SectionType::Name) {
 					i = result.erase(i - 1, i + 1);
 				} else ++i;		// can't go back too far (this means some ".." may be left)
 			} else ++i;
@@ -785,10 +785,10 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 
 	
 
-	TC static bool PathElementMatch(StringSection<CharType> lhs, StringSection<CharType> rhs)
+	TC static bool PathElementMatch(StringSection<CharType> lhs, StringSection<CharType> rhs, bool isCaseSensitive)
 	{
-            // note -- case insensitive compare done here!
-        return XlEqStringI(lhs, rhs);
+        if (isCaseSensitive) return XlEqString(lhs, rhs);
+        else return XlEqStringI(lhs, rhs);
 	}
 
 	TC std::basic_string<CharType> MakeRelativePath(
@@ -834,7 +834,7 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 				break;
 			}
 
-			if (PathElementMatch(basePath.GetSection(basePrefix), destinationObject.GetSection(destinationPrefix))) {
+			if (PathElementMatch(basePath.GetSection(basePrefix), destinationObject.GetSection(destinationPrefix), rules.IsCaseSensitive())) {
 				++basePrefix;
 				++destinationPrefix;
 				continue;

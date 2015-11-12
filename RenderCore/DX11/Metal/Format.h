@@ -69,12 +69,13 @@ namespace RenderCore { namespace Metal_DX11
         };
     }
 
-    FormatCompressionType::Enum     GetCompressionType(NativeFormat::Enum format);
-    FormatComponents::Enum          GetComponents(NativeFormat::Enum format);
-    FormatComponentType::Enum       GetComponentType(NativeFormat::Enum format);
-    unsigned                        BitsPerPixel(NativeFormat::Enum format);
-    unsigned                        GetComponentPrecision(NativeFormat::Enum format);
-    unsigned                        GetComponentCount(FormatComponents::Enum components);
+    auto        GetCompressionType(NativeFormat::Enum format) -> FormatCompressionType::Enum;
+    auto        GetComponents(NativeFormat::Enum format) -> FormatComponents::Enum;
+    auto        GetComponentType(NativeFormat::Enum format) -> FormatComponentType::Enum;
+    unsigned    BitsPerPixel(NativeFormat::Enum format);
+    unsigned    GetComponentPrecision(NativeFormat::Enum format);
+    unsigned    GetDecompressedComponentPrecision(NativeFormat::Enum format);
+    unsigned    GetComponentCount(FormatComponents::Enum components);
 
     NativeFormat::Enum FindFormat(
         FormatCompressionType::Enum compression, 
