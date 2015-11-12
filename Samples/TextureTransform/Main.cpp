@@ -33,7 +33,7 @@ namespace TextureTransform
 
     TextureResult ExecuteTransform(
         RenderCore::IDevice& device,
-        StringSection<char> sourceName,
+        StringSection<char> xleDir,
         StringSection<char> shader,
         const ParameterBox& shaderParameters);
 
@@ -46,6 +46,22 @@ namespace TextureTransform
         for (auto attr = element.FirstAttribute(); attr; attr = attr.Next())
             result.SetParameter((const utf8*)attr.Name().AsString().c_str(), attr.Value().AsString().c_str());
         return std::move(result);
+    }
+
+    static std::string GetEnv(const char varName[])
+    {
+        #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+            size_t len = 0;
+            auto err = getenv_s(&len, nullptr, 0, varName);
+            if (err!=0 || len == 0) return std::string();
+
+            std::string result;
+            result.resize(len);
+            err = getenv_s(&len, AsPointer(result.begin()), result.size(), varName);
+            return result.substr(0, len-1); // strip off a null terminator here
+        #else
+            return std::getenv(varName);
+        #endif
     }
 
     void Execute(StringSection<char> cmdLine)
@@ -63,11 +79,17 @@ namespace TextureTransform
         InputStreamFormatter<char> formatter(stream);
         Document<InputStreamFormatter<char>> doc(formatter);
 
-        auto inputFile = doc.Attribute("i").Value();
         auto outputFile = doc.Attribute("o").Value();
         auto shader = doc.Attribute("s").Value();
 
-        if (inputFile.Empty() || outputFile.Empty() || shader.Empty()) {
+        if (outputFile.Empty() || shader.Empty()) {
+            return;
+        }
+
+        auto xleDir = GetEnv("XLE_DIR");
+        if (xleDir.empty()) {
+            LogAlwaysError << "XLE_DIR environment variable isn't set. Expecting this to be set to root XLE directory";
+            LogAlwaysError << "This program loads shaders from the $(XLE_DIR)\\Working\\Game\\xleres folder";
             return;
         }
 
@@ -81,7 +103,7 @@ namespace TextureTransform
             auto shaderParameters = CreateParameterBox(doc.Element("p"));
 
             auto resultTexture = ExecuteTransform(
-                *device, inputFile, shader, shaderParameters);
+                *device, MakeStringSection(xleDir), shader, shaderParameters);
             if (!resultTexture._pkt) {
                 LogAlwaysError << "Error while performing texture transform";
                 return;

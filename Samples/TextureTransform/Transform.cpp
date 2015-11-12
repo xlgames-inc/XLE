@@ -124,25 +124,48 @@ namespace TextureTransform
 
     TextureResult ExecuteTransform(
         IDevice& device,
-        StringSection<char> sourceName,
+        StringSection<char> xleDir,
         StringSection<char> shaderName,
-        const ParameterBox& shaderParameters)
+        const ParameterBox& parameters)
     {
         using namespace BufferUploads;
 
-        auto psShaderName = shaderName.AsString();
+        auto psShaderName = xleDir.AsString() + "/Working/game/xleres/" + shaderName.AsString();
         if (!XlFindStringI(psShaderName.c_str(), "ps_"))
             psShaderName += ":" PS_DefShaderModel;
 
         auto psByteCode = LoadShaderImmediate(psShaderName.c_str());
-        auto vsByteCode = LoadShaderImmediate("E:/XLE/Working/game/xleres/basic2D.vsh:fullscreen:" VS_DefShaderModel);
+        auto vsByteCode = LoadShaderImmediate((xleDir.AsString() + "/Working/game/xleres/basic2D.vsh:fullscreen:" VS_DefShaderModel).c_str());
 
-        InputResource inputRes(sourceName.AsString().c_str());
+        Metal::ShaderProgram shaderProg(vsByteCode, psByteCode);
+        Metal::BoundUniforms uniforms(shaderProg);
+        uniforms.BindConstantBuffers(1, {"Material"});
+
+        std::vector<InputResource> inputResources;
+
+            // We'll interpret every string in the input parameters as a resource name
+        for (auto i=parameters.Begin(); !i.IsEnd(); ++i) {
+            if (i.Type()._typeHint == ImpliedTyping::TypeHint::String) {
+                auto value = ImpliedTyping::AsString(
+                    i.RawValue(), ptrdiff_t(i.ValueTableEnd()) - ptrdiff_t(i.RawValue()), i.Type());
+
+                InputResource inputRes(value.c_str());
+                if (inputRes._srv.IsGood()) {
+                    uniforms.BindShaderResource(Hash64((const char*)i.Name()), (unsigned)inputResources.size(), 1);
+                    inputResources.push_back(std::move(inputRes));
+                }
+            }
+        }
+
+            // we need to calculate an output format and viewport dimensions
+            // if we have at least one input resource, we will duplicate that resource;
+        if (inputResources.empty())
+            Throw(::Exceptions::BasicLabel("No input resources specified on command line (or input resources not found)"));
+
+        auto rtFormat = AsRTFormat(inputResources[0]._finalFormat);
+        UInt2 viewDims(inputResources[0]._desc._width, inputResources[0]._desc._height);
 
         Techniques::PredefinedCBLayout cbLayout(GetCBLayoutName(psShaderName.c_str()).c_str());
-        auto rtFormat = AsRTFormat(inputRes._finalFormat);
-
-        UInt2 viewDims(inputRes._desc._width, inputRes._desc._height);
 
         auto& uploads = Samples::MinimalAssetServices::GetBufferUploads();
         auto dstTexture = uploads.Transaction_Immediate(
@@ -162,17 +185,16 @@ namespace TextureTransform
         metalContext->Bind(commonRes._blendOpaque);
         metalContext->Bind(commonRes._dssDisable);
         metalContext->BindPS(MakeResourceList(commonRes._defaultSampler));
-        
-        Metal::ShaderProgram shaderProg(vsByteCode, psByteCode);
-        Metal::BoundUniforms uniforms(shaderProg);
-        uniforms.BindConstantBuffers(1, {"Material"});
-        uniforms.BindShaderResources(1, {"DiffuseTexture"});
+
+        SharedPkt cbs[] = { cbLayout.BuildCBDataAsPkt(parameters) };
+        std::vector<const Metal::ShaderResourceView*> srvs;
+        for (const auto&i:inputResources) srvs.push_back(&i._srv);
 
         uniforms.Apply(
             *metalContext, Metal::UniformsStream(),
             Metal::UniformsStream(
-                { cbLayout.BuildCBDataAsPkt(shaderParameters) },
-                { &inputRes._srv }));
+                cbs, nullptr, dimof(cbs),
+                AsPointer(srvs.begin()), srvs.size()));
         metalContext->Bind(shaderProg);
 
         metalContext->Bind(Metal::Topology::TriangleStrip);
