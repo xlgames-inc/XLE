@@ -9,6 +9,7 @@
 #include "../TextureAlgorithm.h"
 #include "../Utility/DebuggingShapes.h"
 #include "../Utility/DebuggingPanels.h"
+#include "../gbuffer.h"
 
 Texture2D<float4>		LightOutput : register(t0);
 Texture2D<float>		DebuggingTextureMin : register(t1);
@@ -43,7 +44,7 @@ float4 DepthsDebuggingTexture(float4 pos : SV_Position, float2 texCoord : TEXCOO
 				return float4(colour.rgb + textureQuery.rgb, .75f*(colour.a + textureQuery.r));
 			}
 		}
-		
+
 		// float2 depths = float2(
 		// 	DebuggingTextureMin.Load(int3(pos.xy, 0)).x,
 		// 	DebuggingTextureMax.Load(int3(pos.xy, 0)).x);
@@ -76,4 +77,49 @@ float4 GBufferDebugging(float4 position : SV_Position, float2 texCoord : TEXCOOR
 	return result;
 }
 
+ITextureLoader Loaders[4];
 
+GBufferEncoded GetGBufferEncoded(float2 coords)
+{
+	GBufferEncoded result;
+	result.diffuseBuffer = GBuffer_Diffuse.SampleLevel(DefaultSampler, coords, 0);
+	result.normalBuffer = GBuffer_Normals.SampleLevel(DefaultSampler, coords, 0);
+	#if HAS_PROPERTIES_BUFFER == 1
+		result.propertiesBuffer = GBuffer_Parameters.SampleLevel(DefaultSampler, coords, 0);
+	#endif
+	return result;
+}
+
+class Roughness : ITextureLoader
+{
+	float4 Load(float2 tc, uint a, uint s) { return float4(Decode(GetGBufferEncoded(tc)).material.roughness.xxx, 1); }
+};
+
+class Specular : ITextureLoader
+{
+	float4 Load(float2 tc, uint a, uint s) { return float4(Decode(GetGBufferEncoded(tc)).material.specular.xxx, 1); }
+};
+
+class Metal : ITextureLoader
+{
+	float4 Load(float2 tc, uint a, uint s) { return float4(Decode(GetGBufferEncoded(tc)).material.metal.xxx, 1); }
+};
+
+class CookedAO : ITextureLoader
+{
+	float4 Load(float2 tc, uint a, uint s) { return float4(Decode(GetGBufferEncoded(tc)).cookedAmbientOcclusion.xxx, 1); }
+};
+
+float4 GenericDebugging(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	float2 outputDimensions = position.xy / texCoord.xy;
+	float aspectRatio = outputDimensions.y / outputDimensions.x;
+
+	float4 result = float4(0.0.xxx, 0.f);
+	RenderTile(float2( 0,  0), float2(.5, .5), texCoord, Loaders[0], 0, result);
+	RenderTile(float2(.5,  0), float2( 1, .5), texCoord, Loaders[1], 0, result);
+	RenderTile(float2( 0, .5), float2(.5,  1), texCoord, Loaders[2], 0, result);
+	RenderTile(float2(.5, .5), float2( 1,  1), texCoord, Loaders[3], 0, result);
+
+	return result;
+}

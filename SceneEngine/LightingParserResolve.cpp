@@ -406,9 +406,10 @@ namespace SceneEngine
         context.Bind(Techniques::CommonResources()._defaultRasterizer);
         context.Bind(Techniques::CommonResources()._dssReadWrite);
         
-        if (Tweakable("DeferredDebugging", false)) {
+        auto debugging = Tweakable("DeferredDebugging", 0);
+        if (debugging > 0) {
             parserContext._pendingOverlays.push_back(
-                std::bind(&Deferred_DrawDebugging, std::placeholders::_1, std::placeholders::_2, std::ref(mainTargets)));
+                std::bind(&Deferred_DrawDebugging, std::placeholders::_1, std::placeholders::_2, std::ref(mainTargets), debugging));
         }
 
         if (Tweakable("RTShadowMetrics", false)) {

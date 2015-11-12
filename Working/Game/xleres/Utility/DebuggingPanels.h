@@ -120,4 +120,21 @@ void RenderTile(float2 minCoords, float2 maxCoords, float2 texCoord, Texture2DAr
 	}
 }
 
+interface ITextureLoader
+{
+	float4 Load(float2 coords, uint arrayIndex, uint sampleIndex);
+};
+
+void RenderTile(
+	float2 minCoords, float2 maxCoords, float2 texCoord,
+	ITextureLoader loader, uint arrayIndex, inout float4 result)
+{
+	RenderTileBorder(minCoords, maxCoords, texCoord, result);
+	float2 tc;
+	const int sampleIndex = 0;
+	if (GetTileCoords(minCoords, maxCoords, texCoord, tc))
+		result = loader.Load(tc, arrayIndex, sampleIndex);
+}
+
+
 #endif
