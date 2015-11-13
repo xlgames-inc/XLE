@@ -257,6 +257,14 @@ namespace RenderCore { namespace ColladaConversion
     template<> RenderCore::Metal::NativeFormat::Enum AsNativeFormat<Float4>() 
         { return RenderCore::Metal::NativeFormat::R32G32B32A32_FLOAT; }
 
+    // #define CHECK_FOR_NAN
+    #if defined(CHECK_FOR_NAN)
+        static void Check(float i) { assert(!std::isnan(i)); }
+        static void Check(Float2 i) { assert(!std::isnan(i[0]) && !std::isnan(i[1])); }
+        static void Check(Float3 i) { assert(!std::isnan(i[0]) && !std::isnan(i[1]) && !std::isnan(i[2])); }
+        static void Check(Float4 i) { assert(!std::isnan(i[0]) && !std::isnan(i[1]) && !std::isnan(i[2]) && !std::isnan(i[3])); }
+    #endif
+
     template<typename PivotType, typename TransformFn>
         std::shared_ptr<IVertexSourceData> TransformStream(
             const IVertexSourceData& src,
@@ -267,7 +275,16 @@ namespace RenderCore { namespace ColladaConversion
             auto* dst = (PivotType*)AsPointer(tempBuffer.begin());
             for (unsigned c=0; c<src.GetCount(); ++c)
                 dst[c] = GetVertex<PivotType>(src, c);
+
+            #if defined(CHECK_FOR_NAN)
+                for (unsigned c=0; c<src.GetCount(); ++c) Check(dst[c]);
+            #endif
+
             transform(dst, &dst[src.GetCount()]);
+
+            #if defined(CHECK_FOR_NAN)
+                for (unsigned c=0; c<src.GetCount(); ++c) Check(dst[c]);
+            #endif
 
                 // Let's make sure the new stream data is in the same format
                 // as the old one.

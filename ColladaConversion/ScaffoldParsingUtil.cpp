@@ -111,6 +111,17 @@ namespace ColladaConversion
         iterator = FastParseElement(beforePoint, iterator, end);
         if (iterator < end && *iterator=='.') {
             ++iterator;
+
+                // some printf implementations will write special values in the form
+                // "-1.#IND". We need to to at least detect these cases, and skip over
+                // them. Maybe it's not critical to return the exact error type referenced.
+            if (iterator < end && *iterator == '#') {
+                ++iterator;
+                while (iterator!=end && !IsWhitespace(*iterator)) ++iterator;
+                dst = std::numeric_limits<float>::quiet_NaN();
+                return iterator;
+            }
+
             auto t = iterator;
             iterator = FastParseElement(afterPoint, iterator, end);
             afterPointPrec = unsigned(iterator - t);
@@ -245,9 +256,9 @@ namespace ColladaConversion
             newEnd = ExperimentalFloatParser(dst, start, end);
         } else {
             // CharType replaced = *end;
-            *const_cast<CharType*>(end) = '\0';
+            // *const_cast<CharType*>(end) = '\0';
             char* newEndT = nullptr;
-            dst = std::strtof((const char*)start, &newEndT);
+            dst = std::strtof((const char*)start, &newEndT);        // note -- there is a risk of running off the string, beyond "end" in some cases!
             // *const_cast<CharType*>(end) = replaced;
             newEnd = (const CharType*)newEndT;
         }
