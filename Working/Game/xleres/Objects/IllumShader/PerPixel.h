@@ -18,6 +18,7 @@
 #include "../gbuffer.h"
 #include "../BasicMaterial.h"
 
+Texture2D           SpecularColorTexture;
 Texture2D<float>	CustomTexture;
 // Texture2D<float2>	ScratchMap : register(t19);		// high res procedural scratches
 // Texture2D<float>	ScratchOccl : register(t20);
@@ -111,6 +112,7 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
 
     #if (OUTPUT_PER_VERTEX_AO==1)
         result.cookedAmbientOcclusion *= geo.ambientOcclusion;
+        result.cookedLightOcclusion *= geo.ambientOcclusion;
     #endif
 
     #if (MAT_AO_IN_NORMAL_BLUE!=0) && (RES_HAS_NormalsTexture!=0) && (RES_HAS_NormalsTexture_DXT==0) && (OUTPUT_TEXCOORD==1)
@@ -228,8 +230,9 @@ PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(float4 paramTexSam
 		//	the diffuse is dark), then we can take that as a hint of metallicness.
 		//	But this is very rough.
 	PerPixelMaterialParam result = PerPixelMaterialParam_Default();
+    float specLum = saturate(SRGBLuminance(paramTexSample.rgb));
 	result.roughness = RoughnessMin;
-	result.specular = lerp(SpecularMin, SpecularMax, SRGBLuminance(paramTexSample.rgb));
+	result.specular = lerp(SpecularMin, SpecularMax, specLum);
 
     // float specLength = length(paramTexSample.rgb);
 	// float3 specDir = paramTexSample.rgb / specLength;
@@ -243,8 +246,9 @@ PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(float4 paramTexSam
     float diff = abs(dH - sH);
     if (diff > 180) diff = 360 - diff;
     result.metal = diff / 180.f;
+    result.metal *= specLum;
     result.metal *= result.metal;
-    result.metal = lerp(MetalMin, MetalMax, result.metal);
+    result.metal = lerp(MetalMin, MetalMax, saturate(result.metal));
 
 	return result;
 }
