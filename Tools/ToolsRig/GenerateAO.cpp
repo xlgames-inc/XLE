@@ -676,9 +676,10 @@ namespace ToolsRig
         Techniques::ParsingContext& parserContext,
         float nearClip, float farClip)
     {
-            // set 5 faces of the cubemap tr
+            // set 5 faces of the cubemap...
+        float n = nearClip;
         auto basicProj = PerspectiveProjection(
-            -1.f, -1.f, 1.f, 1.f, nearClip, farClip,
+            -n, n, n, -n, nearClip, farClip,
             Techniques::GetDefaultClipSpaceType());
 
         Float4x4 cubeViewMatrices[6] = 
@@ -859,8 +860,8 @@ namespace ToolsRig
         _pimpl = std::make_shared<Pimpl>();
         _pimpl->_threadContext = threadContext;
         ToolsRig::AoGen::Desc settings(
-            0.001f, 10.f, 128,
-            2.f, 0.01f, 0.02f);
+            0.001f, 4.f, 128,
+            2.f, 0.001f, 0.01f);
         _pimpl->_aoGen = std::make_unique<ToolsRig::AoGen>(settings);
     }
 
