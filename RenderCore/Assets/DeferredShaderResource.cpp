@@ -173,6 +173,21 @@ namespace RenderCore { namespace Assets
             Services::GetBufferUploads().Transaction_End(_pimpl->_transaction);
     }
 
+    DeferredShaderResource::DeferredShaderResource(DeferredShaderResource&& moveFrom)
+    : _pimpl(std::move(moveFrom._pimpl))
+    , _validationCallback(std::move(moveFrom._validationCallback))
+    {
+        DEBUG_ONLY(XlCopyString(_initializer, moveFrom._initializer));
+    }
+
+    DeferredShaderResource& DeferredShaderResource::operator=(DeferredShaderResource&& moveFrom)
+    {
+        _pimpl = std::move(moveFrom._pimpl);
+        _validationCallback = std::move(moveFrom._validationCallback);
+        DEBUG_ONLY(XlCopyString(_initializer, moveFrom._initializer));
+        return *this;
+    }
+
     const Metal::ShaderResourceView&       DeferredShaderResource::GetShaderResource() const
     {
         if (!_pimpl->_srv.IsGood()) {

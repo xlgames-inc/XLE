@@ -184,7 +184,7 @@ namespace RenderCore { namespace Assets
             hashedModel = HashCombine(hashedModel, *s);
 
         auto renderer = _pimpl->_modelRenderers.Get(hashedModel);
-        if (!renderer) {
+        if (!renderer || renderer->GetDependencyValidation()->GetValidationIndex() > 0) {
             auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
             searchRules.AddSearchDirectoryFromFilename(materialFilename);
             auto suppScaff = _pimpl->LoadSupplementScaffolds(modelFilename, materialFilename, supplements);

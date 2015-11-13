@@ -54,7 +54,12 @@ namespace RenderCore { namespace Assets
         ::Assets::AssetState TryResolve() const;
 
         explicit DeferredShaderResource(const ::Assets::ResChar resourceName[]);
+        DeferredShaderResource(DeferredShaderResource&& moveFrom) never_throws;
+        DeferredShaderResource& operator=(DeferredShaderResource&& moveFrom) never_throws;
         ~DeferredShaderResource();
+
+        DeferredShaderResource(const DeferredShaderResource&) = delete;
+        DeferredShaderResource& operator=(const DeferredShaderResource&) = delete;
     private:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
