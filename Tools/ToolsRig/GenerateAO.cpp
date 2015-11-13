@@ -286,6 +286,22 @@ namespace ToolsRig
         IteratorRange<std::pair<unsigned, MeshDatabase>*> meshes,
         const NativeVBSettings& nativeVbSettings);
 
+    static unsigned FindUniqueTransform(
+        const RenderCore::Assets::ModelScaffold& model,
+        unsigned geoId)
+    {
+        unsigned result = ~0u;
+        const auto& cmdStream = model.CommandStream();
+        for (unsigned c=0; c<cmdStream.GetGeoCallCount(); ++c) {
+            const auto& geoCall = cmdStream.GetGeoCall(c);
+            if (geoCall._geoId == geoId) {
+                if (result != ~0u) return ~0u;  // not unique;
+                result = geoCall._transformMarker;
+            }
+        }
+        return result;
+    }
+
     void CalculateVertexAO(
         RenderCore::IThreadContext& threadContext,
         const ::Assets::ResChar destinationFile[],
@@ -373,6 +389,13 @@ namespace ToolsRig
                 auto& rawGeo = immData._geos[*c];
                 if (rawGeo._drawCalls.empty() || rawGeo._vb._size==0 || rawGeo._vb._ia._vertexStride==0) continue;
 
+                auto transformMarker = FindUniqueTransform(model, *c);
+                if (transformMarker == ~0u) continue;   // skip duplicates
+
+                Float4x4 toModel = Identity<Float4x4>();
+                if (transformMarker < meshToModel._skeletonOutputCount)
+                    toModel = meshToModel._skeletonOutput[transformMarker];
+
                 auto vbStart = model.LargeBlocksOffset() + rawGeo._vb._offset;
                 auto vbEnd = vbStart + rawGeo._vb._size;
                 auto vertexCount = rawGeo._vb._size / rawGeo._vb._ia._vertexStride;
@@ -450,8 +473,12 @@ namespace ToolsRig
                     for (auto q=p; q<p2; ++q)
                         n += GetVertex<Float3>(nStream.GetSourceData(), q->second);
                     n = Normalize(n);
-
                     auto baseSamplePoint = GetVertex<Float3>(pStream.GetSourceData(), p->first);
+
+                        // transform through to model space...
+                    baseSamplePoint = TransformPoint(toModel, baseSamplePoint);
+                    n = Normalize(TransformDirectionVector(toModel, n));
+
                     auto samplePoint = baseSamplePoint + normalsPushOut * n;
                     samplePoints[p->first] = samplePoint;
 
