@@ -1,0 +1,210 @@
+~Shared
+	~Constants; MaterialDiffuse={1.f, .5f, .5f}; MetalMin=0
+~m00
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.0;   RoughnessMin=0.0
+~m01
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.125; RoughnessMin=0.0
+~m02
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.25;  RoughnessMin=0.0
+~m03
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.375; RoughnessMin=0.0
+~m04
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.5;   RoughnessMin=0.0
+~m05
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.625; RoughnessMin=0.0
+~m06
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.75;  RoughnessMin=0.0
+~m07
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.875; RoughnessMin=0.0
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~m10
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.0;   RoughnessMin=0.125
+~m11
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.125; RoughnessMin=0.125
+~m12
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.25;  RoughnessMin=0.125
+~m13
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.375; RoughnessMin=0.125
+~m14
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.5;   RoughnessMin=0.125
+~m15
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.625; RoughnessMin=0.125
+~m16
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.75;  RoughnessMin=0.125
+~m17
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.875; RoughnessMin=0.125
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~m20
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.0;   RoughnessMin=0.25
+~m21
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.125; RoughnessMin=0.25
+~m22
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.25;  RoughnessMin=0.25
+~m23
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.375; RoughnessMin=0.25
+~m24
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.5;   RoughnessMin=0.25
+~m25
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.625; RoughnessMin=0.25
+~m26
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.75;  RoughnessMin=0.25
+~m27
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.875; RoughnessMin=0.25
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~m30
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.0;   RoughnessMin=0.375
+~m31
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.125; RoughnessMin=0.375
+~m32
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.25;  RoughnessMin=0.375
+~m33
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.375; RoughnessMin=0.375
+~m34
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.5;   RoughnessMin=0.375
+~m35
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.625; RoughnessMin=0.375
+~m36
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.75;  RoughnessMin=0.375
+~m37
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.875; RoughnessMin=0.375
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~m40
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.0;   RoughnessMin=0.5
+~m41
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.125; RoughnessMin=0.5
+~m42
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.25;  RoughnessMin=0.5
+~m43
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.375; RoughnessMin=0.5
+~m44
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.5;   RoughnessMin=0.5
+~m45
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.625; RoughnessMin=0.5
+~m46
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.75;  RoughnessMin=0.5
+~m47
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.875; RoughnessMin=0.5
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~m50
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.0;   RoughnessMin=0.625
+~m51
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.125; RoughnessMin=0.625
+~m52
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.25;  RoughnessMin=0.625
+~m53
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.375; RoughnessMin=0.625
+~m54
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.5;   RoughnessMin=0.625
+~m55
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.625; RoughnessMin=0.625
+~m56
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.75;  RoughnessMin=0.625
+~m57
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.875; RoughnessMin=0.625
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~m60
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.0;   RoughnessMin=0.75
+~m61
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.125; RoughnessMin=0.75
+~m62
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.25;  RoughnessMin=0.75
+~m63
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.375; RoughnessMin=0.75
+~m64
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.5;   RoughnessMin=0.75
+~m65
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.625; RoughnessMin=0.75
+~m66
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.75;  RoughnessMin=0.75
+~m67
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.875; RoughnessMin=0.75
+	
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~m70
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.0;   RoughnessMin=0.875
+~m71
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.125; RoughnessMin=0.875
+~m72
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.25;  RoughnessMin=0.875
+~m73
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.375; RoughnessMin=0.875
+~m74
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.5;   RoughnessMin=0.875
+~m75
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.625; RoughnessMin=0.875
+~m76
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.75;  RoughnessMin=0.875
+~m77
+	~Inherit; mattest:Shared
+	~Constants; SpecularMin=0.875; RoughnessMin=0.875
+
+	
