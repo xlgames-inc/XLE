@@ -93,12 +93,11 @@ float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float
     float3 worldSpaceReflection = reflect(-viewDirection, sample.worldSpaceNormal);
 
     float roughness = Material_GetRoughness(sample);
-    float specular = Material_GetSpecular0(sample);
 
     float3 reflSampl = ReadSkyReflectionTexture(worldSpaceReflection, roughness, blurriness);
     reflSampl += Material_GetReflectionBoost(sample).xxx;
 
-    return reflSampl * (specular * fresnel);
+    return reflSampl * fresnel;
 }
 
 /////////////////////////////////////////
