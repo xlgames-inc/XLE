@@ -61,9 +61,8 @@ float3 LightResolve_Specular(
 
 		////////////////////////////////////////////////
 
-	float3 result =
-		(saturate(spec0) * sample.cookedLightOcclusion)
-		* lerp(light.Color.nonMetalSpecularBrightness.xxx * sample.diffuseAlbedo, light.Color.specular, Material_GetMetal(sample));
+	float3 result = (saturate(spec0) * sample.cookedLightOcclusion) * light.Color.specular;
+	result = IntegrateMetalParam(result, sample);
 	// result += (saturate(spec1) * scale) * specularColor1;
 	return result;
 }

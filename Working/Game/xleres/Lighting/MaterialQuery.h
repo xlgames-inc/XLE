@@ -8,6 +8,7 @@
 #define MATERIAL_QUERY_H
 
 #include "LightingAlgorithm.h"
+#include "Constants.h"
 #include "../gbuffer.h"
 
 cbuffer MaterialOverride : register(b9)
@@ -54,7 +55,7 @@ float Material_GetSpecular1(GBufferValues gbuffer)
 
 float Material_SpecularToF0(float specularParameter)
 {
-    return RefractiveIndexToF0(lerp(1.0f, 2.5f, specularParameter));
+    return RefractiveIndexToF0(lerp(RefractiveIndexMin, RefractiveIndexMax, specularParameter));
 }
 
 float Material_GetF0_0(GBufferValues gbuffer)
@@ -98,6 +99,11 @@ float Material_GetReflectionBoost(GBufferValues gbuffer)
 {
     if (UseMaterialOverride) { return MO_ReflectionsBoost; }
     else { return 0.f; }
+}
+
+float3 IntegrateMetalParam(float3 inputReflection, GBufferValues sample)
+{
+    return inputReflection * lerp(1.0.xxx, MetalReflectionBoost * sample.diffuseAlbedo, Material_GetMetal(sample));
 }
 
 #endif

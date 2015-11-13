@@ -9,6 +9,7 @@
 
 #include "LightDesc.h"
 #include "MaterialQuery.h"
+#include "Constants.h"
 #include "../TextureAlgorithm.h"
 #include "../Colour.h"	                 // for LightingScale
 
@@ -40,7 +41,7 @@ float3 ReadSkyReflectionTexture(float3 reflectionVector, float roughness, float 
 {
     uint2 reflectionTextureDims;
     SkyReflectionTexture[0].GetDimensions(reflectionTextureDims.x, reflectionTextureDims.y);
-    float mipMap = blurriness + saturate(roughness) * 3.f;
+    float mipMap = blurriness + saturate(roughness) * ReflectionBlurrinessFromRoughness;
 
     #if SKY_PROJECTION == 1
 
@@ -180,7 +181,7 @@ float3 LightResolve_Ambient(
         float3 finalReflection = skyReflections;
     #endif
 
-    finalReflection *= lerp(sample.diffuseAlbedo, 1.0.xxx, Material_GetMetal(sample));
+    finalReflection = IntegrateMetalParam(finalReflection, sample);
     finalReflection *= sample.cookedAmbientOcclusion;
     result += Material_GetReflectionScale(sample) * finalReflection;
 
