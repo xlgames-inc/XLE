@@ -17,6 +17,7 @@
 #include "../ToolsRig/VisualisationUtils.h"     // for AsCameraDesc
 #include "../ToolsRig/ManipulatorsRender.h"
 #include "../../PlatformRig/BasicSceneParser.h"
+#include "../../PlatformRig/Screenshot.h"
 
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserContext.h"
@@ -29,6 +30,7 @@
 
 #include "../../RenderCore/IThreadContext.h"
 #include "../../Utility/StringUtils.h"
+#include "../../ConsoleRig/Console.h"
 
 namespace GUILayer
 {
@@ -218,10 +220,20 @@ namespace GUILayer
             _sceneParser->PrepareEnvironmentalSettings(
                 clix::marshalString<clix::E_UTF8>(_renderSettings->_activeEnvironmentSettings).c_str());
 
+            auto qualSettings = SceneEngine::RenderingQualitySettings(threadContext->GetStateDesc()._viewportDimensions);
+
+            auto& screenshot = ::ConsoleRig::Detail::FindTweakable("Screenshot", 0);
+            if (screenshot) {
+                PlatformRig::TiledScreenshot(
+                    *threadContext, parserContext,
+                    *_sceneParser.get(), _sceneParser->GetCameraDesc(),
+                    qualSettings, UInt2(screenshot, screenshot));
+                screenshot = 0;
+            }
+
             _sceneParser->AddLightingPlugins(parserContext);
             SceneEngine::LightingParser_ExecuteScene(
-                *threadContext, parserContext, *_sceneParser.get(), _sceneParser->GetCameraDesc(),
-                SceneEngine::RenderingQualitySettings(threadContext->GetStateDesc()._viewportDimensions));
+                *threadContext, parserContext, *_sceneParser.get(), _sceneParser->GetCameraDesc(),qualSettings);
         }
 
         if (_renderSettings->_selection && _renderSettings->_selection->_nativePlacements->size() > 0) {
