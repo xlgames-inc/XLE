@@ -43,18 +43,28 @@ struct PerPixelMaterialParam
     float   metal;
 };
 
-PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(float4 specularColor, float4 diffuseSample)
+PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(float4 paramTexSample, float4 diffuseSample)
 {
-    float specLength = length(specularColor.rgb);
-    float3 specDir = specularColor.rgb / specLength;
-    float d = dot(specDir, specularColor.rgb);
-    float3 diffuseDiverge = specularColor.rgb - d * specDir;
-
     PerPixelMaterialParam result;
-    result.roughness    = 0.f;
-    result.specular     = SRGBLuminance(specularColor.rgb);
-    float div           = dot(diffuseDiverge, diffuseDiverge);
-    result.metal        = saturate(32.f * div * div);
+    float specLum = saturate(SRGBLuminance(paramTexSample.rgb));
+    result.roughness = 0.f;
+    result.specular = specLum;
+
+    // float specLength = length(paramTexSample.rgb);
+    // float3 specDir = paramTexSample.rgb / specLength;
+    // float d = dot(specDir, diffuseSample.rgb);
+    // float3 diffuseDiverge = diffuseSample.rgb - d * specDir;
+    // float div = dot(diffuseDiverge, diffuseDiverge);
+    // result.metal = lerp(MetalMin, MetalMax, saturate(32.f * div * div));
+
+    float dH = RGB2HSV(diffuseSample.rgb).x;
+    float sH = RGB2HSV(paramTexSample.rgb).x;
+    float diff = abs(dH - sH);
+    if (diff > 180) diff = 360 - diff;
+    result.metal = diff / 180.f;
+    result.metal *= specLum;
+    result.metal *= result.metal;
+    result.metal = saturate(result.metal);
     return result;
 }
 
@@ -97,9 +107,7 @@ float4 SpecularWithMask(float4 position : SV_Position, float2 texCoord : TEXCOOR
     float4 diffuse = DiffuseTexture.Load(int3(position.xy, 0));
     float4 specColor = SpecularColor.Load(int3(position.xy, 0));
     float4 materialMask = MaterialMask.Load(int3(position.xy, 0));
-    materialMask.a = 1.0f - materialMask;       // (alpha weight is inverted)
-
-    return materialMask;
+    materialMask.a = 1.0f - materialMask.a;       // (alpha weight is inverted)
 
     PerPixelMaterialParam param = DecodeParametersTexture_ColoredSpecular(specColor, diffuse);
     PerPixelMaterialParam rSample = ScaleByRange(param, RRoughnessRange, RSpecularRange, RMetalRange);
