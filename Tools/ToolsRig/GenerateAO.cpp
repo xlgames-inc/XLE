@@ -43,6 +43,38 @@ namespace RenderCore {
     extern char BuildDateString[];
 }
 
+// #define GEN_AO_DEBUG
+#if defined(GEN_AO_DEBUG)
+    #include "../../Utility/Conversion.h"
+    #include "../../Core/WinAPI/IncludeWindows.h"
+    #include "../../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
+    #include "../../RenderCore/DX11/Metal/DX11Utils.h"
+
+    static void SaveTexture(
+        const ::Assets::ResChar destinationFile[],
+        BufferUploads::DataPacket& pkt, unsigned subresource, 
+        UInt2 dims, RenderCore::Metal::NativeFormat::Enum format)
+    {
+            // using DirectXTex to save to disk as a TGA file...
+        auto rowPitch = pkt.GetPitches(subresource)._rowPitch;
+        DirectX::Image image {
+            dims[0], dims[1],
+            RenderCore::Metal::AsDXGIFormat(format),
+            rowPitch, rowPitch * dims[1],
+            (uint8_t*)pkt.GetData(subresource) };
+        auto fn = Conversion::Convert<std::wstring>(std::string(destinationFile));
+
+        const GUID GUID_ContainerFormatTiff = 
+            { 0x163bcc30, 0xe2e9, 0x4f0b, { 0x96, 0x1d, 0xa3, 0xe9, 0xfd, 0xb7, 0x88, 0xa3 }};
+        auto hresult = DirectX::SaveToWICFile(
+            image, DirectX::WIC_FLAGS_NONE,
+            GUID_ContainerFormatTiff,
+            fn.c_str());
+        (void)hresult;
+        assert(SUCCEEDED(hresult));
+    }
+#endif
+
 namespace ToolsRig
 {
     using namespace RenderCore;
@@ -194,6 +226,30 @@ namespace ToolsRig
         auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
         auto readback = bufferUploads.Resource_ReadBack(*_pimpl->_miniLocator);
 
+        #if defined(GEN_AO_DEBUG)
+            {
+                static unsigned CubeMapsWritten = 0;
+                CreateDirectoryRecursive("aogen_debug");
+
+                BufferUploads::ResourceLocator faceRes = Metal::ExtractResource<ID3D::Resource>(_pimpl->_cubeSRV.GetUnderlying());
+                const auto fDesc = BufferUploads::ExtractDesc(*faceRes.GetUnderlying())._textureDesc;
+                auto fReadback = bufferUploads.Resource_ReadBack(faceRes);
+                for (unsigned c=0; c<5; ++c)
+                    SaveTexture(
+                        StringMeld<256>() << "aogen_debug/" << CubeMapsWritten << "_face_" << c << ".tif",
+                        *fReadback, c, 
+                        UInt2(fDesc._width, fDesc._height), Metal::NativeFormat::R32_FLOAT);
+
+                const auto sdDesc = BufferUploads::ExtractDesc(*_pimpl->_miniLocator->GetUnderlying())._textureDesc;
+                for (unsigned c=0; c<5; ++c)
+                    SaveTexture(
+                        StringMeld<256>() << "aogen_debug/" << CubeMapsWritten << "_stepdown_" << c << ".tif",
+                        *readback, c, 
+                        UInt2(sdDesc._width, sdDesc._height), (RenderCore::Metal::NativeFormat::Enum)sdDesc._nativePixelFormat);
+                ++CubeMapsWritten;
+            }
+        #endif
+
             // Note that we're currently using the full face for the side faces
             // (as opposed to just half of the face, which would correspond to
             // a hemisphere)
@@ -229,16 +285,27 @@ namespace ToolsRig
 
         using namespace BufferUploads;
         auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
+
+        #if defined(GEN_AO_DEBUG)
+            auto typelessFormat = Metal::NativeFormat::R32_TYPELESS;
+            auto dsvFormat = Metal::NativeFormat::D32_FLOAT;
+            auto srvFormat = Metal::NativeFormat::R32_FLOAT;
+        #else
+            auto typelessFormat = Metal::NativeFormat::R24G8_TYPELESS;
+            auto dsvFormat = Metal::NativeFormat::D24_UNORM_S8_UINT;
+            auto srvFormat = Metal::NativeFormat::R24_UNORM_X8_TYPELESS;
+        #endif
+
         _pimpl->_cubeLocator = bufferUploads.Transaction_Immediate(
             CreateDesc( 
                 BindFlag::DepthStencil | BindFlag::ShaderResource,
                 0, GPUAccess::Read|GPUAccess::Write,
                 TextureDesc::Plain2D(
                     settings._renderResolution, settings._renderResolution, 
-                    Metal::NativeFormat::R24G8_TYPELESS, 1, cubeFaces),
+                    typelessFormat, 1, cubeFaces),
                 "AoGen"));
-        _pimpl->_cubeDSV = Metal::DepthStencilView(_pimpl->_cubeLocator->GetUnderlying(), Metal::NativeFormat::D24_UNORM_S8_UINT, Metal::ArraySlice(cubeFaces));
-        _pimpl->_cubeSRV = Metal::ShaderResourceView(_pimpl->_cubeLocator->GetUnderlying(), Metal::NativeFormat::R24_UNORM_X8_TYPELESS, cubeFaces);
+        _pimpl->_cubeDSV = Metal::DepthStencilView(_pimpl->_cubeLocator->GetUnderlying(), dsvFormat, Metal::ArraySlice(cubeFaces));
+        _pimpl->_cubeSRV = Metal::ShaderResourceView(_pimpl->_cubeLocator->GetUnderlying(), srvFormat, cubeFaces);
 
         _pimpl->_miniLocator = bufferUploads.Transaction_Immediate(
             CreateDesc( 
