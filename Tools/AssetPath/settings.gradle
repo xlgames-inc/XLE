@@ -1,14 +1,24 @@
 // Find all subdirectories that contain a "gradle.build" file, and consider
-// them subprojects. For a very large project, this search might be frustratingly
+// them subprojects.
+//
+// We're expecting the path to the root asset folder to be on the
+// gradle command line (eg, -Proot=../../Working). We will find the gradle.build
+// files within that directory
+//
+// For a very large project, this search might be frustratingly
 // slow... but doesn't seem to be a natural way to do this in gradle, oddly.
+// We might want to skip the "int" directory (and .gradle, etc)
 
 import groovy.io.FileType
 def subprojects = []
-def baseDir = new File('').toPath().toAbsolutePath()
-new File('../../Working/').eachFileRecurse (FileType.DIRECTORIES)
+
+def t = startParameter.getProjectProperties()["root"]
+def workingRoot = new File(t).toPath().toAbsolutePath().normalize()
+
+workingRoot.toFile().eachFileRecurse (FileType.DIRECTORIES)
 {
     file ->
-        def path = baseDir.relativize(file.toPath().toAbsolutePath())
+        def path = rootDir.toPath().relativize(file.toPath().toAbsolutePath())
         if (new File(path.toFile(), 'build.gradle').exists())
             subprojects << path.toString()
 }

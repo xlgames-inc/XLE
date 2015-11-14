@@ -1,1 +1,28 @@
 apply plugin: 'groovy'
+
+    // Create a task "tex" in the main project that references all tasks in
+    // all subprojects that begin with "tex"
+    // In this way, we can adjust arbitrarily define tex0, tex1, tex2 (etc)
+    // within the subproject gradle.build files; and this single task can be
+    // used to execute them all.
+task tex {}
+subprojects { tex.dependsOn tasks.matching({t -> t.name.startsWith("tex")}) }
+
+    // We will write our processed files into a "/int/u/" folder under the working directory
+    // Our working directory is retrieved from the command line (just like settings.gradle)
+    // Actually, it would be better if settings.gradle could pass the root folder to
+    // use somehow... But it's not clear how to do that.
+def t = getGradle().startParameter.getProjectProperties()["root"]
+project.ext.rootDir = new File(t).toPath().toAbsolutePath().normalize()
+project.ext.intermediateRoot = new File(ext.rootDir.toFile(), "/int/u/").toPath().normalize().toFile()
+
+    // We can create a closure object that transforms a source file name into
+    // a name within our intermediate folder. This is a global transformation.
+project.ext.makeIntermediateName = {
+    source ->
+        new File(ext.intermediateRoot, ext.rootDir.relativize(source.toPath().toAbsolutePath()).toString()).toPath().normalize().toString()
+}
+
+    // Set a static within the TextureCompress groovy object, which tells that
+    // plugin where to write output files.
+xle.TextureCompress.makeIntermediateName = project.ext.makeIntermediateName
