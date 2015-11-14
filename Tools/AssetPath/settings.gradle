@@ -1,0 +1,16 @@
+// Find all subdirectories that contain a "gradle.build" file, and consider
+// them subprojects. For a very large project, this search might be frustratingly
+// slow... but doesn't seem to be a natural way to do this in gradle, oddly.
+
+import groovy.io.FileType
+def subprojects = []
+def baseDir = new File('').toPath().toAbsolutePath()
+new File('../../Working/').eachFileRecurse (FileType.DIRECTORIES)
+{
+    file ->
+        def path = baseDir.relativize(file.toPath().toAbsolutePath())
+        if (new File(path.toFile(), 'build.gradle').exists())
+            subprojects << path.toString()
+}
+
+include subprojects.toArray(new java.lang.String[0])
