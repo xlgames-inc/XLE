@@ -263,9 +263,13 @@ void CalculateSkyReflection(inout OceanLightingParts parts,
 
     #else
 
+            // todo --  we should consider using the normal instead of the half-vector
+            //          for fresnel calculations here. Since water should have close to
+            //          mirror reflections (as least some of the time)
         parts.skyReflection = LightResolve_Ambient(
             BuildGBufferValues(oceanSurface),
-            parameters.worldViewDirection, BasicAmbient, parameters.pixelPosition.xy, 0);
+            parameters.worldViewDirection, BasicAmbient, parameters.pixelPosition.xy, 0,
+            true);
 
     #endif
 
@@ -273,7 +277,10 @@ void CalculateSkyReflection(inout OceanLightingParts parts,
 
 float3 DoSingleSpecular(OceanSurfaceSample oceanSample, float3 worldViewDirection)
 {
-    return LightResolve_Specular(BuildGBufferValues(oceanSample), worldViewDirection, BasicLight[0]);
+        // todo --  we should consider using the normal instead of the half-vector
+        //          for fresnel calculations here. Since water should have close to
+        //          mirror reflections (as least some of the time)
+    return LightResolve_Specular(BuildGBufferValues(oceanSample), worldViewDirection, BasicLight[0], true);
 }
 
 void CalculateSpecular(	inout OceanLightingParts parts,

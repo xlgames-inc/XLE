@@ -32,7 +32,8 @@ float3 LightResolve_Diffuse(
 float3 LightResolve_Specular(
 	GBufferValues sample,
 	float3 directionToEye,
-	LightDesc light)
+	LightDesc light,
+	bool mirrorSpecular = false)
 {
 	float roughnessValue = Material_GetRoughness(sample);
 
@@ -41,6 +42,12 @@ float3 LightResolve_Specular(
 	float rawDiffuse = CalculateDiffuse(
 		sample.worldSpaceNormal, directionToEye, light.NegativeDirection,
 		DiffuseParameters_Roughness(Material_GetRoughness(sample), light.DiffuseWideningMin, light.DiffuseWideningMax));
+
+		// note -- we have to be careful here, because when using the lambert diffuse
+		//		model, "rawDiffuse" already has the 1.0f/pi normalization factor built
+		//		in... but CalculateSpecular expects it to just by NdotL. To prevent
+		//		problems we need to make sure USE_DISNEY_EQUATOR is disabled when
+		//		using lambert diffuse.
 
 	float F0_0 = Material_GetF0_0(sample);
 	SpecularParameters param0 = SpecularParameters_RoughF0(roughnessValue, F0_0);
@@ -61,7 +68,7 @@ float3 LightResolve_Specular(
 
 		////////////////////////////////////////////////
 
-	float3 result = (saturate(spec0) * sample.cookedLightOcclusion) * light.Color.specular;
+	float3 result = (spec0 * sample.cookedLightOcclusion) * light.Color.specular;
 	result = IntegrateMetalParam(result, sample);
 	// result += (saturate(spec1) * scale) * specularColor1;
 	return result;

@@ -73,21 +73,25 @@ float CalculateSpecular_CookTorrence(float3 normal, float3 directionToEye, float
     // value we got from our earlier diffuse calculation.
     // However, since it widens the specular equator, we might get exaggerated results in
     // that extra space.
-#if !defined(USE_DISNEY_EQUATOR)
+#if !defined(USE_DISNEY_EQUATOR) && (DIFFUSE_METHOD==1)
     #define USE_DISNEY_EQUATOR 1
 #endif
 
 float CalculateSpecular_GGX(
     float3 normal, float3 directionToEye, float3 negativeLightDirection,
-    float roughness, float F0, float rawDiffuse)
+    float roughness, float F0, float rawDiffuse, bool mirrorSurface)
 {
     // return LightingFuncGGX_REF(normal, directionToEye, negativeLightDirection, roughness, F0);
 
-    #if (USE_DISNEY_EQUATOR == 1)
-        return LightingFuncGGX_OPT5_XLE(normal, directionToEye, negativeLightDirection, roughness, F0, rawDiffuse);
-    #else
-        return LightingFuncGGX_OPT5(normal, directionToEye, negativeLightDirection, roughness, F0, dotNL);
-    #endif
+    if (!mirrorSurface) {
+        #if (USE_DISNEY_EQUATOR == 1)
+            return LightingFuncGGX_OPT5_XLE(normal, directionToEye, negativeLightDirection, roughness, F0, rawDiffuse);
+        #else
+            return LightingFuncGGX_OPT5(normal, directionToEye, negativeLightDirection, roughness, F0);
+        #endif
+    } else {
+        return LightingFuncGGX_OPT5_Mirror(normal, directionToEye, negativeLightDirection, roughness, F0);
+    }
 }
 
     //////////////////////////////////////////////////////////////////////////
@@ -98,6 +102,7 @@ struct SpecularParameters
 {
     float roughness;
     float F0;
+    bool mirrorSurface;
 };
 
 SpecularParameters SpecularParameters_Init(float roughness, float refractiveIndex)
@@ -105,14 +110,16 @@ SpecularParameters SpecularParameters_Init(float roughness, float refractiveInde
     SpecularParameters result;
     result.roughness = roughness;
     result.F0 = RefractiveIndexToF0(refractiveIndex);
+    result.mirrorSurface = false;
     return result;
 }
 
-SpecularParameters SpecularParameters_RoughF0(float roughness, float F0)
+SpecularParameters SpecularParameters_RoughF0(float roughness, float F0, bool mirrorSurface = false)
 {
     SpecularParameters result;
     result.roughness = roughness;
     result.F0 = F0;
+    result.mirrorSurface = mirrorSurface;
     return result;
 }
 
@@ -128,7 +135,7 @@ float CalculateSpecular(float3 normal, float3 directionToEye,
     #elif SPECULAR_METHOD==1
         return CalculateSpecular_GGX(
             normal, directionToEye, negativeLightDirection,
-            parameters.roughness, parameters.F0, rawDiffuse);
+            parameters.roughness, parameters.F0, rawDiffuse, parameters.mirrorSurface);
     #endif
 }
 

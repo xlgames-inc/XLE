@@ -7,6 +7,8 @@
 #if !defined(DIFFUSE_METHODS_H)
 #define DIFFUSE_METHODS_H
 
+#include "../Utility/MathConstants.h"
+
 float Sq(float x) { return x*x; }
 float RaiseTo5(float x) { float x2 = x*x; return x2*x2*x; }
 
@@ -29,10 +31,19 @@ float DiffuseMethod_Disney(
 	float cosThetaL = dot(normal, negativeLightDirection);
 	float cosThetaV = dot(normal, directionToEye);
 
+        // Note that we're using the half vector as a parameter to the fresnel
+        // equation. See also "Physically Based Lighting in Call of Duty: Black Ops"
+        // (Lazarov/Treyarch) for another example of this. The theory is this:
+        //      If we imagine the surface as being microfacetted, then the facets
+        //      that are reflecting light aren't actually flat on the surface... They
+        //      are the facets that are raised towards the viewer. Our "halfVector" is
+        //      actually an approximation of an average normal of these active facets.
+        // (disney calls this the "difference angle")
 	float3 halfVector = lerp(negativeLightDirection, directionToEye, .5f);
-	float cosThetaD = max(dot(halfVector, negativeLightDirection), 0);     // (disney calls this the "difference angle")
+    // halfVector = normalize(halfVector); (note that in theory we should have a normalize here.. but it doesn't seem to matter)
+	float cosThetaD = max(dot(halfVector, negativeLightDirection), 0);
 
-        // the following factor controls how broad the diffusing effect is
+        // The following factor controls how broad the diffusing effect is
         // at grazing angles. The problem is, with high levels of "roughness"
         // this will end up producing an extra highlight in the opposite direction
         // of the light (eg, in the shadowed area).
@@ -45,13 +56,31 @@ float DiffuseMethod_Disney(
         // make them flexible, and reduce the overall impact slightly.
 	float FD90 = lerp(wideningMin, wideningMax, cosThetaD * cosThetaD * roughness);
 
-	float result = (1.f + (FD90 - 1.f) * RaiseTo5(1.f - cosThetaL)) * (1.f + (FD90 - 1.f) * RaiseTo5(1.f - cosThetaV)) / pi;
-    return max(result, 0);
+        // I wonder if there is any benefit to using the shadowing factor from our
+        // BRDF as a parameter here...? Obviously it's quite an expensive addition.
+
+        // We could consider power of 4 as a cheaper approximation to power of 5...?
+	float result =
+          (1.f + (FD90 - 1.f) * RaiseTo5(1.f - cosThetaL))
+        * (1.f + (FD90 - 1.f) * RaiseTo5(1.f - cosThetaV));
+
+    // note that the "saturate" here prevents strange results on high grazing angles
+    return saturate(result) / pi;
 }
 
 float DiffuseMethod_Lambert(float3 normal, float3 negativeLightDirection)
 {
-	return saturate(dot(negativeLightDirection, normal));
+        // Plain lambert lighting is not energy conserving. However,
+        // the normalization factor is constant -- it's just 1.0f/pi.
+        // In practice this is just the same as scaling the light brightness,
+        // and since the light brightness isn't really defined in physically
+        // based units, it doesn't really matter... But by adding the scale
+        // factor here, it should allow us to better balance this lighting
+        // model against other lighting models that are corectly normalized.
+        // Note that the results are also similarly simple for broadened
+        // lambert models (where we offset and scale the value from the dot product)
+    const float normalizationFactor = 1.0f/pi;
+	return saturate(dot(negativeLightDirection, normal)) * normalizationFactor;
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -41,6 +41,14 @@ float3 ReadSkyReflectionTexture(float3 reflectionVector, float roughness, float 
 {
     uint2 reflectionTextureDims;
     SkyReflectionTexture[0].GetDimensions(reflectionTextureDims.x, reflectionTextureDims.y);
+
+        // note --  Ideally we want to be using importance sampling (or similar Monte Carlo
+        //          method) to find the correct level of blurriness for the reflections.
+        //          But it's a little expensive.
+        //          We can get an efficient version by building the importance sampled
+        //          blurred textures into the mipmaps...
+        //          Until then, just adding a bias to the mipmap level gives us a
+        //          rough approximation.
     float mipMap = blurriness + saturate(roughness) * ReflectionBlurrinessFromRoughness;
 
     #if SKY_PROJECTION == 1
@@ -78,14 +86,23 @@ float3 ReadSkyReflectionTexture(float3 reflectionVector, float roughness, float 
     #endif
 }
 
-float CalculateSkyReflectionFresnel(GBufferValues sample, float3 viewDirection)
+float CalculateSkyReflectionFresnel(GBufferValues sample, float3 viewDirection, bool mirrorReflection)
 {
     float F0 = Material_GetF0_0(sample);
 
-    float3 worldSpaceReflection = reflect(-viewDirection, sample.worldSpaceNormal);
-    float3 halfVector = normalize(worldSpaceReflection + viewDirection);
-    float fresnel = SchlickFresnelF0(viewDirection, halfVector, F0);
-    return fresnel;
+        // Note that it might be worth considering a slight hack to
+        // the fresnel calculation here... Imagine a reflective sphere --
+        // around microfacet shadowing should start to play a bigger effect.
+        // That should give us an excuse to ramp down the fresnel a little
+        // bit around the edge. This could be handy because very bright halos
+        // around objects can tend to highlight inaccuracies in the lighting.
+    if (!mirrorReflection) {
+        float3 worldSpaceReflection = reflect(-viewDirection, sample.worldSpaceNormal);
+        float3 halfVector = normalize(worldSpaceReflection + viewDirection);
+        return SchlickFresnelF0(viewDirection, halfVector, F0);
+    } else {
+        return SchlickFresnelF0(viewDirection, sample.worldSpaceNormal, F0);
+    }
 }
 
 float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float fresnel, float blurriness)
@@ -160,11 +177,12 @@ float3 LightResolve_Ambient(
     float3 directionToEye,
     AmbientDesc ambient,
     int2 pixelCoords,
-    uint sampleIndex)
+    uint sampleIndex,
+    bool mirrorReflection = false)
 {
     float3 result = CalcBasicAmbient(pixelCoords, sampleIndex, sample, ambient.Colour);
 
-    float fresnel = CalculateSkyReflectionFresnel(sample, directionToEye);
+    float fresnel = CalculateSkyReflectionFresnel(sample, directionToEye, mirrorReflection);
     float blurriness = ambient.SkyReflectionBlurriness;
 
     float3 skyReflections = ambient.SkyReflectionScale * CalculateSkyReflections(sample, directionToEye, fresnel, blurriness);

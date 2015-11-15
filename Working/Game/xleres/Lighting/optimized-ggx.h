@@ -242,4 +242,21 @@ float LightingFuncGGX_OPT5_XLE(float3 N, float3 V, float3 L, float roughness, fl
 	return specular;
 }
 
+float LightingFuncGGX_OPT5_Mirror(float3 N, float3 V, float3 L, float roughness, float F0)
+{
+	float3 H = normalize(V+L);
+
+	float dotNL = saturate(dot(N,L));
+	float dotLH = dotNL;
+	float dotNH = 1.f;
+
+	float D = GGXTable.SampleLevel(ClampingSampler,float2(Pow4(dotNH),roughness), 0).x;
+	float2 FV_helper = GGXTable.SampleLevel(ClampingSampler,float2(dotLH,roughness), 0).yz;
+
+	float FV = F0*FV_helper.x + FV_helper.y;
+	float specular = dotNL * D * FV;
+
+	return specular;
+}
+
 #endif

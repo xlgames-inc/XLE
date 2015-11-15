@@ -55,7 +55,13 @@ float Material_GetSpecular1(GBufferValues gbuffer)
 
 float Material_SpecularToF0(float specularParameter)
 {
-    return RefractiveIndexToF0(lerp(RefractiveIndexMin, RefractiveIndexMax, specularParameter));
+    #if (SPECULAR_LINEAR_AGAINST_F0!=0)
+        const float minF0 = RefractiveIndexToF0(RefractiveIndexMin);
+        const float maxF0 = RefractiveIndexToF0(RefractiveIndexMax);
+        return lerp(minF0, maxF0, specularParameter);
+    #else
+        return RefractiveIndexToF0(lerp(RefractiveIndexMin, RefractiveIndexMax, specularParameter));
+    #endif
 }
 
 float Material_GetF0_0(GBufferValues gbuffer)

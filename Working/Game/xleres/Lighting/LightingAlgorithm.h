@@ -20,10 +20,28 @@ float RefractiveIndexToF0(float refractiveIndex)
 
 float SchlickFresnelF0(float3 viewDirection, float3 halfVector, float F0)
 {
+		// Note that we're using the half vector as a parameter to the fresnel
+		// equation. See also "Physically Based Lighting in Call of Duty: Black Ops"
+		// (Lazarov/Treyarch) for another example of this. The theory is this:
+		//      If we imagine the surface as being microfacetted, then the facets
+		//      that are reflecting light aren't actually flat on the surface... They
+		//      are the facets that are raised towards the viewer. Our "halfVector" is
+		//      actually an approximation of an average normal of these active facets.
+		// For a perfect mirror surface, maybe we could consider using the normal
+		// instead of the half vector here? Might be nice for intense reflections
+		// from puddles of water, etc. Maybe we could also just use the roughness
+		// value to interpolate between half vector and normal...?
+		//
+		// We can also consider a "spherical gaussian approximation" for fresnel. See:
+		//	https://seblagarde.wordpress.com/2012/06/03/spherical-gaussien-approximation-for-blinn-phong-phong-and-fresnel/
+		//	pow(1 - dotEH, 5) = exp2((-5.55473 * EdotH - 6.98316) * EdotH)
+		// It seems like the performance difference might be hardware dependent
+		// Also, maybe we should consider matching the gaussian approximation to the full
+		// fresnel equation; rather than just Schlick's approximation.
 	float A = 1.0f - saturate(dot(viewDirection, halfVector));
 	float sq = A*A;
 	float cb = sq*sq;
-	float q = cb*A;
+	float q = cb*A;	// we could also consider just using the cubed value here
 
 	return F0 + (1.f - F0) * q;	// (note, use lerp for this..?)
 }
@@ -49,8 +67,8 @@ float CalculateMipmapLevel(float2 texCoord, uint2 textureSize)
 
 void OrenNayar_CalculateInputs(float roughness, out float rho, out float shininess)
 {
-    // rho = roughness * roughness;
-    // shininess = 1.f - roughness;
+	    // rho = roughness * roughness;
+	    // shininess = 1.f - roughness;
     rho = 1.f;
     shininess = 2.0f / (roughness*roughness);
 }
