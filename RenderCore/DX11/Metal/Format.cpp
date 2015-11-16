@@ -6,6 +6,7 @@
 
 #include "Format.h"
 #include "../../../Utility/ParameterBox.h"
+#include "../../../Utility/StringUtils.h"
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -422,12 +423,23 @@ namespace RenderCore { namespace Metal_DX11
     {
         switch (format) {
             #define _EXP(X, Y, Z, U)    case NativeFormat::X##_##Y: return #X;
-            #include "../../Metal/Detail/DXGICompatibleFormats.h"
-        #undef _EXP
+                #include "../../Metal/Detail/DXGICompatibleFormats.h"
+            #undef _EXP
         case NativeFormat::Matrix4x4: return "Matrix4x4";
         case NativeFormat::Matrix3x4: return "Matrix3x4";
         default: return "Unknown";
         }
+    }
+
+    NativeFormat::Enum AsNativeFormat(const char name[])
+    {
+        #define _EXP(X, Y, Z, U)    if (!XlEqStringI(name, #X)) return NativeFormat::X##_##Y;
+            #include "../../Metal/Detail/DXGICompatibleFormats.h"
+        #undef _EXP
+
+        if (!XlEqStringI(name, "Matrix4x4")) return NativeFormat::Matrix4x4;
+        if (!XlEqStringI(name, "Matrix3x4")) return NativeFormat::Matrix3x4;
+        return NativeFormat::Unknown;
     }
 }}
 

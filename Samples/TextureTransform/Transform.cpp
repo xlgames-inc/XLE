@@ -167,13 +167,27 @@ namespace TextureTransform
             }
         }
 
-            // we need to calculate an output format and viewport dimensions
-            // if we have at least one input resource, we will duplicate that resource;
-        if (inputResources.empty())
-            Throw(::Exceptions::BasicLabel("No input resources specified on command line (or input resources not found)"));
+            // We need to calculate an output format and viewport dimensions
+            // If we have at least one input resource, we can use that to select
+            // an initial width/height/format.
+            // Otherwise, let's look for parameters named "Dims" and "Format"
 
-        auto rtFormat = AsRTFormat(inputResources[0]._finalFormat);
-        UInt2 viewDims(inputResources[0]._desc._width, inputResources[0]._desc._height);
+        auto rtFormat = Metal::NativeFormat::Unknown;
+        UInt2 viewDims(0, 0);
+        if (!inputResources.empty()) {
+            rtFormat = AsRTFormat(inputResources[0]._finalFormat);
+            viewDims = UInt2(inputResources[0]._desc._width, inputResources[0]._desc._height);
+        }
+
+        auto dimsParam = parameters.GetParameter<UInt2>(ParameterBox::MakeParameterNameHash("Dims"));
+        if (dimsParam.first) viewDims = dimsParam.second;
+
+        auto formatParam = parameters.GetString<char>(ParameterBox::MakeParameterNameHash("Format"));
+        if (!formatParam.empty())
+            rtFormat = Metal::AsNativeFormat(formatParam.c_str());
+
+        if (!viewDims[0] || !viewDims[1] || rtFormat == Metal::NativeFormat::Unknown)
+            Throw(::Exceptions::BasicLabel("Missing Dims or Format parameter"));
 
         Techniques::PredefinedCBLayout cbLayout(GetCBLayoutName(psShaderName.c_str()).c_str());
 
@@ -232,14 +246,34 @@ namespace TextureTransform
             (uint8_t*)_pkt->GetData() };
         auto fn = Conversion::Convert<std::wstring>(std::string(destinationFile));
 
-        const GUID GUID_ContainerFormatTiff = 
-            { 0x163bcc30, 0xe2e9, 0x4f0b, { 0x96, 0x1d, 0xa3, 0xe9, 0xfd, 0xb7, 0x88, 0xa3 }};
-        auto hresult = DirectX::SaveToWICFile(
-            image, DirectX::WIC_FLAGS_NONE,
-            GUID_ContainerFormatTiff,
-            fn.c_str());
-        (void)hresult;
-        assert(SUCCEEDED(hresult));
+        auto ext = MakeFileNameSplitter(destinationFile).Extension();
+
+        HRESULT hresult;
+        if (XlEqStringI(ext, "tga")) {
+            hresult = DirectX::SaveToTGAFile(image, fn.c_str());
+        } else if (XlEqStringI(ext, "dds")) {
+            hresult = DirectX::SaveToDDSFile(image, DirectX::DDS_FLAGS_NONE, fn.c_str());
+        } else {
+            const GUID GUID_ContainerFormatTiff = 
+                { 0x163bcc30, 0xe2e9, 0x4f0b, { 0x96, 0x1d, 0xa3, 0xe9, 0xfd, 0xb7, 0x88, 0xa3 }};
+            const GUID GUID_ContainerFormatPng  = 
+                { 0x1b7cfaf4, 0x713f, 0x473c, { 0xbb, 0xcd, 0x61, 0x37, 0x42, 0x5f, 0xae, 0xaf }};
+            const GUID GUID_ContainerFormatBmp = 
+                { 0x0af1d87e, 0xfcfe, 0x4188, { 0xbd, 0xeb, 0xa7, 0x90, 0x64, 0x71, 0xcb, 0xe3 }};
+
+            GUID container = GUID_ContainerFormatTiff;
+
+            if (XlEqStringI(ext, "bmp")) container = GUID_ContainerFormatBmp;
+            else if (XlEqStringI(ext, "png")) container = GUID_ContainerFormatPng;
+
+            hresult = DirectX::SaveToWICFile(
+                image, DirectX::WIC_FLAGS_NONE,
+                GUID_ContainerFormatTiff,
+                fn.c_str());
+        }
+
+        if (!SUCCEEDED(hresult))
+            Throw(::Exceptions::BasicLabel("Failure while written output image"));
     }
 
 }
