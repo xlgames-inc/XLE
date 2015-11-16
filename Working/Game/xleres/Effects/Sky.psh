@@ -13,6 +13,8 @@
 
 #if SKY_PROJECTION==1
 	Texture2D ReflectionBox[3]	: register(t0);
+#elif SKY_PROJECTION==5
+	TextureCube ReflectionCube	: register(t0);
 #endif
 
 float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
@@ -63,6 +65,10 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 		}
 
 		return 0.0.xxx;
+
+	#elif SKY_PROJECTION==5
+
+		return ReflectionCube.Sample(DefaultSampler, viewFrustumVector);
 
 	#else
 

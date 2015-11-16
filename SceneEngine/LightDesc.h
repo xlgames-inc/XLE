@@ -177,7 +177,7 @@ namespace SceneEngine
     {
     public:
         ::Assets::ResChar   _skyTexture[MaxPath];   ///< use "<texturename>_*" when using a half cube style sky texture. The system will fill in "_*" with appropriate characters
-        enum class SkyTextureType { HemiCube, Equirectangular, HemiEquirectangular };
+        enum class SkyTextureType { HemiCube, Cube, Equirectangular, HemiEquirectangular };
         SkyTextureType      _skyTextureType;
 
         Float3  _ambientLight;

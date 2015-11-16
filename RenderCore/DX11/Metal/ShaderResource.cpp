@@ -25,12 +25,18 @@ namespace RenderCore { namespace Metal_DX11
                 TextureDesc2D textureDesc(resource);
                 if (textureDesc.Width > 0) {
                     if (arrayCount == 0) {
-                        if (textureDesc.SampleDesc.Count > 1 && !forceSingleSample) {
-                            viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMS;
+                        if (textureDesc.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE) {
+                            viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
+                            viewDesc.TextureCube.MostDetailedMip = 0;
+                            viewDesc.TextureCube.MipLevels = (UINT)-1;
                         } else {
-                            viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-                            viewDesc.Texture2D.MostDetailedMip = 0;
-                            viewDesc.Texture2D.MipLevels = (UINT)-1;
+                            if (textureDesc.SampleDesc.Count > 1 && !forceSingleSample) {
+                                viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMS;
+                            } else {
+                                viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+                                viewDesc.Texture2D.MostDetailedMip = 0;
+                                viewDesc.Texture2D.MipLevels = (UINT)-1;
+                            }
                         }
                     } else {
                         if (textureDesc.SampleDesc.Count > 1 && !forceSingleSample) {

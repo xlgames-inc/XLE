@@ -424,6 +424,7 @@ namespace BufferUploads
     {
         unsigned lodLevelMax = 0;
         unsigned lodLevelMin = ~unsigned(0x0);
+        unsigned arrayIndexMax = 0;
         if (desc._type == BufferDesc::Type::Texture) {
                 // find which lod levels are provided in the initialisation data...
             lodLevelMax = desc._textureDesc._mipCount-1;
@@ -433,10 +434,11 @@ namespace BufferUploads
                     lodLevelMin = std::min(lodLevelMin, c);
                 }
             }
+            arrayIndexMax = (unsigned)std::max(0, signed(desc._textureDesc._arrayCount)-1);
         } else {
             lodLevelMin = 0;
         }
-        return PartialResource(Box2D(), 0, lodLevelMax, 0);
+        return PartialResource(Box2D(), 0, lodLevelMax, 0, arrayIndexMax);
     }
 
     TransactionID AssemblyLine::Transaction_Begin(const BufferDesc& desc, DataPacket* initialisationData, TransactionOptions::BitField flags)
@@ -727,16 +729,18 @@ namespace BufferUploads
     
             PlatformInterface::UnderlyingDeviceContext deviceContext(*_device->GetImmediateContext());
             for (unsigned l=part._lodLevelMin; l<=part._lodLevelMax; ++l) {
-                auto size = initialisationData->GetDataSize(SubR(l, part._arrayIndex));
-                const void* data = initialisationData->GetData(SubR(l, part._arrayIndex));
-                if (data) {
-                    deviceContext.PushToStagingResource(
-                        *stagingConstruction._identifier->GetUnderlying(), 
-                        ApplyLODOffset(desc, actualisedStagingLODOffset), 0,
-                        data, size, 
-                        initialisationData->GetPitches(SubR(l, part._arrayIndex)),
-                        Box2D(),
-                        l - actualisedStagingLODOffset, part._arrayIndex);
+                for (unsigned e=part._arrayIndexMin; e<=part._arrayIndexMax; ++e) {
+                    auto size = initialisationData->GetDataSize(SubR(l, e));
+                    const void* data = initialisationData->GetData(SubR(l, e));
+                    if (data) {
+                        deviceContext.PushToStagingResource(
+                            *stagingConstruction._identifier->GetUnderlying(), 
+                            ApplyLODOffset(desc, actualisedStagingLODOffset), 0,
+                            data, size, 
+                            initialisationData->GetPitches(SubR(l, e)),
+                            Box2D(),
+                            l - actualisedStagingLODOffset, e);
+                    }
                 }
             }
     
@@ -2173,6 +2177,7 @@ namespace BufferUploads
                     if (dataSize) {
                         TextureDesc mipMapDesc     = PlatformInterface::CalculateMipMapDesc(transaction._desc._textureDesc, m);
                         mipMapDesc._mipCount       = 1;
+                        mipMapDesc._arrayCount     = 1;
                         const size_t expectedSize  = PlatformInterface::ByteCount(mipMapDesc);
                         assert(std::max(size_t(16),dataSize) == std::max(size_t(16),expectedSize));
                     }
@@ -2192,13 +2197,17 @@ namespace BufferUploads
         Interlocked::Value size = 0;
 		if (rawData)
 			for (unsigned l = part._lodLevelMin; l <= part._lodLevelMax; ++l)
-				size += (unsigned)rawData->GetDataSize(SubR(l, part._arrayIndex));
+                for (unsigned e = part._arrayIndexMin; e <= part._arrayIndexMax; ++e)
+				    size += (unsigned)rawData->GetDataSize(SubR(l, e));
 
         if (transaction._desc._type == BufferDesc::Type::LinearBuffer) {
             assert(PlatformInterface::ByteCount(transaction._desc)==unsigned(size));
         }
         Interlocked::Add(&_currentQueuedBytes[AsUploadDataType(transaction._desc)], size);
-        PushStep(transaction, DataUploadStep(id, rawData, part._box, part._lodLevelMin, part._lodLevelMax, part._arrayIndex));
+
+            // there is a separate "step" for each array element
+        for (unsigned e = part._arrayIndexMin; e <= part._arrayIndexMax; ++e)
+            PushStep(transaction, DataUploadStep(id, rawData, part._box, part._lodLevelMin, part._lodLevelMax, e));
     }
 
     intrusive_ptr<ResourceLocator>     AssemblyLine::GetResource(TransactionID id)

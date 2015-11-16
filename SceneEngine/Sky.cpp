@@ -310,7 +310,12 @@ namespace SceneEngine
                     XlCopyString(&nameBuffer[beforePart+2], MaxPath-beforePart-2, &skyTextureName[beforePart+3]);
                 _face5 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
             } else {
-                _projectionType = (resourceType == GlobalLightingDesc::SkyTextureType::HemiEquirectangular) ? 4 : 3;
+                switch (resourceType) {
+                case GlobalLightingDesc::SkyTextureType::Cube:                  _projectionType = 5; break;
+                case GlobalLightingDesc::SkyTextureType::HemiEquirectangular:   _projectionType = 4; break;
+                default:
+                case GlobalLightingDesc::SkyTextureType::Equirectangular:       _projectionType = 3; break;
+                }
                 _face5 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(skyTextureName);
             }
         } else {

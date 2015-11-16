@@ -436,7 +436,8 @@
                             textureDesc.MiscFlags = 0;
                             return device.CreateTexture1D(&textureDesc, initialisationData?subResources:NULL, desc._name);
 
-                        } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D) {
+                        } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D
+                                || desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
 
                             D3D11_TEXTURE2D_DESC textureDesc;
                             XlZeroMemory(textureDesc);
@@ -452,6 +453,8 @@
                             textureDesc.BindFlags = AsNativeBindFlags(desc._bindFlags);
                             textureDesc.CPUAccessFlags = AsNativeCPUAccessFlag(desc._cpuAccess);
                             textureDesc.MiscFlags = 0;
+                            if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap)
+                                textureDesc.MiscFlags |= D3D11_RESOURCE_MISC_TEXTURECUBE;
                             return device.CreateTexture2D(&textureDesc, initialisationData?subResources:NULL, desc._name);
 
                         } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {

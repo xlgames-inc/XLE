@@ -348,7 +348,12 @@ namespace BufferUploads
         switch (metadata.dimension) {
         case TEX_DIMENSION_TEXTURE1D: desc._dimensionality = TextureDesc::Dimensionality::T1D; break;
         default:
-        case TEX_DIMENSION_TEXTURE2D: desc._dimensionality = TextureDesc::Dimensionality::T2D; break;
+        case TEX_DIMENSION_TEXTURE2D: 
+            if (metadata.miscFlags & TEX_MISC_TEXTURECUBE)
+                desc._dimensionality = TextureDesc::Dimensionality::CubeMap; 
+            else
+                desc._dimensionality = TextureDesc::Dimensionality::T2D; 
+            break;
         case TEX_DIMENSION_TEXTURE3D: desc._dimensionality = TextureDesc::Dimensionality::T3D; break;
         }
         if (metadata.IsCubemap())

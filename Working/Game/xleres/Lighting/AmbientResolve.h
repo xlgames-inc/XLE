@@ -26,7 +26,12 @@
 #endif
 
 Texture2D<float>				AmbientOcclusion		: register(t6);
-Texture2D						SkyReflectionTexture[3] : register(t11);
+
+#if SKY_PROJECTION==5
+    TextureCube						SkyReflectionTexture : register(t11);
+#else
+    Texture2D						SkyReflectionTexture[3] : register(t11);
+#endif
 
 #if CALCULATE_SCREENSPACE_REFLECTIONS==1
     Texture2D<float4>			ScreenSpaceReflResult	: register(t7);
@@ -39,8 +44,6 @@ Texture2D						SkyReflectionTexture[3] : register(t11);
 
 float3 ReadSkyReflectionTexture(float3 reflectionVector, float roughness, float blurriness)
 {
-    uint2 reflectionTextureDims;
-    SkyReflectionTexture[0].GetDimensions(reflectionTextureDims.x, reflectionTextureDims.y);
 
         // note --  Ideally we want to be using importance sampling (or similar Monte Carlo
         //          method) to find the correct level of blurriness for the reflections.
@@ -53,12 +56,18 @@ float3 ReadSkyReflectionTexture(float3 reflectionVector, float roughness, float 
 
     #if SKY_PROJECTION == 1
 
+        uint2 reflectionTextureDims;
+        SkyReflectionTexture[0].GetDimensions(reflectionTextureDims.x, reflectionTextureDims.y);
+
         return ReadReflectionHemiBox(
             reflectionVector,
             SkyReflectionTexture[0], SkyReflectionTexture[1], SkyReflectionTexture[2],
             reflectionTextureDims, uint(mipMap));
 
     #elif (SKY_PROJECTION == 3) || (SKY_PROJECTION == 4)
+
+        uint2 reflectionTextureDims;
+        SkyReflectionTexture[0].GetDimensions(reflectionTextureDims.x, reflectionTextureDims.y);
 
         #if (SKY_PROJECTION == 3)
             float2 skyReflectionCoord = EquirectangularMappingCoord(reflectionVector);
@@ -80,6 +89,12 @@ float3 ReadSkyReflectionTexture(float3 reflectionVector, float roughness, float 
         #endif
 
         return SkyReflectionTexture[0].SampleLevel(ClampingSampler, skyReflectionCoord.xy, mipMap).rgb;
+
+    #elif SKY_PROJECTION==5
+
+            // todo -- we need to calculate the correct cubemap mipmap here, and then
+            //          clamp against "mipMap"
+        return SkyReflectionTexture.SampleLevel(DefaultSampler, reflectionVector, mipMap);
 
     #else
         return 0.0.xxx;

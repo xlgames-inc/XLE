@@ -273,12 +273,13 @@ namespace BufferUploads
     public:
         Box2D _box;
         unsigned _lodLevelMin, _lodLevelMax;
-        unsigned _arrayIndex;
+        unsigned _arrayIndexMin, _arrayIndexMax;
         
         PartialResource(const Box2D& box = Box2D(), 
                         unsigned lodLevelMin = 0, unsigned lodLevelMax = 0,
-                        unsigned arrayIndex = 0)
-        : _box(box), _lodLevelMin(lodLevelMin), _lodLevelMax(lodLevelMax), _arrayIndex(arrayIndex) {}
+                        unsigned arrayIndexMin = 0, unsigned arrayIndexMax = 0)
+        : _box(box), _lodLevelMin(lodLevelMin), _lodLevelMax(lodLevelMax)
+        , _arrayIndexMin(arrayIndexMin), _arrayIndexMax(arrayIndexMax) {}
     };
 
         /////////////////////////////////////////////////

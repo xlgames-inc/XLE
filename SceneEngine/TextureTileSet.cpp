@@ -168,7 +168,7 @@ namespace SceneEngine
             fileHandle, offset, dataSize, BufferUploads::TexturePitches(rowPitch, slicePitch));
         _bufferUploads->UpdateData(
             tile._transaction, dataPacket.get(),
-            BufferUploads::PartialResource(destinationBox, 0, 0, address[2]));
+            BufferUploads::PartialResource(destinationBox, 0, 0, address[2], address[2]));
     }
 
     bool    TextureTileSet::IsValid(const TextureTile& tile) const
