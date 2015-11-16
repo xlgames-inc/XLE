@@ -128,7 +128,7 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
     #endif
 
     float cameraDistance = length(geo.worldViewVector);
-    float detailStrength = lerp(1.25f, .25f, saturate((cameraDistance - 50.f)/150.f));
+    float detailStrength = lerp(1.25f, .25f, saturate((cameraDistance - 150.f)/200.f));
 
     surfaceDerivatives += DecompressDerivatives(
         NormalsTexture.Sample(DefaultSampler, 1.f * texCoord.xy).xy,
@@ -140,7 +140,7 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
     oceanSurface.worldSpaceNormal = worldSpaceNormal;
     oceanSurface.material.specular = Specular;
     oceanSurface.material.roughness = Roughness;
-    oceanSurface.material.metal = 1.f;
+    oceanSurface.material.metal = 0.f;
 
     OceanParameters parameters;
     parameters.worldViewVector = geo.worldViewVector;

@@ -614,8 +614,7 @@ namespace SceneEngine
                 metalContext.BindPS(MakeResourceList(1, _pimpl->_oceanSim->_normalsTextureSRV));
             }
 
-            unsigned skyProjectionType = 0;
-            SkyTextureParts(parserContext.GetSceneParser()->GetGlobalLightingDesc()).BindPS(metalContext, 11);
+            auto skyProjectionType = SkyTextureParts(parserContext.GetSceneParser()->GetGlobalLightingDesc()).BindPS(metalContext, 11);
 
             metalContext.BindPS(MakeResourceList(4,
                 Techniques::FindCachedBox2<WaterNoiseTexture>()._srv));
