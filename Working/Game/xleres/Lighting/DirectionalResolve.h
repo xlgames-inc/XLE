@@ -50,6 +50,15 @@ float3 LightResolve_Specular(
 		//		using lambert diffuse.
 
 	float F0_0 = Material_GetF0_0(sample);
+
+		// in our "metal" lighting model, sample.diffuseAlbedo actually contains
+		// per-wavelength F0 values. In theory, we could do the specular calculation
+		// 3 times (once for each wavelength)... But it's a bit too crazy. We can
+		// make an approximation by taking the average F0 and then scaling by
+		// the colour afterwards...
+	float3 metalF0 = sample.diffuseAlbedo;
+	F0_0 = lerp(F0_0, 0.5f * (metalF0.r + metalF0.g + metalF0.b), Material_GetMetal(sample));
+
 	SpecularParameters param0 = SpecularParameters_RoughF0(roughnessValue, F0_0);
 	float spec0 = Material_GetSpecularScale0(sample)
 		* CalculateSpecular(
@@ -69,7 +78,10 @@ float3 LightResolve_Specular(
 		////////////////////////////////////////////////
 
 	float3 result = (spec0 * sample.cookedLightOcclusion) * light.Color.specular;
-	result = IntegrateMetalParam(result, sample);
+
+		// second part of our metal model approximation (see above)
+	result *= lerp(1.0.xxx, sample.diffuseAlbedo, Material_GetMetal(sample));
+
 	// result += (saturate(spec1) * scale) * specularColor1;
 	return result;
 }

@@ -86,10 +86,8 @@ float3 ReadSkyReflectionTexture(float3 reflectionVector, float roughness, float 
     #endif
 }
 
-float CalculateSkyReflectionFresnel(GBufferValues sample, float3 viewDirection, bool mirrorReflection)
+float3 CalculateSkyReflectionFresnel(float3 F0, GBufferValues sample, float3 viewDirection, bool mirrorReflection)
 {
-    float F0 = Material_GetF0_0(sample);
-
         // Note that it might be worth considering a slight hack to
         // the fresnel calculation here... Imagine a reflective sphere --
         // around microfacet shadowing should start to play a bigger effect.
@@ -99,13 +97,19 @@ float CalculateSkyReflectionFresnel(GBufferValues sample, float3 viewDirection, 
     if (!mirrorReflection) {
         float3 worldSpaceReflection = reflect(-viewDirection, sample.worldSpaceNormal);
         float3 halfVector = normalize(worldSpaceReflection + viewDirection);
-        return SchlickFresnelF0(viewDirection, halfVector, F0);
+        return float3(
+            SchlickFresnelF0_Modified(viewDirection, halfVector, F0.r),
+            SchlickFresnelF0_Modified(viewDirection, halfVector, F0.g),
+            SchlickFresnelF0_Modified(viewDirection, halfVector, F0.b));
     } else {
-        return SchlickFresnelF0(viewDirection, sample.worldSpaceNormal, F0);
+        return float3(
+            SchlickFresnelF0(viewDirection, sample.worldSpaceNormal, F0.r),
+            SchlickFresnelF0(viewDirection, sample.worldSpaceNormal, F0.g),
+            SchlickFresnelF0(viewDirection, sample.worldSpaceNormal, F0.b));
     }
 }
 
-float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float fresnel, float blurriness)
+float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float3 fresnel, float blurriness)
 {
     float3 worldSpaceReflection = reflect(-viewDirection, sample.worldSpaceNormal);
 
@@ -182,7 +186,19 @@ float3 LightResolve_Ambient(
 {
     float3 result = CalcBasicAmbient(pixelCoords, sampleIndex, sample, ambient.Colour);
 
-    float fresnel = CalculateSkyReflectionFresnel(sample, directionToEye, mirrorReflection);
+        // In our metal model, we store F0 values per wavelength in sample.diffuseAlbedo.
+        // This gives us fantasic freedom to control the metallic reflections.
+        // See some good reference here:
+        //  https://seblagarde.wordpress.com/2011/08/17/feeding-a-physical-based-lighting-mode/
+        // Note that we can calculate the correct F0 values for real-world materials using
+        // the methods described on that page.
+        // Also consider sRGB/Linear wierdness in this step...
+    float3 F0 = lerp(
+        Material_GetF0_0(sample).xxx,
+        sample.diffuseAlbedo,
+        Material_GetMetal(sample));
+
+    float3 fresnel = CalculateSkyReflectionFresnel(F0, sample, directionToEye, mirrorReflection);
     float blurriness = ambient.SkyReflectionBlurriness;
 
     float3 skyReflections = ambient.SkyReflectionScale * CalculateSkyReflections(sample, directionToEye, fresnel, blurriness);
@@ -198,7 +214,6 @@ float3 LightResolve_Ambient(
         float3 finalReflection = skyReflections;
     #endif
 
-    finalReflection = IntegrateMetalParam(finalReflection, sample);
     finalReflection *= sample.cookedAmbientOcclusion;
     result += Material_GetReflectionScale(sample) * finalReflection;
 

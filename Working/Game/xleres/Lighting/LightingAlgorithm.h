@@ -42,8 +42,23 @@ float SchlickFresnelF0(float3 viewDirection, float3 halfVector, float F0)
 	float sq = A*A;
 	float cb = sq*sq;
 	float q = cb*A;	// we could also consider just using the cubed value here
-
 	return F0 + (1.f - F0) * q;	// (note, use lerp for this..?)
+}
+
+float SchlickFresnelF0_Modified(float3 viewDirection, float3 halfVector, float F0)
+{
+		// In this modified version, we attempt to reduce the extreme edges of
+		// the reflection by imposing an upper limit.
+		// The extreme edges of the reflection can often highlight rendering
+		// inaccuracies (such as lack of occlusion and local reflections).
+		// So, oftening it off helps to reduce problems.
+	float A = 1.0f - saturate(dot(viewDirection, halfVector));
+	float sq = A*A;
+	float cb = sq*sq;
+	float q = cb*A;
+
+	float upperLimit = min(1.f, 25.f * (F0+0.001f));
+	return F0 + (upperLimit - F0) * q;
 }
 
 float SchlickFresnel(float3 viewDirection, float3 halfVector, float refractiveIndex)

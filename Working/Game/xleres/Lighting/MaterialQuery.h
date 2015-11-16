@@ -107,9 +107,4 @@ float Material_GetReflectionBoost(GBufferValues gbuffer)
     else { return 0.f; }
 }
 
-float3 IntegrateMetalParam(float3 inputReflection, GBufferValues sample)
-{
-    return inputReflection * lerp(1.0.xxx, MetalReflectionBoost * sample.diffuseAlbedo, Material_GetMetal(sample));
-}
-
 #endif

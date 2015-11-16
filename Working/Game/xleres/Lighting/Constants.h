@@ -20,8 +20,24 @@
 
 static const float RefractiveIndexMin = 1.0f;
 static const float RefractiveIndexMax = 1.8f;
-static const float MetalReflectionBoost = 4.f; // 300.f;
 static const float ReflectionBlurrinessFromRoughness = 5.f;
+
+//  For reference -- here are some "F0" values taken from
+//  https://seblagarde.wordpress.com/2011/08/17/feeding-a-physical-based-lighting-mode/
+//      F0(1. ) = 0
+//      F0(1.8) = 0.082
+//      F0(2.0) = 0.111
+//      F0(2.2) = 0.141
+// Quartz    0.045593921
+// ice       0.017908907
+// Water     0.020373188
+// Alcohol   0.01995505
+// Glass     0.04
+// Milk      0.022181983
+// Ruby      0.077271957
+// Crystal   0.111111111
+// Diamond   0.171968833
+// Skin      0.028
 
 // We can choose 2 options for defining the "specular" parameter
 //  a) Linear against "refractive index"
