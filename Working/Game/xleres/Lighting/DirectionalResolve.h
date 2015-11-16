@@ -13,6 +13,7 @@
 
 #include "materialquery.h"
 #include "../gbuffer.h"
+#include "../Utility/MathConstants.h"
 
 float3 LightResolve_Diffuse(
 	GBufferValues sample,
@@ -35,6 +36,10 @@ float3 LightResolve_Specular(
 	LightDesc light,
 	bool mirrorSpecular = false)
 {
+		// Getting lots of problems with specular for normals pointing away
+		// from the camera. We have to avoid this case.
+	if (dot(sample.worldSpaceNormal, directionToEye) < 0.f) return 0.0.xxx;
+
 	float roughnessValue = Material_GetRoughness(sample);
 
 		////////////////////////////////////////////////
@@ -42,6 +47,11 @@ float3 LightResolve_Specular(
 	float rawDiffuse = CalculateDiffuse(
 		sample.worldSpaceNormal, directionToEye, light.NegativeDirection,
 		DiffuseParameters_Roughness(Material_GetRoughness(sample), light.DiffuseWideningMin, light.DiffuseWideningMax));
+
+		// note that we have to compenstate for the normalization factor built into
+		// the CalculateDiffuse call.
+	const float normalizationFactor = recipocalPi;
+	rawDiffuse /= normalizationFactor;
 
 		// note -- we have to be careful here, because when using the lambert diffuse
 		//		model, "rawDiffuse" already has the 1.0f/pi normalization factor built

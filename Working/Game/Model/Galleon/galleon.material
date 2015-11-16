@@ -4,13 +4,16 @@
 	~States; DoubleSided=1u
 ~galleon_sail
 	~ShaderParams; MAT_DOUBLE_SIDED_LIGHTING=1u
-	~Constants; RoughnessMin=0.7f; AlphaThreshold=0.5f; MaterialDiffuse={0.5f, 0.1f, 0.1f}c
+	~Constants; SpecularMin=0.05f; RoughnessMin=0.9f; AlphaThreshold=0.5f
+		MaterialDiffuse={0.5f, 0.1f, 0.1f}c
 	~States; DoubleSided=1u
 ~galleon_01
-	~Constants; MetalMin=0.5f; SpecularMin=0.025f; RoughnessMin=0.125f; SpecularMax=0.15f
+	~Constants; MetalMin=0u; SpecularMin=0.025f; RoughnessMin=0.35f; SpecularMax=0.15f
 		MetalMax=0.5f
 ~galleon_add
-	~Constants; MetalMin=0.4f; RoughnessMax=0.4f; SpecularMin=0.05f; RoughnessMin=0.1f
-		SpecularMax=0.05f
+	~Constants; MetalMin=0.2f; RoughnessMax=0.2f; SpecularMin=0.2f; RoughnessMin=0.2f
+		SpecularMax=0.05f; MetalMax=1u
 ~galleon_02
 	~Constants; SpecularMax=0.2f
+~galleon_add02
+	~Constants; SpecularMin=0.05f; SpecularMax=0.2f

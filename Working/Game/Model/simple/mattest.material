@@ -1,5 +1,5 @@
 ~Shared
-	~Constants; MaterialDiffuse={1.f, .5f, .5f}; MetalMin=0
+	~Constants; MaterialDiffuse={0.690526, 0.30101, 0.181573, 1}v; MetalMin=0
 ~m00
 	~Inherit; mattest:Shared
 	~Constants; SpecularMin=0.0;   RoughnessMin=0.0

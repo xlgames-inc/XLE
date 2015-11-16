@@ -92,7 +92,7 @@ float3 DecompressGBufferNormal(float3 gBufferNormalSample)
     } else {
         rangeAdj = gBufferNormalSample;
     }
-    
+
     float lengthSq = dot(rangeAdj, rangeAdj);
     // if (lengthSq < 0.001f)
     //     return rangeAdj;
@@ -149,7 +149,7 @@ PerPixelMaterialParam PerPixelMaterialParam_Default()
 {
     PerPixelMaterialParam result;
     result.roughness = 0.5f;
-    result.specular = 0.5f;
+    result.specular = 0.05f;
     result.metal = 0.f;
     return result;
 }

@@ -185,7 +185,7 @@ TerrainPixel CalculateTerrainPixel(PSInput geo)
     TerrainPixel output;
     output.diffuseAlbedo = resultDiffuse;
     output.worldSpaceNormal = TerrainResolve_CalculateWorldSpaceNormal(geo, baseTexturing.tangentSpaceNormal);
-    output.specularity = .25f * baseTexturing.specularity;
+    output.specularity = baseTexturing.specularity;
     output.cookedAmbientOcclusion = TerrainResolve_AmbientOcclusion(geo);
     output.mainLightOcclusion = TerrainResolve_AngleBasedShadows(geo);
     return output;
@@ -211,7 +211,7 @@ TerrainPixel CalculateTerrainPixel(PSInput geo)
     output.diffuseAlbedo = p.diffuseAlbedo;
     output.worldSpaceNormal = p.worldSpaceNormal;
     output.material.specular = p.specularity;
-    output.material.roughness = 0.85f;
+    output.material.roughness = 0.9f;
     output.material.metal = 0.f;
     output.cookedAmbientOcclusion = p.cookedAmbientOcclusion;
     output.cookedLightOcclusion = p.mainLightOcclusion;

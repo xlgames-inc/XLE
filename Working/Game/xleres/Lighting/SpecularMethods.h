@@ -133,9 +133,17 @@ float CalculateSpecular(float3 normal, float3 directionToEye,
             normal, directionToEye, negativeLightDirection,
             parameters.roughness, parameters.F0);
     #elif SPECULAR_METHOD==1
-        return CalculateSpecular_GGX(
+        float result = CalculateSpecular_GGX(
             normal, directionToEye, negativeLightDirection,
             parameters.roughness, parameters.F0, rawDiffuse, parameters.mirrorSurface);
+
+            // We should be careful here... Should be saturate the result
+            // coming out of GGX? I don't think it's really intended. But we're
+            // getting extreme values on the edges (particularly for normals that
+            // are actually pointing away from the camera). It will be difficult
+            // to balance the specular balance without setting an upper limit
+        // result = saturate(result);
+        return result;
     #endif
 }
 

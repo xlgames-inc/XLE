@@ -65,7 +65,8 @@ float DiffuseMethod_Disney(
         * (1.f + (FD90 - 1.f) * RaiseTo5(1.f - cosThetaV));
 
     // note that the "saturate" here prevents strange results on high grazing angles
-    return saturate(result) / pi;
+    const float normalizationFactor = recipocalPi;
+    return saturate(result) * normalizationFactor;
 }
 
 float DiffuseMethod_Lambert(float3 normal, float3 negativeLightDirection)
@@ -79,7 +80,7 @@ float DiffuseMethod_Lambert(float3 normal, float3 negativeLightDirection)
         // model against other lighting models that are corectly normalized.
         // Note that the results are also similarly simple for broadened
         // lambert models (where we offset and scale the value from the dot product)
-    const float normalizationFactor = 1.0f/pi;
+    const float normalizationFactor = recipocalPi;
 	return saturate(dot(negativeLightDirection, normal)) * normalizationFactor;
 }
 
