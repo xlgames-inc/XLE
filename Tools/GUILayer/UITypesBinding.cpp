@@ -151,10 +151,13 @@ namespace GUILayer
         if (_object->_hasMouseOver) {
             auto scaffolds = _modelCache->GetScaffolds(_modelSettings->_modelName.c_str(), _modelSettings->_materialName.c_str());
             if (scaffolds._material) {
-                auto matName = scaffolds._material->GetMaterialName(_object->_materialGuid);
-                if (matName) {
-                    return clix::marshalString<clix::E_UTF8>(std::string(matName));
-                }
+                TRY {
+                    auto matName = scaffolds._material->GetMaterialName(_object->_materialGuid);
+                    if (matName) {
+                        return clix::marshalString<clix::E_UTF8>(std::string(matName));
+                    }
+                } CATCH (const ::Assets::Exceptions::PendingAsset&) { return "<<pending>>"; }
+                CATCH_END
             }
         }
         return nullptr;

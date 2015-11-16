@@ -210,6 +210,9 @@ namespace RenderCore { namespace Assets
             SharedStateSet& sharedStateSet, 
             const ::Assets::DirectorySearchRules* searchRules = nullptr, unsigned levelOfDetail = 0);
         ~ModelRenderer();
+
+        ModelRenderer(const ModelRenderer&) = delete;
+        ModelRenderer& operator=(const ModelRenderer&) = delete;
     protected:
         class Pimpl;
         class PimplWithSkinning;

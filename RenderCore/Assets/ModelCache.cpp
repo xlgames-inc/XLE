@@ -179,7 +179,7 @@ namespace RenderCore { namespace Assets
             // we also need to load supplements, for any that are requested
         std::vector<const ModelSupplementScaffold*> supplementScaffolds;
 
-        uint64 hashedModel = (uint64(scaffold._model) << 2ull) | (uint64(scaffold._material) << 48ull) | uint64(LOD);
+        uint64 hashedModel = HashCombine(HashCombine(Hash64(modelFilename), Hash64(materialFilename)), LOD);
         for (auto s=supplements.begin(); s!=supplements.end(); ++s)
             hashedModel = HashCombine(hashedModel, *s);
 
