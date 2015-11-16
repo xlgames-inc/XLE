@@ -24,8 +24,7 @@ Texture2D<float>	CustomTexture;
 // Texture2D<float>	ScratchOccl : register(t20);
 
 PerPixelMaterialParam DecodeParametersTexture_RMS(float4 paramTextureSample);
-PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(float4 paramTexSample, float4 diffuseSample);
-PerPixelMaterialParam DecodeParametersTexture(float4 paramTextureSample, float4 diffuseSample);
+PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(inout float3 diffuseSample, float3 specColorSample);
 PerPixelMaterialParam DefaultMaterialValues();
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -53,15 +52,8 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
         result.blendingAlpha = diffuseTextureSample.a;
     #endif
 
-    #if (SKIP_MATERIAL_DIFFUSE!=1)
-        result.diffuseAlbedo *= MaterialDiffuse;
-    #endif
-
-    #if (OUTPUT_COLOUR==1)
-        result.diffuseAlbedo.rgb *= geo.colour.rgb;
-        #if MAT_MODULATE_VERTEX_ALPHA
-            result.blendingAlpha *= geo.colour.a;
-        #endif
+    #if (OUTPUT_COLOUR==1) && MAT_MODULATE_VERTEX_ALPHA
+        result.blendingAlpha *= geo.colour.a;
     #endif
 
     #if (SKIP_MATERIAL_DIFFUSE!=1)
@@ -85,8 +77,17 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
                 ParametersTexture.Sample(DefaultSampler, geo.texCoord));
         #elif (RES_HAS_SpecularColorTexture!=0)
             result.material = DecodeParametersTexture_ColoredSpecular(
-                SpecularColorTexture.Sample(DefaultSampler, geo.texCoord), diffuseTextureSample);
+                result.diffuseAlbedo.rgb,
+                SpecularColorTexture.Sample(DefaultSampler, geo.texCoord).rgb);
         #endif
+    #endif
+
+    #if (SKIP_MATERIAL_DIFFUSE!=1)
+        result.diffuseAlbedo *= MaterialDiffuse;
+    #endif
+
+    #if (OUTPUT_COLOUR==1)
+        result.diffuseAlbedo.rgb *= geo.colour.rgb;
     #endif
 
     #if (OUTPUT_TEXCOORD==1) && (RES_HAS_CUSTOM_MAP==1)
@@ -220,7 +221,7 @@ PerPixelMaterialParam DecodeParametersTexture_RMS(float4 paramTextureSample)
 	return result;
 }
 
-PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(float4 paramTexSample, float4 diffuseSample)
+PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(inout float3 diffuseSample, float3 specColorSample)
 {
 		// 	Some old textures just have a specular colour in the parameters
 		//	texture. We could do some conversion in a pre-processing step. But
@@ -229,40 +230,37 @@ PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(float4 paramTexSam
 		//	If the specular colour is not similar to the diffuse (and particularly if
 		//	the diffuse is dark), then we can take that as a hint of metallicness.
 		//	But this is very rough.
-	PerPixelMaterialParam result = PerPixelMaterialParam_Default();
-    float specLum = saturate(SRGBLuminance(paramTexSample.rgb));
-	result.roughness = RoughnessMin;
-	result.specular = lerp(SpecularMin, SpecularMax, specLum);
+    // PerPixelMaterialParam result = PerPixelMaterialParam_Default();
+    // float specLum = saturate(SRGBLuminance(paramTexSample.rgb));
+    // result.roughness = RoughnessMin;
+    // result.specular = lerp(SpecularMin, SpecularMax, specLum);
 
-    // float specLength = length(paramTexSample.rgb);
-	// float3 specDir = paramTexSample.rgb / specLength;
-	// float d = dot(specDir, diffuseSample.rgb);
-	// float3 diffuseDiverge = diffuseSample.rgb - d * specDir;
-	// float div = dot(diffuseDiverge, diffuseDiverge);
-	// result.metal = lerp(MetalMin, MetalMax, saturate(32.f * div * div));
+    // float dH = RGB2HSV(diffuseSample.rgb).x;
+    // float sH = RGB2HSV(paramTexSample.rgb).x;
+    // float diff = abs(dH - sH);
+    // if (diff > 180) diff = 360 - diff;
+    // result.metal = diff / 180.f;
+    // result.metal *= specLum;
+    // result.metal *= result.metal;
+    // result.metal = lerp(MetalMin, MetalMax, saturate(result.metal));
 
-    float dH = RGB2HSV(diffuseSample.rgb).x;
-    float sH = RGB2HSV(paramTexSample.rgb).x;
-    float diff = abs(dH - sH);
-    if (diff > 180) diff = 360 - diff;
-    result.metal = diff / 180.f;
-    result.metal *= specLum;
-    result.metal *= result.metal;
-    result.metal = lerp(MetalMin, MetalMax, saturate(result.metal));
+    PerPixelMaterialParam result = PerPixelMaterialParam_Default();
+    float diffuseLum = saturate(SRGBLuminance(diffuseSample));
+    float specLum = saturate(SRGBLuminance(specColorSample));
+    float ratio = specLum / (diffuseLum + 0.00001f);
+    result.metal = saturate((ratio - 1.1f) / 0.9f);
+    // result.roughness = 1.0f - specLum;
+    // result.specular = 0.f;
+    result.roughness = 0.f;
+    result.specular = specLum;
+
+    result.metal        = lerp(MetalMin, MetalMax, result.metal);
+    result.roughness    = lerp(RoughnessMin, RoughnessMax, result.roughness);
+    result.specular     = lerp(SpecularMin, SpecularMax, result.specular);
+
+    diffuseSample       = lerp(diffuseSample, specColorSample, result.metal);
 
 	return result;
-}
-
-PerPixelMaterialParam DecodeParametersTexture(float4 paramTextureSample, float4 diffuseSample)
-{
-	const uint ParamTextType_RMS = 1;
-	const uint ParamTextType_ColoredSpecular = 2;
-	uint type = ParamTextType_ColoredSpecular;
-	if (type == ParamTextType_RMS) {
-		return DecodeParametersTexture_RMS(paramTextureSample);
-	} else if (type == ParamTextType_ColoredSpecular) {
-		return DecodeParametersTexture_ColoredSpecular(paramTextureSample, diffuseSample);
-	}
 }
 
 PerPixelMaterialParam DefaultMaterialValues()

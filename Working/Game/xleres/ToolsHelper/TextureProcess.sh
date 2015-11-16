@@ -43,28 +43,33 @@ struct PerPixelMaterialParam
     float   metal;
 };
 
-PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(float4 paramTexSample, float4 diffuseSample)
+PerPixelMaterialParam PerPixelMaterialParam_Default()
 {
     PerPixelMaterialParam result;
-    float specLum = saturate(SRGBLuminance(paramTexSample.rgb));
-    result.roughness = 0.f;
-    result.specular = specLum;
+    result.roughness = 0.5f;
+    result.specular = 0.5f;
+    result.metal = 0.f;
+    return result;
+}
 
-    // float specLength = length(paramTexSample.rgb);
-    // float3 specDir = paramTexSample.rgb / specLength;
-    // float d = dot(specDir, diffuseSample.rgb);
-    // float3 diffuseDiverge = diffuseSample.rgb - d * specDir;
-    // float div = dot(diffuseDiverge, diffuseDiverge);
-    // result.metal = lerp(MetalMin, MetalMax, saturate(32.f * div * div));
+PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(
+    inout float3 diffuseSample, float3 specColorSample,
+    float2 roughnessRange, float2 specularRange, float2 metalRange)
+{
+    PerPixelMaterialParam result = PerPixelMaterialParam_Default();
+    float diffuseLum    = saturate(SRGBLuminance(diffuseSample));
+    float specLum       = saturate(SRGBLuminance(specColorSample));
+    float ratio         = specLum / (diffuseLum + 0.00001f);
+    result.metal        = saturate((ratio - 1.1f) / 0.9f);
+    result.roughness    = 0.f;
+    result.specular     = specLum;
 
-    float dH = RGB2HSV(diffuseSample.rgb).x;
-    float sH = RGB2HSV(paramTexSample.rgb).x;
-    float diff = abs(dH - sH);
-    if (diff > 180) diff = 360 - diff;
-    result.metal = diff / 180.f;
-    result.metal *= specLum;
-    result.metal *= result.metal;
-    result.metal = saturate(result.metal);
+    result.metal        = lerp(metalRange.x, metalRange.y, result.metal);
+    result.roughness    = lerp(roughnessRange.x, roughnessRange.y, result.roughness);
+    result.specular     = lerp(specularRange.x, specularRange.y, result.specular);
+
+    diffuseSample       = lerp(diffuseSample, specColorSample, result.metal);
+
     return result;
 }
 
@@ -109,11 +114,11 @@ float4 SpecularWithMask(float4 position : SV_Position, float2 texCoord : TEXCOOR
     float4 materialMask = MaterialMask.Load(int3(position.xy, 0));
     materialMask.a = 1.0f - materialMask.a;       // (alpha weight is inverted)
 
-    PerPixelMaterialParam param = DecodeParametersTexture_ColoredSpecular(specColor, diffuse);
-    PerPixelMaterialParam rSample = ScaleByRange(param, RRoughnessRange, RSpecularRange, RMetalRange);
-    PerPixelMaterialParam gSample = ScaleByRange(param, GRoughnessRange, GSpecularRange, GMetalRange);
-    PerPixelMaterialParam bSample = ScaleByRange(param, BRoughnessRange, BSpecularRange, BMetalRange);
-    PerPixelMaterialParam aSample = ScaleByRange(param, ARoughnessRange, ASpecularRange, AMetalRange);
+    float3 rDiffuse = diffuse.rgb, gDiffuse = diffuse.rgb, bDiffuse = diffuse.rgb, aDiffuse = diffuse.rgb;
+    PerPixelMaterialParam rSample = DecodeParametersTexture_ColoredSpecular(rDiffuse, specColor.rgb, RRoughnessRange, RSpecularRange, RMetalRange);
+    PerPixelMaterialParam gSample = DecodeParametersTexture_ColoredSpecular(gDiffuse, specColor.rgb, GRoughnessRange, GSpecularRange, GMetalRange);
+    PerPixelMaterialParam bSample = DecodeParametersTexture_ColoredSpecular(bDiffuse, specColor.rgb, BRoughnessRange, BSpecularRange, BMetalRange);
+    PerPixelMaterialParam aSample = DecodeParametersTexture_ColoredSpecular(aDiffuse, specColor.rgb, ARoughnessRange, ASpecularRange, AMetalRange);
 
     float weightSum = materialMask.r + materialMask.g + materialMask.b + materialMask.a;
     return
@@ -122,4 +127,27 @@ float4 SpecularWithMask(float4 position : SV_Position, float2 texCoord : TEXCOOR
             Add(Scale(gSample, materialMask.g/weightSum),
             Add(Scale(bSample, materialMask.b/weightSum),
                 Scale(aSample, materialMask.a/weightSum)))));
+}
+
+float4 DiffuseWithMask(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+    float4 diffuse = DiffuseTexture.Load(int3(position.xy, 0));
+    float4 specColor = SpecularColor.Load(int3(position.xy, 0));
+    float4 materialMask = MaterialMask.Load(int3(position.xy, 0));
+    materialMask.a = 1.0f - materialMask.a;       // (alpha weight is inverted)
+
+    float3 rDiffuse = diffuse.rgb, gDiffuse = diffuse.rgb, bDiffuse = diffuse.rgb, aDiffuse = diffuse.rgb;
+    PerPixelMaterialParam rSample = DecodeParametersTexture_ColoredSpecular(rDiffuse, specColor.rgb, RRoughnessRange, RSpecularRange, RMetalRange);
+    PerPixelMaterialParam gSample = DecodeParametersTexture_ColoredSpecular(gDiffuse, specColor.rgb, GRoughnessRange, GSpecularRange, GMetalRange);
+    PerPixelMaterialParam bSample = DecodeParametersTexture_ColoredSpecular(bDiffuse, specColor.rgb, BRoughnessRange, BSpecularRange, BMetalRange);
+    PerPixelMaterialParam aSample = DecodeParametersTexture_ColoredSpecular(aDiffuse, specColor.rgb, ARoughnessRange, ASpecularRange, AMetalRange);
+
+    float weightSum = materialMask.r + materialMask.g + materialMask.b + materialMask.a;
+    float4 result = float4(
+              (rDiffuse * materialMask.r/weightSum)
+            + (gDiffuse * materialMask.g/weightSum)
+            + (bDiffuse * materialMask.b/weightSum)
+            + (aDiffuse * materialMask.a/weightSum),
+            diffuse.a);
+    return float4(LinearToSRGB(result.rgb), result.a);
 }
