@@ -66,6 +66,9 @@ namespace TextureTransform
 
     InputResource::InputResource(const ::Assets::ResChar initializer[])
     {
+        _finalFormat = Metal::NativeFormat::Unknown;
+        _desc = BufferUploads::TextureDesc::Plain1D(0, Metal::NativeFormat::Unknown);
+
         auto splitter = MakeFileNameSplitter(initializer);
 
         SourceColorSpace colSpace = SourceColorSpace::Unspecified;
@@ -87,13 +90,15 @@ namespace TextureTransform
                 TextureDesc::Empty(), "TextureProcessInput"),
             inputPacket.get());
 
-        _desc = ExtractDesc(*_resLocator->GetUnderlying())._textureDesc;
+        if (_resLocator) {
+            _desc = ExtractDesc(*_resLocator->GetUnderlying())._textureDesc;
 
-        auto format = (Metal::NativeFormat::Enum)_desc._nativePixelFormat;
-        if (colSpace == SourceColorSpace::SRGB) format = Metal::AsSRGBFormat(format);
-        else if (colSpace == SourceColorSpace::Linear) format = Metal::AsLinearFormat(format);
-        _srv = Metal::ShaderResourceView(_resLocator->GetUnderlying(), format);
-        _finalFormat = format;
+            auto format = (Metal::NativeFormat::Enum)_desc._nativePixelFormat;
+            if (colSpace == SourceColorSpace::SRGB) format = Metal::AsSRGBFormat(format);
+            else if (colSpace == SourceColorSpace::Linear) format = Metal::AsLinearFormat(format);
+            _srv = Metal::ShaderResourceView(_resLocator->GetUnderlying(), format);
+            _finalFormat = format;
+        }
     }
 
     InputResource::~InputResource(){}
@@ -175,7 +180,7 @@ namespace TextureTransform
         auto rtFormat = Metal::NativeFormat::Unknown;
         UInt2 viewDims(0, 0);
         if (!inputResources.empty()) {
-            rtFormat = AsRTFormat(inputResources[0]._finalFormat);
+            rtFormat = inputResources[0]._finalFormat;
             viewDims = UInt2(inputResources[0]._desc._width, inputResources[0]._desc._height);
         }
 
@@ -185,6 +190,8 @@ namespace TextureTransform
         auto formatParam = parameters.GetString<char>(ParameterBox::MakeParameterNameHash("Format"));
         if (!formatParam.empty())
             rtFormat = Metal::AsNativeFormat(formatParam.c_str());
+
+        rtFormat = AsRTFormat(rtFormat);
 
         if (!viewDims[0] || !viewDims[1] || rtFormat == Metal::NativeFormat::Unknown)
             Throw(::Exceptions::BasicLabel("Missing Dims or Format parameter"));

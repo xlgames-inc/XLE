@@ -20,9 +20,13 @@ project.ext.intermediateRoot = new File(ext.rootDir.toFile(), "/int/u/").toPath(
     // a name within our intermediate folder. This is a global transformation.
 project.ext.makeIntermediateName = {
     source ->
-        new File(ext.intermediateRoot, ext.rootDir.relativize(source.toPath().toAbsolutePath()).toString()).toPath().normalize().toString()
+        def srcAbs = source.toPath().toAbsolutePath()
+        if (srcAbs.startsWith(ext.intermediateRoot.toPath())) {
+            return srcAbs.normalize().toString()
+        } else
+            return new File(ext.intermediateRoot, ext.rootDir.relativize(srcAbs).toString()).toPath().normalize().toString()
 }
 
     // Set a static within the TextureCompress groovy object, which tells that
     // plugin where to write output files.
-xle.TextureCompress.makeIntermediateName = project.ext.makeIntermediateName
+xle.TextureTask.makeIntermediateName = project.ext.makeIntermediateName

@@ -431,9 +431,11 @@ namespace RenderCore { namespace Metal_DX11
         }
     }
 
+    #define STRINGIZE(X) #X
+
     NativeFormat::Enum AsNativeFormat(const char name[])
     {
-        #define _EXP(X, Y, Z, U)    if (!XlEqStringI(name, #X)) return NativeFormat::X##_##Y;
+        #define _EXP(X, Y, Z, U)    if (XlEqStringI(name, STRINGIZE(X##_##Y))) return NativeFormat::X##_##Y;
             #include "../../Metal/Detail/DXGICompatibleFormats.h"
         #undef _EXP
 
