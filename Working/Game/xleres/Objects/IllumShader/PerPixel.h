@@ -23,6 +23,8 @@ Texture2D<float>	CustomTexture;
 // Texture2D<float2>	ScratchMap : register(t19);		// high res procedural scratches
 // Texture2D<float>	ScratchOccl : register(t20);
 
+Texture2D<float>	Occlusion;
+
 PerPixelMaterialParam DecodeParametersTexture_RMS(float4 paramTextureSample);
 PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(inout float3 diffuseSample, float3 specColorSample);
 PerPixelMaterialParam DefaultMaterialValues();
@@ -90,9 +92,9 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
         result.diffuseAlbedo.rgb *= geo.colour.rgb;
     #endif
 
-    #if (OUTPUT_TEXCOORD==1) && (RES_HAS_CUSTOM_MAP==1)
+    #if (OUTPUT_TEXCOORD==1) && (RES_HAS_Occlusion==1)
             // use the "custom map" slot for a parameters texture (ambient occlusion, gloss, etc)
-        result.cookedAmbientOcclusion = CustomTexture.Sample(MaybeAnisotropicSampler, geo.texCoord).r;
+        result.cookedAmbientOcclusion = Occlusion.Sample(DefaultSampler, geo.texCoord).r;
 
             // use perlin noise to generate a random gloss pattern (for debugging)
             // (add #include "../Utility/Equations.h")
@@ -249,9 +251,9 @@ PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(inout float3 diffu
     float specLum = saturate(SRGBLuminance(specColorSample));
     float ratio = specLum / (diffuseLum + 0.00001f);
     result.metal = saturate((ratio - 1.1f) / 0.9f);
-    // result.roughness = 1.0f - specLum;
+    result.roughness = 1.0f - specLum;
     // result.specular = 0.f;
-    result.roughness = 0.f;
+    // result.roughness = 0.f;
     result.specular = specLum;
 
     result.metal        = lerp(MetalMin, MetalMax, result.metal);

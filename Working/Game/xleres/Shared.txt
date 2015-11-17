@@ -9,6 +9,7 @@
             RES_HAS_NormalsTexture
             RES_HAS_ParametersTexture
             RES_HAS_SpecularColorTexture
+            RES_HAS_Occlusion
             RES_HAS_NormalsTexture_DXT
             MAT_VCOLOR_IS_ANIM_PARAM
             MAT_DOUBLE_SIDED_LIGHTING

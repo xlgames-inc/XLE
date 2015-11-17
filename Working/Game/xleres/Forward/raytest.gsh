@@ -135,7 +135,7 @@ bool TriangleInFrustum(float4 p0, float4 p1, float4 p2)
 				+ barycentric.y * GetTexCoord(input[1])
 				+ barycentric.z * GetTexCoord(input[2])
 				;
-			isOpaquePart = DiffuseTexture.SampleLevel(DefaultSampler, texCoord, 0).a > AlphaThreshold;
+			isOpaquePart = DiffuseTexture.SampleLevel(DefaultSampler, texCoord, 0).a >= AlphaThreshold;
 		#endif
 
 		if (isOpaquePart) {

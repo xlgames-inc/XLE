@@ -8,6 +8,7 @@
 #include "VisualisationUtils.h"
 #include "HighlightEffects.h"
 #include "../../PlatformRig/InputTranslator.h"
+#include "../../PlatformRig/Screenshot.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParser.h"
@@ -23,6 +24,7 @@
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/ModelUtils.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -260,9 +262,21 @@ namespace ToolsRig
             *model._renderer, model._boundingBox, *model._sharedStateSet,
             model._model);
         sceneParser.Prepare();
+
+        auto qualSettings = SceneEngine::RenderingQualitySettings(context->GetStateDesc()._viewportDimensions);
+
+        auto& screenshot = Tweakable("Screenshot", 0);
+        if (screenshot) {
+            PlatformRig::TiledScreenshot(
+                *context, parserContext,
+                sceneParser, sceneParser.GetCameraDesc(),
+                qualSettings, UInt2(screenshot, screenshot));
+            screenshot = 0;
+        }
+
         LightingParser_ExecuteScene(
             *context, parserContext, sceneParser, sceneParser.GetCameraDesc(),
-            RenderingQualitySettings(context->GetStateDesc()._viewportDimensions));
+            qualSettings);
     }
 
     void ModelVisLayer::RenderWidgets(
