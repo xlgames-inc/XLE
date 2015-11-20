@@ -57,7 +57,27 @@ float SchlickFresnelF0_Modified(float3 viewDirection, float3 halfVector, float F
 	float cb = sq*sq;
 	float q = cb*A;
 
-	float upperLimit = min(1.f, 25.f * (F0+0.001f));
+	float upperLimit = min(1.f, 50.f * (F0+0.001f));
+	return F0 + (upperLimit - F0) * q;
+}
+
+float3 SchlickFresnelF0(float3 viewDirection, float3 halfVector, float3 F0)
+{
+	float A = 1.0f - saturate(dot(viewDirection, halfVector));
+	float sq = A*A;
+	float cb = sq*sq;
+	float q = cb*A;
+	return lerp(F0, 1.f, q);
+}
+
+float3 SchlickFresnelF0_Modified(float3 viewDirection, float3 halfVector, float3 F0)
+{
+	float A = 1.0f - saturate(dot(viewDirection, halfVector));
+	float sq = A*A;
+	float cb = sq*sq;
+	float q = cb*A;
+
+	float upperLimit = min(1.f, 50.f * (F0+0.001f));
 	return F0 + (upperLimit - F0) * q;
 }
 

@@ -30,6 +30,8 @@ float DiffuseMethod_Disney(
 
 	float cosThetaL = dot(normal, negativeLightDirection);
 	float cosThetaV = dot(normal, directionToEye);
+    cosThetaL = saturate(cosThetaL);
+    cosThetaV = saturate(cosThetaV);
 
         // Note that we're using the half vector as a parameter to the fresnel
         // equation. See also "Physically Based Lighting in Call of Duty: Black Ops"
@@ -40,7 +42,7 @@ float DiffuseMethod_Disney(
         //      actually an approximation of an average normal of these active facets.
         // (disney calls this the "difference angle")
 	float3 halfVector = lerp(negativeLightDirection, directionToEye, .5f);
-    // halfVector = normalize(halfVector); (note that in theory we should have a normalize here.. but it doesn't seem to matter)
+    // halfVector = normalize(halfVector); // (note that in theory we should have a normalize here.. but it doesn't seem to matter)
 	float cosThetaD = max(dot(halfVector, negativeLightDirection), 0);
 
         // The following factor controls how broad the diffusing effect is
@@ -54,19 +56,21 @@ float DiffuseMethod_Disney(
         // become more obvious.
         // The two factors here, seem to be arbitrarily picked by Disney. So we should
         // make them flexible, and reduce the overall impact slightly.
-	float FD90 = lerp(wideningMin, wideningMax, cosThetaD * cosThetaD * roughness);
+	float FD90v = lerp(wideningMin, wideningMax, cosThetaD * cosThetaD * roughness);
+    float FD90l = FD90v;
 
         // I wonder if there is any benefit to using the shadowing factor from our
         // BRDF as a parameter here...? Obviously it's quite an expensive addition.
 
         // We could consider power of 4 as a cheaper approximation to power of 5...?
 	float result =
-          (1.f + (FD90 - 1.f) * RaiseTo5(1.f - cosThetaL))
-        * (1.f + (FD90 - 1.f) * RaiseTo5(1.f - cosThetaV));
+          (1.f + (FD90l - 1.f) * RaiseTo5(1.f - cosThetaL))
+        * (1.f + (FD90v - 1.f) * RaiseTo5(1.f - cosThetaV))
+        ;
 
     // note that the "saturate" here prevents strange results on high grazing angles
-    const float normalizationFactor = recipocalPi;
-    return saturate(result) * normalizationFactor;
+    const float normalizationFactor = reciprocalPi;
+    return result * cosThetaL * normalizationFactor;
 }
 
 float DiffuseMethod_Lambert(float3 normal, float3 negativeLightDirection)
@@ -80,7 +84,7 @@ float DiffuseMethod_Lambert(float3 normal, float3 negativeLightDirection)
         // model against other lighting models that are corectly normalized.
         // Note that the results are also similarly simple for broadened
         // lambert models (where we offset and scale the value from the dot product)
-    const float normalizationFactor = recipocalPi;
+    const float normalizationFactor = reciprocalPi;
 	return saturate(dot(negativeLightDirection, normal)) * normalizationFactor;
 }
 

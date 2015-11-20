@@ -139,8 +139,8 @@ float3 TerrainResolve_CalculateWorldSpaceNormal(PSInput geo, float3 tangentSpace
         //
         //  Alternatively, we could normalize uaxis and vaxis
         //  first...?
-    float3 uaxis = float3(1.0f, 0.f, geo.dhdxy.x);
-    float3 vaxis = float3(0.0f, 1.f, geo.dhdxy.y);
+    float3 uaxis = float3(1.f, 0.f, geo.dhdxy.x);
+    float3 vaxis = float3(0.f, 1.f, geo.dhdxy.y);
     float3 normal = cross(uaxis, vaxis);
 
     #if DO_DEFORM_NORMAL==1
@@ -150,13 +150,17 @@ float3 TerrainResolve_CalculateWorldSpaceNormal(PSInput geo, float3 tangentSpace
             // But the tangent frame is already unnormalized. So we already
             // have some accuracy problems. Well, we can avoid normalizes
             // until the very end, and just accept some accuracy problems.
-        return normalize(
-            tangentSpaceNormal.x * uaxis
+        float3 result =
+             tangentSpaceNormal.x * uaxis
            + tangentSpaceNormal.y * vaxis
-           + tangentSpaceNormal.z * normal);
+           + tangentSpaceNormal.z * normal;
     #else
-        return normalize(normal);
+        float3 result = normal;
     #endif
+
+        // note -- we shouldn't need to normalize with gbuffer best-fit-normals scheme
+        //          But removing this normalize is something causing problems currently
+    return normalize(result);
 }
 
 struct TerrainPixel
@@ -188,6 +192,7 @@ TerrainPixel CalculateTerrainPixel(PSInput geo)
     output.specularity = baseTexturing.specularity;
     output.cookedAmbientOcclusion = TerrainResolve_AmbientOcclusion(geo);
     output.mainLightOcclusion = TerrainResolve_AngleBasedShadows(geo);
+
     return output;
 }
 
@@ -211,7 +216,7 @@ TerrainPixel CalculateTerrainPixel(PSInput geo)
     output.diffuseAlbedo = p.diffuseAlbedo;
     output.worldSpaceNormal = p.worldSpaceNormal;
     output.material.specular = p.specularity;
-    output.material.roughness = 0.9f;
+    output.material.roughness = 0.7f;
     output.material.metal = 0.f;
     output.cookedAmbientOcclusion = p.cookedAmbientOcclusion;
     output.cookedLightOcclusion = p.mainLightOcclusion;

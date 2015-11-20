@@ -50,7 +50,7 @@ float3 LightResolve_Specular(
 
 		// note that we have to compenstate for the normalization factor built into
 		// the CalculateDiffuse call.
-	const float normalizationFactor = recipocalPi;
+	const float normalizationFactor = reciprocalPi;
 	rawDiffuse /= normalizationFactor;
 
 		// note -- we have to be careful here, because when using the lambert diffuse
@@ -59,15 +59,10 @@ float3 LightResolve_Specular(
 		//		problems we need to make sure USE_DISNEY_EQUATOR is disabled when
 		//		using lambert diffuse.
 
-	float F0_0 = Material_GetF0_0(sample);
-
-		// in our "metal" lighting model, sample.diffuseAlbedo actually contains
-		// per-wavelength F0 values. In theory, we could do the specular calculation
-		// 3 times (once for each wavelength)... But it's a bit too crazy. We can
-		// make an approximation by taking the average F0 and then scaling by
-		// the colour afterwards...
+		// In our "metal" lighting model, sample.diffuseAlbedo actually contains
+		// per-wavelength F0 values.
 	float3 metalF0 = sample.diffuseAlbedo;
-	F0_0 = lerp(F0_0, 0.5f * (metalF0.r + metalF0.g + metalF0.b), Material_GetMetal(sample));
+	float3 F0_0 = lerp(Material_GetF0_0(sample).xxx, metalF0, Material_GetMetal(sample));
 
 	SpecularParameters param0 = SpecularParameters_RoughF0(roughnessValue, F0_0);
 	float spec0 = Material_GetSpecularScale0(sample)

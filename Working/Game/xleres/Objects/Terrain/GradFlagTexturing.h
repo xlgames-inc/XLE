@@ -39,10 +39,9 @@ TerrainTextureOutput LoadRawTexSample(uint remappedTexIndex, float2 coord, float
     TerrainTextureOutput result;
     result.diffuseAlbedo = DiffuseAtlas.SampleGrad(MaybeAnisotropicSampler, float3(coord, remappedTexIndex), duvdx, duvdy).rgb;
     result.tangentSpaceNormal.xy = NormalsAtlas.SampleGrad(MaybeAnisotropicSampler, float3(coord, remappedTexIndex), duvdx, duvdy).xy;
-    result.specularity = 0.0f;
+    result.specularity = 0.05f;
 
     result.tangentSpaceNormal.xy = 2.f * result.tangentSpaceNormal.xy - 1.0.xx;
-    result.tangentSpaceNormal.xy = float2(result.tangentSpaceNormal.x, -result.tangentSpaceNormal.y);
     result.tangentSpaceNormal =
         float3(
             result.tangentSpaceNormal.xy,

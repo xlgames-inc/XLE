@@ -74,23 +74,107 @@ float CalculateSpecular_CookTorrence(float3 normal, float3 directionToEye, float
     // However, since it widens the specular equator, we might get exaggerated results in
     // that extra space.
 #if !defined(USE_DISNEY_EQUATOR) && (DIFFUSE_METHOD==1)
-    #define USE_DISNEY_EQUATOR 1
+    #define USE_DISNEY_EQUATOR 0        // disabled now that widening is disabled for disney diffuse
 #endif
 
-float CalculateSpecular_GGX(
-    float3 normal, float3 directionToEye, float3 negativeLightDirection,
-    float roughness, float F0, float rawDiffuse, bool mirrorSurface)
+float SmithG(float NdotV, float alpha)
 {
-    // return LightingFuncGGX_REF(normal, directionToEye, negativeLightDirection, roughness, F0);
+    // Filmic worlds uses Smith-Schlick implementation.
+    // It's a little bit simplier...
+    // return 1.0f/(dotNV*(1.0f-k)+k);
+
+    float a = alpha * alpha;
+    float b = NdotV * NdotV;
+    return 1.f/(NdotV + sqrt(lerp(b, 1, a)));
+    // return 1.f/(NdotV + sqrt(a + (1.f-a) * b));
+    // return 1.f/(NdotV + sqrt(a + b - a*b));
+}
+
+float TrowReitzD(float NdotH, float alpha)
+{
+    // Note that the Disney model generalizes this
+    // a little further by making the denomination power
+    // variable.
+    // They call it "GTR"
+    float alphaSqr = alpha * alpha;
+    float denom = 1.f + (alphaSqr - 1.f) * NdotH * NdotH;
+    return alphaSqr / (pi * denom * denom);
+}
+
+float3 ReferenceSpecularGGX(
+    float3 normal,
+    float3 directionToEye,
+    float3 negativeLightDirection,
+    float roughness, float3 F0,
+    bool mirrorSurface)
+{
+    // This is reference implementation of "GGX" specular
+    // It's very close to the Disney lighting model implementation
+
+    // Our basic specular equation is:
+    //
+    //   D(thetah) * F(thetad) * G(thetal, thetav)
+    // ---------------------------------------------
+    //            4cos(thetal)cos(thetav)
+
+    // D is our microfacet distribution function
+    // F is fresnel
+    // G is the shadowing factor (geometric attenuation)
+
+    float3 halfVector = normalize(negativeLightDirection + directionToEye);
+    float NdotL = dot(normal, negativeLightDirection);
+    float NdotV = dot(normal, directionToEye);
+    float NdotH = dot(normal, halfVector);
+    // if (NdotL < 0 || NdotV < 0) return 0.0.xxx;
+    NdotL = saturate(NdotL);
+    NdotV = saturate(NdotV);
+    NdotH = saturate(NdotH);
+
+    /////////// Shadowing factor ///////////
+        // As per the Disney model, rescaling roughness to
+        // values 0.5f -> 1.f for SmithG alpha, and squaring
+    float alphag = roughness*.5+.5;
+    alphag *= alphag;
+    float G = SmithG(NdotL, alphag) * SmithG(NdotV, alphag);
+
+    /////////// Fresnel ///////////
+    float3 F;
+    if (!mirrorSurface) {
+        F = SchlickFresnelF0(directionToEye, halfVector, F0);
+    } else {
+        F = SchlickFresnelF0(directionToEye, normal, F0);
+    }
+
+    /////////// Microfacet ///////////
+        // Mapping alpha to roughness squared (as per Disney
+        // model and Filmic worlds implementation)
+    float D = TrowReitzD(NdotH, roughness * roughness);
+
+    return NdotL * (G * D) * F;
+}
+
+float3 CalculateSpecular_GGX(
+    float3 normal, float3 directionToEye, float3 negativeLightDirection,
+    float roughness, float3 F0, float rawDiffuse, bool mirrorSurface)
+{
+    float aveF0 = 0.3333f * (F0.r + F0.g + F0.b);
+
+    #if 1 // (FORCE_GGX_REF == 1)
+        return ReferenceSpecularGGX(
+            normal, directionToEye, negativeLightDirection,
+            roughness, F0, mirrorSurface);
+
+        return LightingFuncGGX_REF(normal, directionToEye, negativeLightDirection, roughness, aveF0).xxx;
+    #endif
 
     if (!mirrorSurface) {
         #if (USE_DISNEY_EQUATOR == 1)
-            return LightingFuncGGX_OPT5_XLE(normal, directionToEye, negativeLightDirection, roughness, F0, rawDiffuse);
+            return LightingFuncGGX_OPT5_XLE(normal, directionToEye, negativeLightDirection, roughness, aveF0, rawDiffuse).xxx;
         #else
-            return LightingFuncGGX_OPT5(normal, directionToEye, negativeLightDirection, roughness, F0);
+            return LightingFuncGGX_OPT5(normal, directionToEye, negativeLightDirection, roughness, aveF0).xxx;
         #endif
     } else {
-        return LightingFuncGGX_OPT5_Mirror(normal, directionToEye, negativeLightDirection, roughness, F0);
+        return LightingFuncGGX_OPT5_Mirror(normal, directionToEye, negativeLightDirection, roughness, aveF0).xxx;
     }
 }
 
@@ -100,9 +184,9 @@ float CalculateSpecular_GGX(
 
 struct SpecularParameters
 {
-    float roughness;
-    float F0;
-    bool mirrorSurface;
+    float   roughness;
+    float3  F0;
+    bool    mirrorSurface;
 };
 
 SpecularParameters SpecularParameters_Init(float roughness, float refractiveIndex)
@@ -114,36 +198,29 @@ SpecularParameters SpecularParameters_Init(float roughness, float refractiveInde
     return result;
 }
 
-SpecularParameters SpecularParameters_RoughF0(float roughness, float F0, bool mirrorSurface = false)
+SpecularParameters SpecularParameters_RoughF0(float roughness, float3 F0, bool mirrorSurface = false)
 {
     SpecularParameters result;
     result.roughness = roughness;
-    result.F0 = F0;
+    result.F0 = F0.xxx;
     result.mirrorSurface = mirrorSurface;
     return result;
 }
 
-float CalculateSpecular(float3 normal, float3 directionToEye,
-                        float3 negativeLightDirection,
-                        SpecularParameters parameters,
-                        float rawDiffuse)
+float3 CalculateSpecular(
+    float3 normal, float3 directionToEye,
+    float3 negativeLightDirection,
+    SpecularParameters parameters,
+    float rawDiffuse)
 {
     #if SPECULAR_METHOD==0
         return CalculateSpecular_CookTorrence(
             normal, directionToEye, negativeLightDirection,
-            parameters.roughness, parameters.F0);
+            parameters.roughness, parameters.F0).xxx;
     #elif SPECULAR_METHOD==1
-        float result = CalculateSpecular_GGX(
+        return CalculateSpecular_GGX(
             normal, directionToEye, negativeLightDirection,
             parameters.roughness, parameters.F0, rawDiffuse, parameters.mirrorSurface);
-
-            // We should be careful here... Should be saturate the result
-            // coming out of GGX? I don't think it's really intended. But we're
-            // getting extreme values on the edges (particularly for normals that
-            // are actually pointing away from the camera). It will be difficult
-            // to balance the specular balance without setting an upper limit
-        // result = saturate(result);
-        return result;
     #endif
 }
 

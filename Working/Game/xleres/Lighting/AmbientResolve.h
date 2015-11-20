@@ -112,15 +112,9 @@ float3 CalculateSkyReflectionFresnel(float3 F0, GBufferValues sample, float3 vie
     if (!mirrorReflection) {
         float3 worldSpaceReflection = reflect(-viewDirection, sample.worldSpaceNormal);
         float3 halfVector = normalize(worldSpaceReflection + viewDirection);
-        return float3(
-            SchlickFresnelF0_Modified(viewDirection, halfVector, F0.r),
-            SchlickFresnelF0_Modified(viewDirection, halfVector, F0.g),
-            SchlickFresnelF0_Modified(viewDirection, halfVector, F0.b));
+        return SchlickFresnelF0(viewDirection, halfVector, F0);
     } else {
-        return float3(
-            SchlickFresnelF0(viewDirection, sample.worldSpaceNormal, F0.r),
-            SchlickFresnelF0(viewDirection, sample.worldSpaceNormal, F0.g),
-            SchlickFresnelF0(viewDirection, sample.worldSpaceNormal, F0.b));
+        return SchlickFresnelF0(viewDirection, sample.worldSpaceNormal, F0);
     }
 }
 
@@ -132,6 +126,7 @@ float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float
 
     float3 reflSampl = ReadSkyReflectionTexture(worldSpaceReflection, roughness, blurriness);
     reflSampl += Material_GetReflectionBoost(sample).xxx;
+    reflSampl *= saturate(dot(worldSpaceReflection, sample.worldSpaceNormal));
 
     return reflSampl * fresnel;
 }
