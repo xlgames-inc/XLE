@@ -754,6 +754,13 @@ namespace RenderCore { namespace Assets
             IteratorRange<const uint32*>                commandStream,
             const std::function<void(const Float4x4&, const Float4x4&)>&     debugIterator)
     {
+            // The command stream will sometimes not write to 
+            // output matrices. This can happen when the first output
+            // transforms are just identity. Maybe there is a better
+            // way to do this that would prevent having to write to this
+            // array first...?
+        std::fill(result, &result[resultCount], Identity<Float4x4>());
+
             //
             //      Follow the commands in our command list, and output
             //      the resulting transformations.

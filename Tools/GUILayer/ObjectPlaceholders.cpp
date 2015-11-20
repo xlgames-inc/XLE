@@ -20,6 +20,7 @@
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../Assets/Assets.h"
+#include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/Geometry.h"
 #include "../../Utility/StringUtils.h"
@@ -102,6 +103,7 @@ namespace GUILayer
         const VisGeoBox& visBox,
         const ResolvedShader& shader, const RetainedEntity& obj)
     {
+        if (!Tweakable("DrawMarkers", true)) return;
         if (!obj._properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(obj)) return;
 
         const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
