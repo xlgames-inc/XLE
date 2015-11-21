@@ -57,7 +57,14 @@ namespace SceneEngine
         MainTargetsBox& mainTargets,
         LightingResolveTextureBox& lightingResTargets);
 
-    unsigned LightingParser_BindLightResolveResources( 
+    class LightResolveResourcesRes
+    {
+    public:
+        unsigned _skyTextureProjection;
+        bool _hasDiffuseIBL;
+    };
+
+    LightResolveResourcesRes LightingParser_BindLightResolveResources( 
         DeviceContext& context,
         LightingParserContext& parserContext);
 
@@ -418,8 +425,9 @@ namespace SceneEngine
                                                 ForwardTargetsBox& targetsBox,
                                                 unsigned sampleCount)
     {
-        auto skyProj = LightingParser_BindLightResolveResources(context, parserContext);
-        parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", skyProj);
+        auto lightBindRes = LightingParser_BindLightResolveResources(context, parserContext);
+        parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
+        parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", lightBindRes._hasDiffuseIBL?1:0);
 
             //  Order independent transparency disabled when
             //  using MSAA modes... Still some problems in related to MSAA buffers

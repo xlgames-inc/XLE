@@ -10,6 +10,7 @@
 #include "LightDesc.h"
 #include "MaterialQuery.h"
 #include "Constants.h"
+#include "ImageBased.h"
 #include "../TextureAlgorithm.h"
 #include "../Colour.h"	                 // for LightingScale
 
@@ -153,8 +154,10 @@ float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample
         float3 tiledLights = 0.0.xxx;
     #endif
 
+    float3 diffuseIBL = SampleDiffuseIBL(sample.worldSpaceNormal);
+
     float metal = Material_GetMetal(sample);
-    return ((1.0f - metal)*ambientOcclusionSample)*(ambientColor + tiledLights)*sample.diffuseAlbedo.rgb;
+    return ((1.0f - metal)*ambientOcclusionSample)*(ambientColor + tiledLights + diffuseIBL)*sample.diffuseAlbedo.rgb;
 }
 
 /////////////////////////////////////////

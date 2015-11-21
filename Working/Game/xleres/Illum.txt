@@ -10,6 +10,8 @@
             OUTPUT_WORLD_VIEW_VECTOR=1
         ~GlobalEnvironment
             SKIP_MATERIAL_DIFFUSE=0
+            SKY_PROJECTION
+            HAS_DIFFUSE_IBL
         ~Material
             MAT_BLEND_FOG=0
             MAT_SKIP_LIGHTING_SCALE=0
@@ -80,6 +82,10 @@
             GEO_HAS_BITANGENT
             GEO_HAS_NORMAL
             OUTPUT_WORLD_VIEW_VECTOR=1
+        ~GlobalEnvironment
+            SKIP_MATERIAL_DIFFUSE=0
+            SKY_PROJECTION
+            HAS_DIFFUSE_IBL
         ~Runtime
             BASIC_LIGHT_COUNT=1
             SHADOW_CASCADE_MODE=2

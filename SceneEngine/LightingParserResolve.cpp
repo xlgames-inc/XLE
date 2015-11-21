@@ -214,7 +214,14 @@ namespace SceneEngine
     
     static unsigned GBufferType(MainTargetsBox& mainTargets) { return (mainTargets._gbufferTextures[2]) ? 1 : 2; }
 
-    unsigned LightingParser_BindLightResolveResources( 
+    class LightResolveResourcesRes
+    {
+    public:
+        unsigned _skyTextureProjection;
+        bool _hasDiffuseIBL;
+    };
+
+    LightResolveResourcesRes LightingParser_BindLightResolveResources( 
         Metal::DeviceContext& context,
         LightingParserContext& parserContext)
     {
@@ -222,18 +229,24 @@ namespace SceneEngine
             // these are needed in both deferred and forward shading modes... But they are
             // bound at different times in different modes
 
+        LightResolveResourcesRes result = { 0, false };
+
         CATCH_ASSETS_BEGIN
-            unsigned skyTextureProjection = SkyTextureParts(parserContext.GetSceneParser()->GetGlobalLightingDesc()).BindPS(context, 11);
+            const auto& globalDesc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
+            result._skyTextureProjection = SkyTextureParts(globalDesc).BindPS(context, 11);
+
+            if (globalDesc._diffuseIBL[0]) {
+                context.BindPS(MakeResourceList(19, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(globalDesc._diffuseIBL).GetShaderResource()));
+                result._hasDiffuseIBL = true;
+            }
 
             context.BindPS(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
             context.BindPS(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
 
             context.BindPS(MakeResourceList(9, Metal::ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
-
-            return skyTextureProjection;
         CATCH_ASSETS_END(parserContext)
 
-        return 0;
+        return result;
     }
 
     void LightingParser_ResolveGBuffer(
@@ -315,7 +328,7 @@ namespace SceneEngine
 
         CATCH_ASSETS_BEGIN
             SetupStateForDeferredLightingResolve(context, mainTargets, lightingResTargets, resolveRes, doSampleFrequencyOptimisation);
-            auto skyTextureProjection = LightingParser_BindLightResolveResources(context, parserContext);
+            auto resourceBindRes = LightingParser_BindLightResolveResources(context, parserContext);
 
             context.BindPS(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
 
@@ -347,7 +360,8 @@ namespace SceneEngine
                             lightingResolveContext._ambientOcclusionResult.IsGood(),
                             lightingResolveContext._tiledLightingResult.IsGood(),
                             lightingResolveContext._screenSpaceReflectionsResult.IsGood(),
-                            skyTextureProjection, globalLightDesc._doRangeFog);
+                            resourceBindRes._skyTextureProjection, resourceBindRes._hasDiffuseIBL,
+                            globalLightDesc._doRangeFog);
 
                     auto ambientLightPacket = MakeSharedPkt(AsShaderDesc(globalLightDesc));
                     ambientResolveShaders._ambientLightUniforms->Apply(

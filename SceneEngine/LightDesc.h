@@ -180,7 +180,9 @@ namespace SceneEngine
         enum class SkyTextureType { HemiCube, Cube, Equirectangular, HemiEquirectangular };
         SkyTextureType      _skyTextureType;
 
-        Float3  _ambientLight;
+        ::Assets::ResChar   _diffuseIBL[MaxPath];   ///< Diffuse IBL map. Sometimes called irradiance map or ambient map
+        Float3              _ambientLight;
+
         float   _skyBrightness;
         float   _skyReflectionScale;
         float   _skyReflectionBlurriness;

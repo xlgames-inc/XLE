@@ -214,6 +214,7 @@ namespace SceneEngine
     , _skyTextureType(SkyTextureType::Equirectangular)
     {
         _skyTexture[0] = '\0';
+        _diffuseIBL[0] = '\0';
     }
 
     static ParameterBox::ParameterNameHash ParamHash(const char name[])
@@ -232,6 +233,7 @@ namespace SceneEngine
         static const auto skyReflectionScaleHash = ParamHash("SkyReflectionScale");
         static const auto skyReflectionBlurriness = ParamHash("SkyReflectionBlurriness");
         static const auto skyBrightness = ParamHash("SkyBrightness");
+        static const auto diffuseIBLHash = ParamHash("DiffuseIBL");
 
         static const auto rangeFogInscatterHash = ParamHash("RangeFogInscatter");
         static const auto rangeFogInscatterScaleHash = ParamHash("RangeFogInscatterScale");
@@ -266,6 +268,7 @@ namespace SceneEngine
         }
 
         props.GetString(skyTextureHash, _skyTexture, dimof(_skyTexture));
+        props.GetString(diffuseIBLHash, _diffuseIBL, dimof(_diffuseIBL));
     }
 
     ShadowProjectionDesc::ShadowProjectionDesc()

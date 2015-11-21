@@ -14,12 +14,16 @@
           editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" 
           converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
         <scea.dom.editors.attribute category="Ambient" name="AmbientBrightness" displayName="Brightness of the ambient light"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2"/>
+        
+        <scea.dom.editors.attribute category="Ambient" name="DiffuseIBL" displayName="Irradiance map"
+          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" 
+          converter="LevelEditorXLE.AssetNameConverter,LevelEditorXLE"/>
         
         <scea.dom.editors.attribute category="Sky" name="SkyTexture" displayName="Sky Texture"
           editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" 
           converter="LevelEditorXLE.AssetNameConverter,LevelEditorXLE"/>
-        <scea.dom.editors.attribute category="Sky" name="SkyTextureType" displayName="Mapping mode for the sky texture. HemiCube is the upper half of a cubemap. HemiEquirectangular is the upper half of a paranoramic map."
+        <scea.dom.editors.attribute category="Sky" name="SkyTextureType" displayName="Type" description="Mapping mode for the sky texture. HemiCube is the upper half of a cubemap. HemiEquirectangular is the upper half of a paranoramic map."
           editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:HemiCube=0,Cube=1,Equirectangular=2,HemiEquirectangular=3"
           converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:HemiCube=0,Cube=1,Equirectangular=2,HemiEquirectangular=3"/>
         <scea.dom.editors.attribute category="Sky" name="SkyReflectionScale" displayName="Sky Reflection Scale" description="Scale for the reflection of the static sky image"
@@ -54,6 +58,7 @@
         <LeGe.NativeType nativeName="AmbientSettings"/>
         <LeGe.NativeProperty name="AmbientLight" nativeName="AmbientLight"/>
         <LeGe.NativeProperty name="AmbientBrightness" nativeName="AmbientBrightness"/>
+        <LeGe.NativeProperty name="DiffuseIBL" nativeName="DiffuseIBL"/>
         
         <LeGe.NativeProperty name="SkyTexture" nativeName="SkyTexture"/>
         <LeGe.NativeProperty name="SkyTextureType" nativeName="SkyTextureType"/>
@@ -78,6 +83,7 @@
     </xs:annotation>
     <xs:attribute name="AmbientLight" type="xs:int" default="-1"/>
     <xs:attribute name="AmbientBrightness" type="xs:float" default="1"/>
+    <xs:attribute name="DiffuseIBL" type="xs:string"/>
     
     <xs:attribute name="SkyTexture" type="xs:string"/>
     <xs:attribute name="SkyTextureType" type="xs:int" default="0"/>
@@ -222,7 +228,6 @@
         <LeGe.NativeProperty name="DiffuseWideningMax" nativeName="DiffuseWideningMax"/>
         <LeGe.NativeProperty name="Specular" nativeName="Specular"/>
         <LeGe.NativeProperty name="SpecularBrightness" nativeName="SpecularBrightness"/>
-        <LeGe.NativeProperty name="SpecularNonMetalBrightness" nativeName="SpecularNonMetalBrightness"/>
         <LeGe.NativeProperty name="Flags" nativeName="Flags"/>
         <LeGe.NativeProperty name="ShadowResolveModel" nativeName="ShadowResolveModel"/>
         <LeGe.NativeVis geo="sphere"/>
@@ -230,20 +235,18 @@
         <scea.dom.editors.attribute category="Diffuse" name="Diffuse" displayName="Diffuse" description="Diffuse Color" 
           editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
         <scea.dom.editors.attribute category="Diffuse" name="DiffuseBrightness" displayName="Diffuse Brightness" description="Brightness of the diffuse part of the light" 
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,100"/>
         <scea.dom.editors.attribute category="Diffuse" name="DiffuseModel" displayName="Diffuse Model"
           editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:Lambert=0,Soft=1"
           converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:Lambert=0,Soft=1"/>
         <scea.dom.editors.attribute category="Diffuse" name="DiffuseWideningMin" displayName="Widening Min" description="Minimum value for the widening effect for diffuse light"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2.5"/>
         <scea.dom.editors.attribute category="Diffuse" name="DiffuseWideningMax" displayName="Widening Max" description="Maximum value for the widening effect for diffuse light"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2.5"/>
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,5"/>
         
         <scea.dom.editors.attribute category="Specular" name="Specular" displayName="Specular" description="Specular Color" 
           editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
         <scea.dom.editors.attribute category="Specular" name="SpecularBrightness" displayName="Specular Brightness" description="Brightness of the specular part of the light"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,100"/>
-        <scea.dom.editors.attribute category="Specular" name="SpecularNonMetalBrightness" displayName="Specular Non-Metal Brightness" description="Brightness of specular on non-metal"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,100"/>
         
         <scea.dom.editors.attribute category="Other" name="Flags" displayName="Flags"
@@ -266,7 +269,6 @@
         <xs:attribute name="DiffuseWideningMax" type="xs:float" default="2.5"/>
         <xs:attribute name="Specular" type="xs:int" default="-1"/>
         <xs:attribute name="SpecularBrightness" type="xs:float" default="1"/>
-        <xs:attribute name="SpecularNonMetalBrightness" type="xs:float" default="1"/>
         <xs:attribute name="Flags" type="xs:int" default="0"/>
         <xs:attribute name="ShadowResolveModel" type="xs:int" default="0"/>
       </xs:extension>
