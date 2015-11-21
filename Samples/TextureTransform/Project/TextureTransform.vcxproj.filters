@@ -4,8 +4,30 @@
     <ClCompile Include="..\Main.cpp" />
     <ClCompile Include="..\Transform.cpp" />
     <ClCompile Include="..\MinimalAssetServices.cpp" />
+    <ClCompile Include="..\HosekWilkie.cpp" />
+    <ClCompile Include="..\..\..\Foreign\HosekWilkie\ArHosekSkyModel.c">
+      <Filter>HosekWilkie</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\MinimalAssetServices.h" />
+    <ClInclude Include="..\Transform.h" />
+    <ClInclude Include="..\..\..\Foreign\HosekWilkie\ArHosekSkyModel.h">
+      <Filter>HosekWilkie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Foreign\HosekWilkie\ArHosekSkyModelData_CIEXYZ.h">
+      <Filter>HosekWilkie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Foreign\HosekWilkie\ArHosekSkyModelData_RGB.h">
+      <Filter>HosekWilkie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Foreign\HosekWilkie\ArHosekSkyModelData_Spectral.h">
+      <Filter>HosekWilkie</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="HosekWilkie">
+      <UniqueIdentifier>{58c5b62f-f422-401a-8ef1-6157f947f909}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

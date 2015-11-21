@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "Transform.h"
 #include "MinimalAssetServices.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../BufferUploads/DataPacket.h"
@@ -21,22 +22,6 @@
 
 namespace TextureTransform
 {
-    class TextureResult
-    {
-    public:
-        intrusive_ptr<BufferUploads::DataPacket> _pkt;
-        unsigned _format;
-        UInt2 _dimensions;
-
-        void SaveTIFF(const ::Assets::ResChar destinationFile[]) const;
-    };
-
-    TextureResult ExecuteTransform(
-        RenderCore::IDevice& device,
-        StringSection<char> xleDir,
-        StringSection<char> shader,
-        const ParameterBox& shaderParameters);
-
     using namespace BufferUploads;
 
     template<typename Formatter>
@@ -103,7 +88,10 @@ namespace TextureTransform
         auto shaderParameters = CreateParameterBox(doc.Element("p"));
 
         auto resultTexture = ExecuteTransform(
-            *device, MakeStringSection(xleDir), shader, shaderParameters);
+            *device, MakeStringSection(xleDir), shader, shaderParameters,
+            {
+                { "Sky", HosekWilkieSky }
+            });
         if (!resultTexture._pkt) {
             LogAlwaysError << "Error while performing texture transform";
             return;

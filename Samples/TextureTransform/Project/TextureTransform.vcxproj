@@ -30,6 +30,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\Foreign\HosekWilkie\ArHosekSkyModel.c" />
+    <ClCompile Include="..\HosekWilkie.cpp" />
     <ClCompile Include="..\Main.cpp" />
     <ClCompile Include="..\MinimalAssetServices.cpp" />
     <ClCompile Include="..\Transform.cpp" />
@@ -40,6 +42,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\..\ConsoleRig\Project\ConsoleRig.vcxproj">
       <Project>{587a5b72-36e9-ff50-36f4-c0e96bbfa841}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Math\Project\Math.vcxproj">
+      <Project>{2e51aa64-7e29-cd4a-fb7f-bac486a3575c}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore.vcxproj">
       <Project>{116fe083-50bc-1393-470f-f834ef6e02ff}</Project>
@@ -55,7 +60,12 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\Foreign\HosekWilkie\ArHosekSkyModel.h" />
+    <ClInclude Include="..\..\..\Foreign\HosekWilkie\ArHosekSkyModelData_CIEXYZ.h" />
+    <ClInclude Include="..\..\..\Foreign\HosekWilkie\ArHosekSkyModelData_RGB.h" />
+    <ClInclude Include="..\..\..\Foreign\HosekWilkie\ArHosekSkyModelData_Spectral.h" />
     <ClInclude Include="..\MinimalAssetServices.h" />
+    <ClInclude Include="..\Transform.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <RootNamespace>TestPlatform</RootNamespace>

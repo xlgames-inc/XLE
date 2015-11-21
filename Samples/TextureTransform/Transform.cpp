@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "Transform.h"
 #include "MinimalAssetServices.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -23,6 +24,7 @@
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Conversion.h"
+#include <map>
 
 #include "../../Core/WinAPI/IncludeWindows.h"
 #include "../../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
@@ -57,6 +59,7 @@ namespace TextureTransform
         intrusive_ptr<BufferUploads::ResourceLocator> _resLocator;
         BufferUploads::TextureDesc _desc;
         Metal::NativeFormat::Enum _finalFormat;
+        uint64 _bindingHash;
 
         InputResource(const ::Assets::ResChar initializer[]);
         ~InputResource();
@@ -68,6 +71,7 @@ namespace TextureTransform
     {
         _finalFormat = Metal::NativeFormat::Unknown;
         _desc = BufferUploads::TextureDesc::Plain1D(0, Metal::NativeFormat::Unknown);
+        _bindingHash = 0;
 
         auto splitter = MakeFileNameSplitter(initializer);
 
@@ -127,34 +131,14 @@ namespace TextureTransform
             + "_cblayout.txt";
     }
 
-    class TextureResult
-    {
-    public:
-        intrusive_ptr<BufferUploads::DataPacket> _pkt;
-        unsigned _format;
-        UInt2 _dimensions;
-
-        void SaveTIFF(const ::Assets::ResChar destinationFile[]) const;
-    };
-
     TextureResult ExecuteTransform(
         IDevice& device,
         StringSection<char> xleDir,
         StringSection<char> shaderName,
-        const ParameterBox& parameters)
+        const ParameterBox& parameters,
+        std::map<std::string, ProcessingFn> fns)
     {
         using namespace BufferUploads;
-
-        auto psShaderName = xleDir.AsString() + "/Working/game/xleres/" + shaderName.AsString();
-        if (!XlFindStringI(psShaderName.c_str(), "ps_"))
-            psShaderName += ":" PS_DefShaderModel;
-
-        auto psByteCode = LoadShaderImmediate(psShaderName.c_str());
-        auto vsByteCode = LoadShaderImmediate((xleDir.AsString() + "/Working/game/xleres/basic2D.vsh:fullscreen:" VS_DefShaderModel).c_str());
-
-        Metal::ShaderProgram shaderProg(vsByteCode, psByteCode);
-        Metal::BoundUniforms uniforms(shaderProg);
-        uniforms.BindConstantBuffers(1, {"Material"});
 
         std::vector<InputResource> inputResources;
 
@@ -166,12 +150,13 @@ namespace TextureTransform
 
                 InputResource inputRes(value.c_str());
                 if (inputRes._srv.IsGood()) {
-                    uniforms.BindShaderResource(Hash64((const char*)i.Name()), (unsigned)inputResources.size(), 1);
+                    inputRes._bindingHash = Hash64((const char*)i.Name());
                     inputResources.push_back(std::move(inputRes));
                 }
             }
         }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
             // We need to calculate an output format and viewport dimensions
             // If we have at least one input resource, we can use that to select
             // an initial width/height/format.
@@ -196,50 +181,70 @@ namespace TextureTransform
         if (!viewDims[0] || !viewDims[1] || rtFormat == Metal::NativeFormat::Unknown)
             Throw(::Exceptions::BasicLabel("Missing Dims or Format parameter"));
 
-        Techniques::PredefinedCBLayout cbLayout(GetCBLayoutName(psShaderName.c_str()).c_str());
+        auto dstDesc = TextureDesc::Plain2D(viewDims[0], viewDims[1], unsigned(rtFormat));
 
-        auto& uploads = Samples::MinimalAssetServices::GetBufferUploads();
-        auto dstTexture = uploads.Transaction_Immediate(
-            CreateDesc(
-                BindFlag::RenderTarget,
-                0, GPUAccess::Write,
-                TextureDesc::Plain2D(viewDims[0], viewDims[1], unsigned(rtFormat)), 
-                "TextureProcessOutput"));
+        auto i = fns.find(shaderName.AsString());
+        if (i != fns.end()) {
+            return (i->second)(dstDesc, parameters);
+        } else {
+            auto psShaderName = xleDir.AsString() + "/Working/game/xleres/" + shaderName.AsString();
+            if (!XlFindStringI(psShaderName.c_str(), "ps_"))
+                psShaderName += ":" PS_DefShaderModel;
 
-        auto metalContext = Metal::DeviceContext::Get(*device.GetImmediateContext());
-        metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(viewDims[0]), float(viewDims[1])));
-        Metal::RenderTargetView rtv(dstTexture->GetUnderlying());
-        metalContext->Bind(MakeResourceList(rtv), nullptr);
+            auto psByteCode = LoadShaderImmediate(psShaderName.c_str());
+            auto vsByteCode = LoadShaderImmediate((xleDir.AsString() + "/Working/game/xleres/basic2D.vsh:fullscreen:" VS_DefShaderModel).c_str());
 
-        auto& commonRes = Techniques::CommonResources();
-        metalContext->Bind(commonRes._cullDisable);
-        metalContext->Bind(commonRes._blendOpaque);
-        metalContext->Bind(commonRes._dssDisable);
-        metalContext->BindPS(MakeResourceList(commonRes._defaultSampler));
+            Metal::ShaderProgram shaderProg(vsByteCode, psByteCode);
+            Metal::BoundUniforms uniforms(shaderProg);
+            uniforms.BindConstantBuffers(1, {"Material"});
 
-        SharedPkt cbs[] = { cbLayout.BuildCBDataAsPkt(parameters) };
-        std::vector<const Metal::ShaderResourceView*> srvs;
-        for (const auto&i:inputResources) srvs.push_back(&i._srv);
+            for (unsigned c = 0; c<inputResources.size(); ++c)
+                uniforms.BindShaderResource(inputResources[c]._bindingHash, c, 1);
 
-        uniforms.Apply(
-            *metalContext, Metal::UniformsStream(),
-            Metal::UniformsStream(
-                cbs, nullptr, dimof(cbs),
-                AsPointer(srvs.begin()), srvs.size()));
-        metalContext->Bind(shaderProg);
+            Techniques::PredefinedCBLayout cbLayout(GetCBLayoutName(psShaderName.c_str()).c_str());
 
-        metalContext->Bind(Metal::Topology::TriangleStrip);
-        metalContext->Unbind<Metal::VertexBuffer>();
-        metalContext->Unbind<Metal::BoundInputLayout>();
+            auto& uploads = Samples::MinimalAssetServices::GetBufferUploads();
+            auto dstTexture = uploads.Transaction_Immediate(
+                CreateDesc(
+                    BindFlag::RenderTarget,
+                    0, GPUAccess::Write,
+                    dstDesc, 
+                    "TextureProcessOutput"));
+
+            auto metalContext = Metal::DeviceContext::Get(*device.GetImmediateContext());
+            metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(viewDims[0]), float(viewDims[1])));
+            Metal::RenderTargetView rtv(dstTexture->GetUnderlying());
+            metalContext->Bind(MakeResourceList(rtv), nullptr);
+
+            auto& commonRes = Techniques::CommonResources();
+            metalContext->Bind(commonRes._cullDisable);
+            metalContext->Bind(commonRes._blendOpaque);
+            metalContext->Bind(commonRes._dssDisable);
+            metalContext->BindPS(MakeResourceList(commonRes._defaultSampler));
+
+            SharedPkt cbs[] = { cbLayout.BuildCBDataAsPkt(parameters) };
+            std::vector<const Metal::ShaderResourceView*> srvs;
+            for (const auto&i:inputResources) srvs.push_back(&i._srv);
+
+            uniforms.Apply(
+                *metalContext, Metal::UniformsStream(),
+                Metal::UniformsStream(
+                    cbs, nullptr, dimof(cbs),
+                    AsPointer(srvs.begin()), srvs.size()));
+            metalContext->Bind(shaderProg);
+
+            metalContext->Bind(Metal::Topology::TriangleStrip);
+            metalContext->Unbind<Metal::VertexBuffer>();
+            metalContext->Unbind<Metal::BoundInputLayout>();
         
-        metalContext->Draw(4);
+            metalContext->Draw(4);
 
-        uniforms.UnbindShaderResources(*metalContext, 1);
-        metalContext->Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
+            uniforms.UnbindShaderResources(*metalContext, 1);
+            metalContext->Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
 
-        return TextureResult {
-            uploads.Resource_ReadBack(*dstTexture),
-            unsigned(rtFormat), viewDims };
+            auto result = uploads.Resource_ReadBack(*dstTexture);
+            return TextureResult { result, unsigned(rtFormat), viewDims };
+        }
     }
 
     void TextureResult::SaveTIFF(const ::Assets::ResChar destinationFile[]) const
