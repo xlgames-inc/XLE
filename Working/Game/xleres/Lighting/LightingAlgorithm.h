@@ -221,6 +221,32 @@ float SimplifiedOrenNayer(float3 normal, float3 viewDirection, float3 lightDirec
 	return saturate(E0 * rho / pi * D);
 }
 
+float TriAceSpecularOcclusion(float NdotV, float ao)
+{
+    // This is the "Specular Occlusion" parameter suggested by Tri-Ace.
+    // This equation is not physically based, but there are some solid
+    // principles. Actually, our ambient occlusion term isn't
+    // fully physically based, either.
+    //
+    // Let's assume that the "AO" factor represents the quantity of a
+    // hemidome around the normal that is occluded. We can also assume
+    // that the occluded parts are evenly distributed around the lowest
+    // elevation parts of the dome.
+    //
+    // So, given an angle between the normal and the view, we want to know
+    // how much of the specular peak will be occluded.
+    // (See the Tri-Ace slides from cedec2011 for more details)
+    // The result should vary based on roughness. But Tri-Ace found that it
+    // was more efficient just to ignore that.
+    //
+    // Actually, I guess we could use the HdotV there, instead of NdotV, also.
+    // That might encourage less occlusion.
+    float q = (NdotV + ao);
+    return saturate(q * q - 1.f + ao);
+    // d*d + 2*d*a + a*a - 1 + a
+    // d*d - 1 +     a*(2*d + 1)
+    // a*a - 1 + a + d*(2*a + d)
+}
 
 
 #endif

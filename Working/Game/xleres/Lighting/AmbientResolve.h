@@ -21,17 +21,19 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #if defined(TILED_LIGHTS_RESOLVE_MS)
-    Texture2D_MaybeMS<float4>	TiledLightsResolve	 	: register(t5);
+    Texture2D_MaybeMS<float4>	TiledLightsResolve	 	: register(t6);
 #else
-    Texture2D<float4>			TiledLightsResolve	 	: register(t5);
+    Texture2D<float4>			TiledLightsResolve	 	: register(t6);
 #endif
 
-Texture2D<float>				AmbientOcclusion		: register(t6);
+#if HAS_SCREENSPACE_AO==1
+    Texture2D<float>			AmbientOcclusion		: register(t5);
+#endif
 
 #if SKY_PROJECTION==5
-    TextureCube						SkyReflectionTexture : register(t11);
+    TextureCube					SkyReflectionTexture : register(t11);
 #else
-    Texture2D						SkyReflectionTexture[3] : register(t11);
+    Texture2D					SkyReflectionTexture[3] : register(t11);
 #endif
 
 #if CALCULATE_SCREENSPACE_REFLECTIONS==1
@@ -174,33 +176,6 @@ float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample
     }
 #endif
 
-float TriAceSpecularOcclusion(float NdotV, float ao)
-{
-    // This is the "Specular Occlusion" parameter suggested by Tri-Ace.
-    // This equation is not physically based, but there are some solid
-    // principles. Actually, our ambient occlusion term isn't
-    // fully physically based, either.
-    //
-    // Let's assume that the "AO" factor represents the quantity of a
-    // hemidome around the normal that is occluded. We can also assume
-    // that the occluded parts are evenly distributed around the lowest
-    // elevation parts of the dome.
-    //
-    // So, given an angle between the normal and the view, we want to know
-    // how much of the specular peak will be occluded.
-    // (See the Tri-Ace slides from cedec2011 for more details)
-    // The result should vary based on roughness. But Tri-Ace found that it
-    // was more efficient just to ignore that.
-    //
-    // Actually, I guess we could use the HdotV there, instead of NdotV, also.
-    // That might encourage less occlusion.
-    float q = (NdotV + ao);
-    return saturate(q * q - 1.f + ao);
-    // d*d + 2*d*a + a*a - 1 + a
-    // d*d - 1 +     a*(2*d + 1)
-    // a*a - 1 + a + d*(2*a + d)
-}
-
 float3 LightResolve_Ambient(
     GBufferValues sample,
     float3 directionToEye,
@@ -211,7 +186,7 @@ float3 LightResolve_Ambient(
 {
     float3 result = CalcBasicAmbient(pixelCoords, sampleIndex, sample, ambient.Colour);
 
-    #if CALCULATE_AMBIENT_OCCLUSION==1
+    #if HAS_SCREENSPACE_AO==1
         float occlusion = LoadFloat1(AmbientOcclusion, pixelCoords, sampleIndex);
     #else
         float occlusion = 1.f;

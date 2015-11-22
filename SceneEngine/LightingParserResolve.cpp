@@ -331,6 +331,7 @@ namespace SceneEngine
             auto resourceBindRes = LightingParser_BindLightResolveResources(context, parserContext);
 
             context.BindPS(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
+            context.BindPS(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
 
                 // note -- if we do ambient first, we can avoid this clear (by rendering the ambient opaque)
             float clearColour[] = { 0.f, 0.f, 0.f, 1.f };
@@ -376,9 +377,8 @@ namespace SceneEngine
                             lightingResTargets._lightingResolveCopy.get(), 
                             lightingResTargets._lightingResolveTexture.get());
 
-                    context.BindPS(MakeResourceList(5, 
+                    context.BindPS(MakeResourceList(6, 
                         lightingResolveContext._tiledLightingResult, 
-                        lightingResolveContext._ambientOcclusionResult,
                         lightingResolveContext._screenSpaceReflectionsResult,
                         lightingResTargets._lightingResolveCopySRV));
 
@@ -476,6 +476,7 @@ namespace SceneEngine
                     ? LightingResolveShaders::Directional 
                     : LightingResolveShaders::Point;
                 shaderType._shadows = LightingResolveShaders::NoShadows;
+                shaderType._hasScreenSpaceAO = resolveContext._ambientOcclusionResult.IsGood();
 
                     //  We only support a limited set of different light types so far.
                     //  Perhaps this will be extended to support more lights with custom

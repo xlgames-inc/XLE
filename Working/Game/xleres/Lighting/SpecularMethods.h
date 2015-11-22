@@ -188,7 +188,7 @@ SpecularParameters SpecularParameters_RoughF0(float roughness, float3 F0, bool m
 {
     SpecularParameters result;
     result.roughness = roughness;
-    result.F0 = F0.xxx;
+    result.F0 = F0;
     result.mirrorSurface = mirrorSurface;
     return result;
 }

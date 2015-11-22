@@ -155,16 +155,18 @@ namespace SceneEngine
             Shadowing   _shadows;
             uint8       _diffuseModel;
             uint8       _shadowResolveModel;
+            bool        _hasScreenSpaceAO;
 
             unsigned AsIndex() const;
             static unsigned ReservedIndexCount();
 
             LightShaderType(
                 Projection projection, Shadowing shadows, 
-                uint8 diffuseModel, uint8 shadowResolveModel)
-                : _projection(projection), _shadows(shadows), _diffuseModel(diffuseModel), _shadowResolveModel(shadowResolveModel) {}
+                uint8 diffuseModel, uint8 shadowResolveModel, bool hasScreenSpaceAO)
+                : _projection(projection), _shadows(shadows), _diffuseModel(diffuseModel), _shadowResolveModel(shadowResolveModel)
+                , _hasScreenSpaceAO(hasScreenSpaceAO) {}
             LightShaderType()
-                : _projection(Directional), _shadows(NoShadows), _diffuseModel(0), _shadowResolveModel(0) {}
+                : _projection(Directional), _shadows(NoShadows), _diffuseModel(0), _shadowResolveModel(0), _hasScreenSpaceAO(false) {}
         };
 
         class LightShader

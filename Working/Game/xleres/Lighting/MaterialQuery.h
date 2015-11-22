@@ -83,18 +83,6 @@ float Material_GetDiffuseScale(GBufferValues gbuffer)
     else { return 1.f; }
 }
 
-float Material_GetSpecularScale0(GBufferValues gbuffer)
-{
-    if (UseMaterialOverride) { return MO_Specular0Scale; }
-    else { return 1.f; }
-}
-
-float Material_GetSpecularScale1(GBufferValues gbuffer)
-{
-    if (UseMaterialOverride) { return MO_Specular1Scale; }
-    else { return 0.f; }
-}
-
 float Material_GetReflectionScale(GBufferValues gbuffer)
 {
     if (UseMaterialOverride) { return MO_ReflectionsScale; }

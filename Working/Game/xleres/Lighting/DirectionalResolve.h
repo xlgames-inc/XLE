@@ -34,11 +34,13 @@ float3 LightResolve_Specular(
 	GBufferValues sample,
 	float3 directionToEye,
 	LightDesc light,
+	float screenSpaceOcclusion = 1.f,
 	bool mirrorSpecular = false)
 {
 		// Getting lots of problems with specular for normals pointing away
 		// from the camera. We have to avoid this case.
-	if (dot(sample.worldSpaceNormal, directionToEye) < 0.f) return 0.0.xxx;
+	float NdotV = dot(sample.worldSpaceNormal, directionToEye);
+	if (NdotV < 0.f) return 0.0.xxx;
 
 	float roughnessValue = Material_GetRoughness(sample);
 
@@ -51,31 +53,18 @@ float3 LightResolve_Specular(
 
 	SpecularParameters param0 = SpecularParameters_RoughF0(roughnessValue, F0_0);
 	float3 halfVector = normalize(light.NegativeDirection + directionToEye);
-	float3 spec0 = Material_GetSpecularScale0(sample)
-		* CalculateSpecular(
-			sample.worldSpaceNormal, directionToEye,
-			light.NegativeDirection, halfVector,
-			param0);
+	float3 spec0 = CalculateSpecular(
+		sample.worldSpaceNormal, directionToEye,
+		light.NegativeDirection, halfVector,
+		param0);
 
-		////////////////////////////////////////////////
+	float specularOcclusion = screenSpaceOcclusion * sample.cookedLightOcclusion;
+	const bool viewDependentOcclusion = true;
+	if (viewDependentOcclusion) {
+		specularOcclusion = TriAceSpecularOcclusion(NdotV, specularOcclusion);
+	}
 
-	// float F0_1 = Material_GetF0_1(sample);
-	// float3 specularColor1 = 1.0.xxx;
-	// SpecularParameters param1 = SpecularParameters_RoughF0(3.f * roughnessValue, F0_1);
-	// float spec1 = Material_GetSpecularScale1(sample)
-	// 	* CalculateSpecular(
-	// 		sample.worldSpaceNormal, directionToEye,
-	// 		negativeLightDirection, param1);
-
-		////////////////////////////////////////////////
-
-	float3 result = (spec0 * sample.cookedLightOcclusion) * light.Color.specular;
-
-		// second part of our metal model approximation (see above)
-	result *= lerp(1.0.xxx, sample.diffuseAlbedo, Material_GetMetal(sample));
-
-	// result += (saturate(spec1) * scale) * specularColor1;
-	return result;
+	return (spec0 * specularOcclusion) * light.Color.specular;
 }
 
 #endif

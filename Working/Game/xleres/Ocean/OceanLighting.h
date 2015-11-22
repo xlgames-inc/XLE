@@ -280,7 +280,7 @@ float3 DoSingleSpecular(OceanSurfaceSample oceanSample, float3 worldViewDirectio
         // todo --  we should consider using the normal instead of the half-vector
         //          for fresnel calculations here. Since water should have close to
         //          mirror reflections (as least some of the time)
-    return LightResolve_Specular(BuildGBufferValues(oceanSample), worldViewDirection, BasicLight[0], true);
+    return LightResolve_Specular(BuildGBufferValues(oceanSample), worldViewDirection, BasicLight[0], 1.f, true);
 }
 
 void CalculateSpecular(	inout OceanLightingParts parts,

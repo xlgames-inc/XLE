@@ -13,6 +13,10 @@
 #include "../System/LoadGBuffer.h"
 #include "../Colour.h" // for LightingScale
 
+#if HAS_SCREENSPACE_AO==1
+    Texture2D<float>			AmbientOcclusion		: register(t5);
+#endif
+
 cbuffer LightBuffer
 {
 	LightDesc Light;
@@ -27,9 +31,15 @@ float4 ResolveLightUnshadowed(	float4 position : SV_Position,
 	float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
 
 	GBufferValues sample = LoadGBuffer(position, sys);
+
+	float screenSpaceOcclusion = 1.f;
+	#if HAS_SCREENSPACE_AO==1
+        screenSpaceOcclusion = LoadFloat1(AmbientOcclusion, pixelCoords, GetSampleIndex(sys));
+    #endif
+
 	float3 directionToEye = normalize(-viewFrustumVector);
 	float3 diffuse = LightResolve_Diffuse(sample, directionToEye, Light);
-	float3 specular = LightResolve_Specular(sample, directionToEye, Light);
+	float3 specular = LightResolve_Specular(sample, directionToEye, Light, screenSpaceOcclusion);
 
 	const float lightScale = LightingScale;
 	return float4(lightScale*(diffuse + specular), 1.f);
