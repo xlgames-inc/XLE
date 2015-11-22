@@ -439,12 +439,12 @@ namespace RenderCore { namespace ColladaConversion
         const void* sourceBuffer,           size_t sourceVertexStride,
         const Assets::VertexElement* destinationLayoutBegin,  const Assets::VertexElement* destinationLayoutEnd,
         const Assets::VertexElement* sourceLayoutBegin,       const Assets::VertexElement* sourceLayoutEnd,
-        const uint16* reorderingBegin,      const uint16* reorderingEnd )
+        const uint32* reorderingBegin,      const uint32* reorderingEnd )
     {
         uint32      elementReordering[32];
         signed      maxSourceLayout = -1;
         for (auto source=sourceLayoutBegin; source!=sourceLayoutEnd; ++source) {
-                //      look for the same element in the destination layout (or put ~uint16(0x0) if it's not there)
+                //      look for the same element in the destination layout (or put ~uint32(0x0) if it's not there)
             elementReordering[source-sourceLayoutBegin] = ~uint32(0x0);
             for (auto destination=destinationLayoutBegin; destination!=destinationLayoutEnd; ++destination) {
                 if (    !XlCompareString(destination->_semanticName, source->_semanticName)
@@ -473,7 +473,7 @@ namespace RenderCore { namespace ColladaConversion
             void* destinationVertexStart     = PtrAdd(destinationBuffer, destinationIndex*destinationVertexStride);
             const void* sourceVertexStart    = PtrAdd(sourceBuffer, sourceIndex*sourceVertexStride);
             for (unsigned c=0; c<=(unsigned)maxSourceLayout; ++c) {
-                if (elementReordering[c] != ~uint16(0x0)) {
+                if (elementReordering[c] != ~uint32(0x0)) {
                     const auto& destinationElement = destinationLayoutBegin[elementReordering[c]]; assert(&destinationElement < destinationLayoutEnd);
                     const auto& sourceElement = sourceLayoutBegin[c]; assert(&sourceElement < sourceLayoutEnd);
                     size_t elementSize = Metal::BitsPerPixel(Metal::NativeFormat::Enum(destinationElement._nativeFormat))/8;

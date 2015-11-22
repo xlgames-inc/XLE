@@ -31,7 +31,7 @@ namespace RenderCore { namespace ColladaConversion
         const void* sourceBuffer,           size_t sourceVertexStride,
         const Assets::VertexElement* destinationLayoutBegin,  const Assets::VertexElement* destinationLayoutEnd,
         const Assets::VertexElement* sourceLayoutBegin,       const Assets::VertexElement* sourceLayoutEnd,
-        const uint16* reorderingBegin,      const uint16* reorderingEnd );
+        const uint32* reorderingBegin,      const uint32* reorderingEnd );
 
     unsigned CalculateVertexSize(
         const Assets::VertexElement* layoutBegin,  

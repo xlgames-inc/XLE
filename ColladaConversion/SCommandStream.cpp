@@ -278,13 +278,12 @@ namespace RenderCore { namespace ColladaConversion
                 nodeRefs.TryRegisterNode(AsObjectGuid(node), SkeletonBindingName(node).c_str());
 
                 result[c] = (uint16)bindingMatIndex;
+
+                if (c < invBindMats.size())
+                    nodeRefs.AttachInverseBindMatrix(AsObjectGuid(node), invBindMats[c]);
             } else {
                 result[c] = (uint16)~uint16(0);
             }
-
-            if (c < invBindMats.size())
-                nodeRefs.AttachInverseBindMatrix(
-                    AsObjectGuid(node), invBindMats[c]);
         }
 
         return std::move(result);

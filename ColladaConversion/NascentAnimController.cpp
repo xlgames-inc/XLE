@@ -69,10 +69,10 @@ namespace RenderCore { namespace ColladaConversion
                             
         size_t unifiedVertexCount = sourceGeo._unifiedVertexIndexToPositionIndex.size();
 
-        std::vector<std::pair<uint16,uint32>> unifiedVertexIndexToBucketIndex;
+        std::vector<std::pair<uint32,uint32>> unifiedVertexIndexToBucketIndex;
         unifiedVertexIndexToBucketIndex.reserve(unifiedVertexCount);
 
-        for (uint16 c=0; c<unifiedVertexCount; ++c) {
+        for (uint32 c=0; c<unifiedVertexCount; ++c) {
             uint32 positionIndex = sourceGeo._unifiedVertexIndexToPositionIndex[c];
             uint32 bucketIndex   = controller._positionIndexToBucketIndex[positionIndex];
             unifiedVertexIndexToBucketIndex.push_back(std::make_pair(c, bucketIndex));
@@ -82,12 +82,12 @@ namespace RenderCore { namespace ColladaConversion
             //      Resort by bucket index...
             //
 
-        std::sort(unifiedVertexIndexToBucketIndex.begin(), unifiedVertexIndexToBucketIndex.end(), CompareSecond<uint16, uint32>());
+        std::sort(unifiedVertexIndexToBucketIndex.begin(), unifiedVertexIndexToBucketIndex.end(), CompareSecond<uint32, uint32>());
 
-        std::vector<uint16> unifiedVertexReordering;       // unifiedVertexReordering[oldIndex] = newIndex;
-        std::vector<uint16> newUnifiedVertexIndexToPositionIndex;
-        unifiedVertexReordering.resize(unifiedVertexCount, (uint16)~uint16(0x0));
-        newUnifiedVertexIndexToPositionIndex.resize(unifiedVertexCount, (uint16)~uint16(0x0));
+        std::vector<uint32> unifiedVertexReordering;       // unifiedVertexReordering[oldIndex] = newIndex;
+        std::vector<uint32> newUnifiedVertexIndexToPositionIndex;
+        unifiedVertexReordering.resize(unifiedVertexCount, (uint32)~uint32(0x0));
+        newUnifiedVertexIndexToPositionIndex.resize(unifiedVertexCount, (uint32)~uint32(0x0));
 
             //
             //      \todo --    it would better if we tried to maintain the vertex ordering within
@@ -96,20 +96,20 @@ namespace RenderCore { namespace ColladaConversion
             //                  as they were in the original
             //
 
-        uint16 indexAccumulator = 0;
+        uint32 indexAccumulator = 0;
         const size_t bucketCount = dimof(((UnboundSkinController*)nullptr)->_bucket);
-        uint16 bucketStart  [bucketCount];
-        uint16 bucketEnd    [bucketCount];
-        uint16 currentBucket = 0; bucketStart[0] = 0;
+        uint32 bucketStart  [bucketCount];
+        uint32 bucketEnd    [bucketCount];
+        uint32 currentBucket = 0; bucketStart[0] = 0;
         for (auto i=unifiedVertexIndexToBucketIndex.cbegin(); i!=unifiedVertexIndexToBucketIndex.cend(); ++i) {
             if ((i->second >> 16)!=currentBucket) {
                 bucketEnd[currentBucket] = indexAccumulator;
                 bucketStart[++currentBucket] = indexAccumulator;
             }
-            uint16 newIndex = indexAccumulator++;
-            uint16 oldIndex = i->first;
+            uint32 newIndex = indexAccumulator++;
+            uint32 oldIndex = i->first;
             unifiedVertexReordering[oldIndex] = newIndex;
-            newUnifiedVertexIndexToPositionIndex[newIndex] = (uint16)sourceGeo._unifiedVertexIndexToPositionIndex[oldIndex];
+            newUnifiedVertexIndexToPositionIndex[newIndex] = (uint32)sourceGeo._unifiedVertexIndexToPositionIndex[oldIndex];
         }
         bucketEnd[currentBucket] = indexAccumulator;
         for (unsigned b=currentBucket+1; b<bucketCount; ++b) {
@@ -177,16 +177,21 @@ namespace RenderCore { namespace ColladaConversion
 
             //      We have to remap the index buffer, also.
         std::unique_ptr<uint8[]> newIndexBuffer = std::make_unique<uint8[]>(sourceGeo._indices.size());
-        if (sourceGeo._indexFormat == Metal::NativeFormat::R16_UINT) {
+        if (sourceGeo._indexFormat == Metal::NativeFormat::R32_UINT) {
+            std::transform(
+                (const uint32*)sourceGeo._indices.begin(), (const uint32*)sourceGeo._indices.end(),
+                (uint32*)newIndexBuffer.get(),
+                [&unifiedVertexReordering](uint32 inputIndex) { return unifiedVertexReordering[inputIndex]; });
+        } else if (sourceGeo._indexFormat == Metal::NativeFormat::R16_UINT) {
             std::transform(
                 (const uint16*)sourceGeo._indices.begin(), (const uint16*)sourceGeo._indices.end(),
                 (uint16*)newIndexBuffer.get(),
-                [&unifiedVertexReordering](uint16 inputIndex){return unifiedVertexReordering[inputIndex];});
+                [&unifiedVertexReordering](uint16 inputIndex) -> uint16 { auto result = unifiedVertexReordering[inputIndex]; assert(result <= 0xffff); return (uint16)result; });
         } else if (sourceGeo._indexFormat == Metal::NativeFormat::R8_UINT) {
             std::transform(
                 (const uint8*)sourceGeo._indices.begin(), (const uint8*)sourceGeo._indices.end(),
                 (uint8*)newIndexBuffer.get(),
-                [&unifiedVertexReordering](uint8 inputIndex){return unifiedVertexReordering[inputIndex];});
+                [&unifiedVertexReordering](uint8 inputIndex) -> uint8 { auto result = unifiedVertexReordering[inputIndex]; assert(result <= 0xff); return (uint8)result; });
         } else {
             Throw(FormatError("Unrecognised index format when instantiating skin controller in node (%s).", nodeName));
         }
