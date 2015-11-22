@@ -129,14 +129,6 @@ float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float
 
 float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample, float3 ambientColor)
 {
-    #if CALCULATE_AMBIENT_OCCLUSION==1
-        float ambientOcclusionSample = LoadFloat1(AmbientOcclusion, pixelCoords, sampleIndex);
-    #else
-        float ambientOcclusionSample = 1.f;
-    #endif
-
-    ambientOcclusionSample *= sample.cookedAmbientOcclusion;
-
     #if CALCULATE_TILED_LIGHTS==1
         #if defined(TILED_LIGHTS_RESOLVE_MS)
             float3 tiledLights	= LoadFloat4(TiledLightsResolve, pixelCoords, sampleIndex).xyz;
@@ -150,7 +142,7 @@ float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample
     float3 diffuseIBL = SampleDiffuseIBL(sample.worldSpaceNormal);
 
     float metal = Material_GetMetal(sample);
-    return ((1.0f - metal)*ambientOcclusionSample)*(ambientColor + tiledLights + diffuseIBL)*sample.diffuseAlbedo.rgb;
+    return (1.0f - metal)*(ambientColor + tiledLights + diffuseIBL)*sample.diffuseAlbedo.rgb;
 }
 
 /////////////////////////////////////////
@@ -182,6 +174,33 @@ float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample
     }
 #endif
 
+float TriAceSpecularOcclusion(float NdotV, float ao)
+{
+    // This is the "Specular Occlusion" parameter suggested by Tri-Ace.
+    // This equation is not physically based, but there are some solid
+    // principles. Actually, our ambient occlusion term isn't
+    // fully physically based, either.
+    //
+    // Let's assume that the "AO" factor represents the quantity of a
+    // hemidome around the normal that is occluded. We can also assume
+    // that the occluded parts are evenly distributed around the lowest
+    // elevation parts of the dome.
+    //
+    // So, given an angle between the normal and the view, we want to know
+    // how much of the specular peak will be occluded.
+    // (See the Tri-Ace slides from cedec2011 for more details)
+    // The result should vary based on roughness. But Tri-Ace found that it
+    // was more efficient just to ignore that.
+    //
+    // Actually, I guess we could use the HdotV there, instead of NdotV, also.
+    // That might encourage less occlusion.
+    float q = (NdotV + ao);
+    return saturate(q * q - 1.f + ao);
+    // d*d + 2*d*a + a*a - 1 + a
+    // d*d - 1 +     a*(2*d + 1)
+    // a*a - 1 + a + d*(2*a + d)
+}
+
 float3 LightResolve_Ambient(
     GBufferValues sample,
     float3 directionToEye,
@@ -191,6 +210,15 @@ float3 LightResolve_Ambient(
     bool mirrorReflection = false)
 {
     float3 result = CalcBasicAmbient(pixelCoords, sampleIndex, sample, ambient.Colour);
+
+    #if CALCULATE_AMBIENT_OCCLUSION==1
+        float occlusion = LoadFloat1(AmbientOcclusion, pixelCoords, sampleIndex);
+    #else
+        float occlusion = 1.f;
+    #endif
+
+    occlusion *= sample.cookedAmbientOcclusion;
+    result *= occlusion;
 
         // In our metal model, we store F0 values per wavelength in sample.diffuseAlbedo.
         // This gives us fantasic freedom to control the metallic reflections.
@@ -226,15 +254,19 @@ float3 LightResolve_Ambient(
         float3 finalReflection = skyReflections;
     #endif
 
-        // This is just a hack to stand in for better specular occlusion
-        // we need some kind of specular occlusion here, otherwise it becomes too
-        // difficult to balance
     #define SPECULAR_OCCLUSION_EXPERIMENT
     #if defined(SPECULAR_OCCLUSION_EXPERIMENT)
-        finalReflection *= saturate(dot(directionToEye, sample.worldSpaceNormal));
+        float NdotV = dot(directionToEye, sample.worldSpaceNormal);
+        const bool useHalfVector = false;   // using the half vector here doesn't seem to really help
+        if (useHalfVector) {
+            float3 worldSpaceReflection = reflect(-directionToEye, sample.worldSpaceNormal);
+            float3 halfVector = normalize(worldSpaceReflection + directionToEye);
+            NdotV = dot(directionToEye, halfVector);
+        }
+        float specularOcclusion = TriAceSpecularOcclusion(NdotV, occlusion);
+        finalReflection *= specularOcclusion;
     #endif
 
-    finalReflection *= sample.cookedAmbientOcclusion;
     result += Material_GetReflectionScale(sample) * finalReflection;
 
     return result;
