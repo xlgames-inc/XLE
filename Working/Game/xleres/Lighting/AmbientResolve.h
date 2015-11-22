@@ -231,7 +231,7 @@ float3 LightResolve_Ambient(
         // difficult to balance
     #define SPECULAR_OCCLUSION_EXPERIMENT
     #if defined(SPECULAR_OCCLUSION_EXPERIMENT)
-        finalReflection *= saturate(dot(viewDirection, sample.worldSpaceNormal));
+        finalReflection *= saturate(dot(directionToEye, sample.worldSpaceNormal));
     #endif
 
     finalReflection *= sample.cookedAmbientOcclusion;
