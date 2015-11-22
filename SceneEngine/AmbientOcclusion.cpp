@@ -12,6 +12,7 @@
 #include "../RenderCore/Metal/RenderTargetView.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Assets/Assets.h"
@@ -86,7 +87,7 @@ namespace SceneEngine
         parameters.Bias = 0.1f;
         parameters.DetailAO = .5f;
         parameters.CoarseAO = 1.f;
-        parameters.PowerExponent = 3.5f;
+        parameters.PowerExponent = 2.f;
         parameters.DepthStorage = GFSDK_SSAO_FP16_VIEW_DEPTHS;
 
         parameters.DepthThreshold.Enable = true;
@@ -95,7 +96,7 @@ namespace SceneEngine
 
         parameters.Blur.Enable = true;
         parameters.Blur.Radius = GFSDK_SSAO_BLUR_RADIUS_8;
-        parameters.Blur.Sharpness = 4.f;
+        parameters.Blur.Sharpness = 8.f;
         parameters.Blur.SharpnessProfile = GFSDK_SSAO_BlurSharpnessProfile();
 
         parameters.Output.BlendMode = GFSDK_SSAO_OVERWRITE_RGB;
@@ -200,7 +201,7 @@ namespace SceneEngine
         if (IsOrthogonalProjection(parserContext.GetProjectionDesc()._cameraToProjection))
             return;
 
-        static float SceneScale = 1.f;
+        static float SceneScale = 0.1f;
 
             //
             //      See nvidia header on documentation for interface to NVSSAO
@@ -282,6 +283,7 @@ namespace SceneEngine
     {
         SetupVertexGeneratorShader(context);
         context.BindPS(MakeResourceList(resources._aoSRV));
+        context.Bind(Techniques::CommonResources()._blendStraightAlpha);
         context.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/postprocess/debugging.psh:AODebugging:ps_*"));
         context.Draw(4);
