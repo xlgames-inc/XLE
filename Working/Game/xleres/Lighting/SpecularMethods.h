@@ -63,24 +63,11 @@ float CalculateSpecular_CookTorrence(float3 normal, float3 directionToEye, float
         //   G G X                                                      //
     //////////////////////////////////////////////////////////////////////////
 
-    // When using "Disney" diffuse, the diffuse lighting equator is different than
-    // standard lambert.
-    // This causes a discontinuity with the specular model, because "N dot L" is used in
-    // basic GGX model. That leaves an area where "N dot L" is 0 (resulting in zero specular)
-    // but diffuse is greater than zero. In other words, the specular equator is tighter
-    // than the diffuse equator.
-    // We can get around it by replacing the "N dot L" value with the raw diffuse
-    // value we got from our earlier diffuse calculation.
-    // However, since it widens the specular equator, we might get exaggerated results in
-    // that extra space.
-#if !defined(USE_DISNEY_EQUATOR) && (DIFFUSE_METHOD==1)
-    #define USE_DISNEY_EQUATOR 0        // disabled now that widening is disabled for disney diffuse
-#endif
-
 float SmithG(float NdotV, float alpha)
 {
     // Filmic worlds uses Smith-Schlick implementation.
     // It's a little bit simplier...
+    // Epic course notes suggest k = a/2
     // return 1.0f/(dotNV*(1.0f-k)+k);
 
     float a = alpha * alpha;
@@ -105,13 +92,14 @@ float3 ReferenceSpecularGGX(
     float3 normal,
     float3 directionToEye,
     float3 negativeLightDirection,
+    float3 halfVector,
     float roughness, float3 F0,
     bool mirrorSurface)
 {
     // This is reference implementation of "GGX" specular
     // It's very close to the Disney lighting model implementation
 
-    // Our basic specular equation is:
+    // Our basic microfacet specular equation is:
     //
     //   D(thetah) * F(thetad) * G(thetal, thetav)
     // ---------------------------------------------
@@ -121,7 +109,6 @@ float3 ReferenceSpecularGGX(
     // F is fresnel
     // G is the shadowing factor (geometric attenuation)
 
-    float3 halfVector = normalize(negativeLightDirection + directionToEye);
     float NdotL = dot(normal, negativeLightDirection);
     float NdotV = dot(normal, directionToEye);
     float NdotH = dot(normal, halfVector);
@@ -150,29 +137,28 @@ float3 ReferenceSpecularGGX(
         // model and Filmic worlds implementation)
     float D = TrowReitzD(NdotH, roughness * roughness);
 
+    // note that the NdotL part here is for scaling down the incident light
+    // (and so not part of the general BRDF equation)
     return NdotL * (G * D) * F;
 }
 
 float3 CalculateSpecular_GGX(
     float3 normal, float3 directionToEye, float3 negativeLightDirection,
-    float roughness, float3 F0, float rawDiffuse, bool mirrorSurface)
+    float3 halfVector,
+    float roughness, float3 F0, bool mirrorSurface)
 {
     float aveF0 = 0.3333f * (F0.r + F0.g + F0.b);
 
     #if 1 // (FORCE_GGX_REF == 1)
         return ReferenceSpecularGGX(
-            normal, directionToEye, negativeLightDirection,
+            normal, directionToEye, negativeLightDirection, halfVector,
             roughness, F0, mirrorSurface);
 
         return LightingFuncGGX_REF(normal, directionToEye, negativeLightDirection, roughness, aveF0).xxx;
     #endif
 
     if (!mirrorSurface) {
-        #if (USE_DISNEY_EQUATOR == 1)
-            return LightingFuncGGX_OPT5_XLE(normal, directionToEye, negativeLightDirection, roughness, aveF0, rawDiffuse).xxx;
-        #else
-            return LightingFuncGGX_OPT5(normal, directionToEye, negativeLightDirection, roughness, aveF0).xxx;
-        #endif
+        return LightingFuncGGX_OPT5(normal, directionToEye, negativeLightDirection, roughness, aveF0).xxx;
     } else {
         return LightingFuncGGX_OPT5_Mirror(normal, directionToEye, negativeLightDirection, roughness, aveF0).xxx;
     }
@@ -209,9 +195,8 @@ SpecularParameters SpecularParameters_RoughF0(float roughness, float3 F0, bool m
 
 float3 CalculateSpecular(
     float3 normal, float3 directionToEye,
-    float3 negativeLightDirection,
-    SpecularParameters parameters,
-    float rawDiffuse)
+    float3 negativeLightDirection, float3 halfVector,
+    SpecularParameters parameters)
 {
     #if SPECULAR_METHOD==0
         return CalculateSpecular_CookTorrence(
@@ -219,8 +204,8 @@ float3 CalculateSpecular(
             parameters.roughness, parameters.F0).xxx;
     #elif SPECULAR_METHOD==1
         return CalculateSpecular_GGX(
-            normal, directionToEye, negativeLightDirection,
-            parameters.roughness, parameters.F0, rawDiffuse, parameters.mirrorSurface);
+            normal, directionToEye, negativeLightDirection, halfVector,
+            parameters.roughness, parameters.F0, parameters.mirrorSurface);
     #endif
 }
 

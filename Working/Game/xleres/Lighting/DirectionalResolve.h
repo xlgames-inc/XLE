@@ -44,31 +44,18 @@ float3 LightResolve_Specular(
 
 		////////////////////////////////////////////////
 
-	float rawDiffuse = CalculateDiffuse(
-		sample.worldSpaceNormal, directionToEye, light.NegativeDirection,
-		DiffuseParameters_Roughness(Material_GetRoughness(sample), light.DiffuseWideningMin, light.DiffuseWideningMax));
-
-		// note that we have to compenstate for the normalization factor built into
-		// the CalculateDiffuse call.
-	const float normalizationFactor = reciprocalPi;
-	rawDiffuse /= normalizationFactor;
-
-		// note -- we have to be careful here, because when using the lambert diffuse
-		//		model, "rawDiffuse" already has the 1.0f/pi normalization factor built
-		//		in... but CalculateSpecular expects it to just by NdotL. To prevent
-		//		problems we need to make sure USE_DISNEY_EQUATOR is disabled when
-		//		using lambert diffuse.
-
 		// In our "metal" lighting model, sample.diffuseAlbedo actually contains
 		// per-wavelength F0 values.
 	float3 metalF0 = sample.diffuseAlbedo;
 	float3 F0_0 = lerp(Material_GetF0_0(sample).xxx, metalF0, Material_GetMetal(sample));
 
 	SpecularParameters param0 = SpecularParameters_RoughF0(roughnessValue, F0_0);
-	float spec0 = Material_GetSpecularScale0(sample)
+	float3 halfVector = normalize(light.NegativeDirection + directionToEye);
+	float3 spec0 = Material_GetSpecularScale0(sample)
 		* CalculateSpecular(
 			sample.worldSpaceNormal, directionToEye,
-			light.NegativeDirection, param0, rawDiffuse);
+			light.NegativeDirection, halfVector,
+			param0);
 
 		////////////////////////////////////////////////
 

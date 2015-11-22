@@ -77,7 +77,7 @@ float3 SchlickFresnelF0_Modified(float3 viewDirection, float3 halfVector, float3
 	float cb = sq*sq;
 	float q = cb*A;
 
-	float upperLimit = min(1.f, 50.f * (F0+0.001f));
+	float3 upperLimit = min(1.f, 50.f * (F0+0.001f));
 	return F0 + (upperLimit - F0) * q;
 }
 

@@ -95,8 +95,7 @@ float3 ReadSkyReflectionTexture(float3 reflectionVector, float roughness, float 
 
             // todo -- we need to calculate the correct cubemap mipmap here, and then
             //          clamp against "mipMap"
-        return SkyReflectionTexture.SampleLevel(DefaultSampler, reflectionVector, mipMap);
-
+        return SkyReflectionTexture.SampleLevel(DefaultSampler, reflectionVector, mipMap).rgb;
     #else
         return 0.0.xxx;
     #endif
@@ -122,14 +121,8 @@ float3 CalculateSkyReflectionFresnel(float3 F0, GBufferValues sample, float3 vie
 float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float3 fresnel, float blurriness)
 {
     float3 worldSpaceReflection = reflect(-viewDirection, sample.worldSpaceNormal);
-
     float roughness = Material_GetRoughness(sample);
-
-    float3 reflSampl = ReadSkyReflectionTexture(worldSpaceReflection, roughness, blurriness);
-    reflSampl += Material_GetReflectionBoost(sample).xxx;
-    reflSampl *= saturate(dot(worldSpaceReflection, sample.worldSpaceNormal));
-
-    return reflSampl * fresnel;
+    return fresnel * ReadSkyReflectionTexture(worldSpaceReflection, roughness, blurriness);
 }
 
 /////////////////////////////////////////
@@ -206,15 +199,21 @@ float3 LightResolve_Ambient(
         // Note that we can calculate the correct F0 values for real-world materials using
         // the methods described on that page.
         // Also consider sRGB/Linear wierdness in this step...
-    float3 F0 = lerp(
-        Material_GetF0_0(sample).xxx,
-        sample.diffuseAlbedo,
-        Material_GetMetal(sample));
+    float3 F0 = lerp(Material_GetF0_0(sample).xxx, sample.diffuseAlbedo, Material_GetMetal(sample));
 
     float3 fresnel = CalculateSkyReflectionFresnel(F0, sample, directionToEye, mirrorReflection);
     float blurriness = ambient.SkyReflectionBlurriness;
 
-    float3 skyReflections = ambient.SkyReflectionScale * CalculateSkyReflections(sample, directionToEye, fresnel, blurriness);
+    #if SKY_PROJECTION==5
+        float3 skyReflections = SampleSpecularIBL(
+            sample.worldSpaceNormal, directionToEye,
+            SpecularParameters_RoughF0(sample.material.roughness, F0),
+            SkyReflectionTexture);
+    #else
+        float3 skyReflections = CalculateSkyReflections(sample, directionToEye, fresnel, blurriness);
+    #endif
+    skyReflections *= ambient.SkyReflectionScale;
+
     #if CALCULATE_SCREENSPACE_REFLECTIONS==1
             //	The "screen space" reflections block out the sky reflections.
             //	If we get a collision with the screen space reflections, then we need
@@ -225,6 +224,14 @@ float3 LightResolve_Ambient(
         float3 finalReflection = lerp(skyReflections, dynamicReflections.rgb, dynamicReflections.a);
     #else
         float3 finalReflection = skyReflections;
+    #endif
+
+        // This is just a hack to stand in for better specular occlusion
+        // we need some kind of specular occlusion here, otherwise it becomes too
+        // difficult to balance
+    #define SPECULAR_OCCLUSION_EXPERIMENT
+    #if defined(SPECULAR_OCCLUSION_EXPERIMENT)
+        finalReflection *= saturate(dot(viewDirection, sample.worldSpaceNormal));
     #endif
 
     finalReflection *= sample.cookedAmbientOcclusion;

@@ -101,10 +101,4 @@ float Material_GetReflectionScale(GBufferValues gbuffer)
     else { return 1.f; }
 }
 
-float Material_GetReflectionBoost(GBufferValues gbuffer)
-{
-    if (UseMaterialOverride) { return MO_ReflectionsBoost; }
-    else { return 0.f; }
-}
-
 #endif
