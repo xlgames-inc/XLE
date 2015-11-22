@@ -35,6 +35,29 @@ cbuffer LuminanceConstants
 	int		FrameIndex;
 	int		TotalSamplesCount;
 	float	ElapsedTime;
+	uint2	InputTextureDims;
+	float2	InitialSampleSizeRatio;
+}
+
+uint2 GetInputTextureDims()
+{
+	return InputTextureDims;
+	uint2 inputDims;
+	#if MSAA_SAMPLERS != 0
+		int ignore;
+		InputTexture.GetDimensions(inputDims.x, inputDims.y, ignore);
+	#else
+		InputTexture.GetDimensions(inputDims.x, inputDims.y);
+	#endif
+	return inputDims;
+}
+
+float2 GetInitialSampleSizeRatio()
+{
+	return InitialSampleSizeRatio;
+	uint2 outputDims;
+	OutputLuminance.GetDimensions(outputDims.x, outputDims.y);
+	return GetInputTextureDims() / float2(outputDims);
 }
 
 float3 LoadInputColor(int2 pos)
@@ -70,7 +93,7 @@ float CalculateLuminance(float3 colour)
 			//		a colour cube -- curious property...?
 			//
 		const float3 componentWeights = float3(0.299f, .587f, .114f);
-		return sqrt(dot(componentWeights, colour*colour));
+		return sqrt(max(0,dot(componentWeights, colour*colour)));		// negatives cause havok... we have to be careful!
 	} else {
 		const float3 componentWeights = float3(0.2126f, 0.7152f, 0.0722f);
 		return dot(colour, componentWeights);
@@ -82,14 +105,14 @@ float3 BrightPassFilter(float3 colour)
 	const float scale	= SceneKey / OutputLuminanceBuffer[0]._currentLuminance;
 	float3 l			= scale * colour.rgb;
 
-		//	We could use the whitepoint to calculate
-		//	this threshold value... Pixels very close (or over)
-		//	the whitepoint should get the bloom.
-	const float threshold		= BloomThreshold;
-	const float rampingFactor	= BloomRampingFactor;
-	l   = saturate(l-float(threshold).rrr);
-	l	= l / (rampingFactor+l);
-	l = lerp(l, CalculateLuminance(l).xxx, BloomDesaturationFactor);	// desaturate a bit
+	const float threshold = BloomThreshold;
+	l   = saturate(l/float(threshold).rrr - 1.0.xxx);
+
+	// const float rampingFactor = BloomRampingFactor;
+	// l = l / (rampingFactor+l);
+
+	const float3 componentWeights = float3(0.2126f, 0.7152f, 0.0722f);
+	l = lerp(l, dot(l, componentWeights).xxx, BloomDesaturationFactor);	// desaturate a bit
 	return saturate(l);
 }
 
@@ -113,15 +136,10 @@ float3 BrightPassFilter(float3 colour)
 		//		varying the sample pattern per frame. Let's try doing a single
 		//		sample at this step, but varying that sample per frame.
 		//
-
-	uint2 inputDims, outputDims;
-	#if MSAA_SAMPLERS != 0
-		int ignore;
-		InputTexture.GetDimensions(inputDims.x, inputDims.y, ignore);
-	#else
-		InputTexture.GetDimensions(inputDims.x, inputDims.y);
-	#endif
-	OutputLuminance.GetDimensions(outputDims.x, outputDims.y);
+		//		On some hardware, it seems like we're having trouble calling
+		//		GetDimensions on 2 different textures from the same shader.
+		//		Let's just use a shader constant instead.
+		//
 
 	uint ditherArray[16] =
 	{
@@ -135,11 +153,12 @@ float3 BrightPassFilter(float3 colour)
 	uint randomValue	= ditherArray[(ditherAddress.x%4)+(ditherAddress.y%4)*4];
 
 	int2 readOffset		= int2(randomValue%4, randomValue/4);
-	float2 sizeRatio	= float2(inputDims) / float2(outputDims);
+	float2 sizeRatio    = GetInitialSampleSizeRatio();
 	float2 readPosition = (float2(dispatchThreadId.xy) + float2(readOffset)/4.f) * sizeRatio;
 
 		// single tap, no bilinear filtering
-	float3 inputColour	= LoadInputColor(int2(readPosition));
+	int2 tapPos = min(int2(readPosition), GetInputTextureDims() - int2(1,1));
+	float3 inputColour = LoadInputColor(tapPos);
 	float l = CalculateLuminance(inputColour.rgb);
 
 	#if USE_GEOMETRIC_MEAN==1
@@ -172,7 +191,8 @@ float3 BrightPassFilter(float3 colour)
 		}
 	}
 	int pixelSampleCount = (inputMaxs.x-inputMins.x)*(inputMaxs.y-inputMins.y);
-	OutputBrightPass[dispatchThreadId.xy] = float4(BrightPassFilter(acculumatedColour/float(pixelSampleCount)), 1);
+	float3 t = acculumatedColour/float(pixelSampleCount);
+	OutputBrightPass[dispatchThreadId.xy] = float4(BrightPassFilter(t), 1);
 }
 
 [numthreads(16, 16, 1)]
@@ -214,7 +234,7 @@ float3 BrightPassFilter(float3 colour)
 	void UpdateOverallLuminance()
 {
 		//	Single thread shader -- just updates the lumiance value for this frame.
-		//	Input should be a 2x2 texture... so we just read 4 taps here.
+		//	Input should be a 4x2 or 2x2 texture... so we just read a few taps here.
 	uint2 inputDims;
 	#if MSAA_SAMPLERS != 0
 		int ignore;
@@ -222,6 +242,7 @@ float3 BrightPassFilter(float3 colour)
 	#else
 		InputTexture.GetDimensions(inputDims.x, inputDims.y);
 	#endif
+
 	float finalLuminanceSum = 0.f;
 	for (uint y=0; y<inputDims.y; ++y) {
 		for (uint x=0; x<inputDims.x; ++x) {

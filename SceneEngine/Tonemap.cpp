@@ -259,6 +259,9 @@ namespace SceneEngine
         context.Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
 
         TRY {
+            auto sourceDesc = Metal::TextureDesc2D(sourceTexture.GetUnderlying());
+            UInt2 sourceDims(sourceDesc.Width, sourceDesc.Height);
+
             static unsigned frameIndex = 0; ++frameIndex;
             struct LuminanceConstants
             {
@@ -266,7 +269,14 @@ namespace SceneEngine
                 int     _totalSampleCount;
                 float   _elapsedTime;
                 int     _buffer;
-            } luminanceConstants = { frameIndex, resources._firstStepWidth*resources._firstStepHeight, 1.0f/60.f, 0 };
+                UInt2   _inputTextureDims;
+                Float2  _initialSampleSizeRatio;
+            } luminanceConstants = 
+            {
+                frameIndex, resources._firstStepWidth*resources._firstStepHeight, 1.0f/60.f, 0,
+                sourceDims,
+                Float2(float(sourceDims[0]) / float(resources._firstStepWidth), float(sourceDims[1]) / float(resources._firstStepHeight))
+            };
 
             auto toneMapConstants = AsConstants(settings);
             context.BindCS(MakeResourceList(
