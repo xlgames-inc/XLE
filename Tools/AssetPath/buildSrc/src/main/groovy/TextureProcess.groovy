@@ -18,11 +18,12 @@ class TextureTask extends DefaultTask
     File input
 
     @OutputFile
-    File getOutputFile() { return new File(TextureTask.asDestinationFileName(input)) }
+    File getOutputFile() { return new File(asDestinationFileName(input)) }
 
     static Closure makeIntermediateName = null;
 
-    static String asDestinationFileName(File i) {
+    String asDestinationFileName(File i)
+    {
         Object intName
         if (TextureTask.makeIntermediateName != null)
             intName = TextureTask.makeIntermediateName(i)
@@ -54,7 +55,7 @@ class TextureCompress extends TextureTask
                                    : "ALL inputs considered out of date"
 
         inputs.outOfDate { change ->
-            def output = TextureTask.asDestinationFileName(change.file)
+            def output = asDestinationFileName(change.file)
             def input = change.file.getAbsolutePath()
             def exe = "nvcompress -nocuda -silent -$compressionMode -$wrapping ${mips?"-mipfilter $mipFilter":"-nomips"} ${input} ${output}"
 
@@ -87,7 +88,7 @@ class TextureCompress extends TextureTask
 
         inputs.removed { change ->
             println "removed: ${change.file.name}"
-            new File(TextureTask.asDestinationFileName(change.file)).delete()
+            new File(asDestinationFileName(change.file)).delete()
         }
     }
 }
@@ -112,7 +113,7 @@ class EquirectToCube extends TextureTask
                                    : "ALL inputs considered out of date"
 
         inputs.outOfDate { change ->
-            def output = TextureTask.asDestinationFileName(change.file)
+            def output = asDestinationFileName(change.file)
             def input = change.file.getAbsolutePath()
             def exe = "TextureTransform o=${output}; s=ToolsHelper/EquirectangularToCube.sh:${shader}; ~p; Input=${input}; Dims={${faceSize*3}, ${faceSize*4}}; Format=${format}"
 
@@ -145,7 +146,7 @@ class EquirectToCube extends TextureTask
 
         inputs.removed { change ->
             println "removed: ${change.file.name}"
-            new File(TextureTask.asDestinationFileName(change.file)).delete()
+            new File(asDestinationFileName(change.file)).delete()
         }
     }
 }
@@ -161,9 +162,61 @@ class CubeMapGen extends TextureTask
                                    : "ALL inputs considered out of date"
 
         inputs.outOfDate { change ->
-            def output = TextureTask.asDestinationFileName(change.file)
+            def output = asDestinationFileName(change.file)
             def input = change.file.getAbsolutePath()
             def exe = "CubeMapGen ${input} -exit -exportCubeDDS -exportMipChain -edgeFixupWidth:0 -exportPixelFormat:A16B16G16R16F -exportFilename:${output}"
+
+            // println "out of date: ${input}"
+            // println "writing to ${output}"
+            println exe
+
+            def process = exe.execute()
+            process.waitFor()
+
+            // Check the output from the error stream, and throw an exception
+            // if we get something...
+            if (0) // process.getErrorStream().available() > 0)
+            {
+                BufferedReader reader =
+                    new BufferedReader(new InputStreamReader(process.getErrorStream()));
+                StringBuilder builder = new StringBuilder();
+                String line = null;
+                while ( (line = reader.readLine()) != null) {
+                   builder.append(line);
+                   builder.append(System.getProperty("line.separator"));
+                }
+
+                    // note that using TextureProcessError here causes a JVM exception in my
+                    // version of the JDK. It's fixed in a newer version; but let's just use
+                    // a basic exception, anyway
+                throw new java.lang.Exception("${builder.toString()} << when processing ${input} to output file ${output} >>")
+            }
+        }
+
+        inputs.removed { change ->
+            println "removed: ${change.file.name}"
+            new File(asDestinationFileName(change.file)).delete()
+        }
+    }
+}
+
+class DiffuseCubeMapGen extends TextureTask
+{
+    String asDestinationFileName(File i) {
+        def baseName = super.asDestinationFileName(i);
+        return baseName.substring(0, baseName.lastIndexOf('.')) + "_diffuse.dds";
+    }
+
+    @TaskAction
+    void execute(IncrementalTaskInputs inputs)
+    {
+        println inputs.incremental ? "CHANGED inputs considered out of date"
+                                   : "ALL inputs considered out of date"
+
+        inputs.outOfDate { change ->
+            def output = asDestinationFileName(change.file)
+            def input = change.file.getAbsolutePath()
+            def exe = "ModifiedCubeMapGen ${input} -exit -IrradianceCubemap:180 -exportCubeDDS -exportMipChain -edgeFixupWidth:0 -exportPixelFormat:A16B16G16R16F -exportSize=32 -exportFilename:${output}"
 
             // println "out of date: ${input}"
             // println "writing to ${output}"
