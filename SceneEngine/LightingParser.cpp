@@ -529,7 +529,9 @@ namespace SceneEngine
             // We must bind all of the lighting resolve resources here
             //  -- because we'll be doing lighting operations in the pixel
             //      shaders in a forward-lit way
-        LightingParser_BindLightResolveResources(context, parserContext);
+        auto lightBindRes = LightingParser_BindLightResolveResources(context, parserContext);
+        parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
+        parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", lightBindRes._hasDiffuseIBL?1:0);
 
         AutoCleanup bindShadowsCleanup;
         if (!parserContext._preparedDMShadows.empty()) {
