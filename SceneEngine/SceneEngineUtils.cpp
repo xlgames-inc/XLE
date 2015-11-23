@@ -299,13 +299,13 @@ namespace SceneEngine
 
     void CheckSpecularIBLMipMapCount(const RenderCore::Metal::ShaderResourceView& srv)
     {
-        // Specular ibl textures must always have 9 mipmaps. This value is hardcoded in
+        // Specular ibl textures must always have 10 mipmaps. This value is hardcoded in
         // the shader code.
         // 9 mipmaps corresponds to a cubemap with 512x512 faces.
         #if defined(_DEBUG)
             Metal::TextureDesc2D desc(srv.GetUnderlying());
             assert(desc.ArraySize == 6);
-            assert(desc.MipLevels == 9);
+            assert(desc.MipLevels == 10);
         #endif
     }
 
