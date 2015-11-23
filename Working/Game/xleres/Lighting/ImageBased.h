@@ -46,7 +46,7 @@ float VanderCorputRadicalInverse(uint bits)
     bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
     bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
     bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
-    return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+    return float(bits) * 2.3283064365386963e-10f; // / 0x100000000
  }
 
 float2 HammersleyPt(uint i, uint N)
@@ -76,6 +76,8 @@ float3 BuildSampleHalfVectorGGX(uint i, uint sampleCount, float3 normal, float r
     // See http://http.developer.nvidia.com/GPUGems3/gpugems3_ch20.html
     // for more information about normalized "PDFs" in this context
     //
+    // maybe it would be better to swap xi.y and xi.x in this equation?
+    // xi.x is perfectly uniform.
     float cosTheta = sqrt((1.f - xi.y) / (1.f + (a*a - 1.f) * xi.y));
     float sinTheta = sqrt(1.f - cosTheta * cosTheta);
     float phi = 2.f * pi * xi.x;

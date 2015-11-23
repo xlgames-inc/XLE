@@ -1,0 +1,3 @@
+
+
+task texGloss(type:xle.GenericTextureGen) { output = file("glosslut.dds"); format = "R16G16_UNORM"; width = 256; height = 256; shader = "ToolsHelper/SplitSum.sh:main"; }

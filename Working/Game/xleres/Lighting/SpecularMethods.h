@@ -68,7 +68,8 @@ float SmithG(float NdotV, float alpha)
     // Filmic worlds uses Smith-Schlick implementation.
     // It's a little bit simplier...
     // Epic course notes suggest k = alpha/2
-    // return dotNV/(dotNV*(1.0f-k)+k);
+    // float k = alpha / 2.f;
+    // return NdotV/(NdotV*(1.0f-k)+k);
 
     float a = alpha * alpha;
     float b = NdotV * NdotV;
@@ -86,6 +87,24 @@ float TrowReitzD(float NdotH, float alpha)
     float alphaSqr = alpha * alpha;
     float denom = 1.f + (alphaSqr - 1.f) * NdotH * NdotH;
     return alphaSqr / (pi * denom * denom);
+}
+
+float RoughnessToGAlpha(float roughness)
+{
+    // This is the remapping to convert from a roughness
+    // value into the "alpha" term used in the G part of
+    // the brdf equation.
+    float alphag = roughness*.5+.5;
+    alphag *= alphag;
+    return alphag;
+}
+
+float RoughnessToDAlpha(float roughness)
+{
+    // This is the remapping to convert from a roughness
+    // value into the "alpha" term used in the D part of
+    // the brdf equation.
+    return roughness * roughness;
 }
 
 float3 ReferenceSpecularGGX(
@@ -122,8 +141,7 @@ float3 ReferenceSpecularGGX(
     /////////// Shadowing factor ///////////
         // As per the Disney model, rescaling roughness to
         // values 0.5f -> 1.f for SmithG alpha, and squaring
-    float alphag = roughness*.5+.5;
-    alphag *= alphag;
+    float alphag = RoughnessToGAlpha(roughness);
     float G = SmithG(NdotL, alphag) * SmithG(NdotV, alphag);
 
     /////////// Fresnel ///////////
@@ -137,7 +155,7 @@ float3 ReferenceSpecularGGX(
     /////////// Microfacet ///////////
         // Mapping alpha to roughness squared (as per Disney
         // model and Filmic worlds implementation)
-    float D = TrowReitzD(NdotH, roughness * roughness);
+    float D = TrowReitzD(NdotH, RoughnessToDAlpha(roughness));
 
         // Note that the denominator here can be combined with
         // the "G" equation and factored out.

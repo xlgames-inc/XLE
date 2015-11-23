@@ -153,6 +153,53 @@ class EquirectToCube extends TextureTask
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+class GenericTextureGen extends DefaultTask
+{
+    @Input
+    String format = "R16G16B16A16_FLOAT"
+
+    @Input
+    String shader;
+
+    @Input
+    int width = 256;
+    int height = 256;
+
+    @OutputFile
+    File output;
+
+    @TaskAction
+    void Action()
+    {
+        def exe = "TextureTransform o=${output.getAbsoluteFile()}; s=${shader}; ~p; Dims={${width}, ${height}}; Format=${format}"
+        println exe
+
+        def process = exe.execute()
+        process.waitFor()
+
+        // Check the output from the error stream, and throw an exception
+        // if we get something...
+        if (process.getErrorStream().available() > 0)
+        {
+            BufferedReader reader =
+                new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            StringBuilder builder = new StringBuilder();
+            String line = null;
+            while ( (line = reader.readLine()) != null) {
+               builder.append(line);
+               builder.append(System.getProperty("line.separator"));
+            }
+
+                // note that using TextureProcessError here causes a JVM exception in my
+                // version of the JDK. It's fixed in a newer version; but let's just use
+                // a basic exception, anyway
+            throw new java.lang.Exception("${builder.toString()} << when processing ${input} to output file ${output} >>")
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 class CubeMapGen extends TextureTask
 {
     @TaskAction
