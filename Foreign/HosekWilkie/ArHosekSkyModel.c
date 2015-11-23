@@ -663,7 +663,7 @@ double arhosekskymodel_sr_internal(
     int pos =
         (int) (pow(2.0*elevation / MATH_PI, 1.0/3.0) * pieces); // floor
     
-    if ( pos > 44 ) pos = 44;
+    if ( pos > 44 ) { pos = 44; }
     
     const double break_x =
         pow(((double) pos / (double) pieces), 3.0) * (MATH_PI * 0.5);

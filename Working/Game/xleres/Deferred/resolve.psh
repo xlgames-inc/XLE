@@ -149,7 +149,7 @@ float4 ResolveLight(	float4 position : SV_Position,
 	if (finalCascadeIndex >= 0) {
 		shadow = ResolveShadows_Cascade(
 			finalCascadeIndex, cascadeNormCoords, pixelCoords, GetSampleIndex(sys),
-			ShadowResolveConfig_NoFilter());
+			ShadowResolveConfig_Default());
 	}
 
 	GBufferValues sample = LoadGBuffer(position, sys);
@@ -177,7 +177,7 @@ float4 ResolvePointLight(	float4 position : SV_Position,
 
 	int2 pixelCoords = position.xy;
 	float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
-	float shadow = ResolvePointLightShadows(worldPosition, pixelCoords, GetSampleIndex(sys), ShadowResolveConfig_NoFilter());
+	float shadow = ResolvePointLightShadows(worldPosition, pixelCoords, GetSampleIndex(sys), ShadowResolveConfig_Default());
 	GBufferValues sample = LoadGBuffer(position, sys);
 
 	float3 lightVector = (Light.NegativeDirection - worldPosition);
