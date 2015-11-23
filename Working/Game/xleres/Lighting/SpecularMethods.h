@@ -67,12 +67,12 @@ float SmithG(float NdotV, float alpha)
 {
     // Filmic worlds uses Smith-Schlick implementation.
     // It's a little bit simplier...
-    // Epic course notes suggest k = a/2
-    // return 1.0f/(dotNV*(1.0f-k)+k);
+    // Epic course notes suggest k = alpha/2
+    // return dotNV/(dotNV*(1.0f-k)+k);
 
     float a = alpha * alpha;
     float b = NdotV * NdotV;
-    return 1.f/(NdotV + sqrt(lerp(b, 1, a)));
+    return (2.f * NdotV) / (NdotV + sqrt(lerp(b, 1, a)));
     // return 1.f/(NdotV + sqrt(a + (1.f-a) * b));
     // return 1.f/(NdotV + sqrt(a + b - a*b));
 }
@@ -117,6 +117,8 @@ float3 ReferenceSpecularGGX(
     NdotV = saturate(NdotV);
     NdotH = saturate(NdotH);
 
+    if (NdotL == 0.f || NdotL == 0.f) return 0.0.xxx;
+
     /////////// Shadowing factor ///////////
         // As per the Disney model, rescaling roughness to
         // values 0.5f -> 1.f for SmithG alpha, and squaring
@@ -137,9 +139,14 @@ float3 ReferenceSpecularGGX(
         // model and Filmic worlds implementation)
     float D = TrowReitzD(NdotH, roughness * roughness);
 
+        // Note that the denominator here can be combined with
+        // the "G" equation and factored out.
+        // Including here just for clarity and reference purposes.
+    float denom = 4.f * NdotV * NdotL;
+
     // note that the NdotL part here is for scaling down the incident light
     // (and so not part of the general BRDF equation)
-    return NdotL * (G * D) * F;
+    return NdotL * (G * D) * F / denom;
 }
 
 float3 CalculateSpecular_GGX(
