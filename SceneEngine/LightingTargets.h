@@ -230,13 +230,13 @@ namespace SceneEngine
             bool _hasAO, _hasTiledLighting, _hasSRR;
             bool _rangeFog;
             unsigned _skyProjectionType;
-            bool _hasDiffuseIBL;
+            bool _hasIBL;
             unsigned _gbufferType;
 
             Desc(   unsigned gbufferType,
                     unsigned msaaSampleCount, bool msaaSamplers, bool flipDirection,
                     bool hasAO, bool hasTiledLighting, bool hasSSR, 
-                    unsigned skyProjectionType, bool hasDiffuseIBL,
+                    unsigned skyProjectionType, bool hasIBL,
                     bool rangeFog)
             {
                     //  we have to "memset" this -- because padding adds random values in 
@@ -248,7 +248,7 @@ namespace SceneEngine
                 _flipDirection = flipDirection;
                 _hasAO = hasAO; _hasSRR = hasSSR; _hasTiledLighting = hasTiledLighting;
                 _skyProjectionType = skyProjectionType;
-                _hasDiffuseIBL = hasDiffuseIBL;
+                _hasIBL = hasIBL;
                 _rangeFog = rangeFog;
             }
         };

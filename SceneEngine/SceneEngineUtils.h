@@ -86,6 +86,8 @@ namespace SceneEngine
     void BuildGaussianFilteringWeights(float result[], float standardDeviation, unsigned weightsCount);
     float PowerForHalfRadius(float halfRadius, float powerFraction=0.5f);
 
+    void CheckSpecularIBLMipMapCount(const RenderCore::Metal::ShaderResourceView& srv);
+
     class LightingParserContext;
     void DrawPendingResources(
         RenderCore::Metal::DeviceContext* context, 

@@ -95,9 +95,9 @@ float3 ReadSkyReflectionTexture(float3 reflectionVector, float roughness, float 
 
     #elif SKY_PROJECTION==5
 
-            // todo -- we need to calculate the correct cubemap mipmap here, and then
-            //          clamp against "mipMap"
-        return SkyReflectionTexture.SampleLevel(DefaultSampler, reflectionVector, mipMap).rgb;
+            // cheap alternative to proper specular IBL
+        return SkyReflectionTexture.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(reflectionVector), mipMap).rgb;
+
     #else
         return 0.0.xxx;
     #endif
@@ -129,7 +129,8 @@ float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float
 
 /////////////////////////////////////////
 
-float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample, float3 ambientColor)
+float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample,
+                        float3 ambientColor, float iblScale)
 {
     #if CALCULATE_TILED_LIGHTS==1
         #if defined(TILED_LIGHTS_RESOLVE_MS)
@@ -141,7 +142,7 @@ float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample
         float3 tiledLights = 0.0.xxx;
     #endif
 
-    float3 diffuseIBL = SampleDiffuseIBL(sample.worldSpaceNormal);
+    float3 diffuseIBL = iblScale * SampleDiffuseIBL(sample.worldSpaceNormal);
 
     float metal = Material_GetMetal(sample);
     return (1.0f - metal)*(ambientColor + tiledLights + diffuseIBL)*sample.diffuseAlbedo.rgb;
@@ -150,7 +151,7 @@ float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample
 /////////////////////////////////////////
 
 #if CALCULATE_SCREENSPACE_REFLECTIONS==1
-    float4 CalculateScreenSpaceReflections(float2 texCoord, float fresnel, float ambientColor)
+    float4 CalculateScreenSpaceReflections(float2 texCoord, float fresnel, float ambientColor, float iblScale)
     {
             //	the screen space refl sampler should contain a texture coordinate
             //	and an alpha value. We need a copy of the "lighting buffer"
@@ -168,7 +169,7 @@ float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample
         uint2 dims; LightBufferCopy.GetDimensions(dims.x, dims.y);
         float4 samplePosition = float4(reflectionSourceCoords * float2(dims), 0.f, 1.f);
         GBufferValues sample = LoadGBuffer(samplePosition, SystemInputs_Default());
-        litSample += CalcBasicAmbient(int2(samplePosition.xy), SystemInputs_Default(), sample, ambientColor);
+        litSample += CalcBasicAmbient(int2(samplePosition.xy), SystemInputs_Default(), sample, ambientColor, iblScale);
 
         return float4(
             litSample.rgb * (fresnel / LightingScale),
@@ -184,7 +185,7 @@ float3 LightResolve_Ambient(
     uint sampleIndex,
     bool mirrorReflection = false)
 {
-    float3 result = CalcBasicAmbient(pixelCoords, sampleIndex, sample, ambient.Colour);
+    float3 result = CalcBasicAmbient(pixelCoords, sampleIndex, sample, ambient.Colour, ambient.SkyReflectionScale);
 
     #if HAS_SCREENSPACE_AO==1
         float occlusion = LoadFloat1(AmbientOcclusion, pixelCoords, sampleIndex);
@@ -204,15 +205,18 @@ float3 LightResolve_Ambient(
         // Also consider sRGB/Linear wierdness in this step...
     float3 F0 = lerp(Material_GetF0_0(sample).xxx, sample.diffuseAlbedo, Material_GetMetal(sample));
 
-    float3 fresnel = CalculateSkyReflectionFresnel(F0, sample, directionToEye, mirrorReflection);
-    float blurriness = ambient.SkyReflectionBlurriness;
-
-    #if SKY_PROJECTION==5
+    #if HAS_SPECULAR_IBL==1
         float3 skyReflections = SampleSpecularIBL(
+            sample.worldSpaceNormal, directionToEye,
+            SpecularParameters_RoughF0(sample.material.roughness, F0));
+    #elif SKY_PROJECTION==5
+        float3 skyReflections = SampleSpecularIBL_Ref(
             sample.worldSpaceNormal, directionToEye,
             SpecularParameters_RoughF0(sample.material.roughness, F0),
             SkyReflectionTexture);
     #else
+        float3 fresnel = CalculateSkyReflectionFresnel(F0, sample, directionToEye, mirrorReflection);
+        float blurriness = ambient.SkyReflectionBlurriness;
         float3 skyReflections = CalculateSkyReflections(sample, directionToEye, fresnel, blurriness);
     #endif
     skyReflections *= ambient.SkyReflectionScale;
@@ -223,7 +227,7 @@ float3 LightResolve_Ambient(
             //	to blend from the sky reflection colour into that colour.
             // note... if we want fogging on the reflections, we need to perform the fog calculations here, on the
             // reflected pixel
-        float4 dynamicReflections = CalculateScreenSpaceReflections(texCoord, fresnel, ambient.Color);
+        float4 dynamicReflections = CalculateScreenSpaceReflections(texCoord, fresnel, ambient.Color, ambient.SkyReflectionScale);
         float3 finalReflection = lerp(skyReflections, dynamicReflections.rgb, dynamicReflections.a);
     #else
         float3 finalReflection = skyReflections;

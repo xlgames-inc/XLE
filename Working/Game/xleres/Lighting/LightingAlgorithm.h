@@ -248,5 +248,14 @@ float TriAceSpecularOcclusion(float NdotV, float ao)
     // a*a - 1 + a + d*(2*a + d)
 }
 
+float3 AdjSkyCubeMapCoords(float3 input)
+{
+	//float theta = 140.f * 3.14159f / 180.f;
+	//viewFrustumVector.xy = float2(
+	//	viewFrustumVector.x * cos(theta) - viewFrustumVector.y * sin(theta),
+	//	viewFrustumVector.x * sin(theta) + viewFrustumVector.y * cos(theta));
+	return float3(input.x, input.z, -input.y);
+}
+
 
 #endif

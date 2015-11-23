@@ -60,8 +60,9 @@ namespace SceneEngine
     class LightResolveResourcesRes
     {
     public:
-        unsigned _skyTextureProjection;
-        bool _hasDiffuseIBL;
+        unsigned    _skyTextureProjection;
+        bool        _hasDiffuseIBL;
+        bool        _hasSpecularIBL;
     };
 
     LightResolveResourcesRes LightingParser_BindLightResolveResources( 
@@ -428,6 +429,7 @@ namespace SceneEngine
         auto lightBindRes = LightingParser_BindLightResolveResources(context, parserContext);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", lightBindRes._hasDiffuseIBL?1:0);
+        parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_SPECULAR_IBL", lightBindRes._hasSpecularIBL?1:0);
 
             //  Order independent transparency disabled when
             //  using MSAA modes... Still some problems in related to MSAA buffers
@@ -532,6 +534,7 @@ namespace SceneEngine
         auto lightBindRes = LightingParser_BindLightResolveResources(context, parserContext);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", lightBindRes._hasDiffuseIBL?1:0);
+        parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_SPECULAR_IBL", lightBindRes._hasSpecularIBL?1:0);
 
         AutoCleanup bindShadowsCleanup;
         if (!parserContext._preparedDMShadows.empty()) {

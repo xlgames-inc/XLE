@@ -14,12 +14,19 @@
 #include "SpecularMethods.h"
 #include "../CommonResources.h"
 
-TextureCube DiffuseIBL : register(t19);
+TextureCube DiffuseIBL  : register(t19);
+TextureCube SpecularIBL : register(t20);
+Texture2D GlossLUT      : register(t21);        // this is the look up table used in the split-sum IBL glossy reflections
 
 float3 SampleDiffuseIBL(float3 worldSpaceNormal)
 {
+        // note -- in the same way that we apply the specular BRDF when for
+        //      the gloss reflections, we could also apply the diffuse BRDF
+        //      to the diffuse reflections (including the view dependent part)
+        //      Currently we'll just get lambert response...
     #if HAS_DIFFUSE_IBL==1
-        return DiffuseIBL.SampleLevel(DefaultSampler, worldSpaceNormal, 0).rgb;
+        const float normalizationFactor = 1.0f / pi;
+        return DiffuseIBL.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(worldSpaceNormal), 0).rgb * normalizationFactor;
     #else
         return 0.0.xxx;
     #endif
@@ -85,8 +92,11 @@ float3 BuildSampleHalfVectorGGX(uint i, uint sampleCount, float3 normal, float r
     return tangentX * H.x + tangentY * H.y + normal * H.z;
 }
 
-float3 SampleSpecularIBL(float3 normal, float3 viewDirection, SpecularParameters specParam, TextureCube tex)
+float3 SampleSpecularIBL_Ref(float3 normal, float3 viewDirection, SpecularParameters specParam, TextureCube tex)
 {
+        // hack -- currently problems when roughness is 0!
+    if (specParam.roughness == 0.f) return 0.0.xxx;
+
     // This is a reference implementation of glossy specular reflections from a
     // cube map texture. It's too inefficient to run at real-time. But it provides
     // a visual reference.
@@ -103,7 +113,7 @@ float3 SampleSpecularIBL(float3 normal, float3 viewDirection, SpecularParameters
     //      http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
 
     float3 result = 0.0.xxx;
-    const uint sampleCount = 64;
+    const uint sampleCount = 512;
     for (uint s=0; s<sampleCount; ++s) {
             // We could build a distribution of "H" vectors here,
             // or "L" vectors. It makes sense to use H vectors
@@ -112,7 +122,8 @@ float3 SampleSpecularIBL(float3 normal, float3 viewDirection, SpecularParameters
 
             // Now we can light as if the point on the reflection map
             // is a directonal light
-        float3 lightColor = tex.SampleLevel(DefaultSampler, L, 0).rgb;
+
+        float3 lightColor = tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(L), 0).rgb;
         float3 brdf = CalculateSpecular(normal, viewDirection, L, H, specParam); // (also contains NdotL term)
 
             // Unreal course notes say the probability distribution function is
@@ -130,6 +141,66 @@ float3 SampleSpecularIBL(float3 normal, float3 viewDirection, SpecularParameters
     }
 
     return result / float(sampleCount);
+}
+
+float3 SplitSumIBL_PrefilterEnvMap(float roughness, float3 reflection)
+{
+        // Roughness is mapped on to a linear progression through
+        // the mipmaps. Because of the way SampleLevel works, we
+        // need to know how many mipmaps there are in the texture!
+        // For a cubemap with 512x512 faces, there should be 9 mipmaps.
+        // Ideally this value would not be hard-coded...!
+        // We should also use a trilinear sampler, so that we get
+        // interpolation through the mipmap levels.
+        // Also note that the tool that filters the texture must
+        // use the same mapping for roughness that we do -- otherwise
+        // we need to apply the mapping there.
+    const float specularIBLMipMapCount = 9.f;
+    return SpecularIBL.SampleLevel(
+        DefaultSampler, AdjSkyCubeMapCoords(reflection),
+        roughness*specularIBLMipMapCount).rgb;
+}
+
+float2 SplitSumIBL_IntegrateBRDF(float roughness, float NdotV)
+{
+    // Note that we can also use an analytical approximation for
+    // this term. See:
+    // https://knarkowicz.wordpress.com/2014/12/27/analytical-dfg-term-for-ibl/
+    // That would avoid using a lookup table, and replace it with
+    // just a few shader instructions.
+    // This lookup table should have at least 16 bit of precision, and
+    // the values are all in the range [0, 1] (so we can use UNORM format)
+    return GlossLUT.SampleLevel(ClampingSampler, float2(NdotV, roughness), 0).xy;
+}
+
+float3 SampleSpecularIBL_SplitSum(float3 normal, float3 viewDirection, SpecularParameters specParam)
+{
+    // This is the split-sum approximation for glossy specular reflections from
+    // Brian Karis for Unreal.
+    //
+    // This is a useful method for us, because we can use some existing tools for
+    // generating the input textures for this.
+    // For example, see IBL Baker:
+    //      https://github.com/derkreature/IBLBaker
+    //
+    // See http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
+    // for more details.
+    //
+    // Note that when we prefilter the environment map, we assume that N = V = R.
+    // This removes the distortion to the GGX specular shape that should occur at grazing
+    // angles. But Karis suggests that the error is minor. The advantage is the blurring
+    // we apply to the reflection cubemap now only depends on roughness.
+
+    float NdotV = saturate(dot(normal, viewDirection));
+    float3 R = 2.f * dot(viewDirection, normal) * normal - viewDirection;   // reflection vector
+    float3 prefilteredColor = SplitSumIBL_PrefilterEnvMap(specParam.roughness, R);
+    float2 envBRDF = SplitSumIBL_IntegrateBRDF(specParam.roughness, NdotV);
+    return prefilteredColor * (specParam.F0 * envBRDF.x + envBRDF.y);
+}
+
+float3 SampleSpecularIBL(float3 normal, float3 viewDirection, SpecularParameters specParam)
+{
+    return SampleSpecularIBL_SplitSum(normal, viewDirection, specParam);
 }
 
 // note --

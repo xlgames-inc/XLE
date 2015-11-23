@@ -181,6 +181,7 @@ namespace SceneEngine
         SkyTextureType      _skyTextureType;
 
         ::Assets::ResChar   _diffuseIBL[MaxPath];   ///< Diffuse IBL map. Sometimes called irradiance map or ambient map
+        ::Assets::ResChar   _specularIBL[MaxPath];  ///< Prefiltered specular IBL map.
         Float3              _ambientLight;
 
         float   _skyBrightness;

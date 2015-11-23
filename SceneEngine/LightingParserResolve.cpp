@@ -217,8 +217,9 @@ namespace SceneEngine
     class LightResolveResourcesRes
     {
     public:
-        unsigned _skyTextureProjection;
-        bool _hasDiffuseIBL;
+        unsigned    _skyTextureProjection;
+        bool        _hasDiffuseIBL;
+        bool        _hasSpecularIBL;
     };
 
     LightResolveResourcesRes LightingParser_BindLightResolveResources( 
@@ -240,8 +241,15 @@ namespace SceneEngine
                 result._hasDiffuseIBL = true;
             }
 
+            if (globalDesc._specularIBL[0]) {
+                context.BindPS(MakeResourceList(20, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(globalDesc._specularIBL).GetShaderResource()));
+                result._hasSpecularIBL = true;
+                DEBUG_ONLY(CheckSpecularIBLMipMapCount(::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(globalDesc._specularIBL).GetShaderResource())));
+            }
+
             context.BindPS(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
             context.BindPS(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
+            context.BindPS(MakeResourceList(21, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/glosslut.dds:LT").GetShaderResource()));
 
             context.BindPS(MakeResourceList(9, Metal::ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
         CATCH_ASSETS_END(parserContext)
@@ -361,7 +369,7 @@ namespace SceneEngine
                             lightingResolveContext._ambientOcclusionResult.IsGood(),
                             lightingResolveContext._tiledLightingResult.IsGood(),
                             lightingResolveContext._screenSpaceReflectionsResult.IsGood(),
-                            resourceBindRes._skyTextureProjection, resourceBindRes._hasDiffuseIBL,
+                            resourceBindRes._skyTextureProjection, resourceBindRes._hasDiffuseIBL && resourceBindRes._hasSpecularIBL,
                             globalLightDesc._doRangeFog);
 
                     auto ambientLightPacket = MakeSharedPkt(AsShaderDesc(globalLightDesc));

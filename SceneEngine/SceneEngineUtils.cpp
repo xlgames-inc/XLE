@@ -297,6 +297,18 @@ namespace SceneEngine
     bool IsLButtonDown() { return GetKeyState(VK_LBUTTON)<0; }
     bool IsShiftDown() { return GetKeyState(VK_LSHIFT)<0; }
 
+    void CheckSpecularIBLMipMapCount(const RenderCore::Metal::ShaderResourceView& srv)
+    {
+        // Specular ibl textures must always have 9 mipmaps. This value is hardcoded in
+        // the shader code.
+        // 9 mipmaps corresponds to a cubemap with 512x512 faces.
+        #if defined(_DEBUG)
+            Metal::TextureDesc2D desc(srv.GetUnderlying());
+            assert(desc.ArraySize == 6);
+            assert(desc.MipLevels == 9);
+        #endif
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     IteratorRange<RenderCore::Assets::DelayStep*> AsDelaySteps(

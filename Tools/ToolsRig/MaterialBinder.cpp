@@ -293,6 +293,7 @@ namespace ToolsRig
                     if (!XlCompareString(bindDesc.Name, "SkyReflectionTexture[1]")) continue;
                     if (!XlCompareString(bindDesc.Name, "SkyReflectionTexture[2]")) continue;
                     if (!XlCompareString(bindDesc.Name, "GGXTable")) continue;
+                    if (!XlCompareString(bindDesc.Name, "GlossLUT")) continue;
 
                     auto str = bindings.GetString<::Assets::ResChar>(ParameterBox::MakeParameterNameHash(bindDesc.Name));
                     bool isDefaultRes = false;

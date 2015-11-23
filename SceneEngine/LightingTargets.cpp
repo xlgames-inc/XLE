@@ -374,7 +374,8 @@ namespace SceneEngine
             << ";CALCULATE_TILED_LIGHTS=" << desc._hasTiledLighting
             << ";CALCULATE_SCREENSPACE_REFLECTIONS=" << desc._hasSRR
             << ";RESOLVE_RANGE_FOG=" << desc._rangeFog
-            << ";HAS_DIFFUSE_IBL=" << (desc._hasDiffuseIBL?1:0)
+            << ";HAS_DIFFUSE_IBL=" << (desc._hasIBL?1:0)
+            << ";HAS_SPECULAR_IBL=" << (desc._hasIBL?1:0)
             ;
 
         if (desc._msaaSamplers) {

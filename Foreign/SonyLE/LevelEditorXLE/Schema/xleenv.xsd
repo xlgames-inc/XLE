@@ -19,6 +19,9 @@
         <scea.dom.editors.attribute category="Ambient" name="DiffuseIBL" displayName="Irradiance map"
           editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" 
           converter="LevelEditorXLE.AssetNameConverter,LevelEditorXLE"/>
+        <scea.dom.editors.attribute category="Ambient" name="SpecularIBL" displayName="Filtered glossy reflections"
+          editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms"
+          converter="LevelEditorXLE.AssetNameConverter,LevelEditorXLE"/>
         
         <scea.dom.editors.attribute category="Sky" name="SkyTexture" displayName="Sky Texture"
           editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" 
@@ -59,6 +62,7 @@
         <LeGe.NativeProperty name="AmbientLight" nativeName="AmbientLight"/>
         <LeGe.NativeProperty name="AmbientBrightness" nativeName="AmbientBrightness"/>
         <LeGe.NativeProperty name="DiffuseIBL" nativeName="DiffuseIBL"/>
+        <LeGe.NativeProperty name="SpecularIBL" nativeName="SpecularIBL"/>
         
         <LeGe.NativeProperty name="SkyTexture" nativeName="SkyTexture"/>
         <LeGe.NativeProperty name="SkyTextureType" nativeName="SkyTextureType"/>
@@ -84,6 +88,7 @@
     <xs:attribute name="AmbientLight" type="xs:int" default="-1"/>
     <xs:attribute name="AmbientBrightness" type="xs:float" default="1"/>
     <xs:attribute name="DiffuseIBL" type="xs:string"/>
+    <xs:attribute name="SpecularIBL" type="xs:string"/>
     
     <xs:attribute name="SkyTexture" type="xs:string"/>
     <xs:attribute name="SkyTextureType" type="xs:int" default="0"/>
