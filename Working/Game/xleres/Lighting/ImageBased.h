@@ -54,12 +54,10 @@ float2 HammersleyPt(uint i, uint N)
     return float2(float(i)/float(N), VanderCorputRadicalInverse(i));
 }
 
-float3 BuildSampleHalfVectorGGX(uint i, uint sampleCount, float3 normal, float roughness)
+float3 BuildSampleHalfVectorGGX(uint i, uint sampleCount, float3 normal, float alphag)
 {
         // Very similar to the unreal course notes implementation here
     float2 xi = HammersleyPt(i, sampleCount);
-
-    float a = roughness * roughness;
 
     // The following will attempt to select points that are
     // well distributed for the GGX highlight
@@ -76,11 +74,11 @@ float3 BuildSampleHalfVectorGGX(uint i, uint sampleCount, float3 normal, float r
     // See http://http.developer.nvidia.com/GPUGems3/gpugems3_ch20.html
     // for more information about normalized "PDFs" in this context
     //
-    // maybe it would be better to swap xi.y and xi.x in this equation?
-    // xi.x is perfectly uniform.
-    float cosTheta = sqrt((1.f - xi.y) / (1.f + (a*a - 1.f) * xi.y));
+    // Note that I've swapped xi.x & xi.y from the Unreal implementation. Maybe
+    // not a massive change.
+    float cosTheta = sqrt((1.f - xi.x) / (1.f + (alphag*alphag - 1.f) * xi.x));
     float sinTheta = sqrt(1.f - cosTheta * cosTheta);
-    float phi = 2.f * pi * xi.x;
+    float phi = 2.f * pi * xi.y;
 
     float3 H;
     H.x = sinTheta * cos(phi);
@@ -114,12 +112,13 @@ float3 SampleSpecularIBL_Ref(float3 normal, float3 viewDirection, SpecularParame
     // Unreal course notes
     //      http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
 
+    float alphag = RoughnessToGAlpha(specParam.roughness);
     float3 result = 0.0.xxx;
     const uint sampleCount = 512;
     for (uint s=0; s<sampleCount; ++s) {
             // We could build a distribution of "H" vectors here,
             // or "L" vectors. It makes sense to use H vectors
-        float3 H = BuildSampleHalfVectorGGX(s, sampleCount, normal, specParam.roughness);
+        float3 H = BuildSampleHalfVectorGGX(s, sampleCount, normal, alphag);
         float3 L = 2.f * dot(viewDirection, H) * H - viewDirection;
 
             // Now we can light as if the point on the reflection map

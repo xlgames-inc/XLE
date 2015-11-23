@@ -99,6 +99,14 @@ float RoughnessToGAlpha(float roughness)
     return alphag;
 }
 
+float RoughnessToGAlpha_IBL(float roughness)
+{
+    // We can't do the disney remapping when using IBL.
+    // It seems to change the probability density function
+    // in confusing ways. We just don't get the right result.
+    return roughness * roughness;
+}
+
 float RoughnessToDAlpha(float roughness)
 {
     // This is the remapping to convert from a roughness
@@ -131,18 +139,16 @@ float3 ReferenceSpecularGGX(
     float NdotL = dot(normal, negativeLightDirection);
     float NdotV = dot(normal, directionToEye);
     float NdotH = dot(normal, halfVector);
-    // if (NdotL < 0 || NdotV < 0) return 0.0.xxx;
-    NdotL = saturate(NdotL);
-    NdotV = saturate(NdotV);
+    if (NdotL <= 0 || NdotV <= 0) return 0.0.xxx;
+    // NdotL = saturate(NdotL);
+    // NdotV = saturate(NdotV);
     NdotH = saturate(NdotH);
-
-    if (NdotL == 0.f || NdotL == 0.f) return 0.0.xxx;
 
     /////////// Shadowing factor ///////////
         // As per the Disney model, rescaling roughness to
         // values 0.5f -> 1.f for SmithG alpha, and squaring
     float alphag = RoughnessToGAlpha(roughness);
-    float G = SmithG(NdotL, alphag) * SmithG(NdotV, alphag);
+    precise float G = SmithG(NdotL, alphag) * SmithG(NdotV, alphag);
 
     /////////// Fresnel ///////////
     float3 F;
@@ -155,7 +161,7 @@ float3 ReferenceSpecularGGX(
     /////////// Microfacet ///////////
         // Mapping alpha to roughness squared (as per Disney
         // model and Filmic worlds implementation)
-    float D = TrowReitzD(NdotH, RoughnessToDAlpha(roughness));
+    precise float D = TrowReitzD(NdotH, RoughnessToDAlpha(roughness));
 
         // Note that the denominator here can be combined with
         // the "G" equation and factored out.
@@ -164,7 +170,7 @@ float3 ReferenceSpecularGGX(
 
     // note that the NdotL part here is for scaling down the incident light
     // (and so not part of the general BRDF equation)
-    return NdotL * (G * D) * F / denom;
+    return NdotL * G * D * F / denom;
 }
 
 float3 CalculateSpecular_GGX(
