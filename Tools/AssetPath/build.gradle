@@ -29,4 +29,4 @@ project.ext.makeIntermediateName = {
 
     // Set a static within the TextureCompress groovy object, which tells that
     // plugin where to write output files.
-xle.TextureTask.makeIntermediateName = project.ext.makeIntermediateName
+xle.ProcessStep.makeIntermediateName = project.ext.makeIntermediateName

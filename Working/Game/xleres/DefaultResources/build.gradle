@@ -1,3 +1,6 @@
 
 
-task texGloss(type:xle.GenericTextureGen) { output = file("glosslut.dds"); format = "R16G16_UNORM"; width = 256; height = 256; shader = "ToolsHelper/SplitSum.sh:main"; }
+task texGloss(type:xle.TextureTask) {
+	output = file("glosslut.dds");
+	steps.add(new xle.GenericTextureGen(format: "R16G16_UNORM", width: 256, height: 256, shader: "ToolsHelper/SplitSum.sh:main"))
+}
