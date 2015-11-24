@@ -25,8 +25,13 @@ float3 SampleDiffuseIBL(float3 worldSpaceNormal)
         //      to the diffuse reflections (including the view dependent part)
         //      Currently we'll just get lambert response...
     #if HAS_DIFFUSE_IBL==1
-        const float normalizationFactor = 1.0f / pi;
-        return DiffuseIBL.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(worldSpaceNormal), 0).rgb * normalizationFactor;
+        float3 result = DiffuseIBL.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(worldSpaceNormal), 0).rgb;
+            //  When using textures made with IBL Baker, we must multiply in the
+            //  normalization factor here... But with textures build from ModifiedCubeMapGen, it is
+            //  already incorporated
+            // const float normalizationFactor = 1.0f / pi;
+            // result *= normalizationFactor;
+        return result;
     #else
         return 0.0.xxx;
     #endif

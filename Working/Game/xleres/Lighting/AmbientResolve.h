@@ -185,7 +185,7 @@ float3 LightResolve_Ambient(
     uint sampleIndex,
     bool mirrorReflection = false)
 {
-    float3 result = CalcBasicAmbient(pixelCoords, sampleIndex, sample, ambient.Colour, ambient.SkyReflectionScale);
+    float3 diffusePart = CalcBasicAmbient(pixelCoords, sampleIndex, sample, ambient.Colour, ambient.SkyReflectionScale);
 
     #if HAS_SCREENSPACE_AO==1
         float occlusion = LoadFloat1(AmbientOcclusion, pixelCoords, sampleIndex);
@@ -194,7 +194,7 @@ float3 LightResolve_Ambient(
     #endif
 
     occlusion *= sample.cookedAmbientOcclusion;
-    result *= occlusion;
+    diffusePart *= occlusion;
 
         // In our metal model, we store F0 values per wavelength in sample.diffuseAlbedo.
         // This gives us fantasic freedom to control the metallic reflections.
@@ -209,7 +209,7 @@ float3 LightResolve_Ambient(
         float3 skyReflections = SampleSpecularIBL(
             sample.worldSpaceNormal, directionToEye,
             SpecularParameters_RoughF0(sample.material.roughness, F0));
-    #elif SKY_PROJECTION==5
+    #elif 0 // SKY_PROJECTION==5
         float3 skyReflections = SampleSpecularIBL_Ref(
             sample.worldSpaceNormal, directionToEye,
             SpecularParameters_RoughF0(sample.material.roughness, F0),
@@ -228,9 +228,7 @@ float3 LightResolve_Ambient(
             // note... if we want fogging on the reflections, we need to perform the fog calculations here, on the
             // reflected pixel
         float4 dynamicReflections = CalculateScreenSpaceReflections(texCoord, fresnel, ambient.Color, ambient.SkyReflectionScale);
-        float3 finalReflection = lerp(skyReflections, dynamicReflections.rgb, dynamicReflections.a);
-    #else
-        float3 finalReflection = skyReflections;
+        skyReflections = lerp(skyReflections, dynamicReflections.rgb, dynamicReflections.a);
     #endif
 
     #define SPECULAR_OCCLUSION_EXPERIMENT
@@ -243,12 +241,12 @@ float3 LightResolve_Ambient(
             NdotV = dot(directionToEye, halfVector);
         }
         float specularOcclusion = TriAceSpecularOcclusion(NdotV, occlusion);
-        finalReflection *= specularOcclusion;
+        skyReflections *= specularOcclusion;
     #endif
 
-    result += Material_GetReflectionScale(sample) * finalReflection;
-
-    return result;
+    return
+        diffusePart
+        + Material_GetReflectionScale(sample) * skyReflections;
 }
 
 #endif

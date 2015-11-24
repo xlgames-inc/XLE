@@ -94,6 +94,9 @@ float RoughnessToGAlpha(float roughness)
     // This is the remapping to convert from a roughness
     // value into the "alpha" term used in the G part of
     // the brdf equation.
+    // We're using the Disney remapping. It helps to reduce
+    // the brighness of the specular around the edges of high
+    // roughness materials.
     float alphag = roughness*.5+.5;
     alphag *= alphag;
     return alphag;
