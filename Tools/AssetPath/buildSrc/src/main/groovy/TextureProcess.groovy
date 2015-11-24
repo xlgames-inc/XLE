@@ -15,10 +15,15 @@ class TextureProcessError extends java.lang.Exception
 class TextureTask extends DefaultTask
 {
     @InputFile
-    File input
+    File input = null
+	File output = null
 
     @OutputFile
-    File getOutputFile() { return new File(asDestinationFileName(input)) }
+    File getOutputFile() 
+	{ 
+		if (output != null) return output;
+		return new File(asDestinationFileName(input)) 
+	}
 
     static Closure makeIntermediateName = null;
 
@@ -30,6 +35,72 @@ class TextureTask extends DefaultTask
         else intName = i.getPath()
         return intName.substring(0, intName.lastIndexOf('.')) + ".dds";
     }
+
+	static void checkProcessErrorStream(Process process, String operation)
+	{
+		if (process.getErrorStream().available() > 0)
+        {
+            BufferedReader reader =
+                new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            StringBuilder builder = new StringBuilder();
+            String line = null;
+            while ( (line = reader.readLine()) != null) {
+                builder.append(line);
+                builder.append(System.getProperty("line.separator"));
+            }
+
+                // note that using TextureProcessError here causes a JVM exception in my
+                // version of the JDK. It's fixed in a newer version; but let's just use
+                // a basic exception, anyway
+            throw new java.lang.Exception("${builder.toString()} <<  >>")
+        }
+	}
+
+	String getCommandLine(File input, File output) { return null; }
+	boolean doCheckErrorStream() { return true; }
+
+	@TaskAction
+    void run()
+	{
+		def cmdLine = getCommandLine(input, getOutputFile());
+		println cmdLine
+
+        def process = cmdLine.execute()
+        process.waitFor()
+
+		if (doCheckErrorStream())
+			checkProcessErrorStream(process, "while processing texture from ${input} to output file ${output}");
+	}
+
+	/*
+	@TaskAction
+    void execute(IncrementalTaskInputs inputs)
+    {
+        println inputs.incremental ? "CHANGED inputs considered out of date"
+                                   : "ALL inputs considered out of date"
+
+        inputs.outOfDate { change ->
+            def output = asDestinationFileName(change.file)
+            def input = change.file.getAbsolutePath()
+            def exe = getCommandLine(change.file, output);
+
+            // println "out of date: ${input}"
+            // println "writing to ${output}"
+            println exe
+
+            def process = exe.execute()
+            process.waitFor()
+            
+			checkProcessErrorStream(process, "while processing texture from ${input} to output file ${output}");
+        }
+
+        inputs.removed { change ->
+            println "removed: ${change.file.name}"
+            new File(asDestinationFileName(change.file)).delete()
+        }
+    }
+	*/
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,54 +119,23 @@ class TextureCompress extends TextureTask
     @Input
     boolean mips = true
 
-    @TaskAction
-    void execute(IncrementalTaskInputs inputs)
-    {
-        println inputs.incremental ? "CHANGED inputs considered out of date"
-                                   : "ALL inputs considered out of date"
-
-        inputs.outOfDate { change ->
-            def output = asDestinationFileName(change.file)
-            def input = change.file.getAbsolutePath()
-            def exe = "nvcompress -nocuda -silent -$compressionMode -$wrapping ${mips?"-mipfilter $mipFilter":"-nomips"} ${input} ${output}"
-
-            // println "out of date: ${input}"
-            // println "writing to ${output}"
-            println exe
-
-            def process = exe.execute()
-            process.waitFor()
-
-            // Check the output from the error stream, and throw an exception
-            // if we get something...
-            if (process.getErrorStream().available() > 0)
-            {
-                BufferedReader reader =
-                    new BufferedReader(new InputStreamReader(process.getErrorStream()));
-                StringBuilder builder = new StringBuilder();
-                String line = null;
-                while ( (line = reader.readLine()) != null) {
-                   builder.append(line);
-                   builder.append(System.getProperty("line.separator"));
-                }
-
-                    // note that using TextureProcessError here causes a JVM exception in my
-                    // version of the JDK. It's fixed in a newer version; but let's just use
-                    // a basic exception, anyway
-                throw new java.lang.Exception("${builder.toString()} << when processing ${input} to output file ${output} >>")
-            }
-        }
-
-        inputs.removed { change ->
-            println "removed: ${change.file.name}"
-            new File(asDestinationFileName(change.file)).delete()
-        }
-    }
+	String getCommandLine(File input, File output)
+	{
+		return "nvcompress -nocuda -silent -$compressionMode -$wrapping ${mips?"-mipfilter $mipFilter":"-nomips"} ${input.getAbsolutePath()} ${output.getAbsolutePath()}";
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-class EquirectToCube extends TextureTask
+class TextureTransformTask extends TextureTask
+{
+	String makeCommandLine(File output, String shader, String parameters)
+	{
+		return "TextureTransform o=${output.getAbsolutePath()}; s=${shader}; ~p; ${parameters}";
+	}
+}
+
+class EquirectToCube extends TextureTransformTask
 {
     @Input
     int faceSize = 512
@@ -106,54 +146,18 @@ class EquirectToCube extends TextureTask
     @Input
     String shader = "main"
 
-    @TaskAction
-    void execute(IncrementalTaskInputs inputs)
-    {
-        println inputs.incremental ? "CHANGED inputs considered out of date"
-                                   : "ALL inputs considered out of date"
-
-        inputs.outOfDate { change ->
-            def output = asDestinationFileName(change.file)
-            def input = change.file.getAbsolutePath()
-            def exe = "TextureTransform o=${output}; s=ToolsHelper/EquirectangularToCube.sh:${shader}; ~p; Input=${input}; Dims={${faceSize*3}, ${faceSize*4}}; Format=${format}"
-
-            // println "out of date: ${input}"
-            // println "writing to ${output}"
-            println exe
-
-            def process = exe.execute()
-            process.waitFor()
-
-            // Check the output from the error stream, and throw an exception
-            // if we get something...
-            if (process.getErrorStream().available() > 0)
-            {
-                BufferedReader reader =
-                    new BufferedReader(new InputStreamReader(process.getErrorStream()));
-                StringBuilder builder = new StringBuilder();
-                String line = null;
-                while ( (line = reader.readLine()) != null) {
-                   builder.append(line);
-                   builder.append(System.getProperty("line.separator"));
-                }
-
-                    // note that using TextureProcessError here causes a JVM exception in my
-                    // version of the JDK. It's fixed in a newer version; but let's just use
-                    // a basic exception, anyway
-                throw new java.lang.Exception("${builder.toString()} << when processing ${input} to output file ${output} >>")
-            }
-        }
-
-        inputs.removed { change ->
-            println "removed: ${change.file.name}"
-            new File(asDestinationFileName(change.file)).delete()
-        }
-    }
+    String getCommandLine(File input, File output)
+	{
+		return makeCommandLine(
+			output, 
+			"ToolsHelper/EquirectangularToCube.sh:${shader}", 
+			"Input=${input.getAbsolutePath()}; Dims={${faceSize*3}, ${faceSize*4}}; Format=${format}");
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-class GenericTextureGen extends DefaultTask
+class GenericTextureGen extends TextureTransformTask
 {
     @Input
     String format = "R16G16B16A16_FLOAT"
@@ -165,138 +169,38 @@ class GenericTextureGen extends DefaultTask
     int width = 256;
     int height = 256;
 
-    @OutputFile
-    File output;
-
-    @TaskAction
-    void Action()
-    {
-        def exe = "TextureTransform o=${output.getAbsoluteFile()}; s=${shader}; ~p; Dims={${width}, ${height}}; Format=${format}"
-        println exe
-
-        def process = exe.execute()
-        process.waitFor()
-
-        // Check the output from the error stream, and throw an exception
-        // if we get something...
-        if (process.getErrorStream().available() > 0)
-        {
-            BufferedReader reader =
-                new BufferedReader(new InputStreamReader(process.getErrorStream()));
-            StringBuilder builder = new StringBuilder();
-            String line = null;
-            while ( (line = reader.readLine()) != null) {
-               builder.append(line);
-               builder.append(System.getProperty("line.separator"));
-            }
-
-                // note that using TextureProcessError here causes a JVM exception in my
-                // version of the JDK. It's fixed in a newer version; but let's just use
-                // a basic exception, anyway
-            throw new java.lang.Exception("${builder.toString()} << when processing ${input} to output file ${output} >>")
-        }
-    }
+	String getCommandLine(File input, File output)
+	{
+		return makeCommandLine(
+			output, shader,
+			"Dims={${width}, ${height}}; Format=${format}");
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 class CubeMapGen extends TextureTask
 {
-    @TaskAction
-    void execute(IncrementalTaskInputs inputs)
-    {
-        println inputs.incremental ? "CHANGED inputs considered out of date"
-                                   : "ALL inputs considered out of date"
+	String getCommandLine(File input, File output)
+	{
+		return "CubeMapGen ${input.getAbsolutePath()} -exit -exportCubeDDS -exportMipChain -edgeFixupWidth:0 -exportPixelFormat:A16B16G16R16F -exportFilename:${output.getAbsolutePath()}";
+	}
 
-        inputs.outOfDate { change ->
-            def output = asDestinationFileName(change.file)
-            def input = change.file.getAbsolutePath()
-            def exe = "CubeMapGen ${input} -exit -exportCubeDDS -exportMipChain -edgeFixupWidth:0 -exportPixelFormat:A16B16G16R16F -exportFilename:${output}"
-
-            // println "out of date: ${input}"
-            // println "writing to ${output}"
-            println exe
-
-            def process = exe.execute()
-            process.waitFor()
-
-            // Check the output from the error stream, and throw an exception
-            // if we get something...
-            if (0) // process.getErrorStream().available() > 0)
-            {
-                BufferedReader reader =
-                    new BufferedReader(new InputStreamReader(process.getErrorStream()));
-                StringBuilder builder = new StringBuilder();
-                String line = null;
-                while ( (line = reader.readLine()) != null) {
-                   builder.append(line);
-                   builder.append(System.getProperty("line.separator"));
-                }
-
-                    // note that using TextureProcessError here causes a JVM exception in my
-                    // version of the JDK. It's fixed in a newer version; but let's just use
-                    // a basic exception, anyway
-                throw new java.lang.Exception("${builder.toString()} << when processing ${input} to output file ${output} >>")
-            }
-        }
-
-        inputs.removed { change ->
-            println "removed: ${change.file.name}"
-            new File(asDestinationFileName(change.file)).delete()
-        }
-    }
+	boolean doCheckErrorStream() { return false; }
 }
 
 class DiffuseCubeMapGen extends TextureTask
 {
-    String asDestinationFileName(File i) {
+    String asDestinationFileName(File i) 
+	{
         def baseName = super.asDestinationFileName(i);
         return baseName.substring(0, baseName.lastIndexOf('.')) + "_diffuse.dds";
     }
 
-    @TaskAction
-    void execute(IncrementalTaskInputs inputs)
-    {
-        println inputs.incremental ? "CHANGED inputs considered out of date"
-                                   : "ALL inputs considered out of date"
-
-        inputs.outOfDate { change ->
-            def output = asDestinationFileName(change.file)
-            def input = change.file.getAbsolutePath()
-            def exe = "ModifiedCubeMapGen ${input} -exit -IrradianceCubemap:180 -exportCubeDDS -exportMipChain -edgeFixupWidth:0 -exportPixelFormat:A16B16G16R16F -exportSize=32 -exportFilename:${output}"
-
-            // println "out of date: ${input}"
-            // println "writing to ${output}"
-            println exe
-
-            def process = exe.execute()
-            process.waitFor()
-
-            // Check the output from the error stream, and throw an exception
-            // if we get something...
-            if (0) // process.getErrorStream().available() > 0)
-            {
-                BufferedReader reader =
-                    new BufferedReader(new InputStreamReader(process.getErrorStream()));
-                StringBuilder builder = new StringBuilder();
-                String line = null;
-                while ( (line = reader.readLine()) != null) {
-                   builder.append(line);
-                   builder.append(System.getProperty("line.separator"));
-                }
-
-                    // note that using TextureProcessError here causes a JVM exception in my
-                    // version of the JDK. It's fixed in a newer version; but let's just use
-                    // a basic exception, anyway
-                throw new java.lang.Exception("${builder.toString()} << when processing ${input} to output file ${output} >>")
-            }
-        }
-
-        inputs.removed { change ->
-            println "removed: ${change.file.name}"
-            new File(TextureTask.asDestinationFileName(change.file)).delete()
-        }
-    }
+	String getCommandLine(File input, File output)
+	{ 
+		"ModifiedCubeMapGen ${input.getAbsolutePath()} -exit -IrradianceCubemap:180 -exportCubeDDS -exportMipChain -edgeFixupWidth:0 -exportPixelFormat:A16B16G16R16F -exportSize=32 -exportFilename:${output.getAbsolutePath()}";
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
