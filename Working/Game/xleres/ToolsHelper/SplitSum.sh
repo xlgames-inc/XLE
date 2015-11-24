@@ -48,12 +48,17 @@ float2 GenerateSplitTerm(float NdotV, float roughness)
             // However, this changes the probability density function in confusing
             // ways. The result is similiar -- but it is as if a shadow has moved
             // across the output image.
+            //
+            // note -- I'm not sure it's really correct to pass the "alpha" value for
+            //          "G" to BuildSampleHalfVectorGGX
+            //          But the results are very similar to reference calculations. So
+            //          it seems to get a result that's close, anyway.
         const bool clusterAroundHighlight = false;
         if (clusterAroundHighlight) {
-            L = BuildSampleHalfVectorGGX(s, sampleCount, reflect(-V, normal), alphag);
+            L = BuildSampleHalfVectorGGX(s, sampleCount, reflect(-V, normal), roughness*roughness);
             H = normalize(L + V);
         } else {
-            H = BuildSampleHalfVectorGGX(s, sampleCount, normal, alphag);
+            H = BuildSampleHalfVectorGGX(s, sampleCount, normal, roughness*roughness);
             L = 2.f * dot(V, H) * H - V;
         }
 
