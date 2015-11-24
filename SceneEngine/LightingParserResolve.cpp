@@ -73,7 +73,10 @@ namespace SceneEngine
             float       _skyReflectionScale; 
             float       _skyReflectionBlurriness; 
             unsigned    _dummy[3];
+        };
 
+        struct RangeFog
+        {
             Float3      _rangeFogInscatter; unsigned _dummy1;
             Float3      _rangeFogOpticalThickness; unsigned _dummy2;
         };
@@ -95,6 +98,13 @@ namespace SceneEngine
         return ShaderLightDesc::Ambient 
             { 
                 desc._ambientLight, desc._skyReflectionScale, desc._skyReflectionBlurriness, {0,0,0},
+            };
+    }
+
+    static ShaderLightDesc::RangeFog AsRangeFogDesc(const GlobalLightingDesc& desc)
+    {
+        return ShaderLightDesc::RangeFog
+            { 
                 desc._rangeFogInscatter, 0, desc._rangeFogThickness, 0
             };
     }
@@ -352,9 +362,7 @@ namespace SceneEngine
 
                     // -------- -------- -------- -------- -------- --------
 
-                CATCH_ASSETS_BEGIN
-                    ResolveLights(context, parserContext, mainTargets, lightingResolveContext);
-                CATCH_ASSETS_END(parserContext)
+                ResolveLights(context, parserContext, mainTargets, lightingResolveContext);
 
                 CATCH_ASSETS_BEGIN
                     Metal::GPUProfiler::DebugAnnotation anno(context, L"Ambient");
@@ -372,7 +380,19 @@ namespace SceneEngine
                             resourceBindRes._skyTextureProjection, resourceBindRes._hasDiffuseIBL && resourceBindRes._hasSpecularIBL,
                             globalLightDesc._doRangeFog);
 
-                    auto ambientLightPacket = MakeSharedPkt(AsShaderDesc(globalLightDesc));
+                    Metal::ViewportDesc vdesc(context);
+                    struct AmbientResolveCBuffer
+                    {
+                        ShaderLightDesc::Ambient light;
+                        ShaderLightDesc::RangeFog fog;
+                        Float2 reciprocalViewportDims;
+                    } ambientcbuffer {
+                        AsShaderDesc(globalLightDesc),
+                        AsRangeFogDesc(globalLightDesc),
+                        Float2(1.f / float(vdesc.Width), 1.f / float(vdesc.Height))
+                    };
+
+                    auto ambientLightPacket = MakeSharedPkt(ambientcbuffer);
                     ambientResolveShaders._ambientLightUniforms->Apply(
                         context, parserContext.GetGlobalUniformsStream(),
                         Metal::UniformsStream(&ambientLightPacket, nullptr, 1));

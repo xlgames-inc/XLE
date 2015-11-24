@@ -37,24 +37,24 @@ cbuffer ViewProjectionParameters : register(b1)
 float3 CalculateWorldSpacePosition(uint2 samplingPixel, uint2 outputDimensions, uint msaaSampleIndex, out float outputLinearDepth)
 {
     #if defined(DEPTH_IN_LINEAR_COORDS)
-	    float linearDepth = DepthTexture[samplingPixel]; // LoadFloat1(DepthTexture, samplingPixel, msaaSampleIndex);
+	    float linear0To1Depth = DepthTexture[samplingPixel]; // LoadFloat1(DepthTexture, samplingPixel, msaaSampleIndex);
     #else
         float linear0To1Depth = NDCDepthToLinear0To1(DepthTexture[samplingPixel]);
     #endif
- 
+
  	float2 tc = samplingPixel / float2(outputDimensions);
  	float weight0 = (1.f - tc.x) * (1.f - tc.y);
  	float weight1 = (1.f - tc.x) * tc.y;
  	float weight2 = tc.x * (1.f - tc.y);
  	float weight3 = tc.x * tc.y;
- 
- 	float3 viewFrustumVector = 
+
+ 	float3 viewFrustumVector =
  			weight0 * FrustumCorners[0].xyz + weight1 * FrustumCorners[1].xyz
  		+   weight2 * FrustumCorners[2].xyz + weight3 * FrustumCorners[3].xyz
  		;
- 
-    outputLinearDepth = linearDepth;
-	return CalculateWorldPosition(viewFrustumVector, linearDepth, WorldSpaceView);
+
+    outputLinearDepth = linear0To1Depth;
+	return CalculateWorldPosition(viewFrustumVector, linear0To1Depth, WorldSpaceView);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -100,7 +100,7 @@ void ClipRay(float4 rayStart, inout float4 rayEnd)
 		float alpha = (rayStart.x - rayStart.w) / (rayVector.w - rayVector.x);
 		rayEnd = rayStart + alpha * rayVector;
 	}
-	
+
 		// clip y direction
 	if ((rayEnd.y / rayEnd.w) < -1.f) {
 		float4 rayVector = rayEnd - rayStart;
@@ -137,7 +137,7 @@ struct ReflectionRay
 ReflectionRay CalculateReflectionRay(uint2 pixelCoord, uint2 outputDimensions, uint msaaSampleIndex)
 {
     float linearDepth;
-	float3 worldSpacePosition = 
+	float3 worldSpacePosition =
         CalculateWorldSpacePosition(
 		    pixelCoord.xy, outputDimensions, msaaSampleIndex, linearDepth);
 
@@ -159,12 +159,12 @@ ReflectionRay CalculateReflectionRay(uint2 pixelCoord, uint2 outputDimensions, u
 	const float imaginaryDistance	= .05f;
 	float3 worldSpaceRayEnd			= worldSpacePosition + imaginaryDistance * normalize(worldSpaceReflection);
     float4 projectedRayStart		= mul(WorldToClip, float4(worldSpacePosition, 1.f));
- 
+
     ReflectionRay result;
     #if !defined(INTERPOLATE_IN_VIEW_SPACE)
 	    float4 projectedRayEnd			= mul(WorldToClip, float4(worldSpaceRayEnd, 1.f));
 	    float4 projectedDiff			= projectedRayEnd - projectedRayStart;
-	    float4 basicStep				= projectedDiff; 
+	    float4 basicStep				= projectedDiff;
 
 	    const bool adaptiveLength = true;
 	    if (adaptiveLength) {
@@ -185,15 +185,15 @@ ReflectionRay CalculateReflectionRay(uint2 pixelCoord, uint2 outputDimensions, u
         float4 viewSpaceRayStart = mul(WorldToView, float4(worldSpacePosition, 1.f));
 	    float4 viewSpaceRayEnd	 = mul(WorldToView, float4(worldSpaceRayEnd, 1.f));
 	    float4 viewSpaceDiff	 = viewSpaceRayEnd - viewSpaceRayStart;
-	    float4 basicStep		 = viewSpaceDiff; 
+	    float4 basicStep		 = viewSpaceDiff;
 
             // (    because it's view space, we can't really know how many pixels are between these points. We want ideally
             //      we want to step on pixel at a time, but that requires some more math to figure out the number of
             //      pixels between start and end, and the calculate the location of each pixel)
-		// basicStep /= 256.f;      
+		// basicStep /= 256.f;
         // basicStep = (.01f / length(basicStep.xy)) * basicStep;
         basicStep = (.1f / length(basicStep.xy)) * basicStep;
-        // basicStep = normalize(basicStep) / 1024.f;      
+        // basicStep = normalize(basicStep) / 1024.f;
 
 	    result.projStartPosition = viewSpaceRayStart;
 	    result.projBasicStep = basicStep;

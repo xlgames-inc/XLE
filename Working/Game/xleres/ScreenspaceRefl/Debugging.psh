@@ -54,7 +54,7 @@ float4 TilesDebugging(	float4 position				: SV_Position,
 	#endif
 
 	GBufferValues gbuffer = LoadGBuffer(float4(texCoord.xy*normalDim.xy, 0.f, 1.f), SystemInputs_Default());
-	float reflectivity = gbuffer.reflectivity;
+	float reflectivity = gbuffer.material.specular;
 
 	float3 reflectionVector = CalculateReflectionVector(
 		uint2(texCoord.xy*normalDim.xy), viewFrustumVector, gbuffer.worldSpaceNormal);

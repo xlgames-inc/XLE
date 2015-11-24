@@ -19,6 +19,7 @@ cbuffer AmbientLightBuffer
 {
 	AmbientDesc Ambient;
 	RangeFogDesc RangeFog;
+	float2 ReciprocalViewportDims;
 }
 
 float4 ResolveAmbient(
@@ -30,7 +31,13 @@ float4 ResolveAmbient(
 	int2 pixelCoords = position.xy;
 	GBufferValues sample = LoadGBuffer(position, sys);
 	float3 viewDirection = -normalize(viewFrustumVector);
-	float3 result = LightResolve_Ambient(sample, viewDirection, Ambient, pixelCoords, GetSampleIndex(sys));
+
+	AmbientResolveHelpers helpers = AmbientResolveHelpers_Default();
+	helpers.ReciprocalViewportDims = ReciprocalViewportDims;
+
+	float3 result = LightResolve_Ambient(
+		sample, viewDirection, Ambient,
+		pixelCoords, GetSampleIndex(sys), helpers);
 
 	float outscatterScale = 1.f;
 	#if (RESOLVE_RANGE_FOG==1)

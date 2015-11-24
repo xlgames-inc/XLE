@@ -150,14 +150,29 @@ float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample
 
 /////////////////////////////////////////
 
+struct AmbientResolveHelpers
+{
+    float2 ReciprocalViewportDims;
+};
+
+AmbientResolveHelpers AmbientResolveHelpers_Default()
+{
+    AmbientResolveHelpers result;
+    result.ReciprocalViewportDims = 1.0.xx;
+    return result;
+}
+
 #if CALCULATE_SCREENSPACE_REFLECTIONS==1
-    float4 CalculateScreenSpaceReflections(float2 texCoord, float fresnel, float ambientColor, float iblScale)
+    float4 CalculateScreenSpaceReflections(
+        int2 pixelCoords, AmbientResolveHelpers helpers,
+        float fresnel, float ambientColor, float iblScale)
     {
             //	the screen space refl sampler should contain a texture coordinate
             //	and an alpha value. We need a copy of the "lighting buffer"
             //	render target for this step -- because we want to read from a texture
             //	that can the direct lighting already calculated.
-        float4 reflectionValue = ScreenSpaceReflResult.SampleLevel(ClampingSampler, texCoord, 0);
+        float4 reflectionValue = ScreenSpaceReflResult.SampleLevel(
+            ClampingSampler, float2(pixelCoords) * helpers.ReciprocalViewportDims, 0);
 
         float intersectionQuality = reflectionValue.z;
         float pixelReflectivity = reflectionValue.a;
@@ -169,7 +184,8 @@ float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample
         uint2 dims; LightBufferCopy.GetDimensions(dims.x, dims.y);
         float4 samplePosition = float4(reflectionSourceCoords * float2(dims), 0.f, 1.f);
         GBufferValues sample = LoadGBuffer(samplePosition, SystemInputs_Default());
-        litSample += CalcBasicAmbient(int2(samplePosition.xy), SystemInputs_Default(), sample, ambientColor, iblScale);
+        litSample += CalcBasicAmbient(
+            int2(samplePosition.xy), 0, sample, ambientColor, iblScale);
 
         return float4(
             litSample.rgb * (fresnel / LightingScale),
@@ -178,11 +194,9 @@ float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample
 #endif
 
 float3 LightResolve_Ambient(
-    GBufferValues sample,
-    float3 directionToEye,
-    AmbientDesc ambient,
-    int2 pixelCoords,
-    uint sampleIndex,
+    GBufferValues sample, float3 directionToEye, AmbientDesc ambient,
+    int2 pixelCoords, uint sampleIndex,
+    AmbientResolveHelpers helpers,
     bool mirrorReflection = false)
 {
     float3 diffusePart = CalcBasicAmbient(pixelCoords, sampleIndex, sample, ambient.Colour, ambient.SkyReflectionScale);
@@ -227,7 +241,8 @@ float3 LightResolve_Ambient(
             //	to blend from the sky reflection colour into that colour.
             // note... if we want fogging on the reflections, we need to perform the fog calculations here, on the
             // reflected pixel
-        float4 dynamicReflections = CalculateScreenSpaceReflections(texCoord, fresnel, ambient.Color, ambient.SkyReflectionScale);
+        float4 dynamicReflections = CalculateScreenSpaceReflections(
+            pixelCoords, helpers, fresnel, ambient.Colour, ambient.SkyReflectionScale);
         skyReflections = lerp(skyReflections, dynamicReflections.rgb, dynamicReflections.a);
     #endif
 

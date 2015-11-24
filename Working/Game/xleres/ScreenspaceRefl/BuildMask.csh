@@ -21,7 +21,7 @@ static const uint BlockDimension = 64;
 
 cbuffer SamplingPattern
 {
-	uint2 SamplePoint[SamplesPerBlock];
+	uint4 SamplePoint[SamplesPerBlock];
 	uint4 ClosestSamples[BlockDimension][BlockDimension/4];
 	uint4 ClosestSamples2[BlockDimension][BlockDimension/4];
 };
@@ -43,7 +43,7 @@ struct PBI
 float2 DepthCalcX(float2 postDivide, ReflectionRay ray)
 {
 		//	here, we're calculating the z and w values of the given ray
-		//	for a given point in screen space. This should be used for 
+		//	for a given point in screen space. This should be used for
 		//	"x" dominant rays.
 	float a =		(postDivide.x * ray.projStartPosition.w - ray.projStartPosition.x)
 				/	(ray.projBasicStep.x - postDivide.x * ray.projBasicStep.w);
@@ -53,7 +53,7 @@ float2 DepthCalcX(float2 postDivide, ReflectionRay ray)
 float2 DepthCalcY(float2 postDivide, ReflectionRay ray)
 {
 		//	here, we're calculating the z and w values of the given ray
-		//	for a given point in screen space. This should be used for 
+		//	for a given point in screen space. This should be used for
 		//	"y" dominant rays.
 	float a =		(postDivide.y * ray.projStartPosition.w - ray.projStartPosition.y)
 				/	(ray.projBasicStep.y - postDivide.y * ray.projBasicStep.w);
@@ -73,7 +73,7 @@ void PBI_Opr(inout PBI iterator, float2 exitZW, int2 pixelCapCoord, float2 edgeC
 	float ndc0 = entryZW.x / entryZW.y;
 	float ndc1 =  exitZW.x /  exitZW.y;
 
-		//	we have to check to see if we've left the view frustum. 
+		//	we have to check to see if we've left the view frustum.
 		//	going too deep is probably not likely, but we can pass
 		//	in front of the near plane
 	if (ndc1 <= 0.f) {
@@ -94,7 +94,7 @@ void PBI_Opr(inout PBI iterator, float2 exitZW, int2 pixelCapCoord, float2 edgeC
 		//	penetrates the pixel cap, we know that there is definitely
 		//	an intersection
 	const float epsilon = 0.f;
-//	if (	queryDepth >= min(ndc0, ndc1) - epsilon 
+//	if (	queryDepth >= min(ndc0, ndc1) - epsilon
 //		&&	queryDepth <= max(ndc0, ndc1) + epsilon) {
 
 		//	try to distinquish front-face and back-face collisions by looking at
@@ -106,7 +106,7 @@ void PBI_Opr(inout PBI iterator, float2 exitZW, int2 pixelCapCoord, float2 edgeC
 	}
 
 		//	As collide with the edge of the pixel. Sometimes an edge in depth
-		//	space represents a continuous edge in world space. But other times, 
+		//	space represents a continuous edge in world space. But other times,
 		//	there is a continiuity there. We can use an epsilon value to try to
 		//	distinquish the two.
 		//	Note that if the ray intersects a discontinuous edge, we have 2 options:
@@ -130,8 +130,8 @@ void PBI_Opr(inout PBI iterator, float2 exitZW, int2 pixelCapCoord, float2 edgeC
 void PBI_OprX(inout PBI iterator, int2 e0, int2 e1, float alpha, int2 pixelCoord, float2 outputDimensions)
 {
 	float2 edgeIntersection = lerp(float2(e0), float2(e1), alpha);
-	float2 postDivide = 
-		float2(	(edgeIntersection.x *  2.0f - 0.5f) / outputDimensions.x - 1.f, 
+	float2 postDivide =
+		float2(	(edgeIntersection.x *  2.0f - 0.5f) / outputDimensions.x - 1.f,
 				(edgeIntersection.y * -2.0f + 0.5f) / outputDimensions.y + 1.f);
 	float2 exitZW = DepthCalcX(postDivide, iterator._ray);
 	PBI_Opr(iterator, exitZW, pixelCoord, edgeIntersection);
@@ -140,8 +140,8 @@ void PBI_OprX(inout PBI iterator, int2 e0, int2 e1, float alpha, int2 pixelCoord
 void PBI_OprY(inout PBI iterator, int2 e0, int2 e1, float alpha, int2 pixelCoord, float2 outputDimensions)
 {
 	float2 edgeIntersection = lerp(float2(e0), float2(e1), alpha);
-	float2 postDivide = 
-		float2(	(edgeIntersection.x *  2.0f - 0.5f) / outputDimensions.x - 1.f, 
+	float2 postDivide =
+		float2(	(edgeIntersection.x *  2.0f - 0.5f) / outputDimensions.x - 1.f,
 				(edgeIntersection.y * -2.0f + 0.5f) / outputDimensions.y + 1.f);
 	float2 exitZW = DepthCalcY(postDivide, iterator._ray);
 	PBI_Opr(iterator, exitZW, pixelCoord, edgeIntersection);
@@ -154,7 +154,7 @@ bool PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 output
 
 	int w = int( float(ReflectionDistancePixels) * ray.screenSpaceRayDirection.x);
 	int h = int(-float(ReflectionDistancePixels) * ray.screenSpaceRayDirection.y);
-	
+
 	int ystep = sign(h); h = abs(h);
 	int xstep = sign(w); w = abs(w);
 	int ddy = 2 * h;  // We may not need to double this (because we're starting from the corner of the pixel)
@@ -162,7 +162,7 @@ bool PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 output
 
 	int i=0;
 	int errorprev = 0, error = 0; // (start from corner. we don't want to start in the middle of the grid element)
-	int x = int(((ray.projStartPosition.x / ray.projStartPosition.w) * .5f + .5f) * outputDimensions.x), 
+	int x = int(((ray.projStartPosition.x / ray.projStartPosition.w) * .5f + .5f) * outputDimensions.x),
 		y = int(((ray.projStartPosition.y / ray.projStartPosition.w) * -.5f + .5f) * outputDimensions.y);
 
 			//	step 2 pixel forward
@@ -195,8 +195,8 @@ bool PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 output
 	iterator._intersectionCoords	= float2(-1.f, -1.f);
 	iterator._testCount				= 0;
 
-	float2 postDivide = 
-		float2(	((x * 2.0f - 0.5f) / outputDimensions.x) - 1.f, 
+	float2 postDivide =
+		float2(	((x * 2.0f - 0.5f) / outputDimensions.x) - 1.f,
 				((y * -2.0f + 0.5f) / outputDimensions.y) + 1.f);
 	iterator._pixelEntryZW = (ddx >= ddy)?DepthCalcX(postDivide, iterator._ray):DepthCalcY(postDivide, iterator._ray);
 
@@ -211,16 +211,16 @@ bool PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 output
 		for (; i<w && iterator._continueIteration; ++i) {
 			int2 pixelCapCoord = int2(x, y);
 
-			x += xstep; 
-			error += ddy; 
-                    
+			x += xstep;
+			error += ddy;
+
 			int2 e0, e1;
 			float edgeAlpha;
 
 			if (error >= ddx) {
 
-				y += ystep; 
-				error -= ddx; 
+				y += ystep;
+				error -= ddx;
 
 					//  The cases for what happens here. Each case defines different edges
 					//  we need to check
@@ -247,13 +247,13 @@ bool PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 output
 			}
 
 			PBI_OprX(iterator, e0, e1, edgeAlpha, int2(x, y), outputDimensions);
-			errorprev = error; 
+			errorprev = error;
 		}
 		distance = i / float(w);
 	} else {
 		for (; i<h && iterator._continueIteration; ++i) {
 			int2 pixelCapCoord = int2(x, y);
-			
+
 			y += ystep;
 			error += ddx;
 
@@ -262,8 +262,8 @@ bool PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 output
 
 			if (error >= ddy) {
 
-				x += xstep; 
-				error -= ddy; 
+				x += xstep;
+				error -= ddy;
 
 					//  The cases for what happens here. Each case defines different edges
 					//  we need to check
@@ -290,7 +290,7 @@ bool PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 output
 			}
 
 			PBI_OprY(iterator, e0, e1, edgeAlpha, int2(x, y), outputDimensions);
-			errorprev = error; 
+			errorprev = error;
 		}
 		distance = i / float(h);
 	}
@@ -315,17 +315,17 @@ groupshared bool	SampleFoundCollision[SamplesPerBlock];
 
 	const uint msaaSampleIndex = 0;
 	uint rayCastSample = threadId.z;
- 	
+
 		//
 		//		We do 1 sample ray test per thread. This avoids putting a complex
 		//		loop within the shader, and should give us much better parrallelism (particularly
 		//		at low resolutions)
 		//
- 	uint2 samplingPixel = dispatchThreadId.xy * BlockDimension.xx + SamplePoint[rayCastSample];
+ 	uint2 samplingPixel = dispatchThreadId.xy * BlockDimension.xx + SamplePoint[rayCastSample].xy;
 
 	ReflectionRay ray = CalculateReflectionRay(
 		samplingPixel.xy, outputDimensions, msaaSampleIndex);
- 
+
 	bool foundCollision = false;
 	[branch] if (ray.valid) {
 
@@ -347,24 +347,24 @@ groupshared bool	SampleFoundCollision[SamplesPerBlock];
 			float4 iteratingPosition = ray.projStartPosition;
 			[loop] for (uint step=0; step<finalStepCount; ++step) {
  				// iteratingPosition	   += stepVector;
-				iteratingPosition	
+				iteratingPosition
 					=	ray.projStartPosition
 						+ stepVector * (pow((step+1) / float(finalStepCount), IteratingPower) * float(finalStepCount))
 						;
-			
+
 				float4 positionProjSpace = IteratingPositionToProjSpace(iteratingPosition);
 
 				if (!preClipRay && !WithinClipCube(positionProjSpace)) {
 					break;
 				} else if (CompareDepth(positionProjSpace, outputDimensions)) {
-					foundCollision = true; 			
+					foundCollision = true;
 					break;
  				}
  			}
 
 		#else
 
-			int ditherArray[16] = 
+			int ditherArray[16] =
 			{
 				 4, 12,  0,  8,
 				10,  2, 14,  6,
@@ -415,7 +415,7 @@ groupshared bool	SampleFoundCollision[SamplesPerBlock];
 		const float SampleDivisor = 4.f;
 
 		const uint2 samplingPixel = dispatchThreadId.xy * BlockDimension.xx + uint2(x, y);
-			
+
 		float maskValue;
 		[branch] if (samplesWithCollisions > 0) {
 
@@ -454,6 +454,3 @@ groupshared bool	SampleFoundCollision[SamplesPerBlock];
 	}
 
 }
-
-
-

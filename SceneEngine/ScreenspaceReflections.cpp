@@ -30,6 +30,7 @@
 #include "../Utility/StringFormat.h"
 
 #include "../ConsoleRig/Console.h"
+#include <random>
 
 namespace SceneEngine
 {
@@ -121,6 +122,8 @@ namespace SceneEngine
 
 		auto samplingPattern = std::make_unique<SamplingPattern>();
 
+        std::mt19937 generator(std::random_device().operator()());
+
         for (unsigned c=0; c<samplesPerBlock; ++c) {
             const int baseX = (c%8) * 9 + 1;
             const int baseY = (c/8) * 9 + 1;
@@ -128,8 +131,9 @@ namespace SceneEngine
 
             int offsetX = 0, offsetY = 0;
             if (jitterRadius > 0) {
-                offsetX = rand() % ((2*jitterRadius)+1) - jitterRadius;
-                offsetY = rand() % ((2*jitterRadius)+1) - jitterRadius;
+                std::uniform_int_distribution<> dist(-jitterRadius, jitterRadius);
+                offsetX = dist(generator);
+                offsetY = dist(generator);
             }
             
             samplingPattern->samplePositions[c][0] = std::min(std::max(baseX + offsetX, 0), 64-1);
