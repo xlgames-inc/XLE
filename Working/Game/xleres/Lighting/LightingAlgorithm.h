@@ -18,6 +18,14 @@ float RefractiveIndexToF0(float refractiveIndex)
 	return Square((refractiveIndex - 1.f) / (refractiveIndex + 1.f));
 }
 
+float SchlickFresnelCore(float VdotH)
+{
+	float A = 1.0f - saturate(VdotH);
+	float sq = A*A;
+	float cb = sq*sq;
+	return cb*A;	// we could also consider just using the cubed value here
+}
+
 float SchlickFresnelF0(float3 viewDirection, float3 halfVector, float F0)
 {
 		// Note that we're using the half vector as a parameter to the fresnel
@@ -38,10 +46,7 @@ float SchlickFresnelF0(float3 viewDirection, float3 halfVector, float F0)
 		// It seems like the performance difference might be hardware dependent
 		// Also, maybe we should consider matching the gaussian approximation to the full
 		// fresnel equation; rather than just Schlick's approximation.
-	float A = 1.0f - saturate(dot(viewDirection, halfVector));
-	float sq = A*A;
-	float cb = sq*sq;
-	float q = cb*A;	// we could also consider just using the cubed value here
+	float q = SchlickFresnelCore(dot(viewDirection, halfVector));
 	return F0 + (1.f - F0) * q;	// (note, use lerp for this..?)
 }
 
@@ -52,31 +57,20 @@ float SchlickFresnelF0_Modified(float3 viewDirection, float3 halfVector, float F
 		// The extreme edges of the reflection can often highlight rendering
 		// inaccuracies (such as lack of occlusion and local reflections).
 		// So, oftening it off helps to reduce problems.
-	float A = 1.0f - saturate(dot(viewDirection, halfVector));
-	float sq = A*A;
-	float cb = sq*sq;
-	float q = cb*A;
-
+	float q = SchlickFresnelCore(dot(viewDirection, halfVector));
 	float upperLimit = min(1.f, 50.f * (F0+0.001f));
 	return F0 + (upperLimit - F0) * q;
 }
 
 float3 SchlickFresnelF0(float3 viewDirection, float3 halfVector, float3 F0)
 {
-	float A = 1.0f - saturate(dot(viewDirection, halfVector));
-	float sq = A*A;
-	float cb = sq*sq;
-	float q = cb*A;
+	float q = SchlickFresnelCore(dot(viewDirection, halfVector));
 	return lerp(F0, 1.f, q);
 }
 
 float3 SchlickFresnelF0_Modified(float3 viewDirection, float3 halfVector, float3 F0)
 {
-	float A = 1.0f - saturate(dot(viewDirection, halfVector));
-	float sq = A*A;
-	float cb = sq*sq;
-	float q = cb*A;
-
+	float q = SchlickFresnelCore(dot(viewDirection, halfVector));
 	float3 upperLimit = min(1.f, 50.f * (F0+0.001f));
 	return F0 + (upperLimit - F0) * q;
 }

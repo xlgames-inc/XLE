@@ -206,6 +206,9 @@ bool PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 output
 		iterator._lastQueryDepth = DepthTexture[int2(x, y)];
 	#endif
 
+	// We're just going crazy with conditions and looping here!
+	// Surely there must be a better way to do this!
+
 	float distance;
 	if (ddx >= ddy) {
 		for (; i<w && iterator._continueIteration; ++i) {
@@ -302,8 +305,10 @@ bool PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 output
 
 groupshared bool	SampleFoundCollision[SamplesPerBlock];
 
+float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
+
 [numthreads(1, 1, 64)]
-	void BuildMask(uint3 dispatchThreadId : SV_DispatchThreadID, uint3 threadId : SV_GroupThreadID)
+	void BuildMask(uint3 dispatchThreadId : SV_DispatchThreadID, uint groupIndex : SV_GroupIndex)
 {
 		//
 		//		Split the buffer into 64x64 pixel blocks.
@@ -314,17 +319,18 @@ groupshared bool	SampleFoundCollision[SamplesPerBlock];
 	DepthTexture.GetDimensions(outputDimensions.x, outputDimensions.y);
 
 	const uint msaaSampleIndex = 0;
-	uint rayCastSample = threadId.z;
+	uint rayCastSample = groupIndex;
 
 		//
 		//		We do 1 sample ray test per thread. This avoids putting a complex
-		//		loop within the shader, and should give us much better parrallelism (particularly
+		//		loop within the shader, and should give us much better parallelism (particularly
 		//		at low resolutions)
 		//
- 	uint2 samplingPixel = dispatchThreadId.xy * BlockDimension.xx + SamplePoint[rayCastSample].xy;
+	uint2 sampleOffset = SamplePoint[rayCastSample].xy;
+	// sampleOffset = uint2(BlockDimension.xx * float2(frac(rayCastSample/8.f), frac((rayCastSample/8)/8.f))) + uint2(4,4);
+ 	uint2 samplingPixel = dispatchThreadId.xy * BlockDimension.xx + sampleOffset;
 
-	ReflectionRay ray = CalculateReflectionRay(
-		samplingPixel.xy, outputDimensions, msaaSampleIndex);
+	ReflectionRay ray = CalculateReflectionRay(samplingPixel.xy, outputDimensions, msaaSampleIndex);
 
 	bool foundCollision = false;
 	[branch] if (ray.valid) {
@@ -372,7 +378,7 @@ groupshared bool	SampleFoundCollision[SamplesPerBlock];
 				 1,  9,  5, 13
 			};
 			uint2 t = dispatchThreadId.xy & 0x3;
-			float randomizerValue = 0.f; // float(ditherArray[t.x+t.y*4]) / 15.f;
+			float randomizerValue = float(ditherArray[t.x+t.y*4]) / 15.f;
 
 			foundCollision = PixelBasedIteration(ray, randomizerValue, float2(outputDimensions));
 
@@ -395,7 +401,7 @@ groupshared bool	SampleFoundCollision[SamplesPerBlock];
 		//		We're mostly reading from "SampleFoundCollision" here
 		//			... so that must be "groupshared"
 		//
-	uint y = threadId.z;
+	uint y = groupIndex;
 	for (uint x=0; x<BlockDimension; ++x) {
 
 			//	We know the 4 closest samples to this pixel.
@@ -412,39 +418,37 @@ groupshared bool	SampleFoundCollision[SamplesPerBlock];
 		samplesWithCollisions += SampleFoundCollision[(packedSampleIndices2 >>  8) & 0xff];
 		samplesWithCollisions += SampleFoundCollision[(packedSampleIndices2 >> 16) & 0xff];
 		samplesWithCollisions += SampleFoundCollision[(packedSampleIndices2 >> 24) & 0xff];
-		const float SampleDivisor = 4.f;
 
 		const uint2 samplingPixel = dispatchThreadId.xy * BlockDimension.xx + uint2(x, y);
 
 		float maskValue;
-		[branch] if (samplesWithCollisions > 0) {
+			[branch] if (samplesWithCollisions > 0) {
 
-				//	2 or more successful collisions means we should consider
-				//	this an active pixel
+				//	At least one successful collisions means we should consider
+				//	this an active pixel.
+			const float SampleDivisor = 4.f;
 			const float maskFromCollision = saturate(float(samplesWithCollisions)/SampleDivisor);
 
 			float linearDepth;
 			float3 worldSpacePosition = CalculateWorldSpacePosition(
 				samplingPixel, outputDimensions, msaaSampleIndex, linearDepth);
 
-				//	 todo -- could also use the reflection vector for the closest
-				//				sample for the fresnel part
-				//
-				//		todo --	instead of recalculating the fresnel value here,
-				//				we could just use the blurred version of the reflectivity
-				//				constant in the cbuffer
 			float3 worldSpaceNormal = DownSampledNormals[samplingPixel].rgb;
-			if (dot(worldSpaceNormal, worldSpaceNormal) < 0.25f) {
+			float F0 = DownSampledNormals[samplingPixel].a;
+			if (dot(worldSpaceNormal, worldSpaceNormal) < 0.25f || F0 < 0.05f) {
 				maskValue = 0.f;	// invalid edge pixels have normals with tiny magnitudes
 			} else {
-				float3 worldSpaceReflection = reflect(normalize(worldSpacePosition - WorldSpaceView), worldSpaceNormal);
+				// We're just going to do a quick estimate of the fresnel term by
+				// using the angle between the view direction and the normal. This is
+				// equivalent to mirror reflections model -- it's not perfectly
+				// right for our microfacet reflections model.
+				// But should be ok for an estimate here.
 
-				float3 viewDirection = normalize(WorldSpaceView - worldSpacePosition);
-				float3 halfVector = normalize(worldSpaceReflection + viewDirection);
-				const float refractiveIndex = 1.5f;
-				float fresnel = SchlickFresnel(viewDirection, halfVector, refractiveIndex);
-
-				maskValue = fresnel * maskFromCollision;
+				float3 viewDirection = WorldSpaceView - worldSpacePosition;
+				float NdotV = dot(viewDirection, worldSpaceNormal) * ReciprocalLength(viewDirection); // (correct so long as worldSpaceNormal is unit length)
+				float q = SchlickFresnelCore(saturate(NdotV));
+				float F = F0 + (1.f - F0) * q;
+				maskValue = F * maskFromCollision;
 			}
 		} else {
 			maskValue = 0.f;

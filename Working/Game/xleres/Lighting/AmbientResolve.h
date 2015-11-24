@@ -165,7 +165,7 @@ AmbientResolveHelpers AmbientResolveHelpers_Default()
 #if CALCULATE_SCREENSPACE_REFLECTIONS==1
     float4 CalculateScreenSpaceReflections(
         int2 pixelCoords, AmbientResolveHelpers helpers,
-        float fresnel, float ambientColor, float iblScale)
+        float3 fresnel, float ambientColor, float iblScale)
     {
             //	the screen space refl sampler should contain a texture coordinate
             //	and an alpha value. We need a copy of the "lighting buffer"
@@ -173,6 +173,8 @@ AmbientResolveHelpers AmbientResolveHelpers_Default()
             //	that can the direct lighting already calculated.
         float4 reflectionValue = ScreenSpaceReflResult.SampleLevel(
             ClampingSampler, float2(pixelCoords) * helpers.ReciprocalViewportDims, 0);
+
+        if (reflectionValue.a == 0.0f) return 0.0.xxxx;
 
         float intersectionQuality = reflectionValue.z;
         float pixelReflectivity = reflectionValue.a;
@@ -184,12 +186,14 @@ AmbientResolveHelpers AmbientResolveHelpers_Default()
         uint2 dims; LightBufferCopy.GetDimensions(dims.x, dims.y);
         float4 samplePosition = float4(reflectionSourceCoords * float2(dims), 0.f, 1.f);
         GBufferValues sample = LoadGBuffer(samplePosition, SystemInputs_Default());
-        litSample += CalcBasicAmbient(
-            int2(samplePosition.xy), 0, sample, ambientColor, iblScale);
+        litSample = CalcBasicAmbient(int2(samplePosition.xy), 0, sample, ambientColor, iblScale);
 
+            // blending with the sky reflections helps hide artefacts...
+            //  -- and there are so many artefacts!
+        float screenSpaceBlend = .5f;
         return float4(
-            litSample.rgb * (fresnel / LightingScale),
-            min(1.f, intersectionQuality * pixelReflectivity));
+            litSample.rgb * fresnel / LightingScale,
+            screenSpaceBlend * intersectionQuality * pixelReflectivity);
     }
 #endif
 
@@ -218,6 +222,7 @@ float3 LightResolve_Ambient(
         // the methods described on that page.
         // Also consider sRGB/Linear wierdness in this step...
     float3 F0 = lerp(Material_GetF0_0(sample).xxx, sample.diffuseAlbedo, Material_GetMetal(sample));
+    float3 fresnel = CalculateSkyReflectionFresnel(F0, sample, directionToEye, mirrorReflection);
 
     #if HAS_SPECULAR_IBL==1
         float3 skyReflections = SampleSpecularIBL(
@@ -229,7 +234,6 @@ float3 LightResolve_Ambient(
             SpecularParameters_RoughF0(sample.material.roughness, F0),
             SkyReflectionTexture);
     #else
-        float3 fresnel = CalculateSkyReflectionFresnel(F0, sample, directionToEye, mirrorReflection);
         float blurriness = ambient.SkyReflectionBlurriness;
         float3 skyReflections = CalculateSkyReflections(sample, directionToEye, fresnel, blurriness);
     #endif

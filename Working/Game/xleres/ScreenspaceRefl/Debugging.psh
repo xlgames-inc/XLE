@@ -36,7 +36,7 @@ float4 TilesDebugging(	float4 position				: SV_Position,
 						float3 viewFrustumVector	: VIEWFRUSTUMVECTOR) : SV_Target0
 {
 	// return float4(.5.xxx, MaskTexture.SampleLevel(DefaultSampler, texCoord, 0));
-	// return float4(MaskTexture.SampleLevel(DefaultSampler, texCoord, 0).rrr, 1.f);
+	return float4(MaskTexture.SampleLevel(DefaultSampler, texCoord, 0).rrr, 1.f);
 
 	// float2 t	= min(texCoord.xy, 1.f-texCoord.xy);
 	// t = saturate(15.f*t);
@@ -154,6 +154,7 @@ float4 MaskSamplePattern(	float4 position		: SV_Position,
 	uint closestSamples = 0, closestSamples2 = 0;
 	if (	hoveringCellIndex.x >= 0 && hoveringCellIndex.x < BlockDimension
 		&&	hoveringCellIndex.y >= 0 && hoveringCellIndex.y < BlockDimension) {
+
 		closestSamples = ClosestSamples[hoveringCellIndex.y][hoveringCellIndex.x/4][hoveringCellIndex.x%4];
 		closestSamples2 = ClosestSamples2[hoveringCellIndex.y][hoveringCellIndex.x/4][hoveringCellIndex.x%4];
 	}
@@ -175,7 +176,10 @@ float4 MaskSamplePattern(	float4 position		: SV_Position,
 
 	float2 cellCoords = int2(BlockDimension, BlockDimension) * (pixelCoords - gridMin) / float2(gridMax - gridMin);
 	for (uint c=0; c<SamplesPerBlock; ++c) {
-		float2 diff = int2(SamplePoint[c]) - cellCoords;
+		uint2 sampleOffset = SamplePoint[c].xy;
+		// sampleOffset = uint2(BlockDimension.xx * float2(frac(c/8.f), frac((c/8)/8.f))) + uint2(4,4);
+		float2 diff = int2(sampleOffset) - cellCoords;
+
 		float circleDistance = dot(diff, diff);
 
 		if (circleDistance < 35.f) {
@@ -205,6 +209,8 @@ float4 main(	float4 position		: SV_Position,
 				float2 texCoord		: TEXCOORD0,
 				float3 viewFrustumVector : VIEWFRUSTUMVECTOR) : SV_Target0
 {
+	if ((uint(position.x)%128 == 127) || (uint(position.y)%128) == 127) return float4(1,0,0,1);
 	return TilesDebugging(position, texCoord, viewFrustumVector);
+
 	// return MaskSamplePattern(position, texCoord);
 }

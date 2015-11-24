@@ -69,7 +69,7 @@ float4 BuildResult(float distance, float2 texCoord, bool isGoodIntersection, uin
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//		iteration in projection space or view space						//
 
-float4 DetailedStep(float4 start, float4 end, 
+float4 DetailedStep(float4 start, float4 end,
 					float startDistance, float endDistance,
 					float finalDepthDifference,
 					float2 outputDimensions, uint msaaSampleIndex)
@@ -80,7 +80,7 @@ float4 DetailedStep(float4 start, float4 end,
 		iPosition += stepVector;
 
 		float4 positionProjSpace = IteratingPositionToProjSpace(iPosition);
-	
+
 		float depthDifference = CalculateDepthDifference(positionProjSpace, outputDimensions);
 		if (depthDifference > DepthMinThreshold) {
 			#if defined(DEBUG_STEP_COUNT)
@@ -99,7 +99,7 @@ float4 DetailedStep(float4 start, float4 end,
 	return BuildResult(endDistance, texCoord, finalDepthDifference < DepthMaxThreshold, msaaSampleIndex);
 }
 
-float4 FinalDetailedStep(	float4 start, float4 end, 
+float4 FinalDetailedStep(	float4 start, float4 end,
 							float startDistance, float endDistance,
 							float2 outputDimensions, uint msaaSampleIndex)
 {
@@ -136,7 +136,7 @@ float4 MultiResolutionStep(float4 startPosition, float4 basicStepSize, float ran
 	const bool doSimpleTest = false;
 	if (doSimpleTest) {
 		return FinalDetailedStep(
-			startPosition, startPosition + skipPixels * InitialStepCount * basicStepSize, 
+			startPosition, startPosition + skipPixels * InitialStepCount * basicStepSize,
 			0.f, 1.f,
 			outputDimensions, msaaSampleIndex);
 	}
@@ -149,7 +149,7 @@ float4 MultiResolutionStep(float4 startPosition, float4 basicStepSize, float ran
 
 	[loop] for (uint step=0; step<finalStepCount; ++step) {
 
- 		float4 testStart = iPosition; 
+ 		float4 testStart = iPosition;
 		float distanceStart = iDistance;
 		iDistance = pow((step+1) / float(finalStepCount), IteratingPower);
 		iPosition = startPosition + stepVector * (iDistance * float(finalStepCount));
@@ -163,9 +163,9 @@ float4 MultiResolutionStep(float4 startPosition, float4 basicStepSize, float ran
 			float depthDifference = CalculateDepthDifference(positionProjSpace, outputDimensions);
 			if (depthDifference > DepthMinThreshold) {
 				return DetailedStep(
-					testStart, iPosition, 
-					distanceStart * distanceValueScale, iDistance * distanceValueScale, 
-					depthDifference, 
+					testStart, iPosition,
+					distanceStart * distanceValueScale, iDistance * distanceValueScale,
+					depthDifference,
 					outputDimensions, msaaSampleIndex);
 			}
 		}
@@ -192,7 +192,7 @@ struct PBI
 float2 DepthCalcX(float2 postDivide, ReflectionRay ray)
 {
 		//	here, we're calculating the z and w values of the given ray
-		//	for a given point in screen space. This should be used for 
+		//	for a given point in screen space. This should be used for
 		//	"x" dominant rays.
 	float a =		(postDivide.x * ray.projStartPosition.w - ray.projStartPosition.x)
 				/	(ray.projBasicStep.x - postDivide.x * ray.projBasicStep.w);
@@ -202,7 +202,7 @@ float2 DepthCalcX(float2 postDivide, ReflectionRay ray)
 float2 DepthCalcY(float2 postDivide, ReflectionRay ray)
 {
 		//	here, we're calculating the z and w values of the given ray
-		//	for a given point in screen space. This should be used for 
+		//	for a given point in screen space. This should be used for
 		//	"y" dominant rays.
 	float a =		(postDivide.y * ray.projStartPosition.w - ray.projStartPosition.y)
 				/	(ray.projBasicStep.y - postDivide.y * ray.projBasicStep.w);
@@ -222,7 +222,7 @@ void PBI_Opr(inout PBI iterator, float2 exitZW, int2 pixelCapCoord, float2 edgeC
 	float ndc0 = entryZW.x / entryZW.y;
 	float ndc1 =  exitZW.x /  exitZW.y;
 
-		//	we have to check to see if we've left the view frustum. 
+		//	we have to check to see if we've left the view frustum.
 		//	going too deep is probably not likely, but we can pass
 		//	in front of the near plane
 	if (ndc1 <= 0.f) {
@@ -243,7 +243,7 @@ void PBI_Opr(inout PBI iterator, float2 exitZW, int2 pixelCapCoord, float2 edgeC
 		//	penetrates the pixel cap, we know that there is definitely
 		//	an intersection
 	const float epsilon = 0.f;
-//	if (	queryDepth >= min(ndc0, ndc1) - epsilon 
+//	if (	queryDepth >= min(ndc0, ndc1) - epsilon
 //		&&	queryDepth <= max(ndc0, ndc1) + epsilon) {
 
 		//	try to distinquish front-face and back-face collisions by looking at
@@ -255,7 +255,7 @@ void PBI_Opr(inout PBI iterator, float2 exitZW, int2 pixelCapCoord, float2 edgeC
 	}
 
 		//	As collide with the edge of the pixel. Sometimes an edge in depth
-		//	space represents a continuous edge in world space. But other times, 
+		//	space represents a continuous edge in world space. But other times,
 		//	there is a continiuity there. We can use an epsilon value to try to
 		//	distinquish the two.
 		//	Note that if the ray intersects a discontinuous edge, we have 2 options:
@@ -279,8 +279,8 @@ void PBI_Opr(inout PBI iterator, float2 exitZW, int2 pixelCapCoord, float2 edgeC
 void PBI_OprX(inout PBI iterator, int2 e0, int2 e1, float alpha, int2 pixelCoord, float2 outputDimensions)
 {
 	float2 edgeIntersection = lerp(float2(e0), float2(e1), alpha);
-	float2 postDivide = 
-		float2(	(edgeIntersection.x *  2.0f - 0.5f) / outputDimensions.x - 1.f, 
+	float2 postDivide =
+		float2(	(edgeIntersection.x *  2.0f - 0.5f) / outputDimensions.x - 1.f,
 				(edgeIntersection.y * -2.0f + 0.5f) / outputDimensions.y + 1.f);
 	float2 exitZW = DepthCalcX(postDivide, iterator._ray);
 	PBI_Opr(iterator, exitZW, pixelCoord, edgeIntersection);
@@ -289,8 +289,8 @@ void PBI_OprX(inout PBI iterator, int2 e0, int2 e1, float alpha, int2 pixelCoord
 void PBI_OprY(inout PBI iterator, int2 e0, int2 e1, float alpha, int2 pixelCoord, float2 outputDimensions)
 {
 	float2 edgeIntersection = lerp(float2(e0), float2(e1), alpha);
-	float2 postDivide = 
-		float2(	(edgeIntersection.x *  2.0f - 0.5f) / outputDimensions.x - 1.f, 
+	float2 postDivide =
+		float2(	(edgeIntersection.x *  2.0f - 0.5f) / outputDimensions.x - 1.f,
 				(edgeIntersection.y * -2.0f + 0.5f) / outputDimensions.y + 1.f);
 	float2 exitZW = DepthCalcY(postDivide, iterator._ray);
 	PBI_Opr(iterator, exitZW, pixelCoord, edgeIntersection);
@@ -299,10 +299,10 @@ void PBI_OprY(inout PBI iterator, int2 e0, int2 e1, float alpha, int2 pixelCoord
 float4 PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 outputDimensions)
 {
 		//
-		//		We're going to iterate across this ray on a per pixel basis. 
+		//		We're going to iterate across this ray on a per pixel basis.
 		//		We want to use a modified Bressenham algorithm for this. The
 		//		normal Bressenham won't find every pixel that this ray enters.
-		//		We want to find every pixel, even if the ray doesn't go near 
+		//		We want to find every pixel, even if the ray doesn't go near
 		//		the centre of that pixel...
 		//
 		//		We don't want to interpolate between depth values in the depth
@@ -313,7 +313,7 @@ float4 PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 outp
 		//		But we can interpolate between depth values along the ray. So
 		//		the ideal ray test is this:
 		//			* find the points that the ray enters and exits each pixel
-		//			* those 2 points should define a small depth range. 
+		//			* those 2 points should define a small depth range.
 		//			* we want to see if the ray straddles the depth of that pixel
 		//
 
@@ -326,7 +326,7 @@ float4 PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 outp
 
 	int w = int(float(ReflectionDistancePixels) * ray.screenSpaceRayDirection.x);
 	int h = int(-float(ReflectionDistancePixels) * ray.screenSpaceRayDirection.y);
-	
+
 	int ystep = sign(h); h = abs(h);
 	int xstep = sign(w); w = abs(w);
 	int ddy = 2 * h;  // We may not need to double this (because we're starting from the corner of the pixel)
@@ -334,7 +334,7 @@ float4 PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 outp
 
 	int i=0;
 	int errorprev = 0, error = 0; // (start from corner. we don't want to start in the middle of the grid element)
-	int x = int(((ray.projStartPosition.x / ray.projStartPosition.w) * .5f + .5f) * outputDimensions.x), 
+	int x = int(((ray.projStartPosition.x / ray.projStartPosition.w) * .5f + .5f) * outputDimensions.x),
 		y = int(((ray.projStartPosition.y / ray.projStartPosition.w) * -.5f + .5f) * outputDimensions.y);
 
 			//	step 2 pixel forward
@@ -367,8 +367,8 @@ float4 PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 outp
 	iterator._intersectionCoords = float2(-1.f, -1.f);
 	iterator._testCount = 0;
 
-	float2 postDivide = 
-		float2(	((x * 2.0f - 0.5f) / outputDimensions.x) - 1.f, 
+	float2 postDivide =
+		float2(	((x * 2.0f - 0.5f) / outputDimensions.x) - 1.f,
 				((y * -2.0f + 0.5f) / outputDimensions.y) + 1.f);
 	iterator._pixelEntryZW = (ddx >= ddy)?DepthCalcX(postDivide, iterator._ray):DepthCalcY(postDivide, iterator._ray);
 
@@ -383,16 +383,16 @@ float4 PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 outp
 		for (; i<w && iterator._continueIteration; ++i) {
 			int2 pixelCapCoord = int2(x, y);
 
-			x += xstep; 
-			error += ddy; 
-                    
+			x += xstep;
+			error += ddy;
+
 			int2 e0, e1;
 			float edgeAlpha;
 
 			if (error >= ddx) {
 
-				y += ystep; 
-				error -= ddx; 
+				y += ystep;
+				error -= ddx;
 
 					//  The cases for what happens here. Each case defines different edges
 					//  we need to check
@@ -419,13 +419,13 @@ float4 PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 outp
 			}
 
 			PBI_OprX(iterator, e0, e1, edgeAlpha, int2(x, y), outputDimensions);
-			errorprev = error; 
+			errorprev = error;
 		}
 		distance = i / float(w);
 	} else {
 		for (; i<h && iterator._continueIteration; ++i) {
 			int2 pixelCapCoord = int2(x, y);
-			
+
 			y += ystep;
 			error += ddx;
 
@@ -434,8 +434,8 @@ float4 PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 outp
 
 			if (error >= ddy) {
 
-				x += xstep; 
-				error -= ddy; 
+				x += xstep;
+				error -= ddy;
 
 					//  The cases for what happens here. Each case defines different edges
 					//  we need to check
@@ -462,7 +462,7 @@ float4 PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 outp
 			}
 
 			PBI_OprY(iterator, e0, e1, edgeAlpha, int2(x, y), outputDimensions);
-			errorprev = error; 
+			errorprev = error;
 		}
 		distance = i / float(h);
 	}
@@ -471,8 +471,8 @@ float4 PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 outp
 	// return float4((iterator._testCount / 256.f).xxx, 1.0.x);		// (display step count)
 
 	return BuildResult(
-		distance, 
-		iterator._intersectionCoords.xy / float2(outputDimensions), 
+		distance,
+		iterator._intersectionCoords.xy / float2(outputDimensions),
 		iterator._gotIntersection, 0);
 }
 
@@ -500,7 +500,7 @@ float4 PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 outp
 			//	a completely random pattern just ends up looking messy and distracting
 		// float randomizerValue = RandomNoiseTexture[dispatchThreadId.xy & 0x3]; // 0xff];
 
-		int ditherArray[16] = 
+		int ditherArray[16] =
 		{
 			 4, 12,  0,  8,
 			10,  2, 14,  6,
@@ -513,7 +513,7 @@ float4 PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 outp
 		const uint stepMethod = 1;
 		if (stepMethod == 0) {
 			result = MultiResolutionStep(
-				ray.projStartPosition, ray.projBasicStep, 
+				ray.projStartPosition, ray.projBasicStep,
 				randomizerValue, float2(outputDimensions), msaaSampleIndex);
 		} else if (stepMethod == 1) {
 			result = PixelBasedIteration(ray, randomizerValue, float2(outputDimensions));
@@ -527,4 +527,3 @@ float4 PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 outp
 	OutputTexture[dispatchThreadId.xy] = result;
 	// OutputTexture[dispatchThreadId.xy] = float4(maskValue.xxx, 1.f);
 }
-

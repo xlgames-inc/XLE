@@ -12,13 +12,13 @@
 // #define DEPTH_IN_LINEAR_COORDS
 // #define INTERPOLATE_IN_VIEW_SPACE
 
-static const float DepthMinThreshold		= 0.000001f;
-static const float DepthMaxThreshold		= 0.01f;
+static const float DepthMinThreshold		= 0.f; //0.000001f;
+static const float DepthMaxThreshold		= 1.f; // 0.01f;
 
 static const uint DetailStepCount			= 12;
 static const uint InitialStepCount			= 16;
 
-static const uint MaskStepCount             = 16;
+static const uint MaskStepCount             = 8;
 static const uint MaskSkipPixels            = 12;
 static const float IteratingPower           = 2.5f;
 static const uint TotalDistanceMaskShader	= MaskStepCount*MaskSkipPixels;
@@ -216,7 +216,7 @@ ReflectionRay CalculateReflectionRay(uint2 pixelCoord, uint2 outputDimensions, u
         // result.projStartPosition.z += 0.01f;
     }
 
-    result.valid = linearDepth < 0.995f;        // we get strange results with unfilled areas of the depth buffer. So, if depth is too far, it's invalid
+    result.valid = linearDepth != 1.f; // linearDepth < 0.995f;        // we get strange results with unfilled areas of the depth buffer. So, if depth is too far, it's invalid
     result.worldSpaceReflection = worldSpaceReflection;
 
 	return result;

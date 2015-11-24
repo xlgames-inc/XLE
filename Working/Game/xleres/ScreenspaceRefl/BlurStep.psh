@@ -26,7 +26,7 @@ float4 HorizontalBlur(float4 position : SV_Position, float2 texCoord : TEXCOORD0
 
 	const int offset[] = { -3, -2, -1, 0, 1, 2, 3 };
 	const uint sampleCount = 7;
-	
+
 	float FixedWeights[7];
 	FixedWeights[0] = FilteringWeights0.x;
 	FixedWeights[1] = FilteringWeights0.y;
@@ -52,7 +52,7 @@ float4 HorizontalBlur(float4 position : SV_Position, float2 texCoord : TEXCOORD0
 	}
 
 	if (totalWeight > 0.0001f && totalFixedWeights > 0.0001f) {
-		result.rgba /= totalWeight;
+		result.rgb /= totalWeight;
 		result.a = accumAlpha / totalFixedWeights;
 	} else {
 		result.rgba = 0.0.xxxx;
@@ -96,12 +96,10 @@ float4 VerticalBlur(float4 position : SV_Position, float2 texCoord : TEXCOORD0) 
 	}
 
 	if (totalWeight > 0.0001f && totalFixedWeights > 0.0001f) {
-		result.rgba /= totalWeight;
+		result.rgb /= totalWeight;
 		result.a = accumAlpha / totalFixedWeights;
 	} else {
 		result.rgba = 0.0.xxxx;
 	}
 	return result;
 }
-
-

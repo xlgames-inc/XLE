@@ -26,6 +26,7 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../BufferUploads/DataPacket.h"
 #include "../Math/Transformations.h"
 #include "../Utility/StringFormat.h"
 
@@ -47,11 +48,12 @@ namespace SceneEngine
             bool        _useMsaaSamplers;
             unsigned    _maskJitterRadius;
             bool        _interpolateSamples;
+            bool        _hasGBufferProperties;
             Desc(   unsigned width, unsigned height, unsigned downsampleScale, bool useMsaaSamplers, 
-                    unsigned maskJitterRadius, bool interpolateSamples) 
+                    unsigned maskJitterRadius, bool interpolateSamples, bool hasGBufferProperties) 
             : _useMsaaSamplers(useMsaaSamplers), _width(width), _height(height)
             , _downsampleScale(downsampleScale), _maskJitterRadius(maskJitterRadius)
-            , _interpolateSamples(interpolateSamples) {}
+            , _interpolateSamples(interpolateSamples), _hasGBufferProperties(hasGBufferProperties) {}
         };
 
         using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
@@ -122,13 +124,15 @@ namespace SceneEngine
 
 		auto samplingPattern = std::make_unique<SamplingPattern>();
 
+            // note -- it might be helpful for the pattern to be a but
+            //      non-uniform. But probably a non-random pattern would
+            //      be best (eg, using a variation of the hammersly pattern)
         std::mt19937 generator(std::random_device().operator()());
-
         for (unsigned c=0; c<samplesPerBlock; ++c) {
             const int baseX = (c%8) * 9 + 1;
             const int baseY = (c/8) * 9 + 1;
             const int jitterRadius = desc._maskJitterRadius;     // note -- jitter radius larger than 4 can push the sample off the edge
-
+            
             int offsetX = 0, offsetY = 0;
             if (jitterRadius > 0) {
                 std::uniform_int_distribution<> dist(-jitterRadius, jitterRadius);
@@ -140,6 +144,9 @@ namespace SceneEngine
             samplingPattern->samplePositions[c][1] = std::min(std::max(baseY + offsetY, 0), 64-1);
             samplingPattern->samplePositions[c][2] = 0;
             samplingPattern->samplePositions[c][3] = 0;
+
+            // samplingPattern->samplePositions[c][0] = (c%8) * 8 + 4;
+            // samplingPattern->samplePositions[c][1] = (c/8) * 8 + 4;
         }
     
         for (unsigned y=0; y<blockDimension; ++y) {
@@ -192,6 +199,16 @@ namespace SceneEngine
 
 		_samplingPatternConstants = Metal::ConstantBuffer(samplingPattern.get(), sizeof(SamplingPattern));
 
+        // using namespace BufferUploads;
+        // auto pkt = CreateBasicPacket(sizeof(SamplingPattern), samplingPattern.get());
+        // auto samplingPatternCS = GetBufferUploads().Transaction_Immediate(
+        //     CreateDesc(
+        //         BindFlag::StructuredBuffer|BindFlag::ShaderResource, 0, GPUAccess::Read, 
+        //         LinearBufferDesc::Create(sizeof(SamplingPattern), sizeof(unsigned)),
+        //         "SSRSampling"),
+        //     pkt.get());
+        // _samplingPatternConstantsCS = Metal::ShaderResourceView(samplingPatternCS->GetUnderlying());
+
             ////////////
         _buildMask = &::Assets::GetAssetDep<Metal::ComputeShader>(
             "game/xleres/screenspacerefl/buildmask.csh:BuildMask:cs_*");
@@ -200,7 +217,9 @@ namespace SceneEngine
         definesBuffer 
             << (desc._useMsaaSamplers?"MSAA_SAMPLERS=1;":"") 
             << "DOWNSAMPLE_SCALE=" << desc._downsampleScale 
-            << ";INTERPOLATE_SAMPLES=" << int(desc._interpolateSamples);
+            << ";INTERPOLATE_SAMPLES=" << int(desc._interpolateSamples)
+            << ";GBUFFER_TYPE=" << desc._hasGBufferProperties?1:2;
+            ;
 
         _buildReflections = &::Assets::GetAssetDep<Metal::ComputeShader>(
             "game/xleres/screenspacerefl/buildreflection.csh:BuildReflection:cs_*",
@@ -242,16 +261,17 @@ namespace SceneEngine
                                                         Metal::ShaderResourceView* gbufferParam,
                                                         Metal::ShaderResourceView* depthsSRV);
 
-    ScreenSpaceReflectionsResources::Desc GetConfig(unsigned width, unsigned height, bool useMsaaSamplers)
+    ScreenSpaceReflectionsResources::Desc GetConfig(unsigned width, unsigned height, bool useMsaaSamplers, bool hasGBufferProperties)
     {
         unsigned reflScale = Tweakable("ReflectionScale", 2);
         unsigned reflWidth = width / reflScale;
         unsigned reflHeight = height / reflScale;
-        unsigned reflMaskJitterRadius = Tweakable("ReflectionMaskJitterRadius", 0);
+        unsigned reflMaskJitterRadius = Tweakable("ReflectionMaskJitterRadius", 2);
         bool interpolateSamples = Tweakable("ReflectionInterpolateSamples", true);
         return ScreenSpaceReflectionsResources::Desc(
                 reflWidth, reflHeight, reflScale, 
-                useMsaaSamplers, reflMaskJitterRadius, interpolateSamples);
+                useMsaaSamplers, reflMaskJitterRadius, interpolateSamples,
+                hasGBufferProperties);
     }
 
     Metal::ShaderResourceView
@@ -267,7 +287,7 @@ namespace SceneEngine
             //      Build textures and resources related to screen space textures
             //
         using namespace RenderCore;
-        auto cfg = GetConfig(width, height, useMsaaSamplers);
+        auto cfg = GetConfig(width, height, useMsaaSamplers, gbufferParam.IsGood());
         auto& res = Techniques::FindCachedBoxDep<ScreenSpaceReflectionsResources>(cfg);
 
         ProtectState protectState(
@@ -284,8 +304,7 @@ namespace SceneEngine
             //      Downsample the normal & depth textures 
             //
         context->Bind(MakeResourceList(res._downsampledDepth.RTV(), res._downsampledNormals.RTV()), nullptr);
-        context->BindPS(MakeResourceList(1, gbufferNormals));
-        context->BindPS(MakeResourceList(3, depthsSRV));
+        context->BindPS(MakeResourceList(gbufferDiffuse, gbufferNormals, gbufferParam, depthsSRV));
         context->BindPS(MakeResourceList(parserContext.GetGlobalTransformCB()));
         context->Bind(*res._downsampleTargets);
         SetupVertexGeneratorShader(*context);
