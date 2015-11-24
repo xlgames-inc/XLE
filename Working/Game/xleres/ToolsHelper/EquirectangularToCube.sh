@@ -37,7 +37,11 @@ void Panel(inout float4 result, float2 tc, float2 tcMins, float2 tcMaxs, float3 
         tc.y = 2.0f * (tc.y - tcMins.y) / (tcMaxs.y - tcMins.y) - 1.0f;
 
         float3 finalDirection = center + plusX * tc.x + plusY * tc.y;
-        float2 finalCoord = EquirectangularMappingCoord(normalize(finalDirection), hemi);
+		finalDirection = normalize(finalDirection);
+			// match the mapping used by IBLBaker by flipping some things around
+		finalDirection = float3(finalDirection.z, -finalDirection.x, finalDirection.y);
+        float2 finalCoord = EquirectangularMappingCoord(finalDirection, hemi);
+		finalCoord.x = -finalCoord.x;	// more flipping for IBLBaker
 
 		// note -- 	There isn't a 1:1 relationship between input pixel and output
 		// 			pixel. The solid angle of the cubemap pixel and the solid
@@ -53,23 +57,42 @@ void Panel(inout float4 result, float2 tc, float2 tcMins, float2 tcMaxs, float3 
     }
 }
 
-static const float3 HorizontalPanels[6][3] =
-{
-    { float3(0,0,1), float3(0,1,0), float3(-1,0,0) },
-    { float3(1,0,0), float3(0,1,0), float3(0,0,1) },
-    { float3(0,0,-1), float3(0,1,0), float3(1,0,0) },
-    { float3(-1,0,0), float3(0,1,0), float3(0,0,-1) },
+// This is the standard vertical cross layout for cubemaps
+// For Y up:
+//		    +Y              0
+//		 +Z +X -Z         4 1 5
+//		    -Y              2
+//		    -X              3
+//
+// For Z up:
+//		    +Z
+//		 -Y +X +Y
+//		    -Z
+//		    -X
+//
+// CubeMapGen expects:
+//			+Y
+//		 -X +Z +X
+//			-Y
+//			-Z
 
-    { float3(1,0,0), float3(0,0,1), float3(0,-1,0) },
-    { float3(1,0,0), float3(0,0,-1), float3(0,1,0) }
+static const float3 VerticalPanels_ZUp[6][3] =
+{
+	{ float3(0,1,0), float3(1,0,0), float3(0,0,1) },
+    { float3(0,1,0), float3(0,0,-1), float3(1,0,0) },
+	{ float3(0,1,0), float3(-1,0,0), float3(0,0,-1) },
+    { float3(0,1,0), float3(0,0,1), float3(-1,0,0) },
+
+	{ float3(1,0,0), float3(0,0,-1), float3(0,-1,0) },
+	{ float3(-1,0,0), float3(0,0,-1), float3(0,1,0) }
 };
 
-static const float3 VerticalPanels[6][3] =
+static const float3 VerticalPanels_CubeMapGen[6][3] =
 {
 	{ float3(1,0,0), float3(0,0,1), float3(0,1,0) },
-    { float3(1,0,0), float3(0,-1,0), float3(0,0,1) },
+	{ float3(1,0,0), float3(0,-1,0), float3(0,0,1) },
 	{ float3(1,0,0), float3(0,0,-1), float3(0,-1,0) },
-    { float3(1,0,0), float3(0,1,0), float3(0,0,-1) },
+	{ float3(1,0,0), float3(0,1,0), float3(0,0,-1) },
 
 	{ float3(0,0,1), float3(0,-1,0), float3(-1,0,0) },
 	{ float3(0,0,-1), float3(0,-1,0), float3(1,0,0) }
@@ -77,43 +100,7 @@ static const float3 VerticalPanels[6][3] =
 
 float4 Horizontal(float2 texCoord, bool hemi)
 {
-	float4 result = 0.0.xxxx;
-	Panel(
-		result,
-		texCoord,
-		float2(0.0f, 1.0f/3.0f), float2(1.0f/4.0f, 2.0f/3.0f),
-		HorizontalPanels[0], hemi);
-
-	Panel(
-		result,
-		texCoord,
-		float2(1.0f/4.0f, 1.0f/3.0f), float2(2.0f/4.0f, 2.0f/3.0f),
-		HorizontalPanels[1], hemi);
-
-	Panel(
-		result,
-		texCoord,
-		float2(2.0f/4.0f, 1.0f/3.0f), float2(3.0f/4.0f, 2.0f/3.0f),
-		HorizontalPanels[2], hemi);
-
-	Panel(
-		result,
-		texCoord,
-		float2(3.0f/4.0f, 1.0f/3.0f), float2(1.0f, 2.0f/3.0f),
-		HorizontalPanels[3], hemi);
-
-	Panel(
-		result,
-		texCoord,
-		float2(1.0f/4.0f, 0.0f), float2(2.0f/4.0f, 1.0f/3.0f),
-		HorizontalPanels[4], hemi);
-
-	Panel(
-		result,
-		texCoord,
-		float2(1.0f/4.0f, 2.0f/3.0f), float2(2.0f/4.0f, 1.0f),
-		HorizontalPanels[5], hemi);
-	return result;
+	return 0.0.xxxx;
 }
 
 float4 Vertical(float2 texCoord, bool hemi)
@@ -123,37 +110,37 @@ float4 Vertical(float2 texCoord, bool hemi)
 		result,
 		texCoord,
 		float2(1.0f/3.0f, 0.0f), float2(2.0f/3.0f, 1.0f/4.0f),
-		VerticalPanels[0], hemi);
+		VerticalPanels_CubeMapGen[0], hemi);
 
 	Panel(
 		result,
 		texCoord,
 		float2(1.0f/3.0f, 1.0f/4.0f), float2(2.0f/3.0f, 2.0f/4.0f),
-		VerticalPanels[1], hemi);
+		VerticalPanels_CubeMapGen[1], hemi);
 
 	Panel(
 		result,
 		texCoord,
 		float2(1.0f/3.0f, 2.0f/4.0f), float2(2.0f/3.0f, 3.0f/4.0f),
-		VerticalPanels[2], hemi);
+		VerticalPanels_CubeMapGen[2], hemi);
 
 	Panel(
 		result,
 		texCoord,
 		float2(1.0f/3.0f, 3.0f/4.0f), float2(2.0f/3.0f, 1.0f),
-		VerticalPanels[3], hemi);
+		VerticalPanels_CubeMapGen[3], hemi);
 
 	Panel(
 		result,
 		texCoord,
 		float2(0.0f, 1.0f/4.0f), float2(1.0f/3.0f, 2.0f/4.0f),
-		VerticalPanels[4], hemi);
+		VerticalPanels_CubeMapGen[4], hemi);
 
 	Panel(
 		result,
 		texCoord,
 		float2(2.0f/3.0f, 1.0f/4.0f), float2(1.0f, 2.0f/4.0f),
-		VerticalPanels[5], hemi);
+		VerticalPanels_CubeMapGen[5], hemi);
 	return result;
 }
 
