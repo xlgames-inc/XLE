@@ -897,7 +897,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         //
 
         auto result = half_float::detail::float2half<std::round_to_nearest>(input);
-        assert(!isinf(half_float::detail::half2float(result)));
+        // assert(!isinf(half_float::detail::half2float(result)));
         return result;
     }
 
