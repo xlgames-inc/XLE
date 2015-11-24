@@ -2317,7 +2317,7 @@ namespace BufferUploads
         ~RawDataPacket_ReadBack();
 
     protected:
-        unsigned _dataSize, _dataOffset;
+        unsigned _dataOffset;
         std::vector<PlatformInterface::UnderlyingDeviceContext::MappedBuffer> _mappedBuffer;
     };
 
@@ -2330,7 +2330,7 @@ namespace BufferUploads
     size_t          RawDataPacket_ReadBack::GetDataSize(SubResource subRes) const
     {
         assert(subRes < _mappedBuffer.size());
-        return size_t(_dataSize);
+        return _mappedBuffer[subRes].GetPitches()._slicePitch - _dataOffset;
     }
 
     TexturePitches RawDataPacket_ReadBack::GetPitches(SubResource subRes) const
@@ -2341,7 +2341,6 @@ namespace BufferUploads
 
     RawDataPacket_ReadBack::RawDataPacket_ReadBack(const ResourceLocator& locator, PlatformInterface::UnderlyingDeviceContext& context)
     : _dataOffset(0)
-    , _dataSize(locator.Size())
     {
         assert(!locator.IsEmpty());
         auto resource = locator.GetUnderlying();

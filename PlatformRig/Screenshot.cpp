@@ -22,6 +22,8 @@
 #include "../Utility/BitUtils.h"
 #include "../Utility/Conversion.h"
 #include "../Utility/PtrUtils.h"
+#include "../Utility/StringFormat.h"
+#include "../Utility/Streams/FileUtils.h"
 
 #include "../Core/WinAPI/IncludeWindows.h"
 #include "../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
@@ -67,15 +69,24 @@ namespace PlatformRig
         ISceneParser& sceneParser,
         const Techniques::CameraDesc& camera,
         const RenderingQualitySettings& qualitySettings,
-        Metal::NativeFormat::Enum format)
+        UInt2 sampleCount,
+        Metal::NativeFormat::Enum format, bool interleavedTiles)
     {
         // We want to separate the view into several tiles, and render
         // each as a separate high-res render. Then we will stitch them
         // together and write out one extremely high-res result.
 
-        const auto tileDims = 4096u;
-        auto tilesX = CeilToMultiplePow2(qualitySettings._dimensions[0], tileDims) / tileDims;
-        auto tilesY = CeilToMultiplePow2(qualitySettings._dimensions[1], tileDims) / tileDims;
+        UInt2 tileDims;
+        unsigned tilesX, tilesY;
+        if (!interleavedTiles) {
+            tileDims = UInt2(2048u, 2048u);
+            tilesX = CeilToMultiplePow2(qualitySettings._dimensions[0] * sampleCount[0], tileDims[0]) / tileDims[0];
+            tilesY = CeilToMultiplePow2(qualitySettings._dimensions[1] * sampleCount[1], tileDims[1]) / tileDims[1];
+        } else {
+            tilesX = sampleCount[0];
+            tilesY = sampleCount[1];
+            tileDims = qualitySettings._dimensions;
+        }
         auto tileQualSettings = qualitySettings;
 
             // Note that we should write out to a linear format
@@ -120,8 +131,14 @@ namespace PlatformRig
             for (unsigned x=0; x<tilesX; ++x) {
                 auto& target = targets[y*tilesX+x];
 
-                auto viewWidth  = std::min((x+1)*tileDims, qualitySettings._dimensions[0]) - (x*tileDims);
-                auto viewHeight = std::min((y+1)*tileDims, qualitySettings._dimensions[1]) - (y*tileDims);
+                unsigned viewWidth, viewHeight;
+                if (!interleavedTiles) {
+                    viewWidth  = std::min((x+1)*tileDims[0], qualitySettings._dimensions[0] * sampleCount[0]) - (x*tileDims[0]);
+                    viewHeight = std::min((y+1)*tileDims[1], qualitySettings._dimensions[1] * sampleCount[1]) - (y*tileDims[1]);
+                } else {
+                    viewWidth = tileDims[0];
+                    viewHeight = tileDims[1];
+                }
                 tileQualSettings._dimensions = UInt2(viewWidth, viewHeight);
                 auto rtDesc = TextureDesc::Plain2D(viewWidth, viewHeight, format);
                 target = TargetType(rtDesc, "HighResScreenShot");
@@ -139,14 +156,25 @@ namespace PlatformRig
                     // some cases.
                     // Also, with method 2, we don't have to just use a regular grid pattern for samples. We can
                     // use a rotated pattern to try to catch certain triangle shapes better.
-                auto customProjectionMatrix = 
-                    PerspectiveProjection(
-                        LinearInterpolate(l, r, (x*tileDims             )/float(qualitySettings._dimensions[0])),
-                        LinearInterpolate(t, b, (y*tileDims             )/float(qualitySettings._dimensions[1])),
-                        LinearInterpolate(l, r, (x*tileDims +  viewWidth)/float(qualitySettings._dimensions[0])),
-                        LinearInterpolate(t, b, (y*tileDims + viewHeight)/float(qualitySettings._dimensions[1])),
+                Float4x4 customProjectionMatrix;
+                if (!interleavedTiles) {
+                    customProjectionMatrix = PerspectiveProjection(
+                        LinearInterpolate(l, r, (x*tileDims[0]             )/float(qualitySettings._dimensions[0] * sampleCount[0])),
+                        LinearInterpolate(t, b, (y*tileDims[1]             )/float(qualitySettings._dimensions[1] * sampleCount[1])),
+                        LinearInterpolate(l, r, (x*tileDims[0] +  viewWidth)/float(qualitySettings._dimensions[0] * sampleCount[0])),
+                        LinearInterpolate(t, b, (y*tileDims[1] + viewHeight)/float(qualitySettings._dimensions[1] * sampleCount[1])),
                         camera._nearClip, camera._farClip,
                         Techniques::GetDefaultClipSpaceType());
+                } else {
+                    Float2 subpixelOffset(
+                        ((x+.5f)/float(tilesX) - 0.5f)/float(tileDims[0]), 
+                        ((y+.5f)/float(tilesY) - 0.5f)/float(tileDims[1]));
+                    customProjectionMatrix = PerspectiveProjection(
+                        l + n * subpixelOffset[0], t + n * subpixelOffset[1],
+                        r + n * subpixelOffset[0], b + n * subpixelOffset[1],
+                        camera._nearClip, camera._farClip, Techniques::GetDefaultClipSpaceType());
+                }
+
                 auto projDesc = BuildProjectionDesc(camera, UInt2(viewWidth, viewHeight), &customProjectionMatrix);
 
                     // now we can just render, using the normal process.
@@ -164,7 +192,7 @@ namespace PlatformRig
             // Now pull the data over to the CPU, and stitch together
             // We will write out the raw data in some simple format
             //      -- the user can complete processing in a image editing application
-        UInt2 finalImageDims = qualitySettings._dimensions;
+        UInt2 finalImageDims(qualitySettings._dimensions[0]*sampleCount[0], qualitySettings._dimensions[1]*sampleCount[1]);
         auto bpp = Metal::BitsPerPixel(format);
         auto finalRowPitch = finalImageDims[0]*bpp/8;
         auto rawData = CreateBasicPacket(
@@ -181,13 +209,19 @@ namespace PlatformRig
                     auto* readbackEnd = PtrAdd(readback->GetData(), readback->GetDataSize());
                     (void)readbackEnd;
 
-                    auto viewWidth  = std::min((x+1)*tileDims, qualitySettings._dimensions[0]) - (x*tileDims);
-                    auto viewHeight = std::min((y+1)*tileDims, qualitySettings._dimensions[1]) - (y*tileDims);
+                    unsigned viewWidth, viewHeight;
+                    if (!interleavedTiles) {
+                        viewWidth  = std::min((x+1)*tileDims[0], qualitySettings._dimensions[0] * sampleCount[0]) - (x*tileDims[0]);
+                        viewHeight = std::min((y+1)*tileDims[1], qualitySettings._dimensions[1] * sampleCount[1]) - (y*tileDims[1]);
+                    } else {
+                        viewWidth = tileDims[0];
+                        viewHeight = tileDims[1];
+                    }
 
                         // copy each row of the tile into the correct spot in the output texture
                     for (unsigned r=0; r<viewHeight; ++r) {
                         const void* rowSrc = PtrAdd(readback->GetData(), r*readback->GetPitches()._rowPitch);
-                        void* rowDst = PtrAdd(rawData->GetData(), (y*tileDims+r)*finalRowPitch + x*tileDims*bpp/8);
+                        void* rowDst = PtrAdd(rawData->GetData(), (y*tileDims[1]+r)*finalRowPitch + x*tileDims[0]*bpp/8);
                         assert(PtrAdd(rowDst, viewWidth*bpp/8) <= rawDataEnd);
                         assert(PtrAdd(rowSrc, viewWidth*bpp/8) <= readbackEnd);
                         XlCopyMemory(rowDst, rowSrc, viewWidth*bpp/8);
@@ -203,15 +237,15 @@ namespace PlatformRig
     static float Float16AsFloat32(unsigned short input) { return half_float::detail::half2float(input); }
     static unsigned short Float32AsFloat16(float input) { return half_float::detail::float2half<std::round_to_nearest>(input); }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     static intrusive_ptr<DataPacket> BoxFilterR16G16B16A16F(
-        DataPacket& highRes,
-        UInt2 srcDims, UInt2 downsample)
+        DataPacket& highRes, UInt2 srcDims, UInt2 downsample,
+        bool interleavedTiles)
     {
         const auto bpp = unsigned(sizeof(uint16)*4*8);
-        UInt2 downsampledSize(
-            srcDims[0] / downsample[0], 
-            srcDims[1] / downsample[1]);
-        auto downsampledRowPitch = downsampledSize[0] * bpp;
+        UInt2 downsampledSize(srcDims[0] / downsample[0], srcDims[1] / downsample[1]);
+        auto downsampledRowPitch = downsampledSize[0] * bpp / 8;
         auto rawData = CreateBasicPacket(
             downsampledSize[1]*downsampledRowPitch, nullptr,
             TexturePitches(downsampledRowPitch, downsampledSize[1]*downsampledRowPitch));
@@ -226,29 +260,34 @@ namespace PlatformRig
         const unsigned weightDiv = downsample[0] * downsample[1];
         for (unsigned y=0; y<downsampledSize[1]; ++y)
             for (unsigned x=0; x<downsampledSize[0]; ++x) {
-                // UInt4 dst(0, 0, 0, 0);
                 Float4 dst(0, 0, 0, 0);
-                for (unsigned sy=0; sy<downsample[1]; ++sy)
-                    for (unsigned sx=0; sx<downsample[0]; ++sx) {
-                        UInt2 src(x*downsample[0]+sx, y*downsample[1]+sy);
-                        auto* s = PtrAdd(srcData, src[1] * srcRowPitch + src[0] * bpp / 8);
-                        // dst[0] += s[0]; dst[1] += s[1]; dst[2] += s[2]; dst[3] += s[3];
-                        dst[0] += Float16AsFloat32(s[0]);
-                        dst[1] += Float16AsFloat32(s[1]);
-                        dst[2] += Float16AsFloat32(s[2]);
-                    }
 
-                // dst[0] /= weightDiv; assert(dst[0] <= 0xffff);
-                // dst[1] /= weightDiv; assert(dst[1] <= 0xffff);
-                // dst[2] /= weightDiv; assert(dst[2] <= 0xffff);
-                // dst[3] /= weightDiv; assert(dst[3] <= 0xffff);
+                if (!interleavedTiles) {
+                    for (unsigned sy=0; sy<downsample[1]; ++sy)
+                        for (unsigned sx=0; sx<downsample[0]; ++sx) {
+                            UInt2 src(x*downsample[0]+sx, y*downsample[1]+sy);
+                            auto* s = PtrAdd(srcData, src[1] * srcRowPitch + src[0] * bpp/8);
+                            dst[0] += Float16AsFloat32(s[0]);
+                            dst[1] += Float16AsFloat32(s[1]);
+                            dst[2] += Float16AsFloat32(s[2]);
+                        }
+                } else {
+                    for (unsigned sy=0; sy<downsample[1]; ++sy)
+                        for (unsigned sx=0; sx<downsample[0]; ++sx) {
+                            UInt2 src(x+sx*downsampledSize[0], y+sy*downsampledSize[1]);
+                            auto* s = PtrAdd(srcData, src[1] * srcRowPitch + src[0] * bpp/8);
+                            dst[0] += Float16AsFloat32(s[0]);
+                            dst[1] += Float16AsFloat32(s[1]);
+                            dst[2] += Float16AsFloat32(s[2]);
+                        }
+                }
+
                 dst[0] /= float(weightDiv);
                 dst[1] /= float(weightDiv);
                 dst[2] /= float(weightDiv);
                 dst[3] = 1.f;
 
                 auto* d = PtrAdd(dstData, y*dstRowPitch+x*bpp/8);
-                // d[0] = (uint16)dst[0]; d[1] = (uint16)dst[1]; d[2] = (uint16)dst[2]; d[3] = (uint16)dst[3];
                 d[0] = Float32AsFloat16(dst[0]);
                 d[1] = Float32AsFloat16(dst[1]);
                 d[2] = Float32AsFloat16(dst[2]);
@@ -257,6 +296,8 @@ namespace PlatformRig
 
         return std::move(rawData);
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static intrusive_ptr<DataPacket> DoToneMap(
         IThreadContext& context,
@@ -302,6 +343,18 @@ namespace PlatformRig
         return uploads.Resource_ReadBack(postToneMap.Locator());
     }
 
+    std::string FindOutputFilename()
+    {
+        CreateDirectoryRecursive("int/screenshots");
+        unsigned index = 0;
+        for (;;index++) {
+            StringMeld<256> fn;
+            fn << "int/screenshots/shot" << index << ".tiff";
+            if (!DoesFileExist(fn))
+                return fn.get();
+        }
+    }
+
     void TiledScreenshot(
         IThreadContext& context,
         LightingParserContext& parserContext,
@@ -315,9 +368,12 @@ namespace PlatformRig
         auto highResQual = qualitySettings;
         highResQual._dimensions[0] *= sampleCount[0];
         highResQual._dimensions[1] *= sampleCount[1];
+        const bool interleavedTiles = Tweakable("ScreenshotInterleaved", false);
+
         auto image = RenderTiled(
             context, parserContext, sceneParser,
-            camera, highResQual, preFilterFormat);
+            camera, qualitySettings, sampleCount, 
+            preFilterFormat, interleavedTiles);
 
             // Save the unfiltered image (this is a 16 bit depth linear image)
             // We can use a program like "Luminance HDR" to run custom tonemapping
@@ -332,7 +388,12 @@ namespace PlatformRig
             // we're doing an integer downsample) the box filter will mean that
             // each sample point is equally weighted, and it will avoid any
             // blurring to the image.
-        image = BoxFilterR16G16B16A16F(*image, highResQual._dimensions, sampleCount);
+        image = BoxFilterR16G16B16A16F(*image, highResQual._dimensions, sampleCount, interleavedTiles);
+
+        // SaveImage(
+        //     "pretonemap.tiff",
+        //     image->GetData(), qualitySettings._dimensions, 
+        //     image->GetPitches()._rowPitch, preFilterFormat);
 
         auto postToneMapImage = DoToneMap(
             context, parserContext,
@@ -340,7 +401,7 @@ namespace PlatformRig
             sceneParser.GetToneMapSettings());
 
         SaveImage(
-            "screenshot.tiff",
+            FindOutputFilename().c_str(),
             postToneMapImage->GetData(), qualitySettings._dimensions, 
             postToneMapImage->GetPitches()._rowPitch, postFilterFormat);
     }

@@ -472,6 +472,10 @@ namespace XLEMath
         const float n = nearClipPlane;
         const float f = farClipPlane;
 
+            // Note --  there's a slight awkward thing here... l, t, r and b
+            //          are defined to mean values between -nearClipPlane and +nearClipPlane
+            //          it might seem more logical to define them on the range between -1 and 1...?
+
         Float4x4 result = Identity<Float4x4>();
         result(0,0) =  (2.f * n) / (r-l);
         result(0,2) =  (r+l) / (r-l);
