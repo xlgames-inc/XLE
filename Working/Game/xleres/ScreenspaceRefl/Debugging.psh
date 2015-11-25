@@ -4,19 +4,20 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+Texture2D<float3>	DownSampledNormals 			: register(t6);
+Texture2D<float>	DownSampledDepth			: register(t10);
+
+#include "ReflectionUtility.h"
 #include "../CommonResources.h"
 #include "../TransformAlgorithm.h"
-#include "../TextureAlgorithm.h"
 #include "../Lighting/LightingAlgorithm.h"
 #include "../System/LoadGBuffer.h"
+#include "../TextureAlgorithm.h"
 
-Texture2D_MaybeMS<float>	DepthTexture		: register(t4);
-
+Texture2D_MaybeMS<float>	DepthTexture		: register(t3);
 Texture2D			SkyReflectionTexture[3]		: register(t7);
 
 Texture2D<float>	MaskTexture					: register(t5);
-Texture2D<float3>	DownsampledNormalsTexture	: register(t6);
-Texture2D<float>	DownsampledDepthTexture		: register(t10);
 Texture2D<float4>	ReflectionsTexture			: register(t11);
 
 
@@ -104,13 +105,13 @@ float4 TilesDebugging(	float4 position				: SV_Position,
 				MaskTexture.SampleLevel(DefaultSampler, texCoord * 2.f, 0).xxx, 1.f);
 		} else {
 			return float4(
-				DownsampledNormalsTexture.SampleLevel(DefaultSampler,
+				DownSampledNormals.SampleLevel(DefaultSampler,
 					float2((texCoord.x - 0.5f) * 2.f, texCoord.y * 2.f), 0), 1.f);
 		}
 	} else {
 		if (texCoord.x < 0.5f) {
 			return float4(
-				DownsampledDepthTexture.SampleLevel(DefaultSampler,
+				DownSampledDepth.SampleLevel(DefaultSampler,
 					float2(texCoord.x * 2.f, (texCoord.y - 0.5f) * 2.f), 0).xxx, 1.f);
 		} else {
 			return float4(
@@ -204,13 +205,59 @@ float4 MaskSamplePattern(	float4 position		: SV_Position,
 	return result;
 }
 
+float PtToLineDist(ReflectionRay2 ray, float2 ndcXY)
+{
+	float2 start = ViewToClipSpace(ray.viewStart).xy / ViewToClipSpace(ray.viewStart).w;
+	float2 end   = ViewToClipSpace(ray.viewEnd).xy   / ViewToClipSpace(ray.viewEnd).w;
+
+	float2 v = end - start;
+	float2 w = ndcXY - start;
+
+	float c1 = dot(w,v);
+	float c2 = dot(v,v);
+	float b = c1 / c2;
+
+	float2 Pb = start + saturate(b) * v;
+	return distance(ndcXY, Pb);
+}
+
+float4 RayDebugging(	float4 position		: SV_Position,
+						float2 texCoord		: TEXCOORD0) : SV_Target0
+{
+	uint2 outputDimensions = uint2(position.xy / texCoord.xy);
+
+	uint downSampleValue = 2;
+	outputDimensions /= downSampleValue;
+	position /= downSampleValue;
+	uint2 samplePt = MousePosition / downSampleValue;
+
+	ReflectionRay2 ray = CalculateReflectionRay2(samplePt, outputDimensions, 0);
+
+	float2 ndcXY = float2(
+		-1.f + 2.0f * position.x / float(outputDimensions.x),
+		 1.f - 2.0f * position.y / float(outputDimensions.y));
+
+	for (uint c=0; c<GetTestPtCount(ray); ++c) {
+		float4 clipSpaceTest = ViewToClipSpace(GetTestPt(ray, c));
+		float2 ndcTest = clipSpaceTest.xy / clipSpaceTest.w;
+		if (length(ndcTest - ndcXY) <= (1.f/256.f))
+			return 1.0.xxxx;
+	}
+
+	if (PtToLineDist(ray, ndcXY) <= (1.f/256.f))
+		return float4(1,0,0,1);
+	return 0.0.xxxx;
+}
 
 float4 main(	float4 position		: SV_Position,
 				float2 texCoord		: TEXCOORD0,
 				float3 viewFrustumVector : VIEWFRUSTUMVECTOR) : SV_Target0
 {
 	if ((uint(position.x)%128 == 127) || (uint(position.y)%128) == 127) return float4(1,0,0,1);
-	return TilesDebugging(position, texCoord, viewFrustumVector);
 
+	float4 ray = RayDebugging(position, texCoord);
+	if (ray.a > 0.f) return ray;
+
+	return TilesDebugging(position, texCoord, viewFrustumVector);
 	// return MaskSamplePattern(position, texCoord);
 }

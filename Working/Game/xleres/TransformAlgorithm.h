@@ -149,11 +149,15 @@ MiniProjZW GlobalMiniProjZW()
 
     float NDCDepthToWorldSpace_Perspective(float NDCz, MiniProjZW miniProj)
     {
+            // Note we negate the equation here because view space depths
+            // are actually negative (ie, -Z is into the screen in view space).
+            // For convenience, we want to return a positive value.
 	    return miniProj.W / (NDCz + miniProj.Z);
     }
 
     float WorldSpaceDepthToNDC_Perspective(float worldSpaceDepth, MiniProjZW miniProj)
     {
+            // see note above about negating the equation
 	    return miniProj.W / worldSpaceDepth - miniProj.Z;
     }
 

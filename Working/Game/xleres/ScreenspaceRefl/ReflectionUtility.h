@@ -10,7 +10,7 @@
 #include "../TransformAlgorithm.h"
 
 // #define DEPTH_IN_LINEAR_COORDS
-// #define INTERPOLATE_IN_VIEW_SPACE
+#define INTERPOLATE_IN_VIEW_SPACE
 
 static const float DepthMinThreshold		= 0.f; //0.000001f;
 static const float DepthMaxThreshold		= 1.f; // 0.01f;
@@ -37,9 +37,9 @@ cbuffer ViewProjectionParameters : register(b1)
 float3 CalculateWorldSpacePosition(uint2 samplingPixel, uint2 outputDimensions, uint msaaSampleIndex, out float outputLinearDepth)
 {
     #if defined(DEPTH_IN_LINEAR_COORDS)
-	    float linear0To1Depth = DepthTexture[samplingPixel]; // LoadFloat1(DepthTexture, samplingPixel, msaaSampleIndex);
+	    float linear0To1Depth = DownSampledDepth[samplingPixel];
     #else
-        float linear0To1Depth = NDCDepthToLinear0To1(DepthTexture[samplingPixel]);
+        float linear0To1Depth = NDCDepthToLinear0To1(DownSampledDepth[samplingPixel]);
     #endif
 
  	float2 tc = samplingPixel / float2(outputDimensions);
@@ -57,6 +57,40 @@ float3 CalculateWorldSpacePosition(uint2 samplingPixel, uint2 outputDimensions, 
 	return CalculateWorldPosition(viewFrustumVector, linear0To1Depth, WorldSpaceView);
 }
 
+float3 NDCToView(float4 ndc)
+{
+		// negate here because into the screen is -Z axis
+	float Vz = -NDCDepthToWorldSpace(ndc.z);
+
+		// undo projection -- assuming our projection matrix that
+		// can fit into our "minimal projection" representation. If
+		// there is an offset to XY part of the projection matrix, we
+		// will need to apply that also...
+	float2 projAdj = (ndc.xy * -Vz) / MinimalProjection.xy;
+	return float3(projAdj, Vz);
+}
+
+float4 ViewToClipSpace(float3 viewSpace)
+{
+	return float4(
+		MinimalProjection.x * viewSpace.x,
+		MinimalProjection.y * viewSpace.y,
+		MinimalProjection.z * viewSpace.z + MinimalProjection.w,
+		-viewSpace.z);
+}
+
+float3 CalculateViewSpacePosition(uint2 samplingPixel, uint2 outputDimensions, uint msaaSampleIndex)
+{
+		// Screen coordinates -> view space is cheap if we make some
+		// assumptions about the projection matrix!
+		// undo viewport transform
+	float2 preViewport = float2(
+		-1.f + 2.0f * samplingPixel.x / float(outputDimensions.x),
+		 1.f - 2.0f * samplingPixel.y / float(outputDimensions.y));
+
+	return NDCToView(float4(preViewport, DownSampledDepth[samplingPixel], 1.f));
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 float2 AsTexCoord(float2 ndc) { return float2(.5f + .5f * ndc.x, .5f - .5f * ndc.y); }
@@ -65,10 +99,10 @@ float CalculateDepthDifference(float4 position, float2 outputDimensions)
 {
     float2 tc = AsTexCoord(position.xy / position.w);
     #if defined(DEPTH_IN_LINEAR_COORDS)
-	    float queryLinearDepth	= DepthTexture[uint2(tc.xy*outputDimensions.xy)];
+	    float queryLinearDepth	= DownSampledDepth[uint2(tc.xy*outputDimensions.xy)];
  	    float depthDifference	= NDCDepthToLinear0To1(position.z / position.w) - queryLinearDepth;
     #else
-        float queryDepth = DepthTexture[uint2(tc.xy*outputDimensions.xy)];
+        float queryDepth = DownSampledDepth[uint2(tc.xy*outputDimensions.xy)];
         float depthDifference = (position.z/position.w) - queryDepth;
     #endif
     return depthDifference;
@@ -134,6 +168,98 @@ struct ReflectionRay
     bool valid;
 };
 
+float3 LoadWorldSpaceNormal(uint2 pixelCoord)
+{
+	return DownSampledNormals[pixelCoord.xy].rgb;
+}
+
+float3 LoadViewSpaceNormal(uint2 pixelCoord)
+{
+		// hack -- 	we need a smarter way to get
+		//			access to the view space normals
+	return mul(
+		(float3x3)WorldToView,
+		DownSampledNormals[pixelCoord.xy].rgb);
+}
+
+ReflectionRay ReflectionRay_Invalid()
+{
+	ReflectionRay result;
+	result.projStartPosition = result.projBasicStep = 0.0.xxxx;
+	result.valid = false;
+	return result;
+}
+
+float3 ClipViewSpaceRay(float3 viewStart, float3 viewEnd)
+{
+	float4 clipStart = ViewToClipSpace(viewStart);
+	float4 clipEnd = ViewToClipSpace(viewEnd);
+
+	if (clipEnd.x/clipEnd.w > 1.f) {
+		float l = (clipStart.w - clipStart.x) / ((clipStart.w - clipStart.x) - (clipEnd.w - clipEnd.x));
+		clipEnd = lerp(clipStart, clipEnd, l);
+	}
+
+	if (clipEnd.y/clipEnd.w > 1.f) {
+		float l = (clipStart.w - clipStart.y) / ((clipStart.w - clipStart.y) - (clipEnd.w - clipEnd.y));
+		clipEnd = lerp(clipStart, clipEnd, l);
+	}
+
+	if (clipEnd.x/clipEnd.w < -1.f) {
+		float l = (clipStart.w - -clipStart.x) / ((clipStart.w - -clipStart.x) - (clipEnd.w - -clipEnd.x));
+		clipEnd = lerp(clipStart, clipEnd, l);
+	}
+
+	if (clipEnd.y/clipEnd.w < -1.f) {
+		float l = (clipStart.w - -clipStart.y) / ((clipStart.w - -clipStart.y) - (clipEnd.w - -clipEnd.y));
+		clipEnd = lerp(clipStart, clipEnd, l);
+	}
+
+	return NDCToView(float4(clipEnd.xyz / clipEnd.w, 1.f));
+}
+
+struct ReflectionRay2
+{
+	float3 viewStart;
+	float3 viewEnd;
+	bool valid;
+};
+
+ReflectionRay2 ReflectionRay2_Invalid()
+{
+	ReflectionRay2 result;
+	result.valid = false;
+	return result;
+}
+
+float3 GetTestPt(ReflectionRay2 ray, uint index)
+{
+	return lerp(ray.viewStart, ray.viewEnd, (index+1) / 8.f);
+}
+
+uint GetTestPtCount(ReflectionRay2 ray) { return 8; }
+
+ReflectionRay2 CalculateReflectionRay2(uint2 pixelCoord, uint2 outputDimensions, uint msaaSampleIndex)
+{
+	float3 rayStartView = CalculateViewSpacePosition(pixelCoord.xy, outputDimensions, msaaSampleIndex);
+	float3 viewSpaceNormal = LoadViewSpaceNormal(pixelCoord);
+	if (dot(viewSpaceNormal, viewSpaceNormal) < 0.25f)
+		return ReflectionRay2_Invalid();
+	float3 viewSpaceReflection = viewSpaceNormal; // reflect(rayStartView, viewSpaceNormal);
+	// We want to find the point where the reflection vector intersects the edge of the
+	// view frustum. We can do this just by transforming the ray into NDC coordinates,
+	// and doing a clip against the +-W box.
+	float maxReflectionDistanceWorldSpace = min(10.f, FarClip);
+	float3 rayEndView = rayStartView + maxReflectionDistanceWorldSpace * viewSpaceReflection;
+	rayEndView = ClipViewSpaceRay(rayStartView, rayEndView);
+
+	ReflectionRay2 result;
+	result.valid = true;
+	result.viewStart = rayStartView;
+	result.viewEnd = rayEndView;
+	return result;
+}
+
 ReflectionRay CalculateReflectionRay(uint2 pixelCoord, uint2 outputDimensions, uint msaaSampleIndex)
 {
     float linearDepth;
@@ -141,17 +267,12 @@ ReflectionRay CalculateReflectionRay(uint2 pixelCoord, uint2 outputDimensions, u
         CalculateWorldSpacePosition(
 		    pixelCoord.xy, outputDimensions, msaaSampleIndex, linearDepth);
 
-			// normals are stored in basic floating point format in the downsampled normals
-			// texture (not UNORM format, ala the main normals buffer)
+			// Normals are stored in basic floating point format in the downsampled normals texture
 	float3 worldSpaceNormal			= DownSampledNormals[pixelCoord.xy].rgb;
  	float3 worldSpaceReflection		= reflect(worldSpacePosition - WorldSpaceView, worldSpaceNormal);
 
-    if (dot(worldSpaceNormal, worldSpaceNormal) < 0.25f) {
-        ReflectionRay result;
-        result.projStartPosition = result.projBasicStep = 0.0.xxxx;
-        result.valid = false;
-	    return result;
-    }
+    if (dot(worldSpaceNormal, worldSpaceNormal) < 0.25f)
+		return ReflectionRay_Invalid();
 
 		// todo --	this imaginary distance affects the pixel step rate too much.
 		//			we could get a better imaginary distance by just calculating the distance
@@ -182,10 +303,12 @@ ReflectionRay CalculateReflectionRay(uint2 pixelCoord, uint2 outputDimensions, u
 	    result.projStartPosition = projectedRayStart; // + 2.5f * basicStep;
 	    result.projBasicStep = basicStep;
     #else
-        float4 viewSpaceRayStart = mul(WorldToView, float4(worldSpacePosition, 1.f));
-	    float4 viewSpaceRayEnd	 = mul(WorldToView, float4(worldSpaceRayEnd, 1.f));
-	    float4 viewSpaceDiff	 = viewSpaceRayEnd - viewSpaceRayStart;
-	    float4 basicStep		 = viewSpaceDiff;
+		float3 viewSpaceRayStart = CalculateViewSpacePosition(pixelCoord.xy, outputDimensions, msaaSampleIndex);
+        // float3 viewSpaceRayStart = mul(WorldToView, float4(worldSpacePosition, 1.f)).xyz;
+
+	    float3 viewSpaceRayEnd	 = mul(WorldToView, float4(worldSpaceRayEnd, 1.f)).xyz;
+	    float3 viewSpaceDiff	 = viewSpaceRayEnd - viewSpaceRayStart;
+	    float4 basicStep		 = float4(viewSpaceDiff, 1.f);
 
             // (    because it's view space, we can't really know how many pixels are between these points. We want ideally
             //      we want to step on pixel at a time, but that requires some more math to figure out the number of
@@ -195,7 +318,7 @@ ReflectionRay CalculateReflectionRay(uint2 pixelCoord, uint2 outputDimensions, u
         basicStep = (.1f / length(basicStep.xy)) * basicStep;
         // basicStep = normalize(basicStep) / 1024.f;
 
-	    result.projStartPosition = viewSpaceRayStart;
+	    result.projStartPosition = float4(viewSpaceRayStart, 1);
 	    result.projBasicStep = basicStep;
     #endif
 
@@ -225,11 +348,7 @@ ReflectionRay CalculateReflectionRay(uint2 pixelCoord, uint2 outputDimensions, u
 float4 IteratingPositionToProjSpace(float4 testPosition)
 {
     #if defined(INTERPOLATE_IN_VIEW_SPACE)
-		return float4(
-			ProjScale.x * testPosition.x,
-			ProjScale.y * testPosition.y,
-			ProjScale.z * testPosition.z + ProjZOffset,
-			-testPosition.z);
+		return ViewToClipSpace(testPosition.xyz);
 	#else
 		return testPosition;
 	#endif

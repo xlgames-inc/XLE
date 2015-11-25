@@ -11,8 +11,8 @@
 
 RWTexture2D<float>			ReflectionsMask;
 Texture2D<float4>			DownSampledNormals	: register(t1);
-Texture2D<float>			DepthTexture		: register(t2);
-Texture2D<float>			RandomNoiseTexture	: register(t4);
+Texture2D<float>			DownSampledDepth		: register(t2);
+// Texture2D<float>			RandomNoiseTexture	: register(t4);
 
 #include "ReflectionUtility.h"
 
@@ -85,7 +85,7 @@ void PBI_Opr(inout PBI iterator, float2 exitZW, int2 pixelCapCoord, float2 edgeC
 	#if defined(DEPTH_IN_LINEAR_COORDS)
 		// not implemented
     #else
-        float queryDepth = DepthTexture[pixelCapCoord];
+        float queryDepth = DownSampledDepth[pixelCapCoord];
 	#endif
 	float lastQueryDepth = iterator._lastQueryDepth;
 	iterator._lastQueryDepth = queryDepth;
@@ -203,7 +203,7 @@ bool PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 output
 	#if defined(DEPTH_IN_LINEAR_COORDS)
 		// not implemented
 	#else
-		iterator._lastQueryDepth = DepthTexture[int2(x, y)];
+		iterator._lastQueryDepth = DownSampledDepth[int2(x, y)];
 	#endif
 
 	// We're just going crazy with conditions and looping here!
@@ -303,7 +303,7 @@ bool PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 output
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-groupshared bool	SampleFoundCollision[SamplesPerBlock];
+groupshared bool SampleFoundCollision[SamplesPerBlock];
 
 float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 
@@ -316,7 +316,7 @@ float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 		//
 
 	uint2 outputDimensions;
-	DepthTexture.GetDimensions(outputDimensions.x, outputDimensions.y);
+	DownSampledDepth.GetDimensions(outputDimensions.x, outputDimensions.y);
 
 	const uint msaaSampleIndex = 0;
 	uint rayCastSample = groupIndex;
@@ -328,6 +328,7 @@ float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 		//
 	uint2 sampleOffset = SamplePoint[rayCastSample].xy;
 	// sampleOffset = uint2(BlockDimension.xx * float2(frac(rayCastSample/8.f), frac((rayCastSample/8)/8.f))) + uint2(4,4);
+	// sampleOffset = uint2(0,0);
  	uint2 samplingPixel = dispatchThreadId.xy * BlockDimension.xx + sampleOffset;
 
 	ReflectionRay ray = CalculateReflectionRay(samplingPixel.xy, outputDimensions, msaaSampleIndex);
@@ -335,9 +336,17 @@ float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 	bool foundCollision = false;
 	[branch] if (ray.valid) {
 
-		#if 0
+		int ditherArray[16] =
+		{
+			4, 12,  0,  8,
+			10,  2, 14,  6,
+			15,  7, 11,  3,
+			1,  9,  5, 13
+		};
+		uint2 t = dispatchThreadId.xy & 0x3;
+		float randomizerValue = float(ditherArray[t.x+t.y*4]) / 15.f;
 
-			float randomizerValue = RandomNoiseTexture[dispatchThreadId.xy & 0xff];
+		#if 1
 
 			const float randomScale = lerp(0.5f, 1.5f, randomizerValue);
 			const uint finalStepCount = uint(MaskStepCount * randomScale)+1;
@@ -370,16 +379,6 @@ float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 
 		#else
 
-			int ditherArray[16] =
-			{
-				 4, 12,  0,  8,
-				10,  2, 14,  6,
-				15,  7, 11,  3,
-				 1,  9,  5, 13
-			};
-			uint2 t = dispatchThreadId.xy & 0x3;
-			float randomizerValue = float(ditherArray[t.x+t.y*4]) / 15.f;
-
 			foundCollision = PixelBasedIteration(ray, randomizerValue, float2(outputDimensions));
 
 		#endif
@@ -391,6 +390,8 @@ float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 			//		Wait until every thread in the group has completed the above sample ray test
 
 	GroupMemoryBarrierWithGroupSync();
+	// DeviceMemoryBarrierWithGroupSync();
+	// AllMemoryBarrierWithGroupSync();
 
 		//
 		//		Assuming BlockDimension == SamplesPerBlock
@@ -422,7 +423,7 @@ float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 		const uint2 samplingPixel = dispatchThreadId.xy * BlockDimension.xx + uint2(x, y);
 
 		float maskValue;
-			[branch] if (samplesWithCollisions > 0) {
+		[branch] if (samplesWithCollisions > 0) {
 
 				//	At least one successful collisions means we should consider
 				//	this an active pixel.

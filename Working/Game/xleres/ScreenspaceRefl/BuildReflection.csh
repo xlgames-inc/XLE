@@ -11,7 +11,7 @@
 
 Texture2D_MaybeMS<float4>	GBuffer_Diffuse		: register(t0);
 Texture2D<float4>			DownSampledNormals	: register(t1);
-Texture2D<float>			DepthTexture		: register(t2);
+Texture2D<float>			DownSampledDepth		: register(t2);
 Texture2D<float>			ReflectionsMask		: register(t3);
 Texture2D<float>			RandomNoiseTexture	: register(t4);
 
@@ -234,7 +234,7 @@ void PBI_Opr(inout PBI iterator, float2 exitZW, int2 pixelCapCoord, float2 edgeC
 	#if defined(DEPTH_IN_LINEAR_COORDS)
 		// not implemented
     #else
-        float queryDepth = DepthTexture[pixelCapCoord];
+        float queryDepth = DownSampledDepth[pixelCapCoord];
 	#endif
 	float lastQueryDepth = iterator._lastQueryDepth;
 	iterator._lastQueryDepth = queryDepth;
@@ -375,7 +375,7 @@ float4 PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 outp
 	#if defined(DEPTH_IN_LINEAR_COORDS)
 		// not implemented
 	#else
-		iterator._lastQueryDepth = DepthTexture[int2(x, y)];
+		iterator._lastQueryDepth = DownSampledDepth[int2(x, y)];
 	#endif
 
 	float distance;
@@ -490,7 +490,7 @@ float4 PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 outp
 		// do high resolution ray sample
 	const uint msaaSampleIndex = 0;
 	uint2 outputDimensions;
-	DepthTexture.GetDimensions(outputDimensions.x, outputDimensions.y);
+	DownSampledDepth.GetDimensions(outputDimensions.x, outputDimensions.y);
 
 	float4 result;
 	ReflectionRay ray = CalculateReflectionRay(dispatchThreadId.xy, outputDimensions, msaaSampleIndex);

@@ -66,7 +66,7 @@ namespace SceneEngine
             resolveContext._screenSpaceReflectionsResult = ScreenSpaceReflections_BuildTextures(
                 context, parserContext,
                 unsigned(mainTargets._desc._width), unsigned(mainTargets._desc._height), resolveContext.UseMsaaSamplers(),
-                mainTargets._gbufferRTVsSRV[0], mainTargets._gbufferRTVsSRV[1], mainTargets._gbufferRTVsSRV[1],
+                mainTargets._gbufferRTVsSRV[0], mainTargets._gbufferRTVsSRV[1], mainTargets._gbufferRTVsSRV[2],
                 mainTargets._msaaDepthBufferSRV);
         }
     }
