@@ -7,23 +7,10 @@
 #if !defined(REFLECTION_UTILITY_H)
 #define REFLECTION_UTILITY_H
 
+#include "SSConstants.h"
 #include "../TransformAlgorithm.h"
 
 // #define DEPTH_IN_LINEAR_COORDS
-#define INTERPOLATE_IN_VIEW_SPACE
-
-static const float DepthMinThreshold		= 0.f; //0.000001f;
-static const float DepthMaxThreshold		= 1.f; // 0.01f;
-
-static const uint DetailStepCount			= 12;
-static const uint InitialStepCount			= 16;
-
-static const uint MaskStepCount             = 8;
-static const uint MaskSkipPixels            = 12;
-static const float IteratingPower           = 2.5f;
-static const uint TotalDistanceMaskShader	= MaskStepCount*MaskSkipPixels;
-
-static const uint ReflectionDistancePixels  = 64u;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -131,47 +118,6 @@ bool IsCollision(float ndcDepth, float depthTextureValue)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool WithinClipCube(float4 clipSpacePosition)
-{
-	float3 tc = clipSpacePosition.xyz / clipSpacePosition.w;
-	return max(max(abs(tc.x), abs(tc.y)), 1.f-tc.z) <= 1.f;
-}
-
-void ClipRay(float4 rayStart, inout float4 rayEnd)
-{
-		// clip x direction
-	if ((rayEnd.x / rayEnd.w) < -1.f) {
-		float4 rayVector = rayEnd - rayStart;
-		float alpha = (-rayStart.x - rayStart.w) / (rayVector.x + rayVector.w);
-		rayEnd = rayStart + alpha * rayVector;
-	} else if ((rayEnd.x / rayEnd.w) > 1.f) {
-		float4 rayVector = rayEnd - rayStart;
-		float alpha = (rayStart.x - rayStart.w) / (rayVector.w - rayVector.x);
-		rayEnd = rayStart + alpha * rayVector;
-	}
-
-		// clip y direction
-	if ((rayEnd.y / rayEnd.w) < -1.f) {
-		float4 rayVector = rayEnd - rayStart;
-		float alpha = (-rayStart.y - rayStart.w) / (rayVector.y + rayVector.w);
-		rayEnd = rayStart + alpha * rayVector;
-	} else if ((rayEnd.y / rayEnd.w) > 1.f) {
-		float4 rayVector = rayEnd - rayStart;
-		float alpha = (rayStart.y - rayStart.w) / (rayVector.w - rayVector.y);
-		rayEnd = rayStart + alpha * rayVector;
-	}
-
-		// clip z direction
-	if ((rayEnd.z / rayEnd.w) < 0.f) {
-		float4 rayVector = rayEnd - rayStart;
-		float alpha0 = rayStart.z / -rayVector.z;
-        float alpha1 = rayStart.w / -rayVector.w;
-		rayEnd = rayStart + min(alpha0, alpha1) * rayVector;
-	}
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 struct ReflectionRay
 {
 	float4 projStartPosition;
@@ -251,20 +197,22 @@ ReflectionRay2 ReflectionRay2_Invalid()
 
 bool IsValid(ReflectionRay2 ray) { return ray.valid; }
 
-float3 GetTestPt(ReflectionRay2 ray, uint index, uint stepCount, float randomizerValue)
+float GetStepDistance(uint index, uint stepCount, float randomizerValue)
+{
+	return (index+.5f+.5f*randomizerValue) / float(stepCount);
+}
+
+float3 GetTestPt(ReflectionRay2 ray, float distance)
 {
 		// note that we're returning points that are linear in view space
 		// this might not be as ideal as points that are linear in screen
 		// space... But the difference seems to be minor so long as we're
 		// skipping over pixels each time.
 		// It might be ideal to have more samples close the start...?
-	return lerp(ray.viewStart, ray.viewEnd, (index+.25f+.75f*randomizerValue) / float(stepCount));
+	return lerp(ray.viewStart, ray.viewEnd, distance);
 }
 
-float3 GetTestPtNDC(ReflectionRay2 ray, uint index, uint stepCount, float randomizerValue)
-{
-	return ViewToNDCSpace(GetTestPt(ray, index, stepCount, randomizerValue));
-}
+float3 TestPtAsNDC(float3 pt) { return ViewToNDCSpace(pt); }
 
 ReflectionRay2 CreateRay(float3 viewStart, float3 viewEnd)
 {
@@ -289,102 +237,6 @@ ReflectionRay2 CalculateReflectionRay2(float worldSpaceMaxDist, uint2 pixelCoord
 	float3 rayEndView = rayStartView + worldSpaceMaxDist * reflection;
 	rayEndView = ClipViewSpaceRay(rayStartView, rayEndView);
 	return CreateRay(rayStartView, rayEndView);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-ReflectionRay CalculateReflectionRay(uint2 pixelCoord, uint2 outputDimensions, uint msaaSampleIndex)
-{
-    float linearDepth;
-	float3 worldSpacePosition =
-        CalculateWorldSpacePosition(
-		    pixelCoord.xy, outputDimensions, msaaSampleIndex, linearDepth);
-
-			// Normals are stored in basic floating point format in the downsampled normals texture
-	float3 worldSpaceNormal			= DownSampledNormals[pixelCoord.xy].rgb;
- 	float3 worldSpaceReflection		= reflect(worldSpacePosition - WorldSpaceView, worldSpaceNormal);
-
-    if (dot(worldSpaceNormal, worldSpaceNormal) < 0.25f)
-		return ReflectionRay_Invalid();
-
-		// todo --	this imaginary distance affects the pixel step rate too much.
-		//			we could get a better imaginary distance by just calculating the distance
-		//			to the edge of the screen.
-	const float imaginaryDistance	= .05f;
-	float3 worldSpaceRayEnd			= worldSpacePosition + imaginaryDistance * normalize(worldSpaceReflection);
-    float4 projectedRayStart		= mul(WorldToClip, float4(worldSpacePosition, 1.f));
-
-    ReflectionRay result;
-    #if !defined(INTERPOLATE_IN_VIEW_SPACE)
-	    float4 projectedRayEnd			= mul(WorldToClip, float4(worldSpaceRayEnd, 1.f));
-	    float4 projectedDiff			= projectedRayEnd - projectedRayStart;
-	    float4 basicStep				= projectedDiff;
-
-	    const bool adaptiveLength = true;
-	    if (adaptiveLength) {
-		    float aveW = abs(lerp(projectedRayStart.w, projectedRayEnd.w, 0.5f));	// if w values are similar across ray, we can estimate pixel step size
-		    float2 basicStepScaleXY;
-		    basicStepScaleXY.x = 1.f / abs(projectedDiff.x / aveW * 0.5f * outputDimensions.x);
-		    basicStepScaleXY.y = 1.f / abs(projectedDiff.y / aveW * 0.5f * outputDimensions.y);
-		    // basicStep *= 32.f * max(min(basicStepScaleXY.x, basicStepScaleXY.y), 1.0f/(512.f*512.f));
-            // basicStep *= 32.f * min(basicStepScaleXY.x, basicStepScaleXY.y);
-            basicStep *= min(basicStepScaleXY.x, basicStepScaleXY.y);
-	    } else {
-		    basicStep = (.01f / length(basicStep.xy)) * basicStep;
-	    }
-
-	    result.projStartPosition = projectedRayStart; // + 2.5f * basicStep;
-	    result.projBasicStep = basicStep;
-    #else
-		float3 viewSpaceRayStart = CalculateViewSpacePosition(pixelCoord.xy, outputDimensions, msaaSampleIndex);
-        // float3 viewSpaceRayStart = mul(WorldToView, float4(worldSpacePosition, 1.f)).xyz;
-
-	    float3 viewSpaceRayEnd	 = mul(WorldToView, float4(worldSpaceRayEnd, 1.f)).xyz;
-	    float3 viewSpaceDiff	 = viewSpaceRayEnd - viewSpaceRayStart;
-	    float4 basicStep		 = float4(viewSpaceDiff, 1.f);
-
-            // (    because it's view space, we can't really know how many pixels are between these points. We want ideally
-            //      we want to step on pixel at a time, but that requires some more math to figure out the number of
-            //      pixels between start and end, and the calculate the location of each pixel)
-		// basicStep /= 256.f;
-        // basicStep = (.01f / length(basicStep.xy)) * basicStep;
-        basicStep = (.1f / length(basicStep.xy)) * basicStep;
-        // basicStep = normalize(basicStep) / 1024.f;
-
-	    result.projStartPosition = float4(viewSpaceRayStart, 1);
-	    result.projBasicStep = basicStep;
-    #endif
-
-        //      Any straight line in world space should become a straight line in projected space
-        //      (assuming the line is entirely within the view frustum). So, if we find 2 points
-        //      on this ray (that are within the view frustum) and project them, we should be able
-        //      to calculate the gradient of the line in projected space.
-        //      The start point must be within the view frustum, because we're starting from a pixel
-        //      on the screen.
-
-    {
-        float3 imaginaryEnd = worldSpacePosition + 1.f * normalize(worldSpaceReflection);
-	    float4 projectedRayEnd	 = mul(WorldToClip, float4(imaginaryEnd, 1.f));
-        ClipRay(projectedRayStart, projectedRayEnd);    // (make sure we haven't exited the view frustum)
-        result.screenSpaceRayDirection = normalize(
-            (projectedRayEnd.xy / projectedRayEnd.w) - (projectedRayStart.xy / projectedRayStart.w));
-
-        // result.projStartPosition.z += 0.01f;
-    }
-
-    result.valid = linearDepth != 1.f; // linearDepth < 0.995f;        // we get strange results with unfilled areas of the depth buffer. So, if depth is too far, it's invalid
-    result.worldSpaceReflection = worldSpaceReflection;
-
-	return result;
-}
-
-float4 IteratingPositionToClipSpace(float4 testPosition)
-{
-    #if defined(INTERPOLATE_IN_VIEW_SPACE)
-		return ViewToClipSpace(testPosition.xyz);
-	#else
-		return testPosition;
-	#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////

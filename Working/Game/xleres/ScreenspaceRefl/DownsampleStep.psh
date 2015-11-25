@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "SSConstants.h"
 #include "../TransformAlgorithm.h"
 #include "../TextureAlgorithm.h"
 #include "../gbuffer.h"
@@ -47,7 +48,7 @@ float SampleDepth(uint2 position, uint sampleIndex)
 
 float ApproxF0(GBufferValues sample)
 {
-	if (sample.material.roughness > .25f) return 0.f;
+	if (sample.material.roughness > RoughnessThreshold) return 0.f;
 	float metalF0 = 0.33f * (sample.diffuseAlbedo.r + sample.diffuseAlbedo.g + sample.diffuseAlbedo.b);
 	return lerp(Material_GetF0_0(sample), metalF0, Material_GetMetal(sample));
 }
@@ -81,9 +82,9 @@ void main(
 	float3 normal2 = sample2.worldSpaceNormal;
 	float3 normal3 = sample3.worldSpaceNormal;
 
-	if (	dot(normal0, normal1) <  0.5f
-		||	dot(normal0, normal2) <  0.5f
-		||	dot(normal0, normal3) <  0.5f) {
+	if (	dot(normal0, normal1) <  NormalDiscontinuityThreshold
+		||	dot(normal0, normal2) <  NormalDiscontinuityThreshold
+		||	dot(normal0, normal3) <  NormalDiscontinuityThreshold) {
 		outputNormal.xyz = 0.0.xxx;
 	} else {
 		outputNormal.xyz = normalize(normal0+normal1+normal2+normal3);
@@ -110,9 +111,9 @@ void main(
 	float3 normal2 = sample2.worldSpaceNormal;
 	float3 normal3 = sample3.worldSpaceNormal;
 
-	if (	dot(normal0, normal1) <  0.5f
-		||	dot(normal0, normal2) <  0.5f
-		||	dot(normal0, normal3) <  0.5f) {
+	if (	dot(normal0, normal1) <  NormalDiscontinuityThreshold
+		||	dot(normal0, normal2) <  NormalDiscontinuityThreshold
+		||	dot(normal0, normal3) <  NormalDiscontinuityThreshold) {
 		outputNormal.xyz = 0.0.xxx;
 	} else {
 		outputNormal.xyz = normalize(normal0+normal1+normal2+normal3);

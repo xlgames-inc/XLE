@@ -35,6 +35,7 @@ namespace RenderCore { namespace Techniques
         _cullDisable = CullMode::None;
         _cullReverse = RasterizerState(CullMode::Back, false);
 
+        _linearClampSampler = SamplerState(FilterMode::Trilinear, AddressMode::Wrap, AddressMode::Wrap);
         _linearClampSampler = SamplerState(FilterMode::Trilinear, AddressMode::Clamp, AddressMode::Clamp);
         _pointClampSampler = SamplerState(FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp);
 

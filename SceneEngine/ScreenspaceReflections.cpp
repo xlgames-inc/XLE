@@ -81,9 +81,9 @@ namespace SceneEngine
         ScreenSpaceReflectionsResources(const ScreenSpaceReflectionsResources&) = delete;
         ScreenSpaceReflectionsResources& operator=(const ScreenSpaceReflectionsResources&) = delete;
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+        const ::Assets::DepValPtr& GetDependencyValidation() const   { return _depVal; }
     private:
-        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
+        ::Assets::DepValPtr  _depVal;
     };
 
     ScreenSpaceReflectionsResources::ScreenSpaceReflectionsResources(const Desc& desc)
@@ -93,7 +93,7 @@ namespace SceneEngine
     
             ////////////
         _mask = GestaltTypes::UAVSRV(
-            TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R8_UNORM),
+            TextureDesc::Plain2D(desc._width, desc._height, Metal::NativeFormat::R8G8_UNORM),
             "SSReflMask");
 
         _reflections = GestaltTypes::RTVUAVSRV(
@@ -241,12 +241,12 @@ namespace SceneEngine
             definesBuffer.get());
 
             ////////////
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(_validationCallback, _buildMask->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, _buildReflections->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, _downsampleTargets->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, _horizontalBlur->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, _verticalBlur->GetDependencyValidation());
+        _depVal = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterAssetDependency(_depVal, _buildMask->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_depVal, _buildReflections->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_depVal, _downsampleTargets->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_depVal, _horizontalBlur->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_depVal, _verticalBlur->GetDependencyValidation());
     }
 
     ScreenSpaceReflectionsResources::~ScreenSpaceReflectionsResources() {}
@@ -295,8 +295,9 @@ namespace SceneEngine
               ProtectState::States::RenderTargets | ProtectState::States::Viewports
             | ProtectState::States::BlendState | ProtectState::States::RasterizerState);
 
-        context->Bind(Techniques::CommonResources()._blendOpaque);
-        context->Bind(Techniques::CommonResources()._cullDisable);
+        auto& commonResources = Techniques::CommonResources();
+        context->Bind(commonResources._blendOpaque);
+        context->Bind(commonResources._cullDisable);
         Metal::ViewportDesc newViewport(0, 0, float(cfg._width), float(cfg._height), 0.f, 1.f);
         context->Bind(newViewport);
 
@@ -323,12 +324,9 @@ namespace SceneEngine
             //
         context->Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
         context->BindCS(MakeResourceList(gbufferDiffuse, res._downsampledNormals.SRV(), res._downsampledDepth.SRV()));
-        // context->BindCS(MakeResourceList(4, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
         context->BindCS(MakeResourceList(res._mask.UAV()));
         context->BindCS(MakeResourceList(parserContext.GetGlobalTransformCB(), Metal::ConstantBuffer(&viewProjParam, sizeof(viewProjParam)), res._samplingPatternConstants, parserContext.GetGlobalStateCB()));
-        context->BindCS(MakeResourceList(
-            Metal::SamplerState(Metal::FilterMode::Trilinear, Metal::AddressMode::Wrap, Metal::AddressMode::Wrap, Metal::AddressMode::Wrap),
-            Metal::SamplerState(Metal::FilterMode::Trilinear, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp, Metal::AddressMode::Clamp)));
+        context->BindCS(MakeResourceList(commonResources._linearWrapSampler, commonResources._linearClampSampler));
         context->Bind(*res._buildMask);
         context->Dispatch((cfg._width + (64-1))/64, (cfg._height + (64-1))/64);
 

@@ -4,12 +4,13 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "SSConstants.h"
 #include "../TransformAlgorithm.h"
 #include "../TextureAlgorithm.h"
 #include "../gbuffer.h"
 #include "../Lighting/LightingAlgorithm.h"
 
-RWTexture2D<float>			ReflectionsMask;
+RWTexture2D<float2>			ReflectionsMask;
 Texture2D<float4>			DownSampledNormals	: register(t1);
 Texture2D<float>			DownSampledDepth	: register(t2);
 
@@ -32,7 +33,8 @@ bool LookForCollision(ReflectionRay2 ray, uint stepCount, uint2 outputDimensions
 {
 	bool result = false;
 	[unroll] for (uint c=0; c<stepCount; ++c) {
-		float3 ndc = GetTestPtNDC(ray, c, stepCount, randomizerValue);
+		float d = GetStepDistance(c, stepCount, randomizerValue);
+		float3 ndc = TestPtAsNDC(GetTestPt(ray, d));
 		result = result|IsCollision(ndc.z, LoadDepth(ndc.xy, outputDimensions));
 	}
 	return result;
@@ -47,43 +49,6 @@ bool LookForCollision_Ref(ReflectionRay2 ray, uint2 outputDimensions, float rand
 	return PixelBasedIteration(
 		ViewToClipSpace(ray.viewStart), ViewToClipSpace(ray.viewEnd),
 		float2(outputDimensions), settings)._gotIntersection;
-}
-
-bool LookForCollision(ReflectionRay ray, uint2 outputDimensions, float randomizerValue)
-{
-	// old code -- now replaced
-	const float randomScale = lerp(0.5f, 1.5f, randomizerValue);
-	const uint finalStepCount = uint(MaskStepCount * randomScale)+1;
-	float4 stepVector = ray.projBasicStep * MaskSkipPixels / randomScale;
-
-	const bool preClipRay = false;	// not working correctly
-	if (preClipRay) {
-		float4 rayEnd = ray.projStartPosition + stepVector * finalStepCount;
-		ClipRay(ray.projStartPosition, rayEnd);
-		stepVector = (rayEnd - ray.projStartPosition) / float(finalStepCount);
-	}
-
-	float4 iteratingPosition = ray.projStartPosition;
-	[loop] for (uint step=0; step<finalStepCount; ++step) {
-		// iteratingPosition	   += stepVector;
-		iteratingPosition
-			=	ray.projStartPosition
-				+ stepVector * (pow((step+1) / float(finalStepCount), IteratingPower) * float(finalStepCount))
-				;
-
-		float4 clipSpace = IteratingPositionToClipSpace(iteratingPosition);
-
-		if (!preClipRay && !WithinClipCube(clipSpace)) {
-			break;
-		} else if (IsCollision(
-			clipSpace.z/clipSpace.w,
-			LoadDepth(clipSpace.xy/clipSpace.w, outputDimensions))) {
-
-			return true;
-		}
-	}
-
-	return false;
 }
 
 uint IterationOperator(int2 pixelCapCoord, float entryNDCDepth, float exitNDCDepth, inout float ilastQueryDepth)
@@ -164,21 +129,16 @@ float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 		// Iteration:
 		//   0: new code
 		//   1: reference high resolution iteration
-		//   2: old code
 	const uint iterationMethod = 0;
-	const float worldSpaceMaxDist = min(5.f, FarClip);
+	const float worldSpaceMaxDist = min(MaxReflectionDistanceWorld, FarClip);
 	if (iterationMethod == 0) {
 		ReflectionRay2 ray = CalculateReflectionRay2(worldSpaceMaxDist, samplingPixel.xy, outputDimensions, msaaSampleIndex);
 		[branch] if (ray.valid)
-			foundCollision = LookForCollision(ray, 8, outputDimensions, GetRandomizerValue(dispatchThreadId.xy));
+			foundCollision = LookForCollision(ray, MaskTestsPerRay, outputDimensions, GetRandomizerValue(dispatchThreadId.xy));
 	} else if (iterationMethod == 1) {
 		ReflectionRay2 ray = CalculateReflectionRay2(worldSpaceMaxDist, samplingPixel.xy, outputDimensions, msaaSampleIndex);
 		[branch] if (ray.valid)
 			foundCollision = LookForCollision_Ref(ray, outputDimensions, GetRandomizerValue(dispatchThreadId.xy));
-	} else {
-		ReflectionRay ray = CalculateReflectionRay(samplingPixel.xy, outputDimensions, msaaSampleIndex);
-		[branch] if (ray.valid)
-			foundCollision = LookForCollision(ray, outputDimensions, GetRandomizerValue(dispatchThreadId.xy));
 	}
 
 	SampleFoundCollision[rayCastSample] = foundCollision;
@@ -217,7 +177,7 @@ float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 
 		const uint2 samplingPixel = dispatchThreadId.xy * BlockDimension.xx + uint2(x, y);
 
-		float maskValue;
+		float2 maskValue;
 		[branch] if (samplesWithCollisions > 0) {
 
 				//	At least one successful collisions means we should consider
@@ -231,8 +191,8 @@ float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 
 			float3 worldSpaceNormal = DownSampledNormals[samplingPixel].rgb;
 			float F0 = DownSampledNormals[samplingPixel].a;
-			if (dot(worldSpaceNormal, worldSpaceNormal) < 0.25f || F0 < 0.05f) {
-				maskValue = 0.f;	// invalid edge pixels have normals with tiny magnitudes
+			if (dot(worldSpaceNormal, worldSpaceNormal) < 0.25f || F0 < F0Threshold) {
+				maskValue = 0.0.xx;	// invalid edge pixels have normals with tiny magnitudes
 			} else {
 				// We're just going to do a quick estimate of the fresnel term by
 				// using the angle between the view direction and the normal. This is
@@ -244,10 +204,10 @@ float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 				float NdotV = dot(viewDirection, worldSpaceNormal) * ReciprocalLength(viewDirection); // (correct so long as worldSpaceNormal is unit length)
 				float q = SchlickFresnelCore(saturate(NdotV));
 				float F = F0 + (1.f - F0) * q;
-				maskValue = F * maskFromCollision;
+				maskValue = float2(maskFromCollision, F);
 			}
 		} else {
-			maskValue = 0.f;
+			maskValue = 0.0.xx;
 		}
 
 		ReflectionsMask[samplingPixel] = maskValue;

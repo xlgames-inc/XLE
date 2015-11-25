@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "SSConstants.h"
 #include "../TransformAlgorithm.h"
 #include "../TextureAlgorithm.h"
 #include "../CommonResources.h"
@@ -11,8 +12,8 @@
 
 Texture2D_MaybeMS<float4>	GBuffer_Diffuse		: register(t0);
 Texture2D<float4>			DownSampledNormals	: register(t1);
-Texture2D<float>			DownSampledDepth		: register(t2);
-Texture2D<float>			ReflectionsMask		: register(t3);
+Texture2D<float>			DownSampledDepth	: register(t2);
+Texture2D<float2>			ReflectionsMask		: register(t3);
 Texture2D<float>			RandomNoiseTexture	: register(t4);
 
 #include "ReflectionUtility.h"
@@ -20,7 +21,7 @@ Texture2D<float>			RandomNoiseTexture	: register(t4);
 
 RWTexture2D<float4>			OutputTexture;
 
-static const float4 EmptyPixel = float4(.25.xxx, 0);
+static const float4 EmptyPixel = 0.0.xxxx;
 
 // #define DEBUG_STEP_COUNT
 
@@ -70,15 +71,18 @@ float4 BuildResult(float distance, float2 texCoord, bool isGoodIntersection, uin
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool DetailStep(
-	out float4 result, ReflectionRay2 ray, uint stepCount,
-	float2 outputDimensions, uint msaaSampleIndex)
+	out float resultDistance, out float2 resultTC, out bool resultIsGoodIntersection,
+	ReflectionRay2 ray, uint stepCount,
+	float2 outputDimensions)
 {
 	for (uint step=0; step<stepCount; ++step) {
-		float3 viewPt = GetTestPt(ray, step, stepCount, 1.f);
-		float3 testPtNDC = ViewToNDCSpace(viewPt);
+		float d = GetStepDistance(step, stepCount, 1.f);
+		float3 testPtNDC = TestPtAsNDC(GetTestPt(ray, d));
 		float testDepth = LoadDepth(testPtNDC.xy, outputDimensions);
 		[branch] if (IsCollision(testPtNDC.z, testDepth)) {
-			result = BuildResult(.5f, AsZeroToOne(testPtNDC.xy), (testDepth - testPtNDC.z) < DepthMaxThreshold, msaaSampleIndex);
+			resultDistance = d;
+			resultTC = AsZeroToOne(testPtNDC.xy);
+			resultIsGoodIntersection = (testDepth - testPtNDC.z) < DepthMaxThreshold;
 			return true;
 		}
 	}
@@ -98,129 +102,27 @@ bool MultiResolutionStep(
 {
 	float3 lastPt = ray.viewStart;
 	for (uint step=0; step<settings.initialStepCount; ++step) {
-		float3 viewPt = GetTestPt(ray, step, settings.initialStepCount, randomizerValue);
-		float3 testPtNDC = ViewToNDCSpace(viewPt);
+		float d = GetStepDistance(step, settings.initialStepCount, randomizerValue);
+		float3 rayPt = GetTestPt(ray, d);
+		float3 testPtNDC = TestPtAsNDC(rayPt);
 		float testDepth = LoadDepth(testPtNDC.xy, outputDimensions);
 		[branch] if (IsCollision(testPtNDC.z, testDepth)) {
-			ReflectionRay2 detailRay = CreateRay(lastPt, viewPt);
-			if (!DetailStep(result, detailRay, settings.detailStepCount, outputDimensions, msaaSampleIndex))
-				result = BuildResult(.5f, AsZeroToOne(testPtNDC.xy), (testDepth - testPtNDC.z) < DepthMaxThreshold, msaaSampleIndex);
-			return result;
+			ReflectionRay2 detailRay = CreateRay(lastPt, rayPt);
+			float resultDistance; float2 resultTC; bool resultIsGoodIntersection;
+			if (DetailStep(resultDistance, resultTC, resultIsGoodIntersection, detailRay, settings.detailStepCount, outputDimensions)) {
+				resultDistance = lerp(GetStepDistance(step-1, settings.initialStepCount, randomizerValue), d, resultDistance);
+			} else {
+				resultDistance = d;
+				resultTC = AsZeroToOne(testPtNDC.xy);
+				resultIsGoodIntersection = (testDepth - testPtNDC.z) < DepthMaxThreshold;
+			}
+			result = BuildResult(resultDistance, resultTC, resultIsGoodIntersection, msaaSampleIndex);
+			return true;
 		}
-		lastPt = viewPt;
+		lastPt = rayPt;
 	}
 
 	return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//		iteration in projection space or view space						//
-
-float4 DetailedStep(float4 start, float4 end,
-					float startDistance, float endDistance,
-					float finalDepthDifference,
-					float2 outputDimensions, uint msaaSampleIndex)
-{
-	float4 stepVector = (end-start) * (1.f/float(DetailStepCount+1));
-	float4 iPosition = start;
-	for (uint step=0; step<DetailStepCount; ++step) {
-		iPosition += stepVector;
-
-		float4 clipSpace = IteratingPositionToClipSpace(iPosition);
-		float depthTextureValue = LoadDepth(clipSpace.xy/clipSpace.w, outputDimensions);
-		float depthDifference = DepthDifference(clipSpace.z/clipSpace.w, depthTextureValue);
-		if (depthDifference > DepthMinThreshold) {
-			#if defined(DEBUG_STEP_COUNT)
-				return float4((step / float(DetailStepCount)).xxx, 1);
-			#endif
-			float distance = lerp(startDistance, endDistance, step/float(DetailStepCount));
-			float2 texCoord = AsZeroToOne(clipSpace.xy/clipSpace.w);
-			return BuildResult(distance, texCoord, depthDifference < DepthMaxThreshold, msaaSampleIndex);
-		}
-	}
-
-	float4 endClipSpace = IteratingPositionToClipSpace(end);
-
-		//	If we didn't hit it previously... we must hit at the "end" point
-	float2 texCoord = AsZeroToOne(endClipSpace.xy/endClipSpace.w);
-	return BuildResult(endDistance, texCoord, finalDepthDifference < DepthMaxThreshold, msaaSampleIndex);
-}
-
-float4 FinalDetailedStep(	float4 start, float4 end,
-							float startDistance, float endDistance,
-							float2 outputDimensions, uint msaaSampleIndex)
-{
-	float4 stepVector = (end-start) * (1.f/float(DetailStepCount+1));
-	float4 iPosition = start;
-	[loop] for (uint step=0; step<DetailStepCount; ++step) {
-		iPosition += stepVector;
-
-		float4 clipSpace = IteratingPositionToClipSpace(iPosition);
-		if (!WithinClipCube(clipSpace)) {
-			break;
-		}
-
-		float depthTextureValue = LoadDepth(clipSpace.xy/clipSpace.w, outputDimensions);
-		float depthDifference = DepthDifference(clipSpace.z/clipSpace.w, depthTextureValue);
-		if (depthDifference > DepthMinThreshold) {
-			#if defined(DEBUG_STEP_COUNT)
-				return float4((step / float(DetailStepCount)).xxx, 1);
-			#endif
-			float distance = lerp(startDistance, endDistance, step/float(DetailStepCount));
-			float2 texCoord = AsZeroToOne(clipSpace.xy/clipSpace.w);
-			return BuildResult(distance, texCoord, depthDifference < DepthMaxThreshold, msaaSampleIndex);
-		}
-	}
-
-		// in this case, reaching the end means there is no intersection
-	return EmptyPixel;
-}
-
-float4 MultiResolutionStep(float4 startPosition, float4 basicStepSize, float randomizerValue, float2 outputDimensions, uint msaaSampleIndex)
-{
-	const float skipPixels	= TotalDistanceMaskShader/float(InitialStepCount);
-	float4 iPosition = startPosition;
-
-	const bool doSimpleTest = false;
-	if (doSimpleTest) {
-		return FinalDetailedStep(
-			startPosition, startPosition + skipPixels * InitialStepCount * basicStepSize,
-			0.f, 1.f,
-			outputDimensions, msaaSampleIndex);
-	}
-
-	const float randomScale = lerp(0.75f, 1.f, randomizerValue);
-	const uint finalStepCount = uint(InitialStepCount * randomScale);
-	const float distanceValueScale = randomScale;
-	float4 stepVector = basicStepSize * skipPixels * randomScale;
-	float iDistance = 0.f;
-
-	[loop] for (uint step=0; step<finalStepCount; ++step) {
-
- 		float4 testStart = iPosition;
-		float distanceStart = iDistance;
-		iDistance = pow((step+1) / float(finalStepCount), IteratingPower);
-		iPosition = startPosition + stepVector * (iDistance * float(finalStepCount));
-
-		float4 clipSpace = IteratingPositionToClipSpace(iPosition);
-
-			//	check to see if we've gone out of the clip cube
-		if (!WithinClipCube(clipSpace)) {
-			return FinalDetailedStep(testStart, iPosition, distanceStart * distanceValueScale, iDistance * distanceValueScale, outputDimensions, msaaSampleIndex);
-		} else {
-			float depthTextureValue = LoadDepth(clipSpace.xy/clipSpace.w, outputDimensions);
-			float depthDifference = DepthDifference(clipSpace.z/clipSpace.w, depthTextureValue);
-			if (depthDifference > DepthMinThreshold) {
-				return DetailedStep(
-					testStart, iPosition,
-					distanceStart * distanceValueScale, iDistance * distanceValueScale,
-					depthDifference,
-					outputDimensions, msaaSampleIndex);
-			}
-		}
- 	}
-
-	return EmptyPixel;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -286,8 +188,8 @@ float4 MakeResult(PBI iterator, uint2 outputDimensions)
 [numthreads(16, 16, 1)]
 	void BuildReflection(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
-	float maskValue = ReflectionsMask[dispatchThreadId.xy];
-	[branch] if (maskValue == 0.f) {
+	float2 maskValue = ReflectionsMask[dispatchThreadId.xy];
+	[branch] if ((maskValue.x * maskValue.y) == 0.f) {
 		OutputTexture[dispatchThreadId.xy] = 0.0.xxxx;
 		return;
 	}
@@ -307,15 +209,14 @@ float4 MakeResult(PBI iterator, uint2 outputDimensions)
 		// Iteration:
 		//   0: new code
 		//   1: reference high resolution iteration
-		//   2: old code
 	const uint stepMethod = 0;
-	const float worldSpaceMaxDist = min(5.f, FarClip);
+	const float worldSpaceMaxDist = min(MaxReflectionDistanceWorld, FarClip);
 	if (stepMethod == 0) {
 		ReflectionRay2 ray = CalculateReflectionRay2(worldSpaceMaxDist, dispatchThreadId.xy, outputDimensions, msaaSampleIndex);
 		if (ray.valid) {
 			MRStepSettings settings;
-			settings.initialStepCount = 6;
-			settings.detailStepCount = 6;
+			settings.initialStepCount = ReflectionInitialTestsPerRay;
+			settings.detailStepCount = ReflectionDetailTestsPerRay;
 			MultiResolutionStep(
 				result, ray, settings,
 				randomizerValue, outputDimensions, msaaSampleIndex);
@@ -331,18 +232,16 @@ float4 MakeResult(PBI iterator, uint2 outputDimensions)
 				float2(outputDimensions), settings);
 			result = MakeResult(i, outputDimensions);
 		}
-	} else if (stepMethod == 2) {
-		ReflectionRay ray = CalculateReflectionRay(dispatchThreadId.xy, outputDimensions, msaaSampleIndex);
-		if (ray.valid) {
-			result = MultiResolutionStep(
-				ray.projStartPosition, ray.projBasicStep,
-				randomizerValue, float2(outputDimensions), msaaSampleIndex);
-		}
 	}
 
-	// result.rgb = 16.f * ray.basicStep.rgb;
-	// result.a *= maskValue;		// we need this to pick up the fresnel calculation made in BuildMask.csh
+	// We can multiply in our "confidence" value from the mask here...
+	// This helps to fade off the edges of the reflection area a bit.
+	float confidenceFromMask = maskValue.x;
+	#if INTERPOLATE_SAMPLES != 0
+		result.b *= confidenceFromMask;
+	#else
+		result.a *= confidenceFromMask;
+	#endif
 
 	OutputTexture[dispatchThreadId.xy] = result;
-	// OutputTexture[dispatchThreadId.xy] = float4(maskValue.xxx, 1.f);
 }
