@@ -68,6 +68,52 @@ float4 BuildResult(float distance, float2 texCoord, bool isGoodIntersection, uin
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool DetailStep(
+	out float4 result, ReflectionRay2 ray, uint stepCount,
+	float2 outputDimensions, uint msaaSampleIndex)
+{
+	for (uint step=0; step<stepCount; ++step) {
+		float3 viewPt = GetTestPt(ray, step, stepCount, 1.f);
+		float3 testPtNDC = ViewToNDCSpace(viewPt);
+		float testDepth = LoadDepth(testPtNDC.xy, outputDimensions);
+		[branch] if (IsCollision(testPtNDC.z, testDepth)) {
+			result = BuildResult(.5f, AsZeroToOne(testPtNDC.xy), (testDepth - testPtNDC.z) < DepthMaxThreshold, msaaSampleIndex);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+struct MRStepSettings
+{
+	uint initialStepCount;
+	uint detailStepCount;
+};
+
+bool MultiResolutionStep(
+	out float4 result, ReflectionRay2 ray, MRStepSettings settings,
+	float randomizerValue, float2 outputDimensions, uint msaaSampleIndex)
+{
+	float3 lastPt = ray.viewStart;
+	for (uint step=0; step<settings.initialStepCount; ++step) {
+		float3 viewPt = GetTestPt(ray, step, settings.initialStepCount, randomizerValue);
+		float3 testPtNDC = ViewToNDCSpace(viewPt);
+		float testDepth = LoadDepth(testPtNDC.xy, outputDimensions);
+		[branch] if (IsCollision(testPtNDC.z, testDepth)) {
+			ReflectionRay2 detailRay = CreateRay(lastPt, viewPt);
+			if (!DetailStep(result, detailRay, settings.detailStepCount, outputDimensions, msaaSampleIndex))
+				result = BuildResult(.5f, AsZeroToOne(testPtNDC.xy), (testDepth - testPtNDC.z) < DepthMaxThreshold, msaaSampleIndex);
+			return result;
+		}
+		lastPt = viewPt;
+	}
+
+	return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//		iteration in projection space or view space						//
 
 float4 DetailedStep(float4 start, float4 end,
@@ -241,7 +287,7 @@ float4 MakeResult(PBI iterator, uint2 outputDimensions)
 	void BuildReflection(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
 	float maskValue = ReflectionsMask[dispatchThreadId.xy];
-	[branch] if (maskValue < 0.01f) {
+	[branch] if (maskValue == 0.f) {
 		OutputTexture[dispatchThreadId.xy] = 0.0.xxxx;
 		return;
 	}
@@ -262,10 +308,18 @@ float4 MakeResult(PBI iterator, uint2 outputDimensions)
 		//   0: new code
 		//   1: reference high resolution iteration
 		//   2: old code
-	const uint stepMethod = 1;
+	const uint stepMethod = 0;
 	const float worldSpaceMaxDist = min(5.f, FarClip);
 	if (stepMethod == 0) {
-
+		ReflectionRay2 ray = CalculateReflectionRay2(worldSpaceMaxDist, dispatchThreadId.xy, outputDimensions, msaaSampleIndex);
+		if (ray.valid) {
+			MRStepSettings settings;
+			settings.initialStepCount = 6;
+			settings.detailStepCount = 6;
+			MultiResolutionStep(
+				result, ray, settings,
+				randomizerValue, outputDimensions, msaaSampleIndex);
+		}
 	} else if (stepMethod == 1) {
 		ReflectionRay2 ray = CalculateReflectionRay2(worldSpaceMaxDist, dispatchThreadId.xy, outputDimensions, msaaSampleIndex);
 		if (ray.valid) {

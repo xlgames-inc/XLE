@@ -57,7 +57,7 @@ float3 CalculateWorldSpacePosition(uint2 samplingPixel, uint2 outputDimensions, 
 	return CalculateWorldPosition(viewFrustumVector, linear0To1Depth, WorldSpaceView);
 }
 
-float3 NDCToViewSpace(float4 ndc)
+float3 NDCToViewSpace(float3 ndc)
 {
 		// negate here because into the screen is -Z axis
 	float Vz = -NDCDepthToWorldSpace(ndc.z);
@@ -102,7 +102,7 @@ float3 CalculateViewSpacePosition(uint2 samplingPixel, uint2 outputDimensions, u
 		-1.f + 2.0f * samplingPixel.x / float(outputDimensions.x),
 		 1.f - 2.0f * samplingPixel.y / float(outputDimensions.y));
 
-	return NDCToViewSpace(float4(preViewport, DownSampledDepth[samplingPixel], 1.f));
+	return NDCToViewSpace(float3(preViewport, DownSampledDepth[samplingPixel]));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -266,6 +266,15 @@ float3 GetTestPtNDC(ReflectionRay2 ray, uint index, uint stepCount, float random
 	return ViewToNDCSpace(GetTestPt(ray, index, stepCount, randomizerValue));
 }
 
+ReflectionRay2 CreateRay(float3 viewStart, float3 viewEnd)
+{
+	ReflectionRay2 result;
+	result.valid = true;
+	result.viewStart = viewStart;
+	result.viewEnd = viewEnd;
+	return result;
+}
+
 ReflectionRay2 CalculateReflectionRay2(float worldSpaceMaxDist, uint2 pixelCoord, uint2 outputDimensions, uint msaaSampleIndex)
 {
 	float3 rayStartView = CalculateViewSpacePosition(pixelCoord.xy, outputDimensions, msaaSampleIndex);
@@ -279,12 +288,7 @@ ReflectionRay2 CalculateReflectionRay2(float worldSpaceMaxDist, uint2 pixelCoord
 		// and doing a clip against the +-W box.
 	float3 rayEndView = rayStartView + worldSpaceMaxDist * reflection;
 	rayEndView = ClipViewSpaceRay(rayStartView, rayEndView);
-
-	ReflectionRay2 result;
-	result.valid = true;
-	result.viewStart = rayStartView;
-	result.viewEnd = rayEndView;
-	return result;
+	return CreateRay(rayStartView, rayEndView);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
