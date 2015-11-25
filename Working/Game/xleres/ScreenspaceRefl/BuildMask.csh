@@ -303,6 +303,65 @@ bool PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 output
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
+float GetRandomizerValue(uint2 dispatchThreadId)
+{
+	int ditherArray[16] =
+	{
+		4, 12,  0,  8,
+		10,  2, 14,  6,
+		15,  7, 11,  3,
+		1,  9,  5, 13
+	};
+	uint2 t = dispatchThreadId.xy & 0x3;
+	return float(ditherArray[t.x+t.y*4]) / 15.f;
+}
+
+bool LookForCollision(ReflectionRay ray, uint2 outputDimensions, float randomizerValue)
+{
+	#if 1
+
+		const float randomScale = lerp(0.5f, 1.5f, randomizerValue);
+		const uint finalStepCount = uint(MaskStepCount * randomScale)+1;
+		float4 stepVector = ray.projBasicStep * MaskSkipPixels / randomScale;
+
+		const bool preClipRay = false;	// not working correctly
+		if (preClipRay) {
+			float4 rayEnd = ray.projStartPosition + stepVector * finalStepCount;
+			ClipRay(ray.projStartPosition, rayEnd);
+			stepVector = (rayEnd - ray.projStartPosition) / float(finalStepCount);
+		}
+
+		float4 iteratingPosition = ray.projStartPosition;
+		[loop] for (uint step=0; step<finalStepCount; ++step) {
+			// iteratingPosition	   += stepVector;
+			iteratingPosition
+				=	ray.projStartPosition
+					+ stepVector * (pow((step+1) / float(finalStepCount), IteratingPower) * float(finalStepCount))
+					;
+
+			float4 clipSpace = IteratingPositionToClipSpace(iteratingPosition);
+
+			if (!preClipRay && !WithinClipCube(clipSpace)) {
+				break;
+			} else if (IsCollision(
+				clipSpace.z/clipSpace.w,
+				LoadDepth(clipSpace.xy/clipSpace.w, outputDimensions))) {
+
+				return true;
+			}
+		}
+
+		return false;
+
+	#else
+
+		return PixelBasedIteration(ray, randomizerValue, float2(outputDimensions));
+
+	#endif
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+
 groupshared bool SampleFoundCollision[SamplesPerBlock];
 
 float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
@@ -335,53 +394,7 @@ float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 
 	bool foundCollision = false;
 	[branch] if (ray.valid) {
-
-		int ditherArray[16] =
-		{
-			4, 12,  0,  8,
-			10,  2, 14,  6,
-			15,  7, 11,  3,
-			1,  9,  5, 13
-		};
-		uint2 t = dispatchThreadId.xy & 0x3;
-		float randomizerValue = float(ditherArray[t.x+t.y*4]) / 15.f;
-
-		#if 1
-
-			const float randomScale = lerp(0.5f, 1.5f, randomizerValue);
-			const uint finalStepCount = uint(MaskStepCount * randomScale)+1;
-			float4 stepVector = ray.projBasicStep * MaskSkipPixels / randomScale;
-
-			const bool preClipRay = false;	// not working correctly
-			if (preClipRay) {
- 				float4 rayEnd = ray.projStartPosition + stepVector * finalStepCount;
-				ClipRay(ray.projStartPosition, rayEnd);
-				stepVector = (rayEnd - ray.projStartPosition) / float(finalStepCount);
-			}
-
-			float4 iteratingPosition = ray.projStartPosition;
-			[loop] for (uint step=0; step<finalStepCount; ++step) {
- 				// iteratingPosition	   += stepVector;
-				iteratingPosition
-					=	ray.projStartPosition
-						+ stepVector * (pow((step+1) / float(finalStepCount), IteratingPower) * float(finalStepCount))
-						;
-
-				float4 positionProjSpace = IteratingPositionToProjSpace(iteratingPosition);
-
-				if (!preClipRay && !WithinClipCube(positionProjSpace)) {
-					break;
-				} else if (CompareDepth(positionProjSpace, outputDimensions)) {
-					foundCollision = true;
-					break;
- 				}
- 			}
-
-		#else
-
-			foundCollision = PixelBasedIteration(ray, randomizerValue, float2(outputDimensions));
-
-		#endif
+		foundCollision = LookForCollision(ray, outputDimensions, GetRandomizerValue(dispatchThreadId.xy));
 	}
 
 	SampleFoundCollision[rayCastSample] = foundCollision;

@@ -79,6 +79,14 @@ float4 ViewToClipSpace(float3 viewSpace)
 		-viewSpace.z);
 }
 
+float3 ClipToViewSpace(float4 clipSpace)
+{
+	return float3(
+		clipSpace.x / MinimalProjection.x,
+		clipSpace.y / MinimalProjection.y,
+		(clipSpace.z - MinimalProjection.w) / MinimalProjection.z);
+}
+
 float3 CalculateViewSpacePosition(uint2 samplingPixel, uint2 outputDimensions, uint msaaSampleIndex)
 {
 		// Screen coordinates -> view space is cheap if we make some
@@ -93,24 +101,25 @@ float3 CalculateViewSpacePosition(uint2 samplingPixel, uint2 outputDimensions, u
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-float2 AsTexCoord(float2 ndc) { return float2(.5f + .5f * ndc.x, .5f - .5f * ndc.y); }
+float2 AsZeroToOne(float2 ndc) { return float2(.5f + .5f * ndc.x, .5f - .5f * ndc.y); }
 
-float CalculateDepthDifference(float4 position, float2 outputDimensions)
+float LoadDepth(float2 ndcXY, float2 outputDimensions)
 {
-    float2 tc = AsTexCoord(position.xy / position.w);
-    #if defined(DEPTH_IN_LINEAR_COORDS)
-	    float queryLinearDepth	= DownSampledDepth[uint2(tc.xy*outputDimensions.xy)];
- 	    float depthDifference	= NDCDepthToLinear0To1(position.z / position.w) - queryLinearDepth;
-    #else
-        float queryDepth = DownSampledDepth[uint2(tc.xy*outputDimensions.xy)];
-        float depthDifference = (position.z/position.w) - queryDepth;
-    #endif
-    return depthDifference;
+	return DownSampledDepth[uint2(AsZeroToOne(ndcXY)*outputDimensions.xy)];
 }
 
-bool CompareDepth(float4 position, float2 outputDimensions)
+float DepthDifference(float ndcDepth, float depthTextureValue)
 {
-	float depthDifference = CalculateDepthDifference(position, outputDimensions);
+	#if defined(DEPTH_IN_LINEAR_COORDS)
+		return NDCDepthToLinear0To1(ndcDepth) - depthTextureValue;
+	#else
+		return ndcDepth - depthTextureValue;
+	#endif
+}
+
+bool IsCollision(float ndcDepth, float depthTextureValue)
+{
+	float depthDifference = DepthDifference(ndcDepth, depthTextureValue);
 	return depthDifference > DepthMinThreshold; // && depthDifference < DepthMaxThreshold;
 }
 
@@ -192,30 +201,32 @@ ReflectionRay ReflectionRay_Invalid()
 
 float3 ClipViewSpaceRay(float3 viewStart, float3 viewEnd)
 {
+		// Given an input ray in view space; clip against the edge of the screen
+		// We need to transform into homogeneous clip space to do the clipping
 	float4 clipStart = ViewToClipSpace(viewStart);
 	float4 clipEnd = ViewToClipSpace(viewEnd);
 
-	if (clipEnd.x/clipEnd.w > 1.f) {
+	if (clipEnd.x > clipEnd.w) {
 		float l = (clipStart.w - clipStart.x) / ((clipStart.w - clipStart.x) - (clipEnd.w - clipEnd.x));
 		clipEnd = lerp(clipStart, clipEnd, l);
 	}
 
-	if (clipEnd.y/clipEnd.w > 1.f) {
+	if (clipEnd.y > clipEnd.w) {
 		float l = (clipStart.w - clipStart.y) / ((clipStart.w - clipStart.y) - (clipEnd.w - clipEnd.y));
 		clipEnd = lerp(clipStart, clipEnd, l);
 	}
 
-	if (clipEnd.x/clipEnd.w < -1.f) {
+	if (clipEnd.x < -clipEnd.w) {
 		float l = (clipStart.w - -clipStart.x) / ((clipStart.w - -clipStart.x) - (clipEnd.w - -clipEnd.x));
 		clipEnd = lerp(clipStart, clipEnd, l);
 	}
 
-	if (clipEnd.y/clipEnd.w < -1.f) {
+	if (clipEnd.y < -clipEnd.w) {
 		float l = (clipStart.w - -clipStart.y) / ((clipStart.w - -clipStart.y) - (clipEnd.w - -clipEnd.y));
 		clipEnd = lerp(clipStart, clipEnd, l);
 	}
 
-	return NDCToView(float4(clipEnd.xyz / clipEnd.w, 1.f));
+	return ClipToViewSpace(clipEnd);
 }
 
 struct ReflectionRay2
@@ -245,12 +256,13 @@ ReflectionRay2 CalculateReflectionRay2(uint2 pixelCoord, uint2 outputDimensions,
 	float3 viewSpaceNormal = LoadViewSpaceNormal(pixelCoord);
 	if (dot(viewSpaceNormal, viewSpaceNormal) < 0.25f)
 		return ReflectionRay2_Invalid();
-	float3 viewSpaceReflection = viewSpaceNormal; // reflect(rayStartView, viewSpaceNormal);
-	// We want to find the point where the reflection vector intersects the edge of the
-	// view frustum. We can do this just by transforming the ray into NDC coordinates,
-	// and doing a clip against the +-W box.
+	float3 reflection = reflect(normalize(rayStartView), viewSpaceNormal);
+
+		// We want to find the point where the reflection vector intersects the edge of the
+		// view frustum. We can do this just by transforming the ray into NDC coordinates,
+		// and doing a clip against the +-W box.
 	float maxReflectionDistanceWorldSpace = min(10.f, FarClip);
-	float3 rayEndView = rayStartView + maxReflectionDistanceWorldSpace * viewSpaceReflection;
+	float3 rayEndView = rayStartView + maxReflectionDistanceWorldSpace * reflection;
 	rayEndView = ClipViewSpaceRay(rayStartView, rayEndView);
 
 	ReflectionRay2 result;
@@ -259,6 +271,8 @@ ReflectionRay2 CalculateReflectionRay2(uint2 pixelCoord, uint2 outputDimensions,
 	result.viewEnd = rayEndView;
 	return result;
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ReflectionRay CalculateReflectionRay(uint2 pixelCoord, uint2 outputDimensions, uint msaaSampleIndex)
 {
@@ -345,7 +359,7 @@ ReflectionRay CalculateReflectionRay(uint2 pixelCoord, uint2 outputDimensions, u
 	return result;
 }
 
-float4 IteratingPositionToProjSpace(float4 testPosition)
+float4 IteratingPositionToClipSpace(float4 testPosition)
 {
     #if defined(INTERPOLATE_IN_VIEW_SPACE)
 		return ViewToClipSpace(testPosition.xyz);

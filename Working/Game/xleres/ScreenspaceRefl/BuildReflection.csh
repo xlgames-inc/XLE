@@ -79,23 +79,23 @@ float4 DetailedStep(float4 start, float4 end,
 	for (uint step=0; step<DetailStepCount; ++step) {
 		iPosition += stepVector;
 
-		float4 positionProjSpace = IteratingPositionToProjSpace(iPosition);
-
-		float depthDifference = CalculateDepthDifference(positionProjSpace, outputDimensions);
+		float4 clipSpace = IteratingPositionToClipSpace(iPosition);
+		float depthTextureValue = LoadDepth(clipSpace.xy/clipSpace.w, outputDimensions);
+		float depthDifference = DepthDifference(clipSpace.z/clipSpace.w, depthTextureValue);
 		if (depthDifference > DepthMinThreshold) {
 			#if defined(DEBUG_STEP_COUNT)
 				return float4((step / float(DetailStepCount)).xxx, 1);
 			#endif
 			float distance = lerp(startDistance, endDistance, step/float(DetailStepCount));
-			float2 texCoord = AsTexCoord(positionProjSpace.xy/positionProjSpace.w);
+			float2 texCoord = AsZeroToOne(clipSpace.xy/clipSpace.w);
 			return BuildResult(distance, texCoord, depthDifference < DepthMaxThreshold, msaaSampleIndex);
 		}
 	}
 
-	float4 endProjSpace = IteratingPositionToProjSpace(end);
+	float4 endClipSpace = IteratingPositionToClipSpace(end);
 
 		//	If we didn't hit it previously... we must hit at the "end" point
-	float2 texCoord = AsTexCoord(endProjSpace.xy/endProjSpace.w);
+	float2 texCoord = AsZeroToOne(endClipSpace.xy/endClipSpace.w);
 	return BuildResult(endDistance, texCoord, finalDepthDifference < DepthMaxThreshold, msaaSampleIndex);
 }
 
@@ -108,18 +108,19 @@ float4 FinalDetailedStep(	float4 start, float4 end,
 	[loop] for (uint step=0; step<DetailStepCount; ++step) {
 		iPosition += stepVector;
 
-		float4 positionProjSpace = IteratingPositionToProjSpace(iPosition);
-		if (!WithinClipCube(positionProjSpace)) {
+		float4 clipSpace = IteratingPositionToClipSpace(iPosition);
+		if (!WithinClipCube(clipSpace)) {
 			break;
 		}
 
-		float depthDifference = CalculateDepthDifference(positionProjSpace, outputDimensions);
+		float depthTextureValue = LoadDepth(clipSpace.xy/clipSpace.w, outputDimensions);
+		float depthDifference = DepthDifference(clipSpace.z/clipSpace.w, depthTextureValue);
 		if (depthDifference > DepthMinThreshold) {
 			#if defined(DEBUG_STEP_COUNT)
 				return float4((step / float(DetailStepCount)).xxx, 1);
 			#endif
 			float distance = lerp(startDistance, endDistance, step/float(DetailStepCount));
-			float2 texCoord = AsTexCoord(positionProjSpace.xy/positionProjSpace.w);
+			float2 texCoord = AsZeroToOne(clipSpace.xy/clipSpace.w);
 			return BuildResult(distance, texCoord, depthDifference < DepthMaxThreshold, msaaSampleIndex);
 		}
 	}
@@ -154,13 +155,14 @@ float4 MultiResolutionStep(float4 startPosition, float4 basicStepSize, float ran
 		iDistance = pow((step+1) / float(finalStepCount), IteratingPower);
 		iPosition = startPosition + stepVector * (iDistance * float(finalStepCount));
 
-		float4 positionProjSpace = IteratingPositionToProjSpace(iPosition);
+		float4 clipSpace = IteratingPositionToClipSpace(iPosition);
 
 			//	check to see if we've gone out of the clip cube
-		if (!WithinClipCube(positionProjSpace)) {
+		if (!WithinClipCube(clipSpace)) {
 			return FinalDetailedStep(testStart, iPosition, distanceStart * distanceValueScale, iDistance * distanceValueScale, outputDimensions, msaaSampleIndex);
 		} else {
-			float depthDifference = CalculateDepthDifference(positionProjSpace, outputDimensions);
+			float depthTextureValue = LoadDepth(clipSpace.xy/clipSpace.w, outputDimensions);
+			float depthDifference = DepthDifference(clipSpace.z/clipSpace.w, depthTextureValue);
 			if (depthDifference > DepthMinThreshold) {
 				return DetailedStep(
 					testStart, iPosition,

@@ -244,7 +244,7 @@ float4 RayDebugging(	float4 position		: SV_Position,
 			return 1.0.xxxx;
 	}
 
-	if (PtToLineDist(ray, ndcXY) <= (1.f/256.f))
+	if (PtToLineDist(ray, ndcXY) <= (.5f/256.f))
 		return float4(1,0,0,1);
 	return 0.0.xxxx;
 }
