@@ -38,7 +38,8 @@ float4 TilesDebugging(	float4 position				: SV_Position,
 						float3 viewFrustumVector	: VIEWFRUSTUMVECTOR) : SV_Target0
 {
 	// return float4(.5.xxx, MaskTexture.SampleLevel(DefaultSampler, texCoord, 0));
-	return float4(MaskTexture.SampleLevel(DefaultSampler, texCoord, 0).rrr, 1.f);
+	// return float4(MaskTexture.SampleLevel(DefaultSampler, texCoord, 0).rrr, 1.f);
+	return ReflectionsTexture.SampleLevel(DefaultSampler, texCoord, 0);
 
 	// float2 t	= min(texCoord.xy, 1.f-texCoord.xy);
 	// t = saturate(15.f*t);
@@ -216,10 +217,15 @@ uint IterationOperator(int2 pixelCapCoord, float entryNDCDepth, float exitNDCDep
 
 float2 FindIntersectionPt(ReflectionRay2 ray, float randomizerValue, uint2 outputDimensions)
 {
+	PBISettings settings;
+	settings.pixelStep = 1;
+	settings.initialPixelsSkip = 2;
+
+	// Use the accurate pixel based operation to find the perfect intersection pt
 	PBI i = PixelBasedIteration(
 		ViewToClipSpace(ray.viewStart),
 		ViewToClipSpace(ray.viewEnd),
-		randomizerValue, float2(outputDimensions));
+		float2(outputDimensions), settings);
 	if (!i._gotIntersection) return 1.0.xx;
 	float2 t = i._intersectionCoords / float2(outputDimensions);
 	return float2(2.f * t.x - 1.f, 1.f - 2.f * t.y);
@@ -244,27 +250,27 @@ float PtToLineDist(ReflectionRay2 ray, float2 ndcXY)
 float4 RayDebugging(	float4 position		: SV_Position,
 						float2 texCoord		: TEXCOORD0) : SV_Target0
 {
-	// uint2 outputDimensions = uint2(position.xy / texCoord.xy);
 	uint2 outputDimensions;
 	DownSampledDepth.GetDimensions(outputDimensions.x, outputDimensions.y);
 
-	uint downSampleValue = 2;
-	// outputDimensions /= downSampleValue;
+	uint downSampleValue = (uint2(position.xy / texCoord.xy) / outputDimensions).x;
 	position /= downSampleValue;
 	uint2 samplePt = MousePosition / downSampleValue;
 
-	ReflectionRay2 ray = CalculateReflectionRay2(samplePt, outputDimensions, 0);
+	const float worldSpaceMaxDist = min(5.f, FarClip);
+	ReflectionRay2 ray = CalculateReflectionRay2(worldSpaceMaxDist, samplePt, outputDimensions, 0);
 
 	float2 ndcXY = float2(
 		-1.f + 2.0f * position.x / float(outputDimensions.x),
 		 1.f - 2.0f * position.y / float(outputDimensions.y));
 
 	float2 intersectionPtNDC = FindIntersectionPt(ray, GetRandomizerValue(samplePt), outputDimensions);
-	if (length(intersectionPtNDC - ndcXY) <= (5.f/256.f))
+	if (length(intersectionPtNDC - ndcXY) <= (1.f/256.f))
 		return float4(0,1,0,1);
 
-	for (uint c=0; c<GetTestPtCount(ray); ++c) {
-		float4 clipSpaceTest = ViewToClipSpace(GetTestPt(ray, c, GetRandomizerValue(samplePt)));
+	const uint stepCount = 8;
+	[unroll] for (uint c=0; c<stepCount; ++c) {
+		float4 clipSpaceTest = ViewToClipSpace(GetTestPt(ray, c, stepCount, GetRandomizerValue(samplePt)));
 		float2 ndcTest = clipSpaceTest.xy / clipSpaceTest.w;
 		if (length(ndcTest - ndcXY) <= (1.f/256.f))
 			return 1.0.xxxx;

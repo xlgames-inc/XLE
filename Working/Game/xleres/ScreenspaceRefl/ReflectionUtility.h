@@ -249,24 +249,24 @@ ReflectionRay2 ReflectionRay2_Invalid()
 	return result;
 }
 
-float3 GetTestPt(ReflectionRay2 ray, uint index, float randomizerValue)
+bool IsValid(ReflectionRay2 ray) { return ray.valid; }
+
+float3 GetTestPt(ReflectionRay2 ray, uint index, uint stepCount, float randomizerValue)
 {
 		// note that we're returning points that are linear in view space
 		// this might not be as ideal as points that are linear in screen
 		// space... But the difference seems to be minor so long as we're
 		// skipping over pixels each time.
 		// It might be ideal to have more samples close the start...?
-	return lerp(ray.viewStart, ray.viewEnd, (index+.25f+.75f*randomizerValue) / 8.f);
+	return lerp(ray.viewStart, ray.viewEnd, (index+.25f+.75f*randomizerValue) / float(stepCount));
 }
 
-float3 GetTestPtNDC(ReflectionRay2 ray, uint index, float randomizerValue)
+float3 GetTestPtNDC(ReflectionRay2 ray, uint index, uint stepCount, float randomizerValue)
 {
-	return ViewToNDCSpace(GetTestPt(ray, index, randomizerValue));
+	return ViewToNDCSpace(GetTestPt(ray, index, stepCount, randomizerValue));
 }
 
-uint GetTestPtCount(ReflectionRay2 ray) { return 8; }
-
-ReflectionRay2 CalculateReflectionRay2(uint2 pixelCoord, uint2 outputDimensions, uint msaaSampleIndex)
+ReflectionRay2 CalculateReflectionRay2(float worldSpaceMaxDist, uint2 pixelCoord, uint2 outputDimensions, uint msaaSampleIndex)
 {
 	float3 rayStartView = CalculateViewSpacePosition(pixelCoord.xy, outputDimensions, msaaSampleIndex);
 	float3 viewSpaceNormal = LoadViewSpaceNormal(pixelCoord);
@@ -277,8 +277,7 @@ ReflectionRay2 CalculateReflectionRay2(uint2 pixelCoord, uint2 outputDimensions,
 		// We want to find the point where the reflection vector intersects the edge of the
 		// view frustum. We can do this just by transforming the ray into NDC coordinates,
 		// and doing a clip against the +-W box.
-	float maxReflectionDistanceWorldSpace = min(5.f, FarClip);
-	float3 rayEndView = rayStartView + maxReflectionDistanceWorldSpace * reflection;
+	float3 rayEndView = rayStartView + worldSpaceMaxDist * reflection;
 	rayEndView = ClipViewSpaceRay(rayStartView, rayEndView);
 
 	ReflectionRay2 result;

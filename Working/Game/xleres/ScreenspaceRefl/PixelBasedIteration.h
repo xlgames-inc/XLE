@@ -26,6 +26,7 @@ struct PBI
     bool		_gotIntersection;
     bool		_continueIteration;
     float2		_intersectionCoords;
+    float       _distance;
     int			_testCount;
 };
 
@@ -102,11 +103,14 @@ void PBI_OprY(inout PBI iterator, int2 e0, int2 e1, float alpha, int2 pixelCoord
     PBI_Opr(iterator, exitZW, pixelCoord, edgeIntersection);
 }
 
-PBI PixelBasedIteration(float4 clipStart, float4 clipEnd, float randomizerValue, float2 outputDimensions)
+struct PBISettings
 {
-    const uint pixelStep = 8;
-    const uint initialPixelsSkip = 2 + int(randomizerValue * (pixelStep+1));
+    uint pixelStep;
+    uint initialPixelsSkip;
+};
 
+PBI PixelBasedIteration(float4 clipStart, float4 clipEnd, float2 outputDimensions, PBISettings settings)
+{
     // float2 screenSpaceDirection = normalize(clipEnd.xy/clipEnd.w - clipStart.xy/clipStart.w);
     // int w = int( float(ReflectionDistancePixels) * screenSpaceDirection.x);
     // int h = int(-float(ReflectionDistancePixels) * screenSpaceDirection.y);
@@ -132,21 +136,21 @@ PBI PixelBasedIteration(float4 clipStart, float4 clipEnd, float randomizerValue,
             //	based on a random value -- this will add some noise, but will cover the big
             //	gap between pixel steps.
     if (ddx >= ddy) {
-        x += initialPixelsSkip * xstep;
+        x += settings.initialPixelsSkip * xstep;
         y += ystep * ddy / ddx;
         errorprev = error = ddy % ddx;
-        i += initialPixelsSkip;
+        i += settings.initialPixelsSkip;
     } else {
-        y += initialPixelsSkip * ystep;
+        y += settings.initialPixelsSkip * ystep;
         x += xstep * ddx / ddy;
         errorprev = error = ddx % ddy;
-        i += initialPixelsSkip;
+        i += settings.initialPixelsSkip;
     }
 
         //	We don't have to visit every single pixel.
         //	use "pixel step" to jump over some pixels. It adds some noise, but not too bad.
-    xstep *= pixelStep;
-    ystep *= pixelStep;
+    xstep *= settings.pixelStep;
+    ystep *= settings.pixelStep;
 
     PBI iterator;
     iterator._clipStart             = clipStart;
@@ -155,6 +159,7 @@ PBI PixelBasedIteration(float4 clipStart, float4 clipEnd, float randomizerValue,
     iterator._continueIteration		= true;
     iterator._intersectionCoords	= float2(-1.f, -1.f);
     iterator._testCount				= 0;
+    iterator._distance              = 0.f;
 
     float2 ndcStart = PixelToNDC(float2(x, y), outputDimensions);
     iterator._pixelEntryZW = (ddx >= ddy)?DepthCalcX(ndcStart, iterator):DepthCalcY(ndcStart, iterator);
@@ -170,9 +175,8 @@ PBI PixelBasedIteration(float4 clipStart, float4 clipEnd, float randomizerValue,
     // We're just going crazy with conditions and looping here!
     // Surely there must be a better way to do this!
 
-    float distance;
     if (ddx >= ddy) {
-        for (; i<w && iterator._continueIteration; i+=pixelStep) {
+        for (; i<w && iterator._continueIteration; i+=settings.pixelStep) {
             int2 pixelCapCoord = int2(x, y);
 
             x += xstep;
@@ -213,9 +217,9 @@ PBI PixelBasedIteration(float4 clipStart, float4 clipEnd, float randomizerValue,
             PBI_OprX(iterator, e0, e1, edgeAlpha, int2(x, y), outputDimensions);
             errorprev = error;
         }
-        distance = i / float(w);
+        iterator._distance = i / float(w);
     } else {
-        for (; i<h && iterator._continueIteration; i+=pixelStep) {
+        for (; i<h && iterator._continueIteration; i+=settings.pixelStep) {
             int2 pixelCapCoord = int2(x, y);
 
             y += ystep;
@@ -256,7 +260,7 @@ PBI PixelBasedIteration(float4 clipStart, float4 clipEnd, float randomizerValue,
             PBI_OprY(iterator, e0, e1, edgeAlpha, int2(x, y), outputDimensions);
             errorprev = error;
         }
-        distance = i / float(h);
+        iterator._distance = i / float(h);
     }
 
     return iterator;

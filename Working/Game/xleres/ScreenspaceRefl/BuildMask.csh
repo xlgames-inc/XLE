@@ -28,11 +28,11 @@ cbuffer SamplingPattern
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-bool LookForCollision(ReflectionRay2 ray, uint2 outputDimensions, float randomizerValue)
+bool LookForCollision(ReflectionRay2 ray, uint stepCount, uint2 outputDimensions, float randomizerValue)
 {
 	bool result = false;
-	[unroll] for (uint c=0; c<GetTestPtCount(ray); ++c) {
-		float3 ndc = GetTestPtNDC(ray, c, randomizerValue);
+	[unroll] for (uint c=0; c<stepCount; ++c) {
+		float3 ndc = GetTestPtNDC(ray, c, stepCount, randomizerValue);
 		result = result|IsCollision(ndc.z, LoadDepth(ndc.xy, outputDimensions));
 	}
 	return result;
@@ -40,10 +40,13 @@ bool LookForCollision(ReflectionRay2 ray, uint2 outputDimensions, float randomiz
 
 bool LookForCollision_Ref(ReflectionRay2 ray, uint2 outputDimensions, float randomizerValue)
 {
+	PBISettings settings;
+	settings.pixelStep = 8;
+	settings.initialPixelsSkip = 2 + int(randomizerValue * (settings.pixelStep+1));
+
 	return PixelBasedIteration(
-		ViewToClipSpace(ray.viewStart),
-		ViewToClipSpace(ray.viewEnd),
-		randomizerValue, float2(outputDimensions))._gotIntersection;
+		ViewToClipSpace(ray.viewStart), ViewToClipSpace(ray.viewEnd),
+		float2(outputDimensions), settings)._gotIntersection;
 }
 
 bool LookForCollision(ReflectionRay ray, uint2 outputDimensions, float randomizerValue)
@@ -163,12 +166,13 @@ float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 		//   1: reference high resolution iteration
 		//   2: old code
 	const uint iterationMethod = 0;
+	const float worldSpaceMaxDist = min(5.f, FarClip);
 	if (iterationMethod == 0) {
-		ReflectionRay2 ray = CalculateReflectionRay2(samplingPixel.xy, outputDimensions, msaaSampleIndex);
+		ReflectionRay2 ray = CalculateReflectionRay2(worldSpaceMaxDist, samplingPixel.xy, outputDimensions, msaaSampleIndex);
 		[branch] if (ray.valid)
-			foundCollision = LookForCollision(ray, outputDimensions, GetRandomizerValue(dispatchThreadId.xy));
+			foundCollision = LookForCollision(ray, 8, outputDimensions, GetRandomizerValue(dispatchThreadId.xy));
 	} else if (iterationMethod == 1) {
-		ReflectionRay2 ray = CalculateReflectionRay2(samplingPixel.xy, outputDimensions, msaaSampleIndex);
+		ReflectionRay2 ray = CalculateReflectionRay2(worldSpaceMaxDist, samplingPixel.xy, outputDimensions, msaaSampleIndex);
 		[branch] if (ray.valid)
 			foundCollision = LookForCollision_Ref(ray, outputDimensions, GetRandomizerValue(dispatchThreadId.xy));
 	} else {
