@@ -11,10 +11,10 @@
 
 RWTexture2D<float>			ReflectionsMask;
 Texture2D<float4>			DownSampledNormals	: register(t1);
-Texture2D<float>			DownSampledDepth		: register(t2);
-// Texture2D<float>			RandomNoiseTexture	: register(t4);
+Texture2D<float>			DownSampledDepth	: register(t2);
 
 #include "ReflectionUtility.h"
+#include "PixelBasedIteration.h"
 
 static const uint SamplesPerBlock = 64;
 static const uint BlockDimension = 64;
@@ -28,67 +28,70 @@ cbuffer SamplingPattern
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-struct PBI
+bool LookForCollision(ReflectionRay2 ray, uint2 outputDimensions, float randomizerValue)
 {
-	ReflectionRay	_ray;
-	float2			_pixelEntryZW;
-	float			_lastQueryDepth;
-
-	bool		_gotIntersection;
-	bool		_continueIteration;
-	float2		_intersectionCoords;
-	int			_testCount;
-};
-
-float2 DepthCalcX(float2 postDivide, ReflectionRay ray)
-{
-		//	here, we're calculating the z and w values of the given ray
-		//	for a given point in screen space. This should be used for
-		//	"x" dominant rays.
-	float a =		(postDivide.x * ray.projStartPosition.w - ray.projStartPosition.x)
-				/	(ray.projBasicStep.x - postDivide.x * ray.projBasicStep.w);
-	return ray.projStartPosition.zw + a * ray.projBasicStep.zw;
+	bool result = false;
+	[unroll] for (uint c=0; c<GetTestPtCount(ray); ++c) {
+		float3 ndc = GetTestPtNDC(ray, c, randomizerValue);
+		result = result|IsCollision(ndc.z, LoadDepth(ndc.xy, outputDimensions));
+	}
+	return result;
 }
 
-float2 DepthCalcY(float2 postDivide, ReflectionRay ray)
+bool LookForCollision_Ref(ReflectionRay2 ray, uint2 outputDimensions, float randomizerValue)
 {
-		//	here, we're calculating the z and w values of the given ray
-		//	for a given point in screen space. This should be used for
-		//	"y" dominant rays.
-	float a =		(postDivide.y * ray.projStartPosition.w - ray.projStartPosition.y)
-				/	(ray.projBasicStep.y - postDivide.y * ray.projBasicStep.w);
-	return ray.projStartPosition.zw + a * ray.projBasicStep.zw;
+	return PixelBasedIteration(
+		ViewToClipSpace(ray.viewStart),
+		ViewToClipSpace(ray.viewEnd),
+		randomizerValue, float2(outputDimensions))._gotIntersection;
 }
 
-void PBI_Opr(inout PBI iterator, float2 exitZW, int2 pixelCapCoord, float2 edgeCoords)
+bool LookForCollision(ReflectionRay ray, uint2 outputDimensions, float randomizerValue)
 {
-	float2 entryZW = iterator._pixelEntryZW;
-	iterator._pixelEntryZW = exitZW;
-	++iterator._testCount;
+	// old code -- now replaced
+	const float randomScale = lerp(0.5f, 1.5f, randomizerValue);
+	const uint finalStepCount = uint(MaskStepCount * randomScale)+1;
+	float4 stepVector = ray.projBasicStep * MaskSkipPixels / randomScale;
 
-		//	We now know the depth values where the ray enters and exits
-		//	this pixel.
-		//	We can compare this to the values in the depth buffer
-		//	to look for an intersection
-	float ndc0 = entryZW.x / entryZW.y;
-	float ndc1 =  exitZW.x /  exitZW.y;
-
-		//	we have to check to see if we've left the view frustum.
-		//	going too deep is probably not likely, but we can pass
-		//	in front of the near plane
-	if (ndc1 <= 0.f) {
-		iterator._continueIteration = false;
-		iterator._intersectionCoords = 0.0.xx;
-		return;
+	const bool preClipRay = false;	// not working correctly
+	if (preClipRay) {
+		float4 rayEnd = ray.projStartPosition + stepVector * finalStepCount;
+		ClipRay(ray.projStartPosition, rayEnd);
+		stepVector = (rayEnd - ray.projStartPosition) / float(finalStepCount);
 	}
 
+	float4 iteratingPosition = ray.projStartPosition;
+	[loop] for (uint step=0; step<finalStepCount; ++step) {
+		// iteratingPosition	   += stepVector;
+		iteratingPosition
+			=	ray.projStartPosition
+				+ stepVector * (pow((step+1) / float(finalStepCount), IteratingPower) * float(finalStepCount))
+				;
+
+		float4 clipSpace = IteratingPositionToClipSpace(iteratingPosition);
+
+		if (!preClipRay && !WithinClipCube(clipSpace)) {
+			break;
+		} else if (IsCollision(
+			clipSpace.z/clipSpace.w,
+			LoadDepth(clipSpace.xy/clipSpace.w, outputDimensions))) {
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+uint IterationOperator(int2 pixelCapCoord, float entryNDCDepth, float exitNDCDepth, inout float ilastQueryDepth)
+{
 	#if defined(DEPTH_IN_LINEAR_COORDS)
 		// not implemented
-    #else
-        float queryDepth = DownSampledDepth[pixelCapCoord];
+	#else
+		float queryDepth = DownSampledDepth[pixelCapCoord];
 	#endif
-	float lastQueryDepth = iterator._lastQueryDepth;
-	iterator._lastQueryDepth = queryDepth;
+	float lastQueryDepth = ilastQueryDepth;
+	ilastQueryDepth = queryDepth;
 
 		//	collide first with the "cap" of the pixel. If the ray
 		//	penetrates the pixel cap, we know that there is definitely
@@ -99,10 +102,8 @@ void PBI_Opr(inout PBI iterator, float2 exitZW, int2 pixelCapCoord, float2 edgeC
 
 		//	try to distinquish front-face and back-face collisions by looking at
 		//	the direction we pass through this pixel cap
-	if (ndc0 <= queryDepth && ndc1 >= queryDepth) {
-		iterator._gotIntersection = true;
-		iterator._continueIteration = false;
-		iterator._intersectionCoords = float2(pixelCapCoord);
+	if (entryNDCDepth <= queryDepth && exitNDCDepth >= queryDepth) {
+		return 2;   // cap intersection
 	}
 
 		//	As collide with the edge of the pixel. Sometimes an edge in depth
@@ -117,247 +118,14 @@ void PBI_Opr(inout PBI iterator, float2 exitZW, int2 pixelCapCoord, float2 edgeC
 		//	Also note that there are two types of intersections: back-face and front-face.
 		//	We don't really want to stop at a back-face intersection
 	const float continuousEpsilon = 0.005f;	// (have to be rough for build mask)
-	bool isFrontFace = true; // (ndc1 > ndc0) != (queryDepth > lastQueryDepth);
+	bool isFrontFace = true; // (exitNDCDepth > entryNDCDepth) != (queryDepth > lastQueryDepth);
 	if (abs(lastQueryDepth - queryDepth) < continuousEpsilon && isFrontFace) {
-		if (ndc0 >= min(lastQueryDepth, queryDepth) && ndc0 <= max(lastQueryDepth, queryDepth)) {
-			iterator._gotIntersection = true;
-			iterator._continueIteration = false;
-			iterator._intersectionCoords = edgeCoords;
+		if (entryNDCDepth >= min(lastQueryDepth, queryDepth) && entryNDCDepth <= max(lastQueryDepth, queryDepth)) {
+			return 1;
 		}
 	}
-}
 
-void PBI_OprX(inout PBI iterator, int2 e0, int2 e1, float alpha, int2 pixelCoord, float2 outputDimensions)
-{
-	float2 edgeIntersection = lerp(float2(e0), float2(e1), alpha);
-	float2 postDivide =
-		float2(	(edgeIntersection.x *  2.0f - 0.5f) / outputDimensions.x - 1.f,
-				(edgeIntersection.y * -2.0f + 0.5f) / outputDimensions.y + 1.f);
-	float2 exitZW = DepthCalcX(postDivide, iterator._ray);
-	PBI_Opr(iterator, exitZW, pixelCoord, edgeIntersection);
-}
-
-void PBI_OprY(inout PBI iterator, int2 e0, int2 e1, float alpha, int2 pixelCoord, float2 outputDimensions)
-{
-	float2 edgeIntersection = lerp(float2(e0), float2(e1), alpha);
-	float2 postDivide =
-		float2(	(edgeIntersection.x *  2.0f - 0.5f) / outputDimensions.x - 1.f,
-				(edgeIntersection.y * -2.0f + 0.5f) / outputDimensions.y + 1.f);
-	float2 exitZW = DepthCalcY(postDivide, iterator._ray);
-	PBI_Opr(iterator, exitZW, pixelCoord, edgeIntersection);
-}
-
-bool PixelBasedIteration(ReflectionRay ray, float randomizerValue, float2 outputDimensions)
-{
-	const uint pixelStep = 8;
-	const uint initialPixelsSkip = 2 + int(randomizerValue * (pixelStep+1));
-
-	int w = int( float(ReflectionDistancePixels) * ray.screenSpaceRayDirection.x);
-	int h = int(-float(ReflectionDistancePixels) * ray.screenSpaceRayDirection.y);
-
-	int ystep = sign(h); h = abs(h);
-	int xstep = sign(w); w = abs(w);
-	int ddy = 2 * h;  // We may not need to double this (because we're starting from the corner of the pixel)
-	int ddx = 2 * w;
-
-	int i=0;
-	int errorprev = 0, error = 0; // (start from corner. we don't want to start in the middle of the grid element)
-	int x = int(((ray.projStartPosition.x / ray.projStartPosition.w) * .5f + .5f) * outputDimensions.x),
-		y = int(((ray.projStartPosition.y / ray.projStartPosition.w) * -.5f + .5f) * outputDimensions.y);
-
-			//	step 2 pixel forward
-			//		this helps avoid bad intersections greatly. The first pixel is the starter pixel,
-			//		the second pixel is the first pixel "cap" we'll test
-			//	So we must skip at least 2 pixels before iteration. After that, we can offset
-			//	based on a random value -- this will add some noise, but will cover the big
-			//	gap between pixel steps.
-	if (ddx >= ddy) {
-		x += initialPixelsSkip * xstep;
-		y += ystep * ddy / ddx;
-		errorprev = error = ddy % ddx;
-		i += initialPixelsSkip;
-	} else {
-		y += initialPixelsSkip * ystep;
-		x += xstep * ddx / ddy;
-		errorprev = error = ddx % ddy;
-		i += initialPixelsSkip;
-	}
-
-		//	We don't have to visit every single pixel.
-		//	use "pixel step" to jump over some pixels. It adds some noise, but not too bad.
-	xstep *= pixelStep;
-	ystep *= pixelStep;
-
-	PBI iterator;
-	iterator._ray = ray;
-	iterator._gotIntersection		= false;
-	iterator._continueIteration		= true;
-	iterator._intersectionCoords	= float2(-1.f, -1.f);
-	iterator._testCount				= 0;
-
-	float2 postDivide =
-		float2(	((x * 2.0f - 0.5f) / outputDimensions.x) - 1.f,
-				((y * -2.0f + 0.5f) / outputDimensions.y) + 1.f);
-	iterator._pixelEntryZW = (ddx >= ddy)?DepthCalcX(postDivide, iterator._ray):DepthCalcY(postDivide, iterator._ray);
-
-	#if defined(DEPTH_IN_LINEAR_COORDS)
-		// not implemented
-	#else
-		iterator._lastQueryDepth = DownSampledDepth[int2(x, y)];
-	#endif
-
-	// We're just going crazy with conditions and looping here!
-	// Surely there must be a better way to do this!
-
-	float distance;
-	if (ddx >= ddy) {
-		for (; i<w && iterator._continueIteration; ++i) {
-			int2 pixelCapCoord = int2(x, y);
-
-			x += xstep;
-			error += ddy;
-
-			int2 e0, e1;
-			float edgeAlpha;
-
-			if (error >= ddx) {
-
-				y += ystep;
-				error -= ddx;
-
-					//  The cases for what happens here. Each case defines different edges
-					//  we need to check
-				if (error != 0) {
-					e0 = int2(x, y); e1 = int2(x, y+ystep);
-					edgeAlpha = error / float(ddx);
-
-					int2 e0b = int2(x-xstep, y);
-					int2 e1b = int2(x, y);
-					int tri0 = ddx - errorprev;
-					int tri1 = error;
-					PBI_OprX(iterator, e0b, e1b, tri0 / float(tri0+tri1), pixelCapCoord, outputDimensions);
-					if (!iterator._continueIteration) break;
-				} else {
-						// passes directly though the corner. Easiest case.
-					e0 = e1 = int2(x, y);
-					edgeAlpha = 0.f;
-				}
-
-			} else {
-					// simple -- y isn't changing, just moving to the next "x" grid
-				e0 = int2(x, y); e1 = int2(x, y+ystep);
-				edgeAlpha = error / float(ddx);
-			}
-
-			PBI_OprX(iterator, e0, e1, edgeAlpha, int2(x, y), outputDimensions);
-			errorprev = error;
-		}
-		distance = i / float(w);
-	} else {
-		for (; i<h && iterator._continueIteration; ++i) {
-			int2 pixelCapCoord = int2(x, y);
-
-			y += ystep;
-			error += ddx;
-
-			int2 e0, e1;
-			float edgeAlpha;
-
-			if (error >= ddy) {
-
-				x += xstep;
-				error -= ddy;
-
-					//  The cases for what happens here. Each case defines different edges
-					//  we need to check
-				if (error != 0) {
-					e0 = int2(x, y); e1 = int2(x+xstep, y);
-					edgeAlpha = error / float(ddy);
-
-					int2 e0b = int2(x, y-ystep);
-					int2 e1b = int2(x, y);
-					int tri0 = ddy - errorprev;
-					int tri1 = error;
-					PBI_OprY(iterator, e0b, e1b, tri0 / float(tri0+tri1), pixelCapCoord, outputDimensions);
-					if (!iterator._continueIteration) break;
-				} else {
-						// passes directly though the corner. Easiest case.
-					e0 = e1 = int2(x, y);
-					edgeAlpha = 0.f;
-				}
-
-			} else {
-					// simple -- y isn't changing, just moving to the next "x" grid
-				e0 = int2(x, y); e1 = int2(x+xstep, y);
-				edgeAlpha = error / float(ddy);
-			}
-
-			PBI_OprY(iterator, e0, e1, edgeAlpha, int2(x, y), outputDimensions);
-			errorprev = error;
-		}
-		distance = i / float(h);
-	}
-
-	return iterator._gotIntersection;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////
-
-float GetRandomizerValue(uint2 dispatchThreadId)
-{
-	int ditherArray[16] =
-	{
-		4, 12,  0,  8,
-		10,  2, 14,  6,
-		15,  7, 11,  3,
-		1,  9,  5, 13
-	};
-	uint2 t = dispatchThreadId.xy & 0x3;
-	return float(ditherArray[t.x+t.y*4]) / 15.f;
-}
-
-bool LookForCollision(ReflectionRay ray, uint2 outputDimensions, float randomizerValue)
-{
-	#if 1
-
-		const float randomScale = lerp(0.5f, 1.5f, randomizerValue);
-		const uint finalStepCount = uint(MaskStepCount * randomScale)+1;
-		float4 stepVector = ray.projBasicStep * MaskSkipPixels / randomScale;
-
-		const bool preClipRay = false;	// not working correctly
-		if (preClipRay) {
-			float4 rayEnd = ray.projStartPosition + stepVector * finalStepCount;
-			ClipRay(ray.projStartPosition, rayEnd);
-			stepVector = (rayEnd - ray.projStartPosition) / float(finalStepCount);
-		}
-
-		float4 iteratingPosition = ray.projStartPosition;
-		[loop] for (uint step=0; step<finalStepCount; ++step) {
-			// iteratingPosition	   += stepVector;
-			iteratingPosition
-				=	ray.projStartPosition
-					+ stepVector * (pow((step+1) / float(finalStepCount), IteratingPower) * float(finalStepCount))
-					;
-
-			float4 clipSpace = IteratingPositionToClipSpace(iteratingPosition);
-
-			if (!preClipRay && !WithinClipCube(clipSpace)) {
-				break;
-			} else if (IsCollision(
-				clipSpace.z/clipSpace.w,
-				LoadDepth(clipSpace.xy/clipSpace.w, outputDimensions))) {
-
-				return true;
-			}
-		}
-
-		return false;
-
-	#else
-
-		return PixelBasedIteration(ray, randomizerValue, float2(outputDimensions));
-
-	#endif
+	return 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -386,15 +154,27 @@ float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 		//		at low resolutions)
 		//
 	uint2 sampleOffset = SamplePoint[rayCastSample].xy;
-	// sampleOffset = uint2(BlockDimension.xx * float2(frac(rayCastSample/8.f), frac((rayCastSample/8)/8.f))) + uint2(4,4);
-	// sampleOffset = uint2(0,0);
  	uint2 samplingPixel = dispatchThreadId.xy * BlockDimension.xx + sampleOffset;
 
-	ReflectionRay ray = CalculateReflectionRay(samplingPixel.xy, outputDimensions, msaaSampleIndex);
-
 	bool foundCollision = false;
-	[branch] if (ray.valid) {
-		foundCollision = LookForCollision(ray, outputDimensions, GetRandomizerValue(dispatchThreadId.xy));
+
+		// Iteration:
+		//   0: new code
+		//   1: reference high resolution iteration
+		//   2: old code
+	const uint iterationMethod = 0;
+	if (iterationMethod == 0) {
+		ReflectionRay2 ray = CalculateReflectionRay2(samplingPixel.xy, outputDimensions, msaaSampleIndex);
+		[branch] if (ray.valid)
+			foundCollision = LookForCollision(ray, outputDimensions, GetRandomizerValue(dispatchThreadId.xy));
+	} else if (iterationMethod == 1) {
+		ReflectionRay2 ray = CalculateReflectionRay2(samplingPixel.xy, outputDimensions, msaaSampleIndex);
+		[branch] if (ray.valid)
+			foundCollision = LookForCollision_Ref(ray, outputDimensions, GetRandomizerValue(dispatchThreadId.xy));
+	} else {
+		ReflectionRay ray = CalculateReflectionRay(samplingPixel.xy, outputDimensions, msaaSampleIndex);
+		[branch] if (ray.valid)
+			foundCollision = LookForCollision(ray, outputDimensions, GetRandomizerValue(dispatchThreadId.xy));
 	}
 
 	SampleFoundCollision[rayCastSample] = foundCollision;
@@ -403,8 +183,6 @@ float ReciprocalLength(float3 v) { return rsqrt(dot(v, v)); }
 			//		Wait until every thread in the group has completed the above sample ray test
 
 	GroupMemoryBarrierWithGroupSync();
-	// DeviceMemoryBarrierWithGroupSync();
-	// AllMemoryBarrierWithGroupSync();
 
 		//
 		//		Assuming BlockDimension == SamplesPerBlock

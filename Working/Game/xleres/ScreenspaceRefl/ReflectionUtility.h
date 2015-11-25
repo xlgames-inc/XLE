@@ -57,7 +57,7 @@ float3 CalculateWorldSpacePosition(uint2 samplingPixel, uint2 outputDimensions, 
 	return CalculateWorldPosition(viewFrustumVector, linear0To1Depth, WorldSpaceView);
 }
 
-float3 NDCToView(float4 ndc)
+float3 NDCToViewSpace(float4 ndc)
 {
 		// negate here because into the screen is -Z axis
 	float Vz = -NDCDepthToWorldSpace(ndc.z);
@@ -79,6 +79,12 @@ float4 ViewToClipSpace(float3 viewSpace)
 		-viewSpace.z);
 }
 
+float3 ViewToNDCSpace(float3 viewSpace)
+{
+	float4 clip = ViewToClipSpace(viewSpace);
+	return clip.xyz/clip.w;
+}
+
 float3 ClipToViewSpace(float4 clipSpace)
 {
 	return float3(
@@ -96,7 +102,7 @@ float3 CalculateViewSpacePosition(uint2 samplingPixel, uint2 outputDimensions, u
 		-1.f + 2.0f * samplingPixel.x / float(outputDimensions.x),
 		 1.f - 2.0f * samplingPixel.y / float(outputDimensions.y));
 
-	return NDCToView(float4(preViewport, DownSampledDepth[samplingPixel], 1.f));
+	return NDCToViewSpace(float4(preViewport, DownSampledDepth[samplingPixel], 1.f));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -243,9 +249,19 @@ ReflectionRay2 ReflectionRay2_Invalid()
 	return result;
 }
 
-float3 GetTestPt(ReflectionRay2 ray, uint index)
+float3 GetTestPt(ReflectionRay2 ray, uint index, float randomizerValue)
 {
-	return lerp(ray.viewStart, ray.viewEnd, (index+1) / 8.f);
+		// note that we're returning points that are linear in view space
+		// this might not be as ideal as points that are linear in screen
+		// space... But the difference seems to be minor so long as we're
+		// skipping over pixels each time.
+		// It might be ideal to have more samples close the start...?
+	return lerp(ray.viewStart, ray.viewEnd, (index+.25f+.75f*randomizerValue) / 8.f);
+}
+
+float3 GetTestPtNDC(ReflectionRay2 ray, uint index, float randomizerValue)
+{
+	return ViewToNDCSpace(GetTestPt(ray, index, randomizerValue));
 }
 
 uint GetTestPtCount(ReflectionRay2 ray) { return 8; }
@@ -261,7 +277,7 @@ ReflectionRay2 CalculateReflectionRay2(uint2 pixelCoord, uint2 outputDimensions,
 		// We want to find the point where the reflection vector intersects the edge of the
 		// view frustum. We can do this just by transforming the ray into NDC coordinates,
 		// and doing a clip against the +-W box.
-	float maxReflectionDistanceWorldSpace = min(10.f, FarClip);
+	float maxReflectionDistanceWorldSpace = min(5.f, FarClip);
 	float3 rayEndView = rayStartView + maxReflectionDistanceWorldSpace * reflection;
 	rayEndView = ClipViewSpaceRay(rayStartView, rayEndView);
 
@@ -366,6 +382,21 @@ float4 IteratingPositionToClipSpace(float4 testPosition)
 	#else
 		return testPosition;
 	#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+float GetRandomizerValue(uint2 dispatchThreadId)
+{
+	int ditherArray[16] =
+	{
+		4, 12,  0,  8,
+		10,  2, 14,  6,
+		15,  7, 11,  3,
+		1,  9,  5, 13
+	};
+	uint2 t = dispatchThreadId.xy & 0x3;
+	return float(ditherArray[t.x+t.y*4]) / 15.f;
 }
 
 #endif
