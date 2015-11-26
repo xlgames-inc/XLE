@@ -244,7 +244,7 @@ float4 ResolveRectangleLightUnshadowed(
         // plane along the plane normal (p'' or p1)
         //
         // We can define and light space where the light center is at the origin,
-        // light is projected along -Z and +X and +Y lie on the light plane.
+        // light is projected along +Z and +X and +Y lie on the light plane.
         // We can then choose to work either in world space or light space.
         // Let's use light space, because it might make doing boundary test
         // easier later.
@@ -253,16 +253,19 @@ float4 ResolveRectangleLightUnshadowed(
     float3 planeTangent = float3(0,1,0);
     float3 planeBitangent = float3(0,0,1);
     float3 lightCenter = Light.NegativeDirection;
-    float2 lightSize = float2(0.5f, 0.5f);
+    float2 lightSize = float2(0.15f, 0.15f);
 
         // Here lightToWorld is an orthogonal rotation matrix (ie no scale)
         // so we can use simplified transformation operations.
-    float3x3 lightToWorld = float3x3(planeTangent, planeBitangent, planeNormal);
-    float3x3 worldToLight = transpose(lightToWorld);
+    float3x3 worldToLight = float3x3(planeTangent, planeBitangent, planeNormal);
 
     float3 samplePt = mul(worldToLight, worldPosition - lightCenter);
     float3 sampleNormal = mul(worldToLight, sample.worldSpaceNormal);
     float3 viewDirectionLight = mul(worldToLight, directionToEye);
+
+    if (samplePt.z < 0.f) return float4(0.0.xxx, 1.f);
+
+    if (abs(sampleNormal.z) < 1e-3f) sampleNormal += float3(0.01f, 0.01f, 0.01f);
 
         // Triple product type operation becomes simplier...
         // note -- obvious problems with sampleNormal.z is near 0
@@ -271,8 +274,16 @@ float4 ResolveRectangleLightUnshadowed(
 
         // In our coordinate system, pc and pt are easy to find
         // (though is can be more complex if one of the points falls under the sample horizon)
+        // Drobot didn't actually calculate pc and pt -- he just used a half way point
+        // between p0 and p1. But in light space, it's easy to clamp pc and pt.
     float2 pc = float2(clamp(p0.x, -lightSize.x, lightSize.x), clamp(p0.y, -lightSize.y, lightSize.y));
     float2 pt = float2(clamp(p1.x, -lightSize.x, lightSize.x), clamp(p1.y, -lightSize.y, lightSize.y));
+
+        // We need to prevent both points from falling beneath the horizon. Just clamp
+        // on the edge.
+    float2 projHorizNormal = normalize(sampleNormal.xy);
+    pc -= projHorizNormal * min(0, dot(pc - p0, projHorizNormal));
+    pt -= projHorizNormal * min(0, dot(pt - p0, projHorizNormal));
 
     float2 repPt = 0.5f * (pc+pt);
     float3 lightNegDir = float3(repPt - samplePt.xy, -samplePt.z);
@@ -281,14 +292,16 @@ float4 ResolveRectangleLightUnshadowed(
 
         // We can just do the rest of the diffuse calculation in light space, also...
         // If it's just lambert, it's trivial.
-    float NdotL = dot(sampleNormal, lightNegDir);
+    float NdotL = saturate(dot(sampleNormal, lightNegDir));
     float3 diffuse = LightResolve_Diffuse_NdotL(sample, viewDirectionLight, lightNegDir, NdotL, Light);
 
-    float cosThetaLightPlane = sampleNormal.z;
+    float cosThetaLightPlane = saturate(-sampleNormal.z);
+    // return float4(cosThetaLightPlane.xxx, 1.f);
+
     float area = lightSize.x * lightSize.y * 4.f;
     diffuse *= cosThetaLightPlane * area * saturate(DistanceAttenuation(distanceSq, 1.f));
 
-    diffuse *= 100.f;
+    // diffuse *= 100.f;
 
     float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.Radius);
 
