@@ -74,19 +74,22 @@ float4 ResolveTubeLightUnshadowed(float4 position : SV_Position,
                                     float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
                                     SystemInputs sys) : SV_Target0;
 
+float4 ResolveRectangleLightUnshadowed( float4 position : SV_Position,
+                                        float2 texCoord : TEXCOORD0,
+                                        float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
+                                        SystemInputs sys) : SV_Target0;
+
 float4 ResolveSphereLightUnshadowed(float4 position : SV_Position,
 									float2 texCoord : TEXCOORD0,
 									float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
 									SystemInputs sys) : SV_Target0
 {
     // return ResolveTubeLightUnshadowed(position, texCoord, viewFrustumVector, sys);
+    return ResolveRectangleLightUnshadowed(position, texCoord, viewFrustumVector, sys);
 
     int2 pixelCoords = position.xy;
     float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
     GBufferValues sample = LoadGBuffer(position, sys);
-
-        // hack -- currently having problems with very low roughness values!
-    sample.material.roughness = max(0.05f, sample.material.roughness);
 
     float screenSpaceOcclusion = 1.f;
     #if HAS_SCREENSPACE_AO==1
@@ -164,9 +167,6 @@ float4 ResolveTubeLightUnshadowed(
     float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
     GBufferValues sample = LoadGBuffer(position, sys);
 
-        // hack -- currently having problems with very low roughness values!
-    sample.material.roughness = max(0.05f, sample.material.roughness);
-
     float screenSpaceOcclusion = 1.f;
     #if HAS_SCREENSPACE_AO==1
         screenSpaceOcclusion = LoadFloat1(AmbientOcclusion, pixelCoords, GetSampleIndex(sys));
@@ -210,6 +210,90 @@ float4 ResolveTubeLightUnshadowed(
 
     const float lightScale = LightingScale;
     return float4((lightScale*radiusDropOff*distanceAttenuation)*(diffuse + specAttenuation*specular), 1.f);
+}
+
+float4 ResolveRectangleLightUnshadowed(
+    float4 position : SV_Position,
+    float2 texCoord : TEXCOORD0,
+    float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
+    SystemInputs sys) : SV_Target0
+{
+    int2 pixelCoords = position.xy;
+    float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
+    GBufferValues sample = LoadGBuffer(position, sys);
+
+    float screenSpaceOcclusion = 1.f;
+    #if HAS_SCREENSPACE_AO==1
+        screenSpaceOcclusion = LoadFloat1(AmbientOcclusion, pixelCoords, GetSampleIndex(sys));
+    #endif
+
+    float3 directionToEye = normalize(-viewFrustumVector);
+    float3 reflectionDir = reflect(-directionToEye, sample.worldSpaceNormal);
+
+        // This method based on Drobot's research in GPU Gems 5. It should be
+        // fairly general, and it may be possible to adapt this method to
+        // many different shapes.
+        // For diffuse, we're going to use a kind of importance sampling
+        // technique... Except that there will be only a single sample. We want
+        // to find the single that sample that best represents the integral of
+        // diffuse lighting over the whole shape.
+        //
+        // First, we need to find 2 points. The first point is the point on the
+        // light plane that intersects the sample point normal. (p' or p0)
+        // The second point is the projection of the sample point onto the light
+        // plane along the plane normal (p'' or p1)
+        //
+        // We can define and light space where the light center is at the origin,
+        // light is projected along -Z and +X and +Y lie on the light plane.
+        // We can then choose to work either in world space or light space.
+        // Let's use light space, because it might make doing boundary test
+        // easier later.
+
+    float3 planeNormal = float3(1,0,0);
+    float3 planeTangent = float3(0,1,0);
+    float3 planeBitangent = float3(0,0,1);
+    float3 lightCenter = Light.NegativeDirection;
+    float2 lightSize = float2(0.5f, 0.5f);
+
+        // Here lightToWorld is an orthogonal rotation matrix (ie no scale)
+        // so we can use simplified transformation operations.
+    float3x3 lightToWorld = float3x3(planeTangent, planeBitangent, planeNormal);
+    float3x3 worldToLight = transpose(lightToWorld);
+
+    float3 samplePt = mul(worldToLight, worldPosition - lightCenter);
+    float3 sampleNormal = mul(worldToLight, sample.worldSpaceNormal);
+    float3 viewDirectionLight = mul(worldToLight, directionToEye);
+
+        // Triple product type operation becomes simplier...
+        // note -- obvious problems with sampleNormal.z is near 0
+    float2 p0 = samplePt.xy + sampleNormal.xy * (-samplePt.z/sampleNormal.z);
+    float2 p1 = samplePt.xy;    // note -- this has to be improved because the point can't fall under the sample horizon
+
+        // In our coordinate system, pc and pt are easy to find
+        // (though is can be more complex if one of the points falls under the sample horizon)
+    float2 pc = float2(clamp(p0.x, -lightSize.x, lightSize.x), clamp(p0.y, -lightSize.y, lightSize.y));
+    float2 pt = float2(clamp(p1.x, -lightSize.x, lightSize.x), clamp(p1.y, -lightSize.y, lightSize.y));
+
+    float2 repPt = 0.5f * (pc+pt);
+    float3 lightNegDir = float3(repPt - samplePt.xy, -samplePt.z);
+    float distanceSq = dot(lightNegDir, lightNegDir);
+    lightNegDir *= rsqrt(distanceSq);
+
+        // We can just do the rest of the diffuse calculation in light space, also...
+        // If it's just lambert, it's trivial.
+    float NdotL = dot(sampleNormal, lightNegDir);
+    float3 diffuse = LightResolve_Diffuse_NdotL(sample, viewDirectionLight, lightNegDir, NdotL, Light);
+
+    float cosThetaLightPlane = sampleNormal.z;
+    float area = lightSize.x * lightSize.y * 4.f;
+    diffuse *= cosThetaLightPlane * area * saturate(DistanceAttenuation(distanceSq, 1.f));
+
+    diffuse *= 100.f;
+
+    float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.Radius);
+
+    const float lightScale = LightingScale;
+    return float4((lightScale*radiusDropOff)*(diffuse), 1.f);
 }
 
 #endif
