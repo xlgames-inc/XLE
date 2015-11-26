@@ -18,10 +18,11 @@
 float3 LightResolve_Diffuse(
 	GBufferValues sample,
 	float3 directionToEye,
+	float3 negativeLightDirection,
 	LightDesc light)
 {
 	float rawDiffuse = CalculateDiffuse(
-		sample.worldSpaceNormal, directionToEye, light.NegativeDirection,
+		sample.worldSpaceNormal, directionToEye, negativeLightDirection,
 		DiffuseParameters_Roughness(Material_GetRoughness(sample), light.DiffuseWideningMin, light.DiffuseWideningMax));
 
     float metal = Material_GetMetal(sample);
@@ -33,6 +34,7 @@ float3 LightResolve_Diffuse(
 float3 LightResolve_Specular(
 	GBufferValues sample,
 	float3 directionToEye,
+	float3 negativeLightDirection,
 	LightDesc light,
 	float screenSpaceOcclusion = 1.f,
 	bool mirrorSpecular = false)
@@ -52,10 +54,10 @@ float3 LightResolve_Specular(
 	float3 F0_0 = lerp(Material_GetF0_0(sample).xxx, metalF0, Material_GetMetal(sample));
 
 	SpecularParameters param0 = SpecularParameters_RoughF0(roughnessValue, F0_0);
-	float3 halfVector = normalize(light.NegativeDirection + directionToEye);
+	float3 halfVector = normalize(negativeLightDirection + directionToEye);
 	float3 spec0 = CalculateSpecular(
 		sample.worldSpaceNormal, directionToEye,
-		light.NegativeDirection, halfVector,
+		negativeLightDirection, halfVector,
 		param0);
 
 	float specularOcclusion = screenSpaceOcclusion * sample.cookedLightOcclusion;

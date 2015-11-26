@@ -142,7 +142,7 @@ namespace Sample
             //  required. All we have to do is return the properties of the lights
             //  we want.
         static LightDesc dummy;
-        dummy._radius = 10000.f;
+        dummy._cutoffRange = 10000.f;
         dummy._type = LightDesc::Directional;
 
             // sun direction based on angle in the sky

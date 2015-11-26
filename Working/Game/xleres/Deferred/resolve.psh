@@ -160,14 +160,39 @@ float4 ResolveLight(	float4 position : SV_Position,
     #endif
 
 	float3 directionToEye = normalize(-viewFrustumVector);
-	float3 diffuse = LightResolve_Diffuse(sample, directionToEye, Light);
-	float3 specular = LightResolve_Specular(sample, directionToEye, Light, screenSpaceOcclusion);
+	float3 diffuse = LightResolve_Diffuse(sample, directionToEye, Light.NegativeDirection, Light);
+	float3 specular = LightResolve_Specular(sample, directionToEye, Light.NegativeDirection, Light, screenSpaceOcclusion);
 
 	const float lightScale = LightingScale;
 	return float4((lightScale*shadow)*(diffuse + specular), 1.f);
 }
 
-float4 ResolvePointLight(	float4 position : SV_Position,
+float ReciprocalMagnitude(float3 vec)
+{
+    // note -- is there a performance or accuracy advantage to doing it this way?
+    return rsqrt(dot(vec, vec));
+}
+
+float3 RepresentativeVector_Sphere(float3 lightCenter, float lightRadius, float3 litPoint, float3 reflectionDir)
+{
+    // We want to find the "representative point" for a spherical light source
+    // This is the point on the object that best represents the integral of all
+    // incoming light. For a sphere, this is easy.. We just want to find the
+    // point on the sphere closest to the reflection ray. This works so long as the
+    // sphere is not (partially) below the equator. But we'll ignore the artefacts in
+    // these cases.
+    // See Brian Karis' 2013 Unreal course notes for more detail.
+    // See also GPU Gems 5 for Drobot's research on this topic.
+    // See also interesting shadertoy. "Distance Estimated Area Lights"
+    //      https://www.shadertoy.com/view/4ss3Ws
+
+    float3 L = lightCenter - litPoint;
+    float3 testPt = dot(reflectionDir, L) * reflectionDir + litPoint;
+    float3 closestPt = lerp(lightCenter, testPt, saturate(lightRadius * ReciprocalMagnitude(testPt - lightCenter)));
+    return closestPt - litPoint;
+}
+
+float4 ResolveSphereLight(	float4 position : SV_Position,
 							float2 texCoord : TEXCOORD0,
 							float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
 							SystemInputs sys) : SV_Target0
@@ -180,17 +205,25 @@ float4 ResolvePointLight(	float4 position : SV_Position,
 	float shadow = ResolvePointLightShadows(worldPosition, pixelCoords, GetSampleIndex(sys), ShadowResolveConfig_Default());
 	GBufferValues sample = LoadGBuffer(position, sys);
 
-	float3 lightVector = (Light.NegativeDirection - worldPosition);
-	float distanceSq = dot(lightVector, lightVector);
-	float attenuation = DistanceAttenuation(distanceSq, Light.Power);
-	float directionalAttenuation = saturate(dot(lightVector, sample.worldSpaceNormal.xyz) / sqrt(distanceSq));
+    float screenSpaceOcclusion = 1.f;
+    #if HAS_SCREENSPACE_AO==1
+        screenSpaceOcclusion = LoadFloat1(AmbientOcclusion, pixelCoords, GetSampleIndex(sys));
+    #endif
 
-	float D = distanceSq; D *= D; D *= D;
-	float R = Light.Radius; R *= R; R *= R; R *= R;
-	float radiusDropOff = 1.f - saturate(3.f * D / R);
+    float3 directionToEye = normalize(-viewFrustumVector);
+    float3 reflectionDir = reflect(-directionToEye, sample.worldSpaceNormal);
+    float3 lightNegDir = RepresentativeVector_Sphere(Light.NegativeDirection, Light.SourceRadius, worldPosition, reflectionDir);
+    float distanceSq = dot(lightNegDir, lightNegDir);
+    lightNegDir *= rsqrt(distanceSq);
 
-	float3 light = Light.Color.diffuse * directionalAttenuation;
-	return float4((attenuation*radiusDropOff*shadow)*sample.diffuseAlbedo.rgb*light, 1.f);
+    float3 diffuse = LightResolve_Diffuse(sample, directionToEye, lightNegDir, Light);
+    float3 specular = LightResolve_Specular(sample, directionToEye, lightNegDir, Light, screenSpaceOcclusion);
+
+	float attenuation = DistanceAttenuation(distanceSq, 1.f);
+    float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.Radius);
+
+    const float lightScale = LightingScale;
+    return float4((lightScale*shadow*attenuation*radiusDropOff)*(diffuse + specular), 1.f);
 }
 
 #endif

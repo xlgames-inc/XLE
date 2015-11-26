@@ -33,12 +33,15 @@ namespace EntityInterface
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void Fixup(SceneEngine::LightDesc& light, const ParameterBox& props)
+    static void Fixup(SceneEngine::LightDesc& light, const ParameterBox& props, bool directional)
     {
         static const auto transformHash = ParameterBox::MakeParameterNameHash("Transform");
         auto transform = Transpose(props.GetParameter(transformHash, Identity<Float4x4>()));
         auto translation = ExtractTranslation(transform);
-        light._negativeLightDirection = (MagnitudeSquared(translation) > 1e-5f) ? Normalize(translation) : Float3(0.f, 0.f, 0.f);
+        if (directional) {
+            light._negativeLightDirection = (MagnitudeSquared(translation) > 1e-5f) ? Normalize(translation) : Float3(0.f, 0.f, 0.f);
+        } else 
+            light._negativeLightDirection = translation;
     }
 
     namespace EntityTypeName
@@ -46,6 +49,7 @@ namespace EntityInterface
         static const auto* EnvSettings = (const utf8*)"EnvSettings";
         static const auto* AmbientSettings = (const utf8*)"AmbientSettings";
         static const auto* DirectionalLight = (const utf8*)"DirectionalLight";
+        static const auto* SphereLight = (const utf8*)"SphereLight";
         static const auto* ToneMapSettings = (const utf8*)"ToneMapSettings";
         static const auto* ShadowFrustumSettings = (const utf8*)"ShadowFrustumSettings";
 
@@ -71,6 +75,7 @@ namespace EntityInterface
 
         const auto typeAmbient = flexGobInterface.GetTypeId(EntityTypeName::AmbientSettings);
         const auto typeDirectionalLight = flexGobInterface.GetTypeId(EntityTypeName::DirectionalLight);
+        const auto typeSphereLight = flexGobInterface.GetTypeId(EntityTypeName::SphereLight);
         const auto typeToneMapSettings = flexGobInterface.GetTypeId(EntityTypeName::ToneMapSettings);
         const auto typeShadowFrustumSettings = flexGobInterface.GetTypeId(EntityTypeName::ShadowFrustumSettings);
 
@@ -85,10 +90,11 @@ namespace EntityInterface
             }
 
             if (child->_type == typeDirectionalLight) {
-                const auto& props = child->_properties;
 
+                const auto& props = child->_properties;
                 LightDesc light(props);
-                Fixup(light, props);
+                light._type = LightDesc::Type::Directional;
+                Fixup(light, props, true);
                 
                 if (props.GetParameter(Attribute::Flags, 0u) & (1<<0)) {
 
@@ -113,6 +119,15 @@ namespace EntityInterface
                 }
 
                 result._lights.push_back(light);
+
+            } else if (child->_type == typeSphereLight) {
+
+                const auto& props = child->_properties;
+                LightDesc light(props);
+                light._type = LightDesc::Type::Sphere;
+                Fixup(light, props, false);
+                result._lights.push_back(light);
+
             }
 
             if (child->_type == typeToneMapSettings) {

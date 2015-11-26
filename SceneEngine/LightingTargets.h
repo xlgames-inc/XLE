@@ -145,7 +145,7 @@ namespace SceneEngine
         using ShaderProgram = RenderCore::Metal::ShaderProgram;
         using BoundUniforms = RenderCore::Metal::BoundUniforms;
 
-        enum Projection : uint8 { Directional, Point };
+        enum Projection : uint8 { Directional, Sphere };
         enum Shadowing : uint8 { NoShadows, PerspectiveShadows, OrthShadows, OrthShadowsNearCascade, OrthHybridShadows };
             
         class LightShaderType
