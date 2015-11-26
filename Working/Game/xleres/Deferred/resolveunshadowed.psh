@@ -51,7 +51,7 @@ float ReciprocalMagnitude(float3 vec)
     return rsqrt(dot(vec, vec));
 }
 
-float3 RepresentativeVector_Sphere(float3 lightCenter, float lightRadius, float3 litPoint, float3 reflectionDir)
+float3 RepresentativeVector_Sphere(float3 vectorToCenter, float lightRadius, float3 reflectionDir)
 {
     // We want to find the "representative point" for a spherical light source
     // This is the point on the object that best represents the integral of all
@@ -64,7 +64,7 @@ float3 RepresentativeVector_Sphere(float3 lightCenter, float lightRadius, float3
     // See also interesting shadertoy. "Distance Estimated Area Lights"
     //      https://www.shadertoy.com/view/4ss3Ws
 
-    float3 L = lightCenter - litPoint;
+    float3 L = vectorToCenter;
     float3 testPt = dot(reflectionDir, L) * reflectionDir;
     return lerp(L, testPt, saturate(lightRadius * ReciprocalMagnitude(testPt - L)));
 }
@@ -95,7 +95,7 @@ float4 ResolveSphereLightUnshadowed(float4 position : SV_Position,
 
     float3 directionToEye = normalize(-viewFrustumVector);
     float3 reflectionDir = reflect(-directionToEye, sample.worldSpaceNormal);
-    float3 lightNegDir = RepresentativeVector_Sphere(Light.NegativeDirection, Light.SourceRadius, worldPosition, reflectionDir);
+    float3 lightNegDir = RepresentativeVector_Sphere(Light.NegativeDirection - worldPosition, Light.SourceRadius, reflectionDir);
     float distanceSq = dot(lightNegDir, lightNegDir);
     float rDistance = rsqrt(distanceSq);
     lightNegDir *= rDistance;
@@ -181,14 +181,15 @@ float4 ResolveTubeLightUnshadowed(
         // For specular, we use a representative point (similar to the sphere implementation)
 
     float3 L0 = Light.NegativeDirection;
-    float lightLength = Light.SourceRadius;
+    float lightLength = 5.f;
     float3 L1 = Light.NegativeDirection + float3(lightLength,0,0);
 
     float NdotL = TubeLightDiffuseIntegral(L0 - worldPosition, L1 - worldPosition, sample.worldSpaceNormal);
 
         // note --  After doing "RepresentativeVector_Tube" we could also use
         //          RepresentativeVector_Sphere to estimate a thick tube
-    float3 lightNegDir = RepresentativeVector_Tube(L0 - worldPosition, L1 - worldPosition, reflectionDir);
+    float3 tubePoint = RepresentativeVector_Tube(L0 - worldPosition, L1 - worldPosition, reflectionDir);
+    float3 lightNegDir = RepresentativeVector_Sphere(tubePoint, Light.SourceRadius, reflectionDir);
     float distanceSq = dot(lightNegDir, lightNegDir);
     float rDistance = rsqrt(distanceSq);
     lightNegDir *= rDistance;
@@ -199,8 +200,10 @@ float4 ResolveTubeLightUnshadowed(
         // This specular attenutation method is based on Karis. Maybe it needs
         // a little more work...?
     float alpha = sample.material.roughness * sample.material.roughness;
-    float alphaPrime = saturate(alpha + .25f * lightLength * lightLength * .5f * rDistance);
-    float specAttenuation = alpha / alphaPrime; // in principle the highlight is stretched in only one direction... so no square
+    float alphaPrime0 = saturate(alpha + .25f * lightLength * lightLength * .5f * rDistance);
+    float specAttenuation = alpha / alphaPrime0; // in principle the highlight is stretched in only one direction... so no square
+    float alphaPrime1 = saturate(alpha + Light.SourceRadius * Light.SourceRadius * .5f * rDistance);
+    specAttenuation *= (alpha * alpha) / (alphaPrime1 * alphaPrime1);
 
     float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
     float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.Radius);

@@ -666,11 +666,14 @@ namespace SceneEngine
         const unsigned lightCount = 1;
         struct BasicEnv
         {
-            ShaderLightDesc::Ambient _ambient;
-            ShaderLightDesc::Light _dominant[lightCount];
+            ShaderLightDesc::Ambient    _ambient;
+            ShaderLightDesc::RangeFog   _rangeFog;
+            ShaderLightDesc::Light      _dominant[lightCount];
         } env;
 
-        env._ambient = AsShaderDesc(sceneParser.GetGlobalLightingDesc());
+        auto globalDesc = sceneParser.GetGlobalLightingDesc();
+        env._ambient = AsShaderDesc(globalDesc);
+        env._rangeFog = AsRangeFogDesc(globalDesc);
 
         for (unsigned l=0; l<lightCount; ++l)
             if (sceneParser.GetLightCount() > l) {
