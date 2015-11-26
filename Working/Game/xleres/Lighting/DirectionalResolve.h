@@ -15,10 +15,11 @@
 #include "../gbuffer.h"
 #include "../Utility/MathConstants.h"
 
-float3 LightResolve_Diffuse(
+float3 LightResolve_Diffuse_NdotL(
 	GBufferValues sample,
 	float3 directionToEye,
 	float3 negativeLightDirection,
+	float NdotL,
 	LightDesc light)
 {
 	float rawDiffuse = CalculateDiffuse(
@@ -28,7 +29,18 @@ float3 LightResolve_Diffuse(
     float metal = Material_GetMetal(sample);
 	float result = Material_GetDiffuseScale(sample) * rawDiffuse * (1.0f - metal);
 	result *= sample.cookedLightOcclusion;
-	return result * light.Color.diffuse * sample.diffuseAlbedo.rgb;
+	result *= NdotL;
+	return result * light.Color.diffuse.rgb * sample.diffuseAlbedo.rgb;
+}
+
+float3 LightResolve_Diffuse(
+	GBufferValues sample,
+	float3 directionToEye,
+	float3 negativeLightDirection,
+	LightDesc light)
+{
+	float NdotL = saturate(dot(sample.worldSpaceNormal, negativeLightDirection));
+	return LightResolve_Diffuse_NdotL(sample, directionToEye, negativeLightDirection, NdotL, light);
 }
 
 float3 LightResolve_Specular(

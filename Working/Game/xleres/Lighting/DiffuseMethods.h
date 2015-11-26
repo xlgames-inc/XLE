@@ -70,10 +70,10 @@ float DiffuseMethod_Disney(
 
     // note that the "saturate" here prevents strange results on high grazing angles
     const float normalizationFactor = reciprocalPi;
-    return result * cosThetaL * normalizationFactor;
+    return result * normalizationFactor;
 }
 
-float DiffuseMethod_Lambert(float3 normal, float3 negativeLightDirection)
+float DiffuseMethod_Lambert()
 {
         // Plain lambert lighting is not energy conserving. However,
         // the normalization factor is constant -- it's just 1.0f/pi.
@@ -85,7 +85,7 @@ float DiffuseMethod_Lambert(float3 normal, float3 negativeLightDirection)
         // Note that the results are also similarly simple for broadened
         // lambert models (where we offset and scale the value from the dot product)
     const float normalizationFactor = reciprocalPi;
-	return saturate(dot(negativeLightDirection, normal)) * normalizationFactor;
+	return normalizationFactor;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -113,8 +113,7 @@ float CalculateDiffuse( float3 normal, float3 directionToEye,
                         DiffuseParameters parameters)
 {
     #if DIFFUSE_METHOD==0
-        return DiffuseMethod_Lambert(
-            normal, negativeLightDirection);
+        return DiffuseMethod_Lambert();
     #elif DIFFUSE_METHOD==1
         return DiffuseMethod_Disney(
             normal, directionToEye, negativeLightDirection,
