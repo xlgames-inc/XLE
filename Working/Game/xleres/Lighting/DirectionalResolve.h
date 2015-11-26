@@ -66,7 +66,10 @@ float3 LightResolve_Specular(
 		specularOcclusion = TriAceSpecularOcclusion(NdotV, specularOcclusion);
 	}
 
-	return (spec0 * specularOcclusion) * light.Color.specular;
+	// float norm = 1.f / (pi * sample.material.roughness * sample.material.roughness);
+	float norm = 1.f;
+
+	return (spec0 * specularOcclusion * norm) * light.Color.specular;
 }
 
 #endif

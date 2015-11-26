@@ -65,9 +65,8 @@ float3 RepresentativeVector_Sphere(float3 lightCenter, float lightRadius, float3
     //      https://www.shadertoy.com/view/4ss3Ws
 
     float3 L = lightCenter - litPoint;
-    float3 testPt = dot(reflectionDir, L) * reflectionDir + litPoint;
-    float3 closestPt = lerp(lightCenter, testPt, saturate(lightRadius * ReciprocalMagnitude(testPt - lightCenter)));
-    return closestPt - litPoint;
+    float3 testPt = dot(reflectionDir, L) * reflectionDir;
+    return lerp(L, testPt, saturate(lightRadius * ReciprocalMagnitude(testPt - L)));
 }
 
 float4 ResolveSphereLightUnshadowed(float4 position : SV_Position,
@@ -108,11 +107,23 @@ float4 ResolveSphereLightUnshadowed(float4 position : SV_Position,
     float3 diffuse = LightResolve_Diffuse(sample, directionToEye, lightNegDir, Light);
     float3 specular = LightResolve_Specular(sample, directionToEye, lightNegDir, Light, screenSpaceOcclusion);
 
-    float attenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
+        // Specular attenuation is a little tricky here... We want the light
+        // brightness to drop off relative to the solid angle of the light source.
+        // Karis has a rough estimate to an sphere light version of GGX.
+        // He suggests using the ratio of the normalization factors for this estimated
+        // GGX with a direction light source GGX.
+        // It feels like more work could be done here... It seems that the distant specular
+        // highlights are still too bright. Probably it should be compared to a reference
+        // ray tracer solution.
+    float alpha = sample.material.roughness * sample.material.roughness;
+    float alphaPrime = saturate(alpha + Light.SourceRadius * Light.SourceRadius / (2.f * distanceSq));
+    float specAttenuation = (alpha * alpha) / (alphaPrime * alphaPrime);
+
+    float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
     float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.Radius);
 
     const float lightScale = LightingScale;
-    return float4((lightScale*attenuation*radiusDropOff)*(diffuse + specular), 1.f);
+    return float4((lightScale*radiusDropOff*distanceAttenuation)*(diffuse + specAttenuation * specular), 1.f);
 }
 
 #endif
