@@ -78,14 +78,19 @@ namespace PlatformRig
 
         UInt2 tileDims;
         unsigned tilesX, tilesY;
+        unsigned skirt = 0;     // we need to ignore the outermost pixels when not in interleaved mode... This is because AO often has the wrong values on the edge of the screen
+        UInt2 activeDims;
         if (!interleavedTiles) {
             tileDims = UInt2(2048u, 2048u);
-            tilesX = CeilToMultiplePow2(qualitySettings._dimensions[0] * sampleCount[0], tileDims[0]) / tileDims[0];
-            tilesY = CeilToMultiplePow2(qualitySettings._dimensions[1] * sampleCount[1], tileDims[1]) / tileDims[1];
+            skirt = Tweakable("ScreenshotSkirt", 32);
+            activeDims = UInt2(tileDims[0]-2*skirt, tileDims[1]-2*skirt);
+            tilesX = CeilToMultiple(qualitySettings._dimensions[0] * sampleCount[0], activeDims[0]) / (activeDims[0]);
+            tilesY = CeilToMultiple(qualitySettings._dimensions[1] * sampleCount[1], activeDims[1]) / (activeDims[1]);
         } else {
             tilesX = sampleCount[0];
             tilesY = sampleCount[1];
             tileDims = qualitySettings._dimensions;
+            activeDims = tileDims;
         }
         auto tileQualSettings = qualitySettings;
 
@@ -133,14 +138,14 @@ namespace PlatformRig
 
                 unsigned viewWidth, viewHeight;
                 if (!interleavedTiles) {
-                    viewWidth  = std::min((x+1)*tileDims[0], qualitySettings._dimensions[0] * sampleCount[0]) - (x*tileDims[0]);
-                    viewHeight = std::min((y+1)*tileDims[1], qualitySettings._dimensions[1] * sampleCount[1]) - (y*tileDims[1]);
+                    viewWidth  = std::min((x+1)*activeDims[0], qualitySettings._dimensions[0] * sampleCount[0]) - (x*activeDims[0]);
+                    viewHeight = std::min((y+1)*activeDims[1], qualitySettings._dimensions[1] * sampleCount[1]) - (y*activeDims[1]);
                 } else {
-                    viewWidth = tileDims[0];
-                    viewHeight = tileDims[1];
+                    viewWidth = activeDims[0];
+                    viewHeight = activeDims[1];
                 }
-                tileQualSettings._dimensions = UInt2(viewWidth, viewHeight);
-                auto rtDesc = TextureDesc::Plain2D(viewWidth, viewHeight, format);
+                tileQualSettings._dimensions = UInt2(viewWidth+2*skirt, viewHeight+2*skirt);
+                auto rtDesc = TextureDesc::Plain2D(viewWidth+2*skirt, viewHeight+2*skirt, format);
                 target = TargetType(rtDesc, "HighResScreenShot");
 
                     // We build a custom projection matrix that limits
@@ -159,28 +164,27 @@ namespace PlatformRig
                 Float4x4 customProjectionMatrix;
                 if (!interleavedTiles) {
                     customProjectionMatrix = PerspectiveProjection(
-                        LinearInterpolate(l, r, (x*tileDims[0]             )/float(qualitySettings._dimensions[0] * sampleCount[0])),
-                        LinearInterpolate(t, b, (y*tileDims[1]             )/float(qualitySettings._dimensions[1] * sampleCount[1])),
-                        LinearInterpolate(l, r, (x*tileDims[0] +  viewWidth)/float(qualitySettings._dimensions[0] * sampleCount[0])),
-                        LinearInterpolate(t, b, (y*tileDims[1] + viewHeight)/float(qualitySettings._dimensions[1] * sampleCount[1])),
-                        camera._nearClip, camera._farClip,
-                        Techniques::GetDefaultClipSpaceType());
+                        LinearInterpolate(l, r, (int(x*activeDims[0]              - skirt))/float(qualitySettings._dimensions[0] * sampleCount[0])),
+                        LinearInterpolate(t, b, (int(y*activeDims[1]              - skirt))/float(qualitySettings._dimensions[1] * sampleCount[1])),
+                        LinearInterpolate(l, r, (int(x*activeDims[0] +  viewWidth + skirt))/float(qualitySettings._dimensions[0] * sampleCount[0])),
+                        LinearInterpolate(t, b, (int(y*activeDims[1] + viewHeight + skirt))/float(qualitySettings._dimensions[1] * sampleCount[1])),
+                        camera._nearClip, camera._farClip, Techniques::GetDefaultClipSpaceType());
                 } else {
                     Float2 subpixelOffset(
-                        ((x+.5f)/float(tilesX) - 0.5f)/float(tileDims[0]), 
-                        ((y+.5f)/float(tilesY) - 0.5f)/float(tileDims[1]));
+                        ((x+.5f)/float(tilesX) - 0.5f)/float(rtDesc._width), 
+                        ((y+.5f)/float(tilesY) - 0.5f)/float(rtDesc._height));
                     customProjectionMatrix = PerspectiveProjection(
                         l + n * subpixelOffset[0], t + n * subpixelOffset[1],
                         r + n * subpixelOffset[0], b + n * subpixelOffset[1],
                         camera._nearClip, camera._farClip, Techniques::GetDefaultClipSpaceType());
                 }
 
-                auto projDesc = BuildProjectionDesc(camera, UInt2(viewWidth, viewHeight), &customProjectionMatrix);
+                auto projDesc = BuildProjectionDesc(camera, UInt2(rtDesc._width, rtDesc._height), &customProjectionMatrix);
 
                     // now we can just render, using the normal process.
                 parserContext.Reset();
                 metalContext->Bind(MakeResourceList(target.RTV()), nullptr);
-                metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(viewWidth), float(viewHeight)));
+                metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(rtDesc._width), float(rtDesc._height)));
                 LightingParser_SetGlobalTransform(*metalContext, parserContext, projDesc);
                 LightingParser_ExecuteScene(*metalContext, parserContext, tileQualSettings);
             }
@@ -211,17 +215,17 @@ namespace PlatformRig
 
                     unsigned viewWidth, viewHeight;
                     if (!interleavedTiles) {
-                        viewWidth  = std::min((x+1)*tileDims[0], qualitySettings._dimensions[0] * sampleCount[0]) - (x*tileDims[0]);
-                        viewHeight = std::min((y+1)*tileDims[1], qualitySettings._dimensions[1] * sampleCount[1]) - (y*tileDims[1]);
+                        viewWidth  = std::min((x+1)*activeDims[0], qualitySettings._dimensions[0] * sampleCount[0]) - (x*activeDims[0]);
+                        viewHeight = std::min((y+1)*activeDims[1], qualitySettings._dimensions[1] * sampleCount[1]) - (y*activeDims[1]);
                     } else {
-                        viewWidth = tileDims[0];
-                        viewHeight = tileDims[1];
+                        viewWidth = activeDims[0];
+                        viewHeight = activeDims[1];
                     }
 
                         // copy each row of the tile into the correct spot in the output texture
                     for (unsigned r=0; r<viewHeight; ++r) {
-                        const void* rowSrc = PtrAdd(readback->GetData(), r*readback->GetPitches()._rowPitch);
-                        void* rowDst = PtrAdd(rawData->GetData(), (y*tileDims[1]+r)*finalRowPitch + x*tileDims[0]*bpp/8);
+                        const void* rowSrc = PtrAdd(readback->GetData(), (r+skirt)*readback->GetPitches()._rowPitch + skirt*bpp/8);
+                        void* rowDst = PtrAdd(rawData->GetData(), (y*activeDims[1]+r)*finalRowPitch + x*activeDims[0]*bpp/8);
                         assert(PtrAdd(rowDst, viewWidth*bpp/8) <= rawDataEnd);
                         assert(PtrAdd(rowSrc, viewWidth*bpp/8) <= readbackEnd);
                         XlCopyMemory(rowDst, rowSrc, viewWidth*bpp/8);
