@@ -69,11 +69,18 @@ float3 RepresentativeVector_Sphere(float3 lightCenter, float lightRadius, float3
     return lerp(L, testPt, saturate(lightRadius * ReciprocalMagnitude(testPt - L)));
 }
 
+float4 ResolveTubeLightUnshadowed(float4 position : SV_Position,
+                                    float2 texCoord : TEXCOORD0,
+                                    float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
+                                    SystemInputs sys) : SV_Target0;
+
 float4 ResolveSphereLightUnshadowed(float4 position : SV_Position,
 									float2 texCoord : TEXCOORD0,
 									float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
 									SystemInputs sys) : SV_Target0
 {
+    // return ResolveTubeLightUnshadowed(position, texCoord, viewFrustumVector, sys);
+
     int2 pixelCoords = position.xy;
     float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
     GBufferValues sample = LoadGBuffer(position, sys);
@@ -90,7 +97,8 @@ float4 ResolveSphereLightUnshadowed(float4 position : SV_Position,
     float3 reflectionDir = reflect(-directionToEye, sample.worldSpaceNormal);
     float3 lightNegDir = RepresentativeVector_Sphere(Light.NegativeDirection, Light.SourceRadius, worldPosition, reflectionDir);
     float distanceSq = dot(lightNegDir, lightNegDir);
-    lightNegDir *= rsqrt(distanceSq);
+    float rDistance = rsqrt(distanceSq);
+    lightNegDir *= rDistance;
 
         // note --  Here we should really be doing some extra work to calculate the
         //          incoming light power. We need to define what the light power really
@@ -116,14 +124,89 @@ float4 ResolveSphereLightUnshadowed(float4 position : SV_Position,
         // highlights are still too bright. Probably it should be compared to a reference
         // ray tracer solution.
     float alpha = sample.material.roughness * sample.material.roughness;
-    float alphaPrime = saturate(alpha + Light.SourceRadius * Light.SourceRadius / (2.f * distanceSq));
+    float alphaPrime = saturate(alpha + Light.SourceRadius * Light.SourceRadius * .5f * rDistance);
     float specAttenuation = (alpha * alpha) / (alphaPrime * alphaPrime);
 
     float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
     float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.Radius);
 
     const float lightScale = LightingScale;
-    return float4((lightScale*radiusDropOff*distanceAttenuation)*(diffuse + specAttenuation * specular), 1.f);
+    return float4((lightScale*radiusDropOff*distanceAttenuation)*(diffuse + specAttenuation*specular), 1.f);
+}
+
+float TubeLightDiffuseIntegral(float3 L0, float3 L1, float3 N)
+{
+    // see the Unreal course notes and
+    // http://www.cse.yorku.ca/~amana/research/linearLights.pdf
+
+    float L0rmag = ReciprocalMagnitude(L0);
+    float L1rmag = ReciprocalMagnitude(L1);
+    float A = saturate(dot(N, L0) * .5f * L0rmag + dot(N, L1) * 0.5f * L1rmag);
+    return 2.f * A / (1.f/(L0rmag*L1rmag) + dot(L0, L1) + 2.f);
+}
+
+float3 RepresentativeVector_Tube(float3 L0, float3 L1, float3 reflectionDir)
+{
+    float3 Ld = L1 - L0;
+    float LdmagSq = dot(Ld, Ld);
+    float RdotLd = dot(reflectionDir, Ld);
+    float t = (dot(reflectionDir, L0) * RdotLd - dot(L0, Ld)) / (LdmagSq - RdotLd*RdotLd);
+    return L0 + saturate(t) * Ld;
+}
+
+float4 ResolveTubeLightUnshadowed(
+    float4 position : SV_Position,
+    float2 texCoord : TEXCOORD0,
+    float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
+    SystemInputs sys) : SV_Target0
+{
+    int2 pixelCoords = position.xy;
+    float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
+    GBufferValues sample = LoadGBuffer(position, sys);
+
+        // hack -- currently having problems with very low roughness values!
+    sample.material.roughness = max(0.05f, sample.material.roughness);
+
+    float screenSpaceOcclusion = 1.f;
+    #if HAS_SCREENSPACE_AO==1
+        screenSpaceOcclusion = LoadFloat1(AmbientOcclusion, pixelCoords, GetSampleIndex(sys));
+    #endif
+
+    float3 directionToEye = normalize(-viewFrustumVector);
+    float3 reflectionDir = reflect(-directionToEye, sample.worldSpaceNormal);
+
+        // As per Karis' 2013 Unreal course notes, we can calculate tube lights using
+        // different methods for diffuse and specular.
+        // For diffuse, we can directly calculate the integral of NdotL against a line
+        // For specular, we use a representative point (similar to the sphere implementation)
+
+    float3 L0 = Light.NegativeDirection;
+    float lightLength = Light.SourceRadius;
+    float3 L1 = Light.NegativeDirection + float3(lightLength,0,0);
+
+    float NdotL = TubeLightDiffuseIntegral(L0 - worldPosition, L1 - worldPosition, sample.worldSpaceNormal);
+
+        // note --  After doing "RepresentativeVector_Tube" we could also use
+        //          RepresentativeVector_Sphere to estimate a thick tube
+    float3 lightNegDir = RepresentativeVector_Tube(L0 - worldPosition, L1 - worldPosition, reflectionDir);
+    float distanceSq = dot(lightNegDir, lightNegDir);
+    float rDistance = rsqrt(distanceSq);
+    lightNegDir *= rDistance;
+
+    float3 diffuse = LightResolve_Diffuse_NdotL(sample, directionToEye, lightNegDir, NdotL, Light);
+    float3 specular = LightResolve_Specular(sample, directionToEye, lightNegDir, Light, screenSpaceOcclusion);
+
+        // This specular attenutation method is based on Karis. Maybe it needs
+        // a little more work...?
+    float alpha = sample.material.roughness * sample.material.roughness;
+    float alphaPrime = saturate(alpha + .25f * lightLength * lightLength * .5f * rDistance);
+    float specAttenuation = alpha / alphaPrime; // in principle the highlight is stretched in only one direction... so no square
+
+    float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
+    float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.Radius);
+
+    const float lightScale = LightingScale;
+    return float4((lightScale*radiusDropOff*distanceAttenuation)*(diffuse + specAttenuation*specular), 1.f);
 }
 
 #endif
