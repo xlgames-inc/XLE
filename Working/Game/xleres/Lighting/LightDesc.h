@@ -35,6 +35,7 @@ struct LightDesc
 	float		SourceRadius;
 	float		DiffuseWideningMin;
 	float		DiffuseWideningMax;
+	float		Dummy[2];
 };
 
 #endif
