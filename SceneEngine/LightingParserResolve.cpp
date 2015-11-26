@@ -85,11 +85,10 @@ namespace SceneEngine
         {
         public:
             Float3 _negativeDirection; float _radius;
-            Float3 _diffuse; float dummy;
-            Float3 _specular; float nonMetalSpecularBrightness;
-            float _lightPower; 
+            Float3 _diffuse; float _dummy0;
+            Float3 _specular; float _sourceRadius;
             float _diffuseWideningMin, _diffuseWideningMax;
-            float dummy1[1];
+            float _dummy1, _dummy2;
         };
     }
 
@@ -114,12 +113,10 @@ namespace SceneEngine
         return ShaderLightDesc::Light 
             {
                 light._negativeLightDirection, 
-                light._radius, 
+                light._cutoffRange, 
                 light._diffuseColor, 0.f,
-                light._specularColor,
-                light._nonMetalSpecularBrightness,
-                PowerForHalfRadius(light._radius, 0.05f),
-                light._diffuseWideningMin, light._diffuseWideningMax
+                light._specularColor, light._sourceRadius,
+                light._diffuseWideningMin, light._diffuseWideningMax, 0.f, 0.f
             };
     }
 
@@ -502,7 +499,7 @@ namespace SceneEngine
                 shaderType._projection = 
                     (i._type == LightDesc::Directional) 
                     ? LightingResolveShaders::Directional 
-                    : LightingResolveShaders::Point;
+                    : LightingResolveShaders::Sphere;
                 shaderType._shadows = LightingResolveShaders::NoShadows;
                 shaderType._hasScreenSpaceAO = resolveContext._ambientOcclusionResult.IsGood();
 
@@ -680,9 +677,10 @@ namespace SceneEngine
                 env._dominant[l] = AsShaderDesc(sceneParser.GetLightDesc(l));
             } else {
                 env._dominant[l] = ShaderLightDesc::Light
-                    {   Float3(0.f, 0.f, 0.f), 0.f, Float3(0.f, 0.f, 0.f), 0.f,
+                    {   Float3(0.f, 0.f, 0.f), 0.f, 
                         Float3(0.f, 0.f, 0.f), 0.f,
-                        0.f, 0.f, 0.f, { 0.f } };
+                        Float3(0.f, 0.f, 0.f), 0.f,
+                        0.f, 0.f, 0.f, 0.f };
             }
 
         parserContext.SetGlobalCB(

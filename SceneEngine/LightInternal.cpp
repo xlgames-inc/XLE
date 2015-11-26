@@ -297,19 +297,20 @@ namespace SceneEngine
     {
         _type = Directional;
         _negativeLightDirection = Normalize(Float3(-.1f, 0.33f, 1.f));
-        _radius = 10000.f;
+        _cutoffRange = 10000.f;
+        _sourceRadius = 1.f;
         _diffuseColor = Float3(1.f, 1.f, 1.f);
         _specularColor = Float3(1.f, 1.f, 1.f);
-        _nonMetalSpecularBrightness = 1.f;
 
-        _diffuseWideningMin = 0.33f * 0.5f;
-        _diffuseWideningMax = 0.33f * 2.5f;
+        _diffuseWideningMin = 0.5f;
+        _diffuseWideningMax = 2.5f;
         _diffuseModel = 1;
 
         _shadowResolveModel = 0;
     }
 
     LightDesc::LightDesc(const Utility::ParameterBox& props)
+    : LightDesc()
     {
         static const auto diffuseHash = ParameterBox::MakeParameterNameHash("Diffuse");
         static const auto diffuseBrightnessHash = ParameterBox::MakeParameterNameHash("DiffuseBrightness");
@@ -318,21 +319,20 @@ namespace SceneEngine
         static const auto diffuseWideningMax = ParameterBox::MakeParameterNameHash("DiffuseWideningMax");
         static const auto specularHash = ParameterBox::MakeParameterNameHash("Specular");
         static const auto specularBrightnessHash = ParameterBox::MakeParameterNameHash("SpecularBrightness");
-        static const auto specularNonMetalBrightnessHash = ParameterBox::MakeParameterNameHash("SpecularNonMetalBrightness");
         static const auto shadowResolveModel = ParameterBox::MakeParameterNameHash("ShadowResolveModel");
+        static const auto cutoffRange = ParameterBox::MakeParameterNameHash("CutoffRange");
+        static const auto sourceRadius = ParameterBox::MakeParameterNameHash("SourceRadius");
 
-        _type = LightDesc::Directional;
         _diffuseColor = props.GetParameter(diffuseBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(diffuseHash, ~0x0u));
         _specularColor = props.GetParameter(specularBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(specularHash, ~0x0u));
-        _nonMetalSpecularBrightness = props.GetParameter(specularNonMetalBrightnessHash, 1.f);
 
-        _diffuseWideningMin = props.GetParameter(diffuseWideningMin, 0.33f * 0.5f);
-        _diffuseWideningMax = props.GetParameter(diffuseWideningMax, 0.33f * 2.5f);
+        _diffuseWideningMin = props.GetParameter(diffuseWideningMin, _diffuseWideningMin);
+        _diffuseWideningMax = props.GetParameter(diffuseWideningMax, _diffuseWideningMax);
         _diffuseModel = props.GetParameter(diffuseModel, 1);
-                
-        _shadowResolveModel = props.GetParameter(shadowResolveModel, 0);
+        _cutoffRange = props.GetParameter(cutoffRange, _cutoffRange);
+        _sourceRadius = props.GetParameter(sourceRadius, _sourceRadius);
 
-        _radius = 10000.f;
+        _shadowResolveModel = props.GetParameter(shadowResolveModel, 0);
     }
 
     RenderCore::SharedPkt BuildScreenToShadowConstants(

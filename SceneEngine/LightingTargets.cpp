@@ -212,7 +212,7 @@ namespace SceneEngine
             // produces a unique id. But ids must be (close to) contiguous, and we want to
             // reserve as few id numbers as possible.
         auto shadows = _shadows;
-        if (_projection == Point && shadows == OrthShadows) { shadows = PerspectiveShadows; }
+        if (_projection == Sphere && shadows == OrthShadows) { shadows = PerspectiveShadows; }
         auto shadowResolveModel = _shadowResolveModel;
         if (shadows == NoShadows) { shadowResolveModel = 0; }
 
@@ -249,17 +249,17 @@ namespace SceneEngine
         LightShader& dest = _shaders[type.AsIndex()];
         assert(!dest._shader);
 
-        if (type._projection == Point) {
+        if (type._projection == Sphere) {
 
             if (type._shadows == NoShadows) {
                 dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
                     vertexShader_viewFrustumVector, 
-                    "game/xleres/deferred/resolveunshadowed.psh:ResolvePointLightUnshadowed:ps_*",
+                    "game/xleres/deferred/resolveunshadowed.psh:ResolveSphereLightUnshadowed:ps_*",
                     definesTable.get());
             } else {
                 dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
                     vertexShader_viewFrustumVector, 
-                    "game/xleres/deferred/resolve.psh:ResolvePointLight:ps_*",
+                    "game/xleres/deferred/resolve.psh:ResolveSphereLight:ps_*",
 			        definesTable.get());
             }
 
@@ -349,12 +349,19 @@ namespace SceneEngine
         BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 0, 1, true));
         BuildShader(desc, LightShaderType(Directional, OrthHybridShadows, 1, 1, true));
 
-        BuildShader(desc, LightShaderType(Point, NoShadows, 0, 0, false));
-        BuildShader(desc, LightShaderType(Point, NoShadows, 1, 0, false));
-        BuildShader(desc, LightShaderType(Point, PerspectiveShadows, 0, 0, false));
-        BuildShader(desc, LightShaderType(Point, PerspectiveShadows, 1, 0, false));
-        BuildShader(desc, LightShaderType(Point, PerspectiveShadows, 0, 1, false));
-        BuildShader(desc, LightShaderType(Point, PerspectiveShadows, 1, 1, false));
+        BuildShader(desc, LightShaderType(Sphere, NoShadows, 0, 0, false));
+        BuildShader(desc, LightShaderType(Sphere, NoShadows, 1, 0, false));
+        BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 0, 0, false));
+        BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 1, 0, false));
+        BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 0, 1, false));
+        BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 1, 1, false));
+
+        BuildShader(desc, LightShaderType(Sphere, NoShadows, 0, 0, true));
+        BuildShader(desc, LightShaderType(Sphere, NoShadows, 1, 0, true));
+        BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 0, 0, true));
+        BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 1, 0, true));
+        BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 0, 1, true));
+        BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 1, 1, true));
     }
 
     LightingResolveShaders::~LightingResolveShaders() {}

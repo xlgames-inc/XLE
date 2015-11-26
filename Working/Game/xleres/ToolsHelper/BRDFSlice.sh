@@ -26,13 +26,12 @@ float3 BRDF(float3 lightDir, float3 view, float3 normal, float3 tangent, float3 
     light.Radius = 10000.f;
     light.Color.diffuse = float3(1,1,1);
     light.Color.specular = float3(1,1,1);
-    light.Color.nonMetalSpecularBrightness = 1.f;
     light.Power = 1.f;
     light.DiffuseWideningMin = 0.5f;
     light.DiffuseWideningMax = 2.5f;
 
-    float3 diffuse = LightResolve_Diffuse(sample, view, light);
-    float3 specular = LightResolve_Specular(sample, view, light);
+    float3 diffuse = LightResolve_Diffuse(sample, view, lightDir, light);
+    float3 specular = LightResolve_Specular(sample, view, lightDir, light);
     return diffuse + specular;
 }
 

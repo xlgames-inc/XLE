@@ -25,7 +25,6 @@ struct LightColors
 {
 	float3 	diffuse;
 	float3 	specular;
-	float 	nonMetalSpecularBrightness;
 };
 
 struct LightDesc
@@ -33,10 +32,9 @@ struct LightDesc
     float3 		NegativeDirection;
 	float		Radius;
 	LightColors Color;
-	float		Power;
+	float		SourceRadius;
 	float		DiffuseWideningMin;
 	float		DiffuseWideningMax;
-	float		Dummy;
 };
 
 #endif

@@ -46,6 +46,8 @@ float VanderCorputRadicalInverse(uint bits)
     // This is the "Van der Corput radical inverse" function
     // see source:
     //      http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
+    // Note -- Can't we just use the HLSL intrinsic "reversebits"? Is there a benefit?
+    // return float(reversebits(bits)) * 2.3283064365386963e-10f;
     bits = (bits << 16u) | (bits >> 16u);
     bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
     bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);

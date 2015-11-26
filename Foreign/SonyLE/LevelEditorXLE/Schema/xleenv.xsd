@@ -221,11 +221,10 @@
     <xs:attribute name="ExportEnabled" type="xs:boolean" default="true"/>
   </xs:complexType>
 
-      <!-- D I R E C T I O N A L   L I G H T -->
-  <xs:complexType name="directionalLightType">
+      <!-- S T A T I C   L I G H T S -->
+  <xs:complexType name="staticLightType">
     <xs:annotation>
       <xs:appinfo>
-        <LeGe.NativeType nativeName="DirectionalLight"/>
         <LeGe.NativeProperty name="Diffuse" nativeName="Diffuse"/>
         <LeGe.NativeProperty name="DiffuseBrightness" nativeName="DiffuseBrightness"/>
         <LeGe.NativeProperty name="DiffuseModel" nativeName="DiffuseModel"/>
@@ -233,13 +232,11 @@
         <LeGe.NativeProperty name="DiffuseWideningMax" nativeName="DiffuseWideningMax"/>
         <LeGe.NativeProperty name="Specular" nativeName="Specular"/>
         <LeGe.NativeProperty name="SpecularBrightness" nativeName="SpecularBrightness"/>
-        <LeGe.NativeProperty name="Flags" nativeName="Flags"/>
-        <LeGe.NativeProperty name="ShadowResolveModel" nativeName="ShadowResolveModel"/>
         <LeGe.NativeVis geo="sphere"/>
 
-        <scea.dom.editors.attribute category="Diffuse" name="Diffuse" displayName="Diffuse" description="Diffuse Color" 
+        <scea.dom.editors.attribute category="Diffuse" name="Diffuse" displayName="Diffuse" description="Diffuse Color"
           editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
-        <scea.dom.editors.attribute category="Diffuse" name="DiffuseBrightness" displayName="Diffuse Brightness" description="Brightness of the diffuse part of the light" 
+        <scea.dom.editors.attribute category="Diffuse" name="DiffuseBrightness" displayName="Diffuse Brightness" description="Brightness of the diffuse part of the light"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,100"/>
         <scea.dom.editors.attribute category="Diffuse" name="DiffuseModel" displayName="Diffuse Model"
           editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:Lambert=0,Soft=1"
@@ -248,20 +245,11 @@
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2.5"/>
         <scea.dom.editors.attribute category="Diffuse" name="DiffuseWideningMax" displayName="Widening Max" description="Maximum value for the widening effect for diffuse light"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,5"/>
-        
-        <scea.dom.editors.attribute category="Specular" name="Specular" displayName="Specular" description="Specular Color" 
+
+        <scea.dom.editors.attribute category="Specular" name="Specular" displayName="Specular" description="Specular Color"
           editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
         <scea.dom.editors.attribute category="Specular" name="SpecularBrightness" displayName="Specular Brightness" description="Brightness of the specular part of the light"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,100"/>
-        
-        <scea.dom.editors.attribute category="Other" name="Flags" displayName="Flags"
-          editor="Sce.Atf.Controls.PropertyEditing.FlagsUITypeEditor,Atf.Gui.WinForms:CastShadows"
-          converter="Sce.Atf.Controls.PropertyEditing.FlagsTypeConverter:CastShadows"/>
-        <scea.dom.editors.attribute category="Other" name="ShadowResolveModel" displayName="Shadow Resolve Model"
-          editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:Noisy=0,Smooth=1"
-          converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:Noisy=0,Smooth=1"/>
-
-        <scea.dom.editors category="Lights" name="DirLight" menuText="Lights/DirLight" description="A directional light"/>
       </xs:appinfo>
     </xs:annotation>
 
@@ -274,8 +262,53 @@
         <xs:attribute name="DiffuseWideningMax" type="xs:float" default="2.5"/>
         <xs:attribute name="Specular" type="xs:int" default="-1"/>
         <xs:attribute name="SpecularBrightness" type="xs:float" default="1"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  
+  <xs:complexType name="directionalLightType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="DirectionalLight"/>
+        <LeGe.NativeProperty name="Flags" nativeName="Flags"/>
+        <LeGe.NativeProperty name="ShadowResolveModel" nativeName="ShadowResolveModel"/>
+
+        <scea.dom.editors.attribute category="Other" name="Flags" displayName="Flags"
+          editor="Sce.Atf.Controls.PropertyEditing.FlagsUITypeEditor,Atf.Gui.WinForms:CastShadows"
+          converter="Sce.Atf.Controls.PropertyEditing.FlagsTypeConverter:CastShadows"/>
+        <scea.dom.editors.attribute category="Other" name="ShadowResolveModel" displayName="Shadow Resolve Model"
+          editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:Noisy=0,Smooth=1"
+          converter="Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:Noisy=0,Smooth=1"/>
+
+        <scea.dom.editors category="Lights" name="DirLight" menuText="Lights/DirLight" description="A directional light"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:complexContent>
+      <xs:extension base="staticLightType">
         <xs:attribute name="Flags" type="xs:int" default="0"/>
         <xs:attribute name="ShadowResolveModel" type="xs:int" default="0"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="sphereLightType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="SphereLight"/>
+        <LeGe.NativeProperty name="SourceRadius" nativeName="SourceRadius"/>
+
+        <scea.dom.editors.attribute category="Light" name="SourceRadius" displayName="Source Radius"
+          description="This is the radius of the light source sphere. For example, a light global might typically have a radius of 0.05m."
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,5"/>
+        
+        <scea.dom.editors category="Lights" name="SphereLight" menuText="Lights/SphereLight" description="A sphere light"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:complexContent>
+      <xs:extension base="staticLightType">
+        <xs:attribute name="SourceRadius" type="xs:float" default="1"/>
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>

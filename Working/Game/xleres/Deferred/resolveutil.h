@@ -55,8 +55,15 @@ float PowerForHalfRadius(float halfRadius, float powerFraction)
 
 float DistanceAttenuation(float distanceSq, float power)
 {
-	float attenuation = power / (attenuationScalar*distanceSq+1);
-	return attenuation;
+	return power / (distanceSq+1.f);
+}
+
+float CalculateRadiusLimitAttenutation(float distanceSq, float lightRadius)
+{
+	// Calculate the drop-off towards the edge of the light radius...
+	float D = distanceSq; D *= D; D *= D;
+	float R = lightRadius; R *= R; R *= R; R *= R;
+	return 1.f - saturate(3.f * D / R);
 }
 
 #endif
