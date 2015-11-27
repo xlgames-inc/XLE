@@ -84,11 +84,18 @@ namespace SceneEngine
         class Light
         {
         public:
-            Float3 _negativeDirection; float _radius;
-            Float3 _diffuse; float _dummy0;
-            Float3 _specular; float _sourceRadius;
-            float _diffuseWideningMin, _diffuseWideningMax;
-            float _dummy1, _dummy2;
+                // Note that this structure is larger than it needs to be
+                // for some light types. Only some types need the full 
+                // orientation matrix.
+                // It seems like we would end up wasting shader constants
+                // if we want to store a large number of lights for forward
+                // rendering.
+            Float3 _position;           float _cutoffRange;
+            Float3 _diffuse;            float _sourceRadiusX;
+            Float3 _specular;           float _sourceRadiusY;
+            Float3 _orientationX;       float _diffuseWideningMin;
+            Float3 _orientationY;       float _diffuseWideningMax;
+            Float3 _orientationZ;       unsigned _dummy;
         };
     }
 
@@ -112,11 +119,12 @@ namespace SceneEngine
     {
         return ShaderLightDesc::Light 
             {
-                light._negativeLightDirection, 
-                light._cutoffRange, 
-                light._diffuseColor, 0.f,
-                light._specularColor, light._sourceRadius,
-                light._diffuseWideningMin, light._diffuseWideningMax, 0.f, 0.f
+                light._position, light._cutoffRange, 
+                light._diffuseColor, light._radii[0],
+                light._specularColor, light._radii[1],
+                ExtractRight(light._orientation), light._diffuseWideningMin, 
+                ExtractForward(light._orientation), light._diffuseWideningMax, 
+                ExtractUp(light._orientation), 0
             };
     }
 
@@ -496,10 +504,7 @@ namespace SceneEngine
 
             CATCH_ASSETS_BEGIN
                 LightingResolveShaders::LightShaderType shaderType;
-                shaderType._projection = 
-                    (i._type == LightDesc::Directional) 
-                    ? LightingResolveShaders::Directional 
-                    : LightingResolveShaders::Sphere;
+                shaderType._shape = (LightingResolveShaders::Shape)i._shape;
                 shaderType._shadows = LightingResolveShaders::NoShadows;
                 shaderType._hasScreenSpaceAO = resolveContext._ambientOcclusionResult.IsGood();
 
@@ -683,7 +688,9 @@ namespace SceneEngine
                     {   Float3(0.f, 0.f, 0.f), 0.f, 
                         Float3(0.f, 0.f, 0.f), 0.f,
                         Float3(0.f, 0.f, 0.f), 0.f,
-                        0.f, 0.f, 0.f, 0.f };
+                        Float3(0.f, 0.f, 0.f), 0.f,
+                        Float3(0.f, 0.f, 0.f), 0.f,
+                        Float3(0.f, 0.f, 0.f), 0 };
             }
 
         parserContext.SetGlobalCB(

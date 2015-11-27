@@ -608,7 +608,7 @@ namespace SceneEngine
 
         Float3 sunDirection(0.f, 0.f, 1.f);
         if (parserContext.GetSceneParser() && parserContext.GetSceneParser()->GetLightCount() > 0) {
-            sunDirection = parserContext.GetSceneParser()->GetLightDesc(0)._negativeLightDirection;
+            sunDirection = parserContext.GetSceneParser()->GetLightDesc(0)._position;
         }
 
             // We want to project the sun direction onto the plane for the precalculated sun movement.

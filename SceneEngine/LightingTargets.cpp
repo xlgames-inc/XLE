@@ -202,7 +202,7 @@ namespace SceneEngine
 
     unsigned LightingResolveShaders::LightShaderType::ReservedIndexCount()
     {
-        return 0x7F + 1;
+        return 0x1FF + 1;
     }
 
     unsigned LightingResolveShaders::LightShaderType::AsIndex() const
@@ -212,16 +212,17 @@ namespace SceneEngine
             // produces a unique id. But ids must be (close to) contiguous, and we want to
             // reserve as few id numbers as possible.
         auto shadows = _shadows;
-        if (_projection == Sphere && shadows == OrthShadows) { shadows = PerspectiveShadows; }
+        if (_shape == Sphere && shadows == OrthShadows) { shadows = PerspectiveShadows; }
+        if (_shape == Tube || _shape == Rectangle || _shape == Disc) { shadows = NoShadows; }
         auto shadowResolveModel = _shadowResolveModel;
         if (shadows == NoShadows) { shadowResolveModel = 0; }
 
         return 
-              ((_projection & 0x1) << 0)
-            | ((shadows & 0x7) << 1)
-            | ((_diffuseModel & 0x1) << 4)
-            | ((shadowResolveModel & 0x1) << 5)
-            | (unsigned(_hasScreenSpaceAO) << 6)
+              ((_shape & 0x7) << 0)
+            | ((shadows & 0x7) << 3)
+            | ((_diffuseModel & 0x1) << 6)
+            | ((shadowResolveModel & 0x1) << 7)
+            | (unsigned(_hasScreenSpaceAO) << 8)
             ;
     }
 
@@ -239,6 +240,7 @@ namespace SceneEngine
         definesTable << ";SHADOW_RESOLVE_MODEL=" << unsigned(type._shadowResolveModel);
         definesTable << ";SHADOW_RT_HYBRID=" << unsigned(type._shadows == OrthHybridShadows);
         definesTable << ";HAS_SCREENSPACE_AO=" << unsigned(type._hasScreenSpaceAO);
+        definesTable << ";LIGHT_SHAPE=" << unsigned(type._shape);
 
         const char* vertexShader_viewFrustumVector = 
             desc._flipDirection
@@ -249,21 +251,7 @@ namespace SceneEngine
         LightShader& dest = _shaders[type.AsIndex()];
         assert(!dest._shader);
 
-        if (type._projection == Sphere) {
-
-            if (type._shadows == NoShadows) {
-                dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    vertexShader_viewFrustumVector, 
-                    "game/xleres/deferred/resolveunshadowed.psh:ResolveSphereLightUnshadowed:ps_*",
-                    definesTable.get());
-            } else {
-                dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    vertexShader_viewFrustumVector, 
-                    "game/xleres/deferred/resolve.psh:ResolveSphereLight:ps_*",
-			        definesTable.get());
-            }
-
-        } else if (type._projection == Directional) {
+        if (type._shape == Directional) {
 
             if (type._shadows == NoShadows) {
                 dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
@@ -277,7 +265,21 @@ namespace SceneEngine
                     definesTable.get());
             }
 
-        }
+        } else {
+
+            if (type._shadows == NoShadows) {
+                dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    vertexShader_viewFrustumVector, 
+                    "game/xleres/deferred/resolveunshadowed.psh:ResolveAreaLightUnshadowed:ps_*",
+                    definesTable.get());
+            } else {
+                dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    vertexShader_viewFrustumVector, 
+                    "game/xleres/deferred/resolve.psh:ResolveAreaLight:ps_*",
+			        definesTable.get());
+            }
+
+        } 
 
         dest._uniforms = Metal::BoundUniforms(std::ref(*dest._shader));
 
@@ -362,6 +364,21 @@ namespace SceneEngine
         BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 1, 0, true));
         BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 0, 1, true));
         BuildShader(desc, LightShaderType(Sphere, PerspectiveShadows, 1, 1, true));
+
+        BuildShader(desc, LightShaderType(Tube, NoShadows, 0, 0, false));
+        BuildShader(desc, LightShaderType(Tube, NoShadows, 1, 0, false));
+        BuildShader(desc, LightShaderType(Tube, NoShadows, 0, 0, true));
+        BuildShader(desc, LightShaderType(Tube, NoShadows, 1, 0, true));
+
+        BuildShader(desc, LightShaderType(Rectangle, NoShadows, 0, 0, false));
+        BuildShader(desc, LightShaderType(Rectangle, NoShadows, 1, 0, false));
+        BuildShader(desc, LightShaderType(Rectangle, NoShadows, 0, 0, true));
+        BuildShader(desc, LightShaderType(Rectangle, NoShadows, 1, 0, true));
+
+        BuildShader(desc, LightShaderType(Disc, NoShadows, 0, 0, false));
+        BuildShader(desc, LightShaderType(Disc, NoShadows, 1, 0, false));
+        BuildShader(desc, LightShaderType(Disc, NoShadows, 0, 0, true));
+        BuildShader(desc, LightShaderType(Disc, NoShadows, 1, 0, true));
     }
 
     LightingResolveShaders::~LightingResolveShaders() {}

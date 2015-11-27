@@ -160,8 +160,8 @@ float4 ResolveLight(	float4 position : SV_Position,
     #endif
 
 	float3 directionToEye = normalize(-viewFrustumVector);
-	float3 diffuse = LightResolve_Diffuse(sample, directionToEye, Light.NegativeDirection, Light);
-	float3 specular = LightResolve_Specular(sample, directionToEye, Light.NegativeDirection, Light, screenSpaceOcclusion);
+	float3 diffuse = LightResolve_Diffuse(sample, directionToEye, Light.Position, Light);
+	float3 specular = LightResolve_Specular(sample, directionToEye, Light.Position, Light, screenSpaceOcclusion);
 
 	const float lightScale = LightingScale;
 	return float4((lightScale*shadow)*(diffuse + specular), 1.f);
@@ -191,7 +191,7 @@ float3 RepresentativeVector_Sphere(float3 lightCenter, float lightRadius, float3
     return lerp(L, testPt, saturate(lightRadius * ReciprocalMagnitude(testPt - L)));
 }
 
-float4 ResolveSphereLight(	float4 position : SV_Position,
+float4 ResolveAreaLight(	float4 position : SV_Position,
 							float2 texCoord : TEXCOORD0,
 							float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
 							SystemInputs sys) : SV_Target0
@@ -211,7 +211,7 @@ float4 ResolveSphereLight(	float4 position : SV_Position,
 
     float3 directionToEye = normalize(-viewFrustumVector);
     float3 reflectionDir = reflect(-directionToEye, sample.worldSpaceNormal);
-    float3 lightNegDir = RepresentativeVector_Sphere(Light.NegativeDirection, Light.SourceRadius, worldPosition, reflectionDir);
+    float3 lightNegDir = RepresentativeVector_Sphere(Light.Position, Light.SourceRadiusX, worldPosition, reflectionDir);
     float distanceSq = dot(lightNegDir, lightNegDir);
     lightNegDir *= rsqrt(distanceSq);
 
@@ -219,11 +219,11 @@ float4 ResolveSphereLight(	float4 position : SV_Position,
     float3 specular = LightResolve_Specular(sample, directionToEye, lightNegDir, Light, screenSpaceOcclusion);
 
     float alpha = sample.material.roughness * sample.material.roughness;
-    float alphaPrime = saturate(alpha + Light.SourceRadius * Light.SourceRadius / (2.f * distanceSq));
+    float alphaPrime = saturate(alpha + Light.SourceRadiusX * Light.SourceRadiusX / (2.f * distanceSq));
     float specAttenuation = (alpha * alpha) / (alphaPrime * alphaPrime);
 
     float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
-    float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.Radius);
+    float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.CutoffRange);
 
     const float lightScale = LightingScale;
     return float4((lightScale*radiusDropOff*distanceAttenuation)*(diffuse + specAttenuation * specular), 1.f);

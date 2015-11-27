@@ -295,10 +295,11 @@ namespace SceneEngine
 
     LightDesc::LightDesc()
     {
-        _type = Directional;
-        _negativeLightDirection = Normalize(Float3(-.1f, 0.33f, 1.f));
+        _shape = Directional;
+        _position = Normalize(Float3(-.1f, 0.33f, 1.f));
+        _orientation = Identity<Float3x3>();
         _cutoffRange = 10000.f;
-        _sourceRadius = 1.f;
+        _radii = Float2(1.f, 1.f);
         _diffuseColor = Float3(1.f, 1.f, 1.f);
         _specularColor = Float3(1.f, 1.f, 1.f);
 
@@ -321,7 +322,7 @@ namespace SceneEngine
         static const auto specularBrightnessHash = ParameterBox::MakeParameterNameHash("SpecularBrightness");
         static const auto shadowResolveModel = ParameterBox::MakeParameterNameHash("ShadowResolveModel");
         static const auto cutoffRange = ParameterBox::MakeParameterNameHash("CutoffRange");
-        static const auto sourceRadius = ParameterBox::MakeParameterNameHash("SourceRadius");
+        static const auto shape = ParameterBox::MakeParameterNameHash("Shape");
 
         _diffuseColor = props.GetParameter(diffuseBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(diffuseHash, ~0x0u));
         _specularColor = props.GetParameter(specularBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(specularHash, ~0x0u));
@@ -330,7 +331,8 @@ namespace SceneEngine
         _diffuseWideningMax = props.GetParameter(diffuseWideningMax, _diffuseWideningMax);
         _diffuseModel = props.GetParameter(diffuseModel, 1);
         _cutoffRange = props.GetParameter(cutoffRange, _cutoffRange);
-        _sourceRadius = props.GetParameter(sourceRadius, _sourceRadius);
+
+        _shape = (Shape)props.GetParameter(shape, unsigned(_shape));
 
         _shadowResolveModel = props.GetParameter(shadowResolveModel, 0);
     }

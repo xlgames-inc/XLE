@@ -21,21 +21,14 @@ struct RangeFogDesc
 	float3	OpticalThickness;
 };
 
-struct LightColors
-{
-	float3 	diffuse;
-	float3 	specular;
-};
-
 struct LightDesc
 {
-    float3 		NegativeDirection;
-	float		Radius;
-	LightColors Color;
-	float		SourceRadius;
-	float		DiffuseWideningMin;
-	float		DiffuseWideningMax;
-	float		Dummy[2];
+    float3	Position; 		float	CutoffRange;
+	float3	Diffuse; 		float	SourceRadiusX;
+	float3	Specular; 		float	SourceRadiusY;
+	float3	OrientationX; 	float	DiffuseWideningMin;
+	float3	OrientationY; 	float	DiffuseWideningMax;
+	float3	OrientationZ; 	uint	Dummy;
 };
 
 #endif

@@ -145,13 +145,13 @@ namespace SceneEngine
         using ShaderProgram = RenderCore::Metal::ShaderProgram;
         using BoundUniforms = RenderCore::Metal::BoundUniforms;
 
-        enum Projection : uint8 { Directional, Sphere };
+        enum Shape : uint8 { Directional, Sphere, Tube, Rectangle, Disc };
         enum Shadowing : uint8 { NoShadows, PerspectiveShadows, OrthShadows, OrthShadowsNearCascade, OrthHybridShadows };
             
         class LightShaderType
         {
         public:
-            Projection  _projection;
+            Shape       _shape;
             Shadowing   _shadows;
             uint8       _diffuseModel;
             uint8       _shadowResolveModel;
@@ -161,12 +161,12 @@ namespace SceneEngine
             static unsigned ReservedIndexCount();
 
             LightShaderType(
-                Projection projection, Shadowing shadows, 
+                Shape shape, Shadowing shadows, 
                 uint8 diffuseModel, uint8 shadowResolveModel, bool hasScreenSpaceAO)
-                : _projection(projection), _shadows(shadows), _diffuseModel(diffuseModel), _shadowResolveModel(shadowResolveModel)
+                : _shape(shape), _shadows(shadows), _diffuseModel(diffuseModel), _shadowResolveModel(shadowResolveModel)
                 , _hasScreenSpaceAO(hasScreenSpaceAO) {}
             LightShaderType()
-                : _projection(Directional), _shadows(NoShadows), _diffuseModel(0), _shadowResolveModel(0), _hasScreenSpaceAO(false) {}
+                : _shape(Directional), _shadows(NoShadows), _diffuseModel(0), _shadowResolveModel(0), _hasScreenSpaceAO(false) {}
         };
 
         class LightShader
@@ -206,12 +206,12 @@ namespace SceneEngine
 
         const LightShader* GetShader(const LightShaderType& type);
 
-        const std::shared_ptr<Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+        const ::Assets::DepValPtr& GetDependencyValidation() const   { return _validationCallback; }
 
         LightingResolveShaders(const Desc& desc);
         ~LightingResolveShaders();
     private:
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        ::Assets::DepValPtr _validationCallback;
         std::vector<LightShader> _shaders;
 
         void BuildShader(const Desc& desc, const LightShaderType& type);

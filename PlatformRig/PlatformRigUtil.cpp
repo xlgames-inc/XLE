@@ -153,7 +153,7 @@ namespace PlatformRig
         static float projectionSizePower = 3.75f;
         float shadowProjectionDist = shadowFarPlane - shadowNearPlane;
 
-        auto negativeLightDirection = lightDesc._negativeLightDirection;
+        auto negativeLightDirection = lightDesc._position;
 
         auto cameraPos = ExtractTranslation(mainSceneProjectionDesc._cameraToWorld);
         auto cameraForward = ExtractForward_Cam(mainSceneProjectionDesc._cameraToWorld);
@@ -220,7 +220,7 @@ namespace PlatformRig
             // First, we build a rough projection-to-world based on the camera right direction...
 
         auto projRight = ExtractRight(mainSceneProjectionDesc._cameraToWorld);
-        auto projForward = -lightDesc._negativeLightDirection;
+        auto projForward = -lightDesc._position;
         auto projUp = Cross(projRight, projForward);
         auto adjRight = Cross(projForward, projUp);
 
@@ -301,7 +301,7 @@ namespace PlatformRig
 
         Float3 cameraPos = ExtractTranslation(mainSceneProjectionDesc._cameraToWorld);
         Float3 focusPoint = cameraPos + settings._focusDistance * ExtractForward(mainSceneProjectionDesc._cameraToWorld);
-        result._definitionViewMatrix = MakeWorldToLight(lightDesc._negativeLightDirection, focusPoint);
+        result._definitionViewMatrix = MakeWorldToLight(lightDesc._position, focusPoint);
         assert(std::isfinite(result._definitionViewMatrix(0,3)) && !std::isnan(result._definitionViewMatrix(0,3)));
         Float4x4 worldToLightProj = result._definitionViewMatrix;
 
