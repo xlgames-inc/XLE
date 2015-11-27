@@ -56,7 +56,8 @@ float3 LightResolve_Specular(
 	float NdotV = dot(sample.worldSpaceNormal, directionToEye);
 	if (NdotV < 0.f) return 0.0.xxx;
 
-	float roughnessValue = Material_GetRoughness(sample);
+		// HACK! preventing problems at very low roughness values
+	float roughnessValue = max(0.03f, Material_GetRoughness(sample));
 
 		////////////////////////////////////////////////
 

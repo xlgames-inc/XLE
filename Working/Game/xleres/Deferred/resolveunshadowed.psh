@@ -225,6 +225,40 @@ float RectRectIntersectionArea(
     return max(0, A.x) * max(0, A.y);
 }
 
+float TrowReitzDInverse(float D, float alpha)
+{
+    // This is the inverse of the GGX "D" normal distribution
+    // function. We only care about the [0,1] part -- so we can
+    // ignore some secondary solutions.
+    //
+    // float alphaSq = alpha * alpha;
+    // float denom = 1.f + (alphaSq - 1.f) * NdotH * NdotH;
+    // return alphaSq / (pi * denom * denom);
+    //
+    // For 0 <= alpha < 1, there is always a solution for D above around 0.3182
+    // For smaller D values, there sometimes is not a solution.
+
+    float alphaSq = alpha * alpha;
+    float A = sqrt(alphaSq / (pi*D)) - 1.f;
+    float B = A / (alphaSq - 1.f);
+    if (B < 0.f) return 0.f;    // these cases have no solution
+    return saturate(sqrt(B));
+}
+
+float TrowReitzDInverseApprox(float alpha)
+{
+    // This is an approximation of TrowReitzDInverseApprox(0.32f, alpha);
+    // It's based on a Taylor series.
+    // It's fairly accurate for alpha < 0.5... Above that it tends to fall
+    // off. The third order approximation is better above alpha .5. But really
+    // small alpha values are more important, so probably it's fine.
+    // third order: y=.913173-0.378603(a-.2)+0.239374(a-0.2)^2-0.162692(a-.2)^3
+    // For different "cut-off" values of D, we need to recalculate the Taylor series.
+
+    float b = alpha - .2f;
+    return .913173f - 0.378603f * b + .239374f * b * b;
+}
+
 float4 ResolveRectangleLightUnshadowed(
     float4 position : SV_Position,
     float2 texCoord : TEXCOORD0,
@@ -313,7 +347,7 @@ float4 ResolveRectangleLightUnshadowed(
     // return float4(cosThetaLightPlane.xxx, 1.f);
 
     float area = lightSize.x * lightSize.y * 4.f;
-    diffuse *= cosThetaLightPlane * area * saturate(DistanceAttenuation(distanceSq, 1.f));
+    float diffuseAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
 
         // To calculate specular, we need a different equation. We're going to
         // create a cone centered around the reflection angle. The angle of the cone
@@ -333,11 +367,26 @@ float4 ResolveRectangleLightUnshadowed(
         // Let's try doing this in light space, as well.
 
     float3 reflectedDirLight = reflect(-viewDirectionLight, sampleNormal);
-    float coneAngle = 5.f * 3.14159f / 180.f; // fixed cone angle for now
+
+        // We can calculate an estimate for the cone angle by using the inverse of the
+        // normal distribution function. The NDF gives us an intensity value for an input
+        // cosTheta (where theta is the angle between N and H). We can go backwards by
+        // finding the cosTheta that gives us a certain intensity value. The inverse can
+        // give us a cone on which the D value is a given intensity. So let's pick some
+        // cut-off value, and use that. 0.312 is convenient because of the definition of
+        // our NDF.
+        // The full inverse for GGX Trowbridge Reitz is a little too expensive. And the
+        // end result is fairly subtle... So we get by with a rough estimate.
+    // float cosConeAngle = TrowReitzDInverse(0.32f, RoughnessToDAlpha(sample.material.roughness));
+    float cosConeAngle = TrowReitzDInverseApprox(RoughnessToDAlpha(sample.material.roughness));
+    // cosConeAngle = max(0.25f, cosConeAngle); // avoid extreme cases on high roughness materials
+    float sinConeAngle = sqrt(1.f - cosConeAngle*cosConeAngle);
+    float tanConeAngle = sinConeAngle/cosConeAngle;
+    // return float4(tanConeAngle.xxx, 1.f);
 
     float distToProjectedConeCenter = (-samplePt.z/reflectedDirLight.z);
     float2 projectedCircleCenter = samplePt.xy + reflectedDirLight.xy * distToProjectedConeCenter;
-    float projectedCircleRadius = distToProjectedConeCenter * tan(coneAngle);
+    float projectedCircleRadius = distToProjectedConeCenter * tanConeAngle;
 
         // This is squaring the circle...?!
         // float circleArea = pi * projectedCircleRadius * projectedCircleRadius;
@@ -351,7 +400,8 @@ float4 ResolveRectangleLightUnshadowed(
         projectedCircleCenter - float2(squareRadius, squareRadius),
         projectedCircleCenter + float2(squareRadius, squareRadius));
 
-    float integralApprox = intersectionArea / area;
+    float integralApprox = intersectionArea / (area + 1e-3f);
+    // return float4(integralApprox.xxx, 1.f);
 
     float3 specLightNegDir = normalize(float3(representativePt - samplePt.xy, -samplePt.z));
     sample.worldSpaceNormal = sampleNormal;
@@ -359,13 +409,11 @@ float4 ResolveRectangleLightUnshadowed(
     float specDistanceSq = MagnitudeSquared(float3(representativePt, 0) - samplePt);
     float specAttenuation = integralApprox * saturate(DistanceAttenuation(specDistanceSq, 1.f));
 
-    // diffuse *= 100.f;
-    // specular *= 100.f;
-
     float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.Radius);
+    float facingAttenuation = cosThetaLightPlane * area;
 
     const float lightScale = LightingScale;
-    return float4((lightScale*radiusDropOff)*(diffuse + specAttenuation * specular), 1.f);
+    return float4((lightScale*facingAttenuation*radiusDropOff)*(diffuseAttenuation * diffuse + specAttenuation * specular), 1.f);
 }
 
 #endif
