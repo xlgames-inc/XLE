@@ -51,6 +51,8 @@ float ReciprocalMagnitude(float3 vec)
     return rsqrt(dot(vec, vec));
 }
 
+float MagnitudeSquared(float3 vec) { return dot(vec, vec); }
+
 float3 RepresentativeVector_Sphere(float3 vectorToCenter, float lightRadius, float3 reflectionDir)
 {
     // We want to find the "representative point" for a spherical light source
@@ -212,6 +214,17 @@ float4 ResolveTubeLightUnshadowed(
     return float4((lightScale*radiusDropOff*distanceAttenuation)*(diffuse + specAttenuation*specular), 1.f);
 }
 
+float RectRectIntersectionArea(
+    out float2 representativePoint,
+    float2 R0min, float2 R0max, float2 R1min, float2 R1max)
+{
+    float2 intersectionMin = max(R0min, R1min);
+    float2 intersectionMax = min(R0max, R1max);
+    float2 A = intersectionMax - intersectionMin;
+    representativePoint = .5f * (intersectionMin + intersectionMax);
+    return max(0, A.x) * max(0, A.y);
+}
+
 float4 ResolveRectangleLightUnshadowed(
     float4 position : SV_Position,
     float2 texCoord : TEXCOORD0,
@@ -228,7 +241,6 @@ float4 ResolveRectangleLightUnshadowed(
     #endif
 
     float3 directionToEye = normalize(-viewFrustumVector);
-    float3 reflectionDir = reflect(-directionToEye, sample.worldSpaceNormal);
 
         // This method based on Drobot's research in GPU Gems 5. It should be
         // fairly general, and it may be possible to adapt this method to
@@ -248,12 +260,14 @@ float4 ResolveRectangleLightUnshadowed(
         // We can then choose to work either in world space or light space.
         // Let's use light space, because it might make doing boundary test
         // easier later.
+        // It might be that working in world space could end up being fewer
+        // calculations, but we've have to try it to find out.
 
     float3 planeNormal = float3(1,0,0);
     float3 planeTangent = float3(0,1,0);
     float3 planeBitangent = float3(0,0,1);
     float3 lightCenter = Light.NegativeDirection;
-    float2 lightSize = float2(0.15f, 0.15f);
+    float2 lightSize = float2(Light.SourceRadius, Light.SourceRadius);
 
         // Here lightToWorld is an orthogonal rotation matrix (ie no scale)
         // so we can use simplified transformation operations.
@@ -272,18 +286,18 @@ float4 ResolveRectangleLightUnshadowed(
     float2 p0 = samplePt.xy + sampleNormal.xy * (-samplePt.z/sampleNormal.z);
     float2 p1 = samplePt.xy;    // note -- this has to be improved because the point can't fall under the sample horizon
 
+        // We need to prevent p1 from falling beneath the horizon...
+        // We can do this in 2d by finding a line that runs through p0.
+    float2 projHorizNormal = normalize(sampleNormal.xy);
+    p1 -= projHorizNormal * min(0, dot(p1 - p0, projHorizNormal));
+
         // In our coordinate system, pc and pt are easy to find
         // (though is can be more complex if one of the points falls under the sample horizon)
         // Drobot didn't actually calculate pc and pt -- he just used a half way point
-        // between p0 and p1. But in light space, it's easy to clamp pc and pt.
+        // between p0 and p1. Actually, the difference does seem to be quite minor.
+        // But in light space, it's easy to clamp pc and pt.
     float2 pc = float2(clamp(p0.x, -lightSize.x, lightSize.x), clamp(p0.y, -lightSize.y, lightSize.y));
     float2 pt = float2(clamp(p1.x, -lightSize.x, lightSize.x), clamp(p1.y, -lightSize.y, lightSize.y));
-
-        // We need to prevent both points from falling beneath the horizon. Just clamp
-        // on the edge.
-    float2 projHorizNormal = normalize(sampleNormal.xy);
-    pc -= projHorizNormal * min(0, dot(pc - p0, projHorizNormal));
-    pt -= projHorizNormal * min(0, dot(pt - p0, projHorizNormal));
 
     float2 repPt = 0.5f * (pc+pt);
     float3 lightNegDir = float3(repPt - samplePt.xy, -samplePt.z);
@@ -301,12 +315,57 @@ float4 ResolveRectangleLightUnshadowed(
     float area = lightSize.x * lightSize.y * 4.f;
     diffuse *= cosThetaLightPlane * area * saturate(DistanceAttenuation(distanceSq, 1.f));
 
+        // To calculate specular, we need a different equation. We're going to
+        // create a cone centered around the reflection angle. The angle of the cone
+        // should be based on the specular equation -- in particular, the normal
+        // distribution term of the micro-facet equation.
+        // We will project the cone onto the light plane, and we want to find the area
+        // of the intersection of the cone and the light.
+        // We're going to use the ratio of the intersection area with the full light area
+        // to modulate the specular equation. This is an approximation of the integral
+        // incoming light weighted by the normal distribution function.
+        //
+        // A projected cone is a complex shape. So we're not going to use it directly.
+        // Instead, we approximate the projected cone as just a square on the light
+        // plane. First we find a disk approximating the projected cone. Then we find
+        // a square that is adjusted to have the same area.
+        //
+        // Let's try doing this in light space, as well.
+
+    float3 reflectedDirLight = reflect(-viewDirectionLight, sampleNormal);
+    float coneAngle = 5.f * 3.14159f / 180.f; // fixed cone angle for now
+
+    float distToProjectedConeCenter = (-samplePt.z/reflectedDirLight.z);
+    float2 projectedCircleCenter = samplePt.xy + reflectedDirLight.xy * distToProjectedConeCenter;
+    float projectedCircleRadius = distToProjectedConeCenter * tan(coneAngle);
+
+        // This is squaring the circle...?!
+        // float circleArea = pi * projectedCircleRadius * projectedCircleRadius;
+        // float squareSide = sqrt(circleArea);
+    float squareRadius = halfSqrtPi * projectedCircleRadius;
+
+    float2 representativePt;
+    float intersectionArea = RectRectIntersectionArea(
+        representativePt,
+        -lightSize, lightSize,
+        projectedCircleCenter - float2(squareRadius, squareRadius),
+        projectedCircleCenter + float2(squareRadius, squareRadius));
+
+    float integralApprox = intersectionArea / area;
+
+    float3 specLightNegDir = normalize(float3(representativePt - samplePt.xy, -samplePt.z));
+    sample.worldSpaceNormal = sampleNormal;
+    float3 specular = LightResolve_Specular(sample, viewDirectionLight, specLightNegDir, Light, screenSpaceOcclusion);
+    float specDistanceSq = MagnitudeSquared(float3(representativePt, 0) - samplePt);
+    float specAttenuation = integralApprox * saturate(DistanceAttenuation(specDistanceSq, 1.f));
+
     // diffuse *= 100.f;
+    // specular *= 100.f;
 
     float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.Radius);
 
     const float lightScale = LightingScale;
-    return float4((lightScale*radiusDropOff)*(diffuse), 1.f);
+    return float4((lightScale*radiusDropOff)*(diffuse + specAttenuation * specular), 1.f);
 }
 
 #endif
