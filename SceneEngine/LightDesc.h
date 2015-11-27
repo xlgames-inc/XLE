@@ -156,18 +156,20 @@ namespace SceneEngine
     class LightDesc
     {
     public:
-        enum Type { Directional, Point, Sphere };
+        enum Shape { Directional, Sphere, Tube, Rectangle, Disc };
 
-        Float3      _negativeLightDirection;
+        Float3x3    _orientation;
+        Float3      _position;
+        Float2      _radii;
+
         float       _cutoffRange;
-        Type        _type;
+        Shape       _shape;
         Float3      _diffuseColor;
         Float3      _specularColor;
         float       _diffuseWideningMin;
         float       _diffuseWideningMax;
         unsigned    _diffuseModel;
         unsigned    _shadowResolveModel;
-        float       _sourceRadius;
 
         LightDesc();
         LightDesc(const Utility::ParameterBox& paramBox);

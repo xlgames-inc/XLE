@@ -202,6 +202,10 @@ namespace XLEMath
     inline Float3   ExtractForward(const Float3x4& matrix)          { return  Float3(matrix(0,1), matrix(1,1), matrix(2,1)); }
     inline Float3   ExtractUp(const Float3x4& matrix)               { return  Float3(matrix(0,2), matrix(1,2), matrix(2,2)); }
 
+    inline Float3   ExtractRight(const Float3x3& matrix)            { return  Float3(matrix(0,0), matrix(1,0), matrix(2,0)); }
+    inline Float3   ExtractForward(const Float3x3& matrix)          { return  Float3(matrix(0,1), matrix(1,1), matrix(2,1)); }
+    inline Float3   ExtractUp(const Float3x3& matrix)               { return  Float3(matrix(0,2), matrix(1,2), matrix(2,2)); }
+
     inline Float3   ExtractRight_Cam(const Float4x4& matrix)        { return  Float3(matrix(0,0), matrix(1,0), matrix(2,0)); }
     inline Float3   ExtractForward_Cam(const Float4x4& matrix)      { return -Float3(matrix(0,2), matrix(1,2), matrix(2,2)); }
     inline Float3   ExtractUp_Cam(const Float4x4& matrix)           { return  Float3(matrix(0,1), matrix(1,1), matrix(2,1)); }

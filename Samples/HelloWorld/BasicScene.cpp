@@ -143,12 +143,12 @@ namespace Sample
             //  we want.
         static LightDesc dummy;
         dummy._cutoffRange = 10000.f;
-        dummy._type = LightDesc::Directional;
+        dummy._shape = LightDesc::Directional;
 
             // sun direction based on angle in the sky
         Float2 sunDirectionOfMovement = Normalize(Float2(1.f, 0.33f));
         Float2 sunRotationAxis(-sunDirectionOfMovement[1], sunDirectionOfMovement[0]);
-        dummy._negativeLightDirection = 
+        dummy._position = 
             Normalize(TransformDirectionVector(
                 MakeRotationMatrix(Expand(sunRotationAxis, 0.f), SunDirectionAngle), Float3(0.f, 0.f, 1.f)));
 

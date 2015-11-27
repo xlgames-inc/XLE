@@ -50,11 +50,11 @@ float3 ResolveLitColor(
 		[unroll] for (uint c=0; c<BASIC_LIGHT_COUNT; ++c) {
 			result += shadowing[c] * LightResolve_Diffuse(
 				sample, directionToEye,
-				BasicLight[c].NegativeDirection, BasicLight[c]);
+				BasicLight[c].Position, BasicLight[c]);
 
 			result += shadowing[c] * LightResolve_Specular(
 				sample, directionToEye,
-				BasicLight[c].NegativeDirection, BasicLight[c]);
+				BasicLight[c].Position, BasicLight[c]);
 		}
 	#endif
 

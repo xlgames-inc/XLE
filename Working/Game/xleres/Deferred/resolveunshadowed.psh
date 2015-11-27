@@ -38,8 +38,8 @@ float4 ResolveLightUnshadowed(	float4 position : SV_Position,
     #endif
 
 	float3 directionToEye = normalize(-viewFrustumVector);
-	float3 diffuse = LightResolve_Diffuse(sample, directionToEye, Light.NegativeDirection, Light);
-	float3 specular = LightResolve_Specular(sample, directionToEye, Light.NegativeDirection, Light, screenSpaceOcclusion);
+	float3 diffuse = LightResolve_Diffuse(sample, directionToEye, Light.Position, Light);
+	float3 specular = LightResolve_Specular(sample, directionToEye, Light.Position, Light, screenSpaceOcclusion);
 
 	const float lightScale = LightingScale;
 	return float4(lightScale*(diffuse + specular), 1.f);
@@ -81,13 +81,20 @@ float4 ResolveRectangleLightUnshadowed( float4 position : SV_Position,
                                         float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
                                         SystemInputs sys) : SV_Target0;
 
-float4 ResolveSphereLightUnshadowed(float4 position : SV_Position,
+float4 ResolveAreaLightUnshadowed(  float4 position : SV_Position,
 									float2 texCoord : TEXCOORD0,
 									float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
 									SystemInputs sys) : SV_Target0
 {
-    // return ResolveTubeLightUnshadowed(position, texCoord, viewFrustumVector, sys);
-    return ResolveRectangleLightUnshadowed(position, texCoord, viewFrustumVector, sys);
+    #if LIGHT_SHAPE==2
+        return ResolveTubeLightUnshadowed(position, texCoord, viewFrustumVector, sys);
+    #elif LIGHT_SHAPE==3
+        return ResolveRectangleLightUnshadowed(position, texCoord, viewFrustumVector, sys);
+    #elif LIGHT_SHAPE==4
+        return 0.0.xxxx;    // disc
+    #endif
+
+    // Otherwise use sphere implementation --
 
     int2 pixelCoords = position.xy;
     float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
@@ -100,7 +107,7 @@ float4 ResolveSphereLightUnshadowed(float4 position : SV_Position,
 
     float3 directionToEye = normalize(-viewFrustumVector);
     float3 reflectionDir = reflect(-directionToEye, sample.worldSpaceNormal);
-    float3 lightNegDir = RepresentativeVector_Sphere(Light.NegativeDirection - worldPosition, Light.SourceRadius, reflectionDir);
+    float3 lightNegDir = RepresentativeVector_Sphere(Light.Position - worldPosition, Light.SourceRadiusX, reflectionDir);
     float distanceSq = dot(lightNegDir, lightNegDir);
     float rDistance = rsqrt(distanceSq);
     lightNegDir *= rDistance;
@@ -129,11 +136,11 @@ float4 ResolveSphereLightUnshadowed(float4 position : SV_Position,
         // highlights are still too bright. Probably it should be compared to a reference
         // ray tracer solution.
     float alpha = sample.material.roughness * sample.material.roughness;
-    float alphaPrime = saturate(alpha + Light.SourceRadius * Light.SourceRadius * .5f * rDistance);
+    float alphaPrime = saturate(alpha + Light.SourceRadiusX * Light.SourceRadiusX * .5f * rDistance);
     float specAttenuation = (alpha * alpha) / (alphaPrime * alphaPrime);
 
     float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
-    float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.Radius);
+    float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.CutoffRange);
 
     const float lightScale = LightingScale;
     return float4((lightScale*radiusDropOff*distanceAttenuation)*(diffuse + specAttenuation*specular), 1.f);
@@ -182,16 +189,15 @@ float4 ResolveTubeLightUnshadowed(
         // For diffuse, we can directly calculate the integral of NdotL against a line
         // For specular, we use a representative point (similar to the sphere implementation)
 
-    float3 L0 = Light.NegativeDirection;
-    float lightLength = 5.f;
-    float3 L1 = Light.NegativeDirection + float3(lightLength,0,0);
+    float3 L0 = Light.Position - Light.SourceRadiusY * Light.OrientationY;
+    float3 L1 = Light.Position + Light.SourceRadiusY * Light.OrientationY;
 
     float NdotL = TubeLightDiffuseIntegral(L0 - worldPosition, L1 - worldPosition, sample.worldSpaceNormal);
 
         // note --  After doing "RepresentativeVector_Tube" we could also use
         //          RepresentativeVector_Sphere to estimate a thick tube
     float3 tubePoint = RepresentativeVector_Tube(L0 - worldPosition, L1 - worldPosition, reflectionDir);
-    float3 lightNegDir = RepresentativeVector_Sphere(tubePoint, Light.SourceRadius, reflectionDir);
+    float3 lightNegDir = RepresentativeVector_Sphere(tubePoint, Light.SourceRadiusX, reflectionDir);
     float distanceSq = dot(lightNegDir, lightNegDir);
     float rDistance = rsqrt(distanceSq);
     lightNegDir *= rDistance;
@@ -202,13 +208,13 @@ float4 ResolveTubeLightUnshadowed(
         // This specular attenutation method is based on Karis. Maybe it needs
         // a little more work...?
     float alpha = sample.material.roughness * sample.material.roughness;
-    float alphaPrime0 = saturate(alpha + .25f * lightLength * lightLength * .5f * rDistance);
+    float alphaPrime0 = saturate(alpha + .5f * Light.SourceRadiusY * Light.SourceRadiusY * .5f * rDistance);
     float specAttenuation = alpha / alphaPrime0; // in principle the highlight is stretched in only one direction... so no square
-    float alphaPrime1 = saturate(alpha + Light.SourceRadius * Light.SourceRadius * .5f * rDistance);
+    float alphaPrime1 = saturate(alpha + Light.SourceRadiusX * Light.SourceRadiusX * .5f * rDistance);
     specAttenuation *= (alpha * alpha) / (alphaPrime1 * alphaPrime1);
 
     float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
-    float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.Radius);
+    float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.CutoffRange);
 
     const float lightScale = LightingScale;
     return float4((lightScale*radiusDropOff*distanceAttenuation)*(diffuse + specAttenuation*specular), 1.f);
@@ -297,15 +303,12 @@ float4 ResolveRectangleLightUnshadowed(
         // It might be that working in world space could end up being fewer
         // calculations, but we've have to try it to find out.
 
-    float3 planeNormal = float3(1,0,0);
-    float3 planeTangent = float3(0,1,0);
-    float3 planeBitangent = float3(0,0,1);
-    float3 lightCenter = Light.NegativeDirection;
-    float2 lightSize = float2(Light.SourceRadius, Light.SourceRadius);
+    float3 lightCenter = Light.Position;
+    float2 lightSize = float2(Light.SourceRadiusX, Light.SourceRadiusY);
 
         // Here lightToWorld is an orthogonal rotation matrix (ie no scale)
         // so we can use simplified transformation operations.
-    float3x3 worldToLight = float3x3(planeTangent, planeBitangent, planeNormal);
+    float3x3 worldToLight = float3x3(Light.OrientationX, Light.OrientationY, Light.OrientationZ);
 
     float3 samplePt = mul(worldToLight, worldPosition - lightCenter);
     float3 sampleNormal = mul(worldToLight, sample.worldSpaceNormal);
@@ -406,6 +409,13 @@ float4 ResolveRectangleLightUnshadowed(
     float sinConeAngle = sqrt(1.f - cosConeAngle*cosConeAngle);
     float tanConeAngle = sinConeAngle/cosConeAngle;
 
+    //  Drobot's phong based specular cone angle...
+    //  Maybe performance is similar to our method, but
+    //  it's more difficult to balance it against our "roughness" parameter
+    // float ta = 512.f * (1-sample.material.roughness);
+    // float phongAngle = 2.f / pi * sqrt(2/(ta+2));
+    // tanConeAngle = pi * phongAngle; // tan(phongAngle);
+
         // The projected circle radius value here is only accurate when the direction
         // to the light is along the reflection dir (but that's also when the highlight is
         // brightest)
@@ -442,7 +452,7 @@ float4 ResolveRectangleLightUnshadowed(
     float3 specular = LightResolve_Specular(sample, viewDirectionLight, specLightNegDir, Light, screenSpaceOcclusion);
     float specAttenuation = area * integralApprox * saturate(DistanceAttenuation(specDistanceSq, 1.f));
 
-    float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.Radius);
+    float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.CutoffRange);
 
     const float lightScale = LightingScale;
     return float4((lightScale*radiusDropOff)*(diffuseAttenuation * diffuse + specAttenuation * specular), 1.f);

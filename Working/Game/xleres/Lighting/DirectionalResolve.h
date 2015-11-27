@@ -30,7 +30,7 @@ float3 LightResolve_Diffuse_NdotL(
 	float result = Material_GetDiffuseScale(sample) * rawDiffuse * (1.0f - metal);
 	result *= sample.cookedLightOcclusion;
 	result *= NdotL;
-	return result * light.Color.diffuse.rgb * sample.diffuseAlbedo.rgb;
+	return result * light.Diffuse.rgb * sample.diffuseAlbedo.rgb;
 }
 
 float3 LightResolve_Diffuse(
@@ -82,7 +82,7 @@ float3 LightResolve_Specular(
 	// float norm = 1.f / (pi * sample.material.roughness * sample.material.roughness);
 	float norm = 1.f;
 
-	return (spec0 * specularOcclusion * norm) * light.Color.specular;
+	return (spec0 * specularOcclusion * norm) * light.Specular;
 }
 
 #endif

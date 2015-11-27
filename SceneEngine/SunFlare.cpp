@@ -176,14 +176,14 @@ namespace SceneEngine
             // avoid completely if we're facing away
         const auto& sunDesc = parserContext.GetSceneParser()->GetLightDesc(0);
         const auto& projDesc = parserContext.GetProjectionDesc();
-        if (Dot(ExtractForward_Cam(projDesc._cameraToWorld), sunDesc._negativeLightDirection) < 0.f)
+        if (Dot(ExtractForward_Cam(projDesc._cameraToWorld), sunDesc._position) < 0.f)
             return;
 
         const auto cameraPos = ExtractTranslation(projDesc._cameraToWorld);
         const auto transConstants = BuildGlobalTransformConstants(projDesc);
             
         const auto worldToView = InvertOrthonormalTransform(projDesc._cameraToWorld);
-        Float3 sunWorld(cameraPos + 10000.f * sunDesc._negativeLightDirection);
+        Float3 sunWorld(cameraPos + 10000.f * sunDesc._position);
         Float4 sunPos = projDesc._worldToProjection * Expand(sunWorld, 1.f);
         float aspect = projDesc._aspectRatio;
         float flareAngle = Tweakable("SunFlareAngle", 25.f) * .5f * gPI / 180.f;
