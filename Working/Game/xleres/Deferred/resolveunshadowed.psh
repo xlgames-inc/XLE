@@ -313,17 +313,30 @@ float4 ResolveRectangleLightUnshadowed(
 
     if (samplePt.z < 0.f) return float4(0.0.xxx, 1.f);
 
-    if (abs(sampleNormal.z) < 1e-3f) sampleNormal += float3(0.01f, 0.01f, 0.01f);
+    // if (abs(sampleNormal.z) < 1e-3f) sampleNormal += float3(0.03f, 0.03f, 0.03f);
+
+        // We need to skew in these cases to find a collision point.
+    bool isFacingAway = sampleNormal.z >= 0.f;
+    float3 skewedNormal = sampleNormal;
+    if (isFacingAway) skewedNormal = normalize(sampleNormal-float3(0,0,.5f));
 
         // Triple product type operation becomes simplier...
         // note -- obvious problems with sampleNormal.z is near 0
-    float2 p0 = samplePt.xy + sampleNormal.xy * (-samplePt.z/sampleNormal.z);
-    float2 p1 = samplePt.xy;    // note -- this has to be improved because the point can't fall under the sample horizon
+    float2 p0 = samplePt.xy + skewedNormal.xy * (-samplePt.z/skewedNormal.z);
+    float2 p1 = samplePt.xy;
 
         // We need to prevent p1 from falling beneath the horizon...
-        // We can do this in 2d by finding a line that runs through p0.
-    float2 projHorizNormal = normalize(sampleNormal.xy);
-    p1 -= projHorizNormal * min(0, dot(p1 - p0, projHorizNormal));
+    // float2 projHorizNormal = normalize(sampleNormal.xy);
+    // p1 -= projHorizNormal * min(0, dot(p1 - p0, projHorizNormal));
+    if (isFacingAway) {
+            // Let's find the direction along the horizon plane to the light
+            // We can do this by removing the part of the direction that is
+            // perpendicular to the normal (thereby creating a vector that is
+            // tangent to the horizon plane)
+        float3 directionAlongHorizon = -samplePt;
+        directionAlongHorizon -= dot(directionAlongHorizon, sampleNormal) * directionAlongHorizon;
+        p1 = samplePt.xy - directionAlongHorizon.xy * (samplePt.z / directionAlongHorizon.z);
+    }
 
         // In our coordinate system, pc and pt are easy to find
         // (though is can be more complex if one of the points falls under the sample horizon)
@@ -343,11 +356,13 @@ float4 ResolveRectangleLightUnshadowed(
     float NdotL = saturate(dot(sampleNormal, lightNegDir));
     float3 diffuse = LightResolve_Diffuse_NdotL(sample, viewDirectionLight, lightNegDir, NdotL, Light);
 
-    float cosThetaLightPlane = saturate(-sampleNormal.z);
-    // return float4(cosThetaLightPlane.xxx, 1.f);
-
+        // note --  There's some confusinn about this cosThetaLightPlane equation.
+        //          here we're calculating the area of the that that is visible from
+        //          the persepective of the sample point. It seems best to use the
+        //          dot product of the light plane with the light direction
+    float cosThetaLightPlane = saturate(-lightNegDir.z);
     float area = lightSize.x * lightSize.y * 4.f;
-    float diffuseAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
+    float diffuseAttenuation = area * cosThetaLightPlane * saturate(DistanceAttenuation(distanceSq, 1.f));
 
         // To calculate specular, we need a different equation. We're going to
         // create a cone centered around the reflection angle. The angle of the cone
@@ -377,16 +392,27 @@ float4 ResolveRectangleLightUnshadowed(
         // our NDF.
         // The full inverse for GGX Trowbridge Reitz is a little too expensive. And the
         // end result is fairly subtle... So we get by with a rough estimate.
+        //
+        // The clearest artefact we get is problems on grazing angles when the light
+        // source is near a surface (ie, a wall length light source gets distorted
+        // in the floor). The effect is increased with smaller cutoff values here...
+        // Very small cutoff angles almost seem to give the best result.
     // float cosConeAngle = TrowReitzDInverse(0.32f, RoughnessToDAlpha(sample.material.roughness));
+    // float cosConeAngle = TrowReitzDInverse(0.97f, RoughnessToDAlpha(sample.material.roughness));
     float cosConeAngle = TrowReitzDInverseApprox(RoughnessToDAlpha(sample.material.roughness));
-    // cosConeAngle = max(0.25f, cosConeAngle); // avoid extreme cases on high roughness materials
+
+        // note --  we could incorporate this tanConeAngle calculation into the
+        //          TrowReitzDInverseApprox function...?
     float sinConeAngle = sqrt(1.f - cosConeAngle*cosConeAngle);
     float tanConeAngle = sinConeAngle/cosConeAngle;
-    // return float4(tanConeAngle.xxx, 1.f);
 
+        // The projected circle radius value here is only accurate when the direction
+        // to the light is along the reflection dir (but that's also when the highlight is
+        // brightest)
     float distToProjectedConeCenter = (-samplePt.z/reflectedDirLight.z);
     float2 projectedCircleCenter = samplePt.xy + reflectedDirLight.xy * distToProjectedConeCenter;
-    float projectedCircleRadius = distToProjectedConeCenter * tanConeAngle;
+    float projectedCircleRadius = max(0, distToProjectedConeCenter * tanConeAngle);
+    // return float4(projectedCircleRadius.xxx, 1.f);
 
         // This is squaring the circle...?!
         // float circleArea = pi * projectedCircleRadius * projectedCircleRadius;
@@ -400,20 +426,26 @@ float4 ResolveRectangleLightUnshadowed(
         projectedCircleCenter - float2(squareRadius, squareRadius),
         projectedCircleCenter + float2(squareRadius, squareRadius));
 
+    // representativePt = projectedCircleCenter;
+
     float integralApprox = intersectionArea / (area + 1e-3f);
     // return float4(integralApprox.xxx, 1.f);
 
-    float3 specLightNegDir = normalize(float3(representativePt - samplePt.xy, -samplePt.z));
+    float3 specLightNegDir = float3(representativePt - samplePt.xy, -samplePt.z);
+    float specDistanceSq = MagnitudeSquared(specLightNegDir);
+    specLightNegDir *= rsqrt(specDistanceSq);
     sample.worldSpaceNormal = sampleNormal;
+
+        // note --  We can get some interesting results if we use "lightNegDir" here instead of
+        //          specLightNegDir -- it's a good way to visualise the representative poitn we're using
+        //          for the diffuse calculation.
     float3 specular = LightResolve_Specular(sample, viewDirectionLight, specLightNegDir, Light, screenSpaceOcclusion);
-    float specDistanceSq = MagnitudeSquared(float3(representativePt, 0) - samplePt);
-    float specAttenuation = integralApprox * saturate(DistanceAttenuation(specDistanceSq, 1.f));
+    float specAttenuation = area * integralApprox * saturate(DistanceAttenuation(specDistanceSq, 1.f));
 
     float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.Radius);
-    float facingAttenuation = cosThetaLightPlane * area;
 
     const float lightScale = LightingScale;
-    return float4((lightScale*facingAttenuation*radiusDropOff)*(diffuseAttenuation * diffuse + specAttenuation * specular), 1.f);
+    return float4((lightScale*radiusDropOff)*(diffuseAttenuation * diffuse + specAttenuation * specular), 1.f);
 }
 
 #endif
