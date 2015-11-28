@@ -244,7 +244,6 @@ namespace LevelEditor
                 HashSet<string> hiddenprops = new HashSet<string>();
                 foreach (XmlNode xmlnode in kv.Value)
                 {
-                    
                     if (xmlnode.LocalName == "scea.dom.editors.attribute")
                     {
                         XmlAttribute hiddenAttrib = xmlnode.Attributes["hide"];
@@ -257,8 +256,21 @@ namespace LevelEditor
                                 hiddenprops.Add(name);
                             }                            
                         }
+
+                        // shortcut for specifying enum editors and converters...
+                        XmlAttribute enumAttribute = xmlnode.Attributes["enum"];
+                        if (enumAttribute != null)
+                        {
+                            var e = xmlnode as XmlElement;
+                            if (e != null)
+                            {
+                                e.SetAttribute("editor", "Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:" + enumAttribute.Value);
+                                e.SetAttribute("converter", "Sce.Atf.Controls.PropertyEditing.EnumTypeConverter:" + enumAttribute.Value);
+                            }
+                        }
                     }
                 }
+
                 if (hiddenprops.Count > 0)
                 {
                     nodeType.SetTag(HiddenProperties, hiddenprops);

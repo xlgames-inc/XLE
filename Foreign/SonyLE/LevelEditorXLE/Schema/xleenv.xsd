@@ -292,23 +292,22 @@
     </xs:complexContent>
   </xs:complexType>
 
-  <xs:complexType name="sphereLightType">
+  <xs:complexType name="areaLightType">
     <xs:annotation>
       <xs:appinfo>
-        <LeGe.NativeType nativeName="SphereLight"/>
-        <LeGe.NativeProperty name="SourceRadius" nativeName="SourceRadius"/>
+        <LeGe.NativeType nativeName="AreaLight"/>
+        <LeGe.NativeProperty name="Shape" nativeName="Shape"/>
 
-        <scea.dom.editors.attribute category="Light" name="SourceRadius" displayName="Source Radius"
-          description="This is the radius of the light source sphere. For example, a light global might typically have a radius of 0.05m."
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,5"/>
+        <scea.dom.editors.attribute name="Shape" enum="Sphere=1,Tube=2,Rectangle=3,Disc=4" 
+          category="Light" displayName="Shape" description="The shape of the area light"/>
         
-        <scea.dom.editors category="Lights" name="SphereLight" menuText="Lights/SphereLight" description="A sphere light"/>
+        <scea.dom.editors category="Lights" name="AreaLight" menuText="Lights/AreaLight" description="An area light"/>
       </xs:appinfo>
     </xs:annotation>
 
     <xs:complexContent>
       <xs:extension base="staticLightType">
-        <xs:attribute name="SourceRadius" type="xs:float" default="1"/>
+        <xs:attribute name="Shape" type="xs:int" default="1"/>
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>
