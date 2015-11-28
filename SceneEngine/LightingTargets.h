@@ -129,8 +129,9 @@ namespace SceneEngine
             unsigned    _msaaSampleCount;
             bool        _msaaSamplers, _flipDirection;
             unsigned    _gbufferType;
+            bool        _debugging;
 
-            Desc(unsigned gbufferType, unsigned msaaSampleCount, bool msaaSamplers, bool flipDirection) 
+            Desc(unsigned gbufferType, unsigned msaaSampleCount, bool msaaSamplers, bool flipDirection, bool debugging) 
             {
                     //  we have to "memset" this -- because padding adds
                     //  random values in profile mode
@@ -139,6 +140,7 @@ namespace SceneEngine
                 _msaaSampleCount = msaaSampleCount;
                 _msaaSamplers = msaaSamplers;
                 _flipDirection = flipDirection;
+                _debugging = debugging;
             }
         };
 
@@ -189,6 +191,7 @@ namespace SceneEngine
                 ShadowProj_Ortho,
                 ShadowResolveParam,
                 ScreenToRTShadow,
+                Debugging,
                 Max
             };
         };

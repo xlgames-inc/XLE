@@ -16,14 +16,14 @@ Texture2D_MaybeMS<float4>		GBuffer_Normals		: register(t1);
 	Texture2D_MaybeMS<float4>	GBuffer_Parameters	: register(t2);
 #endif
 
-GBufferValues LoadGBuffer(float4 position, SystemInputs sys)
+GBufferValues LoadGBuffer(float2 position, SystemInputs sys)
 {
 	int2 pixelCoord = position.xy;
 
     #if SHADER_NODE_EDITOR==1
             //      In the shader node editor, the gbuffer textures might not be
             //      the same dimensions as the output viewport. So we need to resample.
-            //      Just do basic point resampling (otherwise normal filtering, etc, 
+            //      Just do basic point resampling (otherwise normal filtering, etc,
             //      could get really complex)
         uint2 textureDims;
         GBuffer_Diffuse.GetDimensions(textureDims.x, textureDims.y);
