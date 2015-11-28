@@ -31,6 +31,8 @@
 #include "../Math/Transformations.h"
 #include "../Utility/StringFormat.h"
 
+#include "../RenderCore/DX11/Metal/IncludeDX11.h"   // for unbind depth below
+
 namespace SceneEngine
 {
     using namespace RenderCore;
@@ -137,7 +139,8 @@ namespace SceneEngine
     static void ResolveLights(  Metal::DeviceContext& context,
                                 LightingParserContext& parserContext,
                                 MainTargetsBox& mainTargets,
-                                LightingResolveContext& resolveContext);
+                                const LightingResolveContext& resolveContext,
+                                bool debugging = false);
 
     static void SetupStateForDeferredLightingResolve(   
         Metal::DeviceContext& context, 
@@ -463,12 +466,43 @@ namespace SceneEngine
             parserContext._pendingOverlays.push_back(
                 std::bind(&RTShadows_DrawMetrics, std::placeholders::_1, std::placeholders::_2, std::ref(mainTargets)));
         }
+
+        if (Tweakable("LightResolveDebugging", false)) {
+                // we use the lamdba to store a copy of lightingResolveContext
+            parserContext._pendingOverlays.push_back(
+                [&mainTargets, lightingResolveContext, &lightingResTargets, &resolveRes, doSampleFrequencyOptimisation](RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext)
+                {
+                    SavedTargets savedTargets(context);
+                    auto restoreMarker = savedTargets.MakeResetMarker(context);
+
+                    context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
+
+                    SetupVertexGeneratorShader(context);
+                    context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
+                    context.Bind(Techniques::CommonResources()._dssDisable);
+                    context.BindPS(MakeResourceList(
+                        mainTargets._gbufferRTVsSRV[0], mainTargets._gbufferRTVsSRV[1], mainTargets._gbufferRTVsSRV[2], 
+                        Metal::ShaderResourceView(), mainTargets._msaaDepthBufferSRV));
+
+                    LightingParser_BindLightResolveResources(context, parserContext);
+
+                    context.BindPS(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
+                    context.BindPS(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
+
+                    ResolveLights(context, parserContext, mainTargets, lightingResolveContext, true);
+
+                    context.UnbindPS<Metal::ShaderResourceView>(0, 9);
+                    context.Bind(Techniques::CommonResources()._defaultRasterizer);
+                    context.Bind(Techniques::CommonResources()._dssReadWrite);
+                });
+        }
     }
 
     static void ResolveLights(  Metal::DeviceContext& context,
                                 LightingParserContext& parserContext,
                                 MainTargetsBox& mainTargets,
-                                LightingResolveContext& resolveContext)
+                                const LightingResolveContext& resolveContext,
+                                bool debugging)
     {
         Metal::GPUProfiler::DebugAnnotation anno(context, L"Lights");
 
@@ -478,7 +512,7 @@ namespace SceneEngine
         using CB = LightingResolveShaders::CB;
         using SR = LightingResolveShaders::SR;
         Metal::ConstantBufferPacket constantBufferPackets[CB::Max];
-        const Metal::ConstantBuffer* prebuiltConstantBuffers[] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+        const Metal::ConstantBuffer* prebuiltConstantBuffers[] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
         static_assert(dimof(prebuiltConstantBuffers)==CB::Max, "Prebuilt constant buffer array incorrect size");
 
         const Metal::ShaderResourceView* srvs[] = { nullptr, nullptr, nullptr };
@@ -486,13 +520,25 @@ namespace SceneEngine
         
         prebuiltConstantBuffers[CB::ShadowParam] = &Techniques::FindCachedBox2<ShadowResourcesBox>()._sampleKernel32;
 
+        if (debugging) {
+            Metal::ViewportDesc vdesc(context);
+            struct DebuggingGlobals
+            {
+                UInt2 viewportSize; 
+                Int2 MousePosition;
+            } debuggingGlobals = { UInt2(unsigned(vdesc.Width), unsigned(vdesc.Height)), GetCursorPos() };
+            Metal::ConstantBuffer debuggingCB(&debuggingGlobals, sizeof(debuggingGlobals));
+            prebuiltConstantBuffers[CB::Debugging] = &debuggingCB;
+        }
+
             ////////////////////////////////////////////////////////////////////////
 
         auto& lightingResolveShaders = 
             Techniques::FindCachedBoxDep2<LightingResolveShaders>(
                 GBufferType(mainTargets),
                 (resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerSample)?samplingCount:1, useMsaaSamplers, 
-                resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerPixel);
+                resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerPixel,
+                debugging);
 
         const bool allowOrthoShadowResolve = Tweakable("AllowOrthoShadowResolve", true);
 
@@ -568,7 +614,8 @@ namespace SceneEngine
                 shaderType._shadowResolveModel = (uint8)i._shadowResolveModel;
 
                 const auto* shader = lightingResolveShaders.GetShader(shaderType);
-                assert(shader && shader->_shader);
+                assert(shader);
+                if (!shader->_shader) continue;
 
                 shader->_uniforms.Apply(
                     context, parserContext.GetGlobalUniformsStream(), 

@@ -221,12 +221,125 @@ float4 ResolveTubeLightUnshadowed(
     return float4((lightScale*radiusDropOff*distanceAttenuation)*(diffuse + specAttenuation*specular), 1.f);
 }
 
+cbuffer DebuggingGlobals
+{
+	const uint2 ViewportDimensions;
+	const int2 MousePosition;
+}
+
+void LineLineIntersection(
+    out float3 L0Closest, out float3 L1Closest,
+    float3 L0A, float3 L0B, float3 L1A, float3 L1B)
+{
+    // this is not necessarily the most optimal solution
+    // (and ignores bad cases like parallel lines)
+    // just for debugging...
+    float3 u = normalize(L0B - L0A);
+    float3 v = normalize(L1B - L1A);
+
+    float a = dot(u, u), b = dot(u, v), c = dot(v, v);
+    float d = dot(u, L0A - L1A), e = dot(v, L0A - L1A);
+    float s = (b*e - c*d) / (a*c - b*b);
+    float t = (a*e - b*d) / (a*c - b*b);
+
+    L0Closest = L0A + s * u;
+    L1Closest = L1A + t * v;
+}
+
+float4 ResolveAreaLightDebugging(
+    float4 position : SV_Position,
+    float2 texCoord : TEXCOORD0,
+    float3 drawingPointViewFrustumVector : VIEWFRUSTUMVECTOR,
+    SystemInputs sys) : SV_Target0
+{
+    // We're going to draw some debugging information for the point under the mouse cursor.
+    // Let's calculate the diffuse and specular representative points for that point.
+
+    float2 tc = MousePosition.xy / float2(ViewportDimensions);
+    float3 viewFrustumVector =
+        lerp(
+            lerp(FrustumCorners[0], FrustumCorners[1], tc.y),
+            lerp(FrustumCorners[2], FrustumCorners[3], tc.y),
+            tc.x);
+    float3 worldPosition = CalculateWorldPosition(MousePosition, 0, viewFrustumVector);
+
+    GBufferValues sample = LoadGBuffer(MousePosition, SystemInputs_Default());
+
+    float3 directionToEye = normalize(-viewFrustumVector);
+
+    float3 lightCenter = Light.Position;
+    float2 lightHalfSize = float2(Light.SourceRadiusX, Light.SourceRadiusY);
+    float3x3 worldToLight = float3x3(Light.OrientationX, Light.OrientationY, Light.OrientationZ);
+    float3 samplePt = mul(worldToLight, worldPosition - lightCenter);
+    float3 sampleNormal = mul(worldToLight, sample.worldSpaceNormal);
+    float3 viewDirectionLight = mul(worldToLight, directionToEye);
+    if (samplePt.z < 0.f) return float4(0.0.xxx, 1.f);
+
+    float2 diffRepPt = RectangleDiffuseRepPoint(samplePt, sampleNormal, lightHalfSize);
+    float intersectionArea;
+    float2 specRepPt = RectangleSpecularRepPoint(
+        intersectionArea,
+        samplePt, sampleNormal, viewDirectionLight,
+        lightHalfSize, sample.material.roughness);
+
+    float3 diffPtWorld = mul(transpose(worldToLight), diffRepPt) + lightCenter;
+    float3 specPtWorld = mul(transpose(worldToLight), specRepPt) + lightCenter;
+
+    float4 diffClip = mul(WorldToClip, float4(diffPtWorld,1));
+    float4 specClip = mul(WorldToClip, float4(specPtWorld,1));
+
+    // draw a dot at the specular and diffuse representative points
+    if (diffClip.z > -diffClip.w && diffClip.z < diffClip.w) {
+        float2 pt = diffClip.xy / diffClip.w;
+        pt = float2(ViewportDimensions.x * (0.5f + 0.5f * pt.x), ViewportDimensions.y * (0.5f - 0.5f * pt.y));
+        if (length(pt - position.xy) <= 4.f)
+            return float4(1,0,0,.5);
+    }
+
+    if (specClip.z > -specClip.w && specClip.z < specClip.w) {
+        float2 pt = specClip.xy / specClip.w;
+        pt = float2(ViewportDimensions.x * (0.5f + 0.5f * pt.x), ViewportDimensions.y * (0.5f - 0.5f * pt.y));
+        if (length(pt - position.xy) <= 4.f)
+            return float4(0,1,0,.5);
+    }
+
+    float4 testClip = mul(WorldToClip, float4(worldPosition,1));
+    if (testClip.z > -testClip.w && testClip.z < testClip.w) {
+        float2 pt = testClip.xy / testClip.w;
+        pt = float2(ViewportDimensions.x * (0.5f + 0.5f * pt.x), ViewportDimensions.y * (0.5f - 0.5f * pt.y));
+        if (length(pt - position.xy) <= 4.f)
+            return float4(1,1,1,.5);
+    }
+
+    float3 reflectedDirLight = reflect(-directionToEye, sample.worldSpaceNormal);
+    float cosConeAngle = TrowReitzDInverseApprox(RoughnessToDAlpha(sample.material.roughness));
+
+    float sinConeAngle = sqrt(1.f - cosConeAngle*cosConeAngle);
+    float tanConeAngle = sinConeAngle/cosConeAngle;
+
+    float3 L0Closest, L1Closest;
+    LineLineIntersection(
+        L0Closest, L1Closest,
+        WorldSpaceView, WorldSpaceView + drawingPointViewFrustumVector,
+        worldPosition, worldPosition + reflectedDirLight);
+
+    float u = dot(L1Closest - worldPosition, reflectedDirLight);
+
+    if (u > 0.f && length(L0Closest-L1Closest) < u*tanConeAngle)
+        return float4(0,0,1 /* * exp(-0.01f * dot(L0Closest-WorldSpaceView, drawingPointViewFrustumVector))*/,.5f);
+
+    return float4(0.0.xxx, 1.f);
+}
+
 float4 ResolveRectangleLightUnshadowed(
     float4 position : SV_Position,
     float2 texCoord : TEXCOORD0,
     float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
     SystemInputs sys) : SV_Target0
 {
+    // float4 debugging = ResolveAreaLightDebugging(position, texCoord, viewFrustumVector, sys);
+    // if (debugging.a > 0.f) return 256.f * debugging;
+
     int2 pixelCoords = position.xy;
     float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
     GBufferValues sample = LoadGBuffer(position, sys);
