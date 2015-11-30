@@ -520,6 +520,7 @@ namespace SceneEngine
         
         prebuiltConstantBuffers[CB::ShadowParam] = &Techniques::FindCachedBox2<ShadowResourcesBox>()._sampleKernel32;
 
+        Metal::ConstantBuffer debuggingCB;
         if (debugging) {
             Metal::ViewportDesc vdesc(context);
             struct DebuggingGlobals
@@ -527,7 +528,7 @@ namespace SceneEngine
                 UInt2 viewportSize; 
                 Int2 MousePosition;
             } debuggingGlobals = { UInt2(unsigned(vdesc.Width), unsigned(vdesc.Height)), GetCursorPos() };
-            Metal::ConstantBuffer debuggingCB(&debuggingGlobals, sizeof(debuggingGlobals));
+            debuggingCB = Metal::ConstantBuffer(&debuggingGlobals, sizeof(debuggingGlobals));
             prebuiltConstantBuffers[CB::Debugging] = &debuggingCB;
         }
 
