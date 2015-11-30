@@ -297,11 +297,9 @@
       <xs:appinfo>
         <LeGe.NativeType nativeName="AreaLight"/>
         <LeGe.NativeProperty name="Shape" nativeName="Shape"/>
-
         <scea.dom.editors.attribute name="Shape" enum="Sphere=1,Tube=2,Rectangle=3,Disc=4" 
           category="Light" displayName="Shape" description="The shape of the area light"/>
-        
-        <scea.dom.editors category="Lights" name="AreaLight" menuText="Lights/AreaLight" description="An area light"/>
+        <scea.dom.editors category="Lights" name="AreaLight" menuText="Lights/AreaLight" description="An area light (eg, sphere, tube, rectangle, disc)"/>
       </xs:appinfo>
     </xs:annotation>
 
