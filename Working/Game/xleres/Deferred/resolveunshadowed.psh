@@ -155,7 +155,8 @@ float TubeLightDiffuseIntegral(float3 L0, float3 L1, float3 N)
     float L0rmag = ReciprocalMagnitude(L0);
     float L1rmag = ReciprocalMagnitude(L1);
     float A = saturate(dot(N, L0) * .5f * L0rmag + dot(N, L1) * 0.5f * L1rmag);
-    return 2.f * A / (1.f/(L0rmag*L1rmag) + dot(L0, L1) + 2.f);
+    float B = 1.f/(L0rmag*L1rmag);
+    return 2.f * A / (B + dot(L0, L1) + 2.f);
 }
 
 float3 RepresentativeVector_Tube(float3 L0, float3 L1, float3 reflectionDir)
@@ -218,7 +219,7 @@ float4 ResolveTubeLightUnshadowed(
     float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.CutoffRange);
 
     const float lightScale = LightingScale;
-    return float4((lightScale*radiusDropOff*distanceAttenuation)*(diffuse + specAttenuation*specular), 1.f);
+    return float4((lightScale*radiusDropOff)*(diffuse + distanceAttenuation*specAttenuation*specular), 1.f);
 }
 
 cbuffer DebuggingGlobals

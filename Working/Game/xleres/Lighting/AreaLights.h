@@ -76,24 +76,22 @@ float2 RectangleDiffuseRepPoint(float3 samplePt, float3 sampleNormal, float2 lig
         // We need to skew in these cases to find a collision point.
     bool isFacingAway = sampleNormal.z >= 0.f;
     float3 skewedNormal = sampleNormal;
-    if (isFacingAway) skewedNormal = normalize(sampleNormal-float3(0,0,.5f));
+    if (isFacingAway) skewedNormal = /*normalize*/(float3(sampleNormal.xy, -0.01f)); // (without normalization, it should be incorrect -- but maybe no major visual artefacts)
 
         // Triple product type operation becomes simplier...
         // note -- obvious problems with sampleNormal.z is near 0
     float2 p0 = samplePt.xy + skewedNormal.xy * (-samplePt.z/skewedNormal.z);
     float2 p1 = samplePt.xy;
 
-        // We need to prevent p1 from falling beneath the horizon...
-    // float2 projHorizNormal = normalize(sampleNormal.xy);
-    // p1 -= projHorizNormal * min(0, dot(p1 - p0, projHorizNormal));
     if (isFacingAway) {
+            // We need to prevent p1 from falling beneath the horizon...
             // Let's find the direction along the horizon plane to the light
             // We can do this by removing the part of the direction that is
             // perpendicular to the normal (thereby creating a vector that is
             // tangent to the horizon plane)
-        float3 directionAlongHorizon = -samplePt;
-        directionAlongHorizon -= dot(directionAlongHorizon, sampleNormal) * directionAlongHorizon;
-        p1 = samplePt.xy - directionAlongHorizon.xy * (samplePt.z / directionAlongHorizon.z);
+        float3 directionAlongHorizon = float3(0.0.xx, -samplePt.z);
+        directionAlongHorizon -= dot(directionAlongHorizon, sampleNormal) * sampleNormal;
+        p1 = samplePt.xy + directionAlongHorizon.xy * (-samplePt.z / directionAlongHorizon.z);
     }
 
         // In our coordinate system, pc and pt are easy to find
@@ -104,7 +102,9 @@ float2 RectangleDiffuseRepPoint(float3 samplePt, float3 sampleNormal, float2 lig
     float2 pc = float2(clamp(p0.x, -lightHalfSize.x, lightHalfSize.x), clamp(p0.y, -lightHalfSize.y, lightHalfSize.y));
     float2 pt = float2(clamp(p1.x, -lightHalfSize.x, lightHalfSize.x), clamp(p1.y, -lightHalfSize.y, lightHalfSize.y));
 
-    return 0.5f * (pc+pt);
+    float2 r = 0.5f * (pc+pt);
+    // r = float2(clamp(r.x, -lightHalfSize.x, lightHalfSize.x), clamp(r.y, -lightHalfSize.y, lightHalfSize.y));
+    return pt;
 }
 
 float2 RectangleSpecularRepPoint(out float intersectionArea, float3 samplePt, float3 sampleNormal, float3 viewDirection, float2 lightHalfSize, float roughness)
