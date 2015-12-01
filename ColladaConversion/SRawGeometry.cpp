@@ -912,7 +912,7 @@ namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static std::vector<std::basic_string<utf8>> GetJointNames(
+    std::vector<std::basic_string<utf8>> GetJointNames(
         const SkinController& controller,
         const URIResolveContext& resolveContext)
     {

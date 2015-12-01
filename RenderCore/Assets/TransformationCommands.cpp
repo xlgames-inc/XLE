@@ -797,8 +797,8 @@ namespace RenderCore { namespace Assets
                     Throw(::Exceptions::BasicLabel("Exceeded maximum stack depth in GenerateOutputTransforms"));
                 }
                     
-                if (constant_expression<UseDebugIterator>::result() && workingTransform != workingStack)
-                    debugIterator(*(workingTransform-1), *workingTransform);
+                if (constant_expression<UseDebugIterator>::result())
+                    debugIterator((workingTransform != workingStack) ? *(workingTransform-1) : Identity<Float4x4>(), *workingTransform);
 
                 *(workingTransform+1) = *workingTransform;
                 ++workingTransform;
@@ -960,9 +960,8 @@ namespace RenderCore { namespace Assets
                     uint32 outputIndex = *i++;
                     if (outputIndex < resultCount) {
                         result[outputIndex] = *workingTransform;
-
-                        if (constant_expression<UseDebugIterator>::result() && workingTransform != workingStack)
-                            debugIterator(*(workingTransform-1), *workingTransform);
+                        if (constant_expression<UseDebugIterator>::result())
+                            debugIterator((workingTransform != workingStack) ? *(workingTransform-1) : Identity<Float4x4>(), *workingTransform);
                     } else
                         LogWarning << "Warning -- bad output matrix index (" << outputIndex << ")";
                 }
@@ -975,7 +974,7 @@ namespace RenderCore { namespace Assets
                     i += 16;
                     if (outputIndex < resultCount) {
                         result[outputIndex] = Combine(transformMatrix, *workingTransform);
-                        if (constant_expression<UseDebugIterator>::result() && workingTransform != workingStack)
+                        if (constant_expression<UseDebugIterator>::result())
                             debugIterator(*workingTransform, result[outputIndex]);
                     } else
                         LogWarning << "Warning -- bad output matrix index in TransformFloat4x4AndWrite_Static (" << outputIndex << ")";
@@ -989,7 +988,7 @@ namespace RenderCore { namespace Assets
                     if (parameterIndex < float4x4Count) {
                         if (outputIndex < resultCount) {
                             result[outputIndex] = Combine(float4x4s[parameterIndex], *workingTransform);
-                            if (constant_expression<UseDebugIterator>::result() && workingTransform != workingStack)
+                            if (constant_expression<UseDebugIterator>::result())
                                 debugIterator(*workingTransform, result[outputIndex]);
                         } else
                             LogWarning << "Warning -- bad output matrix index in TransformFloat4x4AndWrite_Parameter (" << outputIndex << ")";
