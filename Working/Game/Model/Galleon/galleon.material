@@ -5,15 +5,14 @@
 ~galleon_sail
 	~ShaderParams; MAT_DOUBLE_SIDED_LIGHTING=1u
 	~Constants; SpecularMin=0.05f; RoughnessMin=0.9f; AlphaThreshold=0.5f
-		MaterialDiffuse={0.5f, 0.1f, 0.1f}c
+		MaterialDiffuse={0.1f, 0.1f, 0.1f}c
 	~States; DoubleSided=1u
-~galleon_01
-	~Constants; MetalMin=0u; SpecularMin=0.025f; RoughnessMin=0.35f; SpecularMax=0.15f
-		MetalMax=0.5f
-~galleon_add
-	~Constants; MetalMin=0.2f; RoughnessMax=0.2f; SpecularMin=0.2f; RoughnessMin=0.2f
-		SpecularMax=0.05f; MetalMax=1u
-~galleon_02
-	~Constants; SpecularMax=0.2f
+~*
+	~Constants; MetalMin=0u; RoughnessMax=0.25f; SpecularMin=0.03f; RoughnessMin=0.05f
+		SpecularMax=0.2f; MetalMax=0u
+~galleon_add03
+	~ShaderParams; MAT_ALPHA_TEST=1u
+	~ResourceBindings; DiffuseTexture=./images/24_galleon_add03pirate_df.dds; SpecularColorTexture=<:():>
+		NormalsTexture=./images/25_galleon_add03pirate_ddn.dds
 ~galleon_add02
-	~Constants; SpecularMin=0.05f; SpecularMax=0.2f
+	~ShaderParams; MAT_ALPHA_TEST=1u
