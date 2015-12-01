@@ -87,6 +87,16 @@ namespace LevelEditorXLE
             {
                 var cwd = new Uri(System.IO.Directory.GetCurrentDirectory().TrimEnd('\\') + "\\");
                 var relUri = cwd.MakeRelativeUri(uri);
+
+                    // If the relative directory beings with a ".." (ie, the file is somewhere else
+                    // on the drive, outside of the working folder) then let's pass the full absolute
+                    // path. 
+                    // This is not ideally. Really we should be using only absolute paths in the C#
+                    // side, and leave the native side to deal with converting them to relative when
+                    // necessary.
+                if (relUri.OriginalString.Substring(0, 2) == "..")
+                    return Uri.UnescapeDataString(uri.OriginalString);
+
                 return Uri.UnescapeDataString(relUri.OriginalString);
             }
             else
@@ -103,7 +113,7 @@ namespace LevelEditorXLE
             if (dot > 0 && dot > sep0 && dot > sep1)
             {
                     // don't remove the params (after ":") if they exist...
-                int param = input.LastIndexOf(':', dot);
+                int param = input.IndexOf(':', dot);
                 if (param >= 0)
                 {
                     return input.Substring(0, dot) + input.Substring(param);
