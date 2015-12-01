@@ -23,6 +23,11 @@
 #include "ConversionCore.h"
 #include <string>
 
+namespace ColladaConversion
+{
+    std::vector<std::basic_string<utf8>> GetJointNames(const SkinController& controller, const URIResolveContext& resolveContext);
+}
+
 namespace RenderCore { namespace ColladaConversion
 {
     using namespace ::ColladaConversion;
@@ -108,6 +113,33 @@ namespace RenderCore { namespace ColladaConversion
         while (child) {
             Gather(child, nodeRefs);
             child = child.GetNextSibling();
+        }
+    }
+
+    void ReferencedGeometries::FindSkinJoints(
+        const VisualScene& scene, 
+        const URIResolveContext& resolveContext,
+        SkeletonRegistry& nodeRefs)
+    {
+        for (auto c:_skinControllers) {
+            const auto& instGeo = scene.GetInstanceController(c._objectIndex);
+            GuidReference controllerRef(instGeo._reference);
+            ObjectGuid controllerId(controllerRef._id, controllerRef._fileHash);
+            auto* scaffoldController = FindElement(controllerRef, resolveContext, &IDocScopeIdResolver::FindSkinController);
+            if (scaffoldController) {
+                auto skeleton = FindElement(instGeo.GetSkeleton(), resolveContext, &IDocScopeIdResolver::FindNode);
+                if (skeleton) {
+                    auto jointNames = GetJointNames(*scaffoldController, resolveContext);
+                    for (auto& j:jointNames) {
+                        auto compareSection = MakeStringSection(j);
+                        Node node = skeleton.FindBreadthFirst(
+                            [&compareSection](const Node& compare) { return XlEqString(compare.GetSid(), compareSection); });
+
+                        if (node)
+                            nodeRefs.TryRegisterNode(AsObjectGuid(node), SkeletonBindingName(node).c_str());
+                    }
+                }
+            }
         }
     }
 

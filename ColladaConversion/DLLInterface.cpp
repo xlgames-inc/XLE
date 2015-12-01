@@ -197,36 +197,39 @@ namespace RenderCore { namespace ColladaConversion
         _canMergeIntoTransform.resize(outputMatrixCount, false);
         _mergedTransforms.resize(outputMatrixCount, Identity<Float4x4>());
 
-        for (unsigned c=0; c<outputMatrixCount; ++c) {
-                // if we've got a skin controller attached, we can't do any merging
-            auto skinI = std::find_if(
-                refGeos._skinControllers.cbegin(), refGeos._skinControllers.cend(),
-                [c](const ReferencedGeometries::AttachedObject& obj) { return obj._outputMatrixIndex == c; });
-            if (skinI != refGeos._skinControllers.cend()) continue;
+            // if there are any skin controllers at all, we need to prevent merging for now
+        if (refGeos._skinControllers.empty()) {
+            for (unsigned c=0; c<outputMatrixCount; ++c) {
+                    // if we've got a skin controller attached, we can't do any merging
+                auto skinI = std::find_if(
+                    refGeos._skinControllers.cbegin(), refGeos._skinControllers.cend(),
+                    [c](const ReferencedGeometries::AttachedObject& obj) { return obj._outputMatrixIndex == c; });
+                if (skinI != refGeos._skinControllers.cend()) continue;
 
-                // check to see if we have at least one mesh attached...
-            auto geoI = std::find_if(
-                refGeos._meshes.cbegin(), refGeos._meshes.cend(),
-                [c](const ReferencedGeometries::AttachedObject& obj) { return obj._outputMatrixIndex == c; });
-            if (geoI == refGeos._meshes.cend()) continue;
+                    // check to see if we have at least one mesh attached...
+                auto geoI = std::find_if(
+                    refGeos._meshes.cbegin(), refGeos._meshes.cend(),
+                    [c](const ReferencedGeometries::AttachedObject& obj) { return obj._outputMatrixIndex == c; });
+                if (geoI == refGeos._meshes.cend()) continue;
 
-                // find all of the meshes attached, and check if any are attached in
-                // multiple places
-            bool doublyAttachedObject = false;
-            for (auto i=refGeos._meshes.cbegin(); i!=refGeos._meshes.cend() && !doublyAttachedObject; ++i) {
-                if (i->_outputMatrixIndex == c) {
-                    GuidReference refGuid(scene.GetInstanceGeometry(i->_objectIndex)._reference);
-                    for (auto i2=refGeos._meshes.cbegin(); i2!=refGeos._meshes.cend(); ++i2) {
-                        GuidReference refGuid2(scene.GetInstanceGeometry(i2->_objectIndex)._reference);
-                        if (refGuid == refGuid2 && i2->_outputMatrixIndex != i->_outputMatrixIndex) {
-                            doublyAttachedObject = true;
-                            break;
+                    // find all of the meshes attached, and check if any are attached in
+                    // multiple places
+                bool doublyAttachedObject = false;
+                for (auto i=refGeos._meshes.cbegin(); i!=refGeos._meshes.cend() && !doublyAttachedObject; ++i) {
+                    if (i->_outputMatrixIndex == c) {
+                        GuidReference refGuid(scene.GetInstanceGeometry(i->_objectIndex)._reference);
+                        for (auto i2=refGeos._meshes.cbegin(); i2!=refGeos._meshes.cend(); ++i2) {
+                            GuidReference refGuid2(scene.GetInstanceGeometry(i2->_objectIndex)._reference);
+                            if (refGuid == refGuid2 && i2->_outputMatrixIndex != i->_outputMatrixIndex) {
+                                doublyAttachedObject = true;
+                                break;
+                            }
                         }
                     }
                 }
-            }
 
-            _canMergeIntoTransform[c] = !doublyAttachedObject;
+                _canMergeIntoTransform[c] = !doublyAttachedObject;
+            }
         }
     }
 
@@ -256,13 +259,15 @@ namespace RenderCore { namespace ColladaConversion
         ReferencedGeometries refGeos;
         refGeos.Gather(rootNode, jointRefs);
 
+            // The skeleton joints won't be included in the skeleton
+            // until we call FindSkinJoints. We don't really need the
+            // full skeleton embedded in the skin file... When the skeleton
+            // is not there, we will just see the model in the bind pose.
+            // But it can be handy to be there for previewing models quickly.
+        refGeos.FindSkinJoints(scene, input._resolveContext, jointRefs);
+
             // We can now build the skeleton (because ReferencedGeometries::Gather 
             // has initialised jointRefs.
-            // Note that when we build the skeleton, it won't contain the joints 
-            // referenced by skin controllers. This is because we haven't built the
-            // skin controllers yet (so the skin controller joints haven't been registered)
-            // This means that the transformation machine built into the skin file will only
-            // output transforms between the skin call root and model space.
 
         unsigned topLevelPops = 0;
         auto coordinateTransform = BuildCoordinateTransform(input._doc->GetAssetDesc());

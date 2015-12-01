@@ -23,6 +23,7 @@
 #include "../Techniques/Techniques.h"
 #include "../Techniques/TechniqueUtils.h"
 #include "../Techniques/ParsingContext.h"
+#include "../Techniques/CommonResources.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Assets/ChunkFile.h"
@@ -68,15 +69,13 @@ namespace RenderCore { namespace Assets
         Metal::BoundInputLayout     _boundInputLayout;
         BindingType::Enum           _bindingType;
 
-        const Metal::VertexShader*        _skinningVertexShaderP4;
-        const Metal::VertexShader*        _skinningVertexShaderP2;
-        const Metal::VertexShader*        _skinningVertexShaderP1;
-        const Metal::VertexShader*        _skinningVertexShaderP0;
+        Metal::VertexShader       _skinningVertexShaderP4;
+        Metal::VertexShader       _skinningVertexShaderP2;
+        Metal::VertexShader       _skinningVertexShaderP1;
+        Metal::VertexShader       _skinningVertexShaderP0;
 
-        const CompiledShaderByteCode* _vbByteCode;
-
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
-        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
+        const ::Assets::DepValPtr& GetDependencyValidation() const   { return _validationCallback; }
+        ::Assets::DepValPtr _validationCallback;
     };
 
     SkinningBindingBox::SkinningBindingBox(const Desc& desc)
@@ -116,14 +115,17 @@ namespace RenderCore { namespace Assets
                 AsPointer(skinningOutputLayout.begin()), unsigned(skinningOutputLayout.size()),
                 &outputVertexStride, 1));
 
-        _skinningVertexShaderP4 =  &::Assets::GetAsset<VertexShader>   (hasNormals ? skinningVertexShaderSourcePN4 : skinningVertexShaderSourceP4);
-        _skinningVertexShaderP2 =  &::Assets::GetAsset<VertexShader>   (hasNormals ? skinningVertexShaderSourcePN2 : skinningVertexShaderSourceP2);
-        _skinningVertexShaderP1 =  &::Assets::GetAsset<VertexShader>   (hasNormals ? skinningVertexShaderSourcePN1 : skinningVertexShaderSourceP1);
-        _skinningVertexShaderP0 =  &::Assets::GetAsset<VertexShader>   (hasNormals ? skinningVertexShaderSourcePN0 : skinningVertexShaderSourceP0);
+        auto& vsByteCodeP4 = ::Assets::GetAssetDep<CompiledShaderByteCode>(hasNormals ? skinningVertexShaderSourcePN4 : skinningVertexShaderSourceP4);
+        auto& vsByteCodeP2 = ::Assets::GetAssetDep<CompiledShaderByteCode>(hasNormals ? skinningVertexShaderSourcePN2 : skinningVertexShaderSourceP2);
+        auto& vsByteCodeP1 = ::Assets::GetAssetDep<CompiledShaderByteCode>(hasNormals ? skinningVertexShaderSourcePN1 : skinningVertexShaderSourceP1);
+        auto& vsByteCodeP0 = ::Assets::GetAssetDep<CompiledShaderByteCode>(hasNormals ? skinningVertexShaderSourcePN0 : skinningVertexShaderSourceP0);
 
-        _vbByteCode = &::Assets::GetAsset<CompiledShaderByteCode>     (hasNormals ? skinningVertexShaderSourcePN4 : skinningVertexShaderSourceP4);
+        _skinningVertexShaderP4 = Metal::VertexShader(vsByteCodeP4);
+        _skinningVertexShaderP2 = Metal::VertexShader(vsByteCodeP2);
+        _skinningVertexShaderP1 = Metal::VertexShader(vsByteCodeP1);
+        _skinningVertexShaderP0 = Metal::VertexShader(vsByteCodeP0);
 
-        BoundUniforms boundUniforms(*_vbByteCode);
+        BoundUniforms boundUniforms(vsByteCodeP4);
         const auto jointTransformsHash = Hash64("JointTransforms");
         if (desc._bindingType == BindingType::cbuffer) {
             boundUniforms.BindConstantBuffer(jointTransformsHash, 0, 1);
@@ -133,17 +135,15 @@ namespace RenderCore { namespace Assets
 
         _boundInputLayout = BoundInputLayout(
             std::make_pair(AsPointer(skinningInputLayout.cbegin()), skinningInputLayout.size()),
-            *_vbByteCode);
+            vsByteCodeP4);
 
         /////////////////////////////////////////////////////////////////////////////
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        // ::Assets::RegisterAssetDependency(validationCallback, _skinningVertexShaderP4->GetDependencyValidation());
-        // ::Assets::RegisterAssetDependency(validationCallback, _skinningVertexShaderP2->GetDependencyValidation());
-        // ::Assets::RegisterAssetDependency(validationCallback, _skinningVertexShaderP1->GetDependencyValidation());
-        // ::Assets::RegisterAssetDependency(validationCallback, _skinningVertexShaderP0->GetDependencyValidation());
-        // ::Assets::RegisterAssetDependency(validationCallback, _geometryShader->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, _vbByteCode->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, vsByteCodeP4.GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, vsByteCodeP2.GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, vsByteCodeP1.GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, vsByteCodeP0.GetDependencyValidation());
 
         _validationCallback = std::move(validationCallback);
         _boundUniforms = std::move(boundUniforms);
@@ -299,12 +299,12 @@ namespace RenderCore { namespace Assets
 
     static void SetSkinningShader(Metal::DeviceContext& context, SkinningBindingBox& bindingBox, unsigned materialIndexValue)
     {
-        if (materialIndexValue == 4)         context.Bind(*bindingBox._skinningVertexShaderP4);
-        else if (materialIndexValue == 2)    context.Bind(*bindingBox._skinningVertexShaderP2);
-        else if (materialIndexValue == 1)    context.Bind(*bindingBox._skinningVertexShaderP1);
+        if (materialIndexValue == 4)         context.Bind(bindingBox._skinningVertexShaderP4);
+        else if (materialIndexValue == 2)    context.Bind(bindingBox._skinningVertexShaderP2);
+        else if (materialIndexValue == 1)    context.Bind(bindingBox._skinningVertexShaderP1);
         else {
             assert(materialIndexValue == 0);
-            context.Bind(*bindingBox._skinningVertexShaderP0);
+            context.Bind(bindingBox._skinningVertexShaderP0);
         }
     }
 
@@ -493,8 +493,8 @@ namespace RenderCore { namespace Assets
 
             // fill in the "HashedInputAssemblies" box if necessary
         const auto& scaffold = *preparedAnimBinding._scaffold;
-        auto& bindingBox = Techniques::FindCachedBoxDep<SkinningBindingBox>(
-            SkinningBindingBox::Desc(bindingType, preparedAnimBinding._iaAnimationHash, mesh._extraVbStride[SkinnedMesh::VertexStreams::AnimatedGeo]));
+        auto& bindingBox = Techniques::FindCachedBoxDep2<SkinningBindingBox>(
+            bindingType, preparedAnimBinding._iaAnimationHash, mesh._extraVbStride[SkinnedMesh::VertexStreams::AnimatedGeo]);
 
             ///////////////////////////////////////////////
 
@@ -889,24 +889,23 @@ namespace RenderCore { namespace Assets
         std::unique_ptr<AnimationSetBinding> _animationSetBinding;
         std::unique_ptr<SkeletonBinding> _skeletonBinding;
         const AnimationSetScaffold* _animationSetScaffold;
-        const SkeletonScaffold* _skeletonScaffold;
+        const TransformationMachine* _transMachine;
     };
 
     void SkinPrepareMachine::PrepareAnimation(   
             Metal::DeviceContext* context, 
             ModelRenderer::PreparedAnimation& state) const
     {
-        auto& skeleton = _pimpl->_skeletonScaffold->GetTransformationMachine();
-        auto& animSet = _pimpl->_animationSetScaffold->ImmutableData();
+        auto& skeleton = *_pimpl->_transMachine;
             
         auto finalMatCount = skeleton.GetOutputMatrixCount();
         state._finalMatrices = std::make_unique<Float4x4[]>(finalMatCount);
-        if (!Tweakable("AnimBasePose", false)) {
+        if (_pimpl->_animationSetScaffold && !Tweakable("AnimBasePose", false)) {
+            auto& animSet = _pimpl->_animationSetScaffold->ImmutableData();
             auto params = animSet._animationSet.BuildTransformationParameterSet(
                 state._animState, 
                 skeleton, *_pimpl->_animationSetBinding, 
                 animSet._curves, animSet._curvesCount);
-
             
             skeleton.GenerateOutputTransforms(state._finalMatrices.get(), finalMatCount, &params);
         } else {
@@ -921,7 +920,7 @@ namespace RenderCore { namespace Assets
 
     unsigned SkinPrepareMachine::GetSkeletonOutputCount() const
     {
-        return _pimpl->_skeletonScaffold->GetTransformationMachine().GetOutputMatrixCount();
+        return _pimpl->_transMachine->GetOutputMatrixCount();
     }
 
     SkinPrepareMachine::SkinPrepareMachine(const ModelScaffold& skinScaffold, const AnimationSetScaffold& animationScaffold, const SkeletonScaffold& skeletonScaffold)
@@ -934,7 +933,18 @@ namespace RenderCore { namespace Assets
             skeletonScaffold.GetTransformationMachine().GetOutputInterface(), 
             skinScaffold.CommandStream().GetInputInterface());
         pimpl->_animationSetScaffold = &animationScaffold;
-        pimpl->_skeletonScaffold = &skeletonScaffold;
+        pimpl->_transMachine = &skeletonScaffold.GetTransformationMachine();
+        _pimpl = std::move(pimpl);
+    }
+
+    SkinPrepareMachine::SkinPrepareMachine(const ModelScaffold& skinScaffold, const TransformationMachine& transMachine)
+    {
+        auto pimpl = std::make_unique<Pimpl>();
+        pimpl->_skeletonBinding = std::make_unique<SkeletonBinding>(
+            transMachine.GetOutputInterface(), 
+            skinScaffold.CommandStream().GetInputInterface());
+        pimpl->_animationSetScaffold = nullptr;
+        pimpl->_transMachine = &transMachine;
         _pimpl = std::move(pimpl);
     }
 
@@ -1111,20 +1121,29 @@ namespace RenderCore { namespace Assets
             //      Construct the lines for while iterating through the transformation machine
 
         std::vector<Vertex_PC> workingVertices;
-        auto& skeleton = _pimpl->_skeletonScaffold->GetTransformationMachine();
-        auto& animData = _pimpl->_animationSetScaffold->ImmutableData();
-        auto params = animData._animationSet.BuildTransformationParameterSet(
-                animState, skeleton, *_pimpl->_animationSetBinding.get(), 
-                animData._curves, animData._curvesCount);
+        auto& skeleton = *_pimpl->_transMachine;
         auto temp = std::make_unique<Float4x4[]>(skeleton.GetOutputMatrixCount());
-        using namespace std::placeholders;
-        skeleton.GenerateOutputTransforms(
-            temp.get(), skeleton.GetOutputMatrixCount(),
-            &params, 
-            std::bind(&RenderSkeleton_DebugIterator, _1, _2, &workingVertices));
+        if (_pimpl->_animationSetScaffold) {
+            auto& animSet = _pimpl->_animationSetScaffold->ImmutableData();
+            auto params = animSet._animationSet.BuildTransformationParameterSet(
+                    animState, skeleton, *_pimpl->_animationSetBinding.get(), 
+                    animSet._curves, animSet._curvesCount);
+            using namespace std::placeholders;
+            skeleton.GenerateOutputTransforms(
+                temp.get(), skeleton.GetOutputMatrixCount(),
+                &params, 
+                std::bind(&RenderSkeleton_DebugIterator, _1, _2, &workingVertices));
+        } else {
+            using namespace std::placeholders;
+            skeleton.GenerateOutputTransforms(
+                temp.get(), skeleton.GetOutputMatrixCount(), &skeleton.GetDefaultParameters(),
+                std::bind(&RenderSkeleton_DebugIterator, _1, _2, &workingVertices));
+        }
 
         VertexBuffer vertexBuffer(AsPointer(workingVertices.begin()), workingVertices.size()*sizeof(Vertex_PC));
         context->Bind(MakeResourceList(vertexBuffer), sizeof(Vertex_PC), 0);
+        context->Bind(Techniques::CommonResources()._dssDisable);
+        context->Bind(Techniques::CommonResources()._blendOpaque);
         context->Bind(Topology::LineList);
         context->Draw((unsigned)workingVertices.size());
     }

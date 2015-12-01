@@ -139,18 +139,44 @@ namespace ToolsRig
             //     true, true, ~0u, ~0u,
             //     Metal::StencilMode::AlwaysWrite);
 
-            for (auto i:delaySteps)
-                ModelRenderer::RenderPrepared(
-                    RenderCore::Assets::ModelRendererContext(*context, parserContext, techniqueIndex),
-                    *_sharedStateSet, _delayedDrawCalls, i,
-                    [context, &drawCallIndexBuffer, &dss](ModelRenderer::DrawCallEvent evnt)
-                    {
-                        context->Bind(dss, 1+evnt._drawCallIndex);  // write stencil buffer with draw index
-                        unsigned drawCallIndexB[4] = { evnt._drawCallIndex, 0, 0, 0 };
-                        drawCallIndexBuffer.Update(*context, drawCallIndexB, sizeof(drawCallIndexB));
+            if (Tweakable("RenderSkinned", false)) {
+                if (delaySteps[0] == RenderCore::Assets::DelayStep::OpaqueRender) {
+                    auto preparedAnimation = _model->CreatePreparedAnimation();
+                    RenderCore::Assets::SkinPrepareMachine prepareMachine(
+                        *_modelScaffold, _modelScaffold->EmbeddedSkeleton());
+                    prepareMachine.PrepareAnimation(context, preparedAnimation);
+                    _model->PrepareAnimation(context, preparedAnimation, prepareMachine.GetSkeletonBinding());
 
-                        context->DrawIndexed(evnt._indexCount, evnt._firstIndex, evnt._firstVertex);
-                    });
+                    RenderCore::Assets::MeshToModel meshToModel(
+                        preparedAnimation._finalMatrices.get(),
+                        prepareMachine.GetSkeletonOutputCount(),
+                        &prepareMachine.GetSkeletonBinding());
+
+                    _model->Render(
+                        RenderCore::Assets::ModelRendererContext(*context, parserContext, techniqueIndex),
+                        *_sharedStateSet, Identity<Float4x4>(), 
+                        meshToModel, &preparedAnimation);
+
+                    if (Tweakable("RenderSkeleton", false)) {
+                        prepareMachine.RenderSkeleton(
+                            context, parserContext, 
+                            preparedAnimation._animState, Identity<Float4x4>());
+                    }
+                }
+            } else {
+                for (auto i:delaySteps)
+                    ModelRenderer::RenderPrepared(
+                        RenderCore::Assets::ModelRendererContext(*context, parserContext, techniqueIndex),
+                        *_sharedStateSet, _delayedDrawCalls, i,
+                        [context, &drawCallIndexBuffer, &dss](ModelRenderer::DrawCallEvent evnt)
+                        {
+                            context->Bind(dss, 1+evnt._drawCallIndex);  // write stencil buffer with draw index
+                            unsigned drawCallIndexB[4] = { evnt._drawCallIndex, 0, 0, 0 };
+                            drawCallIndexBuffer.Update(*context, drawCallIndexB, sizeof(drawCallIndexB));
+
+                            context->DrawIndexed(evnt._indexCount, evnt._firstIndex, evnt._firstVertex);
+                        });
+            }
         }
 
         bool HasContent(const SceneEngine::SceneParseSettings& parseSettings) const

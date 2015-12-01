@@ -399,6 +399,7 @@ namespace RenderCore { namespace Assets
                 const AnimationState& animState, const Float4x4& localToWorld);
         
         SkinPrepareMachine(const ModelScaffold&, const AnimationSetScaffold&, const SkeletonScaffold&);
+        SkinPrepareMachine(const ModelScaffold& skinScaffold, const TransformationMachine& skeletonScaffold);
         ~SkinPrepareMachine();
     protected:
         class Pimpl;

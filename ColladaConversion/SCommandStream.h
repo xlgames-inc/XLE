@@ -71,6 +71,10 @@ namespace RenderCore { namespace ColladaConversion
         std::vector<AttachedObject>   _skinControllers;
 
         void Gather(const ::ColladaConversion::Node& node, SkeletonRegistry& nodeRefs);
+        void FindSkinJoints(
+            const ::ColladaConversion::VisualScene& scene, 
+            const ::ColladaConversion::URIResolveContext& resolveContext, 
+            SkeletonRegistry& nodeRefs);
     };
 
     void RegisterNodeBindingNames(NascentSkeleton& skeleton, const SkeletonRegistry& registry);
