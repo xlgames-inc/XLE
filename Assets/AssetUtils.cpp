@@ -214,14 +214,13 @@ namespace Assets
     {
         ResChar tempBuffer[MaxPath];
 
-        const auto* colon = XlFindChar(baseName, ':');
+        auto splitter = MakeFileNameSplitter(baseName);
         bool baseFileExist = false;
-        if (colon) {
-            XlCopyNString(tempBuffer, dimof(tempBuffer), baseName, colon - baseName);
+        if (!splitter.ParametersWithDivider().Empty()) {
+            XlCopyString(tempBuffer, splitter.AllExceptParameters());
             baseFileExist = DoesFileExist(tempBuffer);
         } else {
             baseFileExist = DoesFileExist(baseName);
-            colon = XlStringEnd(baseName);
         }
 
             // by definition, we always check the unmodified file name first
@@ -238,21 +237,22 @@ namespace Assets
             unsigned workingBufferSize = (baseName!=destination) ? destinationCount : unsigned(dimof(tempBuffer));
 
             for (unsigned c=0; c<_startPointCount; ++c) {
-                XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], baseName, colon);
+                XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], 
+                    splitter.AllExceptParameters().begin(), splitter.AllExceptParameters().end());
                 if (DoesFileExist(workingBuffer)) {
                     SplitPath<ResChar>(workingBuffer).Simplify().Rebuild(workingBuffer, workingBufferSize);
                     if (workingBuffer != destination) {
                         auto workingBufferLen = std::min((ptrdiff_t)XlStringLen(workingBuffer), ptrdiff_t(destinationCount) - 1);
-                        auto colonLen = (ptrdiff_t)XlStringLen(colon);
+                        auto colonLen = (ptrdiff_t)splitter.ParametersWithDivider().Length();
                         auto colonCopy = std::min(ptrdiff_t(destinationCount) - workingBufferLen - 1, colonLen);
                         assert((workingBufferLen + colonCopy) < ptrdiff_t(destinationCount));
                         if (colonCopy > 0)
-                            XlMoveMemory(&destination[workingBufferLen], colon, colonCopy);
+                            XlMoveMemory(&destination[workingBufferLen], splitter.ParametersWithDivider().begin(), colonCopy);
                         destination[workingBufferLen + colonCopy] = '\0';
                         assert(workingBufferLen < (ptrdiff_t(destinationCount)-1));
                         XlCopyMemory(destination, workingBuffer, workingBufferLen);
                     } else {
-                        XlCatString(destination, destinationCount, colon);
+                        XlCatString(destination, destinationCount, splitter.ParametersWithDivider());
                     }
                     return;
                 }

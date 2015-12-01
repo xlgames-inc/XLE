@@ -12,6 +12,7 @@
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Utility/HeapUtils.h"
+#include "../../Utility/Streams/PathUtils.h"
 #include <map>
 
 namespace RenderCore { namespace Assets
@@ -75,9 +76,9 @@ namespace RenderCore { namespace Assets
                 //          (which are irrelevant when dealing with materials, since the
                 //          materials are shared for the entire model file)
             ::Assets::ResChar temp[MaxPath];
-            const auto paramStart = XlFindChar(model, (::Assets::ResChar)':');
-            if (paramStart) {
-                XlCopyString(temp, MakeStringSection(model, paramStart));
+            auto splitter = MakeFileNameSplitter(model);
+            if (!splitter.ParametersWithDivider().Empty()) {
+                XlCopyString(temp, splitter.AllExceptParameters());
                 model = temp;
             }
 
