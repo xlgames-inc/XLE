@@ -25,7 +25,7 @@ namespace Assets
         if (_targetFilename.empty()) return;
 
         auto fn = _targetFilename;
-        auto paramStart = fn.find_first_of(':');
+        auto paramStart = fn.find_last_of(':');
         if (paramStart != std::basic_string<ResChar>::npos)
             fn.erase(fn.begin() + paramStart, fn.end());
 

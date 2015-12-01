@@ -129,7 +129,7 @@ namespace GUILayer
             auto split = fullName->Split(';');
             if (split && split->Length > 0) {
                 auto s = split[split->Length-1];
-                int index = s->IndexOf(':');
+                int index = s->LastIndexOf(':');
                 return s->Substring((index>=0) ? (index+1) : 0);
             }
         }

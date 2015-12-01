@@ -1543,7 +1543,7 @@ namespace RenderCore { namespace Assets
         static std::string Width(unsigned input)
     {
         static char buffer[Size+1];
-        auto err = _itoa_s(input, buffer, 10);
+        auto err = _itoa_s(std::min(input,unsigned(Size*10-1)), buffer, 10);
         if (!err) {
             auto length = XlStringLen(buffer);
             if (length < Size) {

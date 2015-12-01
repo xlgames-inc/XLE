@@ -219,9 +219,9 @@ namespace RenderCore { namespace Assets
             }
 
             #if defined(_DEBUG)
-                if (result[c] == ~unsigned(0x0)) {
-                    LogWarning << "Couldn't bind skin matrix to transformation machine output.";
-                }
+                // if (result[c] == ~unsigned(0x0)) {
+                //     LogWarning << "Couldn't bind skin matrix to transformation machine output.";
+                // }
             #endif
         }
             

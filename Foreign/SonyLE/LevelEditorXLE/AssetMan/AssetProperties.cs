@@ -103,7 +103,7 @@ namespace LevelEditorXLE
             if (dot > 0 && dot > sep0 && dot > sep1)
             {
                     // don't remove the params (after ":") if they exist...
-                int param = input.IndexOf(':', dot);
+                int param = input.LastIndexOf(':', dot);
                 if (param >= 0)
                 {
                     return input.Substring(0, dot) + input.Substring(param);
