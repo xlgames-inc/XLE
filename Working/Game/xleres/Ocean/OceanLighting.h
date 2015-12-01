@@ -204,7 +204,7 @@ void CalculateFoam(	inout OceanLightingParts parts,
                     OceanSurfaceSample oceanSurface,
                     float foamBrightness)
 {
-    float diffuseAmount = saturate(dot(oceanSurface.worldSpaceNormal, BasicLight[0].NegativeDirection));
+    float diffuseAmount = saturate(dot(oceanSurface.worldSpaceNormal, BasicLight[0].Position));
     parts.foamAlbedo = ((0.5f + diffuseAmount) * foamBrightness) * oceanSurface.foamAlbedo;
     parts.foamQuantity = oceanSurface.foamQuantity;
 }
@@ -281,7 +281,7 @@ float3 DoSingleSpecular(OceanSurfaceSample oceanSample, float3 worldViewDirectio
         // todo --  we should consider using the normal instead of the half-vector
         //          for fresnel calculations here. Since water should have close to
         //          mirror reflections (as least some of the time)
-    return LightResolve_Specular(BuildGBufferValues(oceanSample), worldViewDirection, BasicLight[0], 1.f, true);
+    return LightResolve_Specular(BuildGBufferValues(oceanSample), worldViewDirection, BasicLight[0].Position, BasicLight[0], 1.f, true);
 }
 
 void CalculateSpecular(	inout OceanLightingParts parts,
