@@ -20,7 +20,6 @@
 #include "IncludeDX11.h"
 #include <D3D11Shader.h>
 #include <D3Dcompiler.h>
-#include <DxErr.h>
 
 namespace RenderCore { namespace Metal_DX11
 {

@@ -10,6 +10,7 @@
 #include "MarshalString.h"
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
+#include "ExportedNativeTypes.h"
 #include "../../SceneEngine/Erosion.h"
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/TerrainUberSurface.h"
