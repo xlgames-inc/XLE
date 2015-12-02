@@ -102,15 +102,15 @@ namespace SceneEngine
     //     return Float3(Clamp(input[0], mins[0], maxs[0]), Clamp(input[1], mins[1], maxs[1]), Clamp(input[2], mins[2], maxs[2]));
     // }
 
-    template<unsigned WrappingFlags, unsigned Order>
-        static VectorTT<float, Order> ApplyBoundary(
-            const VectorTT<float, Order>& input, 
-            const VectorTT<float, Order>& dims)
+    template<unsigned WrappingFlags, typename VectorType>
+        static VectorType ApplyBoundary(
+            const VectorType& input, 
+            const VectorType& dims)
     {
-        VectorTT<float, Order> result;
+        VectorType result;
         static_assert(RNFSample::WrapY == (RNFSample::WrapX<<1), "Expecting wrapping flags to be sequential bits");
         static_assert(RNFSample::WrapZ == (RNFSample::WrapX<<2), "Expecting wrapping flags to be sequential bits");
-        for (unsigned c=0; c<Order; ++c) {
+        for (unsigned c=0; c<VectorType::dimension; ++c) {
             if (WrappingFlags & (RNFSample::WrapX<<c)) {
                 result[c] = XlFMod(input[c]+dims[c], dims[c]);
             } else {
