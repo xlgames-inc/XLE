@@ -51,7 +51,7 @@ class TextureTask extends DefaultTask
     List<File> getOutputFiles()
 	{
 		def result = new ArrayList<File>();
-		for (int c=0; c<steps.size(); ++c) 
+		for (int c=0; c<steps.size(); ++c)
 			result.add(getOutputFile(c));
 		return result;
 	}
@@ -123,7 +123,7 @@ class TextureTask extends DefaultTask
 
             def process = exe.execute()
             process.waitFor()
-            
+
 			checkProcessErrorStream(process, "while processing texture from ${input} to output file ${output}");
         }
 
@@ -174,7 +174,7 @@ class TextureTransformStep extends ProcessStep
 class EquirectToCube extends TextureTransformStep
 {
     @Input
-    int faceSize = 512
+    int faceSize = 1024
 
     @Input
     String format = "R16G16B16A16_FLOAT"
@@ -185,8 +185,8 @@ class EquirectToCube extends TextureTransformStep
     String getCommandLine(File input, File output)
 	{
 		return makeCommandLine(
-			output, 
-			"ToolsHelper/EquirectangularToCube.sh:${shader}", 
+			output,
+			"ToolsHelper/EquirectangularToCube.sh:${shader}",
 			"Input=${input.getAbsolutePath()}; Dims={${faceSize*3}, ${faceSize*4}}; Format=${format}");
 	}
 }
@@ -234,7 +234,7 @@ class DiffuseCubeMapGen extends ProcessStep
     }
 
 	String getCommandLine(File input, File output)
-	{ 
+	{
 		return "ModifiedCubeMapGen ${input.getAbsolutePath()} -exit -IrradianceCubemap:180 -exportCubeDDS -exportMipChain -edgeFixupWidth:0 -exportPixelFormat:A16B16G16R16F -exportSize:32 -exportFilename:${output.getAbsolutePath()}";
 	}
 
