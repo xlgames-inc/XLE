@@ -166,15 +166,26 @@ namespace Sample
             //  times in a single frame. Generally the properties can be animated in
             //  any way, but they should stay constant over the course of a single frame.
         GlobalLightingDesc result;
-        auto ambientScale = Tweakable("AmbientScale", .5f * 0.075f);
-        result._ambientLight = Float3(.65f * ambientScale, .7f * ambientScale, 1.f * ambientScale);
-        XlCopyString(result._skyTexture, "game/xleres/defaultresources/sky/samplesky.dds");
+        result._ambientLight = Float3(0.f, 0.f, 0.f);
+        XlCopyString(result._skyTexture, "game/xleres/defaultresources/sky/samplesky2.dds");
+        XlCopyString(result._diffuseIBL, "game/xleres/defaultresources/sky/samplesky2_diffuse.dds");
+        XlCopyString(result._specularIBL, "game/xleres/defaultresources/sky/samplesky2_specular.dds");
+        result._skyTextureType = GlobalLightingDesc::SkyTextureType::Cube;
+        result._skyReflectionScale = 1.f;
         return result;
     }
 
     auto BasicSceneParser::GetToneMapSettings() const -> ToneMapSettings
     {
-        return ToneMapSettings();
+        ToneMapSettings toneMapSettings;
+        toneMapSettings._bloomRampingFactor = 0.f;
+        toneMapSettings._sceneKey = 0.16f;
+        toneMapSettings._luminanceMin = 0.f;
+        toneMapSettings._luminanceMax = 20.f;
+        toneMapSettings._whitepoint = 3.f;
+        toneMapSettings._bloomThreshold = 5.f;
+        toneMapSettings._bloomColor = Float3(1.f,1.f,1.f);
+        return toneMapSettings;
     }
 
     unsigned BasicSceneParser::GetShadowProjectionCount() const
