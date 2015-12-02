@@ -1,0 +1,8 @@
+SampleSky2 texture from Adaptive Samples
+
+See here:
+http://adaptivesamples.com/category/hdr-panos/
+
+Covered under CC-BY license. The versions here have been processed for real time rendering (coverted to cubemaps and filtered for IBL)
+
+
