@@ -9,3 +9,6 @@ Starting points: <BR>
 ### Build Status
 [Appveyor CI page](https://ci.appveyor.com/project/djewsbury/xle)
 ![BuildStatusBadge](https://ci.appveyor.com/api/projects/status/github/xlgames-inc/xle?svg=true)
+
+<BR>
+![Screenshot](https://xlgames-inc.github.io/assets/media/CaptainSplitBrightLogo.png)
