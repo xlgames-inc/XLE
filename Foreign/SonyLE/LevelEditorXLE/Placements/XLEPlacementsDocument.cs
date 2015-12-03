@@ -196,6 +196,21 @@ namespace LevelEditorXLE.Placements
             return doc;
         }
 
+        public static XLEPlacementDocument OpenUntitled()
+        {
+            var rootNode = new DomNode(Schema.placementsDocumentType.Type, Schema.placementsDocumentRootElement);
+
+            var doc = rootNode.As<XLEPlacementDocument>();
+
+            // Initialize Dom extensions now that the data is complete
+            rootNode.InitializeExtensions();
+
+            var docRegistry = GetDocRegistry(); 
+            if (docRegistry != null) docRegistry.Add(doc);
+            doc.Dirty = true;
+            return doc;
+        }
+
         private void DomNode_AttributeChanged(object sender, AttributeEventArgs e) { Dirty = true; }
         private void DomNode_ChildInserted(object sender, ChildEventArgs e) { Dirty = true; }
         private void DomNode_ChildRemoved(object sender, ChildEventArgs e) { Dirty = true; }

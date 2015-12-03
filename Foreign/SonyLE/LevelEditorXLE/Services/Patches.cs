@@ -74,9 +74,42 @@ namespace LevelEditorXLE
             }
         }
 
+        public static void SelectNameForReferencedDocuments(IAdaptable gameNode)
+        {
+            var game = gameNode.As<Game.GameExtensions>();
+            if (game == null) return;
+
+            var placementsFolder = game.PlacementsFolder;
+            if (placementsFolder != null)
+                foreach (var cellRef in placementsFolder.Cells)
+                    cellRef.SelectNameIfNecessary();
+        }
+
         public static Tuple<string, string> GetSchemaResourceName()
         {
             return new Tuple<string, string>("LevelEditorXLE.Schema", "xleroot.xsd");
+        }
+
+        public static void CreateDefaultNodes(DomNode gameRoot)
+        {
+            var ext = gameRoot.As<Game.GameExtensions>();
+            if (ext != null)
+            {
+                    // Add default environment settings
+                var envFolder = ext.EnvSettingsFolder;
+                if (envFolder.Settings.Count == 0)
+                    envFolder.AddChild(Environment.XLEEnvSettings.Create(envFolder.GetNameForNewChild()));
+
+                    // Add placements folder with an unnamed default placement document
+                if (ext.PlacementsFolder == null)
+                {
+                    var newNode = Placements.PlacementsFolder.CreateStarter();
+                    if (newNode != null)
+                    {
+                        ext.PlacementsFolder = newNode.As<Placements.PlacementsFolder>();
+                    }
+                }
+            }
         }
 
         private static EmbeddedCollectionEditor SetupEmbeddedCollectionEditor(DomNodeType containedType, string objectName)

@@ -128,6 +128,7 @@ namespace LevelEditorXLE.Placements
         public bool CanAddChild(object child) { return (m_target != null) && m_target.CanAddChild(child); }
         public bool AddChild(object child) { return (m_target != null) && m_target.AddChild(child); }
         #endregion
+
         #region GenericReference<> Members
         static PlacementsCellRef()
         {
@@ -137,8 +138,8 @@ namespace LevelEditorXLE.Placements
 
         protected override XLEPlacementDocument Attach(Uri uri)
         {
-            return XLEPlacementDocument.OpenOrCreate(
-                uri, Globals.MEFContainer.GetExportedValue<ISchemaLoader>());
+            if (uri==null) return XLEPlacementDocument.OpenUntitled();
+            return XLEPlacementDocument.OpenOrCreate(uri, Globals.MEFContainer.GetExportedValue<ISchemaLoader>());
         }
 
         protected override void Detach(XLEPlacementDocument target)
@@ -164,9 +165,44 @@ namespace LevelEditorXLE.Placements
         public override bool CanSave() { return IsResolved() && Target.Dirty; }
         public override void Save(ISchemaLoader schemaLoader)
         {
+            SelectNameIfNecessary();
             Target.Save(Uri, schemaLoader);
         }
         #endregion
+
+        public void SelectNameIfNecessary()
+        {
+            if (Uri == null)
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    "Select a name for the placements document", "Level Editor",
+                    System.Windows.Forms.MessageBoxButtons.OK);
+
+                var dlg = new System.Windows.Forms.SaveFileDialog();
+                dlg.Filter = "Placement documents (*.plcdoc)|*.plcdoc";
+                if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+
+                var root = DomNode.GetRoot();
+                var doc = root.As<IDocument>();
+                Uri baseUri;
+                if (doc != null && Globals.MEFContainer.GetExportedValue<IDocumentService>().IsUntitled(doc))
+                {
+                    // This is an untitled document.
+                    // We should use the resources root as a base, because the document uri
+                    // is unreliable. It's a bit awkward, because it means this method of
+                    // uri resolution can't work reliably until the root document has been saved.
+                    // (and if the user changes the directory of the root document, does that mean
+                    // they want the resource references to be updated, also?)
+                    baseUri = Globals.ResourceRoot;
+                }
+                else
+                    baseUri = root.Cast<IResource>().Uri;
+
+                var relURI = baseUri.MakeRelativeUri(new Uri(dlg.FileName));
+                RawReference = relURI.OriginalString;
+                Target.Dirty = true;
+            }
+        }
 
         public static DomNode Create(string reference, string exportTarget, string name, Vec3F mins, Vec3F maxs)
         {
@@ -193,6 +229,21 @@ namespace LevelEditorXLE.Placements
             var adapter = result.As<PlacementsFolder>();
             if (adapter != null && adapter.DoModalConfigure())
                 return result;
+            return null;
+        }
+
+        public static DomNode CreateStarter()
+        {
+            var result = new DomNode(FolderST.Type);
+            var adapter = result.As<PlacementsFolder>();
+            if (adapter != null)
+            {
+                    // initialize to the default settings
+                var cfg = adapter.GetCfg();
+                cfg.UnnamedPlacementDocuments = true;
+                adapter.Reconfigure(cfg);
+                return result;
+            }
             return null;
         }
 
@@ -304,26 +355,38 @@ namespace LevelEditorXLE.Placements
             var childList = DomNode.GetChildList(Schema.placementsFolderType.cellChild);
             for (int c = 0; c < newCells.Count; ++c)
                 if (!foundMatching[c])
-                    childList.Add(
-                        PlacementsCellRef.Create(
-                            newCells[c].Item1, newCells[c].Item2, newCells[c].Item3, 
-                            newCells[c].Item4, newCells[c].Item5));
+                {
+                    var newItem = PlacementsCellRef.Create(
+                        cfg.UnnamedPlacementDocuments ? null : newCells[c].Item1, 
+                        newCells[c].Item2, newCells[c].Item3,
+                        newCells[c].Item4, newCells[c].Item5);
+                    childList.Add(newItem);
+                    newItem.As<PlacementsCellRef>().CreateAndResolve();
+                }
+        }
+
+        internal PlacementsConfig.Config GetCfg()
+        {
+            var cfg = new PlacementsConfig.Config();
+            cfg.BaseEditorPath = BaseEditorPath;
+            cfg.BaseExportPath = BaseExportPath;
+            var cellCount = CellCount;
+            if (cellCount[0] > 0 && cellCount[1] > 0)
+            {
+                cfg.CellCountX = (uint)cellCount[0];
+                cfg.CellCountY = (uint)cellCount[1];
+            }
+            var cellsOrigin = CellsOrigin;
+            cfg.CellsOriginX = cellsOrigin[0];
+            cfg.CellsOriginY = cellsOrigin[1];
+            cfg.CellSize = GetAttribute<float>(FolderST.CellSizeAttribute);
+            return cfg;
         }
 
         internal bool DoModalConfigure()
         {
                 // open the configuration dialog
-            var cfg = new PlacementsConfig.Config();
-            cfg.BaseEditorPath = BaseEditorPath;
-            cfg.BaseExportPath = BaseExportPath;
-            var cellCount = CellCount;
-            cfg.CellCountX = (uint)cellCount[0];
-            cfg.CellCountY = (uint)cellCount[1];
-            var cellsOrigin = CellsOrigin;
-            cfg.CellsOriginX = cellsOrigin[0];
-            cfg.CellsOriginY = cellsOrigin[1];
-            cfg.CellSize = GetAttribute<float>(FolderST.CellSizeAttribute);
-
+            var cfg = GetCfg();
             using (var dlg = new PlacementsConfig())
             {
                 dlg.Value = cfg;

@@ -906,14 +906,14 @@ namespace SceneEngine
     ToneMapSettings::ToneMapSettings()
     {
         _flags = ToneMapSettings::Flags::EnableToneMap | ToneMapSettings::Flags::EnableBloom;
-        _bloomColor = Float3(19.087036f, 11.582731f, 6.6070509f);
+        _bloomColor = Float3(1.f, 1.f, 1.f); // Float3(19.087036f, 11.582731f, 6.6070509f);
         _bloomBrightness = 1.f;
         _bloomThreshold = 10.f;
         _bloomRampingFactor = .8f;
         _bloomDesaturationFactor = .6f;
         _sceneKey = .23f;
-        _luminanceMin = 0.06f;
-        _luminanceMax = 3.f;
+        _luminanceMin = 0.0f;
+        _luminanceMax = 20.f;
         _whitepoint = 8.f;
         _bloomBlurStdDev = 1.32f;
     }

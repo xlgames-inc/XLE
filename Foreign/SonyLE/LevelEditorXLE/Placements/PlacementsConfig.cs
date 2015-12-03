@@ -57,7 +57,15 @@ namespace LevelEditorXLE.Placements
             [Category("Basic")] [Description("Base Export Path")]
             public string BaseExportPath { get; set; }
 
-            internal Config() { CellCountX = 4; CellCountY = 4; CellSize = 512; }
+            internal bool UnnamedPlacementDocuments { get; set; }
+
+            internal Config() 
+            { 
+                CellCountX = 1; CellCountY = 1;
+                CellSize = 4096;
+                CellsOriginX = -2048; CellsOriginY = -2048;
+                UnnamedPlacementDocuments = false;
+            }
         };
 
         private Config m_config;
