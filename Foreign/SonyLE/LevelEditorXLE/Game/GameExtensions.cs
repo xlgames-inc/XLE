@@ -111,6 +111,8 @@ namespace LevelEditorXLE.Game
             {
                 return GetChild<Placements.PlacementsFolder>(Schema.xleGameType.placementsChild);
             }
+
+            set { SetChild(Schema.xleGameType.placementsChild, value); }
         }
 
         public string ExportDirectory

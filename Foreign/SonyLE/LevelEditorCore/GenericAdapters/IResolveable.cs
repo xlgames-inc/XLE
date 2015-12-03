@@ -73,6 +73,8 @@ namespace LevelEditorCore.GenericAdapters
         {
             get 
             {
+                if (RawReference==null || RawReference.Length == 0) return null;
+
                     // Convert the reference string into a uri
                     // normally our reference string will be a path
                     // that is relative to path of the containing
@@ -100,6 +102,7 @@ namespace LevelEditorCore.GenericAdapters
         public string RawReference
         {
             get { return GetAttribute<string>(s_refAttribute); }
+            set { SetAttribute(s_refAttribute, value); }
         }
 
         public T Target

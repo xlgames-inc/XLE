@@ -70,11 +70,12 @@ namespace PlatformRig
     SceneEngine::GlobalLightingDesc DefaultGlobalLightingDesc()
     {
         SceneEngine::GlobalLightingDesc result;
-        result._ambientLight = Float3(0.013921569f, 0.032941177f, 0.042745098f);
-        XlCopyString(result._skyTexture, "Game\\xleres\\defaultresources\\sky\\samplesky.dds");
-        result._skyReflectionScale = 8.f;
-        result._skyReflectionBlurriness = 2.f;
-        result._skyBrightness = 0.33f;
+        result._ambientLight = Float3(0.f, 0.f, 0.f);
+        XlCopyString(result._skyTexture, "game/xleres/defaultresources/sky/samplesky2.dds");
+        XlCopyString(result._diffuseIBL, "game/xleres/defaultresources/sky/samplesky2_diffuse.dds");
+        XlCopyString(result._specularIBL, "game/xleres/defaultresources/sky/samplesky2_specular.dds");
+        result._skyTextureType = GlobalLightingDesc::SkyTextureType::Cube;
+        result._skyReflectionScale = 1.f;
         result._doAtmosphereBlur = false;
         return result;
     }
@@ -90,7 +91,7 @@ namespace PlatformRig
         auto frustumSettings = PlatformRig::DefaultShadowFrustumSettings();
         result._shadowProj.push_back(EnvironmentSettings::ShadowProj { defLight, 0, frustumSettings });
 
-        {
+        if (constant_expression<false>::result()) {
             SceneEngine::LightDesc secondaryLight;
             secondaryLight._shape = SceneEngine::LightDesc::Directional;
             secondaryLight._position = Normalize(Float3(0.71622938f, 0.48972201f, -0.49717990f));

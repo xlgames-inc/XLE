@@ -54,6 +54,8 @@ namespace LevelEditor
         
         public virtual void Save(Uri uri, ISchemaLoader schemaLoader)
         {
+            LevelEditorXLE.Patches.SelectNameForReferencedDocuments(this);
+
             if (Dirty || m_uriChanged)
             {
                 SaveDomDocument(DomNode, uri, schemaLoader);
@@ -208,6 +210,8 @@ namespace LevelEditor
                 if (prefab == null) continue;
                 prefab.Resolve(uniqueNamer);
             }
+
+            LevelEditorXLE.Patches.CreateDefaultNodes(rootNode);
 
             if (ResolveOnLoad)
             {
