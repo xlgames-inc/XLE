@@ -161,9 +161,17 @@ float3 BrightPassFilter(float3 colour)
 	float3 inputColour = LoadInputColor(tapPos);
 	float l = CalculateLuminance(inputColour.rgb);
 
+	// Extremely large luminance values can cause problems when calculating
+	// the mean. We clamp the top-range to prevent unusual edge cases.
+	// This will cause problems if our high dynamic range buffer has an
+	// unusually large range (for example, if the white point is 1e4f, then
+	// this clamp will be incorrect). But if we assume a reasonably mild
+	// whitepoint, then it should be ok.
+	l = min(l, 1e3f);
+
 	#if USE_GEOMETRIC_MEAN==1
 			//	Using log-average method to calculate geometric mean
-		const float tinyValue = 0.000001f;
+		const float tinyValue = 1e-5f;
 		float logl = log(tinyValue + l);
 		OutputLuminance[dispatchThreadId.xy] = logl;
 	#else
