@@ -57,6 +57,21 @@ namespace LevelEditorXLE
             }
         }
 
+        public static void Unresolve(IAdaptable gameNode)
+        {
+            var game = gameNode.As<Game.GameExtensions>();
+            if (game == null) return;
+
+            var placementsFolder = game.PlacementsFolder;
+            if (placementsFolder != null)
+            {
+                foreach (var cell in placementsFolder.Cells)
+                {
+                    cell.Unresolve();
+                }
+            }
+        }
+
         public static void SaveReferencedDocuments(IAdaptable gameNode, ISchemaLoader schemaLoader)
         {
             var game = gameNode.As<Game.GameExtensions>();

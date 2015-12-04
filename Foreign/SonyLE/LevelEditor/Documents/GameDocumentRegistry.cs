@@ -89,15 +89,22 @@ namespace LevelEditor
         public void Remove(IGameDocument doc)
         {
             if (doc == null)
-                return;                
+                return;
 
             if (!m_documents.Contains(doc))
                 return;
 
             var docRefs = doc.GameDocumentReferences;
-            if (docRefs!=null)
+            if (docRefs != null)
                 foreach (IReference<IGameDocument> gameDocRef in docRefs)
                     Remove(gameDocRef.Target);
+
+            {
+                var gameDoc = doc as DomDocument;
+                if (gameDoc != null)
+                    LevelEditorXLE.Patches.Unresolve(gameDoc);
+            }
+
             m_documents.Remove(doc);
             doc.DirtyChanged -= OnDocumentDirtyChanged;
             doc.UriChanged -= OnDocumentUriChanged;
