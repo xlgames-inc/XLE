@@ -70,6 +70,11 @@ namespace LevelEditorXLE
                     cell.Unresolve();
                 }
             }
+
+                // Detach all children
+                // This will cause the native adapters to destroy the associated native objects.
+            foreach (var c in game.DomNode.Children)
+                c.RemoveFromParent();
         }
 
         public static void SaveReferencedDocuments(IAdaptable gameNode, ISchemaLoader schemaLoader)
