@@ -31,7 +31,7 @@ float4 ResolveLightUnshadowed(	float4 position : SV_Position,
 	int2 pixelCoords = position.xy;
 	float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
 
-	GBufferValues sample = LoadGBuffer(position, sys);
+	GBufferValues sample = LoadGBuffer(position.xy, sys);
 
 	float screenSpaceOcclusion = 1.f;
 	#if HAS_SCREENSPACE_AO==1
@@ -109,7 +109,7 @@ float4 ResolveAreaLightUnshadowed(  float4 position : SV_Position,
 
     int2 pixelCoords = position.xy;
     float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
-    GBufferValues sample = LoadGBuffer(position, sys);
+    GBufferValues sample = LoadGBuffer(position.xy, sys);
 
     float screenSpaceOcclusion = 1.f;
     #if HAS_SCREENSPACE_AO==1
@@ -191,7 +191,7 @@ float4 ResolveTubeLightUnshadowed(
 {
     int2 pixelCoords = position.xy;
     float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
-    GBufferValues sample = LoadGBuffer(position, sys);
+    GBufferValues sample = LoadGBuffer(position.xy, sys);
 
     float screenSpaceOcclusion = 1.f;
     #if HAS_SCREENSPACE_AO==1
@@ -276,8 +276,8 @@ float4 ResolveAreaLightDebugging(
     float2 tc = MousePosition.xy / float2(ViewportDimensions);
     float3 viewFrustumVector =
         lerp(
-            lerp(FrustumCorners[0], FrustumCorners[1], tc.y),
-            lerp(FrustumCorners[2], FrustumCorners[3], tc.y),
+            lerp(FrustumCorners[0].xyz, FrustumCorners[1].xyz, tc.y),
+            lerp(FrustumCorners[2].xyz, FrustumCorners[3].xyz, tc.y),
             tc.x);
     float3 worldPosition = CalculateWorldPosition(MousePosition, 0, viewFrustumVector);
 
@@ -300,8 +300,8 @@ float4 ResolveAreaLightDebugging(
         samplePt, sampleNormal, viewDirectionLight,
         lightHalfSize, sample.material.roughness);
 
-    float3 diffPtWorld = mul(transpose(worldToLight), diffRepPt) + lightCenter;
-    float3 specPtWorld = mul(transpose(worldToLight), specRepPt) + lightCenter;
+    float3 diffPtWorld = mul(transpose(worldToLight), float3(diffRepPt, 0)) + lightCenter;
+    float3 specPtWorld = mul(transpose(worldToLight), float3(specRepPt, 0)) + lightCenter;
 
     float4 diffClip = mul(WorldToClip, float4(diffPtWorld,1));
     float4 specClip = mul(WorldToClip, float4(specPtWorld,1));
@@ -360,7 +360,7 @@ float4 ResolveRectangleLightUnshadowed(
 
     int2 pixelCoords = position.xy;
     float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
-    GBufferValues sample = LoadGBuffer(position, sys);
+    GBufferValues sample = LoadGBuffer(position.xy, sys);
 
     float screenSpaceOcclusion = 1.f;
     #if HAS_SCREENSPACE_AO==1
@@ -393,37 +393,61 @@ float4 ResolveRectangleLightUnshadowed(
     float2 repPt = RectangleDiffuseRepPoint(samplePt, sampleNormal, lightHalfSize);
     float3 lightNegDir = float3(repPt - samplePt.xy, -samplePt.z);
     float distanceSq = dot(lightNegDir, lightNegDir);
-    lightNegDir *= rsqrt(distanceSq);
+    float rDistance = rsqrt(distanceSq);
+    lightNegDir *= rDistance;
 
         // We can just do the rest of the diffuse calculation in light space, also...
         // If it's just lambert, it's trivial.
     float NdotL = saturate(dot(sampleNormal, lightNegDir));
     float3 diffuse = LightResolve_Diffuse_NdotL(sample, viewDirectionLight, lightNegDir, NdotL, Light);
 
-        // "cosThetaLightPlane" is the angle between the light normal the direction from
-        // the light to the sample point.
+        // "cosThetaLightPlane" is the angle between the light normal the
+        // direction from the light to the sample point. In this light type, light
+        // is generally being emitted in the one direction, and so less light escapes
+        // out tangental to the light surface. So, we consider this with cosThetaLightPlane.
     float cosThetaLightPlane = saturate(-lightNegDir.z);
-    float area = lightHalfSize.x * lightHalfSize.y * 4.f;
-    float diffuseAttenuation = area * cosThetaLightPlane * saturate(DistanceAttenuation(distanceSq, 1.f));
+    float diffuseAttenuation = cosThetaLightPlane;
 
     float intersectionArea;
     float2 specRepPt = RectangleSpecularRepPoint(intersectionArea, samplePt, sampleNormal, viewDirectionLight, lightHalfSize, sample.material.roughness);
     float3 specLightNegDir = float3(specRepPt - samplePt.xy, -samplePt.z);
     float specDistanceSq = MagnitudeSquared(specLightNegDir);
     specLightNegDir *= rsqrt(specDistanceSq);
+    float area = lightHalfSize.x * lightHalfSize.y * 4.f;
     float integralApprox = intersectionArea / area;
 
         // note --  We can get some interesting results if we use "lightNegDir" here instead of
-        //          specLightNegDir -- it's a good way to visualise the representative poitn we're using
+        //          specLightNegDir -- it's a good way to visualise the representative point we're using
         //          for the diffuse calculation.
     sample.worldSpaceNormal = sampleNormal;
     float3 specular = LightResolve_Specular(sample, viewDirectionLight, specLightNegDir, Light, screenSpaceOcclusion);
-    float specAttenuation = area * integralApprox * saturate(DistanceAttenuation(specDistanceSq, 1.f));
+    float specAttenuation = integralApprox;
+
+        // Let's use the same distance for both diffuse and specular attenuation
+        // (both to reduce the calculations, and because it makes sense.)
+        // We can choose to use either the diffuse or specular rep point.
+    float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
+
+        // We can attempt to normalize the specular calculation in much the
+        // same way we do for spherical lights. Let's imagine the that light is
+        // a disc with the same area as the rectangle. We can use that in the
+        // alpha prime calculation for spherical lights. This is an approximation
+        // for spherical lights already
+    float alpha = sample.material.roughness * sample.material.roughness;
+    float discRadius = sqrt(lightHalfSize.x * lightHalfSize.y * reciprocalPi);
+    float alphaPrime = saturate(alpha + discRadius * discRadius * .5f * rDistance);
+    specAttenuation *= (alpha * alpha) / (alphaPrime * alphaPrime);
 
     float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.CutoffRange);
 
+    //  Note that we can scale by "area" here if we define our light units in
+    //  "luminous flux per area" units. But it seems more natural to separate
+    //  the "brightness" quantity from area.
+
     const float lightScale = LightingScale;
-    return float4((lightScale*radiusDropOff)*(diffuseAttenuation*diffuse + specAttenuation*specular), 1.f);
+    return float4((lightScale*distanceAttenuation*radiusDropOff)*(
+          diffuseAttenuation*diffuse
+        + specAttenuation*specular), 1.f);
 }
 
 #endif
