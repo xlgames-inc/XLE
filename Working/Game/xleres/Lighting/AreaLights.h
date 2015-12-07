@@ -154,7 +154,7 @@ float2 RectangleSpecularRepPoint(out float intersectionArea, float3 samplePt, fl
         //  Drobot's phong based specular cone angle...
         //  Maybe performance is similar to our method, but
         //  it's more difficult to balance it against our "roughness" parameter
-    // float ta = 512.f * (1-sample.material.roughness);
+    // float ta = 512.f * (1.f-roughness);
     // float phongAngle = 2.f / pi * sqrt(2/(ta+2));
     // tanConeAngle = pi * phongAngle; // tan(phongAngle);
 
@@ -163,7 +163,15 @@ float2 RectangleSpecularRepPoint(out float intersectionArea, float3 samplePt, fl
         // brightest)
     float distToProjectedConeCenter = (-samplePt.z/reflectedDirLight.z);
     float2 projectedCircleCenter = samplePt.xy + reflectedDirLight.xy * distToProjectedConeCenter;
-    float projectedCircleRadius = max(0, distToProjectedConeCenter * tanConeAngle);
+
+        // Beyond a certain width, the inaccuracies in the intersection detection
+        // become too great. The shape of the light become very distorted.
+        // We need to give it an upper range, and clamp it off.
+        // However, this is a double-edged sword. Because with this clamp, sometimes
+        // light sources that are far away will appear too sharp. It's unfortunate,
+        // because the distortion is really only a problem in some cases.
+    const float maxProjectedCircleRadius = 0.33f * min(lightHalfSize.x, lightHalfSize.y);
+    float projectedCircleRadius = clamp(distToProjectedConeCenter * tanConeAngle, 0.f, maxProjectedCircleRadius);
     // return float4(projectedCircleRadius.xxx, 1.f);
 
         // This is squaring the circle...?!

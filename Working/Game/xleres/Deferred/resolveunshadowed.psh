@@ -54,7 +54,7 @@ float ReciprocalMagnitude(float3 vec)
 
 float MagnitudeSquared(float3 vec) { return dot(vec, vec); }
 
-float3 RepresentativeVector_Sphere(float3 vectorToCenter, float lightRadius, float3 reflectionDir)
+float3 RepresentativeVector_Sphere(out float distortionCompensation, float3 vectorToCenter, float lightRadius, float3 reflectionDir)
 {
     // We want to find the "representative point" for a spherical light source
     // This is the point on the object that best represents the integral of all
@@ -69,7 +69,17 @@ float3 RepresentativeVector_Sphere(float3 vectorToCenter, float lightRadius, flo
 
     float3 L = vectorToCenter;
     float3 testPt = dot(reflectionDir, L) * reflectionDir;
-    return lerp(L, testPt, saturate(lightRadius * ReciprocalMagnitude(testPt - L)));
+    float t = lightRadius * ReciprocalMagnitude(testPt - L);
+
+    // We can try to reduce the distortion on extreme angles
+    // by reducing the highlight when the representation pt
+    // is poor. Note that this adds a linear falloff to the
+    // specular equation -- which is not really correct. But
+    // we can justify it by saying we are just correcting for
+    // the inaccuracy in the representative point.
+    distortionCompensation = saturate(1.25f*t);
+
+    return lerp(L, testPt, saturate(t));
 }
 
 float4 ResolveTubeLightUnshadowed(float4 position : SV_Position,
@@ -108,7 +118,8 @@ float4 ResolveAreaLightUnshadowed(  float4 position : SV_Position,
 
     float3 directionToEye = normalize(-viewFrustumVector);
     float3 reflectionDir = reflect(-directionToEye, sample.worldSpaceNormal);
-    float3 lightNegDir = RepresentativeVector_Sphere(Light.Position - worldPosition, Light.SourceRadiusX, reflectionDir);
+    float distortionCompensation;
+    float3 lightNegDir = RepresentativeVector_Sphere(distortionCompensation, Light.Position - worldPosition, Light.SourceRadiusX, reflectionDir);
     float distanceSq = dot(lightNegDir, lightNegDir);
     float rDistance = rsqrt(distanceSq);
     lightNegDir *= rDistance;
@@ -139,6 +150,7 @@ float4 ResolveAreaLightUnshadowed(  float4 position : SV_Position,
     float alpha = sample.material.roughness * sample.material.roughness;
     float alphaPrime = saturate(alpha + Light.SourceRadiusX * Light.SourceRadiusX * .5f * rDistance);
     float specAttenuation = (alpha * alpha) / (alphaPrime * alphaPrime);
+    specAttenuation *= distortionCompensation;
 
     float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
     float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.CutoffRange);
@@ -165,6 +177,9 @@ float3 RepresentativeVector_Tube(float3 L0, float3 L1, float3 reflectionDir)
     float LdmagSq = dot(Ld, Ld);
     float RdotLd = dot(reflectionDir, Ld);
     float t = (dot(reflectionDir, L0) * RdotLd - dot(L0, Ld)) / (LdmagSq - RdotLd*RdotLd);
+    // float t =
+    //      (dot(L0, Ld) * dot(reflectionDir, L0) - dot(L0, L0) * dot(reflectionDir, Ld))
+    //    / (dot(L0, Ld) * dot(reflectionDir, Ld) - dot(Ld, Ld) * dot(reflectionDir, L0));
     return L0 + saturate(t) * Ld;
 }
 
@@ -199,7 +214,8 @@ float4 ResolveTubeLightUnshadowed(
         // note --  After doing "RepresentativeVector_Tube" we could also use
         //          RepresentativeVector_Sphere to estimate a thick tube
     float3 tubePoint = RepresentativeVector_Tube(L0 - worldPosition, L1 - worldPosition, reflectionDir);
-    float3 lightNegDir = RepresentativeVector_Sphere(tubePoint, Light.SourceRadiusX, reflectionDir);
+    float distortionCompensation;
+    float3 lightNegDir = RepresentativeVector_Sphere(distortionCompensation, tubePoint, Light.SourceRadiusX, reflectionDir);
     float distanceSq = dot(lightNegDir, lightNegDir);
     float rDistance = rsqrt(distanceSq);
     lightNegDir *= rDistance;
@@ -214,6 +230,7 @@ float4 ResolveTubeLightUnshadowed(
     float specAttenuation = alpha / alphaPrime0; // in principle the highlight is stretched in only one direction... so no square
     float alphaPrime1 = saturate(alpha + Light.SourceRadiusX * Light.SourceRadiusX * .5f * rDistance);
     specAttenuation *= (alpha * alpha) / (alphaPrime1 * alphaPrime1);
+    specAttenuation *= distortionCompensation;
 
     float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
     float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.CutoffRange);
