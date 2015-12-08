@@ -90,7 +90,8 @@ namespace TextureTransform
         auto resultTexture = ExecuteTransform(
             *device, MakeStringSection(xleDir), shader, shaderParameters,
             {
-                { "Sky", HosekWilkieSky }
+                { "Sky", HosekWilkieSky },
+                { "Compress", CompressTexture }
             });
         if (!resultTexture._pkt) {
             LogAlwaysError << "Error while performing texture transform";
@@ -100,7 +101,7 @@ namespace TextureTransform
             // save "readback" as an output texture.
             // We will write a uncompressed format; normally a second command line
             // tool will be used to compress the result.
-        resultTexture.SaveTIFF(outputFile.AsString().c_str());
+        resultTexture.Save(outputFile.AsString().c_str());
     }
 }
 

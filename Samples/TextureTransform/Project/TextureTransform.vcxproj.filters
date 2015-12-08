@@ -8,6 +8,7 @@
     <ClCompile Include="..\..\..\Foreign\HosekWilkie\ArHosekSkyModel.c">
       <Filter>HosekWilkie</Filter>
     </ClCompile>
+    <ClCompile Include="..\TexCompress.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\MinimalAssetServices.h" />

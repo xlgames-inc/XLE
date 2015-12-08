@@ -183,8 +183,6 @@ namespace TextureTransform
         mipCount = std::max(1u, parameters.GetParameter(ParameterBox::MakeParameterNameHash("MipCount"), mipCount));
         passCount = std::max(1u, parameters.GetParameter(ParameterBox::MakeParameterNameHash("PassCount"), passCount));
         
-        rtFormat = AsRTFormat(rtFormat);
-
         if (!viewDims[0] || !viewDims[1] || rtFormat == Metal::NativeFormat::Unknown)
             Throw(::Exceptions::BasicLabel("Missing Dims or Format parameter"));
 
@@ -196,6 +194,11 @@ namespace TextureTransform
         if (i != fns.end()) {
             return (i->second)(dstDesc, parameters);
         } else {
+            rtFormat = AsRTFormat(rtFormat);
+            dstDesc._nativePixelFormat = rtFormat;
+            if (rtFormat == Metal::NativeFormat::Unknown)
+                Throw(::Exceptions::BasicLabel("Could not find match pixel format for render target. Check inputs."));
+
             auto psShaderName = xleDir.AsString() + "/Working/game/xleres/" + shaderName.AsString();
             if (!XlFindStringI(psShaderName.c_str(), "ps_"))
                 psShaderName += ":" PS_DefShaderModel;
@@ -279,7 +282,52 @@ namespace TextureTransform
         }
     }
 
-    void TextureResult::SaveTIFF(const ::Assets::ResChar destinationFile[]) const
+    DirectX::TexMetadata AsMetadata(const BufferUploads::TextureDesc& desc)
+    {
+        DirectX::TexMetadata metaData;
+        metaData.width = desc._width;
+        metaData.height = desc._height;
+        metaData.depth = desc._depth;
+        metaData.arraySize = desc._arrayCount;
+        metaData.mipLevels = desc._mipCount;
+        metaData.miscFlags = 0;
+        metaData.miscFlags2 = 0;
+        metaData.format = Metal::AsDXGIFormat(Metal::NativeFormat::Enum(desc._nativePixelFormat));
+        metaData.dimension = DirectX::TEX_DIMENSION_TEXTURE2D;
+
+            // Let's assume that all 6 element arrays are cubemaps. 
+            // We can set "TEX_MISC_TEXTURECUBE" to mark it as a cubemap
+        if (metaData.arraySize == 6)
+            metaData.miscFlags |= DirectX::TEX_MISC_TEXTURECUBE;
+        return metaData;
+    }
+
+    std::vector<DirectX::Image> BuildImages(
+        const DirectX::TexMetadata& metaData,
+        BufferUploads::DataPacket& pkt)
+    {
+        std::vector<DirectX::Image> images;
+        images.reserve(metaData.mipLevels * metaData.arraySize);
+        for (unsigned a=0; a<metaData.arraySize; ++a) {
+            for (unsigned m=0; m<metaData.mipLevels; ++m) {
+                auto subRes = BufferUploads::DataPacket::TexSubRes(m, a);
+                auto rowPitch = pkt.GetPitches(subRes)._rowPitch;
+                auto slicePitch = pkt.GetPitches(subRes)._slicePitch;
+                UInt2 mipDims(
+                    std::max(1u, unsigned(metaData.width >> m)), 
+                    std::max(1u, unsigned(metaData.height >> m)));
+                images.push_back({
+                    mipDims[0], mipDims[1],
+                    metaData.format,
+                    rowPitch, slicePitch,
+                    (uint8_t*)pkt.GetData(subRes) });
+            }
+        }
+
+        return std::move(images);
+    }
+
+    void TextureResult::Save(const ::Assets::ResChar destinationFile[]) const
     {
             // using DirectXTex to save to disk...
             // This provides a nice layer over a number of underlying formats
@@ -289,10 +337,11 @@ namespace TextureTransform
         bool singleSubresource = (_mipCount <= 1) && (_arrayCount <= 1);
         if (singleSubresource) {
             auto rowPitch = _pkt->GetPitches()._rowPitch;
+            auto slicePitch = _pkt->GetPitches()._slicePitch;
             DirectX::Image image {
                 _dimensions[0], _dimensions[1],
                 Metal::AsDXGIFormat(Metal::NativeFormat::Enum(_format)),
-                rowPitch, rowPitch * _dimensions[1],
+                rowPitch, slicePitch,
                 (uint8_t*)_pkt->GetData() };
             
             HRESULT hresult;
@@ -328,36 +377,11 @@ namespace TextureTransform
             if (!XlEqStringI(ext, "dds"))
                 Throw(::Exceptions::BasicLabel("Multi-subresource textures must be saved in DDS format"));
             
-            DirectX::TexMetadata metaData;
-            metaData.width = _dimensions[0];
-            metaData.height = _dimensions[1];
-            metaData.depth = 1;
-            metaData.arraySize = _arrayCount;
-            metaData.mipLevels = _mipCount;
-            metaData.miscFlags = 0;
-            metaData.miscFlags2 = 0;
-            metaData.format = Metal::AsDXGIFormat(Metal::NativeFormat::Enum(_format));
-            metaData.dimension = DirectX::TEX_DIMENSION_TEXTURE2D;
-
-                // Let's assume that all 6 element arrays are cubemaps. 
-                // We can set "TEX_MISC_TEXTURECUBE" to mark it as a cubemap
-            if (_arrayCount == 6)
-                metaData.miscFlags |= DirectX::TEX_MISC_TEXTURECUBE;
-
-            std::vector<DirectX::Image> images;
-            images.reserve(_mipCount * _arrayCount);
-            for (unsigned a=0; a<_arrayCount; ++a) {
-                for (unsigned m=0; m<_mipCount; ++m) {
-                    auto subRes = BufferUploads::DataPacket::TexSubRes(m, a);
-                    auto rowPitch = _pkt->GetPitches(subRes)._rowPitch;
-                    UInt2 mipDims(std::max(1u, _dimensions[0] >> m), std::max(1u, _dimensions[1] >> m));
-                    images.push_back({
-                        mipDims[0], mipDims[1],
-                        Metal::AsDXGIFormat(Metal::NativeFormat::Enum(_format)),
-                        rowPitch, rowPitch * mipDims[1],
-                        (uint8_t*)_pkt->GetData(subRes) });
-                }
-            }
+            auto metaData = AsMetadata(
+                BufferUploads::TextureDesc::Plain2D(
+                    _dimensions[0], _dimensions[1], _format, 
+                    uint8(_mipCount), uint16(_arrayCount)));
+            auto images = BuildImages(metaData, *_pkt);
 
             auto hresult = DirectX::SaveToDDSFile(
                 AsPointer(images.cbegin()), images.size(), 
