@@ -23,11 +23,6 @@ namespace BufferUploads
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    auto DataPacket::TexSubRes(unsigned mipIndex, unsigned arrayIndex) -> SubResource
-    {
-        return (mipIndex & 0xffff) | (arrayIndex << 16);
-    }
-
     BasicRawDataPacket::BasicRawDataPacket(size_t dataSize, const void* data, TexturePitches pitches)
     : _dataSize(dataSize), _pitches(pitches)    
     {

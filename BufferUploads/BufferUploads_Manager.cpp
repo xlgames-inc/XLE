@@ -2319,24 +2319,32 @@ namespace BufferUploads
     protected:
         unsigned _dataOffset;
         std::vector<PlatformInterface::UnderlyingDeviceContext::MappedBuffer> _mappedBuffer;
+        unsigned _mipCount;
+        unsigned _arrayCount;
     };
 
     void*     RawDataPacket_ReadBack::GetData(SubResource subRes)
     {
-        assert(subRes < _mappedBuffer.size());
-        return PtrAdd(_mappedBuffer[subRes].GetData(), _dataOffset);
+        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
+        unsigned subResIndex = mip + arrayIndex * _mipCount;
+        assert(subResIndex < _mappedBuffer.size());
+        return PtrAdd(_mappedBuffer[subResIndex].GetData(), _dataOffset);
     }
 
     size_t          RawDataPacket_ReadBack::GetDataSize(SubResource subRes) const
     {
-        assert(subRes < _mappedBuffer.size());
-        return _mappedBuffer[subRes].GetPitches()._slicePitch - _dataOffset;
+        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
+        unsigned subResIndex = mip + arrayIndex * _mipCount;
+        assert(subResIndex < _mappedBuffer.size());
+        return _mappedBuffer[subResIndex].GetPitches()._slicePitch - _dataOffset;
     }
 
     TexturePitches RawDataPacket_ReadBack::GetPitches(SubResource subRes) const
     {
-        assert(subRes < _mappedBuffer.size());
-        return _mappedBuffer[subRes].GetPitches();
+        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
+        unsigned subResIndex = mip + arrayIndex * _mipCount;
+        assert(subResIndex < _mappedBuffer.size());
+        return _mappedBuffer[subResIndex].GetPitches();
     }
 
     RawDataPacket_ReadBack::RawDataPacket_ReadBack(const ResourceLocator& locator, PlatformInterface::UnderlyingDeviceContext& context)
@@ -2348,10 +2356,14 @@ namespace BufferUploads
 
         auto desc = PlatformInterface::ExtractDesc(*resource);
         auto subResCount = 1u;
-        if (desc._type == BufferDesc::Type::Texture)
+        _mipCount = _arrayCount = 1u;
+        if (desc._type == BufferDesc::Type::Texture) {
             subResCount = 
                   std::max(1u, unsigned(desc._textureDesc._mipCount))
                 * std::max(1u, unsigned(desc._textureDesc._arrayCount));
+            _mipCount = desc._textureDesc._mipCount;
+            _arrayCount = desc._textureDesc._arrayCount;
+        }
 
             //
             //      If we have to read back through a staging resource, then let's create

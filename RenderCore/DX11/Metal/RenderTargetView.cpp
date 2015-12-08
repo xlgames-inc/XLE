@@ -14,7 +14,7 @@ namespace RenderCore { namespace Metal_DX11
 
     RenderTargetView::RenderTargetView(
         UnderlyingResource resource,
-        NativeFormat::Enum format, const ArraySlice& arraySlice)
+        NativeFormat::Enum format, const SubResourceSlice& arraySlice)
     {
         if (!resource) {
             Throw(::Exceptions::BasicLabel("NULL resource passed to RenderTargetView constructor"));
@@ -44,7 +44,7 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
                     viewDesc.Texture2DArray.ArraySize = arraySlice._arraySize;
                     viewDesc.Texture2DArray.FirstArraySlice = arraySlice._firstArraySlice;
-                    viewDesc.Texture2DArray.MipSlice = 0;
+                    viewDesc.Texture2DArray.MipSlice = arraySlice._mipMapIndex;
                 }
             }
             rtv = ObjectFactory(*resource).CreateRenderTargetView(resource, &viewDesc);
@@ -82,7 +82,7 @@ namespace RenderCore { namespace Metal_DX11
 
     DepthStencilView::DepthStencilView(
         UnderlyingResource resource, 
-        NativeFormat::Enum format, const ArraySlice& arraySlice)
+        NativeFormat::Enum format, const SubResourceSlice& arraySlice)
     {
         if (!resource) {
             Throw(::Exceptions::BasicLabel("NULL resource passed to DepthStencilView constructor"));

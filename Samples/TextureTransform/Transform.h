@@ -20,9 +20,12 @@ namespace TextureTransform
     class TextureResult
     {
     public:
-        intrusive_ptr<BufferUploads::DataPacket> _pkt;
-        unsigned _format;
-        UInt2 _dimensions;
+        using Pkt = intrusive_ptr<BufferUploads::DataPacket>;
+        Pkt             _pkt;
+        unsigned        _format;
+        UInt2           _dimensions;
+        unsigned        _mipCount;
+        unsigned        _arrayCount;
 
         void SaveTIFF(const ::Assets::ResChar destinationFile[]) const;
     };

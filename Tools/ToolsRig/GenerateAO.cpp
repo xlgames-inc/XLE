@@ -304,7 +304,7 @@ namespace ToolsRig
                     settings._renderResolution, settings._renderResolution, 
                     typelessFormat, 1, cubeFaces),
                 "AoGen"));
-        _pimpl->_cubeDSV = Metal::DepthStencilView(_pimpl->_cubeLocator->GetUnderlying(), dsvFormat, Metal::ArraySlice(cubeFaces));
+        _pimpl->_cubeDSV = Metal::DepthStencilView(_pimpl->_cubeLocator->GetUnderlying(), dsvFormat, Metal::SubResourceSlice(cubeFaces));
         _pimpl->_cubeSRV = Metal::ShaderResourceView(_pimpl->_cubeLocator->GetUnderlying(), srvFormat, cubeFaces);
 
         _pimpl->_miniLocator = bufferUploads.Transaction_Immediate(

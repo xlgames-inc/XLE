@@ -47,13 +47,13 @@ float VanderCorputRadicalInverse(uint bits)
     // see source:
     //      http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
     // Note -- Can't we just use the HLSL intrinsic "reversebits"? Is there a benefit?
-    // return float(reversebits(bits)) * 2.3283064365386963e-10f;
-    bits = (bits << 16u) | (bits >> 16u);
-    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
-    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
-    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
-    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
-    return float(bits) * 2.3283064365386963e-10f; // / 0x100000000
+    return float(reversebits(bits)) * 2.3283064365386963e-10f;
+    // bits = (bits << 16u) | (bits >> 16u);
+    // bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+    // bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+    // bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+    // bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+    // return float(bits) * 2.3283064365386963e-10f; // / 0x100000000
  }
 
 float2 HammersleyPt(uint i, uint N)
@@ -61,7 +61,7 @@ float2 HammersleyPt(uint i, uint N)
     return float2(float(i)/float(N), VanderCorputRadicalInverse(i));
 }
 
-float3 BuildSampleHalfVectorGGX(uint i, uint sampleCount, float3 normal, float alphag)
+float3 BuildSampleHalfVectorGGX(uint i, uint sampleCount, float3 normal, float alphad)
 {
         // Very similar to the unreal course notes implementation here
     float2 xi = HammersleyPt(i, sampleCount);
@@ -83,7 +83,7 @@ float3 BuildSampleHalfVectorGGX(uint i, uint sampleCount, float3 normal, float a
     //
     // Note that I've swapped xi.x & xi.y from the Unreal implementation. Maybe
     // not a massive change.
-    float cosTheta = sqrt((1.f - xi.x) / (1.f + (alphag*alphag - 1.f) * xi.x));
+    float cosTheta = sqrt((1.f - xi.x) / (1.f + (alphad*alphad - 1.f) * xi.x));
     float sinTheta = sqrt(1.f - cosTheta * cosTheta);
     float phi = 2.f * pi * xi.y;
 
@@ -119,13 +119,13 @@ float3 SampleSpecularIBL_Ref(float3 normal, float3 viewDirection, SpecularParame
     // Unreal course notes
     //      http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
 
-    float alphag = RoughnessToGAlpha(specParam.roughness);
+    float alphad = RoughnessToDAlpha(specParam.roughness);
     float3 result = 0.0.xxx;
     const uint sampleCount = 512;
     for (uint s=0; s<sampleCount; ++s) {
             // We could build a distribution of "H" vectors here,
             // or "L" vectors. It makes sense to use H vectors
-        float3 H = BuildSampleHalfVectorGGX(s, sampleCount, normal, alphag);
+        float3 H = BuildSampleHalfVectorGGX(s, sampleCount, normal, alphad);
         float3 L = 2.f * dot(viewDirection, H) * H - viewDirection;
 
             // Now we can light as if the point on the reflection map

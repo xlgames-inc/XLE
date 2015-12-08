@@ -24,12 +24,12 @@ namespace SceneEngine
             "Shadows");
 
         auto shadowTexture = uploads.Transaction_Immediate(uploadsDesc, nullptr);
-        Metal::DepthStencilView depthStencilView(shadowTexture->GetUnderlying(), desc._formats._writeFormat, Metal::ArraySlice(desc._targetCount));
+        Metal::DepthStencilView depthStencilView(shadowTexture->GetUnderlying(), desc._formats._writeFormat, Metal::SubResourceSlice(desc._targetCount));
         Metal::ShaderResourceView shaderResource(shadowTexture->GetUnderlying(), desc._formats._shaderReadFormat, desc._targetCount);
 
         std::vector<Metal::DepthStencilView> dsvBySlice;
         for (unsigned c=0; c<desc._targetCount; ++c) {
-            dsvBySlice.push_back(Metal::DepthStencilView(shadowTexture->GetUnderlying(), desc._formats._writeFormat, Metal::ArraySlice(1, c)));
+            dsvBySlice.push_back(Metal::DepthStencilView(shadowTexture->GetUnderlying(), desc._formats._writeFormat, Metal::SubResourceSlice(1, c)));
         }
 
         _shaderResource = std::move(shaderResource);

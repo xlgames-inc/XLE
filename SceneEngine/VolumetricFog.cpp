@@ -351,7 +351,7 @@ namespace SceneEngine
         std::vector<Metal::RenderTargetView> shadowMapRenderTargets;
         for (int c=0; c<desc._frustumCount; ++c) {
             shadowMapRenderTargets.emplace_back(
-                Metal::RenderTargetView(shadowMapTexture->GetUnderlying(), shadowMapFormat, Metal::ArraySlice(1, c)));
+                Metal::RenderTargetView(shadowMapTexture->GetUnderlying(), shadowMapFormat, Metal::SubResourceSlice(1, c)));
         }
 
         auto shadowMapTextureTemp = uploads.Transaction_Immediate(renderTargetDesc);
@@ -359,7 +359,7 @@ namespace SceneEngine
         std::vector<Metal::RenderTargetView> shadowMapRenderTargetsTemp;
         for (int c=0; c<desc._frustumCount; ++c) {
             shadowMapRenderTargetsTemp.emplace_back(
-                Metal::RenderTargetView(shadowMapTextureTemp->GetUnderlying(), shadowMapFormat, Metal::ArraySlice(1, c)));
+                Metal::RenderTargetView(shadowMapTextureTemp->GetUnderlying(), shadowMapFormat, Metal::SubResourceSlice(1, c)));
         }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
