@@ -107,6 +107,52 @@ float2 RectangleDiffuseRepPoint(float3 samplePt, float3 sampleNormal, float2 lig
     return pt;
 }
 
+void CalculateEllipseApproximation(
+    out float2 S0A, out float2 S0B,
+    out float2 S1A, out float2 S1B,
+    out float ellipseArea,
+    float3 reflectedDirLight, float minorAxis, float distance, float sinConeAngle, float2 projectedCircleCenter)
+{
+
+        // todo -- This math for A and B needs to be simplified radically.
+        //          ideally we don't want to be doing any trig here... It would be
+        //          better to find another method for this.
+    float tiltAngle = acos(saturate(dot(float3(0,0,1), -reflectedDirLight)));
+    float phi = .5f*pi + tiltAngle;
+    float c = pi - asin(sinConeAngle) - phi;
+    float A = distance * sinConeAngle / sin(c);     // from the law of sines
+
+    float phi2 = .5f*pi - tiltAngle;
+    float c2 = pi - asin(sinConeAngle) - phi2;
+    float B = distance * sinConeAngle / sin(c2);
+
+    float majorAxis = .5f * (A + B);
+    float2 ellipseLongAxis = normalize(reflectedDirLight.xy);
+    float2 ellipseCenter = projectedCircleCenter + ellipseLongAxis * .5f * (A-B);
+
+        // "ellipseC" is used to define the "vertices" of the ellipse. These
+        // are critical points for defining the ellipse.
+    float ellipseC = sqrt(majorAxis*majorAxis - minorAxis*minorAxis);
+    float2 focusA = ellipseCenter + ellipseC * ellipseLongAxis;
+    float2 focusB = ellipseCenter - ellipseC * ellipseLongAxis;
+
+    ellipseArea = pi * majorAxis * minorAxis;
+    // float squareRadiusForEllipse = 0.5f * sqrt(0.5f * ellipseArea);  (half to convert from edge length to "radius" value)
+    float squareRadiusForEllipse = sqrt(.25f * 0.5f * ellipseArea);
+
+    // We could put the center of the squared exactly on the ellipse vertices.
+    // But it seems to make more sense just to position them so that the
+    // edge tends to touch the edge of the ellipse.
+    focusA = ellipseCenter + (majorAxis - 1.25f * squareRadiusForEllipse) * ellipseLongAxis;
+    focusB = ellipseCenter - (majorAxis - 1.25f * squareRadiusForEllipse) * ellipseLongAxis;
+
+    S0A = focusA - float2(squareRadiusForEllipse, squareRadiusForEllipse);
+    S0B = focusA + float2(squareRadiusForEllipse, squareRadiusForEllipse);
+
+    S1A = focusB - float2(squareRadiusForEllipse, squareRadiusForEllipse);
+    S1B = focusB + float2(squareRadiusForEllipse, squareRadiusForEllipse);
+}
+
 float2 RectangleSpecularRepPoint(out float intersectionArea, float3 samplePt, float3 sampleNormal, float3 viewDirection, float2 lightHalfSize, float roughness)
 {
         // To calculate specular, we need a different equation. We're going to
@@ -170,8 +216,9 @@ float2 RectangleSpecularRepPoint(out float intersectionArea, float3 samplePt, fl
         // However, this is a double-edged sword. Because with this clamp, sometimes
         // light sources that are far away will appear too sharp. It's unfortunate,
         // because the distortion is really only a problem in some cases.
-    const float maxProjectedCircleRadius = 0.33f * min(lightHalfSize.x, lightHalfSize.y);
-    float projectedCircleRadius = clamp(distToProjectedConeCenter * tanConeAngle, 0.f, maxProjectedCircleRadius);
+    // const float maxProjectedCircleRadius = 0.33f * min(lightHalfSize.x, lightHalfSize.y);
+    // float projectedCircleRadius = clamp(distToProjectedConeCenter * tanConeAngle, 0.f, maxProjectedCircleRadius);
+    float projectedCircleRadius = distToProjectedConeCenter * tanConeAngle;
     // return float4(projectedCircleRadius.xxx, 1.f);
 
         // This is squaring the circle...?!
@@ -186,10 +233,35 @@ float2 RectangleSpecularRepPoint(out float intersectionArea, float3 samplePt, fl
         projectedCircleCenter - float2(squareRadius, squareRadius),
         projectedCircleCenter + float2(squareRadius, squareRadius));
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        // Ellipse approximation experiment...
+
+    float2 S0A, S0B, S1A, S1B;
+    float ellipseArea;
+    CalculateEllipseApproximation(
+        S0A, S0B, S1A, S1B, ellipseArea,
+        reflectedDirLight,
+        distToProjectedConeCenter * tanConeAngle,
+        distToProjectedConeCenter, sinConeAngle, projectedCircleCenter);
+
+    float2 representativePtA;
+    float intersectionAreaA = RectRectIntersectionArea(
+        representativePtA, -lightHalfSize, lightHalfSize, S0A, S0B);
+
+    float2 representativePtB;
+    float intersectionAreaB = RectRectIntersectionArea(
+        representativePtB, -lightHalfSize, lightHalfSize, S1A, S1B);
+
+    // intersectionArea = (intersectionAreaA + intersectionAreaB) / ellipseArea;
+    // return lerp(representativePtA, representativePtB, 0.5f);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     // representativePt = projectedCircleCenter;
 
     // note --  zero area lights will cause nans here
     //          we should skip zero area lights on the CPU side
+    intersectionArea /= pi * projectedCircleRadius * projectedCircleRadius;
     return representativePt;
 }
 

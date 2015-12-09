@@ -329,24 +329,79 @@ float4 ResolveAreaLightDebugging(
             return float4(1,1,1,.5);
     }
 
-    float3 reflectedDirLight = reflect(-directionToEye, sample.worldSpaceNormal);
+    float3 reflectedDir = reflect(-directionToEye, sample.worldSpaceNormal);
     float cosConeAngle = TrowReitzDInverseApprox(RoughnessToDAlpha(sample.material.roughness));
 
     float sinConeAngle = sqrt(1.f - cosConeAngle*cosConeAngle);
     float tanConeAngle = sinConeAngle/cosConeAngle;
 
+    float4 result = float4(0,0,0,1);
+
+        // draw square for eclipse approximation
+    {
+        float3 reflectedDirLight = reflect(-viewDirectionLight, sampleNormal);
+        float distToProjectedConeCenter = (-samplePt.z/reflectedDirLight.z);
+        float2 projectedCircleCenter = samplePt.xy + reflectedDirLight.xy * distToProjectedConeCenter;
+
+        float2 S0A; float2 S0B;
+        float2 S1A; float2 S1B;
+        float eclipseArea;
+        CalculateEllipseApproximation(
+            S0A, S0B, S1A, S1B, eclipseArea,
+            reflectedDirLight,
+            distToProjectedConeCenter * tanConeAngle,
+            distToProjectedConeCenter, sinConeAngle, projectedCircleCenter);
+
+        // We need to find the intersection of the view ray with the light plane
+        // Easiest to do this if we transform the view ray into light space, and look for
+        // intersections in light space.
+        float3 drawingPointWorldPosition = CalculateWorldPosition(position.xy, 0, drawingPointViewFrustumVector);
+        float3 drawingPointLight = mul(worldToLight, drawingPointWorldPosition - lightCenter);
+        float3 drawPointViewDirectionLight = mul(worldToLight, -normalize(drawingPointViewFrustumVector));
+        float2 viewRayIntersection = drawingPointLight.xy + drawPointViewDirectionLight.xy * (-drawingPointLight.z/drawPointViewDirectionLight.z);
+
+        //if (    abs(projectedCircleCenter.x-viewRayIntersection.x) < .1f
+        //    &&  abs(projectedCircleCenter.y-viewRayIntersection.y) < .1f)
+        //    return float4(1,1,0,1);
+
+        if (    viewRayIntersection.x > S0A.x && viewRayIntersection.x < S0B.x
+            &&  viewRayIntersection.y > S0A.y && viewRayIntersection.y < S0B.y)
+            result += float4(.5,.5,0,1);
+
+        if (    viewRayIntersection.x > S1A.x && viewRayIntersection.x < S1B.x
+            &&  viewRayIntersection.y > S1A.y && viewRayIntersection.y < S1B.y)
+            result += float4(0,.5,.5,1);
+
+        // Is this point within the cone?
+        {
+            float3 offset = float3(viewRayIntersection,0) - samplePt;
+            float A = dot(offset, reflectedDirLight);
+            if (A > 0.f) {
+                float3 alongAxis = reflectedDirLight * A;
+                float3 perp = offset - alongAxis;
+                if (length(perp) < length(alongAxis)*tanConeAngle)
+                    result += float4(0,0,.5,1);
+            }
+        }
+
+        if (    abs(viewRayIntersection.x) < Light.SourceRadiusX
+            &&  abs(viewRayIntersection.y) < Light.SourceRadiusY)
+            result += float4(.1,.1,.1,1);
+            // return 1.0.xxxx;
+        // return float4(0.0.xxx, 1);
+    }
+
     float3 L0Closest, L1Closest;
     LineLineIntersection(
         L0Closest, L1Closest,
         WorldSpaceView, WorldSpaceView + drawingPointViewFrustumVector,
-        worldPosition, worldPosition + reflectedDirLight);
+        worldPosition, worldPosition + reflectedDir);
 
-    float u = dot(L1Closest - worldPosition, reflectedDirLight);
+    // float u = dot(L1Closest - worldPosition, reflectedDir);
+    // if (u > 0.f && length(L0Closest-L1Closest) < u*tanConeAngle)
+    //     result += float4(.03,.03,.03 /* * exp(-0.01f * dot(L0Closest-WorldSpaceView, drawingPointViewFrustumVector))*/,.5f);
 
-    if (u > 0.f && length(L0Closest-L1Closest) < u*tanConeAngle)
-        return float4(0,0,1 /* * exp(-0.01f * dot(L0Closest-WorldSpaceView, drawingPointViewFrustumVector))*/,.5f);
-
-    return float4(0.0.xxx, 1.f);
+    return result;
 }
 
 float4 ResolveRectangleLightUnshadowed(
@@ -413,8 +468,9 @@ float4 ResolveRectangleLightUnshadowed(
     float3 specLightNegDir = float3(specRepPt - samplePt.xy, -samplePt.z);
     float specDistanceSq = MagnitudeSquared(specLightNegDir);
     specLightNegDir *= rsqrt(specDistanceSq);
-    float area = lightHalfSize.x * lightHalfSize.y * 4.f;
-    float integralApprox = intersectionArea / area;
+    // float area = lightHalfSize.x * lightHalfSize.y * 4.f;
+    // float integralApprox = intersectionArea / area;
+    float integralApprox = intersectionArea;
 
         // note --  We can get some interesting results if we use "lightNegDir" here instead of
         //          specLightNegDir -- it's a good way to visualise the representative point we're using
