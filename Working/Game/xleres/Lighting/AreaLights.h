@@ -111,6 +111,7 @@ void CalculateEllipseApproximation(
     out float2 S0A, out float2 S0B,
     out float2 S1A, out float2 S1B,
     out float ellipseArea,
+    out float squareWeighting,
     float3 reflectedDirLight, float minorAxis, float distance, float sinConeAngle, float2 projectedCircleCenter)
 {
 
@@ -130,27 +131,38 @@ void CalculateEllipseApproximation(
     float2 ellipseLongAxis = normalize(reflectedDirLight.xy);
     float2 ellipseCenter = projectedCircleCenter + ellipseLongAxis * .5f * (A-B);
 
-        // "ellipseC" is used to define the "vertices" of the ellipse. These
-        // are critical points for defining the ellipse.
+        // "ellipseC" is used to define the "vertices" of the ellipse.
+        // These are critical points for defining the ellipse.
     float ellipseC = sqrt(majorAxis*majorAxis - minorAxis*minorAxis);
     float2 focusA = ellipseCenter + ellipseC * ellipseLongAxis;
     float2 focusB = ellipseCenter - ellipseC * ellipseLongAxis;
 
     ellipseArea = pi * majorAxis * minorAxis;
-    // float squareRadiusForEllipse = 0.5f * sqrt(0.5f * ellipseArea);  (half to convert from edge length to "radius" value)
-    float squareRadiusForEllipse = sqrt(.25f * 0.5f * ellipseArea);
+    float squareRadiusForEllipse = 0.5f * sqrt(0.5f * ellipseArea);  // (half to convert from edge length to "radius" value)
+    // float squareRadiusForEllipse = sqrt(.25f * 0.5f * ellipseArea);
+
+    // squareRadiusForEllipse *= .85f;
 
     // We could put the center of the squared exactly on the ellipse vertices.
     // But it seems to make more sense just to position them so that the
     // edge tends to touch the edge of the ellipse.
-    focusA = ellipseCenter + (majorAxis - 1.25f * squareRadiusForEllipse) * ellipseLongAxis;
-    focusB = ellipseCenter - (majorAxis - 1.25f * squareRadiusForEllipse) * ellipseLongAxis;
+    // Some artifacts can be caused by over-weighting the edges of the ellipse.
+    // We adjust the squares in a bit to try to reduce the effect of these artifacts.
+    const float fudgeFactor = 1.33f;
+    focusA = ellipseCenter + (majorAxis - fudgeFactor * squareRadiusForEllipse) * ellipseLongAxis;
+    focusB = ellipseCenter - (majorAxis - fudgeFactor * squareRadiusForEllipse) * ellipseLongAxis;
 
     S0A = focusA - float2(squareRadiusForEllipse, squareRadiusForEllipse);
     S0B = focusA + float2(squareRadiusForEllipse, squareRadiusForEllipse);
 
     S1A = focusB - float2(squareRadiusForEllipse, squareRadiusForEllipse);
     S1B = focusB + float2(squareRadiusForEllipse, squareRadiusForEllipse);
+
+        // adjust the ellipse area again to take into account adjustments to
+        // the radius value.
+    ellipseArea = 8.f * squareRadiusForEllipse * squareRadiusForEllipse;
+
+    squareWeighting = A / (A+B);
 }
 
 float2 RectangleSpecularRepPoint(out float intersectionArea, float3 samplePt, float3 sampleNormal, float3 viewDirection, float2 lightHalfSize, float roughness)
@@ -221,6 +233,7 @@ float2 RectangleSpecularRepPoint(out float intersectionArea, float3 samplePt, fl
     float projectedCircleRadius = distToProjectedConeCenter * tanConeAngle;
     // return float4(projectedCircleRadius.xxx, 1.f);
 
+#if 0
         // This is squaring the circle...?!
         // float circleArea = pi * projectedCircleRadius * projectedCircleRadius;
         // float squareSide = sqrt(circleArea);
@@ -233,36 +246,62 @@ float2 RectangleSpecularRepPoint(out float intersectionArea, float3 samplePt, fl
         projectedCircleCenter - float2(squareRadius, squareRadius),
         projectedCircleCenter + float2(squareRadius, squareRadius));
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-        // Ellipse approximation experiment...
-
-    float2 S0A, S0B, S1A, S1B;
-    float ellipseArea;
-    CalculateEllipseApproximation(
-        S0A, S0B, S1A, S1B, ellipseArea,
-        reflectedDirLight,
-        distToProjectedConeCenter * tanConeAngle,
-        distToProjectedConeCenter, sinConeAngle, projectedCircleCenter);
-
-    float2 representativePtA;
-    float intersectionAreaA = RectRectIntersectionArea(
-        representativePtA, -lightHalfSize, lightHalfSize, S0A, S0B);
-
-    float2 representativePtB;
-    float intersectionAreaB = RectRectIntersectionArea(
-        representativePtB, -lightHalfSize, lightHalfSize, S1A, S1B);
-
-    // intersectionArea = (intersectionAreaA + intersectionAreaB) / ellipseArea;
-    // return lerp(representativePtA, representativePtB, 0.5f);
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
     // representativePt = projectedCircleCenter;
 
     // note --  zero area lights will cause nans here
     //          we should skip zero area lights on the CPU side
     intersectionArea /= pi * projectedCircleRadius * projectedCircleRadius;
     return representativePt;
+
+#else
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        // Ellipse approximation experiment...
+
+    float2 S0A, S0B, S1A, S1B;
+    float ellipseArea;
+    float squareWeighting;
+    CalculateEllipseApproximation(
+        S0A, S0B, S1A, S1B, ellipseArea, squareWeighting,
+        reflectedDirLight,
+        distToProjectedConeCenter * tanConeAngle,
+        distToProjectedConeCenter, sinConeAngle, projectedCircleCenter);
+
+    float2 representativePtA, representativePtB;
+    float intersectionAreaA = RectRectIntersectionArea(representativePtA, -lightHalfSize, lightHalfSize, S0A, S0B);
+    float intersectionAreaB = RectRectIntersectionArea(representativePtB, -lightHalfSize, lightHalfSize, S1A, S1B);
+
+    // intersectionArea = 2.f * intersectionAreaB / ellipseArea;
+    // return representativePtB;
+
+        // We have to be careful when the intersection area of one square is zero. In this
+        // case the square is completely clipped, and the representativePt may be invalid.
+    float aTotal = (intersectionAreaA + intersectionAreaB);
+    intersectionArea = aTotal / ellipseArea;
+    // return lerp(representativePtA, representativePtB, intersectionAreaB / (aTotal + 1e-7f));
+
+    float w0 = (1.f - squareWeighting) * intersectionAreaA;
+    float w1 = squareWeighting * intersectionAreaB;
+    // return lerp(representativePtA, representativePtB, w1/(w0+w1+1e-7f));
+    float2 repPtFromSquares = lerp(representativePtA, representativePtB, squareWeighting);
+
+        // When we adjust the representative pt for square clipping,
+        // we end up moving the point away from the reflection ray.
+        // With GGX, this has a very quick and significant effect on the
+        // brightness of the reflection. Even when part of the specular
+        // cone is clipped, the very center has a dominant effect on the
+        // brightness.
+        // This means that adjusting the representative point to the intersection
+        // center is having too extreme an effect. We have to tone it down a
+        // little bit some how.
+        // The easiest way is just to linearly blend from the reflection ray to
+        // the intersection center...
+    return lerp(repPtFromSquares, projectedCircleCenter, 0.5f);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+#endif
+
 }
 
 

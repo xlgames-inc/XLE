@@ -345,9 +345,10 @@ float4 ResolveAreaLightDebugging(
 
         float2 S0A; float2 S0B;
         float2 S1A; float2 S1B;
-        float eclipseArea;
+        float ellipseArea;
+        float squareWeighting;
         CalculateEllipseApproximation(
-            S0A, S0B, S1A, S1B, eclipseArea,
+            S0A, S0B, S1A, S1B, ellipseArea, squareWeighting,
             reflectedDirLight,
             distToProjectedConeCenter * tanConeAngle,
             distToProjectedConeCenter, sinConeAngle, projectedCircleCenter);
@@ -397,9 +398,9 @@ float4 ResolveAreaLightDebugging(
         WorldSpaceView, WorldSpaceView + drawingPointViewFrustumVector,
         worldPosition, worldPosition + reflectedDir);
 
-    // float u = dot(L1Closest - worldPosition, reflectedDir);
-    // if (u > 0.f && length(L0Closest-L1Closest) < u*tanConeAngle)
-    //     result += float4(.03,.03,.03 /* * exp(-0.01f * dot(L0Closest-WorldSpaceView, drawingPointViewFrustumVector))*/,.5f);
+    float u = dot(L1Closest - worldPosition, reflectedDir);
+    if (u > 0.f && length(L0Closest-L1Closest) < u*tanConeAngle)
+         result += float4(.03,.03,.03 /* * exp(-0.01f * dot(L0Closest-WorldSpaceView, drawingPointViewFrustumVector))*/,.5f);
 
     return result;
 }
