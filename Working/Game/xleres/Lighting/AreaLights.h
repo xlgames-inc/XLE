@@ -163,9 +163,8 @@ void CalculateEllipseApproximation(
     // float2 focusB = ellipseCenter - ellipseC * ellipseLongAxis;
 
     ellipseArea = pi * majorAxis * minorAxis;
-    ellipseArea = max(1e-7f, ellipseArea);  // prevent math errors in extreme cases
-    // float squareRadiusForEllipse = 0.5f * sqrt(0.5f * ellipseArea);  // (half to convert from edge length to "radius" value)
-    float squareRadiusForEllipse = sqrt(.125f * ellipseArea);
+    ellipseArea = max(0.f, ellipseArea);
+    float squareRadiusForEllipse = sqrt(.125f * ellipseArea);  // (half to convert from edge length to "radius" value)
 
     // We could put the center of the squared exactly on the ellipse vertices.
     // But it seems to make more sense just to position them so that the
@@ -295,7 +294,7 @@ float2 RectangleSpecularRepPoint(out float intersectionArea, float3 samplePt, fl
             // We have to be careful when the intersection area of one square is zero. In this
             // case the square is completely clipped, and the representativePt may be invalid.
         float aTotal = (intersectionAreaA + intersectionAreaB);
-        intersectionArea = aTotal / ellipseArea;
+        intersectionArea = aTotal / (ellipseArea + 1e-7f);
         // return lerp(representativePtA, representativePtB, intersectionAreaB / (aTotal + 1e-7f));
 
         // float w0 = (1.f - squareWeighting) * intersectionAreaA;
