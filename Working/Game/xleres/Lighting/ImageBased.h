@@ -265,7 +265,7 @@ float2 SplitSumIBL_IntegrateBRDF(float roughness, float NdotV)
     // note -- it may be ok to use PointClampSampler here...? is it better to
     //          use a small texture and bilinear filtering, or a large texture
     //          and no filtering?
-    return GlossLUT.SampleLevel(ClampingSampler, float2(NdotV, roughness), 0).xy;
+    return GlossLUT.SampleLevel(ClampingSampler, float2(NdotV, 1.f - roughness), 0).xy;
     // return GenerateSplitTerm(saturate(NdotV), saturate(roughness));
 }
 
