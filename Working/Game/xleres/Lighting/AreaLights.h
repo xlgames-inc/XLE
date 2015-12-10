@@ -163,6 +163,7 @@ void CalculateEllipseApproximation(
     // float2 focusB = ellipseCenter - ellipseC * ellipseLongAxis;
 
     ellipseArea = pi * majorAxis * minorAxis;
+    ellipseArea = max(1e-7f, ellipseArea);  // prevent math errors in extreme cases
     // float squareRadiusForEllipse = 0.5f * sqrt(0.5f * ellipseArea);  // (half to convert from edge length to "radius" value)
     float squareRadiusForEllipse = sqrt(.125f * ellipseArea);
 
@@ -181,10 +182,6 @@ void CalculateEllipseApproximation(
 
     S1A = focusB - float2(squareRadiusForEllipse, squareRadiusForEllipse);
     S1B = focusB + float2(squareRadiusForEllipse, squareRadiusForEllipse);
-
-        // adjust the ellipse area again to take into account adjustments to
-        // the radius value.
-    ellipseArea = 8.f * squareRadiusForEllipse * squareRadiusForEllipse;
 
     squareWeighting = A / (A+B);
 }
