@@ -350,8 +350,7 @@ float4 ResolveAreaLightDebugging(
         CalculateEllipseApproximation(
             S0A, S0B, S1A, S1B, ellipseArea, squareWeighting,
             reflectedDirLight,
-            distToProjectedConeCenter * tanConeAngle,
-            distToProjectedConeCenter, sinConeAngle, projectedCircleCenter);
+            distToProjectedConeCenter, sinConeAngle, cosConeAngle, projectedCircleCenter);
 
         // We need to find the intersection of the view ray with the light plane
         // Easiest to do this if we transform the view ray into light space, and look for
@@ -466,6 +465,7 @@ float4 ResolveRectangleLightUnshadowed(
 
     float intersectionArea;
     float2 specRepPt = RectangleSpecularRepPoint(intersectionArea, samplePt, sampleNormal, viewDirectionLight, lightHalfSize, sample.material.roughness);
+
     float3 specLightNegDir = float3(specRepPt - samplePt.xy, -samplePt.z);
     float specDistanceSq = MagnitudeSquared(specLightNegDir);
     specLightNegDir *= rsqrt(specDistanceSq);
