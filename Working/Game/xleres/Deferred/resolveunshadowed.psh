@@ -119,10 +119,10 @@ float4 ResolveAreaLightUnshadowed(  float4 position : SV_Position,
     float3 directionToEye = normalize(-viewFrustumVector);
     float3 reflectionDir = reflect(-directionToEye, sample.worldSpaceNormal);
     float distortionCompensation;
-    float3 lightNegDir = RepresentativeVector_Sphere(distortionCompensation, Light.Position - worldPosition, Light.SourceRadiusX, reflectionDir);
-    float distanceSq = dot(lightNegDir, lightNegDir);
+    float3 specLightDir = RepresentativeVector_Sphere(distortionCompensation, Light.Position - worldPosition, Light.SourceRadiusX, reflectionDir);
+
+    float distanceSq = MagnitudeSquared(Light.Position - worldPosition);
     float rDistance = rsqrt(distanceSq);
-    lightNegDir *= rDistance;
 
         // note --  Here we should really be doing some extra work to calculate the
         //          incoming light power. We need to define what the light power really
@@ -136,8 +136,9 @@ float4 ResolveAreaLightUnshadowed(  float4 position : SV_Position,
         //      beyond short radius. We could probably find a cut-off point and disable specular
         //      based on distance, source radius & power, & material roughness
 
-    float3 diffuse = LightResolve_Diffuse(sample, directionToEye, lightNegDir, Light);
-    float3 specular = LightResolve_Specular(sample, directionToEye, lightNegDir, Light, screenSpaceOcclusion);
+    float3 diffuseLightDir = (Light.Position - worldPosition)*rDistance;
+    float3 diffuse = LightResolve_Diffuse(sample, directionToEye, diffuseLightDir, Light);
+    float3 specular = LightResolve_Specular(sample, directionToEye, normalize(specLightDir), Light, screenSpaceOcclusion);
 
         // Specular attenuation is a little tricky here... We want the light
         // brightness to drop off relative to the solid angle of the light source.
@@ -215,13 +216,17 @@ float4 ResolveTubeLightUnshadowed(
         //          RepresentativeVector_Sphere to estimate a thick tube
     float3 tubePoint = RepresentativeVector_Tube(L0 - worldPosition, L1 - worldPosition, reflectionDir);
     float distortionCompensation;
-    float3 lightNegDir = RepresentativeVector_Sphere(distortionCompensation, tubePoint, Light.SourceRadiusX, reflectionDir);
-    float distanceSq = dot(lightNegDir, lightNegDir);
-    float rDistance = rsqrt(distanceSq);
-    lightNegDir *= rDistance;
+    float3 specLightDir = RepresentativeVector_Sphere(distortionCompensation, tubePoint, Light.SourceRadiusX, reflectionDir);
 
-    float3 diffuse = LightResolve_Diffuse_NdotL(sample, directionToEye, lightNegDir, NdotL, Light);
-    float3 specular = LightResolve_Specular(sample, directionToEye, lightNegDir, Light, screenSpaceOcclusion);
+    // We can choose to use either "specLightDir" or "tubePoint" for our diffuse distance calc
+    // If we use tubePoint, the radius will have no effect on the diffuse result (just on specular result)
+    // This might not be perfectly correct, but it can avoid artefacts that can occur at certain angles
+    float distanceSq = MagnitudeSquared(tubePoint - worldPosition);
+    float rDistance = rsqrt(distanceSq);
+    float3 diffuseRepDir = (tubePoint - worldPosition) * rDistance;
+
+    float3 diffuse = LightResolve_Diffuse_NdotL(sample, directionToEye, diffuseRepDir, NdotL, Light);
+    float3 specular = LightResolve_Specular(sample, directionToEye, normalize(specLightDir), Light, screenSpaceOcclusion);
 
         // This specular attenutation method is based on Karis. Maybe it needs
         // a little more work...?
@@ -270,6 +275,10 @@ float4 ResolveAreaLightDebugging(
     float3 drawingPointViewFrustumVector : VIEWFRUSTUMVECTOR,
     SystemInputs sys) : SV_Target0
 {
+    #if LIGHT_SHAPE!=3
+        return float4(0.0.xxx,1);        // only debugging rectangles
+    #endif
+
     // We're going to draw some debugging information for the point under the mouse cursor.
     // Let's calculate the diffuse and specular representative points for that point.
 
@@ -291,7 +300,7 @@ float4 ResolveAreaLightDebugging(
     float3 samplePt = mul(worldToLight, worldPosition - lightCenter);
     float3 sampleNormal = mul(worldToLight, sample.worldSpaceNormal);
     float3 viewDirectionLight = mul(worldToLight, directionToEye);
-    if (samplePt.z < 0.f) return float4(0.0.xxx, 1.f);
+    // if (samplePt.z < 0.f) return float4(0.0.xxx, 1.f);
 
     float2 diffRepPt = RectangleDiffuseRepPoint(samplePt, sampleNormal, lightHalfSize);
     float intersectionArea;
@@ -443,13 +452,17 @@ float4 ResolveRectangleLightUnshadowed(
     float3 sampleNormal = mul(worldToLight, sample.worldSpaceNormal);
     float3 viewDirectionLight = mul(worldToLight, directionToEye);
 
-    if (samplePt.z < 0.f) return float4(0.0.xxx, 1.f);
+    // if (samplePt.z < 0.f) return float4(0.0.xxx, 1.f);
 
     float2 repPt = RectangleDiffuseRepPoint(samplePt, sampleNormal, lightHalfSize);
     float3 lightNegDir = float3(repPt - samplePt.xy, -samplePt.z);
     float distanceSq = dot(lightNegDir, lightNegDir);
     float rDistance = rsqrt(distanceSq);
     lightNegDir *= rDistance;
+
+        // we're doing the light calculations in "light space" also, so
+        // adjust sample.worldSpaceNormal
+    sample.worldSpaceNormal = sampleNormal;
 
         // We can just do the rest of the diffuse calculation in light space, also...
         // If it's just lambert, it's trivial.
@@ -460,8 +473,20 @@ float4 ResolveRectangleLightUnshadowed(
         // direction from the light to the sample point. In this light type, light
         // is generally being emitted in the one direction, and so less light escapes
         // out tangental to the light surface. So, we consider this with cosThetaLightPlane.
-    float cosThetaLightPlane = saturate(-lightNegDir.z);
-    float diffuseAttenuation = cosThetaLightPlane;
+        // In 3DS Max, rectangle lights don't work like this.
+        //
+        // Light escapes equally in all directions. However, our solution works poorly
+        // when cosThetaLightPlane is near zero, mostly because of the "skewed normal"
+        // calculations in RectangleDiffuseRepPoint. If we had a better solution for this
+        // case, we could support the same light shape as max.
+    float diffuseAttenuation;
+    const uint RectLightType_SingleDir = 0; // cast light forward, along a single direction
+    const uint RectLightType_TwoDir = 1;    // cast light forward and backward
+    const uint RectLightType_Max = 2;       // cast light in all directions equally, like 3DS Quicksilver
+    const uint rectLightType = RectLightType_SingleDir;
+    if (rectLightType == RectLightType_SingleDir) { diffuseAttenuation = saturate(-lightNegDir.z); }
+    else if (rectLightType == RectLightType_TwoDir) { diffuseAttenuation = abs(lightNegDir.z); }
+    else { diffuseAttenuation = 1.f; }
 
     float intersectionArea;
     float2 specRepPt = RectangleSpecularRepPoint(intersectionArea, samplePt, sampleNormal, viewDirectionLight, lightHalfSize, sample.material.roughness);
@@ -476,7 +501,6 @@ float4 ResolveRectangleLightUnshadowed(
         // note --  We can get some interesting results if we use "lightNegDir" here instead of
         //          specLightNegDir -- it's a good way to visualise the representative point we're using
         //          for the diffuse calculation.
-    sample.worldSpaceNormal = sampleNormal;
     float3 specular = LightResolve_Specular(sample, viewDirectionLight, specLightNegDir, Light, screenSpaceOcclusion);
     float specAttenuation = integralApprox;
 
@@ -502,9 +526,9 @@ float4 ResolveRectangleLightUnshadowed(
     //  the "brightness" quantity from area.
 
     const float lightScale = LightingScale;
-    return float4((lightScale*distanceAttenuation*radiusDropOff)*(
-          diffuseAttenuation*diffuse
-        + specAttenuation*specular), 1.f);
+    return float4(
+        (lightScale*distanceAttenuation*radiusDropOff)
+        * (diffuseAttenuation*diffuse + specAttenuation*specular), 1.f);
 }
 
 #endif

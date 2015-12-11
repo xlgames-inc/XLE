@@ -74,9 +74,11 @@ float2 RectangleDiffuseRepPoint(float3 samplePt, float3 sampleNormal, float2 lig
     // if (abs(sampleNormal.z) < 1e-3f) sampleNormal += float3(0.03f, 0.03f, 0.03f);
 
         // We need to skew in these cases to find a collision point.
-    bool isFacingAway = sampleNormal.z >= 0.f;
+    bool isFacingAway = sampleNormal.z >= -1e-3f && sampleNormal.z <= 1e-3f;
     float3 skewedNormal = sampleNormal;
-    if (isFacingAway) skewedNormal = /*normalize*/(float3(sampleNormal.xy, -0.01f)); // (without normalization, it should be incorrect -- but maybe no major visual artefacts)
+        // we give an imaginary value to skewedNormal.z. This has to be fairly small... If it's too large,
+        // it creates a discontinuity near the equator of the light
+    if (isFacingAway) skewedNormal = /*normalize*/(float3(sampleNormal.xy, sign(samplePt.z) * -0.01f)); // (without normalization, it should be incorrect -- but maybe no major visual artefacts)
 
         // Triple product type operation becomes simplier...
         // note -- obvious problems with sampleNormal.z is near 0
@@ -99,12 +101,12 @@ float2 RectangleDiffuseRepPoint(float3 samplePt, float3 sampleNormal, float2 lig
         // Drobot didn't actually calculate pc and pt -- he just used a half way point
         // between p0 and p1. Actually, the difference does seem to be quite minor.
         // But in light space, it's easy to clamp pc and pt.
-    float2 pc = float2(clamp(p0.x, -lightHalfSize.x, lightHalfSize.x), clamp(p0.y, -lightHalfSize.y, lightHalfSize.y));
-    float2 pt = float2(clamp(p1.x, -lightHalfSize.x, lightHalfSize.x), clamp(p1.y, -lightHalfSize.y, lightHalfSize.y));
+    float2 pc = clamp(p0.xy, -lightHalfSize.xy, lightHalfSize.xy);
+    float2 pt = clamp(p1.xy, -lightHalfSize.xy, lightHalfSize.xy);
 
     float2 r = 0.5f * (pc+pt);
     // r = float2(clamp(r.x, -lightHalfSize.x, lightHalfSize.x), clamp(r.y, -lightHalfSize.y, lightHalfSize.y));
-    return pt;
+    return r;
 }
 
 void CalculateEllipseApproximation(
