@@ -270,12 +270,23 @@ namespace SceneEngine
         definesTable << "GBUFFER_TYPE=" << desc._gbufferType;
         definesTable << ";MSAA_SAMPLES=" << (desc._msaaSampleCount<=1)?0:desc._msaaSampleCount;
         if (desc._msaaSamplers) definesTable << ";MSAA_SAMPLERS=1";
-        //definesTable << ";SHADOW_CASCADE_MODE=" << ((type._shadows == OrthShadows || type._shadows == OrthShadowsNearCascade || type._shadows == OrthHybridShadows) ? 2u : 1u);
-        //definesTable << ";SHADOW_ENABLE_NEAR_CASCADE=" << (type._shadows == OrthShadowsNearCascade ? 1u : 0u);
+
+        if (desc._dynamicLinking) {
+            definesTable << ";LIGHT_RESOLVE_DYN_LINKING=1";
+        } else {
+            if (type._shadows != NoShadows) {
+                definesTable << ";SHADOW_CASCADE_MODE=" << ((type._shadows == OrthShadows || type._shadows == OrthShadowsNearCascade || type._shadows == OrthHybridShadows) ? 2u : 1u);
+                definesTable << ";SHADOW_ENABLE_NEAR_CASCADE=" << (type._shadows == OrthShadowsNearCascade ? 1u : 0u);
+                definesTable << ";SHADOW_RESOLVE_MODEL=" << unsigned(type._shadowResolveModel);
+                definesTable << ";SHADOW_RT_HYBRID=" << unsigned(type._shadows == OrthHybridShadows);
+            }
+            definesTable << ";LIGHT_SHAPE=" << unsigned(type._shape);
+        }
+
         definesTable << ";DIFFUSE_METHOD=" << unsigned(type._diffuseModel);
-        //definesTable << ";SHADOW_RESOLVE_MODEL=" << unsigned(type._shadowResolveModel);
-        //definesTable << ";SHADOW_RT_HYBRID=" << unsigned(type._shadows == OrthHybridShadows);
         definesTable << ";HAS_SCREENSPACE_AO=" << unsigned(type._hasScreenSpaceAO);
+
+        
 
         const char* vertexShader_viewFrustumVector = 
             desc._flipDirection
@@ -285,12 +296,22 @@ namespace SceneEngine
 
         LightShader& dest = _shaders[type.AsIndex()];
         assert(!dest._shader);
-        dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            vertexShader_viewFrustumVector, 
-            (!desc._debugging)
-                ? "game/xleres/deferred/resolvelight.psh:main:!ps_*"
-                : "game/xleres/deferred/debugging/resolvedebug.psh:main:ps_*",
-            definesTable.get());
+
+        if (desc._dynamicLinking && !desc._debugging) {
+            dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                vertexShader_viewFrustumVector, 
+                (!desc._debugging)
+                    ? "game/xleres/deferred/resolvelight.psh:main:!ps_*"
+                    : "game/xleres/deferred/debugging/resolvedebug.psh:main:ps_*",
+                definesTable.get());
+        } else {
+            dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                vertexShader_viewFrustumVector, 
+                (!desc._debugging)
+                    ? "game/xleres/deferred/resolvelight.psh:main:ps_*"
+                    : "game/xleres/deferred/debugging/resolvedebug.psh:main:ps_*",
+                definesTable.get());
+        }
 
         if (dest._shader) {
             dest._uniforms = Metal::BoundUniforms(*dest._shader);
@@ -308,10 +329,13 @@ namespace SceneEngine
             dest._uniforms.BindShaderResource(Hash64("RTSLinkedLists"),             SR::RTShadow_LinkedLists, 1);
             dest._uniforms.BindShaderResource(Hash64("RTSTriangles"),               SR::RTShadow_Triangles, 1);
 
-            dest._boundClassInterfaces = Metal::BoundClassInterfaces(*dest._shader);
-            dest._boundClassInterfaces.Bind(Hash64("MainResolver"), 0, AsLightResolverInterface(type));
-            dest._boundClassInterfaces.Bind(Hash64("MainCascadeResolver"), 0, AsCascadeResolverInterface(type));
-            dest._boundClassInterfaces.Bind(Hash64("MainShadowResolver"), 0, AsShadowResolverInterface(type));
+            if (desc._dynamicLinking) {
+                dest._boundClassInterfaces = Metal::BoundClassInterfaces(*dest._shader);
+                dest._boundClassInterfaces.Bind(Hash64("MainResolver"), 0, AsLightResolverInterface(type));
+                dest._boundClassInterfaces.Bind(Hash64("MainCascadeResolver"), 0, AsCascadeResolverInterface(type));
+                dest._boundClassInterfaces.Bind(Hash64("MainShadowResolver"), 0, AsShadowResolverInterface(type));
+                dest._dynamicLinking = true;
+            }
 
             ::Assets::RegisterAssetDependency(_validationCallback, dest._shader->GetDependencyValidation());
         }

@@ -129,9 +129,10 @@ namespace SceneEngine
             unsigned    _msaaSampleCount;
             bool        _msaaSamplers, _flipDirection;
             unsigned    _gbufferType;
+            bool        _dynamicLinking;
             bool        _debugging;
 
-            Desc(unsigned gbufferType, unsigned msaaSampleCount, bool msaaSamplers, bool flipDirection, bool debugging) 
+            Desc(unsigned gbufferType, unsigned msaaSampleCount, bool msaaSamplers, bool flipDirection, bool dynamicLinking, bool debugging) 
             {
                     //  we have to "memset" this -- because padding adds
                     //  random values in profile mode
@@ -140,6 +141,7 @@ namespace SceneEngine
                 _msaaSampleCount = msaaSampleCount;
                 _msaaSamplers = msaaSamplers;
                 _flipDirection = flipDirection;
+                _dynamicLinking = dynamicLinking;
                 _debugging = debugging;
             }
         };
@@ -178,8 +180,9 @@ namespace SceneEngine
             const ShaderProgram*    _shader;
             BoundUniforms           _uniforms;
             BoundClassInterfaces    _boundClassInterfaces;
+            bool                    _dynamicLinking;
 
-            LightShader() : _shader(nullptr) {}
+            LightShader() : _shader(nullptr), _dynamicLinking(false) {}
         };
 
         struct CB
