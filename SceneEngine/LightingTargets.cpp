@@ -298,11 +298,22 @@ namespace SceneEngine
         assert(!dest._shader);
 
         if (desc._dynamicLinking && !desc._debugging) {
+            // It would be better to use a ID3D11FunctionLinkingGraph
+            // to construct dynamic linking shaders. Perhaps using a
+            // simple scripting language. Eg:
+            //
+            // FunctionLinkingGraph:0
+            // m0 = Module(game/xleres/deferred/lightlibrary.psh)
+            // n0 = Input(float4 position : POSITION)
+            // n1 = Output(float4 color : SV_Target0)
+            // n0 = Call(m0.main)
+            // Bind(n0.position, n1.position)
+            //
+            // We could specialize this string with a regex replace, and the calling
+            // code would remain platform independent
             dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
                 vertexShader_viewFrustumVector, 
-                (!desc._debugging)
-                    ? "game/xleres/deferred/resolvelight.psh:main:!ps_*"
-                    : "game/xleres/deferred/debugging/resolvedebug.psh:main:ps_*",
+                "game/xleres/deferred/resolvelight.psh:main:!ps_*",
                 definesTable.get());
         } else {
             dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
