@@ -44,14 +44,14 @@ VSShadowOutput main(VSInput input)
 
 	result.shadowFrustumFlags = 0;
 
-	uint count = min(GetShadowSubProjectionCount(), OUTPUT_SHADOW_PROJECTION_COUNT);
+	uint count = min(GetShadowSubProjectionCount(GetShadowCascadeMode()), OUTPUT_SHADOW_PROJECTION_COUNT);
 
 	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 		#if (OUTPUT_SHADOW_PROJECTION_COUNT>0)
 			for (uint c=0; c<count; ++c) {
-				float4 p = ShadowProjection_GetOutput(worldPosition, c);
+				float4 p = ShadowProjection_GetOutput(worldPosition, c, GetShadowCascadeMode());
 				bool	left	= p.x < -p.w,
 						right	= p.x >  p.w,
 						top		= p.y < -p.w,
@@ -69,7 +69,7 @@ VSShadowOutput main(VSInput input)
 		float3 basePosition = mul(OrthoShadowWorldToProj, float4(worldPosition, 1));
 		result.position = basePosition;
 		for (uint c=0; c<count; ++c) {
-			float3 cascade = AdjustForCascade(basePosition, c);
+			float3 cascade = AdjustForOrthoCascade(basePosition, c);
 			bool	left	= cascade.x < -1.f,
 					right	= cascade.x >  1.f,
 					top		= cascade.y < -1.f,

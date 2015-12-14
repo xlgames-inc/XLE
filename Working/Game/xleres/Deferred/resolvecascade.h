@@ -7,48 +7,64 @@
 #if !defined(RESOLVE_CASCADE_H)
 #define RESOLVE_CASCADE_H
 
+#include "../Lighting/LightDesc.h"      // CascadeAddress
 #include "../Transform.h"
 #include "../ShadowProjection.h"
 #include "../Utility/ProjectionMath.h"
 
-void FindCascade_FromWorldPosition(
-    out int finalCascadeIndex, out float4 frustumCoordinates,
-    float3 worldPosition)
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+CascadeAddress CascadeAddress_Invalid()
 {
-        // find the first frustum we're within
-    uint projectionCount = min(GetShadowSubProjectionCount(), ShadowMaxSubProjections);
-
-    finalCascadeIndex = -1;
-
-    #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
-        float3 basePosition = mul(OrthoShadowWorldToProj, float4(worldPosition, 1));
-
-        #if SHADOW_ENABLE_NEAR_CASCADE
-            frustumCoordinates = float4(mul(OrthoNearCascade, float4(basePosition, 1)), 1.f);
-            if (PtInFrustum(frustumCoordinates)) {
-                finalCascadeIndex = projectionCount;
-                return;
-            }
-        #endif
-    #endif
-
-    [unroll] for (uint c=0; c<ShadowMaxSubProjections; c++) {
-        #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
-            frustumCoordinates = mul(ShadowWorldToProj[c], float4(worldPosition, 1));
-        #elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
-            frustumCoordinates = float4(AdjustForCascade(basePosition, c), 1.f);
-        #else
-            frustumCoordinates = float4(2.0.xxx, 1.f);
-        #endif
-
-        if (PtInFrustum(frustumCoordinates)) {
-            finalCascadeIndex = c;
-            break;
-        }
-    }
+    CascadeAddress result;
+    result.cascadeIndex = -1;
+    return result;
 }
 
-float4 CameraCoordinateToShadow(float2 camCoordinate, float worldSpaceDepth, float4x4 camToShadow)
+CascadeAddress CascadeAddress_Create(float4 frustumCoordinates, int cascadeIndex, float4 miniProjection)
+{
+    CascadeAddress result;
+    result.cascadeIndex = cascadeIndex;
+    result.frustumCoordinates = frustumCoordinates;
+    result.miniProjection = miniProjection;
+    return result;
+}
+
+CascadeAddress ResolveCascade_FromWorldPosition(float3 worldPosition, uint cascadeMode, bool enableNearCascade)
+{
+        // find the first frustum we're within
+    uint projectionCount = min(GetShadowSubProjectionCount(cascadeMode), ShadowMaxSubProjections);
+
+    if (cascadeMode == SHADOW_CASCADE_MODE_ORTHOGONAL) {
+        float3 basePosition = mul(OrthoShadowWorldToProj, float4(worldPosition, 1));
+        if (enableNearCascade) {
+            float4 frustumCoordinates = float4(mul(OrthoNearCascade, float4(basePosition, 1)), 1.f);
+            if (PtInFrustum(frustumCoordinates))
+                return CascadeAddress_Create(frustumCoordinates, projectionCount, ShadowProjection_GetMiniProj(projectionCount, cascadeMode));
+        }
+
+            // In ortho mode, all frustums have the same near and far depth
+            // so we can check Z independently from XY
+            // (except for the near cascade, which is focused on the near geometry)
+        if (PtInFrustumZ(float4(basePosition, 1.f))) {
+            [unroll] for (uint c=0; c<ShadowMaxSubProjections; c++) {
+                float4 frustumCoordinates = float4(AdjustForOrthoCascade(basePosition, c), 1.f);
+                if (PtInFrustumXY(frustumCoordinates))
+                    return CascadeAddress_Create(frustumCoordinates, c, ShadowProjection_GetMiniProj(c, cascadeMode));
+            }
+        }
+    } else {
+        [unroll] for (uint c=0; c<ShadowMaxSubProjections; c++) {
+            float4 frustumCoordinates = mul(ShadowWorldToProj[c], float4(worldPosition, 1));
+            if (PtInFrustum(frustumCoordinates))
+                return CascadeAddress_Create(frustumCoordinates, c, ShadowProjection_GetMiniProj(c, cascadeMode));
+        }
+    }
+
+    return CascadeAddress_Invalid();
+}
+
+float4 CameraCoordinateToShadow(float2 camCoordinate, float worldSpaceDepth, float4x4 camToShadow, uint cascadeMode)
 {
     const float cameraCoordinateScale = worldSpaceDepth; // (linear0To1Depth * FarClip);
 
@@ -57,23 +73,20 @@ float4 CameraCoordinateToShadow(float2 camCoordinate, float worldSpaceDepth, flo
         //		We'll be comparing to values in the shadow buffer, so we
         //		should try to use the most accurate transformation method
         //
-    #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
-        float3x3 cameraToShadow3x3 = float3x3(
-            camToShadow[0].xyz,
-            camToShadow[1].xyz,
-            camToShadow[2].xyz);
+    if (cascadeMode==SHADOW_CASCADE_MODE_ORTHOGONAL) {
 
+        float3x3 cameraToShadow3x3 = float3x3(camToShadow[0].xyz, camToShadow[1].xyz, camToShadow[2].xyz);
         float3 offset = mul(cameraToShadow3x3, float3(camCoordinate, -1.f));
         offset *= cameraCoordinateScale;	// try doing this scale here (maybe increase accuracy a bit?)
 
         float3 translatePart = float3(camToShadow[0].w, camToShadow[1].w, camToShadow[2].w);
         return float4(offset + translatePart, 1.f);
-    #else
+
+    } else {
+
         float4x3 cameraToShadow4x3 = float4x3(
-            camToShadow[0].xyz,
-            camToShadow[1].xyz,
-            camToShadow[2].xyz,
-            camToShadow[3].xyz);
+            camToShadow[0].xyz, camToShadow[1].xyz,
+            camToShadow[2].xyz, camToShadow[3].xyz);
 
             // Note the "-1" here is due to our view of camera space, where -Z is into the screen.
             // the scale by cameraCoordinateScale will later scale this up to the correct depth.
@@ -82,20 +95,17 @@ float4 CameraCoordinateToShadow(float2 camCoordinate, float worldSpaceDepth, flo
 
         float4 translatePart = float4(camToShadow[0].w, camToShadow[1].w, camToShadow[2].w, camToShadow[3].w);
         return offset + translatePart;
-    #endif
+
+    }
 
     // return mul(camToShadow, float4(float3(camCoordinate, -1.f) * cameraCoordinateScale, 1.f));
 }
 
-void FindCascade_CameraToShadowMethod(
-    out int finalCascadeIndex, out float4 frustumCoordinates,
-    float2 texCoord, float worldSpaceDepth)
+CascadeAddress ResolveCascade_CameraToShadowMethod(float2 texCoord, float worldSpaceDepth, uint cascadeMode, bool enableNearCascade)
 {
     const float2 camCoordinate = XYScale * texCoord + XYTrans;
 
-    uint projectionCount = min(GetShadowSubProjectionCount(), ShadowMaxSubProjections);
-    finalCascadeIndex = -1;
-    frustumCoordinates = 0.0.xxxx;
+    uint projectionCount = min(GetShadowSubProjectionCount(cascadeMode), ShadowMaxSubProjections);
 
         // 	Find the first frustum we're within
         //	This first loop is kept separate and simple
@@ -116,49 +126,36 @@ void FindCascade_CameraToShadowMethod(
         //	required by 4 (but obvious increases the instruction count).
         //	That seems like a good improvement.
 
-    #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
+    if (cascadeMode==SHADOW_CASCADE_MODE_ORTHOGONAL) {
 
-        #if SHADOW_ENABLE_NEAR_CASCADE
-            float3 nearCascadeCoord = CameraCoordinateToShadow(camCoordinate, worldSpaceDepth, OrthoNearCameraToShadow).xyz;
-            if (PtInFrustum(float4(nearCascadeCoord, 1.f))) {
-                finalCascadeIndex = projectionCount;
-                frustumCoordinates = float4(nearCascadeCoord, 1.f);
-                return;
-            }
-        #endif
+        if (enableNearCascade) {
+            float4 nearCascadeCoord = float4(CameraCoordinateToShadow(camCoordinate, worldSpaceDepth, OrthoNearCameraToShadow, cascadeMode).xyz, 1.f);
+            if (PtInFrustum(nearCascadeCoord))
+                return CascadeAddress_Create(nearCascadeCoord, projectionCount, ShadowProjection_GetMiniProj(projectionCount, cascadeMode));
+        }
 
             // in ortho mode, this is much simplier... Here is a
             // separate implementation to take advantage of that case!
-
-        float3 baseCoord = CameraCoordinateToShadow(camCoordinate, worldSpaceDepth, OrthoCameraToShadow).xyz;
-
-            // all cascades have the same near/far clip plane. So we can reject based on depth early
-            // then we only need to look at the XY part of each cascade
-        if (max(baseCoord.z, 1.f-baseCoord.z) <= 1.f) {
+        float3 baseCoord = CameraCoordinateToShadow(camCoordinate, worldSpaceDepth, OrthoCameraToShadow, cascadeMode).xyz;
+        if (PtInFrustumZ(float4(baseCoord, 1.f))) {
             [unroll] for (uint c=0; c<ShadowMaxSubProjections; c++) {
-                float3 t = AdjustForCascade(baseCoord, c);
-                if (max(abs(t.x), abs(t.y)) < 1.f) {
-                    finalCascadeIndex = c;
-                    frustumCoordinates = float4(t, 1.f);
-                    break;
-                }
+                float4 t = float4(AdjustForOrthoCascade(baseCoord, c), 1.f);
+                if (PtInFrustumXY(t))
+                    return CascadeAddress_Create(t, c, ShadowProjection_GetMiniProj(c, cascadeMode));
             }
         }
 
-    #else
+    } else {
+
         for (uint c=0; c<projectionCount; c++) {
-            frustumCoordinates = CameraCoordinateToShadow(
-                camCoordinate, worldSpaceDepth, CameraToShadow[c]);
-
-            float wPart = frustumCoordinates.w;
-            if (max(max(abs(frustumCoordinates.x), abs(frustumCoordinates.y)),
-                max(frustumCoordinates.z, wPart-frustumCoordinates.z)) < wPart) {
-
-                finalCascadeIndex = c;
-                break;
-            }
+            float4 frustumCoordinates = CameraCoordinateToShadow(camCoordinate, worldSpaceDepth, CameraToShadow[c], cascadeMode);
+            if (PtInFrustum(frustumCoordinates))
+                return CascadeAddress_Create(frustumCoordinates, c, ShadowProjection_GetMiniProj(c, cascadeMode));
         }
-    #endif
+
+    }
+
+    return CascadeAddress_Invalid();
 }
 
 #endif

@@ -22,7 +22,7 @@
 	//if (BackfaceSign(float4(input[0].position,1), float4(input[1].position,1), float4(input[2].position,1)) > 0)
 	//	return;
 
-	uint count = min(GetShadowSubProjectionCount(), OUTPUT_SHADOW_PROJECTION_COUNT);
+	uint count = min(GetShadowSubProjectionCount(GetShadowCascadeMode()), OUTPUT_SHADOW_PROJECTION_COUNT);
 	for (uint c=0; c<count; ++c) {
 		#if defined(FRUSTUM_FILTER)
 			if ((FRUSTUM_FILTER & (1<<c)) == 0) {
@@ -45,9 +45,9 @@
 			float4 p1 = input[1].shadowPosition[c];
 			float4 p2 = input[2].shadowPosition[c];
 		#elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
-			float4 p0 = float4(AdjustForCascade(input[0].position.xyz, c), 1.f);
-			float4 p1 = float4(AdjustForCascade(input[1].position.xyz, c), 1.f);
-			float4 p2 = float4(AdjustForCascade(input[2].position.xyz, c), 1.f);
+			float4 p0 = float4(AdjustForOrthoCascade(input[0].position.xyz, c), 1.f);
+			float4 p1 = float4(AdjustForOrthoCascade(input[1].position.xyz, c), 1.f);
+			float4 p2 = float4(AdjustForOrthoCascade(input[2].position.xyz, c), 1.f);
 		#else
 			float4 p0 = 0.0.xxxx;
 			float4 p1 = 0.0.xxxx;
@@ -123,7 +123,7 @@
 		// Note that the clip test here is going to be expensive! We ideally enable this only when
 		// required.
 
-		uint nearCascadeIndex = GetShadowSubProjectionCount();
+		uint nearCascadeIndex = GetShadowSubProjectionCount(GetShadowCascadeMode());
 
 		float4 p0 = float4(mul(OrthoNearCascade, float4(input[0].position.xyz, 1.f)), 1.f);
 		float4 p1 = float4(mul(OrthoNearCascade, float4(input[1].position.xyz, 1.f)), 1.f);

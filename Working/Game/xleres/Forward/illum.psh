@@ -32,12 +32,16 @@ float3 ResolveLitColor(
 				shadowing[c] = 1.f;
 
 			#if SHADOW_CASCADE_MODE!=0
-				int cascade; float4 fc;
-				FindCascade_FromWorldPosition(cascade, fc, worldPosition);
-				if (cascade >= 0) {
+				bool enableNearCascade = false;
+				#if SHADOW_ENABLE_NEAR_CASCADE != 0
+					enableNearCascade = true;
+				#endif
+
+				CascadeAddress cascade = ResolveCascade_FromWorldPosition(worldPosition, GetShadowCascadeMode(), enableNearCascade);
+				if (cascade.cascadeIndex >= 0) {
 					shadowing[0] = ResolveShadows_Cascade(
-						cascade, fc, pixelCoords, sampleIndex,
-						ShadowResolveConfig_NoFilter());
+						cascade.cascadeIndex, cascade.frustumCoordinates, cascade.miniProjection,
+						pixelCoords, sampleIndex, ShadowResolveConfig_NoFilter());
 				}
 			#endif
 		}

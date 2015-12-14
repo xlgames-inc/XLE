@@ -31,4 +31,11 @@ struct LightDesc
 	float3	OrientationZ; 	uint	Dummy;
 };
 
+struct CascadeAddress
+{
+	float4  frustumCoordinates;
+	int     cascadeIndex;
+	float4  miniProjection;
+};
+
 #endif

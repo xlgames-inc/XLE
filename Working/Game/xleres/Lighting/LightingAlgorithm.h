@@ -251,5 +251,29 @@ float3 AdjSkyCubeMapCoords(float3 input)
 	return float3(input.x, input.z, -input.y);
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+float PowerForHalfRadius(float halfRadius, float powerFraction)
+{
+		// attenuation = power / (distanceSq+1);
+		// attenuation * (distanceSq+1) = power
+		// (power*0.5f) * (distanceSq+1) = power
+		// .5f*power = distanceSq+1
+		// power = (distanceSq+1) / .5f
+	return ((halfRadius*halfRadius)+1.f) * (1.f/(1.f-powerFraction));
+}
+
+float DistanceAttenuation(float distanceSq, float power)
+{
+	return power / (distanceSq+1.f);
+}
+
+float CalculateRadiusLimitAttenuation(float distanceSq, float lightRadius)
+{
+	// Calculate the drop-off towards the edge of the light radius...
+	float D = distanceSq; D *= D; D *= D;
+	float R = lightRadius; R *= R; R *= R; R *= R;
+	return 1.f - saturate(3.f * D / R);
+}
 
 #endif

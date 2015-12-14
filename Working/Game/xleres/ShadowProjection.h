@@ -45,60 +45,55 @@ cbuffer ScreenToShadowProjection
 	row_major float4x4 OrthoNearCameraToShadow;
 }
 
-uint GetShadowSubProjectionCount()
+#if defined(SHADOW_CASCADE_MODE)
+	uint GetShadowCascadeMode() { return SHADOW_CASCADE_MODE; }
+#endif
+
+uint GetShadowSubProjectionCount(uint cascadeMode)
 {
-    #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
-		return ShadowSubProjectionCount;
-	#elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
-		return OrthoShadowSubProjectionCount;
-    #else
-        return 0;
-	#endif
+	if (cascadeMode == SHADOW_CASCADE_MODE_ARBITRARY) 	return ShadowSubProjectionCount;
+	if (cascadeMode == SHADOW_CASCADE_MODE_ORTHOGONAL) 	return OrthoShadowSubProjectionCount;
+    return 0;
 }
 
-float3 AdjustForCascade(float3 basePosition, uint cascadeIndex)
+float3 AdjustForOrthoCascade(float3 basePosition, uint cascadeIndex)
 {
-    #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
-        return float3(
-			basePosition.x * OrthoShadowCascadeScale[cascadeIndex].x + OrthoShadowCascadeTrans[cascadeIndex].x,
-			basePosition.y * OrthoShadowCascadeScale[cascadeIndex].y + OrthoShadowCascadeTrans[cascadeIndex].y,
-			basePosition.z);
-    #else
-        return basePosition;
-    #endif
+    return float3(
+		basePosition.x * OrthoShadowCascadeScale[cascadeIndex].x + OrthoShadowCascadeTrans[cascadeIndex].x,
+		basePosition.y * OrthoShadowCascadeScale[cascadeIndex].y + OrthoShadowCascadeTrans[cascadeIndex].y,
+		basePosition.z);
 }
 
-float4 ShadowProjection_GetOutput(float3 position, uint cascadeIndex)
+float4 ShadowProjection_GetOutput(float3 position, uint cascadeIndex, uint cascadeMode)
 {
-	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
+	if (cascadeMode==SHADOW_CASCADE_MODE_ARBITRARY) {
         return mul(ShadowWorldToProj[cascadeIndex], float4(position,1));
-    #elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
-        float3 a = AdjustForCascade(mul(OrthoShadowWorldToProj, float4(position, 1)), cascadeIndex);
+    } else if (cascadeMode==SHADOW_CASCADE_MODE_ORTHOGONAL) {
+        float3 a = AdjustForOrthoCascade(mul(OrthoShadowWorldToProj, float4(position, 1)), cascadeIndex);
         return float4(a, 1.f);
-    #else
+    } else {
         return 0.0.xxxx;
-    #endif
+    }
 }
 
-float4 ShadowProjection_GetOutput(VSInput geo, uint cascadeIndex)
+float4 ShadowProjection_GetOutput(VSInput geo, uint cascadeIndex, uint cascadeMode)
 {
-	return ShadowProjection_GetOutput(geo.position, cascadeIndex);
+	return ShadowProjection_GetOutput(geo.position, cascadeIndex, cascadeMode);
 }
 
-float4 ShadowProjection_GetMiniProj(uint cascadeIndex)
+float4 ShadowProjection_GetMiniProj(uint cascadeIndex, uint cascadeMode)
 {
-	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
+	if (cascadeMode==SHADOW_CASCADE_MODE_ARBITRARY) {
         return ShadowMinimalProjection[cascadeIndex];
-    #elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
+    } else if (cascadeMode==SHADOW_CASCADE_MODE_ORTHOGONAL) {
 		if (cascadeIndex == OrthoShadowSubProjectionCount)
 			return OrthoShadowNearMinimalProjection;
         float4 result = OrthoShadowMinimalProjection;
 		result.xy = OrthoShadowCascadeScale[cascadeIndex].xy;
 		return result;
-    #else
+    } else {
         return 1.0.xxxx;
-    #endif
+    }
 }
-
 
 #endif
