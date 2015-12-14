@@ -16,9 +16,8 @@ namespace ControlsLibrary
             InitializeComponent();
 
             _list = new GUILayer.InvalidAssetList();
-            _assetList.Items.Clear();
-            foreach (var a in _list.AssetList)
-                _assetList.Items.Add(a.Item1);
+            RebuildList();
+            _list._onChange += RebuildList;
 
             _assetList.SelectedIndexChanged += SelectedIndexChanged;
         }
@@ -34,6 +33,21 @@ namespace ControlsLibrary
         private void _closeButton_Click(object sender, EventArgs e)
         {
             DialogResult = DialogResult.OK;
+        }
+
+        private void RebuildList()
+        {
+            if (InvokeRequired) {
+                Invoke(new Action(() => this.RebuildList()));
+                return;
+            }
+
+            _assetList.Items.Clear();
+            var list = _list.AssetList;
+            foreach (var a in list)
+                _assetList.Items.Add(a.Item1);
+            if (_assetList.Items.Count > 0)
+                _assetList.SelectedIndex = 0;
         }
 
         protected GUILayer.InvalidAssetList _list;

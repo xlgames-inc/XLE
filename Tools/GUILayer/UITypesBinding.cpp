@@ -679,19 +679,47 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    static void InvokeChangeEvent(gcroot<InvalidAssetList^> ptr)
+    {
+        return ptr->RaiseChangeEvent();
+    }
+
     InvalidAssetList::InvalidAssetList()
     {
-        _assetList = gcnew List<Tuple<String^, String^>^>();
+        _eventId = 0;
 
             // get the list of assets from the underlying manager
         if (::Assets::Services::GetInvalidAssetMan()) {
+            auto& man = *::Assets::Services::GetInvalidAssetMan();
+            gcroot<InvalidAssetList^> ptrToThis = this;
+            _eventId = man.AddOnChangeEvent(std::bind(InvokeChangeEvent, ptrToThis));
+        }
+    }
+
+    InvalidAssetList::~InvalidAssetList()
+    {
+        if (::Assets::Services::GetInvalidAssetMan())
+            ::Assets::Services::GetInvalidAssetMan()->RemoveOnChangeEvent(_eventId);
+    }
+
+    IEnumerable<Tuple<String^, String^>^>^ InvalidAssetList::AssetList::get() 
+    { 
+        auto result = gcnew List<Tuple<String^, String^>^>();
+        result->Clear();
+        if (::Assets::Services::GetInvalidAssetMan()) {
             auto list = ::Assets::Services::GetInvalidAssetMan()->GetAssets();
             for (const auto& i : list) {
-                _assetList->Add(gcnew Tuple<String^, String^>(
+                result->Add(gcnew Tuple<String^, String^>(
                     clix::marshalString<clix::E_UTF8>(i._name),
                     clix::marshalString<clix::E_UTF8>(i._errorString)));
             }
         }
+        return result;
+    }
+
+    void InvalidAssetList::RaiseChangeEvent()
+    {
+        _onChange();
     }
 
     bool InvalidAssetList::HasInvalidAssets()

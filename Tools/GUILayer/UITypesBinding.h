@@ -379,13 +379,18 @@ namespace GUILayer
     public:
         property IEnumerable<Tuple<String^, String^>^>^ AssetList 
         {
-            IEnumerable<Tuple<String^, String^>^>^ get() { return _assetList; }
+            IEnumerable<Tuple<String^, String^>^>^ get();
         }
 
         static bool HasInvalidAssets();
 
+        delegate void OnChange();
+        event OnChange^ _onChange;
+        void RaiseChangeEvent();
+
         InvalidAssetList();
+        ~InvalidAssetList();
     protected:
-        List<Tuple<String^, String^>^>^ _assetList;
+        unsigned _eventId;
     };
 }

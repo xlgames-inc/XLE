@@ -10,6 +10,7 @@
 #include "../Core/Types.h"
 #include <memory>
 #include <vector>
+#include <functional>
 
 namespace Assets
 {
@@ -31,6 +32,11 @@ namespace Assets
         };
 
         std::vector<AssetRef> GetAssets() const;
+        
+        using OnChangeEvent = std::function<void()>;
+        using ChangeEventId = unsigned;
+        ChangeEventId AddOnChangeEvent(OnChangeEvent evnt);
+        void RemoveOnChangeEvent(ChangeEventId id);
 
         void MarkInvalid(const rstring& name, const rstring& errorString);
         void MarkValid(const ResChar name[]);

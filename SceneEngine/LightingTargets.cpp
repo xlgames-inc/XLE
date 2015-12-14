@@ -226,15 +226,39 @@ namespace SceneEngine
             ;
     }
 
-    const char* AsShaderInterface(LightingResolveShaders::Shape shape)
+    const char* AsLightResolverInterface(const LightingResolveShaders::LightShaderType& type)
     {
-        switch (shape) {
+        switch (type._shape) {
         default:
         case LightingResolveShaders::Directional:   return "Directional";
         case LightingResolveShaders::Sphere:        return "Sphere";
         case LightingResolveShaders::Tube:          return "Tube";
         case LightingResolveShaders::Rectangle:     return "Rectangle";
         case LightingResolveShaders::Disc:          return "Disc";
+        }
+    }
+
+    const char* AsShadowResolverInterface(const LightingResolveShaders::LightShaderType& type)
+    {
+        if (type._shadows == LightingResolveShaders::NoShadows)
+            return "ShadowResolver_None";
+
+        switch (type._shadowResolveModel) {
+        default:
+        case 0: return "ShadowResolver_PoissonDisc";
+        case 1: return "ShadowResolver_Smooth";
+        }
+    }
+
+    const char* AsCascadeResolverInterface(const LightingResolveShaders::LightShaderType& type)
+    {
+        switch (type._shadows) {
+        default:
+        case LightingResolveShaders::NoShadows:                 return "CascadeResolver_None";
+        case LightingResolveShaders::PerspectiveShadows:        return "CascadeResolver_Arbitrary";
+        case LightingResolveShaders::OrthHybridShadows:
+        case LightingResolveShaders::OrthShadows:               return "CascadeResolver_Orthogonal";
+        case LightingResolveShaders::OrthShadowsNearCascade:    return "CascadeResolver_OrthogonalWithNear";
         }
     }
 
@@ -285,9 +309,9 @@ namespace SceneEngine
             dest._uniforms.BindShaderResource(Hash64("RTSTriangles"),               SR::RTShadow_Triangles, 1);
 
             dest._boundClassInterfaces = Metal::BoundClassInterfaces(*dest._shader);
-            dest._boundClassInterfaces.Bind(Hash64("MainResolver"), 0, AsShaderInterface(type._shape));
-            dest._boundClassInterfaces.Bind(Hash64("MainCascadeResolver"), 0, "CascadeResolver_None");
-            dest._boundClassInterfaces.Bind(Hash64("MainShadowResolver"), 0, "ShadowResolver_None");
+            dest._boundClassInterfaces.Bind(Hash64("MainResolver"), 0, AsLightResolverInterface(type));
+            dest._boundClassInterfaces.Bind(Hash64("MainCascadeResolver"), 0, AsCascadeResolverInterface(type));
+            dest._boundClassInterfaces.Bind(Hash64("MainShadowResolver"), 0, AsShadowResolverInterface(type));
 
             ::Assets::RegisterAssetDependency(_validationCallback, dest._shader->GetDependencyValidation());
         }
