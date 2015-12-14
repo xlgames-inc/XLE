@@ -146,6 +146,7 @@ namespace SceneEngine
 
         using ShaderProgram = RenderCore::Metal::ShaderProgram;
         using BoundUniforms = RenderCore::Metal::BoundUniforms;
+        using BoundClassInterfaces = RenderCore::Metal::BoundClassInterfaces;
 
         enum Shape : uint8 { Directional, Sphere, Tube, Rectangle, Disc };
         enum Shadowing : uint8 { NoShadows, PerspectiveShadows, OrthShadows, OrthShadowsNearCascade, OrthHybridShadows };
@@ -176,6 +177,7 @@ namespace SceneEngine
         public:
             const ShaderProgram*    _shader;
             BoundUniforms           _uniforms;
+            BoundClassInterfaces    _boundClassInterfaces;
 
             LightShader() : _shader(nullptr) {}
         };

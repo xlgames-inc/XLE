@@ -621,7 +621,7 @@ namespace SceneEngine
                 shader->_uniforms.Apply(
                     context, parserContext.GetGlobalUniformsStream(), 
                     Metal::UniformsStream(constantBufferPackets, prebuiltConstantBuffers, srvs));
-                context.Bind(*shader->_shader);
+                context.Bind(*shader->_shader, shader->_boundClassInterfaces);
                 context.Draw(4);
             CATCH_ASSETS_END(parserContext)
         }

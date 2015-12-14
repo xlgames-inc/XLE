@@ -226,9 +226,23 @@ namespace SceneEngine
             ;
     }
 
+    const char* AsShaderInterface(LightingResolveShaders::Shape shape)
+    {
+        switch (shape) {
+        default:
+        case LightingResolveShaders::Directional:   return "Directional";
+        case LightingResolveShaders::Sphere:        return "Sphere";
+        case LightingResolveShaders::Tube:          return "Tube";
+        case LightingResolveShaders::Rectangle:     return "Rectangle";
+        case LightingResolveShaders::Disc:          return "Disc";
+        }
+    }
+
     void LightingResolveShaders::BuildShader(const Desc& desc, const LightShaderType& type)
     {
         using namespace RenderCore;
+
+        if (type._shadows != NoShadows) return;
 
         StringMeld<256, ::Assets::ResChar> definesTable;
         definesTable << "GBUFFER_TYPE=" << desc._gbufferType;
@@ -240,7 +254,6 @@ namespace SceneEngine
         definesTable << ";SHADOW_RESOLVE_MODEL=" << unsigned(type._shadowResolveModel);
         definesTable << ";SHADOW_RT_HYBRID=" << unsigned(type._shadows == OrthHybridShadows);
         definesTable << ";HAS_SCREENSPACE_AO=" << unsigned(type._hasScreenSpaceAO);
-        definesTable << ";LIGHT_SHAPE=" << unsigned(type._shape);
 
         const char* vertexShader_viewFrustumVector = 
             desc._flipDirection
@@ -252,34 +265,16 @@ namespace SceneEngine
         assert(!dest._shader);
 
         if (!desc._debugging) {
-            if (type._shape == Directional) {
-
-                if (type._shadows == NoShadows) {
-                    dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-                        vertexShader_viewFrustumVector, 
-                        "game/xleres/deferred/resolveunshadowed.psh:ResolveLightUnshadowed:ps_*",
-                        definesTable.get());
-                } else {
-                    dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-                        vertexShader_viewFrustumVector, 
-                        "game/xleres/deferred/resolve.psh:ResolveLight:ps_*",
-                        definesTable.get());
-                }
-
+            if (type._shadows == NoShadows) {
+                dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    vertexShader_viewFrustumVector, 
+                    "game/xleres/deferred/resolveunshadowed.psh:ResolveLightUnshadowed:!ps_*",
+                    definesTable.get());
             } else {
-
-                if (type._shadows == NoShadows) {
-                    dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-                        vertexShader_viewFrustumVector, 
-                        "game/xleres/deferred/resolveunshadowed.psh:ResolveAreaLightUnshadowed:ps_*",
-                        definesTable.get());
-                } else {
-                    dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-                        vertexShader_viewFrustumVector, 
-                        "game/xleres/deferred/resolve.psh:ResolveAreaLight:ps_*",
-			            definesTable.get());
-                }
-
+                dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    vertexShader_viewFrustumVector, 
+                    "game/xleres/deferred/resolve.psh:ResolveAreaLight:ps_*",
+			        definesTable.get());
             }
         } else {
             if (type._shape != Directional && type._shadows == NoShadows)
@@ -290,7 +285,7 @@ namespace SceneEngine
         }
 
         if (dest._shader) {
-            dest._uniforms = Metal::BoundUniforms(std::ref(*dest._shader));
+            dest._uniforms = Metal::BoundUniforms(*dest._shader);
 
             Techniques::TechniqueContext::BindGlobalUniforms(dest._uniforms);
             dest._uniforms.BindConstantBuffer(Hash64("ArbitraryShadowProjection"),  CB::ShadowProj_Arbit, 1);
@@ -304,6 +299,9 @@ namespace SceneEngine
             dest._uniforms.BindShaderResource(Hash64("RTSListsHead"),               SR::RTShadow_ListHead, 1);
             dest._uniforms.BindShaderResource(Hash64("RTSLinkedLists"),             SR::RTShadow_LinkedLists, 1);
             dest._uniforms.BindShaderResource(Hash64("RTSTriangles"),               SR::RTShadow_Triangles, 1);
+
+            dest._boundClassInterfaces = Metal::BoundClassInterfaces(*dest._shader);
+            dest._boundClassInterfaces.Bind(Hash64("MainResolver"), 0, AsShaderInterface(type._shape));
 
             ::Assets::RegisterAssetDependency(_validationCallback, dest._shader->GetDependencyValidation());
         }

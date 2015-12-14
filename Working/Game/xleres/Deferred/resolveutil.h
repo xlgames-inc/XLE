@@ -58,7 +58,7 @@ float DistanceAttenuation(float distanceSq, float power)
 	return power / (distanceSq+1.f);
 }
 
-float CalculateRadiusLimitAttenutation(float distanceSq, float lightRadius)
+float CalculateRadiusLimitAttenuation(float distanceSq, float lightRadius)
 {
 	// Calculate the drop-off towards the edge of the light radius...
 	float D = distanceSq; D *= D; D *= D;

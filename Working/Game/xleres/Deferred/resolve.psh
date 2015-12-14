@@ -223,7 +223,7 @@ float4 ResolveAreaLight(	float4 position : SV_Position,
     float specAttenuation = (alpha * alpha) / (alphaPrime * alphaPrime);
 
     float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
-    float radiusDropOff = CalculateRadiusLimitAttenutation(distanceSq, Light.CutoffRange);
+    float radiusDropOff = CalculateRadiusLimitAttenuation(distanceSq, Light.CutoffRange);
 
     const float lightScale = LightingScale;
     return float4((lightScale*radiusDropOff*distanceAttenuation)*(diffuse + specAttenuation * specular), 1.f);
