@@ -7,9 +7,9 @@
 #if !defined(SHADOW_TYPES_H)
 #define SHADOW_TYPES_H
 
-#include "../Lighting/ResolverInterface.h"
-#include "../deferred/resolvecascade.h"
+#include "ResolverInterface.h"
 #include "ShadowsResolve.h"
+#include "CascadeResolve.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     //   I N T E R F A C E

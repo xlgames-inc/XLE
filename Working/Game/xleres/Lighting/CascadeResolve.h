@@ -4,10 +4,10 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#if !defined(RESOLVE_CASCADE_H)
-#define RESOLVE_CASCADE_H
+#if !defined(CASCADE_RESOLVE_H)
+#define CASCADE_RESOLVE_H
 
-#include "../Lighting/LightDesc.h"      // CascadeAddress
+#include "LightDesc.h"      // CascadeAddress
 #include "../Transform.h"
 #include "../ShadowProjection.h"
 #include "../Utility/ProjectionMath.h"
@@ -40,18 +40,20 @@ CascadeAddress ResolveCascade_FromWorldPosition(float3 worldPosition, uint casca
         if (enableNearCascade) {
             float4 frustumCoordinates = float4(mul(OrthoNearCascade, float4(basePosition, 1)), 1.f);
             if (PtInFrustum(frustumCoordinates))
-                return CascadeAddress_Create(frustumCoordinates, projectionCount, ShadowProjection_GetMiniProj(projectionCount, cascadeMode));
+                return CascadeAddress_Create(frustumCoordinates, projectionCount, OrthoShadowNearMinimalProjection);
         }
 
             // In ortho mode, all frustums have the same near and far depth
             // so we can check Z independently from XY
             // (except for the near cascade, which is focused on the near geometry)
-        if (PtInFrustumZ(float4(basePosition, 1.f))) {
-            [unroll] for (uint c=0; c<ShadowMaxSubProjections; c++) {
+        [branch] if (PtInFrustumZ(float4(basePosition, 1.f))) {
+            CascadeAddress result = CascadeAddress_Invalid();
+            [unroll] for (int c=ShadowMaxSubProjections-1; c>=0; c--) {
                 float4 frustumCoordinates = float4(AdjustForOrthoCascade(basePosition, c), 1.f);
                 if (PtInFrustumXY(frustumCoordinates))
-                    return CascadeAddress_Create(frustumCoordinates, c, ShadowProjection_GetMiniProj(c, cascadeMode));
+                    result = CascadeAddress_Create(frustumCoordinates, c, ShadowProjection_GetMiniProj_NotNear(c, cascadeMode));
             }
+            return result;
         }
     } else {
         [unroll] for (uint c=0; c<ShadowMaxSubProjections; c++) {
@@ -131,18 +133,20 @@ CascadeAddress ResolveCascade_CameraToShadowMethod(float2 texCoord, float worldS
         if (enableNearCascade) {
             float4 nearCascadeCoord = float4(CameraCoordinateToShadow(camCoordinate, worldSpaceDepth, OrthoNearCameraToShadow, cascadeMode).xyz, 1.f);
             if (PtInFrustum(nearCascadeCoord))
-                return CascadeAddress_Create(nearCascadeCoord, projectionCount, ShadowProjection_GetMiniProj(projectionCount, cascadeMode));
+                return CascadeAddress_Create(nearCascadeCoord, projectionCount, OrthoShadowNearMinimalProjection);
         }
 
             // in ortho mode, this is much simplier... Here is a
             // separate implementation to take advantage of that case!
         float3 baseCoord = CameraCoordinateToShadow(camCoordinate, worldSpaceDepth, OrthoCameraToShadow, cascadeMode).xyz;
-        if (PtInFrustumZ(float4(baseCoord, 1.f))) {
-            [unroll] for (uint c=0; c<ShadowMaxSubProjections; c++) {
+        [branch] if (PtInFrustumZ(float4(baseCoord, 1.f))) {
+            CascadeAddress result = CascadeAddress_Invalid();
+            [unroll] for (int c=ShadowMaxSubProjections-1; c>=0; c--) {
                 float4 t = float4(AdjustForOrthoCascade(baseCoord, c), 1.f);
                 if (PtInFrustumXY(t))
-                    return CascadeAddress_Create(t, c, ShadowProjection_GetMiniProj(c, cascadeMode));
+                    result = CascadeAddress_Create(t, c, ShadowProjection_GetMiniProj_NotNear(c, cascadeMode));
             }
+            return result;
         }
 
     } else {

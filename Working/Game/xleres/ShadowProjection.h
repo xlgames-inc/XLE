@@ -81,19 +81,25 @@ float4 ShadowProjection_GetOutput(VSInput geo, uint cascadeIndex, uint cascadeMo
 	return ShadowProjection_GetOutput(geo.position, cascadeIndex, cascadeMode);
 }
 
-float4 ShadowProjection_GetMiniProj(uint cascadeIndex, uint cascadeMode)
+float4 ShadowProjection_GetMiniProj_NotNear(uint cascadeIndex, uint cascadeMode)
 {
 	if (cascadeMode==SHADOW_CASCADE_MODE_ARBITRARY) {
-        return ShadowMinimalProjection[cascadeIndex];
-    } else if (cascadeMode==SHADOW_CASCADE_MODE_ORTHOGONAL) {
-		if (cascadeIndex == OrthoShadowSubProjectionCount)
-			return OrthoShadowNearMinimalProjection;
-        float4 result = OrthoShadowMinimalProjection;
+		return ShadowMinimalProjection[cascadeIndex];
+	} else if (cascadeMode==SHADOW_CASCADE_MODE_ORTHOGONAL) {
+		float4 result = OrthoShadowMinimalProjection;
 		result.xy = OrthoShadowCascadeScale[cascadeIndex].xy;
 		return result;
-    } else {
-        return 1.0.xxxx;
-    }
+	} else {
+		return 1.0.xxxx;
+	}
+}
+
+float4 ShadowProjection_GetMiniProj(uint cascadeIndex, uint cascadeMode)
+{
+    if (	cascadeMode==SHADOW_CASCADE_MODE_ORTHOGONAL
+		&& 	cascadeIndex == OrthoShadowSubProjectionCount)
+		return OrthoShadowNearMinimalProjection;
+	return ShadowProjection_GetMiniProj_NotNear(cascadeIndex, cascadeMode);
 }
 
 #endif

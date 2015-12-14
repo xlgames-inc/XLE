@@ -32,6 +32,16 @@ cbuffer LightBuffer
     ICascadeResolver    GetCascadeResolver()    { return MainCascadeResolver; }
     IShadowResolver     GetShadowResolver()     { return MainShadowResolver; }
 #else
+
+    // When dynamic linking is disabled, we select the correct interface
+    // by using defines.
+    // In debug mode (ie, when shader optimizations are disabled), this can
+    // reduce performance (relative to calling plain functions)
+    // But when the shaders are compiled, it seems the overhead is minimal.
+    // Using the "interfaces" like this helps give structure to the code
+    // (even though we're not actually using the dynamic resolve stuff), and
+    // it gives us a few more options.
+
     ILightResolver      GetLightResolver()
     {
         #if LIGHT_SHAPE == 1

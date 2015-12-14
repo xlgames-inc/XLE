@@ -12,8 +12,7 @@
 #include "../Lighting/AmbientResolve.h"
 #include "../Lighting/BasicLightingEnvironment.h"
 #include "../Lighting/ShadowsResolve.h"
-
-#include "../Deferred/ResolveCascade.h"
+#include "../Lighting/CascadeResolve.h"
 
 float3 ResolveLitColor(
 	GBufferValues sample, float3 directionToEye,
