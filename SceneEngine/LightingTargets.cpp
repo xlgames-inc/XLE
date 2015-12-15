@@ -302,12 +302,20 @@ namespace SceneEngine
             // to construct dynamic linking shaders. Perhaps using a
             // simple scripting language. Eg:
             //
-            // FunctionLinkingGraph:0
-            // m0 = Module(game/xleres/deferred/lightlibrary.psh)
+            // FunctionLinkingGraph:1
             // n0 = Input(float4 position : POSITION)
             // n1 = Output(float4 color : SV_Target0)
-            // n0 = Call(m0.main)
-            // Bind(n0.position, n1.position)
+            // m0 = Module(game/xleres/deferred/lightlibrary.psh)
+            // n2 = Call(m0.main)
+            // PassValue(n2.0, n0.0)
+            // PassValue(n2.1, n0.1)
+            //
+            // Alternatively (avoiding the PassValue syntax):
+            // FunctionLinkingGraph:1
+            // n0 = Input(float4 position : POSITION)
+            // m0 = Module(game/xleres/deferred/lightlibrary.psh)
+            // n2 = m0.main(n0.0, n0.1)
+            // n1 = Output(float4 color : SV_Target0 = n2.1)
             //
             // We could specialize this string with a regex replace, and the calling
             // code would remain platform independent

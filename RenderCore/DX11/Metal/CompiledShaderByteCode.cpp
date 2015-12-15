@@ -32,19 +32,6 @@ namespace RenderCore { namespace Metal_DX11
 
     static const auto s_shaderReflectionInterfaceGuid = IID_ID3D11ShaderReflection; // __uuidof(ID3D::ShaderReflection); // 
 
-    static HRESULT D3DCompile_Wrapper(
-        LPCVOID pSrcData,
-        SIZE_T SrcDataSize,
-        LPCSTR pSourceName,
-        const D3D_SHADER_MACRO* pDefines,
-        ID3DInclude* pInclude,
-        LPCSTR pEntrypoint,
-        LPCSTR pTarget,
-        UINT Flags1,
-        UINT Flags2,
-        ID3DBlob** ppCode,
-        ID3DBlob** ppErrorMsgs);
-
     class D3DShaderCompiler : public ShaderService::ILowLevelCompiler
     {
     public:
@@ -80,6 +67,22 @@ namespace RenderCore { namespace Metal_DX11
             UINT Flags2,
             ID3DBlob** ppCode,
             ID3DBlob** ppErrorMsgs) const;
+
+        HRESULT D3DCreateFunctionLinkingGraph_Wrapper(
+            UINT uFlags,
+            ID3D11FunctionLinkingGraph **ppFunctionLinkingGraph) const;
+
+        HRESULT D3DCreateLinker_Wrapper(ID3D11Linker **ppLinker) const;
+
+        HRESULT D3DLoadModule_Wrapper(
+            LPCVOID pSrcData, SIZE_T cbSrcDataSize, 
+            ID3D11Module **ppModule) const;
+
+        HRESULT D3DReflectLibrary_Wrapper(
+            LPCVOID pSrcData,
+            SIZE_T  SrcDataSize,
+            REFIID  riid,
+            LPVOID  *ppReflector) const;
 
         D3DShaderCompiler();
         ~D3DShaderCompiler();
@@ -373,12 +376,44 @@ namespace RenderCore { namespace Metal_DX11
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    std::shared_ptr<std::vector<uint8>> MakeBlob(StringSection<char> stringSection)
+    {
+        return std::make_shared<std::vector<uint8>>((const uint8*)stringSection.begin(), (const uint8*)stringSection.end());
+    }
+
+    static void CreatePayloadFromBlobs(
+        /*out*/ std::shared_ptr<std::vector<uint8>>& payload,
+        /*out*/ std::shared_ptr<std::vector<uint8>>& errors,
+        ID3DBlob* payloadBlob,
+        ID3DBlob* errorsBlob,
+        const ShaderService::ShaderHeader& hdr)
+    {
+        payload.reset();
+        if (payloadBlob && payloadBlob->GetBufferPointer() && payloadBlob->GetBufferSize()) {
+            payload = std::make_shared<std::vector<uint8>>(payloadBlob->GetBufferSize() + sizeof(ShaderService::ShaderHeader));
+            auto* dsthdr = (ShaderService::ShaderHeader*)AsPointer(payload->begin());
+            *dsthdr = hdr;
+            XlCopyMemory(
+                PtrAdd(AsPointer(payload->begin()), sizeof(ShaderService::ShaderHeader)),
+                (uint8*)payloadBlob->GetBufferPointer(), payloadBlob->GetBufferSize());
+        }
+
+        errors.reset();
+        if (errorsBlob && errorsBlob->GetBufferPointer() && errorsBlob->GetBufferSize()) {
+            errors = MakeBlob(MakeStringSection(
+                (char*)errorsBlob->GetBufferPointer(), 
+                PtrAdd((char*)errorsBlob->GetBufferPointer(), errorsBlob->GetBufferSize())));
+        }
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     class FLGFormatter
     {
     public:
         enum class Blob
         {
-            Module, Input, Output, Call, Bind,
+            Module, Input, Output, Call, PassValue,
             ParameterBlock, Assignment,
             Token,
             End
@@ -386,7 +421,7 @@ namespace RenderCore { namespace Metal_DX11
         std::pair<Blob, StringSection<char>> PeekNext();
         void SetPosition(const char* newPosition);
 
-        StreamLocation GetStreamLocation() const { return { unsigned(_iterator - _lineStart), _lineIndex }; }
+        StreamLocation GetStreamLocation() const { return { unsigned(_iterator - _lineStart + 1), _lineIndex }; }
 
         FLGFormatter(StringSection<char> script);
         ~FLGFormatter();
@@ -444,11 +479,11 @@ namespace RenderCore { namespace Metal_DX11
                 std::make_pair(Blob::Input,     "Input"),
                 std::make_pair(Blob::Output,    "Output"),
                 std::make_pair(Blob::Call,      "Call"),
-                std::make_pair(Blob::Bind,      "Bind")
+                std::make_pair(Blob::PassValue, "PassValue")
             };
             // read forward to any token terminator
             const char* i = _iterator;
-            while (i < _script.end() && !IsWhitespace(*i) && !IsIgnoreable(*i) && *i != '\r' && *i != '\n')
+            while (i < _script.end() && !IsWhitespace(*i) && *i != '\r' && *i != '\n' && *i != '(' && *i != ')')
                 ++i;
 
             auto token = MakeStringSection(_iterator, i);
@@ -464,7 +499,7 @@ namespace RenderCore { namespace Metal_DX11
     {
         // typically called after PeekNext(), we should advance to the given
         // position. While advancing, we have to look for new lines!
-        assert(newPosition >= _iterator && newPostion <= _script.end());
+        assert(newPosition >= _iterator && newPosition <= _script.end());
         while (_iterator < newPosition) {
             if (*_iterator == '\n' || *_iterator == '\r') {
                     // note that if we attempt to "SetPosition" to a point in the middle of "\r\n"
@@ -481,6 +516,7 @@ namespace RenderCore { namespace Metal_DX11
     FLGFormatter::FLGFormatter(StringSection<char> script)
     : _script(script)
     {
+        _iterator = _script.begin();
         _lineIndex = 1;
         _lineStart = _script.begin();
     }
@@ -494,25 +530,42 @@ namespace RenderCore { namespace Metal_DX11
     public:
         ID3D11Module* GetUnderlying() { return _module.get(); }
 
-        FunctionLinkingModule(const ::Assets::ResChar initializer[]);
+        FunctionLinkingModule(const ::Assets::ResChar initializer[], const ::Assets::ResChar defines[]);
         ~FunctionLinkingModule();
     private:
         intrusive_ptr<ID3D11Module> _module;
     };
 
-    FunctionLinkingModule::FunctionLinkingModule(const ::Assets::ResChar initializer[])
+    FunctionLinkingModule::FunctionLinkingModule(const ::Assets::ResChar initializer[], const ::Assets::ResChar defines[])
     {
-        auto& byteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(initializer);
+        auto& byteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(initializer, defines);
         auto state = byteCode.StallWhilePending();
         if (state != ::Assets::AssetState::Ready)
             Throw(::Assets::Exceptions::InvalidAsset(initializer, "Shader compile failure while building function linking module"));
         auto code = byteCode.GetByteCode();
 
         ID3D11Module* rawModule = nullptr;
-        auto hresult = D3DLoadModule(code.first, code.second, &rawModule);
+        auto hresult = D3DShaderCompiler::GetInstance().D3DLoadModule_Wrapper(code.first, code.second, &rawModule);
         _module = moveptr(rawModule);
         if (!SUCCEEDED(hresult))
             Throw(::Assets::Exceptions::InvalidAsset(initializer, "Failure while creating shader module from compiled shader byte code"));
+
+
+        {
+            ID3D11LibraryReflection* reflectionRaw = nullptr;
+            hresult = D3DShaderCompiler::GetInstance().D3DReflectLibrary_Wrapper(code.first, code.second, IID_ID3D11LibraryReflection, (void**)&reflectionRaw);
+            intrusive_ptr<ID3D11LibraryReflection> reflection = moveptr(reflectionRaw);
+        
+            D3D11_LIBRARY_DESC desc;
+            reflection->GetDesc(&desc);
+            for (unsigned c=0; c<desc.FunctionCount; ++c) {
+                auto* fnRefl = reflection->GetFunctionByIndex(c);
+                D3D11_FUNCTION_DESC fnDesc;
+                fnRefl->GetDesc(&fnDesc);
+                unsigned i;
+                i = 0;
+            }
+        }
     }
 
     FunctionLinkingModule::~FunctionLinkingModule() {}
@@ -542,12 +595,19 @@ namespace RenderCore { namespace Metal_DX11
     class FunctionLinkingGraph
     {
     public:
+        ID3D11FunctionLinkingGraph* GetUnderlying() { return _graph.get(); }
+
+        bool TryLink(
+            std::shared_ptr<std::vector<uint8>>& payload,
+            std::shared_ptr<std::vector<uint8>>& errors,
+            std::vector<::Assets::DependentFileState>& dependencies);
 
         using Section = StringSection<char>;
-        FunctionLinkingGraph(Section script);
+        FunctionLinkingGraph(Section script, Section shaderProfile, Section defines);
         ~FunctionLinkingGraph();
     private:
         void ParseAssignmentExpression(FLGFormatter& formatter, Section variableName);
+        void ParsePassValue(Section srcNode, Section srcParam, Section dstNode, Section dstParam, StreamLocation loc);
 
         intrusive_ptr<ID3D11FunctionLinkingGraph> _graph;
 
@@ -555,12 +615,18 @@ namespace RenderCore { namespace Metal_DX11
         using NodePtr = intrusive_ptr<ID3D11LinkingNode>;
         std::vector<std::pair<Section, ModulePtr>>  _modules;
         std::vector<std::pair<Section, NodePtr>>    _nodes;
+
+        std::string _shaderProfile, _defines;
     };
 
-    FunctionLinkingGraph::FunctionLinkingGraph(StringSection<char> script)
+    static std::regex PassValueParametersParse(R"--(\s*(\w+).(\w+)\s*,\s*(\w+).(\w+)\s*)--");
+
+    FunctionLinkingGraph::FunctionLinkingGraph(StringSection<char> script, Section shaderProfile, Section defines)
+    : _shaderProfile(shaderProfile.AsString())
+    , _defines(defines.AsString())
     {
         ID3D11FunctionLinkingGraph* graphRaw = nullptr;
-        auto hresult = D3DCreateFunctionLinkingGraph(0, &graphRaw);
+        auto hresult = D3DShaderCompiler::GetInstance().D3DCreateFunctionLinkingGraph_Wrapper(0, &graphRaw);
         if (!SUCCEEDED(hresult))
             Throw(::Exceptions::BasicLabel::BasicLabel("Failure while creating D3D function linking graph"));
         _graph = moveptr(graphRaw);
@@ -571,6 +637,10 @@ namespace RenderCore { namespace Metal_DX11
             auto next = formatter.PeekNext();
             if (next.first == Blob::End) break;
             
+                // Will we parse a statement at a time.
+                // There are only 2 types of statements.
+                // Assignments  -- <<variable>> = <<Module/Input/Output/Call>
+                // Bindings     -- PassValue(<<node>>.<<parameter>>, <<node>>.<<parameter>>))
             switch (next.first) {
             case Blob::Token:
                 {
@@ -584,11 +654,101 @@ namespace RenderCore { namespace Metal_DX11
                     ParseAssignmentExpression(formatter, next.second);
                     break;
                 }
+
+            case Blob::PassValue:
+                {
+                    auto startLocation = formatter.GetStreamLocation();
+                    formatter.SetPosition(next.second.end());
+                    auto expectingParameters = formatter.PeekNext();
+                    if (expectingParameters.first != Blob::ParameterBlock)
+                        Throw(FormatException("Expecting parameters block for PassValue statement", formatter.GetStreamLocation()));
+                    formatter.SetPosition(expectingParameters.second.end());
+
+                    std::match_results<const char*> match;
+                    bool a = std::regex_match(
+                        expectingParameters.second.begin(), expectingParameters.second.end(), 
+                        match, PassValueParametersParse);
+                    if (a && match.size() >= 5) {
+                        ParsePassValue(
+                            MakeStringSection(match[1].first, match[1].second),
+                            MakeStringSection(match[2].first, match[2].second),
+                            MakeStringSection(match[3].first, match[3].second),
+                            MakeStringSection(match[4].first, match[4].second),
+                            startLocation);
+                    } else {
+                        Throw(FormatException("Couldn't parser parameters block for PassValue statement", formatter.GetStreamLocation()));
+                    }
+
+                    break;
+                }
+
+            default:
+                Throw(FormatException("Unexpected token. Statements should start with either an assignment or PassValue instruction", formatter.GetStreamLocation()));
             }
         }
     }
 
     FunctionLinkingGraph::~FunctionLinkingGraph() {}
+
+    bool FunctionLinkingGraph::TryLink(
+        std::shared_ptr<std::vector<uint8>>& payload,
+        std::shared_ptr<std::vector<uint8>>& errors,
+        std::vector<::Assets::DependentFileState>& dependencies)
+    {
+        ID3D11Linker* linkerRaw = nullptr;
+        auto hresult = D3DShaderCompiler::GetInstance().D3DCreateLinker_Wrapper(&linkerRaw);
+        intrusive_ptr<ID3D11Linker> linker = moveptr(linkerRaw);
+        if (!SUCCEEDED(hresult)) {
+            errors = MakeBlob("Could not create D3D shader linker object");
+            return false;
+        }
+
+        ID3DBlob* errorsBlobRaw = nullptr;
+        ID3D11ModuleInstance* baseModuleInstanceRaw = nullptr;
+        hresult = _graph->CreateModuleInstance(&baseModuleInstanceRaw, &errorsBlobRaw);
+        intrusive_ptr<ID3DBlob> errorsBlob0 = moveptr(errorsBlobRaw);
+        intrusive_ptr<ID3D11ModuleInstance> baseModuleInstance = moveptr(baseModuleInstanceRaw);
+        if (!SUCCEEDED(hresult)) {
+            errors = MakeBlob("Failure while creating a module instance from the function linking graph");
+            return false;
+        }
+
+        // linker->UseLibrary(baseModuleInstance.get());
+        std::vector<intrusive_ptr<ID3D11ModuleInstance>> instances;
+        instances.reserve(_modules.size());
+        for (auto& i:_modules) {
+            ID3D11ModuleInstance* rawInstance = nullptr;
+            hresult = i.second->CreateInstance("", &rawInstance);
+            if (!SUCCEEDED(hresult)) {
+                errors = MakeBlob("Failure while creating a module instance from a module while linking");
+                return false;
+            }
+            instances.emplace_back(moveptr(rawInstance));
+        }
+
+        for (auto& i:instances) linker->UseLibrary(i.get());
+
+        ID3DBlob* resultBlobRaw = nullptr;
+        errorsBlobRaw = nullptr;
+        hresult = linker->Link(
+            baseModuleInstance.get(), "main", "flgshader", 0,
+            &resultBlobRaw, &errorsBlobRaw);
+        intrusive_ptr<ID3DBlob> errorsBlob1 = moveptr(errorsBlobRaw);
+        intrusive_ptr<ID3DBlob> resultBlob = moveptr(resultBlobRaw);
+
+        if (!SUCCEEDED(hresult)) {
+            errors = MakeBlob("Failure during final linking process for dynamic shader");
+            return false;
+        }
+
+        CreatePayloadFromBlobs(
+            payload, errors, resultBlob.get(), errorsBlob1.get(), 
+            ShaderService::ShaderHeader { ShaderService::ShaderHeader::Version, false });
+
+        // note -- we should add any modules that we referred to as dependencies.
+
+        return true;
+    }
 
     class ShaderParameter
     {
@@ -646,8 +806,9 @@ namespace RenderCore { namespace Metal_DX11
             if (hlslTypeName.Length() >= len
                 && !XlComparePrefix(baseTypes[c].first.begin(), hlslTypeName.begin(), len)) {
 
-                const auto matrixMarker = XlFindChar(&hlslTypeName[len], 'x');
-                if (matrixMarker != nullptr) {
+                auto matrixMarker = &hlslTypeName[len];
+                while (matrixMarker != hlslTypeName.end() && *matrixMarker != 'x') ++matrixMarker;
+                if (matrixMarker != hlslTypeName.end()) {
                     auto count0 = StringToUnsigned(MakeStringSection(&hlslTypeName[len], matrixMarker));
                     auto count1 = StringToUnsigned(MakeStringSection(matrixMarker+1, hlslTypeName.end()));
 
@@ -702,7 +863,7 @@ namespace RenderCore { namespace Metal_DX11
                 break;
             }
 
-            _class = (typeDesc._arrayCount <= 1) ? D3D_SVC_VECTOR : D3D_SVC_SCALAR;
+            _class = (typeDesc._arrayCount <= 1) ? D3D_SVC_SCALAR : D3D_SVC_VECTOR;
             _rows = typeDesc._arrayCount;
             _columns = 1;
         }
@@ -713,10 +874,9 @@ namespace RenderCore { namespace Metal_DX11
         // This should be a comma separated list of parameterss
         // just have to do the separation by comma here...
         std::vector<ShaderParameter> result;
+        const auto* i = input.begin();
         for (;;) {
-            const auto* i = input.begin();
             while (i < input.end() && (IsWhitespace(*i) || IsNewlineWhitespace(*i))) ++i;
-
             if (i == input.end()) break;
 
             const auto* start = i;
@@ -757,19 +917,25 @@ namespace RenderCore { namespace Metal_DX11
                     // Note that we can do relative paths for this module name reference here -- 
                     //      it must be an full asset path
                     // Also, we should explicitly specify the shader version number and use the "lib" type
+                    // And we want to pass through our defines as well -- so that the linked module inherits
+                    // the same defines.
+
+                std::string fullModuleName = parameterBlock.AsString() + ":null:lib_" + _shaderProfile;
+
                 FunctionLinkingModule module(
-                    Conversion::Convert<::Assets::rstring>(parameterBlock.AsString()).c_str());
-                // ID3D11ModuleInstance* moduleInstanceRaw = nullptr;
-                // auto hresult = module.GetUnderlying()->CreateInstance(nullptr, &moduleInstanceRaw);
-                // intrusive_ptr<ID3D11ModuleInstance> moduleInstance = moveptr(moduleInstanceRaw);
-                // if (!SUCCEEDED(hresult))
-                //     Throw(::Exceptions::BasicLabel("D3D error while creating module instance from shader module"));
+                    Conversion::Convert<::Assets::rstring>(fullModuleName).c_str(),
+                    Conversion::Convert<::Assets::rstring>(_defines).c_str());
 
                 auto i = LowerBoundT(_modules, variableName);
                 if (i != _modules.end() && XlEqString(i->first, variableName))
                     Throw(FormatException("Attempting to reassign module that is already assigned. Check for naming conflicts.", startLoc));
 
                 _modules.insert(i, std::make_pair(variableName, module.GetUnderlying()));
+
+                // ID3D11ModuleInstance* instance = nullptr;
+                // HRESULT hresult = module.GetUnderlying()->CreateInstance("", &instance);
+                // if (!SUCCEEDED(hresult))
+                //     Throw(::Exceptions::BasicLabel("Failure creating shader library module instance."));
             }
             break;
 
@@ -826,9 +992,10 @@ namespace RenderCore { namespace Metal_DX11
                 auto module = m->second.get();
 
                 ID3D11LinkingNode* linkingNodeRaw = nullptr;
-                auto hresult = _graph->CallFunction(nullptr, module, 
-                    MakeStringSection(i+1, parameterBlock.end()).AsString().c_str(),
-                    &linkingNodeRaw);
+                auto fnName = MakeStringSection(i+1, parameterBlock.end()).AsString();
+                auto hresult = _graph->CallFunction(
+                    "", module, 
+                    fnName.c_str(), &linkingNodeRaw);
                 intrusive_ptr<ID3D11LinkingNode> linkingNode = moveptr(linkingNodeRaw);
                 if (!SUCCEEDED(hresult))
                     Throw(FormatException("D3D error while creating linking node for function call. Requested function may be missing from the module.", paramBlockLoc));
@@ -841,6 +1008,30 @@ namespace RenderCore { namespace Metal_DX11
             }
             break;
         }
+    }
+
+    void FunctionLinkingGraph::ParsePassValue(
+        Section srcNode, Section srcParam, 
+        Section dstNode, Section dstParam, StreamLocation loc)
+    {
+        auto sn = LowerBoundT(_nodes, srcNode);
+        if (sn != _nodes.end() && XlEqString(sn->first, srcNode))
+            Throw(FormatException("Unknown source node", loc));
+
+        auto dn = LowerBoundT(_nodes, dstNode);
+        if (dn != _nodes.end() && XlEqString(sn->first, dstNode))
+            Throw(FormatException("Unknown destination node", loc));
+
+        // Parameters are refered to by index. We could potentially
+        // do a lookup to convert string names to their correct indices. We
+        // can use ID3D11LibraryReflection to get the reflection information
+        // for a shader module.
+        auto hresult = _graph->PassValue(
+            sn->second.get(), StringToUnsigned(srcParam),
+            dn->second.get(), StringToUnsigned(dstParam));
+
+        if (!SUCCEEDED(hresult))
+            Throw(FormatException("D3D failure in PassValue statement.", loc));
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -863,6 +1054,9 @@ namespace RenderCore { namespace Metal_DX11
         std::string definesCopy;
         auto arrayOfDefines = MakeDefinesTable(definesTable, shaderPath._shaderModel, definesCopy);
 
+        ResChar shaderModel[64];
+        AdaptShaderModel(shaderModel, dimof(shaderModel), shaderPath._shaderModel);
+
             // Check for the marker labelling this as a function linking graph shader
         const char fileId[] = "FunctionLinkingGraph";
         StringSection<char> asStringSection(
@@ -870,28 +1064,49 @@ namespace RenderCore { namespace Metal_DX11
             (const char*)PtrAdd(sourceCode, std::min(sourceCodeLength, XlStringLen(fileId))));
         if (XlEqString(asStringSection, fileId)) {
 
-                // This a FunctionLinkingGraph definition
-                // look for the version number, and then parse this file as
-                // a simple script language.
-            const char* i = (const char*)PtrAdd(sourceCode, XlStringLen(fileId));
-            const char* e = (const char*)PtrAdd(sourceCode, sourceCodeLength);
+            dependencies.push_back(
+                ::Assets::IntermediateAssets::Store::GetDependentFileState(shaderPath._filename));
 
-                // A version number may follow -- but it's optional
-            if (i < e && *i == ':') {
-                ++i;
-                auto versionStart = i;
-                while (i < e && *i != '\n' && *i != '\r') ++i;
-                StringSection<char> version(versionStart, i);
-                char temp[32]; const char* endPtr;
-                XlCopyString(temp, version);
-                auto versionNumber = XlAtoI32(temp, &endPtr);
-                if (versionNumber != 0 || endPtr != version.end())
-                    Throw(::Exceptions::BasicLabel("Function linking graph script version unsupported (%s)", version.AsString().c_str()));
+            try
+            {
+
+                    // This a FunctionLinkingGraph definition
+                    // look for the version number, and then parse this file as
+                    // a simple script language.
+                const char* i = (const char*)PtrAdd(sourceCode, XlStringLen(fileId));
+                const char* e = (const char*)PtrAdd(sourceCode, sourceCodeLength);
+
+                    // A version number may follow -- but it's optional
+                if (i < e && *i == ':') {
+                    ++i;
+                    auto versionStart = i;
+                    while (i < e && *i != '\n' && *i != '\r') ++i;
+                    if (StringToUnsigned(MakeStringSection(versionStart, i)) != 1)
+                        Throw(::Exceptions::BasicLabel("Function linking graph script version unsupported (%s)", MakeStringSection(versionStart, i).AsString().c_str()));
+                }
+
+                // we need to remove the initial part of the shader model (eg, ps_, vs_)
+                const char* firstUnderscore = shaderModel;
+                while (*firstUnderscore != '\0' && *firstUnderscore != '_') ++firstUnderscore;
+                if (firstUnderscore != 0)
+                    XlMoveMemory(shaderModel, firstUnderscore+1, XlStringEnd(shaderModel) - firstUnderscore);
+            
+                FunctionLinkingGraph flg(MakeStringSection(i, e), shaderModel, definesTable);
+                bool linkResult = flg.TryLink(payload, errors, dependencies);
+                if (linkResult) { MarkValid(shaderPath); }
+                else            { MarkInvalid(shaderPath, S_FALSE, errors); }
+                return linkResult;
+
+            } catch (const std::exception& e) {
+
+                    // We have to suppress any exceptions that occur during the linking
+                    // step. We can get parsing errors here, as well as linking errors
+                auto* what = e.what();
+                errors = std::make_shared<std::vector<uint8>>(what, XlStringEnd(what)+1);
+                MarkInvalid(shaderPath, S_FALSE, errors);
+                return false;
+
             }
-
-                // Now we scan through, token at a time... And as we go, we will build a 
-                // ID3DFunctionLinkingGraph.
-                // Our scripting language as a pretty simple 1:1 mapping to the D3D functions.
 
         } else {
 
@@ -899,38 +1114,25 @@ namespace RenderCore { namespace Metal_DX11
             XlDirname(directoryName, dimof(directoryName), shaderPath._filename);
             IncludeHandler includeHandler(directoryName);
 
-            ResChar shaderModel[64];
-            AdaptShaderModel(shaderModel, dimof(shaderModel), shaderPath._shaderModel);
-
             auto hresult = D3DCompile_Wrapper(
                 sourceCode, sourceCodeLength,
                 shaderPath._filename,
 
                 AsPointer(arrayOfDefines.cbegin()), &includeHandler, 
-                shaderPath._entryPoint, shaderModel,
+                XlEqString(shaderPath._entryPoint, "null") ? nullptr : shaderPath._entryPoint,       // (libraries have a null entry point)
+                shaderModel,
 
                 GetShaderCompilationFlags(), 0, 
                 &codeResult, &errorResult);
 
                 // we get a "blob" from D3D. But we need to copy it into
                 // a shared_ptr<vector> so we can pass to it our clients
-            payload.reset();
-            if (codeResult && codeResult->GetBufferPointer() && codeResult->GetBufferSize()) {
-                payload = std::make_shared<std::vector<uint8>>(codeResult->GetBufferSize() + sizeof(ShaderService::ShaderHeader));
-                auto* hdr = (ShaderService::ShaderHeader*)AsPointer(payload->begin());
-                hdr->_version = ShaderService::ShaderHeader::Version;
-                hdr->_dynamicLinkageEnabled = shaderPath._dynamicLinkageEnabled;
-                XlCopyMemory(
-                    PtrAdd(AsPointer(payload->begin()), sizeof(ShaderService::ShaderHeader)),
-                    (uint8*)codeResult->GetBufferPointer(), codeResult->GetBufferSize());
-            }
-
-            errors.reset();
-            if (errorResult && errorResult->GetBufferPointer() && errorResult->GetBufferSize()) {
-                errors = std::make_shared<std::vector<uint8>>(
-                    (uint8*)errorResult->GetBufferPointer(), 
-                    PtrAdd((uint8*)errorResult->GetBufferPointer(), errorResult->GetBufferSize()));
-            }
+            
+            CreatePayloadFromBlobs(
+                payload, errors, codeResult, errorResult, 
+                ShaderService::ShaderHeader {
+                    ShaderService::ShaderHeader::Version, shaderPath._dynamicLinkageEnabled
+                });
 
             dependencies = includeHandler.GetIncludeFiles();
             dependencies.push_back(
@@ -1014,6 +1216,94 @@ namespace RenderCore { namespace Metal_DX11
         }
 
         return (*fn)(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2, ppCode, ppErrorMsgs);
+    }
+
+    HRESULT D3DShaderCompiler::D3DCreateFunctionLinkingGraph_Wrapper(
+        UINT uFlags,
+        ID3D11FunctionLinkingGraph **ppFunctionLinkingGraph) const
+    {
+        auto compiler = GetShaderCompileModule();
+        if (!compiler || compiler == INVALID_HANDLE_VALUE) {
+			assert(0 && "d3dcompiler_47.dll is missing. Please make sure this dll is in the same directory as your executable, or reachable path");
+            return E_NOINTERFACE;
+        }
+
+        typedef HRESULT WINAPI D3DCreateFunctionLinkingGraph_Fn(UINT, ID3D11FunctionLinkingGraph**);
+
+        auto fn = (D3DCreateFunctionLinkingGraph_Fn*)(*Windows::Fn_GetProcAddress)(compiler, "D3DCreateFunctionLinkingGraph");
+        if (!fn) {
+            (*Windows::FreeLibrary)(compiler);
+            compiler = (HMODULE)INVALID_HANDLE_VALUE;
+            return E_NOINTERFACE;
+        }
+
+        return (*fn)(uFlags, ppFunctionLinkingGraph);
+    }
+
+    HRESULT D3DShaderCompiler::D3DCreateLinker_Wrapper(ID3D11Linker **ppLinker) const
+    {
+        auto compiler = GetShaderCompileModule();
+        if (!compiler || compiler == INVALID_HANDLE_VALUE) {
+			assert(0 && "d3dcompiler_47.dll is missing. Please make sure this dll is in the same directory as your executable, or reachable path");
+            return E_NOINTERFACE;
+        }
+
+        typedef HRESULT WINAPI D3DCreateLinker_Fn(ID3D11Linker**);
+
+        auto fn = (D3DCreateLinker_Fn*)(*Windows::Fn_GetProcAddress)(compiler, "D3DCreateLinker");
+        if (!fn) {
+            (*Windows::FreeLibrary)(compiler);
+            compiler = (HMODULE)INVALID_HANDLE_VALUE;
+            return E_NOINTERFACE;
+        }
+
+        return (*fn)(ppLinker);
+    }
+
+    HRESULT D3DShaderCompiler::D3DLoadModule_Wrapper(
+        LPCVOID pSrcData, SIZE_T cbSrcDataSize, 
+        ID3D11Module **ppModule) const
+    {
+        auto compiler = GetShaderCompileModule();
+        if (!compiler || compiler == INVALID_HANDLE_VALUE) {
+			assert(0 && "d3dcompiler_47.dll is missing. Please make sure this dll is in the same directory as your executable, or reachable path");
+            return E_NOINTERFACE;
+        }
+
+        typedef HRESULT WINAPI D3DLoadModule_Fn(LPCVOID, SIZE_T, ID3D11Module**);
+
+        auto fn = (D3DLoadModule_Fn*)(*Windows::Fn_GetProcAddress)(compiler, "D3DLoadModule");
+        if (!fn) {
+            (*Windows::FreeLibrary)(compiler);
+            compiler = (HMODULE)INVALID_HANDLE_VALUE;
+            return E_NOINTERFACE;
+        }
+
+        return (*fn)(pSrcData, cbSrcDataSize, ppModule);
+    }
+
+    HRESULT D3DShaderCompiler::D3DReflectLibrary_Wrapper(
+        LPCVOID pSrcData,
+        SIZE_T  SrcDataSize,
+        REFIID  riid,
+        LPVOID  *ppReflector) const
+    {
+        auto compiler = GetShaderCompileModule();
+        if (!compiler || compiler == INVALID_HANDLE_VALUE) {
+			assert(0 && "d3dcompiler_47.dll is missing. Please make sure this dll is in the same directory as your executable, or reachable path");
+            return E_NOINTERFACE;
+        }
+
+        typedef HRESULT WINAPI D3DReflectLibrary_Fn(LPCVOID, SIZE_T, REFIID, LPVOID);
+
+        auto fn = (D3DReflectLibrary_Fn*)(*Windows::Fn_GetProcAddress)(compiler, "D3DReflectLibrary");
+        if (!fn) {
+            (*Windows::FreeLibrary)(compiler);
+            compiler = (HMODULE)INVALID_HANDLE_VALUE;
+            return E_NOINTERFACE;
+        }
+
+        return (*fn)(pSrcData, SrcDataSize, riid, ppReflector);
     }
 
     std::string D3DShaderCompiler::MakeShaderMetricsString(const void* data, size_t dataSize) const
