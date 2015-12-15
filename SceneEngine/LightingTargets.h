@@ -129,10 +129,10 @@ namespace SceneEngine
             unsigned    _msaaSampleCount;
             bool        _msaaSamplers, _flipDirection;
             unsigned    _gbufferType;
-            bool        _dynamicLinking;
+            unsigned    _dynamicLinking;
             bool        _debugging;
 
-            Desc(unsigned gbufferType, unsigned msaaSampleCount, bool msaaSamplers, bool flipDirection, bool dynamicLinking, bool debugging) 
+            Desc(unsigned gbufferType, unsigned msaaSampleCount, bool msaaSamplers, bool flipDirection, unsigned dynamicLinking, bool debugging)
             {
                     //  we have to "memset" this -- because padding adds
                     //  random values in profile mode

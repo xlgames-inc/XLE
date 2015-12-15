@@ -9,6 +9,7 @@
 #include "../Lighting/ShadowTypes.h"
 #include "resolveutil.h"
 #include "../System/LoadGBuffer.h"
+#include "../Colour.h" // for LightingScale
 
 #if HAS_SCREENSPACE_AO==1
     Texture2D<float>	AmbientOcclusion : register(t5);
@@ -19,7 +20,8 @@ cbuffer LightBuffer
     LightDesc Light;
 }
 
-export float3 DoResolve_Sphere(
+export float3 DoResolve(
+    ILightResolver resolver,
     float4 position,
     float3 viewFrustumVector,
     float3 worldPosition,
@@ -40,8 +42,23 @@ export float3 DoResolve_Sphere(
     screenDest.pixelCoords = pixelCoords;
     screenDest.sampleIndex = GetSampleIndex(sys);
 
-    Sphere resolver;
     return resolver.Resolve(sample, sampleExtra, Light, worldPosition, normalize(-viewFrustumVector), screenDest);
+}
+
+export float3 DoResolve_Sphere(
+    float4 position, float3 viewFrustumVector,
+    float3 worldPosition, uint sampleIndex)
+{
+    Sphere resolver;
+    return DoResolve(resolver, position, viewFrustumVector, worldPosition, sampleIndex);
+}
+
+export float3 DoResolve_Directional(
+    float4 position, float3 viewFrustumVector,
+    float3 worldPosition, uint sampleIndex)
+{
+    Directional resolver;
+    return DoResolve(resolver, position, viewFrustumVector, worldPosition, sampleIndex);
 }
 
 export void CalculateWorldPosition(
@@ -54,4 +71,9 @@ export void CalculateWorldPosition(
     int2 pixelCoords = position.xy;
     worldSpaceDepth = GetWorldSpaceDepth(pixelCoords, sampleIndex);
     worldPosition = WorldSpaceView + (worldSpaceDepth / FarClip) * viewFrustumVector;
+}
+
+export float4 FinalizeResolve(float3 resolvedLight)
+{
+    return float4((LightingScale)*result, 1.f);
 }

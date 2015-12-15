@@ -595,10 +595,10 @@ namespace RenderCore { namespace Metal_DX11
             const char shaderModel[]);
 
         using Section = StringSection<char>;
-        FunctionLinkingGraph(Section script, Section shaderProfile, Section defines);
+        FunctionLinkingGraph(Section script, Section shaderProfile, Section defines, const ::Assets::DirectorySearchRules& searchRules);
         ~FunctionLinkingGraph();
     private:
-        void ParseAssignmentExpression(FLGFormatter& formatter, Section variableName);
+        void ParseAssignmentExpression(FLGFormatter& formatter, Section variableName, const ::Assets::DirectorySearchRules& searchRules);
         void ParsePassValue(Section srcNode, Section srcParam, Section dstNode, Section dstParam, StreamLocation loc);
 
         intrusive_ptr<ID3D11FunctionLinkingGraph> _graph;
@@ -606,13 +606,14 @@ namespace RenderCore { namespace Metal_DX11
         using NodePtr = intrusive_ptr<ID3D11LinkingNode>;
         std::vector<std::pair<Section, FunctionLinkingModule>> _modules;
         std::vector<std::pair<Section, NodePtr>> _nodes;
+        std::vector<::Assets::DependentFileState> _depFiles;
 
         std::string _shaderProfile, _defines;
     };
 
     static std::regex PassValueParametersParse(R"--(\s*(\w+).(\w+)\s*,\s*(\w+).(\w+)\s*)--");
 
-    FunctionLinkingGraph::FunctionLinkingGraph(StringSection<char> script, Section shaderProfile, Section defines)
+    FunctionLinkingGraph::FunctionLinkingGraph(StringSection<char> script, Section shaderProfile, Section defines, const ::Assets::DirectorySearchRules& searchRules)
     : _shaderProfile(shaderProfile.AsString())
     , _defines(defines.AsString())
     {
@@ -642,7 +643,7 @@ namespace RenderCore { namespace Metal_DX11
                         Throw(FormatException("Expecting assignment after variable name", formatter.GetStreamLocation()));
                     formatter.SetPosition(expectingAssignment.second.end());
 
-                    ParseAssignmentExpression(formatter, next.second);
+                    ParseAssignmentExpression(formatter, next.second, searchRules);
                     break;
                 }
 
@@ -764,8 +765,7 @@ namespace RenderCore { namespace Metal_DX11
             payload, errors, resultBlob.get(), errorsBlob1.get(), 
             ShaderService::ShaderHeader { ShaderService::ShaderHeader::Version, false });
 
-        // note -- we should add any modules that we referred to as dependencies.
-
+        dependencies.insert(dependencies.end(), _depFiles.begin(), _depFiles.end());
         return true;
     }
 
@@ -826,7 +826,7 @@ namespace RenderCore { namespace Metal_DX11
             if (hlslTypeName.Length() >= len
                 && !XlComparePrefix(baseTypes[c].first.begin(), hlslTypeName.begin(), len)) {
 
-                auto matrixMarker = &hlslTypeName[len];
+                auto matrixMarker = hlslTypeName.begin() + len;
                 while (matrixMarker != hlslTypeName.end() && *matrixMarker != 'x') ++matrixMarker;
                 if (matrixMarker != hlslTypeName.end()) {
                     auto count0 = StringToUnsigned(MakeStringSection(&hlslTypeName[len], matrixMarker));
@@ -838,7 +838,7 @@ namespace RenderCore { namespace Metal_DX11
                     result._typeHint = TypeHint::Matrix;
                     return result;
                 } else {
-                    auto count = StringToUnsigned(MakeStringSection(&hlslTypeName[len], hlslTypeName.end()));
+                    auto count = StringToUnsigned(MakeStringSection(hlslTypeName.begin() + len, hlslTypeName.end()));
                     if (count == 0 || count > 4) count = 1;
                     TypeDesc result;
                     result._arrayCount = (uint16)count;
@@ -916,7 +916,7 @@ namespace RenderCore { namespace Metal_DX11
         return moveptr(rawBlob);
     }
 
-    void FunctionLinkingGraph::ParseAssignmentExpression(FLGFormatter& formatter, Section variableName)
+    void FunctionLinkingGraph::ParseAssignmentExpression(FLGFormatter& formatter, Section variableName, const ::Assets::DirectorySearchRules& searchRules)
     {
         auto startLoc = formatter.GetStreamLocation();
         
@@ -947,11 +947,20 @@ namespace RenderCore { namespace Metal_DX11
                     // And we want to pass through our defines as well -- so that the linked module inherits
                     // the same defines.
 
-                std::string fullModuleName = parameterBlock.AsString() + ":null:lib_" + _shaderProfile;
+                ::Assets::ResChar resolvedName[MaxPath];
+                XlCopyString(resolvedName, parameterBlock);
+                searchRules.ResolveFile(resolvedName, resolvedName);
 
-                FunctionLinkingModule module(
-                    Conversion::Convert<::Assets::rstring>(fullModuleName).c_str(),
-                    Conversion::Convert<::Assets::rstring>(_defines).c_str());
+                // register a dependent file (even if it doesn't exist)
+                // Note that this isn't really enough -- we need dependencies on
+                // this file, and any dependencies it has! Really, our dependency
+                // is on the product asset, not the source asset.
+                _depFiles.push_back(::Assets::IntermediateAssets::Store::GetDependentFileState(resolvedName));
+
+                XlCatString(resolvedName, ":null:lib_");
+                XlCatString(resolvedName, _shaderProfile.c_str());
+
+                FunctionLinkingModule module(resolvedName, Conversion::Convert<::Assets::rstring>(_defines).c_str());
 
                 auto i = LowerBoundT(_modules, variableName);
                 if (i != _modules.end() && XlEqString(i->first, variableName))
@@ -1132,7 +1141,7 @@ namespace RenderCore { namespace Metal_DX11
                 if (firstUnderscore != 0)
                     XlMoveMemory(shortenedModel, firstUnderscore+1, XlStringEnd(shortenedModel) - firstUnderscore);
             
-                FunctionLinkingGraph flg(MakeStringSection(i, e), shortenedModel, definesTable);
+                FunctionLinkingGraph flg(MakeStringSection(i, e), shortenedModel, definesTable, ::Assets::DefaultDirectorySearchRules(shaderPath._filename));
                 bool linkResult = flg.TryLink(payload, errors, dependencies, shaderModel);
                 if (linkResult) { MarkValid(shaderPath); }
                 else            { MarkInvalid(shaderPath, S_FALSE, errors); }

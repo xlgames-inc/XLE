@@ -271,8 +271,9 @@ namespace SceneEngine
         definesTable << ";MSAA_SAMPLES=" << (desc._msaaSampleCount<=1)?0:desc._msaaSampleCount;
         if (desc._msaaSamplers) definesTable << ";MSAA_SAMPLERS=1";
 
-        if (desc._dynamicLinking) {
+        if (desc._dynamicLinking==2) {
             definesTable << ";LIGHT_RESOLVE_DYN_LINKING=1";
+        } else if (desc._dynamicLinking == 1) {
         } else {
             if (type._shadows != NoShadows) {
                 definesTable << ";SHADOW_CASCADE_MODE=" << ((type._shadows == OrthShadows || type._shadows == OrthShadowsNearCascade || type._shadows == OrthHybridShadows) ? 2u : 1u);
@@ -286,8 +287,6 @@ namespace SceneEngine
         definesTable << ";DIFFUSE_METHOD=" << unsigned(type._diffuseModel);
         definesTable << ";HAS_SCREENSPACE_AO=" << unsigned(type._hasScreenSpaceAO);
 
-        
-
         const char* vertexShader_viewFrustumVector = 
             desc._flipDirection
                 ? "game/xleres/basic2D.vsh:fullscreen_flip_viewfrustumvector:vs_*"
@@ -297,28 +296,17 @@ namespace SceneEngine
         LightShader& dest = _shaders[type.AsIndex()];
         assert(!dest._shader);
 
-        if (desc._dynamicLinking && !desc._debugging) {
-            // It would be better to use a ID3D11FunctionLinkingGraph
-            // to construct dynamic linking shaders. Perhaps using a
-            // simple scripting language. Eg:
-            //
-            // FunctionLinkingGraph:1
-            // n0 = Input(float4 position : POSITION)
-            // n1 = Output(float4 color : SV_Target0)
-            // m0 = Module(game/xleres/deferred/lightlibrary.psh)
-            // n2 = Call(m0.main)
-            // PassValue(n2.0, n0.0)
-            // PassValue(n2.1, n0.1)
-            //
-            // Alternatively (avoiding the PassValue syntax):
-            // FunctionLinkingGraph:1
-            // n0 = Input(float4 position : POSITION)
-            // m0 = Module(game/xleres/deferred/lightlibrary.psh)
-            // n2 = m0.main(n0.0, n0.1)
-            // n1 = Output(float4 color : SV_Target0 = n2.1)
-            //
-            // We could specialize this string with a regex replace, and the calling
-            // code would remain platform independent
+        if (desc._debugging) {
+            dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                vertexShader_viewFrustumVector, 
+                "game/xleres/deferred/debugging/resolvedebug.psh:main:ps_*",
+                definesTable.get());
+        } else if (desc._dynamicLinking==1) {
+            dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                vertexShader_viewFrustumVector, 
+                "game/xleres/deferred/resolvelightgraph.psh:main:ps_*",
+                definesTable.get());
+        } else if (desc._dynamicLinking==2) {
             dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
                 vertexShader_viewFrustumVector, 
                 "game/xleres/deferred/resolvelight.psh:main:!ps_*",
@@ -348,7 +336,7 @@ namespace SceneEngine
             dest._uniforms.BindShaderResource(Hash64("RTSLinkedLists"),             SR::RTShadow_LinkedLists, 1);
             dest._uniforms.BindShaderResource(Hash64("RTSTriangles"),               SR::RTShadow_Triangles, 1);
 
-            if (desc._dynamicLinking) {
+            if (desc._dynamicLinking==2) {
                 dest._boundClassInterfaces = Metal::BoundClassInterfaces(*dest._shader);
                 dest._boundClassInterfaces.Bind(Hash64("MainResolver"), 0, AsLightResolverInterface(type));
                 dest._boundClassInterfaces.Bind(Hash64("MainCascadeResolver"), 0, AsCascadeResolverInterface(type));

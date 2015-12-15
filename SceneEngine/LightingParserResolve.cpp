@@ -539,7 +539,7 @@ namespace SceneEngine
                 GBufferType(mainTargets),
                 (resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerSample)?samplingCount:1, useMsaaSamplers, 
                 resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerPixel,
-                Tweakable("LightResolveDynamic", false), debugging);
+                Tweakable("LightResolveDynamic", 0), debugging);
 
         const bool allowOrthoShadowResolve = Tweakable("AllowOrthoShadowResolve", true);
 

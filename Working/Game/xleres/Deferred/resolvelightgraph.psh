@@ -4,7 +4,7 @@ main = Input(
     float4 position : SV_Position,
     float2 texCoord : TEXCOORD0,
     float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
-    uint sampleIndex : SV_SampleIndex);
+    uint sampleIndex : SV_SampleIndex)
 
 m0 = Module(resolvelightlib.sh)
 worldPos = Call(m0.CalculateWorldPosition)
@@ -12,5 +12,14 @@ PassValue(main.0, worldPos.2)
 PassValue(main.2, worldPos.3)
 PassValue(main.3, worldPos.4)
 
-resolve = Call(m0.DoResolve_Sphere)
-PassValue(main.0, main.2, worldPos.0, main.3)
+light = Call(m0.DoResolve_Sphere)
+PassValue(main.0, light.0)
+PassValue(main.2, light.1)
+PassValue(worldPos.0, light.2)
+PassValue(main.3, light.3)
+
+finalize = Call(m0.FinalizeResolve)
+PassValue(light.result, finalize.0)
+
+output = Output(float4 result : SV_Target0)
+PassValue(finalize.result, output.0)
