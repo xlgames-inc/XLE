@@ -29,6 +29,15 @@ SystemInputs SystemInputs_Default()
     return result;
 }
 
+SystemInputs SystemInputs_SampleIndex(uint sampleIndex)
+{
+	SystemInputs result;
+	#if MSAA_SAMPLES > 1
+		result.sampleIndex = sampleIndex;
+	#endif
+	return result;
+}
+
 #if MSAA_SAMPLES > 1
 	uint GetSampleIndex(SystemInputs inputs) { return inputs.sampleIndex; }
 #else
