@@ -5,6 +5,7 @@
 Starting points: <BR>
 * Development blog: https://xlgames-inc.github.io
 * Technical documentation: https://github.com/xlgames-inc/XLE/wiki
+* "What to do first" blog post: http://xlgames-inc.github.io/posts/whattodofirst/
 
 ### Build Status
 [Appveyor CI page](https://ci.appveyor.com/project/djewsbury/xle)

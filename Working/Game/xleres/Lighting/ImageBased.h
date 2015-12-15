@@ -178,7 +178,8 @@ float2 SplitSumIBL_IntegrateBRDF(float roughness, float NdotV)
     // just a few shader instructions.
     // This lookup table should have at least 16 bit of precision, and
     // the values are all in the range [0, 1] (so we can use UNORM format)
-    return GlossLUT.SampleLevel(ClampingSampler, float2(NdotV, roughness), 0).xy;
+    return GlossLUT.SampleLevel(ClampingSampler, float2(NdotV, 1.f - roughness), 0).xy;
+    // return GenerateSplitTerm(saturate(NdotV), saturate(roughness));
 }
 
 float3 SampleSpecularIBL_SplitSum(float3 normal, float3 viewDirection, SpecularParameters specParam)
