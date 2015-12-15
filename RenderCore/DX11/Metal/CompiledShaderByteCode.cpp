@@ -415,8 +415,9 @@ namespace RenderCore { namespace Metal_DX11
     public:
         enum class Blob
         {
-            Module, Input, Output, Call, PassValue,
+            Call, PassValue, Module,
             ParameterBlock, Assignment,
+            DeclareInput, DeclareOutput, 
             Token,
             End
         };
@@ -441,6 +442,8 @@ namespace RenderCore { namespace Metal_DX11
 
     auto FLGFormatter::PeekNext() -> std::pair<Blob, StringSection<char>>
     {
+    restartParse:
+
         while (_iterator < _script.end()) {
             if (IsWhitespace(*_iterator) || IsIgnoreable(*_iterator)) {
                 ++_iterator;
@@ -458,7 +461,17 @@ namespace RenderCore { namespace Metal_DX11
             return std::make_pair(Blob::End, StringSection<char>());
 
         // check for known tokens -- 
-        if (*_iterator == '=') {
+        if (*_iterator == '/' && (_iterator + 1) < _script.end() && *(_iterator+1) == '/') {
+            // just scan to the end of the line...
+            _iterator += 2;
+            while (_iterator < _script.end() && *_iterator != '\r' && *_iterator != '\n') ++_iterator;
+
+            // ok, I could use a loop to do this (or a recursive call)
+            // but sometimes goto is actually the best solution...!
+            // A loop would make all of the rest of the function confusing and a recursive
+            // call isn't ideal if there are many sequential comment lines
+            goto restartParse;
+        } else if (*_iterator == '=') {
             return std::make_pair(Blob::Assignment, StringSection<char>(_iterator, _iterator+1));
         } else if (*_iterator == '(') {
                 // This is a parameter block. We need to scan forward over everything until
@@ -477,11 +490,11 @@ namespace RenderCore { namespace Metal_DX11
         } else {
             static const std::pair<Blob, StringSection<char>> KnownTokens[] = 
             {
-                std::make_pair(Blob::Module,    "Module"),
-                std::make_pair(Blob::Input,     "Input"),
-                std::make_pair(Blob::Output,    "Output"),
-                std::make_pair(Blob::Call,      "Call"),
-                std::make_pair(Blob::PassValue, "PassValue")
+                std::make_pair(Blob::Module,        "Module"),
+                std::make_pair(Blob::DeclareInput,  "DeclareInput"),
+                std::make_pair(Blob::DeclareOutput, "DeclareOutput"),
+                std::make_pair(Blob::Call,          "Call"),
+                std::make_pair(Blob::PassValue,     "PassValue")
             };
             // read forward to any token terminator
             const char* i = _iterator;
@@ -572,15 +585,15 @@ namespace RenderCore { namespace Metal_DX11
             inline bool operator()(const First& lhs, const std::pair<First, Second>& rhs) const                      { return XlCompareString(lhs, rhs.first) < 0; }
         };
 
-    template<typename Object>
-        typename std::vector<std::pair<StringSection<char>, Object>>::iterator
+    template<typename StringComparable, typename Object>
+        typename std::vector<std::pair<StringComparable, Object>>::iterator
             LowerBoundT(
-                std::vector<std::pair<StringSection<char>, Object>>& vector,
-                StringSection<char> comparison)
+                std::vector<std::pair<StringComparable, Object>>& vector,
+                StringComparable comparison)
         {
             return std::lower_bound(
                 vector.begin(), vector.end(), comparison,
-                StringCompareFirst<StringSection<char>, Object>());
+                StringCompareFirst<StringComparable, Object>());
         }
 
     class FunctionLinkingGraph
@@ -599,20 +612,26 @@ namespace RenderCore { namespace Metal_DX11
         ~FunctionLinkingGraph();
     private:
         void ParseAssignmentExpression(FLGFormatter& formatter, Section variableName, const ::Assets::DirectorySearchRules& searchRules);
-        void ParsePassValue(Section srcNode, Section srcParam, Section dstNode, Section dstParam, StreamLocation loc);
-
-        intrusive_ptr<ID3D11FunctionLinkingGraph> _graph;
+        void ParsePassValue(Section src, Section dst, StreamLocation loc);
 
         using NodePtr = intrusive_ptr<ID3D11LinkingNode>;
+        using AliasTarget = std::pair<NodePtr, int>;
+        AliasTarget ResolveParameter(Section src, StreamLocation loc);
+        NodePtr ParseCallExpression(Section fnName, Section paramsShortHand, StreamLocation loc);
+
+        intrusive_ptr<ID3D11FunctionLinkingGraph> _graph;
         std::vector<std::pair<Section, FunctionLinkingModule>> _modules;
         std::vector<std::pair<Section, NodePtr>> _nodes;
+
+        std::vector<std::pair<std::string, AliasTarget>> _aliases;
+
         std::vector<::Assets::DependentFileState> _depFiles;
         std::vector<std::pair<Section, Section>> _referencedFunctions;
 
         std::string _shaderProfile, _defines;
     };
 
-    static std::regex PassValueParametersParse(R"--(\s*(\w+).(\w+)\s*,\s*(\w+).(\w+)\s*)--");
+    static std::regex PassValueParametersParse(R"--(\s*([\w.]+)\s*,\s*([\w.]+)\s*)--");
 
     FunctionLinkingGraph::FunctionLinkingGraph(StringSection<char> script, Section shaderProfile, Section defines, const ::Assets::DirectorySearchRules& searchRules)
     : _shaderProfile(shaderProfile.AsString())
@@ -661,12 +680,10 @@ namespace RenderCore { namespace Metal_DX11
                     bool a = std::regex_match(
                         expectingParameters.second.begin(), expectingParameters.second.end(), 
                         match, PassValueParametersParse);
-                    if (a && match.size() >= 5) {
+                    if (a && match.size() >= 3) {
                         ParsePassValue(
                             MakeStringSection(match[1].first, match[1].second),
                             MakeStringSection(match[2].first, match[2].second),
-                            MakeStringSection(match[3].first, match[3].second),
-                            MakeStringSection(match[4].first, match[4].second),
                             startLocation);
                     } else {
                         Throw(FormatException("Couldn't parser parameters block for PassValue statement", formatter.GetStreamLocation()));
@@ -808,6 +825,7 @@ namespace RenderCore { namespace Metal_DX11
     };
 
     static std::regex ShaderParameterParse(R"--((\w+)\s+(\w+)\s*(?:\:\s*(\w+))\s*)--");
+    static std::regex CommaSeparatedList(R"--([^,\s][^\,]*[^,\s]*)--");
 
     template<typename DestType = unsigned, typename CharType = char>
         DestType StringToUnsigned(const StringSection<CharType> source)
@@ -939,10 +957,34 @@ namespace RenderCore { namespace Metal_DX11
         
         using Blob = FLGFormatter::Blob;
         auto next = formatter.PeekNext();
-        if (   next.first != Blob::Module && next.first != Blob::Input
-            && next.first != Blob::Output && next.first != Blob::Call)
+        if (   next.first != Blob::Module && next.first != Blob::DeclareInput
+            && next.first != Blob::DeclareOutput && next.first != Blob::Call
+            && next.first != Blob::Token)
             Throw(FormatException("Unexpected token after assignment operation", formatter.GetStreamLocation()));
         formatter.SetPosition(next.second.end());
+
+        if (next.first == Blob::Token) {
+            // This can be one of 2 things:
+            // 1)  a "PassValue" expression written in short-hand
+            //    eg: output.0 = fn.0
+            // 2)  a "Call" expression in short-hand
+            //    eg: output.0 = m0.Resolve(position)
+            // We assume it's a function call if there is a parameter block
+            auto maybeParams = formatter.PeekNext();
+            if (maybeParams.first == Blob::ParameterBlock) {
+                formatter.SetPosition(maybeParams.second.end());
+
+                auto linkingNode = ParseCallExpression(next.second, maybeParams.second, startLoc);
+                auto n = LowerBoundT(_nodes, variableName);
+                if (n != _nodes.end() && XlEqString(n->first, variableName))
+                    Throw(FormatException("Attempting to reassign node that is already assigned. Check for naming conflicts.", startLoc));
+
+                _nodes.insert(n, std::make_pair(variableName, std::move(linkingNode)));
+            } else {
+                ParsePassValue(next.second, variableName, startLoc);
+            }
+            return;
+        }
 
         // parse the parameter block that comes next
         auto paramBlockLoc = formatter.GetStreamLocation();
@@ -987,8 +1029,8 @@ namespace RenderCore { namespace Metal_DX11
             }
             break;
 
-        case Blob::Input:
-        case Blob::Output:
+        case Blob::DeclareInput:
+        case Blob::DeclareOutput:
             {
                 // For both input and output, our parameter block should be a list of 
                 // parameters (in a HLSL-like syntax). We use this to create a linking
@@ -999,11 +1041,11 @@ namespace RenderCore { namespace Metal_DX11
                 finalParams.reserve(params.size());
                 for (auto&i:params)
                     finalParams.push_back(
-                        i.AsParameterDesc((next.first == Blob::Input) ? D3D_PF_IN : D3D_PF_OUT));
+                        i.AsParameterDesc((next.first == Blob::DeclareInput) ? D3D_PF_IN : D3D_PF_OUT));
 
                 ID3D11LinkingNode* linkingNodeRaw = nullptr;
                 HRESULT hresult;
-                if (next.first == Blob::Input) {
+                if (next.first == Blob::DeclareInput) {
                     hresult = _graph->SetInputSignature(AsPointer(finalParams.cbegin()), (unsigned)finalParams.size(), &linkingNodeRaw);
                 } else {
                     hresult = _graph->SetOutputSignature(AsPointer(finalParams.cbegin()), (unsigned)finalParams.size(), &linkingNodeRaw);
@@ -1020,6 +1062,15 @@ namespace RenderCore { namespace Metal_DX11
                 if (i != _nodes.end() && XlEqString(i->first, variableName))
                     Throw(FormatException("Attempting to reassign node that is already assigned. Check for naming conflicts.", startLoc));
 
+                // we can use the parameter names to create aliases...
+                for (unsigned c=0; c<params.size(); ++c) {
+                    auto i = LowerBoundT(_aliases, params[c]._name);
+                    if (i != _aliases.end() && i->first == params[c]._name)
+                        Throw(FormatException("Duplicate parameter name found", startLoc));
+                    AliasTarget target = std::make_pair(linkingNode, c);
+                    _aliases.insert(i, std::make_pair(params[c]._name, target));
+                }
+
                 _nodes.insert(i, std::make_pair(variableName, std::move(linkingNode)));
             }
             break;
@@ -1032,71 +1083,104 @@ namespace RenderCore { namespace Metal_DX11
                 // and assigned with the Module instruction. This will create a new
                 // linking node.
 
-                auto* i = parameterBlock.begin();
-                while (i != parameterBlock.end() && *i != '.') ++i;
-
-                if (i == parameterBlock.end())
-                    Throw(FormatException("Expected a module and function name in Call instruction.", paramBlockLoc));
-
-                auto moduleName = MakeStringSection(parameterBlock.begin(), i);
-                auto m = LowerBoundT(_modules, moduleName);
-                if (m == _modules.end() || !XlEqString(m->first, moduleName))
-                    Throw(FormatException("Unknown module variable in Call instruction. Modules should be registered with Module instruction before using.", paramBlockLoc));
-
-                auto module = m->second.GetUnderlying();
-
-                ID3D11LinkingNode* linkingNodeRaw = nullptr;
-                auto fnName = MakeStringSection(i+1, parameterBlock.end());
-                auto hresult = _graph->CallFunction(
-                    "", module, 
-                    fnName.AsString().c_str(), &linkingNodeRaw);
-                intrusive_ptr<ID3D11LinkingNode> linkingNode = moveptr(linkingNodeRaw);
-                if (!SUCCEEDED(hresult)) {
-                    auto e = GetLastError(*_graph);
-                    StringMeld<1024> buffer;
-                    buffer << "D3D error while creating linking node for function call (" << (const char*)e->GetBufferPointer() << ")";
-                    Throw(FormatException(buffer.get(), paramBlockLoc));
-                }
-
+                auto linkingNode = ParseCallExpression(parameterBlock, Section(), paramBlockLoc);
                 auto n = LowerBoundT(_nodes, variableName);
                 if (n != _nodes.end() && XlEqString(n->first, variableName))
                     Throw(FormatException("Attempting to reassign node that is already assigned. Check for naming conflicts.", startLoc));
 
                 _nodes.insert(n, std::make_pair(variableName, std::move(linkingNode)));
-                _referencedFunctions.insert(LowerBoundT(_referencedFunctions, moduleName), std::make_pair(moduleName, fnName));
             }
             break;
         }
     }
 
-    void FunctionLinkingGraph::ParsePassValue(
-        Section srcNode, Section srcParam, 
-        Section dstNode, Section dstParam, StreamLocation loc)
+    auto FunctionLinkingGraph::ParseCallExpression(Section fnName, Section paramsShortHand, StreamLocation loc) -> NodePtr
     {
-        auto sn = LowerBoundT(_nodes, srcNode);
-        if (sn == _nodes.end() || !XlEqString(sn->first, srcNode))
-            Throw(FormatException("Unknown source node", loc));
+        auto* i = fnName.begin();
+        while (i != fnName.end() && *i != '.') ++i;
 
-        auto dn = LowerBoundT(_nodes, dstNode);
-        if (dn == _nodes.end() || !XlEqString(dn->first, dstNode))
-            Throw(FormatException("Unknown destination node", loc));
+        if (i == fnName.end())
+            Throw(FormatException("Expected a module and function name in Call instruction.", loc));
+
+        auto modulePart = MakeStringSection(fnName.begin(), i);
+        auto fnPart = MakeStringSection(i+1, fnName.end());
+
+        auto m = LowerBoundT(_modules, modulePart);
+        if (m == _modules.end() || !XlEqString(m->first, modulePart))
+            Throw(FormatException("Unknown module variable in Call instruction. Modules should be registered with Module instruction before using.", loc));
+
+        auto module = m->second.GetUnderlying();
+
+        ID3D11LinkingNode* linkingNodeRaw = nullptr;
+        auto hresult = _graph->CallFunction(
+            "", module, 
+            fnPart.AsString().c_str(), &linkingNodeRaw);
+        intrusive_ptr<ID3D11LinkingNode> linkingNode = moveptr(linkingNodeRaw);
+        if (!SUCCEEDED(hresult)) {
+            auto e = GetLastError(*_graph);
+            Throw(FormatException(StringMeld<1024>() << "D3D error while creating linking node for function call (" << (const char*)e->GetBufferPointer() << ")", loc));
+        }
+
+        _referencedFunctions.insert(LowerBoundT(_referencedFunctions, modulePart), std::make_pair(modulePart, fnPart));
+
+        // paramsShortHand should be a comma separated list. Parameters can either be aliases, or they can be
+        // in node.index format
+        auto param = std::cregex_iterator(paramsShortHand.begin(), paramsShortHand.end(), CommaSeparatedList);
+        unsigned index = 0;
+        for (; param != std::cregex_iterator(); ++param) {
+            auto resolvedParam = ResolveParameter(Section(param->begin()->first, param->begin()->second), loc);
+            auto hresult = _graph->PassValue(resolvedParam.first.get(), resolvedParam.second, linkingNode.get(), index++);
+            if (!SUCCEEDED(hresult)) {
+                auto e = GetLastError(*_graph);
+                Throw(FormatException(StringMeld<1024>() << "D3D failure in PassValue statement (" << (const char*)e->GetBufferPointer() << ")", loc));
+            }
+        }
+
+        return std::move(linkingNode);
+    }
+
+    auto FunctionLinkingGraph::ResolveParameter(Section src, StreamLocation loc) -> AliasTarget
+    {
+        // Could be an alias, or could be in <node>.<parameter> format
+        auto a = LowerBoundT(_aliases, src.AsString());
+        if (a != _aliases.end() && XlEqString(MakeStringSection(a->first), src))
+            return a->second;
+
+        // split into <node>.<parameter> and resolve
+        auto* dot = src.begin();
+        while (dot != src.end() && *dot != '.') ++dot;
+        if (dot == src.end())
+            Throw(FormatException(StringMeld<256>() << "Unknown alias (" << src.AsString().c_str() << ")", loc));
+
+        auto nodeSection = MakeStringSection(src.begin(), dot);
+        auto indexSection = MakeStringSection(dot+1, src.end());
+
+        auto n = LowerBoundT(_nodes, nodeSection);
+        if (n == _nodes.end() || !XlEqString(n->first, nodeSection))
+            Throw(FormatException(StringMeld<256>() << "Could not find node (" << nodeSection.AsString().c_str() << ")", loc));
 
         // Parameters are refered to by index. We could potentially
         // do a lookup to convert string names to their correct indices. We
         // can use ID3D11LibraryReflection to get the reflection information
         // for a shader module.
-        int srcParamI, dstParamI;
-        if (XlEqString(srcParam, "result")) srcParamI = D3D_RETURN_PARAMETER_INDEX;
-        else srcParamI = (int)StringToUnsigned(srcParam);
-        if (XlEqString(dstParam, "result")) dstParamI = D3D_RETURN_PARAMETER_INDEX;
-        else dstParamI = (int)StringToUnsigned(dstParam);
-        auto hresult = _graph->PassValue(sn->second.get(), srcParamI, dn->second.get(), dstParamI);
 
+        int index;
+        if (XlEqString(indexSection, "result")) index = D3D_RETURN_PARAMETER_INDEX;
+        else index = (int)StringToUnsigned(indexSection);
+
+        return AliasTarget(n->second, index);
+    }
+
+    void FunctionLinkingGraph::ParsePassValue(
+        Section srcName, Section dstName, StreamLocation loc)
+    {
+        AliasTarget src = ResolveParameter(srcName, loc);
+        AliasTarget dst = ResolveParameter(dstName, loc);
+
+        auto hresult = _graph->PassValue(src.first.get(), src.second, dst.first.get(), dst.second);
         if (!SUCCEEDED(hresult)) {
             auto e = GetLastError(*_graph);
-            StringMeld<1024> buffer;
-            buffer << "D3D failure in PassValue statement (" << (const char*)e->GetBufferPointer() << ")";
-            Throw(FormatException(buffer.get(), loc));
+            Throw(FormatException(StringMeld<1024>() << "D3D failure in PassValue statement (" << (const char*)e->GetBufferPointer() << ")", loc));
         }
     }
 

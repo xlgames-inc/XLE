@@ -1,25 +1,24 @@
 FunctionLinkingGraph:1
 
-main = Input(
+main = DeclareInput(
     float4 position : SV_Position,
     float2 texCoord : TEXCOORD0,
     float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
     uint sampleIndex : SV_SampleIndex)
 
+// Link in our main module
 m0 = Module(resolvelightlib.sh)
-worldPos = Call(m0.CalculateWorldPosition)
-PassValue(main.0, worldPos.2)
-PassValue(main.2, worldPos.3)
-PassValue(main.3, worldPos.4)
 
-light = Call(m0.DoResolve_Directional)
-PassValue(main.0, light.0)
-PassValue(main.2, light.1)
-PassValue(worldPos.0, light.2)
-PassValue(main.3, light.3)
+// The basic structure is simple:
+// 1) Calculate some inputs to the resolve operations
+// 2) Perform each resolve step
+// 3) Generate the output value by combining the resolve outputs
+//
+// Steps 1 and 3 are fixes, but step 2 varies depending on the options
+// selected for the light (ie, this is where the dynamic linking occurs)
+worldPos = m0.CalculateWorldPosition(position, viewFrustumVector, sampleIndex)
+light = m0.DoResolve_Directional(position, viewFrustumVector, worldPos.3, sampleIndex)
+finalize = m0.FinalizeResolve(light.result)
 
-finalize = Call(m0.FinalizeResolve)
-PassValue(light.result, finalize.0)
-
-output = Output(float4 result : SV_Target0)
-PassValue(finalize.result, output.0)
+output = DeclareOutput(float4 outColour : SV_Target0)
+outColour = finalize.result

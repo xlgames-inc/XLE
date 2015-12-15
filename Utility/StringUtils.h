@@ -571,6 +571,18 @@ namespace Utility
             return XlToLower(a[blen]);
         }
 
+    template<typename T>
+        int XlCompareString(const std::basic_string<T>& a, const std::basic_string<T>& b)
+        {
+            return XlCompareString(MakeStringSection(a), MakeStringSection(b));
+        }
+
+    template<typename T>
+        int XlCompareStringI(const std::basic_string<T>& a, const std::basic_string<T>& b)
+        {
+            return XlCompareStringI(MakeStringSection(a), MakeStringSection(b));
+        }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     #if REDIRECT_CLIB_WITH_PREPROCESSOR

@@ -41,11 +41,11 @@ export float3 DoResolve_Directional(
 }
 
 export void CalculateWorldPosition(
-    out float3 worldPosition,
-    out float worldSpaceDepth,
     float4 position,
     float3 viewFrustumVector,
-    uint sampleIndex)
+    uint sampleIndex,
+    out float3 worldPosition,
+    out float worldSpaceDepth)
 {
     int2 pixelCoords = position.xy;
     worldSpaceDepth = GetWorldSpaceDepth(pixelCoords, sampleIndex);
