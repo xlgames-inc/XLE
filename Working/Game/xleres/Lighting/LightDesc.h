@@ -31,11 +31,25 @@ struct LightDesc
 	float3	OrientationZ; 	uint	Dummy;
 };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+	//   structures used by resolvers...
+
 struct CascadeAddress
 {
 	float4  frustumCoordinates;
 	int     cascadeIndex;
 	float4  miniProjection;
+};
+
+struct LightScreenDest
+{
+    int2 pixelCoords;
+    uint sampleIndex;
+};
+
+struct LightSampleExtra
+{
+    float screenSpaceOcclusion;
 };
 
 #endif

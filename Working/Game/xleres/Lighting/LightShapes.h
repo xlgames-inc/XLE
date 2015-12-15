@@ -7,7 +7,6 @@
 #if !defined(LIGHT_SHAPES_H)
 #define LIGHT_SHAPES_H
 
-#include "ResolverInterface.h"
 #include "LightDesc.h"
 #include "DirectionalResolve.h"
 #include "AreaLights.h"
@@ -15,21 +14,18 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-class Directional : ILightResolver
+float3 Resolve_Directional(
+    GBufferValues sample,
+    LightSampleExtra sampleExtra,
+    LightDesc light,
+    float3 worldPosition,
+    float3 directionToEye,
+    LightScreenDest screenDest)
 {
-    float3 Resolve(
-        GBufferValues sample,
-        LightSampleExtra sampleExtra,
-        LightDesc light,
-        float3 worldPosition,
-        float3 directionToEye,
-        LightScreenDest screenDest)
-    {
-        float3 diffuse = LightResolve_Diffuse(sample, directionToEye, light.Position, light);
-        float3 specular = LightResolve_Specular(sample, directionToEye, light.Position, light, sampleExtra.screenSpaceOcclusion);
-        return diffuse + specular;
-    }
-};
+    float3 diffuse = LightResolve_Diffuse(sample, directionToEye, light.Position, light);
+    float3 specular = LightResolve_Specular(sample, directionToEye, light.Position, light, sampleExtra.screenSpaceOcclusion);
+    return diffuse + specular;
+}
 
     // note -- is there a performance or accuracy advantage to doing ReciprocalMagnitude this way?
 float ReciprocalMagnitude(float3 vec)   { return rsqrt(dot(vec, vec)); }
@@ -65,58 +61,55 @@ float3 RepresentativeVector_Sphere(out float distortionCompensation, float3 vect
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-class Sphere : ILightResolver
+float3 Resolve_Sphere(
+    GBufferValues sample,
+    LightSampleExtra sampleExtra,
+    LightDesc light,
+    float3 worldPosition,
+    float3 directionToEye,
+    LightScreenDest screenDest)
 {
-    float3 Resolve(
-        GBufferValues sample,
-        LightSampleExtra sampleExtra,
-        LightDesc light,
-        float3 worldPosition,
-        float3 directionToEye,
-        LightScreenDest screenDest)
-    {
-        float3 reflectionDir = reflect(-directionToEye, sample.worldSpaceNormal);
-        float distortionCompensation;
-        float3 specLightDir = RepresentativeVector_Sphere(distortionCompensation, light.Position - worldPosition, light.SourceRadiusX, reflectionDir);
+    float3 reflectionDir = reflect(-directionToEye, sample.worldSpaceNormal);
+    float distortionCompensation;
+    float3 specLightDir = RepresentativeVector_Sphere(distortionCompensation, light.Position - worldPosition, light.SourceRadiusX, reflectionDir);
 
-        float distanceSq = MagnitudeSquared(light.Position - worldPosition);
-        float rDistance = rsqrt(distanceSq);
+    float distanceSq = MagnitudeSquared(light.Position - worldPosition);
+    float rDistance = rsqrt(distanceSq);
 
-            // note --  Here we should really be doing some extra work to calculate the
-            //          incoming light power. We need to define what the light power really
-            //          means...? Is it irradiance? Or power per surface area? Or the power
-            //          than an equivalent point light source would have?
-            //      Right now we're going to ignore that, and just use trivial implementations.
-            //      Also, if we were using a specular equation that is normalizes for energy
-            //      conservation, we also need to make special changes here... Again, we'll ignore.
+        // note --  Here we should really be doing some extra work to calculate the
+        //          incoming light power. We need to define what the light power really
+        //          means...? Is it irradiance? Or power per surface area? Or the power
+        //          than an equivalent point light source would have?
+        //      Right now we're going to ignore that, and just use trivial implementations.
+        //      Also, if we were using a specular equation that is normalizes for energy
+        //      conservation, we also need to make special changes here... Again, we'll ignore.
 
-            // note -- on high roughness materials, the specular seems to have very little effect
-            //      beyond short radius. We could probably find a cut-off point and disable specular
-            //      based on distance, source radius & power, & material roughness
+        // note -- on high roughness materials, the specular seems to have very little effect
+        //      beyond short radius. We could probably find a cut-off point and disable specular
+        //      based on distance, source radius & power, & material roughness
 
-        float3 diffuseLightDir = (light.Position - worldPosition)*rDistance;
-        float3 diffuse = LightResolve_Diffuse(sample, directionToEye, diffuseLightDir, light);
-        float3 specular = LightResolve_Specular(sample, directionToEye, normalize(specLightDir), light, sampleExtra.screenSpaceOcclusion);
+    float3 diffuseLightDir = (light.Position - worldPosition)*rDistance;
+    float3 diffuse = LightResolve_Diffuse(sample, directionToEye, diffuseLightDir, light);
+    float3 specular = LightResolve_Specular(sample, directionToEye, normalize(specLightDir), light, sampleExtra.screenSpaceOcclusion);
 
-            // Specular attenuation is a little tricky here... We want the light
-            // brightness to drop off relative to the solid angle of the light source.
-            // Karis has a rough estimate to an sphere light version of GGX.
-            // He suggests using the ratio of the normalization factors for this estimated
-            // GGX with a direction light source GGX.
-            // It feels like more work could be done here... It seems that the distant specular
-            // highlights are still too bright. Probably it should be compared to a reference
-            // ray tracer solution.
-        float alpha = sample.material.roughness * sample.material.roughness;
-        float alphaPrime = saturate(alpha + light.SourceRadiusX * light.SourceRadiusX * .5f * rDistance);
-        float specAttenuation = (alpha * alpha) / (alphaPrime * alphaPrime);
-        specAttenuation *= distortionCompensation;
+        // Specular attenuation is a little tricky here... We want the light
+        // brightness to drop off relative to the solid angle of the light source.
+        // Karis has a rough estimate to an sphere light version of GGX.
+        // He suggests using the ratio of the normalization factors for this estimated
+        // GGX with a direction light source GGX.
+        // It feels like more work could be done here... It seems that the distant specular
+        // highlights are still too bright. Probably it should be compared to a reference
+        // ray tracer solution.
+    float alpha = sample.material.roughness * sample.material.roughness;
+    float alphaPrime = saturate(alpha + light.SourceRadiusX * light.SourceRadiusX * .5f * rDistance);
+    float specAttenuation = (alpha * alpha) / (alphaPrime * alphaPrime);
+    specAttenuation *= distortionCompensation;
 
-        float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
-        float radiusDropOff = CalculateRadiusLimitAttenuation(distanceSq, light.CutoffRange);
+    float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
+    float radiusDropOff = CalculateRadiusLimitAttenuation(distanceSq, light.CutoffRange);
 
-        return (radiusDropOff*distanceAttenuation)*(diffuse + specAttenuation*specular);
-    }
-};
+    return (radiusDropOff*distanceAttenuation)*(diffuse + specAttenuation*specular);
+}
 
 float TubeLightDiffuseIntegral(float3 L0, float3 L1, float3 N)
 {
@@ -144,170 +137,164 @@ float3 RepresentativeVector_Tube(float3 L0, float3 L1, float3 reflectionDir)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-class Tube : ILightResolver
+float3 Resolve_Tube(
+    GBufferValues sample,
+    LightSampleExtra sampleExtra,
+    LightDesc light,
+    float3 worldPosition,
+    float3 directionToEye,
+    LightScreenDest screenDest)
 {
-    float3 Resolve(
-        GBufferValues sample,
-        LightSampleExtra sampleExtra,
-        LightDesc light,
-        float3 worldPosition,
-        float3 directionToEye,
-        LightScreenDest screenDest)
-    {
-        float3 reflectionDir = reflect(-directionToEye, sample.worldSpaceNormal);
+    float3 reflectionDir = reflect(-directionToEye, sample.worldSpaceNormal);
 
-            // As per Karis' 2013 Unreal course notes, we can calculate tube lights using
-            // different methods for diffuse and specular.
-            // For diffuse, we can directly calculate the integral of NdotL against a line
-            // For specular, we use a representative point (similar to the sphere implementation)
+        // As per Karis' 2013 Unreal course notes, we can calculate tube lights using
+        // different methods for diffuse and specular.
+        // For diffuse, we can directly calculate the integral of NdotL against a line
+        // For specular, we use a representative point (similar to the sphere implementation)
 
-        float3 L0 = light.Position - light.SourceRadiusY * light.OrientationY;
-        float3 L1 = light.Position + light.SourceRadiusY * light.OrientationY;
+    float3 L0 = light.Position - light.SourceRadiusY * light.OrientationY;
+    float3 L1 = light.Position + light.SourceRadiusY * light.OrientationY;
 
-        float NdotL = TubeLightDiffuseIntegral(L0 - worldPosition, L1 - worldPosition, sample.worldSpaceNormal);
+    float NdotL = TubeLightDiffuseIntegral(L0 - worldPosition, L1 - worldPosition, sample.worldSpaceNormal);
 
-            // note --  After doing "RepresentativeVector_Tube" we could also use
-            //          RepresentativeVector_Sphere to estimate a thick tube
-        float3 tubePoint = RepresentativeVector_Tube(L0 - worldPosition, L1 - worldPosition, reflectionDir);
-        float distortionCompensation;
-        float3 specLightDir = RepresentativeVector_Sphere(distortionCompensation, tubePoint, light.SourceRadiusX, reflectionDir);
+        // note --  After doing "RepresentativeVector_Tube" we could also use
+        //          RepresentativeVector_Sphere to estimate a thick tube
+    float3 tubePoint = RepresentativeVector_Tube(L0 - worldPosition, L1 - worldPosition, reflectionDir);
+    float distortionCompensation;
+    float3 specLightDir = RepresentativeVector_Sphere(distortionCompensation, tubePoint, light.SourceRadiusX, reflectionDir);
 
-        // We can choose to use either "specLightDir" or "tubePoint" for our diffuse distance calc
-        // If we use tubePoint, the radius will have no effect on the diffuse result (just on specular result)
-        // This might not be perfectly correct, but it can avoid artefacts that can occur at certain angles
-        float distanceSq = MagnitudeSquared(tubePoint - worldPosition);
-        float rDistance = rsqrt(distanceSq);
-        float3 diffuseRepDir = (tubePoint - worldPosition) * rDistance;
+    // We can choose to use either "specLightDir" or "tubePoint" for our diffuse distance calc
+    // If we use tubePoint, the radius will have no effect on the diffuse result (just on specular result)
+    // This might not be perfectly correct, but it can avoid artefacts that can occur at certain angles
+    float distanceSq = MagnitudeSquared(tubePoint - worldPosition);
+    float rDistance = rsqrt(distanceSq);
+    float3 diffuseRepDir = (tubePoint - worldPosition) * rDistance;
 
-        float3 diffuse = LightResolve_Diffuse_NdotL(sample, directionToEye, diffuseRepDir, NdotL, light);
-        float3 specular = LightResolve_Specular(sample, directionToEye, normalize(specLightDir), light, sampleExtra.screenSpaceOcclusion);
+    float3 diffuse = LightResolve_Diffuse_NdotL(sample, directionToEye, diffuseRepDir, NdotL, light);
+    float3 specular = LightResolve_Specular(sample, directionToEye, normalize(specLightDir), light, sampleExtra.screenSpaceOcclusion);
 
-            // This specular attenuation method is based on Karis. Maybe it needs
-            // a little more work...?
-        float alpha = sample.material.roughness * sample.material.roughness;
-        float alphaPrime0 = saturate(alpha + .5f * light.SourceRadiusY * light.SourceRadiusY * .5f * rDistance);
-        float specAttenuation = alpha / alphaPrime0; // in principle the highlight is stretched in only one direction... so no square
-        float alphaPrime1 = saturate(alpha + light.SourceRadiusX * light.SourceRadiusX * .5f * rDistance);
-        specAttenuation *= (alpha * alpha) / (alphaPrime1 * alphaPrime1);
-        specAttenuation *= distortionCompensation;
+        // This specular attenuation method is based on Karis. Maybe it needs
+        // a little more work...?
+    float alpha = sample.material.roughness * sample.material.roughness;
+    float alphaPrime0 = saturate(alpha + .5f * light.SourceRadiusY * light.SourceRadiusY * .5f * rDistance);
+    float specAttenuation = alpha / alphaPrime0; // in principle the highlight is stretched in only one direction... so no square
+    float alphaPrime1 = saturate(alpha + light.SourceRadiusX * light.SourceRadiusX * .5f * rDistance);
+    specAttenuation *= (alpha * alpha) / (alphaPrime1 * alphaPrime1);
+    specAttenuation *= distortionCompensation;
 
-        float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
-        float radiusDropOff = CalculateRadiusLimitAttenuation(distanceSq, light.CutoffRange);
+    float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
+    float radiusDropOff = CalculateRadiusLimitAttenuation(distanceSq, light.CutoffRange);
 
-        return radiusDropOff*(diffuse + distanceAttenuation*specAttenuation*specular);
-    }
-};
+    return radiusDropOff*(diffuse + distanceAttenuation*specAttenuation*specular);
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-class Rectangle : ILightResolver
+float3 Resolve_Rectangle(
+    GBufferValues sample,
+    LightSampleExtra sampleExtra,
+    LightDesc light,
+    float3 worldPosition,
+    float3 directionToEye,
+    LightScreenDest screenDest)
 {
-    float3 Resolve(
-        GBufferValues sample,
-        LightSampleExtra sampleExtra,
-        LightDesc light,
-        float3 worldPosition,
-        float3 directionToEye,
-        LightScreenDest screenDest)
-    {
-            // We can define and light space where the light center is at the origin,
-            // light is projected along +Z and +X and +Y lie on the light plane.
-            // We can then choose to work either in world space or light space.
-            // Let's use light space, because it might make doing boundary test
-            // easier later.
-            // It might be that working in world space could end up being fewer
-            // calculations, but we've have to try it to find out.
+        // We can define and light space where the light center is at the origin,
+        // light is projected along +Z and +X and +Y lie on the light plane.
+        // We can then choose to work either in world space or light space.
+        // Let's use light space, because it might make doing boundary test
+        // easier later.
+        // It might be that working in world space could end up being fewer
+        // calculations, but we've have to try it to find out.
 
-        float3 lightCenter = light.Position;
-        float2 lightHalfSize = float2(light.SourceRadiusX, light.SourceRadiusY);
+    float3 lightCenter = light.Position;
+    float2 lightHalfSize = float2(light.SourceRadiusX, light.SourceRadiusY);
 
-            // Here lightToWorld is an orthogonal rotation matrix (ie no scale)
-            // so we can use simplified transformation operations.
-        float3x3 worldToLight = float3x3(light.OrientationX, light.OrientationY, light.OrientationZ);
+        // Here lightToWorld is an orthogonal rotation matrix (ie no scale)
+        // so we can use simplified transformation operations.
+    float3x3 worldToLight = float3x3(light.OrientationX, light.OrientationY, light.OrientationZ);
 
-        float3 samplePt = mul(worldToLight, worldPosition - lightCenter);
-        float3 sampleNormal = mul(worldToLight, sample.worldSpaceNormal);
-        float3 viewDirectionLight = mul(worldToLight, directionToEye);
+    float3 samplePt = mul(worldToLight, worldPosition - lightCenter);
+    float3 sampleNormal = mul(worldToLight, sample.worldSpaceNormal);
+    float3 viewDirectionLight = mul(worldToLight, directionToEye);
 
-        // if (samplePt.z < 0.f) return float4(0.0.xxx, 1.f);
+    // if (samplePt.z < 0.f) return float4(0.0.xxx, 1.f);
 
-        float2 repPt = RectangleDiffuseRepPoint(samplePt, sampleNormal, lightHalfSize);
-        float3 lightNegDir = float3(repPt - samplePt.xy, -samplePt.z);
-        float distanceSq = dot(lightNegDir, lightNegDir);
-        float rDistance = rsqrt(distanceSq);
-        lightNegDir *= rDistance;
+    float2 repPt = RectangleDiffuseRepPoint(samplePt, sampleNormal, lightHalfSize);
+    float3 lightNegDir = float3(repPt - samplePt.xy, -samplePt.z);
+    float distanceSq = dot(lightNegDir, lightNegDir);
+    float rDistance = rsqrt(distanceSq);
+    lightNegDir *= rDistance;
 
-            // we're doing the light calculations in "light space" also, so
-            // adjust sample.worldSpaceNormal
-        sample.worldSpaceNormal = sampleNormal;
+        // we're doing the light calculations in "light space" also, so
+        // adjust sample.worldSpaceNormal
+    sample.worldSpaceNormal = sampleNormal;
 
-            // We can just do the rest of the diffuse calculation in light space, also...
-            // If it's just lambert, it's trivial.
-        float NdotL = saturate(dot(sampleNormal, lightNegDir));
-        float3 diffuse = LightResolve_Diffuse_NdotL(sample, viewDirectionLight, lightNegDir, NdotL, light);
+        // We can just do the rest of the diffuse calculation in light space, also...
+        // If it's just lambert, it's trivial.
+    float NdotL = saturate(dot(sampleNormal, lightNegDir));
+    float3 diffuse = LightResolve_Diffuse_NdotL(sample, viewDirectionLight, lightNegDir, NdotL, light);
 
-            // "cosThetaLightPlane" is the angle between the light normal the
-            // direction from the light to the sample point. In this light type, light
-            // is generally being emitted in the one direction, and so less light escapes
-            // out tangental to the light surface. So, we consider this with cosThetaLightPlane.
-            // In 3DS Max, rectangle lights don't work like this.
-            //
-            // Light escapes equally in all directions. However, our solution works poorly
-            // when cosThetaLightPlane is near zero, mostly because of the "skewed normal"
-            // calculations in RectangleDiffuseRepPoint. If we had a better solution for this
-            // case, we could support the same light shape as max.
-        float diffuseAttenuation;
-        const uint RectLightType_SingleDir = 0; // cast light forward, along a single direction
-        const uint RectLightType_TwoDir = 1;    // cast light forward and backward
-        const uint RectLightType_Max = 2;       // cast light in all directions equally, like 3DS Quicksilver
-        const uint rectLightType = RectLightType_SingleDir;
-        if (rectLightType == RectLightType_SingleDir)   { diffuseAttenuation = saturate(-lightNegDir.z); }
-        else if (rectLightType == RectLightType_TwoDir) { diffuseAttenuation = abs(lightNegDir.z); }
-        else                                            { diffuseAttenuation = 1.f; }
+        // "cosThetaLightPlane" is the angle between the light normal the
+        // direction from the light to the sample point. In this light type, light
+        // is generally being emitted in the one direction, and so less light escapes
+        // out tangental to the light surface. So, we consider this with cosThetaLightPlane.
+        // In 3DS Max, rectangle lights don't work like this.
+        //
+        // Light escapes equally in all directions. However, our solution works poorly
+        // when cosThetaLightPlane is near zero, mostly because of the "skewed normal"
+        // calculations in RectangleDiffuseRepPoint. If we had a better solution for this
+        // case, we could support the same light shape as max.
+    float diffuseAttenuation;
+    const uint RectLightType_SingleDir = 0; // cast light forward, along a single direction
+    const uint RectLightType_TwoDir = 1;    // cast light forward and backward
+    const uint RectLightType_Max = 2;       // cast light in all directions equally, like 3DS Quicksilver
+    const uint rectLightType = RectLightType_SingleDir;
+    if (rectLightType == RectLightType_SingleDir)   { diffuseAttenuation = saturate(-lightNegDir.z); }
+    else if (rectLightType == RectLightType_TwoDir) { diffuseAttenuation = abs(lightNegDir.z); }
+    else                                            { diffuseAttenuation = 1.f; }
 
-        float intersectionArea;
-        float2 specRepPt = RectangleSpecularRepPoint(intersectionArea, samplePt, sampleNormal, viewDirectionLight, lightHalfSize, sample.material.roughness);
+    float intersectionArea;
+    float2 specRepPt = RectangleSpecularRepPoint(intersectionArea, samplePt, sampleNormal, viewDirectionLight, lightHalfSize, sample.material.roughness);
 
-        float3 specLightNegDir = float3(specRepPt - samplePt.xy, -samplePt.z);
-        float specDistanceSq = MagnitudeSquared(specLightNegDir);
-        specLightNegDir *= rsqrt(specDistanceSq);
-        // float area = lightHalfSize.x * lightHalfSize.y * 4.f;
-        // float integralApprox = intersectionArea / area;
-        float integralApprox = intersectionArea;
+    float3 specLightNegDir = float3(specRepPt - samplePt.xy, -samplePt.z);
+    float specDistanceSq = MagnitudeSquared(specLightNegDir);
+    specLightNegDir *= rsqrt(specDistanceSq);
+    // float area = lightHalfSize.x * lightHalfSize.y * 4.f;
+    // float integralApprox = intersectionArea / area;
+    float integralApprox = intersectionArea;
 
-            // note --  We can get some interesting results if we use "lightNegDir" here instead of
-            //          specLightNegDir -- it's a good way to visualise the representative point we're using
-            //          for the diffuse calculation.
-        float3 specular = LightResolve_Specular(sample, viewDirectionLight, specLightNegDir, light, sampleExtra.screenSpaceOcclusion);
-        float specAttenuation = integralApprox;
+        // note --  We can get some interesting results if we use "lightNegDir" here instead of
+        //          specLightNegDir -- it's a good way to visualise the representative point we're using
+        //          for the diffuse calculation.
+    float3 specular = LightResolve_Specular(sample, viewDirectionLight, specLightNegDir, light, sampleExtra.screenSpaceOcclusion);
+    float specAttenuation = integralApprox;
 
-        if (rectLightType == RectLightType_SingleDir)   { specAttenuation *= saturate(-specLightNegDir.z); }
-        else if (rectLightType == RectLightType_TwoDir) { specAttenuation *= abs(specLightNegDir.z); }
+    if (rectLightType == RectLightType_SingleDir)   { specAttenuation *= saturate(-specLightNegDir.z); }
+    else if (rectLightType == RectLightType_TwoDir) { specAttenuation *= abs(specLightNegDir.z); }
 
-            // Let's use the same distance for both diffuse and specular attenuation
-            // (both to reduce the calculations, and because it makes sense.)
-            // We can choose to use either the diffuse or specular rep point.
-        float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
+        // Let's use the same distance for both diffuse and specular attenuation
+        // (both to reduce the calculations, and because it makes sense.)
+        // We can choose to use either the diffuse or specular rep point.
+    float distanceAttenuation = saturate(DistanceAttenuation(distanceSq, 1.f));
 
-            // We can attempt to normalize the specular calculation in much the
-            // same way we do for spherical lights. Let's imagine the that light is
-            // a disc with the same area as the rectangle. We can use that in the
-            // alpha prime calculation for spherical lights. This is an approximation
-            // for spherical lights already
-        float alpha = sample.material.roughness * sample.material.roughness;
-        float discRadius = sqrt(lightHalfSize.x * lightHalfSize.y * reciprocalPi);
-        float alphaPrime = saturate(alpha + discRadius * discRadius * .5f * rDistance);
-        specAttenuation *= (alpha * alpha) / (alphaPrime * alphaPrime);
+        // We can attempt to normalize the specular calculation in much the
+        // same way we do for spherical lights. Let's imagine the that light is
+        // a disc with the same area as the rectangle. We can use that in the
+        // alpha prime calculation for spherical lights. This is an approximation
+        // for spherical lights already
+    float alpha = sample.material.roughness * sample.material.roughness;
+    float discRadius = sqrt(lightHalfSize.x * lightHalfSize.y * reciprocalPi);
+    float alphaPrime = saturate(alpha + discRadius * discRadius * .5f * rDistance);
+    specAttenuation *= (alpha * alpha) / (alphaPrime * alphaPrime);
 
-        float radiusDropOff = CalculateRadiusLimitAttenuation(distanceSq, light.CutoffRange);
+    float radiusDropOff = CalculateRadiusLimitAttenuation(distanceSq, light.CutoffRange);
 
-        //  Note that we can scale by "area" here if we define our light units in
-        //  "luminous flux per area" units. But it seems more natural to separate
-        //  the "brightness" quantity from area.
+    //  Note that we can scale by "area" here if we define our light units in
+    //  "luminous flux per area" units. But it seems more natural to separate
+    //  the "brightness" quantity from area.
 
-        return (distanceAttenuation*radiusDropOff) * (diffuseAttenuation*diffuse + specAttenuation*specular);
-    }
-};
+    return (distanceAttenuation*radiusDropOff) * (diffuseAttenuation*diffuse + specAttenuation*specular);
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

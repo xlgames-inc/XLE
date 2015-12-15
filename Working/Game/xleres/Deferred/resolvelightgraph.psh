@@ -12,7 +12,7 @@ PassValue(main.0, worldPos.2)
 PassValue(main.2, worldPos.3)
 PassValue(main.3, worldPos.4)
 
-light = Call(m0.DoResolve_Sphere)
+light = Call(m0.DoResolve_Directional)
 PassValue(main.0, light.0)
 PassValue(main.2, light.1)
 PassValue(worldPos.0, light.2)

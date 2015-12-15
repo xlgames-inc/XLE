@@ -607,6 +607,7 @@ namespace RenderCore { namespace Metal_DX11
         std::vector<std::pair<Section, FunctionLinkingModule>> _modules;
         std::vector<std::pair<Section, NodePtr>> _nodes;
         std::vector<::Assets::DependentFileState> _depFiles;
+        std::vector<std::pair<Section, Section>> _referencedFunctions;
 
         std::string _shaderProfile, _defines;
     };
@@ -725,18 +726,34 @@ namespace RenderCore { namespace Metal_DX11
             // We can setup a default binding by just binding to the original slots -- 
             {
                 auto* reflection = i.second.GetReflection();
-                auto* fn0 = reflection->GetFunctionByIndex(0);  // todo -- we should find the specific functions that we're actually using!
-                D3D11_FUNCTION_DESC desc;
-                fn0->GetDesc(&desc);
-                for (unsigned c=0; c<desc.BoundResources; ++c) {
-                    D3D11_SHADER_INPUT_BIND_DESC bindDesc;
-                    fn0->GetResourceBindingDesc(c, &bindDesc);
-                    if (bindDesc.Type == D3D_SIT_CBUFFER) {
-                        instance->BindConstantBuffer(bindDesc.BindPoint, bindDesc.BindPoint, 0);
-                    } else if (bindDesc.Type == D3D_SIT_TEXTURE) {
-                        instance->BindResource(bindDesc.BindPoint, bindDesc.BindPoint, bindDesc.BindCount);
-                    } else if (bindDesc.Type == D3D_SIT_SAMPLER) {
-                        instance->BindSampler(bindDesc.BindPoint, bindDesc.BindPoint, bindDesc.BindCount);
+
+                auto refFns = std::equal_range(_referencedFunctions.cbegin(), _referencedFunctions.cend(), i.first, StringCompareFirst<Section, Section>());
+                if (refFns.first == refFns.second) continue;
+
+                D3D11_LIBRARY_DESC libDesc;
+                reflection->GetDesc(&libDesc);
+
+                for (unsigned c=0; c<libDesc.FunctionCount; ++c) {
+                    auto* fn = reflection->GetFunctionByIndex(c);
+
+                    D3D11_FUNCTION_DESC desc;
+                    fn->GetDesc(&desc);
+
+                    // if the function is referenced, we can apply the default bindings...
+                    auto i = std::find_if(refFns.first, refFns.second, 
+                        [&desc](const std::pair<Section, Section>& p) { return XlEqString(p.second, desc.Name);});
+                    if (i != refFns.second) {
+                        for (unsigned c=0; c<desc.BoundResources; ++c) {
+                            D3D11_SHADER_INPUT_BIND_DESC bindDesc;
+                            fn->GetResourceBindingDesc(c, &bindDesc);
+                            if (bindDesc.Type == D3D_SIT_CBUFFER) {
+                                instance->BindConstantBuffer(bindDesc.BindPoint, bindDesc.BindPoint, 0);
+                            } else if (bindDesc.Type == D3D_SIT_TEXTURE) {
+                                instance->BindResource(bindDesc.BindPoint, bindDesc.BindPoint, bindDesc.BindCount);
+                            } else if (bindDesc.Type == D3D_SIT_SAMPLER) {
+                                instance->BindSampler(bindDesc.BindPoint, bindDesc.BindPoint, bindDesc.BindCount);
+                            }
+                        }
                     }
                 }
             }
@@ -1029,10 +1046,10 @@ namespace RenderCore { namespace Metal_DX11
                 auto module = m->second.GetUnderlying();
 
                 ID3D11LinkingNode* linkingNodeRaw = nullptr;
-                auto fnName = MakeStringSection(i+1, parameterBlock.end()).AsString();
+                auto fnName = MakeStringSection(i+1, parameterBlock.end());
                 auto hresult = _graph->CallFunction(
                     "", module, 
-                    fnName.c_str(), &linkingNodeRaw);
+                    fnName.AsString().c_str(), &linkingNodeRaw);
                 intrusive_ptr<ID3D11LinkingNode> linkingNode = moveptr(linkingNodeRaw);
                 if (!SUCCEEDED(hresult)) {
                     auto e = GetLastError(*_graph);
@@ -1046,6 +1063,7 @@ namespace RenderCore { namespace Metal_DX11
                     Throw(FormatException("Attempting to reassign node that is already assigned. Check for naming conflicts.", startLoc));
 
                 _nodes.insert(n, std::make_pair(variableName, std::move(linkingNode)));
+                _referencedFunctions.insert(LowerBoundT(_referencedFunctions, moduleName), std::make_pair(moduleName, fnName));
             }
             break;
         }
@@ -1068,9 +1086,9 @@ namespace RenderCore { namespace Metal_DX11
         // can use ID3D11LibraryReflection to get the reflection information
         // for a shader module.
         int srcParamI, dstParamI;
-        if (XlEqString(srcParam, "return")) srcParamI = D3D_RETURN_PARAMETER_INDEX;
+        if (XlEqString(srcParam, "result")) srcParamI = D3D_RETURN_PARAMETER_INDEX;
         else srcParamI = (int)StringToUnsigned(srcParam);
-        if (XlEqString(dstParam, "return")) dstParamI = D3D_RETURN_PARAMETER_INDEX;
+        if (XlEqString(dstParam, "result")) dstParamI = D3D_RETURN_PARAMETER_INDEX;
         else dstParamI = (int)StringToUnsigned(dstParam);
         auto hresult = _graph->PassValue(sn->second.get(), srcParamI, dn->second.get(), dstParamI);
 

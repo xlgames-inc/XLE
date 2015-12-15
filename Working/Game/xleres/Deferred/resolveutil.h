@@ -7,7 +7,6 @@
 #if !defined(RESOLVE_UTIL_H)
 #define RESOLVE_UTIL_H
 
-#include "../Utility/MathConstants.h"
 #include "../TextureAlgorithm.h"		// for LoadFloat1
 #include "../TransformAlgorithm.h"		// float NDC->linear conversions
 
@@ -31,7 +30,5 @@ float3 CalculateWorldPosition(int2 pixelCoords, uint sampleIndex, float3 viewFru
 	// if (depth >= 1.f) clip(-1); // maybe would be ideal to discard these pixels with stencil buffer
 	return CalculateWorldPosition(viewFrustumVector, depth, WorldSpaceView);
 }
-
-
 
 #endif

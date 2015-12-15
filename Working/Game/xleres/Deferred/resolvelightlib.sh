@@ -4,9 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../Lighting/ResolverInterface.h"
 #include "../Lighting/LightShapes.h"
-#include "../Lighting/ShadowTypes.h"
 #include "resolveutil.h"
 #include "../System/LoadGBuffer.h"
 #include "../Colour.h" // for LightingScale
@@ -20,12 +18,9 @@ cbuffer LightBuffer
     LightDesc Light;
 }
 
-export float3 DoResolve(
-    ILightResolver resolver,
-    float4 position,
-    float3 viewFrustumVector,
-    float3 worldPosition,
-    uint sampleIndex)
+export float3 DoResolve_Directional(
+    float4 position, float3 viewFrustumVector,
+    float3 worldPosition, uint sampleIndex)
 {
     SystemInputs sys = SystemInputs_SampleIndex(sampleIndex);
 
@@ -42,23 +37,7 @@ export float3 DoResolve(
     screenDest.pixelCoords = pixelCoords;
     screenDest.sampleIndex = GetSampleIndex(sys);
 
-    return resolver.Resolve(sample, sampleExtra, Light, worldPosition, normalize(-viewFrustumVector), screenDest);
-}
-
-export float3 DoResolve_Sphere(
-    float4 position, float3 viewFrustumVector,
-    float3 worldPosition, uint sampleIndex)
-{
-    Sphere resolver;
-    return DoResolve(resolver, position, viewFrustumVector, worldPosition, sampleIndex);
-}
-
-export float3 DoResolve_Directional(
-    float4 position, float3 viewFrustumVector,
-    float3 worldPosition, uint sampleIndex)
-{
-    Directional resolver;
-    return DoResolve(resolver, position, viewFrustumVector, worldPosition, sampleIndex);
+    return Resolve_Directional(sample, sampleExtra, Light, worldPosition, normalize(-viewFrustumVector), screenDest);
 }
 
 export void CalculateWorldPosition(
@@ -75,5 +54,5 @@ export void CalculateWorldPosition(
 
 export float4 FinalizeResolve(float3 resolvedLight)
 {
-    return float4((LightingScale)*result, 1.f);
+    return float4((LightingScale)*resolvedLight, 1.f);
 }

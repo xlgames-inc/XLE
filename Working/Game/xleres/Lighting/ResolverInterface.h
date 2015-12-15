@@ -10,17 +10,6 @@
 #include "../gbuffer.h"
 #include "LightDesc.h"
 
-struct LightScreenDest
-{
-    int2 pixelCoords;
-    uint sampleIndex;
-};
-
-struct LightSampleExtra
-{
-    float screenSpaceOcclusion;
-};
-
 interface ILightResolver
 {
     float3 Resolve(
@@ -40,6 +29,65 @@ interface IShadowResolver
 interface ICascadeResolver
 {
     CascadeAddress Resolve(float3 worldPosition, float2 camXY, float worldSpaceDepth);
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+#include "LightShapes.h"
+
+class Directional : ILightResolver
+{
+    float3 Resolve(
+        GBufferValues sample,
+        LightSampleExtra sampleExtra,
+        LightDesc light,
+        float3 worldPosition,
+        float3 directionToEye,
+        LightScreenDest screenDest)
+    {
+        return Resolve_Directional(sample, sampleExtra, light, worldPosition, directionToEye, screenDest);
+    }
+};
+
+class Sphere : ILightResolver
+{
+    float3 Resolve(
+        GBufferValues sample,
+        LightSampleExtra sampleExtra,
+        LightDesc light,
+        float3 worldPosition,
+        float3 directionToEye,
+        LightScreenDest screenDest)
+    {
+        return Resolve_Sphere(sample, sampleExtra, light, worldPosition, directionToEye, screenDest);
+    }
+};
+
+class Tube : ILightResolver
+{
+    float3 Resolve(
+        GBufferValues sample,
+        LightSampleExtra sampleExtra,
+        LightDesc light,
+        float3 worldPosition,
+        float3 directionToEye,
+        LightScreenDest screenDest)
+    {
+        return Resolve_Tube(sample, sampleExtra, light, worldPosition, directionToEye, screenDest);
+    }
+};
+
+class Rectangle : ILightResolver
+{
+    float3 Resolve(
+        GBufferValues sample,
+        LightSampleExtra sampleExtra,
+        LightDesc light,
+        float3 worldPosition,
+        float3 directionToEye,
+        LightScreenDest screenDest)
+    {
+        return Resolve_Rectangle(sample, sampleExtra, light, worldPosition, directionToEye, screenDest);
+    }
 };
 
 #endif
