@@ -9,12 +9,20 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if MSAA_SAMPLES > 1
+    #define MAYBE_SAMPLE_INDEX , uint sampleIndex
+#else
+    #define MAYBE_SAMPLE_INDEX
+    static const uint sampleIndex = 0;
+#endif
+
 export float DoResolve_ShadowResolver_PoissonDisc(
     float4  frustumCoordinates,
     int     cascadeIndex,
     float4  miniProjection,
-    float2  pixelCoords,
-    uint    sampleIndex)
+    float2  pixelCoords
+    MAYBE_SAMPLE_INDEX
+    )
 {
     ShadowResolveConfig config = ShadowResolveConfig_Default();
     config._pcUsePoissonDiskMethod = true;
@@ -28,8 +36,9 @@ export float DoResolve_ShadowResolver_Smooth(
     float4  frustumCoordinates,
     int     cascadeIndex,
     float4  miniProjection,
-    float2  pixelCoords,
-    uint    sampleIndex)
+    float2  pixelCoords
+    MAYBE_SAMPLE_INDEX
+    )
 {
     ShadowResolveConfig config = ShadowResolveConfig_Default();
     config._pcUsePoissonDiskMethod = false;
@@ -43,8 +52,9 @@ export float DoResolve_ShadowResolver_None(
     float4  frustumCoordinates,
     int     cascadeIndex,
     float4  miniProjection,
-    float2  pixelCoords,
-    uint    sampleIndex)
+    float2  pixelCoords
+    MAYBE_SAMPLE_INDEX
+    )
 {
     return 1.f;
 }

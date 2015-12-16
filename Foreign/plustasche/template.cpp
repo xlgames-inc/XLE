@@ -330,7 +330,7 @@ std::string template_t::render_sections(const std::string& tmplate,
         // Check on end-of-section newlines
         bool shouldSkipNextNewline =
             // If the section ended in a newline, or was empty...
-            ((repl[repl.length() - 1] == '\n') || show == "false") &&
+            ((repl.empty() || repl[repl.length() - 1] == '\n') || show == "false") &&
             // ...and the section is also followed by a newline, skip it.
             (std::string(matches[0].second, matches[0].second + 1) == "\n");
         

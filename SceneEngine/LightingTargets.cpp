@@ -268,7 +268,7 @@ namespace SceneEngine
 
         StringMeld<256, ::Assets::ResChar> definesTable;
         definesTable << "GBUFFER_TYPE=" << desc._gbufferType;
-        definesTable << ";MSAA_SAMPLES=" << (desc._msaaSampleCount<=1)?0:desc._msaaSampleCount;
+        definesTable << ";MSAA_SAMPLES=" << ((desc._msaaSampleCount<=1)?0:desc._msaaSampleCount);
         if (desc._msaaSamplers) definesTable << ";MSAA_SAMPLERS=1";
 
         if (desc._dynamicLinking==2) {
@@ -277,6 +277,8 @@ namespace SceneEngine
             definesTable << ";shape=" << AsLightResolverInterface(type);
             definesTable << ";cascade=" << AsCascadeResolverInterface(type);
             definesTable << ";shadows=" << AsShadowResolverInterface(type);
+            if (desc._msaaSampleCount > 1)
+                definesTable << ";passSampleIndex=true";
         } else {
             if (type._shadows != NoShadows) {
                 definesTable << ";SHADOW_CASCADE_MODE=" << ((type._shadows == OrthShadows || type._shadows == OrthShadowsNearCascade || type._shadows == OrthHybridShadows) ? 2u : 1u);

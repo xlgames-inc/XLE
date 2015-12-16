@@ -417,7 +417,7 @@ namespace RenderCore { namespace Metal_DX11
     public:
         enum class Blob
         {
-            Call, PassValue, Module,
+            Call, PassValue, Module, Alias,
             ParameterBlock, Assignment,
             DeclareInput, DeclareOutput, 
             Token,
@@ -496,7 +496,8 @@ namespace RenderCore { namespace Metal_DX11
                 std::make_pair(Blob::DeclareInput,  "DeclareInput"),
                 std::make_pair(Blob::DeclareOutput, "DeclareOutput"),
                 std::make_pair(Blob::Call,          "Call"),
-                std::make_pair(Blob::PassValue,     "PassValue")
+                std::make_pair(Blob::PassValue,     "PassValue"),
+                std::make_pair(Blob::Alias,         "Alias")
             };
             // read forward to any token terminator
             const char* i = _iterator;
@@ -835,7 +836,7 @@ namespace RenderCore { namespace Metal_DX11
     };
 
     static std::regex ShaderParameterParse(R"--((\w+)\s+(\w+)\s*(?:\:\s*(\w+))\s*)--");
-    static std::regex CommaSeparatedList(R"--([^,\s][^\,]*[^,\s]*)--");
+    static std::regex CommaSeparatedList(R"--([^,\s]+)--");
 
     template<typename DestType = unsigned, typename CharType = char>
         DestType StringToUnsigned(const StringSection<CharType> source)
@@ -969,7 +970,7 @@ namespace RenderCore { namespace Metal_DX11
         auto next = formatter.PeekNext();
         if (   next.first != Blob::Module && next.first != Blob::DeclareInput
             && next.first != Blob::DeclareOutput && next.first != Blob::Call
-            && next.first != Blob::Token)
+            && next.first != Blob::Token && next.first != Blob::Alias)
             Throw(FormatException("Unexpected token after assignment operation", formatter.GetStreamLocation()));
         formatter.SetPosition(next.second.end());
 
@@ -1077,6 +1078,19 @@ namespace RenderCore { namespace Metal_DX11
                     Throw(FormatException("Attempting to reassign node that is already assigned. Check for naming conflicts.", startLoc));
 
                 _nodes.insert(n, std::make_pair(variableName, std::move(linkingNode)));
+            }
+            break;
+
+        case Blob::Alias:
+            {
+                // Our parameters should be an alias or node parameter reference
+                // we're just creating a new name for something that already exists
+                auto target = ResolveParameter(parameterBlock, paramBlockLoc);
+                auto varNameStr = variableName.AsString();
+                auto i = LowerBoundT(_aliases, varNameStr);
+                if (i != _aliases.end() && i->first == varNameStr)
+                    Throw(FormatException("Duplicate alias name found", startLoc));
+                _aliases.insert(i, std::make_pair(varNameStr, target));
             }
             break;
         }

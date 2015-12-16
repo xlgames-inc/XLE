@@ -7,6 +7,13 @@
 #include "../Lighting/LightShapes.h"
 #include "../System/LoadGBuffer.h"
 
+#if MSAA_SAMPLES > 1
+    #define MAYBE_SAMPLE_INDEX , uint sampleIndex
+#else
+    #define MAYBE_SAMPLE_INDEX
+    static const uint sampleIndex = 0;
+#endif
+
 // We have to careful about constant buffer assignments
 // Our system doesn't support cases where multiple libraries used
 // by the same shader have different constant buffers (or resources)
@@ -28,8 +35,10 @@ LightSampleExtra MakeLightSampleExtra(float screenSpaceOcclusion)
 
 export float3 DoResolve_Directional(
     float4 position, float3 viewFrustumVector,
-    float3 worldPosition, uint sampleIndex,
-    float screenSpaceOcclusion)
+    float3 worldPosition,
+    float screenSpaceOcclusion
+    MAYBE_SAMPLE_INDEX
+    )
 {
     SystemInputs sys = SystemInputs_SampleIndex(sampleIndex);
 
@@ -44,8 +53,10 @@ export float3 DoResolve_Directional(
 
 export float3 DoResolve_Sphere(
     float4 position, float3 viewFrustumVector,
-    float3 worldPosition, uint sampleIndex,
-    float screenSpaceOcclusion)
+    float3 worldPosition,
+    float screenSpaceOcclusion
+    MAYBE_SAMPLE_INDEX
+    )
 {
     SystemInputs sys = SystemInputs_SampleIndex(sampleIndex);
 
@@ -60,8 +71,10 @@ export float3 DoResolve_Sphere(
 
 export float3 DoResolve_Tube(
     float4 position, float3 viewFrustumVector,
-    float3 worldPosition, uint sampleIndex,
-    float screenSpaceOcclusion)
+    float3 worldPosition,
+    float screenSpaceOcclusion
+    MAYBE_SAMPLE_INDEX
+    )
 {
     SystemInputs sys = SystemInputs_SampleIndex(sampleIndex);
 
@@ -76,8 +89,10 @@ export float3 DoResolve_Tube(
 
 export float3 DoResolve_Rectangle(
     float4 position, float3 viewFrustumVector,
-    float3 worldPosition, uint sampleIndex,
-    float screenSpaceOcclusion)
+    float3 worldPosition,
+    float screenSpaceOcclusion
+    MAYBE_SAMPLE_INDEX
+    )
 {
     SystemInputs sys = SystemInputs_SampleIndex(sampleIndex);
 
@@ -92,8 +107,10 @@ export float3 DoResolve_Rectangle(
 
 export float3 DoResolve_Disc(
     float4 position, float3 viewFrustumVector,
-    float3 worldPosition, uint sampleIndex,
-    float screenSpaceOcclusion)
+    float3 worldPosition,
+    float screenSpaceOcclusion
+    MAYBE_SAMPLE_INDEX
+    )
 {
     return 0.0.xxx;
 }

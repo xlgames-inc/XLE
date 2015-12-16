@@ -11,13 +11,21 @@
     Texture2D<float>	AmbientOcclusion : register(t5);
 #endif
 
+#if MSAA_SAMPLES > 1
+    #define MAYBE_SAMPLE_INDEX , uint sampleIndex
+#else
+    #define MAYBE_SAMPLE_INDEX
+    static const uint sampleIndex = 0;
+#endif
+
 export void Setup(
     float4 position,
     float3 viewFrustumVector,
-    uint sampleIndex,
     out float3 worldPosition,
     out float worldSpaceDepth,
-    out float screenSpaceOcclusion)
+    out float screenSpaceOcclusion
+    MAYBE_SAMPLE_INDEX
+    )
 {
     int2 pixelCoords = position.xy;
     worldSpaceDepth = GetWorldSpaceDepth(pixelCoords, sampleIndex);
