@@ -14,22 +14,6 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-CascadeAddress CascadeAddress_Invalid()
-{
-    CascadeAddress result;
-    result.cascadeIndex = -1;
-    return result;
-}
-
-CascadeAddress CascadeAddress_Create(float4 frustumCoordinates, int cascadeIndex, float4 miniProjection)
-{
-    CascadeAddress result;
-    result.cascadeIndex = cascadeIndex;
-    result.frustumCoordinates = frustumCoordinates;
-    result.miniProjection = miniProjection;
-    return result;
-}
-
 CascadeAddress ResolveCascade_FromWorldPosition(float3 worldPosition, uint cascadeMode, bool enableNearCascade)
 {
         // find the first frustum we're within

@@ -133,6 +133,7 @@ namespace PlatformRig
         static const auto* EnvSettings = (const utf8*)"EnvSettings";
         static const auto* AmbientSettings = (const utf8*)"AmbientSettings";
         static const auto* DirectionalLight = (const utf8*)"DirectionalLight";
+        static const auto* AreaLight = (const utf8*)"AreaLight";
         static const auto* ToneMapSettings = (const utf8*)"ToneMapSettings";
         static const auto* ShadowFrustumSettings = (const utf8*)"ShadowFrustumSettings";
 
@@ -170,11 +171,11 @@ namespace PlatformRig
                     InputStreamFormatter<utf8>::InteriorSection name;
                     if (!formatter.TryBeginElement(name)) break;
 
-                    if (!XlComparePrefix(EntityTypeName::AmbientSettings, name._start, name._end - name._start)) {
+                    if (XlEqString(name, EntityTypeName::AmbientSettings)) {
                         _globalLightingDesc = GlobalLightingDesc(ParameterBox(formatter));
-                    } else if (!XlComparePrefix(EntityTypeName::ToneMapSettings, name._start, name._end - name._start)) {
+                    } else if (XlEqString(name, EntityTypeName::ToneMapSettings)) {
                         AccessorDeserialize(formatter, _toneMapSettings);
-                    } else if (!XlComparePrefix(EntityTypeName::DirectionalLight, name._start, name._end - name._start)) {
+                    } else if (XlEqString(name, EntityTypeName::DirectionalLight) || XlEqString(name, EntityTypeName::AreaLight)) {
 
                         ParameterBox params(formatter);
                         uint64 hashName = 0ull;
@@ -193,7 +194,7 @@ namespace PlatformRig
                             lightNames.push_back(0);    // dummy if shadows are disabled
                         }
                         
-                    } else if (!XlComparePrefix(EntityTypeName::ShadowFrustumSettings, name._start, name._end - name._start)) {
+                    } else if (XlEqString(name, EntityTypeName::ShadowFrustumSettings)) {
 
                         ParameterBox params(formatter);
                         uint64 hashName = 0ull;
@@ -209,11 +210,11 @@ namespace PlatformRig
                             frustumLink = Hash64((const char*)buffer);
                         lightFrustumLink.push_back(std::make_pair(frustumLink, hashName));
 
-                    } else if (!XlComparePrefix(EntityTypeName::OceanLightingSettings, name._start, name._end - name._start)) {
+                    } else if (XlEqString(name, EntityTypeName::OceanLightingSettings)) {
                         _oceanLighting = OceanLightingSettings(ParameterBox(formatter));
-                    } else if (!XlComparePrefix(EntityTypeName::OceanSettings, name._start, name._end - name._start)) {
+                    } else if (XlEqString(name, EntityTypeName::OceanSettings)) {
                         _deepOceanSim = DeepOceanSimSettings(ParameterBox(formatter));
-                    } else if (!XlComparePrefix(EntityTypeName::FogVolumeRenderer, name._start, name._end - name._start)) {
+                    } else if (XlEqString(name, EntityTypeName::FogVolumeRenderer)) {
                         _volFogRenderer = VolumetricFogConfig::Renderer(formatter);
                     } else
                         formatter.SkipElement();

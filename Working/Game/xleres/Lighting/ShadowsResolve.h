@@ -10,6 +10,7 @@
 #include "SampleFiltering.h"
 #include "../TransformAlgorithm.h"
 #include "../Utility/Misc.h"
+#include "../Utility/MathConstants.h"
 #include "../Deferred/resolvertshadows.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

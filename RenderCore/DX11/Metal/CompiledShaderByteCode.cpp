@@ -21,6 +21,7 @@
 
 #include <regex> // used for parsing parameter definition
 #include "../../../Utility/ParameterBox.h"
+#include <set>
 
 #include "../../../Utility/WinAPI/WinAPIWrapper.h"
 #include "IncludeDX11.h"
@@ -556,6 +557,13 @@ namespace RenderCore { namespace Metal_DX11
 
     FunctionLinkingModule::FunctionLinkingModule(const ::Assets::ResChar initializer[], const ::Assets::ResChar defines[])
     {
+        // note --  we have to be a little bit careful here. If all of the compilation threads hit this point
+        //          and start waiting for other pending assets, there may be no threads left to compile the other assets!
+        //          this might happen if we attempt to compile a lot of different variations of a single shader graph at
+        //          the same time.
+        //      Also, there is a potential chance that the source shader code could change twice in rapid succession, which
+        //      could cause the CompilerShaderByteCode object to be destroyed while we still have a pointer to it. Actually,
+        //      this case of one compiled asset being dependent on another compile asset introduces a lot of complications!
         auto& byteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(initializer, defines);
         auto state = byteCode.StallWhilePending();
         if (state != ::Assets::AssetState::Ready)
@@ -619,6 +627,7 @@ namespace RenderCore { namespace Metal_DX11
         using AliasTarget = std::pair<NodePtr, int>;
         AliasTarget ResolveParameter(Section src, StreamLocation loc);
         NodePtr ParseCallExpression(Section fnName, Section paramsShortHand, StreamLocation loc);
+        FunctionLinkingModule ParseModuleExpression(Section params, const ::Assets::DirectorySearchRules& searchRules, StreamLocation loc);
 
         intrusive_ptr<ID3D11FunctionLinkingGraph> _graph;
         std::vector<std::pair<Section, FunctionLinkingModule>> _modules;
@@ -999,34 +1008,12 @@ namespace RenderCore { namespace Metal_DX11
         switch (next.first) {
         case Blob::Module:
             {
-                    // This is an operation to construct a new module instance. We must load the
-                    // module from some other source file, and then construct a module instance from it.
-                    // Note that we can do relative paths for this module name reference here -- 
-                    //      it must be an full asset path
-                    // Also, we should explicitly specify the shader version number and use the "lib" type
-                    // And we want to pass through our defines as well -- so that the linked module inherits
-                    // the same defines.
-
-                ::Assets::ResChar resolvedName[MaxPath];
-                XlCopyString(resolvedName, parameterBlock);
-                searchRules.ResolveFile(resolvedName, resolvedName);
-
-                // register a dependent file (even if it doesn't exist)
-                // Note that this isn't really enough -- we need dependencies on
-                // this file, and any dependencies it has! Really, our dependency
-                // is on the product asset, not the source asset.
-                _depFiles.push_back(::Assets::IntermediateAssets::Store::GetDependentFileState(resolvedName));
-
-                XlCatString(resolvedName, ":null:lib_");
-                XlCatString(resolvedName, _shaderProfile.c_str());
-
-                FunctionLinkingModule module(resolvedName, Conversion::Convert<::Assets::rstring>(_defines).c_str());
-
                 auto i = LowerBoundT(_modules, variableName);
                 if (i != _modules.end() && XlEqString(i->first, variableName))
                     Throw(FormatException("Attempting to reassign module that is already assigned. Check for naming conflicts.", startLoc));
 
-                _modules.insert(i, std::make_pair(variableName, module));
+                auto module = ParseModuleExpression(parameterBlock, searchRules, startLoc);
+                _modules.insert(i, std::make_pair(variableName, std::move(module)));
             }
             break;
 
@@ -1140,6 +1127,75 @@ namespace RenderCore { namespace Metal_DX11
         return std::move(linkingNode);
     }
 
+    FunctionLinkingModule FunctionLinkingGraph::ParseModuleExpression(Section params, const ::Assets::DirectorySearchRules& searchRules, StreamLocation loc)
+    {
+            // This is an operation to construct a new module instance. We must load the
+            // module from some other source file, and then construct a module instance from it.
+            // Note that we can do relative paths for this module name reference here -- 
+            //      it must be an full asset path
+            // Also, we should explicitly specify the shader version number and use the "lib" type
+            // And we want to pass through our defines as well -- so that the linked module inherits
+            // the same defines.
+
+        auto param = std::cregex_iterator(params.begin(), params.end(), CommaSeparatedList);
+        if (param == std::cregex_iterator())
+            Throw(FormatException("Expecting module name in Module expression", loc));
+
+            // First parameter is just the module name -- 
+        ::Assets::ResChar resolvedName[MaxPath];
+        XlCopyString(resolvedName, MakeStringSection(param->begin()->first, param->begin()->second));
+        searchRules.ResolveFile(resolvedName, resolvedName);
+
+            // Register a dependent file (even if it doesn't exist)
+            // Note that this isn't really enough -- we need dependencies on
+            // this file, and any dependencies it has! Really, our dependency
+            // is on the product asset, not the source asset.
+        _depFiles.push_back(::Assets::IntermediateAssets::Store::GetDependentFileState(resolvedName));
+
+        XlCatString(resolvedName, ":null:lib_");
+        XlCatString(resolvedName, _shaderProfile.c_str());
+
+            // Second parameter is a filter that we can use to filter the list of defines
+            // typically many input defines should be filtered out in this step. This prevents
+            // us from creating a separate asset for a define that is ignored.
+        ++param;
+        if (param != std::cregex_iterator()) {
+            auto filter = MakeStringSection(param->begin()->first, param->begin()->second);
+            std::set<uint64> filteredIn;
+            auto* i=filter.begin();
+            for (;;) {
+                while (i!=filter.end() && *i==';') ++i;
+                auto start=i;
+                while (i!=filter.end() && *i!=';') ++i;
+                if (i == start) break;
+                filteredIn.insert(Hash64(start, i));
+            }
+
+            auto filteredDefines = _defines;
+            auto si=filteredDefines.rbegin();
+            for (;;) {
+                while (si!=filteredDefines.rend() && *si==';') ++si;
+                auto start=si;
+                while (si!=filteredDefines.rend() && *si!=';') ++si;
+                if (si == start) break;
+
+                auto equs = start;
+                while (equs!=si && *equs!='=') ++equs;
+
+                auto hash = Hash64(&(*si.base()), &(*equs));
+                if (filteredIn.find(hash) == filteredIn.end()) {
+                    // reverse over the ';' deliminator
+                    if (si!=filteredDefines.rend()) ++si;
+                    si = decltype(si)(filteredDefines.erase(si.base(), start.base()));
+                }
+            }
+
+            return FunctionLinkingModule(resolvedName, Conversion::Convert<::Assets::rstring>(filteredDefines).c_str());
+        } else {
+            return FunctionLinkingModule(resolvedName, Conversion::Convert<::Assets::rstring>(_defines).c_str());
+        }
+    }
+
     auto FunctionLinkingGraph::ResolveParameter(Section src, StreamLocation loc) -> AliasTarget
     {
         // Could be an alias, or could be in <node>.<parameter> format
@@ -1186,6 +1242,15 @@ namespace RenderCore { namespace Metal_DX11
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static PlustacheTypes::ObjectType CreateTemplateContext(IteratorRange<D3D10_SHADER_MACRO*> macros)
+    {
+        PlustacheTypes::ObjectType result;
+        for (auto i=macros.cbegin(); i!=macros.cend(); ++i)
+            if (i->Name && i->Definition)
+                result[i->Name] = i->Definition;
+        return std::move(result);
+    }
 
     bool D3DShaderCompiler::DoLowLevelCompile(
         /*out*/ std::shared_ptr<std::vector<uint8>>& payload,
@@ -1255,8 +1320,7 @@ namespace RenderCore { namespace Metal_DX11
                 const bool doStringTemplating = true;
                 if (constant_expression<doStringTemplating>::result()) {
                     Plustache::template_t templ;
-                    PlustacheTypes::ObjectType obj;
-                    obj["shape"] = "Directional";
+                    auto obj = CreateTemplateContext(MakeIteratorRange(arrayOfDefines));
                     customizedString = templ.render(std::string(i, e), obj);
                     finalSection = MakeStringSection(customizedString);
                 }

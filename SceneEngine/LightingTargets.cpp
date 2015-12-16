@@ -274,6 +274,9 @@ namespace SceneEngine
         if (desc._dynamicLinking==2) {
             definesTable << ";LIGHT_RESOLVE_DYN_LINKING=1";
         } else if (desc._dynamicLinking == 1) {
+            definesTable << ";shape=" << AsLightResolverInterface(type);
+            definesTable << ";cascade=" << AsCascadeResolverInterface(type);
+            definesTable << ";shadows=" << AsShadowResolverInterface(type);
         } else {
             if (type._shadows != NoShadows) {
                 definesTable << ";SHADOW_CASCADE_MODE=" << ((type._shadows == OrthShadows || type._shadows == OrthShadowsNearCascade || type._shadows == OrthHybridShadows) ? 2u : 1u);

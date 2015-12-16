@@ -7,7 +7,14 @@ main = DeclareInput(
     uint sampleIndex : SV_SampleIndex)
 
 // Link in our main module
-m0 = Module(resolvelightlib.sh)
+// We specify a filter for defines here. This is important because some defines
+// are intended for this file (eg, for Mustache symbols) while other defines
+// need to be passed down to this module
+// It's good to be strict about this list, because the fewer defines get passed
+// done to the modules, the fewer different versions of that module we have
+libLightShape = Module(lib_lightshape.sh, GBUFFER_TYPE;MSAA_SAMPLES;DIFFUSE_METHOD)
+libShadow = Module(lib_shadow.sh, MSAA_SAMPLES)
+libHelper = Module(lib_helper.sh, MSAA_SAMPLES;HAS_SCREENSPACE_AO)
 
 // The basic structure is simple:
 // 1) Calculate some inputs to the resolve operations
@@ -16,9 +23,12 @@ m0 = Module(resolvelightlib.sh)
 //
 // Steps 1 and 3 are fixes, but step 2 varies depending on the options
 // selected for the light (ie, this is where the dynamic linking occurs)
-worldPos = m0.CalculateWorldPosition(position, viewFrustumVector, sampleIndex)
-light = m0.DoResolve_{{shape}}(position, viewFrustumVector, worldPos.3, sampleIndex)
-finalize = m0.FinalizeResolve(light.result)
+setup = libHelper.Setup(position, viewFrustumVector, sampleIndex)
 
+light = libLightShape.DoResolve_{{shape}}(position, viewFrustumVector, setup.3, sampleIndex, setup.5)
+cascade = libShadow.DoResolve_{{cascade}}(position, texCoord, setup.4)
+shadow = libShadow.DoResolve_{{shadows}}(cascade.3, cascade.4, cascade.5, position, sampleIndex)
+
+finalize = libHelper.FinalizeResolve(light.result, shadow.result)
 output = DeclareOutput(float4 outColour : SV_Target0)
 outColour = finalize.result
