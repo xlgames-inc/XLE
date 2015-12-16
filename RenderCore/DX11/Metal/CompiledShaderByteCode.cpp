@@ -17,6 +17,7 @@
 #include "../../../Utility/PtrUtils.h"
 #include "../../../Utility/Streams/StreamFormatter.h"
 #include "../../../Utility/Conversion.h"
+#include "../../../Foreign/plustasche/template.hpp"
 
 #include <regex> // used for parsing parameter definition
 #include "../../../Utility/ParameterBox.h"
@@ -1242,8 +1243,25 @@ namespace RenderCore { namespace Metal_DX11
                 while (*firstUnderscore != '\0' && *firstUnderscore != '_') ++firstUnderscore;
                 if (firstUnderscore != 0)
                     XlMoveMemory(shortenedModel, firstUnderscore+1, XlStringEnd(shortenedModel) - firstUnderscore);
+                
+                // We must first process the string using a string templating/interpolation library
+                // this adds a kind of pre-processing step that allows us to customize the shader graph
+                // that will be generated.
+                // Unfortunately the string processing step is a little inefficient. Other than using a 
+                // C preprocessor, there doesn't seem to be a highly efficient string templating
+                // library for C++ (without dependencies on other libraries such as boost). Maybe google ctemplates?
+                auto finalSection = MakeStringSection(i, e);
+                std::string customizedString;
+                const bool doStringTemplating = true;
+                if (constant_expression<doStringTemplating>::result()) {
+                    Plustache::template_t templ;
+                    PlustacheTypes::ObjectType obj;
+                    obj["shape"] = "Directional";
+                    customizedString = templ.render(std::string(i, e), obj);
+                    finalSection = MakeStringSection(customizedString);
+                }
             
-                FunctionLinkingGraph flg(MakeStringSection(i, e), shortenedModel, definesTable, ::Assets::DefaultDirectorySearchRules(shaderPath._filename));
+                FunctionLinkingGraph flg(finalSection, shortenedModel, definesTable, ::Assets::DefaultDirectorySearchRules(shaderPath._filename));
                 bool linkResult = flg.TryLink(payload, errors, dependencies, shaderModel);
                 if (linkResult) { MarkValid(shaderPath); }
                 else            { MarkInvalid(shaderPath, S_FALSE, errors); }

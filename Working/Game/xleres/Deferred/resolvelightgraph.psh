@@ -17,7 +17,7 @@ m0 = Module(resolvelightlib.sh)
 // Steps 1 and 3 are fixes, but step 2 varies depending on the options
 // selected for the light (ie, this is where the dynamic linking occurs)
 worldPos = m0.CalculateWorldPosition(position, viewFrustumVector, sampleIndex)
-light = m0.DoResolve_Directional(position, viewFrustumVector, worldPos.3, sampleIndex)
+light = m0.DoResolve_{{shape}}(position, viewFrustumVector, worldPos.3, sampleIndex)
 finalize = m0.FinalizeResolve(light.result)
 
 output = DeclareOutput(float4 outColour : SV_Target0)
