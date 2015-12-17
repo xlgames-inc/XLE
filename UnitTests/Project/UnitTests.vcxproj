@@ -89,6 +89,7 @@
     <ClCompile Include="..\BasicMaths.cpp" />
     <ClCompile Include="..\DLLBinding.cpp" />
     <ClCompile Include="..\ModelConversion.cpp" />
+    <ClCompile Include="..\ShaderParser.cpp" />
     <ClCompile Include="..\StartupShutdown.cpp" />
     <ClCompile Include="..\StreamFormatter.cpp" />
     <ClCompile Include="..\Threading.cpp" />
@@ -122,6 +123,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\SceneEngine\Project\SceneEngine.vcxproj">
       <Project>{0a40e6ed-47cc-a08e-71c5-8a3515d81eaf}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\ShaderParser\Project\ShaderParser.vcxproj">
+      <Project>{d7818769-51d6-7fe8-161b-71f0f96a076f}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>

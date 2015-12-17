@@ -42,6 +42,7 @@ tokens
 	FUNCTION;
 	LOCAL_VAR;
 	CAST;
+	CLASS;
 	
 	SEMANTIC;
 	
@@ -104,13 +105,14 @@ toplevel
 	|	cbuffer
 	|	function
 	|	compile_fragment
+	|	'export' function_signature
 	;
 
 global
 	:	uniform
 	;
 	
-variablename_single : id=ident sub=subscript? sem=semantic? registerAssignment? ('=' e=expression)? -> ^(VARIABLE_NAME $id $sub? $sem? $e?);
+variablename_single : id=ident sub+=subscript* sem=semantic? registerAssignment? ('=' e=expression)? -> ^(VARIABLE_NAME $id $sub* $sem? $e?);
 variablename_list	: variablename_single (',' variablename_single)* -> variablename_single+;
 
 uniform
@@ -136,6 +138,11 @@ structure
 		-> ^(STRUCT ident $fields*)
 	;
 
+interface_class
+	:	('interface'|'class') ident '{' fields+=class_field* '}' ';'
+		-> ^(CLASS ident $fields*)
+	;
+
 cbuffer
 	:	'cbuffer' ident registerAssignment? '{' fields+=structure_field* '}'
 		-> ^(STRUCT ident $fields*)
@@ -143,6 +150,13 @@ cbuffer
 	
 structure_field
 	:	variable
+	|	isolated_macro
+	;
+
+class_field
+	:	variable
+	|	cbuffer
+	|	function_signature
 	;
 
 function_attribute
@@ -154,6 +168,24 @@ function_attribute
 function
 	:	function_attribute ret=ident name=ident '(' args=formal_arglist ')' semantic? block
 		-> ^(FUNCTION $ret $name $args semantic? block)
+	;
+
+function_signature
+	:	function_attribute ret=ident name=ident '(' args=formal_arglist ')' ';'
+		-> ^(FUNCTION $ret $name $args)
+	;
+
+// Note --	isolated_macro macro represents some macro expression in the code that
+//			will be expanded by the preprocessor. Since we don't support the preprocessor
+//			when parsing, we should assume it does nothing, and just ignore it. This kind
+//			of macro is often used for optional function parameters and optional structure
+//			members. Unfortunately they will be lost! The only solution is to support 
+//			the preprocessor... But that is impractical because of the behaviour of #include...
+//
+//		Unfortunately we can't know for sure if the identifier is truly a macro here... It would
+//		be better if we could test for common naming conventions (eg, uppercase and underscores)
+isolated_macro
+	:	Identifier
 	;
 	
 semantic
@@ -202,8 +234,9 @@ formal_arglist
 	;
 	
 formal_arg
-	:	(dir=direction | storage_class | type_modifier)* ty=type_name id=ident sub=subscript? sem=semantic?
-		-> ^(FORMAL_ARG $ty $id $sub? $sem? $dir?)
+	:	(dir=direction | storage_class | type_modifier)* ty=type_name id=ident sub+=subscript* sem=semantic? ('=' expression)?
+		-> ^(FORMAL_ARG $ty $id $sub* $sem? $dir?)
+	|	isolated_macro
 	;
 	
 direction
@@ -235,6 +268,7 @@ statement
 	|	'continue' ';'!
 	|	';'!
 	|	statementExpression ';'!
+	|	isolated_macro
 	// also -- switch
 	;
 	
@@ -516,7 +550,15 @@ COMMENT
 
 LINE_COMMENT
 	:	'//' ~('\n'|'\r')* '\r'? '\n'	{$channel=HIDDEN;}
-	|	'#' ~('\n'|'\r')* '\r'? '\n'	{$channel=HIDDEN;}			// hide any line that begins with "#" (just ignore preprocessor stuff)
+	;
+
+//	Hide any line that begins with "#" (just ignore preprocessor stuff)... 
+//	We also need to suport the '\' line extension... so just eat everything
+//	until we hit a newline that isn't preceeded by a '\'. Of course, this will
+//	mean any preprocessor directive can get extended to the next line (not just
+//	#define)
+PRE_PROCESSOR_LINE
+	:	'#' (options {greedy=false;}: . )* (~'\\' '\r'? '\n')	{$channel=HIDDEN;}
 	;
 
 // EOF

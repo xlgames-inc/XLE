@@ -17,12 +17,12 @@ SamplerState				ShadowDepthSampler	: register(s5);
     //
     //  This is AMD's method of shadow filtering (from the D3D11 SDK)
     //  It has been mixed with a similar implementation from nvidia.
-    //  
+    //
     //  It uses a fixed size filter, with weights that change based
-    //  on the blocker distance. It seems that the advantage of this over 
+    //  on the blocker distance. It seems that the advantage of this over
     //  poisson disk methods is that poisson disk methods can end up
     //  sampling the same pixels multiple times, particularly for small
-    //  filter sizes. This method will always sample a fixed box around 
+    //  filter sizes. This method will always sample a fixed box around
     //  the target point. This method might also have slightly smoother
     //  results -- because a poisson disk can introduce artefacts where
     //  the samples in the disk are more or less densely packed.
@@ -43,8 +43,8 @@ SamplerState				ShadowDepthSampler	: register(s5);
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-static const float C3[11][11] = 
-                 { { 1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0 }, 
+static const float C3[11][11] =
+                 { { 1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0 },
                    { 1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0 },
                    { 1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0 },
                    { 1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0 },
@@ -54,11 +54,11 @@ static const float C3[11][11] =
                    { 1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0 },
                    { 1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0 },
                    { 1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0 },
-                   { 1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0 },
+                   { 1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0 }
                    };
 
-static const float C2[11][11] = 
-                 { { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 }, 
+static const float C2[11][11] =
+                 { { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 },
                    { 0.0,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.0 },
                    { 0.0,0.2,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.2,0.0 },
                    { 0.0,0.2,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.2,0.0 },
@@ -68,11 +68,11 @@ static const float C2[11][11] =
                    { 0.0,0.2,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.2,0.0 },
                    { 0.0,0.2,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.2,0.0 },
                    { 0.0,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.0 },
-                   { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 },
+                   { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 }
                    };
 
-static const float C1[11][11] = 
-                 { { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 }, 
+static const float C1[11][11] =
+                 { { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 },
                    { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 },
                    { 0.0,0.0,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.0,0.0 },
                    { 0.0,0.0,0.2,1.0,1.0,1.0,1.0,1.0,0.2,0.0,0.0 },
@@ -82,11 +82,11 @@ static const float C1[11][11] =
                    { 0.0,0.0,0.2,1.0,1.0,1.0,1.0,1.0,0.2,0.0,0.0 },
                    { 0.0,0.0,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.0,0.0 },
                    { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 },
-                   { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 },
+                   { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 }
                    };
 
-static const float C0[11][11] = 
-                 { { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 }, 
+static const float C0[11][11] =
+                 { { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 },
                    { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 },
                    { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 },
                    { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 },
@@ -96,77 +96,77 @@ static const float C0[11][11] =
                    { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 },
                    { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 },
                    { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 },
-                   { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 },
+                   { 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0 }
                    };
 
 // Matrices of bezier control points used to dynamically generate a filter matrix.
 // The generated matrix is sized FS x FS; the bezier control matrices are zero padded
 // to simplify the dynamic filter loop.
-static const float P0[BMS][BMS] = 
+static const float P0[BMS][BMS] =
 {
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },  
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 0.8f, 0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 1.0f, 0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 0.8f, 0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 0.8f, 0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 1.0f, 0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.8f, 0.8f, 0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }
 };
 
-static const float P1[BMS][BMS] = 
-{ 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 	
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },  
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
+static const float P1[BMS][BMS] =
+{
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }
 };
 
-static const float P2[BMS][BMS] = 
+static const float P2[BMS][BMS] =
 {
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },  
-	{ 0.0f, 0.0f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }, 
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }
 };
 
-static const float P3[BMS][BMS] = 
+static const float P3[BMS][BMS] =
 {
-	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },  
-	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 }, 
-	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 }, 
-	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 }, 
-	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 }, 
-	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 }, 
-	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 }, 
-	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 }, 
-	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 }, 
-	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 }, 
-	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 }, 
-	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 }, 
+	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 },
+	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 },
+	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 },
+	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 },
+	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 },
+	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 },
+	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 },
+	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 },
+	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 },
+	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 },
+	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 },
+	{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0 },
 	{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0 }
 };
 
@@ -183,7 +183,7 @@ float BezierFilter( int r, int c, float fL )
 float BezierFilter_1( int row, int col, float t )
 {
         //  the nVidia implementation of this is slightly different
-        //  But it seems mostly because the nVidia method pads out the 
+        //  But it seems mostly because the nVidia method pads out the
         //  bezier matrices with zeroes on the edges. They say this is
         //  to simplify the loop code below
 	int r = row + 1;
@@ -207,7 +207,7 @@ float2 CalculateShadowLargeFilterBias(float comparisonDistance, float2 texCoords
 			//	as test texture coordinates change. We can use to to bias the depth sample and avoid
 			//	a lot of acne artefacts with large sampling filters.
 			//	It really does help to reduce acne artefacts greatly. But it maybe adding some artefacts of
-			//	it's own (particularly along cascade edges and in areas with large depth discontinuities) 
+			//	it's own (particularly along cascade edges and in areas with large depth discontinuities)
 			//	So there might be a trade-off
     float2 depthddTC = 0.0.xx;
 	const bool useLargeFilterBias = false;
@@ -228,7 +228,7 @@ float2 CalculateShadowLargeFilterBias(float comparisonDistance, float2 texCoords
 				    // when the texture coordinate derivatives are very small, but the larger the
 				    // clamping constant, the less improvement this method provides.
 			    const float zeroClampConstant = 1e-4f;
-			    if (abs(tcxDDXY.x) < zeroClampConstant) tcxDDXY.x = zeroClampConstant;		
+			    if (abs(tcxDDXY.x) < zeroClampConstant) tcxDDXY.x = zeroClampConstant;
 			    if (abs(tcxDDXY.y) < zeroClampConstant) tcxDDXY.y = zeroClampConstant;
 			    if (abs(tcyDDXY.x) < zeroClampConstant) tcyDDXY.x = zeroClampConstant;
 			    if (abs(tcyDDXY.y) < zeroClampConstant) tcyDDXY.y = zeroClampConstant;
@@ -250,7 +250,7 @@ float2 CalculateShadowLargeFilterBias(float comparisonDistance, float2 texCoords
         // if (max(abs(ddx(arrayIndex)), abs(ddy(arrayIndex))) != 0) {
 		// 	depthddTC = 0.0.xx;		// discontinuity when adjacent pixels are in a different shadow split
 		// }
-			
+
 	}
 
     return depthddTC;
@@ -267,7 +267,7 @@ float FixedSizeShadowFilter(Texture2DArray samplingTexture, float3 baseTC, float
         // (must be done before we change baseTC below)
     float2 largeFilterBias = CalculateShadowLargeFilterBias(comparisonDepth, baseTC.xy);
     largeFilterBias /= float2(ShadowMapDims.xy);    // we're using this with a texel offset, rather than a 0-1 texture coordinate offset
-    
+
     float2 stc = (float2(ShadowMapDims.xy) * baseTC.xy) + float2(0.5f, 0.5f);
     float2 tcs = floor(stc);
     float2 fc = stc - tcs;
@@ -290,98 +290,98 @@ float FixedSizeShadowFilter(Texture2DArray samplingTexture, float3 baseTC, float
     float2 v0[ FS2 + 1 ];
     [unroll(AMD_FILTER_SIZE)] for (row = -FS2; row <= FS2; row += 2) {
         for (col = -FS2; col <= FS2; col += 2) {
-            v1[(col+FS2)/2] = samplingTexture.GatherCmpRed( 
+            v1[(col+FS2)/2] = samplingTexture.GatherCmpRed(
                 ShadowSampler, baseTC.xyz, comparisonDepth, int2( col, row ) );
-          
+
             if( col == -FS2 )
             {
-                s += ( 1 - fc.y ) * ( v1[0].w * ( BezierFilter(row+FS2,0,fRatio) - 
-                                      BezierFilter(row+FS2,0,fRatio) * fc.x ) + v1[0].z * 
-                                    ( fc.x * ( BezierFilter(row+FS2,0,fRatio) - 
-                                      BezierFilter(row+FS2,1,fRatio) ) +  
+                s += ( 1 - fc.y ) * ( v1[0].w * ( BezierFilter(row+FS2,0,fRatio) -
+                                      BezierFilter(row+FS2,0,fRatio) * fc.x ) + v1[0].z *
+                                    ( fc.x * ( BezierFilter(row+FS2,0,fRatio) -
+                                      BezierFilter(row+FS2,1,fRatio) ) +
                                       BezierFilter(row+FS2,1,fRatio) ) );
-                s += (     fc.y ) * ( v1[0].x * ( BezierFilter(row+FS2,0,fRatio) - 
-                                      BezierFilter(row+FS2,0,fRatio) * fc.x ) + 
-                                      v1[0].y * ( fc.x * ( BezierFilter(row+FS2,0,fRatio) - 
-                                      BezierFilter(row+FS2,1,fRatio) ) +  
+                s += (     fc.y ) * ( v1[0].x * ( BezierFilter(row+FS2,0,fRatio) -
+                                      BezierFilter(row+FS2,0,fRatio) * fc.x ) +
+                                      v1[0].y * ( fc.x * ( BezierFilter(row+FS2,0,fRatio) -
+                                      BezierFilter(row+FS2,1,fRatio) ) +
                                       BezierFilter(row+FS2,1,fRatio) ) );
                 if( row > -FS2 )
                 {
-                    s += ( 1 - fc.y ) * ( v0[0].x * ( BezierFilter(row+FS2-1,0,fRatio) - 
-                                          BezierFilter(row+FS2-1,0,fRatio) * fc.x ) + v0[0].y * 
-                                        ( fc.x * ( BezierFilter(row+FS2-1,0,fRatio) - 
-                                          BezierFilter(row+FS2-1,1,fRatio) ) +  
+                    s += ( 1 - fc.y ) * ( v0[0].x * ( BezierFilter(row+FS2-1,0,fRatio) -
+                                          BezierFilter(row+FS2-1,0,fRatio) * fc.x ) + v0[0].y *
+                                        ( fc.x * ( BezierFilter(row+FS2-1,0,fRatio) -
+                                          BezierFilter(row+FS2-1,1,fRatio) ) +
                                           BezierFilter(row+FS2-1,1,fRatio) ) );
-                    s += (     fc.y ) * ( v1[0].w * ( BezierFilter(row+FS2-1,0,fRatio) - 
-                                          BezierFilter(row+FS2-1,0,fRatio) * fc.x ) + v1[0].z * 
-                                        ( fc.x * ( BezierFilter(row+FS2-1,0,fRatio) - 
-                                          BezierFilter(row+FS2-1,1,fRatio) ) +  
+                    s += (     fc.y ) * ( v1[0].w * ( BezierFilter(row+FS2-1,0,fRatio) -
+                                          BezierFilter(row+FS2-1,0,fRatio) * fc.x ) + v1[0].z *
+                                        ( fc.x * ( BezierFilter(row+FS2-1,0,fRatio) -
+                                          BezierFilter(row+FS2-1,1,fRatio) ) +
                                           BezierFilter(row+FS2-1,1,fRatio) ) );
                 }
             }
             else if( col == FS2 )
             {
-                s += ( 1 - fc.y ) * ( v1[FS2].w * ( fc.x * ( BezierFilter(row+FS2,FS-2,fRatio) - 
-                                      BezierFilter(row+FS2,FS-1,fRatio) ) + 
-                                      BezierFilter(row+FS2,FS-1,fRatio) ) + v1[FS2].z * fc.x * 
+                s += ( 1 - fc.y ) * ( v1[FS2].w * ( fc.x * ( BezierFilter(row+FS2,FS-2,fRatio) -
+                                      BezierFilter(row+FS2,FS-1,fRatio) ) +
+                                      BezierFilter(row+FS2,FS-1,fRatio) ) + v1[FS2].z * fc.x *
                                       BezierFilter(row+FS2,FS-1,fRatio) );
-                s += (     fc.y ) * ( v1[FS2].x * ( fc.x * ( BezierFilter(row+FS2,FS-2,fRatio) - 
-                                      BezierFilter(row+FS2,FS-1,fRatio) ) + 
-                                      BezierFilter(row+FS2,FS-1,fRatio) ) + v1[FS2].y * fc.x * 
+                s += (     fc.y ) * ( v1[FS2].x * ( fc.x * ( BezierFilter(row+FS2,FS-2,fRatio) -
+                                      BezierFilter(row+FS2,FS-1,fRatio) ) +
+                                      BezierFilter(row+FS2,FS-1,fRatio) ) + v1[FS2].y * fc.x *
                                       BezierFilter(row+FS2,FS-1,fRatio) );
                 if( row > -FS2 )
                 {
-                    s += ( 1 - fc.y ) * ( v0[FS2].x * ( fc.x * 
-                                        ( BezierFilter(row+FS2-1,FS-2,fRatio) - 
-                                          BezierFilter(row+FS2-1,FS-1,fRatio) ) + 
-                                          BezierFilter(row+FS2-1,FS-1,fRatio) ) + 
+                    s += ( 1 - fc.y ) * ( v0[FS2].x * ( fc.x *
+                                        ( BezierFilter(row+FS2-1,FS-2,fRatio) -
+                                          BezierFilter(row+FS2-1,FS-1,fRatio) ) +
+                                          BezierFilter(row+FS2-1,FS-1,fRatio) ) +
                                           v0[FS2].y * fc.x * BezierFilter(row+FS2-1,FS-1,fRatio) );
-                    s += (     fc.y ) * ( v1[FS2].w * ( fc.x * 
-                                        ( BezierFilter(row+FS2-1,FS-2,fRatio) - 
-                                          BezierFilter(row+FS2-1,FS-1,fRatio) ) + 
-                                          BezierFilter(row+FS2-1,FS-1,fRatio) ) + 
+                    s += (     fc.y ) * ( v1[FS2].w * ( fc.x *
+                                        ( BezierFilter(row+FS2-1,FS-2,fRatio) -
+                                          BezierFilter(row+FS2-1,FS-1,fRatio) ) +
+                                          BezierFilter(row+FS2-1,FS-1,fRatio) ) +
                                           v1[FS2].z * fc.x * BezierFilter(row+FS2-1,FS-1,fRatio) );
                 }
             }
             else
             {
-                s += ( 1 - fc.y ) * ( v1[(col+FS2)/2].w * ( fc.x * 
-                                    ( BezierFilter(row+FS2,col+FS2-1,fRatio) - 
-                                      BezierFilter(row+FS2,col+FS2+0,fRatio) ) + 
+                s += ( 1 - fc.y ) * ( v1[(col+FS2)/2].w * ( fc.x *
+                                    ( BezierFilter(row+FS2,col+FS2-1,fRatio) -
                                       BezierFilter(row+FS2,col+FS2+0,fRatio) ) +
-                                      v1[(col+FS2)/2].z * ( fc.x * 
-                                    ( BezierFilter(row+FS2,col+FS2-0,fRatio) - 
-                                      BezierFilter(row+FS2,col+FS2+1,fRatio) ) + 
+                                      BezierFilter(row+FS2,col+FS2+0,fRatio) ) +
+                                      v1[(col+FS2)/2].z * ( fc.x *
+                                    ( BezierFilter(row+FS2,col+FS2-0,fRatio) -
+                                      BezierFilter(row+FS2,col+FS2+1,fRatio) ) +
                                       BezierFilter(row+FS2,col+FS2+1,fRatio) ) );
-                s += (     fc.y ) * ( v1[(col+FS2)/2].x * ( fc.x * 
-                                    ( BezierFilter(row+FS2,col+FS2-1,fRatio) - 
-                                      BezierFilter(row+FS2,col+FS2+0,fRatio) ) + 
+                s += (     fc.y ) * ( v1[(col+FS2)/2].x * ( fc.x *
+                                    ( BezierFilter(row+FS2,col+FS2-1,fRatio) -
                                       BezierFilter(row+FS2,col+FS2+0,fRatio) ) +
-                                      v1[(col+FS2)/2].y * ( fc.x * 
-                                    ( BezierFilter(row+FS2,col+FS2-0,fRatio) - 
-                                      BezierFilter(row+FS2,col+FS2+1,fRatio) ) + 
+                                      BezierFilter(row+FS2,col+FS2+0,fRatio) ) +
+                                      v1[(col+FS2)/2].y * ( fc.x *
+                                    ( BezierFilter(row+FS2,col+FS2-0,fRatio) -
+                                      BezierFilter(row+FS2,col+FS2+1,fRatio) ) +
                                       BezierFilter(row+FS2,col+FS2+1,fRatio) ) );
                 if( row > -FS2 )
                 {
-                    s += ( 1 - fc.y ) * ( v0[(col+FS2)/2].x * ( fc.x * 
-                                        ( BezierFilter(row+FS2-1,col+FS2-1,fRatio) - 
-                                          BezierFilter(row+FS2-1,col+FS2+0,fRatio) ) + 
+                    s += ( 1 - fc.y ) * ( v0[(col+FS2)/2].x * ( fc.x *
+                                        ( BezierFilter(row+FS2-1,col+FS2-1,fRatio) -
                                           BezierFilter(row+FS2-1,col+FS2+0,fRatio) ) +
-                                          v0[(col+FS2)/2].y * ( fc.x * 
-                                        ( BezierFilter(row+FS2-1,col+FS2-0,fRatio) - 
-                                          BezierFilter(row+FS2-1,col+FS2+1,fRatio) ) + 
+                                          BezierFilter(row+FS2-1,col+FS2+0,fRatio) ) +
+                                          v0[(col+FS2)/2].y * ( fc.x *
+                                        ( BezierFilter(row+FS2-1,col+FS2-0,fRatio) -
+                                          BezierFilter(row+FS2-1,col+FS2+1,fRatio) ) +
                                           BezierFilter(row+FS2-1,col+FS2+1,fRatio) ) );
-                    s += (     fc.y ) * ( v1[(col+FS2)/2].w * ( fc.x * 
-                                        ( BezierFilter(row+FS2-1,col+FS2-1,fRatio) - 
-                                          BezierFilter(row+FS2-1,col+FS2+0,fRatio) ) + 
+                    s += (     fc.y ) * ( v1[(col+FS2)/2].w * ( fc.x *
+                                        ( BezierFilter(row+FS2-1,col+FS2-1,fRatio) -
                                           BezierFilter(row+FS2-1,col+FS2+0,fRatio) ) +
-                                          v1[(col+FS2)/2].z * ( fc.x * 
-                                        ( BezierFilter(row+FS2-1,col+FS2-0,fRatio) - 
-                                          BezierFilter(row+FS2-1,col+FS2+1,fRatio) ) + 
+                                          BezierFilter(row+FS2-1,col+FS2+0,fRatio) ) +
+                                          v1[(col+FS2)/2].z * ( fc.x *
+                                        ( BezierFilter(row+FS2-1,col+FS2-0,fRatio) -
+                                          BezierFilter(row+FS2-1,col+FS2+1,fRatio) ) +
                                           BezierFilter(row+FS2-1,col+FS2+1,fRatio) ) );
                 }
             }
-            
+
             if( row != FS2 )
             {
                 v0[(col+FS2)/2] = v1[(col+FS2)/2].xy;
@@ -399,7 +399,7 @@ float FixedSizeShadowFilter(Texture2DArray samplingTexture, float3 baseTC, float
        }
     }
 
-        //  this is an improvement from a nvidia sample. It seems to be the same, 
+        //  this is an improvement from a nvidia sample. It seems to be the same,
         //  just cleaned up for code clarity
 	float2 prevRow[FS2 + 1];
 	[unroll(FS)] for (row = -FS2; row <= FS2; row += 2) {
@@ -445,4 +445,3 @@ float FixedSizeShadowFilter(Texture2DArray samplingTexture, float3 baseTC, float
 #undef BMS
 
 #endif
-

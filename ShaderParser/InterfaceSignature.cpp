@@ -5,25 +5,24 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "InterfaceSignature.h"
+#include "../ConsoleRig/Log.h"
 #include "Grammar/ShaderLexer.h"
 #include "Grammar/ShaderParser.h"
 #include "../Utility/StringUtils.h"
-
 #include "../Utility/StringFormat.h"
 #include "../Utility/Streams/Stream.h"
-#include "../ConsoleRig/OutputStream.h"
 #include <assert.h>
 
 namespace ShaderSourceParser
 {
-    void Warning(const char format[], ...)
-    {
-        va_list args;
-        va_start(args, format);
-        ConsoleRig::GetWarningStream().Write((const utf8*)"{Color:ff7f7f}");
-        PrintFormatV(&ConsoleRig::GetWarningStream(), format, args);
-        va_end(args);
-    }
+    // void Warning(const char format[], ...)
+    // {
+    //     va_list args;
+    //     va_start(args, format);
+    //     ConsoleRig::GetWarningStream().Write((const utf8*)"{Color:ff7f7f}");
+    //     PrintFormatV(&ConsoleRig::GetWarningStream(), format, args);
+    //     va_end(args);
+    // }
 
     static std::string AsString(ANTLR3_STRING* antlrString)
     {
@@ -115,8 +114,8 @@ namespace ShaderSourceParser
         auto abstractSyntaxTree = psr->fx_file(psr);
 
         if (psr->pParser->rec->state->errorCount > 0) {
-            Warning("Tree : %s\n", abstractSyntaxTree.tree->toStringTree(abstractSyntaxTree.tree)->chars);
-            ConsoleRig::GetWarningStream().Flush();
+            LogWarning << "Tree: " << (const char*)abstractSyntaxTree.tree->toStringTree(abstractSyntaxTree.tree)->chars;
+            // ConsoleRig::GetWarningStream().Flush();
             throw Exceptions::CompileError(XlDynFormatString("The parser returned %d errors, tree walking aborted.\n", psr->pParser->rec->state->errorCount).c_str());
         }
 
@@ -337,11 +336,20 @@ namespace ShaderSourceParser
 
 }
 
-#include <stdexcept>
+// #include <stdexcept>
 void myDisplayRecognitionError (void * recognizer, void * tokenNames)
 {
-    pANTLR3_BASE_RECOGNIZER r = (pANTLR3_BASE_RECOGNIZER)recognizer;
-    pANTLR3_UINT8 * t = (pANTLR3_UINT8 *)tokenNames;
-    ShaderSourceParser::Warning("Error from antlr");
+    auto r = (pANTLR3_BASE_RECOGNIZER)recognizer;
+    auto t = (pANTLR3_UINT8 *)tokenNames;
+    auto token = (pANTLR3_COMMON_TOKEN)r->state->exception->token;
+
+    auto text = ShaderSourceParser::AsString(token->getText(token));
+    
+    LogWarning
+        << "Shader parse error (" 
+        << unsigned(r->state->exception->line) << ":" << unsigned(r->state->exception->charPositionInLine) << ")"
+        ;
+    LogWarning
+        << "Token text: " << text;
 }
 
