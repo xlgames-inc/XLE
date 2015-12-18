@@ -95,7 +95,7 @@ float4 TransformPosition(float3 position, uint projectionIndex)
 }
 
 #if SHADOWS==1
-	[maxvertexcount(30*3)]
+	[maxvertexcount(90)]
 #else
 	[maxvertexcount(30)]
 #endif

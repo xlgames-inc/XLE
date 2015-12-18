@@ -86,7 +86,7 @@ void BittonicSort(int threadIndex)
 		//
 		//		Have to unroll because of the group sync operations
 		//		Should result in 28 comparisons
-		//		after unrolling, it becomes many instructions 
+		//		after unrolling, it becomes many instructions
 		//			-- about 320 instructions in the optimised version
 		//
 #if 0
@@ -124,7 +124,7 @@ void BittonicSort(int threadIndex)
 		}
 	}
 #else
-	
+
 	bool writingBuffer = false;
 	const int wg = ThreadWidth*ThreadHeight;
 	[unroll] for (int length=1;length<wg;length<<=1) {
@@ -297,7 +297,7 @@ void ClusterKeyToLinearDepths(uint clusterKey, out float minDepth, out float max
 
 		//	Compact (remove duplicates)
 	if (clusterKeyIndex == 0 || ourClusterKey != prevClusterKey) {
-		//	it's unique... write 
+		//	it's unique... write
 		uint pushLocation;
 		InterlockedAdd(UniqueClusterKeysCount, 1, pushLocation);
 		ClusterKeys[pushLocation] = ourClusterKey;
@@ -336,7 +336,7 @@ void ClusterKeyToLinearDepths(uint clusterKey, out float minDepth, out float max
 	ClusterMinDepth[clusterForThisThread] = clusterForThisThreadMinDepth;
 	ClusterMaxDepth[clusterForThisThread] = clusterForThisThreadMaxDepth;
 	GroupMemoryBarrier();
-	
+
 	uint clusterErrorCount = 0;
 	uint lightCullCount = 0;
 	uint lightCalculateCount = 0;
@@ -345,10 +345,10 @@ void ClusterKeyToLinearDepths(uint clusterKey, out float minDepth, out float max
 	[branch] if (finalDepthMin < finalDepthMax) {
 		LightOutput[pixelCoord] = float4(0.0.xxx,1);
 
-			//	
+			//
 			//		Now that we know list of clusters, test each light
 			//		and find the lights that are visible in this frustum
-			//		
+			//
 			//		Note that the ideal iteration depends on the number of
 			//		lights... if there less than 256 lights, we should
 			//		compare each light and cluster on different threads. But
@@ -364,9 +364,9 @@ void ClusterKeyToLinearDepths(uint clusterKey, out float minDepth, out float max
 		float2 B = float2(worldDistanceMaxDepth*tanMaxAngle.x, worldDistanceMaxDepth*tanMaxAngle.y);
 		float2 C = float2(worldDistanceMinDepth*tanMinAngle.x, worldDistanceMinDepth*tanMinAngle.y);
 		float2 D = float2(worldDistanceMinDepth*tanMaxAngle.x, worldDistanceMinDepth*tanMaxAngle.y);
-		float2 minBox = float2(	min(min(A.x, B.x), min(C.x, B.x)), 
+		float2 minBox = float2(	min(min(A.x, B.x), min(C.x, B.x)),
 								min(min(A.y, B.y), min(C.y, B.y)));
-		float2 maxBox = float2(	max(max(A.x, B.x), max(C.x, B.x)), 
+		float2 maxBox = float2(	max(max(A.x, B.x), max(C.x, B.x)),
 								max(max(A.y, B.y), max(C.y, B.y)));
 
 		const uint lightCount = LightCount;
@@ -385,7 +385,7 @@ void ClusterKeyToLinearDepths(uint clusterKey, out float minDepth, out float max
 
 				//
 				//		X/Y clip plane check...
-				//			(note --	we're actually testing an aligned cube 
+				//			(note --	we're actually testing an aligned cube
 				//						around there sphere light. Maybe this will
 				//						include some redundant tiles)
 				//
@@ -393,13 +393,14 @@ void ClusterKeyToLinearDepths(uint clusterKey, out float minDepth, out float max
 			if (	((p.BaseAngles.x + p.ViewSpaceHalfSubtendingAngle) > minAngleX)
 				&&	((p.BaseAngles.x - p.ViewSpaceHalfSubtendingAngle) < maxAngleX)
 				&&	((p.BaseAngles.y + p.ViewSpaceHalfSubtendingAngle) > minAngleY)
-				&&	((p.BaseAngles.y - p.ViewSpaceHalfSubtendingAngle) < maxAngleY)) {
+				&&	((p.BaseAngles.y - p.ViewSpaceHalfSubtendingAngle) < maxAngleY))
 		#else
 			if (	((p.ViewSpacePosition.x + l.Radius) > minBox.x)
 				&&	((p.ViewSpacePosition.x - l.Radius) < maxBox.x)
 				&&	((p.ViewSpacePosition.y + l.Radius) > minBox.y)
-				&&	((p.ViewSpacePosition.y - l.Radius) < maxBox.y)) {
+				&&	((p.ViewSpacePosition.y - l.Radius) < maxBox.y))
 		#endif
+			{
 
 				const float flatDepth = p.ViewSpacePosition.z;
 				const float clusterMinDepth = ClusterMinDepth[clusterIndex];
@@ -463,7 +464,7 @@ void ClusterKeyToLinearDepths(uint clusterKey, out float minDepth, out float max
 
 		//
 		//		We need out find where our cluster key ended up...
-		//		
+		//
 	uint indexInActiveLightCount = 0;
 	for (uint q=0; q<uniqueClusterKeysCount; ++q) {
 		if (ClusterKeys[q] == clusterKey) {
@@ -478,10 +479,10 @@ void ClusterKeyToLinearDepths(uint clusterKey, out float minDepth, out float max
 	#if defined(_METRICS)
 		DebuggingLightCountTexture[pixelCoord] = activeLightCount;
 		// DebuggingLightCountTexture[pixelCoord] = uniqueClusterKeysCount;
-		DebuggingTextureMin[pixelCoord] = finalDepthMin; 
+		DebuggingTextureMin[pixelCoord] = finalDepthMin;
 		DebuggingTextureMax[pixelCoord] = finalDepthMax;
 	#endif
-	
+
 	for (uint c=0; c<activeLightCount; ++c) {
 		uint activeLightIndex = min(c*uniqueClusterKeysCount+indexInActiveLightCount, MaxLightCount);
 		Light l = GetInputLight(ActiveLightIndices[activeLightIndex]);
@@ -514,6 +515,3 @@ void ClusterKeyToLinearDepths(uint clusterKey, out float minDepth, out float max
 		}
 	#endif
 }
-
-
-

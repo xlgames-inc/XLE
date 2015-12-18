@@ -49,7 +49,7 @@ static const float3 CubeMapPanels_DX[6][3] =
 
         // +Z, -Z
     { float3(1,0,0), float3(0,-1,0), float3(0,0,1) },
-    { float3(-1,0,0), float3(0,-1,0), float3(0,0,-1) },
+    { float3(-1,0,0), float3(0,-1,0), float3(0,0,-1) }
 };
 
 float3 CalculateCubeMapDirection(uint panelIndex, float2 texCoord)

@@ -144,13 +144,14 @@ void FFT_Row(uint rowIndex, uint N, bool inverse)
 	Real c1 = Real(-1.0);
 	Real c2 = Real(0.0);
 	uint l2 = 1;
-	[flatten] for (uint step = 1; step < N; step <<= 1) {
+	[unroll] for (uint step = 1; step < N; step <<= 1)
+	{
 		uint l1 = l2;
 		l2 <<= 1;
 		Real u1 = Real(1.0);
 		Real u2 = Real(0.0);
-		[flatten] for (uint j=0;j<l1;j++) {
-			[flatten] for (uint i=j;i<N;i+=l2) {
+		[unroll] for (uint j=0;j<l1;j++) {
+			[unroll] for (uint i=j;i<N;i+=l2) {
 				uint2 pairCoord = uint2(i, rowIndex);
 				uint2 matchCoord = uint2(i + l1, rowIndex);
 				Innerloop(pairCoord, matchCoord, Complex(u1, u2));
@@ -244,13 +245,13 @@ void FFT_Column(uint columnIndex, uint N, bool inverse)
 	Real c1 = Real(-1.0);
 	Real c2 = Real(0.0);
 	uint l2 = 1;
-	[flatten] for (uint step = 1; step < N; step <<= 1) {
+	[unroll] for (uint step = 1; step < N; step <<= 1) {
 		uint l1 = l2;
 		l2 <<= 1;
 		Real u1 = Real(1.0);
 		Real u2 = Real(0.0);
-		[flatten] for (uint j=0;j<l1;j++) {
-			[flatten] for (uint i=j;i<N;i+=l2) {
+		[unroll] for (uint j=0;j<l1;j++) {
+			[unroll] for (uint i=j;i<N;i+=l2) {
 				uint2 pairCoord = uint2(columnIndex, i);
 				uint2 matchCoord = uint2(columnIndex, i + l1);
 				Innerloop(pairCoord, matchCoord, Complex(u1, u2));

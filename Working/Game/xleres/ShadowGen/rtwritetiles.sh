@@ -155,13 +155,13 @@ struct ListNode
 RWTexture2D<uint>	          ListsHead    : register(u1);
 RWStructuredBuffer<ListNode>  LinkedLists  : register(u2);
 
-uint ps_main(float4 pos : SV_Position,
-    #if (OUTPUT_PRIM_ID==1)     // (set if we get the primitive id from the geometry shader)
-        uint triIndex : PRIMID
-    #else
-        uint triIndex : SV_PrimitiveID
-    #endif
-    ) : SV_Target0
+#if (OUTPUT_PRIM_ID==1)     // (set if we get the primitive id from the geometry shader)
+    #define TRI_INDEX_SEMANTIC PRIMID
+#else
+    #define TRI_INDEX_SEMANTIC SV_PrimitiveID
+#endif
+
+uint ps_main(float4 pos : SV_Position, uint triIndex : TRI_INDEX_SEMANTIC) : SV_Target0
 {
         // it would be helpful for ListsHead where our bound render target.
         // But we need to both read and write from it... That isn't possible

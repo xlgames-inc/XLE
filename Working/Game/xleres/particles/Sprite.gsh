@@ -18,13 +18,13 @@
 	float3 cameraUp		= float3(CameraBasis[0].y, CameraBasis[1].y, CameraBasis[2].y);
 	float3 rotatedRight = cameraRight * input[0].screenRot.x + cameraUp * input[0].screenRot.y;
 	float3 rotatedUp	= cameraRight * input[0].screenRot.z + cameraUp * input[0].screenRot.w;
-	
+
 	float2 texCoords[4] =
 	{
 		float2(1.0f, 0.f),
 		float2(0.0f, 0.f),
 		float2(1.0f, 1.f),
-		float2(0.0f, 1.f),
+		float2(0.0f, 1.f)
 	};
 
 	float2 axes[4] =
@@ -32,7 +32,7 @@
 		float2( 1.0f,  1.f),
 		float2(-1.0f,  1.f),
 		float2( 1.0f, -1.f),
-		float2(-1.0f, -1.f),
+		float2(-1.0f, -1.f)
 	};
 
 	for (uint c=0; c<4; ++c) {
@@ -46,7 +46,7 @@
 		#if OUTPUT_COLOUR==1
 			output.colour 		= input[0].colour;
 		#endif
-	
+
 		#if OUTPUT_TEXCOORD==1
 					// (not tested in X3; but it theory it should look like this)
 				// output.texCoord 	= input[0].texCoord + (input[0].texCoordScale.yz*2.f-1.0.xx) * texCoords[c];
@@ -76,5 +76,3 @@
 	outputStream.Append(input[2]);
 	outputStream.Append(input[3]);
 }
-
-

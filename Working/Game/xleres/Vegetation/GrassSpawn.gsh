@@ -38,7 +38,7 @@ float2 CalculateWind(float3 worldPosition)
 {
 	float2 timeOffset = float2(-0.132f, 0.0823f) * 5.f * Time;
 	float noiseValue = PerlinNoise2D(0.0187f*worldPosition.xy+timeOffset);
-	
+
 	float2 timeOffset2 = float2(1.132f, 2.0823f) * 2.f * Time;
 	float noiseStrength = PerlinNoise2D(0.01137f*worldPosition.xy + timeOffset);
 	noiseStrength *= noiseStrength;
@@ -55,23 +55,23 @@ void WriteInstance(float3 instancePosition, inout uint outputVertices, inout Tri
 {
 	// #define TOP_DOWN_VIEW
 	#if !defined(TOP_DOWN_VIEW)
-		float3 offsets[4] = 
+		float3 offsets[4] =
 		{
 			float3(-0.5f, 0.f, 1.0f),
 			float3( 0.5f, 0.f, 1.0f),
 			float3(-0.5f, 0.f, 0.0f),
-			float3( 0.5f, 0.f, 0.0f),
+			float3( 0.5f, 0.f, 0.0f)
 		};
 	#else
-		float3 offsets[4] = 
+		float3 offsets[4] =
 		{
 			float3(-0.5f,  0.5f, 0.1f),
 			float3( 0.5f,  0.5f, 0.1f),
 			float3(-0.5f, -0.5f, 0.1f),
-			float3( 0.5f, -0.5f, 0.1f),
+			float3( 0.5f, -0.5f, 0.1f)
 		};
 	#endif
-	float2 tcs[4] = 
+	float2 tcs[4] =
 	{
 		float2(0.f, 0.f),
 		float2(1.f, 0.f),
@@ -84,20 +84,20 @@ void WriteInstance(float3 instancePosition, inout uint outputVertices, inout Tri
 		const float noiseLookupScale = 0.338f;
 		float noiseValue = PerlinNoise2D(noiseLookupScale*instancePosition.xy);
 
-		float4 images[] = 
+		float4 images[] =
 		{
 			float4(0.f, 5.f/1024.f,				568.f/1024.f, 340.f/1024.f),
 			float4(568.f/1024.f, 0.f,			1024.f/1024.f, 340.f/1024.f),
 			float4(0.f, 340.f/1024.f,			646.f/1024.f, (340.f+289.f)/1024.f),
 			float4(646.f/1024.f, 340.f/1024.f,	(646.f+247.f)/1024.f, (340.f+289.f)/1024.f),
 			float4(0.f, 646.f/1024.f,			489.f/1024.f, 1.f),
-			float4(523.f/1024.f, 626.f/1024.f,	1.f, 1.f),
+			float4(523.f/1024.f, 626.f/1024.f,	1.f, 1.f)
 		};
-		bool useTerrainColour[] = 
+		bool useTerrainColour[] =
 		{
 			true, false, true, false, true, true
 		};
-		float scaleParameter[] = 
+		float scaleParameter[] =
 		{
 			0.85f, 1.f, 1.f, 1.f, 1.f, 1.f
 		};
@@ -190,7 +190,7 @@ void Swap(inout float3 A, inout float3 B)
 	B = x;
 }
 
-void RasterizeBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11, 
+void RasterizeBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 							inout uint outputVertices,
 							float spacing,
 							inout TriangleStream<GSOutput> outputStream)
@@ -312,7 +312,7 @@ bool CullTriangle(WorkingTriangle tri)
 
 
 
-void RasterizeLineBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11, 
+void RasterizeLineBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 								inout uint outputVertices,
 								float spacing,
 								inout LineStream<GSOutput> outputStream)
@@ -352,13 +352,13 @@ void RasterizeLineBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 	GSOutput output;
 	output.color = 1.0.xxx;
 	output.texCoord = 0.0.xx;
-	
+
 	output.position = mul(WorldToClip, float4(input[0].position.xyz,1));
 	outputStream.Append(output);
-	
+
 	output.position = mul(WorldToClip, float4(input[1].position.xyz,1));
 	outputStream.Append(output);
-	
+
 	output.position = mul(WorldToClip, float4(input[2].position.xyz,1));
 	outputStream.Append(output);
 	outputStream.RestartStrip();
@@ -391,4 +391,3 @@ void RasterizeLineBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 	RasterizeLineBetweenEdges(tri.pts[0], tri.pts[1], tri.pts[0], tri.pts[2], outputVertices, gridSpacing, outputStream);
 	RasterizeLineBetweenEdges(tri.pts[1], tri.pts[2], tri.pts[0], tri.pts[2], outputVertices, gridSpacing, outputStream);
 }
-

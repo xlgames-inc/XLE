@@ -175,16 +175,18 @@ float3 CalculateSamplePoint(uint3 cellIndex)
 	DensityValues[outputTexel] = density;
 }
 
-static float3 GetDirectionToSun()
+float3 GetDirectionToSun()
 {
 	return BasicLight[0].NegativeDirection;
 }
 
 #if (MONOCHROME_INSCATTER==1)
-	float CalculateInscatter(int3 dispatchThreadId, float density)
+	#define CalculateInscatter_Result float
 #else
-	float3 CalculateInscatter(int3 dispatchThreadId, float density)
+	#define CalculateInscatter_Result float3
 #endif
+
+CalculateInscatter_Result CalculateInscatter(int3 dispatchThreadId, float density)
 {
 			//
 			//		Smooth the search through the shadowing grid
