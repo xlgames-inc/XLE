@@ -180,7 +180,7 @@ namespace ShaderSourceParser
 
                     result._functions.push_back(std::move(functionResult));
                 }
-            } else if (tokenType == STRUCT) {
+            } else if (tokenType == STRUCT || tokenType == CBUFFER) {
 
                 //
                 //  Structs are simple...
