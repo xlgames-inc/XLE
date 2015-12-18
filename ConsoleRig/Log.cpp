@@ -39,6 +39,7 @@ static auto Fn_GetStorage = ConstHash64<'getl', 'ogst', 'orag', 'e'>::Value;
 static auto Fn_CoutRedirectModule = ConstHash64<'cout', 'redi', 'rect'>::Value;
 static auto Fn_LogMainModule = ConstHash64<'logm', 'ainm', 'odul', 'e'>::Value;
 static auto Fn_GuidGen = ConstHash64<'guid', 'gen'>::Value;
+static auto Fn_RedirectCout = ConstHash64<'redi', 'rect', 'cout'>::Value;
 
 namespace ConsoleRig
 {
@@ -96,7 +97,8 @@ namespace ConsoleRig
             // object to a c++ std::stream_buf
         #if defined(REDIRECT_COUT)
             
-            if (!serv.Has<ModuleId()>(Fn_CoutRedirectModule)) {
+            bool doRedirect = serv.Call<bool>(Fn_RedirectCout);
+            if (doRedirect && !serv.Has<ModuleId()>(Fn_CoutRedirectModule)) {
                 s_coutAdapter.Reset(GetSharedDebuggerWarningStream());
                 s_oldCoutStreamBuf = std::cout.rdbuf();
                 std::cout.rdbuf(&s_coutAdapter);

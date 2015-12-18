@@ -97,6 +97,7 @@ namespace ConsoleRig
         std::string _applicationName;
         std::string _logConfigFile;
         bool _setWorkingDir;
+        bool _redirectCout;
         unsigned _longTaskThreadPoolCount;
         unsigned _shortTaskThreadPoolCount;
 
