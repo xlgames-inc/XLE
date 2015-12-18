@@ -98,7 +98,6 @@ toplevel
 	|	cbuffer
 	|	function
 	|	function_signature
-	|	'export' function_signature
 	;
 
 global
@@ -137,7 +136,7 @@ interface_class
 	;
 
 cbuffer
-	:	'cbuffer' ident registerAssignment? '{' fields+=structure_field* '}'
+	:	('cbuffer'|'tbuffer') ident registerAssignment? '{' fields+=structure_field* '}'
 		-> ^(CBUFFER ident $fields*)
 	;
 	
@@ -151,20 +150,26 @@ class_field
 	|	cbuffer
 	|	function_signature
 	;
-
-function_attribute
-	:	'[' 'numthreads' '(' expression ',' expression ',' expression ')' ']'
-	|	'[' 'maxvertexcount' '(' expression ')' ']'
-	|
+	
+functionAttributeType 
+	: 'numthreads'			// compute shaders
+	| 'maxvertexcount'		// geometry shaders
+	| 'earlydepthstencil'	// pixel shaders
+	| 'domain' | 'partitioning' | 'outputtopology' | 'patchconstantfunc' | 'outputcontrolpoints' | 'maxtessfactor' // hull & domain shaders
 	;
+	
+staticExpression : literal|StringLiteral|ident;
+staticExpressionList : staticExpression (',' staticExpression)*;
+
+functionAttributes :	('[' functionAttributeType ('(' staticExpressionList ')')? ']')*;
 
 function
-	:	function_attribute ret=ident name=ident '(' args=formal_arglist ')' semantic? block
+	:	'export'? functionAttributes ret=ident name=ident '(' args=formal_arglist ')' semantic? block
 		-> ^(FUNCTION $ret $name $args semantic? block)
 	;
 
 function_signature
-	:	function_attribute ret=ident name=ident '(' args=formal_arglist ')' ';'
+	:	'export'? functionAttributes ret=ident name=ident '(' args=formal_arglist ')' ';'
 		-> ^(FUNCTION $ret $name $args)
 	;
 
@@ -195,18 +200,22 @@ texture_type_name	: 'texture'
 					| 'RWTexture1D' | 'RWTexture1DArray'
 					| 'RWTexture2D' | 'RWTexture2DArray'
 					| 'RWTexture3D' | 'RWTexture3DArray'
-					| 'tbuffer'
 
 					| 'Texture2D_MaybeMS'		// (for convenience, include this XLE custom #define)
 					;
 
-structuredBufferTypeName : 'StructuredBuffer' | 'RWStructuredBuffer';
+structuredBufferTypeName : 'StructuredBuffer' | 'RWStructuredBuffer' | 'AppendStructuredBuffer';
+
+streamOutputObject : 'PointStream' | 'LineStream' | 'TriangleStream';
 
 type_name
-	:	ident
-	|	sampler_type_name
-	|	texture_type_name ('<' ident '>')?
-	|	structuredBufferTypeName '<' ident '>'
+	:	sampler_type_name
+	|	texture_type_name ('<' staticExpressionList '>')?
+	|	structuredBufferTypeName '<' staticExpressionList '>'
+	|	streamOutputObject '<' staticExpressionList '>'
+	|	'InputPatch' '<' staticExpressionList '>'
+	|	'OutputPatch' '<' staticExpressionList '>'
+	|	ident
 	;
 	
 ident
@@ -218,19 +227,23 @@ block
 	;
 	
 formal_arglist
-	:	formal_arg (',' formal_arg)*
-		-> formal_arg+
-	|	-> /* nothing */
+	:	formal_arg ((',' formal_arg)|isolated_macro)* -> formal_arg+
+	|
 	;
 	
 formal_arg
-	:	(dir=direction | storage_class | type_modifier)* ty=type_name id=ident sub+=subscript* sem=semantic? ('=' expression)?
+	:	(dir=direction | storage_class | type_modifier)* geometryPrimitiveType? ty=type_name id=ident sub+=subscript* sem=semantic? ('=' expression)?
 		-> ^(FORMAL_ARG $ty $id $sub* $sem? $dir?)
-	|	isolated_macro
 	;
 	
 direction
 	:	'in' | 'out' -> ^(DIRECTION_OUT) | 'inout' -> ^(DIRECTION_IN_OUT)
+	;
+	
+// geometryPrimitiveType is only required for geometry shaders. So there may be
+// parsing confusion if there are any structs with a conflicting name (eg: point)
+geometryPrimitiveType
+	:	'point' | 'line' | 'triangle' | 'lineadj' | 'triangleadj'
 	;
 	
 literal : DecimalLiteral | FloatingPointLiteral | HexLiteral;
@@ -296,13 +309,6 @@ statementExpression
 expressionList
 	:	expression (','! expression)*
 	;
-
-curly_brace_initialiser
-	: '{' expression (',' expression)* '}'
-	| '{' '}'
-	;
-
-expression : conditionalExpression (assignmentOp^ expression)?;
 	
 ////////////////////////////////////////////////////////////////////////////////
 // See the C operator precedence rules:
@@ -323,6 +329,7 @@ postfixOp : '++' | '--';
 
 ////////////////////////////////////////////////////////////////////////////////
 
+expression					: conditionalExpression (assignmentOp^ expression)?;
 conditionalExpression		: conditionalOrExpression ( '?' expression ':' expression )?;
 conditionalOrExpression		: conditionalAndExpression ( '||'^ conditionalAndExpression )*;
 conditionalAndExpression	: inclusiveOrExpression ( '&&'^ inclusiveOrExpression )*;
@@ -353,7 +360,8 @@ postfixExpression
 			|	'[' expression ']'	-> ^('[' $postfixExpression expression)
 			|	'.' ident			-> ^('.' $postfixExpression ident)
 			|	postfixOp
-		)*
+		)+
+	|	primary
 	;
 
 primary
@@ -370,6 +378,11 @@ parExpression
 arguments
 	:	'(' expressionList? ')' -> ^(ARG_LIST expressionList)
 	;
+	
+curly_brace_initialiser
+	: '{' expression (',' expression)* '}'
+	| '{' '}'
+	;
 
 //------------------------------------------------------------------------------
 //						L E X E R 
@@ -383,7 +396,7 @@ OctalLiteral : '0' ('0'..'7')+ IntegerTypeSuffix? ;
 
 fragment HexDigit : ('0'..'9'|'a'..'f'|'A'..'F') ;
 
-fragment IntegerTypeSuffix : ('l'|'L') ;
+fragment IntegerTypeSuffix : ('l'|'L'|'u'|'U'|'ul'|'UL') ;
 
 FloatingPointLiteral
 	:	('0'..'9')+ '.' ('0'..'9')* Exponent? FloatTypeSuffix?

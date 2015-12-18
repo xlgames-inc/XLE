@@ -34,6 +34,11 @@ namespace UnitTests
                 size_t blockSize = 0;
                 auto memBlock = LoadFileAsMemoryBlock(i.c_str(), &blockSize);
 
+                const char* flgId = "FunctionLinkingGraph";
+                if (blockSize > XlStringLen(flgId) && 
+                    XlEqString(MakeStringSection((const char*)memBlock.get(), (const char*)&memBlock[XlStringLen(flgId)]), flgId))
+                    continue;
+
                 auto signature = ShaderSourceParser::BuildShaderFragmentSignature(
                     (const char*)memBlock.get(), blockSize);
 
