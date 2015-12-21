@@ -22,11 +22,12 @@
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
+#include "../../BufferUploads/IBufferUploads.h"
+#include "../../BufferUploads/DataPacket.h"
+#include "../../BufferUploads/ResourceLocator.h"
 #include "../../Math/Transformations.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Conversion.h"
-
-#include "../../RenderCore/DX11/Metal/IncludeDX11.h"
 
 namespace PreviewRender
 {
@@ -39,23 +40,6 @@ namespace PreviewRender
         std::unique_ptr<::Assets::Services> _assetServices;
         std::unique_ptr<ConsoleRig::GlobalServices> _services;
     };
-
-    static intrusive_ptr<ID3D::Texture2D> CreateTexture(
-        RenderCore::IDevice* device, 
-        const D3D11_TEXTURE2D_DESC& desc)
-    {
-        RenderCore::Metal::ObjectFactory objectFactory(device);
-
-        intrusive_ptr<ID3D::Texture2D> result;
-        ID3D::Texture2D* tempTarget = nullptr;
-        HRESULT hresult = objectFactory.GetUnderlying()->CreateTexture2D(&desc, nullptr, &tempTarget);
-        if (tempTarget) {
-            if (SUCCEEDED(hresult)) {
-                result = moveptr(tempTarget);
-            } else tempTarget->Release();
-        }
-        return result;
-    }
 
     class PreviewBuilderPimpl
     {
@@ -222,56 +206,26 @@ namespace PreviewRender
         catch (...) {}
 
         using namespace RenderCore;
-        using namespace RenderCore::Metal;
         auto context = Manager::Instance->GetDevice()->GetImmediateContext();
-        auto metalContext = DeviceContext::Get(*context);
 
-        D3D11_TEXTURE2D_DESC targetDesc;
-        targetDesc.Width                = width;
-        targetDesc.Height               = height;
-        targetDesc.MipLevels            = 1;
-        targetDesc.ArraySize            = 1;
-        targetDesc.Format               = DXGI_FORMAT_R8G8B8A8_TYPELESS;
-        targetDesc.SampleDesc.Count     = 1;
-        targetDesc.SampleDesc.Quality   = 0;
-        targetDesc.Usage                = D3D11_USAGE_DEFAULT;
-        targetDesc.BindFlags            = D3D11_BIND_RENDER_TARGET;
-        targetDesc.CPUAccessFlags       = 0;
-        targetDesc.MiscFlags            = 0;
+        auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
+        auto targetTexture = uploads.Transaction_Immediate(
+            BufferUploads::CreateDesc(
+                BufferUploads::BindFlag::RenderTarget,
+                0, BufferUploads::GPUAccess::Write,
+                BufferUploads::TextureDesc::Plain2D(
+                    width, height, 
+                    Metal::NativeFormat::R8G8B8A8_UNORM_SRGB),
+                "PreviewBuilderTarget"));
 
-        auto targetTexture = CreateTexture(Manager::Instance->GetDevice(), targetDesc);
-        intrusive_ptr<ID3D::RenderTargetView> renderTargetView;
-        if (targetTexture) {
-            D3D11_RENDER_TARGET_VIEW_DESC viewDesc;
-            viewDesc.Format                 = DXGI_FORMAT_R8G8B8A8_UNORM;       // \todo -- SRGB correction
-            viewDesc.ViewDimension          = D3D11_RTV_DIMENSION_TEXTURE2D;
-            viewDesc.Texture2D.MipSlice     = 0;
-            {
-                ID3D::RenderTargetView* tempView = nullptr;
-                RenderCore::Metal::ObjectFactory objectFactory(Manager::Instance->GetDevice());
-                HRESULT hresult = objectFactory.GetUnderlying()->CreateRenderTargetView(targetTexture.get(), &viewDesc, &tempView);
-                if (tempView) {
-                    if (SUCCEEDED(hresult)) {
-                        renderTargetView = moveptr(tempView);
-                    } else tempView->Release();
-                }
-            }
-        }
+        Metal::RenderTargetView targetRTV(targetTexture->GetUnderlying());
 
-        {
-            ID3D::RenderTargetView* rtView = renderTargetView.get();
-            metalContext->GetUnderlying()->OMSetRenderTargets(1, &rtView, nullptr);
+        auto metalContext = Metal::DeviceContext::Get(*context);
+        float clearColor[] = { 0.05f, 0.05f, 0.2f, 1.f };
+        metalContext->Clear(targetRTV, clearColor);
 
-            D3D11_VIEWPORT viewport;
-            viewport.TopLeftX = viewport.TopLeftY = 0;
-            viewport.Width = FLOAT(width); 
-            viewport.Height = FLOAT(height);
-            viewport.MinDepth = 0.f; viewport.MaxDepth = 1.f;
-            metalContext->GetUnderlying()->RSSetViewports(1, &viewport);
-
-            FLOAT clearColor[] = {0.05f, 0.05f, 0.2f, 1.f};
-            metalContext->GetUnderlying()->ClearRenderTargetView(rtView, clearColor);
-        }
+        metalContext->Bind(RenderCore::MakeResourceList(targetRTV), nullptr);
+        metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(width), float(height), 0.f, 1.f));
 
             ////////////
 
@@ -284,41 +238,31 @@ namespace PreviewRender
 
             ////////////
 
-        D3D11_TEXTURE2D_DESC readableTargetDesc = targetDesc;
-        readableTargetDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-        readableTargetDesc.Usage = D3D11_USAGE_STAGING;
-        readableTargetDesc.BindFlags = 0;
-        readableTargetDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-        intrusive_ptr<ID3D::Texture2D> readableTarget = CreateTexture(Manager::Instance->GetDevice(), readableTargetDesc);
-
-        Metal::Copy(*metalContext, readableTarget.get(), targetTexture.get());
-
-        D3D11_MAPPED_SUBRESOURCE mappedTexture;
-        HRESULT hresult = metalContext->GetUnderlying()->Map(readableTarget.get(), 0, D3D11_MAP_READ, 0, &mappedTexture);
-        if (SUCCEEDED(hresult)) {
+        auto readback = uploads.Resource_ReadBack(*targetTexture);
+        if (readback && readback->GetDataSize()) {
             using System::Drawing::Bitmap;
             using namespace System::Drawing;
             Bitmap^ newBitmap = gcnew Bitmap(width, height, Imaging::PixelFormat::Format32bppArgb);
-            auto data = newBitmap->LockBits(System::Drawing::Rectangle(0, 0, width, height), Imaging::ImageLockMode::WriteOnly, Imaging::PixelFormat::Format32bppArgb);
+            auto data = newBitmap->LockBits(
+                System::Drawing::Rectangle(0, 0, width, height), 
+                Imaging::ImageLockMode::WriteOnly, 
+                Imaging::PixelFormat::Format32bppArgb);
             try
             {
                     // we have to flip ABGR -> ARGB!
                 for (int y=0; y<height; ++y) {
-                    void* sourcePtr = PtrAdd(mappedTexture.pData, y * mappedTexture.RowPitch);
+                    void* sourcePtr = PtrAdd(readback->GetData(), y * readback->GetPitches()._rowPitch);
                     System::IntPtr destinationPtr = data->Scan0 + y * width * sizeof(unsigned);
                     for (int x=0; x<width; ++x) {
                         ((unsigned*)(void*)destinationPtr)[x] = 
                             (RenderCore::ARGBtoABGR(((unsigned*)sourcePtr)[x]) & 0x00ffffff) | 0xff000000;
                     }
                 }
-                // XlCopyMemory((void*)ptr, mappedTexture.pData, mappedTexture.DepthPitch);
             }
             finally
             {
                 newBitmap->UnlockBits(data);
             }
-
-            metalContext->GetUnderlying()->Unmap(readableTarget.get(), 0);
             return newBitmap;
         }
 

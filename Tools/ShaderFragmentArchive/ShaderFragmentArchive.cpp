@@ -36,7 +36,7 @@ namespace ShaderFragmentArchive
 
         if (!function._returnType.empty() && function._returnType != "void") {
             Parameter^ p = gcnew Parameter;
-            p->Name = marshalString<E_UTF8>("return");
+            p->Name = marshalString<E_UTF8>("result");
             p->Type = marshalString<E_UTF8>(function._returnType);
             Outputs->Add(p);
         }

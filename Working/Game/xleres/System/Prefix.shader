@@ -32,6 +32,10 @@ float4 	Cast_float_to_float4(float input)		{ return float4(input.xxx, 1); }
 float4 	Cast_float2_to_float4(float2 input)		{ return float4(input.xy, 0, 1); }
 float4 	Cast_float3_to_float4(float3 input)		{ return float4(input.xyz, 1); }
 
+float3 	Cast_float_to_float3(float input)		{ return float3(input.xxx); }
+float3 	Cast_float2_to_float3(float2 input)		{ return float3(input.xy, 0); }
+float3 	Cast_float3_to_float3(float3 input)		{ return float3(input.xyz); }
+
 float3 	Cast_float4_to_float3(float4 input)		{ return input.xyz; }
 float4 	Cast_float3x3_to_float4(float3x3 input)		{ return float4(input[0].xyz, 1); }
 
@@ -102,4 +106,3 @@ struct NodeEditor_GraphOutput
 };
 
 #endif
-

@@ -238,7 +238,7 @@ namespace NodeEditor
                     {
                         var inputItem = FindOrCreateNodeItem(nodeIdToControlNode[c.InputNodeID],
                             (item) => (item.Output != null && item.Output.Enabled && item is ShaderFragmentNodeItem && ((ShaderFragmentNodeItem)item).Name.Equals(c.InputParameterName)),
-                            () => new ShaderFragmentNodeItem("return", c.InputType, null, false, true));
+                            () => new ShaderFragmentNodeItem("result", c.InputType, null, false, true));
                         
                         var outputItem = FindOrCreateNodeItem(nodeIdToControlNode[c.OutputNodeID],
                             (item) => (item.Input != null && item.Input.Enabled && item is ShaderFragmentNodeItem && ((ShaderFragmentNodeItem)item).Name.Equals(c.OutputParameterName)),

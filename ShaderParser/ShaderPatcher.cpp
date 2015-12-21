@@ -357,10 +357,10 @@ namespace ShaderPatcher
             //  output node attached. First, look for a "return" value. Then search through
             //  for parameters with "out" set
         if (!sig._returnType.empty() && sig._returnType != "void") {
-            if (!HasConnection(_nodeConnections, node.NodeId(), "return")) {
+            if (!HasConnection(_nodeConnections, node.NodeId(), "result")) {
                 auto newNodeId = GetUniqueNodeId();
                 _nodes.push_back(Node(sig._returnType, newNodeId, Node::Type::Output)); // (note -- this invalidates "node"!)
-                _nodeConnections.push_back(NodeConnection(newNodeId, nodeId, "value", sig._returnType, "return", sig._returnType));
+                _nodeConnections.push_back(NodeConnection(newNodeId, nodeId, "value", sig._returnType, "result", sig._returnType));
             }
         }
 
@@ -511,7 +511,7 @@ namespace ShaderPatcher
         }
 
         if (!sig._returnType.empty() && sig._returnType != "void") {
-            auto outputName = OutputTemporaryForNode(node.NodeId(), "return");
+            auto outputName = OutputTemporaryForNode(node.NodeId(), "result");
             result << "\t" << sig._returnType << " " << outputName << ";" << std::endl;
             result << "\t" << outputName << " = " << functionName << "( ";
         } else {
@@ -847,22 +847,18 @@ namespace ShaderPatcher
             //      that if the node exists in the graph, then it's going to be
             //      required in the shader.
             //
-        for (   auto i =graph.GetNodes().cbegin(); 
-                     i!=graph.GetNodes().cend();     ++i) {
-            
+        for (auto i =graph.GetNodes().cbegin(); i!=graph.GetNodes().cend(); ++i) {
             if (    i->GetType() == Node::Type::InterpolatorIntoPixel 
                 ||  i->GetType() == Node::Type::InterpolatorIntoVertex
                 ||  i->GetType() == Node::Type::SystemParameters) {
 
-                if (mainFunctionDeclParameters.tellp() != std::stringstream::pos_type(0)) {
+                if (mainFunctionDeclParameters.tellp() != std::stringstream::pos_type(0))
                     mainFunctionDeclParameters << ", ";
-                }
 
                 auto signature = LoadParameterStructSignature(SplitArchiveName(i->ArchiveName()));
                 mainFunctionDeclParameters << signature._name << " " << InterpolatorParameterName(i->NodeId());
 
             }
-
         }
 
         auto varyingParameters = GetMainFunctionVaryingParameters(graph, graphOfTemporaries);
@@ -947,13 +943,13 @@ namespace ShaderPatcher
                             auto sig = LoadFunctionSignature(SplitArchiveName(inputNode->ArchiveName()));
                             bool foundConnection = false;
                                 // todo -- we could simplify this a little bit by just making the return value an output parameter
-                                //          with the name "return" in the signature definition
-                            if (i->InputParameterName() == "return") {
+                                //          with the name "result" in the signature definition
+                            if (i->InputParameterName() == "result") {
                                 if (!sig._returnType.empty() && sig._returnType != "void") {
                                     if (sig._returnType != i->OutputType()._name) {
-                                        result << "Cast_" << sig._returnType << "_to_" << i->OutputType()._name << "(" << OutputTemporaryForNode(i->InputNodeId(), "return") << ");" << std::endl;
+                                        result << "Cast_" << sig._returnType << "_to_" << i->OutputType()._name << "(" << OutputTemporaryForNode(i->InputNodeId(), "result") << ");" << std::endl;
                                     } else {
-                                        result << OutputTemporaryForNode(i->InputNodeId(), "return") << ";" << std::endl;
+                                        result << OutputTemporaryForNode(i->InputNodeId(), "result") << ";" << std::endl;
                                     }
                                     foundConnection = true;
                                 }
@@ -1007,6 +1003,7 @@ namespace ShaderPatcher
 
         ////////////////////////////////////////////////////////////////////////
 
+#if 0
     static const char*      KnownCBufferSystemParameters[]  = { "Time" };
     static const char*      KnowGlobalBufferParameters[]    = { "LocalNegativeLightDirection", "LocalSpaceView", "LocalToWorld", "WorldToClip" };
 
@@ -1161,6 +1158,8 @@ namespace ShaderPatcher
         return false;
     }
 
+#endif
+
     static std::string InitializationForSystemStruct(const ShaderPatcher::Node& node, std::string& extraHeaders)
     {
             //  some system structs are known by the system, and 
@@ -1258,7 +1257,7 @@ namespace ShaderPatcher
 
         auto varyingParameters = GetMainFunctionVaryingParameters(graph, graphOfTemporaries);
 
-        ParameterOperationQueue     operationQueue;
+        // ParameterOperationQueue     operationQueue;
      
 
 
@@ -1268,12 +1267,14 @@ namespace ShaderPatcher
             //      to a default
             //
 
+#if 0
         signed maxTexCoordForVSToPS = -1;
         for (auto p=operationQueue.activeVSLoadOperations.cbegin(); p!=operationQueue.activeVSLoadOperations.cend(); ++p) {
             if ((*p)->_vsToPSSemantic.substr(0, 8) == "TEXCOORD") {
                 maxTexCoordForVSToPS = std::max(signed(XlAtoI32((*p)->_vsToPSSemantic.substr(8).c_str())), maxTexCoordForVSToPS);
             }
         }
+#endif
 
         char smallBuffer[128];
         std::stringstream result;
@@ -1356,6 +1357,7 @@ namespace ShaderPatcher
             //
             //      Now write the queued vs-to-ps parameters
             //
+#if 0
         for (auto v=operationQueue.activeVSLoadOperations.cbegin(); v!=operationQueue.activeVSLoadOperations.cend(); ++v) {
             if (std::find_if(operationQueue.activeVSLoadOperations.cbegin(), v, 
                     [=](const ParameterOperationQueue::VSLoadOperation* op) { return op->_vsToPSSemantic == (*v)->_vsToPSSemantic; }) != v) {
@@ -1368,6 +1370,7 @@ namespace ShaderPatcher
             }
             result << "\t" << (*v)->_vsToPSType << " " << (*v)->_vsToPSParameter << " : " << semantic << ";" << std::endl;
         }
+#endif
 
             //
             //      Finally write the pixel shader system inputs (default SV_ type inputs like position and msaa sample)
@@ -1441,7 +1444,9 @@ namespace ShaderPatcher
 
             // Collect all of the output values into a flat array of floats.
         unsigned outputDimensionality = 0;
-        {
+        bool needFlatOutputs = inputDimensionality == 1;
+
+        if (needFlatOutputs) {
             std::stringstream writingToFlatArray;
             for (auto i=mainFunctionOutputs.begin(); i!=mainFunctionOutputs.end(); ++i) {
                 auto signature = LoadParameterStructSignature(SplitArchiveName(i->_archiveName));
@@ -1496,13 +1501,14 @@ namespace ShaderPatcher
             //      If the shader takes 3d position as input, then we must
             //      transform the coordinates by local-to-world and world-to-clip
             //      
-        const bool requires3DTransform = operationQueue.Requires3DTransform();
+        const bool requires3DTransform = false; // operationQueue.Requires3DTransform();
         if (requires3DTransform) {
             result << "PSInput VertexShaderEntry(uint vertexId : SV_VertexID, float3 iPosition : POSITION0";
         } else {
             result << "PSInput VertexShaderEntry(uint vertexId : SV_VertexID, float" << std::max(2u,std::min(inputDimensionality, 4u)) << " iPosition : POSITION0";
         }
 
+#if 0
         for (auto i=operationQueue.activeVSInputParameters.cbegin(); i!=operationQueue.activeVSInputParameters.cend(); ++i) {
             auto o = std::find_if(operationQueue.activeVSInputParameters.cbegin(), i, 
                 [=](const ParameterOperationQueue::VSInputParameter* i2) { return (*i)->_vsInputSemantic == i2->_vsInputSemantic; });
@@ -1510,6 +1516,7 @@ namespace ShaderPatcher
 
             result << ", " << (*i)->_vsInputType << " i" << (*i)->_vsInputSemantic << " : " << (*i)->_vsInputSemantic;
         }
+#endif
             
         result << ")" << std::endl;
         result << "{" << std::endl;
@@ -1548,6 +1555,7 @@ namespace ShaderPatcher
             }
         }
 
+#if 0
         for (auto i=interpolatorsIntoPixel.cbegin(); i!=interpolatorsIntoPixel.cend(); ++i) {
             result << "\tOUT." << i->_name << " = BuildInterpolator_" << i->_type << "(vertexId);" << std::endl;
         }
@@ -1559,6 +1567,7 @@ namespace ShaderPatcher
                 result << "\tOUT." << (*p)->_vsToPSParameter << " = i" << (*p)->_vsInputSemantic << ";" << std::endl;
             }
         }
+#endif
 
         result << "\treturn OUT;" << std::endl;
         result << "}" << std::endl;
