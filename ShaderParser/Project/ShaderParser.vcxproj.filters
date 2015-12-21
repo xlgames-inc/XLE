@@ -18,6 +18,7 @@
     <ClCompile Include="..\InterfaceSignature.cpp" />
     <ClCompile Include="..\ParameterSignature.cpp" />
     <ClCompile Include="..\ShaderPatcher.cpp" />
+    <ClCompile Include="..\AntlrHelper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Grammar\ShaderLexer.h">
@@ -29,6 +30,8 @@
     <ClInclude Include="..\InterfaceSignature.h" />
     <ClInclude Include="..\ParameterSignature.h" />
     <ClInclude Include="..\ShaderPatcher.h" />
+    <ClInclude Include="..\AntlrHelper.h" />
+    <ClInclude Include="..\Exceptions.h" />
   </ItemGroup>
   <ItemGroup>
     <Antlr3ParserLexer Include="..\Grammar\Shader.g">

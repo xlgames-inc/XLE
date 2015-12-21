@@ -4,7 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../../ShaderParser/ParameterSignature.h"
+#include "../../ShaderParser/InterfaceSignature.h"
+#include "../../ShaderParser/Exceptions.h"
 #include "../../Core/WinAPI/IncludeWindows.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/Log.h"
@@ -23,22 +24,31 @@ namespace ShaderScan
         Document<InputStreamFormatter<char>> doc(formatter);
 
         auto inputFile = doc.Attribute("i").Value();
-        // std::cout << "Scanning file: " << inputFile.AsString().c_str() << std::endl;
         if (inputFile.Empty()) {
             return;     // expecting "i=<input filename"> on the command line
         }
 
+        std::cout << "Scanning file: " << inputFile.AsString().c_str() << std::endl;
         size_t inputFileSize;
         auto inputFileBlock = LoadFileAsMemoryBlock(inputFile.AsString().c_str(), &inputFileSize);
 
-        auto sig = ShaderSourceParser::LoadSignature((const char*)inputFileBlock.get(), inputFileSize);
+        TRY {
+            ShaderSourceParser::BuildShaderFragmentSignature(
+                (const char*)inputFileBlock.get(), inputFileSize);
+        } CATCH(const ShaderSourceParser::Exceptions::ParsingFailure& e) {
 
-        // Write all of the out to "cout" -- 
-        std::cerr << "\"" << inputFile.AsString().c_str() << "\""
-            << ":" << "(1:1)" << "(5:1)" 
-            << ":" << "error"
-            << ":" << "Expected a different token!"
-            ;
+                // catch the list of errors, and report each one...
+            auto errors = e.GetErrors();
+            for (auto i:errors) {
+                std::cerr 
+                    << "\"" << inputFile.AsString().c_str() << "\""
+                    << ":(" << i._lineStart << ":" << i._charStart << ")("
+                    << i._lineEnd << ":" << i._charEnd << "):error:"
+                    << i._message
+                    << std::endl;
+            }
+
+        } CATCH_END
     }
 }
 

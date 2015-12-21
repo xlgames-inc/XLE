@@ -196,7 +196,7 @@ namespace ShaderFragmentArchive
                     ParameterStruct^ pstruct = gcnew ParameterStruct(*i);
                     ParameterStructs->Add(pstruct);
                 }
-            } catch (const ShaderSourceParser::Exceptions::CompileError& ) {
+            } catch (const ShaderSourceParser::Exceptions::ParseError& ) {
                 ExceptionString = "Failed during parsing. Look for compilation errors.";
             }
             

@@ -142,6 +142,7 @@
     </Antlr3ParserLexer>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\AntlrHelper.cpp" />
     <ClCompile Include="..\Grammar\ShaderLexer.c" />
     <ClCompile Include="..\Grammar\ShaderParser.c" />
     <ClCompile Include="..\InterfaceSignature.cpp" />
@@ -149,6 +150,8 @@
     <ClCompile Include="..\ShaderPatcher.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\AntlrHelper.h" />
+    <ClInclude Include="..\Exceptions.h" />
     <ClInclude Include="..\Grammar\ShaderLexer.h" />
     <ClInclude Include="..\Grammar\ShaderParser.h" />
     <ClInclude Include="..\InterfaceSignature.h" />

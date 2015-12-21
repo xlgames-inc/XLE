@@ -63,11 +63,29 @@ tokens
 @header
 {
 	#pragma warning(disable:4244)
-	void myDisplayRecognitionError (void * recognizer, void * tokenNames);
+	void CustomDisplayRecognitionError(void * recognizer, void * tokenNames);
 }
 
 @members
 {
+	typedef void ExceptionHandler(void*, const ANTLR3_EXCEPTION*, const ANTLR3_UINT8**);
+	ExceptionHandler* g_ShaderParserExceptionHandler = NULL;
+	void* g_ShaderParserExceptionHandlerUserData = NULL;
+
+	void CustomDisplayRecognitionError(void * recognizer, void * tokenNames)
+	{
+		ANTLR3_BASE_RECOGNIZER* r = (ANTLR3_BASE_RECOGNIZER*)recognizer;
+		ANTLR3_UINT8 ** t = (ANTLR3_UINT8 **)tokenNames;
+		ANTLR3_COMMON_TOKEN* token = (ANTLR3_COMMON_TOKEN*)r->state->exception->token;
+
+		if (g_ShaderParserExceptionHandler) {
+			(*g_ShaderParserExceptionHandler)(
+				g_ShaderParserExceptionHandlerUserData, 
+				r->state->exception,
+				t);
+		}
+	}
+
 	unsigned LooksLikePreprocessorMacro(pANTLR3_COMMON_TOKEN token)
 	{
 			// Expecting all characters to be upper case ASCII chars
@@ -82,7 +100,7 @@ tokens
 }
 
 @parser::apifuncs {
-	RECOGNIZER->displayRecognitionError = myDisplayRecognitionError;
+	RECOGNIZER->displayRecognitionError = CustomDisplayRecognitionError;
 }
 
 storage_class : 'extern' | 'nointerpolation' | 'precise' | 'shared' | 'groupshared' | 'static' | 'uniform' | 'volatile';
@@ -98,6 +116,7 @@ toplevel
 	|	cbuffer
 	|	function
 	|	function_signature
+	|	';'			// empty statement
 	;
 
 global
