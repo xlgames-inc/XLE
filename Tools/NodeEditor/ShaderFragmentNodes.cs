@@ -134,13 +134,15 @@ namespace NodeEditor
                 {
                     var nodeGraph = ModelConversion.ToShaderPatcherLayer(_graphControl);
                     var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id);
-
                     _builder  = PreviewRender.Manager.Instance.CreatePreview(shader);
                 }
+
+                if (_builder == null)
+                    return;
                 
                     // (assuming no rotation on this transformation -- scale is easy to find)
                 Size idealSize = new Size((int)(graphics.Transform.Elements[0] * size.Width), (int)(graphics.Transform.Elements[3] * size.Height));
-                if (_builder != null && _builder.Bitmap != null) {
+                if (_builder.Bitmap != null) {
                         // compare the current bitmap size to the size we'd like
                     Size bitmapSize = _builder.Bitmap.Size;
                     float difference = System.Math.Max(System.Math.Abs(1.0f - bitmapSize.Width / (float)(idealSize.Width)), System.Math.Abs(1.0f - bitmapSize.Height / (float)(idealSize.Height)));

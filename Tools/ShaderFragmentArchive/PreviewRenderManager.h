@@ -52,6 +52,8 @@ namespace PreviewRender
             Manager^ get() { if (!_instance) { _instance = gcnew Manager(); } return _instance; }
         }
 
+        static void Shutdown();
+
     private:
         ManagerPimpl*       _pimpl;
         static Manager^     _instance;

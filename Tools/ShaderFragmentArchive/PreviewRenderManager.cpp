@@ -18,18 +18,26 @@
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/Resource.h"
+#include "../../RenderCore/Metal/InputLayout.h"
+#include "../../RenderCore/Assets/Services.h"
+#include "../../RenderCore/Techniques/CommonResources.h"
+#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../Math/Transformations.h"
-#include "../../RenderCore/DX11/Metal/IncludeDX11.h"
+#include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Conversion.h"
+
+#include "../../RenderCore/DX11/Metal/IncludeDX11.h"
 
 namespace PreviewRender
 {
     class ManagerPimpl
     {
     public:
-        std::shared_ptr<RenderCore::IDevice>   _device;
-        std::unique_ptr<::Assets::Services> _assetServices;
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
+        std::unique_ptr<RenderCore::Assets::Services> _renderAssetsServices;
+        std::shared_ptr<RenderCore::IDevice> _device;
+        std::unique_ptr<::Assets::Services> _assetServices;
+        std::unique_ptr<ConsoleRig::GlobalServices> _services;
     };
 
     static intrusive_ptr<ID3D::Texture2D> CreateTexture(
@@ -49,70 +57,13 @@ namespace PreviewRender
         return result;
     }
 
-#if 0
-    static System::String^ BuildTypeName(const D3D11_SHADER_TYPE_DESC& typeDesc)
-    {
-        System::String^ typeName;
-
-            //      Convert from the D3D type into a string
-            //      type name
-        if (typeDesc.Type == D3D10_SVT_FLOAT) {
-            typeName = "float";
-        } else if (typeDesc.Type == D3D10_SVT_INT) {
-            typeName = "int";
-        } else if (typeDesc.Type == D3D10_SVT_BOOL) {
-            typeName = "bool";
-        } else if (typeDesc.Type == D3D10_SVT_UINT) {
-            typeName = "uint";
-        } else {
-            return "";
-        }
-
-        if (typeDesc.Columns > 1 || (typeDesc.Columns == 1 && typeDesc.Rows > 1)) {
-            typeName += typeDesc.Columns;
-
-            if (typeDesc.Rows > 1) {
-                typeName += 'x';
-                typeName += typeDesc.Rows;
-            }
-        }
-
-        return typeName;
-    }
-
-    class SystemConstantsContext
-    {
-    public:
-        Float3      _lightNegativeDirection;
-        Float3      _lightColour;
-        unsigned    _outputWidth, _outputHeight;
-    };
-
-    static bool WriteSystemVariable(const char name[], ShaderDiagram::Document^ doc, const SystemConstantsContext& context, void* destination, void* destinationEnd)
-    {
-        size_t size = size_t(destinationEnd) - size_t(destination);
-        if (!_stricmp(name, "SI_OutputDimensions") && size >= (sizeof(unsigned)*2)) {
-            ((unsigned*)destination)[0] = context._outputWidth;
-            ((unsigned*)destination)[1] = context._outputHeight;
-            return true;
-        } else if (!_stricmp(name, "SI_NegativeLightDirection") && size >= sizeof(Float3)) {
-            *((Float3*)destination) = doc->NegativeLightDirection;
-            return true;
-        } else if (!_stricmp(name, "SI_LightColor") && size >= sizeof(Float3)) {
-            *((Float3*)destination) = context._lightColour;
-            return true;
-        }
-        return false;
-    }
-#endif
-    
     class PreviewBuilderPimpl
     {
     public:
         std::unique_ptr<RenderCore::CompiledShaderByteCode>     _vertexShader;
         std::unique_ptr<RenderCore::CompiledShaderByteCode>     _pixelShader;
         std::unique_ptr<RenderCore::Metal::ShaderProgram>       _shaderProgram;
-        std::string                                                     _errorString;
+        std::string                                             _errorString;
 
         RenderCore::Metal::ShaderProgram & GetShaderProgram()
         {
@@ -130,69 +81,6 @@ namespace PreviewRender
         }
     };
 
-#if 0
-
-    RenderCore::Metal::ConstantBufferPacket SetupGlobalState(
-        RenderCore::Metal::DeviceContext*   context,
-        const RenderCore::Techniques::GlobalTransformConstants&  globalTransform)
-    {
-            // deprecated -- use scene engine to set default states
-        // context->Bind(SceneEngine::CommonResources()._dssReadWrite);
-        // context->Bind(SceneEngine::CommonResources()._blendStraightAlpha);
-        // context->Bind(SceneEngine::CommonResources()._defaultRasterizer);
-        // context->BindPS(MakeResourceList(SceneEngine::CommonResources()._defaultSampler));
-        return RenderCore::MakeSharedPkt(globalTransform);
-    }
-
-    RenderCore::Metal::ConstantBufferPacket SetupGlobalState(
-        RenderCore::Metal::DeviceContext*   context,
-        const RenderCore::Techniques::CameraDesc&       camera)
-    {
-        using namespace RenderCore;
-        using namespace RenderCore::Metal;
-        
-        ViewportDesc viewportDesc(*context);
-        Float4x4 worldToCamera = InvertOrthonormalTransform(camera._cameraToWorld);
-        Float4x4 projectionMatrix = PerspectiveProjection(
-            camera, viewportDesc.Width / float(viewportDesc.Height));
-
-        Techniques::GlobalTransformConstants transformConstants;
-        transformConstants._worldToClip = Combine(worldToCamera, projectionMatrix);
-        transformConstants._viewToWorld = camera._cameraToWorld;
-
-        transformConstants._worldSpaceView = ExtractTranslation(camera._cameraToWorld);
-        transformConstants._minimalProjection = ExtractMinimalProjection(projectionMatrix);
-        transformConstants._farClip = Techniques::CalculateNearAndFarPlane(transformConstants._minimalProjection, Techniques::GetDefaultClipSpaceType()).second;
-
-        // auto right      = Normalize(ExtractRight_Cam(camera._cameraToWorld));
-        // auto up         = Normalize(ExtractUp_Cam(camera._cameraToWorld));
-        // auto forward    = Normalize(ExtractForward_Cam(camera._cameraToWorld));
-        // auto fy         = XlTan(0.5f * camera._verticalFieldOfView);
-        // auto fx         = fy * viewportDesc.Width / float(viewportDesc.Height);
-        // transformConstants._frustumCorners[0] = Expand(Float3(camera._farClip * (forward - fx * right + fy * up)), 1.f);
-        // transformConstants._frustumCorners[1] = Expand(Float3(camera._farClip * (forward - fx * right - fy * up)), 1.f);
-        // transformConstants._frustumCorners[2] = Expand(Float3(camera._farClip * (forward + fx * right + fy * up)), 1.f);
-        // transformConstants._frustumCorners[3] = Expand(Float3(camera._farClip * (forward + fx * right - fy * up)), 1.f);
-
-        const float aspectRatio = viewportDesc.Width / float(viewportDesc.Height);
-        const float top = camera._nearClip * XlTan(.5f * camera._verticalFieldOfView);
-        const float right = top * aspectRatio;
-        Float3 preTransformCorners[] = {
-            Float3(-right,  top, -camera._nearClip),
-            Float3(-right, -top, -camera._nearClip),
-            Float3( right,  top, -camera._nearClip),
-            Float3( right, -top, -camera._nearClip) 
-        };
-        for (unsigned c=0; c<4; ++c) {
-            transformConstants._frustumCorners[c] = 
-                Expand(TransformDirectionVector(camera._cameraToWorld, preTransformCorners[c]), 1.f);
-        }
-        
-        return SetupGlobalState(context, transformConstants);
-    }
-
-#endif
-
     enum DrawPreviewResult
     {
         DrawPreviewResult_Error,
@@ -200,15 +88,58 @@ namespace PreviewRender
         DrawPreviewResult_Success
     };
 
+    class MaterialBinder : public ToolsRig::IMaterialBinder
+    {
+    public:
+        virtual RenderCore::Metal::ShaderProgram* Apply(
+            RenderCore::Metal::DeviceContext& metalContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
+            unsigned techniqueIndex,
+            const RenderCore::Assets::ResolvedMaterial& mat,
+            const SystemConstants& sysConstants,
+            const ::Assets::DirectorySearchRules& searchRules,
+            const RenderCore::Metal::InputLayout& geoInputLayout);
+        
+        MaterialBinder(RenderCore::Metal::ShaderProgram& shaderProgram);
+        ~MaterialBinder();
+    private:
+        RenderCore::Metal::ShaderProgram* _shaderProgram;
+    };
+
+    RenderCore::Metal::ShaderProgram* MaterialBinder::Apply(
+            RenderCore::Metal::DeviceContext& metalContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
+            unsigned techniqueIndex,
+            const RenderCore::Assets::ResolvedMaterial& mat,
+            const SystemConstants& sysConstants,
+            const ::Assets::DirectorySearchRules& searchRules,
+            const RenderCore::Metal::InputLayout& geoInputLayout)
+    {
+        metalContext.Bind(*_shaderProgram);
+
+        RenderCore::Metal::BoundInputLayout inputLayout(geoInputLayout, *_shaderProgram);
+        metalContext.Bind(inputLayout);
+
+        BindConstantsAndResources(
+            metalContext, parserContext, mat, 
+            sysConstants, searchRules, *_shaderProgram);
+
+        return _shaderProgram;
+    }
+
+    MaterialBinder::MaterialBinder(RenderCore::Metal::ShaderProgram& shaderProgram) : _shaderProgram(&shaderProgram) {}
+    MaterialBinder::~MaterialBinder() {}
+
     static DrawPreviewResult DrawPreview(
         RenderCore::IThreadContext& context, 
         PreviewBuilderPimpl& builder, ShaderDiagram::Document^ doc)
     {
         using namespace ToolsRig;
 
-        try {
+        try 
+        {
             MaterialVisObject visObject;
-            // visObject._shaderProgram = &builder.GetShaderProgram();
+            visObject._materialBinder = std::make_shared<MaterialBinder>(builder.GetShaderProgram());
             visObject._systemConstants._lightNegativeDirection = Normalize(doc->NegativeLightDirection);
             visObject._systemConstants._lightColour = Float3(1,1,1);
 
@@ -236,6 +167,7 @@ namespace PreviewRender
             MaterialVisSettings visSettings;
             visSettings._camera = std::make_shared<VisCameraSettings>();
             visSettings._camera->_position = Float3(-5, 0, 0);
+            visSettings._geometryType = MaterialVisSettings::GeometryType::Plane2D;
 
             SceneEngine::LightingParserContext parserContext(
                 *Manager::Instance->GetGlobalTechniqueContext());
@@ -246,9 +178,9 @@ namespace PreviewRender
 
             if (result) return DrawPreviewResult_Success;
             if (parserContext.HasPendingAssets()) return DrawPreviewResult_Pending;
-        } catch (::Assets::Exceptions::InvalidAsset&) { return DrawPreviewResult_Error; }
+        } 
+        catch (::Assets::Exceptions::InvalidAsset&) { return DrawPreviewResult_Error; }
         catch (::Assets::Exceptions::PendingAsset&) { return DrawPreviewResult_Pending; }
-
         return DrawPreviewResult_Error;
     }
 
@@ -463,17 +395,43 @@ namespace PreviewRender
         _instance = nullptr;
     }
 
+    void Manager::Shutdown()
+    {
+        delete _instance;
+        _instance = nullptr;
+    }
+
     Manager::Manager()
     {
         _pimpl = new ManagerPimpl;
+        
+        ConsoleRig::StartupConfig cfg;
+        cfg._applicationName = clix::marshalString<clix::E_UTF8>(System::Windows::Forms::Application::ProductName);
+        _pimpl->_services = std::make_unique<ConsoleRig::GlobalServices>(cfg);
+
         _pimpl->_device = RenderCore::CreateDevice();
         _pimpl->_assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
+        _pimpl->_renderAssetsServices = std::make_unique<RenderCore::Assets::Services>(_pimpl->_device.get());
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
     }
 
     Manager::~Manager()
     {
+        System::GC::Collect();
+        System::GC::WaitForPendingFinalizers();
+        // DelayedDeleteQueue::FlushQueue();
+
+        RenderCore::Techniques::ResourceBoxes_Shutdown();
+        // RenderOverlays::CleanupFontSystem();
+        _pimpl->_assetServices->GetAssetSets().Clear();
+        Assets::Dependencies_Shutdown();
+        _pimpl->_globalTechniqueContext.reset();
+        _pimpl->_renderAssetsServices.reset();
+        _pimpl->_assetServices.reset();
+        _pimpl->_device.reset();
+        _pimpl->_services.reset();
         delete _pimpl;
+        TerminateFileSystemMonitoring();
     }
 
 

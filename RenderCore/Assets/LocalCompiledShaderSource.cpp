@@ -209,10 +209,10 @@ namespace RenderCore { namespace Assets
     {
         auto state = GetState();
         if (state == ::Assets::AssetState::Invalid)
-            Throw(::Assets::Exceptions::InvalidAsset(initializer, ""));
+            Throw(::Assets::Exceptions::InvalidAsset(initializer, "Invalid shader code while resolving"));
 
         if (state == ::Assets::AssetState::Pending) 
-            Throw(::Assets::Exceptions::PendingAsset(initializer, ""));
+            Throw(::Assets::Exceptions::PendingAsset(initializer, "Pending shader code while resolving"));
 
         if (depVal)
             for (const auto& i:_deps)

@@ -110,7 +110,7 @@ namespace RenderCore
             _compileHelper.reset();
         } else if (_marker) {
             if (_marker->GetState() == ::Assets::AssetState::Pending)
-                Throw(Assets::Exceptions::PendingAsset(Initializer(), ""));
+                Throw(Assets::Exceptions::PendingAsset(Initializer(), "Marker is still pending while resolving shader code"));
             
             ResolveFromCompileMarker();
         }
