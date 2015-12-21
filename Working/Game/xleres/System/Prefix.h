@@ -77,7 +77,6 @@ float4 FilledGraphPattern(float4 position)
 	return colours[(c.x+c.y)%2];
 }
 
-
 //////////////////////////////////////////////////////////////////
 		// Graphs //
 

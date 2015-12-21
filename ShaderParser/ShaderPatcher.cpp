@@ -727,9 +727,11 @@ namespace ShaderPatcher
 
         std::stringstream result;
         if (copyFragmentContents) {
-            result << LoadSourceFile("game/xleres/System/Prefix.shader") << std::endl;
+            result << LoadSourceFile("game/xleres/System/Prefix.h") << std::endl;
+            result << LoadSourceFile("game/xleres/System/BuildInterpolators.h") << std::endl;
         } else {
-            result << "#include \"game/xleres/System/Prefix.shader\"" << std::endl;
+            result << "#include \"game/xleres/System/Prefix.h\"" << std::endl;
+            result << "#include \"game/xleres/System/BuildInterpolators.h\"" << std::endl;
         }
         result << std::endl;
 
@@ -1284,6 +1286,9 @@ namespace ShaderPatcher
 
             //  
             //      First write the "varying" parameters
+            //      The varying parameters are always written in the vertex shader and
+            //      read by the pixel shader. They will "vary" over the geometry that
+            //      we're rendering -- hense the name.
             //
         {
             result << "struct Varying" << std::endl << "{" << std::endl;
@@ -1545,14 +1550,30 @@ namespace ShaderPatcher
             //
         for (auto v=varyingParameters.begin(); v!=varyingParameters.end(); ++v) {
                 //  \todo -- handle min/max coordinate conversions, etc
-            int dimensionality = GetDimensionality(v->_type);
-            if (dimensionality == 1) {
-                result << "\tOUT.varyingParameters." << v->_name << " = iPosition.x * 0.5 + 0.5.x;" << std::endl;
-            } else if (dimensionality == 2) {
-                result << "\tOUT.varyingParameters." << v->_name << " = float2(iPosition.x * 0.5 + 0.5, iPosition.y * -0.5 + 0.5);" << std::endl;
-            } else if (dimensionality == 3) {
-                result << "\tOUT.varyingParameters." << v->_name << " = worldPosition.xyz;" << std::endl;
-            }
+            // int dimensionality = GetDimensionality(v->_type);
+            // if (dimensionality == 1) {
+            //     result << "\tOUT.varyingParameters." << v->_name << " = iPosition.x * 0.5 + 0.5.x;" << std::endl;
+            // } else if (dimensionality == 2) {
+            //     result << "\tOUT.varyingParameters." << v->_name << " = float2(iPosition.x * 0.5 + 0.5, iPosition.y * -0.5 + 0.5);" << std::endl;
+            // } else if (dimensionality == 3) {
+            //     result << "\tOUT.varyingParameters." << v->_name << " = worldPosition.xyz;" << std::endl;
+            // }
+
+            // Here, we have to sometimes look for parameters that we understand.
+            // First, we should look at the semantic attached.
+            // We can look for translator functions in the "BuildInterpolators.h" system header
+            // If there is a function signature there that can generate the interpolator
+            // we're interested in, then we should use that function.
+            //
+            // If the parameter is actually a structure, we need to look inside of the structure
+            // and bind the individual elements. We should do this recursively incase we have
+            // structures within structures.
+            //
+            // Even if we know that the parameter is a structure, it might be hard to find the
+            // structure within the shader source code... It would require following through
+            // #include statements, etc. That could potentially create some complications here...
+            // Maybe we just need a single BuildInterpolator_ that returns a full structure for
+            // things like VSOutput...?
         }
 
 #if 0
