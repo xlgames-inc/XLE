@@ -104,10 +104,23 @@ void template_t::compile_data()
  */
 void template_t::update_tags() {
     // tag and section regex
+    // DavidJ -- I made a horrible hack here...
+    // in "section content" we want to match any characters
+    // In C++ regex we can do this with (?:.|\r|\n)* or similar
+    // However, this is interpretted very slowly -- and actually
+    // it's causing calls stack overflows while parsing relatively small
+    // strings.
+    // It would be nice if we could use the "s" pattern modifier mode.
+    // However, this isn't supported in C++
+    // An alternative pattern to match (almost) any content is [^\f]
+    // This matches anything other than the "line feed" character... But
+    // that line feed character is next to useless. 
+    // This alternative pattern turns out to be oddly more efficient!
+    // Try some tests on https://regex101.com/ for examples.
     tag.assign(otag + "(#|=|&|!|>|\\{)?(.+?)(\\})?" + ctag);
     section.assign(otag + "(\\^|\\#)([^\\}]*)" + ctag +
         "(?:[ \\t]*\\n)?" +  // ignore leading whitespace
-        "((?:.|\\s)+?)" +  // section content
+        "([^\f]*?)" +  // section content
         otag + "\\/\\2" + ctag);
 }
 
