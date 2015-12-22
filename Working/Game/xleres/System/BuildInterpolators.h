@@ -16,7 +16,7 @@
 
 float3 BuildInterpolator_WORLDPOSITION(VSInput input)
 {
-	#if defined(INPUT_2D)
+	#if defined(GEO_PRETRANSFORMED)
 		return float3(input.xy, 0);
 	#else
 		float3 localPosition = GetLocalPosition(input);
@@ -26,7 +26,7 @@ float3 BuildInterpolator_WORLDPOSITION(VSInput input)
 
 float4 BuildInterpolator_SV_Position(VSInput input)
 {
-	#if defined(INPUT_2D)
+	#if defined(GEO_PRETRANSFORMED)
 		return float4(input.xy, 0, 1);
 	#else
 		float3 worldPosition = BuildInterpolator_WORLDPOSITION(input);
