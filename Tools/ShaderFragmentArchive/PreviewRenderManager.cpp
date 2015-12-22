@@ -287,8 +287,8 @@ namespace PreviewRender
         std::string nativeShaderText = clix::marshalString<clix::E_UTF8>(shaderText);
         try {
             using namespace RenderCore;
-            _pimpl->_vertexShader = std::make_unique<CompiledShaderByteCode>(nativeShaderText.c_str(), "VertexShaderEntry", VS_DefShaderModel, "SHADER_NODE_EDITOR=1");
-            _pimpl->_pixelShader = std::make_unique<CompiledShaderByteCode>(nativeShaderText.c_str(), "PixelShaderEntry", PS_DefShaderModel, "SHADER_NODE_EDITOR=1");
+            _pimpl->_vertexShader = std::make_unique<CompiledShaderByteCode>(nativeShaderText.c_str(), "vs_main", VS_DefShaderModel, "SHADER_NODE_EDITOR=1");
+            _pimpl->_pixelShader = std::make_unique<CompiledShaderByteCode>(nativeShaderText.c_str(), "ps_main", PS_DefShaderModel, "SHADER_NODE_EDITOR=1");
         }
         catch (::Assets::Exceptions::PendingAsset&) {}
         catch (::Assets::Exceptions::InvalidAsset&) 

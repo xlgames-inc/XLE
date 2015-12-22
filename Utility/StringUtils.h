@@ -104,6 +104,22 @@ namespace Utility
             return StringSection<CharType>(AsPointer(str.cbegin()), AsPointer(str.cend()));
         }
 
+    template<typename CharType>
+        inline StringSection<CharType> MakeStringSection(
+            const typename std::basic_string<CharType>::const_iterator& begin,
+            const typename std::basic_string<CharType>::const_iterator& end)
+        {
+            return StringSection<CharType>(AsPointer(begin), AsPointer(end));
+        }
+
+    template<typename CharType>
+        inline StringSection<CharType> MakeStringSection(
+            const typename std::basic_string<CharType>::iterator& begin,
+            const typename std::basic_string<CharType>::iterator& end)
+        {
+            return StringSection<CharType>(AsPointer(begin), AsPointer(end));
+        }
+
         ////////////   S T R I N G   C O M P A R I S O N S   ////////////
     XL_UTILITY_API int      XlComparePrefix     (const char* x, const char* y, size_t size);
     XL_UTILITY_API int      XlComparePrefixI    (const char* x, const char* y, size_t size);

@@ -20,6 +20,7 @@ namespace ShaderSourceParser
     {
     public:
         StringType  _returnType;
+        StringType  _returnSemantic;
         StringType  _name;
 
         class Parameter

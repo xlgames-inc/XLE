@@ -7,6 +7,7 @@
 #include "Shader.h"
 #include "DeviceContext.h"
 #include "../../ShaderService.h"
+#include "../../ShaderLangUtil.h"
 #include "../../../Assets/IntermediateAssets.h"
 #include "../../../Assets/AssetUtils.h"
 #include "../../../Assets/InvalidAssetManager.h"
@@ -17,10 +18,10 @@
 #include "../../../Utility/PtrUtils.h"
 #include "../../../Utility/Streams/StreamFormatter.h"
 #include "../../../Utility/Conversion.h"
+#include "../../../ConsoleRig/Log.h"
 #include "../../../Foreign/plustasche/template.hpp"
 
 #include <regex> // used for parsing parameter definition
-#include "../../../Utility/ParameterBox.h"
 #include <set>
 
 #include "../../../Utility/WinAPI/WinAPIWrapper.h"
@@ -364,6 +365,9 @@ namespace RenderCore { namespace Metal_DX11
             const auto* errors = (const char*)AsPointer(errorsBlob->cbegin());
             stream << "Errors as follows:" << std::endl;
             stream << errors;
+
+            LogInfo << "Shader errors while compiling (" << shaderPath._filename << ":" << shaderPath._entryPoint << ")";
+            LogInfo << errors;
         } else {
             stream << "(no extra data)" << std::endl;
         }
@@ -856,49 +860,6 @@ namespace RenderCore { namespace Metal_DX11
         return result;
     }
 
-    static ImpliedTyping::TypeDesc HLSLTypeNameAsTypeDesc(StringSection<char> hlslTypeName)
-    {
-        using namespace ImpliedTyping;
-        static std::pair<StringSection<char>, ImpliedTyping::TypeCat> baseTypes[] = 
-        {
-            { "float", TypeCat::Float },
-            { "uint", TypeCat::UInt32 },
-            { "dword", TypeCat::UInt32 },
-            { "int", TypeCat::Int32 },
-            { "byte", TypeCat::UInt8 }
-            // "half", "double" not supported
-        };
-        for (unsigned c=0; c<dimof(baseTypes); ++c) {
-            auto len = baseTypes[c].first.Length();
-            if (hlslTypeName.Length() >= len
-                && !XlComparePrefix(baseTypes[c].first.begin(), hlslTypeName.begin(), len)) {
-
-                auto matrixMarker = hlslTypeName.begin() + len;
-                while (matrixMarker != hlslTypeName.end() && *matrixMarker != 'x') ++matrixMarker;
-                if (matrixMarker != hlslTypeName.end()) {
-                    auto count0 = StringToUnsigned(MakeStringSection(&hlslTypeName[len], matrixMarker));
-                    auto count1 = StringToUnsigned(MakeStringSection(matrixMarker+1, hlslTypeName.end()));
-
-                    TypeDesc result;
-                    result._arrayCount = (uint16)std::max(1u, count0 * count1);
-                    result._type = baseTypes[c].second;
-                    result._typeHint = TypeHint::Matrix;
-                    return result;
-                } else {
-                    auto count = StringToUnsigned(MakeStringSection(hlslTypeName.begin() + len, hlslTypeName.end()));
-                    if (count == 0 || count > 4) count = 1;
-                    TypeDesc result;
-                    result._arrayCount = (uint16)count;
-                    result._type = baseTypes[c].second;
-                    result._typeHint = (count > 1) ? TypeHint::Vector : TypeHint::None;
-                    return result;
-                }
-            }
-        }
-
-        return TypeDesc();
-    }
-
     ShaderParameter::ShaderParameter(StringSection<char> param)
     {
         // Our parameters are always of the format "type name [: semantic]"
@@ -917,7 +878,7 @@ namespace RenderCore { namespace Metal_DX11
                 _semanticName = std::string(match[3].first, match[3].second);
 
             auto typeName = MakeStringSection(match[1].first, match[1].second);
-            auto typeDesc = HLSLTypeNameAsTypeDesc(typeName);
+            auto typeDesc = ShaderLangTypeNameAsTypeDesc(typeName);
             
                 // Convert the "typeDesc" values into the types used by the HLSL library
             switch (typeDesc._type) {

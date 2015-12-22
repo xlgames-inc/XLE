@@ -219,6 +219,7 @@
     </ClInclude>
     <ClInclude Include="..\RenderUtils.h" />
     <ClInclude Include="..\Resource.h" />
+    <ClInclude Include="..\ShaderLangUtil.h" />
     <ClInclude Include="..\ShaderService.h" />
   </ItemGroup>
   <ItemGroup>
@@ -254,6 +255,7 @@
     </ClCompile>
     <ClCompile Include="..\RenderUtils.cpp" />
     <ClCompile Include="..\Resource.cpp" />
+    <ClCompile Include="..\ShaderLangUtil.cpp" />
     <ClCompile Include="..\ShaderService.cpp" />
     <ClCompile Include="..\Version.cpp" />
   </ItemGroup>

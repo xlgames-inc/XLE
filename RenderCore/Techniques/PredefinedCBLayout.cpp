@@ -6,6 +6,7 @@
 
 #include "PredefinedCBLayout.h"
 #include "../RenderUtils.h"
+#include "../ShaderLangUtil.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/BitUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -14,46 +15,6 @@
 
 namespace RenderCore { namespace Techniques
 {
-    static ImpliedTyping::TypeDesc HLSLTypeNameAsTypeDesc(const char hlslTypeName[])
-    {
-        using namespace ImpliedTyping;
-        std::pair<const char*, ImpliedTyping::TypeCat> baseTypes[] = 
-        {
-            { "float", TypeCat::Float },
-            { "uint", TypeCat::UInt32 },
-            { "dword", TypeCat::UInt32 },
-            { "int", TypeCat::Int32 },
-            { "byte", TypeCat::UInt8 }
-            // "half", "double" not supported
-        };
-        for (unsigned c=0; c<dimof(baseTypes); ++c) {
-            auto len = XlStringLen(baseTypes[c].first);
-            if (!XlComparePrefix(baseTypes[c].first, hlslTypeName, len)) {
-                const auto matrixMarker = XlFindChar(&hlslTypeName[len], 'x');
-                if (matrixMarker != nullptr) {
-                    auto count0 = XlAtoUI32(&hlslTypeName[len]);
-                    auto count1 = XlAtoUI32(matrixMarker+1);
-
-                    TypeDesc result;
-                    result._arrayCount = (uint16)std::max(1u, count0 * count1);
-                    result._type = baseTypes[c].second;
-                    result._typeHint = TypeHint::Matrix;
-                    return result;
-                } else {
-                    auto count = XlAtoUI32(&hlslTypeName[len]);
-                    if (count == 0 || count > 4) count = 1;
-                    TypeDesc result;
-                    result._arrayCount = (uint16)count;
-                    result._type = baseTypes[c].second;
-                    result._typeHint = (count > 1) ? TypeHint::Vector : TypeHint::None;
-                    return result;
-                }
-            }
-        }
-
-        return TypeDesc();
-    }
-
     PredefinedCBLayout::PredefinedCBLayout(const ::Assets::ResChar initializer[])
     {
         // Here, we will read a simple configuration file that will define the layout
@@ -85,7 +46,7 @@ namespace RenderCore { namespace Techniques
                 Element e;
                 e._name = std::basic_string<utf8>((const utf8*)match[2].first, (const utf8*)match[2].second);
                 e._hash = ParameterBox::MakeParameterNameHash(e._name);
-                e._type = HLSLTypeNameAsTypeDesc(match[1].str().c_str());
+                e._type = ShaderLangTypeNameAsTypeDesc(MakeStringSection(match[1].str()));
 
                 auto size = e._type.GetSize();
                 if (!size) {

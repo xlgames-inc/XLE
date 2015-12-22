@@ -84,7 +84,7 @@ float NodeEditor_GraphEdgeFactor(float value)
 {
 	value = abs(value);
     float d = fwidth(value);
-    return 1.f - smoothstep(0.0.xxx, 2.f * d, value);
+    return 1.f - smoothstep(0.f, 2.f * d, value);
 }
 
 float NodeEditor_IsGraphEdge(float functionResult, float comparisonValue)

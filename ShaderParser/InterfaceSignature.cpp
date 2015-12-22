@@ -36,6 +36,7 @@ namespace ShaderSourceParser
                     // Function objects should be
                     //      (return type) (function name)
                     //      (FORMAL_ARG)*
+                    //      (SEMANTIC)?
                     //      BLOCK
 
                 auto functionChildCount = node->getChildCount(node);
@@ -76,6 +77,12 @@ namespace ShaderSourceParser
                                 }
                                 
                                 functionResult._parameters.push_back(std::move(parameter));
+                            }
+                        } else if (tokenType == SEMANTIC) {
+                            auto childCount = functionNode->getChildCount(functionNode);
+                            if (childCount >= 1) {
+                                auto semanticNode = pANTLR3_BASE_TREE(functionNode->getChild(functionNode, 0));
+                                functionResult._returnSemantic = AntlrHelper::AsString<CharType>(semanticNode->toString(semanticNode));
                             }
                         }
                     }
@@ -183,6 +190,7 @@ namespace ShaderSourceParser
     FunctionSignature::~FunctionSignature() {}
     FunctionSignature::FunctionSignature(FunctionSignature&& moveFrom)
     :   _returnType(std::move(moveFrom._returnType))
+    ,   _returnSemantic(std::move(moveFrom._returnSemantic))
     ,   _name(std::move(moveFrom._name))
     ,   _parameters(std::move(moveFrom._parameters))
     {}
@@ -190,6 +198,7 @@ namespace ShaderSourceParser
     FunctionSignature& FunctionSignature::operator=(FunctionSignature&& moveFrom) never_throws
     {
         _returnType = std::move(moveFrom._returnType);
+        _returnSemantic = std::move(moveFrom._returnSemantic);
         _name = std::move(moveFrom._name);
         _parameters = std::move(moveFrom._parameters);
         return *this;

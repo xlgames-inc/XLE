@@ -7,6 +7,7 @@
 #include "ShaderPatcher.h"
 #include "InterfaceSignature.h"
 #include "ParameterSignature.h"
+#include "../RenderCore/ShaderLangUtil.h"
 #include "../Core/Exceptions.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/StringUtils.h"
@@ -775,10 +776,22 @@ namespace ShaderPatcher
         return result.str();
     }
 
-    struct MainFunctionParameter
+    static bool IsStructType(StringSection<char> typeName)
     {
-        std::string _type, _name, _archiveName;
-        MainFunctionParameter(const std::string& type, const std::string& name, const std::string& archiveName) : _type(type), _name(name), _archiveName(archiveName) {}
+        // If it's not recognized as a built-in shader language type, then we
+        // need to assume this is a struct type. There is no typedef in HLSL, but
+        // it could be a #define -- but let's assume it isn't.
+        return RenderCore::ShaderLangTypeNameAsTypeDesc(typeName)._type == ImpliedTyping::TypeCat::Void;
+    }
+
+    class MainFunctionParameter
+    {
+    public:
+        std::string _type, _name, _archiveName, _semantic;
+        MainFunctionParameter(
+            const std::string& type, const std::string& name, 
+            const std::string& archiveName, const std::string& semantic = std::string())
+            : _type(type), _name(name), _archiveName(archiveName), _semantic(semantic) {}
         MainFunctionParameter() {}
     };
 
@@ -830,7 +843,7 @@ namespace ShaderPatcher
                             { return p._name == i->OutputParameterName(); });
 
                     if (p!=sig._parameters.end()) {
-                        result.push_back(MainFunctionParameter(p->_type, matchResult[1], p->_type));
+                        result.push_back(MainFunctionParameter(p->_type, matchResult[1], p->_type, p->_semantic));
                     }
                 }
             }
@@ -1064,7 +1077,7 @@ namespace ShaderPatcher
     {
         { "LocalNormal",        "NORMAL0",      "float3", "NORMAL0",        std::string(), true },
         { "TexCoord0",          "TEXCOORD0",    "float2", "TEXCOORD0",      std::string(), false },
-        { "LocalViewVector",    std::string(),  "float3", std::string(),    "OUT.LocalViewVector = LocalSpaceView - iPosition;", true }
+        { "LocalViewVector",    std::string(),  "float3", std::string(),    "OUT.LocalViewVector = LocalSpaceView - localPosition;", true }
     };
         
     const ParameterOperationQueue::PSLoadOperation ParameterOperationQueue::KnownPSLoadOperations[] = 
@@ -1160,8 +1173,6 @@ namespace ShaderPatcher
         return false;
     }
 
-#endif
-
     static std::string InitializationForSystemStruct(const ShaderPatcher::Node& node, std::string& extraHeaders)
     {
             //  some system structs are known by the system, and 
@@ -1175,6 +1186,8 @@ namespace ShaderPatcher
 
         return "GetSystemStruct_" + std::get<1>(split) + "()";
     }
+
+#endif
 
     NodeGraph           GenerateGraphOfTemporaries(const NodeGraph& graph)
     {
@@ -1222,9 +1235,9 @@ namespace ShaderPatcher
                                 // todo --  check for parameters with duplicate names. It's possible
                                 //          that different nodes have the same input parameter name
                                 //          (or we might even have the same parameter name multiple times)
-                            std::stringstream stream; stream << "IN_" << p->_name;
+                            // std::stringstream stream; stream << "IN_" << p->_name;
 
-                            NodeConnection newConnection(i->NodeId(), ~0ul, p->_name, p->_type, stream.str(), p->_type);
+                            NodeConnection newConnection(i->NodeId(), ~0ul, p->_name, p->_type, p->_name, p->_type);
                             graphOfTemporaries.GetNodeConnections().push_back(newConnection);
                         }
                     }
@@ -1235,6 +1248,90 @@ namespace ShaderPatcher
 
         return graphOfTemporaries;
     }
+
+    struct VaryingParamsFlags 
+    {
+        enum Enum { WritesVSOutput = 1<<0 };
+        using BitField = unsigned;
+    };
+    
+    class ParameterMachine
+    {
+    public:
+        auto GetBuildInterpolator(const MainFunctionParameter& param) const
+            -> std::pair<std::string, VaryingParamsFlags::BitField>;
+
+        auto GetBuildSystem(const MainFunctionParameter& param) const -> std::string;
+
+        ParameterMachine();
+        ~ParameterMachine();
+    private:
+        ShaderSourceParser::ShaderFragmentSignature _systemHeader;
+    };
+
+    auto ParameterMachine::GetBuildInterpolator(const MainFunctionParameter& param) const
+        -> std::pair<std::string, VaryingParamsFlags::BitField>
+    {
+        std::string searchName = "BuildInterpolator_" + param._semantic;
+        auto i = std::find_if(
+            _systemHeader._functions.cbegin(), 
+            _systemHeader._functions.cend(),
+            [searchName](const ShaderSourceParser::FunctionSignature& sig) { return sig._name == searchName; });
+
+        if (i == _systemHeader._functions.cend()) {
+            searchName = "BuildInterpolator_" + param._name;
+            i = std::find_if(
+                _systemHeader._functions.cbegin(), 
+                _systemHeader._functions.cend(),
+                [searchName](const ShaderSourceParser::FunctionSignature& sig) { return sig._name == searchName; });
+        }
+
+        if (i == _systemHeader._functions.cend()) {
+            searchName = "BuildInterpolator_" + param._type;
+            i = std::find_if(
+                _systemHeader._functions.cbegin(), 
+                _systemHeader._functions.cend(),
+                [searchName](const ShaderSourceParser::FunctionSignature& sig) { return sig._name == searchName; });
+        }
+
+        if (i != _systemHeader._functions.cend()) {
+            VaryingParamsFlags::BitField flags = 0;
+            if (!i->_returnSemantic.empty()) {
+                    // using regex, convert the semantic value into a series of flags...
+                static std::regex FlagsParse(R"--(NE(?:_([^_]*))*)--");
+                std::smatch match;
+                if (std::regex_match(i->_returnSemantic.begin(), i->_returnSemantic.end(), match, FlagsParse))
+                    for (unsigned c=1; c<match.size(); ++c)
+                        if (XlEqString(MakeStringSection<char>(match[c].first, match[c].second), "WritesVSOutput"))
+                            flags |= VaryingParamsFlags::WritesVSOutput;
+            }
+
+            return std::make_pair(i->_name, flags);
+        }
+
+        return std::make_pair(std::string(), 0);
+    }
+
+    auto ParameterMachine::GetBuildSystem(const MainFunctionParameter& param) const -> std::string
+    {
+        std::string searchName = "BuildSystem_" + param._type;
+        auto i = std::find_if(
+            _systemHeader._functions.cbegin(), 
+            _systemHeader._functions.cend(),
+            [searchName](const ShaderSourceParser::FunctionSignature& sig) { return sig._name == searchName; });
+        if (i != _systemHeader._functions.cend())
+            return i->_name;
+        return std::string();
+    }
+
+    ParameterMachine::ParameterMachine()
+    {
+        auto buildInterpolatorsSource = LoadSourceFile("game/xleres/System/BuildInterpolators.h");
+        _systemHeader = ShaderSourceParser::BuildShaderFragmentSignature(
+            AsPointer(buildInterpolatorsSource.begin()), buildInterpolatorsSource.size());
+    }
+
+    ParameterMachine::~ParameterMachine() {}
 
     std::string         GenerateStructureForPreview(const NodeGraph& graph, const NodeGraph& graphOfTemporaries)
     {
@@ -1257,11 +1354,14 @@ namespace ShaderPatcher
             //      window)
             //
 
-        auto varyingParameters = GetMainFunctionVaryingParameters(graph, graphOfTemporaries);
+        auto mainFunctionParams = GetMainFunctionVaryingParameters(graph, graphOfTemporaries);
+        std::vector<std::string> buildSystemFunctions;
+        
+        ParameterMachine paramMachine;
+        for (auto i=mainFunctionParams.cbegin(); i!=mainFunctionParams.cend(); ++i)
+            buildSystemFunctions.push_back(paramMachine.GetBuildSystem(*i));
 
         // ParameterOperationQueue     operationQueue;
-     
-
 
             //
             //      All varying parameters must have semantics
@@ -1291,10 +1391,19 @@ namespace ShaderPatcher
             //      we're rendering -- hense the name.
             //
         {
-            result << "struct Varying" << std::endl << "{" << std::endl;
-            for (auto v=varyingParameters.cbegin(); v!=varyingParameters.cend(); ++v) {
-                int index = (int)std::distance(varyingParameters.cbegin(), v);
-                result << "\t" << v->_type << " " << v->_name << " : " << "VARYING_" << XlI32toA(index, smallBuffer, dimof(smallBuffer), 10) <<  ";" << std::endl;
+            result << "struct NE_Varying" << std::endl << "{" << std::endl;
+            for (size_t index=0; index<mainFunctionParams.size(); ++index) {
+                const auto& p = mainFunctionParams[index];
+                if (!buildSystemFunctions[index].empty()) continue;
+
+                result << "\t" << p._type << " " << p._name;
+                if (!p._semantic.empty()) {
+                    result << " : " << p._semantic;
+                } else {
+                    if (!IsStructType(MakeStringSection(p._type)))
+                        result << " : " << "VARYING_" << XlI32toA(index, smallBuffer, dimof(smallBuffer), 10);
+                }
+                result <<  ";" << std::endl;
             }
             result << "};" << std::endl << std::endl;
         }
@@ -1305,16 +1414,73 @@ namespace ShaderPatcher
             //
         auto mainFunctionOutputs = GetMainFunctionOutputParameters(graph, graphOfTemporaries);
         {
-            result << "struct " << graph.GetName() << "_Output" << std::endl << "{" << std::endl;
+            result << "struct NE_" << graph.GetName() << "_Output" << std::endl << "{" << std::endl;
             for (auto i=mainFunctionOutputs.begin(); i!=mainFunctionOutputs.end(); ++i) {
                 result << "\t" << i->_type << " " << i->_name << ": SV_Target" << std::distance(mainFunctionOutputs.begin(), i) << ";" << std::endl;
             }
             result << "};" << std::endl << std::endl;
         }
 
-        result << "struct PSInput" << std::endl << "{" << std::endl;
-        result << "\tfloat4 position : SV_Position;" << std::endl;
-        result << "\tVarying varyingParameters;" << std::endl;
+            //
+            //      Calculate the code that will fill in the varying parameters from the vertex
+            //      shader. We need to do this now because it will effect some of the structure
+            //      later.
+            //
+        std::stringstream varyingInitialization;
+        std::string vsOutputName = "input.geo";
+        
+        VaryingParamsFlags::BitField varyingParamsFlags = 0;
+        for (size_t index=0; index<mainFunctionParams.size(); ++index) {
+            const auto& p = mainFunctionParams[index];
+            if (!buildSystemFunctions[index].empty()) continue;
+
+            // Here, we have to sometimes look for parameters that we understand.
+            // First, we should look at the semantic attached.
+            // We can look for translator functions in the "BuildInterpolators.h" system header
+            // If there is a function signature there that can generate the interpolator
+            // we're interested in, then we should use that function.
+            //
+            // If the parameter is actually a structure, we need to look inside of the structure
+            // and bind the individual elements. We should do this recursively incase we have
+            // structures within structures.
+            //
+            // Even if we know that the parameter is a structure, it might be hard to find the
+            // structure within the shader source code... It would require following through
+            // #include statements, etc. That could potentially create some complications here...
+            // Maybe we just need a single BuildInterpolator_ that returns a full structure for
+            // things like VSOutput...?
+
+            std::string buildInterpolator;
+            VaryingParamsFlags::BitField flags;
+            std::tie(buildInterpolator, flags) = paramMachine.GetBuildInterpolator(p);
+
+            if (!buildInterpolator.empty()) {
+                varyingInitialization << "\tOUT.varyingParameters." << p._name << " = ";
+                varyingInitialization << buildInterpolator << "(vsInput);" << std::endl;
+                varyingParamsFlags |= flags;
+                if (flags & VaryingParamsFlags::WritesVSOutput)
+                    vsOutputName = "input.varyingParameters." + p._name;
+            } else {
+                if (!IsStructType(MakeStringSection(p._type))) {
+                    varyingInitialization << "\tOUT.varyingParameters." << p._name << " = ";
+
+                    //  \todo -- handle min/max coordinate conversions, etc
+                    int dimensionality = GetDimensionality(p._type);
+                    if (dimensionality == 1) {
+                        varyingInitialization << "localPosition.x * 0.5 + 0.5.x;" << std::endl;
+                    } else if (dimensionality == 2) {
+                        varyingInitialization << "float2(localPosition.x * 0.5 + 0.5, localPosition.y * -0.5 + 0.5);" << std::endl;
+                    } else if (dimensionality == 3) {
+                        varyingInitialization << "worldPosition.xyz;" << std::endl;
+                    }
+                }
+            }
+        }
+
+        result << "struct NE_PSInput" << std::endl << "{" << std::endl;
+        if (!(varyingParamsFlags & VaryingParamsFlags::WritesVSOutput))
+            result << "\tVSOutput geo;" << std::endl;
+        result << "\tNE_Varying varyingParameters;" << std::endl;
 
         std::string extraIncludeStatements;
 
@@ -1322,6 +1488,7 @@ namespace ShaderPatcher
             //      Write fixed "InterpolatorIntoPixel" parameters
             //
         std::string parametersToMainFunctionCall;
+#if 0
         std::vector<MainFunctionParameter> interpolatorsIntoPixel;
         for (auto n=graph.GetNodes().cbegin(); n!=graph.GetNodes().cend(); ++n) {
             if (n->GetType() == Node::Type::InterpolatorIntoPixel) {
@@ -1332,7 +1499,7 @@ namespace ShaderPatcher
                 if (!parametersToMainFunctionCall.empty()) {
                     parametersToMainFunctionCall += ", ";
                 }
-                parametersToMainFunctionCall += "IN." + memberName;
+                parametersToMainFunctionCall += "input." + memberName;
                 interpolatorsIntoPixel.push_back(MainFunctionParameter(signature._name, memberName, n->ArchiveName()));
             } else if (n->GetType() == Node::Type::SystemParameters) {
                 if (!parametersToMainFunctionCall.empty()) {
@@ -1341,14 +1508,22 @@ namespace ShaderPatcher
                 parametersToMainFunctionCall += InitializationForSystemStruct(*n, extraIncludeStatements);
             }
         }
+#endif
 
             //  pass each member of the "varyingParameters" struct as a separate input to
             //  the main function
-        for (auto v=varyingParameters.cbegin(); v!=varyingParameters.cend(); ++v) {
+        for (size_t index=0; index<mainFunctionParams.size(); ++index) {
+            const auto& p = mainFunctionParams[index];
             if (!parametersToMainFunctionCall.empty()) {
                 parametersToMainFunctionCall += ", ";
             }
-            parametersToMainFunctionCall += "IN.varyingParameters." + v->_name;
+
+            auto buildSystemFunction = buildSystemFunctions[index];
+            if (!buildSystemFunction.empty()) {
+                parametersToMainFunctionCall += buildSystemFunction + "(" + vsOutputName + ", sys)";
+            } else {
+                parametersToMainFunctionCall += "input.varyingParameters." + p._name;
+            }
         }
             
             // also pass each output as a parameter to the main function
@@ -1377,27 +1552,26 @@ namespace ShaderPatcher
         }
 #endif
 
-            //
-            //      Finally write the pixel shader system inputs (default SV_ type inputs like position and msaa sample)
-            //
-        result << "\tSystemInputs sys;" << std::endl;
         result << "};" << std::endl << std::endl;
 
         result << extraIncludeStatements << std::endl;
 
         unsigned inputDimensionality = 0;
-        for (auto v=varyingParameters.cbegin(); v!=varyingParameters.cend(); ++v) {
-            inputDimensionality += GetDimensionality(v->_type);
+        for (size_t index=0; index<mainFunctionParams.size(); ++index) {
+            const auto& p = mainFunctionParams[index];
+            if (!buildSystemFunctions[index].empty()) continue;
+            inputDimensionality += GetDimensionality(p._type);
+        }
+        const bool allowGraphs = false;
+
+        std::string finalOutputType = "NE_" + graph.GetName() + "_Output";
+        if (allowGraphs && inputDimensionality==1) {
+            finalOutputType = "NE_GraphOutput";
         }
 
-        std::string finalOutputType = graph.GetName() + "_Output";
-        if (inputDimensionality==1) {
-            finalOutputType = "NodeEditor_GraphOutput";
-        }
-
-        result << finalOutputType << " PixelShaderEntry(PSInput IN)" << std::endl;
+        result << finalOutputType << " ps_main(NE_PSInput input, SystemInputs sys)" << std::endl;
         result << "{" << std::endl;
-        result << "\t" << graph.GetName() << "_Output functionResult;" << std::endl;
+        result << "\t" << "NE_" << graph.GetName() << "_Output functionResult;" << std::endl;
         result << "\t" << graph.GetName() << "(";
         result << parametersToMainFunctionCall;
 
@@ -1449,7 +1623,7 @@ namespace ShaderPatcher
 
             // Collect all of the output values into a flat array of floats.
         unsigned outputDimensionality = 0;
-        bool needFlatOutputs = inputDimensionality == 1;
+        bool needFlatOutputs = allowGraphs && inputDimensionality == 1;
 
         if (needFlatOutputs) {
             std::stringstream writingToFlatArray;
@@ -1481,21 +1655,21 @@ namespace ShaderPatcher
             result << writingToFlatArray.str() << std::endl;
         }
 
-        if (inputDimensionality == 1) {
+        if (allowGraphs && inputDimensionality == 1) {
                 //  special case for 1D graphs. Filter the output via a function to render a graph
 
-            result << "NodeEditor_GraphOutput graphOutput;" << std::endl;
-            result << "float comparisonValue = 1.f - IN.position.y / NodeEditor_GetOutputDimensions().y;" << std::endl;
+            result << "NE_GraphOutput graphOutput;" << std::endl;
+            result << "float comparisonValue = 1.f - input.position.y / NodeEditor_GetOutputDimensions().y;" << std::endl;
 	        result << "bool filled = false;" << std::endl;
 	        result << "for (uint c=0; c<outputDimensionality; c++)" << std::endl;
 		    result << "    if (comparisonValue < flatOutputs[c])" << std::endl;
 			result << "        filled = true;" << std::endl;
-	        result << "graphOutput.output = filled ? FilledGraphPattern(IN.position) : BackgroundPattern(IN.position);" << std::endl;
+	        result << "graphOutput.output = filled ? FilledGraphPattern(input.position) : BackgroundPattern(input.position);" << std::endl;
 	        result << "for (uint c2=0; c2<outputDimensionality; c2++)" << std::endl;
 		    result << "    graphOutput.output.rgb = lerp(graphOutput.output.rgb, NodeEditor_GraphEdgeColour(c2).rgb, NodeEditor_IsGraphEdge(flatOutputs[c2], comparisonValue));" << std::endl;
             result << "return graphOutput;" << std::endl;
             
-            // result << "\tfunctionResult.target0 = NodeEditor_RenderGraph(functionResult.target0, IN.position);" << std::endl;
+            // result << "\tfunctionResult.target0 = NodeEditor_RenderGraph(functionResult.target0, input.position);" << std::endl;
         } else {
             result << "\treturn functionResult;" << std::endl;
         }
@@ -1506,11 +1680,11 @@ namespace ShaderPatcher
             //      If the shader takes 3d position as input, then we must
             //      transform the coordinates by local-to-world and world-to-clip
             //      
-        const bool requires3DTransform = false; // operationQueue.Requires3DTransform();
+        const bool requires3DTransform = true; // operationQueue.Requires3DTransform();
         if (requires3DTransform) {
-            result << "PSInput VertexShaderEntry(uint vertexId : SV_VertexID, float3 iPosition : POSITION0";
+            result << "NE_PSInput vs_main(uint vertexId : SV_VertexID, VSInput vsInput";
         } else {
-            result << "PSInput VertexShaderEntry(uint vertexId : SV_VertexID, float" << std::max(2u,std::min(inputDimensionality, 4u)) << " iPosition : POSITION0";
+            result << "NE_PSInput vs_main(uint vertexId : SV_VertexID, float" << std::max(2u,std::min(inputDimensionality, 4u)) << " localPosition : POSITION0";
         }
 
 #if 0
@@ -1525,56 +1699,28 @@ namespace ShaderPatcher
             
         result << ")" << std::endl;
         result << "{" << std::endl;
-        result << "\tPSInput OUT;" << std::endl;
+        result << "\tNE_PSInput OUT;" << std::endl;
             
         if (requires3DTransform) {
-            result << "\tfloat3 worldPosition = mul(LocalToWorld, float4(iPosition,1)).xyz;" << std::endl;
-            result << "\tfloat4 clipPosition = mul(WorldToClip, float4(worldPosition,1));" << std::endl;
-            result << "\tOUT.position = clipPosition;" << std::endl;
+            if (!(varyingParamsFlags & VaryingParamsFlags::WritesVSOutput)) {
+                result << "\tOUT.geo = BuildInterpolator_VSOutput(vsInput);" << std::endl;
+            }
+            result << "\tfloat3 localPosition = GetLocalPosition(vsInput);" << std::endl;
+            result << "\tfloat3 worldPosition = BuildInterpolator_WORLDPOSITION(vsInput);" << std::endl;
         } else {
             if (inputDimensionality<=2) {
-                result << "\tOUT.position = float4(iPosition.xy, 0.0f, 1.0f);" << std::endl;
-                result << "\tfloat3 worldPosition = float3(iPosition.xy, 0.0f);" << std::endl;
+                result << "\tOUT.position = float4(localPosition.xy, 0.0f, 1.0f);" << std::endl;
+                result << "\tfloat3 worldPosition = float3(localPosition.xy, 0.0f);" << std::endl;
             } else if (inputDimensionality==3) {
-                result << "\tOUT.position = float4(iPosition.xyz, 1.0f);" << std::endl;
-                result << "\tfloat3 worldPosition = iPosition.xyz;" << std::endl;
+                result << "\tOUT.position = float4(localPosition.xyz, 1.0f);" << std::endl;
+                result << "\tfloat3 worldPosition = localPosition.xyz;" << std::endl;
             } else {
-                result << "\tOUT.position = iPosition;" << std::endl;
-                result << "\tfloat3 worldPosition = iPosition.xyz;" << std::endl;
+                result << "\tOUT.position = localPosition;" << std::endl;
+                result << "\tfloat3 worldPosition = localPosition.xyz;" << std::endl;
             }
         }
             
-            //
-            //      For each varying parameter, write out the appropriate value for
-            //      this point on the rendering surface
-            //
-        for (auto v=varyingParameters.begin(); v!=varyingParameters.end(); ++v) {
-                //  \todo -- handle min/max coordinate conversions, etc
-            // int dimensionality = GetDimensionality(v->_type);
-            // if (dimensionality == 1) {
-            //     result << "\tOUT.varyingParameters." << v->_name << " = iPosition.x * 0.5 + 0.5.x;" << std::endl;
-            // } else if (dimensionality == 2) {
-            //     result << "\tOUT.varyingParameters." << v->_name << " = float2(iPosition.x * 0.5 + 0.5, iPosition.y * -0.5 + 0.5);" << std::endl;
-            // } else if (dimensionality == 3) {
-            //     result << "\tOUT.varyingParameters." << v->_name << " = worldPosition.xyz;" << std::endl;
-            // }
-
-            // Here, we have to sometimes look for parameters that we understand.
-            // First, we should look at the semantic attached.
-            // We can look for translator functions in the "BuildInterpolators.h" system header
-            // If there is a function signature there that can generate the interpolator
-            // we're interested in, then we should use that function.
-            //
-            // If the parameter is actually a structure, we need to look inside of the structure
-            // and bind the individual elements. We should do this recursively incase we have
-            // structures within structures.
-            //
-            // Even if we know that the parameter is a structure, it might be hard to find the
-            // structure within the shader source code... It would require following through
-            // #include statements, etc. That could potentially create some complications here...
-            // Maybe we just need a single BuildInterpolator_ that returns a full structure for
-            // things like VSOutput...?
-        }
+        result << varyingInitialization.str();
 
 #if 0
         for (auto i=interpolatorsIntoPixel.cbegin(); i!=interpolatorsIntoPixel.cend(); ++i) {
