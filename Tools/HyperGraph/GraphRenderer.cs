@@ -44,26 +44,52 @@ namespace HyperGraph
 				yield return item;
 		}
 
-		public static SizeF Measure(Graphics context, Node node)
+        public static uint GetSide(NodeItem item)
+        {
+            if (item.Input != null && item.Input.Enabled) return 0;
+            else if (item.Output != null && item.Output.Enabled) return 2;
+            return 1;
+        }
+
+        private struct NodeSize
+        {
+            internal SizeF BaseSize { get; set; }
+            internal float LeftPartWidth { get; set; }
+            internal float RightPartWidth { get; set; }
+        };
+
+        private static NodeSize Measure(Graphics context, Node node)
 		{
 			if (node == null)
-				return SizeF.Empty;
+                return new NodeSize { BaseSize = SizeF.Empty, LeftPartWidth = 0, RightPartWidth = 0 };
 
 			SizeF size = Size.Empty;
             size.Height = (int)GraphConstants.TopHeight;
+
+            SizeF[] sizes = new SizeF[3] { size, size, size };
 			foreach (var item in EnumerateNodeItems(node))
 			{
+                var side = GetSide(item);
 				var itemSize = item.Measure(context);
-				size.Width = Math.Max(size.Width, itemSize.Width);
-				size.Height += GraphConstants.ItemSpacing + itemSize.Height;
+
+                if (side != 1)
+                    itemSize = AdjustConnectorSize(itemSize);
+
+                sizes[side].Width = Math.Max(sizes[side].Width, itemSize.Width);
+                sizes[side].Height += GraphConstants.ItemSpacing + itemSize.Height;
 			}
-			
-			if (node.Collapsed)
-				size.Height -= GraphConstants.ItemSpacing;
+
+            size = sizes[1];
+            for (uint c = 0; c < 3; ++c)
+                size.Height = Math.Max(size.Height, sizes[c].Height);
+
+            if (node.Collapsed)
+                size.Height -= GraphConstants.ItemSpacing;
 
 			size.Width += GraphConstants.NodeExtraWidth;
             size.Height += GraphConstants.BottomHeight;
-			return size;
+
+            return new NodeSize { BaseSize = size, LeftPartWidth = sizes[0].Width, RightPartWidth = sizes[2].Width };
 		}
 
 		static SizeF PreRenderItem(Graphics graphics, NodeItem item, PointF position)
@@ -149,6 +175,16 @@ namespace HyperGraph
 			}
 		}
 
+        private static SizeF AdjustConnectorSize(SizeF clientSize)
+        {
+            // Given the requested client size, what is the full size of the
+            // connector required?
+            SizeF result = clientSize;
+            result.Height += 8;
+            result.Width += 12 + (result.Height - 8);   // add space for the statusRect
+            return result;
+        }
+
         private static PointF ConnectorInterfacePoint(RectangleF bounds, ConnectorType type)
         {
             float width = bounds.Bottom - bounds.Top - 8;
@@ -194,15 +230,15 @@ namespace HyperGraph
 		{
 			if (node == null)
 				return;
-			var size		= Measure(graphics, node);
-			var position	= node.Location;
-			node.bounds		= new RectangleF(position, size);
+			var size = Measure(graphics, node);
+			var position = node.Location;
+            node.bounds = new RectangleF(position, size.BaseSize);
 			
-			var path				= new GraphicsPath(FillMode.Winding);
-			var left				= position.X;
-			var top					= position.Y;
-			var right				= position.X + size.Width;
-			var bottom				= position.Y + size.Height;
+			var path = new GraphicsPath(FillMode.Winding);
+			var left = position.X;
+			var top = position.Y;
+            var right = position.X + size.BaseSize.Width;
+            var bottom = position.Y + size.BaseSize.Height;
 			
 			node.inputConnectors.Clear();
 			node.outputConnectors.Clear();
@@ -239,42 +275,55 @@ namespace HyperGraph
 													    connectorY,
                                                         GraphConstants.ConnectorWidthCollapsed,
                                                         realHeight);
-			} else
+			} 
+            else
 			{
 				node.inputBounds	= Rectangle.Empty;
 				node.outputBounds	= Rectangle.Empty;
-				
+
+                PointF[] positions = new PointF[] { itemPosition, itemPosition, itemPosition };
+                float[] widths = new float[] { size.LeftPartWidth, size.BaseSize.Width, size.RightPartWidth };
+
 				foreach (var item in EnumerateNodeItems(node))
 				{
-					var itemSize		= PreRenderItem(graphics, item, itemPosition);
-					var realHeight		= itemSize.Height;
-					var inputConnector	= item.Input;
+                    var inputConnector = item.Input;
+                    var outputConnector = item.Output;
+
+                    var side = GetSide(item);
+                    var itemSize = PreRenderItem(graphics, item, positions[side]);
+					var realHeight = itemSize.Height;
+					
 					if (inputConnector != null && inputConnector.Enabled)
 					{
 						if (itemSize.IsEmpty)
 						{
 							inputConnector.bounds = Rectangle.Empty;
-						} else
+						} 
+                        else
 						{
-                            inputConnector.bounds = new RectangleF( left - GraphConstants.ConnectorWidth, itemPosition.Y,
-                                                                    GraphConstants.ConnectorWidth, realHeight);
+                            inputConnector.bounds = new RectangleF(
+                                left - widths[side], positions[side].Y,
+                                widths[side], realHeight);
 						}
 						node.inputConnectors.Add(inputConnector);
 					}
-					var outputConnector = item.Output;
+
 					if (outputConnector != null && outputConnector.Enabled)
 					{
 						if (itemSize.IsEmpty)
 						{
 							outputConnector.bounds = Rectangle.Empty;
-						} else
+						} 
+                        else
 						{
-                            outputConnector.bounds = new RectangleF(right, itemPosition.Y,
-                                                                    GraphConstants.ConnectorWidth, realHeight);
+                            outputConnector.bounds = new RectangleF(
+                                right, positions[side].Y,
+                                widths[side], realHeight);
 						}
 						node.outputConnectors.Add(outputConnector);
 					}
-					itemPosition.Y += itemSize.Height + GraphConstants.ItemSpacing;
+
+                    positions[side].Y += itemSize.Height + GraphConstants.ItemSpacing;
 				}
 			}
 			node.itemsBounds = new RectangleF(left, top, right - left, bottom - top);
@@ -360,7 +409,8 @@ namespace HyperGraph
 				// 	RenderConnector(graphics, node.outputBounds, outputState, ConnectorType.Output);
 				//if (inputConnected)
 				//	RenderArrow(graphics, node.inputBounds, inputState);
-			} else
+			} 
+            else
 			{
 				node.inputBounds	= Rectangle.Empty;
 				node.outputBounds	= Rectangle.Empty;

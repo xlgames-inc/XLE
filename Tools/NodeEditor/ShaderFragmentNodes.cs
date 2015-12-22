@@ -85,21 +85,30 @@ namespace NodeEditor
 
         public override SizeF Measure(Graphics graphics)
         {
-            return new SizeF(GraphConstants.MinimumItemWidth, GraphConstants.MinimumItemHeight);
+                // Resize based on the length of the strings. Sometimes we get really
+                // long names, so it's useful to resize the connector to match...!
+            var mainStringSize = graphics.MeasureString(this.Name, SystemFonts.MenuFont);
+            var shortTypeSize = graphics.MeasureString("(" + this.ShortType + ")", SystemFonts.MenuFont);
+            const uint separation = 8;
+            return new SizeF(
+                mainStringSize.Width + separation + shortTypeSize.Width, 
+                Math.Max(GraphConstants.MinimumItemHeight, mainStringSize.Height));
         }
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location)
-        {
-        }
+        
+        public override void Render(Graphics graphics, SizeF minimumSize, PointF location) {}
+
         public override void RenderConnector(Graphics graphics, RectangleF bounds)
         {
-            var size = Measure(graphics);
             graphics.DrawString(
                 this.Name, SystemFonts.MenuFont, Brushes.White,
                 bounds, GraphConstants.LeftTextStringFormat);
 
+            var mainStringSize = graphics.MeasureString(this.Name, SystemFonts.MenuFont);
+            const uint separation = 8;
+
             RectangleF newRect = new RectangleF(bounds.Location, bounds.Size);
-            newRect.X += size.Width + 2;
-            newRect.Width -= size.Width + 2;
+            newRect.X += mainStringSize.Width + separation;
+            newRect.Width -= mainStringSize.Width + separation;
             graphics.DrawString("(" + this.ShortType + ")", SystemFonts.MenuFont, Brushes.DarkGray,
                 newRect, GraphConstants.LeftTextStringFormat);
         }
