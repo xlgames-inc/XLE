@@ -284,64 +284,59 @@ namespace NodeEditor
 
     class ShaderFragmentNodeCreator
     {
-        internal static String AsString(Enum e)
+        internal static IDictionary<Enum, string> PreviewGeoNames;
+        internal static IDictionary<Enum, string> ParamSourceTypeNames;
+        
+        static ShaderFragmentNodeCreator()
         {
-                // This is really not a great solution ---
-                //      an alternative is to use attributes on the enum object
-            if (e is ShaderFragmentPreviewItem.PreviewGeometry)
+            PreviewGeoNames = new Dictionary<Enum, string>
             {
-                switch ((ShaderFragmentPreviewItem.PreviewGeometry)e)
-                {
-                    case ShaderFragmentPreviewItem.PreviewGeometry.Chart: return "Chart";
-                    case ShaderFragmentPreviewItem.PreviewGeometry.Box: return "Box";
-                    default:
-                    case ShaderFragmentPreviewItem.PreviewGeometry.Sphere: return "Sphere";
-                    case ShaderFragmentPreviewItem.PreviewGeometry.Model: return "Model";
-                }
-            }
+                { ShaderFragmentPreviewItem.PreviewGeometry.Chart, "Chart" },
+                { ShaderFragmentPreviewItem.PreviewGeometry.Box, "Box" },
+                { ShaderFragmentPreviewItem.PreviewGeometry.Sphere, "Sphere" },
+                { ShaderFragmentPreviewItem.PreviewGeometry.Model, "Model" }
+            };
 
-            if (e is ParamSourceType)
+            ParamSourceTypeNames = new Dictionary<Enum, string>
             {
-                switch ((ParamSourceType)e)
-                {
-                    case ParamSourceType.Material: return "Material Parameter";
-                    case ParamSourceType.InterpolatorIntoVertex: return "Interpolator Into Vertex Shader";
-                    case ParamSourceType.InterpolatorIntoPixel: return "Interpolator Into Pixel Shader";
-                    case ParamSourceType.System: return "System Parameter";
-                    case ParamSourceType.Output: return "Output";
-                    case ParamSourceType.Constant: return "Constant";
-                }
-            }
-
-            return "<<unknown>>";
+                { ParamSourceType.Material, "Material Parameter" },
+                { ParamSourceType.InterpolatorIntoVertex, "Interpolator Into Vertex Shader" },
+                { ParamSourceType.InterpolatorIntoPixel, "Interpolator Into Pixel Shader" },
+                { ParamSourceType.System, "System Parameter" },
+                { ParamSourceType.Output, "Output" },
+                { ParamSourceType.Constant, "Constant" }
+            };
         }
 
-        internal static T AsEnumValue<T>(String input) where T : struct, IComparable, IConvertible, IFormattable
+        internal static String AsString(Enum e, IDictionary<Enum, string> table)
+        {
+            foreach (KeyValuePair<Enum, string> kvp in table)
+                if (kvp.Key == e)
+                    return kvp.Value;
+            throw new InvalidOperationException(String.Format("Could not convert enum to string value {0}.", e));
+        }
+
+        internal static T AsEnumValue<T>(String input, IDictionary<Enum, string> table) where T : struct, IComparable, IConvertible, IFormattable
         {
             Type enumType = typeof(T);
             if (!enumType.IsEnum)
                 throw new InvalidOperationException("Expecting enum type as parameter to AsEnumValue.");
-            
-            foreach (var e in Enum.GetValues(typeof(T)).Cast<T>())
-                if (AsString((Enum)(object)e) == input)
-                    return e;
+
+            foreach (KeyValuePair<Enum, string> kvp in table)
+                if (kvp.Value == input)
+                    return (T)(object)kvp.Key;
             return default(T);
         }
 
-        internal static Tuple<List<String>, int> AsEnumList<T>(T value) where T : struct, IComparable, IConvertible, IFormattable
+        internal static Tuple<List<String>, int> AsEnumList(Enum value, IDictionary<Enum, string> table)
         {
-            Type enumType = typeof(T);
-            if (!enumType.IsEnum)
-                throw new InvalidOperationException("Expecting enum type as parameter to AsEnumList.");
-
             int selectedIndex = 0;
             List<String> typeNames = new List<String>();
-
-            foreach (var e in Enum.GetValues(typeof(T)).Cast<T>())
+            foreach (KeyValuePair<Enum, string> kvp in table)
             {
-                if (e.ToString() == value.ToString())
+                if (kvp.Key == value)
                     selectedIndex = typeNames.Count;
-                typeNames.Add(AsString((Enum)(object)e));
+                typeNames.Add(kvp.Value);
             }
             return Tuple.Create(typeNames, selectedIndex);
         }
@@ -354,7 +349,7 @@ namespace NodeEditor
             var previewItem = new ShaderFragmentPreviewItem(graphControl, doc);
             node.AddItem(previewItem);
 
-            var enumList = AsEnumList(previewItem.Geometry);
+            var enumList = AsEnumList(previewItem.Geometry, PreviewGeoNames);
             var previewModeSelection = new HyperGraph.Items.NodeDropDownItem(enumList.Item1.ToArray(), enumList.Item2, false, false);
             node.AddItem(previewModeSelection);
             previewModeSelection.SelectionChanged += 
@@ -363,7 +358,7 @@ namespace NodeEditor
                     if (sender is HyperGraph.Items.NodeDropDownItem)
                     {
                         var item = (HyperGraph.Items.NodeDropDownItem)sender;
-                        previewItem.Geometry = AsEnumValue<ShaderFragmentPreviewItem.PreviewGeometry>(item.Items[args.Index]);
+                        previewItem.Geometry = AsEnumValue<ShaderFragmentPreviewItem.PreviewGeometry>(item.Items[args.Index], PreviewGeoNames);
                     }
                 };
 
@@ -388,7 +383,7 @@ namespace NodeEditor
             {
                 var item = (HyperGraph.Items.NodeDropDownItem)sender;
                 var node = item.Node;
-                var newType = AsEnumValue<ParamSourceType>(item.Items[args.Index]);
+                var newType = AsEnumValue<ParamSourceType>(item.Items[args.Index], ParamSourceTypeNames);
 
                     //  We might have to change the input/output settings on this node
                 bool isOutput = newType == ParamSourceType.Output;
@@ -420,7 +415,7 @@ namespace NodeEditor
             var node = new Node(title);
             node.Tag = new ShaderParameterNodeTag(archiveName);
 
-            var enumList = AsEnumList(sourceType);
+            var enumList = AsEnumList(sourceType, ParamSourceTypeNames);
             var typeSelection = new HyperGraph.Items.NodeDropDownItem(enumList.Item1.ToArray(), enumList.Item2, false, false);
             node.AddItem(typeSelection);
             typeSelection.SelectionChanged += ParameterNodeTypeChanged;
@@ -638,7 +633,7 @@ namespace NodeEditor
                         {
                             var dropDown = (HyperGraph.Items.NodeDropDownItem)i;
                             var stringForm = dropDown.Items[dropDown.SelectedIndex];
-                            type = ShaderFragmentNodeCreator.AsEnumValue<ParamSourceType>(stringForm);
+                            type = ShaderFragmentNodeCreator.AsEnumValue<ParamSourceType>(stringForm, ShaderFragmentNodeCreator.ParamSourceTypeNames);
                             break;
                         }
                     }

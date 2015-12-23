@@ -76,7 +76,7 @@ namespace NodeEditor
                             {
                                 var dropDown = (HyperGraph.Items.NodeDropDownItem)i;
                                 var stringForm = dropDown.Items[dropDown.SelectedIndex];
-                                var parameterSource = ShaderFragmentNodeCreator.AsEnumValue<ShaderFragmentArchive.Parameter.SourceType>(stringForm);
+                                var parameterSource = ShaderFragmentNodeCreator.AsEnumValue<ShaderFragmentArchive.Parameter.SourceType>(stringForm, ShaderFragmentNodeCreator.ParamSourceTypeNames);
                                 resultNode.NodeType = AsNodeType(parameterSource);
                             }
                         }
