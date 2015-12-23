@@ -11,6 +11,8 @@ using System.Text;
 using System.Drawing;
 using HyperGraph;
 
+using ParamSourceType = ShaderFragmentArchive.Parameter.SourceType;
+
 namespace NodeEditor
 {
 
@@ -129,7 +131,12 @@ namespace NodeEditor
     public class ShaderFragmentPreviewItem : NodeItem 
     {
         public ShaderFragmentPreviewItem(HyperGraph.GraphControl graphControl, ShaderDiagram.Document doc)
-            { _graphControl = graphControl; _document = doc; _builder = null; }
+        { 
+            _graphControl = graphControl; 
+            _document = doc; 
+            _builder = null;
+            Geometry = PreviewGeometry.Box;
+        }
 
         public override void    Render(Graphics graphics, SizeF minimumSize, PointF location)
         {
@@ -194,6 +201,13 @@ namespace NodeEditor
         }
 
         public override bool OnEndDrag() { base.OnEndDrag(); return true; }
+
+        public enum PreviewGeometry
+        {
+            Chart,
+            Box, Sphere, Model
+        };
+        public PreviewGeometry Geometry { get; set; }
 
         private HyperGraph.GraphControl         _graphControl;
         private ShaderDiagram.Document          _document;
@@ -270,47 +284,103 @@ namespace NodeEditor
 
     class ShaderFragmentNodeCreator
     {
+        internal static String AsString(Enum e)
+        {
+                // This is really not a great solution ---
+                //      an alternative is to use attributes on the enum object
+            if (e is ShaderFragmentPreviewItem.PreviewGeometry)
+            {
+                switch ((ShaderFragmentPreviewItem.PreviewGeometry)e)
+                {
+                    case ShaderFragmentPreviewItem.PreviewGeometry.Chart: return "Chart";
+                    case ShaderFragmentPreviewItem.PreviewGeometry.Box: return "Box";
+                    default:
+                    case ShaderFragmentPreviewItem.PreviewGeometry.Sphere: return "Sphere";
+                    case ShaderFragmentPreviewItem.PreviewGeometry.Model: return "Model";
+                }
+            }
+
+            if (e is ParamSourceType)
+            {
+                switch ((ParamSourceType)e)
+                {
+                    case ParamSourceType.Material: return "Material Parameter";
+                    case ParamSourceType.InterpolatorIntoVertex: return "Interpolator Into Vertex Shader";
+                    case ParamSourceType.InterpolatorIntoPixel: return "Interpolator Into Pixel Shader";
+                    case ParamSourceType.System: return "System Parameter";
+                    case ParamSourceType.Output: return "Output";
+                    case ParamSourceType.Constant: return "Constant";
+                }
+            }
+
+            return "<<unknown>>";
+        }
+
+        internal static T AsEnumValue<T>(String input) where T : struct, IComparable, IConvertible, IFormattable
+        {
+            Type enumType = typeof(T);
+            if (!enumType.IsEnum)
+                throw new InvalidOperationException("Expecting enum type as parameter to AsEnumValue.");
+            
+            foreach (var e in Enum.GetValues(typeof(T)).Cast<T>())
+                if (AsString((Enum)(object)e) == input)
+                    return e;
+            return default(T);
+        }
+
+        internal static Tuple<List<String>, int> AsEnumList<T>(T value) where T : struct, IComparable, IConvertible, IFormattable
+        {
+            Type enumType = typeof(T);
+            if (!enumType.IsEnum)
+                throw new InvalidOperationException("Expecting enum type as parameter to AsEnumList.");
+
+            int selectedIndex = 0;
+            List<String> typeNames = new List<String>();
+
+            foreach (var e in Enum.GetValues(typeof(T)).Cast<T>())
+            {
+                if (e.ToString() == value.ToString())
+                    selectedIndex = typeNames.Count;
+                typeNames.Add(AsString((Enum)(object)e));
+            }
+            return Tuple.Create(typeNames, selectedIndex);
+        }
+
         public static Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName, HyperGraph.GraphControl graphControl, ShaderDiagram.Document doc)
         {
             var node = new Node(fn.Name);
             node.Tag = new ShaderProcedureNodeTag(archiveName);
-            node.AddItem(new ShaderFragmentPreviewItem(graphControl, doc));
+
+            var previewItem = new ShaderFragmentPreviewItem(graphControl, doc);
+            node.AddItem(previewItem);
+
+            var enumList = AsEnumList(previewItem.Geometry);
+            var previewModeSelection = new HyperGraph.Items.NodeDropDownItem(enumList.Item1.ToArray(), enumList.Item2, false, false);
+            node.AddItem(previewModeSelection);
+            previewModeSelection.SelectionChanged += 
+                (object sender, HyperGraph.Items.AcceptNodeSelectionChangedEventArgs args) => 
+                {
+                    if (sender is HyperGraph.Items.NodeDropDownItem)
+                    {
+                        var item = (HyperGraph.Items.NodeDropDownItem)sender;
+                        previewItem.Geometry = AsEnumValue<ShaderFragmentPreviewItem.PreviewGeometry>(item.Items[args.Index]);
+                    }
+                };
+
             foreach (var param in fn.InputParameters)
-            {
                 node.AddItem(new ShaderFragmentNodeItem(param.Name, param.Type, archiveName + ":" + param.Name, true, false));
-            }
             foreach (var output in fn.Outputs)
-            {
                 node.AddItem(new ShaderFragmentNodeItem(output.Name, output.Type, archiveName + ":" + output.Name, false, true));
-            }
             return node;
         }
 
-        public static String AsString(ShaderFragmentArchive.Parameter.SourceType input)
-        {
-            switch (input) 
-            {
-            case ShaderFragmentArchive.Parameter.SourceType.Material:               return "Material Parameter";
-            case ShaderFragmentArchive.Parameter.SourceType.InterpolatorIntoVertex: return "Interpolator Into Vertex Shader";
-            case ShaderFragmentArchive.Parameter.SourceType.InterpolatorIntoPixel:  return "Interpolator Into Pixel Shader";
-            case ShaderFragmentArchive.Parameter.SourceType.System:                 return "System Parameter";
-            case ShaderFragmentArchive.Parameter.SourceType.Output:                 return "Output";
-            case ShaderFragmentArchive.Parameter.SourceType.Constant:               return "Constant";
-            }
-            return "Unknown Parameter";
-        }
-
-        public static ShaderFragmentArchive.Parameter.SourceType AsSourceType(String input)
-        {
-            foreach (var e in Enum.GetValues(typeof(ShaderFragmentArchive.Parameter.SourceType)).Cast<ShaderFragmentArchive.Parameter.SourceType>())
-            {
-                if (AsString(e) == input)
-                {
-                    return e;
-                }
-            }
-            return ShaderFragmentArchive.Parameter.SourceType.Material;
-        }
+        // public static ShaderFragmentArchive.Parameter.SourceType AsSourceType(String input)
+        // {
+        //     foreach (var e in Enum.GetValues(typeof(ShaderFragmentArchive.Parameter.SourceType)).Cast<ShaderFragmentArchive.Parameter.SourceType>())
+        //         if (AsString(e) == input)
+        //             return e;
+        //     return ShaderFragmentArchive.Parameter.SourceType.Material;
+        // }
 
         private static void ParameterNodeTypeChanged(object sender, HyperGraph.Items.AcceptNodeSelectionChangedEventArgs args)
         {
@@ -318,11 +388,10 @@ namespace NodeEditor
             {
                 var item = (HyperGraph.Items.NodeDropDownItem)sender;
                 var node = item.Node;
-
-                var newType = AsSourceType(item.Items[args.Index]);
+                var newType = AsEnumValue<ParamSourceType>(item.Items[args.Index]);
 
                     //  We might have to change the input/output settings on this node
-                bool isOutput = newType == ShaderFragmentArchive.Parameter.SourceType.Output;
+                bool isOutput = newType == ParamSourceType.Output;
                 var oldItems = new List<HyperGraph.NodeItem>(node.Items);
                 foreach (var i in oldItems)
                 {
@@ -346,32 +415,24 @@ namespace NodeEditor
             }
         }
 
-        public static Node CreateEmptyParameterNode(ShaderFragmentArchive.Parameter.SourceType sourceType, String archiveName, String title)
+        public static Node CreateEmptyParameterNode(ParamSourceType sourceType, String archiveName, String title)
         {
             var node = new Node(title);
             node.Tag = new ShaderParameterNodeTag(archiveName);
-            int selectedIndex = 0;
-            List<String> typeNames = new List<String>();
-            foreach (var e in Enum.GetValues(typeof(ShaderFragmentArchive.Parameter.SourceType)).Cast<ShaderFragmentArchive.Parameter.SourceType>())
-            {
-                if (e == sourceType)
-                {
-                    selectedIndex = typeNames.Count;
-                }
-                typeNames.Add(AsString(e));
-            }
-            var typeSelection = new HyperGraph.Items.NodeDropDownItem(typeNames.ToArray(), selectedIndex, false, false);
+
+            var enumList = AsEnumList(sourceType);
+            var typeSelection = new HyperGraph.Items.NodeDropDownItem(enumList.Item1.ToArray(), enumList.Item2, false, false);
             node.AddItem(typeSelection);
             typeSelection.SelectionChanged += ParameterNodeTypeChanged;
             return node;
         }
 
-        public static Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ShaderFragmentArchive.Parameter.SourceType type)
+        public static Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type)
         {
             var node = CreateEmptyParameterNode(type, archiveName, parameter.Name);
             foreach (var param in parameter.Parameters)
             {
-                bool isOutput = type == ShaderFragmentArchive.Parameter.SourceType.Output;
+                bool isOutput = type == ParamSourceType.Output;
                 node.AddItem(new ShaderFragmentNodeItem(
                     param.Name, param.Type, archiveName + ":" + param.Name, 
                     isOutput ? true : false, isOutput ? false : true));
@@ -570,20 +631,19 @@ namespace NodeEditor
                 if (n.Tag is ShaderParameterNodeTag && n.Items.Count() > 0)
                 {
                         // look for a drop down list element -- this will tell us the type
-                    ShaderFragmentArchive.Parameter.SourceType type = 
-                        ShaderFragmentArchive.Parameter.SourceType.System;
+                    var type = ParamSourceType.System;
                     foreach (var i in n.Items)
                     {
                         if (i is HyperGraph.Items.NodeDropDownItem)
                         {
                             var dropDown = (HyperGraph.Items.NodeDropDownItem)i;
                             var stringForm = dropDown.Items[dropDown.SelectedIndex];
-                            type = ShaderFragmentNodeCreator.AsSourceType(stringForm);
+                            type = ShaderFragmentNodeCreator.AsEnumValue<ParamSourceType>(stringForm);
                             break;
                         }
                     }
 
-                    if (type == ShaderFragmentArchive.Parameter.SourceType.Material)
+                    if (type == ParamSourceType.Material)
                     {
                         foreach (var i in n.Items)
                         {

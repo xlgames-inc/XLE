@@ -87,9 +87,9 @@ namespace HyperGraph.Items
 
 		internal SizeF TextSize;
 
-		public override bool OnDoubleClick()
+        public override bool OnDoubleClick(System.Windows.Forms.Control container)
 		{
-			base.OnDoubleClick();
+            base.OnDoubleClick(container);
 			var form = new TextEditForm();
 			form.Text = Name ?? "Edit text";
 			form.InputText = Text;

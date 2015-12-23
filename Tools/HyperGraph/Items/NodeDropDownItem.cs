@@ -90,17 +90,42 @@ namespace HyperGraph.Items
 
 		internal SizeF TextSize;
 
-		public override bool OnDoubleClick()
+        public override bool OnClick(System.Windows.Forms.Control container, System.Windows.Forms.MouseEventArgs evnt, System.Drawing.Drawing2D.Matrix viewTransform)
 		{
-			base.OnDoubleClick();
-			var form = new SelectionForm();
-			form.Text = Name ?? "Select item from list";
-			form.Items = Items;
-			form.SelectedIndex = SelectedIndex;
-			var result = form.ShowDialog();
-			if (result == DialogResult.OK)
-				SelectedIndex = form.SelectedIndex;
-			return true;
+			base.OnClick(container, evnt, viewTransform);
+
+            if (evnt.Button == System.Windows.Forms.MouseButtons.Left)
+            {
+                var basePts = new PointF[]{new PointF(bounds.Left, bounds.Top), new PointF(bounds.Right, bounds.Bottom)};
+                viewTransform.TransformPoints(basePts);
+
+                var dropDownCtrl = new ListBox();
+                dropDownCtrl.Items.AddRange(Items);
+                dropDownCtrl.SelectedIndex = SelectedIndex;
+                dropDownCtrl.BorderStyle = BorderStyle.None;
+                dropDownCtrl.Margin = new Padding(0);
+                dropDownCtrl.Padding = new Padding(0);
+
+                var toolDrop = new ToolStripDropDown();
+                var toolHost = new ToolStripControlHost(dropDownCtrl);
+                toolHost.Margin = new Padding(0);
+                toolDrop.Padding = new Padding(0);
+                toolDrop.Items.Add(toolHost);
+
+                dropDownCtrl.SelectedIndexChanged += 
+                    (object sender, System.EventArgs e) =>
+                    {
+                        var lb = sender as ListBox;
+                        if (lb != null)
+                            SelectedIndex = lb.SelectedIndex;
+                        toolDrop.Close();
+                    };
+
+                toolDrop.Show(container, new Point((int)basePts[0].X, (int)basePts[1].Y + 4));
+                return true;
+            }
+
+            return false;
 		}
 
         public override SizeF Measure(Graphics graphics)
@@ -147,7 +172,8 @@ namespace HyperGraph.Items
 			{
 				graphics.DrawPath(Pens.White, path);
 				graphics.DrawString(text, SystemFonts.MenuFont, Brushes.Black, new RectangleF(location, size), GraphConstants.LeftTextStringFormat);
-			} else
+			}
+            else
 			{
 				graphics.DrawPath(Pens.Black, path);
 				graphics.DrawString(text, SystemFonts.MenuFont, Brushes.Black, new RectangleF(location, size), GraphConstants.LeftTextStringFormat);

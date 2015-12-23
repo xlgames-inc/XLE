@@ -60,9 +60,9 @@ namespace HyperGraph.Items
 
 		internal SizeF TextSize;
 
-		public override bool OnClick()
+        public override bool OnClick(System.Windows.Forms.Control container, System.Windows.Forms.MouseEventArgs evnt, System.Drawing.Drawing2D.Matrix viewTransform)
 		{
-			base.OnClick();
+			base.OnClick(container, evnt, viewTransform);
 			if (Clicked != null)
 				Clicked(this, new NodeItemEventArgs(this));
 			return true;

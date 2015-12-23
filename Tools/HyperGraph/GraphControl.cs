@@ -1856,7 +1856,7 @@ namespace HyperGraph
 					break;
 				case ElementType.NodeItem:
 					var item = element as NodeItem;
-					if (item.OnDoubleClick())
+					if (item.OnDoubleClick(this))
 					{
 						this.Refresh();
 						return;
@@ -1934,7 +1934,7 @@ namespace HyperGraph
 							return;
 
 						var item = element as NodeItem;
-						if (item.OnClick())
+						if (item.OnClick(this, e, transformation))
 						{
 							ignoreDoubleClick = true; // to avoid double-click from firing
 							this.Refresh();

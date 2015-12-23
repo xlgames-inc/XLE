@@ -57,8 +57,16 @@ namespace HyperGraph
 		internal RectangleF			bounds;
 		internal RenderState		state			= RenderState.None;
 
-		public virtual bool			OnClick()					 { return false; }
-		public virtual bool			OnDoubleClick()				 { return false; }
+        public virtual bool OnClick(System.Windows.Forms.Control container, System.Windows.Forms.MouseEventArgs evnt, System.Drawing.Drawing2D.Matrix viewTransform)
+        {
+            return false; 
+        }
+
+        public virtual bool OnDoubleClick(System.Windows.Forms.Control container)
+        {
+            return false; 
+        }
+
 		public virtual bool			OnStartDrag(PointF location, out PointF original_location) { original_location = Point.Empty; return false; }
 		public virtual bool			OnDrag(PointF location)		 { return false; }		
 		public virtual bool			OnEndDrag() 				 { return false; }
