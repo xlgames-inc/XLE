@@ -45,6 +45,7 @@ tokens
 	UNIFORM;
 	VARIABLE;
 	VARIABLE_NAME;
+	TYPE_NAME;
 	FUNCTION_CALL;
 	ARG_LIST;
 	FORMAL_ARG;
@@ -99,7 +100,8 @@ tokens
 	}
 }
 
-@parser::apifuncs {
+@parser::apifuncs 
+{
 	RECOGNIZER->displayRecognitionError = CustomDisplayRecognitionError;
 }
 
@@ -178,7 +180,7 @@ functionAttributeType
 	;
 	
 staticExpression : literal|StringLiteral|ident;
-staticExpressionList : staticExpression (',' staticExpression)*;
+staticExpressionList : staticExpression (','! staticExpression)*;
 
 functionAttributes :	('[' functionAttributeType ('(' staticExpressionList ')')? ']')*;
 
@@ -228,13 +230,13 @@ structuredBufferTypeName : 'StructuredBuffer' | 'RWStructuredBuffer' | 'AppendSt
 streamOutputObject : 'PointStream' | 'LineStream' | 'TriangleStream';
 
 type_name
-	:	sampler_type_name
-	|	texture_type_name ('<' staticExpressionList '>')?
-	|	structuredBufferTypeName '<' staticExpressionList '>'
-	|	streamOutputObject '<' staticExpressionList '>'
-	|	'InputPatch' '<' staticExpressionList '>'
-	|	'OutputPatch' '<' staticExpressionList '>'
-	|	ident
+	:	sampler_type_name										-> ^(TYPE_NAME sampler_type_name)
+	|	texture_type_name ('<' staticExpressionList '>')?		-> ^(TYPE_NAME texture_type_name staticExpressionList)
+	|	structuredBufferTypeName '<' staticExpressionList '>'	-> ^(TYPE_NAME structuredBufferTypeName staticExpressionList)
+	|	streamOutputObject '<' staticExpressionList '>'			-> ^(TYPE_NAME streamOutputObject staticExpressionList)
+	|	'InputPatch' '<' staticExpressionList '>'				-> ^(TYPE_NAME 'InputPatch' staticExpressionList)
+	|	'OutputPatch' '<' staticExpressionList '>'				-> ^(TYPE_NAME 'OutputPatch' staticExpressionList)
+	|	ident													-> ^(TYPE_NAME ident)
 	;
 	
 ident

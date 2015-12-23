@@ -16,6 +16,30 @@
 
 namespace ShaderSourceParser
 {
+    static std::basic_string<StringType::value_type> AsTypeNameString(ANTLR3_BASE_TREE* typeNameNode)
+    {
+        // We're expecting the input to be a TYPE_NAME node.
+        // The format should be an initial name, followed by a static expression list
+        using CharType = StringType::value_type;
+        auto type = typeNameNode->getType(typeNameNode);
+        auto childCount = typeNameNode->getChildCount(typeNameNode);
+        if (type != TYPE_NAME || childCount == 0)
+            return "<<tree parsing error>>";
+        
+        auto baseChild = pANTLR3_BASE_TREE(typeNameNode->getChild(typeNameNode, 0));
+        auto result = AntlrHelper::AsString<CharType>(baseChild->toString(baseChild));
+        if (childCount > 1) {
+            result += "<";
+            for (unsigned c=1; c<childCount; ++c) {
+                if (c!=1) result += ", ";
+                auto child = pANTLR3_BASE_TREE(typeNameNode->getChild(typeNameNode, c));
+                result += AntlrHelper::AsString<CharType>(baseChild->toString(child));
+            }
+            result += ">";
+        }
+        return result;
+    }
+
     ShaderFragmentSignature     BuildShaderFragmentSignature(const char sourceCode[], size_t sourceCodeLength)
     {
         AntlrHelper::ParserRig psr(sourceCode, sourceCodeLength);
@@ -61,7 +85,7 @@ namespace ShaderSourceParser
 
                                 FunctionSignature::Parameter parameter;
                                 parameter._name     = AntlrHelper::AsString<CharType>(nameNode->toString(nameNode));
-                                parameter._type     = AntlrHelper::AsString<CharType>(typeNode->toString(typeNode));
+                                parameter._type     = AsTypeNameString(typeNode);
                                 parameter._direction = FunctionSignature::Parameter::In;
 
                                     // look for a DIRECTION_OUT or DIRECTION_IN_OUT child
@@ -127,7 +151,7 @@ namespace ShaderSourceParser
                             if (uniformChildCount >= 2) {
 
                                 auto typeNameNode   = pANTLR3_BASE_TREE(uniformNode->getChild(uniformNode, 0));
-                                auto uniformType    = AntlrHelper::AsString<CharType>(typeNameNode->toString(typeNameNode));
+                                auto uniformType    = AsTypeNameString(typeNameNode);
 
                                 for (unsigned n=1; n<uniformChildCount; ++n) {
                                     auto nameNode   = pANTLR3_BASE_TREE(uniformNode->getChild(uniformNode, n));
