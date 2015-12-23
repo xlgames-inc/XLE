@@ -100,11 +100,39 @@ namespace HyperGraph.Items
                 viewTransform.TransformPoints(basePts);
 
                 var dropDownCtrl = new ListBox();
-                dropDownCtrl.Items.AddRange(Items);
-                dropDownCtrl.SelectedIndex = SelectedIndex;
                 dropDownCtrl.BorderStyle = BorderStyle.None;
                 dropDownCtrl.Margin = new Padding(0);
                 dropDownCtrl.Padding = new Padding(0);
+
+                if (false)
+                {
+                    dropDownCtrl.DrawMode = DrawMode.OwnerDrawVariable;
+                    dropDownCtrl.DrawItem +=
+                        (object sender, DrawItemEventArgs e) =>
+                        {
+                            var lb = sender as ListBox;
+                            var item = lb.Items[e.Index];
+                            e.Graphics.DrawString(
+                                item.ToString(), SystemFonts.MenuFont, Brushes.Black,
+                                e.Bounds, GraphConstants.LeftTextStringFormat);
+                        };
+
+                    dropDownCtrl.MeasureItem +=
+                        (object sender, MeasureItemEventArgs e) =>
+                        {
+                            var lb = sender as ListBox;
+                            var item = lb.Items[e.Index];
+                            var size = new Size(GraphConstants.MinimumItemWidth, GraphConstants.MinimumItemHeight);
+                            var textSize = e.Graphics.MeasureString(
+                                item.ToString(), SystemFonts.MenuFont,
+                                size, GraphConstants.LeftMeasureTextStringFormat);
+                            e.ItemWidth = 256 + (int)textSize.Width;
+                            e.ItemHeight = (int)textSize.Height;
+                        };
+                }
+
+                dropDownCtrl.Items.AddRange(Items);
+                dropDownCtrl.SelectedIndex = SelectedIndex;
 
                 var toolDrop = new ToolStripDropDown();
                 var toolHost = new ToolStripControlHost(dropDownCtrl);
@@ -112,7 +140,7 @@ namespace HyperGraph.Items
                 toolDrop.Padding = new Padding(0);
                 toolDrop.Items.Add(toolHost);
 
-                dropDownCtrl.SelectedIndexChanged += 
+                dropDownCtrl.SelectedIndexChanged +=
                     (object sender, System.EventArgs e) =>
                     {
                         var lb = sender as ListBox;
