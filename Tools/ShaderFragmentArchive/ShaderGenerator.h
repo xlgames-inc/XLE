@@ -96,7 +96,7 @@ namespace ShaderPatcherLayer {
         ShaderPatcher::NodeGraph    ConvertToNativePreview(UInt32 previewNodeId);
 
         static public String^       GenerateShader(NodeGraph^ graph, String^ name);
-        static public String^       GeneratePreviewShader(NodeGraph^ graph, UInt32 previewNodeId);
+        static public String^       GeneratePreviewShader(NodeGraph^ graph, UInt32 previewNodeId, String^ outputToVisualize);
 
     private:
         List<Node^>^                    _nodes;

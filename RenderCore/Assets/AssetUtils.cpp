@@ -11,6 +11,7 @@
 #include "DeferredShaderResource.h"
 #include "ModelScaffoldInternal.h"
 #include "../RenderUtils.h"
+#include "../../Assets/AssetUtils.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/OutputStream.h"
 #include "../../Utility/Streams/Stream.h"
@@ -205,6 +206,32 @@ namespace RenderCore { namespace Assets
             ele._nativeFormat = i->_nativeFormat;
             ele._alignedByteOffset = i->_alignedByteOffset;
             result._elements.push_back(ele);
+        }
+        return std::move(result);
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    ParameterBox TechParams_SetResHas(
+        const ParameterBox& inputMatParameters, const ParameterBox& resBindings,
+        const ::Assets::DirectorySearchRules& searchRules)
+    {
+        static const auto DefaultNormalsTextureBindingHash = ParameterBox::MakeParameterNameHash("NormalsTexture");
+            // The "material parameters" ParameterBox should contain some "RES_HAS_..."
+            // settings. These tell the shader what resource bindings are available
+            // (and what are missing). We need to set these parameters according to our
+            // binding list
+        ParameterBox result = inputMatParameters;
+        for (auto param=resBindings.Begin(); !param.IsEnd(); ++param) {
+            result.SetParameter(StringMeld<64, utf8>() << "RES_HAS_" << param.Name(), 1);
+            if (param.HashName() == DefaultNormalsTextureBindingHash) {
+                auto resourceName = resBindings.GetString<::Assets::ResChar>(DefaultNormalsTextureBindingHash);
+                ::Assets::ResChar resolvedName[MaxPath];
+                searchRules.ResolveFile(resolvedName, dimof(resolvedName), resourceName.c_str());
+                result.SetParameter(
+                    (const utf8*)"RES_HAS_NormalsTexture_DXT", 
+                    RenderCore::Assets::IsDXTNormalMap(resolvedName));
+            }
         }
         return std::move(result);
     }

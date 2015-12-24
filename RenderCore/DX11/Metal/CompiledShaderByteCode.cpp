@@ -90,14 +90,15 @@ namespace RenderCore { namespace Metal_DX11
         D3DShaderCompiler();
         ~D3DShaderCompiler();
 
-        static D3DShaderCompiler& GetInstance() { return *s_instance; }
+        static std::shared_ptr<D3DShaderCompiler> GetInstance() { return s_instance.lock(); }
 
     protected:
         mutable Threading::Mutex _moduleLock;
         mutable HMODULE _module;
         HMODULE GetShaderCompileModule() const;
 
-        static D3DShaderCompiler* s_instance;
+        static std::weak_ptr<D3DShaderCompiler> s_instance;
+        friend std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler();
     };
 
         ////////////////////////////////////////////////////////////
@@ -577,13 +578,14 @@ namespace RenderCore { namespace Metal_DX11
         auto code = byteCode.GetByteCode();
 
         ID3D11Module* rawModule = nullptr;
-        auto hresult = D3DShaderCompiler::GetInstance().D3DLoadModule_Wrapper(code.first, code.second, &rawModule);
+        auto compiler = D3DShaderCompiler::GetInstance(); 
+        auto hresult = compiler->D3DLoadModule_Wrapper(code.first, code.second, &rawModule);
         _module = moveptr(rawModule);
         if (!SUCCEEDED(hresult))
             Throw(::Assets::Exceptions::InvalidAsset(initializer, "Failure while creating shader module from compiled shader byte code"));
 
         ID3D11LibraryReflection* reflectionRaw = nullptr;
-        D3DShaderCompiler::GetInstance().D3DReflectLibrary_Wrapper(code.first, code.second, IID_ID3D11LibraryReflection, (void**)&reflectionRaw);
+        compiler->D3DReflectLibrary_Wrapper(code.first, code.second, IID_ID3D11LibraryReflection, (void**)&reflectionRaw);
         _reflection = moveptr(reflectionRaw);
     }
 
@@ -654,7 +656,8 @@ namespace RenderCore { namespace Metal_DX11
     , _defines(defines.AsString())
     {
         ID3D11FunctionLinkingGraph* graphRaw = nullptr;
-        auto hresult = D3DShaderCompiler::GetInstance().D3DCreateFunctionLinkingGraph_Wrapper(0, &graphRaw);
+        auto compiler = D3DShaderCompiler::GetInstance();
+        auto hresult = compiler->D3DCreateFunctionLinkingGraph_Wrapper(0, &graphRaw);
         if (!SUCCEEDED(hresult))
             Throw(::Exceptions::BasicLabel::BasicLabel("Failure while creating D3D function linking graph"));
         _graph = moveptr(graphRaw);
@@ -723,7 +726,8 @@ namespace RenderCore { namespace Metal_DX11
         const char shaderModel[])
     {
         ID3D11Linker* linkerRaw = nullptr;
-        auto hresult = D3DShaderCompiler::GetInstance().D3DCreateLinker_Wrapper(&linkerRaw);
+        auto compiler = D3DShaderCompiler::GetInstance();
+        auto hresult = compiler->D3DCreateLinker_Wrapper(&linkerRaw);
         intrusive_ptr<ID3D11Linker> linker = moveptr(linkerRaw);
         if (!SUCCEEDED(hresult)) {
             errors = MakeBlob("Could not create D3D shader linker object");
@@ -1571,21 +1575,15 @@ namespace RenderCore { namespace Metal_DX11
         return str.str();
     }
 
-    D3DShaderCompiler* D3DShaderCompiler::s_instance = nullptr;
+    std::weak_ptr<D3DShaderCompiler> D3DShaderCompiler::s_instance;
 
     D3DShaderCompiler::D3DShaderCompiler() 
     {
         _module = (HMODULE)INVALID_HANDLE_VALUE;
-
-        assert(s_instance == nullptr);
-        s_instance = this;
     }
 
     D3DShaderCompiler::~D3DShaderCompiler()
     {
-        assert(s_instance == this);
-        s_instance = nullptr;
-
             // note --  we have to be careful when unloading this DLL!
             //          We may have created ID3D11Reflection objects using
             //          this dll. If any of them are still alive when we unload
@@ -1607,12 +1605,12 @@ namespace RenderCore { namespace Metal_DX11
 
             // awkward -- we have to use a singleton pattern to get access to the compiler here...
             //          Otherwise, we could potentially have multiple instances of D3DShaderCompiler.
-        auto& compiler = D3DShaderCompiler::GetInstance();
+        auto compiler = D3DShaderCompiler::GetInstance();
 
         auto byteCode = shaderCode.GetByteCode();
 
         ID3D::ShaderReflection* reflectionTemp = nullptr;
-        HRESULT hresult = compiler.D3DReflect_Wrapper(byteCode.first, byteCode.second, s_shaderReflectionInterfaceGuid, (void**)&reflectionTemp);
+        HRESULT hresult = compiler->D3DReflect_Wrapper(byteCode.first, byteCode.second, s_shaderReflectionInterfaceGuid, (void**)&reflectionTemp);
         if (!SUCCEEDED(hresult) || !reflectionTemp)
             Throw(::Assets::Exceptions::InvalidAsset(
                 shaderCode.Initializer(), "Error while invoking low-level shader reflection"));
@@ -1621,7 +1619,12 @@ namespace RenderCore { namespace Metal_DX11
 
     std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler()
     {
-        return std::make_shared<D3DShaderCompiler>();
+        auto result = D3DShaderCompiler::s_instance.lock();
+        if (result) return std::move(result);
+
+        result = std::make_shared<D3DShaderCompiler>();
+        D3DShaderCompiler::s_instance = result;
+        return std::move(result);
     }
 
 }}

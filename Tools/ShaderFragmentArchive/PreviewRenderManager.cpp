@@ -20,8 +20,11 @@
 #include "../../RenderCore/Metal/Resource.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Assets/Services.h"
+#include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
+#include "../../RenderCore/Techniques/TechniqueMaterial.h"
+#include "../../RenderCore/MinimalShaderSource.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../BufferUploads/DataPacket.h"
 #include "../../BufferUploads/ResourceLocator.h"
@@ -39,30 +42,14 @@ namespace PreviewRender
         std::shared_ptr<RenderCore::IDevice> _device;
         std::unique_ptr<::Assets::Services> _assetServices;
         std::unique_ptr<ConsoleRig::GlobalServices> _services;
+        std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
     };
 
     class PreviewBuilderPimpl
     {
     public:
-        std::unique_ptr<RenderCore::CompiledShaderByteCode>     _vertexShader;
-        std::unique_ptr<RenderCore::CompiledShaderByteCode>     _pixelShader;
-        std::unique_ptr<RenderCore::Metal::ShaderProgram>       _shaderProgram;
-        std::string                                             _errorString;
-
-        RenderCore::Metal::ShaderProgram & GetShaderProgram()
-        {
-            if (_shaderProgram)         { return *_shaderProgram.get(); }
-
-                // can throw a "PendingAsset" or "InvalidAsset"
-            try {
-                auto program = std::make_unique<RenderCore::Metal::ShaderProgram>(std::ref(*_vertexShader), std::ref(*_pixelShader));
-                _shaderProgram = std::move(program);
-                return *program;
-            } catch (const ::Assets::Exceptions::InvalidAsset& exception) {
-                _errorString = exception.what();
-                throw exception;
-            }
-        }
+        std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
+        std::string _shaderText;
     };
 
     enum DrawPreviewResult
@@ -75,7 +62,7 @@ namespace PreviewRender
     class MaterialBinder : public ToolsRig::IMaterialBinder
     {
     public:
-        virtual RenderCore::Metal::ShaderProgram* Apply(
+        virtual bool Apply(
             RenderCore::Metal::DeviceContext& metalContext,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
@@ -84,48 +71,85 @@ namespace PreviewRender
             const ::Assets::DirectorySearchRules& searchRules,
             const RenderCore::Metal::InputLayout& geoInputLayout);
         
-        MaterialBinder(RenderCore::Metal::ShaderProgram& shaderProgram);
+        MaterialBinder(RenderCore::ShaderService::IShaderSource& shaderSource, const std::string& shaderText);
         ~MaterialBinder();
     private:
-        RenderCore::Metal::ShaderProgram* _shaderProgram;
+        std::string _shaderText;
+        RenderCore::ShaderService::IShaderSource* _shaderSource;
     };
 
-    RenderCore::Metal::ShaderProgram* MaterialBinder::Apply(
-            RenderCore::Metal::DeviceContext& metalContext,
-            RenderCore::Techniques::ParsingContext& parserContext,
-            unsigned techniqueIndex,
-            const RenderCore::Assets::ResolvedMaterial& mat,
-            const SystemConstants& sysConstants,
-            const ::Assets::DirectorySearchRules& searchRules,
-            const RenderCore::Metal::InputLayout& geoInputLayout)
+    bool MaterialBinder::Apply(
+        RenderCore::Metal::DeviceContext& metalContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
+        unsigned techniqueIndex,
+        const RenderCore::Assets::ResolvedMaterial& mat,
+        const SystemConstants& sysConstants,
+        const ::Assets::DirectorySearchRules& searchRules,
+        const RenderCore::Metal::InputLayout& geoInputLayout)
     {
-        metalContext.Bind(*_shaderProgram);
+        // We need to build a shader program based on the input shader texture
+        // and the material parameters given. We will need to stall waiting for
+        // this shader to compile... Because we compile it on demand, this is the
+        // only way. So, ideally we should use a shader service that isn't
+        // asynchronous.
 
-        RenderCore::Metal::BoundInputLayout inputLayout(geoInputLayout, *_shaderProgram);
+        auto matParams = RenderCore::Assets::TechParams_SetResHas(mat._matParams, mat._bindings, searchRules);
+        auto geoParams = RenderCore::Techniques::TechParams_SetGeo(geoInputLayout);
+
+        const ParameterBox* state[] = {
+            &geoParams, 
+            &parserContext.GetTechniqueContext()._globalEnvironmentState,
+            &parserContext.GetTechniqueContext()._runtimeState, 
+            &matParams
+        };
+
+        std::vector<std::pair<const utf8*, std::string>> defines;
+        for (unsigned c=0; c<dimof(state); ++c)
+            BuildStringTable(defines, *state[c]);
+        std::string definesTable = FlattenStringTable(defines);
+
+        auto vsCompileMarker = _shaderSource->CompileFromMemory(
+            _shaderText.c_str(), "vs_main", VS_DefShaderModel, definesTable.c_str());
+        auto psCompileMarker = _shaderSource->CompileFromMemory(
+            _shaderText.c_str(), "ps_main", PS_DefShaderModel, definesTable.c_str());
+
+        RenderCore::CompiledShaderByteCode vsCode(std::move(vsCompileMarker));
+        RenderCore::CompiledShaderByteCode psCode(std::move(psCompileMarker));
+        vsCode.StallWhilePending();
+        psCode.StallWhilePending();
+        
+        RenderCore::Metal::ShaderProgram shaderProgram(vsCode, psCode);
+        metalContext.Bind(shaderProgram);
+
+        RenderCore::Metal::BoundInputLayout inputLayout(geoInputLayout, shaderProgram);
         metalContext.Bind(inputLayout);
 
         BindConstantsAndResources(
             metalContext, parserContext, mat, 
-            sysConstants, searchRules, *_shaderProgram);
+            sysConstants, searchRules, shaderProgram);
 
-        return _shaderProgram;
+        return true;
     }
 
-    MaterialBinder::MaterialBinder(RenderCore::Metal::ShaderProgram& shaderProgram) : _shaderProgram(&shaderProgram) {}
+    MaterialBinder::MaterialBinder(RenderCore::ShaderService::IShaderSource& shaderSource, const std::string& shaderText) 
+    : _shaderSource(&shaderSource), _shaderText(shaderText) {}
     MaterialBinder::~MaterialBinder() {}
 
-    static DrawPreviewResult DrawPreview(
+    static std::pair<DrawPreviewResult, std::string> DrawPreview(
         RenderCore::IThreadContext& context, 
-        PreviewBuilderPimpl& builder, ShaderDiagram::Document^ doc)
+        PreviewBuilderPimpl& builder, 
+        PreviewBuilder::PreviewGeometry geometry,
+        ShaderDiagram::Document^ doc)
     {
         using namespace ToolsRig;
 
         try 
         {
             MaterialVisObject visObject;
-            visObject._materialBinder = std::make_shared<MaterialBinder>(builder.GetShaderProgram());
+            visObject._materialBinder = std::make_shared<MaterialBinder>(*builder._shaderSource, builder._shaderText);
             visObject._systemConstants._lightNegativeDirection = Normalize(doc->NegativeLightDirection);
             visObject._systemConstants._lightColour = Float3(1,1,1);
+            visObject._parameters._matParams.SetParameter(u("SHADER_NODE_EDITOR"), "1");
 
                 //  We need to convert the material parameters and resource bindings
                 //  from the "doc" into native format in the "visObject._parameters" object.
@@ -151,7 +175,29 @@ namespace PreviewRender
             MaterialVisSettings visSettings;
             visSettings._camera = std::make_shared<VisCameraSettings>();
             visSettings._camera->_position = Float3(-5, 0, 0);
-            visSettings._geometryType = MaterialVisSettings::GeometryType::Plane2D;
+
+            // Select the geometry type to use.
+            // In the "chart" mode, we are just going to run a pixel shader for every
+            // output pixel, so we want to use a pretransformed quad covering the viewport
+            switch (geometry) {
+            case PreviewBuilder::PreviewGeometry::Chart:
+                visSettings._geometryType = MaterialVisSettings::GeometryType::Plane2D;
+                visObject._parameters._matParams.SetParameter(u("GEO_PRETRANSFORMED"), "1");
+                break;
+
+            case PreviewBuilder::PreviewGeometry::Box:
+                visSettings._geometryType = MaterialVisSettings::GeometryType::Cube;
+                break;
+
+            default:
+            case PreviewBuilder::PreviewGeometry::Sphere:
+                visSettings._geometryType = MaterialVisSettings::GeometryType::Sphere;
+                break;
+
+            case PreviewBuilder::PreviewGeometry::Model:
+                visSettings._geometryType = MaterialVisSettings::GeometryType::Model;
+                break;
+            };
 
             SceneEngine::LightingParserContext parserContext(
                 *Manager::Instance->GetGlobalTechniqueContext());
@@ -159,13 +205,15 @@ namespace PreviewRender
             bool result = ToolsRig::MaterialVisLayer::Draw(
                 context, parserContext, 
                 visSettings, VisEnvSettings(), visObject);
+            if (result)
+                return std::make_pair(DrawPreviewResult_Success, std::string());
 
-            if (result) return DrawPreviewResult_Success;
-            if (parserContext.HasPendingAssets()) return DrawPreviewResult_Pending;
-        } 
-        catch (::Assets::Exceptions::InvalidAsset&) { return DrawPreviewResult_Error; }
-        catch (::Assets::Exceptions::PendingAsset&) { return DrawPreviewResult_Pending; }
-        return DrawPreviewResult_Error;
+            if (parserContext.HasPendingAssets()) return std::make_pair(DrawPreviewResult_Pending, std::string());
+        }
+        catch (::Assets::Exceptions::InvalidAsset&) { return std::make_pair(DrawPreviewResult_Error, std::string()); }
+        catch (::Assets::Exceptions::PendingAsset&) { return std::make_pair(DrawPreviewResult_Pending, std::string()); }
+
+        return std::make_pair(DrawPreviewResult_Error, std::string());
     }
 
     System::Drawing::Bitmap^    PreviewBuilder::GenerateErrorBitmap(const char str[], Size^ size)
@@ -186,24 +234,11 @@ namespace PreviewRender
         return newBitmap;
     }
 
-    System::Drawing::Bitmap^    PreviewBuilder::GenerateBitmap(ShaderDiagram::Document^ doc, Size^ size)
+    System::Drawing::Bitmap^    PreviewBuilder::GenerateBitmap(
+        ShaderDiagram::Document^ doc, Size^ size, PreviewGeometry geometry)
     {
         const int width = std::max(0, int(size->Width));
         const int height = std::max(0, int(size->Height));
-
-        if (!_pimpl->_errorString.empty()) {
-            return GenerateErrorBitmap(_pimpl->_errorString.c_str(), size);
-        }
-
-            // note --  call GetShaderProgram() to check to see if our compile
-            //          is ready. Do this before creating textures, etc -- to minimize
-            //          overhead in the main thread while shaders are still compiling
-        try {
-            _pimpl->GetShaderProgram();
-        } catch (const ::Assets::Exceptions::PendingAsset&) {
-            return nullptr; // still pending
-        }
-        catch (...) {}
 
         using namespace RenderCore;
         auto context = Manager::Instance->GetDevice()->GetImmediateContext();
@@ -229,10 +264,10 @@ namespace PreviewRender
 
             ////////////
 
-        auto result = DrawPreview(*context, *_pimpl, doc);
-        if (result == DrawPreviewResult_Error) {
-            return GenerateErrorBitmap(_pimpl->_errorString.c_str(), size);
-        } else if (result == DrawPreviewResult_Pending) {
+        auto result = DrawPreview(*context, *_pimpl, geometry, doc);
+        if (result.first == DrawPreviewResult_Error) {
+            return GenerateErrorBitmap(result.second.c_str(), size);
+        } else if (result.first == DrawPreviewResult_Pending) {
             return nullptr;
         }
 
@@ -269,9 +304,9 @@ namespace PreviewRender
         return nullptr;
     }
 
-    void    PreviewBuilder::Update(ShaderDiagram::Document^ doc, Size^ size)
+    void    PreviewBuilder::Update(ShaderDiagram::Document^ doc, Size^ size, PreviewGeometry geometry)
     {
-        _bitmap = GenerateBitmap(doc, size);
+        _bitmap = GenerateBitmap(doc, size, geometry);
     }
 
     void    PreviewBuilder::Invalidate()
@@ -280,21 +315,13 @@ namespace PreviewRender
         _bitmap = nullptr;
     }
 
-    PreviewBuilder::PreviewBuilder(System::String^ shaderText)
+    PreviewBuilder::PreviewBuilder(
+        std::shared_ptr<RenderCore::ShaderService::IShaderSource> shaderSource, 
+        System::String^ shaderText)
     {
         _pimpl = new PreviewBuilderPimpl();
-
-        std::string nativeShaderText = clix::marshalString<clix::E_UTF8>(shaderText);
-        try {
-            using namespace RenderCore;
-            _pimpl->_vertexShader = std::make_unique<CompiledShaderByteCode>(nativeShaderText.c_str(), "vs_main", VS_DefShaderModel, "SHADER_NODE_EDITOR=1");
-            _pimpl->_pixelShader = std::make_unique<CompiledShaderByteCode>(nativeShaderText.c_str(), "ps_main", PS_DefShaderModel, "SHADER_NODE_EDITOR=1");
-        }
-        catch (::Assets::Exceptions::PendingAsset&) {}
-        catch (::Assets::Exceptions::InvalidAsset&) 
-        {
-            _pimpl->_errorString = "Compile failure";
-        }
+        _pimpl->_shaderText = clix::marshalString<clix::E_UTF8>(shaderText);
+        _pimpl->_shaderSource = std::move(shaderSource);
     }
 
     PreviewBuilder::~PreviewBuilder()
@@ -304,7 +331,7 @@ namespace PreviewRender
 
     PreviewBuilder^    Manager::CreatePreview(System::String^ shaderText)
     {
-        return gcnew PreviewBuilder(shaderText);
+        return gcnew PreviewBuilder(_pimpl->_shaderSource, shaderText);
     }
 
     void                    Manager::RotateLightDirection(ShaderDiagram::Document^ doc, System::Drawing::PointF rotationAmount)
@@ -327,6 +354,13 @@ namespace PreviewRender
     RenderCore::IDevice*        Manager::GetDevice()
     {
         return _pimpl->_device.get();
+    }
+
+    void Manager::Update()
+    {
+        ::Assets::Services::GetAsyncMan().Update();
+        RenderCore::Assets::Services::GetBufferUploads().Update(
+            *_pimpl->_device->GetImmediateContext());
     }
 
     RenderCore::Techniques::TechniqueContext* Manager::GetGlobalTechniqueContext()
@@ -357,6 +391,8 @@ namespace PreviewRender
         _pimpl->_assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
         _pimpl->_renderAssetsServices = std::make_unique<RenderCore::Assets::Services>(_pimpl->_device.get());
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
+        _pimpl->_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
+            RenderCore::Metal::CreateLowLevelShaderCompiler());
     }
 
     Manager::~Manager()

@@ -92,11 +92,17 @@ namespace ShaderSourceParser
                                     // this will exist after the type and name (if it exists at all)
                                 for (unsigned c=2; c<childCount; ++c) {
                                     using namespace AntlrHelper;
-                                    auto tokenType = GetType(GetToken(GetChild(functionNode, c)));
+                                    auto child = GetChild(functionNode, c);
+                                    auto tokenType = GetType(GetToken(child));
                                     if (tokenType == DIRECTION_OUT) {
                                         parameter._direction = FunctionSignature::Parameter::Out;
                                     } else if (tokenType == DIRECTION_OUT) {
                                         parameter._direction = FunctionSignature::Parameter::In | FunctionSignature::Parameter::Out;
+                                    } else if (tokenType == SEMANTIC) {
+                                        if (child->getChildCount(child) >= 1) {
+                                            auto semanticNode = pANTLR3_BASE_TREE(child->getChild(child, 0));
+                                            parameter._semantic = AntlrHelper::AsString<CharType>(semanticNode->toString(semanticNode));
+                                        }
                                     }
                                 }
                                 

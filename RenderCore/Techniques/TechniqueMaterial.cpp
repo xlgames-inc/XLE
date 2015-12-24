@@ -35,19 +35,25 @@ namespace RenderCore { namespace Techniques
             ) != end;
     }
 
+    ParameterBox TechParams_SetGeo(const Metal::InputLayout& inputLayout)
+    {
+        ParameterBox result;
+        if (HasElement(inputLayout, "NORMAL"))          result.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1);
+        if (HasElement(inputLayout, "TEXCOORD"))        result.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1);
+        if (HasElement(inputLayout, "TEXTANGENT"))      result.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1);
+        if (HasElement(inputLayout, "TEXBITANGENT"))    result.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1);
+        if (HasElement(inputLayout, "COLOR"))           result.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1);
+        return std::move(result);
+    }
+
     TechniqueMaterial::TechniqueMaterial(
         const Metal::InputLayout& inputLayout,
         const std::initializer_list<uint64>& objectCBs,
         ParameterBox materialParameters)
     : _materialParameters(std::move(materialParameters))
     , _techniqueInterface(MakeTechInterface(inputLayout, objectCBs))
-    {
-        if (HasElement(inputLayout, "NORMAL"))          _geometryParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1);
-        if (HasElement(inputLayout, "TEXCOORD"))        _geometryParameters.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1);
-        if (HasElement(inputLayout, "TEXTANGENT"))      _geometryParameters.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1);
-        if (HasElement(inputLayout, "TEXBITANGENT"))    _geometryParameters.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1);
-        if (HasElement(inputLayout, "COLOR"))           _geometryParameters.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1);
-    }
+    , _geometryParameters(TechParams_SetGeo(inputLayout))
+    {}
 
     TechniqueMaterial::TechniqueMaterial() {}
     TechniqueMaterial::TechniqueMaterial(TechniqueMaterial&& moveFrom)
@@ -81,5 +87,6 @@ namespace RenderCore { namespace Techniques
         auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(shaderName);
         return shaderType.FindVariation(techniqueIndex, state, _techniqueInterface);
     }
+
 }}
 

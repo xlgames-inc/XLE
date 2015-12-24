@@ -24,7 +24,7 @@ float3 BuildInterpolator_WORLDPOSITION(VSInput input)
 	#endif
 }
 
-float4 BuildInterpolator_SV_Position(VSInput input)
+float4 BuildInterpolator_SV_Position(VSInput input) : NE_WritesVSOutput
 {
 	#if defined(GEO_PRETRANSFORMED)
 		return float4(input.xy, 0, 1);
@@ -34,14 +34,19 @@ float4 BuildInterpolator_SV_Position(VSInput input)
 	#endif
 }
 
-float4 BuildInterpolator_COLOR0(VSInput input)
+float4 BuildInterpolator_COLOR(VSInput input)
 {
-	#if (GEO_HAS_COLOUR==1) && (MAT_VCOLOR_IS_ANIM_PARAM!=1)
+	#if (MAT_VCOLOR_IS_ANIM_PARAM!=1)
 		return GetColour(input);
 	#else
 		return 1.0.xxxx;
 	#endif
 }
+
+float2 BuildInterpolator_TEXCOORD(VSInput input) { return GetTexCoord(input); }
+
+float4 BuildInterpolator_COLOR0(VSInput input) { return BuildInterpolator_COLOR(input); }
+float2 BuildInterpolator_TEXCOORD0(VSInput input) { return BuildInterpolator_TEXCOORD(input); }
 
 float3 BuildInterpolator_WORLDVIEWVECTOR(VSInput input)
 {

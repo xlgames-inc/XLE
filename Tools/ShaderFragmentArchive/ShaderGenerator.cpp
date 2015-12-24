@@ -96,11 +96,13 @@ namespace ShaderPatcherLayer
             +   ShaderPatcher::GenerateShaderBody(nativeGraph, graphOfTemporaries));
     }
 
-    String^         NodeGraph::GeneratePreviewShader(NodeGraph^ graph, UInt32 previewNodeId)
+    String^         NodeGraph::GeneratePreviewShader(NodeGraph^ graph, UInt32 previewNodeId, String^ outputToVisualize)
     {
         auto nativeGraph = graph->ConvertToNativePreview(previewNodeId);
         ShaderPatcher::NodeGraph graphOfTemporaries = ShaderPatcher::GenerateGraphOfTemporaries(nativeGraph);
-        std::string structure = ShaderPatcher::GenerateStructureForPreview(nativeGraph, graphOfTemporaries);
+        std::string structure = ShaderPatcher::GenerateStructureForPreview(
+            nativeGraph, graphOfTemporaries, 
+            outputToVisualize ? marshalString<E_UTF8>(outputToVisualize).c_str() : "");
         return marshalString<E_UTF8>(
                 ShaderPatcher::GenerateShaderHeader(nativeGraph) 
             +   ShaderPatcher::GenerateShaderBody(nativeGraph, graphOfTemporaries) 

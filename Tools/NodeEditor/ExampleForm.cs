@@ -435,7 +435,7 @@ namespace NodeEditor
         private void OnShowPreviewShader(object sender, EventArgs e)
         {
             var nodeGraph = ModelConversion.ToShaderPatcherLayer(graphControl);
-            var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, AttachedId(sender));
+            var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, AttachedId(sender), "");
             MessageBox.Show(shader, "Generated shader", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
         }
 
@@ -463,7 +463,7 @@ namespace NodeEditor
 
                     // generate a preview builder for this specific node...
                 var nodeGraph = ModelConversion.ToShaderPatcherLayer(graphControl);
-                var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, nodeId);
+                var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, nodeId, "");
                 var builder = PreviewRender.Manager.Instance.CreatePreview(shader);
 
                     // create a "LargePreview" window

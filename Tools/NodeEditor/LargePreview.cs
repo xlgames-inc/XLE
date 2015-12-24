@@ -77,7 +77,9 @@ namespace NodeEditor
 
             try
             {
-                _preview.Update(_document, new Size(ClientRectangle.Width, ClientRectangle.Height));
+                _preview.Update(
+                    _document, new Size(ClientRectangle.Width, ClientRectangle.Height), 
+                    PreviewRender.PreviewBuilder.PreviewGeometry.Sphere);
                 if (_preview.Bitmap != null)
                 {
                     e.Graphics.DrawImage(_preview.Bitmap, new Point() { X = 0, Y = 0 });

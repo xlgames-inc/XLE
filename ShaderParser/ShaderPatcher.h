@@ -158,7 +158,7 @@ namespace ShaderPatcher
                                                 MaterialConstantsStyle::Enum materialConstantsStyle = MaterialConstantsStyle::CBuffer, 
                                                 bool copyFragmentContents = false);
     std::string         GenerateShaderBody(const NodeGraph& graph, const NodeGraph& graphOfTemporaries);
-    std::string         GenerateStructureForPreview(const NodeGraph& graph, const NodeGraph& graphOfTemporaries);
+    std::string         GenerateStructureForPreview(const NodeGraph& graph, const NodeGraph& graphOfTemporaries, const char outputToVisualize[]);
     NodeGraph           GenerateGraphOfTemporaries(const NodeGraph& graph);
     
 

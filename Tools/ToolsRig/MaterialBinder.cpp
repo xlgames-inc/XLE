@@ -28,36 +28,12 @@
 
 namespace ToolsRig
 {
-   
 
     IMaterialBinder::~IMaterialBinder() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static ParameterBox SetResHasParameters(
-        const ParameterBox& inputMatParameters, const ParameterBox& resBindings,
-        const ::Assets::DirectorySearchRules& searchRules)
-    {
-        static const auto DefaultNormalsTextureBindingHash = ParameterBox::MakeParameterNameHash("NormalsTexture");
-            // The "material parameters" ParameterBox should contain some "RES_HAS_..."
-            // settings. These tell the shader what resource bindings are available
-            // (and what are missing). We need to set these parameters according to our
-            // binding list
-        ParameterBox result = inputMatParameters;
-        for (auto param=resBindings.Begin(); !param.IsEnd(); ++param) {
-            result.SetParameter(StringMeld<64, utf8>() << "RES_HAS_" << param.Name(), 1);
-            if (param.HashName() == DefaultNormalsTextureBindingHash) {
-                auto resourceName = resBindings.GetString<::Assets::ResChar>(DefaultNormalsTextureBindingHash);
-                ::Assets::ResChar resolvedName[MaxPath];
-                searchRules.ResolveFile(resolvedName, dimof(resolvedName), resourceName.c_str());
-                result.SetParameter((const utf8*)"RES_HAS_NormalsTexture_DXT", 
-                    RenderCore::Assets::IsDXTNormalMap(resolvedName));
-            }
-        }
-        return std::move(result);
-    }
-
-    RenderCore::Metal::ShaderProgram* MaterialBinder::Apply(
+    bool MaterialBinder::Apply(
         RenderCore::Metal::DeviceContext& metalContext,
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex,
@@ -69,12 +45,12 @@ namespace ToolsRig
         using namespace RenderCore;
         using namespace RenderCore::Techniques;
 
-        ParameterBox materialParameters = SetResHasParameters(mat._matParams, mat._bindings, searchRules);
+        ParameterBox materialParameters = RenderCore::Assets::TechParams_SetResHas(mat._matParams, mat._bindings, searchRules);
         TechniqueMaterial material(geoInputLayout, {}, materialParameters);
 
         auto variation = material.FindVariation(parserContext, techniqueIndex, _shaderTypeName.c_str());
         if (variation._shaderProgram == nullptr) {
-            return nullptr; // we can't render because we couldn't resolve a good shader variation
+            return false; // we can't render because we couldn't resolve a good shader variation
         }
 
             // we must bind the shader program & the bound layout
@@ -88,7 +64,7 @@ namespace ToolsRig
         BindConstantsAndResources(
             metalContext, parserContext, mat, 
             sysConstants, searchRules, *variation._shaderProgram);
-        return variation._shaderProgram;
+        return true;
     }
         
     MaterialBinder::MaterialBinder(const ::Assets::ResChar shaderTypeName[])

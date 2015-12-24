@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../../RenderCore/IDevice_Forward.h"
+#include "../../RenderCore/ShaderService.h" // for RenderCore::ShaderService::IShaderSource
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "ShaderDiagramDocument.h"
 #include <memory>
@@ -26,16 +27,23 @@ namespace PreviewRender
             System::Drawing::Bitmap^ get() { return _bitmap; }
         }
 
-        void    Update(ShaderDiagram::Document^ doc, Size^ size);
+        enum class PreviewGeometry
+        {
+            Chart, Box, Sphere, Model
+        };
+
+        void    Update(ShaderDiagram::Document^ doc, Size^ size, PreviewGeometry geometry);
         void    Invalidate();
 
-        PreviewBuilder(System::String^ shaderText);
+        PreviewBuilder(
+            std::shared_ptr<RenderCore::ShaderService::IShaderSource> shaderSource, 
+            System::String^ shaderText);
         ~PreviewBuilder();
     private:
         PreviewBuilderPimpl*        _pimpl;
         System::Drawing::Bitmap^    _bitmap;
 
-        System::Drawing::Bitmap^    GenerateBitmap(ShaderDiagram::Document^ doc, Size^ size);
+        System::Drawing::Bitmap^    GenerateBitmap(ShaderDiagram::Document^ doc, Size^ size, PreviewGeometry geometry);
         System::Drawing::Bitmap^    GenerateErrorBitmap(const char str[], Size^ size);
     };
 
@@ -45,7 +53,8 @@ namespace PreviewRender
         PreviewBuilder^         CreatePreview(System::String^ shaderText);
         void                    RotateLightDirection(ShaderDiagram::Document^ doc, System::Drawing::PointF rotationAmount);
         RenderCore::IDevice*    GetDevice();
-        RenderCore::Techniques::TechniqueContext* GetGlobalTechniqueContext();
+        auto                    GetGlobalTechniqueContext() -> RenderCore::Techniques::TechniqueContext*;
+        void                    Update();
 
         static property Manager^     Instance
         {

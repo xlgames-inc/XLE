@@ -1236,6 +1236,28 @@ namespace Utility
         }
     }
 
+    std::string FlattenStringTable(const StringTable& stringTable)
+    {
+        std::string combinedStrings;
+        
+            // Calculate size of the concatenated string first, so we can avoid allocations during the 
+            // concatenation process.
+        size_t size = 0;
+        std::for_each(stringTable.cbegin(), stringTable.cend(), 
+            [&size](const std::pair<const utf8*, std::string>& object) { size += 2 + XlStringLen(object.first) + object.second.size(); });
+        combinedStrings.reserve(size+1);
+
+        std::for_each(stringTable.cbegin(), stringTable.cend(), 
+            [&combinedStrings](const std::pair<const utf8*, std::string>& object) 
+            {
+                combinedStrings.insert(combinedStrings.end(), (const char*)object.first, (const char*)XlStringEnd(object.first)); 
+                combinedStrings.push_back('=');
+                combinedStrings.insert(combinedStrings.end(), object.second.cbegin(), object.second.cend()); 
+                combinedStrings.push_back(';');
+            });
+        return combinedStrings;
+    }
+
     const void* ParameterBox::Iterator::RawValue() const
     {
         return ValueTableOffset(_box->_values, _box->_offsets[_index].second);

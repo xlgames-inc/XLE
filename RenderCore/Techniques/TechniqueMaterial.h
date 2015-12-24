@@ -33,5 +33,7 @@ namespace RenderCore { namespace Techniques
         const TechniqueMaterial& operator=(TechniqueMaterial&& moveFrom);
         ~TechniqueMaterial();
     };
+
+    ParameterBox TechParams_SetGeo(const Metal::InputLayout& inputLayout);
 }}
 

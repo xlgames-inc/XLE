@@ -135,7 +135,8 @@ namespace NodeEditor
             _graphControl = graphControl; 
             _document = doc; 
             _builder = null;
-            Geometry = PreviewGeometry.Box;
+            Geometry = PreviewRender.PreviewBuilder.PreviewGeometry.Sphere;
+            OutputToVisualize = "";
         }
 
         public override void    Render(Graphics graphics, SizeF minimumSize, PointF location)
@@ -146,11 +147,13 @@ namespace NodeEditor
                 if (!graphics.IsVisible(new Rectangle() {X = (int)location.X, Y = (int)location.Y, Width = (int)size.Width, Height = (int)size.Height }))
                     return;
 
+                PreviewRender.Manager.Instance.Update();
+
                 if (_builder == null)
                 {
                     var nodeGraph = ModelConversion.ToShaderPatcherLayer(_graphControl);
-                    var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id);
-                    _builder  = PreviewRender.Manager.Instance.CreatePreview(shader);
+                    var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id, OutputToVisualize);
+                    _builder = PreviewRender.Manager.Instance.CreatePreview(shader);
                 }
 
                 if (_builder == null)
@@ -168,7 +171,7 @@ namespace NodeEditor
                 }
 
                 if (_builder.Bitmap==null) {
-                    _builder.Update(_document, idealSize);
+                    _builder.Update(_document, idealSize, Geometry);
                 }
 
                 if (_builder.Bitmap!=null) {
@@ -202,17 +205,16 @@ namespace NodeEditor
 
         public override bool OnEndDrag() { base.OnEndDrag(); return true; }
 
-        public enum PreviewGeometry
-        {
-            Chart,
-            Box, Sphere, Model
-        };
-        public PreviewGeometry Geometry { get; set; }
+        public PreviewRender.PreviewBuilder.PreviewGeometry Geometry { get { return _previewGeometry; } set { _previewGeometry = value; InvalidateParameters(); } }
+        public string OutputToVisualize { get { return _outputToVisualize; } set { _outputToVisualize = value; InvalidateShaderStructure(); } }
 
         private HyperGraph.GraphControl         _graphControl;
         private ShaderDiagram.Document          _document;
         private PreviewRender.PreviewBuilder    _builder;
-        private PointF _lastDragLocation;
+        private PointF                          _lastDragLocation;
+
+        private PreviewRender.PreviewBuilder.PreviewGeometry _previewGeometry;
+        private string _outputToVisualize;
     }
 
     #endregion
@@ -291,10 +293,10 @@ namespace NodeEditor
         {
             PreviewGeoNames = new Dictionary<Enum, string>
             {
-                { ShaderFragmentPreviewItem.PreviewGeometry.Chart, "Chart" },
-                { ShaderFragmentPreviewItem.PreviewGeometry.Box, "Box" },
-                { ShaderFragmentPreviewItem.PreviewGeometry.Sphere, "Sphere" },
-                { ShaderFragmentPreviewItem.PreviewGeometry.Model, "Model" }
+                { PreviewRender.PreviewBuilder.PreviewGeometry.Chart, "Chart" },
+                { PreviewRender.PreviewBuilder.PreviewGeometry.Box, "Box" },
+                { PreviewRender.PreviewBuilder.PreviewGeometry.Sphere, "Sphere" },
+                { PreviewRender.PreviewBuilder.PreviewGeometry.Model, "Model" }
             };
 
             ParamSourceTypeNames = new Dictionary<Enum, string>
@@ -334,7 +336,7 @@ namespace NodeEditor
             List<String> typeNames = new List<String>();
             foreach (KeyValuePair<Enum, string> kvp in table)
             {
-                if (kvp.Key == value)
+                if (kvp.Key.Equals(value))
                     selectedIndex = typeNames.Count;
                 typeNames.Add(kvp.Value);
             }
@@ -349,6 +351,7 @@ namespace NodeEditor
             var previewItem = new ShaderFragmentPreviewItem(graphControl, doc);
             node.AddItem(previewItem);
 
+            // Drop-down selection box for "preview mode"
             var enumList = AsEnumList(previewItem.Geometry, PreviewGeoNames);
             var previewModeSelection = new HyperGraph.Items.NodeDropDownItem(enumList.Item1.ToArray(), enumList.Item2, false, false);
             node.AddItem(previewModeSelection);
@@ -358,9 +361,18 @@ namespace NodeEditor
                     if (sender is HyperGraph.Items.NodeDropDownItem)
                     {
                         var item = (HyperGraph.Items.NodeDropDownItem)sender;
-                        previewItem.Geometry = AsEnumValue<ShaderFragmentPreviewItem.PreviewGeometry>(item.Items[args.Index], PreviewGeoNames);
+                        previewItem.Geometry = AsEnumValue<PreviewRender.PreviewBuilder.PreviewGeometry>(item.Items[args.Index], PreviewGeoNames);
                     }
                 };
+
+                // Text item box for output visualization string
+                // note --  should could potentially become a more complex editing control
+                //          it might be useful to have some preset defaults and helpers rather than just
+                //          requiring the user to construct the raw string
+            var outputToVisualize = new HyperGraph.Items.NodeTextBoxItem(previewItem.OutputToVisualize, false, false);
+            node.AddItem(outputToVisualize);
+            outputToVisualize.TextChanged +=
+                (object sender, HyperGraph.Items.AcceptNodeTextChangedEventArgs args) => { previewItem.OutputToVisualize = args.Text; };
 
             foreach (var param in fn.InputParameters)
                 node.AddItem(new ShaderFragmentNodeItem(param.Name, param.Type, archiveName + ":" + param.Name, true, false));

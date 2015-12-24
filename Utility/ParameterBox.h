@@ -322,6 +322,7 @@ namespace Utility
     using StringTable = std::vector<std::pair<const utf8*, std::string>>;
     void    BuildStringTable(StringTable& defines, const ParameterBox& box);
     void    OverrideStringTable(StringTable& defines, const ParameterBox& box);
+    std::string FlattenStringTable(const StringTable& stringTable);
 }
 
 using namespace Utility;

@@ -38,7 +38,7 @@ namespace ToolsRig
             SystemConstants();
         };
 
-        virtual RenderCore::Metal::ShaderProgram* Apply(
+        virtual bool Apply(
             RenderCore::Metal::DeviceContext& metalContext,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
@@ -61,7 +61,7 @@ namespace ToolsRig
     class MaterialBinder : public IMaterialBinder
     {
     public:
-        virtual RenderCore::Metal::ShaderProgram* Apply(
+        virtual bool Apply(
             RenderCore::Metal::DeviceContext& metalContext,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,

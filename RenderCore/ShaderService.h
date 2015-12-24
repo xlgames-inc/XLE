@@ -187,6 +187,7 @@ namespace RenderCore
             const char shaderInMemory[], const char entryPoint[], 
             const char shaderModel[], const ::Assets::ResChar definesTable[]=nullptr);
         CompiledShaderByteCode(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+        CompiledShaderByteCode(std::shared_ptr<ShaderService::IPendingMarker>&& marker);
         ~CompiledShaderByteCode();
 
         CompiledShaderByteCode(const CompiledShaderByteCode&) = delete;

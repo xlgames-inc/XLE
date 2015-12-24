@@ -277,19 +277,7 @@ namespace RenderCore { namespace Techniques
             OverrideStringTable(defines, *globalState[c]);
         }
 
-        std::string combinedStrings;
-        size_t size = 0;
-        std::for_each(defines.cbegin(), defines.cend(), 
-            [&size](const std::pair<const utf8*, std::string>& object) { size += 2 + XlStringLen(object.first) + object.second.size(); });
-        combinedStrings.reserve(size);
-        std::for_each(defines.cbegin(), defines.cend(), 
-            [&combinedStrings](const std::pair<const utf8*, std::string>& object) 
-            {
-                combinedStrings.insert(combinedStrings.end(), (const char*)object.first, (const char*)XlStringEnd(object.first)); 
-                combinedStrings.push_back('=');
-                combinedStrings.insert(combinedStrings.end(), object.second.cbegin(), object.second.cend()); 
-                combinedStrings.push_back(';');
-            });
+        auto combinedStrings = FlattenStringTable(defines);
 
         std::string vsShaderModel, psShaderModel, gsShaderModel;
         auto vsi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"vs_", CompareFirst<const utf8*, std::string>());

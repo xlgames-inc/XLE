@@ -97,6 +97,13 @@ namespace RenderCore
         _compileHelper = std::move(compileHelper);
     }
 
+    CompiledShaderByteCode::CompiledShaderByteCode(std::shared_ptr<ShaderService::IPendingMarker>&& marker)
+    {
+        _validationCallback = std::make_shared<Assets::DependencyValidation>();
+        _stage = marker->GetStage();
+        _compileHelper = std::move(marker);
+    }
+
     CompiledShaderByteCode::~CompiledShaderByteCode()
     {
     }

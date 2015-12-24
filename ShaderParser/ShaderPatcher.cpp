@@ -796,8 +796,9 @@ namespace ShaderPatcher
         MainFunctionParameter() {}
     };
 
-    std::vector<MainFunctionParameter> GetMainFunctionOutputParameters(const NodeGraph& graph, const NodeGraph& graphOfTemporaries)
+    static std::vector<MainFunctionParameter> GetMainFunctionOutputParameters(const NodeGraph& graph, const NodeGraph& graphOfTemporaries, bool useNodeId = false)
     {
+        unsigned outputIndex = 0;
         std::vector<MainFunctionParameter> result;
         for (auto i =graph.GetNodes().cbegin(); i!=graph.GetNodes().cend(); ++i) {
             if (i->GetType() == Node::Type::Output) {
@@ -805,7 +806,8 @@ namespace ShaderPatcher
                     // at the moment, each output element is a struct. It might be convenient
                     // if we could use both structs or value types
                 StringMeld<64> buffer;
-                buffer << "OUT_" << i->NodeId();
+                if (useNodeId)  { buffer << "OUT_" << i->NodeId(); }
+                else            { buffer << "OUT" << outputIndex++; }
                     
                 auto signature = LoadParameterStructSignature(SplitArchiveName(i->ArchiveName()));
                 if (!signature._name.empty()) {
@@ -818,13 +820,25 @@ namespace ShaderPatcher
         return result;
     }
 
-    std::vector<MainFunctionParameter> GetMainFunctionVaryingParameters(const NodeGraph& graph, const NodeGraph& graphOfTemporaries)
+    static std::vector<MainFunctionParameter> GetMainFunctionVaryingParameters(const NodeGraph& graph, const NodeGraph& graphOfTemporaries)
     {
         std::vector<MainFunctionParameter> result;
 
         for (auto i = graphOfTemporaries.GetNodeConnections().begin(); i!=graphOfTemporaries.GetNodeConnections().end(); ++i) {
             if (i->OutputNodeId() != ~0ull) {
-                result.push_back(MainFunctionParameter(i->InputType()._name, i->InputParameterName(), i->InputType()._name));
+                // we need to go back to the function signature to get semantic information
+                std::string semantic;
+                auto* destinationNode = graph.GetNode(i->OutputNodeId());
+                if (destinationNode) {
+                    auto sig = LoadFunctionSignature(SplitArchiveName(destinationNode->ArchiveName()));
+                    auto p = std::find_if(sig._parameters.cbegin(), sig._parameters.cend(), 
+                        [=](const ShaderSourceParser::FunctionSignature::Parameter&p)
+                            { return p._name == i->OutputParameterName(); });
+                    if (p!=sig._parameters.end())
+                        semantic = p->_semantic;
+                }
+
+                result.push_back(MainFunctionParameter(i->InputType()._name, i->InputParameterName(), i->InputType()._name, semantic));
             }
         }
 
@@ -896,7 +910,7 @@ namespace ShaderPatcher
         std::stringstream result;
         const bool writeOutputsViaStruct = false;
         if (!writeOutputsViaStruct) {
-            auto outputs = GetMainFunctionOutputParameters(graph, graphOfTemporaries);
+            auto outputs = GetMainFunctionOutputParameters(graph, graphOfTemporaries, true);
             for (auto i=outputs.begin(); i!=outputs.end(); ++i) {
                 if (mainFunctionDeclParameters.tellp() != std::stringstream::pos_type(0)) {
                     mainFunctionDeclParameters << ", ";
@@ -1276,29 +1290,54 @@ namespace ShaderPatcher
 
     // todo -- these templates could come from a file... It would be convenient for development
     //          (but it would also add another file dependency)
-    static const char ps_main_template[] = 
+    static const char ps_main_template_default[] = 
 R"--(
-{{^IsChart}}NE_{{GraphName}}_Output{{/IsChart}}{{#IsChart}}NE_GraphOutput{{/IsChart}} ps_main(NE_PSInput input, SystemInputs sys)
+NE_{{GraphName}}_Output ps_main(NE_PSInput input, SystemInputs sys)
+{
+    NE_{{GraphName}}_Output functionResult;
+    {{GraphName}}({{ParametersToMainFunctionCall}});
+    return functionResult;
+}
+)--";
+
+    static const char ps_main_template_explicit[] = 
+R"--(
+
+float4 AsFloat4(float input)    { return Cast_float_to_float4(input); }
+float4 AsFloat4(float2 input)   { return Cast_float2_to_float4(input); }
+float4 AsFloat4(float3 input)   { return Cast_float3_to_float4(input); }
+float4 AsFloat4(float4 input)   { return input; }
+
+float4 AsFloat4(int input)      { return Cast_float_to_float4(float(input)); }
+float4 AsFloat4(int2 input)     { return Cast_float2_to_float4(float2(input)); }
+float4 AsFloat4(int3 input)     { return Cast_float3_to_float4(float3(input)); }
+float4 AsFloat4(int4 input)     { return float4(input); }
+
+float4 AsFloat4(uint input)     { return Cast_float_to_float4(float(input)); }
+float4 AsFloat4(uint2 input)    { return Cast_float2_to_float4(float2(input)); }
+float4 AsFloat4(uint3 input)    { return Cast_float3_to_float4(float3(input)); }
+float4 AsFloat4(uint4 input)    { return float4(input); }
+
+float4 ps_main(NE_PSInput input, SystemInputs sys) : SV_Target0
 {
     NE_{{GraphName}}_Output functionResult;
     {{GraphName}}({{ParametersToMainFunctionCall}});
 
     {{^IsChart}}
-    return functionResult;
+    return AsFloat4(functionResult.{{PreviewOutput}});
     {{/IsChart}}
 
-    {{FlatOutputsInit}}
     {{#IsChart}}
-    NE_GraphOutput graphOutput;
+    {{FlatOutputsInit}}
     float comparisonValue = 1.f - input.position.y / NodeEditor_GetOutputDimensions().y;
     bool filled = false;
     for (uint c=0; c<outputDimensionality; c++)
         if (comparisonValue < flatOutputs[c])
             filled = true;
-    graphOutput.output = filled ? FilledGraphPattern(input.position) : BackgroundPattern(input.position);
+    float3 chartOutput = filled ? FilledGraphPattern(input.position) : BackgroundPattern(input.position);
     for (uint c2=0; c2<outputDimensionality; c2++)
-        graphOutput.output.rgb = lerp(graphOutput.output.rgb, NodeEditor_GraphEdgeColour(c2).rgb, NodeEditor_IsGraphEdge(flatOutputs[c2], comparisonValue));
-    return graphOutput;
+        chartOutput = lerp(chartOutput, NodeEditor_GraphEdgeColour(c2).rgb, NodeEditor_IsGraphEdge(flatOutputs[c2], comparisonValue));
+    return float4(chartOutput, 1.f);
     {{/IsChart}}
 }
 )--";
@@ -1316,7 +1355,7 @@ NE_PSInput vs_main(uint vertexId : SV_VertexID, VSInput vsInput)
 }
 )--";
 
-    std::string         GenerateStructureForPreview(const NodeGraph& graph, const NodeGraph& graphOfTemporaries)
+    std::string         GenerateStructureForPreview(const NodeGraph& graph, const NodeGraph& graphOfTemporaries, const char outputToVisualize[])
     {
             //
             //      Generate the shader structure that will surround the main
@@ -1427,7 +1466,8 @@ NE_PSInput vs_main(uint vertexId : SV_VertexID, VSInput vsInput)
             {
                 {"GraphName", graph.GetName()},
                 {"IsChart", ToPlustache(allowGraphs && inputDimensionality == 1)},
-                {"ParametersToMainFunctionCall", parametersToMainFunctionCall}
+                {"ParametersToMainFunctionCall", parametersToMainFunctionCall},
+                {"PreviewOutput", outputToVisualize}
             };
 
                 // Collect all of the output values into a flat array of floats.
@@ -1464,7 +1504,19 @@ NE_PSInput vs_main(uint vertexId : SV_VertexID, VSInput vsInput)
                 context["FlatOutputsInit"] = writingToFlatArray.str();
             }
 
-            result << preprocessor.render(ps_main_template, context);
+            // outputToVisualize can either be the name of a variable in the functionResult
+            // struct, or it can be a number signifying out of the SV_Target<> outputs.
+            // When we have a graph that outputs a struct (such as GBufferValues), we don't
+            // actually know the contents of that struct from here. So we can access the members
+            // directly (or understand their types, etc)
+            // However, outputToVisualize allows the caller to explicitly capture the result from
+            // one of those struct members.
+
+            if (    outputToVisualize && outputToVisualize[0] != '\0' 
+                && !XlBeginsWith(MakeStringSection(outputToVisualize), MakeStringSection("SV_Target"))) {
+                result << preprocessor.render(ps_main_template_explicit, context);
+            } else
+                result << preprocessor.render(ps_main_template_default, context);
         }
 
         // Render the vs_main template
