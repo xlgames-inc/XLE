@@ -129,7 +129,7 @@ namespace RenderCore { namespace Techniques
             Utility::InputStreamFormatter<utf8>& formatter, 
             const std::string& name,
             ::Assets::DirectorySearchRules* searchRules = nullptr, 
-            std::vector<const std::shared_ptr<::Assets::DependencyValidation>>* inherited = nullptr);
+            std::vector<std::shared_ptr<::Assets::DependencyValidation>>* inherited = nullptr);
         Technique(Technique&& moveFrom);
         Technique& operator=(Technique&& moveFrom);
         Technique();

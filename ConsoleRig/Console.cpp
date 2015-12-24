@@ -172,14 +172,14 @@ namespace ConsoleRig
     static std::u16string      AsUTF16(const std::string& input)
     {
         char16_t buffer[1024];
-        utf8_2_ucs2((utf8*)AsPointer(input.begin()), input.size(), buffer, dimof(buffer));
+        utf8_2_ucs2((utf8*)AsPointer(input.begin()), input.size(), (ucs2*)buffer, dimof(buffer));
         return std::u16string(buffer);
     }
 
     static std::u16string      AsUTF16(const char input[], size_t len)
     {
         char16_t buffer[1024];
-        utf8_2_ucs2((utf8*)input, len, buffer, dimof(buffer));
+        utf8_2_ucs2((utf8*)input, len, (ucs2*)buffer, dimof(buffer));
         return std::u16string(buffer);
     }
 

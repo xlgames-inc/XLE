@@ -225,6 +225,21 @@ namespace RenderCore { namespace Metal_DX11
         _shaderResourceBindings = std::move(moveFrom._shaderResourceBindings);
         return *this;
     }
+
+	BoundUniforms::StageBinding::StageBinding(const StageBinding& copyFrom)
+	: _reflection(copyFrom._reflection)
+	, _shaderConstantBindings(copyFrom._shaderConstantBindings)
+	, _shaderResourceBindings(copyFrom._shaderResourceBindings)
+	{
+	}
+
+	BoundUniforms::StageBinding& BoundUniforms::StageBinding::operator=(const StageBinding& copyFrom)
+	{
+		_reflection = copyFrom._reflection;
+		_shaderConstantBindings = copyFrom._shaderConstantBindings;
+		_shaderResourceBindings = copyFrom._shaderResourceBindings;
+		return *this;
+	}
     
 
     bool BoundUniforms::BindConstantBuffer( uint64 hashName, unsigned slot, unsigned stream,
@@ -863,6 +878,20 @@ namespace RenderCore { namespace Metal_DX11
         _classInstanceArray = std::move(moveFrom._classInstanceArray);
         return *this;
     }
+
+	BoundClassInterfaces::StageBinding::StageBinding(const StageBinding& copyFrom)
+	: _reflection(copyFrom._reflection)
+	, _linkage(copyFrom._linkage)
+	, _classInstanceArray(copyFrom._classInstanceArray)
+	{}
+
+	auto BoundClassInterfaces::StageBinding::operator=(const StageBinding& copyFrom) -> StageBinding&
+	{
+		_reflection = copyFrom._reflection;
+		_linkage = copyFrom._linkage;
+		_classInstanceArray = copyFrom._classInstanceArray;
+		return *this;
+	}
 
 }}
 

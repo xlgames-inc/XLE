@@ -253,7 +253,7 @@ namespace BufferUploads
             QueueSet() {}
         };
 
-        QueueSet _queueSet_Main;(
+        QueueSet _queueSet_Main;
         QueueSet _queueSet_FramePriority[4];
         unsigned _framePriority_WritingQueueSet;
 

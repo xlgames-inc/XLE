@@ -386,7 +386,7 @@ namespace RenderCore { namespace Techniques
             Setting(
                 InputStreamFormatter<utf8>& source,
                 ::Assets::DirectorySearchRules& searchRules,
-                std::vector<const std::shared_ptr<::Assets::DependencyValidation>>& inherited);
+                std::vector<std::shared_ptr<::Assets::DependencyValidation>>& inherited);
         };
         std::vector<std::pair<uint64,Setting>> _settings;
 
@@ -430,7 +430,7 @@ namespace RenderCore { namespace Techniques
     static void LoadInheritedParameterBoxes(
         Formatter& source, ParameterBox dst[4],
         ::Assets::DirectorySearchRules* searchRules,
-        std::vector<const std::shared_ptr<::Assets::DependencyValidation>>* inherited)
+        std::vector<std::shared_ptr<::Assets::DependencyValidation>>* inherited)
     {
             //  We will serialize in a list of 
             //  shareable settings that we can inherit from
@@ -516,7 +516,7 @@ namespace RenderCore { namespace Techniques
     ParameterBoxTable::Setting::Setting(
         Formatter& formatter,
         ::Assets::DirectorySearchRules& searchRules,
-        std::vector<const std::shared_ptr<::Assets::DependencyValidation>>& inherited)
+        std::vector<std::shared_ptr<::Assets::DependencyValidation>>& inherited)
     {
         for (;;) {
             auto next = formatter.PeekNext();
@@ -549,7 +549,7 @@ namespace RenderCore { namespace Techniques
 
         if (sourceFile) {
             auto searchRules = ::Assets::DefaultDirectorySearchRules(filename);
-            std::vector<const std::shared_ptr<::Assets::DependencyValidation>> inherited;
+            std::vector<std::shared_ptr<::Assets::DependencyValidation>> inherited;
 
             TRY
             {
@@ -624,7 +624,7 @@ namespace RenderCore { namespace Techniques
         Formatter& formatter, 
         const std::string& name,
         ::Assets::DirectorySearchRules* searchRules,
-        std::vector<const std::shared_ptr<::Assets::DependencyValidation>>* inherited)
+        std::vector<std::shared_ptr<::Assets::DependencyValidation>>* inherited)
     {
             //
             //      There are some parameters that will we always have an effect on the
@@ -770,7 +770,7 @@ namespace RenderCore { namespace Techniques
         
         if (sourceFile) {
             auto searchRules = ::Assets::DefaultDirectorySearchRules(resourceName);
-            std::vector<const std::shared_ptr<::Assets::DependencyValidation>> inheritedAssets;
+            std::vector<std::shared_ptr<::Assets::DependencyValidation>> inheritedAssets;
 
             TRY
             {

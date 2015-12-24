@@ -33,10 +33,10 @@ namespace RenderCore { namespace Metal_DX11
             // having to include XLEMath headers from here.
             // Plus, it will also work with any other types that expose a stl collection type
             // interface.
-        template<typename Source, 
-            std::enable_if<
-                decltype(Internal::UnsignedTest(std::declval<typename Source::value_type>()))::value
-                >* = nullptr>
+		template<
+			typename Source,
+			typename InternalTestType = decltype(Internal::UnsignedTest(std::declval<typename Source::value_type>())),
+			std::enable_if<InternalTestType::value>* = nullptr>
             PixelCoord(const Source& src)
             {
                 auto size = std::size(src);

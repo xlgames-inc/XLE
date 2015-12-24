@@ -216,6 +216,8 @@ namespace RenderCore { namespace Metal_DX11
             ~StageBinding();
             StageBinding(StageBinding&& moveFrom);
             StageBinding& operator=(StageBinding&& moveFrom);
+			StageBinding(const StageBinding& copyFrom);
+			StageBinding& operator=(const StageBinding& copyFrom);
         };
 
         StageBinding    _stageBindings[ShaderStage::Max];
@@ -249,6 +251,8 @@ namespace RenderCore { namespace Metal_DX11
             ~StageBinding();
             StageBinding(StageBinding&& moveFrom);
             StageBinding& operator=(StageBinding&& moveFrom);
+			StageBinding(const StageBinding& copyFrom);
+			StageBinding& operator=(const StageBinding& copyFrom);
         };
 
         StageBinding    _stageBindings[ShaderStage::Max];

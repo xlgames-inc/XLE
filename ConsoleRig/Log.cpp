@@ -33,6 +33,8 @@ INITIALIZE_NULL_EASYLOGGINGPP
     #define REDIRECT_COUT
 #endif
 
+#pragma warning(disable:4592)
+
 //////////////////////////////////
 
 static auto Fn_GetStorage = ConstHash64<'getl', 'ogst', 'orag', 'e'>::Value;

@@ -59,6 +59,10 @@ namespace Utility
         BlockSerializerAllocator(std::allocator<Type>&& moveFrom)                   : _fromFixedStorage(0) {}
         BlockSerializerAllocator(const BlockSerializerAllocator<Type>& copyFrom)    : _fromFixedStorage(0) {}
         BlockSerializerAllocator(BlockSerializerAllocator<Type>&& moveFrom)         : _fromFixedStorage(moveFrom._fromFixedStorage) {}
+
+		BlockSerializerAllocator& operator=(const BlockSerializerAllocator<Type>& copyFrom) {_fromFixedStorage = 0; }
+		BlockSerializerAllocator& operator=(BlockSerializerAllocator<Type>&& moveFrom)		{ _fromFixedStorage = moveFrom._fromFixedStorage; }
+
     private:
         unsigned    _fromFixedStorage;
     };
