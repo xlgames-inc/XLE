@@ -104,16 +104,16 @@ namespace HyperGraph
 			item.Render(graphics, minimumSize, position);
 		}
 
-		private static Pen BorderPen = new Pen(Color.FromArgb(200, 200, 200));
-        private static Brush CompatibleBrush = new SolidBrush(Color.FromArgb(255, 196, 196));
+		internal static Pen BorderPen = new Pen(Color.FromArgb(200, 200, 200));
+        internal static Brush CompatibleBrush = new SolidBrush(Color.FromArgb(255, 196, 196));
 
-        private static Brush FocusBrush = new HatchBrush(   HatchStyle.LightDownwardDiagonal,
+        internal static Brush FocusBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
                                                             Color.FromArgb(140, 120, 120),  Color.FromArgb(96, 96, 96));
-        private static Brush HoverBrush = new HatchBrush(   HatchStyle.DashedHorizontal,
+        internal static Brush HoverBrush = new HatchBrush(HatchStyle.DashedHorizontal,
                                                             Color.FromArgb(96, 96, 96),     Color.FromArgb(96, 96, 96));
-        private static Brush NormalBrush = new HatchBrush(  HatchStyle.LightDownwardDiagonal,
+        internal static Brush NormalBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
                                                             Color.FromArgb(120, 120, 120),  Color.FromArgb(96, 96, 96));
-        private static Brush TitleAreaBrush = new SolidBrush(Color.FromArgb(96, 96, 96));
+        internal static Brush TitleAreaBrush = new SolidBrush(Color.FromArgb(96, 96, 96));
 
         enum ConnectorType { Input, Output };
 
