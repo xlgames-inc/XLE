@@ -96,6 +96,9 @@
     <Compile Include="ExampleForm.Designer.cs">
       <DependentUpon>ExampleForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="GraphControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="LargePreview.cs">
       <SubType>Form</SubType>
     </Compile>

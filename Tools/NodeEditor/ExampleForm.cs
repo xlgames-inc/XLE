@@ -35,17 +35,8 @@ namespace NodeEditor
 		{
 			InitializeComponent();
 
-            graphControl.CompatibilityStrategy = new ShaderFragmentNodeCompatibility();
-            graphControl.ConnectionAdded	+= new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionAdded);
-			graphControl.ConnectionAdding	+= new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionAdding);
-			graphControl.ConnectionRemoving += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionRemoved);
-            graphControl.NodeAdded          += new EventHandler<AcceptNodeEventArgs>(OnNodeAdded);
-            graphControl.NodeRemoved        += new EventHandler<NodeEventArgs>(OnNodeRemoved);
-            graphControl.ConnectionRemoving += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionRemoved);
-			graphControl.ShowElementMenu	+= new EventHandler<AcceptElementLocationEventArgs>(OnShowElementMenu);
-            graphControl.FocusChanged       += new EventHandler<ElementEventArgs>(OnFocusChanged);
-            graphControl.MouseEnter         += new System.EventHandler(OnGraphMouseEnter);
-            graphControl.ConnectorDoubleClick += new EventHandler<HyperGraph.GraphControl.NodeConnectorEventArgs>(OnConnectorDoubleClick);
+            graphControl.FocusChanged += new EventHandler<ElementEventArgs>(OnFocusChanged);
+            graphControl.MouseEnter += new System.EventHandler(OnGraphMouseEnter);
 
             _tabGroupTextureNode = new RibbonTabGroup(_ribbon, (uint)RibbonMarkupCommands.cmdTabGroupTextureNode);
 
@@ -97,66 +88,6 @@ namespace NodeEditor
             }
 
             _tabGroupTextureNode.ContextAvailable = textureContext;
-        }
-
-        private void OnNodeAdded(object sender, AcceptNodeEventArgs args) { OnNodesChange(); }
-        private void OnNodeRemoved(object sender, NodeEventArgs args) { OnNodesChange(); ShaderFragmentNodeUtil.InvalidateShaderStructure(graphControl); }
-        private void OnNodesChange()
-        {
-            var didSomething = ShaderParameterUtil.FillInMaterialParameters(_document, graphControl);
-            if (didSomething)
-            {
-                _materialParametersGrid.Refresh();
-            }
-        }
-
-		void OnConnectionAdding(object sender, AcceptNodeConnectionEventArgs e) {}
-
-		static int counter = 1;
-		void OnConnectionAdded(object sender, AcceptNodeConnectionEventArgs e)
-		{
-			e.Connection.Name = "Connection " + counter ++;
-            ShaderFragmentNodeUtil.InvalidateShaderStructure(graphControl);
-		}
-
-        void OnConnectionRemoved(object sender, AcceptNodeConnectionEventArgs e)
-        {
-            ShaderFragmentNodeUtil.InvalidateShaderStructure(graphControl);
-        }
-
-        void OnConnectorDoubleClick(object sender, HyperGraph.GraphControl.NodeConnectorEventArgs e)
-        {
-            var dialog = new HyperGraph.TextEditForm();
-            dialog.InputText = "1.0f";
-
-                //  look for an existing simple connection attached to this connector
-            foreach(var i in e.Node.Connections) 
-            {
-                if (i.To == e.Connector && i.From == null)
-                    dialog.InputText = i.Name;
-            }
-
-            var result = dialog.ShowDialog();
-            if (result == DialogResult.OK)
-            {
-                bool foundExisting = false;
-                foreach (var i in e.Node.Connections)
-                    if (i.To == e.Connector && i.From == null)
-                    {
-                        i.Name = dialog.InputText;
-                        foundExisting = true;
-                    }
-
-                if (!foundExisting)
-                {
-                    var connection = new NodeConnection();
-                    connection.To = e.Connector;
-                    connection.Name = dialog.InputText;
-                    e.Node.AddConnection(connection);
-                }
-
-                ShaderFragmentNodeUtil.InvalidateAttachedConstants(graphControl);
-            }
         }
 
         private void OnShowLabelsChanged(object sender, ExecuteEventArgs e)
@@ -376,127 +307,11 @@ namespace NodeEditor
         }
         #endregion
 
-        #region Element context menu
-        void OnShowElementMenu(object sender, AcceptElementLocationEventArgs e)
-        {
-            if (e.Element is Node && ((Node)e.Element).Tag is ShaderProcedureNodeTag)
-            {
-                var tag = (ShaderProcedureNodeTag)((Node)e.Element).Tag;
-                nodeMenu.Tag = tag.Id;
-                nodeMenu.Show(e.Position);
-                e.Cancel = false;
-            }
-            if (e.Element is Node && ((Node)e.Element).Tag is ShaderParameterNodeTag)
-            {
-                var tag = (ShaderParameterNodeTag)((Node)e.Element).Tag;
-                parameterBoxMenu.Tag = tag.Id;
-                parameterBoxMenu.Show(e.Position);
-                e.Cancel = false;
-            }
-            else if (e.Element is ShaderFragmentNodeItem)
-            {
-                var tag = (ShaderFragmentNodeItem)e.Element;
-                if (tag.ArchiveName != null)
-                {
-                    ShaderParameterUtil.EditParameter(graphControl, tag.ArchiveName);
-                    e.Cancel = false;
-                }
-            }
-            else if (e.Element is NodeConnector && ((NodeConnector)e.Element).Item is ShaderFragmentNodeItem)
-            {
-                var tag = (ShaderFragmentNodeItem)((NodeConnector)e.Element).Item;
-                if (tag.ArchiveName != null)
-                {
-                    ShaderParameterUtil.EditParameter(graphControl, tag.ArchiveName);
-                    e.Cancel = false;
-                }
-            }
-            else
-            {
-                // if you don't want to show a menu for this item (but perhaps show a menu for something more higher up) 
-                // then you can cancel the event
-                e.Cancel = true;
-            }
-        }
-
-        private UInt32 AttachedId(object senderObject)
-        {
-            if (senderObject is ToolStripMenuItem)
-            {
-                var tag = ((ToolStripMenuItem)senderObject).GetCurrentParent().Tag;
-                if (tag is UInt32)
-                {
-                    return (UInt32)tag;
-                }
-            }
-            return 0;
-        }
-        
-        private void OnShowPreviewShader(object sender, EventArgs e)
-        {
-            var nodeGraph = ModelConversion.ToShaderPatcherLayer(graphControl);
-            var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, AttachedId(sender), "");
-            MessageBox.Show(shader, "Generated shader", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
-        }
-
-        private void refreshToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-                //      Find the attached preview items and invalidate
-            var n = ShaderFragmentNodeUtil.GetShaderFragmentNode(graphControl, AttachedId(sender));
-            if (n!=null) {
-                foreach (NodeItem i in n.Items)
-                {
-                    if (i is ShaderFragmentPreviewItem)
-                    {
-                        ((ShaderFragmentPreviewItem)i).InvalidateShaderStructure();
-                    }
-                }
-            }
-        }
-
-        private void largePreviewToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            var n = ShaderFragmentNodeUtil.GetShaderFragmentNode(graphControl, AttachedId(sender));
-            if (n != null)
-            {
-                var nodeId = ((ShaderFragmentNodeTag)n.Tag).Id;
-
-                    // generate a preview builder for this specific node...
-                var nodeGraph = ModelConversion.ToShaderPatcherLayer(graphControl);
-                var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, nodeId, "");
-                var builder = PreviewRender.Manager.Instance.CreatePreview(shader);
-
-                    // create a "LargePreview" window
-                new LargePreview(builder, _document).Show();
-            }
-        }
-
-        private void addParameterToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-                //      Add a new parameter to the attached parameter node
-            // var n = ShaderFragmentNodeUtil.GetParameterNode(graphControl, AttachedId(sender));
-            // if (n != null)
-            // {
-            //     var param = ShaderFragmentArchive.Archive.GetParameterStruct("LocalArchive[NewParameter]");
-            //     if (param.Name.Length == 0)
-            //     {
-            //         param.Name = "NewParameter";
-            //     }
-            //     if (param.Type.Length == 0)
-            //     {
-            //         param.Type = "float";
-            //     }
-            // 
-            //     n.AddItem(new ShaderFragmentNodeItem(param.Name, param.Type, param.ArchiveName, false, true));
-            // }
-        }
-
         private void _materialParametersGrid_PropertyValueChanged(object s, PropertyValueChangedEventArgs e)
         {
             ShaderFragmentNodeUtil.InvalidateParameters(graphControl);
             graphControl.Refresh();
         }
-        #endregion
 
         #region Members
         private ShaderDiagram.Document _document = new ShaderDiagram.Document();

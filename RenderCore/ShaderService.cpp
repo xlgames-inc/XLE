@@ -99,6 +99,7 @@ namespace RenderCore
 
     CompiledShaderByteCode::CompiledShaderByteCode(std::shared_ptr<ShaderService::IPendingMarker>&& marker)
     {
+        DEBUG_ONLY(XlCopyString(_initializer, "ManualShader");)
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
         _stage = marker->GetStage();
         _compileHelper = std::move(marker);
