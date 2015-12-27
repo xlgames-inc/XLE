@@ -13,7 +13,7 @@ using HyperGraph;
 
 using ParamSourceType = ShaderFragmentArchive.Parameter.SourceType;
 
-namespace NodeEditor
+namespace NodeEditorCore
 {
 
     #region ShaderFragmentNodeItem
@@ -284,7 +284,7 @@ namespace NodeEditor
         public ShaderParameterNodeTag(string archiveName) : base(archiveName) {}
     }
 
-    class ShaderFragmentNodeCreator
+    public class ShaderFragmentNodeCreator
     {
         internal static IDictionary<Enum, string> PreviewGeoNames;
         internal static IDictionary<Enum, string> ParamSourceTypeNames;
@@ -457,7 +457,7 @@ namespace NodeEditor
         //          Utility functions
         //  
 
-    class ShaderFragmentNodeUtil
+    public class ShaderFragmentNodeUtil
     {
         public static Node GetShaderFragmentNode(HyperGraph.GraphControl graphControl, UInt64 id)
         {
@@ -574,7 +574,7 @@ namespace NodeEditor
         //          Utility functions for editing parameters
         //  
 
-    class ShaderParameterUtil
+    public class ShaderParameterUtil
     {
         private static String IdentifierSafeName(String input)
         {

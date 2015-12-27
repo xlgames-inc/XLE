@@ -52,7 +52,7 @@ namespace NodeEditor
             _loadButton = new RibbonLib.Controls.RibbonButton(_ribbon, (uint)RibbonMarkupCommands.cmdLoad);
             _loadButton.ExecuteEvent += new EventHandler<ExecuteEventArgs>(OnLoad);
 
-            _fragmentTree.Model = new Aga.Controls.Tree.SortedTreeModel(new TreeViewArchiveModel());
+            _fragmentTree.Model = new Aga.Controls.Tree.SortedTreeModel(new NodeEditorCore.TreeViewArchiveModel());
             _fragmentTree.ItemDrag += new ItemDragEventHandler(OnFragmentTreeItemDrag);
             _fragmentTree.NodeMouseDoubleClick += new EventHandler<Aga.Controls.Tree.TreeNodeAdvMouseEventArgs>(OnFragmentTreeItemDoubleClick);
 
@@ -106,9 +106,9 @@ namespace NodeEditor
                     var array = (Aga.Controls.Tree.TreeNodeAdv[])e.Item;
                     foreach (var a in array)
                     {
-                        if (a.Tag is TreeViewArchiveModel.ShaderFragmentItem)
+                        if (a.Tag is NodeEditorCore.TreeViewArchiveModel.ShaderFragmentItem)
                         {
-                            var item = (TreeViewArchiveModel.ShaderFragmentItem)a.Tag;
+                            var item = (NodeEditorCore.TreeViewArchiveModel.ShaderFragmentItem)a.Tag;
 
                             var archiveName = item.ArchiveName;
                             if (archiveName != null && archiveName.Length > 0)
@@ -116,13 +116,13 @@ namespace NodeEditor
                                 var fn = ShaderFragmentArchive.Archive.GetFunction(archiveName);
                                 if (fn != null)
                                 {
-                                    this.DoDragDrop(ShaderFragmentNodeCreator.CreateNode(fn, archiveName, graphControl, _document), DragDropEffects.Copy);
+                                    this.DoDragDrop(NodeEditorCore.ShaderFragmentNodeCreator.CreateNode(fn, archiveName, graphControl, _document), DragDropEffects.Copy);
                                 }
                             }
                         }
-                        else if (a.Tag is TreeViewArchiveModel.ParameterStructItem)
+                        else if (a.Tag is NodeEditorCore.TreeViewArchiveModel.ParameterStructItem)
                         {
-                            var item = (TreeViewArchiveModel.ParameterStructItem)a.Tag;
+                            var item = (NodeEditorCore.TreeViewArchiveModel.ParameterStructItem)a.Tag;
 
                             var archiveName = item.ArchiveName;
                             if (archiveName != null && archiveName.Length > 0)
@@ -130,7 +130,7 @@ namespace NodeEditor
                                 var fn = ShaderFragmentArchive.Archive.GetParameterStruct(archiveName);
                                 if (fn != null)
                                 {
-                                    this.DoDragDrop(ShaderFragmentNodeCreator.CreateParameterNode(fn, archiveName, ShaderFragmentArchive.Parameter.SourceType.Material), DragDropEffects.Copy);
+                                    this.DoDragDrop(NodeEditorCore.ShaderFragmentNodeCreator.CreateParameterNode(fn, archiveName, ShaderFragmentArchive.Parameter.SourceType.Material), DragDropEffects.Copy);
                                 }
                             }
                         }
@@ -141,9 +141,9 @@ namespace NodeEditor
 
         private void OnFragmentTreeItemDoubleClick(object sender, Aga.Controls.Tree.TreeNodeAdvMouseEventArgs e)
         {
-            if (e.Node != null && e.Node.Tag is TreeViewArchiveModel.ParameterStructItem)
+            if (e.Node != null && e.Node.Tag is NodeEditorCore.TreeViewArchiveModel.ParameterStructItem)
             {
-                ShaderParameterUtil.EditParameter(graphControl, ((TreeViewArchiveModel.ParameterStructItem)e.Node.Tag).ArchiveName);
+                NodeEditorCore.ShaderParameterUtil.EditParameter(graphControl, ((NodeEditorCore.TreeViewArchiveModel.ParameterStructItem)e.Node.Tag).ArchiveName);
             }
         }
         #endregion
@@ -156,8 +156,8 @@ namespace NodeEditor
                 //      This can be used for serialisation & for output to a shader
                 //
 
-            var nodeGraph    = ModelConversion.ToShaderPatcherLayer(graphControl);
-            var shader       = ShaderPatcherLayer.NodeGraph.GenerateShader(nodeGraph, "Test");
+            var nodeGraph = NodeEditorCore.ModelConversion.ToShaderPatcherLayer(graphControl);
+            var shader = ShaderPatcherLayer.NodeGraph.GenerateShader(nodeGraph, "Test");
             MessageBox.Show(shader, "Generated shader", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
         }
 
@@ -175,7 +175,7 @@ namespace NodeEditor
                     {
                         using (var xmlStream = new System.IO.MemoryStream())
                         {
-                            var nodeGraph = ModelConversion.ToShaderPatcherLayer(graphControl);
+                            var nodeGraph = NodeEditorCore.ModelConversion.ToShaderPatcherLayer(graphControl);
                             var serializer = new System.Runtime.Serialization.DataContractSerializer(
                                 typeof(ShaderPatcherLayer.NodeGraph));
                             var settings = new System.Xml.XmlWriterSettings()
@@ -247,7 +247,7 @@ namespace NodeEditor
                 if (o != null && o is ShaderPatcherLayer.NodeGraph)
                 {
                     graphControl.RemoveNodes(graphControl.Nodes.ToList());
-                    ModelConversion.AddToHyperGraph((ShaderPatcherLayer.NodeGraph)o, graphControl, _document);
+                    NodeEditorCore.ModelConversion.AddToHyperGraph((ShaderPatcherLayer.NodeGraph)o, graphControl, _document);
                     return true;
                 }
             }
@@ -309,7 +309,7 @@ namespace NodeEditor
 
         private void _materialParametersGrid_PropertyValueChanged(object s, PropertyValueChangedEventArgs e)
         {
-            ShaderFragmentNodeUtil.InvalidateParameters(graphControl);
+            NodeEditorCore.ShaderFragmentNodeUtil.InvalidateParameters(graphControl);
             graphControl.Refresh();
         }
 

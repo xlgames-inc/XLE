@@ -14,7 +14,7 @@ using System.Drawing;
 using System.ComponentModel;
 using System.Threading;
 
-namespace NodeEditor
+namespace NodeEditorCore
 {
 	public class TreeViewArchiveModel : ITreeModel
 	{

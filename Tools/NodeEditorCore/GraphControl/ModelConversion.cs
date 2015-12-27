@@ -12,9 +12,9 @@ using HyperGraph;
 using HyperGraph.Compatibility;
 using HyperGraph.Items;
 
-namespace NodeEditor
+namespace NodeEditorCore
 {
-    class ModelConversion
+    public class ModelConversion
     {
         private static ShaderPatcherLayer.Node.Type AsNodeType(ShaderFragmentArchive.Parameter.SourceType input)
         {

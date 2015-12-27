@@ -30,7 +30,7 @@
 		{
             this.components = new System.ComponentModel.Container();
             
-            this.graphControl = new GraphControl();
+            this.graphControl = new NodeEditorCore.GraphControl();
             this.panel1 = new System.Windows.Forms.Panel();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.panel2 = new System.Windows.Forms.Panel();
@@ -292,7 +292,7 @@
 
 		#endregion
 
-        private GraphControl graphControl;
+        private NodeEditorCore.GraphControl graphControl;
         private Aga.Controls.Tree.NodeControls.NodeStateIcon _icon;
         private Aga.Controls.Tree.NodeControls.NodeTextBox _visibleName;
         private Aga.Controls.Tree.NodeControls.NodeTextBox _returnType;

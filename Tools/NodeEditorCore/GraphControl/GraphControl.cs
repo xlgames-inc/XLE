@@ -10,9 +10,9 @@ using System.Text;
 using System.Windows.Forms;
 using HyperGraph;
 
-namespace NodeEditor
+namespace NodeEditorCore
 {
-    class GraphControl : HyperGraph.GraphControl
+    public class GraphControl : HyperGraph.GraphControl
     {
         HyperGraph.GraphControl GetGraphControl() { return this; }
 
