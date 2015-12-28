@@ -130,9 +130,9 @@ namespace NodeEditorCore
 
     public class ShaderFragmentPreviewItem : NodeItem 
     {
-        public ShaderFragmentPreviewItem(HyperGraph.GraphControl graphControl, ShaderDiagram.Document doc)
-        { 
-            _graphControl = graphControl; 
+        public ShaderFragmentPreviewItem(HyperGraph.IGraphModel graph, ShaderDiagram.Document doc)
+        {
+            _graph = graph; 
             _document = doc; 
             _builder = null;
             Geometry = PreviewRender.PreviewBuilder.PreviewGeometry.Sphere;
@@ -151,7 +151,7 @@ namespace NodeEditorCore
 
                 if (_builder == null)
                 {
-                    var nodeGraph = ModelConversion.ToShaderPatcherLayer(_graphControl);
+                    var nodeGraph = ModelConversion.ToShaderPatcherLayer(_graph);
                     var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id, OutputToVisualize);
                     _builder = PreviewRender.Manager.Instance.CreatePreview(shader);
                 }
@@ -208,7 +208,7 @@ namespace NodeEditorCore
         public PreviewRender.PreviewBuilder.PreviewGeometry Geometry { get { return _previewGeometry; } set { _previewGeometry = value; InvalidateParameters(); } }
         public string OutputToVisualize { get { return _outputToVisualize; } set { _outputToVisualize = value; InvalidateShaderStructure(); } }
 
-        private HyperGraph.GraphControl         _graphControl;
+        private HyperGraph.IGraphModel          _graph;
         private ShaderDiagram.Document          _document;
         private PreviewRender.PreviewBuilder    _builder;
         private PointF                          _lastDragLocation;
@@ -343,12 +343,12 @@ namespace NodeEditorCore
             return Tuple.Create(typeNames, selectedIndex);
         }
 
-        public static Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName, HyperGraph.GraphControl graphControl, ShaderDiagram.Document doc)
+        public static Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName, HyperGraph.IGraphModel graph, ShaderDiagram.Document doc)
         {
             var node = new Node(fn.Name);
             node.Tag = new ShaderProcedureNodeTag(archiveName);
 
-            var previewItem = new ShaderFragmentPreviewItem(graphControl, doc);
+            var previewItem = new ShaderFragmentPreviewItem(graph, doc);
             node.AddItem(previewItem);
 
             // Drop-down selection box for "preview mode"
@@ -459,9 +459,9 @@ namespace NodeEditorCore
 
     public class ShaderFragmentNodeUtil
     {
-        public static Node GetShaderFragmentNode(HyperGraph.GraphControl graphControl, UInt64 id)
+        public static Node GetShaderFragmentNode(HyperGraph.IGraphModel graph, UInt64 id)
         {
-            foreach (Node n in graphControl.Nodes)
+            foreach (Node n in graph.Nodes)
             {
                 if (n.Tag is ShaderFragmentNodeTag
                     && ((ShaderFragmentNodeTag)n.Tag).Id == (UInt64)id)
@@ -485,9 +485,9 @@ namespace NodeEditorCore
         //    return null;
         //}
 
-        public static void InvalidateShaderStructure(HyperGraph.GraphControl graphControl)
+        public static void InvalidateShaderStructure(HyperGraph.IGraphModel graph)
         {
-            foreach (Node n in graphControl.Nodes)
+            foreach (Node n in graph.Nodes)
             {
                 foreach (NodeItem i in n.Items)
                 {
@@ -499,9 +499,9 @@ namespace NodeEditorCore
             }
         }
 
-        public static void InvalidateParameters(HyperGraph.GraphControl graphControl)
+        public static void InvalidateParameters(HyperGraph.IGraphModel graph)
         {
-            foreach (Node n in graphControl.Nodes)
+            foreach (Node n in graph.Nodes)
             {
                 foreach (NodeItem i in n.Items)
                 {
@@ -513,9 +513,9 @@ namespace NodeEditorCore
             }
         }
 
-        public static void InvalidateAttachedConstants(HyperGraph.GraphControl graphControl)
+        public static void InvalidateAttachedConstants(HyperGraph.IGraphModel graph)
         {
-            foreach (Node n in graphControl.Nodes)
+            foreach (Node n in graph.Nodes)
             {
                 foreach (NodeItem i in n.Items)
                 {
@@ -528,13 +528,13 @@ namespace NodeEditorCore
         }
 
         public static void UpdateGraphConnectionsForParameter(
-                                HyperGraph.GraphControl graphControl,
+                                HyperGraph.IGraphModel graph,
                                 String oldArchiveName, String newArchiveName)
         {
             //      Look for connections in the graph using the "oldArchiveName" and
             //      update them with parameter state information from "newArchiveName"
 
-            foreach (var n in graphControl.Nodes)
+            foreach (var n in graph.Nodes)
             {
                 foreach (var item in n.Items)
                 {
@@ -590,7 +590,7 @@ namespace NodeEditorCore
             return ret;
         }
 
-        public static void EditParameter(HyperGraph.GraphControl graphControl, String archiveName)
+        public static void EditParameter(HyperGraph.IGraphModel graph, String archiveName)
         {
             //var parameter = ShaderFragmentArchive.Archive.GetParameter(archiveName);
             //if (parameter != null)
@@ -626,14 +626,14 @@ namespace NodeEditorCore
             //}
         }
 
-        public static bool FillInMaterialParameters(ShaderDiagram.Document document, HyperGraph.GraphControl graphControl)
+        public static bool FillInMaterialParameters(ShaderDiagram.Document document, HyperGraph.IGraphModel graph)
         {
                 //
                 //      Look for new or removed material parameters
                 //      and update the material parameters dictionary
                 //
             Dictionary<String, String> newMaterialParameters = new Dictionary<String, String>();
-            foreach (Node n in graphControl.Nodes)
+            foreach (Node n in graph.Nodes)
             {
                 if (n.Tag is ShaderParameterNodeTag && n.Items.Count() > 0)
                 {

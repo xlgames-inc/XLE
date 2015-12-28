@@ -12,34 +12,62 @@ using HyperGraph;
 
 namespace NodeEditorCore
 {
-    public class GraphControl : HyperGraph.GraphControl
+    public class GraphHelpers
     {
-        HyperGraph.GraphControl GetGraphControl() { return this; }
-
-        private void InvalidateShaderStructure()
+        public static void SetupDefaultHandlers(HyperGraph.IGraphModel model)
         {
-            ShaderFragmentNodeUtil.InvalidateShaderStructure(GetGraphControl());
-        }
-
-        public GraphControl()
-        {
-            components = new System.ComponentModel.Container();
-            nodeMenu = CreateNodeMenu();
-
-            var model = new HyperGraph.GraphModel();
             model.CompatibilityStrategy = new ShaderFragmentNodeCompatibility();
-
-            // Attach event handlers...
             model.ConnectionAdded += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionAdded);
             model.ConnectionAdding += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionAdding);
             model.ConnectionRemoving += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionRemoved);
             model.NodeAdded += new EventHandler<AcceptNodeEventArgs>(OnNodeAdded);
             model.NodeRemoved += new EventHandler<NodeEventArgs>(OnNodeRemoved);
             model.ConnectionRemoving += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionRemoved);
+        }
 
-            GetGraphControl().Model = model;
-            GetGraphControl().ConnectorDoubleClick += new EventHandler<HyperGraph.GraphControl.NodeConnectorEventArgs>(OnConnectorDoubleClick);
-            GetGraphControl().ShowElementMenu += new EventHandler<AcceptElementLocationEventArgs>(OnShowElementMenu);
+        private static void InvalidateShaderStructure(object sender)
+        {
+            var model = sender as IGraphModel;
+            if (model != null)
+                ShaderFragmentNodeUtil.InvalidateShaderStructure(model);
+        }
+
+        private static void OnNodeAdded(object sender, AcceptNodeEventArgs args) { OnNodesChange(); }
+        private static void OnNodeRemoved(object sender, NodeEventArgs args) { OnNodesChange(); InvalidateShaderStructure(sender); }
+        private static void OnNodesChange()
+        {
+            // var didSomething = ShaderParameterUtil.FillInMaterialParameters(_document, graphControl);
+            // if (didSomething)
+            // {
+            //     _materialParametersGrid.Refresh();
+            // }
+        }
+
+        private static void OnConnectionAdding(object sender, AcceptNodeConnectionEventArgs e) { }
+
+        static int counter = 1;
+        private static void OnConnectionAdded(object sender, AcceptNodeConnectionEventArgs e)
+        {
+            e.Connection.Name = "Connection " + counter++;
+            InvalidateShaderStructure(sender);
+        }
+
+        private static void OnConnectionRemoved(object sender, AcceptNodeConnectionEventArgs e)
+        {
+            InvalidateShaderStructure(sender);
+        }
+    }
+
+    public class GraphControl : HyperGraph.GraphControl
+    {
+        HyperGraph.IGraphModel GetGraphModel() { return base._model; }
+
+        public GraphControl()
+        {
+            components = new System.ComponentModel.Container();
+            nodeMenu = CreateNodeMenu();
+            ConnectorDoubleClick += OnConnectorDoubleClick;
+            ShowElementMenu += OnShowElementMenu;
         }
 
         private System.Windows.Forms.ContextMenuStrip CreateNodeMenu()
@@ -75,33 +103,7 @@ namespace NodeEditorCore
             return result;
         }
 
-        #region Graph control event handlers
-        private void OnNodeAdded(object sender, AcceptNodeEventArgs args) { OnNodesChange(); }
-        private void OnNodeRemoved(object sender, NodeEventArgs args) { OnNodesChange(); InvalidateShaderStructure(); }
-        private void OnNodesChange()
-        {
-            // var didSomething = ShaderParameterUtil.FillInMaterialParameters(_document, graphControl);
-            // if (didSomething)
-            // {
-            //     _materialParametersGrid.Refresh();
-            // }
-        }
-
-        void OnConnectionAdding(object sender, AcceptNodeConnectionEventArgs e) { }
-
-        static int counter = 1;
-        void OnConnectionAdded(object sender, AcceptNodeConnectionEventArgs e)
-        {
-            e.Connection.Name = "Connection " + counter++;
-            InvalidateShaderStructure();
-        }
-
-        void OnConnectionRemoved(object sender, AcceptNodeConnectionEventArgs e)
-        {
-            InvalidateShaderStructure();
-        }
-
-        void OnConnectorDoubleClick(object sender, HyperGraph.GraphControl.NodeConnectorEventArgs e)
+        private void OnConnectorDoubleClick(object sender, HyperGraph.GraphControl.NodeConnectorEventArgs e)
         {
             var dialog = new HyperGraph.TextEditForm();
             dialog.InputText = "1.0f";
@@ -132,11 +134,10 @@ namespace NodeEditorCore
                     e.Node.AddConnection(connection);
                 }
 
-                InvalidateShaderStructure();
+                ShaderFragmentNodeUtil.InvalidateShaderStructure(GetGraphModel());
             }
         }
-        #endregion
-
+        
         #region Element context menu
         void OnShowElementMenu(object sender, AcceptElementLocationEventArgs e)
         {
@@ -160,7 +161,7 @@ namespace NodeEditorCore
                 var tag = (ShaderFragmentNodeItem)e.Element;
                 if (tag.ArchiveName != null)
                 {
-                    ShaderParameterUtil.EditParameter(GetGraphControl(), tag.ArchiveName);
+                    ShaderParameterUtil.EditParameter(GetGraphModel(), tag.ArchiveName);
                     e.Cancel = false;
                 }
             }
@@ -169,7 +170,7 @@ namespace NodeEditorCore
                 var tag = (ShaderFragmentNodeItem)((NodeConnector)e.Element).Item;
                 if (tag.ArchiveName != null)
                 {
-                    ShaderParameterUtil.EditParameter(GetGraphControl(), tag.ArchiveName);
+                    ShaderParameterUtil.EditParameter(GetGraphModel(), tag.ArchiveName);
                     e.Cancel = false;
                 }
             }
@@ -196,12 +197,12 @@ namespace NodeEditorCore
 
         private HyperGraph.Node GetNode(uint id)
         {
-            return ShaderFragmentNodeUtil.GetShaderFragmentNode(GetGraphControl(), id);
+            return ShaderFragmentNodeUtil.GetShaderFragmentNode(GetGraphModel(), id);
         }
 
         private ShaderPatcherLayer.NodeGraph ConvertToShaderPatcherLayer()
         {
-            return ModelConversion.ToShaderPatcherLayer(GetGraphControl());
+            return ModelConversion.ToShaderPatcherLayer(GetGraphModel());
         }
 
         private void OnShowPreviewShader(object sender, EventArgs e)

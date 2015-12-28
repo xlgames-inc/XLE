@@ -35,7 +35,10 @@ namespace NodeEditor
 		{
 			InitializeComponent();
 
-            graphControl.Model = new HyperGraph.GraphModel();
+            _hyperGraphModel = new HyperGraph.GraphModel();
+            NodeEditorCore.GraphHelpers.SetupDefaultHandlers(_hyperGraphModel);
+
+            graphControl.Model = _hyperGraphModel;
             graphControl.FocusChanged += new EventHandler<ElementEventArgs>(OnFocusChanged);
             graphControl.MouseEnter += new System.EventHandler(OnGraphMouseEnter);
 
@@ -117,7 +120,7 @@ namespace NodeEditor
                                 var fn = ShaderFragmentArchive.Archive.GetFunction(archiveName);
                                 if (fn != null)
                                 {
-                                    this.DoDragDrop(NodeEditorCore.ShaderFragmentNodeCreator.CreateNode(fn, archiveName, graphControl, _document), DragDropEffects.Copy);
+                                    this.DoDragDrop(NodeEditorCore.ShaderFragmentNodeCreator.CreateNode(fn, archiveName, _hyperGraphModel, _document), DragDropEffects.Copy);
                                 }
                             }
                         }
@@ -144,7 +147,7 @@ namespace NodeEditor
         {
             if (e.Node != null && e.Node.Tag is NodeEditorCore.TreeViewArchiveModel.ParameterStructItem)
             {
-                NodeEditorCore.ShaderParameterUtil.EditParameter(graphControl, ((NodeEditorCore.TreeViewArchiveModel.ParameterStructItem)e.Node.Tag).ArchiveName);
+                NodeEditorCore.ShaderParameterUtil.EditParameter(_hyperGraphModel, ((NodeEditorCore.TreeViewArchiveModel.ParameterStructItem)e.Node.Tag).ArchiveName);
             }
         }
         #endregion
@@ -157,7 +160,7 @@ namespace NodeEditor
                 //      This can be used for serialisation & for output to a shader
                 //
 
-            var nodeGraph = NodeEditorCore.ModelConversion.ToShaderPatcherLayer(graphControl);
+            var nodeGraph = NodeEditorCore.ModelConversion.ToShaderPatcherLayer(_hyperGraphModel);
             var shader = ShaderPatcherLayer.NodeGraph.GenerateShader(nodeGraph, "Test");
             MessageBox.Show(shader, "Generated shader", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
         }
@@ -176,7 +179,7 @@ namespace NodeEditor
                     {
                         using (var xmlStream = new System.IO.MemoryStream())
                         {
-                            var nodeGraph = NodeEditorCore.ModelConversion.ToShaderPatcherLayer(graphControl);
+                            var nodeGraph = NodeEditorCore.ModelConversion.ToShaderPatcherLayer(_hyperGraphModel);
                             var serializer = new System.Runtime.Serialization.DataContractSerializer(
                                 typeof(ShaderPatcherLayer.NodeGraph));
                             var settings = new System.Xml.XmlWriterSettings()
@@ -247,8 +250,8 @@ namespace NodeEditor
                 var o = serializer.ReadObject(xmlStream);
                 if (o != null && o is ShaderPatcherLayer.NodeGraph)
                 {
-                    graphControl.Model.RemoveNodes(graphControl.Nodes.ToList());
-                    NodeEditorCore.ModelConversion.AddToHyperGraph((ShaderPatcherLayer.NodeGraph)o, graphControl, _document);
+                    _hyperGraphModel.RemoveNodes(_hyperGraphModel.Nodes.ToList());
+                    NodeEditorCore.ModelConversion.AddToHyperGraph((ShaderPatcherLayer.NodeGraph)o, _hyperGraphModel, _document);
                     return true;
                 }
             }
@@ -310,7 +313,7 @@ namespace NodeEditor
 
         private void _materialParametersGrid_PropertyValueChanged(object s, PropertyValueChangedEventArgs e)
         {
-            NodeEditorCore.ShaderFragmentNodeUtil.InvalidateParameters(graphControl);
+            NodeEditorCore.ShaderFragmentNodeUtil.InvalidateParameters(_hyperGraphModel);
             graphControl.Refresh();
         }
 
@@ -321,6 +324,7 @@ namespace NodeEditor
         private RibbonLib.Controls.RibbonButton _generateTestScript;
         private RibbonLib.Controls.RibbonButton _saveAsButton;
         private RibbonLib.Controls.RibbonButton _loadButton;
+        private HyperGraph.IGraphModel _hyperGraphModel;
         #endregion
 	}
 }

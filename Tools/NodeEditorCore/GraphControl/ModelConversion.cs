@@ -53,11 +53,11 @@ namespace NodeEditorCore
             //
             //      So, let's just build it from the graph control object.
             //
-        public static ShaderPatcherLayer.NodeGraph ToShaderPatcherLayer(HyperGraph.GraphControl graphControl)
+        public static ShaderPatcherLayer.NodeGraph ToShaderPatcherLayer(HyperGraph.IGraphModel graph)
         {
             ShaderPatcherLayer.NodeGraph nodeGraph = new ShaderPatcherLayer.NodeGraph();
             Dictionary<Node, int> nodeToVisualNodeId = new Dictionary<Node, int>();
-            foreach (Node n in graphControl.Nodes)
+            foreach (Node n in graph.Nodes)
             {
                 if (n.Tag is ShaderFragmentNodeTag)
                 {
@@ -177,7 +177,7 @@ namespace NodeEditorCore
             return nodeItem.Type;
         }
 
-        public static void AddToHyperGraph(ShaderPatcherLayer.NodeGraph nodeGraph, HyperGraph.GraphControl graphControl, ShaderDiagram.Document doc)
+        public static void AddToHyperGraph(ShaderPatcherLayer.NodeGraph nodeGraph, HyperGraph.IGraphModel graph, ShaderDiagram.Document doc)
         {
                 //
                 //      Convert from the "ShaderPatcherLayer" representation back to
@@ -206,7 +206,7 @@ namespace NodeEditorCore
                             if (fn != null)
                             {
                                 var visualNode = nodeGraph.VisualNodes[n.VisualNodeId];
-                                var newNode = ShaderFragmentNodeCreator.CreateNode(fn, n.FragmentArchiveName, graphControl, doc);
+                                var newNode = ShaderFragmentNodeCreator.CreateNode(fn, n.FragmentArchiveName, graph, doc);
                                 newNode.Location = visualNode.Location;
                                 newNode.Collapsed = visualNode.State == ShaderPatcherLayer.VisualNode.StateType.Collapsed;
                                 newNodes[n.VisualNodeId] = newNode;
@@ -229,7 +229,7 @@ namespace NodeEditorCore
                     }
                 }
 
-                graphControl.Model.AddNodes(newNodes.Values);
+                graph.AddNodes(newNodes.Values);
 
                     // --------< Node Connections >--------
                 foreach (var c in nodeGraph.NodeConnections)
@@ -244,7 +244,7 @@ namespace NodeEditorCore
                             (item) => (item.Input != null && item.Input.Enabled && item is ShaderFragmentNodeItem && ((ShaderFragmentNodeItem)item).Name.Equals(c.OutputParameterName)),
                             () => new ShaderFragmentNodeItem(c.OutputParameterName, c.OutputType, null, true, false));
 
-                        graphControl.Model.Connect(inputItem.Output, outputItem.Input);
+                        graph.Connect(inputItem.Output, outputItem.Input);
                     }
                 }
 
