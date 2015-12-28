@@ -35,6 +35,7 @@ namespace NodeEditor
 		{
 			InitializeComponent();
 
+            graphControl.Model = new HyperGraph.GraphModel();
             graphControl.FocusChanged += new EventHandler<ElementEventArgs>(OnFocusChanged);
             graphControl.MouseEnter += new System.EventHandler(OnGraphMouseEnter);
 
@@ -246,7 +247,7 @@ namespace NodeEditor
                 var o = serializer.ReadObject(xmlStream);
                 if (o != null && o is ShaderPatcherLayer.NodeGraph)
                 {
-                    graphControl.RemoveNodes(graphControl.Nodes.ToList());
+                    graphControl.Model.RemoveNodes(graphControl.Nodes.ToList());
                     NodeEditorCore.ModelConversion.AddToHyperGraph((ShaderPatcherLayer.NodeGraph)o, graphControl, _document);
                     return true;
                 }

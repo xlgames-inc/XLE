@@ -46,6 +46,8 @@
     <Compile Include="Compatibility\NeverCompatible.cs" />
     <Compile Include="Compatibility\ICompatibilityStrategy.cs" />
     <Compile Include="Compatibility\TagTypeCompatibility.cs" />
+    <Compile Include="GraphModel.cs" />
+    <Compile Include="IGraphModel.cs" />
     <Compile Include="Items\NodeNumericSliderItem.cs" />
     <Compile Include="NodeSelection.cs" />
     <Compile Include="Items\NodeDropDownItem.cs" />

@@ -30,33 +30,6 @@ using HyperGraph.Items;
 
 namespace HyperGraph
 {
-	public sealed class NodeEventArgs : EventArgs
-	{
-		public NodeEventArgs(Node node) { Node = node; }
-		public Node Node { get; private set; }
-	}
-
-	public sealed class ElementEventArgs : EventArgs
-	{
-		public ElementEventArgs(IElement element) { Element = element; }
-		public IElement Element { get; private set; }
-	}
-
-	public sealed class AcceptNodeEventArgs : CancelEventArgs
-	{
-		public AcceptNodeEventArgs(Node node) { Node = node; }
-		public AcceptNodeEventArgs(Node node, bool cancel) : base(cancel) { Node = node; }
-		public Node Node { get; private set; }
-	}
-
-	public sealed class AcceptElementLocationEventArgs : CancelEventArgs
-	{
-		public AcceptElementLocationEventArgs(IElement element, Point position) { Element = element; Position = position; }
-		public AcceptElementLocationEventArgs(IElement element, Point position, bool cancel) : base(cancel) { Element = element; Position = position; }
-		public IElement Element		{ get; private set; }
-		public Point	Position	{ get; private set; }
-	}
-
 	public class Node : IElement
 	{
 		public string			Title			{ get { return titleItem.Title; } set { titleItem.Title = value; } }

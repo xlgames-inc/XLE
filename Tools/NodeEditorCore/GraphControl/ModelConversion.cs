@@ -229,7 +229,7 @@ namespace NodeEditorCore
                     }
                 }
 
-                graphControl.AddNodes(newNodes.Values);
+                graphControl.Model.AddNodes(newNodes.Values);
 
                     // --------< Node Connections >--------
                 foreach (var c in nodeGraph.NodeConnections)
@@ -244,7 +244,7 @@ namespace NodeEditorCore
                             (item) => (item.Input != null && item.Input.Enabled && item is ShaderFragmentNodeItem && ((ShaderFragmentNodeItem)item).Name.Equals(c.OutputParameterName)),
                             () => new ShaderFragmentNodeItem(c.OutputParameterName, c.OutputType, null, true, false));
 
-                        graphControl.Connect(inputItem.Output, outputItem.Input);
+                        graphControl.Model.Connect(inputItem.Output, outputItem.Input);
                     }
                 }
 

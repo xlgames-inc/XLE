@@ -26,15 +26,18 @@ namespace NodeEditorCore
             components = new System.ComponentModel.Container();
             nodeMenu = CreateNodeMenu();
 
-            GetGraphControl().CompatibilityStrategy = new ShaderFragmentNodeCompatibility();
+            var model = new HyperGraph.GraphModel();
+            model.CompatibilityStrategy = new ShaderFragmentNodeCompatibility();
 
             // Attach event handlers...
-            GetGraphControl().ConnectionAdded += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionAdded);
-            GetGraphControl().ConnectionAdding += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionAdding);
-            GetGraphControl().ConnectionRemoving += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionRemoved);
-            GetGraphControl().NodeAdded += new EventHandler<AcceptNodeEventArgs>(OnNodeAdded);
-            GetGraphControl().NodeRemoved += new EventHandler<NodeEventArgs>(OnNodeRemoved);
-            GetGraphControl().ConnectionRemoving += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionRemoved);
+            model.ConnectionAdded += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionAdded);
+            model.ConnectionAdding += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionAdding);
+            model.ConnectionRemoving += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionRemoved);
+            model.NodeAdded += new EventHandler<AcceptNodeEventArgs>(OnNodeAdded);
+            model.NodeRemoved += new EventHandler<NodeEventArgs>(OnNodeRemoved);
+            model.ConnectionRemoving += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionRemoved);
+
+            GetGraphControl().Model = model;
             GetGraphControl().ConnectorDoubleClick += new EventHandler<HyperGraph.GraphControl.NodeConnectorEventArgs>(OnConnectorDoubleClick);
             GetGraphControl().ShowElementMenu += new EventHandler<AcceptElementLocationEventArgs>(OnShowElementMenu);
         }
