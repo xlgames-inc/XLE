@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using Sce.Atf;
 using Sce.Atf.Adaptation;
 using Sce.Atf.Applications;
@@ -18,32 +19,33 @@ namespace MaterialTool
     /// with a history, selection, and editing capabilities. There may be multiple
     /// contexts within a single circuit document, because each sub-circuit has its own
     /// editing context.</summary>
-    public class ShaderEditingContext :
-        EditingContext      // (provides some implementation for managing selection and history)
-        , IEnumerableContext
+    public class GraphEditingContext :
+        /*EditingContext      // (provides some implementation for managing selection and history... but there's a problem here because it relies on DomNodeAdapter)
+        ,*/ IEnumerableContext
         , IInstancingContext
         , IObservableContext
         , INamingContext
         , IColoringContext
     {
+        private HyperGraph.IGraphModel _model;
+        public HyperGraph.IGraphModel Model { get { return _model; } }
+
+        public GraphEditingContext(HyperGraph.IGraphModel model)
+        {
+            _model = model;
+            model.NodeAdded += model_NodeAdded;
+            model.NodeRemoved += model_NodeRemoved;
+            model.ConnectionAdded += model_ConnectionAdded;
+            model.ConnectionRemoved += model_ConnectionRemoved;
+        }
+
         #region IEnumerableContext Members
 
         /// <summary>
         /// Gets an enumeration of all of the items of this context</summary>
         IEnumerable<object> IEnumerableContext.Items
         {
-            get
-            {
-                foreach (Element module in CircuitContainer.Elements)
-                    yield return module;
-                foreach (Wire connection in CircuitContainer.Wires)
-                    yield return connection;
-                if (CircuitContainer.Annotations != null)
-                {
-                    foreach (Annotation annotation in CircuitContainer.Annotations)
-                        yield return annotation;
-                }
-            }
+            get { return Model.Nodes; }
         }
 
         #endregion
@@ -56,17 +58,9 @@ namespace MaterialTool
         /// <returns>Item's name in the context, or null if none</returns>
         string INamingContext.GetName(object item)
         {
-            Element element = item.As<Element>();
-            if (element != null)
-                return element.Name;
-
-            Wire wire = item.As<Wire>();
-            if (wire != null)
-                return wire.Label;
-
-            var groupPin = item.As<GroupPin>();
-            if (groupPin != null)
-                return groupPin.Name;
+            var node = item as HyperGraph.Node;
+            if (node != null)
+                return node.Title;
             return null;
         }
 
@@ -76,10 +70,7 @@ namespace MaterialTool
         /// <returns>True iff the item can be named</returns>
         bool INamingContext.CanSetName(object item)
         {
-            return
-                item.Is<Element>() ||
-                item.Is<Wire>() ||
-                item.Is<GroupPin>();
+            return (item as HyperGraph.Node) != null;
         }
 
         /// <summary>
@@ -88,25 +79,10 @@ namespace MaterialTool
         /// <param name="name">New item name</param>
         void INamingContext.SetName(object item, string name)
         {
-            Element element = item.As<Element>();
-            if (element != null)
+            var node = item as HyperGraph.Node;
+            if (node != null)
             {
-                element.Name = name;
-                return;
-            }
-
-            Wire wire = item.As<Wire>();
-            if (wire != null)
-            {
-                wire.Label = name;
-                return;
-            }
-
-
-            var groupPin = item.As<GroupPin>();
-            if (groupPin != null)
-            {
-                groupPin.Name = name;
+                node.Title = name;
                 return;
             }
         }
@@ -146,7 +122,7 @@ namespace MaterialTool
 
         public virtual bool CanDelete()
         {
-            return Selection.Count > 0;
+            return false; //  return Selection.Count > 0;
         }
 
         public virtual void Delete()
@@ -201,45 +177,24 @@ namespace MaterialTool
             ItemChanged.Raise(this, e);
         }
 
-        /// <summary>
-        /// Explicitly notify the graph object has been changed. This is useful when some changes, 
-        /// such as group pin connectivity, are computed at runtime, outside DOM attribute mechanism.</summary>
-        /// <param name="element">Changed graph object</param>
-        public void NotifyObjectChanged(object element)
+        void model_NodeAdded(object sender, HyperGraph.AcceptNodeEventArgs e)
         {
-            OnObjectChanged(new ItemChangedEventArgs<object>(element));
+            OnObjectInserted(new ItemInsertedEventArgs<object>(-1, e.Node, sender));
+        }
+        
+        void model_NodeRemoved(object sender, HyperGraph.NodeEventArgs e)
+        {
+            OnObjectRemoved(new ItemRemovedEventArgs<object>(-1, e.Node, sender));
         }
 
-        private static bool IsCircuitItem(DomNode child, DomNode parent)
+        void model_ConnectionAdded(object sender, HyperGraph.AcceptNodeConnectionEventArgs e)
         {
-            if (parent == null)
-                return false;
-
-            while (parent != null &&
-                parent.Is<LayerFolder>())
-            {
-                parent = parent.Parent;
-            }
-
-            return
-               child.Is<Group>() || parent.Is<Circuit>() || parent.Is<Group>();
+            OnObjectInserted(new ItemInsertedEventArgs<object>(-1, e.Connection, sender));
         }
-
-
-        private void GroupChanged(object sender, EventArgs eventArgs)
+        
+        void model_ConnectionRemoved(object sender, HyperGraph.NodeConnectionEventArgs e)
         {
-
-            var group = sender.Cast<Group>();
-            // Some group properties, such as its display bound, are computed at runtime but not stored as Dom Attributes.  
-            // Since group elements could be nested and child changes could affect the appearance of the parent group,  
-            // need to bubble up the ItemChanged event by traversing up the editing context chain 
-            foreach (var node in group.DomNode.Lineage)
-            {
-                var editingContext = node.As<CircuitEditingContext>();
-                if (editingContext != null)
-                    editingContext.ItemChanged.Raise(this, new ItemChangedEventArgs<object>(group.DomNode));
-            }
-
+            OnObjectRemoved(new ItemRemovedEventArgs<object>(-1, e.Connection, sender));
         }
 
         #endregion
@@ -252,14 +207,6 @@ namespace MaterialTool
         /// <param name="item">Item</param>
         Color IColoringContext.GetColor(ColoringTypes kind, object item)
         {
-            if (item.Is<Annotation>())
-            {
-                if (kind == ColoringTypes.BackColor)
-                    return item.Cast<Annotation>().BackColor;
-                if (kind == ColoringTypes.ForeColor)
-                    return item.Cast<Annotation>().ForeColor;
-            }
-
             return s_zeroColor;
         }
 
@@ -270,14 +217,6 @@ namespace MaterialTool
         /// <returns>True iff the item can be colored</returns>
         bool IColoringContext.CanSetColor(ColoringTypes kind, object item)
         {
-            if (item.Is<Annotation>())
-            {
-                if (kind == ColoringTypes.BackColor)
-                    return true;
-                if (kind == ColoringTypes.ForeColor)
-                    return true;
-            }
-
             return false;
         }
 
@@ -288,13 +227,6 @@ namespace MaterialTool
         /// <param name="newValue">Item new color</param>
         void IColoringContext.SetColor(ColoringTypes kind, object item, Color newValue)
         {
-            if (item.Is<Annotation>())
-            {
-                if (kind == ColoringTypes.BackColor)
-                    item.Cast<Annotation>().BackColor = newValue;
-                else if (kind == ColoringTypes.ForeColor)
-                    item.Cast<Annotation>().ForeColor = newValue;
-            }
         }
 
         #endregion

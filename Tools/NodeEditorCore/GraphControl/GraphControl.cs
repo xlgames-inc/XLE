@@ -56,6 +56,59 @@ namespace NodeEditorCore
         {
             InvalidateShaderStructure(sender);
         }
+
+        private static IGraphModel LoadFromXML(System.IO.Stream stream)
+        {
+            var serializer = 
+                new System.Runtime.Serialization.DataContractSerializer(
+                            typeof(ShaderPatcherLayer.NodeGraph));
+            using (var xmlStream = System.Xml.XmlReader.Create(stream))
+            {
+                var o = serializer.ReadObject(xmlStream);
+                if (o != null && o is ShaderPatcherLayer.NodeGraph)
+                {
+                    var result = new GraphModel();
+                    NodeEditorCore.ModelConversion.AddToHyperGraph(
+                        (ShaderPatcherLayer.NodeGraph)o, result, null);
+                    return result;
+                }
+            }
+            return null;
+        }
+
+        private static IGraphModel LoadFromShader(System.IO.Stream stream)
+        {
+            // the xml should be hidden within a comment in this file.
+            //      look for a string between "NEStart{" XXX "}NEEnd"
+
+            using (var sr = new System.IO.StreamReader(stream, System.Text.Encoding.ASCII))
+            {
+                var asString = sr.ReadToEnd();
+                var matches = System.Text.RegularExpressions.Regex.Matches(asString,
+                    @"NEStart\{(.*)\}NEEnd",
+                    System.Text.RegularExpressions.RegexOptions.CultureInvariant | System.Text.RegularExpressions.RegexOptions.Singleline);
+                if (matches.Count > 0 && matches[0].Groups.Count > 1)
+                {
+                    var xmlString = matches[0].Groups[1].Value;
+                    return LoadFromXML(new System.IO.MemoryStream(System.Text.Encoding.ASCII.GetBytes(xmlString)));
+                }
+            }
+
+            return null;
+        }
+
+        public static HyperGraph.IGraphModel Load(string filename)
+        {
+            System.IO.FileStream fileStream = new System.IO.FileStream(filename, System.IO.FileMode.Open);
+            try
+            {
+                return LoadFromShader(fileStream);
+            }
+            finally
+            {
+                fileStream.Close();
+            }
+        }
     }
 
     public class GraphControl : HyperGraph.GraphControl
@@ -64,6 +117,11 @@ namespace NodeEditorCore
 
         public GraphControl()
         {
+            // This is mostly just for the right-click menu now... We probably
+            // no longer need to derive from HyperGraph.GraphControl -- instead, just turn this
+            // into a helper class.
+            // But, then again, maybe even HyperGraph.GraphControl could be split into several
+            // small pieces using the ATF AdaptableControl type stuff...?
             components = new System.ComponentModel.Container();
             nodeMenu = CreateNodeMenu();
             ConnectorDoubleClick += OnConnectorDoubleClick;

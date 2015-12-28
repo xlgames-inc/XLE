@@ -96,7 +96,7 @@ namespace MaterialTool
                 typeof(Editor),                         // editor which manages circuit documents and controls
                 // typeof(SchemaLoader),                   // loads circuit schema and extends types
                 // typeof(GroupingCommands),               // circuit group/ungroup commands
-                // typeof(CircuitControlRegistry),         // circuit controls management
+                typeof(GraphControlRegistry),         // circuit controls management
                 // typeof(LayeringCommands),               // "Add Layer" command
                 // typeof(GraphViewCommands),              // zooming with presets
                 typeof(PerformanceMonitor),             // displays the frame rate and memory usage

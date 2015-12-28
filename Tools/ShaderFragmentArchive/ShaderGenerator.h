@@ -29,32 +29,32 @@ namespace ShaderPatcherLayer {
             Output,
             Constants
         };
-        [DataMember] property String^       FragmentArchiveName;
-        [DataMember] property UInt32        NodeId;
-        [DataMember] property int           VisualNodeId;
-        [DataMember] property Type          NodeType;
+        [DataMember] String^       FragmentArchiveName;
+        [DataMember] UInt32        NodeId;
+        [DataMember] int           VisualNodeId;
+        [DataMember] Type          NodeType;
     };
 
         ///////////////////////////////////////////////////////////////
     [DataContract] public ref class NodeConnection
     {
     public:
-        [DataMember] property UInt32        OutputNodeID;
-        [DataMember] property UInt32        InputNodeID;
-        [DataMember] property String^       OutputParameterName;
-        [DataMember] property String^       OutputType;
-        [DataMember] property String^       InputParameterName;
-        [DataMember] property String^       InputType;
-        [DataMember] property String^       Semantic;
+        [DataMember] UInt32        OutputNodeID;
+        [DataMember] UInt32        InputNodeID;
+        [DataMember] String^       OutputParameterName;
+        [DataMember] String^       OutputType;
+        [DataMember] String^       InputParameterName;
+        [DataMember] String^       InputType;
+        [DataMember] String^       Semantic;
     };
 
         ///////////////////////////////////////////////////////////////
     [DataContract] public ref class NodeConstantConnection
     {
     public:
-        [DataMember] property UInt32        OutputNodeID;
-        [DataMember] property String^       OutputParameterName;
-        [DataMember] property String^       Value;
+        [DataMember] UInt32        OutputNodeID;
+        [DataMember] String^       OutputParameterName;
+        [DataMember] String^       Value;
     };
 
         ///////////////////////////////////////////////////////////////
@@ -62,8 +62,8 @@ namespace ShaderPatcherLayer {
     {
     public:
         enum class StateType { Normal, Collapsed };
-        [DataMember] property PointF        Location;
-        [DataMember] property StateType     State;
+        [DataMember] PointF        Location;
+        [DataMember] StateType     State;
     };
 
         ///////////////////////////////////////////////////////////////

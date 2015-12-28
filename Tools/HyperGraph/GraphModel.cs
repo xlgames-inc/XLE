@@ -100,7 +100,8 @@ namespace HyperGraph
 
             BringElementToFront(node);
             // FocusElement = node;
-            InvalidateViews(this, EventArgs.Empty);
+            if (InvalidateViews != null)
+                InvalidateViews(this, EventArgs.Empty);
             return true;
         }
 
@@ -140,7 +141,8 @@ namespace HyperGraph
             {
                 BringElementToFront(lastNode);
                 // FocusElement = lastNode;
-                InvalidateViews(this, EventArgs.Empty);
+                if (InvalidateViews != null) 
+                    InvalidateViews(this, EventArgs.Empty);
             }
             return modified;
         }
@@ -162,7 +164,8 @@ namespace HyperGraph
 
             DisconnectAll(node);
             _graphNodes.Remove(node);
-            InvalidateViews(this, EventArgs.Empty);
+            if (InvalidateViews != null) 
+                InvalidateViews(this, EventArgs.Empty);
 
             if (NodeRemoved != null)
                 NodeRemoved(this, new NodeEventArgs(node));
@@ -197,7 +200,8 @@ namespace HyperGraph
                     NodeRemoved(this, new NodeEventArgs(node));
             }
             if (modified)
-                InvalidateViews(this, EventArgs.Empty);
+                if (InvalidateViews != null) 
+                    InvalidateViews(this, EventArgs.Empty);
             return modified;
         }
         #endregion
@@ -285,7 +289,8 @@ namespace HyperGraph
             if (ConnectionRemoved != null)
                 ConnectionRemoved(this, new NodeConnectionEventArgs(from, to, connection));
 
-            InvalidateViews(this, EventArgs.Empty);
+            if (InvalidateViews != null) 
+                InvalidateViews(this, EventArgs.Empty);
             return true;
         }
 

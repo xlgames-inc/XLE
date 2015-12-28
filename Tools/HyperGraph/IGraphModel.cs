@@ -34,6 +34,22 @@ namespace HyperGraph
         public Point Position { get; private set; }
     }
 
+    public sealed class NodeConnectionEventArgs : EventArgs
+    {
+        public NodeConnectionEventArgs(NodeConnection connection) { Connection = connection; From = connection.From; To = connection.To; }
+        public NodeConnectionEventArgs(NodeConnector from, NodeConnector to, NodeConnection connection) { Connection = connection; From = from; To = to; }
+        public NodeConnector From { get; set; }
+        public NodeConnector To { get; set; }
+        public NodeConnection Connection { get; private set; }
+    }
+
+    public sealed class AcceptNodeConnectionEventArgs : CancelEventArgs
+    {
+        public AcceptNodeConnectionEventArgs(NodeConnection connection) { Connection = connection; }
+        public AcceptNodeConnectionEventArgs(NodeConnection connection, bool cancel) : base(cancel) { Connection = connection; }
+        public NodeConnection Connection { get; private set; }
+    }
+
     public interface IGraphModel
     {
         IEnumerable<Node> Nodes { get; }

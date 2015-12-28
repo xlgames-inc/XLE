@@ -18,11 +18,6 @@ using Sce.Atf.Adaptation;
 using Sce.Atf.Applications;
 using Sce.Atf.Controls;
 using Sce.Atf.Controls.Adaptable;
-using Sce.Atf.Controls.Adaptable.Graphs;
-using Sce.Atf.Controls.PropertyEditing;
-using Sce.Atf.VectorMath;
-using Sce.Atf.Direct2D;
-using Sce.Atf.Dom;
 
 namespace MaterialTool
 {
@@ -89,12 +84,12 @@ namespace MaterialTool
 
                 m_contextRegistry.ActiveContextChanged += delegate
                 {
-                    var editingContext = m_contextRegistry.GetActiveContext<CircuitEditingContext>();
-                    ViewingContext viewContext = m_contextRegistry.GetActiveContext<ViewingContext>();
+                    var editingContext = m_contextRegistry.GetActiveContext<GraphEditingContext>();
+                    // ViewingContext viewContext = m_contextRegistry.GetActiveContext<ViewingContext>();
                     IHistoryContext hist = m_contextRegistry.GetActiveContext<IHistoryContext>();
                     m_scriptingService.SetVariable("editingContext", editingContext);
-                    m_scriptingService.SetVariable("circuitContainer", editingContext != null ? editingContext.CircuitContainer : null);
-                    m_scriptingService.SetVariable("view", viewContext);
+                    // m_scriptingService.SetVariable("circuitContainer", editingContext != null ? editingContext.CircuitContainer : null);
+                    // m_scriptingService.SetVariable("view", viewContext);
                     m_scriptingService.SetVariable("hist", hist);
                 };
             }
@@ -119,75 +114,53 @@ namespace MaterialTool
 
         public DocumentClientInfo Info { get { return EditorInfo; } }
         public static DocumentClientInfo EditorInfo =
-            new DocumentClientInfo("Circuit".Localize(), ".circuit", null, null);
+            new DocumentClientInfo("Shader Graph".Localize(), ".sh", null, null);
 
         public bool CanOpen(Uri uri) { return EditorInfo.IsCompatibleUri(uri); }
 
         public IDocument Open(Uri uri)
         {
-            DomNode node = null;
-            string filePath = uri.LocalPath;
-
+            var filePath = uri.LocalPath;
             if (File.Exists(filePath))
             {
-                
+                // Try to load this document...
+                var graph = NodeEditorCore.GraphHelpers.Load(filePath);
+                NodeEditorCore.GraphHelpers.SetupDefaultHandlers(graph);
+
+                var doc = new GraphDocument(graph);
+
+                // Create a control for the new document
+                string fileName = Path.GetFileName(filePath);
+                ControlInfo controlInfo = new ControlInfo(fileName, filePath, StandardControlGroup.Center);
+                controlInfo.IsDocument = true;
+
+                var control = CreateGraphControl(doc);
+                // doc.ControlInfo = controlInfo;
+                // doc.Uri = uri;
+
+                _controlRegistry.RegisterControl(doc, control, controlInfo, this);
+                return doc;
             }
             else
             {
-                
+                return null;
             }
+        }
 
-            CircuitDocument circuitCircuitDocument = null;
-            if (node != null)
-            {
-                // now that the data is complete, initialize all other extensions to the Dom data
-                node.InitializeExtensions();
-
-                // AdaptableControl control = CreateCircuitControl(node);
-                // control.AddHelp("https://github.com/SonyWWS/ATF/wiki/Adaptable-Controls".Localize());
-                // 
-                // var viewingContext = node.Cast<ViewingContext>();
-                // viewingContext.Control = control;
-                // 
-                // circuitCircuitDocument = node.Cast<CircuitDocument>();
-                // string fileName = Path.GetFileName(filePath);
-                // ControlInfo controlInfo = new ControlInfo(fileName, filePath, StandardControlGroup.Center);
-                // 
-                // //Set IsDocument to true to prevent exception in command service if two files with the
-                // //  same name, but in different directories, are opened.
-                // controlInfo.IsDocument = true;
-                // 
-                // circuitCircuitDocument.ControlInfo = controlInfo;
-                // circuitCircuitDocument.Uri = uri;
-
-                // var editingContext = node.Cast<CircuitEditingContext>();
-                // editingContext.GetLocalBound = GetLocalBound;
-                // editingContext.GetWorldOffset = GetWorldOffset;
-                // editingContext.GetTitleHeight = GetTitleHeight;
-                // editingContext.GetLabelHeight = GetLabelHeight;
-                // editingContext.GetSubContentOffset = GetSubContentOffset;
-                // control.Context = editingContext;
-
-                // m_circuitControlRegistry.RegisterControl(node, control, controlInfo, this);
-                // 
-                // // Set the zoom and translation to show the existing items (if any).
-                // var enumerableContext = editingContext.Cast<IEnumerableContext>();
-                // if (viewingContext.CanFrame(enumerableContext.Items))
-                //     viewingContext.Frame(enumerableContext.Items);
-            }
-
-            return circuitCircuitDocument;
+        internal AdaptableControl CreateGraphControl(GraphEditingContext context)
+        {
+            return new GraphControl(context);
         }
 
         public void Show(IDocument document)
         {
-            var viewingContext = document.Cast<ViewingContext>();
-            m_controlHostService.Show(viewingContext.Control);
+            // var viewingContext = document.Cast<ViewingContext>();
+            // m_controlHostService.Show(viewingContext.Control);
         }
 
         public void Save(IDocument document, Uri uri)
         {
-            CircuitDocument circuitDocument = (CircuitDocument)document;
+            var circuitDocument = (GraphDocument)document;
             string filePath = uri.LocalPath;
             FileMode fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.OpenOrCreate;
             using (FileStream stream = new FileStream(filePath, fileMode))
@@ -224,17 +197,17 @@ namespace MaterialTool
             var adaptableControl = (AdaptableControl)control;
 
             bool closed = true;
-            CircuitDocument circuitDocument = adaptableControl.ContextAs<CircuitDocument>();
-            if (circuitDocument != null)
+            var doc = adaptableControl.ContextAs<GraphDocument>();
+            if (doc != null)
             {
-                closed = m_documentService.Close(circuitDocument);
+                closed = m_documentService.Close(doc);
                 if (closed)
-                    Close(circuitDocument);
+                    Close(doc);
             }
             else
             {
                 // We don't care if the control was already unregistered. 'closed' should be true.
-                m_circuitControlRegistry.UnregisterControl(control);
+                _controlRegistry.UnregisterControl(control);
             }
             return closed;
         }
@@ -253,7 +226,7 @@ namespace MaterialTool
 
         private void control_HoverStarted(object sender, HoverEventArgs<object, object> e)
         {
-            m_hoverForm = GetHoverForm(e);
+            _hoverForm = GetHoverForm(e);
         }
 
         private HoverBase GetHoverForm(HoverEventArgs<object, object> e)
@@ -309,17 +282,16 @@ namespace MaterialTool
 
         private void control_HoverStopped(object sender, EventArgs e)
         {
-            if (m_hoverForm != null)
+            if (_hoverForm != null)
             {
-                m_hoverForm.Controls.Clear();
-                m_hoverForm.Close();
-                m_hoverForm.Dispose();
+                _hoverForm.Controls.Clear();
+                _hoverForm.Close();
+                _hoverForm.Dispose();
             }
         }
 
         [Import]
-        private CircuitControlRegistry m_circuitControlRegistry = null;
-        private HoverBase m_hoverForm;
-
+        private GraphControlRegistry _controlRegistry = null;
+        private HoverBase _hoverForm;
     }
 }
