@@ -96,7 +96,7 @@ namespace MaterialTool
                 typeof(Editor),                         // editor which manages circuit documents and controls
                 // typeof(SchemaLoader),                   // loads circuit schema and extends types
                 // typeof(GroupingCommands),               // circuit group/ungroup commands
-                typeof(GraphControlRegistry),         // circuit controls management
+                typeof(DiagramControlRegistry),         // circuit controls management
                 // typeof(LayeringCommands),               // "Add Layer" command
                 // typeof(GraphViewCommands),              // zooming with presets
                 typeof(PerformanceMonitor),             // displays the frame rate and memory usage
@@ -112,7 +112,10 @@ namespace MaterialTool
                 typeof(PythonService),                  // scripting service for automated tests
                 typeof(ScriptConsole),                  // provides a dockable command console for entering Python commands
                 typeof(AtfScriptVariables),             // exposes common ATF services as script variables
-                typeof(AutomationService)               // provides facilities to run an automated script using the .NET remoting service
+                typeof(AutomationService),              // provides facilities to run an automated script using the .NET remoting service
+
+                typeof(GUILayer.EngineDevice),
+                typeof(PreviewRender.Manager)
             );
 
             // enable use of the system clipboard
@@ -120,6 +123,13 @@ namespace MaterialTool
 
             // Set up the MEF container with these components
             var container = new CompositionContainer(catalog);
+
+            // This is bit wierd, but we're going to add the container to itself.
+            // This will create a tight circular dependency, of course
+            // It's also not ideal by the core DI pattern. 
+            // But it's useful for us, because we want to use the same container to construct
+            // objects (and also to retrieve global instances).
+            container.ComposeExportedValue<ExportProvider>(container);
 
             // Configure the main Form
             var batch = new CompositionBatch();

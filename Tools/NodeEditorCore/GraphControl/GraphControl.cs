@@ -57,7 +57,7 @@ namespace NodeEditorCore
             InvalidateShaderStructure(sender);
         }
 
-        private static IGraphModel LoadFromXML(System.IO.Stream stream)
+        private static IGraphModel LoadFromXML(System.IO.Stream stream, System.ComponentModel.Composition.Hosting.ExportProvider exportProvider)
         {
             var serializer = 
                 new System.Runtime.Serialization.DataContractSerializer(
@@ -69,14 +69,14 @@ namespace NodeEditorCore
                 {
                     var result = new GraphModel();
                     NodeEditorCore.ModelConversion.AddToHyperGraph(
-                        (ShaderPatcherLayer.NodeGraph)o, result, null);
+                        (ShaderPatcherLayer.NodeGraph)o, result, null, exportProvider);
                     return result;
                 }
             }
             return null;
         }
 
-        private static IGraphModel LoadFromShader(System.IO.Stream stream)
+        private static IGraphModel LoadFromShader(System.IO.Stream stream, System.ComponentModel.Composition.Hosting.ExportProvider exportProvider)
         {
             // the xml should be hidden within a comment in this file.
             //      look for a string between "NEStart{" XXX "}NEEnd"
@@ -90,19 +90,19 @@ namespace NodeEditorCore
                 if (matches.Count > 0 && matches[0].Groups.Count > 1)
                 {
                     var xmlString = matches[0].Groups[1].Value;
-                    return LoadFromXML(new System.IO.MemoryStream(System.Text.Encoding.ASCII.GetBytes(xmlString)));
+                    return LoadFromXML(new System.IO.MemoryStream(System.Text.Encoding.ASCII.GetBytes(xmlString)), exportProvider);
                 }
             }
 
             return null;
         }
 
-        public static HyperGraph.IGraphModel Load(string filename)
+        public static HyperGraph.IGraphModel Load(string filename, System.ComponentModel.Composition.Hosting.ExportProvider exportProvider)
         {
             System.IO.FileStream fileStream = new System.IO.FileStream(filename, System.IO.FileMode.Open);
             try
             {
-                return LoadFromShader(fileStream);
+                return LoadFromShader(fileStream, exportProvider);
             }
             finally
             {
@@ -294,9 +294,9 @@ namespace NodeEditorCore
                 var nodeId = ((ShaderFragmentNodeTag)n.Tag).Id;
 
                 // generate a preview builder for this specific node...
-                var nodeGraph = ConvertToShaderPatcherLayer();
-                var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, nodeId, "");
-                var builder = PreviewRender.Manager.Instance.CreatePreview(shader);
+                // var nodeGraph = ConvertToShaderPatcherLayer();
+                // var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, nodeId, "");
+                // var builder = PreviewRender.Manager.Instance.CreatePreview(shader);
 
                 // create a "LargePreview" window
                 // new LargePreview(builder, _document).Show();

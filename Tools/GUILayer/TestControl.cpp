@@ -11,6 +11,7 @@
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "IWindowRig.h"
+#include "DelayedDeleteQueue.h"
 #include "ExportedNativeTypes.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/InputTranslator.h"

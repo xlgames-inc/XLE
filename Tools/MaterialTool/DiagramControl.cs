@@ -8,9 +8,9 @@ using Sce.Atf.Controls.Adaptable;
 
 namespace MaterialTool
 {
-    class GraphControl : AdaptableControl
+    class DiagramControl : AdaptableControl
     {
-        public GraphControl(GraphEditingContext context)
+        public DiagramControl(DiagramEditingContext context)
         {
             Context = context;
 

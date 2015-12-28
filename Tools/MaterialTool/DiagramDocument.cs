@@ -12,7 +12,7 @@ namespace MaterialTool
     /// <summary>
     /// Adapts the circuit to IDocument and synchronizes URI and dirty bit changes to the
     /// ControlInfo instance used to register the viewing control in the UI</summary>
-    public class GraphDocument : GraphEditingContext, IDocument
+    public class DiagramDocument : DiagramEditingContext, IDocument
     {
         #region IDocument Members
         bool IDocument.IsReadOnly
@@ -95,6 +95,6 @@ namespace MaterialTool
 
         #endregion
 
-        public GraphDocument(HyperGraph.IGraphModel model) : base(model) {}
+        public DiagramDocument(HyperGraph.IGraphModel model, Uri uri) : base(model) { _uri = uri; }
     }
 }

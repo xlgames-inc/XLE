@@ -177,7 +177,10 @@ namespace NodeEditorCore
             return nodeItem.Type;
         }
 
-        public static void AddToHyperGraph(ShaderPatcherLayer.NodeGraph nodeGraph, HyperGraph.IGraphModel graph, ShaderDiagram.Document doc)
+        public static void AddToHyperGraph(
+            ShaderPatcherLayer.NodeGraph nodeGraph, 
+            HyperGraph.IGraphModel graph, ShaderDiagram.Document doc,
+            System.ComponentModel.Composition.Hosting.ExportProvider exportProvider)
         {
                 //
                 //      Convert from the "ShaderPatcherLayer" representation back to
@@ -206,7 +209,7 @@ namespace NodeEditorCore
                             if (fn != null)
                             {
                                 var visualNode = nodeGraph.VisualNodes[n.VisualNodeId];
-                                var newNode = ShaderFragmentNodeCreator.CreateNode(fn, n.FragmentArchiveName, graph, doc);
+                                var newNode = ShaderFragmentNodeCreator.CreateNode(fn, n.FragmentArchiveName, graph, doc, exportProvider);
                                 newNode.Location = visualNode.Location;
                                 newNode.Collapsed = visualNode.State == ShaderPatcherLayer.VisualNode.StateType.Collapsed;
                                 newNodes[n.VisualNodeId] = newNode;

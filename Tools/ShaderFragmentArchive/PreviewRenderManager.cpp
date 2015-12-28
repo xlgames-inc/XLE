@@ -14,6 +14,12 @@
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../../SceneEngine/LightingParserContext.h"
 
+#include "../../RenderCore/IDevice_Forward.h"
+#include "../../RenderCore/ShaderService.h" // for RenderCore::ShaderService::IShaderSource
+#include "../../RenderCore/Techniques/Techniques.h"
+#include "../GUILayer/NativeEngineDevice.h"
+#include "../GUILayer/CLIXAutoPtr.h"
+
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Shader.h"
@@ -31,24 +37,71 @@
 #include "../../Math/Transformations.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Conversion.h"
+#include <memory>
+
+using namespace System::ComponentModel::Composition;
 
 namespace PreviewRender
 {
+    [Export(IManager::typeid)]
+    [Export(Manager::typeid)]
+    [PartCreationPolicy(CreationPolicy::Shared)]
+    public ref class Manager : IManager
+    {
+    public:
+        virtual IPreviewBuilder^ CreatePreviewBuilder(System::String^ shaderText);
+
+        void                    RotateLightDirection(ShaderDiagram::Document^ doc, System::Drawing::PointF rotationAmount);
+        RenderCore::IDevice*    GetDevice();
+        auto                    GetGlobalTechniqueContext() -> RenderCore::Techniques::TechniqueContext*;
+        void                    Update();
+
+        [ImportingConstructor]
+        Manager(GUILayer::EngineDevice^ engineDevice);
+    private:
+        clix::auto_ptr<ManagerPimpl> _pimpl;
+
+        ~Manager();
+    };
+
     class ManagerPimpl
     {
     public:
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
-        std::unique_ptr<RenderCore::Assets::Services> _renderAssetsServices;
+        // std::unique_ptr<RenderCore::Assets::Services> _renderAssetsServices;
         std::shared_ptr<RenderCore::IDevice> _device;
-        std::unique_ptr<::Assets::Services> _assetServices;
-        std::unique_ptr<ConsoleRig::GlobalServices> _services;
+        // std::unique_ptr<::Assets::Services> _assetServices;
+        // std::unique_ptr<ConsoleRig::GlobalServices> _services;
         std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
+        BufferUploads::IManager* _uploads;
+    };
+
+    public ref class PreviewBuilder : IPreviewBuilder
+    {
+    public:
+        virtual System::Drawing::Bitmap^ Build(
+            ShaderDiagram::Document^ doc, Size^ size, PreviewGeometry geometry);
+
+        PreviewBuilder(
+            std::shared_ptr<RenderCore::ShaderService::IShaderSource> shaderSource, 
+            std::shared_ptr<RenderCore::Techniques::TechniqueContext> techContext,
+            std::shared_ptr<RenderCore::IDevice> device,
+            BufferUploads::IManager& uploads,
+            System::String^ shaderText);
+        ~PreviewBuilder();
+    private:
+        PreviewBuilderPimpl*        _pimpl;
+
+        System::Drawing::Bitmap^    GenerateErrorBitmap(const char str[], Size^ size);
     };
 
     class PreviewBuilderPimpl
     {
     public:
         std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
+        std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techContext;
+        std::shared_ptr<RenderCore::IDevice> _device;
+        BufferUploads::IManager* _uploads;
         std::string _shaderText;
     };
 
@@ -136,9 +189,9 @@ namespace PreviewRender
     MaterialBinder::~MaterialBinder() {}
 
     static std::pair<DrawPreviewResult, std::string> DrawPreview(
-        RenderCore::IThreadContext& context, 
+        RenderCore::IThreadContext& context,
         PreviewBuilderPimpl& builder, 
-        PreviewBuilder::PreviewGeometry geometry,
+        PreviewGeometry geometry,
         ShaderDiagram::Document^ doc)
     {
         using namespace ToolsRig;
@@ -180,28 +233,26 @@ namespace PreviewRender
             // In the "chart" mode, we are just going to run a pixel shader for every
             // output pixel, so we want to use a pretransformed quad covering the viewport
             switch (geometry) {
-            case PreviewBuilder::PreviewGeometry::Chart:
+            case PreviewGeometry::Chart:
                 visSettings._geometryType = MaterialVisSettings::GeometryType::Plane2D;
                 visObject._parameters._matParams.SetParameter(u("GEO_PRETRANSFORMED"), "1");
                 break;
 
-            case PreviewBuilder::PreviewGeometry::Box:
+            case PreviewGeometry::Box:
                 visSettings._geometryType = MaterialVisSettings::GeometryType::Cube;
                 break;
 
             default:
-            case PreviewBuilder::PreviewGeometry::Sphere:
+            case PreviewGeometry::Sphere:
                 visSettings._geometryType = MaterialVisSettings::GeometryType::Sphere;
                 break;
 
-            case PreviewBuilder::PreviewGeometry::Model:
+            case PreviewGeometry::Model:
                 visSettings._geometryType = MaterialVisSettings::GeometryType::Model;
                 break;
             };
 
-            SceneEngine::LightingParserContext parserContext(
-                *Manager::Instance->GetGlobalTechniqueContext());
-
+            SceneEngine::LightingParserContext parserContext(*builder._techContext);
             bool result = ToolsRig::MaterialVisLayer::Draw(
                 context, parserContext, 
                 visSettings, VisEnvSettings(), visObject);
@@ -234,16 +285,15 @@ namespace PreviewRender
         return newBitmap;
     }
 
-    System::Drawing::Bitmap^    PreviewBuilder::GenerateBitmap(
+    System::Drawing::Bitmap^    PreviewBuilder::Build(
         ShaderDiagram::Document^ doc, Size^ size, PreviewGeometry geometry)
     {
+        using namespace RenderCore;
+
         const int width = std::max(0, int(size->Width));
         const int height = std::max(0, int(size->Height));
 
-        using namespace RenderCore;
-        auto context = Manager::Instance->GetDevice()->GetImmediateContext();
-
-        auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
+        auto& uploads = *_pimpl->_uploads;
         auto targetTexture = uploads.Transaction_Immediate(
             BufferUploads::CreateDesc(
                 BufferUploads::BindFlag::RenderTarget,
@@ -255,6 +305,7 @@ namespace PreviewRender
 
         Metal::RenderTargetView targetRTV(targetTexture->GetUnderlying());
 
+        auto context = _pimpl->_device->GetImmediateContext();
         auto metalContext = Metal::DeviceContext::Get(*context);
         float clearColor[] = { 0.05f, 0.05f, 0.2f, 1.f };
         metalContext->Clear(targetRTV, clearColor);
@@ -304,24 +355,19 @@ namespace PreviewRender
         return nullptr;
     }
 
-    void    PreviewBuilder::Update(ShaderDiagram::Document^ doc, Size^ size, PreviewGeometry geometry)
-    {
-        _bitmap = GenerateBitmap(doc, size, geometry);
-    }
-
-    void    PreviewBuilder::Invalidate()
-    {
-        delete _bitmap;
-        _bitmap = nullptr;
-    }
-
     PreviewBuilder::PreviewBuilder(
         std::shared_ptr<RenderCore::ShaderService::IShaderSource> shaderSource, 
+        std::shared_ptr<RenderCore::Techniques::TechniqueContext> techContext,
+        std::shared_ptr<RenderCore::IDevice> device,
+        BufferUploads::IManager& uploads,
         System::String^ shaderText)
     {
         _pimpl = new PreviewBuilderPimpl();
         _pimpl->_shaderText = clix::marshalString<clix::E_UTF8>(shaderText);
         _pimpl->_shaderSource = std::move(shaderSource);
+        _pimpl->_techContext = std::move(techContext);
+        _pimpl->_device = std::move(device);
+        _pimpl->_uploads = &uploads;
     }
 
     PreviewBuilder::~PreviewBuilder()
@@ -329,9 +375,12 @@ namespace PreviewRender
         delete _pimpl;
     }
 
-    PreviewBuilder^    Manager::CreatePreview(System::String^ shaderText)
+    IPreviewBuilder^    Manager::CreatePreviewBuilder(System::String^ shaderText)
     {
-        return gcnew PreviewBuilder(_pimpl->_shaderSource, shaderText);
+        return gcnew PreviewBuilder(
+            _pimpl->_shaderSource, _pimpl->_globalTechniqueContext, 
+            _pimpl->_device, *_pimpl->_uploads,
+            shaderText);
     }
 
     void                    Manager::RotateLightDirection(ShaderDiagram::Document^ doc, System::Drawing::PointF rotationAmount)
@@ -358,9 +407,9 @@ namespace PreviewRender
 
     void Manager::Update()
     {
-        ::Assets::Services::GetAsyncMan().Update();
-        RenderCore::Assets::Services::GetBufferUploads().Update(
-            *_pimpl->_device->GetImmediateContext());
+        // ::Assets::Services::GetAsyncMan().Update();
+        // RenderCore::Assets::Services::GetBufferUploads().Update(
+        //     *_pimpl->_device->GetImmediateContext());
     }
 
     RenderCore::Techniques::TechniqueContext* Manager::GetGlobalTechniqueContext()
@@ -368,28 +417,23 @@ namespace PreviewRender
         return _pimpl->_globalTechniqueContext.get();
     }
 
-    static Manager::Manager()
-    {
-        _instance = nullptr;
-    }
+    // static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
 
-    void Manager::Shutdown()
+    Manager::Manager(GUILayer::EngineDevice^ engineDevice)
     {
-        delete _instance;
-        _instance = nullptr;
-    }
-
-    Manager::Manager()
-    {
-        _pimpl = new ManagerPimpl;
+        // s_attachRef = engineDevice->GetNative().GetGlobalServices()->Attach();
         
-        ConsoleRig::StartupConfig cfg;
-        cfg._applicationName = clix::marshalString<clix::E_UTF8>(System::Windows::Forms::Application::ProductName);
-        _pimpl->_services = std::make_unique<ConsoleRig::GlobalServices>(cfg);
+        _pimpl.reset(new ManagerPimpl());
+        _pimpl->_device = engineDevice->GetNative().GetRenderDevice();
+        _pimpl->_uploads = &engineDevice->GetNative().GetRenderAssetServices()->GetBufferUploadsInstance();
 
-        _pimpl->_device = RenderCore::CreateDevice();
-        _pimpl->_assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
-        _pimpl->_renderAssetsServices = std::make_unique<RenderCore::Assets::Services>(_pimpl->_device.get());
+        // ConsoleRig::StartupConfig cfg;
+        // cfg._applicationName = clix::marshalString<clix::E_UTF8>(System::Windows::Forms::Application::ProductName);
+        // _pimpl->_services = std::make_unique<ConsoleRig::GlobalServices>(cfg);
+
+        // _pimpl->_device = RenderCore::CreateDevice();
+        // _pimpl->_assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
+        // _pimpl->_renderAssetsServices = std::make_unique<RenderCore::Assets::Services>(_pimpl->_device.get());
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
         _pimpl->_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
             RenderCore::Metal::CreateLowLevelShaderCompiler());
@@ -397,21 +441,23 @@ namespace PreviewRender
 
     Manager::~Manager()
     {
-        System::GC::Collect();
-        System::GC::WaitForPendingFinalizers();
-        // DelayedDeleteQueue::FlushQueue();
-
-        RenderCore::Techniques::ResourceBoxes_Shutdown();
-        // RenderOverlays::CleanupFontSystem();
-        _pimpl->_assetServices->GetAssetSets().Clear();
-        Assets::Dependencies_Shutdown();
+        _pimpl->_shaderSource.reset();
         _pimpl->_globalTechniqueContext.reset();
-        _pimpl->_renderAssetsServices.reset();
-        _pimpl->_assetServices.reset();
-        _pimpl->_device.reset();
-        _pimpl->_services.reset();
-        delete _pimpl;
-        TerminateFileSystemMonitoring();
+        // System::GC::Collect();
+        // System::GC::WaitForPendingFinalizers();
+        // // DelayedDeleteQueue::FlushQueue();
+        // 
+        // RenderCore::Techniques::ResourceBoxes_Shutdown();
+        // // RenderOverlays::CleanupFontSystem();
+        // _pimpl->_assetServices->GetAssetSets().Clear();
+        // Assets::Dependencies_Shutdown();
+        // _pimpl->_globalTechniqueContext.reset();
+        // _pimpl->_renderAssetsServices.reset();
+        // _pimpl->_assetServices.reset();
+        // _pimpl->_device.reset();
+        // _pimpl->_services.reset();
+        // delete _pimpl;
+        // TerminateFileSystemMonitoring();
     }
 
 

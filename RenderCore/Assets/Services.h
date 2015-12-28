@@ -31,6 +31,8 @@ namespace RenderCore { namespace Assets
 
         Services(const Services&) = delete;
         const Services& operator=(const Services&) = delete;
+
+        BufferUploads::IManager& GetBufferUploadsInstance() { return *_bufferUploads; }
     protected:
         std::unique_ptr<BufferUploads::IManager> _bufferUploads;
         std::unique_ptr<ShaderService> _shaderService;

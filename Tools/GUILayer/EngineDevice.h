@@ -7,9 +7,10 @@
 #pragma once
 
 #include "../../RenderCore/IThreadContext_Forward.h"
-#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include <memory>
+
+using namespace System::ComponentModel::Composition;
 
 namespace GUILayer
 {
@@ -25,10 +26,13 @@ namespace GUILayer
     /// CLI objects -- but we do need them to provide interfaces that can be used
     /// from GUI elements. This creates a kind of balancing act between what should
     /// go in "ref class" objects and plain native objects.
+    [Export(EngineDevice::typeid)]
+    [PartCreationPolicy(CreationPolicy::Shared)]
     public ref class EngineDevice
     {
     public:
         static EngineDevice^ GetInstance() { return s_instance; }
+
         static void SetDefaultWorkingDirectory();
         NativeEngineDevice& GetNative() { return *_pimpl; }
 
@@ -39,8 +43,9 @@ namespace GUILayer
 
         EngineDevice();
         ~EngineDevice();
+        !EngineDevice();
     protected:
-        clix::auto_ptr<NativeEngineDevice> _pimpl;
+        NativeEngineDevice* _pimpl;
 
         static EngineDevice^ s_instance;
     };

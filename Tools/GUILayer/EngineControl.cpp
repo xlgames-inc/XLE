@@ -10,6 +10,7 @@
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "IWindowRig.h"
+#include "DelayedDeleteQueue.h"
 #include "ExportedNativeTypes.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlappedWindow.h"
@@ -36,7 +37,7 @@ namespace GUILayer
     void EngineControl::Render()
     {
         auto engineDevice = EngineDevice::GetInstance();
-        auto* renderDevice = engineDevice->GetNative().GetRenderDevice();
+        auto* renderDevice = engineDevice->GetNative().GetRenderDevice().get();
         auto immediateContext = renderDevice->GetImmediateContext();
         Render(*immediateContext.get(), *_pimpl->_windowRig.get());
 

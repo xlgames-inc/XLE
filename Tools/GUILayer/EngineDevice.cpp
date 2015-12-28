@@ -8,6 +8,7 @@
 #include "NativeEngineDevice.h"
 #include "MarshalString.h"
 #include "WindowRigInternal.h"
+#include "DelayedDeleteQueue.h"
 #include "ExportedNativeTypes.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../PlatformRig/FrameRig.h"
@@ -126,8 +127,8 @@ namespace GUILayer
     EngineDevice::EngineDevice()
     {
         assert(s_instance == nullptr);
-        _pimpl.reset(new NativeEngineDevice);
-        RenderOverlays::InitFontSystem(_pimpl->GetRenderDevice(), _pimpl->GetBufferUploads());
+        _pimpl = new NativeEngineDevice;
+        RenderOverlays::InitFontSystem(_pimpl->GetRenderDevice().get(), _pimpl->GetBufferUploads());
         s_instance = this;
     }
 
@@ -148,8 +149,15 @@ namespace GUILayer
         if (_pimpl->GetAssetServices())
             _pimpl->GetAssetServices()->GetAssetSets().Clear();
         Assets::Dependencies_Shutdown();
-        _pimpl.reset();
+        delete _pimpl;
+        _pimpl = nullptr;
         TerminateFileSystemMonitoring();
+    }
+
+    EngineDevice::!EngineDevice() 
+    {
+        delete _pimpl;
+        _pimpl = nullptr;
     }
 }
 

@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Composition;
 using System.Linq;
 using System.Text;
 using System.Drawing;
@@ -130,12 +131,14 @@ namespace NodeEditorCore
 
     public class ShaderFragmentPreviewItem : NodeItem 
     {
-        public ShaderFragmentPreviewItem(HyperGraph.IGraphModel graph, ShaderDiagram.Document doc)
+        public ShaderFragmentPreviewItem(HyperGraph.IGraphModel graph, ShaderDiagram.Document doc, PreviewRender.IManager previewManager)
         {
             _graph = graph; 
             _document = doc; 
             _builder = null;
-            Geometry = PreviewRender.PreviewBuilder.PreviewGeometry.Sphere;
+            _cachedBitmap = null;
+            _previewManager = previewManager;
+            Geometry = PreviewRender.PreviewGeometry.Sphere;
             OutputToVisualize = "";
         }
 
@@ -147,13 +150,15 @@ namespace NodeEditorCore
                 if (!graphics.IsVisible(new Rectangle() {X = (int)location.X, Y = (int)location.Y, Width = (int)size.Width, Height = (int)size.Height }))
                     return;
 
-                PreviewRender.Manager.Instance.Update();
+                // PreviewRender.Manager.Instance.Update();
 
                 if (_builder == null)
                 {
                     var nodeGraph = ModelConversion.ToShaderPatcherLayer(_graph);
-                    var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id, OutputToVisualize);
-                    _builder = PreviewRender.Manager.Instance.CreatePreview(shader);
+                    var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(
+                        nodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id, OutputToVisualize);
+
+                    _builder = _previewManager.CreatePreviewBuilder(shader);
                 }
 
                 if (_builder == null)
@@ -161,31 +166,29 @@ namespace NodeEditorCore
                 
                     // (assuming no rotation on this transformation -- scale is easy to find)
                 Size idealSize = new Size((int)(graphics.Transform.Elements[0] * size.Width), (int)(graphics.Transform.Elements[3] * size.Height));
-                if (_builder.Bitmap != null) {
+                if (_cachedBitmap != null)
+                {
                         // compare the current bitmap size to the size we'd like
-                    Size bitmapSize = _builder.Bitmap.Size;
+                    Size bitmapSize = _cachedBitmap.Size;
                     float difference = System.Math.Max(System.Math.Abs(1.0f - bitmapSize.Width / (float)(idealSize.Width)), System.Math.Abs(1.0f - bitmapSize.Height / (float)(idealSize.Height)));
-                    if (difference > 0.1f) {
-                        _builder.Invalidate();
-                    }
+                    if (difference > 0.1f)
+                        _cachedBitmap = null;
                 }
 
-                if (_builder.Bitmap==null) {
-                    _builder.Update(_document, idealSize, Geometry);
-                }
+                if (_cachedBitmap == null)
+                    _cachedBitmap = _builder.Build(_document, idealSize, Geometry);
 
-                if (_builder.Bitmap!=null) {
-                    graphics.DrawImage(_builder.Bitmap, new RectangleF() { X = location.X, Y = location.Y, Width = size.Width, Height = size.Height });
-                }
+                if (_cachedBitmap != null)
+                    graphics.DrawImage(_cachedBitmap, new RectangleF() { X = location.X, Y = location.Y, Width = size.Width, Height = size.Height });
             }
         }
 
         public override SizeF   Measure(Graphics graphics) { return new SizeF(196, 196); }
         public override void    RenderConnector(Graphics graphics, RectangleF bounds) { }
 
-        public void InvalidateShaderStructure()     { _builder = null; }
-        public void InvalidateParameters()          { if (_builder!=null) _builder.Invalidate(); }
-        public void InvalidateAttachedConstants()   { _builder = null;  /* required complete rebuild of shader */ }
+        public void InvalidateShaderStructure() { _cachedBitmap = null; _builder = null; }
+        public void InvalidateParameters() { _cachedBitmap = null; }
+        public void InvalidateAttachedConstants() { _cachedBitmap = null; _builder = null;  /* required complete rebuild of shader */ }
 
         public override bool OnStartDrag(PointF location, out PointF original_location)
         {
@@ -197,7 +200,7 @@ namespace NodeEditorCore
         public override bool OnDrag(PointF location)
         {
             base.OnDrag(location);
-            PreviewRender.Manager.Instance.RotateLightDirection(_document, new PointF(location.X - _lastDragLocation.X, location.Y - _lastDragLocation.Y));
+            // PreviewRender.Manager.Instance.RotateLightDirection(_document, new PointF(location.X - _lastDragLocation.X, location.Y - _lastDragLocation.Y));
             _lastDragLocation = location;
             InvalidateParameters();
             return true;
@@ -205,15 +208,17 @@ namespace NodeEditorCore
 
         public override bool OnEndDrag() { base.OnEndDrag(); return true; }
 
-        public PreviewRender.PreviewBuilder.PreviewGeometry Geometry { get { return _previewGeometry; } set { _previewGeometry = value; InvalidateParameters(); } }
+        public PreviewRender.PreviewGeometry Geometry { get { return _previewGeometry; } set { _previewGeometry = value; InvalidateParameters(); } }
         public string OutputToVisualize { get { return _outputToVisualize; } set { _outputToVisualize = value; InvalidateShaderStructure(); } }
 
         private HyperGraph.IGraphModel          _graph;
         private ShaderDiagram.Document          _document;
-        private PreviewRender.PreviewBuilder    _builder;
+        private PreviewRender.IPreviewBuilder   _builder;
         private PointF                          _lastDragLocation;
+        private PreviewRender.IManager          _previewManager;
 
-        private PreviewRender.PreviewBuilder.PreviewGeometry _previewGeometry;
+        private System.Drawing.Bitmap           _cachedBitmap;
+        private PreviewRender.PreviewGeometry   _previewGeometry;
         private string _outputToVisualize;
     }
 
@@ -293,10 +298,10 @@ namespace NodeEditorCore
         {
             PreviewGeoNames = new Dictionary<Enum, string>
             {
-                { PreviewRender.PreviewBuilder.PreviewGeometry.Chart, "Chart" },
-                { PreviewRender.PreviewBuilder.PreviewGeometry.Box, "Box" },
-                { PreviewRender.PreviewBuilder.PreviewGeometry.Sphere, "Sphere" },
-                { PreviewRender.PreviewBuilder.PreviewGeometry.Model, "Model" }
+                { PreviewRender.PreviewGeometry.Chart, "Chart" },
+                { PreviewRender.PreviewGeometry.Box, "Box" },
+                { PreviewRender.PreviewGeometry.Sphere, "Sphere" },
+                { PreviewRender.PreviewGeometry.Model, "Model" }
             };
 
             ParamSourceTypeNames = new Dictionary<Enum, string>
@@ -343,12 +348,16 @@ namespace NodeEditorCore
             return Tuple.Create(typeNames, selectedIndex);
         }
 
-        public static Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName, HyperGraph.IGraphModel graph, ShaderDiagram.Document doc)
+        public static Node CreateNode(
+            ShaderFragmentArchive.Function fn, String archiveName, 
+            HyperGraph.IGraphModel graph, ShaderDiagram.Document doc,
+            System.ComponentModel.Composition.Hosting.ExportProvider exportProvider)
         {
             var node = new Node(fn.Name);
             node.Tag = new ShaderProcedureNodeTag(archiveName);
 
-            var previewItem = new ShaderFragmentPreviewItem(graph, doc);
+            var previewManager = exportProvider.GetExport<PreviewRender.IManager>();
+            var previewItem = new ShaderFragmentPreviewItem(graph, doc, previewManager.Value);
             node.AddItem(previewItem);
 
             // Drop-down selection box for "preview mode"
@@ -361,7 +370,7 @@ namespace NodeEditorCore
                     if (sender is HyperGraph.Items.NodeDropDownItem)
                     {
                         var item = (HyperGraph.Items.NodeDropDownItem)sender;
-                        previewItem.Geometry = AsEnumValue<PreviewRender.PreviewBuilder.PreviewGeometry>(item.Items[args.Index], PreviewGeoNames);
+                        previewItem.Geometry = AsEnumValue<PreviewRender.PreviewGeometry>(item.Items[args.Index], PreviewGeoNames);
                     }
                 };
 

@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.ComponentModel.Composition.Hosting;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -84,7 +85,7 @@ namespace MaterialTool
 
                 m_contextRegistry.ActiveContextChanged += delegate
                 {
-                    var editingContext = m_contextRegistry.GetActiveContext<GraphEditingContext>();
+                    var editingContext = m_contextRegistry.GetActiveContext<DiagramEditingContext>();
                     // ViewingContext viewContext = m_contextRegistry.GetActiveContext<ViewingContext>();
                     IHistoryContext hist = m_contextRegistry.GetActiveContext<IHistoryContext>();
                     m_scriptingService.SetVariable("editingContext", editingContext);
@@ -121,35 +122,24 @@ namespace MaterialTool
         public IDocument Open(Uri uri)
         {
             var filePath = uri.LocalPath;
-            if (File.Exists(filePath))
-            {
-                // Try to load this document...
-                var graph = NodeEditorCore.GraphHelpers.Load(filePath);
-                NodeEditorCore.GraphHelpers.SetupDefaultHandlers(graph);
-
-                var doc = new GraphDocument(graph);
-
-                // Create a control for the new document
-                string fileName = Path.GetFileName(filePath);
-                ControlInfo controlInfo = new ControlInfo(fileName, filePath, StandardControlGroup.Center);
-                controlInfo.IsDocument = true;
-
-                var control = CreateGraphControl(doc);
-                // doc.ControlInfo = controlInfo;
-                // doc.Uri = uri;
-
-                _controlRegistry.RegisterControl(doc, control, controlInfo, this);
-                return doc;
+            HyperGraph.IGraphModel graph;
+            if (File.Exists(filePath)) {
+                graph = NodeEditorCore.GraphHelpers.Load(filePath, _exportProvider);
+            } else {
+                graph = new HyperGraph.GraphModel();
             }
-            else
-            {
-                return null;
-            }
-        }
 
-        internal AdaptableControl CreateGraphControl(GraphEditingContext context)
-        {
-            return new GraphControl(context);
+            NodeEditorCore.GraphHelpers.SetupDefaultHandlers(graph);
+
+            var doc = new DiagramDocument(graph, uri);
+
+                // Create a control for the new document, and register it!
+            _controlRegistry.RegisterControl(
+                doc,
+                new DiagramControl(doc), 
+                new ControlInfo(Path.GetFileName(filePath), filePath, StandardControlGroup.Center) { IsDocument = true }, 
+                this);
+            return doc;
         }
 
         public void Show(IDocument document)
@@ -160,7 +150,7 @@ namespace MaterialTool
 
         public void Save(IDocument document, Uri uri)
         {
-            var circuitDocument = (GraphDocument)document;
+            var circuitDocument = (DiagramDocument)document;
             string filePath = uri.LocalPath;
             FileMode fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.OpenOrCreate;
             using (FileStream stream = new FileStream(filePath, fileMode))
@@ -197,7 +187,7 @@ namespace MaterialTool
             var adaptableControl = (AdaptableControl)control;
 
             bool closed = true;
-            var doc = adaptableControl.ContextAs<GraphDocument>();
+            var doc = adaptableControl.ContextAs<DiagramDocument>();
             if (doc != null)
             {
                 closed = m_documentService.Close(doc);
@@ -291,7 +281,10 @@ namespace MaterialTool
         }
 
         [Import]
-        private GraphControlRegistry _controlRegistry = null;
+        private DiagramControlRegistry _controlRegistry = null;
         private HoverBase _hoverForm;
+
+        [Import]
+        private ExportProvider _exportProvider;
     }
 }

@@ -19,7 +19,7 @@ namespace GUILayer
     class NativeEngineDevice
     {
     public:
-        RenderCore::IDevice*        GetRenderDevice() { return _renderDevice.get(); }
+        const std::shared_ptr<RenderCore::IDevice>&        GetRenderDevice() { return _renderDevice; }
         BufferUploads::IManager*    GetBufferUploads();
         ::Assets::Services*         GetAssetServices() { return _assetServices.get(); }
         std::unique_ptr<IWindowRig> CreateWindowRig(const void* nativeWindowHandle);
@@ -27,6 +27,7 @@ namespace GUILayer
         RenderCore::IThreadContext* GetImmediateContext();
         ConsoleRig::GlobalServices* GetGlobalServices() { return _services.get(); }
         int                         GetCreationThreadId() { return _creationThreadId; }
+        RenderCore::Assets::Services* GetRenderAssetServices() { return _renderAssetsServices.get(); }
 
         NativeEngineDevice();
         ~NativeEngineDevice();
