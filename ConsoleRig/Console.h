@@ -46,11 +46,9 @@ namespace ConsoleRig
         Console(Console&&) = delete;
         Console& operator=(Console&&) = delete;
     private:
-        std::vector<std::u16string>     _lines;
-        bool                            _lastLineComplete;
-        std::unique_ptr<LuaState>       _lua;
-        std::unique_ptr<ConsoleVariableStorage> _cvars;
-        static Console*     s_instance;
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+        static Console* s_instance;
     };
 
     // template <typename Type> class ConsoleVariable;

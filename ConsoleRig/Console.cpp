@@ -92,6 +92,18 @@ namespace ConsoleRig
 
             //////   C O R E   C O N S O L E   B E H A V I O U R   //////
 
+    class Console::Pimpl
+    {
+    public:
+        std::vector<std::u16string> _lines;
+        bool _lastLineComplete;
+        std::unique_ptr<LuaState> _lua;
+        std::unique_ptr<ConsoleVariableStorage> _cvars;
+
+        int _dummyValue;
+        ConsoleVariable<int> _dummyVar;
+    };
+
     Console*        Console::s_instance = nullptr;
 
     void            Console::Execute(const std::string& str)
@@ -100,7 +112,7 @@ namespace ConsoleRig
 
         lua_State* L = GetLuaState();
         luaL_loadstring(L, str.c_str());
-        int errorCode = _lua->PCall(0, 0);
+        int errorCode = _pimpl->_lua->PCall(0, 0);
         if (errorCode != LUA_OK) {
             const char* msg = lua_tostring(L, -1);
             if (msg) {
@@ -244,7 +256,7 @@ namespace ConsoleRig
         if (!this) return;  // hack!
         std::u16string::size_type currentOffset = 0;
         std::u16string::size_type stringLength = message.size();
-        bool lastLineComplete = _lastLineComplete;
+        bool lastLineComplete = _pimpl->_lastLineComplete;
 
         while (currentOffset < stringLength) {
             const std::u16string::size_type start = currentOffset;
@@ -260,10 +272,10 @@ namespace ConsoleRig
             }
 
             if (end > start) {
-                if (!lastLineComplete && !_lines.empty()) {
-                    _lines[_lines.size()-1] += message.substr(start, end-start);
+                if (!lastLineComplete && !_pimpl->_lines.empty()) {
+                    _pimpl->_lines[_pimpl->_lines.size()-1] += message.substr(start, end-start);
                 } else {
-                    _lines.push_back(message.substr(start, end-start));
+                    _pimpl->_lines.push_back(message.substr(start, end-start));
                 }
 
                 lastLineComplete = completeLine;
@@ -275,13 +287,13 @@ namespace ConsoleRig
             }
         }
 
-        _lastLineComplete = lastLineComplete;
+        _pimpl->_lastLineComplete = lastLineComplete;
     }
 
     std::vector<std::u16string>    Console::GetLines(unsigned lineCount, unsigned scrollback)
     {
         std::vector<std::u16string> result;
-        signed linesToGet = std::max(0, std::min(signed(lineCount), signed(_lines.size())-signed(scrollback)));
+        signed linesToGet = std::max(0, std::min(signed(lineCount), signed(_pimpl->_lines.size())-signed(scrollback)));
         result.reserve(linesToGet);
 
         if (linesToGet <= 0) {
@@ -289,7 +301,7 @@ namespace ConsoleRig
         }
 
         std::copy(
-            _lines.end() - scrollback - linesToGet, _lines.end() - scrollback,
+            _pimpl->_lines.end() - scrollback - linesToGet, _pimpl->_lines.end() - scrollback,
             std::back_inserter(result));
 
         return result;
@@ -297,17 +309,17 @@ namespace ConsoleRig
 
     unsigned Console::GetLineCount() const
     {
-        return unsigned(_lines.size());
+        return unsigned(_pimpl->_lines.size());
     }
 
     lua_State*  Console::GetLuaState()
     {
-        return _lua->GetUnderlying();
+        return _pimpl->_lua->GetUnderlying();
     }
 
     ConsoleVariableStorage&  Console::GetCVars()
     {
-        return *_cvars;
+        return *_pimpl->_cvars;
     }
 
     void Console::SetInstance(Console* newInstance)
@@ -318,19 +330,27 @@ namespace ConsoleRig
 
     Console::Console()  
     {
-        _lastLineComplete = false;
-        _lines.push_back(std::u16string());
-        _lua = std::make_unique<LuaState>();
-        _cvars = std::make_unique<ConsoleVariableStorage>();
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_lastLineComplete = false;
+        _pimpl->_lines.push_back(std::u16string());
+        _pimpl->_lua = std::make_unique<LuaState>();
+        _pimpl->_cvars = std::make_unique<ConsoleVariableStorage>();
 
         assert(!s_instance);
         s_instance = this;
+
+        // HACK --  getting some memory allocation problems across DLL boundaries sometimes
+        //          It seems to be resolved if we allocate the first console variable in the
+        //          main module.
+        _pimpl->_dummyValue = 1;
+        _pimpl->_dummyVar = ConsoleVariable<int>("dummy", _pimpl->_dummyValue);
     }
 
     Console::~Console() 
     {
-        _cvars.reset();
-        _lua.reset();
+        _pimpl->_cvars.reset();
+        _pimpl->_lua.reset();
+        _pimpl.reset();
         assert(s_instance==this);
         s_instance = nullptr;
     }
