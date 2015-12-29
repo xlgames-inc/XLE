@@ -11,11 +11,13 @@
 using namespace System;
 using namespace System::Collections::Generic;
 using namespace System::ComponentModel;
+using namespace System::ComponentModel::Composition;
 
 namespace ShaderSourceParser { class FunctionSignature; class ParameterStructSignature; }
 namespace Utility { class OnChangeCallback; }
 
-namespace ShaderFragmentArchive {
+namespace ShaderFragmentArchive 
+{
 
         ///////////////////////////////////////////////////////////////
     public ref class Function
@@ -99,16 +101,19 @@ namespace ShaderFragmentArchive {
 	};
 
         ///////////////////////////////////////////////////////////////
+    [Export(Archive::typeid)]
+    [PartCreationPolicy(CreationPolicy::Shared)]
     public ref class Archive
     {
     public: 
-        static ShaderFragment^      GetFragment(String^ name);
-        static Function^            GetFunction(String^ name);
-        static ParameterStruct^     GetParameterStruct(String^ name);
-        static Parameter^           GetParameter(String^ name);
+        ShaderFragment^      GetFragment(String^ name);
+        Function^            GetFunction(String^ name);
+        ParameterStruct^     GetParameterStruct(String^ name);
+        Parameter^           GetParameter(String^ name);
+
+        Archive();
     private:
-        static System::Collections::Generic::Dictionary<String^, ShaderFragment^>^    _dictionary;
-        static Archive();
+        Dictionary<String^, ShaderFragment^>^    _dictionary;
     };
     
 }

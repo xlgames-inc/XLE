@@ -436,9 +436,9 @@ namespace ShaderFragmentArchive
         return nullptr;
     }
 
-    static Archive::Archive()
+    Archive::Archive()
     {
-        _dictionary          = gcnew System::Collections::Generic::Dictionary<String^, ShaderFragment^>(StringComparer::CurrentCultureIgnoreCase);
+        _dictionary = gcnew Dictionary<String^, ShaderFragment^>(StringComparer::CurrentCultureIgnoreCase);
     }
 
 }

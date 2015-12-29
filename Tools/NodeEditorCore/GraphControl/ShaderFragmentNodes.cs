@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.ComponentModel.Composition.Hosting;
 using System.Linq;
 using System.Text;
 using System.Drawing;
@@ -131,13 +132,16 @@ namespace NodeEditorCore
 
     public class ShaderFragmentPreviewItem : NodeItem 
     {
-        public ShaderFragmentPreviewItem(HyperGraph.IGraphModel graph, ShaderDiagram.Document doc, PreviewRender.IManager previewManager)
+        public ShaderFragmentPreviewItem(
+            HyperGraph.IGraphModel graph, ShaderDiagram.Document doc, 
+            ExportProvider exportProvider)
         {
             _graph = graph; 
             _document = doc; 
             _builder = null;
             _cachedBitmap = null;
-            _previewManager = previewManager;
+            _previewManager = exportProvider.GetExport<PreviewRender.IManager>().Value;
+            _converter = exportProvider.GetExport<IModelConversion>().Value;
             Geometry = PreviewRender.PreviewGeometry.Sphere;
             OutputToVisualize = "";
         }
@@ -154,7 +158,7 @@ namespace NodeEditorCore
 
                 if (_builder == null)
                 {
-                    var nodeGraph = ModelConversion.ToShaderPatcherLayer(_graph);
+                    var nodeGraph = _converter.ToShaderPatcherLayer(_graph);
                     var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(
                         nodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id, OutputToVisualize);
 
@@ -216,6 +220,7 @@ namespace NodeEditorCore
         private PreviewRender.IPreviewBuilder   _builder;
         private PointF                          _lastDragLocation;
         private PreviewRender.IManager          _previewManager;
+        private IModelConversion                _converter;
 
         private System.Drawing.Bitmap           _cachedBitmap;
         private PreviewRender.PreviewGeometry   _previewGeometry;
@@ -351,13 +356,12 @@ namespace NodeEditorCore
         public static Node CreateNode(
             ShaderFragmentArchive.Function fn, String archiveName, 
             HyperGraph.IGraphModel graph, ShaderDiagram.Document doc,
-            System.ComponentModel.Composition.Hosting.ExportProvider exportProvider)
+            ExportProvider exportProvider)
         {
             var node = new Node(fn.Name);
             node.Tag = new ShaderProcedureNodeTag(archiveName);
 
-            var previewManager = exportProvider.GetExport<PreviewRender.IManager>();
-            var previewItem = new ShaderFragmentPreviewItem(graph, doc, previewManager.Value);
+            var previewItem = new ShaderFragmentPreviewItem(graph, doc, exportProvider);
             node.AddItem(previewItem);
 
             // Drop-down selection box for "preview mode"
@@ -466,7 +470,7 @@ namespace NodeEditorCore
         //          Utility functions
         //  
 
-    public class ShaderFragmentNodeUtil
+    public static class ShaderFragmentNodeUtil
     {
         public static Node GetShaderFragmentNode(HyperGraph.IGraphModel graph, UInt64 id)
         {
@@ -535,8 +539,21 @@ namespace NodeEditorCore
                 }
             }
         }
+    }
 
-        public static void UpdateGraphConnectionsForParameter(
+    #endregion
+    #region Parameter Editing
+
+        //
+    /////////////////////////////////////////////////////////////////////////////////////
+        //
+        //          Utility functions for editing parameters
+        //  
+
+    [Export]
+    public class ShaderParameterUtil
+    {
+        public void UpdateGraphConnectionsForParameter(
                                 HyperGraph.IGraphModel graph,
                                 String oldArchiveName, String newArchiveName)
         {
@@ -556,8 +573,8 @@ namespace NodeEditorCore
 
                             //      Name and Type are cached on the connector
                             //      so, we have to update them with the latest info...
-                            var param = ShaderFragmentArchive.Archive.GetParameter(newArchiveName);
-                            if (param!=null)
+                            var param = _shaderFragments.GetParameter(newArchiveName);
+                            if (param != null)
                             {
                                 i.Name = param.Name;
                                 i.Type = param.Type;
@@ -572,19 +589,7 @@ namespace NodeEditorCore
                 }
             }
         }
-    }
 
-    #endregion
-    #region Parameter Editing
-
-        //
-    /////////////////////////////////////////////////////////////////////////////////////
-        //
-        //          Utility functions for editing parameters
-        //  
-
-    public class ShaderParameterUtil
-    {
         private static String IdentifierSafeName(String input)
         {
             //      Convert bad characters into underscores
@@ -635,7 +640,7 @@ namespace NodeEditorCore
             //}
         }
 
-        public static bool FillInMaterialParameters(ShaderDiagram.Document document, HyperGraph.IGraphModel graph)
+        public bool FillInMaterialParameters(ShaderDiagram.Document document, HyperGraph.IGraphModel graph)
         {
                 //
                 //      Look for new or removed material parameters
@@ -670,7 +675,7 @@ namespace NodeEditorCore
                                 {
                                     if (!newMaterialParameters.ContainsKey(item.ArchiveName))
                                     {
-                                        var param = ShaderFragmentArchive.Archive.GetParameter(item.ArchiveName);
+                                        var param = _shaderFragments.GetParameter(item.ArchiveName);
                                         if (param != null)
                                         {
                                             newMaterialParameters.Add(item.ArchiveName, param.Type);
@@ -707,7 +712,7 @@ namespace NodeEditorCore
             {
                 if (!document.PreviewMaterialState.ContainsKey(s.Key))
                 {
-                    var parameter = ShaderFragmentArchive.Archive.GetParameter(s.Key);
+                    var parameter = _shaderFragments.GetParameter(s.Key);
                     System.Object def = null;
                     if (parameter != null && parameter.Default != null && parameter.Default.Length > 0)
                     {
@@ -732,6 +737,9 @@ namespace NodeEditorCore
 
             return didSomething;
         }
+
+        [Import]
+        ShaderFragmentArchive.Archive _shaderFragments;
     }
 
     #endregion

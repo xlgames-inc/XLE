@@ -74,7 +74,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="ShaderTree\TreeViewArchiveModel.cs" />
+    <Compile Include="ShaderTree\ShaderFragmentArchiveModel.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Foreign\TreeViewAdv-1.7.0.0\Aga.Controls\Aga.Controls.csproj">

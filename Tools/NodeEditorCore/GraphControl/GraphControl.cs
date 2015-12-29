@@ -12,7 +12,7 @@ using HyperGraph;
 
 namespace NodeEditorCore
 {
-    public class GraphHelpers
+    public static class GraphHelpers
     {
         public static void SetupDefaultHandlers(HyperGraph.IGraphModel model)
         {
@@ -68,8 +68,8 @@ namespace NodeEditorCore
                 if (o != null && o is ShaderPatcherLayer.NodeGraph)
                 {
                     var result = new GraphModel();
-                    NodeEditorCore.ModelConversion.AddToHyperGraph(
-                        (ShaderPatcherLayer.NodeGraph)o, result, null, exportProvider);
+                    exportProvider.GetExport<NodeEditorCore.IModelConversion>().Value.AddToHyperGraph(
+                        (ShaderPatcherLayer.NodeGraph)o, result, null);
                     return result;
                 }
             }
@@ -258,16 +258,16 @@ namespace NodeEditorCore
             return ShaderFragmentNodeUtil.GetShaderFragmentNode(GetGraphModel(), id);
         }
 
-        private ShaderPatcherLayer.NodeGraph ConvertToShaderPatcherLayer()
-        {
-            return ModelConversion.ToShaderPatcherLayer(GetGraphModel());
-        }
+        // private ShaderPatcherLayer.NodeGraph ConvertToShaderPatcherLayer()
+        // {
+        //     return ModelConversion.ToShaderPatcherLayer(GetGraphModel());
+        // }
 
         private void OnShowPreviewShader(object sender, EventArgs e)
         {
-            var nodeGraph = ConvertToShaderPatcherLayer();
-            var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, AttachedId(sender), "");
-            MessageBox.Show(shader, "Generated shader", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+            // var nodeGraph = ConvertToShaderPatcherLayer();
+            // var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, AttachedId(sender), "");
+            // MessageBox.Show(shader, "Generated shader", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
         }
 
         private void refreshToolStripMenuItem_Click(object sender, EventArgs e)

@@ -12,11 +12,14 @@ using Aga.Controls.Tree;
 using System.IO;
 using System.Drawing;
 using System.ComponentModel;
+using System.ComponentModel.Composition;
 using System.Threading;
 
 namespace NodeEditorCore
 {
-	public class TreeViewArchiveModel : ITreeModel
+    [Export(typeof(ShaderFragmentArchiveModel))]
+    [PartCreationPolicy(CreationPolicy.Shared)]
+	public class ShaderFragmentArchiveModel : ITreeModel
 	{
             /////////////////////////////////////////////////
         public abstract class BaseItem
@@ -68,8 +71,8 @@ namespace NodeEditorCore
                 }
             }
 
-            private TreeViewArchiveModel _owner;
-            public TreeViewArchiveModel Owner
+            private ShaderFragmentArchiveModel _owner;
+            public ShaderFragmentArchiveModel Owner
             {
                 get { return _owner; }
                 set { _owner = value; }
@@ -137,7 +140,7 @@ namespace NodeEditorCore
         {
             public string FunctionName { get; set; }
             public string Name { get { return FunctionName; } }
-            public FolderItem(string name, BaseItem parent, TreeViewArchiveModel owner)
+            public FolderItem(string name, BaseItem parent, ShaderFragmentArchiveModel owner)
             {
                 Icon = GetFolderIcon();
                 ItemPath = name;
@@ -157,7 +160,7 @@ namespace NodeEditorCore
             public string FileName { get; set; }
             public string Name { get { return FileName; } }
 
-            public ShaderFileItem(string name, BaseItem parent, TreeViewArchiveModel owner)
+            public ShaderFileItem(string name, BaseItem parent, ShaderFragmentArchiveModel owner)
             {
                 Icon = GetShaderFileIcon();
                 Parent = parent;
@@ -186,7 +189,7 @@ namespace NodeEditorCore
             public string ArchiveName { get; set; }
             public string Name { get { return FunctionName; } }
 
-            public ShaderFragmentItem(BaseItem parent, TreeViewArchiveModel owner)
+            public ShaderFragmentItem(BaseItem parent, ShaderFragmentArchiveModel owner)
             {
                 Icon = GetShaderFragmentIcon();
                 Parent = parent;
@@ -207,7 +210,7 @@ namespace NodeEditorCore
             public string ArchiveName { get; set; }
             public string Name { get { return StructName; } }
 
-            public ParameterStructItem(BaseItem parent, TreeViewArchiveModel owner)
+            public ParameterStructItem(BaseItem parent, ShaderFragmentArchiveModel owner)
             {
                 Icon = GetParameterIcon();
                 Parent = parent;
@@ -220,7 +223,7 @@ namespace NodeEditorCore
 		private List<BaseItem> _itemsToRead;
         private Dictionary<string, List<BaseItem>> _cache = new Dictionary<string, List<BaseItem>>();
 
-        public TreeViewArchiveModel()
+        public ShaderFragmentArchiveModel()
 		{
 			_itemsToRead = new List<BaseItem>();
 
@@ -257,7 +260,7 @@ namespace NodeEditorCore
                     item.Size = info.Length;
                     item.Date = info.CreationTime;
 
-                    var parameter = ShaderFragmentArchive.Archive.GetParameter(item.ItemPath);
+                    var parameter = _archive.GetParameter(item.ItemPath);
                     ParameterItem sfi = (ParameterItem)item;
                     sfi.FileName = Path.GetFileNameWithoutExtension(item.ItemPath);
                     sfi.FunctionName = parameter.Name;
@@ -355,7 +358,7 @@ namespace NodeEditorCore
                     else
                     {
                             // It's a file. Let's try to parse it as a shader file and get the information within
-                        var fragment = ShaderFragmentArchive.Archive.GetFragment(basePath);
+                        var fragment = _archive.GetFragment(basePath);
 
                         ShaderFileItem sfi = (ShaderFileItem)parent;
                         sfi.ExceptionString = fragment.ExceptionString;
@@ -415,5 +418,8 @@ namespace NodeEditorCore
             if (StructureChanged != null)
                 StructureChanged(this, new TreePathEventArgs());
         }
+
+        [Import]
+        ShaderFragmentArchive.Archive _archive;
 	}
 }

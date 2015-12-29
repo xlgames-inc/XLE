@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Composition;
 using System.Linq;
 using System.Text;
 using HyperGraph;
@@ -14,7 +15,17 @@ using HyperGraph.Items;
 
 namespace NodeEditorCore
 {
-    public class ModelConversion
+    public interface IModelConversion
+    {
+        ShaderPatcherLayer.NodeGraph ToShaderPatcherLayer(HyperGraph.IGraphModel graph);
+        void AddToHyperGraph(
+            ShaderPatcherLayer.NodeGraph nodeGraph,
+            HyperGraph.IGraphModel graph, ShaderDiagram.Document doc);
+    }
+
+    [Export(typeof(IModelConversion))]
+    [PartCreationPolicy(CreationPolicy.Shared)]
+    public class ModelConversion : IModelConversion
     {
         private static ShaderPatcherLayer.Node.Type AsNodeType(ShaderFragmentArchive.Parameter.SourceType input)
         {
@@ -53,7 +64,7 @@ namespace NodeEditorCore
             //
             //      So, let's just build it from the graph control object.
             //
-        public static ShaderPatcherLayer.NodeGraph ToShaderPatcherLayer(HyperGraph.IGraphModel graph)
+        public ShaderPatcherLayer.NodeGraph ToShaderPatcherLayer(HyperGraph.IGraphModel graph)
         {
             ShaderPatcherLayer.NodeGraph nodeGraph = new ShaderPatcherLayer.NodeGraph();
             Dictionary<Node, int> nodeToVisualNodeId = new Dictionary<Node, int>();
@@ -168,19 +179,16 @@ namespace NodeEditorCore
             return nodeGraph;
         }
 
-        private static string TypeFromNodeItem(ShaderFragmentNodeItem nodeItem)
+        private string TypeFromNodeItem(ShaderFragmentNodeItem nodeItem)
         {
             if (nodeItem.ArchiveName != null && nodeItem.ArchiveName.Length != 0)
-            {
-                return ShaderFragmentArchive.Archive.GetParameter(nodeItem.ArchiveName).Type;
-            }
+                return _shaderFragments.GetParameter(nodeItem.ArchiveName).Type;
             return nodeItem.Type;
         }
 
-        public static void AddToHyperGraph(
+        public void AddToHyperGraph(
             ShaderPatcherLayer.NodeGraph nodeGraph, 
-            HyperGraph.IGraphModel graph, ShaderDiagram.Document doc,
-            System.ComponentModel.Composition.Hosting.ExportProvider exportProvider)
+            HyperGraph.IGraphModel graph, ShaderDiagram.Document doc)
         {
                 //
                 //      Convert from the "ShaderPatcherLayer" representation back to
@@ -205,11 +213,11 @@ namespace NodeEditorCore
                     {
                         if (n.NodeType == ShaderPatcherLayer.Node.Type.Procedure)
                         {
-                            var fn = ShaderFragmentArchive.Archive.GetFunction(n.FragmentArchiveName);
+                            var fn = _shaderFragments.GetFunction(n.FragmentArchiveName);
                             if (fn != null)
                             {
                                 var visualNode = nodeGraph.VisualNodes[n.VisualNodeId];
-                                var newNode = ShaderFragmentNodeCreator.CreateNode(fn, n.FragmentArchiveName, graph, doc, exportProvider);
+                                var newNode = ShaderFragmentNodeCreator.CreateNode(fn, n.FragmentArchiveName, graph, doc, _exportProvider);
                                 newNode.Location = visualNode.Location;
                                 newNode.Collapsed = visualNode.State == ShaderPatcherLayer.VisualNode.StateType.Collapsed;
                                 newNodes[n.VisualNodeId] = newNode;
@@ -218,7 +226,7 @@ namespace NodeEditorCore
                         }
                         else
                         {
-                            var ps = ShaderFragmentArchive.Archive.GetParameterStruct(n.FragmentArchiveName);
+                            var ps = _shaderFragments.GetParameterStruct(n.FragmentArchiveName);
                             if (ps != null)
                             {
                                 var visualNode = nodeGraph.VisualNodes[n.VisualNodeId];
@@ -285,5 +293,11 @@ namespace NodeEditorCore
             node.AddItem(newItem);
             return newItem;
         }
+
+        [Import]
+        private System.ComponentModel.Composition.Hosting.ExportProvider _exportProvider;
+
+        [Import]
+        ShaderFragmentArchive.Archive _shaderFragments;
     }
 }
