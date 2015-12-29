@@ -17,6 +17,12 @@ using ParamSourceType = ShaderFragmentArchive.Parameter.SourceType;
 
 namespace NodeEditorCore
 {
+    public interface IShaderFragmentNodeCreator
+    {
+        Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName);
+        Node CreateEmptyParameterNode(ParamSourceType sourceType, String archiveName, String title);
+        Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type);
+    }
 
     #region ShaderFragmentNodeItem
 
@@ -29,7 +35,7 @@ namespace NodeEditorCore
         //      of a shader graph node.
         //  
     
-    public class ShaderFragmentNodeItem : NodeItem
+    internal class ShaderFragmentNodeItem : NodeItem
     {
         public ShaderFragmentNodeItem(string name, string type, string archiveName, bool inputEnabled=false, bool outputEnabled=false) :
             base(inputEnabled, outputEnabled)
@@ -130,21 +136,20 @@ namespace NodeEditorCore
         //      and displays it in a little preview
         //  
 
-    public class ShaderFragmentPreviewItem : NodeItem 
+    internal class ShaderFragmentPreviewItem : NodeItem 
     {
-        public ShaderFragmentPreviewItem(
-            HyperGraph.IGraphModel graph, ShaderDiagram.Document doc, 
-            ExportProvider exportProvider)
+        public ShaderFragmentPreviewItem()
         {
-            _graph = graph; 
-            _document = doc; 
             _builder = null;
             _cachedBitmap = null;
-            _previewManager = exportProvider.GetExport<PreviewRender.IManager>().Value;
-            _converter = exportProvider.GetExport<IModelConversion>().Value;
+            // _previewManager = exportProvider.GetExport<PreviewRender.IManager>().Value;
+            // _converter = exportProvider.GetExport<IModelConversion>().Value;
             Geometry = PreviewRender.PreviewGeometry.Sphere;
             OutputToVisualize = "";
         }
+
+        HyperGraph.IGraphModel Graph { set { _graph = value; } }
+        ShaderDiagram.Document Document { set { _document = value; } }
 
         public override void    Render(Graphics graphics, SizeF minimumSize, PointF location)
         {
@@ -153,6 +158,8 @@ namespace NodeEditorCore
                 SizeF size = Measure(graphics);
                 if (!graphics.IsVisible(new Rectangle() {X = (int)location.X, Y = (int)location.Y, Width = (int)size.Width, Height = (int)size.Height }))
                     return;
+
+                if (_graph == null) return;
 
                 // PreviewRender.Manager.Instance.Update();
 
@@ -219,7 +226,10 @@ namespace NodeEditorCore
         private ShaderDiagram.Document          _document;
         private PreviewRender.IPreviewBuilder   _builder;
         private PointF                          _lastDragLocation;
+
+        [Import]
         private PreviewRender.IManager          _previewManager;
+        [Import]
         private IModelConversion                _converter;
 
         private System.Drawing.Bitmap           _cachedBitmap;
@@ -276,7 +286,7 @@ namespace NodeEditorCore
         //          Creating nodes & tag tags
         //  
 
-    public class ShaderFragmentNodeTag
+    internal class ShaderFragmentNodeTag
     {
         public string ArchiveName { get; set; }
         public UInt32 Id { get; set; }
@@ -284,17 +294,19 @@ namespace NodeEditorCore
         private static UInt32 nodeAccumulatingId = 1;
     }
 
-    public class ShaderProcedureNodeTag : ShaderFragmentNodeTag
+    internal class ShaderProcedureNodeTag : ShaderFragmentNodeTag
     {
         public ShaderProcedureNodeTag(string archiveName) : base(archiveName) {}
     }
-    
-    public class ShaderParameterNodeTag : ShaderFragmentNodeTag
+
+    internal class ShaderParameterNodeTag : ShaderFragmentNodeTag
     {
         public ShaderParameterNodeTag(string archiveName) : base(archiveName) {}
     }
 
-    public class ShaderFragmentNodeCreator
+    [Export(typeof(IShaderFragmentNodeCreator))]
+    [PartCreationPolicy(CreationPolicy.Shared)]
+    public class ShaderFragmentNodeCreator : IShaderFragmentNodeCreator
     {
         internal static IDictionary<Enum, string> PreviewGeoNames;
         internal static IDictionary<Enum, string> ParamSourceTypeNames;
@@ -353,15 +365,19 @@ namespace NodeEditorCore
             return Tuple.Create(typeNames, selectedIndex);
         }
 
-        public static Node CreateNode(
-            ShaderFragmentArchive.Function fn, String archiveName, 
-            HyperGraph.IGraphModel graph, ShaderDiagram.Document doc,
-            ExportProvider exportProvider)
+        public Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName)
         {
             var node = new Node(fn.Name);
             node.Tag = new ShaderProcedureNodeTag(archiveName);
 
-            var previewItem = new ShaderFragmentPreviewItem(graph, doc, exportProvider);
+            var previewItem = new ShaderFragmentPreviewItem();
+
+            // use composition to access some exported types --
+            {
+                CompositionBatch compositionBatch = new CompositionBatch();
+                compositionBatch.AddPart(previewItem);
+                _composer.Compose(compositionBatch);
+            }
             node.AddItem(previewItem);
 
             // Drop-down selection box for "preview mode"
@@ -435,7 +451,7 @@ namespace NodeEditorCore
             }
         }
 
-        public static Node CreateEmptyParameterNode(ParamSourceType sourceType, String archiveName, String title)
+        public Node CreateEmptyParameterNode(ParamSourceType sourceType, String archiveName, String title)
         {
             var node = new Node(title);
             node.Tag = new ShaderParameterNodeTag(archiveName);
@@ -447,7 +463,7 @@ namespace NodeEditorCore
             return node;
         }
 
-        public static Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type)
+        public Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type)
         {
             var node = CreateEmptyParameterNode(type, archiveName, parameter.Name);
             foreach (var param in parameter.Parameters)
@@ -459,6 +475,9 @@ namespace NodeEditorCore
             }
             return node;
         }
+
+        [Import]
+        CompositionContainer _composer;
     }
 
     #endregion
@@ -551,6 +570,7 @@ namespace NodeEditorCore
         //  
 
     [Export]
+    [PartCreationPolicy(CreationPolicy.Shared)]
     public class ShaderParameterUtil
     {
         public void UpdateGraphConnectionsForParameter(

@@ -26,6 +26,16 @@ namespace MaterialTool
             _child = new HyperGraph.GraphControl();
             _child.Padding = new System.Windows.Forms.Padding(0);
             _child.Dock = System.Windows.Forms.DockStyle.Fill;
+
+            _child.AllowDrop = true;
+            _child.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
+            _child.HighlightCompatible = true;
+            _child.LargeGridStep = 160F;
+            _child.SmallGridStep = 20F; 
+            _child.LargeStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(90)))), ((int)(((byte)(90)))), ((int)(((byte)(90)))));
+            _child.SmallStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(80)))), ((int)(((byte)(80)))));
+            _child.ShowLabels = false;
+
             Controls.Add(_child);
 
             _child.Paint += child_Paint;

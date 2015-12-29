@@ -217,7 +217,8 @@ namespace NodeEditorCore
                             if (fn != null)
                             {
                                 var visualNode = nodeGraph.VisualNodes[n.VisualNodeId];
-                                var newNode = ShaderFragmentNodeCreator.CreateNode(fn, n.FragmentArchiveName, graph, doc, _exportProvider);
+                                var newNode = _nodeCreator.CreateNode(fn, n.FragmentArchiveName);
+                                // graph, doc
                                 newNode.Location = visualNode.Location;
                                 newNode.Collapsed = visualNode.State == ShaderPatcherLayer.VisualNode.StateType.Collapsed;
                                 newNodes[n.VisualNodeId] = newNode;
@@ -230,7 +231,7 @@ namespace NodeEditorCore
                             if (ps != null)
                             {
                                 var visualNode = nodeGraph.VisualNodes[n.VisualNodeId];
-                                var newNode = ShaderFragmentNodeCreator.CreateParameterNode(ps, n.FragmentArchiveName, AsSourceType(n.NodeType));
+                                var newNode = _nodeCreator.CreateParameterNode(ps, n.FragmentArchiveName, AsSourceType(n.NodeType));
                                 newNode.Location = visualNode.Location;
                                 newNode.Collapsed = visualNode.State == ShaderPatcherLayer.VisualNode.StateType.Collapsed;
                                 newNodes[n.VisualNodeId] = newNode;
@@ -299,5 +300,8 @@ namespace NodeEditorCore
 
         [Import]
         ShaderFragmentArchive.Archive _shaderFragments;
+
+        [Import]
+        IShaderFragmentNodeCreator _nodeCreator;
     }
 }

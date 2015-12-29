@@ -157,10 +157,9 @@ namespace MaterialTool
                                 var fn = _fragments.GetFunction(archiveName);
                                 if (fn != null)
                                 {
-                                    // this.DoDragDrop(
-                                    //     NodeEditorCore.ShaderFragmentNodeCreator.CreateNode(
-                                    //         fn, archiveName, _hyperGraphModel, _document, _exportProvider),
-                                    //     DragDropEffects.Copy);
+                                    this.DoDragDrop(
+                                        _nodeCreator.CreateNode(fn, archiveName),
+                                        DragDropEffects.Copy);
                                 }
                             }
                         }
@@ -174,7 +173,7 @@ namespace MaterialTool
                                 var fn = _fragments.GetParameterStruct(archiveName);
                                 if (fn != null)
                                 {
-                                    var node = NodeEditorCore.ShaderFragmentNodeCreator.CreateParameterNode(
+                                    var node = _nodeCreator.CreateParameterNode(
                                         fn, archiveName, ShaderFragmentArchive.Parameter.SourceType.Material);
                                     this.DoDragDrop(node, DragDropEffects.Copy);
                                 }
@@ -191,5 +190,8 @@ namespace MaterialTool
 
         [Import]
         ShaderFragmentArchive.Archive _fragments;
+
+        [Import]
+        NodeEditorCore.IShaderFragmentNodeCreator _nodeCreator;
     }
 }

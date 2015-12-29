@@ -123,7 +123,8 @@ namespace MaterialTool
 
                 typeof(NodeEditorCore.ShaderFragmentArchiveModel),
                 typeof(NodeEditorCore.ShaderParameterUtil),
-                typeof(NodeEditorCore.ModelConversion)
+                typeof(NodeEditorCore.ModelConversion),
+                typeof(NodeEditorCore.ShaderFragmentNodeCreator)
             );
 
             // enable use of the system clipboard
@@ -138,6 +139,7 @@ namespace MaterialTool
             // But it's useful for us, because we want to use the same container to construct
             // objects (and also to retrieve global instances).
             container.ComposeExportedValue<ExportProvider>(container);
+            container.ComposeExportedValue<CompositionContainer>(container);
 
             // Configure the main Form
             var batch = new CompositionBatch();
