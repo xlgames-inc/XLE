@@ -77,7 +77,7 @@ namespace HyperGraph.Items
 			if ((state & RenderState.Hover) == RenderState.Hover)
 				graphics.DrawString(this.Title, SystemFonts.CaptionFont, Brushes.White, new RectangleF(location, size), GraphConstants.TitleStringFormat);
 			else
-                graphics.DrawString(this.Title, SystemFonts.CaptionFont, Brushes.White, new RectangleF(location, size), GraphConstants.TitleStringFormat);
+                graphics.DrawString(this.Title, SystemFonts.CaptionFont, Brushes.LightGray, new RectangleF(location, size), GraphConstants.TitleStringFormat);
 		}
 
         public override void RenderConnector(Graphics graphics, RectangleF rectangle) { }

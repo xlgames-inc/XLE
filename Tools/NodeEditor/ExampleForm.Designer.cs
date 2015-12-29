@@ -67,7 +67,6 @@
             this.graphControl.AllowDrop = true;
             this.graphControl.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.graphControl.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.graphControl.FocusElement = null;
             this.graphControl.HighlightCompatible = true;
             this.graphControl.LargeGridStep = 160F;
             this.graphControl.LargeStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(90)))), ((int)(((byte)(90)))), ((int)(((byte)(90)))));

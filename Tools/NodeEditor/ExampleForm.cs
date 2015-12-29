@@ -49,8 +49,9 @@ namespace NodeEditor
             NodeEditorCore.GraphHelpers.SetupDefaultHandlers(_hyperGraphModel);
 
             graphControl.Model = _hyperGraphModel;
-            graphControl.FocusChanged += new EventHandler<ElementEventArgs>(OnFocusChanged);
-            graphControl.MouseEnter += new System.EventHandler(OnGraphMouseEnter);
+            graphControl.Selection = new GraphSelection();
+            graphControl.Selection.SelectionChanged += OnFocusChanged;
+            graphControl.MouseEnter += OnGraphMouseEnter;
 
             graphControl.Paint += graphControl_Paint;
 
@@ -96,19 +97,20 @@ namespace NodeEditor
         }
 
         #region Graph control event handlers
-        void OnFocusChanged(object sender, ElementEventArgs e)
+        void OnFocusChanged(object sender, EventArgs e)
         {
             var textureContext = ContextAvailability.NotAvailable;
 
-            if (e.Element is Node)
+            var sel = graphControl.Selection.Selection;
+            if (sel.FirstOrDefault() is Node)
             {
-                var node = (Node)e.Element;
+                var node = sel.FirstOrDefault() as Node;
                 if (node.Title.Equals("Texture"))
                 {
                     textureContext = ContextAvailability.Available;
                 }
             }
-
+        
             _tabGroupTextureNode.ContextAvailable = textureContext;
         }
 

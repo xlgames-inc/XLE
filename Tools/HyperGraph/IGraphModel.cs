@@ -77,4 +77,16 @@ namespace HyperGraph
         event EventHandler<NodeConnectionEventArgs>          ConnectionRemoved;
         event EventHandler<EventArgs>                        InvalidateViews;
     }
+
+    public interface IGraphSelection
+    {
+        ISet<IElement> Selection { get; }
+
+        void Update(IEnumerable<IElement> selectedItems, IEnumerable<IElement> deselectedItems);
+        void SelectSingle(IElement newSelection);
+        bool Contains(IElement element);
+
+        event EventHandler SelectionChanged;
+        event EventHandler SelectionChanging;
+    }
 }

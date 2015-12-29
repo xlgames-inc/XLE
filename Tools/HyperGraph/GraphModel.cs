@@ -342,4 +342,89 @@ namespace HyperGraph
         public event EventHandler<EventArgs> InvalidateViews;
         #endregion
     }
+
+    public class GraphSelection : IGraphSelection
+    {
+        public ISet<IElement> Selection { get { return _selection; } }
+        private readonly HashSet<IElement> _selection = new HashSet<IElement>();
+
+        public void Update(IEnumerable<IElement> selectedItems, IEnumerable<IElement> deselectedItems)
+        {
+            // If there is no actual change, then we should abort immediately without
+            // invoking our event handlers.
+            bool change = false;
+            change |= (deselectedItems != null && _selection.Overlaps(deselectedItems));
+            change |= (selectedItems != null && !_selection.IsSupersetOf(selectedItems));
+            if (!change) return;
+
+            if (SelectionChanging != null)
+                SelectionChanging.Invoke(this, EventArgs.Empty);
+            if (deselectedItems != null)
+                _selection.ExceptWith(deselectedItems);
+            if (selectedItems != null)
+                _selection.UnionWith(selectedItems);
+            if (SelectionChanged != null)
+                SelectionChanged.Invoke(this, EventArgs.Empty);
+        }
+
+        public void SelectSingle(IElement newSelection)
+        {
+            if (SelectionChanging != null)
+                SelectionChanging.Invoke(this, EventArgs.Empty);
+            _selection.Clear();
+            _selection.Add(newSelection);
+            if (SelectionChanged != null)
+                SelectionChanged.Invoke(this, EventArgs.Empty);
+        }
+
+        public event EventHandler SelectionChanged; 
+        public event EventHandler SelectionChanging;
+
+        public bool Contains(IElement element)
+        {
+            if (element == null)
+				return false;
+
+            foreach (var e in Selection) {
+			    if (element.ElementType ==
+				    e.ElementType)
+				    return (element == e);
+			
+			    switch (e.ElementType)
+			    {
+				    case ElementType.Connection:
+					    var focusConnection = e as NodeConnection;
+					    return (focusConnection.To == element ||
+							    focusConnection.From == element ||
+							
+							    ((focusConnection.To != null &&
+							    focusConnection.To.Node == element) ||
+							    (focusConnection.From != null &&
+							    focusConnection.From.Node == element)));
+				    case ElementType.NodeItem:
+					    var focusItem = e as NodeItem;
+					    return (focusItem.Node == element);
+				    case ElementType.InputConnector:
+				    case ElementType.OutputConnector:
+					    var focusConnector = e as NodeConnector;
+					    return (focusConnector.Node == element);
+				    case ElementType.NodeSelection:
+				    {
+					    var selection = e as NodeSelection;
+					    foreach (var node in selection.Nodes)
+					    {
+						    if (node == element)
+							    return true;
+					    }
+					    return false;
+				    }
+				    default:
+				    case ElementType.Node:
+					    return false;
+			    }
+            }
+
+            return false;
+        }
+    }
 }

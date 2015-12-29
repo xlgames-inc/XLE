@@ -107,13 +107,15 @@ namespace HyperGraph
 		internal static Pen BorderPen = new Pen(Color.FromArgb(200, 200, 200));
         internal static Brush CompatibleBrush = new SolidBrush(Color.FromArgb(255, 196, 196));
 
-        internal static Brush FocusBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
+        internal static Brush DraggingBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
                                                             Color.FromArgb(140, 120, 120),  Color.FromArgb(96, 96, 96));
-        internal static Brush HoverBrush = new HatchBrush(HatchStyle.DashedHorizontal,
-                                                            Color.FromArgb(96, 96, 96),     Color.FromArgb(96, 96, 96));
+        internal static Brush HoverBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
+                                                            Color.FromArgb(80, 80, 80), Color.FromArgb(96, 96, 96));
         internal static Brush NormalBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
                                                             Color.FromArgb(120, 120, 120),  Color.FromArgb(96, 96, 96));
         internal static Brush TitleAreaBrush = new SolidBrush(Color.FromArgb(96, 96, 96));
+
+        internal static Pen FocusPen = new Pen(Color.FromArgb(255, 255, 255), 3.0f);
 
         enum ConnectorType { Input, Output };
 
@@ -153,7 +155,7 @@ namespace HyperGraph
                         clientRect = new RectangleF(bounds.Left + 4, bounds.Top + 4, bounds.Width - 12 - width, bounds.Height - 8);
                     }
 
-                    graphics.FillPath(NormalBrush, path);
+                    graphics.FillPath(((state & RenderState.Hover)!=0) ? HoverBrush : NormalBrush , path);
                     graphics.DrawPath(BorderPen, path);
                     graphics.FillRectangle(brush, statusRect);
 
@@ -342,9 +344,9 @@ namespace HyperGraph
 			var bottom				= position.Y + size.Height;
 
             Brush brush;
-            if ((node.state & (RenderState.Dragging | RenderState.Focus)) != 0)         { brush = FocusBrush; }
-            else if ((node.state & RenderState.Hover) != 0)                             { brush = HoverBrush; }
-            else                                                                        { brush = NormalBrush; }
+            if ((node.state & RenderState.Dragging) != 0)       { brush = DraggingBrush; }
+            else if ((node.state & RenderState.Hover) != 0)     { brush = HoverBrush; }
+            else                                                { brush = NormalBrush; }
 
             const Boolean roundedRectRendering = false;
             if (roundedRectRendering)
@@ -369,11 +371,18 @@ namespace HyperGraph
                 var titleRect = new Rectangle((int)left, (int)top, (int)(right - left), titleSize);
                 var backgroundRect = new Rectangle((int)left, (int)top + titleSize, (int)(right - left), (int)(bottom - top) - titleSize);
 
-
                 DrawShadow(graphics, rect); 
                 graphics.FillRectangle(brush, backgroundRect);
                 graphics.FillRectangle(TitleAreaBrush, titleRect);
                 graphics.DrawRectangle(BorderPen, rect);
+
+                if ((node.state & RenderState.Focus) != 0)
+                {
+                    // We're going to draw a outline around the edge of the entire node
+                    // This should be a thick line, with some bright color
+                    var outline = new Rectangle(rect.Left - 4, rect.Top - 4, rect.Width + 8, rect.Height + 8);
+                    graphics.DrawRectangle(FocusPen, outline);
+                }
             }
 
 			/*

@@ -20,6 +20,8 @@ namespace MaterialTool
     {
         public DiagramControl()
         {
+            DoubleBuffered = false;
+
             Margin = new System.Windows.Forms.Padding(0);
             _child = new HyperGraph.GraphControl();
             _child.Padding = new System.Windows.Forms.Padding(0);
