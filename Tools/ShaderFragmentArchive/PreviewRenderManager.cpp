@@ -8,35 +8,31 @@
 #include "PreviewRenderManager.h"
 #include "TypeRules.h"
 #include "ShaderDiagramDocument.h"
+
 #include "../GUILayer/MarshalString.h"
-
-#include "../ToolsRig/MaterialVisualisation.h"
-#include "../ToolsRig/VisualisationUtils.h"
-#include "../../SceneEngine/LightingParserContext.h"
-
-#include "../../RenderCore/IDevice_Forward.h"
-#include "../../RenderCore/ShaderService.h" // for RenderCore::ShaderService::IShaderSource
-#include "../../RenderCore/Techniques/Techniques.h"
 #include "../GUILayer/NativeEngineDevice.h"
 #include "../GUILayer/CLIXAutoPtr.h"
+#include "../ToolsRig/MaterialVisualisation.h"
+#include "../ToolsRig/VisualisationUtils.h"
+
+#include "../../SceneEngine/LightingParserContext.h"
 
 #include "../../RenderCore/IDevice.h"
-#include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/ShaderService.h" // for RenderCore::ShaderService::IShaderSource
 #include "../../RenderCore/Metal/Shader.h"
-#include "../../RenderCore/Metal/Resource.h"
 #include "../../RenderCore/Metal/InputLayout.h"
+#include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
-#include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/MinimalShaderSource.h"
+
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../BufferUploads/DataPacket.h"
 #include "../../BufferUploads/ResourceLocator.h"
-#include "../../Math/Transformations.h"
-#include "../../ConsoleRig/GlobalServices.h"
-#include "../../Utility/Conversion.h"
+
+#include "../../Utility/PtrUtils.h"
+
 #include <memory>
 
 using namespace System::ComponentModel::Composition;
@@ -50,11 +46,7 @@ namespace PreviewRender
     {
     public:
         virtual IPreviewBuilder^ CreatePreviewBuilder(System::String^ shaderText);
-
-        void                    RotateLightDirection(ShaderDiagram::Document^ doc, System::Drawing::PointF rotationAmount);
-        RenderCore::IDevice*    GetDevice();
-        auto                    GetGlobalTechniqueContext() -> RenderCore::Techniques::TechniqueContext*;
-        void                    Update();
+        void RotateLightDirection(ShaderDiagram::Document^ doc, System::Drawing::PointF rotationAmount);
 
         [ImportingConstructor]
         Manager(GUILayer::EngineDevice^ engineDevice);
@@ -68,12 +60,13 @@ namespace PreviewRender
     {
     public:
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
-        // std::unique_ptr<RenderCore::Assets::Services> _renderAssetsServices;
         std::shared_ptr<RenderCore::IDevice> _device;
-        // std::unique_ptr<::Assets::Services> _assetServices;
-        // std::unique_ptr<ConsoleRig::GlobalServices> _services;
         std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
-        BufferUploads::IManager* _uploads;
+
+        ConsoleRig::AttachRef<ConsoleRig::GlobalServices> _attachRef;
+        ConsoleRig::AttachRef<::Assets::Services> _attachRef1;
+        ConsoleRig::AttachRef<RenderCore::Assets::Services> _attachRef2;
+        ConsoleRig::AttachRef<RenderCore::Metal::ObjectFactory> _attachRef3;
     };
 
     public ref class PreviewBuilder : IPreviewBuilder
@@ -86,7 +79,6 @@ namespace PreviewRender
             std::shared_ptr<RenderCore::ShaderService::IShaderSource> shaderSource, 
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> techContext,
             std::shared_ptr<RenderCore::IDevice> device,
-            BufferUploads::IManager& uploads,
             System::String^ shaderText);
         ~PreviewBuilder();
     private:
@@ -101,7 +93,6 @@ namespace PreviewRender
         std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techContext;
         std::shared_ptr<RenderCore::IDevice> _device;
-        BufferUploads::IManager* _uploads;
         std::string _shaderText;
     };
 
@@ -296,7 +287,7 @@ namespace PreviewRender
         const int width = std::max(0, int(size->Width));
         const int height = std::max(0, int(size->Height));
 
-        auto& uploads = *_pimpl->_uploads;
+        auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
         auto targetTexture = uploads.Transaction_Immediate(
             BufferUploads::CreateDesc(
                 BufferUploads::BindFlag::RenderTarget,
@@ -362,7 +353,6 @@ namespace PreviewRender
         std::shared_ptr<RenderCore::ShaderService::IShaderSource> shaderSource, 
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> techContext,
         std::shared_ptr<RenderCore::IDevice> device,
-        BufferUploads::IManager& uploads,
         System::String^ shaderText)
     {
         _pimpl = new PreviewBuilderPimpl();
@@ -370,7 +360,6 @@ namespace PreviewRender
         _pimpl->_shaderSource = std::move(shaderSource);
         _pimpl->_techContext = std::move(techContext);
         _pimpl->_device = std::move(device);
-        _pimpl->_uploads = &uploads;
     }
 
     PreviewBuilder::~PreviewBuilder()
@@ -382,69 +371,39 @@ namespace PreviewRender
     {
         return gcnew PreviewBuilder(
             _pimpl->_shaderSource, _pimpl->_globalTechniqueContext, 
-            _pimpl->_device, *_pimpl->_uploads,
+            _pimpl->_device,
             shaderText);
     }
 
     void                    Manager::RotateLightDirection(ShaderDiagram::Document^ doc, System::Drawing::PointF rotationAmount)
     {
-        try {
-            float deltaCameraYaw    = -rotationAmount.Y * 1.f * gPI / 180.f;
-            float deltaCameraPitch  =  rotationAmount.X * 1.f * gPI / 180.f;
-
-            Float3x3 rotationPart;
-            cml::matrix_rotation_euler(rotationPart, deltaCameraYaw, 0.f, deltaCameraPitch, cml::euler_order_yxz);
-
-            auto negLightDir = doc->NegativeLightDirection;
-            negLightDir = TransformDirectionVector(rotationPart, negLightDir);
-            doc->NegativeLightDirection = Normalize(negLightDir);
-        } catch(...) {
-            doc->NegativeLightDirection = Float3(0.f, 0.f, 1.f);        // catch any math errors
-        }
+        // try {
+        //     float deltaCameraYaw    = -rotationAmount.Y * 1.f * gPI / 180.f;
+        //     float deltaCameraPitch  =  rotationAmount.X * 1.f * gPI / 180.f;
+        // 
+        //     Float3x3 rotationPart;
+        //     cml::matrix_rotation_euler(rotationPart, deltaCameraYaw, 0.f, deltaCameraPitch, cml::euler_order_yxz);
+        // 
+        //     auto negLightDir = doc->NegativeLightDirection;
+        //     negLightDir = TransformDirectionVector(rotationPart, negLightDir);
+        //     doc->NegativeLightDirection = Normalize(negLightDir);
+        // } catch(...) {
+        //     doc->NegativeLightDirection = Float3(0.f, 0.f, 1.f);        // catch any math errors
+        // }
     }
-
-    RenderCore::IDevice*        Manager::GetDevice()
-    {
-        return _pimpl->_device.get();
-    }
-
-    void Manager::Update()
-    {
-        // ::Assets::Services::GetAsyncMan().Update();
-        // RenderCore::Assets::Services::GetBufferUploads().Update(
-        //     *_pimpl->_device->GetImmediateContext());
-    }
-
-    RenderCore::Techniques::TechniqueContext* Manager::GetGlobalTechniqueContext()
-    {
-        return _pimpl->_globalTechniqueContext.get();
-    }
-
-    static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
-    static ConsoleRig::AttachRef<RenderCore::Metal::ObjectFactory> s_attachRef2;
-    static ConsoleRig::AttachRef<RenderCore::Assets::Services> s_attachRef3;
-
+    
     Manager::Manager(GUILayer::EngineDevice^ engineDevice)
     {
-        s_attachRef = engineDevice->GetNative().GetGlobalServices()->Attach();
-        
         _pimpl.reset(new ManagerPimpl());
+
+        _pimpl->_attachRef = engineDevice->GetNative().GetGlobalServices()->Attach();
+        auto& crossModule = ConsoleRig::GlobalServices::GetCrossModule();
+        _pimpl->_attachRef1 = crossModule.Attach<::Assets::Services>();
+        _pimpl->_attachRef2 = crossModule.Attach<RenderCore::Assets::Services>();
+        _pimpl->_attachRef3 = crossModule.Attach<RenderCore::Metal::ObjectFactory>();
+                
         _pimpl->_device = engineDevice->GetNative().GetRenderDevice();
-        _pimpl->_uploads = &engineDevice->GetNative().GetRenderAssetServices()->GetBufferUploadsInstance();
-
-        s_attachRef2 = 
-            ConsoleRig::GlobalServices::GetCrossModule().Attach<RenderCore::Metal::ObjectFactory>();
-
-        s_attachRef3 = 
-            ConsoleRig::GlobalServices::GetCrossModule().Attach<RenderCore::Assets::Services>();
-
-        // ConsoleRig::StartupConfig cfg;
-        // cfg._applicationName = clix::marshalString<clix::E_UTF8>(System::Windows::Forms::Application::ProductName);
-        // _pimpl->_services = std::make_unique<ConsoleRig::GlobalServices>(cfg);
-
-        // _pimpl->_device = RenderCore::CreateDevice();
-        // _pimpl->_assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
-        // _pimpl->_renderAssetsServices = std::make_unique<RenderCore::Assets::Services>(_pimpl->_device.get());
+        
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
         _pimpl->_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
             RenderCore::Metal::CreateLowLevelShaderCompiler());
@@ -452,28 +411,13 @@ namespace PreviewRender
 
     Manager::~Manager()
     {
-        s_attachRef3.Detach();
-        s_attachRef2.Detach();
-        s_attachRef.Detach();
+        _pimpl->_attachRef3.Detach();
+        _pimpl->_attachRef2.Detach();
+        _pimpl->_attachRef1.Detach();
+        _pimpl->_attachRef.Detach();
 
         _pimpl->_shaderSource.reset();
         _pimpl->_globalTechniqueContext.reset();
-
-        // System::GC::Collect();
-        // System::GC::WaitForPendingFinalizers();
-        // // DelayedDeleteQueue::FlushQueue();
-        // 
-        // RenderCore::Techniques::ResourceBoxes_Shutdown();
-        // // RenderOverlays::CleanupFontSystem();
-        // _pimpl->_assetServices->GetAssetSets().Clear();
-        // Assets::Dependencies_Shutdown();
-        // _pimpl->_globalTechniqueContext.reset();
-        // _pimpl->_renderAssetsServices.reset();
-        // _pimpl->_assetServices.reset();
-        // _pimpl->_device.reset();
-        // _pimpl->_services.reset();
-        // delete _pimpl;
-        // TerminateFileSystemMonitoring();
     }
 
 

@@ -22,7 +22,7 @@ namespace NodeEditor
 			Application.EnableVisualStyles();
 			Application.SetCompatibleTextRenderingDefault(false);
 			Application.Run(new ExampleForm());
-            PreviewRender.Manager.Shutdown();
+            // PreviewRender.Manager.Shutdown();
 		}
 	}
 }

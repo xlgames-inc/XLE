@@ -58,7 +58,7 @@ namespace NodeEditor
         {
             if (Capture)
             {
-                PreviewRender.Manager.Instance.RotateLightDirection(_document, new PointF(e.Location.X - _lastDragLocation.X, e.Location.Y - _lastDragLocation.Y));
+                // PreviewRender.Manager.Instance.RotateLightDirection(_document, new PointF(e.Location.X - _lastDragLocation.X, e.Location.Y - _lastDragLocation.Y));
                 _lastDragLocation = e.Location;
                 Invalidate();
             }
@@ -77,12 +77,12 @@ namespace NodeEditor
 
             try
             {
-                _preview.Update(
+                var bitmap = _preview.Build(
                     _document, new Size(ClientRectangle.Width, ClientRectangle.Height), 
-                    PreviewRender.PreviewBuilder.PreviewGeometry.Sphere);
-                if (_preview.Bitmap != null)
+                    PreviewRender.PreviewGeometry.Sphere);
+                if (bitmap != null)
                 {
-                    e.Graphics.DrawImage(_preview.Bitmap, new Point() { X = 0, Y = 0 });
+                    e.Graphics.DrawImage(bitmap, new Point() { X = 0, Y = 0 });
                 }
             } catch {}
         }

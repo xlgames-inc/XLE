@@ -122,6 +122,9 @@ namespace GUILayer
             // run approximately once per frame.
         assert(System::Threading::Thread::CurrentThread->ManagedThreadId == _pimpl->GetCreationThreadId());
         Assets::Services::GetAsyncMan().Update();
+
+            // Some tools need buffer uploads to be updated from here
+        _pimpl->GetBufferUploads()->Update(*_pimpl->GetImmediateContext());
     }
     
     EngineDevice::EngineDevice()

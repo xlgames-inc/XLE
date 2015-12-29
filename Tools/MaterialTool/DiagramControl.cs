@@ -5,21 +5,43 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 using Sce.Atf.Controls.Adaptable;
+using System.ComponentModel.Composition;
 
 namespace MaterialTool
 {
-    class DiagramControl : AdaptableControl
+    interface IDiagramControl
     {
-        public DiagramControl(DiagramEditingContext context)
+        void SetContext(DiagramEditingContext context);
+    }
+
+    [Export(typeof(IDiagramControl))]
+    [PartCreationPolicy(CreationPolicy.NonShared)]
+    class DiagramControl : AdaptableControl, IDiagramControl
+    {
+        public DiagramControl()
+        {
+            Margin = new System.Windows.Forms.Padding(0);
+            _child = new HyperGraph.GraphControl();
+            _child.Padding = new System.Windows.Forms.Padding(0);
+            _child.Dock = System.Windows.Forms.DockStyle.Fill;
+            Controls.Add(_child);
+
+            _child.Paint += child_Paint;
+        }
+
+        public void SetContext(DiagramEditingContext context)
         {
             Context = context;
-
-            Margin = new System.Windows.Forms.Padding(0);
-            var child = new HyperGraph.GraphControl();
-            child.Model = context.Model;
-            child.Padding = new System.Windows.Forms.Padding(0);
-            child.Dock = System.Windows.Forms.DockStyle.Fill;
-            Controls.Add(child);
+            _child.Model = context.Model;
         }
+
+        void child_Paint(object sender, System.Windows.Forms.PaintEventArgs e)
+        {
+            _engine.ForegroundUpdate();
+        }
+
+        [Import]
+        private GUILayer.EngineDevice _engine;
+        private HyperGraph.GraphControl _child;
     }
 }

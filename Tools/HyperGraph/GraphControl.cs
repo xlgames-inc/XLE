@@ -655,7 +655,7 @@ namespace HyperGraph
 			
 			e.Graphics.SmoothingMode		= SmoothingMode.HighQuality;
 
-            if (!_model.Nodes.Any())
+            if (_model == null || !_model.Nodes.Any())
 				return;
 			
 			var transformed_location = GetTransformedLocation();

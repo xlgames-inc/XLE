@@ -132,11 +132,13 @@ namespace MaterialTool
             NodeEditorCore.GraphHelpers.SetupDefaultHandlers(graph);
 
             var doc = new DiagramDocument(graph, uri);
+            var control = _exportProvider.GetExport<IDiagramControl>().Value;
+            control.SetContext(doc);
 
                 // Create a control for the new document, and register it!
             _controlRegistry.RegisterControl(
                 doc,
-                new DiagramControl(doc), 
+                control as Control, 
                 new ControlInfo(Path.GetFileName(filePath), filePath, StandardControlGroup.Center) { IsDocument = true }, 
                 this);
             return doc;

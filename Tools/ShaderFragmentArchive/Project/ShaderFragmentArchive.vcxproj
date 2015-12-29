@@ -105,14 +105,8 @@
     <ProjectReference Include="..\..\..\ConsoleRig\Project\ConsoleRig.vcxproj">
       <Project>{587a5b72-36e9-ff50-36f4-c0e96bbfa841}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\Foreign\FreeType\builds\windows\vc2010\freetype.vcxproj">
-      <Project>{78b079bd-9fc7-4b9e-b4a6-96da0f00248b}</Project>
-    </ProjectReference>
     <ProjectReference Include="..\..\..\Foreign\Project\Foreign.vcxproj">
       <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\Foreign\TreeViewAdv-1.7.0.0\Aga.Controls\Aga.Controls.csproj">
-      <Project>{e73bb233-d88b-44a7-a98f-d71ee158381d}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\..\Math\Project\Math.vcxproj">
       <Project>{2e51aa64-7e29-cd4a-fb7f-bac486a3575c}</Project>
@@ -123,14 +117,14 @@
     <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore.vcxproj">
       <Project>{116fe083-50bc-1393-470f-f834ef6e02ff}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore_Assets.vcxproj">
+      <Project>{ebf600b7-b82e-483c-b0ce-c74bbc60dc9a}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore_DX11.vcxproj">
       <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore_Techniques.vcxproj">
       <Project>{8188bb13-0b12-c110-2a31-515435fd3bb5}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\SceneEngine\Project\SceneEngine.vcxproj">
-      <Project>{0a40e6ed-47cc-a08e-71c5-8a3515d81eaf}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\..\ShaderParser\Project\ShaderParser.vcxproj">
       <Project>{d7818769-51d6-7fe8-161b-71f0f96a076f}</Project>

@@ -154,6 +154,10 @@
       <Project>{e73bb233-d88b-44a7-a98f-d71ee158381d}</Project>
       <Name>Aga.Controls</Name>
     </ProjectReference>
+    <ProjectReference Include="..\GUILayer\Project\GUILayer.vcxproj">
+      <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>
+      <Name>GUILayer</Name>
+    </ProjectReference>
     <ProjectReference Include="..\HyperGraph\HyperGraph.csproj">
       <Project>{e4cc63d8-127d-4bc9-80e0-ccb3e9da06dc}</Project>
       <Name>HyperGraph</Name>

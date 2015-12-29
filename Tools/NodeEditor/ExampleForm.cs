@@ -6,6 +6,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Composition;
+using System.ComponentModel.Composition.Hosting;
 using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
@@ -33,6 +35,14 @@ namespace NodeEditor
 
 		public ExampleForm()
 		{
+            var catalog = new TypeCatalog(
+                typeof(GUILayer.EngineDevice),
+                typeof(PreviewRender.Manager)
+            );
+            var container = new CompositionContainer(catalog);
+            container.ComposeExportedValue<ExportProvider>(container);
+            _exportProvider = container;
+
 			InitializeComponent();
 
             _hyperGraphModel = new HyperGraph.GraphModel();
@@ -41,6 +51,8 @@ namespace NodeEditor
             graphControl.Model = _hyperGraphModel;
             graphControl.FocusChanged += new EventHandler<ElementEventArgs>(OnFocusChanged);
             graphControl.MouseEnter += new System.EventHandler(OnGraphMouseEnter);
+
+            graphControl.Paint += graphControl_Paint;
 
             _tabGroupTextureNode = new RibbonTabGroup(_ribbon, (uint)RibbonMarkupCommands.cmdTabGroupTextureNode);
 
@@ -76,6 +88,12 @@ namespace NodeEditor
             }
             catch (System.Exception) {}
 		}
+
+        void graphControl_Paint(object sender, PaintEventArgs e)
+        {
+            var engine = _exportProvider.GetExport<GUILayer.EngineDevice>();
+            engine.Value.ForegroundUpdate();
+        }
 
         #region Graph control event handlers
         void OnFocusChanged(object sender, ElementEventArgs e)
@@ -120,7 +138,10 @@ namespace NodeEditor
                                 var fn = ShaderFragmentArchive.Archive.GetFunction(archiveName);
                                 if (fn != null)
                                 {
-                                    this.DoDragDrop(NodeEditorCore.ShaderFragmentNodeCreator.CreateNode(fn, archiveName, _hyperGraphModel, _document), DragDropEffects.Copy);
+                                    this.DoDragDrop(
+                                        NodeEditorCore.ShaderFragmentNodeCreator.CreateNode(
+                                            fn, archiveName, _hyperGraphModel, _document, _exportProvider), 
+                                        DragDropEffects.Copy);
                                 }
                             }
                         }
@@ -251,7 +272,9 @@ namespace NodeEditor
                 if (o != null && o is ShaderPatcherLayer.NodeGraph)
                 {
                     _hyperGraphModel.RemoveNodes(_hyperGraphModel.Nodes.ToList());
-                    NodeEditorCore.ModelConversion.AddToHyperGraph((ShaderPatcherLayer.NodeGraph)o, _hyperGraphModel, _document);
+                    NodeEditorCore.ModelConversion.AddToHyperGraph(
+                        (ShaderPatcherLayer.NodeGraph)o, _hyperGraphModel, 
+                        _document, _exportProvider);
                     return true;
                 }
             }
@@ -325,6 +348,7 @@ namespace NodeEditor
         private RibbonLib.Controls.RibbonButton _saveAsButton;
         private RibbonLib.Controls.RibbonButton _loadButton;
         private HyperGraph.IGraphModel _hyperGraphModel;
+        private CompositionContainer _exportProvider;
         #endregion
 	}
 }
