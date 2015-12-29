@@ -152,6 +152,9 @@ namespace RenderCore { namespace Metal_DX11
         static void PrepareDevice(ID3D::Device&);
         static void ReleaseDevice(ID3D::Device&);
 
+        void AttachCurrentModule();
+        void DetachCurrentModule();
+
         ObjectFactory(IDevice* device);
         ObjectFactory(ID3D::Device& device);
         ObjectFactory(ID3D::Resource& resource);
@@ -168,6 +171,8 @@ namespace RenderCore { namespace Metal_DX11
         intrusive_ptr<AttachedData> _attachedData;
         static intrusive_ptr<AttachedData> InitAttachedData(ID3D::Device* device);
     };
+
+
 
     class DeviceContext : noncopyable
     {

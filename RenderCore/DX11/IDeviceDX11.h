@@ -41,8 +41,6 @@ namespace RenderCore
             typedef IDeviceDX11 Base_DeviceDX11;
         #endif
 
-        ID3D::Device*        GetDefaultUnderlyingDevice();
-
 /*-----------------*/ #include "../FlexEnd.h" /*-----------------*/
 
 

@@ -8,11 +8,15 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 typedef struct lua_State lua_State;
 
 namespace ConsoleRig
 {
+    class LuaState;
+    class ConsoleVariableStorage;
+    
     class Console
     {
     public:
@@ -28,14 +32,24 @@ namespace ConsoleRig
         unsigned    GetLineCount() const;
 
         static Console&     GetInstance() { return *s_instance; }
+        static bool         HasInstance() { return s_instance != nullptr; }
         static void         SetInstance(Console* newInstance);
+
         lua_State*          GetLuaState();
+        ConsoleVariableStorage& GetCVars();
 
         Console();
         ~Console();
+
+        Console(const Console&) = delete;
+        Console& operator=(const Console&) = delete;
+        Console(Console&&) = delete;
+        Console& operator=(Console&&) = delete;
     private:
         std::vector<std::u16string>     _lines;
-        bool                _lastLineComplete;
+        bool                            _lastLineComplete;
+        std::unique_ptr<LuaState>       _lua;
+        std::unique_ptr<ConsoleVariableStorage> _cvars;
         static Console*     s_instance;
     };
 

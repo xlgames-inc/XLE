@@ -51,6 +51,7 @@ namespace ToolsRig
     VisEnvSettings::VisEnvSettings()
     {
         _activeSetting = PlatformRig::DefaultEnvironmentSettings();
+        _depVal = std::make_shared<::Assets::DependencyValidation>();
     }
 
     VisEnvSettings::VisEnvSettings(const ::Assets::ResChar filename[])

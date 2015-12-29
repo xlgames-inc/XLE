@@ -22,7 +22,7 @@ namespace RenderCore
 {
 ////////////////////////////////////////////////////////////////////////////////
 
-    namespace Metal_DX11 { class DeviceContext; }
+    namespace Metal_DX11 { class DeviceContext; class ObjectFactory; }
 
     class Device;
 
@@ -99,6 +99,7 @@ namespace RenderCore
         std::shared_ptr<ThreadContextDX11>  _immediateThreadContext;
 
         intrusive_ptr<IDXGI::Factory>       GetDXGIFactory();
+        std::unique_ptr<Metal_DX11::ObjectFactory> _mainFactory;
     };
 
     class DeviceDX11 : public Device, public Base_DeviceDX11
@@ -107,7 +108,7 @@ namespace RenderCore
         virtual void*           QueryInterface(const GUID& guid);
         ID3D::Device*           GetUnderlyingDevice();
         ID3D::DeviceContext*    GetImmediateDeviceContext();
-
+        
         DeviceDX11();
         ~DeviceDX11();
     };

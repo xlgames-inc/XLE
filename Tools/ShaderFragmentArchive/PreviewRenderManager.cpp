@@ -200,29 +200,32 @@ namespace PreviewRender
         {
             MaterialVisObject visObject;
             visObject._materialBinder = std::make_shared<MaterialBinder>(*builder._shaderSource, builder._shaderText);
-            visObject._systemConstants._lightNegativeDirection = Normalize(doc->NegativeLightDirection);
             visObject._systemConstants._lightColour = Float3(1,1,1);
             visObject._parameters._matParams.SetParameter(u("SHADER_NODE_EDITOR"), "1");
 
-                //  We need to convert the material parameters and resource bindings
-                //  from the "doc" into native format in the "visObject._parameters" object.
-                //  Any "string" parameter might be a texture binding
-            for each (auto i in doc->PreviewMaterialState) {
-                auto str = dynamic_cast<String^>(i.Value);
-                if (str) {
-                    visObject._parameters._bindings.SetParameter(
-                            (const utf8*)clix::marshalString<clix::E_UTF8>(i.Key).c_str(),
-                            clix::marshalString<clix::E_UTF8>(str));
-                }
-            }
+            if (doc != nullptr) {
+                visObject._systemConstants._lightNegativeDirection = Normalize(doc->NegativeLightDirection);
 
-                //  Shader constants are more difficult... we only support uint32 currently!
-            for each (auto i in doc->PreviewMaterialState) {
-                uint32 dest;
-                ShaderPatcherLayer::TypeRules::CopyToBytes(
-                    &dest, i.Value, "uint", 
-                    ShaderPatcherLayer::TypeRules::ExtractTypeName(i.Value),
-                    PtrAdd(&dest, sizeof(dest)));
+                    //  We need to convert the material parameters and resource bindings
+                    //  from the "doc" into native format in the "visObject._parameters" object.
+                    //  Any "string" parameter might be a texture binding
+                for each (auto i in doc->PreviewMaterialState) {
+                    auto str = dynamic_cast<String^>(i.Value);
+                    if (str) {
+                        visObject._parameters._bindings.SetParameter(
+                                (const utf8*)clix::marshalString<clix::E_UTF8>(i.Key).c_str(),
+                                clix::marshalString<clix::E_UTF8>(str));
+                    }
+                }
+
+                    //  Shader constants are more difficult... we only support uint32 currently!
+                for each (auto i in doc->PreviewMaterialState) {
+                    uint32 dest;
+                    ShaderPatcherLayer::TypeRules::CopyToBytes(
+                        &dest, i.Value, "uint", 
+                        ShaderPatcherLayer::TypeRules::ExtractTypeName(i.Value),
+                        PtrAdd(&dest, sizeof(dest)));
+                }
             }
 
             MaterialVisSettings visSettings;
@@ -417,15 +420,23 @@ namespace PreviewRender
         return _pimpl->_globalTechniqueContext.get();
     }
 
-    // static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
+    static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
+    static ConsoleRig::AttachRef<RenderCore::Metal::ObjectFactory> s_attachRef2;
+    static ConsoleRig::AttachRef<RenderCore::Assets::Services> s_attachRef3;
 
     Manager::Manager(GUILayer::EngineDevice^ engineDevice)
     {
-        // s_attachRef = engineDevice->GetNative().GetGlobalServices()->Attach();
+        s_attachRef = engineDevice->GetNative().GetGlobalServices()->Attach();
         
         _pimpl.reset(new ManagerPimpl());
         _pimpl->_device = engineDevice->GetNative().GetRenderDevice();
         _pimpl->_uploads = &engineDevice->GetNative().GetRenderAssetServices()->GetBufferUploadsInstance();
+
+        s_attachRef2 = 
+            ConsoleRig::GlobalServices::GetCrossModule().Attach<RenderCore::Metal::ObjectFactory>();
+
+        s_attachRef3 = 
+            ConsoleRig::GlobalServices::GetCrossModule().Attach<RenderCore::Assets::Services>();
 
         // ConsoleRig::StartupConfig cfg;
         // cfg._applicationName = clix::marshalString<clix::E_UTF8>(System::Windows::Forms::Application::ProductName);
@@ -441,8 +452,13 @@ namespace PreviewRender
 
     Manager::~Manager()
     {
+        s_attachRef3.Detach();
+        s_attachRef2.Detach();
+        s_attachRef.Detach();
+
         _pimpl->_shaderSource.reset();
         _pimpl->_globalTechniqueContext.reset();
+
         // System::GC::Collect();
         // System::GC::WaitForPendingFinalizers();
         // // DelayedDeleteQueue::FlushQueue();

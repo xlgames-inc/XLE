@@ -10,6 +10,7 @@
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/IteratorUtils.h"
 #include "../../Core/Exceptions.h"
 #include "../../Math/Vector.h"
 #include <iterator>
@@ -32,7 +33,8 @@ namespace ConsoleRig
     {
     public:
         lua_State* L;
-        operator lua_State*() { return L; }
+        // operator lua_State*() { return L; }
+        lua_State* GetUnderlying() { return L; }
 
         int             PCall(int argumentCount, int returnValueCount);
     
@@ -49,20 +51,56 @@ namespace ConsoleRig
 
 
 
+    class ConsoleVariableStorage
+    {
+    public:
+        class ICVarTable
+        {
+        public:
+            virtual ~ICVarTable() {}
+        };
+
+        template<typename Type>
+            class CVarTable : public ICVarTable
+        {
+        public:
+            using Table = std::vector<std::unique_ptr<std::pair<Type, ConsoleVariable<Type>>>>;
+            Table _table;
+        };
+
+        template<typename Type>
+            using Table = typename CVarTable<Type>::Table;
+
+        template<typename Type>
+            Table<Type>& GetTable()
+        {
+            auto hash = typeid(Type).hash_code();
+            auto i = LowerBound(_tables, (uint64)hash);
+            if (i == _tables.end() || i->first == hash) {
+                auto newTable = std::make_unique<CVarTable<Type>>();
+                i = _tables.insert(i, std::make_pair(hash, std::move(newTable)));
+            }
+            
+            auto* rawTable = i->second.get();
+            return ((CVarTable<Type>*)rawTable)->_table;    // (critical upcast here)
+        }
+
+    private:
+        std::vector<std::pair<uint64, std::unique_ptr<ICVarTable>>> _tables;
+    };
 
 
             //////   C O R E   C O N S O L E   B E H A V I O U R   //////
 
-    static std::unique_ptr<LuaState>    g_ConsoleLUA = nullptr;
-    Console*                            Console::s_instance = nullptr;
+    Console*        Console::s_instance = nullptr;
 
     void            Console::Execute(const std::string& str)
     {
         Print("{Color:af3f7f}Executing string -- {Color:7F7F7F}" + str + "\n");
 
-        lua_State* L = *g_ConsoleLUA;
+        lua_State* L = GetLuaState();
         luaL_loadstring(L, str.c_str());
-        int errorCode = g_ConsoleLUA->PCall(0, 0);
+        int errorCode = _lua->PCall(0, 0);
         if (errorCode != LUA_OK) {
             const char* msg = lua_tostring(L, -1);
             if (msg) {
@@ -119,7 +157,7 @@ namespace ConsoleRig
 
     std::vector<std::string>    Console::AutoComplete(const std::string& input)
     {
-        lua_State* L = *g_ConsoleLUA;
+        lua_State* L = GetLuaState();
 
             //
             //      Separate the input string into parts with "." or ":"
@@ -264,7 +302,12 @@ namespace ConsoleRig
 
     lua_State*  Console::GetLuaState()
     {
-        return (lua_State*)*g_ConsoleLUA;
+        return _lua->GetUnderlying();
+    }
+
+    ConsoleVariableStorage&  Console::GetCVars()
+    {
+        return *_cvars;
     }
 
     void Console::SetInstance(Console* newInstance)
@@ -277,18 +320,17 @@ namespace ConsoleRig
     {
         _lastLineComplete = false;
         _lines.push_back(std::u16string());
+        _lua = std::make_unique<LuaState>();
+        _cvars = std::make_unique<ConsoleVariableStorage>();
 
         assert(!s_instance);
         s_instance = this;
-
-        assert(!g_ConsoleLUA);
-        g_ConsoleLUA = std::make_unique<LuaState>();
     }
 
     Console::~Console() 
     {
-        g_ConsoleLUA.reset();
-
+        _cvars.reset();
+        _lua.reset();
         assert(s_instance==this);
         s_instance = nullptr;
     }
@@ -477,13 +519,11 @@ namespace ConsoleRig
             (*attachedValue->_attachedValue) = newValue;
             return *attachedValue->_attachedValue;
         }
-
-
+        
         template <typename Type>
-            std::vector<std::unique_ptr<std::pair<Type, ConsoleVariable<Type>>>>&  GetConsoleVariableTable()
+            ConsoleVariableStorage::Table<Type>& GetConsoleVariableTable()
         {
-            static std::vector<std::unique_ptr<std::pair<Type, ConsoleVariable<Type>>>> staticTable;
-            return staticTable;
+            return Console::GetInstance().GetCVars().GetTable<Type>();
         }
 
         template <typename Type>
@@ -502,16 +542,19 @@ namespace ConsoleRig
             {
                 auto& table  = GetConsoleVariableTable<Type>();
                 auto i       = std::lower_bound(table.cbegin(), table.cend(), name, CompareConsoleVariable<Type>());
-                if (i!=table.cend() && !XlCompareString((*i)->second.Name().c_str(), name)) {
+                if (i!=table.cend() && XlEqString((*i)->second.Name(), name))
                     return (*i)->first;
-                }
 
                 typedef std::pair<Type, ConsoleVariable<Type>> Pair;
+                // This bit of funkiness is because we want the ConsoleVariable object to contain
+                // a pointer to the value object (which is contained in the same heap block)
+                // It's awkward here, but it's convenient otherwise
                 std::unique_ptr<Pair> p(new Pair(defaultValue, ConsoleVariable<Type>()));
                 Type& result = std::get<0>(*p);
                 ConsoleVariable<Type>& var = std::get<1>(*p);
                 var.~ConsoleVariable<Type>();
                 new(&var) ConsoleVariable<Type>(name, result);
+
                 table.insert(i, std::move(p));
                 return result;
             }
@@ -583,7 +626,7 @@ namespace ConsoleRig
             //
             //          Register the variable as a global value in LUA
             //
-        lua_State* L = *g_ConsoleLUA.get();        // (use the global lua state for console variables)
+        lua_State* L = Console::GetInstance().GetLuaState();        // (use the global lua state for console variables)
 
         using namespace luabridge;
 
@@ -621,8 +664,8 @@ namespace ConsoleRig
     template <typename Type>
         ConsoleVariable<Type>::~ConsoleVariable()
     {
-        if (!_name.empty() && g_ConsoleLUA) {
-            lua_State* L = *g_ConsoleLUA;
+        if (!_name.empty() && Console::HasInstance()) {
+            lua_State* L = Console::GetInstance().GetLuaState();
 
             lua_getglobal(L, "_G");
             luabridge::rawgetfield(L, -1, _cvarNamespace.empty()?"cv":_cvarNamespace.c_str());

@@ -12,6 +12,7 @@
 #include "Buffer.h"
 #include "Resource.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../ConsoleRig/AttachableInternal.h"
 #include "../../Utility/Threading/Mutex.h"
 #include "../../Utility/MemoryUtils.h"
 
@@ -640,6 +641,8 @@ namespace RenderCore { namespace Metal_DX11
     }
         /// @}
 
+    static ID3D::Device* s_defaultDevice = nullptr;
+
     ObjectFactory::ObjectFactory(IDevice* device)
     : _device(ExtractUnderlyingDevice(device))
     {
@@ -661,7 +664,7 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     ObjectFactory::ObjectFactory()
-    : _device(GetDefaultUnderlyingDevice())
+    : _device(s_defaultDevice)
     {
         _attachedData = InitAttachedData(_device.get());
     }
@@ -710,6 +713,18 @@ namespace RenderCore { namespace Metal_DX11
             }
         }
         return std::move(result);
+    }
+
+    void ObjectFactory::AttachCurrentModule()
+    {
+        assert(s_defaultDevice == nullptr);
+        s_defaultDevice = _device.get();
+    }
+
+    void ObjectFactory::DetachCurrentModule()
+    {
+        assert(s_defaultDevice == _device.get());
+        s_defaultDevice = nullptr;
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -772,3 +787,8 @@ namespace RenderCore { namespace Metal_DX11
     template void DeviceContext::BindSO<1>(const ResourceList<VertexBuffer, 1>&, unsigned);
     template void DeviceContext::BindSO<2>(const ResourceList<VertexBuffer, 2>&, unsigned);
 }}
+
+namespace ConsoleRig
+{
+    template class Attachable<RenderCore::Metal_DX11::ObjectFactory>;
+}
