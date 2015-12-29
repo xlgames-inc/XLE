@@ -35,6 +35,7 @@ namespace MaterialTool
         {
             Context = context;
             _child.Model = context.Model;
+            _child.Selection = context.DiagramSelection;
         }
 
         void child_Paint(object sender, System.Windows.Forms.PaintEventArgs e)

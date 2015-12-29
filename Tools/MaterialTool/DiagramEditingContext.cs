@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using Sce.Atf;
 using Sce.Atf.Adaptation;
 using Sce.Atf.Applications;
@@ -15,15 +16,18 @@ using Sce.Atf.Dom;
 namespace MaterialTool
 {
     public class DiagramEditingContext :
-        /*EditingContext      // (provides some implementation for managing selection and history... but there's a problem here because it relies on DomNodeAdapter)
-        ,*/ IEnumerableContext
+        IEnumerableContext
         , IInstancingContext
         , IObservableContext
         , INamingContext
         , IColoringContext
+        , ISelectionContext
     {
         private HyperGraph.IGraphModel _model;
+        private HyperGraph.IGraphSelection _selection;
+
         public HyperGraph.IGraphModel Model { get { return _model; } }
+        public HyperGraph.IGraphSelection DiagramSelection { get { return _selection; } }
 
         public DiagramEditingContext(HyperGraph.IGraphModel model)
         {
@@ -32,7 +36,57 @@ namespace MaterialTool
             model.NodeRemoved += model_NodeRemoved;
             model.ConnectionAdded += model_ConnectionAdded;
             model.ConnectionRemoved += model_ConnectionRemoved;
+
+            _selection = new HyperGraph.GraphSelection();
+            _selection.SelectionChanging +=_selection_SelectionChanging;
+            _selection.SelectionChanged += _selection_SelectionChanged;
         }
+
+        #region ISelectionContext Member
+        private void _selection_SelectionChanged(object sender, EventArgs e)
+        {
+            if (SelectionChanged != null)
+                SelectionChanged.Invoke(sender, e);
+        }
+
+        private void _selection_SelectionChanging(object sender, EventArgs e)
+        {
+            if (SelectionChanging != null)
+                SelectionChanging.Invoke(sender, e);
+        }
+
+        public object LastSelected 
+        { 
+            get { return _selection.Selection.LastOrDefault(); }
+        }
+        public IEnumerable<object> Selection 
+        { 
+            get { return _selection.Selection; }
+            set
+            {
+                _selection.Update(value.AsIEnumerable<HyperGraph.IElement>(), null);
+            }
+        }
+        public int SelectionCount { get { return _selection.Selection.Count; } }
+
+        public event EventHandler SelectionChanged;
+        public event EventHandler SelectionChanging;
+
+        public T GetLastSelected<T>() where T : class
+        {
+            if (typeof(HyperGraph.IElement).IsAssignableFrom(typeof(T)))
+                return LastSelected.As<T>();
+            return null;
+        }
+        public IEnumerable<T> GetSelection<T>() where T : class
+        {
+            return _selection.Selection.AsIEnumerable<T>();
+        }
+        public bool SelectionContains(object item)
+        {
+            return _selection.Selection.Contains(item);
+        }
+        #endregion
 
         #region IEnumerableContext Members
         IEnumerable<object> IEnumerableContext.Items
