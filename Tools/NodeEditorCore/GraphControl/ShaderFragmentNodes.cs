@@ -28,6 +28,8 @@ namespace NodeEditorCore
     {
         ShaderPatcherLayer.NodeGraph NodeGraph { get; }
         ShaderPatcherLayer.Document ParameterSettings { get; }
+
+        uint ShaderStructureHash { get; }
     }
 
     [Export(typeof(IDiagramDocument))]
@@ -43,6 +45,8 @@ namespace NodeEditorCore
         }
 
         public HyperGraph.IGraphModel ViewModel { get; set; }
+
+        public uint ShaderStructureHash { get { return ViewModel.GlobalRevisionIndex; } }
 
         [Import]
         private IModelConversion _converter;
@@ -168,6 +172,7 @@ namespace NodeEditorCore
             _cachedBitmap = null;
             Geometry = ShaderPatcherLayer.PreviewGeometry.Sphere;
             OutputToVisualize = "";
+            _shaderStructureHash = 0;
         }
 
         public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
@@ -187,6 +192,13 @@ namespace NodeEditorCore
 
                 var doc = context as IDiagramDocument;
                 if (doc == null) return;
+
+                var currentHash = doc.ShaderStructureHash;
+                if (currentHash != _shaderStructureHash)
+                {
+                    _builder = null;
+                    _shaderStructureHash = currentHash;
+                }
 
                 if (_builder == null)
                 {
@@ -221,7 +233,7 @@ namespace NodeEditorCore
         public override SizeF   Measure(Graphics graphics) { return new SizeF(196, 196); }
         public override void    RenderConnector(Graphics graphics, RectangleF bounds) { }
 
-        public void InvalidateShaderStructure() { _cachedBitmap = null; _builder = null; }
+        public void InvalidateShaderStructure() { _cachedBitmap = null; _builder = null; _shaderStructureHash = 0;  }
         public void InvalidateParameters() { _cachedBitmap = null; }
 
         public override bool OnStartDrag(PointF location, out PointF original_location)
@@ -245,15 +257,16 @@ namespace NodeEditorCore
         public ShaderPatcherLayer.PreviewGeometry Geometry { get { return _previewGeometry; } set { _previewGeometry = value; InvalidateParameters(); } }
         public string OutputToVisualize                 { get { return _outputToVisualize; } set { _outputToVisualize = value; InvalidateShaderStructure(); } }
 
-        private ShaderPatcherLayer.IPreviewBuilder _builder;
-        private PointF                          _lastDragLocation;
-
+        private PointF _lastDragLocation;
+        private ShaderPatcherLayer.PreviewGeometry _previewGeometry;
+        private string _outputToVisualize;
         [Import]
         private ShaderPatcherLayer.IManager _previewManager;
 
-        private System.Drawing.Bitmap           _cachedBitmap;
-        private ShaderPatcherLayer.PreviewGeometry _previewGeometry;
-        private string _outputToVisualize;
+        // bitmap cache --
+        private uint _shaderStructureHash;
+        private ShaderPatcherLayer.IPreviewBuilder _builder; 
+        private System.Drawing.Bitmap _cachedBitmap;
     }
 
     #endregion

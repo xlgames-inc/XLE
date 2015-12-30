@@ -60,13 +60,15 @@ namespace HyperGraph
         void RemoveNode(Node node);
         bool RemoveNodes(IEnumerable<Node> nodes);
 
-        NodeConnection Connect(NodeItem from, NodeItem to);
-        NodeConnection Connect(NodeConnector from, NodeConnector to);
+        NodeConnection Connect(NodeItem from, NodeItem to, string name = "");
+        NodeConnection Connect(NodeConnector from, NodeConnector to, string name = "");
         bool Disconnect(NodeConnection connection);
         bool DisconnectAll(Node node);
         bool ConnectionIsAllowed(NodeConnector from, NodeConnector to);
 
         Compatibility.ICompatibilityStrategy CompatibilityStrategy { get; set; }
+
+        uint GlobalRevisionIndex { get; }
 
         event EventHandler<AcceptNodeEventArgs>              NodeAdded;
         event EventHandler<AcceptNodeEventArgs>              NodeRemoving;

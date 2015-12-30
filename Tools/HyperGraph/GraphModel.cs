@@ -14,6 +14,8 @@ namespace HyperGraph
         }
 
         private readonly List<Node> _graphNodes = new List<Node>();
+        private static uint _nextRevisionIndex = 1;
+        private uint _revisionIndex;
 
         public ICompatibilityStrategy CompatibilityStrategy { get; set; }
 
@@ -22,6 +24,8 @@ namespace HyperGraph
         {
             if (element == null)
                 return;
+
+            bool madeChange = false;
             switch (element.ElementType)
             {
                 case ElementType.Connection:
@@ -34,6 +38,7 @@ namespace HyperGraph
                     {
                         connections.Remove(connection);
                         connections.Insert(0, connection);
+                        madeChange = true;
                     }
 
                     connections = connection.To.Node.connections;
@@ -41,6 +46,7 @@ namespace HyperGraph
                     {
                         connections.Remove(connection);
                         connections.Insert(0, connection);
+                        madeChange = true;
                     }
                     break;
                 case ElementType.NodeSelection:
@@ -52,6 +58,7 @@ namespace HyperGraph
                             {
                                 _graphNodes.Remove(node);
                                 _graphNodes.Insert(0, node);
+                                madeChange = true;
                             }
                         }
                         break;
@@ -63,6 +70,7 @@ namespace HyperGraph
                         {
                             _graphNodes.Remove(node);
                             _graphNodes.Insert(0, node);
+                            madeChange = true;
                         }
                         break;
                     }
@@ -75,6 +83,13 @@ namespace HyperGraph
                     var item = element as NodeItem;
                     BringElementToFront(item.Node);
                     break;
+            }
+
+            if (madeChange)
+            {
+                // don't call UpdateRevisionIndex(); here (generated shaders should not changed)
+                if (InvalidateViews != null)
+                    InvalidateViews(this, EventArgs.Empty);
             }
         }
         #endregion
@@ -100,6 +115,7 @@ namespace HyperGraph
 
             BringElementToFront(node);
             // FocusElement = node;
+            UpdateRevisionIndex();
             if (InvalidateViews != null)
                 InvalidateViews(this, EventArgs.Empty);
             return true;
@@ -141,6 +157,7 @@ namespace HyperGraph
             {
                 BringElementToFront(lastNode);
                 // FocusElement = lastNode;
+                UpdateRevisionIndex();
                 if (InvalidateViews != null) 
                     InvalidateViews(this, EventArgs.Empty);
             }
@@ -164,6 +181,7 @@ namespace HyperGraph
 
             DisconnectAll(node);
             _graphNodes.Remove(node);
+            UpdateRevisionIndex();
             if (InvalidateViews != null) 
                 InvalidateViews(this, EventArgs.Empty);
 
@@ -199,47 +217,51 @@ namespace HyperGraph
                 if (NodeRemoved != null)
                     NodeRemoved(this, new NodeEventArgs(node));
             }
-            if (modified)
+            if (modified) {
+                UpdateRevisionIndex();
                 if (InvalidateViews != null) 
                     InvalidateViews(this, EventArgs.Empty);
+            }
             return modified;
         }
         #endregion
 
         #region Connect / Disconnect
-        public NodeConnection Connect(NodeItem from, NodeItem to)
+        public NodeConnection Connect(NodeItem from, NodeItem to, string name)
         {
-            return Connect(from.Output, to.Input);
+            return Connect(from.Output, to.Input, name);
         }
 
-        public NodeConnection Connect(NodeConnector from, NodeConnector to)
+        public NodeConnection Connect(NodeConnector from, NodeConnector to, string name)
         {
-            if (from == null || to == null ||
-                from.Node == null || to.Node == null ||
-                !from.Enabled ||
-                !to.Enabled)
-                return null;
-
-            foreach (var other in from.Node.connections)
+            if (from != null)
             {
-                if (other.From == from &&
-                    other.To == to)
-                    return null;
+                foreach (var other in from.Node.connections)
+                {
+                    if (other.From == from &&
+                        other.To == to)
+                        return null;
+                }
             }
 
-            foreach (var other in to.Node.connections)
+            if (to != null)
             {
-                if (other.From == from &&
-                    other.To == to)
-                    return null;
+                foreach (var other in to.Node.connections)
+                {
+                    if (other.From == from &&
+                        other.To == to)
+                        return null;
+                }
             }
 
             var connection = new NodeConnection();
             connection.From = from;
             connection.To = to;
 
-            from.Node.connections.Add(connection);
-            to.Node.connections.Add(connection);
+            if (from != null)
+                from.Node.connections.Add(connection);
+            if (to != null)
+                to.Node.connections.Add(connection);
 
             if (ConnectionAdded != null)
             {
@@ -251,6 +273,10 @@ namespace HyperGraph
                     return null;
                 }
             }
+
+            UpdateRevisionIndex();
+            if (InvalidateViews != null) 
+                InvalidateViews(this, EventArgs.Empty);
 
             return connection;
         }
@@ -289,6 +315,7 @@ namespace HyperGraph
             if (ConnectionRemoved != null)
                 ConnectionRemoved(this, new NodeConnectionEventArgs(from, to, connection));
 
+            UpdateRevisionIndex();
             if (InvalidateViews != null) 
                 InvalidateViews(this, EventArgs.Empty);
             return true;
@@ -341,6 +368,11 @@ namespace HyperGraph
         public event EventHandler<NodeConnectionEventArgs> ConnectionRemoved;
         public event EventHandler<EventArgs> InvalidateViews;
         #endregion
+
+        public GraphModel() { UpdateRevisionIndex(); }
+
+        private void UpdateRevisionIndex() { _revisionIndex = _nextRevisionIndex++; }
+        public uint GlobalRevisionIndex { get { return _revisionIndex; } }
     }
 
     public class GraphSelection : IGraphSelection

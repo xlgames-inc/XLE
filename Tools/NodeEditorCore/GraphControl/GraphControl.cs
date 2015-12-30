@@ -25,15 +25,8 @@ namespace NodeEditorCore
             model.ConnectionRemoving += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionRemoved);
         }
 
-        public static void InvalidateShaderStructure(object sender)
-        {
-            var model = sender as IGraphModel;
-            // if (model != null)
-            //     model.IncrementChangeCounter();
-        }
-
         private static void OnNodeAdded(object sender, AcceptNodeEventArgs args) { OnNodesChange(); }
-        private static void OnNodeRemoved(object sender, NodeEventArgs args) { OnNodesChange(); InvalidateShaderStructure(sender); }
+        private static void OnNodeRemoved(object sender, NodeEventArgs args) { OnNodesChange(); }
         private static void OnNodesChange()
         {
             // var didSomething = ShaderParameterUtil.FillInMaterialParameters(_document, graphControl);
@@ -43,19 +36,9 @@ namespace NodeEditorCore
             // }
         }
 
-        private static void OnConnectionAdding(object sender, AcceptNodeConnectionEventArgs e) { }
-
-        static int counter = 1;
-        private static void OnConnectionAdded(object sender, AcceptNodeConnectionEventArgs e)
-        {
-            e.Connection.Name = "Connection " + counter++;
-            InvalidateShaderStructure(sender);
-        }
-
-        private static void OnConnectionRemoved(object sender, AcceptNodeConnectionEventArgs e)
-        {
-            InvalidateShaderStructure(sender);
-        }
+        private static void OnConnectionAdding(object sender, AcceptNodeConnectionEventArgs e) {}
+        private static void OnConnectionAdded(object sender, AcceptNodeConnectionEventArgs e) {}
+        private static void OnConnectionRemoved(object sender, AcceptNodeConnectionEventArgs e) {}
 
         private static IGraphModel LoadFromXML(System.IO.Stream stream, System.ComponentModel.Composition.Hosting.ExportProvider exportProvider)
         {
@@ -185,14 +168,7 @@ namespace NodeEditorCore
                     }
 
                 if (!foundExisting)
-                {
-                    var connection = new NodeConnection();
-                    connection.To = e.Connector;
-                    connection.Name = dialog.InputText;
-                    e.Node.AddConnection(connection);
-                }
-
-                GraphHelpers.InvalidateShaderStructure(GetGraphModel());
+                    GetGraphModel().Connect(null, e.Connector, dialog.InputText);
             }
         }
         
