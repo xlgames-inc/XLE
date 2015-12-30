@@ -17,7 +17,7 @@ namespace NodeEditor
 {
     public partial class LargePreview : Form
     {
-        public LargePreview(PreviewRender.PreviewBuilder preview, ShaderDiagram.Document doc)
+        public LargePreview(ShaderPatcherLayer.PreviewBuilder preview, ShaderPatcherLayer.Document doc)
         {
             _preview = preview;
             _document = doc;
@@ -40,8 +40,8 @@ namespace NodeEditor
             // suppress background paint entirely
         }
 
-        private PreviewRender.PreviewBuilder _preview;
-        private ShaderDiagram.Document _document;
+        private ShaderPatcherLayer.PreviewBuilder _preview;
+        private ShaderPatcherLayer.Document _document;
         private Point _lastDragLocation;
 
         private void LargePreview_MouseDown(object sender, MouseEventArgs e)
@@ -78,8 +78,8 @@ namespace NodeEditor
             try
             {
                 var bitmap = _preview.Build(
-                    _document, new Size(ClientRectangle.Width, ClientRectangle.Height), 
-                    PreviewRender.PreviewGeometry.Sphere);
+                    _document, new Size(ClientRectangle.Width, ClientRectangle.Height),
+                    ShaderPatcherLayer.PreviewGeometry.Sphere);
                 if (bitmap != null)
                 {
                     e.Graphics.DrawImage(bitmap, new Point() { X = 0, Y = 0 });

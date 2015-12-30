@@ -37,11 +37,22 @@ namespace NodeEditor
 		{
             var catalog = new TypeCatalog(
                 typeof(GUILayer.EngineDevice),
-                typeof(PreviewRender.Manager)
+                typeof(ShaderPatcherLayer.Manager),
+                typeof(ShaderFragmentArchive.Archive),
+                typeof(NodeEditorCore.ShaderFragmentArchiveModel),
+                typeof(NodeEditorCore.ShaderParameterUtil),
+                typeof(NodeEditorCore.ModelConversion),
+                typeof(NodeEditorCore.ShaderFragmentNodeCreator),
+                typeof(NodeEditorCore.DiagramDocument)
             );
             var container = new CompositionContainer(catalog);
-            container.ComposeExportedValue<ExportProvider>(container);
+            container.ComposeExportedValue<ExportProvider>(container); 
+            container.ComposeExportedValue<CompositionContainer>(container);
             _exportProvider = container;
+
+            _shaderFragments = container.GetExport<ShaderFragmentArchive.Archive>().Value;
+            _nodeCreator = container.GetExport<NodeEditorCore.IShaderFragmentNodeCreator>().Value;
+            _modelConversion = container.GetExport<NodeEditorCore.IModelConversion>().Value;
 
 			InitializeComponent();
 
@@ -69,7 +80,8 @@ namespace NodeEditor
             _loadButton = new RibbonLib.Controls.RibbonButton(_ribbon, (uint)RibbonMarkupCommands.cmdLoad);
             _loadButton.ExecuteEvent += new EventHandler<ExecuteEventArgs>(OnLoad);
 
-            _fragmentTree.Model = new Aga.Controls.Tree.SortedTreeModel(new NodeEditorCore.TreeViewArchiveModel());
+            var fragmentTreeModel = container.GetExport<NodeEditorCore.ShaderFragmentArchiveModel>().Value;
+            _fragmentTree.Model = new Aga.Controls.Tree.SortedTreeModel(fragmentTreeModel);
             _fragmentTree.ItemDrag += new ItemDragEventHandler(OnFragmentTreeItemDrag);
             _fragmentTree.NodeMouseDoubleClick += new EventHandler<Aga.Controls.Tree.TreeNodeAdvMouseEventArgs>(OnFragmentTreeItemDoubleClick);
 
@@ -95,6 +107,10 @@ namespace NodeEditor
             var engine = _exportProvider.GetExport<GUILayer.EngineDevice>();
             engine.Value.ForegroundUpdate();
         }
+
+        private ShaderFragmentArchive.Archive _shaderFragments;
+        private NodeEditorCore.IShaderFragmentNodeCreator _nodeCreator;
+        private NodeEditorCore.IModelConversion _modelConversion;
 
         #region Graph control event handlers
         void OnFocusChanged(object sender, EventArgs e)
@@ -130,34 +146,33 @@ namespace NodeEditor
                     var array = (Aga.Controls.Tree.TreeNodeAdv[])e.Item;
                     foreach (var a in array)
                     {
-                        if (a.Tag is NodeEditorCore.TreeViewArchiveModel.ShaderFragmentItem)
+                        if (a.Tag is NodeEditorCore.ShaderFragmentArchiveModel.ShaderFragmentItem)
                         {
-                            var item = (NodeEditorCore.TreeViewArchiveModel.ShaderFragmentItem)a.Tag;
+                            var item = (NodeEditorCore.ShaderFragmentArchiveModel.ShaderFragmentItem)a.Tag;
 
                             var archiveName = item.ArchiveName;
                             if (archiveName != null && archiveName.Length > 0)
                             {
-                                var fn = ShaderFragmentArchive.Archive.GetFunction(archiveName);
+                                var fn = _shaderFragments.GetFunction(archiveName);
                                 if (fn != null)
                                 {
                                     this.DoDragDrop(
-                                        NodeEditorCore.ShaderFragmentNodeCreator.CreateNode(
-                                            fn, archiveName, _hyperGraphModel, _document, _exportProvider), 
+                                        _nodeCreator.CreateNode(fn, archiveName), 
                                         DragDropEffects.Copy);
                                 }
                             }
                         }
-                        else if (a.Tag is NodeEditorCore.TreeViewArchiveModel.ParameterStructItem)
+                        else if (a.Tag is NodeEditorCore.ShaderFragmentArchiveModel.ParameterStructItem)
                         {
-                            var item = (NodeEditorCore.TreeViewArchiveModel.ParameterStructItem)a.Tag;
+                            var item = (NodeEditorCore.ShaderFragmentArchiveModel.ParameterStructItem)a.Tag;
 
                             var archiveName = item.ArchiveName;
                             if (archiveName != null && archiveName.Length > 0)
                             {
-                                var fn = ShaderFragmentArchive.Archive.GetParameterStruct(archiveName);
+                                var fn = _shaderFragments.GetParameterStruct(archiveName);
                                 if (fn != null)
                                 {
-                                    this.DoDragDrop(NodeEditorCore.ShaderFragmentNodeCreator.CreateParameterNode(fn, archiveName, ShaderFragmentArchive.Parameter.SourceType.Material), DragDropEffects.Copy);
+                                    this.DoDragDrop(_nodeCreator.CreateParameterNode(fn, archiveName, ShaderFragmentArchive.Parameter.SourceType.Material), DragDropEffects.Copy);
                                 }
                             }
                         }
@@ -168,9 +183,9 @@ namespace NodeEditor
 
         private void OnFragmentTreeItemDoubleClick(object sender, Aga.Controls.Tree.TreeNodeAdvMouseEventArgs e)
         {
-            if (e.Node != null && e.Node.Tag is NodeEditorCore.TreeViewArchiveModel.ParameterStructItem)
+            if (e.Node != null && e.Node.Tag is NodeEditorCore.ShaderFragmentArchiveModel.ParameterStructItem)
             {
-                NodeEditorCore.ShaderParameterUtil.EditParameter(_hyperGraphModel, ((NodeEditorCore.TreeViewArchiveModel.ParameterStructItem)e.Node.Tag).ArchiveName);
+                NodeEditorCore.ShaderParameterUtil.EditParameter(_hyperGraphModel, ((NodeEditorCore.ShaderFragmentArchiveModel.ParameterStructItem)e.Node.Tag).ArchiveName);
             }
         }
         #endregion
@@ -183,7 +198,7 @@ namespace NodeEditor
                 //      This can be used for serialisation & for output to a shader
                 //
 
-            var nodeGraph = NodeEditorCore.ModelConversion.ToShaderPatcherLayer(_hyperGraphModel);
+            var nodeGraph = _modelConversion.ToShaderPatcherLayer(_hyperGraphModel);
             var shader = ShaderPatcherLayer.NodeGraph.GenerateShader(nodeGraph, "Test");
             MessageBox.Show(shader, "Generated shader", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
         }
@@ -202,7 +217,7 @@ namespace NodeEditor
                     {
                         using (var xmlStream = new System.IO.MemoryStream())
                         {
-                            var nodeGraph = NodeEditorCore.ModelConversion.ToShaderPatcherLayer(_hyperGraphModel);
+                            var nodeGraph = _modelConversion.ToShaderPatcherLayer(_hyperGraphModel);
                             var serializer = new System.Runtime.Serialization.DataContractSerializer(
                                 typeof(ShaderPatcherLayer.NodeGraph));
                             var settings = new System.Xml.XmlWriterSettings()
@@ -274,9 +289,8 @@ namespace NodeEditor
                 if (o != null && o is ShaderPatcherLayer.NodeGraph)
                 {
                     _hyperGraphModel.RemoveNodes(_hyperGraphModel.Nodes.ToList());
-                    NodeEditorCore.ModelConversion.AddToHyperGraph(
-                        (ShaderPatcherLayer.NodeGraph)o, _hyperGraphModel, 
-                        _document, _exportProvider);
+                    _modelConversion.AddToHyperGraph(
+                        (ShaderPatcherLayer.NodeGraph)o, _hyperGraphModel, _document);
                     return true;
                 }
             }
@@ -338,12 +352,12 @@ namespace NodeEditor
 
         private void _materialParametersGrid_PropertyValueChanged(object s, PropertyValueChangedEventArgs e)
         {
-            NodeEditorCore.ShaderFragmentNodeUtil.InvalidateParameters(_hyperGraphModel);
+            // NodeEditorCore.ShaderFragmentNodeUtil.InvalidateParameters(_hyperGraphModel);
             graphControl.Refresh();
         }
 
         #region Members
-        private ShaderDiagram.Document _document = new ShaderDiagram.Document();
+        private ShaderPatcherLayer.Document _document = new ShaderPatcherLayer.Document();
         private RibbonTabGroup _tabGroupTextureNode;
         private RibbonLib.Controls.RibbonCheckBox _showLabels;
         private RibbonLib.Controls.RibbonButton _generateTestScript;

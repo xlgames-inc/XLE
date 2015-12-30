@@ -257,6 +257,7 @@ namespace HyperGraph
             var connection = new NodeConnection();
             connection.From = from;
             connection.To = to;
+            connection.Name = name;
 
             if (from != null)
                 from.Node.connections.Add(connection);
