@@ -36,15 +36,35 @@ namespace ControlsLibrary.MaterialEditor
             _environment.SelectedIndexChanged += SelectedEnvironmentChanged;
         }
 
-        public IEnumerable<GUILayer.RawMaterial> Object
+        public string Object
         {
             set 
             {
+                foreach (var m in _attachedMaterials) {
+                    m.MaterialParameterBox.ListChanged -= ListChangedCallback;
+                    m.ResourceBindings.ListChanged -= ListChangedCallback;
+                    m.ShaderConstants.ListChanged -= ListChangedCallback;
+                }
+                _attachedMaterials.Clear();
+
+                foreach (var s in value.Split(';')) {
+                    var m = GUILayer.RawMaterial.Get(s);
+                    m.MaterialParameterBox.ListChanged += ListChangedCallback;
+                    m.ResourceBindings.ListChanged += ListChangedCallback;
+                    m.ShaderConstants.ListChanged += ListChangedCallback;
+                    _attachedMaterials.Add(m);
+                }
+
                 string model = ""; ulong binding = 0;
                 if (previewModel != null && previewModel.Item1 != null) { model = previewModel.Item1; binding = previewModel.Item2; }
-                visLayer.SetConfig(value, model, binding);
+                visLayer.SetConfig(_attachedMaterials, model, binding);
                 InvalidatePreview();
             }
+        }
+
+        private void ListChangedCallback(object sender, ListChangedEventArgs e)
+        {
+            InvalidatePreview();
         }
 
         public GUILayer.EnvironmentSettingsSet EnvironmentSet
@@ -90,6 +110,8 @@ namespace ControlsLibrary.MaterialEditor
         protected GUILayer.MaterialVisSettings visSettings;
         protected GUILayer.EnvironmentSettingsSet envSettings;
         protected Tuple<string, ulong> previewModel = null;
+        protected List<GUILayer.RawMaterial> _attachedMaterials = new List<GUILayer.RawMaterial>();
+        protected List<GUILayer.RenderStateSet> _attachedStateSets = new List<GUILayer.RenderStateSet>();
 
         private void _resetCamera_Click(object sender, EventArgs e)
         {

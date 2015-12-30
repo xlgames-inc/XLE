@@ -206,6 +206,7 @@ namespace NodeEditorCore
                     var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(
                         doc.NodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id, OutputToVisualize);
                     _builder = _previewManager.CreatePreviewBuilder(shader);
+                    _cachedBitmap = null;
                 }
 
                 if (_builder == null)

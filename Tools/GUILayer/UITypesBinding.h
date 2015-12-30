@@ -308,11 +308,6 @@ namespace GUILayer
         using NativeConfig = ::Assets::DivergentAsset<::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial, InputStreamFormatter<utf8>>>;
         RenderStateSet(std::shared_ptr<NativeConfig> underlying);
         ~RenderStateSet();
-        !RenderStateSet()
-        {
-            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of RenderStateSet");
-        }
-
     protected:
         clix::shared_ptr<NativeConfig> _underlying;
 
@@ -341,8 +336,8 @@ namespace GUILayer
 
         const RenderCore::Assets::RawMaterial* GetUnderlying();
 
-        List<String^>^ BuildInheritanceList();
-        static List<String^>^ BuildInheritanceList(String^ topMost);
+        String^ BuildInheritanceList();
+        static String^ BuildInheritanceList(String^ topMost);
 
         void AddInheritted(String^);
         void RemoveInheritted(String^);
@@ -350,16 +345,10 @@ namespace GUILayer
         property String^ Filename { String^ get(); }
         property String^ SettingName { String^ get(); }
 
-        RawMaterial(String^ initialiser);
-        // RawMaterial(std::shared_ptr<NativeConfig> underlying);
-        RawMaterial(RawMaterial^ cloneFrom);
-        ~RawMaterial();
+        static RawMaterial^ Get(String^ initializer);
 
-        !RawMaterial()
-        {
-            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of RawMaterial");
-        }
-    protected:
+        ~RawMaterial();
+    private:
         using NativeConfig = ::Assets::DivergentAsset<::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial, InputStreamFormatter<utf8>>>;
         clix::shared_ptr<NativeConfig> _underlying;
 
@@ -372,6 +361,11 @@ namespace GUILayer
         String^ _settingName;
         void ParameterBox_Changed(System::Object^, ListChangedEventArgs^);
         void ResourceBinding_Changed(System::Object^, ListChangedEventArgs^);
+
+        RawMaterial(String^ initialiser);
+
+        static RawMaterial();
+        static Dictionary<String^, WeakReference^>^ s_table;
     };
 
     public ref class InvalidAssetList

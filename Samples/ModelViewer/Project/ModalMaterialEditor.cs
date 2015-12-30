@@ -26,7 +26,10 @@ namespace ModelViewer
         {
             set
             {
-                hierchicalMaterialControl1.Object = value;
+                // note --  We can get "PendingAsset" exceptions here!
+                //          we need some way to handle these properly
+                _matControls.Object = value;
+                _preview.Object = value;
             }
         }
 
@@ -34,7 +37,7 @@ namespace ModelViewer
         {
             set
             {
-                hierchicalMaterialControl1.PreviewModel = value;
+                _preview.PreviewModel = value;
             }
         }
     }

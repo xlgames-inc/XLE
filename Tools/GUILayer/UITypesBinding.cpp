@@ -395,31 +395,32 @@ namespace GUILayer
         }
     }
 
-    List<System::String^>^ RawMaterial::BuildInheritanceList()
+    System::String^ RawMaterial::BuildInheritanceList()
     {
             // create a RawMaterial wrapper object for all of the inheritted objects
         if (!!_underlying) {
-            auto result = gcnew List<System::String^>();
-
             auto& asset = _underlying->GetAsset();
             auto searchRules = ::Assets::DefaultDirectorySearchRules(
                 clix::marshalString<clix::E_UTF8>(_filename).c_str());
             
+            System::String^ result = "";
             auto inheritted = asset._asset.ResolveInherited(searchRules);
             for (auto i = inheritted.cbegin(); i != inheritted.cend(); ++i) {
-                result->Add(clix::marshalString<clix::E_UTF8>(*i));
+                if (result->Length != 0) result += ";";
+                result += clix::marshalString<clix::E_UTF8>(*i);
             }
             return result;
         }
         return nullptr;
     }
 
-    List<System::String^>^ RawMaterial::BuildInheritanceList(System::String^ topMost)
+    System::String^ RawMaterial::BuildInheritanceList(System::String^ topMost)
     {
-        auto temp = gcnew RawMaterial(topMost);
-        auto result = temp->BuildInheritanceList();
-        delete temp;
-        return result;
+        // auto temp = gcnew RawMaterial(topMost);
+        // auto result = temp->BuildInheritanceList();
+        // delete temp;
+        // return result;
+        return Get(topMost)->BuildInheritanceList();
     }
 
     void RawMaterial::AddInheritted(String^ item)
@@ -444,6 +445,36 @@ namespace GUILayer
         return (!!_underlying) ? &_underlying->GetAsset()._asset : nullptr; 
     }
 
+    // Dictionary<String^, WeakReference^>^ RawMaterial::s_table; // = gcnew Dictionary<String^, WeakReference^>();
+
+    static RawMaterial::RawMaterial()
+    {
+        s_table = gcnew Dictionary<String^, WeakReference^>();
+    }
+
+    RawMaterial^ RawMaterial::Get(String^ initializer)
+    {
+        // Creates a raw material for the given initializer, or constructs
+        // a new one if one hasn't been created yet.
+        // Note -- there's a problem here because different initializers could
+        // end up resolving to the same native object. That may not be a problem
+        // in all cases... But it could throw off the change tracking.
+        System::Diagnostics::Debug::Assert(initializer && initializer->Length > 0);
+        
+        WeakReference^ ref;
+        if (s_table->TryGetValue(initializer, ref)) {
+            auto o = ref->Target;
+            if (o) return (RawMaterial^)o;
+        
+            // if the reference expired, we have to remove it -- we will create it again afterwards...
+            s_table->Remove(initializer);
+        }
+        
+        auto result = gcnew RawMaterial(initializer);
+        s_table->Add(initializer, gcnew WeakReference(result));
+        return result;
+    }
+
     RawMaterial::RawMaterial(System::String^ initialiser)
     {
         auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
@@ -457,28 +488,16 @@ namespace GUILayer
         _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
     }
 
-    // RawMaterial::RawMaterial(
-    //     std::shared_ptr<NativeConfig> underlying)
-    // {
-    //     _underlying = std::move(underlying);
-    //     _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
-    //     _filename = "unknown";
-    //     _settingName = "unknown";
-    // }
-
-    RawMaterial::RawMaterial(RawMaterial^ cloneFrom)
-    {
-        _underlying = cloneFrom->_underlying;
-        _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
-        _filename = cloneFrom->_filename;
-        _settingName = cloneFrom->_filename;
-    }
-
     RawMaterial::~RawMaterial()
     {
-        _underlying.reset();
         delete _renderStateSet;
+        _underlying.reset();
     }
+
+    // RawMaterial::!RawMaterial()
+    // {
+    //     System::Diagnostics::Debug::Assert(false, "Non deterministic delete of RawMaterial");
+    // }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -115,7 +115,6 @@ namespace ControlsLibrary.MaterialEditor
             _blendMode.SelectedIndexChanged += OnBlendModeChanged;
         }
 
-        protected List<GUILayer.RawMaterial> _objectsPendingDispose = null;
         protected GUILayer.RawMaterial _currentFocusMat = null;
 
         protected void ClearAndDispose(bool disposing = false)
@@ -125,7 +124,6 @@ namespace ControlsLibrary.MaterialEditor
                 _materialParameterBox.DataSource = null;
                 _shaderConstants.DataSource = null;
                 _resourceBindings.DataSource = null;
-                _materialPreview1.Object = null;
                 foreach (var o in _controls) o.Object = null;
                 _doubleSidedCheck.DataBindings.Clear();
                 _wireframeGroup.DataBindings.Clear();
@@ -156,13 +154,6 @@ namespace ControlsLibrary.MaterialEditor
                 _currentFocusMat.ResourceBindings.ListChanged -= OnParameterChanged;
                 _currentFocusMat = null;
             }
-
-            if (_objectsPendingDispose != null)
-            {
-                foreach (var mat in _objectsPendingDispose)
-                    mat.Dispose();
-                _objectsPendingDispose.Clear();
-            }
         }
 
         private void OnBlendModeChanged(object sender, EventArgs e)
@@ -176,21 +167,15 @@ namespace ControlsLibrary.MaterialEditor
             }
         }
 
-        public IEnumerable<string> Object
+        public string Object
         {
             set
             {
                 ClearAndDispose();
 
-                var mats = new List<GUILayer.RawMaterial>();
-                if (value != null)
-                    foreach (var s in value)
-                        mats.Add(new GUILayer.RawMaterial(s));
-
-                _materialPreview1.Object = mats; 
-                _objectsPendingDispose = mats;
-
-                var focusMat = (mats.Count > 0) ? mats[mats.Count-1] : null;
+                GUILayer.RawMaterial focusMat = null;
+                if (value != null && value.Length > 0)
+                    focusMat = GUILayer.RawMaterial.Get(value);
                 if (focusMat != null)
                 {
                     foreach (var o in _controls) o.Object = focusMat;
@@ -214,20 +199,7 @@ namespace ControlsLibrary.MaterialEditor
             }
         }
 
-        void OnParameterChanged(object sender, ListChangedEventArgs e)
-        {
-            _materialPreview1.InvalidatePreview();
-        }
-
-        public Tuple<string, ulong> PreviewModel
-        {
-            set { _materialPreview1.PreviewModel = value; }
-        }
-
-        public GUILayer.EnvironmentSettingsSet EnvironmentSet
-        {
-            set { _materialPreview1.EnvironmentSet = value; }
-        }
+        void OnParameterChanged(object sender, ListChangedEventArgs e) {}
 
         public abstract class ExtraControls : UserControl
         {
