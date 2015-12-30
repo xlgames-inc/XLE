@@ -20,7 +20,7 @@ namespace NodeEditorCore
         ShaderPatcherLayer.NodeGraph ToShaderPatcherLayer(HyperGraph.IGraphModel graph);
         void AddToHyperGraph(
             ShaderPatcherLayer.NodeGraph nodeGraph,
-            HyperGraph.IGraphModel graph, ShaderDiagram.Document doc);
+            HyperGraph.IGraphModel graph, ShaderPatcherLayer.Document doc);
     }
 
     [Export(typeof(IModelConversion))]
@@ -187,8 +187,8 @@ namespace NodeEditorCore
         }
 
         public void AddToHyperGraph(
-            ShaderPatcherLayer.NodeGraph nodeGraph, 
-            HyperGraph.IGraphModel graph, ShaderDiagram.Document doc)
+            ShaderPatcherLayer.NodeGraph nodeGraph,
+            HyperGraph.IGraphModel graph, ShaderPatcherLayer.Document doc)
         {
                 //
                 //      Convert from the "ShaderPatcherLayer" representation back to

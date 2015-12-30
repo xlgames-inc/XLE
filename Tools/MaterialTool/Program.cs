@@ -114,7 +114,7 @@ namespace MaterialTool
                 typeof(AtfScriptVariables),             // exposes common ATF services as script variables
                 typeof(AutomationService),              // provides facilities to run an automated script using the .NET remoting service
 
-                typeof(PreviewRender.Manager),
+                typeof(ShaderPatcherLayer.Manager),
                 typeof(ShaderFragmentArchive.Archive),
                 typeof(GUILayer.EngineDevice),
                
@@ -124,7 +124,8 @@ namespace MaterialTool
                 typeof(NodeEditorCore.ShaderFragmentArchiveModel),
                 typeof(NodeEditorCore.ShaderParameterUtil),
                 typeof(NodeEditorCore.ModelConversion),
-                typeof(NodeEditorCore.ShaderFragmentNodeCreator)
+                typeof(NodeEditorCore.ShaderFragmentNodeCreator),
+                typeof(NodeEditorCore.DiagramDocument)
             );
 
             // enable use of the system clipboard

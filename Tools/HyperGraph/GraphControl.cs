@@ -329,6 +329,8 @@ namespace HyperGraph
             return result;
         }
 
+        public object Context { get; set; }
+
         private void UpdateFocusStates()
         {
             // only setting the "focus" state on the nodes
@@ -624,7 +626,7 @@ namespace HyperGraph
                 return;
 
             GraphRenderer.PerformLayout(e.Graphics, _model.Nodes);
-            GraphRenderer.Render(e.Graphics, _model.Nodes, ShowLabels);
+            GraphRenderer.Render(e.Graphics, _model.Nodes, ShowLabels, Context);
 			
 			if (command == CommandMode.Edit)
 			{

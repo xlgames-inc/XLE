@@ -7,7 +7,7 @@
 #include "StdAfx.h"
 #include "ShaderDiagramDocument.h"
 
-namespace ShaderDiagram
+namespace ShaderPatcherLayer
 {
 
     Document::Document()

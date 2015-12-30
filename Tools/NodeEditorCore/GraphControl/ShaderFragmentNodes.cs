@@ -24,6 +24,30 @@ namespace NodeEditorCore
         Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type);
     }
 
+    public interface IDiagramDocument
+    {
+        ShaderPatcherLayer.NodeGraph NodeGraph { get; }
+        ShaderPatcherLayer.Document ParameterSettings { get; }
+    }
+
+    [Export(typeof(IDiagramDocument))]
+    [Export(typeof(DiagramDocument))]
+    [PartCreationPolicy(CreationPolicy.NonShared)]
+    public class DiagramDocument : IDiagramDocument
+    {
+        public ShaderPatcherLayer.Document ParameterSettings { get; set; }
+
+        public ShaderPatcherLayer.NodeGraph NodeGraph 
+        {
+            get { return _converter.ToShaderPatcherLayer(ViewModel); }  // note -- a lot of conversion work here every frame
+        }
+
+        public HyperGraph.IGraphModel ViewModel { get; set; }
+
+        [Import]
+        private IModelConversion _converter;
+    }
+
     #region ShaderFragmentNodeItem
 
         //
@@ -105,7 +129,7 @@ namespace NodeEditorCore
                 Math.Max(GraphConstants.MinimumItemHeight, mainStringSize.Height));
         }
         
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location) {}
+        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context) {}
 
         public override void RenderConnector(Graphics graphics, RectangleF bounds)
         {
@@ -142,16 +166,11 @@ namespace NodeEditorCore
         {
             _builder = null;
             _cachedBitmap = null;
-            // _previewManager = exportProvider.GetExport<PreviewRender.IManager>().Value;
-            // _converter = exportProvider.GetExport<IModelConversion>().Value;
-            Geometry = PreviewRender.PreviewGeometry.Sphere;
+            Geometry = ShaderPatcherLayer.PreviewGeometry.Sphere;
             OutputToVisualize = "";
         }
 
-        HyperGraph.IGraphModel Graph { set { _graph = value; } }
-        ShaderDiagram.Document Document { set { _document = value; } }
-
-        public override void    Render(Graphics graphics, SizeF minimumSize, PointF location)
+        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
         {
             if (Node.Tag is ShaderFragmentNodeTag)
             {
@@ -159,16 +178,21 @@ namespace NodeEditorCore
                 if (!graphics.IsVisible(new Rectangle() {X = (int)location.X, Y = (int)location.Y, Width = (int)size.Width, Height = (int)size.Height }))
                     return;
 
-                if (_graph == null) return;
+                // We need to get some global context information 
+                // (such the the containing graph and material parameter settings)
+                // We could use composition to get access to a global. But ideally this
+                // should be passed in from the top-level render function.
+                // This is a more convenient way to track invalidation, also -- because we
+                // can just check if there have been any changes since our last cached bitmap.
 
-                // PreviewRender.Manager.Instance.Update();
+                var doc = context as IDiagramDocument;
+                if (doc == null) return;
 
                 if (_builder == null)
                 {
-                    var nodeGraph = _converter.ToShaderPatcherLayer(_graph);
+                        // note -- much of this work doesn't really need to be repeated for each node.
                     var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(
-                        nodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id, OutputToVisualize);
-
+                        doc.NodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id, OutputToVisualize);
                     _builder = _previewManager.CreatePreviewBuilder(shader);
                 }
 
@@ -187,7 +211,7 @@ namespace NodeEditorCore
                 }
 
                 if (_cachedBitmap == null)
-                    _cachedBitmap = _builder.Build(_document, idealSize, Geometry);
+                    _cachedBitmap = _builder.Build(doc.ParameterSettings, idealSize, Geometry);
 
                 if (_cachedBitmap != null)
                     graphics.DrawImage(_cachedBitmap, new RectangleF() { X = location.X, Y = location.Y, Width = size.Width, Height = size.Height });
@@ -199,7 +223,6 @@ namespace NodeEditorCore
 
         public void InvalidateShaderStructure() { _cachedBitmap = null; _builder = null; }
         public void InvalidateParameters() { _cachedBitmap = null; }
-        public void InvalidateAttachedConstants() { _cachedBitmap = null; _builder = null;  /* required complete rebuild of shader */ }
 
         public override bool OnStartDrag(PointF location, out PointF original_location)
         {
@@ -213,27 +236,23 @@ namespace NodeEditorCore
             base.OnDrag(location);
             // PreviewRender.Manager.Instance.RotateLightDirection(_document, new PointF(location.X - _lastDragLocation.X, location.Y - _lastDragLocation.Y));
             _lastDragLocation = location;
-            InvalidateParameters();
+            // InvalidateParameters();
             return true;
         }
 
         public override bool OnEndDrag() { base.OnEndDrag(); return true; }
 
-        public PreviewRender.PreviewGeometry Geometry { get { return _previewGeometry; } set { _previewGeometry = value; InvalidateParameters(); } }
-        public string OutputToVisualize { get { return _outputToVisualize; } set { _outputToVisualize = value; InvalidateShaderStructure(); } }
+        public ShaderPatcherLayer.PreviewGeometry Geometry { get { return _previewGeometry; } set { _previewGeometry = value; InvalidateParameters(); } }
+        public string OutputToVisualize                 { get { return _outputToVisualize; } set { _outputToVisualize = value; InvalidateShaderStructure(); } }
 
-        private HyperGraph.IGraphModel          _graph;
-        private ShaderDiagram.Document          _document;
-        private PreviewRender.IPreviewBuilder   _builder;
+        private ShaderPatcherLayer.IPreviewBuilder _builder;
         private PointF                          _lastDragLocation;
 
         [Import]
-        private PreviewRender.IManager          _previewManager;
-        [Import]
-        private IModelConversion                _converter;
+        private ShaderPatcherLayer.IManager _previewManager;
 
         private System.Drawing.Bitmap           _cachedBitmap;
-        private PreviewRender.PreviewGeometry   _previewGeometry;
+        private ShaderPatcherLayer.PreviewGeometry _previewGeometry;
         private string _outputToVisualize;
     }
 
@@ -315,10 +334,10 @@ namespace NodeEditorCore
         {
             PreviewGeoNames = new Dictionary<Enum, string>
             {
-                { PreviewRender.PreviewGeometry.Chart, "Chart" },
-                { PreviewRender.PreviewGeometry.Box, "Box" },
-                { PreviewRender.PreviewGeometry.Sphere, "Sphere" },
-                { PreviewRender.PreviewGeometry.Model, "Model" }
+                { ShaderPatcherLayer.PreviewGeometry.Chart, "Chart" },
+                { ShaderPatcherLayer.PreviewGeometry.Box, "Box" },
+                { ShaderPatcherLayer.PreviewGeometry.Sphere, "Sphere" },
+                { ShaderPatcherLayer.PreviewGeometry.Model, "Model" }
             };
 
             ParamSourceTypeNames = new Dictionary<Enum, string>
@@ -390,7 +409,7 @@ namespace NodeEditorCore
                     if (sender is HyperGraph.Items.NodeDropDownItem)
                     {
                         var item = (HyperGraph.Items.NodeDropDownItem)sender;
-                        previewItem.Geometry = AsEnumValue<PreviewRender.PreviewGeometry>(item.Items[args.Index], PreviewGeoNames);
+                        previewItem.Geometry = AsEnumValue<ShaderPatcherLayer.PreviewGeometry>(item.Items[args.Index], PreviewGeoNames);
                     }
                 };
 
@@ -503,61 +522,6 @@ namespace NodeEditorCore
             }
             return null;
         }
-
-        //public static Node GetParameterNode(HyperGraph.GraphControl graphControl, UInt64 id)
-        //{
-        //    foreach (Node n in graphControl.Nodes)
-        //    {
-        //        if (n.Tag is ShaderParameterNodeTag
-        //            && ((ShaderParameterNodeTag)n.Tag).Id == (UInt64)id)
-        //        {
-        //            return n;
-        //        }
-        //    }
-        //    return null;
-        //}
-
-        public static void InvalidateShaderStructure(HyperGraph.IGraphModel graph)
-        {
-            foreach (Node n in graph.Nodes)
-            {
-                foreach (NodeItem i in n.Items)
-                {
-                    if (i is ShaderFragmentPreviewItem)
-                    {
-                        ((ShaderFragmentPreviewItem)i).InvalidateShaderStructure();
-                    }
-                }
-            }
-        }
-
-        public static void InvalidateParameters(HyperGraph.IGraphModel graph)
-        {
-            foreach (Node n in graph.Nodes)
-            {
-                foreach (NodeItem i in n.Items)
-                {
-                    if (i is ShaderFragmentPreviewItem)
-                    {
-                        ((ShaderFragmentPreviewItem)i).InvalidateParameters();
-                    }
-                }
-            }
-        }
-
-        public static void InvalidateAttachedConstants(HyperGraph.IGraphModel graph)
-        {
-            foreach (Node n in graph.Nodes)
-            {
-                foreach (NodeItem i in n.Items)
-                {
-                    if (i is ShaderFragmentPreviewItem)
-                    {
-                        ((ShaderFragmentPreviewItem)i).InvalidateAttachedConstants();
-                    }
-                }
-            }
-        }
     }
 
     #endregion
@@ -660,7 +624,7 @@ namespace NodeEditorCore
             //}
         }
 
-        public bool FillInMaterialParameters(ShaderDiagram.Document document, HyperGraph.IGraphModel graph)
+        public bool FillInMaterialParameters(ShaderPatcherLayer.Document document, HyperGraph.IGraphModel graph)
         {
                 //
                 //      Look for new or removed material parameters

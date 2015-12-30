@@ -196,7 +196,7 @@ namespace HyperGraph.Items
 			}
 		}
 
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location)
+        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
 		{
 			var text = string.Empty;
 			if (Items != null &&

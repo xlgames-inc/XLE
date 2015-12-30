@@ -99,9 +99,9 @@ namespace HyperGraph
 			return itemSize;
 		}
 
-		static void RenderItem(Graphics graphics, SizeF minimumSize, NodeItem item, PointF position)
+		static void RenderItem(Graphics graphics, SizeF minimumSize, NodeItem item, PointF position, object context)
 		{
-			item.Render(graphics, minimumSize, position);
+			item.Render(graphics, minimumSize, position, context);
 		}
 
 		internal static Pen BorderPen = new Pen(Color.FromArgb(200, 200, 200));
@@ -215,7 +215,7 @@ namespace HyperGraph
 			}
 		}
 
-		public static void Render(Graphics graphics, IEnumerable<Node> nodes, bool showLabels)
+		public static void Render(Graphics graphics, IEnumerable<Node> nodes, bool showLabels, object context)
 		{
 			var skipConnections = new HashSet<NodeConnection>();
 			foreach (var node in nodes.Reverse<Node>())
@@ -224,7 +224,7 @@ namespace HyperGraph
 			}
 			foreach (var node in nodes.Reverse<Node>())
 			{
-				GraphRenderer.Render(graphics, node);
+				GraphRenderer.Render(graphics, node, context);
 			}
 		}
 
@@ -332,7 +332,7 @@ namespace HyperGraph
 		}
         
 
-		static void Render(Graphics graphics, Node node)
+		static void Render(Graphics graphics, Node node, object context)
 		{
 			var size		= node.bounds.Size;
 			var position	= node.bounds.Location;
@@ -411,7 +411,7 @@ namespace HyperGraph
 				// 		outputState |= connection.state | RenderState.Connected;
 				// }
 
-				RenderItem(graphics, new SizeF(node.bounds.Width - GraphConstants.NodeExtraWidth, 0), node.titleItem, itemPosition);
+				RenderItem(graphics, new SizeF(node.bounds.Width - GraphConstants.NodeExtraWidth, 0), node.titleItem, itemPosition, context);
 				// if (node.inputConnectors.Count > 0)
 				// 	RenderConnector(graphics, node.inputBounds, node.inputState, ConnectorType.Input);
 				// if (node.outputConnectors.Count > 0)
@@ -427,7 +427,7 @@ namespace HyperGraph
 				var minimumItemSize = new SizeF(node.bounds.Width - GraphConstants.NodeExtraWidth, 0);
 				foreach (var item in EnumerateNodeItems(node))
 				{
-					RenderItem(graphics, minimumItemSize, item, itemPosition);
+					RenderItem(graphics, minimumItemSize, item, itemPosition, context);
 					var inputConnector	= item.Input;
 					if (inputConnector != null && inputConnector.Enabled)
 					{

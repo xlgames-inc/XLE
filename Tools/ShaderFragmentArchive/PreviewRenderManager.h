@@ -6,12 +6,11 @@
 
 #pragma once
 
-namespace ShaderDiagram { ref class Document; }
-
-namespace PreviewRender
+namespace ShaderPatcherLayer
 {
     class ManagerPimpl;
     class PreviewBuilderPimpl;
+    ref class Document;
 
     using System::Drawing::Size;
 
@@ -23,8 +22,7 @@ namespace PreviewRender
     public interface class IPreviewBuilder
     {
     public:
-        System::Drawing::Bitmap^ Build(
-            ShaderDiagram::Document^ doc, Size^ size, PreviewGeometry geometry);
+        System::Drawing::Bitmap^ Build(Document^ doc, Size^ size, PreviewGeometry geometry);
     };
 
     public interface class IManager

@@ -71,7 +71,7 @@ namespace HyperGraph
 		public virtual bool			OnDrag(PointF location)		 { return false; }		
 		public virtual bool			OnEndDrag() 				 { return false; }
 		public abstract SizeF		Measure(Graphics context);
-		public abstract void		Render(Graphics graphics, SizeF minimumSize, PointF position);
+		public abstract void		Render(Graphics graphics, SizeF minimumSize, PointF position, object context);
         public abstract void        RenderConnector(Graphics graphics, RectangleF rectangle);
 
 		public ElementType ElementType { get { return ElementType.NodeItem; } }

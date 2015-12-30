@@ -37,7 +37,7 @@
 
 using namespace System::ComponentModel::Composition;
 
-namespace PreviewRender
+namespace ShaderPatcherLayer
 {
     [Export(IManager::typeid)]
     [Export(Manager::typeid)]
@@ -46,7 +46,7 @@ namespace PreviewRender
     {
     public:
         virtual IPreviewBuilder^ CreatePreviewBuilder(System::String^ shaderText);
-        void RotateLightDirection(ShaderDiagram::Document^ doc, System::Drawing::PointF rotationAmount);
+        void RotateLightDirection(Document^ doc, System::Drawing::PointF rotationAmount);
 
         [ImportingConstructor]
         Manager(GUILayer::EngineDevice^ engineDevice);
@@ -73,7 +73,7 @@ namespace PreviewRender
     {
     public:
         virtual System::Drawing::Bitmap^ Build(
-            ShaderDiagram::Document^ doc, Size^ size, PreviewGeometry geometry);
+            Document^ doc, Size^ size, PreviewGeometry geometry);
 
         PreviewBuilder(
             std::shared_ptr<RenderCore::ShaderService::IShaderSource> shaderSource, 
@@ -183,7 +183,7 @@ namespace PreviewRender
         RenderCore::IThreadContext& context,
         PreviewBuilderPimpl& builder, 
         PreviewGeometry geometry,
-        ShaderDiagram::Document^ doc)
+        ShaderPatcherLayer::Document^ doc)
     {
         using namespace ToolsRig;
 
@@ -279,8 +279,7 @@ namespace PreviewRender
         return newBitmap;
     }
 
-    System::Drawing::Bitmap^    PreviewBuilder::Build(
-        ShaderDiagram::Document^ doc, Size^ size, PreviewGeometry geometry)
+    System::Drawing::Bitmap^ PreviewBuilder::Build(Document^ doc, Size^ size, PreviewGeometry geometry)
     {
         using namespace RenderCore;
 
@@ -375,7 +374,7 @@ namespace PreviewRender
             shaderText);
     }
 
-    void                    Manager::RotateLightDirection(ShaderDiagram::Document^ doc, System::Drawing::PointF rotationAmount)
+    void                    Manager::RotateLightDirection(Document^ doc, System::Drawing::PointF rotationAmount)
     {
         // try {
         //     float deltaCameraYaw    = -rotationAmount.Y * 1.f * gPI / 180.f;

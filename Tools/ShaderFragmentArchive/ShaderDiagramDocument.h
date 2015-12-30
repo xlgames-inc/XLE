@@ -12,7 +12,7 @@ using System::Collections::Generic::Dictionary;
 using System::String;
 using System::Object;
 
-namespace ShaderDiagram
+namespace ShaderPatcherLayer
 {
     public ref class Document
     {

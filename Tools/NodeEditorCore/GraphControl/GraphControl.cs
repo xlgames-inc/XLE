@@ -25,11 +25,11 @@ namespace NodeEditorCore
             model.ConnectionRemoving += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionRemoved);
         }
 
-        private static void InvalidateShaderStructure(object sender)
+        public static void InvalidateShaderStructure(object sender)
         {
             var model = sender as IGraphModel;
-            if (model != null)
-                ShaderFragmentNodeUtil.InvalidateShaderStructure(model);
+            // if (model != null)
+            //     model.IncrementChangeCounter();
         }
 
         private static void OnNodeAdded(object sender, AcceptNodeEventArgs args) { OnNodesChange(); }
@@ -192,7 +192,7 @@ namespace NodeEditorCore
                     e.Node.AddConnection(connection);
                 }
 
-                ShaderFragmentNodeUtil.InvalidateShaderStructure(GetGraphModel());
+                GraphHelpers.InvalidateShaderStructure(GetGraphModel());
             }
         }
         

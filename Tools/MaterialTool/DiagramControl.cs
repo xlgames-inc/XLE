@@ -46,6 +46,12 @@ namespace MaterialTool
             Context = context;
             _child.Model = context.Model;
             _child.Selection = context.DiagramSelection;
+
+            // We also setup an underlying context that will be used
+            // while rendering node items.
+            var underlyingDoc = _exportProvider.GetExport<NodeEditorCore.DiagramDocument>().Value;
+            underlyingDoc.ViewModel = context.Model;
+            _child.Context = underlyingDoc;
         }
 
         void child_Paint(object sender, System.Windows.Forms.PaintEventArgs e)
@@ -55,6 +61,8 @@ namespace MaterialTool
 
         [Import]
         private GUILayer.EngineDevice _engine;
+        [Import]
+        private System.ComponentModel.Composition.Hosting.ExportProvider _exportProvider;
         private HyperGraph.GraphControl _child;
     }
 }
