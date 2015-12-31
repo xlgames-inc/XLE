@@ -227,10 +227,10 @@ namespace LevelEditorXLE.Placements
             m_hasHoverPt = HitTest(out m_hoverPt, scrPt, vc);
             if (!m_hasHoverPt) return;
 
-            var nativeVC = vc as XLEBridgeUtils.NativeDesignControl;
+            var nativeVC = vc as XLEBridgeUtils.IViewContext;
             if (nativeVC == null) return;
 
-            var game = nativeVC.DesignView.Context.As<IGame>();
+            var game = vc.As<DesignViewControl>().DesignView.Context.As<IGame>();
             if (game == null) return;
 
             if (ManipulatorContext.Objects.Count == 0) return;
@@ -309,7 +309,7 @@ namespace LevelEditorXLE.Placements
         {
             if (m_hasHoverPt)
             {
-                using (var context = XLEBridgeUtils.NativeDesignControl.CreateSimpleRenderingContext(null))
+                using (var context = XLEBridgeUtils.DesignControlAdapter.CreateSimpleRenderingContext(null))
                 {
                     GUILayer.RenderingUtil.RenderCylinderHighlight(
                         context, XLEBridgeUtils.Utils.AsVector3(m_hoverPt), ManipulatorContext.Radius);
@@ -338,7 +338,7 @@ namespace LevelEditorXLE.Placements
         {
             var ray = vc.GetWorldRay(pt);
             var pick = XLEBridgeUtils.Picking.RayPick(
-                vc, ray, XLEBridgeUtils.Picking.Flags.Terrain);
+                vc as XLEBridgeUtils.IViewContext, ray, XLEBridgeUtils.Picking.Flags.Terrain);
 
             if (pick != null && pick.Length > 0)
             {

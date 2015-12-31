@@ -13,16 +13,17 @@ using Sce.Atf.Dom;
 using Sce.Atf.VectorMath;
 
 using LevelEditorCore;
+using XLEBridgeUtils;
 
 using ViewTypes = Sce.Atf.Rendering.ViewTypes;
 
 namespace RenderingInterop
 {
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class NativeDesignControl : XLEBridgeUtils.NativeDesignControl
+    public class NativeDesignControl : DesignViewControl, IViewContext
     {
         public NativeDesignControl(DesignView designView, GUILayer.EditorSceneManager sceneManager, GUILayer.ObjectSet selection) :
-            base(designView, sceneManager, selection)
+            base(designView)
         {
             if (s_marqueePen == null)
             {
@@ -37,7 +38,9 @@ namespace RenderingInterop
             BackColor = SystemColors.ControlDark;
             m_renderState.OnChanged += (sender, e) => Invalidate();
 
-            base.AddRenderCallback(RenderExtras);
+            Adapter = new DesignControlAdapter(this, Camera, sceneManager, selection);
+            Adapter.AddRenderCallback(
+                (GUILayer.SimpleRenderingContext context) => RenderExtras(designView));
         }
 
         public ulong SurfaceId
@@ -50,6 +53,8 @@ namespace RenderingInterop
         {
             get { return m_renderState; }
         }
+
+        public DesignControlAdapter Adapter;
 
         protected override void Dispose(bool disposing)
         {
@@ -65,33 +70,33 @@ namespace RenderingInterop
             bool multiSelect = DragOverThreshold;
             List<object> paths = new List<object>();
 
-            XLEBridgeUtils.Picking.HitRecord[] hits;
+            Picking.HitRecord[] hits;
 
             if(multiSelect)
             {// frustum pick                
                 RectangleF rect = MakeRect(FirstMousePoint, CurrentMousePoint);
                 var frustum = XLEBridgeUtils.Utils.MakeFrustumMatrix(Camera, rect, ClientSize);
-                hits = XLEBridgeUtils.Picking.FrustumPick(
+                hits = Picking.FrustumPick(
                     GameEngine.GetEngineDevice(),
-                    SceneManager, TechniqueContext, 
+                    Adapter.SceneManager, Adapter.TechniqueContext, 
                     frustum, Camera, ClientSize, 
-                    XLEBridgeUtils.Picking.Flags.Objects | XLEBridgeUtils.Picking.Flags.Helpers);
+                    Picking.Flags.Objects | Picking.Flags.Helpers);
             }
             else
             {// ray pick
                 Ray3F rayW = GetWorldRay(CurrentMousePoint);
-                hits = XLEBridgeUtils.Picking.RayPick(
+                hits = Picking.RayPick(
                     GameEngine.GetEngineDevice(),
-                    SceneManager, TechniqueContext, 
+                    Adapter.SceneManager, Adapter.TechniqueContext, 
                     rayW, Camera, ClientSize,
-                    XLEBridgeUtils.Picking.Flags.Terrain | XLEBridgeUtils.Picking.Flags.Objects | XLEBridgeUtils.Picking.Flags.Helpers);
+                    Picking.Flags.Terrain | Picking.Flags.Objects | Picking.Flags.Helpers);
             }
 
             if (hits==null) return new List<object>();
 
             // create unique list of hits
             HashSet<ulong> instanceSet = new HashSet<ulong>();
-            var uniqueHits = new List<XLEBridgeUtils.Picking.HitRecord>();
+            var uniqueHits = new List<Picking.HitRecord>();
             // build 'path' objects for each hit record.
             foreach (var hit in hits)
             {
@@ -99,7 +104,7 @@ namespace RenderingInterop
                 if (added) uniqueHits.Add(hit);
             }
 
-            var firstHit = new XLEBridgeUtils.Picking.HitRecord();
+            var firstHit = new Picking.HitRecord();
             
 
             // build 'path' objects for each hit record.
@@ -193,10 +198,10 @@ namespace RenderingInterop
 
         protected bool GetTerrainCollision(out Vec3F result, Point clientPt)
         {
-            var pick = XLEBridgeUtils.Picking.RayPick(
+            var pick = Picking.RayPick(
                 GameEngine.GetEngineDevice(),
-                SceneManager, TechniqueContext,
-                GetWorldRay(clientPt), Camera, ClientSize, XLEBridgeUtils.Picking.Flags.Terrain);
+                Adapter.SceneManager, Adapter.TechniqueContext,
+                GetWorldRay(clientPt), Camera, ClientSize, Picking.Flags.Terrain);
 
             if (pick != null && pick.Length > 0)
             {
@@ -297,10 +302,10 @@ namespace RenderingInterop
             if (skipRender)
                 return;
 
-            _renderSettings._activeEnvironmentSettings = RenderState.EnvironmentSettings;
+            Adapter.RenderSettings._activeEnvironmentSettings = RenderState.EnvironmentSettings;
 
             m_clk.Start();
-            base.Render();
+            Adapter.Render();
             m_pendingCaption = string.Format("View Type: {0}   time per frame-render call: {1:0.00} ms", ViewType, m_clk.Milliseconds);
 
             if (IsPicking)
@@ -317,7 +322,7 @@ namespace RenderingInterop
 
         }
       
-        private void RenderExtras(DesignView designView, Sce.Atf.Rendering.Camera camera)
+        private void RenderExtras(DesignView designView)
         {
             bool renderSelected = RenderState.DisplayBound == DisplayFlagModes.Selection
                 || RenderState.DisplayCaption == DisplayFlagModes.Selection
@@ -337,7 +342,7 @@ namespace RenderingInterop
             {
                 var game = designView.Context.As<IGame>();
                 GridRenderer gridRender = game.Grid.Cast<GridRenderer>();
-                gridRender.Render(camera);
+                gridRender.Render(Camera);
             }
 
             RenderProperties(Items,
@@ -448,5 +453,13 @@ namespace RenderingInterop
         private Clock m_clk = new Clock();
         private RenderState m_renderState;
         private string m_pendingCaption;
+
+
+        #region IViewContext members
+        Size IViewContext.ViewportSize { get { return base.Size; } }
+        Sce.Atf.Rendering.Camera IViewContext.Camera { get { return base.Camera; } }
+        GUILayer.EditorSceneManager IViewContext.SceneManager { get { return Adapter.SceneManager; } }
+        GUILayer.TechniqueContextWrapper IViewContext.TechniqueContext { get { return Adapter.TechniqueContext; } }
+        #endregion
     }
 }

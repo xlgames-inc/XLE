@@ -33,7 +33,8 @@ namespace RenderingInterop
             };
             foreach (var v in views)
             {
-                v.AddRenderCallback(RenderCallback);
+                v.Adapter.AddRenderCallback(
+                    (GUILayer.SimpleRenderingContext context) => RenderCallback(this, v.Camera));
             }
             QuadView.TopLeft = views[0];
             QuadView.TopRight = views[1];

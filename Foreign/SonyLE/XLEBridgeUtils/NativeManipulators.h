@@ -35,6 +35,14 @@ namespace XLEBridgeUtils
         String^ _activeManipulator;
     };
 
+    public interface class IViewContext
+    {
+        property Drawing::Size ViewportSize { Drawing::Size get(); }
+        property Sce::Atf::Rendering::Camera^ Camera { Sce::Atf::Rendering::Camera^ get(); }
+        property GUILayer::EditorSceneManager^ SceneManager { GUILayer::EditorSceneManager^ get(); }
+        property GUILayer::TechniqueContextWrapper^ TechniqueContext { GUILayer::TechniqueContextWrapper^ get(); }
+    };
+
     /// <summary>Provides a bridge between the SCE level editor types and native manipulators<summary>
     /// Accesses native IManipulator methods internally, but takes Sce level editor types as
     /// method parameters.
@@ -43,25 +51,18 @@ namespace XLEBridgeUtils
     public:
         static property GUILayer::EditorSceneManager^ SceneManager;
 
-        value class View
-        {
-        public:
-            Drawing::Size _viewportSize;
-			Sce::Atf::Rendering::Camera^ _camera;
-        };
-
-        bool MouseMove(View vc, Point scrPt);
+        bool MouseMove(IViewContext^ vc, Point scrPt);
         void Render();
         void OnBeginDrag();
-        void OnDragging(View vc, Point scrPt);
-        void OnEndDrag(View vc, Point scrPt);
-        void OnMouseWheel(View vc, Point scrPt, int delta);
+        void OnDragging(IViewContext^ vc, Point scrPt);
+        void OnEndDrag(IViewContext^ vc, Point scrPt);
+        void OnMouseWheel(IViewContext^ vc, Point scrPt, int delta);
 
         NativeManipulatorLayer(ActiveManipulatorContext^ manipContext);
         ~NativeManipulatorLayer();
 
     private:
-        bool SendInputEvent(View vc, const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
+        bool SendInputEvent(IViewContext^ vc, const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
 
         ActiveManipulatorContext^ _manipContext;
         bool _pendingBeginDrag;

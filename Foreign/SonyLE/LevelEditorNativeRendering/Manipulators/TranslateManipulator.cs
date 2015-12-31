@@ -98,6 +98,9 @@ namespace RenderingInterop
             if (m_cancelDrag || m_hitRegion == HitRegion.None || m_activeOp == null || m_activeOp.NodeList.Count == 0)
                 return;
 
+            var nativeVC = vc as NativeDesignControl;
+            if (nativeVC == null) return;
+
             bool hitAxis = m_hitRegion == HitRegion.XAxis
                 || m_hitRegion == HitRegion.YAxis
                 || m_hitRegion == HitRegion.ZAxis;
@@ -149,7 +152,7 @@ namespace RenderingInterop
                     rayW.MoveToIncludePoint(orgPosW + snapOffset + manipMove);
 
                     var hits = XLEBridgeUtils.Picking.RayPick(
-                        vc, rayW,
+                        nativeVC.Adapter, rayW,
                         XLEBridgeUtils.Picking.Flags.Terrain | XLEBridgeUtils.Picking.Flags.Objects | XLEBridgeUtils.Picking.Flags.IgnoreSelection);
                     bool cansnap = false;
                     var target = new XLEBridgeUtils.Picking.HitRecord();

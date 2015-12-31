@@ -17,7 +17,7 @@
 namespace XLEBridgeUtils
 {
 
-    bool NativeManipulatorLayer::MouseMove(View vc, Point scrPt)
+    bool NativeManipulatorLayer::MouseMove(IViewContext^ vc, Point scrPt)
     {
         using namespace RenderOverlays::DebuggingDisplay;
 		InputSnapshot evnt(0, 0, 0, Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
@@ -44,7 +44,7 @@ namespace XLEBridgeUtils
     }
 
     void NativeManipulatorLayer::OnBeginDrag() { _pendingBeginDrag = true; }
-    void NativeManipulatorLayer::OnDragging(View vc, Point scrPt) 
+    void NativeManipulatorLayer::OnDragging(IViewContext^ vc, Point scrPt) 
 	{
 			//  We need to create a fake "mouse over" event and pass it through to
 			//  the currently selected manipulator. We might also need to set the state
@@ -62,7 +62,7 @@ namespace XLEBridgeUtils
         _pendingBeginDrag = false;
 	}
 
-    void NativeManipulatorLayer::OnEndDrag(View vc, Point scrPt) 
+    void NativeManipulatorLayer::OnEndDrag(IViewContext^ vc, Point scrPt) 
 	{
             // Emulate a "mouse up" operation 
         using namespace RenderOverlays::DebuggingDisplay;
@@ -74,7 +74,7 @@ namespace XLEBridgeUtils
         SendInputEvent(vc, evnt);
 	}
 
-    void NativeManipulatorLayer::OnMouseWheel(View vc, Point scrPt, int delta)
+    void NativeManipulatorLayer::OnMouseWheel(IViewContext^ vc, Point scrPt, int delta)
     {
         using namespace RenderOverlays::DebuggingDisplay;
 		InputSnapshot evnt(
@@ -95,7 +95,7 @@ namespace XLEBridgeUtils
     }
 
     bool NativeManipulatorLayer::SendInputEvent(
-        View vc, 
+        IViewContext^ vc, 
 		const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
 	{
 		auto underlying = _manipContext->GetNativeManipulator();
@@ -103,8 +103,8 @@ namespace XLEBridgeUtils
 
 		auto hitTestContext = GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
 			GUILayer::EngineDevice::GetInstance(), nullptr,
-			Utils::AsCameraDesc(vc._camera),
-            vc._viewportSize.Width, vc._viewportSize.Height);
+			Utils::AsCameraDesc(vc->Camera),
+            vc->ViewportSize.Width, vc->ViewportSize.Height);
 		auto hitTestScene = SceneManager->GetIntersectionScene();
 
 		underlying->OnInputEvent(evnt, hitTestContext->GetNative(), hitTestScene->GetNative());

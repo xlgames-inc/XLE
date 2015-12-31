@@ -258,14 +258,17 @@ namespace RenderingInterop
 
         private bool CalculateTerrainIntersection(ViewControl vc, Ray3F ray, GUILayer.IntersectionTestSceneWrapper testScene, out Vec3F result)
         {
-            var pick = XLEBridgeUtils.Picking.RayPick(vc, ray, XLEBridgeUtils.Picking.Flags.Terrain);
+            var nativeVC = vc as NativeDesignControl;
+            if (nativeVC == null) { result = Vec3F.ZeroVector; return false; }
+
+            var pick = XLEBridgeUtils.Picking.RayPick(nativeVC.Adapter, ray, XLEBridgeUtils.Picking.Flags.Terrain);
             if (pick != null && pick.Length > 0)
             {
                 result = pick[0].hitPt;
                 return true;
             }
-            
-            result = new Vec3F(0.0f, 0.0f, 0.0f);
+
+            result = Vec3F.ZeroVector;
             return false;
         }
 

@@ -43,8 +43,11 @@ namespace LevelEditorXLE.Materials
             var sceneManager = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
             var env = new GUILayer.EnvironmentSettingsSet(sceneManager);
             env.AddDefault();
-            m_controls.EnvironmentSet = env;
-            m_controls.PreviewModel = Tuple.Create(Context.PreviewModelName, Context.PreviewModelBinding); 
+
+            // todo -- we need a separate window for the preview now (material preview is no longer embedded
+            //          in the hierarchical control)
+            // m_controls.EnvironmentSet = env;
+            // m_controls.PreviewModel = Tuple.Create(Context.PreviewModelName, Context.PreviewModelBinding); 
             m_controls.Object = Context.MaterialName;
         }
 

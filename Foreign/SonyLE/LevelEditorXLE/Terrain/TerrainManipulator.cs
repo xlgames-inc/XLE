@@ -20,13 +20,13 @@ namespace LevelEditorXLE.Terrain
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class TerrainManipulator : LevelEditorCore.IManipulator, IInitializable, XLEBridgeUtils.IShutdownWithEngine, IDisposable, XLEBridgeUtils.IManipulatorExtra
     {
-        public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc, scrPt); }
-        public void Render(LevelEditorCore.ViewControl vc)                     { _nativeManip.Render(vc); }
+        public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc as XLEBridgeUtils.IViewContext, scrPt); }
+        public void Render(LevelEditorCore.ViewControl vc)                     { _nativeManip.Render(); }
         public void OnBeginDrag()                                              { _nativeManip.OnBeginDrag(); }
-        public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc, scrPt); }
+        public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc as XLEBridgeUtils.IViewContext, scrPt); }
         public void OnEndDrag(LevelEditorCore.ViewControl vc, Point scrPt) 
 		{
-            _nativeManip.OnEndDrag(vc, scrPt);
+            _nativeManip.OnEndDrag(vc as XLEBridgeUtils.IViewContext, scrPt);
 
 			// we need to create operations and turn them into a transaction:
 			// string transName = string.Format("Apply {0} brush", brush.Name);
@@ -40,7 +40,7 @@ namespace LevelEditorXLE.Terrain
 			// }, transName);
 			// m_tmpOps.Clear();
 		}
-        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc, scrPt, delta); }
+        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc as XLEBridgeUtils.IViewContext, scrPt, delta); }
 
         public bool ClearBeforeDraw() { return false; }
 

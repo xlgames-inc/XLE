@@ -442,7 +442,7 @@ namespace RenderingInterop
         /// Sets render flags used for basic drawing.</summary>        
         public static void SetRendererFlag(BasicRendererFlags renderFlags)
         {
-            using (var context = XLEBridgeUtils.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources))
+            using (var context = XLEBridgeUtils.DesignControlAdapter.CreateSimpleRenderingContext(s_savedRenderResources))
             {
                 context.InitState(
                     (renderFlags & BasicRendererFlags.DisableDepthTest)==0,
@@ -504,7 +504,7 @@ namespace RenderingInterop
 
         public static GUILayer.SimpleRenderingContext CreateRenderingContext()
         {
-            return XLEBridgeUtils.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources);
+            return XLEBridgeUtils.DesignControlAdapter.CreateSimpleRenderingContext(s_savedRenderResources);
         }
 
         #region private members

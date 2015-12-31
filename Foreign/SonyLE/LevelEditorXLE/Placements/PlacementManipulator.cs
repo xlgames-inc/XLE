@@ -19,12 +19,12 @@ namespace LevelEditorXLE.Placements
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class PlacementManipulator : LevelEditorCore.IManipulator, IInitializable, XLEBridgeUtils.IShutdownWithEngine, IDisposable
     {
-        public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc, scrPt); }
-        public void Render(LevelEditorCore.ViewControl vc)                     { _nativeManip.Render(vc); }
+        public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc as XLEBridgeUtils.IViewContext, scrPt); }
+        public void Render(LevelEditorCore.ViewControl vc)                     { _nativeManip.Render(); }
         public void OnBeginDrag()                                              { _nativeManip.OnBeginDrag(); }
-        public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc, scrPt); }
-        public void OnEndDrag(LevelEditorCore.ViewControl vc, Point scrPt)     { _nativeManip.OnEndDrag(vc, scrPt); }
-        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc, scrPt, delta); }
+        public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc as XLEBridgeUtils.IViewContext, scrPt); }
+        public void OnEndDrag(LevelEditorCore.ViewControl vc, Point scrPt)     { _nativeManip.OnEndDrag(vc as XLEBridgeUtils.IViewContext, scrPt); }
+        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc as XLEBridgeUtils.IViewContext, scrPt, delta); }
 
         public LevelEditorCore.ManipulatorInfo ManipulatorInfo
         {

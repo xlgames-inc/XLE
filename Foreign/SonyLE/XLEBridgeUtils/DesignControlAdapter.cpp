@@ -33,7 +33,7 @@ namespace XLEBridgeUtils
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public ref class DesignControlAdapter
+    public ref class DesignControlAdapter : public IViewContext
     {
     public:
         static GUILayer::SimpleRenderingContext^ CreateSimpleRenderingContext(
@@ -114,17 +114,22 @@ namespace XLEBridgeUtils
         }
 
         property GUILayer::EditorSceneManager^ SceneManager {
-            GUILayer::EditorSceneManager^ get() { return _sceneManager; }
+            virtual GUILayer::EditorSceneManager^ get() { return _sceneManager; }
         }
 
         property GUILayer::TechniqueContextWrapper^ TechniqueContext {
-            GUILayer::TechniqueContextWrapper^ get() { return _layerControl->GetTechniqueContext(); }
+            virtual GUILayer::TechniqueContextWrapper^ get() { return _layerControl->GetTechniqueContext(); }
+        }
+
+        property GUILayer::EditorSceneRenderSettings^ RenderSettings {
+            virtual GUILayer::EditorSceneRenderSettings^ get() { return _renderSettings; }
         }
 
         property Sce::Atf::Rendering::Camera^ Camera {
-            Sce::Atf::Rendering::Camera^ get() { return _camera; }
+            virtual Sce::Atf::Rendering::Camera^ get() { return _camera; }
             void set(Sce::Atf::Rendering::Camera^ camera)
             {
+                _camera = camera;
                     //  use the camera "AxisSystem" to convert from the native SonyWWS
                     //  camera coordinates into the coordinates we need for XLE.
                     //      SonyWWS native has +Y as up
@@ -135,7 +140,7 @@ namespace XLEBridgeUtils
                     //  When using AxisSystem like this, we must use the "World..." properties 
                     //  in the Camera object. eg, "WorldEye" gives us the native XLE coordinates,
                     //  "Eye" gives us the native SonyWWS coordinates.
-                Camera->AxisSystem = gcnew Matrix4F(
+                _camera->AxisSystem = gcnew Matrix4F(
                     1.f, 0.f, 0.f, 0.f, 
                     0.f, 0.f, -1.f, 0.f, 
                     0.f, 1.f, 0.f, 0.f, 
@@ -143,7 +148,7 @@ namespace XLEBridgeUtils
             }
         }
 
-        property Size ViewportSize;
+        virtual property Size ViewportSize;
 
     protected:
         void OnResize(System::Object^ sender, System::EventArgs^ e)
@@ -155,6 +160,7 @@ namespace XLEBridgeUtils
                 if (sz.Width > 0 && sz.Height > 0)
                     Camera->Aspect = (float)sz.Width / (float)sz.Height;
             }
+            _layerControl->OnResize(e);
         }
 
         GUILayer::LayerControl^ _layerControl;
@@ -346,7 +352,7 @@ namespace XLEBridgeUtils
         }
 
         static array<HitRecord>^ RayPick(
-            DesignControlAdapter^ vc,
+            IViewContext^ vc,
             Ray3F ray, Flags flags)
         {
             auto sceneMan = vc->SceneManager;
@@ -360,7 +366,7 @@ namespace XLEBridgeUtils
         }
 
         static array<HitRecord>^ FrustumPick(
-            DesignControlAdapter^ vc,
+            IViewContext^ vc,
             Matrix4F^ pickingFrustum, Flags flags)
         {
             auto sceneMan = vc->SceneManager;
