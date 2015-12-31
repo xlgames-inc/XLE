@@ -86,9 +86,6 @@
     <Compile Include="Manipulators\XLENativeManipControls.Designer.cs">
       <DependentUpon>XLENativeManipControls.cs</DependentUpon>
     </Compile>
-    <Compile Include="Materials\XLEMaterialInspector.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
     <Compile Include="Placements\PlacementsConfig.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -135,6 +132,10 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Tools\ControlsLibraryExt\ControlsLibraryExt.csproj">
+      <Project>{75aed629-a689-4eea-8276-df6f0fb0f94b}</Project>
+      <Name>ControlsLibraryExt</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\Tools\ControlsLibrary\ControlsLibrary.csproj">
       <Project>{b7539653-6e9c-4493-8023-d4a2bffcd8e2}</Project>
       <Name>ControlsLibrary</Name>
@@ -169,9 +170,6 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Schema\xlegame.xsd">
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Materials\material.xsd">
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <None Include="Schema\GenSchemaDef.bat" />

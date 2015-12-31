@@ -15,51 +15,55 @@ using Sce.Atf.Applications;
 using Sce.Atf.Controls.PropertyEditing;
 using Sce.Atf.Dom;
 
-using LevelEditorCore;
-
 using ControlsLibrary.MaterialEditor;
 using System.Reflection;
 
-namespace LevelEditorXLE.Materials
+namespace ControlsLibraryExt
 {
     [Export(typeof(IInitializable))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    class XLEMaterialInspector : IInitializable
+    public class MaterialInspector : IInitializable
     {
         void IInitializable.Initialize()
         {
-            m_controls = new HierchicalMaterialControl();
-            m_controls.FocusedMatControls.AddExtraControls("Material", new MatTab());
-            Context.OnChange += OnActiveMaterialChange;
-            m_controlHostService.RegisterControl(
-                m_controls,
-                new ControlInfo("Material inspector", "Properties for the picked material", StandardControlGroup.Right),
+            _controls = new HierchicalMaterialControl();
+            _controls.FocusedMatControls.AddExtraControls("Material", new MatTab(_schemaLoader));
+            _context.OnChange += OnActiveMaterialChange;
+            _controlHostService.RegisterControl(
+                _controls,
+                new ControlInfo("Material inspector".Localize(), "Properties for the picked material".Localize(), StandardControlGroup.Right),
                 null);
         }
 
         void OnActiveMaterialChange()
         {
-            // RenderingInterop.GameEngine.GetEditorSceneManager()
-            var sceneManager = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            var env = new GUILayer.EnvironmentSettingsSet(sceneManager);
-            env.AddDefault();
-
             // todo -- we need a separate window for the preview now (material preview is no longer embedded
             //          in the hierarchical control)
-            // m_controls.EnvironmentSet = env;
+            // Also, there should be a better way to pull in the list of useable environment setting sets
+            //
+            // var sceneManager = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+            // if (sceneManager != null)
+            // {
+            //     var env = new GUILayer.EnvironmentSettingsSet(sceneManager);
+            //     env.AddDefault();
+            //     m_controls.EnvironmentSet = env;
+            // }
             // m_controls.PreviewModel = Tuple.Create(Context.PreviewModelName, Context.PreviewModelBinding); 
-            m_controls.Object = Context.MaterialName;
+            _controls.Object = _context.MaterialName;
         }
 
-        [Import(AllowDefault = false)] private IControlHostService m_controlHostService;
-        [Import(AllowDefault = false)] private ActiveMaterialContext Context;
-        HierchicalMaterialControl m_controls;
+        [Import(AllowDefault = false)] private IControlHostService _controlHostService;
+        [Import(AllowDefault = false)] private ActiveMaterialContext _context;
+        [Import(AllowDefault = false)] private MaterialSchemaLoader _schemaLoader;
+        HierchicalMaterialControl _controls;
     }
 
     class MatTab : ControlsLibrary.MaterialEditor.MaterialControl.ExtraControls
     {
-        public MatTab()
+        public MatTab(MaterialSchemaLoader schemaLoader)
         {
+            m_schemaLoader = schemaLoader;
+
             SuspendLayout();
             m_child = new Sce.Atf.Controls.PropertyEditing.PropertyGrid();
 
@@ -81,8 +85,7 @@ namespace LevelEditorXLE.Materials
             {
                 if (value != null)
                 {
-                    var schemaLoader = Globals.MEFContainer.GetExportedValue<MaterialSchemaLoader>();
-                    m_child.Bind(schemaLoader.CreatePropertyContext(value));
+                    m_child.Bind(m_schemaLoader.CreatePropertyContext(value));
                 }
                 else
                 {
@@ -92,6 +95,7 @@ namespace LevelEditorXLE.Materials
         }
 
         private Sce.Atf.Controls.PropertyEditing.PropertyGrid m_child;
+        private MaterialSchemaLoader m_schemaLoader; 
     }
 
     [Export(typeof(MaterialSchemaLoader))]
@@ -108,7 +112,7 @@ namespace LevelEditorXLE.Materials
 
         public MaterialSchemaLoader()
         {
-            SchemaResolver = new ResourceStreamResolver(Assembly.GetExecutingAssembly(), "LevelEditorXLE.Materials");
+            SchemaResolver = new ResourceStreamResolver(Assembly.GetExecutingAssembly(), "ControlsLibraryExt.Material");
             Load("material.xsd");
         }
     };

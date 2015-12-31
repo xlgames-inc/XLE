@@ -17,29 +17,6 @@ using Camera = Sce.Atf.Rendering.Camera;
 
 namespace LevelEditorXLE.Materials
 {
-    [Export(typeof(ActiveMaterialContext))]
-    [PartCreationPolicy(CreationPolicy.Shared)]
-    public class ActiveMaterialContext
-    {
-        public string MaterialName 
-        { 
-            get { return m_materialName; }
-            set {
-                if (value != m_materialName) 
-                {
-                    m_materialName = value; 
-                    OnChange();
-                }
-            }
-        }
-        public string PreviewModelName { get; set; }
-        public ulong PreviewModelBinding { get; set; }
-        public delegate void OnChangeDelegate();
-        public event OnChangeDelegate OnChange;
-
-        private string m_materialName = null;
-    }
-
     [Export(typeof(IManipulator))]
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class PickMaterialManipulator : IManipulator
@@ -133,7 +110,7 @@ namespace LevelEditorXLE.Materials
             protected set;
         }
 
-        [Import(AllowDefault = false)] private ActiveMaterialContext Context;
+        [Import(AllowDefault = false)] private ControlsLibraryExt.ActiveMaterialContext Context;
         private GUILayer.ObjectSet m_highlight = new GUILayer.ObjectSet();
         private ulong m_highlightMaterialGUID = ~0ul;
     }
