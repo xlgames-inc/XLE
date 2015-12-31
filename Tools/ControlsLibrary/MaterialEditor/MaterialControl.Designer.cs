@@ -35,25 +35,25 @@ namespace ControlsLibrary.MaterialEditor
         /// </summary>
         private void InitializeComponent()
         {
-            this._pages = new System.Windows.Forms.TabControl();
+            this._pages = new System.Windows.Forms.CustomTabControl();
+            this._resourcesPage = new System.Windows.Forms.TabPage();
+            this._resourceBindings = new System.Windows.Forms.DataGridView();
             this._constantsPage = new System.Windows.Forms.TabPage();
             this._shaderConstants = new System.Windows.Forms.DataGridView();
-            this._resourceBindings = new System.Windows.Forms.DataGridView();
+            this._shaderFlags = new System.Windows.Forms.TabPage();
             this._materialParameterBox = new System.Windows.Forms.DataGridView();
             this._statesGroup = new System.Windows.Forms.GroupBox();
             this._blendMode = new System.Windows.Forms.ComboBox();
             this._wireframeGroup = new System.Windows.Forms.CheckBox();
             this._doubleSidedCheck = new System.Windows.Forms.CheckBox();
-            this._resourcesPage = new System.Windows.Forms.TabPage();
-            this._shaderFlags = new System.Windows.Forms.TabPage();
             this._pages.SuspendLayout();
+            this._resourcesPage.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._resourceBindings)).BeginInit();
             this._constantsPage.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._shaderConstants)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this._resourceBindings)).BeginInit();
+            this._shaderFlags.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._materialParameterBox)).BeginInit();
             this._statesGroup.SuspendLayout();
-            this._resourcesPage.SuspendLayout();
-            this._shaderFlags.SuspendLayout();
             this.SuspendLayout();
             // 
             // _pages
@@ -64,36 +64,40 @@ namespace ControlsLibrary.MaterialEditor
             this._pages.Controls.Add(this._resourcesPage);
             this._pages.Controls.Add(this._constantsPage);
             this._pages.Controls.Add(this._shaderFlags);
+            // 
+            // 
+            // 
+            this._pages.DisplayStyleProvider.BorderColor = System.Drawing.SystemColors.ControlDark;
+            this._pages.DisplayStyleProvider.BorderColorHot = System.Drawing.SystemColors.ControlDark;
+            this._pages.DisplayStyleProvider.BorderColorSelected = System.Drawing.Color.FromArgb(((int)(((byte)(127)))), ((int)(((byte)(157)))), ((int)(((byte)(185)))));
+            this._pages.DisplayStyleProvider.CloserColor = System.Drawing.Color.Empty;
+            this._pages.DisplayStyleProvider.FocusTrack = true;
+            this._pages.DisplayStyleProvider.HotTrack = true;
+            this._pages.DisplayStyleProvider.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this._pages.DisplayStyleProvider.Opacity = 1F;
+            this._pages.DisplayStyleProvider.Overlap = 0;
+            this._pages.DisplayStyleProvider.Padding = new System.Drawing.Point(6, 3);
+            this._pages.DisplayStyleProvider.ShowTabCloser = false;
+            this._pages.DisplayStyleProvider.TextColor = System.Drawing.SystemColors.ControlText;
+            this._pages.DisplayStyleProvider.TextColorDisabled = System.Drawing.SystemColors.ControlDark;
+            this._pages.DisplayStyleProvider.TextColorSelected = System.Drawing.SystemColors.ControlText;
+            this._pages.HotTrack = true;
             this._pages.Location = new System.Drawing.Point(0, 0);
+            this._pages.Margin = new System.Windows.Forms.Padding(0);
             this._pages.Name = "_pages";
             this._pages.SelectedIndex = 0;
             this._pages.Size = new System.Drawing.Size(525, 275);
             this._pages.TabIndex = 3;
             // 
-            // _constantsPage
+            // _resourcesPage
             // 
-            this._constantsPage.Controls.Add(this._shaderConstants);
-            this._constantsPage.Location = new System.Drawing.Point(4, 22);
-            this._constantsPage.Name = "_constantsPage";
-            this._constantsPage.Padding = new System.Windows.Forms.Padding(3);
-            this._constantsPage.Size = new System.Drawing.Size(517, 249);
-            this._constantsPage.TabIndex = 0;
-            this._constantsPage.Text = "Constants";
-            this._constantsPage.UseVisualStyleBackColor = true;
-            // 
-            // _shaderConstants
-            // 
-            this._shaderConstants.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this._shaderConstants.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.None;
-            this._shaderConstants.ColumnHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
-            this._shaderConstants.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this._shaderConstants.ColumnHeadersVisible = false;
-            this._shaderConstants.Dock = System.Windows.Forms.DockStyle.Fill;
-            this._shaderConstants.Location = new System.Drawing.Point(3, 3);
-            this._shaderConstants.Name = "_shaderConstants";
-            this._shaderConstants.RowHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
-            this._shaderConstants.Size = new System.Drawing.Size(511, 243);
-            this._shaderConstants.TabIndex = 2;
+            this._resourcesPage.Controls.Add(this._resourceBindings);
+            this._resourcesPage.Location = new System.Drawing.Point(4, 23);
+            this._resourcesPage.Name = "_resourcesPage";
+            this._resourcesPage.Size = new System.Drawing.Size(517, 248);
+            this._resourcesPage.TabIndex = 1;
+            this._resourcesPage.Text = "Resources";
+            this._resourcesPage.UseVisualStyleBackColor = true;
             // 
             // _resourceBindings
             // 
@@ -107,8 +111,42 @@ namespace ControlsLibrary.MaterialEditor
             this._resourceBindings.Name = "_resourceBindings";
             this._resourceBindings.RowHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
             this._resourceBindings.RowHeadersWidthSizeMode = System.Windows.Forms.DataGridViewRowHeadersWidthSizeMode.DisableResizing;
-            this._resourceBindings.Size = new System.Drawing.Size(517, 249);
+            this._resourceBindings.Size = new System.Drawing.Size(517, 248);
             this._resourceBindings.TabIndex = 0;
+            // 
+            // _constantsPage
+            // 
+            this._constantsPage.Controls.Add(this._shaderConstants);
+            this._constantsPage.Location = new System.Drawing.Point(4, 23);
+            this._constantsPage.Name = "_constantsPage";
+            this._constantsPage.Size = new System.Drawing.Size(517, 248);
+            this._constantsPage.TabIndex = 0;
+            this._constantsPage.Text = "Constants";
+            this._constantsPage.UseVisualStyleBackColor = true;
+            // 
+            // _shaderConstants
+            // 
+            this._shaderConstants.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this._shaderConstants.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.None;
+            this._shaderConstants.ColumnHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
+            this._shaderConstants.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this._shaderConstants.ColumnHeadersVisible = false;
+            this._shaderConstants.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._shaderConstants.Location = new System.Drawing.Point(0, 0);
+            this._shaderConstants.Name = "_shaderConstants";
+            this._shaderConstants.RowHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
+            this._shaderConstants.Size = new System.Drawing.Size(517, 248);
+            this._shaderConstants.TabIndex = 2;
+            // 
+            // _shaderFlags
+            // 
+            this._shaderFlags.Controls.Add(this._materialParameterBox);
+            this._shaderFlags.Location = new System.Drawing.Point(4, 23);
+            this._shaderFlags.Name = "_shaderFlags";
+            this._shaderFlags.Size = new System.Drawing.Size(517, 248);
+            this._shaderFlags.TabIndex = 2;
+            this._shaderFlags.Text = "Shader Flags";
+            this._shaderFlags.UseVisualStyleBackColor = true;
             // 
             // _materialParameterBox
             // 
@@ -120,7 +158,8 @@ namespace ControlsLibrary.MaterialEditor
             this._materialParameterBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this._materialParameterBox.Location = new System.Drawing.Point(0, 0);
             this._materialParameterBox.Name = "_materialParameterBox";
-            this._materialParameterBox.Size = new System.Drawing.Size(517, 249);
+            this._materialParameterBox.RowHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
+            this._materialParameterBox.Size = new System.Drawing.Size(517, 248);
             this._materialParameterBox.TabIndex = 1;
             // 
             // _statesGroup
@@ -173,26 +212,6 @@ namespace ControlsLibrary.MaterialEditor
             this._doubleSidedCheck.ThreeState = true;
             this._doubleSidedCheck.UseVisualStyleBackColor = true;
             // 
-            // _resourcesPage
-            // 
-            this._resourcesPage.Controls.Add(this._resourceBindings);
-            this._resourcesPage.Location = new System.Drawing.Point(4, 22);
-            this._resourcesPage.Name = "_resourcesPage";
-            this._resourcesPage.Size = new System.Drawing.Size(517, 249);
-            this._resourcesPage.TabIndex = 1;
-            this._resourcesPage.Text = "Resources";
-            this._resourcesPage.UseVisualStyleBackColor = true;
-            // 
-            // _shaderFlags
-            // 
-            this._shaderFlags.Controls.Add(this._materialParameterBox);
-            this._shaderFlags.Location = new System.Drawing.Point(4, 22);
-            this._shaderFlags.Name = "_shaderFlags";
-            this._shaderFlags.Size = new System.Drawing.Size(517, 249);
-            this._shaderFlags.TabIndex = 2;
-            this._shaderFlags.Text = "Shader Flags";
-            this._shaderFlags.UseVisualStyleBackColor = true;
-            // 
             // MaterialControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -202,14 +221,14 @@ namespace ControlsLibrary.MaterialEditor
             this.Name = "MaterialControl";
             this.Size = new System.Drawing.Size(525, 331);
             this._pages.ResumeLayout(false);
+            this._resourcesPage.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this._resourceBindings)).EndInit();
             this._constantsPage.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this._shaderConstants)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this._resourceBindings)).EndInit();
+            this._shaderFlags.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this._materialParameterBox)).EndInit();
             this._statesGroup.ResumeLayout(false);
             this._statesGroup.PerformLayout();
-            this._resourcesPage.ResumeLayout(false);
-            this._shaderFlags.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -222,7 +241,7 @@ namespace ControlsLibrary.MaterialEditor
         private System.Windows.Forms.DataGridView _shaderConstants;
         private System.Windows.Forms.DataGridView _materialParameterBox;
         private System.Windows.Forms.DataGridView _resourceBindings;
-        private System.Windows.Forms.TabControl _pages;
+        private System.Windows.Forms.CustomTabControl _pages;
         private System.Windows.Forms.TabPage _constantsPage;
         private System.Windows.Forms.ComboBox _blendMode;
         private System.Windows.Forms.TabPage _resourcesPage;

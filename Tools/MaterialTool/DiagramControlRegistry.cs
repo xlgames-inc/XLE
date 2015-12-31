@@ -54,7 +54,7 @@ namespace MaterialTool
             get { return _controls; }
         }
 
-        public ControlInfo GetCircuitControlInfo(DiagramDocument domNode)
+        public ControlInfo GetControlInfo(DiagramDocument domNode)
         {
             return (from ctrol in _controls where ctrol.Key == domNode select ctrol.Value.Second).FirstOrDefault();
         }
