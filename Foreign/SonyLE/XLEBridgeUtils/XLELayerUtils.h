@@ -46,9 +46,6 @@ namespace XLEBridgeUtils
             System::Drawing::RectangleF rectangle,
             System::Drawing::Size viewportSize);
 
-        static GUILayer::EditorSceneManager^ GetSceneManager(LevelEditorCore::ViewControl^ vc);
-        static GUILayer::TechniqueContextWrapper^ GetTechniqueContext(LevelEditorCore::ViewControl^ vc);
-
         static void AttachLibrary(GUILayer::EngineDevice^ device);
         static void DetachLibrary();
     };

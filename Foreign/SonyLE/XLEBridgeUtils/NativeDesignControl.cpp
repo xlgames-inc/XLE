@@ -15,25 +15,25 @@
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../RenderCore/IDevice.h"
+#include <msclr\auto_handle.h>
 #include <memory>
 
 using namespace System;
 using namespace System::Windows::Forms;
 using namespace System::Drawing;
 using namespace System::Collections::Generic;
-using namespace LevelEditorCore::VectorMath;
+using namespace System::Runtime::InteropServices;
 using namespace Sce::Atf;
 using namespace Sce::Atf::Adaptation;
 using namespace Sce::Atf::Applications;
 using namespace Sce::Atf::Dom;
 using namespace Sce::Atf::VectorMath;
-using namespace LevelEditorCore;
 
 namespace XLEBridgeUtils
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public ref class NativeDesignControl : public DesignViewControl
+    public ref class NativeDesignAdapter
     {
     public:
         static GUILayer::SimpleRenderingContext^ CreateSimpleRenderingContext(
@@ -45,40 +45,27 @@ namespace XLEBridgeUtils
                 savedRes, ManipulatorOverlay::s_currentParsingContext);
         }
 
-        NativeDesignControl(
-            LevelEditorCore::DesignView^ designView, 
+        NativeDesignAdapter(
+            Control^ attachedControl, 
+            Sce::Atf::Rendering::Camera^ camera,
             GUILayer::EditorSceneManager^ sceneManager,
             GUILayer::ObjectSet^ selection)
-        : DesignViewControl(designView)
         {
-            _layerControl = gcnew GUILayer::LayerControl(this);
+            _layerControl = gcnew GUILayer::LayerControl(attachedControl);
             _cameraSettings = gcnew GUILayer::VisCameraSettings();
             _renderSettings = gcnew GUILayer::EditorSceneRenderSettings();
             _renderSettings->_selection = selection;
             _sceneManager = sceneManager;
             _mainOverlay = sceneManager->CreateOverlaySystem(_cameraSettings, _renderSettings);
             _layerControl->AddSystem(_mainOverlay);
-            _manipulatorOverlay = gcnew ManipulatorOverlay(designView, this);
+            _manipulatorOverlay = gcnew ManipulatorOverlay();
             _layerControl->AddSystem(_manipulatorOverlay);
-
-                //  use the camera "AxisSystem" to convert from the native SonyWWS
-                //  camera coordinates into the coordinates we need for XLE.
-                //      SonyWWS native has +Y as up
-                //      But XLE uses +Z up
-                //  note -- handiness untested. XLE defaults to right handed coordinates in
-                //          view space.
-                //
-                //  When using AxisSystem like this, we must use the "World..." properties 
-                //  in the Camera object. eg, "WorldEye" gives us the native XLE coordinates,
-                //  "Eye" gives us the native SonyWWS coordinates.
-            Camera->AxisSystem = gcnew Matrix4F(
-                1.f, 0.f, 0.f, 0.f, 
-                0.f, 0.f, -1.f, 0.f, 
-                0.f, 1.f, 0.f, 0.f, 
-                0.f, 0.f, 0.f, 1.f);
+            Camera = camera;
+            ViewportSize = attachedControl->Size;
+            attachedControl->Resize += gcnew System::EventHandler(this, &NativeDesignAdapter::OnResize);
         }
 
-        ~NativeDesignControl() 
+        ~NativeDesignAdapter() 
         { 
             delete _layerControl; _layerControl = nullptr; 
             delete _cameraSettings; _cameraSettings = nullptr; 
@@ -87,7 +74,7 @@ namespace XLEBridgeUtils
             delete _mainOverlay; _mainOverlay = nullptr;
         }
 
-        void Render() override
+        void Render()
         {
                 //  "_cameraSettings" should match the camera set in 
                 //  the view control
@@ -134,16 +121,40 @@ namespace XLEBridgeUtils
             GUILayer::TechniqueContextWrapper^ get() { return _layerControl->GetTechniqueContext(); }
         }
 
-    protected:
-        void OnResize(System::EventArgs^ e) override
-        {
-            _layerControl->OnResize(e);
-            auto sz = ClientSize;
-            if (sz.Width > 0 && sz.Height > 0)
+        property Sce::Atf::Rendering::Camera^ Camera {
+            Sce::Atf::Rendering::Camera^ get() { return _camera; }
+            void set(Sce::Atf::Rendering::Camera^ camera)
             {
-                Camera->Aspect = (float)sz.Width / (float)sz.Height;
+                    //  use the camera "AxisSystem" to convert from the native SonyWWS
+                    //  camera coordinates into the coordinates we need for XLE.
+                    //      SonyWWS native has +Y as up
+                    //      But XLE uses +Z up
+                    //  note -- handiness untested. XLE defaults to right handed coordinates in
+                    //          view space.
+                    //
+                    //  When using AxisSystem like this, we must use the "World..." properties 
+                    //  in the Camera object. eg, "WorldEye" gives us the native XLE coordinates,
+                    //  "Eye" gives us the native SonyWWS coordinates.
+                Camera->AxisSystem = gcnew Matrix4F(
+                    1.f, 0.f, 0.f, 0.f, 
+                    0.f, 0.f, -1.f, 0.f, 
+                    0.f, 1.f, 0.f, 0.f, 
+                    0.f, 0.f, 0.f, 1.f);
             }
-            __super::OnResize(e);
+        }
+
+        property Size ViewportSize;
+
+    protected:
+        void OnResize(System::Object^ sender, System::EventArgs^ e)
+        {
+            Control^ ctrl = dynamic_cast<Control^>(sender);
+            if (ctrl != nullptr) {
+                auto sz = ctrl->ClientSize;
+                ViewportSize = sz;
+                if (sz.Width > 0 && sz.Height > 0)
+                    Camera->Aspect = (float)sz.Width / (float)sz.Height;
+            }
         }
 
         GUILayer::LayerControl^ _layerControl;
@@ -154,6 +165,7 @@ namespace XLEBridgeUtils
 
     private:
         ManipulatorOverlay^ _manipulatorOverlay;
+        Sce::Atf::Rendering::Camera^ _camera;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -168,34 +180,40 @@ namespace XLEBridgeUtils
         RenderCore::IThreadContext* device, 
         SceneEngine::LightingParserContext& parserContext)
     {
-        using namespace LevelEditorCore;
         s_currentParsingContext = &parserContext;
             
+        auto context = gcnew GUILayer::SimpleRenderingContext(nullptr, ManipulatorOverlay::s_currentParsingContext);
+        
         try
         {
-            OnRender(_designView, _viewControl->Camera);
-            if (_designView->Manipulator != nullptr) {
+            OnRender(context);
 
-                bool clearBeforeDraw = true;
-                IManipulatorExtra^ extra = dynamic_cast<IManipulatorExtra^>(_designView->Manipulator);
-                if (extra)
-                    clearBeforeDraw = extra->ClearBeforeDraw();
-
-                if (clearBeforeDraw) {
-                        // disable depth write and depth read
-                    auto context = gcnew GUILayer::SimpleRenderingContext(nullptr, ManipulatorOverlay::s_currentParsingContext);
-                    GUILayer::RenderingUtil::ClearDepthBuffer(context);
-                    context->InitState(true, true);
-                    delete context;
-                }
-
-                _designView->Manipulator->Render(_viewControl);
-            }
+            // if (_designView->Manipulator != nullptr) {
+            // 
+            //     bool clearBeforeDraw = true;
+            //     IManipulatorExtra^ extra = dynamic_cast<IManipulatorExtra^>(_designView->Manipulator);
+            //     if (extra)
+            //         clearBeforeDraw = extra->ClearBeforeDraw();
+            // 
+            //     if (clearBeforeDraw) {
+            //             // disable depth write and depth read
+            //         
+            //         GUILayer::RenderingUtil::ClearDepthBuffer(context);
+            //         context->InitState(true, true);
+            //         delete context;
+            //     }
+            // 
+            //     _designView->Manipulator->Render(_viewControl);
+            // }
         }
         catch (...)
         {
             s_currentParsingContext = nullptr;
             throw;
+        }
+        finally
+        {
+            delete context;
         }
 
         s_currentParsingContext = nullptr;
@@ -206,27 +224,154 @@ namespace XLEBridgeUtils
         const RenderCore::Techniques::ProjectionDesc& projectionDesc) {}
     void ManipulatorOverlay::SetActivationState(bool) {}
 
-    ManipulatorOverlay::ManipulatorOverlay(
-        LevelEditorCore::DesignView^ designView,
-        LevelEditorCore::ViewControl^ viewControl)
-    : _designView(designView), _viewControl(viewControl) {}
-    ManipulatorOverlay::~ManipulatorOverlay() {}
-    ManipulatorOverlay::!ManipulatorOverlay() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+    //      P I C K I N G                                                                   //
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    GUILayer::EditorSceneManager^ Utils::GetSceneManager(LevelEditorCore::ViewControl^ vc)
+    public ref class Picking
     {
-        auto native = dynamic_cast<NativeDesignControl^>(vc);
-        if (!native) return nullptr;
-        return native->SceneManager;
-    }
+    public:
+        [Flags]
+        enum struct Flags : unsigned
+        {
+            Terrain = 1 << 0, Objects = 1 << 1, Helpers = 1 << 6, 
+            AllWorldObjects = Terrain | Objects,
+            IgnoreSelection = 1 << 10 
+        };
 
-    GUILayer::TechniqueContextWrapper^ Utils::GetTechniqueContext(LevelEditorCore::ViewControl^ vc)
-    {
-        auto native = dynamic_cast<NativeDesignControl^>(vc);
-        if (!native) return nullptr;
-        return native->TechniqueContext;
-    }
+        [StructLayout(LayoutKind::Sequential)]
+        value struct HitRecord
+        {
+            uint64 documentId;
+            uint64 instanceId;    // instance id of the game object.
+            uint index;          // index of sub-object (if any )
+            float distance;      // distance from camera ( for sorting )
+            Vec3F hitPt;       // hit point in world space.
+            Vec3F normal;      // world normal at hit-point.       
+            Vec3F nearestVertex; //  nearest vertex in world space.
+            bool hasNormal;
+            bool hasNearestVert;
+            short pad;
+
+            uint32 drawCallIndex;
+            uint64 materialGuid;
+            String^ materialName;
+            String^ modelName;
+        };
+
+        static array<HitRecord>^ FrustumPick(
+            GUILayer::EngineDevice^ device,
+            GUILayer::EditorSceneManager^ sceneManager,
+            GUILayer::TechniqueContextWrapper^ techniqueContext,
+            Matrix4F^ pickingFrustum, 
+            Sce::Atf::Rendering::Camera^ camera,
+            System::Drawing::Size viewportSize,
+            Flags flags)
+        {
+            System::Diagnostics::Debug::Assert(unsigned(flags & Flags::IgnoreSelection) == 0);
+
+            ICollection<GUILayer::HitRecord>^ results = nullptr;
+            {
+                msclr::auto_handle<GUILayer::IntersectionTestContextWrapper> context(
+                    Utils::CreateIntersectionTestContext(
+                        device, techniqueContext, camera, 
+                        (unsigned)viewportSize.Width, (unsigned)viewportSize.Height));
+
+                msclr::auto_handle<GUILayer::IntersectionTestSceneWrapper> scene(
+                    sceneManager->GetIntersectionScene());
+
+                cli::pin_ptr<float> ptr = &pickingFrustum->M11;
+                results = GUILayer::EditorInterfaceUtils::FrustumIntersection(
+                    scene.get(), context.get(), ptr, (uint)flags);
+            }
+
+            if (results == nullptr) { return nullptr; }
+            return AsHitRecordArray(results);
+        }
+
+        static array<HitRecord>^ AsHitRecordArray(ICollection<GUILayer::HitRecord>^ results)
+        {
+            auto hitRecords = gcnew array<HitRecord>(results->Count);
+            uint index = 0;
+            for each(auto r in results)
+            {
+                hitRecords[index].documentId = r._document;
+                hitRecords[index].instanceId = r._object;
+                hitRecords[index].index = 0;
+                hitRecords[index].distance = r._distance;
+                hitRecords[index].hitPt = Utils::AsVec3F(r._worldSpaceCollision);
+                hitRecords[index].normal = Vec3F(0.0f, 0.0f, 0.0f);
+                hitRecords[index].nearestVertex = Vec3F(0.0f, 0.0f, 0.0f);
+                hitRecords[index].hasNormal = hitRecords[index].hasNearestVert = false;
+                hitRecords[index].drawCallIndex = r._drawCallIndex;
+                hitRecords[index].materialGuid = r._materialGuid;
+                hitRecords[index].materialName = r._materialName;
+                hitRecords[index].modelName = r._modelName;
+                index++;
+            }
+
+            return hitRecords;
+        }
+
+        static array<HitRecord>^ RayPick(
+            GUILayer::EngineDevice^ device,
+            GUILayer::EditorSceneManager^ sceneManager,
+            GUILayer::TechniqueContextWrapper^ techniqueContext,
+            Ray3F ray, Sce::Atf::Rendering::Camera^ camera, 
+            System::Drawing::Size viewportSize, Flags flags)
+        {
+            System::Diagnostics::Debug::Assert(unsigned(flags & Flags::IgnoreSelection) == 0);
+
+            ICollection<GUILayer::HitRecord>^ results = nullptr; 
+            auto endPt = ray.Origin + camera->FarZ * ray.Direction;
+
+            {
+                msclr::auto_handle<GUILayer::IntersectionTestContextWrapper> context(
+                    Utils::CreateIntersectionTestContext(
+                        device, techniqueContext, camera, 
+                        (uint)viewportSize.Width, (uint)viewportSize.Height));
+
+                msclr::auto_handle<GUILayer::IntersectionTestSceneWrapper> scene(
+                    sceneManager->GetIntersectionScene());
+
+                results = GUILayer::EditorInterfaceUtils::RayIntersection(
+                    scene.get(), context.get(),
+                    Utils::AsVector3(ray.Origin),
+                    Utils::AsVector3(endPt), (uint)flags);
+            }
+
+            if (results == nullptr) { return nullptr; }
+            return AsHitRecordArray(results);
+        }
+
+        static array<HitRecord>^ RayPick(
+            NativeDesignAdapter^ vc,
+            Ray3F ray, Flags flags)
+        {
+            auto sceneMan = vc->SceneManager;
+            if (!sceneMan) return nullptr;
+            
+            return RayPick(
+                GUILayer::EngineDevice::GetInstance(),
+                sceneMan,
+                vc->TechniqueContext,
+                ray, vc->Camera, vc->ViewportSize, flags);
+        }
+
+        static array<HitRecord>^ FrustumPick(
+            NativeDesignAdapter^ vc,
+            Matrix4F^ pickingFrustum, Flags flags)
+        {
+            auto sceneMan = vc->SceneManager;
+            if (!sceneMan) return nullptr;
+            
+            return FrustumPick(
+                GUILayer::EngineDevice::GetInstance(),
+                sceneMan,
+                vc->TechniqueContext,
+                pickingFrustum, vc->Camera, vc->ViewportSize, flags);
+        }
+    };
 }
 

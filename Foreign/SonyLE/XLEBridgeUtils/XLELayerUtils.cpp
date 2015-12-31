@@ -96,9 +96,7 @@ namespace XLEBridgeUtils
 
     void DomChangeInspector::ContextRegistry_ActiveContextChanged(System::Object^ sender, EventArgs^ e)
     {
-        using namespace LevelEditorCore;
-        IGameContext^ game = m_contextRegistry->GetActiveContext<IGameContext^>();
-        auto observableContext = Sce::Atf::Adaptation::Adapters::As<IObservableContext^>(game);
+        IObservableContext^ observableContext = m_contextRegistry->GetActiveContext<IObservableContext^>();
         if (m_observableContext == observableContext) return;
         if (m_observableContext != nullptr) {
             m_observableContext->ItemInserted -= gcnew EventHandler<ItemInsertedEventArgs<System::Object^>^>(this, &DomChangeInspector::m_observableContext_ItemInserted);

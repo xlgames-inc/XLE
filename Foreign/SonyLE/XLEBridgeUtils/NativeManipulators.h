@@ -43,21 +43,25 @@ namespace XLEBridgeUtils
     public:
         static property GUILayer::EditorSceneManager^ SceneManager;
 
-        bool MouseMove(LevelEditorCore::ViewControl^ vc, Point scrPt);
-        void Render(LevelEditorCore::ViewControl^ vc);
+        value class View
+        {
+        public:
+            Drawing::Size _viewportSize;
+			Sce::Atf::Rendering::Camera^ _camera;
+        };
+
+        bool MouseMove(View vc, Point scrPt);
+        void Render();
         void OnBeginDrag();
-        void OnDragging(LevelEditorCore::ViewControl^ vc, Point scrPt);
-        void OnEndDrag(LevelEditorCore::ViewControl^ vc, Point scrPt);
-        void OnMouseWheel(LevelEditorCore::ViewControl^ vc, Point scrPt, int delta);
+        void OnDragging(View vc, Point scrPt);
+        void OnEndDrag(View vc, Point scrPt);
+        void OnMouseWheel(View vc, Point scrPt, int delta);
 
         NativeManipulatorLayer(ActiveManipulatorContext^ manipContext);
         ~NativeManipulatorLayer();
 
     private:
-        bool SendInputEvent(
-            Drawing::Size viewportSize,
-			Sce::Atf::Rendering::Camera^ camera, 
-			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
+        bool SendInputEvent(View vc, const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
 
         ActiveManipulatorContext^ _manipContext;
         bool _pendingBeginDrag;

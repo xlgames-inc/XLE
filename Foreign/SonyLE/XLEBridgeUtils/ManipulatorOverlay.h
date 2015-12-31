@@ -13,7 +13,7 @@ namespace SceneEngine { class LightingParserContext; }
 
 namespace XLEBridgeUtils
 {
-    public delegate void RenderCallback(LevelEditorCore::DesignView^ designView, Sce::Atf::Rendering::Camera^ camera);
+    public delegate void RenderCallback(GUILayer::SimpleRenderingContext^ context);
 
     private ref class ManipulatorOverlay : public GUILayer::IOverlaySystem
     {
@@ -29,16 +29,7 @@ namespace XLEBridgeUtils
 
         event RenderCallback^ OnRender;
 
-        ManipulatorOverlay(
-            LevelEditorCore::DesignView^ designView,
-            LevelEditorCore::ViewControl^ viewControl);
-        ~ManipulatorOverlay();
-        !ManipulatorOverlay();
-
         static SceneEngine::LightingParserContext* s_currentParsingContext = nullptr;
-    protected:
-        LevelEditorCore::DesignView^ _designView;
-        LevelEditorCore::ViewControl^ _viewControl;
     };
 }
 

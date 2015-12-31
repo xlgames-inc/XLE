@@ -17,17 +17,17 @@
 namespace XLEBridgeUtils
 {
 
-    bool NativeManipulatorLayer::MouseMove(LevelEditorCore::ViewControl^ vc, Point scrPt)
+    bool NativeManipulatorLayer::MouseMove(View vc, Point scrPt)
     {
         using namespace RenderOverlays::DebuggingDisplay;
 		InputSnapshot evnt(0, 0, 0, Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
 			// "return true" has two effects --
 			//		1. sets the cursor to a moving cursor
 			//		2. turns mouse down into "drag-begin" event
-		return SendInputEvent(vc->ClientSize, vc->Camera, evnt);
+		return SendInputEvent(vc, evnt);
     }
 
-    void NativeManipulatorLayer::Render(LevelEditorCore::ViewControl^ vc)
+    void NativeManipulatorLayer::Render()
     {
 			//	We can't get any context information from here!
 			//	EditorSceneManager must be a singleton, otherwise
@@ -44,7 +44,7 @@ namespace XLEBridgeUtils
     }
 
     void NativeManipulatorLayer::OnBeginDrag() { _pendingBeginDrag = true; }
-    void NativeManipulatorLayer::OnDragging(LevelEditorCore::ViewControl^ vc, Point scrPt) 
+    void NativeManipulatorLayer::OnDragging(View vc, Point scrPt) 
 	{
 			//  We need to create a fake "mouse over" event and pass it through to
 			//  the currently selected manipulator. We might also need to set the state
@@ -58,11 +58,11 @@ namespace XLEBridgeUtils
 			Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
         GUILayer::EditorInterfaceUtils::SetupModifierKeys(evnt);
 
-		SendInputEvent(vc->ClientSize, vc->Camera, evnt);
+		SendInputEvent(vc, evnt);
         _pendingBeginDrag = false;
 	}
 
-    void NativeManipulatorLayer::OnEndDrag(LevelEditorCore::ViewControl^ vc, Point scrPt) 
+    void NativeManipulatorLayer::OnEndDrag(View vc, Point scrPt) 
 	{
             // Emulate a "mouse up" operation 
         using namespace RenderOverlays::DebuggingDisplay;
@@ -71,17 +71,17 @@ namespace XLEBridgeUtils
 			0, btnState, 0,
 			Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
         GUILayer::EditorInterfaceUtils::SetupModifierKeys(evnt);
-        SendInputEvent(vc->ClientSize, vc->Camera, evnt);
+        SendInputEvent(vc, evnt);
 	}
 
-    void NativeManipulatorLayer::OnMouseWheel(LevelEditorCore::ViewControl^ vc, Point scrPt, int delta)
+    void NativeManipulatorLayer::OnMouseWheel(View vc, Point scrPt, int delta)
     {
         using namespace RenderOverlays::DebuggingDisplay;
 		InputSnapshot evnt(
 			0, 0, delta,
 			Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
         GUILayer::EditorInterfaceUtils::SetupModifierKeys(evnt);
-        SendInputEvent(vc->ClientSize, vc->Camera, evnt);
+        SendInputEvent(vc, evnt);
     }
 
     NativeManipulatorLayer::NativeManipulatorLayer(ActiveManipulatorContext^ manipContext) 
@@ -95,8 +95,7 @@ namespace XLEBridgeUtils
     }
 
     bool NativeManipulatorLayer::SendInputEvent(
-        Drawing::Size viewportSize,
-		Sce::Atf::Rendering::Camera^ camera, 
+        View vc, 
 		const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
 	{
 		auto underlying = _manipContext->GetNativeManipulator();
@@ -104,8 +103,8 @@ namespace XLEBridgeUtils
 
 		auto hitTestContext = GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
 			GUILayer::EngineDevice::GetInstance(), nullptr,
-			Utils::AsCameraDesc(camera),
-            viewportSize.Width, viewportSize.Height);
+			Utils::AsCameraDesc(vc._camera),
+            vc._viewportSize.Width, vc._viewportSize.Height);
 		auto hitTestScene = SceneManager->GetIntersectionScene();
 
 		underlying->OnInputEvent(evnt, hitTestContext->GetNative(), hitTestScene->GetNative());
