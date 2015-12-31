@@ -78,7 +78,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\MaterialLayer.cpp" />
-    <ClCompile Include="..\NativeDesignControl.cpp" />
+    <ClCompile Include="..\DesignControlAdapter.cpp" />
     <ClCompile Include="..\NativeManipulators.cpp" />
     <ClCompile Include="..\PropertyDescriptorUtils.cpp" />
     <ClCompile Include="..\XLELayerUtils.cpp" />

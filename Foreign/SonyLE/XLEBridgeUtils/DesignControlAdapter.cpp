@@ -33,7 +33,7 @@ namespace XLEBridgeUtils
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public ref class NativeDesignAdapter
+    public ref class DesignControlAdapter
     {
     public:
         static GUILayer::SimpleRenderingContext^ CreateSimpleRenderingContext(
@@ -45,7 +45,7 @@ namespace XLEBridgeUtils
                 savedRes, ManipulatorOverlay::s_currentParsingContext);
         }
 
-        NativeDesignAdapter(
+        DesignControlAdapter(
             Control^ attachedControl, 
             Sce::Atf::Rendering::Camera^ camera,
             GUILayer::EditorSceneManager^ sceneManager,
@@ -62,10 +62,10 @@ namespace XLEBridgeUtils
             _layerControl->AddSystem(_manipulatorOverlay);
             Camera = camera;
             ViewportSize = attachedControl->Size;
-            attachedControl->Resize += gcnew System::EventHandler(this, &NativeDesignAdapter::OnResize);
+            attachedControl->Resize += gcnew System::EventHandler(this, &DesignControlAdapter::OnResize);
         }
 
-        ~NativeDesignAdapter() 
+        ~DesignControlAdapter() 
         { 
             delete _layerControl; _layerControl = nullptr; 
             delete _cameraSettings; _cameraSettings = nullptr; 
@@ -346,7 +346,7 @@ namespace XLEBridgeUtils
         }
 
         static array<HitRecord>^ RayPick(
-            NativeDesignAdapter^ vc,
+            DesignControlAdapter^ vc,
             Ray3F ray, Flags flags)
         {
             auto sceneMan = vc->SceneManager;
@@ -360,7 +360,7 @@ namespace XLEBridgeUtils
         }
 
         static array<HitRecord>^ FrustumPick(
-            NativeDesignAdapter^ vc,
+            DesignControlAdapter^ vc,
             Matrix4F^ pickingFrustum, Flags flags)
         {
             auto sceneMan = vc->SceneManager;
