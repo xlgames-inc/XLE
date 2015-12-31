@@ -46,7 +46,6 @@ namespace ShaderPatcherLayer
     {
     public:
         virtual IPreviewBuilder^ CreatePreviewBuilder(System::String^ shaderText);
-        void RotateLightDirection(Document^ doc, System::Drawing::PointF rotationAmount);
 
         [ImportingConstructor]
         Manager(GUILayer::EngineDevice^ engineDevice);
@@ -192,32 +191,12 @@ namespace ShaderPatcherLayer
             MaterialVisObject visObject;
             visObject._materialBinder = std::make_shared<MaterialBinder>(*builder._shaderSource, builder._shaderText);
             visObject._systemConstants._lightColour = Float3(1,1,1);
+
+            // Our default material settings come from the "Document" object. This
+            // give us our starting material and shader properties.
+            if (doc != nullptr && doc->DefaultsMaterial != nullptr)
+                doc->DefaultsMaterial->Resolve(visObject._parameters);
             visObject._parameters._matParams.SetParameter(u("SHADER_NODE_EDITOR"), "1");
-
-            if (doc != nullptr) {
-                visObject._systemConstants._lightNegativeDirection = Normalize(doc->NegativeLightDirection);
-
-                    //  We need to convert the material parameters and resource bindings
-                    //  from the "doc" into native format in the "visObject._parameters" object.
-                    //  Any "string" parameter might be a texture binding
-                for each (auto i in doc->PreviewMaterialState) {
-                    auto str = dynamic_cast<String^>(i.Value);
-                    if (str) {
-                        visObject._parameters._bindings.SetParameter(
-                                (const utf8*)clix::marshalString<clix::E_UTF8>(i.Key).c_str(),
-                                clix::marshalString<clix::E_UTF8>(str));
-                    }
-                }
-
-                    //  Shader constants are more difficult... we only support uint32 currently!
-                for each (auto i in doc->PreviewMaterialState) {
-                    uint32 dest;
-                    ShaderPatcherLayer::TypeRules::CopyToBytes(
-                        &dest, i.Value, "uint", 
-                        ShaderPatcherLayer::TypeRules::ExtractTypeName(i.Value),
-                        PtrAdd(&dest, sizeof(dest)));
-                }
-            }
 
             MaterialVisSettings visSettings;
             visSettings._camera = std::make_shared<VisCameraSettings>();
@@ -372,23 +351,6 @@ namespace ShaderPatcherLayer
             _pimpl->_shaderSource, _pimpl->_globalTechniqueContext, 
             _pimpl->_device,
             shaderText);
-    }
-
-    void                    Manager::RotateLightDirection(Document^ doc, System::Drawing::PointF rotationAmount)
-    {
-        // try {
-        //     float deltaCameraYaw    = -rotationAmount.Y * 1.f * gPI / 180.f;
-        //     float deltaCameraPitch  =  rotationAmount.X * 1.f * gPI / 180.f;
-        // 
-        //     Float3x3 rotationPart;
-        //     cml::matrix_rotation_euler(rotationPart, deltaCameraYaw, 0.f, deltaCameraPitch, cml::euler_order_yxz);
-        // 
-        //     auto negLightDir = doc->NegativeLightDirection;
-        //     negLightDir = TransformDirectionVector(rotationPart, negLightDir);
-        //     doc->NegativeLightDirection = Normalize(negLightDir);
-        // } catch(...) {
-        //     doc->NegativeLightDirection = Float3(0.f, 0.f, 1.f);        // catch any math errors
-        // }
     }
     
     Manager::Manager(GUILayer::EngineDevice^ engineDevice)

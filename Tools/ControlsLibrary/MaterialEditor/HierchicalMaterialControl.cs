@@ -63,7 +63,7 @@ namespace ControlsLibrary.MaterialEditor
             string topItem = names[names.Count - 1];
             var parentNode = _hierachyTree.Nodes.Add(topItem);
             parentNode.Tag = topItem; // string.Join(";", names);
-            AddComboBoxChildren(parentNode, GUILayer.RawMaterial.BuildInheritanceList(topItem));
+            AddComboBoxChildren(parentNode, GUILayer.RawMaterial.Get(topItem).BuildInheritanceList());
             return parentNode;
         }
 
@@ -74,7 +74,7 @@ namespace ControlsLibrary.MaterialEditor
             {
                 var newNode = parentNode.Nodes.Add(mat);
                 newNode.Tag = new List<string>() { mat };
-                AddComboBoxChildren(newNode, GUILayer.RawMaterial.BuildInheritanceList(mat));
+                AddComboBoxChildren(newNode, GUILayer.RawMaterial.Get(mat).BuildInheritanceList());
             }
         }
 

@@ -52,7 +52,7 @@ namespace NodeEditorCore
                 {
                     var result = new GraphModel();
                     exportProvider.GetExport<NodeEditorCore.IModelConversion>().Value.AddToHyperGraph(
-                        (ShaderPatcherLayer.NodeGraph)o, result, null);
+                        (ShaderPatcherLayer.NodeGraph)o, result);
                     return result;
                 }
             }

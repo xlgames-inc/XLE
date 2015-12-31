@@ -397,11 +397,10 @@ namespace GUILayer
 
     System::String^ RawMaterial::BuildInheritanceList()
     {
-            // create a RawMaterial wrapper object for all of the inheritted objects
         if (!!_underlying) {
             auto& asset = _underlying->GetAsset();
             auto searchRules = ::Assets::DefaultDirectorySearchRules(
-                clix::marshalString<clix::E_UTF8>(_filename).c_str());
+                MakeStringSection(clix::marshalString<clix::E_UTF8>(Filename)));
             
             System::String^ result = "";
             auto inheritted = asset._asset.ResolveInherited(searchRules);
@@ -414,13 +413,13 @@ namespace GUILayer
         return nullptr;
     }
 
-    System::String^ RawMaterial::BuildInheritanceList(System::String^ topMost)
+    void RawMaterial::Resolve(RenderCore::Assets::ResolvedMaterial& destination)
     {
-        // auto temp = gcnew RawMaterial(topMost);
-        // auto result = temp->BuildInheritanceList();
-        // delete temp;
-        // return result;
-        return Get(topMost)->BuildInheritanceList();
+        if (!!_underlying) {
+            auto searchRules = Assets::DefaultDirectorySearchRules(
+                MakeStringSection(clix::marshalString<clix::E_UTF8>(Filename)));
+            _underlying->GetAsset()._asset.Resolve(destination, searchRules);
+        }
     }
 
     void RawMaterial::AddInheritted(String^ item)
@@ -437,15 +436,17 @@ namespace GUILayer
         assert(0); // not implemented!
     }
 
-    System::String^ RawMaterial::Filename::get() { return _filename; }
-    System::String^ RawMaterial::SettingName::get() { return _settingName; }
+    System::String^ RawMaterial::Filename::get()
+    { 
+        auto native = MakeFileNameSplitter(clix::marshalString<clix::E_UTF8>(_initializer)).AllExceptParameters();
+        return clix::marshalString<clix::E_UTF8>(native);
+    }
+    System::String^ RawMaterial::Initializer::get() { return _initializer; }
 
     const RenderCore::Assets::RawMaterial* RawMaterial::GetUnderlying() 
     { 
         return (!!_underlying) ? &_underlying->GetAsset()._asset : nullptr; 
     }
-
-    // Dictionary<String^, WeakReference^>^ RawMaterial::s_table; // = gcnew Dictionary<String^, WeakReference^>();
 
     static RawMaterial::RawMaterial()
     {
@@ -475,16 +476,17 @@ namespace GUILayer
         return result;
     }
 
+    RawMaterial^ RawMaterial::CreateUntitled() 
+    { 
+        static unsigned counter = 0;
+        return gcnew RawMaterial("untitled" + (counter++) + ".material");
+    }
+
     RawMaterial::RawMaterial(System::String^ initialiser)
     {
+        _initializer = initialiser;
         auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
         _underlying = RenderCore::Assets::RawMaterial::GetDivergentAsset(nativeInit.c_str());
-
-        auto splitName = MakeFileNameSplitter(nativeInit);
-
-        _filename = clix::marshalString<clix::E_UTF8>(splitName.AllExceptParameters());
-        _settingName = clix::marshalString<clix::E_UTF8>(splitName.Parameters());
-
         _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
     }
 
@@ -493,11 +495,6 @@ namespace GUILayer
         delete _renderStateSet;
         _underlying.reset();
     }
-
-    // RawMaterial::!RawMaterial()
-    // {
-    //     System::Diagnostics::Debug::Assert(false, "Non deterministic delete of RawMaterial");
-    // }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

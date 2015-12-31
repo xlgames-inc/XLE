@@ -640,6 +640,7 @@ namespace NodeEditorCore
 
         public bool FillInMaterialParameters(ShaderPatcherLayer.Document document, HyperGraph.IGraphModel graph)
         {
+#if false
                 //
                 //      Look for new or removed material parameters
                 //      and update the material parameters dictionary
@@ -734,6 +735,9 @@ namespace NodeEditorCore
             }
 
             return didSomething;
+#else
+            return false;
+#endif
         }
 
         [Import]

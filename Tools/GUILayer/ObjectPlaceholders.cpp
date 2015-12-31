@@ -58,7 +58,7 @@ namespace GUILayer
         VisGeoBox(const Desc&);
         ~VisGeoBox();
     protected:
-        std::shared_ptr<Assets::DependencyValidation> _depVal;
+        std::shared_ptr<::Assets::DependencyValidation> _depVal;
     };
     
     VisGeoBox::VisGeoBox(const Desc&)
@@ -75,7 +75,7 @@ namespace GUILayer
         _cubeVBCount = (unsigned)cubeVertices.size();
         _cubeVBStride = (unsigned)sizeof(decltype(cubeVertices)::value_type);
         _cubeVB = Metal::VertexBuffer(AsPointer(cubeVertices.cbegin()), _cubeVBCount * _cubeVBStride);
-        _depVal = std::make_shared<Assets::DependencyValidation>();
+        _depVal = std::make_shared<::Assets::DependencyValidation>();
     }
 
     VisGeoBox::~VisGeoBox() {}

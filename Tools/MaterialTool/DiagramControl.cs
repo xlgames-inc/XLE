@@ -51,6 +51,9 @@ namespace MaterialTool
             // while rendering node items.
             var underlyingDoc = _exportProvider.GetExport<NodeEditorCore.DiagramDocument>().Value;
             underlyingDoc.ViewModel = context.Model;
+            underlyingDoc.ParameterSettings = 
+                new ShaderPatcherLayer.Document 
+                    { DefaultsMaterial = GUILayer.RawMaterial.Get(_activeMaterialContext.MaterialName) };
             _child.Context = underlyingDoc;
         }
 
@@ -63,6 +66,8 @@ namespace MaterialTool
         private GUILayer.EngineDevice _engine;
         [Import]
         private System.ComponentModel.Composition.Hosting.ExportProvider _exportProvider;
+        [Import]
+        private ControlsLibraryExt.ActiveMaterialContext _activeMaterialContext;
         private HyperGraph.GraphControl _child;
     }
 }

@@ -20,7 +20,7 @@ using namespace System::Windows::Forms;
 using namespace System::Drawing::Design;
 using namespace System::Collections::Generic;
 
-namespace RenderCore { namespace Assets { class RawMaterial; }}
+namespace RenderCore { namespace Assets { class RawMaterial; class ResolvedMaterial; }}
 namespace Assets
 {
     template<typename Type, typename Formatter>
@@ -337,15 +337,16 @@ namespace GUILayer
         const RenderCore::Assets::RawMaterial* GetUnderlying();
 
         String^ BuildInheritanceList();
-        static String^ BuildInheritanceList(String^ topMost);
+        void Resolve(RenderCore::Assets::ResolvedMaterial& destination);
 
         void AddInheritted(String^);
         void RemoveInheritted(String^);
 
         property String^ Filename { String^ get(); }
-        property String^ SettingName { String^ get(); }
+        property String^ Initializer { String^ get(); }
 
         static RawMaterial^ Get(String^ initializer);
+        static RawMaterial^ CreateUntitled();
 
         ~RawMaterial();
     private:
@@ -357,8 +358,7 @@ namespace GUILayer
         BindingList<StringStringPair^>^ _materialParameterBox;
         BindingList<StringStringPair^>^ _shaderConstants;
         BindingList<StringStringPair^>^ _resourceBindings;
-        String^ _filename;
-        String^ _settingName;
+        String^ _initializer;
         void ParameterBox_Changed(System::Object^, ListChangedEventArgs^);
         void ResourceBinding_Changed(System::Object^, ListChangedEventArgs^);
 

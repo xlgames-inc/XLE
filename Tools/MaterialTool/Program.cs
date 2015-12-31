@@ -125,7 +125,11 @@ namespace MaterialTool
                 typeof(NodeEditorCore.ShaderParameterUtil),
                 typeof(NodeEditorCore.ModelConversion),
                 typeof(NodeEditorCore.ShaderFragmentNodeCreator),
-                typeof(NodeEditorCore.DiagramDocument)
+                typeof(NodeEditorCore.DiagramDocument),
+
+                typeof(ControlsLibraryExt.ActiveMaterialContext),
+                typeof(ControlsLibraryExt.MaterialInspector),
+                typeof(ControlsLibraryExt.MaterialSchemaLoader)
             );
 
             // enable use of the system clipboard

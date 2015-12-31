@@ -131,6 +131,16 @@ namespace MaterialTool
 
             NodeEditorCore.GraphHelpers.SetupDefaultHandlers(graph);
 
+                // We need to make sure there is a material set to the active
+                // material context... If there is none, we must create a new
+                // untitled material, and set that...
+            var matContext = _exportProvider.GetExport<ControlsLibraryExt.ActiveMaterialContext>().Value;
+            if (matContext.MaterialName == null)
+            {
+                var newMaterial = GUILayer.RawMaterial.CreateUntitled();
+                matContext.MaterialName = newMaterial.Initializer;
+            }
+
             var doc = new DiagramDocument(graph, uri);
             var control = _exportProvider.GetExport<IDiagramControl>().Value;
             control.SetContext(doc);
