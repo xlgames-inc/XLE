@@ -30,21 +30,60 @@ using System.Text;
 using System.Windows.Forms;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
+using System.Reflection;
 using HyperGraph.Compatibility;
 
 namespace HyperGraph
 {
 	public delegate bool AcceptElement(IElement element);
 
-	public partial class GraphControl : Control
+	public class GraphControl
 	{
-		#region Constructor
-		public GraphControl()
+		public void Attach(Control ctrl)
 		{
-			InitializeComponent();
-			this.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.Opaque | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.Selectable | ControlStyles.UserPaint, true);
+            // Hack --  SetStyle is protected, but we can access it by reflection
+            //          It seems unclear why this was protected... Perhaps because it effects
+            //          the way some virtual methods work? Anyway, it also effects our callbacks.
+            //          So let's work-around this restruction.
+			// ctrl.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.Opaque | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.Selectable | ControlStyles.UserPaint, true);
+            var type = ctrl.GetType();
+            var method = type.GetMethod("SetStyle", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (method != null)
+                method.Invoke(ctrl, new object[]{
+                    ControlStyles.AllPaintingInWmPaint | ControlStyles.Opaque | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.Selectable | ControlStyles.UserPaint, true});
+
+            ctrl.Paint += OnPaint;
+            ctrl.MouseWheel += OnMouseWheel;
+            ctrl.MouseDown += OnMouseDown;
+            ctrl.MouseMove += OnMouseMove;
+            ctrl.MouseUp += OnMouseUp;
+            ctrl.DoubleClick += OnDoubleClick;
+            ctrl.MouseClick += OnMouseClick;
+            ctrl.KeyDown += OnKeyDown;
+            ctrl.KeyUp += OnKeyUp;
+            ctrl.DragEnter += OnDragEnter;
+            ctrl.DragOver += OnDragOver;
+            ctrl.DragLeave += OnDragLeave;
+            ctrl.DragDrop += OnDragDrop;
+            _invalidationChain = new WeakReference(ctrl);
 		}
-		#endregion
+
+        public void Detach(Control ctrl)
+        {
+            ctrl.Paint -= OnPaint;
+            ctrl.MouseWheel -= OnMouseWheel;
+            ctrl.MouseDown -= OnMouseDown;
+            ctrl.MouseMove -= OnMouseMove;
+            ctrl.MouseUp -= OnMouseUp;
+            ctrl.DoubleClick -= OnDoubleClick;
+            ctrl.MouseClick -= OnMouseClick;
+            ctrl.KeyDown -= OnKeyDown;
+            ctrl.KeyUp -= OnKeyUp;
+            ctrl.DragEnter -= OnDragEnter;
+            ctrl.DragOver -= OnDragOver;
+            ctrl.DragLeave -= OnDragLeave;
+            ctrl.DragDrop -= OnDragDrop;
+        }
 
         public event EventHandler<AcceptElementLocationEventArgs>   ShowElementMenu; 
 
@@ -64,7 +103,7 @@ namespace HyperGraph
 					return;
 
 				internalSmallGridStep = value;
-				this.Invalidate();
+                InvokeInvalidate();
 			}
 		}
 		public float	internalLargeGridStep			= 16.0f * 8.0f;
@@ -81,7 +120,7 @@ namespace HyperGraph
 					return;
 
 				internalLargeGridStep = value;
-				this.Invalidate();
+                InvokeInvalidate();
 			}
 		}
 		private Color	internalSmallStepGridColor	= Color.Gray;
@@ -97,7 +136,7 @@ namespace HyperGraph
 
 				internalSmallStepGridColor = value;
 				SmallGridPen = new Pen(internalSmallStepGridColor);
-				this.Invalidate();
+                InvokeInvalidate();
 			}
 		}
 		private Color	internalLargeStepGridColor	= Color.LightGray;
@@ -113,7 +152,7 @@ namespace HyperGraph
 
 				internalLargeStepGridColor = value;
 				LargeGridPen = new Pen(internalLargeStepGridColor);
-				this.Invalidate();
+                InvokeInvalidate();
 			}
 		}
 		#endregion
@@ -275,7 +314,7 @@ namespace HyperGraph
 				if (internalShowLabels == value)
 					return;
 				internalShowLabels = value;
-				this.Invalidate();
+				InvokeInvalidate();
 			}
 		}
 		#endregion
@@ -299,7 +338,15 @@ namespace HyperGraph
             }
         }
 
-        public void InvalidateViewsHandler(object sender, EventArgs args) { Invalidate(); }
+        public void InvalidateViewsHandler(object sender, EventArgs args) { InvokeInvalidate(); }
+
+        private WeakReference _invalidationChain;
+        private void InvokeInvalidate() 
+        {
+            if (_invalidationChain == null) return;
+            var t = _invalidationChain.Target as Control;
+            if (t != null) t.Invalidate(); 
+        }
 
         public IGraphSelection Selection
         {
@@ -374,11 +421,11 @@ namespace HyperGraph
 		#region UpdateMatrices
 		readonly Matrix			transformation = new Matrix();
 		readonly Matrix			inverse_transformation = new Matrix();
-		void UpdateMatrices()
+		void UpdateMatrices(Control ctrl)
 		{
 			if (zoom < 0.25f) zoom = 0.25f;
 			if (zoom > 5.00f) zoom = 5.00f;
-			var center = new PointF(this.Width / 2.0f, this.Height / 2.0f);
+            var center = new PointF(ctrl.Width / 2.0f, ctrl.Height / 2.0f);
 			transformation.Reset();
 			transformation.Translate(translation.X, translation.Y);
 			transformation.Translate(center.X, center.Y);
@@ -416,7 +463,7 @@ namespace HyperGraph
 		}
 		#endregion
 
-		#region FindInputConnectorAt
+		#region Picking
 		static NodeConnector FindInputConnectorAt(Node node, PointF location)
 		{
 			if (node.itemsBounds == null || node.Collapsed)
@@ -432,10 +479,8 @@ namespace HyperGraph
 			}
 			return null;
 		}
-		#endregion
 
-		#region FindOutputConnectorAt
-		static NodeConnector FindOutputConnectorAt(Node node, PointF location)
+        static NodeConnector FindOutputConnectorAt(Node node, PointF location)
 		{
 			if (node.itemsBounds == null || node.Collapsed)
 				return null;
@@ -450,80 +495,25 @@ namespace HyperGraph
 			}
 			return null;
 		}
-		#endregion
 
-		#region FindElementAt
-		IElement FindElementAt(PointF location)
+        public static IElement FindElementAt(IGraphModel model, PointF location, AcceptElement acceptElement = null)
 		{
-            foreach (var node in _model.Nodes)
+            foreach (var node in model.Nodes)
 			{
 				var inputConnector = FindInputConnectorAt(node, location);
-				if (inputConnector != null)
+				if (inputConnector != null && (acceptElement==null || acceptElement(inputConnector)))
 					return inputConnector;
 
 				var outputConnector = FindOutputConnectorAt(node, location);
-				if (outputConnector != null)
+				if (outputConnector != null && (acceptElement== null || acceptElement(outputConnector)))
 					return outputConnector;
 
 				if (node.bounds.Contains(location))
 				{
 					var item = FindNodeItemAt(node, location);
-					if (item != null)
+					if (item != null && (acceptElement == null || acceptElement(item)))
 						return item;
-					return node;
-				}
-			}
-
-			var skipConnections		= new HashSet<NodeConnection>();
-			var foundConnections	= new List<NodeConnection>();
-            foreach (var node in _model.Nodes)
-			{
-				foreach (var connection in node.connections)
-				{
-					if (skipConnections.Add(connection)) // if we can add it, we haven't checked it yet
-					{
-						if (connection.bounds.Contains(location))
-							foundConnections.Insert(0, connection);
-					}
-				}
-			}
-			foreach (var connection in foundConnections)
-			{
-				if (connection.textBounds.Contains(location))
-					return connection;
-			}
-			foreach (var connection in foundConnections)
-			{
-				using (var region = GraphRenderer.GetConnectionRegion(connection))
-				{
-					if (region.IsVisible(location))
-						return connection;
-				}
-			}
-
-			return null;
-		}
-		#endregion
-		
-		#region FindElementAt
-		IElement FindElementAt(PointF location, AcceptElement acceptElement)
-		{
-            foreach (var node in _model.Nodes)
-			{
-				var inputConnector = FindInputConnectorAt(node, location);
-				if (inputConnector != null && acceptElement(inputConnector))
-					return inputConnector;
-
-				var outputConnector = FindOutputConnectorAt(node, location);
-				if (outputConnector != null && acceptElement(outputConnector))
-					return outputConnector;
-
-				if (node.bounds.Contains(location))
-				{
-					var item = FindNodeItemAt(node, location);
-					if (item != null && acceptElement(item))
-						return item;
-					if (acceptElement(node))
+					if (acceptElement == null || acceptElement(node))
 						return node;
 					else
 						return null;
@@ -532,7 +522,7 @@ namespace HyperGraph
 
 			var skipConnections		= new HashSet<NodeConnection>();
 			var foundConnections	= new List<NodeConnection>();
-            foreach (var node in _model.Nodes)
+            foreach (var node in model.Nodes)
 			{
 				foreach (var connection in node.connections)
 				{
@@ -545,20 +535,25 @@ namespace HyperGraph
 			}
 			foreach (var connection in foundConnections)
 			{
-				if (connection.textBounds.Contains(location) && acceptElement(connection))
+				if (connection.textBounds.Contains(location) && (acceptElement == null || acceptElement(connection)))
 					return connection;
 			}
 			foreach (var connection in foundConnections)
 			{
 				using (var region = GraphRenderer.GetConnectionRegion(connection))
 				{
-					if (region.IsVisible(location) && acceptElement(connection))
+					if (region.IsVisible(location) && (acceptElement == null || acceptElement(connection)))
 						return connection;
 				}
 			}
 
 			return null;
 		}
+
+        public static IEnumerable<IElement> RectangleSelection(IGraphModel model, RectangleF rect, AcceptElement acceptElement = null)
+        {
+            return model.Nodes.Where(x => (rect.Contains(x.bounds) && (acceptElement == null || acceptElement(x))));
+        }
 		#endregion
 		
 		#region GetTransformedLocation
@@ -593,13 +588,10 @@ namespace HyperGraph
 		#endregion
 
 		#region OnPaint
-		protected override void OnPaint(PaintEventArgs e)
+		private void OnPaint(object sender, PaintEventArgs e)
 		{
-			base.OnPaint(e);
-
 			if (e.Graphics == null)
 				return;
-			
 
 			e.Graphics.PageUnit				= GraphicsUnit.Pixel;
 			e.Graphics.CompositingQuality	= CompositingQuality.GammaCorrected;
@@ -607,10 +599,11 @@ namespace HyperGraph
 			e.Graphics.PixelOffsetMode		= PixelOffsetMode.HighQuality;
 			e.Graphics.InterpolationMode	= InterpolationMode.HighQualityBicubic;
 
-			UpdateMatrices();			
+            var ctrl = (Control)sender;
+			UpdateMatrices(ctrl);			
 			e.Graphics.Transform			= transformation;
 
-			OnDrawBackground(e);
+            OnDrawBackground(ctrl, e);
 			
 			e.Graphics.SmoothingMode		= SmoothingMode.HighQuality;
 
@@ -657,9 +650,9 @@ namespace HyperGraph
 		#endregion
 
 		#region OnDrawBackground
-		virtual protected void OnDrawBackground(PaintEventArgs e)
+		private void OnDrawBackground(Control ctrl, PaintEventArgs e)
 		{
-			e.Graphics.Clear(BackColor);
+			e.Graphics.Clear(ctrl.BackColor);
 
 			if (!ShowGrid)
 				return;
@@ -707,13 +700,11 @@ namespace HyperGraph
 
 
 		#region OnMouseWheel
-		protected override void OnMouseWheel(MouseEventArgs e)
+		private void OnMouseWheel(object sender, MouseEventArgs e)
 		{
-			base.OnMouseWheel(e);
-
 			zoom *= (float)Math.Pow(2, e.Delta / 480.0f);
 
-			this.Refresh();
+			((Control)sender).Refresh();
 		}
 		#endregion
 
@@ -731,10 +722,8 @@ namespace HyperGraph
         }
 
 		#region OnMouseDown
-		protected override void OnMouseDown(MouseEventArgs e)
+		private void OnMouseDown(object sender, MouseEventArgs e)
 		{
-			base.OnMouseDown(e);
-
 			if (currentButtons != MouseButtons.None)
 				return;
 
@@ -746,6 +735,8 @@ namespace HyperGraph
 			abortDrag	= false;
 			mouseMoved	= false;
 			snappedLocation = lastLocation = e.Location;
+
+            var ctrl = (Control)sender;
 			
 			var points = new PointF[] { e.Location };
 			inverse_transformation.TransformPoints(points);
@@ -755,7 +746,7 @@ namespace HyperGraph
 
 			if (e.Button == MouseButtons.Left)
 			{
-				var element = FindElementAt(transformed_location);
+				var element = FindElementAt(_model, transformed_location);
 				if (element != null)
 				{
 					var selection = BuildNodeSelection();
@@ -763,7 +754,7 @@ namespace HyperGraph
 					var element_node = element as Node;
 					if (element_node != null)
 					{
-						switch (ModifierKeys)
+                        switch (Control.ModifierKeys)
 						{
 							case Keys.None:
 							{
@@ -922,7 +913,7 @@ namespace HyperGraph
 
 					DragElement = element;
                     _model.BringElementToFront(element);
-					this.Refresh();
+					ctrl.Refresh();
 					command = CommandMode.Edit;
 				} else
 					command = CommandMode.MarqueSelection;
@@ -934,15 +925,13 @@ namespace HyperGraph
 
 			points = new PointF[] { originalLocation };
 			transformation.TransformPoints(points);
-			originalMouseLocation = this.PointToScreen(new Point((int)points[0].X, (int)points[0].Y));
+			originalMouseLocation = ctrl.PointToScreen(new Point((int)points[0].X, (int)points[0].Y));
 		}
 		#endregion
 
 		#region OnMouseMove
-		protected override void OnMouseMove(MouseEventArgs e)
+		private void OnMouseMove(object sender, MouseEventArgs e)
 		{
-			base.OnMouseMove(e);
-			
 			if (DragElement == null &&
 				command != CommandMode.MarqueSelection &&
 				(currentButtons & MouseButtons.Right) != 0)
@@ -975,7 +964,7 @@ namespace HyperGraph
 			var deltaX = (lastLocation.X - currentLocation.X) / zoom;
 			var deltaY = (lastLocation.Y - currentLocation.Y) / zoom;
 
-			
+            var ctrl = (Control)sender;
 
 			bool needRedraw = false;
 			switch (command)
@@ -991,10 +980,10 @@ namespace HyperGraph
 						(Math.Abs(deltaY) > 0))
 					{
 						zoom *= (float)Math.Pow(2, deltaY / 100.0f);
-						Cursor.Position = this.PointToScreen(lastLocation);
+                        Cursor.Position = ctrl.PointToScreen(lastLocation);
 						snappedLocation = //lastLocation = 
 							currentLocation;
-						this.Refresh();
+                        ctrl.Refresh();
 					}
 					return;
 				case CommandMode.TranslateView:
@@ -1013,7 +1002,7 @@ namespace HyperGraph
 						translation.X -= deltaX * zoom;
 						translation.Y -= deltaY * zoom;
 						snappedLocation = lastLocation = currentLocation;
-						this.Refresh();
+                        ctrl.Refresh();
 					}
 					return;
 				}
@@ -1037,18 +1026,18 @@ namespace HyperGraph
 							{
 								if (marque_rectangle.Contains(node.bounds))
 								{
-									if (!workingSelection.Contains(node) && (ModifierKeys != Keys.Alt))
+									if (!workingSelection.Contains(node) && (Control.ModifierKeys != Keys.Alt))
 									{
 										_selectedNodes.Add(node);
 									}
-									if (workingSelection.Contains(node) && (ModifierKeys == Keys.Alt))
+									if (workingSelection.Contains(node) && (Control.ModifierKeys == Keys.Alt))
 									{
 										_unselectedNodes.Add(node);
 									}
 								}
                                 else
 								{
-									if (workingSelection.Contains(node) && (ModifierKeys == Keys.None))
+									if (workingSelection.Contains(node) && (Control.ModifierKeys == Keys.None))
 									{
 										_unselectedNodes.Add(node);
 									}
@@ -1058,7 +1047,7 @@ namespace HyperGraph
 
 						snappedLocation = lastLocation = currentLocation;
                         UpdateFocusStates();
-						this.Refresh();
+                        ctrl.Refresh();
 					}
 					return;
 
@@ -1096,7 +1085,7 @@ namespace HyperGraph
 																(int)Math.Round(node.Location.Y - deltaY));
 								}
 								snappedLocation = lastLocation = currentLocation;
-								this.Refresh();
+                                ctrl.Refresh();
 								return;
 							}
 							case ElementType.Node:				// drag single node
@@ -1105,7 +1094,7 @@ namespace HyperGraph
 								node.Location	= new Point((int)Math.Round(node.Location.X - deltaX),
 															(int)Math.Round(node.Location.Y - deltaY));
 								snappedLocation = lastLocation = currentLocation;
-								this.Refresh();
+                                ctrl.Refresh();
 								return;
 							}
 							case ElementType.NodeItem:			// drag in node-item
@@ -1144,7 +1133,7 @@ namespace HyperGraph
 			IElement draggingOverElement = null;
 
             SetFlag(DragElement, (RenderState.Compatible | RenderState.Incompatible | RenderState.Conversion), false);
-			var element = FindElementAt(transformed_location);
+			var element = FindElementAt(_model, transformed_location);
 			if (element != null)
 			{
 				switch (element.ElementType)
@@ -1259,7 +1248,7 @@ namespace HyperGraph
 					SetFlag(internalDragOverElement, RenderState.DraggedOver, false);
 					var node = GetElementNode(internalDragOverElement);
 					if (node != null)
-						GraphRenderer.PerformLayout(this.CreateGraphics(), node);
+                        GraphRenderer.PerformLayout(ctrl.CreateGraphics(), node);
 					needRedraw = true;
 				}
 
@@ -1270,7 +1259,7 @@ namespace HyperGraph
 					SetFlag(internalDragOverElement, RenderState.DraggedOver, true);
 					var node = GetElementNode(internalDragOverElement);
 					if (node != null)
-						GraphRenderer.PerformLayout(this.CreateGraphics(), node);
+                        GraphRenderer.PerformLayout(ctrl.CreateGraphics(), node);
 					needRedraw = true;
 				}
 			}
@@ -1293,7 +1282,7 @@ namespace HyperGraph
 						
 
 			if (needRedraw)
-				this.Refresh();
+                ctrl.Refresh();
 		}
 		#endregion
 
@@ -1329,14 +1318,16 @@ namespace HyperGraph
         }
 
 		#region OnMouseUp
-		protected override void OnMouseUp(MouseEventArgs e)
+		private void OnMouseUp(object sender, MouseEventArgs e)
 		{
 			currentButtons &= ~e.Button;
 			
 			bool needRedraw = false;
 			if (!dragging)
 				return;
-			
+
+            var ctrl = (Control)sender;
+
 			try
 			{
 				Point currentLocation;
@@ -1374,7 +1365,7 @@ namespace HyperGraph
                         {
                             UpdateFocusStates();
                         }
-						this.Invalidate();
+						ctrl.Invalidate();
 						return;
 					case CommandMode.ScaleView:
 						return;
@@ -1469,29 +1460,28 @@ namespace HyperGraph
 				_unselectedNodes.Clear();
 				
 				if (needRedraw)
-					this.Refresh();
-			
-				base.OnMouseUp(e);
+					ctrl.Refresh();
 			}
 		}
 		#endregion
 
 		#region OnDoubleClick
 		bool ignoreDoubleClick = false;
-		protected override void OnDoubleClick(EventArgs e)
+		private void OnDoubleClick(object sender, EventArgs e)
 		{
-			base.OnDoubleClick(e);
 			if (mouseMoved || ignoreDoubleClick || 
-				ModifierKeys != Keys.None)
+				Control.ModifierKeys != Keys.None)
 				return;
 
 			var points = new Point[] { lastLocation };
 			inverse_transformation.TransformPoints(points);
 			var transformed_location = points[0];
 
-			var element = FindElementAt(transformed_location);
+			var element = FindElementAt(_model, transformed_location);
 			if (element == null)
 				return;
+
+            var ctrl = (Control)sender;
 
 			switch (element.ElementType)
 			{
@@ -1500,9 +1490,9 @@ namespace HyperGraph
 					break;
 				case ElementType.NodeItem:
 					var item = element as NodeItem;
-					if (item.OnDoubleClick(this))
+                    if (item.OnDoubleClick(ctrl))
 					{
-						this.Refresh();
+                        ctrl.Refresh();
 						return;
 					}
 					element = item.Node;
@@ -1512,7 +1502,7 @@ namespace HyperGraph
 					node.Collapsed = !node.Collapsed;
 					if (Selection!=null)
                         Selection.SelectSingle(node);
-					this.Refresh();
+                    ctrl.Refresh();
 					break;
 
                 case ElementType.InputConnector:
@@ -1525,7 +1515,7 @@ namespace HyperGraph
 		#endregion
 
 		#region OnMouseClick
-		protected override void OnMouseClick(MouseEventArgs e)
+		private void OnMouseClick(object sender, MouseEventArgs e)
 		{
 			try
 			{
@@ -1537,15 +1527,17 @@ namespace HyperGraph
 				inverse_transformation.TransformPoints(points);
 				var transformed_location = points[0];
 
+                var ctrl = (Control)sender;
+
 				if (e.Button == MouseButtons.Right)
 				{
 					if (null != ShowElementMenu)
 					{
 						// See if we clicked on an element and give our owner the chance to show a menu
-						var result = FindElementAt(transformed_location, delegate(IElement el)
+						var result = FindElementAt(_model, transformed_location, delegate(IElement el)
 						{
 							// Fire the event and see if someone cancels it.
-							var eventArgs = new AcceptElementLocationEventArgs(el, this.PointToScreen(lastLocation));
+                            var eventArgs = new AcceptElementLocationEventArgs(el, ctrl.PointToScreen(lastLocation));
 							// Give our owner the chance to show a menu for this element ...
 							ShowElementMenu(this, eventArgs);
 							// If the owner declines (cancel == true) then we'll continue looking up the hierarchy ..
@@ -1555,18 +1547,18 @@ namespace HyperGraph
 						//	allowing our owner to show a generic menu
 						if (result == null)
 						{
-							var eventArgs = new AcceptElementLocationEventArgs(null, this.PointToScreen(lastLocation));
+                            var eventArgs = new AcceptElementLocationEventArgs(null, ctrl.PointToScreen(lastLocation));
 							ShowElementMenu(this, eventArgs);							
 						}
 						return;
 					}
 				}
 
-				var element = FindElementAt(transformed_location);
+				var element = FindElementAt(_model, transformed_location);
 				if (element == null)
 				{
 					ignoreDoubleClick = true; // to avoid double-click from firing
-					if (ModifierKeys == Keys.None)
+					if (Control.ModifierKeys == Keys.None)
                         if (Selection!=null)
                             Selection.Update(null, Selection.Selection);
 					return;
@@ -1576,14 +1568,14 @@ namespace HyperGraph
 				{
 					case ElementType.NodeItem:
 					{
-						if (ModifierKeys != Keys.None)
+						if (Control.ModifierKeys != Keys.None)
 							return;
 
 						var item = element as NodeItem;
-						if (item.OnClick(this, e, transformation))
+                        if (item.OnClick(ctrl, e, transformation))
 						{
 							ignoreDoubleClick = true; // to avoid double-click from firing
-							this.Refresh();
+                            ctrl.Refresh();
 							return;
 						}
 						break;
@@ -1592,15 +1584,13 @@ namespace HyperGraph
 			}
 			finally
 			{
-				base.OnMouseClick(e);
 			}
 		}
 		#endregion
 
 		#region OnKeyDown
-		protected override void OnKeyDown(KeyEventArgs e)
+		private void OnKeyDown(object sender, KeyEventArgs e)
 		{
-			base.OnKeyDown(e);
 			if (e.KeyCode == Keys.Escape)
 			{
 				if (dragging)
@@ -1615,7 +1605,7 @@ namespace HyperGraph
                         _selectedNodes.Clear();
                         _unselectedNodes.Clear();
                         UpdateFocusStates();
-						this.Refresh();
+						((Control)sender).Refresh();
 					}
 					return;
 				}
@@ -1624,9 +1614,8 @@ namespace HyperGraph
 		#endregion
 
 		#region OnKeyUp
-		protected override void OnKeyUp(KeyEventArgs e)
+		private void OnKeyUp(object sender, KeyEventArgs e)
 		{
-			base.OnKeyUp(e);
 			if (e.KeyCode == Keys.Delete)
 			{
                 foreach(var q in Selection.Selection) 
@@ -1653,9 +1642,8 @@ namespace HyperGraph
 
 		#region OnDragEnter
 		Node dragNode = null;
-		protected override void OnDragEnter(DragEventArgs drgevent)
+		private void OnDragEnter(object sender, DragEventArgs drgevent)
 		{
-			base.OnDragEnter(drgevent);
 			dragNode = null;
 
 			foreach (var name in drgevent.Data.GetFormats())
@@ -1676,13 +1664,14 @@ namespace HyperGraph
 		#endregion
 
 		#region OnDragOver
-		protected override void OnDragOver(DragEventArgs drgevent)
+		private void OnDragOver(object sender, DragEventArgs drgevent)
 		{
-			base.OnDragOver(drgevent);
 			if (dragNode == null)
 				return;
 
-			var location = (PointF)this.PointToClient(new Point(drgevent.X, drgevent.Y));
+            var ctrl = (Control)sender;
+
+			var location = (PointF)ctrl.PointToClient(new Point(drgevent.X, drgevent.Y));
 			location.X -= ((dragNode.bounds.Right - dragNode.bounds.Left) / 2);
 			location.Y -= ((dragNode.titleItem.bounds.Bottom - dragNode.titleItem.bounds.Top) / 2);
 			
@@ -1693,7 +1682,7 @@ namespace HyperGraph
 			if (dragNode.Location != location)
 			{
 				dragNode.Location = location;
-				this.Invalidate();
+				ctrl.Invalidate();
 			}
 			
 			drgevent.Effect = DragDropEffects.Copy;
@@ -1701,9 +1690,8 @@ namespace HyperGraph
 		#endregion
 
 		#region OnDragLeave
-		protected override void OnDragLeave(EventArgs e)
+		private void OnDragLeave(object sender, EventArgs e)
 		{
-			base.OnDragLeave(e);
 			if (dragNode == null)
 				return;
             _model.RemoveNode(dragNode);
@@ -1712,9 +1700,8 @@ namespace HyperGraph
 		#endregion
 
 		#region OnDragDrop
-		protected override void OnDragDrop(DragEventArgs drgevent)
+		private void OnDragDrop(object sender, DragEventArgs drgevent)
 		{
-			base.OnDragDrop(drgevent);
 		}
 		#endregion
 	}

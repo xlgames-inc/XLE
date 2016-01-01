@@ -62,7 +62,7 @@ namespace HyperGraph
 		public IEnumerable<NodeConnection>	Connections { get { return connections; } }
 		public IEnumerable<NodeItem>		Items		{ get { return nodeItems; } }
 		
-		internal RectangleF		bounds;
+		public RectangleF		bounds;
 		internal RectangleF		inputBounds;
 		internal RectangleF		outputBounds;
 		internal RectangleF		itemsBounds;

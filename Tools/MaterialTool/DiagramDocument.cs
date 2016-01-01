@@ -37,17 +37,17 @@ namespace MaterialTool
         {
             add
             {
-                lock (DirtyChangedEvent)
-                {
-                    DirtyChangedEvent += value;
-                }
+                // lock (DirtyChangedEvent)
+                // {
+                //     DirtyChangedEvent += value;
+                // }
             }
             remove
             {
-                lock (DirtyChangedEvent)
-                {
-                    DirtyChangedEvent -= value;
-                }
+                // lock (DirtyChangedEvent)
+                // {
+                //     DirtyChangedEvent -= value;
+                // }
             }
         }
 

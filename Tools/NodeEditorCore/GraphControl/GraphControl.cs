@@ -94,7 +94,7 @@ namespace NodeEditorCore
         }
     }
 
-    public class GraphControl : HyperGraph.GraphControl
+    public class GraphControl : HyperGraph.GraphControl, IDisposable
     {
         HyperGraph.IGraphModel GetGraphModel() { return base._model; }
 
@@ -301,16 +301,13 @@ namespace NodeEditorCore
         
         #endregion
 
-        protected override void Dispose(bool disposing)
+        public void Dispose()
         {
-            if (disposing && (components != null))
-            {
-                components.Dispose();
-            }
-            base.Dispose(disposing);
+            if (components != null) { components.Dispose(); components = null; }
+            if (nodeMenu != null) { nodeMenu.Dispose(); nodeMenu = null; }
         }
 
         private System.Windows.Forms.ContextMenuStrip nodeMenu;
-        private System.ComponentModel.IContainer components = null;
+        private System.ComponentModel.Container components;
     }
 }

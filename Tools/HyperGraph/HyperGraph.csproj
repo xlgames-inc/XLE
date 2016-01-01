@@ -64,12 +64,7 @@
     </Compile>
     <Compile Include="ElementType.cs" />
     <Compile Include="GraphConstants.cs" />
-    <Compile Include="GraphControl.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="GraphControl.Designer.cs">
-      <DependentUpon>GraphControl.cs</DependentUpon>
-    </Compile>
+    <Compile Include="GraphControl.cs" />
     <Compile Include="IElement.cs" />
     <Compile Include="Items\NodeTextBoxItem.cs" />
     <Compile Include="Items\NodeCheckboxItem.cs" />
