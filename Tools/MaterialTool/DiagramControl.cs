@@ -23,7 +23,7 @@ namespace MaterialTool
             DoubleBuffered = false;
 
             Margin = new System.Windows.Forms.Padding(0);
-            _child = new HyperGraph.GraphControl();
+            _child = new NodeEditorCore.GraphControl();
             _child.Padding = new System.Windows.Forms.Padding(0);
             _child.Dock = System.Windows.Forms.DockStyle.Fill;
 
@@ -67,7 +67,7 @@ namespace MaterialTool
         [Import]
         private System.ComponentModel.Composition.Hosting.ExportProvider _exportProvider;
         [Import]
-        private ControlsLibraryExt.ActiveMaterialContext _activeMaterialContext;
+        private ControlsLibraryExt.Material.ActiveMaterialContext _activeMaterialContext;
         private HyperGraph.GraphControl _child;
     }
 }

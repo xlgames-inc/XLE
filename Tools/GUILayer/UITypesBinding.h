@@ -177,6 +177,7 @@ namespace GUILayer
             }
         }
 
+        [Browsable(false)]
         property VisCameraSettings^ Camera
         {
             VisCameraSettings^ get() { return _camSettings; }

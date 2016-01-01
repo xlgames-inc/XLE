@@ -18,7 +18,7 @@ using Sce.Atf.Dom;
 using ControlsLibrary.MaterialEditor;
 using System.Reflection;
 
-namespace ControlsLibraryExt
+namespace ControlsLibraryExt.Material
 {
     [Export(typeof(IInitializable))]
     [PartCreationPolicy(CreationPolicy.Shared)]

@@ -70,6 +70,7 @@
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="Microsoft.CSharp" />
@@ -80,11 +81,29 @@
     <Compile Include="Material\MaterialInspector.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="ModelView\CtrlStrip.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ModelView\CtrlStrip.Designer.cs">
+      <DependentUpon>CtrlStrip.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ModelView\ModelView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ModelView\ModelView.Designer.cs">
+      <DependentUpon>ModelView.cs</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Material\material.xsd">
       <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ModelView\CtrlStrip.resx">
+      <DependentUpon>CtrlStrip.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ModelView\ModelView.resx">
+      <DependentUpon>ModelView.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>

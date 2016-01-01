@@ -134,7 +134,7 @@ namespace MaterialTool
                 // We need to make sure there is a material set to the active
                 // material context... If there is none, we must create a new
                 // untitled material, and set that...
-            var matContext = _exportProvider.GetExport<ControlsLibraryExt.ActiveMaterialContext>().Value;
+            var matContext = _exportProvider.GetExport<ControlsLibraryExt.Material.ActiveMaterialContext>().Value;
             if (matContext.MaterialName == null)
             {
                 var newMaterial = GUILayer.RawMaterial.CreateUntitled();

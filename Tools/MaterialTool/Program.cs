@@ -114,6 +114,8 @@ namespace MaterialTool
                 typeof(AtfScriptVariables),             // exposes common ATF services as script variables
                 typeof(AutomationService),              // provides facilities to run an automated script using the .NET remoting service
 
+                typeof(SkinService),
+
                 typeof(ShaderPatcherLayer.Manager),
                 typeof(ShaderFragmentArchive.Archive),
                 typeof(GUILayer.EngineDevice),
@@ -127,9 +129,11 @@ namespace MaterialTool
                 typeof(NodeEditorCore.ShaderFragmentNodeCreator),
                 typeof(NodeEditorCore.DiagramDocument),
 
-                typeof(ControlsLibraryExt.ActiveMaterialContext),
-                typeof(ControlsLibraryExt.MaterialInspector),
-                typeof(ControlsLibraryExt.MaterialSchemaLoader)
+                typeof(ControlsLibraryExt.Material.ActiveMaterialContext),
+                typeof(ControlsLibraryExt.Material.MaterialInspector),
+                typeof(ControlsLibraryExt.Material.MaterialSchemaLoader),
+
+                typeof(ControlsLibraryExt.ModelView.ActiveModelView)
             );
 
             // enable use of the system clipboard
@@ -159,6 +163,10 @@ namespace MaterialTool
             batch.AddPart(mainForm);
             // batch.AddPart(new WebHelpCommands("https://github.com/SonyWWS/ATF/wiki/ATF-Circuit-Editor-Sample".Localize()));
             container.Compose(batch);
+
+            // Early engine initialization
+            //      * we need to attach compilers for models, etc
+            container.GetExport<GUILayer.EngineDevice>().Value.AttachDefaultCompilers();
 
             container.InitializeAll();
             Application.Run(mainForm);

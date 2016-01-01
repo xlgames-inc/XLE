@@ -7,7 +7,7 @@
 using System;
 using System.ComponentModel.Composition;
 
-namespace ControlsLibraryExt
+namespace ControlsLibraryExt.Material
 {
     [Export(typeof(ActiveMaterialContext))]
     [PartCreationPolicy(CreationPolicy.Shared)]
