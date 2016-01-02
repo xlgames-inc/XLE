@@ -131,14 +131,6 @@ namespace ToolsRig
             Metal::ConstantBuffer drawCallIndexBuffer(nullptr, sizeof(unsigned)*4);
             context->BindGS(MakeResourceList(drawCallIndexBuffer));
 
-                // note -- if the depth stencil state used here doesn't
-                //          have the stencil buffer enabled, the material
-                //          highlight behaviour won't work.
-            Metal::DepthStencilState dss(*context);
-            // Metal::DepthStencilState dss(
-            //     true, true, ~0u, ~0u,
-            //     Metal::StencilMode::AlwaysWrite);
-
             if (Tweakable("RenderSkinned", false)) {
                 if (delaySteps[0] == RenderCore::Assets::DelayStep::OpaqueRender) {
                     auto preparedAnimation = _model->CreatePreparedAnimation();
@@ -164,13 +156,37 @@ namespace ToolsRig
                     }
                 }
             } else {
+                const bool fillInStencilInfo = (_settings->_colourByMaterial != 0);
+
                 for (auto i:delaySteps)
                     ModelRenderer::RenderPrepared(
                         RenderCore::Assets::ModelRendererContext(*context, parserContext, techniqueIndex),
                         *_sharedStateSet, _delayedDrawCalls, i,
-                        [context, &drawCallIndexBuffer, &dss](ModelRenderer::DrawCallEvent evnt)
+                        [context, &drawCallIndexBuffer, &fillInStencilInfo](ModelRenderer::DrawCallEvent evnt)
                         {
-                            context->Bind(dss, 1+evnt._drawCallIndex);  // write stencil buffer with draw index
+                            if (fillInStencilInfo) {
+                                // hack -- we just adjust the depth stencil state to enable the stencil buffer
+                                //          no way to do this currently without dropping back to low level API
+                                #if GFXAPI_ACTIVE == GFXAPI_DX11
+                                    Metal::DepthStencilState dss(*context);
+                                    D3D11_DEPTH_STENCIL_DESC desc;
+                                    dss.GetUnderlying()->GetDesc(&desc);
+                                    desc.StencilEnable = true;
+                                    desc.StencilWriteMask = 0xff;
+                                    desc.StencilReadMask = 0xff;
+                                    desc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+                                    desc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+                                    desc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_REPLACE;
+                                    desc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+                                    desc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+                                    desc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+                                    desc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+                                    desc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+                                    auto newDSS = Metal::ObjectFactory().CreateDepthStencilState(&desc);
+                                    context->GetUnderlying()->OMSetDepthStencilState(newDSS.get(), 1+evnt._drawCallIndex);
+                                #endif
+                            }
+
                             unsigned drawCallIndexB[4] = { evnt._drawCallIndex, 0, 0, 0 };
                             drawCallIndexBuffer.Update(*context, drawCallIndexB, sizeof(drawCallIndexB));
 
