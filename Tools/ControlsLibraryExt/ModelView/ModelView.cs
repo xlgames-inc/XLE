@@ -21,6 +21,8 @@ namespace ControlsLibraryExt.ModelView
 
             _visResources = _view.Underlying.CreateVisResources();
             _ctrls.OnChange += (object sender, EventArgs args) => { _view.Invalidate(); };
+
+            _view.MouseClick += OnViewerMouseClick;
         }
 
         public GUILayer.ModelVisSettings Object
@@ -37,6 +39,8 @@ namespace ControlsLibraryExt.ModelView
         {
             if (disposing)
             {
+                _view.MouseClick -= OnViewerMouseClick;
+
                 if (components != null) components.Dispose();
                 if (_visMouseOver != null) _visMouseOver.Dispose();
                 if (_visResources != null) _visResources.Dispose();
@@ -45,8 +49,39 @@ namespace ControlsLibraryExt.ModelView
             base.Dispose(disposing);
         }
 
+        #region ContextMenu
+        protected void ContextMenu_EditMaterial(object sender, EventArgs e)
+        {
+            if (_activeMaterialContext == null) return;
+            var i = sender as MenuItem;
+            if (i != null)
+            {
+                var s = i.Tag as string;
+                if (s != null)
+                    _activeMaterialContext.MaterialName = s;
+            }
+        }
+
+        protected void OnViewerMouseClick(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                if (_visMouseOver.HasMouseOver && _activeMaterialContext != null)
+                {
+                    ContextMenu cm = new ContextMenu();
+                    cm.MenuItems.Add(
+                        new MenuItem("Pick &Material (" + _visMouseOver.MaterialName + ")", new EventHandler(ContextMenu_EditMaterial))
+                        { Tag = _visMouseOver.FullMaterialName });
+                    cm.Show(this, e.Location);
+                }
+            }
+        }
+        #endregion
+
         private GUILayer.VisMouseOver _visMouseOver;
         private GUILayer.VisResources _visResources;
+
+        internal Material.ActiveMaterialContext _activeMaterialContext;
     }
 
     [Export(typeof(IInitializable))]
@@ -56,7 +91,7 @@ namespace ControlsLibraryExt.ModelView
         void IInitializable.Initialize()
         {
             _settings = GUILayer.ModelVisSettings.CreateDefault();
-            _controls = new ModelView { Object = _settings };
+            _controls = new ModelView { Object = _settings, _activeMaterialContext = this._activeMaterialContext };
             _controlHostService.RegisterControl(
                 _controls,
                 new ControlInfo(
@@ -67,6 +102,7 @@ namespace ControlsLibraryExt.ModelView
         }
 
         [Import(AllowDefault = false)] private IControlHostService _controlHostService;
+        [Import] private Material.ActiveMaterialContext _activeMaterialContext;
         ModelView _controls;
 
         GUILayer.ModelVisSettings _settings;
