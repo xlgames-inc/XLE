@@ -26,6 +26,7 @@ namespace RenderCore { namespace Techniques
 }}
 
 namespace SceneEngine { class ISceneParser; class IntersectionTestScene; }
+namespace RenderOverlays { class IOverlayContext; }
 
 namespace ToolsRig
 {
@@ -148,16 +149,21 @@ namespace ToolsRig
             const RenderCore::Techniques::ProjectionDesc& projectionDesc);
         virtual void SetActivationState(bool newState);
 
+        using OverlayFn = std::function<void(RenderOverlays::IOverlayContext&, const ToolsRig::VisMouseOver&)>;
+
         MouseOverTrackingOverlay(
             std::shared_ptr<VisMouseOver> mouseOver,
             std::shared_ptr<RenderCore::IThreadContext> threadContext,
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext,
             std::shared_ptr<VisCameraSettings> camera,
-            std::shared_ptr<SceneEngine::IntersectionTestScene> scene);
+            std::shared_ptr<SceneEngine::IntersectionTestScene> scene,
+            OverlayFn&& overlayFn);
         ~MouseOverTrackingOverlay();
     protected:
         std::shared_ptr<IInputListener> _inputListener;
         std::shared_ptr<VisCameraSettings> _camera;
+        std::shared_ptr<VisMouseOver> _mouseOver;
+        OverlayFn _overlayFn;
     };
 
     std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const RenderCore::Assets::ModelCache::Model& model);

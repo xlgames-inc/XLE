@@ -234,6 +234,12 @@ namespace GUILayer
         void AttachCallback(PropertyGrid^ callback);
         std::shared_ptr<ToolsRig::VisMouseOver> GetUnderlying() { return _object.GetNativePtr(); }
 
+        static String^ BuildFullMaterialName(
+            const ToolsRig::ModelVisSettings& modelSettings,
+            RenderCore::Assets::ModelCache& modelCache,
+            uint64 materialGuid);
+        static String^ DescriptiveMaterialName(String^ fullName);
+
         VisMouseOver(
             std::shared_ptr<ToolsRig::VisMouseOver> attached,
             std::shared_ptr<ToolsRig::ModelVisSettings> settings,

@@ -16,6 +16,7 @@
 #include "../../SceneEngine/RayVsModel.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
@@ -643,9 +644,18 @@ namespace ToolsRig
     void MouseOverTrackingOverlay::RenderToScene(
         RenderCore::IThreadContext*, 
         SceneEngine::LightingParserContext&) {}
+    
     void MouseOverTrackingOverlay::RenderWidgets(
-        RenderCore::IThreadContext*, 
-        const RenderCore::Techniques::ProjectionDesc&) {}
+        RenderCore::IThreadContext* threadContext, 
+        const RenderCore::Techniques::ProjectionDesc& projDesc) 
+    {
+        if (!_mouseOver->_hasMouseOver || !_overlayFn) return;
+
+        using namespace RenderOverlays::DebuggingDisplay;
+        RenderOverlays::ImmediateOverlayContext overlays(threadContext, projDesc);
+        _overlayFn(overlays, *_mouseOver);
+    }
+
     void MouseOverTrackingOverlay::SetActivationState(bool) {}
 
     MouseOverTrackingOverlay::MouseOverTrackingOverlay(
@@ -653,8 +663,11 @@ namespace ToolsRig
         std::shared_ptr<RenderCore::IThreadContext> threadContext,
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext,
         std::shared_ptr<VisCameraSettings> camera,
-        std::shared_ptr<SceneEngine::IntersectionTestScene> scene)
+        std::shared_ptr<SceneEngine::IntersectionTestScene> scene,
+        OverlayFn&& overlayFn)
+    : _overlayFn(std::move(overlayFn))
     {
+        _mouseOver = mouseOver;
         _inputListener = std::make_shared<MouseOverTrackingListener>(
             std::move(mouseOver),
             std::move(threadContext), std::move(techniqueContext), 

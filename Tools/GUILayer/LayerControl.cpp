@@ -31,8 +31,11 @@
 #include "../../SceneEngine/VegetationSpawn.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Assets/Material.h"
 #include "../../Utility/PtrUtils.h"
+#include "../../Utility/StringFormat.h"
 #include <stack>
+#include <iomanip>
 
 unsigned FrameRenderCount = 0;
 
@@ -161,6 +164,32 @@ namespace GUILayer
     VisResources::~VisResources() {}
     VisResources::!VisResources() { System::Diagnostics::Debug::Assert(false, "Non deterministic delete of VisResources"); }
 
+    static void RenderTrackingOverlay(
+        RenderOverlays::IOverlayContext& context,
+        const ToolsRig::VisMouseOver& mouseOver,
+        std::shared_ptr<ToolsRig::ModelVisSettings> modelSettings,
+        std::shared_ptr<RenderCore::Assets::ModelCache> modelCache)
+    {
+        using namespace RenderOverlays::DebuggingDisplay;
+        auto viewportDims = context.GetDeviceContext()->GetStateDesc()._viewportDimensions;
+
+        auto textHeight = (int)context.TextHeight(nullptr);
+        String^ matName = VisMouseOver::DescriptiveMaterialName(
+            VisMouseOver::BuildFullMaterialName(*modelSettings, *modelCache, mouseOver._materialGuid));
+        DrawText(
+            &context,
+            Rect(Coord2(3, viewportDims[1]-textHeight-3), Coord2(viewportDims[0]-3, viewportDims[1]-3)),
+            nullptr, RenderOverlays::ColorB(0xffafafaf),
+            StringMeld<512>() 
+                << "Material: {Color:7f3faf}" << clix::marshalString<clix::E_UTF8>(matName)
+                << "{Color:afafaf}, Draw call: " << mouseOver._drawCallIndex
+                << std::setprecision(4)
+                << ", (" << mouseOver._intersectionPt[0]
+                << ", "  << mouseOver._intersectionPt[1]
+                << ", "  << mouseOver._intersectionPt[2]
+                << ")");
+    }
+
     void LayerControl::SetupDefaultVis(ModelVisSettings^ settings, VisMouseOver^ mouseOver, VisResources^ resources)
     {
         auto visLayer = std::make_unique<ToolsRig::ModelVisLayer>(
@@ -190,12 +219,14 @@ namespace GUILayer
             overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
         }
 
+        using namespace std::placeholders;
         overlaySet.AddSystem(
             std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
                 mouseOver->GetUnderlying(),
                 EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(),
                 _pimpl->_globalTechniqueContext,
-                settings->Camera->GetUnderlying(), intersectionScene));
+                settings->Camera->GetUnderlying(), intersectionScene,
+                std::bind(&RenderTrackingOverlay, _1, _2, settings->GetUnderlying(), resources->_visCache.GetNativePtr())));
     }
 
     VisMouseOver^ LayerControl::CreateVisMouseOver(ModelVisSettings^ settings, VisResources^ resources)
