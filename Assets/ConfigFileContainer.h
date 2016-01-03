@@ -14,6 +14,7 @@
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/StringFormat.h"
 #include <memory>
+#include <vector>
 
 namespace Assets
 {
@@ -235,5 +236,15 @@ namespace Assets
         {
             return std::make_unique<ConfigFileListContainer>();
         }
+
+    template<typename CharType>
+        class TextChunk
+    {
+    public:
+        StringSection<CharType> _type, _name, _content;
+    };
+
+    template<typename CharType>
+        std::vector<TextChunk<CharType>> ReadCompoundTextDocument(StringSection<CharType> doc);
 }
 

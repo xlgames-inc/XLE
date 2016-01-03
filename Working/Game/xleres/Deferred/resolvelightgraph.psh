@@ -1,4 +1,6 @@
-FunctionLinkingGraph:1
+// CompoundDocument:1
+
+<<Chunk:FunctionLinkingGraph:main>>--(
 
 main = DeclareInput(
     float4 position : SV_Position,
@@ -36,3 +38,5 @@ shadow = libShadow.DoResolve_{{shadows}}(cascade.3, cascade.4, cascade.5, positi
 finalize = libHelper.FinalizeResolve(light.result, shadow.result)
 output = DeclareOutput(float4 outColour : SV_Target0)
 outColour = finalize.result
+
+)--

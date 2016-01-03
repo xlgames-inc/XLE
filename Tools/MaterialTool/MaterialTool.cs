@@ -123,10 +123,10 @@ namespace MaterialTool
         {
             var filePath = uri.LocalPath;
             HyperGraph.IGraphModel graph;
+            graph = new HyperGraph.GraphModel();
             if (File.Exists(filePath)) {
-                graph = NodeEditorCore.GraphHelpers.Load(filePath, _exportProvider);
-            } else {
-                graph = new HyperGraph.GraphModel();
+                var nativeGraph = ShaderPatcherLayer.NodeGraph.Load(filePath);
+                _converter.AddToHyperGraph(nativeGraph, graph);
             }
 
             NodeEditorCore.GraphHelpers.SetupDefaultHandlers(graph);
@@ -134,12 +134,8 @@ namespace MaterialTool
                 // We need to make sure there is a material set to the active
                 // material context... If there is none, we must create a new
                 // untitled material, and set that...
-            var matContext = _exportProvider.GetExport<ControlsLibraryExt.Material.ActiveMaterialContext>().Value;
-            if (matContext.MaterialName == null)
-            {
-                var newMaterial = GUILayer.RawMaterial.CreateUntitled();
-                matContext.MaterialName = newMaterial.Initializer;
-            }
+            if (_activeMaterialContext.MaterialName == null)
+                _activeMaterialContext.MaterialName = GUILayer.RawMaterial.CreateUntitled().Initializer;
 
             var doc = new DiagramDocument(graph, uri);
             var control = _exportProvider.GetExport<IDiagramControl>().Value;
@@ -162,14 +158,15 @@ namespace MaterialTool
 
         public void Save(IDocument document, Uri uri)
         {
-            var circuitDocument = (DiagramDocument)document;
+            var doc = (DiagramDocument)document;
             string filePath = uri.LocalPath;
             FileMode fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.OpenOrCreate;
             using (FileStream stream = new FileStream(filePath, fileMode))
             {
-                // var writer = new CircuitWriter(m_schemaLoader.TypeCollection);
-                // writer.Write(circuitDocument.DomNode, stream, uri);
+                var nativeGraph = _converter.ToShaderPatcherLayer(doc.Model);
+                nativeGraph.Save(stream);
             }
+            doc.Uri = uri;
         }
 
         public void Close(IDocument document)
@@ -298,5 +295,11 @@ namespace MaterialTool
 
         [Import]
         private ExportProvider _exportProvider;
+
+        [Import(AllowDefault=false)]
+        private NodeEditorCore.IModelConversion _converter;
+
+        [Import]
+        private ControlsLibraryExt.Material.ActiveMaterialContext _activeMaterialContext; 
     }
 }

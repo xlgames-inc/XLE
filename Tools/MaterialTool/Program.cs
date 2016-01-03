@@ -124,7 +124,6 @@ namespace MaterialTool
                 typeof(ShaderFragmentArchiveControl),
 
                 typeof(NodeEditorCore.ShaderFragmentArchiveModel),
-                typeof(NodeEditorCore.ShaderParameterUtil),
                 typeof(NodeEditorCore.ModelConversion),
                 typeof(NodeEditorCore.ShaderFragmentNodeCreator),
                 typeof(NodeEditorCore.DiagramDocument),

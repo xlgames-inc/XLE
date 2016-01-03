@@ -11,6 +11,7 @@
 #include "../../../Assets/IntermediateAssets.h"
 #include "../../../Assets/AssetUtils.h"
 #include "../../../Assets/InvalidAssetManager.h"
+#include "../../../Assets/ConfigFileContainer.h"
 #include "../../../Utility/Streams/PathUtils.h"
 #include "../../../Utility/Threading/Mutex.h"
 #include "../../../Utility/StringUtils.h"
@@ -1253,12 +1254,18 @@ namespace RenderCore { namespace Metal_DX11
         ResChar shaderModel[64];
         AdaptShaderModel(shaderModel, dimof(shaderModel), shaderPath._shaderModel);
 
-            // Check for the marker labelling this as a function linking graph shader
-        const char fileId[] = "FunctionLinkingGraph";
-        StringSection<char> asStringSection(
-            (const char*)sourceCode, 
-            (const char*)PtrAdd(sourceCode, std::min(sourceCodeLength, XlStringLen(fileId))));
-        if (XlEqString(asStringSection, fileId)) {
+            // If this is a compound text document, look for a chunk that contains a 
+            // function linking graph with the right name. We can embedded different
+            // forms of text data in a single file by using a compound document like this.
+        StringSection<char> asStringSection((const char*)sourceCode, (const char*)PtrAdd(sourceCode, sourceCodeLength));
+        auto compoundChunks = ::Assets::ReadCompoundTextDocument(asStringSection);
+        auto chunk = std::find_if(compoundChunks.begin(), compoundChunks.end(),
+            [&shaderPath](const ::Assets::TextChunk<char>& chunk) 
+            {
+                return XlEqString(chunk._type, "FunctionLinkingGraph")
+                    && XlEqString(chunk._name, shaderPath._entryPoint);
+            });
+        if (chunk != compoundChunks.end()) {
 
             dependencies.push_back(
                 ::Assets::IntermediateAssets::Store::GetDependentFileState(shaderPath._filename));
@@ -1269,8 +1276,8 @@ namespace RenderCore { namespace Metal_DX11
                     // This a FunctionLinkingGraph definition
                     // look for the version number, and then parse this file as
                     // a simple script language.
-                const char* i = (const char*)PtrAdd(sourceCode, XlStringLen(fileId));
-                const char* e = (const char*)PtrAdd(sourceCode, sourceCodeLength);
+                const char* i = chunk->_content.begin();
+                const char* e = chunk->_content.end();
 
                     // A version number may follow -- but it's optional
                 if (i < e && *i == ':') {

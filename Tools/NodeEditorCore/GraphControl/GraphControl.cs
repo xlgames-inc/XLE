@@ -27,71 +27,11 @@ namespace NodeEditorCore
 
         private static void OnNodeAdded(object sender, AcceptNodeEventArgs args) { OnNodesChange(); }
         private static void OnNodeRemoved(object sender, NodeEventArgs args) { OnNodesChange(); }
-        private static void OnNodesChange()
-        {
-            // var didSomething = ShaderParameterUtil.FillInMaterialParameters(_document, graphControl);
-            // if (didSomething)
-            // {
-            //     _materialParametersGrid.Refresh();
-            // }
-        }
+        private static void OnNodesChange() {}
 
         private static void OnConnectionAdding(object sender, AcceptNodeConnectionEventArgs e) {}
         private static void OnConnectionAdded(object sender, AcceptNodeConnectionEventArgs e) {}
         private static void OnConnectionRemoved(object sender, AcceptNodeConnectionEventArgs e) {}
-
-        private static IGraphModel LoadFromXML(System.IO.Stream stream, System.ComponentModel.Composition.Hosting.ExportProvider exportProvider)
-        {
-            var serializer = 
-                new System.Runtime.Serialization.DataContractSerializer(
-                            typeof(ShaderPatcherLayer.NodeGraph));
-            using (var xmlStream = System.Xml.XmlReader.Create(stream))
-            {
-                var o = serializer.ReadObject(xmlStream);
-                if (o != null && o is ShaderPatcherLayer.NodeGraph)
-                {
-                    var result = new GraphModel();
-                    exportProvider.GetExport<NodeEditorCore.IModelConversion>().Value.AddToHyperGraph(
-                        (ShaderPatcherLayer.NodeGraph)o, result);
-                    return result;
-                }
-            }
-            return null;
-        }
-
-        private static IGraphModel LoadFromShader(System.IO.Stream stream, System.ComponentModel.Composition.Hosting.ExportProvider exportProvider)
-        {
-            // the xml should be hidden within a comment in this file.
-            //      look for a string between "NEStart{" XXX "}NEEnd"
-
-            using (var sr = new System.IO.StreamReader(stream, System.Text.Encoding.ASCII))
-            {
-                var asString = sr.ReadToEnd();
-                var matches = System.Text.RegularExpressions.Regex.Matches(asString,
-                    @"NEStart\{(.*)\}NEEnd",
-                    System.Text.RegularExpressions.RegexOptions.CultureInvariant | System.Text.RegularExpressions.RegexOptions.Singleline);
-                if (matches.Count > 0 && matches[0].Groups.Count > 1)
-                {
-                    var xmlString = matches[0].Groups[1].Value;
-                    return LoadFromXML(new System.IO.MemoryStream(System.Text.Encoding.ASCII.GetBytes(xmlString)), exportProvider);
-                }
-            }
-
-            return null;
-        }
-
-        public static HyperGraph.IGraphModel Load(string filename, System.ComponentModel.Composition.Hosting.ExportProvider exportProvider)
-        {
-            System.IO.FileStream fileStream = new System.IO.FileStream(filename, System.IO.FileMode.Open);
-            try
-            {
-                return LoadFromShader(fileStream, exportProvider);
-            }
-            finally
-            {
-                fileStream.Close();
-            }
-        }
     }
 
     public class GraphControl : HyperGraph.GraphControl, IDisposable
@@ -190,24 +130,24 @@ namespace NodeEditorCore
             //     e.Cancel = false;
             // }
             // else 
-            if (e.Element is ShaderFragmentNodeItem)
-            {
-                var tag = (ShaderFragmentNodeItem)e.Element;
-                if (tag.ArchiveName != null)
-                {
-                    ShaderParameterUtil.EditParameter(GetGraphModel(), tag.ArchiveName);
-                    e.Cancel = false;
-                }
-            }
-            else if (e.Element is NodeConnector && ((NodeConnector)e.Element).Item is ShaderFragmentNodeItem)
-            {
-                var tag = (ShaderFragmentNodeItem)((NodeConnector)e.Element).Item;
-                if (tag.ArchiveName != null)
-                {
-                    ShaderParameterUtil.EditParameter(GetGraphModel(), tag.ArchiveName);
-                    e.Cancel = false;
-                }
-            }
+            // if (e.Element is ShaderFragmentNodeItem)
+            // {
+            //     var tag = (ShaderFragmentNodeItem)e.Element;
+            //     if (tag.ArchiveName != null)
+            //     {
+            //         ShaderParameterUtil.EditParameter(GetGraphModel(), tag.ArchiveName);
+            //         e.Cancel = false;
+            //     }
+            // }
+            // else if (e.Element is NodeConnector && ((NodeConnector)e.Element).Item is ShaderFragmentNodeItem)
+            // {
+            //     var tag = (ShaderFragmentNodeItem)((NodeConnector)e.Element).Item;
+            //     if (tag.ArchiveName != null)
+            //     {
+            //         ShaderParameterUtil.EditParameter(GetGraphModel(), tag.ArchiveName);
+            //         e.Cancel = false;
+            //     }
+            // }
             else
             {
                 // if you don't want to show a menu for this item (but perhaps show a menu for something more higher up) 

@@ -95,8 +95,14 @@ namespace ShaderPatcherLayer {
         ShaderPatcher::NodeGraph    ConvertToNative(String^ name);
         ShaderPatcher::NodeGraph    ConvertToNativePreview(UInt32 previewNodeId);
 
-        static public String^       GenerateShader(NodeGraph^ graph, String^ name);
-        static public String^       GeneratePreviewShader(NodeGraph^ graph, UInt32 previewNodeId, String^ outputToVisualize);
+        static String^       GenerateShader(NodeGraph^ graph, String^ name);
+        static String^       GeneratePreviewShader(NodeGraph^ graph, UInt32 previewNodeId, String^ outputToVisualize);
+
+        static NodeGraph^   LoadFromXML(System::IO::Stream^ stream);
+        void                SaveToXML(System::IO::Stream^ stream);
+
+        static NodeGraph^   Load(String^ filename);
+        void                Save(System::IO::Stream^ stream);
 
     private:
         List<Node^>^                    _nodes;

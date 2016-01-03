@@ -9,6 +9,10 @@
 #include "ShaderGenerator.h"
 #include "../GUILayer/MarshalString.h"
 #include "../../ShaderParser/ShaderPatcher.h"
+#include "../../Assets/ConfigFileContainer.h"
+#include "../../Utility/Streams/FileUtils.h"
+
+using namespace System::Runtime::Serialization;
 
 namespace ShaderPatcherLayer 
 {
@@ -110,5 +114,124 @@ namespace ShaderPatcherLayer
             ;
     }
 
+    NodeGraph^ NodeGraph::LoadFromXML(System::IO::Stream^ stream)
+    {
+        auto serializer = gcnew DataContractSerializer(NodeGraph::typeid);
+        try
+        {
+            auto o = serializer->ReadObject(stream);
+            return dynamic_cast<NodeGraph^>(o);
+        }
+        finally
+        {
+            delete serializer;
+        }
+    }
+
+    void NodeGraph::SaveToXML(System::IO::Stream^ stream)
+    {
+        DataContractSerializer^ serializer = nullptr;
+        System::Xml::XmlWriterSettings^ settings = nullptr;
+        System::Xml::XmlWriter^ writer = nullptr;
+
+        try
+        {
+            serializer = gcnew DataContractSerializer(NodeGraph::typeid);
+            settings = gcnew System::Xml::XmlWriterSettings();
+            settings->Indent = true;
+            settings->IndentChars = "\t";
+            settings->Encoding = System::Text::Encoding::UTF8;
+
+            writer = System::Xml::XmlWriter::Create(stream, settings);
+            serializer->WriteObject(writer, this);
+        }
+        finally
+        {
+            delete writer;
+            delete serializer;
+            delete settings;
+        }
+    }
+
+    static bool IsNodeGraphChunk(const ::Assets::TextChunk<char>& chunk) 
+        { return XlEqString(chunk._type, "NodeGraph"); }
+
+    NodeGraph^   NodeGraph::Load(String^ filename)
+    {
+        // Load from a graph model compound text file (that may contain other text chunks)
+        // We're going to use a combination of native and managed stuff -- so it's easier
+        // if the caller just passes in a filename
+        size_t size = 0;
+        auto block = LoadFileAsMemoryBlock(
+            clix::marshalString<clix::E_UTF8>(filename).c_str(), &size);
+        if (!block.get() || !size)
+            throw gcnew System::Exception(System::String::Format("Missing or empty file {0}", filename));
+
+        auto chunks = ::Assets::ReadCompoundTextDocument(
+            MakeStringSection((const char*)block.get(), (const char*)PtrAdd(block.get(), size)));
+        auto ci = std::find_if(chunks.cbegin(), chunks.cend(), IsNodeGraphChunk);
+        if (ci == chunks.end()) 
+            throw gcnew System::Exception("Could not find node graph chunk within compound text file");
+
+        array<Byte>^ managedArray = nullptr;
+        System::IO::MemoryStream^ memStream = nullptr;
+        try
+        {
+            // marshall the native string into a managed array, and from there into
+            // a stream... We need to strip off leading whitespace, however (usually
+            // there is a leading newline, which confuses the xml loader
+            auto begin = ci->_content.begin();
+            while (begin != ci->_content.end() && *begin == ' ' || *begin == '\t' || *begin == '\r' || *begin == '\n')
+                ++begin;
+
+            size_t contentSize = size_t(ci->_content.end()) - size_t(begin);
+            managedArray = gcnew array<Byte>((int)contentSize);
+            {
+                cli::pin_ptr<Byte> pinned = &managedArray[managedArray->GetLowerBound(0)];
+                XlCopyMemory(pinned, begin, contentSize);
+            }
+            memStream = gcnew System::IO::MemoryStream(managedArray);
+            // Then we can just load this XML using the managed serialization functionality
+            return LoadFromXML(memStream);
+        }
+        finally
+        {
+            delete memStream;
+            delete managedArray;
+        }
+    }
+
+    void NodeGraph::Save(System::IO::Stream^ stream)
+    {
+        // We want to write this node graph to the given stream.
+        // But we're going to write a compound text document, which will include
+        // the graph in multiple forms.
+        // One form will be the XML serialized nodes. Another form will be the
+        // HLSL output.
+
+        auto sw = gcnew System::IO::StreamWriter(stream, System::Text::Encoding::UTF8);
+        try
+        {
+            sw->Write("// CompoundDocument:1");
+            sw->WriteLine();
+
+            auto shader = NodeGraph::GenerateShader(this, "main");
+            sw->Write(shader); 
+
+            // embed the node graph in there, as well
+            sw->Write("/* <<Chunk:NodeGraph:main>>--(");
+            sw->WriteLine();
+            sw->Flush();
+            SaveToXML(stream);
+            sw->WriteLine();
+            sw->Write(")-- */");
+
+            // we may want to embed other things (such as a ShaderType definition)
+        }
+        finally
+        {
+            delete sw;
+        }
+    }
 
 }
