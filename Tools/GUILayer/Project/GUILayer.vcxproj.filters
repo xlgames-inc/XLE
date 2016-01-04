@@ -56,6 +56,9 @@
     <ClCompile Include="..\DelayedDeleteQueue.cpp">
       <Filter>Fundamental</Filter>
     </ClCompile>
+    <ClCompile Include="..\NativeManipulators.cpp">
+      <Filter>LevelEditor</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -121,6 +124,9 @@
     </ClInclude>
     <ClInclude Include="..\DelayedDeleteQueue.h">
       <Filter>Fundamental</Filter>
+    </ClInclude>
+    <ClInclude Include="..\NativeManipulators.h">
+      <Filter>LevelEditor</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -227,7 +227,7 @@ namespace LevelEditorXLE.Placements
             m_hasHoverPt = HitTest(out m_hoverPt, scrPt, vc);
             if (!m_hasHoverPt) return;
 
-            var nativeVC = vc as XLEBridgeUtils.IViewContext;
+            var nativeVC = vc as GUILayer.IViewContext;
             if (nativeVC == null) return;
 
             var game = vc.As<DesignViewControl>().DesignView.Context.As<IGame>();
@@ -338,7 +338,7 @@ namespace LevelEditorXLE.Placements
         {
             var ray = vc.GetWorldRay(pt);
             var pick = XLEBridgeUtils.Picking.RayPick(
-                vc as XLEBridgeUtils.IViewContext, ray, XLEBridgeUtils.Picking.Flags.Terrain);
+                vc as GUILayer.IViewContext, ray, XLEBridgeUtils.Picking.Flags.Terrain);
 
             if (pick != null && pick.Length > 0)
             {

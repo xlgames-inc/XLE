@@ -2,14 +2,12 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\MaterialLayer.cpp" />
-    <ClCompile Include="..\NativeManipulators.cpp" />
     <ClCompile Include="..\PropertyDescriptorUtils.cpp" />
     <ClCompile Include="..\XLELayerUtils.cpp" />
     <ClCompile Include="..\DesignControlAdapter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\XLELayerUtils.h" />
-    <ClInclude Include="..\NativeManipulators.h" />
     <ClInclude Include="..\PropertyDescriptorUtils.h" />
   </ItemGroup>
 </Project>

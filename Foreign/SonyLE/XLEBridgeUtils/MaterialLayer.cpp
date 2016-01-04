@@ -4,7 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "NativeManipulators.h"
 #include "PropertyDescriptorUtils.h"
 #include "../../Assets/Assets.h"
 #include "../../RenderCore/Assets/Material.h"

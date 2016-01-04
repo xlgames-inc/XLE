@@ -79,12 +79,10 @@
   <ItemGroup>
     <ClCompile Include="..\MaterialLayer.cpp" />
     <ClCompile Include="..\DesignControlAdapter.cpp" />
-    <ClCompile Include="..\NativeManipulators.cpp" />
     <ClCompile Include="..\PropertyDescriptorUtils.cpp" />
     <ClCompile Include="..\XLELayerUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\NativeManipulators.h" />
     <ClInclude Include="..\PropertyDescriptorUtils.h" />
     <ClInclude Include="..\XLELayerUtils.h" />
   </ItemGroup>

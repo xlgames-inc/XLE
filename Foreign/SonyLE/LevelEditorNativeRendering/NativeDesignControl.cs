@@ -20,7 +20,7 @@ using ViewTypes = Sce.Atf.Rendering.ViewTypes;
 namespace RenderingInterop
 {
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class NativeDesignControl : DesignViewControl, IViewContext
+    public class NativeDesignControl : DesignViewControl, GUILayer.IViewContext
     {
         public NativeDesignControl(DesignView designView) :
             base(designView)
@@ -477,11 +477,11 @@ namespace RenderingInterop
 
 
         #region IViewContext members
-        Size IViewContext.ViewportSize { get { return base.Size; } }
-        GUILayer.CameraDescWrapper IViewContext.Camera { get { return Utils.AsCameraDesc(base.Camera); } }
-        GUILayer.EditorSceneManager IViewContext.SceneManager { get { return Adapter.SceneManager; } }
-        GUILayer.TechniqueContextWrapper IViewContext.TechniqueContext { get { return Adapter.TechniqueContext; } }
-        GUILayer.EngineDevice IViewContext.EngineDevice { get { return Adapter.EngineDevice;  } }
+        Size GUILayer.IViewContext.ViewportSize { get { return base.Size; } }
+        GUILayer.CameraDescWrapper GUILayer.IViewContext.Camera { get { return Utils.AsCameraDesc(base.Camera); } }
+        GUILayer.EditorSceneManager GUILayer.IViewContext.SceneManager { get { return Adapter.SceneManager; } }
+        GUILayer.TechniqueContextWrapper GUILayer.IViewContext.TechniqueContext { get { return Adapter.TechniqueContext; } }
+        GUILayer.EngineDevice GUILayer.IViewContext.EngineDevice { get { return Adapter.EngineDevice; } }
         #endregion
     }
 }

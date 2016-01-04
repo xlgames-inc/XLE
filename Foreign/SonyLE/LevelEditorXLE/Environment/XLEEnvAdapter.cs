@@ -145,7 +145,7 @@ namespace LevelEditorXLE.Environment
 
         public IEnumerable<PendingExport> BuildPendingExports()
         {
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+            var sceneMan = GUILayer.NativeManipulatorLayer.SceneManager;
             var result = new List<PendingExport>();
             result.Add(new PendingExport(ExportTarget, sceneMan.ExportEnv(0)));
             return result;

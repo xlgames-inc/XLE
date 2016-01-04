@@ -15,15 +15,22 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
 namespace ToolsRig { class IManipulator; }
 
-namespace XLEBridgeUtils
+namespace GUILayer
 {
+    ref class CameraDescWrapper;
+    ref class EditorSceneManager;
+    ref class TechniqueContextWrapper;
+    ref class EngineDevice;
+    ref class SimpleRenderingContext;
+    ref class IManipulatorSet;
+
     public ref class ActiveManipulatorContext
     {
     public:
         ToolsRig::IManipulator* GetNativeManipulator();
 
-        property GUILayer::IManipulatorSet^ ManipulatorSet  { GUILayer::IManipulatorSet^ get(); void set(GUILayer::IManipulatorSet^); }
-        property String^ ActiveManipulator                  { String^ get(); void set(String^); }
+        property IManipulatorSet^ ManipulatorSet    { IManipulatorSet^ get(); void set(IManipulatorSet^); }
+        property String^ ActiveManipulator          { String^ get(); void set(String^); }
 
         event EventHandler^ OnActiveManipulatorChange;
         event EventHandler^ OnManipulatorSetChange;
@@ -31,17 +38,17 @@ namespace XLEBridgeUtils
         ActiveManipulatorContext();
         ~ActiveManipulatorContext();
     private:
-        GUILayer::IManipulatorSet^ _manipulatorSet;
+        IManipulatorSet^ _manipulatorSet;
         String^ _activeManipulator;
     };
 
     public interface class IViewContext
     {
         property Drawing::Size ViewportSize { Drawing::Size get(); }
-        property GUILayer::CameraDescWrapper^ Camera { GUILayer::CameraDescWrapper^ get(); }
-        property GUILayer::EditorSceneManager^ SceneManager { GUILayer::EditorSceneManager^ get(); }
-        property GUILayer::TechniqueContextWrapper^ TechniqueContext { GUILayer::TechniqueContextWrapper^ get(); }
-        property GUILayer::EngineDevice^ EngineDevice { GUILayer::EngineDevice^ get(); }
+        property CameraDescWrapper^ Camera { CameraDescWrapper^ get(); }
+        property EditorSceneManager^ SceneManager { EditorSceneManager^ get(); }
+        property TechniqueContextWrapper^ TechniqueContext { TechniqueContextWrapper^ get(); }
+        property EngineDevice^ EngineDevice { GUILayer::EngineDevice^ get(); }
     };
 
     /// <summary>Provides a bridge between the SCE level editor types and native manipulators<summary>
@@ -50,10 +57,10 @@ namespace XLEBridgeUtils
     public ref class NativeManipulatorLayer
     {
     public:
-        static property GUILayer::EditorSceneManager^ SceneManager;
+        static property EditorSceneManager^ SceneManager;
 
         bool MouseMove(IViewContext^ vc, Point scrPt);
-        void Render(GUILayer::SimpleRenderingContext^ context);
+        void Render(SimpleRenderingContext^ context);
         void OnBeginDrag();
         void OnDragging(IViewContext^ vc, Point scrPt);
         void OnEndDrag(IViewContext^ vc, Point scrPt);

@@ -7,14 +7,33 @@
 #pragma warning(disable:4564)
 
 #include "NativeManipulators.h"
-#include "XLELayerUtils.h"
-#include "../../../Tools/ToolsRig/IManipulator.h"
-#include "../../../Tools/GUILayer/NativeEngineDevice.h"
-#include "../../../RenderOverlays/DebuggingDisplay.h"
-#include "../../../RenderCore/IDevice.h"
+#include "ManipulatorUtils.h"
+#include "EditorInterfaceUtils.h"
+#include "SimpleRenderingContext.h"
+#include "GUILayerUtil.h"
+#include "LevelEditorScene.h"       // for getting the intersection scene from the IViewContext
+#include "NativeEngineDevice.h"
+#include "../ToolsRig/IManipulator.h"
+#include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../../RenderCore/IDevice.h"
+#include "../../PlatformRig/BasicSceneParser.h"
 
-namespace XLEBridgeUtils
+extern "C" __declspec(dllimport) short __stdcall GetKeyState(int nVirtKey);
+
+namespace GUILayer
 {
+    static void SetupModifierKeys(RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+    {
+        using namespace RenderOverlays::DebuggingDisplay;
+        typedef InputSnapshot::ActiveButton ActiveButton;
+        static auto shift = KeyId_Make("shift");
+        static auto control = KeyId_Make("control");
+        static auto alt = KeyId_Make("alt");
+
+        if (GetKeyState(0x10) < 0) evnt._activeButtons.push_back(ActiveButton(shift, false, true));
+        if (GetKeyState(0x11) < 0) evnt._activeButtons.push_back(ActiveButton(control, false, true));
+        if (GetKeyState(0x12) < 0) evnt._activeButtons.push_back(ActiveButton(alt, false, true));
+    }
 
     bool NativeManipulatorLayer::MouseMove(IViewContext^ vc, Point scrPt)
     {
@@ -26,7 +45,7 @@ namespace XLEBridgeUtils
 		return SendInputEvent(vc, evnt);
     }
 
-    void NativeManipulatorLayer::Render(GUILayer::SimpleRenderingContext^ context)
+    void NativeManipulatorLayer::Render(SimpleRenderingContext^ context)
     {
         auto underlying = _manipContext->GetNativeManipulator();
         if (!underlying) return;
@@ -46,7 +65,7 @@ namespace XLEBridgeUtils
 		InputSnapshot evnt(
 			btnState, _pendingBeginDrag ? btnState : 0, 0,
 			Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
-        GUILayer::EditorInterfaceUtils::SetupModifierKeys(evnt);
+        SetupModifierKeys(evnt);
 
 		SendInputEvent(vc, evnt);
         _pendingBeginDrag = false;
@@ -60,7 +79,7 @@ namespace XLEBridgeUtils
 		InputSnapshot evnt(
 			0, btnState, 0,
 			Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
-        GUILayer::EditorInterfaceUtils::SetupModifierKeys(evnt);
+        SetupModifierKeys(evnt);
         SendInputEvent(vc, evnt);
 	}
 
@@ -70,7 +89,7 @@ namespace XLEBridgeUtils
 		InputSnapshot evnt(
 			0, 0, delta,
 			Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
-        GUILayer::EditorInterfaceUtils::SetupModifierKeys(evnt);
+        SetupModifierKeys(evnt);
         SendInputEvent(vc, evnt);
     }
 
@@ -91,9 +110,13 @@ namespace XLEBridgeUtils
 		auto underlying = _manipContext->GetNativeManipulator();
         if (!underlying) return false;
 
-		auto hitTestContext = GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
+		auto hitTestContext = CreateIntersectionTestContext(
 			vc->EngineDevice, nullptr,
 			vc->Camera, vc->ViewportSize.Width, vc->ViewportSize.Height);
+
+        // Only way to get the intersection scene is via the SceneManager
+        // But what if we don't want to use a SceneManager. Is there a better
+        // way to get the intersection scene?
 		auto hitTestScene = vc->SceneManager->GetIntersectionScene();
 
 		underlying->OnInputEvent(evnt, hitTestContext->GetNative(), hitTestScene->GetNative());
@@ -104,8 +127,8 @@ namespace XLEBridgeUtils
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    GUILayer::IManipulatorSet^ ActiveManipulatorContext::ManipulatorSet::get() { return _manipulatorSet; }
-    void ActiveManipulatorContext::ManipulatorSet::set(GUILayer::IManipulatorSet^ value)
+    IManipulatorSet^ ActiveManipulatorContext::ManipulatorSet::get() { return _manipulatorSet; }
+    void ActiveManipulatorContext::ManipulatorSet::set(IManipulatorSet^ value)
     {
         if (value != _manipulatorSet) {
             delete _manipulatorSet;

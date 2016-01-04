@@ -63,7 +63,7 @@ namespace LevelEditorXLE.Terrain
 
         public IEnumerable<PendingExport> BuildPendingExports()
         {
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+            var sceneMan = GUILayer.NativeManipulatorLayer.SceneManager;
             var result = new List<PendingExport>();
             result.Add(new PendingExport(ExportTarget, sceneMan.ExportVegetationSpawn(0)));
             return result;

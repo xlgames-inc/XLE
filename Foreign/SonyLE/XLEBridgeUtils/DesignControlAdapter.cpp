@@ -7,7 +7,6 @@
 #pragma warning(disable:4564)   // method 'Copy' of class 'Sce::Atf::Dom::DomNode' defines unsupported default parameter 'originalToCopyMap'
 
 #include "XLELayerUtils.h"
-#include "NativeManipulators.h"
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
 #include "../../Tools/GUILayer/NativeEngineDevice.h"
 #include "../../Tools/GUILayer/CLIXAutoPtr.h"
@@ -69,7 +68,7 @@ namespace XLEBridgeUtils
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public ref class DesignControlAdapter : public IViewContext
+    public ref class DesignControlAdapter : public GUILayer::IViewContext
     {
     public:
         DesignControlAdapter(
@@ -332,7 +331,7 @@ namespace XLEBridgeUtils
         }
 
         static array<HitRecord>^ RayPick(
-            IViewContext^ vc,
+            GUILayer::IViewContext^ vc,
             Ray3F ray, Flags flags)
         {
             auto sceneMan = vc->SceneManager;
@@ -346,7 +345,7 @@ namespace XLEBridgeUtils
         }
 
         static array<HitRecord>^ FrustumPick(
-            IViewContext^ vc,
+            GUILayer::IViewContext^ vc,
             Matrix4F^ pickingFrustum, Flags flags)
         {
             auto sceneMan = vc->SceneManager;

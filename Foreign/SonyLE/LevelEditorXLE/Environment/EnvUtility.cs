@@ -32,7 +32,7 @@ namespace LevelEditorXLE.Environment
                 var sun = SunNode;
                 if (sun == null) return;
 
-                var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+                var sceneMan = GUILayer.NativeManipulatorLayer.SceneManager;
                 float sunPathAngle = GUILayer.EditorInterfaceUtils.GetSunPathAngle(sceneMan);
 
                 var x = (float)(Math.Sin(newAngle) * Math.Cos(sunPathAngle));

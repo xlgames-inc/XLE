@@ -36,8 +36,6 @@ using namespace System;
 using namespace System::Collections::Generic;
 using namespace System::Runtime::InteropServices;
 
-extern "C" __declspec(dllimport) short __stdcall GetKeyState(int nVirtKey);
-
 namespace GUILayer
 {
     public value class HitRecord
@@ -93,6 +91,27 @@ namespace GUILayer
         RenderCore::Techniques::CameraDesc* _native;
     };
 
+    IntersectionTestContextWrapper^
+        CreateIntersectionTestContext(
+            EngineDevice^ engineDevice,
+            TechniqueContextWrapper^ techniqueContext,
+            CameraDescWrapper^ camera,
+            unsigned viewportWidth, unsigned viewportHeight)
+    {
+        std::shared_ptr<RenderCore::Techniques::TechniqueContext> nativeTC;
+        if (techniqueContext) {
+            nativeTC = techniqueContext->_techniqueContext.GetNativePtr();
+        } else {
+            nativeTC = std::make_shared<RenderCore::Techniques::TechniqueContext>();
+        }
+        return gcnew IntersectionTestContextWrapper(
+            std::make_shared<SceneEngine::IntersectionTestContext>(
+                engineDevice->GetNative().GetRenderDevice()->GetImmediateContext(),
+                *camera->_native,
+                std::make_shared<RenderCore::ViewportContext>(UInt2(viewportWidth, viewportHeight)),
+                nativeTC));
+    }
+
     public ref class EditorInterfaceUtils
     {
     public:
@@ -112,18 +131,9 @@ namespace GUILayer
                 CameraDescWrapper^ camera,
                 unsigned viewportWidth, unsigned viewportHeight)
         {
-            std::shared_ptr<RenderCore::Techniques::TechniqueContext> nativeTC;
-            if (techniqueContext) {
-                nativeTC = techniqueContext->_techniqueContext.GetNativePtr();
-            } else {
-                nativeTC = std::make_shared<RenderCore::Techniques::TechniqueContext>();
-            }
-            return gcnew IntersectionTestContextWrapper(
-                std::make_shared<SceneEngine::IntersectionTestContext>(
-                    engineDevice->GetNative().GetRenderDevice()->GetImmediateContext(),
-                    *camera->_native,
-                    std::make_shared<RenderCore::ViewportContext>(UInt2(viewportWidth, viewportHeight)),
-                    nativeTC));
+            return GUILayer::CreateIntersectionTestContext(
+                engineDevice, techniqueContext, camera,
+                viewportWidth, viewportHeight);
         }
 
         static System::Collections::Generic::ICollection<HitRecord>^
@@ -295,19 +305,6 @@ namespace GUILayer
             else if (type == System::Char::typeid)      { return (unsigned)ImpliedTyping::TypeCat::UInt16; }
 
             return (unsigned)ImpliedTyping::TypeCat::Void;
-        }
-
-        static void SetupModifierKeys(RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
-        {
-            using namespace RenderOverlays::DebuggingDisplay;
-            typedef InputSnapshot::ActiveButton ActiveButton;
-            static auto shift = KeyId_Make("shift");
-            static auto control = KeyId_Make("control");
-            static auto alt = KeyId_Make("alt");
-
-            if (GetKeyState(0x10) < 0) evnt._activeButtons.push_back(ActiveButton(shift, false, true));
-            if (GetKeyState(0x11) < 0) evnt._activeButtons.push_back(ActiveButton(control, false, true));
-            if (GetKeyState(0x12) < 0) evnt._activeButtons.push_back(ActiveButton(alt, false, true));
         }
 
         static Tuple<Vector3, Vector3>^ CalculatePlacementCellBoundary(

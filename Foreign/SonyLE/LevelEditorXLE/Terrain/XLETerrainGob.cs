@@ -188,7 +188,7 @@ namespace LevelEditorXLE.Terrain
 
         public IEnumerable<PendingExport> BuildPendingExports()
         {
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+            var sceneMan = GUILayer.NativeManipulatorLayer.SceneManager;
             var result = new List<PendingExport>();
             result.Add(new PendingExport(CacheExportTarget, sceneMan.ExportTerrainCachedData()));
             result.Add(
@@ -200,7 +200,7 @@ namespace LevelEditorXLE.Terrain
         #endregion
 
         #region Internal Low Level
-        private GUILayer.EditorSceneManager SceneMan { get { return XLEBridgeUtils.NativeManipulatorLayer.SceneManager; } }
+        private GUILayer.EditorSceneManager SceneMan { get { return GUILayer.NativeManipulatorLayer.SceneManager; } }
         internal void Unload()
         {
             SceneMan.UnloadTerrain();
@@ -395,7 +395,7 @@ namespace LevelEditorXLE.Terrain
 
         void DoFlushToDisk()
         {
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+            var sceneMan = GUILayer.NativeManipulatorLayer.SceneManager;
             using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
             {
                 GUILayer.EditorInterfaceUtils.FlushTerrainToDisk(sceneMan, progress);

@@ -20,12 +20,12 @@ namespace LevelEditorXLE.Terrain
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class TerrainManipulator : LevelEditorCore.IManipulator, IInitializable, XLEBridgeUtils.IShutdownWithEngine, IDisposable, XLEBridgeUtils.IManipulatorExtra
     {
-        public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc as XLEBridgeUtils.IViewContext, scrPt); }
+        public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc as GUILayer.IViewContext, scrPt); }
         public void OnBeginDrag()                                              { _nativeManip.OnBeginDrag(); }
-        public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc as XLEBridgeUtils.IViewContext, scrPt); }
+        public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc as GUILayer.IViewContext, scrPt); }
         public void OnEndDrag(LevelEditorCore.ViewControl vc, Point scrPt) 
 		{
-            _nativeManip.OnEndDrag(vc as XLEBridgeUtils.IViewContext, scrPt);
+            _nativeManip.OnEndDrag(vc as GUILayer.IViewContext, scrPt);
 
 			// we need to create operations and turn them into a transaction:
 			// string transName = string.Format("Apply {0} brush", brush.Name);
@@ -39,7 +39,7 @@ namespace LevelEditorXLE.Terrain
 			// }, transName);
 			// m_tmpOps.Clear();
 		}
-        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc as XLEBridgeUtils.IViewContext, scrPt, delta); }
+        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc as GUILayer.IViewContext, scrPt, delta); }
 
         public void Render(object opaqueContext, LevelEditorCore.ViewControl vc) 
         {
@@ -62,7 +62,7 @@ namespace LevelEditorXLE.Terrain
             }
         }
 
-        public XLEBridgeUtils.ActiveManipulatorContext ManipulatorContext
+        public GUILayer.ActiveManipulatorContext ManipulatorContext
         {
             get { return _manipContext; }
         }
@@ -71,8 +71,8 @@ namespace LevelEditorXLE.Terrain
         {
             _domChangeInspector = new XLEBridgeUtils.DomChangeInspector(m_contextRegistry);
             _domChangeInspector.OnActiveContextChanged += UpdateManipulatorContext;
-            _manipContext.ManipulatorSet = XLEBridgeUtils.NativeManipulatorLayer.SceneManager.CreateTerrainManipulators();
-            _nativeManip = new XLEBridgeUtils.NativeManipulatorLayer(_manipContext);
+            _manipContext.ManipulatorSet = GUILayer.NativeManipulatorLayer.SceneManager.CreateTerrainManipulators();
+            _nativeManip = new GUILayer.NativeManipulatorLayer(_manipContext);
         }
 
         public void Shutdown()
@@ -82,8 +82,8 @@ namespace LevelEditorXLE.Terrain
         }
 
         TerrainManipulator()
-        { 
-            _manipContext = new XLEBridgeUtils.ActiveManipulatorContext(); 
+        {
+            _manipContext = new GUILayer.ActiveManipulatorContext(); 
             _nativeManip = null;
         }
 
@@ -108,7 +108,7 @@ namespace LevelEditorXLE.Terrain
 
         private void UpdateManipulatorContext(object obj)
         {
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+            var sceneMan = GUILayer.NativeManipulatorLayer.SceneManager;
             if (sceneMan != null) {
                 _manipContext.ManipulatorSet = sceneMan.CreateTerrainManipulators();
             } else {
@@ -116,8 +116,8 @@ namespace LevelEditorXLE.Terrain
             }
         }
 
-        private XLEBridgeUtils.NativeManipulatorLayer _nativeManip;
-        private XLEBridgeUtils.ActiveManipulatorContext _manipContext;
+        private GUILayer.NativeManipulatorLayer _nativeManip;
+        private GUILayer.ActiveManipulatorContext _manipContext;
         private XLEBridgeUtils.DomChangeInspector _domChangeInspector;
         [Import(AllowDefault = false)] IContextRegistry m_contextRegistry;
     };

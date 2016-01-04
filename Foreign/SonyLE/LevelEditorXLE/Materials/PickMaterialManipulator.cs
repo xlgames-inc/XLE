@@ -38,7 +38,7 @@ namespace LevelEditorXLE.Materials
             var ray = vc.GetWorldRay(scrPt);
             var endPt = ray.Origin + vc.Camera.FarZ * ray.Direction;
 
-            var nativeVC = vc as XLEBridgeUtils.IViewContext;
+            var nativeVC = vc as GUILayer.IViewContext;
             if (nativeVC == null) return false;
 
             // do an intersection test here, and find the material under the cursor
@@ -69,7 +69,7 @@ namespace LevelEditorXLE.Materials
 
             // do an intersection test here, and find the material under the cursor
             var pick = XLEBridgeUtils.Picking.RayPick(
-                vc as XLEBridgeUtils.IViewContext, ray, XLEBridgeUtils.Picking.Flags.Objects);
+                vc as GUILayer.IViewContext, ray, XLEBridgeUtils.Picking.Flags.Objects);
 
             if (pick != null && pick.Length > 0)
             {
@@ -89,7 +89,7 @@ namespace LevelEditorXLE.Materials
             if (m_highlightMaterialGUID == ~0ul) return;
 
             // ---- ---- ---- ---- render highlight ---- ---- ---- ----
-            var nativeVC = vc as XLEBridgeUtils.IViewContext;
+            var nativeVC = vc as GUILayer.IViewContext;
             if (nativeVC == null) return;
 
             var context = opaqueContext as GUILayer.SimpleRenderingContext;

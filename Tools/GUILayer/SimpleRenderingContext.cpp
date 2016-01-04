@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "SimpleRenderingContext.h"
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "EditorInterfaceUtils.h"
@@ -11,7 +12,6 @@
 #include "LevelEditorScene.h"
 #include "MathLayer.h"
 #include "DelayedDeleteQueue.h"
-#include "CLIXAutoPtr.h"
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/ManipulatorsUtil.h"
 #include "../ToolsRig/ManipulatorsRender.h"
@@ -149,93 +149,64 @@ namespace GUILayer
         return false;
     }
 
-    /// <summary>Context for simple rendering commands</summary>
-    /// Some tools need to perform basic rendering commands: create a vertex buffer,
-    /// set a technique, draw some polygons. 
-    /// 
-    /// For example, a manipulator might want to draw a 3D arrow or tube as part
-    /// of a widget.
-    ///
-    /// This provides this kind of basic behaviour via the CLI interface so it
-    /// can be used by C# (or other C++/CLI) code.
-    public ref class SimpleRenderingContext
+    void SimpleRenderingContext::DrawPrimitive(
+        unsigned primitiveType,
+        uint64 vb,
+        unsigned startVertex,
+        unsigned vertexCount,
+        const float color[], const float xform[])
     {
-    public:
-        void DrawPrimitive(
-            unsigned primitiveType,
-            uint64 vb,
-            unsigned startVertex,
-            unsigned vertexCount,
-            const float color[], const float xform[])
-        {
-            // We need to bind the technique and technique interface
-            //      (including vertex input format)
-            // "color" can be passed as a Float4 as the material parameter "MaterialDiffuse"
-            // then we just bind the vertex buffer and call draw
+        // We need to bind the technique and technique interface
+        //      (including vertex input format)
+        // "color" can be passed as a Float4 as the material parameter "MaterialDiffuse"
+        // then we just bind the vertex buffer and call draw
 
-            auto* vbuffer = _savedRes->GetVertexBuffer(vb);
-            if (!vbuffer) return;
+        auto* vbuffer = _savedRes->GetVertexBuffer(vb);
+        if (!vbuffer) return;
 
-            auto* vfFormat = _savedRes->GetVertexBufferFormat(vb);
-            if (!vfFormat) return;
+        auto* vfFormat = _savedRes->GetVertexBufferFormat(vb);
+        if (!vfFormat) return;
 
-            if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat)) {
-                _devContext->Bind((RenderCore::Metal::Topology::Enum)primitiveType);
-                _devContext->Bind(RenderCore::MakeResourceList(*vbuffer), vfFormat->_vertexStride, 0);
-                _devContext->Draw(vertexCount, startVertex);
-            }
+        if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat)) {
+            _devContext->Bind((RenderCore::Metal::Topology::Enum)primitiveType);
+            _devContext->Bind(RenderCore::MakeResourceList(*vbuffer), vfFormat->_vertexStride, 0);
+            _devContext->Draw(vertexCount, startVertex);
         }
+    }
 
-        void DrawIndexedPrimitive(
-            unsigned primitiveType,
-            uint64 vb, uint64 ib,
-            unsigned startIndex,
-            unsigned indexCount,
-            unsigned startVertex,
-            const float color[], const float xform[]) 
-        {
-            auto* ibuffer = _savedRes->GetIndexBuffer(ib);
-            auto* vbuffer = _savedRes->GetVertexBuffer(vb);
-            if (!ibuffer || !vbuffer) return;
+    void SimpleRenderingContext::DrawIndexedPrimitive(
+        unsigned primitiveType,
+        uint64 vb, uint64 ib,
+        unsigned startIndex,
+        unsigned indexCount,
+        unsigned startVertex,
+        const float color[], const float xform[]) 
+    {
+        auto* ibuffer = _savedRes->GetIndexBuffer(ib);
+        auto* vbuffer = _savedRes->GetVertexBuffer(vb);
+        if (!ibuffer || !vbuffer) return;
 
-            auto* vfFormat = _savedRes->GetVertexBufferFormat(vb);
-            if (!vfFormat) return;
+        auto* vfFormat = _savedRes->GetVertexBufferFormat(vb);
+        if (!vfFormat) return;
             
-            if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat)) {
-                auto& devContext = *_devContext.get();
-                _devContext->Bind((RenderCore::Metal::Topology::Enum)primitiveType);
-                devContext.Bind(RenderCore::MakeResourceList(*vbuffer), vfFormat->_vertexStride, 0);
-                devContext.Bind(*ibuffer, RenderCore::Metal::NativeFormat::R32_UINT);   // Sony editor always uses 32 bit indices
-                devContext.DrawIndexed(indexCount, startIndex, startVertex);
-            }
+        if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat)) {
+            auto& devContext = *_devContext.get();
+            _devContext->Bind((RenderCore::Metal::Topology::Enum)primitiveType);
+            devContext.Bind(RenderCore::MakeResourceList(*vbuffer), vfFormat->_vertexStride, 0);
+            devContext.Bind(*ibuffer, RenderCore::Metal::NativeFormat::R32_UINT);   // Sony editor always uses 32 bit indices
+            devContext.DrawIndexed(indexCount, startIndex, startVertex);
         }
+    }
 
-        void InitState(bool depthTest, bool depthWrite)
-        {
-            if (depthWrite) _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadWrite);
-            else if (depthTest) _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadOnly);
-            else _devContext->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
+    void SimpleRenderingContext::InitState(bool depthTest, bool depthWrite)
+    {
+        if (depthWrite) _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadWrite);
+        else if (depthTest) _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadOnly);
+        else _devContext->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
                 
-            _devContext->Bind(RenderCore::Techniques::CommonResources()._blendStraightAlpha);
-            _devContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
-        }
-
-        SceneEngine::LightingParserContext& GetParsingContext() { return *_parsingContext; }
-        RenderCore::Metal::DeviceContext& GetDevContext() { return *_devContext.get(); }
-        RenderCore::IThreadContext& GetThreadContext() { return *_threadContext; }
-
-        SimpleRenderingContext(
-            RenderCore::IThreadContext* threadContext,
-            SavedRenderResources^ savedRes, 
-            void* parsingContext);
-        ~SimpleRenderingContext();
-        !SimpleRenderingContext();
-    protected:
-        SavedRenderResources^ _savedRes;
-        SceneEngine::LightingParserContext* _parsingContext;
-        clix::shared_ptr<RenderCore::Metal::DeviceContext> _devContext;
-        RenderCore::IThreadContext* _threadContext;     // note -- keeping an unprotected pointer here (SimpleRenderingContext is typically short lived). Create must be careful to manage lifetimes
-    };
+        _devContext->Bind(RenderCore::Techniques::CommonResources()._blendStraightAlpha);
+        _devContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
+    }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////?//
 

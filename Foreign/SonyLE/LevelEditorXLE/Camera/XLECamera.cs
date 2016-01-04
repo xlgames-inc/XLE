@@ -62,7 +62,7 @@ namespace LevelEditorXLE
                 // anywhere!
 
                 ViewControl c = sender as ViewControl;
-                XLEBridgeUtils.IViewContext vc = sender as XLEBridgeUtils.IViewContext;
+                GUILayer.IViewContext vc = sender as GUILayer.IViewContext;
                 if (c != null && vc != null) {
                         // We can use XLEBridgeUtils to do the ray test. This will
                         // execute the native code (which in turn performs the intersection

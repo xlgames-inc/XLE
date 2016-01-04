@@ -19,11 +19,11 @@ namespace LevelEditorXLE.Placements
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class PlacementManipulator : LevelEditorCore.IManipulator, IInitializable, XLEBridgeUtils.IShutdownWithEngine, IDisposable
     {
-        public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc as XLEBridgeUtils.IViewContext, scrPt); }
+        public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc as GUILayer.IViewContext, scrPt); }
         public void OnBeginDrag()                                              { _nativeManip.OnBeginDrag(); }
-        public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc as XLEBridgeUtils.IViewContext, scrPt); }
-        public void OnEndDrag(LevelEditorCore.ViewControl vc, Point scrPt)     { _nativeManip.OnEndDrag(vc as XLEBridgeUtils.IViewContext, scrPt); }
-        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc as XLEBridgeUtils.IViewContext, scrPt, delta); }
+        public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc as GUILayer.IViewContext, scrPt); }
+        public void OnEndDrag(LevelEditorCore.ViewControl vc, Point scrPt)     { _nativeManip.OnEndDrag(vc as GUILayer.IViewContext, scrPt); }
+        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc as GUILayer.IViewContext, scrPt, delta); }
 
         public void Render(object opaqueContext, LevelEditorCore.ViewControl vc) 
         {
@@ -47,9 +47,9 @@ namespace LevelEditorXLE.Placements
         public void Initialize()
         {
             _manipSettings = new Settings();
-            _manipContext.ManipulatorSet = XLEBridgeUtils.NativeManipulatorLayer.SceneManager.CreatePlacementManipulators(_manipSettings);
+            _manipContext.ManipulatorSet = GUILayer.NativeManipulatorLayer.SceneManager.CreatePlacementManipulators(_manipSettings);
             // _controls->ActiveContext = _manipContext;
-            _nativeManip = new XLEBridgeUtils.NativeManipulatorLayer(_manipContext);
+            _nativeManip = new GUILayer.NativeManipulatorLayer(_manipContext);
 
             if (_resourceLister != null)
                 _resourceLister.SelectionChanged += resourceLister_SelectionChanged;
@@ -63,7 +63,7 @@ namespace LevelEditorXLE.Placements
 
         public PlacementManipulator()
         {
-            _manipContext = new XLEBridgeUtils.ActiveManipulatorContext();
+            _manipContext = new GUILayer.ActiveManipulatorContext();
             _nativeManip = null;
         }
 
@@ -104,8 +104,8 @@ namespace LevelEditorXLE.Placements
             internal String _selectedMaterial;
         };
 
-        XLEBridgeUtils.NativeManipulatorLayer _nativeManip;
-        XLEBridgeUtils.ActiveManipulatorContext _manipContext;
+        GUILayer.NativeManipulatorLayer _nativeManip;
+        GUILayer.ActiveManipulatorContext _manipContext;
         Settings _manipSettings;
 
         [Import(AllowDefault =  true)] LevelEditorCore.ResourceLister _resourceLister;
