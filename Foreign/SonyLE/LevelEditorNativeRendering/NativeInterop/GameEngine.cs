@@ -79,7 +79,7 @@ namespace RenderingInterop
         #region initialize and shutdown
         private static GameEngine s_inist;
         private static GUILayer.EngineDevice s_engineDevice;
-        private static GUILayer.SavedRenderResources s_savedRenderResources;
+        private static GUILayer.RetainedRenderResources s_retainedRenderResources;
         private static GUILayer.EditorSceneManager s_underlyingScene;
         private static GUILayer.EntityLayer s_entityInterface;
         private static XLEBridgeUtils.LoggingRedirect s_loggingRedirect;
@@ -98,7 +98,7 @@ namespace RenderingInterop
                 GUILayer.EngineDevice.SetDefaultWorkingDirectory();
                 s_engineDevice = new GUILayer.EngineDevice();
                 s_engineDevice.AttachDefaultCompilers();
-                s_savedRenderResources = new GUILayer.SavedRenderResources(s_engineDevice);
+                s_retainedRenderResources = new GUILayer.RetainedRenderResources(s_engineDevice);
                 s_underlyingScene = new GUILayer.EditorSceneManager();
                 Util3D.Init();
                 XLEBridgeUtils.Utils.GlobalSceneManager = s_underlyingScene;
@@ -138,7 +138,7 @@ namespace RenderingInterop
 
         public static GUILayer.EditorSceneManager GetEditorSceneManager() { return s_underlyingScene; }
         public static GUILayer.EngineDevice GetEngineDevice() { return s_engineDevice; }
-        public static GUILayer.SavedRenderResources GetSavedResources() { return s_savedRenderResources; }
+        public static GUILayer.RetainedRenderResources GetSavedResources() { return s_retainedRenderResources; }
 
         /// <summary>
         /// shutdown game engine.
@@ -169,8 +169,8 @@ namespace RenderingInterop
             s_entityInterface = null;
             s_underlyingScene.Dispose();
             s_underlyingScene = null;
-            s_savedRenderResources.Dispose();
-            s_savedRenderResources = null;
+            s_retainedRenderResources.Dispose();
+            s_retainedRenderResources = null;
             s_engineDevice.Dispose();
             s_engineDevice = null;
             GlobalSelection.Dispose();
@@ -498,18 +498,18 @@ namespace RenderingInterop
 
         private static ulong NativeCreateVertexBuffer(VertexFormat vf, void* buffer, uint vertexCount) 
         {
-            return s_savedRenderResources.CreateVertexBuffer(
+            return s_retainedRenderResources.CreateVertexBuffer(
                 buffer,
                 vertexCount * vf.GetSize(),
                 (uint)vf);
         }
         private static ulong NativeCreateIndexBuffer(uint* buffer, uint indexCount) 
         {
-            return s_savedRenderResources.CreateIndexBuffer(buffer, sizeof(uint)*indexCount);
+            return s_retainedRenderResources.CreateIndexBuffer(buffer, sizeof(uint)*indexCount);
         }
         private static void NativeDeleteBuffer(ulong buffer) 
         {
-            s_savedRenderResources.DeleteBuffer(buffer);
+            s_retainedRenderResources.DeleteBuffer(buffer);
         }
         private static void NativeDrawPrimitive(
             GUILayer.SimpleRenderingContext context,

@@ -93,7 +93,7 @@ namespace GUILayer
     /// <summary>Create and maintain rendering resources for SimpleRenderingContext</summary>
     /// Create & maintain vertex and index buffers. Intended for use when linking to
     /// C# GUI apps.
-    public ref class SavedRenderResources
+    public ref class RetainedRenderResources
     {
     public:
         uint64  CreateVertexBuffer(void* data, size_t size, unsigned format);
@@ -104,9 +104,9 @@ namespace GUILayer
         const RenderCore::Metal::IndexBuffer* GetIndexBuffer(uint64 id);
         const VertexFormatRecord* GetVertexBufferFormat(uint64 id);
 
-        SavedRenderResources(EngineDevice^ engineDevice);
-        ~SavedRenderResources();
-        !SavedRenderResources();
+        RetainedRenderResources(EngineDevice^ engineDevice);
+        ~RetainedRenderResources();
+        !RetainedRenderResources();
     protected:
         clix::auto_ptr<SavedRenderResourcesPimpl> _pimpl;
     };
@@ -161,10 +161,10 @@ namespace GUILayer
         // "color" can be passed as a Float4 as the material parameter "MaterialDiffuse"
         // then we just bind the vertex buffer and call draw
 
-        auto* vbuffer = _savedRes->GetVertexBuffer(vb);
+        auto* vbuffer = _retainedRes->GetVertexBuffer(vb);
         if (!vbuffer) return;
 
-        auto* vfFormat = _savedRes->GetVertexBufferFormat(vb);
+        auto* vfFormat = _retainedRes->GetVertexBufferFormat(vb);
         if (!vfFormat) return;
 
         if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat)) {
@@ -182,11 +182,11 @@ namespace GUILayer
         unsigned startVertex,
         const float color[], const float xform[]) 
     {
-        auto* ibuffer = _savedRes->GetIndexBuffer(ib);
-        auto* vbuffer = _savedRes->GetVertexBuffer(vb);
+        auto* ibuffer = _retainedRes->GetIndexBuffer(ib);
+        auto* vbuffer = _retainedRes->GetVertexBuffer(vb);
         if (!ibuffer || !vbuffer) return;
 
-        auto* vfFormat = _savedRes->GetVertexBufferFormat(vb);
+        auto* vfFormat = _retainedRes->GetVertexBufferFormat(vb);
         if (!vfFormat) return;
             
         if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat)) {
@@ -210,7 +210,7 @@ namespace GUILayer
 
 ////////////////////////////////////////////////////////////////////////////////////////////////?//
 
-    uint64  SavedRenderResources::CreateVertexBuffer(void* data, size_t size, unsigned format)
+    uint64  RetainedRenderResources::CreateVertexBuffer(void* data, size_t size, unsigned format)
     {
         RenderCore::Metal::VertexBuffer newBuffer(_pimpl->_objectFactory, data, size);
         _pimpl->_vertexBuffers.push_back(std::make_pair(_pimpl->_nextBufferID, std::move(newBuffer)));
@@ -218,21 +218,21 @@ namespace GUILayer
         return _pimpl->_nextBufferID++;
     }
 
-    uint64  SavedRenderResources::CreateIndexBuffer(void* data, size_t size)
+    uint64  RetainedRenderResources::CreateIndexBuffer(void* data, size_t size)
     {
         RenderCore::Metal::IndexBuffer newBuffer(_pimpl->_objectFactory, data, size);
         _pimpl->_indexBuffers.push_back(std::make_pair(_pimpl->_nextBufferID, std::move(newBuffer)));
         return _pimpl->_nextBufferID++;
     }
 
-    const RenderCore::Metal::VertexBuffer* SavedRenderResources::GetVertexBuffer(uint64 id)
+    const RenderCore::Metal::VertexBuffer* RetainedRenderResources::GetVertexBuffer(uint64 id)
     {
         for (auto i = _pimpl->_vertexBuffers.cbegin(); i != _pimpl->_vertexBuffers.cend(); ++i)
             if (i->first == id) return &i->second;
         return nullptr;
     }
 
-    const VertexFormatRecord* SavedRenderResources::GetVertexBufferFormat(uint64 id)
+    const VertexFormatRecord* RetainedRenderResources::GetVertexBufferFormat(uint64 id)
     {
         for (auto i = _pimpl->_vbFormat.cbegin(); i != _pimpl->_vbFormat.cend(); ++i)
             if (i->first == id && i->second < dimof(_pimpl->_vfRecord)) {
@@ -241,14 +241,14 @@ namespace GUILayer
         return nullptr;
     }
 
-    const RenderCore::Metal::IndexBuffer* SavedRenderResources::GetIndexBuffer(uint64 id)
+    const RenderCore::Metal::IndexBuffer* RetainedRenderResources::GetIndexBuffer(uint64 id)
     {
         for (auto i = _pimpl->_indexBuffers.cbegin(); i != _pimpl->_indexBuffers.cend(); ++i)
             if (i->first == id) return &i->second;
         return nullptr;
     }
 
-    bool SavedRenderResources::DeleteBuffer(uint64 id)
+    bool RetainedRenderResources::DeleteBuffer(uint64 id)
     {
         auto vi = LowerBound(_pimpl->_vertexBuffers, id);
         if (vi != _pimpl->_vertexBuffers.end() && vi->first == id) {
@@ -265,23 +265,23 @@ namespace GUILayer
         return false;
     }
 
-    SavedRenderResources::SavedRenderResources(EngineDevice^ engineDevice) 
+    RetainedRenderResources::RetainedRenderResources(EngineDevice^ engineDevice) 
     {
         _pimpl.reset(
             new SavedRenderResourcesPimpl(
                 *engineDevice->GetNative().GetRenderDevice()));
     }
 
-    SavedRenderResources::~SavedRenderResources() { _pimpl.reset(); }
-    SavedRenderResources::!SavedRenderResources() { _pimpl.reset(); }
+    RetainedRenderResources::~RetainedRenderResources() { _pimpl.reset(); }
+    RetainedRenderResources::!RetainedRenderResources() { _pimpl.reset(); }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////?//
 
     SimpleRenderingContext::SimpleRenderingContext(
         RenderCore::IThreadContext* threadContext,
-        SavedRenderResources^ savedRes, 
+        RetainedRenderResources^ savedRes, 
         void* parsingContext)
-    : _savedRes(savedRes), _parsingContext((SceneEngine::LightingParserContext*)parsingContext)
+    : _retainedRes(savedRes), _parsingContext((SceneEngine::LightingParserContext*)parsingContext)
     , _threadContext(threadContext)
     {
         _devContext = RenderCore::Metal::DeviceContext::Get(*threadContext);

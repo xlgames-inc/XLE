@@ -14,7 +14,7 @@ namespace SceneEngine { class LightingParserContext; }
 
 namespace GUILayer
 {
-    ref class SavedRenderResources;
+    ref class RetainedRenderResources;
 
     /// <summary>Context for simple rendering commands</summary>
     /// Some tools need to perform basic rendering commands: create a vertex buffer,
@@ -50,12 +50,12 @@ namespace GUILayer
 
         SimpleRenderingContext(
             RenderCore::IThreadContext* threadContext,
-            SavedRenderResources^ savedRes, 
+            RetainedRenderResources^ savedRes, 
             void* parsingContext);
         ~SimpleRenderingContext();
         !SimpleRenderingContext();
     protected:
-        SavedRenderResources^ _savedRes;
+        RetainedRenderResources^ _retainedRes;
         SceneEngine::LightingParserContext* _parsingContext;
         clix::shared_ptr<RenderCore::Metal::DeviceContext> _devContext;
         RenderCore::IThreadContext* _threadContext;     // note -- keeping an unprotected pointer here (SimpleRenderingContext is typically short lived). Create must be careful to manage lifetimes

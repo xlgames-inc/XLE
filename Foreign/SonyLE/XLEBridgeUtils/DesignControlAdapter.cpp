@@ -46,7 +46,7 @@ namespace XLEBridgeUtils
             RenderCore::IThreadContext* device, 
             SceneEngine::LightingParserContext& parserContext) override
         {
-            auto context = gcnew GUILayer::SimpleRenderingContext(device, SavedResources, &parserContext);
+            auto context = gcnew GUILayer::SimpleRenderingContext(device, RetainedResources, &parserContext);
             try
             {
                 OnRender(context);
@@ -63,7 +63,7 @@ namespace XLEBridgeUtils
         virtual void SetActivationState(bool) override {}
 
         event RenderCallback^ OnRender;
-        property GUILayer::SavedRenderResources^ SavedResources;
+        property GUILayer::RetainedRenderResources^ RetainedResources;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +76,7 @@ namespace XLEBridgeUtils
             Sce::Atf::Rendering::Camera^ camera,
             GUILayer::EditorSceneManager^ sceneManager,
             GUILayer::ObjectSet^ selection,
-            GUILayer::SavedRenderResources^ savedRes)
+            GUILayer::RetainedRenderResources^ savedRes)
         {
             _layerControl = gcnew GUILayer::LayerControl(attachedControl);
             _cameraSettings = gcnew GUILayer::VisCameraSettings();
@@ -86,7 +86,7 @@ namespace XLEBridgeUtils
             _mainOverlay = sceneManager->CreateOverlaySystem(_cameraSettings, _renderSettings);
             _layerControl->AddSystem(_mainOverlay);
             _manipulatorOverlay = gcnew DesignControlAdapterOverlay;
-            _manipulatorOverlay->SavedResources = savedRes;
+            _manipulatorOverlay->RetainedResources = savedRes;
             _layerControl->AddSystem(_manipulatorOverlay);
             SceCamera = camera;
             ViewportSize = attachedControl->Size;
