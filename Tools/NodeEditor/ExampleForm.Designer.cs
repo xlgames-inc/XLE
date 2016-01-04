@@ -17,7 +17,6 @@
 			{
                 if (components != null)
 				    components.Dispose();
-                _exportProvider.Dispose();
 			}
 			base.Dispose(disposing);
 		}
@@ -31,8 +30,8 @@
 		private void InitializeComponent()
 		{
             this.components = new System.ComponentModel.Container();
-            
-            this.graphControl = new NodeEditorCore.GraphControl();
+
+            this.graphControl = new System.Windows.Forms.UserControl();
             this.panel1 = new System.Windows.Forms.Panel();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.panel2 = new System.Windows.Forms.Panel();
@@ -67,15 +66,9 @@
             this.graphControl.AllowDrop = true;
             this.graphControl.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             this.graphControl.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.graphControl.HighlightCompatible = true;
-            this.graphControl.LargeGridStep = 160F;
-            this.graphControl.LargeStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(90)))), ((int)(((byte)(90)))), ((int)(((byte)(90)))));
             this.graphControl.Location = new System.Drawing.Point(0, 0);
             this.graphControl.Name = "graphControl";
-            this.graphControl.ShowLabels = false;
             this.graphControl.Size = new System.Drawing.Size(996, 439);
-            this.graphControl.SmallGridStep = 20F;
-            this.graphControl.SmallStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(80)))), ((int)(((byte)(80)))));
             this.graphControl.TabIndex = 0;
             this.graphControl.Text = "graphControl";
             // 
@@ -293,7 +286,7 @@
 
 		#endregion
 
-        private NodeEditorCore.GraphControl graphControl;
+        private System.Windows.Forms.UserControl graphControl;
         private Aga.Controls.Tree.NodeControls.NodeStateIcon _icon;
         private Aga.Controls.Tree.NodeControls.NodeTextBox _visibleName;
         private Aga.Controls.Tree.NodeControls.NodeTextBox _returnType;

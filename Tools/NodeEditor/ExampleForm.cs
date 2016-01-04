@@ -21,6 +21,8 @@ using RibbonLib.Interop;
 
 namespace NodeEditor
 {
+    [Export(typeof(ExampleForm))]
+    [PartCreationPolicy(CreationPolicy.NonShared)]
 	public partial class ExampleForm : Form
 	{
         public enum RibbonMarkupCommands : uint
@@ -33,37 +35,32 @@ namespace NodeEditor
             cmdLoad                  = 1010
         }
 
-		public ExampleForm()
+        [ImportingConstructor]
+		public ExampleForm(ExportProvider exportProvider)
 		{
-            var catalog = new TypeCatalog(
-                typeof(GUILayer.EngineDevice),
-                typeof(ShaderPatcherLayer.Manager),
-                typeof(ShaderFragmentArchive.Archive),
-                typeof(NodeEditorCore.ShaderFragmentArchiveModel),
-                typeof(NodeEditorCore.ShaderParameterUtil),
-                typeof(NodeEditorCore.ModelConversion),
-                typeof(NodeEditorCore.ShaderFragmentNodeCreator),
-                typeof(NodeEditorCore.DiagramDocument)
-            );
-            var container = new CompositionContainer(catalog);
-            container.ComposeExportedValue<ExportProvider>(container); 
-            container.ComposeExportedValue<CompositionContainer>(container);
-            _exportProvider = container;
-
-            _shaderFragments = container.GetExport<ShaderFragmentArchive.Archive>().Value;
-            _nodeCreator = container.GetExport<NodeEditorCore.IShaderFragmentNodeCreator>().Value;
-            _modelConversion = container.GetExport<NodeEditorCore.IModelConversion>().Value;
+            _shaderFragments = exportProvider.GetExport<ShaderFragmentArchive.Archive>().Value;
+            _nodeCreator = exportProvider.GetExport<NodeEditorCore.IShaderFragmentNodeCreator>().Value;
+            _modelConversion = exportProvider.GetExport<NodeEditorCore.IModelConversion>().Value;
 
 			InitializeComponent();
 
             _hyperGraphModel = new HyperGraph.GraphModel();
             NodeEditorCore.GraphHelpers.SetupDefaultHandlers(_hyperGraphModel);
 
-            graphControl.Model = _hyperGraphModel;
-            graphControl.Selection = new GraphSelection();
-            graphControl.Selection.SelectionChanged += OnFocusChanged;
-            graphControl.MouseEnter += OnGraphMouseEnter;
+            _graphAdapter = new HyperGraph.GraphControl();
+            _graphAdapter.Attach(graphControl);
+            _graphAdapter.HighlightCompatible = true;
+            _graphAdapter.LargeGridStep = 160F;
+            _graphAdapter.LargeStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(90)))), ((int)(((byte)(90)))), ((int)(((byte)(90)))));
+            _graphAdapter.ShowLabels = false;
+            _graphAdapter.SmallGridStep = 20F;
+            _graphAdapter.SmallStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(80)))), ((int)(((byte)(80)))));
 
+            _graphAdapter.Model = _hyperGraphModel;
+            _graphAdapter.Selection = new GraphSelection();
+            _graphAdapter.Selection.SelectionChanged += OnFocusChanged;
+
+            graphControl.MouseEnter += OnGraphMouseEnter;
             graphControl.Paint += graphControl_Paint;
 
             _tabGroupTextureNode = new RibbonTabGroup(_ribbon, (uint)RibbonMarkupCommands.cmdTabGroupTextureNode);
@@ -80,26 +77,18 @@ namespace NodeEditor
             _loadButton = new RibbonLib.Controls.RibbonButton(_ribbon, (uint)RibbonMarkupCommands.cmdLoad);
             _loadButton.ExecuteEvent += new EventHandler<ExecuteEventArgs>(OnLoad);
 
-            var fragmentTreeModel = container.GetExport<NodeEditorCore.ShaderFragmentArchiveModel>().Value;
+            var fragmentTreeModel = exportProvider.GetExport<NodeEditorCore.ShaderFragmentArchiveModel>().Value;
             _fragmentTree.Model = new Aga.Controls.Tree.SortedTreeModel(fragmentTreeModel);
             _fragmentTree.ItemDrag += new ItemDragEventHandler(OnFragmentTreeItemDrag);
             _fragmentTree.NodeMouseDoubleClick += new EventHandler<Aga.Controls.Tree.TreeNodeAdvMouseEventArgs>(OnFragmentTreeItemDoubleClick);
 
-            _materialParametersGrid.SelectedObject = new DictionaryPropertyGridAdapter(_document.PreviewMaterialState);
+            // _materialParametersGrid.SelectedObject = new DictionaryPropertyGridAdapter(_document.PreviewMaterialState);
 
             try
             {
-                System.IO.FileStream fileStream = new System.IO.FileStream("defaultload.sh", System.IO.FileMode.Open);
-                try
-                {
-                    LoadFromShader(fileStream);
-                }
-                finally
-                {
-                    fileStream.Close();
-                }
+                LoadFile("defaultload.sh");
             }
-            catch (System.Exception) {}
+            catch(System.Exception) {}
 		}
 
         void graphControl_Paint(object sender, PaintEventArgs e)
@@ -111,13 +100,14 @@ namespace NodeEditor
         private ShaderFragmentArchive.Archive _shaderFragments;
         private NodeEditorCore.IShaderFragmentNodeCreator _nodeCreator;
         private NodeEditorCore.IModelConversion _modelConversion;
+        private HyperGraph.GraphControl _graphAdapter;
 
         #region Graph control event handlers
         void OnFocusChanged(object sender, EventArgs e)
         {
             var textureContext = ContextAvailability.NotAvailable;
 
-            var sel = graphControl.Selection.Selection;
+            var sel = _graphAdapter.Selection.Selection;
             if (sel.FirstOrDefault() is Node)
             {
                 var node = sel.FirstOrDefault() as Node;
@@ -132,7 +122,7 @@ namespace NodeEditor
 
         private void OnShowLabelsChanged(object sender, ExecuteEventArgs e)
 		{
-            graphControl.ShowLabels = _showLabels.BooleanValue;
+            _graphAdapter.ShowLabels = _showLabels.BooleanValue;
 		}
         #endregion
 
@@ -183,10 +173,10 @@ namespace NodeEditor
 
         private void OnFragmentTreeItemDoubleClick(object sender, Aga.Controls.Tree.TreeNodeAdvMouseEventArgs e)
         {
-            if (e.Node != null && e.Node.Tag is NodeEditorCore.ShaderFragmentArchiveModel.ParameterStructItem)
-            {
-                NodeEditorCore.ShaderParameterUtil.EditParameter(_hyperGraphModel, ((NodeEditorCore.ShaderFragmentArchiveModel.ParameterStructItem)e.Node.Tag).ArchiveName);
-            }
+            // if (e.Node != null && e.Node.Tag is NodeEditorCore.ShaderFragmentArchiveModel.ParameterStructItem)
+            // {
+            //     NodeEditorCore.ShaderParameterUtil.EditParameter(_hyperGraphModel, ((NodeEditorCore.ShaderFragmentArchiveModel.ParameterStructItem)e.Node.Tag).ArchiveName);
+            // }
         }
         #endregion
 
@@ -215,40 +205,8 @@ namespace NodeEditor
                 {
                     using (var stream = dialog.OpenFile())
                     {
-                        using (var xmlStream = new System.IO.MemoryStream())
-                        {
-                            var nodeGraph = _modelConversion.ToShaderPatcherLayer(_hyperGraphModel);
-                            var serializer = new System.Runtime.Serialization.DataContractSerializer(
-                                typeof(ShaderPatcherLayer.NodeGraph));
-                            var settings = new System.Xml.XmlWriterSettings()
-                            {
-                                Indent = true,
-                                IndentChars = "\t",
-                                Encoding = System.Text.Encoding.ASCII
-                            };
-
-                                // write the xml to a memory stream to begin with
-                            using (var writer = System.Xml.XmlWriter.Create(xmlStream, settings))
-                            {
-                                serializer.WriteObject(writer, nodeGraph);
-                            }
-
-                                // we hide the memory stream within a comment, and write
-                                // out a hlsl shader file
-                                // The HLSL compiler doesn't like UTF files... It just wants plain ASCII encoding
-
-                            using (var sw = new System.IO.StreamWriter(stream, System.Text.Encoding.ASCII))
-                            {
-                                var shader = ShaderPatcherLayer.NodeGraph.GenerateShader(nodeGraph, System.IO.Path.GetFileNameWithoutExtension(dialog.FileName));
-                                sw.Write(shader); 
-                                
-                                sw.Write("/* **** **** NodeEditor **** **** \r\nNEStart{");
-                                sw.Flush();
-                                xmlStream.WriteTo(stream);
-                                sw.Write("}NEEnd\r\n **** **** */\r\n");
-                            }
-
-                        }
+                        var graph = _modelConversion.ToShaderPatcherLayer(_hyperGraphModel);
+                        graph.Save(stream);
                     }
                 }
             }
@@ -263,59 +221,15 @@ namespace NodeEditor
                 dialog.RestoreDirectory = true;
 
                 if (dialog.ShowDialog() == DialogResult.OK)
-                {
-                    using (var stream = dialog.OpenFile())
-                    {
-                        if (string.Compare(System.IO.Path.GetExtension(dialog.FileName), ".xml", true) == 0)
-                        {
-                            LoadFromXML(stream);
-                        }
-                        else 
-                        {
-                            LoadFromShader(stream);
-                        }
-                    }
-                }
+                    LoadFile(dialog.FileName);
             }
         }
 
-        private bool LoadFromXML(System.IO.Stream stream)
+        private void LoadFile(string filename)
         {
-            var serializer = new System.Runtime.Serialization.DataContractSerializer(
-                            typeof(ShaderPatcherLayer.NodeGraph));
-            using (var xmlStream = System.Xml.XmlReader.Create(stream))
-            {
-                var o = serializer.ReadObject(xmlStream);
-                if (o != null && o is ShaderPatcherLayer.NodeGraph)
-                {
-                    _hyperGraphModel.RemoveNodes(_hyperGraphModel.Nodes.ToList());
-                    _modelConversion.AddToHyperGraph(
-                        (ShaderPatcherLayer.NodeGraph)o, _hyperGraphModel, _document);
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private bool LoadFromShader(System.IO.Stream stream)
-        {
-                // the xml should be hidden within a comment in this file.
-            //      look for a string between "NEStart{" XXX "}NEEnd"
-
-            using (var sr = new System.IO.StreamReader(stream, System.Text.Encoding.ASCII))
-            {
-                var asString = sr.ReadToEnd();
-                var matches = System.Text.RegularExpressions.Regex.Matches(asString, 
-                    @"NEStart\{(.*)\}NEEnd", 
-                    System.Text.RegularExpressions.RegexOptions.CultureInvariant | System.Text.RegularExpressions.RegexOptions.Singleline);
-                if (matches.Count > 0 && matches[0].Groups.Count > 1)
-                {
-                    var xmlString = matches[0].Groups[1].Value;
-                    return LoadFromXML(new System.IO.MemoryStream(System.Text.Encoding.ASCII.GetBytes(xmlString)));
-                }
-            }
-
-            return false;
+            ShaderPatcherLayer.NodeGraph graph = ShaderPatcherLayer.NodeGraph.Load(filename);
+            _hyperGraphModel.RemoveNodes(_hyperGraphModel.Nodes.ToList());
+            _modelConversion.AddToHyperGraph(graph, _hyperGraphModel);
         }
         #endregion
 
@@ -364,7 +278,6 @@ namespace NodeEditor
         private RibbonLib.Controls.RibbonButton _saveAsButton;
         private RibbonLib.Controls.RibbonButton _loadButton;
         private HyperGraph.IGraphModel _hyperGraphModel;
-        private CompositionContainer _exportProvider;
         #endregion
 	}
 }
