@@ -53,8 +53,6 @@ namespace RenderCore { namespace Assets
     /// These functions are normally used within the constructor of ModelRenderer
     namespace ModelConstruction
     {
-        static const std::string DefaultShader = "illum";
-
         static size_t InsertOrCombine(std::vector<std::vector<uint8>>& dest, std::vector<uint8>&& compare)
         {
             assert(compare.size());
@@ -70,7 +68,7 @@ namespace RenderCore { namespace Assets
 
         struct SubMatResources
         { 
-            SharedShaderName _shaderName; 
+            SharedTechniqueConfig _shaderName; 
             SharedParameterBox _matParams; 
             unsigned _constantBuffer; 
             unsigned _texturesIndex; 
@@ -251,8 +249,9 @@ namespace RenderCore { namespace Assets
 
                 // fill in the details for all of the material references we found
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
-                std::string shaderName = DefaultShader;
-                i->second._shaderName = sharedStateSet.InsertShaderName(shaderName);
+                auto* matData = matScaffold.GetMaterial(i->first);
+                const ::Assets::ResChar* shaderName = (matData && matData->_techniqueConfig[0]) ? matData->_techniqueConfig : "illum";
+                i->second._shaderName = sharedStateSet.InsertTechniqueConfig(shaderName);
                 i->second._texturesIndex = (unsigned)std::distance(materialResources.begin(), i);
             }
 
@@ -987,7 +986,7 @@ namespace RenderCore { namespace Assets
 
     ModelRenderer::Pimpl::DrawCallResources::DrawCallResources()
     {
-        _shaderName = SharedShaderName::Invalid;
+        _shaderName = SharedTechniqueConfig::Invalid;
         _geoParamBox = _materialParamBox = SharedParameterBox::Invalid;
         _textureSet = _constantBuffer = ~0u;
         _renderStateSet = SharedRenderStateSet::Invalid;
@@ -996,7 +995,7 @@ namespace RenderCore { namespace Assets
     }
 
     ModelRenderer::Pimpl::DrawCallResources::DrawCallResources(
-        SharedShaderName shaderName,
+        SharedTechniqueConfig shaderName,
         SharedParameterBox geoParamBox, SharedParameterBox matParamBox,
         unsigned textureSet, unsigned constantBuffer,
         SharedRenderStateSet renderStateSet, DelayStep delayStep, MaterialGuid materialBindingGuid)

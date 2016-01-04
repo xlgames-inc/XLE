@@ -68,11 +68,10 @@ namespace Assets
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
+    /// <summary>Records the status of asynchronous operation, very much like a std::promise<AssetState></summary>
     class PendingOperationMarker
     {
     public:
-        std::shared_ptr<DependencyValidation> _dependencyValidation;
-
         AssetState  GetState() const { return _state; }
         void        SetState(AssetState newState);
         AssetState  StallWhilePending() const;
@@ -82,7 +81,7 @@ namespace Assets
         void                SetInitializer(const char initializer[]);
 
         PendingOperationMarker();
-        PendingOperationMarker(AssetState state, std::shared_ptr<DependencyValidation> depVal);
+        PendingOperationMarker(AssetState state);
         ~PendingOperationMarker();
     protected:
         AssetState _state;

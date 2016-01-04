@@ -8,6 +8,7 @@
 #include "ModelRunTime.h"
 #include "Material.h"
 #include "SharedStateSet.h"
+#include "Services.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateAssets.h"
@@ -236,7 +237,7 @@ namespace RenderCore { namespace Assets
     ModelCache::ModelCache(const Config& cfg, std::shared_ptr<RenderCore::Assets::IModelFormat> format)
     {
         _pimpl = std::make_unique<Pimpl>(cfg);
-        _pimpl->_sharedStateSet = std::make_unique<SharedStateSet>();
+        _pimpl->_sharedStateSet = std::make_unique<SharedStateSet>(RenderCore::Assets::Services::GetTechniqueConfigDirs());
         _pimpl->_format = std::move(format);
     }
 

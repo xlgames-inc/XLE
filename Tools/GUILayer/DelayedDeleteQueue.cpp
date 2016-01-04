@@ -22,7 +22,7 @@ namespace GUILayer
     {
         auto count = _queue->Count;
         if (count > 0) {
-            LogUtilMethods::LogInfoF("Destroying native objects that were released deterministically from cli code: %i", count);
+            LogUtilMethods::LogInfoF("Destroying native objects that were released indeterministically from cli code: %i", count);
             for each(auto i in _queue)
                 (i->Item2)(i->Item1.ToPointer());
             _queue->Clear();

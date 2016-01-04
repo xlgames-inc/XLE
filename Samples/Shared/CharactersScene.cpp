@@ -10,6 +10,7 @@
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
+#include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/GPUProfiler.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
@@ -75,6 +76,8 @@ namespace Sample
         std::vector<NetworkCharacter>       _networkCharacters;
         std::vector<StateBin>               _stateCache;
 
+        Pimpl()
+        : _charactersSharedStateSet(RenderCore::Assets::Services::GetTechniqueConfigDirs()) {}
     };
 
 //////////////////////////////////////////////////////////////////////////////////////////////

@@ -413,7 +413,7 @@ namespace Assets
     }
 
     PendingCompileMarker::PendingCompileMarker(AssetState state, const char sourceID0[], uint64 sourceID1, std::shared_ptr<Assets::DependencyValidation> depVal)
-    : PendingOperationMarker(state, std::move(depVal)), _sourceID1(sourceID1)
+    : PendingOperationMarker(state), _sourceID1(sourceID1), _dependencyValidation(std::move(depVal))
     {
         if (sourceID0) {
             XlCopyString(_sourceID0, sourceID0);

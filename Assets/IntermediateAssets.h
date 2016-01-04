@@ -33,6 +33,8 @@ namespace Assets
     class PendingCompileMarker : public PendingOperationMarker
     {
     public:
+        std::shared_ptr<DependencyValidation> _dependencyValidation;
+
         char    _sourceID0[MaxPath];
         uint64  _sourceID1;
         std::shared_ptr<ArchiveCache> _archive;

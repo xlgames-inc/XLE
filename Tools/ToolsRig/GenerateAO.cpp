@@ -418,7 +418,7 @@ namespace ToolsRig
             // Setup the rendering objects we'll need
             // We're going to be use a ModelRenderer to do the rendering
             // for calculating the AO -- so we have to create that now.
-        SharedStateSet sharedStates;
+        SharedStateSet sharedStates(RenderCore::Assets::Services::GetTechniqueConfigDirs());
         std::unique_ptr<ModelRenderer> renderer;
 
             // we need to stall while pending...

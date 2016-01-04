@@ -330,11 +330,12 @@ namespace RenderCore { namespace Assets
             return i->second.c_str();
         return nullptr;
     }
-
+    
+    static const unsigned ExpectedVersion = 1;
     static const ::Assets::AssetChunkRequest MaterialScaffoldChunkRequests[]
     {
-        ::Assets::AssetChunkRequest { 
-            "Scaffold", ChunkType_ResolvedMat, 0, 
+        ::Assets::AssetChunkRequest {
+            "Scaffold", ChunkType_ResolvedMat, ExpectedVersion, 
             ::Assets::AssetChunkRequest::DataType::BlockSerializer 
         }
     };

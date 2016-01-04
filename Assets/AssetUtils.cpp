@@ -414,8 +414,8 @@ namespace Assets
         DEBUG_ONLY(_initializer[0] = '\0');
     }
 
-    PendingOperationMarker::PendingOperationMarker(AssetState state, std::shared_ptr<DependencyValidation> depVal) 
-    : _state(state), _dependencyValidation(std::move(depVal))
+    PendingOperationMarker::PendingOperationMarker(AssetState state) 
+    : _state(state)
     {
         DEBUG_ONLY(_initializer[0] = '\0');
     }

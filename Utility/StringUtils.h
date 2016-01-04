@@ -366,6 +366,12 @@ namespace Utility
             XlCopyNString(destination, Count, source._start, source.Length());
         }
 
+    template <int Count, typename CharType>
+        void XlCopyString(CharType (&destination)[Count], const std::basic_string<CharType>& source)
+        {
+            XlCopyNString(destination, Count, AsPointer(source.cbegin()), source.size());
+        }
+
     template <typename CharType>
         void XlCatString(CharType destination[], size_t size, const StringSection<CharType>& source)
         {
@@ -382,6 +388,12 @@ namespace Utility
         void XlCatString(CharType (&destination)[Count], const StringSection<CharType>& source)
         {
             XlCatNString(destination, Count, source.begin(), source.Length());
+        }
+
+    template <int Count, typename CharType>
+        void XlCatString(CharType (&destination)[Count], const std::basic_string<CharType>& source)
+        {
+            XlCatNString(destination, Count, AsPointer(source.cbegin()), source.size());
         }
 
     template<typename T>
