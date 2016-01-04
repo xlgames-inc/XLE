@@ -155,7 +155,7 @@
         ~Runtime
             BASIC_LIGHT_COUNT=1
             SHADOW_CASCADE_MODE=2
-            STOCHASTIC_SAMPLE_COUNT
+            STOCHASTIC_SAMPLE_COUNT=8
             STOCHASTIC_TRANS_PRIMITIVEID
             STOCHASTIC_TRANS_OPACITY
     VertexShader=game/xleres/forward/illum.vsh:main

@@ -68,7 +68,7 @@ float4 LightSample(GBufferValues sample, VSOutput geo, SystemInputs sys)
 	float4 result = float4(
 		ResolveLitColor(
 			sample, directionToEye, GetWorldPosition(geo),
-			int2(geo.position.xy), GetSampleIndex(sys)), 1.f);
+			LightScreenDest_Create(int2(geo.position.xy), GetSampleIndex(sys))), 1.f);
 
 	#if OUTPUT_FOG_COLOR == 1
 		result.rgb = lerp(geo.fogColor.rgb, result.rgb, geo.fogColor.a);
@@ -156,7 +156,9 @@ Texture2DMS<float> StochasticOcclusionDepths : register(t9);
 	RWTexture2D<uint> LitSamplesMetrics : register(u2);
 #endif
 
-#define STOCHASTIC_SAMPLE_COUNT 8
+#if !defined(STOCHASTIC_SAMPLE_COUNT)
+	#define STOCHASTIC_SAMPLE_COUNT 8
+#endif
 
 #if (STOCHASTIC_TRANS_PRIMITIVEID==1)
 	Texture2DMS<uint> StochasticPrimitiveIds : register(t8);

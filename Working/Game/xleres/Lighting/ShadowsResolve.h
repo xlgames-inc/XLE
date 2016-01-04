@@ -326,10 +326,12 @@ float ResolveDMShadows(	uint projection, float2 shadowTexCoord,
 }
 
 float ResolveShadows_Cascade(
-    uint cascadeIndex, float4 cascadeNormCoords, float4 miniProjection,
+    int cascadeIndex, float4 cascadeNormCoords, float4 miniProjection,
     int2 randomizerValue, uint msaaSampleIndex,
     ShadowResolveConfig config)
 {
+    [branch] if (cascadeIndex < 0) return 1.f;
+
     float2 texCoords;
     float comparisonDistance;
     texCoords = cascadeNormCoords.xy / cascadeNormCoords.w;

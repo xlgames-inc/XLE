@@ -113,10 +113,8 @@ float4 main(
         normalize(-viewFrustumVector), screenDest);
 
     // Also calculate the shadowing -- (though we could skip it if the lighting is too dim here)
-    float shadow = 1.f;		// area outside of all cascades is considered outside of shadow...
     CascadeAddress cascade = GetCascadeResolver().Resolve(worldPosition, texCoord, worldSpaceDepth);
-    if (cascade.cascadeIndex >= 0)
-        shadow = GetShadowResolver().Resolve(cascade, screenDest);
+    float shadow = GetShadowResolver().Resolve(cascade, screenDest);
 
 	return float4((LightingScale*shadow)*result, 1.f);
 }
