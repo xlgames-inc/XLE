@@ -15,6 +15,8 @@ using Sce.Atf.Controls.PropertyEditing;
 using LevelEditorCore;
 using Camera = Sce.Atf.Rendering.Camera;
 
+#pragma warning disable 0649 // Field '...' is never assigned to, and will always have its default value null
+
 namespace LevelEditorXLE.Materials
 {
     [Export(typeof(IManipulator))]

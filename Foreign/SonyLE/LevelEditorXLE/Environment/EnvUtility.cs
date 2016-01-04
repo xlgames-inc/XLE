@@ -15,6 +15,7 @@ using Sce.Atf.Applications;
 using Sce.Atf.Dom;
 
 using LevelEditorCore;
+using LevelEditorXLE.Extensions;
 
 namespace LevelEditorXLE.Environment
 {
@@ -32,8 +33,7 @@ namespace LevelEditorXLE.Environment
                 var sun = SunNode;
                 if (sun == null) return;
 
-                var sceneMan = GUILayer.NativeManipulatorLayer.SceneManager;
-                float sunPathAngle = GUILayer.EditorInterfaceUtils.GetSunPathAngle(sceneMan);
+                float sunPathAngle = GUILayer.EditorInterfaceUtils.GetSunPathAngle(this.GetSceneManager());
 
                 var x = (float)(Math.Sin(newAngle) * Math.Cos(sunPathAngle));
                 var y = (float)(Math.Sin(newAngle) * Math.Sin(sunPathAngle));

@@ -101,7 +101,7 @@ namespace RenderingInterop
                 s_savedRenderResources = new GUILayer.SavedRenderResources(s_engineDevice);
                 s_underlyingScene = new GUILayer.EditorSceneManager();
                 Util3D.Init();
-                GUILayer.NativeManipulatorLayer.SceneManager = s_underlyingScene;
+                XLEBridgeUtils.Utils.GlobalSceneManager = s_underlyingScene;
                 s_entityInterface = s_underlyingScene.GetEntityInterface();
                 CriticalError = "";
                 s_inist.PopulateEngineInfo(
@@ -165,7 +165,7 @@ namespace RenderingInterop
             s_loggingRedirect = null;
             XLEBridgeUtils.Utils.DetachLibrary();
             Util3D.Shutdown();
-            GUILayer.NativeManipulatorLayer.SceneManager = null;
+            XLEBridgeUtils.Utils.GlobalSceneManager = null;
             s_entityInterface = null;
             s_underlyingScene.Dispose();
             s_underlyingScene = null;

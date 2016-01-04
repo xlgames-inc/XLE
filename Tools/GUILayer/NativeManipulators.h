@@ -57,8 +57,6 @@ namespace GUILayer
     public ref class NativeManipulatorLayer
     {
     public:
-        static property EditorSceneManager^ SceneManager;
-
         bool MouseMove(IViewContext^ vc, Point scrPt);
         void Render(SimpleRenderingContext^ context);
         void OnBeginDrag();
