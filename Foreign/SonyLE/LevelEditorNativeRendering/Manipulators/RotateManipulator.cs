@@ -110,10 +110,14 @@ namespace RenderingInterop
         }
 
 
-        public override void Render(ViewControl vc)
+        public override void Render(object opaqueContext, ViewControl vc)
         {                                                                           
             Matrix4F normWorld = GetManipulatorMatrix();
             if (normWorld == null) return;
+
+            var context = opaqueContext as GUILayer.SimpleRenderingContext;
+            if (context == null) return;
+
             float RingDiameter = 2 * AxisLength;
             Color xcolor = (m_hitRegion == HitRegion.XAxis) ? Color.Gold : XAxisColor;
             Color ycolor = (m_hitRegion == HitRegion.YAxis ) ? Color.Gold : YAxisColor;
@@ -128,21 +132,21 @@ namespace RenderingInterop
             scale.Scale(axScale);
             rot.RotX(MathHelper.PiOver2);            
             Matrix4F xform = scale * rot * normWorld;
-            Util3D.DrawRing(xform, Zcolor);
+            Util3D.DrawRing(context, xform, Zcolor);
 
             rot.RotZ(-MathHelper.PiOver2);
             xform = scale * rot * normWorld;
-            Util3D.DrawRing(xform, xcolor);
+            Util3D.DrawRing(context, xform, xcolor);
             
             xform = scale * normWorld;
-            Util3D.DrawRing(xform, ycolor);
+            Util3D.DrawRing(context, xform, ycolor);
 
             Matrix4F billboard
                 = Util.CreateBillboard(normWorld.Translation, vc.Camera.WorldEye, vc.Camera.Up, vc.Camera.LookAt);
             rot.RotX(MathHelper.PiOver2);
             scale.Scale(s * LookRingScale);
             xform = scale * rot * billboard;
-            Util3D.DrawRing(xform, lColor);
+            Util3D.DrawRing(context, xform, lColor);
         }
 
         public override void OnBeginDrag()

@@ -50,7 +50,8 @@ namespace XLEBridgeUtils
             Control^ attachedControl, 
             Sce::Atf::Rendering::Camera^ camera,
             GUILayer::EditorSceneManager^ sceneManager,
-            GUILayer::ObjectSet^ selection)
+            GUILayer::ObjectSet^ selection,
+            GUILayer::SavedRenderResources^ savedRes)
         {
             _layerControl = gcnew GUILayer::LayerControl(attachedControl);
             _cameraSettings = gcnew GUILayer::VisCameraSettings();
@@ -59,7 +60,8 @@ namespace XLEBridgeUtils
             _sceneManager = sceneManager;
             _mainOverlay = sceneManager->CreateOverlaySystem(_cameraSettings, _renderSettings);
             _layerControl->AddSystem(_mainOverlay);
-            _manipulatorOverlay = gcnew ManipulatorOverlay();
+            _manipulatorOverlay = gcnew ManipulatorOverlay;
+            _manipulatorOverlay->SavedResources = savedRes;
             _layerControl->AddSystem(_manipulatorOverlay);
             Camera = camera;
             ViewportSize = attachedControl->Size;
@@ -192,7 +194,7 @@ namespace XLEBridgeUtils
     {
         s_currentParsingContext = &parserContext;
             
-        auto context = gcnew GUILayer::SimpleRenderingContext(device, nullptr, ManipulatorOverlay::s_currentParsingContext);
+        auto context = gcnew GUILayer::SimpleRenderingContext(device, SavedResources, &parserContext);
         
         try
         {

@@ -142,8 +142,11 @@ namespace RenderingInterop
         }
 
 
-        public void Render(ViewControl vc, Matrix4F normWorld)
+        public void Render(object opaqueContext, ViewControl vc, Matrix4F normWorld)
         {
+            var context = opaqueContext as GUILayer.SimpleRenderingContext;
+            if (context == null) return;
+
             float s = Util.CalcAxisScale(vc.Camera, normWorld.Translation, Manipulator.AxisLength, vc.Height);
             Color xcolor = (m_hitRegion == HitRegion.XAxis || m_hitRegion == HitRegion.XYSquare || m_hitRegion == HitRegion.XZSquare) ? Color.Gold : Manipulator.XAxisColor;
             Color ycolor = (m_hitRegion == HitRegion.YAxis || m_hitRegion == HitRegion.XYSquare || m_hitRegion == HitRegion.YZSquare) ? Color.Gold : Manipulator.YAxisColor;
@@ -169,34 +172,34 @@ namespace RenderingInterop
             // Draw X axis
             axisrot.RotZ(-MathHelper.PiOver2);
             Matrix4F scaleRot  = axisScale * axisrot;
-            Matrix4F axisXform = scaleRot * normWorld;            
-            Util3D.DrawCylinder(axisXform, xcolor);
+            Matrix4F axisXform = scaleRot * normWorld;
+            Util3D.DrawCylinder(context, axisXform, xcolor);
 
             // draw y
             axisXform = axisScale * normWorld;
-            Util3D.DrawCylinder(axisXform, ycolor);
+            Util3D.DrawCylinder(context, axisXform, ycolor);
 
             // draw z
             axisrot.RotX(MathHelper.PiOver2);            
             scaleRot = axisScale * axisrot;
             axisXform = scaleRot * normWorld;
-            Util3D.DrawCylinder(axisXform, Zcolor);
+            Util3D.DrawCylinder(context, axisXform, Zcolor);
 
             // draw center cube.
             Matrix4F cubeScale = new Matrix4F();
             cubeScale.Scale(CenterCube * s);
             var cubexform = cubeScale * normWorld;
-            Util3D.DrawCube(cubexform, Color.White);
+            Util3D.DrawCube(context, cubexform, Color.White);
             
 
-            Matrix4F arrowHead = ComputeXhead(normWorld, s);            
-            Util3D.DrawCone(arrowHead, xcolor);
+            Matrix4F arrowHead = ComputeXhead(normWorld, s);
+            Util3D.DrawCone(context, arrowHead, xcolor);
 
             arrowHead = ComputeYhead(normWorld, s);
-            Util3D.DrawCone(arrowHead, ycolor);
+            Util3D.DrawCone(context, arrowHead, ycolor);
 
             arrowHead = ComputeZhead(normWorld, s);
-            Util3D.DrawCone(arrowHead, Zcolor);
+            Util3D.DrawCone(context, arrowHead, Zcolor);
             
             // draw xy rect.
             Matrix4F scale = new Matrix4F();
@@ -208,33 +211,33 @@ namespace RenderingInterop
             Matrix4F squareXform = scale * rot * trans * normWorld;
 
 
-            Util3D.DrawCylinder(squareXform, XYy);
+            Util3D.DrawCylinder(context, squareXform, XYy);
 
             trans.Translation = new Vec3F(s * SquareLength, 0, 0);
             squareXform = scale * trans * normWorld;
-            Util3D.DrawCylinder(squareXform, XYx);
+            Util3D.DrawCylinder(context, squareXform, XYx);
 
 
             // draw xz rect.
             trans.Translation = new Vec3F(0, 0, s * SquareLength);
             rot.RotZ(-MathHelper.PiOver2);
             squareXform = scale * rot * trans * normWorld;
-            Util3D.DrawCylinder(squareXform, XZz);
+            Util3D.DrawCylinder(context, squareXform, XZz);
 
             trans.Translation = new Vec3F(s * SquareLength, 0, 0);
             rot.RotX(MathHelper.PiOver2);
             squareXform = scale * rot * trans * normWorld;
-            Util3D.DrawCylinder(squareXform, XZx);
+            Util3D.DrawCylinder(context, squareXform, XZx);
 
             // draw yz
             trans.Translation = new Vec3F(0, s * SquareLength, 0);
             rot.RotX(MathHelper.PiOver2);
             squareXform = scale * rot * trans * normWorld;
-            Util3D.DrawCylinder(squareXform, YZy);
+            Util3D.DrawCylinder(context, squareXform, YZy);
 
             trans.Translation = new Vec3F(0, 0, s * SquareLength);
             squareXform = scale * trans * normWorld;
-            Util3D.DrawCylinder(squareXform, YZz);
+            Util3D.DrawCylinder(context, squareXform, YZz);
         }
 
         

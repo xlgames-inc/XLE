@@ -220,7 +220,7 @@ namespace GUILayer
             _devContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
         }
 
-        RenderCore::Techniques::ParsingContext& GetParsingContext() { return *_parsingContext; }
+        SceneEngine::LightingParserContext& GetParsingContext() { return *_parsingContext; }
         RenderCore::Metal::DeviceContext& GetDevContext() { return *_devContext.get(); }
         RenderCore::IThreadContext& GetThreadContext() { return *_threadContext; }
 
@@ -232,7 +232,7 @@ namespace GUILayer
         !SimpleRenderingContext();
     protected:
         SavedRenderResources^ _savedRes;
-        RenderCore::Techniques::ParsingContext* _parsingContext;
+        SceneEngine::LightingParserContext* _parsingContext;
         clix::shared_ptr<RenderCore::Metal::DeviceContext> _devContext;
         RenderCore::IThreadContext* _threadContext;     // note -- keeping an unprotected pointer here (SimpleRenderingContext is typically short lived). Create must be careful to manage lifetimes
     };
@@ -310,7 +310,7 @@ namespace GUILayer
         RenderCore::IThreadContext* threadContext,
         SavedRenderResources^ savedRes, 
         void* parsingContext)
-    : _savedRes(savedRes), _parsingContext((RenderCore::Techniques::ParsingContext*)parsingContext)
+    : _savedRes(savedRes), _parsingContext((SceneEngine::LightingParserContext*)parsingContext)
     , _threadContext(threadContext)
     {
         _devContext = RenderCore::Metal::DeviceContext::Get(*threadContext);

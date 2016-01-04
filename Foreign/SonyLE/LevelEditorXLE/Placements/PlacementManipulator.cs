@@ -20,11 +20,17 @@ namespace LevelEditorXLE.Placements
     public class PlacementManipulator : LevelEditorCore.IManipulator, IInitializable, XLEBridgeUtils.IShutdownWithEngine, IDisposable
     {
         public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc as XLEBridgeUtils.IViewContext, scrPt); }
-        public void Render(LevelEditorCore.ViewControl vc)                     { _nativeManip.Render(); }
         public void OnBeginDrag()                                              { _nativeManip.OnBeginDrag(); }
         public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc as XLEBridgeUtils.IViewContext, scrPt); }
         public void OnEndDrag(LevelEditorCore.ViewControl vc, Point scrPt)     { _nativeManip.OnEndDrag(vc as XLEBridgeUtils.IViewContext, scrPt); }
         public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc as XLEBridgeUtils.IViewContext, scrPt, delta); }
+
+        public void Render(object opaqueContext, LevelEditorCore.ViewControl vc) 
+        {
+            var context = opaqueContext as GUILayer.SimpleRenderingContext;
+            if (context == null) return;
+            _nativeManip.Render(context); 
+        }
 
         public LevelEditorCore.ManipulatorInfo ManipulatorInfo
         {

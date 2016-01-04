@@ -305,15 +305,15 @@ namespace LevelEditorXLE.Placements
         public void OnEndDrag(ViewControl vc, Point scrPt) {}
         public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { }
 
-        public void Render(ViewControl vc)
+        public void Render(object opaqueContext, ViewControl vc)
         {
             if (m_hasHoverPt)
             {
-                using (var context = XLEBridgeUtils.DesignControlAdapter.CreateSimpleRenderingContext(null))
-                {
-                    GUILayer.RenderingUtil.RenderCylinderHighlight(
-                        context, XLEBridgeUtils.Utils.AsVector3(m_hoverPt), ManipulatorContext.Radius);
-                }
+                var context = opaqueContext as GUILayer.SimpleRenderingContext;
+                if (context == null) return;
+
+                GUILayer.RenderingUtil.RenderCylinderHighlight(
+                    context, XLEBridgeUtils.Utils.AsVector3(m_hoverPt), ManipulatorContext.Radius);
             }
         }
 

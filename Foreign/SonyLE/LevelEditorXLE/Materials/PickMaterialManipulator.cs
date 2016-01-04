@@ -84,7 +84,7 @@ namespace LevelEditorXLE.Materials
 
         public void OnMouseWheel(ViewControl vc, Point scrPt, int delta) { }
 
-        public void Render(ViewControl vc)
+        public void Render(object opaqueContext, ViewControl vc)
         {
             if (m_highlightMaterialGUID == ~0ul) return;
 
@@ -92,15 +92,15 @@ namespace LevelEditorXLE.Materials
             var nativeVC = vc as XLEBridgeUtils.IViewContext;
             if (nativeVC == null) return;
 
+            var context = opaqueContext as GUILayer.SimpleRenderingContext;
+            if (context == null) return;
+
             var sceneManager = nativeVC.SceneManager;
-            using (var context = XLEBridgeUtils.DesignControlAdapter.CreateSimpleRenderingContext(null))
+            using (var placements = sceneManager.GetPlacementsEditor())
             {
-                using (var placements = sceneManager.GetPlacementsEditor())
-                {
-                    GUILayer.RenderingUtil.RenderHighlight(
-                        context, placements,
-                        null, m_highlightMaterialGUID);
-                }
+                GUILayer.RenderingUtil.RenderHighlight(
+                    context, placements,
+                    null, m_highlightMaterialGUID);
             }
         }
 

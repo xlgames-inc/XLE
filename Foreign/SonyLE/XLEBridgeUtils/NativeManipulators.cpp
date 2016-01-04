@@ -27,20 +27,11 @@ namespace XLEBridgeUtils
 		return SendInputEvent(vc, evnt);
     }
 
-    void NativeManipulatorLayer::Render()
+    void NativeManipulatorLayer::Render(GUILayer::SimpleRenderingContext^ context)
     {
-			//	We can't get any context information from here!
-			//	EditorSceneManager must be a singleton, otherwise
-			//	there's no way to get it. Ideally the ViewControl
-			//	could tell us something, but there's no way to attach
-			//	more context information on the render call
-        if (!ManipulatorOverlay::s_currentParsingContext) return;
         auto underlying = _manipContext->GetNativeManipulator();
         if (!underlying) return;
-
-        underlying->Render(
-            *GUILayer::EngineDevice::GetInstance()->GetNativeImmediateContext(),
-            *ManipulatorOverlay::s_currentParsingContext);
+        underlying->Render(context->GetThreadContext(), context->GetParsingContext());
     }
 
     void NativeManipulatorLayer::OnBeginDrag() { _pendingBeginDrag = true; }

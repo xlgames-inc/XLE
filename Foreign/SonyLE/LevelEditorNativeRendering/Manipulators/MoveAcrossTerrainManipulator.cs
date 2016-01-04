@@ -77,10 +77,13 @@ namespace RenderingInterop
             return false;
         }
 
-        public override void Render(ViewControl vc)
+        public override void Render(object opaqueContext, ViewControl vc)
         {                                                
             Matrix4F normWorld = GetManipulatorMatrix();
             if (normWorld == null) return;
+
+            var context = opaqueContext as GUILayer.SimpleRenderingContext;
+            if (context == null) return;
 
             Vec3F pos = normWorld.Translation;
             float s = Util.CalcAxisScale(vc.Camera, pos, AxisLength, vc.Height);
@@ -93,24 +96,28 @@ namespace RenderingInterop
             Matrix4F scale = new Matrix4F(); 
             scale.Scale(centerCubeScale);
             Matrix4F centerCubeXform = scale * normWorld;
-            Util3D.DrawCube(centerCubeXform, centerCubeColor);
+            Util3D.DrawCube(context, centerCubeXform, centerCubeColor);
 
             Matrix4F arrowScale = new Matrix4F();
             arrowScale.Scale(0.75f);
 
             Util3D.DrawArrowCap(
+                context,
                 arrowScale * Matrix4F.CreateTranslation(new Vec3F(1.0f, 0.0f, -0.5f)) * centerCubeXform,
                 highlight ? Color.Gold : Color.Red);
 
             Util3D.DrawArrowCap(
+                context,
                 arrowScale * Matrix4F.RotAxisRH(Vec3F.ZAxis, Math.PI) * Matrix4F.CreateTranslation(new Vec3F(-1.0f, 0.0f, -0.5f)) * centerCubeXform,
                 highlight ? Color.Gold : Color.Red);
 
             Util3D.DrawArrowCap(
+                context,
                 arrowScale * Matrix4F.RotAxisRH(Vec3F.ZAxis, .5 * Math.PI) * Matrix4F.CreateTranslation(new Vec3F(0.0f, 1.0f, -0.5f)) * centerCubeXform,
                 highlight ? Color.Gold : Color.Green);
 
             Util3D.DrawArrowCap(
+                context,
                 arrowScale * Matrix4F.RotAxisRH(Vec3F.ZAxis, 1.5f * Math.PI) * Matrix4F.CreateTranslation(new Vec3F(0.0f, -1.0f, -0.5f)) * centerCubeXform,
                 highlight ? Color.Gold : Color.Green);
         }

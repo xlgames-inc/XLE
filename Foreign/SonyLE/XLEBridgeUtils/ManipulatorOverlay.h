@@ -29,6 +29,8 @@ namespace XLEBridgeUtils
 
         event RenderCallback^ OnRender;
 
+        property GUILayer::SavedRenderResources^ SavedResources;
+
         static SceneEngine::LightingParserContext* s_currentParsingContext = nullptr;
     };
 }

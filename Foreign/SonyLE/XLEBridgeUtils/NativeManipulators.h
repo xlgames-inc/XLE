@@ -53,7 +53,7 @@ namespace XLEBridgeUtils
         static property GUILayer::EditorSceneManager^ SceneManager;
 
         bool MouseMove(IViewContext^ vc, Point scrPt);
-        void Render();
+        void Render(GUILayer::SimpleRenderingContext^ context);
         void OnBeginDrag();
         void OnDragging(IViewContext^ vc, Point scrPt);
         void OnEndDrag(IViewContext^ vc, Point scrPt);

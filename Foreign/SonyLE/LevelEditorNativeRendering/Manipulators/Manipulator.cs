@@ -34,7 +34,7 @@ namespace RenderingInterop
             HitMatrix.Set(normWorld);            
             return true;
         }
-        public abstract void Render(ViewControl vc);
+        public abstract void Render(object context, ViewControl vc);
         public abstract void OnBeginDrag();
         public abstract void OnDragging(ViewControl vc, Point scrPt);
         public abstract void OnEndDrag(ViewControl vc, Point scrPt);

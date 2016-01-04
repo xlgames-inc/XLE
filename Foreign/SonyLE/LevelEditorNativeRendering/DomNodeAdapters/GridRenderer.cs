@@ -24,9 +24,9 @@ namespace RenderingInterop
             DomNode.AttributeChanged += DomNode_AttributeChanged;            
         }
 
-        public void Render(Camera cam)
+        public void Render(GUILayer.SimpleRenderingContext context, Camera cam)
         {
-            GameEngine.SetRendererFlag(BasicRendererFlags.WireFrame);
+            GameEngine.SetRendererFlag(context, BasicRendererFlags.WireFrame);
             IGrid grid = this.As<IGrid>();
 
             if (grid.Visible == false)
@@ -88,10 +88,10 @@ namespace RenderingInterop
                 gridXform = Matrix4F.Multiply(scale, trans);
             }
 
-            GameEngine.DrawPrimitive(PrimitiveType.LineList, m_gridVBId, 0, m_gridVertexCount, Color.LightGray,
+            GameEngine.DrawPrimitive(context, PrimitiveType.LineList, m_gridVBId, 0, m_gridVertexCount, Color.LightGray,
                                      Matrix4F.Multiply(gridXform, cam.AxisSystem));
 
-            GameEngine.DrawPrimitive(PrimitiveType.LineList, m_basisAxesVBId, 0, m_basisAxesVertexCount, Color.White,
+            GameEngine.DrawPrimitive(context, PrimitiveType.LineList, m_basisAxesVBId, 0, m_basisAxesVertexCount, Color.White,
                                      gridXform);
         }
 

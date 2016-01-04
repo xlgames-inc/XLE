@@ -115,13 +115,15 @@ namespace RenderingInterop
             return false;
         }
 
-        public override void Render(ViewControl vc)
+        public override void Render(object opaqueContext, ViewControl vc)
         {
                                                
             Matrix4F normWorld = GetManipulatorMatrix();
             if (normWorld == null) return;
 
-            
+            var context = opaqueContext as GUILayer.SimpleRenderingContext;
+            if (context == null) return;
+
             Vec3F pos = normWorld.Translation;
             float s = Util.CalcAxisScale(vc.Camera, pos, AxisLength, vc.Height);
             
@@ -140,22 +142,22 @@ namespace RenderingInterop
             Matrix4F rot = new Matrix4F();
             rot.RotZ(-MathHelper.PiOver2);
             Matrix4F xform = scale * rot * normWorld;           
-            Util3D.DrawCylinder(xform, xcolor);
+            Util3D.DrawCylinder(context, xform, xcolor);
 
             axscale.Y = Math.Abs(s * m_scale.Y);
             scale.Scale(axscale);
-            xform = scale * normWorld;           
-            Util3D.DrawCylinder(xform, ycolor);
+            xform = scale * normWorld;
+            Util3D.DrawCylinder(context, xform, ycolor);
             rot.RotX(MathHelper.PiOver2);
             axscale.Y = Math.Abs(s * m_scale.Z);
             scale.Scale(axscale);
             xform = scale * rot * normWorld;
-            Util3D.DrawCylinder(xform, zcolor);
+            Util3D.DrawCylinder(context, xform, zcolor);
             
             Vec3F centerCubeScale = sv * CenterCubeSize;
             scale.Scale(centerCubeScale);            
             Matrix4F centerCubeXform = scale * normWorld;
-            Util3D.DrawCube(centerCubeXform, centerCubeColor);
+            Util3D.DrawCube(context, centerCubeXform, centerCubeColor);
 
 
             Vec3F handleScale = new Vec3F(Math.Abs(s * m_scale.X), Math.Abs(s * m_scale.Y), Math.Abs(s * m_scale.Z));
@@ -166,15 +168,15 @@ namespace RenderingInterop
             trans.Translation = new Vec3F(handleScale.X - handleWidth, 0, 0);
             xform = scale * trans * normWorld;
 
-            Util3D.DrawCube(xform, xcolor);
+            Util3D.DrawCube(context, xform, xcolor);
 
             trans.Translation = new Vec3F(0, handleScale.Y - handleWidth, 0);
             xform = scale * trans * normWorld;
-            Util3D.DrawCube(xform, ycolor);
+            Util3D.DrawCube(context, xform, ycolor);
 
             trans.Translation = new Vec3F(0, 0, handleScale.Z - handleWidth);
             xform = scale * trans * normWorld;
-            Util3D.DrawCube(xform, zcolor);
+            Util3D.DrawCube(context, xform, zcolor);
         }
 
         public override void OnBeginDrag()

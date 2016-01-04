@@ -26,10 +26,10 @@ namespace RenderingInterop
         {
             NativeDesignControl[] views = new NativeDesignControl[]
             {
-                new NativeDesignControl(this, GameEngine.GetEditorSceneManager(), GameEngine.GlobalSelection) { ViewType = ViewTypes.Perspective },
-                new NativeDesignControl(this, GameEngine.GetEditorSceneManager(), GameEngine.GlobalSelection) { ViewType = ViewTypes.Right },
-                new NativeDesignControl(this, GameEngine.GetEditorSceneManager(), GameEngine.GlobalSelection) { ViewType = ViewTypes.Top },
-                new NativeDesignControl(this, GameEngine.GetEditorSceneManager(), GameEngine.GlobalSelection) { ViewType = ViewTypes.Front }
+                new NativeDesignControl(this) { ViewType = ViewTypes.Perspective },
+                new NativeDesignControl(this) { ViewType = ViewTypes.Right },
+                new NativeDesignControl(this) { ViewType = ViewTypes.Top },
+                new NativeDesignControl(this) { ViewType = ViewTypes.Front }
             };
             foreach (var v in views)
             {

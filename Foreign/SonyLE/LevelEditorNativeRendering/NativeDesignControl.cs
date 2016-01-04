@@ -22,7 +22,7 @@ namespace RenderingInterop
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class NativeDesignControl : DesignViewControl, IViewContext
     {
-        public NativeDesignControl(DesignView designView, GUILayer.EditorSceneManager sceneManager, GUILayer.ObjectSet selection) :
+        public NativeDesignControl(DesignView designView) :
             base(designView)
         {
             if (s_marqueePen == null)
@@ -38,9 +38,13 @@ namespace RenderingInterop
             BackColor = SystemColors.ControlDark;
             m_renderState.OnChanged += (sender, e) => Invalidate();
 
-            Adapter = new DesignControlAdapter(this, Camera, sceneManager, selection);
+
+            Adapter = new DesignControlAdapter(
+                this, Camera, 
+                GameEngine.GetEditorSceneManager(), 
+                GameEngine.GlobalSelection, GameEngine.GetSavedResources());
             Adapter.AddRenderCallback(
-                (GUILayer.SimpleRenderingContext context) => RenderExtras(designView));
+                (GUILayer.SimpleRenderingContext context) => RenderExtras(context, designView));
         }
 
         public ulong SurfaceId
@@ -321,8 +325,8 @@ namespace RenderingInterop
             }
 
         }
-      
-        private void RenderExtras(DesignView designView)
+
+        private void RenderExtras(GUILayer.SimpleRenderingContext context, DesignView designView)
         {
             bool renderSelected = RenderState.DisplayBound == DisplayFlagModes.Selection
                 || RenderState.DisplayCaption == DisplayFlagModes.Selection
@@ -332,7 +336,7 @@ namespace RenderingInterop
             {
                 var selection = DesignView.Context.As<ISelectionContext>().Selection;
                 IEnumerable<DomNode> rootDomNodes = DomNode.GetRoots(selection.AsIEnumerable<DomNode>());
-                RenderProperties(rootDomNodes,
+                RenderProperties(context, rootDomNodes,
                     RenderState.DisplayCaption == DisplayFlagModes.Selection,
                     RenderState.DisplayBound == DisplayFlagModes.Selection,
                     RenderState.DisplayPivot == DisplayFlagModes.Selection);
@@ -342,10 +346,10 @@ namespace RenderingInterop
             {
                 var game = designView.Context.As<IGame>();
                 GridRenderer gridRender = game.Grid.Cast<GridRenderer>();
-                gridRender.Render(Camera);
+                gridRender.Render(context, Camera);
             }
 
-            RenderProperties(Items,
+            RenderProperties(context, Items,
                 RenderState.DisplayCaption == DisplayFlagModes.Always,
                 RenderState.DisplayBound == DisplayFlagModes.Always,
                 RenderState.DisplayPivot == DisplayFlagModes.Always);
@@ -353,11 +357,11 @@ namespace RenderingInterop
             GameEngine.DrawText2D(m_pendingCaption, Util3D.CaptionFont, 1, 1, Color.White);
         }
         
-        private void RenderProperties(IEnumerable<object> objects, bool renderCaption, bool renderBound, bool renderPivot)
+        private void RenderProperties(GUILayer.SimpleRenderingContext context, IEnumerable<object> objects, bool renderCaption, bool renderBound, bool renderPivot)
         {                      
             if (renderCaption || renderBound)
             {
-                Util3D.RenderFlag = BasicRendererFlags.WireFrame;
+                Util3D.SetRenderFlag(context, BasicRendererFlags.WireFrame);
                 Matrix4F vp = Camera.ViewMatrix * Camera.ProjectionMatrix;
                 foreach (object obj in objects)
                 {
@@ -369,7 +373,7 @@ namespace RenderingInterop
 
                     if (renderBound)
                     {
-                        Util3D.DrawAABB(bnode.BoundingBox);
+                        Util3D.DrawAABB(context, bnode.BoundingBox);
                     }
                     if (renderCaption && nnode != null)
                     {
@@ -383,7 +387,7 @@ namespace RenderingInterop
 
             if (renderPivot)
             {
-                Util3D.RenderFlag = BasicRendererFlags.WireFrame | BasicRendererFlags.DisableDepthTest;
+                Util3D.SetRenderFlag(context, BasicRendererFlags.WireFrame | BasicRendererFlags.DisableDepthTest);
 
                 // create few temp matrics to
                 Matrix4F toWorld = new Matrix4F();
@@ -411,7 +415,7 @@ namespace RenderingInterop
                     sc.Scale(s);
                     Util.CreateBillboard(bl, pos, Camera.WorldEye, Camera.Up, Camera.LookAt);
                     recXform = sc * bl;
-                    Util3D.DrawPivot(recXform, Color.Yellow);
+                    Util3D.DrawPivot(context, recXform, Color.Yellow);
                 }
             }
         }
