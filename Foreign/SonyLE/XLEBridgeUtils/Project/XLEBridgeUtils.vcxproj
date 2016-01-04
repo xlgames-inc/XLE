@@ -84,7 +84,6 @@
     <ClCompile Include="..\XLELayerUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\ManipulatorOverlay.h" />
     <ClInclude Include="..\NativeManipulators.h" />
     <ClInclude Include="..\PropertyDescriptorUtils.h" />
     <ClInclude Include="..\XLELayerUtils.h" />

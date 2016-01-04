@@ -8,7 +8,6 @@
     <ClCompile Include="..\DesignControlAdapter.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\ManipulatorOverlay.h" />
     <ClInclude Include="..\XLELayerUtils.h" />
     <ClInclude Include="..\NativeManipulators.h" />
     <ClInclude Include="..\PropertyDescriptorUtils.h" />

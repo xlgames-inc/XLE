@@ -6,7 +6,6 @@
 
 #pragma warning(disable:4564)   // method 'Copy' of class 'Sce::Atf::Dom::DomNode' defines unsupported default parameter 'originalToCopyMap'
 
-#include "ManipulatorOverlay.h"
 #include "XLELayerUtils.h"
 #include "NativeManipulators.h"
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
@@ -33,19 +32,46 @@ namespace XLEBridgeUtils
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    public delegate void RenderCallback(GUILayer::SimpleRenderingContext^ context);
+
+    public interface class IManipulatorExtra
+    {
+    public:
+        virtual bool ClearBeforeDraw() = 0;
+    };
+
+    private ref class DesignControlAdapterOverlay : public GUILayer::IOverlaySystem
+    {
+    public:
+        virtual void RenderToScene(
+            RenderCore::IThreadContext* device, 
+            SceneEngine::LightingParserContext& parserContext) override
+        {
+            auto context = gcnew GUILayer::SimpleRenderingContext(device, SavedResources, &parserContext);
+            try
+            {
+                OnRender(context);
+            }
+            finally
+            {
+                delete context;
+            }
+        }
+
+        virtual void RenderWidgets(
+            RenderCore::IThreadContext* device, 
+            const RenderCore::Techniques::ProjectionDesc& projectionDesc) override {}
+        virtual void SetActivationState(bool) override {}
+
+        event RenderCallback^ OnRender;
+        property GUILayer::SavedRenderResources^ SavedResources;
+    };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     public ref class DesignControlAdapter : public IViewContext
     {
     public:
-        static GUILayer::SimpleRenderingContext^ CreateSimpleRenderingContext(
-            GUILayer::SavedRenderResources^ savedRes)
-        {
-            if (!ManipulatorOverlay::s_currentParsingContext) return nullptr;
-
-            return gcnew GUILayer::SimpleRenderingContext(
-                GUILayer::EngineDevice::GetInstance()->GetNativeImmediateContext(),
-                savedRes, ManipulatorOverlay::s_currentParsingContext);
-        }
-
         DesignControlAdapter(
             Control^ attachedControl, 
             Sce::Atf::Rendering::Camera^ camera,
@@ -60,10 +86,10 @@ namespace XLEBridgeUtils
             _sceneManager = sceneManager;
             _mainOverlay = sceneManager->CreateOverlaySystem(_cameraSettings, _renderSettings);
             _layerControl->AddSystem(_mainOverlay);
-            _manipulatorOverlay = gcnew ManipulatorOverlay;
+            _manipulatorOverlay = gcnew DesignControlAdapterOverlay;
             _manipulatorOverlay->SavedResources = savedRes;
             _layerControl->AddSystem(_manipulatorOverlay);
-            Camera = camera;
+            SceCamera = camera;
             ViewportSize = attachedControl->Size;
             attachedControl->Resize += gcnew System::EventHandler(this, &DesignControlAdapter::OnResize);
         }
@@ -81,7 +107,7 @@ namespace XLEBridgeUtils
         {
                 //  "_cameraSettings" should match the camera set in 
                 //  the view control
-            auto camera = Camera;
+            auto camera = _camera;
             auto& dstCam = *_cameraSettings->GetUnderlyingRaw();
             dstCam._position = AsFloat3(camera->WorldEye);
             dstCam._focus = AsFloat3(camera->WorldLookAtPoint);
@@ -132,8 +158,13 @@ namespace XLEBridgeUtils
             virtual GUILayer::EditorSceneRenderSettings^ get() { return _renderSettings; }
         }
 
-        property Sce::Atf::Rendering::Camera^ Camera {
-            virtual Sce::Atf::Rendering::Camera^ get() { return _camera; }
+        property GUILayer::CameraDescWrapper^ Camera {
+            virtual GUILayer::CameraDescWrapper^ get() { return Utils::AsCameraDesc(_camera); }
+        }
+
+        property Sce::Atf::Rendering::Camera^ SceCamera
+        {
+            Sce::Atf::Rendering::Camera^ get() { return _camera; }
             void set(Sce::Atf::Rendering::Camera^ camera)
             {
                 _camera = camera;
@@ -165,7 +196,7 @@ namespace XLEBridgeUtils
                 auto sz = ctrl->ClientSize;
                 ViewportSize = sz;
                 if (sz.Width > 0 && sz.Height > 0)
-                    Camera->Aspect = (float)sz.Width / (float)sz.Height;
+                    _camera->Aspect = (float)sz.Width / (float)sz.Height;
             }
         }
 
@@ -176,66 +207,9 @@ namespace XLEBridgeUtils
         GUILayer::IOverlaySystem^ _mainOverlay;
 
     private:
-        ManipulatorOverlay^ _manipulatorOverlay;
+        DesignControlAdapterOverlay^ _manipulatorOverlay;
         Sce::Atf::Rendering::Camera^ _camera;
     };
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    public interface class IManipulatorExtra
-    {
-    public:
-        virtual bool ClearBeforeDraw() = 0;
-    };
-
-    void ManipulatorOverlay::RenderToScene(
-        RenderCore::IThreadContext* device, 
-        SceneEngine::LightingParserContext& parserContext)
-    {
-        s_currentParsingContext = &parserContext;
-            
-        auto context = gcnew GUILayer::SimpleRenderingContext(device, SavedResources, &parserContext);
-        
-        try
-        {
-            OnRender(context);
-
-            // if (_designView->Manipulator != nullptr) {
-            // 
-            //     bool clearBeforeDraw = true;
-            //     IManipulatorExtra^ extra = dynamic_cast<IManipulatorExtra^>(_designView->Manipulator);
-            //     if (extra)
-            //         clearBeforeDraw = extra->ClearBeforeDraw();
-            // 
-            //     if (clearBeforeDraw) {
-            //             // disable depth write and depth read
-            //         
-            //         GUILayer::RenderingUtil::ClearDepthBuffer(context);
-            //         context->InitState(true, true);
-            //         delete context;
-            //     }
-            // 
-            //     _designView->Manipulator->Render(_viewControl);
-            // }
-        }
-        catch (...)
-        {
-            s_currentParsingContext = nullptr;
-            throw;
-        }
-        finally
-        {
-            delete context;
-        }
-
-        s_currentParsingContext = nullptr;
-    }
-
-    void ManipulatorOverlay::RenderWidgets(
-        RenderCore::IThreadContext* device, 
-        const RenderCore::Techniques::ProjectionDesc& projectionDesc) {}
-    void ManipulatorOverlay::SetActivationState(bool) {}
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     //      P I C K I N G                                                                   //
@@ -277,7 +251,7 @@ namespace XLEBridgeUtils
             GUILayer::EditorSceneManager^ sceneManager,
             GUILayer::TechniqueContextWrapper^ techniqueContext,
             Matrix4F^ pickingFrustum, 
-            Sce::Atf::Rendering::Camera^ camera,
+            GUILayer::CameraDescWrapper^ camera,
             System::Drawing::Size viewportSize,
             Flags flags)
         {
@@ -330,13 +304,13 @@ namespace XLEBridgeUtils
             GUILayer::EngineDevice^ device,
             GUILayer::EditorSceneManager^ sceneManager,
             GUILayer::TechniqueContextWrapper^ techniqueContext,
-            Ray3F ray, Sce::Atf::Rendering::Camera^ camera, 
+            Ray3F ray, GUILayer::CameraDescWrapper^ camera, 
             System::Drawing::Size viewportSize, Flags flags)
         {
             System::Diagnostics::Debug::Assert(unsigned(flags & Flags::IgnoreSelection) == 0);
 
             ICollection<GUILayer::HitRecord>^ results = nullptr; 
-            auto endPt = ray.Origin + camera->FarZ * ray.Direction;
+            auto endPt = ray.Origin + camera->_native->_farClip * ray.Direction;
 
             {
                 msclr::auto_handle<GUILayer::IntersectionTestContextWrapper> context(

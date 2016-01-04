@@ -38,7 +38,7 @@ namespace XLEBridgeUtils
     public interface class IViewContext
     {
         property Drawing::Size ViewportSize { Drawing::Size get(); }
-        property Sce::Atf::Rendering::Camera^ Camera { Sce::Atf::Rendering::Camera^ get(); }
+        property GUILayer::CameraDescWrapper^ Camera { GUILayer::CameraDescWrapper^ get(); }
         property GUILayer::EditorSceneManager^ SceneManager { GUILayer::EditorSceneManager^ get(); }
         property GUILayer::TechniqueContextWrapper^ TechniqueContext { GUILayer::TechniqueContextWrapper^ get(); }
         property GUILayer::EngineDevice^ EngineDevice { GUILayer::EngineDevice^ get(); }

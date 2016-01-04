@@ -41,16 +41,16 @@ namespace XLEBridgeUtils
         Utils::CreateIntersectionTestContext(
             GUILayer::EngineDevice^ engineDevice,
             GUILayer::TechniqueContextWrapper^ techniqueContext,
-            Sce::Atf::Rendering::Camera^ camera,
+            GUILayer::CameraDescWrapper^ camera,
             unsigned viewportWidth, unsigned viewportHeight)
     {
         return GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
             engineDevice, techniqueContext, 
-            AsCameraDesc(camera), viewportWidth, viewportHeight);
+            camera, viewportWidth, viewportHeight);
     }
 
     Sce::Atf::VectorMath::Matrix4F^ Utils::MakeFrustumMatrix(
-        Sce::Atf::Rendering::Camera^ camera,
+        GUILayer::CameraDescWrapper^ camera,
         System::Drawing::RectangleF rectangle,
         System::Drawing::Size viewportSize)
     {
@@ -74,7 +74,7 @@ namespace XLEBridgeUtils
 
         std::unique_ptr<Float4x4> worldToProjPtr;
         worldToProjPtr.reset((Float4x4*)GUILayer::EditorInterfaceUtils::CalculateWorldToProjection(
-            AsCameraDesc(camera), viewportSize.Width / float(viewportSize.Height)));
+            camera, viewportSize.Width / float(viewportSize.Height)));
             
         auto worldToProj = Combine(*worldToProjPtr, rectangleAdj);
 

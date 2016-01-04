@@ -7,7 +7,6 @@
 #pragma warning(disable:4564)
 
 #include "NativeManipulators.h"
-#include "ManipulatorOverlay.h"
 #include "XLELayerUtils.h"
 #include "../../../Tools/ToolsRig/IManipulator.h"
 #include "../../../Tools/GUILayer/NativeEngineDevice.h"
@@ -94,8 +93,7 @@ namespace XLEBridgeUtils
 
 		auto hitTestContext = GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
 			vc->EngineDevice, nullptr,
-			Utils::AsCameraDesc(vc->Camera),
-            vc->ViewportSize.Width, vc->ViewportSize.Height);
+			vc->Camera, vc->ViewportSize.Width, vc->ViewportSize.Height);
 		auto hitTestScene = vc->SceneManager->GetIntersectionScene();
 
 		underlying->OnInputEvent(evnt, hitTestContext->GetNative(), hitTestScene->GetNative());

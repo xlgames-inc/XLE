@@ -38,13 +38,13 @@ namespace RenderingInterop
             BackColor = SystemColors.ControlDark;
             m_renderState.OnChanged += (sender, e) => Invalidate();
 
-
             Adapter = new DesignControlAdapter(
                 this, Camera, 
                 GameEngine.GetEditorSceneManager(), 
                 GameEngine.GlobalSelection, GameEngine.GetSavedResources());
-            Adapter.AddRenderCallback(
-                (GUILayer.SimpleRenderingContext context) => RenderExtras(context, designView));
+
+            Adapter.AddRenderCallback((GUILayer.SimpleRenderingContext context) => RenderManipulators(context, designView));
+            Adapter.AddRenderCallback((GUILayer.SimpleRenderingContext context) => RenderExtras(context, designView));
         }
 
         public ulong SurfaceId
@@ -79,11 +79,11 @@ namespace RenderingInterop
             if(multiSelect)
             {// frustum pick                
                 RectangleF rect = MakeRect(FirstMousePoint, CurrentMousePoint);
-                var frustum = XLEBridgeUtils.Utils.MakeFrustumMatrix(Camera, rect, ClientSize);
+                var frustum = XLEBridgeUtils.Utils.MakeFrustumMatrix(Utils.AsCameraDesc(Camera), rect, ClientSize);
                 hits = Picking.FrustumPick(
                     GameEngine.GetEngineDevice(),
                     Adapter.SceneManager, Adapter.TechniqueContext, 
-                    frustum, Camera, ClientSize, 
+                    frustum, Utils.AsCameraDesc(Camera), ClientSize, 
                     Picking.Flags.Objects | Picking.Flags.Helpers);
             }
             else
@@ -91,8 +91,8 @@ namespace RenderingInterop
                 Ray3F rayW = GetWorldRay(CurrentMousePoint);
                 hits = Picking.RayPick(
                     GameEngine.GetEngineDevice(),
-                    Adapter.SceneManager, Adapter.TechniqueContext, 
-                    rayW, Camera, ClientSize,
+                    Adapter.SceneManager, Adapter.TechniqueContext,
+                    rayW, Utils.AsCameraDesc(Camera), ClientSize,
                     Picking.Flags.Terrain | Picking.Flags.Objects | Picking.Flags.Helpers);
             }
 
@@ -205,7 +205,7 @@ namespace RenderingInterop
             var pick = Picking.RayPick(
                 GameEngine.GetEngineDevice(),
                 Adapter.SceneManager, Adapter.TechniqueContext,
-                GetWorldRay(clientPt), Camera, ClientSize, Picking.Flags.Terrain);
+                GetWorldRay(clientPt), Utils.AsCameraDesc(Camera), ClientSize, Picking.Flags.Terrain);
 
             if (pick != null && pick.Length > 0)
             {
@@ -324,6 +324,23 @@ namespace RenderingInterop
                 }
             }
 
+        }
+
+        private void RenderManipulators(GUILayer.SimpleRenderingContext context, DesignView designView)
+        {
+            var mani = designView.Manipulator;
+            if (mani == null) return;
+
+            var extra = mani as IManipulatorExtra;
+            var clearBeforeDraw = (extra != null) ? extra.ClearBeforeDraw() : true;
+            
+            if (clearBeforeDraw) {
+                    // disable depth write and depth read
+                GUILayer.RenderingUtil.ClearDepthBuffer(context);
+                context.InitState(true, true);
+            }
+
+            mani.Render(context, this);
         }
 
         private void RenderExtras(GUILayer.SimpleRenderingContext context, DesignView designView)
@@ -461,7 +478,7 @@ namespace RenderingInterop
 
         #region IViewContext members
         Size IViewContext.ViewportSize { get { return base.Size; } }
-        Sce.Atf.Rendering.Camera IViewContext.Camera { get { return base.Camera; } }
+        GUILayer.CameraDescWrapper IViewContext.Camera { get { return Utils.AsCameraDesc(base.Camera); } }
         GUILayer.EditorSceneManager IViewContext.SceneManager { get { return Adapter.SceneManager; } }
         GUILayer.TechniqueContextWrapper IViewContext.TechniqueContext { get { return Adapter.TechniqueContext; } }
         GUILayer.EngineDevice IViewContext.EngineDevice { get { return Adapter.EngineDevice;  } }

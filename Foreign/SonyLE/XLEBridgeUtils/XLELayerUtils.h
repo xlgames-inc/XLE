@@ -38,11 +38,11 @@ namespace XLEBridgeUtils
             CreateIntersectionTestContext(
                 GUILayer::EngineDevice^ engineDevice,
                 GUILayer::TechniqueContextWrapper^ techniqueContext,
-                Sce::Atf::Rendering::Camera^ camera,
+                GUILayer::CameraDescWrapper^ camera,
                 unsigned viewportWidth, unsigned viewportHeight);
 
         static Sce::Atf::VectorMath::Matrix4F^ MakeFrustumMatrix(
-            Sce::Atf::Rendering::Camera^ camera,
+            GUILayer::CameraDescWrapper^ camera,
             System::Drawing::RectangleF rectangle,
             System::Drawing::Size viewportSize);
 

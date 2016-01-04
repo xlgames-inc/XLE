@@ -10,17 +10,6 @@
 #include "../../RenderCore/Assets/Material.h"
 #include "../../Tools/GUILayer/MarshalString.h"
 
-// using namespace Sce::Atf;
-// using namespace Sce::Atf::Applications;
-// using namespace Sce::Atf::Dom;
-// using namespace System;
-// using namespace System::Collections::Generic;
-// using namespace System::Reflection;
-// using namespace System::ComponentModel;
-// using namespace System::ComponentModel::Composition;
-// using namespace System::Xml;
-// using namespace System::Xml::Schema;
-
 namespace XLEBridgeUtils
 {
     /// <summary>Provides a IGetAndSetProperties interface for material objects</summary>
@@ -113,34 +102,5 @@ namespace XLEBridgeUtils
     protected:
         GUILayer::RawMaterial^ _material;
     };
-
-    // [Export(ActiveMaterialContext::typeid)]
-    // [PartCreationPolicy(CreationPolicy.Shared)]
-    // public ref class ActiveMaterialContext
-    // {
-    // public:
-    //     property System::String^ MaterialName 
-    //     { 
-    //         System::String^ get() { return m_materialName; }
-    //         void set(System::String^ value) 
-    //         {
-    //             if (value != m_materialName) 
-    //             {
-    //                 m_materialName = value; 
-    //                 OnChange();
-    //             }
-    //         }
-    //     }
-    //     property System::String^ PreviewModelName;
-    //     property uint64 PreviewModelBinding;
-    // 
-    //     delegate void OnChangeDelegate();
-    //     event OnChangeDelegate^ OnChange;
-    // 
-    //     ActiveMaterialContext() : m_materialName(nullptr) {}
-    // private:
-    //     System::String^ m_materialName;
-    // };
-    
 }
 
