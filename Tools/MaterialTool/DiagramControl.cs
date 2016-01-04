@@ -90,10 +90,9 @@ namespace MaterialTool
 
         void child_Paint(object sender, System.Windows.Forms.PaintEventArgs e)
         {
-            _engine.ForegroundUpdate();
+            GUILayer.EngineDevice.GetInstance().ForegroundUpdate();
         }
 
-        [Import] private GUILayer.EngineDevice _engine;
         [Import] private System.ComponentModel.Composition.Hosting.ExportProvider _exportProvider;
         [Import] private ControlsLibraryExt.Material.ActiveMaterialContext _activeMaterialContext;
         private HoverLabel _hover = null;

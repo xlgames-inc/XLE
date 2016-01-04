@@ -42,6 +42,7 @@ namespace XLEBridgeUtils
             if (!ManipulatorOverlay::s_currentParsingContext) return nullptr;
 
             return gcnew GUILayer::SimpleRenderingContext(
+                GUILayer::EngineDevice::GetInstance()->GetNativeImmediateContext(),
                 savedRes, ManipulatorOverlay::s_currentParsingContext);
         }
 
@@ -121,6 +122,10 @@ namespace XLEBridgeUtils
             virtual GUILayer::TechniqueContextWrapper^ get() { return _layerControl->GetTechniqueContext(); }
         }
 
+        property GUILayer::EngineDevice^ EngineDevice { 
+            virtual GUILayer::EngineDevice^ get() { return GUILayer::EngineDevice::GetInstance(); }
+        }
+
         property GUILayer::EditorSceneRenderSettings^ RenderSettings {
             virtual GUILayer::EditorSceneRenderSettings^ get() { return _renderSettings; }
         }
@@ -160,7 +165,6 @@ namespace XLEBridgeUtils
                 if (sz.Width > 0 && sz.Height > 0)
                     Camera->Aspect = (float)sz.Width / (float)sz.Height;
             }
-            _layerControl->OnResize(e);
         }
 
         GUILayer::LayerControl^ _layerControl;
@@ -188,7 +192,7 @@ namespace XLEBridgeUtils
     {
         s_currentParsingContext = &parserContext;
             
-        auto context = gcnew GUILayer::SimpleRenderingContext(nullptr, ManipulatorOverlay::s_currentParsingContext);
+        auto context = gcnew GUILayer::SimpleRenderingContext(device, nullptr, ManipulatorOverlay::s_currentParsingContext);
         
         try
         {
@@ -359,7 +363,7 @@ namespace XLEBridgeUtils
             if (!sceneMan) return nullptr;
             
             return RayPick(
-                GUILayer::EngineDevice::GetInstance(),
+                vc->EngineDevice,
                 sceneMan,
                 vc->TechniqueContext,
                 ray, vc->Camera, vc->ViewportSize, flags);
@@ -373,7 +377,7 @@ namespace XLEBridgeUtils
             if (!sceneMan) return nullptr;
             
             return FrustumPick(
-                GUILayer::EngineDevice::GetInstance(),
+                vc->EngineDevice,
                 sceneMan,
                 vc->TechniqueContext,
                 pickingFrustum, vc->Camera, vc->ViewportSize, flags);

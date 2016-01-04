@@ -102,10 +102,10 @@ namespace XLEBridgeUtils
         if (!underlying) return false;
 
 		auto hitTestContext = GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
-			GUILayer::EngineDevice::GetInstance(), nullptr,
+			vc->EngineDevice, nullptr,
 			Utils::AsCameraDesc(vc->Camera),
             vc->ViewportSize.Width, vc->ViewportSize.Height);
-		auto hitTestScene = SceneManager->GetIntersectionScene();
+		auto hitTestScene = vc->SceneManager->GetIntersectionScene();
 
 		underlying->OnInputEvent(evnt, hitTestContext->GetNative(), hitTestScene->GetNative());
 		delete hitTestContext;

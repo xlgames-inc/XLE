@@ -47,8 +47,7 @@ namespace ShaderPatcherLayer
     public:
         virtual IPreviewBuilder^ CreatePreviewBuilder(System::String^ shaderText);
 
-        [ImportingConstructor]
-        Manager(GUILayer::EngineDevice^ engineDevice);
+        Manager();
     private:
         clix::auto_ptr<ManagerPimpl> _pimpl;
 
@@ -353,9 +352,11 @@ namespace ShaderPatcherLayer
             shaderText);
     }
     
-    Manager::Manager(GUILayer::EngineDevice^ engineDevice)
+    Manager::Manager()
     {
         _pimpl.reset(new ManagerPimpl());
+
+        auto engineDevice = GUILayer::EngineDevice::GetInstance();
 
         _pimpl->_attachRef = engineDevice->GetNative().GetGlobalServices()->Attach();
         auto& crossModule = ConsoleRig::GlobalServices::GetCrossModule();

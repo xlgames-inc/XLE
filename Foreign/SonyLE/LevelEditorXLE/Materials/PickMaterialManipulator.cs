@@ -110,7 +110,7 @@ namespace LevelEditorXLE.Materials
             protected set;
         }
 
-        [Import(AllowDefault = false)] private ControlsLibraryExt.ActiveMaterialContext Context;
+        [Import(AllowDefault = false)] private ControlsLibraryExt.Material.ActiveMaterialContext Context;
         private GUILayer.ObjectSet m_highlight = new GUILayer.ObjectSet();
         private ulong m_highlightMaterialGUID = ~0ul;
     }

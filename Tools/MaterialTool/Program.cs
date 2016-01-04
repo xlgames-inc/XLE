@@ -43,6 +43,10 @@ namespace MaterialTool
             //  during the initialization phase below. Use XML files that are embedded resources.
             Thread.CurrentThread.CurrentUICulture = System.Globalization.CultureInfo.CurrentCulture;
             Localizer.SetStringLocalizer(new EmbeddedResourceStringLocalizer());
+            
+            // early engine initialization
+            var engineDevice = new GUILayer.EngineDevice();
+            GC.KeepAlive(engineDevice);
 
             // Enable metadata driven property editing for the DOM
             DomNodeType.BaseOfAllTypes.AddAdapterCreator(new AdapterCreator<CustomTypeDescriptorNodeAdapter>());
@@ -118,7 +122,6 @@ namespace MaterialTool
 
                 typeof(ShaderPatcherLayer.Manager),
                 typeof(ShaderFragmentArchive.Archive),
-                typeof(GUILayer.EngineDevice),
                
                 typeof(DiagramControl),
                 typeof(ShaderFragmentArchiveControl),
@@ -163,13 +166,13 @@ namespace MaterialTool
             // batch.AddPart(new WebHelpCommands("https://github.com/SonyWWS/ATF/wiki/ATF-Circuit-Editor-Sample".Localize()));
             container.Compose(batch);
 
-            // Early engine initialization
-            //      * we need to attach compilers for models, etc
-            container.GetExport<GUILayer.EngineDevice>().Value.AttachDefaultCompilers();
+            // We need to attach compilers for models, etc
+            engineDevice.AttachDefaultCompilers();
 
             container.InitializeAll();
             Application.Run(mainForm);
             container.Dispose();
+            engineDevice.Dispose();
         }
     }
 }

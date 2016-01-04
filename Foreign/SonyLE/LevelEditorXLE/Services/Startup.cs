@@ -51,9 +51,9 @@ namespace LevelEditorXLE
 
                 typeof(Terrain.TerrainManipulator),
 
-                typeof(ControlsLibraryExt.MaterialInspector),
-                typeof(ControlsLibraryExt.MaterialSchemaLoader),
-                typeof(ControlsLibraryExt.ActiveMaterialContext), 
+                typeof(ControlsLibraryExt.Material.MaterialInspector),
+                typeof(ControlsLibraryExt.Material.MaterialSchemaLoader),
+                typeof(ControlsLibraryExt.Material.ActiveMaterialContext), 
                 typeof(Materials.PickMaterialManipulator),
 
                 // typeof(Placements.PlacementManipulator),     (provides access to the native placements manipulators... but not really required)

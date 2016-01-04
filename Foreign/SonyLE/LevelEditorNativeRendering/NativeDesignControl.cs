@@ -460,6 +460,7 @@ namespace RenderingInterop
         Sce.Atf.Rendering.Camera IViewContext.Camera { get { return base.Camera; } }
         GUILayer.EditorSceneManager IViewContext.SceneManager { get { return Adapter.SceneManager; } }
         GUILayer.TechniqueContextWrapper IViewContext.TechniqueContext { get { return Adapter.TechniqueContext; } }
+        GUILayer.EngineDevice IViewContext.EngineDevice { get { return Adapter.EngineDevice;  } }
         #endregion
     }
 }

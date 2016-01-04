@@ -104,8 +104,8 @@ namespace NodeEditor
 
         void graphControl_Paint(object sender, PaintEventArgs e)
         {
-            var engine = _exportProvider.GetExport<GUILayer.EngineDevice>();
-            engine.Value.ForegroundUpdate();
+            var engine = GUILayer.EngineDevice.GetInstance();
+            engine.ForegroundUpdate();
         }
 
         private ShaderFragmentArchive.Archive _shaderFragments;

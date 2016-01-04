@@ -41,6 +41,7 @@ namespace XLEBridgeUtils
         property Sce::Atf::Rendering::Camera^ Camera { Sce::Atf::Rendering::Camera^ get(); }
         property GUILayer::EditorSceneManager^ SceneManager { GUILayer::EditorSceneManager^ get(); }
         property GUILayer::TechniqueContextWrapper^ TechniqueContext { GUILayer::TechniqueContextWrapper^ get(); }
+        property GUILayer::EngineDevice^ EngineDevice { GUILayer::EngineDevice^ get(); }
     };
 
     /// <summary>Provides a bridge between the SCE level editor types and native manipulators<summary>

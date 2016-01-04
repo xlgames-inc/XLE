@@ -222,9 +222,10 @@ namespace GUILayer
 
         RenderCore::Techniques::ParsingContext& GetParsingContext() { return *_parsingContext; }
         RenderCore::Metal::DeviceContext& GetDevContext() { return *_devContext.get(); }
-        RenderCore::IThreadContext& GetThreadContext() { return *_threadContext.get(); }
+        RenderCore::IThreadContext& GetThreadContext() { return *_threadContext; }
 
         SimpleRenderingContext(
+            RenderCore::IThreadContext* threadContext,
             SavedRenderResources^ savedRes, 
             void* parsingContext);
         ~SimpleRenderingContext();
@@ -233,7 +234,7 @@ namespace GUILayer
         SavedRenderResources^ _savedRes;
         RenderCore::Techniques::ParsingContext* _parsingContext;
         clix::shared_ptr<RenderCore::Metal::DeviceContext> _devContext;
-        clix::shared_ptr<RenderCore::IThreadContext> _threadContext;
+        RenderCore::IThreadContext* _threadContext;     // note -- keeping an unprotected pointer here (SimpleRenderingContext is typically short lived). Create must be careful to manage lifetimes
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////?//
@@ -306,13 +307,13 @@ namespace GUILayer
 ////////////////////////////////////////////////////////////////////////////////////////////////?//
 
     SimpleRenderingContext::SimpleRenderingContext(
+        RenderCore::IThreadContext* threadContext,
         SavedRenderResources^ savedRes, 
         void* parsingContext)
     : _savedRes(savedRes), _parsingContext((RenderCore::Techniques::ParsingContext*)parsingContext)
+    , _threadContext(threadContext)
     {
-        auto threadContext = EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext();
-        _devContext = RenderCore::Metal::DeviceContext::Get(*threadContext.get());
-        _threadContext = std::move(threadContext);
+        _devContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
     }
     SimpleRenderingContext::~SimpleRenderingContext() { _devContext.reset(); }
     SimpleRenderingContext::!SimpleRenderingContext() { _devContext.reset(); }

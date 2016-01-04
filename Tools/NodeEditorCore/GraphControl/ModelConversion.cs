@@ -294,9 +294,6 @@ namespace NodeEditorCore
         }
 
         [Import]
-        private System.ComponentModel.Composition.Hosting.ExportProvider _exportProvider;
-
-        [Import]
         ShaderFragmentArchive.Archive _shaderFragments;
 
         [Import]

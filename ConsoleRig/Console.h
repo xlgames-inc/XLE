@@ -69,6 +69,8 @@ namespace ConsoleRig
     private:
         std::string     _name;
         std::string     _cvarNamespace;
+
+        void Deregister();
     };
 
     namespace Detail

@@ -348,6 +348,8 @@ namespace ConsoleRig
 
     Console::~Console() 
     {
+            // force "dummyVar" to deregister now
+        _pimpl->_dummyVar = ConsoleVariable<int>(std::string(), _pimpl->_dummyValue);
         _pimpl->_cvars.reset();
         _pimpl->_lua.reset();
         _pimpl.reset();
@@ -684,6 +686,29 @@ namespace ConsoleRig
     template <typename Type>
         ConsoleVariable<Type>::~ConsoleVariable()
     {
+        Deregister();
+    }
+
+    template <typename Type>
+        ConsoleVariable<Type>::ConsoleVariable(ConsoleVariable&& moveFrom)
+    :       _name(std::move(moveFrom._name))
+    ,       _cvarNamespace(std::move(moveFrom._cvarNamespace))
+    ,       _attachedValue(std::move(moveFrom._attachedValue))
+    {}
+
+    template <typename Type>
+        ConsoleVariable<Type>& ConsoleVariable<Type>::operator=(ConsoleVariable<Type>&& moveFrom)
+    {
+        Deregister();
+        _name           = std::move(moveFrom._name);
+        _cvarNamespace  = std::move(moveFrom._cvarNamespace);
+        _attachedValue  = std::move(moveFrom._attachedValue);
+        return *this;
+    }
+
+    template <typename Type>
+        void ConsoleVariable<Type>::Deregister()
+    {
         if (!_name.empty() && Console::HasInstance()) {
             lua_State* L = Console::GetInstance().GetLuaState();
 
@@ -703,23 +728,6 @@ namespace ConsoleRig
 
             lua_pop(L, 2);      // pop _G & cv namespace
         }
-    }
-
-    template <typename Type>
-        ConsoleVariable<Type>::ConsoleVariable(ConsoleVariable&& moveFrom)
-    :       _name(std::move(moveFrom._name))
-    ,       _cvarNamespace(std::move(moveFrom._cvarNamespace))
-    ,       _attachedValue(std::move(moveFrom._attachedValue))
-    {
-    }
-
-    template <typename Type>
-        ConsoleVariable<Type>& ConsoleVariable<Type>::operator=(ConsoleVariable<Type>&& moveFrom)
-    {
-        _name           = std::move(moveFrom._name);
-        _cvarNamespace  = std::move(moveFrom._cvarNamespace);
-        _attachedValue  = std::move(moveFrom._attachedValue);
-        return moveFrom;
     }
 
 

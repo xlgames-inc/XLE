@@ -202,10 +202,12 @@ namespace GUILayer
                 settings->GetUnderlying(), resources->_visCache.GetNativePtr(), 
                 mouseOver ? mouseOver->GetUnderlying() : nullptr));
 
+        auto immContext = EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext();
+
         auto intersectionScene = CreateModelIntersectionScene(
             settings->GetUnderlying(), resources->_visCache.GetNativePtr());
         auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
-            EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(),
+            immContext,
             RenderCore::Techniques::CameraDesc(), 
             GetWindowRig().GetPresentationChain()->GetViewportContext(),
             _pimpl->_globalTechniqueContext);
@@ -223,7 +225,7 @@ namespace GUILayer
         overlaySet.AddSystem(
             std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
                 mouseOver->GetUnderlying(),
-                EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(),
+                immContext,
                 _pimpl->_globalTechniqueContext,
                 settings->Camera->GetUnderlying(), intersectionScene,
                 std::bind(&RenderTrackingOverlay, _1, _2, settings->GetUnderlying(), resources->_visCache.GetNativePtr())));

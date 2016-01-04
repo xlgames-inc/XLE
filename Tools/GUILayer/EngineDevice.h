@@ -26,8 +26,6 @@ namespace GUILayer
     /// CLI objects -- but we do need them to provide interfaces that can be used
     /// from GUI elements. This creates a kind of balancing act between what should
     /// go in "ref class" objects and plain native objects.
-    [Export(EngineDevice::typeid)]
-    [PartCreationPolicy(CreationPolicy::Shared)]
     public ref class EngineDevice
     {
     public:
