@@ -63,9 +63,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="GraphControl\GraphControl.cs">
-      <SubType>Component</SubType>
-    </Compile>
+    <Compile Include="GraphControl\GraphControl.cs" />
     <Compile Include="GraphControl\ModelConversion.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="GraphControl\ShaderFragmentNodes.cs" />

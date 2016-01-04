@@ -94,10 +94,10 @@ namespace Assets
                     Throw(::Exceptions::BasicLabel("Hit end of file while reading chunk in compound text document"));
 
                 result.push_back(
-                    TextChunk<CharType> {
+                    TextChunk<CharType>(
                         MakeStringSection(t.first, t.second),
                         MakeStringSection(n.first, n.second),
-                        MakeStringSection(contentStart, ci) });
+                        MakeStringSection(contentStart, ci)));
             }
             ++ri;
         }

@@ -11,6 +11,8 @@ using System.Drawing;
 using System.Collections.Generic;
 using System;
 
+#pragma warning disable 0649        // Field '...' is never assigned to, and will always have its default value null
+
 namespace MaterialTool
 {
     interface IDiagramControl

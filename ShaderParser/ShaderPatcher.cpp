@@ -1398,7 +1398,7 @@ NE_PSInput vs_main(uint vertexId : SV_VertexID, VSInput vsInput)
             //      there's no practical way with Plustasche.
             //
         result << "struct NE_Varying" << std::endl << "{" << std::endl;
-        for (size_t index=0; index<mainParams.Count(); ++index) {
+        for (unsigned index=0; index<mainParams.Count(); ++index) {
             auto sig = mainParams.VaryingStructSignature(index);
             if (sig.empty()) continue;
             result << sig << ";" << std::endl;
@@ -1423,7 +1423,7 @@ NE_PSInput vs_main(uint vertexId : SV_VertexID, VSInput vsInput)
             //
         std::stringstream varyingInitialization;
         
-        for (size_t index=0; index<mainParams.Count(); ++index) {
+        for (unsigned index=0; index<mainParams.Count(); ++index) {
             auto initString = mainParams.VSInitExpression(index);
             if (initString.empty()) continue;
             varyingInitialization << "\tOUT.varyingParameters." << mainParams.Param(index)._name << " = " << initString << ";" << std::endl;
@@ -1439,7 +1439,7 @@ NE_PSInput vs_main(uint vertexId : SV_VertexID, VSInput vsInput)
 
             //  Pass each member of the "varyingParameters" struct as a separate input to
             //  the main function
-        for (size_t index=0; index<mainParams.Count(); ++index) {
+        for (unsigned index=0; index<mainParams.Count(); ++index) {
             if (!parametersToMainFunctionCall.empty())
                 parametersToMainFunctionCall += ", ";
             parametersToMainFunctionCall += mainParams.PSExpression(index, "input.geo", "input.varyingParameters");
@@ -1453,7 +1453,7 @@ NE_PSInput vs_main(uint vertexId : SV_VertexID, VSInput vsInput)
         }
 
         unsigned inputDimensionality = 0;
-        for (size_t index=0; index<mainParams.Count(); ++index)
+        for (unsigned index=0; index<mainParams.Count(); ++index)
             if (!mainParams.IsInitializedBySystem(index))
                 inputDimensionality += GetDimensionality(mainParams.Param(index)._type);
 

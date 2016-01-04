@@ -13,6 +13,8 @@ using HyperGraph;
 using HyperGraph.Compatibility;
 using HyperGraph.Items;
 
+#pragma warning disable 0649        // Field '...' is never assigned to, and will always have its default value null
+
 namespace NodeEditorCore
 {
     public interface IModelConversion

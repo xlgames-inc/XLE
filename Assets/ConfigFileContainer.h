@@ -242,6 +242,9 @@ namespace Assets
     {
     public:
         StringSection<CharType> _type, _name, _content;
+
+        TextChunk(StringSection<CharType> type, StringSection<CharType> name, StringSection<CharType> content)
+            : _type(type), _name(name), _content(content) {}
     };
 
     template<typename CharType>

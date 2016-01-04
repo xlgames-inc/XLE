@@ -20,6 +20,8 @@ using Sce.Atf.Applications;
 using Sce.Atf.Controls;
 using Sce.Atf.Controls.Adaptable;
 
+#pragma warning disable 0649        // Field '...' is never assigned to, and will always have its default value null
+
 namespace MaterialTool
 {
     [Export(typeof(IDocumentClient))]

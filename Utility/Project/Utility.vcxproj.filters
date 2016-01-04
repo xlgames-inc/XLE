@@ -131,15 +131,11 @@
     <ClCompile Include="..\Streams\Data.cpp">
       <Filter>Streams</Filter>
     </ClCompile>
-    <ClCompile Include="..\WinAPI\StringUtils_WinAPI.cpp">
-      <Filter>WinAPI</Filter>
-    </ClCompile>
     <ClCompile Include="..\Threading\WinAPI\ThreadObject_WinAPI.cpp">
       <Filter>Threading\WinAPI</Filter>
     </ClCompile>
     <ClCompile Include="..\StringFormatTime.cpp" />
     <ClCompile Include="..\ArithmeticUtils.cpp" />
-    <ClCompile Include="..\ExceptionUtils.cpp" />
     <ClCompile Include="..\HashUtils.cpp" />
     <ClCompile Include="..\Streams\WinAPI\FileSystemMonitor_WinAPI.cpp">
       <Filter>Streams\WinAPI</Filter>

@@ -11,6 +11,8 @@ using System.Windows.Forms;
 using Sce.Atf;
 using Sce.Atf.Applications;
 
+#pragma warning disable 0649        // Field '...' is never assigned to, and will always have its default value null
+
 namespace ControlsLibraryExt.ModelView
 {
     public partial class ModelView : UserControl

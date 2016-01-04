@@ -18,6 +18,8 @@ using Sce.Atf.Dom;
 using ControlsLibrary.MaterialEditor;
 using System.Reflection;
 
+#pragma warning disable 0649        // Field '...' is never assigned to, and will always have its default value null
+
 namespace ControlsLibraryExt.Material
 {
     [Export(typeof(IInitializable))]
