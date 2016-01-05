@@ -251,6 +251,17 @@ namespace Serialization
                     ptr._subBlockSize);
             } else if (ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::Vector) {
                 size_t* o = (size_t*)PtrAdd(block, sizeof(Header)+ptr._pointerOffset);
+
+				#if (STL_ACTIVE == STL_MSVC) && (_MSC_VER >= 1900)
+						// This is the flag in the BlockSerializerAllocator in the vector
+						// It's a bit of an awkward hack... but one it's one of those hacks
+						//		-- once it's working, it works well.
+						// In VS2015, it changed position with in vector object. Actually the
+						// new position might be less ideal, because it's before the more
+						// commonly accessed begin/end pointers.
+					*(unsigned*)o = 1; o = PtrAdd(o, sizeof(unsigned));
+				#endif
+
                 #if (STL_ACTIVE == STL_MSVC) && (_ITERATOR_DEBUG_LEVEL != 0)
                         //  in debug, to produce a valid vector, we need to add one of these proxy
                         //  objects. it requires some extra memory management; but fortunately it's
@@ -265,7 +276,11 @@ namespace Serialization
                 o[0] = (ptr._subBlockOffset + size_t(base) + sizeof(Header));
                 o[1] = (ptr._subBlockOffset + ptr._subBlockSize + size_t(base) + sizeof(Header));
                 o[2] = (ptr._subBlockOffset + ptr._subBlockSize + size_t(base) + sizeof(Header));
-                *(unsigned*)(&o[3]) = 1;
+
+				#if (STL_ACTIVE == STL_MSVC) && (_MSC_VER < 1900)
+					*(unsigned*)(&o[3]) = 1;
+				#endif
+
             } else if (ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::UniquePtr) {
                 size_t* o = (size_t*)PtrAdd(block, sizeof(Header)+ptr._pointerOffset);
                 o[0] = (ptr._subBlockOffset + size_t(base) + sizeof(Header));
