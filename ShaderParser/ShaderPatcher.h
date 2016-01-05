@@ -70,6 +70,11 @@ namespace ShaderPatcher
         NodeConnection(NodeConnection&& moveFrom);
         NodeConnection& operator=(NodeConnection&& moveFrom);
 
+		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
+			NodeConnection(const NodeConnection&) = default;
+			NodeConnection& operator=(const NodeConnection&) = default;
+		#endif
+
         uint32      OutputNodeId() const        { return _outputNodeId; }
         uint32      InputNodeId() const         { return _inputNodeId; }
 

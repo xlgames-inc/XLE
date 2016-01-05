@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../Utility/UTFUtils.h"
 #include <string>
 #include <vector>
 #include <memory>
@@ -26,9 +27,9 @@ namespace ConsoleRig
         void        Print(const char messageStart[]);
         void        Print(const char* messageStart, const char* messageEnd);
         void        Print(const std::string& message);
-        void        Print(const std::u16string& message);
+        void        Print(const std::basic_string<ucs2>& message);
 
-        auto        GetLines(unsigned lineCount, unsigned scrollback=0) -> std::vector<std::u16string>;
+        auto        GetLines(unsigned lineCount, unsigned scrollback=0) -> std::vector<std::basic_string<ucs2>>;
         unsigned    GetLineCount() const;
 
         static Console&     GetInstance() { return *s_instance; }

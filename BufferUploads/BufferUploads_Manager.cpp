@@ -1765,7 +1765,7 @@ namespace BufferUploads
                 if (Process(*step, stepMask, context, budgetUnderConstruction)) {
                     didSomething = true;
                 } else {
-                    _queueSet_Main._prepareSteps.push_overflow(*step);
+                    _queueSet_Main._prepareSteps.push_overflow(std::move(*step));
                 }
                 queueSet._prepareSteps.pop();
             }
@@ -1778,7 +1778,7 @@ namespace BufferUploads
                 if (Process(*resourceCreateStep, stepMask, context, budgetUnderConstruction)) {
                     didSomething = true;
                 } else {
-                    _queueSet_Main._resourceCreateSteps.push_overflow(*resourceCreateStep);
+                    _queueSet_Main._resourceCreateSteps.push_overflow(std::move(*resourceCreateStep));
                 }
                 queueSet._resourceCreateSteps.pop();
             }
@@ -1791,7 +1791,7 @@ namespace BufferUploads
                 if (Process_StagingBuffer(*resourceCreateStep, stepMask, context, budgetUnderConstruction)) {
                     didSomething = true;
                 } else {
-                    _queueSet_Main._stagingBufferCreateSteps.push_overflow(*resourceCreateStep);
+                    _queueSet_Main._stagingBufferCreateSteps.push_overflow(std::move(*resourceCreateStep));
                 }
                 queueSet._stagingBufferCreateSteps.pop();
             }
@@ -1804,7 +1804,7 @@ namespace BufferUploads
                 if (Process(*uploadStep, stepMask, context, budgetUnderConstruction)) {
                     didSomething = true;
                 } else {
-                    _queueSet_Main._uploadSteps.push_overflow(*uploadStep);
+                    _queueSet_Main._uploadSteps.push_overflow(std::move(*uploadStep));
                 }
                 queueSet._uploadSteps.pop();
             }
@@ -2246,7 +2246,7 @@ namespace BufferUploads
     void AssemblyLine::PushStep_StagingBuffer(Transaction& transaction, ResourceCreateStep&& step)
     {
         Interlocked::Increment(&transaction._referenceCount);
-        GetQueueSet(transaction._creationOptions)._stagingBufferCreateSteps.push_overflow(step);
+        GetQueueSet(transaction._creationOptions)._stagingBufferCreateSteps.push_overflow(std::move(step));
     }
 
     void AssemblyLine::PushStep(Transaction& transaction, DataUploadStep&& step)

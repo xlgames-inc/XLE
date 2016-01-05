@@ -36,13 +36,20 @@ namespace RenderCore { namespace ColladaConversion
         : _hdr(moveFrom._hdr)
         , _data(std::move(moveFrom._data))
         {}
-        NascentChunk() {}
         NascentChunk& operator=(NascentChunk&& moveFrom) never_throws
         {
             _hdr = moveFrom._hdr;
             _data = std::move(moveFrom._data);
             return *this;
         }
+		NascentChunk(const NascentChunk& copyFrom) : _hdr(copyFrom._hdr), _data(copyFrom._data) {}
+		NascentChunk& operator=(const NascentChunk& copyFrom)
+		{
+			_hdr = copyFrom._hdr;
+			_data = copyFrom._data;
+			return *this;
+		}
+		NascentChunk() {}
     };
 
     class ColladaScaffold;

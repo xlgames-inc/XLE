@@ -350,7 +350,7 @@ namespace ColladaConversion
                 formatter.SkipElement();
             } else {
                 if (BeginsWith(eleName, u("sampler"))) {
-                    _samplerParameters.push_back(SamplerParameter(formatter, sid, eleName));
+                    _samplerParameters.emplace_back(SamplerParameter(formatter, sid, eleName));
                 } else if (Is(eleName, u("surface"))) {
 
                         // "surface" is depreciated in collada 1.5. But it's a very import
@@ -1381,7 +1381,7 @@ namespace ColladaConversion
     }
 
     Image::Image(Image&& moveFrom) never_throws
-    : _extra(moveFrom._extra)
+    : _extra(std::move(moveFrom._extra))
     {
         _id = moveFrom._id;
         _name = moveFrom._name;
@@ -1393,7 +1393,7 @@ namespace ColladaConversion
         _id = moveFrom._id;
         _name = moveFrom._name;
         _initFrom = moveFrom._initFrom;
-        _extra = moveFrom._extra;
+        _extra = std::move(moveFrom._extra);
         return *this;
     }
 
@@ -1723,7 +1723,7 @@ namespace ColladaConversion
     }
 
     InstanceController::InstanceController(InstanceController&& moveFrom) never_throws
-    : InstanceGeometry(std::forward<InstanceController&>(moveFrom))
+    : InstanceGeometry(std::forward<InstanceController>(moveFrom))
     {
         _skeleton = moveFrom._skeleton;
     }
@@ -1801,7 +1801,7 @@ namespace ColladaConversion
                         }
 
                         workingNodes.push(newNodeIndex);
-                        _nodes.push_back(newNode);
+                        _nodes.emplace_back(std::move(newNode));
                         eatEndElement = false;
 
                     } else if (Is(eleName, u("instance_geometry"))) {

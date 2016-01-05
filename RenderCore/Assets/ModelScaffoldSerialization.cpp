@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#if 0
+
 #include "ModelScaffoldInternal.h"
 #include "../../Assets/BlockSerializer.h"
 
@@ -43,3 +45,5 @@ void Serialize(
     outputSerializer.SerializeRaw(ia._elements);
     Serialize(outputSerializer, ia._vertexStride);
 }
+
+#endif

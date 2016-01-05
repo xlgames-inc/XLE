@@ -111,6 +111,8 @@ namespace Utility
         BlockSerializerDeleter(std::default_delete<Type[]>&& moveFrom)          : _fromFixedStorage(0) {}
         BlockSerializerDeleter(const BlockSerializerDeleter<Type[]>& copyFrom)  : _fromFixedStorage(copyFrom._fromFixedStorage) {}
         BlockSerializerDeleter(BlockSerializerDeleter<Type[]>&& moveFrom)       : _fromFixedStorage(moveFrom._fromFixedStorage) {}
+		BlockSerializerDeleter& operator=(const BlockSerializerDeleter<Type[]>& copyFrom) { copyFrom._fromFixedStorage = 0; return *this; }
+		BlockSerializerDeleter& operator=(BlockSerializerDeleter<Type[]>&& moveFrom) { _fromFixedStorage = moveFrom._fromFixedStorage; return *this; }
     private:
         unsigned    _fromFixedStorage;
     };

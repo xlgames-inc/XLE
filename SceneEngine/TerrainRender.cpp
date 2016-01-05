@@ -1197,7 +1197,7 @@ namespace SceneEngine
                     FILE_FLAG_OVERLAPPED|FILE_FLAG_RANDOM_ACCESS, nullptr);
                 assert(layer._streamingFilePtr != INVALID_HANDLE_VALUE);
 
-                coverage.push_back(layer);
+                coverage.emplace_back(std::move(layer));
             }
 
             _heightTiles = std::move(heightTiles);
@@ -1207,17 +1207,16 @@ namespace SceneEngine
         }
     }
 
-    TerrainCellRenderer::CellRenderInfo::CellRenderInfo(CellRenderInfo&& moveFrom)
+    TerrainCellRenderer::CellRenderInfo::CellRenderInfo(CellRenderInfo&& moveFrom) never_throws
+	:	_heightTiles(std::move(moveFrom._heightTiles))
+	,	_sourceCell(std::move(moveFrom._sourceCell))
+	,	_heightMapStreamingFilePtr(std::move(moveFrom._heightMapStreamingFilePtr))
+	,	_coverage(std::move(moveFrom._coverage))
     {
-        _heightTiles = std::move(moveFrom._heightTiles);
-        _sourceCell = std::move(moveFrom._sourceCell);
-        _heightMapStreamingFilePtr = std::move(moveFrom._heightMapStreamingFilePtr);
-        _coverage = std::move(moveFrom._coverage);
-
         moveFrom._heightMapStreamingFilePtr = INVALID_HANDLE_VALUE;
     }
 
-    auto TerrainCellRenderer::CellRenderInfo::operator=(CellRenderInfo&& moveFrom) throw() -> CellRenderInfo&
+    auto TerrainCellRenderer::CellRenderInfo::operator=(CellRenderInfo&& moveFrom) never_throws -> CellRenderInfo&
     {
         _heightTiles = std::move(moveFrom._heightTiles);
         _sourceCell = std::move(moveFrom._sourceCell);
@@ -1248,6 +1247,22 @@ namespace SceneEngine
             if (i->_streamingFilePtr && i->_streamingFilePtr!=INVALID_HANDLE_VALUE)
                 CloseHandle((HANDLE)i->_streamingFilePtr);
     }
+
+	TerrainCellRenderer::CellRenderInfo::CoverageLayer::CoverageLayer() { _streamingFilePtr = nullptr; _source = nullptr; }
+	TerrainCellRenderer::CellRenderInfo::CoverageLayer::~CoverageLayer() {}
+	TerrainCellRenderer::CellRenderInfo::CoverageLayer::CoverageLayer(CoverageLayer&& moveFrom) never_throws
+	: _source(moveFrom._source)
+	, _streamingFilePtr(moveFrom._streamingFilePtr)
+	, _tiles(std::move(moveFrom._tiles))
+	{}
+
+	auto TerrainCellRenderer::CellRenderInfo::CoverageLayer::operator=(CoverageLayer&& moveFrom) never_throws -> CoverageLayer&
+	{
+		_source = moveFrom._source; moveFrom._source = nullptr;
+		_streamingFilePtr = moveFrom._streamingFilePtr; moveFrom._streamingFilePtr = nullptr;
+		_tiles = std::move(moveFrom._tiles);
+		return *this;
+	}
 
     static bool IsCompatible(const TerrainRendererConfig::Layer& lhs, const TerrainRendererConfig::Layer& rhs)
     {
@@ -1311,13 +1326,12 @@ namespace SceneEngine
     TerrainCellRenderer::NodeCoverageInfo::NodeCoverageInfo()
     {}
 
-    TerrainCellRenderer::NodeCoverageInfo::NodeCoverageInfo(NodeCoverageInfo&& moveFrom)
-    {
-        _tile = std::move(moveFrom._tile);
-        _pendingTile = std::move(moveFrom._pendingTile);
-    }
+    TerrainCellRenderer::NodeCoverageInfo::NodeCoverageInfo(NodeCoverageInfo&& moveFrom) never_throws
+	: _tile(std::move(moveFrom._tile))
+	, _pendingTile(std::move(moveFrom._pendingTile))
+    {}
 
-    auto TerrainCellRenderer::NodeCoverageInfo::operator=(NodeCoverageInfo&& moveFrom) -> NodeCoverageInfo& 
+    auto TerrainCellRenderer::NodeCoverageInfo::operator=(NodeCoverageInfo&& moveFrom) never_throws -> NodeCoverageInfo&
     {
         _tile = std::move(moveFrom._tile);
         _pendingTile = std::move(moveFrom._pendingTile);

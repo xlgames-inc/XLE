@@ -85,6 +85,7 @@
 //                  * limit the number stack frames written out
 //                  * pass frameNum to OnCallStackEntry
 //
+#pragma warning(disable:4091)	// warning C4091: 'typedef ': ignored on left of '' when no variable is declared
 #include <windows.h>
 #include <tchar.h>
 #include <stdio.h>

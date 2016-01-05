@@ -48,7 +48,7 @@ namespace PlatformRig { namespace Overlays
                     Coord2(consoleMaxSize._bottomRight[0],  consoleMaxSize._bottomRight[1]-3)),
             entryBoxColor);
 
-        std::vector<std::u16string> lines = _console->GetLines(linesToRender, _scrollBack);
+        auto lines = _console->GetLines(linesToRender, _scrollBack);
         signed emptyLines = signed(linesToRender) - signed(lines.size());
         for (signed c=0; c<emptyLines; ++c) { historyAreaLayout.AllocateFullWidth(Coord(textHeight)); }
         for (auto i=lines.cbegin(); i!=lines.cend(); ++i) {
@@ -105,18 +105,18 @@ namespace PlatformRig { namespace Overlays
         ++_renderCounter;
     }
 
-    static std::string      AsUTF8(const std::u16string& input)
+    static std::string      AsUTF8(const std::basic_string<ucs2>& input)
     {
         char buffer[1024];
         ucs2_2_utf8(AsPointer(input.begin()), input.size(), (utf8*)buffer, dimof(buffer));
         return std::string(buffer);
     }
 
-    static std::u16string      AsUTF16(const std::string& input)
+    static std::basic_string<ucs2>      AsUTF16(const std::string& input)
     {
-        char16_t buffer[1024];
+        ucs2 buffer[1024];
         utf8_2_ucs2((utf8*)AsPointer(input.begin()), input.size(), buffer, dimof(buffer));
-        return std::u16string(buffer);
+        return std::basic_string<ucs2>(buffer);
     }
 
     bool    ConsoleDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
@@ -127,7 +127,7 @@ namespace PlatformRig { namespace Overlays
                 DeleteSelectedPart();
                 assert(_caret <= _currentLine.size());
                 if (_caret <= _currentLine.size()) {
-                    _currentLine.insert(_caret++, 1, (std::u16string::value_type)input._pressedChar);
+                    _currentLine.insert(_caret++, 1, (std::basic_string<ucs2>::value_type)input._pressedChar);
                     _autoComplete.clear();
                     _selectionStart = _selectionEnd = _caret;
                     consume = true;
@@ -186,7 +186,7 @@ namespace PlatformRig { namespace Overlays
             if (newHistoryCursor != _historyCursor) {
                 _historyCursor = newHistoryCursor;
                 if (!_historyCursor) {
-                    _currentLine = std::u16string();
+                    _currentLine = std::basic_string<ucs2>();
                     _caret = 0;
                 } else {
                     _currentLine = _history[_history.size() - _historyCursor];
@@ -247,7 +247,7 @@ namespace PlatformRig { namespace Overlays
             _historyCursor = 0;
             _scrollBack = 0;        // reset scroll?
             _scrollBackFractional = 0;
-            _currentLine = std::u16string();
+            _currentLine = std::basic_string<ucs2>();
             _autoComplete.clear();
             consume = true;
         }
@@ -255,7 +255,7 @@ namespace PlatformRig { namespace Overlays
         if (input.IsPress(escape)) {
             _caret = 0;
             _selectionStart = _selectionEnd = _caret;
-            _currentLine = std::u16string();
+            _currentLine = std::basic_string<ucs2>();
             _autoComplete.clear();
             consume = true;
         }

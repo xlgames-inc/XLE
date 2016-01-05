@@ -16,6 +16,7 @@
 #include <iterator>
 #include <algorithm>
 
+#define _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS		// LuaBridge uses hash_map, which creates a compile error in Visual Studio 2015. We should use the standard unordered_map, instead
 #undef new
 
     #include <lua.hpp>
@@ -95,7 +96,7 @@ namespace ConsoleRig
     class Console::Pimpl
     {
     public:
-        std::vector<std::u16string> _lines;
+        std::vector<std::basic_string<ucs2>> _lines;
         bool _lastLineComplete;
         std::unique_ptr<LuaState> _lua;
         std::unique_ptr<ConsoleVariableStorage> _cvars;
@@ -219,18 +220,18 @@ namespace ConsoleRig
         return result;
     }
 
-    static std::u16string      AsUTF16(const std::string& input)
+    static std::basic_string<ucs2>      AsUTF16(const std::string& input)
     {
-        char16_t buffer[1024];
-        utf8_2_ucs2((utf8*)AsPointer(input.begin()), input.size(), (ucs2*)buffer, dimof(buffer));
-        return std::u16string(buffer);
+		ucs2 buffer[1024];
+        utf8_2_ucs2((utf8*)AsPointer(input.begin()), input.size(), buffer, dimof(buffer));
+        return std::basic_string<ucs2>(buffer);
     }
 
-    static std::u16string      AsUTF16(const char input[], size_t len)
+    static std::basic_string<ucs2>      AsUTF16(const char input[], size_t len)
     {
-        char16_t buffer[1024];
-        utf8_2_ucs2((utf8*)input, len, (ucs2*)buffer, dimof(buffer));
-        return std::u16string(buffer);
+		ucs2 buffer[1024];
+        utf8_2_ucs2((utf8*)input, len, buffer, dimof(buffer));
+        return std::basic_string<ucs2>(buffer);
     }
 
     void            Console::Print(const std::string& message)
@@ -251,17 +252,17 @@ namespace ConsoleRig
         Print(AsUTF16(messageStart, messageEnd - messageStart));
     }
 
-    void            Console::Print(const std::u16string& message)
+    void            Console::Print(const std::basic_string<ucs2>& message)
     {
         if (!this) return;  // hack!
-        std::u16string::size_type currentOffset = 0;
-        std::u16string::size_type stringLength = message.size();
+        std::basic_string<ucs2>::size_type currentOffset = 0;
+        std::basic_string<ucs2>::size_type stringLength = message.size();
         bool lastLineComplete = _pimpl->_lastLineComplete;
 
         while (currentOffset < stringLength) {
-            const std::u16string::size_type start = currentOffset;
-            const std::u16string::size_type s     = message.find_first_of((char16_t*)L"\r\n", currentOffset);
-            std::u16string::size_type end;
+            const std::basic_string<ucs2>::size_type start = currentOffset;
+            const std::basic_string<ucs2>::size_type s     = message.find_first_of((ucs2*)L"\r\n", currentOffset);
+            std::basic_string<ucs2>::size_type end;
             bool completeLine = false;
 
             if (s != std::string::npos) {
@@ -290,9 +291,9 @@ namespace ConsoleRig
         _pimpl->_lastLineComplete = lastLineComplete;
     }
 
-    std::vector<std::u16string>    Console::GetLines(unsigned lineCount, unsigned scrollback)
+    std::vector<std::basic_string<ucs2>>    Console::GetLines(unsigned lineCount, unsigned scrollback)
     {
-        std::vector<std::u16string> result;
+        std::vector<std::basic_string<ucs2>> result;
         signed linesToGet = std::max(0, std::min(signed(lineCount), signed(_pimpl->_lines.size())-signed(scrollback)));
         result.reserve(linesToGet);
 
@@ -332,7 +333,7 @@ namespace ConsoleRig
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_lastLineComplete = false;
-        _pimpl->_lines.push_back(std::u16string());
+        _pimpl->_lines.push_back(std::basic_string<ucs2>());
         _pimpl->_lua = std::make_unique<LuaState>();
         _pimpl->_cvars = std::make_unique<ConsoleVariableStorage>();
 

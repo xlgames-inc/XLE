@@ -70,6 +70,11 @@ namespace Assets
         ChunkFileAsset& operator=(ChunkFileAsset&& moveFrom) never_throws;
         ~ChunkFileAsset();
 
+		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
+			ChunkFileAsset(const ChunkFileAsset&) = default;
+			ChunkFileAsset& operator=(const ChunkFileAsset&) = default;
+		#endif
+
     protected:
         using ResolveFn = void(void*, IteratorRange<AssetChunkResult*>);
 

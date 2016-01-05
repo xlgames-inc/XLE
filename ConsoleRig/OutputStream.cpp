@@ -200,11 +200,11 @@ namespace ConsoleRig
 
         //      Character type conversions not handled correctly!
     void    ConsoleOutputStream::WriteChar(utf8 ch)             { Console::GetInstance().Print(std::string((char*)&ch, 1)); }
-    void    ConsoleOutputStream::WriteChar(ucs2 ch)             { Console::GetInstance().Print(std::u16string((char16_t*)&ch, 1)); }
+    void    ConsoleOutputStream::WriteChar(ucs2 ch)             { Console::GetInstance().Print(std::basic_string<ucs2>(&ch, 1)); }
     void    ConsoleOutputStream::WriteChar(ucs4 ch)             { assert(0); }
 
     void    ConsoleOutputStream::Write(StringSection<utf8> str) { Console::GetInstance().Print((const char*)str.begin(), (const char*)str.end()); }
-    void    ConsoleOutputStream::Write(StringSection<ucs2> str) { Console::GetInstance().Print(std::u16string((char16_t*)str.begin(), (char16_t*)str.end())); }
+    void    ConsoleOutputStream::Write(StringSection<ucs2> str) { Console::GetInstance().Print(str.AsString()); }
     void    ConsoleOutputStream::Write(StringSection<ucs4> str) { assert(0); }
 
     void    ConsoleOutputStream::Flush(){}

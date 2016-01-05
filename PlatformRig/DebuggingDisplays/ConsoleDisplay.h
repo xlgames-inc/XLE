@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../../Utility/UTFUtils.h"
 
 namespace ConsoleRig { class Console; }
 
@@ -24,14 +25,14 @@ namespace PlatformRig { namespace Overlays
         ConsoleDisplay(ConsoleRig::Console& console);
         ~ConsoleDisplay();
     private:
-        std::u16string                  _currentLine;
+        std::basic_string<ucs2>			_currentLine;
         size_t                          _caret;
         size_t                          _selectionStart, _selectionEnd;
         unsigned                        _renderCounter;
         ConsoleRig::Console*            _console;
 
-        std::vector<std::u16string>     _history;
-        unsigned                        _historyCursor;
+        std::vector<std::basic_string<ucs2>>    _history;
+        unsigned								_historyCursor;
 
         std::vector<std::string>        _autoComplete;
         unsigned                        _autoCompleteCursor;
