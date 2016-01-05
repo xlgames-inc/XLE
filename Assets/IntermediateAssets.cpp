@@ -407,14 +407,36 @@ namespace Assets { namespace IntermediateAssets
 
 namespace Assets
 {
-    PendingCompileMarker::PendingCompileMarker() : _sourceID1(0) 
+	class PendingCompileMarker::Pimpl
+	{
+	public:
+		Threading::Mutex _eventsLock;
+		RequestCompileEvent _onRequestCompile;
+	};
+
+	void PendingCompileMarker::SetOnRequestCompile(RequestCompileEvent&& fn)
+	{
+		ScopedLock(_pimpl->_eventsLock);
+		_pimpl->_onRequestCompile = std::move(fn);
+	}
+
+	bool PendingCompileMarker::RequestCompile()
+	{
+		ScopedLock(_pimpl->_eventsLock);
+		if (!_pimpl->_onRequestCompile) return false;
+		return _pimpl->_onRequestCompile(*this);
+	}
+
+	PendingCompileMarker::PendingCompileMarker() : _sourceID1(0)
     {
+		_pimpl = std::make_unique<Pimpl>();
         DEBUG_ONLY(_initializer[0] = '\0');
     }
 
     PendingCompileMarker::PendingCompileMarker(AssetState state, const char sourceID0[], uint64 sourceID1, std::shared_ptr<Assets::DependencyValidation> depVal)
     : PendingOperationMarker(state), _sourceID1(sourceID1), _dependencyValidation(std::move(depVal))
     {
+		_pimpl = std::make_unique<Pimpl>();
         if (sourceID0) {
             XlCopyString(_sourceID0, sourceID0);
         } else {
@@ -422,5 +444,15 @@ namespace Assets
         }
     }
 
-    PendingCompileMarker::~PendingCompileMarker() {}
+    PendingCompileMarker::~PendingCompileMarker() 
+	{
+		std::unique_ptr<Pimpl> p;
+		{
+			ScopedLock(_pimpl->_eventsLock);
+			_pimpl->_onRequestCompile = RequestCompileEvent();
+			// while still locked, prevent any further access to _pimpl
+			p = std::move(_pimpl);
+		}
+		p.reset();
+	}
 }

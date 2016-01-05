@@ -28,6 +28,7 @@ namespace RenderCore { extern char VersionString[]; extern char BuildDateString[
 
 namespace RenderCore { namespace Assets
 {
+	static const unsigned ResolvedMat_ExpectedVersion = 1;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -202,7 +203,7 @@ namespace RenderCore { namespace Assets
                 1, VersionString, BuildDateString, 
                 std::make_tuple(destination, "wb", 0));
 
-            output.BeginChunk(ChunkType_ResolvedMat, 0, Meld() << sourceModel << "&" << sourceMaterial);
+            output.BeginChunk(ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion, Meld() << sourceModel << "&" << sourceMaterial);
             output.Write(block.get(), 1, blockSize);
             output.FinishCurrentChunk();
         }
@@ -219,6 +220,7 @@ namespace RenderCore { namespace Assets
                 op._sourceID0, MakeStringSection(compileResult._baseDir), 
                 MakeIteratorRange(compileResult._dependencies));
             assert(op._dependencyValidation);
+
             op.SetState(::Assets::AssetState::Ready);
         } CATCH(const ::Assets::Exceptions::PendingAsset&) {
             throw;
@@ -255,10 +257,6 @@ namespace RenderCore { namespace Assets
         StringMeld<256,ResChar> debugInitializer;
         debugInitializer<< materialFilename << "(material scaffold)";
 
-            // now either return an existing asset, or compile a new one
-        auto marker = CompilerHelper::CheckExistingAsset(store, intermediateName, debugInitializer);
-        if (marker) return marker;
-
             // Compile can throw "pending"...
             // So we need to keep a queue of active work operations.
             // We can push the compilation work into the background (but, actually, it's
@@ -270,14 +268,27 @@ namespace RenderCore { namespace Assets
         XlCopyString(backgroundOp->_sourceID0, intermediateName);
         backgroundOp->_destinationStore = &store;
         backgroundOp->_typeCode = typeCode;
+		backgroundOp->_dependencyValidation = store.MakeDependencyValidation(intermediateName);
+		backgroundOp->SetState(::Assets::AssetState::Ready);	// we just start off ready, so that the asset will attempt to load the file
 
-        {
-            ScopedLock(_pimpl->_threadLock);
-            if (!_pimpl->_thread)
-                _pimpl->_thread = std::make_unique<CompilationThread>(
-                    [](QueuedCompileOperation& op) { DoCompileMaterialScaffold(op); });
-        }
-        _pimpl->_thread->Push(backgroundOp);
+		auto sthis = shared_from_this();
+		backgroundOp->SetOnRequestCompile(
+			[sthis](::Assets::PendingCompileMarker& baseMarker) -> bool
+			{
+				baseMarker.SetState(AssetState::Pending);
+				// todo -- maybe we should check if this queued operation already
+				//		exists here...?
+				auto& p = *sthis->_pimpl;
+				{
+					ScopedLock(p._threadLock);
+					if (!p._thread)
+						p._thread = std::make_unique<CompilationThread>(
+							[](QueuedCompileOperation& op) { DoCompileMaterialScaffold(op); });
+				}
+				auto op = baseMarker.shared_from_this();
+				p._thread->Push(std::static_pointer_cast<QueuedCompileOperation>(op));
+				return true;
+			});
 
         return std::move(backgroundOp);
     }
@@ -331,11 +342,10 @@ namespace RenderCore { namespace Assets
         return nullptr;
     }
     
-    static const unsigned ExpectedVersion = 1;
     static const ::Assets::AssetChunkRequest MaterialScaffoldChunkRequests[]
     {
         ::Assets::AssetChunkRequest {
-            "Scaffold", ChunkType_ResolvedMat, ExpectedVersion, 
+            "Scaffold", ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion, 
             ::Assets::AssetChunkRequest::DataType::BlockSerializer 
         }
     };

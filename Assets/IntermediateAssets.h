@@ -39,9 +39,22 @@ namespace Assets
         uint64  _sourceID1;
         std::shared_ptr<ArchiveCache> _archive;
 
+		using RequestCompileEvent = std::function<bool(PendingCompileMarker&)>;
+		void SetOnRequestCompile(RequestCompileEvent&& fn);
+		bool RequestCompile();
+
         PendingCompileMarker();
         PendingCompileMarker(AssetState state, const char sourceID0[], uint64 sourceID1, std::shared_ptr<DependencyValidation> depVal);
         ~PendingCompileMarker();
+
+		PendingCompileMarker(PendingCompileMarker&&) = delete;
+		PendingCompileMarker& operator=(PendingCompileMarker&&) = delete;
+		PendingCompileMarker(const PendingCompileMarker&) = delete;
+		PendingCompileMarker& operator=(const PendingCompileMarker&) = delete;
+
+	private:
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
     };
 }
 

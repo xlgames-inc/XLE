@@ -12,6 +12,20 @@
 
 namespace Assets
 {
+	class VersionError : public ::Exceptions::BasicLabel
+	{
+	public:
+		VersionError(const char format[], ...) never_throws;
+	};
+
+	VersionError::VersionError(const char format[], ...) never_throws
+	{
+		va_list args;
+		va_start(args, format);
+		XlFormatStringV(_buffer, dimof(_buffer), format, args);
+		va_end(args);
+	}
+
     static std::vector<AssetChunkResult> LoadRawData(
         const char filename[],
         IteratorRange<const AssetChunkRequest*> requests)
@@ -31,7 +45,7 @@ namespace Assets
                     StringMeld<128>() << "Missing chunk (" << r._name << ")", filename);
 
             if (i->_chunkVersion != r._expectedVersion) {
-                throw ::Assets::Exceptions::FormatError(
+                throw VersionError(
                     StringMeld<256>() << 
                         "Data chunk is incorrect version for chunk (" 
                         << r._name << ") expected: " << r._expectedVersion << ", got: " << i->_chunkVersion, 
@@ -104,16 +118,54 @@ namespace Assets
         assert(!_validationCallback && !_resolveFn);
         if (marker->GetState() == ::Assets::AssetState::Ready) {
             _resolveFn = nullptr;
-            _filename = marker->_sourceID0;
-            _validationCallback = marker->_dependencyValidation;
-            auto pendingResult = LoadRawData(marker->_sourceID0, requests);
-            (*resolveFn)(this, MakeIteratorRange(pendingResult));
-        } else {
-            _marker = std::move(marker);
-            _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-            _requests = requests;
-            _resolveFn = resolveFn;
-        }
+
+			if (!marker->_dependencyValidation || marker->_dependencyValidation->GetValidationIndex() != 0) {
+				_marker = std::move(marker);
+				_validationCallback = std::make_shared<::Assets::DependencyValidation>();
+				_requests = requests;
+				_resolveFn = resolveFn;
+				_marker->RequestCompile();
+				return;
+			}
+
+			TRY
+			{
+				auto pendingResult = LoadRawData(marker->_sourceID0, requests);
+				(*resolveFn)(this, MakeIteratorRange(pendingResult));
+				_filename = marker->_sourceID0;
+				_validationCallback = marker->_dependencyValidation;
+				return;
+			}
+			CATCH(const VersionError&) 
+			{
+					// If we get a version error, we can attempt to recompile the asset
+				_marker = std::move(marker);
+				_validationCallback = std::make_shared<::Assets::DependencyValidation>();
+				_requests = requests;
+				_resolveFn = resolveFn; 
+				if (_marker->RequestCompile())
+					return;
+				throw;
+			}
+			CATCH(const Utility::Exceptions::IOException&)
+			{
+				_marker = std::move(marker);
+				_validationCallback = std::make_shared<::Assets::DependencyValidation>();
+				_requests = requests;
+				_resolveFn = resolveFn;
+				if (_marker->RequestCompile())
+					return;
+				throw;
+
+			}
+			CATCH_END
+        } 
+
+		// if the asset is pending, we just have to wait now ... 
+        _marker = std::move(marker);
+        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        _requests = requests;
+        _resolveFn = resolveFn;
     }
 
     ChunkFileAsset::ChunkFileAsset(ChunkFileAsset&& moveFrom) never_throws
