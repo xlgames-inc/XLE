@@ -86,9 +86,8 @@ namespace RenderCore { namespace Assets
             techniqueInterface.BindConstantBuffer(Techniques::ObjectCB::LocalTransform, 0, 1);
             techniqueInterface.BindConstantBuffer(Techniques::ObjectCB::BasicMaterialConstants, 1, 1);
             Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
-            for (unsigned c=0; c<textureBindPointsCount; ++c) {
+            for (unsigned c=0; c<textureBindPointsCount; ++c)
                 techniqueInterface.BindShaderResource(textureBindPoints[c], c, 1);
-            }
                 
             interfaces.push_back(std::move(techniqueInterface));
             hashes.push_back(interfHash);

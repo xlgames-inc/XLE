@@ -222,13 +222,13 @@ namespace RenderCore { namespace Assets
                     XlCatString(colladaFile, dimof(colladaFile), ".dae");
                 XlCopyString(rootNode, splitName.Parameters());
 
-                const auto* destinationFile = op._sourceID0;
+                const auto* destinationFile = op.GetLocator()._sourceID0;
                 ::Assets::ResChar temp[MaxPath];
                 if (op._typeCode == Type_RawMat) {
                         // When building rawmat, a material name could be on the op._sourceID0
                         // string. But we need to remove it from the path to find the real output
                         // name.
-                    XlCopyString(temp, MakeFileNameSplitter(op._sourceID0).AllExceptParameters());
+                    XlCopyString(temp, MakeFileNameSplitter(op.GetLocator()._sourceID0).AllExceptParameters());
                     destinationFile = temp;
                 }
 
@@ -285,7 +285,7 @@ namespace RenderCore { namespace Assets
                     // write new dependencies
                 std::vector<::Assets::DependentFileState> deps;
                 deps.push_back(op._destinationStore->GetDependentFileState(colladaFile));
-                op._dependencyValidation = op._destinationStore->WriteDependencies(destinationFile, splitName.DriveAndPath(), MakeIteratorRange(deps));
+                op.GetLocator()._dependencyValidation = op._destinationStore->WriteDependencies(destinationFile, splitName.DriveAndPath(), MakeIteratorRange(deps));
         
                 op.SetState(::Assets::AssetState::Ready);
             }
@@ -322,7 +322,7 @@ namespace RenderCore { namespace Assets
                         deps.push_back(op._destinationStore->GetDependentFileState(i->c_str()));
                     }
 
-                    SerializeToFile((*_serializeAnimationSetFn)(*mergedAnimationSet), op._sourceID0, libVersionDesc);
+                    SerializeToFile((*_serializeAnimationSetFn)(*mergedAnimationSet), op.GetLocator()._sourceID0, libVersionDesc);
                 } else {
                     if (!_oldPathOk)
                         Throw(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Some interface functions are missing"));
@@ -344,11 +344,11 @@ namespace RenderCore { namespace Assets
                             deps.push_back(op._destinationStore->GetDependentFileState(i->c_str()));
                         }
 
-                        SerializeToFile(((*mergedAnimationSet).*_ocSerializeAnimationFunction)(), op._sourceID0, libVersionDesc);
+                        SerializeToFile(((*mergedAnimationSet).*_ocSerializeAnimationFunction)(), op.GetLocator()._sourceID0, libVersionDesc);
                     #endif
                 }
 
-                op._dependencyValidation = op._destinationStore->WriteDependencies(op._sourceID0, splitName.DriveAndPath(), MakeIteratorRange(deps));
+                op.GetLocator()._dependencyValidation = op._destinationStore->WriteDependencies(op.GetLocator()._sourceID0, splitName.DriveAndPath(), MakeIteratorRange(deps));
                 if (::Assets::Services::GetInvalidAssetMan())
                     ::Assets::Services::GetInvalidAssetMan()->MarkValid(op._initializer0);
                 op.SetState(::Assets::AssetState::Ready);
@@ -366,35 +366,61 @@ namespace RenderCore { namespace Assets
         } CATCH_END
     }
     
-    std::shared_ptr<::Assets::PendingCompileMarker> ColladaCompiler::PrepareAsset(
-        uint64 typeCode, 
-        const ::Assets::ResChar* initializers[], unsigned initializerCount, 
-        const ::Assets::IntermediateAssets::Store& destinationStore)
+    class ColladaCompiler::Marker : public ::Assets::ICompileMarker
     {
-        char outputName[MaxPath];
-        bool stripParams = typeCode == Type_RawMat;
-        if (stripParams) {
-            destinationStore.MakeIntermediateName(
-                outputName, MakeFileNameSplitter(initializers[0]).AllExceptParameters());
-        } else {
-            destinationStore.MakeIntermediateName(outputName, initializers[0]);
-        }
-        switch (typeCode) {
-        case Type_Model: XlCatString(outputName, dimof(outputName), "-skin"); break;
-        case Type_Skeleton: XlCatString(outputName, dimof(outputName), "-skel"); break;
-        case Type_AnimationSet: XlCatString(outputName, dimof(outputName), "-anim"); break;
-        case Type_RawMat: XlCatString(outputName, dimof(outputName), "-rawmat"); break;
+    public:
+        ::Assets::IntermediateAssetLocator GetExistingAsset() const;
+        std::shared_ptr<::Assets::PendingCompileMarker> InvokeCompile() const;
+        StringSection<::Assets::ResChar> Initializer() const;
 
+        Marker(
+            const ::Assets::ResChar requestName[], uint64 typeCode,
+            const ::Assets::IntermediateAssets::Store& store,
+            std::shared_ptr<ColladaCompiler> compiler);
+        ~Marker();
+    private:
+        std::weak_ptr<ColladaCompiler> _compiler;
+        ::Assets::rstring _requestName;
+        uint64 _typeCode;
+        const ::Assets::IntermediateAssets::Store* _store;
+
+        void MakeIntermediateName(::Assets::ResChar destination[], size_t count) const;
+    };
+
+    void ColladaCompiler::Marker::MakeIntermediateName(::Assets::ResChar destination[], size_t count) const
+    {
+        bool stripParams = _typeCode == ColladaCompiler::Type_RawMat;
+        if (stripParams) {
+            _store->MakeIntermediateName(
+                destination, (unsigned)count, MakeFileNameSplitter(_requestName).AllExceptParameters());
+        } else {
+            _store->MakeIntermediateName(destination, (unsigned)count, _requestName.c_str());
+        }
+
+        switch (_typeCode) {
         default:
             assert(0);
-            return nullptr;   // unknown asset type!
+        case Type_Model: XlCatString(destination, count, "-skin"); break;
+        case Type_Skeleton: XlCatString(destination, count, "-skel"); break;
+        case Type_AnimationSet: XlCatString(destination, count, "-anim"); break;
+        case Type_RawMat: XlCatString(destination, count, "-rawmat"); break;
         }
+    }
 
-        if (auto existing = ::Assets::CompilerHelper::CheckExistingAsset(destinationStore, outputName, initializers[0])) {
-            if (typeCode == Type_RawMat)
-                XlCatString(existing->_sourceID0, MakeFileNameSplitter(initializers[0]).ParametersWithDivider());
-            return existing;
-        }
+    ::Assets::IntermediateAssetLocator ColladaCompiler::Marker::GetExistingAsset() const
+    {
+        ::Assets::IntermediateAssetLocator result;
+        MakeIntermediateName(result._sourceID0, dimof(result._sourceID0));
+        result._dependencyValidation = _store->MakeDependencyValidation(result._sourceID0);
+        if (_typeCode == Type_RawMat)
+            XlCatString(result._sourceID0, MakeFileNameSplitter(_requestName).ParametersWithDivider());
+        return result;
+    }
+
+    std::shared_ptr<::Assets::PendingCompileMarker> ColladaCompiler::Marker::InvokeCompile() const
+    {
+        auto c = _compiler.lock();
+        if (!c) return nullptr;
 
             // Queue this compilation operation to occur in the background thread.
             //
@@ -404,25 +430,47 @@ namespace RenderCore { namespace Assets
             // However, with the new implementation, we could use one of the global thread pools
             // and it should be ok to queue up multiple compilations at the same time.
         auto backgroundOp = std::make_shared<QueuedCompileOperation>();
-        backgroundOp->SetInitializer(initializers[0]);
-        XlCopyString(backgroundOp->_initializer0, initializers[0]);
-        XlCopyString(backgroundOp->_sourceID0, outputName);
-        if (typeCode == Type_RawMat)
-            XlCatString(backgroundOp->_sourceID0, MakeFileNameSplitter(initializers[0]).ParametersWithDivider());
-        backgroundOp->_destinationStore = &destinationStore;
-        backgroundOp->_typeCode = typeCode;
+        backgroundOp->SetInitializer(_requestName.c_str());
+        XlCopyString(backgroundOp->_initializer0, _requestName);
+        MakeIntermediateName(backgroundOp->GetLocator()._sourceID0, dimof(backgroundOp->GetLocator()._sourceID0));
+        if (_typeCode == Type_RawMat)
+            XlCatString(backgroundOp->GetLocator()._sourceID0, MakeFileNameSplitter(_requestName).ParametersWithDivider());
+        backgroundOp->_destinationStore = _store;
+        backgroundOp->_typeCode = _typeCode;
 
         {
-            ScopedLock(_pimpl->_threadLock);
-            if (!_pimpl->_thread) {
-                auto* p =_pimpl.get();
-                _pimpl->_thread = std::make_unique<CompilationThread>(
+            ScopedLock(c->_pimpl->_threadLock);
+            if (!c->_pimpl->_thread) {
+                auto* p = c->_pimpl.get();
+                c->_pimpl->_thread = std::make_unique<CompilationThread>(
                     [p](QueuedCompileOperation& op) { p->PerformCompile(op); });
             }
         }
-        _pimpl->_thread->Push(backgroundOp);
+        c->_pimpl->_thread->Push(backgroundOp);
         
         return std::move(backgroundOp);
+    }
+
+    StringSection<::Assets::ResChar> ColladaCompiler::Marker::Initializer() const
+    {
+        return MakeStringSection(_requestName);
+    }
+
+    ColladaCompiler::Marker::Marker(
+        const ::Assets::ResChar requestName[], uint64 typeCode,
+        const ::Assets::IntermediateAssets::Store& store,
+        std::shared_ptr<ColladaCompiler> compiler)
+    : _compiler(std::move(compiler)), _requestName(requestName), _typeCode(typeCode), _store(&store)
+    {}
+
+    ColladaCompiler::Marker::~Marker() {}
+
+    std::shared_ptr<::Assets::ICompileMarker> ColladaCompiler::PrepareAsset(
+        uint64 typeCode, 
+        const ::Assets::ResChar* initializers[], unsigned initializerCount, 
+        const ::Assets::IntermediateAssets::Store& destinationStore)
+    {
+        return std::make_shared<Marker>(initializers[0], typeCode, destinationStore, shared_from_this());
     }
 
     void ColladaCompiler::StallOnPendingOperations(bool cancelAll)

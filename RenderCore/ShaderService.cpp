@@ -35,27 +35,34 @@ namespace RenderCore
 
     ShaderStage::Enum ShaderService::ResId::AsShaderStage() const { return RenderCore::AsShaderStage(_shaderModel); }
 
-    CompiledShaderByteCode::CompiledShaderByteCode(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
+    CompiledShaderByteCode::CompiledShaderByteCode(std::shared_ptr<::Assets::ICompileMarker>&& marker)
     {
             // no way to know the shader stage in this mode...
             //  Maybe the shader stage should be encoded in the intermediate file name
         _stage = ShaderStage::Null;
         DEBUG_ONLY(_initializer[0] = '\0');
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
 
         if (marker) {
-            auto i = strrchr(marker->_sourceID0, '-');
-            if (i) _stage = AsShaderStage(i+1);
-            DEBUG_ONLY(XlCopyString(_initializer, marker->Initializer()));
-            _marker = std::move(marker);
+            DEBUG_ONLY(XlCopyString(_initializer, marker->Initializer());)
+            auto existing = marker->GetExistingAsset();
 
-                // if immediately ready, we can do a resolve right now.
-            if (_marker->GetState() != ::Assets::AssetState::Pending) {
-                ResolveFromCompileMarker();
-                if (!_shader || _shader->empty())
-                    Throw(Assets::Exceptions::InvalidAsset(Initializer(), "CompiledShaderByteCode invalid"));
+            auto i = strrchr(existing._sourceID0, '-');
+            if (i) _stage = AsShaderStage(i+1);
+
+            if (existing._dependencyValidation && existing._dependencyValidation->GetValidationIndex() == 0) {
+                _shader = existing._archive->OpenFromCache(existing._sourceID1);
+                _validationCallback = std::move(existing._dependencyValidation);
+            } 
+
+            if (!_shader) {
+                _validationCallback = std::make_shared<Assets::DependencyValidation>();
+                _marker = marker->InvokeCompile();
+                auto markerState = _marker->GetState();
+                if (markerState == ::Assets::AssetState::Invalid)
+                    Throw(::Assets::Exceptions::InvalidAsset(_initializer, "Compiled shader code is invalid"));
             }
-        }
+        } else
+            _validationCallback = std::make_shared<Assets::DependencyValidation>();
     }
 
     CompiledShaderByteCode::CompiledShaderByteCode(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[])
@@ -65,17 +72,15 @@ namespace RenderCore
         std::shared_ptr<ShaderService::IPendingMarker> compileHelper;
         DEBUG_ONLY(XlCopyString(_initializer, initializer);)
 
-        if (initializer && initializer[0] != '\0') {
-            if (XlCompareStringI(initializer, "null")!=0) {
-                compileHelper = 
-                    ShaderService::GetInstance().CompileFromFile(
-                        initializer, definesTable);
+        if (initializer && initializer[0] != '\0' && XlCompareStringI(initializer, "null")!=0) {
+            compileHelper = 
+                ShaderService::GetInstance().CompileFromFile(
+                    initializer, definesTable);
 
-                if (compileHelper != nullptr)
-                    _stage = compileHelper->GetStage();
+            if (compileHelper != nullptr)
+                _stage = compileHelper->GetStage();
 
-                RegisterFileDependency(validationCallback, MakeFileNameSplitter(initializer).AllExceptParameters());
-            }
+            RegisterFileDependency(validationCallback, MakeFileNameSplitter(initializer).AllExceptParameters());
         }
 
         _validationCallback = std::move(validationCallback);
@@ -132,14 +137,16 @@ namespace RenderCore
     void CompiledShaderByteCode::ResolveFromCompileMarker() const
     {
         if (_marker->GetState() != ::Assets::AssetState::Invalid) {
+            auto loc = _marker->GetLocator();
+
                 //  Our shader should be stored in a shader cache file
                 //  Find that file, and get the completed shader.
                 //  Note that this might hit the disk currently...?
-            if (_marker->_archive) {
+            if (loc._archive) {
                 TRY {
-                    _shader = _marker->_archive->OpenFromCache(_marker->_sourceID1);
+                    _shader = loc._archive->OpenFromCache(loc._sourceID1);
                 } CATCH (...) {
-                    LogWarning << "Compilation marker is finished, but shader couldn't be opened from cache (" << _marker->_sourceID0 << ":" <<_marker->_sourceID1 << ")";
+                    LogWarning << "Compilation marker is finished, but shader couldn't be opened from cache (" << loc._sourceID0 << ":" <<loc._sourceID1 << ")";
                 } CATCH_END
             }
         }
@@ -147,8 +154,8 @@ namespace RenderCore
             //  Even when we're considered invalid, we must register a dependency, and release
             //  the marker. This way we will be recompiled if the asset is changed (eg, to fix
             //  the compile error)
-        if (_marker->_dependencyValidation)
-            Assets::RegisterAssetDependency(_validationCallback, _marker->_dependencyValidation);
+        if (_marker->GetLocator()._dependencyValidation)
+            Assets::RegisterAssetDependency(_validationCallback, _marker->GetLocator()._dependencyValidation);
 
         if (_marker->GetState() == ::Assets::AssetState::Invalid)
             Throw(Assets::Exceptions::InvalidAsset(Initializer(), "CompiledShaderByteCode invalid"));

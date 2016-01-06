@@ -85,7 +85,7 @@ namespace RenderCore { namespace Assets
 
         static const auto CompileProcessType = ConstHash64<'ResM', 'at'>::Value;
 
-        MaterialScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+        MaterialScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker);
         MaterialScaffold(MaterialScaffold&& moveFrom) never_throws;
         MaterialScaffold& operator=(MaterialScaffold&& moveFrom) never_throws;
         ~MaterialScaffold();

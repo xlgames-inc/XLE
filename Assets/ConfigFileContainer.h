@@ -114,7 +114,9 @@ namespace Assets
         DirectorySearchRules _searchRules;
 
         ConfigFileListContainer(const ResChar initializer[]);
-        ConfigFileListContainer(std::shared_ptr<PendingCompileMarker>&& marker);
+        ConfigFileListContainer(
+            const ::Assets::IntermediateAssetLocator& locator, 
+            const ::Assets::ResChar initializer[]);
         ConfigFileListContainer();
         ~ConfigFileListContainer();
 
@@ -213,16 +215,10 @@ namespace Assets
 
     template<typename Type, typename Formatter>
         ConfigFileListContainer<Type, Formatter>::ConfigFileListContainer(
-            std::shared_ptr<PendingCompileMarker>&& marker)
+            const ::Assets::IntermediateAssetLocator& locator, 
+            const ::Assets::ResChar initializer[])
     {
-        auto state = marker->GetState();
-        if (state == AssetState::Ready) {
-            Construct(marker->_sourceID0);
-        } else if (state == AssetState::Pending) {
-            Throw(Exceptions::PendingAsset(marker->Initializer(), "Asset pending when loading through ConfigFileListContainer"));
-        } else {
-            Throw(Exceptions::PendingAsset(marker->Initializer(), "Asset invlaid when loading through ConfigFileListContainer"));
-        }
+        Construct(locator._sourceID0);
     }
 
     template<typename Type, typename Formatter>

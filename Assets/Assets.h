@@ -42,6 +42,9 @@ namespace Assets
 {
         ////////////////////////////////////////////////////////////////////////
 
+    class IntermediateAssetLocator;
+    class PendingCompileMarker;
+
     namespace Internal
     {
 		template <typename AssetType>
@@ -49,7 +52,15 @@ namespace Assets
 		{
 		public:
 			using DivAsset = DivergentAsset<AssetType>;
+            static const bool HasIntermediateConstructor = std::is_constructible<AssetType, const IntermediateAssetLocator&, const ResChar*>::value;
 		};
+
+        class ActiveCompileOperation
+        {
+        public:
+            std::shared_ptr<PendingCompileMarker> _compileMarker;
+            ::Assets::rstring _initializer;
+        };
 
         template <typename AssetType>
             class AssetSet : public IAssetSet
@@ -57,8 +68,10 @@ namespace Assets
         public:
             AssetSet();
             ~AssetSet();
-            void Clear();
-            void LogReport() const;
+
+            void            Clear();
+            void            LogReport() const;
+
             uint64          GetTypeCode() const;
             const char*     GetTypeName() const;
             unsigned        GetDivergentCount() const;
@@ -67,6 +80,7 @@ namespace Assets
             std::string     GetAssetName(uint64 id) const;
 
             static std::vector<std::pair<uint64, std::unique_ptr<AssetType>>> _assets;
+            static std::vector<std::pair<uint64, ActiveCompileOperation>> _activeCompiles;
 			
 			#if defined(ASSETS_STORE_DIVERGENT)
 				using DivAsset = typename AssetTraits<AssetType>::DivAsset;
@@ -97,7 +111,7 @@ namespace Assets
             public:
                 AssetSet<AssetType>* operator->() const never_throws { return _assetSet; }
                 AssetSet<AssetType>& operator*() const never_throws { return *_assetSet; }
-                AssetSet<AssetType>* get() const never_throws { return *_assetSet; }
+                AssetSet<AssetType>* get() const never_throws { return _assetSet; }
 
                 AssetSetPtr(AssetSet<AssetType>& assetSet)
                     : _assetSet(&assetSet) 
@@ -170,7 +184,7 @@ namespace Assets
         template<> struct ConstructAsset<0>
         { 
             template<typename AssetType, typename... Params> 
-				static typename Ptr<AssetType> Create(Params... initialisers)
+				static typename Ptr<AssetType> Create(AssetSet<AssetType>&, uint64 hash, Params... initialisers)
 			{
 				return std::make_unique<AssetType>(std::forward<Params>(initialisers)...);
 			}
@@ -178,14 +192,72 @@ namespace Assets
 
         template<> struct ConstructAsset<1>
         { 
-            template<typename AssetType, typename... Params> 
-				static typename Ptr<AssetType> Create(Params... initialisers)
+            template<
+                typename AssetType, typename... Params, 
+                typename std::enable_if<!AssetTraits<AssetType>::HasIntermediateConstructor>::type* = nullptr>
+                static typename Ptr<AssetType> Create(AssetSet<AssetType>&, uint64 hash, Params... initialisers)
             {
+                    // This asset type handles the compilation process manually. We will get a ICompileMarker
+                    // from the compiler and pass it directly to the asset.
                 auto& compilers = Services::GetAsyncMan().GetIntermediateCompilers();
                 auto& store = Services::GetAsyncMan().GetIntermediateStore();
-				const char* inits[] = { ((const char*)initialisers)... };
-				auto marker = compilers.PrepareAsset(GetCompileProcessType<AssetType>(), inits, dimof(inits), store);
+                const char* inits[] = { ((const char*)initialisers)... };
+                auto marker = compilers.PrepareAsset(GetCompileProcessType<AssetType>(), inits, dimof(inits), store);
                 return std::make_unique<AssetType>(std::move(marker));
+            }
+
+            template<
+                typename AssetType, typename... Params, 
+                typename std::enable_if<AssetTraits<AssetType>::HasIntermediateConstructor>::type* = nullptr>
+                static typename Ptr<AssetType> Create(AssetSet<AssetType>& set, uint64 hash, Params... initialisers)
+            {
+                    // This asset type uses the default compilation process. The asset type itself only has
+                    // the logic for loading the completed intermediate asset. We will use general code for 
+                    // testing for existing assets and invoking compiles (etc).
+
+                auto& compilers = Services::GetAsyncMan().GetIntermediateCompilers();
+                auto& store = Services::GetAsyncMan().GetIntermediateStore();
+                const char* inits[] = { ((const char*)initialisers)... };
+
+                auto i = LowerBound(set._activeCompiles, hash);
+                if (i != set._activeCompiles.end() && i->first == hash) {
+                    auto state = i->second._compileMarker->GetState();
+                    if (state == AssetState::Pending)
+                        Throw(Exceptions::PendingAsset(i->second._initializer.c_str(), "Compile still pending"));
+                    if (state == AssetState::Invalid)
+                        Throw(Exceptions::PendingAsset(i->second._initializer.c_str(), "Asset became invalid during compile"));
+
+                    // note --  If we get an exception here, every subsequent call will follow this same path
+                    //          and reach this same invalid state.
+                    auto result = std::make_unique<AssetType>(i->second._compileMarker->GetLocator(), "CompiledAsset");
+                    set._activeCompiles.erase(i);
+                    return std::move(result);
+                }
+
+				auto marker = compilers.PrepareAsset(GetCompileProcessType<AssetType>(), inits, dimof(inits), store);
+                auto existingLoc = marker->GetExistingAsset();
+                if (!existingLoc._dependencyValidation) {
+                        // no existing asset -- we must invoke a compile
+                    auto pendingCompile = marker->InvokeCompile();
+                    auto initializer = marker->Initializer().AsString();
+                    set._activeCompiles.insert(i, std::make_pair(hash, ActiveCompileOperation{std::move(pendingCompile), initializer}));
+                    Throw(Exceptions::PendingAsset(initializer.c_str(), "Pending recompile"));
+                }
+
+                TRY {
+                    auto result = std::make_unique<AssetType>(existingLoc, "CompiledAsset");
+                    return std::move(result);
+                } CATCH (const Exceptions::InvalidAsset&) {
+                    // on invalid (eg, missing or out-of-date), we can try to invoke a recompile
+                    auto pendingCompile = marker->InvokeCompile();
+                    auto initializer = marker->Initializer().AsString();
+                    set._activeCompiles.insert(i, std::make_pair(hash, ActiveCompileOperation{std::move(pendingCompile), initializer}));
+                    Throw(Exceptions::PendingAsset(initializer.c_str(), "Pending recompile"));
+                } CATCH (const Exceptions::PendingAsset&) {
+                    assert(0); // trouble -- we don't want to get a pending asset here...!
+                    throw;
+                } 
+                CATCH_END
             }
         };
 
@@ -229,7 +301,7 @@ namespace Assets
                             //  locked for awhile. Or, even worse, we could try for a recursive lock on the same
                             //  asset set.
                         auto oldResource = std::move(i->second);
-                        i->second = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(std::forward<Params>(initialisers)...);
+                        i->second = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(*assetSet.get(), hash, std::forward<Params>(initialisers)...);
                     }
                     return *i->second;
                 }
@@ -238,7 +310,7 @@ namespace Assets
                     auto name = AsString(initialisers...);  // (have to do this before constructor (incase constructor does std::move operations)
                 #endif
 
-                auto newAsset = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(std::forward<Params>(initialisers)...);
+                auto newAsset = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(*assetSet.get(), hash, std::forward<Params>(initialisers)...);
                 #if defined(ASSETS_STORE_NAMES)
                         // This is extra functionality designed for debugging and profiling
                         // attach a name to this hash value, so we can query the contents
@@ -428,6 +500,10 @@ namespace Assets
 
         template <typename AssetType>
             std::vector<std::pair<uint64, std::unique_ptr<AssetType>>> AssetSet<AssetType>::_assets;
+
+        template <typename AssetType>
+            std::vector<std::pair<uint64, ActiveCompileOperation>> AssetSet<AssetType>::_activeCompiles;
+
         #if defined(ASSETS_STORE_NAMES)
             template <typename AssetType>
                 std::vector<std::pair<uint64, std::string>> AssetSet<AssetType>::_assetNames;

@@ -31,7 +31,6 @@
     <ClCompile Include="..\InvalidAssetManager.cpp" />
     <ClCompile Include="..\AsyncLoadOperation.cpp" />
     <ClCompile Include="..\IntermediateAssets.cpp" />
-    <ClCompile Include="..\CompilerHelper.cpp" />
     <ClCompile Include="..\ChunkFileAsset.cpp" />
     <ClCompile Include="..\ConfigFileContainer.cpp" />
   </ItemGroup>

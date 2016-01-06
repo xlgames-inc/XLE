@@ -14,7 +14,7 @@
 #include <utility>
 #include <assert.h>
 
-namespace Assets { class DependencyValidation; class DependentFileState; class PendingCompileMarker; }
+namespace Assets { class DependencyValidation; class DependentFileState; class PendingCompileMarker; class ICompileMarker; }
 
 namespace RenderCore
 {
@@ -37,10 +37,10 @@ namespace RenderCore
         class ResId
         {
         public:
-            ResChar _filename[MaxPath];
-            ResChar _entryPoint[64];
-            ResChar _shaderModel[32];
-            bool _dynamicLinkageEnabled;
+            ResChar     _filename[MaxPath];
+            ResChar     _entryPoint[64];
+            ResChar     _shaderModel[32];
+            bool        _dynamicLinkageEnabled;
 
             ResId(const ResChar filename[], const ResChar entryPoint[], const ResChar shaderModel[]);
             ResId();
@@ -186,7 +186,7 @@ namespace RenderCore
         CompiledShaderByteCode(
             const char shaderInMemory[], const char entryPoint[], 
             const char shaderModel[], const ::Assets::ResChar definesTable[]=nullptr);
-        CompiledShaderByteCode(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+        CompiledShaderByteCode(std::shared_ptr<::Assets::ICompileMarker>&& marker);
         CompiledShaderByteCode(std::shared_ptr<ShaderService::IPendingMarker>&& marker);
         ~CompiledShaderByteCode();
 

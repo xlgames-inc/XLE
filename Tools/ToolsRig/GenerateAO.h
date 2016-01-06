@@ -78,10 +78,10 @@ namespace ToolsRig
         const ::Assets::DirectorySearchRules* searchRules);
 
     /// <summary>Compiler type for generating per-vertex AO supplement</summary>
-    class AOSupplementCompiler : public ::Assets::IntermediateAssets::IAssetCompiler
+    class AOSupplementCompiler : public ::Assets::IntermediateAssets::IAssetCompiler, public std::enable_shared_from_this<AOSupplementCompiler>
     {
     public:
-        std::shared_ptr<::Assets::PendingCompileMarker> PrepareAsset(
+        std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(
             uint64 typeCode, 
             const ::Assets::ResChar* initializers[], unsigned initializerCount,
             const ::Assets::IntermediateAssets::Store& destinationStore);
@@ -98,6 +98,8 @@ namespace ToolsRig
         class Pimpl;
         std::shared_ptr<Pimpl> _pimpl;
         class PollingOp;
+
+        class Marker;
     };
 
 }

@@ -346,7 +346,7 @@ namespace Assets { namespace IntermediateAssets
         }
     }
 
-    std::shared_ptr<PendingCompileMarker> CompilerSet::PrepareAsset(
+    std::shared_ptr<ICompileMarker> CompilerSet::PrepareAsset(
         uint64 typeCode, const ResChar* initializers[], unsigned initializerCount,
         Store& store)
     {
@@ -360,23 +360,7 @@ namespace Assets { namespace IntermediateAssets
             // note that ideally we want to be able to schedule this in the background
         auto i = LowerBound(_pimpl->_compilers, typeCode);
         if (i != _pimpl->_compilers.cend() && i->first == typeCode) {
-
-            TRY {
-                return i->second->PrepareAsset(typeCode, initializers, initializerCount, store);
-            } CATCH (const std::exception& e) {
-                    // we must send back an Invalid marker if we hit an exception
-                    // (otherwise we can end up in an infinite compile operation)
-                LogAlwaysError << "Exception during processing of (" << initializers[0] << "). Exception details: (" << e.what() << ")";
-                auto result = std::make_shared<PendingCompileMarker>(AssetState::Invalid, nullptr, 0, nullptr);
-                result->SetInitializer(initializers[0]);
-                return std::move(result);
-            } CATCH (...) {
-                LogAlwaysError << "Unknown exception during processing of (" << initializers[0] << ").";
-                auto result = std::make_shared<PendingCompileMarker>(AssetState::Invalid, nullptr, 0, nullptr);
-                result->SetInitializer(initializers[0]);
-                return std::move(result);
-            } CATCH_END
-
+            return i->second->PrepareAsset(typeCode, initializers, initializerCount, store);
         } else {
             assert(0);  // couldn't find a processor for this asset type
         }
@@ -407,52 +391,22 @@ namespace Assets { namespace IntermediateAssets
 
 namespace Assets
 {
-	class PendingCompileMarker::Pimpl
-	{
-	public:
-		Threading::Mutex _eventsLock;
-		RequestCompileEvent _onRequestCompile;
-	};
-
-	void PendingCompileMarker::SetOnRequestCompile(RequestCompileEvent&& fn)
-	{
-		ScopedLock(_pimpl->_eventsLock);
-		_pimpl->_onRequestCompile = std::move(fn);
-	}
-
-	bool PendingCompileMarker::RequestCompile()
-	{
-		ScopedLock(_pimpl->_eventsLock);
-		if (!_pimpl->_onRequestCompile) return false;
-		return _pimpl->_onRequestCompile(*this);
-	}
-
-	PendingCompileMarker::PendingCompileMarker() : _sourceID1(0)
+    IntermediateAssetLocator::IntermediateAssetLocator()
     {
-		_pimpl = std::make_unique<Pimpl>();
-        DEBUG_ONLY(_initializer[0] = '\0');
+        _sourceID0[0] = '\0';
+        _sourceID1 = 0;
+    }
+    IntermediateAssetLocator::~IntermediateAssetLocator() {}
+
+    const IntermediateAssetLocator& PendingCompileMarker::GetLocator() const { return _locator; }
+
+    IntermediateAssetLocator& PendingCompileMarker::GetLocator() { return _locator; }
+
+    void PendingCompileMarker::SetLocator(const IntermediateAssetLocator& locator)
+    {
+        _locator = locator;
     }
 
-    PendingCompileMarker::PendingCompileMarker(AssetState state, const char sourceID0[], uint64 sourceID1, std::shared_ptr<Assets::DependencyValidation> depVal)
-    : PendingOperationMarker(state), _sourceID1(sourceID1), _dependencyValidation(std::move(depVal))
-    {
-		_pimpl = std::make_unique<Pimpl>();
-        if (sourceID0) {
-            XlCopyString(_sourceID0, sourceID0);
-        } else {
-            _sourceID0[0] = '\0';
-        }
-    }
-
-    PendingCompileMarker::~PendingCompileMarker() 
-	{
-		std::unique_ptr<Pimpl> p;
-		{
-			ScopedLock(_pimpl->_eventsLock);
-			_pimpl->_onRequestCompile = RequestCompileEvent();
-			// while still locked, prevent any further access to _pimpl
-			p = std::move(_pimpl);
-		}
-		p.reset();
-	}
+	PendingCompileMarker::PendingCompileMarker() {}
+    PendingCompileMarker::~PendingCompileMarker()  {}
 }

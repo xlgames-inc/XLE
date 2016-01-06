@@ -20,7 +20,7 @@ namespace RenderCore { namespace Assets
     class MaterialScaffoldCompiler : public ::Assets::IntermediateAssets::IAssetCompiler, public std::enable_shared_from_this<MaterialScaffoldCompiler>
     {
     public:
-        std::shared_ptr<::Assets::PendingCompileMarker> PrepareAsset(
+        std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(
             uint64 typeCode, 
             const ::Assets::ResChar* initializers[], unsigned initializerCount,
             const ::Assets::IntermediateAssets::Store& destinationStore);
@@ -33,6 +33,8 @@ namespace RenderCore { namespace Assets
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
+
+        friend class MatCompilerMarker;
     };
 
 }}
