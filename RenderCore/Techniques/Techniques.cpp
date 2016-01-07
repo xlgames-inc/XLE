@@ -13,6 +13,7 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/InvalidAssetManager.h"
+#include "../../Assets/ConfigFileContainer.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../ConsoleRig/Log.h"
@@ -373,7 +374,7 @@ namespace RenderCore { namespace Techniques
             Setting& operator=(Setting&& moveFrom);
             Setting(
                 InputStreamFormatter<utf8>& source,
-                ::Assets::DirectorySearchRules& searchRules,
+                const ::Assets::DirectorySearchRules& searchRules,
                 std::vector<std::shared_ptr<::Assets::DependencyValidation>>& inherited);
         };
         std::vector<std::pair<uint64,Setting>> _settings;
@@ -417,7 +418,7 @@ namespace RenderCore { namespace Techniques
 
     static void LoadInheritedParameterBoxes(
         Formatter& source, ParameterBox dst[4],
-        ::Assets::DirectorySearchRules* searchRules,
+        const ::Assets::DirectorySearchRules* searchRules,
         std::vector<std::shared_ptr<::Assets::DependencyValidation>>* inherited)
     {
             //  We will serialize in a list of 
@@ -503,7 +504,7 @@ namespace RenderCore { namespace Techniques
 
     ParameterBoxTable::Setting::Setting(
         Formatter& formatter,
-        ::Assets::DirectorySearchRules& searchRules,
+        const ::Assets::DirectorySearchRules& searchRules,
         std::vector<std::shared_ptr<::Assets::DependencyValidation>>& inherited)
     {
         for (;;) {
@@ -611,7 +612,7 @@ namespace RenderCore { namespace Techniques
     Technique::Technique(
         Formatter& formatter, 
         const std::string& name,
-        ::Assets::DirectorySearchRules* searchRules,
+        const ::Assets::DirectorySearchRules* searchRules,
         std::vector<std::shared_ptr<::Assets::DependencyValidation>>* inherited)
     {
             //
@@ -673,14 +674,29 @@ namespace RenderCore { namespace Techniques
         _name = name;
     }
 
+    void Technique::MergeIn(const Technique& source)
+    {
+        if (!source._name.empty()) _name = source._name;
+        if (!source._vertexShaderName.empty()) _vertexShaderName = source._vertexShaderName;
+        if (!source._pixelShaderName.empty()) _pixelShaderName = source._pixelShaderName;
+        if (!source._geometryShaderName.empty()) _geometryShaderName = source._geometryShaderName;
+
+        for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
+            const auto& s = source._baseParameters._parameters[c];
+            auto& d = _baseParameters._parameters[c];
+            for (auto i = s.Begin(); !i.IsEnd(); ++i)
+                d.SetParameter(i.Name(), i.RawValue(), i.Type());
+        }
+    }
+
     Technique::Technique(Technique&& moveFrom)
-    :       _name(moveFrom._name)
-    ,       _baseParameters(std::move(moveFrom._baseParameters))
-    ,       _filteredToResolved(std::move(moveFrom._filteredToResolved))
-    ,       _globalToResolved(std::move(moveFrom._globalToResolved))
-    ,       _vertexShaderName(moveFrom._vertexShaderName)
-    ,       _pixelShaderName(moveFrom._pixelShaderName)
-    ,       _geometryShaderName(moveFrom._geometryShaderName)
+    :   _name(moveFrom._name)
+    ,   _baseParameters(std::move(moveFrom._baseParameters))
+    ,   _filteredToResolved(std::move(moveFrom._filteredToResolved))
+    ,   _globalToResolved(std::move(moveFrom._globalToResolved))
+    ,   _vertexShaderName(moveFrom._vertexShaderName)
+    ,   _pixelShaderName(moveFrom._pixelShaderName)
+    ,   _geometryShaderName(moveFrom._geometryShaderName)
     {}
 
     Technique& Technique::operator=(Technique&& moveFrom)
@@ -748,7 +764,7 @@ namespace RenderCore { namespace Techniques
         return ~0u;
     }
 
-    ShaderType::ShaderType(const char resourceName[])
+    ShaderType::ShaderType(const ::Assets::ResChar resourceName[])
     {
         size_t sourceFileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(resourceName, &sourceFileSize);
@@ -756,53 +772,28 @@ namespace RenderCore { namespace Techniques
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterFileDependency(_validationCallback, resourceName);
         
-        if (sourceFile) {
+        if (sourceFile && sourceFileSize) {
             auto searchRules = ::Assets::DefaultDirectorySearchRules(resourceName);
             std::vector<std::shared_ptr<::Assets::DependencyValidation>> inheritedAssets;
 
+            StringSection<char> configSection((const char*)sourceFile.get(), (const char*)PtrAdd(sourceFile.get(), sourceFileSize));
+
+            auto compoundDoc = ::Assets::ReadCompoundTextDocument(configSection);
+            if (!compoundDoc.empty()) {
+                auto i = std::find_if(
+                    compoundDoc.cbegin(), compoundDoc.cend(),
+                    [](const ::Assets::TextChunk<char>& chunk)
+                    { return XlEqString(chunk._type, "TechniqueConfig"); });
+
+                if (i != compoundDoc.cend())
+                    configSection = i->_content;
+            }
+
             TRY
             {
-                Formatter formatter(MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), sourceFileSize)));
-                for (;;) {
-                    bool cleanQuit = false;
-                    switch (formatter.PeekNext()) {
-                    case Formatter::Blob::BeginElement:
-                        {
-                            Formatter::InteriorSection eleName;
-                            if (!formatter.TryBeginElement(eleName)) break;
-
-                            auto index = AsTechniqueIndex(eleName);
-                            if (index < dimof(_technique)) {
-                                if (_technique[index].IsValid())
-                                    Throw(FormatException(
-                                        "Same technique label is used more than once", formatter.GetLocation()));
-
-                                _technique[index] = 
-                                    Technique(
-                                        formatter, 
-                                        Conversion::Convert<std::string>(AsString(eleName)),
-                                        &searchRules, &inheritedAssets);
-                            } else {
-                                LogWarning << "Ignoring technique label (" << eleName.AsString().c_str() << ") because it is unrecognised";
-                                formatter.SkipElement();
-                            }
-                            if (!formatter.TryEndElement()) break;
-                        }
-                        continue;
-
-                    case Formatter::Blob::None:
-                        cleanQuit = true;
-                        break;
-
-                    default:
-                        break;
-                    }
-
-                    if (!cleanQuit)
-                        Throw(FormatException("Unexpected blob while reading stream", formatter.GetLocation()));
-                    break;
-                }
-
+                ParseConfigFile(
+                    StringSection<utf8>((const utf8*)configSection.begin(), (const utf8*)configSection.end()), 
+                    searchRules, inheritedAssets);
                 if (::Assets::Services::GetInvalidAssetMan())
                     ::Assets::Services::GetInvalidAssetMan()->MarkValid(resourceName);
             }
@@ -814,14 +805,94 @@ namespace RenderCore { namespace Techniques
             }
             CATCH_END
 
-            for (auto i=inheritedAssets.begin(); i!=inheritedAssets.end(); ++i) {
+            for (auto i=inheritedAssets.begin(); i!=inheritedAssets.end(); ++i)
                 ::Assets::RegisterAssetDependency(_validationCallback, *i);
-            }
         }
     }
 
     ShaderType::~ShaderType()
     {}
+
+    void ShaderType::ParseConfigFile(
+        StringSection<utf8> input, 
+        const ::Assets::DirectorySearchRules& searchRules,
+        std::vector<std::shared_ptr<::Assets::DependencyValidation>>& inheritedAssets)
+    {
+        Formatter formatter(MemoryMappedInputStream(input.begin(), input.end()));
+        for (;;) {
+            bool cleanQuit = false;
+            switch (formatter.PeekNext()) {
+            case Formatter::Blob::BeginElement:
+                {
+                    Formatter::InteriorSection eleName;
+                    if (!formatter.TryBeginElement(eleName)) break;
+
+                    if (XlEqString(eleName, u("Inherit"))) {
+                        // we should find a list of other technique configuation files to inherit from
+                        for (;;) {
+                            auto next = formatter.PeekNext();
+                            if (next == Formatter::Blob::EndElement) break;
+                            if (next != Formatter::Blob::AttributeName)
+                                Throw(FormatException("Unexpected blob when serializing inheritted list", formatter.GetLocation()));
+            
+                            Formatter::InteriorSection name, value;
+                            if (!formatter.TryAttribute(name, value))
+                                Throw(FormatException("Bad attribute in inheritted list", formatter.GetLocation()));
+
+                            ::Assets::ResChar resolvedFile[MaxPath];
+                            XlCopyNString(resolvedFile, (const ::Assets::ResChar*)name._start, name._end-name._start);
+                            XlCatString(resolvedFile, dimof(resolvedFile), ".txt");
+                            searchRules.ResolveFile(resolvedFile, resolvedFile);
+
+                            // exceptions thrown by from the inheritted asset will not be suppressed
+                            const auto& inheritFrom = ::Assets::GetAssetDep<ShaderType>(resolvedFile);
+                            inheritedAssets.push_back(inheritFrom.GetDependencyValidation());
+
+                            // we should merge in the content from all the inheritted's assets
+                            for (unsigned c=0; c<dimof(_technique); ++c)
+                                _technique[c].MergeIn(inheritFrom._technique[c]);
+                        }
+                    } else {
+                        auto index = AsTechniqueIndex(eleName);
+                        if (index < dimof(_technique)) {
+                            Technique newTech(
+                                formatter, 
+                                Conversion::Convert<std::string>(AsString(eleName)),
+                                &searchRules, &inheritedAssets);
+                        
+                            // Merge this new technique definition into our existing
+                            // technique. The new technique values will override any
+                            // values already there.
+                            if (_technique[index].IsValid()) {
+                                _technique[index].MergeIn(newTech);
+                            } else {
+                                _technique[index] = std::move(newTech);
+                            }
+                        } else {
+                            LogWarning 
+                                << "Ignoring technique label (" << eleName.AsString().c_str() 
+                                << ") because it is unrecognised";
+                            formatter.SkipElement();
+                        }
+                    }
+
+                    if (!formatter.TryEndElement()) break;
+                }
+                continue;
+
+            case Formatter::Blob::None:
+                cleanQuit = true;
+                break;
+
+            default:
+                break;
+            }
+
+            if (!cleanQuit)
+                Throw(FormatException("Unexpected blob while reading stream", formatter.GetLocation()));
+            break;
+        }
+    }
 
         //////////////////////-------//////////////////////
 

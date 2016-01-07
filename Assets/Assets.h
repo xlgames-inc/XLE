@@ -34,8 +34,8 @@
         //          .net code can't include the <mutex> header...
         //          So we have to push all code that interacts with
         //          the mutex class into the cpp file
-    namespace std { class mutex; extern template unique_ptr<mutex>::~unique_ptr(); }
-    namespace Utility { namespace Threading { using Mutex = std::mutex; }}
+    namespace std { class mutex; extern template unique_ptr<mutex>::~unique_ptr(); class recursive_mutex; extern template unique_ptr<recursive_mutex>::~unique_ptr(); }
+    namespace Utility { namespace Threading { using Mutex = std::mutex; using RecursiveMutex = std::recursive_mutex; }}
 #endif
 
 namespace Assets
@@ -94,7 +94,7 @@ namespace Assets
             #if defined(ASSETS_MULTITHREADED)
                 AssetSet& operator=(const AssetSet& cloneFrom) = delete;
                 AssetSet(const AssetSet& cloneFrom) = delete;
-                std::unique_ptr<Utility::Threading::Mutex> _lock;
+                std::unique_ptr<Utility::Threading::RecursiveMutex> _lock;
             #endif
         };
 
@@ -104,6 +104,10 @@ namespace Assets
             std::unique_ptr<Utility::Threading::Mutex> CreateMutexPtr();
             void LockMutex(Utility::Threading::Mutex&);
             void UnlockMutex(Utility::Threading::Mutex&);
+
+            std::unique_ptr<Utility::Threading::RecursiveMutex> CreateRecursiveMutexPtr();
+            void LockMutex(Utility::Threading::RecursiveMutex&);
+            void UnlockMutex(Utility::Threading::RecursiveMutex&);
 
             template <typename AssetType>
                 class AssetSetPtr // : public std::unique_lock<Utility::Threading::Mutex>
@@ -424,7 +428,7 @@ namespace Assets
 
         template <typename AssetType>
             AssetSet<AssetType>::AssetSet() 
-            : _lock(CreateMutexPtr())
+            : _lock(CreateRecursiveMutexPtr())
         {}
 
         template <typename AssetType>

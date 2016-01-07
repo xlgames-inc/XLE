@@ -82,12 +82,12 @@ namespace Assets
                 while (ci != doc.end()) {
                     while (ci != doc.end() && *ci != ')') ++ci;
                     if (ci == doc.end()) break;
-                    ++ci;
 
                     const auto* di = d.first;
-                    auto ci2 = ci;
+                    auto ci2 = ci+1;
                     while (ci2 != doc.end() && di != d.second && *ci2 == *di) { ++ci2; ++di; }
                     if (di == d.second) break; // matching deliminator means we terminate here
+                    ++ci;
                 }
 
                 if (ci == doc.end())

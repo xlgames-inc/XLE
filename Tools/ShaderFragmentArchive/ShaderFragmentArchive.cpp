@@ -10,6 +10,7 @@
 #include "../GUILayer/MarshalString.h"
 #include "../../ShaderParser/InterfaceSignature.h"
 #include "../../ShaderParser/ParameterSignature.h"
+#include "../../ShaderParser/Exceptions.h"
 #include "../../Utility/Streams/FileSystemMonitor.h"
 #include "../../Utility/Streams/PathUtils.h"
 
@@ -196,7 +197,7 @@ namespace ShaderFragmentArchive
                     ParameterStruct^ pstruct = gcnew ParameterStruct(*i);
                     ParameterStructs->Add(pstruct);
                 }
-            } catch (const ShaderSourceParser::Exceptions::ParseError& ) {
+            } catch (const ShaderSourceParser::Exceptions::ParsingFailure& ) {
                 ExceptionString = "Failed during parsing. Look for compilation errors.";
             }
             
@@ -258,7 +259,7 @@ namespace ShaderFragmentArchive
                     Source      = SourceType::Material;
                 }
 
-            } catch (const ShaderSourceParser::Exceptions::ParseError& ) {
+            } catch (const ShaderSourceParser::Exceptions::ParsingFailure&) {
 
                 ExceptionString = "Failure in parser. Check text file format";
 

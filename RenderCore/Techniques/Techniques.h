@@ -9,6 +9,7 @@
 #include "CommonBindings.h"     // for TechniqueIndex::Max
 #include "../Metal/Forward.h"
 #include "../../Assets/AssetsCore.h"
+#include "../../Utility/StringUtils.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Core/Prefix.h"
 #include "../../Core/Types.h"
@@ -120,15 +121,17 @@ namespace RenderCore { namespace Techniques
     class Technique
     {
     public:
-        ResolvedShader      FindVariation(  const ParameterBox* globalState[ShaderParameters::Source::Max], 
-                                            const TechniqueInterface& techniqueInterface) const;
+        ResolvedShader FindVariation(  
+            const ParameterBox* globalState[ShaderParameters::Source::Max], 
+            const TechniqueInterface& techniqueInterface) const;
 
-        bool                IsValid() const { return !_vertexShaderName.empty(); }
+        bool IsValid() const { return !_vertexShaderName.empty(); }
+        void MergeIn(const Technique& source);
 
         Technique(
             Utility::InputStreamFormatter<utf8>& formatter, 
             const std::string& name,
-            ::Assets::DirectorySearchRules* searchRules = nullptr, 
+            const ::Assets::DirectorySearchRules* searchRules = nullptr, 
             std::vector<std::shared_ptr<::Assets::DependencyValidation>>* inherited = nullptr);
         Technique(Technique&& moveFrom);
         Technique& operator=(Technique&& moveFrom);
@@ -185,11 +188,16 @@ namespace RenderCore { namespace Techniques
 
         auto GetDependencyValidation() const -> const ::Assets::DepValPtr& { return _validationCallback; }
 
-        ShaderType(const char resourceName[]);
+        ShaderType(const ::Assets::ResChar resourceName[]);
         ~ShaderType();
     private:
         Technique           _technique[size_t(TechniqueIndex::Max)];
         ::Assets::DepValPtr _validationCallback;
+
+        void ParseConfigFile(
+            StringSection<utf8> input, 
+            const ::Assets::DirectorySearchRules& searchRules,
+            std::vector<std::shared_ptr<::Assets::DependencyValidation>>& inheritedAssets);
     };
 
         //////////////////////////////////////////////////////////////////

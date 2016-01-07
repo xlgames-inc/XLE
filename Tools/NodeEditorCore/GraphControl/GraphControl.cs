@@ -36,7 +36,8 @@ namespace NodeEditorCore
 
     public class GraphControl : HyperGraph.GraphControl, IDisposable
     {
-        HyperGraph.IGraphModel GetGraphModel() { return base._model; }
+        HyperGraph.IGraphModel  GetGraphModel() { return base._model; }
+        public IModelConversion ModelConversion { get; set; }
 
         public GraphControl()
         {
@@ -162,9 +163,7 @@ namespace NodeEditorCore
             {
                 var tag = ((ToolStripMenuItem)senderObject).GetCurrentParent().Tag;
                 if (tag is UInt32)
-                {
                     return (UInt32)tag;
-                }
             }
             return 0;
         }
@@ -174,16 +173,15 @@ namespace NodeEditorCore
             return ShaderFragmentNodeUtil.GetShaderFragmentNode(GetGraphModel(), id);
         }
 
-        // private ShaderPatcherLayer.NodeGraph ConvertToShaderPatcherLayer()
-        // {
-        //     return ModelConversion.ToShaderPatcherLayer(GetGraphModel());
-        // }
+        private ShaderPatcherLayer.NodeGraph ConvertToShaderPatcherLayer()
+        {
+            return ModelConversion.ToShaderPatcherLayer(GetGraphModel());
+        }
 
         private void OnShowPreviewShader(object sender, EventArgs e)
         {
-            // var nodeGraph = ConvertToShaderPatcherLayer();
-            // var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, AttachedId(sender), "");
-            // MessageBox.Show(shader, "Generated shader", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+            var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(ConvertToShaderPatcherLayer(), AttachedId(sender), "");
+            MessageBox.Show(shader, "Generated shader", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
         }
 
         private void refreshToolStripMenuItem_Click(object sender, EventArgs e)

@@ -1024,6 +1024,23 @@ namespace ShaderPatcher
             }
         }
 
+        for (auto i=graph.GetNodeConstantConnections().cbegin(); i!=graph.GetNodeConstantConnections().cend(); ++i) {
+            auto* destinationNode = graph.GetNode(i->OutputNodeId());
+            if (destinationNode && destinationNode->GetType() == Node::Type::Output) {
+                if  (!writeOutputsViaStruct) {
+                    if (i->OutputParameterName() != "value") {
+                        result << "\tOUT_" << destinationNode->NodeId() << "." << i->OutputParameterName() << " = ";
+                    } else {
+                        result << "\tOUT_" << destinationNode->NodeId() << " = ";
+                    }
+                } else {
+                    result << "\tOUT." << "Output_" << destinationNode->NodeId() << "." << i->OutputParameterName() << " = ";
+                }
+
+                result << i->Value() << ";" << std::endl;
+            }
+        }
+
         result << std::endl << "}" << std::endl;
 
         return result.str();
@@ -1211,9 +1228,9 @@ namespace ShaderPatcher
 
         std::stringstream result;
         result << "\t" << p._type << " " << p._name;
-        if (!p._semantic.empty()) {
+        /*if (!p._semantic.empty()) {
             result << " : " << p._semantic;
-        } else {
+        } else */ {
             char smallBuffer[128];
             if (!IsStructType(MakeStringSection(p._type)))  // (struct types don't get a semantic)
                 result << " : " << "VARYING_" << XlI32toA(index, smallBuffer, dimof(smallBuffer), 10);

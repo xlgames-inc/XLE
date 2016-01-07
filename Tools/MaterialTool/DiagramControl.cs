@@ -53,6 +53,7 @@ namespace MaterialTool
             graphAdapter.Model = context.Model;
             graphAdapter.Selection = context.DiagramSelection; 
             graphAdapter.Context = underlyingDoc;
+            graphAdapter.ModelConversion = _modelConversion;
 
             // calling Adapt will unbind previous adapters
             var hoverAdapter = new HoverAdapter();
@@ -95,6 +96,7 @@ namespace MaterialTool
 
         [Import] private System.ComponentModel.Composition.Hosting.ExportProvider _exportProvider;
         [Import] private ControlsLibraryExt.Material.ActiveMaterialContext _activeMaterialContext;
+        [Import] private NodeEditorCore.IModelConversion _modelConversion;
         private HoverLabel _hover = null;
     }
 

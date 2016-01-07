@@ -117,7 +117,7 @@ namespace MaterialTool
 
         public DocumentClientInfo Info { get { return EditorInfo; } }
         public static DocumentClientInfo EditorInfo =
-            new DocumentClientInfo("Shader Graph".Localize(), ".sh", null, null);
+            new DocumentClientInfo("Shader Graph".Localize(), ".txt", null, null);
 
         public bool CanOpen(Uri uri) { return EditorInfo.IsCompatibleUri(uri); }
 
@@ -161,13 +161,8 @@ namespace MaterialTool
         public void Save(IDocument document, Uri uri)
         {
             var doc = (DiagramDocument)document;
-            string filePath = uri.LocalPath;
-            FileMode fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.OpenOrCreate;
-            using (FileStream stream = new FileStream(filePath, fileMode))
-            {
-                var nativeGraph = _converter.ToShaderPatcherLayer(doc.Model);
-                nativeGraph.Save(stream);
-            }
+            var nativeGraph = _converter.ToShaderPatcherLayer(doc.Model);
+            nativeGraph.Save(uri.LocalPath);
             doc.Uri = uri;
         }
 

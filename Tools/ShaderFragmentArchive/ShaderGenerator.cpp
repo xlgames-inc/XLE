@@ -67,19 +67,12 @@ namespace ShaderPatcherLayer
     ShaderPatcher::NodeGraph        NodeGraph::ConvertToNative(String^ name)
     {
         ShaderPatcher::NodeGraph res(marshalString<E_UTF8>(name));
-
-        for each(Node^ n in Nodes) {
+        for each(Node^ n in Nodes)
             res.GetNodes().push_back(ShaderPatcherLayer::ConvertToNative(n));
-        }
-
-        for each(NodeConnection^ c in NodeConnections) {
+        for each(NodeConnection^ c in NodeConnections)
             res.GetNodeConnections().push_back(ShaderPatcherLayer::ConvertToNative(c));
-        }
-
-        for each(NodeConstantConnection^ c in NodeConstantConnections) {
+        for each(NodeConstantConnection^ c in NodeConstantConnections)
             res.GetNodeConstantConnections().push_back(ShaderPatcherLayer::ConvertToNative(c));
-        }
-
         return res;
     }
 
@@ -122,10 +115,7 @@ namespace ShaderPatcherLayer
             auto o = serializer->ReadObject(stream);
             return dynamic_cast<NodeGraph^>(o);
         }
-        finally
-        {
-            delete serializer;
-        }
+        finally { delete serializer; }
     }
 
     void NodeGraph::SaveToXML(System::IO::Stream^ stream)
@@ -201,7 +191,7 @@ namespace ShaderPatcherLayer
         }
     }
 
-    void NodeGraph::Save(System::IO::Stream^ stream)
+    void NodeGraph::Save(String^ filename)
     {
         // We want to write this node graph to the given stream.
         // But we're going to write a compound text document, which will include
@@ -209,28 +199,42 @@ namespace ShaderPatcherLayer
         // One form will be the XML serialized nodes. Another form will be the
         // HLSL output.
 
-        auto sw = gcnew System::IO::StreamWriter(stream, System::Text::Encoding::UTF8);
+        using namespace System::IO;
+
+        StreamWriter^ sw = nullptr;
+        auto fileMode = File::Exists(filename) ? FileMode::Truncate : FileMode::OpenOrCreate;
+        auto stream = gcnew FileStream(filename, fileMode);
         try
         {
-            sw->Write("// CompoundDocument:1");
-            sw->WriteLine();
+            // note --  shader compiler doesn't support the UTF8 BOM properly.
+            //          We we have to use an ascii mode
+            auto sw = gcnew System::IO::StreamWriter(stream, System::Text::Encoding::ASCII);
+        
+            sw->Write("// CompoundDocument:1"); sw->WriteLine();
 
             auto shader = NodeGraph::GenerateShader(this, "main");
             sw->Write(shader); 
 
             // embed the node graph in there, as well
-            sw->Write("/* <<Chunk:NodeGraph:main>>--(");
+            sw->Write("/* <<Chunk:NodeGraph:main>>--("); sw->WriteLine();
+            sw->Flush();
+            SaveToXML(stream); sw->WriteLine();
+            sw->Write(")-- */"); sw->WriteLine();
+
+            // also embedded a technique config
+            sw->WriteLine();
+            sw->Write("/* <<Chunk:TechniqueConfig:main>>--("); sw->WriteLine();
+            sw->Write("~Inherit; Illum"); sw->WriteLine();
+            sw->Write("~Deferred"); sw->WriteLine();
+            sw->Write("    PixelShader=" + filename + ":main"); sw->WriteLine();
+            sw->Write(")--*/"); sw->WriteLine();
             sw->WriteLine();
             sw->Flush();
-            SaveToXML(stream);
-            sw->WriteLine();
-            sw->Write(")-- */");
-
-            // we may want to embed other things (such as a ShaderType definition)
         }
         finally
         {
             delete sw;
+            delete stream;
         }
     }
 

@@ -102,7 +102,7 @@ namespace ShaderPatcherLayer {
         void                SaveToXML(System::IO::Stream^ stream);
 
         static NodeGraph^   Load(String^ filename);
-        void                Save(System::IO::Stream^ stream);
+        void                Save(String^ filename);
 
     private:
         List<Node^>^                    _nodes;

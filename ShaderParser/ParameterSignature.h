@@ -28,13 +28,4 @@ namespace ShaderSourceParser
 
     ParameterSignature      LoadSignature(const char sourceCode[], size_t sourceCodeLength);
     std::string             StoreSignature(const ParameterSignature& signature);
-
-    namespace Exceptions
-    {
-        class ParseError : public ::Exceptions::BasicLabel
-        {
-        public:
-            ParseError(const char label[]) never_throws;
-        };
-    }
 }

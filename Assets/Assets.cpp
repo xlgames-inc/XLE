@@ -15,6 +15,7 @@ namespace std
 {
         // this is related to the hack to remove <mutex> from Assets.h for C++/CLR
     template unique_ptr<mutex>::~unique_ptr(); 
+    template unique_ptr<recursive_mutex>::~unique_ptr(); 
 }
 
 namespace Assets 
@@ -57,13 +58,13 @@ namespace Assets
         std::basic_string<ResChar> AsString() { return std::basic_string<ResChar>(); }
 
 
-        std::unique_ptr<Threading::Mutex> CreateMutexPtr()
-        {
-            return std::make_unique<Threading::Mutex>();
-        }
-
+        std::unique_ptr<Threading::Mutex> CreateMutexPtr() { return std::make_unique<Threading::Mutex>(); }
         void LockMutex(Threading::Mutex& mutex) { mutex.lock(); }
         void UnlockMutex(Threading::Mutex& mutex) { mutex.unlock(); }
+
+        std::unique_ptr<Threading::RecursiveMutex> CreateRecursiveMutexPtr() { return std::make_unique<Threading::RecursiveMutex>(); }
+        void LockMutex(Threading::RecursiveMutex& mutex) { mutex.lock(); }
+        void UnlockMutex(Threading::RecursiveMutex& mutex) { mutex.unlock(); }
 
     }
 }
