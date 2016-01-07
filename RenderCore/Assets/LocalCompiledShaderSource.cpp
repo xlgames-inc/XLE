@@ -624,7 +624,7 @@ namespace RenderCore { namespace Assets
     {
         auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler);
         auto resId = ShaderService::MakeResId(resource, *_compiler);
-        compileHelper->Enqueue(resId, definesTable, nullptr);
+        compileHelper->Enqueue(resId, definesTable?definesTable:"", nullptr);
         return compileHelper;
     }
             

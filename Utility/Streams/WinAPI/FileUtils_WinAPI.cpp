@@ -22,63 +22,107 @@ namespace Utility
         return underlyingShareMode;
     }
 
+    namespace Internal
+    {
+        struct UnderlyingOpenMode
+        {
+            unsigned _underlyingAccessMode;
+            unsigned _creationDisposition;
+            unsigned _underlyingFlags;
+        };
+    }
+
+    static Exceptions::IOException::Reason AsExceptionReason(DWORD dw)
+    {
+        switch (dw) {
+        case ERROR_FILE_NOT_FOUND:
+        case ERROR_PATH_NOT_FOUND:
+            return Exceptions::IOException::Reason::FileNotFound;
+
+        case ERROR_ACCESS_DENIED:
+            return Exceptions::IOException::Reason::AccessDenied;
+
+        case ERROR_WRITE_PROTECT:
+            return Exceptions::IOException::Reason::WriteProtect;
+
+        default:
+            return Exceptions::IOException::Reason::Complex;
+        }
+    }
+
+    static Internal::UnderlyingOpenMode AsUnderlyingOpenMode(const char openMode[])
+    {
+        Internal::UnderlyingOpenMode result = {0,0,0};
+
+        auto* i = openMode;
+        while (*i != '\0') {
+            switch (*i) {
+            case 'w':
+                if (*(i+1) == '+') {
+                    ++i;
+                    result._underlyingAccessMode = FILE_GENERIC_WRITE | FILE_GENERIC_READ;
+                    result._creationDisposition = CREATE_ALWAYS;
+                } else {
+                    result._underlyingAccessMode = FILE_GENERIC_WRITE;
+                    result._creationDisposition = CREATE_ALWAYS;
+                }
+                break;
+
+            case 'r':
+                if (*(i+1) == '+') {
+                    ++i;
+                    result._underlyingAccessMode = FILE_GENERIC_WRITE | FILE_GENERIC_READ;
+                    result._creationDisposition = OPEN_EXISTING;
+                } else {
+                    result._underlyingAccessMode = FILE_GENERIC_READ;
+                    result._creationDisposition = OPEN_EXISTING;
+                }
+                break;
+
+            case 'b': break;    // binary mode -- actually the only supported mode
+
+            case 'T':
+            case 'D': result._underlyingFlags |= FILE_ATTRIBUTE_TEMPORARY; break;
+            case 'R': result._underlyingFlags |= FILE_FLAG_RANDOM_ACCESS; break;
+            case 'S': result._underlyingFlags |= FILE_FLAG_SEQUENTIAL_SCAN; break;
+            
+            case 'a':
+                Throw(Exceptions::IOException(Exceptions::IOException::Reason::Complex, "Append file mode not supported"));
+
+            case 't':
+                Throw(Exceptions::IOException(Exceptions::IOException::Reason::Complex, "Text oriented file modes not supported"));
+
+            case 'c':
+                if (XlBeginsWith(MakeStringSection(i), MakeStringSection("ccs=")))
+                    Throw(Exceptions::IOException(Exceptions::IOException::Reason::Complex, "Encoded text file modes supported"));
+                // else, fall through...
+
+            default:
+                Throw(Exceptions::IOException(Exceptions::IOException::Reason::Complex, "Unknown characters found in open mode string (%s)", openMode));
+            }
+            ++i;
+        }
+
+        return result;
+    }
+
     BasicFile::BasicFile(   const char filename[], const char openMode[], 
                             ShareMode::BitField shareMode)
     {
         assert(filename && filename[0]);
         assert(openMode);
 
-        unsigned underlyingAccessMode = 0;
-        unsigned creationDisposition = 0;
-        unsigned underlyingFlags = 0;
-
         auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
-
-        if (XlFindString(openMode, "w+")) {
-            underlyingAccessMode = FILE_GENERIC_WRITE | FILE_GENERIC_READ;
-            creationDisposition = CREATE_ALWAYS;
-        } else if (XlFindString(openMode, "r+")) {
-            underlyingAccessMode = FILE_GENERIC_WRITE | FILE_GENERIC_READ;
-            creationDisposition = OPEN_EXISTING;
-        } else if (XlFindString(openMode, "a+")) {
-            assert(0); // not supported;
-            Throw(Exceptions::IOException("Append file mode not supported"));
-        } else if (XlFindChar(openMode, 'w')) {
-            underlyingAccessMode = FILE_GENERIC_WRITE;
-            creationDisposition = CREATE_ALWAYS;
-        } else if (XlFindChar(openMode, 'r')) {
-            underlyingAccessMode = FILE_GENERIC_READ;
-            creationDisposition = OPEN_EXISTING;
-        } else if (XlFindChar(openMode, 'a')) {
-            assert(0); // not supported;
-            Throw(Exceptions::IOException("Append file mode not supported"));
-        }
-
-        if (XlFindChar(openMode, 't')) {
-            assert(0); // not supported;
-            Throw(Exceptions::IOException("Text oriented file modes not supported"));
-        }
-        if (XlFindString(openMode, "ccs=")) {
-            assert(0); // not supported;
-            Throw(Exceptions::IOException("Encoded text file modes supported"));
-        }
-
-        if (XlFindChar(openMode, 'T') || XlFindChar(openMode, 'D')) {
-            underlyingFlags |= FILE_ATTRIBUTE_TEMPORARY;
-        }
-
-        if (XlFindChar(openMode, 'R')) { underlyingFlags |= FILE_FLAG_RANDOM_ACCESS; }
-        if (XlFindChar(openMode, 'S')) { underlyingFlags |= FILE_FLAG_SEQUENTIAL_SCAN; }
+        auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
 
         auto handle = CreateFile(
             filename, 
-            underlyingAccessMode,
+            underlyingOpenMode._underlyingAccessMode,
             underlyingShareMode,
-            nullptr, creationDisposition,
-            underlyingFlags, nullptr);
+            nullptr, underlyingOpenMode._creationDisposition,
+            underlyingOpenMode._underlyingFlags, nullptr);
         
         if (handle == INVALID_HANDLE_VALUE) {
-
                 // use "FormatMessage" to get error code
                 //  (as per msdn article: "Retrieving the Last-Error Code")
             LPVOID lpMsgBuf;
@@ -91,8 +135,10 @@ namespace Utility
                 dw,
                 MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                 (LPTSTR) &lpMsgBuf,
-                0, NULL );
+                0, NULL);
+
             Exceptions::IOException except(
+                AsExceptionReason(dw),
                 "Failure during file open. Probably missing file or bad privileges: (%s), openMode: (%s), error string: (%s)", 
                 filename, openMode, lpMsgBuf);
             LocalFree(lpMsgBuf);
@@ -101,6 +147,28 @@ namespace Utility
         }
 
         _file = (void*)handle;
+    }
+
+    auto BasicFile::TryOpen(const char filename[], const char openMode[], ShareMode::BitField shareMode) never_throws -> Exceptions::IOException::Reason
+    {
+        assert(_file == INVALID_HANDLE_VALUE);
+        assert(filename && filename[0]);
+        assert(openMode);
+
+        auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
+        auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
+
+        _file = CreateFile(
+            filename, 
+            underlyingOpenMode._underlyingAccessMode,
+            underlyingShareMode,
+            nullptr, underlyingOpenMode._creationDisposition,
+            underlyingOpenMode._underlyingFlags, nullptr);
+
+        if (_file != INVALID_HANDLE_VALUE && _file != nullptr)
+            return Exceptions::IOException::Reason::Success;
+
+        return AsExceptionReason(GetLastError());
     }
 
     BasicFile::BasicFile(BasicFile&& moveFrom) never_throws

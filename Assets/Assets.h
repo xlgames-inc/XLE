@@ -236,8 +236,8 @@ namespace Assets
 
 				auto marker = compilers.PrepareAsset(GetCompileProcessType<AssetType>(), inits, dimof(inits), store);
                 auto existingLoc = marker->GetExistingAsset();
-                if (!existingLoc._dependencyValidation) {
-                        // no existing asset -- we must invoke a compile
+                if (!existingLoc._dependencyValidation || existingLoc._dependencyValidation->GetValidationIndex()!=0) {
+                        // no existing asset (or out-of-date) -- we must invoke a compile
                     auto pendingCompile = marker->InvokeCompile();
                     auto initializer = marker->Initializer().AsString();
                     set._activeCompiles.insert(i, std::make_pair(hash, ActiveCompileOperation{std::move(pendingCompile), initializer}));
@@ -247,17 +247,37 @@ namespace Assets
                 TRY {
                     auto result = std::make_unique<AssetType>(existingLoc, "CompiledAsset");
                     return std::move(result);
-                } CATCH (const Exceptions::InvalidAsset&) {
-                    // on invalid (eg, missing or out-of-date), we can try to invoke a recompile
-                    auto pendingCompile = marker->InvokeCompile();
-                    auto initializer = marker->Initializer().AsString();
-                    set._activeCompiles.insert(i, std::make_pair(hash, ActiveCompileOperation{std::move(pendingCompile), initializer}));
-                    Throw(Exceptions::PendingAsset(initializer.c_str(), "Pending recompile"));
-                } CATCH (const Exceptions::PendingAsset&) {
-                    assert(0); // trouble -- we don't want to get a pending asset here...!
-                    throw;
                 } 
+                
+                // We should catch only some exceptions and force a recompile... This should happen on
+                // missing file, or if the file has a bad version number. We also need to catch InvalidAsset,
+                // because some assets will throw this on failure.
+                // Note that other exceptions could be a problem here.
+                CATCH (const Exceptions::InvalidAsset&) 
+                {
+                    // LogWarning << "Asset (" << existingLoc._sourceID0 << ") appears to be invalid. Attempting recompile.";
+                } 
+                CATCH(const ::Assets::Exceptions::FormatError& e) 
+                {
+                    if (e.GetReason() != ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion)
+                        throw;
+
+                    // LogWarning << "Asset (" << existingLoc._sourceID0 << ") appears to be incorrect version. Attempting recompile.";
+                }
+                CATCH(const Utility::Exceptions::IOException& e)
+                {
+                    if (e.GetReason() != Utility::Exceptions::IOException::Reason::FileNotFound)
+                        throw;
+
+                    // LogWarning << "Asset (" << existingLoc._sourceID0 << ") is missing. Attempting compile.";
+                }
                 CATCH_END
+
+                // on invalid (eg, missing or out-of-date), we can try to invoke a recompile
+                auto pendingCompile = marker->InvokeCompile();
+                auto initializer = marker->Initializer().AsString();
+                set._activeCompiles.insert(i, std::make_pair(hash, ActiveCompileOperation{std::move(pendingCompile), initializer}));
+                Throw(Exceptions::PendingAsset(initializer.c_str(), "Pending recompile"));
             }
         };
 

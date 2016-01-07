@@ -13,45 +13,41 @@
 
 namespace Assets
 {
-	class VersionError : public ::Exceptions::BasicLabel
-	{
-	public:
-		VersionError(const char format[], ...) never_throws;
-	};
-
-	VersionError::VersionError(const char format[], ...) never_throws
-	{
-		va_list args;
-		va_start(args, format);
-		XlFormatStringV(_buffer, dimof(_buffer), format, args);
-		va_end(args);
-	}
-
     static std::vector<AssetChunkResult> LoadRawData(
         const char filename[],
         IteratorRange<const AssetChunkRequest*> requests)
     {
         BasicFile file(filename, "rb");
         auto chunks = Serialization::ChunkFile::LoadChunkTable(file);
-
+        
         std::vector<AssetChunkResult> result;
         result.reserve(requests.size());
 
+            // First scan through and check to see if we
+            // have all of the chunks we need
         using ChunkHeader = Serialization::ChunkFile::ChunkHeader;
         for (const auto& r:requests) {
-            auto i = std::find_if(chunks.begin(), chunks.end(), 
+            auto i = std::find_if(
+                chunks.begin(), chunks.end(), 
                 [&r](const ChunkHeader& c) { return c._type == r._type; });
             if (i == chunks.end())
-                throw ::Assets::Exceptions::FormatError(
-                    StringMeld<128>() << "Missing chunk (" << r._name << ")", filename);
+                Throw(::Assets::Exceptions::FormatError(
+                    StringMeld<128>() << "Missing chunk (" << r._name << ")", filename));
 
-            if (i->_chunkVersion != r._expectedVersion) {
-                throw VersionError(
-                    StringMeld<256>() << 
-                        "Data chunk is incorrect version for chunk (" 
+            if (i->_chunkVersion != r._expectedVersion)
+                Throw(::Assets::Exceptions::FormatError(
+                    ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion,
+                    StringMeld<256>() 
+                        << "Data chunk is incorrect version for chunk (" 
                         << r._name << ") expected: " << r._expectedVersion << ", got: " << i->_chunkVersion, 
-                    filename);
-            }
+                        filename));
+        }
+
+        for (const auto& r:requests) {
+            auto i = std::find_if(
+                chunks.begin(), chunks.end(), 
+                [&r](const ChunkHeader& c) { return c._type == r._type; });
+            assert(i != chunks.end());
 
             AssetChunkResult chunkResult;
             chunkResult._offset = i->_fileOffset;
@@ -122,20 +118,31 @@ namespace Assets
         auto existing = marker.GetExistingAsset();
         if (existing._dependencyValidation && existing._dependencyValidation->GetValidationIndex() == 0) {
             TRY
-			{
-				auto pendingResult = LoadRawData(existing._sourceID0, op._requests);
-				(*op._fn)(this, MakeIteratorRange(pendingResult));
-				_filename = existing._sourceID0;
-				_validationCallback = existing._dependencyValidation;
+            {
+                auto pendingResult = LoadRawData(existing._sourceID0, op._requests);
+                (*op._fn)(this, MakeIteratorRange(pendingResult));
+                _filename = existing._sourceID0;
+                _validationCallback = existing._dependencyValidation;
                 return;
-			}
-			CATCH(const VersionError&) 
-			{
-				LogWarning << "Asset (" << existing._sourceID0 << ") appears to be incorrect version. Attempting recompile.";
-			}
-            CATCH(const Utility::Exceptions::IOException&)  // also have to catch IO error for missing file
-            {}
-            // however note that format errors other than invalid version should not invoke a recompile!
+            }
+
+            // We should catch only some exceptions and force a recompile... This should happen on
+            // missing file, or if the file has a bad version number. If the load fails for other
+            // reasons, we just throw back the exception.
+            CATCH(const ::Assets::Exceptions::FormatError& e) 
+            {
+                if (e.GetReason() != ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion)
+                    throw;
+
+                LogWarning << "Asset (" << existing._sourceID0 << ") appears to be incorrect version. Attempting recompile.";
+            }
+            CATCH(const Utility::Exceptions::IOException& e)
+            {
+                if (e.GetReason() != Utility::Exceptions::IOException::Reason::FileNotFound)
+                    throw;
+
+                LogWarning << "Asset (" << existing._sourceID0 << ") is missing. Attempting compile.";
+            }
             CATCH_END
         }
 
