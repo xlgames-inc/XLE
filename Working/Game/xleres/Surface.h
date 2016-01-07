@@ -268,20 +268,33 @@ float3 LocalToWorldUnitVector(float3 localSpaceVector)
     }
 #endif
 
-float3 GetNormal(VSOutput geo)
-{
-    #if defined(RES_HAS_NormalsTexture_DXT)
-        bool dxtNormalMap = RES_HAS_NormalsTexture_DXT==1;
-    #else
-        bool dxtNormalMap = false;
-    #endif
+#if OUTPUT_TEXCOORD==1 /////////////////////////////////////////////
+    float2 VSOutGetTexCoord(VSOutput geo) { return geo.texCoord; }
+#else
+    float2 VSOutGetTexCoord(VSOutput geo) { return 1.0.xx; }
+#endif //////////////////////////////////////////////////////////////
 
+float3 SampleDefaultNormalMap(VSOutput geo)
+{
+	#if defined(RES_HAS_NormalsTexture_DXT)
+		bool dxtNormalMap = RES_HAS_NormalsTexture_DXT==1;
+	#else
+		bool dxtNormalMap = false;
+	#endif
+
+	return SampleNormalMap(NormalsTexture, DefaultSampler, dxtNormalMap, VSOutGetTexCoord(geo));
+}
+
+float3 NormalMapToWorld(float3 normalTextureSample, VSOutput geo)
+{
 	#if OUTPUT_TANGENT_FRAME==1
 
 		#if (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1)
-            return NormalMapAlgorithm(
-                NormalsTexture, DefaultSampler, dxtNormalMap,
-                geo.texCoord, BuildTangentFrameFromGeo(geo));
+
+			TangentFrameStruct tangentFrame = BuildTangentFrameFromGeo(geo);
+			float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent.xyz, tangentFrame.bitangent, tangentFrame.normal);
+			return mul(normalTextureSample, normalsTextureToWorld);
+
 		#else
 			return normalize(geo.normal);
 		#endif
@@ -289,9 +302,10 @@ float3 GetNormal(VSOutput geo)
     #elif OUTPUT_LOCAL_TANGENT_FRAME==1
 
         #if (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1)
-            float3 localNormal = NormalMapAlgorithm(
-                NormalsTexture, DefaultSampler, dxtNormalMap,
-                geo.texCoord, BuildLocalTangentFrameFromGeo(geo));
+
+			TangentFrameStruct localTangentFrame = BuildLocalTangentFrameFromGeo(geo);
+			float3x3 normalsTextureToLocal = float3x3(localTangentFrame.tangent.xyz, localTangentFrame.bitangent, localTangentFrame.normal);
+			float3 localNormal = mul(normalTextureSample, normalsTextureToLocal);
 
                 // note --  Problems when there is a scale on LocalToWorld here.
                 //          There are many objects with uniform scale values, and they require a normalize here.
@@ -305,14 +319,12 @@ float3 GetNormal(VSOutput geo)
 	#elif (OUTPUT_NORMAL==1) && (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1) && (OUTPUT_WORLD_VIEW_VECTOR==1)
 
 	    float3x3 normalsTextureToWorld = AutoCotangentFrame(normalize(geo.normal), GetWorldViewVector(geo), geo.texCoord);
-		float3 normalTextureSample = SampleNormalMap(NormalsTexture, DefaultSampler, dxtNormalMap, geo.texCoord);
 			// Note -- matrix multiply opposite from normal (so we can initialise normalsTextureToWorld easily)
 		return mul(normalTextureSample, normalsTextureToWorld);
 
     #elif (OUTPUT_LOCAL_NORMAL==1) && (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1) && (OUTPUT_LOCAL_VIEW_VECTOR==1)
 
 		float3x3 normalsTextureToWorld = AutoCotangentFrame(normalize(geo.localNormal), GetLocalViewVector(geo), geo.texCoord);
-		float3 normalTextureSample = SampleNormalMap(NormalsTexture, DefaultSampler, dxtNormalMap, geo.texCoord);
 			// Note -- matrix multiply opposite from normal (so we can initialise normalsTextureToWorld easily)
 		return mul(normalTextureSample, normalsTextureToWorld);
 
@@ -323,6 +335,11 @@ float3 GetNormal(VSOutput geo)
 	#else
 		return 0.0.xxx;
 	#endif
+}
+
+float3 GetNormal(VSOutput geo)
+{
+	return NormalMapToWorld(SampleDefaultNormalMap(geo), geo);
 }
 
 float3 GetVertexNormal(VSOutput geo)

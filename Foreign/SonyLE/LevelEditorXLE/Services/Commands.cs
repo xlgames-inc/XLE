@@ -22,7 +22,6 @@ using LevelEditorCore;
 namespace LevelEditorXLE
 {
     [Export(typeof(IInitializable))]
-    [Export(typeof(Commands))]
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class Commands : ICommandClient, IInitializable
     {
@@ -33,12 +32,6 @@ namespace LevelEditorXLE
 
             switch ((Command)commandTag)
             {
-                case Command.SaveModifiedAssets:
-                    return GUILayer.PendingSaveList.HasModifiedAssets();
-
-                case Command.ViewInvalidAssets:
-                    return GUILayer.InvalidAssetList.HasInvalidAssets();
-
                 case Command.ExportToGame:
                     return true;
             }
@@ -52,14 +45,6 @@ namespace LevelEditorXLE
             {
                 switch ((Command)commandTag)
                 {
-                    case Command.SaveModifiedAssets:
-                        PerformSaveModifiedAssets();
-                        break;
-
-                    case Command.ViewInvalidAssets:
-                        PerformViewInvalidAssets();
-                        break;
-
                     case Command.ExportToGame:
                         PerformExportToGame();
                         break;
@@ -89,56 +74,11 @@ namespace LevelEditorXLE
                 LevelEditorCore.Resources.CubesImage,
                 CommandVisibility.Menu,
                 this);
-
-            m_commandService.RegisterCommand(
-                Command.SaveModifiedAssets,
-                StandardMenu.File,
-                "Assets",
-                "Modified Assets...".Localize(),
-                "View and save any assets that have been modified".Localize(),
-                Keys.None,
-                LevelEditorCore.Resources.CubesImage,
-                CommandVisibility.Menu,
-                this);
-
-            m_commandService.RegisterCommand(
-                Command.ViewInvalidAssets,
-                StandardMenu.File,
-                "Assets",
-                "View Invalid Assets...".Localize(),
-                "View any assets at are marked as invalid".Localize(),
-                Keys.None,
-                LevelEditorCore.Resources.CubesImage,
-                CommandVisibility.Menu,
-                this);
         }
 
         private enum Command
         {
-            SaveModifiedAssets,
-            ViewInvalidAssets,
             ExportToGame
-        }
-
-        private void PerformSaveModifiedAssets()
-        {
-            var pendingAssetList = GUILayer.PendingSaveList.Create();
-            using (var dialog = new ControlsLibrary.ModifiedAssetsDialog())
-            {
-                dialog.BuildAssetList(pendingAssetList);
-                if (dialog.ShowDialog() == DialogResult.OK)
-                {
-                    pendingAssetList.Commit();
-                }
-            }
-        }
-
-        private void PerformViewInvalidAssets()
-        {
-            using (var dialog = new ControlsLibrary.InvalidAssetDialog())
-            {
-                dialog.ShowDialog();
-            }
         }
 
         private void PerformExportToGame()

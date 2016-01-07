@@ -51,6 +51,7 @@ namespace LevelEditorXLE
 
                 typeof(Terrain.TerrainManipulator),
 
+                typeof(ControlsLibraryExt.Commands.CommonCommands),
                 typeof(ControlsLibraryExt.Material.MaterialInspector),
                 typeof(ControlsLibraryExt.Material.MaterialSchemaLoader),
                 typeof(ControlsLibraryExt.Material.ActiveMaterialContext), 

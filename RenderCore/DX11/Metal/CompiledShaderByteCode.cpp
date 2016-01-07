@@ -174,6 +174,7 @@ namespace RenderCore { namespace Metal_DX11
         IncludeHandler(const char baseDirectory[]) : _baseDirectory(baseDirectory) 
         {
             _searchDirectories.push_back(baseDirectory);
+			_searchDirectories.push_back("");		// if we can't find a file relative to the base directory, then search relative the current working folder
         }
         ~IncludeHandler() {}
     private:
@@ -188,7 +189,7 @@ namespace RenderCore { namespace Metal_DX11
         ::Assets::ResolvedAssetFile path, buffer;
         for (auto i=_searchDirectories.cbegin(); i!=_searchDirectories.cend(); ++i) {
             XlCopyString(buffer._fn, dimof(buffer._fn), i->c_str());
-            XlCatString(buffer._fn, dimof(buffer._fn), "/");
+            if (!i->empty()) XlCatString(buffer._fn, dimof(buffer._fn), "/");
             XlCatString(buffer._fn, dimof(buffer._fn), pFileName);
             SplitPath<ResChar>(buffer._fn).Simplify().Rebuild(path._fn);
 

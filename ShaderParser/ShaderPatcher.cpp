@@ -802,19 +802,21 @@ namespace ShaderPatcher
         std::vector<MainFunctionParameter> result;
         for (auto i =graph.GetNodes().cbegin(); i!=graph.GetNodes().cend(); ++i) {
             if (i->GetType() == Node::Type::Output) {
-
                     // at the moment, each output element is a struct. It might be convenient
                     // if we could use both structs or value types
                 StringMeld<64> buffer;
                 if (useNodeId)  { buffer << "OUT_" << i->NodeId(); }
-                else            { buffer << "OUT" << outputIndex++; }
-                    
-                auto signature = LoadParameterStructSignature(SplitArchiveName(i->ArchiveName()));
-                if (!signature._name.empty()) {
-                    result.push_back(MainFunctionParameter(signature._name, std::string(buffer), i->ArchiveName()));
-                } else {
-                    result.push_back(MainFunctionParameter(i->ArchiveName(), std::string(buffer), i->ArchiveName()));
-                }
+                else            { buffer << "OUT" << outputIndex; }
+
+				auto signature = LoadParameterStructSignature(SplitArchiveName(i->ArchiveName()));
+				std::string type = (!signature._name.empty()) ? signature._name : i->ArchiveName();
+
+				StringMeld<64> semantic;
+				if (!IsStructType(MakeStringSection(type)))
+					semantic << "SV_Target" << outputIndex;
+
+                result.push_back(MainFunctionParameter(type, std::string(buffer), i->ArchiveName(), std::string(semantic)));
+				outputIndex++;
             }
         }
         return result;
@@ -838,7 +840,22 @@ namespace ShaderPatcher
                         semantic = p->_semantic;
                 }
 
-                result.push_back(MainFunctionParameter(i->InputType()._name, i->InputParameterName(), i->InputType()._name, semantic));
+				MainFunctionParameter param(
+					i->InputType()._name, i->InputParameterName(), 
+					i->InputType()._name, semantic);
+
+				// Look for another parameter with the same name...
+				auto existing = std::find_if(result.begin(), result.end(), 
+					[&param](const MainFunctionParameter& p) { return p._name == param._name; });
+				if (existing != result.end()) {
+					// If we have 2 parameters with the same name, we're going to expect they
+					// also have the same type and semantic (otherwise we would need to adjust
+					// the name to avoid conflicts).
+					if (existing->_type != param._type || existing->_semantic != param._semantic)
+						Throw(::Exceptions::BasicLabel("Main function parameters with the same name, but different types/semantics (%s)", param._name));
+				} else {
+					result.push_back(param);
+				}
             }
         }
 
@@ -897,6 +914,8 @@ namespace ShaderPatcher
                 mainFunctionDeclParameters << ", ";
             }
             mainFunctionDeclParameters << i->_type << " " << i->_name;
+			if (!i->_semantic.empty())
+				mainFunctionDeclParameters << " : " << i->_semantic;
         }
 
             //  
@@ -916,6 +935,8 @@ namespace ShaderPatcher
                     mainFunctionDeclParameters << ", ";
                 }
                 mainFunctionDeclParameters << "out " << i->_type << " " << i->_name;
+				if (!i->_semantic.empty())
+					mainFunctionDeclParameters << " : " << i->_semantic;
             }
         } else {
             result << "struct " << graph.GetName() << "_Output" << std::endl << "{" << std::endl;

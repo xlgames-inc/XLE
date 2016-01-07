@@ -127,6 +127,7 @@ namespace RenderCore { namespace Techniques
 
         bool IsValid() const { return !_vertexShaderName.empty(); }
         void MergeIn(const Technique& source);
+		void ReplaceSelfReference(StringSection<::Assets::ResChar> filename);
 
         Technique(
             Utility::InputStreamFormatter<utf8>& formatter, 

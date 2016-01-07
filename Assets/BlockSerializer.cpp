@@ -253,16 +253,18 @@ namespace Serialization
                 size_t* o = (size_t*)PtrAdd(block, sizeof(Header)+ptr._pointerOffset);
 
 				#if (STL_ACTIVE == STL_MSVC) && (_MSC_VER >= 1900)
-						// This is the flag in the BlockSerializerAllocator in the vector
-						// It's a bit of an awkward hack... but one it's one of those hacks
-						//		-- once it's working, it works well.
-						// In VS2015, it changed position with in vector object. Actually the
-						// new position might be less ideal, because it's before the more
-						// commonly accessed begin/end pointers.
-					*(unsigned*)o = 1; o = PtrAdd(o, sizeof(unsigned));
+					// This is the flag in the BlockSerializerAllocator in the vector
+					// It's a bit of an awkward hack... but one it's one of those hacks
+					//		-- once it's working, it works well.
+					// In VS2015, it changed position with in vector object. Actually the
+					// new position might be less ideal, because it's before the more
+					// commonly accessed begin/end pointers.
+					*(size_t*)o = 1; o = PtrAdd(o, sizeof(size_t));
 				#endif
 
-                #if (STL_ACTIVE == STL_MSVC) && (_ITERATOR_DEBUG_LEVEL != 0)
+				auto* containerPtr = o;
+
+				#if (STL_ACTIVE == STL_MSVC) && (_ITERATOR_DEBUG_LEVEL != 0)
                         //  in debug, to produce a valid vector, we need to add one of these proxy
                         //  objects. it requires some extra memory management; but fortunately it's
                         //  just debug builds!
@@ -270,9 +272,10 @@ namespace Serialization
                         //  on the returned objects to make sure the vector destructor deletes this
                         //  object!
                     auto proxy = std::make_unique<std::_Container_proxy>();
-                    proxy->_Mycont = (std::_Container_base12*)o;
+                    proxy->_Mycont = (std::_Container_base12*)containerPtr;
                     *o++ = size_t(proxy.release());
                 #endif
+
                 o[0] = (ptr._subBlockOffset + size_t(base) + sizeof(Header));
                 o[1] = (ptr._subBlockOffset + ptr._subBlockSize + size_t(base) + sizeof(Header));
                 o[2] = (ptr._subBlockOffset + ptr._subBlockSize + size_t(base) + sizeof(Header));

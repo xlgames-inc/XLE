@@ -131,6 +131,7 @@ namespace MaterialTool
                 typeof(NodeEditorCore.ShaderFragmentNodeCreator),
                 typeof(NodeEditorCore.DiagramDocument),
 
+                typeof(ControlsLibraryExt.Commands.CommonCommands),
                 typeof(ControlsLibraryExt.Material.ActiveMaterialContext),
                 typeof(ControlsLibraryExt.Material.MaterialInspector),
                 typeof(ControlsLibraryExt.Material.MaterialSchemaLoader),

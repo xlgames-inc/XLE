@@ -104,11 +104,17 @@ namespace NodeEditorCore
                 foreach (var i in e.Node.Connections)
                     if (i.To == e.Connector && i.From == null)
                     {
-                        i.Name = dialog.InputText;
+                        // empty dialog text means we want to disconnect any existing connections
+                        if (dialog.InputText.Length > 0) {
+                            i.Name = dialog.InputText;
+                        } else {
+                            GetGraphModel().Disconnect(i);
+                            break;
+                        }
                         foundExisting = true;
                     }
 
-                if (!foundExisting)
+                if (!foundExisting && dialog.InputText.Length > 0)
                     GetGraphModel().Connect(null, e.Connector, dialog.InputText);
             }
         }

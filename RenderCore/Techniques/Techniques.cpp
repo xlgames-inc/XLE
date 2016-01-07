@@ -605,9 +605,7 @@ namespace RenderCore { namespace Techniques
         return *this;
     }
 
-    ParameterBoxTable::~ParameterBoxTable()
-    {
-    }
+    ParameterBoxTable::~ParameterBoxTable() {}
 
     Technique::Technique(
         Formatter& formatter, 
@@ -688,6 +686,29 @@ namespace RenderCore { namespace Techniques
                 d.SetParameter(i.Name(), i.RawValue(), i.Type());
         }
     }
+
+	template<typename Char>
+		static void ReplaceInString(
+			std::basic_string<Char>& str, 
+			StringSection<Char> oldText, 
+			StringSection<Char> newText)
+		{
+			size_t i = 0;
+			for (;;) {
+				i = str.find(oldText.begin(), i, oldText.Length());
+				if (i == std::basic_string<Char>::npos) return;
+				str.replace(i, oldText.Length(), newText.begin());
+				i += newText.Length(); // prevent infinite loops if newText contains oldText
+			}
+		}
+
+	void Technique::ReplaceSelfReference(StringSection<::Assets::ResChar> filename)
+	{
+		auto selfRef = MakeStringSection("<.>");
+		ReplaceInString(_vertexShaderName, selfRef, filename);
+		ReplaceInString(_pixelShaderName, selfRef, filename);
+		ReplaceInString(_geometryShaderName, selfRef, filename);
+	}
 
     Technique::Technique(Technique&& moveFrom)
     :   _name(moveFrom._name)
@@ -803,7 +824,14 @@ namespace RenderCore { namespace Techniques
                     ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(resourceName, e.what());
                 Throw(::Assets::Exceptions::InvalidAsset(resourceName, e.what()));
             }
-            CATCH_END
+			CATCH_END
+
+				// Do some patch-up after parsing...
+				// we want to replace <.> with the name of the asset
+				// This allows the asset to reference itself (without complications
+				// for related to directories, etc)
+			for (unsigned c=0; c<dimof(_technique); ++c)
+				_technique[c].ReplaceSelfReference(resourceName);
 
             for (auto i=inheritedAssets.begin(); i!=inheritedAssets.end(); ++i)
                 ::Assets::RegisterAssetDependency(_validationCallback, *i);

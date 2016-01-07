@@ -85,26 +85,40 @@ namespace ShaderPatcherLayer
 
     String^         NodeGraph::GenerateShader(NodeGraph^ graph, String^name)
     {
-        auto nativeGraph = graph->ConvertToNative(name);
-        nativeGraph.AddDefaultOutputs();
-        ShaderPatcher::NodeGraph graphOfTemporaries = ShaderPatcher::GenerateGraphOfTemporaries(nativeGraph);
-        return marshalString<E_UTF8>(
-                ShaderPatcher::GenerateShaderHeader(nativeGraph) 
-            +   ShaderPatcher::GenerateShaderBody(nativeGraph, graphOfTemporaries));
+		try
+		{
+			auto nativeGraph = graph->ConvertToNative(name);
+			nativeGraph.AddDefaultOutputs();
+			ShaderPatcher::NodeGraph graphOfTemporaries = ShaderPatcher::GenerateGraphOfTemporaries(nativeGraph);
+			return marshalString<E_UTF8>(
+					ShaderPatcher::GenerateShaderHeader(nativeGraph) 
+				+   ShaderPatcher::GenerateShaderBody(nativeGraph, graphOfTemporaries));
+		} catch (const std::exception& e) {
+			return "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what());
+		} catch (...) {
+			return "Unknown exception while generating shader";
+		}
     }
 
     String^         NodeGraph::GeneratePreviewShader(NodeGraph^ graph, UInt32 previewNodeId, String^ outputToVisualize)
     {
-        auto nativeGraph = graph->ConvertToNativePreview(previewNodeId);
-        ShaderPatcher::NodeGraph graphOfTemporaries = ShaderPatcher::GenerateGraphOfTemporaries(nativeGraph);
-        std::string structure = ShaderPatcher::GenerateStructureForPreview(
-            nativeGraph, graphOfTemporaries, 
-            outputToVisualize ? marshalString<E_UTF8>(outputToVisualize).c_str() : "");
-        return marshalString<E_UTF8>(
-                ShaderPatcher::GenerateShaderHeader(nativeGraph) 
-            +   ShaderPatcher::GenerateShaderBody(nativeGraph, graphOfTemporaries) 
-            +   structure)
-            ;
+		try
+		{
+			auto nativeGraph = graph->ConvertToNativePreview(previewNodeId);
+			ShaderPatcher::NodeGraph graphOfTemporaries = ShaderPatcher::GenerateGraphOfTemporaries(nativeGraph);
+			std::string structure = ShaderPatcher::GenerateStructureForPreview(
+				nativeGraph, graphOfTemporaries, 
+				outputToVisualize ? marshalString<E_UTF8>(outputToVisualize).c_str() : "");
+			return marshalString<E_UTF8>(
+					ShaderPatcher::GenerateShaderHeader(nativeGraph) 
+				+   ShaderPatcher::GenerateShaderBody(nativeGraph, graphOfTemporaries) 
+				+   structure)
+				;
+		} catch (const std::exception& e) {
+			return "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what());
+		} catch (...) {
+			return "Unknown exception while generating shader";
+		}
     }
 
     NodeGraph^ NodeGraph::LoadFromXML(System::IO::Stream^ stream)
@@ -226,7 +240,7 @@ namespace ShaderPatcherLayer
             sw->Write("/* <<Chunk:TechniqueConfig:main>>--("); sw->WriteLine();
             sw->Write("~Inherit; Illum"); sw->WriteLine();
             sw->Write("~Deferred"); sw->WriteLine();
-            sw->Write("    PixelShader=" + filename + ":main"); sw->WriteLine();
+            sw->Write("    PixelShader=<.>:main"); sw->WriteLine();
             sw->Write(")--*/"); sw->WriteLine();
             sw->WriteLine();
             sw->Flush();
