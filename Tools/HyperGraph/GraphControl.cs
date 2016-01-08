@@ -419,8 +419,8 @@ namespace HyperGraph
         private List<Node> _unselectedNodes = new List<Node>();
 		
 		#region UpdateMatrices
-		readonly Matrix			transformation = new Matrix();
-		readonly Matrix			inverse_transformation = new Matrix();
+		private readonly Matrix			transformation = new Matrix();
+		private readonly Matrix			inverse_transformation = new Matrix();
 		void UpdateMatrices(Control ctrl)
 		{
 			if (zoom < 0.25f) zoom = 0.25f;
@@ -443,11 +443,6 @@ namespace HyperGraph
 		#region FindNodeItemAt
 		static NodeItem FindNodeItemAt(Node node, PointF location)
 		{
-			if (node.itemsBounds == null ||
-				location.X < node.itemsBounds.Left ||
-				location.X > node.itemsBounds.Right)
-				return null;
-
 			foreach (var item in node.Items)
 			{
 				if (item.bounds.IsEmpty)
@@ -466,7 +461,7 @@ namespace HyperGraph
 		#region Picking
 		static NodeConnector FindInputConnectorAt(Node node, PointF location)
 		{
-			if (node.itemsBounds == null || node.Collapsed)
+			if (/*node.itemsBounds == null ||*/ node.Collapsed)
 				return null;
 
 			foreach (var inputConnector in node.inputConnectors)
@@ -482,7 +477,7 @@ namespace HyperGraph
 
         static NodeConnector FindOutputConnectorAt(Node node, PointF location)
 		{
-			if (node.itemsBounds == null || node.Collapsed)
+			if (/*node.itemsBounds == null ||*/ node.Collapsed)
 				return null;
 
 			foreach (var outputConnector in node.outputConnectors)
@@ -569,6 +564,13 @@ namespace HyperGraph
 			}
 			return transformed_location;
 		}
+
+        public PointF ClientToModel(PointF clientCoord)
+        {
+            var points = new PointF[] { snappedLocation };
+            inverse_transformation.TransformPoints(points);
+            return points[0];
+        }
 		#endregion
 
 		#region GetMarqueRectangle

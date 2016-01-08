@@ -54,8 +54,8 @@ namespace HyperGraph
 		public NodeConnector		Input			{ get; private set; }
 		public NodeConnector		Output			{ get; private set; }
 
-		internal RectangleF			bounds;
-		internal RenderState		state			= RenderState.None;
+		internal RectangleF		    bounds;
+        internal RenderState		state			= RenderState.None;
 
         public virtual bool OnClick(System.Windows.Forms.Control container, System.Windows.Forms.MouseEventArgs evnt, System.Drawing.Drawing2D.Matrix viewTransform)
         {
@@ -75,5 +75,9 @@ namespace HyperGraph
         public abstract void        RenderConnector(Graphics graphics, RectangleF rectangle);
 
 		public ElementType ElementType { get { return ElementType.NodeItem; } }
-	}
+
+        protected RectangleF GetBounds() { return bounds; }
+        protected RenderState GetState() { return state; }
+
+    }
 }

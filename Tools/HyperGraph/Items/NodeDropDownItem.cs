@@ -99,8 +99,8 @@ namespace HyperGraph.Items
             if (evnt.Button == System.Windows.Forms.MouseButtons.Left)
             {
                 var basePts = new PointF[] { 
-                    new PointF(Node.itemsBounds.Left + GraphConstants.HorizontalSpacing, bounds.Top), 
-                    new PointF(Node.itemsBounds.Right + GraphConstants.HorizontalSpacing - GraphConstants.NodeExtraWidth, bounds.Bottom) };
+                    new PointF(Node.bounds.Left + GraphConstants.HorizontalSpacing, bounds.Top), 
+                    new PointF(Node.bounds.Right + GraphConstants.HorizontalSpacing - GraphConstants.NodeExtraWidth, bounds.Bottom) };
                 viewTransform.TransformPoints(basePts);
 
                 var dropDownCtrl = new ListBox();

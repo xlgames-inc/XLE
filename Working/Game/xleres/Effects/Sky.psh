@@ -98,16 +98,9 @@ float4 main(float4 position : SV_Position, float2 oTexCoord : TEXCOORD0, float3 
 	return CalculateColour0(oTexCoord, viewFrustumVector, WorldSpaceView + 10000.f * viewFrustumVector);
 }
 
-
-#if OUTPUT_TEXCOORD==1
-	float2 GetTexCoord(VSOutput input) { return input.texCoord; }
-#else
-	float2 GetTexCoord(VSOutput input) { return 1.0.xx; }
-#endif
-
 float4 ps_HalfCube(VSOutput geo) : SV_Target0
 {
-	return CalculateColour0(GetTexCoord(geo), normalize(GetWorldPosition(geo) - WorldSpaceView), GetWorldPosition(geo));
+	return CalculateColour0(VSOutGetTexCoord(geo), normalize(GetWorldPosition(geo) - WorldSpaceView), GetWorldPosition(geo));
 }
 
 	//////////////////////////////////

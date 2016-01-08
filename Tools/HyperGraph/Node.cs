@@ -65,7 +65,6 @@ namespace HyperGraph
 		public RectangleF		bounds;
 		internal RectangleF		inputBounds;
 		internal RectangleF		outputBounds;
-		internal RectangleF		itemsBounds;
 		internal RenderState	state			= RenderState.None;
 		internal RenderState	inputState		= RenderState.None;
 		internal RenderState	outputState		= RenderState.None;

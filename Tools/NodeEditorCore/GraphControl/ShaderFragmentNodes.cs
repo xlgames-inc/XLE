@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.ComponentModel.Composition.Hosting;
 using System.Linq;
-using System.Text;
 using System.Drawing;
 using HyperGraph;
 
@@ -24,6 +23,8 @@ namespace NodeEditorCore
         Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName);
         Node CreateEmptyParameterNode(ParamSourceType sourceType, String archiveName, String title);
         Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type);
+        Node CreateEmptyInputParameterNode(String title);
+        Node FindNodeFromId(HyperGraph.IGraphModel graph, UInt64 id);
     }
 
     public interface IDiagramDocument
@@ -127,8 +128,8 @@ namespace NodeEditorCore
         {
                 // Resize based on the length of the strings. Sometimes we get really
                 // long names, so it's useful to resize the connector to match...!
-            var mainStringSize = graphics.MeasureString(this.Name, SystemFonts.MenuFont);
-            var shortTypeSize = graphics.MeasureString("(" + this.ShortType + ")", SystemFonts.MenuFont);
+            var mainStringSize = graphics.MeasureString(GetNameText(), SystemFonts.MenuFont);
+            var shortTypeSize = graphics.MeasureString(GetTypeText(), SystemFonts.MenuFont);
             const uint separation = 8;
             return new SizeF(
                 mainStringSize.Width + separation + shortTypeSize.Width, 
@@ -143,15 +144,18 @@ namespace NodeEditorCore
                 this.Name, SystemFonts.MenuFont, Brushes.White,
                 bounds, GraphConstants.LeftTextStringFormat);
 
-            var mainStringSize = graphics.MeasureString(this.Name, SystemFonts.MenuFont);
+            var mainStringSize = graphics.MeasureString(GetNameText(), SystemFonts.MenuFont);
             const uint separation = 8;
 
             RectangleF newRect = new RectangleF(bounds.Location, bounds.Size);
             newRect.X += mainStringSize.Width + separation;
             newRect.Width -= mainStringSize.Width + separation;
-            graphics.DrawString("(" + this.ShortType + ")", SystemFonts.MenuFont, Brushes.DarkGray,
+            graphics.DrawString(GetTypeText(), SystemFonts.MenuFont, Brushes.DarkGray,
                 newRect, GraphConstants.LeftTextStringFormat);
         }
+
+        protected virtual string GetNameText() { return this.Name; }
+        protected virtual string GetTypeText() { return "(" + this.ShortType + ")"; }
     }
 
     #endregion
@@ -311,15 +315,89 @@ namespace NodeEditorCore
             return HyperGraph.Compatibility.ConnectionType.Incompatible;
         }
     }
-
     #endregion
+    #region ShaderFragmentInputParameterItem
+    internal class ShaderFragmentInputParameterItem : ShaderFragmentNodeItem
+    {
+        public ShaderFragmentInputParameterItem(string name, string type, string semantic) :
+            base(name, type, string.Empty, false, true)
+        {
+            this.Semantic = semantic;
+        }
+
+        public string Semantic { get; set; }
+
+        // private static Brush BackgroundBrush = new SolidBrush(Color.FromArgb(96, 96, 96));
+
+        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
+        {
+            /*
+            var size = Measure(graphics);
+            size.Width = Math.Max(minimumSize.Width, size.Width);
+            size.Height = Math.Max(minimumSize.Height, size.Height);
+            var rect = new RectangleF(location, size);
+
+            bool highlight = (GetState() & RenderState.Hover) == RenderState.Hover;
+
+            // We want the item to work like 2 buttons: "edit" and "delete"
+            // Let's split the item into 2 equal parts, and draw button-type shapes there.
+            var editRect = new RectangleF(rect.Left, rect.Top, rect.Width / 2.0f, rect.Height);
+            var deleteRect = new RectangleF((rect.Left + rect.Right) / 2.0f, rect.Top, rect.Width / 2.0f, rect.Height);
+
+            var editPath = GraphRenderer.CreateRoundedRectangle(editRect.Size, editRect.Location);
+            graphics.FillPath(BackgroundBrush, editPath);
+            graphics.DrawPath(highlight ? Pens.White : Pens.LightGray, editPath);
+            graphics.DrawString("Edit", SystemFonts.MenuFont, Brushes.White, editRect, GraphConstants.CenterTextStringFormat);
+            */
+        }
+
+        protected override string GetTypeText() { return ": " + Semantic + " (" + ShortType + ")"; }
+    }
+    #endregion
+    #region ShaderFragmentAddInputParameterItem
+    public sealed class ShaderFragmentAddInputParameterItem : NodeItem
+    {
+        public override bool OnClick(System.Windows.Forms.Control container, System.Windows.Forms.MouseEventArgs evnt, System.Drawing.Drawing2D.Matrix viewTransform)
+        {
+            Node.AddItem(new ShaderFragmentInputParameterItem("Item", "float4", "COLOR0"));
+            return true;
+        }
+
+        public override SizeF Measure(Graphics graphics)
+        {
+            return new Size(GraphConstants.MinimumItemWidth, GraphConstants.MinimumItemHeight);
+        }
+
+        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
+        {
+            var size = Measure(graphics);
+            size.Width = Math.Max(minimumSize.Width, size.Width);
+            size.Height = Math.Max(minimumSize.Height, size.Height);
+
+            using (var path = GraphRenderer.CreateRoundedRectangle(size, location))
+            {
+                using (var brush = new SolidBrush(Color.FromArgb(64, Color.Black)))
+                    graphics.FillPath(brush, path);
+
+                var rect = new RectangleF(location, size);
+                graphics.DrawString(
+                    "+", SystemFonts.MenuFont, 
+                    ((GetState() & RenderState.Hover) != 0) ? Brushes.White : Brushes.Black, rect, 
+                    GraphConstants.CenterTextStringFormat);
+            }
+        }
+
+        public override void RenderConnector(Graphics graphics, RectangleF rectangle) { }
+    }
+    #endregion
+
     #region Node Creation
 
-        //
+    //
     /////////////////////////////////////////////////////////////////////////////////////
-        //
-        //          Creating nodes & tag tags
-        //  
+    //
+    //          Creating nodes & tag tags
+    //  
 
     internal class ShaderFragmentNodeTag
     {
@@ -337,6 +415,11 @@ namespace NodeEditorCore
     internal class ShaderParameterNodeTag : ShaderFragmentNodeTag
     {
         public ShaderParameterNodeTag(string archiveName) : base(archiveName) {}
+    }
+
+    internal class ShaderInputParameterNodeTag : ShaderFragmentNodeTag
+    {
+        public ShaderInputParameterNodeTag() : base(String.Empty) { }
     }
 
     [Export(typeof(IShaderFragmentNodeCreator))]
@@ -358,12 +441,15 @@ namespace NodeEditorCore
 
             ParamSourceTypeNames = new Dictionary<Enum, string>
             {
-                { ParamSourceType.Material, "Material Parameter" },
-                { ParamSourceType.InterpolatorIntoVertex, "Interpolator Into Vertex Shader" },
-                { ParamSourceType.InterpolatorIntoPixel, "Interpolator Into Pixel Shader" },
-                { ParamSourceType.System, "System Parameter" },
-                { ParamSourceType.Output, "Output" },
-                { ParamSourceType.Constant, "Constant" }
+                // { ParamSourceType.Material, "Material Parameter" },
+                // { ParamSourceType.InterpolatorIntoVertex, "Interpolator Into Vertex Shader" },
+                // { ParamSourceType.InterpolatorIntoPixel, "Interpolator Into Pixel Shader" },
+                // { ParamSourceType.System, "System Parameter" },
+                // { ParamSourceType.Output, "Output" },
+                // { ParamSourceType.Constant, "Constant" }
+
+                { ParamSourceType.InterpolatorIntoPixel, "Input" },
+                { ParamSourceType.Output, "Output" }
             };
         }
 
@@ -445,14 +531,6 @@ namespace NodeEditorCore
             return node;
         }
 
-        // public static ShaderFragmentArchive.Parameter.SourceType AsSourceType(String input)
-        // {
-        //     foreach (var e in Enum.GetValues(typeof(ShaderFragmentArchive.Parameter.SourceType)).Cast<ShaderFragmentArchive.Parameter.SourceType>())
-        //         if (AsString(e) == input)
-        //             return e;
-        //     return ShaderFragmentArchive.Parameter.SourceType.Material;
-        // }
-
         private static void ParameterNodeTypeChanged(object sender, HyperGraph.Items.AcceptNodeSelectionChangedEventArgs args)
         {
             if (sender is HyperGraph.Items.NodeDropDownItem)
@@ -511,22 +589,15 @@ namespace NodeEditorCore
             return node;
         }
 
-        [Import]
-        CompositionContainer _composer;
-    }
+        public Node CreateEmptyInputParameterNode(String title)
+        {
+            var node = new Node(title);
+            node.Tag = new ShaderInputParameterNodeTag();
+            node.AddItem(new ShaderFragmentAddInputParameterItem());
+            return node;
+        }
 
-    #endregion
-    #region Node Util
-
-        //
-    /////////////////////////////////////////////////////////////////////////////////////
-        //
-        //          Utility functions
-        //  
-
-    public static class ShaderFragmentNodeUtil
-    {
-        public static Node GetShaderFragmentNode(HyperGraph.IGraphModel graph, UInt64 id)
+        public Node FindNodeFromId(HyperGraph.IGraphModel graph, UInt64 id)
         {
             foreach (Node n in graph.Nodes)
             {
@@ -538,6 +609,9 @@ namespace NodeEditorCore
             }
             return null;
         }
+
+        [Import]
+        CompositionContainer _composer;
     }
 
     #endregion

@@ -5,8 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Windows.Forms;
 using HyperGraph;
 
@@ -38,6 +36,7 @@ namespace NodeEditorCore
     {
         HyperGraph.IGraphModel  GetGraphModel() { return base._model; }
         public IModelConversion ModelConversion { get; set; }
+        public IShaderFragmentNodeCreator NodeFactory { get; set; }
 
         public GraphControl()
         {
@@ -46,47 +45,47 @@ namespace NodeEditorCore
             // into a helper class.
             // But, then again, maybe even HyperGraph.GraphControl could be split into several
             // small pieces using the ATF AdaptableControl type stuff...?
-            components = new System.ComponentModel.Container();
-            nodeMenu = CreateNodeMenu();
+            _components = new System.ComponentModel.Container();
+            _nodeMenu = CreateNodeMenu();
+            _emptySpaceMenu = CreateEmptySpaceMenu();
             ConnectorDoubleClick += OnConnectorDoubleClick;
             ShowElementMenu += OnShowElementMenu;
         }
 
-        private System.Windows.Forms.ContextMenuStrip CreateNodeMenu()
+        private ContextMenuStrip CreateNodeMenu()
         {
-            var result = new System.Windows.Forms.ContextMenuStrip(this.components);
+            var showPreviewShaderItem = new ToolStripMenuItem() { Text = "Show Preview Shader" };
+            showPreviewShaderItem.Click += new EventHandler(this.OnShowPreviewShader);
 
-            var showPreviewShaderItem = new System.Windows.Forms.ToolStripMenuItem();
-            var refreshToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            var largePreviewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            var refreshToolStripMenuItem = new ToolStripMenuItem() { Text = "Refresh" };
+            refreshToolStripMenuItem.Click += new EventHandler(this.refreshToolStripMenuItem_Click);
 
-            showPreviewShaderItem.Name = "showPreviewShaderItem";
-            showPreviewShaderItem.Size = new System.Drawing.Size(186, 22);
-            showPreviewShaderItem.Text = "Show Preview Shader";
-            showPreviewShaderItem.Click += new System.EventHandler(this.OnShowPreviewShader);
+            var largePreviewToolStripMenuItem = new ToolStripMenuItem() { Text = "Large Preview" };
+            largePreviewToolStripMenuItem.Click += new EventHandler(this.largePreviewToolStripMenuItem_Click);
 
-            refreshToolStripMenuItem.Name = "refreshToolStripMenuItem";
-            refreshToolStripMenuItem.Size = new System.Drawing.Size(186, 22);
-            refreshToolStripMenuItem.Text = "Refresh";
-            refreshToolStripMenuItem.Click += new System.EventHandler(this.refreshToolStripMenuItem_Click);
+            return new ContextMenuStrip(this._components)
+                {
+                    Items = { showPreviewShaderItem, refreshToolStripMenuItem, largePreviewToolStripMenuItem }
+                };
+        }
 
-            largePreviewToolStripMenuItem.Name = "largePreviewToolStripMenuItem";
-            largePreviewToolStripMenuItem.Size = new System.Drawing.Size(186, 22);
-            largePreviewToolStripMenuItem.Text = "Large Preview";
-            largePreviewToolStripMenuItem.Click += new System.EventHandler(this.largePreviewToolStripMenuItem_Click);
+        private ContextMenuStrip CreateEmptySpaceMenu()
+        {
+            var item0 = new ToolStripMenuItem() { Text = "Create Input" };
+            item0.Click += new EventHandler(this.OnCreateInputParameterNode);
 
-            result.Items.AddRange(
-                new System.Windows.Forms.ToolStripItem[] {
-                    showPreviewShaderItem,
-                    refreshToolStripMenuItem,
-                    largePreviewToolStripMenuItem});
-            result.Name = "NodeMenu";
-            result.Size = new System.Drawing.Size(187, 92);
-            return result;
+            return new ContextMenuStrip(this._components)
+            {
+                Items = { item0 }
+            };
         }
 
         private void OnConnectorDoubleClick(object sender, HyperGraph.GraphControl.NodeConnectorEventArgs e)
         {
+            // only attach constants to node inputs
+            if (e.Connector != e.Connector.Item.Input)
+                return;
+
             var dialog = new HyperGraph.TextEditForm();
             dialog.InputText = "1.0f";
 
@@ -122,11 +121,18 @@ namespace NodeEditorCore
         #region Element context menu
         void OnShowElementMenu(object sender, AcceptElementLocationEventArgs e)
         {
+            if (e.Element == null)
+            {
+                _emptySpaceMenu.Tag = ClientToModel(new System.Drawing.PointF(e.Position.X, e.Position.Y));
+                _emptySpaceMenu.Show(e.Position);
+                e.Cancel = false;
+            }
+            else
             if (e.Element is Node && ((Node)e.Element).Tag is ShaderProcedureNodeTag)
             {
                 var tag = (ShaderProcedureNodeTag)((Node)e.Element).Tag;
-                nodeMenu.Tag = tag.Id;
-                nodeMenu.Show(e.Position);
+                _nodeMenu.Tag = tag.Id;
+                _nodeMenu.Show(e.Position);
                 e.Cancel = false;
             }
             // if (e.Element is Node && ((Node)e.Element).Tag is ShaderParameterNodeTag)
@@ -176,7 +182,7 @@ namespace NodeEditorCore
 
         private HyperGraph.Node GetNode(uint id)
         {
-            return ShaderFragmentNodeUtil.GetShaderFragmentNode(GetGraphModel(), id);
+            return NodeFactory.FindNodeFromId(GetGraphModel(), id);
         }
 
         private ShaderPatcherLayer.NodeGraph ConvertToShaderPatcherLayer()
@@ -189,7 +195,6 @@ namespace NodeEditorCore
             var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(ConvertToShaderPatcherLayer(), AttachedId(sender), "");
             MessageBox.Show(shader, "Generated shader", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
         }
-
         private void refreshToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //      Find the attached preview items and invalidate
@@ -205,7 +210,6 @@ namespace NodeEditorCore
                 }
             }
         }
-
         private void largePreviewToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var n = GetNode(AttachedId(sender));
@@ -222,7 +226,6 @@ namespace NodeEditorCore
                 // new LargePreview(builder, _document).Show();
             }
         }
-
         private void addParameterToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //      Add a new parameter to the attached parameter node
@@ -242,16 +245,26 @@ namespace NodeEditorCore
             //     n.AddItem(new ShaderFragmentNodeItem(param.Name, param.Type, param.ArchiveName, false, true));
             // }
         }
-        
+        private void OnCreateInputParameterNode(object sender, EventArgs e)
+        {
+            var n = NodeFactory.CreateEmptyInputParameterNode("Inputs");
+            var tag = ((ToolStripMenuItem)sender).GetCurrentParent().Tag;
+            if (tag is System.Drawing.PointF)
+                n.Location = (System.Drawing.PointF)tag;
+
+            GetGraphModel().AddNode(n);
+        }
+
         #endregion
 
         public void Dispose()
         {
-            if (components != null) { components.Dispose(); components = null; }
-            if (nodeMenu != null) { nodeMenu.Dispose(); nodeMenu = null; }
+            if (_components != null) { _components.Dispose(); _components = null; }
+            if (_nodeMenu != null) { _nodeMenu.Dispose(); _nodeMenu = null; }
         }
 
-        private System.Windows.Forms.ContextMenuStrip nodeMenu;
-        private System.ComponentModel.Container components;
+        private ContextMenuStrip _nodeMenu;
+        private ContextMenuStrip _emptySpaceMenu;
+        private System.ComponentModel.Container _components;
     }
 }

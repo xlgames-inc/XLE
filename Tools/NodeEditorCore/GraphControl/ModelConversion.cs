@@ -182,7 +182,10 @@ namespace NodeEditorCore
         private string TypeFromNodeItem(ShaderFragmentNodeItem nodeItem)
         {
             if (nodeItem.ArchiveName != null && nodeItem.ArchiveName.Length != 0)
-                return _shaderFragments.GetParameter(nodeItem.ArchiveName).Type;
+            {
+                var param = _shaderFragments.GetParameter(nodeItem.ArchiveName);
+                return (param != null) ? param.Type : string.Empty;
+            }
             return nodeItem.Type;
         }
 

@@ -18,7 +18,7 @@ float4 SampleAnisotropic(Texture2D inputTexture, float2 texCoord : TEXCOORD0)
     return inputTexture.Sample(MaybeAnisotropicSampler, texCoord);
 }
 
-float4 GetDiffuseTexture(VSOutput geo)
+void GetDiffuseTexture(VSOutput geo, out float3 rgb, out float alpha)
 {
     float4 diffuseTextureSample = 1.0.xxxx;
     #if (OUTPUT_TEXCOORD==1) && (RES_HAS_DiffuseTexture!=0)
@@ -28,7 +28,8 @@ float4 GetDiffuseTexture(VSOutput geo)
             diffuseTextureSample = DiffuseTexture.Sample(MaybeAnisotropicSampler, geo.texCoord);
         #endif
     #endif
-    return diffuseTextureSample;
+    rgb = diffuseTextureSample.rgb;
+    alpha = diffuseTextureSample.a;
 }
 
 float3 LoadNormalMap(

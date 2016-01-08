@@ -13,7 +13,8 @@ using namespace System::Runtime::Serialization;
 
 namespace ShaderPatcher { class NodeGraph; }
 
-namespace ShaderPatcherLayer {
+namespace ShaderPatcherLayer 
+{
 
         ///////////////////////////////////////////////////////////////
     [DataContract] public ref class Node
@@ -56,6 +57,17 @@ namespace ShaderPatcherLayer {
         [DataMember] String^       OutputParameterName;
         [DataMember] String^       Value;
     };
+
+		///////////////////////////////////////////////////////////////
+	[DataContract] public ref class NodeInputParameterConnection
+	{
+	public:
+		[DataMember] UInt32        OutputNodeID;
+        [DataMember] String^       OutputParameterName;
+		[DataMember] String^       Type;
+		[DataMember] String^       Name;
+		[DataMember] String^       Semantic;
+	};
 
         ///////////////////////////////////////////////////////////////
     [DataContract] public ref class VisualNode

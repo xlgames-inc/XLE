@@ -59,42 +59,43 @@ namespace HyperGraph
         };
 
         private static NodeSize Measure(Graphics context, Node node)
-		{
-			if (node == null)
+        {
+            if (node == null)
                 return new NodeSize { BaseSize = SizeF.Empty, LeftPartWidth = 0, RightPartWidth = 0 };
 
-			SizeF size = Size.Empty;
+            SizeF size = Size.Empty;
             size.Height = (int)GraphConstants.TopHeight;
 
+            bool[] firstItem = new bool[3] { true, true, true };
             SizeF[] sizes = new SizeF[3] { size, size, size };
-			foreach (var item in EnumerateNodeItems(node))
-			{
+            foreach (var item in EnumerateNodeItems(node))
+            {
                 var side = GetSide(item);
-				var itemSize = item.Measure(context);
+                var itemSize = item.Measure(context);
 
                 if (side != 1)
                     itemSize = AdjustConnectorSize(itemSize);
 
                 sizes[side].Width = Math.Max(sizes[side].Width, itemSize.Width);
-                sizes[side].Height += GraphConstants.ItemSpacing + itemSize.Height;
-			}
+                if (!firstItem[side])
+                    sizes[side].Height += GraphConstants.ItemSpacing;
+                sizes[side].Height += itemSize.Height;
+                firstItem[side] = false;
+            }
 
             size = sizes[1];
             for (uint c = 0; c < 3; ++c)
                 size.Height = Math.Max(size.Height, sizes[c].Height);
 
-            if (node.Collapsed)
-                size.Height -= GraphConstants.ItemSpacing;
-
-			size.Width += GraphConstants.NodeExtraWidth;
+            size.Width += GraphConstants.NodeExtraWidth;
             size.Height += GraphConstants.BottomHeight;
 
             return new NodeSize { BaseSize = size, LeftPartWidth = sizes[0].Width, RightPartWidth = sizes[2].Width };
-		}
+        }
 
-		static SizeF PreRenderItem(Graphics graphics, NodeItem item, PointF position)
+        static SizeF PreRenderItem(Graphics graphics, NodeItem item, PointF position)
 		{
-			var itemSize = (SizeF)item.Measure(graphics);
+			var itemSize = item.Measure(graphics);
 			item.bounds = new RectangleF(position, itemSize);
 			return itemSize;
 		}
@@ -182,7 +183,7 @@ namespace HyperGraph
             // Given the requested client size, what is the full size of the
             // connector required?
             SizeF result = clientSize;
-            result.Height += 8;
+            // result.Height += 8;
             result.Width += 12 + (result.Height - 8);   // add space for the statusRect
             return result;
         }
@@ -235,6 +236,7 @@ namespace HyperGraph
 			var size = Measure(graphics, node);
 			var position = node.Location;
             node.bounds = new RectangleF(position, size.BaseSize);
+            position.Y += (int)GraphConstants.TopHeight;
 			
 			var path = new GraphicsPath(FillMode.Winding);
 			var left = position.X;
@@ -265,18 +267,15 @@ namespace HyperGraph
 						node.outputConnectors.Add(outputConnector);
 					}
 				}
-				var itemSize		= PreRenderItem(graphics, node.titleItem, itemPosition);
-				var realHeight		= itemSize.Height - GraphConstants.TopHeight;
-				var connectorY		= itemPosition.Y  + (int)Math.Ceiling(realHeight / 2.0f);
+				var itemSize = PreRenderItem(graphics, node.titleItem, itemPosition);
+                var connectorY = itemPosition.Y;
 
-                node.inputBounds = new RectangleF(      left - GraphConstants.ConnectorWidthCollapsed, 
-													    connectorY,
-                                                        GraphConstants.ConnectorWidthCollapsed,
-                                                        realHeight);
-                node.outputBounds = new RectangleF(     right - GraphConstants.ConnectorWidthCollapsed, 
-													    connectorY,
-                                                        GraphConstants.ConnectorWidthCollapsed,
-                                                        realHeight);
+                node.inputBounds = new RectangleF(      
+                    left - GraphConstants.ConnectorWidthCollapsed, connectorY,
+                    GraphConstants.ConnectorWidthCollapsed, itemSize.Height);
+                node.outputBounds = new RectangleF(     
+                    right - GraphConstants.ConnectorWidthCollapsed, connectorY,
+                    GraphConstants.ConnectorWidthCollapsed, itemSize.Height);
 			} 
             else
 			{
@@ -328,7 +327,6 @@ namespace HyperGraph
                     positions[side].Y += itemSize.Height + GraphConstants.ItemSpacing;
 				}
 			}
-			node.itemsBounds = new RectangleF(left, top, right - left, bottom - top);
 		}
         
 
@@ -367,14 +365,25 @@ namespace HyperGraph
             else 
             {
                 var rect = new Rectangle((int)left, (int)top, (int)(right - left), (int)(bottom - top));
-                int titleSize = Math.Min((int)(bottom - top), GraphConstants.TopHeight + GraphConstants.TitleHeight);
-                var titleRect = new Rectangle((int)left, (int)top, (int)(right - left), titleSize);
-                var backgroundRect = new Rectangle((int)left, (int)top + titleSize, (int)(right - left), (int)(bottom - top) - titleSize);
 
-                DrawShadow(graphics, rect); 
-                graphics.FillRectangle(brush, backgroundRect);
-                graphics.FillRectangle(TitleAreaBrush, titleRect);
-                graphics.DrawRectangle(BorderPen, rect);
+                if (node.Collapsed)
+                {
+                    graphics.FillRectangle(TitleAreaBrush, rect);
+                }
+                else
+                {
+                    int titleHeight = (node.titleItem != null) ? (int)(node.titleItem.bounds.Height + GraphConstants.TopHeight) : 0;
+                    titleHeight = Math.Min((int)(bottom - top), titleHeight);
+
+                    var titleRect = new Rectangle((int)left, (int)top, (int)(right - left), titleHeight);
+                    var backgroundRect = new Rectangle((int)left, (int)top + titleHeight, (int)(right - left), (int)(bottom - top) - titleHeight);
+
+                    DrawShadow(graphics, rect);
+                    graphics.FillRectangle(brush, backgroundRect);
+                    if (titleHeight != 0)
+                        graphics.FillRectangle(TitleAreaBrush, titleRect);
+                    graphics.DrawRectangle(BorderPen, rect);
+                }
 
                 if ((node.state & RenderState.Focus) != 0)
                 {
@@ -392,9 +401,6 @@ namespace HyperGraph
 					    right - GraphConstants.ConnectorSize, node.titleItem.bounds.Bottom - GraphConstants.ItemSpacing);
 			*/
 
-			var itemPosition = position;
-			itemPosition.X += (int)GraphConstants.HorizontalSpacing;
-            itemPosition.Y += (int)GraphConstants.TopHeight;
 			if (node.Collapsed)
 			{
 				// bool inputConnected = false;
@@ -411,7 +417,7 @@ namespace HyperGraph
 				// 		outputState |= connection.state | RenderState.Connected;
 				// }
 
-				RenderItem(graphics, new SizeF(node.bounds.Width - GraphConstants.NodeExtraWidth, 0), node.titleItem, itemPosition, context);
+				RenderItem(graphics, new SizeF(node.bounds.Width - GraphConstants.NodeExtraWidth, 0), node.titleItem, node.titleItem.bounds.Location, context);
 				// if (node.inputConnectors.Count > 0)
 				// 	RenderConnector(graphics, node.inputBounds, node.inputState, ConnectorType.Input);
 				// if (node.outputConnectors.Count > 0)
@@ -427,7 +433,7 @@ namespace HyperGraph
 				var minimumItemSize = new SizeF(node.bounds.Width - GraphConstants.NodeExtraWidth, 0);
 				foreach (var item in EnumerateNodeItems(node))
 				{
-					RenderItem(graphics, minimumItemSize, item, itemPosition, context);
+					RenderItem(graphics, minimumItemSize, item, item.bounds.Location, context);
 					var inputConnector	= item.Input;
 					if (inputConnector != null && inputConnector.Enabled)
 					{
@@ -467,7 +473,6 @@ namespace HyperGraph
                             RenderConnector(graphics, outputConnector.bounds, state, ConnectorType.Output, outputConnector);
 						}
 					}
-					itemPosition.Y += item.bounds.Height + GraphConstants.ItemSpacing;
 				}
 			}
 		}
