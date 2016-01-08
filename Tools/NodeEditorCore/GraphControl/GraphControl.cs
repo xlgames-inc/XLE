@@ -82,39 +82,65 @@ namespace NodeEditorCore
 
         private void OnConnectorDoubleClick(object sender, HyperGraph.GraphControl.NodeConnectorEventArgs e)
         {
-            // only attach constants to node inputs
-            if (e.Connector != e.Connector.Item.Input)
-                return;
-
-            var dialog = new HyperGraph.TextEditForm();
-            dialog.InputText = "1.0f";
-
-            //  look for an existing simple connection attached to this connector
-            foreach (var i in e.Node.Connections)
+            // For input connectors, we can try to add a constant connection
+            if (e.Connector == e.Connector.Item.Input)
             {
-                if (i.To == e.Connector && i.From == null)
-                    dialog.InputText = i.Name;
+                var dialog = new HyperGraph.TextEditForm();
+                dialog.InputText = "1.0f";
+
+                //  look for an existing simple connection attached to this connector
+                foreach (var i in e.Node.Connections)
+                {
+                    if (i.To == e.Connector && i.From == null)
+                        dialog.InputText = i.Name;
+                }
+
+                var result = dialog.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    bool foundExisting = false;
+                    foreach (var i in e.Node.Connections)
+                        if (i.To == e.Connector && i.From == null)
+                        {
+                            // empty dialog text means we want to disconnect any existing connections
+                            if (dialog.InputText.Length > 0)
+                            {
+                                i.Name = dialog.InputText;
+                            }
+                            else
+                            {
+                                GetGraphModel().Disconnect(i);
+                                break;
+                            }
+                            foundExisting = true;
+                        }
+
+                    if (!foundExisting && dialog.InputText.Length > 0)
+                        GetGraphModel().Connect(null, e.Connector, dialog.InputText);
+                }
             }
 
-            var result = dialog.ShowDialog();
-            if (result == DialogResult.OK)
+            // for output connectors, we can customize an input parameter
+            if (e.Connector == e.Connector.Item.Output)
             {
-                bool foundExisting = false;
-                foreach (var i in e.Node.Connections)
-                    if (i.To == e.Connector && i.From == null)
+                var inputParam = e.Connector.Item as ShaderFragmentInputParameterItem;
+                if (inputParam != null)
+                {
+                    using (var fm = new InputParameterForm() { Name = inputParam.Name, Type = inputParam.Type, Semantic = inputParam.Semantic })
                     {
-                        // empty dialog text means we want to disconnect any existing connections
-                        if (dialog.InputText.Length > 0) {
-                            i.Name = dialog.InputText;
-                        } else {
-                            GetGraphModel().Disconnect(i);
-                            break;
+                        var result = fm.ShowDialog();
+                        if (result == DialogResult.OK)
+                        {
+                            inputParam.Name = fm.Name;
+                            inputParam.Type = fm.Type;
+                            inputParam.Semantic = fm.Semantic;
                         }
-                        foundExisting = true;
+                        else if (result == DialogResult.No)
+                        {
+                            inputParam.Node.RemoveItem(inputParam);
+                        }
                     }
-
-                if (!foundExisting && dialog.InputText.Length > 0)
-                    GetGraphModel().Connect(null, e.Connector, dialog.InputText);
+                }
             }
         }
         
@@ -247,12 +273,20 @@ namespace NodeEditorCore
         }
         private void OnCreateInputParameterNode(object sender, EventArgs e)
         {
-            var n = NodeFactory.CreateEmptyInputParameterNode("Inputs");
-            var tag = ((ToolStripMenuItem)sender).GetCurrentParent().Tag;
-            if (tag is System.Drawing.PointF)
-                n.Location = (System.Drawing.PointF)tag;
+            using (var fm = new InputParameterForm(false) { Name = "Color", Type = "float4", Semantic = "COLOR0" })
+            {
+                var result = fm.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    var n = NodeFactory.CreateEmptyInputParameterNode("Inputs");
+                    var tag = ((ToolStripMenuItem)sender).GetCurrentParent().Tag;
+                    if (tag is System.Drawing.PointF)
+                        n.Location = (System.Drawing.PointF)tag;
+                    n.AddItem(new ShaderFragmentInputParameterItem(fm.Name, fm.Type, fm.Semantic));
 
-            GetGraphModel().AddNode(n);
+                    GetGraphModel().AddNode(n);
+                }
+            }
         }
 
         #endregion
