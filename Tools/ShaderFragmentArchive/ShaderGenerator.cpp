@@ -56,7 +56,7 @@ namespace ShaderPatcherLayer
             ShaderPatcher::Type(marshalString<E_UTF8>(connection->InputType)));
     }
 
-    static ShaderPatcher::NodeConstantConnection        ConvertToNative(NodeConstantConnection^ connection)
+    static ShaderPatcher::NodeConstantConnection        ConvertToNative(ConstantConnection^ connection)
     {
         return ShaderPatcher::NodeConstantConnection(
             connection->OutputNodeID,
@@ -71,7 +71,7 @@ namespace ShaderPatcherLayer
             res.GetNodes().push_back(ShaderPatcherLayer::ConvertToNative(n));
         for each(NodeConnection^ c in NodeConnections)
             res.GetNodeConnections().push_back(ShaderPatcherLayer::ConvertToNative(c));
-        for each(NodeConstantConnection^ c in NodeConstantConnections)
+        for each(ConstantConnection^ c in ConstantConnections)
             res.GetNodeConstantConnections().push_back(ShaderPatcherLayer::ConvertToNative(c));
         return res;
     }

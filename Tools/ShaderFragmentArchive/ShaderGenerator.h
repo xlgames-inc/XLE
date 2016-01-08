@@ -37,12 +37,18 @@ namespace ShaderPatcherLayer
     };
 
         ///////////////////////////////////////////////////////////////
-    [DataContract] public ref class NodeConnection
+    [DataContract] public ref class BaseConnection
     {
     public:
         [DataMember] UInt32        OutputNodeID;
-        [DataMember] UInt32        InputNodeID;
         [DataMember] String^       OutputParameterName;
+    };
+
+        ///////////////////////////////////////////////////////////////
+    [DataContract] public ref class NodeConnection : public BaseConnection
+    {
+    public:
+        [DataMember] UInt32        InputNodeID;
         [DataMember] String^       OutputType;
         [DataMember] String^       InputParameterName;
         [DataMember] String^       InputType;
@@ -50,23 +56,20 @@ namespace ShaderPatcherLayer
     };
 
         ///////////////////////////////////////////////////////////////
-    [DataContract] public ref class NodeConstantConnection
+    [DataContract] public ref class ConstantConnection : public BaseConnection
     {
     public:
-        [DataMember] UInt32        OutputNodeID;
-        [DataMember] String^       OutputParameterName;
         [DataMember] String^       Value;
     };
 
 		///////////////////////////////////////////////////////////////
-	[DataContract] public ref class NodeInputParameterConnection
+	[DataContract] public ref class InputParameterConnection : public BaseConnection
 	{
 	public:
-		[DataMember] UInt32        OutputNodeID;
-        [DataMember] String^       OutputParameterName;
 		[DataMember] String^       Type;
 		[DataMember] String^       Name;
 		[DataMember] String^       Semantic;
+        [DataMember] int           VisualNodeId;
 	};
 
         ///////////////////////////////////////////////////////////////
@@ -92,9 +95,14 @@ namespace ShaderPatcherLayer
             List<NodeConnection^>^ get()        { if (!_connections) { _connections = gcnew List<NodeConnection^>(); } return _connections; }
         }
 
-        [DataMember] property List<NodeConstantConnection^>^ NodeConstantConnections
+        [DataMember] property List<ConstantConnection^>^ ConstantConnections
         {
-            List<NodeConstantConnection^>^ get() { if (!_constantConnections) { _constantConnections = gcnew List<NodeConstantConnection^>(); } return _constantConnections; }
+            List<ConstantConnection^>^ get() { if (!_constantConnections) { _constantConnections = gcnew List<ConstantConnection^>(); } return _constantConnections; }
+        }
+
+        [DataMember] property List<InputParameterConnection^>^ InputParameterConnections
+        {
+            List<InputParameterConnection^>^ get() { if (!_inputParameterConnections) { _inputParameterConnections = gcnew List<InputParameterConnection^>(); } return _inputParameterConnections; }
         }
 
         [DataMember] property List<VisualNode^>^ VisualNodes
@@ -119,7 +127,8 @@ namespace ShaderPatcherLayer
     private:
         List<Node^>^                    _nodes;
         List<NodeConnection^>^          _connections;
-        List<NodeConstantConnection^>^  _constantConnections;
+        List<ConstantConnection^>^  _constantConnections;
+        List<InputParameterConnection^>^  _inputParameterConnections;
         List<VisualNode^>^              _visualNodes;
     };
 

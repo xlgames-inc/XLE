@@ -6,6 +6,7 @@
 
 using System;
 using System.Windows.Forms;
+using System.Linq;
 using HyperGraph;
 
 namespace NodeEditorCore
@@ -137,6 +138,13 @@ namespace NodeEditorCore
                         }
                         else if (result == DialogResult.No)
                         {
+                                // we must disconnect before removing the item...
+                            for (;;)
+                            {
+                                var c = inputParam.Output.Connectors.FirstOrDefault();
+                                if (c == null) break;
+                                GetGraphModel().Disconnect(c);
+                            }
                             inputParam.Node.RemoveItem(inputParam);
                         }
                     }

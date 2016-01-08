@@ -352,6 +352,8 @@ namespace ShaderPatcher
 
     void        NodeGraph::AddDefaultOutputs(const Node& node)
     {
+        if (node.ArchiveName().empty()) return;
+
         auto sig = LoadFunctionSignature(SplitArchiveName(node.ArchiveName()));
         auto nodeId = node.NodeId();
 
@@ -1080,7 +1082,7 @@ namespace ShaderPatcher
             //          our "varying parameters".
             //
         for (auto i=graph.GetNodes().cbegin(); i!=graph.GetNodes().cend(); ++i) {
-            if (i->GetType() == Node::Type::Procedure) {
+            if (i->GetType() == Node::Type::Procedure && !i->ArchiveName().empty()) {
 
                 auto signature = LoadFunctionSignature(SplitArchiveName(i->ArchiveName()));
                 for (auto p=signature._parameters.cbegin(); p!=signature._parameters.cend(); ++p) {
