@@ -172,25 +172,25 @@ namespace ShaderPatcher
         void Add(ConstantConnection&&);
         void Add(InputParameterConnection&&);
 
-        std::string                         GetName() const                     { return _name; }
-        void                                SetName(std::string newName)        { _name = newName; }
+        std::string     GetName() const                 { return _name; }
+        void            SetName(std::string newName)    { _name = newName; }
 
-        void        TrimForPreview(uint32 previewNode);
-        bool        TrimForOutputs(const std::string outputs[], size_t outputCount);
-        void        AddDefaultOutputs();
+        void            TrimForPreview(uint32 previewNode);
+        bool            TrimForOutputs(const std::string outputs[], size_t outputCount);
+        void            AddDefaultOutputs();
 
-        const Node*         GetNode(uint32 nodeId) const;
+        const Node*     GetNode(uint32 nodeId) const;
 
         NodeGraph(const std::string& name = std::string());
         NodeGraph(NodeGraph&& moveFrom) never_throws;
         NodeGraph& operator=(NodeGraph&& moveFrom) never_throws;
 
     private:
-        std::vector<Node>                   _nodes;
-        std::vector<NodeConnection>         _nodeConnections;
+        std::vector<Node> _nodes;
+        std::vector<NodeConnection> _nodeConnections;
         std::vector<ConstantConnection> _constantConnections;
         std::vector<InputParameterConnection> _inputParameterConnections;
-        std::string                         _name;
+        std::string _name;
 
         void        Trim(const uint32* trimNodesBegin, const uint32* trimNodesEnd);
         bool        IsUpstream(uint32 startNode, uint32 searchingForNode);
@@ -202,18 +202,49 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
+    class MainFunctionParameter
+    {
+    public:
+        std::string _type, _name, _archiveName, _semantic;
+        MainFunctionParameter(
+            const std::string& type, const std::string& name, 
+            const std::string& archiveName, const std::string& semantic = std::string())
+            : _type(type), _name(name), _archiveName(archiveName), _semantic(semantic) {}
+        MainFunctionParameter() {}
+    };
+
+    class MainFunctionInterface
+    {
+    public:
+        IteratorRange<const MainFunctionParameter*> GetInputParameters() const { return MakeIteratorRange(_inputParameters); }
+        IteratorRange<const MainFunctionParameter*> GetOutputParameters() const { return MakeIteratorRange(_outputParameters); }
+        const NodeGraph& GetGraphOfTemporaries() const { return _graphOfTemporaries; }
+
+        MainFunctionInterface(const NodeGraph& graph);
+        ~MainFunctionInterface();
+    private:
+        std::vector<MainFunctionParameter> _inputParameters;
+        std::vector<MainFunctionParameter> _outputParameters;
+        NodeGraph _graphOfTemporaries;
+    };
+
     namespace MaterialConstantsStyle
     {
         enum Enum { CBuffer };
     }
 
-    std::string         GenerateShaderHeader(   const NodeGraph& graph, 
-                                                MaterialConstantsStyle::Enum materialConstantsStyle = MaterialConstantsStyle::CBuffer, 
-                                                bool copyFragmentContents = false);
-    std::string         GenerateShaderBody(const NodeGraph& graph, const NodeGraph& graphOfTemporaries);
-    std::string         GenerateStructureForPreview(const NodeGraph& graph, const NodeGraph& graphOfTemporaries, const char outputToVisualize[]);
-    NodeGraph           GenerateGraphOfTemporaries(const NodeGraph& graph);
-    
+    std::string GenerateShaderHeader(   
+        const NodeGraph& graph, 
+        MaterialConstantsStyle::Enum materialConstantsStyle = MaterialConstantsStyle::CBuffer, 
+        bool copyFragmentContents = false);
+
+    std::string GenerateShaderBody(
+        const NodeGraph& graph, const MainFunctionInterface& interf);
+
+    std::string GenerateStructureForPreview(
+        const NodeGraph& graph, 
+        const MainFunctionInterface& interf, 
+        const char outputToVisualize[]);
 
 }
 

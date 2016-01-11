@@ -101,10 +101,10 @@ namespace ShaderPatcherLayer
 		{
 			auto nativeGraph = graph->ConvertToNative(name);
 			nativeGraph.AddDefaultOutputs();
-			ShaderPatcher::NodeGraph graphOfTemporaries = ShaderPatcher::GenerateGraphOfTemporaries(nativeGraph);
+			ShaderPatcher::MainFunctionInterface interf(nativeGraph);
 			return marshalString<E_UTF8>(
 					ShaderPatcher::GenerateShaderHeader(nativeGraph) 
-				+   ShaderPatcher::GenerateShaderBody(nativeGraph, graphOfTemporaries));
+				+   ShaderPatcher::GenerateShaderBody(nativeGraph, interf));
 		} catch (const std::exception& e) {
 			return "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what());
 		} catch (...) {
@@ -117,13 +117,13 @@ namespace ShaderPatcherLayer
 		try
 		{
 			auto nativeGraph = graph->ConvertToNativePreview(previewNodeId);
-			ShaderPatcher::NodeGraph graphOfTemporaries = ShaderPatcher::GenerateGraphOfTemporaries(nativeGraph);
+			ShaderPatcher::MainFunctionInterface interf(nativeGraph);
 			std::string structure = ShaderPatcher::GenerateStructureForPreview(
-				nativeGraph, graphOfTemporaries, 
+				nativeGraph, interf, 
 				outputToVisualize ? marshalString<E_UTF8>(outputToVisualize).c_str() : "");
 			return marshalString<E_UTF8>(
 					ShaderPatcher::GenerateShaderHeader(nativeGraph) 
-				+   ShaderPatcher::GenerateShaderBody(nativeGraph, graphOfTemporaries) 
+				+   ShaderPatcher::GenerateShaderBody(nativeGraph, interf) 
 				+   structure)
 				;
 		} catch (const std::exception& e) {

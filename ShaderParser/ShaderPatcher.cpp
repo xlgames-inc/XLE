@@ -880,17 +880,6 @@ namespace ShaderPatcher
         return RenderCore::ShaderLangTypeNameAsTypeDesc(typeName)._type == ImpliedTyping::TypeCat::Void;
     }
 
-    class MainFunctionParameter
-    {
-    public:
-        std::string _type, _name, _archiveName, _semantic;
-        MainFunctionParameter(
-            const std::string& type, const std::string& name, 
-            const std::string& archiveName, const std::string& semantic = std::string())
-            : _type(type), _name(name), _archiveName(archiveName), _semantic(semantic) {}
-        MainFunctionParameter() {}
-    };
-
     static std::vector<MainFunctionParameter> GetMainFunctionOutputParameters(const NodeGraph& graph, const NodeGraph& graphOfTemporaries, bool useNodeId = false)
     {
         unsigned outputIndex = 0;
@@ -935,9 +924,44 @@ namespace ShaderPatcher
 	    }
     }
 
-    static std::vector<MainFunctionParameter> GetMainFunctionVaryingParameters(const NodeGraph& graph, const NodeGraph& graphOfTemporaries)
+    MainFunctionInterface::MainFunctionInterface(const NodeGraph& graph)
     {
-        std::vector<MainFunctionParameter> result;
+            //
+            //      Look for inputs to the graph that aren't
+            //      attached to anything.
+            //      These should either take some default input, or become 
+            //          our "varying parameters".
+            //
+        for each (auto i in graph.GetNodes()) {
+            if (i.GetType() == Node::Type::Procedure && !i.ArchiveName().empty()) {
+                auto signature = LoadFunctionSignature(SplitArchiveName(i.ArchiveName()));
+                for (auto p=signature._parameters.cbegin(); p!=signature._parameters.cend(); ++p) {
+
+                    if (!(p->_direction & ShaderSourceParser::FunctionSignature::Parameter::In))
+                        continue;
+
+                    bool found = 
+                            (FindConnection(graph.GetNodeConnections(), i.NodeId(), p->_name) != graph.GetNodeConnections().cend())
+                        ||  (FindConnection(graph.GetConstantConnections(), i.NodeId(), p->_name) != graph.GetConstantConnections().cend())
+                        ||  (FindConnection(graph.GetInputParameterConnections(), i.NodeId(), p->_name) != graph.GetInputParameterConnections().cend())
+                        ;
+
+                        //
+                        //      If we didn't find any connection, then it's an
+                        //      unattached parameter. Let's consider it a varying parameter
+                        //      We can use a "ConstantConnection" to reference the parameter name
+                        //
+                    if (!found) {
+                        auto mainFunctionParamName = p->_name;
+                        _graphOfTemporaries.Add(ConstantConnection(i.NodeId(), p->_name, mainFunctionParamName));
+
+                        AddWithExistingCheck(
+                            _inputParameters,
+                            MainFunctionParameter(p->_type, p->_name, i.ArchiveName(), p->_semantic));
+                    }
+                }
+            }
+        }
 
             //
             //      Any "interpolator" nodes must have values passed into
@@ -954,31 +978,7 @@ namespace ShaderPatcher
                 std::string type = (!signature._name.empty()) ? signature._name : i.ArchiveName();
 
                 auto paramName = InterpolatorParameterName(i.NodeId());
-                AddWithExistingCheck(
-                    result,
-                    MainFunctionParameter(type, paramName, i.ArchiveName()));
-            }
-        }
-
-        for each(auto i in graphOfTemporaries.GetNodeConnections()) {
-            if (i.OutputNodeId() != ~0ull) {
-                // we need to go back to the function signature to get semantic information
-                std::string semantic;
-                auto* destinationNode = graph.GetNode(i.OutputNodeId());
-                if (destinationNode) {
-                    auto sig = LoadFunctionSignature(SplitArchiveName(destinationNode->ArchiveName()));
-                    auto p = std::find_if(sig._parameters.cbegin(), sig._parameters.cend(), 
-                        [=](const ShaderSourceParser::FunctionSignature::Parameter&p)
-                            { return p._name == i.OutputParameterName(); });
-                    if (p!=sig._parameters.end())
-                        semantic = p->_semantic;
-                }
-
-                AddWithExistingCheck(
-                    result,
-                    MainFunctionParameter(
-                        i.InputType()._name, i.InputParameterName(), 
-                        i.InputType()._name, semantic));
+                AddWithExistingCheck(_inputParameters, MainFunctionParameter(type, paramName, i.ArchiveName()));
             }
         }
 
@@ -997,13 +997,15 @@ namespace ShaderPatcher
                         { return p._name == i.OutputParameterName(); });
 
                 if (p!=sig._parameters.end()) {
-                    result.emplace_back(MainFunctionParameter(p->_type, matchResult[1], p->_type, p->_semantic));
+                    _inputParameters.emplace_back(MainFunctionParameter(p->_type, matchResult[1], p->_type, p->_semantic));
                 }
             }
         }
 
-        return result;
+        _outputParameters = GetMainFunctionOutputParameters(graph, _graphOfTemporaries, true);
     }
+
+    MainFunctionInterface::~MainFunctionInterface() {}
 
     static void MaybeComma(std::stringstream& stream) { if (stream.tellp() != std::stringstream::pos_type(0)) stream << ", "; }
 
@@ -1013,12 +1015,12 @@ namespace ShaderPatcher
     {
         if (!s_writeOutputsViaStruct) {
             if (paramName != "value") {
-                result << "\tOUT_" << nodeId << "." << paramName << " = ";
+                result << "\tOUT_" << nodeId << "." << paramName;
             } else {
-                result << "\tOUT_" << nodeId << " = ";
+                result << "\tOUT_" << nodeId;
             }
         } else {
-            result << "\tOUT." << "Output_" << nodeId << "." << paramName << " = ";
+            result << "\tOUT." << "Output_" << nodeId << "." << paramName;
         }
     }
 
@@ -1037,6 +1039,7 @@ namespace ShaderPatcher
             if (destinationNode && destinationNode->GetType() == Node::Type::Output) {
                 result << "\t";
                 WriteOutputParamName(result, destinationNode->NodeId(), i.OutputParameterName());
+                result << " = ";
 
                     //
                     //      Enforce a cast if we need it...
@@ -1057,16 +1060,15 @@ namespace ShaderPatcher
         }
     }
 
-    std::string GenerateShaderBody(const NodeGraph& graph, const NodeGraph& graphOfTemporaries)
+    std::string GenerateShaderBody(const NodeGraph& graph, const MainFunctionInterface& interf)
     {
         std::stringstream mainFunctionDeclParameters;
 
-        auto varyingParameters = GetMainFunctionVaryingParameters(graph, graphOfTemporaries);
-        for (auto i=varyingParameters.begin(); i!=varyingParameters.end(); ++i) {
+        for each (auto i in interf.GetInputParameters()) {
             MaybeComma(mainFunctionDeclParameters);
-            mainFunctionDeclParameters << i->_type << " " << i->_name;
-			if (!i->_semantic.empty())
-				mainFunctionDeclParameters << " : " << i->_semantic;
+            mainFunctionDeclParameters << i._type << " " << i._name;
+			if (!i._semantic.empty())
+				mainFunctionDeclParameters << " : " << i._semantic;
         }
 
             //  
@@ -1079,12 +1081,11 @@ namespace ShaderPatcher
             //
         std::stringstream result;
         if (!s_writeOutputsViaStruct) {
-            auto outputs = GetMainFunctionOutputParameters(graph, graphOfTemporaries, true);
-            for (auto i=outputs.begin(); i!=outputs.end(); ++i) {
+            for each (auto i in interf.GetOutputParameters()) {
                 MaybeComma(mainFunctionDeclParameters);
-                mainFunctionDeclParameters << "out " << i->_type << " " << i->_name;
-				if (!i->_semantic.empty())
-					mainFunctionDeclParameters << " : " << i->_semantic;
+                mainFunctionDeclParameters << "out " << i._type << " " << i._name;
+				if (!i._semantic.empty())
+					mainFunctionDeclParameters << " : " << i._semantic;
             }
         } else {
             result << "struct " << graph.GetName() << "_Output" << std::endl << "{" << std::endl;
@@ -1100,7 +1101,7 @@ namespace ShaderPatcher
 
         result << "void " << graph.GetName() << "(" << mainFunctionDeclParameters.str() << ")" << std::endl;
         result << "{" << std::endl;
-        result << GenerateMainFunctionBody(graph, graphOfTemporaries);
+        result << GenerateMainFunctionBody(graph, interf.GetGraphOfTemporaries());
 
             //
             //      Fill in the "OUT" structure with all of the output
@@ -1119,48 +1120,6 @@ namespace ShaderPatcher
     }
 
         ////////////////////////////////////////////////////////////////////////
-
-    NodeGraph           GenerateGraphOfTemporaries(const NodeGraph& graph)
-    {
-        NodeGraph graphOfTemporaries;
-
-            //
-            //      Look for inputs to the graph that aren't
-            //      attached to anything.
-            //      These should either take some default input, or become 
-            //          our "varying parameters".
-            //
-        for (auto i=graph.GetNodes().cbegin(); i!=graph.GetNodes().cend(); ++i) {
-            if (i->GetType() == Node::Type::Procedure && !i->ArchiveName().empty()) {
-
-                auto signature = LoadFunctionSignature(SplitArchiveName(i->ArchiveName()));
-                for (auto p=signature._parameters.cbegin(); p!=signature._parameters.cend(); ++p) {
-
-                    if (!(p->_direction & ShaderSourceParser::FunctionSignature::Parameter::In))
-                        continue;
-
-                    bool found = 
-                            (FindConnection(graph.GetNodeConnections(), i->NodeId(), p->_name) != graph.GetNodeConnections().cend())
-                        ||  (FindConnection(graph.GetConstantConnections(), i->NodeId(), p->_name) != graph.GetConstantConnections().cend())
-                        ||  (FindConnection(graph.GetInputParameterConnections(), i->NodeId(), p->_name) != graph.GetInputParameterConnections().cend())
-                        ;
-
-                        //
-                        //      If we didn't find any connection, then it's an
-                        //      unattached parameter. Let's consider it a varying parameter
-                        //      We can use a "ConstantConnection" to reference the parameter name
-                        //
-                    if (!found) {
-                        auto mainFunctionParamName = p->_name;
-                        graphOfTemporaries.Add(ConstantConnection(i->NodeId(), p->_name, mainFunctionParamName));
-                    }
-
-                }
-            }
-        }
-
-        return graphOfTemporaries;
-    }
 
     struct VaryingParamsFlags 
     {
@@ -1252,7 +1211,7 @@ namespace ShaderPatcher
         return value ? T : F;
     }
 
-    class MainFunctionParameters
+    class ParameterGenerator
     {
     public:
         unsigned Count() const                      { return (unsigned)_parameters.size(); };
@@ -1265,8 +1224,8 @@ namespace ShaderPatcher
 
         bool IsInitializedBySystem(unsigned index) const { return !_buildSystemFunctions[index].empty(); }
 
-        MainFunctionParameters(const NodeGraph& graph, const NodeGraph& graphOfTemporaries);
-        ~MainFunctionParameters();
+        ParameterGenerator(const NodeGraph& graph, const MainFunctionInterface& interf);
+        ~ParameterGenerator();
     private:
         std::vector<MainFunctionParameter>  _parameters;
         std::vector<std::string>            _buildSystemFunctions;
@@ -1275,7 +1234,7 @@ namespace ShaderPatcher
         ParameterMachine _paramMachine;
     };
 
-    std::string MainFunctionParameters::VaryingStructSignature(unsigned index) const
+    std::string ParameterGenerator::VaryingStructSignature(unsigned index) const
     {
         if (!_buildSystemFunctions[index].empty()) return std::string();
         const auto& p = _parameters[index];
@@ -1292,7 +1251,7 @@ namespace ShaderPatcher
         return result.str();
     }
 
-    std::string MainFunctionParameters::VSInitExpression(unsigned index)
+    std::string ParameterGenerator::VSInitExpression(unsigned index)
     {
         const auto& p = _parameters[index];
         if (!_buildSystemFunctions[index].empty()) return std::string();
@@ -1338,7 +1297,7 @@ namespace ShaderPatcher
         return std::string();
     }
 
-    std::string MainFunctionParameters::PSExpression(unsigned index, const char vsOutputName[], const char varyingParameterStruct[]) const
+    std::string ParameterGenerator::PSExpression(unsigned index, const char vsOutputName[], const char varyingParameterStruct[]) const
     {
         auto buildSystemFunction = _buildSystemFunctions[index];
         if (!buildSystemFunction.empty()) {
@@ -1350,14 +1309,14 @@ namespace ShaderPatcher
         }
     }
 
-    MainFunctionParameters::MainFunctionParameters(const NodeGraph& graph, const NodeGraph& graphOfTemporaries)
+    ParameterGenerator::ParameterGenerator(const NodeGraph& graph, const MainFunctionInterface& interf)
     {
-        _parameters = GetMainFunctionVaryingParameters(graph, graphOfTemporaries);
+        _parameters = std::vector<MainFunctionParameter>(interf.GetInputParameters().cbegin(), interf.GetInputParameters().cend());
         for (auto i=_parameters.cbegin(); i!=_parameters.cend(); ++i)
             _buildSystemFunctions.push_back(_paramMachine.GetBuildSystem(*i));
     }
 
-    MainFunctionParameters::~MainFunctionParameters() {}
+    ParameterGenerator::~ParameterGenerator() {}
 
     // todo -- these templates could come from a file... It would be convenient for development
     //          (but it would also add another file dependency)
@@ -1426,7 +1385,9 @@ NE_PSInput vs_main(uint vertexId : SV_VertexID, VSInput vsInput)
 }
 )--";
 
-    std::string         GenerateStructureForPreview(const NodeGraph& graph, const NodeGraph& graphOfTemporaries, const char outputToVisualize[])
+    std::string         GenerateStructureForPreview(
+        const NodeGraph& graph, const MainFunctionInterface& interf, 
+        const char outputToVisualize[])
     {
             //
             //      Generate the shader structure that will surround the main
@@ -1447,7 +1408,7 @@ NE_PSInput vs_main(uint vertexId : SV_VertexID, VSInput vsInput)
             //      window)
             //
 
-        MainFunctionParameters mainParams(graph, graphOfTemporaries);
+        ParameterGenerator mainParams(graph, interf);
 
             //
             //      All varying parameters must have semantics
@@ -1480,11 +1441,10 @@ NE_PSInput vs_main(uint vertexId : SV_VertexID, VSInput vsInput)
             //      Write "_Output" structure. This contains all of the values that are output
             //      from the main function
             //
-        auto mainFunctionOutputs = GetMainFunctionOutputParameters(graph, graphOfTemporaries);
         result << "struct NE_" << graph.GetName() << "_Output" << std::endl << "{" << std::endl;
-        for (auto i=mainFunctionOutputs.begin(); i!=mainFunctionOutputs.end(); ++i) {
-            result << "\t" << i->_type << " " << i->_name << ": SV_Target" << std::distance(mainFunctionOutputs.begin(), i) << ";" << std::endl;
-        }
+        unsigned svTargetCounter = 0;
+        for each (auto i in interf.GetOutputParameters())
+            result << "\t" << i._type << " " << i._name << ": SV_Target" << (svTargetCounter++) << ";" << std::endl;
         result << "};" << std::endl << std::endl;
 
             //
@@ -1517,10 +1477,10 @@ NE_PSInput vs_main(uint vertexId : SV_VertexID, VSInput vsInput)
         }
             
             //  Also pass each output as a parameter to the main function
-        for (auto i=mainFunctionOutputs.begin(); i!=mainFunctionOutputs.end(); ++i) {
+        for each (auto i in interf.GetOutputParameters()) {
             if (!parametersToMainFunctionCall.empty())
                 parametersToMainFunctionCall += ", ";
-            parametersToMainFunctionCall += "functionResult." + i->_name;
+            parametersToMainFunctionCall += "functionResult." + i._name;
         }
 
         unsigned inputDimensionality = 0;
@@ -1547,22 +1507,22 @@ NE_PSInput vs_main(uint vertexId : SV_VertexID, VSInput vsInput)
             bool needFlatOutputs = allowGraphs && inputDimensionality == 1;
             if (needFlatOutputs) {
                 std::stringstream writingToFlatArray;
-                for (auto i=mainFunctionOutputs.begin(); i!=mainFunctionOutputs.end(); ++i) {
-                    auto signature = LoadParameterStructSignature(SplitArchiveName(i->_archiveName));
+                for each (auto i in interf.GetOutputParameters()) {
+                    auto signature = LoadParameterStructSignature(SplitArchiveName(i._archiveName));
                     if (!signature._name.empty()) {
                         for (auto p=signature._parameters.cbegin(); p!=signature._parameters.cend(); ++p) {
                             auto dim = GetDimensionality(p->_type);
                             for (unsigned c=0; c<dim; ++c) {
-                                writingToFlatArray << "flatOutputs[" << outputDimensionality+c << "] = " << "functionResult." << i->_name << "." << p->_name;
+                                writingToFlatArray << "flatOutputs[" << outputDimensionality+c << "] = " << "functionResult." << i._name << "." << p->_name;
                                 if (dim != 1) writingToFlatArray << "[" << c << "]";
                                 writingToFlatArray << ";";
                             }
                             outputDimensionality += dim;
                         }
                     } else {
-                        auto dim = GetDimensionality(i->_archiveName);
+                        auto dim = GetDimensionality(i._archiveName);
                         for (unsigned c=0; c<dim; ++c) {
-                            writingToFlatArray << "flatOutputs[" << outputDimensionality+c << "] = " << "functionResult." << i->_name;
+                            writingToFlatArray << "flatOutputs[" << outputDimensionality+c << "] = " << "functionResult." << i._name;
                             if (dim != 1) writingToFlatArray << "[" << c << "]";
                             writingToFlatArray << ";";
                         }
