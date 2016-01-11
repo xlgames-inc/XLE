@@ -31,15 +31,13 @@ namespace ShaderPatcher
     : _archiveName(archiveName)
     , _nodeId(nodeId)
     , _type(type)
-    {
-    }
+    {}
 
     Node::Node(Node&& moveFrom) 
     :   _archiveName(std::move(moveFrom._archiveName))
     ,   _nodeId(moveFrom._nodeId)
     ,   _type(moveFrom._type)
-    {
-    }
+    {}
 
     Node& Node::operator=(Node&& moveFrom) never_throws
     {
@@ -59,33 +57,46 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
+    NodeBaseConnection::NodeBaseConnection(uint32 outputNodeId, const std::string& outputParameterName)
+    : _outputNodeId(outputNodeId), _outputParameterName(outputParameterName) {}
+
+    NodeBaseConnection::NodeBaseConnection(NodeBaseConnection&& moveFrom) never_throws
+    : _outputNodeId(moveFrom._outputNodeId)
+    , _outputParameterName(std::move(moveFrom._outputParameterName))
+    {
+    }
+
+    NodeBaseConnection& NodeBaseConnection::operator=(NodeBaseConnection&& moveFrom) never_throws
+    {
+        _outputNodeId = moveFrom._outputNodeId;
+        _outputParameterName = std::move(moveFrom._outputParameterName);
+        return *this;
+    }
+
+        ///////////////////////////////////////////////////////////////
+
     NodeConnection::NodeConnection( uint32 outputNodeId, uint32 inputNodeId, 
                                     const std::string& outputParameterName, const Type& outputType, 
                                     const std::string& inputParameterName, const Type& inputType)
-    :       _outputNodeId(outputNodeId)
+    :       NodeBaseConnection(outputNodeId, outputParameterName)
     ,       _inputNodeId(inputNodeId)
-    ,       _outputParameterName(outputParameterName)
     ,       _outputType(outputType)
     ,       _inputParameterName(inputParameterName)
     ,       _inputType(inputType)
-    {
-    }
+    {}
 
     NodeConnection::NodeConnection(NodeConnection&& moveFrom)
-    :       _outputNodeId(moveFrom._outputNodeId)
+    :       NodeBaseConnection(std::move(moveFrom))
     ,       _inputNodeId(moveFrom._inputNodeId)
-    ,       _outputParameterName(moveFrom._outputParameterName)
     ,       _outputType(moveFrom._outputType)
     ,       _inputParameterName(moveFrom._inputParameterName)
     ,       _inputType(moveFrom._inputType)
-    {
-    }
+    {}
 
     NodeConnection& NodeConnection::operator=(NodeConnection&& moveFrom)
     {
-        _outputNodeId = moveFrom._outputNodeId;
+        NodeBaseConnection::operator=(std::move(moveFrom));
         _inputNodeId = moveFrom._inputNodeId;
-        _outputParameterName = moveFrom._outputParameterName;
         _outputType = moveFrom._outputType;
         _inputParameterName = moveFrom._inputParameterName;
         _inputType = moveFrom._inputType;
@@ -94,25 +105,37 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    NodeConstantConnection::NodeConstantConnection(uint32 outputNodeId, const std::string& outputParameterName, const std::string& value)
-    :       _outputNodeId(outputNodeId)
-    ,       _outputParameterName(outputParameterName)
-    ,       _value(value)
-    {
-    }
+    ConstantConnection::ConstantConnection(uint32 outputNodeId, const std::string& outputParameterName, const std::string& value)
+    :   NodeBaseConnection(outputNodeId, outputParameterName)
+    ,   _value(value) {}
 
-    NodeConstantConnection::NodeConstantConnection(NodeConstantConnection&& moveFrom)
-    :       _outputNodeId(moveFrom._outputNodeId)
-    ,       _outputParameterName(moveFrom._outputParameterName)
-    ,       _value(moveFrom._value)
-    {
-    }
+    ConstantConnection::ConstantConnection(ConstantConnection&& moveFrom)
+    :   NodeBaseConnection(std::move(moveFrom))
+    ,   _value(moveFrom._value) {}
 
-    NodeConstantConnection& NodeConstantConnection::operator=(NodeConstantConnection&& moveFrom)
+    ConstantConnection& ConstantConnection::operator=(ConstantConnection&& moveFrom)
     {
-        _outputNodeId = moveFrom._outputNodeId;
-        _outputParameterName = moveFrom._outputParameterName;
+        NodeBaseConnection::operator=(std::move(moveFrom));
         _value = moveFrom._value;
+        return *this;
+    }
+
+        ///////////////////////////////////////////////////////////////
+
+    InputParameterConnection::InputParameterConnection(uint32 outputNodeId, const std::string& outputParameterName, const Type& type, const std::string& name, const std::string& semantic)
+    :   NodeBaseConnection(outputNodeId, outputParameterName)
+    ,   _type(type), _name(name), _semantic(semantic) {}
+
+    InputParameterConnection::InputParameterConnection(InputParameterConnection&& moveFrom)
+    :   NodeBaseConnection(std::move(moveFrom))
+    ,   _type(std::move(moveFrom._type)), _name(std::move(moveFrom._name)), _semantic(std::move(moveFrom._semantic)) {}
+
+    InputParameterConnection& InputParameterConnection::operator=(InputParameterConnection&& moveFrom)
+    {
+        NodeBaseConnection::operator=(std::move(moveFrom));
+        _type = std::move(moveFrom._type);
+        _name = std::move(moveFrom._name);
+        _semantic = std::move(moveFrom._semantic);
         return *this;
     }
 
@@ -123,19 +146,25 @@ namespace ShaderPatcher
     NodeGraph::NodeGraph(NodeGraph&& moveFrom) 
     :   _nodes(std::move(moveFrom._nodes))
     ,   _nodeConnections(std::move(moveFrom._nodeConnections))
-    ,   _nodeConstantConnections(std::move(moveFrom._nodeConstantConnections))
+    ,   _constantConnections(std::move(moveFrom._constantConnections))
+    ,   _inputParameterConnections(std::move(moveFrom._inputParameterConnections))
     ,   _name(std::move(moveFrom._name))
-    {
-    }
+    {}
 
     NodeGraph& NodeGraph::operator=(NodeGraph&& moveFrom)
     {
         _nodes = std::move(moveFrom._nodes);
         _nodeConnections = std::move(moveFrom._nodeConnections);
-        _nodeConstantConnections = std::move(moveFrom._nodeConstantConnections);
+        _constantConnections = std::move(moveFrom._constantConnections);
+        _inputParameterConnections = std::move(moveFrom._inputParameterConnections);
         _name = std::move(moveFrom._name);
         return *this;
     }
+
+    void NodeGraph::Add(Node&& a) { _nodes.emplace_back(std::move(a)); }
+    void NodeGraph::Add(NodeConnection&& a) { _nodeConnections.emplace_back(std::move(a)); }
+    void NodeGraph::Add(ConstantConnection&& a) { _constantConnections.emplace_back(std::move(a)); }
+    void NodeGraph::Add(InputParameterConnection&& a) { _inputParameterConnections.emplace_back(std::move(a)); }
 
     bool            NodeGraph::IsUpstream(uint32 startNode, uint32 searchingForNode)
     {
@@ -430,12 +459,19 @@ namespace ShaderPatcher
                     { return !HasNode(connection.InputNodeId()) || !HasNode(connection.OutputNodeId()); }),
             _nodeConnections.end());
 
-        _nodeConstantConnections.erase(
+        _constantConnections.erase(
             std::remove_if(
-                _nodeConstantConnections.begin(), _nodeConstantConnections.end(),
-                [=](const NodeConstantConnection& connection) 
+                _constantConnections.begin(), _constantConnections.end(),
+                [=](const ConstantConnection& connection) 
                     { return !HasNode(connection.OutputNodeId()); }),
-            _nodeConstantConnections.end());
+            _constantConnections.end());
+
+        _inputParameterConnections.erase(
+            std::remove_if(
+                _inputParameterConnections.begin(), _inputParameterConnections.end(),
+                [=](const InputParameterConnection& connection) 
+                    { return !HasNode(connection.OutputNodeId()); }),
+            _inputParameterConnections.end());
     }
 
         ///////////////////////////////////////////////////////////////
@@ -478,6 +514,93 @@ namespace ShaderPatcher
     }
     static std::string InterpolatorParameterName(uint32 nodeId)     { return std::string("interp_") + AsString(nodeId); }
 
+    template<typename Connection>
+        const Connection* FindConnection(
+            IteratorRange<const Connection*> connections,
+            uint32 nodeId, const std::string& parameterName)
+    {
+        return std::find_if(
+            connections.cbegin(), connections.cend(), 
+            [nodeId, &parameterName](const NodeBaseConnection& connection)
+            { return    connection.OutputNodeId() == nodeId && 
+                        connection.OutputParameterName() == parameterName; } );
+    }
+
+    static bool PassParameter(
+        std::stringstream& result,
+        std::stringstream& warnings,
+        const NodeGraph& nodeGraph,
+        uint32 nodeId, const std::string& parameterName, const std::string& parameterType)
+    {
+        auto i = FindConnection(nodeGraph.GetNodeConnections(), nodeId, parameterName);
+        if (i!=nodeGraph.GetNodeConnections().cend()) {
+                //      Found a connection... write the parameter name.
+                //      We can also check for casting and any type errors
+            const Type& connectionInputType     = i->InputType();
+            const Type& connectionOutputType    = i->OutputType();
+            if (parameterType != connectionOutputType._name) {
+                warnings    << "\t// Type for function parameter name " << parameterName 
+                            << " seems to have changed in the shader fragment. Check for valid connections." << std::endl;
+            }
+
+            const bool doCast = connectionInputType._name != parameterType;
+            if (doCast)
+                result << "Cast_" << connectionInputType._name << "_to_" << parameterType << "(";
+
+                //      Check to see what kind of connnection it is
+                //      By default, let's just assume it's a procedure.
+            auto inputNodeType = Node::Type::Procedure;
+            auto* inputNode = nodeGraph.GetNode(i->InputNodeId());
+            if (inputNode) { inputNodeType = inputNode->GetType(); }
+
+            if (inputNodeType == Node::Type::Procedure) {
+                result << OutputTemporaryForNode(i->InputNodeId(), i->InputParameterName()); 
+            } else if (inputNodeType == Node::Type::MaterialCBuffer) {
+                result << i->InputParameterName();
+            } else if (inputNodeType == Node::Type::Constants) {
+                result << "ConstantValue_" << i->InputNodeId() << "_" << i->InputParameterName();
+            } else if (inputNodeType == Node::Type::InterpolatorIntoPixel || inputNodeType == Node::Type::InterpolatorIntoVertex || inputNodeType == Node::Type::SystemParameters) {
+                result << InterpolatorParameterName(i->InputNodeId()) << "." << i->InputParameterName();
+            }
+
+            if (doCast) result << ")";
+
+            return true;
+        }
+
+        auto ci = FindConnection(nodeGraph.GetConstantConnections(), nodeId, parameterName);
+        if (ci!=nodeGraph.GetConstantConnections().cend()) {
+
+                //  we have a "constant connection" value here. We either extract the name of 
+                //  the varying parameter, or we interpret this as pure text...
+            std::regex filter("<(.*)>");
+            std::smatch matchResult;
+            if (std::regex_match(ci->Value(), matchResult, filter) && matchResult.size() > 1) {
+                result << matchResult[1];
+            } else {
+                result << ci->Value();
+            }
+
+            return true;
+        }
+
+        auto ti = FindConnection(nodeGraph.GetInputParameterConnections(), nodeId, parameterName);
+        if (ti!=nodeGraph.GetInputParameterConnections().cend()) {
+
+            const bool doCast = ti->InputType()._name != parameterType;
+            if (doCast)
+                result << "Cast_" << ti->InputType()._name << "_to_" << parameterType << "(";
+
+            result << ti->InputName();
+
+            if (doCast) result << ")";
+
+            return true;
+        }
+
+        return false;
+    }
+
     static std::stringstream GenerateFunctionCall(const Node& node, const NodeGraph& nodeGraph, const NodeGraph& graphOfTemporaries)
     {
         auto splitName = SplitArchiveName(node.ArchiveName());
@@ -502,8 +625,7 @@ namespace ShaderPatcher
         auto functionName = std::get<1>(splitName);
         auto sig = LoadFunctionSignature(splitName);
 
-        std::stringstream result;
-        std::stringstream warnings;
+        std::stringstream result, warnings;
 
             //      1.  Declare output variable (made unique by node id)
             //      2.  Call the function, assigning the output variable as appropriate
@@ -533,80 +655,9 @@ namespace ShaderPatcher
                 continue;
             }
 
-            const std::string& name = p->_name;
-            auto i = std::find_if(  nodeGraph.GetNodeConnections().cbegin(), nodeGraph.GetNodeConnections().cend(), 
-                                    [&](const NodeConnection& connection) 
-                                    { return    connection.OutputNodeId() == node.NodeId() && 
-                                                connection.OutputParameterName() == name; } );
-            if (i!=nodeGraph.GetNodeConnections().cend()) {
-
-                    //      Found a connection... write the parameter name.
-                    //      We can also check for casting and any type errors
-                const Type& connectionInputType     = i->InputType();
-                const Type& connectionOutputType    = i->OutputType();
-                const std::string& parsedType       = p->_type;
-                if (parsedType != connectionOutputType._name) {
-                    warnings    << "\t// Type for function parameter name " << name 
-                                << " seems to have changed in the shader fragment. Check for valid connections." << std::endl;
-                }
-
-                const bool doCast = connectionInputType._name != parsedType;
-                if (doCast) {
-                    result << "Cast_" << connectionInputType._name << "_to_" << parsedType << "(";
-                }
-
-                    //      Check to see what kind of connnection it is
-                    //      By default, let's just assume it's a procedure.
-                auto inputNodeType = Node::Type::Procedure;
-                auto* inputNode = nodeGraph.GetNode(i->InputNodeId());
-                if (inputNode) { inputNodeType = inputNode->GetType(); }
-
-                if (inputNodeType == Node::Type::Procedure) {
-                    result << OutputTemporaryForNode(i->InputNodeId(), i->InputParameterName()); 
-                } else if (inputNodeType == Node::Type::MaterialCBuffer) {
-                    result << i->InputParameterName();
-                } else if (inputNodeType == Node::Type::Constants) {
-                    result << "ConstantValue_" << i->InputNodeId() << "_" << i->InputParameterName();
-                } else if (inputNodeType == Node::Type::InterpolatorIntoPixel || inputNodeType == Node::Type::InterpolatorIntoVertex || inputNodeType == Node::Type::SystemParameters) {
-                    result << InterpolatorParameterName(i->InputNodeId()) << "." << i->InputParameterName();
-                }
-
-                if (doCast) {
-                    result << ")";
-                }
-
-            } else {
-
-                auto ci = std::find_if(  nodeGraph.GetNodeConstantConnections().cbegin(), nodeGraph.GetNodeConstantConnections().cend(), 
-                                    [&](const NodeConstantConnection& connection) 
-                                    { return    connection.OutputNodeId() == node.NodeId() && 
-                                                connection.OutputParameterName() == name; } );
-                if (ci!=nodeGraph.GetNodeConstantConnections().cend()) {
-
-                        //  we have a "constant connection" value here. We either extract the name of 
-                        //  the varying parameter, or we interpret this as pure text...
-                    std::regex filter("<(.*)>");
-                    std::smatch matchResult;
-                    if (std::regex_match(ci->Value(), matchResult, filter) && matchResult.size() > 1) {
-                        result << matchResult[1];
-                    } else {
-                        result << ci->Value();
-                    }
-
-                } else {
-
-                        //  If there is a connection in the graph of temporaries, it must mean that we
-                        //  have a varying parameter (or a system generated constant) attached
-                    auto ti = std::find_if(  graphOfTemporaries.GetNodeConnections().cbegin(), graphOfTemporaries.GetNodeConnections().cend(), 
-                                            [&](const NodeConnection& connection) 
-                                            { return    connection.OutputNodeId() == node.NodeId() && 
-                                                        connection.OutputParameterName() == name; } );
-                    if (ti != graphOfTemporaries.GetNodeConnections().cend()) {
-                        result << ti->InputParameterName(); // (assume no casting required)
-                    }
-
-                }
-                
+            if (    !PassParameter(result, warnings, nodeGraph, node.NodeId(), p->_name, p->_type)
+                &&  !PassParameter(result, warnings, graphOfTemporaries, node.NodeId(), p->_name, p->_type)) {
+                warnings << "// could not generate parameter pass expression for parameter " << p->_name << std::endl;
             }
         }
 
@@ -828,23 +879,23 @@ namespace ShaderPatcher
     {
         std::vector<MainFunctionParameter> result;
 
-        for (auto i = graphOfTemporaries.GetNodeConnections().begin(); i!=graphOfTemporaries.GetNodeConnections().end(); ++i) {
-            if (i->OutputNodeId() != ~0ull) {
+        for each(auto i in graphOfTemporaries.GetNodeConnections()) {
+            if (i.OutputNodeId() != ~0ull) {
                 // we need to go back to the function signature to get semantic information
                 std::string semantic;
-                auto* destinationNode = graph.GetNode(i->OutputNodeId());
+                auto* destinationNode = graph.GetNode(i.OutputNodeId());
                 if (destinationNode) {
                     auto sig = LoadFunctionSignature(SplitArchiveName(destinationNode->ArchiveName()));
                     auto p = std::find_if(sig._parameters.cbegin(), sig._parameters.cend(), 
                         [=](const ShaderSourceParser::FunctionSignature::Parameter&p)
-                            { return p._name == i->OutputParameterName(); });
+                            { return p._name == i.OutputParameterName(); });
                     if (p!=sig._parameters.end())
                         semantic = p->_semantic;
                 }
 
 				MainFunctionParameter param(
-					i->InputType()._name, i->InputParameterName(), 
-					i->InputType()._name, semantic);
+					i.InputType()._name, i.InputParameterName(), 
+					i.InputType()._name, semantic);
 
 				// Look for another parameter with the same name...
 				auto existing = std::find_if(result.begin(), result.end(), 
@@ -863,18 +914,18 @@ namespace ShaderPatcher
 
             // also find "constant" connections on the main graph that are marked as input parameters
         std::regex filter("<(.*)>");
-        for (auto i = graph.GetNodeConstantConnections().begin(); i!=graph.GetNodeConstantConnections().end(); ++i) {
+        for each (auto i in graph.GetConstantConnections()) {
             std::smatch matchResult;
-            if (std::regex_match(i->Value(), matchResult, filter)) {
+            if (std::regex_match(i.Value(), matchResult, filter)) {
                 if (matchResult.size() > 1) {
                         // we need to find the type by looking out the output node
-                    auto* destinationNode = graph.GetNode(i->OutputNodeId());
+                    auto* destinationNode = graph.GetNode(i.OutputNodeId());
                     if (!destinationNode) continue;
 
                     auto sig = LoadFunctionSignature(SplitArchiveName(destinationNode->ArchiveName()));
                     auto p = std::find_if(sig._parameters.cbegin(), sig._parameters.cend(), 
                         [=](const ShaderSourceParser::FunctionSignature::Parameter&p)
-                            { return p._name == i->OutputParameterName(); });
+                            { return p._name == i.OutputParameterName(); });
 
                     if (p!=sig._parameters.end()) {
                         result.push_back(MainFunctionParameter(p->_type, matchResult[1], p->_type, p->_semantic));
@@ -1047,20 +1098,20 @@ namespace ShaderPatcher
             }
         }
 
-        for (auto i=graph.GetNodeConstantConnections().cbegin(); i!=graph.GetNodeConstantConnections().cend(); ++i) {
-            auto* destinationNode = graph.GetNode(i->OutputNodeId());
+        for each (auto i in graph.GetConstantConnections()) {
+            auto* destinationNode = graph.GetNode(i.OutputNodeId());
             if (destinationNode && destinationNode->GetType() == Node::Type::Output) {
                 if  (!writeOutputsViaStruct) {
-                    if (i->OutputParameterName() != "value") {
-                        result << "\tOUT_" << destinationNode->NodeId() << "." << i->OutputParameterName() << " = ";
+                    if (i.OutputParameterName() != "value") {
+                        result << "\tOUT_" << destinationNode->NodeId() << "." << i.OutputParameterName() << " = ";
                     } else {
                         result << "\tOUT_" << destinationNode->NodeId() << " = ";
                     }
                 } else {
-                    result << "\tOUT." << "Output_" << destinationNode->NodeId() << "." << i->OutputParameterName() << " = ";
+                    result << "\tOUT." << "Output_" << destinationNode->NodeId() << "." << i.OutputParameterName() << " = ";
                 }
 
-                result << i->Value() << ";" << std::endl;
+                result << i.Value() << ";" << std::endl;
             }
         }
 
@@ -1090,39 +1141,19 @@ namespace ShaderPatcher
                     if (!(p->_direction & ShaderSourceParser::FunctionSignature::Parameter::In))
                         continue;
 
-                    auto searchIterator = 
-                        std::find_if(   graph.GetNodeConnections().cbegin(), graph.GetNodeConnections().cend(),
-                                        [&](const NodeConnection& connection) 
-                        { 
-                            return 
-                                (connection.OutputNodeId() == i->NodeId())
-                                && (connection.OutputParameterName() == p->_name);
-                        });
+                    bool found = 
+                            (FindConnection(graph.GetNodeConnections(), i->NodeId(), p->_name) != graph.GetNodeConnections().cend())
+                        ||  (FindConnection(graph.GetConstantConnections(), i->NodeId(), p->_name) != graph.GetConstantConnections().cend())
+                        ||  (FindConnection(graph.GetInputParameterConnections(), i->NodeId(), p->_name) != graph.GetInputParameterConnections().cend())
+                        ;
 
                         //
                         //      If we didn't find any connection, then it's an
                         //      unattached parameter. Let's consider it a varying parameter
                         //
-                    if (searchIterator == graph.GetNodeConnections().cend()) {
-
-                        auto searchIterator2 = std::find_if(graph.GetNodeConstantConnections().cbegin(), graph.GetNodeConstantConnections().cend(),
-                            [&](const NodeConstantConnection& connection) 
-                            { 
-                                return 
-                                    (connection.OutputNodeId() == i->NodeId())
-                                    && (connection.OutputParameterName() == p->_name);
-                            });
-
-                        if (searchIterator2 == graph.GetNodeConstantConnections().cend()) {
-                                // todo --  check for parameters with duplicate names. It's possible
-                                //          that different nodes have the same input parameter name
-                                //          (or we might even have the same parameter name multiple times)
-                            // std::stringstream stream; stream << "IN_" << p->_name;
-
-                            NodeConnection newConnection(i->NodeId(), ~0ul, p->_name, p->_type, p->_name, p->_type);
-                            graphOfTemporaries.GetNodeConnections().push_back(newConnection);
-                        }
-                    }
+                    if (!found)
+                        graphOfTemporaries.Add(
+                            NodeConnection(i->NodeId(), ~0ul, p->_name, p->_type, p->_name, p->_type));
 
                 }
             }

@@ -105,14 +105,12 @@ namespace Utility
         class IteratorRange : public std::pair<Iterator, Iterator>
         {
         public:
-            Iterator begin()                { return first; }
-            Iterator end()                  { return second; }
-            const Iterator begin() const    { return first; }
-            const Iterator end() const      { return second; }
-            const Iterator cbegin() const   { return first; }
-            const Iterator cend() const     { return second; }
-            size_t size() const             { return std::distance(first, second); }
-            bool empty() const              { return first == second; }
+            Iterator begin() const      { return first; }
+            Iterator end() const        { return second; }
+            Iterator cbegin() const     { return first; }
+            Iterator cend() const       { return second; }
+            size_t size() const         { return std::distance(first, second); }
+            bool empty() const          { return first == second; }
 
             decltype(*std::declval<Iterator>()) operator[](size_t index) const { return first[index]; }
 

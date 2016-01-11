@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../Utility/IteratorUtils.h"
 #include "../Core/Types.h"
 #include <string>
 #include <vector>
@@ -34,7 +35,7 @@ namespace ShaderPatcher
         
         Node(const std::string& archiveName, uint32 nodeId, Type::Enum type);
 
-        Node(Node&& moveFrom);
+        Node(Node&& moveFrom) never_throws;
         Node& operator=(Node&& moveFrom) never_throws;
         Node& operator=(const Node& cloneFrom);
 
@@ -60,55 +61,100 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    class NodeConnection
+    class NodeBaseConnection
+    {
+    public:
+        NodeBaseConnection(uint32 outputNodeId, const std::string& outputParameterName);
+
+        NodeBaseConnection(NodeBaseConnection&& moveFrom) never_throws;
+        NodeBaseConnection& operator=(NodeBaseConnection&& moveFrom) never_throws;
+
+		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
+			NodeBaseConnection(const NodeBaseConnection&) = default;
+			NodeBaseConnection& operator=(const NodeBaseConnection&) = default;
+		#endif
+
+        uint32      OutputNodeId() const                { return _outputNodeId; }
+        const std::string&  OutputParameterName() const { return _outputParameterName; }
+
+    protected:
+        uint32          _outputNodeId;
+        std::string     _outputParameterName;
+    };
+
+        ///////////////////////////////////////////////////////////////
+
+    class NodeConnection : public NodeBaseConnection
     {
     public:
         NodeConnection( uint32 outputNodeId, uint32 inputNodeId, 
                         const std::string& outputParameterName, const Type& outputType, 
                         const std::string& inputParameterName, const Type& inputType);
 
-        NodeConnection(NodeConnection&& moveFrom);
-        NodeConnection& operator=(NodeConnection&& moveFrom);
+        NodeConnection(NodeConnection&& moveFrom) never_throws;
+        NodeConnection& operator=(NodeConnection&& moveFrom) never_throws;
 
 		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
 			NodeConnection(const NodeConnection&) = default;
 			NodeConnection& operator=(const NodeConnection&) = default;
 		#endif
 
-        uint32      OutputNodeId() const        { return _outputNodeId; }
         uint32      InputNodeId() const         { return _inputNodeId; }
 
         const Type&         InputType() const               { return _inputType; }
         const Type&         OutputType() const              { return _outputType; }
         const std::string&  InputParameterName() const      { return _inputParameterName; }
-        const std::string&  OutputParameterName() const     { return _outputParameterName; }
 
     private:
-        uint32          _outputNodeId;
         uint32          _inputNodeId;
-        std::string     _outputParameterName;
-        Type            _outputType;
         std::string     _inputParameterName;
         Type            _inputType;
+
+        Type            _outputType;
     };
 
         ///////////////////////////////////////////////////////////////
 
-    class NodeConstantConnection
+    class ConstantConnection : public NodeBaseConnection
     {
     public:
-        NodeConstantConnection(uint32 outputNodeId, const std::string& outputParameterName, const std::string& value);
-        NodeConstantConnection(NodeConstantConnection&& moveFrom);
-        NodeConstantConnection& operator=(NodeConstantConnection&& moveFrom);
+        ConstantConnection(uint32 outputNodeId, const std::string& outputParameterName, const std::string& value);
+        ConstantConnection(ConstantConnection&& moveFrom) never_throws;
+        ConstantConnection& operator=(ConstantConnection&& moveFrom) never_throws;
 
-        uint32              OutputNodeId() const            { return _outputNodeId; }
-        const std::string&  OutputParameterName() const     { return _outputParameterName; }
+        #if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
+			NodeConstantConnection(const NodeConstantConnection&) = default;
+			NodeConstantConnection& operator=(const NodeConstantConnection&) = default;
+		#endif
+
         const std::string&  Value() const                   { return _value; }
 
     private:
-        uint32          _outputNodeId;
-        std::string     _outputParameterName;
         std::string     _value;
+    };
+
+            ///////////////////////////////////////////////////////////////
+
+    class InputParameterConnection : public NodeBaseConnection
+    {
+    public:
+        InputParameterConnection(uint32 outputNodeId, const std::string& outputParameterName, const Type& type, const std::string& name, const std::string& semantic);
+        InputParameterConnection(InputParameterConnection&& moveFrom) never_throws;
+        InputParameterConnection& operator=(InputParameterConnection&& moveFrom) never_throws;
+
+        #if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
+			InputParameterConnection(const InputParameterConnection&) = default;
+			InputParameterConnection& operator=(const InputParameterConnection&) = default;
+		#endif
+        
+        const Type&         InputType() const        { return _type; }
+        const std::string&  InputName() const        { return _name; }
+        const std::string&  InputSemantic() const    { return _semantic; }
+
+    private:
+        Type            _type;        
+        std::string     _name;
+        std::string     _semantic;
     };
 
         ///////////////////////////////////////////////////////////////
@@ -116,14 +162,15 @@ namespace ShaderPatcher
     class NodeGraph
     {
     public:
-        std::vector<Node>&                  GetNodes()                          { return _nodes; }
-        const std::vector<Node>&            GetNodes() const                    { return _nodes; }
+        IteratorRange<const Node*>                      GetNodes() const                        { return MakeIteratorRange(_nodes); }
+        IteratorRange<const NodeConnection*>            GetNodeConnections() const              { return MakeIteratorRange(_nodeConnections); }
+        IteratorRange<const ConstantConnection*>    GetConstantConnections() const          { return MakeIteratorRange(_constantConnections); }
+        IteratorRange<const InputParameterConnection*>  GetInputParameterConnections() const    { return MakeIteratorRange(_inputParameterConnections); }
 
-        std::vector<NodeConnection>&        GetNodeConnections()                { return _nodeConnections; }
-        const std::vector<NodeConnection>&  GetNodeConnections() const          { return _nodeConnections; }
-
-        std::vector<NodeConstantConnection>&        GetNodeConstantConnections()          { return _nodeConstantConnections; }
-        const std::vector<NodeConstantConnection>&  GetNodeConstantConnections() const    { return _nodeConstantConnections; }
+        void Add(Node&&);
+        void Add(NodeConnection&&);
+        void Add(ConstantConnection&&);
+        void Add(InputParameterConnection&&);
 
         std::string                         GetName() const                     { return _name; }
         void                                SetName(std::string newName)        { _name = newName; }
@@ -135,13 +182,14 @@ namespace ShaderPatcher
         const Node*         GetNode(uint32 nodeId) const;
 
         NodeGraph(const std::string& name = std::string());
-        NodeGraph(NodeGraph&& moveFrom);
-        NodeGraph& operator=(NodeGraph&& moveFrom);
+        NodeGraph(NodeGraph&& moveFrom) never_throws;
+        NodeGraph& operator=(NodeGraph&& moveFrom) never_throws;
 
     private:
         std::vector<Node>                   _nodes;
         std::vector<NodeConnection>         _nodeConnections;
-        std::vector<NodeConstantConnection> _nodeConstantConnections;
+        std::vector<ConstantConnection> _constantConnections;
+        std::vector<InputParameterConnection> _inputParameterConnections;
         std::string                         _name;
 
         void        Trim(const uint32* trimNodesBegin, const uint32* trimNodesEnd);
