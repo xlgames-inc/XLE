@@ -164,7 +164,7 @@ namespace ShaderPatcher
     public:
         IteratorRange<const Node*>                      GetNodes() const                        { return MakeIteratorRange(_nodes); }
         IteratorRange<const NodeConnection*>            GetNodeConnections() const              { return MakeIteratorRange(_nodeConnections); }
-        IteratorRange<const ConstantConnection*>    GetConstantConnections() const          { return MakeIteratorRange(_constantConnections); }
+        IteratorRange<const ConstantConnection*>        GetConstantConnections() const          { return MakeIteratorRange(_constantConnections); }
         IteratorRange<const InputParameterConnection*>  GetInputParameterConnections() const    { return MakeIteratorRange(_inputParameterConnections); }
 
         void Add(Node&&);
