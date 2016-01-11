@@ -527,7 +527,7 @@ namespace HyperGraph
                         //  this is a basic connection. It just connects one connector to a 
                         //  static string value (either a variable name or constant value)
                         //      Draw a small arrow from the connection label to the connector
-                        if (!string.IsNullOrWhiteSpace(connection.Name))
+                        if (!string.IsNullOrWhiteSpace(connection.Name) && !to.Node.Collapsed)
                         {
                             PointF center;
                             if (to != null) center = pt2;

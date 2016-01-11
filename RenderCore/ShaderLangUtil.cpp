@@ -28,6 +28,8 @@ namespace RenderCore
 
     ImpliedTyping::TypeDesc ShaderLangTypeNameAsTypeDesc(StringSection<char> hlslTypeName)
     {
+            // Note that HLSL type names are not case sensitive!
+            //  see "Keywords" in the HLSL docs
         using namespace ImpliedTyping;
         static std::pair<StringSection<char>, ImpliedTyping::TypeCat> baseTypes[] = 
         {
@@ -41,7 +43,7 @@ namespace RenderCore
         for (unsigned c=0; c<dimof(baseTypes); ++c) {
             auto len = baseTypes[c].first.Length();
             if (hlslTypeName.Length() >= len
-                && !XlComparePrefix(baseTypes[c].first.begin(), hlslTypeName.begin(), len)) {
+                && !XlComparePrefixI(baseTypes[c].first.begin(), hlslTypeName.begin(), len)) {
 
                 auto matrixMarker = hlslTypeName.begin() + len;
                 while (matrixMarker != hlslTypeName.end() && *matrixMarker != 'x') ++matrixMarker;

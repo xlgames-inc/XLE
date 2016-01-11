@@ -51,7 +51,6 @@ namespace ShaderPatcherLayer
         return ShaderPatcher::NodeConnection(
             connection->OutputNodeID, connection->InputNodeID, 
             marshalString<E_UTF8>(connection->OutputParameterName),
-            ShaderPatcher::Type(marshalString<E_UTF8>(connection->OutputType)), 
             marshalString<E_UTF8>(connection->InputParameterName),
             ShaderPatcher::Type(marshalString<E_UTF8>(connection->InputType)));
     }

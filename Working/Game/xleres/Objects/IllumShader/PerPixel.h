@@ -16,10 +16,9 @@
 #include "../Utility/perlinnoise.h"
 #include "../Colour.h"
 #include "../gbuffer.h"
-#include "../BasicMaterial.h"
 
 Texture2D           SpecularColorTexture;
-Texture2D<float>	CustomTexture;
+// Texture2D<float>	CustomTexture;
 // Texture2D<float2>	ScratchMap : register(t19);		// high res procedural scratches
 // Texture2D<float>	ScratchOccl : register(t20);
 

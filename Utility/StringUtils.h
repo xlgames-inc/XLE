@@ -626,7 +626,7 @@ namespace Utility
         }
 
     template<typename T>
-        bool XlBeginsWithI(const StringSection<T>& a, const std::basic_string<T>& b)
+        bool XlBeginsWithI(const StringSection<T>& a, const StringSection<T>& b)
         {
             return 
                 a.Length() >= b.Length()

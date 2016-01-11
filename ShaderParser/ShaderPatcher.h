@@ -34,14 +34,13 @@ namespace ShaderPatcher
         };
         
         Node(const std::string& archiveName, uint32 nodeId, Type::Enum type);
-
         Node(Node&& moveFrom) never_throws;
         Node& operator=(Node&& moveFrom) never_throws;
         Node& operator=(const Node& cloneFrom);
 
-        const std::string&  ArchiveName() const     { return _archiveName; }
-        uint32              NodeId() const          { return _nodeId; }
-        Type::Enum          GetType() const         { return _type; }
+        const std::string&  ArchiveName() const         { return _archiveName; }
+        uint32              NodeId() const              { return _nodeId; }
+        Type::Enum          GetType() const             { return _type; }
         
     private:
         std::string     _archiveName;
@@ -88,7 +87,7 @@ namespace ShaderPatcher
     {
     public:
         NodeConnection( uint32 outputNodeId, uint32 inputNodeId, 
-                        const std::string& outputParameterName, const Type& outputType, 
+                        const std::string& outputParameterName,
                         const std::string& inputParameterName, const Type& inputType);
 
         NodeConnection(NodeConnection&& moveFrom) never_throws;
@@ -99,18 +98,14 @@ namespace ShaderPatcher
 			NodeConnection& operator=(const NodeConnection&) = default;
 		#endif
 
-        uint32      InputNodeId() const         { return _inputNodeId; }
-
-        const Type&         InputType() const               { return _inputType; }
-        const Type&         OutputType() const              { return _outputType; }
-        const std::string&  InputParameterName() const      { return _inputParameterName; }
+        uint32              InputNodeId() const         { return _inputNodeId; }
+        const Type&         InputType() const           { return _inputType; }
+        const std::string&  InputParameterName() const  { return _inputParameterName; }
 
     private:
         uint32          _inputNodeId;
         std::string     _inputParameterName;
         Type            _inputType;
-
-        Type            _outputType;
     };
 
         ///////////////////////////////////////////////////////////////
@@ -127,7 +122,7 @@ namespace ShaderPatcher
 			NodeConstantConnection& operator=(const NodeConstantConnection&) = default;
 		#endif
 
-        const std::string&  Value() const                   { return _value; }
+        const std::string&  Value() const               { return _value; }
 
     private:
         std::string     _value;
@@ -147,12 +142,12 @@ namespace ShaderPatcher
 			InputParameterConnection& operator=(const InputParameterConnection&) = default;
 		#endif
         
-        const Type&         InputType() const        { return _type; }
-        const std::string&  InputName() const        { return _name; }
-        const std::string&  InputSemantic() const    { return _semantic; }
+        const Type&         InputType() const           { return _type; }
+        const std::string&  InputName() const           { return _name; }
+        const std::string&  InputSemantic() const       { return _semantic; }
 
     private:
-        Type            _type;        
+        Type            _type;
         std::string     _name;
         std::string     _semantic;
     };
@@ -181,9 +176,10 @@ namespace ShaderPatcher
 
         const Node*     GetNode(uint32 nodeId) const;
 
-        NodeGraph(const std::string& name = std::string());
         NodeGraph(NodeGraph&& moveFrom) never_throws;
         NodeGraph& operator=(NodeGraph&& moveFrom) never_throws;
+        NodeGraph(const std::string& name = std::string());
+        ~NodeGraph();
 
     private:
         std::vector<Node> _nodes;
@@ -216,8 +212,9 @@ namespace ShaderPatcher
     class MainFunctionInterface
     {
     public:
-        IteratorRange<const MainFunctionParameter*> GetInputParameters() const { return MakeIteratorRange(_inputParameters); }
-        IteratorRange<const MainFunctionParameter*> GetOutputParameters() const { return MakeIteratorRange(_outputParameters); }
+        auto GetInputParameters() const -> IteratorRange<const MainFunctionParameter*>      { return MakeIteratorRange(_inputParameters); }
+        auto GetOutputParameters() const -> IteratorRange<const MainFunctionParameter*>     { return MakeIteratorRange(_outputParameters); }
+        auto GetGlobalParameters() const -> IteratorRange<const MainFunctionParameter*>     { return MakeIteratorRange(_globalParameters); }
         const NodeGraph& GetGraphOfTemporaries() const { return _graphOfTemporaries; }
 
         MainFunctionInterface(const NodeGraph& graph);
@@ -225,6 +222,7 @@ namespace ShaderPatcher
     private:
         std::vector<MainFunctionParameter> _inputParameters;
         std::vector<MainFunctionParameter> _outputParameters;
+        std::vector<MainFunctionParameter> _globalParameters;
         NodeGraph _graphOfTemporaries;
     };
 

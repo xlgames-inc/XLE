@@ -281,7 +281,7 @@ namespace NodeEditorCore
         }
         private void OnCreateInputParameterNode(object sender, EventArgs e)
         {
-            using (var fm = new InputParameterForm(false) { Name = "Color", Type = "float4", Semantic = "COLOR0" })
+            using (var fm = new InputParameterForm(false) { Name = "Color", Type = "float4", Semantic = "" })
             {
                 var result = fm.ShowDialog();
                 if (result == DialogResult.OK)

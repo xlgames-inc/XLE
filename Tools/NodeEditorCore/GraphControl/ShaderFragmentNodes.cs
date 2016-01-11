@@ -73,7 +73,6 @@ namespace NodeEditorCore
         {
             this.Name = name;
             this.Type = type;
-            this.Tag = type;
             this.ArchiveName = archiveName;
         }
 
@@ -117,6 +116,7 @@ namespace NodeEditorCore
                 {
                     _shortType = "";
                 }
+                Tag = value;
             }
         }
         public string ShortType { get { return _shortType; } }
@@ -359,7 +359,14 @@ namespace NodeEditorCore
     {
         public override bool OnClick(System.Windows.Forms.Control container, System.Windows.Forms.MouseEventArgs evnt, System.Drawing.Drawing2D.Matrix viewTransform)
         {
-            Node.AddItem(new ShaderFragmentInputParameterItem("Item", "float4", "COLOR0"));
+            using (var fm = new InputParameterForm(false) { Name = "Color", Type = "float4", Semantic = "" })
+            {
+                var result = fm.ShowDialog();
+                if (result == System.Windows.Forms.DialogResult.OK)
+                {
+                    Node.AddItem(new ShaderFragmentInputParameterItem(fm.Name, fm.Type, fm.Semantic));
+                }
+            }
             return true;
         }
 
