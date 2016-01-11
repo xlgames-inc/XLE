@@ -31,7 +31,7 @@ struct RTS_VSOutput
 
 void vs_writetris(VSInput input, out RTS_VSOutput output)
 {
-    float3 localPosition	= GetLocalPosition(input);
+    float3 localPosition	= VSIn_GetLocalPosition(input);
 
     #if GEO_HAS_INSTANCE_ID==1
         float3 objectCentreWorld;
@@ -40,19 +40,19 @@ void vs_writetris(VSInput input, out RTS_VSOutput output)
     #else
         float3 worldPosition = mul(LocalToWorld, float4(localPosition,1)).xyz;
         float3 objectCentreWorld = float3(LocalToWorld[0][3], LocalToWorld[1][3], LocalToWorld[2][3]);
-        float3 worldNormal = LocalToWorldUnitVector(GetLocalNormal(input));
+        float3 worldNormal = LocalToWorldUnitVector(VSIn_GetLocalNormal(input));
     #endif
 
     #if OUTPUT_TEXCOORD==1
-        output.texCoord = GetTexCoord(input);
+        output.texCoord = VSIn_GetTexCoord(input);
     #endif
 
     #if (GEO_HAS_NORMAL==1) || (GEO_HAS_TANGENT_FRAME==1)
         #if (GEO_HAS_NORMAL==0) && (GEO_HAS_TANGENT_FRAME==1)
-            worldNormal =  BuildWorldSpaceTangentFrame(input).normal;
+            worldNormal =  VSIn_GetWorldTangentFrame(input).normal;
         #endif
 
-        worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), GetColour(input));
+        worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), VSIn_GetColour(input));
     #endif
 
     #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY

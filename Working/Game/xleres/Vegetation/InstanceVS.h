@@ -18,7 +18,7 @@
 
     float3 InstanceWorldPosition(VSInput input, out float3 worldNormal, out float3 objectCentreWorld)
     {
-        float3 localPosition = GetLocalPosition(input);
+        float3 localPosition = VSIn_GetLocalPosition(input);
 
             // Ideally the object we're instantiating should have an
             // identity local-to-world. But if it doesn't we need to transform
@@ -30,7 +30,7 @@
         float2x2 rotMat = float2x2(float2(sc.y, -sc.x), float2(sc.x, sc.y));
         float scale = .75f + .25f * sc.x;       // add cheap scale component (directly related to rotation)
 
-        float3 localNormal = GetLocalNormal(input);
+        float3 localNormal = VSIn_GetLocalNormal(input);
         worldNormal = float3(mul(rotMat, localNormal.xy), localNormal.z);
 
         return float3(

@@ -13,9 +13,8 @@
 #include "../gbuffer.h"
 #include "../BasicMaterial.h"
 #include "../Lighting/LightingAlgorithm.h"
-#include "../Utility/perlinnoise.h"
+// #include "../Utility/perlinnoise.h"
 #include "../Colour.h"
-#include "../gbuffer.h"
 
 Texture2D           SpecularColorTexture;
 // Texture2D<float>	CustomTexture;
@@ -144,7 +143,7 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
         //     float2 blendedNormals = mainNormals + (scratchiness) * scratchNormals;
         //     float3 finalNormal = float3(blendedNormals, sqrt(saturate(1.f + dot(blendedNormals.xy, -blendedNormals.xy))));
         //
-        //     TangentFrameStruct tangentFrame = BuildTangentFrameFromGeo(geo);
+        //     TangentFrameStruct tangentFrame = GetWorldTangentFrame(geo);
         //     float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent, tangentFrame.bitangent, tangentFrame.normal);
         //     result.worldSpaceNormal = mul(finalNormal, normalsTextureToWorld);
         //
@@ -272,5 +271,8 @@ PerPixelMaterialParam DefaultMaterialValues()
 	result.metal = MetalMin;
 	return result;
 }
+
+
+float GetAlphaThreshold() { return AlphaThreshold; }
 
 #endif

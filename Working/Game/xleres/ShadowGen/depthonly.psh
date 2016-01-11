@@ -8,6 +8,7 @@
 #include "../MainGeometry.h"
 #include "../Surface.h"
 #include "../Utility/Misc.h"
+#include "../BasicMaterial.h"
 
 void DoDitherAlphaTest(VSOutput geo, int2 pixelCoords, uint primitiveID)
 {
@@ -43,6 +44,6 @@ void main(VSOutput geo)
 		// DoDitherAlphaTest(geo, int2(geo.position.xy), geo.primitiveId);
 		AlphaTestAlgorithm(DiffuseTexture, DefaultSampler, geo.texCoord, 0.5f);
 	#else
-		DoAlphaTest(geo);
+		DoAlphaTest(geo, AlphaThreshold);
 	#endif
 }

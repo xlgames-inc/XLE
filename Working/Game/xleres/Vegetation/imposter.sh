@@ -210,7 +210,7 @@ GBufferEncoded ps_deferred(VSOutput geo)
         // Normals are stored in the view space that was originally
         // used to render the sprite.
         // It's equivalent to the tangent space of the sprite.
-    TangentFrameStruct tangentFrame = BuildTangentFrameFromGeo(geo);
+    TangentFrameStruct tangentFrame = GetWorldTangentFrame(geo);
     float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent.xyz, tangentFrame.bitangent, tangentFrame.normal);
 
         // note that we can skip the decompression step here if we use

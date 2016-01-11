@@ -13,7 +13,7 @@
 
 Texture2D SecondaryNormalMap;
 
-float4 SampleAnisotropic(Texture2D inputTexture, float2 texCoord : TEXCOORD0)
+float4 LoadAnisotropic(Texture2D inputTexture, float2 texCoord : TEXCOORD0)
 {
     return inputTexture.Sample(MaybeAnisotropicSampler, texCoord);
 }
@@ -39,7 +39,7 @@ float3 LoadNormalMap(
 {
     const bool dxtNormalMap = false;
     float3 normalTextureSample = SampleNormalMap(normalMap, DefaultSampler, dxtNormalMap, texCoord);
-    return NormalMapToWorld(normalTextureSample, geo);
+    return TransformNormalMapToWorld(normalTextureSample, geo);
 }
 
 float3 BlendNormals(float3 normalA, float3 normalB, float alpha)

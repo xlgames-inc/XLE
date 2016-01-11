@@ -12,7 +12,7 @@
 #endif
 GBufferEncoded main(VSOutput geo)
 {
-	DoAlphaTest(geo);
+	DoAlphaTest(geo, GetAlphaThreshold());
 
 	#if (VIS_ANIM_PARAM!=0) && (OUTPUT_COLOUR==1)
 		{

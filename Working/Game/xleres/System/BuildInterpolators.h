@@ -19,7 +19,7 @@ float3 BuildInterpolator_WORLDPOSITION(VSInput input)
 	#if defined(GEO_PRETRANSFORMED)
 		return float3(input.xy, 0);
 	#else
-		float3 localPosition = GetLocalPosition(input);
+		float3 localPosition = VSIn_GetLocalPosition(input);
 		return mul(LocalToWorld, float4(localPosition,1)).xyz;
 	#endif
 }
@@ -37,13 +37,13 @@ float4 BuildInterpolator_SV_Position(VSInput input) : NE_WritesVSOutput
 float4 BuildInterpolator_COLOR(VSInput input)
 {
 	#if (MAT_VCOLOR_IS_ANIM_PARAM!=1)
-		return GetColour(input);
+		return VSIn_GetColour(input);
 	#else
 		return 1.0.xxxx;
 	#endif
 }
 
-float2 BuildInterpolator_TEXCOORD(VSInput input) { return GetTexCoord(input); }
+float2 BuildInterpolator_TEXCOORD(VSInput input) { return VSIn_GetTexCoord(input); }
 
 float4 BuildInterpolator_COLOR0(VSInput input) { return BuildInterpolator_COLOR(input); }
 float2 BuildInterpolator_TEXCOORD0(VSInput input) { return BuildInterpolator_TEXCOORD(input); }
@@ -55,31 +55,31 @@ float3 BuildInterpolator_WORLDVIEWVECTOR(VSInput input)
 
 float4 BuildInterpolator_LOCALTANGENT(VSInput input)
 {
-	return GetLocalTangent(input);
+	return VSIn_GetLocalTangent(input);
 }
 
 float3 BuildInterpolator_LOCALBITANGENT(VSInput input)
 {
-	return GetLocalBitangent(input);
+	return VSIn_GetLocalBitangent(input);
 }
 
 VSOutput BuildInterpolator_VSOutput(VSInput input) : NE_WritesVSOutput
 {
 	VSOutput output;
-	float3 localPosition = GetLocalPosition(input);
+	float3 localPosition = VSIn_GetLocalPosition(input);
 	float3 worldPosition = BuildInterpolator_WORLDPOSITION(input);
-	float3 worldNormal = LocalToWorldUnitVector(GetLocalNormal(input));
+	float3 worldNormal = LocalToWorldUnitVector(VSIn_GetLocalNormal(input));
 
 	#if OUTPUT_COLOUR==1
 		output.colour = BuildInterpolator_COLOR0(input);
 	#endif
 
 	#if OUTPUT_TEXCOORD==1
-		output.texCoord = GetTexCoord(input);
+		output.texCoord = VSIn_GetTexCoord(input);
 	#endif
 
 	#if GEO_HAS_TANGENT_FRAME==1
-		TangentFrameStruct worldSpaceTangentFrame = BuildWorldSpaceTangentFrame(input);
+		TangentFrameStruct worldSpaceTangentFrame = VSIn_GetWorldTangentFrame(input);
 
 		#if OUTPUT_TANGENT_FRAME==1
 			output.tangent = worldSpaceTangentFrame.tangent;
@@ -103,7 +103,7 @@ VSOutput BuildInterpolator_VSOutput(VSInput input) : NE_WritesVSOutput
 	#endif
 
 	#if (OUTPUT_LOCAL_NORMAL==1)
-		output.localNormal = GetLocalNormal(input);
+		output.localNormal = VSIn_GetLocalNormal(input);
 	#endif
 
 	#if OUTPUT_LOCAL_VIEW_VECTOR==1

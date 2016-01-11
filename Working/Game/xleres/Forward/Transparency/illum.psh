@@ -103,7 +103,7 @@ float4 main_oi(VSOutput geo, SystemInputs sys) : SV_Target
 	if (ndcComparison > destinationDepth)
 		discard;
 
-	DoAlphaTest(geo);
+	DoAlphaTest(geo, GetAlphaThreshold());
 
 	GBufferValues sample = IllumShader_PerPixel(geo);
 

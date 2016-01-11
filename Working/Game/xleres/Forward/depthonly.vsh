@@ -14,11 +14,11 @@
 VSOutput main(VSInput input)
 {
 	VSOutput output;
-	float3 worldPosition = mul(LocalToWorld, float4(GetLocalPosition(input),1));
+	float3 worldPosition = mul(LocalToWorld, float4(VSIn_GetLocalPosition(input),1));
 	output.position		 = mul(WorldToClip, float4(worldPosition,1));
 
 	#if OUTPUT_TEXCOORD==1
-		output.texCoord = GetTexCoord(input);
+		output.texCoord = VSIn_GetTexCoord(input);
 	#endif
 
 	return output;

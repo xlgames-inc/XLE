@@ -100,7 +100,7 @@ float4 main(float4 position : SV_Position, float2 oTexCoord : TEXCOORD0, float3 
 
 float4 ps_HalfCube(VSOutput geo) : SV_Target0
 {
-	return CalculateColour0(VSOutGetTexCoord(geo), normalize(GetWorldPosition(geo) - WorldSpaceView), GetWorldPosition(geo));
+	return CalculateColour0(GetTexCoord(geo), normalize(GetWorldPosition(geo) - WorldSpaceView), GetWorldPosition(geo));
 }
 
 	//////////////////////////////////
@@ -108,14 +108,14 @@ float4 ps_HalfCube(VSOutput geo) : SV_Target0
 VSOutput vs_main(VSInput input)
 {
 	VSOutput output;
-	float3 localPosition = GetLocalPosition(input);
+	float3 localPosition = VSIn_GetLocalPosition(input);
 	float3 worldPosition = float3(50.f * localPosition.xy + WorldSpaceView.xy, 2.f * 50.f * localPosition.z);
 	output.position		 = mul(WorldToClip, float4(worldPosition,1));
 
 	output.position.z	 = 1.0f * output.position.w;		// push to infinity
 
 	#if OUTPUT_TEXCOORD==1
-		output.texCoord = GetTexCoord(input);
+		output.texCoord = VSIn_GetTexCoord(input);
 	#endif
 
 	#if OUTPUT_WORLD_POSITION==1

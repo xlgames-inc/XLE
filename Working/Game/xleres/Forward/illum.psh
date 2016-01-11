@@ -73,7 +73,7 @@ float3 ResolveLitColor(
 #endif
 float4 main(VSOutput geo, SystemInputs sys) : SV_Target0
 {
-	DoAlphaTest(geo);
+	DoAlphaTest(geo, GetAlphaThreshold());
 
 	GBufferValues sample = IllumShader_PerPixel(geo);
 
