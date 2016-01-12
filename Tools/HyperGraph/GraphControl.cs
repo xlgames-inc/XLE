@@ -1088,6 +1088,7 @@ namespace HyperGraph
 								}
 								snappedLocation = lastLocation = currentLocation;
                                 ctrl.Refresh();
+                                _model.InvokeMiscChange(false);
 								return;
 							}
 							case ElementType.Node:				// drag single node
@@ -1097,6 +1098,7 @@ namespace HyperGraph
 															(int)Math.Round(node.Location.Y - deltaY));
 								snappedLocation = lastLocation = currentLocation;
                                 ctrl.Refresh();
+                                _model.InvokeMiscChange(false);
 								return;
 							}
 							case ElementType.NodeItem:			// drag in node-item

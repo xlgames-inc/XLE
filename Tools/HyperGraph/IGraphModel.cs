@@ -59,6 +59,7 @@ namespace HyperGraph
         bool AddNodes(IEnumerable<Node> nodes);
         void RemoveNode(Node node);
         bool RemoveNodes(IEnumerable<Node> nodes);
+        void InvokeMiscChange(bool rebuildShaders);
 
         NodeConnection Connect(NodeItem from, NodeItem to, string name = "");
         NodeConnection Connect(NodeConnector from, NodeConnector to, string name = "");
@@ -70,14 +71,15 @@ namespace HyperGraph
 
         uint GlobalRevisionIndex { get; }
 
-        event EventHandler<AcceptNodeEventArgs>              NodeAdded;
-        event EventHandler<AcceptNodeEventArgs>              NodeRemoving;
-        event EventHandler<NodeEventArgs>                    NodeRemoved;
-        event EventHandler<AcceptNodeConnectionEventArgs>    ConnectionAdding;
-        event EventHandler<AcceptNodeConnectionEventArgs>    ConnectionAdded;
-        event EventHandler<AcceptNodeConnectionEventArgs>    ConnectionRemoving;
-        event EventHandler<NodeConnectionEventArgs>          ConnectionRemoved;
-        event EventHandler<EventArgs>                        InvalidateViews;
+        event EventHandler<AcceptNodeEventArgs>             NodeAdded;
+        event EventHandler<AcceptNodeEventArgs>             NodeRemoving;
+        event EventHandler<NodeEventArgs>                   NodeRemoved;
+        event EventHandler<AcceptNodeConnectionEventArgs>   ConnectionAdding;
+        event EventHandler<AcceptNodeConnectionEventArgs>   ConnectionAdded;
+        event EventHandler<AcceptNodeConnectionEventArgs>   ConnectionRemoving;
+        event EventHandler<NodeConnectionEventArgs>         ConnectionRemoved;
+        event EventHandler<EventArgs>                       MiscChange;
+        event EventHandler<EventArgs>                       InvalidateViews;
     }
 
     public interface IGraphSelection

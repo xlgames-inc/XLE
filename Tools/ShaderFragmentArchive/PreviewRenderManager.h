@@ -16,7 +16,7 @@ namespace ShaderPatcherLayer
 
     public enum class PreviewGeometry
     {
-        Chart, Box, Sphere, Model
+        Chart, Plane2D, Box, Sphere, Model
     };
     
     public interface class IPreviewBuilder

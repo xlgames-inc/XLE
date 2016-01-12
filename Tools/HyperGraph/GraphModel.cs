@@ -367,6 +367,7 @@ namespace HyperGraph
         public event EventHandler<AcceptNodeConnectionEventArgs> ConnectionAdded;
         public event EventHandler<AcceptNodeConnectionEventArgs> ConnectionRemoving;
         public event EventHandler<NodeConnectionEventArgs> ConnectionRemoved;
+        public event EventHandler<EventArgs> MiscChange;
         public event EventHandler<EventArgs> InvalidateViews;
         #endregion
 
@@ -374,6 +375,8 @@ namespace HyperGraph
 
         private void UpdateRevisionIndex() { _revisionIndex = _nextRevisionIndex++; }
         public uint GlobalRevisionIndex { get { return _revisionIndex; } }
+
+        public void InvokeMiscChange(bool rebuildShaders) { if (rebuildShaders) UpdateRevisionIndex(); MiscChange.Invoke(this, EventArgs.Empty); }
     }
 
     public class GraphSelection : IGraphSelection

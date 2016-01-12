@@ -270,8 +270,11 @@ namespace NodeEditorCore
 
         public override bool OnEndDrag() { base.OnEndDrag(); return true; }
 
-        public ShaderPatcherLayer.PreviewGeometry Geometry { get { return _previewGeometry; } set { _previewGeometry = value; InvalidateShaderStructure(); } }
-        public string OutputToVisualize                 { get { return _outputToVisualize; } set { _outputToVisualize = value; InvalidateShaderStructure(); } }
+        // note -- 
+        //  we really want to do an InvokeMiscChange on the IGraphModel when these change...
+        //  but we don't have any way to find the graph model from here!
+        public ShaderPatcherLayer.PreviewGeometry Geometry  { get { return _previewGeometry; }      set { if (_previewGeometry != value) { _previewGeometry = value; InvalidateShaderStructure(); } } }
+        public string OutputToVisualize                     { get { return _outputToVisualize; }    set { if (_outputToVisualize != value) { _outputToVisualize = value; InvalidateShaderStructure(); } } }
 
         public ShaderPatcherLayer.PreviewSettings PreviewSettings
         {
@@ -468,6 +471,7 @@ namespace NodeEditorCore
             PreviewGeoNames = new Dictionary<Enum, string>
             {
                 { ShaderPatcherLayer.PreviewGeometry.Chart, "Chart" },
+                { ShaderPatcherLayer.PreviewGeometry.Plane2D, "2D" },
                 { ShaderPatcherLayer.PreviewGeometry.Box, "Box" },
                 { ShaderPatcherLayer.PreviewGeometry.Sphere, "Sphere" },
                 { ShaderPatcherLayer.PreviewGeometry.Model, "Model" }

@@ -118,6 +118,8 @@ namespace NodeEditorCore
 
                     if (!foundExisting && dialog.InputText.Length > 0)
                         GetGraphModel().Connect(null, e.Connector, dialog.InputText);
+
+                    GetGraphModel().InvokeMiscChange(true);
                 }
             }
 
@@ -135,6 +137,7 @@ namespace NodeEditorCore
                             inputParam.Name = fm.Name;
                             inputParam.Type = fm.Type;
                             inputParam.Semantic = fm.Semantic;
+                            GetGraphModel().InvokeMiscChange(true);
                         }
                         else if (result == DialogResult.No)
                         {
@@ -146,6 +149,7 @@ namespace NodeEditorCore
                                 GetGraphModel().Disconnect(c);
                             }
                             inputParam.Node.RemoveItem(inputParam);
+                            GetGraphModel().InvokeMiscChange(true);
                         }
                     }
                 }

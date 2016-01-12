@@ -205,6 +205,7 @@ namespace ShaderPatcherLayer
             // In the "chart" mode, we are just going to run a pixel shader for every
             // output pixel, so we want to use a pretransformed quad covering the viewport
             switch (geometry) {
+            case PreviewGeometry::Plane2D:
             case PreviewGeometry::Chart:
                 visSettings._geometryType = MaterialVisSettings::GeometryType::Plane2D;
                 visObject._parameters._matParams.SetParameter(u("GEO_PRETRANSFORMED"), "1");

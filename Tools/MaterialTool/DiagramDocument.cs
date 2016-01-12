@@ -23,39 +23,18 @@ namespace MaterialTool
         bool IDocument.Dirty
         {
             get { return _dirty; }
-            set
-            {
-                if (value != _dirty)
-                {
-                    _dirty = value;
-                    OnDirtyChanged(EventArgs.Empty);
-                }
-            }
+            set { SetDirty(value); }
         }
 
-        event EventHandler IDocument.DirtyChanged
-        {
-            add
-            {
-                // lock (DirtyChangedEvent)
-                // {
-                //     DirtyChangedEvent += value;
-                // }
-            }
-            remove
-            {
-                // lock (DirtyChangedEvent)
-                // {
-                //     DirtyChangedEvent -= value;
-                // }
-            }
-        }
+        public event EventHandler DirtyChanged;
 
-        private event EventHandler DirtyChangedEvent;
-
-        protected void OnDirtyChanged(EventArgs e)
+        private void SetDirty(bool newValue)
         {
-            DirtyChangedEvent.Raise(this, e);
+            if (newValue != _dirty)
+            {
+                _dirty = newValue;
+                DirtyChanged.Raise(this, EventArgs.Empty);
+            }
         }
 
         private bool _dirty;
@@ -95,6 +74,22 @@ namespace MaterialTool
 
         #endregion
 
-        public DiagramDocument(HyperGraph.IGraphModel model, Uri uri) : base(model) { _uri = uri; }
+        public DiagramDocument(HyperGraph.IGraphModel model, Uri uri) : base(model) 
+        {
+            _uri = uri;
+
+                // tracking for dirty flag --
+            Model.NodeAdded += Model_NodeAdded;
+            Model.NodeRemoved += Model_NodeRemoved;
+            Model.ConnectionAdded += Model_ConnectionAdded;
+            Model.ConnectionRemoved += Model_ConnectionRemoved;
+            Model.MiscChange += Model_MiscChange;
+        }
+
+        void Model_MiscChange(object sender, EventArgs e) { SetDirty(true); }
+        void Model_ConnectionRemoved(object sender, HyperGraph.NodeConnectionEventArgs e) { SetDirty(true); }
+        void Model_ConnectionAdded(object sender, HyperGraph.AcceptNodeConnectionEventArgs e) { SetDirty(true); }
+        void Model_NodeRemoved(object sender, HyperGraph.NodeEventArgs e) { SetDirty(true); }
+        void Model_NodeAdded(object sender, HyperGraph.AcceptNodeEventArgs e) { SetDirty(true); }
     }
 }

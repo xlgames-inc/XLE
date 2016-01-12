@@ -226,18 +226,8 @@ namespace ShaderPatcher
         NodeGraph _graphOfTemporaries;
     };
 
-    namespace MaterialConstantsStyle
-    {
-        enum Enum { CBuffer };
-    }
-
-    std::string GenerateShaderHeader(   
-        const NodeGraph& graph, 
-        MaterialConstantsStyle::Enum materialConstantsStyle = MaterialConstantsStyle::CBuffer, 
-        bool copyFragmentContents = false);
-
-    std::string GenerateShaderBody(
-        const NodeGraph& graph, const MainFunctionInterface& interf);
+    std::string GenerateShaderHeader(const NodeGraph& graph);
+    std::string GenerateShaderBody(const NodeGraph& graph, const MainFunctionInterface& interf);
 
     struct PreviewOptions
     {

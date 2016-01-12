@@ -803,9 +803,7 @@ namespace ShaderPatcher
         return result.str();
     }
 
-    std::string GenerateShaderHeader(   const NodeGraph& graph, 
-                                        MaterialConstantsStyle::Enum materialConstantsStyle, 
-                                        bool copyFragmentContents)
+    std::string GenerateShaderHeader(const NodeGraph& graph)
     {
             //  
             //      Generate shader source code for the given input
@@ -825,6 +823,7 @@ namespace ShaderPatcher
             //          off and call the fragments from the graph.
             //
 
+        const bool copyFragmentContents = false;
         std::stringstream result;
         if (copyFragmentContents) {
             result << LoadSourceFile("game/xleres/System/Prefix.h") << std::endl;
@@ -1033,12 +1032,12 @@ namespace ShaderPatcher
     {
         if (!s_writeOutputsViaStruct) {
             if (paramName != "value") {
-                result << "\tOUT_" << nodeId << "." << paramName;
+                result << "OUT_" << nodeId << "." << paramName;
             } else {
-                result << "\tOUT_" << nodeId;
+                result << "OUT_" << nodeId;
             }
         } else {
-            result << "\tOUT." << "Output_" << nodeId << "." << paramName;
+            result << "OUT." << "Output_" << nodeId << "." << paramName;
         }
     }
 
