@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "PreviewRenderManager.h"
+
 using namespace System;
 using namespace System::Collections::Generic;
 using namespace System::Drawing;
@@ -82,17 +84,26 @@ namespace ShaderPatcherLayer
     };
 
         ///////////////////////////////////////////////////////////////
+    [DataContract] public ref class PreviewSettings
+    {
+    public:
+        [DataMember] PreviewGeometry    Geometry;
+        [DataMember] String^            OutputToVisualize;
+        [DataMember] int                VisualNodeId;
+    };
+
+        ///////////////////////////////////////////////////////////////
     [DataContract] public ref class NodeGraph
     {
     public:
         [DataMember] property List<Node^>^ Nodes
         {
-            List<Node^>^ get()                  { if (!_nodes) { _nodes = gcnew List<Node^>(); } return _nodes; }
+            List<Node^>^ get() { if (!_nodes) { _nodes = gcnew List<Node^>(); } return _nodes; }
         }
 
         [DataMember] property List<NodeConnection^>^ NodeConnections
         {
-            List<NodeConnection^>^ get()        { if (!_connections) { _connections = gcnew List<NodeConnection^>(); } return _connections; }
+            List<NodeConnection^>^ get() { if (!_connections) { _connections = gcnew List<NodeConnection^>(); } return _connections; }
         }
 
         [DataMember] property List<ConstantConnection^>^ ConstantConnections
@@ -107,7 +118,12 @@ namespace ShaderPatcherLayer
 
         [DataMember] property List<VisualNode^>^ VisualNodes
         {
-            List<VisualNode^>^ get()            { if (!_visualNodes) { _visualNodes = gcnew List<VisualNode^>(); } return _visualNodes; }
+            List<VisualNode^>^ get() { if (!_visualNodes) { _visualNodes = gcnew List<VisualNode^>(); } return _visualNodes; }
+        }
+
+        [DataMember] property List<PreviewSettings^>^ PreviewSettingsObjects
+        {
+            List<PreviewSettings^>^ get() { if (!_previewSettings) { _previewSettings = gcnew List<PreviewSettings^>(); } return _previewSettings; }
         }
 
         NodeGraph();
@@ -115,8 +131,8 @@ namespace ShaderPatcherLayer
         ShaderPatcher::NodeGraph    ConvertToNative(String^ name);
         ShaderPatcher::NodeGraph    ConvertToNativePreview(UInt32 previewNodeId);
 
-        static String^       GenerateShader(NodeGraph^ graph, String^ name);
-        static String^       GeneratePreviewShader(NodeGraph^ graph, UInt32 previewNodeId, String^ outputToVisualize);
+        static String^      GenerateShader(NodeGraph^ graph, String^ name);
+        static String^      GeneratePreviewShader(NodeGraph^ graph, UInt32 previewNodeId, PreviewSettings^ settings);
 
         static NodeGraph^   LoadFromXML(System::IO::Stream^ stream);
         void                SaveToXML(System::IO::Stream^ stream);
@@ -127,9 +143,10 @@ namespace ShaderPatcherLayer
     private:
         List<Node^>^                    _nodes;
         List<NodeConnection^>^          _connections;
-        List<ConstantConnection^>^  _constantConnections;
-        List<InputParameterConnection^>^  _inputParameterConnections;
+        List<ConstantConnection^>^      _constantConnections;
+        List<InputParameterConnection^>^_inputParameterConnections;
         List<VisualNode^>^              _visualNodes;
+        List<PreviewSettings^>^         _previewSettings;
     };
 
 }

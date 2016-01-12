@@ -22,7 +22,7 @@ namespace ShaderPatcherLayer
     public interface class IPreviewBuilder
     {
     public:
-        System::Drawing::Bitmap^ Build(Document^ doc, Size^ size, PreviewGeometry geometry);
+        System::Drawing::Bitmap^ Build(Document^ doc, Size^ size, PreviewGeometry geometry, unsigned targetToVisualize);
     };
 
     public interface class IManager

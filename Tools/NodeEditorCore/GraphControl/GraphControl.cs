@@ -224,25 +224,25 @@ namespace NodeEditorCore
             return ModelConversion.ToShaderPatcherLayer(GetGraphModel());
         }
 
+        private ShaderFragmentPreviewItem GetPreviewItem(object sender)
+        {
+            var n = GetNode(AttachedId(sender));
+            if (n == null) return null;
+            return (ShaderFragmentPreviewItem)n.Items.Where(x => x is ShaderFragmentPreviewItem).FirstOrDefault();
+        }
+
         private void OnShowPreviewShader(object sender, EventArgs e)
         {
-            var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(ConvertToShaderPatcherLayer(), AttachedId(sender), "");
-            MessageBox.Show(shader, "Generated shader", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+            var p = GetPreviewItem(sender);
+            var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(ConvertToShaderPatcherLayer(), AttachedId(sender), p.PreviewSettings);
+            var wnd = new ControlsLibrary.BasicControls.TextWindow();
+            wnd.Text = System.Text.RegularExpressions.Regex.Replace(shader, @"\r\n|\n\r|\n|\r", "\r\n");        // (make sure we to convert the line endings into windows form)
+            wnd.Show();
         }
         private void refreshToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            //      Find the attached preview items and invalidate
-            var n = GetNode(AttachedId(sender));
-            if (n != null)
-            {
-                foreach (NodeItem i in n.Items)
-                {
-                    if (i is ShaderFragmentPreviewItem)
-                    {
-                        ((ShaderFragmentPreviewItem)i).InvalidateShaderStructure();
-                    }
-                }
-            }
+            var p = GetPreviewItem(sender);
+            if (p!=null) p.InvalidateShaderStructure();
         }
         private void largePreviewToolStripMenuItem_Click(object sender, EventArgs e)
         {

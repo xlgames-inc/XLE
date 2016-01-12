@@ -65,8 +65,7 @@ namespace SceneEngine
             BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);
             context->Bind(boundVertexInputLayout);
             context->Bind(shaderProgram);
-            context->Bind(     ResourceList<VertexBuffer, 1>(std::make_tuple(std::ref(vertexBuffer))), 
-                                sizeof(Vertex), 0);
+            context->Bind(MakeResourceList(vertexBuffer), sizeof(Vertex), 0);
 
             BoundUniforms boundLayout(shaderProgram);
             boundLayout.BindConstantBuffer(ObjectCB::LocalTransform, 0, 1);

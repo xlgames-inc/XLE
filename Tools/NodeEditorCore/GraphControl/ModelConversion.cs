@@ -173,6 +173,17 @@ namespace NodeEditorCore
                         }
                     }
                 }
+
+                // build the preview settings objects
+                foreach (var i in n.Items)
+                {
+                    var preview = i as ShaderFragmentPreviewItem;
+                    if (preview == null) continue;
+                    
+                    var settings = preview.PreviewSettings;
+                    settings.VisualNodeId = visualNodeId;
+                    nodeGraph.PreviewSettingsObjects.Add(settings);
+                }
             }
 
             return nodeGraph;
@@ -218,12 +229,15 @@ namespace NodeEditorCore
                     if (!newNodes.ContainsKey(n.VisualNodeId))
                     {
                         var visualNode = nodeGraph.VisualNodes[n.VisualNodeId];
+
+                        // also look for preview settings...
+                        var previewSettings = nodeGraph.PreviewSettingsObjects.Where(x => x.VisualNodeId == n.VisualNodeId).FirstOrDefault();
                         Node newNode = null;
                         if (n.NodeType == ShaderPatcherLayer.Node.Type.Procedure)
                         {
                             var fn = _shaderFragments.GetFunction(n.FragmentArchiveName);
                             if (fn != null)
-                                newNode = _nodeCreator.CreateNode(fn, n.FragmentArchiveName);
+                                newNode = _nodeCreator.CreateNode(fn, n.FragmentArchiveName, previewSettings);
                         }
                         else
                         {

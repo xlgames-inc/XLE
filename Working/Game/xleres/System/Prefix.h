@@ -39,6 +39,21 @@ float3 	Cast_float3_to_float3(float3 input)		{ return float3(input.xyz); }
 float3 	Cast_float4_to_float3(float4 input)		{ return input.xyz; }
 float4 	Cast_float3x3_to_float4(float3x3 input)		{ return float4(input[0].xyz, 1); }
 
+float4 AsFloat4(float input)	{ return Cast_float_to_float4(input); }
+float4 AsFloat4(float2 input)   { return Cast_float2_to_float4(input); }
+float4 AsFloat4(float3 input)   { return Cast_float3_to_float4(input); }
+float4 AsFloat4(float4 input)   { return input; }
+
+float4 AsFloat4(int input)	  { return Cast_float_to_float4(float(input)); }
+float4 AsFloat4(int2 input)	 { return Cast_float2_to_float4(float2(input)); }
+float4 AsFloat4(int3 input)	 { return Cast_float3_to_float4(float3(input)); }
+float4 AsFloat4(int4 input)	 { return float4(input); }
+
+float4 AsFloat4(uint input)	 { return Cast_float_to_float4(float(input)); }
+float4 AsFloat4(uint2 input)	{ return Cast_float2_to_float4(float2(input)); }
+float4 AsFloat4(uint3 input)	{ return Cast_float3_to_float4(float3(input)); }
+float4 AsFloat4(uint4 input)	{ return float4(input); }
+
 struct DefaultOutput1T0 { float  target : SV_Target0; };
 struct DefaultOutput2T0 { float2 target : SV_Target0; };
 struct DefaultOutput3T0 { float3 target : SV_Target0; };
@@ -54,54 +69,11 @@ struct DefaultOutput2T2 { float2 target : SV_Target2; };
 struct DefaultOutput3T2 { float3 target : SV_Target2; };
 struct DefaultOutput4T2 { float4 target : SV_Target2; };
 
-#include "../TextureAlgorithm.h"
-
 #if SHADER_NODE_EDITOR==1
     const int2 SI_OutputDimensions;
 	int2 NodeEditor_GetOutputDimensions() { return SI_OutputDimensions; }
 #else
 	int2 NodeEditor_GetOutputDimensions() { return int2(128, 128); }
 #endif
-
-float4 BackgroundPattern(float4 position)
-{
-	int2 c = int2(position.xy / 16.f);
-	float4 colours[] = { float4(0.125f, 0.125f, 0.125f, 1.f), float4(0.025f, 0.025f, 0.025f, 1.f) };
-	return colours[(c.x+c.y)%2];
-}
-
-float4 FilledGraphPattern(float4 position)
-{
-	int2 c = int2(position.xy / 8.f);
-	float4 colours[] = { float4(0.35f, 0.35f, 0.35f, 1.f), float4(0.65f, 0.65f, 0.65f, 1.f) };
-	return colours[(c.x+c.y)%2];
-}
-
-//////////////////////////////////////////////////////////////////
-		// Graphs //
-
-float NodeEditor_GraphEdgeFactor(float value)
-{
-	value = abs(value);
-    float d = fwidth(value);
-    return 1.f - smoothstep(0.f, 2.f * d, value);
-}
-
-float NodeEditor_IsGraphEdge(float functionResult, float comparisonValue)
-{
-	float distance = functionResult - comparisonValue;
-	return NodeEditor_GraphEdgeFactor(distance);
-}
-
-float4 NodeEditor_GraphEdgeColour(int index)
-{
-	float4 colours[] = { float4(1, 0, 0, 1), float4(0, 1, 0, 1), float4(0, 0, 1, 1), float4(0, 1, 1, 1) };
-	return colours[min(3, index)];
-}
-
-struct NodeEditor_GraphOutput
-{
-	float4 output : SV_Target0;
-};
 
 #endif

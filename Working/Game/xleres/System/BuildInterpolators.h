@@ -10,6 +10,7 @@
 #include "../Transform.h"
 #include "../MainGeometry.h"
 #include "../Surface.h"
+#include "../TextureAlgorithm.h"		// for SystemInputs
 #include "../Lighting/LightDesc.h"		// for LightScreenDest
 
 //////////////////////////////////////////////////////////////////
@@ -17,7 +18,7 @@
 float3 BuildInterpolator_WORLDPOSITION(VSInput input)
 {
 	#if defined(GEO_PRETRANSFORMED)
-		return float3(input.xy, 0);
+		return float3(VSIn_GetLocalPosition(input).xy, 0);
 	#else
 		float3 localPosition = VSIn_GetLocalPosition(input);
 		return mul(LocalToWorld, float4(localPosition,1)).xyz;
@@ -27,7 +28,7 @@ float3 BuildInterpolator_WORLDPOSITION(VSInput input)
 float4 BuildInterpolator_SV_Position(VSInput input) : NE_WritesVSOutput
 {
 	#if defined(GEO_PRETRANSFORMED)
-		return float4(input.xy, 0, 1);
+		return float4(VSIn_GetLocalPosition(input).xy, 0, 1);
 	#else
 		float3 worldPosition = BuildInterpolator_WORLDPOSITION(input);
 		return mul(WorldToClip, float4(worldPosition,1));

@@ -239,10 +239,18 @@ namespace ShaderPatcher
     std::string GenerateShaderBody(
         const NodeGraph& graph, const MainFunctionInterface& interf);
 
+    struct PreviewOptions
+    {
+    public:
+        enum class Type { Object, Chart };
+        Type _type;
+        std::string _outputToVisualize;
+    };
+
     std::string GenerateStructureForPreview(
         const NodeGraph& graph, 
         const MainFunctionInterface& interf, 
-        const char outputToVisualize[]);
+        const PreviewOptions& previewOptions = { PreviewOptions::Type::Object, std::string() });
 
 }
 

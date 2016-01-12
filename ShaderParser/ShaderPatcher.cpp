@@ -13,12 +13,18 @@
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/PtrUtils.h"
-#include "../Foreign/plustasche/template.hpp"
 #include <sstream>
 #include <assert.h>
 #include <algorithm>
 #include <tuple>
 #include <regex>
+
+    // mustache templates stuff...
+#include "../Assets/AssetUtils.h"
+#include "../Assets/ConfigFileContainer.h"
+#include "../Utility/Streams/StreamFormatter.h"
+#include "../Foreign/plustasche/template.hpp"
+
 
 #pragma warning(disable:4127)       // conditional expression is constant
 
@@ -1405,76 +1411,34 @@ namespace ShaderPatcher
 
     ParameterGenerator::~ParameterGenerator() {}
 
-    // todo -- these templates could come from a file... It would be convenient for development
-    //          (but it would also add another file dependency)
-    static const char ps_main_template_default[] = 
-R"--(
-NE_{{GraphName}}_Output ps_main(NE_PSInput input, SystemInputs sys)
-{
-	NE_{{GraphName}}_Output functionResult;
-	{{GraphName}}({{ParametersToMainFunctionCall}});
-	return functionResult;
-}
-)--";
+    class TemplateItem
+    {
+    public:
+        std::basic_string<char> _item;
+        TemplateItem(
+            InputStreamFormatter<char>& formatter,
+            const ::Assets::DirectorySearchRules&)
+        {
+            InputStreamFormatter<char>::InteriorSection name, value;
+            using Blob = InputStreamFormatter<char>::Blob;
+            if (formatter.PeekNext() == Blob::AttributeName && formatter.TryAttribute(name, value)) {
+                _item = value.AsString();
+            } else
+                Throw(Utility::FormatException("Expecting single string attribute", formatter.GetLocation()));
+        }
+        TemplateItem() {}
+    };
 
-    static const char ps_main_template_explicit[] = 
-R"--(
-
-float4 AsFloat4(float input)    { return Cast_float_to_float4(input); }
-float4 AsFloat4(float2 input)   { return Cast_float2_to_float4(input); }
-float4 AsFloat4(float3 input)   { return Cast_float3_to_float4(input); }
-float4 AsFloat4(float4 input)   { return input; }
-
-float4 AsFloat4(int input)      { return Cast_float_to_float4(float(input)); }
-float4 AsFloat4(int2 input)     { return Cast_float2_to_float4(float2(input)); }
-float4 AsFloat4(int3 input)     { return Cast_float3_to_float4(float3(input)); }
-float4 AsFloat4(int4 input)     { return float4(input); }
-
-float4 AsFloat4(uint input)     { return Cast_float_to_float4(float(input)); }
-float4 AsFloat4(uint2 input)    { return Cast_float2_to_float4(float2(input)); }
-float4 AsFloat4(uint3 input)    { return Cast_float3_to_float4(float3(input)); }
-float4 AsFloat4(uint4 input)    { return float4(input); }
-
-float4 ps_main(NE_PSInput input, SystemInputs sys) : SV_Target0
-{
-	NE_{{GraphName}}_Output functionResult;
-	{{GraphName}}({{ParametersToMainFunctionCall}});
-
-	{{^IsChart}}
-	return AsFloat4(functionResult.{{PreviewOutput}});
-	{{/IsChart}}
-
-	{{#IsChart}}
-	{{FlatOutputsInit}}
-	float comparisonValue = 1.f - input.position.y / NodeEditor_GetOutputDimensions().y;
-	bool filled = false;
-	for (uint c=0; c<outputDimensionality; c++)
-		if (comparisonValue < flatOutputs[c])
-			filled = true;
-	float3 chartOutput = filled ? FilledGraphPattern(input.position) : BackgroundPattern(input.position);
-	for (uint c2=0; c2<outputDimensionality; c2++)
-		chartOutput = lerp(chartOutput, NodeEditor_GraphEdgeColour(c2).rgb, NodeEditor_IsGraphEdge(flatOutputs[c2], comparisonValue));
-	return float4(chartOutput, 1.f);
-	{{/IsChart}}
-}
-)--";
-
-    static const char vs_main_template[] = 
-R"--(
-NE_PSInput vs_main(uint vertexId : SV_VertexID, VSInput vsInput)
-{
-	NE_PSInput OUT;
-	{{#InitGeo}}OUT.geo = BuildInterpolator_VSOutput(vsInput);{{/InitGeo}}
-	float3 worldPosition = BuildInterpolator_WORLDPOSITION(vsInput);
-	float3 localPosition = GetLocalPosition(vsInput);
-	{{VaryingInitialization}}
-	return OUT;
-}
-)--";
+    static std::string GetTemplate(const char templateName[])
+    {
+        StringMeld<MaxPath, Assets::ResChar> str;
+        str << "game/xleres/System/PreviewTemplates.sh:" << templateName;
+        return ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<TemplateItem, InputStreamFormatter<char>>>(str.get())._asset._item;
+    }
 
     std::string         GenerateStructureForPreview(
         const NodeGraph& graph, const MainFunctionInterface& interf, 
-        const char outputToVisualize[])
+        const PreviewOptions& previewOptions)
     {
             //
             //      Generate the shader structure that will surround the main
@@ -1578,75 +1542,70 @@ NE_PSInput vs_main(uint vertexId : SV_VertexID, VSInput vsInput)
             parametersToMainFunctionCall += "functionResult." + i._name;
         }
 
-        unsigned inputDimensionality = 0;
-        for (unsigned index=0; index<mainParams.Count(); ++index)
-            if (!mainParams.IsInitializedBySystem(index))
-                inputDimensionality += GetDimensionality(mainParams.Param(index)._type);
-
-        const bool allowGraphs = false;
         Plustache::template_t preprocessor;
 
         // Render the ps_main template
         {
-            PlustacheTypes::ObjectType context
-            {
-                {"GraphName", graph.GetName()},
-                {"IsChart", ToPlustache(allowGraphs && inputDimensionality == 1)},
-                {"ParametersToMainFunctionCall", parametersToMainFunctionCall},
-                {"PreviewOutput", outputToVisualize}
-            };
+            Plustache::Context context;
+            context.add("GraphName", graph.GetName());
+            context.add("ParametersToMainFunctionCall", parametersToMainFunctionCall);
+            context.add("PreviewOutput", previewOptions._outputToVisualize);
 
                 // Collect all of the output values into a flat array of floats.
                 // This is needed for "charts"
-            unsigned outputDimensionality = 0;
-            bool needFlatOutputs = allowGraphs && inputDimensionality == 1;
-            if (needFlatOutputs) {
-                std::stringstream writingToFlatArray;
-                for each (auto i in interf.GetOutputParameters()) {
-                    auto signature = LoadParameterStructSignature(SplitArchiveName(i._archiveName));
-                    if (!signature._name.empty()) {
-                        for (auto p=signature._parameters.cbegin(); p!=signature._parameters.cend(); ++p) {
-                            auto dim = GetDimensionality(p->_type);
-                            for (unsigned c=0; c<dim; ++c) {
-                                writingToFlatArray << "flatOutputs[" << outputDimensionality+c << "] = " << "functionResult." << i._name << "." << p->_name;
-                                if (dim != 1) writingToFlatArray << "[" << c << "]";
-                                writingToFlatArray << ";";
+            const bool renderAsChart = previewOptions._type == PreviewOptions::Type::Chart;
+            if (renderAsChart) {
+                std::vector<PlustacheTypes::ObjectType> chartLines;
+
+                if (!previewOptions._outputToVisualize.empty()) {
+                    // When we have an "outputToVisualize" we only show the
+                    // chart for that single output.
+                    chartLines.push_back(
+                        PlustacheTypes::ObjectType { std::make_pair("Item", previewOptions._outputToVisualize) });
+                } else {
+                    // Find all of the scalar values written out from main function,
+                    // including searching through parameter strructures.
+                    for each (auto i in interf.GetOutputParameters()) {
+                        auto signature = LoadParameterStructSignature(SplitArchiveName(i._archiveName));
+                        if (!signature._name.empty()) {
+                            for (auto p=signature._parameters.cbegin(); p!=signature._parameters.cend(); ++p) {
+                                    // todo -- what if this is also a parameter struct?
+                                auto dim = GetDimensionality(p->_type);
+                                for (unsigned c=0; c<dim; ++c) {
+                                    std::stringstream str;
+                                    str << i._name << "." << p->_name;
+                                    if (dim != 1) str << "[" << c << "]";
+                                    chartLines.push_back(
+                                        PlustacheTypes::ObjectType { std::make_pair("Item", str.str()) });
+                                }
                             }
-                            outputDimensionality += dim;
+                        } else {
+                            auto dim = GetDimensionality(i._archiveName);
+                            for (unsigned c=0; c<dim; ++c) {
+                                std::stringstream str;
+                                str << i._name;
+                                if (dim != 1) str << "[" << c << "]";
+                                chartLines.push_back(
+                                    PlustacheTypes::ObjectType { std::make_pair("Item", str.str()) });
+                            }
                         }
-                    } else {
-                        auto dim = GetDimensionality(i._archiveName);
-                        for (unsigned c=0; c<dim; ++c) {
-                            writingToFlatArray << "flatOutputs[" << outputDimensionality+c << "] = " << "functionResult." << i._name;
-                            if (dim != 1) writingToFlatArray << "[" << c << "]";
-                            writingToFlatArray << ";";
-                        }
-                        outputDimensionality += dim;
                     }
                 }
 
-                writingToFlatArray << "const uint outputDimensionality = " << outputDimensionality << ";" << std::endl;
-                writingToFlatArray << "float flatOutputs[" << outputDimensionality << "];" << std::endl;
-                context["FlatOutputsInit"] = writingToFlatArray.str();
+                context.add("ChartLines", chartLines);
+                context.add("ChartLineCount", (StringMeld<64>() << unsigned(chartLines.size())).get());
             }
 
-            // outputToVisualize can either be the name of a variable in the functionResult
-            // struct, or it can be a number signifying out of the SV_Target<> outputs.
-            // When we have a graph that outputs a struct (such as GBufferValues), we don't
-            // actually know the contents of that struct from here. So we can access the members
-            // directly (or understand their types, etc)
-            // However, outputToVisualize allows the caller to explicitly capture the result from
-            // one of those struct members.
-
-            if (    outputToVisualize && outputToVisualize[0] != '\0' 
-                && !XlBeginsWith(MakeStringSection(outputToVisualize), MakeStringSection("SV_Target"))) {
-                result << preprocessor.render(ps_main_template_explicit, context);
+            if (renderAsChart) {
+                result << preprocessor.render(GetTemplate("ps_main_chart"), context);
+            } else if (!previewOptions._outputToVisualize.empty()) {
+                result << preprocessor.render(GetTemplate("ps_main_explicit"), context);
             } else
-                result << preprocessor.render(ps_main_template_default, context);
+                result << preprocessor.render(GetTemplate("ps_main"), context);
         }
 
         // Render the vs_main template
-        result << preprocessor.render(vs_main_template, 
+        result << preprocessor.render(GetTemplate("vs_main"), 
             PlustacheTypes::ObjectType
             {
                 {"InitGeo", ToPlustache(mainParams.VSOutputMember().empty())},

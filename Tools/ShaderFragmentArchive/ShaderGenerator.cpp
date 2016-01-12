@@ -96,40 +96,46 @@ namespace ShaderPatcherLayer
 
     String^         NodeGraph::GenerateShader(NodeGraph^ graph, String^name)
     {
-		try
-		{
-			auto nativeGraph = graph->ConvertToNative(name);
-			nativeGraph.AddDefaultOutputs();
-			ShaderPatcher::MainFunctionInterface interf(nativeGraph);
-			return marshalString<E_UTF8>(
-					ShaderPatcher::GenerateShaderHeader(nativeGraph) 
-				+   ShaderPatcher::GenerateShaderBody(nativeGraph, interf));
-		} catch (const std::exception& e) {
-			return "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what());
-		} catch (...) {
-			return "Unknown exception while generating shader";
-		}
+        try
+        {
+            auto nativeGraph = graph->ConvertToNative(name);
+            nativeGraph.AddDefaultOutputs();
+            ShaderPatcher::MainFunctionInterface interf(nativeGraph);
+            return marshalString<E_UTF8>(
+                    ShaderPatcher::GenerateShaderHeader(nativeGraph) 
+                +   ShaderPatcher::GenerateShaderBody(nativeGraph, interf));
+        } catch (const std::exception& e) {
+            return "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what());
+        } catch (...) {
+            return "Unknown exception while generating shader";
+        }
     }
 
-    String^         NodeGraph::GeneratePreviewShader(NodeGraph^ graph, UInt32 previewNodeId, String^ outputToVisualize)
+    String^         NodeGraph::GeneratePreviewShader(NodeGraph^ graph, UInt32 previewNodeId, PreviewSettings^ settings)
     {
-		try
-		{
-			auto nativeGraph = graph->ConvertToNativePreview(previewNodeId);
-			ShaderPatcher::MainFunctionInterface interf(nativeGraph);
-			std::string structure = ShaderPatcher::GenerateStructureForPreview(
-				nativeGraph, interf, 
-				outputToVisualize ? marshalString<E_UTF8>(outputToVisualize).c_str() : "");
-			return marshalString<E_UTF8>(
-					ShaderPatcher::GenerateShaderHeader(nativeGraph) 
-				+   ShaderPatcher::GenerateShaderBody(nativeGraph, interf) 
-				+   structure)
-				;
-		} catch (const std::exception& e) {
-			return "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what());
-		} catch (...) {
-			return "Unknown exception while generating shader";
-		}
+        try
+        {
+            auto nativeGraph = graph->ConvertToNativePreview(previewNodeId);
+            ShaderPatcher::MainFunctionInterface interf(nativeGraph);
+            ShaderPatcher::PreviewOptions options = 
+            {
+                (settings->Geometry == PreviewGeometry::Chart)
+                    ? ShaderPatcher::PreviewOptions::Type::Chart
+                    : ShaderPatcher::PreviewOptions::Type::Object,
+                String::IsNullOrEmpty(settings->OutputToVisualize) 
+                    ? std::string() 
+                    : marshalString<E_UTF8>(settings->OutputToVisualize)
+            };
+            return marshalString<E_UTF8>(
+                    ShaderPatcher::GenerateShaderHeader(nativeGraph) 
+                +   ShaderPatcher::GenerateShaderBody(nativeGraph, interf) 
+                +   ShaderPatcher::GenerateStructureForPreview(nativeGraph, interf, options))
+                ;
+        } catch (const std::exception& e) {
+            return "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what());
+        } catch (...) {
+            return "Unknown exception while generating shader";
+        }
     }
 
     NodeGraph^ NodeGraph::LoadFromXML(System::IO::Stream^ stream)

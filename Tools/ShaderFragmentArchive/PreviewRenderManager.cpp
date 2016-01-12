@@ -71,7 +71,7 @@ namespace ShaderPatcherLayer
     {
     public:
         virtual System::Drawing::Bitmap^ Build(
-            Document^ doc, Size^ size, PreviewGeometry geometry);
+            Document^ doc, Size^ size, PreviewGeometry geometry, unsigned targetToVisualize);
 
         PreviewBuilder(
             std::shared_ptr<RenderCore::ShaderService::IShaderSource> shaderSource, 
@@ -257,31 +257,49 @@ namespace ShaderPatcherLayer
         return newBitmap;
     }
 
-    System::Drawing::Bitmap^ PreviewBuilder::Build(Document^ doc, Size^ size, PreviewGeometry geometry)
+    System::Drawing::Bitmap^ PreviewBuilder::Build(Document^ doc, Size^ size, PreviewGeometry geometry, uint targetToVisualize)
     {
         using namespace RenderCore;
 
         const int width = std::max(0, int(size->Width));
         const int height = std::max(0, int(size->Height));
 
-        auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
-        auto targetTexture = uploads.Transaction_Immediate(
-            BufferUploads::CreateDesc(
-                BufferUploads::BindFlag::RenderTarget,
-                0, BufferUploads::GPUAccess::Write,
-                BufferUploads::TextureDesc::Plain2D(
-                    width, height, 
-                    Metal::NativeFormat::R8G8B8A8_UNORM_SRGB),
-                "PreviewBuilderTarget"));
+        const unsigned maxTargets = 4;
+        targetToVisualize = std::min(targetToVisualize, maxTargets-1);
 
-        Metal::RenderTargetView targetRTV(targetTexture->GetUnderlying());
+        auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
+        intrusive_ptr<BufferUploads::ResourceLocator> targets[maxTargets];
+        for (unsigned c=0; c<(targetToVisualize+1); ++c)
+            targets[c] = uploads.Transaction_Immediate(
+                BufferUploads::CreateDesc(
+                    BufferUploads::BindFlag::RenderTarget,
+                    0, BufferUploads::GPUAccess::Write,
+                    BufferUploads::TextureDesc::Plain2D(width, height, Metal::NativeFormat::R8G8B8A8_UNORM_SRGB),
+                    "PreviewBuilderTarget"));
+
+        auto depthBuffer = uploads.Transaction_Immediate(
+            BufferUploads::CreateDesc(
+                BufferUploads::BindFlag::DepthStencil,
+                0, BufferUploads::GPUAccess::Write,
+                BufferUploads::TextureDesc::Plain2D(width, height, Metal::NativeFormat::D24_UNORM_S8_UINT),
+                "PreviewBuilderDepthBuffer"));
 
         auto context = _pimpl->_device->GetImmediateContext();
         auto metalContext = Metal::DeviceContext::Get(*context);
         float clearColor[] = { 0.05f, 0.05f, 0.2f, 1.f };
-        metalContext->Clear(targetRTV, clearColor);
 
-        metalContext->Bind(RenderCore::MakeResourceList(targetRTV), nullptr);
+        Metal::RenderTargetView rtvs[maxTargets];
+        for (unsigned c=0; c<(targetToVisualize+1); ++c) {
+            rtvs[c] = Metal::RenderTargetView(targets[c]->GetUnderlying());
+            metalContext->Clear(rtvs[c], clearColor);
+        }
+
+        Metal::DepthStencilView dsv(depthBuffer->GetUnderlying());
+        metalContext->Clear(dsv, 1.f, 0x0);
+        RenderCore::ResourceList<Metal::RenderTargetView, maxTargets> rtvList(
+            std::initializer_list<const Metal::RenderTargetView>(rtvs, ArrayEnd(rtvs)));
+        metalContext->Bind(rtvList, &dsv);
+
         metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(width), float(height), 0.f, 1.f));
 
             ////////////
@@ -295,7 +313,7 @@ namespace ShaderPatcherLayer
 
             ////////////
 
-        auto readback = uploads.Resource_ReadBack(*targetTexture);
+        auto readback = uploads.Resource_ReadBack(*targets[targetToVisualize]);
         if (readback && readback->GetDataSize()) {
             using System::Drawing::Bitmap;
             using namespace System::Drawing;

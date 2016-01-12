@@ -20,7 +20,7 @@ namespace NodeEditorCore
 {
     public interface IShaderFragmentNodeCreator
     {
-        Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName);
+        Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName, ShaderPatcherLayer.PreviewSettings previewSettings = null);
         Node CreateEmptyParameterNode(ParamSourceType sourceType, String archiveName, String title);
         Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type);
         Node CreateEmptyInputParameterNode(String title);
@@ -209,8 +209,11 @@ namespace NodeEditorCore
                 if (_builder == null)
                 {
                         // note -- much of this work doesn't really need to be repeated for each node.
+                    var prevSettings = PreviewSettings;
+                    if (prevSettings.OutputToVisualize.StartsWith("SV_Target"))
+                        prevSettings.OutputToVisualize = string.Empty;
                     var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(
-                        doc.NodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id, OutputToVisualize);
+                        doc.NodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id, prevSettings);
                     _builder = _previewManager.CreatePreviewBuilder(shader);
                     _cachedBitmap = null;
                 }
@@ -230,7 +233,13 @@ namespace NodeEditorCore
                 }
 
                 if (_cachedBitmap == null)
-                    _cachedBitmap = _builder.Build(doc.ParameterSettings, idealSize, Geometry);
+                {
+                    uint target = 0;
+                    if (OutputToVisualize.StartsWith("SV_Target"))
+                        if (!uint.TryParse(OutputToVisualize.Substring(9), out target))
+                            target = 0;
+                    _cachedBitmap = _builder.Build(doc.ParameterSettings, idealSize, Geometry, target);
+                }
 
                 if (_cachedBitmap != null)
                     graphics.DrawImage(_cachedBitmap, new RectangleF() { X = location.X, Y = location.Y, Width = size.Width, Height = size.Height });
@@ -261,8 +270,26 @@ namespace NodeEditorCore
 
         public override bool OnEndDrag() { base.OnEndDrag(); return true; }
 
-        public ShaderPatcherLayer.PreviewGeometry Geometry { get { return _previewGeometry; } set { _previewGeometry = value; InvalidateParameters(); } }
+        public ShaderPatcherLayer.PreviewGeometry Geometry { get { return _previewGeometry; } set { _previewGeometry = value; InvalidateShaderStructure(); } }
         public string OutputToVisualize                 { get { return _outputToVisualize; } set { _outputToVisualize = value; InvalidateShaderStructure(); } }
+
+        public ShaderPatcherLayer.PreviewSettings PreviewSettings
+        {
+            get
+            {
+                return new ShaderPatcherLayer.PreviewSettings
+                    {
+                        Geometry = this.Geometry,
+                        OutputToVisualize = this.OutputToVisualize
+                    };
+            }
+
+            set
+            {
+                Geometry = value.Geometry;
+                OutputToVisualize = value.OutputToVisualize;
+            }
+        }
 
         private PointF _lastDragLocation;
         private ShaderPatcherLayer.PreviewGeometry _previewGeometry;
@@ -493,12 +520,14 @@ namespace NodeEditorCore
             return Tuple.Create(typeNames, selectedIndex);
         }
 
-        public Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName)
+        public Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName, ShaderPatcherLayer.PreviewSettings previewSettings)
         {
             var node = new Node(fn.Name);
             node.Tag = new ShaderProcedureNodeTag(archiveName);
 
             var previewItem = new ShaderFragmentPreviewItem();
+            if (previewSettings != null)
+                previewItem.PreviewSettings = previewSettings;
 
             // use composition to access some exported types --
             {
@@ -508,7 +537,7 @@ namespace NodeEditorCore
             }
             node.AddItem(previewItem);
 
-            // Drop-down selection box for "preview mode"
+                // Drop-down selection box for "preview mode"
             var enumList = AsEnumList(previewItem.Geometry, PreviewGeoNames);
             var previewModeSelection = new HyperGraph.Items.NodeDropDownItem(enumList.Item1.ToArray(), enumList.Item2, false, false);
             node.AddItem(previewModeSelection);

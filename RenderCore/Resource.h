@@ -48,8 +48,8 @@ namespace RenderCore
         class ResourceList
         {
         public:
-            ResourceList(const std::initializer_list<const Type*>& initializers);
-            ResourceList(unsigned offset, const std::initializer_list<const Type*>& initializers);
+            ResourceList(std::initializer_list<const Type> initializers);
+            ResourceList(unsigned offset, std::initializer_list<const Type> initializers);
             template<typename Tuple> ResourceList(const Tuple& initializers);
             template<typename Tuple> ResourceList(unsigned offset, const Tuple& initializers);
 
@@ -75,22 +75,22 @@ namespace RenderCore
     #pragma warning(disable:4718)       // recursive call has no side effects, deleting
 
     template <typename Type, int Count>
-        ResourceList<Type,Count>::ResourceList(const std::initializer_list<const Type*>& initializers)
+        ResourceList<Type,Count>::ResourceList(std::initializer_list<const Type> initializers)
         {
             size_t size = std::min(initializers.size(), size_t(Count));
             for (unsigned c=0; c<size; ++c) {
-                _buffers[c] = initializers.begin()[c]->GetUnderlying();
+                _buffers[c] = initializers.begin()[c].GetUnderlying();
             }
             std::fill(&_buffers[size], &_buffers[Count], Type::UnderlyingType(0));
             _startingPoint = 0;
         }
 
     template <typename Type, int Count>
-        ResourceList<Type,Count>::ResourceList(unsigned offset, const std::initializer_list<const Type*>& initializers)
+        ResourceList<Type,Count>::ResourceList(unsigned offset, std::initializer_list<const Type> initializers)
         {
             size_t size = std::min(initializers.size(), size_t(Count));
             for (unsigned c=0; c<size; ++c) {
-                _buffers[c] = initializers.begin()[c]->GetUnderlying();
+                _buffers[c] = initializers.begin()[c].GetUnderlying();
             }
             std::fill(&_buffers[size], &_buffers[Count], Type::UnderlyingType(0));
             _startingPoint = offset;
