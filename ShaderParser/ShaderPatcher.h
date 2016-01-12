@@ -216,6 +216,7 @@ namespace ShaderPatcher
         auto GetOutputParameters() const -> IteratorRange<const MainFunctionParameter*>     { return MakeIteratorRange(_outputParameters); }
         auto GetGlobalParameters() const -> IteratorRange<const MainFunctionParameter*>     { return MakeIteratorRange(_globalParameters); }
         const NodeGraph& GetGraphOfTemporaries() const { return _graphOfTemporaries; }
+        std::string GetOutputParameterName(const NodeBaseConnection& c) const;
 
         MainFunctionInterface(const NodeGraph& graph);
         ~MainFunctionInterface();
@@ -223,7 +224,10 @@ namespace ShaderPatcher
         std::vector<MainFunctionParameter> _inputParameters;
         std::vector<MainFunctionParameter> _outputParameters;
         std::vector<MainFunctionParameter> _globalParameters;
+        std::vector<std::pair<const NodeBaseConnection*, std::string>> _outputParameterNames;
         NodeGraph _graphOfTemporaries;
+
+        void BuildMainFunctionOutputParameters(const NodeGraph& graph);
     };
 
     std::string GenerateShaderHeader(const NodeGraph& graph);
