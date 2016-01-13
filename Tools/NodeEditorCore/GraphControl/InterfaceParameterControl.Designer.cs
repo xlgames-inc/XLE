@@ -6,7 +6,7 @@
 
 namespace NodeEditorCore
 {
-    partial class InputParameterControl
+    partial class InterfaceParameterControl
     {
         /// <summary> 
         /// Required designer variable.

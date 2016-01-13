@@ -18,12 +18,14 @@ using ParamSourceType = ShaderFragmentArchive.Parameter.SourceType;
 
 namespace NodeEditorCore
 {
+    public enum InterfaceDirection { In, Out };
+
     public interface IShaderFragmentNodeCreator
     {
         Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName, ShaderPatcherLayer.PreviewSettings previewSettings = null);
         Node CreateEmptyParameterNode(ParamSourceType sourceType, String archiveName, String title);
         Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type);
-        Node CreateEmptyInputParameterNode(String title);
+        Node CreateInterfaceNode(String title, InterfaceDirection direction);
         Node FindNodeFromId(HyperGraph.IGraphModel graph, UInt64 id);
     }
 
@@ -55,7 +57,7 @@ namespace NodeEditorCore
         private IModelConversion _converter;
     }
 
-    #region ShaderFragmentNodeItem
+    #region Node Items
 
         //
     /////////////////////////////////////////////////////////////////////////////////////
@@ -157,9 +159,6 @@ namespace NodeEditorCore
         protected virtual string GetNameText() { return this.Name; }
         protected virtual string GetTypeText() { return "(" + this.ShortType + ")"; }
     }
-
-    #endregion
-    #region ShaderFragmentPreviewItem
 
         //
     /////////////////////////////////////////////////////////////////////////////////////
@@ -306,9 +305,6 @@ namespace NodeEditorCore
         private System.Drawing.Bitmap _cachedBitmap;
     }
 
-    #endregion
-    #region ShaderFragmentNodeCompatibility
-
         //
     /////////////////////////////////////////////////////////////////////////////////////
         //
@@ -345,12 +341,10 @@ namespace NodeEditorCore
             return HyperGraph.Compatibility.ConnectionType.Incompatible;
         }
     }
-    #endregion
-    #region ShaderFragmentInputParameterItem
-    internal class ShaderFragmentInputParameterItem : ShaderFragmentNodeItem
+    internal class ShaderFragmentInterfaceParameterItem : ShaderFragmentNodeItem
     {
-        public ShaderFragmentInputParameterItem(string name, string type, string semantic) :
-            base(name, type, string.Empty, false, true)
+        public ShaderFragmentInterfaceParameterItem(string name, string type, string semantic, InterfaceDirection direction) :
+            base(name, type, string.Empty, direction == InterfaceDirection.Out, direction == InterfaceDirection.In)
         {
             this.Semantic = semantic;
         }
@@ -383,18 +377,16 @@ namespace NodeEditorCore
 
         protected override string GetTypeText() { return ": " + Semantic + " (" + ShortType + ")"; }
     }
-    #endregion
-    #region ShaderFragmentAddInputParameterItem
-    public sealed class ShaderFragmentAddInputParameterItem : NodeItem
+    internal class ShaderFragmentAddParameterItem : NodeItem
     {
         public override bool OnClick(System.Windows.Forms.Control container, System.Windows.Forms.MouseEventArgs evnt, System.Drawing.Drawing2D.Matrix viewTransform)
         {
-            using (var fm = new InputParameterForm(false) { Name = "Color", Type = "float4", Semantic = "" })
+            using (var fm = new InterfaceParameterForm(false) { Name = "Color", Type = "float4", Semantic = "" })
             {
                 var result = fm.ShowDialog();
                 if (result == System.Windows.Forms.DialogResult.OK)
                 {
-                    Node.AddItem(new ShaderFragmentInputParameterItem(fm.Name, fm.Type, fm.Semantic));
+                    Node.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, fm.Semantic, Direction));
                 }
             }
             return true;
@@ -425,6 +417,8 @@ namespace NodeEditorCore
         }
 
         public override void RenderConnector(Graphics graphics, RectangleF rectangle) { }
+
+        public InterfaceDirection Direction = InterfaceDirection.In;
     }
     #endregion
 
@@ -454,9 +448,10 @@ namespace NodeEditorCore
         public ShaderParameterNodeTag(string archiveName) : base(archiveName) {}
     }
 
-    internal class ShaderInputParameterNodeTag : ShaderFragmentNodeTag
+    internal class ShaderInterfaceParameterNodeTag : ShaderFragmentNodeTag
     {
-        public ShaderInputParameterNodeTag() : base(String.Empty) { }
+        public ShaderInterfaceParameterNodeTag() : base(String.Empty) {}
+        public InterfaceDirection Direction = InterfaceDirection.In;
     }
 
     [Export(typeof(IShaderFragmentNodeCreator))]
@@ -629,11 +624,11 @@ namespace NodeEditorCore
             return node;
         }
 
-        public Node CreateEmptyInputParameterNode(String title)
+        public Node CreateInterfaceNode(String title, InterfaceDirection direction)
         {
             var node = new Node(title);
-            node.Tag = new ShaderInputParameterNodeTag();
-            node.AddItem(new ShaderFragmentAddInputParameterItem());
+            node.Tag = new ShaderInterfaceParameterNodeTag { Direction = direction };
+            node.AddItem(new ShaderFragmentAddParameterItem { Direction = direction });
             return node;
         }
 

@@ -33,8 +33,6 @@ namespace MaterialTool
 
         public void SetContext(DiagramEditingContext context)
         {
-            Context = context;
-
             // We also setup an underlying context that will be used
             // while rendering node items.
             var underlyingDoc = _exportProvider.GetExport<NodeEditorCore.DiagramDocument>().Value;
@@ -80,6 +78,7 @@ namespace MaterialTool
             hoverAdapter.HoverStopped += EndHover;
             MouseLeave += EndHover;
             Adapt(new IControlAdapter[] { graphAdapter, new PickingAdapter { Context = context }, hoverAdapter });
+            Context = context;
         }
 
         private void EndHover(object sender, EventArgs args)

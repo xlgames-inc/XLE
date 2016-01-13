@@ -15,9 +15,9 @@ using System.Windows.Forms;
 
 namespace NodeEditorCore
 {
-    public partial class InputParameterForm : Form
+    public partial class InterfaceParameterForm : Form
     {
-        public InputParameterForm(bool showDeleteButton = true)
+        public InterfaceParameterForm(bool showDeleteButton = true)
         {
             InitializeComponent();
             if (!showDeleteButton)

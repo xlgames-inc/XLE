@@ -75,14 +75,58 @@ namespace NodeEditorCore
             var item0 = new ToolStripMenuItem() { Text = "Create Input" };
             item0.Click += new EventHandler(this.OnCreateInputParameterNode);
 
+            var item1 = new ToolStripMenuItem() { Text = "Create Output" };
+            item1.Click += new EventHandler(this.OnCreateOutputParameterNode);
+
             return new ContextMenuStrip(this._components)
             {
-                Items = { item0 }
+                Items = { item0, item1 }
             };
         }
 
         private void OnConnectorDoubleClick(object sender, HyperGraph.GraphControl.NodeConnectorEventArgs e)
         {
+            var inputParam = e.Connector.Item as ShaderFragmentInterfaceParameterItem;
+            if (inputParam != null)
+            {
+                using (var fm = new InterfaceParameterForm() { Name = inputParam.Name, Type = inputParam.Type, Semantic = inputParam.Semantic })
+                {
+                    var result = fm.ShowDialog();
+                    if (result == DialogResult.OK)
+                    {
+                        inputParam.Name = fm.Name;
+                        inputParam.Type = fm.Type;
+                        inputParam.Semantic = fm.Semantic;
+                        GetGraphModel().InvokeMiscChange(true);
+                    }
+                    else if (result == DialogResult.No)
+                    {
+                        // we must disconnect before removing the item...
+                        if (inputParam.Output != null)
+                        {
+                            for (; ; )
+                            {
+                                var c = inputParam.Output.Connectors.FirstOrDefault();
+                                if (c == null) break;
+                                GetGraphModel().Disconnect(c);
+                            }
+                        }
+                        if (inputParam.Input != null)
+                        {
+                            for (; ; )
+                            {
+                                var c = inputParam.Input.Connectors.FirstOrDefault();
+                                if (c == null) break;
+                                GetGraphModel().Disconnect(c);
+                            }
+                        }
+                        inputParam.Node.RemoveItem(inputParam);
+                        GetGraphModel().InvokeMiscChange(true);
+                    }
+                }
+                return;
+            }
+
             // For input connectors, we can try to add a constant connection
             if (e.Connector == e.Connector.Item.Input)
             {
@@ -120,38 +164,6 @@ namespace NodeEditorCore
                         GetGraphModel().Connect(null, e.Connector, dialog.InputText);
 
                     GetGraphModel().InvokeMiscChange(true);
-                }
-            }
-
-            // for output connectors, we can customize an input parameter
-            if (e.Connector == e.Connector.Item.Output)
-            {
-                var inputParam = e.Connector.Item as ShaderFragmentInputParameterItem;
-                if (inputParam != null)
-                {
-                    using (var fm = new InputParameterForm() { Name = inputParam.Name, Type = inputParam.Type, Semantic = inputParam.Semantic })
-                    {
-                        var result = fm.ShowDialog();
-                        if (result == DialogResult.OK)
-                        {
-                            inputParam.Name = fm.Name;
-                            inputParam.Type = fm.Type;
-                            inputParam.Semantic = fm.Semantic;
-                            GetGraphModel().InvokeMiscChange(true);
-                        }
-                        else if (result == DialogResult.No)
-                        {
-                                // we must disconnect before removing the item...
-                            for (;;)
-                            {
-                                var c = inputParam.Output.Connectors.FirstOrDefault();
-                                if (c == null) break;
-                                GetGraphModel().Disconnect(c);
-                            }
-                            inputParam.Node.RemoveItem(inputParam);
-                            GetGraphModel().InvokeMiscChange(true);
-                        }
-                    }
                 }
             }
         }
@@ -285,16 +297,33 @@ namespace NodeEditorCore
         }
         private void OnCreateInputParameterNode(object sender, EventArgs e)
         {
-            using (var fm = new InputParameterForm(false) { Name = "Color", Type = "float4", Semantic = "" })
+            using (var fm = new InterfaceParameterForm(false) { Name = "Color", Type = "float4", Semantic = "" })
             {
                 var result = fm.ShowDialog();
                 if (result == DialogResult.OK)
                 {
-                    var n = NodeFactory.CreateEmptyInputParameterNode("Inputs");
+                    var n = NodeFactory.CreateInterfaceNode("Inputs", InterfaceDirection.In);
                     var tag = ((ToolStripMenuItem)sender).GetCurrentParent().Tag;
                     if (tag is System.Drawing.PointF)
                         n.Location = (System.Drawing.PointF)tag;
-                    n.AddItem(new ShaderFragmentInputParameterItem(fm.Name, fm.Type, fm.Semantic));
+                    n.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, fm.Semantic, InterfaceDirection.In));
+
+                    GetGraphModel().AddNode(n);
+                }
+            }
+        }
+        private void OnCreateOutputParameterNode(object sender, EventArgs e)
+        {
+            using (var fm = new InterfaceParameterForm(false) { Name = "Color", Type = "float4", Semantic = "" })
+            {
+                var result = fm.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    var n = NodeFactory.CreateInterfaceNode("Outputs", InterfaceDirection.Out);
+                    var tag = ((ToolStripMenuItem)sender).GetCurrentParent().Tag;
+                    if (tag is System.Drawing.PointF)
+                        n.Location = (System.Drawing.PointF)tag;
+                    n.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, fm.Semantic, InterfaceDirection.Out));
 
                     GetGraphModel().AddNode(n);
                 }

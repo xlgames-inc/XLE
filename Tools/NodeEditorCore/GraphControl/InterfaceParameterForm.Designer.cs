@@ -6,7 +6,7 @@
     
 namespace NodeEditorCore
 {
-    partial class InputParameterForm
+    partial class InterfaceParameterForm
     {
         /// <summary>
         /// Required designer variable.
@@ -34,7 +34,7 @@ namespace NodeEditorCore
         /// </summary>
         private void InitializeComponent()
         {
-            this._ctrl = new NodeEditorCore.InputParameterControl();
+            this._ctrl = new NodeEditorCore.InterfaceParameterControl();
             this._okButton = new System.Windows.Forms.Button();
             this._cancelButton = new System.Windows.Forms.Button();
             this._deleteButton = new System.Windows.Forms.Button();
@@ -107,7 +107,7 @@ namespace NodeEditorCore
 
         #endregion
 
-        private InputParameterControl _ctrl;
+        private InterfaceParameterControl _ctrl;
         private System.Windows.Forms.Button _okButton;
         private System.Windows.Forms.Button _cancelButton;
         private System.Windows.Forms.Button _deleteButton;

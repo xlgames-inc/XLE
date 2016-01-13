@@ -72,6 +72,16 @@ namespace ShaderPatcherLayer
             marshalString<E_UTF8>(connection->Name),
             marshalString<E_UTF8>(connection->Semantic));
     }
+
+    static ShaderPatcher::NodeConnection        ConvertToNative(OutputParameterConnection^ connection)
+    {
+            // note -- semantic lost!
+        return ShaderPatcher::NodeConnection(
+            ~0u, connection->InputNodeID,
+            marshalString<E_UTF8>(connection->Name),
+            marshalString<E_UTF8>(connection->InputParameterName),
+            ShaderPatcher::Type(marshalString<E_UTF8>(connection->Type)));
+    }
     
     ShaderPatcher::NodeGraph        NodeGraph::ConvertToNative(String^ name)
     {
@@ -83,6 +93,8 @@ namespace ShaderPatcherLayer
         for each(ConstantConnection^ c in ConstantConnections)
             res.Add(ShaderPatcherLayer::ConvertToNative(c));
         for each(InputParameterConnection^ c in InputParameterConnections)
+            res.Add(ShaderPatcherLayer::ConvertToNative(c));
+        for each(OutputParameterConnection^ c in OutputParameterConnections)
             res.Add(ShaderPatcherLayer::ConvertToNative(c));
         return res;
     }
@@ -99,7 +111,13 @@ namespace ShaderPatcherLayer
         try
         {
             auto nativeGraph = graph->ConvertToNative(name);
-            nativeGraph.AddDefaultOutputs();
+
+                // Only when there are no explicit outputs do we attach default outputs -- 
+                // The default outputs can get in the way, because sometimes when a function
+                // output is ignored, it ends up being considered a "default" output
+            if (graph->OutputParameterConnections->Count == 0)
+                nativeGraph.AddDefaultOutputs();
+
             ShaderPatcher::MainFunctionInterface interf(nativeGraph);
             return marshalString<E_UTF8>(
                     ShaderPatcher::GenerateShaderHeader(nativeGraph) 
@@ -243,11 +261,13 @@ namespace ShaderPatcherLayer
         
             sw->Write("// CompoundDocument:1"); sw->WriteLine();
 
-            auto shader = NodeGraph::GenerateShader(this, "main");
+            auto graphName = Path::GetFileNameWithoutExtension(filename);
+
+            auto shader = NodeGraph::GenerateShader(this, graphName);
             sw->Write(shader); 
 
             // embed the node graph in there, as well
-            sw->Write("/* <<Chunk:NodeGraph:main>>--("); sw->WriteLine();
+            sw->Write("/* <<Chunk:NodeGraph:" + graphName + ">>--("); sw->WriteLine();
             sw->Flush();
             SaveToXML(stream); sw->WriteLine();
             sw->Write(")-- */"); sw->WriteLine();
@@ -257,7 +277,7 @@ namespace ShaderPatcherLayer
             sw->Write("/* <<Chunk:TechniqueConfig:main>>--("); sw->WriteLine();
             sw->Write("~Inherit; Illum"); sw->WriteLine();
             sw->Write("~Deferred"); sw->WriteLine();
-            sw->Write("    PixelShader=<.>:main"); sw->WriteLine();
+            sw->Write("    PixelShader=<.>:" + graphName); sw->WriteLine();
             sw->Write(")--*/"); sw->WriteLine();
             sw->WriteLine();
             sw->Flush();

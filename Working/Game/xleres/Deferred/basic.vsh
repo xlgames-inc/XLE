@@ -54,6 +54,10 @@ VSOutput main(VSInput input)
 
 	output.position = mul(WorldToClip, float4(worldPosition,1));
 
+	#if OUTPUT_WORLD_POSITION==1
+		output.worldPosition = worldPosition;
+	#endif
+
 	#if OUTPUT_LOCAL_TANGENT_FRAME==1
 		output.localTangent = VSIn_GetLocalTangent(input);
 		output.localBitangent = VSIn_GetLocalBitangent(input);

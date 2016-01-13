@@ -64,17 +64,17 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GraphControl\GraphControl.cs" />
-    <Compile Include="GraphControl\InputParameterControl.cs">
+    <Compile Include="GraphControl\InterfaceParameterControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="GraphControl\InputParameterControl.Designer.cs">
-      <DependentUpon>InputParameterControl.cs</DependentUpon>
+    <Compile Include="GraphControl\InterfaceParameterControl.Designer.cs">
+      <DependentUpon>InterfaceParameterControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="GraphControl\InputParameterForm.cs">
+    <Compile Include="GraphControl\InterfaceParameterForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="GraphControl\InputParameterForm.Designer.cs">
-      <DependentUpon>InputParameterForm.cs</DependentUpon>
+    <Compile Include="GraphControl\InterfaceParameterForm.Designer.cs">
+      <DependentUpon>InterfaceParameterForm.cs</DependentUpon>
     </Compile>
     <Compile Include="GraphControl\ModelConversion.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -114,11 +114,11 @@
     <None Include="Resources\icon_paper.png" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="GraphControl\InputParameterControl.resx">
-      <DependentUpon>InputParameterControl.cs</DependentUpon>
+    <EmbeddedResource Include="GraphControl\InterfaceParameterControl.resx">
+      <DependentUpon>InterfaceParameterControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="GraphControl\InputParameterForm.resx">
-      <DependentUpon>InputParameterForm.cs</DependentUpon>
+    <EmbeddedResource Include="GraphControl\InterfaceParameterForm.resx">
+      <DependentUpon>InterfaceParameterForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

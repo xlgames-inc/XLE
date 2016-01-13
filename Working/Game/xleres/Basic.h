@@ -37,7 +37,14 @@ float Multiply1(float lhs, float rhs)                { return lhs * rhs; }
 float Add1(float lhs, float rhs)            { return lhs + rhs; }
 float Subtract1(float lhs, float rhs)       { return lhs - rhs; }
 float Divide1(float lhs, float rhs)         { return lhs / rhs; }
-float Round1(float lhs, float multipleOf)   { return round(lhs / multipleOf) * multipleOf; }
+float Round1(float value)         { return round(value); }
+float RoundToMultiple1(float lhs, float multipleOf)   { return round(lhs / multipleOf) * multipleOf; }
+float Power1(float base, float exponent)    { return pow(base, exponent); }
+
+float3 Add3(float3 lhs, float3 rhs)            { return lhs + rhs; }
+float3 Subtract3(float3 lhs, float3 rhs)       { return lhs - rhs; }
+float3 Divide3(float3 lhs, float3 rhs)         { return lhs / rhs; }
+float3 Round3(float3 values)                   { return round(values); }
 
 float4 SplitAlpha(float3 inputColour, float inputAlpha)     { return float4(inputColour, inputAlpha); }
 
@@ -53,9 +60,14 @@ float3 Negate3(float3 input) { return -input; }
 
 float Lerp(float min, float max, float alpha) { return lerp(min, max, alpha); }
 
-void Separate3(float3 input, out float x, out float y, out float z)
-{
-    x = input.x; y = input.y; z = input.z;
-}
+void Separate3(float3 input, out float r, out float g, out float b) { r = input.r; g = input.g; b = input.b; }
+void Combine3(float r, float g, float b, out float3 result) { result = float3(r, g, b); }
+
+float Cosine1(float x) { return cos(x); }
+float Sine1(float x) { return sin(x); }
+float Tangent1(float x) { return tan(x); }
+
+float3 Mix3(float3 lhs, float3 rhs, float factor) { return lerp(lhs, rhs, factor); }
+float Mix1(float lhs, float rhs, float factor) { return lerp(lhs, rhs, factor); }
 
 #endif

@@ -74,6 +74,18 @@ namespace ShaderPatcherLayer
         [DataMember] int           VisualNodeId;
 	};
 
+    	///////////////////////////////////////////////////////////////
+	[DataContract] public ref class OutputParameterConnection
+	{
+	public:
+        [DataMember] UInt32        InputNodeID;
+        [DataMember] String^       InputParameterName;
+		[DataMember] String^       Type;
+        [DataMember] String^       Name;
+		[DataMember] String^       Semantic;
+        [DataMember] int           VisualNodeId;
+	};
+
         ///////////////////////////////////////////////////////////////
     [DataContract] public ref class VisualNode
     {
@@ -116,6 +128,11 @@ namespace ShaderPatcherLayer
             List<InputParameterConnection^>^ get() { if (!_inputParameterConnections) { _inputParameterConnections = gcnew List<InputParameterConnection^>(); } return _inputParameterConnections; }
         }
 
+        [DataMember] property List<OutputParameterConnection^>^ OutputParameterConnections
+        {
+            List<OutputParameterConnection^>^ get() { if (!_outputParameterConnections) { _outputParameterConnections = gcnew List<OutputParameterConnection^>(); } return _outputParameterConnections; }
+        }
+
         [DataMember] property List<VisualNode^>^ VisualNodes
         {
             List<VisualNode^>^ get() { if (!_visualNodes) { _visualNodes = gcnew List<VisualNode^>(); } return _visualNodes; }
@@ -141,12 +158,13 @@ namespace ShaderPatcherLayer
         void                Save(String^ filename);
 
     private:
-        List<Node^>^                    _nodes;
-        List<NodeConnection^>^          _connections;
-        List<ConstantConnection^>^      _constantConnections;
-        List<InputParameterConnection^>^_inputParameterConnections;
-        List<VisualNode^>^              _visualNodes;
-        List<PreviewSettings^>^         _previewSettings;
+        List<Node^>^                        _nodes;
+        List<NodeConnection^>^              _connections;
+        List<ConstantConnection^>^          _constantConnections;
+        List<InputParameterConnection^>^    _inputParameterConnections;
+        List<OutputParameterConnection^>^   _outputParameterConnections;
+        List<VisualNode^>^                  _visualNodes;
+        List<PreviewSettings^>^             _previewSettings;
     };
 
 }

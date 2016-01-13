@@ -177,13 +177,16 @@ namespace MaterialTool
 
         public void Activate(Control control)
         {
-            // AdaptableControl adaptableControl = (AdaptableControl)control;
-            // var context = adaptableControl.ContextAs<CircuitEditingContext>();
-            // m_contextRegistry.ActiveContext = context;
-            // 
-            // CircuitDocument circuitDocument = context.As<CircuitDocument>();
-            // if (circuitDocument != null)
-            //     m_documentRegistry.ActiveDocument = circuitDocument;
+            AdaptableControl adaptableControl = (AdaptableControl)control;
+            var context = adaptableControl.ContextAs<DiagramEditingContext>();
+            if (context != null)
+            {
+                m_contextRegistry.ActiveContext = context;
+
+                var circuitDocument = context.As<DiagramDocument>();
+                if (circuitDocument != null)
+                    m_documentRegistry.ActiveDocument = circuitDocument;
+            }
         }
 
         public void Deactivate(Control control) {}

@@ -159,7 +159,7 @@ namespace RenderCore { namespace Assets
         ::Serialize(serializer, _matParams);
         ::Serialize(serializer, _stateSet.GetHash());
         ::Serialize(serializer, _constants);
-		serializer.SerializeRaw<const ::Assets::ResChar(&)[16]>(_techniqueConfig);
+		serializer.SerializeRaw<const ::Assets::ResChar(&)[dimof(_techniqueConfig)]>(_techniqueConfig);
     }
 
 }}

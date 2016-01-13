@@ -15,11 +15,11 @@ using System.Windows.Forms;
 
 namespace NodeEditorCore
 {
-    public partial class InputParameterControl : UserControl
+    public partial class InterfaceParameterControl : UserControl
     {
-        enum KnownBaseTypes { @float, @int, @uint, Texture2D };
+        enum KnownBaseTypes { Auto, @float, @int, @uint, Texture2D };
 
-        public InputParameterControl()
+        public InterfaceParameterControl()
         {
             InitializeComponent();
 
@@ -50,7 +50,12 @@ namespace NodeEditorCore
                 // We actually understand only a small range of typenames: 
                 //  "float\d?" or "int\d?" or "uint\d?" or "Texture2D"
                 // Maybe Texture2D<??> could be useful...?
-                if (_type == "Texture2D")
+                if (string.IsNullOrEmpty(_type))
+                {
+                    _typeBaseBox.SelectedIndex = (int)KnownBaseTypes.Auto;
+                    _typeDimension0Box.Enabled = false;
+                }
+                else if (_type == "Texture2D")
                 {
                     _typeBaseBox.SelectedIndex = (int)KnownBaseTypes.Texture2D;
                     _typeDimension0Box.Enabled = false;
@@ -70,7 +75,12 @@ namespace NodeEditorCore
         private void _typeBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             KnownBaseTypes t = (KnownBaseTypes)_typeBaseBox.SelectedIndex;
-            if (t == KnownBaseTypes.Texture2D)
+            if (t == KnownBaseTypes.Auto)
+            {
+                _typeDimension0Box.Enabled = false;
+                _type = string.Empty;
+            } 
+            else if (t == KnownBaseTypes.Texture2D)
             {
                 _typeDimension0Box.Enabled = false;
                 _type = t.ToString();
