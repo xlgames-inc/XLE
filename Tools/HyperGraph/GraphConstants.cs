@@ -43,6 +43,7 @@ namespace HyperGraph
         public const int ConnectorWidthCollapsed= 8;
 		public const int HorizontalSpacing		= 8;
         public const int NodeExtraWidth         = GraphConstants.HorizontalSpacing * 2;
+        public const float ConnectionWidth      = 4.0f;
 
         public const TextFormatFlags TitleTextFlags =       TextFormatFlags.ExternalLeading |
 															TextFormatFlags.GlyphOverhangPadding |

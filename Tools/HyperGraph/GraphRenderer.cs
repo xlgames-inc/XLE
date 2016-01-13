@@ -106,7 +106,6 @@ namespace HyperGraph
 		}
 
 		internal static Pen BorderPen = new Pen(Color.FromArgb(200, 200, 200));
-        internal static Brush CompatibleBrush = new SolidBrush(Color.FromArgb(255, 196, 196));
 
         internal static Brush DraggingBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
                                                             Color.FromArgb(140, 120, 120),  Color.FromArgb(96, 96, 96));
@@ -158,17 +157,7 @@ namespace HyperGraph
 
                     graphics.FillPath(((state & RenderState.Hover)!=0) ? HoverBrush : NormalBrush , path);
                     graphics.DrawPath(BorderPen, path);
-                    graphics.FillRectangle(brush, statusRect);
-
-                    if ((state & (RenderState.Compatible | RenderState.Conversion | RenderState.Dragging)) == RenderState.Compatible)
-                    {
-                        graphics.FillRectangle(CompatibleBrush, statusRect);
-                        graphics.DrawRectangle(BorderPen, statusRect);
-                    }
-                    else
-                    {
-                        graphics.FillRectangle(brush, statusRect);
-                    }
+                    graphics.FillEllipse(brush, statusRect);
 
                     if (connector!=null)
                     {
@@ -188,10 +177,16 @@ namespace HyperGraph
             return result;
         }
 
-        private static PointF ConnectorInterfacePoint(RectangleF bounds, ConnectorType type)
+        private static PointF ConnectorInterfacePoint(NodeConnector connector)
         {
+            if (connector == null) return new PointF(0.0f, 0.0f);
+
+            RectangleF bounds;
+            if (connector.Node.Collapsed) bounds = (connector.ElementType == ElementType.InputConnector) ? connector.Node.inputBounds : connector.Node.outputBounds;
+            else bounds = connector.bounds;
+
             float width = bounds.Bottom - bounds.Top - 8;
-            if (type == ConnectorType.Input) {
+            if (connector.ElementType == ElementType.InputConnector) {
                 return new PointF(bounds.Left + width / 2.0f + 4.0f, (bounds.Top + bounds.Bottom) / 2.0f);
             } else {
                 return new PointF(bounds.Right - width / 2.0f + 4.0f, (bounds.Top + bounds.Bottom) / 2.0f);
@@ -489,17 +484,8 @@ namespace HyperGraph
 					var to		= connection.To;
 					var from	= connection.From;
 
-                    RectangleF toBounds;
-                    RectangleF fromBounds;
-                    if (to == null) toBounds = new RectangleF(0.0f, 0.0f, 0.0f, 0.0f);
-                    else if (to.Node.Collapsed) toBounds = to.Node.inputBounds;
-                    else toBounds = to.bounds;
-                    if (from == null) fromBounds = new RectangleF(0.0f, 0.0f, 0.0f, 0.0f);
-                    else if (from.Node.Collapsed) fromBounds = from.Node.outputBounds;
-                    else fromBounds = from.bounds;
-
-                    var pt1 = ConnectorInterfacePoint(fromBounds, ConnectorType.Output);
-                    var pt2 = ConnectorInterfacePoint(toBounds, ConnectorType.Input);
+                    var pt1 = ConnectorInterfacePoint(from);
+                    var pt2 = ConnectorInterfacePoint(to);
 
                     if (to != null && from != null)
                     {
@@ -573,17 +559,8 @@ namespace HyperGraph
 
 		public static Region GetConnectionRegion(NodeConnection connection)
 		{
-			var to		= connection.To;
-			var from	= connection.From;
-			RectangleF toBounds;
-			RectangleF fromBounds;
-			if (to.Node.Collapsed)		toBounds = to.Node.inputBounds;
-			else						toBounds = to.bounds;
-			if (from.Node.Collapsed)	fromBounds = from.Node.outputBounds;
-			else						fromBounds = from.bounds;
-
-            var pt1 = ConnectorInterfacePoint(fromBounds, ConnectorType.Output);
-            var pt2 = ConnectorInterfacePoint(toBounds, ConnectorType.Input);
+            var pt1 = ConnectorInterfacePoint(connection.From);
+            var pt2 = ConnectorInterfacePoint(connection.To);
 
             Region region;
 			float centerX;
@@ -605,9 +582,9 @@ namespace HyperGraph
 				} else
                 if ((state & RenderState.Conversion) != 0)
                 {
-                    return Color.BurlyWood;
-                }
-				if ((state & RenderState.Compatible) != 0)
+                    return Color.LemonChiffon;
+                } else 
+                if ((state & RenderState.Compatible) != 0)
 				{
 					return Color.LemonChiffon;
 				} else
@@ -619,13 +596,12 @@ namespace HyperGraph
 			} else
 			if ((state & RenderState.Compatible) != 0)
 			{
-				return Color.White;
+                return Color.ForestGreen;
 			} else
             if ((state & RenderState.Conversion) != 0)
             {
-                return Color.ForestGreen;
-            }
-            else
+                return Color.LightSkyBlue;
+            } else
 			if ((state & RenderState.Connected) != 0)
 			{
                 return Color.SteelBlue;
@@ -644,12 +620,12 @@ namespace HyperGraph
 		static List<PointF> GetArrowLinePoints(float x1, float y1, float x2, float y2, out float centerX, out float centerY, float extra_thickness = 0)
         {
             var widthX = (x2 - x1);
-            var lengthX = Math.Max(60, Math.Abs(widthX / 2))
+            var lengthX = Math.Max(30, Math.Abs(widthX / 2))
                 //+ Math.Max(0, -widthX / 2)
                 ;
             var lengthY = 0;// Math.Max(-170, Math.Min(-120.0f, widthX - 120.0f)) + 120.0f; 
-            if (widthX < 120)
-                lengthX = 60;
+            // if (widthX < 120)
+            //     lengthX = 60;
             var yB = ((y1 + y2) / 2) + lengthY;// (y2 + ((y1 - y2) / 2) * 0.75f) + lengthY;
             var yC = y2 + yB;
             var xC = (x1 + x2) / 2;
@@ -673,12 +649,12 @@ namespace HyperGraph
             var t = 1.0f;//Math.Min(1, Math.Max(0, (widthX - 30) / 60.0f));
             var yA = (yB * t) + (yC * (1 - t));
 
-            if (widthX <= 120)
-            {
-                points.Insert(2, new PointF(xB, yA));
-                points.Insert(2, new PointF(xC, yA));
-                points.Insert(2, new PointF(xA, yA));
-            }
+            // if (widthX <= 120)
+            // {
+            //     points.Insert(2, new PointF(xB, yA));
+            //     points.Insert(2, new PointF(xC, yA));
+            //     points.Insert(2, new PointF(xA, yA));
+            // }
             //*
             using (var tempPath = new GraphicsPath())
             {
@@ -714,8 +690,8 @@ namespace HyperGraph
             }
 
             float midLength = (totalLength / 2.0f);// * 0.75f;
-            float startWidth = extra_thickness + 6.0f;
-            float endWidth = extra_thickness + 6.0f;
+            float startWidth = extra_thickness + GraphConstants.ConnectionWidth;
+            float endWidth = extra_thickness + GraphConstants.ConnectionWidth;
             float currentLength = 0;
             var newPoints = new List<PointF>();
 
@@ -797,11 +773,7 @@ namespace HyperGraph
 				output == null)
 				return;
 			
-			RectangleF outputBounds;
-			if (output.Node.Collapsed)	outputBounds = output.Node.outputBounds;
-			else						outputBounds = output.bounds;
-
-            var interfacePoint = ConnectorInterfacePoint(outputBounds, ConnectorType.Output);
+            var interfacePoint = ConnectorInterfacePoint(output);
 			
 			float centerX;
 			float centerY;
@@ -821,11 +793,7 @@ namespace HyperGraph
 				input == null)
 				return;
 			
-			RectangleF inputBounds;
-			if (input.Node.Collapsed)	inputBounds = input.Node.inputBounds;
-			else						inputBounds = input.bounds;
-
-            var interfacePoint = ConnectorInterfacePoint(inputBounds, ConnectorType.Input);
+            var interfacePoint = ConnectorInterfacePoint(input);
 
 			float centerX;
 			float centerY;
