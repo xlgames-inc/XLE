@@ -118,8 +118,8 @@ namespace ShaderPatcher
         ConstantConnection& operator=(ConstantConnection&& moveFrom) never_throws;
 
         #if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
-			NodeConstantConnection(const NodeConstantConnection&) = default;
-			NodeConstantConnection& operator=(const NodeConstantConnection&) = default;
+			ConstantConnection(const ConstantConnection&) = default;
+			ConstantConnection& operator=(const ConstantConnection&) = default;
 		#endif
 
         const std::string&  Value() const               { return _value; }
