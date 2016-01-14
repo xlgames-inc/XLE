@@ -49,7 +49,7 @@ namespace MaterialTool
             return result;
         }
 
-        public IEnumerable< KeyValuePair<DiagramDocument, Pair<Control, ControlInfo>>> CircuitNodeControls
+        public IEnumerable< KeyValuePair<DiagramDocument, Pair<Control, ControlInfo>>> DiagramControls
         {
             get { return _controls; }
         }

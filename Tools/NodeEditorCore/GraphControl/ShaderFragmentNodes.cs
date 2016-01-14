@@ -325,6 +325,14 @@ namespace NodeEditorCore
             {
                 string fromType = (string)from.Item.Tag;
                 string toType = (string)to.Item.Tag;
+
+                    // we use "auto" when we want one end to match whatever is on the other end.
+                    // so, "auto" can match to anything -- except another auto. Auto to auto is always incompatible.
+                bool fromAuto = fromType.Equals("auto", StringComparison.CurrentCultureIgnoreCase);
+                bool toAuto = toType.Equals("auto", StringComparison.CurrentCultureIgnoreCase);
+                if (fromAuto || toAuto)
+                    return (fromAuto && toAuto) ? HyperGraph.Compatibility.ConnectionType.Incompatible : HyperGraph.Compatibility.ConnectionType.Compatible;
+
                 if (fromType.Equals(toType, StringComparison.CurrentCultureIgnoreCase))
                 {
                     return HyperGraph.Compatibility.ConnectionType.Compatible;

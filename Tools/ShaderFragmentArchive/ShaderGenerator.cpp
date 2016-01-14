@@ -251,8 +251,7 @@ namespace ShaderPatcherLayer
         using namespace System::IO;
 
         StreamWriter^ sw = nullptr;
-        auto fileMode = File::Exists(filename) ? FileMode::Truncate : FileMode::OpenOrCreate;
-        auto stream = gcnew FileStream(filename, fileMode);
+        auto stream = gcnew MemoryStream();
         try
         {
             // note --  shader compiler doesn't support the UTF8 BOM properly.
@@ -281,6 +280,21 @@ namespace ShaderPatcherLayer
             sw->Write(")--*/"); sw->WriteLine();
             sw->WriteLine();
             sw->Flush();
+
+                // If we wrote to the memory stream successfully, we can write to disk -- 
+                // maybe we could alternatively write to a temporary file in the same directory,
+                // and then move the new file over the top...?
+            auto fileMode = File::Exists(filename) ? FileMode::Truncate : FileMode::OpenOrCreate;
+            auto fileStream = gcnew FileStream(filename, fileMode);
+            try
+            {
+                stream->WriteTo(fileStream);
+                fileStream->Flush();
+            }
+            finally
+            {
+                delete fileStream;
+            }
         }
         finally
         {

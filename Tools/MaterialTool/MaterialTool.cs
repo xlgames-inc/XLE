@@ -154,8 +154,11 @@ namespace MaterialTool
 
         public void Show(IDocument document)
         {
-            // var viewingContext = document.Cast<ViewingContext>();
-            // m_controlHostService.Show(viewingContext.Control);
+            // Our viewing context is independent of the document... we would need to search through all of the
+            // controls to find one that is open to this document...?
+            var ctrl = _controlRegistry.DiagramControls.Where(x => x.Key == document).FirstOrDefault();
+            if (ctrl.Key == document)
+                m_controlHostService.Show(ctrl.Value.First);
         }
 
         public void Save(IDocument document, Uri uri)

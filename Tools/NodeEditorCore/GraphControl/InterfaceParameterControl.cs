@@ -17,7 +17,7 @@ namespace NodeEditorCore
 {
     public partial class InterfaceParameterControl : UserControl
     {
-        enum KnownBaseTypes { Auto, @float, @int, @uint, Texture2D };
+        enum KnownBaseTypes { auto, @float, @int, @uint, Texture2D };
 
         public InterfaceParameterControl()
         {
@@ -52,7 +52,7 @@ namespace NodeEditorCore
                 // Maybe Texture2D<??> could be useful...?
                 if (string.IsNullOrEmpty(_type))
                 {
-                    _typeBaseBox.SelectedIndex = (int)KnownBaseTypes.Auto;
+                    _typeBaseBox.SelectedIndex = (int)KnownBaseTypes.auto;
                     _typeDimension0Box.Enabled = false;
                 }
                 else if (_type == "Texture2D")
@@ -75,10 +75,10 @@ namespace NodeEditorCore
         private void _typeBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             KnownBaseTypes t = (KnownBaseTypes)_typeBaseBox.SelectedIndex;
-            if (t == KnownBaseTypes.Auto)
+            if (t == KnownBaseTypes.auto)
             {
                 _typeDimension0Box.Enabled = false;
-                _type = string.Empty;
+                _type = "auto";
             } 
             else if (t == KnownBaseTypes.Texture2D)
             {

@@ -926,9 +926,29 @@ namespace ShaderPatcher
             auto* destinationNode = graph.GetNode(c.OutputNodeId());
             if (!destinationNode) {
                 auto type = c.InputType()._name;
+
+                if (type.empty() || XlEqStringI(MakeStringSection(type), "auto")) {
+                        // auto types must match whatever is on the other end.
+                    auto* srcNode = graph.GetNode(c.InputNodeId());
+                    if (srcNode) {
+                        auto sig = LoadFunctionSignature(SplitArchiveName(srcNode->ArchiveName()));
+                        if (c.InputParameterName() == s_resultName && HasResultValue(sig))
+                            type = sig._returnType;
+
+                        auto p = std::find_if(sig._parameters.cbegin(), sig._parameters.cend(), 
+                            [&c](const ShaderSourceParser::FunctionSignature::Parameter&p)
+                                { return p._name == c.InputParameterName(); });
+                        if (p!=sig._parameters.end()) {
+                            assert(p->_direction & ShaderSourceParser::FunctionSignature::Parameter::Out);
+                            type = p->_type;
+                        }
+                    }
+                }
+
                 StringMeld<64> semantic;
 				if (!IsStructType(MakeStringSection(type)))
 					semantic << "SV_Target" << svTargetIndex++;
+
                 auto finalName = UniquifyName(c.OutputParameterName(), nameMap);
                 _outputParameters.emplace_back(MainFunctionParameter(type, finalName, std::string(semantic)));
                 _outputParameterNames.insert(LowerBound(_outputParameterNames, (const NodeBaseConnection*)&c), std::make_pair(&c, finalName));
@@ -956,7 +976,7 @@ namespace ShaderPatcher
 		    // also have the same type and semantic (otherwise we would need to adjust
 		    // the name to avoid conflicts).
 		    if (existing->_type != param._type || existing->_semantic != param._semantic)
-			    Throw(::Exceptions::BasicLabel("Main function parameters with the same name, but different types/semantics (%s)", param._name));
+			    Throw(::Exceptions::BasicLabel("Main function parameters with the same name, but different types/semantics (%s)", param._name.c_str()));
 	    } else {
 		    dst.emplace_back(std::move(param));
 	    }
@@ -1036,11 +1056,13 @@ namespace ShaderPatcher
                     // at the moment, it will always be an input parameter
                 auto sig = LoadFunctionSignature(SplitArchiveName(destinationNode->ArchiveName()));
                 auto p = std::find_if(sig._parameters.cbegin(), sig._parameters.cend(), 
-                    [=](const ShaderSourceParser::FunctionSignature::Parameter&p)
+                    [&i](const ShaderSourceParser::FunctionSignature::Parameter&p)
                         { return p._name == i.OutputParameterName(); });
 
-                if (p!=sig._parameters.end())
+                if (p!=sig._parameters.end()) {
+                    assert(p->_direction & ShaderSourceParser::FunctionSignature::Parameter::In);
                     AddWithExistingCheck(_inputParameters, MainFunctionParameter(p->_type, matchResult[1], p->_type, p->_semantic));
+                }
             }
         }
 
@@ -1058,10 +1080,26 @@ namespace ShaderPatcher
                 }
             }
 
+            auto type = i.InputType()._name;
+            if (type.empty() || XlEqStringI(MakeStringSection(type), "auto")) {
+                // auto types must match whatever is on the other end.
+                auto* destinationNode = graph.GetNode(i.OutputNodeId());
+                if (destinationNode) {
+                    auto sig = LoadFunctionSignature(SplitArchiveName(destinationNode->ArchiveName()));
+                    auto p = std::find_if(sig._parameters.cbegin(), sig._parameters.cend(), 
+                        [=](const ShaderSourceParser::FunctionSignature::Parameter&p)
+                            { return p._name == i.OutputParameterName(); });
+                    if (p!=sig._parameters.end()) {
+                        assert(p->_direction & ShaderSourceParser::FunctionSignature::Parameter::In);
+                        type = p->_type;
+                    }
+                }
+            }
+
             if (isInputParam) {
-                AddWithExistingCheck(_inputParameters, MainFunctionParameter(i.InputType()._name, name, std::string(), i.InputSemantic()));
+                AddWithExistingCheck(_inputParameters, MainFunctionParameter(type, name, std::string(), i.InputSemantic()));
             } else {
-                AddWithExistingCheck(_globalParameters, MainFunctionParameter(i.InputType()._name, name, std::string()));
+                AddWithExistingCheck(_globalParameters, MainFunctionParameter(type, name, std::string()));
             }
         }
 
@@ -1082,7 +1120,7 @@ namespace ShaderPatcher
 
             auto* destinationNode = graph.GetNode(i.OutputNodeId());
             if (!destinationNode) {
-                result << "\t" << interf.GetOutputParameterName(i) << " = "; // todo -- problem here mapping to renaming than occurs in GetMainFunctionOutputParameters!
+                result << "\t" << interf.GetOutputParameterName(i) << " = ";
             } else if (destinationNode->GetType() == Node::Type::Output) {
                 result << "\t" << "OUT_" << destinationNode->NodeId() << "." << i.OutputParameterName() << " = ";
                 outputType = TypeFromParameterStructFragment(destinationNode->ArchiveName(), i.OutputParameterName());
