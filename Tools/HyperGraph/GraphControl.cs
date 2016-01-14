@@ -461,10 +461,7 @@ namespace HyperGraph
 		#region Picking
 		static NodeConnector FindInputConnectorAt(Node node, PointF location)
 		{
-			if (/*node.itemsBounds == null ||*/ node.Collapsed)
-				return null;
-
-			foreach (var inputConnector in node.inputConnectors)
+			foreach (var inputConnector in node.InputConnectors)
 			{
 				if (inputConnector.bounds.IsEmpty)
 					continue;
@@ -477,10 +474,7 @@ namespace HyperGraph
 
         static NodeConnector FindOutputConnectorAt(Node node, PointF location)
 		{
-			if (/*node.itemsBounds == null ||*/ node.Collapsed)
-				return null;
-
-			foreach (var outputConnector in node.outputConnectors)
+			foreach (var outputConnector in node.OutputConnectors)
 			{
 				if (outputConnector.bounds.IsEmpty)
 					continue;
@@ -505,9 +499,12 @@ namespace HyperGraph
 
 				if (node.bounds.Contains(location))
 				{
-					var item = FindNodeItemAt(node, location);
-					if (item != null && (acceptElement == null || acceptElement(item)))
-						return item;
+                    if (!node.Collapsed)
+                    {
+                        var item = FindNodeItemAt(node, location);
+                        if (item != null && (acceptElement == null || acceptElement(item)))
+                            return item;
+                    }
 					if (acceptElement == null || acceptElement(node))
 						return node;
 					else
@@ -519,7 +516,7 @@ namespace HyperGraph
 			var foundConnections	= new List<NodeConnection>();
             foreach (var node in model.Nodes)
 			{
-				foreach (var connection in node.connections)
+				foreach (var connection in node.Connections)
 				{
 					if (skipConnections.Add(connection)) // if we can add it, we haven't checked it yet
 					{
@@ -847,7 +844,7 @@ namespace HyperGraph
                                 foreach (Node graphNode in _model.Nodes)
 								{
 									// Check compatibility of node connectors
-									foreach (NodeConnector connectorTo in graphNode.outputConnectors)
+									foreach (NodeConnector connectorTo in graphNode.OutputConnectors)
 									{
                                         var connectionType = _model.CompatibilityStrategy.CanConnect(connectorFrom, connectorTo);
                                         if (connectionType == HyperGraph.Compatibility.ConnectionType.Compatible)
@@ -870,7 +867,7 @@ namespace HyperGraph
                                 foreach (Node graphNode in _model.Nodes)
 								{
 									// Check compatibility of node connectors
-									foreach (NodeConnector connectorTo in graphNode.inputConnectors)
+									foreach (NodeConnector connectorTo in graphNode.InputConnectors)
 									{
                                         var connectionType = _model.CompatibilityStrategy.CanConnect(connectorFrom, connectorTo);
                                         if (connectionType == HyperGraph.Compatibility.ConnectionType.Compatible)
@@ -1167,13 +1164,14 @@ namespace HyperGraph
 								var dragConnector = DragElement as NodeConnector;
 								if (dragConnector == null)
 									break;
-								
-								if (node.outputConnectors.Count == 1)
+
+                                var outputConnectors = node.OutputConnectors.ToList();
+								if (outputConnectors.Count == 1)
 								{
 									// Check if this connection would be allowed.
-                                    if (_model.ConnectionIsAllowed(dragConnector, node.outputConnectors[0]))
+                                    if (_model.ConnectionIsAllowed(dragConnector, outputConnectors[0]))
 									{
-										element = node.outputConnectors[0];
+										element = outputConnectors[0];
 										goto case ElementType.OutputConnector;
 									}
 								}
@@ -1186,12 +1184,13 @@ namespace HyperGraph
 								if (dragConnector == null)
 									break;
 
-								if (node.inputConnectors.Count == 1)
+                                var inputConnectors = node.InputConnectors.ToList();
+                                if (inputConnectors.Count == 1)
 								{
 									// Check if this connection would be allowed.
-                                    if (_model.ConnectionIsAllowed(dragConnector, node.inputConnectors[0]))
+                                    if (_model.ConnectionIsAllowed(dragConnector, inputConnectors[0]))
 									{
-										element = node.inputConnectors[0];
+										element = inputConnectors[0];
 										goto case ElementType.InputConnector;
 									}
 								}
@@ -1441,10 +1440,10 @@ namespace HyperGraph
 					// Remove all highlight flags
                     foreach (Node graphNode in _model.Nodes)
 					{
-						foreach (NodeConnector inputConnector in graphNode.inputConnectors)
+						foreach (NodeConnector inputConnector in graphNode.InputConnectors)
                             SetFlag(inputConnector, RenderState.Compatible | RenderState.Incompatible | RenderState.Conversion, false);
 
-						foreach (NodeConnector outputConnector in graphNode.outputConnectors)
+						foreach (NodeConnector outputConnector in graphNode.OutputConnectors)
                             SetFlag(outputConnector, RenderState.Compatible | RenderState.Incompatible | RenderState.Conversion, false);
 					}
 				}

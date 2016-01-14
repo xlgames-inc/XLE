@@ -119,8 +119,15 @@ namespace HyperGraph
 
         enum ConnectorType { Input, Output };
 
-		static void RenderConnector(Graphics graphics, RectangleF bounds, RenderState state, ConnectorType type, NodeConnector connector=null)
+		static void RenderConnector(Graphics graphics, RectangleF bounds, RenderState state, ConnectorType type, NodeConnector connector=null, bool collapsed=false)
 		{
+            if (collapsed)
+            {
+                using (var brush = new SolidBrush(GetArrowLineColor(state)))
+                    graphics.FillEllipse(brush, bounds);
+                return;
+            }
+
             var cornerSize = GraphConstants.ConnectorCornerSize;
 
 			using (var brush = new SolidBrush(GetArrowLineColor(state)))
@@ -182,8 +189,13 @@ namespace HyperGraph
             if (connector == null) return new PointF(0.0f, 0.0f);
 
             RectangleF bounds;
-            if (connector.Node.Collapsed) bounds = (connector.ElementType == ElementType.InputConnector) ? connector.Node.inputBounds : connector.Node.outputBounds;
-            else bounds = connector.bounds;
+            if (connector.Node.Collapsed)
+            {
+                return new PointF(
+                    (connector.bounds.Left + connector.bounds.Right) * 0.5f,
+                    (connector.bounds.Top + connector.bounds.Bottom) * 0.5f);
+            } else
+                bounds = connector.bounds;
 
             float width = bounds.Bottom - bounds.Top - 8;
             if (connector.ElementType == ElementType.InputConnector) {
@@ -224,7 +236,29 @@ namespace HyperGraph
 			}
 		}
 
-		public static void PerformLayout(Graphics graphics, Node node)
+        private static RectangleF CollapsedInputConnector(RectangleF nodeBounds, uint index, uint count)
+        {
+            var center = new PointF(nodeBounds.Left, (nodeBounds.Top + nodeBounds.Bottom) / 2.0f);
+            float arcRadiusY = (nodeBounds.Bottom - nodeBounds.Top) / 2.0f;
+            float arcRadiusX = 0.5f * arcRadiusY;
+            double angle = (index+.5f) / (double)count * Math.PI;
+            center = new PointF(center.X - arcRadiusX * (float)Math.Sin(angle), center.Y - arcRadiusY * (float)Math.Cos(angle));
+            float radius = 4.0f;
+            return new RectangleF(center.X - radius, center.Y - radius, 2.0f * radius, 2.0f * radius);
+        }
+
+        private static RectangleF CollapsedOutputConnector(RectangleF nodeBounds, uint index, uint count)
+        {
+            var center = new PointF(nodeBounds.Right, (nodeBounds.Top + nodeBounds.Bottom) / 2.0f);
+            float arcRadiusY = (nodeBounds.Bottom - nodeBounds.Top) / 2.0f;
+            float arcRadiusX = 0.5f * arcRadiusY;
+            double angle = (index+0.5f) / (double)count * Math.PI;
+            center = new PointF(center.X + arcRadiusX * (float)Math.Sin(angle), center.Y - arcRadiusY * (float)Math.Cos(angle));
+            float radius = 4.0f;
+            return new RectangleF(center.X - radius, center.Y - radius, 2.0f * radius, 2.0f * radius);
+        }
+
+        public static void PerformLayout(Graphics graphics, Node node)
 		{
 			if (node == null)
 				return;
@@ -239,44 +273,36 @@ namespace HyperGraph
             var right = position.X + size.BaseSize.Width;
             var bottom = position.Y + size.BaseSize.Height;
 			
-			node.inputConnectors.Clear();
-			node.outputConnectors.Clear();
-			//node.connections.Clear();
-
 			var itemPosition = position;
 			itemPosition.X += (int)GraphConstants.HorizontalSpacing;
 			if (node.Collapsed)
 			{
-				foreach (var item in node.Items)
-				{
-					var inputConnector	= item.Input;
-					if (inputConnector != null && inputConnector.Enabled)
-					{
-						inputConnector.bounds = Rectangle.Empty;
-						node.inputConnectors.Add(inputConnector);
-					}
-					var outputConnector = item.Output;
-					if (outputConnector != null && outputConnector.Enabled)
-					{
-						outputConnector.bounds = Rectangle.Empty;
-						node.outputConnectors.Add(outputConnector);
-					}
-				}
-				var itemSize = PreRenderItem(graphics, node.titleItem, itemPosition);
-                var connectorY = itemPosition.Y;
+                uint inputConnectorCount = 0, outputConnectorCount = 0;
+                foreach (var item in node.Items)
+                {
+                    if (item.Input != null && item.Input.Enabled) ++inputConnectorCount;
+                    if (item.Output != null && item.Output.Enabled) ++outputConnectorCount;
+                }
 
-                node.inputBounds = new RectangleF(      
-                    left - GraphConstants.ConnectorWidthCollapsed, connectorY,
-                    GraphConstants.ConnectorWidthCollapsed, itemSize.Height);
-                node.outputBounds = new RectangleF(     
-                    right - GraphConstants.ConnectorWidthCollapsed, connectorY,
-                    GraphConstants.ConnectorWidthCollapsed, itemSize.Height);
+                uint inputConnectorIndex = 0, outputConnectorIndex = 0;
+                foreach (var item in node.Items)
+				{
+					if (item.Input != null && item.Input.Enabled)
+					{
+                        item.Input.bounds = CollapsedInputConnector(node.bounds, inputConnectorIndex, inputConnectorCount);
+                        ++inputConnectorIndex;
+                    }
+					if (item.Output != null && item.Output.Enabled)
+					{
+                        item.Output.bounds = CollapsedOutputConnector(node.bounds, outputConnectorIndex, outputConnectorCount);
+                        ++outputConnectorIndex;
+                    }
+				}
+
+				var itemSize = PreRenderItem(graphics, node.titleItem, itemPosition);
 			} 
             else
 			{
-				node.inputBounds	= Rectangle.Empty;
-				node.outputBounds	= Rectangle.Empty;
-
                 PointF[] positions = new PointF[] { itemPosition, itemPosition, itemPosition };
                 float[] widths = new float[] { size.LeftPartWidth, size.BaseSize.Width, size.RightPartWidth };
 
@@ -301,7 +327,6 @@ namespace HyperGraph
                                 left - widths[side], positions[side].Y,
                                 widths[side], realHeight);
 						}
-						node.inputConnectors.Add(inputConnector);
 					}
 
 					if (outputConnector != null && outputConnector.Enabled)
@@ -316,7 +341,6 @@ namespace HyperGraph
                                 right, positions[side].Y,
                                 widths[side], realHeight);
 						}
-						node.outputConnectors.Add(outputConnector);
 					}
 
                     positions[side].Y += itemSize.Height + GraphConstants.ItemSpacing;
@@ -389,92 +413,36 @@ namespace HyperGraph
                 }
             }
 
-			/*
-			    if (!node.Collapsed)
-				    graphics.DrawLine(Pens.Black, 
-					    left  + GraphConstants.ConnectorSize, node.titleItem.bounds.Bottom - GraphConstants.ItemSpacing, 
-					    right - GraphConstants.ConnectorSize, node.titleItem.bounds.Bottom - GraphConstants.ItemSpacing);
-			*/
-
-			if (node.Collapsed)
-			{
-				// bool inputConnected = false;
-				// var inputState	= RenderState.None;
-				// var outputState = node.outputState;
-				// foreach (var connection in node.connections)
-				// {
-				// 	if (connection.To.Node == node)
-				// 	{
-				// 		inputState |= connection.state;
-				// 		inputConnected = true;
-				// 	}
-				// 	if (connection.From.Node == node)
-				// 		outputState |= connection.state | RenderState.Connected;
-				// }
-
-				RenderItem(graphics, new SizeF(node.bounds.Width - GraphConstants.NodeExtraWidth, 0), node.titleItem, node.titleItem.bounds.Location, context);
-				// if (node.inputConnectors.Count > 0)
-				// 	RenderConnector(graphics, node.inputBounds, node.inputState, ConnectorType.Input);
-				// if (node.outputConnectors.Count > 0)
-				// 	RenderConnector(graphics, node.outputBounds, outputState, ConnectorType.Output);
-				//if (inputConnected)
-				//	RenderArrow(graphics, node.inputBounds, inputState);
-			} 
+            if (node.Collapsed)
+            {
+                RenderItem(graphics, new SizeF(node.bounds.Width - GraphConstants.NodeExtraWidth, 0), node.titleItem, node.titleItem.bounds.Location, context);
+            }
             else
-			{
-				node.inputBounds	= Rectangle.Empty;
-				node.outputBounds	= Rectangle.Empty;
-				
-				var minimumItemSize = new SizeF(node.bounds.Width - GraphConstants.NodeExtraWidth, 0);
-				foreach (var item in EnumerateNodeItems(node))
-				{
-					RenderItem(graphics, minimumItemSize, item, item.bounds.Location, context);
-					var inputConnector	= item.Input;
-					if (inputConnector != null && inputConnector.Enabled)
-					{
-						if (!inputConnector.bounds.IsEmpty)
-						{
-							var state		= RenderState.None;
-							var connected	= false;
-							foreach (var connection in node.connections)
-							{
-								if (connection.To == inputConnector)
-								{
-									state |= connection.state;
-									connected = true;
-								}
-							}
+            {
+                var minimumItemSize = new SizeF(node.bounds.Width - GraphConstants.NodeExtraWidth, 0);
+                foreach (var item in EnumerateNodeItems(node))
+                {
+                    RenderItem(graphics, minimumItemSize, item, item.bounds.Location, context);
+                }
+            }
 
-							RenderConnector(graphics, 
-											inputConnector.bounds,
-											inputConnector.state, ConnectorType.Input,
-                                            inputConnector);
-
-							if (connected)
-								RenderArrow(graphics, inputConnector.bounds, state);
-						}
-					}
-					var outputConnector = item.Output;
-					if (outputConnector != null && outputConnector.Enabled)
-					{
-						if (!outputConnector.bounds.IsEmpty)
-						{
-							var state = outputConnector.state;
-							foreach (var connection in node.connections)
-							{
-								if (connection.From == outputConnector)
-									state |= connection.state | RenderState.Connected;
-							}
-                            RenderConnector(graphics, outputConnector.bounds, state, ConnectorType.Output, outputConnector);
-						}
-					}
-				}
+            foreach (var item in node.Items)    // (don't use EnumerateItems because we want to show collapsed nodes)
+            {
+                // note --  the "connected" state is not stored in the retained state member
+                //          ... so if we want to colour the connectors based on if they are connected,
+                //          we need to look for connections now.
+                var inputConnector	= item.Input;
+				if (inputConnector != null && inputConnector.Enabled && !inputConnector.bounds.IsEmpty)
+					RenderConnector(graphics, inputConnector.bounds, inputConnector.state, ConnectorType.Input, inputConnector, node.Collapsed);
+				var outputConnector = item.Output;
+				if (outputConnector != null && outputConnector.Enabled && !outputConnector.bounds.IsEmpty)
+                    RenderConnector(graphics, outputConnector.bounds, outputConnector.state, ConnectorType.Output, outputConnector, node.Collapsed);
 			}
 		}
 
 		public static void RenderConnections(Graphics graphics, Node node, HashSet<NodeConnection> skipConnections, bool showLabels)
 		{
-			foreach (var connection in node.connections.Reverse<NodeConnection>())
+			foreach (var connection in node.Connections.Reverse<NodeConnection>())
 			{
 				if (connection == null)
 					continue;

@@ -33,21 +33,8 @@ namespace HyperGraph
                     BringElementToFront(connection.From);
                     BringElementToFront(connection.To);
 
-                    var connections = connection.From.Node.connections;
-                    if (connections[0] != connection)
-                    {
-                        connections.Remove(connection);
-                        connections.Insert(0, connection);
-                        madeChange = true;
-                    }
-
-                    connections = connection.To.Node.connections;
-                    if (connections[0] != connection)
-                    {
-                        connections.Remove(connection);
-                        connections.Insert(0, connection);
-                        madeChange = true;
-                    }
+                    madeChange |= connection.From.Node.MoveToFront(connection);
+                    madeChange |= connection.To.Node.MoveToFront(connection);
                     break;
                 case ElementType.NodeSelection:
                     {
@@ -236,7 +223,7 @@ namespace HyperGraph
         {
             if (from != null)
             {
-                foreach (var other in from.Node.connections)
+                foreach (var other in from.Node.Connections)
                 {
                     if (other.From == from &&
                         other.To == to)
@@ -246,7 +233,7 @@ namespace HyperGraph
 
             if (to != null)
             {
-                foreach (var other in to.Node.connections)
+                foreach (var other in to.Node.Connections)
                 {
                     if (other.From == from &&
                         other.To == to)
@@ -260,9 +247,9 @@ namespace HyperGraph
             connection.Name = name;
 
             if (from != null)
-                from.Node.connections.Add(connection);
+                from.Node.AddConnection(connection);
             if (to != null)
-                to.Node.connections.Add(connection);
+                to.Node.AddConnection(connection);
 
             if (ConnectionAdded != null)
             {
@@ -302,11 +289,11 @@ namespace HyperGraph
             var to = connection.To;
             if (from != null && from.Node != null)
             {
-                from.Node.connections.Remove(connection);
+                from.Node.RemoveConnection(connection);
             }
             if (to != null && to.Node != null)
             {
-                to.Node.connections.Remove(connection);
+                to.Node.RemoveConnection(connection);
             }
 
             // Just in case somebody stored it somewhere ..
@@ -325,10 +312,9 @@ namespace HyperGraph
         public bool DisconnectAll(Node node)
         {
             bool modified = false;
-            var connections = node.connections.ToList();
+            var connections = node.Connections.ToList();
             foreach (var connection in connections)
-                modified = Disconnect(connection) ||
-                    modified;
+                modified |= Disconnect(connection);
             return modified;
         }
 
