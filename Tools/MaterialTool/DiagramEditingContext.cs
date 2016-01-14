@@ -11,7 +11,6 @@ using System.Linq;
 using Sce.Atf;
 using Sce.Atf.Adaptation;
 using Sce.Atf.Applications;
-using Sce.Atf.Dom;
 
 namespace MaterialTool
 {
@@ -22,6 +21,8 @@ namespace MaterialTool
         , INamingContext
         , IColoringContext
         , ISelectionContext
+        , ITreeListView
+        , IItemView
     {
         private HyperGraph.IGraphModel _model;
         private HyperGraph.IGraphSelection _selection;
@@ -64,7 +65,7 @@ namespace MaterialTool
             get { return _selection.Selection; }
             set
             {
-                _selection.Update(value.AsIEnumerable<HyperGraph.IElement>(), null);
+                _selection.Update(value.AsIEnumerable<HyperGraph.IElement>(), _selection.Selection);
             }
         }
         public int SelectionCount { get { return _selection.Selection.Count; } }
@@ -219,6 +220,52 @@ namespace MaterialTool
         {
         }
         #endregion
+
+        #region ITreeListView / IItemView Members
+        public string[] ColumnNames
+        {
+            get { return new string[] { "Name" }; }
+        }
+
+        public IEnumerable<object> Roots {
+            get { return _model.Nodes; }
+        }
+
+        public IEnumerable<object> GetChildren(object parent)
+        {
+            var n = parent as HyperGraph.Node;
+            if (n==null) return Enumerable.Empty<object>();
+            return n.Items;
+        }
+
+        public void GetInfo(object item, ItemInfo info)
+        {
+            var n = item as HyperGraph.Node;
+            if (n != null)
+            {
+                info.Label = n.Title;
+                info.Properties = new object[0];
+                info.HasCheck = false;
+                info.FontStyle = FontStyle.Regular;
+                info.IsLeaf = false;
+                info.IsExpandedInView = false;
+                info.HoverText = string.Empty;
+                info.AllowLabelEdit = false;
+                info.AllowSelect = true;
+            }
+            else if (NodeFactory != null)
+            {
+                info.IsLeaf = true;
+                info.Label = NodeFactory.GetDescription(item);
+            }
+            else
+            {
+                info.IsLeaf = true;
+            }
+        }
+        #endregion
+
+        public NodeEditorCore.IShaderFragmentNodeCreator NodeFactory;
 
         private static Color s_zeroColor = new Color();
     }

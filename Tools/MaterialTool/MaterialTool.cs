@@ -139,8 +139,8 @@ namespace MaterialTool
             if (_activeMaterialContext.MaterialName == null)
                 _activeMaterialContext.MaterialName = GUILayer.RawMaterial.CreateUntitled().Initializer;
 
-            var doc = new DiagramDocument(graph, uri);
-            var control = _exportProvider.GetExport<IDiagramControl>().Value;
+            var doc = new DiagramDocument(graph, uri) { NodeFactory = _nodeFactory };
+            var control = _exportProvider.GetExport<Controls.IDiagramControl>().Value;
             control.SetContext(doc);
 
                 // Create a control for the new document, and register it!
@@ -178,7 +178,8 @@ namespace MaterialTool
         public void Activate(Control control)
         {
             AdaptableControl adaptableControl = (AdaptableControl)control;
-            var context = adaptableControl.ContextAs<DiagramEditingContext>();
+
+            var context = adaptableControl.ContextAs<Controls.AdaptableSet>();
             if (context != null)
             {
                 m_contextRegistry.ActiveContext = context;
@@ -298,6 +299,9 @@ namespace MaterialTool
 
         [Import(AllowDefault=false)]
         private NodeEditorCore.IModelConversion _converter;
+
+        [Import]
+        private NodeEditorCore.IShaderFragmentNodeCreator _nodeFactory;
 
         [Import]
         private ControlsLibraryExt.Material.ActiveMaterialContext _activeMaterialContext; 

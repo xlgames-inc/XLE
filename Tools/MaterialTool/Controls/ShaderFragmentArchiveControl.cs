@@ -12,7 +12,7 @@ using System.Windows.Forms;
 
 #pragma warning disable 0649        // Field '...' is never assigned to, and will always have its default value null
 
-namespace MaterialTool
+namespace MaterialTool.Controls
 {
     [Export(typeof(ShaderFragmentArchiveControl))]
     [Export(typeof(IInitializable))]

@@ -336,6 +336,7 @@ namespace HyperGraph
                 _model = value;
                 _model.InvalidateViews += InvalidateViewsHandler;
             }
+            get { return _model; }
         }
 
         public void InvalidateViewsHandler(object sender, EventArgs args) { InvokeInvalidate(); }
@@ -412,31 +413,29 @@ namespace HyperGraph
 		PointF					originalLocation;
 		Point					originalMouseLocation;
 		
-		PointF					translation = new PointF();
-		float					zoom = 1.0f;
-
         private List<Node> _selectedNodes = new List<Node>();
         private List<Node> _unselectedNodes = new List<Node>();
-		
-		#region UpdateMatrices
-		private readonly Matrix			transformation = new Matrix();
-		private readonly Matrix			inverse_transformation = new Matrix();
-		void UpdateMatrices(Control ctrl)
-		{
-			if (zoom < 0.25f) zoom = 0.25f;
-			if (zoom > 5.00f) zoom = 5.00f;
-            var center = new PointF(ctrl.Width / 2.0f, ctrl.Height / 2.0f);
-			transformation.Reset();
-			transformation.Translate(translation.X, translation.Y);
-			transformation.Translate(center.X, center.Y);
-			transformation.Scale(zoom, zoom);
-			transformation.Translate(-center.X, -center.Y);
 
-			inverse_transformation.Reset();
-			inverse_transformation.Translate(center.X, center.Y);
-			inverse_transformation.Scale(1.0f / zoom, 1.0f / zoom);
-			inverse_transformation.Translate(-center.X, -center.Y);
-			inverse_transformation.Translate(-translation.X, -translation.Y);
+        #region Transformations
+        protected PointF _translation = new PointF();
+        protected float _zoom = 1.0f;
+        public static readonly float MinZoom = 0.25f;
+        public static readonly float MaxZoom = 5.00f;
+
+        private readonly Matrix			transformation = new Matrix();
+		private readonly Matrix			inverse_transformation = new Matrix();
+
+        public Matrix Transform {  get { return transformation; } }
+
+		protected void UpdateMatrices()
+		{
+			transformation.Reset();
+			transformation.Translate(_translation.X, _translation.Y);
+			transformation.Scale(_zoom, _zoom);
+
+            inverse_transformation.Reset();
+            inverse_transformation.Scale(1.0f / _zoom, 1.0f / _zoom);
+			inverse_transformation.Translate(-_translation.X, -_translation.Y);
 		}
 		#endregion
 
@@ -598,11 +597,10 @@ namespace HyperGraph
 			e.Graphics.PixelOffsetMode		= PixelOffsetMode.HighQuality;
 			e.Graphics.InterpolationMode	= InterpolationMode.HighQualityBicubic;
 
-            var ctrl = (Control)sender;
-			UpdateMatrices(ctrl);			
+			UpdateMatrices();			
 			e.Graphics.Transform			= transformation;
 
-            OnDrawBackground(ctrl, e);
+            OnDrawBackground((Control)sender, e);
 			
 			e.Graphics.SmoothingMode		= SmoothingMode.HighQuality;
 
@@ -701,9 +699,24 @@ namespace HyperGraph
 		#region OnMouseWheel
 		private void OnMouseWheel(object sender, MouseEventArgs e)
 		{
-			zoom *= (float)Math.Pow(2, e.Delta / 480.0f);
+            float oldZoom = _zoom;
+			_zoom *= (float)Math.Pow(2, e.Delta / 480.0f);
+            if (_zoom < MinZoom) _zoom = MinZoom;
+            if (_zoom > MaxZoom) _zoom = MaxZoom;
 
-			((Control)sender).Refresh();
+            var ctrl = sender as Control;
+            if (ctrl != null)
+            {
+                // Adjust translation to so that we appear to zoom in and out
+                // of the center of the control
+                var fixedPt = new PointF(ctrl.Width / 2.0f, ctrl.Height / 2.0f);
+                var t = new PointF((fixedPt.X - _translation.X) / oldZoom, (fixedPt.Y - _translation.Y) / oldZoom);
+                var t2 = new PointF((fixedPt.X - _translation.X) / _zoom, (fixedPt.Y - _translation.Y) / _zoom);
+                _translation.X += (t2.X - t.X) * _zoom;
+                _translation.Y += (t2.Y - t.Y) * _zoom;
+                UpdateMatrices();
+                ctrl.Invalidate();
+            }
 		}
 		#endregion
 
@@ -912,7 +925,7 @@ namespace HyperGraph
 
 					DragElement = element;
                     _model.BringElementToFront(element);
-					ctrl.Refresh();
+					ctrl.Invalidate();
 					command = CommandMode.Edit;
 				} else
 					command = CommandMode.MarqueSelection;
@@ -960,8 +973,8 @@ namespace HyperGraph
 				transformed_location = points[0];
 			}
 
-			var deltaX = (lastLocation.X - currentLocation.X) / zoom;
-			var deltaY = (lastLocation.Y - currentLocation.Y) / zoom;
+			var deltaX = (lastLocation.X - currentLocation.X) / _zoom;
+			var deltaY = (lastLocation.Y - currentLocation.Y) / _zoom;
 
             var ctrl = (Control)sender;
 
@@ -978,11 +991,11 @@ namespace HyperGraph
 					if (mouseMoved &&
 						(Math.Abs(deltaY) > 0))
 					{
-						zoom *= (float)Math.Pow(2, deltaY / 100.0f);
-                        Cursor.Position = ctrl.PointToScreen(lastLocation);
-						snappedLocation = //lastLocation = 
-							currentLocation;
-                        ctrl.Refresh();
+						// _zoom *= (float)Math.Pow(2, deltaY / 100.0f);
+                        // Cursor.Position = ctrl.PointToScreen(lastLocation);
+						// snappedLocation = //lastLocation = 
+						// 	currentLocation;
+                        // ctrl.Invalidate();
 					}
 					return;
 				case CommandMode.TranslateView:
@@ -998,10 +1011,11 @@ namespace HyperGraph
 						(Math.Abs(deltaX) > 0) ||
 						(Math.Abs(deltaY) > 0))
 					{
-						translation.X -= deltaX * zoom;
-						translation.Y -= deltaY * zoom;
+						_translation.X -= deltaX * _zoom;
+						_translation.Y -= deltaY * _zoom;
 						snappedLocation = lastLocation = currentLocation;
-                        ctrl.Refresh();
+                        UpdateMatrices();
+                        ctrl.Invalidate();
 					}
 					return;
 				}
@@ -1046,7 +1060,7 @@ namespace HyperGraph
 
 						snappedLocation = lastLocation = currentLocation;
                         UpdateFocusStates();
-                        ctrl.Refresh();
+                        ctrl.Invalidate();
 					}
 					return;
 
@@ -1084,7 +1098,7 @@ namespace HyperGraph
 																(int)Math.Round(node.Location.Y - deltaY));
 								}
 								snappedLocation = lastLocation = currentLocation;
-                                ctrl.Refresh();
+                                ctrl.Invalidate();
                                 _model.InvokeMiscChange(false);
 								return;
 							}
@@ -1094,7 +1108,7 @@ namespace HyperGraph
 								node.Location	= new Point((int)Math.Round(node.Location.X - deltaX),
 															(int)Math.Round(node.Location.Y - deltaY));
 								snappedLocation = lastLocation = currentLocation;
-                                ctrl.Refresh();
+                                ctrl.Invalidate();
                                 _model.InvokeMiscChange(false);
 								return;
 							}
@@ -1285,7 +1299,7 @@ namespace HyperGraph
 						
 
 			if (needRedraw)
-                ctrl.Refresh();
+                ctrl.Invalidate();
 		}
 		#endregion
 
@@ -1463,7 +1477,7 @@ namespace HyperGraph
 				_unselectedNodes.Clear();
 				
 				if (needRedraw)
-					ctrl.Refresh();
+					ctrl.Invalidate();
 			}
 		}
 		#endregion
@@ -1495,7 +1509,7 @@ namespace HyperGraph
 					var item = element as NodeItem;
                     if (item.OnDoubleClick(ctrl))
 					{
-                        ctrl.Refresh();
+                        ctrl.Invalidate();
 						return;
 					}
 					element = item.Node;
@@ -1505,7 +1519,7 @@ namespace HyperGraph
 					node.Collapsed = !node.Collapsed;
 					if (Selection!=null)
                         Selection.SelectSingle(node);
-                    ctrl.Refresh();
+                    ctrl.Invalidate();
 					break;
 
                 case ElementType.InputConnector:
@@ -1578,7 +1592,7 @@ namespace HyperGraph
                         if (item.OnClick(ctrl, e, transformation))
 						{
 							ignoreDoubleClick = true; // to avoid double-click from firing
-                            ctrl.Refresh();
+                            ctrl.Invalidate();
 							return;
 						}
 						break;
@@ -1608,7 +1622,7 @@ namespace HyperGraph
                         _selectedNodes.Clear();
                         _unselectedNodes.Clear();
                         UpdateFocusStates();
-						((Control)sender).Refresh();
+						((Control)sender).Invalidate();
 					}
 					return;
 				}

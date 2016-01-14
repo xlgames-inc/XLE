@@ -76,8 +76,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DiagramControl.cs">
+    <Compile Include="Controls\DiagramControl.cs">
       <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\DiagramLister.cs">
+      <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="DiagramControlRegistry.cs" />
     <Compile Include="DiagramEditingContext.cs" />
@@ -85,7 +88,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DiagramDocument.cs" />
-    <Compile Include="ShaderFragmentArchiveControl.cs">
+    <Compile Include="Controls\ShaderFragmentArchiveControl.cs">
       <SubType>Component</SubType>
     </Compile>
     <EmbeddedResource Include="Properties\Resources.resx">

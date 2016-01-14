@@ -27,6 +27,7 @@ namespace NodeEditorCore
         Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type);
         Node CreateInterfaceNode(String title, InterfaceDirection direction);
         Node FindNodeFromId(HyperGraph.IGraphModel graph, UInt64 id);
+        string GetDescription(object item);
     }
 
     public interface IDiagramDocument
@@ -156,8 +157,8 @@ namespace NodeEditorCore
                 newRect, GraphConstants.LeftTextStringFormat);
         }
 
-        protected virtual string GetNameText() { return this.Name; }
-        protected virtual string GetTypeText() { return "(" + this.ShortType + ")"; }
+        internal virtual string GetNameText() { return this.Name; }
+        internal virtual string GetTypeText() { return "(" + this.ShortType + ")"; }
     }
 
         //
@@ -375,7 +376,7 @@ namespace NodeEditorCore
             */
         }
 
-        protected override string GetTypeText() { return ": " + Semantic + " (" + ShortType + ")"; }
+        internal override string GetTypeText() { return ": " + Semantic + " (" + ShortType + ")"; }
     }
     internal class ShaderFragmentAddParameterItem : NodeItem
     {
@@ -643,6 +644,63 @@ namespace NodeEditorCore
                 }
             }
             return null;
+        }
+
+        public string GetDescription(object o)
+        {
+            var node = o as Node;
+            if (node != null)
+            {
+                return node.Title;
+            }
+
+            var item = o as ShaderFragmentNodeItem;
+            if (item != null)
+            {
+                string result = item.GetNameText() + " " + item.GetTypeText();
+                if (item.Input != null && item.Input.Enabled)
+                {
+                    foreach (var c in item.Input.Connectors)
+                    {
+                        var t = (c.From != null) ? (c.From.Item as ShaderFragmentNodeItem) : null;
+                        if (t != null)
+                        {
+                            result += " <- " + t.GetNameText() + " in " + t.Node.Title;
+                        }
+                        else
+                            result += " <- " + c.Name;
+                    }
+                }
+
+                if (item.Output != null && item.Output.Enabled)
+                {
+                    foreach (var c in item.Output.Connectors)
+                    {
+                        var t = (c.To != null) ? (c.To.Item as ShaderFragmentNodeItem) : null;
+                        if (t != null)
+                        {
+                            result += " -> " + t.GetNameText() + " in " + t.Node.Title;
+                        }
+                        else
+                            result += " -> " + c.Name;
+                    }
+                }
+                return result;
+            }
+
+            var preview = o as ShaderFragmentPreviewItem;
+            if (preview != null)
+                return "preview";
+
+            var dropDownList = o as HyperGraph.Items.NodeDropDownItem;
+            if (dropDownList != null)
+                return dropDownList.Items[dropDownList.SelectedIndex].ToString();
+
+            var textBox = o as HyperGraph.Items.NodeTextBoxItem;
+            if (textBox != null)
+                return textBox.Text;
+
+            return string.Empty;
         }
 
         [Import]
