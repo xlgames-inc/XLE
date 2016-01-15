@@ -26,6 +26,15 @@ namespace RenderCore { namespace Metal_DX11 { namespace GPUProfiler     /// Low 
     public:
         intrusive_ptr<ID3D::Query> _query;
         bool _isAllocated;
+
+		Query() : _isAllocated(false) {}
+		Query(Query&& moveFrom) never_throws : _isAllocated(moveFrom._isAllocated), _query(std::move(moveFrom._query)) {}
+		Query& operator=(Query&& moveFrom) never_throws 
+		{
+			_isAllocated = moveFrom._isAllocated;
+			_query = std::move(moveFrom._query);
+			return *this;
+		}
     };
 
     class QueryConstructionFailure : public ::Exceptions::BasicLabel
@@ -387,8 +396,8 @@ namespace RenderCore { namespace Metal_DX11 { namespace GPUProfiler     /// Low 
         const unsigned QueryPoolSize = 96;
         const unsigned DisjointQueryPoolSize = 4;
         
-        std::vector<Query> queryPool(QueryPoolSize);
-        std::vector<Query> disjointQueryPool(DisjointQueryPoolSize);
+        std::vector<Query> queryPool; queryPool.reserve(QueryPoolSize);
+        std::vector<Query> disjointQueryPool; disjointQueryPool.reserve(DisjointQueryPoolSize);
 
             ///////////////////////////////////////~~~///////////////////////////////////////
         for (unsigned c=0; c<DisjointQueryPoolSize; ++c) {
