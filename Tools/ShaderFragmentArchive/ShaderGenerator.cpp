@@ -129,21 +129,30 @@ namespace ShaderPatcherLayer
         }
     }
 
-    String^         NodeGraph::GeneratePreviewShader(NodeGraph^ graph, UInt32 previewNodeId, PreviewSettings^ settings)
+    String^         NodeGraph::GeneratePreviewShader(
+		NodeGraph^ graph, UInt32 previewNodeId, 
+		PreviewSettings^ settings, IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions)
     {
         try
         {
             auto nativeGraph = graph->ConvertToNativePreview(previewNodeId);
             ShaderPatcher::MainFunctionInterface interf(nativeGraph);
             ShaderPatcher::PreviewOptions options = 
-            {
-                (settings->Geometry == PreviewGeometry::Chart)
-                    ? ShaderPatcher::PreviewOptions::Type::Chart
-                    : ShaderPatcher::PreviewOptions::Type::Object,
-                String::IsNullOrEmpty(settings->OutputToVisualize) 
-                    ? std::string() 
-                    : marshalString<E_UTF8>(settings->OutputToVisualize)
-            };
+				{
+					(settings->Geometry == PreviewGeometry::Chart)
+						? ShaderPatcher::PreviewOptions::Type::Chart
+						: ShaderPatcher::PreviewOptions::Type::Object,
+					String::IsNullOrEmpty(settings->OutputToVisualize) 
+						? std::string() 
+						: marshalString<E_UTF8>(settings->OutputToVisualize),
+					ShaderPatcher::PreviewOptions::VariableRestrictions()
+				};
+			if (variableRestrictions)
+				for each(auto v in variableRestrictions)
+					options._variableRestrictions.push_back(
+						std::make_pair(
+							clix::marshalString<clix::E_UTF8>(v.Key),
+							clix::marshalString<clix::E_UTF8>(v.Value)));
             return marshalString<E_UTF8>(
                     ShaderPatcher::GenerateShaderHeader(nativeGraph) 
                 +   ShaderPatcher::GenerateShaderBody(nativeGraph, interf) 
@@ -155,6 +164,35 @@ namespace ShaderPatcherLayer
             return "Unknown exception while generating shader";
         }
     }
+
+	NodeGraph::Interface^	NodeGraph::GetInterface(NodeGraph^ graph)
+	{
+		auto nativeGraph = graph->ConvertToNative("graph");
+        ShaderPatcher::MainFunctionInterface interf(nativeGraph);
+
+		auto variables = gcnew List<Interface::Item>();
+		for (const auto& i:interf.GetInputParameters()) {
+			Interface::Item item;
+			item.Type = clix::marshalString<clix::E_UTF8>(i._type);
+			item.Name = clix::marshalString<clix::E_UTF8>(i._name);
+			item.Semantic = clix::marshalString<clix::E_UTF8>(i._semantic);
+			variables->Add(item);
+		}
+
+		auto resources = gcnew List<Interface::Item>();
+		for (const auto& i2:interf.GetGlobalParameters()) {
+			Interface::Item item;
+			item.Type = clix::marshalString<clix::E_UTF8>(i2._type);
+			item.Name = clix::marshalString<clix::E_UTF8>(i2._name);
+			item.Semantic = clix::marshalString<clix::E_UTF8>(i2._semantic);
+			variables->Add(item);
+		}
+
+		auto result = gcnew NodeGraph::Interface();
+		result->Variables = variables;
+		result->Resources = resources;
+		return result;
+	}
 
     NodeGraph^ NodeGraph::LoadFromXML(System::IO::Stream^ stream)
     {

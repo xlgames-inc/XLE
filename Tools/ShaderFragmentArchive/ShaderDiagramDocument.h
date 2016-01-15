@@ -19,6 +19,8 @@ namespace ShaderPatcherLayer
     public:
         property GUILayer::RawMaterial^ DefaultsMaterial;
 		property Dictionary<String^, String^>^ Variables;
+
+		Document() { Variables = gcnew Dictionary<String^, String^>(); }
     };
 }
 

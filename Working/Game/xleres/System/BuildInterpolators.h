@@ -147,4 +147,37 @@ SystemInputs BuildSystem_SystemInputs(VSOutput input, SystemInputs sys)
 	return sys;
 }
 
+//////////////////////////////////////////////////////////////////
+
+float2 NormInterp(float2 a) { return 0.5.xx + 0.5.xx * a; }
+
+float InterpolateVariable_AutoAxis(float lhs, float rhs, float2 a)
+{
+	return lerp(lhs.x, rhs.x, NormInterp(a).x);
+}
+
+float2 InterpolateVariable_AutoAxis(float2 lhs, float2 rhs, float2 a)
+{
+	return float2(lerp(lhs.x, rhs.x, NormInterp(a).x), lerp(lhs.y, rhs.y, NormInterp(a).y));
+}
+
+float3 InterpolateVariable_AutoAxis(float3 lhs, float3 rhs, float2 a)
+{
+	return float3(lerp(lhs.x, rhs.x, NormInterp(a).x), lerp(lhs.y, rhs.y, NormInterp(a).y), lerp(lhs.z, rhs.z, NormInterp(a).x));
+}
+
+float4 InterpolateVariable_AutoAxis(float4 lhs, float4 rhs, float2 a)
+{
+	return float4(lerp(lhs.x, rhs.x, NormInterp(a).x), lerp(lhs.y, rhs.y, NormInterp(a).y), lerp(lhs.z, rhs.z, NormInterp(a).x), lerp(lhs.w, rhs.w, NormInterp(a).y));
+}
+
+float  InterpolateVariable_XAxis(float  lhs, float  rhs, float2 a) { return lerp(lhs, rhs, NormInterp(a).x); }
+float2 InterpolateVariable_XAxis(float2 lhs, float2 rhs, float2 a) { return lerp(lhs, rhs, NormInterp(a).x); }
+float3 InterpolateVariable_XAxis(float3 lhs, float3 rhs, float2 a) { return lerp(lhs, rhs, NormInterp(a).x); }
+float4 InterpolateVariable_XAxis(float4 lhs, float4 rhs, float2 a) { return lerp(lhs, rhs, NormInterp(a).x); }
+float  InterpolateVariable_YAxis(float  lhs, float  rhs, float2 a) { return lerp(lhs, rhs, NormInterp(a).y); }
+float2 InterpolateVariable_YAxis(float2 lhs, float2 rhs, float2 a) { return lerp(lhs, rhs, NormInterp(a).y); }
+float3 InterpolateVariable_YAxis(float3 lhs, float3 rhs, float2 a) { return lerp(lhs, rhs, NormInterp(a).y); }
+float4 InterpolateVariable_YAxis(float4 lhs, float4 rhs, float2 a) { return lerp(lhs, rhs, NormInterp(a).y); }
+
 #endif

@@ -1353,13 +1353,15 @@ namespace ShaderPatcher
 
         bool IsInitializedBySystem(unsigned index) const { return !_buildSystemFunctions[index].empty(); }
 
-        ParameterGenerator(const NodeGraph& graph, const MainFunctionInterface& interf);
+        ParameterGenerator(const NodeGraph& graph, const MainFunctionInterface& interf, const PreviewOptions& previewOptions);
         ~ParameterGenerator();
     private:
         std::vector<MainFunctionParameter>  _parameters;
         std::vector<std::string>            _buildSystemFunctions;
         std::string                         _vsOutputMember;
         ParameterMachine                    _paramMachine;
+
+		const PreviewOptions* _previewOptions;
     };
 
     std::string ParameterGenerator::VaryingStructSignature(unsigned index) const
@@ -1411,15 +1413,30 @@ namespace ShaderPatcher
             return buildInterpolator + "(vsInput)";
         } else {
             if (!IsStructType(MakeStringSection(p._type))) {
-                    //  \todo -- handle min/max coordinate conversions, etc
-                int dimensionality = GetDimensionality(p._type);
-                if (dimensionality == 1) {
-                    return "localPosition.x * 0.5 + 0.5.x";
-                } else if (dimensionality == 2) {
-                    return "float2(localPosition.x * 0.5 + 0.5, localPosition.y * -0.5 + 0.5)";
-                } else if (dimensionality == 3) {
-                    return "worldPosition.xyz";
-                }
+
+					// Look for a "restriction" applied to this variable.
+				auto r = std::find_if(
+					_previewOptions->_variableRestrictions.cbegin(), _previewOptions->_variableRestrictions.cend(), 
+					[&p](const std::pair<std::string, std::string>& v) { return XlEqStringI(v.first, p._name); });
+				if (r != _previewOptions->_variableRestrictions.cend()) {
+					static std::regex pattern("([^:]*):([^:]*):([^:]*)");
+					std::smatch match;
+					if (std::regex_match(r->second, match, pattern) && match.size() >= 4) {
+						return std::string("InterpolateVariable_") + match[1].str() + "(" + match[2].str() + ", " + match[3].str() + ", localPosition)";
+					} else {
+						return r->second;	// interpret as a constant
+					}
+				} else {
+					// attempt to set values 
+					int dimensionality = GetDimensionality(p._type);
+					if (dimensionality == 1) {
+						return "localPosition.x * 0.5 + 0.5.x";
+					} else if (dimensionality == 2) {
+						return "float2(localPosition.x * 0.5 + 0.5, localPosition.y * -0.5 + 0.5)";
+					} else if (dimensionality == 3) {
+						return "worldPosition.xyz";
+					}
+				}
             }
         }
 
@@ -1448,11 +1465,12 @@ namespace ShaderPatcher
         return !CanBeStoredInCBuffer(MakeStringSection(_parameters[index]._type));
     }
 
-    ParameterGenerator::ParameterGenerator(const NodeGraph& graph, const MainFunctionInterface& interf)
+    ParameterGenerator::ParameterGenerator(const NodeGraph& graph, const MainFunctionInterface& interf, const PreviewOptions& previewOptions)
     {
         _parameters = std::vector<MainFunctionParameter>(interf.GetInputParameters().cbegin(), interf.GetInputParameters().cend());
         for (auto i=_parameters.cbegin(); i!=_parameters.cend(); ++i)
             _buildSystemFunctions.push_back(_paramMachine.GetBuildSystem(*i));
+		_previewOptions = &previewOptions;
     }
 
     ParameterGenerator::~ParameterGenerator() {}
@@ -1505,7 +1523,7 @@ namespace ShaderPatcher
             //      window)
             //
 
-        ParameterGenerator mainParams(graph, interf);
+        ParameterGenerator mainParams(graph, interf, previewOptions);
 
             //
             //      All varying parameters must have semantics

@@ -82,6 +82,7 @@ namespace MaterialTool.Controls
             graphAdapter.Context = context.UnderlyingDocument;
             graphAdapter.ModelConversion = _modelConversion;
             graphAdapter.NodeFactory = _nodeFactory;
+            graphAdapter.Document = context.UnderlyingDocument;
 
             // calling Adapt will unbind previous adapters
             var hoverAdapter = new HoverAdapter();

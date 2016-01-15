@@ -38,6 +38,7 @@ namespace NodeEditorCore
         HyperGraph.IGraphModel  GetGraphModel() { return base._model; }
         public IModelConversion ModelConversion { get; set; }
         public IShaderFragmentNodeCreator NodeFactory { get; set; }
+        public IDiagramDocument Document { get; set; }
 
         public GraphControl()
         {
@@ -250,7 +251,9 @@ namespace NodeEditorCore
         private void OnShowPreviewShader(object sender, EventArgs e)
         {
             var p = GetPreviewItem(sender);
-            var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(ConvertToShaderPatcherLayer(), AttachedId(sender), p.PreviewSettings);
+            var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(
+                ConvertToShaderPatcherLayer(), AttachedId(sender), 
+                p.PreviewSettings, (Document!=null) ? Document.ParameterSettings.Variables : null);
             var wnd = new ControlsLibrary.BasicControls.TextWindow();
             wnd.Text = System.Text.RegularExpressions.Regex.Replace(shader, @"\r\n|\n\r|\n|\r", "\r\n");        // (make sure we to convert the line endings into windows form)
             wnd.Show();

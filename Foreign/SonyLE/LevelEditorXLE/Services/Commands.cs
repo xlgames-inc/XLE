@@ -12,7 +12,6 @@ using System.Collections.Generic;
 using Sce.Atf;
 using Sce.Atf.Applications;
 using Sce.Atf.Adaptation;
-using Sce.Atf.VectorMath;
 using Sce.Atf.Dom;
 
 using LevelEditorCore;

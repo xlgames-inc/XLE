@@ -36,6 +36,7 @@ namespace NodeEditorCore
         ShaderPatcherLayer.Document ParameterSettings { get; }
 
         uint ShaderStructureHash { get; }
+        void Invalidate();
     }
 
     [Export(typeof(IDiagramDocument))]
@@ -53,6 +54,8 @@ namespace NodeEditorCore
         public HyperGraph.IGraphModel ViewModel { get; set; }
 
         public uint ShaderStructureHash { get { return ViewModel.GlobalRevisionIndex; } }
+
+        public void Invalidate() { ViewModel.InvokeMiscChange(true); }
 
         [Import]
         private IModelConversion _converter;
@@ -213,7 +216,7 @@ namespace NodeEditorCore
                     if (prevSettings.OutputToVisualize.StartsWith("SV_Target"))
                         prevSettings.OutputToVisualize = string.Empty;
                     var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(
-                        doc.NodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id, prevSettings);
+                        doc.NodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id, prevSettings, doc.ParameterSettings.Variables);
                     _builder = _previewManager.CreatePreviewBuilder(shader);
                     _cachedBitmap = null;
                 }

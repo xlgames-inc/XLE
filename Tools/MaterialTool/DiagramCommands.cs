@@ -44,22 +44,14 @@ namespace MaterialTool
                         var context = _contextRegistry.GetActiveContext<DiagramEditingContext>();
                         if (context != null)
                         {
-                            (new DiagramSettings(context.UnderlyingDocument.ParameterSettings)).ShowDialog();
+                            (new DiagramSettings(context.UnderlyingDocument)).ShowDialog();
                         }
                         break;
                 }
             }
         }
 
-        public void UpdateCommand(object commandTag, CommandState state)
-        {
-            // if (commandTag is Command)
-            // {
-            //     switch ((Command)commandTag)
-            //     {
-            //     }
-            // }
-        }
+        public void UpdateCommand(object commandTag, CommandState state) {}
 
         public virtual void Initialize()
         {

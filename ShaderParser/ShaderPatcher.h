@@ -239,12 +239,14 @@ namespace ShaderPatcher
         enum class Type { Object, Chart };
         Type _type;
         std::string _outputToVisualize;
+		using VariableRestrictions = std::vector<std::pair<std::string, std::string>>;
+        VariableRestrictions _variableRestrictions;
     };
 
     std::string GenerateStructureForPreview(
         const NodeGraph& graph, 
         const MainFunctionInterface& interf, 
-        const PreviewOptions& previewOptions = { PreviewOptions::Type::Object, std::string() });
+        const PreviewOptions& previewOptions = { PreviewOptions::Type::Object, std::string(), PreviewOptions::VariableRestrictions() });
 
 }
 

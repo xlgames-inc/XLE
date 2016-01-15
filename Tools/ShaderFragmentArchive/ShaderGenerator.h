@@ -149,7 +149,19 @@ namespace ShaderPatcherLayer
         ShaderPatcher::NodeGraph    ConvertToNativePreview(UInt32 previewNodeId);
 
         static String^      GenerateShader(NodeGraph^ graph, String^ name);
-        static String^      GeneratePreviewShader(NodeGraph^ graph, UInt32 previewNodeId, PreviewSettings^ settings);
+        static String^      GeneratePreviewShader(
+			NodeGraph^ graph, UInt32 previewNodeId, 
+			PreviewSettings^ settings,
+			IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
+
+		ref class Interface
+		{
+		public:
+			value class Item { public: property String^ Type; property String^ Name; property String^ Semantic; };
+			property IEnumerable<Item>^ Variables;
+			property IEnumerable<Item>^ Resources;
+		};
+        static Interface^	GetInterface(NodeGraph^ graph);
 
         static NodeGraph^   LoadFromXML(System::IO::Stream^ stream);
         void                SaveToXML(System::IO::Stream^ stream);
