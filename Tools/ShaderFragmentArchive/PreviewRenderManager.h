@@ -6,13 +6,11 @@
 
 #pragma once
 
+#include "../GUILayer/CLIXAutoPtr.h"
+
 namespace ShaderPatcherLayer
 {
-    class ManagerPimpl;
-    class PreviewBuilderPimpl;
     ref class Document;
-
-    using System::Drawing::Size;
 
     public enum class PreviewGeometry
     {
@@ -22,13 +20,24 @@ namespace ShaderPatcherLayer
     public interface class IPreviewBuilder
     {
     public:
-        System::Drawing::Bitmap^ Build(Document^ doc, Size^ size, PreviewGeometry geometry, unsigned targetToVisualize);
+        System::Drawing::Bitmap^ Build(Document^ doc, System::Drawing::Size^ size, PreviewGeometry geometry, unsigned targetToVisualize);
     };
 
     public interface class IManager
     {
         IPreviewBuilder^ CreatePreviewBuilder(System::String^ shaderText);
     };
+
+	class AttachPimpl;
+	public ref class LibraryAttachMarker
+	{
+	public:
+		LibraryAttachMarker(GUILayer::EngineDevice^ engineDevice);
+		~LibraryAttachMarker();
+		!LibraryAttachMarker();
+	private:
+		AttachPimpl* _pimpl;
+	};
 
 }
 

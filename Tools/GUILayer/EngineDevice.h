@@ -38,6 +38,7 @@ namespace GUILayer
         void ForegroundUpdate();
 
         void AttachDefaultCompilers();
+		void PrepareForShutdown();
 
         EngineDevice();
         ~EngineDevice();

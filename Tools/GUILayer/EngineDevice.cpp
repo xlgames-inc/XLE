@@ -126,6 +126,21 @@ namespace GUILayer
             // Some tools need buffer uploads to be updated from here
         _pimpl->GetBufferUploads()->Update(*_pimpl->GetImmediateContext());
     }
+
+	void EngineDevice::PrepareForShutdown()
+	{
+		    // it's a good idea to force a GC collect here...
+            // it will help flush out managed references to native objects
+            // before we go through the shutdown steps
+        System::GC::Collect();
+        System::GC::WaitForPendingFinalizers();
+        DelayedDeleteQueue::FlushQueue();
+        
+        RenderCore::Techniques::ResourceBoxes_Shutdown();
+        RenderOverlays::CleanupFontSystem();
+        if (_pimpl->GetAssetServices())
+            _pimpl->GetAssetServices()->GetAssetSets().Clear();
+	}
     
     EngineDevice::EngineDevice()
     {
@@ -140,17 +155,7 @@ namespace GUILayer
         assert(s_instance == this);
         s_instance = nullptr;
 
-            // it's a good idea to force a GC collect here...
-            // it will help flush out managed references to native objects
-            // before we go through the shutdown steps
-        System::GC::Collect();
-        System::GC::WaitForPendingFinalizers();
-        DelayedDeleteQueue::FlushQueue();
-        
-        RenderCore::Techniques::ResourceBoxes_Shutdown();
-        RenderOverlays::CleanupFontSystem();
-        if (_pimpl->GetAssetServices())
-            _pimpl->GetAssetServices()->GetAssetSets().Clear();
+		PrepareForShutdown();
         Assets::Dependencies_Shutdown();
         delete _pimpl;
         _pimpl = nullptr;

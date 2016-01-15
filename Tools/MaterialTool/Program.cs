@@ -48,6 +48,9 @@ namespace MaterialTool
             var engineDevice = new GUILayer.EngineDevice();
             GC.KeepAlive(engineDevice);
 
+            var attach0 = new ShaderPatcherLayer.LibraryAttachMarker(engineDevice);
+            GC.KeepAlive(attach0);
+
             // Enable metadata driven property editing for the DOM
             DomNodeType.BaseOfAllTypes.AddAdapterCreator(new AdapterCreator<CustomTypeDescriptorNodeAdapter>());
 
@@ -77,7 +80,7 @@ namespace MaterialTool
                 typeof(StandardFileExitCommand),        // standard File exit menu command
                 // typeof(StandardEditCommands),           // standard Edit menu commands for copy/paste
                 // typeof(StandardEditHistoryCommands),    // standard Edit menu commands for undo/redo
-                // typeof(StandardSelectionCommands),      // standard Edit menu selection commands
+                typeof(StandardSelectionCommands),      // standard Edit menu selection commands
                 typeof(StandardLayoutCommands),         // standard Format menu layout commands
                 typeof(StandardViewCommands),           // standard View menu commands
 
@@ -174,6 +177,10 @@ namespace MaterialTool
             container.InitializeAll();
             Application.Run(mainForm);
             container.Dispose();
+            mainForm.Dispose();
+
+            engineDevice.PrepareForShutdown();
+            attach0.Dispose();
             engineDevice.Dispose();
         }
     }

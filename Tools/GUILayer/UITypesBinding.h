@@ -77,11 +77,6 @@ namespace GUILayer
         }
         VisCameraSettings()     { _object = std::make_shared<ToolsRig::VisCameraSettings>(); }
         ~VisCameraSettings()    { _object.reset(); }
-
-        !VisCameraSettings()
-        {
-            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of VisCameraSettings");
-        }
     protected:
         clix::shared_ptr<ToolsRig::VisCameraSettings> _object;
     };
@@ -200,11 +195,6 @@ namespace GUILayer
 
         ~ModelVisSettings() { delete _camSettings; _object.reset(); }
 
-        !ModelVisSettings()
-        {
-            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of ModelVisSettings");
-        }
-
         static ModelVisSettings^ CreateDefault();
 
     protected:
@@ -246,10 +236,6 @@ namespace GUILayer
             std::shared_ptr<RenderCore::Assets::ModelCache> cache);
         VisMouseOver();
         ~VisMouseOver();
-        !VisMouseOver()
-        {
-            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of ModelVisSettings");
-        }
 
     protected:
         clix::shared_ptr<ToolsRig::VisMouseOver> _object;

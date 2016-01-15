@@ -39,6 +39,16 @@ using namespace System::ComponentModel::Composition;
 
 namespace ShaderPatcherLayer
 {
+	using System::Drawing::Size;
+
+	class ManagerPimpl
+    {
+    public:
+        std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
+        std::shared_ptr<RenderCore::IDevice> _device;
+        std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
+    };
+
     [Export(IManager::typeid)]
     [Export(Manager::typeid)]
     [PartCreationPolicy(CreationPolicy::Shared)]
@@ -54,17 +64,13 @@ namespace ShaderPatcherLayer
         ~Manager();
     };
 
-    class ManagerPimpl
+	class PreviewBuilderPimpl
     {
     public:
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
-        std::shared_ptr<RenderCore::IDevice> _device;
         std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
-
-        ConsoleRig::AttachRef<ConsoleRig::GlobalServices> _attachRef;
-        ConsoleRig::AttachRef<::Assets::Services> _attachRef1;
-        ConsoleRig::AttachRef<RenderCore::Assets::Services> _attachRef2;
-        ConsoleRig::AttachRef<RenderCore::Metal::ObjectFactory> _attachRef3;
+        std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techContext;
+        std::shared_ptr<RenderCore::IDevice> _device;
+        std::string _shaderText;
     };
 
     public ref class PreviewBuilder : IPreviewBuilder
@@ -83,15 +89,6 @@ namespace ShaderPatcherLayer
         PreviewBuilderPimpl*        _pimpl;
 
         System::Drawing::Bitmap^    GenerateErrorBitmap(const char str[], Size^ size);
-    };
-
-    class PreviewBuilderPimpl
-    {
-    public:
-        std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techContext;
-        std::shared_ptr<RenderCore::IDevice> _device;
-        std::string _shaderText;
     };
 
     enum DrawPreviewResult
@@ -375,14 +372,7 @@ namespace ShaderPatcherLayer
     {
         _pimpl.reset(new ManagerPimpl());
 
-        auto engineDevice = GUILayer::EngineDevice::GetInstance();
-
-        _pimpl->_attachRef = engineDevice->GetNative().GetGlobalServices()->Attach();
-        auto& crossModule = ConsoleRig::GlobalServices::GetCrossModule();
-        _pimpl->_attachRef1 = crossModule.Attach<::Assets::Services>();
-        _pimpl->_attachRef2 = crossModule.Attach<RenderCore::Assets::Services>();
-        _pimpl->_attachRef3 = crossModule.Attach<RenderCore::Metal::ObjectFactory>();
-                
+		auto engineDevice = GUILayer::EngineDevice::GetInstance();
         _pimpl->_device = engineDevice->GetNative().GetRenderDevice();
         
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
@@ -392,14 +382,45 @@ namespace ShaderPatcherLayer
 
     Manager::~Manager()
     {
-        _pimpl->_attachRef3.Detach();
-        _pimpl->_attachRef2.Detach();
-        _pimpl->_attachRef1.Detach();
-        _pimpl->_attachRef.Detach();
-
         _pimpl->_shaderSource.reset();
         _pimpl->_globalTechniqueContext.reset();
     }
+
+	class AttachPimpl
+    {
+    public:
+        ConsoleRig::AttachRef<ConsoleRig::GlobalServices> _attachRef;
+        ConsoleRig::AttachRef<::Assets::Services> _attachRef1;
+        ConsoleRig::AttachRef<RenderCore::Assets::Services> _attachRef2;
+        ConsoleRig::AttachRef<RenderCore::Metal::ObjectFactory> _attachRef3;
+    };
+
+	LibraryAttachMarker::LibraryAttachMarker(GUILayer::EngineDevice^ engineDevice)
+	{
+		_pimpl = new AttachPimpl();
+
+        _pimpl->_attachRef = engineDevice->GetNative().GetGlobalServices()->Attach();
+        auto& crossModule = ConsoleRig::GlobalServices::GetCrossModule();
+        _pimpl->_attachRef1 = crossModule.Attach<::Assets::Services>();
+        _pimpl->_attachRef2 = crossModule.Attach<RenderCore::Assets::Services>();
+        _pimpl->_attachRef3 = crossModule.Attach<RenderCore::Metal::ObjectFactory>();
+	}
+
+	LibraryAttachMarker::~LibraryAttachMarker()
+	{
+		if (_pimpl) {
+			_pimpl->_attachRef3.Detach();
+			_pimpl->_attachRef2.Detach();
+			_pimpl->_attachRef1.Detach();
+			_pimpl->_attachRef.Detach();
+			delete _pimpl; _pimpl = nullptr;
+		}
+	}
+
+	LibraryAttachMarker::!LibraryAttachMarker() 
+	{
+		this->~LibraryAttachMarker();
+	}
 
 
 }
