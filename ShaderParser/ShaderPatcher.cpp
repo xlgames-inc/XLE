@@ -532,7 +532,7 @@ namespace ShaderPatcher
 
     static void WriteCastExpression(std::stringstream& result, const ExpressionString& expression, const std::string& dstType)
     {
-        if (!expression._type.empty() && !dstType.empty() && expression._type != dstType) {
+        if (!expression._type.empty() && !dstType.empty() && expression._type != dstType && !XlEqStringI(dstType, "auto") && !XlEqStringI(expression._type, "auto")) {
             result << "Cast_" << expression._type << "_to_" << dstType << "(" << expression._expression << ")";
         } else 
             result << expression._expression;

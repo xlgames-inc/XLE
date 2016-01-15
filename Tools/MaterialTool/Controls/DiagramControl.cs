@@ -70,14 +70,6 @@ namespace MaterialTool.Controls
             if (existingContext != null)
                 existingContext.SelectionChanged -= Context_SelectionChanged;
 
-            // We also setup an underlying context that will be used
-            // while rendering node items.
-            var underlyingDoc = _exportProvider.GetExport<NodeEditorCore.DiagramDocument>().Value;
-            underlyingDoc.ViewModel = context.Model;
-            underlyingDoc.ParameterSettings = 
-                new ShaderPatcherLayer.Document 
-                    { DefaultsMaterial = GUILayer.RawMaterial.Get(_activeMaterialContext.MaterialName) };
-
             var graphAdapter = new HyperGraphAdapter();
             graphAdapter.HighlightCompatible = true;
             graphAdapter.LargeGridStep = 160F;
@@ -87,7 +79,7 @@ namespace MaterialTool.Controls
             graphAdapter.ShowLabels = false;
             graphAdapter.Model = context.Model;
             graphAdapter.Selection = context.DiagramSelection; 
-            graphAdapter.Context = underlyingDoc;
+            graphAdapter.Context = context.UnderlyingDocument;
             graphAdapter.ModelConversion = _modelConversion;
             graphAdapter.NodeFactory = _nodeFactory;
 

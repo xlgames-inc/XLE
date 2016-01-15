@@ -18,6 +18,7 @@ namespace ShaderPatcherLayer
     {
     public:
         property GUILayer::RawMaterial^ DefaultsMaterial;
+		property Dictionary<String^, String^>^ Variables;
     };
 }
 

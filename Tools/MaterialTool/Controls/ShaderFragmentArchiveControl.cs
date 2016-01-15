@@ -76,27 +76,30 @@ namespace MaterialTool.Controls
             icon.ScaleMode = Aga.Controls.Tree.ImageScaleMode.Clip;
             // _visibleName
             visibleName.DataPropertyName = "Name";
-            visibleName.Font = new System.Drawing.Font("Cordia New", 15F, System.Drawing.FontStyle.Italic, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             visibleName.IncrementalSearchEnabled = true;
             visibleName.LeftMargin = 8;
             visibleName.ParentColumn = treeColumn1;
             visibleName.Trimming = System.Drawing.StringTrimming.EllipsisCharacter;
+            // visibleName.Font = new System.Drawing.Font("Arial", 10F, System.Drawing.FontStyle.Italic, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             visibleName.UseCompatibleTextRendering = true;
             // _returnType
             returnType.DataPropertyName = "ReturnType";
             returnType.IncrementalSearchEnabled = true;
             returnType.LeftMargin = 3;
             returnType.ParentColumn = treeColumn3;
+            returnType.UseCompatibleTextRendering = true;
             // _parameters
             parameters.DataPropertyName = "Parameters";
             parameters.IncrementalSearchEnabled = true;
             parameters.LeftMargin = 3;
             parameters.ParentColumn = treeColumn4;
+            parameters.UseCompatibleTextRendering = true;
             // _exceptionString
             exceptionString.DataPropertyName = "ExceptionString";
             exceptionString.IncrementalSearchEnabled = true;
             exceptionString.LeftMargin = 3;
             exceptionString.ParentColumn = treeColumn5;
+            exceptionString.UseCompatibleTextRendering = true;
             // fragment tree
             fragmentTree.BackColor = System.Drawing.Color.Silver;
             fragmentTree.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
@@ -108,8 +111,9 @@ namespace MaterialTool.Controls
             fragmentTree.DefaultToolTipProvider = null;
             fragmentTree.Dock = System.Windows.Forms.DockStyle.Fill;
             fragmentTree.DragDropMarkColor = System.Drawing.Color.Black;
-            fragmentTree.Font = new System.Drawing.Font("Cordia New", 16F, System.Drawing.FontStyle.Italic, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            fragmentTree.ForeColor = System.Drawing.Color.White;
+            fragmentTree.Font = System.Drawing.SystemFonts.MenuFont;
+                // new System.Drawing.Font("Arial", 10F, System.Drawing.FontStyle.Italic, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            fragmentTree.ForeColor = System.Drawing.Color.Gray;
             fragmentTree.FullRowSelect = true;
             fragmentTree.GridLineStyle = ((Aga.Controls.Tree.GridLineStyle)((Aga.Controls.Tree.GridLineStyle.Horizontal | Aga.Controls.Tree.GridLineStyle.Vertical)));
             fragmentTree.LineColor = System.Drawing.Color.White;

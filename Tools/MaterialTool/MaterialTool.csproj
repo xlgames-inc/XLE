@@ -82,8 +82,15 @@
     <Compile Include="Controls\DiagramLister.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="DiagramCommands.cs" />
     <Compile Include="DiagramControlRegistry.cs" />
     <Compile Include="DiagramEditingContext.cs" />
+    <Compile Include="DiagramSettings.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DiagramSettings.Designer.cs">
+      <DependentUpon>DiagramSettings.cs</DependentUpon>
+    </Compile>
     <Compile Include="MaterialTool.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -91,6 +98,9 @@
     <Compile Include="Controls\ShaderFragmentArchiveControl.cs">
       <SubType>Component</SubType>
     </Compile>
+    <EmbeddedResource Include="DiagramSettings.resx">
+      <DependentUpon>DiagramSettings.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>

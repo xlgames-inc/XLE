@@ -30,6 +30,8 @@ namespace MaterialTool
         public HyperGraph.IGraphModel Model { get { return _model; } }
         public HyperGraph.IGraphSelection DiagramSelection { get { return _selection; } }
 
+        public NodeEditorCore.DiagramDocument UnderlyingDocument;
+
         public DiagramEditingContext(HyperGraph.IGraphModel model)
         {
             _model = model;

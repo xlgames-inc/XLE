@@ -16,6 +16,6 @@ namespace ControlsLibrary.BasicControls
             InitializeComponent();
         }
 
-        public string Text { set { _textBox.Text = value; } }
+        public new string Text { set { _textBox.Text = value; } }
     }
 }

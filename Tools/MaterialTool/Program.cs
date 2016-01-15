@@ -140,7 +140,9 @@ namespace MaterialTool
                 typeof(ControlsLibraryExt.Material.MaterialInspector),
                 typeof(ControlsLibraryExt.Material.MaterialSchemaLoader),
 
-                typeof(ControlsLibraryExt.ModelView.ActiveModelView)
+                typeof(ControlsLibraryExt.ModelView.ActiveModelView),
+
+                typeof(DiagramCommands)
             );
 
             // enable use of the system clipboard

@@ -139,7 +139,13 @@ namespace MaterialTool
             if (_activeMaterialContext.MaterialName == null)
                 _activeMaterialContext.MaterialName = GUILayer.RawMaterial.CreateUntitled().Initializer;
 
-            var doc = new DiagramDocument(graph, uri) { NodeFactory = _nodeFactory };
+            var underlyingDoc = _exportProvider.GetExport<NodeEditorCore.DiagramDocument>().Value;
+            underlyingDoc.ViewModel = graph;
+            underlyingDoc.ParameterSettings =
+                new ShaderPatcherLayer.Document
+                { DefaultsMaterial = GUILayer.RawMaterial.Get(_activeMaterialContext.MaterialName) };
+
+            var doc = new DiagramDocument(graph, uri) { NodeFactory = _nodeFactory, UnderlyingDocument = underlyingDoc };
             var control = _exportProvider.GetExport<Controls.IDiagramControl>().Value;
             control.SetContext(doc);
 
