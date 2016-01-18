@@ -18,7 +18,7 @@ namespace ShaderPatcherLayer
     [DataContract] public ref class NodeGraphContext
     {
     public:
-        property GUILayer::RawMaterial^ DefaultsMaterial;
+        property String^ DefaultsMaterial;
         property String^ PreviewModelFile;
 
         // Restrictions placed on the input variables

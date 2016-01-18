@@ -217,6 +217,7 @@ namespace ShaderPatcher
         auto GetGlobalParameters() const -> IteratorRange<const MainFunctionParameter*>     { return MakeIteratorRange(_globalParameters); }
         const NodeGraph& GetGraphOfTemporaries() const { return _graphOfTemporaries; }
         std::string GetOutputParameterName(const NodeBaseConnection& c) const;
+        bool IsCBufferGlobal(unsigned c) const;
 
         MainFunctionInterface(const NodeGraph& graph);
         ~MainFunctionInterface();

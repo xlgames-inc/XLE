@@ -7,6 +7,7 @@
 #include "PredefinedCBLayout.h"
 #include "../RenderUtils.h"
 #include "../ShaderLangUtil.h"
+#include "../../Assets/ConfigFileContainer.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/BitUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -24,11 +25,22 @@ namespace RenderCore { namespace Techniques
             
         size_t size;
         auto file = LoadFileAsMemoryBlock(initializer, &size);
+        StringSection<char> configSection((const char*)file.get(), (const char*)PtrAdd(file.get(), size));
+
+        // if it's a compound document, we're only going to extra the cb layout part
+        auto compoundDoc = ::Assets::ReadCompoundTextDocument(configSection);
+        if (!compoundDoc.empty()) {
+            auto i = std::find_if(
+                compoundDoc.cbegin(), compoundDoc.cend(),
+                [](const ::Assets::TextChunk<char>& chunk)
+                { return XlEqString(chunk._type, "CBLayout"); });
+            if (i != compoundDoc.cend())
+                configSection = i->_content;
+        }
 
         unsigned cbIterator = 0;
-
-        const char* iterator = (const char*)file.get();
-        const char* end = PtrAdd(iterator, size);
+        const char* iterator = configSection.begin();
+        const char* end = configSection.end();
         for (;;) {
             while (iterator < end && (*iterator == '\n' || *iterator == '\r' || *iterator == ' '|| *iterator == '\t')) ++iterator;
             const char* lineStart = iterator;

@@ -33,6 +33,7 @@
 #include "../../BufferUploads/ResourceLocator.h"
 
 #include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/ConfigFileContainer.h"
 
 #include "../../Utility/PtrUtils.h"
 
@@ -191,11 +192,21 @@ namespace ShaderPatcherLayer
             visObject._materialBinder = std::make_shared<MaterialBinder>(*builder._shaderSource, builder._shaderText);
             visObject._systemConstants._lightColour = Float3(1,1,1);
             visObject._previewModelFile = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
+            visObject._searchRules = Assets::DefaultDirectorySearchRules(MakeStringSection(visObject._previewModelFile));
 
             // Our default material settings come from the "Document" object. This
             // give us our starting material and shader properties.
-            if (doc != nullptr && doc->DefaultsMaterial != nullptr)
-                doc->DefaultsMaterial->Resolve(visObject._parameters);
+            if (doc != nullptr && !String::IsNullOrEmpty(doc->DefaultsMaterial)) {
+                auto split = doc->DefaultsMaterial->Split(';');
+                for each(auto s in split) {
+                    auto nativeName = clix::marshalString<clix::E_UTF8>(s);
+                    auto rawMat = RenderCore::Assets::RawMaterial::GetDivergentAsset(nativeName.c_str());
+                    if (!rawMat) continue;
+
+                    auto searchRules = Assets::DefaultDirectorySearchRules(MakeStringSection(nativeName));
+                    rawMat->GetAsset()._asset.Resolve(visObject._parameters, searchRules);
+                }
+            }
             visObject._parameters._matParams.SetParameter(u("SHADER_NODE_EDITOR"), "1");
 
             for each(auto i in doc->ShaderParameters)

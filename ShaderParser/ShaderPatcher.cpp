@@ -964,6 +964,52 @@ namespace ShaderPatcher
         return i->second;
     }
 
+    static bool CanBeStoredInCBuffer(const StringSection<char> type)
+    {
+        // HLSL keywords are not case sensitive. We could assume that
+        // a type name that does not begin with one of the scalar type
+        // prefixes is a global resource (like a texture, etc). This
+        // should provide some flexibility with new DX12 types, and perhaps
+        // allow for manipulating custom "interface" types...?
+        // 
+        // However, that isn't going to work well with struct types (which
+        // can be contained with cbuffers and be passed to functions like
+        // scalars)
+        //
+        // const char* scalarTypePrefixes[] = 
+        // {
+        //     "bool", "int", "uint", "half", "float", "double"
+        // };
+        //
+        // Note that we only check the prefix -- to catch variations on
+        // texture and RWTexture (and <> arguments like Texture2D<float4>)
+
+        const char* resourceTypePrefixes[] = 
+        {
+            "cbuffer", "tbuffer", 
+            "StructuredBuffer", "Buffer", "ByteAddressBuffer", "AppendStructuredBuffer", 
+            "RWBuffer", "RWByteAddressBuffer", "RWStructuredBuffer", 
+                        
+            "sampler", // SamplerState, SamplerComparisonState
+            "RWTexture", // RWTexture1D, RWTexture1DArray, RWTexture2D, RWTexture2DArray, RWTexture3D
+            "texture", // Texture1D, Texture1DArray, Texture2D, Texture2DArray, Texture2DMS, Texture2DMSArray, Texture3D, TextureCube, TextureCubeArray
+
+            // special .fx file types:
+            // "BlendState", "DepthStencilState", "DepthStencilView", "RasterizerState", "RenderTargetView", 
+        };
+        // note -- some really special function signature-only: InputPatch, OutputPatch, LineStream, TriangleStream, PointStream
+
+        for (unsigned c=0; c<dimof(resourceTypePrefixes); ++c)
+            if (XlBeginsWithI(type, MakeStringSection(resourceTypePrefixes[c])))
+                return false;
+        return true;
+    }
+
+    bool MainFunctionInterface::IsCBufferGlobal(unsigned c) const
+    {
+        return CanBeStoredInCBuffer(MakeStringSection(_globalParameters[c]._type));
+    }
+
     static void AddWithExistingCheck(
         std::vector<MainFunctionParameter>& dst,
         MainFunctionParameter&& param)
@@ -1138,47 +1184,6 @@ namespace ShaderPatcher
             }
             result << ";" << std::endl;
         }
-    }
-
-    static bool CanBeStoredInCBuffer(const StringSection<char> type)
-    {
-        // HLSL keywords are not case sensitive. We could assume that
-        // a type name that does not begin with one of the scalar type
-        // prefixes is a global resource (like a texture, etc). This
-        // should provide some flexibility with new DX12 types, and perhaps
-        // allow for manipulating custom "interface" types...?
-        // 
-        // However, that isn't going to work well with struct types (which
-        // can be contained with cbuffers and be passed to functions like
-        // scalars)
-        //
-        // const char* scalarTypePrefixes[] = 
-        // {
-        //     "bool", "int", "uint", "half", "float", "double"
-        // };
-        //
-        // Note that we only check the prefix -- to catch variations on
-        // texture and RWTexture (and <> arguments like Texture2D<float4>)
-
-        const char* resourceTypePrefixes[] = 
-        {
-            "cbuffer", "tbuffer", 
-            "StructuredBuffer", "Buffer", "ByteAddressBuffer", "AppendStructuredBuffer", 
-            "RWBuffer", "RWByteAddressBuffer", "RWStructuredBuffer", 
-                        
-            "sampler", // SamplerState, SamplerComparisonState
-            "RWTexture", // RWTexture1D, RWTexture1DArray, RWTexture2D, RWTexture2DArray, RWTexture3D
-            "texture", // Texture1D, Texture1DArray, Texture2D, Texture2DArray, Texture2DMS, Texture2DMSArray, Texture3D, TextureCube, TextureCubeArray
-
-            // special .fx file types:
-            // "BlendState", "DepthStencilState", "DepthStencilView", "RasterizerState", "RenderTargetView", 
-        };
-        // note -- some really special function signature-only: InputPatch, OutputPatch, LineStream, TriangleStream, PointStream
-
-        for (unsigned c=0; c<dimof(resourceTypePrefixes); ++c)
-            if (XlBeginsWithI(type, MakeStringSection(resourceTypePrefixes[c])))
-                return false;
-        return true;
     }
 
     static void MaybeComma(std::stringstream& stream) { if (stream.tellp() != std::stringstream::pos_type(0)) stream << ", "; }

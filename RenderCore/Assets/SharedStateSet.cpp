@@ -12,6 +12,7 @@
 #include "../Techniques/CommonBindings.h"
 #include "../Techniques/RenderStateResolver.h"
 #include "../Techniques/CompiledRenderStateSet.h"
+#include "../Techniques/PredefinedCBLayout.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/Buffer.h"
@@ -232,6 +233,17 @@ namespace RenderCore { namespace Assets
         context._context->Bind(compiled->_rasterizerState);
         
         _currentRenderState = renderStateSetIndex;
+    }
+
+    const Techniques::PredefinedCBLayout* SharedStateSet::GetCBLayout(SharedTechniqueConfig shaderName)
+    {
+        // If the technique config has an embedded cblayout, we must return that.
+        // Otherwise, we return the default
+        const auto& sn = _pimpl->_resolvedTechniqueConfigs[shaderName.Value()];
+        auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(sn.c_str());
+        if (shaderType.HasEmbeddedCBLayout())
+            return &::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(sn.c_str());
+        return &::Assets::GetAssetDep<Techniques::PredefinedCBLayout>("game/xleres/BasicMaterialConstants.txt");
     }
 
     auto SharedStateSet::CaptureState(

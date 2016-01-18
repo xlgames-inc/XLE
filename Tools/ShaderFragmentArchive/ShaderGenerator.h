@@ -154,6 +154,7 @@ namespace ShaderPatcherLayer
 			NodeGraph^ graph, UInt32 previewNodeId, 
 			PreviewSettings^ settings,
 			IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
+        static String^      GenerateCBLayout(NodeGraph^ graph);
 
 		ref class Interface
 		{

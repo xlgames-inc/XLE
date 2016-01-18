@@ -152,6 +152,12 @@ namespace RenderCore { namespace Assets
 
     CachedTextureFormats::~CachedTextureFormats() {}
 
+    static bool IsDXTNormalMap(uint32 format)
+    {
+        return format >= RenderCore::Metal::NativeFormat::BC1_TYPELESS
+            && format <= RenderCore::Metal::NativeFormat::BC1_UNORM_SRGB;
+    }
+
     bool IsDXTNormalMap(const std::string& textureName)
     {
         if (textureName.empty()) return false;
@@ -162,6 +168,15 @@ namespace RenderCore { namespace Assets
         typedef CachedTextureFormats::Header Hdr;
         typedef CachedTextureFormats::Entry Entry;
         auto* data = cache._cache->GetData();
+        if (!data) {
+            static bool firstTime = true;
+            if (firstTime) {
+                LogAlwaysError << "Failed to open TextureFormatCache.dat! DXT normal map queries will be inefficient.";
+                firstTime = false;
+            }
+            return IsDXTNormalMap(DeferredShaderResource::LoadFormat(textureName.c_str()));
+        }
+
         auto& hdr = *(Hdr*)data;
         auto* start = (Entry*)PtrAdd(data, sizeof(Hdr));
         auto* end = (Entry*)PtrAdd(data, sizeof(Hdr) + sizeof(Entry) * hdr._count);
@@ -182,12 +197,10 @@ namespace RenderCore { namespace Assets
                 i->second = RenderCore::Metal::NativeFormat::Unknown;
             } CATCH_END
             ++hdr._count;
-            return i->second >= RenderCore::Metal::NativeFormat::BC1_TYPELESS
-                && i->second <= RenderCore::Metal::NativeFormat::BC1_UNORM_SRGB;
+            return IsDXTNormalMap(i->second);
         }
 
-        return      i->second >= RenderCore::Metal::NativeFormat::BC1_TYPELESS
-                &&  i->second <= RenderCore::Metal::NativeFormat::BC1_UNORM_SRGB;
+        return IsDXTNormalMap(i->second);
     }
 
     GeoInputAssembly CreateGeoInputAssembly(   

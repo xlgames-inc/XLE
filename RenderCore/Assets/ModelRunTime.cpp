@@ -40,6 +40,7 @@
 #include "../../Core/Exceptions.h"
 
 #include <string>
+#include <set>
 
 #include "../Metal/DeviceContextImpl.h" // pulls in DX/Windows indirectly
 
@@ -222,7 +223,7 @@ namespace RenderCore { namespace Assets
             SharedStateSet& sharedStateSet, unsigned levelOfDetail,
             std::vector<uint64>& textureBindPoints,
             std::vector<std::vector<uint8>>& prescientMaterialConstantBuffers,
-            ParamBoxDescriptions& paramBoxDesc, const Techniques::PredefinedCBLayout& cbLayout,
+            ParamBoxDescriptions& paramBoxDesc, std::set<const Techniques::PredefinedCBLayout*>& cbLayouts,
             const ::Assets::DirectorySearchRules* searchRules)
         {
             std::vector<std::pair<MaterialGuid, SubMatResources>> materialResources;
@@ -258,7 +259,9 @@ namespace RenderCore { namespace Assets
                 // build material constants
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 auto* matData = matScaffold.GetMaterial(i->first);
-                auto cbData = matData ? cbLayout.BuildCBDataAsVector(matData->_constants) : std::vector<uint8>(cbLayout._cbSize, uint8(0));
+                auto* cbLayout = sharedStateSet.GetCBLayout(i->second._shaderName);
+                auto cbData = matData ? cbLayout->BuildCBDataAsVector(matData->_constants) : std::vector<uint8>(cbLayout->_cbSize, uint8(0));
+                cbLayouts.insert(cbLayout);
 
                 i->second._constantBuffer = 
                     (unsigned)InsertOrCombine(
@@ -480,17 +483,16 @@ namespace RenderCore { namespace Assets
     {
         using namespace ModelConstruction;
 
-        const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>("game/xleres/BasicMaterialConstants.txt");
-
             // build the underlying objects required to render the given scaffold 
             //  (at the given level of detail)
         std::vector<uint64> textureBindPoints;
         std::vector<std::vector<uint8>> prescientMaterialConstantBuffers;
+        std::set<const Techniques::PredefinedCBLayout*> cbLayouts;
         ModelConstruction::ParamBoxDescriptions paramBoxDesc;
         auto materialResources = BuildMaterialResources(
             scaffold, matScaffold, sharedStateSet, levelOfDetail,
             textureBindPoints, prescientMaterialConstantBuffers,
-            paramBoxDesc, cbLayout, searchRules);
+            paramBoxDesc, cbLayouts, searchRules);
 
             // one "textureset" for each sub material (though, in theory, we could 
             // combine texture sets for materials that share the same textures
@@ -682,7 +684,7 @@ namespace RenderCore { namespace Assets
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(_validationCallback, scaffold.GetDependencyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, matScaffold.GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, cbLayout.GetDependencyValidation());
+        for(auto i:cbLayouts) ::Assets::RegisterAssetDependency(_validationCallback, i->GetDependencyValidation());
         for (const auto& t:boundTextures) if (t) ::Assets::RegisterAssetDependency(_validationCallback, t->GetDependencyValidation());       // rebuild the entire renderer if any texture changes
 
         auto pimpl = std::make_unique<PimplWithSkinning>();

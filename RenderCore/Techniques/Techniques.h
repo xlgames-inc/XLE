@@ -188,12 +188,14 @@ namespace RenderCore { namespace Techniques
             const TechniqueInterface& techniqueInterface) const;
 
         auto GetDependencyValidation() const -> const ::Assets::DepValPtr& { return _validationCallback; }
+        bool HasEmbeddedCBLayout() const { return _hasEmbeddedCBLayout; }
 
         ShaderType(const ::Assets::ResChar resourceName[]);
         ~ShaderType();
     private:
         Technique           _technique[size_t(TechniqueIndex::Max)];
         ::Assets::DepValPtr _validationCallback;
+        bool                _hasEmbeddedCBLayout;
 
         void ParseConfigFile(
             StringSection<utf8> input, 

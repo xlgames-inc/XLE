@@ -12,8 +12,6 @@
 #include "../Surface.h"
 #include "../Utility/perlinnoise.h"
 
-Texture2D SecondaryNormalMap;
-
 float4 LoadAnisotropic(Texture2D inputTexture, float2 texCoord : TEXCOORD0)
 {
     return inputTexture.Sample(MaybeAnisotropicSampler, texCoord);

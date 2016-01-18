@@ -785,6 +785,8 @@ namespace RenderCore { namespace Techniques
 
     ShaderType::ShaderType(const ::Assets::ResChar resourceName[])
     {
+        _hasEmbeddedCBLayout = false;
+
         size_t sourceFileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(resourceName, &sourceFileSize);
 
@@ -795,7 +797,9 @@ namespace RenderCore { namespace Techniques
             auto searchRules = ::Assets::DefaultDirectorySearchRules(resourceName);
             std::vector<std::shared_ptr<::Assets::DependencyValidation>> inheritedAssets;
 
-            StringSection<char> configSection((const char*)sourceFile.get(), (const char*)PtrAdd(sourceFile.get(), sourceFileSize));
+            StringSection<char> configSection(
+                (const char*)sourceFile.get(), 
+                (const char*)PtrAdd(sourceFile.get(), sourceFileSize));
 
             auto compoundDoc = ::Assets::ReadCompoundTextDocument(configSection);
             if (!compoundDoc.empty()) {
@@ -806,6 +810,11 @@ namespace RenderCore { namespace Techniques
 
                 if (i != compoundDoc.cend())
                     configSection = i->_content;
+
+                _hasEmbeddedCBLayout = std::find_if(
+                    compoundDoc.cbegin(), compoundDoc.cend(),
+                    [](const ::Assets::TextChunk<char>& chunk)
+                    { return XlEqString(chunk._type, "CBLayout"); }) != compoundDoc.cend();
             }
 
             TRY

@@ -139,7 +139,7 @@ namespace MaterialTool
             if (File.Exists(uri.LocalPath))
                 underlyingDoc.Load(uri);
 
-            underlyingDoc.GraphContext.DefaultsMaterial = GUILayer.RawMaterial.Get(_activeMaterialContext.MaterialName);
+            underlyingDoc.GraphContext.DefaultsMaterial = _activeMaterialContext.MaterialName;
             underlyingDoc.GraphContext.PreviewModelFile = "game/model/galleon/galleon.dae";
 
             var doc = new DiagramDocument(underlyingDoc, uri) { NodeFactory = _nodeFactory };

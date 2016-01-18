@@ -17,6 +17,7 @@ namespace RenderCore { namespace Techniques
     class TechniqueContext; class ParsingContext; 
     class IStateSetResolver;
     class RenderStateSet;
+    class PredefinedCBLayout;
 }}
 namespace Utility { class ParameterBox; }
 
@@ -80,6 +81,8 @@ namespace RenderCore { namespace Assets
         void BeginRenderState(
             const ModelRendererContext& context, 
             SharedRenderStateSet renderStateSetIndex) const;
+
+        const Techniques::PredefinedCBLayout* GetCBLayout(SharedTechniqueConfig shaderName);
 
         class CaptureMarker
         {

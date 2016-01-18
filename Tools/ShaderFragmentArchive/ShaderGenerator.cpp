@@ -166,6 +166,33 @@ namespace ShaderPatcherLayer
         }
     }
 
+    String^      NodeGraph::GenerateCBLayout(NodeGraph^ graph)
+    {
+        try
+        {
+            auto nativeGraph = graph->ConvertToNative("temp");
+            ShaderPatcher::MainFunctionInterface interf(nativeGraph);
+
+            std::stringstream str;
+                // Input parameters that can be stored in a cbuffer become
+                // part of our cblayout
+            auto globalParams = interf.GetGlobalParameters();
+            for (unsigned c=0; c<globalParams.size(); ++c) {
+                if (interf.IsCBufferGlobal(c)) {
+                    const auto& p = globalParams[c];
+                    str << p._type << " " << p._name << std::endl;
+                    // we can also specify a default value here...
+                }
+            }
+            return clix::marshalString<clix::E_UTF8>(str.str());
+
+        } catch (const std::exception& e) {
+            return "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what());
+        } catch (...) {
+            return "Unknown exception while generating shader";
+        }
+    }
+
 	NodeGraph::Interface^	NodeGraph::GetInterface(NodeGraph^ graph)
 	{
 		auto nativeGraph = graph->ConvertToNative("graph");
@@ -411,6 +438,16 @@ namespace ShaderPatcherLayer
                 sw->Write(")--*/"); sw->WriteLine();
                 sw->WriteLine();
                 sw->Flush();
+
+                // write out a cb layout, as well
+                auto cbLayout = NodeGraph::GenerateCBLayout(nodeGraph);
+                if (!String::IsNullOrEmpty(cbLayout)) {
+                    sw->Write("/* <<Chunk:CBLayout:main>>--("); sw->WriteLine();
+                    sw->Write(cbLayout); sw->WriteLine();
+                    sw->Write(")--*/"); sw->WriteLine();
+                    sw->WriteLine();
+                    sw->Flush();
+                }
             }
 
                 // If we wrote to the memory stream successfully, we can write to disk -- 
