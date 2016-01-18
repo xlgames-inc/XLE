@@ -34,6 +34,10 @@ namespace ToolsRig
         VisCameraSettings();
     };
 
+    VisCameraSettings AlignCameraToBoundingBox(
+        float verticalFieldOfView, 
+        const std::pair<Float3, Float3>& boxIn);
+
     class VisEnvSettings
     {
     public:

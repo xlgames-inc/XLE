@@ -134,11 +134,13 @@ namespace MaterialTool
             underlyingDoc.ViewModel.CompatibilityStrategy = _nodeFactory.CreateCompatibilityStrategy();
             underlyingDoc.GraphContext = new ShaderPatcherLayer.NodeGraphContext();
 
+            // When creating a new document, we'll pass through here with a file that
+            // doesn't exist... So let's check if we need to load it now...
             if (File.Exists(uri.LocalPath))
                 underlyingDoc.Load(uri);
 
-            underlyingDoc.GraphContext.DefaultsMaterial 
-                = GUILayer.RawMaterial.Get(_activeMaterialContext.MaterialName);
+            underlyingDoc.GraphContext.DefaultsMaterial = GUILayer.RawMaterial.Get(_activeMaterialContext.MaterialName);
+            underlyingDoc.GraphContext.PreviewModelFile = "game/model/galleon/galleon.dae";
 
             var doc = new DiagramDocument(underlyingDoc, uri) { NodeFactory = _nodeFactory };
             var control = _exportProvider.GetExport<Controls.IDiagramControl>().Value;

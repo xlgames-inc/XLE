@@ -24,12 +24,15 @@
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
+#include "../../RenderCore/Assets/ModelRunTime.h"   // for aligning preview camera to model
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/MinimalShaderSource.h"
 
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../BufferUploads/DataPacket.h"
 #include "../../BufferUploads/ResourceLocator.h"
+
+#include "../../Assets/IntermediateAssets.h"
 
 #include "../../Utility/PtrUtils.h"
 
@@ -187,6 +190,7 @@ namespace ShaderPatcherLayer
             MaterialVisObject visObject;
             visObject._materialBinder = std::make_shared<MaterialBinder>(*builder._shaderSource, builder._shaderText);
             visObject._systemConstants._lightColour = Float3(1,1,1);
+            visObject._previewModelFile = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
 
             // Our default material settings come from the "Document" object. This
             // give us our starting material and shader properties.
@@ -226,6 +230,16 @@ namespace ShaderPatcherLayer
                 visSettings._geometryType = MaterialVisSettings::GeometryType::Model;
                 break;
             };
+
+            // Align the camera if we're drawing with a model...
+            if (geometry == PreviewGeometry::Model && !visObject._previewModelFile.empty()) {
+                const auto& model = ::Assets::GetAssetComp<RenderCore::Assets::ModelScaffold>(
+                    visObject._previewModelFile.c_str());
+                model.StallAndResolve();
+                *visSettings._camera = ToolsRig::AlignCameraToBoundingBox(
+                    visSettings._camera->_verticalFieldOfView, 
+                    model.GetStaticBoundingBox());
+            }
 
             SceneEngine::LightingParserContext parserContext(*builder._techContext);
             bool result = ToolsRig::MaterialVisLayer::Draw(

@@ -19,6 +19,7 @@ namespace ShaderPatcherLayer
     {
     public:
         property GUILayer::RawMaterial^ DefaultsMaterial;
+        property String^ PreviewModelFile;
 
         // Restrictions placed on the input variables
         [DataMember] property Dictionary<String^, String^>^ Variables { Dictionary<String^, String^>^ get() { if (!_variables) _variables = gcnew Dictionary<String^, String^>(); return _variables; } }

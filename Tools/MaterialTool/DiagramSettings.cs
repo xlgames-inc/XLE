@@ -64,6 +64,7 @@ namespace MaterialTool
             foreach (var i in diagContext.ShaderParameters)
                 if (i.Key.Equals("OUTPUT_WORLD_POSITION"))
                     _needsWorldPosition.CheckState = CheckState.Checked;
+            _previewModel.Text = diagContext.PreviewModelFile;
 
             _okButton.Click += _okButton_Click;
         }
@@ -82,6 +83,8 @@ namespace MaterialTool
             else
                 diagContext.ShaderParameters.Remove("OUTPUT_WORLD_POSITION");
 
+            diagContext.PreviewModelFile = _previewModel.Text;
+
             _context.Invalidate();
             DialogResult = DialogResult.OK;
         }
@@ -92,6 +95,21 @@ namespace MaterialTool
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
             _needsWorldPosition.Enabled = _type.SelectedIndex == 1;
+        }
+
+        private void _previewModelSelect_Click(object sender, EventArgs e)
+        {
+            using (var ofd = new OpenFileDialog()) 
+            {
+                ofd.FileName = System.IO.Directory.GetCurrentDirectory() + "/" + _previewModel.Text;
+                // ofd.InitialDirectory = System.IO.Path.GetDirectoryName(_previewModel.Text);
+                ofd.Filter = "Model files|*.dae|All Files|*.*";
+                if (ofd.ShowDialog() == DialogResult.OK)
+                {
+                    var relTo = new Uri(System.IO.Directory.GetCurrentDirectory() + "/");
+                    _previewModel.Text = relTo.MakeRelativeUri(new Uri(ofd.FileName)).OriginalString;
+                }
+            }
         }
     }
 }
