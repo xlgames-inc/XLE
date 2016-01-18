@@ -136,12 +136,11 @@ namespace MaterialTool
                 typeof(NodeEditorCore.DiagramDocument),
 
                 typeof(ControlsLibraryExt.Commands.CommonCommands),
-                typeof(ControlsLibraryExt.Material.ActiveMaterialContext),
                 typeof(ControlsLibraryExt.Material.MaterialInspector),
                 typeof(ControlsLibraryExt.Material.MaterialSchemaLoader),
-
                 typeof(ControlsLibraryExt.ModelView.ActiveModelView),
 
+                typeof(ActiveMaterialContext),
                 typeof(DiagramCommands)
             );
 

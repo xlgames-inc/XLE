@@ -20,6 +20,7 @@
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../RenderCore/Techniques/RenderStateResolver.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/Conversion.h"
 #include <msclr/auto_gcroot.h>
 #include <iomanip>
 
@@ -458,6 +459,20 @@ namespace GUILayer
     const RenderCore::Assets::RawMaterial* RawMaterial::GetUnderlying() 
     { 
         return (!!_underlying) ? &_underlying->GetAsset()._asset : nullptr; 
+    }
+
+    String^ RawMaterial::TechniqueConfig::get() { return clix::marshalString<clix::E_UTF8>(_underlying->GetAsset()._asset._techniqueConfig); }
+
+    void RawMaterial::TechniqueConfig::set(String^ value)
+    {
+        auto native = Conversion::Convert<::Assets::rstring>(clix::marshalString<clix::E_UTF8>(value));
+        if (_underlying->GetAsset()._asset._techniqueConfig != native) {
+            auto transaction = _underlying->Transaction_Begin("Technique Config");
+            if (transaction) {
+                transaction->GetAsset()._asset._techniqueConfig = native;
+                transaction->Commit();
+            }
+        }
     }
 
     static RawMaterial::RawMaterial()

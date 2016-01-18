@@ -64,6 +64,26 @@ namespace ControlsLibraryExt.ModelView
             }
         }
 
+        protected void ContextMenu_AssignTechnique(object sender, EventArgs e)
+        {
+            var i = sender as MenuItem;
+            if (i != null)
+            {
+                var s = i.Tag as Tuple<string, string>;
+                if (s != null) {
+                    // Get this material, and change it's technique config to the one requested
+                    string matName = s.Item1;
+                    int lastSemi = matName.LastIndexOf(';');
+                    if (lastSemi > 0) matName = matName.Substring(lastSemi + 1);
+                    var mat = GUILayer.RawMaterial.Get(matName);
+                    if (mat != null) {
+                        mat.TechniqueConfig = s.Item2;
+                        Invalidate();
+                    }
+                }
+            }
+        }
+
         protected void OnViewerMouseClick(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Right)
@@ -74,6 +94,14 @@ namespace ControlsLibraryExt.ModelView
                     cm.MenuItems.Add(
                         new MenuItem("Pick &Material (" + _visMouseOver.MaterialName + ")", new EventHandler(ContextMenu_EditMaterial))
                         { Tag = _visMouseOver.FullMaterialName });
+
+                    foreach (var t in _activeMaterialContext.AssignableTechniqueConfigs)
+                    {
+                        cm.MenuItems.Add(
+                            new MenuItem("Assign Technique (" + t + ")", 
+                            new EventHandler(ContextMenu_AssignTechnique)) { Tag = new Tuple<string, string>(_visMouseOver.FullMaterialName, t) });
+                    }
+
                     cm.Show(this, e.Location);
                 }
             }

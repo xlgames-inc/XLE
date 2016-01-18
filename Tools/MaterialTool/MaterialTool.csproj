@@ -76,6 +76,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ActiveMaterialContext.cs" />
     <Compile Include="Controls\DiagramControl.cs">
       <SubType>Component</SubType>
     </Compile>

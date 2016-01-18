@@ -327,6 +327,8 @@ namespace GUILayer
 
         property RenderStateSet^ StateSet { RenderStateSet^ get() { return _renderStateSet; } }
 
+        property String^ TechniqueConfig { String^ get(); void set(String^); }
+
         const RenderCore::Assets::RawMaterial* GetUnderlying();
 
         String^ BuildInheritanceList();

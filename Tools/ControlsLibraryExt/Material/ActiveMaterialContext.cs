@@ -6,6 +6,7 @@
 
 using System;
 using System.ComponentModel.Composition;
+using System.Collections.Generic;
 
 namespace ControlsLibraryExt.Material
 {
@@ -29,6 +30,8 @@ namespace ControlsLibraryExt.Material
         public ulong PreviewModelBinding { get; set; }
         public delegate void OnChangeDelegate();
         public event OnChangeDelegate OnChange;
+
+        public virtual IEnumerable<string> AssignableTechniqueConfigs { get { return System.Linq.Enumerable.Empty<string>(); } }
 
         private string m_materialName = null;
     }

@@ -50,6 +50,9 @@
         <scea.dom.editors.attribute category="Vegetation" name="P-MAT_DOUBLE_SIDED_LIGHTING" displayName="Double sided lighting"
           description="Enables lighting on both sides of the polygons"
           editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms" />
+
+        <scea.dom.editors.attribute category="Basic" name="TechniqueConfig" displayName="Technique"
+          description="Technique configuration used with this material (leave blank for default)"/>
         
       </xs:appinfo>
     </xs:annotation>
@@ -67,6 +70,8 @@
     <xs:attribute name="P-MAT_DOUBLE_SIDED_LIGHTING" type="xs:boolean" default="false"/>
     <xs:attribute name="P-MAT_ALPHA_TEST" type="xs:boolean" default="false"/>
     <xs:attribute name="P-MAT_PREMULTIPLIED_ALPHA" type="xs:boolean" default="false"/>
+
+    <xs:attribute name="TechniqueConfig" type="xs:string" default=""/>
     
   </xs:complexType>
 </xs:schema>
