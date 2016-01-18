@@ -17,7 +17,7 @@ namespace NodeEditor
 {
     public partial class LargePreview : Form
     {
-        public LargePreview(ShaderPatcherLayer.PreviewBuilder preview, ShaderPatcherLayer.Document doc)
+        public LargePreview(ShaderPatcherLayer.PreviewBuilder preview, ShaderPatcherLayer.NodeGraphContext doc)
         {
             _preview = preview;
             _document = doc;
@@ -41,7 +41,7 @@ namespace NodeEditor
         }
 
         private ShaderPatcherLayer.PreviewBuilder _preview;
-        private ShaderPatcherLayer.Document _document;
+        private ShaderPatcherLayer.NodeGraphContext _document;
         private Point _lastDragLocation;
 
         private void LargePreview_MouseDown(object sender, MouseEventArgs e)
@@ -79,7 +79,7 @@ namespace NodeEditor
             {
                 var bitmap = _preview.Build(
                     _document, new Size(ClientRectangle.Width, ClientRectangle.Height),
-                    ShaderPatcherLayer.PreviewGeometry.Sphere);
+                    ShaderPatcherLayer.PreviewGeometry.Sphere, 0);
                 if (bitmap != null)
                 {
                     e.Graphics.DrawImage(bitmap, new Point() { X = 0, Y = 0 });

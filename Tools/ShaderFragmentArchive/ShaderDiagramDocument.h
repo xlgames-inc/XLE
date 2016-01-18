@@ -11,16 +11,17 @@
 using System::Collections::Generic::Dictionary;
 using System::String;
 using System::Object;
+using namespace System::Runtime::Serialization;
 
 namespace ShaderPatcherLayer
 {
-    public ref class Document
+    [DataContract] public ref class NodeGraphContext
     {
     public:
         property GUILayer::RawMaterial^ DefaultsMaterial;
-		property Dictionary<String^, String^>^ Variables;
+		[DataMember] Dictionary<String^, String^>^ Variables;
 
-		Document() { Variables = gcnew Dictionary<String^, String^>(); }
+		NodeGraphContext() { Variables = gcnew Dictionary<String^, String^>(); }
     };
 }
 

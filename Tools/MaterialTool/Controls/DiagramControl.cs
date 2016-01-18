@@ -22,7 +22,7 @@ namespace MaterialTool.Controls
 {
     interface IDiagramControl
     {
-        void SetContext(DiagramEditingContext context);
+        void SetContext(DiagramDocument context);
     }
 
     class AdaptableSet : IAdaptable, IDecoratable
@@ -64,7 +64,7 @@ namespace MaterialTool.Controls
             Paint += child_Paint;
         }
 
-        public void SetContext(DiagramEditingContext context)
+        public void SetContext(DiagramDocument context)
         {
             var existingContext = context as ISelectionContext;
             if (existingContext != null)

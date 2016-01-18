@@ -12,6 +12,7 @@ using namespace System;
 using namespace System::Collections::Generic;
 using namespace System::Drawing;
 using namespace System::Runtime::Serialization;
+using System::Runtime::InteropServices::OutAttribute;
 
 namespace ShaderPatcher { class NodeGraph; }
 
@@ -166,8 +167,8 @@ namespace ShaderPatcherLayer
         static NodeGraph^   LoadFromXML(System::IO::Stream^ stream);
         void                SaveToXML(System::IO::Stream^ stream);
 
-        static NodeGraph^   Load(String^ filename);
-        void                Save(String^ filename);
+        static void    Load(String^ filename, [Out] NodeGraph^% nodeGraph, [Out] NodeGraphContext^% context);
+        static void    Save(String^ filename, NodeGraph^ nodeGraph, NodeGraphContext^ context);
 
     private:
         List<Node^>^                        _nodes;

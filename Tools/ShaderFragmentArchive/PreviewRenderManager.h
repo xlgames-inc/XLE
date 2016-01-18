@@ -10,7 +10,7 @@
 
 namespace ShaderPatcherLayer
 {
-    ref class Document;
+    ref class NodeGraphContext;
 
     public enum class PreviewGeometry
     {
@@ -20,7 +20,9 @@ namespace ShaderPatcherLayer
     public interface class IPreviewBuilder
     {
     public:
-        System::Drawing::Bitmap^ Build(Document^ doc, System::Drawing::Size^ size, PreviewGeometry geometry, unsigned targetToVisualize);
+        System::Drawing::Bitmap^ Build(
+            NodeGraphContext^ doc, System::Drawing::Size^ size, 
+            PreviewGeometry geometry, unsigned targetToVisualize);
     };
 
     public interface class IManager

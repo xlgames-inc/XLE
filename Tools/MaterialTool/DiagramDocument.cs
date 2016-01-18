@@ -74,8 +74,11 @@ namespace MaterialTool
 
         #endregion
 
-        public DiagramDocument(HyperGraph.IGraphModel model, Uri uri) : base(model) 
+        public NodeEditorCore.IDiagramDocument UnderlyingDocument;
+
+        public DiagramDocument(NodeEditorCore.IDiagramDocument underlyingDoc, Uri uri) : base(underlyingDoc.ViewModel) 
         {
+            UnderlyingDocument = underlyingDoc;
             _uri = uri;
 
                 // tracking for dirty flag --

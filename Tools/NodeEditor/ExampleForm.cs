@@ -45,7 +45,7 @@ namespace NodeEditor
 			InitializeComponent();
 
             _hyperGraphModel = new HyperGraph.GraphModel();
-            NodeEditorCore.GraphHelpers.SetupDefaultHandlers(_hyperGraphModel);
+            _hyperGraphModel.CompatibilityStrategy = _nodeCreator.CreateCompatibilityStrategy();
 
             _graphAdapter = new HyperGraph.GraphControl();
             _graphAdapter.Attach(graphControl);
@@ -203,11 +203,8 @@ namespace NodeEditor
 
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    using (var stream = dialog.OpenFile())
-                    {
-                        var graph = _modelConversion.ToShaderPatcherLayer(_hyperGraphModel);
-                        graph.Save(stream);
-                    }
+                    var graph = _modelConversion.ToShaderPatcherLayer(_hyperGraphModel);
+                    ShaderPatcherLayer.NodeGraph.Save(dialog.FileName, graph, _document);
                 }
             }
         }
@@ -227,7 +224,8 @@ namespace NodeEditor
 
         private void LoadFile(string filename)
         {
-            ShaderPatcherLayer.NodeGraph graph = ShaderPatcherLayer.NodeGraph.Load(filename);
+            ShaderPatcherLayer.NodeGraph graph;
+            ShaderPatcherLayer.NodeGraph.Load(filename, out graph, out _document);
             _hyperGraphModel.RemoveNodes(_hyperGraphModel.Nodes.ToList());
             _modelConversion.AddToHyperGraph(graph, _hyperGraphModel);
         }
@@ -271,7 +269,7 @@ namespace NodeEditor
         }
 
         #region Members
-        private ShaderPatcherLayer.Document _document = new ShaderPatcherLayer.Document();
+        private ShaderPatcherLayer.NodeGraphContext _document = new ShaderPatcherLayer.NodeGraphContext();
         private RibbonTabGroup _tabGroupTextureNode;
         private RibbonLib.Controls.RibbonCheckBox _showLabels;
         private RibbonLib.Controls.RibbonButton _generateTestScript;

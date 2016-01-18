@@ -13,6 +13,10 @@
 float3 ConvertSRGBToLinear(float3 srgbInput)    { return SRGBToLinear(srgbInput); }
 float3 ConvertLinearToSRGB(float3 linearInput)  { return LinearToSRGB(linearInput); }
 
+float3 RGB(float r, float g, float b) { return float3(r, g, b); }
+float3 HSV(float h, float s, float v) { return HSV2RGB(float3(h, s, v)); }
+float3 HSL(float h, float s, float l) { return HSL2RGB(float3(h, s, l)); }
+
 PerPixelMaterialParam MakeMaterialParams(float roughness, float specular, float metal)
 {
     PerPixelMaterialParam result = PerPixelMaterialParam_Default();

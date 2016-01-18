@@ -24,17 +24,14 @@ namespace MaterialTool
         , ITreeListView
         , IItemView
     {
-        private HyperGraph.IGraphModel _model;
         private HyperGraph.IGraphSelection _selection;
 
-        public HyperGraph.IGraphModel Model { get { return _model; } }
+        public HyperGraph.IGraphModel Model;
         public HyperGraph.IGraphSelection DiagramSelection { get { return _selection; } }
-
-        public NodeEditorCore.DiagramDocument UnderlyingDocument;
 
         public DiagramEditingContext(HyperGraph.IGraphModel model)
         {
-            _model = model;
+            Model = model;
             model.NodeAdded += model_NodeAdded;
             model.NodeRemoved += model_NodeRemoved;
             model.ConnectionAdded += model_ConnectionAdded;
@@ -230,7 +227,7 @@ namespace MaterialTool
         }
 
         public IEnumerable<object> Roots {
-            get { return _model.Nodes; }
+            get { return Model.Nodes; }
         }
 
         public IEnumerable<object> GetChildren(object parent)

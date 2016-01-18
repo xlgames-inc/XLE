@@ -506,7 +506,7 @@ namespace MaterialTool
             }
 
             _variablesList = new BindingList<StringPair>();
-            foreach (var i in _context.ParameterSettings.Variables)
+            foreach (var i in _context.GraphContext.Variables)
                 _variablesList.Add(new StringPair { Key = i.Key, Value = i.Value });
             _variables.DataSource = _variablesList;
 
@@ -516,9 +516,9 @@ namespace MaterialTool
         private void _okButton_Click(object sender, EventArgs e)
         {
             // commit the variables to the document
-            _context.ParameterSettings.Variables.Clear();
+            _context.GraphContext.Variables.Clear();
             foreach (var i in _variablesList)
-                _context.ParameterSettings.Variables.Add(i.Key ?? string.Empty, i.Value ?? string.Empty);
+                _context.GraphContext.Variables.Add(i.Key ?? string.Empty, i.Value ?? string.Empty);
 
             _context.Invalidate();
             DialogResult = DialogResult.OK;

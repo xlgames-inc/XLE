@@ -11,28 +11,6 @@ using HyperGraph;
 
 namespace NodeEditorCore
 {
-    public static class GraphHelpers
-    {
-        public static void SetupDefaultHandlers(HyperGraph.IGraphModel model)
-        {
-            model.CompatibilityStrategy = new ShaderFragmentNodeCompatibility();
-            model.ConnectionAdded += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionAdded);
-            model.ConnectionAdding += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionAdding);
-            model.ConnectionRemoving += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionRemoved);
-            model.NodeAdded += new EventHandler<AcceptNodeEventArgs>(OnNodeAdded);
-            model.NodeRemoved += new EventHandler<NodeEventArgs>(OnNodeRemoved);
-            model.ConnectionRemoving += new EventHandler<AcceptNodeConnectionEventArgs>(OnConnectionRemoved);
-        }
-
-        private static void OnNodeAdded(object sender, AcceptNodeEventArgs args) { OnNodesChange(); }
-        private static void OnNodeRemoved(object sender, NodeEventArgs args) { OnNodesChange(); }
-        private static void OnNodesChange() {}
-
-        private static void OnConnectionAdding(object sender, AcceptNodeConnectionEventArgs e) {}
-        private static void OnConnectionAdded(object sender, AcceptNodeConnectionEventArgs e) {}
-        private static void OnConnectionRemoved(object sender, AcceptNodeConnectionEventArgs e) {}
-    }
-
     public class GraphControl : HyperGraph.GraphControl, IDisposable
     {
         HyperGraph.IGraphModel  GetGraphModel() { return base._model; }
@@ -253,7 +231,7 @@ namespace NodeEditorCore
             var p = GetPreviewItem(sender);
             var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(
                 ConvertToShaderPatcherLayer(), AttachedId(sender), 
-                p.PreviewSettings, (Document!=null) ? Document.ParameterSettings.Variables : null);
+                p.PreviewSettings, (Document!=null) ? Document.GraphContext.Variables : null);
             var wnd = new ControlsLibrary.BasicControls.TextWindow();
             wnd.Text = System.Text.RegularExpressions.Regex.Replace(shader, @"\r\n|\n\r|\n|\r", "\r\n");        // (make sure we to convert the line endings into windows form)
             wnd.Show();

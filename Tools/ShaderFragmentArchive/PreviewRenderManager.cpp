@@ -77,7 +77,7 @@ namespace ShaderPatcherLayer
     {
     public:
         virtual System::Drawing::Bitmap^ Build(
-            Document^ doc, Size^ size, PreviewGeometry geometry, unsigned targetToVisualize);
+            NodeGraphContext^ doc, Size^ size, PreviewGeometry geometry, unsigned targetToVisualize);
 
         PreviewBuilder(
             std::shared_ptr<RenderCore::ShaderService::IShaderSource> shaderSource, 
@@ -178,7 +178,7 @@ namespace ShaderPatcherLayer
         RenderCore::IThreadContext& context,
         PreviewBuilderPimpl& builder, 
         PreviewGeometry geometry,
-        ShaderPatcherLayer::Document^ doc)
+        ShaderPatcherLayer::NodeGraphContext^ doc)
     {
         using namespace ToolsRig;
 
@@ -255,7 +255,7 @@ namespace ShaderPatcherLayer
         return newBitmap;
     }
 
-    System::Drawing::Bitmap^ PreviewBuilder::Build(Document^ doc, Size^ size, PreviewGeometry geometry, uint targetToVisualize)
+    System::Drawing::Bitmap^ PreviewBuilder::Build(NodeGraphContext^ doc, Size^ size, PreviewGeometry geometry, uint targetToVisualize)
     {
         using namespace RenderCore;
 

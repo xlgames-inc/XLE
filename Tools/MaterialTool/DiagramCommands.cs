@@ -41,7 +41,7 @@ namespace MaterialTool
                 switch ((Command)commandTag)
                 {
                     case Command.DiagramSettings:
-                        var context = _contextRegistry.GetActiveContext<DiagramEditingContext>();
+                        var context = _contextRegistry.GetActiveContext<DiagramDocument>();
                         if (context != null)
                         {
                             (new DiagramSettings(context.UnderlyingDocument)).ShowDialog();

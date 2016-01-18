@@ -123,37 +123,31 @@ namespace MaterialTool
 
         public IDocument Open(Uri uri)
         {
-            var filePath = uri.LocalPath;
-            HyperGraph.IGraphModel graph;
-            graph = new HyperGraph.GraphModel();
-            if (File.Exists(filePath)) {
-                var nativeGraph = ShaderPatcherLayer.NodeGraph.Load(filePath);
-                _converter.AddToHyperGraph(nativeGraph, graph);
-            }
-
-            NodeEditorCore.GraphHelpers.SetupDefaultHandlers(graph);
-
                 // We need to make sure there is a material set to the active
                 // material context... If there is none, we must create a new
                 // untitled material, and set that...
             if (_activeMaterialContext.MaterialName == null)
                 _activeMaterialContext.MaterialName = GUILayer.RawMaterial.CreateUntitled().Initializer;
 
-            var underlyingDoc = _exportProvider.GetExport<NodeEditorCore.DiagramDocument>().Value;
-            underlyingDoc.ViewModel = graph;
-            underlyingDoc.ParameterSettings =
-                new ShaderPatcherLayer.Document
-                { DefaultsMaterial = GUILayer.RawMaterial.Get(_activeMaterialContext.MaterialName) };
+            var underlyingDoc = _exportProvider.GetExport<NodeEditorCore.IDiagramDocument>().Value;
+            underlyingDoc.ViewModel = new HyperGraph.GraphModel();
+            underlyingDoc.ViewModel.CompatibilityStrategy = _nodeFactory.CreateCompatibilityStrategy();
+            underlyingDoc.GraphContext = new ShaderPatcherLayer.NodeGraphContext();
 
-            var doc = new DiagramDocument(graph, uri) { NodeFactory = _nodeFactory, UnderlyingDocument = underlyingDoc };
+            if (File.Exists(uri.LocalPath))
+                underlyingDoc.Load(uri);
+
+            underlyingDoc.GraphContext.DefaultsMaterial 
+                = GUILayer.RawMaterial.Get(_activeMaterialContext.MaterialName);
+
+            var doc = new DiagramDocument(underlyingDoc, uri) { NodeFactory = _nodeFactory };
             var control = _exportProvider.GetExport<Controls.IDiagramControl>().Value;
             control.SetContext(doc);
 
                 // Create a control for the new document, and register it!
             _controlRegistry.RegisterControl(
-                doc,
-                control as Control, 
-                new ControlInfo(Path.GetFileName(filePath), filePath, StandardControlGroup.Center) { IsDocument = true }, 
+                doc, control.As<Control>(), 
+                new ControlInfo(Path.GetFileName(uri.LocalPath), uri.LocalPath, StandardControlGroup.Center) { IsDocument = true }, 
                 this);
             return doc;
         }
@@ -170,8 +164,7 @@ namespace MaterialTool
         public void Save(IDocument document, Uri uri)
         {
             var doc = (DiagramDocument)document;
-            var nativeGraph = _converter.ToShaderPatcherLayer(doc.Model);
-            nativeGraph.Save(uri.LocalPath);
+            doc.UnderlyingDocument.Save(uri);
             doc.Uri = uri;
         }
 
@@ -305,9 +298,6 @@ namespace MaterialTool
 
         [Import]
         private ExportProvider _exportProvider;
-
-        [Import(AllowDefault=false)]
-        private NodeEditorCore.IModelConversion _converter;
 
         [Import]
         private NodeEditorCore.IShaderFragmentNodeCreator _nodeFactory;

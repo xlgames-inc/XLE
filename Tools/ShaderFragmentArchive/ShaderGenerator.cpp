@@ -7,6 +7,7 @@
 #include "stdafx.h"
 
 #include "ShaderGenerator.h"
+#include "ShaderDiagramDocument.h"
 #include "../GUILayer/MarshalString.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../Assets/ConfigFileContainer.h"
@@ -230,10 +231,64 @@ namespace ShaderPatcherLayer
         }
     }
 
-    static bool IsNodeGraphChunk(const ::Assets::TextChunk<char>& chunk) 
-        { return XlEqString(chunk._type, "NodeGraph"); }
+    static bool IsNodeGraphChunk(const ::Assets::TextChunk<char>& chunk)        { return XlEqString(chunk._type, "NodeGraph"); }
+    static bool IsNodeGraphContextChunk(const ::Assets::TextChunk<char>& chunk) { return XlEqString(chunk._type, "NodeGraphContext"); }
 
-    NodeGraph^   NodeGraph::Load(String^ filename)
+    static array<Byte>^ AsManagedArray(const ::Assets::TextChunk<char>* chunk)
+    {
+        // marshall the native string into a managed array, and from there into
+        // a stream... We need to strip off leading whitespace, however (usually
+        // there is a leading newline, which confuses the xml loader
+        auto begin = chunk->_content.begin();
+        while (begin != chunk->_content.end() && *begin == ' ' || *begin == '\t' || *begin == '\r' || *begin == '\n')
+            ++begin;
+
+        size_t contentSize = size_t(chunk->_content.end()) - size_t(begin);
+        array<Byte>^ managedArray = gcnew array<Byte>((int)contentSize);
+        {
+            cli::pin_ptr<Byte> pinned = &managedArray[managedArray->GetLowerBound(0)];
+            XlCopyMemory(pinned, begin, contentSize);
+        }
+        return managedArray;
+    }
+
+    static NodeGraphContext^ LoadContext(System::IO::Stream^ stream)
+    {
+        auto serializer = gcnew DataContractSerializer(NodeGraphContext::typeid);
+        try
+        {
+            auto o = serializer->ReadObject(stream);
+            return dynamic_cast<NodeGraphContext^>(o);
+        }
+        finally { delete serializer; }
+    }
+
+    static void SaveToXML(System::IO::Stream^ stream, NodeGraphContext^ context)
+    {
+        DataContractSerializer^ serializer = nullptr;
+        System::Xml::XmlWriterSettings^ settings = nullptr;
+        System::Xml::XmlWriter^ writer = nullptr;
+
+        try
+        {
+            serializer = gcnew DataContractSerializer(NodeGraphContext::typeid);
+            settings = gcnew System::Xml::XmlWriterSettings();
+            settings->Indent = true;
+            settings->IndentChars = "\t";
+            settings->Encoding = System::Text::Encoding::UTF8;
+
+            writer = System::Xml::XmlWriter::Create(stream, settings);
+            serializer->WriteObject(writer, context);
+        }
+        finally
+        {
+            delete writer;
+            delete serializer;
+            delete settings;
+        }
+    }
+
+    void NodeGraph::Load(String^ filename, [Out] NodeGraph^% nodeGraph, [Out] NodeGraphContext^% context)
     {
         // Load from a graph model compound text file (that may contain other text chunks)
         // We're going to use a combination of native and managed stuff -- so it's easier
@@ -246,39 +301,51 @@ namespace ShaderPatcherLayer
 
         auto chunks = ::Assets::ReadCompoundTextDocument(
             MakeStringSection((const char*)block.get(), (const char*)PtrAdd(block.get(), size)));
-        auto ci = std::find_if(chunks.cbegin(), chunks.cend(), IsNodeGraphChunk);
-        if (ci == chunks.end()) 
+
+        auto graphChunk = std::find_if(chunks.cbegin(), chunks.cend(), IsNodeGraphChunk);
+        if (graphChunk == chunks.end()) 
             throw gcnew System::Exception("Could not find node graph chunk within compound text file");
 
-        array<Byte>^ managedArray = nullptr;
-        System::IO::MemoryStream^ memStream = nullptr;
-        try
-        {
-            // marshall the native string into a managed array, and from there into
-            // a stream... We need to strip off leading whitespace, however (usually
-            // there is a leading newline, which confuses the xml loader
-            auto begin = ci->_content.begin();
-            while (begin != ci->_content.end() && *begin == ' ' || *begin == '\t' || *begin == '\r' || *begin == '\n')
-                ++begin;
+        auto contextChunk = std::find_if(chunks.cbegin(), chunks.cend(), IsNodeGraphContextChunk);
 
-            size_t contentSize = size_t(ci->_content.end()) - size_t(begin);
-            managedArray = gcnew array<Byte>((int)contentSize);
-            {
-                cli::pin_ptr<Byte> pinned = &managedArray[managedArray->GetLowerBound(0)];
-                XlCopyMemory(pinned, begin, contentSize);
-            }
-            memStream = gcnew System::IO::MemoryStream(managedArray);
-            // Then we can just load this XML using the managed serialization functionality
-            return LoadFromXML(memStream);
-        }
-        finally
+            // load the graphChunk first
         {
-            delete memStream;
-            delete managedArray;
+            array<Byte>^ managedArray = nullptr;
+            System::IO::MemoryStream^ memStream = nullptr;
+            try
+            {
+                managedArray = AsManagedArray(AsPointer(graphChunk));
+                memStream = gcnew System::IO::MemoryStream(managedArray);
+                nodeGraph = LoadFromXML(memStream);
+            }
+            finally
+            {
+                delete memStream;
+                delete managedArray;
+            }
+        }
+
+            // now load the context chunk (if it exists)
+        if (contextChunk != chunks.end()) {
+            array<Byte>^ managedArray = nullptr;
+            System::IO::MemoryStream^ memStream = nullptr;
+            try
+            {
+                managedArray = AsManagedArray(AsPointer(contextChunk));
+                memStream = gcnew System::IO::MemoryStream(managedArray);
+                context = LoadContext(memStream);
+            }
+            finally
+            {
+                delete memStream;
+                delete managedArray;
+            }
+        } else {
+            context = gcnew NodeGraphContext();
         }
     }
 
-    void NodeGraph::Save(String^ filename)
+    void NodeGraph::Save(String^ filename, NodeGraph^ nodeGraph, NodeGraphContext^ context)
     {
         // We want to write this node graph to the given stream.
         // But we're going to write a compound text document, which will include
@@ -300,13 +367,19 @@ namespace ShaderPatcherLayer
 
             auto graphName = Path::GetFileNameWithoutExtension(filename);
 
-            auto shader = NodeGraph::GenerateShader(this, graphName);
+            auto shader = NodeGraph::GenerateShader(nodeGraph, graphName);
             sw->Write(shader); 
 
             // embed the node graph in there, as well
             sw->Write("/* <<Chunk:NodeGraph:" + graphName + ">>--("); sw->WriteLine();
             sw->Flush();
-            SaveToXML(stream); sw->WriteLine();
+            nodeGraph->SaveToXML(stream); sw->WriteLine();
+            sw->Write(")-- */"); sw->WriteLine();
+
+            // embed the node graph context
+            sw->Write("/* <<Chunk:NodeGraphContext:" + graphName + ">>--("); sw->WriteLine();
+            sw->Flush();
+            ShaderPatcherLayer::SaveToXML(stream, context); sw->WriteLine();
             sw->Write(")-- */"); sw->WriteLine();
 
             // also embedded a technique config

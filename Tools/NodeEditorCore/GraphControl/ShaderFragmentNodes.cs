@@ -27,24 +27,28 @@ namespace NodeEditorCore
         Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type);
         Node CreateInterfaceNode(String title, InterfaceDirection direction);
         Node FindNodeFromId(HyperGraph.IGraphModel graph, UInt64 id);
+        HyperGraph.Compatibility.ICompatibilityStrategy CreateCompatibilityStrategy();
         string GetDescription(object item);
     }
 
     public interface IDiagramDocument
     {
         ShaderPatcherLayer.NodeGraph NodeGraph { get; }
-        ShaderPatcherLayer.Document ParameterSettings { get; }
+        ShaderPatcherLayer.NodeGraphContext GraphContext { get; set; }
+        HyperGraph.IGraphModel ViewModel { get; set; }
 
         uint ShaderStructureHash { get; }
         void Invalidate();
+
+        void Save(Uri destination);
+        void Load(Uri source);
     }
 
     [Export(typeof(IDiagramDocument))]
-    [Export(typeof(DiagramDocument))]
     [PartCreationPolicy(CreationPolicy.NonShared)]
     public class DiagramDocument : IDiagramDocument
     {
-        public ShaderPatcherLayer.Document ParameterSettings { get; set; }
+        public ShaderPatcherLayer.NodeGraphContext GraphContext { get; set; }
 
         public ShaderPatcherLayer.NodeGraph NodeGraph 
         {
@@ -52,10 +56,23 @@ namespace NodeEditorCore
         }
 
         public HyperGraph.IGraphModel ViewModel { get; set; }
-
         public uint ShaderStructureHash { get { return ViewModel.GlobalRevisionIndex; } }
-
         public void Invalidate() { ViewModel.InvokeMiscChange(true); }
+
+        public void Save(Uri destination)
+        {
+            ShaderPatcherLayer.NodeGraph.Save(destination.LocalPath, NodeGraph, GraphContext);
+        }
+
+        public void Load(Uri source)
+        {
+            ShaderPatcherLayer.NodeGraph nativeGraph;
+            ShaderPatcherLayer.NodeGraphContext graphContext;
+            // nativeGraph = ShaderPatcherLayer.NodeGraph.Load(source.LocalPath);
+            ShaderPatcherLayer.NodeGraph.Load(source.LocalPath, out nativeGraph, out graphContext);
+            GraphContext = graphContext;
+            _converter.AddToHyperGraph(nativeGraph, ViewModel);
+        }
 
         [Import]
         private IModelConversion _converter;
@@ -179,7 +196,7 @@ namespace NodeEditorCore
         {
             _builder = null;
             _cachedBitmap = null;
-            Geometry = ShaderPatcherLayer.PreviewGeometry.Sphere;
+            Geometry = ShaderPatcherLayer.PreviewGeometry.Plane2D;
             OutputToVisualize = "";
             _shaderStructureHash = 0;
         }
@@ -216,7 +233,7 @@ namespace NodeEditorCore
                     if (prevSettings.OutputToVisualize.StartsWith("SV_Target"))
                         prevSettings.OutputToVisualize = string.Empty;
                     var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(
-                        doc.NodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id, prevSettings, doc.ParameterSettings.Variables);
+                        doc.NodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id, prevSettings, doc.GraphContext.Variables);
                     _builder = _previewManager.CreatePreviewBuilder(shader);
                     _cachedBitmap = null;
                 }
@@ -241,7 +258,7 @@ namespace NodeEditorCore
                     if (OutputToVisualize.StartsWith("SV_Target"))
                         if (!uint.TryParse(OutputToVisualize.Substring(9), out target))
                             target = 0;
-                    _cachedBitmap = _builder.Build(doc.ParameterSettings, idealSize, Geometry, target);
+                    _cachedBitmap = _builder.Build(doc.GraphContext, idealSize, Geometry, target);
                 }
 
                 if (_cachedBitmap != null)
@@ -317,7 +334,7 @@ namespace NodeEditorCore
         //      Checks node inputs and outputs for type compatibility
         //  
 
-    public class ShaderFragmentNodeCompatibility : HyperGraph.Compatibility.ICompatibilityStrategy
+    internal class ShaderFragmentNodeCompatibility : HyperGraph.Compatibility.ICompatibilityStrategy
     {
         public HyperGraph.Compatibility.ConnectionType CanConnect(NodeConnector from, NodeConnector to)
         {
@@ -712,6 +729,11 @@ namespace NodeEditorCore
                 return textBox.Text;
 
             return string.Empty;
+        }
+
+        public HyperGraph.Compatibility.ICompatibilityStrategy CreateCompatibilityStrategy()
+        {
+            return new ShaderFragmentNodeCompatibility();
         }
 
         [Import]
