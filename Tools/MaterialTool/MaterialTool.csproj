@@ -79,9 +79,7 @@
     <Compile Include="Controls\DiagramControl.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Controls\DiagramLister.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
+    <Compile Include="Controls\DiagramLister.cs" />
     <Compile Include="DiagramCommands.cs" />
     <Compile Include="DiagramControlRegistry.cs" />
     <Compile Include="DiagramEditingContext.cs" />
@@ -136,6 +134,10 @@
     <ProjectReference Include="..\ControlsLibraryExt\ControlsLibraryExt.csproj">
       <Project>{75aed629-a689-4eea-8276-df6f0fb0f94b}</Project>
       <Name>ControlsLibraryExt</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ControlsLibrary\ControlsLibrary.csproj">
+      <Project>{b7539653-6e9c-4493-8023-d4a2bffcd8e2}</Project>
+      <Name>ControlsLibrary</Name>
     </ProjectReference>
     <ProjectReference Include="..\GUILayer\Project\GUILayer.vcxproj">
       <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>

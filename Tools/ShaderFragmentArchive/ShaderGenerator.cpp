@@ -381,16 +381,37 @@ namespace ShaderPatcherLayer
             sw->Flush();
             ShaderPatcherLayer::SaveToXML(stream, context); sw->WriteLine();
             sw->Write(")-- */"); sw->WriteLine();
-
-            // also embedded a technique config
-            sw->WriteLine();
-            sw->Write("/* <<Chunk:TechniqueConfig:main>>--("); sw->WriteLine();
-            sw->Write("~Inherit; Illum"); sw->WriteLine();
-            sw->Write("~Deferred"); sw->WriteLine();
-            sw->Write("    PixelShader=<.>:" + graphName); sw->WriteLine();
-            sw->Write(")--*/"); sw->WriteLine();
-            sw->WriteLine();
             sw->Flush();
+
+            // also embedded a technique config, if requested
+            if (context->HasTechniqueConfig) {
+                sw->WriteLine();
+                sw->Write("/* <<Chunk:TechniqueConfig:main>>--("); sw->WriteLine();
+                sw->Write("~Inherit; game/xleres/Illum.txt"); sw->WriteLine();
+                sw->Write("~Deferred"); sw->WriteLine();
+
+                // Sometimes we can attach restrictions or defaults to shader parameters -- 
+                //      take care of those here...
+                auto shaderParams = context->ShaderParameters;
+                if (shaderParams->Count > 0) {
+                    sw->Write("    ~Parameters"); sw->WriteLine();
+                    sw->Write("        ~Material"); sw->WriteLine();
+                    for each(auto i in shaderParams) {
+                        sw->Write("            ");
+                        sw->Write(i.Key);
+                        if (i.Value && i.Value->Length > 0) {
+                            sw->Write("=");
+                            sw->Write(i.Value);
+                        }
+                        sw->WriteLine();
+                    }
+                }
+
+                sw->Write("    PixelShader=<.>:" + graphName); sw->WriteLine();
+                sw->Write(")--*/"); sw->WriteLine();
+                sw->WriteLine();
+                sw->Flush();
+            }
 
                 // If we wrote to the memory stream successfully, we can write to disk -- 
                 // maybe we could alternatively write to a temporary file in the same directory,

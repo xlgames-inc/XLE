@@ -56,7 +56,7 @@ namespace RenderCore { namespace Assets
         ParameterBox _matParams;
         Techniques::RenderStateSet _stateSet;
         ParameterBox _constants;
-        ::Assets::ResChar _techniqueConfig[16];
+        ::Assets::ResChar _techniqueConfig[32];
 
         template<typename Serializer>
             void Serialize(Serializer& serializer) const;

@@ -424,7 +424,6 @@ namespace RenderCore { namespace Techniques
             //  We will serialize in a list of 
             //  shareable settings that we can inherit from
             //  Inherit lists should take the form "FileName:Setting"
-            //  FileName should have no extension -- we'll append .txt. 
             //  The "setting" should be a top-level item in the file
 
         for (;;) {
@@ -444,7 +443,6 @@ namespace RenderCore { namespace Techniques
 
             ::Assets::ResChar resolvedFile[MaxPath];
             XlCopyNString(resolvedFile, (const ::Assets::ResChar*)name._start, colon-name._start);
-            XlCatString(resolvedFile, dimof(resolvedFile), ".txt");
             if (searchRules) {
                 searchRules->ResolveFile(
                     resolvedFile, dimof(resolvedFile), resolvedFile);
@@ -869,7 +867,6 @@ namespace RenderCore { namespace Techniques
 
                             ::Assets::ResChar resolvedFile[MaxPath];
                             XlCopyNString(resolvedFile, (const ::Assets::ResChar*)name._start, name._end-name._start);
-                            XlCatString(resolvedFile, dimof(resolvedFile), ".txt");
                             searchRules.ResolveFile(resolvedFile, resolvedFile);
 
                             // exceptions thrown by from the inheritted asset will not be suppressed

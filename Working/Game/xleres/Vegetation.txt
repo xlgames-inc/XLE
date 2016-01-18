@@ -1,5 +1,5 @@
 ~Illum
-    ~Inherit; Shared:CommonMaterial; Shared:Skinnable; Shared:VegetationSpawn; Shared:System
+    ~Inherit; Shared.txt:CommonMaterial; Shared.txt:Skinnable; Shared.txt:VegetationSpawn; Shared.txt:System
     ~Parameters
         ~Geometry
             GEO_HAS_COLOUR
@@ -13,7 +13,7 @@
     VertexShader=game/xleres/forward/illum.vsh:main
     PixelShader=game/xleres/forward/illum.psh:main
 ~DepthOnly
-    ~Inherit; Shared:Skinnable; Shared:VegetationSpawn
+    ~Inherit; Shared.txt:Skinnable; Shared.txt:VegetationSpawn
     ~Parameters
         ~Geometry
             GEO_HAS_TEXCOORD
@@ -22,7 +22,7 @@
     VertexShader=game/xleres/forward/depthonly.vsh:main
     PixelShader=game/xleres/forward/depthonly.psh:main
 ~Deferred
-    ~Inherit; Shared:CommonMaterial; Shared:Skinnable; Shared:VegetationSpawn; Shared:System; Shared:Deferred
+    ~Inherit; Shared.txt:CommonMaterial; Shared.txt:Skinnable; Shared.txt:VegetationSpawn; Shared.txt:System; Shared.txt:Deferred
     ~Parameters
         ~Geometry
             GEO_HAS_COLOUR
@@ -35,7 +35,7 @@
     VertexShader=game/xleres/deferred/basic.vsh:main
     PixelShader=game/xleres/deferred/basic.psh:main
 ~ShadowGen
-    ~Inherit; Shared:Skinnable; Shared:VegetationSpawn
+    ~Inherit; Shared.txt:Skinnable; Shared.txt:VegetationSpawn
     ~Parameters
         ~Geometry
             GEO_HAS_TEXCOORD
@@ -53,7 +53,7 @@
     GeometryShader=game/xleres/shadowgen/depthonly.gsh:main
     PixelShader=game/xleres/shadowgen/depthonly.psh:main
 ~OrderIndependentTransparency
-    ~Inherit; Shared:CommonMaterial; Shared:Skinnable; Shared:VegetationSpawn; Shared:System
+    ~Inherit; Shared.txt:CommonMaterial; Shared.txt:Skinnable; Shared.txt:VegetationSpawn; Shared.txt:System
     ~Parameters
         ~Geometry
             GEO_HAS_COLOUR
@@ -67,7 +67,7 @@
     VertexShader=game/xleres/forward/illum.vsh:main
     PixelShader=game/xleres/forward/transparency/illum.psh:main
 ~RayTest
-    ~Inherit; Shared:Skinnable; Shared:VegetationSpawn
+    ~Inherit; Shared.txt:Skinnable; Shared.txt:VegetationSpawn
     ~Parameters
         ~Geometry
             GEO_HAS_TEXCOORD

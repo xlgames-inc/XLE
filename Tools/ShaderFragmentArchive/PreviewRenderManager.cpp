@@ -194,6 +194,11 @@ namespace ShaderPatcherLayer
                 doc->DefaultsMaterial->Resolve(visObject._parameters);
             visObject._parameters._matParams.SetParameter(u("SHADER_NODE_EDITOR"), "1");
 
+            for each(auto i in doc->ShaderParameters)
+                visObject._parameters._matParams.SetParameter(
+                    (const utf8*)clix::marshalString<clix::E_UTF8>(i.Key).c_str(),
+                    clix::marshalString<clix::E_UTF8>(i.Value));
+
             MaterialVisSettings visSettings;
             visSettings._camera = std::make_shared<VisCameraSettings>();
             visSettings._camera->_position = Float3(-5, 0, 0);

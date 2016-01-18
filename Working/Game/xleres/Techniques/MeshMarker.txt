@@ -1,5 +1,5 @@
 ~Illum
-    ~Inherit; ../Shared:System
+    ~Inherit; ../Shared.txt:System
     ~Parameters
         ~Geometry
             GEO_HAS_TEXCOORD

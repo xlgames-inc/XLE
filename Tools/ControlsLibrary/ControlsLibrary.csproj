@@ -74,6 +74,9 @@
     <Compile Include="BasicControls\TextWindow.Designer.cs">
       <DependentUpon>TextWindow.cs</DependentUpon>
     </Compile>
+    <Compile Include="DataGridAdapters.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="DiffMatchPatch.cs" />
     <Compile Include="ExportPreviewDialog.cs">
       <SubType>Form</SubType>
