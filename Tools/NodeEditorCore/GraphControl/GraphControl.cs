@@ -278,7 +278,7 @@ namespace NodeEditorCore
         }
         private void OnCreateInputParameterNode(object sender, EventArgs e)
         {
-            using (var fm = new InterfaceParameterForm(false) { Name = "Color", Type = "float4", Semantic = "" })
+            using (var fm = new InterfaceParameterForm(false) { Name = "Color", Type = "auto", Semantic = "" })
             {
                 var result = fm.ShowDialog();
                 if (result == DialogResult.OK)
@@ -295,7 +295,7 @@ namespace NodeEditorCore
         }
         private void OnCreateOutputParameterNode(object sender, EventArgs e)
         {
-            using (var fm = new InterfaceParameterForm(false) { Name = "Color", Type = "float4", Semantic = "" })
+            using (var fm = new InterfaceParameterForm(false) { Name = "Color", Type = "auto", Semantic = "" })
             {
                 var result = fm.ShowDialog();
                 if (result == DialogResult.OK)

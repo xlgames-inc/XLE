@@ -246,42 +246,75 @@ namespace ShaderPatcher
         }
     }
 
-    static ShaderSourceParser::FunctionSignature LoadFunctionSignature(const std::tuple<std::string, std::string>& splitName)
-    {
-        using namespace ShaderSourceParser;
-        TRY {
-            auto shaderFile = LoadSourceFile(std::get<0>(splitName));
-            auto parsedFile = BuildShaderFragmentSignature(shaderFile.c_str(), shaderFile.size());
+	class ShaderFragment
+	{
+	public:
+		auto GetFunction(const char fnName[]) const -> const ShaderSourceParser::FunctionSignature*;
+		auto GetParameterStruct(const char structName[]) const -> const ShaderSourceParser::ParameterStructSignature*;
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		ShaderFragment(const ::Assets::ResChar fn[]);
+		~ShaderFragment();
+	private:
+		ShaderSourceParser::ShaderFragmentSignature _sig;
+		::Assets::DepValPtr _depVal;
+	};
 
-            auto i = std::find_if(parsedFile._functions.cbegin(), parsedFile._functions.cend(), 
-                [&](const FunctionSignature& signature) { return signature._name == std::get<1>(splitName); });
-            if (i!=parsedFile._functions.cend()) {
-                return std::move(const_cast<FunctionSignature&>(*i));
-            }
+	auto ShaderFragment::GetFunction(const char fnName[]) const -> const ShaderSourceParser::FunctionSignature*
+	{
+		auto i = std::find_if(
+			_sig._functions.cbegin(), _sig._functions.cend(), 
+            [fnName](const ShaderSourceParser::FunctionSignature& signature) { return XlEqString(signature._name, fnName); });
+        if (i!=_sig._functions.cend())
+			return AsPointer(i);
+		return nullptr;
+	}
+
+	auto ShaderFragment::GetParameterStruct(const char structName[]) const -> const ShaderSourceParser::ParameterStructSignature*
+	{
+		auto i = std::find_if(
+			_sig._parameterStructs.cbegin(), _sig._parameterStructs.cend(), 
+            [structName](const ShaderSourceParser::ParameterStructSignature& signature) { return XlEqString(signature._name, structName); });
+        if (i!=_sig._parameterStructs.cend())
+			return AsPointer(i);
+		return nullptr;
+	}
+
+	ShaderFragment::ShaderFragment(const ::Assets::ResChar fn[])
+	{
+		auto shaderFile = LoadSourceFile(fn);
+		_sig = ShaderSourceParser::BuildShaderFragmentSignature(shaderFile.c_str(), shaderFile.size());
+		_depVal = std::make_shared<::Assets::DependencyValidation>();
+		::Assets::RegisterFileDependency(_depVal, fn);
+	}
+
+	ShaderFragment::~ShaderFragment() {}
+
+	static const ShaderSourceParser::FunctionSignature& LoadFunctionSignature(const std::tuple<std::string, std::string>& splitName)
+    {
+        TRY {
+			auto& frag = ::Assets::GetAssetDep<ShaderFragment>(std::get<0>(splitName).c_str());
+			auto* fn = frag.GetFunction(std::get<1>(splitName).c_str());
+			if (fn != nullptr) return *fn;
         } CATCH (...) {
         } CATCH_END
-
-        return FunctionSignature();
+		static ShaderSourceParser::FunctionSignature blank;
+        return blank;
     }
 
-    static ShaderSourceParser::ParameterStructSignature LoadParameterStructSignature(const std::tuple<std::string, std::string>& splitName)
+    static const ShaderSourceParser::ParameterStructSignature& LoadParameterStructSignature(const std::tuple<std::string, std::string>& splitName)
     {
         if (!std::get<0>(splitName).empty()) {
             using namespace ShaderSourceParser;
             TRY {
-                auto shaderFile = LoadSourceFile(std::get<0>(splitName));
-                auto parsedFile = BuildShaderFragmentSignature(shaderFile.c_str(), shaderFile.size());
-
-                auto i = std::find_if(parsedFile._parameterStructs.cbegin(), parsedFile._parameterStructs.cend(), 
-                    [&](const ParameterStructSignature& signature) { return signature._name == std::get<1>(splitName); });
-                if (i!=parsedFile._parameterStructs.cend()) {
-                    return std::move(const_cast<ParameterStructSignature&>(*i));
-                }
+				auto& frag = ::Assets::GetAssetDep<ShaderFragment>(std::get<0>(splitName).c_str());
+				auto* str = frag.GetParameterStruct(std::get<1>(splitName).c_str());
+				if (str != nullptr) return *str;
             } CATCH (...) {
             } CATCH_END
         }
 
-        return ShaderSourceParser::ParameterStructSignature();
+		static ShaderSourceParser::ParameterStructSignature blank;
+        return blank;
     }
 
     static bool HasResultValue(const ShaderSourceParser::FunctionSignature& sig) { return !sig._returnType.empty() && sig._returnType != "void"; }
@@ -393,7 +426,7 @@ namespace ShaderPatcher
     {
         if (node.ArchiveName().empty()) return;
 
-        auto sig = LoadFunctionSignature(SplitArchiveName(node.ArchiveName()));
+        const auto& sig = LoadFunctionSignature(SplitArchiveName(node.ArchiveName()));
 
             //  a function can actually output many values. Each output needs it's own default
             //  output node attached. First, look for a "return" value. Then search through
@@ -541,7 +574,7 @@ namespace ShaderPatcher
     static std::string TypeFromShaderFragment(const std::string& archiveName, const std::string& paramName)
     {
             // Go back to the shader fragments to find the current type for the given parameter
-        auto sig = LoadFunctionSignature(SplitArchiveName(archiveName));
+        const auto& sig = LoadFunctionSignature(SplitArchiveName(archiveName));
         if (paramName == s_resultName && HasResultValue(sig))
             return sig._returnType;
 
@@ -557,7 +590,7 @@ namespace ShaderPatcher
     static std::string TypeFromParameterStructFragment(const std::string& archiveName, const std::string& paramName)
     {
             // Go back to the shader fragments to find the current type for the given parameter
-        auto sig = LoadParameterStructSignature(SplitArchiveName(archiveName));
+        const auto& sig = LoadParameterStructSignature(SplitArchiveName(archiveName));
         for (const auto& p:sig._parameters)
             if (p._name == paramName)
                 return p._type;
@@ -664,7 +697,7 @@ namespace ShaderPatcher
         
 
         auto functionName = std::get<1>(splitName);
-        auto sig = LoadFunctionSignature(splitName);
+        const auto& sig = LoadFunctionSignature(splitName);
 
         std::stringstream result, warnings;
 
@@ -911,7 +944,7 @@ namespace ShaderPatcher
                 StringMeld<64> buffer;
                 buffer << "OUT_" << i->NodeId();
 
-				auto signature = LoadParameterStructSignature(SplitArchiveName(i->ArchiveName()));
+				const auto& signature = LoadParameterStructSignature(SplitArchiveName(i->ArchiveName()));
 				std::string type = (!signature._name.empty()) ? signature._name : i->ArchiveName();
 
 				StringMeld<64> semantic;
@@ -931,7 +964,7 @@ namespace ShaderPatcher
                         // auto types must match whatever is on the other end.
                     auto* srcNode = graph.GetNode(c.InputNodeId());
                     if (srcNode) {
-                        auto sig = LoadFunctionSignature(SplitArchiveName(srcNode->ArchiveName()));
+                        const auto& sig = LoadFunctionSignature(SplitArchiveName(srcNode->ArchiveName()));
                         if (c.InputParameterName() == s_resultName && HasResultValue(sig))
                             type = sig._returnType;
 
@@ -1038,7 +1071,7 @@ namespace ShaderPatcher
             //
         for (const auto& i:graph.GetNodes()) {
             if (i.GetType() == Node::Type::Procedure && !i.ArchiveName().empty()) {
-                auto signature = LoadFunctionSignature(SplitArchiveName(i.ArchiveName()));
+                const auto& signature = LoadFunctionSignature(SplitArchiveName(i.ArchiveName()));
                 for (auto p=signature._parameters.cbegin(); p!=signature._parameters.cend(); ++p) {
 
                     if (!(p->_direction & ShaderSourceParser::FunctionSignature::Parameter::In))
@@ -1078,7 +1111,7 @@ namespace ShaderPatcher
                 ||  i.GetType() == Node::Type::InterpolatorIntoVertex
                 ||  i.GetType() == Node::Type::SystemParameters) {
                 
-                auto signature = LoadParameterStructSignature(SplitArchiveName(i.ArchiveName()));
+                const auto& signature = LoadParameterStructSignature(SplitArchiveName(i.ArchiveName()));
                 std::string type = (!signature._name.empty()) ? signature._name : i.ArchiveName();
 
                 auto paramName = InterpolatorParameterName(i.NodeId());
@@ -1100,7 +1133,7 @@ namespace ShaderPatcher
 
                     // We can make this an input parameter, or a global/cbuffer parameter
                     // at the moment, it will always be an input parameter
-                auto sig = LoadFunctionSignature(SplitArchiveName(destinationNode->ArchiveName()));
+                const auto& sig = LoadFunctionSignature(SplitArchiveName(destinationNode->ArchiveName()));
                 auto p = std::find_if(sig._parameters.cbegin(), sig._parameters.cend(), 
                     [&i](const ShaderSourceParser::FunctionSignature::Parameter&p)
                         { return p._name == i.OutputParameterName(); });
@@ -1131,7 +1164,7 @@ namespace ShaderPatcher
                 // auto types must match whatever is on the other end.
                 auto* destinationNode = graph.GetNode(i.OutputNodeId());
                 if (destinationNode) {
-                    auto sig = LoadFunctionSignature(SplitArchiveName(destinationNode->ArchiveName()));
+                    const auto& sig = LoadFunctionSignature(SplitArchiveName(destinationNode->ArchiveName()));
                     auto p = std::find_if(sig._parameters.cbegin(), sig._parameters.cend(), 
                         [=](const ShaderSourceParser::FunctionSignature::Parameter&p)
                             { return p._name == i.OutputParameterName(); });
@@ -1635,7 +1668,7 @@ namespace ShaderPatcher
                     // Find all of the scalar values written out from main function,
                     // including searching through parameter strructures.
                     for (const auto& i:interf.GetOutputParameters()) {
-                        auto signature = LoadParameterStructSignature(SplitArchiveName(i._archiveName));
+                        const auto& signature = LoadParameterStructSignature(SplitArchiveName(i._archiveName));
                         if (!signature._name.empty()) {
                             for (auto p=signature._parameters.cbegin(); p!=signature._parameters.cend(); ++p) {
                                     // todo -- what if this is also a parameter struct?

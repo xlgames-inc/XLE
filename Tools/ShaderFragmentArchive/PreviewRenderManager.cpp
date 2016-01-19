@@ -279,8 +279,8 @@ namespace ShaderPatcherLayer
 
             if (parserContext.HasPendingAssets()) return std::make_pair(DrawPreviewResult_Pending, std::string());
         }
-        catch (::Assets::Exceptions::InvalidAsset&) { return std::make_pair(DrawPreviewResult_Error, std::string()); }
-        catch (::Assets::Exceptions::PendingAsset&) { return std::make_pair(DrawPreviewResult_Pending, std::string()); }
+        catch (::Assets::Exceptions::InvalidAsset& e) { return std::make_pair(DrawPreviewResult_Error, e.what()); }
+        catch (::Assets::Exceptions::PendingAsset& e) { return std::make_pair(DrawPreviewResult_Pending, e.Initializer()); }
 
         return std::make_pair(DrawPreviewResult_Error, std::string());
     }

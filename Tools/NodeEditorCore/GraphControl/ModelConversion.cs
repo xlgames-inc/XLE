@@ -287,14 +287,12 @@ namespace NodeEditorCore
                         if (n.NodeType == ShaderPatcherLayer.Node.Type.Procedure)
                         {
                             var fn = _shaderFragments.GetFunction(n.FragmentArchiveName);
-                            if (fn != null)
-                                newNode = _nodeCreator.CreateNode(fn, n.FragmentArchiveName, previewSettings);
+                            newNode = _nodeCreator.CreateNode(fn, n.FragmentArchiveName, previewSettings);
                         }
                         else
                         {
                             var ps = _shaderFragments.GetParameterStruct(n.FragmentArchiveName);
-                            if (ps != null)
-                                newNode = _nodeCreator.CreateParameterNode(ps, n.FragmentArchiveName, AsSourceType(n.NodeType));
+                            newNode = _nodeCreator.CreateParameterNode(ps, n.FragmentArchiveName, AsSourceType(n.NodeType));
                         }
 
                         if (newNode != null)
@@ -315,7 +313,7 @@ namespace NodeEditorCore
                     {
                         var inputItem = FindOrCreateNodeItem(nodeIdToControlNode[c.InputNodeID],
                             (item) => (item.Output != null && item.Output.Enabled && item is ShaderFragmentNodeItem && ((ShaderFragmentNodeItem)item).Name.Equals(c.InputParameterName)),
-                            () => new ShaderFragmentNodeItem("result", c.InputType, null, false, true));
+                            () => new ShaderFragmentNodeItem(c.InputParameterName, c.InputType, null, false, true));
                         
                         var outputItem = FindOrCreateNodeItem(nodeIdToControlNode[c.OutputNodeID],
                             (item) => (item.Input != null && item.Input.Enabled && item is ShaderFragmentNodeItem && ((ShaderFragmentNodeItem)item).Name.Equals(c.OutputParameterName)),

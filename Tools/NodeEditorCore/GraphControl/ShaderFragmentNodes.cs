@@ -410,7 +410,7 @@ namespace NodeEditorCore
     {
         public override bool OnClick(System.Windows.Forms.Control container, System.Windows.Forms.MouseEventArgs evnt, System.Drawing.Drawing2D.Matrix viewTransform)
         {
-            using (var fm = new InterfaceParameterForm(false) { Name = "Color", Type = "float4", Semantic = "" })
+            using (var fm = new InterfaceParameterForm(false) { Name = "Color", Type = "auto", Semantic = "" })
             {
                 var result = fm.ShowDialog();
                 if (result == System.Windows.Forms.DialogResult.OK)
@@ -548,9 +548,16 @@ namespace NodeEditorCore
             return Tuple.Create(typeNames, selectedIndex);
         }
 
-        public Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName, ShaderPatcherLayer.PreviewSettings previewSettings)
+        private string VisibleName(string archiveName)
         {
-            var node = new Node(fn.Name);
+            int i = archiveName.LastIndexOf(':');
+            if (i > 0) return archiveName.Substring(i + 1);
+            return archiveName;
+        }
+
+        public Node CreateNode(ShaderFragmentArchive.Function fn, string archiveName, ShaderPatcherLayer.PreviewSettings previewSettings)
+        {
+            var node = new Node((fn!= null) ? fn.Name : VisibleName(archiveName));
             node.Tag = new ShaderProcedureNodeTag(archiveName);
 
             var previewItem = new ShaderFragmentPreviewItem();
@@ -588,10 +595,13 @@ namespace NodeEditorCore
             outputToVisualize.TextChanged +=
                 (object sender, HyperGraph.Items.AcceptNodeTextChangedEventArgs args) => { previewItem.OutputToVisualize = args.Text; };
 
-            foreach (var param in fn.InputParameters)
-                node.AddItem(new ShaderFragmentNodeItem(param.Name, param.Type, archiveName + ":" + param.Name, true, false));
-            foreach (var output in fn.Outputs)
-                node.AddItem(new ShaderFragmentNodeItem(output.Name, output.Type, archiveName + ":" + output.Name, false, true));
+            if (fn != null)
+            {
+                foreach (var param in fn.InputParameters)
+                    node.AddItem(new ShaderFragmentNodeItem(param.Name, param.Type, archiveName + ":" + param.Name, true, false));
+                foreach (var output in fn.Outputs)
+                    node.AddItem(new ShaderFragmentNodeItem(output.Name, output.Type, archiveName + ":" + output.Name, false, true));
+            }
             return node;
         }
 
@@ -642,13 +652,16 @@ namespace NodeEditorCore
 
         public Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type)
         {
-            var node = CreateEmptyParameterNode(type, archiveName, parameter.Name);
-            foreach (var param in parameter.Parameters)
+            var node = CreateEmptyParameterNode(type, archiveName, (parameter != null) ? parameter.Name : VisibleName(archiveName));
+            if (parameter != null)
             {
-                bool isOutput = type == ParamSourceType.Output;
-                node.AddItem(new ShaderFragmentNodeItem(
-                    param.Name, param.Type, archiveName + ":" + param.Name, 
-                    isOutput ? true : false, isOutput ? false : true));
+                foreach (var param in parameter.Parameters)
+                {
+                    bool isOutput = type == ParamSourceType.Output;
+                    node.AddItem(new ShaderFragmentNodeItem(
+                        param.Name, param.Type, archiveName + ":" + param.Name,
+                        isOutput ? true : false, isOutput ? false : true));
+                }
             }
             return node;
         }
