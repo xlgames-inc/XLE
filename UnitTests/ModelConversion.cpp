@@ -13,6 +13,8 @@
 #include "../ColladaConversion/NascentModel.h"
 #include "../Assets/IntermediateAssets.h"
 #include "../Assets/Assets.h"
+#include "../Assets/AssetServices.h"
+#include "../Assets/CompileAndAsyncManager.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"

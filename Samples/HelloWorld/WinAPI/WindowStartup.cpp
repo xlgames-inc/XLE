@@ -7,6 +7,7 @@
 #include "../../../PlatformRig/AllocationProfiler.h"
 #include "../../../ConsoleRig/Log.h"
 #include "../../../ConsoleRig/GlobalServices.h"
+#include "../../../Assets/CompileAndAsyncManager.h"
 #include "../../../Utility/SystemUtils.h"
 #include "../../../Core/Exceptions.h"
 
@@ -114,6 +115,7 @@ static void TestParser()
 #include "../../RenderCore/Assets/Services.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/Assets.h"
+#include "../../Assets/AssetServices.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
 

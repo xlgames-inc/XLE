@@ -41,6 +41,7 @@
 #include "../../RenderOverlays/Overlays/ShadowFrustumDebugger.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Assets/CompileAndAsyncManager.h"
+#include "../../Assets/AssetServices.h"
 
 #include "../../Tools/ToolsRig/GenerateAO.h"
 
