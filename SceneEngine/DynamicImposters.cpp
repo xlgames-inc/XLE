@@ -405,7 +405,7 @@ namespace SceneEngine
 
         auto shader = _pimpl->_material.FindVariation(
             parserContext, techniqueIndex, "game/xleres/vegetation/impostermaterial.txt");
-        if (!shader._shaderProgram) return;
+        if (!shader._shader._shaderProgram) return;
 
             // For each object here, we should look to see if we have a prepared
             // imposter already available. If not, we have to build the imposter.
@@ -505,12 +505,12 @@ namespace SceneEngine
 
         // shader.Apply(context, parserContext, {std::move(spriteTable)});
         const Metal::ConstantBuffer* cbs[] = {&_pimpl->_spriteTableCB};
-        shader._boundUniforms->Apply(
+        shader._shader._boundUniforms->Apply(
             context, 
             parserContext.GetGlobalUniformsStream(),
             Metal::UniformsStream(nullptr, cbs, dimof(cbs)));
-        context.Bind(*shader._boundLayout);
-        context.Bind(*shader._shaderProgram);
+        context.Bind(*shader._shader._boundLayout);
+        context.Bind(*shader._shader._shaderProgram);
         
         Metal::VertexBuffer tempvb(AsPointer(vertices.begin()), vertices.size()*sizeof(Vertex));
         context.Bind(MakeResourceList(tempvb), sizeof(Vertex), 0);

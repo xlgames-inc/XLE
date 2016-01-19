@@ -12,6 +12,7 @@
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/ConfigFileContainer.h"
+#include "../../Assets/AssetServices.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/Data.h"

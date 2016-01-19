@@ -13,6 +13,8 @@
 #include "../RenderCore/Metal/Resource.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../Assets/AssetServices.h"
+#include "../Assets/CompileAndAsyncManager.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/StringFormat.h"

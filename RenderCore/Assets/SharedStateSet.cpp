@@ -243,7 +243,7 @@ namespace RenderCore { namespace Assets
         auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(sn.c_str());
         if (shaderType.HasEmbeddedCBLayout())
             return &::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(sn.c_str());
-        return &::Assets::GetAssetDep<Techniques::PredefinedCBLayout>("game/xleres/BasicMaterialConstants.txt");
+        return &::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(Techniques::DefaultPredefinedCBLayout);
     }
 
     auto SharedStateSet::CaptureState(

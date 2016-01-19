@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
 #include "../../Utility/MemoryUtils.h"
 
@@ -39,5 +40,7 @@ namespace RenderCore { namespace Techniques
 
         static const auto Max = 11u;
     };
+
+    extern const ::Assets::ResChar* DefaultPredefinedCBLayout;
 }}
 

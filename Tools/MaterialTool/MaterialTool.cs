@@ -86,15 +86,14 @@ namespace MaterialTool
                 m_scriptingService.SetVariable("layerLister", m_layerLister);
 
                 m_contextRegistry.ActiveContextChanged += delegate
-                {
-                    var editingContext = m_contextRegistry.GetActiveContext<DiagramEditingContext>();
-                    // ViewingContext viewContext = m_contextRegistry.GetActiveContext<ViewingContext>();
-                    IHistoryContext hist = m_contextRegistry.GetActiveContext<IHistoryContext>();
-                    m_scriptingService.SetVariable("editingContext", editingContext);
-                    // m_scriptingService.SetVariable("circuitContainer", editingContext != null ? editingContext.CircuitContainer : null);
-                    // m_scriptingService.SetVariable("view", viewContext);
-                    m_scriptingService.SetVariable("hist", hist);
-                };
+                    {
+                        var editingContext = m_contextRegistry.GetActiveContext<DiagramEditingContext>();
+                        var viewContext = m_contextRegistry.GetActiveContext<Controls.ViewingContext>();
+                        IHistoryContext hist = m_contextRegistry.GetActiveContext<IHistoryContext>();
+                        m_scriptingService.SetVariable("editingContext", editingContext);
+                        m_scriptingService.SetVariable("view", viewContext);
+                        m_scriptingService.SetVariable("hist", hist);
+                    };
             }
 
             if (m_settingsService != null)
@@ -109,6 +108,12 @@ namespace MaterialTool
                 // m_settingsService.RegisterUserSettings("Circuit Editor", settings);
                 // m_settingsService.RegisterSettings(this, settings);
             }
+
+                // We need to make sure there is a material set to the active
+                // material context... If there is none, we must create a new
+                // untitled material, and set that...
+            if (_activeMaterialContext.MaterialName == null)
+                _activeMaterialContext.MaterialName = GUILayer.RawMaterial.CreateUntitled().Initializer;
         }
 
         #endregion
@@ -123,12 +128,6 @@ namespace MaterialTool
 
         public IDocument Open(Uri uri)
         {
-                // We need to make sure there is a material set to the active
-                // material context... If there is none, we must create a new
-                // untitled material, and set that...
-            if (_activeMaterialContext.MaterialName == null)
-                _activeMaterialContext.MaterialName = GUILayer.RawMaterial.CreateUntitled().Initializer;
-
             var underlyingDoc = _exportProvider.GetExport<NodeEditorCore.IDiagramDocument>().Value;
             underlyingDoc.ViewModel = new HyperGraph.GraphModel();
             underlyingDoc.ViewModel.CompatibilityStrategy = _nodeFactory.CreateCompatibilityStrategy();

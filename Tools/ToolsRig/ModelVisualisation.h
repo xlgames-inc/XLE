@@ -9,6 +9,7 @@
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../Assets/Assets.h"
 #include "../../RenderCore/Assets/ModelCache.h"
+#include <functional>
 
 namespace RenderCore { namespace Assets 
 {

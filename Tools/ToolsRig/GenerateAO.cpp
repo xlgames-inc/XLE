@@ -26,6 +26,8 @@
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../Assets/AssetServices.h"
+#include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/StringFormat.h"

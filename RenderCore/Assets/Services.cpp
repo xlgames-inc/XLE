@@ -13,6 +13,7 @@
 #include "../ShaderService.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/AssetServices.h"
 #include "../../ConsoleRig/AttachableInternal.h"
 #include "../../BufferUploads/IBufferUploads.h"
 

@@ -30,6 +30,7 @@ namespace ControlsLibraryExt.Material
         {
             _controls = new HierchicalMaterialControl();
             _controls.FocusedMatControls.AddExtraControls("Material", new MatTab(_schemaLoader));
+            _controls.Object = _context.MaterialName;
             _context.OnChange += OnActiveMaterialChange;
             _controlHostService.RegisterControl(
                 _controls,

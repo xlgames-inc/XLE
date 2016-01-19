@@ -6,12 +6,12 @@
 
 #include "ColladaCompilerInterface.h"
 #include "CompilationThread.h"
-// #include "AssetUtils.h" // for ChunkType_Metrics
 #include "../../ColladaConversion/NascentModel.h"
 #include "../../ColladaConversion/DLLInterface.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/CompilerHelper.h"
 #include "../../Assets/InvalidAssetManager.h"
+#include "../../Assets/AssetServices.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../Utility/Threading/LockFree.h"
 #include "../../Utility/Threading/ThreadObject.h"

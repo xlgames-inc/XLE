@@ -150,10 +150,11 @@ namespace ShaderPatcherLayer
         ShaderPatcher::NodeGraph    ConvertToNativePreview(UInt32 previewNodeId);
 
         static String^      GenerateShader(NodeGraph^ graph, String^ name);
-        static String^      GeneratePreviewShader(
-			NodeGraph^ graph, UInt32 previewNodeId, 
-			PreviewSettings^ settings,
-			IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
+        static Tuple<String^, String^>^ 
+            GeneratePreviewShader(
+			    NodeGraph^ graph, UInt32 previewNodeId, 
+			    PreviewSettings^ settings,
+			    IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
         static String^      GenerateCBLayout(NodeGraph^ graph);
 
 		ref class Interface

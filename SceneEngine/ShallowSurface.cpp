@@ -469,17 +469,13 @@ namespace SceneEngine
 
         auto lightingConstantsBuffer = MakeLightingConstants(_pimpl->_lightingCfg);
 
-        // const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
-        //     "game/xleres/BasicMaterialConstants.txt");
-        // auto matParam = cbLayout.BuildCBDataAsPkt(ParameterBox());
-
         std::vector<unsigned> unsimulated;  // todo -- use frame temporary heap
         unsimulated.reserve(_pimpl->_simGrids.size());
 
             // First, render the tiles that are currently being simulated
         auto shader = simMaterial.FindVariation(
             parserContext, techniqueIndex, "game/xleres/ocean/shallowsurface.txt");
-        if (shader._shaderProgram) {
+        if (shader._shader._shaderProgram) {
             for (auto i=_pimpl->_simGrids.cbegin(); i!=_pimpl->_simGrids.cend(); ++i) {
                 auto page = _pimpl->_sim->BuildCellConstants(i->_gridCoord);
                 if (!page) {
@@ -487,7 +483,7 @@ namespace SceneEngine
                     continue;
                 }
 
-                shader.Apply(
+                shader._shader.Apply(
                     metalContext, parserContext, 
                     {
                         MakeLocalTransformPacket(
@@ -508,14 +504,14 @@ namespace SceneEngine
             //  We must also render distant tiles that don't have active simulation
         auto unsimShader = unsimMaterial.FindVariation(
             parserContext, techniqueIndex, "game/xleres/ocean/shallowsurface.txt");
-        if (unsimShader._shaderProgram) {
+        if (unsimShader._shader._shaderProgram) {
             for (auto i=unsimulated.cbegin(); i!=unsimulated.cend(); ++i) {
                 auto& grid = _pimpl->_simGrids[*i];
 
                 auto gridToWorld = grid._gridToWorld;
                 gridToWorld(2, 3) = _pimpl->_cfg._baseHeight;   // apply base height to the grid-to-world transform
 
-                unsimShader.Apply(
+                unsimShader._shader.Apply(
                     metalContext, parserContext, 
                     {
                         MakeLocalTransformPacket(

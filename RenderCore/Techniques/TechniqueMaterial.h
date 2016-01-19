@@ -7,11 +7,13 @@
 #pragma once
 
 #include "Techniques.h"
-#include "../Metal/Forward.h"
+#include "../../Assets/AssetsCore.h"
 #include "../../Utility/ParameterBox.h"
 
 namespace RenderCore { namespace Techniques
 {
+    class PredefinedCBLayout;
+
     class TechniqueMaterial
     {
     public:
@@ -19,10 +21,19 @@ namespace RenderCore { namespace Techniques
         ParameterBox _geometryParameters;
         TechniqueInterface _techniqueInterface;
 
-        ResolvedShader FindVariation(
+        class Variation
+        {
+        public:
+            ResolvedShader      _shader;
+            const PredefinedCBLayout* _cbLayout;
+        };
+
+        Variation FindVariation(
             ParsingContext& parsingContext,
             unsigned techniqueIndex,
-            const char shaderName[]) const;
+            const ::Assets::ResChar techniqueConfig[]) const;
+
+        const PredefinedCBLayout& GetCBLayout(const ::Assets::ResChar techniqueConfig[]);
 
         TechniqueMaterial(
             const Metal::InputLayout& inputLayout,

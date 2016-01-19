@@ -58,7 +58,6 @@ namespace RenderCore { namespace Techniques
         Metal::ShaderProgram*           _shaderProgram;
         Metal::BoundUniforms*           _boundUniforms;
         Metal::BoundInputLayout*        _boundLayout;
-        Metal::ConstantBufferLayout*    _materialConstantsLayout;
 
         void Apply(
             Metal::DeviceContext& devContext,
@@ -176,7 +175,6 @@ namespace RenderCore { namespace Techniques
         mutable std::vector<std::unique_ptr<Metal::ShaderProgram>> _resolvedShaderPrograms;
         mutable std::vector<std::unique_ptr<Metal::BoundUniforms>> _resolvedBoundUniforms;
         mutable std::vector<std::unique_ptr<Metal::BoundInputLayout>> _resolvedBoundInputLayouts;
-        mutable std::vector<std::unique_ptr<Metal::ConstantBufferLayout>> _resolvedMaterialConstantsLayouts;
     };
 
     class ShaderType

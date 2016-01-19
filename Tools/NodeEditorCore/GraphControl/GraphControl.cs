@@ -233,7 +233,7 @@ namespace NodeEditorCore
                 ConvertToShaderPatcherLayer(), AttachedId(sender), 
                 p.PreviewSettings, (Document!=null) ? Document.GraphContext.Variables : null);
             var wnd = new ControlsLibrary.BasicControls.TextWindow();
-            wnd.Text = System.Text.RegularExpressions.Regex.Replace(shader, @"\r\n|\n\r|\n|\r", "\r\n");        // (make sure we to convert the line endings into windows form)
+            wnd.Text = System.Text.RegularExpressions.Regex.Replace(shader.Item1, @"\r\n|\n\r|\n|\r", "\r\n");        // (make sure we to convert the line endings into windows form)
             wnd.Show();
         }
         private void refreshToolStripMenuItem_Click(object sender, EventArgs e)

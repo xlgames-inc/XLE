@@ -12,6 +12,7 @@
 #include "../../../Assets/AssetUtils.h"
 #include "../../../Assets/InvalidAssetManager.h"
 #include "../../../Assets/ConfigFileContainer.h"
+#include "../../../Assets/AssetServices.h"
 #include "../../../Utility/Streams/PathUtils.h"
 #include "../../../Utility/Threading/Mutex.h"
 #include "../../../Utility/StringUtils.h"

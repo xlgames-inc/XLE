@@ -9,6 +9,7 @@
 #include "../Techniques/RenderStateResolver.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/ChunkFileAsset.h"
+#include "../../Assets/AssetUtils.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/Mixins.h"

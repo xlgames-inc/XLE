@@ -12,7 +12,7 @@
 #include "../../Math/Matrix.h"
 
 namespace RenderCore { namespace Assets { class ResolvedMaterial; } }
-namespace RenderCore { namespace Techniques { class ParsingContext; } }
+namespace RenderCore { namespace Techniques { class ParsingContext; class PredefinedCBLayout; } }
 namespace Assets { class DirectorySearchRules; }
 
 namespace ToolsRig
@@ -55,7 +55,8 @@ namespace ToolsRig
             const RenderCore::Assets::ResolvedMaterial& mat,
             const SystemConstants& sysConstants,
             const ::Assets::DirectorySearchRules& searchRules,
-            RenderCore::Metal::ShaderProgram& shaderProgram);
+            RenderCore::Metal::ShaderProgram& shaderProgram,
+            const RenderCore::Techniques::PredefinedCBLayout& cbLayout);
     };
 
     class MaterialBinder : public IMaterialBinder

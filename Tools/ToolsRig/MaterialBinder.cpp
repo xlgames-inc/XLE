@@ -49,21 +49,23 @@ namespace ToolsRig
         TechniqueMaterial material(geoInputLayout, {}, materialParameters);
 
         auto variation = material.FindVariation(parserContext, techniqueIndex, _shaderTypeName.c_str());
-        if (variation._shaderProgram == nullptr) {
+        if (variation._shader._shaderProgram == nullptr) {
             return false; // we can't render because we couldn't resolve a good shader variation
         }
 
             // we must bind the shader program & the bound layout
             // but we're not using the BoundUniforms in the ResolvedShader object
-        metalContext.Bind(*variation._shaderProgram);
-        metalContext.Bind(*variation._boundLayout);
+        metalContext.Bind(*variation._shader._shaderProgram);
+        metalContext.Bind(*variation._shader._boundLayout);
 
             // Instead of using ResolvedShader::_boundUniforms, let's
             // look at the reflection information for the shader program
             // and assign each shader input to some reasonable value
         BindConstantsAndResources(
             metalContext, parserContext, mat, 
-            sysConstants, searchRules, *variation._shaderProgram);
+            sysConstants, searchRules, 
+            *variation._shader._shaderProgram,
+            *variation._cbLayout);
         return true;
     }
         
@@ -136,6 +138,7 @@ namespace ToolsRig
 
     static std::vector<std::pair<uint64, RenderCore::Metal::ConstantBufferPacket>> 
         BuildMaterialConstants(
+            const RenderCore::Techniques::PredefinedCBLayout& cbLayout,
             ID3D::ShaderReflection& reflection, 
             const ParameterBox& constants,
             const IMaterialBinder::SystemConstants& systemConstantsContext,
@@ -148,9 +151,6 @@ namespace ToolsRig
             //      from the current previewing material state
             //
         std::vector<std::pair<uint64, RenderCore::Metal::ConstantBufferPacket>> finalResult;
-
-        const auto& cbLayout = ::Assets::GetAssetDep<RenderCore::Techniques::PredefinedCBLayout>(
-            "game/xleres/BasicMaterialConstants.txt");
 
         D3D11_SHADER_DESC shaderDesc;
         reflection.GetDesc(&shaderDesc);
@@ -324,7 +324,8 @@ namespace ToolsRig
         const RenderCore::Assets::ResolvedMaterial& mat,
         const SystemConstants& sysConstants,
         const ::Assets::DirectorySearchRules& searchRules,
-        RenderCore::Metal::ShaderProgram& shaderProgram)
+        RenderCore::Metal::ShaderProgram& shaderProgram,
+        const RenderCore::Techniques::PredefinedCBLayout& cbLayout)
     {
         using namespace RenderCore;
 
@@ -335,6 +336,7 @@ namespace ToolsRig
         Metal::ViewportDesc currentViewport(metalContext);
             
         auto materialConstants = BuildMaterialConstants(
+            cbLayout,
             *Metal::CreateReflection(shaderProgram.GetCompiledPixelShader()), 
             mat._constants, sysConstants, 
             UInt2(unsigned(currentViewport.Width), unsigned(currentViewport.Height)));

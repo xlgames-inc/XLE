@@ -314,7 +314,6 @@ namespace RenderCore { namespace Techniques
         std::unique_ptr<ShaderProgram> shaderProgram;
         std::unique_ptr<BoundUniforms> boundUniforms;
         std::unique_ptr<BoundInputLayout> boundInputLayout;
-        std::unique_ptr<ConstantBufferLayout> boundMaterialConstants;
 
         if (_geometryShaderName.empty()) {
             shaderProgram = std::make_unique<ShaderProgram>(
@@ -344,18 +343,12 @@ namespace RenderCore { namespace Techniques
             std::make_pair(AsPointer(techniqueInterface._pimpl->_vertexInputLayout.cbegin()), techniqueInterface._pimpl->_vertexInputLayout.size()),
             std::ref(*shaderProgram));
 
-            // resolving the "materialConstants" buffer is useful for CryRenderXLE right now
-        boundMaterialConstants = std::unique_ptr<ConstantBufferLayout>(
-            new ConstantBufferLayout(boundUniforms->GetConstantBufferLayout("MaterialConstants")));
-
         resolvedShader._shaderProgram = shaderProgram.get();
         resolvedShader._boundUniforms = boundUniforms.get();
         resolvedShader._boundLayout = boundInputLayout.get();
-        resolvedShader._materialConstantsLayout = boundMaterialConstants.get();
         _resolvedShaderPrograms.push_back(std::move(shaderProgram));
         _resolvedBoundUniforms.push_back(std::move(boundUniforms));
         _resolvedBoundInputLayouts.push_back(std::move(boundInputLayout));
-        _resolvedMaterialConstantsLayouts.push_back(std::move(boundMaterialConstants));
     }
 
     static const char* s_parameterBoxNames[] = 

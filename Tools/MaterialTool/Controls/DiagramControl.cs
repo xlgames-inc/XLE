@@ -143,6 +143,12 @@ namespace MaterialTool.Controls
 
         void child_Paint(object sender, System.Windows.Forms.PaintEventArgs e)
         {
+                // update the "defaults material"
+            var doc = ContextAs<DiagramDocument>().UnderlyingDocument;
+            if (doc.GraphContext.DefaultsMaterial != _activeMaterialContext.MaterialName) {
+                doc.GraphContext.DefaultsMaterial = _activeMaterialContext.MaterialName;
+                doc.Invalidate();
+            }
             GUILayer.EngineDevice.GetInstance().ForegroundUpdate();
         }
 

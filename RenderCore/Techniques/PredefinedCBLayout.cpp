@@ -21,8 +21,6 @@ namespace RenderCore { namespace Techniques
         // Here, we will read a simple configuration file that will define the layout
         // of a constant buffer. Sometimes we need to get the layout of a constant 
         // buffer without compiling any shader code, or really touching the HLSL at all.
-        std::regex parseStatement(R"--((\w*)\s+(\w*)\s*(?:=\s*([^;]*))?;?\s*)--");
-            
         size_t size;
         auto file = LoadFileAsMemoryBlock(initializer, &size);
         StringSection<char> configSection((const char*)file.get(), (const char*)PtrAdd(file.get(), size));
@@ -38,9 +36,25 @@ namespace RenderCore { namespace Techniques
                 configSection = i->_content;
         }
 
+        Parse(configSection);
+
+        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterFileDependency(_validationCallback, initializer);
+    }
+
+    PredefinedCBLayout::PredefinedCBLayout(StringSection<char> source, bool)
+    {
+        Parse(source);
+        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+    }
+
+    void PredefinedCBLayout::Parse(StringSection<char> source)
+    {
+        std::regex parseStatement(R"--((\w*)\s+(\w*)\s*(?:=\s*([^;]*))?;?\s*)--");
+
         unsigned cbIterator = 0;
-        const char* iterator = configSection.begin();
-        const char* end = configSection.end();
+        const char* iterator = source.begin();
+        const char* end = source.end();
         for (;;) {
             while (iterator < end && (*iterator == '\n' || *iterator == '\r' || *iterator == ' '|| *iterator == '\t')) ++iterator;
             const char* lineStart = iterator;
@@ -56,8 +70,9 @@ namespace RenderCore { namespace Techniques
             bool a = std::regex_match(lineStart, iterator, match, parseStatement);
             if (a && match.size() >= 3) {
                 Element e;
-                e._name = std::basic_string<utf8>((const utf8*)match[2].first, (const utf8*)match[2].second);
-                e._hash = ParameterBox::MakeParameterNameHash(e._name);
+                std::basic_string<utf8> name((const utf8*)match[2].first, (const utf8*)match[2].second);
+                // e._name = name;
+                e._hash = ParameterBox::MakeParameterNameHash(name);
                 e._type = ShaderLangTypeNameAsTypeDesc(MakeStringSection(match[1].str()));
 
                 auto size = e._type.GetSize();
@@ -90,12 +105,12 @@ namespace RenderCore { namespace Techniques
                             buffer1, dimof(buffer1), e._type,
                             buffer0, defaultType);
                         if (castSuccess) {
-                            _defaults.SetParameter(e._name.c_str(), buffer1, e._type);
+                            _defaults.SetParameter(name.c_str(), buffer1, e._type);
                         } else {
                             LogWarning << "Default initialiser can't be cast to same type as variable in PredefinedCBLayout: " << std::string(lineStart, iterator);
                         }
                     } else {
-                        _defaults.SetParameter(e._name.c_str(), buffer0, defaultType);
+                        _defaults.SetParameter(name.c_str(), buffer0, defaultType);
                     }
                 }
             } else {
@@ -105,12 +120,7 @@ namespace RenderCore { namespace Techniques
 
         _cbSize = cbIterator;
         _cbSize = CeilToMultiplePow2(_cbSize, 16);
-
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterFileDependency(_validationCallback, initializer);
     }
-
-    PredefinedCBLayout::~PredefinedCBLayout() {}
 
     void PredefinedCBLayout::WriteBuffer(void* dst, const ParameterBox& parameters) const
     {
@@ -138,4 +148,21 @@ namespace RenderCore { namespace Techniques
         WriteBuffer(result.begin(), parameters);
         return std::move(result);
     }
+
+    PredefinedCBLayout::PredefinedCBLayout() {}
+    PredefinedCBLayout::PredefinedCBLayout(PredefinedCBLayout&& moveFrom) never_throws
+    : _elements(std::move(moveFrom._elements))
+    , _defaults(std::move(moveFrom._defaults))
+    , _validationCallback(std::move(moveFrom._validationCallback))
+    {}
+
+    PredefinedCBLayout& PredefinedCBLayout::operator=(PredefinedCBLayout&& moveFrom) never_throws
+    {
+        _elements = std::move(moveFrom._elements);
+        _defaults = std::move(moveFrom._defaults);
+        _validationCallback = std::move(moveFrom._validationCallback);
+        return *this;
+    }
+
+    PredefinedCBLayout::~PredefinedCBLayout() {}
 }}

@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ConfigFileContainer.h"
+#include "AssetServices.h"
 #include <regex>
 
 namespace Assets
@@ -109,5 +110,20 @@ namespace Assets
     //  std::regex has problems with our unicode character types, so it's not
     //  working currently
     template std::vector<TextChunk<char>> ReadCompoundTextDocument(StringSection<char>);
+
+    namespace Internal
+    {
+        void MarkInvalid(const ResChar initializer[], const char reason[])
+        {
+            if (Services::GetInvalidAssetMan())
+                Services::GetInvalidAssetMan()->MarkInvalid(initializer, reason);
+        }
+
+        void MarkValid(const ResChar initializer[])
+        {
+            if (Services::GetInvalidAssetMan())
+                Services::GetInvalidAssetMan()->MarkValid(initializer);
+        }
+    }
 }
 

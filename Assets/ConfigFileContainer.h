@@ -66,6 +66,12 @@ namespace Assets
         std::shared_ptr<DependencyValidation>  _validationCallback;
     };
 
+    namespace Internal
+    {
+        void MarkInvalid(const ResChar initializer[], const char reason[]);
+        void MarkValid(const ResChar initializer[]);
+    }
+
     template<typename Type, typename Formatter>
         ConfigFileContainer<Type, Formatter>::ConfigFileContainer(const ResChar initializer[])
     {
@@ -81,15 +87,12 @@ namespace Assets
 
             _asset = Type(formatter, searchRules);
 
-            if (Services::GetInvalidAssetMan())
-                Services::GetInvalidAssetMan()->MarkValid(initializer);
+            Internal::MarkValid(initializer);
         } CATCH (const std::exception& e) {
-            if (Services::GetInvalidAssetMan())
-                Services::GetInvalidAssetMan()->MarkInvalid(initializer, e.what());
+            Internal::MarkInvalid(initializer, e.what());
             throw;
         } CATCH(...) {
-            if (Services::GetInvalidAssetMan())
-                Services::GetInvalidAssetMan()->MarkInvalid(initializer, "Unknown error");
+            Internal::MarkInvalid(initializer, "Unknown error");
             throw;
         } CATCH_END
 
@@ -191,15 +194,12 @@ namespace Assets
             // if (!gotConfig)
             //     Throw(::Exceptions::BasicLabel(StringMeld<256>() << "Configuration setting (" << initializer << ") is missing"));
 
-            if (Services::GetInvalidAssetMan())
-                Services::GetInvalidAssetMan()->MarkValid(initializer);
+            Internal::MarkValid(initializer);
         } CATCH (const std::exception& e) {
-            if (Services::GetInvalidAssetMan())
-                Services::GetInvalidAssetMan()->MarkInvalid(initializer, e.what());
+            Internal::MarkInvalid(initializer, e.what());
             throw;
         } CATCH(...) {
-            if (Services::GetInvalidAssetMan())
-                Services::GetInvalidAssetMan()->MarkInvalid(initializer, "Unknown error");
+            Internal::MarkInvalid(initializer, "Unknown error");
             throw;
         } CATCH_END
 

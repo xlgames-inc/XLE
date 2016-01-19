@@ -7,8 +7,6 @@
 #pragma once
 
 #include "AssetsCore.h"
-#include "CompileAndAsyncManager.h"
-#include "AssetServices.h"
 #include "AssetSetManager.h"
 #include "../Utility/Streams/FileSystemMonitor.h"       // (for OnChangeCallback base class)
 #include "../Utility/IteratorUtils.h"
@@ -44,9 +42,13 @@ namespace Assets
 
     class IntermediateAssetLocator;
     class PendingCompileMarker;
+    class ICompileMarker;
 
     namespace Internal
     {
+        AssetSetManager& GetAssetSetManager();
+        std::shared_ptr<ICompileMarker> PrepareAsset(uint64 typeCode, const ResChar* initializers[], unsigned initializerCount);
+
 		template <typename AssetType>
 			class AssetTraits
 		{
@@ -79,16 +81,16 @@ namespace Assets
             bool            DivergentHasChanges(unsigned index) const;
             std::string     GetAssetName(uint64 id) const;
 
-            static std::vector<std::pair<uint64, std::unique_ptr<AssetType>>> _assets;
-            static std::vector<std::pair<uint64, ActiveCompileOperation>> _activeCompiles;
+            std::vector<std::pair<uint64, std::unique_ptr<AssetType>>> _assets;
+            std::vector<std::pair<uint64, ActiveCompileOperation>> _activeCompiles;
 			
 			#if defined(ASSETS_STORE_DIVERGENT)
 				using DivAsset = typename AssetTraits<AssetType>::DivAsset;
-				static std::vector<std::pair<uint64, std::shared_ptr<DivAsset>>> _divergentAssets;
+				std::vector<std::pair<uint64, std::shared_ptr<DivAsset>>> _divergentAssets;
 			#endif
 
             #if defined(ASSETS_STORE_NAMES)
-                static std::vector<std::pair<uint64, std::string>> _assetNames;
+                std::vector<std::pair<uint64, std::string>> _assetNames;
             #endif
 
             #if defined(ASSETS_MULTITHREADED)
@@ -160,7 +162,7 @@ namespace Assets
         {
             static AssetSet<AssetType>* set = nullptr;
             if (!set)
-                set = Services::GetAssetSets().GetSetForType<AssetType>();
+                set = GetAssetSetManager().GetSetForType<AssetType>();
             
             #if defined(ASSETS_STORE_NAMES)
                     // These should agree. If there's a mismatch, there may be a threading problem
@@ -172,7 +174,7 @@ namespace Assets
             #else
                     //  When not multithreaded, check the thread ids for safety.
                     //  We have to check the thread ids
-                assert(Services::GetAssetSets().IsBoundThread());  
+                assert(GetAssetSetManager().IsBoundThread());  
                 return *set;
             #endif
         }
@@ -203,10 +205,8 @@ namespace Assets
             {
                     // This asset type handles the compilation process manually. We will get a ICompileMarker
                     // from the compiler and pass it directly to the asset.
-                auto& compilers = Services::GetAsyncMan().GetIntermediateCompilers();
-                auto& store = Services::GetAsyncMan().GetIntermediateStore();
                 const char* inits[] = { ((const char*)initialisers)... };
-                auto marker = compilers.PrepareAsset(GetCompileProcessType<AssetType>(), inits, dimof(inits), store);
+                auto marker = PrepareAsset(GetCompileProcessType<AssetType>(), inits, dimof(inits));
                 return std::make_unique<AssetType>(std::move(marker));
             }
 
@@ -219,8 +219,6 @@ namespace Assets
                     // the logic for loading the completed intermediate asset. We will use general code for 
                     // testing for existing assets and invoking compiles (etc).
 
-                auto& compilers = Services::GetAsyncMan().GetIntermediateCompilers();
-                auto& store = Services::GetAsyncMan().GetIntermediateStore();
                 const char* inits[] = { ((const char*)initialisers)... };
 
                 auto i = LowerBound(set._activeCompiles, hash);
@@ -238,7 +236,7 @@ namespace Assets
                     return std::move(result);
                 }
 
-				auto marker = compilers.PrepareAsset(GetCompileProcessType<AssetType>(), inits, dimof(inits), store);
+				auto marker = PrepareAsset(GetCompileProcessType<AssetType>(), inits, dimof(inits));
                 auto existingLoc = marker->GetExistingAsset();
                 if (!existingLoc._dependencyValidation || existingLoc._dependencyValidation->GetValidationIndex()!=0) {
                         // no existing asset (or out-of-date) -- we must invoke a compile
@@ -521,22 +519,6 @@ namespace Assets
                     return std::string();
                 #endif
             }
-
-        template <typename AssetType>
-            std::vector<std::pair<uint64, std::unique_ptr<AssetType>>> AssetSet<AssetType>::_assets;
-
-        template <typename AssetType>
-            std::vector<std::pair<uint64, ActiveCompileOperation>> AssetSet<AssetType>::_activeCompiles;
-
-        #if defined(ASSETS_STORE_NAMES)
-            template <typename AssetType>
-                std::vector<std::pair<uint64, std::string>> AssetSet<AssetType>::_assetNames;
-        #endif
-
-        #if defined(ASSETS_STORE_DIVERGENT)
-            template <typename AssetType>
-                std::vector<std::pair<uint64, std::shared_ptr<typename AssetSet<AssetType>::DivAsset>>> AssetSet<AssetType>::_divergentAssets;
-        #endif
     }
 
     template<typename AssetType, typename... Params> const AssetType& GetAsset(Params... initialisers)		    { return Internal::GetAsset<false, false, AssetType>(std::forward<Params>(initialisers)...); }

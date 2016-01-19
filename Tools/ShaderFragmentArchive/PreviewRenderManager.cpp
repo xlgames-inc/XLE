@@ -26,6 +26,7 @@
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"   // for aligning preview camera to model
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
+#include "../../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../../RenderCore/MinimalShaderSource.h"
 
 #include "../../BufferUploads/IBufferUploads.h"
@@ -59,7 +60,7 @@ namespace ShaderPatcherLayer
     public ref class Manager : IManager
     {
     public:
-        virtual IPreviewBuilder^ CreatePreviewBuilder(System::String^ shaderText);
+        virtual IPreviewBuilder^ CreatePreviewBuilder(IManager::ShaderText^ shaderText);
 
         Manager();
     private:
@@ -75,6 +76,7 @@ namespace ShaderPatcherLayer
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techContext;
         std::shared_ptr<RenderCore::IDevice> _device;
         std::string _shaderText;
+        RenderCore::Techniques::PredefinedCBLayout _cbLayout;
     };
 
     public ref class PreviewBuilder : IPreviewBuilder
@@ -87,7 +89,7 @@ namespace ShaderPatcherLayer
             std::shared_ptr<RenderCore::ShaderService::IShaderSource> shaderSource, 
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> techContext,
             std::shared_ptr<RenderCore::IDevice> device,
-            System::String^ shaderText);
+            System::String^ shaderText, System::String^ cbLayout);
         ~PreviewBuilder();
     private:
         PreviewBuilderPimpl*        _pimpl;
@@ -114,11 +116,15 @@ namespace ShaderPatcherLayer
             const ::Assets::DirectorySearchRules& searchRules,
             const RenderCore::Metal::InputLayout& geoInputLayout);
         
-        MaterialBinder(RenderCore::ShaderService::IShaderSource& shaderSource, const std::string& shaderText);
+        MaterialBinder(
+            RenderCore::ShaderService::IShaderSource& shaderSource, 
+            const std::string& shaderText,
+            const RenderCore::Techniques::PredefinedCBLayout& cbLayout);
         ~MaterialBinder();
     private:
         std::string _shaderText;
         RenderCore::ShaderService::IShaderSource* _shaderSource;
+        const RenderCore::Techniques::PredefinedCBLayout* _cbLayout;
     };
 
     bool MaterialBinder::Apply(
@@ -167,15 +173,25 @@ namespace ShaderPatcherLayer
         RenderCore::Metal::BoundInputLayout inputLayout(geoInputLayout, shaderProgram);
         metalContext.Bind(inputLayout);
 
+        // We need to build a PredefinedCBLayout, also. Normally, this is built from the 
+        // node graph directly. We have 2 choices:
+        //      1) build from the node graph (using a similiar path to what happens in non-preview modes)
+        //      2) use reflection to get the cb details from compiled shader code, and build from there.
+        // Method 1 is a little more difficult to implement, but should provide more robust results in
+        // general (because it will match the technique config case better). So let's do that...
+
         BindConstantsAndResources(
             metalContext, parserContext, mat, 
-            sysConstants, searchRules, shaderProgram);
+            sysConstants, searchRules, shaderProgram, *_cbLayout);
 
         return true;
     }
 
-    MaterialBinder::MaterialBinder(RenderCore::ShaderService::IShaderSource& shaderSource, const std::string& shaderText) 
-    : _shaderSource(&shaderSource), _shaderText(shaderText) {}
+    MaterialBinder::MaterialBinder(
+        RenderCore::ShaderService::IShaderSource& shaderSource, 
+        const std::string& shaderText,
+        const RenderCore::Techniques::PredefinedCBLayout& cbLayout) 
+    : _shaderSource(&shaderSource), _shaderText(shaderText), _cbLayout(&cbLayout) {}
     MaterialBinder::~MaterialBinder() {}
 
     static std::pair<DrawPreviewResult, std::string> DrawPreview(
@@ -189,7 +205,7 @@ namespace ShaderPatcherLayer
         try 
         {
             MaterialVisObject visObject;
-            visObject._materialBinder = std::make_shared<MaterialBinder>(*builder._shaderSource, builder._shaderText);
+            visObject._materialBinder = std::make_shared<MaterialBinder>(*builder._shaderSource, builder._shaderText, builder._cbLayout);
             visObject._systemConstants._lightColour = Float3(1,1,1);
             visObject._previewModelFile = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
             visObject._searchRules = Assets::DefaultDirectorySearchRules(MakeStringSection(visObject._previewModelFile));
@@ -201,6 +217,7 @@ namespace ShaderPatcherLayer
                 for each(auto s in split) {
                     auto nativeName = clix::marshalString<clix::E_UTF8>(s);
                     auto rawMat = RenderCore::Assets::RawMaterial::GetDivergentAsset(nativeName.c_str());
+                    // auto rawMat = GUILayer::RawMaterial::Get(s)->GetUnderlying();
                     if (!rawMat) continue;
 
                     auto searchRules = Assets::DefaultDirectorySearchRules(MakeStringSection(nativeName));
@@ -376,10 +393,12 @@ namespace ShaderPatcherLayer
         std::shared_ptr<RenderCore::ShaderService::IShaderSource> shaderSource, 
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> techContext,
         std::shared_ptr<RenderCore::IDevice> device,
-        System::String^ shaderText)
+        System::String^ shaderText, System::String^ cbLayout)
     {
         _pimpl = new PreviewBuilderPimpl();
         _pimpl->_shaderText = clix::marshalString<clix::E_UTF8>(shaderText);
+        auto nativeCBLayout = clix::marshalString<clix::E_UTF8>(cbLayout);
+        _pimpl->_cbLayout = RenderCore::Techniques::PredefinedCBLayout(MakeStringSection(nativeCBLayout), true);
         _pimpl->_shaderSource = std::move(shaderSource);
         _pimpl->_techContext = std::move(techContext);
         _pimpl->_device = std::move(device);
@@ -390,12 +409,12 @@ namespace ShaderPatcherLayer
         delete _pimpl;
     }
 
-    IPreviewBuilder^    Manager::CreatePreviewBuilder(System::String^ shaderText)
+    IPreviewBuilder^    Manager::CreatePreviewBuilder(IManager::ShaderText^ shaderText)
     {
         return gcnew PreviewBuilder(
             _pimpl->_shaderSource, _pimpl->_globalTechniqueContext, 
             _pimpl->_device,
-            shaderText);
+            shaderText->Item1, shaderText->Item2);
     }
     
     Manager::Manager()

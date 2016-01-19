@@ -128,21 +128,18 @@ namespace GUILayer
                 materialParameters);
 
             auto variation = material.FindVariation(parsingContext, techniqueIndex, "game/xleres/illum.txt");
-            if (variation._shaderProgram == nullptr) {
+            if (variation._shader._shaderProgram == nullptr) {
                 return false; // we can't render because we couldn't resolve a good shader variation
             }
-
-            const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
-                "game/xleres/BasicMaterialConstants.txt");
 
             ParameterBox matConstants;
             matConstants.SetParameter((const utf8*)"MaterialDiffuse", Float3(color[0], color[1], color[2]));
 
-            variation.Apply(
+            variation._shader.Apply(
                 devContext, parsingContext,
                 {
                     Techniques::MakeLocalTransformPacket(Transpose(*(Float4x4*)xform), Float3(0.f, 0.f, 0.f)),
-                    cbLayout.BuildCBDataAsPkt(matConstants)
+                    variation._cbLayout->BuildCBDataAsPkt(matConstants)
                 });
             return true;
         CATCH_ASSETS_END(parsingContext)

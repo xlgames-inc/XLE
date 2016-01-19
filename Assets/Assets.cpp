@@ -5,6 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Assets.h"
+#include "AssetServices.h"
+#include "CompileAndAsyncManager.h"
+#include "IntermediateAssets.h"
 
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
@@ -65,6 +68,20 @@ namespace Assets
         std::unique_ptr<Threading::RecursiveMutex> CreateRecursiveMutexPtr() { return std::make_unique<Threading::RecursiveMutex>(); }
         void LockMutex(Threading::RecursiveMutex& mutex) { mutex.lock(); }
         void UnlockMutex(Threading::RecursiveMutex& mutex) { mutex.unlock(); }
+
+        AssetSetManager& GetAssetSetManager()
+        {
+            return Services::GetAssetSets();
+        }
+
+        std::shared_ptr<ICompileMarker> PrepareAsset(
+            uint64 typeCode, const ResChar* initializers[], 
+            unsigned initializerCount)
+        {
+            auto& compilers = Services::GetAsyncMan().GetIntermediateCompilers();
+            auto& store = Services::GetAsyncMan().GetIntermediateStore();
+            return compilers.PrepareAsset(typeCode, initializers, initializerCount, store);
+        }
 
     }
 }

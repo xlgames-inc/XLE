@@ -101,20 +101,17 @@ namespace GUILayer
         Metal::DeviceContext& devContext,
         ParsingContext& parserContext,
         const VisGeoBox& visBox,
-        const ResolvedShader& shader, const RetainedEntity& obj)
+        const TechniqueMaterial::Variation& shader, const RetainedEntity& obj)
     {
         if (!Tweakable("DrawMarkers", true)) return;
         if (!obj._properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(obj)) return;
 
-        const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
-            "game/xleres/BasicMaterialConstants.txt");
-
-        shader.Apply(devContext, parserContext,
+        shader._shader.Apply(devContext, parserContext,
             {
                 MakeLocalTransformPacket(
                     GetTransform(obj),
                     ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                cbLayout.BuildCBDataAsPkt(ParameterBox())
+                shader._cbLayout->BuildCBDataAsPkt(ParameterBox())
             });
         
         devContext.Bind(MakeResourceList(visBox._cubeVB), visBox._cubeVBStride, 0);
@@ -125,7 +122,7 @@ namespace GUILayer
         Metal::DeviceContext& devContext,
         ParsingContext& parserContext,
         const VisGeoBox& visBox,
-        const ResolvedShader& shader, const RetainedEntity& obj,
+        const TechniqueMaterial::Variation& shader, const RetainedEntity& obj,
         EntityInterface::RetainedEntities& objs)
     {
         static auto IndexListHash = ParameterBox::MakeParameterNameHash("IndexList");
@@ -156,15 +153,12 @@ namespace GUILayer
             }
         }
         
-        const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
-            "game/xleres/BasicMaterialConstants.txt");
-
-        shader.Apply(devContext, parserContext,
+        shader._shader.Apply(devContext, parserContext,
             {
                 MakeLocalTransformPacket(
                     GetTransform(obj),
                     ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                cbLayout.BuildCBDataAsPkt(ParameterBox())
+                shader._cbLayout->BuildCBDataAsPkt(ParameterBox())
             });
 
         devContext.Bind(Techniques::CommonResources()._blendAdditive);
@@ -187,7 +181,7 @@ namespace GUILayer
     {
         auto& visBox = FindCachedBoxDep<VisGeoBox>(VisGeoBox::Desc());
         auto shader = visBox._material.FindVariation(parserContext, techniqueIndex, "game/xleres/illum.txt");
-        if (shader._shaderProgram) {
+        if (shader._shader._shaderProgram) {
             for (auto a=_cubeAnnotations.cbegin(); a!=_cubeAnnotations.cend(); ++a) {
                 auto objects = _objects->FindEntitiesOfType(a->_typeId);
                 for (auto o=objects.cbegin(); o!=objects.cend(); ++o) {
@@ -197,7 +191,7 @@ namespace GUILayer
         }
 
         auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, "game/xleres/techniques/meshmarker.txt");
-        if (shaderP._shaderProgram) {
+        if (shaderP._shader._shaderProgram) {
             for (const auto&a:_triMeshAnnotations) {
                 auto objects = _objects->FindEntitiesOfType(a._typeId);
                 for (auto o=objects.cbegin(); o!=objects.cend(); ++o) {

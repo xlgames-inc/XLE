@@ -20,6 +20,8 @@
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/AssetServices.h"
+#include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/SystemUtils.h"

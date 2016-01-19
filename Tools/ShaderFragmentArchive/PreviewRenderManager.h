@@ -27,7 +27,8 @@ namespace ShaderPatcherLayer
 
     public interface class IManager
     {
-        IPreviewBuilder^ CreatePreviewBuilder(System::String^ shaderText);
+        using ShaderText = System::Tuple<System::String^, System::String^>;
+        IPreviewBuilder^ CreatePreviewBuilder(ShaderText^ shaderText);
     };
 
 	class AttachPimpl;

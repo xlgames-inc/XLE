@@ -129,8 +129,24 @@ namespace ShaderPatcherLayer
             return "Unknown exception while generating shader";
         }
     }
+    
+    static std::string GenerateCBLayoutInt(ShaderPatcher::MainFunctionInterface& interf)
+    {
+        std::stringstream str;
+            // Input parameters that can be stored in a cbuffer become
+            // part of our cblayout
+        auto globalParams = interf.GetGlobalParameters();
+        for (unsigned c=0; c<globalParams.size(); ++c) {
+            if (interf.IsCBufferGlobal(c)) {
+                const auto& p = globalParams[c];
+                str << p._type << " " << p._name << std::endl;
+                // we can also specify a default value here...
+            }
+        }
+        return str.str();
+    }
 
-    String^         NodeGraph::GeneratePreviewShader(
+    Tuple<String^,String^>^ NodeGraph::GeneratePreviewShader(
 		NodeGraph^ graph, UInt32 previewNodeId, 
 		PreviewSettings^ settings, IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions)
     {
@@ -154,15 +170,21 @@ namespace ShaderPatcherLayer
 						std::make_pair(
 							clix::marshalString<clix::E_UTF8>(v.Key),
 							clix::marshalString<clix::E_UTF8>(v.Value)));
-            return marshalString<E_UTF8>(
-                    ShaderPatcher::GenerateShaderHeader(nativeGraph) 
-                +   ShaderPatcher::GenerateShaderBody(nativeGraph, interf) 
-                +   ShaderPatcher::GenerateStructureForPreview(nativeGraph, interf, options))
-                ;
+                
+            return gcnew Tuple<String^,String^>(
+                marshalString<E_UTF8>(
+                        ShaderPatcher::GenerateShaderHeader(nativeGraph) 
+                    +   ShaderPatcher::GenerateShaderBody(nativeGraph, interf) 
+                    +   ShaderPatcher::GenerateStructureForPreview(nativeGraph, interf, options)),
+                marshalString<E_UTF8>(GenerateCBLayoutInt(interf)));
         } catch (const std::exception& e) {
-            return "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what());
+            return gcnew Tuple<String^,String^>(
+                "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what()),
+                String::Empty);
         } catch (...) {
-            return "Unknown exception while generating shader";
+            return gcnew Tuple<String^,String^>(
+                "Unknown exception while generating shader",
+                String::Empty);
         }
     }
 
@@ -172,20 +194,7 @@ namespace ShaderPatcherLayer
         {
             auto nativeGraph = graph->ConvertToNative("temp");
             ShaderPatcher::MainFunctionInterface interf(nativeGraph);
-
-            std::stringstream str;
-                // Input parameters that can be stored in a cbuffer become
-                // part of our cblayout
-            auto globalParams = interf.GetGlobalParameters();
-            for (unsigned c=0; c<globalParams.size(); ++c) {
-                if (interf.IsCBufferGlobal(c)) {
-                    const auto& p = globalParams[c];
-                    str << p._type << " " << p._name << std::endl;
-                    // we can also specify a default value here...
-                }
-            }
-            return clix::marshalString<clix::E_UTF8>(str.str());
-
+            return clix::marshalString<clix::E_UTF8>(GenerateCBLayoutInt(interf));
         } catch (const std::exception& e) {
             return "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what());
         } catch (...) {

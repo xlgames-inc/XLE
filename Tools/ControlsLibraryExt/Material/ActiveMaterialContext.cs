@@ -22,7 +22,8 @@ namespace ControlsLibraryExt.Material
                 if (value != m_materialName)
                 {
                     m_materialName = value;
-                    OnChange();
+                    if (OnChange != null)
+                        OnChange.Invoke();
                 }
             }
         }
