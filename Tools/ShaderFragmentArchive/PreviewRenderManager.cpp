@@ -27,6 +27,7 @@
 #include "../../RenderCore/Assets/ModelRunTime.h"   // for aligning preview camera to model
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/MinimalShaderSource.h"
 
 #include "../../BufferUploads/IBufferUploads.h"
@@ -458,11 +459,20 @@ namespace ShaderPatcherLayer
 	LibraryAttachMarker::~LibraryAttachMarker()
 	{
 		if (_pimpl) {
+            System::GC::Collect();
+            System::GC::WaitForPendingFinalizers();
+            GUILayer::DelayedDeleteQueue::FlushQueue();
+        
+            RenderCore::Techniques::ResourceBoxes_Shutdown();
+            // Assets::Dependencies_Shutdown();     (can't do this properly here!)
+
 			_pimpl->_attachRef3.Detach();
 			_pimpl->_attachRef2.Detach();
 			_pimpl->_attachRef1.Detach();
 			_pimpl->_attachRef.Detach();
 			delete _pimpl; _pimpl = nullptr;
+
+            TerminateFileSystemMonitoring();
 		}
 	}
 

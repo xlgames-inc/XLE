@@ -423,7 +423,7 @@ namespace ShaderPatcherLayer
             if (context->HasTechniqueConfig) {
                 sw->WriteLine();
                 sw->Write("/* <<Chunk:TechniqueConfig:main>>--("); sw->WriteLine();
-                sw->Write("~Inherit; game/xleres/Illum.txt"); sw->WriteLine();
+                sw->Write("~Inherit; game/xleres/techniques/illum.tech"); sw->WriteLine();
                 sw->Write("~Deferred"); sw->WriteLine();
 
                 // Sometimes we can attach restrictions or defaults to shader parameters -- 

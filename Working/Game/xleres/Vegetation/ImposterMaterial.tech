@@ -24,7 +24,7 @@
     PixelShader=game/xleres/vegetation/imposter.sh:ps_depthonly
     GeometryShader=game/xleres/vegetation/imposter.sh:gs_main
 ~Deferred
-    ~Inherit; ../Shared.txt:Deferred
+    ~Inherit; ../techniques/shared.tech:Deferred
     ~Parameters
         ~Geometry
         ~GlobalEnvironment

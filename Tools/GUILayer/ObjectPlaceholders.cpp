@@ -180,7 +180,7 @@ namespace GUILayer
         unsigned techniqueIndex)
     {
         auto& visBox = FindCachedBoxDep<VisGeoBox>(VisGeoBox::Desc());
-        auto shader = visBox._material.FindVariation(parserContext, techniqueIndex, "game/xleres/illum.txt");
+        auto shader = visBox._material.FindVariation(parserContext, techniqueIndex, "game/xleres/techniques/illum.tech");
         if (shader._shader._shaderProgram) {
             for (auto a=_cubeAnnotations.cbegin(); a!=_cubeAnnotations.cend(); ++a) {
                 auto objects = _objects->FindEntitiesOfType(a->_typeId);
@@ -190,7 +190,7 @@ namespace GUILayer
             }
         }
 
-        auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, "game/xleres/techniques/meshmarker.txt");
+        auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, "game/xleres/techniques/meshmarker.tech");
         if (shaderP._shader._shaderProgram) {
             for (const auto&a:_triMeshAnnotations) {
                 auto objects = _objects->FindEntitiesOfType(a._typeId);

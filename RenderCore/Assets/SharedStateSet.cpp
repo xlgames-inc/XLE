@@ -110,7 +110,7 @@ namespace RenderCore { namespace Assets
                 // Shaders are referenced relative to a few fixed directories.
             ::Assets::ResChar resName[MaxPath];
             XlCopyString(resName, shaderName);
-            XlCatString(resName, ".txt");
+            XlCatString(resName, ".tech");
             _pimpl->_shaderSearchDirs.ResolveFile(resName, dimof(resName), resName);
             
             rawShaderNames.push_back(hash);

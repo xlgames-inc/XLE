@@ -63,7 +63,7 @@ namespace GUILayer
         const ::Assets::ResChar* shader = (resMat._techniqueConfig[0]) ? resMat._techniqueConfig : "illum";
         ::Assets::ResChar resolvedShader[MaxPath];
         XlCopyString(resolvedShader, shader);
-        XlCatString(resolvedShader, ".txt");
+        XlCatString(resolvedShader, ".tech");
         RenderCore::Assets::Services::GetTechniqueConfigDirs().ResolveFile(resolvedShader, resolvedShader);
 
         visObject->_materialBinder = std::make_shared<ToolsRig::MaterialBinder>(shader);

@@ -33,7 +33,7 @@ namespace SceneEngine
 {
     using namespace RenderCore;
 
-    static const ::Assets::ResChar s_techniqueConfig[] = "game/xleres/cloudvolume.txt";
+    static const ::Assets::ResChar s_techniqueConfig[] = "game/xleres/techniques/cloudvolume.tech";
 
     class DualContourRenderer::Pimpl
     {
@@ -323,7 +323,7 @@ namespace SceneEngine
                 { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
                 ParameterBox());
 
-            auto shader = material.FindVariation(parserContext, techniqueIndex, "game/xleres/illum.txt");
+            auto shader = material.FindVariation(parserContext, techniqueIndex, "game/xleres/techniques/illum.tech");
             if (shader._shader._shaderProgram) {
                 shader._shader.Apply(
                     *context, parserContext, 

@@ -13,7 +13,7 @@
 
 namespace RenderCore { namespace Techniques
 {
-    const ::Assets::ResChar* DefaultPredefinedCBLayout = "game/xleres/BasicMaterialConstants.txt";
+    const ::Assets::ResChar* DefaultPredefinedCBLayout = "game/xleres/techniques/BasicMaterialConstants.txt";
 
     static Techniques::TechniqueInterface MakeTechInterface(
         const Metal::InputLayout& inputLayout,

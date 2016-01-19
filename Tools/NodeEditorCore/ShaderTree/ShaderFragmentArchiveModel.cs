@@ -340,7 +340,7 @@ namespace NodeEditorCore
                                     || extension.Equals(".psh", StringComparison.CurrentCultureIgnoreCase)
                                     || extension.Equals(".gsh", StringComparison.CurrentCultureIgnoreCase)
                                     || extension.Equals(".sh", StringComparison.CurrentCultureIgnoreCase)
-                                    || extension.Equals(".txt", StringComparison.CurrentCultureIgnoreCase)
+                                    || extension.Equals(".tech", StringComparison.CurrentCultureIgnoreCase)
                                     || extension.Equals(".hlsl", StringComparison.CurrentCultureIgnoreCase)
                                     )
                                 {
