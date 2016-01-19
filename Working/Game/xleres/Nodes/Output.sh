@@ -7,13 +7,14 @@
 #if !defined(NODES_OUTPUT_H)
 #define NODES_OUTPUT_H
 
+#include "MaterialParam.sh"
 #include "../gbuffer.h"
 
-GBufferEncoded PerPixelOutput(
+GBufferEncoded Output_PerPixel(
   float3 diffuseAlbedo,
   float3 worldSpaceNormal,
 
-  PerPixelMaterialParam material,
+  CommonMaterialParam material,
 
   float blendingAlpha,
   float normalMapAccuracy,
@@ -23,12 +24,19 @@ GBufferEncoded PerPixelOutput(
   GBufferValues values;
   values.diffuseAlbedo = diffuseAlbedo;
   values.worldSpaceNormal = worldSpaceNormal;
-  values.material = material;
+  values.material.roughness = material.roughness;
+  values.material.specular = material.specular;
+  values.material.metal = material.metal;
   values.blendingAlpha = blendingAlpha;
   values.normalMapAccuracy = normalMapAccuracy;
   values.cookedAmbientOcclusion = cookedAmbientOcclusion;
   values.cookedLightOcclusion = cookedLightOcclusion;
   return Encode(values);
+}
+
+float4 Output_ParamTex(CommonMaterialParam param)
+{
+    return float4(param.roughness, param.specular, param.metal, 1.f);
 }
 
 #endif

@@ -43,9 +43,12 @@ namespace NodeEditorCore
             var largePreviewToolStripMenuItem = new ToolStripMenuItem() { Text = "Large Preview" };
             largePreviewToolStripMenuItem.Click += new EventHandler(this.largePreviewToolStripMenuItem_Click);
 
+            var setArchiveName = new ToolStripMenuItem() { Text = "Set Archive Name" };
+            setArchiveName.Click += SetArchiveName_Click;
+
             return new ContextMenuStrip(this._components)
                 {
-                    Items = { showPreviewShaderItem, refreshToolStripMenuItem, largePreviewToolStripMenuItem }
+                    Items = { showPreviewShaderItem, refreshToolStripMenuItem, largePreviewToolStripMenuItem, setArchiveName }
                 };
         }
 
@@ -275,6 +278,21 @@ namespace NodeEditorCore
             // 
             //     n.AddItem(new ShaderFragmentNodeItem(param.Name, param.Type, param.ArchiveName, false, true));
             // }
+        }
+        private void SetArchiveName_Click(object sender, EventArgs e)
+        {
+            var n = GetNode(AttachedId(sender));
+            if (n == null) return;
+
+            var tag = n.Tag as ShaderFragmentNodeTag;
+            if (tag == null) return;
+
+            using (var dialog = new HyperGraph.TextEditForm { InputText = tag.ArchiveName })
+            {
+                    // careful -- should we validate that the archive name is at least reasonable?
+                if (dialog.ShowDialog() == DialogResult.OK)
+                    tag.ArchiveName = dialog.InputText;
+            }
         }
         private void OnCreateInputParameterNode(object sender, EventArgs e)
         {

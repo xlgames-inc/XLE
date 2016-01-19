@@ -101,10 +101,10 @@ namespace ControlsLibrary.MaterialEditor
                 _resourceBindings.Columns.Add(
                     new DataGridViewTextBoxColumn()
                     {
-                        // CellTemplate = cell,
+                        CellTemplate = new ResourceNameCell(),
                         Name = "ResourceName",
                         HeaderText = "ResourceName",
-                        ToolTipText = "Name of the bound resourec",
+                        ToolTipText = "Name of the bound resource",
                         DataPropertyName = "Value",
                         FillWeight = 70,
                         AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill

@@ -24,6 +24,13 @@ namespace ConsoleRig { class IProgress; }
 
 namespace GUILayer
 {
+	public ref class Utils
+	{
+	public:
+		static System::String^ MakeAssetName(System::String^ input);
+		static System::UInt64 HashID(System::String^ string);
+	};
+
     public ref class TechniqueContextWrapper
     {
     public:

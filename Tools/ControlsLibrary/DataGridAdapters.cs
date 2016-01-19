@@ -450,6 +450,199 @@ namespace ControlsLibrary
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    internal class ResourceNameEditControl : UserControl, IDataGridViewEditingControl
+    {
+        public ResourceNameEditControl()
+        {
+        }
+
+        // Implements the IDataGridViewEditingControl.EditingControlFormattedValue  
+        // property. 
+        public object EditingControlFormattedValue
+        {
+            get { return Value; }
+            set { Value = value.ToString(); }
+        }
+
+        internal string Value = null;
+
+        // Implements the  
+        // IDataGridViewEditingControl.GetEditingControlFormattedValue method. 
+        public object GetEditingControlFormattedValue(DataGridViewDataErrorContexts context)
+        {
+            return EditingControlFormattedValue;
+        }
+
+        // Implements the  
+        // IDataGridViewEditingControl.ApplyCellStyleToEditingControl method. 
+        public void ApplyCellStyleToEditingControl(DataGridViewCellStyle dataGridViewCellStyle)
+        {
+            Font = dataGridViewCellStyle.Font;
+            ForeColor = dataGridViewCellStyle.ForeColor;
+            BackColor = dataGridViewCellStyle.BackColor;
+        }
+
+        // Implements the IDataGridViewEditingControl.EditingControlRowIndex  
+        // property. 
+        public int EditingControlRowIndex
+        {
+            get { return _rowIndex; }
+            set { _rowIndex = value; }
+        }
+
+        // Implements the IDataGridViewEditingControl.EditingControlWantsInputKey  
+        // method. 
+        public bool EditingControlWantsInputKey(Keys key, bool dataGridViewWantsInputKey)
+        {
+            // Let the DateTimePicker handle the keys listed. 
+            switch (key & Keys.KeyCode)
+            {
+                case Keys.Left:
+                case Keys.Up:
+                case Keys.Down:
+                case Keys.Right:
+                case Keys.Home:
+                case Keys.End:
+                case Keys.PageDown:
+                case Keys.PageUp:
+                    return true;
+                default:
+                    return !dataGridViewWantsInputKey;
+            }
+        }
+
+        // Implements the IDataGridViewEditingControl.PrepareEditingControlForEdit  
+        // method. 
+        public void PrepareEditingControlForEdit(bool selectAll)
+        {
+            BuildChildControls();
+        }
+
+        private void BuildChildControls()
+        {
+            SuspendLayout();
+            Controls.Clear();
+
+            var type = new TextBox();
+            type.Location = new Point(0, 0);
+            type.Width = Width - Height;
+            type.Height = Height;
+            type.Text = Value;
+            type.TextChanged +=
+                (object sender, EventArgs e)
+                    => { Value = ((TextBox)sender).Text; OnValueChanged(e); };
+            Controls.Add(type);
+
+            var btn = new Button();
+            btn.Location = new Point(Width - Height, 0);
+            btn.Width = Height;
+            btn.Height = Height;
+            btn.Click += Btn_Click;
+            btn.Text = "...";
+            Controls.Add(btn);
+
+            ResumeLayout();
+        }
+
+        private void Btn_Click(object sender, EventArgs e)
+        {
+            using (var ofd = new OpenFileDialog())
+            {
+                ofd.FileName = Value ?? "";
+                ofd.Filter = "Texture files|*.dds;*.jpg;*.png;*.tif;*.tiff;*.tga|All Files|*.*";
+                if (ofd.ShowDialog() == DialogResult.OK)
+                {
+                    Value = GUILayer.Utils.MakeAssetName(ofd.FileName);
+                    OnValueChanged(null);
+                    BuildChildControls();
+                }
+            }
+        }
+
+        // Implements the IDataGridViewEditingControl 
+        // .RepositionEditingControlOnValueChange property. 
+        public bool RepositionEditingControlOnValueChange
+        {
+            get { return false; }
+        }
+
+        // Implements the IDataGridViewEditingControl 
+        // .EditingControlDataGridView property. 
+        public DataGridView EditingControlDataGridView
+        {
+            get { return _dataGridView; }
+            set { _dataGridView = value; }
+        }
+
+        // Implements the IDataGridViewEditingControl 
+        // .EditingControlValueChanged property. 
+        public bool EditingControlValueChanged
+        {
+            get { return _valueChanged; }
+            set { _valueChanged = value; }
+        }
+
+        // Implements the IDataGridViewEditingControl 
+        // .EditingPanelCursor property. 
+        public Cursor EditingPanelCursor
+        {
+            get { return base.Cursor; }
+        }
+
+        protected void OnValueChanged(EventArgs eventargs)
+        {
+            // Notify the DataGridView that the contents of the cell 
+            // have changed.
+            _valueChanged = true;
+            EditingControlDataGridView.NotifyCurrentCellDirty(true);
+            // base.OnValueChanged(eventargs);
+        }
+
+        private DataGridView _dataGridView;
+        private bool _valueChanged = false;
+        private int _rowIndex;
+    }
+
+    public class ResourceNameCell : DataGridViewTextBoxCell
+    {
+        public override void InitializeEditingControl(
+            int rowIndex,
+            object initialFormattedValue, DataGridViewCellStyle dataGridViewCellStyle)
+        {
+            // Set the value of the editing control to the current cell value. 
+            base.InitializeEditingControl(rowIndex, initialFormattedValue, dataGridViewCellStyle);
+            var ctl = DataGridView.EditingControl as ResourceNameEditControl;
+            if (ctl != null)
+            {
+                ctl.Value = (Value == null) ? string.Empty : Value.ToString();
+            }
+        }
+
+        public override Type EditType { get { return typeof(ResourceNameEditControl); } }
+        public override Type ValueType { get { return typeof(string); } }
+        public override object DefaultNewRowValue { get { return string.Empty; } }
+
+        protected override void Paint(
+            Graphics graphics,
+            Rectangle clipBounds,
+            Rectangle cellBounds,
+            int rowIndex,
+            DataGridViewElementStates cellState,
+            object value,
+            object formattedValue,
+            string errorText,
+            DataGridViewCellStyle cellStyle,
+            DataGridViewAdvancedBorderStyle advancedBorderStyle,
+            DataGridViewPaintParts paintParts)
+        {
+            base.Paint(graphics, clipBounds, cellBounds, rowIndex, cellState,
+                value, formattedValue, errorText, cellStyle,
+                advancedBorderStyle, paintParts);
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+
     public class StringPair : INotifyPropertyChanged
     {
         public string Key { get { return _key; } set { _key = value; NotifyPropertyChanged("Key"); } }

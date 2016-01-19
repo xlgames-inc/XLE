@@ -12,9 +12,24 @@
 #include "../Surface.h"
 #include "../Utility/perlinnoise.h"
 
-float4 LoadAnisotropic(Texture2D inputTexture, float2 texCoord : TEXCOORD0)
+float4 SampleAnisotropic(Texture2D inputTexture, float2 texCoord : TEXCOORD0)
 {
     return inputTexture.Sample(MaybeAnisotropicSampler, texCoord);
+}
+
+float4 Sample(Texture2D inputTexture, float2 texCoord : TEXCOORD0)
+{
+    return inputTexture.Sample(DefaultSampler, texCoord);
+}
+
+float4 GetPixelCoords(VSOutput geo)
+{
+    return geo.position;
+}
+
+float4 LoadAbsolute(Texture2D inputTexture, uint2 pixelCoords)
+{
+    return inputTexture.Load(uint3(pixelCoords, 0));
 }
 
 void GetDiffuseTexture(VSOutput geo, out float3 rgb, out float alpha)
@@ -31,7 +46,7 @@ void GetDiffuseTexture(VSOutput geo, out float3 rgb, out float alpha)
     alpha = diffuseTextureSample.a;
 }
 
-float3 LoadNormalMap(
+float3 SampleNormalMap(
   Texture2D normalMap,
   float2 texCoord : TEXCOORD0,
   VSOutput geo)

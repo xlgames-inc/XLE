@@ -25,16 +25,6 @@ float3 BuildInterpolator_WORLDPOSITION(VSInput input)
 	#endif
 }
 
-float4 BuildInterpolator_SV_Position(VSInput input) : NE_WritesVSOutput
-{
-	#if defined(GEO_PRETRANSFORMED)
-		return float4(VSIn_GetLocalPosition(input).xyz, 1);
-	#else
-		float3 worldPosition = BuildInterpolator_WORLDPOSITION(input);
-		return mul(WorldToClip, float4(worldPosition,1));
-	#endif
-}
-
 float4 BuildInterpolator_COLOR(VSInput input)
 {
 	#if (MAT_VCOLOR_IS_ANIM_PARAM!=1)
@@ -96,7 +86,11 @@ VSOutput BuildInterpolator_VSOutput(VSInput input) : NE_WritesVSOutput
 		output.normal = worldNormal;
 	#endif
 
-	output.position = BuildInterpolator_SV_Position(input);
+	#if defined(GEO_PRETRANSFORMED)
+		output.position = float4(VSIn_GetLocalPosition(input).xyz, 1);
+	#else
+		output.position = mul(WorldToClip, float4(worldPosition,1));
+	#endif
 
 	#if OUTPUT_LOCAL_TANGENT_FRAME==1
 		output.localTangent = BuildInterpolator_LOCALTANGENT(input);

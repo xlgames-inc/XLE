@@ -983,7 +983,7 @@ namespace ShaderPatcher
 					semantic << "SV_Target" << svTargetIndex++;
 
                 auto finalName = UniquifyName(c.OutputParameterName(), nameMap);
-                _outputParameters.emplace_back(MainFunctionParameter(type, finalName, std::string(semantic)));
+                _outputParameters.emplace_back(MainFunctionParameter(type, finalName, "", std::string(semantic)));
                 _outputParameterNames.insert(LowerBound(_outputParameterNames, (const NodeBaseConnection*)&c), std::make_pair(&c, finalName));
             }
         }
