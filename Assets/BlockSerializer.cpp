@@ -263,6 +263,7 @@ namespace Serialization
 				#endif
 
 				auto* containerPtr = o;
+				(void)containerPtr;
 
 				#if (STL_ACTIVE == STL_MSVC) && (_ITERATOR_DEBUG_LEVEL != 0)
                         //  in debug, to produce a valid vector, we need to add one of these proxy

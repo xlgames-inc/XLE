@@ -59,7 +59,7 @@ namespace RenderCore
                 _marker = marker->InvokeCompile();
                 auto markerState = _marker->GetState();
                 if (markerState == ::Assets::AssetState::Invalid)
-                    Throw(::Assets::Exceptions::InvalidAsset(_initializer, "Compiled shader code is invalid"));
+                    Throw(::Assets::Exceptions::InvalidAsset(Initializer(), "Compiled shader code is invalid"));
             }
         } else
             _validationCallback = std::make_shared<Assets::DependencyValidation>();
