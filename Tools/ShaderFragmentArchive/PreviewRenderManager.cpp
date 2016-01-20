@@ -70,41 +70,6 @@ namespace ShaderPatcherLayer
         ~Manager();
     };
 
-	class PreviewBuilderPimpl
-    {
-    public:
-        std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techContext;
-        std::shared_ptr<RenderCore::IDevice> _device;
-        std::string _shaderText;
-        RenderCore::Techniques::PredefinedCBLayout _cbLayout;
-    };
-
-    public ref class PreviewBuilder : IPreviewBuilder
-    {
-    public:
-        virtual System::Drawing::Bitmap^ Build(
-            NodeGraphContext^ doc, Size^ size, PreviewGeometry geometry, unsigned targetToVisualize);
-
-        PreviewBuilder(
-            std::shared_ptr<RenderCore::ShaderService::IShaderSource> shaderSource, 
-            std::shared_ptr<RenderCore::Techniques::TechniqueContext> techContext,
-            std::shared_ptr<RenderCore::IDevice> device,
-            System::String^ shaderText, System::String^ cbLayout);
-        ~PreviewBuilder();
-    private:
-        PreviewBuilderPimpl*        _pimpl;
-
-        System::Drawing::Bitmap^    GenerateErrorBitmap(const char str[], Size^ size);
-    };
-
-    enum DrawPreviewResult
-    {
-        DrawPreviewResult_Error,
-        DrawPreviewResult_Pending,
-        DrawPreviewResult_Success
-    };
-
     class MaterialBinder : public ToolsRig::IMaterialBinder
     {
     public:
@@ -126,6 +91,36 @@ namespace ShaderPatcherLayer
         std::string _shaderText;
         RenderCore::ShaderService::IShaderSource* _shaderSource;
         const RenderCore::Techniques::PredefinedCBLayout* _cbLayout;
+
+		class CachedShader
+		{
+		public:
+			RenderCore::Metal::ShaderProgram _shaderProgram;
+			RenderCore::Metal::BoundInputLayout _inputLayout;
+			RenderCore::Metal::BoundUniforms _uniforms;
+
+			CachedShader& operator=(const CachedShader&) = delete;
+			CachedShader(const CachedShader&) = delete;
+
+			CachedShader& operator=(CachedShader&& moveFrom) never_throws
+			{
+				_shaderProgram = std::move(moveFrom._shaderProgram);
+				_inputLayout = std::move(moveFrom._inputLayout);
+				_uniforms = std::move(moveFrom._uniforms);
+				return *this;
+			}
+
+			CachedShader(CachedShader&& moveFrom) never_throws
+			: _shaderProgram(std::move(moveFrom._shaderProgram))
+			, _inputLayout(std::move(moveFrom._inputLayout))
+			, _uniforms(std::move(moveFrom._uniforms))
+			{}
+
+			CachedShader() {}
+			~CachedShader() {}
+		};
+
+		std::vector<std::pair<uint64, CachedShader>> _cachedShaders;
     };
 
     bool MaterialBinder::Apply(
@@ -153,26 +148,43 @@ namespace ShaderPatcherLayer
             &matParams
         };
 
-        std::vector<std::pair<const utf8*, std::string>> defines;
-        for (unsigned c=0; c<dimof(state); ++c)
-            BuildStringTable(defines, *state[c]);
-        std::string definesTable = FlattenStringTable(defines);
+		uint64 hash = 0;
+		for (unsigned c=0; c<dimof(state); ++c)
+			hash = HashCombine(hash, HashCombine(state[c]->GetHash(), state[c]->GetParameterNamesHash()));
 
-        auto vsCompileMarker = _shaderSource->CompileFromMemory(
-            _shaderText.c_str(), "vs_main", VS_DefShaderModel, definesTable.c_str());
-        auto psCompileMarker = _shaderSource->CompileFromMemory(
-            _shaderText.c_str(), "ps_main", PS_DefShaderModel, definesTable.c_str());
+		const CachedShader* shader = nullptr;
+		auto i = LowerBound(_cachedShaders, hash);
+		if (i != _cachedShaders.end() && i->first == hash)
+			shader = &i->second;
 
-        RenderCore::CompiledShaderByteCode vsCode(std::move(vsCompileMarker));
-        RenderCore::CompiledShaderByteCode psCode(std::move(psCompileMarker));
-        vsCode.StallWhilePending();
-        psCode.StallWhilePending();
+		if (shader == nullptr) {
+			std::vector<std::pair<const utf8*, std::string>> defines;
+			for (unsigned c=0; c<dimof(state); ++c)
+				BuildStringTable(defines, *state[c]);
+			std::string definesTable = FlattenStringTable(defines);
+
+			auto vsCompileMarker = _shaderSource->CompileFromMemory(
+				_shaderText.c_str(), "vs_main", VS_DefShaderModel, definesTable.c_str());
+			auto psCompileMarker = _shaderSource->CompileFromMemory(
+				_shaderText.c_str(), "ps_main", PS_DefShaderModel, definesTable.c_str());
+
+			using namespace RenderCore;
+			CompiledShaderByteCode vsCode(std::move(vsCompileMarker));
+			CompiledShaderByteCode psCode(std::move(psCompileMarker));
+			vsCode.StallWhilePending();
+			psCode.StallWhilePending();
         
-        RenderCore::Metal::ShaderProgram shaderProgram(vsCode, psCode);
-        metalContext.Bind(shaderProgram);
+			CachedShader cs;
+			cs._shaderProgram = Metal::ShaderProgram(vsCode, psCode);
+			cs._inputLayout = Metal::BoundInputLayout(geoInputLayout, cs._shaderProgram);
+			cs._uniforms = Metal::BoundUniforms(cs._shaderProgram);
 
-        RenderCore::Metal::BoundInputLayout inputLayout(geoInputLayout, shaderProgram);
-        metalContext.Bind(inputLayout);
+			i = _cachedShaders.insert(i, std::make_pair(hash, std::move(cs)));
+			shader = &i->second;
+		}
+
+		metalContext.Bind(shader->_inputLayout);
+		metalContext.Bind(shader->_shaderProgram);
 
         // We need to build a PredefinedCBLayout, also. Normally, this is built from the 
         // node graph directly. We have 2 choices:
@@ -183,7 +195,8 @@ namespace ShaderPatcherLayer
 
         BindConstantsAndResources(
             metalContext, parserContext, mat, 
-            sysConstants, searchRules, shaderProgram, *_cbLayout);
+            sysConstants, searchRules, 
+			shader->_uniforms, *_cbLayout);
 
         return true;
     }
@@ -195,9 +208,19 @@ namespace ShaderPatcherLayer
     : _shaderSource(&shaderSource), _shaderText(shaderText), _cbLayout(&cbLayout) {}
     MaterialBinder::~MaterialBinder() {}
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	enum DrawPreviewResult
+    {
+        DrawPreviewResult_Error,
+        DrawPreviewResult_Pending,
+        DrawPreviewResult_Success
+    };
+
     static std::pair<DrawPreviewResult, std::string> DrawPreview(
         RenderCore::IThreadContext& context,
-        PreviewBuilderPimpl& builder, 
+        const RenderCore::Techniques::TechniqueContext& techContext,
+		const std::shared_ptr<MaterialBinder>& binder,
         PreviewGeometry geometry,
         ShaderPatcherLayer::NodeGraphContext^ doc)
     {
@@ -206,7 +229,7 @@ namespace ShaderPatcherLayer
         try 
         {
             MaterialVisObject visObject;
-            visObject._materialBinder = std::make_shared<MaterialBinder>(*builder._shaderSource, builder._shaderText, builder._cbLayout);
+            visObject._materialBinder = binder;
             visObject._systemConstants._lightColour = Float3(1,1,1);
             visObject._previewModelFile = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
             visObject._searchRules = Assets::DefaultDirectorySearchRules(MakeStringSection(visObject._previewModelFile));
@@ -272,7 +295,7 @@ namespace ShaderPatcherLayer
                     model.GetStaticBoundingBox());
             }
 
-            SceneEngine::LightingParserContext parserContext(*builder._techContext);
+            SceneEngine::LightingParserContext parserContext(techContext);
             bool result = ToolsRig::MaterialVisLayer::Draw(
                 context, parserContext, 
                 visSettings, VisEnvSettings(), visObject);
@@ -286,6 +309,37 @@ namespace ShaderPatcherLayer
 
         return std::make_pair(DrawPreviewResult_Error, std::string());
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class PreviewBuilderPimpl
+    {
+    public:
+        std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
+        std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techContext;
+        std::shared_ptr<RenderCore::IDevice> _device;
+        std::string _shaderText;
+        RenderCore::Techniques::PredefinedCBLayout _cbLayout;
+		std::shared_ptr<MaterialBinder> _materialBinder;
+    };
+
+    public ref class PreviewBuilder : IPreviewBuilder
+    {
+    public:
+        virtual System::Drawing::Bitmap^ Build(
+            NodeGraphContext^ doc, Size^ size, PreviewGeometry geometry, unsigned targetToVisualize);
+
+        PreviewBuilder(
+            std::shared_ptr<RenderCore::ShaderService::IShaderSource> shaderSource, 
+            std::shared_ptr<RenderCore::Techniques::TechniqueContext> techContext,
+            std::shared_ptr<RenderCore::IDevice> device,
+            System::String^ shaderText, System::String^ cbLayout);
+        ~PreviewBuilder();
+    private:
+        PreviewBuilderPimpl*        _pimpl;
+
+        System::Drawing::Bitmap^    GenerateErrorBitmap(const char str[], Size^ size);
+    };
 
     System::Drawing::Bitmap^    PreviewBuilder::GenerateErrorBitmap(const char str[], Size^ size)
     {
@@ -352,7 +406,7 @@ namespace ShaderPatcherLayer
 
             ////////////
 
-        auto result = DrawPreview(*context, *_pimpl, geometry, doc);
+        auto result = DrawPreview(*context, *_pimpl->_techContext, _pimpl->_materialBinder, geometry, doc);
         if (result.first == DrawPreviewResult_Error) {
             return GenerateErrorBitmap(result.second.c_str(), size);
         } else if (result.first == DrawPreviewResult_Pending) {
@@ -405,6 +459,7 @@ namespace ShaderPatcherLayer
         _pimpl->_shaderSource = std::move(shaderSource);
         _pimpl->_techContext = std::move(techContext);
         _pimpl->_device = std::move(device);
+		_pimpl->_materialBinder = std::make_shared<MaterialBinder>(*_pimpl->_shaderSource, _pimpl->_shaderText, _pimpl->_cbLayout);
     }
 
     PreviewBuilder::~PreviewBuilder()

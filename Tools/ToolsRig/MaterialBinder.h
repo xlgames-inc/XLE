@@ -55,7 +55,7 @@ namespace ToolsRig
             const RenderCore::Assets::ResolvedMaterial& mat,
             const SystemConstants& sysConstants,
             const ::Assets::DirectorySearchRules& searchRules,
-            RenderCore::Metal::ShaderProgram& shaderProgram,
+			const RenderCore::Metal::BoundUniforms& boundLayout,
             const RenderCore::Techniques::PredefinedCBLayout& cbLayout);
     };
 

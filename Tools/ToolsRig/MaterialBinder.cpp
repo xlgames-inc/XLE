@@ -64,7 +64,7 @@ namespace ToolsRig
         BindConstantsAndResources(
             metalContext, parserContext, mat, 
             sysConstants, searchRules, 
-            *variation._shader._shaderProgram,
+			*variation._shader._boundUniforms,
             *variation._cbLayout);
         return true;
     }
@@ -139,7 +139,7 @@ namespace ToolsRig
     static std::vector<std::pair<uint64, RenderCore::Metal::ConstantBufferPacket>> 
         BuildMaterialConstants(
             const RenderCore::Techniques::PredefinedCBLayout& cbLayout,
-            ID3D::ShaderReflection& reflection, 
+            RenderCore::Metal::BoundUniforms& boundUniforms, 
             const ParameterBox& constants,
             const IMaterialBinder::SystemConstants& systemConstantsContext,
             UInt2 viewportDims)
@@ -152,15 +152,17 @@ namespace ToolsRig
             //
         std::vector<std::pair<uint64, RenderCore::Metal::ConstantBufferPacket>> finalResult;
 
+		auto reflection = boundUniforms.GetReflection(RenderCore::ShaderStage::Pixel);
+
         D3D11_SHADER_DESC shaderDesc;
-        reflection.GetDesc(&shaderDesc);
+        reflection->GetDesc(&shaderDesc);
         for (unsigned c=0; c<shaderDesc.BoundResources; ++c) {
 
             D3D11_SHADER_INPUT_BIND_DESC bindDesc;
-            reflection.GetResourceBindingDesc(c, &bindDesc);
+            reflection->GetResourceBindingDesc(c, &bindDesc);
 
             if (bindDesc.Type == D3D10_SIT_CBUFFER) {
-                auto cbuffer = reflection.GetConstantBufferByName(bindDesc.Name);
+                auto cbuffer = reflection->GetConstantBufferByName(bindDesc.Name);
                 if (cbuffer) {
                     D3D11_SHADER_BUFFER_DESC bufferDesc;
                     HRESULT hresult = cbuffer->GetDesc(&bufferDesc);
@@ -227,7 +229,6 @@ namespace ToolsRig
     static std::vector<const RenderCore::Metal::ShaderResourceView*>
         BuildBoundTextures(
             RenderCore::Metal::BoundUniforms& boundUniforms,
-            RenderCore::Metal::ShaderProgram& shaderProgram,
             const ParameterBox& bindings,
             const Assets::DirectorySearchRules& searchRules)
     {
@@ -244,16 +245,16 @@ namespace ToolsRig
             //      default objects.
             //
 
-        const CompiledShaderByteCode* shaderCode[] = {
-            &shaderProgram.GetCompiledVertexShader(),
-            &shaderProgram.GetCompiledPixelShader(),
-            shaderProgram.GetCompiledGeometryShader(),
+        const ShaderStage::Enum stages[] = {
+            ShaderStage::Vertex,
+			ShaderStage::Pixel,
+			ShaderStage::Geometry
         };
 
-        for (unsigned s=0; s<dimof(shaderCode); ++s) {
-            if (!shaderCode[s]) continue;
+        for (unsigned s=0; s<dimof(stages); ++s) {
+            auto reflection = boundUniforms.GetReflection(stages[s]);
+			if (!reflection) continue;
 
-            auto reflection = Metal::CreateReflection(*shaderCode[s]);
             D3D11_SHADER_DESC shaderDesc;
             reflection->GetDesc(&shaderDesc);
 
@@ -263,7 +264,7 @@ namespace ToolsRig
                 reflection->GetResourceBindingDesc(c, &bindDesc);
                 if  (bindDesc.Type == D3D10_SIT_TEXTURE) {
 
-                        // skip "NormalsFittingTexture" -- system use
+                        // skip some textures that are only for system use...
                     if (!XlCompareString(bindDesc.Name, "NormalsFittingTexture")) continue;
                     if (!XlCompareString(bindDesc.Name, "SkyReflectionTexture[0]")) continue;
                     if (!XlCompareString(bindDesc.Name, "SkyReflectionTexture[1]")) continue;
@@ -324,7 +325,7 @@ namespace ToolsRig
         const RenderCore::Assets::ResolvedMaterial& mat,
         const SystemConstants& sysConstants,
         const ::Assets::DirectorySearchRules& searchRules,
-        RenderCore::Metal::ShaderProgram& shaderProgram,
+		const RenderCore::Metal::BoundUniforms& srcLayout,
         const RenderCore::Techniques::PredefinedCBLayout& cbLayout)
     {
         using namespace RenderCore;
@@ -333,16 +334,16 @@ namespace ToolsRig
                 //      Constants / Resources
                 //
 
+		Metal::BoundUniforms boundLayout;
+		boundLayout.CopyReflection(srcLayout);
+        Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
+
         Metal::ViewportDesc currentViewport(metalContext);
             
         auto materialConstants = BuildMaterialConstants(
-            cbLayout,
-            *Metal::CreateReflection(shaderProgram.GetCompiledPixelShader()), 
+            cbLayout, boundLayout, 
             mat._constants, sysConstants, 
             UInt2(unsigned(currentViewport.Width), unsigned(currentViewport.Height)));
-        
-        Metal::BoundUniforms boundLayout(shaderProgram);
-        Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
             
         std::vector<RenderCore::Metal::ConstantBufferPacket> constantBufferPackets;
         constantBufferPackets.push_back(
@@ -355,8 +356,7 @@ namespace ToolsRig
         }
 
         auto boundTextures = BuildBoundTextures(
-            boundLayout, shaderProgram,
-            mat._bindings, searchRules);
+            boundLayout, mat._bindings, searchRules);
         boundLayout.Apply(
             metalContext,
             parsingContext.GetGlobalUniformsStream(),

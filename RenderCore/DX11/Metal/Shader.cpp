@@ -327,39 +327,39 @@ namespace RenderCore { namespace Metal_DX11
 
     ShaderProgram::ShaderProgram(   const ResChar vertexShaderInitializer[], 
                                     const ResChar fragmentShaderInitializer[])
-    :   _compiledVertexShader(::Assets::GetAssetComp<CompiledShaderByteCode>(vertexShaderInitializer)) // (odd..?)
-    ,   _compiledPixelShader(::Assets::GetAssetComp<CompiledShaderByteCode>(fragmentShaderInitializer)) // (odd..?)
-    ,   _vertexShader(_compiledVertexShader)
-    ,   _pixelShader(_compiledPixelShader)
+    :   _compiledVertexShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(vertexShaderInitializer)) // (odd..?)
+    ,   _compiledPixelShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(fragmentShaderInitializer)) // (odd..?)
+    ,   _vertexShader(*_compiledVertexShader)
+    ,   _pixelShader(*_compiledPixelShader)
     ,   _compiledGeometryShader(nullptr)
     {
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, _compiledVertexShader.GetDependencyValidation());
-        Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledVertexShader->GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader->GetDependencyValidation());
     }
     
     ShaderProgram::ShaderProgram(   const ResChar vertexShaderInitializer[], 
                                     const ResChar fragmentShaderInitializer[],
                                     const ResChar definesTable[])
-    :   _compiledVertexShader(::Assets::GetAssetComp<CompiledShaderByteCode>(vertexShaderInitializer, definesTable)) // (odd..?)
-    ,   _compiledPixelShader(::Assets::GetAssetComp<CompiledShaderByteCode>(fragmentShaderInitializer, definesTable)) // (odd..?)
-    ,   _vertexShader(_compiledVertexShader)
-    ,   _pixelShader(_compiledPixelShader)
+    :   _compiledVertexShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(vertexShaderInitializer, definesTable)) // (odd..?)
+    ,   _compiledPixelShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(fragmentShaderInitializer, definesTable)) // (odd..?)
+    ,   _vertexShader(*_compiledVertexShader)
+    ,   _pixelShader(*_compiledPixelShader)
     ,   _compiledGeometryShader(nullptr)
     {
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, _compiledVertexShader.GetDependencyValidation());
-        Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledVertexShader->GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader->GetDependencyValidation());
     }
 
     ShaderProgram::ShaderProgram(   const ResChar vertexShaderInitializer[], 
                                     const ResChar geometryShaderInitializer[],
                                     const ResChar fragmentShaderInitializer[],
                                     const ResChar definesTable[])
-    :   _compiledVertexShader(::Assets::GetAssetComp<CompiledShaderByteCode>(vertexShaderInitializer, definesTable)) // (odd..?)
-    ,   _compiledPixelShader(::Assets::GetAssetComp<CompiledShaderByteCode>(fragmentShaderInitializer, definesTable)) // (odd..?)
-    ,   _vertexShader(_compiledVertexShader)
-    ,   _pixelShader(_compiledPixelShader)
+    :   _compiledVertexShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(vertexShaderInitializer, definesTable)) // (odd..?)
+    ,   _compiledPixelShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(fragmentShaderInitializer, definesTable)) // (odd..?)
+    ,   _vertexShader(*_compiledVertexShader)
+    ,   _pixelShader(*_compiledPixelShader)
     ,   _compiledGeometryShader(nullptr)
     {
         if (geometryShaderInitializer && geometryShaderInitializer[0]) {
@@ -367,8 +367,8 @@ namespace RenderCore { namespace Metal_DX11
             _geometryShader = GeometryShader(*_compiledGeometryShader);
         }
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, _compiledVertexShader.GetDependencyValidation());
-        Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledVertexShader->GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader->GetDependencyValidation());
         if (_compiledGeometryShader) {
             Assets::RegisterAssetDependency(_validationCallback, _compiledGeometryShader->GetDependencyValidation());
         }
@@ -376,8 +376,8 @@ namespace RenderCore { namespace Metal_DX11
 
     ShaderProgram::ShaderProgram(   const CompiledShaderByteCode& compiledVertexShader, 
                                     const CompiledShaderByteCode& compiledFragmentShader)
-    :   _compiledVertexShader(compiledVertexShader)
-    ,   _compiledPixelShader(compiledFragmentShader)
+    :   _compiledVertexShader(&compiledVertexShader)
+    ,   _compiledPixelShader(&compiledFragmentShader)
     ,   _compiledGeometryShader(nullptr)
     {
             //  make sure both the vertex shader and the pixel shader
@@ -392,16 +392,52 @@ namespace RenderCore { namespace Metal_DX11
         _vertexShader = std::move(vertexShader);
         _pixelShader = std::move(pixelShader);
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, _compiledVertexShader.GetDependencyValidation());
-        Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledVertexShader->GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader->GetDependencyValidation());
     }
 
+	ShaderProgram::ShaderProgram()
+	{
+		_compiledVertexShader = nullptr;
+		_compiledPixelShader = nullptr;
+		_compiledGeometryShader = nullptr;
+	}
     ShaderProgram::~ShaderProgram() {}
 
     bool ShaderProgram::DynamicLinkingEnabled() const
     {
-        return _compiledVertexShader.DynamicLinkingEnabled() || _compiledPixelShader.DynamicLinkingEnabled();
+        return _compiledVertexShader->DynamicLinkingEnabled() || _compiledPixelShader->DynamicLinkingEnabled();
     }
+
+	ShaderProgram::ShaderProgram(ShaderProgram&& moveFrom) never_throws
+	: _compiledVertexShader(moveFrom._compiledVertexShader)
+	, _compiledPixelShader(moveFrom._compiledPixelShader)
+	, _compiledGeometryShader(moveFrom._compiledGeometryShader)
+	, _vertexShader(std::move(moveFrom._vertexShader))
+	, _pixelShader(std::move(moveFrom._pixelShader))
+	, _geometryShader(std::move(moveFrom._geometryShader))
+	, _validationCallback(std::move(moveFrom._validationCallback))
+	{
+		moveFrom._compiledVertexShader = nullptr;
+		moveFrom._compiledPixelShader = nullptr;
+		moveFrom._compiledGeometryShader = nullptr;
+	}
+
+    ShaderProgram& ShaderProgram::operator=(ShaderProgram&& moveFrom) never_throws
+	{
+		_compiledVertexShader = moveFrom._compiledVertexShader;
+		_compiledPixelShader = moveFrom._compiledPixelShader;
+		_compiledGeometryShader = moveFrom._compiledGeometryShader;
+		moveFrom._compiledVertexShader = nullptr;
+		moveFrom._compiledPixelShader = nullptr;
+		moveFrom._compiledGeometryShader = nullptr;
+
+		_vertexShader = std::move(moveFrom._vertexShader);
+		_pixelShader = std::move(moveFrom._pixelShader);
+		_geometryShader = std::move(moveFrom._geometryShader);
+		_validationCallback = std::move(moveFrom._validationCallback);
+		return *this;
+	}
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
