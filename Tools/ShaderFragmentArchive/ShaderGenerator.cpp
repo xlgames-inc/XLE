@@ -450,16 +450,16 @@ namespace ShaderPatcherLayer
                 sw->Write(")--*/"); sw->WriteLine();
                 sw->WriteLine();
                 sw->Flush();
+            }
 
-                // write out a cb layout, as well
-                auto cbLayout = NodeGraph::GenerateCBLayout(nodeGraph);
-                if (!String::IsNullOrEmpty(cbLayout)) {
-                    sw->Write("/* <<Chunk:CBLayout:main>>--("); sw->WriteLine();
-                    sw->Write(cbLayout); sw->WriteLine();
-                    sw->Write(")--*/"); sw->WriteLine();
-                    sw->WriteLine();
-                    sw->Flush();
-                }
+                // write out a cb layout, as well (sometimes required even if it's not a technique config)
+            auto cbLayout = NodeGraph::GenerateCBLayout(nodeGraph);
+            if (!String::IsNullOrEmpty(cbLayout)) {
+                sw->Write("/* <<Chunk:CBLayout:main>>--("); sw->WriteLine();
+                sw->Write(cbLayout); sw->WriteLine();
+                sw->Write(")--*/"); sw->WriteLine();
+                sw->WriteLine();
+                sw->Flush();
             }
 
                 // If we wrote to the memory stream successfully, we can write to disk -- 

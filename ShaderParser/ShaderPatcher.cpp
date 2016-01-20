@@ -1521,7 +1521,7 @@ namespace ShaderPatcher
         TemplateItem() {}
     };
 
-    static std::string GetTemplate(const char templateName[])
+    static std::string GetPreviewTemplate(const char templateName[])
     {
         StringMeld<MaxPath, Assets::ResChar> str;
         str << "game/xleres/System/PreviewTemplates.sh:" << templateName;
@@ -1693,15 +1693,15 @@ namespace ShaderPatcher
             }
 
             if (renderAsChart) {
-                result << preprocessor.render(GetTemplate("ps_main_chart"), context);
+                result << preprocessor.render(GetPreviewTemplate("ps_main_chart"), context);
             } else if (!previewOptions._outputToVisualize.empty()) {
-                result << preprocessor.render(GetTemplate("ps_main_explicit"), context);
+                result << preprocessor.render(GetPreviewTemplate("ps_main_explicit"), context);
             } else
-                result << preprocessor.render(GetTemplate("ps_main"), context);
+                result << preprocessor.render(GetPreviewTemplate("ps_main"), context);
         }
 
         // Render the vs_main template
-        result << preprocessor.render(GetTemplate("vs_main"), 
+        result << preprocessor.render(GetPreviewTemplate("vs_main"), 
             PlustacheTypes::ObjectType
             {
                 {"InitGeo", ToPlustache(mainParams.VSOutputMember().empty())},
