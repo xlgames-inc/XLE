@@ -39,6 +39,12 @@ namespace NodeEditorCore
             set { _semantic = value; _semanticBox.Text = value; }
         }
 
+        public string Default
+        {
+            get { return _default; }
+            set { _default = value; _defaultBox.Text = value; }
+        }
+
         public string Type
         {
             get { return _type; }
@@ -97,7 +103,8 @@ namespace NodeEditorCore
 
         private void _name_TextChanged(object sender, EventArgs e) { _name = _nameBox.Text; }
         private void _semanticBox_TextChanged(object sender, EventArgs e) { _semantic = _semanticBox.Text; }
-        private string _name, _type, _semantic;
+        private void _defaultBox_TextChanged(object sender, EventArgs e) { _default = _defaultBox.Text; }
+        private string _name, _type, _semantic, _default;
     }
 }
 

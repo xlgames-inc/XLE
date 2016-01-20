@@ -94,6 +94,9 @@ namespace MaterialTool
                         m_scriptingService.SetVariable("view", viewContext);
                         m_scriptingService.SetVariable("hist", hist);
                     };
+
+                // attach tweakable bridge for accessing console variables
+                m_scriptingService.SetVariable("cv", new GUILayer.TweakableBridge());
             }
 
             if (m_settingsService != null)

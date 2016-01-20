@@ -71,7 +71,7 @@ namespace NodeEditorCore
             var inputParam = e.Connector.Item as ShaderFragmentInterfaceParameterItem;
             if (inputParam != null)
             {
-                using (var fm = new InterfaceParameterForm() { Name = inputParam.Name, Type = inputParam.Type, Semantic = inputParam.Semantic })
+                using (var fm = new InterfaceParameterForm() { Name = inputParam.Name, Type = inputParam.Type, Semantic = inputParam.Semantic, Default = inputParam.Default })
                 {
                     var result = fm.ShowDialog();
                     if (result == DialogResult.OK)
@@ -79,6 +79,7 @@ namespace NodeEditorCore
                         inputParam.Name = fm.Name;
                         inputParam.Type = fm.Type;
                         inputParam.Semantic = fm.Semantic;
+                        inputParam.Default = fm.Default;
                         GetGraphModel().InvokeMiscChange(true);
                     }
                     else if (result == DialogResult.No)
@@ -305,7 +306,7 @@ namespace NodeEditorCore
                     var tag = ((ToolStripMenuItem)sender).GetCurrentParent().Tag;
                     if (tag is System.Drawing.PointF)
                         n.Location = (System.Drawing.PointF)tag;
-                    n.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, fm.Semantic, InterfaceDirection.In));
+                    n.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, InterfaceDirection.In) { Semantic = fm.Semantic, Default = fm.Default });
 
                     GetGraphModel().AddNode(n);
                 }
@@ -322,7 +323,7 @@ namespace NodeEditorCore
                     var tag = ((ToolStripMenuItem)sender).GetCurrentParent().Tag;
                     if (tag is System.Drawing.PointF)
                         n.Location = (System.Drawing.PointF)tag;
-                    n.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, fm.Semantic, InterfaceDirection.Out));
+                    n.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, InterfaceDirection.Out) { Semantic = fm.Semantic, Default = fm.Default });
 
                     GetGraphModel().AddNode(n);
                 }

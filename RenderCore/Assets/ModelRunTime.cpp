@@ -1118,6 +1118,14 @@ namespace RenderCore { namespace Assets
             
                 const auto& d = md->second;
                 devContext.Bind(Metal::Topology::Enum(d._topology));  // do we really need to set the topology every time?
+
+                    // -- this draw call index stuff is only required in some cases --
+                    //      we need some way to customise the model rendering method for different purposes
+                devContext.Bind(Techniques::CommonResources()._dssReadWriteWriteStencil, 1+drawCallIndex);  // write stencil buffer with draw index
+                unsigned drawCallIndexB[4] = { drawCallIndex, 0, 0, 0 };
+                drawCallIndexBuffer.Update(devContext, drawCallIndexB, sizeof(drawCallIndexB));
+                    // -------------
+
                 devContext.DrawIndexed(d._indexCount, d._firstIndex, d._firstVertex);
             }
 

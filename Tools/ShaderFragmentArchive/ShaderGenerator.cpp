@@ -71,7 +71,8 @@ namespace ShaderPatcherLayer
             marshalString<E_UTF8>(connection->OutputParameterName),
             ShaderPatcher::Type(marshalString<E_UTF8>(connection->Type)),
             marshalString<E_UTF8>(connection->Name),
-            marshalString<E_UTF8>(connection->Semantic));
+            marshalString<E_UTF8>(connection->Semantic),
+            connection->Default ? marshalString<E_UTF8>(connection->Default) : std::string());
     }
 
     static ShaderPatcher::NodeConnection        ConvertToNative(OutputParameterConnection^ connection)
@@ -139,8 +140,10 @@ namespace ShaderPatcherLayer
         for (unsigned c=0; c<globalParams.size(); ++c) {
             if (interf.IsCBufferGlobal(c)) {
                 const auto& p = globalParams[c];
-                str << p._type << " " << p._name << std::endl;
-                // we can also specify a default value here...
+                str << p._type << " " << p._name;
+                if (!p._default.empty())
+                    str << " = " << p._default;
+                str << ";" << std::endl;
             }
         }
         return str.str();

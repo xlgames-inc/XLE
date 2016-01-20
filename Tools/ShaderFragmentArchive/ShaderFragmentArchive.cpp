@@ -112,17 +112,19 @@ namespace ShaderFragmentArchive
         ShaderFragmentChangeCallback(ShaderFragment^ shaderFragment, System::Threading::SynchronizationContext^ mainThread);
         virtual ~ShaderFragmentChangeCallback();
     private:
-        gcroot<ShaderFragment^> _shaderFragment;
+        gcroot<WeakReference^> _shaderFragment;
         gcroot<System::Threading::SynchronizationContext^> _mainThread;
     };
 
     void    ShaderFragmentChangeCallback::OnChange() 
     {
-        _mainThread->Post(gcnew System::Threading::SendOrPostCallback(_shaderFragment, &ShaderFragment::OnChange), nullptr);
+        auto frag = dynamic_cast<ShaderFragment^>(_shaderFragment->Target);
+        if (frag)
+            _mainThread->Post(gcnew System::Threading::SendOrPostCallback(frag, &ShaderFragment::OnChange), nullptr);
     }
 
     ShaderFragmentChangeCallback::ShaderFragmentChangeCallback(ShaderFragment^ shaderFragment, System::Threading::SynchronizationContext^ mainThread)
-        : _shaderFragment(shaderFragment)
+        : _shaderFragment(gcnew WeakReference(shaderFragment))
         , _mainThread(mainThread)
     {}
 
@@ -142,7 +144,7 @@ namespace ShaderFragmentArchive
     void ShaderFragment::OnChange(Object^obj)
     {
         ++_changeMarker;
-        ChangeEvent(obj);
+        ChangeEvent(obj, EventArgs::Empty);
     }
 
     ShaderFragment::ShaderFragment(String^ sourceFile)
@@ -203,10 +205,10 @@ namespace ShaderFragmentArchive
             
         }
 
-        auto changeCallback = std::shared_ptr<Utility::OnChangeCallback>(
+        std::shared_ptr<ShaderFragmentChangeCallback> changeCallback(
             new ShaderFragmentChangeCallback(this, System::Threading::SynchronizationContext::Current));
         RegisterFileDependency(changeCallback, marshalString<E_UTF8>(sourceFile).c_str());
-        _fileChangeCallback = new std::shared_ptr<Utility::OnChangeCallback>(changeCallback);
+        _fileChangeCallback = changeCallback;
     }
 
     ShaderFragment::~ShaderFragment()
@@ -215,7 +217,7 @@ namespace ShaderFragmentArchive
         delete ParameterStructs;
         delete Name;
         delete ExceptionString;
-        delete _fileChangeCallback;
+        _fileChangeCallback.reset();
     }
 
     Parameter::Parameter(String^ archiveName)

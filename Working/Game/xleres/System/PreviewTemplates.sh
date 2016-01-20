@@ -56,7 +56,7 @@ float4 NodeEditor_GraphEdgeColour(int index)
 
 //////////////////////////////////////////////////////////////////
 
-float4 ps_main(NE_PSInput input, float4 position : SV_Position, SystemInputs sys) : SV_Target0
+float4 ps_main(NE_PSInput input, float2 chartCoords : CHARTCOORDS, float4 position : SV_Position, SystemInputs sys) : SV_Target0
 {
 	NE_{{GraphName}}_Output functionResult;
 	{{GraphName}}({{ParametersToMainFunctionCall}});
@@ -69,7 +69,7 @@ float4 ps_main(NE_PSInput input, float4 position : SV_Position, SystemInputs sys
 {{/ChartLines}}
 	};
 
-	float chartY = 1.f - position.y / NodeEditor_GetOutputDimensions().y;
+	float chartY = chartCoords.y; // 1.f - position.y / NodeEditor_GetOutputDimensions().y;
 
 	uint filled = 0;
 	for (uint c=0; c<chartLineCount; c++)
@@ -85,13 +85,12 @@ float4 ps_main(NE_PSInput input, float4 position : SV_Position, SystemInputs sys
 ):>
 
 ~vs_main; item=<:(
-NE_PSInput vs_main(uint vertexId : SV_VertexID, VSInput vsInput)
+void vs_main(uint vertexId : SV_VertexID, VSInput vsInput, out NE_PSInput OUT, out float2 chartCoords : CHARTCOORDS)
 {
-	NE_PSInput OUT;
 	{{#InitGeo}}OUT.geo = BuildInterpolator_VSOutput(vsInput);{{/InitGeo}}
 	float3 worldPosition = BuildInterpolator_WORLDPOSITION(vsInput);
 	float3 localPosition = VSIn_GetLocalPosition(vsInput);
 {{VaryingInitialization}}
-	return OUT;
+	chartCoords = .5.xx + 0.5f * localPosition.xy;
 }
 ):>

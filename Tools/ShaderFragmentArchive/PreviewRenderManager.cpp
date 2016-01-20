@@ -223,6 +223,8 @@ namespace ShaderPatcherLayer
 
                     auto searchRules = Assets::DefaultDirectorySearchRules(MakeStringSection(nativeName));
                     rawMat->GetAsset()._asset.Resolve(visObject._parameters, searchRules);
+
+                    visObject._searchRules.AddSearchDirectoryFromFilename(MakeStringSection(nativeName));
                 }
             }
             visObject._parameters._matParams.SetParameter(u("SHADER_NODE_EDITOR"), "1");

@@ -133,7 +133,7 @@ namespace ShaderPatcher
     class InputParameterConnection : public NodeBaseConnection
     {
     public:
-        InputParameterConnection(uint32 outputNodeId, const std::string& outputParameterName, const Type& type, const std::string& name, const std::string& semantic);
+        InputParameterConnection(uint32 outputNodeId, const std::string& outputParameterName, const Type& type, const std::string& name, const std::string& semantic, const std::string& defaultValue);
         InputParameterConnection(InputParameterConnection&& moveFrom) never_throws;
         InputParameterConnection& operator=(InputParameterConnection&& moveFrom) never_throws;
 
@@ -145,11 +145,13 @@ namespace ShaderPatcher
         const Type&         InputType() const           { return _type; }
         const std::string&  InputName() const           { return _name; }
         const std::string&  InputSemantic() const       { return _semantic; }
+        const std::string&  Default() const             { return _default; }
 
     private:
         Type            _type;
         std::string     _name;
         std::string     _semantic;
+        std::string     _default;
     };
 
         ///////////////////////////////////////////////////////////////
@@ -201,11 +203,11 @@ namespace ShaderPatcher
     class MainFunctionParameter
     {
     public:
-        std::string _type, _name, _archiveName, _semantic;
+        std::string _type, _name, _archiveName, _semantic, _default;
         MainFunctionParameter(
             const std::string& type, const std::string& name, 
-            const std::string& archiveName, const std::string& semantic = std::string())
-            : _type(type), _name(name), _archiveName(archiveName), _semantic(semantic) {}
+            const std::string& archiveName, const std::string& semantic = std::string(), const std::string& defaultValue = std::string())
+            : _type(type), _name(name), _archiveName(archiveName), _semantic(semantic), _default(defaultValue) {}
         MainFunctionParameter() {}
     };
 

@@ -42,6 +42,9 @@ namespace NodeEditorCore
             this.label4 = new System.Windows.Forms.Label();
             this._typeBaseBox = new System.Windows.Forms.ComboBox();
             this._typeDimension0Box = new System.Windows.Forms.ComboBox();
+            this.label5 = new System.Windows.Forms.Label();
+            this._defaultBox = new System.Windows.Forms.TextBox();
+            this.label6 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // label1
@@ -81,11 +84,9 @@ namespace NodeEditorCore
             // 
             // _semanticBox
             // 
-            this._semanticBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
             this._semanticBox.Location = new System.Drawing.Point(304, 21);
             this._semanticBox.Name = "_semanticBox";
-            this._semanticBox.Size = new System.Drawing.Size(179, 20);
+            this._semanticBox.Size = new System.Drawing.Size(142, 20);
             this._semanticBox.TabIndex = 5;
             this._semanticBox.TextChanged += new System.EventHandler(this._semanticBox_TextChanged);
             // 
@@ -118,10 +119,41 @@ namespace NodeEditorCore
             this._typeDimension0Box.TabIndex = 8;
             this._typeDimension0Box.SelectedIndexChanged += new System.EventHandler(this._typeBox_SelectedIndexChanged);
             // 
-            // InputParameterControl
+            // label5
+            // 
+            this.label5.AutoSize = true;
+            this.label5.Location = new System.Drawing.Point(452, 24);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(13, 13);
+            this.label5.TabIndex = 9;
+            this.label5.Text = "=";
+            // 
+            // _defaultBox
+            // 
+            this._defaultBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this._defaultBox.Location = new System.Drawing.Point(471, 21);
+            this._defaultBox.Name = "_defaultBox";
+            this._defaultBox.Size = new System.Drawing.Size(142, 20);
+            this._defaultBox.TabIndex = 10;
+            this._defaultBox.TextChanged += new System.EventHandler(this._defaultBox_TextChanged);
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(514, 4);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(41, 13);
+            this.label6.TabIndex = 11;
+            this.label6.Text = "Default";
+            // 
+            // InterfaceParameterControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.Controls.Add(this.label6);
+            this.Controls.Add(this._defaultBox);
+            this.Controls.Add(this.label5);
             this.Controls.Add(this._typeDimension0Box);
             this.Controls.Add(this._typeBaseBox);
             this.Controls.Add(this.label4);
@@ -130,8 +162,8 @@ namespace NodeEditorCore
             this.Controls.Add(this.label3);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
-            this.Name = "InputParameterControl";
-            this.Size = new System.Drawing.Size(486, 48);
+            this.Name = "InterfaceParameterControl";
+            this.Size = new System.Drawing.Size(618, 45);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -147,5 +179,8 @@ namespace NodeEditorCore
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.ComboBox _typeBaseBox;
         private System.Windows.Forms.ComboBox _typeDimension0Box;
+        private System.Windows.Forms.Label label5;
+        private System.Windows.Forms.TextBox _defaultBox;
+        private System.Windows.Forms.Label label6;
     }
 }

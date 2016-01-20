@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../GUILayer/CLIXAutoPtr.h"
 #include <memory>
 
 using namespace System;
@@ -80,7 +81,6 @@ namespace ShaderFragmentArchive
     };
 
         ///////////////////////////////////////////////////////////////
-    public delegate void ChangeEventHandler(Object^ sender);
     public ref class ShaderFragment
 	{
     public:
@@ -92,11 +92,11 @@ namespace ShaderFragmentArchive
         ShaderFragment(String^ sourceFile);
         ~ShaderFragment();
 
-        event ChangeEventHandler^ ChangeEvent;
-        void    OnChange(Object^);
+        event       EventHandler^ ChangeEvent;
+        void        OnChange(Object^);
         unsigned    GetChangeMarker() { return _changeMarker; }
     private:
-        std::shared_ptr<Utility::OnChangeCallback>*  _fileChangeCallback;
+        clix::shared_ptr<Utility::OnChangeCallback> _fileChangeCallback;
         unsigned _changeMarker;
 	};
 

@@ -177,7 +177,8 @@ namespace NodeEditorCore
                                             VisualNodeId = visualNodeId,
                                             Type = inputParam.Type,
                                             Name = inputParam.Name,
-                                            Semantic = inputParam.Semantic
+                                            Semantic = inputParam.Semantic,
+                                            Default = inputParam.Default
                                         });
                             }
                             else if (connection.To.Item is ShaderFragmentInterfaceParameterItem)
@@ -368,7 +369,7 @@ namespace NodeEditorCore
                             if (i==null) return false;
                             return i.Name.Equals(c.Name) && i.Type.Equals(c.Type) && i.Semantic.Equals(c.Semantic);
                         },
-                        () => new ShaderFragmentInterfaceParameterItem(c.Name, c.Type, c.Semantic, InterfaceDirection.In));
+                        () => new ShaderFragmentInterfaceParameterItem(c.Name, c.Type, InterfaceDirection.In) { Semantic = c.Semantic, Default = c.Default });
 
                     graph.Connect(srcItem.Output, dstItem.Input);
                 }
@@ -402,7 +403,7 @@ namespace NodeEditorCore
                             if (i == null) return false;
                             return i.Name.Equals(c.Name) && i.Type.Equals(c.Type) && i.Semantic.Equals(c.Semantic);
                         },
-                        () => new ShaderFragmentInterfaceParameterItem(c.Name, c.Type, c.Semantic, InterfaceDirection.Out));
+                        () => new ShaderFragmentInterfaceParameterItem(c.Name, c.Type, InterfaceDirection.Out) { Semantic = c.Semantic });
 
                     graph.Connect(srcItem.Output, dstItem.Input);
                 }

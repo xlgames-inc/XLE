@@ -286,7 +286,11 @@ float3 GetNormal(VSOutput geo)
 void DoAlphaTest(VSOutput geo, float alphaThreshold)
 {
 	#if (OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1))
-        AlphaTestAlgorithm(DiffuseTexture, DefaultSampler, geo.texCoord, alphaThreshold);
+		#if (USE_CLAMPING_SAMPLER_FOR_DIFFUSE==1)
+			AlphaTestAlgorithm(DiffuseTexture, ClampingSampler, geo.texCoord, alphaThreshold);
+		#else
+        	AlphaTestAlgorithm(DiffuseTexture, MaybeAnisotropicSampler, geo.texCoord, alphaThreshold);
+		#endif
 	#endif
 }
 

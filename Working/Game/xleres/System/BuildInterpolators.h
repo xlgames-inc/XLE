@@ -143,7 +143,11 @@ SystemInputs BuildSystem_SystemInputs(VSOutput input, SystemInputs sys)
 
 //////////////////////////////////////////////////////////////////
 
-float2 NormInterp(float2 a) { return 0.5.xx + 0.5.xx * a; }
+#if SHADER_NODE_EDITOR_CHART==1
+	float2 NormInterp(float2 a) { return 0.5.xx + 0.5f * a.xx; }
+#else
+	float2 NormInterp(float2 a) { return 0.5.xx + 0.5f * a; }
+#endif
 
 float InterpolateVariable_AutoAxis(float lhs, float rhs, float2 a)
 {

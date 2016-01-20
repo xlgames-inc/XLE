@@ -72,6 +72,7 @@ namespace ShaderPatcherLayer
 		[DataMember] String^       Type;
 		[DataMember] String^       Name;
 		[DataMember] String^       Semantic;
+        [DataMember] String^       Default;
         [DataMember] int           VisualNodeId;
 	};
 

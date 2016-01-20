@@ -36,6 +36,12 @@ namespace NodeEditorCore
             set { _ctrl.Semantic = value; }
         }
 
+        public string Default
+        {
+            get { return _ctrl.Default; }
+            set { _ctrl.Default = value; }
+        }
+
         public string Type
         {
             get { return _ctrl.Type; }

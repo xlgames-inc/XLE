@@ -28,6 +28,7 @@ float RoundToMultiple1(float lhs, float multipleOf)   { return round(lhs / multi
 float Power1(float base, float exponent)    { return pow(base, exponent); }
 float Saturate1(float input)                { return saturate(input); }
 float Lerp1(float min, float max, float alpha) { return lerp(min, max, alpha); }
+float Max1(float lhs, float rhs)            { return max(lhs, rhs); }
 float AddMany1(float first, float second, float third, float forth) { return first + second + third + forth; }
 
 float3 Add3(float3 lhs, float3 rhs)            { return lhs + rhs; }
@@ -43,6 +44,9 @@ float3 Lerp4(float4 min, float4 max, float alpha) { return lerp(min, max, alpha)
 
 float3 Normalize3(float3 input) { return normalize(input); }
 float3 Negate3(float3 input) { return -input; }
+
+void Separate2(float2 input, out float r, out float g) { r = input.r; g = input.g; }
+void Combine2(float r, float g, out float2 result) { result = float2(r, g); }
 
 void Separate3(float3 input, out float r, out float g, out float b) { r = input.r; g = input.g; b = input.b; }
 void Combine3(float r, float g, float b, out float3 result) { result = float3(r, g, b); }

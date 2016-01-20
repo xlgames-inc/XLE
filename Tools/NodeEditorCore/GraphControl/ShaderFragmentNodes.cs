@@ -372,13 +372,12 @@ namespace NodeEditorCore
     }
     internal class ShaderFragmentInterfaceParameterItem : ShaderFragmentNodeItem
     {
-        public ShaderFragmentInterfaceParameterItem(string name, string type, string semantic, InterfaceDirection direction) :
+        public ShaderFragmentInterfaceParameterItem(string name, string type, InterfaceDirection direction) :
             base(name, type, string.Empty, direction == InterfaceDirection.Out, direction == InterfaceDirection.In)
-        {
-            this.Semantic = semantic;
-        }
+        {}
 
         public string Semantic { get; set; }
+        public string Default { get; set; }
 
         // private static Brush BackgroundBrush = new SolidBrush(Color.FromArgb(96, 96, 96));
 
@@ -410,12 +409,12 @@ namespace NodeEditorCore
     {
         public override bool OnClick(System.Windows.Forms.Control container, System.Windows.Forms.MouseEventArgs evnt, System.Drawing.Drawing2D.Matrix viewTransform)
         {
-            using (var fm = new InterfaceParameterForm(false) { Name = "Color", Type = "auto", Semantic = "" })
+            using (var fm = new InterfaceParameterForm(false) { Name = "Color", Type = "auto", Semantic = "", Default = "" })
             {
                 var result = fm.ShowDialog();
                 if (result == System.Windows.Forms.DialogResult.OK)
                 {
-                    Node.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, fm.Semantic, Direction));
+                    Node.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, Direction) { Semantic = fm.Semantic, Default = fm.Default });
                 }
             }
             return true;

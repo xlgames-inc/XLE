@@ -133,7 +133,7 @@ namespace GUILayer
         if (value != _manipulatorSet) {
             delete _manipulatorSet;
             _manipulatorSet = value;
-            OnManipulatorSetChange(this, nullptr);
+            OnManipulatorSetChange(this, EventArgs::Empty);
         }
     }
 
@@ -149,7 +149,7 @@ namespace GUILayer
                 if (oldNativeManip) oldNativeManip->SetActivationState(false);
                 if (newNativeManip) newNativeManip->SetActivationState(true);
             }
-            OnActiveManipulatorChange(this, nullptr);
+            OnActiveManipulatorChange(this, EventArgs::Empty);
         }
     }
 

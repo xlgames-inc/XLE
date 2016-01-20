@@ -129,13 +129,13 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    InputParameterConnection::InputParameterConnection(uint32 outputNodeId, const std::string& outputParameterName, const Type& type, const std::string& name, const std::string& semantic)
+    InputParameterConnection::InputParameterConnection(uint32 outputNodeId, const std::string& outputParameterName, const Type& type, const std::string& name, const std::string& semantic, const std::string& defaultValue)
     :   NodeBaseConnection(outputNodeId, outputParameterName)
-    ,   _type(type), _name(name), _semantic(semantic) {}
+    ,   _type(type), _name(name), _semantic(semantic), _default(defaultValue) {}
 
     InputParameterConnection::InputParameterConnection(InputParameterConnection&& moveFrom)
     :   NodeBaseConnection(std::move(moveFrom))
-    ,   _type(std::move(moveFrom._type)), _name(std::move(moveFrom._name)), _semantic(std::move(moveFrom._semantic)) {}
+    ,   _type(std::move(moveFrom._type)), _name(std::move(moveFrom._name)), _semantic(std::move(moveFrom._semantic)), _default(std::move(moveFrom._default)) {}
 
     InputParameterConnection& InputParameterConnection::operator=(InputParameterConnection&& moveFrom)
     {
@@ -143,6 +143,7 @@ namespace ShaderPatcher
         _type = std::move(moveFrom._type);
         _name = std::move(moveFrom._name);
         _semantic = std::move(moveFrom._semantic);
+        _default = std::move(moveFrom._default);
         return *this;
     }
 
@@ -855,15 +856,8 @@ namespace ShaderPatcher
             //          off and call the fragments from the graph.
             //
 
-        const bool copyFragmentContents = false;
         std::stringstream result;
-        if (copyFragmentContents) {
-            result << LoadSourceFile("game/xleres/System/Prefix.h") << std::endl;
-            result << LoadSourceFile("game/xleres/System/BuildInterpolators.h") << std::endl;
-        } else {
-            result << "#include \"game/xleres/System/Prefix.h\"" << std::endl;
-            result << "#include \"game/xleres/System/BuildInterpolators.h\"" << std::endl;
-        }
+        result << "#include \"game/xleres/System/Prefix.h\"" << std::endl;
         result << std::endl;
 
             //
@@ -891,13 +885,9 @@ namespace ShaderPatcher
             if (std::find(archivesAlreadyLoaded.cbegin(), archivesAlreadyLoaded.cend(), std::get<0>(splitName)) == archivesAlreadyLoaded.cend()) {
                 archivesAlreadyLoaded.push_back(std::get<0>(splitName));
 
-                if (copyFragmentContents) {
-                    result << std::endl << LoadSourceFile(std::get<0>(splitName)) << std::endl;
-                } else {
-                    std::string filename = std::get<0>(splitName);
-                    std::replace(filename.begin(), filename.end(), '\\', '/');
-                    result << "#include \"" << filename << "\"" << std::endl;
-                }
+                std::string filename = std::get<0>(splitName);
+                std::replace(filename.begin(), filename.end(), '\\', '/');
+                result << "#include \"" << filename << "\"" << std::endl;
             }
 
         }
@@ -1176,9 +1166,9 @@ namespace ShaderPatcher
             }
 
             if (isInputParam) {
-                AddWithExistingCheck(_inputParameters, MainFunctionParameter(type, name, std::string(), i.InputSemantic()));
+                AddWithExistingCheck(_inputParameters, MainFunctionParameter(type, name, std::string(), i.InputSemantic(), i.Default()));
             } else {
-                AddWithExistingCheck(_globalParameters, MainFunctionParameter(type, name, std::string()));
+                AddWithExistingCheck(_globalParameters, MainFunctionParameter(type, name, std::string(), std::string(), i.Default()));
             }
         }
 
@@ -1573,6 +1563,11 @@ namespace ShaderPatcher
         result << std::endl;
         result << "\t//////// Structure for preview ////////" << std::endl;
 
+        const bool renderAsChart = previewOptions._type == PreviewOptions::Type::Chart;
+        if (renderAsChart)
+            result << "#define SHADER_NODE_EDITOR_CHART 1" << std::endl;
+        result << "#include \"game/xleres/System/BuildInterpolators.h\"" << std::endl;
+
             //  
             //      First write the "varying" parameters
             //      The varying parameters are always written in the vertex shader and
@@ -1655,7 +1650,6 @@ namespace ShaderPatcher
 
                 // Collect all of the output values into a flat array of floats.
                 // This is needed for "charts"
-            const bool renderAsChart = previewOptions._type == PreviewOptions::Type::Chart;
             if (renderAsChart) {
                 std::vector<PlustacheTypes::ObjectType> chartLines;
 

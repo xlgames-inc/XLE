@@ -21,7 +21,7 @@ namespace NodeEditorCore
 {
     [Export(typeof(ShaderFragmentArchiveModel))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-	public class ShaderFragmentArchiveModel : ITreeModel
+	public sealed class ShaderFragmentArchiveModel : ITreeModel, IDisposable
 	{
             /////////////////////////////////////////////////
         public abstract class BaseItem
@@ -387,7 +387,11 @@ namespace NodeEditorCore
                             items.Add(paramItem);
                         }
 
-                        fragment.ChangeEvent += new ShaderFragmentArchive.ChangeEventHandler(OnStructureChanged);
+                            // Need to hold a pointer to this fragment, to prevent it from being cleaned up
+                            // The archive can sometimes delete and recreate the fragment (and in those
+                            // cases, the new fragment won't have our callbacks)
+                        fragment.ChangeEvent += OnStructureChanged; 
+                        AttachedFragments.Add(fragment);
                     }
                     _cache.Add(basePath, items);
                     _itemsToRead.AddRange(items);
@@ -416,12 +420,24 @@ namespace NodeEditorCore
 		public event EventHandler<TreeModelEventArgs> NodesInserted;
 		public event EventHandler<TreeModelEventArgs> NodesRemoved;
 		public event EventHandler<TreePathEventArgs> StructureChanged;
-        public void OnStructureChanged(Object sender)
+
+        private List<ShaderFragmentArchive.ShaderFragment> AttachedFragments = new List<ShaderFragmentArchive.ShaderFragment>();
+        private void OnStructureChanged(Object sender, EventArgs args)
         {
+            ClearAttachedFragments();
             _cache = new Dictionary<string, List<BaseItem>>();
             if (StructureChanged != null)
                 StructureChanged(this, new TreePathEventArgs());
         }
+
+        private void ClearAttachedFragments()
+        {
+            foreach(var f in AttachedFragments)
+                f.ChangeEvent -= OnStructureChanged; 
+            AttachedFragments.Clear();
+        }
+
+        public void Dispose() { ClearAttachedFragments(); }
 
         [Import]
         ShaderFragmentArchive.Archive _archive;

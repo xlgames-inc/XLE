@@ -51,6 +51,9 @@ namespace MaterialTool
             var attach0 = new ShaderPatcherLayer.LibraryAttachMarker(engineDevice);
             GC.KeepAlive(attach0);
 
+            XLEBridgeUtils.Utils.AttachLibrary(engineDevice);
+            var logRedirect = new XLEBridgeUtils.LoggingRedirect();
+
             // Enable metadata driven property editing for the DOM
             DomNodeType.BaseOfAllTypes.AddAdapterCreator(new AdapterCreator<CustomTypeDescriptorNodeAdapter>());
 
@@ -180,7 +183,9 @@ namespace MaterialTool
             container.Dispose();
             mainForm.Dispose();
 
+            logRedirect.Dispose();
             engineDevice.PrepareForShutdown();
+            XLEBridgeUtils.Utils.DetachLibrary();
             attach0.Dispose();
             engineDevice.Dispose();
         }
