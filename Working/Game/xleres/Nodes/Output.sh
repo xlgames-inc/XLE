@@ -10,7 +10,7 @@
 #include "MaterialParam.sh"
 #include "../gbuffer.h"
 
-GBufferEncoded Output_PerPixel(
+GBufferValues Output_PerPixel(
   float3 diffuseAlbedo,
   float3 worldSpaceNormal,
 
@@ -31,7 +31,7 @@ GBufferEncoded Output_PerPixel(
   values.normalMapAccuracy = normalMapAccuracy;
   values.cookedAmbientOcclusion = cookedAmbientOcclusion;
   values.cookedLightOcclusion = cookedLightOcclusion;
-  return Encode(values);
+  return values;
 }
 
 float4 Output_ParamTex(CommonMaterialParam param)

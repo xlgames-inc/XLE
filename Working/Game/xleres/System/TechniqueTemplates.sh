@@ -30,7 +30,16 @@ float4 io_main({{MainFunctionParameterSignature}}, SystemInputs sys) : SV_Target
 		discard;
 
     GBufferValues sample;
-    {{GraphName}}({{ForwardMainParameters}}, result);
+    {{GraphName}}({{ForwardMainParameters}}, sample);
+
+		// note --  At alpha threshold, we just consider
+		//			it opaque. It's a useful optimisation
+		//			that goes hand in hand with the pre-depth pass.
+	const float minAlpha =   1.f / 255.f;
+	const float maxAlpha = 254.f / 255.f;  // AlphaThreshold;
+	if (sample.blendingAlpha < minAlpha) {
+		discard;
+	}
 
     float4 result = LightSample(sample, geo, sys);
 

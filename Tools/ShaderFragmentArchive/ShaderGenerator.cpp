@@ -384,6 +384,32 @@ namespace ShaderPatcherLayer
         }
     }
 
+	static void WriteTechniqueConfigSection(
+		System::IO::StreamWriter^ sw,
+		String^ section, String^ entryPoint, 
+		Dictionary<String^, String^>^ shaderParams)
+	{
+		sw->Write("~"); sw->Write(section); sw->WriteLine();
+
+        // Sometimes we can attach restrictions or defaults to shader parameters -- 
+        //      take care of those here...
+        if (shaderParams->Count > 0) {
+            sw->Write("    ~Parameters"); sw->WriteLine();
+            sw->Write("        ~Material"); sw->WriteLine();
+            for each(auto i in shaderParams) {
+                sw->Write("            ");
+                sw->Write(i.Key);
+                if (i.Value && i.Value->Length > 0) {
+                    sw->Write("=");
+                    sw->Write(i.Value);
+                }
+                sw->WriteLine();
+            }
+        }
+
+        sw->Write("    PixelShader=<.>:" + entryPoint); sw->WriteLine();
+	}
+
     void NodeGraph::Save(String^ filename, NodeGraph^ nodeGraph, NodeGraphContext^ context)
     {
         // We want to write this node graph to the given stream.
@@ -424,29 +450,29 @@ namespace ShaderPatcherLayer
 
             // also embedded a technique config, if requested
             if (context->HasTechniqueConfig) {
+
+				sw->WriteLine();
+
+				// Unfortunately have to do all of this again to
+				// get at the MainFunctionParameters object
+				try {
+					auto nativeGraph = nodeGraph->ConvertToNative(graphName);
+					auto str = ShaderPatcher::GenerateStructureForTechniqueConfig(
+						ShaderPatcher::MainFunctionInterface(nativeGraph), nativeGraph.GetName().c_str());
+					sw->Write(clix::marshalString<clix::E_UTF8>(str));
+				} catch (const std::exception& e) {
+					sw->Write("Exception while generating technique entry points: " + clix::marshalString<clix::E_UTF8>(e.what()));
+				} catch (...) {
+					sw->Write("Unknown exception while generating technique entry points");
+				}
+
                 sw->WriteLine();
                 sw->Write("/* <<Chunk:TechniqueConfig:main>>--("); sw->WriteLine();
                 sw->Write("~Inherit; game/xleres/techniques/illum.tech"); sw->WriteLine();
-                sw->Write("~Deferred"); sw->WriteLine();
 
-                // Sometimes we can attach restrictions or defaults to shader parameters -- 
-                //      take care of those here...
-                auto shaderParams = context->ShaderParameters;
-                if (shaderParams->Count > 0) {
-                    sw->Write("    ~Parameters"); sw->WriteLine();
-                    sw->Write("        ~Material"); sw->WriteLine();
-                    for each(auto i in shaderParams) {
-                        sw->Write("            ");
-                        sw->Write(i.Key);
-                        if (i.Value && i.Value->Length > 0) {
-                            sw->Write("=");
-                            sw->Write(i.Value);
-                        }
-                        sw->WriteLine();
-                    }
-                }
-
-                sw->Write("    PixelShader=<.>:" + graphName); sw->WriteLine();
+				WriteTechniqueConfigSection(sw, "Deferred", "deferred_main", context->ShaderParameters);
+				WriteTechniqueConfigSection(sw, "OrderIndependentTransparency", "oi_main", context->ShaderParameters);
+                
                 sw->Write(")--*/"); sw->WriteLine();
                 sw->WriteLine();
                 sw->Flush();

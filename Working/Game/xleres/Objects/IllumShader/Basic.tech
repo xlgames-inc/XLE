@@ -1,85 +1,85 @@
 // CompoundDocument:1
 #include "game/xleres/System/Prefix.h"
 
-#include "game/xleres/ToolsHelper/DecodeParametersTexture_ColoredSpecular.sh"
 #include "game/xleres/Nodes/Basic.sh"
-#include "game/xleres/Surface.h"
-#include "game/xleres/Nodes/Texture.sh"
 #include "game/xleres/Nodes/Output.sh"
+#include "game/xleres/Nodes/Texture.sh"
 #include "game/xleres/Colour.h"
+#include "game/xleres/ToolsHelper/DecodeParametersTexture_ColoredSpecular.sh"
+#include "game/xleres/Surface.h"
 
 
 Texture2D SpecularColorTexture;
 cbuffer BasicMaterialConstants
 {
 	float3 MaterialDiffuse;
+	float Opacity;
 	float MetalMin;
 	float MetalMax;
 	float RoughnessMin;
 	float RoughnessMax;
 	float SpecularMin;
 	float SpecularMax;
-	float Opacity;
 }
-void Basic(VSOutput geo, out GBufferEncoded result)
+void Basic(VSOutput geo, out GBufferValues result)
 {
-	float2 Output_18_result;
-	Combine2( SpecularMin, SpecularMax, Output_18_result );
+	float Output_41_result;
+	Output_41_result = SampleTextureAO( geo );
 
-	float2 Output_19_result;
-	Combine2( RoughnessMin, RoughnessMax, Output_19_result );
+	float Output_42_result;
+	Output_42_result = GetVertexAOMultiplier( geo );
 
-	float2 Output_23_result;
-	Combine2( MetalMin, MetalMax, Output_23_result );
+	float Output_43_result;
+	Output_43_result = Multiply1( Output_42_result, Output_41_result );
 
-	float2 Output_30_result;
-	Output_30_result = GetTexCoord( geo );
+	float3 Output_32_rgb;
+	float Output_32_alpha;
+	SampleTextureDiffuse( geo, Output_32_rgb, Output_32_alpha );
 
-	float4 Output_29_result;
-	Output_29_result = SampleAnisotropic( SpecularColorTexture, Output_30_result );
+	float2 Output_36_result;
+	Combine2( SpecularMin, SpecularMax, Output_36_result );
 
-	float3 Output_33_rgb;
-	float Output_33_alpha;
-	SampleTextureDiffuse( geo, Output_33_rgb, Output_33_alpha );
+	float2 Output_37_result;
+	Combine2( RoughnessMin, RoughnessMax, Output_37_result );
 
-	float3 Output_20_finalDiffuseSample;
-	CommonMaterialParam Output_20_materialParam;
-	DecodeParametersTexture_ColoredSpecular( Output_23_result, Output_19_result, Output_18_result, Output_33_rgb, Cast_float4_to_float3(Output_29_result), Output_20_finalDiffuseSample, Output_20_materialParam );
+	float2 Output_40_result;
+	Combine2( MetalMin, MetalMax, Output_40_result );
 
-	float3 Output_34_result;
-	Output_34_result = SRGBToLinear( MaterialDiffuse );
+	float2 Output_47_result;
+	Output_47_result = GetTexCoord( geo );
+
+	float4 Output_46_result;
+	Output_46_result = SampleAnisotropic( SpecularColorTexture, Output_47_result );
+
+	float3 Output_34_finalDiffuseSample;
+	CommonMaterialParam Output_34_materialParam;
+	DecodeParametersTexture_ColoredSpecular( Output_40_result, Output_37_result, Output_36_result, Output_32_rgb, Cast_float4_to_float3(Output_46_result), Output_34_finalDiffuseSample, Output_34_materialParam );
+
+	float3 Output_33_result;
+	Output_33_result = SRGBToLinear( MaterialDiffuse );
 
 	float3 Output_35_result;
-	Output_35_result = Multiply3( Output_34_result, Output_20_finalDiffuseSample );
+	Output_35_result = Multiply3( Output_33_result, Output_34_finalDiffuseSample );
 
-	float3 Output_21_result;
-	Output_21_result = GetNormal( geo );
+	float3 Output_38_result;
+	Output_38_result = GetNormal( geo );
 
-	float3 Output_22_result;
-	Output_22_result = MaybeMakeDoubleSided( geo, Output_21_result );
-
-	float Output_24_result;
-	Output_24_result = SampleTextureAO( geo );
-
-	float Output_25_result;
-	Output_25_result = GetVertexAOMultiplier( geo );
-
-	float Output_26_result;
-	Output_26_result = Multiply1( Output_25_result, Output_24_result );
-
-	float Output_32_result;
-	Output_32_result = GetVertexOpacityMultiplier( geo );
+	float3 Output_39_result;
+	Output_39_result = MaybeMakeDoubleSided( geo, Output_38_result );
 
 	float Output_31_result;
-	Output_31_result = Multiply1( Output_33_alpha, Output_32_result );
+	Output_31_result = GetVertexOpacityMultiplier( geo );
 
-	float Output_27_result;
-	Output_27_result = Multiply1( Output_31_result, Opacity );
+	float Output_48_result;
+	Output_48_result = Multiply1( Output_32_alpha, Output_31_result );
 
-	GBufferEncoded Output_28_result;
-	Output_28_result = Output_PerPixel( Output_35_result, Output_22_result, Output_20_materialParam, Output_27_result, 1.0f, Output_26_result, Output_25_result );
+	float Output_44_result;
+	Output_44_result = Multiply1( Output_48_result, Opacity );
 
-	result = Output_28_result;
+	GBufferValues Output_45_result;
+	Output_45_result = Output_PerPixel( Output_35_result, Output_39_result, Output_34_materialParam, Output_44_result, 1.0f, Output_43_result, Output_42_result );
+
+	result = Output_45_result;
 
 }
 /* <<Chunk:NodeGraph:Basic>>--(
@@ -87,86 +87,23 @@ void Basic(VSOutput geo, out GBufferEncoded result)
 <NodeGraph xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
 	<ConstantConnections>
 		<ConstantConnection>
-			<OutputNodeID>28</OutputNodeID>
+			<OutputNodeID>45</OutputNodeID>
 			<OutputParameterName>normalMapAccuracy</OutputParameterName>
 			<Value>1.0f</Value>
 		</ConstantConnection>
 	</ConstantConnections>
 	<InputParameterConnections>
 		<InputParameterConnection>
-			<OutputNodeID>34</OutputNodeID>
+			<OutputNodeID>33</OutputNodeID>
 			<OutputParameterName>input</OutputParameterName>
 			<Default>{1.f, 1.f, 1.f}c</Default>
 			<Name>MaterialDiffuse</Name>
 			<Semantic></Semantic>
 			<Type>auto</Type>
-			<VisualNodeId>0</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>29</OutputNodeID>
-			<OutputParameterName>inputTexture</OutputParameterName>
-			<Default i:nil="true" />
-			<Name>SpecularColorTexture</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>2</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>23</OutputNodeID>
-			<OutputParameterName>r</OutputParameterName>
-			<Default>0.f</Default>
-			<Name>MetalMin</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
 			<VisualNodeId>3</VisualNodeId>
 		</InputParameterConnection>
 		<InputParameterConnection>
-			<OutputNodeID>23</OutputNodeID>
-			<OutputParameterName>g</OutputParameterName>
-			<Default>1.f</Default>
-			<Name>MetalMax</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>3</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>19</OutputNodeID>
-			<OutputParameterName>r</OutputParameterName>
-			<Default>0.5f</Default>
-			<Name>RoughnessMin</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>3</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>19</OutputNodeID>
-			<OutputParameterName>g</OutputParameterName>
-			<Default>1.f</Default>
-			<Name>RoughnessMax</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>3</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>18</OutputNodeID>
-			<OutputParameterName>r</OutputParameterName>
-			<Default>0.1f</Default>
-			<Name>SpecularMin</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>3</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>18</OutputNodeID>
-			<OutputParameterName>g</OutputParameterName>
-			<Default>1.f</Default>
-			<Name>SpecularMax</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>3</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>27</OutputNodeID>
+			<OutputNodeID>44</OutputNodeID>
 			<OutputParameterName>rhs</OutputParameterName>
 			<Default>1.f</Default>
 			<Name>Opacity</Name>
@@ -174,146 +111,83 @@ void Basic(VSOutput geo, out GBufferEncoded result)
 			<Type>auto</Type>
 			<VisualNodeId>4</VisualNodeId>
 		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>40</OutputNodeID>
+			<OutputParameterName>r</OutputParameterName>
+			<Default>0.f</Default>
+			<Name>MetalMin</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>5</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>40</OutputNodeID>
+			<OutputParameterName>g</OutputParameterName>
+			<Default>1.f</Default>
+			<Name>MetalMax</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>5</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>37</OutputNodeID>
+			<OutputParameterName>r</OutputParameterName>
+			<Default>0.5f</Default>
+			<Name>RoughnessMin</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>5</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>37</OutputNodeID>
+			<OutputParameterName>g</OutputParameterName>
+			<Default>1.f</Default>
+			<Name>RoughnessMax</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>5</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>36</OutputNodeID>
+			<OutputParameterName>r</OutputParameterName>
+			<Default>0.1f</Default>
+			<Name>SpecularMin</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>5</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>36</OutputNodeID>
+			<OutputParameterName>g</OutputParameterName>
+			<Default>1.f</Default>
+			<Name>SpecularMax</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>5</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>46</OutputNodeID>
+			<OutputParameterName>inputTexture</OutputParameterName>
+			<Default i:nil="true" />
+			<Name>SpecularColorTexture</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>6</VisualNodeId>
+		</InputParameterConnection>
 	</InputParameterConnections>
 	<NodeConnections>
 		<NodeConnection>
-			<OutputNodeID>28</OutputNodeID>
-			<OutputParameterName>material</OutputParameterName>
-			<InputNodeID>20</InputNodeID>
-			<InputParameterName>materialParam</InputParameterName>
-			<InputType>CommonMaterialParam</InputType>
-			<OutputType>CommonMaterialParam</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>35</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>20</InputNodeID>
-			<InputParameterName>finalDiffuseSample</InputParameterName>
-			<InputType>float3</InputType>
-			<OutputType>float3</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>28</OutputNodeID>
-			<OutputParameterName>diffuseAlbedo</OutputParameterName>
-			<InputNodeID>35</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float3</InputType>
-			<OutputType>float3</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>20</OutputNodeID>
-			<OutputParameterName>specularRange</OutputParameterName>
-			<InputNodeID>18</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float2</InputType>
-			<OutputType>float2</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>20</OutputNodeID>
-			<OutputParameterName>roughnessRange</OutputParameterName>
-			<InputNodeID>19</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float2</InputType>
-			<OutputType>float2</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>22</OutputNodeID>
-			<OutputParameterName>normal</OutputParameterName>
-			<InputNodeID>21</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float3</InputType>
-			<OutputType>float3</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>28</OutputNodeID>
-			<OutputParameterName>worldSpaceNormal</OutputParameterName>
-			<InputNodeID>22</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float3</InputType>
-			<OutputType>float3</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>20</OutputNodeID>
-			<OutputParameterName>metalRange</OutputParameterName>
-			<InputNodeID>23</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float2</InputType>
-			<OutputType>float2</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>26</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>24</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>28</OutputNodeID>
-			<OutputParameterName>cookedLightOcclusion</OutputParameterName>
-			<InputNodeID>25</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>26</OutputNodeID>
-			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>25</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>28</OutputNodeID>
+			<OutputNodeID>45</OutputNodeID>
 			<OutputParameterName>cookedAmbientOcclusion</OutputParameterName>
-			<InputNodeID>26</InputNodeID>
+			<InputNodeID>43</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>28</OutputNodeID>
-			<OutputParameterName>blendingAlpha</OutputParameterName>
-			<InputNodeID>27</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>20</OutputNodeID>
-			<OutputParameterName>specColorSample</OutputParameterName>
-			<InputNodeID>29</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float4</InputType>
-			<OutputType>float3</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>29</OutputNodeID>
-			<OutputParameterName>texCoord</OutputParameterName>
-			<InputNodeID>30</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float2</InputType>
-			<OutputType>float2</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>27</OutputNodeID>
-			<OutputParameterName>lhs</OutputParameterName>
+			<OutputNodeID>48</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
 			<InputNodeID>31</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
@@ -321,27 +195,27 @@ void Basic(VSOutput geo, out GBufferEncoded result)
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>31</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>32</InputNodeID>
+			<OutputNodeID>44</OutputNodeID>
+			<OutputParameterName>lhs</OutputParameterName>
+			<InputNodeID>48</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>31</OutputNodeID>
+			<OutputNodeID>48</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>33</InputNodeID>
+			<InputNodeID>32</InputNodeID>
 			<InputParameterName>alpha</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>20</OutputNodeID>
+			<OutputNodeID>34</OutputNodeID>
 			<OutputParameterName>diffuseSample</OutputParameterName>
-			<InputNodeID>33</InputNodeID>
+			<InputNodeID>32</InputNodeID>
 			<InputParameterName>rgb</InputParameterName>
 			<InputType>float3</InputType>
 			<OutputType>float3</OutputType>
@@ -350,119 +224,245 @@ void Basic(VSOutput geo, out GBufferEncoded result)
 		<NodeConnection>
 			<OutputNodeID>35</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>34</InputNodeID>
+			<InputNodeID>33</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float3</InputType>
 			<OutputType>float3</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>45</OutputNodeID>
+			<OutputParameterName>material</OutputParameterName>
+			<InputNodeID>34</InputNodeID>
+			<InputParameterName>materialParam</InputParameterName>
+			<InputType>CommonMaterialParam</InputType>
+			<OutputType>CommonMaterialParam</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>35</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<InputNodeID>34</InputNodeID>
+			<InputParameterName>finalDiffuseSample</InputParameterName>
+			<InputType>float3</InputType>
+			<OutputType>float3</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>45</OutputNodeID>
+			<OutputParameterName>diffuseAlbedo</OutputParameterName>
+			<InputNodeID>35</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float3</InputType>
+			<OutputType>float3</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>34</OutputNodeID>
+			<OutputParameterName>specularRange</OutputParameterName>
+			<InputNodeID>36</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float2</InputType>
+			<OutputType>float2</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>34</OutputNodeID>
+			<OutputParameterName>roughnessRange</OutputParameterName>
+			<InputNodeID>37</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float2</InputType>
+			<OutputType>float2</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>39</OutputNodeID>
+			<OutputParameterName>normal</OutputParameterName>
+			<InputNodeID>38</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float3</InputType>
+			<OutputType>float3</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>45</OutputNodeID>
+			<OutputParameterName>worldSpaceNormal</OutputParameterName>
+			<InputNodeID>39</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float3</InputType>
+			<OutputType>float3</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>34</OutputNodeID>
+			<OutputParameterName>metalRange</OutputParameterName>
+			<InputNodeID>40</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float2</InputType>
+			<OutputType>float2</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>43</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<InputNodeID>41</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>45</OutputNodeID>
+			<OutputParameterName>cookedLightOcclusion</OutputParameterName>
+			<InputNodeID>42</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>43</OutputNodeID>
+			<OutputParameterName>lhs</OutputParameterName>
+			<InputNodeID>42</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>45</OutputNodeID>
+			<OutputParameterName>blendingAlpha</OutputParameterName>
+			<InputNodeID>44</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>34</OutputNodeID>
+			<OutputParameterName>specColorSample</OutputParameterName>
+			<InputNodeID>46</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float4</InputType>
+			<OutputType>float3</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>46</OutputNodeID>
+			<OutputParameterName>texCoord</OutputParameterName>
+			<InputNodeID>47</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float2</InputType>
+			<OutputType>float2</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
 	</NodeConnections>
 	<Nodes>
 		<Node>
-			<FragmentArchiveName>game/xleres/ToolsHelper\DecodeParametersTexture_ColoredSpecular.sh:DecodeParametersTexture_ColoredSpecular</FragmentArchiveName>
-			<NodeId>20</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<NodeId>43</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>0</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Output.sh:Output_PerPixel</FragmentArchiveName>
+			<NodeId>45</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>1</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:GetVertexOpacityMultiplier</FragmentArchiveName>
+			<NodeId>31</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>2</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<NodeId>48</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>7</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:SampleTextureDiffuse</FragmentArchiveName>
+			<NodeId>32</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>8</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Colour.h:SRGBToLinear</FragmentArchiveName>
+			<NodeId>33</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>9</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/ToolsHelper\DecodeParametersTexture_ColoredSpecular.sh:DecodeParametersTexture_ColoredSpecular</FragmentArchiveName>
+			<NodeId>34</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>10</VisualNodeId>
 		</Node>
 		<Node>
 			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply3</FragmentArchiveName>
 			<NodeId>35</NodeId>
 			<NodeType>Procedure</NodeType>
-			<VisualNodeId>5</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Combine2</FragmentArchiveName>
-			<NodeId>18</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>6</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Combine2</FragmentArchiveName>
-			<NodeId>19</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>7</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Surface.h:GetNormal</FragmentArchiveName>
-			<NodeId>21</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>8</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:MaybeMakeDoubleSided</FragmentArchiveName>
-			<NodeId>22</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>9</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Combine2</FragmentArchiveName>
-			<NodeId>23</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>10</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:SampleTextureAO</FragmentArchiveName>
-			<NodeId>24</NodeId>
-			<NodeType>Procedure</NodeType>
 			<VisualNodeId>11</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:GetVertexAOMultiplier</FragmentArchiveName>
-			<NodeId>25</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Combine2</FragmentArchiveName>
+			<NodeId>36</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>12</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
-			<NodeId>26</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Combine2</FragmentArchiveName>
+			<NodeId>37</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>13</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
-			<NodeId>27</NodeId>
+			<FragmentArchiveName>game/xleres/Surface.h:GetNormal</FragmentArchiveName>
+			<NodeId>38</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>14</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Output.sh:Output_PerPixel</FragmentArchiveName>
-			<NodeId>28</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:MaybeMakeDoubleSided</FragmentArchiveName>
+			<NodeId>39</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>15</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:SampleAnisotropic</FragmentArchiveName>
-			<NodeId>29</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Combine2</FragmentArchiveName>
+			<NodeId>40</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>16</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Surface.h:GetTexCoord</FragmentArchiveName>
-			<NodeId>30</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:SampleTextureAO</FragmentArchiveName>
+			<NodeId>41</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>17</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
-			<NodeId>31</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:GetVertexAOMultiplier</FragmentArchiveName>
+			<NodeId>42</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>18</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:GetVertexOpacityMultiplier</FragmentArchiveName>
-			<NodeId>32</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<NodeId>44</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>19</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:SampleTextureDiffuse</FragmentArchiveName>
-			<NodeId>33</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Texture.sh:SampleAnisotropic</FragmentArchiveName>
+			<NodeId>46</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>20</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Colour.h:SRGBToLinear</FragmentArchiveName>
-			<NodeId>34</NodeId>
+			<FragmentArchiveName>game/xleres/Surface.h:GetTexCoord</FragmentArchiveName>
+			<NodeId>47</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>21</VisualNodeId>
 		</Node>
@@ -471,18 +471,18 @@ void Basic(VSOutput geo, out GBufferEncoded result)
 	<PreviewSettingsObjects>
 		<PreviewSettings>
 			<Geometry>Plane2D</Geometry>
-			<OutputToVisualize>result2.metal</OutputToVisualize>
+			<OutputToVisualize></OutputToVisualize>
+			<VisualNodeId>0</VisualNodeId>
+		</PreviewSettings>
+		<PreviewSettings>
+			<Geometry>Plane2D</Geometry>
+			<OutputToVisualize>result.diffuseAlbedo</OutputToVisualize>
 			<VisualNodeId>1</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
 			<Geometry>Plane2D</Geometry>
 			<OutputToVisualize></OutputToVisualize>
-			<VisualNodeId>5</VisualNodeId>
-		</PreviewSettings>
-		<PreviewSettings>
-			<Geometry>Plane2D</Geometry>
-			<OutputToVisualize></OutputToVisualize>
-			<VisualNodeId>6</VisualNodeId>
+			<VisualNodeId>2</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
 			<Geometry>Plane2D</Geometry>
@@ -501,7 +501,7 @@ void Basic(VSOutput geo, out GBufferEncoded result)
 		</PreviewSettings>
 		<PreviewSettings>
 			<Geometry>Plane2D</Geometry>
-			<OutputToVisualize></OutputToVisualize>
+			<OutputToVisualize>result2.metal</OutputToVisualize>
 			<VisualNodeId>10</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
@@ -563,22 +563,36 @@ void Basic(VSOutput geo, out GBufferEncoded result)
 	<VisualNodes>
 		<VisualNode>
 			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>235</d4p1:x>
-				<d4p1:y>-200</d4p1:y>
+				<d4p1:x>1059</d4p1:x>
+				<d4p1:y>664</d4p1:y>
+			</Location>
+			<State>Collapsed</State>
+		</VisualNode>
+		<VisualNode>
+			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
+				<d4p1:x>1660</d4p1:x>
+				<d4p1:y>207</d4p1:y>
 			</Location>
 			<State>Normal</State>
 		</VisualNode>
 		<VisualNode>
 			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>262</d4p1:x>
-				<d4p1:y>-31</d4p1:y>
+				<d4p1:x>-117</d4p1:x>
+				<d4p1:y>540</d4p1:y>
+			</Location>
+			<State>Collapsed</State>
+		</VisualNode>
+		<VisualNode>
+			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
+				<d4p1:x>237</d4p1:x>
+				<d4p1:y>-201</d4p1:y>
 			</Location>
 			<State>Normal</State>
 		</VisualNode>
 		<VisualNode>
 			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>-985</d4p1:x>
-				<d4p1:y>-91</d4p1:y>
+				<d4p1:x>-130</d4p1:x>
+				<d4p1:y>647</d4p1:y>
 			</Location>
 			<State>Normal</State>
 		</VisualNode>
@@ -591,8 +605,36 @@ void Basic(VSOutput geo, out GBufferEncoded result)
 		</VisualNode>
 		<VisualNode>
 			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>-130</d4p1:x>
-				<d4p1:y>647</d4p1:y>
+				<d4p1:x>-985</d4p1:x>
+				<d4p1:y>-91</d4p1:y>
+			</Location>
+			<State>Normal</State>
+		</VisualNode>
+		<VisualNode>
+			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
+				<d4p1:x>188</d4p1:x>
+				<d4p1:y>483</d4p1:y>
+			</Location>
+			<State>Collapsed</State>
+		</VisualNode>
+		<VisualNode>
+			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
+				<d4p1:x>-476</d4p1:x>
+				<d4p1:y>211</d4p1:y>
+			</Location>
+			<State>Normal</State>
+		</VisualNode>
+		<VisualNode>
+			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
+				<d4p1:x>590</d4p1:x>
+				<d4p1:y>-143</d4p1:y>
+			</Location>
+			<State>Collapsed</State>
+		</VisualNode>
+		<VisualNode>
+			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
+				<d4p1:x>262</d4p1:x>
+				<d4p1:y>-31</d4p1:y>
 			</Location>
 			<State>Normal</State>
 		</VisualNode>
@@ -654,24 +696,10 @@ void Basic(VSOutput geo, out GBufferEncoded result)
 		</VisualNode>
 		<VisualNode>
 			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>1035</d4p1:x>
-				<d4p1:y>675</d4p1:y>
-			</Location>
-			<State>Collapsed</State>
-		</VisualNode>
-		<VisualNode>
-			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
 				<d4p1:x>377</d4p1:x>
 				<d4p1:y>561</d4p1:y>
 			</Location>
 			<State>Collapsed</State>
-		</VisualNode>
-		<VisualNode>
-			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>1660</d4p1:x>
-				<d4p1:y>207</d4p1:y>
-			</Location>
-			<State>Normal</State>
 		</VisualNode>
 		<VisualNode>
 			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
@@ -687,34 +715,6 @@ void Basic(VSOutput geo, out GBufferEncoded result)
 			</Location>
 			<State>Collapsed</State>
 		</VisualNode>
-		<VisualNode>
-			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>188</d4p1:x>
-				<d4p1:y>483</d4p1:y>
-			</Location>
-			<State>Collapsed</State>
-		</VisualNode>
-		<VisualNode>
-			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>-74</d4p1:x>
-				<d4p1:y>540</d4p1:y>
-			</Location>
-			<State>Collapsed</State>
-		</VisualNode>
-		<VisualNode>
-			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>-476</d4p1:x>
-				<d4p1:y>211</d4p1:y>
-			</Location>
-			<State>Normal</State>
-		</VisualNode>
-		<VisualNode>
-			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>590</d4p1:x>
-				<d4p1:y>-143</d4p1:y>
-			</Location>
-			<State>Collapsed</State>
-		</VisualNode>
 	</VisualNodes>
 </NodeGraph>
 )-- */
@@ -727,21 +727,80 @@ void Basic(VSOutput geo, out GBufferEncoded result)
 </NodeGraphContext>
 )-- */
 
+
+
+#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
+	[earlydepthstencil]
+#endif
+GBufferEncoded deferred_main(VSOutput geo)
+{
+    // If we're doing to do the alpha threshold test, we
+    // should try to do as early in the shader as we can!
+    // Unfortunately, there's no real easy way to do that with
+    // a node graph here...Unless we create some special #define
+    // somehow...
+	// DoAlphaTest(geo, GetAlphaThreshold());
+	GBufferValues result;
+    Basic(geo, result);
+	return Encode(result);
+}
+
+
+
+#include "game/xleres/Forward/Transparency/util.h"
+
+float4 io_main(VSOutput geo, SystemInputs sys) : SV_Target0
+{
+    float destinationDepth = DuplicateOfDepthBuffer[uint2(geo.position.xy)];
+	float ndcComparison = geo.position.z; // / geo.position.w;
+	if (ndcComparison > destinationDepth)
+		discard;
+
+    GBufferValues sample;
+    Basic(geo, sample);
+
+		// note --  At alpha threshold, we just consider
+		//			it opaque. It's a useful optimisation
+		//			that goes hand in hand with the pre-depth pass.
+	const float minAlpha =   1.f / 255.f;
+	const float maxAlpha = 254.f / 255.f;  // AlphaThreshold;
+	if (sample.blendingAlpha < minAlpha) {
+		discard;
+	}
+
+    float4 result = LightSample(sample, geo, sys);
+
+    if (result.a >= maxAlpha) {
+		return float4(LightingScale * result.rgb, 1.f); // result.a);
+	} else {
+		#if !MAT_PREMULTIPLIED_ALPHA
+			result.rgb *= result.a;
+		#endif
+
+		OutputFragmentNode(uint2(geo.position.xy), result, ndcComparison);
+		discard;
+		return 0.0.xxxx;
+	}
+}
+
+
 /* <<Chunk:TechniqueConfig:main>>--(
 ~Inherit; game/xleres/techniques/illum.tech
 ~Deferred
-    PixelShader=<.>:Basic
+    PixelShader=<.>:deferred_main
+~OrderIndependentTransparency
+    PixelShader=<.>:oi_main
 )--*/
 
 /* <<Chunk:CBLayout:main>>--(
 float3 MaterialDiffuse = {1.f, 1.f, 1.f}c;
+float Opacity = 1.f;
 float MetalMin = 0.f;
 float MetalMax = 1.f;
 float RoughnessMin = 0.5f;
 float RoughnessMax = 1.f;
 float SpecularMin = 0.1f;
 float SpecularMax = 1.f;
-float Opacity = 1.f;
 
 )--*/
 

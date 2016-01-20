@@ -1711,5 +1711,38 @@ namespace ShaderPatcher
         return result.str();
     }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	static std::string GetTechniqueTemplate(const char templateName[])
+    {
+        StringMeld<MaxPath, Assets::ResChar> str;
+        str << "game/xleres/System/TechniqueTemplates.sh:" << templateName;
+        return ::Assets::GetAssetDep<::Assets::ConfigFileListContainer<TemplateItem, InputStreamFormatter<char>>>(str.get())._asset._item;
+    }
+
+	std::string GenerateStructureForTechniqueConfig(const MainFunctionInterface& interf, const char graphName[])
+	{
+		std::stringstream mainFunctionParameterSignature;
+		std::stringstream forwardMainParameters;
+		for (const auto& p:interf.GetInputParameters()) {
+			MaybeComma(mainFunctionParameterSignature);
+			mainFunctionParameterSignature << p._type << " " << p._name;
+
+			MaybeComma(forwardMainParameters);
+			forwardMainParameters << p._name;
+		}
+		
+		Plustache::Context context;
+		context.add("MainFunctionParameterSignature", mainFunctionParameterSignature.str());
+		context.add("ForwardMainParameters", forwardMainParameters.str());
+		context.add("GraphName", graphName);
+
+		std::stringstream result;
+		Plustache::template_t preprocessor;
+		result << preprocessor.render(GetTechniqueTemplate("deferred_main"), context);
+		result << preprocessor.render(GetTechniqueTemplate("oi_main"), context);
+		return result.str();
+	}
+
 }
 

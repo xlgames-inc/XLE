@@ -251,5 +251,6 @@ namespace ShaderPatcher
         const MainFunctionInterface& interf, 
         const PreviewOptions& previewOptions = { PreviewOptions::Type::Object, std::string(), PreviewOptions::VariableRestrictions() });
 
+	std::string GenerateStructureForTechniqueConfig(const MainFunctionInterface& interf, const char graphName[]);
 }
 
