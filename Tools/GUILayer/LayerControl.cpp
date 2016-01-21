@@ -327,7 +327,7 @@ namespace GUILayer
 
     LayerControl::!LayerControl()
     {
-        System::Diagnostics::Debug::Assert(false, "Non deterministic delete of LayerControl");
+        // System::Diagnostics::Debug::Assert(false, "Non deterministic delete of LayerControl");
     }
 }
 

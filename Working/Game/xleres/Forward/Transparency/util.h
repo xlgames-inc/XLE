@@ -82,4 +82,138 @@ float4 LightSample(GBufferValues sample, VSOutput geo, SystemInputs sys)
 	result.a = sample.blendingAlpha;
 	return result;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+Texture2DMS<float> StochasticOcclusionDepths : register(t9);
+
+#include "../../Utility/metrics.h"
+#if defined(_METRICS)
+	RWStructuredBuffer<MetricsStructure> MetricsObject : register(u1);
+	RWTexture2D<uint> LitSamplesMetrics : register(u2);
+#endif
+
+#if !defined(STOCHASTIC_SAMPLE_COUNT)
+	#define STOCHASTIC_SAMPLE_COUNT 8
+#endif
+
+#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
+	Texture2DMS<uint> StochasticPrimitiveIds : register(t8);
+	uint LoadPrimitiveId(uint2 coord, int sample) { return StochasticPrimitiveIds.Load(uint2(coord), sample); }
+#else
+	uint LoadPrimitiveId(uint2 coord, int sample) { return 0; }
+#endif
+
+#if (STOCHASTIC_TRANS_OPACITY==1)
+	Texture2DMS<float> StochasticOpacities : register(t7);
+	float LoadSampleOpacity(uint2 coord, int sample) { return StochasticOpacities.Load(uint2(coord), sample); }
+#else
+	float LoadSampleOpacity(uint2 coord, int sample) { return 0.f; }
+#endif
+
+uint CalculateStochasticPixelType(float4 position, out float occlusion)
+{
+	// This is the main resolve step when using stochastic blending
+	// The brightness of the color we want to write should be modulated
+	// by the alpha values of all of the layers on top of this one.
+	//
+	// But how to we know the alpha contribution of all of the layers
+	// above this one?
+	// Well, we can use the depth and alpha values written to the stochastic
+	// buffers to create an estimate. It's not perfectly accurate, and it
+	// is noisy, but it will give us a rough idea.
+
+	occlusion = 1.f;
+	float ndcComparison = position.z;
+
+	uint occCount = 0;
+	float sampleDepth = StochasticOcclusionDepths.Load(uint2(position.xy), 0);
+	float minSampleDepth = sampleDepth, maxSampleDepth = sampleDepth;
+	uint primId = LoadPrimitiveId(uint2(position.xy), 0);
+	uint firstPrimId = primId;
+	bool splitPixel = false;
+
+	for (uint s=0;;) {
+			// Maybe getting self-occlusion here?
+			// The depth values written to the MSAA sample seem to be the depth
+			// at the sampling point (not the center of the pixel). So they won't
+			// exactly match the pixel center depth we have here.
+			// To prevent some self occlusion, we can use the primitive id
+		if (	(sampleDepth < ndcComparison)
+				#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
+					&& (primId != primitiveID)
+				#endif
+			) {
+
+				// special case -- check if occluded by opaque pixel
+			if (LoadSampleOpacity(uint2(position.xy), 0)==1.f)
+				return 2;
+
+			++occCount;
+		}
+
+		++s;
+		if (s>=STOCHASTIC_SAMPLE_COUNT) break;
+		sampleDepth = StochasticOcclusionDepths.Load(uint2(position.xy), s);
+		minSampleDepth = min(sampleDepth, minSampleDepth);
+		maxSampleDepth = max(sampleDepth, maxSampleDepth);
+
+		primId = LoadPrimitiveId(uint2(position.xy), s);
+
+			// note that the equation here isn't perfectly exact... Because we're
+			// using a per-draw call "primitiveId", primitives in different draw calls
+			// can end up with the same id. In these cases, the result will be incorrect.
+			// We can try to deal with this by integrating a draw call id into the primitive
+			// id... But that requires a little bit of constant buffer thrashing.
+		splitPixel = splitPixel | (firstPrimId != primId);
+	}
+
+	if (occCount == STOCHASTIC_SAMPLE_COUNT) {
+		// Discard would be much cheaper here. But sometimes all of the fragments on
+		// the top have a very low alpha values -- which means that the final blending
+		// alpha value becomes incorrect
+		//
+		// Note that we can sometimes get more fragments falling through this path than
+		// the other path. This is especially true for geometry is that is partially opaque
+		// and partially transparent.
+		//
+		// We can reduce the cases that fall through here using a depth pre-pass. That helps
+		// in edge cases (such as when a large opaque part is filling a lot of the screen),
+		// but in common cases it seems that benefit is not significant.
+		//
+		// Never the less, it would be nice if we could somehow know when it's not necessary
+		// to fall take this path -- and when we can just discard, instead.
+
+			// Here, we can attempt to check if the samples belong to the same pixel by
+			// looking at their depth values. Unfortunately it's not very accurate. Up close it
+			// is not too bad. But at a certain distance from the camera there is not enough
+			// precision in the depth buffer to reliably distinguish one pixel from another.
+		// float threshold = 5e-4f;
+		// bool singlePixel = (NDCDepthToWorldSpace(maxSampleDepth) - NDCDepthToWorldSpace(minSampleDepth)) < threshold;
+
+			// if all samples have the sample primitive id, then it should mean that the
+			// top most pixel is opaque. Note that we can't use this method to detect
+			// opaque pixels below partially transparent pixels
+		#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
+			if (!splitPixel) return 2;
+		#endif
+
+		#if defined(_METRICS)
+			uint buffer;
+			InterlockedAdd(MetricsObject[0].StocasticTransPartialLitFragmentCount, 1, buffer);
+			InterlockedAdd(LitSamplesMetrics[uint2(position.xy)], 1, buffer);
+		#endif
+
+		return 1;
+	} else {
+		occlusion = float(occCount) / float(STOCHASTIC_SAMPLE_COUNT);
+
+		#if defined(_METRICS)
+			uint buffer;
+			InterlockedAdd(MetricsObject[0].StocasticTransLitFragmentCount, 1, buffer);
+			// InterlockedAdd(LitSamplesMetrics[uint2(geo.position.xy)], 1, buffer);
+		#endif
+
+		return 0;
+	}
+}

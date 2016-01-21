@@ -1741,6 +1741,7 @@ namespace ShaderPatcher
 		Plustache::template_t preprocessor;
 		result << preprocessor.render(GetTechniqueTemplate("deferred_main"), context);
 		result << preprocessor.render(GetTechniqueTemplate("oi_main"), context);
+        result << preprocessor.render(GetTechniqueTemplate("stochastic_main"), context);
 		return result.str();
 	}
 

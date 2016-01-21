@@ -36,7 +36,7 @@ float4 io_main({{MainFunctionParameterSignature}}, SystemInputs sys) : SV_Target
 		//			it opaque. It's a useful optimisation
 		//			that goes hand in hand with the pre-depth pass.
 	const float minAlpha =   1.f / 255.f;
-	const float maxAlpha = 254.f / 255.f;  // AlphaThreshold;
+	const float maxAlpha = 0.95f; // 254.f / 255.f;  // AlphaThreshold;
 	if (sample.blendingAlpha < minAlpha) {
 		discard;
 	}
@@ -54,6 +54,35 @@ float4 io_main({{MainFunctionParameterSignature}}, SystemInputs sys) : SV_Target
 		discard;
 		return 0.0.xxxx;
 	}
+}
+
+):>
+
+~stochastic_main;  item=<:(
+
+[earlydepthstencil]
+float4 stochastic_main(VSOutput geo,
+	#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
+		uint primitiveID : SV_PrimitiveID,
+	#endif
+	SystemInputs sys) : SV_Target
+{
+	float occlusion;
+	uint type = CalculateStochasticPixelType(geo.position, occlusion);
+	[branch] if (type > 0) {
+		if (type == 2) return float4(0.0.xxx, 1); // discard;
+
+		// Only need to calculate the "alpha" value for this step...
+		GBufferValues sample;
+		{{GraphName}}({{ForwardMainParameters}}, sample);
+		return float4(0.0.xxx, sample.blendingAlpha);
+	}
+
+	GBufferValues sample;
+	{{GraphName}}({{ForwardMainParameters}}, sample);
+
+	float4 litValue = LightSample(sample, geo, sys);
+	return float4((LightingScale * (1.f - occlusion) * litValue.a) * litValue.rgb, litValue.a);
 }
 
 ):>

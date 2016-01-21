@@ -104,6 +104,14 @@ float3 MaybeMakeDoubleSided(VSOutput geo, float3 normal)
     return normal;
 }
 
+float MaybeDoAlphaTest(float alpha, float alphaThreshold)
+{
+    #if (OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1))
+        if (alpha < alphaThreshold) discard;
+    #endif
+    return alpha;
+}
+
 float3 SampleNormalMap(
   Texture2D normalMap,
   float2 texCoord : TEXCOORD0,
