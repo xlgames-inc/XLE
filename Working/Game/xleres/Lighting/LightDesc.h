@@ -42,6 +42,7 @@ struct CascadeAddress
 };
 
 struct LightScreenDest
+{
     int2 pixelCoords;
     uint sampleIndex;
 };

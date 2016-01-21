@@ -135,7 +135,7 @@ namespace ToolsRig
                         RenderCore::Assets::ModelRendererContext(*context, parserContext, techniqueIndex),
                         *_sharedStateSet, _delayedDrawCalls, i,
                         [context, &drawCallIndexBuffer, &fillInStencilInfo](ModelRenderer::DrawCallEvent evnt)
-			{
+                        {
                             if (fillInStencilInfo) {
                                 // hack -- we just adjust the depth stencil state to enable the stencil buffer
                                 //          no way to do this currently without dropping back to low level API
@@ -158,6 +158,7 @@ namespace ToolsRig
                                     context->GetUnderlying()->OMSetDepthStencilState(newDSS.get(), 1+evnt._drawCallIndex);
                                 #endif
                             }
+
                             unsigned drawCallIndexB[4] = { evnt._drawCallIndex, 0, 0, 0 };
                             drawCallIndexBuffer.Update(*context, drawCallIndexB, sizeof(drawCallIndexB));
 

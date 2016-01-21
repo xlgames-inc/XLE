@@ -202,6 +202,7 @@ namespace SceneEngine
 
     unsigned LightingResolveShaders::LightShaderType::ReservedIndexCount()
     {
+        return 0x1FF + 1;
     }
 
     unsigned LightingResolveShaders::LightShaderType::AsIndex() const
@@ -290,7 +291,6 @@ namespace SceneEngine
 
         definesTable << ";DIFFUSE_METHOD=" << unsigned(type._diffuseModel);
         definesTable << ";HAS_SCREENSPACE_AO=" << unsigned(type._hasScreenSpaceAO);
-        definesTable << ";LIGHT_SHAPE=" << unsigned(type._shape);
 
         const char* vertexShader_viewFrustumVector = 
             desc._flipDirection
@@ -347,6 +347,8 @@ namespace SceneEngine
                 dest._boundClassInterfaces.Bind(Hash64("MainCascadeResolver"), 0, AsCascadeResolverInterface(type));
                 dest._boundClassInterfaces.Bind(Hash64("MainShadowResolver"), 0, AsShadowResolverInterface(type));
                 dest._dynamicLinking = true;
+            }
+
             ::Assets::RegisterAssetDependency(_validationCallback, dest._shader->GetDependencyValidation());
         }
     }
