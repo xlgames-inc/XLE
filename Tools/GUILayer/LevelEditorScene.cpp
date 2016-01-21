@@ -205,6 +205,19 @@ namespace GUILayer
         }
     };
 
+	enum class StreamWriterResult { Text, Binary, MetricsText, None };
+
+	static auto __clrcall AsPendingExportType(StreamWriterResult input) -> EditorSceneManager::PendingExport::Type
+	{
+		switch (input) {
+		case StreamWriterResult::Text: return EditorSceneManager::PendingExport::Type::Text;
+		case StreamWriterResult::Binary: return EditorSceneManager::PendingExport::Type::Binary;
+		case StreamWriterResult::MetricsText: return EditorSceneManager::PendingExport::Type::MetricsText;
+		default:
+		case StreamWriterResult::None: return EditorSceneManager::PendingExport::Type::None;
+		}	
+	}
+
     template<typename Type>
         static EditorSceneManager::PendingExport^ ExportViaStream(
             System::String^ typeName,
@@ -216,7 +229,7 @@ namespace GUILayer
         TRY
         {
             MemoryOutputStream<utf8> stream;
-            result->_previewType = streamWriter(stream);
+            result->_previewType = AsPendingExportType(streamWriter(stream));
             result->_preview = clix::marshalString<clix::E_UTF8>(stream.GetBuffer().str());
             result->_success = true;
             result->_messages = "Success";
@@ -229,11 +242,11 @@ namespace GUILayer
     }
 
     static auto WriteEnvSettings(OutputStream& stream, uint64 docId, EntityInterface::RetainedEntities* flexObjects) 
-        -> EditorSceneManager::PendingExport::Type
+        -> StreamWriterResult
     {
         OutputStreamFormatter formatter(stream);
         EntityInterface::ExportEnvSettings(formatter, *flexObjects, docId);
-        return EditorSceneManager::PendingExport::Type::Text;
+        return StreamWriterResult::Text;
     }
 
     auto EditorSceneManager::ExportEnv(EntityInterface::DocumentId docId) -> PendingExport^
@@ -245,11 +258,11 @@ namespace GUILayer
 
     static auto WriteGameObjects(
         OutputStream& stream, uint64 docId, 
-        EntityInterface::RetainedEntities* flexObjects) -> EditorSceneManager::PendingExport::Type
+        EntityInterface::RetainedEntities* flexObjects) -> StreamWriterResult
     {
         OutputStreamFormatter formatter(stream);
         EntityInterface::ExportGameObjects(formatter, *flexObjects, docId);
-        return EditorSceneManager::PendingExport::Type::Text;
+        return StreamWriterResult::Text;
     }
 
     auto EditorSceneManager::ExportGameObjects(
@@ -262,7 +275,7 @@ namespace GUILayer
 
     static auto WritePlacementsCfg(
         OutputStream& stream, 
-        IEnumerable<EditorSceneManager::PlacementCellRef>^ cells) -> EditorSceneManager::PendingExport::Type
+        IEnumerable<EditorSceneManager::PlacementCellRef>^ cells) -> StreamWriterResult
     {
         OutputStreamFormatter formatter(stream);
         for each(auto c in cells) {
@@ -274,7 +287,7 @@ namespace GUILayer
             formatter.EndElement(ele);
         }
         formatter.Flush();
-        return EditorSceneManager::PendingExport::Type::Text;
+        return StreamWriterResult::Text;
     }
 
     auto EditorSceneManager::ExportPlacementsCfg(IEnumerable<PlacementCellRef>^ cells) -> PendingExport^
@@ -345,11 +358,11 @@ namespace GUILayer
     }
 
     static auto WriteTerrainCfg(OutputStream& stream, SceneEngine::TerrainConfig& cfg) 
-        -> EditorSceneManager::PendingExport::Type
+        -> StreamWriterResult
     {
         OutputStreamFormatter formatter(stream);
         cfg.Write(formatter);
-        return EditorSceneManager::PendingExport::Type::Text;
+        return StreamWriterResult::Text;
     }
 
     auto EditorSceneManager::ExportTerrain(TerrainConfig^ cfg) -> PendingExport^
@@ -358,10 +371,10 @@ namespace GUILayer
     }
 
     static auto WriteTerrainCachedData(OutputStream& stream, SceneEngine::TerrainManager* terrainMan) 
-        -> EditorSceneManager::PendingExport::Type
+        -> StreamWriterResult
     {
         SceneEngine::WriteTerrainCachedData(stream, terrainMan->GetConfig(), *terrainMan->GetFormat());
-        return EditorSceneManager::PendingExport::Type::Text;
+        return StreamWriterResult::Text;
     }
 
     auto EditorSceneManager::ExportTerrainCachedData() -> PendingExport^
@@ -372,10 +385,10 @@ namespace GUILayer
     }
 
     static auto WriteTerrainMaterialData(OutputStream& stream, SceneEngine::TerrainManager* terrainMan) 
-        -> EditorSceneManager::PendingExport::Type
+        -> StreamWriterResult
     {
         SceneEngine::WriteTerrainMaterialData(stream, terrainMan->GetMaterialConfig());
-        return EditorSceneManager::PendingExport::Type::Text;
+        return StreamWriterResult::Text;
     }
 
     auto EditorSceneManager::ExportTerrainMaterialData() -> PendingExport^
@@ -386,11 +399,11 @@ namespace GUILayer
     }
 
     static auto WriteVegetationSpawnConfig(OutputStream& stream, SceneEngine::VegetationSpawnManager* man) 
-        -> EditorSceneManager::PendingExport::Type
+        -> StreamWriterResult
     {
         Utility::OutputStreamFormatter formatter(stream);
         man->GetConfig().Write(formatter);
-        return EditorSceneManager::PendingExport::Type::Text;
+        return StreamWriterResult::Text;
     }
 
     auto EditorSceneManager::ExportVegetationSpawn(EntityInterface::DocumentId docId) -> PendingExport^

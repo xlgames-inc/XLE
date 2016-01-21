@@ -28,6 +28,7 @@ namespace RenderCore { extern char VersionString[]; extern char BuildDateString[
 
 namespace RenderCore { namespace Assets
 {
+	static const unsigned ResolvedMat_ExpectedVersion = 1;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -36,7 +37,9 @@ namespace RenderCore { namespace Assets
     public:
         std::vector<std::basic_string<utf8>> _configurations;
 
-        RawMatConfigurations(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+        RawMatConfigurations(
+            const ::Assets::IntermediateAssetLocator& locator, 
+            const ::Assets::ResChar initializer[]);
 
         static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
 
@@ -45,37 +48,29 @@ namespace RenderCore { namespace Assets
         std::shared_ptr<::Assets::DependencyValidation> _validationCallback;
     };
 
-    RawMatConfigurations::RawMatConfigurations(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
+    RawMatConfigurations::RawMatConfigurations(const ::Assets::IntermediateAssetLocator& locator, const ::Assets::ResChar initializer[])
     {
-        auto state = marker->GetState();
-        if (state == ::Assets::AssetState::Pending)
-            Throw(::Assets::Exceptions::PendingAsset(marker->Initializer(), "Pending asset in RawMatConfigurations"));
-        if (state == ::Assets::AssetState::Invalid)
-            Throw(::Assets::Exceptions::PendingAsset(marker->Initializer(), "Invalid asset in RawMatConfigurations"));
-
             //  Get associated "raw" material information. This is should contain the material information attached
             //  to the geometry export (eg, .dae file).
 
         size_t sourceFileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(marker->_sourceID0, &sourceFileSize);
-        if (!sourceFile)
-            Throw(::Assets::Exceptions::InvalidAsset(marker->Initializer(), 
-                StringMeld<128>() << "Missing or empty file: " << marker->_sourceID0));
+        auto sourceFile = LoadFileAsMemoryBlock(locator._sourceID0, &sourceFileSize);
+        if (!sourceFile || sourceFileSize == 0)
+            Throw(::Assets::Exceptions::InvalidAsset(
+                initializer, 
+                StringMeld<128>() << "Missing or empty file: " << locator._sourceID0));
 
-        {
-            InputStreamFormatter<utf8> formatter(
-                MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), sourceFileSize)));
-            Document<decltype(formatter)> doc(formatter);
+        InputStreamFormatter<utf8> formatter(
+            MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), sourceFileSize)));
+        Document<decltype(formatter)> doc(formatter);
             
-            for (auto config=doc.FirstChild(); config; config=config.NextSibling()) {
-                auto name = config.Name();
-                if (name.Empty()) continue;
-                _configurations.push_back(name.AsString());
-            }
+        for (auto config=doc.FirstChild(); config; config=config.NextSibling()) {
+            auto name = config.Name();
+            if (name.Empty()) continue;
+            _configurations.push_back(name.AsString());
         }
 
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterFileDependency(_validationCallback, marker->_sourceID0);
+        _validationCallback = locator._dependencyValidation;
     }
 
     static void AddDep(
@@ -202,7 +197,7 @@ namespace RenderCore { namespace Assets
                 1, VersionString, BuildDateString, 
                 std::make_tuple(destination, "wb", 0));
 
-            output.BeginChunk(ChunkType_ResolvedMat, 0, Meld() << sourceModel << "&" << sourceMaterial);
+            output.BeginChunk(ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion, Meld() << sourceModel << "&" << sourceMaterial);
             output.Write(block.get(), 1, blockSize);
             output.FinishCurrentChunk();
         }
@@ -214,11 +209,12 @@ namespace RenderCore { namespace Assets
     {
         TRY
         {
-            auto compileResult = CompileMaterialScaffold(op._initializer0, op._initializer1, op._sourceID0);
-            op._dependencyValidation = op._destinationStore->WriteDependencies(
-                op._sourceID0, MakeStringSection(compileResult._baseDir), 
+            auto compileResult = CompileMaterialScaffold(op._initializer0, op._initializer1, op.GetLocator()._sourceID0);
+            op.GetLocator()._dependencyValidation = op._destinationStore->WriteDependencies(
+                op.GetLocator()._sourceID0, MakeStringSection(compileResult._baseDir), 
                 MakeIteratorRange(compileResult._dependencies));
-            assert(op._dependencyValidation);
+            assert(op.GetLocator()._dependencyValidation);
+
             op.SetState(::Assets::AssetState::Ready);
         } CATCH(const ::Assets::Exceptions::PendingAsset&) {
             throw;
@@ -236,7 +232,81 @@ namespace RenderCore { namespace Assets
         std::unique_ptr<CompilationThread> _thread;
     };
 
-    std::shared_ptr<::Assets::PendingCompileMarker> MaterialScaffoldCompiler::PrepareAsset(
+    class MatCompilerMarker : public ::Assets::ICompileMarker
+    {
+    public:
+        ::Assets::IntermediateAssetLocator GetExistingAsset() const;
+        std::shared_ptr<::Assets::PendingCompileMarker> InvokeCompile() const;
+        StringSection<::Assets::ResChar> Initializer() const;
+
+        MatCompilerMarker(
+            ::Assets::rstring materialFilename, ::Assets::rstring modelFilename,
+            const ::Assets::IntermediateAssets::Store& store,
+            std::shared_ptr<MaterialScaffoldCompiler> compiler);
+        ~MatCompilerMarker();
+    private:
+        std::weak_ptr<MaterialScaffoldCompiler> _compiler;
+        ::Assets::rstring _materialFilename, _modelFilename;
+        const ::Assets::IntermediateAssets::Store* _store;
+
+        void GetIntermediateName(::Assets::ResChar destination[], size_t destinationCount) const;
+    };
+
+    void MatCompilerMarker::GetIntermediateName(::Assets::ResChar destination[], size_t destinationCount) const
+    {
+        _store->MakeIntermediateName(destination, (unsigned)destinationCount, _materialFilename.c_str());
+        StringMeldAppend(destination, &destination[destinationCount])
+            << "-" << MakeFileNameSplitter(_modelFilename).FileAndExtension().AsString() << "-resmat";
+    }
+
+    ::Assets::IntermediateAssetLocator MatCompilerMarker::GetExistingAsset() const
+    {
+        ::Assets::IntermediateAssetLocator result;
+        GetIntermediateName(result._sourceID0, dimof(result._sourceID0));
+        result._dependencyValidation = _store->MakeDependencyValidation(result._sourceID0);
+        return result;
+    }
+
+    std::shared_ptr<::Assets::PendingCompileMarker> MatCompilerMarker::InvokeCompile() const
+    {
+        auto c = _compiler.lock();
+        if (!c) return nullptr;
+
+        using namespace ::Assets;
+        StringMeld<256,ResChar> debugInitializer;
+        debugInitializer<< _materialFilename << "(material scaffold)";
+
+        auto backgroundOp = std::make_shared<QueuedCompileOperation>();
+        backgroundOp->SetInitializer(debugInitializer);
+        XlCopyString(backgroundOp->_initializer0, _materialFilename);
+        XlCopyString(backgroundOp->_initializer1, _modelFilename);
+        backgroundOp->_destinationStore = _store;
+        GetIntermediateName(backgroundOp->GetLocator()._sourceID0, dimof(backgroundOp->GetLocator()._sourceID0));
+
+		{
+			ScopedLock(c->_pimpl->_threadLock);
+			if (!c->_pimpl->_thread)
+				c->_pimpl->_thread = std::make_unique<CompilationThread>(
+					[](QueuedCompileOperation& op) { DoCompileMaterialScaffold(op); });
+		}
+		c->_pimpl->_thread->Push(backgroundOp);
+
+        return std::move(backgroundOp);
+    }
+
+    StringSection<::Assets::ResChar> MatCompilerMarker::Initializer() const
+    {
+        return MakeStringSection(_materialFilename);
+    }
+
+    MatCompilerMarker::MatCompilerMarker(
+        ::Assets::rstring materialFilename, ::Assets::rstring modelFilename,
+        const ::Assets::IntermediateAssets::Store& store,
+        std::shared_ptr<MaterialScaffoldCompiler> compiler)
+    : _materialFilename(materialFilename), _modelFilename(modelFilename), _compiler(std::move(compiler)), _store(&store) {}
+    MatCompilerMarker::~MatCompilerMarker() {}
+
+    std::shared_ptr<::Assets::ICompileMarker> MaterialScaffoldCompiler::PrepareAsset(
         uint64 typeCode, 
         const ::Assets::ResChar* initializers[], unsigned initializerCount,
         const ::Assets::IntermediateAssets::Store& store)
@@ -245,41 +315,7 @@ namespace RenderCore { namespace Assets
             Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in MaterialScaffoldCompiler. Material filename first, then model filename"));
 
         const auto* materialFilename = initializers[0], *modelFilename = initializers[1];
-
-        using namespace ::Assets;
-        ResChar intermediateName[MaxPath];
-        store.MakeIntermediateName(intermediateName, materialFilename);
-        StringMeldAppend(intermediateName)
-            << "-" << MakeFileNameSplitter(modelFilename).FileAndExtension().AsString() << "-resmat";
-
-        StringMeld<256,ResChar> debugInitializer;
-        debugInitializer<< materialFilename << "(material scaffold)";
-
-            // now either return an existing asset, or compile a new one
-        auto marker = CompilerHelper::CheckExistingAsset(store, intermediateName, debugInitializer);
-        if (marker) return marker;
-
-            // Compile can throw "pending"...
-            // So we need to keep a queue of active work operations.
-            // We can push the compilation work into the background (but, actually, it's
-            // probably not a lot of work)
-        auto backgroundOp = std::make_shared<QueuedCompileOperation>();
-        backgroundOp->SetInitializer(debugInitializer);
-        XlCopyString(backgroundOp->_initializer0, materialFilename);
-        XlCopyString(backgroundOp->_initializer1, modelFilename);
-        XlCopyString(backgroundOp->_sourceID0, intermediateName);
-        backgroundOp->_destinationStore = &store;
-        backgroundOp->_typeCode = typeCode;
-
-        {
-            ScopedLock(_pimpl->_threadLock);
-            if (!_pimpl->_thread)
-                _pimpl->_thread = std::make_unique<CompilationThread>(
-                    [](QueuedCompileOperation& op) { DoCompileMaterialScaffold(op); });
-        }
-        _pimpl->_thread->Push(backgroundOp);
-
-        return std::move(backgroundOp);
+        return std::make_shared<MatCompilerMarker>(materialFilename, modelFilename, store, shared_from_this());
     }
 
     void MaterialScaffoldCompiler::StallOnPendingOperations(bool cancelAll)
@@ -330,19 +366,19 @@ namespace RenderCore { namespace Assets
             return i->second.c_str();
         return nullptr;
     }
-
+    
     static const ::Assets::AssetChunkRequest MaterialScaffoldChunkRequests[]
     {
-        ::Assets::AssetChunkRequest { 
-            "Scaffold", ChunkType_ResolvedMat, 0, 
+        ::Assets::AssetChunkRequest {
+            "Scaffold", ChunkType_ResolvedMat, ResolvedMat_ExpectedVersion, 
             ::Assets::AssetChunkRequest::DataType::BlockSerializer 
         }
     };
 
-    MaterialScaffold::MaterialScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
+    MaterialScaffold::MaterialScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker)
         : ChunkFileAsset("MaterialScaffold")
     {
-        Prepare(std::move(marker), MakeIteratorRange(MaterialScaffoldChunkRequests), &Resolver); 
+        Prepare(*marker, ResolveOp{MakeIteratorRange(MaterialScaffoldChunkRequests), &Resolver}); 
     }
 
     MaterialScaffold::MaterialScaffold(MaterialScaffold&& moveFrom) never_throws

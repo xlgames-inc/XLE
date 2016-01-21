@@ -24,7 +24,7 @@ namespace RenderCore { namespace Assets
         , public std::enable_shared_from_this<LocalCompiledShaderSource>
     {
     public:
-        std::shared_ptr<::Assets::PendingCompileMarker> PrepareAsset(
+        std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(
             uint64 typeCode, const ::Assets::ResChar* initializers[], unsigned initializerCount,
             const ::Assets::IntermediateAssets::Store& destinationStore);
 
@@ -49,6 +49,8 @@ namespace RenderCore { namespace Assets
         mutable Interlocked::Value _activeCompileCount;
         Threading::Mutex _activeCompileOperationsLock;
         std::shared_ptr<ShaderService::ILowLevelCompiler> _compiler;
+
+        class Marker;
     };
 }}
 

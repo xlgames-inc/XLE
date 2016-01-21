@@ -12,7 +12,7 @@
 #include "../../Math/Matrix.h"
 
 namespace RenderCore { namespace Assets { class ResolvedMaterial; } }
-namespace RenderCore { namespace Techniques { class ParsingContext; } }
+namespace RenderCore { namespace Techniques { class ParsingContext; class PredefinedCBLayout; } }
 namespace Assets { class DirectorySearchRules; }
 
 namespace ToolsRig
@@ -38,7 +38,7 @@ namespace ToolsRig
             SystemConstants();
         };
 
-        virtual RenderCore::Metal::ShaderProgram* Apply(
+        virtual bool Apply(
             RenderCore::Metal::DeviceContext& metalContext,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
@@ -55,13 +55,14 @@ namespace ToolsRig
             const RenderCore::Assets::ResolvedMaterial& mat,
             const SystemConstants& sysConstants,
             const ::Assets::DirectorySearchRules& searchRules,
-            RenderCore::Metal::ShaderProgram& shaderProgram);
+			const RenderCore::Metal::BoundUniforms& boundLayout,
+            const RenderCore::Techniques::PredefinedCBLayout& cbLayout);
     };
 
     class MaterialBinder : public IMaterialBinder
     {
     public:
-        virtual RenderCore::Metal::ShaderProgram* Apply(
+        virtual bool Apply(
             RenderCore::Metal::DeviceContext& metalContext,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,

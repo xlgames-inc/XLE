@@ -27,14 +27,14 @@ namespace RenderCore { namespace Assets
     EmbeddedSkeletonPose::~EmbeddedSkeletonPose() {}
 
     EmbeddedSkeletonPose::EmbeddedSkeletonPose(EmbeddedSkeletonPose&& moveFrom) never_throws
-    : _binding(moveFrom._binding)
-    , _transforms(moveFrom._transforms)
+    : _binding(std::move(moveFrom._binding))
+    , _transforms(std::move(moveFrom._transforms))
     {}
 
     EmbeddedSkeletonPose& EmbeddedSkeletonPose::operator=(EmbeddedSkeletonPose&& moveFrom) never_throws
     {
-        _binding = moveFrom._binding;
-        _transforms = moveFrom._transforms;
+        _binding = std::move(moveFrom._binding);
+        _transforms = std::move(moveFrom._transforms);
         return *this;
     }
 

@@ -51,7 +51,7 @@ namespace SceneEngine
             //  we don't have a pointer to buffer uploads to end the
             //  previous transaction
         assert(_transaction == ~BufferUploads::TransactionID(0x0));
-        TextureTile(moveFrom).swap(*this);
+        TextureTile(std::move(moveFrom)).swap(*this);
         return *this;
     }
 

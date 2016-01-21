@@ -404,8 +404,8 @@ namespace SceneEngine
             return;
 
         auto shader = _pimpl->_material.FindVariation(
-            parserContext, techniqueIndex, "game/xleres/vegetation/impostermaterial.txt");
-        if (!shader._shaderProgram) return;
+            parserContext, techniqueIndex, "game/xleres/vegetation/impostermaterial.tech");
+        if (!shader._shader._shaderProgram) return;
 
             // For each object here, we should look to see if we have a prepared
             // imposter already available. If not, we have to build the imposter.
@@ -505,12 +505,12 @@ namespace SceneEngine
 
         // shader.Apply(context, parserContext, {std::move(spriteTable)});
         const Metal::ConstantBuffer* cbs[] = {&_pimpl->_spriteTableCB};
-        shader._boundUniforms->Apply(
+        shader._shader._boundUniforms->Apply(
             context, 
             parserContext.GetGlobalUniformsStream(),
             Metal::UniformsStream(nullptr, cbs, dimof(cbs)));
-        context.Bind(*shader._boundLayout);
-        context.Bind(*shader._shaderProgram);
+        context.Bind(*shader._shader._boundLayout);
+        context.Bind(*shader._shader._shaderProgram);
         
         Metal::VertexBuffer tempvb(AsPointer(vertices.begin()), vertices.size()*sizeof(Vertex));
         context.Bind(MakeResourceList(tempvb), sizeof(Vertex), 0);
@@ -762,20 +762,19 @@ namespace SceneEngine
 
         context.Clear(_atlas._tempDSV.DSV(), 1.f, 0u);
 
-        const Metal::RenderTargetView* rtvs[3];
+        Metal::RenderTargetView rtvs[3];
         auto layerCount = std::min(dimof(rtvs), _atlas._layers.size());
         for (unsigned c=0; c<layerCount; ++c) {
             const auto& l = _atlas._layers[c];
                 // note --  alpha starts out as 1.f
                 //          With the _blendOneSrcAlpha blend, this how no effect
             context.Clear(l._tempRTV.RTV(), {0.f, 0.f, 0.f, 1.f});  
-            rtvs[c] = &l._tempRTV.RTV();
+            rtvs[c] = l._tempRTV.RTV();
         }
         
         context.Bind(
             ResourceList<Metal::RenderTargetView, dimof(rtvs)>(
-                std::initializer_list<const Metal::RenderTargetView*>(
-                    rtvs, &rtvs[(unsigned)layerCount])), 
+                std::initializer_list<const Metal::RenderTargetView>(rtvs, &rtvs[(unsigned)layerCount])), 
             &_atlas._tempDSV.DSV());
         context.Bind(viewport);
         context.Bind(Techniques::CommonResources()._blendOpaque);

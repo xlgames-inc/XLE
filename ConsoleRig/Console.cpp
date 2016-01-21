@@ -10,11 +10,13 @@
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/IteratorUtils.h"
 #include "../../Core/Exceptions.h"
 #include "../../Math/Vector.h"
 #include <iterator>
 #include <algorithm>
 
+#define _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS		// LuaBridge uses hash_map, which creates a compile error in Visual Studio 2015. We should use the standard unordered_map, instead
 #undef new
 
     #include <lua.hpp>
@@ -32,7 +34,8 @@ namespace ConsoleRig
     {
     public:
         lua_State* L;
-        operator lua_State*() { return L; }
+        // operator lua_State*() { return L; }
+        lua_State* GetUnderlying() { return L; }
 
         int             PCall(int argumentCount, int returnValueCount);
     
@@ -49,20 +52,68 @@ namespace ConsoleRig
 
 
 
+    class ConsoleVariableStorage
+    {
+    public:
+        class ICVarTable
+        {
+        public:
+            virtual ~ICVarTable() {}
+        };
+
+        template<typename Type>
+            class CVarTable : public ICVarTable
+        {
+        public:
+            using Table = std::vector<std::unique_ptr<std::pair<Type, ConsoleVariable<Type>>>>;
+            Table _table;
+        };
+
+        template<typename Type>
+            using Table = typename CVarTable<Type>::Table;
+
+        template<typename Type>
+            Table<Type>& GetTable()
+        {
+            auto hash = typeid(Type).hash_code();
+            auto i = LowerBound(_tables, (uint64)hash);
+            if (i == _tables.end() || i->first != hash) {
+                auto newTable = std::make_unique<CVarTable<Type>>();
+                i = _tables.insert(i, std::make_pair(hash, std::move(newTable)));
+            }
+            
+            auto* rawTable = i->second.get();
+            return ((CVarTable<Type>*)rawTable)->_table;    // (critical upcast here)
+        }
+
+    private:
+        std::vector<std::pair<uint64, std::unique_ptr<ICVarTable>>> _tables;
+    };
 
 
             //////   C O R E   C O N S O L E   B E H A V I O U R   //////
 
-    static std::unique_ptr<LuaState>    g_ConsoleLUA = nullptr;
-    Console*                            Console::s_instance = nullptr;
+    class Console::Pimpl
+    {
+    public:
+        std::vector<std::basic_string<ucs2>> _lines;
+        bool _lastLineComplete;
+        std::unique_ptr<LuaState> _lua;
+        std::unique_ptr<ConsoleVariableStorage> _cvars;
+
+        int _dummyValue;
+        ConsoleVariable<int> _dummyVar;
+    };
+
+    Console*        Console::s_instance = nullptr;
 
     void            Console::Execute(const std::string& str)
     {
         Print("{Color:af3f7f}Executing string -- {Color:7F7F7F}" + str + "\n");
 
-        lua_State* L = *g_ConsoleLUA;
+        lua_State* L = GetLuaState();
         luaL_loadstring(L, str.c_str());
-        int errorCode = g_ConsoleLUA->PCall(0, 0);
+        int errorCode = _pimpl->_lua->PCall(0, 0);
         if (errorCode != LUA_OK) {
             const char* msg = lua_tostring(L, -1);
             if (msg) {
@@ -119,7 +170,7 @@ namespace ConsoleRig
 
     std::vector<std::string>    Console::AutoComplete(const std::string& input)
     {
-        lua_State* L = *g_ConsoleLUA;
+        lua_State* L = GetLuaState();
 
             //
             //      Separate the input string into parts with "." or ":"
@@ -169,18 +220,18 @@ namespace ConsoleRig
         return result;
     }
 
-    static std::u16string      AsUTF16(const std::string& input)
+    static std::basic_string<ucs2>      AsUTF16(const std::string& input)
     {
-        char16_t buffer[1024];
+		ucs2 buffer[1024];
         utf8_2_ucs2((utf8*)AsPointer(input.begin()), input.size(), buffer, dimof(buffer));
-        return std::u16string(buffer);
+        return std::basic_string<ucs2>(buffer);
     }
 
-    static std::u16string      AsUTF16(const char input[], size_t len)
+    static std::basic_string<ucs2>      AsUTF16(const char input[], size_t len)
     {
-        char16_t buffer[1024];
+		ucs2 buffer[1024];
         utf8_2_ucs2((utf8*)input, len, buffer, dimof(buffer));
-        return std::u16string(buffer);
+        return std::basic_string<ucs2>(buffer);
     }
 
     void            Console::Print(const std::string& message)
@@ -201,17 +252,17 @@ namespace ConsoleRig
         Print(AsUTF16(messageStart, messageEnd - messageStart));
     }
 
-    void            Console::Print(const std::u16string& message)
+    void            Console::Print(const std::basic_string<ucs2>& message)
     {
         if (!this) return;  // hack!
-        std::u16string::size_type currentOffset = 0;
-        std::u16string::size_type stringLength = message.size();
-        bool lastLineComplete = _lastLineComplete;
+        std::basic_string<ucs2>::size_type currentOffset = 0;
+        std::basic_string<ucs2>::size_type stringLength = message.size();
+        bool lastLineComplete = _pimpl->_lastLineComplete;
 
         while (currentOffset < stringLength) {
-            const std::u16string::size_type start = currentOffset;
-            const std::u16string::size_type s     = message.find_first_of((char16_t*)L"\r\n", currentOffset);
-            std::u16string::size_type end;
+            const std::basic_string<ucs2>::size_type start = currentOffset;
+            const std::basic_string<ucs2>::size_type s     = message.find_first_of((ucs2*)L"\r\n", currentOffset);
+            std::basic_string<ucs2>::size_type end;
             bool completeLine = false;
 
             if (s != std::string::npos) {
@@ -222,10 +273,10 @@ namespace ConsoleRig
             }
 
             if (end > start) {
-                if (!lastLineComplete && !_lines.empty()) {
-                    _lines[_lines.size()-1] += message.substr(start, end-start);
+                if (!lastLineComplete && !_pimpl->_lines.empty()) {
+                    _pimpl->_lines[_pimpl->_lines.size()-1] += message.substr(start, end-start);
                 } else {
-                    _lines.push_back(message.substr(start, end-start));
+                    _pimpl->_lines.push_back(message.substr(start, end-start));
                 }
 
                 lastLineComplete = completeLine;
@@ -237,13 +288,13 @@ namespace ConsoleRig
             }
         }
 
-        _lastLineComplete = lastLineComplete;
+        _pimpl->_lastLineComplete = lastLineComplete;
     }
 
-    std::vector<std::u16string>    Console::GetLines(unsigned lineCount, unsigned scrollback)
+    std::vector<std::basic_string<ucs2>>    Console::GetLines(unsigned lineCount, unsigned scrollback)
     {
-        std::vector<std::u16string> result;
-        signed linesToGet = std::max(0, std::min(signed(lineCount), signed(_lines.size())-signed(scrollback)));
+        std::vector<std::basic_string<ucs2>> result;
+        signed linesToGet = std::max(0, std::min(signed(lineCount), signed(_pimpl->_lines.size())-signed(scrollback)));
         result.reserve(linesToGet);
 
         if (linesToGet <= 0) {
@@ -251,7 +302,7 @@ namespace ConsoleRig
         }
 
         std::copy(
-            _lines.end() - scrollback - linesToGet, _lines.end() - scrollback,
+            _pimpl->_lines.end() - scrollback - linesToGet, _pimpl->_lines.end() - scrollback,
             std::back_inserter(result));
 
         return result;
@@ -259,12 +310,17 @@ namespace ConsoleRig
 
     unsigned Console::GetLineCount() const
     {
-        return unsigned(_lines.size());
+        return unsigned(_pimpl->_lines.size());
     }
 
     lua_State*  Console::GetLuaState()
     {
-        return (lua_State*)*g_ConsoleLUA;
+        return _pimpl->_lua->GetUnderlying();
+    }
+
+    ConsoleVariableStorage&  Console::GetCVars()
+    {
+        return *_pimpl->_cvars;
     }
 
     void Console::SetInstance(Console* newInstance)
@@ -275,20 +331,29 @@ namespace ConsoleRig
 
     Console::Console()  
     {
-        _lastLineComplete = false;
-        _lines.push_back(std::u16string());
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_lastLineComplete = false;
+        _pimpl->_lines.push_back(std::basic_string<ucs2>());
+        _pimpl->_lua = std::make_unique<LuaState>();
+        _pimpl->_cvars = std::make_unique<ConsoleVariableStorage>();
 
         assert(!s_instance);
         s_instance = this;
 
-        assert(!g_ConsoleLUA);
-        g_ConsoleLUA = std::make_unique<LuaState>();
+        // HACK --  getting some memory allocation problems across DLL boundaries sometimes
+        //          It seems to be resolved if we allocate the first console variable in the
+        //          main module.
+        _pimpl->_dummyValue = 1;
+        _pimpl->_dummyVar = ConsoleVariable<int>("dummy", _pimpl->_dummyValue);
     }
 
     Console::~Console() 
     {
-        g_ConsoleLUA.reset();
-
+            // force "dummyVar" to deregister now
+        _pimpl->_dummyVar = ConsoleVariable<int>(std::string(), _pimpl->_dummyValue);
+        _pimpl->_cvars.reset();
+        _pimpl->_lua.reset();
+        _pimpl.reset();
         assert(s_instance==this);
         s_instance = nullptr;
     }
@@ -477,13 +542,11 @@ namespace ConsoleRig
             (*attachedValue->_attachedValue) = newValue;
             return *attachedValue->_attachedValue;
         }
-
-
+        
         template <typename Type>
-            std::vector<std::unique_ptr<std::pair<Type, ConsoleVariable<Type>>>>&  GetConsoleVariableTable()
+            ConsoleVariableStorage::Table<Type>& GetConsoleVariableTable()
         {
-            static std::vector<std::unique_ptr<std::pair<Type, ConsoleVariable<Type>>>> staticTable;
-            return staticTable;
+            return Console::GetInstance().GetCVars().GetTable<Type>();
         }
 
         template <typename Type>
@@ -502,16 +565,19 @@ namespace ConsoleRig
             {
                 auto& table  = GetConsoleVariableTable<Type>();
                 auto i       = std::lower_bound(table.cbegin(), table.cend(), name, CompareConsoleVariable<Type>());
-                if (i!=table.cend() && !XlCompareString((*i)->second.Name().c_str(), name)) {
+                if (i!=table.cend() && XlEqString((*i)->second.Name(), name))
                     return (*i)->first;
-                }
 
                 typedef std::pair<Type, ConsoleVariable<Type>> Pair;
+                // This bit of funkiness is because we want the ConsoleVariable object to contain
+                // a pointer to the value object (which is contained in the same heap block)
+                // It's awkward here, but it's convenient otherwise
                 std::unique_ptr<Pair> p(new Pair(defaultValue, ConsoleVariable<Type>()));
                 Type& result = std::get<0>(*p);
                 ConsoleVariable<Type>& var = std::get<1>(*p);
                 var.~ConsoleVariable<Type>();
                 new(&var) ConsoleVariable<Type>(name, result);
+
                 table.insert(i, std::move(p));
                 return result;
             }
@@ -583,7 +649,7 @@ namespace ConsoleRig
             //
             //          Register the variable as a global value in LUA
             //
-        lua_State* L = *g_ConsoleLUA.get();        // (use the global lua state for console variables)
+        lua_State* L = Console::GetInstance().GetLuaState();        // (use the global lua state for console variables)
 
         using namespace luabridge;
 
@@ -621,8 +687,31 @@ namespace ConsoleRig
     template <typename Type>
         ConsoleVariable<Type>::~ConsoleVariable()
     {
-        if (!_name.empty() && g_ConsoleLUA) {
-            lua_State* L = *g_ConsoleLUA;
+        Deregister();
+    }
+
+    template <typename Type>
+        ConsoleVariable<Type>::ConsoleVariable(ConsoleVariable&& moveFrom)
+    :       _name(std::move(moveFrom._name))
+    ,       _cvarNamespace(std::move(moveFrom._cvarNamespace))
+    ,       _attachedValue(std::move(moveFrom._attachedValue))
+    {}
+
+    template <typename Type>
+        ConsoleVariable<Type>& ConsoleVariable<Type>::operator=(ConsoleVariable<Type>&& moveFrom)
+    {
+        Deregister();
+        _name           = std::move(moveFrom._name);
+        _cvarNamespace  = std::move(moveFrom._cvarNamespace);
+        _attachedValue  = std::move(moveFrom._attachedValue);
+        return *this;
+    }
+
+    template <typename Type>
+        void ConsoleVariable<Type>::Deregister()
+    {
+        if (!_name.empty() && Console::HasInstance()) {
+            lua_State* L = Console::GetInstance().GetLuaState();
 
             lua_getglobal(L, "_G");
             luabridge::rawgetfield(L, -1, _cvarNamespace.empty()?"cv":_cvarNamespace.c_str());
@@ -640,23 +729,6 @@ namespace ConsoleRig
 
             lua_pop(L, 2);      // pop _G & cv namespace
         }
-    }
-
-    template <typename Type>
-        ConsoleVariable<Type>::ConsoleVariable(ConsoleVariable&& moveFrom)
-    :       _name(std::move(moveFrom._name))
-    ,       _cvarNamespace(std::move(moveFrom._cvarNamespace))
-    ,       _attachedValue(std::move(moveFrom._attachedValue))
-    {
-    }
-
-    template <typename Type>
-        ConsoleVariable<Type>& ConsoleVariable<Type>::operator=(ConsoleVariable<Type>&& moveFrom)
-    {
-        _name           = std::move(moveFrom._name);
-        _cvarNamespace  = std::move(moveFrom._cvarNamespace);
-        _attachedValue  = std::move(moveFrom._attachedValue);
-        return moveFrom;
     }
 
 

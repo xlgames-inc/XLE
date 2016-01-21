@@ -11,13 +11,13 @@ ParticleVStoGS main(VSInput input)
 {
 	ParticleVStoGS output;
 	output.position = input.position;
-	
+
 	#if GEO_HAS_COLOUR==1
-		output.colour 		= GetColour(input);
+		output.colour 		= VSIn_GetColour(input);
 	#endif
-	
+
 	#if GEO_HAS_TEXCOORD==1
-		output.texCoord 	= GetTexCoord(input);
+		output.texCoord 	= VSIn_GetTexCoord(input);
 	#endif
 
 	#if OUTPUT_FOG_COLOR == 1
@@ -39,8 +39,8 @@ VSOutput nogs(VSInput input)
 	float3 rotatedUp	= cameraRight * input.screenRot.z + cameraUp * input.screenRot.w;
 
 	float2 expXY = input.texCoordScale.zy * 2.f - 1.f;
-	
-	float3 worldPosition 
+
+	float3 worldPosition
 		= input.position
 		+ rotatedRight * expXY.x
 		+ rotatedUp * expXY.y
@@ -50,7 +50,7 @@ VSOutput nogs(VSInput input)
 	#if OUTPUT_COLOUR==1
 		output.colour 		= input.colour;
 	#endif
-	
+
 	#if OUTPUT_TEXCOORD==1
 		output.texCoord 	= input.texCoord;
 	#endif

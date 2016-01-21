@@ -16,6 +16,8 @@
 
 namespace Assets
 {
+    class ArchiveDirectoryBlock;
+
     class ArchiveCache
     {
     public:
@@ -47,6 +49,11 @@ namespace Assets
 
         ArchiveCache(const char archiveName[], const char buildVersionString[], const char buildDateString[]);
         ~ArchiveCache();
+
+        ArchiveCache(const ArchiveCache&) = delete;
+        ArchiveCache& operator=(const ArchiveCache&) = delete;
+        ArchiveCache(ArchiveCache&&) = delete;
+        ArchiveCache& operator=(ArchiveCache&&) = delete;
 
     protected:
         class PendingCommit
@@ -85,6 +92,10 @@ namespace Assets
             bool operator()(uint64 lhs, const PendingCommit& rhs) { return lhs < rhs._id; }
             bool operator()(const PendingCommit& lhs, const PendingCommit& rhs) { return lhs._id < rhs._id; }
         };
+
+        mutable std::vector<ArchiveDirectoryBlock> _cachedBlockList;
+        mutable bool _cachedBlockListValid;
+        const std::vector<ArchiveDirectoryBlock>& GetBlockList() const;
     };
 
 

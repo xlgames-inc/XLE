@@ -62,7 +62,8 @@ namespace LevelEditorXLE
                 // anywhere!
 
                 ViewControl c = sender as ViewControl;
-                if (c != null) {
+                GUILayer.IViewContext vc = sender as GUILayer.IViewContext;
+                if (c != null && vc != null) {
                         // We can use XLEBridgeUtils to do the ray test. This will
                         // execute the native code (which in turn performs the intersection
                         // on the GPU)
@@ -71,9 +72,8 @@ namespace LevelEditorXLE
                         // getting it from the view control)
                     var hit = XLEBridgeUtils.Picking.RayPick(
                         GUILayer.EngineDevice.GetInstance(),
-                        XLEBridgeUtils.Utils.GetSceneManager(c),
-                        XLEBridgeUtils.Utils.GetTechniqueContext(c),
-                        c.GetWorldRay(e.Location), Camera, c.ClientSize,
+                        vc.SceneManager, vc.TechniqueContext,
+                        c.GetWorldRay(e.Location), XLEBridgeUtils.Utils.AsCameraDesc(Camera), c.ClientSize,
                         XLEBridgeUtils.Picking.Flags.AllWorldObjects);
                     if (hit != null && hit.Length > 0)
                     {

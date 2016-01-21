@@ -13,6 +13,7 @@ using Sce.Atf.Applications;
 using Sce.Atf.Dom;
 
 using LevelEditorCore;
+using LevelEditorXLE.Extensions;
 
 namespace LevelEditorXLE.Terrain
 {
@@ -43,9 +44,8 @@ namespace LevelEditorXLE.Terrain
 
         public IEnumerable<PendingExport> BuildPendingExports()
         {
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
             var result = new List<PendingExport>();
-            result.Add(new PendingExport(ExportTarget, sceneMan.ExportTerrainMaterialData()));
+            result.Add(new PendingExport(ExportTarget, this.GetSceneManager().ExportTerrainMaterialData()));
             return result;
         }
         #endregion

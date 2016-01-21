@@ -7,9 +7,10 @@
 #pragma once
 
 #include "../../RenderCore/IThreadContext_Forward.h"
-#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include <memory>
+
+using namespace System::ComponentModel::Composition;
 
 namespace GUILayer
 {
@@ -29,6 +30,7 @@ namespace GUILayer
     {
     public:
         static EngineDevice^ GetInstance() { return s_instance; }
+
         static void SetDefaultWorkingDirectory();
         NativeEngineDevice& GetNative() { return *_pimpl; }
 
@@ -36,11 +38,13 @@ namespace GUILayer
         void ForegroundUpdate();
 
         void AttachDefaultCompilers();
+		void PrepareForShutdown();
 
         EngineDevice();
         ~EngineDevice();
+        !EngineDevice();
     protected:
-        clix::auto_ptr<NativeEngineDevice> _pimpl;
+        NativeEngineDevice* _pimpl;
 
         static EngineDevice^ s_instance;
     };

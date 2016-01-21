@@ -45,7 +45,8 @@ void SetupXHeights(out float heights[BLOCK_DIMENSION+1], uint2 baseCoord, uint a
 	}
 }
 
-[numthreads(SHALLOW_WATER_TILE_DIMENSION/BLOCK_DIMENSION, SHALLOW_WATER_TILE_DIMENSION/BLOCK_DIMENSION, 1)]
+#define THREAD_COUNT SHALLOW_WATER_TILE_DIMENSION/BLOCK_DIMENSION
+[numthreads(THREAD_COUNT, THREAD_COUNT, 1)]
 	void BuildDerivatives(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
 	uint arrayIndex = dispatchThreadId.z;

@@ -17,11 +17,17 @@ namespace Assets
     public:
         Threading::Mutex _assetsLock;
         std::vector<std::pair<uint64, AssetRef>> _assets;
+        std::vector<std::pair<unsigned, InvalidAssetManager::OnChangeEvent>> _onChangeEvents;
         bool _active;
+        unsigned _nextChangeEventId;
+
+        void FireChangeEvents() { for (auto i:_onChangeEvents) i.second(); }
+        Pimpl() { _active = false; _nextChangeEventId = 1; }
     };
 
     void InvalidAssetManager::MarkInvalid(const rstring& name, const rstring& errorString)
     {
+        bool fireChangedEvents = false;
         if (_pimpl->_active) {
             ScopedLock(_pimpl->_assetsLock);
             auto hashName = Hash64(name);
@@ -30,22 +36,42 @@ namespace Assets
                 assert(i->second._name == name);
                 i->second._errorString = errorString;
             } else {
-                _pimpl->_assets.insert(
-                    i, std::make_pair(hashName, AssetRef { name, errorString }));
+                _pimpl->_assets.insert(i, std::make_pair(hashName, AssetRef { name, errorString }));
             }
+            fireChangedEvents = true;
         }
+        if (fireChangedEvents)
+            _pimpl->FireChangeEvents();
     }
 
     void InvalidAssetManager::MarkValid(const ResChar name[])
     {
+        bool fireChangedEvents = false;
         if (_pimpl->_active) {
             ScopedLock(_pimpl->_assetsLock);
             auto hashName = Hash64(name);
             auto i = LowerBound(_pimpl->_assets, hashName);
             if (i != _pimpl->_assets.end() && i->first == hashName) {
                 _pimpl->_assets.erase(i);
+                fireChangedEvents = true;
             }
         }
+        if (fireChangedEvents)
+            _pimpl->FireChangeEvents();
+    }
+
+    auto InvalidAssetManager::AddOnChangeEvent(OnChangeEvent evnt) -> ChangeEventId
+    {
+        auto id = _pimpl->_nextChangeEventId++;
+        _pimpl->_onChangeEvents.push_back(std::make_pair(id, evnt));
+        return id;
+    }
+
+    void InvalidAssetManager::RemoveOnChangeEvent(ChangeEventId id)
+    {
+        for (auto i=_pimpl->_onChangeEvents.begin(); i!=_pimpl->_onChangeEvents.end(); ++i)
+            if (i->first == id)
+                _pimpl->_onChangeEvents.erase(i);
     }
 
     auto InvalidAssetManager::GetAssets() const -> std::vector<AssetRef>

@@ -13,6 +13,9 @@ bool PtInFrustum(float4 pt)
 	return max(xyMax, max(pt.z, pt.w-pt.z)) <= pt.w;
 }
 
+bool PtInFrustumXY(float4 pt) 	{ return max(abs(pt.x), abs(pt.y)) <= pt.w; }
+bool PtInFrustumZ(float4 pt) 	{ return max(pt.z, pt.w-pt.z) <= pt.w; }
+
 bool InsideFrustum(float4 clipSpacePosition) { return PtInFrustum(clipSpacePosition); }
 
 int CountTrue(bool3 input)

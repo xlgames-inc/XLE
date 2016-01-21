@@ -232,29 +232,33 @@ namespace RenderCore { namespace Metal_DX11
         ShaderProgram(  const CompiledShaderByteCode& compiledVertexShader, 
                         const CompiledShaderByteCode& compiledFragmentShader);
 
+		ShaderProgram();
         ~ShaderProgram();
 
         const VertexShader&                 GetVertexShader() const             { return _vertexShader; }
         const GeometryShader&               GetGeometryShader() const           { return _geometryShader; }
         const PixelShader&                  GetPixelShader() const              { return _pixelShader; }
-        const CompiledShaderByteCode&       GetCompiledVertexShader() const     { return _compiledVertexShader; }
-        const CompiledShaderByteCode&       GetCompiledPixelShader() const      { return _compiledPixelShader; }
+        const CompiledShaderByteCode&       GetCompiledVertexShader() const     { return *_compiledVertexShader; }
+        const CompiledShaderByteCode&       GetCompiledPixelShader() const      { return *_compiledPixelShader; }
         const CompiledShaderByteCode*       GetCompiledGeometryShader() const   { return _compiledGeometryShader; }
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
 
         bool DynamicLinkingEnabled() const;
 
+		ShaderProgram(ShaderProgram&&) never_throws;
+        ShaderProgram& operator=(ShaderProgram&&) never_throws;
+
     protected:
-        const CompiledShaderByteCode&           _compiledVertexShader;
-        const CompiledShaderByteCode&           _compiledPixelShader;
+        const CompiledShaderByteCode*           _compiledVertexShader;
+        const CompiledShaderByteCode*           _compiledPixelShader;
         const CompiledShaderByteCode*           _compiledGeometryShader;
         VertexShader                            _vertexShader;
         PixelShader                             _pixelShader;
         GeometryShader                          _geometryShader;
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
 
-        ShaderProgram(const ShaderProgram&);
-        ShaderProgram& operator=(const ShaderProgram&);
+        ShaderProgram(const ShaderProgram&) = delete;
+        ShaderProgram& operator=(const ShaderProgram&) = delete;
     };
 
     ///

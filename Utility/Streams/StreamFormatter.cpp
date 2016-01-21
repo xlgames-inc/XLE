@@ -81,8 +81,6 @@ namespace Utility
 
         // _hotLine = true; DoNewLine<CharType>(); // (force extra new line before new element)
 
-        assert(nameEnd > nameStart);
-
         _stream->WriteChar(FormatterConstants<CharType>::ElementPrefix);
 
             // in simple cases, we just write the name without extra formatting 

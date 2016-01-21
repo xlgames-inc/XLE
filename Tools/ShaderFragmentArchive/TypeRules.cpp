@@ -42,21 +42,31 @@ namespace ShaderPatcherLayer
         RawType = fullTypeName->Substring(rawNameStart, rawNameEnd - rawNameStart);
     }
 
+	static bool IsConvertableType(System::String^ type)
+	{
+			// bool, half, double not supported
+		return	type->Equals("float", System::StringComparison::CurrentCultureIgnoreCase)
+			||	type->Equals("int", System::StringComparison::CurrentCultureIgnoreCase)
+			||	type->Equals("uint", System::StringComparison::CurrentCultureIgnoreCase)
+			;
+	}
+
     bool TypeRules::HasAutomaticConversion(System::String^ sourceType, System::String^ destinationType)
     {
         auto sourceBreakdown = gcnew TypeBreakdown(sourceType);
         auto destinationBreakdown = gcnew TypeBreakdown(destinationType);
 
             //
-            //      We can always convert between types with the same raw type, so
-            //      long at Dimension1 is identical.
+            //      We can always convert between types with the same raw type, or
+			//		two scalar raw types, so long at Dimension1 is identical.
             //
             //      So float -> float2 and float2 -> float;
-            //      also, uint4 -> int2;
+            //      also, uint4 -> int2, float2 -> int4;
             //      But float4x4 cannot be converted to float4.
             //
-        return sourceBreakdown->RawType->Equals(
-            destinationBreakdown->RawType, System::StringComparison::CurrentCultureIgnoreCase)
+		bool sameBaseType = sourceBreakdown->RawType->Equals(destinationBreakdown->RawType, System::StringComparison::CurrentCultureIgnoreCase);
+        return 
+			(sameBaseType || (IsConvertableType(sourceBreakdown->RawType) && IsConvertableType(destinationBreakdown->RawType)))
             && sourceBreakdown->Dimension1 == destinationBreakdown->Dimension1;
     }
 

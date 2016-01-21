@@ -40,6 +40,7 @@
 #include "../../Core/Exceptions.h"
 
 #include <string>
+#include <set>
 
 #include "../Metal/DeviceContextImpl.h" // pulls in DX/Windows indirectly
 
@@ -53,8 +54,6 @@ namespace RenderCore { namespace Assets
     /// These functions are normally used within the constructor of ModelRenderer
     namespace ModelConstruction
     {
-        static const std::string DefaultShader = "illum";
-
         static size_t InsertOrCombine(std::vector<std::vector<uint8>>& dest, std::vector<uint8>&& compare)
         {
             assert(compare.size());
@@ -70,7 +69,7 @@ namespace RenderCore { namespace Assets
 
         struct SubMatResources
         { 
-            SharedShaderName _shaderName; 
+            SharedTechniqueConfig _shaderName; 
             SharedParameterBox _matParams; 
             unsigned _constantBuffer; 
             unsigned _texturesIndex; 
@@ -224,7 +223,7 @@ namespace RenderCore { namespace Assets
             SharedStateSet& sharedStateSet, unsigned levelOfDetail,
             std::vector<uint64>& textureBindPoints,
             std::vector<std::vector<uint8>>& prescientMaterialConstantBuffers,
-            ParamBoxDescriptions& paramBoxDesc, const Techniques::PredefinedCBLayout& cbLayout,
+            ParamBoxDescriptions& paramBoxDesc, std::set<const Techniques::PredefinedCBLayout*>& cbLayouts,
             const ::Assets::DirectorySearchRules* searchRules)
         {
             std::vector<std::pair<MaterialGuid, SubMatResources>> materialResources;
@@ -251,15 +250,18 @@ namespace RenderCore { namespace Assets
 
                 // fill in the details for all of the material references we found
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
-                std::string shaderName = DefaultShader;
-                i->second._shaderName = sharedStateSet.InsertShaderName(shaderName);
+                auto* matData = matScaffold.GetMaterial(i->first);
+                const ::Assets::ResChar* shaderName = (matData && matData->_techniqueConfig[0]) ? matData->_techniqueConfig : "illum";
+                i->second._shaderName = sharedStateSet.InsertTechniqueConfig(shaderName);
                 i->second._texturesIndex = (unsigned)std::distance(materialResources.begin(), i);
             }
 
                 // build material constants
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 auto* matData = matScaffold.GetMaterial(i->first);
-                auto cbData = matData ? cbLayout.BuildCBDataAsVector(matData->_constants) : std::vector<uint8>(cbLayout._cbSize, uint8(0));
+                auto* cbLayout = sharedStateSet.GetCBLayout(i->second._shaderName);
+                auto cbData = matData ? cbLayout->BuildCBDataAsVector(matData->_constants) : std::vector<uint8>(cbLayout->_cbSize, uint8(0));
+                cbLayouts.insert(cbLayout);
 
                 i->second._constantBuffer = 
                     (unsigned)InsertOrCombine(
@@ -481,17 +483,16 @@ namespace RenderCore { namespace Assets
     {
         using namespace ModelConstruction;
 
-        const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>("game/xleres/BasicMaterialConstants.txt");
-
             // build the underlying objects required to render the given scaffold 
             //  (at the given level of detail)
         std::vector<uint64> textureBindPoints;
         std::vector<std::vector<uint8>> prescientMaterialConstantBuffers;
+        std::set<const Techniques::PredefinedCBLayout*> cbLayouts;
         ModelConstruction::ParamBoxDescriptions paramBoxDesc;
         auto materialResources = BuildMaterialResources(
             scaffold, matScaffold, sharedStateSet, levelOfDetail,
             textureBindPoints, prescientMaterialConstantBuffers,
-            paramBoxDesc, cbLayout, searchRules);
+            paramBoxDesc, cbLayouts, searchRules);
 
             // one "textureset" for each sub material (though, in theory, we could 
             // combine texture sets for materials that share the same textures
@@ -683,7 +684,7 @@ namespace RenderCore { namespace Assets
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(_validationCallback, scaffold.GetDependencyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, matScaffold.GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, cbLayout.GetDependencyValidation());
+        for(auto i:cbLayouts) ::Assets::RegisterAssetDependency(_validationCallback, i->GetDependencyValidation());
         for (const auto& t:boundTextures) if (t) ::Assets::RegisterAssetDependency(_validationCallback, t->GetDependencyValidation());       // rebuild the entire renderer if any texture changes
 
         auto pimpl = std::make_unique<PimplWithSkinning>();
@@ -987,7 +988,7 @@ namespace RenderCore { namespace Assets
 
     ModelRenderer::Pimpl::DrawCallResources::DrawCallResources()
     {
-        _shaderName = SharedShaderName::Invalid;
+        _shaderName = SharedTechniqueConfig::Invalid;
         _geoParamBox = _materialParamBox = SharedParameterBox::Invalid;
         _textureSet = _constantBuffer = ~0u;
         _renderStateSet = SharedRenderStateSet::Invalid;
@@ -996,7 +997,7 @@ namespace RenderCore { namespace Assets
     }
 
     ModelRenderer::Pimpl::DrawCallResources::DrawCallResources(
-        SharedShaderName shaderName,
+        SharedTechniqueConfig shaderName,
         SharedParameterBox geoParamBox, SharedParameterBox matParamBox,
         unsigned textureSet, unsigned constantBuffer,
         SharedRenderStateSet renderStateSet, DelayStep delayStep, MaterialGuid materialBindingGuid)
@@ -1117,6 +1118,14 @@ namespace RenderCore { namespace Assets
             
                 const auto& d = md->second;
                 devContext.Bind(Metal::Topology::Enum(d._topology));  // do we really need to set the topology every time?
+
+                    // -- this draw call index stuff is only required in some cases --
+                    //      we need some way to customise the model rendering method for different purposes
+                devContext.Bind(Techniques::CommonResources()._dssReadWriteWriteStencil, 1+drawCallIndex);  // write stencil buffer with draw index
+                unsigned drawCallIndexB[4] = { drawCallIndex, 0, 0, 0 };
+                drawCallIndexBuffer.Update(devContext, drawCallIndexB, sizeof(drawCallIndexB));
+                    // -------------
+
                 devContext.DrawIndexed(d._indexCount, d._firstIndex, d._firstVertex);
             }
 
@@ -1737,13 +1746,13 @@ namespace RenderCore { namespace Assets
     ModelScaffold::ModelScaffold(const ::Assets::ResChar filename[])
     : ChunkFileAsset("ModelScaffold")
     {
-        Prepare(filename, MakeIteratorRange(ModelScaffoldChunkRequests), &Resolver);
+        Prepare(filename, ResolveOp{MakeIteratorRange(ModelScaffoldChunkRequests), &Resolver});
     }
 
-    ModelScaffold::ModelScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
+    ModelScaffold::ModelScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker)
     : ChunkFileAsset("ModelScaffold")
     {
-        Prepare(std::move(marker), MakeIteratorRange(ModelScaffoldChunkRequests), &Resolver); 
+        Prepare(*marker, ResolveOp{MakeIteratorRange(ModelScaffoldChunkRequests), &Resolver}); 
     }
 
     ModelScaffold::ModelScaffold(ModelScaffold&& moveFrom) never_throws
@@ -1805,13 +1814,13 @@ namespace RenderCore { namespace Assets
     ModelSupplementScaffold::ModelSupplementScaffold(const ::Assets::ResChar filename[])
     : ChunkFileAsset("ModelSupplementScaffold")
     {
-        Prepare(filename, MakeIteratorRange(ModelSupplementScaffoldChunkRequests), &Resolver);
+        Prepare(filename, ResolveOp{MakeIteratorRange(ModelSupplementScaffoldChunkRequests), &Resolver});
     }
 
-    ModelSupplementScaffold::ModelSupplementScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
+    ModelSupplementScaffold::ModelSupplementScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker)
     : ChunkFileAsset("ModelSupplementScaffold")
     {
-        Prepare(std::move(marker), MakeIteratorRange(ModelSupplementScaffoldChunkRequests), &Resolver);
+        Prepare(*marker, ResolveOp{MakeIteratorRange(ModelSupplementScaffoldChunkRequests), &Resolver});
     }
 
     ModelSupplementScaffold::ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom)

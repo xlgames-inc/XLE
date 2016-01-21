@@ -69,13 +69,20 @@ namespace Assets
         class FormatError : public ::Exceptions::BasicLabel
         {
         public:
-            FormatError(const char format[], ...) never_throws;
-        };
+            enum class Reason
+            {
+                Success,
+                UnsupportedVersion,
+                FormatNotUnderstood
+            };
 
-        class UnsupportedFormat : public ::Exceptions::BasicLabel
-        {
-        public:
-            UnsupportedFormat(const char format[], ...) never_throws;
+            Reason GetReason() const { return _reason; }
+
+            FormatError(const char format[], ...) never_throws;
+            FormatError(Reason reason, const char format[], ...) never_throws;
+
+        private:
+            Reason _reason;
         };
     }
 }

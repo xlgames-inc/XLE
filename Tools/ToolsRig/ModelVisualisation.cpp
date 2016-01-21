@@ -16,6 +16,7 @@
 #include "../../SceneEngine/RayVsModel.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
@@ -52,36 +53,6 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    VisCameraSettings AlignCameraToBoundingBox(
-        float verticalFieldOfView, 
-        const std::pair<Float3, Float3>& boxIn)
-    {
-        auto box = boxIn;
-
-            // convert empty/inverted boxes into something rational...
-        if (    box.first[0] >= box.second[0] 
-            ||  box.first[1] >= box.second[1] 
-            ||  box.first[2] >= box.second[2]) {
-            box.first = Float3(-10.f, -10.f, -10.f);
-            box.second = Float3( 10.f,  10.f,  10.f);
-        }
-
-        const float border = 0.0f;
-        Float3 position = .5f * (box.first + box.second);
-
-            // push back to attempt to fill the viewport with the bounding box
-        float verticalHalfDimension = .5f * box.second[2] - box.first[2];
-        position[0] = box.first[0] - (verticalHalfDimension * (1.f + border)) / XlTan(.5f * Deg2Rad(verticalFieldOfView));
-
-        VisCameraSettings result;
-        result._position = position;
-        result._focus = .5f * (box.first + box.second);
-        result._verticalFieldOfView = verticalFieldOfView;
-        result._farClip = 1.25f * (box.second[0] - position[0]);
-        result._nearClip = result._farClip / 10000.f;
-        return result;
-    }
-    
     static void RenderWithEmbeddedSkeleton(
         const RenderCore::Assets::ModelRendererContext& context,
         const ModelRenderer& model,
@@ -131,13 +102,6 @@ namespace ToolsRig
             Metal::ConstantBuffer drawCallIndexBuffer(nullptr, sizeof(unsigned)*4);
             context->BindGS(MakeResourceList(drawCallIndexBuffer));
 
-                // note -- if the depth stencil state used here doesn't
-                //          have the stencil buffer enabled, the material
-                //          highlight behaviour won't work.
-            Metal::DepthStencilState dss(*context);
-            // Metal::DepthStencilState dss(
-            //     true, true, ~0u, ~0u,
-            //     Metal::StencilMode::AlwaysWrite);
 
             if (Tweakable("RenderSkinned", false)) {
                 if (delaySteps[0] == RenderCore::Assets::DelayStep::OpaqueRender) {
@@ -164,13 +128,36 @@ namespace ToolsRig
                     }
                 }
             } else {
+                const bool fillInStencilInfo = (_settings->_colourByMaterial != 0);
+
                 for (auto i:delaySteps)
                     ModelRenderer::RenderPrepared(
                         RenderCore::Assets::ModelRendererContext(*context, parserContext, techniqueIndex),
                         *_sharedStateSet, _delayedDrawCalls, i,
-                        [context, &drawCallIndexBuffer, &dss](ModelRenderer::DrawCallEvent evnt)
-                        {
-                            context->Bind(dss, 1+evnt._drawCallIndex);  // write stencil buffer with draw index
+                        [context, &drawCallIndexBuffer, &fillInStencilInfo](ModelRenderer::DrawCallEvent evnt)
+			{
+                            if (fillInStencilInfo) {
+                                // hack -- we just adjust the depth stencil state to enable the stencil buffer
+                                //          no way to do this currently without dropping back to low level API
+                                #if GFXAPI_ACTIVE == GFXAPI_DX11
+                                    Metal::DepthStencilState dss(*context);
+                                    D3D11_DEPTH_STENCIL_DESC desc;
+                                    dss.GetUnderlying()->GetDesc(&desc);
+                                    desc.StencilEnable = true;
+                                    desc.StencilWriteMask = 0xff;
+                                    desc.StencilReadMask = 0xff;
+                                    desc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+                                    desc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+                                    desc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_REPLACE;
+                                    desc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+                                    desc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+                                    desc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+                                    desc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+                                    desc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+                                    auto newDSS = Metal::ObjectFactory().CreateDepthStencilState(&desc);
+                                    context->GetUnderlying()->OMSetDepthStencilState(newDSS.get(), 1+evnt._drawCallIndex);
+                                #endif
+                            }
                             unsigned drawCallIndexB[4] = { evnt._drawCallIndex, 0, 0, 0 };
                             drawCallIndexBuffer.Update(*context, drawCallIndexB, sizeof(drawCallIndexB));
 
@@ -627,9 +614,18 @@ namespace ToolsRig
     void MouseOverTrackingOverlay::RenderToScene(
         RenderCore::IThreadContext*, 
         SceneEngine::LightingParserContext&) {}
+    
     void MouseOverTrackingOverlay::RenderWidgets(
-        RenderCore::IThreadContext*, 
-        const RenderCore::Techniques::ProjectionDesc&) {}
+        RenderCore::IThreadContext* threadContext, 
+        const RenderCore::Techniques::ProjectionDesc& projDesc) 
+    {
+        if (!_mouseOver->_hasMouseOver || !_overlayFn) return;
+
+        using namespace RenderOverlays::DebuggingDisplay;
+        RenderOverlays::ImmediateOverlayContext overlays(threadContext, projDesc);
+        _overlayFn(overlays, *_mouseOver);
+    }
+
     void MouseOverTrackingOverlay::SetActivationState(bool) {}
 
     MouseOverTrackingOverlay::MouseOverTrackingOverlay(
@@ -637,8 +633,11 @@ namespace ToolsRig
         std::shared_ptr<RenderCore::IThreadContext> threadContext,
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext,
         std::shared_ptr<VisCameraSettings> camera,
-        std::shared_ptr<SceneEngine::IntersectionTestScene> scene)
+        std::shared_ptr<SceneEngine::IntersectionTestScene> scene,
+        OverlayFn&& overlayFn)
+    : _overlayFn(std::move(overlayFn))
     {
+        _mouseOver = mouseOver;
         _inputListener = std::make_shared<MouseOverTrackingListener>(
             std::move(mouseOver),
             std::move(threadContext), std::move(techniqueContext), 

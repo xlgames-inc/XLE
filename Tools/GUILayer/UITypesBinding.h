@@ -20,7 +20,7 @@ using namespace System::Windows::Forms;
 using namespace System::Drawing::Design;
 using namespace System::Collections::Generic;
 
-namespace RenderCore { namespace Assets { class RawMaterial; }}
+namespace RenderCore { namespace Assets { class RawMaterial; class ResolvedMaterial; }}
 namespace Assets
 {
     template<typename Type, typename Formatter>
@@ -77,11 +77,6 @@ namespace GUILayer
         }
         VisCameraSettings()     { _object = std::make_shared<ToolsRig::VisCameraSettings>(); }
         ~VisCameraSettings()    { _object.reset(); }
-
-        !VisCameraSettings()
-        {
-            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of VisCameraSettings");
-        }
     protected:
         clix::shared_ptr<ToolsRig::VisCameraSettings> _object;
     };
@@ -177,6 +172,7 @@ namespace GUILayer
             }
         }
 
+        [Browsable(false)]
         property VisCameraSettings^ Camera
         {
             VisCameraSettings^ get() { return _camSettings; }
@@ -198,11 +194,6 @@ namespace GUILayer
         }
 
         ~ModelVisSettings() { delete _camSettings; _object.reset(); }
-
-        !ModelVisSettings()
-        {
-            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of ModelVisSettings");
-        }
 
         static ModelVisSettings^ CreateDefault();
 
@@ -233,16 +224,18 @@ namespace GUILayer
         void AttachCallback(PropertyGrid^ callback);
         std::shared_ptr<ToolsRig::VisMouseOver> GetUnderlying() { return _object.GetNativePtr(); }
 
+        static String^ BuildFullMaterialName(
+            const ToolsRig::ModelVisSettings& modelSettings,
+            RenderCore::Assets::ModelCache& modelCache,
+            uint64 materialGuid);
+        static String^ DescriptiveMaterialName(String^ fullName);
+
         VisMouseOver(
             std::shared_ptr<ToolsRig::VisMouseOver> attached,
             std::shared_ptr<ToolsRig::ModelVisSettings> settings,
             std::shared_ptr<RenderCore::Assets::ModelCache> cache);
         VisMouseOver();
         ~VisMouseOver();
-        !VisMouseOver()
-        {
-            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of ModelVisSettings");
-        }
 
     protected:
         clix::shared_ptr<ToolsRig::VisMouseOver> _object;
@@ -308,11 +301,6 @@ namespace GUILayer
         using NativeConfig = ::Assets::DivergentAsset<::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial, InputStreamFormatter<utf8>>>;
         RenderStateSet(std::shared_ptr<NativeConfig> underlying);
         ~RenderStateSet();
-        !RenderStateSet()
-        {
-            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of RenderStateSet");
-        }
-
     protected:
         clix::shared_ptr<NativeConfig> _underlying;
 
@@ -339,27 +327,24 @@ namespace GUILayer
 
         property RenderStateSet^ StateSet { RenderStateSet^ get() { return _renderStateSet; } }
 
+        property String^ TechniqueConfig { String^ get(); void set(String^); }
+
         const RenderCore::Assets::RawMaterial* GetUnderlying();
 
-        List<String^>^ BuildInheritanceList();
-        static List<String^>^ BuildInheritanceList(String^ topMost);
+        String^ BuildInheritanceList();
+        void Resolve(RenderCore::Assets::ResolvedMaterial& destination);
 
         void AddInheritted(String^);
         void RemoveInheritted(String^);
 
         property String^ Filename { String^ get(); }
-        property String^ SettingName { String^ get(); }
+        property String^ Initializer { String^ get(); }
 
-        RawMaterial(String^ initialiser);
-        // RawMaterial(std::shared_ptr<NativeConfig> underlying);
-        RawMaterial(RawMaterial^ cloneFrom);
+        static RawMaterial^ Get(String^ initializer);
+        static RawMaterial^ CreateUntitled();
+
         ~RawMaterial();
-
-        !RawMaterial()
-        {
-            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of RawMaterial");
-        }
-    protected:
+    private:
         using NativeConfig = ::Assets::DivergentAsset<::Assets::ConfigFileListContainer<RenderCore::Assets::RawMaterial, InputStreamFormatter<utf8>>>;
         clix::shared_ptr<NativeConfig> _underlying;
 
@@ -368,10 +353,14 @@ namespace GUILayer
         BindingList<StringStringPair^>^ _materialParameterBox;
         BindingList<StringStringPair^>^ _shaderConstants;
         BindingList<StringStringPair^>^ _resourceBindings;
-        String^ _filename;
-        String^ _settingName;
+        String^ _initializer;
         void ParameterBox_Changed(System::Object^, ListChangedEventArgs^);
         void ResourceBinding_Changed(System::Object^, ListChangedEventArgs^);
+
+        RawMaterial(String^ initialiser);
+
+        static RawMaterial();
+        static Dictionary<String^, WeakReference^>^ s_table;
     };
 
     public ref class InvalidAssetList
@@ -379,13 +368,18 @@ namespace GUILayer
     public:
         property IEnumerable<Tuple<String^, String^>^>^ AssetList 
         {
-            IEnumerable<Tuple<String^, String^>^>^ get() { return _assetList; }
+            IEnumerable<Tuple<String^, String^>^>^ get();
         }
 
         static bool HasInvalidAssets();
 
+        delegate void OnChange();
+        event OnChange^ _onChange;
+        void RaiseChangeEvent();
+
         InvalidAssetList();
+        ~InvalidAssetList();
     protected:
-        List<Tuple<String^, String^>^>^ _assetList;
+        unsigned _eventId;
     };
 }

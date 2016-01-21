@@ -34,31 +34,67 @@ namespace ModelViewer
         /// </summary>
         private void InitializeComponent()
         {
-            this.hierchicalMaterialControl1 = new ControlsLibrary.MaterialEditor.HierchicalMaterialControl();
+            this._matControls = new ControlsLibrary.MaterialEditor.HierchicalMaterialControl();
+            this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+            this._preview = new ControlsLibrary.MaterialEditor.MaterialPreview();
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
+            this.splitContainer1.Panel1.SuspendLayout();
+            this.splitContainer1.Panel2.SuspendLayout();
+            this.splitContainer1.SuspendLayout();
             this.SuspendLayout();
             // 
-            // hierchicalMaterialControl1
+            // _matControls
             // 
-            this.hierchicalMaterialControl1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.hierchicalMaterialControl1.Location = new System.Drawing.Point(0, 0);
-            this.hierchicalMaterialControl1.Name = "hierchicalMaterialControl1";
-            this.hierchicalMaterialControl1.Size = new System.Drawing.Size(400, 700);
-            this.hierchicalMaterialControl1.TabIndex = 0;
+            this._matControls.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._matControls.Location = new System.Drawing.Point(0, 0);
+            this._matControls.Size = new System.Drawing.Size(571, 388);
+            this._matControls.TabIndex = 0;
+            // 
+            // splitContainer1
+            // 
+            this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.splitContainer1.Location = new System.Drawing.Point(0, 0);
+            // 
+            // splitContainer1.Panel1
+            // 
+            this.splitContainer1.Panel1.Controls.Add(this._preview);
+            // 
+            // splitContainer1.Panel2
+            // 
+            this.splitContainer1.Panel2.Controls.Add(this._matControls);
+            this.splitContainer1.Size = new System.Drawing.Size(1005, 388);
+            this.splitContainer1.SplitterDistance = 430;
+            this.splitContainer1.TabIndex = 1;
+            // 
+            // _preview
+            // 
+            this._preview.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._preview.Location = new System.Drawing.Point(0, 0);
+            this._preview.Size = new System.Drawing.Size(430, 388);
+            this._preview.TabIndex = 0;
             // 
             // ModalMaterialEditor
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(400, 700);
-            this.Controls.Add(this.hierchicalMaterialControl1);
+            this.ClientSize = new System.Drawing.Size(1005, 388);
+            this.Controls.Add(this.splitContainer1);
             this.Name = "ModalMaterialEditor";
             this.Text = "ModalMaterialEditor";
+            this.splitContainer1.Panel1.ResumeLayout(false);
+            this.splitContainer1.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
+            this.splitContainer1.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
 
         #endregion
 
-        private ControlsLibrary.MaterialEditor.HierchicalMaterialControl hierchicalMaterialControl1;
+        private ControlsLibrary.MaterialEditor.HierchicalMaterialControl _matControls;
+        private ControlsLibrary.MaterialEditor.MaterialPreview _preview;
+        // private System.Windows.Forms.Button _matControls;
+        // private System.Windows.Forms.Button _preview; 
+        private System.Windows.Forms.SplitContainer splitContainer1;
     }
 }

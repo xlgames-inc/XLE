@@ -31,46 +31,30 @@ options
 	memoize = true;
 }
 
-// virtual tokens for AST tree nodes
 tokens
 {
-	SAMPLER;
-	SAMPLER_FIELD_TEXTURE;
-	SAMPLER_FIELD_ATTRIB;
-	
 	STRUCT;
+	CBUFFER;
 	FUNCTION;
-	LOCAL_VAR;
-	CAST;
+	CLASS;
 	
+	LOCAL_VAR;
 	SEMANTIC;
 	
 	SUBSCRIPT;
 	UNIFORM;
 	VARIABLE;
 	VARIABLE_NAME;
+	TYPE_NAME;
 	FUNCTION_CALL;
 	ARG_LIST;
 	FORMAL_ARG;
-	FORMAL_ARG_LIST;
-	EMPTY_FORMAL_ARG_LIST;
-	IDENT_LIST;
-	ASSIGN;
 	BLOCK;
-	EMPTY;
 	
 	IF;
 	IF_ELSE;
-	ELSE;
+	CAST;
 	
-	ASSERT;
-	LAMBDA;
-	FIELD_ACCESS;
-	DEBUG_BREAK;
-	BREAK;
-	TRACE;
-	LITERAL;
-
 	DIRECTION_OUT;
 	DIRECTION_IN_OUT;
 
@@ -80,15 +64,45 @@ tokens
 @header
 {
 	#pragma warning(disable:4244)
-	void myDisplayRecognitionError (void * recognizer, void * tokenNames);
+	void CustomDisplayRecognitionError(void * recognizer, void * tokenNames);
 }
 
 @members
 {
+	typedef void ExceptionHandler(void*, const ANTLR3_EXCEPTION*, const ANTLR3_UINT8**);
+	ExceptionHandler* g_ShaderParserExceptionHandler = NULL;
+	void* g_ShaderParserExceptionHandlerUserData = NULL;
+
+	void CustomDisplayRecognitionError(void * recognizer, void * tokenNames)
+	{
+		ANTLR3_BASE_RECOGNIZER* r = (ANTLR3_BASE_RECOGNIZER*)recognizer;
+		ANTLR3_UINT8 ** t = (ANTLR3_UINT8 **)tokenNames;
+		ANTLR3_COMMON_TOKEN* token = (ANTLR3_COMMON_TOKEN*)r->state->exception->token;
+
+		if (g_ShaderParserExceptionHandler) {
+			(*g_ShaderParserExceptionHandler)(
+				g_ShaderParserExceptionHandlerUserData, 
+				r->state->exception,
+				t);
+		}
+	}
+
+	unsigned LooksLikePreprocessorMacro(pANTLR3_COMMON_TOKEN token)
+	{
+			// Expecting all characters to be upper case ASCII chars
+			// or underscores
+		pANTLR3_STRING text = token->getText(token);
+		pANTLR3_UINT8 chrs = text->chars;
+		for (unsigned c=0; c<text->len; ++c)
+			if ((chrs[c] < 'A' || chrs[c] > 'Z') && chrs[c] != '_')
+				return 0;
+		return 1;
+	}
 }
 
-@parser::apifuncs {
-	RECOGNIZER->displayRecognitionError = myDisplayRecognitionError;
+@parser::apifuncs 
+{
+	RECOGNIZER->displayRecognitionError = CustomDisplayRecognitionError;
 }
 
 storage_class : 'extern' | 'nointerpolation' | 'precise' | 'shared' | 'groupshared' | 'static' | 'uniform' | 'volatile';
@@ -103,14 +117,15 @@ toplevel
 	|	structure
 	|	cbuffer
 	|	function
-	|	compile_fragment
+	|	function_signature
+	|	';'			// empty statement
 	;
 
 global
 	:	uniform
 	;
 	
-variablename_single : id=ident sub=subscript? sem=semantic? registerAssignment? ('=' e=expression)? -> ^(VARIABLE_NAME $id $sub? $sem? $e?);
+variablename_single : id=ident sub+=subscript* sem=semantic? registerAssignment? ('=' e=expression)? -> ^(VARIABLE_NAME $id $sub* $sem? $e?);
 variablename_list	: variablename_single (',' variablename_single)* -> variablename_single+;
 
 uniform
@@ -136,24 +151,61 @@ structure
 		-> ^(STRUCT ident $fields*)
 	;
 
+interface_class
+	:	('interface'|'class') ident '{' fields+=class_field* '}' ';'
+		-> ^(CLASS ident $fields*)
+	;
+
 cbuffer
-	:	'cbuffer' ident registerAssignment? '{' fields+=structure_field* '}'
-		-> ^(STRUCT ident $fields*)
+	:	('cbuffer'|'tbuffer') ident registerAssignment? '{' fields+=structure_field* '}'
+		-> ^(CBUFFER ident $fields*)
 	;
 	
 structure_field
 	:	variable
+	|	isolated_macro
 	;
 
-function_attribute
-	:	'[' 'numthreads' '(' expression ',' expression ',' expression ')' ']'
-	|	'[' 'maxvertexcount' '(' expression ')' ']'
-	|
+class_field
+	:	variable
+	|	cbuffer
+	|	function_signature
 	;
+	
+functionAttributeType 
+	: 'numthreads'			// compute shaders
+	| 'maxvertexcount'		// geometry shaders
+	| 'earlydepthstencil'	// pixel shaders
+	| 'domain' | 'partitioning' | 'outputtopology' | 'patchconstantfunc' | 'outputcontrolpoints' | 'maxtessfactor' // hull & domain shaders
+	;
+	
+staticExpression : literal|StringLiteral|ident;
+staticExpressionList : staticExpression (','! staticExpression)*;
+
+functionAttributes :	('[' functionAttributeType ('(' staticExpressionList ')')? ']')*;
 
 function
-	:	function_attribute ret=ident name=ident '(' args=formal_arglist ')' semantic? block
+	:	'export'? functionAttributes ret=ident name=ident '(' args=formal_arglist ')' semantic? block
 		-> ^(FUNCTION $ret $name $args semantic? block)
+	;
+
+function_signature
+	:	'export'? functionAttributes ret=ident name=ident '(' args=formal_arglist ')' ';'
+		-> ^(FUNCTION $ret $name $args)
+	;
+
+// Note --	
+//		isolated_macro macro represents some macro expression in the code that
+//		will be expanded by the preprocessor. Since we don't support the preprocessor
+//		when parsing, we should assume it does nothing, and just ignore it. This kind
+//		of macro is often used for optional function parameters and optional structure
+//		members. Unfortunately they will be lost! The only solution is to support 
+//		the preprocessor... But that is impractical because of the behaviour of #include...
+//
+//		We're going to use common preprocessor formatting conventions to try to limit
+//		matches with this rule. We can use a semantic predicate test the identifier
+isolated_macro
+	:	{ LooksLikePreprocessorMacro(LT(1)) }? Identifier
 	;
 	
 semantic
@@ -169,22 +221,22 @@ texture_type_name	: 'texture'
 					| 'RWTexture1D' | 'RWTexture1DArray'
 					| 'RWTexture2D' | 'RWTexture2DArray'
 					| 'RWTexture3D' | 'RWTexture3DArray'
-					| 'tbuffer'
 
-					| 'Texture2D_MaybeMS'		// (for convenient, include this custom #define)
+					| 'Texture2D_MaybeMS'		// (for convenience, include this XLE custom #define)
 					;
 
-structuredBufferTypeName : 'StructuredBuffer' | 'RWStructuredBuffer';
+structuredBufferTypeName : 'StructuredBuffer' | 'RWStructuredBuffer' | 'AppendStructuredBuffer';
+
+streamOutputObject : 'PointStream' | 'LineStream' | 'TriangleStream';
 
 type_name
-	:	ident
-	|	sampler_type_name
-	|	texture_type_name ('<' ident '>')?
-	|	structuredBufferTypeName '<' ident '>'
-	;
-	
-compile_fragment
-	:	('vertexfragment'^ | 'pixelfragment'^) ident '='! ('compile' | 'compile_fragment') ! ident ident arguments ';'!
+	:	sampler_type_name										-> ^(TYPE_NAME sampler_type_name)
+	|	texture_type_name ('<' staticExpressionList '>')?		-> ^(TYPE_NAME texture_type_name staticExpressionList)
+	|	structuredBufferTypeName '<' staticExpressionList '>'	-> ^(TYPE_NAME structuredBufferTypeName staticExpressionList)
+	|	streamOutputObject '<' staticExpressionList '>'			-> ^(TYPE_NAME streamOutputObject staticExpressionList)
+	|	'InputPatch' '<' staticExpressionList '>'				-> ^(TYPE_NAME 'InputPatch' staticExpressionList)
+	|	'OutputPatch' '<' staticExpressionList '>'				-> ^(TYPE_NAME 'OutputPatch' staticExpressionList)
+	|	ident													-> ^(TYPE_NAME ident)
 	;
 	
 ident
@@ -196,25 +248,26 @@ block
 	;
 	
 formal_arglist
-	:	formal_arg (',' formal_arg)*
-		-> formal_arg+
-	|	-> /* nothing */
+	:	formal_arg ((',' formal_arg)|isolated_macro)* -> formal_arg+
+	|
 	;
 	
 formal_arg
-	:	(dir=direction | storage_class | type_modifier)* ty=type_name id=ident sub=subscript? sem=semantic?
-		-> ^(FORMAL_ARG $ty $id $sub? $sem? $dir?)
+	:	(dir=direction | storage_class | type_modifier)* geometryPrimitiveType? ty=type_name id=ident sub+=subscript* sem=semantic? ('=' expression)?
+		-> ^(FORMAL_ARG $ty $id $sub* $sem? $dir?)
 	;
 	
 direction
 	:	'in' | 'out' -> ^(DIRECTION_OUT) | 'inout' -> ^(DIRECTION_IN_OUT)
 	;
 	
-literal
-	:	d=DecimalLiteral			// -> ^(LITERAL $d)
-	|	f=FloatingPointLiteral		// -> ^(LITERAL $f)
-	|	h=HexLiteral				//-> ^(LITERAL $h)
+// geometryPrimitiveType is only required for geometry shaders. So there may be
+// parsing confusion if there are any structs with a conflicting name (eg: point)
+geometryPrimitiveType
+	:	'point' | 'line' | 'triangle' | 'lineadj' | 'triangleadj'
 	;
+	
+literal : DecimalLiteral | FloatingPointLiteral | HexLiteral;
 
 //---------------------------------------------------------------------------------
 //					 S t a t e m e n t 
@@ -226,24 +279,24 @@ statement
 	|	for_loop
 	|	while_loop
 	|	do_while_loop
-	|	'delete'^ expression
-	|	lc='assert' e=parExpression ';' -> ^(ASSERT[$lc] $e)
-	|	'return' expression? ';' 
-		-> ^('return' expression)
-	|	'asm_break' ';'!
+	|	'return'^ expression? ';'!
 	|	'break' ';'!
 	|	'continue' ';'!
 	|	';'!
 	|	statementExpression ';'!
+	|	isolated_macro
 	// also -- switch
 	;
-	
-loop_attribute	: '[' 'unroll' ('(' ident ')')? ']'
-				| '[' 'loop' ']' 
-				| ;
-cond_attribute	: '[' 'branch' ']'
-				| '[' 'flatten' ']' 
-				| ;
+
+loop_attribute
+	: '[' 'unroll' ('(' ident ')')? ']'
+	| '[' 'loop' ']' 
+	| ;
+
+cond_attribute
+	: '[' 'branch' ']'
+	| '[' 'flatten' ']' 
+	| ;
 
 for_loop
 	:	loop_attribute 'for' '(' start=statementExpression? ';' cond=expression? ';' next=expression? ')' body=statement
@@ -260,152 +313,101 @@ while_loop
 		-> ^('while' $cond $body )
 	;
 	
-// TODO: there is a more efficient way to do this, and still generate the correct AST tree
 if_block
-	:	cond_attribute 'if' parExpression statement 'else' statement -> ^(IF_ELSE statement statement parExpression)
-	|	cond_attribute 'if' parExpression statement -> ^(IF statement parExpression)
+	:	cond_attribute 'if' parExpression statement 'else' statement	-> ^(IF_ELSE statement statement parExpression)
+	|	cond_attribute 'if' parExpression statement						-> ^(IF statement parExpression)
 	;
 
 statementExpression
 	:	expression
-	|	(storage_class|type_modifier)* ty=ident names=variablename_list		-> ^(LOCAL_VAR $ty $names)
+	|	(storage_class|type_modifier)* ty=ident names=variablename_list	-> ^(LOCAL_VAR $ty $names)
 	;
 	
-//---------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 //					 E x p r e s s i o n
-//---------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 expressionList
 	:	expression (','! expression)*
 	;
+	
+////////////////////////////////////////////////////////////////////////////////
+// See the C operator precedence rules:
+//		http://en.cppreference.com/w/c/language/operator_precedence
+// The grouping and ordering of rules here reflects those changes. I'm assuming
+// that HLSL rules are equivalent to C (given that it may not be explictly 
+// documented), but I think it is a reasonable assumption.
+////////////////////////////////////////////////////////////////////////////////
+	
+assignmentOp : '=' | '+=' | '-=' | '*=' | '/=' | '&=' | '|=' | '^=' | '%=' | '>>=' | '<<=';
+relationalOp : ('<=' | '>=' | '<' | '>');
+shiftOp : ('<<' | '>>');
+additionOp : ('+' | '-');
+multiplicationOp : ('*' | '/' | '%');
+unaryOp : '+' | '-' | '~' | '!';
+prefixOp : '++' | '--';
+postfixOp : '++' | '--';
 
+////////////////////////////////////////////////////////////////////////////////
+
+expression					: conditionalExpression (assignmentOp^ expression)?;
+conditionalExpression		: conditionalOrExpression ( '?' expression ':' expression )?;
+conditionalOrExpression		: conditionalAndExpression ( '||'^ conditionalAndExpression )*;
+conditionalAndExpression	: inclusiveOrExpression ( '&&'^ inclusiveOrExpression )*;
+inclusiveOrExpression		: exclusiveOrExpression ( '|'^ exclusiveOrExpression )*;
+exclusiveOrExpression		: andExpression ( '^'^ andExpression )*;
+andExpression				: equalityExpression ( '&'^ equalityExpression )*;
+equalityExpression			: relationalExpression ( ('=='^ | '!='^) relationalExpression )*;
+relationalExpression		: shiftExpression ( relationalOp^ shiftExpression )*;
+shiftExpression				: additiveExpression ( shiftOp^ additiveExpression )*;
+additiveExpression			: multiplicativeExpression ( additionOp^ multiplicativeExpression )*;
+multiplicativeExpression	: castExpression ( multiplicationOp^ castExpression )*;
+
+castExpression
+	:	'(' type_name ')' unaryExpression
+	|	unaryExpression
+	;
+
+unaryExpression
+	:	postfixExpression
+	|	prefixOp^ unaryExpression
+	|	unaryOp^ castExpression
+	;
+
+postfixExpression
+	:	primary
+		(
+			arguments				-> ^(FUNCTION_CALL arguments $postfixExpression)
+			|	'[' expression ']'	-> ^('[' $postfixExpression expression)
+			|	'.' ident			-> ^('.' $postfixExpression ident)
+			|	postfixOp
+		)+
+	|	primary
+	;
+
+primary
+	:	literal
+	|	ident
+	|	parExpression
+	|	curly_brace_initialiser
+	;
+
+parExpression
+	:	'(' expression ')' -> expression
+	;
+
+arguments
+	:	'(' expressionList? ')' -> ^(ARG_LIST expressionList)
+	;
+	
 curly_brace_initialiser
 	: '{' expression (',' expression)* '}'
 	| '{' '}'
 	;
 
-expression
-	:	conditionalExpression (assignmentOperator^ expression)?
-	|	curly_brace_initialiser
-	;
-	
-assignmentOperator
-	:	'='
-	|	'+='
-	|	'-='
-	|	'*='
-	|	'/='
-	|	'&='
-	|	'|='
-	|	'^='
-	|	'%='
-	|	'>>='
-	|	'<<='
-	;
-
-conditionalExpression
-	:	conditionalOrExpression ( '?' expression ':' expression )?
-	;
-
-conditionalOrExpression
-	:	conditionalAndExpression ( '||'^ conditionalAndExpression )*
-	;
-
-conditionalAndExpression
-	:	inclusiveOrExpression ( '&&'^ inclusiveOrExpression )*
-	;
-
-inclusiveOrExpression
-	:	exclusiveOrExpression ( '|'^ exclusiveOrExpression )*
-	;
-
-exclusiveOrExpression
-	:	andExpression ( '^'^ andExpression )*
-	;
-
-andExpression
-	:	equalityExpression ( '&'^ equalityExpression )*
-	;
-
-equalityExpression
-	:	instanceOfExpression ( ('=='^ | '!='^) instanceOfExpression )*
-	;
-
-instanceOfExpression
-	:	relationalExpression
-	;
-
-relationalExpression
-	:	shiftExpression ( relationalOp^ shiftExpression )*
-	;
-	
-relationalOp
-	:	('<' '=' | '>' '=' | '<' | '>')
-	;
-
-shiftExpression
-	:	additiveExpression ( shiftOp^ additiveExpression )*
-	;
-
-// TODO: need a sem pred to check column on these >>>
-shiftOp
-	:	('<' '<' | '>' '>')
-	;
-
-additiveExpression
-	:	multiplicativeExpression ( ('+'^ | '-'^) multiplicativeExpression )*
-	;
-
-multiplicativeExpression
-	:	unaryExpression ( ( '*'^ | '/'^ | '%'^ ) unaryExpression )*
-	;
-	
-unaryExpression
-	:	'+'^ unaryExpression
-	|	'-'^ unaryExpression
-	|	'++'^ unaryExpression
-	|	'--'^ unaryExpression
-	|	unaryExpressionNotPlusMinus
-	;
-	
-unaryExpressionNotPlusMinus
-	:	'~'^ unaryExpression
-	| 	'!'^ unaryExpression
-	|	postfixExpression ('++'^|'--'^)?
-	;
-	
-postfixExpression
-	:	(primary->primary) // set return tree to just primary
-		(
-			arguments				-> ^(FUNCTION_CALL arguments $postfixExpression)
-			|	'[' expression ']'	-> ^('[' $postfixExpression expression)
-			|	'.' primary			-> ^('.' $postfixExpression primary)
-		)*
-	;
-	
-primary
-	:	cast_expression
-	|	parExpression
-	|	literal
-	|	ident
-	;
-	
-cast_expression
-	:	'(' ty=type_name ')' e=expression
-		-> ^(CAST $ty $e)
-	;
-	
-parExpression
-	:	'(' expression ')' -> expression
-	;
-	
-arguments
-	:	'(' expressionList? ')' -> ^(ARG_LIST expressionList)
-	;
-
-//--------------------------------------------------------------------
+//------------------------------------------------------------------------------
 //						L E X E R 
-//--------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 HexLiteral : '0' ('x'|'X') HexDigit+ IntegerTypeSuffix? ;
 
@@ -413,25 +415,19 @@ DecimalLiteral : ('0' | '1'..'9' '0'..'9'*) IntegerTypeSuffix? ;
 
 OctalLiteral : '0' ('0'..'7')+ IntegerTypeSuffix? ;
 
-fragment
-HexDigit : ('0'..'9'|'a'..'f'|'A'..'F') ;
+fragment HexDigit : ('0'..'9'|'a'..'f'|'A'..'F') ;
 
-fragment
-IntegerTypeSuffix : ('l'|'L') ;
+fragment IntegerTypeSuffix : ('l'|'L'|'u'|'U'|'ul'|'UL') ;
 
 FloatingPointLiteral
 	:	('0'..'9')+ '.' ('0'..'9')* Exponent? FloatTypeSuffix?
 	|	'.' ('0'..'9')+ Exponent? FloatTypeSuffix?
-	|	('0'..'9')+ (	  Exponent FloatTypeSuffix?
-						| FloatTypeSuffix
-					)
+	|	('0'..'9')+ Exponent? FloatTypeSuffix?
 	;
 
-fragment
-Exponent : ('e'|'E') ('+'|'-')? ('0'..'9')+ ;
+fragment Exponent : ('e'|'E') ('+'|'-')? ('0'..'9')+ ;
 
-fragment
-FloatTypeSuffix : ('f'|'F'|'d'|'D') ;
+fragment FloatTypeSuffix : ('f'|'F'|'d'|'D') ;
 
 CharacterLiteral
 	:	'\'' ( EscapeSequence | ~('\''|'\\') ) '\''
@@ -448,15 +444,13 @@ EscapeSequence
 	|	OctalEscape
 	;
 
-fragment
-OctalEscape
+fragment OctalEscape
 	:	'\\' ('0'..'3') ('0'..'7') ('0'..'7')
 	|	'\\' ('0'..'7') ('0'..'7')
 	|	'\\' ('0'..'7')
 	;
 
-fragment
-UnicodeEscape
+fragment UnicodeEscape
 	:	'\\' 'u' HexDigit HexDigit HexDigit HexDigit
 	;
 	
@@ -471,8 +465,7 @@ QuotedIdentifier
 /**I found this char range in JavaCC's grammar, but Letter and Digit overlap.
 	Still works, but...
  */
-fragment
-Letter
+fragment Letter
 	:  '\u0024' |
 		'\u0041'..'\u005a' |
 		'\u005f' |
@@ -488,8 +481,7 @@ Letter
 		'\uf900'..'\ufaff'
 	;
 
-fragment
-JavaIDDigit
+fragment JavaIDDigit
 	:  '\u0030'..'\u0039' |
 		'\u0660'..'\u0669' |
 		'\u06f0'..'\u06f9' |
@@ -511,12 +503,20 @@ WS  :  (' '|'\r'|'\t'|'\u000C'|'\n') {$channel=HIDDEN;}
 	;
 
 COMMENT
-	:	'/*' ( options {greedy=false;} : . )* '*/' {$channel=HIDDEN;}
+	:	'/*' ( options {greedy=false;} : . )* '*/' { $channel=HIDDEN; }
 	;
 
 LINE_COMMENT
-	:	'//' ~('\n'|'\r')* '\r'? '\n'	{$channel=HIDDEN;}
-	|	'#' ~('\n'|'\r')* '\r'? '\n'	{$channel=HIDDEN;}			// hide any line that begins with "#" (just ignore preprocessor stuff)
+	:	'//' ~('\n'|'\r')* '\r'? '\n' { $channel=HIDDEN; }
+	;
+
+//	Hide any line that begins with "#" (just ignore preprocessor stuff)... 
+//	We also need to suport the '\' line extension... so just eat everything
+//	until we hit a newline that isn't preceeded by a '\'. Of course, this will
+//	mean any preprocessor directive can get extended to the next line (not just
+//	#define)
+PRE_PROCESSOR_LINE
+	:	'#' (options {greedy=false;}: . )* ~('\\'|'\r') '\r'? '\n' { $channel=HIDDEN; }
 	;
 
 // EOF

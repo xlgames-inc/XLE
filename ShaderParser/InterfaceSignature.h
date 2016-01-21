@@ -9,23 +9,27 @@
 #include "../Core/Prefix.h"
 #include "../Core/Exceptions.h"
 #include "../Utility/Mixins.h"
+#include "../Utility/UTFUtils.h"
 #include <vector>
 
 namespace ShaderSourceParser
 {
+    using StringType = std::string;
+
     class FunctionSignature : noncopyable
     {
     public:
-        std::string     _returnType;
-        std::string     _name;
+        StringType  _returnType;
+        StringType  _returnSemantic;
+        StringType  _name;
 
         class Parameter
         {
         public:
             enum Direction { In = 1<<0, Out = 1<<1 };
-            std::string _type;
-            std::string _semantic;
-            std::string _name;
+            StringType _type;
+            StringType _semantic;
+            StringType _name;
             unsigned _direction;
         };
 
@@ -43,12 +47,12 @@ namespace ShaderSourceParser
         class Parameter
         {
         public:
-            std::string _type;
-            std::string _semantic;
-            std::string _name;
+            StringType _type;
+            StringType _semantic;
+            StringType _name;
         };
 
-        std::string _name;
+        StringType _name;
         std::vector<Parameter> _parameters;
 
         ParameterStructSignature();
@@ -71,14 +75,5 @@ namespace ShaderSourceParser
 
 
     ShaderFragmentSignature     BuildShaderFragmentSignature(const char sourceCode[], size_t sourceCodeLength);
-
-    namespace Exceptions
-    {
-        class CompileError : public ::Exceptions::BasicLabel
-        {
-        public:
-            CompileError(const char label[]) never_throws;
-        };
-    }
 }
 

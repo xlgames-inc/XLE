@@ -209,7 +209,7 @@ namespace RenderingInterop
                         {
                             if (!UInt64.TryParse(stringId, out existingId))
                             {
-                                existingId = GUILayer.Util.HashID(stringId);
+                                existingId = GUILayer.Utils.HashID(stringId);
                             }
                         }
                     }

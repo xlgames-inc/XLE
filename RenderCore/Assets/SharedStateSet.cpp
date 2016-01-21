@@ -12,6 +12,7 @@
 #include "../Techniques/CommonBindings.h"
 #include "../Techniques/RenderStateResolver.h"
 #include "../Techniques/CompiledRenderStateSet.h"
+#include "../Techniques/PredefinedCBLayout.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/Buffer.h"
@@ -28,7 +29,9 @@ namespace RenderCore { namespace Assets
     {
     public:
         using TechInterface = Techniques::TechniqueInterface;
-        std::vector<std::string>    _shaderNames;
+        std::vector<uint64>                 _rawTechniqueConfigs;
+        std::vector<::Assets::rstring>      _resolvedTechniqueConfigs;
+        
         std::vector<TechInterface>  _techniqueInterfaces;
         std::vector<ParameterBox>   _parameterBoxes;
         std::vector<uint64>         _techniqueInterfaceHashes;
@@ -42,6 +45,8 @@ namespace RenderCore { namespace Assets
         uint64 _currentGlobalRenderState;
         std::shared_ptr<Techniques::IStateSetResolver> _currentStateResolver;
         std::shared_ptr<ParameterBox> _environment;
+
+        ::Assets::DirectorySearchRules _shaderSearchDirs;
     };
 
     static uint64 Hash(const Metal::InputElementDesc& desc)
@@ -82,9 +87,8 @@ namespace RenderCore { namespace Assets
             techniqueInterface.BindConstantBuffer(Techniques::ObjectCB::LocalTransform, 0, 1);
             techniqueInterface.BindConstantBuffer(Techniques::ObjectCB::BasicMaterialConstants, 1, 1);
             Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
-            for (unsigned c=0; c<textureBindPointsCount; ++c) {
+            for (unsigned c=0; c<textureBindPointsCount; ++c)
                 techniqueInterface.BindShaderResource(textureBindPoints[c], c, 1);
-            }
                 
             interfaces.push_back(std::move(techniqueInterface));
             hashes.push_back(interfHash);
@@ -96,15 +100,24 @@ namespace RenderCore { namespace Assets
         return techniqueInterfaceIndex;
     }
 
-    SharedShaderName SharedStateSet::InsertShaderName(const std::string& shaderName)
+    SharedTechniqueConfig SharedStateSet::InsertTechniqueConfig(const ::Assets::ResChar shaderName[])
     {
-        auto& shaderNames = _pimpl->_shaderNames;
-        auto n = std::find(shaderNames.cbegin(), shaderNames.cend(), shaderName);
-        if (n == shaderNames.cend()) {
-            shaderNames.push_back(shaderName);
-            return unsigned(shaderNames.size()-1);
+        auto hash = Hash64(shaderName);
+        auto& rawShaderNames = _pimpl->_rawTechniqueConfigs;
+        auto n = std::find(rawShaderNames.begin(), rawShaderNames.end(), hash);
+        if (n == rawShaderNames.end()) {
+                // We must also resolve the full filename for this shader.
+                // Shaders are referenced relative to a few fixed directories.
+            ::Assets::ResChar resName[MaxPath];
+            XlCopyString(resName, shaderName);
+            XlCatString(resName, ".tech");
+            _pimpl->_shaderSearchDirs.ResolveFile(resName, dimof(resName), resName);
+            
+            rawShaderNames.push_back(hash);
+            _pimpl->_resolvedTechniqueConfigs.push_back(resName);
+            return unsigned(rawShaderNames.size()-1);
         } else {
-            return unsigned(std::distance(shaderNames.cbegin(), n));
+            return unsigned(std::distance(rawShaderNames.begin(), n));
         }
     }
 
@@ -156,7 +169,7 @@ namespace RenderCore { namespace Assets
 
     RenderCore::Metal::BoundUniforms* SharedStateSet::BeginVariation(
             const ModelRendererContext& context,
-            SharedShaderName shaderName, SharedTechniqueInterface techniqueInterface, 
+            SharedTechniqueConfig shaderName, SharedTechniqueInterface techniqueInterface, 
             SharedParameterBox geoParamBox, SharedParameterBox materialParamBox) const
     {
         if (    shaderName == _currentShaderName && techniqueInterface == _currentTechniqueInterface 
@@ -164,20 +177,9 @@ namespace RenderCore { namespace Assets
             return _currentBoundUniforms;
         }
 
-            // we need to check both the "xleres" and "xleres_cry" folders for material files
-        char buffer[MaxPath];
-        XlCopyString(buffer, "game/xleres/");
-        XlCatString(buffer, dimof(buffer), _pimpl->_shaderNames[shaderName.Value()].c_str());
-        XlCatString(buffer, dimof(buffer), ".txt");
-
-        if (!DoesFileExist(buffer)) {
-            XlCopyString(buffer, "game/xleres_cry/");
-            XlCatString(buffer, dimof(buffer), _pimpl->_shaderNames[shaderName.Value()].c_str());
-            XlCatString(buffer, dimof(buffer), ".txt");
-        }
-
         auto& techniqueContext = context._parserContext->GetTechniqueContext();
-        auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(buffer);
+        const auto& sn = _pimpl->_resolvedTechniqueConfigs[shaderName.Value()];
+        auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(sn.c_str());
         const ParameterBox* state[] = {
             &_pimpl->_parameterBoxes[geoParamBox.Value()],
             &techniqueContext._globalEnvironmentState,
@@ -233,13 +235,24 @@ namespace RenderCore { namespace Assets
         _currentRenderState = renderStateSetIndex;
     }
 
+    const Techniques::PredefinedCBLayout* SharedStateSet::GetCBLayout(SharedTechniqueConfig shaderName)
+    {
+        // If the technique config has an embedded cblayout, we must return that.
+        // Otherwise, we return the default
+        const auto& sn = _pimpl->_resolvedTechniqueConfigs[shaderName.Value()];
+        auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(sn.c_str());
+        if (shaderType.HasEmbeddedCBLayout())
+            return &::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(sn.c_str());
+        return &::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(Techniques::DefaultPredefinedCBLayout);
+    }
+
     auto SharedStateSet::CaptureState(
         Metal::DeviceContext& context,
         std::shared_ptr<Techniques::IStateSetResolver> stateResolver,
         std::shared_ptr<Utility::ParameterBox> environment) -> CaptureMarker
     {
         assert(!_pimpl->_capturedContext);
-        _currentShaderName = SharedShaderName::Invalid;
+        _currentShaderName = SharedTechniqueConfig::Invalid;
         _currentTechniqueInterface = SharedTechniqueInterface::Invalid;
         _currentMaterialParamBox = SharedParameterBox::Invalid;
         _currentGeoParamBox = SharedParameterBox::Invalid;
@@ -268,11 +281,11 @@ namespace RenderCore { namespace Assets
     }
 
 
-    SharedStateSet::SharedStateSet()
+    SharedStateSet::SharedStateSet(const ::Assets::DirectorySearchRules& shaderSearchDir)
     {
         auto pimpl = std::make_unique<Pimpl>();
 
-        _currentShaderName = SharedShaderName::Invalid;
+        _currentShaderName = SharedTechniqueConfig::Invalid;
         _currentTechniqueInterface = SharedTechniqueInterface::Invalid;
         _currentMaterialParamBox = SharedParameterBox::Invalid;
         _currentGeoParamBox = SharedParameterBox::Invalid;
@@ -281,6 +294,7 @@ namespace RenderCore { namespace Assets
 
         pimpl->_currentGlobalRenderState = SharedRenderStateSet::Invalid;
         pimpl->_capturedContext = nullptr;
+        pimpl->_shaderSearchDirs = shaderSearchDir;
         _pimpl = std::move(pimpl);
     }
 

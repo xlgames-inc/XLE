@@ -54,4 +54,16 @@ namespace GUILayer
         EnvironmentSettingsSet(EditorSceneManager^ scene);
         ~EnvironmentSettingsSet();
     };
+
+    ref class IntersectionTestContextWrapper;
+    ref class EngineDevice;
+    ref class TechniqueContextWrapper;
+    ref class CameraDescWrapper;
+
+    IntersectionTestContextWrapper^
+        CreateIntersectionTestContext(
+            EngineDevice^ engineDevice,
+            TechniqueContextWrapper^ techniqueContext,
+            CameraDescWrapper^ camera,
+            unsigned viewportWidth, unsigned viewportHeight);
 }

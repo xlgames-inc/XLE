@@ -12,6 +12,7 @@ namespace GUILayer { class NativeEngineDevice; }
 namespace ToolsRig { class IManipulator; class VisCameraSettings; }
 namespace SceneEngine { class LightingParserContext; class IntersectionTestContext; class IntersectionTestScene; class PlacementsEditor; }
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class CameraDesc; } }
+namespace RenderCore { namespace Assets { class ResolvedMaterial; } }
 namespace RenderOverlays { namespace DebuggingDisplay { class InputSnapshot; } }
 namespace ConsoleRig { class IProgress; class GlobalServices; }
 
@@ -24,6 +25,7 @@ namespace ConsoleRig { class IProgress; class GlobalServices; }
 #pragma make_public(SceneEngine::PlacementsEditor)
 #pragma make_public(RenderCore::Techniques::ProjectionDesc)
 #pragma make_public(RenderCore::Techniques::CameraDesc)
+#pragma make_public(RenderCore::Assets::ResolvedMaterial)
 #pragma make_public(RenderCore::IThreadContext)
 #pragma make_public(RenderOverlays::DebuggingDisplay::InputSnapshot)
 #pragma make_public(ConsoleRig::IProgress)

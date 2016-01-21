@@ -11,22 +11,21 @@ using System.Drawing;
 using Sce.Atf;
 using Sce.Atf.Applications;
 using System;
+using LevelEditorXLE.Extensions;
 
 namespace LevelEditorXLE.Terrain
 {
     [Export(typeof(LevelEditorCore.IManipulator))]
-    [Export(typeof(IInitializable))]
     [Export(typeof(XLEBridgeUtils.IShutdownWithEngine))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class TerrainManipulator : LevelEditorCore.IManipulator, IInitializable, XLEBridgeUtils.IShutdownWithEngine, IDisposable, XLEBridgeUtils.IManipulatorExtra
+    public class TerrainManipulator : LevelEditorCore.IManipulator, XLEBridgeUtils.IShutdownWithEngine, IDisposable, XLEBridgeUtils.IManipulatorExtra
     {
-        public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc, scrPt); }
-        public void Render(LevelEditorCore.ViewControl vc)                     { _nativeManip.Render(vc); }
+        public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc as GUILayer.IViewContext, scrPt); }
         public void OnBeginDrag()                                              { _nativeManip.OnBeginDrag(); }
-        public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc, scrPt); }
+        public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc as GUILayer.IViewContext, scrPt); }
         public void OnEndDrag(LevelEditorCore.ViewControl vc, Point scrPt) 
 		{
-            _nativeManip.OnEndDrag(vc, scrPt);
+            _nativeManip.OnEndDrag(vc as GUILayer.IViewContext, scrPt);
 
 			// we need to create operations and turn them into a transaction:
 			// string transName = string.Format("Apply {0} brush", brush.Name);
@@ -40,7 +39,14 @@ namespace LevelEditorXLE.Terrain
 			// }, transName);
 			// m_tmpOps.Clear();
 		}
-        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc, scrPt, delta); }
+        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc as GUILayer.IViewContext, scrPt, delta); }
+
+        public void Render(object opaqueContext, LevelEditorCore.ViewControl vc) 
+        {
+            var context = opaqueContext as GUILayer.SimpleRenderingContext;
+            if (context == null) return;
+            _nativeManip.Render(context); 
+        }
 
         public bool ClearBeforeDraw() { return false; }
 
@@ -56,53 +62,44 @@ namespace LevelEditorXLE.Terrain
             }
         }
 
-        public XLEBridgeUtils.ActiveManipulatorContext ManipulatorContext
+        public GUILayer.ActiveManipulatorContext ManipulatorContext
         {
             get { return _manipContext; }
         }
 
-        public void Initialize()
-        {
-            _domChangeInspector = new XLEBridgeUtils.DomChangeInspector(m_contextRegistry);
-            _domChangeInspector.OnActiveContextChanged += UpdateManipulatorContext;
-            _manipContext.ManipulatorSet = XLEBridgeUtils.NativeManipulatorLayer.SceneManager.CreateTerrainManipulators();
-            _nativeManip = new XLEBridgeUtils.NativeManipulatorLayer(_manipContext);
-        }
-
         public void Shutdown()
         {
+            var r = _contextRegistry.Target as IContextRegistry;
+            if (r != null) r.ActiveContextChanged -= OnActiveContextChanged;
             if (_nativeManip != null) { _nativeManip.Dispose(); _nativeManip = null; }
             if (_manipContext != null) { _manipContext.Dispose(); _manipContext = null; }
         }
 
-        TerrainManipulator()
-        { 
-            _manipContext = new XLEBridgeUtils.ActiveManipulatorContext(); 
+        [ImportingConstructor]
+        public TerrainManipulator(IContextRegistry contextRegistry)
+        {
+            _manipContext = new GUILayer.ActiveManipulatorContext(); 
             _nativeManip = null;
+
+            _contextRegistry = new WeakReference(contextRegistry);
+            contextRegistry.ActiveContextChanged += OnActiveContextChanged;
+            _nativeManip = new GUILayer.NativeManipulatorLayer(_manipContext);
         }
 
-        ~TerrainManipulator()
-        {
-            Dispose(false);
-        }
+        public void Dispose() { Shutdown(); }
 
-        public void Dispose()
+        private void OnActiveContextChanged(object obj, EventArgs args)
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected void Dispose(bool disposing)
-        {
-            if (disposing) {
-                if (_nativeManip != null) { _nativeManip.Dispose(); _nativeManip = null; }
-                if (_manipContext != null) { _manipContext.Dispose(); _manipContext = null; }
+            GUILayer.EditorSceneManager sceneMan = null; 
+            
+            IContextRegistry registry = obj as IContextRegistry;
+            if (registry != null)
+            {
+                var gameExt = registry.GetActiveContext<Game.GameExtensions>();
+                if (gameExt != null)
+                    sceneMan = gameExt.SceneManager;
             }
-        }
 
-        private void UpdateManipulatorContext(object obj)
-        {
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
             if (sceneMan != null) {
                 _manipContext.ManipulatorSet = sceneMan.CreateTerrainManipulators();
             } else {
@@ -110,10 +107,9 @@ namespace LevelEditorXLE.Terrain
             }
         }
 
-        private XLEBridgeUtils.NativeManipulatorLayer _nativeManip;
-        private XLEBridgeUtils.ActiveManipulatorContext _manipContext;
-        private XLEBridgeUtils.DomChangeInspector _domChangeInspector;
-        [Import(AllowDefault = false)] IContextRegistry m_contextRegistry;
+        private GUILayer.NativeManipulatorLayer _nativeManip;
+        private GUILayer.ActiveManipulatorContext _manipContext;
+        private WeakReference _contextRegistry;
     };
 }
 

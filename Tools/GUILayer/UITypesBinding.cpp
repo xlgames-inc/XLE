@@ -20,6 +20,7 @@
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../RenderCore/Techniques/RenderStateResolver.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/Conversion.h"
 #include <msclr/auto_gcroot.h>
 #include <iomanip>
 
@@ -125,14 +126,8 @@ namespace GUILayer
     System::String^ VisMouseOver::MaterialName::get() 
     {
         auto fullName = FullMaterialName;
-        if (fullName) {
-            auto split = fullName->Split(';');
-            if (split && split->Length > 0) {
-                auto s = split[split->Length-1];
-                int index = s->LastIndexOf(':');
-                return s->Substring((index>=0) ? (index+1) : 0);
-            }
-        }
+        if (fullName)
+            return DescriptiveMaterialName(fullName);
         return "<<no material>>";
     }
 
@@ -148,19 +143,37 @@ namespace GUILayer
 
     System::String^ VisMouseOver::FullMaterialName::get()
     {
-        if (_object->_hasMouseOver) {
-            auto scaffolds = _modelCache->GetScaffolds(_modelSettings->_modelName.c_str(), _modelSettings->_materialName.c_str());
-            if (scaffolds._material) {
-                TRY {
-                    auto matName = scaffolds._material->GetMaterialName(_object->_materialGuid);
-                    if (matName) {
-                        return clix::marshalString<clix::E_UTF8>(std::string(matName));
-                    }
-                } CATCH (const ::Assets::Exceptions::PendingAsset&) { return "<<pending>>"; }
-                CATCH_END
-            }
-        }
+        if (_object->_hasMouseOver)
+            return BuildFullMaterialName(*_modelSettings.get(), *_modelCache.get(), _object->_materialGuid);
         return nullptr;
+    }
+
+    String^ VisMouseOver::BuildFullMaterialName(
+        const ToolsRig::ModelVisSettings& modelSettings,
+        RenderCore::Assets::ModelCache& modelCache,
+        uint64 materialGuid)
+    {
+        auto scaffolds = modelCache.GetScaffolds(modelSettings._modelName.c_str(), modelSettings._materialName.c_str());
+        if (scaffolds._material) {
+            TRY {
+                return clix::marshalString<clix::E_UTF8>(scaffolds._material->GetMaterialName(materialGuid));
+            } 
+            CATCH (const ::Assets::Exceptions::PendingAsset&) { return "<<pending>>"; }
+            CATCH_END
+        }
+        return "<<unknown>>";
+    }
+
+    String^ VisMouseOver::DescriptiveMaterialName(String^ fullName)
+    {
+        if (fullName->Length == 0 || fullName[0] == '<') return fullName;
+        auto split = fullName->Split(';');
+        if (split && split->Length > 0) {
+            auto s = split[split->Length-1];
+            int index = s->LastIndexOf(':');
+            return s->Substring((index>=0) ? (index+1) : 0);
+        }
+        return fullName;
     }
 
     uint64 VisMouseOver::MaterialBindingGuid::get()
@@ -395,31 +408,31 @@ namespace GUILayer
         }
     }
 
-    List<System::String^>^ RawMaterial::BuildInheritanceList()
+    System::String^ RawMaterial::BuildInheritanceList()
     {
-            // create a RawMaterial wrapper object for all of the inheritted objects
         if (!!_underlying) {
-            auto result = gcnew List<System::String^>();
-
             auto& asset = _underlying->GetAsset();
             auto searchRules = ::Assets::DefaultDirectorySearchRules(
-                clix::marshalString<clix::E_UTF8>(_filename).c_str());
+                MakeStringSection(clix::marshalString<clix::E_UTF8>(Filename)));
             
+            System::String^ result = "";
             auto inheritted = asset._asset.ResolveInherited(searchRules);
             for (auto i = inheritted.cbegin(); i != inheritted.cend(); ++i) {
-                result->Add(clix::marshalString<clix::E_UTF8>(*i));
+                if (result->Length != 0) result += ";";
+                result += clix::marshalString<clix::E_UTF8>(*i);
             }
             return result;
         }
         return nullptr;
     }
 
-    List<System::String^>^ RawMaterial::BuildInheritanceList(System::String^ topMost)
+    void RawMaterial::Resolve(RenderCore::Assets::ResolvedMaterial& destination)
     {
-        auto temp = gcnew RawMaterial(topMost);
-        auto result = temp->BuildInheritanceList();
-        delete temp;
-        return result;
+        if (!!_underlying) {
+            auto searchRules = Assets::DefaultDirectorySearchRules(
+                MakeStringSection(clix::marshalString<clix::E_UTF8>(Filename)));
+            _underlying->GetAsset()._asset.Resolve(destination, searchRules);
+        }
     }
 
     void RawMaterial::AddInheritted(String^ item)
@@ -436,48 +449,78 @@ namespace GUILayer
         assert(0); // not implemented!
     }
 
-    System::String^ RawMaterial::Filename::get() { return _filename; }
-    System::String^ RawMaterial::SettingName::get() { return _settingName; }
+    System::String^ RawMaterial::Filename::get()
+    { 
+        auto native = MakeFileNameSplitter(clix::marshalString<clix::E_UTF8>(_initializer)).AllExceptParameters();
+        return clix::marshalString<clix::E_UTF8>(native);
+    }
+    System::String^ RawMaterial::Initializer::get() { return _initializer; }
 
     const RenderCore::Assets::RawMaterial* RawMaterial::GetUnderlying() 
     { 
         return (!!_underlying) ? &_underlying->GetAsset()._asset : nullptr; 
     }
 
-    RawMaterial::RawMaterial(System::String^ initialiser)
+    String^ RawMaterial::TechniqueConfig::get() { return clix::marshalString<clix::E_UTF8>(_underlying->GetAsset()._asset._techniqueConfig); }
+
+    void RawMaterial::TechniqueConfig::set(String^ value)
     {
-        auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
-        _underlying = RenderCore::Assets::RawMaterial::GetDivergentAsset(nativeInit.c_str());
-
-        auto splitName = MakeFileNameSplitter(nativeInit);
-
-        _filename = clix::marshalString<clix::E_UTF8>(splitName.AllExceptParameters());
-        _settingName = clix::marshalString<clix::E_UTF8>(splitName.Parameters());
-
-        _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
+        auto native = Conversion::Convert<::Assets::rstring>(clix::marshalString<clix::E_UTF8>(value));
+        if (_underlying->GetAsset()._asset._techniqueConfig != native) {
+            auto transaction = _underlying->Transaction_Begin("Technique Config");
+            if (transaction) {
+                transaction->GetAsset()._asset._techniqueConfig = native;
+                transaction->Commit();
+            }
+        }
     }
 
-    // RawMaterial::RawMaterial(
-    //     std::shared_ptr<NativeConfig> underlying)
-    // {
-    //     _underlying = std::move(underlying);
-    //     _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
-    //     _filename = "unknown";
-    //     _settingName = "unknown";
-    // }
-
-    RawMaterial::RawMaterial(RawMaterial^ cloneFrom)
+    static RawMaterial::RawMaterial()
     {
-        _underlying = cloneFrom->_underlying;
+        s_table = gcnew Dictionary<String^, WeakReference^>();
+    }
+
+    RawMaterial^ RawMaterial::Get(String^ initializer)
+    {
+        // Creates a raw material for the given initializer, or constructs
+        // a new one if one hasn't been created yet.
+        // Note -- there's a problem here because different initializers could
+        // end up resolving to the same native object. That may not be a problem
+        // in all cases... But it could throw off the change tracking.
+        System::Diagnostics::Debug::Assert(initializer && initializer->Length > 0);
+        
+        WeakReference^ ref;
+        if (s_table->TryGetValue(initializer, ref)) {
+            auto o = ref->Target;
+            if (o) return (RawMaterial^)o;
+        
+            // if the reference expired, we have to remove it -- we will create it again afterwards...
+            s_table->Remove(initializer);
+        }
+        
+        auto result = gcnew RawMaterial(initializer);
+        s_table->Add(initializer, gcnew WeakReference(result));
+        return result;
+    }
+
+    RawMaterial^ RawMaterial::CreateUntitled() 
+    { 
+        static unsigned counter = 0;
+        return gcnew RawMaterial("untitled" + (counter++) + ".material");
+    }
+
+    RawMaterial::RawMaterial(System::String^ initialiser)
+    {
+        _initializer = initialiser;
+        auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
+        _underlying = RenderCore::Assets::RawMaterial::GetDivergentAsset(nativeInit.c_str());
         _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
-        _filename = cloneFrom->_filename;
-        _settingName = cloneFrom->_filename;
     }
 
     RawMaterial::~RawMaterial()
     {
-        _underlying.reset();
         delete _renderStateSet;
+        _underlying.reset();
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -679,19 +722,47 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    static void InvokeChangeEvent(gcroot<InvalidAssetList^> ptr)
+    {
+        return ptr->RaiseChangeEvent();
+    }
+
     InvalidAssetList::InvalidAssetList()
     {
-        _assetList = gcnew List<Tuple<String^, String^>^>();
+        _eventId = 0;
 
             // get the list of assets from the underlying manager
         if (::Assets::Services::GetInvalidAssetMan()) {
+            auto& man = *::Assets::Services::GetInvalidAssetMan();
+            gcroot<InvalidAssetList^> ptrToThis = this;
+            _eventId = man.AddOnChangeEvent(std::bind(InvokeChangeEvent, ptrToThis));
+        }
+    }
+
+    InvalidAssetList::~InvalidAssetList()
+    {
+        if (::Assets::Services::GetInvalidAssetMan())
+            ::Assets::Services::GetInvalidAssetMan()->RemoveOnChangeEvent(_eventId);
+    }
+
+    IEnumerable<Tuple<String^, String^>^>^ InvalidAssetList::AssetList::get() 
+    { 
+        auto result = gcnew List<Tuple<String^, String^>^>();
+        result->Clear();
+        if (::Assets::Services::GetInvalidAssetMan()) {
             auto list = ::Assets::Services::GetInvalidAssetMan()->GetAssets();
             for (const auto& i : list) {
-                _assetList->Add(gcnew Tuple<String^, String^>(
+                result->Add(gcnew Tuple<String^, String^>(
                     clix::marshalString<clix::E_UTF8>(i._name),
                     clix::marshalString<clix::E_UTF8>(i._errorString)));
             }
         }
+        return result;
+    }
+
+    void InvalidAssetList::RaiseChangeEvent()
+    {
+        _onChange();
     }
 
     bool InvalidAssetList::HasInvalidAssets()

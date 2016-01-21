@@ -85,7 +85,7 @@
 	#endif
 	void main(VSOutput geo)
 	{
-		DoAlphaTest(geo);
+		DoAlphaTest(geo, GetAlphaThreshold());
 	}
 
 #endif

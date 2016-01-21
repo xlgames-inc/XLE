@@ -227,7 +227,7 @@ namespace ToolsRig
         };
 
         VertexBuffer vertexBuffer(vertices, sizeof(vertices));
-        metalContext.Bind(ResourceList<VertexBuffer, 1>(std::make_tuple(std::ref(vertexBuffer))), sizeof(Vertex), 0);
+        metalContext.Bind(MakeResourceList(vertexBuffer), sizeof(Vertex), 0);
 
         const auto& shaderProgram = ::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:P2T:" VS_DefShaderModel, 

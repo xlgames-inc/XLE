@@ -33,6 +33,8 @@ namespace SceneEngine
 {
     using namespace RenderCore;
 
+    static const ::Assets::ResChar s_techniqueConfig[] = "game/xleres/techniques/cloudvolume.tech";
+
     class DualContourRenderer::Pimpl
     {
     public:
@@ -117,9 +119,9 @@ namespace SceneEngine
     {
         TRY {
             using namespace RenderCore::Techniques;
-            auto variation = pimpl->_basicMaterial.FindVariation(parserContext, techniqueIndex, "game/xleres/cloudvolume.txt");
-            if (variation._shaderProgram != nullptr) {
-                variation.Apply(*context, parserContext, 
+            auto variation = pimpl->_basicMaterial.FindVariation(parserContext, techniqueIndex, s_techniqueConfig);
+            if (variation._shader._shaderProgram != nullptr) {
+                variation._shader.Apply(*context, parserContext, 
                     {
                         MakeLocalTransformPacket(
                             Identity<Float4x4>(),
@@ -289,13 +291,11 @@ namespace SceneEngine
             { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
             ParameterBox());
 
-        const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
-            "game/xleres/BasicMaterialConstants.txt");
+        const auto& cbLayout = pimpl->_basicMaterial.GetCBLayout(s_techniqueConfig);
         pimpl->_materialConstants = cbLayout.BuildCBDataAsPkt(ParameterBox());
 
         pimpl->_dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(
-            pimpl->_dependencyValidation, cbLayout.GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(pimpl->_dependencyValidation, cbLayout.GetDependencyValidation());
 
         _pimpl = std::move(pimpl);
     }
@@ -323,18 +323,15 @@ namespace SceneEngine
                 { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
                 ParameterBox());
 
-            auto shader = material.FindVariation(parserContext, techniqueIndex, "game/xleres/illum.txt");
-            if (shader._shaderProgram) {
-                const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
-                    "game/xleres/BasicMaterialConstants.txt");
-
-                shader.Apply(
+            auto shader = material.FindVariation(parserContext, techniqueIndex, "game/xleres/techniques/illum.tech");
+            if (shader._shader._shaderProgram) {
+                shader._shader.Apply(
                     *context, parserContext, 
                     {
                         MakeLocalTransformPacket(
                             Identity<Float4x4>(),
                             ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                        cbLayout.BuildCBDataAsPkt(ParameterBox())
+                        shader._cbLayout->BuildCBDataAsPkt(ParameterBox())
                     });
 
                 Metal::VertexBuffer vb(

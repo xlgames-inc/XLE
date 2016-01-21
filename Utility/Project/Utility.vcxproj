@@ -167,7 +167,6 @@
     <ClCompile Include="..\ArithmeticUtils.cpp" />
     <ClCompile Include="..\BitUtils.cpp" />
     <ClCompile Include="..\Conversion.cpp" />
-    <ClCompile Include="..\ExceptionUtils.cpp" />
     <ClCompile Include="..\FunctionUtils.cpp" />
     <ClCompile Include="..\HashUtils.cpp" />
     <ClCompile Include="..\HeapUtils.cpp" />
@@ -197,11 +196,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\UTFUtils.cpp" />
-    <ClCompile Include="..\WinAPI\StringUtils_WinAPI.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\WinAPI\System_WinAPI.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">true</ExcludedFromBuild>

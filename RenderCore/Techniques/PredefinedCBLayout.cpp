@@ -6,6 +6,8 @@
 
 #include "PredefinedCBLayout.h"
 #include "../RenderUtils.h"
+#include "../ShaderLangUtil.h"
+#include "../../Assets/ConfigFileContainer.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/BitUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -14,60 +16,45 @@
 
 namespace RenderCore { namespace Techniques
 {
-    static ImpliedTyping::TypeDesc HLSLTypeNameAsTypeDesc(const char hlslTypeName[])
-    {
-        using namespace ImpliedTyping;
-        std::pair<const char*, ImpliedTyping::TypeCat> baseTypes[] = 
-        {
-            { "float", TypeCat::Float },
-            { "uint", TypeCat::UInt32 },
-            { "dword", TypeCat::UInt32 },
-            { "int", TypeCat::Int32 },
-            { "byte", TypeCat::UInt8 }
-            // "half", "double" not supported
-        };
-        for (unsigned c=0; c<dimof(baseTypes); ++c) {
-            auto len = XlStringLen(baseTypes[c].first);
-            if (!XlComparePrefix(baseTypes[c].first, hlslTypeName, len)) {
-                const auto matrixMarker = XlFindChar(&hlslTypeName[len], 'x');
-                if (matrixMarker != nullptr) {
-                    auto count0 = XlAtoUI32(&hlslTypeName[len]);
-                    auto count1 = XlAtoUI32(matrixMarker+1);
-
-                    TypeDesc result;
-                    result._arrayCount = (uint16)std::max(1u, count0 * count1);
-                    result._type = baseTypes[c].second;
-                    result._typeHint = TypeHint::Matrix;
-                    return result;
-                } else {
-                    auto count = XlAtoUI32(&hlslTypeName[len]);
-                    if (count == 0 || count > 4) count = 1;
-                    TypeDesc result;
-                    result._arrayCount = (uint16)count;
-                    result._type = baseTypes[c].second;
-                    result._typeHint = (count > 1) ? TypeHint::Vector : TypeHint::None;
-                    return result;
-                }
-            }
-        }
-
-        return TypeDesc();
-    }
-
     PredefinedCBLayout::PredefinedCBLayout(const ::Assets::ResChar initializer[])
     {
         // Here, we will read a simple configuration file that will define the layout
         // of a constant buffer. Sometimes we need to get the layout of a constant 
         // buffer without compiling any shader code, or really touching the HLSL at all.
-        std::regex parseStatement(R"--((\w*)\s+(\w*)\s*(?:=\s*([^;]*))?;?\s*)--");
-            
         size_t size;
         auto file = LoadFileAsMemoryBlock(initializer, &size);
+        StringSection<char> configSection((const char*)file.get(), (const char*)PtrAdd(file.get(), size));
+
+        // if it's a compound document, we're only going to extra the cb layout part
+        auto compoundDoc = ::Assets::ReadCompoundTextDocument(configSection);
+        if (!compoundDoc.empty()) {
+            auto i = std::find_if(
+                compoundDoc.cbegin(), compoundDoc.cend(),
+                [](const ::Assets::TextChunk<char>& chunk)
+                { return XlEqString(chunk._type, "CBLayout"); });
+            if (i != compoundDoc.cend())
+                configSection = i->_content;
+        }
+
+        Parse(configSection);
+
+        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterFileDependency(_validationCallback, initializer);
+    }
+
+    PredefinedCBLayout::PredefinedCBLayout(StringSection<char> source, bool)
+    {
+        Parse(source);
+        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+    }
+
+    void PredefinedCBLayout::Parse(StringSection<char> source)
+    {
+        std::regex parseStatement(R"--((\w*)\s+(\w*)\s*(?:=\s*([^;]*))?;?\s*)--");
 
         unsigned cbIterator = 0;
-
-        const char* iterator = (const char*)file.get();
-        const char* end = PtrAdd(iterator, size);
+        const char* iterator = source.begin();
+        const char* end = source.end();
         for (;;) {
             while (iterator < end && (*iterator == '\n' || *iterator == '\r' || *iterator == ' '|| *iterator == '\t')) ++iterator;
             const char* lineStart = iterator;
@@ -83,9 +70,10 @@ namespace RenderCore { namespace Techniques
             bool a = std::regex_match(lineStart, iterator, match, parseStatement);
             if (a && match.size() >= 3) {
                 Element e;
-                e._name = std::basic_string<utf8>((const utf8*)match[2].first, (const utf8*)match[2].second);
-                e._hash = ParameterBox::MakeParameterNameHash(e._name);
-                e._type = HLSLTypeNameAsTypeDesc(match[1].str().c_str());
+                std::basic_string<utf8> name((const utf8*)match[2].first, (const utf8*)match[2].second);
+                // e._name = name;
+                e._hash = ParameterBox::MakeParameterNameHash(name);
+                e._type = ShaderLangTypeNameAsTypeDesc(MakeStringSection(match[1].str()));
 
                 auto size = e._type.GetSize();
                 if (!size) {
@@ -117,12 +105,12 @@ namespace RenderCore { namespace Techniques
                             buffer1, dimof(buffer1), e._type,
                             buffer0, defaultType);
                         if (castSuccess) {
-                            _defaults.SetParameter(e._name.c_str(), buffer1, e._type);
+                            _defaults.SetParameter(name.c_str(), buffer1, e._type);
                         } else {
                             LogWarning << "Default initialiser can't be cast to same type as variable in PredefinedCBLayout: " << std::string(lineStart, iterator);
                         }
                     } else {
-                        _defaults.SetParameter(e._name.c_str(), buffer0, defaultType);
+                        _defaults.SetParameter(name.c_str(), buffer0, defaultType);
                     }
                 }
             } else {
@@ -132,12 +120,7 @@ namespace RenderCore { namespace Techniques
 
         _cbSize = cbIterator;
         _cbSize = CeilToMultiplePow2(_cbSize, 16);
-
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterFileDependency(_validationCallback, initializer);
     }
-
-    PredefinedCBLayout::~PredefinedCBLayout() {}
 
     void PredefinedCBLayout::WriteBuffer(void* dst, const ParameterBox& parameters) const
     {
@@ -165,4 +148,21 @@ namespace RenderCore { namespace Techniques
         WriteBuffer(result.begin(), parameters);
         return std::move(result);
     }
+
+    PredefinedCBLayout::PredefinedCBLayout() {}
+    PredefinedCBLayout::PredefinedCBLayout(PredefinedCBLayout&& moveFrom) never_throws
+    : _elements(std::move(moveFrom._elements))
+    , _defaults(std::move(moveFrom._defaults))
+    , _validationCallback(std::move(moveFrom._validationCallback))
+    {}
+
+    PredefinedCBLayout& PredefinedCBLayout::operator=(PredefinedCBLayout&& moveFrom) never_throws
+    {
+        _elements = std::move(moveFrom._elements);
+        _defaults = std::move(moveFrom._defaults);
+        _validationCallback = std::move(moveFrom._validationCallback);
+        return *this;
+    }
+
+    PredefinedCBLayout::~PredefinedCBLayout() {}
 }}

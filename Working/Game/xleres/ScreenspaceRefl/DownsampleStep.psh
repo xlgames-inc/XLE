@@ -63,6 +63,7 @@ void main(
 	float4 position			: SV_Position,
 	float2 oTexCoord		: TEXCOORD0)
 {
+
 	const uint sampleIndex = 0;
 
 		//			If there's too much discontinuity of the normal, then we
@@ -124,10 +125,10 @@ void main(
 	#if defined(DEPTH_IN_LINEAR_COORDS)
 			//	convert depth values to linear values before blending
 		outputDepth =
-			  SampleDepth(uint2(position.xy)*2 + uint2(0,0), sampleIndex))
-			+ SampleDepth(uint2(position.xy)*2 + uint2(1,0), sampleIndex))
-			+ SampleDepth(uint2(position.xy)*2 + uint2(0,1), sampleIndex))
-			+ SampleDepth(uint2(position.xy)*2 + uint2(1,1), sampleIndex))
+			  SampleDepth(uint2(position.xy)*2 + uint2(0,0), sampleIndex)
+			+ SampleDepth(uint2(position.xy)*2 + uint2(1,0), sampleIndex)
+			+ SampleDepth(uint2(position.xy)*2 + uint2(0,1), sampleIndex)
+			+ SampleDepth(uint2(position.xy)*2 + uint2(1,1), sampleIndex)
 			;
 		outputDepth *= 0.25f;
 	#else
@@ -155,4 +156,5 @@ void main(
 	outputDepth = SampleDepth(uint2(position.xy), sampleIndex);
 
 #endif
+
 }

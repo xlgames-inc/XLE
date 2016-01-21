@@ -79,7 +79,7 @@ namespace RenderingInterop
         #region initialize and shutdown
         private static GameEngine s_inist;
         private static GUILayer.EngineDevice s_engineDevice;
-        private static GUILayer.SavedRenderResources s_savedRenderResources;
+        private static GUILayer.RetainedRenderResources s_retainedRenderResources;
         private static GUILayer.EditorSceneManager s_underlyingScene;
         private static GUILayer.EntityLayer s_entityInterface;
         private static XLEBridgeUtils.LoggingRedirect s_loggingRedirect;
@@ -98,10 +98,10 @@ namespace RenderingInterop
                 GUILayer.EngineDevice.SetDefaultWorkingDirectory();
                 s_engineDevice = new GUILayer.EngineDevice();
                 s_engineDevice.AttachDefaultCompilers();
-                s_savedRenderResources = new GUILayer.SavedRenderResources(s_engineDevice);
+                s_retainedRenderResources = new GUILayer.RetainedRenderResources(s_engineDevice);
                 s_underlyingScene = new GUILayer.EditorSceneManager();
                 Util3D.Init();
-                XLEBridgeUtils.NativeManipulatorLayer.SceneManager = s_underlyingScene;
+                XLEBridgeUtils.Utils.GlobalSceneManager = s_underlyingScene;
                 s_entityInterface = s_underlyingScene.GetEntityInterface();
                 CriticalError = "";
                 s_inist.PopulateEngineInfo(
@@ -138,6 +138,7 @@ namespace RenderingInterop
 
         public static GUILayer.EditorSceneManager GetEditorSceneManager() { return s_underlyingScene; }
         public static GUILayer.EngineDevice GetEngineDevice() { return s_engineDevice; }
+        public static GUILayer.RetainedRenderResources GetSavedResources() { return s_retainedRenderResources; }
 
         /// <summary>
         /// shutdown game engine.
@@ -164,12 +165,12 @@ namespace RenderingInterop
             s_loggingRedirect = null;
             XLEBridgeUtils.Utils.DetachLibrary();
             Util3D.Shutdown();
-            XLEBridgeUtils.NativeManipulatorLayer.SceneManager = null;
+            XLEBridgeUtils.Utils.GlobalSceneManager = null;
             s_entityInterface = null;
             s_underlyingScene.Dispose();
             s_underlyingScene = null;
-            s_savedRenderResources.Dispose();
-            s_savedRenderResources = null;
+            s_retainedRenderResources.Dispose();
+            s_retainedRenderResources = null;
             s_engineDevice.Dispose();
             s_engineDevice = null;
             GlobalSelection.Dispose();
@@ -440,24 +441,19 @@ namespace RenderingInterop
 
         /// <summary>
         /// Sets render flags used for basic drawing.</summary>        
-        public static void SetRendererFlag(BasicRendererFlags renderFlags)
+        public static void SetRendererFlag(GUILayer.SimpleRenderingContext context, BasicRendererFlags renderFlags)
         {
-            using (var context = XLEBridgeUtils.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources))
-            {
-                context.InitState(
-                    (renderFlags & BasicRendererFlags.DisableDepthTest)==0,
-                    (renderFlags & BasicRendererFlags.DisableDepthWrite) == 0);
-            }
+            context.InitState(
+                (renderFlags & BasicRendererFlags.DisableDepthTest) == 0,
+                (renderFlags & BasicRendererFlags.DisableDepthWrite) == 0);
         }
 
         //Draw primitive with the given parameters.
-        public static void DrawPrimitive(PrimitiveType pt,
-                                            ulong vb,
-                                            uint StartVertex,
-                                            uint vertexCount,
-                                            Color color,
-                                            Matrix4F xform)
-                                            
+        public static void DrawPrimitive(
+            GUILayer.SimpleRenderingContext context,
+            PrimitiveType pt,
+            ulong vb, uint StartVertex, uint vertexCount,
+            Color color, Matrix4F xform)
         {
             Vec4F vc;
             vc.X = color.R / 255.0f;
@@ -466,20 +462,17 @@ namespace RenderingInterop
             vc.W = color.A / 255.0f;
             fixed (float* mtrx = &xform.M11)
             {
-                NativeDrawPrimitive(pt, vb, StartVertex, vertexCount, &vc.X, mtrx);
+                NativeDrawPrimitive(context, pt, vb, StartVertex, vertexCount, &vc.X, mtrx);
             }
 
         }
 
-        public static void DrawIndexedPrimitive(PrimitiveType pt,
-                                                ulong vb,
-                                                ulong ib,
-                                                uint startIndex,
-                                                uint indexCount,
-                                                uint startVertex,
-                                                Color color,
-                                                Matrix4F xform)
-                                                
+        public static void DrawIndexedPrimitive(
+            GUILayer.SimpleRenderingContext context, 
+            PrimitiveType pt,
+            ulong vb, ulong ib,
+            uint startIndex, uint indexCount, uint startVertex,
+            Color color, Matrix4F xform)
         {
             Vec4F vc;
             vc.X = color.R / 255.0f;
@@ -488,9 +481,8 @@ namespace RenderingInterop
             vc.W = color.A / 255.0f;
             fixed (float* mtrx = &xform.M11)
             {
-                NativeDrawIndexedPrimitive(pt, vb, ib, startIndex, indexCount, startVertex, &vc.X, mtrx);
+                NativeDrawIndexedPrimitive(context, pt, vb, ib, startIndex, indexCount, startVertex, &vc.X, mtrx);
             }
-
         }
         #endregion
 
@@ -502,54 +494,40 @@ namespace RenderingInterop
 
         #endregion
 
-        public static GUILayer.SimpleRenderingContext CreateRenderingContext()
-        {
-            return XLEBridgeUtils.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources);
-        }
-
         #region private members
 
         private static ulong NativeCreateVertexBuffer(VertexFormat vf, void* buffer, uint vertexCount) 
         {
-            return s_savedRenderResources.CreateVertexBuffer(
+            return s_retainedRenderResources.CreateVertexBuffer(
                 buffer,
                 vertexCount * vf.GetSize(),
                 (uint)vf);
         }
         private static ulong NativeCreateIndexBuffer(uint* buffer, uint indexCount) 
         {
-            return s_savedRenderResources.CreateIndexBuffer(buffer, sizeof(uint)*indexCount);
+            return s_retainedRenderResources.CreateIndexBuffer(buffer, sizeof(uint)*indexCount);
         }
         private static void NativeDeleteBuffer(ulong buffer) 
         {
-            s_savedRenderResources.DeleteBuffer(buffer);
+            s_retainedRenderResources.DeleteBuffer(buffer);
         }
-        private static void NativeDrawPrimitive(PrimitiveType pt,
-                                                        ulong vb,
-                                                        uint StartVertex,
-                                                        uint vertexCount,
-                                                        float* color,
-                                                        float* xform) 
+        private static void NativeDrawPrimitive(
+            GUILayer.SimpleRenderingContext context,
+            PrimitiveType pt,
+            ulong vb, uint StartVertex, uint vertexCount,
+            float* color, float* xform) 
         {
-            using (var context = CreateRenderingContext())
-            {
-                context.DrawPrimitive((uint)pt, vb, StartVertex, vertexCount, color, xform);
-            }
+            context.DrawPrimitive((uint)pt, vb, StartVertex, vertexCount, color, xform);
         }
 
-        private static void NativeDrawIndexedPrimitive(PrimitiveType pt,
-                                                        ulong vb,
-                                                        ulong ib,
-                                                        uint startIndex,
-                                                        uint indexCount,
-                                                        uint startVertex,
-                                                        float* color,
-                                                        float* xform) 
+        private static void NativeDrawIndexedPrimitive(
+            GUILayer.SimpleRenderingContext context, 
+            PrimitiveType pt,
+            ulong vb, ulong ib,
+            uint startIndex, uint indexCount, uint startVertex,
+            float* color, float* xform) 
         {
-            using (var context = CreateRenderingContext())
-            {
-                context.DrawIndexedPrimitive((uint)pt, vb, ib, startIndex, indexCount, startVertex, color, xform);
-            }
+            context.DrawIndexedPrimitive((uint)pt, vb, ib, startIndex, indexCount, startVertex, color, xform);
         }
 
         private static string s_notInitialized = "Not initialized, please call Initialize()";

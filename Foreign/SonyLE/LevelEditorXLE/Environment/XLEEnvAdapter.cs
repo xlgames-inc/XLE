@@ -16,6 +16,7 @@ using Sce.Atf.Applications;
 using Sce.Atf.Dom;
 
 using LevelEditorCore;
+using LevelEditorXLE.Extensions;
 
 namespace LevelEditorXLE.Environment
 {
@@ -145,9 +146,8 @@ namespace LevelEditorXLE.Environment
 
         public IEnumerable<PendingExport> BuildPendingExports()
         {
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
             var result = new List<PendingExport>();
-            result.Add(new PendingExport(ExportTarget, sceneMan.ExportEnv(0)));
+            result.Add(new PendingExport(ExportTarget, this.GetSceneManager().ExportEnv(0)));
             return result;
         }
         #endregion

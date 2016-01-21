@@ -99,9 +99,31 @@ namespace Utility
         }
 
     template<typename CharType>
+        inline StringSection<CharType> MakeStringSection(const CharType* nullTerm)
+        {
+            return StringSection<CharType>(nullTerm);
+        }
+
+    template<typename CharType>
         inline StringSection<CharType> MakeStringSection(const std::basic_string<CharType>& str)
         {
             return StringSection<CharType>(AsPointer(str.cbegin()), AsPointer(str.cend()));
+        }
+
+    template<typename CharType>
+        inline StringSection<CharType> MakeStringSection(
+            const typename std::basic_string<CharType>::const_iterator& begin,
+            const typename std::basic_string<CharType>::const_iterator& end)
+        {
+            return StringSection<CharType>(AsPointer(begin), AsPointer(end));
+        }
+
+    template<typename CharType>
+        inline StringSection<CharType> MakeStringSection(
+            const typename std::basic_string<CharType>::iterator& begin,
+            const typename std::basic_string<CharType>::iterator& end)
+        {
+            return StringSection<CharType>(AsPointer(begin), AsPointer(end));
         }
 
         ////////////   S T R I N G   C O M P A R I S O N S   ////////////
@@ -344,6 +366,12 @@ namespace Utility
             XlCopyNString(destination, Count, source._start, source.Length());
         }
 
+    template <int Count, typename CharType>
+        void XlCopyString(CharType (&destination)[Count], const std::basic_string<CharType>& source)
+        {
+            XlCopyNString(destination, Count, AsPointer(source.cbegin()), source.size());
+        }
+
     template <typename CharType>
         void XlCatString(CharType destination[], size_t size, const StringSection<CharType>& source)
         {
@@ -360,6 +388,12 @@ namespace Utility
         void XlCatString(CharType (&destination)[Count], const StringSection<CharType>& source)
         {
             XlCatNString(destination, Count, source.begin(), source.Length());
+        }
+
+    template <int Count, typename CharType>
+        void XlCatString(CharType (&destination)[Count], const std::basic_string<CharType>& source)
+        {
+            XlCatNString(destination, Count, AsPointer(source.cbegin()), source.size());
         }
 
     template<typename T>
@@ -569,6 +603,34 @@ namespace Utility
             if (alen == blen) return 0;
             if (alen < blen) return -int(XlToLower(b[alen]));
             return XlToLower(a[blen]);
+        }
+
+    template<typename T>
+        int XlCompareString(const std::basic_string<T>& a, const std::basic_string<T>& b)
+        {
+            return XlCompareString(MakeStringSection(a), MakeStringSection(b));
+        }
+
+    template<typename T>
+        int XlCompareStringI(const std::basic_string<T>& a, const std::basic_string<T>& b)
+        {
+            return XlCompareStringI(MakeStringSection(a), MakeStringSection(b));
+        }
+
+    template<typename T>
+        bool XlBeginsWith(const StringSection<T>& a, const StringSection<T>& b)
+        {
+            return 
+                a.Length() >= b.Length()
+                && XlEqString(StringSection<T>(a.begin(), a.begin() + b.Length()), b);
+        }
+
+    template<typename T>
+        bool XlBeginsWithI(const StringSection<T>& a, const StringSection<T>& b)
+        {
+            return 
+                a.Length() >= b.Length()
+                && XlEqStringI(StringSection<T>(a.begin(), a.begin() + b.Length()), b);
         }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

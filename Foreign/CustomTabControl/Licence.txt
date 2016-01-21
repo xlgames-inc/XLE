@@ -1,0 +1,7 @@
+This code from CodeProject page:
+* http://www.codeproject.com/Articles/91387/Painting-Your-Own-Tabs-Second-Edition
+
+It was distributed under the The Code Project Open License (CPOL) 1.02
+* http://www.codeproject.com/info/cpol10.aspx
+
+Minor changes and additions have been made to customize it for XLE

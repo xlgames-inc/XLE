@@ -136,7 +136,7 @@ namespace Overlays
         };
 
         VertexBuffer vertexBuffer(vertices, sizeof(vertices));
-        context->Bind(ResourceList<VertexBuffer, 1>(std::make_tuple(std::ref(vertexBuffer))), sizeof(Vertex), 0);
+        context->Bind(MakeResourceList(vertexBuffer), sizeof(Vertex), 0);
 
         const auto& shaderProgram = ::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:P2T:" VS_DefShaderModel, 

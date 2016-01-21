@@ -21,7 +21,6 @@
 
 namespace RenderCore
 {
-    static ID3D::Device* gDefaultDevice = nullptr;
     static void DumpAllDXGIObjects();
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -125,7 +124,9 @@ namespace RenderCore
             Throw(Exceptions::BasicLabel("Failure in D3D11 device construction. Aborting."));
         }
 
-        Metal_DX11::ObjectFactory::PrepareDevice(*underlying);
+        // Metal_DX11::ObjectFactory::PrepareDevice(*underlying);
+        _mainFactory = std::make_unique<Metal_DX11::ObjectFactory>(*underlying);
+        ConsoleRig::GlobalServices::GetCrossModule().Publish(*_mainFactory);
 
             //  Once we know there can be no more exceptions thrown, we can commit
             //  locals to the members.
@@ -135,6 +136,8 @@ namespace RenderCore
 
     Device::~Device()
     {
+        ConsoleRig::GlobalServices::GetCrossModule().Withhold(*_mainFactory);
+        _mainFactory.reset();
         Metal_DX11::ObjectFactory::ReleaseDevice(*_underlying);
 
         _immediateThreadContext.reset();
@@ -326,20 +329,11 @@ namespace RenderCore
 
     DeviceDX11::DeviceDX11()
     {
-        gDefaultDevice = _underlying.get();
     }
 
     DeviceDX11::~DeviceDX11()
     {
-        if (gDefaultDevice == _underlying.get()) {
-            gDefaultDevice = nullptr;
-        }
         _immediateContext->Flush();
-    }
-
-    ID3D::Device*        GetDefaultUnderlyingDevice()
-    {
-        return gDefaultDevice;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////

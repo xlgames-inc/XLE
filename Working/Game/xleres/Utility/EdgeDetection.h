@@ -33,14 +33,14 @@ static const float SharrHoriz3x3[3][3] =
 {
     {  -3.f * SharrConstant3x3, 0.f,  3.f * SharrConstant3x3 },
     { -10.f * SharrConstant3x3, 0.f, 10.f * SharrConstant3x3 },
-    {  -3.f * SharrConstant3x3, 0.f,  3.f * SharrConstant3x3 },
+    {  -3.f * SharrConstant3x3, 0.f,  3.f * SharrConstant3x3 }
 };
 
 static const float SharrVert3x3[3][3] =
 {
     {  -3.f * SharrConstant3x3, -10.f * SharrConstant3x3,  -3.f * SharrConstant3x3 },
     { 0.f, 0.f, 0.f },
-    {   3.f * SharrConstant3x3,  10.f * SharrConstant3x3,   3.f * SharrConstant3x3 },
+    {   3.f * SharrConstant3x3,  10.f * SharrConstant3x3,   3.f * SharrConstant3x3 }
 };
 
 

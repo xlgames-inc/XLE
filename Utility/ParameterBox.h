@@ -204,8 +204,14 @@ namespace Utility
             ParameterBox(InputStreamFormatter<CharType>& stream, 
                 const void* defaultValue = nullptr, 
                 const ImpliedTyping::TypeDesc& defaultValueType = ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Void, 0u));
-        ParameterBox(ParameterBox&& moveFrom);
-        ParameterBox& operator=(ParameterBox&& moveFrom);
+        ParameterBox(ParameterBox&& moveFrom) never_throws;
+        ParameterBox& operator=(ParameterBox&& moveFrom) never_throws;
+		
+		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
+			ParameterBox(const ParameterBox&) = default;
+			ParameterBox& operator=(const ParameterBox&) = default;
+		#endif
+
         ~ParameterBox();
     private:
         mutable uint64      _cachedHash;
@@ -322,6 +328,7 @@ namespace Utility
     using StringTable = std::vector<std::pair<const utf8*, std::string>>;
     void    BuildStringTable(StringTable& defines, const ParameterBox& box);
     void    OverrideStringTable(StringTable& defines, const ParameterBox& box);
+    std::string FlattenStringTable(const StringTable& stringTable);
 }
 
 using namespace Utility;

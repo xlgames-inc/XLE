@@ -10,6 +10,7 @@
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "IWindowRig.h"
+#include "DelayedDeleteQueue.h"
 #include "ExportedNativeTypes.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlappedWindow.h"
@@ -36,7 +37,7 @@ namespace GUILayer
     void EngineControl::Render()
     {
         auto engineDevice = EngineDevice::GetInstance();
-        auto* renderDevice = engineDevice->GetNative().GetRenderDevice();
+        auto* renderDevice = engineDevice->GetNative().GetRenderDevice().get();
         auto immediateContext = renderDevice->GetImmediateContext();
         Render(*immediateContext.get(), *_pimpl->_windowRig.get());
 
@@ -44,46 +45,59 @@ namespace GUILayer
         DelayedDeleteQueue::FlushQueue();
     }
 
-    void EngineControl::OnResize(System::EventArgs^ e)
+    void EngineControl::Evnt_Resize(Object^ sender, System::EventArgs^ e)
     {
-        _pimpl->_windowRig->OnResize(_control->Size.Width, _control->Size.Height);
-        // __super::OnResize(e);
+        auto ctrl = dynamic_cast<Control^>(sender);
+        if (!ctrl) return;
+        _pimpl->_windowRig->OnResize(ctrl->Size.Width, ctrl->Size.Height);
     }
 
-    void EngineControl::Evnt_KeyDown(Object^, KeyEventArgs^ e)
+    void EngineControl::Evnt_KeyDown(Object^ sender, KeyEventArgs^ e)
     {
         if (_pimpl->_inputTranslator) { 
+            auto ctrl = dynamic_cast<Control^>(sender);
+            if (!ctrl) return;
+
             _pimpl->_inputTranslator->OnKeyChange(e->KeyValue, true); 
             e->Handled = true;
-            _control->Invalidate();
+            ctrl->Invalidate();
         }
     }
 
-    void EngineControl::Evnt_KeyUp(Object^, KeyEventArgs^ e)
+    void EngineControl::Evnt_KeyUp(Object^ sender, KeyEventArgs^ e)
     {
         if (_pimpl->_inputTranslator) { 
+            auto ctrl = dynamic_cast<Control^>(sender);
+            if (!ctrl) return;
+
             _pimpl->_inputTranslator->OnKeyChange(e->KeyValue, false); 
             e->Handled = true;
-            _control->Invalidate();
+            ctrl->Invalidate();
         }
     }
 
-    void EngineControl::Evnt_KeyPress(Object^, KeyPressEventArgs^ e)
+    void EngineControl::Evnt_KeyPress(Object^ sender, KeyPressEventArgs^ e)
     {
         if (_pimpl->_inputTranslator) {
+            auto ctrl = dynamic_cast<Control^>(sender);
+            if (!ctrl) return;
+            
             _pimpl->_inputTranslator->OnChar(e->KeyChar);
             e->Handled = true;
-            _control->Invalidate();
+            ctrl->Invalidate();
         }
     }
 
-    void EngineControl::Evnt_MouseMove(Object^, MouseEventArgs^ e)
+    void EngineControl::Evnt_MouseMove(Object^ sender, MouseEventArgs^ e)
     {
             // (todo -- only when activated?)
         if (_pimpl->_inputTranslator) {
-            PlatformRig::InputTranslator::s_hackWindowSize = UInt2(unsigned(_control->Size.Width), unsigned(_control->Size.Height));
+            auto ctrl = dynamic_cast<Control^>(sender);
+            if (!ctrl) return;
+            
+            PlatformRig::InputTranslator::s_hackWindowSize = UInt2(unsigned(ctrl->Size.Width), unsigned(ctrl->Size.Height));
             _pimpl->_inputTranslator->OnMouseMove(e->Location.X, e->Location.Y);
-            _control->Invalidate();
+            ctrl->Invalidate();
         }
     }
 
@@ -97,35 +111,47 @@ namespace GUILayer
         }
     }
     
-    void EngineControl::Evnt_MouseDown(Object^, MouseEventArgs^ e)
+    void EngineControl::Evnt_MouseDown(Object^ sender, MouseEventArgs^ e)
     {
         if (_pimpl->_inputTranslator) {
+            auto ctrl = dynamic_cast<Control^>(sender);
+            if (!ctrl) return;
+
             _pimpl->_inputTranslator->OnMouseButtonChange(AsIndex(e->Button), true);
-            _control->Invalidate();
+            ctrl->Invalidate();
         }
     }
 
-    void EngineControl::Evnt_MouseUp(Object^, MouseEventArgs^ e)
+    void EngineControl::Evnt_MouseUp(Object^ sender, MouseEventArgs^ e)
     {
         if (_pimpl->_inputTranslator) {
+            auto ctrl = dynamic_cast<Control^>(sender);
+            if (!ctrl) return;
+            
             _pimpl->_inputTranslator->OnMouseButtonChange(AsIndex(e->Button), false);
-            _control->Invalidate();
+            ctrl->Invalidate();
         }
     }
 
-    void EngineControl::Evnt_MouseWheel(Object^, MouseEventArgs^ e)
+    void EngineControl::Evnt_MouseWheel(Object^ sender, MouseEventArgs^ e)
     {
         if (_pimpl->_inputTranslator) {
+            auto ctrl = dynamic_cast<Control^>(sender);
+            if (!ctrl) return;
+            
             _pimpl->_inputTranslator->OnMouseWheel(e->Delta);
-            _control->Invalidate();
+            ctrl->Invalidate();
         }
     }
 
-    void EngineControl::Evnt_DoubleClick(Object^, MouseEventArgs^ e)
+    void EngineControl::Evnt_DoubleClick(Object^ sender, MouseEventArgs^ e)
     {
         if (_pimpl->_inputTranslator) {
+            auto ctrl = dynamic_cast<Control^>(sender);
+            if (!ctrl) return;
+            
             _pimpl->_inputTranslator->OnMouseButtonDblClk(AsIndex(e->Button));
-            _control->Invalidate();
+            ctrl->Invalidate();
         }
     }
 
@@ -133,7 +159,7 @@ namespace GUILayer
     {
         // when we've lost or gained the focus, we need to reset the input translator 
         //  (because we might miss key up/down message when not focused)
-        if (_pimpl && _pimpl->_inputTranslator) {       // (this can sometimes be called after the dispose, which ends up with an invalid _pimpl)
+        if (_pimpl.get() && _pimpl->_inputTranslator.get()) {       // (this can sometimes be called after the dispose, which ends up with an invalid _pimpl)
             _pimpl->_inputTranslator->OnFocusChange();
         }
     }
@@ -164,10 +190,9 @@ namespace GUILayer
     }
 
     EngineControl::EngineControl(Control^ control)
-        : _control(control)
     {
         _pimpl.reset(new EngineControlPimpl);
-        _pimpl->_windowRig = EngineDevice::GetInstance()->GetNative().CreateWindowRig(_control->Handle.ToPointer());
+        _pimpl->_windowRig = EngineDevice::GetInstance()->GetNative().CreateWindowRig(control->Handle.ToPointer());
         _pimpl->_inputTranslator = std::make_unique<PlatformRig::InputTranslator>();
         _pimpl->_inputTranslator->AddListener(_pimpl->_windowRig->GetFrameRig().GetMainOverlaySystem()->GetInputListener());
 
@@ -181,14 +206,11 @@ namespace GUILayer
         control->MouseDoubleClick += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_DoubleClick);
         control->GotFocus += gcnew System::EventHandler(this, &GUILayer::EngineControl::Evnt_FocusChange);
         control->LostFocus += gcnew System::EventHandler(this, &GUILayer::EngineControl::Evnt_FocusChange);
+        control->Resize += gcnew System::EventHandler(this, &GUILayer::EngineControl::Evnt_Resize);
     }
 
     EngineControl::~EngineControl()
     {
-        // RenderCore::Metal::DeviceContext::PrepareForDestruction(
-        //     EngineDevice::GetInstance()->GetRenderDevice(), 
-        //     _pimpl->_windowRig->GetPresentationChain().get());
-
         _pimpl.reset();
     }
 

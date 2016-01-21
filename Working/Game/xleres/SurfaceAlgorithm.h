@@ -7,6 +7,8 @@
 #if !defined(SURFACE_ALGORITHM_H)
 #define SURFACE_ALGORITHM_H
 
+#include "Transform.h"
+
 struct TangentFrameStruct
 {
     float3 tangent, bitangent, normal;
@@ -21,6 +23,25 @@ TangentFrameStruct BuildTangentFrame(float3 tangent, float3 bitangent, float3 no
     result.normal = normal;
     result.handiness = handiness;
     return result;
+}
+
+float GetWorldTangentFrameHandiness(float4 tangent)
+{
+	#if LOCAL_TO_WORLD_HAS_FLIP==1
+		return sign(-tangent.w);
+	#else
+		return sign(tangent.w);
+	#endif
+}
+
+float3 NormalFromTangents(float3 tangent, float3 bitangent, float handiness)
+{
+		// Note -- the order of this cross product
+		// 		depends on whether we have a right handed or
+		//		left handed tangent frame. That should depend
+		//		on how the tangent frame is generated, and
+		//		whether there is a flip on any transforms applied.
+	return cross(bitangent, tangent) * handiness;
 }
 
 float3 SampleNormalMap(Texture2D normalMap, SamplerState samplerObject, bool dxtFormatNormalMap, float2 texCoord)
@@ -61,6 +82,22 @@ void AlphaTestAlgorithm(Texture2D textureObject, SamplerState samplerObject,
 	if (textureObject.Sample(samplerObject, texCoord).a < alphaThreshold) {
 		clip(-1);
 	}
+}
+
+float3x3 GetLocalToWorldUniformScale()
+{
+        // note -- here, we assume that local-to-world doesn't have a nonuniform
+        // scale.
+	return (float3x3)LocalToWorld;
+}
+
+float3 LocalToWorldUnitVector(float3 localSpaceVector)
+{
+    float3 result = mul(GetLocalToWorldUniformScale(), localSpaceVector);
+    #if !defined(NO_SCALE)
+        result = normalize(result); // store scale value in constant...?
+    #endif
+    return result;
 }
 
 float3x3 AutoCotangentFrame(float3 inputNormal, float3 negativeViewVector, float2 texCoord)

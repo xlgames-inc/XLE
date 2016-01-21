@@ -5,6 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Assets.h"
+#include "AssetServices.h"
+#include "CompileAndAsyncManager.h"
+#include "IntermediateAssets.h"
 
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
@@ -15,6 +18,7 @@ namespace std
 {
         // this is related to the hack to remove <mutex> from Assets.h for C++/CLR
     template unique_ptr<mutex>::~unique_ptr(); 
+    template unique_ptr<recursive_mutex>::~unique_ptr(); 
 }
 
 namespace Assets 
@@ -57,13 +61,27 @@ namespace Assets
         std::basic_string<ResChar> AsString() { return std::basic_string<ResChar>(); }
 
 
-        std::unique_ptr<Threading::Mutex> CreateMutexPtr()
-        {
-            return std::make_unique<Threading::Mutex>();
-        }
-
+        std::unique_ptr<Threading::Mutex> CreateMutexPtr() { return std::make_unique<Threading::Mutex>(); }
         void LockMutex(Threading::Mutex& mutex) { mutex.lock(); }
         void UnlockMutex(Threading::Mutex& mutex) { mutex.unlock(); }
+
+        std::unique_ptr<Threading::RecursiveMutex> CreateRecursiveMutexPtr() { return std::make_unique<Threading::RecursiveMutex>(); }
+        void LockMutex(Threading::RecursiveMutex& mutex) { mutex.lock(); }
+        void UnlockMutex(Threading::RecursiveMutex& mutex) { mutex.unlock(); }
+
+        AssetSetManager& GetAssetSetManager()
+        {
+            return Services::GetAssetSets();
+        }
+
+        std::shared_ptr<ICompileMarker> PrepareAsset(
+            uint64 typeCode, const ResChar* initializers[], 
+            unsigned initializerCount)
+        {
+            auto& compilers = Services::GetAsyncMan().GetIntermediateCompilers();
+            auto& store = Services::GetAsyncMan().GetIntermediateStore();
+            return compilers.PrepareAsset(typeCode, initializers, initializerCount, store);
+        }
 
     }
 }

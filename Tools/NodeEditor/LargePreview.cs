@@ -17,7 +17,7 @@ namespace NodeEditor
 {
     public partial class LargePreview : Form
     {
-        public LargePreview(PreviewRender.PreviewBuilder preview, ShaderDiagram.Document doc)
+        public LargePreview(ShaderPatcherLayer.PreviewBuilder preview, ShaderPatcherLayer.NodeGraphContext doc)
         {
             _preview = preview;
             _document = doc;
@@ -40,8 +40,8 @@ namespace NodeEditor
             // suppress background paint entirely
         }
 
-        private PreviewRender.PreviewBuilder _preview;
-        private ShaderDiagram.Document _document;
+        private ShaderPatcherLayer.PreviewBuilder _preview;
+        private ShaderPatcherLayer.NodeGraphContext _document;
         private Point _lastDragLocation;
 
         private void LargePreview_MouseDown(object sender, MouseEventArgs e)
@@ -58,7 +58,7 @@ namespace NodeEditor
         {
             if (Capture)
             {
-                PreviewRender.Manager.Instance.RotateLightDirection(_document, new PointF(e.Location.X - _lastDragLocation.X, e.Location.Y - _lastDragLocation.Y));
+                // PreviewRender.Manager.Instance.RotateLightDirection(_document, new PointF(e.Location.X - _lastDragLocation.X, e.Location.Y - _lastDragLocation.Y));
                 _lastDragLocation = e.Location;
                 Invalidate();
             }
@@ -77,10 +77,12 @@ namespace NodeEditor
 
             try
             {
-                _preview.Update(_document, new Size(ClientRectangle.Width, ClientRectangle.Height));
-                if (_preview.Bitmap != null)
+                var bitmap = _preview.Build(
+                    _document, new Size(ClientRectangle.Width, ClientRectangle.Height),
+                    ShaderPatcherLayer.PreviewGeometry.Sphere, 0);
+                if (bitmap != null)
                 {
-                    e.Graphics.DrawImage(_preview.Bitmap, new Point() { X = 0, Y = 0 });
+                    e.Graphics.DrawImage(bitmap, new Point() { X = 0, Y = 0 });
                 }
             } catch {}
         }

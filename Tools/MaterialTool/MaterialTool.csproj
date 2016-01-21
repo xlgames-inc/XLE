@@ -1,0 +1,168 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{FFA59DBC-FD8A-4738-B693-CD384478D73F}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>MaterialTool</RootNamespace>
+    <AssemblyName>MaterialTool</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile>
+    </TargetFrameworkProfile>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\..\Finals_Debug64\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>..\..\Finals_Release64\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\..\Finals_Debug32\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+    <OutputPath>..\..\Finals_Release32\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Atf.Core">
+      <HintPath>..\..\Foreign\SonyLE\ATF\lib\Debug\Atf.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Atf.Gui">
+      <HintPath>..\..\Foreign\SonyLE\ATF\lib\Debug\Atf.Gui.dll</HintPath>
+    </Reference>
+    <Reference Include="Atf.Gui.WinForms">
+      <HintPath>..\..\Foreign\SonyLE\ATF\lib\Debug\Atf.Gui.WinForms.dll</HintPath>
+    </Reference>
+    <Reference Include="Atf.IronPython">
+      <HintPath>..\..\Foreign\SonyLE\ATF\lib\Debug\Atf.IronPython.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Deployment" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="ActiveMaterialContext.cs" />
+    <Compile Include="Controls\DiagramControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\DiagramLister.cs" />
+    <Compile Include="DiagramCommands.cs" />
+    <Compile Include="DiagramControlRegistry.cs" />
+    <Compile Include="DiagramEditingContext.cs" />
+    <Compile Include="DiagramSettings.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DiagramSettings.Designer.cs">
+      <DependentUpon>DiagramSettings.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MaterialTool.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="DiagramDocument.cs" />
+    <Compile Include="Controls\ShaderFragmentArchiveControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <EmbeddedResource Include="DiagramSettings.resx">
+      <DependentUpon>DiagramSettings.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Foreign\SonyLE\XLEBridgeUtils\Project\XLEBridgeUtils.vcxproj">
+      <Project>{7626c65e-8df3-42e0-b9cb-414561c50bc5}</Project>
+      <Name>XLEBridgeUtils</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Foreign\TreeViewAdv-1.7.0.0\Aga.Controls\Aga.Controls.csproj">
+      <Project>{e73bb233-d88b-44a7-a98f-d71ee158381d}</Project>
+      <Name>Aga.Controls</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ControlsLibraryExt\ControlsLibraryExt.csproj">
+      <Project>{75aed629-a689-4eea-8276-df6f0fb0f94b}</Project>
+      <Name>ControlsLibraryExt</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ControlsLibrary\ControlsLibrary.csproj">
+      <Project>{b7539653-6e9c-4493-8023-d4a2bffcd8e2}</Project>
+      <Name>ControlsLibrary</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\GUILayer\Project\GUILayer.vcxproj">
+      <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>
+      <Name>GUILayer</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\HyperGraph\HyperGraph.csproj">
+      <Project>{e4cc63d8-127d-4bc9-80e0-ccb3e9da06dc}</Project>
+      <Name>HyperGraph</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\NodeEditorCore\NodeEditorCore.csproj">
+      <Project>{788b1d28-29dd-4f5c-bf04-4a8d5866cde5}</Project>
+      <Name>NodeEditorCore</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ShaderFragmentArchive\Project\ShaderFragmentArchive.vcxproj">
+      <Project>{39ea3939-2098-42cf-8f3a-e3d13bdb546b}</Project>
+      <Name>ShaderFragmentArchive</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

@@ -28,36 +28,12 @@
 
 namespace ToolsRig
 {
-   
 
     IMaterialBinder::~IMaterialBinder() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static ParameterBox SetResHasParameters(
-        const ParameterBox& inputMatParameters, const ParameterBox& resBindings,
-        const ::Assets::DirectorySearchRules& searchRules)
-    {
-        static const auto DefaultNormalsTextureBindingHash = ParameterBox::MakeParameterNameHash("NormalsTexture");
-            // The "material parameters" ParameterBox should contain some "RES_HAS_..."
-            // settings. These tell the shader what resource bindings are available
-            // (and what are missing). We need to set these parameters according to our
-            // binding list
-        ParameterBox result = inputMatParameters;
-        for (auto param=resBindings.Begin(); !param.IsEnd(); ++param) {
-            result.SetParameter(StringMeld<64, utf8>() << "RES_HAS_" << param.Name(), 1);
-            if (param.HashName() == DefaultNormalsTextureBindingHash) {
-                auto resourceName = resBindings.GetString<::Assets::ResChar>(DefaultNormalsTextureBindingHash);
-                ::Assets::ResChar resolvedName[MaxPath];
-                searchRules.ResolveFile(resolvedName, dimof(resolvedName), resourceName.c_str());
-                result.SetParameter((const utf8*)"RES_HAS_NormalsTexture_DXT", 
-                    RenderCore::Assets::IsDXTNormalMap(resolvedName));
-            }
-        }
-        return std::move(result);
-    }
-
-    RenderCore::Metal::ShaderProgram* MaterialBinder::Apply(
+    bool MaterialBinder::Apply(
         RenderCore::Metal::DeviceContext& metalContext,
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex,
@@ -69,26 +45,28 @@ namespace ToolsRig
         using namespace RenderCore;
         using namespace RenderCore::Techniques;
 
-        ParameterBox materialParameters = SetResHasParameters(mat._matParams, mat._bindings, searchRules);
+        ParameterBox materialParameters = RenderCore::Assets::TechParams_SetResHas(mat._matParams, mat._bindings, searchRules);
         TechniqueMaterial material(geoInputLayout, {}, materialParameters);
 
         auto variation = material.FindVariation(parserContext, techniqueIndex, _shaderTypeName.c_str());
-        if (variation._shaderProgram == nullptr) {
-            return nullptr; // we can't render because we couldn't resolve a good shader variation
+        if (variation._shader._shaderProgram == nullptr) {
+            return false; // we can't render because we couldn't resolve a good shader variation
         }
 
             // we must bind the shader program & the bound layout
             // but we're not using the BoundUniforms in the ResolvedShader object
-        metalContext.Bind(*variation._shaderProgram);
-        metalContext.Bind(*variation._boundLayout);
+        metalContext.Bind(*variation._shader._shaderProgram);
+        metalContext.Bind(*variation._shader._boundLayout);
 
             // Instead of using ResolvedShader::_boundUniforms, let's
             // look at the reflection information for the shader program
             // and assign each shader input to some reasonable value
         BindConstantsAndResources(
             metalContext, parserContext, mat, 
-            sysConstants, searchRules, *variation._shaderProgram);
-        return variation._shaderProgram;
+            sysConstants, searchRules, 
+			*variation._shader._boundUniforms,
+            *variation._cbLayout);
+        return true;
     }
         
     MaterialBinder::MaterialBinder(const ::Assets::ResChar shaderTypeName[])
@@ -160,7 +138,8 @@ namespace ToolsRig
 
     static std::vector<std::pair<uint64, RenderCore::Metal::ConstantBufferPacket>> 
         BuildMaterialConstants(
-            ID3D::ShaderReflection& reflection, 
+            const RenderCore::Techniques::PredefinedCBLayout& cbLayout,
+            RenderCore::Metal::BoundUniforms& boundUniforms, 
             const ParameterBox& constants,
             const IMaterialBinder::SystemConstants& systemConstantsContext,
             UInt2 viewportDims)
@@ -173,18 +152,17 @@ namespace ToolsRig
             //
         std::vector<std::pair<uint64, RenderCore::Metal::ConstantBufferPacket>> finalResult;
 
-        const auto& cbLayout = ::Assets::GetAssetDep<RenderCore::Techniques::PredefinedCBLayout>(
-            "game/xleres/BasicMaterialConstants.txt");
+		auto reflection = boundUniforms.GetReflection(RenderCore::ShaderStage::Pixel);
 
         D3D11_SHADER_DESC shaderDesc;
-        reflection.GetDesc(&shaderDesc);
+        reflection->GetDesc(&shaderDesc);
         for (unsigned c=0; c<shaderDesc.BoundResources; ++c) {
 
             D3D11_SHADER_INPUT_BIND_DESC bindDesc;
-            reflection.GetResourceBindingDesc(c, &bindDesc);
+            reflection->GetResourceBindingDesc(c, &bindDesc);
 
             if (bindDesc.Type == D3D10_SIT_CBUFFER) {
-                auto cbuffer = reflection.GetConstantBufferByName(bindDesc.Name);
+                auto cbuffer = reflection->GetConstantBufferByName(bindDesc.Name);
                 if (cbuffer) {
                     D3D11_SHADER_BUFFER_DESC bufferDesc;
                     HRESULT hresult = cbuffer->GetDesc(&bufferDesc);
@@ -251,7 +229,6 @@ namespace ToolsRig
     static std::vector<const RenderCore::Metal::ShaderResourceView*>
         BuildBoundTextures(
             RenderCore::Metal::BoundUniforms& boundUniforms,
-            RenderCore::Metal::ShaderProgram& shaderProgram,
             const ParameterBox& bindings,
             const Assets::DirectorySearchRules& searchRules)
     {
@@ -268,16 +245,16 @@ namespace ToolsRig
             //      default objects.
             //
 
-        const CompiledShaderByteCode* shaderCode[] = {
-            &shaderProgram.GetCompiledVertexShader(),
-            &shaderProgram.GetCompiledPixelShader(),
-            shaderProgram.GetCompiledGeometryShader(),
+        const ShaderStage::Enum stages[] = {
+            ShaderStage::Vertex,
+			ShaderStage::Pixel,
+			ShaderStage::Geometry
         };
 
-        for (unsigned s=0; s<dimof(shaderCode); ++s) {
-            if (!shaderCode[s]) continue;
+        for (unsigned s=0; s<dimof(stages); ++s) {
+            auto reflection = boundUniforms.GetReflection(stages[s]);
+			if (!reflection) continue;
 
-            auto reflection = Metal::CreateReflection(*shaderCode[s]);
             D3D11_SHADER_DESC shaderDesc;
             reflection->GetDesc(&shaderDesc);
 
@@ -287,7 +264,7 @@ namespace ToolsRig
                 reflection->GetResourceBindingDesc(c, &bindDesc);
                 if  (bindDesc.Type == D3D10_SIT_TEXTURE) {
 
-                        // skip "NormalsFittingTexture" -- system use
+                        // skip some textures that are only for system use...
                     if (!XlCompareString(bindDesc.Name, "NormalsFittingTexture")) continue;
                     if (!XlCompareString(bindDesc.Name, "SkyReflectionTexture[0]")) continue;
                     if (!XlCompareString(bindDesc.Name, "SkyReflectionTexture[1]")) continue;
@@ -348,7 +325,8 @@ namespace ToolsRig
         const RenderCore::Assets::ResolvedMaterial& mat,
         const SystemConstants& sysConstants,
         const ::Assets::DirectorySearchRules& searchRules,
-        RenderCore::Metal::ShaderProgram& shaderProgram)
+		const RenderCore::Metal::BoundUniforms& srcLayout,
+        const RenderCore::Techniques::PredefinedCBLayout& cbLayout)
     {
         using namespace RenderCore;
 
@@ -356,15 +334,16 @@ namespace ToolsRig
                 //      Constants / Resources
                 //
 
+		Metal::BoundUniforms boundLayout;
+		boundLayout.CopyReflection(srcLayout);
+        Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
+
         Metal::ViewportDesc currentViewport(metalContext);
             
         auto materialConstants = BuildMaterialConstants(
-            *Metal::CreateReflection(shaderProgram.GetCompiledPixelShader()), 
+            cbLayout, boundLayout, 
             mat._constants, sysConstants, 
             UInt2(unsigned(currentViewport.Width), unsigned(currentViewport.Height)));
-        
-        Metal::BoundUniforms boundLayout(shaderProgram);
-        Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
             
         std::vector<RenderCore::Metal::ConstantBufferPacket> constantBufferPackets;
         constantBufferPackets.push_back(
@@ -377,8 +356,7 @@ namespace ToolsRig
         }
 
         auto boundTextures = BuildBoundTextures(
-            boundLayout, shaderProgram,
-            mat._bindings, searchRules);
+            boundLayout, mat._bindings, searchRules);
         boundLayout.Apply(
             metalContext,
             parsingContext.GetGlobalUniformsStream(),

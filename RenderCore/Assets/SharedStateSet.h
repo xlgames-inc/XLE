@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../Metal/Forward.h"
+#include "../../Assets/AssetUtils.h"
 #include "../../Core/Types.h"
 #include <string>
 #include <memory>
@@ -16,6 +17,7 @@ namespace RenderCore { namespace Techniques
     class TechniqueContext; class ParsingContext; 
     class IStateSetResolver;
     class RenderStateSet;
+    class PredefinedCBLayout;
 }}
 namespace Utility { class ParameterBox; }
 
@@ -55,7 +57,7 @@ namespace RenderCore { namespace Assets
             };
     }
 
-    using SharedShaderName = Internal::SharedStateIndex<0>;
+    using SharedTechniqueConfig = Internal::SharedStateIndex<0>;
     using SharedParameterBox = Internal::SharedStateIndex<1>;
     using SharedTechniqueInterface = Internal::SharedStateIndex<2>;
     using SharedRenderStateSet = Internal::SharedStateIndex<3>;
@@ -67,18 +69,20 @@ namespace RenderCore { namespace Assets
             const RenderCore::Metal::InputElementDesc vertexElements[], unsigned count,
             const uint64 textureBindPoints[], unsigned textureBindPointsCount);
 
-        SharedShaderName InsertShaderName(const std::string& shaderName);
+        SharedTechniqueConfig InsertTechniqueConfig(const ::Assets::ResChar shaderName[]);
         SharedParameterBox InsertParameterBox(const Utility::ParameterBox& box);
         unsigned InsertRenderStateSet(const Techniques::RenderStateSet& states);
 
         Metal::BoundUniforms* BeginVariation(
             const ModelRendererContext& context, 
-            SharedShaderName shaderName, SharedTechniqueInterface techniqueInterface,
+            SharedTechniqueConfig shaderName, SharedTechniqueInterface techniqueInterface,
             SharedParameterBox geoParamBox, SharedParameterBox materialParamBox) const;
 
         void BeginRenderState(
             const ModelRendererContext& context, 
             SharedRenderStateSet renderStateSetIndex) const;
+
+        const Techniques::PredefinedCBLayout* GetCBLayout(SharedTechniqueConfig shaderName);
 
         class CaptureMarker
         {
@@ -105,13 +109,13 @@ namespace RenderCore { namespace Assets
             std::shared_ptr<Utility::ParameterBox> environment);
         void ReleaseState(Metal::DeviceContext& context);
 
-        SharedStateSet();
+        SharedStateSet(const ::Assets::DirectorySearchRules& shaderSearchDir);
         ~SharedStateSet();
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
 
-        mutable SharedShaderName _currentShaderName;
+        mutable SharedTechniqueConfig _currentShaderName;
         mutable SharedTechniqueInterface _currentTechniqueInterface;
         mutable SharedParameterBox _currentMaterialParamBox;
         mutable SharedParameterBox _currentGeoParamBox;

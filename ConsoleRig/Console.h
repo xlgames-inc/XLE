@@ -6,13 +6,18 @@
 
 #pragma once
 
+#include "../Utility/UTFUtils.h"
 #include <string>
 #include <vector>
+#include <memory>
 
 typedef struct lua_State lua_State;
 
 namespace ConsoleRig
 {
+    class LuaState;
+    class ConsoleVariableStorage;
+    
     class Console
     {
     public:
@@ -22,21 +27,29 @@ namespace ConsoleRig
         void        Print(const char messageStart[]);
         void        Print(const char* messageStart, const char* messageEnd);
         void        Print(const std::string& message);
-        void        Print(const std::u16string& message);
+        void        Print(const std::basic_string<ucs2>& message);
 
-        auto        GetLines(unsigned lineCount, unsigned scrollback=0) -> std::vector<std::u16string>;
+        auto        GetLines(unsigned lineCount, unsigned scrollback=0) -> std::vector<std::basic_string<ucs2>>;
         unsigned    GetLineCount() const;
 
         static Console&     GetInstance() { return *s_instance; }
+        static bool         HasInstance() { return s_instance != nullptr; }
         static void         SetInstance(Console* newInstance);
+
         lua_State*          GetLuaState();
+        ConsoleVariableStorage& GetCVars();
 
         Console();
         ~Console();
+
+        Console(const Console&) = delete;
+        Console& operator=(const Console&) = delete;
+        Console(Console&&) = delete;
+        Console& operator=(Console&&) = delete;
     private:
-        std::vector<std::u16string>     _lines;
-        bool                _lastLineComplete;
-        static Console*     s_instance;
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+        static Console* s_instance;
     };
 
     // template <typename Type> class ConsoleVariable;
@@ -57,6 +70,8 @@ namespace ConsoleRig
     private:
         std::string     _name;
         std::string     _cvarNamespace;
+
+        void Deregister();
     };
 
     namespace Detail

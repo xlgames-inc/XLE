@@ -26,6 +26,8 @@
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../Assets/AssetServices.h"
+#include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -304,7 +306,7 @@ namespace ToolsRig
                     settings._renderResolution, settings._renderResolution, 
                     typelessFormat, 1, cubeFaces),
                 "AoGen"));
-        _pimpl->_cubeDSV = Metal::DepthStencilView(_pimpl->_cubeLocator->GetUnderlying(), dsvFormat, Metal::ArraySlice(cubeFaces));
+        _pimpl->_cubeDSV = Metal::DepthStencilView(_pimpl->_cubeLocator->GetUnderlying(), dsvFormat, Metal::SubResourceSlice(cubeFaces));
         _pimpl->_cubeSRV = Metal::ShaderResourceView(_pimpl->_cubeLocator->GetUnderlying(), srvFormat, cubeFaces);
 
         _pimpl->_miniLocator = bufferUploads.Transaction_Immediate(
@@ -418,7 +420,7 @@ namespace ToolsRig
             // Setup the rendering objects we'll need
             // We're going to be use a ModelRenderer to do the rendering
             // for calculating the AO -- so we have to create that now.
-        SharedStateSet sharedStates;
+        SharedStateSet sharedStates(RenderCore::Assets::Services::GetTechniqueConfigDirs());
         std::unique_ptr<ModelRenderer> renderer;
 
             // we need to stall while pending...
@@ -767,16 +769,16 @@ namespace ToolsRig
             _queuedOp->SetState(::Assets::AssetState::Invalid);
             return Result::Finish;
         }
-
+        
         TRY
         {
             auto compileResult = p->PerformCompile(
                 _queuedOp->_initializer0, _queuedOp->_initializer1, 
-                _queuedOp->_sourceID0);
-            _queuedOp->_dependencyValidation = _queuedOp->_destinationStore->WriteDependencies(
-                _queuedOp->_sourceID0, MakeStringSection(compileResult._baseDir), 
+                _queuedOp->GetLocator()._sourceID0);
+            _queuedOp->GetLocator()._dependencyValidation = _queuedOp->_destinationStore->WriteDependencies(
+                _queuedOp->GetLocator()._sourceID0, MakeStringSection(compileResult._baseDir), 
                 MakeIteratorRange(compileResult._dependencies));
-            assert(_queuedOp->_dependencyValidation);
+            assert(_queuedOp->GetLocator()._dependencyValidation);
             _queuedOp->SetState(::Assets::AssetState::Ready);
         } CATCH(const ::Assets::Exceptions::PendingAsset&) {
             return Result::KeepPolling;
@@ -800,36 +802,42 @@ namespace ToolsRig
     AOSupplementCompiler::PollingOp::~PollingOp() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    
-    std::shared_ptr<::Assets::PendingCompileMarker> 
-        AOSupplementCompiler::PrepareAsset(
-            uint64 typeCode, 
-            const ::Assets::ResChar* initializers[], unsigned initializerCount,
-            const ::Assets::IntermediateAssets::Store& store)
+
+    class AOSupplementCompiler::Marker : public ::Assets::ICompileMarker
     {
-        if (initializerCount != 2 || !initializers[0][0] || !initializers[1][0]) 
-            Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in AOSupplementCompiler. Model filename first, then material filename"));
+    public:
+        ::Assets::IntermediateAssetLocator GetExistingAsset() const;
+        std::shared_ptr<::Assets::PendingCompileMarker> InvokeCompile() const;
+        StringSection<::Assets::ResChar> Initializer() const;
 
-        const auto* modelFilename = initializers[0], *materialFilename = initializers[1];
+        Marker(
+            const ::Assets::ResChar modelFilename[],
+            const ::Assets::ResChar materialFilename[],
+            uint64 typeCode,
+            const ::Assets::IntermediateAssets::Store& store,
+            std::shared_ptr<AOSupplementCompiler> compiler);
+        ~Marker();
+    private:
+        ::Assets::rstring _modelFilename, _materialFilename;
+        ::Assets::rstring _initializer;
+        std::weak_ptr<AOSupplementCompiler> _compiler;
+        uint64 _typeCode;
+        const ::Assets::IntermediateAssets::Store* _store;
+        void MakeIntermediateName(::Assets::ResChar destination[], size_t destinationCount) const;
+    };
 
-            // build the intermediate name from our initializers
-        using namespace ::Assets;
-        ResChar intermediateName[MaxPath];
-        store.MakeIntermediateName(intermediateName, modelFilename);
-        StringMeldAppend(intermediateName)
-            << "-" << MakeFileNameSplitter(materialFilename).File().AsString() << "-ao";
+    ::Assets::IntermediateAssetLocator AOSupplementCompiler::Marker::GetExistingAsset() const
+    {
+        ::Assets::IntermediateAssetLocator result;
+        MakeIntermediateName(result._sourceID0, dimof(result._sourceID0));
+        result._dependencyValidation = _store->MakeDependencyValidation(result._sourceID0);
+        return result;
+    }
 
-        StringMeld<256,ResChar> debugInitializer;
-        debugInitializer<< modelFilename << "(AO supplement)";
-
-            // check for an existing asset that is up-to-date and can be used immediately...
-        auto marker = CompilerHelper::CheckExistingAsset(store, intermediateName, debugInitializer);
-        if (marker) return marker;
-
-            // If it doesn't exist, we have to perform a compile
-            // then return a marker for the new asset.
-        // auto deps = PerformCompile(modelFilename, materialFilename, intermediateName);
-        // return CompilerHelper::PrepareCompileMarker(store, intermediateName, deps);
+    std::shared_ptr<::Assets::PendingCompileMarker> AOSupplementCompiler::Marker::InvokeCompile() const
+    {
+        auto c = _compiler.lock();
+        if (!c) return nullptr;
 
         using QueuedOp = RenderCore::Assets::QueuedCompileOperation;
 
@@ -837,16 +845,51 @@ namespace ToolsRig
             // thread. We can't push into a background thread here...
 
         auto backgroundOp = std::make_shared<QueuedOp>();
-        backgroundOp->SetInitializer(debugInitializer);
-        XlCopyString(backgroundOp->_initializer0, modelFilename);
-        XlCopyString(backgroundOp->_initializer1, materialFilename);
-        XlCopyString(backgroundOp->_sourceID0, intermediateName);
-        backgroundOp->_destinationStore = &store;
-        backgroundOp->_typeCode = typeCode;
+        backgroundOp->SetInitializer(_initializer.c_str());
+        XlCopyString(backgroundOp->_initializer0, _modelFilename);
+        XlCopyString(backgroundOp->_initializer1, _materialFilename);
+        MakeIntermediateName(backgroundOp->GetLocator()._sourceID0, dimof(backgroundOp->GetLocator()._sourceID0));
+        backgroundOp->_destinationStore = _store;
+        backgroundOp->_typeCode = _typeCode;
 
         ::Assets::Services::GetAsyncMan().Add(
-            std::make_shared<PollingOp>(_pimpl, backgroundOp));
+            std::make_shared<PollingOp>(c->_pimpl, backgroundOp));
         return std::move(backgroundOp);
+    }
+
+    void AOSupplementCompiler::Marker::MakeIntermediateName(::Assets::ResChar destination[], size_t destinationCount) const
+    {
+        _store->MakeIntermediateName(destination, (unsigned)destinationCount, _modelFilename.c_str());
+        StringMeldAppend(destination, &destination[destinationCount])
+            << "-" << MakeFileNameSplitter(_materialFilename).File().AsString() << "-ao";
+    }
+
+    StringSection<::Assets::ResChar> AOSupplementCompiler::Marker::Initializer() const { return MakeStringSection(_initializer); }
+
+    AOSupplementCompiler::Marker::Marker(
+        const ::Assets::ResChar modelFilename[],
+        const ::Assets::ResChar materialFilename[],
+        uint64 typeCode,
+        const ::Assets::IntermediateAssets::Store& store,
+        std::shared_ptr<AOSupplementCompiler> compiler)
+    : _modelFilename(modelFilename), _materialFilename(materialFilename)
+    , _typeCode(typeCode), _store(&store), _compiler(std::move(compiler))
+    {
+        _initializer = ::Assets::rstring(modelFilename) + "(AO supplement)";
+    }
+    
+    AOSupplementCompiler::Marker::~Marker() {}
+    
+    std::shared_ptr<::Assets::ICompileMarker> 
+        AOSupplementCompiler::PrepareAsset(
+            uint64 typeCode, 
+            const ::Assets::ResChar* initializers[], unsigned initializerCount,
+            const ::Assets::IntermediateAssets::Store& store)
+    {
+        if (initializerCount != 2 || !initializers[0][0] || !initializers[1][0]) 
+            Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in AOSupplementCompiler. Model filename first, then material filename"));
+        const auto* modelFilename = initializers[0], *materialFilename = initializers[1];
+        return std::make_shared<Marker>(modelFilename, materialFilename, typeCode, store, shared_from_this());
     }
 
     void AOSupplementCompiler::StallOnPendingOperations(bool)

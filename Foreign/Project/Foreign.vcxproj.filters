@@ -7,9 +7,6 @@
     <Filter Include="Hash\Murmur">
       <UniqueIdentifier>{d24c4b12-9970-4943-a553-d25cddff56ea}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Lua">
-      <UniqueIdentifier>{3ae209b4-7742-4528-8b36-2f9575855b5f}</UniqueIdentifier>
-    </Filter>
     <Filter Include="TinyXML">
       <UniqueIdentifier>{2a72f877-53cb-4217-9bc2-90f7a66adf33}</UniqueIdentifier>
     </Filter>
@@ -24,6 +21,12 @@
     </Filter>
     <Filter Include="StamSimpleFluid">
       <UniqueIdentifier>{7f199cf2-efff-41d7-94b2-8578cc9b9bd9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="plustasche">
+      <UniqueIdentifier>{cb08e698-b2c9-4601-9cc5-d21822b43a21}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="LibTIFF\Lua">
+      <UniqueIdentifier>{3ae209b4-7742-4528-8b36-2f9575855b5f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -40,106 +43,103 @@
       <Filter>TinyThread</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\liolib.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\llex.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lmathlib.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lmem.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\loadlib.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lobject.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lopcodes.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\loslib.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lparser.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lstate.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lstring.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lstrlib.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\ltable.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\ltablib.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\ltm.c">
-      <Filter>Lua</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Lua\src\luac.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lundump.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lutf8lib.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lvm.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lzio.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lapi.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lauxlib.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lbaselib.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lbitlib.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lcode.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lcorolib.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lctype.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\ldblib.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\ldebug.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\ldo.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\ldump.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lfunc.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\lgc.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\Lua\src\linit.c">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClCompile>
     <ClCompile Include="..\LibTiff\tif_stream.cxx">
       <Filter>LibTIFF</Filter>
@@ -249,9 +249,6 @@
     <ClCompile Include="..\LibTiff\tif_tile.c">
       <Filter>LibTIFF</Filter>
     </ClCompile>
-    <ClCompile Include="..\LibTiff\tif_unix.c">
-      <Filter>LibTIFF</Filter>
-    </ClCompile>
     <ClCompile Include="..\LibTiff\tif_version.c">
       <Filter>LibTIFF</Filter>
     </ClCompile>
@@ -273,6 +270,12 @@
     <ClCompile Include="..\StamSimpleFluid\solver.c">
       <Filter>StamSimpleFluid</Filter>
     </ClCompile>
+    <ClCompile Include="..\plustasche\context.cpp">
+      <Filter>plustasche</Filter>
+    </ClCompile>
+    <ClCompile Include="..\plustasche\template.cpp">
+      <Filter>plustasche</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Hash\MurmurHash3.h">
@@ -291,82 +294,82 @@
       <Filter>TinyThread</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\llex.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\llimits.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lmem.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lobject.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lopcodes.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lparser.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lprefix.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lstate.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lstring.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\ltable.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\ltm.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lua.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lua.hpp">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\luaconf.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lualib.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lundump.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lvm.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lzio.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lapi.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lauxlib.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lcode.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lctype.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\ldebug.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\ldo.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lfunc.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\Lua\src\lgc.h">
-      <Filter>Lua</Filter>
+      <Filter>LibTIFF\Lua</Filter>
     </ClInclude>
     <ClInclude Include="..\LibTiff\tif_dir.h">
       <Filter>LibTIFF</Filter>
@@ -409,6 +412,15 @@
     </ClInclude>
     <ClInclude Include="..\StackWalker\StackWalker.h">
       <Filter>StackWalker</Filter>
+    </ClInclude>
+    <ClInclude Include="..\plustasche\context.hpp">
+      <Filter>plustasche</Filter>
+    </ClInclude>
+    <ClInclude Include="..\plustasche\plustache_types.hpp">
+      <Filter>plustasche</Filter>
+    </ClInclude>
+    <ClInclude Include="..\plustasche\template.hpp">
+      <Filter>plustasche</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

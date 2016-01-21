@@ -53,12 +53,6 @@ namespace ControlsLibrary
             if (layerControl != null) layerControl.OnPaint(pe);
         }
 
-        protected override void OnResize(EventArgs pe)
-        {
-            if (layerControl!=null) layerControl.OnResize(pe);
-            base.OnResize(pe);
-        }
-
         protected override bool IsInputKey(Keys keyData)
         {
             if (layerControl != null) return layerControl.IsInputKey(keyData);

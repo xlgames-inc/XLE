@@ -77,6 +77,10 @@
         #define FEATURE_EXCEPTIONS  0
     #endif
 
+	#if _MSC_VER >= 1900
+		#define COMPILER_DEFAULT_IMPLICIT_OPERATORS 1
+	#endif
+
 #else
 
     #define FEATURE_RTTI        1      // assume it's on

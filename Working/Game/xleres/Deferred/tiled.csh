@@ -126,8 +126,8 @@ ProjectedLight BuildProjectedLight(Light l)
 }
 
 [numthreads(ThreadWidth, ThreadHeight, 1)]
-	void main(	uint3 threadId : SV_GroupThreadID, 
-				uint3 groupId : SV_GroupID, 
+	void main(	uint3 threadId : SV_GroupThreadID,
+				uint3 groupId : SV_GroupID,
 				uint3 dispatchThreadId : SV_DispatchThreadID)
 {
 	int2 groupPixelCoord = threadId.xy;
@@ -149,7 +149,7 @@ ProjectedLight BuildProjectedLight(Light l)
 		InterlockedMax(DepthMax, depthAsInt);
 	}
 
-		//		Wait until all threads in this group have completed 
+		//		Wait until all threads in this group have completed
 		//		calculating Min/Max depth values.
 		//		Sync entire group.
 
@@ -163,14 +163,14 @@ ProjectedLight BuildProjectedLight(Light l)
 	uint finalDepthMax = DepthMax;
 	[branch] if (finalDepthMin < finalDepthMax) {
 
-			//	
+			//
 			//		Now that we know tile min/max, test each light
 			//		and find the lights that are visible in this frustum
-			//		
+			//
 			//		We could issue another compute shader dispatch to handle
 			//		lights... But we can just do this in the same dispatch like
 			//		this:
-			//			Each thread handles a different light index. 
+			//			Each thread handles a different light index.
 			//			If there are too many lights, then we have to loop through
 			//			multiple times.
 			//
@@ -187,9 +187,9 @@ ProjectedLight BuildProjectedLight(Light l)
 		float2 B = float2(worldDistanceMaxDepth*tan(maxAngleX), worldDistanceMaxDepth*tan(maxAngleY));
 		float2 C = float2(worldDistanceMinDepth*tan(minAngleX), worldDistanceMinDepth*tan(minAngleY));
 		float2 D = float2(worldDistanceMinDepth*tan(maxAngleX), worldDistanceMinDepth*tan(maxAngleY));
-		float2 minBox = float2(	min(min(A.x, B.x), min(C.x, B.x)), 
+		float2 minBox = float2(	min(min(A.x, B.x), min(C.x, B.x)),
 								min(min(A.y, B.y), min(C.y, B.y)));
-		float2 maxBox = float2(	max(max(A.x, B.x), max(C.x, B.x)), 
+		float2 maxBox = float2(	max(max(A.x, B.x), max(C.x, B.x)),
 								max(max(A.y, B.y), max(C.y, B.y)));
 
 		const uint lightCount = LightCount;
@@ -212,24 +212,24 @@ ProjectedLight BuildProjectedLight(Light l)
 				//		world to view transform to do it efficiently.
 				//
 				//		View space coordinates would make calculating the frustum planes
-				//		slightly easier... But the culling math should be roughly identical 
+				//		slightly easier... But the culling math should be roughly identical
 				//		as world space coordinates. Well, it might be quicker because we
 				//		could ignore the X coordinate while culling against the top and
 				//		bottom planes, and ignore the Y coordinate while culling against
 				//		left and right (and depth becomes trivial).
 				//
-				//		Or, we could just use world coordinates. This would avoid 
+				//		Or, we could just use world coordinates. This would avoid
 				//		pretransforming light coordinates completely.
 				//
-				//		We could potentially build a list of lights culled by left, right, 
+				//		We could potentially build a list of lights culled by left, right,
 				//		top and bottom planes in an earlier compute shader pass.
-				//			
+				//
 			Light l = GetInputLight(lightIndex);
 			ProjectedLight p = GetProjectedLight(lightIndex);
 
 				//
 				//		X/Y clip plane check...
-				//			(note --	we're actually testing an aligned cube 
+				//			(note --	we're actually testing an aligned cube
 				//						around there sphere light. Maybe this will
 				//						include some redundant tiles)
 				//
@@ -237,13 +237,14 @@ ProjectedLight BuildProjectedLight(Light l)
 			if (	((p.BaseAngles.x + p.ViewSpaceHalfSubtendingAngle) > minAngleX)
 				&&	((p.BaseAngles.x - p.ViewSpaceHalfSubtendingAngle) < maxAngleX)
 				&&	((p.BaseAngles.y + p.ViewSpaceHalfSubtendingAngle) > minAngleY)
-				&&	((p.BaseAngles.y - p.ViewSpaceHalfSubtendingAngle) < maxAngleY)) {
+				&&	((p.BaseAngles.y - p.ViewSpaceHalfSubtendingAngle) < maxAngleY))
 	#else
 			[branch] if (	((p.ViewSpacePosition.x + l.Radius) > minBox.x)
 				&&	((p.ViewSpacePosition.x - l.Radius) < maxBox.x)
 				&&	((p.ViewSpacePosition.y + l.Radius) > minBox.y)
-				&&	((p.ViewSpacePosition.y - l.Radius) < maxBox.y)) {
+				&&	((p.ViewSpacePosition.y - l.Radius) < maxBox.y))
 	#endif
+			{
 
 					// todo -- is near clip plane distance correctly accounted for here?
 
@@ -270,7 +271,7 @@ ProjectedLight BuildProjectedLight(Light l)
 
 		//		Write out the depth min / max for debugging
 	#if defined(_METRICS)
-		DebuggingTextureMin[pixelCoord] = finalDepthMin; 
+		DebuggingTextureMin[pixelCoord] = finalDepthMin;
 		DebuggingTextureMax[pixelCoord] = finalDepthMax;
 	#endif
 
@@ -294,7 +295,7 @@ ProjectedLight BuildProjectedLight(Light l)
 	#if defined(_METRICS)
 		DebuggingLightCountTexture[pixelCoord] = ActiveLightCount;
 	#endif
-	
+
 	const uint activeLightCount = ActiveLightCount;
 	for (uint c=0; c<activeLightCount; ++c) {
 		Light l = GetInputLight(ActiveLightIndices[c]);
@@ -325,6 +326,3 @@ ProjectedLight BuildProjectedLight(Light l)
 		}
 	#endif
 }
-
-
-

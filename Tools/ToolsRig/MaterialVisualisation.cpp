@@ -392,6 +392,10 @@ namespace ToolsRig
             SceneEngine::LightingParser_SetGlobalTransform(
                 *metalContext.get(), parserContext, 
                 SceneEngine::BuildProjectionDesc(sceneParser.GetCameraDesc(), qualSettings._dimensions));
+            CATCH_ASSETS_BEGIN
+                SceneEngine::ReturnToSteadyState(*metalContext.get());
+                SceneEngine::SetFrameGlobalStates(*metalContext.get());
+            CATCH_ASSETS_END(parserContext)
             sceneParser.Draw(*metalContext.get(), parserContext, 0);
                 
         } else if (settings._lightingType == MaterialVisSettings::LightingType::Deferred) {

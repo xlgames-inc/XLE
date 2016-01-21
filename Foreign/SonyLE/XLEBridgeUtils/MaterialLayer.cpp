@@ -4,22 +4,10 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "NativeManipulators.h"
 #include "PropertyDescriptorUtils.h"
 #include "../../Assets/Assets.h"
 #include "../../RenderCore/Assets/Material.h"
 #include "../../Tools/GUILayer/MarshalString.h"
-
-// using namespace Sce::Atf;
-// using namespace Sce::Atf::Applications;
-// using namespace Sce::Atf::Dom;
-// using namespace System;
-// using namespace System::Collections::Generic;
-// using namespace System::Reflection;
-// using namespace System::ComponentModel;
-// using namespace System::ComponentModel::Composition;
-// using namespace System::Xml;
-// using namespace System::Xml::Schema;
 
 namespace XLEBridgeUtils
 {
@@ -37,6 +25,13 @@ namespace XLEBridgeUtils
                 // rebuild the binding list objects in the GUILayer part.
                 // Using the C++ layer give us a little more flexibility. 
             if (name->Length < 2) return false;
+
+            if (name->Equals("TechniqueConfig")) {
+                if (type != String::typeid)
+                    return false;
+                result = _material->TechniqueConfig;
+                return true;
+            }
 
             auto cName = name->Substring(2);
             decltype(_material->ShaderConstants) list = nullptr;
@@ -84,6 +79,13 @@ namespace XLEBridgeUtils
 
         virtual bool TrySetMember(String^ name, bool caseInsensitive, Object^ value)
         {
+            if (name->Equals("TechniqueConfig")) {
+                String^ input = dynamic_cast<String^>(value);
+                if (!input) return false;
+                _material->TechniqueConfig = input;
+                return true;
+            }
+
             auto cName = name->Substring(2);
             decltype(_material->ShaderConstants) list = nullptr;
             if (name[0] == 'C' && name[1] == '-') {
@@ -113,34 +115,5 @@ namespace XLEBridgeUtils
     protected:
         GUILayer::RawMaterial^ _material;
     };
-
-    // [Export(ActiveMaterialContext::typeid)]
-    // [PartCreationPolicy(CreationPolicy.Shared)]
-    // public ref class ActiveMaterialContext
-    // {
-    // public:
-    //     property System::String^ MaterialName 
-    //     { 
-    //         System::String^ get() { return m_materialName; }
-    //         void set(System::String^ value) 
-    //         {
-    //             if (value != m_materialName) 
-    //             {
-    //                 m_materialName = value; 
-    //                 OnChange();
-    //             }
-    //         }
-    //     }
-    //     property System::String^ PreviewModelName;
-    //     property uint64 PreviewModelBinding;
-    // 
-    //     delegate void OnChangeDelegate();
-    //     event OnChangeDelegate^ OnChange;
-    // 
-    //     ActiveMaterialContext() : m_materialName(nullptr) {}
-    // private:
-    //     System::String^ m_materialName;
-    // };
-    
 }
 

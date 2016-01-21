@@ -30,32 +30,62 @@ using System.Text;
 using System.Windows.Forms;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
+using System.Reflection;
 using HyperGraph.Compatibility;
 
 namespace HyperGraph
 {
 	public delegate bool AcceptElement(IElement element);
 
-	public partial class GraphControl : Control
+	public class GraphControl
 	{
-		#region Constructor
-		public GraphControl()
+		public void Attach(Control ctrl)
 		{
-			InitializeComponent();
-			this.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.Opaque | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.Selectable | ControlStyles.UserPaint, true);
-			CompatibilityStrategy = new AlwaysCompatible();
-		}
-		#endregion
+            // Hack --  SetStyle is protected, but we can access it by reflection
+            //          It seems unclear why this was protected... Perhaps because it effects
+            //          the way some virtual methods work? Anyway, it also effects our callbacks.
+            //          So let's work-around this restruction.
+			// ctrl.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.Opaque | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.Selectable | ControlStyles.UserPaint, true);
+            var type = ctrl.GetType();
+            var method = type.GetMethod("SetStyle", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (method != null)
+                method.Invoke(ctrl, new object[]{
+                    ControlStyles.AllPaintingInWmPaint | ControlStyles.Opaque | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.Selectable | ControlStyles.UserPaint, true});
 
-		public event EventHandler<ElementEventArgs>					FocusChanged;
-		public event EventHandler<AcceptNodeEventArgs>				NodeAdded;
-		public event EventHandler<AcceptNodeEventArgs>				NodeRemoving;
-		public event EventHandler<NodeEventArgs>					NodeRemoved;
-		public event EventHandler<AcceptElementLocationEventArgs>	ShowElementMenu;
-		public event EventHandler<AcceptNodeConnectionEventArgs>	ConnectionAdding;
-		public event EventHandler<AcceptNodeConnectionEventArgs>	ConnectionAdded;
-		public event EventHandler<AcceptNodeConnectionEventArgs>	ConnectionRemoving;
-		public event EventHandler<NodeConnectionEventArgs>			ConnectionRemoved;
+            ctrl.Paint += OnPaint;
+            ctrl.MouseWheel += OnMouseWheel;
+            ctrl.MouseDown += OnMouseDown;
+            ctrl.MouseMove += OnMouseMove;
+            ctrl.MouseUp += OnMouseUp;
+            ctrl.DoubleClick += OnDoubleClick;
+            ctrl.MouseClick += OnMouseClick;
+            ctrl.KeyDown += OnKeyDown;
+            ctrl.KeyUp += OnKeyUp;
+            ctrl.DragEnter += OnDragEnter;
+            ctrl.DragOver += OnDragOver;
+            ctrl.DragLeave += OnDragLeave;
+            ctrl.DragDrop += OnDragDrop;
+            _invalidationChain = new WeakReference(ctrl);
+		}
+
+        public void Detach(Control ctrl)
+        {
+            ctrl.Paint -= OnPaint;
+            ctrl.MouseWheel -= OnMouseWheel;
+            ctrl.MouseDown -= OnMouseDown;
+            ctrl.MouseMove -= OnMouseMove;
+            ctrl.MouseUp -= OnMouseUp;
+            ctrl.DoubleClick -= OnDoubleClick;
+            ctrl.MouseClick -= OnMouseClick;
+            ctrl.KeyDown -= OnKeyDown;
+            ctrl.KeyUp -= OnKeyUp;
+            ctrl.DragEnter -= OnDragEnter;
+            ctrl.DragOver -= OnDragOver;
+            ctrl.DragLeave -= OnDragLeave;
+            ctrl.DragDrop -= OnDragDrop;
+        }
+
+        public event EventHandler<AcceptElementLocationEventArgs>   ShowElementMenu; 
 
 		#region Grid
 		public bool		ShowGrid					= true;
@@ -73,7 +103,7 @@ namespace HyperGraph
 					return;
 
 				internalSmallGridStep = value;
-				this.Invalidate();
+                InvokeInvalidate();
 			}
 		}
 		public float	internalLargeGridStep			= 16.0f * 8.0f;
@@ -90,7 +120,7 @@ namespace HyperGraph
 					return;
 
 				internalLargeGridStep = value;
-				this.Invalidate();
+                InvokeInvalidate();
 			}
 		}
 		private Color	internalSmallStepGridColor	= Color.Gray;
@@ -106,7 +136,7 @@ namespace HyperGraph
 
 				internalSmallStepGridColor = value;
 				SmallGridPen = new Pen(internalSmallStepGridColor);
-				this.Invalidate();
+                InvokeInvalidate();
 			}
 		}
 		private Color	internalLargeStepGridColor	= Color.LightGray;
@@ -122,7 +152,7 @@ namespace HyperGraph
 
 				internalLargeStepGridColor = value;
 				LargeGridPen = new Pen(internalLargeStepGridColor);
-				this.Invalidate();
+                InvokeInvalidate();
 			}
 		}
 		#endregion
@@ -163,31 +193,6 @@ namespace HyperGraph
 		}
 		#endregion
 		
-		#region FocusElement
-		IElement internalFocusElement;
-		[Browsable(false), EditorBrowsable(EditorBrowsableState.Never)]
-		public IElement FocusElement
-		{
-			get { return internalFocusElement; }
-			set
-			{
-				if (internalFocusElement == value)
-					return;
-				if (internalFocusElement != null)
-					SetFlag(internalFocusElement, RenderState.Focus, false, false);
-				internalFocusElement = value;
-				if (internalFocusElement != null)
-					SetFlag(internalFocusElement, RenderState.Focus, true, false);
-
-				if (FocusChanged != null)
-					FocusChanged(this, new ElementEventArgs(value));
-
-				this.Invalidate();
-			}
-		}
-		#endregion
-
-
 		#region SetFlag
 		RenderState SetFlag(RenderState original, RenderState flag, bool value)
 		{
@@ -294,118 +299,7 @@ namespace HyperGraph
 			}
 		}
 		#endregion
-
-		#region BringElementToFront
-		public void BringElementToFront(IElement element)
-		{
-			if (element == null)
-				return;
-			switch (element.ElementType)
-			{
-				case ElementType.Connection:
-					var connection = element as NodeConnection;
-					BringElementToFront(connection.From);
-					BringElementToFront(connection.To);
-					
-					var connections = connection.From.Node.connections;
-					if (connections[0] != connection)
-					{
-						connections.Remove(connection);
-						connections.Insert(0, connection);
-					}
-					
-					connections = connection.To.Node.connections;
-					if (connections[0] != connection)
-					{
-						connections.Remove(connection);
-						connections.Insert(0, connection);
-					}
-					break;
-				case ElementType.NodeSelection:
-				{
-					var selection = element as NodeSelection;
-					foreach(var node in selection.Nodes.Reverse<Node>())
-					{
-						if (graphNodes[0] != node)
-						{
-							graphNodes.Remove(node);
-							graphNodes.Insert(0, node);
-						}
-					}
-					break;
-				}
-				case ElementType.Node:
-				{
-					var node = element as Node;
-					if (graphNodes[0] != node)
-					{
-						graphNodes.Remove(node);
-						graphNodes.Insert(0, node);
-					}
-					break;
-				}
-				case ElementType.InputConnector:
-				case ElementType.OutputConnector:
-					var connector = element as NodeConnector;
-					BringElementToFront(connector.Node);
-					break;
-				case ElementType.NodeItem:
-					var item = element as NodeItem;
-					BringElementToFront(item.Node);
-					break;
-			}
-		}
-		#endregion
 		
-		#region HasFocus
-		bool HasFocus(IElement element)
-		{
-			if (element == null)
-				return FocusElement == null;
-
-			if (FocusElement == null)
-				return false;
-
-			if (element.ElementType ==
-				FocusElement.ElementType)
-				return (element == FocusElement);
-			
-			switch (FocusElement.ElementType)
-			{
-				case ElementType.Connection:
-					var focusConnection = FocusElement as NodeConnection;
-					return (focusConnection.To == element ||
-							focusConnection.From == element ||
-							
-							((focusConnection.To != null &&
-							focusConnection.To.Node == element) ||
-							(focusConnection.From != null &&
-							focusConnection.From.Node == element)));
-				case ElementType.NodeItem:
-					var focusItem = FocusElement as NodeItem;
-					return (focusItem.Node == element);
-				case ElementType.InputConnector:
-				case ElementType.OutputConnector:
-					var focusConnector = FocusElement as NodeConnector;
-					return (focusConnector.Node == element);
-				case ElementType.NodeSelection:
-				{
-					var selection = FocusElement as NodeSelection;
-					foreach (var node in selection.Nodes)
-					{
-						if (node == element)
-							return true;
-					}
-					return false;
-				}
-				default:
-				case ElementType.Node:
-					return false;
-			}
-		}
-		#endregion
-
-
 		#region ShowLabels
 		bool internalShowLabels = false;
 		[Description("Show labels on the lines that connect the graph nodes"), Category("Appearance")]
@@ -420,13 +314,12 @@ namespace HyperGraph
 				if (internalShowLabels == value)
 					return;
 				internalShowLabels = value;
-				this.Invalidate();
+				InvokeInvalidate();
 			}
 		}
 		#endregion
 
-		#region HighlightCompatible
-		/// <summary>
+        /// <summary>
 		/// Should compatible connectors be highlighted when dragging a connection?
 		/// </summary>
 		[DisplayName( "Highlight Compatible Node Items" )]
@@ -434,20 +327,71 @@ namespace HyperGraph
 		[Category( "Behavior" )]
 		public bool HighlightCompatible { get; set; }
 
-		/// <summary>
-		/// The strategy that will be applied to determine if two node item connectors are compatible with each other
-		/// </summary>
+        public IGraphModel Model 
+        {
+            set
+            {
+                if (_model != null)
+                    _model.InvalidateViews -= InvalidateViewsHandler;
+                _model = value;
+                _model.InvalidateViews += InvalidateViewsHandler;
+            }
+            get { return _model; }
+        }
+
+        public void InvalidateViewsHandler(object sender, EventArgs args) { InvokeInvalidate(); }
+
+        private WeakReference _invalidationChain;
+        private void InvokeInvalidate() 
+        {
+            if (_invalidationChain == null) return;
+            var t = _invalidationChain.Target as Control;
+            if (t != null) t.Invalidate(); 
+        }
+
+        public IGraphSelection Selection
+        {
+            set {
+                if (_selection != null)
+                    _selection.SelectionChanged -= _selection_SelectionChanged;
+                _selection = value;
+                _selection.SelectionChanged += _selection_SelectionChanged;
+            }
+            get { return _selection; }
+        }
+
+        private void _selection_SelectionChanged(object sender, EventArgs e)
+        {
+            UpdateFocusStates();
+        }
+
+        private ISet<IElement> WorkingSelection()
+        {
+            var result = Selection.Selection;
+            if (_unselectedNodes.Any() || _selectedNodes.Any())
+            {
+                result = new HashSet<IElement>(result);
+                result.ExceptWith(_unselectedNodes);
+                result.UnionWith(_selectedNodes);
+            }
+            return result;
+        }
+
+        public object Context { get; set; }
+
+        private void UpdateFocusStates()
+        {
+            // only setting the "focus" state on the nodes
+            var set = WorkingSelection();
+            foreach (var n in Nodes)
+                SetFlag(n, RenderState.Focus, set.Contains(n), false);
+        }
+
+        protected IGraphModel _model;
+        protected IGraphSelection _selection;
+
 		[Browsable(false), EditorBrowsable(EditorBrowsableState.Never)]
-		public ICompatibilityStrategy CompatibilityStrategy { get; set; }
-		#endregion
-
-
-		#region Nodes
-		readonly List<Node> graphNodes = new List<Node>();
-		[Browsable(false), EditorBrowsable(EditorBrowsableState.Never)]
-		public IEnumerable<Node> Nodes { get { return graphNodes; } }
-		#endregion
-
+		private IEnumerable<Node> Nodes { get { return _model.Nodes; } }
 
 		enum CommandMode
 		{
@@ -457,13 +401,10 @@ namespace HyperGraph
 			Edit
 		}
 
-
 		IElement				internalDragOverElement;
 		bool					mouseMoved		= false;
 		bool					dragging		= false;
 		bool					abortDrag		= false;
-		readonly List<Node>		selectedNodes	= new List<Node>();
-		readonly List<Node>		unselectedNodes	= new List<Node>();
 		CommandMode				command			= CommandMode.Edit;
 		MouseButtons			currentButtons;
 
@@ -472,272 +413,35 @@ namespace HyperGraph
 		PointF					originalLocation;
 		Point					originalMouseLocation;
 		
-		PointF					translation = new PointF();
-		float					zoom = 1.0f;
+        private List<Node> _selectedNodes = new List<Node>();
+        private List<Node> _unselectedNodes = new List<Node>();
 
-		
-		#region UpdateMatrices
-		readonly Matrix			transformation = new Matrix();
-		readonly Matrix			inverse_transformation = new Matrix();
-		void UpdateMatrices()
+        #region Transformations
+        protected PointF _translation = new PointF();
+        protected float _zoom = 1.0f;
+        public static readonly float MinZoom = 0.25f;
+        public static readonly float MaxZoom = 5.00f;
+
+        private readonly Matrix			transformation = new Matrix();
+		private readonly Matrix			inverse_transformation = new Matrix();
+
+        public Matrix Transform {  get { return transformation; } }
+
+		protected void UpdateMatrices()
 		{
-			if (zoom < 0.25f) zoom = 0.25f;
-			if (zoom > 5.00f) zoom = 5.00f;
-			var center = new PointF(this.Width / 2.0f, this.Height / 2.0f);
 			transformation.Reset();
-			transformation.Translate(translation.X, translation.Y);
-			transformation.Translate(center.X, center.Y);
-			transformation.Scale(zoom, zoom);
-			transformation.Translate(-center.X, -center.Y);
+			transformation.Translate(_translation.X, _translation.Y);
+			transformation.Scale(_zoom, _zoom);
 
-			inverse_transformation.Reset();
-			inverse_transformation.Translate(center.X, center.Y);
-			inverse_transformation.Scale(1.0f / zoom, 1.0f / zoom);
-			inverse_transformation.Translate(-center.X, -center.Y);
-			inverse_transformation.Translate(-translation.X, -translation.Y);
+            inverse_transformation.Reset();
+            inverse_transformation.Scale(1.0f / _zoom, 1.0f / _zoom);
+			inverse_transformation.Translate(-_translation.X, -_translation.Y);
 		}
 		#endregion
-
-
-
-		#region AddNode
-		public bool AddNode(Node node)
-		{
-			if (node == null ||
-				graphNodes.Contains(node))
-				return false;
-
-			graphNodes.Insert(0, node);			
-			if (NodeAdded != null)
-			{
-				var eventArgs = new AcceptNodeEventArgs(node);
-				NodeAdded(this, eventArgs);
-				if (eventArgs.Cancel)
-				{
-					graphNodes.Remove(node);
-					return false;
-				}
-			}
-
-			BringElementToFront(node);
-			FocusElement = node;
-			this.Invalidate();
-			return true;
-		}
-		#endregion
-
-		#region AddNodes
-		public bool AddNodes(IEnumerable<Node> nodes)
-		{
-			if (nodes == null)
-				return false;
-
-			int		index		= 0;
-			bool	modified	= false;
-			Node	lastNode	= null;
-			foreach (var node in nodes)
-			{
-				if (node == null)
-					continue;
-				if (graphNodes.Contains(node))
-					continue;
-
-				graphNodes.Insert(index, node); index++;
-
-				if (NodeAdded != null)
-				{
-					var eventArgs = new AcceptNodeEventArgs(node);
-					NodeAdded(this, eventArgs);
-					if (eventArgs.Cancel)
-					{
-						graphNodes.Remove(node);
-						modified = true;
-					} else
-						lastNode = node;
-				} else
-					lastNode = node;
-			}
-			if (lastNode != null)
-			{
-				BringElementToFront(lastNode);
-				FocusElement = lastNode;
-				this.Invalidate();
-			}
-			return modified;
-		}
-		#endregion
-
-		#region RemoveNode
-		public void RemoveNode(Node node)
-		{
-			if (node == null)
-				return;
-
-			if (NodeRemoving != null)
-			{
-				var eventArgs = new AcceptNodeEventArgs(node);
-				NodeRemoving(this, eventArgs);
-				if (eventArgs.Cancel)
-					return;
-			}
-			if (HasFocus(node))
-				FocusElement = null;
-
-			DisconnectAll(node);
-			graphNodes.Remove(node);
-			this.Invalidate();
-
-			if (NodeRemoved != null)
-				NodeRemoved(this, new NodeEventArgs(node));
-		}
-		#endregion
-
-		#region RemoveNodes
-		public bool RemoveNodes(IEnumerable<Node> nodes)
-		{
-			if (nodes == null)
-				return false;
-
-			bool modified = false;
-			foreach (var node in nodes)
-			{
-				if (node == null)
-					continue;
-				if (NodeRemoving != null)
-				{
-					var eventArgs = new AcceptNodeEventArgs(node);
-					NodeRemoving(this, eventArgs);
-					if (eventArgs.Cancel)
-						continue;
-				}
-
-				if (HasFocus(node))
-					FocusElement = null;
-
-				DisconnectAll(node);
-				graphNodes.Remove(node);
-				modified = true;
-
-				if (NodeRemoved != null)
-					NodeRemoved(this, new NodeEventArgs(node));
-			}
-			if (modified)
-				this.Invalidate();
-			return modified;
-		}
-		#endregion
-
-		#region Connect
-		public NodeConnection Connect(NodeItem from, NodeItem to)
-		{
-			return Connect(from.Output, to.Input);
-		}
-
-		public NodeConnection Connect(NodeConnector from, NodeConnector to)
-		{
-			if (from      == null || to      == null ||
-				from.Node == null || to.Node == null ||
-				!from.Enabled || 
-				!to.Enabled)
-				return null;
-
-			foreach (var other in from.Node.connections)
-			{
-				if (other.From == from &&
-					other.To == to)
-					return null;
-			}
-
-			foreach (var other in to.Node.connections)
-			{
-				if (other.From == from &&
-					other.To == to)
-					return null;
-			}
-
-			var connection = new NodeConnection();
-			connection.From = from;
-			connection.To = to;
-
-			from.Node.connections.Add(connection);
-			to.Node.connections.Add(connection);
-			
-			if (ConnectionAdded != null)
-			{
-				var eventArgs = new AcceptNodeConnectionEventArgs(connection);
-				ConnectionAdded(this, eventArgs);
-				if (eventArgs.Cancel)
-				{
-					Disconnect(connection);
-					return null;
-				}
-			}
-
-			return connection;
-		}
-		#endregion
-
-		#region Disconnect
-		public bool Disconnect(NodeConnection connection)
-		{
-			if (connection == null)
-				return false;
-
-			if (ConnectionRemoving != null)
-			{
-				var eventArgs = new AcceptNodeConnectionEventArgs(connection);
-				ConnectionRemoving(this, eventArgs);
-				if (eventArgs.Cancel)
-					return false;
-			}
-
-			if (HasFocus(connection))
-				FocusElement = null;
-			
-			var from	= connection.From;
-			var to		= connection.To;
-			if (from != null && from.Node != null)
-			{
-				from.Node.connections.Remove(connection);
-			}
-			if (to != null && to.Node != null)
-			{
-				to.Node.connections.Remove(connection);
-			}
-
-			// Just in case somebody stored it somewhere ..
-			connection.From = null;
-			connection.To = null;
-
-			if (ConnectionRemoved != null)
-				ConnectionRemoved(this, new NodeConnectionEventArgs(from, to, connection));
-
-			this.Invalidate();
-			return true;
-		}
-		#endregion
-
-		#region DisconnectAll (private)
-		bool DisconnectAll(Node node)
-		{
-			bool modified = false;
-			var connections = node.connections.ToList();
-			foreach (var connection in connections)
-				modified = Disconnect(connection) ||
-					modified;
-			return modified;
-		}
-		#endregion
-
 
 		#region FindNodeItemAt
 		static NodeItem FindNodeItemAt(Node node, PointF location)
 		{
-			if (node.itemsBounds == null ||
-				location.X < node.itemsBounds.Left ||
-				location.X > node.itemsBounds.Right)
-				return null;
-
 			foreach (var item in node.Items)
 			{
 				if (item.bounds.IsEmpty)
@@ -753,13 +457,10 @@ namespace HyperGraph
 		}
 		#endregion
 
-		#region FindInputConnectorAt
+		#region Picking
 		static NodeConnector FindInputConnectorAt(Node node, PointF location)
 		{
-			if (node.itemsBounds == null || node.Collapsed)
-				return null;
-
-			foreach (var inputConnector in node.inputConnectors)
+			foreach (var inputConnector in node.InputConnectors)
 			{
 				if (inputConnector.bounds.IsEmpty)
 					continue;
@@ -769,15 +470,10 @@ namespace HyperGraph
 			}
 			return null;
 		}
-		#endregion
 
-		#region FindOutputConnectorAt
-		static NodeConnector FindOutputConnectorAt(Node node, PointF location)
+        static NodeConnector FindOutputConnectorAt(Node node, PointF location)
 		{
-			if (node.itemsBounds == null || node.Collapsed)
-				return null;
-
-			foreach (var outputConnector in node.outputConnectors)
+			foreach (var outputConnector in node.OutputConnectors)
 			{
 				if (outputConnector.bounds.IsEmpty)
 					continue;
@@ -787,80 +483,28 @@ namespace HyperGraph
 			}
 			return null;
 		}
-		#endregion
 
-		#region FindElementAt
-		IElement FindElementAt(PointF location)
+        public static IElement FindElementAt(IGraphModel model, PointF location, AcceptElement acceptElement = null)
 		{
-			foreach (var node in graphNodes)
+            foreach (var node in model.Nodes)
 			{
 				var inputConnector = FindInputConnectorAt(node, location);
-				if (inputConnector != null)
+				if (inputConnector != null && (acceptElement==null || acceptElement(inputConnector)))
 					return inputConnector;
 
 				var outputConnector = FindOutputConnectorAt(node, location);
-				if (outputConnector != null)
+				if (outputConnector != null && (acceptElement== null || acceptElement(outputConnector)))
 					return outputConnector;
 
 				if (node.bounds.Contains(location))
 				{
-					var item = FindNodeItemAt(node, location);
-					if (item != null)
-						return item;
-					return node;
-				}
-			}
-
-			var skipConnections		= new HashSet<NodeConnection>();
-			var foundConnections	= new List<NodeConnection>();
-			foreach (var node in graphNodes)
-			{
-				foreach (var connection in node.connections)
-				{
-					if (skipConnections.Add(connection)) // if we can add it, we haven't checked it yet
-					{
-						if (connection.bounds.Contains(location))
-							foundConnections.Insert(0, connection);
-					}
-				}
-			}
-			foreach (var connection in foundConnections)
-			{
-				if (connection.textBounds.Contains(location))
-					return connection;
-			}
-			foreach (var connection in foundConnections)
-			{
-				using (var region = GraphRenderer.GetConnectionRegion(connection))
-				{
-					if (region.IsVisible(location))
-						return connection;
-				}
-			}
-
-			return null;
-		}
-		#endregion
-		
-		#region FindElementAt
-		IElement FindElementAt(PointF location, AcceptElement acceptElement)
-		{
-			foreach (var node in graphNodes)
-			{
-				var inputConnector = FindInputConnectorAt(node, location);
-				if (inputConnector != null && acceptElement(inputConnector))
-					return inputConnector;
-
-				var outputConnector = FindOutputConnectorAt(node, location);
-				if (outputConnector != null && acceptElement(outputConnector))
-					return outputConnector;
-
-				if (node.bounds.Contains(location))
-				{
-					var item = FindNodeItemAt(node, location);
-					if (item != null && acceptElement(item))
-						return item;
-					if (acceptElement(node))
+                    if (!node.Collapsed)
+                    {
+                        var item = FindNodeItemAt(node, location);
+                        if (item != null && (acceptElement == null || acceptElement(item)))
+                            return item;
+                    }
+					if (acceptElement == null || acceptElement(node))
 						return node;
 					else
 						return null;
@@ -869,9 +513,9 @@ namespace HyperGraph
 
 			var skipConnections		= new HashSet<NodeConnection>();
 			var foundConnections	= new List<NodeConnection>();
-			foreach (var node in graphNodes)
+            foreach (var node in model.Nodes)
 			{
-				foreach (var connection in node.connections)
+				foreach (var connection in node.Connections)
 				{
 					if (skipConnections.Add(connection)) // if we can add it, we haven't checked it yet
 					{
@@ -882,20 +526,25 @@ namespace HyperGraph
 			}
 			foreach (var connection in foundConnections)
 			{
-				if (connection.textBounds.Contains(location) && acceptElement(connection))
+				if (connection.textBounds.Contains(location) && (acceptElement == null || acceptElement(connection)))
 					return connection;
 			}
 			foreach (var connection in foundConnections)
 			{
 				using (var region = GraphRenderer.GetConnectionRegion(connection))
 				{
-					if (region.IsVisible(location) && acceptElement(connection))
+					if (region.IsVisible(location) && (acceptElement == null || acceptElement(connection)))
 						return connection;
 				}
 			}
 
 			return null;
 		}
+
+        public static IEnumerable<IElement> RectangleSelection(IGraphModel model, RectangleF rect, AcceptElement acceptElement = null)
+        {
+            return model.Nodes.Where(x => (rect.Contains(x.bounds) && (acceptElement == null || acceptElement(x))));
+        }
 		#endregion
 		
 		#region GetTransformedLocation
@@ -911,6 +560,13 @@ namespace HyperGraph
 			}
 			return transformed_location;
 		}
+
+        public PointF ClientToModel(PointF clientCoord)
+        {
+            var points = new PointF[] { snappedLocation };
+            inverse_transformation.TransformPoints(points);
+            return points[0];
+        }
 		#endregion
 
 		#region GetMarqueRectangle
@@ -930,13 +586,10 @@ namespace HyperGraph
 		#endregion
 
 		#region OnPaint
-		protected override void OnPaint(PaintEventArgs e)
+		private void OnPaint(object sender, PaintEventArgs e)
 		{
-			base.OnPaint(e);
-
 			if (e.Graphics == null)
 				return;
-			
 
 			e.Graphics.PageUnit				= GraphicsUnit.Pixel;
 			e.Graphics.CompositingQuality	= CompositingQuality.GammaCorrected;
@@ -947,14 +600,10 @@ namespace HyperGraph
 			UpdateMatrices();			
 			e.Graphics.Transform			= transformation;
 
-			OnDrawBackground(e);
+            OnDrawBackground((Control)sender, e);
 			
 			e.Graphics.SmoothingMode		= SmoothingMode.HighQuality;
 
-			if (this.graphNodes.Count == 0)
-				return;
-
-			
 			var transformed_location = GetTransformedLocation();
 			if (command == CommandMode.MarqueSelection)
 			{
@@ -963,8 +612,11 @@ namespace HyperGraph
 				e.Graphics.DrawRectangle(Pens.DarkGray, marque_rectangle.X, marque_rectangle.Y, marque_rectangle.Width, marque_rectangle.Height);
 			}
 
-			GraphRenderer.PerformLayout(e.Graphics, graphNodes);
-			GraphRenderer.Render(e.Graphics, graphNodes, ShowLabels);
+            if (_model == null || !_model.Nodes.Any())
+                return;
+
+            GraphRenderer.PerformLayout(e.Graphics, _model.Nodes);
+            GraphRenderer.Render(e.Graphics, _model.Nodes, ShowLabels, Context);
 			
 			if (command == CommandMode.Edit)
 			{
@@ -995,9 +647,9 @@ namespace HyperGraph
 		#endregion
 
 		#region OnDrawBackground
-		virtual protected void OnDrawBackground(PaintEventArgs e)
+		private void OnDrawBackground(Control ctrl, PaintEventArgs e)
 		{
-			e.Graphics.Clear(BackColor);
+			e.Graphics.Clear(ctrl.BackColor);
 
 			if (!ShowGrid)
 				return;
@@ -1045,31 +697,58 @@ namespace HyperGraph
 
 
 		#region OnMouseWheel
-		protected override void OnMouseWheel(MouseEventArgs e)
+		private void OnMouseWheel(object sender, MouseEventArgs e)
 		{
-			base.OnMouseWheel(e);
+            float oldZoom = _zoom;
+			_zoom *= (float)Math.Pow(2, e.Delta / 480.0f);
+            if (_zoom < MinZoom) _zoom = MinZoom;
+            if (_zoom > MaxZoom) _zoom = MaxZoom;
 
-			zoom *= (float)Math.Pow(2, e.Delta / 480.0f);
-
-			this.Refresh();
+            var ctrl = sender as Control;
+            if (ctrl != null)
+            {
+                // Adjust translation to so that we appear to zoom in and out
+                // of the center of the control
+                var fixedPt = new PointF(ctrl.Width / 2.0f, ctrl.Height / 2.0f);
+                var t = new PointF((fixedPt.X - _translation.X) / oldZoom, (fixedPt.Y - _translation.Y) / oldZoom);
+                var t2 = new PointF((fixedPt.X - _translation.X) / _zoom, (fixedPt.Y - _translation.Y) / _zoom);
+                _translation.X += (t2.X - t.X) * _zoom;
+                _translation.Y += (t2.Y - t.Y) * _zoom;
+                UpdateMatrices();
+                ctrl.Invalidate();
+            }
 		}
 		#endregion
 
-		#region OnMouseDown
-		protected override void OnMouseDown(MouseEventArgs e)
-		{
-			base.OnMouseDown(e);
+        NodeSelection BuildNodeSelection()
+        {
+            if (Selection == null) return null;
 
+            var nodes = new List<Node>();
+            foreach (var e in Selection.Selection)
+            {
+                var n = e as Node;
+                if (n != null) nodes.Add(n);
+            }
+            return new NodeSelection(nodes);    
+        }
+
+		#region OnMouseDown
+		private void OnMouseDown(object sender, MouseEventArgs e)
+		{
 			if (currentButtons != MouseButtons.None)
 				return;
 
 			currentButtons |= e.Button;
-			selectedNodes.Clear();
-			unselectedNodes.Clear();
+
+            _selectedNodes.Clear();
+            _unselectedNodes.Clear();
 			dragging	= true;
 			abortDrag	= false;
 			mouseMoved	= false;
 			snappedLocation = lastLocation = e.Location;
+
+            var ctrl = (Control)sender;
 			
 			var points = new PointF[] { e.Location };
 			inverse_transformation.TransformPoints(points);
@@ -1079,14 +758,15 @@ namespace HyperGraph
 
 			if (e.Button == MouseButtons.Left)
 			{
-				var element = FindElementAt(transformed_location);
+				var element = FindElementAt(_model, transformed_location);
 				if (element != null)
 				{
-					var selection = FocusElement as NodeSelection;				
+					var selection = BuildNodeSelection();
+
 					var element_node = element as Node;
 					if (element_node != null)
 					{
-						switch (ModifierKeys)
+                        switch (Control.ModifierKeys)
 						{
 							case Keys.None:
 							{
@@ -1097,24 +777,18 @@ namespace HyperGraph
 								}
 								break;
 							}
+
 							case Keys.Shift:
 							{
-								if (selection != null)
+								if (selection != null && !selection.Nodes.Contains(element_node))
 								{
-									if (!selection.Nodes.Contains(element_node))
-									{
-										var nodes = selection.Nodes.ToList();
-										nodes.Add(element_node);
-										element = new NodeSelection(nodes);
-									}
-								} else
-								{
-									var focus_node = FocusElement as Node;
-									if (focus_node != null)
-										element = new NodeSelection(new Node[] { focus_node, element_node });
+									var nodes = selection.Nodes.ToList();
+									nodes.Add(element_node);
+									element = new NodeSelection(nodes);
 								}
 								break;
 							}
+
 							case Keys.Control:
 							{
 								if (selection != null)
@@ -1124,40 +798,24 @@ namespace HyperGraph
 										var nodes = selection.Nodes.ToList();
 										nodes.Remove(element_node);
 										element = new NodeSelection(nodes);
-									} else
+									}
+                                    else
 									{
 										var nodes = selection.Nodes.ToList();
 										nodes.Add(element_node);
 										element = new NodeSelection(nodes);
 									}
-								} else
-								{
-									var focus_node = FocusElement as Node;
-									if (focus_node != null)
-									{
-										if (focus_node == element_node)
-											element = null;
-										else
-											element = new NodeSelection(new Node[] { focus_node, element_node });
-									}
 								}
 								break;
 							}
+
 							case Keys.Alt:
 							{
-								if (selection != null)
+								if (selection != null && selection.Nodes.Contains(element_node))
 								{
-									if (selection.Nodes.Contains(element_node))
-									{
-										var nodes = selection.Nodes.ToList();
-										nodes.Remove(element_node);
-										element = new NodeSelection(nodes);
-									}
-								} else
-								{
-									var focus_node = FocusElement as Node;
-									if (focus_node != null)
-										element = null;
+									var nodes = selection.Nodes.ToList();
+									nodes.Remove(element_node);
+									element = new NodeSelection(nodes);
 								}
 								break;
 							}
@@ -1173,7 +831,8 @@ namespace HyperGraph
 							element = item.Node;
 							originalLocation = transformed_location;
 						}
-					} else
+					}
+                    else
 					{
 						var connection = element as NodeConnection;
 						if (connection != null)
@@ -1181,7 +840,7 @@ namespace HyperGraph
 					}
 
 					// Should compatible connectors be highlighted?
-					if (HighlightCompatible && null != CompatibilityStrategy)
+                    if (HighlightCompatible && null != _model.CompatibilityStrategy)
 					{
 						var connectorFrom = element as NodeConnector;
 						if (connectorFrom == null)
@@ -1195,12 +854,12 @@ namespace HyperGraph
 							if (element.ElementType == ElementType.InputConnector)
 							{
 								// Iterate over all nodes
-								foreach (Node graphNode in graphNodes)
+                                foreach (Node graphNode in _model.Nodes)
 								{
 									// Check compatibility of node connectors
-									foreach (NodeConnector connectorTo in graphNode.outputConnectors)
+									foreach (NodeConnector connectorTo in graphNode.OutputConnectors)
 									{
-                                        var connectionType = CompatibilityStrategy.CanConnect(connectorFrom, connectorTo);
+                                        var connectionType = _model.CompatibilityStrategy.CanConnect(connectorFrom, connectorTo);
                                         if (connectionType == HyperGraph.Compatibility.ConnectionType.Compatible)
 										{
 											SetFlag(connectorTo, RenderState.Compatible, true);
@@ -1218,12 +877,12 @@ namespace HyperGraph
 							} else
 							{
 								// Iterate over all nodes
-								foreach (Node graphNode in graphNodes)
+                                foreach (Node graphNode in _model.Nodes)
 								{
 									// Check compatibility of node connectors
-									foreach (NodeConnector connectorTo in graphNode.inputConnectors)
+									foreach (NodeConnector connectorTo in graphNode.InputConnectors)
 									{
-                                        var connectionType = CompatibilityStrategy.CanConnect(connectorFrom, connectorTo);
+                                        var connectionType = _model.CompatibilityStrategy.CanConnect(connectorFrom, connectorTo);
                                         if (connectionType == HyperGraph.Compatibility.ConnectionType.Compatible)
 										{
 											SetFlag(connectorTo, RenderState.Compatible, true);
@@ -1242,10 +901,31 @@ namespace HyperGraph
 						}
 					}
 
-					FocusElement =
-						DragElement = element;
-					BringElementToFront(element);
-					this.Refresh();
+                    if (Selection != null) 
+                    {
+                        if (element.ElementType == ElementType.NodeSelection) 
+                        {
+                            var sel = element as NodeSelection;
+                            Selection.Update(sel.Nodes, Selection.Selection);
+                        }
+                        else if (element.ElementType == ElementType.Node)
+                        {
+                            Selection.SelectSingle(element);
+                        }
+                        else if (element.ElementType == ElementType.NodeItem)
+                        {
+                            Selection.SelectSingle((element as NodeItem).Node);
+                        }
+                        else if (element.ElementType == ElementType.InputConnector
+                            || element.ElementType == ElementType.OutputConnector)
+                        {
+                            Selection.SelectSingle((element as NodeConnector).Node);
+                        }
+                    }
+
+					DragElement = element;
+                    _model.BringElementToFront(element);
+					ctrl.Invalidate();
 					command = CommandMode.Edit;
 				} else
 					command = CommandMode.MarqueSelection;
@@ -1257,15 +937,13 @@ namespace HyperGraph
 
 			points = new PointF[] { originalLocation };
 			transformation.TransformPoints(points);
-			originalMouseLocation = this.PointToScreen(new Point((int)points[0].X, (int)points[0].Y));
+			originalMouseLocation = ctrl.PointToScreen(new Point((int)points[0].X, (int)points[0].Y));
 		}
 		#endregion
 
 		#region OnMouseMove
-		protected override void OnMouseMove(MouseEventArgs e)
+		private void OnMouseMove(object sender, MouseEventArgs e)
 		{
-			base.OnMouseMove(e);
-			
 			if (DragElement == null &&
 				command != CommandMode.MarqueSelection &&
 				(currentButtons & MouseButtons.Right) != 0)
@@ -1295,10 +973,10 @@ namespace HyperGraph
 				transformed_location = points[0];
 			}
 
-			var deltaX = (lastLocation.X - currentLocation.X) / zoom;
-			var deltaY = (lastLocation.Y - currentLocation.Y) / zoom;
+			var deltaX = (lastLocation.X - currentLocation.X) / _zoom;
+			var deltaY = (lastLocation.Y - currentLocation.Y) / _zoom;
 
-			
+            var ctrl = (Control)sender;
 
 			bool needRedraw = false;
 			switch (command)
@@ -1313,11 +991,11 @@ namespace HyperGraph
 					if (mouseMoved &&
 						(Math.Abs(deltaY) > 0))
 					{
-						zoom *= (float)Math.Pow(2, deltaY / 100.0f);
-						Cursor.Position = this.PointToScreen(lastLocation);
-						snappedLocation = //lastLocation = 
-							currentLocation;
-						this.Refresh();
+						// _zoom *= (float)Math.Pow(2, deltaY / 100.0f);
+                        // Cursor.Position = ctrl.PointToScreen(lastLocation);
+						// snappedLocation = //lastLocation = 
+						// 	currentLocation;
+                        // ctrl.Invalidate();
 					}
 					return;
 				case CommandMode.TranslateView:
@@ -1333,10 +1011,11 @@ namespace HyperGraph
 						(Math.Abs(deltaX) > 0) ||
 						(Math.Abs(deltaY) > 0))
 					{
-						translation.X -= deltaX * zoom;
-						translation.Y -= deltaY * zoom;
+						_translation.X -= deltaX * _zoom;
+						_translation.Y -= deltaY * _zoom;
 						snappedLocation = lastLocation = currentLocation;
-						this.Refresh();
+                        UpdateMatrices();
+                        ctrl.Invalidate();
 					}
 					return;
 				}
@@ -1353,45 +1032,35 @@ namespace HyperGraph
 						(Math.Abs(deltaY) > 0))
 					{
 						var marque_rectangle = GetMarqueRectangle();
-												
-						foreach (var node in selectedNodes)
-							SetFlag(node, RenderState.Focus, false, false);
-
-						foreach (var node in unselectedNodes)
-							SetFlag(node, RenderState.Focus, true, false);
-
 						if (!abortDrag)
 						{
-							foreach (var node in graphNodes)
+                            var workingSelection = WorkingSelection();
+                            foreach (var node in _model.Nodes)
 							{
 								if (marque_rectangle.Contains(node.bounds))
 								{
-									if ((node.state & RenderState.Focus) == 0 &&
-										(ModifierKeys != Keys.Alt))
+									if (!workingSelection.Contains(node) && (Control.ModifierKeys != Keys.Alt))
 									{
-										SetFlag(node, RenderState.Focus, true, false);
-										selectedNodes.Add(node);
+										_selectedNodes.Add(node);
 									}
-									if ((node.state & RenderState.Focus) != 0 &&
-										(ModifierKeys == Keys.Alt))
+									if (workingSelection.Contains(node) && (Control.ModifierKeys == Keys.Alt))
 									{
-										SetFlag(node, RenderState.Focus, false, false);
-										unselectedNodes.Add(node);
+										_unselectedNodes.Add(node);
 									}
-								} else
+								}
+                                else
 								{
-									if ((node.state & RenderState.Focus) == RenderState.Focus &&
-										(ModifierKeys == Keys.None))
+									if (workingSelection.Contains(node) && (Control.ModifierKeys == Keys.None))
 									{
-										SetFlag(node, RenderState.Focus, false, false);
-										unselectedNodes.Add(node);
+										_unselectedNodes.Add(node);
 									}
 								}
 							}
 						}
 
 						snappedLocation = lastLocation = currentLocation;
-						this.Refresh();
+                        UpdateFocusStates();
+                        ctrl.Invalidate();
 					}
 					return;
 
@@ -1416,7 +1085,7 @@ namespace HyperGraph
 					mouseMoved = true;
 					if (DragElement != null)
 					{
-						BringElementToFront(DragElement);
+                        _model.BringElementToFront(DragElement);
 
 						switch (DragElement.ElementType)
 						{
@@ -1429,7 +1098,8 @@ namespace HyperGraph
 																(int)Math.Round(node.Location.Y - deltaY));
 								}
 								snappedLocation = lastLocation = currentLocation;
-								this.Refresh();
+                                ctrl.Invalidate();
+                                _model.InvokeMiscChange(false);
 								return;
 							}
 							case ElementType.Node:				// drag single node
@@ -1438,7 +1108,8 @@ namespace HyperGraph
 								node.Location	= new Point((int)Math.Round(node.Location.X - deltaX),
 															(int)Math.Round(node.Location.Y - deltaY));
 								snappedLocation = lastLocation = currentLocation;
-								this.Refresh();
+                                ctrl.Invalidate();
+                                _model.InvokeMiscChange(false);
 								return;
 							}
 							case ElementType.NodeItem:			// drag in node-item
@@ -1450,11 +1121,11 @@ namespace HyperGraph
 							}
 							case ElementType.Connection:		// start dragging end of connection to new input connector
 							{
-								BringElementToFront(DragElement);
+                                _model.BringElementToFront(DragElement);
 								var connection			= DragElement as NodeConnection;
 								var outputConnector		= connection.From;
-								FocusElement			= outputConnector.Node;
-								if (Disconnect(connection))
+								// FocusElement			= outputConnector.Node;
+                                if (_model.Disconnect(connection))
 									DragElement	= outputConnector;
 								else
 									DragElement = null;
@@ -1477,7 +1148,7 @@ namespace HyperGraph
 			IElement draggingOverElement = null;
 
             SetFlag(DragElement, (RenderState.Compatible | RenderState.Incompatible | RenderState.Conversion), false);
-			var element = FindElementAt(transformed_location);
+			var element = FindElementAt(_model, transformed_location);
 			if (element != null)
 			{
 				switch (element.ElementType)
@@ -1507,13 +1178,14 @@ namespace HyperGraph
 								var dragConnector = DragElement as NodeConnector;
 								if (dragConnector == null)
 									break;
-								
-								if (node.outputConnectors.Count == 1)
+
+                                var outputConnectors = node.OutputConnectors.ToList();
+								if (outputConnectors.Count == 1)
 								{
 									// Check if this connection would be allowed.
-									if (ConnectionIsAllowed(dragConnector, node.outputConnectors[0]))
+                                    if (_model.ConnectionIsAllowed(dragConnector, outputConnectors[0]))
 									{
-										element = node.outputConnectors[0];
+										element = outputConnectors[0];
 										goto case ElementType.OutputConnector;
 									}
 								}
@@ -1526,12 +1198,13 @@ namespace HyperGraph
 								if (dragConnector == null)
 									break;
 
-								if (node.inputConnectors.Count == 1)
+                                var inputConnectors = node.InputConnectors.ToList();
+                                if (inputConnectors.Count == 1)
 								{
 									// Check if this connection would be allowed.
-									if (ConnectionIsAllowed(dragConnector, node.inputConnectors[0]))
+                                    if (_model.ConnectionIsAllowed(dragConnector, inputConnectors[0]))
 									{
-										element = node.inputConnectors[0];
+										element = inputConnectors[0];
 										goto case ElementType.InputConnector;
 									}
 								}
@@ -1563,7 +1236,7 @@ namespace HyperGraph
 									element = null;
 								} else
 								{
-									if (!ConnectionIsAllowed(dragConnector, destinationConnector))
+                                    if (!_model.ConnectionIsAllowed(dragConnector, destinationConnector))
 									{
 										SetFlag(DragElement, RenderState.Incompatible, true);
 									} else
@@ -1592,7 +1265,7 @@ namespace HyperGraph
 					SetFlag(internalDragOverElement, RenderState.DraggedOver, false);
 					var node = GetElementNode(internalDragOverElement);
 					if (node != null)
-						GraphRenderer.PerformLayout(this.CreateGraphics(), node);
+                        GraphRenderer.PerformLayout(ctrl.CreateGraphics(), node);
 					needRedraw = true;
 				}
 
@@ -1603,7 +1276,7 @@ namespace HyperGraph
 					SetFlag(internalDragOverElement, RenderState.DraggedOver, true);
 					var node = GetElementNode(internalDragOverElement);
 					if (node != null)
-						GraphRenderer.PerformLayout(this.CreateGraphics(), node);
+                        GraphRenderer.PerformLayout(ctrl.CreateGraphics(), node);
 					needRedraw = true;
 				}
 			}
@@ -1626,40 +1299,8 @@ namespace HyperGraph
 						
 
 			if (needRedraw)
-				this.Refresh();
+                ctrl.Invalidate();
 		}
-
-		/// <summary>
-		/// Checks whether the connection between two connectors is allowed.
-		/// This is achieved through event propagation.
-		/// </summary>
-		/// <returns></returns>
-		private bool ConnectionIsAllowed(NodeConnector from, NodeConnector to)
-		{
-			if (HighlightCompatible && null != CompatibilityStrategy)
-			{
-				if (CompatibilityStrategy.CanConnect(from, to) == ConnectionType.Incompatible)
-					return false;
-			}
-			
-			// If someone has subscribed to the ConnectionAdding event,
-			// give them a chance to interrupt this connection attempt.
-			if (null != ConnectionAdding) 
-			{
-				// Populate a temporary NodeConnection instance.
-				var connection = new NodeConnection();
-				connection.From = from;
-				connection.To = to;
-
-				// Fire the event and see if someone cancels it.
-				var eventArgs = new AcceptNodeConnectionEventArgs(connection);
-				ConnectionAdding(this, eventArgs);
-				if (eventArgs.Cancel)
-					return false;
-			}
-			return true;
-		}
-
 		#endregion
 
 		#region GetElementNode
@@ -1686,15 +1327,24 @@ namespace HyperGraph
         }
         public event EventHandler<NodeConnectorEventArgs> ConnectorDoubleClick;
 
+        private void Swap<T>(ref List<T> lhs, ref List<T> rhs)
+        {
+            List<T> t = lhs;
+            lhs = rhs;
+            rhs = t;
+        }
+
 		#region OnMouseUp
-		protected override void OnMouseUp(MouseEventArgs e)
+		private void OnMouseUp(object sender, MouseEventArgs e)
 		{
 			currentButtons &= ~e.Button;
 			
 			bool needRedraw = false;
 			if (!dragging)
 				return;
-			
+
+            var ctrl = (Control)sender;
+
 			try
 			{
 				Point currentLocation;
@@ -1715,32 +1365,24 @@ namespace HyperGraph
 					transformed_location = points[0];
 				}
 
-
 				switch (command)
 				{
 					case CommandMode.MarqueSelection:
-						if (abortDrag)
-						{
-							foreach (var node in selectedNodes)
-								SetFlag(node, RenderState.Focus, false, false);
 
-							foreach (var node in unselectedNodes)
-								SetFlag(node, RenderState.Focus, true, false);							
-						} else
+                        List<Node> newUnselected = new List<Node>();
+                        List<Node> newSelected = new List<Node>();
+                        Swap(ref newUnselected, ref _unselectedNodes);
+                        Swap(ref newSelected, ref _selectedNodes);
+
+						if (!abortDrag && Selection != null)
 						{
-							NodeSelection selection = null;
-							if (graphNodes.Count > 0)
-							{
-								// select all focused nodes
-								var result = (from node in graphNodes
-											  where (node.state & RenderState.Focus) == RenderState.Focus
-											  select node).ToList();
-								if (result.Count > 0)
-									selection = new NodeSelection(result);
-							}
-							FocusElement = selection;
-						}
-						this.Invalidate();
+                            Selection.Update(newSelected, newUnselected);
+						} 
+                        else
+                        {
+                            UpdateFocusStates();
+                        }
+						ctrl.Invalidate();
 						return;
 					case CommandMode.ScaleView:
 						return;
@@ -1751,6 +1393,7 @@ namespace HyperGraph
 					case CommandMode.Edit:
 						break;
 				}
+
 				if (DragElement != null)
 				{
 					switch (DragElement.ElementType)
@@ -1759,10 +1402,14 @@ namespace HyperGraph
 						{
 							var inputConnector	= (NodeConnector)DragElement;
 							var outputConnector = HoverElement as NodeOutputConnector;
-							if (outputConnector != null &&
-								outputConnector.Node != inputConnector.Node &&
-								(inputConnector.state & (RenderState.Compatible|RenderState.Conversion)) != 0)
-								FocusElement = Connect(outputConnector, inputConnector);
+                            if (outputConnector != null &&
+                                outputConnector.Node != inputConnector.Node &&
+                                (inputConnector.state & (RenderState.Compatible | RenderState.Conversion)) != 0)
+                            {
+                                var newConnection = _model.Connect(outputConnector, inputConnector);
+                                if (Selection != null)
+                                    Selection.SelectSingle(newConnection);
+                            }
 							needRedraw = true;
 							return;
 						}
@@ -1770,10 +1417,14 @@ namespace HyperGraph
 						{
 							var outputConnector = (NodeConnector)DragElement;
 							var inputConnector	= HoverElement as NodeInputConnector;
-							if (inputConnector != null &&
-								inputConnector.Node != outputConnector.Node &&
+                            if (inputConnector != null &&
+                                inputConnector.Node != outputConnector.Node &&
                                 (outputConnector.state & (RenderState.Compatible | RenderState.Conversion)) != 0)
-								FocusElement = Connect(outputConnector, inputConnector);
+                            {
+                                var newConnection = _model.Connect(outputConnector, inputConnector);
+                                if (Selection != null)
+                                    Selection.SelectSingle(newConnection);
+                            }
 							needRedraw = true;
 							return;
 						}
@@ -1788,24 +1439,25 @@ namespace HyperGraph
 						}
 					}
 				}
-				if (DragElement != null ||
-					FocusElement != null)
-				{
-					FocusElement = null;
-					needRedraw = true;
-				}
+
+				// if (DragElement != null ||
+				// 	FocusElement != null)
+				// {
+				// 	FocusElement = null;
+				// 	needRedraw = true;
+				// }
 			}
 			finally
 			{
 				if (HighlightCompatible)
 				{
 					// Remove all highlight flags
-					foreach (Node graphNode in graphNodes)
+                    foreach (Node graphNode in _model.Nodes)
 					{
-						foreach (NodeConnector inputConnector in graphNode.inputConnectors)
+						foreach (NodeConnector inputConnector in graphNode.InputConnectors)
                             SetFlag(inputConnector, RenderState.Compatible | RenderState.Incompatible | RenderState.Conversion, false);
 
-						foreach (NodeConnector outputConnector in graphNode.outputConnectors)
+						foreach (NodeConnector outputConnector in graphNode.OutputConnectors)
                             SetFlag(outputConnector, RenderState.Compatible | RenderState.Incompatible | RenderState.Conversion, false);
 					}
 				}
@@ -1821,33 +1473,32 @@ namespace HyperGraph
 
 				dragging = false;
 				command = CommandMode.Edit;
-				selectedNodes.Clear();
-				unselectedNodes.Clear();
+				_selectedNodes.Clear();
+				_unselectedNodes.Clear();
 				
 				if (needRedraw)
-					this.Refresh();
-			
-				base.OnMouseUp(e);
+					ctrl.Invalidate();
 			}
 		}
 		#endregion
 
 		#region OnDoubleClick
 		bool ignoreDoubleClick = false;
-		protected override void OnDoubleClick(EventArgs e)
+		private void OnDoubleClick(object sender, EventArgs e)
 		{
-			base.OnDoubleClick(e);
 			if (mouseMoved || ignoreDoubleClick || 
-				ModifierKeys != Keys.None)
+				Control.ModifierKeys != Keys.None)
 				return;
 
 			var points = new Point[] { lastLocation };
 			inverse_transformation.TransformPoints(points);
 			var transformed_location = points[0];
 
-			var element = FindElementAt(transformed_location);
+			var element = FindElementAt(_model, transformed_location);
 			if (element == null)
 				return;
+
+            var ctrl = (Control)sender;
 
 			switch (element.ElementType)
 			{
@@ -1856,9 +1507,9 @@ namespace HyperGraph
 					break;
 				case ElementType.NodeItem:
 					var item = element as NodeItem;
-					if (item.OnDoubleClick())
+                    if (item.OnDoubleClick(ctrl))
 					{
-						this.Refresh();
+                        ctrl.Invalidate();
 						return;
 					}
 					element = item.Node;
@@ -1866,8 +1517,9 @@ namespace HyperGraph
 				case ElementType.Node:
 					var node = element as Node;
 					node.Collapsed = !node.Collapsed;
-					FocusElement = node;
-					this.Refresh();
+					if (Selection!=null)
+                        Selection.SelectSingle(node);
+                    ctrl.Invalidate();
 					break;
 
                 case ElementType.InputConnector:
@@ -1880,7 +1532,7 @@ namespace HyperGraph
 		#endregion
 
 		#region OnMouseClick
-		protected override void OnMouseClick(MouseEventArgs e)
+		private void OnMouseClick(object sender, MouseEventArgs e)
 		{
 			try
 			{
@@ -1892,15 +1544,17 @@ namespace HyperGraph
 				inverse_transformation.TransformPoints(points);
 				var transformed_location = points[0];
 
+                var ctrl = (Control)sender;
+
 				if (e.Button == MouseButtons.Right)
 				{
 					if (null != ShowElementMenu)
 					{
 						// See if we clicked on an element and give our owner the chance to show a menu
-						var result = FindElementAt(transformed_location, delegate(IElement el)
+						var result = FindElementAt(_model, transformed_location, delegate(IElement el)
 						{
 							// Fire the event and see if someone cancels it.
-							var eventArgs = new AcceptElementLocationEventArgs(el, this.PointToScreen(lastLocation));
+                            var eventArgs = new AcceptElementLocationEventArgs(el, ctrl.PointToScreen(lastLocation));
 							// Give our owner the chance to show a menu for this element ...
 							ShowElementMenu(this, eventArgs);
 							// If the owner declines (cancel == true) then we'll continue looking up the hierarchy ..
@@ -1910,19 +1564,20 @@ namespace HyperGraph
 						//	allowing our owner to show a generic menu
 						if (result == null)
 						{
-							var eventArgs = new AcceptElementLocationEventArgs(null, this.PointToScreen(lastLocation));
+                            var eventArgs = new AcceptElementLocationEventArgs(null, ctrl.PointToScreen(lastLocation));
 							ShowElementMenu(this, eventArgs);							
 						}
 						return;
 					}
 				}
 
-				var element = FindElementAt(transformed_location);
+				var element = FindElementAt(_model, transformed_location);
 				if (element == null)
 				{
 					ignoreDoubleClick = true; // to avoid double-click from firing
-					if (ModifierKeys == Keys.None)
-						FocusElement = null;
+					if (Control.ModifierKeys == Keys.None)
+                        if (Selection!=null)
+                            Selection.Update(null, Selection.Selection);
 					return;
 				}
 
@@ -1930,14 +1585,14 @@ namespace HyperGraph
 				{
 					case ElementType.NodeItem:
 					{
-						if (ModifierKeys != Keys.None)
+						if (Control.ModifierKeys != Keys.None)
 							return;
 
 						var item = element as NodeItem;
-						if (item.OnClick())
+                        if (item.OnClick(ctrl, e, transformation))
 						{
 							ignoreDoubleClick = true; // to avoid double-click from firing
-							this.Refresh();
+                            ctrl.Invalidate();
 							return;
 						}
 						break;
@@ -1946,15 +1601,13 @@ namespace HyperGraph
 			}
 			finally
 			{
-				base.OnMouseClick(e);
 			}
 		}
 		#endregion
 
 		#region OnKeyDown
-		protected override void OnKeyDown(KeyEventArgs e)
+		private void OnKeyDown(object sender, KeyEventArgs e)
 		{
-			base.OnKeyDown(e);
 			if (e.KeyCode == Keys.Escape)
 			{
 				if (dragging)
@@ -1966,13 +1619,10 @@ namespace HyperGraph
 					} else
 					if (command == CommandMode.MarqueSelection)
 					{
-						foreach (var node in selectedNodes)
-							SetFlag(node, RenderState.Focus, false, false);
-						
-						foreach (var node in unselectedNodes)
-							SetFlag(node, RenderState.Focus, true, false);
-
-						this.Refresh();
+                        _selectedNodes.Clear();
+                        _unselectedNodes.Clear();
+                        UpdateFocusStates();
+						((Control)sender).Invalidate();
 					}
 					return;
 				}
@@ -1981,26 +1631,27 @@ namespace HyperGraph
 		#endregion
 
 		#region OnKeyUp
-		protected override void OnKeyUp(KeyEventArgs e)
+		private void OnKeyUp(object sender, KeyEventArgs e)
 		{
-			base.OnKeyUp(e);
 			if (e.KeyCode == Keys.Delete)
 			{
-				if (FocusElement == null)
-					return;
+                foreach(var q in Selection.Selection) 
+                {
+                    switch (q.ElementType)
+                    {
+                        case ElementType.Node: _model.RemoveNode(q as Node); break;
+                        case ElementType.Connection: _model.Disconnect(q as NodeConnection); break;
+                        case ElementType.NodeSelection:
+                            {
+                                var selection = q as NodeSelection;
+                                foreach (var node in selection.Nodes)
+                                    _model.RemoveNode(node);
+                                break;
+                            }
+                    }
+                }
 
-				switch (FocusElement.ElementType)
-				{
-					case ElementType.Node:			RemoveNode(FocusElement as Node); break;
-					case ElementType.Connection:	Disconnect(FocusElement as NodeConnection); break;
-					case ElementType.NodeSelection:
-					{
-						var selection = FocusElement as NodeSelection;
-						foreach(var node in selection.Nodes)
-							RemoveNode(node); 
-						break;
-					}
-				}
+                Selection.Update(null, Selection.Selection);
 			}
 		}
 		#endregion
@@ -2008,9 +1659,8 @@ namespace HyperGraph
 
 		#region OnDragEnter
 		Node dragNode = null;
-		protected override void OnDragEnter(DragEventArgs drgevent)
+		private void OnDragEnter(object sender, DragEventArgs drgevent)
 		{
-			base.OnDragEnter(drgevent);
 			dragNode = null;
 
 			foreach (var name in drgevent.Data.GetFormats())
@@ -2018,7 +1668,7 @@ namespace HyperGraph
 				var node = drgevent.Data.GetData(name) as Node;
 				if (node != null)
 				{
-					if (AddNode(node))
+                    if (_model.AddNode(node))
 					{
 						dragNode = node;
 
@@ -2031,13 +1681,14 @@ namespace HyperGraph
 		#endregion
 
 		#region OnDragOver
-		protected override void OnDragOver(DragEventArgs drgevent)
+		private void OnDragOver(object sender, DragEventArgs drgevent)
 		{
-			base.OnDragOver(drgevent);
 			if (dragNode == null)
 				return;
 
-			var location = (PointF)this.PointToClient(new Point(drgevent.X, drgevent.Y));
+            var ctrl = (Control)sender;
+
+			var location = (PointF)ctrl.PointToClient(new Point(drgevent.X, drgevent.Y));
 			location.X -= ((dragNode.bounds.Right - dragNode.bounds.Left) / 2);
 			location.Y -= ((dragNode.titleItem.bounds.Bottom - dragNode.titleItem.bounds.Top) / 2);
 			
@@ -2048,7 +1699,7 @@ namespace HyperGraph
 			if (dragNode.Location != location)
 			{
 				dragNode.Location = location;
-				this.Invalidate();
+				ctrl.Invalidate();
 			}
 			
 			drgevent.Effect = DragDropEffects.Copy;
@@ -2056,20 +1707,18 @@ namespace HyperGraph
 		#endregion
 
 		#region OnDragLeave
-		protected override void OnDragLeave(EventArgs e)
+		private void OnDragLeave(object sender, EventArgs e)
 		{
-			base.OnDragLeave(e);
 			if (dragNode == null)
 				return;
-			RemoveNode(dragNode);
+            _model.RemoveNode(dragNode);
 			dragNode = null;
 		}
 		#endregion
 
 		#region OnDragDrop
-		protected override void OnDragDrop(DragEventArgs drgevent)
+		private void OnDragDrop(object sender, DragEventArgs drgevent)
 		{
-			base.OnDragDrop(drgevent);
 		}
 		#endregion
 	}

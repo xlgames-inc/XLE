@@ -10,21 +10,30 @@ using System.ComponentModel.Composition;
 using System.Windows.Forms;
 using System.Drawing;
 using Sce.Atf;
+using Sce.Atf.Applications;
+using LevelEditorXLE.Extensions;
+
+#pragma warning disable 0649 // Field '...' is never assigned to, and will always have its default value null
 
 namespace LevelEditorXLE.Placements
 {
     [Export(typeof(LevelEditorCore.IManipulator))]
-    [Export(typeof(IInitializable))]
     [Export(typeof(XLEBridgeUtils.IShutdownWithEngine))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class PlacementManipulator : LevelEditorCore.IManipulator, IInitializable, XLEBridgeUtils.IShutdownWithEngine, IDisposable
+    public class PlacementManipulator : LevelEditorCore.IManipulator, XLEBridgeUtils.IShutdownWithEngine, IDisposable
     {
-        public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc, scrPt); }
-        public void Render(LevelEditorCore.ViewControl vc)                     { _nativeManip.Render(vc); }
+        public bool Pick(LevelEditorCore.ViewControl vc, Point scrPt)          { return _nativeManip.MouseMove(vc as GUILayer.IViewContext, scrPt); }
         public void OnBeginDrag()                                              { _nativeManip.OnBeginDrag(); }
-        public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc, scrPt); }
-        public void OnEndDrag(LevelEditorCore.ViewControl vc, Point scrPt)     { _nativeManip.OnEndDrag(vc, scrPt); }
-        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc, scrPt, delta); }
+        public void OnDragging(LevelEditorCore.ViewControl vc, Point scrPt)    { _nativeManip.OnDragging(vc as GUILayer.IViewContext, scrPt); }
+        public void OnEndDrag(LevelEditorCore.ViewControl vc, Point scrPt)     { _nativeManip.OnEndDrag(vc as GUILayer.IViewContext, scrPt); }
+        public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { _nativeManip.OnMouseWheel(vc as GUILayer.IViewContext, scrPt, delta); }
+
+        public void Render(object opaqueContext, LevelEditorCore.ViewControl vc) 
+        {
+            var context = opaqueContext as GUILayer.SimpleRenderingContext;
+            if (context == null) return;
+            _nativeManip.Render(context); 
+        }
 
         public LevelEditorCore.ManipulatorInfo ManipulatorInfo
         {
@@ -38,47 +47,39 @@ namespace LevelEditorXLE.Placements
             }
         }
 
-        public void Initialize()
-        {
-            _manipSettings = new Settings();
-            _manipContext.ManipulatorSet = XLEBridgeUtils.NativeManipulatorLayer.SceneManager.CreatePlacementManipulators(_manipSettings);
-            // _controls->ActiveContext = _manipContext;
-            _nativeManip = new XLEBridgeUtils.NativeManipulatorLayer(_manipContext);
-
-            if (_resourceLister != null)
-                _resourceLister.SelectionChanged += resourceLister_SelectionChanged;
-        }
-
         public void Shutdown()
         {
+            var r = _contextRegistry.Target as IContextRegistry;
+            if (r != null) r.ActiveContextChanged -= OnActiveContextChanged;
+
+            var rl = _resourceLister.Target as LevelEditorCore.ResourceLister;
+            if (rl != null) rl.SelectionChanged -= resourceLister_SelectionChanged;
+
             if (_nativeManip != null) { _nativeManip.Dispose(); _nativeManip = null; }
             if (_manipContext != null) { _manipContext.Dispose(); _manipContext = null; }
         }
 
-        public PlacementManipulator()
+        [ImportingConstructor]
+        public PlacementManipulator(IContextRegistry contextRegistry, LevelEditorCore.ResourceLister resourceLister)
         {
-            _manipContext = new XLEBridgeUtils.ActiveManipulatorContext();
+            _manipContext = new GUILayer.ActiveManipulatorContext();
             _nativeManip = null;
-        }
 
-        ~PlacementManipulator()
-        {
-            Dispose(false);
-        }
+            _manipSettings = new Settings();
+            _nativeManip = new GUILayer.NativeManipulatorLayer(_manipContext);
 
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing) {
-                if (_nativeManip != null) { _nativeManip.Dispose(); _nativeManip = null; }
-                if (_manipContext != null) { _manipContext.Dispose(); _manipContext = null; }
+            if (resourceLister != null)
+            {
+                resourceLister.SelectionChanged += resourceLister_SelectionChanged;
+                _resourceLister = new WeakReference(resourceLister);
             }
+
+            _contextRegistry = new WeakReference(contextRegistry);
+            contextRegistry.ActiveContextChanged += OnActiveContextChanged;
+            _nativeManip = new GUILayer.NativeManipulatorLayer(_manipContext);
         }
+
+        public void Dispose() { Shutdown(); }
 
         private class Settings : GUILayer.IPlacementManipulatorSettingsLayer
         {
@@ -98,16 +99,40 @@ namespace LevelEditorXLE.Placements
             internal String _selectedMaterial;
         };
 
-        XLEBridgeUtils.NativeManipulatorLayer _nativeManip;
-        XLEBridgeUtils.ActiveManipulatorContext _manipContext;
-        Settings _manipSettings;
+        private void OnActiveContextChanged(object obj, EventArgs args)
+        {
+            GUILayer.EditorSceneManager sceneMan = null;
 
-        [Import(AllowDefault =  true)] LevelEditorCore.ResourceLister _resourceLister;
+            IContextRegistry registry = obj as IContextRegistry;
+            if (registry != null)
+            {
+                var gameExt = registry.GetActiveContext<Game.GameExtensions>();
+                if (gameExt != null)
+                    sceneMan = gameExt.SceneManager;
+            }
+
+            if (sceneMan != null)
+            {
+                _manipContext.ManipulatorSet = sceneMan.CreatePlacementManipulators(_manipSettings);
+            }
+            else
+            {
+                _manipContext.ManipulatorSet = null;
+            }
+        }
+
+        private GUILayer.NativeManipulatorLayer _nativeManip;
+        private GUILayer.ActiveManipulatorContext _manipContext;
+        private Settings _manipSettings;
+
         [Import(AllowDefault = false)] IXLEAssetService _assetService;
+        WeakReference _contextRegistry;
+        WeakReference _resourceLister;
 
         void resourceLister_SelectionChanged(object sender, EventArgs e)
         {
-            var resourceUri = _resourceLister.LastSelected;
+            var resLister = sender as LevelEditorCore.ResourceLister;
+            var resourceUri = resLister.LastSelected;
             if (resourceUri != null) {
                 _manipSettings._selectedModel = 
                     _assetService.StripExtension(_assetService.AsAssetName(resourceUri));

@@ -43,24 +43,35 @@ namespace Utility
             struct MaybeRemoveRef<InType, typename std::enable_if<!std::is_trivial<typename std::remove_reference<InType>::type>::value>::type>
             {
                 using Type = InType;
-            };
+			};
 
-        #define DefaultGet(InType, Member)                                                                              \
+		template<typename Type, typename std::enable_if<!std::is_lvalue_reference<Type>::value>::type* = nullptr>
+			Type DefaultWithStaticRef() { return Default<Type>(); }
+
+		template<typename Type, typename std::enable_if<std::is_lvalue_reference<Type>::value>::type* = nullptr>
+			Type DefaultWithStaticRef() 
+			{ 
+				using NoRef = std::remove_reference<Type>::type;
+				static NoRef s_retainedDefault = Default<NoRef>();
+				return s_retainedDefault;
+			}
+
+		#define DefaultGet(InType, Member)                                                                              \
             [](const InType& t)                                                                                         \
             {                                                                                                           \
                 using namespace Utility::Internal;                                                                      \
-                using ResultType = MaybeRemoveRef<decltype(std::declval<const InType>().*(&InType::Member))>::Type;     \
+				using ResultType = MaybeRemoveRef<const decltype(InType::Member)&>::Type;								\
                 return DefaultGetImp<ResultType>(t, &InType::Member);                                                   \
             }                                                                                                           \
             /**/
 
-        #define DefaultSet(InType, Member)                                                                                  \
-            [](InType& t, Utility::Internal::MaybeRemoveRef<decltype(std::declval<const InType>().*(&InType::Member))>::Type value)            \
-            {                                                                                                               \
-                using namespace Utility::Internal;                                                                          \
-                DefaultSetImp(t, &InType::Member,                                                                           \
-                    std::forward<MaybeRemoveRef<decltype(std::declval<const InType>().*(&InType::Member))>::Type>(value));  \
-            }                                                                                                               \
+        #define DefaultSet(InType, Member)                                                                              \
+            [](InType& t, Utility::Internal::MaybeRemoveRef<const decltype(InType::Member)&>::Type value)				\
+            {                                                                                                           \
+                using namespace Utility::Internal;                                                                      \
+				using PassType = MaybeRemoveRef<const decltype(InType::Member)&>::Type;									\
+                DefaultSetImp(t, &InType::Member, std::forward<PassType>(value));										\
+            }                                                                                                           \
             /**/
 
         template<typename Result, typename Type, typename PtrToMember>
@@ -68,7 +79,7 @@ namespace Utility
             {
                 if (arrayIndex > arrayCount) {
                     assert(0);
-                    return Default<Result>();
+                    return DefaultWithStaticRef<Result>();
                 }
                 return (type.*ptrToMember)[arrayIndex]; 
             }
@@ -278,17 +289,14 @@ namespace Utility
                 using Type = SetterFnTraits<SetFn>::ObjectType;
 
                 using DestCharType = PassToSetter::value_type;
+				std::basic_string<DestCharType> str;
                 if (srcStringForm) {
-                    setFn(
-                        *(typename std::remove_reference<Type>::type*)obj,
-                        std::basic_string<DestCharType>(
+                    str = std::basic_string<DestCharType>(
                             (const DestCharType*)src,
-                            (const DestCharType*)PtrAdd(src,srcType.GetSize())));
-                } else {
-                    setFn(
-                        *(typename std::remove_reference<Type>::type*)obj,
-                        ImpliedTyping::AsString(src, srcType.GetSize(), srcType, true));
-                }
+                            (const DestCharType*)PtrAdd(src,srcType.GetSize()));
+                } else
+                    str = ImpliedTyping::AsString(src, srcType.GetSize(), srcType, true);
+				setFn(*(typename std::remove_reference<Type>::type*)obj, str);
                 return true;
             }
 
@@ -336,18 +344,14 @@ namespace Utility
                 using Type = SetterFnTraits<SetFn>::ObjectType;
 
                 using DestCharType = PassToSetter::value_type;
+				std::basic_string<DestCharType> str;
                 if (srcStringForm) {
-                    setFn(
-                        *(typename std::remove_reference<Type>::type*)obj, arrayIndex, 
-                        std::basic_string<DestCharType>(
+					str = std::basic_string<DestCharType>(
                             (const DestCharType*)src,
-                            (const DestCharType*)PtrAdd(src,srcType.GetSize())));
-                } else {
-                    setFn(
-                        *(typename std::remove_reference<Type>::type*)obj, arrayIndex, 
-                        ImpliedTyping::AsString(src, srcType.GetSize(), srcType, true));
-                }
-
+                            (const DestCharType*)PtrAdd(src,srcType.GetSize()));
+                } else
+                    str = ImpliedTyping::AsString(src, srcType.GetSize(), srcType, true);
+				setFn(*(typename std::remove_reference<Type>::type*)obj, arrayIndex, str);
                 return true;
             }
 

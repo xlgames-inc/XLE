@@ -539,7 +539,7 @@ namespace SceneEngine
                 GBufferType(mainTargets),
                 (resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerSample)?samplingCount:1, useMsaaSamplers, 
                 resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerPixel,
-                debugging);
+                Tweakable("LightResolveDynamic", 0), debugging);
 
         const bool allowOrthoShadowResolve = Tweakable("AllowOrthoShadowResolve", true);
 
@@ -621,7 +621,10 @@ namespace SceneEngine
                 shader->_uniforms.Apply(
                     context, parserContext.GetGlobalUniformsStream(), 
                     Metal::UniformsStream(constantBufferPackets, prebuiltConstantBuffers, srvs));
-                context.Bind(*shader->_shader);
+                if (shader->_dynamicLinking)
+                    context.Bind(*shader->_shader, shader->_boundClassInterfaces);
+                else
+                    context.Bind(*shader->_shader);
                 context.Draw(4);
             CATCH_ASSETS_END(parserContext)
         }

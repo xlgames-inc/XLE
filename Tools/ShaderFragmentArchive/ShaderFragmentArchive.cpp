@@ -10,6 +10,7 @@
 #include "../GUILayer/MarshalString.h"
 #include "../../ShaderParser/InterfaceSignature.h"
 #include "../../ShaderParser/ParameterSignature.h"
+#include "../../ShaderParser/Exceptions.h"
 #include "../../Utility/Streams/FileSystemMonitor.h"
 #include "../../Utility/Streams/PathUtils.h"
 
@@ -36,7 +37,7 @@ namespace ShaderFragmentArchive
 
         if (!function._returnType.empty() && function._returnType != "void") {
             Parameter^ p = gcnew Parameter;
-            p->Name = marshalString<E_UTF8>("return");
+            p->Name = marshalString<E_UTF8>("result");
             p->Type = marshalString<E_UTF8>(function._returnType);
             Outputs->Add(p);
         }
@@ -111,17 +112,19 @@ namespace ShaderFragmentArchive
         ShaderFragmentChangeCallback(ShaderFragment^ shaderFragment, System::Threading::SynchronizationContext^ mainThread);
         virtual ~ShaderFragmentChangeCallback();
     private:
-        gcroot<ShaderFragment^> _shaderFragment;
+        gcroot<WeakReference^> _shaderFragment;
         gcroot<System::Threading::SynchronizationContext^> _mainThread;
     };
 
     void    ShaderFragmentChangeCallback::OnChange() 
     {
-        _mainThread->Post(gcnew System::Threading::SendOrPostCallback(_shaderFragment, &ShaderFragment::OnChange), nullptr);
+        auto frag = dynamic_cast<ShaderFragment^>(_shaderFragment->Target);
+        if (frag)
+            _mainThread->Post(gcnew System::Threading::SendOrPostCallback(frag, &ShaderFragment::OnChange), nullptr);
     }
 
     ShaderFragmentChangeCallback::ShaderFragmentChangeCallback(ShaderFragment^ shaderFragment, System::Threading::SynchronizationContext^ mainThread)
-        : _shaderFragment(shaderFragment)
+        : _shaderFragment(gcnew WeakReference(shaderFragment))
         , _mainThread(mainThread)
     {}
 
@@ -141,7 +144,7 @@ namespace ShaderFragmentArchive
     void ShaderFragment::OnChange(Object^obj)
     {
         ++_changeMarker;
-        ChangeEvent(obj);
+        ChangeEvent(obj, EventArgs::Empty);
     }
 
     ShaderFragment::ShaderFragment(String^ sourceFile)
@@ -196,16 +199,16 @@ namespace ShaderFragmentArchive
                     ParameterStruct^ pstruct = gcnew ParameterStruct(*i);
                     ParameterStructs->Add(pstruct);
                 }
-            } catch (const ShaderSourceParser::Exceptions::CompileError& ) {
+            } catch (const ShaderSourceParser::Exceptions::ParsingFailure& ) {
                 ExceptionString = "Failed during parsing. Look for compilation errors.";
             }
             
         }
 
-        auto changeCallback = std::shared_ptr<Utility::OnChangeCallback>(
+        std::shared_ptr<ShaderFragmentChangeCallback> changeCallback(
             new ShaderFragmentChangeCallback(this, System::Threading::SynchronizationContext::Current));
         RegisterFileDependency(changeCallback, marshalString<E_UTF8>(sourceFile).c_str());
-        _fileChangeCallback = new std::shared_ptr<Utility::OnChangeCallback>(changeCallback);
+        _fileChangeCallback = changeCallback;
     }
 
     ShaderFragment::~ShaderFragment()
@@ -214,7 +217,7 @@ namespace ShaderFragmentArchive
         delete ParameterStructs;
         delete Name;
         delete ExceptionString;
-        delete _fileChangeCallback;
+        _fileChangeCallback.reset();
     }
 
     Parameter::Parameter(String^ archiveName)
@@ -258,7 +261,7 @@ namespace ShaderFragmentArchive
                     Source      = SourceType::Material;
                 }
 
-            } catch (const ShaderSourceParser::Exceptions::ParseError& ) {
+            } catch (const ShaderSourceParser::Exceptions::ParsingFailure&) {
 
                 ExceptionString = "Failure in parser. Check text file format";
 
@@ -436,9 +439,9 @@ namespace ShaderFragmentArchive
         return nullptr;
     }
 
-    static Archive::Archive()
+    Archive::Archive()
     {
-        _dictionary          = gcnew System::Collections::Generic::Dictionary<String^, ShaderFragment^>(StringComparer::CurrentCultureIgnoreCase);
+        _dictionary = gcnew Dictionary<String^, ShaderFragment^>(StringComparer::CurrentCultureIgnoreCase);
     }
 
 }

@@ -10,6 +10,7 @@
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
+#include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../SceneEngine/LightingParserContext.h"
@@ -49,7 +50,8 @@ namespace GUILayer
         
         if (_config) {
             for each(auto c in _config)
-                searchRules.AddSearchDirectoryFromFilename(clix::marshalString<clix::E_UTF8>(c->Filename).c_str());
+                searchRules.AddSearchDirectoryFromFilename(
+                    MakeStringSection(clix::marshalString<clix::E_UTF8>(c->Filename)));
 
                 // also grab the directory with the preview model in it
             searchRules.AddSearchDirectoryFromFilename(clix::marshalString<clix::E_UTF8>(_previewModel).c_str());
@@ -58,9 +60,13 @@ namespace GUILayer
                 c->GetUnderlying()->Resolve(resMat, searchRules);
         }
 
-        visObject->_materialBinder = std::make_shared<ToolsRig::MaterialBinder>(
-            "game/xleres/illum.txt");
+        const ::Assets::ResChar* shader = (resMat._techniqueConfig[0]) ? resMat._techniqueConfig : "illum";
+        ::Assets::ResChar resolvedShader[MaxPath];
+        XlCopyString(resolvedShader, shader);
+        XlCatString(resolvedShader, ".tech");
+        RenderCore::Assets::Services::GetTechniqueConfigDirs().ResolveFile(resolvedShader, resolvedShader);
 
+        visObject->_materialBinder = std::make_shared<ToolsRig::MaterialBinder>(shader);
         visObject->_previewModelFile = clix::marshalString<clix::E_UTF8>(_previewModel);
         visObject->_previewMaterialBinding = _materialBinding;
 

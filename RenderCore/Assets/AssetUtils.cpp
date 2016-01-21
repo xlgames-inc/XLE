@@ -11,6 +11,7 @@
 #include "DeferredShaderResource.h"
 #include "ModelScaffoldInternal.h"
 #include "../RenderUtils.h"
+#include "../../Assets/AssetUtils.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/OutputStream.h"
 #include "../../Utility/Streams/Stream.h"
@@ -151,6 +152,12 @@ namespace RenderCore { namespace Assets
 
     CachedTextureFormats::~CachedTextureFormats() {}
 
+    static bool IsDXTNormalMap(uint32 format)
+    {
+        return format >= RenderCore::Metal::NativeFormat::BC1_TYPELESS
+            && format <= RenderCore::Metal::NativeFormat::BC1_UNORM_SRGB;
+    }
+
     bool IsDXTNormalMap(const std::string& textureName)
     {
         if (textureName.empty()) return false;
@@ -161,6 +168,15 @@ namespace RenderCore { namespace Assets
         typedef CachedTextureFormats::Header Hdr;
         typedef CachedTextureFormats::Entry Entry;
         auto* data = cache._cache->GetData();
+        if (!data) {
+            static bool firstTime = true;
+            if (firstTime) {
+                LogAlwaysError << "Failed to open TextureFormatCache.dat! DXT normal map queries will be inefficient.";
+                firstTime = false;
+            }
+            return IsDXTNormalMap(DeferredShaderResource::LoadFormat(textureName.c_str()));
+        }
+
         auto& hdr = *(Hdr*)data;
         auto* start = (Entry*)PtrAdd(data, sizeof(Hdr));
         auto* end = (Entry*)PtrAdd(data, sizeof(Hdr) + sizeof(Entry) * hdr._count);
@@ -181,12 +197,10 @@ namespace RenderCore { namespace Assets
                 i->second = RenderCore::Metal::NativeFormat::Unknown;
             } CATCH_END
             ++hdr._count;
-            return i->second >= RenderCore::Metal::NativeFormat::BC1_TYPELESS
-                && i->second <= RenderCore::Metal::NativeFormat::BC1_UNORM_SRGB;
+            return IsDXTNormalMap(i->second);
         }
 
-        return      i->second >= RenderCore::Metal::NativeFormat::BC1_TYPELESS
-                &&  i->second <= RenderCore::Metal::NativeFormat::BC1_UNORM_SRGB;
+        return IsDXTNormalMap(i->second);
     }
 
     GeoInputAssembly CreateGeoInputAssembly(   
@@ -205,6 +219,32 @@ namespace RenderCore { namespace Assets
             ele._nativeFormat = i->_nativeFormat;
             ele._alignedByteOffset = i->_alignedByteOffset;
             result._elements.push_back(ele);
+        }
+        return std::move(result);
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    ParameterBox TechParams_SetResHas(
+        const ParameterBox& inputMatParameters, const ParameterBox& resBindings,
+        const ::Assets::DirectorySearchRules& searchRules)
+    {
+        static const auto DefaultNormalsTextureBindingHash = ParameterBox::MakeParameterNameHash("NormalsTexture");
+            // The "material parameters" ParameterBox should contain some "RES_HAS_..."
+            // settings. These tell the shader what resource bindings are available
+            // (and what are missing). We need to set these parameters according to our
+            // binding list
+        ParameterBox result = inputMatParameters;
+        for (auto param=resBindings.Begin(); !param.IsEnd(); ++param) {
+            result.SetParameter(StringMeld<64, utf8>() << "RES_HAS_" << param.Name(), 1);
+            if (param.HashName() == DefaultNormalsTextureBindingHash) {
+                auto resourceName = resBindings.GetString<::Assets::ResChar>(DefaultNormalsTextureBindingHash);
+                ::Assets::ResChar resolvedName[MaxPath];
+                searchRules.ResolveFile(resolvedName, dimof(resolvedName), resourceName.c_str());
+                result.SetParameter(
+                    (const utf8*)"RES_HAS_NormalsTexture_DXT", 
+                    RenderCore::Assets::IsDXTNormalMap(resolvedName));
+            }
         }
         return std::move(result);
     }

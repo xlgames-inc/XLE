@@ -216,10 +216,10 @@ namespace EntityInterface
 
 	bool RetainedEntityInterface::DeleteObject(const Identifier& id)
     {
-        for (auto i=_scene->_objects.cbegin(); i!=_scene->_objects.cend(); ++i)
+        for (auto i=_scene->_objects.begin(); i!=_scene->_objects.end(); ++i)
             if (i->_doc == id.Document() && i->_id == id.Object()) {
                 assert(i->_type == id.ObjectType());
-                RetainedEntity copy = std::move(*i);
+                RetainedEntity copy(std::move(*i));
                 _scene->_objects.erase(i);
 
                 auto type = _scene->GetObjectType(id.ObjectType());

@@ -33,21 +33,24 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     
-    ResolvedMaterial::ResolvedMaterial() {}
+    ResolvedMaterial::ResolvedMaterial() { _techniqueConfig[0] = '\0'; }
 
-    ResolvedMaterial::ResolvedMaterial(ResolvedMaterial&& moveFrom)
+    ResolvedMaterial::ResolvedMaterial(ResolvedMaterial&& moveFrom) never_throws
     : _bindings(std::move(moveFrom._bindings))
     , _matParams(std::move(moveFrom._matParams))
     , _stateSet(moveFrom._stateSet)
     , _constants(std::move(moveFrom._constants))
-    {}
+    {
+        XlCopyString(_techniqueConfig, moveFrom._techniqueConfig);
+    }
 
-    ResolvedMaterial& ResolvedMaterial::operator=(ResolvedMaterial&& moveFrom)
+    ResolvedMaterial& ResolvedMaterial::operator=(ResolvedMaterial&& moveFrom) never_throws
     {
         _bindings = std::move(moveFrom._bindings);
         _matParams = std::move(moveFrom._matParams);
         _stateSet = moveFrom._stateSet;
         _constants = std::move(moveFrom._constants);
+        XlCopyString(_techniqueConfig, moveFrom._techniqueConfig);
         return *this;
     }
 
@@ -343,6 +346,9 @@ namespace RenderCore { namespace Assets
                 {
                     InputStreamFormatter<utf8>::InteriorSection name, value;
                     formatter.TryAttribute(name, value);
+                    if (XlEqString(name, u("TechniqueConfig"))) {
+                        _techniqueConfig = Conversion::Convert<AssetName>(value.AsString());
+                    } 
                     break;
                 }
 
@@ -382,6 +388,9 @@ namespace RenderCore { namespace Assets
 
     void RawMaterial::Serialize(OutputStreamFormatter& formatter) const
     {
+        if (!_techniqueConfig.empty())
+            formatter.WriteAttribute(u("TechniqueConfig"), Conversion::Convert<std::basic_string<utf8>>(_techniqueConfig));
+
         if (!_inherit.empty()) {
             auto ele = formatter.BeginElement(u("Inherit"));
             for (auto i=_inherit.cbegin(); i!=_inherit.cend(); ++i) {
@@ -424,12 +433,19 @@ namespace RenderCore { namespace Assets
         dest._stateSet = Merge(dest._stateSet, _stateSet);
         dest._constants.MergeIn(_constants);
         dest._bindings.MergeIn(_resourceBindings);
+
+        // Shader names in "ResolvedMaterial" are kept very short. We
+        // want the material object to be fairly light-weight. 
+        if (_techniqueConfig.size() > (dimof(dest._techniqueConfig)-1))
+            Throw(::Exceptions::BasicLabel("Shader name is too long during resolve"));
+
+        XlCopyString(dest._techniqueConfig, _techniqueConfig);
     }
 
     auto RawMaterial::ResolveInherited(
-        const ::Assets::DirectorySearchRules& searchRules) const -> std::vector<ResString>
+        const ::Assets::DirectorySearchRules& searchRules) const -> std::vector<AssetName>
     {
-        std::vector<ResString> result;
+        std::vector<AssetName> result;
 
         for (auto i=_inherit.cbegin(); i!=_inherit.cend(); ++i) {
             auto name = *i;
@@ -442,7 +458,7 @@ namespace RenderCore { namespace Assets
                 
                 StringMeld<MaxPath, ::Assets::ResChar> finalRawMatName;
                 finalRawMatName << resolvedFile << colon;
-                result.push_back((ResString)finalRawMatName);
+                result.push_back((AssetName)finalRawMatName);
             } else {
                 result.push_back(name);
             }

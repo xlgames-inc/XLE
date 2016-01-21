@@ -13,16 +13,17 @@ using Sce.Atf.Dom;
 using Sce.Atf.VectorMath;
 
 using LevelEditorCore;
+using XLEBridgeUtils;
 
 using ViewTypes = Sce.Atf.Rendering.ViewTypes;
 
 namespace RenderingInterop
 {
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class NativeDesignControl : XLEBridgeUtils.NativeDesignControl
+    public class NativeDesignControl : DesignViewControl, GUILayer.IViewContext
     {
-        public NativeDesignControl(DesignView designView, GUILayer.EditorSceneManager sceneManager, GUILayer.ObjectSet selection) :
-            base(designView, sceneManager, selection)
+        public NativeDesignControl(DesignView designView) :
+            base(designView)
         {
             if (s_marqueePen == null)
             {
@@ -37,7 +38,13 @@ namespace RenderingInterop
             BackColor = SystemColors.ControlDark;
             m_renderState.OnChanged += (sender, e) => Invalidate();
 
-            base.AddRenderCallback(RenderExtras);
+            Adapter = new DesignControlAdapter(
+                this, Camera, 
+                GameEngine.GetEditorSceneManager(), 
+                GameEngine.GlobalSelection, GameEngine.GetSavedResources());
+
+            Adapter.AddRenderCallback((GUILayer.SimpleRenderingContext context) => RenderManipulators(context, designView));
+            Adapter.AddRenderCallback((GUILayer.SimpleRenderingContext context) => RenderExtras(context, designView));
         }
 
         public ulong SurfaceId
@@ -50,6 +57,8 @@ namespace RenderingInterop
         {
             get { return m_renderState; }
         }
+
+        public DesignControlAdapter Adapter;
 
         protected override void Dispose(bool disposing)
         {
@@ -65,33 +74,33 @@ namespace RenderingInterop
             bool multiSelect = DragOverThreshold;
             List<object> paths = new List<object>();
 
-            XLEBridgeUtils.Picking.HitRecord[] hits;
+            Picking.HitRecord[] hits;
 
             if(multiSelect)
             {// frustum pick                
                 RectangleF rect = MakeRect(FirstMousePoint, CurrentMousePoint);
-                var frustum = XLEBridgeUtils.Utils.MakeFrustumMatrix(Camera, rect, ClientSize);
-                hits = XLEBridgeUtils.Picking.FrustumPick(
+                var frustum = XLEBridgeUtils.Utils.MakeFrustumMatrix(Utils.AsCameraDesc(Camera), rect, ClientSize);
+                hits = Picking.FrustumPick(
                     GameEngine.GetEngineDevice(),
-                    SceneManager, TechniqueContext, 
-                    frustum, Camera, ClientSize, 
-                    XLEBridgeUtils.Picking.Flags.Objects | XLEBridgeUtils.Picking.Flags.Helpers);
+                    Adapter.SceneManager, Adapter.TechniqueContext, 
+                    frustum, Utils.AsCameraDesc(Camera), ClientSize, 
+                    Picking.Flags.Objects | Picking.Flags.Helpers);
             }
             else
             {// ray pick
                 Ray3F rayW = GetWorldRay(CurrentMousePoint);
-                hits = XLEBridgeUtils.Picking.RayPick(
+                hits = Picking.RayPick(
                     GameEngine.GetEngineDevice(),
-                    SceneManager, TechniqueContext, 
-                    rayW, Camera, ClientSize,
-                    XLEBridgeUtils.Picking.Flags.Terrain | XLEBridgeUtils.Picking.Flags.Objects | XLEBridgeUtils.Picking.Flags.Helpers);
+                    Adapter.SceneManager, Adapter.TechniqueContext,
+                    rayW, Utils.AsCameraDesc(Camera), ClientSize,
+                    Picking.Flags.Terrain | Picking.Flags.Objects | Picking.Flags.Helpers);
             }
 
             if (hits==null) return new List<object>();
 
             // create unique list of hits
             HashSet<ulong> instanceSet = new HashSet<ulong>();
-            var uniqueHits = new List<XLEBridgeUtils.Picking.HitRecord>();
+            var uniqueHits = new List<Picking.HitRecord>();
             // build 'path' objects for each hit record.
             foreach (var hit in hits)
             {
@@ -99,7 +108,7 @@ namespace RenderingInterop
                 if (added) uniqueHits.Add(hit);
             }
 
-            var firstHit = new XLEBridgeUtils.Picking.HitRecord();
+            var firstHit = new Picking.HitRecord();
             
 
             // build 'path' objects for each hit record.
@@ -193,10 +202,10 @@ namespace RenderingInterop
 
         protected bool GetTerrainCollision(out Vec3F result, Point clientPt)
         {
-            var pick = XLEBridgeUtils.Picking.RayPick(
+            var pick = Picking.RayPick(
                 GameEngine.GetEngineDevice(),
-                SceneManager, TechniqueContext,
-                GetWorldRay(clientPt), Camera, ClientSize, XLEBridgeUtils.Picking.Flags.Terrain);
+                Adapter.SceneManager, Adapter.TechniqueContext,
+                GetWorldRay(clientPt), Utils.AsCameraDesc(Camera), ClientSize, Picking.Flags.Terrain);
 
             if (pick != null && pick.Length > 0)
             {
@@ -297,10 +306,10 @@ namespace RenderingInterop
             if (skipRender)
                 return;
 
-            _renderSettings._activeEnvironmentSettings = RenderState.EnvironmentSettings;
+            Adapter.RenderSettings._activeEnvironmentSettings = RenderState.EnvironmentSettings;
 
             m_clk.Start();
-            base.Render();
+            Adapter.Render();
             m_pendingCaption = string.Format("View Type: {0}   time per frame-render call: {1:0.00} ms", ViewType, m_clk.Milliseconds);
 
             if (IsPicking)
@@ -316,8 +325,25 @@ namespace RenderingInterop
             }
 
         }
-      
-        private void RenderExtras(DesignView designView, Sce.Atf.Rendering.Camera camera)
+
+        private void RenderManipulators(GUILayer.SimpleRenderingContext context, DesignView designView)
+        {
+            var mani = designView.Manipulator;
+            if (mani == null) return;
+
+            var extra = mani as IManipulatorExtra;
+            var clearBeforeDraw = (extra != null) ? extra.ClearBeforeDraw() : true;
+            
+            if (clearBeforeDraw) {
+                    // disable depth write and depth read
+                GUILayer.RenderingUtil.ClearDepthBuffer(context);
+                context.InitState(true, true);
+            }
+
+            mani.Render(context, this);
+        }
+
+        private void RenderExtras(GUILayer.SimpleRenderingContext context, DesignView designView)
         {
             bool renderSelected = RenderState.DisplayBound == DisplayFlagModes.Selection
                 || RenderState.DisplayCaption == DisplayFlagModes.Selection
@@ -327,7 +353,7 @@ namespace RenderingInterop
             {
                 var selection = DesignView.Context.As<ISelectionContext>().Selection;
                 IEnumerable<DomNode> rootDomNodes = DomNode.GetRoots(selection.AsIEnumerable<DomNode>());
-                RenderProperties(rootDomNodes,
+                RenderProperties(context, rootDomNodes,
                     RenderState.DisplayCaption == DisplayFlagModes.Selection,
                     RenderState.DisplayBound == DisplayFlagModes.Selection,
                     RenderState.DisplayPivot == DisplayFlagModes.Selection);
@@ -337,10 +363,10 @@ namespace RenderingInterop
             {
                 var game = designView.Context.As<IGame>();
                 GridRenderer gridRender = game.Grid.Cast<GridRenderer>();
-                gridRender.Render(camera);
+                gridRender.Render(context, Camera);
             }
 
-            RenderProperties(Items,
+            RenderProperties(context, Items,
                 RenderState.DisplayCaption == DisplayFlagModes.Always,
                 RenderState.DisplayBound == DisplayFlagModes.Always,
                 RenderState.DisplayPivot == DisplayFlagModes.Always);
@@ -348,11 +374,11 @@ namespace RenderingInterop
             GameEngine.DrawText2D(m_pendingCaption, Util3D.CaptionFont, 1, 1, Color.White);
         }
         
-        private void RenderProperties(IEnumerable<object> objects, bool renderCaption, bool renderBound, bool renderPivot)
+        private void RenderProperties(GUILayer.SimpleRenderingContext context, IEnumerable<object> objects, bool renderCaption, bool renderBound, bool renderPivot)
         {                      
             if (renderCaption || renderBound)
             {
-                Util3D.RenderFlag = BasicRendererFlags.WireFrame;
+                Util3D.SetRenderFlag(context, BasicRendererFlags.WireFrame);
                 Matrix4F vp = Camera.ViewMatrix * Camera.ProjectionMatrix;
                 foreach (object obj in objects)
                 {
@@ -364,7 +390,7 @@ namespace RenderingInterop
 
                     if (renderBound)
                     {
-                        Util3D.DrawAABB(bnode.BoundingBox);
+                        Util3D.DrawAABB(context, bnode.BoundingBox);
                     }
                     if (renderCaption && nnode != null)
                     {
@@ -378,7 +404,7 @@ namespace RenderingInterop
 
             if (renderPivot)
             {
-                Util3D.RenderFlag = BasicRendererFlags.WireFrame | BasicRendererFlags.DisableDepthTest;
+                Util3D.SetRenderFlag(context, BasicRendererFlags.WireFrame | BasicRendererFlags.DisableDepthTest);
 
                 // create few temp matrics to
                 Matrix4F toWorld = new Matrix4F();
@@ -406,7 +432,7 @@ namespace RenderingInterop
                     sc.Scale(s);
                     Util.CreateBillboard(bl, pos, Camera.WorldEye, Camera.Up, Camera.LookAt);
                     recXform = sc * bl;
-                    Util3D.DrawPivot(recXform, Color.Yellow);
+                    Util3D.DrawPivot(context, recXform, Color.Yellow);
                 }
             }
         }
@@ -448,5 +474,14 @@ namespace RenderingInterop
         private Clock m_clk = new Clock();
         private RenderState m_renderState;
         private string m_pendingCaption;
+
+
+        #region IViewContext members
+        Size GUILayer.IViewContext.ViewportSize { get { return base.Size; } }
+        GUILayer.CameraDescWrapper GUILayer.IViewContext.Camera { get { return Utils.AsCameraDesc(base.Camera); } }
+        GUILayer.EditorSceneManager GUILayer.IViewContext.SceneManager { get { return Adapter.SceneManager; } }
+        GUILayer.TechniqueContextWrapper GUILayer.IViewContext.TechniqueContext { get { return Adapter.TechniqueContext; } }
+        GUILayer.EngineDevice GUILayer.IViewContext.EngineDevice { get { return Adapter.EngineDevice; } }
+        #endregion
     }
 }

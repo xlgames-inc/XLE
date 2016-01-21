@@ -16,6 +16,19 @@ namespace Assets
     class DependencyValidation; 
     class ArchiveCache;
 
+    class IntermediateAssetLocator
+    {
+    public:
+        std::shared_ptr<DependencyValidation> _dependencyValidation;
+
+        ResChar     _sourceID0[MaxPath];
+        uint64      _sourceID1;
+        std::shared_ptr<ArchiveCache> _archive;
+
+        IntermediateAssetLocator();
+        ~IntermediateAssetLocator();
+    };
+
     /// <summary>Records the state of a resource being compiled</summary>
     /// When a resource compile operation begins, we need some generic way
     /// to test it's state. We also need some breadcrumbs to find the final 
@@ -33,13 +46,29 @@ namespace Assets
     class PendingCompileMarker : public PendingOperationMarker
     {
     public:
-        char    _sourceID0[MaxPath];
-        uint64  _sourceID1;
-        std::shared_ptr<ArchiveCache> _archive;
+        // this has become very much like a std::promise<IntermediateAssetLocator>!
+        const IntermediateAssetLocator& GetLocator() const;
+        IntermediateAssetLocator& GetLocator();
+        void SetLocator(const IntermediateAssetLocator& locator);
 
         PendingCompileMarker();
-        PendingCompileMarker(AssetState state, const char sourceID0[], uint64 sourceID1, std::shared_ptr<DependencyValidation> depVal);
         ~PendingCompileMarker();
+
+		PendingCompileMarker(PendingCompileMarker&&) = delete;
+		PendingCompileMarker& operator=(PendingCompileMarker&&) = delete;
+		PendingCompileMarker(const PendingCompileMarker&) = delete;
+		PendingCompileMarker& operator=(const PendingCompileMarker&) = delete;
+
+	private:
+		IntermediateAssetLocator _locator;
+    };
+
+    class ICompileMarker
+    {
+    public:
+        virtual IntermediateAssetLocator GetExistingAsset() const = 0;
+        virtual std::shared_ptr<PendingCompileMarker> InvokeCompile() const = 0;
+        virtual StringSection<ResChar> Initializer() const = 0;
     };
 }
 
@@ -86,7 +115,7 @@ namespace Assets { namespace IntermediateAssets
     class IAssetCompiler
     {
     public:
-        virtual std::shared_ptr<PendingCompileMarker> PrepareAsset(
+        virtual std::shared_ptr<ICompileMarker> PrepareAsset(
             uint64 typeCode, const ResChar* initializers[], unsigned initializerCount,
             const Store& destinationStore) = 0;
         virtual void StallOnPendingOperations(bool cancelAll) = 0;
@@ -97,7 +126,7 @@ namespace Assets { namespace IntermediateAssets
     {
     public:
         void AddCompiler(uint64 typeCode, const std::shared_ptr<IAssetCompiler>& processor);
-        std::shared_ptr<PendingCompileMarker> PrepareAsset(
+        std::shared_ptr<ICompileMarker> PrepareAsset(
             uint64 typeCode, const ResChar* initializers[], unsigned initializerCount,
             Store& store);
         void StallOnPendingOperations(bool cancelAll);

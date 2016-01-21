@@ -38,7 +38,7 @@ float4 ToNDCCoords(float2 pixelCoordsPosition)
 	// not clear why we're getting this warning...
 #pragma warning(disable:4715) // emitting a system-interpreted value which may not be written in every execution path of the shader
 
-void OutputCharacter(	int character, inout Rectangle rect, 
+void OutputCharacter(	int character, inout Rectangle rect,
 						inout TriangleStream<GSOutput> outputStream)
 {
 	float2 charPixelSize = CharDim.xy / 2.f;
@@ -77,7 +77,7 @@ bool RequiresComma(int digitPlace)
 	return (((uint)(digitPlace+27))%3)==0 && (digitPlace!=0);
 }
 
-[maxvertexcount(4*20)]
+[maxvertexcount(80)]
 	void main(point VSOutput input[1], inout TriangleStream<GSOutput> outputStream)
 {
 	Rectangle rect;
@@ -126,4 +126,3 @@ bool RequiresComma(int digitPlace)
 		OutputCharacter(13, rect, outputStream);
 	}
 }
-

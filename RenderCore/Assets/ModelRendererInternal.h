@@ -72,7 +72,7 @@ namespace RenderCore { namespace Assets
         class DrawCallResources
         {
         public:
-            SharedShaderName    _shaderName;
+            SharedTechniqueConfig _shaderName;
             SharedParameterBox  _geoParamBox;
             SharedParameterBox  _materialParamBox;
 
@@ -85,7 +85,7 @@ namespace RenderCore { namespace Assets
 
             DrawCallResources();
             DrawCallResources(
-                SharedShaderName shaderName,
+                SharedTechniqueConfig shaderName,
                 SharedParameterBox geoParamBox, SharedParameterBox matParamBox,
                 unsigned textureSet, unsigned constantBuffer,
                 SharedRenderStateSet renderStateSet, DelayStep delayStep, MaterialGuid materialBindingIndex);

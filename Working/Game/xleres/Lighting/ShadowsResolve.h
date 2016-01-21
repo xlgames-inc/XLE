@@ -9,12 +9,9 @@
 
 #include "SampleFiltering.h"
 #include "../TransformAlgorithm.h"
-#include "../ShadowProjection.h"
 #include "../Utility/Misc.h"
-
-#if SHADOW_RT_HYBRID==1
-    #include "../Deferred/resolvertshadows.h"
-#endif
+#include "../Utility/MathConstants.h"
+#include "../Deferred/resolvertshadows.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     //   I N P U T S
@@ -55,6 +52,8 @@ struct ShadowResolveConfig
         // "Percentage Closer" configuration
     bool _pcUsePoissonDiskMethod;
     bool _pcDoFilterRotation;
+
+    bool _hasHybridRT;
 };
 
 ShadowResolveConfig ShadowResolveConfig_Default()
@@ -63,6 +62,7 @@ ShadowResolveConfig ShadowResolveConfig_Default()
     result._doFiltering = true;
     result._pcUsePoissonDiskMethod = SHADOW_RESOLVE_MODEL == 0;
     result._pcDoFilterRotation = true;
+    result._hasHybridRT = false;
     return result;
 }
 
@@ -72,23 +72,24 @@ ShadowResolveConfig ShadowResolveConfig_NoFilter()
     result._doFiltering = false;
     result._pcUsePoissonDiskMethod = false;
     result._pcDoFilterRotation = false;
+    result._hasHybridRT = false;
     return result;
 }
 
 float2 GetRawShadowSampleFilter(uint index)
 {
-#if MSAA_SAMPLES > 1		// hack -- shader optimiser causes a problem with shadow filtering...
-    return 0.0.xx;
-#else
-    #if defined(PACK_FILTER_KERNEL)	// this only works efficiently if we can unpack all of the shadow loops
-        if (index >= 16) {
-            return FilterKernel[index-16].zw;
-        } else
+    #if MSAA_SAMPLES > 1		// hack -- shader optimiser causes a problem with shadow filtering...
+        return 0.0.xx;
+    #else
+        #if defined(PACK_FILTER_KERNEL)	// this only works efficiently if we can unpack all of the shadow loops
+            if (index >= 16) {
+                return FilterKernel[index-16].zw;
+            } else
+        #endif
+        {
+            return FilterKernel[index].xy;
+        }
     #endif
-    {
-        return FilterKernel[index].xy;
-    }
-#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -278,7 +279,9 @@ float CalculateFilteredShadows(
     //   R E S O L V E
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-float ResolveDMShadows(	uint projection, float2 shadowTexCoord, float comparisonDistance,
+float ResolveDMShadows(	uint projection, float2 shadowTexCoord,
+                        float4 miniProjection,
+                        float comparisonDistance,
                         int2 randomizerValue, uint msaaSampleIndex,
                         ShadowResolveConfig config)
 {
@@ -291,7 +294,7 @@ float ResolveDMShadows(	uint projection, float2 shadowTexCoord, float comparison
         //	of depth ranges.
         //	With perspective projection, it is more expensive than biasing in NDC depth space.
         //	But with orthogonal shadows, it should be very similar
-    MiniProjZW miniP = AsMiniProjZW(ShadowProjection_GetMiniProj(projection));
+    MiniProjZW miniP = AsMiniProjZW(miniProjection);
     if (shadowsPerspectiveProj) {
         float worldSpaceDepth = NDCDepthToWorldSpace_Perspective(comparisonDistance, miniP);
         biasedDepth = WorldSpaceDepthToNDC_Perspective(worldSpaceDepth - ShadowBiasWorldSpace, miniP);
@@ -316,36 +319,36 @@ float ResolveDMShadows(	uint projection, float2 shadowTexCoord, float comparison
     if (config._doFiltering) {
         return CalculateFilteredShadows(
             shadowTexCoord, biasedDepth, projection, casterDistance, randomizerValue,
-            ShadowProjection_GetMiniProj(projection).xy, msaaSampleIndex, config);
+            miniProjection.xy, msaaSampleIndex, config);
     } else {
         return TestShadow(shadowTexCoord, projection, biasedDepth);
     }
 }
 
 float ResolveShadows_Cascade(
-    uint cascadeIndex, float4 cascadeNormCoords, int2 randomizerValue, uint msaaSampleIndex,
+    int cascadeIndex, float4 cascadeNormCoords, float4 miniProjection,
+    int2 randomizerValue, uint msaaSampleIndex,
     ShadowResolveConfig config)
 {
+    [branch] if (cascadeIndex < 0) return 1.f;
+
     float2 texCoords;
     float comparisonDistance;
     texCoords = cascadeNormCoords.xy / cascadeNormCoords.w;
     texCoords = float2(0.5f + 0.5f * texCoords.x, 0.5f - 0.5f * texCoords.y);
     comparisonDistance = cascadeNormCoords.z / cascadeNormCoords.w;
 
-    #if SHADOW_RT_HYBRID==1
             // 	When hybrid shadows are enabled, the first cascade might be
             //	resolved using ray traced shadows. For convenience, we'll assume
             //	the the ray traced shadow cascade always matches the first cascade
             //	of the depth map shadows...
             //	We could alternatively have a completely independent cascade; but
             //	that would make doing the hybrid blend more difficult
-        if (cascadeIndex==0) {
-            return ResolveRTShadows(cascadeNormCoords.xyz/cascadeNormCoords.w, randomizerValue);
-        }
-    #endif
+    if (config._hasHybridRT && cascadeIndex==0) {
+        return ResolveRTShadows(cascadeNormCoords.xyz/cascadeNormCoords.w, randomizerValue);
+    }
 
-    return ResolveDMShadows(cascadeIndex, texCoords, comparisonDistance, randomizerValue, msaaSampleIndex, config);
+    return ResolveDMShadows(cascadeIndex, texCoords, miniProjection, comparisonDistance, randomizerValue, msaaSampleIndex, config);
 }
-
 
 #endif

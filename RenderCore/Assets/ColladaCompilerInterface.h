@@ -8,14 +8,16 @@
 
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Core/Types.h"
+#include <memory>
 
 namespace RenderCore { namespace Assets 
 {
 
-    class ColladaCompiler : public ::Assets::IntermediateAssets::IAssetCompiler
+    class ColladaCompiler : public ::Assets::IntermediateAssets::IAssetCompiler, public std::enable_shared_from_this<ColladaCompiler>
     {
     public:
-        std::shared_ptr<::Assets::PendingCompileMarker> PrepareAsset(
+        std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(
             uint64 typeCode, 
             const ::Assets::ResChar* initializers[], unsigned initializerCount,
             const ::Assets::IntermediateAssets::Store& destinationStore);
@@ -32,6 +34,8 @@ namespace RenderCore { namespace Assets
     protected:
         class Pimpl;
         std::shared_ptr<Pimpl> _pimpl;
+
+        class Marker;
     };
 
 }}

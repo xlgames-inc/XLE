@@ -9,6 +9,7 @@
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Core/Types.h"
+#include <memory>
 
 namespace Assets { class DependencyValidation; class PendingCompileMarker; }
 
@@ -16,10 +17,10 @@ namespace RenderCore { namespace Assets
 {
     static const uint64 ChunkType_ResolvedMat = ConstHash64<'ResM', 'at'>::Value;
 
-    class MaterialScaffoldCompiler : public ::Assets::IntermediateAssets::IAssetCompiler
+    class MaterialScaffoldCompiler : public ::Assets::IntermediateAssets::IAssetCompiler, public std::enable_shared_from_this<MaterialScaffoldCompiler>
     {
     public:
-        std::shared_ptr<::Assets::PendingCompileMarker> PrepareAsset(
+        std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(
             uint64 typeCode, 
             const ::Assets::ResChar* initializers[], unsigned initializerCount,
             const ::Assets::IntermediateAssets::Store& destinationStore);
@@ -32,6 +33,8 @@ namespace RenderCore { namespace Assets
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
+
+        friend class MatCompilerMarker;
     };
 
 }}

@@ -48,15 +48,16 @@ namespace ConsoleRig
     static auto Fn_GetAppName = ConstHash64<'appn', 'ame'>::Value;
     static auto Fn_LogCfg = ConstHash64<'logc', 'fg'>::Value;
     static auto Fn_GuidGen = ConstHash64<'guid', 'gen'>::Value;
+    static auto Fn_RedirectCout = ConstHash64<'redi', 'rect', 'cout'>::Value;
 
     static void MainRig_Startup(const StartupConfig& cfg, VariantFunctions& serv)
     {
         std::string appNameString = cfg._applicationName;
         std::string logCfgString = cfg._logConfigFile;
-        serv.Add<std::string()>(
-            Fn_GetAppName, [appNameString](){ return appNameString; });
-        serv.Add<std::string()>(
-            Fn_LogCfg, [logCfgString](){ return logCfgString; });
+        bool redirectCount = cfg._redirectCout;
+        serv.Add<std::string()>(Fn_GetAppName, [appNameString](){ return appNameString; });
+        serv.Add<std::string()>(Fn_LogCfg, [logCfgString](){ return logCfgString; });
+        serv.Add<bool()>(Fn_RedirectCout, [redirectCount](){ return redirectCount; });
 
         srand(std::random_device().operator()());
 
@@ -83,6 +84,7 @@ namespace ConsoleRig
         _applicationName = "XLEApp";
         _logConfigFile = "log.cfg";
         _setWorkingDir = true;
+        _redirectCout = true;
         _longTaskThreadPoolCount = 4;
         _shortTaskThreadPoolCount = 2;
     }

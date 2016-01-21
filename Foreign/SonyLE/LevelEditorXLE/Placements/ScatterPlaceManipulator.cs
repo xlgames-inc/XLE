@@ -19,6 +19,8 @@ using Camera = Sce.Atf.Rendering.Camera;
 using System.ComponentModel;
 using System.Xml.Serialization;
 
+#pragma warning disable 0649 // Field '...' is never assigned to, and will always have its default value null
+
 namespace LevelEditorXLE.Placements
 {
     [Export(typeof(IManipulator))]
@@ -227,10 +229,10 @@ namespace LevelEditorXLE.Placements
             m_hasHoverPt = HitTest(out m_hoverPt, scrPt, vc);
             if (!m_hasHoverPt) return;
 
-            var nativeVC = vc as XLEBridgeUtils.NativeDesignControl;
+            var nativeVC = vc as GUILayer.IViewContext;
             if (nativeVC == null) return;
 
-            var game = nativeVC.DesignView.Context.As<IGame>();
+            var game = vc.As<DesignViewControl>().DesignView.Context.As<IGame>();
             if (game == null) return;
 
             if (ManipulatorContext.Objects.Count == 0) return;
@@ -305,15 +307,15 @@ namespace LevelEditorXLE.Placements
         public void OnEndDrag(ViewControl vc, Point scrPt) {}
         public void OnMouseWheel(LevelEditorCore.ViewControl vc, Point scrPt, int delta) { }
 
-        public void Render(ViewControl vc)
+        public void Render(object opaqueContext, ViewControl vc)
         {
             if (m_hasHoverPt)
             {
-                using (var context = XLEBridgeUtils.NativeDesignControl.CreateSimpleRenderingContext(null))
-                {
-                    GUILayer.RenderingUtil.RenderCylinderHighlight(
-                        context, XLEBridgeUtils.Utils.AsVector3(m_hoverPt), ManipulatorContext.Radius);
-                }
+                var context = opaqueContext as GUILayer.SimpleRenderingContext;
+                if (context == null) return;
+
+                GUILayer.RenderingUtil.RenderCylinderHighlight(
+                    context, XLEBridgeUtils.Utils.AsVector3(m_hoverPt), ManipulatorContext.Radius);
             }
         }
 
@@ -338,7 +340,7 @@ namespace LevelEditorXLE.Placements
         {
             var ray = vc.GetWorldRay(pt);
             var pick = XLEBridgeUtils.Picking.RayPick(
-                vc, ray, XLEBridgeUtils.Picking.Flags.Terrain);
+                vc as GUILayer.IViewContext, ray, XLEBridgeUtils.Picking.Flags.Terrain);
 
             if (pick != null && pick.Length > 0)
             {

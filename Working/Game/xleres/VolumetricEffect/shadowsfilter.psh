@@ -100,7 +100,7 @@ static const bool UseFilteringWeights = true;
 	float DistanceSampleThreshold() { return 0.98f; }
 #endif
 
-static void AccValue(int2 coord, float weight, inout float accumulatedValue, inout float accWeight)
+void AccValue(int2 coord, float weight, inout float accumulatedValue, inout float accWeight)
 {
 	float value = weight * FilteringSource.Load(int4(coord.xy, WorkingSlice, 0));
 	if (!DontBlurDistantSamples || value < DistanceSampleThreshold()) {
@@ -111,7 +111,7 @@ static void AccValue(int2 coord, float weight, inout float accumulatedValue, ino
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static float HorizBlur(int2 mid, int samples, int textureWidth)
+float HorizBlur(int2 mid, int samples, int textureWidth)
 {
 	float accumulatedValue = 0.f;
 
@@ -158,7 +158,7 @@ static float HorizBlur(int2 mid, int samples, int textureWidth)
 	return accumulatedValue;
 }
 
-static float VertBlur(int2 mid, int samples, int textureHeight)
+float VertBlur(int2 mid, int samples, int textureHeight)
 {
 	float accumulatedValue = 0.f;
 

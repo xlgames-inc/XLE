@@ -82,6 +82,12 @@
       <Filter>Util</Filter>
     </ClInclude>
     <ClInclude Include="..\ShaderService.h" />
+    <ClInclude Include="..\ShaderLangUtil.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\MinimalShaderSource.h">
+      <Filter>Util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">
@@ -115,5 +121,11 @@
       <Filter>Util</Filter>
     </ClCompile>
     <ClCompile Include="..\ShaderService.cpp" />
+    <ClCompile Include="..\ShaderLangUtil.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\MinimalShaderSource.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

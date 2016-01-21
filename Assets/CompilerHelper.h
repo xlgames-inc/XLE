@@ -24,16 +24,6 @@ namespace Assets
             std::vector<::Assets::DependentFileState> _dependencies;
             ::Assets::rstring _baseDir;
         };
-
-        static std::shared_ptr<PendingCompileMarker> CheckExistingAsset(
-            const IntermediateAssets::Store& destinationStore,
-            const ResChar intermediateName[],
-            const ResChar initializer[]);
-
-        static std::shared_ptr<PendingCompileMarker> PrepareCompileMarker(
-            const IntermediateAssets::Store& destinationStore,
-            const ResChar intermediateName[],
-            const CompileResult& compileResult);
     };
 }
 

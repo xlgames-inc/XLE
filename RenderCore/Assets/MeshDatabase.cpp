@@ -13,6 +13,7 @@
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/BitUtils.h"
 #include "../../Foreign/half-1.9.2/include/half.hpp"
+#include <iterator>
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {

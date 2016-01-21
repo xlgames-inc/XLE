@@ -16,7 +16,7 @@
 
 TextureCube DiffuseIBL  : register(t19);
 TextureCube SpecularIBL : register(t20);
-Texture2D GlossLUT      : register(t21);        // this is the look up table used in the split-sum IBL glossy reflections
+Texture2D<float2> GlossLUT : register(t21);        // this is the look up table used in the split-sum IBL glossy reflections
 
 float3 SampleDiffuseIBL(float3 worldSpaceNormal)
 {
@@ -47,13 +47,13 @@ float VanderCorputRadicalInverse(uint bits)
     // see source:
     //      http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
     // Note -- Can't we just use the HLSL intrinsic "reversebits"? Is there a benefit?
-    // return float(reversebits(bits)) * 2.3283064365386963e-10f;
-    bits = (bits << 16u) | (bits >> 16u);
-    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
-    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
-    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
-    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
-    return float(bits) * 2.3283064365386963e-10f; // / 0x100000000
+    return float(reversebits(bits)) * 2.3283064365386963e-10f;
+    // bits = (bits << 16u) | (bits >> 16u);
+    // bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+    // bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+    // bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+    // bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+    // return float(bits) * 2.3283064365386963e-10f; // / 0x100000000
  }
 
 float2 HammersleyPt(uint i, uint N)
@@ -61,7 +61,7 @@ float2 HammersleyPt(uint i, uint N)
     return float2(float(i)/float(N), VanderCorputRadicalInverse(i));
 }
 
-float3 BuildSampleHalfVectorGGX(uint i, uint sampleCount, float3 normal, float alphag)
+float3 BuildSampleHalfVectorGGX(uint i, uint sampleCount, float3 normal, float alphad)
 {
         // Very similar to the unreal course notes implementation here
     float2 xi = HammersleyPt(i, sampleCount);
@@ -83,7 +83,7 @@ float3 BuildSampleHalfVectorGGX(uint i, uint sampleCount, float3 normal, float a
     //
     // Note that I've swapped xi.x & xi.y from the Unreal implementation. Maybe
     // not a massive change.
-    float cosTheta = sqrt((1.f - xi.x) / (1.f + (alphag*alphag - 1.f) * xi.x));
+    float cosTheta = sqrt((1.f - xi.x) / (1.f + (alphad*alphad - 1.f) * xi.x));
     float sinTheta = sqrt(1.f - cosTheta * cosTheta);
     float phi = 2.f * pi * xi.y;
 
@@ -119,20 +119,20 @@ float3 SampleSpecularIBL_Ref(float3 normal, float3 viewDirection, SpecularParame
     // Unreal course notes
     //      http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
 
-    float alphag = RoughnessToGAlpha(specParam.roughness);
+    float alphad = RoughnessToDAlpha(specParam.roughness);
     float3 result = 0.0.xxx;
     const uint sampleCount = 512;
     for (uint s=0; s<sampleCount; ++s) {
             // We could build a distribution of "H" vectors here,
             // or "L" vectors. It makes sense to use H vectors
-        float3 H = BuildSampleHalfVectorGGX(s, sampleCount, normal, alphag);
+        precise float3 H = BuildSampleHalfVectorGGX(s, sampleCount, normal, alphad);
         float3 L = 2.f * dot(viewDirection, H) * H - viewDirection;
 
             // Now we can light as if the point on the reflection map
             // is a directonal light
 
         float3 lightColor = tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(L), 0).rgb;
-        float3 brdf = CalculateSpecular(normal, viewDirection, L, H, specParam); // (also contains NdotL term)
+        precise float3 brdf = CalculateSpecular(normal, viewDirection, L, H, specParam); // (also contains NdotL term)
 
             // Unreal course notes say the probability distribution function is
             //      D * NdotH / (4 * VdotH)
@@ -142,7 +142,7 @@ float3 SampleSpecularIBL_Ref(float3 normal, float3 viewDirection, SpecularParame
             // it the long way.
         float NdotH = saturate(dot(normal, H));
         float VdotH = saturate(dot(viewDirection, H));
-        float D = TrowReitzD(NdotH, specParam.roughness * specParam.roughness);
+        precise float D = TrowReitzD(NdotH, specParam.roughness * specParam.roughness);
         float pdfWeight = (4.f * VdotH) / (D * NdotH);
 
         result += lightColor * brdf * pdfWeight;
@@ -163,10 +163,94 @@ float3 SplitSumIBL_PrefilterEnvMap(float roughness, float3 reflection)
         // Also note that the tool that filters the texture must
         // use the same mapping for roughness that we do -- otherwise
         // we need to apply the mapping there.
-    const float specularIBLMipMapCount = 9.f;
+    const float specularIBLMipMapCount = 9.f + 1.f;     // (actually getting a much closer result with the +1.f here)
     return SpecularIBL.SampleLevel(
         DefaultSampler, AdjSkyCubeMapCoords(reflection),
         roughness*specularIBLMipMapCount).rgb;
+}
+
+float2 GenerateSplitTerm(float NdotV, float roughness)
+{
+    // This generates the lookup table used by the glossy specular reflections
+    // split sum approximation.
+    // Based on the method presented by Unreal course notes:
+    //  http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
+    // While referencing the implementation in "IBL Baker":
+    //  https://github.com/derkreature/IBLBaker/
+    // We should maintain our own version, because we need to take into account the
+    // same remapping on "roughness" that we do for run-time specular.
+    //
+    // For the most part, we will just be integrating the specular equation over the
+    // hemisphere with white incoming light. We use importance sampling with a fixed
+    // number of samples to try to make the work load manageable...
+
+    float3 normal = float3(0.0f, 0.0f, 1.0f);
+    float3 V = float3(sqrt(1.0f - NdotV * NdotV), 0.0f, NdotV);
+
+    const uint sampleCount = 64 * 1024;
+
+        // Karis suggests that using our typical Disney remapping
+        // for the alpha value for the G term will make IBL much too dark.
+        // Indeed, it changes the output texture a lot.
+        // However, it seems like a good improvement to me. It does make
+        // low roughness materials slightly darker. However, it seems to
+        // have the biggest effect on high roughness materials. These materials
+        // get much lower reflections around the edges. This seems to be
+        // good, however... Because without it, low roughness get a clear
+        // halo around their edges. This doesn't happen so much with the
+        // runtime specular. So it actually seems better with the this remapping.
+    float alphag = RoughnessToGAlpha(roughness);
+    float G2 = SmithG(NdotV, alphag);
+
+    float A = 0.f, B = 0.f;
+    [loop] for (uint s=0; s<sampleCount; ++s) {
+        float3 H, L;
+
+            // We could consider clustering the samples around the highlight.
+            // However, this changes the probability density function in confusing
+            // ways. The result is similiar -- but it is as if a shadow has moved
+            // across the output image.
+            //
+            // note -- I'm not sure it's really correct to pass the "alpha" value for
+            //          "G" to BuildSampleHalfVectorGGX
+            //          But the results are very similar to reference calculations. So
+            //          it seems to get a result that's close, anyway.
+        const bool clusterAroundHighlight = false;
+        if (clusterAroundHighlight) {
+            L = BuildSampleHalfVectorGGX(s, sampleCount, reflect(-V, normal), roughness*roughness);
+            H = normalize(L + V);
+        } else {
+            H = BuildSampleHalfVectorGGX(s, sampleCount, normal, roughness*roughness);
+            L = 2.f * dot(V, H) * H - V;
+        }
+
+        float NdotL = L.z;
+        float NdotH = saturate(H.z);
+        float VdotH = saturate(dot(V, H));
+
+        if (NdotL > 0) {
+                // using "precise" here has a massive effect...
+                // Without it, there are clear errors in the result.
+            precise float G = SmithG(NdotL, alphag) * G2;
+
+            // F0 gets factored out of the equation here
+            // the result we will generate is actually a scale and offset to
+            // the runtime F0 value.
+            precise float F = pow(1.f - VdotH, 5.f);
+
+            // As per SampleSpecularIBL_Ref, we need to apply the inverse of the
+            // propability density function to get a normalized result.
+            // This factors out the D term, and introduces some other terms.
+            //      pdf inverse = 4.f * VdotH / (D * NdotH)
+            //      specular eq = D*G*F / (4*NdotL*NdotV)
+            precise float normalizedSpecular = G * VdotH / (NdotH * NdotV);  // (excluding F term)
+
+            A += (1.f - F) * normalizedSpecular;
+            B += F * normalizedSpecular;
+        }
+    }
+
+    return float2(A, B) / float(sampleCount).xx;
 }
 
 float2 SplitSumIBL_IntegrateBRDF(float roughness, float NdotV)
@@ -178,6 +262,9 @@ float2 SplitSumIBL_IntegrateBRDF(float roughness, float NdotV)
     // just a few shader instructions.
     // This lookup table should have at least 16 bit of precision, and
     // the values are all in the range [0, 1] (so we can use UNORM format)
+    // note -- it may be ok to use PointClampSampler here...? is it better to
+    //          use a small texture and bilinear filtering, or a large texture
+    //          and no filtering?
     return GlossLUT.SampleLevel(ClampingSampler, float2(NdotV, 1.f - roughness), 0).xy;
     // return GenerateSplitTerm(saturate(NdotV), saturate(roughness));
 }

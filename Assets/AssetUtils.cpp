@@ -392,6 +392,7 @@ namespace Assets
         auto PendingAsset::State() const -> AssetState { return AssetState::Pending; }
 
         FormatError::FormatError(const char format[], ...) never_throws
+        : _reason(Reason::FormatNotUnderstood)
         {
             va_list args;
             va_start(args, format);
@@ -399,7 +400,8 @@ namespace Assets
             va_end(args);
         }
 
-        UnsupportedFormat::UnsupportedFormat(const char format[], ...) never_throws
+        FormatError::FormatError(Reason reason, const char format[], ...) never_throws
+        : _reason(reason)
         {
             va_list args;
             va_start(args, format);
@@ -414,8 +416,8 @@ namespace Assets
         DEBUG_ONLY(_initializer[0] = '\0');
     }
 
-    PendingOperationMarker::PendingOperationMarker(AssetState state, std::shared_ptr<DependencyValidation> depVal) 
-    : _state(state), _dependencyValidation(std::move(depVal))
+    PendingOperationMarker::PendingOperationMarker(AssetState state) 
+    : _state(state)
     {
         DEBUG_ONLY(_initializer[0] = '\0');
     }

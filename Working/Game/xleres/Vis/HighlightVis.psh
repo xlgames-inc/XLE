@@ -16,9 +16,15 @@ uint4 StencilToMarkerMap[256];
 #endif
 
 #if INPUT_MODE == 0
-	Texture2D<uint>		StencilInput;
+		// In this mode, we're binding a depth buffer/stencil combo to
+		// "StencilInput"
+		// Oddly, on some hardware Texture2D<uint> works fine to access
+		// the stencil parts (assuming the view was created with X24_TYPELESS_G8_UINT
+		// or some similar stencil-only format).
+		// But, on other hardware we must explicitly access the "G" channel.
+	Texture2D<uint2>	StencilInput;
 #elif INPUT_MODE == 1
- 	Texture2D		StencilInput;
+ 	Texture2D			StencilInput;
 #endif
 
 static const uint DummyMarker = 0xffffffff;
@@ -31,7 +37,7 @@ uint GetHighlightMarker()
 uint Marker(uint2 pos)
 {
 	#if INPUT_MODE == 0
-		uint stencilValue = StencilInput.Load(uint3(pos, 0));
+		uint stencilValue = StencilInput.Load(uint3(pos, 0)).g;
 	#elif INPUT_MODE == 1
 		uint stencilValue = uint(255.f * StencilInput.Load(uint3(pos, 0)).a);
 	#endif

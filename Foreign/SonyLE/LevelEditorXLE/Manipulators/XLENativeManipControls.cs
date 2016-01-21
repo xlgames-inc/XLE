@@ -53,7 +53,7 @@ namespace LevelEditorXLE.Manipulators
             }
         }
 
-        public void SetActiveContext(XLEBridgeUtils.ActiveManipulatorContext context)
+        public void SetActiveContext(GUILayer.ActiveManipulatorContext context)
         {
             if (_context != null)
             {
@@ -77,7 +77,7 @@ namespace LevelEditorXLE.Manipulators
             manipulatorProperties.Bind(properties as Sce.Atf.Applications.IPropertyEditingContext);
         }
 
-        private XLEBridgeUtils.ActiveManipulatorContext _context = null;
+        private GUILayer.ActiveManipulatorContext _context = null;
 
         private void OnActiveManipulatorChange(object sender, EventArgs args)
         {

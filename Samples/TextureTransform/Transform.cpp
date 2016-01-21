@@ -164,6 +164,9 @@ namespace TextureTransform
 
         auto rtFormat = Metal::NativeFormat::Unknown;
         UInt2 viewDims(0, 0);
+        unsigned arrayCount = 1;
+        unsigned mipCount = 1;
+        unsigned passCount = 1;
         if (!inputResources.empty()) {
             rtFormat = inputResources[0]._finalFormat;
             viewDims = UInt2(inputResources[0]._desc._width, inputResources[0]._desc._height);
@@ -176,17 +179,26 @@ namespace TextureTransform
         if (!formatParam.empty())
             rtFormat = Metal::AsNativeFormat(formatParam.c_str());
 
-        rtFormat = AsRTFormat(rtFormat);
-
+        arrayCount = std::max(1u, parameters.GetParameter(ParameterBox::MakeParameterNameHash("ArrayCount"), arrayCount));
+        mipCount = std::max(1u, parameters.GetParameter(ParameterBox::MakeParameterNameHash("MipCount"), mipCount));
+        passCount = std::max(1u, parameters.GetParameter(ParameterBox::MakeParameterNameHash("PassCount"), passCount));
+        
         if (!viewDims[0] || !viewDims[1] || rtFormat == Metal::NativeFormat::Unknown)
             Throw(::Exceptions::BasicLabel("Missing Dims or Format parameter"));
 
-        auto dstDesc = TextureDesc::Plain2D(viewDims[0], viewDims[1], unsigned(rtFormat));
+        auto dstDesc = TextureDesc::Plain2D(
+            viewDims[0], viewDims[1], unsigned(rtFormat), 
+            uint8(mipCount), uint16(arrayCount));
 
         auto i = fns.find(shaderName.AsString());
         if (i != fns.end()) {
             return (i->second)(dstDesc, parameters);
         } else {
+            rtFormat = AsRTFormat(rtFormat);
+            dstDesc._nativePixelFormat = rtFormat;
+            if (rtFormat == Metal::NativeFormat::Unknown)
+                Throw(::Exceptions::BasicLabel("Could not find match pixel format for render target. Check inputs."));
+
             auto psShaderName = xleDir.AsString() + "/Working/game/xleres/" + shaderName.AsString();
             if (!XlFindStringI(psShaderName.c_str(), "ps_"))
                 psShaderName += ":" PS_DefShaderModel;
@@ -196,7 +208,7 @@ namespace TextureTransform
 
             Metal::ShaderProgram shaderProg(vsByteCode, psByteCode);
             Metal::BoundUniforms uniforms(shaderProg);
-            uniforms.BindConstantBuffers(1, {"Material"});
+            uniforms.BindConstantBuffers(1, {"Material", "SubResourceId"});
 
             for (unsigned c = 0; c<inputResources.size(); ++c)
                 uniforms.BindShaderResource(inputResources[c]._bindingHash, c, 1);
@@ -212,80 +224,173 @@ namespace TextureTransform
                     "TextureProcessOutput"));
 
             auto metalContext = Metal::DeviceContext::Get(*device.GetImmediateContext());
-            metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(viewDims[0]), float(viewDims[1])));
-            Metal::RenderTargetView rtv(dstTexture->GetUnderlying());
-            metalContext->Bind(MakeResourceList(rtv), nullptr);
-
             auto& commonRes = Techniques::CommonResources();
             metalContext->Bind(commonRes._cullDisable);
-            metalContext->Bind(commonRes._blendOpaque);
             metalContext->Bind(commonRes._dssDisable);
             metalContext->BindPS(MakeResourceList(commonRes._defaultSampler));
-
-            SharedPkt cbs[] = { cbLayout.BuildCBDataAsPkt(parameters) };
-            std::vector<const Metal::ShaderResourceView*> srvs;
-            for (const auto&i:inputResources) srvs.push_back(&i._srv);
-
-            uniforms.Apply(
-                *metalContext, Metal::UniformsStream(),
-                Metal::UniformsStream(
-                    cbs, nullptr, dimof(cbs),
-                    AsPointer(srvs.begin()), srvs.size()));
             metalContext->Bind(shaderProg);
-
             metalContext->Bind(Metal::Topology::TriangleStrip);
             metalContext->Unbind<Metal::VertexBuffer>();
             metalContext->Unbind<Metal::BoundInputLayout>();
+
+            for (unsigned m=0; m<mipCount; ++m)
+                for (unsigned a=0; a<arrayCount; ++a) {
+                    UInt2 mipDims(std::max(1u, viewDims[0] >> m), std::max(1u, viewDims[1] >> m));
+                    metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(mipDims[0]), float(mipDims[1])));
+                    Metal::RenderTargetView rtv(
+                        dstTexture->GetUnderlying(),
+                        rtFormat, Metal::SubResourceSlice(1, a, m));
+                    metalContext->Bind(MakeResourceList(rtv), nullptr);
+
+                    for (unsigned p=0; p<passCount; ++p) {
+
+                        metalContext->Bind((p==0)?commonRes._blendOpaque:commonRes._blendAdditive);
+
+                        struct SubResourceId
+                        {
+                            unsigned _arrayIndex, _mipIndex;
+                            unsigned _passIndex, _passCount;
+                        } subResId = { a, m, p, passCount };
+
+                        SharedPkt cbs[] = { cbLayout.BuildCBDataAsPkt(parameters), MakeSharedPkt(subResId) };
+                        std::vector<const Metal::ShaderResourceView*> srvs;
+                        for (const auto&i:inputResources) srvs.push_back(&i._srv);
+
+                        uniforms.Apply(
+                            *metalContext, Metal::UniformsStream(),
+                            Metal::UniformsStream(
+                                cbs, nullptr, dimof(cbs),
+                                AsPointer(srvs.begin()), srvs.size()));
         
-            metalContext->Draw(4);
+                        metalContext->Draw(4);
+
+                        // We're sometimes getting driver resets while performing long operations. This can happen
+                        // when a draw operation takes a long time, and windows thinks the GPU has crashed up.
+                        // Let's try to split the draw operations up a bit, so windows is less paranoid!
+                        if ((p%8)==7) {
+                            metalContext->GetUnderlying()->Flush();
+                            Threading::Sleep(16);
+                        }
+                    }
+                }
 
             uniforms.UnbindShaderResources(*metalContext, 1);
             metalContext->Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
 
             auto result = uploads.Resource_ReadBack(*dstTexture);
-            return TextureResult { result, unsigned(rtFormat), viewDims };
+            return TextureResult { result, unsigned(rtFormat), viewDims, mipCount, arrayCount };
         }
     }
 
-    void TextureResult::SaveTIFF(const ::Assets::ResChar destinationFile[]) const
+    DirectX::TexMetadata AsMetadata(const BufferUploads::TextureDesc& desc)
     {
-            // using DirectXTex to save to disk as a TGA file...
-        auto rowPitch = _pkt->GetPitches()._rowPitch;
-        DirectX::Image image {
-            _dimensions[0], _dimensions[1],
-            Metal::AsDXGIFormat(Metal::NativeFormat::Enum(_format)),
-            rowPitch, rowPitch * _dimensions[1],
-            (uint8_t*)_pkt->GetData() };
-        auto fn = Conversion::Convert<std::wstring>(std::string(destinationFile));
+        DirectX::TexMetadata metaData;
+        metaData.width = desc._width;
+        metaData.height = desc._height;
+        metaData.depth = desc._depth;
+        metaData.arraySize = desc._arrayCount;
+        metaData.mipLevels = desc._mipCount;
+        metaData.miscFlags = 0;
+        metaData.miscFlags2 = 0;
+        metaData.format = Metal::AsDXGIFormat(Metal::NativeFormat::Enum(desc._nativePixelFormat));
+        metaData.dimension = DirectX::TEX_DIMENSION_TEXTURE2D;
 
-        auto ext = MakeFileNameSplitter(destinationFile).Extension();
+            // Let's assume that all 6 element arrays are cubemaps. 
+            // We can set "TEX_MISC_TEXTURECUBE" to mark it as a cubemap
+        if (metaData.arraySize == 6)
+            metaData.miscFlags |= DirectX::TEX_MISC_TEXTURECUBE;
+        return metaData;
+    }
 
-        HRESULT hresult;
-        if (XlEqStringI(ext, "tga")) {
-            hresult = DirectX::SaveToTGAFile(image, fn.c_str());
-        } else if (XlEqStringI(ext, "dds")) {
-            hresult = DirectX::SaveToDDSFile(image, DirectX::DDS_FLAGS_NONE, fn.c_str());
-        } else {
-            const GUID GUID_ContainerFormatTiff = 
-                { 0x163bcc30, 0xe2e9, 0x4f0b, { 0x96, 0x1d, 0xa3, 0xe9, 0xfd, 0xb7, 0x88, 0xa3 }};
-            const GUID GUID_ContainerFormatPng  = 
-                { 0x1b7cfaf4, 0x713f, 0x473c, { 0xbb, 0xcd, 0x61, 0x37, 0x42, 0x5f, 0xae, 0xaf }};
-            const GUID GUID_ContainerFormatBmp = 
-                { 0x0af1d87e, 0xfcfe, 0x4188, { 0xbd, 0xeb, 0xa7, 0x90, 0x64, 0x71, 0xcb, 0xe3 }};
-
-            GUID container = GUID_ContainerFormatTiff;
-
-            if (XlEqStringI(ext, "bmp")) container = GUID_ContainerFormatBmp;
-            else if (XlEqStringI(ext, "png")) container = GUID_ContainerFormatPng;
-
-            hresult = DirectX::SaveToWICFile(
-                image, DirectX::WIC_FLAGS_NONE,
-                GUID_ContainerFormatTiff,
-                fn.c_str());
+    std::vector<DirectX::Image> BuildImages(
+        const DirectX::TexMetadata& metaData,
+        BufferUploads::DataPacket& pkt)
+    {
+        std::vector<DirectX::Image> images;
+        images.reserve(metaData.mipLevels * metaData.arraySize);
+        for (unsigned a=0; a<metaData.arraySize; ++a) {
+            for (unsigned m=0; m<metaData.mipLevels; ++m) {
+                auto subRes = BufferUploads::DataPacket::TexSubRes(m, a);
+                auto rowPitch = pkt.GetPitches(subRes)._rowPitch;
+                auto slicePitch = pkt.GetPitches(subRes)._slicePitch;
+                UInt2 mipDims(
+                    std::max(1u, unsigned(metaData.width >> m)), 
+                    std::max(1u, unsigned(metaData.height >> m)));
+                images.push_back({
+                    mipDims[0], mipDims[1],
+                    metaData.format,
+                    rowPitch, slicePitch,
+                    (uint8_t*)pkt.GetData(subRes) });
+            }
         }
 
-        if (!SUCCEEDED(hresult))
-            Throw(::Exceptions::BasicLabel("Failure while written output image"));
+        return std::move(images);
+    }
+
+    void TextureResult::Save(const ::Assets::ResChar destinationFile[]) const
+    {
+            // using DirectXTex to save to disk...
+            // This provides a nice layer over a number of underlying formats
+        auto ext = MakeFileNameSplitter(destinationFile).Extension();
+        auto fn = Conversion::Convert<std::wstring>(std::string(destinationFile));
+
+        bool singleSubresource = (_mipCount <= 1) && (_arrayCount <= 1);
+        if (singleSubresource) {
+            auto rowPitch = _pkt->GetPitches()._rowPitch;
+            auto slicePitch = _pkt->GetPitches()._slicePitch;
+            DirectX::Image image {
+                _dimensions[0], _dimensions[1],
+                Metal::AsDXGIFormat(Metal::NativeFormat::Enum(_format)),
+                rowPitch, slicePitch,
+                (uint8_t*)_pkt->GetData() };
+            
+            HRESULT hresult;
+            if (XlEqStringI(ext, "tga")) {
+                hresult = DirectX::SaveToTGAFile(image, fn.c_str());
+            } else if (XlEqStringI(ext, "dds")) {
+                hresult = DirectX::SaveToDDSFile(image, DirectX::DDS_FLAGS_NONE, fn.c_str());
+            } else {
+                const GUID GUID_ContainerFormatTiff = 
+                    { 0x163bcc30, 0xe2e9, 0x4f0b, { 0x96, 0x1d, 0xa3, 0xe9, 0xfd, 0xb7, 0x88, 0xa3 }};
+                const GUID GUID_ContainerFormatPng  = 
+                    { 0x1b7cfaf4, 0x713f, 0x473c, { 0xbb, 0xcd, 0x61, 0x37, 0x42, 0x5f, 0xae, 0xaf }};
+                const GUID GUID_ContainerFormatBmp = 
+                    { 0x0af1d87e, 0xfcfe, 0x4188, { 0xbd, 0xeb, 0xa7, 0x90, 0x64, 0x71, 0xcb, 0xe3 }};
+
+                GUID container = GUID_ContainerFormatTiff;
+
+                if (XlEqStringI(ext, "bmp")) container = GUID_ContainerFormatBmp;
+                else if (XlEqStringI(ext, "png")) container = GUID_ContainerFormatPng;
+
+                hresult = DirectX::SaveToWICFile(
+                    image, DirectX::WIC_FLAGS_NONE,
+                    GUID_ContainerFormatTiff,
+                    fn.c_str());
+            }
+
+            if (!SUCCEEDED(hresult))
+                Throw(::Exceptions::BasicLabel("Failure while written output image"));
+        } else {
+
+            // When we have multiple mipmaps or array elements, we're creating a multi subresource
+            // texture. These can only be saved in DDS format.
+            if (!XlEqStringI(ext, "dds"))
+                Throw(::Exceptions::BasicLabel("Multi-subresource textures must be saved in DDS format"));
+            
+            auto metaData = AsMetadata(
+                BufferUploads::TextureDesc::Plain2D(
+                    _dimensions[0], _dimensions[1], _format, 
+                    uint8(_mipCount), uint16(_arrayCount)));
+            auto images = BuildImages(metaData, *_pkt);
+
+            auto hresult = DirectX::SaveToDDSFile(
+                AsPointer(images.cbegin()), images.size(), 
+                metaData,
+                DirectX::DDS_FLAGS_NONE, fn.c_str());
+
+            if (!SUCCEEDED(hresult))
+                Throw(::Exceptions::BasicLabel("Failure while written output image"));
+        }
     }
 
 }

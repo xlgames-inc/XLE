@@ -15,6 +15,7 @@ using Sce.Atf.Dom;
 using LevelEditorCore;
 using LevelEditorXLE.Environment;
 using LevelEditorXLE.Placements;
+using LevelEditorXLE.Extensions;
 
 namespace LevelEditorXLE.Game
 {
@@ -119,6 +120,11 @@ namespace LevelEditorXLE.Game
         {
             get { return GetAttribute<string>(Schema.xleGameType.ExportDirectoryAttribute); }
             set { SetAttribute(Schema.xleGameType.ExportDirectoryAttribute, value); }
+        }
+
+        public GUILayer.EditorSceneManager SceneManager
+        {
+            get { return XLEBridgeUtils.Utils.GlobalSceneManager; }
         }
 
         #region Context Menu Commands
@@ -228,9 +234,8 @@ namespace LevelEditorXLE.Game
 
         public IEnumerable<PendingExport> BuildPendingExports()
         {
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
             var result = new List<PendingExport>();
-            result.Add(new PendingExport(ExportTarget, sceneMan.ExportGameObjects(0)));
+            result.Add(new PendingExport(ExportTarget, this.GetSceneManager().ExportGameObjects(0)));
             return result;
         }
         #endregion

@@ -49,7 +49,7 @@ namespace HyperGraph
 				var parentNode = Node;
 				if (parentNode == null)
 					yield break;
-				foreach (var connection in parentNode.connections)
+				foreach (var connection in parentNode.Connections)
 				{
 					if (connection.From == this) yield return connection;
 					if (connection.To   == this) yield return connection;
@@ -67,7 +67,7 @@ namespace HyperGraph
 				var parentNode = Node;
 				if (parentNode == null)
 					return false;
-				foreach (var connection in parentNode.connections)
+				foreach (var connection in parentNode.Connections)
 				{
 					if (connection.From == this) return true;
 					if (connection.To   == this) return true;

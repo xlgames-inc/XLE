@@ -103,5 +103,10 @@ namespace BufferUploads
         _rowPitch = _slicePitch = 0;
     }
 
+    inline auto DataPacket::TexSubRes(unsigned mipIndex, unsigned arrayIndex) -> SubResource
+    {
+        return (mipIndex & 0xffff) | (arrayIndex << 16);
+    }
+
 }
 

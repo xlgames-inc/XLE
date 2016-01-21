@@ -253,7 +253,7 @@ namespace BufferUploads
             QueueSet() {}
         };
 
-        QueueSet _queueSet_Main;(
+        QueueSet _queueSet_Main;
         QueueSet _queueSet_FramePriority[4];
         unsigned _framePriority_WritingQueueSet;
 
@@ -1765,7 +1765,7 @@ namespace BufferUploads
                 if (Process(*step, stepMask, context, budgetUnderConstruction)) {
                     didSomething = true;
                 } else {
-                    _queueSet_Main._prepareSteps.push_overflow(*step);
+                    _queueSet_Main._prepareSteps.push_overflow(std::move(*step));
                 }
                 queueSet._prepareSteps.pop();
             }
@@ -1778,7 +1778,7 @@ namespace BufferUploads
                 if (Process(*resourceCreateStep, stepMask, context, budgetUnderConstruction)) {
                     didSomething = true;
                 } else {
-                    _queueSet_Main._resourceCreateSteps.push_overflow(*resourceCreateStep);
+                    _queueSet_Main._resourceCreateSteps.push_overflow(std::move(*resourceCreateStep));
                 }
                 queueSet._resourceCreateSteps.pop();
             }
@@ -1791,7 +1791,7 @@ namespace BufferUploads
                 if (Process_StagingBuffer(*resourceCreateStep, stepMask, context, budgetUnderConstruction)) {
                     didSomething = true;
                 } else {
-                    _queueSet_Main._stagingBufferCreateSteps.push_overflow(*resourceCreateStep);
+                    _queueSet_Main._stagingBufferCreateSteps.push_overflow(std::move(*resourceCreateStep));
                 }
                 queueSet._stagingBufferCreateSteps.pop();
             }
@@ -1804,7 +1804,7 @@ namespace BufferUploads
                 if (Process(*uploadStep, stepMask, context, budgetUnderConstruction)) {
                     didSomething = true;
                 } else {
-                    _queueSet_Main._uploadSteps.push_overflow(*uploadStep);
+                    _queueSet_Main._uploadSteps.push_overflow(std::move(*uploadStep));
                 }
                 queueSet._uploadSteps.pop();
             }
@@ -2246,7 +2246,7 @@ namespace BufferUploads
     void AssemblyLine::PushStep_StagingBuffer(Transaction& transaction, ResourceCreateStep&& step)
     {
         Interlocked::Increment(&transaction._referenceCount);
-        GetQueueSet(transaction._creationOptions)._stagingBufferCreateSteps.push_overflow(step);
+        GetQueueSet(transaction._creationOptions)._stagingBufferCreateSteps.push_overflow(std::move(step));
     }
 
     void AssemblyLine::PushStep(Transaction& transaction, DataUploadStep&& step)
@@ -2319,24 +2319,32 @@ namespace BufferUploads
     protected:
         unsigned _dataOffset;
         std::vector<PlatformInterface::UnderlyingDeviceContext::MappedBuffer> _mappedBuffer;
+        unsigned _mipCount;
+        unsigned _arrayCount;
     };
 
     void*     RawDataPacket_ReadBack::GetData(SubResource subRes)
     {
-        assert(subRes < _mappedBuffer.size());
-        return PtrAdd(_mappedBuffer[subRes].GetData(), _dataOffset);
+        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
+        unsigned subResIndex = mip + arrayIndex * _mipCount;
+        assert(subResIndex < _mappedBuffer.size());
+        return PtrAdd(_mappedBuffer[subResIndex].GetData(), _dataOffset);
     }
 
     size_t          RawDataPacket_ReadBack::GetDataSize(SubResource subRes) const
     {
-        assert(subRes < _mappedBuffer.size());
-        return _mappedBuffer[subRes].GetPitches()._slicePitch - _dataOffset;
+        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
+        unsigned subResIndex = mip + arrayIndex * _mipCount;
+        assert(subResIndex < _mappedBuffer.size());
+        return _mappedBuffer[subResIndex].GetPitches()._slicePitch - _dataOffset;
     }
 
     TexturePitches RawDataPacket_ReadBack::GetPitches(SubResource subRes) const
     {
-        assert(subRes < _mappedBuffer.size());
-        return _mappedBuffer[subRes].GetPitches();
+        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
+        unsigned subResIndex = mip + arrayIndex * _mipCount;
+        assert(subResIndex < _mappedBuffer.size());
+        return _mappedBuffer[subResIndex].GetPitches();
     }
 
     RawDataPacket_ReadBack::RawDataPacket_ReadBack(const ResourceLocator& locator, PlatformInterface::UnderlyingDeviceContext& context)
@@ -2348,10 +2356,14 @@ namespace BufferUploads
 
         auto desc = PlatformInterface::ExtractDesc(*resource);
         auto subResCount = 1u;
-        if (desc._type == BufferDesc::Type::Texture)
+        _mipCount = _arrayCount = 1u;
+        if (desc._type == BufferDesc::Type::Texture) {
             subResCount = 
                   std::max(1u, unsigned(desc._textureDesc._mipCount))
                 * std::max(1u, unsigned(desc._textureDesc._arrayCount));
+            _mipCount = desc._textureDesc._mipCount;
+            _arrayCount = desc._textureDesc._arrayCount;
+        }
 
             //
             //      If we have to read back through a staging resource, then let's create

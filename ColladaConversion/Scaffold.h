@@ -84,6 +84,11 @@ namespace ColladaConversion
             SamplerParameter();
             SamplerParameter(Formatter& formatter, Section sid, Section eleName);
             ~SamplerParameter();
+
+			#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
+				SamplerParameter(SamplerParameter&&) = default;
+				SamplerParameter& operator=(SamplerParameter&&) = default;
+			#endif
         };
 
         class SurfaceParameter

@@ -291,4 +291,21 @@ float fbmNoise3D(float3 position, float hgrid, float gain, float lacunarity, int
 	return total;
 }
 
+float fbmNoise3DZeroToOne(float3 position, float hgrid, float gain, float lacunarity, int octaves)
+{
+		// standard fbm noise method
+	float total = 0.0f;
+	float frequency = 1.0f/(float)hgrid;
+	float amplitude = 1.f;
+
+	for (int i = 0; i < octaves; ++i)
+	{
+		total += (0.5f + 0.5f * PerlinNoise3D(position * frequency)) * amplitude;
+		frequency *= lacunarity;
+		amplitude *= gain;
+	}
+
+	return total;
+}
+
 #endif

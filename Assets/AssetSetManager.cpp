@@ -6,6 +6,7 @@
 
 #include "AssetSetManager.h"
 #include "../Utility/Threading/ThreadingUtils.h"
+#include "../Utility/Threading/Mutex.h"
 #include "../Utility/IteratorUtils.h"
 #include <vector>
 #include <memory>
@@ -21,6 +22,7 @@ namespace Assets
     public:
         std::vector<std::pair<size_t, std::unique_ptr<IAssetSet>>> _sets;
         unsigned _boundThreadId;
+        Threading::Mutex _lock;
     };
 
     IAssetSet* AssetSetManager::GetSetForTypeCode(size_t typeCode)
@@ -69,6 +71,16 @@ namespace Assets
     const IAssetSet* AssetSetManager::GetAssetSet(unsigned index)
     {
         return _pimpl->_sets[index].second.get();
+    }
+
+    void AssetSetManager::Lock()
+    {
+        _pimpl->_lock.lock();
+    }
+
+    void AssetSetManager::Unlock()
+    {
+        _pimpl->_lock.unlock();
     }
 
     AssetSetManager::AssetSetManager()

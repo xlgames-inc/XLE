@@ -14,6 +14,7 @@
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/StringFormat.h"
 #include <memory>
+#include <vector>
 
 namespace Assets
 {
@@ -65,6 +66,12 @@ namespace Assets
         std::shared_ptr<DependencyValidation>  _validationCallback;
     };
 
+    namespace Internal
+    {
+        void MarkInvalid(const ResChar initializer[], const char reason[]);
+        void MarkValid(const ResChar initializer[]);
+    }
+
     template<typename Type, typename Formatter>
         ConfigFileContainer<Type, Formatter>::ConfigFileContainer(const ResChar initializer[])
     {
@@ -80,15 +87,12 @@ namespace Assets
 
             _asset = Type(formatter, searchRules);
 
-            if (Services::GetInvalidAssetMan())
-                Services::GetInvalidAssetMan()->MarkValid(initializer);
+            Internal::MarkValid(initializer);
         } CATCH (const std::exception& e) {
-            if (Services::GetInvalidAssetMan())
-                Services::GetInvalidAssetMan()->MarkInvalid(initializer, e.what());
+            Internal::MarkInvalid(initializer, e.what());
             throw;
         } CATCH(...) {
-            if (Services::GetInvalidAssetMan())
-                Services::GetInvalidAssetMan()->MarkInvalid(initializer, "Unknown error");
+            Internal::MarkInvalid(initializer, "Unknown error");
             throw;
         } CATCH_END
 
@@ -113,7 +117,9 @@ namespace Assets
         DirectorySearchRules _searchRules;
 
         ConfigFileListContainer(const ResChar initializer[]);
-        ConfigFileListContainer(std::shared_ptr<PendingCompileMarker>&& marker);
+        ConfigFileListContainer(
+            const ::Assets::IntermediateAssetLocator& locator, 
+            const ::Assets::ResChar initializer[]);
         ConfigFileListContainer();
         ~ConfigFileListContainer();
 
@@ -188,15 +194,12 @@ namespace Assets
             // if (!gotConfig)
             //     Throw(::Exceptions::BasicLabel(StringMeld<256>() << "Configuration setting (" << initializer << ") is missing"));
 
-            if (Services::GetInvalidAssetMan())
-                Services::GetInvalidAssetMan()->MarkValid(initializer);
+            Internal::MarkValid(initializer);
         } CATCH (const std::exception& e) {
-            if (Services::GetInvalidAssetMan())
-                Services::GetInvalidAssetMan()->MarkInvalid(initializer, e.what());
+            Internal::MarkInvalid(initializer, e.what());
             throw;
         } CATCH(...) {
-            if (Services::GetInvalidAssetMan())
-                Services::GetInvalidAssetMan()->MarkInvalid(initializer, "Unknown error");
+            Internal::MarkInvalid(initializer, "Unknown error");
             throw;
         } CATCH_END
 
@@ -212,16 +215,10 @@ namespace Assets
 
     template<typename Type, typename Formatter>
         ConfigFileListContainer<Type, Formatter>::ConfigFileListContainer(
-            std::shared_ptr<PendingCompileMarker>&& marker)
+            const ::Assets::IntermediateAssetLocator& locator, 
+            const ::Assets::ResChar initializer[])
     {
-        auto state = marker->GetState();
-        if (state == AssetState::Ready) {
-            Construct(marker->_sourceID0);
-        } else if (state == AssetState::Pending) {
-            Throw(Exceptions::PendingAsset(marker->Initializer(), "Asset pending when loading through ConfigFileListContainer"));
-        } else {
-            Throw(Exceptions::PendingAsset(marker->Initializer(), "Asset invlaid when loading through ConfigFileListContainer"));
-        }
+        Construct(locator._sourceID0);
     }
 
     template<typename Type, typename Formatter>
@@ -235,5 +232,18 @@ namespace Assets
         {
             return std::make_unique<ConfigFileListContainer>();
         }
+
+    template<typename CharType>
+        class TextChunk
+    {
+    public:
+        StringSection<CharType> _type, _name, _content;
+
+        TextChunk(StringSection<CharType> type, StringSection<CharType> name, StringSection<CharType> content)
+            : _type(type), _name(name), _content(content) {}
+    };
+
+    template<typename CharType>
+        std::vector<TextChunk<CharType>> ReadCompoundTextDocument(StringSection<CharType> doc);
 }
 

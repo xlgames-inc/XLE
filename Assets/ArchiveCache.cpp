@@ -20,15 +20,16 @@ namespace Assets
     static const uint64 ChunkType_ArchiveDirectory = ConstHash64<'Arch', 'ive', 'Dir'>::Value;
     static const uint64 ChunkType_ArchiveAttachments = ConstHash64<'Arch', 'ive', 'Attc'>::Value;
 
+    class ArchiveDirectoryBlock 
+    {
+    public:
+        uint64 _id;
+        unsigned _start, _size;
+    };
+    
     class DirectoryChunk
     {
     public:
-        class Block 
-        {
-        public:
-            uint64 _id;
-            unsigned _start, _size;
-        };
         unsigned _blockCount;
         unsigned _spanningHeapSize;
 
@@ -38,9 +39,9 @@ namespace Assets
         class CompareBlock
         {
         public:
-            bool operator()(const Block& lhs, uint64 rhs) { return lhs._id < rhs; }
-            bool operator()(uint64 lhs, const Block& rhs) { return lhs < rhs._id; }
-            bool operator()(const Block& lhs, const Block& rhs) { return lhs._id < rhs._id; }
+            bool operator()(const ArchiveDirectoryBlock& lhs, uint64 rhs) { return lhs._id < rhs; }
+            bool operator()(uint64 lhs, const ArchiveDirectoryBlock& rhs) { return lhs < rhs._id; }
+            bool operator()(const ArchiveDirectoryBlock& lhs, const ArchiveDirectoryBlock& rhs) { return lhs._id < rhs._id; }
         };
     };
 
@@ -115,11 +116,8 @@ namespace Assets
         }
     }
 
-    static std::vector<DirectoryChunk::Block> LoadBlockList(const char filename[])
+    static std::vector<ArchiveDirectoryBlock> LoadBlockList(const char filename[])
     {
-            // note --  we could potentially just keep the directory information in memory
-            //          but; currently we'll open the file and read it in again every time
-            //          Maybe we should use a memory mapped file for the directory...
         using namespace Serialization::ChunkFile;
         BasicFile directoryFile(filename, "rb");
         auto chunkTable = LoadChunkTable(directoryFile);
@@ -129,11 +127,20 @@ namespace Assets
         directoryFile.Seek(chunk._fileOffset, SEEK_SET);
         directoryFile.Read(&dirHdr, sizeof(dirHdr), 1);
 
-        std::vector<DirectoryChunk::Block> blocks;  // note -- use a fixed size vector here?
+        std::vector<ArchiveDirectoryBlock> blocks;  // note -- use a fixed size vector here?
         blocks.resize(dirHdr._blockCount);
-        directoryFile.Read(AsPointer(blocks.begin()), sizeof(DirectoryChunk::Block), dirHdr._blockCount);
+        directoryFile.Read(AsPointer(blocks.begin()), sizeof(ArchiveDirectoryBlock), dirHdr._blockCount);
 
         return std::move(blocks);
+    }
+
+    auto ArchiveCache::GetBlockList() const -> const std::vector<ArchiveDirectoryBlock>&
+    {
+        if (!_cachedBlockListValid) {
+            _cachedBlockList = LoadBlockList(_directoryFileName.c_str());
+            _cachedBlockListValid = true;
+        }
+        return _cachedBlockList;
     }
 
     auto ArchiveCache::OpenFromCache(uint64 id) -> BlockAndSize
@@ -153,7 +160,7 @@ namespace Assets
             // flush to complete.
 
         {
-            auto blocks = LoadBlockList(_directoryFileName.c_str());
+            const auto& blocks = GetBlockList();
                 // we maintain the blocks array sorted by id to make this check faster...
             auto bi = std::lower_bound(blocks.begin(), blocks.end(), id, DirectoryChunk::CompareBlock());
             if (bi != blocks.end() && bi->_id == id) {
@@ -178,7 +185,7 @@ namespace Assets
         }
 
         TRY {
-            auto blocks = LoadBlockList(_directoryFileName.c_str());
+            const auto& blocks = GetBlockList();
             auto bi = std::lower_bound(blocks.begin(), blocks.end(), id, DirectoryChunk::CompareBlock());
             return (bi != blocks.end() && bi->_id == id);
         } CATCH (...) {
@@ -190,6 +197,8 @@ namespace Assets
     {
         ScopedLock(_pendingBlocksLock);
         if (_pendingBlocks.empty()) { return; }
+
+        _cachedBlockListValid = false;
 
             // 1.   Open the directory and initialize our heap
             //      representation
@@ -207,7 +216,7 @@ namespace Assets
         using namespace Serialization::ChunkFile;
         {
             DirectoryChunk dirHdr;
-            std::vector<DirectoryChunk::Block> blocks;
+            std::vector<ArchiveDirectoryBlock> blocks;
             std::unique_ptr<uint8[]> flattenedSpanningHeap;
         
             BasicFile directoryFile;
@@ -223,7 +232,7 @@ namespace Assets
                 directoryFile.Read(&dirHdr, sizeof(dirHdr), 1);
 
                 blocks.resize(dirHdr._blockCount);
-                directoryFile.Read(AsPointer(blocks.begin()), sizeof(DirectoryChunk::Block), dirHdr._blockCount);
+                directoryFile.Read(AsPointer(blocks.begin()), sizeof(ArchiveDirectoryBlock), dirHdr._blockCount);
                 flattenedSpanningHeap = std::make_unique<uint8[]>(dirHdr._spanningHeapSize);
                 directoryFile.Read(flattenedSpanningHeap.get(), 1, dirHdr._spanningHeapSize);
                 directoryFileOpened = true;
@@ -290,7 +299,7 @@ namespace Assets
 
                     auto b = std::lower_bound(blocks.begin(), blocks.end(), i->_id, DirectoryChunk::CompareBlock());
                     assert(b==blocks.cend() || b->_id != i->_id);
-                    DirectoryChunk::Block newBlock = { i->_id, i->_pendingCommitPtr, newBlockSize };
+                    ArchiveDirectoryBlock newBlock = { i->_id, i->_pendingCommitPtr, newBlockSize };
                     blocks.insert(b, newBlock);
 
                 }
@@ -329,7 +338,7 @@ namespace Assets
                 auto flattenedHeap = spanningHeap.Flatten();
             
                 ChunkHeader chunkHeader(
-                    ChunkType_ArchiveDirectory, 0, "ArchiveCache", unsigned(sizeof(DirectoryChunk) + blocks.size() * sizeof(DirectoryChunk::Block) + flattenedHeap.second));
+                    ChunkType_ArchiveDirectory, 0, "ArchiveCache", unsigned(sizeof(DirectoryChunk) + blocks.size() * sizeof(ArchiveDirectoryBlock) + flattenedHeap.second));
                 chunkHeader._fileOffset = sizeof(ChunkFileHeader) + sizeof(ChunkHeader);
 
                 DirectoryChunk chunkData;
@@ -344,7 +353,7 @@ namespace Assets
                 directoryFile.Write(&fileHeader, sizeof(fileHeader), 1);
                 directoryFile.Write(&chunkHeader, sizeof(chunkHeader), 1);
                 directoryFile.Write(&chunkData, sizeof(chunkData), 1);
-                directoryFile.Write(AsPointer(blocks.begin()), sizeof(DirectoryChunk::Block), blocks.size());
+                directoryFile.Write(AsPointer(blocks.begin()), sizeof(ArchiveDirectoryBlock), blocks.size());
                 directoryFile.Write(flattenedHeap.first.get(), 1, flattenedHeap.second);
             }
         }
@@ -430,7 +439,7 @@ namespace Assets
             // We need to open the file and get metrics information
             // for the blocks contained within
         ////////////////////////////////////////////////////////////////////////////////////
-        std::vector<DirectoryChunk::Block> fileBlocks;
+        std::vector<ArchiveDirectoryBlock> fileBlocks;
         TRY {
             BasicFile directoryFile(_directoryFileName.c_str(), "rb");
 
@@ -442,7 +451,7 @@ namespace Assets
             directoryFile.Read(&dirHdr, sizeof(dirHdr), 1);
 
             fileBlocks.resize(dirHdr._blockCount);
-            directoryFile.Read(AsPointer(fileBlocks.begin()), sizeof(DirectoryChunk::Block), dirHdr._blockCount);
+            directoryFile.Read(AsPointer(fileBlocks.begin()), sizeof(ArchiveDirectoryBlock), dirHdr._blockCount);
         } CATCH (...) {
         } CATCH_END
 
@@ -530,9 +539,10 @@ namespace Assets
         const char archiveName[],
         const char buildVersionString[],
         const char buildDateString[]) 
-        : _mainFileName(archiveName)
-        , _buildVersionString(buildVersionString)
-        , _buildDateString(buildDateString)
+    : _mainFileName(archiveName)
+    , _buildVersionString(buildVersionString)
+    , _buildDateString(buildDateString)
+    , _cachedBlockListValid(false)
     {
         _directoryFileName = _mainFileName + ".dir";
 

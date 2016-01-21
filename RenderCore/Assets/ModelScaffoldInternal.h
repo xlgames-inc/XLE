@@ -8,6 +8,7 @@
 
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
+#include "../../Assets/BlockSerializer.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Core/Types.h"
 
@@ -114,6 +115,11 @@ namespace RenderCore { namespace Assets
         GeoInputAssembly(GeoInputAssembly&& moveFrom) never_throws;
         GeoInputAssembly& operator=(GeoInputAssembly&& moveFrom) never_throws;
         ~GeoInputAssembly();
+
+		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
+			GeoInputAssembly(const GeoInputAssembly&) = default;
+			GeoInputAssembly& operator=(const GeoInputAssembly&) = default;
+		#endif
     };
 
     class VertexData
@@ -185,4 +191,45 @@ namespace RenderCore { namespace Assets
     #pragma pack(pop)
 
 }}
+
+template<>
+inline void Serialize(
+	Serialization::NascentBlockSerializer& outputSerializer,
+	const RenderCore::Assets::GeoInputAssembly& ia)
+{
+	outputSerializer.SerializeRaw(ia._elements);
+	Serialize(outputSerializer, ia._vertexStride);
+}
+
+template<>
+inline void Serialize(
+	Serialization::NascentBlockSerializer& outputSerializer,
+	const RenderCore::Assets::IndexData& indexData)
+{
+	Serialize(outputSerializer, indexData._format);
+	Serialize(outputSerializer, indexData._offset);
+	Serialize(outputSerializer, indexData._size);
+}
+
+template<>
+inline void Serialize(
+	Serialization::NascentBlockSerializer& outputSerializer,
+	const RenderCore::Assets::VertexData& vertexData)
+{
+	Serialize(outputSerializer, vertexData._ia);
+	Serialize(outputSerializer, vertexData._offset);
+	Serialize(outputSerializer, vertexData._size);
+}
+
+template<>
+inline void Serialize(
+	Serialization::NascentBlockSerializer& outputSerializer,
+	const RenderCore::Assets::DrawCallDesc& drawCall)
+{
+	outputSerializer.SerializeValue(drawCall._firstIndex);
+	outputSerializer.SerializeValue(drawCall._indexCount);
+	outputSerializer.SerializeValue(drawCall._firstVertex);
+	outputSerializer.SerializeValue(drawCall._subMaterialIndex);
+	outputSerializer.SerializeValue(drawCall._topology);
+}
 

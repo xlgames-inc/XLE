@@ -18,12 +18,12 @@ namespace RenderingInterop
     // utility class for drawing simple 2d/3d shapes
     public static class Util3D
     {
-        public static BasicRendererFlags RenderFlag
-        {
-            set { GameEngine.SetRendererFlag(value);}
+        public static void SetRenderFlag(GUILayer.SimpleRenderingContext context, BasicRendererFlags flags)
+        { 
+            GameEngine.SetRendererFlag(context, flags);
         }
 
-        public static void DrawSphere(Sphere3F sphere, Color c)
+        public static void DrawSphere(GUILayer.SimpleRenderingContext context, Sphere3F sphere, Color c)
         {
             // create matrix from AABB            
             T1.Set(sphere.Center);
@@ -31,7 +31,7 @@ namespace RenderingInterop
             T1.M11 = scale;
             T1.M22 = scale;
             T1.M33 = scale;
-            DrawSphere(T1, c);
+            DrawSphere(context, T1, c);
             
         }
 
@@ -40,16 +40,16 @@ namespace RenderingInterop
             get { return s_captionFont; }
         }
 
-        public static void DrawPivot(Matrix4F xform, Color c)
+        public static void DrawPivot(GUILayer.SimpleRenderingContext context, Matrix4F xform, Color c)
         {
-            GameEngine.DrawPrimitive(PrimitiveType.LineStrip,
+            GameEngine.DrawPrimitive(context, PrimitiveType.LineStrip,
               s_pivotVerts,
               0,
               s_pivotVertexCount,
               c,
               xform);            
         }
-        public static void DrawAABB(AABB bound)
+        public static void DrawAABB(GUILayer.SimpleRenderingContext context, AABB bound)
         {
             // create matrix from AABB
             Vec3F trans = bound.Center;
@@ -59,7 +59,7 @@ namespace RenderingInterop
             T1.M22 = diag.Y;
             T1.M33 = diag.Z;
 
-            GameEngine.DrawIndexedPrimitive(PrimitiveType.LineList,
+            GameEngine.DrawIndexedPrimitive(context, PrimitiveType.LineList,
                s_boxVertsId,
                s_boxIndicesId,
                0,
@@ -69,18 +69,18 @@ namespace RenderingInterop
                T1);
         }
 
-        public static void DrawCircle(Matrix4F xform, Color color)
-        {            
-            GameEngine.DrawPrimitive(PrimitiveType.LineStrip,
+        public static void DrawCircle(GUILayer.SimpleRenderingContext context, Matrix4F xform, Color color)
+        {
+            GameEngine.DrawPrimitive(context, PrimitiveType.LineStrip,
                s_circleVerts,
                0,
                s_circleVertexCount,
                color,
                xform);
         }
-        public static void DrawUnitSquare(Matrix4F xform, Color color)
+        public static void DrawUnitSquare(GUILayer.SimpleRenderingContext context, Matrix4F xform, Color color)
         {
-            GameEngine.DrawPrimitive(PrimitiveType.LineList,
+            GameEngine.DrawPrimitive(context, PrimitiveType.LineList,
                 s_linesVertId,
                 s_unitSquareStartVertex,
                 s_unitSquareVertexCount,
@@ -88,9 +88,9 @@ namespace RenderingInterop
                 xform);
         }
 
-        public static void DrawRect(Matrix4F xform, Color color)
+        public static void DrawRect(GUILayer.SimpleRenderingContext context, Matrix4F xform, Color color)
         {
-            GameEngine.DrawPrimitive(PrimitiveType.LineList,
+            GameEngine.DrawPrimitive(context, PrimitiveType.LineList,
                 s_linesVertId,
                 s_rectStartVertex,
                 s_rectVertexCount,
@@ -98,10 +98,10 @@ namespace RenderingInterop
                 xform);
             
         }
-        
-        public static void DrawAxis(Matrix4F xform, Color color)
+
+        public static void DrawAxis(GUILayer.SimpleRenderingContext context, Matrix4F xform, Color color)
         {
-            GameEngine.DrawPrimitive(PrimitiveType.LineList,
+            GameEngine.DrawPrimitive(context, PrimitiveType.LineList,
                 s_linesVertId,
                 s_axisStartVertex,
                 s_axisVertexCount,
@@ -110,10 +110,10 @@ namespace RenderingInterop
         }
 
 
-        public static void DrawX(Matrix4F xform, Color color)
+        public static void DrawX(GUILayer.SimpleRenderingContext context, Matrix4F xform, Color color)
         {
 
-            GameEngine.DrawPrimitive(PrimitiveType.LineList,
+            GameEngine.DrawPrimitive(context, PrimitiveType.LineList,
                                      s_linesVertId,
                                      s_axisStartVertex,
                                      2,
@@ -122,9 +122,9 @@ namespace RenderingInterop
 
         }
 
-        public static void DrawY(Matrix4F xform, Color color)
+        public static void DrawY(GUILayer.SimpleRenderingContext context, Matrix4F xform, Color color)
         {
-            GameEngine.DrawPrimitive(PrimitiveType.LineList,
+            GameEngine.DrawPrimitive(context, PrimitiveType.LineList,
                                      s_linesVertId,
                                      s_axisStartVertex + 2,
                                      2,
@@ -133,9 +133,9 @@ namespace RenderingInterop
 
         }
 
-        public static void DrawZ(Matrix4F xform, Color color)
+        public static void DrawZ(GUILayer.SimpleRenderingContext context, Matrix4F xform, Color color)
         {
-            GameEngine.DrawPrimitive(PrimitiveType.LineList,
+            GameEngine.DrawPrimitive(context, PrimitiveType.LineList,
                                      s_linesVertId,
                                      s_axisStartVertex + 4,
                                      2,
@@ -144,9 +144,9 @@ namespace RenderingInterop
 
         }
 
-        public static void DrawSphere(Matrix4F xform, System.Drawing.Color color)
-        {            
-            GameEngine.DrawIndexedPrimitive(PrimitiveType.TriangleList,
+        public static void DrawSphere(GUILayer.SimpleRenderingContext context, Matrix4F xform, System.Drawing.Color color)
+        {
+            GameEngine.DrawIndexedPrimitive(context, PrimitiveType.TriangleList,
                 s_sphereVertId,
                 s_sphereIndexId,
                 0,
@@ -164,9 +164,9 @@ namespace RenderingInterop
         public const float RingThickness = (RingOuterRadias - RingInnerRadias);
         public const float RingCenterRadias = 0.5f * (RingInnerRadias + RingOuterRadias);
 
-        public static void DrawRing(Matrix4F xform, Color color)
-        {            
-            GameEngine.DrawIndexedPrimitive(PrimitiveType.TriangleList,
+        public static void DrawRing(GUILayer.SimpleRenderingContext context, Matrix4F xform, Color color)
+        {
+            GameEngine.DrawIndexedPrimitive(context, PrimitiveType.TriangleList,
                s_torusVertId,
                s_torusIndexId,
                0,
@@ -175,9 +175,9 @@ namespace RenderingInterop
                color,
                xform);
         }
-        public static void DrawCylinder(Matrix4F xform, Color color)
+        public static void DrawCylinder(GUILayer.SimpleRenderingContext context, Matrix4F xform, Color color)
         {
-            GameEngine.DrawIndexedPrimitive(PrimitiveType.TriangleList,
+            GameEngine.DrawIndexedPrimitive(context, PrimitiveType.TriangleList,
                s_cylinderVertId,
                s_cylinderIndexId,
                0,
@@ -187,9 +187,9 @@ namespace RenderingInterop
                xform);
         }
 
-        public static void DrawCone(Matrix4F xform, Color color)
-        {                                   
-            GameEngine.DrawIndexedPrimitive(PrimitiveType.TriangleList,
+        public static void DrawCone(GUILayer.SimpleRenderingContext context, Matrix4F xform, Color color)
+        {
+            GameEngine.DrawIndexedPrimitive(context, PrimitiveType.TriangleList,
                s_coneVertId,
                s_coneIndexId,
                0,
@@ -198,10 +198,10 @@ namespace RenderingInterop
                color,
                xform);
         }
-      
-        public static void DrawCube(Matrix4F xform, Color color)
+
+        public static void DrawCube(GUILayer.SimpleRenderingContext context, Matrix4F xform, Color color)
         {
-            GameEngine.DrawIndexedPrimitive(PrimitiveType.TriangleList,
+            GameEngine.DrawIndexedPrimitive(context, PrimitiveType.TriangleList,
                s_cubeVertId,
                s_cubeIndexId,
                0,
@@ -212,9 +212,9 @@ namespace RenderingInterop
 
         }
 
-        public static void DrawArrowCap(Matrix4F xform, Color color)
+        public static void DrawArrowCap(GUILayer.SimpleRenderingContext context, Matrix4F xform, Color color)
         {
-            GameEngine.DrawIndexedPrimitive(PrimitiveType.TriangleList,
+            GameEngine.DrawIndexedPrimitive(context, PrimitiveType.TriangleList,
                s_arrowCapVertId,
                s_arrowCapIndexId,
                0,

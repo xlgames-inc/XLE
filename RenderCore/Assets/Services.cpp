@@ -13,6 +13,7 @@
 #include "../ShaderService.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/AssetServices.h"
 #include "../../ConsoleRig/AttachableInternal.h"
 #include "../../BufferUploads/IBufferUploads.h"
 
@@ -36,6 +37,13 @@ namespace RenderCore { namespace Assets
             BufferUploads::AttachLibrary(ConsoleRig::GlobalServices::GetInstance());
             _bufferUploads = BufferUploads::CreateManager(device);
         }
+
+        // The technique config search directories are used to search for
+        // technique configuration files. These are the files that point to
+        // shaders used by rendering models. Each material can reference one
+        // of these configuration files. But we can add some flexibility to the
+        // engine by searching for these files in multiple directories. 
+        _techConfDirs.AddSearchDirectory("game/xleres/techniques");
 
             // Setup required compilers.
             //  * material scaffold compiler

@@ -12,7 +12,7 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD, float4 co
 {
 	float4 texCol = DefaultTexture.SampleLevel(DefaultSampler, texCoord, 0);
 
-	float2 offsets[] = 
+	float2 offsets[] =
 	{
 		float2(-4.f/512.f, -4.f/64.f),
 		float2( 4.f/512.f, -4.f/64.f),
@@ -22,7 +22,7 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD, float4 co
 		float2(-4.f/512.f,  0.f/64.f),
 		float2( 4.f/512.f,  0.f/64.f),
 		float2( 0.f/512.f, -4.f/64.f),
-		float2( 0.f/512.f,  4.f/64.f),
+		float2( 0.f/512.f,  4.f/64.f)
 	};
 
 	float shadowA = 0.f;
@@ -32,4 +32,3 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD, float4 co
 
 	return float4(color.rgb*texCol.a, color.a*(texCol.a + shadowA));
 }
-

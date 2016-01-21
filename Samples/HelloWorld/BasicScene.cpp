@@ -10,6 +10,7 @@
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/Material.h"
+#include "../../RenderCore/Assets/Services.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/Tonemap.h"
@@ -239,7 +240,8 @@ namespace Sample
 
     BasicSceneParser::Model::Model()
     {
-        _sharedStateSet = std::make_unique<RenderCore::Assets::SharedStateSet>();
+        _sharedStateSet = std::make_unique<RenderCore::Assets::SharedStateSet>(
+            RenderCore::Assets::Services::GetTechniqueConfigDirs());
     }
 
     BasicSceneParser::Model::~Model()

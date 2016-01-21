@@ -13,9 +13,10 @@
 		/// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
 		protected override void Dispose(bool disposing)
 		{
-			if (disposing && (components != null))
+			if (disposing)
 			{
-				components.Dispose();
+                if (components != null)
+				    components.Dispose();
 			}
 			base.Dispose(disposing);
 		}
@@ -29,11 +30,8 @@
 		private void InitializeComponent()
 		{
             this.components = new System.ComponentModel.Container();
-            HyperGraph.Compatibility.AlwaysCompatible alwaysCompatible1 = new HyperGraph.Compatibility.AlwaysCompatible();
-            this.nodeMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
-            this.showPreviewShaderItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.refreshToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.graphControl = new HyperGraph.GraphControl();
+
+            this.graphControl = new System.Windows.Forms.UserControl();
             this.panel1 = new System.Windows.Forms.Panel();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.panel2 = new System.Windows.Forms.Panel();
@@ -51,10 +49,6 @@
             this._materialParametersGrid = new System.Windows.Forms.PropertyGrid();
             this._ribbon = new RibbonLib.Ribbon();
             this._materialPropertiesGrid = new System.Windows.Forms.PropertyGrid();
-            this.parameterBoxMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
-            this.addParameterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.largePreviewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.nodeMenu.SuspendLayout();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -65,48 +59,16 @@
             this.splitContainer2.Panel1.SuspendLayout();
             this.splitContainer2.Panel2.SuspendLayout();
             this.splitContainer2.SuspendLayout();
-            this.parameterBoxMenu.SuspendLayout();
             this.SuspendLayout();
-            // 
-            // nodeMenu
-            // 
-            this.nodeMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.showPreviewShaderItem,
-            this.refreshToolStripMenuItem,
-            this.largePreviewToolStripMenuItem});
-            this.nodeMenu.Name = "NodeMenu";
-            this.nodeMenu.Size = new System.Drawing.Size(187, 92);
-            // 
-            // showPreviewShaderItem
-            // 
-            this.showPreviewShaderItem.Name = "showPreviewShaderItem";
-            this.showPreviewShaderItem.Size = new System.Drawing.Size(186, 22);
-            this.showPreviewShaderItem.Text = "Show Preview Shader";
-            this.showPreviewShaderItem.Click += new System.EventHandler(this.OnShowPreviewShader);
-            // 
-            // refreshToolStripMenuItem
-            // 
-            this.refreshToolStripMenuItem.Name = "refreshToolStripMenuItem";
-            this.refreshToolStripMenuItem.Size = new System.Drawing.Size(186, 22);
-            this.refreshToolStripMenuItem.Text = "Refresh";
-            this.refreshToolStripMenuItem.Click += new System.EventHandler(this.refreshToolStripMenuItem_Click);
             // 
             // graphControl
             // 
             this.graphControl.AllowDrop = true;
             this.graphControl.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
-            this.graphControl.CompatibilityStrategy = alwaysCompatible1;
             this.graphControl.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.graphControl.FocusElement = null;
-            this.graphControl.HighlightCompatible = true;
-            this.graphControl.LargeGridStep = 160F;
-            this.graphControl.LargeStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(90)))), ((int)(((byte)(90)))), ((int)(((byte)(90)))));
             this.graphControl.Location = new System.Drawing.Point(0, 0);
             this.graphControl.Name = "graphControl";
-            this.graphControl.ShowLabels = false;
             this.graphControl.Size = new System.Drawing.Size(996, 439);
-            this.graphControl.SmallGridStep = 20F;
-            this.graphControl.SmallStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(80)))), ((int)(((byte)(80)))));
             this.graphControl.TabIndex = 0;
             this.graphControl.Text = "graphControl";
             // 
@@ -298,27 +260,6 @@
             this._materialPropertiesGrid.TabIndex = 0;
             this._materialPropertiesGrid.ToolbarVisible = false;
             // 
-            // parameterBoxMenu
-            // 
-            this.parameterBoxMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.addParameterToolStripMenuItem});
-            this.parameterBoxMenu.Name = "parameterBoxMenu";
-            this.parameterBoxMenu.Size = new System.Drawing.Size(154, 26);
-            // 
-            // addParameterToolStripMenuItem
-            // 
-            this.addParameterToolStripMenuItem.Name = "addParameterToolStripMenuItem";
-            this.addParameterToolStripMenuItem.Size = new System.Drawing.Size(153, 22);
-            this.addParameterToolStripMenuItem.Text = "Add Parameter";
-            this.addParameterToolStripMenuItem.Click += new System.EventHandler(this.addParameterToolStripMenuItem_Click);
-            // 
-            // largePreviewToolStripMenuItem
-            // 
-            this.largePreviewToolStripMenuItem.Name = "largePreviewToolStripMenuItem";
-            this.largePreviewToolStripMenuItem.Size = new System.Drawing.Size(186, 22);
-            this.largePreviewToolStripMenuItem.Text = "Large Preview";
-            this.largePreviewToolStripMenuItem.Click += new System.EventHandler(this.largePreviewToolStripMenuItem_Click);
-            // 
             // ExampleForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -329,7 +270,6 @@
             this.Controls.Add(this._ribbon);
             this.Name = "ExampleForm";
             this.Text = "Shader Construction";
-            this.nodeMenu.ResumeLayout(false);
             this.panel1.ResumeLayout(false);
             this.splitContainer1.Panel1.ResumeLayout(false);
             this.splitContainer1.Panel2.ResumeLayout(false);
@@ -340,21 +280,18 @@
             this.splitContainer2.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).EndInit();
             this.splitContainer2.ResumeLayout(false);
-            this.parameterBoxMenu.ResumeLayout(false);
             this.ResumeLayout(false);
 
 		}
 
 		#endregion
 
-        private HyperGraph.GraphControl graphControl;
+        private System.Windows.Forms.UserControl graphControl;
         private Aga.Controls.Tree.NodeControls.NodeStateIcon _icon;
         private Aga.Controls.Tree.NodeControls.NodeTextBox _visibleName;
         private Aga.Controls.Tree.NodeControls.NodeTextBox _returnType;
         private Aga.Controls.Tree.NodeControls.NodeTextBox _parameters;
         private Aga.Controls.Tree.NodeControls.NodeTextBox _exceptionString;
-        private System.Windows.Forms.ContextMenuStrip nodeMenu;
-        private System.Windows.Forms.ToolStripMenuItem showPreviewShaderItem;
         private System.Windows.Forms.Panel panel1;
         private RibbonLib.Ribbon _ribbon;
         private Aga.Controls.Tree.TreeViewAdv _fragmentTree;
@@ -368,9 +305,6 @@
         private System.Windows.Forms.PropertyGrid _materialParametersGrid;
         private System.Windows.Forms.PropertyGrid _materialPropertiesGrid;
         private System.Windows.Forms.ToolStripMenuItem refreshToolStripMenuItem;
-        private System.Windows.Forms.ContextMenuStrip parameterBoxMenu;
-        private System.Windows.Forms.ToolStripMenuItem addParameterToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem largePreviewToolStripMenuItem;
 	}
 }
 

@@ -11,7 +11,7 @@
 namespace ConsoleRig
 {
     template<typename Obj>
-        Attachable<Obj>::AttachRef::AttachRef(AttachRef&& moveFrom)
+        AttachRef<Obj>::AttachRef(AttachRef&& moveFrom)
     {
         _isAttached = moveFrom._isAttached;
         _attachedServices = moveFrom._attachedServices;
@@ -20,7 +20,7 @@ namespace ConsoleRig
     }
 
     template<typename Obj>
-        auto Attachable<Obj>::AttachRef::operator=(AttachRef&& moveFrom)
+        auto AttachRef<Obj>::operator=(AttachRef&& moveFrom)
             -> AttachRef&
     {
         _isAttached = moveFrom._isAttached;
@@ -31,24 +31,44 @@ namespace ConsoleRig
     }
 
     template<typename Obj>
-        Attachable<Obj>::AttachRef::AttachRef()
+        AttachRef<Obj>::AttachRef()
     {
         _isAttached = false;
         _attachedServices = nullptr;
     }
 
+    namespace Internal
+    {
+        template<typename T> struct HasAttachCurrentModule
+        {
+            template<typename U, void (U::*)()> struct FunctionSignature {};
+            template<typename U> static std::true_type Test1(FunctionSignature<U, &U::AttachCurrentModule>*);
+            template<typename U> static std::false_type Test1(...);
+            static const bool Result = decltype(Test1<T>(0))::value;
+        };
+
+        template<typename Obj, typename std::enable_if<HasAttachCurrentModule<Obj>::Result>::type* = nullptr>
+            static void TryAttachCurrentModule(Obj& obj)
+        {
+            obj.AttachCurrentModule();
+        }
+
+        template<typename Obj, typename std::enable_if<!HasAttachCurrentModule<Obj>::Result>::type* = nullptr>
+            static void TryAttachCurrentModule(Obj& obj) {}
+    }
+    
     template<typename Obj>
-        Attachable<Obj>::AttachRef::AttachRef(Attachable<Obj>& obj)
+        AttachRef<Obj>::AttachRef(Attachable<Obj>& obj)
     : _attachedServices(&obj)
     {
         ++_attachedServices->_attachReferenceCount;
         _isAttached = true;
 
-        _attachedServices->_object->AttachCurrentModule();
+        Internal::TryAttachCurrentModule(*_attachedServices->_object);
     }
     
     template<typename Obj>
-        void Attachable<Obj>::AttachRef::Detach()
+        void AttachRef<Obj>::Detach()
     {
         if (_isAttached) {
             _attachedServices->_object->DetachCurrentModule();
@@ -61,21 +81,21 @@ namespace ConsoleRig
     }
 
     template<typename Obj>
-        Obj& Attachable<Obj>::AttachRef::Get()
+        Obj& AttachRef<Obj>::Get()
     {
         return *_attachedServices->_object;
     }
 
     template<typename Obj>
-        Attachable<Obj>::AttachRef::~AttachRef()
+        AttachRef<Obj>::~AttachRef()
     {
         Detach();
     }
     
     template<typename Obj>
-        auto Attachable<Obj>::Attach() -> AttachRef 
+        auto Attachable<Obj>::Attach() -> AttachRef<Obj>
     {
-        return AttachRef(*this);
+        return AttachRef<Obj>(*this);
     }
     
     template<typename Obj>

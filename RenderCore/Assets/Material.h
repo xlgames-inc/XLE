@@ -9,6 +9,7 @@
 #include "../Techniques/RenderStateResolver.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/ChunkFileAsset.h"
+#include "../../Assets/AssetUtils.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/Mixins.h"
@@ -56,13 +57,16 @@ namespace RenderCore { namespace Assets
         ParameterBox _matParams;
         Techniques::RenderStateSet _stateSet;
         ParameterBox _constants;
+        ::Assets::ResChar _techniqueConfig[32];
 
         template<typename Serializer>
             void Serialize(Serializer& serializer) const;
 
         ResolvedMaterial();
-        ResolvedMaterial(ResolvedMaterial&& moveFrom);
-        ResolvedMaterial& operator=(ResolvedMaterial&& moveFrom);
+        ResolvedMaterial(ResolvedMaterial&& moveFrom) never_throws;
+        ResolvedMaterial& operator=(ResolvedMaterial&& moveFrom) never_throws;
+        ResolvedMaterial(const ResolvedMaterial&) = delete;
+        ResolvedMaterial& operator=(const ResolvedMaterial&) = delete;
     };
 
     #pragma pack(pop)
@@ -82,7 +86,7 @@ namespace RenderCore { namespace Assets
 
         static const auto CompileProcessType = ConstHash64<'ResM', 'at'>::Value;
 
-        MaterialScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+        MaterialScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker);
         MaterialScaffold(MaterialScaffold&& moveFrom) never_throws;
         MaterialScaffold& operator=(MaterialScaffold&& moveFrom) never_throws;
         ~MaterialScaffold();
@@ -106,13 +110,15 @@ namespace RenderCore { namespace Assets
     class RawMaterial
     {
     public:
+        using AssetName = ::Assets::rstring;
+        
         ParameterBox _resourceBindings;
         ParameterBox _matParamBox;
         Techniques::RenderStateSet _stateSet;
         ParameterBox _constants;
+        AssetName _techniqueConfig;
 
-        using ResString = ::Assets::rstring;
-        std::vector<ResString> _inherit;
+        std::vector<AssetName> _inherit;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 
@@ -121,7 +127,7 @@ namespace RenderCore { namespace Assets
             const ::Assets::DirectorySearchRules& searchRules,
             std::vector<::Assets::DependentFileState>* deps = nullptr) const;
 
-        std::vector<ResString> ResolveInherited(
+        std::vector<AssetName> ResolveInherited(
             const ::Assets::DirectorySearchRules& searchRules) const;
 
         void Serialize(OutputStreamFormatter& formatter) const;
@@ -154,6 +160,7 @@ namespace RenderCore { namespace Assets
         ::Serialize(serializer, _matParams);
         ::Serialize(serializer, _stateSet.GetHash());
         ::Serialize(serializer, _constants);
+		serializer.SerializeRaw<const ::Assets::ResChar(&)[dimof(_techniqueConfig)]>(_techniqueConfig);
     }
 
 }}

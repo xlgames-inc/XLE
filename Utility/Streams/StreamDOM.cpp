@@ -196,7 +196,7 @@ namespace Utility
     {}
 
     template <typename Formatter>
-        Document<Formatter>::Document(Document&& moveFrom)
+        Document<Formatter>::Document(Document&& moveFrom) never_throws
     {
         _elements = std::move(moveFrom._elements);
         _attributes = std::move(moveFrom._attributes);
@@ -204,7 +204,7 @@ namespace Utility
     }
 
     template <typename Formatter>
-        auto Document<Formatter>::operator=(Document&& moveFrom) -> Document&
+        auto Document<Formatter>::operator=(Document&& moveFrom) never_throws -> Document&
     {
         _elements = std::move(moveFrom._elements);
         _attributes = std::move(moveFrom._attributes);

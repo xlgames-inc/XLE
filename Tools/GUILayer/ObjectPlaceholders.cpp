@@ -58,7 +58,7 @@ namespace GUILayer
         VisGeoBox(const Desc&);
         ~VisGeoBox();
     protected:
-        std::shared_ptr<Assets::DependencyValidation> _depVal;
+        std::shared_ptr<::Assets::DependencyValidation> _depVal;
     };
     
     VisGeoBox::VisGeoBox(const Desc&)
@@ -75,7 +75,7 @@ namespace GUILayer
         _cubeVBCount = (unsigned)cubeVertices.size();
         _cubeVBStride = (unsigned)sizeof(decltype(cubeVertices)::value_type);
         _cubeVB = Metal::VertexBuffer(AsPointer(cubeVertices.cbegin()), _cubeVBCount * _cubeVBStride);
-        _depVal = std::make_shared<Assets::DependencyValidation>();
+        _depVal = std::make_shared<::Assets::DependencyValidation>();
     }
 
     VisGeoBox::~VisGeoBox() {}
@@ -101,20 +101,17 @@ namespace GUILayer
         Metal::DeviceContext& devContext,
         ParsingContext& parserContext,
         const VisGeoBox& visBox,
-        const ResolvedShader& shader, const RetainedEntity& obj)
+        const TechniqueMaterial::Variation& shader, const RetainedEntity& obj)
     {
         if (!Tweakable("DrawMarkers", true)) return;
         if (!obj._properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(obj)) return;
 
-        const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
-            "game/xleres/BasicMaterialConstants.txt");
-
-        shader.Apply(devContext, parserContext,
+        shader._shader.Apply(devContext, parserContext,
             {
                 MakeLocalTransformPacket(
                     GetTransform(obj),
                     ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                cbLayout.BuildCBDataAsPkt(ParameterBox())
+                shader._cbLayout->BuildCBDataAsPkt(ParameterBox())
             });
         
         devContext.Bind(MakeResourceList(visBox._cubeVB), visBox._cubeVBStride, 0);
@@ -125,7 +122,7 @@ namespace GUILayer
         Metal::DeviceContext& devContext,
         ParsingContext& parserContext,
         const VisGeoBox& visBox,
-        const ResolvedShader& shader, const RetainedEntity& obj,
+        const TechniqueMaterial::Variation& shader, const RetainedEntity& obj,
         EntityInterface::RetainedEntities& objs)
     {
         static auto IndexListHash = ParameterBox::MakeParameterNameHash("IndexList");
@@ -156,15 +153,12 @@ namespace GUILayer
             }
         }
         
-        const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
-            "game/xleres/BasicMaterialConstants.txt");
-
-        shader.Apply(devContext, parserContext,
+        shader._shader.Apply(devContext, parserContext,
             {
                 MakeLocalTransformPacket(
                     GetTransform(obj),
                     ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                cbLayout.BuildCBDataAsPkt(ParameterBox())
+                shader._cbLayout->BuildCBDataAsPkt(ParameterBox())
             });
 
         devContext.Bind(Techniques::CommonResources()._blendAdditive);
@@ -186,8 +180,8 @@ namespace GUILayer
         unsigned techniqueIndex)
     {
         auto& visBox = FindCachedBoxDep<VisGeoBox>(VisGeoBox::Desc());
-        auto shader = visBox._material.FindVariation(parserContext, techniqueIndex, "game/xleres/illum.txt");
-        if (shader._shaderProgram) {
+        auto shader = visBox._material.FindVariation(parserContext, techniqueIndex, "game/xleres/techniques/illum.tech");
+        if (shader._shader._shaderProgram) {
             for (auto a=_cubeAnnotations.cbegin(); a!=_cubeAnnotations.cend(); ++a) {
                 auto objects = _objects->FindEntitiesOfType(a->_typeId);
                 for (auto o=objects.cbegin(); o!=objects.cend(); ++o) {
@@ -196,8 +190,8 @@ namespace GUILayer
             }
         }
 
-        auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, "game/xleres/techniques/meshmarker.txt");
-        if (shaderP._shaderProgram) {
+        auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, "game/xleres/techniques/meshmarker.tech");
+        if (shaderP._shader._shaderProgram) {
             for (const auto&a:_triMeshAnnotations) {
                 auto objects = _objects->FindEntitiesOfType(a._typeId);
                 for (auto o=objects.cbegin(); o!=objects.cend(); ++o) {

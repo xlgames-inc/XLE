@@ -43,23 +43,13 @@ namespace ControlsLibrary.MaterialEditor
             }
         }
 
-        public Tuple<string, ulong> PreviewModel
-        {
-            set { _materialControl.PreviewModel = value; }
-        }
-
-        public GUILayer.EnvironmentSettingsSet EnvironmentSet
-        {
-            set { _materialControl.EnvironmentSet = value; }
-        }
-
         public MaterialControl FocusedMatControls { get { return _materialControl; } }
 
         protected void SubMatSelectedNodeChanged(object sender, EventArgs e)
         {
                 //  When the selected node changes, we want to 
                 //  change the object that we're currently editing...
-            var mat = (_hierachyTree.SelectedNode!=null) ? (_hierachyTree.SelectedNode.Tag as IEnumerable<string>) : null;
+            var mat = (_hierachyTree.SelectedNode!=null) ? (_hierachyTree.SelectedNode.Tag as string) : null;
             _materialControl.Object = mat;
         }
 
@@ -72,21 +62,19 @@ namespace ControlsLibrary.MaterialEditor
         {
             string topItem = names[names.Count - 1];
             var parentNode = _hierachyTree.Nodes.Add(topItem);
-            parentNode.Tag = names;
-            AddComboBoxChildren(parentNode, GUILayer.RawMaterial.BuildInheritanceList(topItem));
+            parentNode.Tag = topItem; // string.Join(";", names);
+            AddComboBoxChildren(parentNode, GUILayer.RawMaterial.Get(topItem).BuildInheritanceList());
             return parentNode;
         }
 
-        protected void AddComboBoxChildren(
-            ComboTreeNode parentNode, 
-            List<string> childMats)
+        protected void AddComboBoxChildren(ComboTreeNode parentNode, string childMats)
         {
-            if (childMats == null) return;
-            foreach (var mat in childMats)
+            if (childMats == null || childMats.Length == 0) return;
+            foreach (var mat in childMats.Split(';'))
             {
                 var newNode = parentNode.Nodes.Add(mat);
                 newNode.Tag = new List<string>() { mat };
-                AddComboBoxChildren(newNode, GUILayer.RawMaterial.BuildInheritanceList(mat));
+                AddComboBoxChildren(newNode, GUILayer.RawMaterial.Get(mat).BuildInheritanceList());
             }
         }
 
@@ -127,7 +115,7 @@ namespace ControlsLibrary.MaterialEditor
                 "Add Inheritted Material Settings");
             if (result.Length > 0)
             {
-                using (var mat = new GUILayer.RawMaterial(selectedMaterial))
+                using (var mat = GUILayer.RawMaterial.Get(selectedMaterial))
                     mat.AddInheritted(result);
                 // now we need to refresh this control with the new changes...
                 Object = _activeObject;

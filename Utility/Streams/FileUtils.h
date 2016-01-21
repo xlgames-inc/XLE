@@ -20,6 +20,38 @@ typedef struct _iobuf FILE;
 
 namespace Utility 
 {
+    namespace Exceptions
+    {
+        class IOException : public ::Exceptions::BasicLabel
+        {
+        public:
+            /// <summary>A incomplete list of a few common file related errors</summary>
+            /// Openning a file can result in a wide variety of possible errors. However, there
+            /// are a few particularly common ones (like file not found, etc). This enum provides
+            /// a way to quickly identify some of the common error types.
+            enum class Reason
+            {
+                Success, FileNotFound,
+                AccessDenied, WriteProtect,
+                Complex
+            };
+
+            IOException(Reason reason, const char format[], ...) never_throws
+            : _reason(reason)
+            {
+                va_list args;
+                va_start(args, format);
+                _vsnprintf_s(_buffer, _TRUNCATE, format, args);
+                va_end(args);
+            }
+
+            Reason GetReason() const { return _reason; }
+
+        private:
+            Reason _reason;
+        };
+    }
+
         //
         //  "BasicFile" --  C++ wrapper for file interactions.
         //                  Prefer using BasicFile, instead of C-style interface functions 
@@ -46,7 +78,9 @@ namespace Utility
             typedef unsigned BitField;
         };
 
-        BasicFile(const char filename[], const char readMode[], ShareMode::BitField shareMode = ShareMode::Read);
+        Exceptions::IOException::Reason TryOpen(const char filename[], const char openMode[], ShareMode::BitField shareMode = ShareMode::Read) never_throws;
+
+        BasicFile(const char filename[], const char openMode[], ShareMode::BitField shareMode = ShareMode::Read);
         BasicFile(BasicFile&& moveFrom) never_throws;
         BasicFile& operator=(BasicFile&& moveFrom) never_throws;
         BasicFile();
@@ -107,22 +141,6 @@ namespace Utility
     }
     XL_UTILITY_API std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter = FindFilesFilter::All);
     XL_UTILITY_API std::vector<std::string> FindFilesHierarchical(const std::string& rootDirectory, const std::string& filePattern, FindFilesFilter::BitField filter = FindFilesFilter::All);
-
-
-    namespace Exceptions
-    {
-        class IOException : public ::Exceptions::BasicLabel
-        {
-        public:
-            IOException(const char format[], ...) never_throws
-            {
-                va_list args;
-                va_start(args, format);
-                _vsnprintf_s(_buffer, _TRUNCATE, format, args);
-                va_end(args);
-            }
-        };
-    }
 }
 
 using namespace Utility;

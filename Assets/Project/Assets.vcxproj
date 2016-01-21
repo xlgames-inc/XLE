@@ -118,7 +118,7 @@
     <ClCompile Include="..\ChunkFile.cpp" />
     <ClCompile Include="..\ChunkFileAsset.cpp" />
     <ClCompile Include="..\CompileAndAsyncManager.cpp" />
-    <ClCompile Include="..\CompilerHelper.cpp" />
+    <ClCompile Include="..\ConfigFileContainer.cpp" />
     <ClCompile Include="..\DivergentAsset.cpp" />
     <ClCompile Include="..\AssetServices.cpp" />
     <ClCompile Include="..\IntermediateAssets.cpp" />

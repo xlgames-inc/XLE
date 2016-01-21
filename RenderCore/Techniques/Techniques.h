@@ -9,6 +9,7 @@
 #include "CommonBindings.h"     // for TechniqueIndex::Max
 #include "../Metal/Forward.h"
 #include "../../Assets/AssetsCore.h"
+#include "../../Utility/StringUtils.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Core/Prefix.h"
 #include "../../Core/Types.h"
@@ -57,7 +58,6 @@ namespace RenderCore { namespace Techniques
         Metal::ShaderProgram*           _shaderProgram;
         Metal::BoundUniforms*           _boundUniforms;
         Metal::BoundInputLayout*        _boundLayout;
-        Metal::ConstantBufferLayout*    _materialConstantsLayout;
 
         void Apply(
             Metal::DeviceContext& devContext,
@@ -120,16 +120,19 @@ namespace RenderCore { namespace Techniques
     class Technique
     {
     public:
-        ResolvedShader      FindVariation(  const ParameterBox* globalState[ShaderParameters::Source::Max], 
-                                            const TechniqueInterface& techniqueInterface) const;
+        ResolvedShader FindVariation(  
+            const ParameterBox* globalState[ShaderParameters::Source::Max], 
+            const TechniqueInterface& techniqueInterface) const;
 
-        bool                IsValid() const { return !_vertexShaderName.empty(); }
+        bool IsValid() const { return !_vertexShaderName.empty(); }
+        void MergeIn(const Technique& source);
+		void ReplaceSelfReference(StringSection<::Assets::ResChar> filename);
 
         Technique(
             Utility::InputStreamFormatter<utf8>& formatter, 
             const std::string& name,
-            ::Assets::DirectorySearchRules* searchRules = nullptr, 
-            std::vector<const std::shared_ptr<::Assets::DependencyValidation>>* inherited = nullptr);
+            const ::Assets::DirectorySearchRules* searchRules = nullptr, 
+            std::vector<std::shared_ptr<::Assets::DependencyValidation>>* inherited = nullptr);
         Technique(Technique&& moveFrom);
         Technique& operator=(Technique&& moveFrom);
         Technique();
@@ -172,7 +175,6 @@ namespace RenderCore { namespace Techniques
         mutable std::vector<std::unique_ptr<Metal::ShaderProgram>> _resolvedShaderPrograms;
         mutable std::vector<std::unique_ptr<Metal::BoundUniforms>> _resolvedBoundUniforms;
         mutable std::vector<std::unique_ptr<Metal::BoundInputLayout>> _resolvedBoundInputLayouts;
-        mutable std::vector<std::unique_ptr<Metal::ConstantBufferLayout>> _resolvedMaterialConstantsLayouts;
     };
 
     class ShaderType
@@ -184,12 +186,19 @@ namespace RenderCore { namespace Techniques
             const TechniqueInterface& techniqueInterface) const;
 
         auto GetDependencyValidation() const -> const ::Assets::DepValPtr& { return _validationCallback; }
+        bool HasEmbeddedCBLayout() const { return _hasEmbeddedCBLayout; }
 
-        ShaderType(const char resourceName[]);
+        ShaderType(const ::Assets::ResChar resourceName[]);
         ~ShaderType();
     private:
         Technique           _technique[size_t(TechniqueIndex::Max)];
         ::Assets::DepValPtr _validationCallback;
+        bool                _hasEmbeddedCBLayout;
+
+        void ParseConfigFile(
+            StringSection<utf8> input, 
+            const ::Assets::DirectorySearchRules& searchRules,
+            std::vector<std::shared_ptr<::Assets::DependencyValidation>>& inheritedAssets);
     };
 
         //////////////////////////////////////////////////////////////////

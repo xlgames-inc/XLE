@@ -51,11 +51,11 @@ namespace RenderingInterop
             return picked;
         }
 
-        public override void Render(ViewControl vc)
+        public override void Render(object opaqueContext, ViewControl vc)
         {
             Matrix4F normWorld = GetManipulatorMatrix();
-            if (normWorld == null) return;            
-            m_translatorControl.Render(vc, normWorld);                                
+            if (normWorld == null) return;
+            m_translatorControl.Render(opaqueContext, vc, normWorld);                                
         }
 
         public override void OnBeginDrag()

@@ -15,33 +15,36 @@ namespace Utility { class CompletionThreadPool; }
 namespace ConsoleRig
 {
     template<typename Obj>
+        class Attachable;
+
+    template<typename Obj>
+        class AttachRef
+    {
+    public:
+        void Detach();
+        Obj& Get();
+        operator bool() { return _isAttached; }
+
+        AttachRef();
+        AttachRef(AttachRef&& moveFrom);
+        AttachRef& operator=(AttachRef&& moveFrom);
+        ~AttachRef();
+
+        AttachRef(const AttachRef&) = delete;
+        AttachRef& operator=(const AttachRef&) = delete;
+    protected:
+        AttachRef(Attachable<Obj>&);
+        bool _isAttached;
+        Attachable<Obj>* _attachedServices;
+        friend class Attachable<Obj>;
+    };
+    
+    template<typename Obj>
         class Attachable
     {
     public:
-        class AttachRef;
-        AttachRef Attach();
-
-        class AttachRef
-        {
-        public:
-            void Detach();
-            Obj& Get();
-            operator bool() { return _isAttached; }
-
-            AttachRef();
-            AttachRef(AttachRef&& moveFrom);
-            AttachRef& operator=(AttachRef&& moveFrom);
-            ~AttachRef();
-
-            AttachRef(const AttachRef&) = delete;
-            AttachRef& operator=(const AttachRef&) = delete;
-        protected:
-            AttachRef(Attachable<Obj>&);
-            bool _isAttached;
-            Attachable<Obj>* _attachedServices;
-            friend class Attachable<Obj>;
-        };
-
+        AttachRef<Obj> Attach();
+        
         Attachable(Obj& obj);
         ~Attachable();
 
@@ -49,12 +52,10 @@ namespace ConsoleRig
         Attachable& operator=(const Attachable&) = delete;
     protected:
         signed _attachReferenceCount;
-        AttachRef _mainAttachReference;
+        AttachRef<Obj> _mainAttachReference;
         Obj* _object;
+        friend class AttachRef<Obj>;
     };
-
-    template<typename Object>
-        using AttachRef = typename Attachable<Object>::AttachRef;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -63,13 +64,13 @@ namespace ConsoleRig
     public:
         VariantFunctions _services;
 
-        template<typename Object> auto Attach() -> typename Attachable<Object>::AttachRef;
+        template<typename Object> auto Attach() -> AttachRef<Object>;
         template<typename Object> void Publish(Object& obj);
         template<typename Object> void Withhold(Object& obj);
     };
 
     template<typename Object>
-        auto CrossModule::Attach() -> typename Attachable<Object>::AttachRef
+        auto CrossModule::Attach() -> AttachRef<Object>
     {
         return _services.Call<Attachable<Object>*>(typeid(Object).hash_code())->Attach();
     }
@@ -97,6 +98,7 @@ namespace ConsoleRig
         std::string _applicationName;
         std::string _logConfigFile;
         bool _setWorkingDir;
+        bool _redirectCout;
         unsigned _longTaskThreadPoolCount;
         unsigned _shortTaskThreadPoolCount;
 
@@ -122,7 +124,6 @@ namespace ConsoleRig
 
         void AttachCurrentModule();
         void DetachCurrentModule();
-
     protected:
         static GlobalServices* s_instance;
         CrossModule _crossModule;

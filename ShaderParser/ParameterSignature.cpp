@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ParameterSignature.h"
+#include "Exceptions.h"
 #include "../Utility/Streams/Data.h"
 #include "../Utility/StringUtils.h"
 
@@ -15,7 +16,8 @@ namespace ShaderSourceParser
         Data data;
         bool loadResult = data.Load(sourceCode, (int)sourceCodeLength);
         if (!loadResult) {
-            throw Exceptions::ParseError("Failure while parsing object");
+            Error errors[] = { Error{0,0,0,0, "Failure while parsing object"} };
+            throw Exceptions::ParsingFailure(MakeIteratorRange(errors));
         }
 
         ParameterSignature result;
@@ -64,11 +66,6 @@ namespace ShaderSourceParser
         int len = dimof(buffer);
         data.SaveToBuffer(buffer, &len);
         return std::string(buffer);
-    }
-
-    namespace Exceptions
-    {
-        ParseError::ParseError(const char label[]) never_throws : BasicLabel(label) {}
     }
 }
 

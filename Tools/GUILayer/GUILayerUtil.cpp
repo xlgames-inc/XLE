@@ -8,19 +8,24 @@
 #include "MarshalString.h"
 #include "ExportedNativeTypes.h"
 #include "../../SceneEngine/IntersectionTest.h"
+#include "../../Assets/AssetUtils.h"
 #include "../../ConsoleRig/IProgress.h"
 #include "../../Utility/MemoryUtils.h"
 
 namespace GUILayer
 {
-    public ref class Util
+    System::UInt64 Utils::HashID(System::String^ string)
     {
-    public:
-        static System::UInt64 HashID(System::String^ string)
-        {
-            return Hash64(clix::marshalString<clix::E_UTF8>(string));
-        }
-    };
+        return Hash64(clix::marshalString<clix::E_UTF8>(string));
+    }
+
+	System::String^ Utils::MakeAssetName(System::String^ value)
+	{
+		auto nativeName = clix::marshalString<clix::E_UTF8>(value);
+        ::Assets::ResolvedAssetFile resName;
+        ::Assets::MakeAssetName(resName, nativeName.c_str());
+		return clix::marshalString<clix::E_UTF8>(resName._fn);
+	}
 
     TechniqueContextWrapper::TechniqueContextWrapper(
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)

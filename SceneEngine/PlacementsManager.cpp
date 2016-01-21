@@ -252,7 +252,7 @@ namespace SceneEngine
     Placements::Placements(const ResChar filename[])
     : ChunkFileAsset("Placements")
     {
-        Prepare(filename, MakeIteratorRange(PlacementsChunkRequests), Resolver);
+        Prepare(filename, ResolveOp{MakeIteratorRange(PlacementsChunkRequests), Resolver});
     }
 
     void Placements::Resolver(void* obj, IteratorRange<::Assets::AssetChunkResult*> chunks)

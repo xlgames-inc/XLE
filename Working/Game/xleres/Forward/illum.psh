@@ -6,71 +6,14 @@
 
 #include "../MainGeometry.h"
 #include "../Objects/IllumShader/PerPixel.h"
-
-#include "../Lighting/LightDesc.h"
-#include "../Lighting/DirectionalResolve.h"
-#include "../Lighting/AmbientResolve.h"
-#include "../Lighting/BasicLightingEnvironment.h"
-#include "../Lighting/ShadowsResolve.h"
-
-#include "../Deferred/ResolveCascade.h"
-
-float3 ResolveLitColor(
-	GBufferValues sample, float3 directionToEye,
-	float3 worldPosition,
-	int2 pixelCoords, uint sampleIndex)
-{
-	float3 result = 0.0.xxx;
-
-	#if (OUTPUT_NORMAL==1)
-
-			// Calculate the shadowing of light sources (where we can)
-
-		float shadowing[BASIC_LIGHT_COUNT];
-		{
-			[unroll] for (uint c=0; c<BASIC_LIGHT_COUNT; ++c)
-				shadowing[c] = 1.f;
-
-			#if SHADOW_CASCADE_MODE!=0
-				int cascade; float4 fc;
-				FindCascade_FromWorldPosition(cascade, fc, worldPosition);
-				if (cascade >= 0) {
-					shadowing[0] = ResolveShadows_Cascade(
-						cascade, fc, pixelCoords, sampleIndex,
-						ShadowResolveConfig_NoFilter());
-				}
-			#endif
-		}
-
-			// note -- 	This loop must be unrolled when using GGX specular...
-			//			This is because there are texture look-ups in the GGX
-			//			implementation, and those can cause won't function
-			//			correctly inside a dynamic loop
-
-		[unroll] for (uint c=0; c<BASIC_LIGHT_COUNT; ++c) {
-			result += shadowing[c] * LightResolve_Diffuse(
-				sample, directionToEye,
-				BasicLight[c].Position, BasicLight[c]);
-
-			result += shadowing[c] * LightResolve_Specular(
-				sample, directionToEye,
-				BasicLight[c].Position, BasicLight[c]);
-		}
-	#endif
-
-	result += LightResolve_Ambient(
-		sample, directionToEye, BasicAmbient, pixelCoords, sampleIndex,
-		AmbientResolveHelpers_Default());
-
-	return result;
-}
+#include "../Lighting/Forward.h"
 
 #if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
 	[earlydepthstencil]
 #endif
 float4 main(VSOutput geo, SystemInputs sys) : SV_Target0
 {
-	DoAlphaTest(geo);
+	DoAlphaTest(geo, GetAlphaThreshold());
 
 	GBufferValues sample = IllumShader_PerPixel(geo);
 
@@ -82,7 +25,7 @@ float4 main(VSOutput geo, SystemInputs sys) : SV_Target0
 	float4 result = float4(
 		ResolveLitColor(
 			sample, directionToEye, GetWorldPosition(geo),
-			int2(geo.position.xy), GetSampleIndex(sys)), 1.f);
+			LightScreenDest_Create(int2(geo.position.xy), GetSampleIndex(sys))), 1.f);
 
 	#if OUTPUT_FOG_COLOR == 1
 		result.rgb = lerp(geo.fogColor.rgb, result.rgb, geo.fogColor.a);

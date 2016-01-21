@@ -13,7 +13,7 @@
 VSOutput main(VSInput input)
 {
 	VSOutput output;
-	float3 localPosition = GetLocalPosition(input);
+	float3 localPosition = VSIn_GetLocalPosition(input);
 
 	#if GEO_HAS_INSTANCE_ID==1
 		float3 objectCentreWorld;
@@ -22,19 +22,19 @@ VSOutput main(VSInput input)
 	#else
 		float3 worldPosition = mul(LocalToWorld, float4(localPosition,1)).xyz;
 		float3 objectCentreWorld = float3(LocalToWorld[0][3], LocalToWorld[1][3], LocalToWorld[2][3]);
-		float3 worldNormal = LocalToWorldUnitVector(GetLocalNormal(input));
+		float3 worldNormal = LocalToWorldUnitVector(VSIn_GetLocalNormal(input));
 	#endif
 
 	#if OUTPUT_COLOUR==1
-		output.colour 		= GetColour(input);
+		output.colour 		= VSIn_GetColour(input);
 	#endif
 
 	#if OUTPUT_TEXCOORD==1
-		output.texCoord 	= GetTexCoord(input);
+		output.texCoord 	= VSIn_GetTexCoord(input);
 	#endif
 
 	#if GEO_HAS_TANGENT_FRAME==1
-		TangentFrameStruct worldSpaceTangentFrame = BuildWorldSpaceTangentFrame(input);
+		TangentFrameStruct worldSpaceTangentFrame = VSIn_GetWorldTangentFrame(input);
 
 		#if OUTPUT_TANGENT_FRAME==1
 			output.tangent = worldSpaceTangentFrame.tangent;
@@ -50,17 +50,21 @@ VSOutput main(VSInput input)
 		output.normal = worldNormal;
 	#endif
 
-	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), GetColour(input).rgb);
+	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), VSIn_GetColour(input).rgb);
 
 	output.position = mul(WorldToClip, float4(worldPosition,1));
 
+	#if OUTPUT_WORLD_POSITION==1
+		output.worldPosition = worldPosition;
+	#endif
+
 	#if OUTPUT_LOCAL_TANGENT_FRAME==1
-		output.localTangent = GetLocalTangent(input);
-		output.localBitangent = GetLocalBitangent(input);
+		output.localTangent = VSIn_GetLocalTangent(input);
+		output.localBitangent = VSIn_GetLocalBitangent(input);
 	#endif
 
 	#if (OUTPUT_LOCAL_NORMAL==1)
-		output.localNormal = GetLocalNormal(input);
+		output.localNormal = VSIn_GetLocalNormal(input);
 	#endif
 
 	#if OUTPUT_LOCAL_VIEW_VECTOR==1

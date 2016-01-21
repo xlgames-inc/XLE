@@ -44,8 +44,8 @@ namespace Utility
         Document(Formatter& formatter);
         ~Document();
 
-        Document(Document&& moveFrom);
-        Document& operator=(Document&& moveFrom);
+        Document(Document&& moveFrom) never_throws;
+        Document& operator=(Document&& moveFrom) never_throws;
     protected:
         class AttributeDesc
         {

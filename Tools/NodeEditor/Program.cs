@@ -6,7 +6,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.ComponentModel.Composition;
+using System.ComponentModel.Composition.Hosting;
 using System.Windows.Forms;
 
 namespace NodeEditor
@@ -19,9 +20,30 @@ namespace NodeEditor
 		[STAThread]
 		static void Main()
 		{
-			Application.EnableVisualStyles();
-			Application.SetCompatibleTextRenderingDefault(false);
-			Application.Run(new ExampleForm());
+            var engine = new GUILayer.EngineDevice();
+            GC.KeepAlive(engine);
+
+            var catalog = new TypeCatalog(
+                typeof(ShaderPatcherLayer.Manager),
+                typeof(ShaderFragmentArchive.Archive),
+                typeof(NodeEditorCore.ShaderFragmentArchiveModel),
+                typeof(NodeEditorCore.ModelConversion),
+                typeof(NodeEditorCore.ShaderFragmentNodeCreator),
+                typeof(NodeEditorCore.DiagramDocument),
+                typeof(ExampleForm)
+            );
+
+            using (var container = new CompositionContainer(catalog))
+            {
+                container.ComposeExportedValue<ExportProvider>(container);
+                container.ComposeExportedValue<CompositionContainer>(container);
+
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                Application.Run(container.GetExport<ExampleForm>().Value);
+            }
+
+            engine.Dispose();
 		}
 	}
 }

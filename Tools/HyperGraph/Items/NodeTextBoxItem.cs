@@ -87,9 +87,9 @@ namespace HyperGraph.Items
 
 		internal SizeF TextSize;
 
-		public override bool OnDoubleClick()
+        public override bool OnDoubleClick(System.Windows.Forms.Control container)
 		{
-			base.OnDoubleClick();
+            base.OnDoubleClick(container);
 			var form = new TextEditForm();
 			form.Text = Name ?? "Edit text";
 			form.InputText = Text;
@@ -119,7 +119,7 @@ namespace HyperGraph.Items
 			}
 		}
 
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location)
+        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
 		{
 			var size = Measure(graphics);
 			size.Width  = Math.Max(minimumSize.Width, size.Width);

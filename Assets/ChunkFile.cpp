@@ -10,6 +10,7 @@
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/MemoryUtils.h"
+#include <tuple>
 
 namespace Serialization { namespace ChunkFile
 {

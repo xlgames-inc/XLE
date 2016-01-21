@@ -38,19 +38,18 @@ namespace XLEBridgeUtils
             CreateIntersectionTestContext(
                 GUILayer::EngineDevice^ engineDevice,
                 GUILayer::TechniqueContextWrapper^ techniqueContext,
-                Sce::Atf::Rendering::Camera^ camera,
+                GUILayer::CameraDescWrapper^ camera,
                 unsigned viewportWidth, unsigned viewportHeight);
 
         static Sce::Atf::VectorMath::Matrix4F^ MakeFrustumMatrix(
-            Sce::Atf::Rendering::Camera^ camera,
+            GUILayer::CameraDescWrapper^ camera,
             System::Drawing::RectangleF rectangle,
             System::Drawing::Size viewportSize);
 
-        static GUILayer::EditorSceneManager^ GetSceneManager(LevelEditorCore::ViewControl^ vc);
-        static GUILayer::TechniqueContextWrapper^ GetTechniqueContext(LevelEditorCore::ViewControl^ vc);
-
         static void AttachLibrary(GUILayer::EngineDevice^ device);
         static void DetachLibrary();
+
+        static property GUILayer::EditorSceneManager^ GlobalSceneManager;
     };
 
     public ref class DomChangeInspector

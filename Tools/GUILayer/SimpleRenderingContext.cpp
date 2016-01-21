@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "SimpleRenderingContext.h"
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "EditorInterfaceUtils.h"
@@ -11,7 +12,6 @@
 #include "LevelEditorScene.h"
 #include "MathLayer.h"
 #include "DelayedDeleteQueue.h"
-#include "CLIXAutoPtr.h"
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/ManipulatorsUtil.h"
 #include "../ToolsRig/ManipulatorsRender.h"
@@ -93,7 +93,7 @@ namespace GUILayer
     /// <summary>Create and maintain rendering resources for SimpleRenderingContext</summary>
     /// Create & maintain vertex and index buffers. Intended for use when linking to
     /// C# GUI apps.
-    public ref class SavedRenderResources
+    public ref class RetainedRenderResources
     {
     public:
         uint64  CreateVertexBuffer(void* data, size_t size, unsigned format);
@@ -104,9 +104,9 @@ namespace GUILayer
         const RenderCore::Metal::IndexBuffer* GetIndexBuffer(uint64 id);
         const VertexFormatRecord* GetVertexBufferFormat(uint64 id);
 
-        SavedRenderResources(EngineDevice^ engineDevice);
-        ~SavedRenderResources();
-        !SavedRenderResources();
+        RetainedRenderResources(EngineDevice^ engineDevice);
+        ~RetainedRenderResources();
+        !RetainedRenderResources();
     protected:
         clix::auto_ptr<SavedRenderResourcesPimpl> _pimpl;
     };
@@ -127,118 +127,87 @@ namespace GUILayer
                 {Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants},
                 materialParameters);
 
-            auto variation = material.FindVariation(parsingContext, techniqueIndex,"game/xleres/illum.txt");
-            if (variation._shaderProgram == nullptr) {
+            auto variation = material.FindVariation(parsingContext, techniqueIndex, "game/xleres/techniques/illum.tech");
+            if (variation._shader._shaderProgram == nullptr) {
                 return false; // we can't render because we couldn't resolve a good shader variation
             }
-
-            const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
-                "game/xleres/BasicMaterialConstants.txt");
 
             ParameterBox matConstants;
             matConstants.SetParameter((const utf8*)"MaterialDiffuse", Float3(color[0], color[1], color[2]));
 
-            variation.Apply(
+            variation._shader.Apply(
                 devContext, parsingContext,
                 {
                     Techniques::MakeLocalTransformPacket(Transpose(*(Float4x4*)xform), Float3(0.f, 0.f, 0.f)),
-                    cbLayout.BuildCBDataAsPkt(matConstants)
+                    variation._cbLayout->BuildCBDataAsPkt(matConstants)
                 });
             return true;
         CATCH_ASSETS_END(parsingContext)
         return false;
     }
 
-    /// <summary>Context for simple rendering commands</summary>
-    /// Some tools need to perform basic rendering commands: create a vertex buffer,
-    /// set a technique, draw some polygons. 
-    /// 
-    /// For example, a manipulator might want to draw a 3D arrow or tube as part
-    /// of a widget.
-    ///
-    /// This provides this kind of basic behaviour via the CLI interface so it
-    /// can be used by C# (or other C++/CLI) code.
-    public ref class SimpleRenderingContext
+    void SimpleRenderingContext::DrawPrimitive(
+        unsigned primitiveType,
+        uint64 vb,
+        unsigned startVertex,
+        unsigned vertexCount,
+        const float color[], const float xform[])
     {
-    public:
-        void DrawPrimitive(
-            unsigned primitiveType,
-            uint64 vb,
-            unsigned startVertex,
-            unsigned vertexCount,
-            const float color[], const float xform[])
-        {
-            // We need to bind the technique and technique interface
-            //      (including vertex input format)
-            // "color" can be passed as a Float4 as the material parameter "MaterialDiffuse"
-            // then we just bind the vertex buffer and call draw
+        // We need to bind the technique and technique interface
+        //      (including vertex input format)
+        // "color" can be passed as a Float4 as the material parameter "MaterialDiffuse"
+        // then we just bind the vertex buffer and call draw
 
-            auto* vbuffer = _savedRes->GetVertexBuffer(vb);
-            if (!vbuffer) return;
+        auto* vbuffer = _retainedRes->GetVertexBuffer(vb);
+        if (!vbuffer) return;
 
-            auto* vfFormat = _savedRes->GetVertexBufferFormat(vb);
-            if (!vfFormat) return;
+        auto* vfFormat = _retainedRes->GetVertexBufferFormat(vb);
+        if (!vfFormat) return;
 
-            if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat)) {
-                _devContext->Bind((RenderCore::Metal::Topology::Enum)primitiveType);
-                _devContext->Bind(RenderCore::MakeResourceList(*vbuffer), vfFormat->_vertexStride, 0);
-                _devContext->Draw(vertexCount, startVertex);
-            }
+        if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat)) {
+            _devContext->Bind((RenderCore::Metal::Topology::Enum)primitiveType);
+            _devContext->Bind(RenderCore::MakeResourceList(*vbuffer), vfFormat->_vertexStride, 0);
+            _devContext->Draw(vertexCount, startVertex);
         }
+    }
 
-        void DrawIndexedPrimitive(
-            unsigned primitiveType,
-            uint64 vb, uint64 ib,
-            unsigned startIndex,
-            unsigned indexCount,
-            unsigned startVertex,
-            const float color[], const float xform[]) 
-        {
-            auto* ibuffer = _savedRes->GetIndexBuffer(ib);
-            auto* vbuffer = _savedRes->GetVertexBuffer(vb);
-            if (!ibuffer || !vbuffer) return;
+    void SimpleRenderingContext::DrawIndexedPrimitive(
+        unsigned primitiveType,
+        uint64 vb, uint64 ib,
+        unsigned startIndex,
+        unsigned indexCount,
+        unsigned startVertex,
+        const float color[], const float xform[]) 
+    {
+        auto* ibuffer = _retainedRes->GetIndexBuffer(ib);
+        auto* vbuffer = _retainedRes->GetVertexBuffer(vb);
+        if (!ibuffer || !vbuffer) return;
 
-            auto* vfFormat = _savedRes->GetVertexBufferFormat(vb);
-            if (!vfFormat) return;
+        auto* vfFormat = _retainedRes->GetVertexBufferFormat(vb);
+        if (!vfFormat) return;
             
-            if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat)) {
-                auto& devContext = *_devContext.get();
-                _devContext->Bind((RenderCore::Metal::Topology::Enum)primitiveType);
-                devContext.Bind(RenderCore::MakeResourceList(*vbuffer), vfFormat->_vertexStride, 0);
-                devContext.Bind(*ibuffer, RenderCore::Metal::NativeFormat::R32_UINT);   // Sony editor always uses 32 bit indices
-                devContext.DrawIndexed(indexCount, startIndex, startVertex);
-            }
+        if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat)) {
+            auto& devContext = *_devContext.get();
+            _devContext->Bind((RenderCore::Metal::Topology::Enum)primitiveType);
+            devContext.Bind(RenderCore::MakeResourceList(*vbuffer), vfFormat->_vertexStride, 0);
+            devContext.Bind(*ibuffer, RenderCore::Metal::NativeFormat::R32_UINT);   // Sony editor always uses 32 bit indices
+            devContext.DrawIndexed(indexCount, startIndex, startVertex);
         }
+    }
 
-        void InitState(bool depthTest, bool depthWrite)
-        {
-            if (depthWrite) _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadWrite);
-            else if (depthTest) _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadOnly);
-            else _devContext->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
+    void SimpleRenderingContext::InitState(bool depthTest, bool depthWrite)
+    {
+        if (depthWrite) _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadWrite);
+        else if (depthTest) _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadOnly);
+        else _devContext->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
                 
-            _devContext->Bind(RenderCore::Techniques::CommonResources()._blendStraightAlpha);
-            _devContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
-        }
-
-        RenderCore::Techniques::ParsingContext& GetParsingContext() { return *_parsingContext; }
-        RenderCore::Metal::DeviceContext& GetDevContext() { return *_devContext.get(); }
-        RenderCore::IThreadContext& GetThreadContext() { return *_threadContext.get(); }
-
-        SimpleRenderingContext(
-            SavedRenderResources^ savedRes, 
-            void* parsingContext);
-        ~SimpleRenderingContext();
-        !SimpleRenderingContext();
-    protected:
-        SavedRenderResources^ _savedRes;
-        RenderCore::Techniques::ParsingContext* _parsingContext;
-        clix::shared_ptr<RenderCore::Metal::DeviceContext> _devContext;
-        clix::shared_ptr<RenderCore::IThreadContext> _threadContext;
-    };
+        _devContext->Bind(RenderCore::Techniques::CommonResources()._blendStraightAlpha);
+        _devContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
+    }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////?//
 
-    uint64  SavedRenderResources::CreateVertexBuffer(void* data, size_t size, unsigned format)
+    uint64  RetainedRenderResources::CreateVertexBuffer(void* data, size_t size, unsigned format)
     {
         RenderCore::Metal::VertexBuffer newBuffer(_pimpl->_objectFactory, data, size);
         _pimpl->_vertexBuffers.push_back(std::make_pair(_pimpl->_nextBufferID, std::move(newBuffer)));
@@ -246,21 +215,21 @@ namespace GUILayer
         return _pimpl->_nextBufferID++;
     }
 
-    uint64  SavedRenderResources::CreateIndexBuffer(void* data, size_t size)
+    uint64  RetainedRenderResources::CreateIndexBuffer(void* data, size_t size)
     {
         RenderCore::Metal::IndexBuffer newBuffer(_pimpl->_objectFactory, data, size);
         _pimpl->_indexBuffers.push_back(std::make_pair(_pimpl->_nextBufferID, std::move(newBuffer)));
         return _pimpl->_nextBufferID++;
     }
 
-    const RenderCore::Metal::VertexBuffer* SavedRenderResources::GetVertexBuffer(uint64 id)
+    const RenderCore::Metal::VertexBuffer* RetainedRenderResources::GetVertexBuffer(uint64 id)
     {
         for (auto i = _pimpl->_vertexBuffers.cbegin(); i != _pimpl->_vertexBuffers.cend(); ++i)
             if (i->first == id) return &i->second;
         return nullptr;
     }
 
-    const VertexFormatRecord* SavedRenderResources::GetVertexBufferFormat(uint64 id)
+    const VertexFormatRecord* RetainedRenderResources::GetVertexBufferFormat(uint64 id)
     {
         for (auto i = _pimpl->_vbFormat.cbegin(); i != _pimpl->_vbFormat.cend(); ++i)
             if (i->first == id && i->second < dimof(_pimpl->_vfRecord)) {
@@ -269,14 +238,14 @@ namespace GUILayer
         return nullptr;
     }
 
-    const RenderCore::Metal::IndexBuffer* SavedRenderResources::GetIndexBuffer(uint64 id)
+    const RenderCore::Metal::IndexBuffer* RetainedRenderResources::GetIndexBuffer(uint64 id)
     {
         for (auto i = _pimpl->_indexBuffers.cbegin(); i != _pimpl->_indexBuffers.cend(); ++i)
             if (i->first == id) return &i->second;
         return nullptr;
     }
 
-    bool SavedRenderResources::DeleteBuffer(uint64 id)
+    bool RetainedRenderResources::DeleteBuffer(uint64 id)
     {
         auto vi = LowerBound(_pimpl->_vertexBuffers, id);
         if (vi != _pimpl->_vertexBuffers.end() && vi->first == id) {
@@ -293,26 +262,26 @@ namespace GUILayer
         return false;
     }
 
-    SavedRenderResources::SavedRenderResources(EngineDevice^ engineDevice) 
+    RetainedRenderResources::RetainedRenderResources(EngineDevice^ engineDevice) 
     {
         _pimpl.reset(
             new SavedRenderResourcesPimpl(
                 *engineDevice->GetNative().GetRenderDevice()));
     }
 
-    SavedRenderResources::~SavedRenderResources() { _pimpl.reset(); }
-    SavedRenderResources::!SavedRenderResources() { _pimpl.reset(); }
+    RetainedRenderResources::~RetainedRenderResources() { _pimpl.reset(); }
+    RetainedRenderResources::!RetainedRenderResources() { _pimpl.reset(); }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////?//
 
     SimpleRenderingContext::SimpleRenderingContext(
-        SavedRenderResources^ savedRes, 
+        RenderCore::IThreadContext* threadContext,
+        RetainedRenderResources^ savedRes, 
         void* parsingContext)
-    : _savedRes(savedRes), _parsingContext((RenderCore::Techniques::ParsingContext*)parsingContext)
+    : _retainedRes(savedRes), _parsingContext((SceneEngine::LightingParserContext*)parsingContext)
+    , _threadContext(threadContext)
     {
-        auto threadContext = EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext();
-        _devContext = RenderCore::Metal::DeviceContext::Get(*threadContext.get());
-        _threadContext = std::move(threadContext);
+        _devContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
     }
     SimpleRenderingContext::~SimpleRenderingContext() { _devContext.reset(); }
     SimpleRenderingContext::!SimpleRenderingContext() { _devContext.reset(); }

@@ -90,17 +90,86 @@ namespace HyperGraph.Items
 
 		internal SizeF TextSize;
 
-		public override bool OnDoubleClick()
+        private static Brush BackgroundBrush = new SolidBrush(Color.FromArgb(96, 96, 96));
+
+        public override bool OnClick(System.Windows.Forms.Control container, System.Windows.Forms.MouseEventArgs evnt, System.Drawing.Drawing2D.Matrix viewTransform)
 		{
-			base.OnDoubleClick();
-			var form = new SelectionForm();
-			form.Text = Name ?? "Select item from list";
-			form.Items = Items;
-			form.SelectedIndex = SelectedIndex;
-			var result = form.ShowDialog();
-			if (result == DialogResult.OK)
-				SelectedIndex = form.SelectedIndex;
-			return true;
+			base.OnClick(container, evnt, viewTransform);
+
+            if (evnt.Button == System.Windows.Forms.MouseButtons.Left)
+            {
+                var basePts = new PointF[] { 
+                    new PointF(Node.bounds.Left + GraphConstants.HorizontalSpacing, bounds.Top), 
+                    new PointF(Node.bounds.Right + GraphConstants.HorizontalSpacing - GraphConstants.NodeExtraWidth, bounds.Bottom) };
+                viewTransform.TransformPoints(basePts);
+
+                var dropDownCtrl = new ListBox();
+                dropDownCtrl.BorderStyle = BorderStyle.None;
+                dropDownCtrl.Margin = new Padding(0);
+                dropDownCtrl.Padding = new Padding(0);
+
+                dropDownCtrl.DrawMode = DrawMode.OwnerDrawVariable;
+                dropDownCtrl.DrawItem +=
+                    (object sender, DrawItemEventArgs e) =>
+                    {
+                        var lb = sender as ListBox;
+                        var item = lb.Items[e.Index];
+
+                        bool selectedState = e.State != DrawItemState.None;
+
+                        // We have to draw the background every item, because the control 
+                        // background isn't refreshed on state changes
+                        e.Graphics.FillRectangle(selectedState ? Brushes.Gray : BackgroundBrush, e.Bounds);
+                        e.Graphics.DrawString(
+                            item.ToString(), SystemFonts.MenuFont, selectedState ? Brushes.Black : Brushes.White,
+                            e.Bounds, GraphConstants.LeftTextStringFormat);
+                    };
+
+                dropDownCtrl.MeasureItem +=
+                    (object sender, MeasureItemEventArgs e) =>
+                    {
+                        var lb = sender as ListBox;
+                        var item = lb.Items[e.Index];
+                        var size = new Size(GraphConstants.MinimumItemWidth, GraphConstants.MinimumItemHeight);
+                        var textSize = e.Graphics.MeasureString(
+                            item.ToString(), SystemFonts.MenuFont,
+                            size, GraphConstants.LeftMeasureTextStringFormat);
+                        e.ItemWidth = (int)textSize.Width;
+                        e.ItemHeight = (int)textSize.Height;
+                    };
+
+                dropDownCtrl.BackColor = Color.FromArgb(96, 96, 96);
+
+                dropDownCtrl.Items.AddRange(Items);
+                dropDownCtrl.SelectedIndex = SelectedIndex;
+                
+                var toolDrop = new ToolStripDropDown();
+                var toolHost = new ToolStripControlHost(dropDownCtrl);
+                toolHost.Margin = new Padding(0);
+                toolDrop.Padding = new Padding(0);
+                toolDrop.Items.Add(toolHost);
+
+                // Unfortunately the AutoSize functionality for toolHost just doesn't
+                // work with an owner draw list box... Perhaps MeasureItem isn't called
+                // until the list box is first drawn -- but that is after the tool host
+                // has done it's auto size
+                toolHost.AutoSize = false;
+                toolHost.Size = new Size((int)(basePts[1].X - basePts[0].X), dropDownCtrl.PreferredHeight + 20);
+                
+                dropDownCtrl.SelectedIndexChanged +=
+                    (object sender, System.EventArgs e) =>
+                    {
+                        var lb = sender as ListBox;
+                        if (lb != null)
+                            SelectedIndex = lb.SelectedIndex;
+                        toolDrop.Close();
+                    };
+
+                toolDrop.Show(container, new Point((int)basePts[0].X, (int)basePts[1].Y + 4));
+                return true;
+            }
+
+            return false;
 		}
 
         public override SizeF Measure(Graphics graphics)
@@ -127,7 +196,7 @@ namespace HyperGraph.Items
 			}
 		}
 
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location)
+        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
 		{
 			var text = string.Empty;
 			if (Items != null &&
@@ -140,18 +209,33 @@ namespace HyperGraph.Items
 
 			var path = GraphRenderer.CreateRoundedRectangle(size, location);
 
-			location.Y += 1;
-			location.X += 1;
+            var stringRect = new RectangleF(new PointF(location.X + 1, location.Y + 1), new SizeF(size.Width - 2, size.Height - 2));
+            var arrowRect = stringRect;
 
-			if ((state & RenderState.Hover) == RenderState.Hover)
-			{
-				graphics.DrawPath(Pens.White, path);
-				graphics.DrawString(text, SystemFonts.MenuFont, Brushes.Black, new RectangleF(location, size), GraphConstants.LeftTextStringFormat);
-			} else
-			{
-				graphics.DrawPath(Pens.Black, path);
-				graphics.DrawString(text, SystemFonts.MenuFont, Brushes.Black, new RectangleF(location, size), GraphConstants.LeftTextStringFormat);
-			}
+            float sep = 2.0f;
+            float arrowWidth = Math.Min(arrowRect.Height, stringRect.Width - sep);
+            arrowRect.X += arrowRect.Width - arrowWidth;
+            arrowRect.Width = arrowWidth;
+            stringRect.Width -= arrowWidth - sep;
+            arrowRect.X += 6; arrowRect.Width -= 12;
+            arrowRect.Y += 6; arrowRect.Height -= 12;
+
+            bool highlight = (state & RenderState.Hover) == RenderState.Hover;
+
+            graphics.FillPath(BackgroundBrush, path);
+            graphics.DrawPath(highlight ? Pens.White : Pens.LightGray, path);
+            graphics.DrawString(text, SystemFonts.MenuFont, Brushes.White, stringRect, GraphConstants.CenterTextStringFormat);
+
+                // draw a little arrow to indicate that it is a drop down list
+            graphics.FillPolygon(
+                highlight ? Brushes.White : Brushes.LightGray,
+                new Point[] 
+                    {
+                        new Point((int)arrowRect.Left, (int)arrowRect.Top),
+                        new Point((int)arrowRect.Right, (int)arrowRect.Top),
+                        new Point((int)(.5f * (arrowRect.Left + arrowRect.Right)), (int)arrowRect.Bottom)
+                    });
+
 		}
 
         public override void RenderConnector(Graphics graphics, RectangleF rectangle) { }

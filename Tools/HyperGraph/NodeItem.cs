@@ -54,18 +54,30 @@ namespace HyperGraph
 		public NodeConnector		Input			{ get; private set; }
 		public NodeConnector		Output			{ get; private set; }
 
-		internal RectangleF			bounds;
-		internal RenderState		state			= RenderState.None;
+		internal RectangleF		    bounds;
+        internal RenderState		state			= RenderState.None;
 
-		public virtual bool			OnClick()					 { return false; }
-		public virtual bool			OnDoubleClick()				 { return false; }
+        public virtual bool OnClick(System.Windows.Forms.Control container, System.Windows.Forms.MouseEventArgs evnt, System.Drawing.Drawing2D.Matrix viewTransform)
+        {
+            return false; 
+        }
+
+        public virtual bool OnDoubleClick(System.Windows.Forms.Control container)
+        {
+            return false; 
+        }
+
 		public virtual bool			OnStartDrag(PointF location, out PointF original_location) { original_location = Point.Empty; return false; }
 		public virtual bool			OnDrag(PointF location)		 { return false; }		
 		public virtual bool			OnEndDrag() 				 { return false; }
 		public abstract SizeF		Measure(Graphics context);
-		public abstract void		Render(Graphics graphics, SizeF minimumSize, PointF position);
+		public abstract void		Render(Graphics graphics, SizeF minimumSize, PointF position, object context);
         public abstract void        RenderConnector(Graphics graphics, RectangleF rectangle);
 
 		public ElementType ElementType { get { return ElementType.NodeItem; } }
-	}
+
+        protected RectangleF GetBounds() { return bounds; }
+        protected RenderState GetState() { return state; }
+
+    }
 }

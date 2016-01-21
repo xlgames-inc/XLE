@@ -82,6 +82,9 @@ namespace RenderCore { namespace Metal_DX11
         BoundInputLayout();
         ~BoundInputLayout();
 
+		BoundInputLayout(BoundInputLayout&& moveFrom) never_throws;
+		BoundInputLayout& operator=(BoundInputLayout&& moveFrom) never_throws;
+
         typedef ID3D::InputLayout*  UnderlyingType;
         UnderlyingType              GetUnderlying() const { return _underlying.get(); }
 
@@ -176,8 +179,8 @@ namespace RenderCore { namespace Metal_DX11
         BoundUniforms();
         ~BoundUniforms();
         BoundUniforms& operator=(const BoundUniforms& copyFrom);
-        BoundUniforms(BoundUniforms&& moveFrom);
-        BoundUniforms& operator=(BoundUniforms&& moveFrom);
+        BoundUniforms(BoundUniforms&& moveFrom) never_throws;
+        BoundUniforms& operator=(BoundUniforms&& moveFrom) never_throws;
 
         bool BindConstantBuffer(    uint64 hashName, unsigned slot, unsigned uniformsStream,
                                     const ConstantBufferLayoutElement elements[] = nullptr, 
@@ -189,6 +192,9 @@ namespace RenderCore { namespace Metal_DX11
 
         bool BindShaderResources(unsigned uniformsStream, std::initializer_list<const char*> res);
         bool BindShaderResources(unsigned uniformsStream, std::initializer_list<uint64> res);
+
+		void CopyReflection(const BoundUniforms& copyFrom);
+		intrusive_ptr<ID3D::ShaderReflection> GetReflection(ShaderStage::Enum stage);
 
         ConstantBufferLayout                                GetConstantBufferLayout(const char name[]);
         std::vector<std::pair<ShaderStage::Enum,unsigned>>  GetConstantBufferBinding(const char name[]);
@@ -216,6 +222,8 @@ namespace RenderCore { namespace Metal_DX11
             ~StageBinding();
             StageBinding(StageBinding&& moveFrom);
             StageBinding& operator=(StageBinding&& moveFrom);
+			StageBinding(const StageBinding& copyFrom);
+			StageBinding& operator=(const StageBinding& copyFrom);
         };
 
         StageBinding    _stageBindings[ShaderStage::Max];
@@ -249,6 +257,8 @@ namespace RenderCore { namespace Metal_DX11
             ~StageBinding();
             StageBinding(StageBinding&& moveFrom);
             StageBinding& operator=(StageBinding&& moveFrom);
+			StageBinding(const StageBinding& copyFrom);
+			StageBinding& operator=(const StageBinding& copyFrom);
         };
 
         StageBinding    _stageBindings[ShaderStage::Max];

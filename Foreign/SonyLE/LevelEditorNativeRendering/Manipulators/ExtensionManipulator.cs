@@ -155,11 +155,14 @@ namespace RenderingInterop
             return false;
         }
 
-        public override void Render(ViewControl vc)
+        public override void Render(object opaqueContext, ViewControl vc)
         {
                        
             Matrix4F normWorld = GetManipulatorMatrix();
             if (normWorld == null) return;
+
+            var context = opaqueContext as GUILayer.SimpleRenderingContext;
+            if (context == null) return;
             
             int axis = (int)m_hitRegion;
 
@@ -197,43 +200,43 @@ namespace RenderingInterop
             scale.Scale(axscale);           
             rot.RotZ(-MathHelper.PiOver2);
             Matrix4F xform = scale * rot * normWorld;
-            Util3D.DrawCylinder(xform, xcolor);
+            Util3D.DrawCylinder(context, xform, xcolor);
 
             axscale.Y = negativeAxis ? s : s * dragScale.Y;
             scale.Scale(axscale);
             xform = scale * normWorld;
-            Util3D.DrawCylinder(xform, ycolor);
+            Util3D.DrawCylinder(context, xform, ycolor);
 
             axscale.Y = negativeAxis ? s : s * dragScale.Z;
             scale.Scale(axscale);
             rot.RotX(MathHelper.PiOver2);
             xform = scale * rot * normWorld;
-            Util3D.DrawCylinder(xform, zcolor);
+            Util3D.DrawCylinder(context, xform, zcolor);
 
 
             rot.RotZ(MathHelper.PiOver2);
             axscale.Y = negativeAxis ? s * dragScale.X : s;
             scale.Scale(axscale);
             xform = scale * rot * normWorld;
-            Util3D.DrawCylinder(xform, nxcolor);
+            Util3D.DrawCylinder(context, xform, nxcolor);
 
             rot.RotZ(MathHelper.Pi);
             axscale.Y = negativeAxis ? s * dragScale.Y : s;
             scale.Scale(axscale);
             xform = scale * rot * normWorld;
-            Util3D.DrawCylinder(xform, nycolor);
+            Util3D.DrawCylinder(context, xform, nycolor);
 
             rot.RotX(-MathHelper.PiOver2);
             axscale.Y = negativeAxis ? s * dragScale.Z : s;
             scale.Scale(axscale);
             xform = scale * rot * normWorld;
-            Util3D.DrawCylinder(xform, nzcolor);
+            Util3D.DrawCylinder(context, xform, nzcolor);
 
 
             // draw center cube
             scale.Scale(s*(1.0f / 16.0f));
             xform = scale * normWorld;
-            Util3D.DrawCube(xform, Color.White);
+            Util3D.DrawCube(context, xform, Color.White);
             
             Vec3F handle = sv*AxisHandle;
             float handleWidth = handle.X/2;
@@ -245,38 +248,38 @@ namespace RenderingInterop
             float drag = m_hitRegion == HitRegion.XAxis ? dragScale.X : 1.0f;
             trans.Translation = new Vec3F(drag * sv.X - handleWidth, 0, 0);            
             xform = scale * trans * normWorld;
-            Util3D.DrawCube(xform, xcolor);
+            Util3D.DrawCube(context, xform, xcolor);
 
             // y handle
             drag = m_hitRegion == HitRegion.YAxis ? dragScale.Y : 1.0f;
             trans.Translation = new Vec3F(0, drag * sv.Y - handleWidth, 0);
             xform = scale * trans * normWorld;
-            Util3D.DrawCube(xform, ycolor);
+            Util3D.DrawCube(context, xform, ycolor);
 
             // z handle
             drag = m_hitRegion == HitRegion.ZAxis ? dragScale.Z : 1.0f;
             trans.Translation = new Vec3F(0, 0, drag * sv.Z - handleWidth);
             xform = scale * trans * normWorld;
-            Util3D.DrawCube(xform, zcolor);
+            Util3D.DrawCube(context, xform, zcolor);
 
 
             // -x handle
             drag = m_hitRegion == HitRegion.NegXAxis ? dragScale.X : 1.0f;
             trans.Translation = new Vec3F(-sv.X * drag + handleWidth, 0, 0);
             xform = scale * trans * normWorld;
-            Util3D.DrawCube(xform, nxcolor);
+            Util3D.DrawCube(context, xform, nxcolor);
 
             // -y handle
             drag = m_hitRegion == HitRegion.NegYAxis ? dragScale.Y : 1.0f;
             trans.Translation = new Vec3F(0, -sv.Y * drag + handleWidth, 0);
             xform = scale * trans * normWorld;
-            Util3D.DrawCube(xform, nycolor);
+            Util3D.DrawCube(context, xform, nycolor);
 
             // -z handle
             drag = m_hitRegion == HitRegion.NegZAxis ? dragScale.Z : 1.0f;
             trans.Translation = new Vec3F(0, 0, -sv.Z * drag + handleWidth);
             xform = scale * trans * normWorld;
-            Util3D.DrawCube(xform, nzcolor);
+            Util3D.DrawCube(context, xform, nzcolor);
         }
 
         public override void OnBeginDrag()

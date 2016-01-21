@@ -19,10 +19,10 @@ namespace ControlsLibrary
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing)
             {
-                components.Dispose();
-                if (layerControl != null) { layerControl.Dispose(); layerControl = null; }
+                if (components != null) components.Dispose();
+                if (layerControl != null) layerControl.Dispose();
             }
             base.Dispose(disposing);
         }

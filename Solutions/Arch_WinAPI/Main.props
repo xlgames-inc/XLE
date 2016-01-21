@@ -12,6 +12,7 @@
 	<GfxConfiguration Condition="$(Configuration.Contains('-'))">$(Configuration.Split("-")[1])</GfxConfiguration>
 	<RawConfiguration Condition="! $(Configuration.Contains('-'))">$(Configuration)</RawConfiguration>
 	<GfxConfiguration Condition="! $(Configuration.Contains('-'))"></GfxConfiguration>
+	<CrippleNewWarnings Condition="$(MSBuildToolsVersion) &gt;= 14">/Wv:18</CrippleNewWarnings>
   </PropertyGroup>
   
   <ImportGroup Label="PropertySheets">

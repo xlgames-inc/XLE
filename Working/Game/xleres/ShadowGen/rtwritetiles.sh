@@ -31,7 +31,7 @@ struct RTS_VSOutput
 
 void vs_writetris(VSInput input, out RTS_VSOutput output)
 {
-    float3 localPosition	= GetLocalPosition(input);
+    float3 localPosition	= VSIn_GetLocalPosition(input);
 
     #if GEO_HAS_INSTANCE_ID==1
         float3 objectCentreWorld;
@@ -40,26 +40,26 @@ void vs_writetris(VSInput input, out RTS_VSOutput output)
     #else
         float3 worldPosition = mul(LocalToWorld, float4(localPosition,1)).xyz;
         float3 objectCentreWorld = float3(LocalToWorld[0][3], LocalToWorld[1][3], LocalToWorld[2][3]);
-        float3 worldNormal = LocalToWorldUnitVector(GetLocalNormal(input));
+        float3 worldNormal = LocalToWorldUnitVector(VSIn_GetLocalNormal(input));
     #endif
 
     #if OUTPUT_TEXCOORD==1
-        output.texCoord = GetTexCoord(input);
+        output.texCoord = VSIn_GetTexCoord(input);
     #endif
 
     #if (GEO_HAS_NORMAL==1) || (GEO_HAS_TANGENT_FRAME==1)
         #if (GEO_HAS_NORMAL==0) && (GEO_HAS_TANGENT_FRAME==1)
-            worldNormal =  BuildWorldSpaceTangentFrame(input).normal;
+            worldNormal =  VSIn_GetWorldTangentFrame(input).normal;
         #endif
 
-        worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), GetColour(input));
+        worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), VSIn_GetColour(input));
     #endif
 
     #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
         output.position = ShadowProjection_GetOutput(worldPosition, 0);
     #elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
         float3 basePosition = mul(OrthoShadowWorldToProj, float4(worldPosition, 1));
-        float3 cascadePos = AdjustForCascade(basePosition, 0);
+        float3 cascadePos = AdjustForOrthoCascade(basePosition, 0);
         output.position = float4(cascadePos, 1.f);
     #endif
 
@@ -155,13 +155,13 @@ struct ListNode
 RWTexture2D<uint>	          ListsHead    : register(u1);
 RWStructuredBuffer<ListNode>  LinkedLists  : register(u2);
 
-uint ps_main(float4 pos : SV_Position,
-    #if (OUTPUT_PRIM_ID==1)     // (set if we get the primitive id from the geometry shader)
-        uint triIndex : PRIMID
-    #else
-        uint triIndex : SV_PrimitiveID
-    #endif
-    ) : SV_Target0
+#if (OUTPUT_PRIM_ID==1)     // (set if we get the primitive id from the geometry shader)
+    #define TRI_INDEX_SEMANTIC PRIMID
+#else
+    #define TRI_INDEX_SEMANTIC SV_PrimitiveID
+#endif
+
+uint ps_main(float4 pos : SV_Position, uint triIndex : TRI_INDEX_SEMANTIC) : SV_Target0
 {
         // it would be helpful for ListsHead where our bound render target.
         // But we need to both read and write from it... That isn't possible

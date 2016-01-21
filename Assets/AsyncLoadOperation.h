@@ -16,9 +16,7 @@ namespace Utility { class CompletionThreadPool; }
 namespace Assets
 {
 
-    class AsyncLoadOperation
-        : public ::Assets::PendingOperationMarker
-        , public std::enable_shared_from_this<AsyncLoadOperation>
+    class AsyncLoadOperation : public ::Assets::PendingOperationMarker
     {
     public:
         void Enqueue(const ResChar filename[], CompletionThreadPool& pool);

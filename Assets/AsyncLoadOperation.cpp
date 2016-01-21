@@ -78,7 +78,7 @@ namespace Assets
             // hold a strong reference at least until the read has
             // completed
 
-        std::weak_ptr<AsyncLoadOperation> weakToThis = shared_from_this();
+        std::weak_ptr<AsyncLoadOperation> weakToThis = std::static_pointer_cast<AsyncLoadOperation>(shared_from_this());
         pool.Enqueue(
             [weakToThis]()
             {

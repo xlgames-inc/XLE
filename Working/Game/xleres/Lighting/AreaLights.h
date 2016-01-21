@@ -7,6 +7,9 @@
 #if !defined(AREA_LIGHTS_H)
 #define AREA_LIGHTS_H
 
+#include "SpecularMethods.h"        // for RoughnessToDAlpha
+#include "../Utility/MathConstants.h"
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     //   Utility functions for calculating rectangle area lights
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -74,9 +77,11 @@ float2 RectangleDiffuseRepPoint(float3 samplePt, float3 sampleNormal, float2 lig
     // if (abs(sampleNormal.z) < 1e-3f) sampleNormal += float3(0.03f, 0.03f, 0.03f);
 
         // We need to skew in these cases to find a collision point.
-    bool isFacingAway = sampleNormal.z >= 0.f;
+    bool isFacingAway = sampleNormal.z >= -1e-3f && sampleNormal.z <= 1e-3f;
     float3 skewedNormal = sampleNormal;
-    if (isFacingAway) skewedNormal = /*normalize*/(float3(sampleNormal.xy, -0.01f)); // (without normalization, it should be incorrect -- but maybe no major visual artefacts)
+        // we give an imaginary value to skewedNormal.z. This has to be fairly small... If it's too large,
+        // it creates a discontinuity near the equator of the light
+    if (isFacingAway) skewedNormal = /*normalize*/(float3(sampleNormal.xy, sign(samplePt.z) * -0.01f)); // (without normalization, it should be incorrect -- but maybe no major visual artefacts)
 
         // Triple product type operation becomes simplier...
         // note -- obvious problems with sampleNormal.z is near 0
@@ -99,12 +104,90 @@ float2 RectangleDiffuseRepPoint(float3 samplePt, float3 sampleNormal, float2 lig
         // Drobot didn't actually calculate pc and pt -- he just used a half way point
         // between p0 and p1. Actually, the difference does seem to be quite minor.
         // But in light space, it's easy to clamp pc and pt.
-    float2 pc = float2(clamp(p0.x, -lightHalfSize.x, lightHalfSize.x), clamp(p0.y, -lightHalfSize.y, lightHalfSize.y));
-    float2 pt = float2(clamp(p1.x, -lightHalfSize.x, lightHalfSize.x), clamp(p1.y, -lightHalfSize.y, lightHalfSize.y));
+    float2 pc = clamp(p0.xy, -lightHalfSize.xy, lightHalfSize.xy);
+    float2 pt = clamp(p1.xy, -lightHalfSize.xy, lightHalfSize.xy);
 
     float2 r = 0.5f * (pc+pt);
     // r = float2(clamp(r.x, -lightHalfSize.x, lightHalfSize.x), clamp(r.y, -lightHalfSize.y, lightHalfSize.y));
-    return pt;
+    return r;
+}
+
+void CalculateEllipseApproximation(
+    out float2 S0A, out float2 S0B,
+    out float2 S1A, out float2 S1B,
+    out float ellipseArea,
+    out float squareWeighting,
+    float3 reflectedDirLight, float distance, float sinConeAngle, float cosConeAngle, float2 projectedCircleCenter)
+{
+    float dBySinConeAngle = distance * sinConeAngle;
+    float minorAxis = dBySinConeAngle / cosConeAngle;
+
+    float cosTiltAngle = -reflectedDirLight.z;
+    float sinTiltAngle = sqrt(1.f-cosTiltAngle*cosTiltAngle);
+
+    #if 0
+        //  This is the slow way of doing the calculation...
+        float tiltAngle = acos(saturate(cosTiltAngle));
+        float phi = .5f*pi + tiltAngle;
+        float c = pi - (asin(sinConeAngle) + phi);
+        float A = distance * sinConeAngle / sin(c);     // from the law of sines
+
+        float phi2 = .5f*pi - tiltAngle;
+        float c2 = pi - (asin(sinConeAngle) + phi2);
+        float B = distance * sinConeAngle / sin(c2);
+
+    #else
+        // Trig optimizes out completely. But we need both sine and cosine for
+        // cone angle and the tilt angle. That means we need to use a sqrt to
+        // get the sine from the cosine
+
+        // float c = cos(asin(sinConeAngle) + tiltAngle);
+        // cos(a+b) = cosa.cosb - sina.sinb (trig addition)
+        // float c = cosConeAngle * cosTiltAngle - sinConeAngle * sinTiltAngle;
+        float Q = cosConeAngle * cosTiltAngle;
+        float W = sinConeAngle * sinTiltAngle;
+        float A = dBySinConeAngle / (Q-W);
+
+        // float c2 = sin(pi - asin(sinConeAngle) - (.5f*pi - tiltAngle))
+        //          = sin(.5f*pi - (asin(sinConeAngle) - tiltAngle))
+        // float c2 = cos(asin(sinConeAngle) - tiltAngle)
+        // cos(a-b) = cosa.cosb + sina.sinb (trig addition)
+        // float c2 = cosConeAngle * cosTiltAngle + sinConeAngle * sinTiltAngle;
+        float B = dBySinConeAngle / (Q+W);
+
+    #endif
+
+    float majorAxis = .5f * (A + B);
+    float2 ellipseLongAxis = normalize(reflectedDirLight.xy);
+    float2 ellipseCenter = projectedCircleCenter + ellipseLongAxis * .5f * (A-B);
+
+        // "ellipseC" is used to define the "vertices" of the ellipse.
+        // These are critical points for defining the ellipse.
+    // float ellipseC = sqrt(majorAxis*majorAxis - minorAxis*minorAxis);
+    // float2 focusA = ellipseCenter + ellipseC * ellipseLongAxis;
+    // float2 focusB = ellipseCenter - ellipseC * ellipseLongAxis;
+
+    ellipseArea = pi * majorAxis * minorAxis;
+    ellipseArea = max(0.f, ellipseArea);
+    float squareRadiusForEllipse = sqrt(.125f * ellipseArea);  // (half to convert from edge length to "radius" value)
+
+    // We could put the center of the squared exactly on the ellipse vertices.
+    // But it seems to make more sense just to position them so that the
+    // edge tends to touch the edge of the ellipse.
+    // Some artifacts can be caused by over-weighting the edges of the ellipse.
+    // We adjust the squares in a bit to try to reduce the effect of these artifacts.
+    const float fudgeFactor = 1.33f;
+    float2 vertexAxis = (majorAxis - fudgeFactor * squareRadiusForEllipse) * ellipseLongAxis;
+    float2 focusA = ellipseCenter + vertexAxis;
+    float2 focusB = ellipseCenter - vertexAxis;
+
+    S0A = focusA - float2(squareRadiusForEllipse, squareRadiusForEllipse);
+    S0B = focusA + float2(squareRadiusForEllipse, squareRadiusForEllipse);
+
+    S1A = focusB - float2(squareRadiusForEllipse, squareRadiusForEllipse);
+    S1B = focusB + float2(squareRadiusForEllipse, squareRadiusForEllipse);
+
+    squareWeighting = A / (A+B);
 }
 
 float2 RectangleSpecularRepPoint(out float intersectionArea, float3 samplePt, float3 sampleNormal, float3 viewDirection, float2 lightHalfSize, float roughness)
@@ -154,7 +237,7 @@ float2 RectangleSpecularRepPoint(out float intersectionArea, float3 samplePt, fl
         //  Drobot's phong based specular cone angle...
         //  Maybe performance is similar to our method, but
         //  it's more difficult to balance it against our "roughness" parameter
-    // float ta = 512.f * (1-sample.material.roughness);
+    // float ta = 512.f * (1.f-roughness);
     // float phongAngle = 2.f / pi * sqrt(2/(ta+2));
     // tanConeAngle = pi * phongAngle; // tan(phongAngle);
 
@@ -163,26 +246,82 @@ float2 RectangleSpecularRepPoint(out float intersectionArea, float3 samplePt, fl
         // brightest)
     float distToProjectedConeCenter = (-samplePt.z/reflectedDirLight.z);
     float2 projectedCircleCenter = samplePt.xy + reflectedDirLight.xy * distToProjectedConeCenter;
-    float projectedCircleRadius = max(0, distToProjectedConeCenter * tanConeAngle);
-    // return float4(projectedCircleRadius.xxx, 1.f);
 
-        // This is squaring the circle...?!
-        // float circleArea = pi * projectedCircleRadius * projectedCircleRadius;
-        // float squareSide = sqrt(circleArea);
-    float squareRadius = halfSqrtPi * projectedCircleRadius;
+    const bool useDoubleSquareMethod = true;
+    if (!useDoubleSquareMethod) {
+            // Beyond a certain width, the inaccuracies in the intersection detection
+            // become too great. The shape of the light become very distorted.
+            // Can try to it an upper range, and clamp it off.
+            // However, this is a double-edged sword. Because with this clamp, sometimes
+            // light sources that are far away will appear too sharp. It's unfortunate,
+            // because the distortion is really only a problem in some cases.
+        // const float maxProjectedCircleRadius = 0.33f * min(lightHalfSize.x, lightHalfSize.y);
+        // float projectedCircleRadius = clamp(distToProjectedConeCenter * tanConeAngle, 0.f, maxProjectedCircleRadius);
+        float projectedCircleRadius = distToProjectedConeCenter * tanConeAngle;
+        // return float4(projectedCircleRadius.xxx, 1.f);
 
-    float2 representativePt;
-    intersectionArea = RectRectIntersectionArea(
-        representativePt,
-        -lightHalfSize, lightHalfSize,
-        projectedCircleCenter - float2(squareRadius, squareRadius),
-        projectedCircleCenter + float2(squareRadius, squareRadius));
+            // This is squaring the circle...?!
+            // float circleArea = pi * projectedCircleRadius * projectedCircleRadius;
+            // float squareSide = sqrt(circleArea);
+        float squareRadius = halfSqrtPi * projectedCircleRadius;
 
-    // representativePt = projectedCircleCenter;
+        float2 representativePt;
+        intersectionArea = RectRectIntersectionArea(
+            representativePt,
+            -lightHalfSize, lightHalfSize,
+            projectedCircleCenter - float2(squareRadius, squareRadius),
+            projectedCircleCenter + float2(squareRadius, squareRadius));
 
-    // note --  zero area lights will cause nans here
-    //          we should skip zero area lights on the CPU side
-    return representativePt;
+        // representativePt = projectedCircleCenter;
+
+        // note --  zero area lights will cause nans here
+        //          we should skip zero area lights on the CPU side
+        intersectionArea /= pi * projectedCircleRadius * projectedCircleRadius;
+        return representativePt;
+
+    } else {
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+            // Ellipse approximation experiment...
+
+        float2 S0A, S0B, S1A, S1B;
+        float ellipseArea;
+        float squareWeighting;
+        CalculateEllipseApproximation(
+            S0A, S0B, S1A, S1B, ellipseArea, squareWeighting,
+            reflectedDirLight,
+            distToProjectedConeCenter, sinConeAngle, cosConeAngle, projectedCircleCenter);
+
+        float2 representativePtA, representativePtB;
+        float intersectionAreaA = RectRectIntersectionArea(representativePtA, -lightHalfSize, lightHalfSize, S0A, S0B);
+        float intersectionAreaB = RectRectIntersectionArea(representativePtB, -lightHalfSize, lightHalfSize, S1A, S1B);
+
+            // We have to be careful when the intersection area of one square is zero. In this
+            // case the square is completely clipped, and the representativePt may be invalid.
+        float aTotal = (intersectionAreaA + intersectionAreaB);
+        intersectionArea = aTotal / (ellipseArea + 1e-7f);
+        // return lerp(representativePtA, representativePtB, intersectionAreaB / (aTotal + 1e-7f));
+
+        // float w0 = (1.f - squareWeighting) * intersectionAreaA;
+        // float w1 = squareWeighting * intersectionAreaB;
+        // return lerp(representativePtA, representativePtB, w1/(w0+w1+1e-7f));
+        float2 repPtFromSquares = lerp(representativePtA, representativePtB, squareWeighting);
+
+            // When we adjust the representative pt for square clipping,
+            // we end up moving the point away from the reflection ray.
+            // With GGX, this has a very quick and significant effect on the
+            // brightness of the reflection. Even when part of the specular
+            // cone is clipped, the very center has a dominant effect on the
+            // brightness.
+            // This means that adjusting the representative point to the intersection
+            // center is having too extreme an effect. We have to tone it down a
+            // little bit some how.
+            // The easiest way is just to linearly blend from the reflection ray to
+            // the intersection center...
+        return lerp(repPtFromSquares, projectedCircleCenter, 0.5f);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    }
 }
 
 

@@ -973,13 +973,13 @@ namespace RenderCore { namespace Assets
     SkeletonScaffold::SkeletonScaffold(const ::Assets::ResChar filename[])
     : ChunkFileAsset("SkeletonScaffold")
     {
-        Prepare(filename, MakeIteratorRange(SkeletonScaffoldChunkRequests), &Resolver);
+        Prepare(filename, ResolveOp{MakeIteratorRange(SkeletonScaffoldChunkRequests), &Resolver});
     }
 
-    SkeletonScaffold::SkeletonScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
+    SkeletonScaffold::SkeletonScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker)
     : ChunkFileAsset("SkeletonScaffold")
     {
-        Prepare(std::move(marker), MakeIteratorRange(SkeletonScaffoldChunkRequests), &Resolver);
+        Prepare(*marker, ResolveOp{MakeIteratorRange(SkeletonScaffoldChunkRequests), &Resolver});
     }
 
     SkeletonScaffold::SkeletonScaffold(SkeletonScaffold&& moveFrom)
@@ -1031,13 +1031,13 @@ namespace RenderCore { namespace Assets
     AnimationSetScaffold::AnimationSetScaffold(const ::Assets::ResChar filename[])
     : ChunkFileAsset("AnimationSetScaffold")
     {
-        Prepare(filename, MakeIteratorRange(AnimationSetScaffoldChunkRequests), &Resolver);
+        Prepare(filename, ResolveOp{MakeIteratorRange(AnimationSetScaffoldChunkRequests), &Resolver});
     }
 
-    AnimationSetScaffold::AnimationSetScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
+    AnimationSetScaffold::AnimationSetScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker)
     : ChunkFileAsset("AnimationSetScaffold")
     {
-        Prepare(std::move(marker), MakeIteratorRange(AnimationSetScaffoldChunkRequests), &Resolver);
+        Prepare(*marker, ResolveOp{MakeIteratorRange(AnimationSetScaffoldChunkRequests), &Resolver});
     }
 
     AnimationSetScaffold::AnimationSetScaffold(AnimationSetScaffold&& moveFrom)

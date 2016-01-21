@@ -117,15 +117,15 @@ struct VSInput //////////////////////////////////////////////////////
 #endif
 
 #if GEO_HAS_COLOUR==1 ///////////////////////////////////////////////
-    float4 GetColour(VSInput input) { return input.colour; }
+    float4 VSIn_GetColour(VSInput input) { return input.colour; }
 #else
-    float4 GetColour(VSInput input) { return 1.0.xxxx; }
+    float4 VSIn_GetColour(VSInput input) { return 1.0.xxxx; }
 #endif //////////////////////////////////////////////////////////////
 
 #if GEO_HAS_TEXCOORD==1 /////////////////////////////////////////////
-    float2 GetTexCoord(VSInput input) { return input.texCoord; }
+    float2 VSIn_GetTexCoord(VSInput input) { return input.texCoord; }
 #else
-    float2 GetTexCoord(VSInput input) { return 1.0.xx; }
+    float2 VSIn_GetTexCoord(VSInput input) { return 0.0.xx; }
 #endif //////////////////////////////////////////////////////////////
 
 #if (GEO_HAS_NORMAL==1 || GEO_HAS_TANGENT_FRAME==1) && (AUTO_COTANGENT==1)

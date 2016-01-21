@@ -30,33 +30,6 @@ using HyperGraph.Items;
 
 namespace HyperGraph
 {
-	public sealed class NodeEventArgs : EventArgs
-	{
-		public NodeEventArgs(Node node) { Node = node; }
-		public Node Node { get; private set; }
-	}
-
-	public sealed class ElementEventArgs : EventArgs
-	{
-		public ElementEventArgs(IElement element) { Element = element; }
-		public IElement Element { get; private set; }
-	}
-
-	public sealed class AcceptNodeEventArgs : CancelEventArgs
-	{
-		public AcceptNodeEventArgs(Node node) { Node = node; }
-		public AcceptNodeEventArgs(Node node, bool cancel) : base(cancel) { Node = node; }
-		public Node Node { get; private set; }
-	}
-
-	public sealed class AcceptElementLocationEventArgs : CancelEventArgs
-	{
-		public AcceptElementLocationEventArgs(IElement element, Point position) { Element = element; Position = position; }
-		public AcceptElementLocationEventArgs(IElement element, Point position, bool cancel) : base(cancel) { Element = element; Position = position; }
-		public IElement Element		{ get; private set; }
-		public Point	Position	{ get; private set; }
-	}
-
 	public class Node : IElement
 	{
 		public string			Title			{ get { return titleItem.Title; } set { titleItem.Title = value; } }
@@ -67,9 +40,12 @@ namespace HyperGraph
 		{ 
 			get 
 			{
-				return (internalCollapsed && 
-						((state & RenderState.DraggedOver) == 0)) ||
-						nodeItems.Count == 0;
+                        // disabling "collapse" on DraggedOver gives an interesting
+                        // result... but also gets in the way a lot of the time
+                // return (internalCollapsed && 
+                // 		((state & RenderState.DraggedOver) == 0)) ||
+                // 		nodeItems.Count == 0;
+                return internalCollapsed;
 			} 
 			set 
 			{
@@ -88,20 +64,35 @@ namespace HyperGraph
 
 		public IEnumerable<NodeConnection>	Connections { get { return connections; } }
 		public IEnumerable<NodeItem>		Items		{ get { return nodeItems; } }
-		
-		internal RectangleF		bounds;
-		internal RectangleF		inputBounds;
-		internal RectangleF		outputBounds;
-		internal RectangleF		itemsBounds;
+
+        public IEnumerable<NodeConnector>   InputConnectors
+        {
+            get
+            {
+                foreach (var i in nodeItems)
+                    if (i.Input != null && i.Input.Enabled)
+                        yield return i.Input;
+            }
+        }
+
+        public IEnumerable<NodeConnector> OutputConnectors
+        {
+            get
+            {
+                foreach (var i in nodeItems)
+                    if (i.Output != null && i.Output.Enabled)
+                        yield return i.Output;
+            }
+        }
+
+        public RectangleF		bounds;
 		internal RenderState	state			= RenderState.None;
 		internal RenderState	inputState		= RenderState.None;
 		internal RenderState	outputState		= RenderState.None;
 
-		internal readonly List<NodeConnector>	inputConnectors		= new List<NodeConnector>();
-		internal readonly List<NodeConnector>	outputConnectors	= new List<NodeConnector>();
-		internal readonly List<NodeConnection>	connections			= new List<NodeConnection>();
+		private readonly List<NodeConnection>	connections			= new List<NodeConnection>();
 		internal readonly NodeTitleItem			titleItem			= new NodeTitleItem();
-		readonly List<NodeItem>					nodeItems			= new List<NodeItem>();
+		private readonly List<NodeItem>			nodeItems			= new List<NodeItem>();
 
 		public Node(string title)
 		{
@@ -131,9 +122,22 @@ namespace HyperGraph
         {
             connections.Add(newConnection);
         }
-		
-		// Returns true if there are some connections that aren't connected
-		public bool AnyConnectorsDisconnected
+
+        public void RemoveConnection(NodeConnection connection)
+        {
+            connections.Remove(connection);
+        }
+
+        public bool MoveToFront(NodeConnection connection)
+        {
+            if (connections[0] == connection) return false;
+            connections.Remove(connection);
+            connections.Insert(0, connection);
+            return true;
+        }
+
+        // Returns true if there are some connections that aren't connected
+        public bool AnyConnectorsDisconnected
 		{
 			get
 			{

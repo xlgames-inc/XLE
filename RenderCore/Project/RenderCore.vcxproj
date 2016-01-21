@@ -201,6 +201,7 @@
     <ClInclude Include="..\Metal\ShaderResource.h" />
     <ClInclude Include="..\Metal\State.h" />
     <ClInclude Include="..\Metal\Types.h" />
+    <ClInclude Include="..\MinimalShaderSource.h" />
     <ClInclude Include="..\OpenGLES\Device.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">true</ExcludedFromBuild>
@@ -219,6 +220,7 @@
     </ClInclude>
     <ClInclude Include="..\RenderUtils.h" />
     <ClInclude Include="..\Resource.h" />
+    <ClInclude Include="..\ShaderLangUtil.h" />
     <ClInclude Include="..\ShaderService.h" />
   </ItemGroup>
   <ItemGroup>
@@ -244,6 +246,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\MinimalShaderSource.cpp" />
     <ClCompile Include="..\OpenGLES\Device.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">true</ExcludedFromBuild>
@@ -254,6 +257,7 @@
     </ClCompile>
     <ClCompile Include="..\RenderUtils.cpp" />
     <ClCompile Include="..\Resource.cpp" />
+    <ClCompile Include="..\ShaderLangUtil.cpp" />
     <ClCompile Include="..\ShaderService.cpp" />
     <ClCompile Include="..\Version.cpp" />
   </ItemGroup>

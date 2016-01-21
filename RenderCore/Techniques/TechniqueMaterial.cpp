@@ -6,12 +6,15 @@
 
 #include "TechniqueMaterial.h"
 #include "ParsingContext.h"
+#include "PredefinedCBLayout.h"
 #include "../Metal/InputLayout.h"
 #include "../../Assets/Assets.h"
 #include "../../Utility/StringUtils.h"
 
 namespace RenderCore { namespace Techniques
 {
+    const ::Assets::ResChar* DefaultPredefinedCBLayout = "game/xleres/techniques/BasicMaterialConstants.txt";
+
     static Techniques::TechniqueInterface MakeTechInterface(
         const Metal::InputLayout& inputLayout,
         const std::initializer_list<uint64>& objectCBs)
@@ -35,19 +38,25 @@ namespace RenderCore { namespace Techniques
             ) != end;
     }
 
+    ParameterBox TechParams_SetGeo(const Metal::InputLayout& inputLayout)
+    {
+        ParameterBox result;
+        if (HasElement(inputLayout, "NORMAL"))          result.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1);
+        if (HasElement(inputLayout, "TEXCOORD"))        result.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1);
+        if (HasElement(inputLayout, "TEXTANGENT"))      result.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1);
+        if (HasElement(inputLayout, "TEXBITANGENT"))    result.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1);
+        if (HasElement(inputLayout, "COLOR"))           result.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1);
+        return std::move(result);
+    }
+
     TechniqueMaterial::TechniqueMaterial(
         const Metal::InputLayout& inputLayout,
         const std::initializer_list<uint64>& objectCBs,
         ParameterBox materialParameters)
     : _materialParameters(std::move(materialParameters))
     , _techniqueInterface(MakeTechInterface(inputLayout, objectCBs))
-    {
-        if (HasElement(inputLayout, "NORMAL"))          _geometryParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1);
-        if (HasElement(inputLayout, "TEXCOORD"))        _geometryParameters.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1);
-        if (HasElement(inputLayout, "TEXTANGENT"))      _geometryParameters.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1);
-        if (HasElement(inputLayout, "TEXBITANGENT"))    _geometryParameters.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1);
-        if (HasElement(inputLayout, "COLOR"))           _geometryParameters.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1);
-    }
+    , _geometryParameters(TechParams_SetGeo(inputLayout))
+    {}
 
     TechniqueMaterial::TechniqueMaterial() {}
     TechniqueMaterial::TechniqueMaterial(TechniqueMaterial&& moveFrom)
@@ -67,9 +76,9 @@ namespace RenderCore { namespace Techniques
 
     TechniqueMaterial::~TechniqueMaterial() {}
 
-    Techniques::ResolvedShader TechniqueMaterial::FindVariation(
-        Techniques::ParsingContext& parsingContext,
-        unsigned techniqueIndex, const char shaderName[]) const
+    auto TechniqueMaterial::FindVariation(
+        ParsingContext& parsingContext,
+        unsigned techniqueIndex, const char techniqueConfigName[]) const -> Variation
     {
         const ParameterBox* state[] = {
             &_geometryParameters, 
@@ -78,8 +87,40 @@ namespace RenderCore { namespace Techniques
             &_materialParameters
         };
 
-        auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(shaderName);
-        return shaderType.FindVariation(techniqueIndex, state, _techniqueInterface);
+        auto& techConfig = ::Assets::GetAssetDep<ShaderType>(techniqueConfigName);
+
+        Variation result;
+        result._cbLayout = nullptr;
+        result._shader = techConfig.FindVariation(techniqueIndex, state, _techniqueInterface);
+        if (result._shader._shaderProgram == nullptr) return result;
+
+        // We need to know the layout the main materials constant buffer now...
+        // We could  just use the reflection interface to get the layout from there...
+        // But that's not exactly what we want.
+        // This constant buffer is defined to be the same for every shader produced by 
+        // the same technique config. And sometimes we want to know the layout before we
+        // decide on the particular technique variation we are going to use... Therefore,
+        // we must define the layout of this cb in some way that is independent from the compiled
+        // shader code...
+        if (techConfig.HasEmbeddedCBLayout()) {
+            result._cbLayout = &::Assets::GetAssetDep<PredefinedCBLayout>(techniqueConfigName);
+        } else {
+            // This is the default CB layout where there isn't one explicitly referenced by the
+            // technique config file
+            result._cbLayout = &::Assets::GetAssetDep<PredefinedCBLayout>(DefaultPredefinedCBLayout);
+        }
+        return result;
     }
+
+    const PredefinedCBLayout& TechniqueMaterial::GetCBLayout(const ::Assets::ResChar techniqueConfigName[])
+    {
+        auto& techConfig = ::Assets::GetAssetDep<ShaderType>(techniqueConfigName);
+        if (techConfig.HasEmbeddedCBLayout()) {
+            return ::Assets::GetAssetDep<PredefinedCBLayout>(techniqueConfigName);
+        } else {
+            return ::Assets::GetAssetDep<PredefinedCBLayout>(DefaultPredefinedCBLayout);
+        }
+    }
+
 }}
 

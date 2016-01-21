@@ -49,7 +49,7 @@ namespace HyperGraph.Items
 		/// <param name="graphics">The <see cref="Graphics"/> instance that should be used for drawing.</param>
 		/// <param name="minimumSize">The smallest size the slider has to fit into.</param>
 		/// <param name="location">Where the slider should be drawn.</param>
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location)
+        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
 		{
 			var size = Measure(graphics);
 			size.Width  = Math.Max(minimumSize.Width, size.Width);

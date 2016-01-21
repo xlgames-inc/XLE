@@ -20,11 +20,14 @@ namespace TextureTransform
     class TextureResult
     {
     public:
-        intrusive_ptr<BufferUploads::DataPacket> _pkt;
-        unsigned _format;
-        UInt2 _dimensions;
+        using Pkt = intrusive_ptr<BufferUploads::DataPacket>;
+        Pkt             _pkt;
+        unsigned        _format;
+        UInt2           _dimensions;
+        unsigned        _mipCount;
+        unsigned        _arrayCount;
 
-        void SaveTIFF(const ::Assets::ResChar destinationFile[]) const;
+        void Save(const ::Assets::ResChar destinationFile[]) const;
     };
 
     using ProcessingFn = std::function<TextureResult(const BufferUploads::TextureDesc&, const ParameterBox&)>;
@@ -37,4 +40,5 @@ namespace TextureTransform
         std::map<std::string, ProcessingFn> fns);
 
     TextureResult HosekWilkieSky(const BufferUploads::TextureDesc&, const ParameterBox& parameters);
+    TextureResult CompressTexture(const BufferUploads::TextureDesc& desc, const ParameterBox& parameters);
 }

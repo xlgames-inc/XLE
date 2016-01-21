@@ -20,6 +20,7 @@ using LevelEditorCore;
 using LevelEditorCore.GenericAdapters.Extensions;
 
 using XLEBridgeUtils;
+using LevelEditorXLE.Extensions;
 
 namespace LevelEditorXLE.Placements
 {
@@ -60,10 +61,10 @@ namespace LevelEditorXLE.Placements
             {
                     // if we are resolved, we can get the cell boundary from the
                     // native stuff
-                var sceneMan = NativeManipulatorLayer.SceneManager;
                 var target = Target.As<XLEBridgeUtils.INativeDocumentAdapter>();
                 if (target != null)
                 {
+                    var sceneMan = Target.GetSceneManager();
                     var boundary = GUILayer.EditorInterfaceUtils.CalculatePlacementCellBoundary(
                         sceneMan, target.NativeDocumentId);
                     var result = Tuple.Create(
@@ -117,7 +118,7 @@ namespace LevelEditorXLE.Placements
                         new ErrorExport
                             { _success = false, _messages = "Error resolving target" })};
 
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+            var sceneMan = Target.GetSceneManager();
             var result = new List<PendingExport>();
             result.Add(new PendingExport(ExportTarget, sceneMan.ExportPlacements(target.NativeDocumentId)));
             return result;
@@ -436,9 +437,8 @@ namespace LevelEditorXLE.Placements
 
         public IEnumerable<PendingExport> BuildPendingExports()
         {
-            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
             var result = new List<PendingExport>();
-            var e = sceneMan.ExportPlacementsCfg(BuildExportRefs());
+            var e = this.GetSceneManager().ExportPlacementsCfg(BuildExportRefs());
             result.Add(new PendingExport(ExportTarget, e));
             return result;
         }

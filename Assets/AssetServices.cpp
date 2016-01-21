@@ -20,8 +20,6 @@ namespace Assets
         _assetSets = std::make_unique<AssetSetManager>();
         _asyncMan = std::make_unique<CompileAndAsyncManager>();
         _invalidAssetMan = std::make_unique<InvalidAssetManager>(!!(flags & Flags::RecordInvalidAssets));
-
-        ConsoleRig::GlobalServices::GetCrossModule().Publish(*this);
     }
 
     Services::~Services() 
@@ -29,19 +27,8 @@ namespace Assets
         _invalidAssetMan.reset();
         _assetSets.reset();
         _asyncMan.reset();
-        ConsoleRig::GlobalServices::GetCrossModule().Withhold(*this);
     }
 
-    void Services::AttachCurrentModule()
-    {
-        assert(s_instance==nullptr);
-        s_instance = this;
-    }
-
-    void Services::DetachCurrentModule()
-    {
-        assert(s_instance==this);
-        s_instance = nullptr;
-    }
+    // Services* CrossModuleSingleton<Services>::s_instance = nullptr;
 }
 

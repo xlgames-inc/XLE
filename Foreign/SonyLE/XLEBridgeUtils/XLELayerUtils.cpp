@@ -41,16 +41,16 @@ namespace XLEBridgeUtils
         Utils::CreateIntersectionTestContext(
             GUILayer::EngineDevice^ engineDevice,
             GUILayer::TechniqueContextWrapper^ techniqueContext,
-            Sce::Atf::Rendering::Camera^ camera,
+            GUILayer::CameraDescWrapper^ camera,
             unsigned viewportWidth, unsigned viewportHeight)
     {
         return GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
             engineDevice, techniqueContext, 
-            AsCameraDesc(camera), viewportWidth, viewportHeight);
+            camera, viewportWidth, viewportHeight);
     }
 
     Sce::Atf::VectorMath::Matrix4F^ Utils::MakeFrustumMatrix(
-        Sce::Atf::Rendering::Camera^ camera,
+        GUILayer::CameraDescWrapper^ camera,
         System::Drawing::RectangleF rectangle,
         System::Drawing::Size viewportSize)
     {
@@ -74,7 +74,7 @@ namespace XLEBridgeUtils
 
         std::unique_ptr<Float4x4> worldToProjPtr;
         worldToProjPtr.reset((Float4x4*)GUILayer::EditorInterfaceUtils::CalculateWorldToProjection(
-            AsCameraDesc(camera), viewportSize.Width / float(viewportSize.Height)));
+            camera, viewportSize.Width / float(viewportSize.Height)));
             
         auto worldToProj = Combine(*worldToProjPtr, rectangleAdj);
 
@@ -96,9 +96,7 @@ namespace XLEBridgeUtils
 
     void DomChangeInspector::ContextRegistry_ActiveContextChanged(System::Object^ sender, EventArgs^ e)
     {
-        using namespace LevelEditorCore;
-        IGameContext^ game = m_contextRegistry->GetActiveContext<IGameContext^>();
-        auto observableContext = Sce::Atf::Adaptation::Adapters::As<IObservableContext^>(game);
+        IObservableContext^ observableContext = m_contextRegistry->GetActiveContext<IObservableContext^>();
         if (m_observableContext == observableContext) return;
         if (m_observableContext != nullptr) {
             m_observableContext->ItemInserted -= gcnew EventHandler<ItemInsertedEventArgs<System::Object^>^>(this, &DomChangeInspector::m_observableContext_ItemInserted);

@@ -140,6 +140,7 @@ namespace SceneEngine
         float nearClip, float farClip);
 
     void SetFrameGlobalStates(MetalContext& context);
+    void ReturnToSteadyState(MetalContext& context);
 
         ///////////////////////////////////////////////////////////////////////////
 

@@ -68,16 +68,17 @@ namespace HyperGraph.Items
 			}
 		}
 
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location)
+        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
 		{
 			var size = Measure(graphics);
 			size.Width  = Math.Max(minimumSize.Width, size.Width);
 			size.Height = Math.Max(minimumSize.Height, size.Height);
 
-			if ((state & RenderState.Hover) == RenderState.Hover)
-				graphics.DrawString(this.Title, SystemFonts.CaptionFont, Brushes.White, new RectangleF(location, size), GraphConstants.TitleStringFormat);
+            var rect = new RectangleF(location, size);
+            if ((state & RenderState.Hover) == RenderState.Hover)
+				graphics.DrawString(this.Title, SystemFonts.CaptionFont, Brushes.White, rect, GraphConstants.TitleStringFormat);
 			else
-                graphics.DrawString(this.Title, SystemFonts.CaptionFont, Brushes.White, new RectangleF(location, size), GraphConstants.TitleStringFormat);
+                graphics.DrawString(this.Title, SystemFonts.CaptionFont, Brushes.LightGray, rect, GraphConstants.TitleStringFormat);
 		}
 
         public override void RenderConnector(Graphics graphics, RectangleF rectangle) { }

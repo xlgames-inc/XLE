@@ -19,6 +19,7 @@ class ProcessStep
 	boolean doCheckErrorStream()					{ return true; }
 
 	boolean isIntermediate = false;
+	String outputNamePostfix = "";
 
 	static Closure makeIntermediateName = null;
     String asDestinationFileName(File i, String newExt, int intermediateIndex)
@@ -27,7 +28,7 @@ class ProcessStep
         if (makeIntermediateName != null)	intName = makeIntermediateName(i);
         else								intName = i.getPath();
 
-        return intName.substring(0, intName.lastIndexOf('.')) + (isIntermediate?"_${intermediateIndex}":"") + newExt;
+        return intName.substring(0, intName.lastIndexOf('.')) + outputNamePostfix + (isIntermediate?"_${intermediateIndex}":"") + newExt;
     }
 }
 
@@ -90,7 +91,7 @@ class TextureTask extends DefaultTask
 		for (int c=0; c<steps.size(); ++c) {
 			def stepInput = input;
 			def t = stepInputs[c];
-			if (t) { stepInput = getOutputFile(t) }
+			if (t != null) { stepInput = getOutputFile(t) }
 			else if (c!=0) { stepInput = getOutputFile(c-1) }
 
 			def stepOutput = getOutputFile(c)
@@ -215,6 +216,19 @@ class GenericTextureGen extends TextureTransformStep
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+class CompressWithTextureTransform extends TextureTransformStep
+{
+    @Input
+    String format = "BC6H_UF16"
+	
+	String getCommandLine(File input, File output)
+	{
+		return makeCommandLine(output, "Compress", "Format=${format}; Input=${input.getAbsolutePath()}");
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 class CubeMapGen extends ProcessStep
 {
 	String getCommandLine(File input, File output)
@@ -227,18 +241,29 @@ class CubeMapGen extends ProcessStep
 
 class DiffuseCubeMapGen extends ProcessStep
 {
-    String asDestinationFileName(File i, String newExt, int intermediateIndex)
-	{
-        def baseName = super.asDestinationFileName(i, newExt, intermediateIndex);
-        return baseName.substring(0, baseName.lastIndexOf('.')) + "_diffuse" + newExt;
-    }
-
 	String getCommandLine(File input, File output)
 	{
 		return "ModifiedCubeMapGen ${input.getAbsolutePath()} -exit -IrradianceCubemap:180 -exportCubeDDS -exportMipChain -edgeFixupWidth:0 -exportPixelFormat:A16B16G16R16F -exportSize:32 -exportFilename:${output.getAbsolutePath()}";
 	}
 
 	boolean doCheckErrorStream() { return false; }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+class SpecularIBLFilter extends TextureTransformStep
+{
+    @Input
+    String format = "R32G32B32A32_FLOAT"
+	
+	@Input
+    int faceSize = 512
+	
+	{
+		return makeCommandLine(output, 
+			"ToolsHelper/SplitSum.sh:EquiRectFilterGlossySpecular", 
+			"MipCount=${(int)(Math.log(faceSize)/Math.log(2.0f))}; ArrayCount=6; PassCount=128; Input=${input}; Dims={${faceSize}, ${faceSize}}; Format=${format}");
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -271,11 +296,28 @@ class EquiRectEnv extends TextureTask
 {
 	EquiRectEnv()
 	{
+			// First, convert the input texture to a dds format 
+			// (even though we're using nvcompress, the result will be in an uncompressed format)
 		steps.add(new TextureCompress(compressionMode:"rgb", mips:false, isIntermediate:true));
+	
+			// Build the basic cubemap background
+			// Use CubeMapGen to create mipmaps for the cubemap that are weighted for solid angle
+			// Then compress the result into BC6H_UF16 format
 		steps.add(new EquirectToCube(isIntermediate:true));
-		steps.add(new CubeMapGen());
-		steps.add(new DiffuseCubeMapGen());
-		stepInputs[3] = 1;
+		steps.add(new CubeMapGen(isIntermediate:true));
+		steps.add(new CompressWithTextureTransform(format: "BC6H_UF16"));
+		
+			// Use ModifiedCubeMapGen to create the diffuse IBL reflections
+			// We will compress the result into BC6H_UF16 format
+		steps.add(new DiffuseCubeMapGen(isIntermediate:true));
+		stepInputs[4] = 1;
+		steps.add(new CompressWithTextureTransform(format: "BC6H_UF16", outputNamePostfix:"_diffuse"));
+		
+			// Use TextureTransform to create the specular IBL reflections
+			// Then compress the result into BC6H_UF16 format
+		steps.add(new SpecularIBLFilter(isIntermediate:true));
+		stepInputs[6] = 0;
+		steps.add(new CompressWithTextureTransform(format: "BC6H_UF16", outputNamePostfix:"_specular"));
 	}
 }
 
@@ -286,7 +328,7 @@ class HemiEquiRectEnv extends TextureTask
 		steps.add(new TextureCompress(compressionMode:"rgb", mips:false, isIntermediate:true));
 		steps.add(new EquirectToCube(isIntermediate:true, shader:"hemi"));
 		steps.add(new CubeMapGen());
-		steps.add(new DiffuseCubeMapGen());
+		steps.add(new DiffuseCubeMapGen(outputNamePostfix:"_diffuse"));
 		stepInputs[3] = 1;
 	}
 }

@@ -90,6 +90,7 @@
     <ClCompile Include="..\LevelEditorScene.cpp" />
     <ClCompile Include="..\ManipulatorUtils.cpp" />
     <ClCompile Include="..\MaterialVisualisation.cpp" />
+    <ClCompile Include="..\NativeManipulators.cpp" />
     <ClCompile Include="..\ObjectPlaceholders.cpp" />
     <ClCompile Include="..\SimpleRenderingContext.cpp" />
     <ClCompile Include="..\ManipulatorsLayer.cpp" />
@@ -118,6 +119,7 @@
     <ClInclude Include="..\MarshalString.h" />
     <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\ManipulatorsLayer.h" />
+    <ClInclude Include="..\NativeManipulators.h" />
     <ClInclude Include="..\ObjectPlaceholders.h" />
     <ClInclude Include="..\TerrainLayer.h" />
     <ClInclude Include="..\TestControl.h" />
@@ -127,6 +129,7 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />

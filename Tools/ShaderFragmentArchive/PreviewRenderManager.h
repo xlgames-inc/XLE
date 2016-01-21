@@ -6,60 +6,41 @@
 
 #pragma once
 
-#include "../../RenderCore/IDevice_Forward.h"
-#include "../../RenderCore/Techniques/Techniques.h"
-#include "ShaderDiagramDocument.h"
-#include <memory>
+#include "../GUILayer/CLIXAutoPtr.h"
 
-namespace PreviewRender
+namespace ShaderPatcherLayer
 {
-    class ManagerPimpl;
-    class PreviewBuilderPimpl;
+    ref class NodeGraphContext;
 
-    using System::Drawing::Size;
-
-    public ref class PreviewBuilder
+    public enum class PreviewGeometry
+    {
+        Chart, Plane2D, Box, Sphere, Model
+    };
+    
+    public interface class IPreviewBuilder
     {
     public:
-        property System::Drawing::Bitmap^   Bitmap
-        {
-            System::Drawing::Bitmap^ get() { return _bitmap; }
-        }
-
-        void    Update(ShaderDiagram::Document^ doc, Size^ size);
-        void    Invalidate();
-
-        PreviewBuilder(System::String^ shaderText);
-        ~PreviewBuilder();
-    private:
-        PreviewBuilderPimpl*        _pimpl;
-        System::Drawing::Bitmap^    _bitmap;
-
-        System::Drawing::Bitmap^    GenerateBitmap(ShaderDiagram::Document^ doc, Size^ size);
-        System::Drawing::Bitmap^    GenerateErrorBitmap(const char str[], Size^ size);
+        System::Drawing::Bitmap^ Build(
+            NodeGraphContext^ doc, System::Drawing::Size^ size, 
+            PreviewGeometry geometry, unsigned targetToVisualize);
     };
 
-    public ref class Manager
+    public interface class IManager
     {
-    public:
-        PreviewBuilder^         CreatePreview(System::String^ shaderText);
-        void                    RotateLightDirection(ShaderDiagram::Document^ doc, System::Drawing::PointF rotationAmount);
-        RenderCore::IDevice*    GetDevice();
-        RenderCore::Techniques::TechniqueContext* GetGlobalTechniqueContext();
-
-        static property Manager^     Instance
-        {
-            Manager^ get() { if (!_instance) { _instance = gcnew Manager(); } return _instance; }
-        }
-
-    private:
-        ManagerPimpl*       _pimpl;
-        static Manager^     _instance;
-
-        Manager();
-        ~Manager();
-        static Manager();
+        using ShaderText = System::Tuple<System::String^, System::String^>;
+        IPreviewBuilder^ CreatePreviewBuilder(ShaderText^ shaderText);
     };
+
+	class AttachPimpl;
+	public ref class LibraryAttachMarker
+	{
+	public:
+		LibraryAttachMarker(GUILayer::EngineDevice^ engineDevice);
+		~LibraryAttachMarker();
+		!LibraryAttachMarker();
+	private:
+		AttachPimpl* _pimpl;
+	};
 
 }
 

@@ -40,6 +40,17 @@ namespace RenderCore { namespace Metal_DX11
     BoundInputLayout::BoundInputLayout() {}
     BoundInputLayout::~BoundInputLayout() {}
 
+	BoundInputLayout::BoundInputLayout(BoundInputLayout&& moveFrom) never_throws
+	: _underlying(std::move(moveFrom._underlying))
+	{
+	}
+
+	BoundInputLayout& BoundInputLayout::operator=(BoundInputLayout&& moveFrom) never_throws
+	{
+		_underlying = std::move(moveFrom._underlying);
+		return *this;
+	}
+
     intrusive_ptr<ID3D::InputLayout>   BoundInputLayout::BuildInputLayout(const InputLayout& layout, const CompiledShaderByteCode& shader)
     {
         auto byteCode = shader.GetByteCode();
@@ -225,6 +236,21 @@ namespace RenderCore { namespace Metal_DX11
         _shaderResourceBindings = std::move(moveFrom._shaderResourceBindings);
         return *this;
     }
+
+	BoundUniforms::StageBinding::StageBinding(const StageBinding& copyFrom)
+	: _reflection(copyFrom._reflection)
+	, _shaderConstantBindings(copyFrom._shaderConstantBindings)
+	, _shaderResourceBindings(copyFrom._shaderResourceBindings)
+	{
+	}
+
+	BoundUniforms::StageBinding& BoundUniforms::StageBinding::operator=(const StageBinding& copyFrom)
+	{
+		_reflection = copyFrom._reflection;
+		_shaderConstantBindings = copyFrom._shaderConstantBindings;
+		_shaderResourceBindings = copyFrom._shaderResourceBindings;
+		return *this;
+	}
     
 
     bool BoundUniforms::BindConstantBuffer( uint64 hashName, unsigned slot, unsigned stream,
@@ -416,6 +442,20 @@ namespace RenderCore { namespace Metal_DX11
             result &= BindShaderResource(*c, unsigned(c-res.begin()), uniformsStream);
         return result;
     }
+
+	void BoundUniforms::CopyReflection(const BoundUniforms& copyFrom)
+	{
+		for (unsigned c=0; c<ShaderStage::Max; ++c) {
+			_stageBindings[c]._shaderConstantBindings.clear();
+			_stageBindings[c]._shaderResourceBindings.clear();
+			_stageBindings[c]._reflection = copyFrom._stageBindings[c]._reflection;
+		}
+	}
+
+	intrusive_ptr<ID3D::ShaderReflection> BoundUniforms::GetReflection(ShaderStage::Enum stage)
+	{
+		return _stageBindings[stage]._reflection;
+	}
 
     unsigned CalculateVertexStride(
         const InputElementDesc* start, const InputElementDesc* end,
@@ -863,6 +903,20 @@ namespace RenderCore { namespace Metal_DX11
         _classInstanceArray = std::move(moveFrom._classInstanceArray);
         return *this;
     }
+
+	BoundClassInterfaces::StageBinding::StageBinding(const StageBinding& copyFrom)
+	: _reflection(copyFrom._reflection)
+	, _linkage(copyFrom._linkage)
+	, _classInstanceArray(copyFrom._classInstanceArray)
+	{}
+
+	auto BoundClassInterfaces::StageBinding::operator=(const StageBinding& copyFrom) -> StageBinding&
+	{
+		_reflection = copyFrom._reflection;
+		_linkage = copyFrom._linkage;
+		_classInstanceArray = copyFrom._classInstanceArray;
+		return *this;
+	}
 
 }}
 

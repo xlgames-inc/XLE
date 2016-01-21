@@ -22,7 +22,7 @@
 #include <vector>
 
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
-namespace Assets { class DirectorySearchRules; class PendingCompileMarker; class DependencyValidation; }
+namespace Assets { class DirectorySearchRules; class ICompileMarker; class DependencyValidation; }
 
 namespace RenderCore { namespace Assets
 {
@@ -88,7 +88,7 @@ namespace RenderCore { namespace Assets
         static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
 
         ModelScaffold(const ::Assets::ResChar filename[]);
-        ModelScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+        ModelScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker);
         ModelScaffold(ModelScaffold&& moveFrom) never_throws;
         ModelScaffold& operator=(ModelScaffold&& moveFrom) never_throws;
         ~ModelScaffold();
@@ -254,7 +254,7 @@ namespace RenderCore { namespace Assets
         const ModelSupplementImmutableData& ImmutableData() const;
 
         ModelSupplementScaffold(const ::Assets::ResChar filename[]);
-        ModelSupplementScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+        ModelSupplementScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker);
         ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom) never_throws;
         ModelSupplementScaffold& operator=(ModelSupplementScaffold&& moveFrom) never_throws;
         ~ModelSupplementScaffold();
@@ -303,7 +303,7 @@ namespace RenderCore { namespace Assets
         static const auto CompileProcessType = ConstHash64<'Skel', 'eton'>::Value;
 
         SkeletonScaffold(const ::Assets::ResChar filename[]);
-        SkeletonScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+        SkeletonScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker);
         SkeletonScaffold(SkeletonScaffold&& moveFrom) never_throws;
         SkeletonScaffold& operator=(SkeletonScaffold&& moveFrom) never_throws;
         ~SkeletonScaffold();
@@ -328,7 +328,7 @@ namespace RenderCore { namespace Assets
         static const auto CompileProcessType = ConstHash64<'Anim', 'Set'>::Value;
 
         AnimationSetScaffold(const ::Assets::ResChar filename[]);
-        AnimationSetScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+        AnimationSetScaffold(std::shared_ptr<::Assets::ICompileMarker>&& marker);
         AnimationSetScaffold(AnimationSetScaffold&& moveFrom) never_throws;
         AnimationSetScaffold& operator=(AnimationSetScaffold&& moveFrom) never_throws;
         ~AnimationSetScaffold();

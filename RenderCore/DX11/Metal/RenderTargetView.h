@@ -14,19 +14,20 @@ namespace RenderCore { namespace Metal_DX11
 {
     class DeviceContext;
 
-    class ArraySlice
+    class SubResourceSlice
     {
     public:
         unsigned _arraySize;
         unsigned _firstArraySlice;
-        ArraySlice(unsigned arraySize=0, unsigned firstArraySlice=0) : _arraySize(arraySize), _firstArraySlice(firstArraySlice) {}
+        unsigned _mipMapIndex;
+        SubResourceSlice(unsigned arraySize=0, unsigned firstArraySlice=0, unsigned mipMapIndex=0) : _arraySize(arraySize), _firstArraySlice(firstArraySlice), _mipMapIndex(mipMapIndex) {}
     };
     
     class RenderTargetView
     {
     public:
         typedef ID3D::Resource*                 UnderlyingResource;
-        RenderTargetView(UnderlyingResource resource, NativeFormat::Enum format = NativeFormat::Unknown, const ArraySlice& arraySlice = ArraySlice());
+        RenderTargetView(UnderlyingResource resource, NativeFormat::Enum format = NativeFormat::Unknown, const SubResourceSlice& arraySlice = SubResourceSlice());
         RenderTargetView(ID3D::RenderTargetView* resource);
         RenderTargetView(MovePTRHelper<ID3D::RenderTargetView> resource);
         RenderTargetView(DeviceContext& context);
@@ -49,7 +50,7 @@ namespace RenderCore { namespace Metal_DX11
     {
     public:
         typedef ID3D::Resource*                 UnderlyingResource;
-        DepthStencilView(UnderlyingResource resource, NativeFormat::Enum format = NativeFormat::Unknown, const ArraySlice& arraySlice = ArraySlice());
+        DepthStencilView(UnderlyingResource resource, NativeFormat::Enum format = NativeFormat::Unknown, const SubResourceSlice& arraySlice = SubResourceSlice());
         DepthStencilView(ID3D::DepthStencilView* resource);
         DepthStencilView(MovePTRHelper<ID3D::DepthStencilView> resource);
         DepthStencilView(DeviceContext& context);

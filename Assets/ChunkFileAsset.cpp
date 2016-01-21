@@ -9,6 +9,7 @@
 #include "IntermediateAssets.h"
 #include "../Utility/StringFormat.h"
 #include "../Core/Exceptions.h"
+#include "../ConsoleRig/Log.h"
 
 namespace Assets
 {
@@ -18,25 +19,35 @@ namespace Assets
     {
         BasicFile file(filename, "rb");
         auto chunks = Serialization::ChunkFile::LoadChunkTable(file);
-
+        
         std::vector<AssetChunkResult> result;
         result.reserve(requests.size());
 
+            // First scan through and check to see if we
+            // have all of the chunks we need
         using ChunkHeader = Serialization::ChunkFile::ChunkHeader;
         for (const auto& r:requests) {
-            auto i = std::find_if(chunks.begin(), chunks.end(), 
+            auto i = std::find_if(
+                chunks.begin(), chunks.end(), 
                 [&r](const ChunkHeader& c) { return c._type == r._type; });
             if (i == chunks.end())
-                throw ::Assets::Exceptions::FormatError(
-                    StringMeld<128>() << "Missing chunk (" << r._name << ")", filename);
+                Throw(::Assets::Exceptions::FormatError(
+                    StringMeld<128>() << "Missing chunk (" << r._name << ")", filename));
 
-            if (i->_chunkVersion != r._expectedVersion) {
-                throw ::Assets::Exceptions::FormatError(
-                    StringMeld<256>() << 
-                        "Data chunk is incorrect version for chunk (" 
+            if (i->_chunkVersion != r._expectedVersion)
+                Throw(::Assets::Exceptions::FormatError(
+                    ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion,
+                    StringMeld<256>() 
+                        << "Data chunk is incorrect version for chunk (" 
                         << r._name << ") expected: " << r._expectedVersion << ", got: " << i->_chunkVersion, 
-                    filename);
-            }
+                        filename));
+        }
+
+        for (const auto& r:requests) {
+            auto i = std::find_if(
+                chunks.begin(), chunks.end(), 
+                [&r](const ChunkHeader& c) { return c._type == r._type; });
+            assert(i != chunks.end());
 
             AssetChunkResult chunkResult;
             chunkResult._offset = i->_fileOffset;
@@ -61,8 +72,10 @@ namespace Assets
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     ChunkFileAsset::ChunkFileAsset(const char assetTypeName[])
-    : _resolveFn(nullptr), _assetTypeName(assetTypeName)
-    {}
+    : _assetTypeName(assetTypeName)
+    {
+        _pendingResolveOp._fn = nullptr;
+    }
 
     void ChunkFileAsset::ExecuteResolve(
         ResolveFn* resolveFn, void* obj, 
@@ -82,45 +95,66 @@ namespace Assets
         }
     }
 
-    void ChunkFileAsset::Prepare(
-        const ResChar filename[], 
-        IteratorRange<const AssetChunkRequest*> requests, 
-        ResolveFn* resolveFn)
+    void ChunkFileAsset::Prepare(const ResChar filename[], const ResolveOp& op)
     {
-        assert(!_validationCallback && !_resolveFn);
+        assert(!_pendingCompile && !_pendingResolveOp._fn);
         _filename = filename;
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         RegisterFileDependency(_validationCallback, filename);
-        auto pendingResult = LoadRawData(filename, requests);
-        ExecuteResolve(resolveFn, this, MakeIteratorRange(pendingResult), filename, _assetTypeName);
+        auto pendingResult = LoadRawData(filename, op._requests);
+        ExecuteResolve(op._fn, this, MakeIteratorRange(pendingResult), filename, _assetTypeName);
     }
     
-    void ChunkFileAsset::Prepare(
-        std::shared_ptr<::Assets::PendingCompileMarker>&& marker,
-        IteratorRange<const AssetChunkRequest*> requests,
-        ResolveFn* resolveFn)
+    void ChunkFileAsset::Prepare(::Assets::ICompileMarker& marker, const ResolveOp& op)
     {
-        assert(!_validationCallback && !_resolveFn);
-        if (marker->GetState() == ::Assets::AssetState::Ready) {
-            _resolveFn = nullptr;
-            _filename = marker->_sourceID0;
-            _validationCallback = marker->_dependencyValidation;
-            auto pendingResult = LoadRawData(marker->_sourceID0, requests);
-            (*resolveFn)(this, MakeIteratorRange(pendingResult));
-        } else {
-            _marker = std::move(marker);
-            _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-            _requests = requests;
-            _resolveFn = resolveFn;
+        assert(!_pendingCompile && !_pendingResolveOp._fn);
+
+        // If we have an existing marker, we will try to load it here.
+        // If the load fails, we can either mark the asset as invalid; or
+        // we can invoke a recompile (which will happen asynchronously).
+        // We are accessing the disk here, so ideally Prepare should be called
+        // from a background thread.
+        auto existing = marker.GetExistingAsset();
+        if (existing._dependencyValidation && existing._dependencyValidation->GetValidationIndex() == 0) {
+            TRY
+            {
+                auto pendingResult = LoadRawData(existing._sourceID0, op._requests);
+                (*op._fn)(this, MakeIteratorRange(pendingResult));
+                _filename = existing._sourceID0;
+                _validationCallback = existing._dependencyValidation;
+                return;
+            }
+
+            // We should catch only some exceptions and force a recompile... This should happen on
+            // missing file, or if the file has a bad version number. If the load fails for other
+            // reasons, we just throw back the exception.
+            CATCH(const ::Assets::Exceptions::FormatError& e) 
+            {
+                if (e.GetReason() != ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion)
+                    throw;
+
+                LogWarning << "Asset (" << existing._sourceID0 << ") appears to be incorrect version. Attempting recompile.";
+            }
+            CATCH(const Utility::Exceptions::IOException& e)
+            {
+                if (e.GetReason() != Utility::Exceptions::IOException::Reason::FileNotFound)
+                    throw;
+
+                LogWarning << "Asset (" << existing._sourceID0 << ") is missing. Attempting compile.";
+            }
+            CATCH_END
         }
+
+        _pendingResolveOp = op;
+        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        _pendingCompile = marker.InvokeCompile();
     }
 
     ChunkFileAsset::ChunkFileAsset(ChunkFileAsset&& moveFrom) never_throws
     : _filename(std::move(moveFrom._filename))
-    , _requests(moveFrom._requests)
-    , _resolveFn(std::move(moveFrom._resolveFn))
-    , _marker(std::move(moveFrom._marker))
+    , _pendingResolveOp(moveFrom._pendingResolveOp)
+    , _pendingCompile(moveFrom._pendingCompile)
     , _validationCallback(std::move(moveFrom._validationCallback))
     , _assetTypeName(moveFrom._assetTypeName)
     {}
@@ -128,9 +162,8 @@ namespace Assets
     ChunkFileAsset& ChunkFileAsset::operator=(ChunkFileAsset&& moveFrom) never_throws
     {
         _filename = std::move(moveFrom._filename);
-        _requests = moveFrom._requests;
-        _resolveFn = std::move(moveFrom._resolveFn);
-        _marker = std::move(moveFrom._marker);
+        _pendingResolveOp = moveFrom._pendingResolveOp;
+        _pendingCompile = moveFrom._pendingCompile;
         _validationCallback = std::move(moveFrom._validationCallback);
         _assetTypeName = moveFrom._assetTypeName;
         return *this;
@@ -140,34 +173,34 @@ namespace Assets
 
     void ChunkFileAsset::Resolve() const
     {
-        if (_marker) {
-            if (_marker->GetState() == ::Assets::AssetState::Invalid) {
+        if (_pendingCompile) {
+            if (_pendingCompile->GetState() == ::Assets::AssetState::Invalid) {
                 Throw(::Assets::Exceptions::InvalidAsset(
-                    _marker->Initializer(), 
+                    _pendingCompile->Initializer(), 
                     StringMeld<256>() << "Pending compile failed in ChunkFileAsset (type: " << _assetTypeName << ")"));
-            } else if (_marker->GetState() == ::Assets::AssetState::Pending) {
+            } else if (_pendingCompile->GetState() == ::Assets::AssetState::Pending) {
                     // we need to throw immediately on pending resource
                     // this object is useless while it's pending.
                 Throw(::Assets::Exceptions::PendingAsset(
-                    _marker->Initializer(), 
+                    _pendingCompile->Initializer(), 
                     StringMeld<256>() << "Compile still pending (type:" << _assetTypeName << ")"));
             }
 
                 // hack --  Resolve needs to be called by const methods (like "GetStaticBoundingBox")
                 //          but Resolve() must change all the internal pointers... It's an awkward
                 //          case for const-correctness
-            const_cast<ChunkFileAsset*>(this)->CompleteFromMarker(*_marker);
-            _marker.reset();
+            const_cast<ChunkFileAsset*>(this)->CompleteFromMarker(*_pendingCompile);
+            _pendingCompile.reset();
         }
     }
 
     ::Assets::AssetState ChunkFileAsset::TryResolve() const
     {
-        if (_marker) {
-            auto markerState = _marker->GetState();
+        if (_pendingCompile) {
+            auto markerState = _pendingCompile->GetState();
             if (markerState != ::Assets::AssetState::Ready) return markerState;
-            const_cast<ChunkFileAsset*>(this)->CompleteFromMarker(*_marker);
-            _marker.reset();
+            const_cast<ChunkFileAsset*>(this)->CompleteFromMarker(*_pendingCompile);
+            _pendingCompile.reset();
         }
 
         return ::Assets::AssetState::Ready;
@@ -175,11 +208,11 @@ namespace Assets
 
     ::Assets::AssetState ChunkFileAsset::StallAndResolve() const
     {
-        if (_marker) {
-            auto markerState = _marker->StallWhilePending();
+        if (_pendingCompile) {
+            auto markerState = _pendingCompile->StallWhilePending();
             if (markerState != ::Assets::AssetState::Ready) return markerState;
-            const_cast<ChunkFileAsset*>(this)->CompleteFromMarker(*_marker);
-            _marker.reset();
+            const_cast<ChunkFileAsset*>(this)->CompleteFromMarker(*_pendingCompile);
+            _pendingCompile.reset();
         }
 
         return ::Assets::AssetState::Ready;
@@ -187,13 +220,17 @@ namespace Assets
 
     void ChunkFileAsset::CompleteFromMarker(::Assets::PendingCompileMarker& marker)
     {
-        _filename = marker._sourceID0;
-        if (!_validationCallback) _validationCallback = marker._dependencyValidation;
-        else ::Assets::RegisterAssetDependency(_validationCallback, marker._dependencyValidation);
+        auto locator = marker.GetLocator();
 
-        auto chunks = LoadRawData(marker._sourceID0, _requests);
-        ExecuteResolve(_resolveFn, this, MakeIteratorRange(chunks), _filename.c_str(), _assetTypeName);
-        _resolveFn = nullptr;
+        if (!_validationCallback) _validationCallback = locator._dependencyValidation;
+        else ::Assets::RegisterAssetDependency(_validationCallback, locator._dependencyValidation);
+        
+        _filename = locator._sourceID0;
+        auto chunks = LoadRawData(locator._sourceID0, _pendingResolveOp._requests);
+        if (_pendingResolveOp._fn) {
+            ExecuteResolve(_pendingResolveOp._fn, this, MakeIteratorRange(chunks), _filename.c_str(), _assetTypeName);
+            _pendingResolveOp._fn = nullptr;
+        }
     }
 
 }

@@ -8,6 +8,7 @@
 #include "NativeEngineDevice.h"
 #include "MarshalString.h"
 #include "WindowRigInternal.h"
+#include "DelayedDeleteQueue.h"
 #include "ExportedNativeTypes.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../PlatformRig/FrameRig.h"
@@ -19,6 +20,8 @@
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/AssetServices.h"
+#include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/SystemUtils.h"
@@ -121,22 +124,14 @@ namespace GUILayer
             // run approximately once per frame.
         assert(System::Threading::Thread::CurrentThread->ManagedThreadId == _pimpl->GetCreationThreadId());
         Assets::Services::GetAsyncMan().Update();
-    }
-    
-    EngineDevice::EngineDevice()
-    {
-        assert(s_instance == nullptr);
-        _pimpl.reset(new NativeEngineDevice);
-        RenderOverlays::InitFontSystem(_pimpl->GetRenderDevice(), _pimpl->GetBufferUploads());
-        s_instance = this;
+
+            // Some tools need buffer uploads to be updated from here
+        _pimpl->GetBufferUploads()->Update(*_pimpl->GetImmediateContext());
     }
 
-    EngineDevice::~EngineDevice()
-    {
-        assert(s_instance == this);
-        s_instance = nullptr;
-
-            // it's a good idea to force a GC collect here...
+	void EngineDevice::PrepareForShutdown()
+	{
+		    // it's a good idea to force a GC collect here...
             // it will help flush out managed references to native objects
             // before we go through the shutdown steps
         System::GC::Collect();
@@ -147,9 +142,32 @@ namespace GUILayer
         RenderOverlays::CleanupFontSystem();
         if (_pimpl->GetAssetServices())
             _pimpl->GetAssetServices()->GetAssetSets().Clear();
+	}
+    
+    EngineDevice::EngineDevice()
+    {
+        assert(s_instance == nullptr);
+        _pimpl = new NativeEngineDevice;
+        RenderOverlays::InitFontSystem(_pimpl->GetRenderDevice().get(), _pimpl->GetBufferUploads());
+        s_instance = this;
+    }
+
+    EngineDevice::~EngineDevice()
+    {
+        assert(s_instance == this);
+        s_instance = nullptr;
+
+		PrepareForShutdown();
         Assets::Dependencies_Shutdown();
-        _pimpl.reset();
+        delete _pimpl;
+        _pimpl = nullptr;
         TerminateFileSystemMonitoring();
+    }
+
+    EngineDevice::!EngineDevice() 
+    {
+        delete _pimpl;
+        _pimpl = nullptr;
     }
 }
 

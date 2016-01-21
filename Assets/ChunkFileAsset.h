@@ -14,6 +14,7 @@ namespace Assets
 {
     class PendingCompileMarker;
     class DependencyValidation;
+    class ICompileMarker;
 
     class AssetChunkRequest
     {
@@ -70,27 +71,31 @@ namespace Assets
         ChunkFileAsset& operator=(ChunkFileAsset&& moveFrom) never_throws;
         ~ChunkFileAsset();
 
+		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
+			ChunkFileAsset(const ChunkFileAsset&) = default;
+			ChunkFileAsset& operator=(const ChunkFileAsset&) = default;
+		#endif
+
     protected:
         using ResolveFn = void(void*, IteratorRange<AssetChunkResult*>);
 
+        class ResolveOp
+        {
+        public:
+            IteratorRange<const AssetChunkRequest*> _requests;
+            ResolveFn* _fn;
+        };
+
         ChunkFileAsset(const char assetTypeName[]);
-        void Prepare(
-            const ::Assets::ResChar filename[], 
-            IteratorRange<const AssetChunkRequest*> requests,
-            ResolveFn* resolveFn);
-        void Prepare(
-            std::shared_ptr<PendingCompileMarker>&& marker,
-            IteratorRange<const AssetChunkRequest*> requests,
-            ResolveFn* resolveFn);
+        void Prepare(const ::Assets::ResChar filename[], const ResolveOp& op);
+        void Prepare(::Assets::ICompileMarker& marker, const ResolveOp& op);
     private:
         rstring                                         _filename;
-        mutable std::shared_ptr<PendingCompileMarker>   _marker;
         std::shared_ptr<DependencyValidation>           _validationCallback;
-
-        IteratorRange<const AssetChunkRequest*>     _requests;
-        ResolveFn*                                  _resolveFn;
-
         const char* _assetTypeName;
+
+        mutable std::shared_ptr<PendingCompileMarker> _pendingCompile;
+        ResolveOp _pendingResolveOp;
 
         void CompleteFromMarker(::Assets::PendingCompileMarker& marker);
         static void ExecuteResolve(

@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include "../../RenderCore/IThreadContext_Forward.h"
 #include <memory>
@@ -25,7 +24,6 @@ namespace GUILayer
 	public:
         void Render();
         void OnPaint(PaintEventArgs^);
-        void OnResize(System::EventArgs^ e);
         bool IsInputKey(Keys keyData);
 
         IWindowRig& GetWindowRig();
@@ -43,13 +41,13 @@ namespace GUILayer
         void Evnt_MouseUp(Object^, MouseEventArgs^ e);
         void Evnt_MouseWheel(Object^, MouseEventArgs^ e);
         void Evnt_DoubleClick(Object^, MouseEventArgs^ e);
-        void Evnt_FocusChange(Object ^sender, System::EventArgs ^e);
+        void Evnt_FocusChange(Object^, System::EventArgs ^e);
+        void Evnt_Resize(Object^, System::EventArgs^ e);
 
         virtual void Render(RenderCore::IThreadContext&, IWindowRig&) = 0;
 
     private:
         clix::auto_ptr<EngineControlPimpl> _pimpl;
-        Control^ _control;
     };
 
     class EngineControlPimpl

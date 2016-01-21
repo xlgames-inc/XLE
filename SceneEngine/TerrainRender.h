@@ -117,16 +117,16 @@ namespace SceneEngine
             void EndTransactions(BufferUploads::IManager& bufferUploads);
 
             NodeCoverageInfo();
-            NodeCoverageInfo(NodeCoverageInfo&& moveFrom);
-            NodeCoverageInfo& operator=(NodeCoverageInfo&& moveFrom);
+            NodeCoverageInfo(NodeCoverageInfo&& moveFrom) never_throws;
+            NodeCoverageInfo& operator=(NodeCoverageInfo&& moveFrom) never_throws;
         };
 
         class CellRenderInfo
         {
         public:
             CellRenderInfo(const TerrainCell& cell, const TerrainCellTexture* const* cellCoverageBegin, const TerrainCellTexture* const* cellCoverageEnd);
-            CellRenderInfo(CellRenderInfo&& moveFrom);
-            CellRenderInfo& operator=(CellRenderInfo&& moveFrom) throw();
+            CellRenderInfo(CellRenderInfo&& moveFrom) never_throws;
+            CellRenderInfo& operator=(CellRenderInfo&& moveFrom) never_throws;
             ~CellRenderInfo();
 
             bool CompleteUpload(uint32 uploadId, BufferUploads::IManager& bufferUploads);
@@ -144,6 +144,14 @@ namespace SceneEngine
                 const TerrainCellTexture*       _source;
                 const void*                     _streamingFilePtr;
                 std::vector<NodeCoverageInfo>   _tiles;
+
+				CoverageLayer();
+				~CoverageLayer();
+				CoverageLayer(CoverageLayer&&) never_throws;
+				CoverageLayer& operator=(CoverageLayer&&) never_throws;
+
+				CoverageLayer(const CoverageLayer&) = delete;
+				CoverageLayer& operator=(const CoverageLayer&) = delete;
             };
             std::vector<CoverageLayer> _coverage;
 

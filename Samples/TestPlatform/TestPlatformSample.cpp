@@ -29,6 +29,7 @@
 #include "../../RenderOverlays/DebugHotKeys.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Tools/ToolsRig/BasicManipulators.h"
+#include "../../Assets/AssetServices.h"
 
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/Console.h"
