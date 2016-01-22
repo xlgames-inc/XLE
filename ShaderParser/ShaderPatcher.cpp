@@ -1447,13 +1447,20 @@ namespace ShaderPatcher
 					_previewOptions->_variableRestrictions.cbegin(), _previewOptions->_variableRestrictions.cend(), 
 					[&p](const std::pair<std::string, std::string>& v) { return XlEqStringI(v.first, p._name); });
 				if (r != _previewOptions->_variableRestrictions.cend()) {
-					static std::regex pattern("([^:]*):([^:]*):([^:]*)");
-					std::smatch match;
-					if (std::regex_match(r->second, match, pattern) && match.size() >= 4) {
-						return std::string("InterpolateVariable_") + match[1].str() + "(" + match[2].str() + ", " + match[3].str() + ", localPosition)";
-					} else {
-						return r->second;	// interpret as a constant
-					}
+                     if (XlBeginsWith(MakeStringSection(r->second), MakeStringSection("Function:"))) {
+                            // This is actually a function name. It would be great if we could chose to
+                            // run this function in the VS or PS, dependant on the parameters.
+                        _buildSystemFunctions[index] = r->second.substr(9);
+                        return std::string();
+                    } else {
+					    static std::regex pattern("([^:]*):([^:]*):([^:]*)");
+					    std::smatch match;
+					    if (std::regex_match(r->second, match, pattern) && match.size() >= 4) {
+						    return std::string("InterpolateVariable_") + match[1].str() + "(" + match[2].str() + ", " + match[3].str() + ", localPosition)";
+					    } else {
+						    return r->second;	// interpret as a constant
+					    }
+                     }
 				} else {
 					// attempt to set values 
 					int dimensionality = GetDimensionality(p._type);

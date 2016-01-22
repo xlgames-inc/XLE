@@ -209,7 +209,7 @@ namespace ControlsLibrary
 
     internal class RestrictionSettings
     {
-        public enum AxisType { AutoAxis, XAxis, YAxis, Constant };
+        public enum AxisType { AutoAxis, XAxis, YAxis, Constant, Function };
         public AxisType Axis;
         public string LeftValue;
         public string RightValue;
@@ -219,10 +219,19 @@ namespace ControlsLibrary
             get
             {
                 if (Axis == AxisType.Constant) return LeftValue;
+                if (Axis == AxisType.Function) return "Function:" + LeftValue;
                 return Axis.ToString() + ":" + LeftValue + ":" + RightValue;
             }
             set
             {
+                if (value.StartsWith("Function:"))
+                {
+                    Axis = AxisType.Function;
+                    RightValue = String.Empty;
+                    LeftValue = value.Substring(9);
+                    return;
+                }
+
                 var regex = new System.Text.RegularExpressions.Regex("([^:]*):([^:]*):([^:]*)");
                 var m = regex.Match(value);
                 if (m.Success)
@@ -329,7 +338,7 @@ namespace ControlsLibrary
                     => { Value.Axis = (RestrictionSettings.AxisType)(((ComboBox)sender).SelectedIndex); OnValueChanged(e); BuildChildControls(); };
             Controls.Add(type);
 
-            if (Value.Axis == RestrictionSettings.AxisType.Constant)
+            if (Value.Axis == RestrictionSettings.AxisType.Constant || Value.Axis == RestrictionSettings.AxisType.Function)
             {
                 var consts = new TextBox();
                 consts.Location = new Point(Width / 3, 0);
