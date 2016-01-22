@@ -40,15 +40,12 @@ namespace NodeEditorCore
             var refreshToolStripMenuItem = new ToolStripMenuItem() { Text = "Refresh" };
             refreshToolStripMenuItem.Click += new EventHandler(this.refreshToolStripMenuItem_Click);
 
-            var largePreviewToolStripMenuItem = new ToolStripMenuItem() { Text = "Large Preview" };
-            largePreviewToolStripMenuItem.Click += new EventHandler(this.largePreviewToolStripMenuItem_Click);
-
             var setArchiveName = new ToolStripMenuItem() { Text = "Set Archive Name" };
             setArchiveName.Click += SetArchiveName_Click;
 
             return new ContextMenuStrip(this._components)
                 {
-                    Items = { showPreviewShaderItem, refreshToolStripMenuItem, largePreviewToolStripMenuItem, setArchiveName }
+                    Items = { showPreviewShaderItem, refreshToolStripMenuItem, setArchiveName }
                 };
         }
 
@@ -66,69 +63,25 @@ namespace NodeEditorCore
             };
         }
 
-        private void OnConnectorDoubleClick(object sender, HyperGraph.GraphControl.NodeConnectorEventArgs e)
+        private string GetSimpleConnection(NodeConnector connector)
         {
-            var inputParam = e.Connector.Item as ShaderFragmentInterfaceParameterItem;
-            if (inputParam != null)
-            {
-                using (var fm = new InterfaceParameterForm() { Name = inputParam.Name, Type = inputParam.Type, Semantic = inputParam.Semantic, Default = inputParam.Default })
-                {
-                    var result = fm.ShowDialog();
-                    if (result == DialogResult.OK)
-                    {
-                        inputParam.Name = fm.Name;
-                        inputParam.Type = fm.Type;
-                        inputParam.Semantic = fm.Semantic;
-                        inputParam.Default = fm.Default;
-                        GetGraphModel().InvokeMiscChange(true);
-                    }
-                    else if (result == DialogResult.No)
-                    {
-                        // we must disconnect before removing the item...
-                        if (inputParam.Output != null)
-                        {
-                            for (; ; )
-                            {
-                                var c = inputParam.Output.Connectors.FirstOrDefault();
-                                if (c == null) break;
-                                GetGraphModel().Disconnect(c);
-                            }
-                        }
-                        if (inputParam.Input != null)
-                        {
-                            for (; ; )
-                            {
-                                var c = inputParam.Input.Connectors.FirstOrDefault();
-                                if (c == null) break;
-                                GetGraphModel().Disconnect(c);
-                            }
-                        }
-                        inputParam.Node.RemoveItem(inputParam);
-                        GetGraphModel().InvokeMiscChange(true);
-                    }
-                }
-                return;
-            }
+            //  look for an existing simple connection attached to this connector
+            return connector.Node.Connections.Where(x => x.To == connector && x.From == null).Select(x => x.Name).FirstOrDefault();
+        }
 
-            // For input connectors, we can try to add a constant connection
-            if (e.Connector == e.Connector.Item.Input)
+        private void EditSimpleConnection(NodeConnector connector)
+        {
+            using (var dialog = new HyperGraph.TextEditForm())
             {
-                var dialog = new HyperGraph.TextEditForm();
-                dialog.InputText = "1.0f";
-
-                //  look for an existing simple connection attached to this connector
-                foreach (var i in e.Node.Connections)
-                {
-                    if (i.To == e.Connector && i.From == null)
-                        dialog.InputText = i.Name;
-                }
+                var existing = GetSimpleConnection(connector);
+                dialog.InputText = (!string.IsNullOrEmpty(existing)) ? existing : "1.0f";
 
                 var result = dialog.ShowDialog();
                 if (result == DialogResult.OK)
                 {
                     bool foundExisting = false;
-                    foreach (var i in e.Node.Connections)
-                        if (i.To == e.Connector && i.From == null)
+                    foreach (var i in connector.Node.Connections)
+                        if (i.To == connector && i.From == null)
                         {
                             // empty dialog text means we want to disconnect any existing connections
                             if (dialog.InputText.Length > 0)
@@ -144,10 +97,74 @@ namespace NodeEditorCore
                         }
 
                     if (!foundExisting && dialog.InputText.Length > 0)
-                        GetGraphModel().Connect(null, e.Connector, dialog.InputText);
+                        GetGraphModel().Connect(null, connector, dialog.InputText);
 
                     GetGraphModel().InvokeMiscChange(true);
                 }
+            }
+        }
+
+        private void DisconnectAll(NodeConnector connector)
+        {
+            var connectionsDupe = connector.Node.Connections.ToArray();
+            foreach (var i in connectionsDupe)
+                if (i.To == connector || i.From == connector)
+                    GetGraphModel().Disconnect(i);
+        }
+
+        private void EditInterfaceParameter(ShaderFragmentInterfaceParameterItem interfItem)
+        {
+            using (var fm = new InterfaceParameterForm() { Name = interfItem.Name, Type = interfItem.Type, Semantic = interfItem.Semantic, Default = interfItem.Default })
+            {
+                var result = fm.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    interfItem.Name = fm.Name;
+                    interfItem.Type = fm.Type;
+                    interfItem.Semantic = fm.Semantic;
+                    interfItem.Default = fm.Default;
+                    GetGraphModel().InvokeMiscChange(true);
+                }
+                else if (result == DialogResult.No)
+                {
+                    // we must disconnect before removing the item...
+                    if (interfItem.Output != null)
+                    {
+                        for (; ; )
+                        {
+                            var c = interfItem.Output.Connectors.FirstOrDefault();
+                            if (c == null) break;
+                            GetGraphModel().Disconnect(c);
+                        }
+                    }
+                    if (interfItem.Input != null)
+                    {
+                        for (; ; )
+                        {
+                            var c = interfItem.Input.Connectors.FirstOrDefault();
+                            if (c == null) break;
+                            GetGraphModel().Disconnect(c);
+                        }
+                    }
+                    interfItem.Node.RemoveItem(interfItem);
+                    GetGraphModel().InvokeMiscChange(true);
+                }
+            }
+        }
+
+        private void OnConnectorDoubleClick(object sender, HyperGraph.GraphControl.NodeConnectorEventArgs e)
+        {
+            var interfItem = e.Connector.Item as ShaderFragmentInterfaceParameterItem;
+            if (interfItem != null)
+            {
+                EditInterfaceParameter(interfItem);
+                return;
+            }
+
+            // For input connectors, we can try to add a constant connection
+            if (e.Connector == e.Connector.Item.Input)
+            {
+                EditSimpleConnection(e.Connector);
             }
         }
         
@@ -185,15 +202,54 @@ namespace NodeEditorCore
             //         e.Cancel = false;
             //     }
             // }
-            // else if (e.Element is NodeConnector && ((NodeConnector)e.Element).Item is ShaderFragmentNodeItem)
-            // {
-            //     var tag = (ShaderFragmentNodeItem)((NodeConnector)e.Element).Item;
-            //     if (tag.ArchiveName != null)
-            //     {
-            //         ShaderParameterUtil.EditParameter(GetGraphModel(), tag.ArchiveName);
-            //         e.Cancel = false;
-            //     }
-            // }
+            else if (e.Element is NodeConnector && ((NodeConnector)e.Element).Item is ShaderFragmentNodeItem)
+            {
+                NodeConnector conn = (NodeConnector)e.Element;
+                var tag = (ShaderFragmentNodeItem)conn.Item;
+                if (tag.ArchiveName != null)
+                {
+                    // pop up a context menu for this connector
+                    var menu = new ContextMenuStrip();
+
+                    var param = conn.Item as ShaderFragmentInterfaceParameterItem;
+                    if (param != null)
+                    {
+                        var editItem = new ToolStripMenuItem() { Text = "Edit parameter" };
+                        editItem.Click += (object o, EventArgs a) => { EditInterfaceParameter(param); };
+                        menu.Items.Add(editItem);
+                    }
+
+                    if (conn == conn.Item.Input)
+                    {
+                        var existing = GetSimpleConnection(conn);
+                        if (!string.IsNullOrEmpty(existing))
+                        {
+                            var editItem = new ToolStripMenuItem() { Text = "Edit simple connection" };
+                            editItem.Click += (object o, EventArgs a) => { EditSimpleConnection(conn); };
+                            menu.Items.Add(editItem);
+                        }
+                        else
+                        {
+                            var addItem = new ToolStripMenuItem() { Text = "Add simple connection" };
+                            addItem.Click += (object o, EventArgs a) => { EditSimpleConnection(conn); };
+                            menu.Items.Add(addItem);
+                        }
+                    }
+
+                    if (conn.Node.Connections.Where(x=>x.To==conn||x.From==conn).Any())
+                    {
+                        var removeItem = new ToolStripMenuItem() { Text = "Disconnect" };
+                        removeItem.Click += (object o, EventArgs a) => { DisconnectAll(conn); };
+                        menu.Items.Add(removeItem);
+                    }
+
+                    if (menu.Items.Count > 0)
+                    {
+                        menu.Show(e.Position);
+                        e.Cancel = false;
+                    }
+                }
+            }
             else
             {
                 // if you don't want to show a menu for this item (but perhaps show a menu for something more higher up) 
@@ -244,22 +300,6 @@ namespace NodeEditorCore
         {
             var p = GetPreviewItem(sender);
             if (p!=null) p.InvalidateShaderStructure();
-        }
-        private void largePreviewToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            var n = GetNode(AttachedId(sender));
-            if (n != null)
-            {
-                var nodeId = ((ShaderFragmentNodeTag)n.Tag).Id;
-
-                // generate a preview builder for this specific node...
-                // var nodeGraph = ConvertToShaderPatcherLayer();
-                // var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(nodeGraph, nodeId, "");
-                // var builder = PreviewRender.Manager.Instance.CreatePreview(shader);
-
-                // create a "LargePreview" window
-                // new LargePreview(builder, _document).Show();
-            }
         }
         private void addParameterToolStripMenuItem_Click(object sender, EventArgs e)
         {
