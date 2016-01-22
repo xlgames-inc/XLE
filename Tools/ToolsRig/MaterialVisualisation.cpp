@@ -101,19 +101,19 @@ namespace ToolsRig
                 auto shaderProgram = _object->_materialBinder->Apply(
                     metalContext, parserContext, techniqueIndex,
                     _object->_parameters, _object->_systemConstants, 
-                    _object->_searchRules, Vertex2D_InputLayout);
+                    _object->_searchRules, Vertex3D_InputLayout);
                 if (!shaderProgram) return;
 
-                const Internal::Vertex2D    vertices[] = 
+                const Internal::Vertex3D    vertices[] = 
                 {
-                    { Float2(-1.f, -1.f),  Float2(0.f, 0.f) },
-                    { Float2( 1.f, -1.f),  Float2(1.f, 0.f) },
-                    { Float2(-1.f,  1.f),  Float2(0.f, 1.f) },
-                    { Float2( 1.f,  1.f),  Float2(1.f, 1.f) }
+                    { Float3(-1.f, -1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(0.f, 1.f), Float4(1.f, 0.f, 0.f, 1.f) },
+                    { Float3( 1.f, -1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(1.f, 1.f), Float4(1.f, 0.f, 0.f, 1.f) },
+                    { Float3(-1.f,  1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(0.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) },
+                    { Float3( 1.f,  1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(1.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) }
                 };
 
                 Metal::VertexBuffer vertexBuffer(vertices, sizeof(vertices));
-                metalContext.Bind(MakeResourceList(vertexBuffer), sizeof(Internal::Vertex2D), 0);
+                metalContext.Bind(MakeResourceList(vertexBuffer), sizeof(Internal::Vertex3D), 0);
                 metalContext.Bind(Metal::Topology::TriangleStrip);
                 metalContext.Draw(dimof(vertices));
 

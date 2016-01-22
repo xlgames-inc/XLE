@@ -259,7 +259,7 @@ namespace ShaderPatcherLayer
 
             MaterialVisSettings visSettings;
             visSettings._camera = std::make_shared<VisCameraSettings>();
-            visSettings._camera->_position = Float3(-5, 0, 0);
+            visSettings._camera->_position = Float3(-4, 0, 0);  // note that the position of the camera affects the apparent color of normals when previewing world space normals
 
             // Select the geometry type to use.
             // In the "chart" mode, we are just going to run a pixel shader for every
