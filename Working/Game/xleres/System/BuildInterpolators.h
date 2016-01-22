@@ -178,4 +178,12 @@ float2 InterpolateVariable_YAxis(float2 lhs, float2 rhs, float2 a) { return lerp
 float3 InterpolateVariable_YAxis(float3 lhs, float3 rhs, float2 a) { return lerp(lhs, rhs, NormInterp(a).y); }
 float4 InterpolateVariable_YAxis(float4 lhs, float4 rhs, float2 a) { return lerp(lhs, rhs, NormInterp(a).y); }
 
+float3 BuildNormal(VSOutput geo, SystemInputs sys) { return -GetNormal(geo); }
+float3 BuildRefractionIncident(VSOutput geo, SystemInputs sys) { return normalize(float3(1.0f, 0.33f, 0.0f)); }
+float3 BuildRefractionOutgoing(VSOutput geo, SystemInputs sys)
+{
+	float3 worldSpacePosition = GetNormal(geo);
+	return normalize(WorldSpaceView.xyz - worldSpacePosition);
+}
+
 #endif

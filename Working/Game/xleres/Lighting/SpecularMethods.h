@@ -139,13 +139,23 @@ float3 ReferenceSpecularGGX(
     // F is fresnel
     // G is the shadowing factor (geometric attenuation)
 
-    float NdotL = dot(normal, negativeLightDirection);
-    float NdotV = dot(normal, directionToEye);
-    float NdotH = dot(normal, halfVector);
-    if (NdotL <= 0 || NdotV <= 0) return 0.0.xxx;
+     float NdotL = dot(normal, negativeLightDirection);
+     float NdotV = dot(normal, directionToEye);
+
+     // The following the the approach used by Walter, et al, in the GGX
+     // paper for dealing with surfaces that are pointed away from the light.
+     // This is important for surfaces that can transmit light (eg, the glass
+     // Walter used for his demonstrations, or leaves)
+     halfVector *= sign(NdotL);
+     NdotL = abs(NdotL);
+     NdotV = abs(NdotV);
+
+     float NdotH = dot(normal, halfVector);
+     NdotH = abs(NdotH);
+    // if (NdotL <= 0 || NdotV <= 0) return 0.0.xxx;
     // NdotL = saturate(NdotL);
     // NdotV = saturate(NdotV);
-    NdotH = saturate(NdotH);
+    // NdotH = saturate(NdotH);
 
     /////////// Shadowing factor ///////////
         // As per the Disney model, rescaling roughness to
@@ -156,9 +166,9 @@ float3 ReferenceSpecularGGX(
     /////////// Fresnel ///////////
     float3 F;
     if (!mirrorSurface) {
-        F = SchlickFresnelF0(directionToEye, halfVector, F0);
+        F = SchlickFresnelF0(negativeLightDirection, halfVector, F0);
     } else {
-        F = SchlickFresnelF0(directionToEye, normal, F0);
+        F = SchlickFresnelF0(negativeLightDirection, normal, F0);
     }
 
     /////////// Microfacet ///////////

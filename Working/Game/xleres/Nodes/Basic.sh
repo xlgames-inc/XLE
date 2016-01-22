@@ -30,6 +30,9 @@ float Saturate1(float input)                { return saturate(input); }
 float Lerp1(float min, float max, float alpha) { return lerp(min, max, alpha); }
 float Max1(float lhs, float rhs)            { return max(lhs, rhs); }
 float AddMany1(float first, float second, float third, float forth) { return first + second + third + forth; }
+float MultiplyMany1(float first, float second, float third, float forth) { return first * second * third * forth; }
+float Abs1(float value) { return abs(value); }
+float Square1(float value) { return value * value; }
 
 float3 Add3(float3 lhs, float3 rhs)            { return lhs + rhs; }
 float3 Subtract3(float3 lhs, float3 rhs)       { return lhs - rhs; }
@@ -64,6 +67,9 @@ float Tangent1(float x) { return tan(x); }
 float3 Mix3(float3 lhs, float3 rhs, float factor) { return lerp(lhs, rhs, factor); }
 float Mix1(float lhs, float rhs, float factor) { return lerp(lhs, rhs, factor); }
 
+float Dot3(float3 lhs, float3 rhs) { return dot(lhs, rhs); }
+
+float3 PassThrough3(float3 input) { return input; }
 float4 PassThrough(float4 input) { return input; }
 
 float Remap1(float input, float2 inputRange, float2 outputRange)
