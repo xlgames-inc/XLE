@@ -17,7 +17,7 @@ namespace GUILayer
 		~TestControl();
 
     protected:
-        virtual void Render(RenderCore::IThreadContext& threadContext, IWindowRig& windowRig) override;
+        virtual bool Render(RenderCore::IThreadContext& threadContext, IWindowRig& windowRig) override;
 	};
 }
 

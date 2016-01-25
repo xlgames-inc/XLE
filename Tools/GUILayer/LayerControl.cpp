@@ -74,7 +74,7 @@ namespace GUILayer
         return PlatformRig::FrameRig::RenderResult(hasPendingResources);
     }
 
-    void LayerControl::Render(RenderCore::IThreadContext& threadContext, IWindowRig& windowRig)
+    bool LayerControl::Render(RenderCore::IThreadContext& threadContext, IWindowRig& windowRig)
     {
             // Rare cases can recursively start rendering
             // (for example, if we attempt to call a Windows GUI function while in the middle of
@@ -82,29 +82,35 @@ namespace GUILayer
             // Re-entering rendering recursively can cause some bad problems, however
             //  -- so we need to prevent it.
         if (_pimpl->_activePaint)
-            return;
+            return false;
 
             // Check for cases where a paint operation can be begun on one window
             // while another window is in the middle of rendering.
         static bool activePaintCheck2 = false;
-        if (activePaintCheck2) return;
+        if (activePaintCheck2) return false;
 
         _pimpl->_activePaint = true;
         activePaintCheck2 = true;
         
+        bool result = true;
         TRY
         {
             auto& frameRig = windowRig.GetFrameRig();
-            frameRig.ExecuteFrame(
+            auto frResult = frameRig.ExecuteFrame(
                 threadContext, windowRig.GetPresentationChain().get(), 
                 nullptr, nullptr,
                 std::bind(
                     RenderFrame, std::placeholders::_1,
                     std::ref(*_pimpl), frameRig.GetMainOverlaySystem().get()));
+
+            // return false if when we have pending resources (encourage another redraw)
+            result =  !frResult._renderResult._hasPendingResources;
         } CATCH (...) {
         } CATCH_END
         activePaintCheck2 = false;
         _pimpl->_activePaint = false;
+
+        return result;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -50,7 +50,7 @@ namespace ControlsLibrary
 
         protected override void OnPaint(PaintEventArgs pe)
         {
-            if (layerControl != null) layerControl.OnPaint(pe);
+            if (layerControl != null) layerControl.OnPaint(this, pe);
         }
 
         protected override bool IsInputKey(Keys keyData)

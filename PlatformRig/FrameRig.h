@@ -21,17 +21,18 @@ namespace PlatformRig
     class FrameRig
     {
     public:
-        class FrameResult
-        {
-        public:
-            float _elapsedTime;
-        };
-
         class RenderResult
         {
         public:
             bool _hasPendingResources;
-            RenderResult(bool hasPendingResources) : _hasPendingResources(hasPendingResources) {}
+            RenderResult(bool hasPendingResources = false) : _hasPendingResources(hasPendingResources) {}
+        };
+
+        class FrameResult
+        {
+        public:
+            float _elapsedTime;
+            RenderResult _renderResult;
         };
 
         typedef std::function<RenderResult(RenderCore::IThreadContext&)>

@@ -73,7 +73,7 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void TestControl::Render(
+    bool TestControl::Render(
         RenderCore::IThreadContext& threadContext, 
         IWindowRig& windowRig)
     {
@@ -81,6 +81,7 @@ namespace GUILayer
         frameRig.ExecuteFrame(
             threadContext, windowRig.GetPresentationChain().get(),
             nullptr, nullptr, DummyRenderFrame);
+        return true;
     }
 
     TestControl::TestControl(Control^ control) : EngineControl(control) {}

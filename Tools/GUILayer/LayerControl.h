@@ -43,7 +43,7 @@ namespace GUILayer
         clix::auto_ptr<LayerControlPimpl> _pimpl;
         TechniqueContextWrapper^ _techContextWrapper;
 
-        virtual void Render(RenderCore::IThreadContext&, IWindowRig&) override;
+        virtual bool Render(RenderCore::IThreadContext&, IWindowRig&) override;
     };
 
     class LayerControlPimpl 

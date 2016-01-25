@@ -22,8 +22,8 @@ namespace GUILayer
 	public ref class EngineControl abstract
 	{
 	public:
-        void Render();
-        void OnPaint(PaintEventArgs^);
+        bool Render();
+        void OnPaint(Control^ ctrl, PaintEventArgs^);
         bool IsInputKey(Keys keyData);
 
         IWindowRig& GetWindowRig();
@@ -44,7 +44,7 @@ namespace GUILayer
         void Evnt_FocusChange(Object^, System::EventArgs ^e);
         void Evnt_Resize(Object^, System::EventArgs^ e);
 
-        virtual void Render(RenderCore::IThreadContext&, IWindowRig&) = 0;
+        virtual bool Render(RenderCore::IThreadContext&, IWindowRig&) = 0;
 
     private:
         clix::auto_ptr<EngineControlPimpl> _pimpl;

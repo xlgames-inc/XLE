@@ -260,6 +260,7 @@ namespace PlatformRig
 
         FrameResult result;
         result._elapsedTime = frameElapsedTime;
+        result._renderResult = renderRes;
         return result;
     }
 

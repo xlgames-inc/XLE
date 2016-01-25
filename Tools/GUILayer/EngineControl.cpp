@@ -24,25 +24,27 @@ namespace GUILayer
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void EngineControl::OnPaint(PaintEventArgs^ pe)
+    void EngineControl::OnPaint(Control^ ctrl, PaintEventArgs^ pe)
     {
         // Note -- we're suppressing base class paint events to
         // try to avoid flicker. See:
         //    https://msdn.microsoft.com/en-us/library/1e430ef4(v=vs.85).aspx
         // __super::OnPaint(pe);
 
-        Render();
+        if (!Render())
+            ctrl->Invalidate();
     }
 
-    void EngineControl::Render()
+    bool EngineControl::Render()
     {
         auto engineDevice = EngineDevice::GetInstance();
         auto* renderDevice = engineDevice->GetNative().GetRenderDevice().get();
         auto immediateContext = renderDevice->GetImmediateContext();
-        Render(*immediateContext.get(), *_pimpl->_windowRig.get());
+        bool result = Render(*immediateContext.get(), *_pimpl->_windowRig.get());
 
             // perform our delayed deletes now (in the main thread)
         DelayedDeleteQueue::FlushQueue();
+        return result;
     }
 
     void EngineControl::Evnt_Resize(Object^ sender, System::EventArgs^ e)
