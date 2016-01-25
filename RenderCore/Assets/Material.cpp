@@ -434,12 +434,14 @@ namespace RenderCore { namespace Assets
         dest._constants.MergeIn(_constants);
         dest._bindings.MergeIn(_resourceBindings);
 
-        // Shader names in "ResolvedMaterial" are kept very short. We
-        // want the material object to be fairly light-weight. 
-        if (_techniqueConfig.size() > (dimof(dest._techniqueConfig)-1))
-            Throw(::Exceptions::BasicLabel("Shader name is too long during resolve"));
+        if (!_techniqueConfig.empty()) {
+            // Shader names in "ResolvedMaterial" are kept very short. We
+            // want the material object to be fairly light-weight. 
+            if (_techniqueConfig.size() > (dimof(dest._techniqueConfig)-1))
+                Throw(::Exceptions::BasicLabel("Shader name is too long during resolve"));
 
-        XlCopyString(dest._techniqueConfig, _techniqueConfig);
+            XlCopyString(dest._techniqueConfig, _techniqueConfig);
+        }
     }
 
     auto RawMaterial::ResolveInherited(
