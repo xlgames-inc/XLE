@@ -256,7 +256,7 @@ SpecularParameters SpecularParameters_RoughF0Transmission(float roughness, float
     return result;
 }
 
-#include "Testing/WalterTrans.sh"
+#include "Diagrams/GGXTransmission.sh"
 
 float3 CalculateSpecular(
     float3 normal, float3 directionToEye,
@@ -301,7 +301,7 @@ float3 CalculateSpecular(
                 //  Anyway, 1.33 is ior for water -- which is fairly significant refraction.
             const float iorIncident = 1.f;
             const float iorOutgoing = SpecularTransmissionIndexOfRefraction; // 1.33f;
-            WalterTrans(
+            GGXTransmission(
                 parameters.roughness, parameters.F0.g, iorIncident, iorOutgoing,
                 negativeLightDirection, directionToEye, -normal,        // (note flipping normal)
                 transmitted);

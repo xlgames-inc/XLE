@@ -6,7 +6,7 @@
 #include "game/xleres/Lighting/LightingAlgorithm.h"
 
 
-void WalterTrans(float roughness, float F0, float iorIncident, float iorOutgoing, float3 i, float3 o, float3 n, out float result : SV_Target0)
+void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutgoing, float3 i, float3 o, float3 n, out float result : SV_Target0)
 {
 	float Output_32_result;
 	Output_32_result = RoughnessToDAlpha( roughness );
@@ -104,7 +104,7 @@ void WalterTrans(float roughness, float F0, float iorIncident, float iorOutgoing
 	result = Output_26_result;
 
 }
-/* <<Chunk:NodeGraph:WalterTrans>>--(
+/* <<Chunk:NodeGraph:GGXTransmission>>--(
 <?xml version="1.0" encoding="utf-8"?>
 <NodeGraph xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
 	<ConstantConnections>
@@ -1179,7 +1179,7 @@ void WalterTrans(float roughness, float F0, float iorIncident, float iorOutgoing
 	</VisualNodes>
 </NodeGraph>
 )-- */
-/* <<Chunk:NodeGraphContext:WalterTrans>>--(
+/* <<Chunk:NodeGraphContext:GGXTransmission>>--(
 <?xml version="1.0" encoding="utf-8"?>
 <NodeGraphContext xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
 	<HasTechniqueConfig>false</HasTechniqueConfig>
