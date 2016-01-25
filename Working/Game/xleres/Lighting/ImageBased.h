@@ -151,6 +151,89 @@ float3 SampleSpecularIBL_Ref(float3 normal, float3 viewDirection, SpecularParame
     return result / float(sampleCount);
 }
 
+float3 SampleTransmittedSpecularIBL_Ref(
+    float3 normal, float3 viewDirection,
+    SpecularParameters specParam, TextureCube tex)
+{
+        // hack -- currently problems when roughness is 0!
+    if (specParam.roughness == 0.f) return 0.0.xxx;
+
+    // return tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(-viewDirection), 0).rgb;
+
+        // This is a reference implementation of transmitted IBL specular.
+        // We're going to follow the same method and microfacet distribution as
+        // SampleSpecularIBL_Ref
+    float alphad = RoughnessToDAlpha(specParam.roughness);
+    float3 result = 0.0.xxx;
+    const uint sampleCount = 32;
+    for (uint s=0; s<sampleCount; ++s) {
+        // using the same distribution of half-vectors that we use for reflection
+        // (except we flip the normal because of the way the equation is built)
+        precise float3 H = BuildSampleHalfVectorGGX(s, sampleCount, -normal, alphad);
+
+        // following Walter07 here, we need to build "i", the incoming direction.
+        // Actually Walter builds the outgoing direction -- but we need to reverse the
+        // equation and get the incoming direction.
+        float iorIncident = 1.f;
+        float iorOutgoing = SpecularTransmissionIndexOfRefraction;
+
+        // H = -(1/l)(iorIncident * i + iorOutgoing * o);
+        //  where l is length of (iorIncident * i + iorOutgoing * o)
+        // -H * l = iorIncident * i + iorOutgoing * o
+        // -H * l - iorOutgoing * o = iorIncident * i
+        // i = -H * l / iorIncident - iorOutgoing / iorIncident * o
+        float3 ot = viewDirection;
+        float c = dot(ot, -H);
+        float b = iorOutgoing * c;
+        if (c < 0.f || c >= 1.f) continue; // return float3(0,1,0);
+
+        // float a = sqrt(iorOutgoing*iorOutgoing - b*b);
+        // float a = sqrt(iorOutgoing*iorOutgoing - iorOutgoing*iorOutgoing*c*c);
+        // float a = iorOutgoing * sqrt(1.f - c*c);
+        float asq = iorOutgoing*iorOutgoing*(1.f - c*c);
+        if (asq >= iorIncident*iorIncident) continue; // return float3(0,1,0);
+        // float e = sqrt(iorIncident*iorIncident - asq);
+        // float e = sqrt(iorIncident*iorIncident - iorOutgoing*iorOutgoing*(1.f - c*c));
+        float etaSq = (iorOutgoing*iorOutgoing) / (iorIncident*iorIncident);
+        // float e = sqrt(iorIncident*iorIncident*(1.f - etaSq*(1.f - c*c)));
+        float e = iorIncident*sqrt(1.f - etaSq + etaSq*c*c);
+        float l = b + e;
+
+        float3 i = -H * l / iorIncident - iorOutgoing / iorIncident * ot;
+        if (isinf(i.x) || isnan(i.x)) return float3(1,0,0);
+        if (abs(length(i) - 1.f) > 0.01f) return float3(1,0,0);
+
+        float3 H2 = CalculateHt(i, ot, iorIncident, iorOutgoing);
+        if (length(H2 - H) > 0.01f) return float3(1,0,0);
+
+        // if (dot(i, H) < 0.f) return float3(0,0,1);
+        // if (dot(ot, H2) > 0.f) return float3(0,0,1);
+
+        // i = -i;
+
+        // ok, we've got our incoming vector
+        float3 lightColor = tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(i), 0).rgb;
+        result += lightColor;
+        continue;
+        precise float3 brdf = CalculateSpecular(normal, viewDirection, i, H, specParam); // (also contains NdotL term)
+
+            // Unreal course notes say the probability distribution function is
+            //      D * NdotH / (4 * VdotH)
+            // We need to apply the inverse of this to weight the sample correctly.
+            // A better solution is to factor the terms out of the microfacet specular
+            // equation. But since this is for a reference implementation, let's do
+            // it the long way.
+        float NdotH = saturate(dot(-normal, H));
+        float VdotH = saturate(dot(viewDirection, H));
+        precise float D = TrowReitzD(NdotH, specParam.roughness * specParam.roughness);
+        float pdfWeight = (4.f * VdotH) / (D * NdotH);
+
+        result += lightColor * brdf * pdfWeight;
+    }
+
+    return result / float(sampleCount);
+}
+
 float3 SplitSumIBL_PrefilterEnvMap(float roughness, float3 reflection)
 {
         // Roughness is mapped on to a linear progression through
@@ -200,27 +283,27 @@ float2 GenerateSplitTerm(float NdotV, float roughness)
         // halo around their edges. This doesn't happen so much with the
         // runtime specular. So it actually seems better with the this remapping.
     float alphag = RoughnessToGAlpha(roughness);
+    float alphad = RoughnessToDAlpha(roughness);
     float G2 = SmithG(NdotV, alphag);
 
     float A = 0.f, B = 0.f;
     [loop] for (uint s=0; s<sampleCount; ++s) {
         float3 H, L;
 
+            // Our sampling variable is the microfacet normal (which is the halfVector)
+            // We will calculate a set of half vectors that are distributed in such a
+            // way to reduce the sampling artifacts in the final image.
+            //
             // We could consider clustering the samples around the highlight.
             // However, this changes the probability density function in confusing
             // ways. The result is similiar -- but it is as if a shadow has moved
             // across the output image.
-            //
-            // note -- I'm not sure it's really correct to pass the "alpha" value for
-            //          "G" to BuildSampleHalfVectorGGX
-            //          But the results are very similar to reference calculations. So
-            //          it seems to get a result that's close, anyway.
         const bool clusterAroundHighlight = false;
         if (clusterAroundHighlight) {
-            L = BuildSampleHalfVectorGGX(s, sampleCount, reflect(-V, normal), roughness*roughness);
+            L = BuildSampleHalfVectorGGX(s, sampleCount, reflect(-V, normal), alphad);
             H = normalize(L + V);
         } else {
-            H = BuildSampleHalfVectorGGX(s, sampleCount, normal, roughness*roughness);
+            H = BuildSampleHalfVectorGGX(s, sampleCount, normal, alphad);
             L = 2.f * dot(V, H) * H - V;
         }
 

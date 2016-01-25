@@ -233,6 +233,10 @@ float3 LightResolve_Ambient(
             sample.worldSpaceNormal, directionToEye,
             SpecularParameters_RoughF0(sample.material.roughness, F0),
             SkyReflectionTexture);
+        skyReflections += SampleTransmittedSpecularIBL_Ref(
+            sample.worldSpaceNormal, directionToEye,
+            SpecularParameters_RoughF0Transmission(sample.material.roughness, F0, 1.0.xxx),
+            SkyReflectionTexture);
     #else
         float blurriness = ambient.SkyReflectionBlurriness;
         float3 skyReflections = CalculateSkyReflections(sample, directionToEye, fresnel, blurriness);
