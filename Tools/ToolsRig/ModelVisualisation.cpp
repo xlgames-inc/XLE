@@ -222,7 +222,6 @@ namespace ToolsRig
         std::shared_ptr<ModelCache> _cache;
         std::shared_ptr<ModelVisSettings> _settings;
         std::shared_ptr<VisEnvSettings> _envSettings;
-        ::Assets::rstring _envSettingsFile;
     };
 
     auto ModelVisLayer::GetInputListener() -> std::shared_ptr<IInputListener>
@@ -269,7 +268,8 @@ namespace ToolsRig
 
         const auto* envSettings = _pimpl->_envSettings.get();
         if (!envSettings)
-            envSettings = &::Assets::GetAssetDep<VisEnvSettings>(_pimpl->_envSettingsFile.c_str());
+            envSettings = &::Assets::GetAssetDep<VisEnvSettings>(
+                _pimpl->_settings->_envSettingsFile.c_str());
 
         ModelSceneParser sceneParser(
             *_pimpl->_settings, *envSettings,
@@ -305,11 +305,6 @@ namespace ToolsRig
     void ModelVisLayer::SetEnvironment(std::shared_ptr<VisEnvSettings> envSettings)
     {
         _pimpl->_envSettings = envSettings;
-    }
-
-    void ModelVisLayer::SetEnvironment(::Assets::ResChar envSettingsFile[])
-    {
-        _pimpl->_envSettingsFile = envSettingsFile;
     }
 
     ModelVisLayer::ModelVisLayer(
@@ -661,6 +656,7 @@ namespace ToolsRig
     {
         _modelName = "game/model/galleon/galleon.dae";
         _materialName = "game/model/galleon/galleon.material";
+        _envSettingsFile = "defaultenv.txt:environment";
         _pendingCameraAlignToModel = true;
         _doHighlightWireframe = false;
         _highlightRay = std::make_pair(Zero<Float3>(), Zero<Float3>());

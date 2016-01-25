@@ -57,6 +57,7 @@ namespace ToolsRig
         std::string _modelName;
         std::string _materialName;
         std::string _supplements;
+        std::string _envSettingsFile;
         std::shared_ptr<VisCameraSettings> _camera;
         bool _pendingCameraAlignToModel;
 
@@ -103,7 +104,6 @@ namespace ToolsRig
         virtual void SetActivationState(bool newState);
 
         void SetEnvironment(std::shared_ptr<VisEnvSettings> envSettings);
-        void SetEnvironment(::Assets::ResChar envSettingsFile[]);
 
         ModelVisLayer(
             std::shared_ptr<ModelVisSettings> settings,

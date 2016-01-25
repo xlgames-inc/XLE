@@ -122,6 +122,18 @@ namespace GUILayer
             void set(String^ value);
         }
 
+        [Category("Environment")]
+        [Description("Environment settings name")]
+        property String^ EnvSettingsFile
+        {
+            String^ get()
+            {
+                return clix::marshalString<clix::E_UTF8>(_object->_envSettingsFile);
+            }
+
+            void set(String^ value);
+        }
+
         enum class ColourByMaterialType { None, All, MouseOver };
 
         [Category("Visualisation")]
