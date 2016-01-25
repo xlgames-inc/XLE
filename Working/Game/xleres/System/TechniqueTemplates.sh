@@ -18,6 +18,10 @@ GBufferEncoded deferred_main({{MainFunctionParameterSignature}})
 
 ):>
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+	//		O R D E R   I N D E P E N D E N T   M A I N
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 ~oi_main;  item=<:(
 
 #include "game/xleres/Forward/Transparency/util.h"
@@ -58,6 +62,10 @@ float4 io_main({{MainFunctionParameterSignature}}, SystemInputs sys) : SV_Target
 
 ):>
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+	//		S T O C H A S T I C   M A I N
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 ~stochastic_main;  item=<:(
 
 [earlydepthstencil]
@@ -84,5 +92,60 @@ float4 stochastic_main(VSOutput geo,
 	float4 litValue = LightSample(sample, geo, sys);
 	return float4((LightingScale * (1.f - occlusion) * litValue.a) * litValue.rgb, litValue.a);
 }
+
+):>
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+	//		D E P T H   O N L Y
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+~depthonly_main;  item=<:(
+
+#include "Forward/Transparency/depthonlyutil.h"
+
+#if (STOCHASTIC_TRANS)
+
+	void depthonly_main(
+		VSOutput geo, uint primitiveID : SV_PrimitiveID,
+		out uint oCoverage : SV_Coverage
+		#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
+			, out uint oPrimId : SV_Target0
+			#if (STOCHASTIC_TRANS_OPACITY==1)
+				, out float oOpacity : SV_Target1
+			#endif
+		#elif (STOCHASTIC_TRANS_OPACITY==1)
+			, out float oOpacity : SV_Target0
+		#endif
+
+		)
+	{
+		GBufferValues sample;
+		{{GraphName}}({{ForwardMainParameters}}, sample);
+		float alpha = sample.blendingAlpha;
+
+		oCoverage = StochasticTransMask(uint2(geo.position.xy), alpha, primitiveID);
+		#if (STOCHASTIC_TRANS_PRIMITIVEID==1)
+			oPrimId = primitiveID;
+		#endif
+		#if (STOCHASTIC_TRANS_OPACITY==1)
+			oOpacity = alpha;
+		#endif
+	}
+
+#else
+
+	#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
+		[earlydepthstencil]
+	#endif
+	void depthonly_main(VSOutput geo)
+	{
+		#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
+				// execute sampling only for discard() events
+			GBufferValues sample;
+			{{GraphName}}({{ForwardMainParameters}}, sample);
+		#endif
+	}
+
+#endif
 
 ):>

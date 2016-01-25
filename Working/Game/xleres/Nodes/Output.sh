@@ -19,9 +19,11 @@ GBufferValues Output_PerPixel(
   float blendingAlpha,
   float normalMapAccuracy,
   float cookedAmbientOcclusion,
-  float cookedLightOcclusion)
+  float cookedLightOcclusion,
+
+  float3 transmission)
 {
-  GBufferValues values;
+  GBufferValues values = GBufferValues_Default();
   values.diffuseAlbedo = diffuseAlbedo;
   values.worldSpaceNormal = worldSpaceNormal;
   values.material.roughness = material.roughness;
@@ -31,6 +33,7 @@ GBufferValues Output_PerPixel(
   values.normalMapAccuracy = normalMapAccuracy;
   values.cookedAmbientOcclusion = cookedAmbientOcclusion;
   values.cookedLightOcclusion = cookedLightOcclusion;
+  values.transmission = transmission;
   return values;
 }
 

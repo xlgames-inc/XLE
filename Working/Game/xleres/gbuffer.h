@@ -143,6 +143,8 @@ struct GBufferValues
     float normalMapAccuracy;
     float cookedAmbientOcclusion;
     float cookedLightOcclusion; // this is precalculated occlusion of the dominant light source
+
+    float3 transmission;
 };
 
 PerPixelMaterialParam PerPixelMaterialParam_Default()
@@ -166,6 +168,8 @@ GBufferValues GBufferValues_Default()
     result.normalMapAccuracy = 1.f;
     result.cookedAmbientOcclusion = 1.f;
     result.cookedLightOcclusion = 1.f;
+
+    result.transmission = 0.0.xxx;
     return result;
 }
 

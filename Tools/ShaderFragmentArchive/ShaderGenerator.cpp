@@ -473,6 +473,7 @@ namespace ShaderPatcherLayer
 				WriteTechniqueConfigSection(sw, "Deferred", "deferred_main", context->ShaderParameters);
 				WriteTechniqueConfigSection(sw, "OrderIndependentTransparency", "oi_main", context->ShaderParameters);
                 WriteTechniqueConfigSection(sw, "StochasticTransparency", "stochastic_main", context->ShaderParameters);
+                WriteTechniqueConfigSection(sw, "DepthOnly", "depthonly_main", context->ShaderParameters);
                 
                 sw->Write(")--*/"); sw->WriteLine();
                 sw->WriteLine();

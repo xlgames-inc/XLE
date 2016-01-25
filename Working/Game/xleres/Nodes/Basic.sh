@@ -43,7 +43,7 @@ float3 Lerp3(float3 min, float3 max, float alpha) { return lerp(min, max, alpha)
 
 float4 Add4(float4 lhs, float4 rhs) { return float4(lhs.rgb + rhs.rgb, 1.f); }
 float4 Saturate4(float4 input)                 { return saturate(input); }
-float3 Lerp4(float4 min, float4 max, float alpha) { return lerp(min, max, alpha); }
+float4 Lerp4(float4 min, float4 max, float alpha) { return lerp(min, max, alpha); }
 
 float3 Normalize3(float3 input) { return normalize(input); }
 float3 Negate3(float3 input) { return -input; }

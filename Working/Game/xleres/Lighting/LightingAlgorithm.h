@@ -276,4 +276,10 @@ float CalculateRadiusLimitAttenuation(float distanceSq, float lightRadius)
 	return 1.f - saturate(3.f * D / R);
 }
 
+float3 CalculateHt(float3 i, float3 o, float iorIncident, float iorOutgoing)
+{
+		// Calculate the half vector used in transmitted specular equation
+	return -normalize(iorIncident * i + iorOutgoing * o);
+}
+
 #endif

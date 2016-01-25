@@ -1,108 +1,107 @@
 // CompoundDocument:1
 #include "game/xleres/System/Prefix.h"
 
+#include "game/xleres/Lighting/SpecularMethods.h"
 #include "game/xleres/Nodes/Basic.sh"
 #include "game/xleres/Lighting/LightingAlgorithm.h"
-#include "game/xleres/Lighting/SpecularMethods.h"
-#include "game/xleres/Lighting/DirectionalResolve.h"
 
 
-void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness, float3 i, float3 o, float3 n, out float result : SV_Target0)
+void WalterTrans(float roughness, float F0, float iorIncident, float iorOutgoing, float3 i, float3 o, float3 n, out float result : SV_Target0)
 {
-	float3 Output_15_result;
-	Output_15_result = CalculateHt( i, o, iorIncident, iorOutgoing );
+	float Output_32_result;
+	Output_32_result = RoughnessToDAlpha( roughness );
 
-	float Output_4_result;
-	Output_4_result = Dot3( Output_15_result, i );
-
-	float Output_3_result;
-	Output_3_result = Abs1( Output_4_result );
+	float3 Output_11_result;
+	Output_11_result = CalculateHt( i, o, iorIncident, iorOutgoing );
 
 	float Output_2_result;
-	Output_2_result = SchlickFresnelCore( Output_4_result );
+	Output_2_result = Dot3( Output_11_result, i );
 
-	float Output_5_result;
-	Output_5_result = Lerp1( F0, 1.f, Output_2_result );
+	float Output_3_result;
+	Output_3_result = Abs1( Output_2_result );
 
-	float Output_6_result;
-	Output_6_result = Subtract1( 1.0f, Output_5_result );
-
-	float Output_38_result;
-	Output_38_result = Saturate1( Output_6_result );
-
-	float Output_37_result;
-	Output_37_result = Square1( iorOutgoing );
-
-	float Output_18_result;
-	Output_18_result = Dot3( i, n );
-
-	float Output_23_result;
-	Output_23_result = Abs1( Output_18_result );
-
-	float Output_31_result;
-	Output_31_result = RoughnessToGAlpha( roughness );
-
-	float Output_22_result;
-	Output_22_result = SmithG( Output_23_result, Output_31_result );
-
-	float Output_17_result;
-	Output_17_result = Dot3( o, n );
-
-	float Output_21_result;
-	Output_21_result = Abs1( Output_17_result );
-
-	float Output_20_result;
-	Output_20_result = SmithG( Output_21_result, Output_31_result );
-
-	float Output_11_result;
-	Output_11_result = Multiply1( Output_22_result, Output_20_result );
-
-	float Output_13_result;
-	Output_13_result = Multiply1( Output_23_result, Output_21_result );
-
-	float Output_16_result;
-	Output_16_result = Dot3( Output_15_result, o );
-
-	float Output_25_result;
-	Output_25_result = Abs1( Output_16_result );
-
-	float Output_12_result;
-	Output_12_result = Multiply1( Output_3_result, Output_25_result );
-
-	float Output_14_result;
-	Output_14_result = Divide1( Output_12_result, Output_13_result );
-
-	float Output_28_result;
-	Output_28_result = MultiplyMany1( Output_14_result, Output_38_result, Output_37_result, Output_11_result );
-
-	float Output_19_result;
-	Output_19_result = Dot3( Output_15_result, n );
-
-	float Output_30_result;
-	Output_30_result = RoughnessToDAlpha( roughness );
-
-	float Output_9_result;
-	Output_9_result = TrowReitzD( Output_19_result, Output_30_result );
-
-	float Output_24_result;
-	Output_24_result = Multiply1( iorOutgoing, Output_16_result );
-
-	float Output_26_result;
-	Output_26_result = Multiply1( iorIncident, Output_4_result );
-
-	float Output_29_result;
-	Output_29_result = Add1( Output_26_result, Output_24_result );
-
-	float Output_36_result;
-	Output_36_result = Square1( Output_29_result );
-
-	float Output_27_result;
-	Output_27_result = Multiply1( Output_28_result, Output_9_result );
+	float Output_4_result;
+	Output_4_result = SchlickFresnelCore( Output_2_result );
 
 	float Output_7_result;
-	Output_7_result = Divide1( Output_27_result, Output_36_result );
+	Output_7_result = Lerp1( F0, 1.f, Output_4_result );
 
-	result = Output_7_result;
+	float Output_5_result;
+	Output_5_result = Subtract1( 1.0f, Output_7_result );
+
+	float Output_6_result;
+	Output_6_result = Saturate1( Output_5_result );
+
+	float Output_17_result;
+	Output_17_result = Square1( iorOutgoing );
+
+	float Output_15_result;
+	Output_15_result = Dot3( i, n );
+
+	float Output_13_result;
+	Output_13_result = Abs1( Output_15_result );
+
+	float Output_20_result;
+	Output_20_result = RoughnessToGAlpha( roughness );
+
+	float Output_9_result;
+	Output_9_result = SmithG( Output_13_result, Output_20_result );
+
+	float Output_14_result;
+	Output_14_result = Dot3( o, n );
+
+	float Output_22_result;
+	Output_22_result = Abs1( Output_14_result );
+
+	float Output_23_result;
+	Output_23_result = SmithG( Output_22_result, Output_20_result );
+
+	float Output_24_result;
+	Output_24_result = Multiply1( Output_9_result, Output_23_result );
+
+	float Output_12_result;
+	Output_12_result = Multiply1( Output_13_result, Output_22_result );
+
+	float Output_28_result;
+	Output_28_result = Dot3( Output_11_result, o );
+
+	float Output_21_result;
+	Output_21_result = Abs1( Output_28_result );
+
+	float Output_27_result;
+	Output_27_result = Multiply1( Output_3_result, Output_21_result );
+
+	float Output_25_result;
+	Output_25_result = Divide1( Output_27_result, Output_12_result );
+
+	float Output_8_result;
+	Output_8_result = MultiplyMany1( Output_25_result, Output_6_result, Output_17_result, Output_24_result );
+
+	float Output_10_result;
+	Output_10_result = Dot3( Output_11_result, n );
+
+	float Output_16_result;
+	Output_16_result = TrowReitzD( Output_10_result, Output_32_result );
+
+	float Output_29_result;
+	Output_29_result = Multiply1( iorOutgoing, Output_28_result );
+
+	float Output_30_result;
+	Output_30_result = Multiply1( iorIncident, Output_2_result );
+
+	float Output_19_result;
+	Output_19_result = Add1( Output_30_result, Output_29_result );
+
+	float Output_18_result;
+	Output_18_result = Square1( Output_19_result );
+
+	float Output_31_result;
+	Output_31_result = Multiply1( Output_8_result, Output_16_result );
+
+	float Output_26_result;
+	Output_26_result = Divide1( Output_31_result, Output_18_result );
+
+	result = Output_26_result;
 
 }
 /* <<Chunk:NodeGraph:WalterTrans>>--(
@@ -110,181 +109,190 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 <NodeGraph xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
 	<ConstantConnections>
 		<ConstantConnection>
-			<OutputNodeID>6</OutputNodeID>
-			<OutputParameterName>lhs</OutputParameterName>
-			<Value>1.0f</Value>
-		</ConstantConnection>
-		<ConstantConnection>
-			<OutputNodeID>5</OutputNodeID>
-			<OutputParameterName>min</OutputParameterName>
-			<Value>&lt;F0&gt;</Value>
-		</ConstantConnection>
-		<ConstantConnection>
-			<OutputNodeID>5</OutputNodeID>
-			<OutputParameterName>max</OutputParameterName>
-			<Value>1.f</Value>
-		</ConstantConnection>
-		<ConstantConnection>
-			<OutputNodeID>15</OutputNodeID>
-			<OutputParameterName>iorIncident</OutputParameterName>
-			<Value>&lt;iorIncident&gt;</Value>
-		</ConstantConnection>
-		<ConstantConnection>
-			<OutputNodeID>15</OutputNodeID>
-			<OutputParameterName>iorOutgoing</OutputParameterName>
-			<Value>&lt;iorOutgoing&gt;</Value>
-		</ConstantConnection>
-		<ConstantConnection>
-			<OutputNodeID>31</OutputNodeID>
+			<OutputNodeID>32</OutputNodeID>
 			<OutputParameterName>roughness</OutputParameterName>
 			<Value>&lt;roughness&gt;</Value>
 		</ConstantConnection>
 		<ConstantConnection>
-			<OutputNodeID>30</OutputNodeID>
+			<OutputNodeID>5</OutputNodeID>
+			<OutputParameterName>lhs</OutputParameterName>
+			<Value>1.0f</Value>
+		</ConstantConnection>
+		<ConstantConnection>
+			<OutputNodeID>7</OutputNodeID>
+			<OutputParameterName>min</OutputParameterName>
+			<Value>&lt;F0&gt;</Value>
+		</ConstantConnection>
+		<ConstantConnection>
+			<OutputNodeID>7</OutputNodeID>
+			<OutputParameterName>max</OutputParameterName>
+			<Value>1.f</Value>
+		</ConstantConnection>
+		<ConstantConnection>
+			<OutputNodeID>11</OutputNodeID>
+			<OutputParameterName>iorIncident</OutputParameterName>
+			<Value>&lt;iorIncident&gt;</Value>
+		</ConstantConnection>
+		<ConstantConnection>
+			<OutputNodeID>11</OutputNodeID>
+			<OutputParameterName>iorOutgoing</OutputParameterName>
+			<Value>&lt;iorOutgoing&gt;</Value>
+		</ConstantConnection>
+		<ConstantConnection>
+			<OutputNodeID>20</OutputNodeID>
 			<OutputParameterName>roughness</OutputParameterName>
 			<Value>&lt;roughness&gt;</Value>
 		</ConstantConnection>
 	</ConstantConnections>
 	<InputParameterConnections>
 		<InputParameterConnection>
-			<OutputNodeID>24</OutputNodeID>
-			<OutputParameterName>lhs</OutputParameterName>
-			<Default></Default>
-			<Name>&lt;iorOutgoing&gt;</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>16</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>26</OutputNodeID>
-			<OutputParameterName>lhs</OutputParameterName>
-			<Default></Default>
-			<Name>&lt;iorIncident&gt;</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>16</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>37</OutputNodeID>
-			<OutputParameterName>value</OutputParameterName>
-			<Default></Default>
-			<Name>&lt;iorOutgoing&gt;</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>16</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>15</OutputNodeID>
+			<OutputNodeID>11</OutputNodeID>
 			<OutputParameterName>i</OutputParameterName>
 			<Default i:nil="true" />
 			<Name>&lt;i&gt;</Name>
 			<Semantic></Semantic>
 			<Type>auto</Type>
-			<VisualNodeId>25</VisualNodeId>
+			<VisualNodeId>0</VisualNodeId>
 		</InputParameterConnection>
 		<InputParameterConnection>
-			<OutputNodeID>15</OutputNodeID>
+			<OutputNodeID>11</OutputNodeID>
 			<OutputParameterName>o</OutputParameterName>
 			<Default></Default>
 			<Name>&lt;o&gt;</Name>
 			<Semantic></Semantic>
 			<Type>auto</Type>
-			<VisualNodeId>25</VisualNodeId>
+			<VisualNodeId>0</VisualNodeId>
 		</InputParameterConnection>
 		<InputParameterConnection>
-			<OutputNodeID>4</OutputNodeID>
+			<OutputNodeID>2</OutputNodeID>
 			<OutputParameterName>rhs</OutputParameterName>
 			<Default i:nil="true" />
 			<Name>&lt;i&gt;</Name>
 			<Semantic></Semantic>
 			<Type>auto</Type>
-			<VisualNodeId>25</VisualNodeId>
+			<VisualNodeId>0</VisualNodeId>
 		</InputParameterConnection>
 		<InputParameterConnection>
-			<OutputNodeID>16</OutputNodeID>
+			<OutputNodeID>28</OutputNodeID>
 			<OutputParameterName>rhs</OutputParameterName>
 			<Default></Default>
 			<Name>&lt;o&gt;</Name>
 			<Semantic></Semantic>
 			<Type>auto</Type>
-			<VisualNodeId>25</VisualNodeId>
+			<VisualNodeId>0</VisualNodeId>
 		</InputParameterConnection>
 		<InputParameterConnection>
-			<OutputNodeID>18</OutputNodeID>
+			<OutputNodeID>15</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
 			<Default i:nil="true" />
 			<Name>&lt;i&gt;</Name>
 			<Semantic></Semantic>
 			<Type>auto</Type>
-			<VisualNodeId>25</VisualNodeId>
+			<VisualNodeId>0</VisualNodeId>
 		</InputParameterConnection>
 		<InputParameterConnection>
-			<OutputNodeID>18</OutputNodeID>
+			<OutputNodeID>15</OutputNodeID>
 			<OutputParameterName>rhs</OutputParameterName>
 			<Default></Default>
 			<Name>&lt;n&gt;</Name>
 			<Semantic></Semantic>
 			<Type>auto</Type>
-			<VisualNodeId>25</VisualNodeId>
+			<VisualNodeId>0</VisualNodeId>
 		</InputParameterConnection>
 		<InputParameterConnection>
-			<OutputNodeID>17</OutputNodeID>
+			<OutputNodeID>14</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
 			<Default></Default>
 			<Name>&lt;o&gt;</Name>
 			<Semantic></Semantic>
 			<Type>auto</Type>
-			<VisualNodeId>25</VisualNodeId>
+			<VisualNodeId>0</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>14</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<Default></Default>
+			<Name>&lt;n&gt;</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>0</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>10</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<Default></Default>
+			<Name>&lt;n&gt;</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>0</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>29</OutputNodeID>
+			<OutputParameterName>lhs</OutputParameterName>
+			<Default></Default>
+			<Name>&lt;iorOutgoing&gt;</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>1</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>30</OutputNodeID>
+			<OutputParameterName>lhs</OutputParameterName>
+			<Default></Default>
+			<Name>&lt;iorIncident&gt;</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>1</VisualNodeId>
 		</InputParameterConnection>
 		<InputParameterConnection>
 			<OutputNodeID>17</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
+			<OutputParameterName>value</OutputParameterName>
 			<Default></Default>
-			<Name>&lt;n&gt;</Name>
+			<Name>&lt;iorOutgoing&gt;</Name>
 			<Semantic></Semantic>
 			<Type>auto</Type>
-			<VisualNodeId>25</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>19</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
-			<Default></Default>
-			<Name>&lt;n&gt;</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>25</VisualNodeId>
+			<VisualNodeId>1</VisualNodeId>
 		</InputParameterConnection>
 	</InputParameterConnections>
 	<NodeConnections>
 		<NodeConnection>
+			<OutputNodeID>16</OutputNodeID>
+			<OutputParameterName>alpha</OutputParameterName>
+			<InputNodeID>32</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
 			<OutputNodeID>3</OutputNodeID>
 			<OutputParameterName>value</OutputParameterName>
-			<InputNodeID>4</InputNodeID>
+			<InputNodeID>2</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>26</OutputNodeID>
+			<OutputNodeID>30</OutputNodeID>
 			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>4</InputNodeID>
+			<InputNodeID>2</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>2</OutputNodeID>
+			<OutputNodeID>4</OutputNodeID>
 			<OutputParameterName>VdotH</OutputParameterName>
-			<InputNodeID>4</InputNodeID>
+			<InputNodeID>2</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>12</OutputNodeID>
+			<OutputNodeID>27</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
 			<InputNodeID>3</InputNodeID>
 			<InputParameterName>result</InputParameterName>
@@ -293,27 +301,9 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>5</OutputNodeID>
+			<OutputNodeID>7</OutputNodeID>
 			<OutputParameterName>alpha</OutputParameterName>
-			<InputNodeID>2</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>38</OutputNodeID>
-			<OutputParameterName>input</OutputParameterName>
-			<InputNodeID>6</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>28</OutputNodeID>
-			<OutputParameterName>second</OutputParameterName>
-			<InputNodeID>38</InputNodeID>
+			<InputNodeID>4</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
@@ -321,7 +311,7 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 		</NodeConnection>
 		<NodeConnection>
 			<OutputNodeID>6</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
+			<OutputParameterName>input</OutputParameterName>
 			<InputNodeID>5</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
@@ -329,18 +319,81 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>27</OutputNodeID>
-			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>28</InputNodeID>
+			<OutputNodeID>8</OutputNodeID>
+			<OutputParameterName>second</OutputParameterName>
+			<InputNodeID>6</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>11</OutputNodeID>
+			<OutputNodeID>5</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<InputNodeID>7</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>31</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>22</InputNodeID>
+			<InputNodeID>8</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>24</OutputNodeID>
+			<OutputParameterName>lhs</OutputParameterName>
+			<InputNodeID>9</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>16</OutputNodeID>
+			<OutputParameterName>NdotH</OutputParameterName>
+			<InputNodeID>10</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>2</OutputNodeID>
+			<OutputParameterName>lhs</OutputParameterName>
+			<InputNodeID>11</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType></InputType>
+			<OutputType>float3</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>28</OutputNodeID>
+			<OutputParameterName>lhs</OutputParameterName>
+			<InputNodeID>11</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType></InputType>
+			<OutputType>float3</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>10</OutputNodeID>
+			<OutputParameterName>lhs</OutputParameterName>
+			<InputNodeID>11</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType></InputType>
+			<OutputType>float3</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>25</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<InputNodeID>12</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
@@ -348,43 +401,16 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 		</NodeConnection>
 		<NodeConnection>
 			<OutputNodeID>9</OutputNodeID>
-			<OutputParameterName>NdotH</OutputParameterName>
-			<InputNodeID>19</InputNodeID>
+			<OutputParameterName>NdotV</OutputParameterName>
+			<InputNodeID>13</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>4</OutputNodeID>
+			<OutputNodeID>12</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>15</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float3</InputType>
-			<OutputType>float3</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>16</OutputNodeID>
-			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>15</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float3</InputType>
-			<OutputType>float3</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>19</OutputNodeID>
-			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>15</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float3</InputType>
-			<OutputType>float3</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>14</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
 			<InputNodeID>13</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
@@ -393,142 +419,7 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 		</NodeConnection>
 		<NodeConnection>
 			<OutputNodeID>22</OutputNodeID>
-			<OutputParameterName>NdotV</OutputParameterName>
-			<InputNodeID>23</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>13</OutputNodeID>
-			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>23</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>21</OutputNodeID>
 			<OutputParameterName>value</OutputParameterName>
-			<InputNodeID>17</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>23</OutputNodeID>
-			<OutputParameterName>value</OutputParameterName>
-			<InputNodeID>18</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>27</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>9</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>28</OutputNodeID>
-			<OutputParameterName>third</OutputParameterName>
-			<InputNodeID>37</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>7</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>36</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>36</OutputNodeID>
-			<OutputParameterName>value</OutputParameterName>
-			<InputNodeID>29</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>20</OutputNodeID>
-			<OutputParameterName>alpha</OutputParameterName>
-			<InputNodeID>31</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>22</OutputNodeID>
-			<OutputParameterName>alpha</OutputParameterName>
-			<InputNodeID>31</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>12</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>25</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>13</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>21</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>20</OutputNodeID>
-			<OutputParameterName>NdotV</OutputParameterName>
-			<InputNodeID>21</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>11</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>20</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>28</OutputNodeID>
-			<OutputParameterName>forth</OutputParameterName>
-			<InputNodeID>11</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>28</OutputNodeID>
-			<OutputParameterName>first</OutputParameterName>
 			<InputNodeID>14</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
@@ -536,25 +427,16 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>14</OutputNodeID>
-			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>12</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>25</OutputNodeID>
+			<OutputNodeID>13</OutputNodeID>
 			<OutputParameterName>value</OutputParameterName>
-			<InputNodeID>16</InputNodeID>
+			<InputNodeID>15</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>24</OutputNodeID>
+			<OutputNodeID>31</OutputNodeID>
 			<OutputParameterName>rhs</OutputParameterName>
 			<InputNodeID>16</InputNodeID>
 			<InputParameterName>result</InputParameterName>
@@ -563,27 +445,36 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>29</OutputNodeID>
+			<OutputNodeID>8</OutputNodeID>
+			<OutputParameterName>third</OutputParameterName>
+			<InputNodeID>17</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>26</OutputNodeID>
 			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>24</InputNodeID>
+			<InputNodeID>18</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>29</OutputNodeID>
-			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>26</InputNodeID>
+			<OutputNodeID>18</OutputNodeID>
+			<OutputParameterName>value</OutputParameterName>
+			<InputNodeID>19</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>7</OutputNodeID>
-			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>27</InputNodeID>
+			<OutputNodeID>23</OutputNodeID>
+			<OutputParameterName>alpha</OutputParameterName>
+			<InputNodeID>20</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
@@ -592,7 +483,115 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 		<NodeConnection>
 			<OutputNodeID>9</OutputNodeID>
 			<OutputParameterName>alpha</OutputParameterName>
+			<InputNodeID>20</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>27</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<InputNodeID>21</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>12</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<InputNodeID>22</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>23</OutputNodeID>
+			<OutputParameterName>NdotV</OutputParameterName>
+			<InputNodeID>22</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>24</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<InputNodeID>23</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>8</OutputNodeID>
+			<OutputParameterName>forth</OutputParameterName>
+			<InputNodeID>24</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>8</OutputNodeID>
+			<OutputParameterName>first</OutputParameterName>
+			<InputNodeID>25</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>25</OutputNodeID>
+			<OutputParameterName>lhs</OutputParameterName>
+			<InputNodeID>27</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>21</OutputNodeID>
+			<OutputParameterName>value</OutputParameterName>
+			<InputNodeID>28</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>29</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<InputNodeID>28</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>19</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<InputNodeID>29</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>19</OutputNodeID>
+			<OutputParameterName>lhs</OutputParameterName>
 			<InputNodeID>30</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>26</OutputNodeID>
+			<OutputParameterName>lhs</OutputParameterName>
+			<InputNodeID>31</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
@@ -601,188 +600,188 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 	</NodeConnections>
 	<Nodes>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
-			<NodeId>4</NodeId>
+			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:RoughnessToDAlpha</FragmentArchiveName>
+			<NodeId>32</NodeId>
 			<NodeType>Procedure</NodeType>
-			<VisualNodeId>0</VisualNodeId>
+			<VisualNodeId>2</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
+			<NodeId>2</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>3</VisualNodeId>
 		</Node>
 		<Node>
 			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
 			<NodeId>3</NodeId>
 			<NodeType>Procedure</NodeType>
-			<VisualNodeId>1</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\LightingAlgorithm.h:SchlickFresnelCore</FragmentArchiveName>
-			<NodeId>2</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>2</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Subtract1</FragmentArchiveName>
-			<NodeId>6</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>3</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Saturate1</FragmentArchiveName>
-			<NodeId>38</NodeId>
-			<NodeType>Procedure</NodeType>
 			<VisualNodeId>4</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Lerp1</FragmentArchiveName>
-			<NodeId>5</NodeId>
+			<FragmentArchiveName>game/xleres/Lighting\LightingAlgorithm.h:SchlickFresnelCore</FragmentArchiveName>
+			<NodeId>4</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>5</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:MultiplyMany1</FragmentArchiveName>
-			<NodeId>28</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Subtract1</FragmentArchiveName>
+			<NodeId>5</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>6</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:SmithG</FragmentArchiveName>
-			<NodeId>22</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Saturate1</FragmentArchiveName>
+			<NodeId>6</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>7</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
-			<NodeId>19</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Lerp1</FragmentArchiveName>
+			<NodeId>7</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>8</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\DirectionalResolve.h:CalculateHt</FragmentArchiveName>
-			<NodeId>15</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:MultiplyMany1</FragmentArchiveName>
+			<NodeId>8</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>9</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
-			<NodeId>13</NodeId>
+			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:SmithG</FragmentArchiveName>
+			<NodeId>9</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>10</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
-			<NodeId>23</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
+			<NodeId>10</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>11</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
-			<NodeId>17</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>12</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
-			<NodeId>18</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>13</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:TrowReitzD</FragmentArchiveName>
-			<NodeId>9</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>14</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Square1</FragmentArchiveName>
-			<NodeId>37</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>15</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Square1</FragmentArchiveName>
-			<NodeId>36</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>17</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Add1</FragmentArchiveName>
-			<NodeId>29</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>18</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:RoughnessToGAlpha</FragmentArchiveName>
-			<NodeId>31</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>19</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
-			<NodeId>25</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>20</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
-			<NodeId>21</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>21</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:SmithG</FragmentArchiveName>
-			<NodeId>20</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>22</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>game/xleres/Lighting\LightingAlgorithm.h:CalculateHt</FragmentArchiveName>
 			<NodeId>11</NodeId>
 			<NodeType>Procedure</NodeType>
-			<VisualNodeId>23</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Divide1</FragmentArchiveName>
-			<NodeId>14</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>24</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Divide1</FragmentArchiveName>
-			<NodeId>7</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>26</VisualNodeId>
+			<VisualNodeId>12</VisualNodeId>
 		</Node>
 		<Node>
 			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>12</NodeId>
 			<NodeType>Procedure</NodeType>
-			<VisualNodeId>27</VisualNodeId>
+			<VisualNodeId>13</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
+			<NodeId>13</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>14</VisualNodeId>
 		</Node>
 		<Node>
 			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
+			<NodeId>14</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>15</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
+			<NodeId>15</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>16</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:TrowReitzD</FragmentArchiveName>
 			<NodeId>16</NodeId>
 			<NodeType>Procedure</NodeType>
-			<VisualNodeId>28</VisualNodeId>
+			<VisualNodeId>17</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Square1</FragmentArchiveName>
+			<NodeId>17</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>18</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Square1</FragmentArchiveName>
+			<NodeId>18</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>19</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Add1</FragmentArchiveName>
+			<NodeId>19</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>20</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:RoughnessToGAlpha</FragmentArchiveName>
+			<NodeId>20</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>21</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
+			<NodeId>21</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>22</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
+			<NodeId>22</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>23</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:SmithG</FragmentArchiveName>
+			<NodeId>23</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>24</VisualNodeId>
 		</Node>
 		<Node>
 			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>24</NodeId>
 			<NodeType>Procedure</NodeType>
-			<VisualNodeId>29</VisualNodeId>
+			<VisualNodeId>25</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Divide1</FragmentArchiveName>
+			<NodeId>25</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>26</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Divide1</FragmentArchiveName>
 			<NodeId>26</NodeId>
 			<NodeType>Procedure</NodeType>
-			<VisualNodeId>30</VisualNodeId>
+			<VisualNodeId>27</VisualNodeId>
 		</Node>
 		<Node>
 			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
 			<NodeId>27</NodeId>
 			<NodeType>Procedure</NodeType>
+			<VisualNodeId>28</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
+			<NodeId>28</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>29</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<NodeId>29</NodeId>
+			<NodeType>Procedure</NodeType>
+			<VisualNodeId>30</VisualNodeId>
+		</Node>
+		<Node>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<NodeId>30</NodeId>
+			<NodeType>Procedure</NodeType>
 			<VisualNodeId>31</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:RoughnessToDAlpha</FragmentArchiveName>
-			<NodeId>30</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<NodeId>31</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>32</VisualNodeId>
 		</Node>
@@ -790,17 +789,7 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 	<OutputParameterConnections />
 	<PreviewSettingsObjects>
 		<PreviewSettings>
-			<Geometry>Sphere</Geometry>
-			<OutputToVisualize></OutputToVisualize>
-			<VisualNodeId>0</VisualNodeId>
-		</PreviewSettings>
-		<PreviewSettings>
-			<Geometry>Sphere</Geometry>
-			<OutputToVisualize></OutputToVisualize>
-			<VisualNodeId>1</VisualNodeId>
-		</PreviewSettings>
-		<PreviewSettings>
-			<Geometry>Sphere</Geometry>
+			<Geometry>Plane2D</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>2</VisualNodeId>
 		</PreviewSettings>
@@ -810,7 +799,7 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 			<VisualNodeId>3</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Plane2D</Geometry>
+			<Geometry>Sphere</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>4</VisualNodeId>
 		</PreviewSettings>
@@ -825,7 +814,7 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 			<VisualNodeId>6</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Sphere</Geometry>
+			<Geometry>Plane2D</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>7</VisualNodeId>
 		</PreviewSettings>
@@ -836,7 +825,7 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 		</PreviewSettings>
 		<PreviewSettings>
 			<Geometry>Sphere</Geometry>
-			<OutputToVisualize>result * .5 + .5.xxx</OutputToVisualize>
+			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>9</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
@@ -845,13 +834,13 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 			<VisualNodeId>10</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Plane2D</Geometry>
+			<Geometry>Sphere</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>11</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
 			<Geometry>Sphere</Geometry>
-			<OutputToVisualize></OutputToVisualize>
+			<OutputToVisualize>result * .5 + .5.xxx</OutputToVisualize>
 			<VisualNodeId>12</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
@@ -860,17 +849,22 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 			<VisualNodeId>13</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Sphere</Geometry>
+			<Geometry>Plane2D</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>14</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Plane2D</Geometry>
+			<Geometry>Sphere</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>15</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Plane2D</Geometry>
+			<Geometry>Sphere</Geometry>
+			<OutputToVisualize></OutputToVisualize>
+			<VisualNodeId>16</VisualNodeId>
+		</PreviewSettings>
+		<PreviewSettings>
+			<Geometry>Sphere</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>17</VisualNodeId>
 		</PreviewSettings>
@@ -900,14 +894,19 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 			<VisualNodeId>22</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Sphere</Geometry>
+			<Geometry>Plane2D</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>23</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Sphere</Geometry>
+			<Geometry>Plane2D</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>24</VisualNodeId>
+		</PreviewSettings>
+		<PreviewSettings>
+			<Geometry>Sphere</Geometry>
+			<OutputToVisualize></OutputToVisualize>
+			<VisualNodeId>25</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
 			<Geometry>Sphere</Geometry>
@@ -920,7 +919,7 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 			<VisualNodeId>27</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Plane2D</Geometry>
+			<Geometry>Sphere</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>28</VisualNodeId>
 		</PreviewSettings>
@@ -946,6 +945,27 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 		</PreviewSettings>
 	</PreviewSettingsObjects>
 	<VisualNodes>
+		<VisualNode>
+			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
+				<d4p1:x>-836.2657</d4p1:x>
+				<d4p1:y>582.577942</d4p1:y>
+			</Location>
+			<State>Normal</State>
+		</VisualNode>
+		<VisualNode>
+			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
+				<d4p1:x>-257</d4p1:x>
+				<d4p1:y>1015</d4p1:y>
+			</Location>
+			<State>Normal</State>
+		</VisualNode>
+		<VisualNode>
+			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
+				<d4p1:x>836</d4p1:x>
+				<d4p1:y>1003</d4p1:y>
+			</Location>
+			<State>Collapsed</State>
+		</VisualNode>
 		<VisualNode>
 			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
 				<d4p1:x>-253</d4p1:x>
@@ -1060,13 +1080,6 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 		</VisualNode>
 		<VisualNode>
 			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>-257</d4p1:x>
-				<d4p1:y>1015</d4p1:y>
-			</Location>
-			<State>Normal</State>
-		</VisualNode>
-		<VisualNode>
-			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
 				<d4p1:x>1666</d4p1:x>
 				<d4p1:y>1171</d4p1:y>
 			</Location>
@@ -1123,13 +1136,6 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 		</VisualNode>
 		<VisualNode>
 			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>-836.2657</d4p1:x>
-				<d4p1:y>582.577942</d4p1:y>
-			</Location>
-			<State>Normal</State>
-		</VisualNode>
-		<VisualNode>
-			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
 				<d4p1:x>1919</d4p1:x>
 				<d4p1:y>1119</d4p1:y>
 			</Location>
@@ -1167,13 +1173,6 @@ void WalterTrans(float F0, float iorIncident, float iorOutgoing, float roughness
 			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
 				<d4p1:x>1666</d4p1:x>
 				<d4p1:y>951</d4p1:y>
-			</Location>
-			<State>Collapsed</State>
-		</VisualNode>
-		<VisualNode>
-			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>836</d4p1:x>
-				<d4p1:y>1003</d4p1:y>
 			</Location>
 			<State>Collapsed</State>
 		</VisualNode>

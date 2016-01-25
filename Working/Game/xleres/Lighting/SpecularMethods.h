@@ -9,6 +9,7 @@
 
 #include "optimized-ggx.h"
 #include "LightingAlgorithm.h"
+#include "Constants.h"
 
 #if !defined(SPECULAR_METHOD)
     #define SPECULAR_METHOD 1
@@ -139,23 +140,27 @@ float3 ReferenceSpecularGGX(
     // F is fresnel
     // G is the shadowing factor (geometric attenuation)
 
-     float NdotL = dot(normal, negativeLightDirection);
-     float NdotV = dot(normal, directionToEye);
+    float NdotL = dot(normal, negativeLightDirection);
+    float NdotV = dot(normal, directionToEye);
 
      // The following the the approach used by Walter, et al, in the GGX
      // paper for dealing with surfaces that are pointed away from the light.
      // This is important for surfaces that can transmit light (eg, the glass
-     // Walter used for his demonstrations, or leaves)
-     halfVector *= sign(NdotL);
-     NdotL = abs(NdotL);
-     NdotV = abs(NdotV);
+     // Walter used for his demonstrations, or leaves).
+     // With this method, we get a highlight on the side light, reguardless of
+     // which direction the normal is actually facing. Infact, if we reverse the
+     // normal (with "normal = -normal") it has no impact on the result.
+    #if MAT_DOUBLE_SIDED_LIGHTING
+        float sndl = sign(NdotL);
+        halfVector *= sndl;
+        NdotV *= sndl;
+        NdotL *= sndl;
+    #else
+        float sndl = 1.f;
+    #endif
 
-     float NdotH = dot(normal, halfVector);
-     NdotH = abs(NdotH);
-    // if (NdotL <= 0 || NdotV <= 0) return 0.0.xxx;
-    // NdotL = saturate(NdotL);
-    // NdotV = saturate(NdotV);
-    // NdotH = saturate(NdotH);
+    float NdotH = dot(normal, halfVector);
+    if (NdotV < 0.f) return 0.0.xxx;
 
     /////////// Shadowing factor ///////////
         // As per the Disney model, rescaling roughness to
@@ -164,12 +169,13 @@ float3 ReferenceSpecularGGX(
     precise float G = SmithG(NdotL, alphag) * SmithG(NdotV, alphag);
 
     /////////// Fresnel ///////////
-    float3 F;
+    float q;
     if (!mirrorSurface) {
-        F = SchlickFresnelF0(negativeLightDirection, halfVector, F0);
+        q = SchlickFresnelCore(sndl * dot(negativeLightDirection, halfVector));
     } else {
-        F = SchlickFresnelF0(negativeLightDirection, normal, F0);
+        q = SchlickFresnelCore(sndl * dot(negativeLightDirection, normal));
     }
+    float3 F = F0 + (1.f - F0) * q;
 
     /////////// Microfacet ///////////
         // Mapping alpha to roughness squared (as per Disney
@@ -216,6 +222,7 @@ struct SpecularParameters
 {
     float   roughness;
     float3  F0;
+    float3  transmission;
     bool    mirrorSurface;
 };
 
@@ -225,6 +232,7 @@ SpecularParameters SpecularParameters_Init(float roughness, float refractiveInde
     result.roughness = roughness;
     result.F0 = RefractiveIndexToF0(refractiveIndex);
     result.mirrorSurface = false;
+    result.transmission = 0.0.xxx;
     return result;
 }
 
@@ -234,8 +242,21 @@ SpecularParameters SpecularParameters_RoughF0(float roughness, float3 F0, bool m
     result.roughness = roughness;
     result.F0 = F0;
     result.mirrorSurface = mirrorSurface;
+    result.transmission = 0.0.xxx;
     return result;
 }
+
+SpecularParameters SpecularParameters_RoughF0Transmission(float roughness, float3 F0, float3 transmission)
+{
+    SpecularParameters result;
+    result.roughness = roughness;
+    result.F0 = F0;
+    result.mirrorSurface = false;
+    result.transmission = transmission;
+    return result;
+}
+
+#include "Testing/WalterTrans.sh"
 
 float3 CalculateSpecular(
     float3 normal, float3 directionToEye,
@@ -247,9 +268,50 @@ float3 CalculateSpecular(
             normal, directionToEye, negativeLightDirection,
             parameters.roughness, parameters.F0).xxx;
     #elif SPECULAR_METHOD==1
-        return CalculateSpecular_GGX(
+        float3 reflected = CalculateSpecular_GGX(
             normal, directionToEye, negativeLightDirection, halfVector,
             parameters.roughness, parameters.F0, parameters.mirrorSurface);
+
+        // Calculate specular light transmitted through
+        // For most cases of transmission, there should actually be 2 interfaces
+        //		-- 	when the light enters the material, and when it exits it.
+        // The light will bend at each interface. So, to calculate the refraction
+        // properly, we really need to know the thickness of the object. That will
+        // determine how much the light actually bends. If we know the thickness,
+        // we can calculate an approximate bending due to refaction. But for now, ignore
+        // thank.
+        //
+        // It may be ok to consider the microfacet distribution only on a single
+        // interface.
+        // Walter's implementation is based solving for a surface pointing away from
+        // the camera. And, as he mentions in the paper, the higher index of refraction
+        // should be inside the material (ie, on the camera side). Infact, this is
+        // required to get the transmission half vector, ht, pointing in the right direction.
+        // So, in effect we're solving for the microfacets on an imaginary back face where
+        // the light first entered the object on it's way to the camera.
+        //
+        // In theory, we could do the fresnel calculation for r, g & b separately. But we're
+        // just going to ignore that and only do a single channel. This might produce an
+        // incorrect result for metals; but why would we get a large amount of transmission
+        // through metals?
+        float transmitted = 0.f;
+
+        #if MAT_TRANSMITTED_SPECULAR==1
+                // note -- constant ior. Could be tied to "specular" parameter?
+                //  Anyway, 1.33 is ior for water -- which is fairly significant refraction.
+            const float iorIncident = 1.f;
+            const float iorOutgoing = SpecularTransmissionIndexOfRefraction; // 1.33f;
+            WalterTrans(
+                parameters.roughness, parameters.F0.g, iorIncident, iorOutgoing,
+                negativeLightDirection, directionToEye, -normal,        // (note flipping normal)
+                transmitted);
+        #endif
+
+        reflected = clamp(reflected, 0.0.xxx, SpecularOutputClamp.xxx);
+        transmitted = clamp(transmitted, 0.f, SpecularOutputClamp);
+
+        return reflected + parameters.transmission * transmitted;
+
     #endif
 }
 
