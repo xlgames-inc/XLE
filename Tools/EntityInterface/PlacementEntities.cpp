@@ -92,24 +92,14 @@ namespace EntityInterface
 
         SceneEngine::PlacementsEditor::ObjTransDef newObj;
         newObj._localToWorld = Identity<decltype(newObj._localToWorld)>();
-        newObj._model = "game/model/nature/bushtree/BushE";
-        newObj._material = "game/model/nature/bushtree/BushE";
+        newObj._model = "";
+        newObj._material = "";
+        for (size_t c=0; c<initializerCount; ++c) 
+            SetObjProperty(newObj, initializers[c]);
 
         auto guid = SceneEngine::PlacementGUID(id.Document(), id.Object());
         auto transaction = _editor->Transaction_Begin(nullptr, nullptr);
         if (transaction->Create(guid, newObj)) {
-
-            if (initializerCount) {
-                auto originalObject = transaction->GetObject(0);
-
-                bool result = false;
-                for (size_t c=0; c<initializerCount; ++c) 
-                    result |= SetObjProperty(originalObject, initializers[c]);
-
-                if (result)
-                    transaction->SetObject(0, originalObject);
-            }
-
             transaction->Commit();
             return true;
         }

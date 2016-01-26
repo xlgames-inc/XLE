@@ -91,8 +91,8 @@ namespace LevelEditorXLE.Placements
 
             internal Settings()
             {
-                _selectedModel = "game/model/nature/bushtree/BushE";
-                _selectedMaterial = "game/model/nature/bushtree/BushE";
+                _selectedModel = "game/model/galleon/galleon";
+                _selectedMaterial = "game/model/galleon/galleon";
             }
 
             internal String _selectedModel;
