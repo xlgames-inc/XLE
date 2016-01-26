@@ -1,1 +1,1 @@
-gradle -Proot=e:/xle/Working/ %1 %2 %3
+gradle -Proot=%XLE_DIR%/Working/ %1 %2 %3
