@@ -142,7 +142,7 @@ float3 SampleSpecularIBL_Ref(float3 normal, float3 viewDirection, SpecularParame
             // it the long way.
         float NdotH = saturate(dot(normal, H));
         float VdotH = saturate(dot(viewDirection, H));
-        precise float D = TrowReitzD(NdotH, specParam.roughness * specParam.roughness);
+        precise float D = TrowReitzD(NdotH, alphad);
         float pdfWeight = (4.f * VdotH) / (D * NdotH);
 
         result += lightColor * brdf * pdfWeight;
@@ -165,11 +165,14 @@ float3 SampleTransmittedSpecularIBL_Ref(
         // SampleSpecularIBL_Ref
     float alphad = RoughnessToDAlpha(specParam.roughness);
     float3 result = 0.0.xxx;
-    const uint sampleCount = 32;
+    const uint sampleCount = 128;
     for (uint s=0; s<sampleCount; ++s) {
         // using the same distribution of half-vectors that we use for reflection
         // (except we flip the normal because of the way the equation is built)
         precise float3 H = BuildSampleHalfVectorGGX(s, sampleCount, -normal, alphad);
+
+        // float3 L = 2.f * dot(viewDirection, H) * H - viewDirection;
+        // return tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(L), 0).rgb;
 
         // following Walter07 here, we need to build "i", the incoming direction.
         // Actually Walter builds the outgoing direction -- but we need to reverse the
@@ -191,41 +194,38 @@ float3 SampleTransmittedSpecularIBL_Ref(
         // float a = sqrt(iorOutgoing*iorOutgoing - iorOutgoing*iorOutgoing*c*c);
         // float a = iorOutgoing * sqrt(1.f - c*c);
         float asq = iorOutgoing*iorOutgoing*(1.f - c*c);
+
+            // some half vectors have no transmission solution. Maybe these
+            // result in internal reflection?
         if (asq >= iorIncident*iorIncident) continue; // return float3(0,1,0);
         // float e = sqrt(iorIncident*iorIncident - asq);
         // float e = sqrt(iorIncident*iorIncident - iorOutgoing*iorOutgoing*(1.f - c*c));
         float etaSq = (iorOutgoing*iorOutgoing) / (iorIncident*iorIncident);
         // float e = sqrt(iorIncident*iorIncident*(1.f - etaSq*(1.f - c*c)));
         float e = iorIncident*sqrt(1.f - etaSq + etaSq*c*c);
-        float l = b + e;
+        float l = b - e;
 
         float3 i = -H * l / iorIncident - iorOutgoing / iorIncident * ot;
-        if (isinf(i.x) || isnan(i.x)) return float3(1,0,0);
-        if (abs(length(i) - 1.f) > 0.01f) return float3(1,0,0);
 
-        float3 H2 = CalculateHt(i, ot, iorIncident, iorOutgoing);
-        if (length(H2 - H) > 0.01f) return float3(1,0,0);
+        #if 0
+            if (isinf(i.x) || isnan(i.x)) return float3(1,0,0);
+            if (abs(length(i) - 1.f) > 0.01f) return float3(1,0,0);
+            float3 H2 = CalculateHt(i, ot, iorIncident, iorOutgoing);
+            if (length(H2 - H) > 0.01f) return float3(1,0,0);
+        #endif
 
-        // if (dot(i, H) < 0.f) return float3(0,0,1);
-        // if (dot(ot, H2) > 0.f) return float3(0,0,1);
-
-        // i = -i;
-
-        // ok, we've got our incoming vector
+        // ok, we've got our incoming vector. We can do the cube map lookup
+        // Note that when we call "CalculateSpecular", it's going to recalculate
+        // the transmission half vector and come out with the same result.
         float3 lightColor = tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(i), 0).rgb;
-        result += lightColor;
-        continue;
         precise float3 brdf = CalculateSpecular(normal, viewDirection, i, H, specParam); // (also contains NdotL term)
 
-            // Unreal course notes say the probability distribution function is
-            //      D * NdotH / (4 * VdotH)
-            // We need to apply the inverse of this to weight the sample correctly.
-            // A better solution is to factor the terms out of the microfacet specular
-            // equation. But since this is for a reference implementation, let's do
-            // it the long way.
-        float NdotH = saturate(dot(-normal, H));
-        float VdotH = saturate(dot(viewDirection, H));
-        precise float D = TrowReitzD(NdotH, specParam.roughness * specParam.roughness);
+        // We have to apply the distribution weight. Since our half vectors are distributed
+        // in the same fashion as the reflection case, we should have the same weight.
+        // (But we need to consider the flipping that occurs)
+        float NdotH = saturate(dot(normal, -H));
+        float VdotH = saturate(dot(viewDirection, -H));
+        precise float D = TrowReitzD(NdotH, alphad);
         float pdfWeight = (4.f * VdotH) / (D * NdotH);
 
         result += lightColor * brdf * pdfWeight;
