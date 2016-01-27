@@ -16,6 +16,14 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Tar
     return float4(GenerateSplitTerm(NdotV, roughness), 0, 1);
 }
 
+float4 main_trans(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+    float NdotV = texCoord.x;
+    float roughness = 1.f-texCoord.y;
+    const uint sampleCount = 64 * 1024;
+    return float4(GenerateSplitTermTrans(NdotV, roughness, sampleCount), 0, 1);
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 cbuffer SubResourceId
@@ -63,6 +71,8 @@ float3 CalculateCubeMapDirection(uint panelIndex, float2 texCoord)
         + plusY * (2.f * texCoord.y - 1.f));
 }
 
+static const float SpecularIBLMipMapCount = 9.f;
+
 float4 EquiRectFilterGlossySpecular(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
     // This is the second term of the "split-term" solution for IBL glossy specular
@@ -106,9 +116,8 @@ float4 EquiRectFilterGlossySpecular(float4 position : SV_Position, float2 texCoo
     // more linear against the sample cone size, perhaps...?
     // Does it make sense to offset by .5 to get a value in the middle of the range? We
     // will be using trilinear filtering to get a value between 2 mipmaps.
-    const float specularIBLMipMapCount = 9.f;
     const float offset = 0.0f; // 0.5f
-    float roughness = saturate((MipIndex + offset) / specularIBLMipMapCount);
+    float roughness = saturate((MipIndex + offset) / SpecularIBLMipMapCount);
     roughness = max(roughness, 0.025f);
     SpecularParameters specParam = SpecularParameters_RoughF0(roughness, 1.0.xxx);
 
@@ -116,6 +125,8 @@ float4 EquiRectFilterGlossySpecular(float4 position : SV_Position, float2 texCoo
     float alphad = RoughnessToDAlpha(specParam.roughness);
 
     float3 result = 0.0.xxx;
+    float totalWeight = 0.f;
+
         // We need a huge number of samples for a smooth result
         // Perhaps we should use double precision math?
         // Anyway, we need to split it up into multiple passes, otherwise
@@ -159,13 +170,98 @@ float4 EquiRectFilterGlossySpecular(float4 position : SV_Position, float2 texCoo
             // This occurs in the high roughness values when we have a very large
             // number of samples. This might be a result of the bit hacks we're
             // doing in the hammersly calculation?
-        if (!isnan(scale))
-            result += lightColor * scale;
+
+            // note --  seems like the weighting here could be simplified down to just
+            //          NdotL?
+        #if 0
+            if (!isnan(scale))
+                result += lightColor * scale;
+        #endif
+
+        result += lightColor * NdotL;
+        totalWeight += NdotL;
     }
 
-    // Might be more accuracy to divide by "passSampleCount" here, and then later on divide
+    // Might be more accurate to divide by "passSampleCount" here, and then later on divide
     // by PassCount...?
-    return float4(result / float(totalSampleCount), 1.f);
+    // return float4(result / float(totalSampleCount), 1.f);
+    return float4(result / totalWeight / PassCount, 1.f);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+float3 CalculateFilteredTextureTrans(float3 cubeMapDirection, float roughness)
+{
+    float3 normal = cubeMapDirection;
+    float3 viewDirection = cubeMapDirection;
+
+    const float3 ot = viewDirection;
+    const float iorIncident = 1.f;
+    const float iorOutgoing = SpecularTransmissionIndexOfRefraction;
+
+    float alphag = RoughnessToGAlpha(roughness);
+    float alphad = RoughnessToDAlpha(roughness);
+
+    float totalWeight = 0.f;
+    float3 result = 0.0.xxx;
+    const uint passSampleCount = 256;
+    const uint totalSampleCount = passSampleCount * PassCount;
+    [loop] for (uint s=0; s<passSampleCount; ++s) {
+        precise float3 H = BuildSampleHalfVectorGGX(
+            s+PassIndex*passSampleCount, totalSampleCount,
+            -normal, alphad);
+
+        float3 i;
+        if (!CalculateTransmissionIncident(i, ot, H, iorIncident, iorOutgoing))
+            continue;
+
+        float3 lightColor = SampleInputTexture(i);
+        float weight = saturate(dot(-normal, i));
+        result += lightColor * weight;
+        totalWeight += weight;
+#if 0
+        // As per the reflection case, our probability distribution function is
+        //      D * NdotH / (4 * VdotH)
+        // However, it doesn't factor out like it does in the reflection case.
+        // So, we have to do the full calculation, and then apply the inverse of
+        // the pdf afterwards.
+
+        float NdotH = saturate(dot(normal, -H));
+        float VdotH = saturate(dot(viewDirection, -H));
+
+        precise float D = TrowReitzD(NdotH, alphad);
+        float pdfWeight = (4.f * VdotH) / (D * NdotH);
+
+        float transmitted;
+        GGXTransmission(        // todo -- fresnel calculation is going to get in the way
+            roughness, 0.f, iorIncident, iorOutgoing,
+            i, ot, -normal,
+            transmitted);
+
+        float scale = transmitted * pdfWeight;
+        if (!isnan(scale))
+            result += lightColor * scale;
+#endif
+    }
+
+    // Might be more accurate to divide by "passSampleCount" here, and then later on divide
+    // by PassCount...?
+    return float4(result / totalWeight / PassCount, 1.f);
+}
+
+float4 EquiRectFilterGlossySpecularTrans(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+    // Following the simplifications we use for split-sum specular reflections, here
+    // is the equivalent sampling for specular transmission
+    float3 cubeMapDirection = CalculateCubeMapDirection(ArrayIndex, texCoord);
+
+        // undoing AdjSkyCubeMapCoords
+    cubeMapDirection = float3(cubeMapDirection.x, -cubeMapDirection.z, cubeMapDirection.y);
+    cubeMapDirection = float3(-cubeMapDirection.x, -cubeMapDirection.y, cubeMapDirection.z);
+
+    const float offset = 0.0f; // 0.5f
+    float roughness = saturate((MipIndex + offset) / SpecularIBLMipMapCount);
+    roughness = max(roughness, 0.025f);
+
+    return float4(CalculateFilteredTextureTrans(cubeMapDirection, roughness), 1.f));
+}

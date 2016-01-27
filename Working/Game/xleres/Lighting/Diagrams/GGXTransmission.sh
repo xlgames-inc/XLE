@@ -1,107 +1,104 @@
 // CompoundDocument:1
 #include "game/xleres/System/Prefix.h"
 
-#include "game/xleres/Lighting/SpecularMethods.h"
 #include "game/xleres/Nodes/Basic.sh"
+#include "game/xleres/Lighting/SpecularMethods.h"
 #include "game/xleres/Lighting/LightingAlgorithm.h"
 
 
 void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutgoing, float3 i, float3 o, float3 n, out float result : SV_Target0)
 {
-	float Output_32_result;
-	Output_32_result = RoughnessToDAlpha( roughness );
+	float3 Output_73_result;
+	Output_73_result = CalculateHt( i, o, iorIncident, iorOutgoing );
 
-	float3 Output_11_result;
-	Output_11_result = CalculateHt( i, o, iorIncident, iorOutgoing );
+	float Output_64_result;
+	Output_64_result = Dot3( Output_73_result, i );
 
-	float Output_2_result;
-	Output_2_result = Dot3( Output_11_result, i );
+	float Output_66_result;
+	Output_66_result = SchlickFresnelCore( Output_64_result );
 
-	float Output_3_result;
-	Output_3_result = Abs1( Output_2_result );
+	float Output_69_result;
+	Output_69_result = Lerp1( F0, 1.f, Output_66_result );
 
-	float Output_4_result;
-	Output_4_result = SchlickFresnelCore( Output_2_result );
+	float Output_67_result;
+	Output_67_result = Subtract1( 1.0f, Output_69_result );
 
-	float Output_7_result;
-	Output_7_result = Lerp1( F0, 1.f, Output_4_result );
+	float Output_68_result;
+	Output_68_result = Saturate1( Output_67_result );
 
-	float Output_5_result;
-	Output_5_result = Subtract1( 1.0f, Output_7_result );
+	float Output_79_result;
+	Output_79_result = Square1( iorOutgoing );
 
-	float Output_6_result;
-	Output_6_result = Saturate1( Output_5_result );
+	float Output_77_result;
+	Output_77_result = Dot3( i, n );
 
-	float Output_17_result;
-	Output_17_result = Square1( iorOutgoing );
+	float Output_75_result;
+	Output_75_result = Abs1( Output_77_result );
 
-	float Output_15_result;
-	Output_15_result = Dot3( i, n );
+	float Output_82_result;
+	Output_82_result = RoughnessToGAlpha( roughness );
 
-	float Output_13_result;
-	Output_13_result = Abs1( Output_15_result );
+	precise float Output_71_result = SmithG( Output_75_result, Output_82_result );
 
-	float Output_20_result;
-	Output_20_result = RoughnessToGAlpha( roughness );
+	float Output_76_result;
+	Output_76_result = Dot3( o, n );
 
-	float Output_9_result;
-	Output_9_result = SmithG( Output_13_result, Output_20_result );
+	float Output_84_result;
+	Output_84_result = Abs1( Output_76_result );
 
-	float Output_14_result;
-	Output_14_result = Dot3( o, n );
+	precise float Output_85_result = SmithG( Output_84_result, Output_82_result );
 
-	float Output_22_result;
-	Output_22_result = Abs1( Output_14_result );
+	float Output_86_result;
+	Output_86_result = Multiply1( Output_71_result, Output_85_result );
 
-	float Output_23_result;
-	Output_23_result = SmithG( Output_22_result, Output_20_result );
+	float Output_74_result;
+	Output_74_result = Multiply1( Output_75_result, Output_84_result );
 
-	float Output_24_result;
-	Output_24_result = Multiply1( Output_9_result, Output_23_result );
+	float Output_65_result;
+	Output_65_result = Abs1( Output_64_result );
 
-	float Output_12_result;
-	Output_12_result = Multiply1( Output_13_result, Output_22_result );
+	float Output_90_result;
+	Output_90_result = Dot3( Output_73_result, o );
 
-	float Output_28_result;
-	Output_28_result = Dot3( Output_11_result, o );
+	float Output_83_result;
+	Output_83_result = Abs1( Output_90_result );
 
-	float Output_21_result;
-	Output_21_result = Abs1( Output_28_result );
+	float Output_89_result;
+	Output_89_result = Multiply1( Output_65_result, Output_83_result );
 
-	float Output_27_result;
-	Output_27_result = Multiply1( Output_3_result, Output_21_result );
+	float Output_87_result;
+	Output_87_result = Divide1( Output_89_result, Output_74_result );
 
-	float Output_25_result;
-	Output_25_result = Divide1( Output_27_result, Output_12_result );
+	float Output_70_result;
+	Output_70_result = MultiplyMany1( Output_87_result, Output_68_result, Output_79_result, Output_86_result );
 
-	float Output_8_result;
-	Output_8_result = MultiplyMany1( Output_25_result, Output_6_result, Output_17_result, Output_24_result );
+	float Output_63_result;
+	Output_63_result = RoughnessToDAlpha( roughness );
 
-	float Output_10_result;
-	Output_10_result = Dot3( Output_11_result, n );
+	float Output_72_result;
+	Output_72_result = Dot3( Output_73_result, n );
 
-	float Output_16_result;
-	Output_16_result = TrowReitzD( Output_10_result, Output_32_result );
+	precise float Output_78_result = TrowReitzD( Output_72_result, Output_63_result );
 
-	float Output_29_result;
-	Output_29_result = Multiply1( iorOutgoing, Output_28_result );
+	float Output_93_result;
+	Output_93_result = Multiply1( Output_70_result, Output_78_result );
 
-	float Output_30_result;
-	Output_30_result = Multiply1( iorIncident, Output_2_result );
+	float Output_91_result;
+	Output_91_result = Multiply1( iorOutgoing, Output_90_result );
 
-	float Output_19_result;
-	Output_19_result = Add1( Output_30_result, Output_29_result );
+	float Output_92_result;
+	Output_92_result = Multiply1( iorIncident, Output_64_result );
 
-	float Output_18_result;
-	Output_18_result = Square1( Output_19_result );
+	float Output_81_result;
+	Output_81_result = Add1( Output_92_result, Output_91_result );
 
-	float Output_31_result;
-	Output_31_result = Multiply1( Output_8_result, Output_16_result );
+	float Output_80_result;
+	Output_80_result = Square1( Output_81_result );
 
-	float Output_26_result;
-	Output_26_result = Divide1( Output_31_result, Output_18_result );
+	float Output_88_result;
+	Output_88_result = Divide1( Output_93_result, Output_80_result );
 
-	result = Output_26_result;
+	result = Output_88_result;
 
 }
 /* <<Chunk:NodeGraph:GGXTransmission>>--(
@@ -109,125 +106,44 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 <NodeGraph xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
 	<ConstantConnections>
 		<ConstantConnection>
-			<OutputNodeID>32</OutputNodeID>
+			<OutputNodeID>63</OutputNodeID>
 			<OutputParameterName>roughness</OutputParameterName>
 			<Value>&lt;roughness&gt;</Value>
 		</ConstantConnection>
 		<ConstantConnection>
-			<OutputNodeID>5</OutputNodeID>
+			<OutputNodeID>67</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
 			<Value>1.0f</Value>
 		</ConstantConnection>
 		<ConstantConnection>
-			<OutputNodeID>7</OutputNodeID>
+			<OutputNodeID>69</OutputNodeID>
 			<OutputParameterName>min</OutputParameterName>
 			<Value>&lt;F0&gt;</Value>
 		</ConstantConnection>
 		<ConstantConnection>
-			<OutputNodeID>7</OutputNodeID>
+			<OutputNodeID>69</OutputNodeID>
 			<OutputParameterName>max</OutputParameterName>
 			<Value>1.f</Value>
 		</ConstantConnection>
 		<ConstantConnection>
-			<OutputNodeID>11</OutputNodeID>
+			<OutputNodeID>73</OutputNodeID>
 			<OutputParameterName>iorIncident</OutputParameterName>
 			<Value>&lt;iorIncident&gt;</Value>
 		</ConstantConnection>
 		<ConstantConnection>
-			<OutputNodeID>11</OutputNodeID>
+			<OutputNodeID>73</OutputNodeID>
 			<OutputParameterName>iorOutgoing</OutputParameterName>
 			<Value>&lt;iorOutgoing&gt;</Value>
 		</ConstantConnection>
 		<ConstantConnection>
-			<OutputNodeID>20</OutputNodeID>
+			<OutputNodeID>82</OutputNodeID>
 			<OutputParameterName>roughness</OutputParameterName>
 			<Value>&lt;roughness&gt;</Value>
 		</ConstantConnection>
 	</ConstantConnections>
 	<InputParameterConnections>
 		<InputParameterConnection>
-			<OutputNodeID>11</OutputNodeID>
-			<OutputParameterName>i</OutputParameterName>
-			<Default i:nil="true" />
-			<Name>&lt;i&gt;</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>0</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>11</OutputNodeID>
-			<OutputParameterName>o</OutputParameterName>
-			<Default></Default>
-			<Name>&lt;o&gt;</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>0</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>2</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
-			<Default i:nil="true" />
-			<Name>&lt;i&gt;</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>0</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>28</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
-			<Default></Default>
-			<Name>&lt;o&gt;</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>0</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>15</OutputNodeID>
-			<OutputParameterName>lhs</OutputParameterName>
-			<Default i:nil="true" />
-			<Name>&lt;i&gt;</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>0</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>15</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
-			<Default></Default>
-			<Name>&lt;n&gt;</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>0</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>14</OutputNodeID>
-			<OutputParameterName>lhs</OutputParameterName>
-			<Default></Default>
-			<Name>&lt;o&gt;</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>0</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>14</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
-			<Default></Default>
-			<Name>&lt;n&gt;</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>0</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>10</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
-			<Default></Default>
-			<Name>&lt;n&gt;</Name>
-			<Semantic></Semantic>
-			<Type>auto</Type>
-			<VisualNodeId>0</VisualNodeId>
-		</InputParameterConnection>
-		<InputParameterConnection>
-			<OutputNodeID>29</OutputNodeID>
+			<OutputNodeID>91</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
 			<Default></Default>
 			<Name>&lt;iorOutgoing&gt;</Name>
@@ -236,7 +152,7 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 			<VisualNodeId>1</VisualNodeId>
 		</InputParameterConnection>
 		<InputParameterConnection>
-			<OutputNodeID>30</OutputNodeID>
+			<OutputNodeID>92</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
 			<Default></Default>
 			<Name>&lt;iorIncident&gt;</Name>
@@ -245,7 +161,7 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 			<VisualNodeId>1</VisualNodeId>
 		</InputParameterConnection>
 		<InputParameterConnection>
-			<OutputNodeID>17</OutputNodeID>
+			<OutputNodeID>79</OutputNodeID>
 			<OutputParameterName>value</OutputParameterName>
 			<Default></Default>
 			<Name>&lt;iorOutgoing&gt;</Name>
@@ -253,345 +169,426 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 			<Type>auto</Type>
 			<VisualNodeId>1</VisualNodeId>
 		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>73</OutputNodeID>
+			<OutputParameterName>i</OutputParameterName>
+			<Default i:nil="true" />
+			<Name>&lt;i&gt;</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>2</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>73</OutputNodeID>
+			<OutputParameterName>o</OutputParameterName>
+			<Default></Default>
+			<Name>&lt;o&gt;</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>2</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>64</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<Default i:nil="true" />
+			<Name>&lt;i&gt;</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>2</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>90</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<Default></Default>
+			<Name>&lt;o&gt;</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>2</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>77</OutputNodeID>
+			<OutputParameterName>lhs</OutputParameterName>
+			<Default i:nil="true" />
+			<Name>&lt;i&gt;</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>2</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>77</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<Default></Default>
+			<Name>&lt;n&gt;</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>2</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>76</OutputNodeID>
+			<OutputParameterName>lhs</OutputParameterName>
+			<Default></Default>
+			<Name>&lt;o&gt;</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>2</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>76</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<Default></Default>
+			<Name>&lt;n&gt;</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>2</VisualNodeId>
+		</InputParameterConnection>
+		<InputParameterConnection>
+			<OutputNodeID>72</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<Default></Default>
+			<Name>&lt;n&gt;</Name>
+			<Semantic></Semantic>
+			<Type>auto</Type>
+			<VisualNodeId>2</VisualNodeId>
+		</InputParameterConnection>
 	</InputParameterConnections>
 	<NodeConnections>
 		<NodeConnection>
-			<OutputNodeID>16</OutputNodeID>
-			<OutputParameterName>alpha</OutputParameterName>
-			<InputNodeID>32</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>3</OutputNodeID>
-			<OutputParameterName>value</OutputParameterName>
-			<InputNodeID>2</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>30</OutputNodeID>
-			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>2</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>4</OutputNodeID>
-			<OutputParameterName>VdotH</OutputParameterName>
-			<InputNodeID>2</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>27</OutputNodeID>
-			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>3</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>7</OutputNodeID>
-			<OutputParameterName>alpha</OutputParameterName>
-			<InputNodeID>4</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>6</OutputNodeID>
-			<OutputParameterName>input</OutputParameterName>
-			<InputNodeID>5</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>8</OutputNodeID>
+			<OutputNodeID>70</OutputNodeID>
 			<OutputParameterName>second</OutputParameterName>
-			<InputNodeID>6</InputNodeID>
+			<InputNodeID>68</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>5</OutputNodeID>
+			<OutputNodeID>88</OutputNodeID>
+			<OutputParameterName>lhs</OutputParameterName>
+			<InputNodeID>93</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>78</OutputNodeID>
+			<OutputParameterName>alpha</OutputParameterName>
+			<InputNodeID>63</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>65</OutputNodeID>
+			<OutputParameterName>value</OutputParameterName>
+			<InputNodeID>64</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>92</OutputNodeID>
 			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>7</InputNodeID>
+			<InputNodeID>64</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>31</OutputNodeID>
+			<OutputNodeID>66</OutputNodeID>
+			<OutputParameterName>VdotH</OutputParameterName>
+			<InputNodeID>64</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>89</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>8</InputNodeID>
+			<InputNodeID>65</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>24</OutputNodeID>
+			<OutputNodeID>69</OutputNodeID>
+			<OutputParameterName>alpha</OutputParameterName>
+			<InputNodeID>66</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>68</OutputNodeID>
+			<OutputParameterName>input</OutputParameterName>
+			<InputNodeID>67</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>67</OutputNodeID>
+			<OutputParameterName>rhs</OutputParameterName>
+			<InputNodeID>69</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>93</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>9</InputNodeID>
+			<InputNodeID>70</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>16</OutputNodeID>
+			<OutputNodeID>86</OutputNodeID>
+			<OutputParameterName>lhs</OutputParameterName>
+			<InputNodeID>71</InputNodeID>
+			<InputParameterName>result</InputParameterName>
+			<InputType>float</InputType>
+			<OutputType>float</OutputType>
+			<Semantic i:nil="true" />
+		</NodeConnection>
+		<NodeConnection>
+			<OutputNodeID>78</OutputNodeID>
 			<OutputParameterName>NdotH</OutputParameterName>
-			<InputNodeID>10</InputNodeID>
+			<InputNodeID>72</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>2</OutputNodeID>
+			<OutputNodeID>64</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>11</InputNodeID>
+			<InputNodeID>73</InputNodeID>
 			<InputParameterName>result</InputParameterName>
-			<InputType></InputType>
+			<InputType>float3</InputType>
 			<OutputType>float3</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>28</OutputNodeID>
+			<OutputNodeID>90</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>11</InputNodeID>
+			<InputNodeID>73</InputNodeID>
 			<InputParameterName>result</InputParameterName>
-			<InputType></InputType>
+			<InputType>float3</InputType>
 			<OutputType>float3</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>10</OutputNodeID>
+			<OutputNodeID>72</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>11</InputNodeID>
+			<InputNodeID>73</InputNodeID>
 			<InputParameterName>result</InputParameterName>
-			<InputType></InputType>
+			<InputType>float3</InputType>
 			<OutputType>float3</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>25</OutputNodeID>
+			<OutputNodeID>87</OutputNodeID>
 			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>12</InputNodeID>
+			<InputNodeID>74</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>9</OutputNodeID>
+			<OutputNodeID>71</OutputNodeID>
 			<OutputParameterName>NdotV</OutputParameterName>
-			<InputNodeID>13</InputNodeID>
+			<InputNodeID>75</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>12</OutputNodeID>
+			<OutputNodeID>74</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>13</InputNodeID>
+			<InputNodeID>75</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>22</OutputNodeID>
+			<OutputNodeID>84</OutputNodeID>
 			<OutputParameterName>value</OutputParameterName>
-			<InputNodeID>14</InputNodeID>
+			<InputNodeID>76</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>13</OutputNodeID>
+			<OutputNodeID>75</OutputNodeID>
 			<OutputParameterName>value</OutputParameterName>
-			<InputNodeID>15</InputNodeID>
+			<InputNodeID>77</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>31</OutputNodeID>
+			<OutputNodeID>93</OutputNodeID>
 			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>16</InputNodeID>
+			<InputNodeID>78</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>8</OutputNodeID>
+			<OutputNodeID>70</OutputNodeID>
 			<OutputParameterName>third</OutputParameterName>
-			<InputNodeID>17</InputNodeID>
+			<InputNodeID>79</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>26</OutputNodeID>
+			<OutputNodeID>88</OutputNodeID>
 			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>18</InputNodeID>
+			<InputNodeID>80</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>18</OutputNodeID>
+			<OutputNodeID>80</OutputNodeID>
 			<OutputParameterName>value</OutputParameterName>
-			<InputNodeID>19</InputNodeID>
+			<InputNodeID>81</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>23</OutputNodeID>
+			<OutputNodeID>85</OutputNodeID>
 			<OutputParameterName>alpha</OutputParameterName>
-			<InputNodeID>20</InputNodeID>
+			<InputNodeID>82</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>9</OutputNodeID>
+			<OutputNodeID>71</OutputNodeID>
 			<OutputParameterName>alpha</OutputParameterName>
-			<InputNodeID>20</InputNodeID>
+			<InputNodeID>82</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>27</OutputNodeID>
+			<OutputNodeID>89</OutputNodeID>
 			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>21</InputNodeID>
+			<InputNodeID>83</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>12</OutputNodeID>
+			<OutputNodeID>74</OutputNodeID>
 			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>22</InputNodeID>
+			<InputNodeID>84</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>23</OutputNodeID>
+			<OutputNodeID>85</OutputNodeID>
 			<OutputParameterName>NdotV</OutputParameterName>
-			<InputNodeID>22</InputNodeID>
+			<InputNodeID>84</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>24</OutputNodeID>
+			<OutputNodeID>86</OutputNodeID>
 			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>23</InputNodeID>
+			<InputNodeID>85</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>8</OutputNodeID>
+			<OutputNodeID>70</OutputNodeID>
 			<OutputParameterName>forth</OutputParameterName>
-			<InputNodeID>24</InputNodeID>
+			<InputNodeID>86</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>8</OutputNodeID>
+			<OutputNodeID>70</OutputNodeID>
 			<OutputParameterName>first</OutputParameterName>
-			<InputNodeID>25</InputNodeID>
+			<InputNodeID>87</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>25</OutputNodeID>
+			<OutputNodeID>87</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>27</InputNodeID>
+			<InputNodeID>89</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>21</OutputNodeID>
+			<OutputNodeID>83</OutputNodeID>
 			<OutputParameterName>value</OutputParameterName>
-			<InputNodeID>28</InputNodeID>
+			<InputNodeID>90</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>29</OutputNodeID>
+			<OutputNodeID>91</OutputNodeID>
 			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>28</InputNodeID>
+			<InputNodeID>90</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>19</OutputNodeID>
+			<OutputNodeID>81</OutputNodeID>
 			<OutputParameterName>rhs</OutputParameterName>
-			<InputNodeID>29</InputNodeID>
+			<InputNodeID>91</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
 			<Semantic i:nil="true" />
 		</NodeConnection>
 		<NodeConnection>
-			<OutputNodeID>19</OutputNodeID>
+			<OutputNodeID>81</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>30</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float</InputType>
-			<OutputType>float</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>26</OutputNodeID>
-			<OutputParameterName>lhs</OutputParameterName>
-			<InputNodeID>31</InputNodeID>
+			<InputNodeID>92</InputNodeID>
 			<InputParameterName>result</InputParameterName>
 			<InputType>float</InputType>
 			<OutputType>float</OutputType>
@@ -600,188 +597,188 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 	</NodeConnections>
 	<Nodes>
 		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:RoughnessToDAlpha</FragmentArchiveName>
-			<NodeId>32</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Saturate1</FragmentArchiveName>
+			<NodeId>68</NodeId>
 			<NodeType>Procedure</NodeType>
-			<VisualNodeId>2</VisualNodeId>
+			<VisualNodeId>0</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
-			<NodeId>2</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<NodeId>93</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>3</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
-			<NodeId>3</NodeId>
+			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:RoughnessToDAlpha</FragmentArchiveName>
+			<NodeId>63</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>4</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\LightingAlgorithm.h:SchlickFresnelCore</FragmentArchiveName>
-			<NodeId>4</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
+			<NodeId>64</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>5</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Subtract1</FragmentArchiveName>
-			<NodeId>5</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
+			<NodeId>65</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>6</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Saturate1</FragmentArchiveName>
-			<NodeId>6</NodeId>
+			<FragmentArchiveName>game/xleres/Lighting\LightingAlgorithm.h:SchlickFresnelCore</FragmentArchiveName>
+			<NodeId>66</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>7</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Lerp1</FragmentArchiveName>
-			<NodeId>7</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Subtract1</FragmentArchiveName>
+			<NodeId>67</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>8</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:MultiplyMany1</FragmentArchiveName>
-			<NodeId>8</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Lerp1</FragmentArchiveName>
+			<NodeId>69</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>9</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:SmithG</FragmentArchiveName>
-			<NodeId>9</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:MultiplyMany1</FragmentArchiveName>
+			<NodeId>70</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>10</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
-			<NodeId>10</NodeId>
+			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:SmithG</FragmentArchiveName>
+			<NodeId>71</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>11</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\LightingAlgorithm.h:CalculateHt</FragmentArchiveName>
-			<NodeId>11</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
+			<NodeId>72</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>12</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
-			<NodeId>12</NodeId>
+			<FragmentArchiveName>game/xleres/Lighting\LightingAlgorithm.h:CalculateHt</FragmentArchiveName>
+			<NodeId>73</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>13</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
-			<NodeId>13</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<NodeId>74</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>14</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
-			<NodeId>14</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
+			<NodeId>75</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>15</VisualNodeId>
 		</Node>
 		<Node>
 			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
-			<NodeId>15</NodeId>
+			<NodeId>76</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>16</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:TrowReitzD</FragmentArchiveName>
-			<NodeId>16</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
+			<NodeId>77</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>17</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Square1</FragmentArchiveName>
-			<NodeId>17</NodeId>
+			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:TrowReitzD</FragmentArchiveName>
+			<NodeId>78</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>18</VisualNodeId>
 		</Node>
 		<Node>
 			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Square1</FragmentArchiveName>
-			<NodeId>18</NodeId>
+			<NodeId>79</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>19</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Add1</FragmentArchiveName>
-			<NodeId>19</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Square1</FragmentArchiveName>
+			<NodeId>80</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>20</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:RoughnessToGAlpha</FragmentArchiveName>
-			<NodeId>20</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Add1</FragmentArchiveName>
+			<NodeId>81</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>21</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
-			<NodeId>21</NodeId>
+			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:RoughnessToGAlpha</FragmentArchiveName>
+			<NodeId>82</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>22</VisualNodeId>
 		</Node>
 		<Node>
 			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
-			<NodeId>22</NodeId>
+			<NodeId>83</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>23</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:SmithG</FragmentArchiveName>
-			<NodeId>23</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Abs1</FragmentArchiveName>
+			<NodeId>84</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>24</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
-			<NodeId>24</NodeId>
+			<FragmentArchiveName>game/xleres/Lighting\SpecularMethods.h:SmithG</FragmentArchiveName>
+			<NodeId>85</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>25</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Divide1</FragmentArchiveName>
-			<NodeId>25</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<NodeId>86</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>26</VisualNodeId>
 		</Node>
 		<Node>
 			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Divide1</FragmentArchiveName>
-			<NodeId>26</NodeId>
+			<NodeId>87</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>27</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
-			<NodeId>27</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Divide1</FragmentArchiveName>
+			<NodeId>88</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>28</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
-			<NodeId>28</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
+			<NodeId>89</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>29</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
-			<NodeId>29</NodeId>
+			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Dot3</FragmentArchiveName>
+			<NodeId>90</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>30</VisualNodeId>
 		</Node>
 		<Node>
 			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
-			<NodeId>30</NodeId>
+			<NodeId>91</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>31</VisualNodeId>
 		</Node>
 		<Node>
 			<FragmentArchiveName>game/xleres/Nodes\Basic.sh:Multiply1</FragmentArchiveName>
-			<NodeId>31</NodeId>
+			<NodeId>92</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>32</VisualNodeId>
 		</Node>
@@ -789,17 +786,17 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 	<OutputParameterConnections />
 	<PreviewSettingsObjects>
 		<PreviewSettings>
-			<Geometry>Plane2D</Geometry>
+			<Geometry>Sphere</Geometry>
 			<OutputToVisualize></OutputToVisualize>
-			<VisualNodeId>2</VisualNodeId>
+			<VisualNodeId>0</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Sphere</Geometry>
+			<Geometry>Plane2D</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>3</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Sphere</Geometry>
+			<Geometry>Plane2D</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>4</VisualNodeId>
 		</PreviewSettings>
@@ -814,7 +811,7 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 			<VisualNodeId>6</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Plane2D</Geometry>
+			<Geometry>Sphere</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>7</VisualNodeId>
 		</PreviewSettings>
@@ -840,21 +837,21 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 		</PreviewSettings>
 		<PreviewSettings>
 			<Geometry>Sphere</Geometry>
-			<OutputToVisualize>result * .5 + .5.xxx</OutputToVisualize>
+			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>12</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
 			<Geometry>Sphere</Geometry>
-			<OutputToVisualize></OutputToVisualize>
+			<OutputToVisualize>result * .5 + .5.xxx</OutputToVisualize>
 			<VisualNodeId>13</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Plane2D</Geometry>
+			<Geometry>Sphere</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>14</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Sphere</Geometry>
+			<Geometry>Plane2D</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>15</VisualNodeId>
 		</PreviewSettings>
@@ -869,7 +866,7 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 			<VisualNodeId>17</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Plane2D</Geometry>
+			<Geometry>Sphere</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>18</VisualNodeId>
 		</PreviewSettings>
@@ -904,7 +901,7 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 			<VisualNodeId>24</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Sphere</Geometry>
+			<Geometry>Plane2D</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>25</VisualNodeId>
 		</PreviewSettings>
@@ -924,7 +921,7 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 			<VisualNodeId>28</VisualNodeId>
 		</PreviewSettings>
 		<PreviewSettings>
-			<Geometry>Plane2D</Geometry>
+			<Geometry>Sphere</Geometry>
 			<OutputToVisualize></OutputToVisualize>
 			<VisualNodeId>29</VisualNodeId>
 		</PreviewSettings>
@@ -947,8 +944,8 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 	<VisualNodes>
 		<VisualNode>
 			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>-836.2657</d4p1:x>
-				<d4p1:y>582.577942</d4p1:y>
+				<d4p1:x>1138</d4p1:x>
+				<d4p1:y>604</d4p1:y>
 			</Location>
 			<State>Normal</State>
 		</VisualNode>
@@ -958,6 +955,20 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 				<d4p1:y>1015</d4p1:y>
 			</Location>
 			<State>Normal</State>
+		</VisualNode>
+		<VisualNode>
+			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
+				<d4p1:x>-836.2657</d4p1:x>
+				<d4p1:y>582.577942</d4p1:y>
+			</Location>
+			<State>Normal</State>
+		</VisualNode>
+		<VisualNode>
+			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
+				<d4p1:x>1666</d4p1:x>
+				<d4p1:y>951</d4p1:y>
+			</Location>
+			<State>Collapsed</State>
 		</VisualNode>
 		<VisualNode>
 			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
@@ -991,13 +1002,6 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
 				<d4p1:x>979</d4p1:x>
 				<d4p1:y>568</d4p1:y>
-			</Location>
-			<State>Collapsed</State>
-		</VisualNode>
-		<VisualNode>
-			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>1138</d4p1:x>
-				<d4p1:y>604</d4p1:y>
 			</Location>
 			<State>Collapsed</State>
 		</VisualNode>
@@ -1169,13 +1173,6 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 			</Location>
 			<State>Collapsed</State>
 		</VisualNode>
-		<VisualNode>
-			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>1666</d4p1:x>
-				<d4p1:y>951</d4p1:y>
-			</Location>
-			<State>Collapsed</State>
-		</VisualNode>
 	</VisualNodes>
 </NodeGraph>
 )-- */
@@ -1195,7 +1192,7 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 		</d2p1:KeyValueOfstringstring>
 		<d2p1:KeyValueOfstringstring>
 			<d2p1:Key>F0</d2p1:Key>
-			<d2p1:Value>.35</d2p1:Value>
+			<d2p1:Value>.2</d2p1:Value>
 		</d2p1:KeyValueOfstringstring>
 		<d2p1:KeyValueOfstringstring>
 			<d2p1:Key>roughness</d2p1:Key>
@@ -1203,7 +1200,7 @@ void GGXTransmission(float roughness, float F0, float iorIncident, float iorOutg
 		</d2p1:KeyValueOfstringstring>
 		<d2p1:KeyValueOfstringstring>
 			<d2p1:Key>n</d2p1:Key>
-			<d2p1:Value>Function:BuildNormal</d2p1:Value>
+			<d2p1:Value>Function:BuildRefractionNormal</d2p1:Value>
 		</d2p1:KeyValueOfstringstring>
 		<d2p1:KeyValueOfstringstring>
 			<d2p1:Key>i</d2p1:Key>

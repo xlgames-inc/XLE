@@ -267,7 +267,12 @@ namespace SceneEngine
 
             context.BindPS(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
             context.BindPS(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
-            context.BindPS(MakeResourceList(21, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/glosslut.dds:LT").GetShaderResource()));
+            context.BindPS(MakeResourceList(21, 
+				::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/glosslut.dds:LT").GetShaderResource(),
+				::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/glosstranslut.dds:LT").GetShaderResource()));
+
+			context.BindPS(RenderCore::MakeResourceList(30, 
+				::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("Int/u/Game/Library/Sky/Chelsea_Stairs_3k_ts.dds").GetShaderResource()));
 
             context.BindPS(MakeResourceList(9, Metal::ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
         CATCH_ASSETS_END(parserContext)

@@ -282,4 +282,38 @@ float3 CalculateHt(float3 i, float3 o, float iorIncident, float iorOutgoing)
 	return -normalize(iorIncident * i + iorOutgoing * o);
 }
 
+bool CalculateTransmissionIncident(out float3 i, float3 ot, float3 m, float iorIncident, float iorOutgoing)
+{
+    // here, m is the half vector (microfacet normal), and ot
+    // is the direction to the viewer
+
+    // m = -(1/l)(iorIncident * i + iorOutgoing * o);
+    //  where l is length of (iorIncident * i + iorOutgoing * o)
+    // -m * l = iorIncident * i + iorOutgoing * o
+    // -m * l - iorOutgoing * o = iorIncident * i
+    // i = -m * l / iorIncident - iorOutgoing / iorIncident * o
+
+    float c = dot(ot, -m);
+    float b = iorOutgoing * c;
+    // if (c < 0.f || c >= 1.f) return false; // return float3(0,1,0);
+
+    // float a = sqrt(iorOutgoing*iorOutgoing - b*b);
+    // float a = sqrt(iorOutgoing*iorOutgoing - iorOutgoing*iorOutgoing*c*c);
+    // float a = iorOutgoing * sqrt(1.f - c*c);
+    float asq = iorOutgoing*iorOutgoing*(1.f - c*c);
+
+        // some half vectors have no transmission solution. Maybe these
+        // result in internal reflection?
+    if (asq >= iorIncident*iorIncident) return false;
+    // float e = sqrt(iorIncident*iorIncident - asq);
+    // float e = sqrt(iorIncident*iorIncident - iorOutgoing*iorOutgoing*(1.f - c*c));
+    float etaSq = (iorOutgoing*iorOutgoing) / (iorIncident*iorIncident);
+    // float e = sqrt(iorIncident*iorIncident*(1.f - etaSq*(1.f - c*c)));
+    float e = iorIncident*sqrt(1.f - etaSq + etaSq*c*c);
+    float l = b - e;
+
+    i = -m * l / iorIncident - iorOutgoing / iorIncident * ot;
+    return true;
+}
+
 #endif

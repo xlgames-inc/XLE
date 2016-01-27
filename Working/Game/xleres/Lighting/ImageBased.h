@@ -17,6 +17,9 @@
 TextureCube DiffuseIBL  : register(t19);
 TextureCube SpecularIBL : register(t20);
 Texture2D<float2> GlossLUT : register(t21);        // this is the look up table used in the split-sum IBL glossy reflections
+Texture2D<float2> GlossTransLUT : register(t22);
+
+TextureCube SpecularTransIBL : register(t30);
 
 float3 SampleDiffuseIBL(float3 worldSpaceNormal)
 {
@@ -142,89 +145,6 @@ float3 SampleSpecularIBL_Ref(float3 normal, float3 viewDirection, SpecularParame
             // it the long way.
         float NdotH = saturate(dot(normal, H));
         float VdotH = saturate(dot(viewDirection, H));
-        precise float D = TrowReitzD(NdotH, alphad);
-        float pdfWeight = (4.f * VdotH) / (D * NdotH);
-
-        result += lightColor * brdf * pdfWeight;
-    }
-
-    return result / float(sampleCount);
-}
-
-float3 SampleTransmittedSpecularIBL_Ref(
-    float3 normal, float3 viewDirection,
-    SpecularParameters specParam, TextureCube tex)
-{
-        // hack -- currently problems when roughness is 0!
-    if (specParam.roughness == 0.f) return 0.0.xxx;
-
-    // return tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(-viewDirection), 0).rgb;
-
-        // This is a reference implementation of transmitted IBL specular.
-        // We're going to follow the same method and microfacet distribution as
-        // SampleSpecularIBL_Ref
-    float alphad = RoughnessToDAlpha(specParam.roughness);
-    float3 result = 0.0.xxx;
-    const uint sampleCount = 128;
-    for (uint s=0; s<sampleCount; ++s) {
-        // using the same distribution of half-vectors that we use for reflection
-        // (except we flip the normal because of the way the equation is built)
-        precise float3 H = BuildSampleHalfVectorGGX(s, sampleCount, -normal, alphad);
-
-        // float3 L = 2.f * dot(viewDirection, H) * H - viewDirection;
-        // return tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(L), 0).rgb;
-
-        // following Walter07 here, we need to build "i", the incoming direction.
-        // Actually Walter builds the outgoing direction -- but we need to reverse the
-        // equation and get the incoming direction.
-        float iorIncident = 1.f;
-        float iorOutgoing = SpecularTransmissionIndexOfRefraction;
-
-        // H = -(1/l)(iorIncident * i + iorOutgoing * o);
-        //  where l is length of (iorIncident * i + iorOutgoing * o)
-        // -H * l = iorIncident * i + iorOutgoing * o
-        // -H * l - iorOutgoing * o = iorIncident * i
-        // i = -H * l / iorIncident - iorOutgoing / iorIncident * o
-        float3 ot = viewDirection;
-        float c = dot(ot, -H);
-        float b = iorOutgoing * c;
-        if (c < 0.f || c >= 1.f) continue; // return float3(0,1,0);
-
-        // float a = sqrt(iorOutgoing*iorOutgoing - b*b);
-        // float a = sqrt(iorOutgoing*iorOutgoing - iorOutgoing*iorOutgoing*c*c);
-        // float a = iorOutgoing * sqrt(1.f - c*c);
-        float asq = iorOutgoing*iorOutgoing*(1.f - c*c);
-
-            // some half vectors have no transmission solution. Maybe these
-            // result in internal reflection?
-        if (asq >= iorIncident*iorIncident) continue; // return float3(0,1,0);
-        // float e = sqrt(iorIncident*iorIncident - asq);
-        // float e = sqrt(iorIncident*iorIncident - iorOutgoing*iorOutgoing*(1.f - c*c));
-        float etaSq = (iorOutgoing*iorOutgoing) / (iorIncident*iorIncident);
-        // float e = sqrt(iorIncident*iorIncident*(1.f - etaSq*(1.f - c*c)));
-        float e = iorIncident*sqrt(1.f - etaSq + etaSq*c*c);
-        float l = b - e;
-
-        float3 i = -H * l / iorIncident - iorOutgoing / iorIncident * ot;
-
-        #if 0
-            if (isinf(i.x) || isnan(i.x)) return float3(1,0,0);
-            if (abs(length(i) - 1.f) > 0.01f) return float3(1,0,0);
-            float3 H2 = CalculateHt(i, ot, iorIncident, iorOutgoing);
-            if (length(H2 - H) > 0.01f) return float3(1,0,0);
-        #endif
-
-        // ok, we've got our incoming vector. We can do the cube map lookup
-        // Note that when we call "CalculateSpecular", it's going to recalculate
-        // the transmission half vector and come out with the same result.
-        float3 lightColor = tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(i), 0).rgb;
-        precise float3 brdf = CalculateSpecular(normal, viewDirection, i, H, specParam); // (also contains NdotL term)
-
-        // We have to apply the distribution weight. Since our half vectors are distributed
-        // in the same fashion as the reflection case, we should have the same weight.
-        // (But we need to consider the flipping that occurs)
-        float NdotH = saturate(dot(normal, -H));
-        float VdotH = saturate(dot(viewDirection, -H));
         precise float D = TrowReitzD(NdotH, alphad);
         float pdfWeight = (4.f * VdotH) / (D * NdotH);
 
@@ -380,6 +300,152 @@ float3 SampleSpecularIBL_SplitSum(float3 normal, float3 viewDirection, SpecularP
 float3 SampleSpecularIBL(float3 normal, float3 viewDirection, SpecularParameters specParam)
 {
     return SampleSpecularIBL_SplitSum(normal, viewDirection, specParam);
+}
+
+/////////////////// T R A N S M I T T E D   S P E C U L A R ///////////////////
+
+float3 SampleTransmittedSpecularIBL_Ref(
+    float3 normal, float3 viewDirection,
+    SpecularParameters specParam, TextureCube tex)
+{
+        // hack -- currently problems when roughness is 0!
+    if (specParam.roughness == 0.f) return 0.0.xxx;
+
+    float iorIncident = 1.f;
+    float iorOutgoing = SpecularTransmissionIndexOfRefraction;
+    float3 ot = viewDirection;
+
+        // This is a reference implementation of transmitted IBL specular.
+        // We're going to follow the same method and microfacet distribution as
+        // SampleSpecularIBL_Ref
+    float alphad = RoughnessToDAlpha(specParam.roughness);
+    float3 result = 0.0.xxx;
+    const uint sampleCount = 128;
+    for (uint s=0; s<sampleCount; ++s) {
+        // using the same distribution of half-vectors that we use for reflection
+        // (except we flip the normal because of the way the equation is built)
+        precise float3 H = BuildSampleHalfVectorGGX(s, sampleCount, -normal, alphad);
+
+        // following Walter07 here, we need to build "i", the incoming direction.
+        // Actually Walter builds the outgoing direction -- but we need to reverse the
+        // equation and get the incoming direction.
+        float3 i;
+        if (!CalculateTransmissionIncident(i, ot, H, iorIncident, iorOutgoing))
+            continue;
+
+        #if 0
+            if (isinf(i.x) || isnan(i.x)) return float3(1,0,0);
+            if (abs(length(i) - 1.f) > 0.01f) return float3(1,0,0);
+            float3 H2 = CalculateHt(i, ot, iorIncident, iorOutgoing);
+            if (length(H2 - H) > 0.01f) return float3(1,0,0);
+        #endif
+
+        // ok, we've got our incoming vector. We can do the cube map lookup
+        // Note that when we call "CalculateSpecular", it's going to recalculate
+        // the transmission half vector and come out with the same result.
+        float3 lightColor = tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(i), 0).rgb;
+        precise float3 brdf = CalculateSpecular(normal, viewDirection, i, H, specParam); // (also contains NdotL term)
+
+        // We have to apply the distribution weight. Since our half vectors are distributed
+        // in the same fashion as the reflection case, we should have the same weight.
+        // (But we need to consider the flipping that occurs)
+        float NdotH = saturate(dot(normal, -H));
+        float VdotH = saturate(dot(viewDirection, -H));
+        precise float D = TrowReitzD(NdotH, alphad);
+        float pdfWeight = (4.f * VdotH) / (D * NdotH);
+
+        result += lightColor * brdf * pdfWeight;
+    }
+
+    return result / float(sampleCount);
+}
+
+float2 GenerateSplitTermTrans(float NdotV, float roughness, uint sampleCount)
+{
+    // This is for generating the split-term lookup for specular transmission
+    // It uses the same approximations and simplifications as for reflected
+    // specular.
+    // Note that we're actually assuming a constant iorOutgoing for all materials
+    // This might be ok, because the effect of this term also depends on the geometry
+    // arrangement (ie, how far away refracted things are). So maybe it's not a
+    // critical parameter for materials (even though it should in theory be related
+    // to the "specular" parameter)
+
+    float3 normal = float3(0.0f, 0.0f, 1.0f);
+    float3 V = float3(sqrt(1.0f - NdotV * NdotV), 0.0f, NdotV);
+
+    const float iorIncident = 1.f;
+    const float iorOutgoing = SpecularTransmissionIndexOfRefraction;
+    float3 ot = V;
+
+    float alphag = RoughnessToGAlpha(roughness);
+    float alphad = RoughnessToDAlpha(roughness);
+    float G2 = SmithG(NdotV, alphag);
+
+    float A = 0.f, B = 0.f;
+    [loop] for (uint s=0; s<sampleCount; ++s) {
+
+        precise float3 H = BuildSampleHalfVectorGGX(
+            s, sampleCount, -normal, alphad);
+
+        float3 i;
+        if (!CalculateTransmissionIncident(i, ot, H, iorIncident, iorOutgoing))
+            continue;
+
+        // As per the reflection case, our probability distribution function is
+        //      D * NdotH / (4 * VdotH)
+        // However, it doesn't factor out like it does in the reflection case.
+        // So, we have to do the full calculation, and then apply the inverse of
+        // the pdf afterwards.
+
+        float NdotH = saturate(dot(normal, -H));
+        float VdotH = saturate(dot(V, -H));
+
+        precise float D = TrowReitzD(NdotH, alphad);
+        float pdfWeight = (4.f * VdotH) / (D * NdotH);
+
+        float transmitted;
+        GGXTransmission(        // todo -- fresnel calculation is going to get in the way
+            roughness, 0.f, iorIncident, iorOutgoing,
+            i, ot, -normal,
+            transmitted);
+
+        precise float F = pow(1.f - VdotH, 5.f);
+
+        float normalizedSpecular = transmitted / pdfWeight;
+        A += (1.f - F) * normalizedSpecular;
+        B += F * normalizedSpecular;
+    }
+
+    return float2(A, B) / float(sampleCount).xx;
+}
+
+float2 SplitSumIBLTrans_IntegrateBRDF(float roughness, float NdotV)
+{
+    const uint sampleCount = 32;
+    return GenerateSplitTermTrans(NdotV, roughness, sampleCount);
+    // return GlossTransLUT.SampleLevel(ClampingSampler, float2(NdotV, 1.f - roughness), 0).xy;
+}
+
+float3 SplitSumIBLTrans_PrefilterEnvMap(float roughness, float3 ot)
+{
+    const float specularIBLMipMapCount = 9.f + 1.f;     // (actually getting a much closer result with the +1.f here)
+    return SpecularTransIBL.SampleLevel(
+        DefaultSampler, AdjSkyCubeMapCoords(ot),
+        roughness*specularIBLMipMapCount).rgb;
+}
+
+float3 SampleSpecularIBLTrans_SplitSum(float3 normal, float3 viewDirection, SpecularParameters specParam)
+{
+    float NdotV = saturate(dot(normal, viewDirection));
+    float3 prefilteredColor = SplitSumIBLTrans_PrefilterEnvMap(specParam.roughness, viewDirection);
+    float2 envBRDF = SplitSumIBLTrans_IntegrateBRDF(specParam.roughness, NdotV);
+    return specParam.transmission * prefilteredColor * (specParam.F0 * envBRDF.x + envBRDF.y);
+}
+
+float3 SampleSpecularIBLTrans(float3 normal, float3 viewDirection, SpecularParameters specParam)
+{
+    return SampleSpecularIBLTrans_SplitSum(normal, viewDirection, specParam);
 }
 
 // note --

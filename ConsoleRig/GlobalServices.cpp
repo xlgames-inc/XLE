@@ -16,6 +16,7 @@
 #include "../Utility/StringFormat.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/MemoryUtils.h"
+#include "../Utility/Conversion.h"
 #include <assert.h>
 #include <random>
 
@@ -24,7 +25,7 @@ namespace ConsoleRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void SetWorkingDirectory()
+    static void GetAssetRoot(nchar_t workingDir[], size_t workingDirSize)
     {
             //
             //      For convenience, set the working directory to be ../Working 
@@ -32,13 +33,11 @@ namespace ConsoleRig
             //
         nchar_t appPath     [MaxPath];
         nchar_t appDir      [MaxPath];
-        nchar_t workingDir  [MaxPath];
 
         XlGetProcessPath    (appPath, dimof(appPath));
         XlDirname           (appDir, dimof(appDir), appPath);
         const auto* fn = a2n("..\\Working");
-        XlConcatPath        (workingDir, dimof(workingDir), appDir, fn, XlStringEnd(fn));
-        XlChDir             (workingDir);
+        XlConcatPath        (workingDir, (int)workingDirSize, appDir, fn, XlStringEnd(fn));
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -49,6 +48,7 @@ namespace ConsoleRig
     static auto Fn_LogCfg = ConstHash64<'logc', 'fg'>::Value;
     static auto Fn_GuidGen = ConstHash64<'guid', 'gen'>::Value;
     static auto Fn_RedirectCout = ConstHash64<'redi', 'rect', 'cout'>::Value;
+	static auto Fn_GetAssetRoot = ConstHash64<'asse', 'troo', 't'>::Value;
 
     static void MainRig_Startup(const StartupConfig& cfg, VariantFunctions& serv)
     {
@@ -75,8 +75,13 @@ namespace ConsoleRig
             //
         CreateDirectoryRecursive("int");
 
+		nchar_t assetRoot[MaxPath];
+		GetAssetRoot(assetRoot, dimof(assetRoot));
         if (cfg._setWorkingDir)
-            SetWorkingDirectory();
+			XlChDir(assetRoot);
+
+		std::string assetRootString = Conversion::Convert<std::string>(std::basic_string<nchar_t>(assetRoot));
+		serv.Add<std::string()>(Fn_GetAssetRoot, [assetRootString](){ return assetRootString; });
     }
 
     StartupConfig::StartupConfig()
