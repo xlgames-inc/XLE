@@ -23,8 +23,8 @@ Texture2D<float2> GlossTransLUT : register(t22);
 
 TextureCube SpecularTransIBL : register(t30);
 
-// #define RECALC_SPLIT_TERM
-// #define RECALC_FILTERED_TEXTURE
+#define RECALC_SPLIT_TERM
+#define RECALC_FILTERED_TEXTURE
 
 float3 IBLPrecalc_SampleInputTexture(float3 direction)
 {
@@ -122,6 +122,7 @@ float3 SampleSpecularIBL_SplitSum(float3 normal, float3 viewDirection, SpecularP
 
 float3 SampleSpecularIBL(float3 normal, float3 viewDirection, SpecularParameters specParam)
 {
+    // return SampleSpecularIBL_Ref(normal, viewDirection, specParam, SkyReflectionTexture);
     return SampleSpecularIBL_SplitSum(normal, viewDirection, specParam);
 }
 

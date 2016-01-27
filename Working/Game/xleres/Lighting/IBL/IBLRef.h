@@ -15,9 +15,6 @@
 
 float3 SampleSpecularIBL_Ref(float3 normal, float3 viewDirection, SpecularParameters specParam, TextureCube tex)
 {
-        // hack -- currently problems when roughness is 0!
-    if (specParam.roughness == 0.f) return 0.0.xxx;
-
     // This is a reference implementation of glossy specular reflections from a
     // cube map texture. It's too inefficient to run at real-time. But it provides
     // a visual reference.
@@ -47,18 +44,7 @@ float3 SampleSpecularIBL_Ref(float3 normal, float3 viewDirection, SpecularParame
 
         float3 lightColor = tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(L), 0).rgb;
         precise float3 brdf = CalculateSpecular(normal, viewDirection, L, H, specParam); // (also contains NdotL term)
-
-            // Unreal course notes say the probability distribution function is
-            //      D * NdotH / (4 * VdotH)
-            // We need to apply the inverse of this to weight the sample correctly.
-            // A better solution is to factor the terms out of the microfacet specular
-            // equation. But since this is for a reference implementation, let's do
-            // it the long way.
-        float NdotH = saturate(dot(normal, H));
-        float VdotH = saturate(dot(viewDirection, H));
-        precise float D = TrowReitzD(NdotH, alphad);
-        float pdfWeight = (4.f * VdotH) / (D * NdotH);
-
+        float pdfWeight = InversePDFWeight(H, normal, viewDirection, alphad);
         result += lightColor * brdf * pdfWeight;
     }
 
@@ -69,9 +55,6 @@ float3 SampleTransmittedSpecularIBL_Ref(
     float3 normal, float3 viewDirection,
     SpecularParameters specParam, TextureCube tex)
 {
-        // hack -- currently problems when roughness is 0!
-    if (specParam.roughness == 0.f) return 0.0.xxx;
-
     float iorIncident = 1.f;
     float iorOutgoing = SpecularTransmissionIndexOfRefraction;
     float3 ot = viewDirection;
@@ -110,11 +93,7 @@ float3 SampleTransmittedSpecularIBL_Ref(
         // We have to apply the distribution weight. Since our half vectors are distributed
         // in the same fashion as the reflection case, we should have the same weight.
         // (But we need to consider the flipping that occurs)
-        // float NdotH = saturate(dot(normal, -H));
-        // float VdotH = saturate(dot(viewDirection, -H));
-        // precise float D = TrowReitzD(NdotH, alphad);
-        // float pdfWeight = (4.f * VdotH) / (D * NdotH);
-        float pdfWeight = SamplingPDFWeight(H, -normal, viewDirection, alphad);
+        float pdfWeight = InversePDFWeight(H, -normal, viewDirection, alphad);
 
         result += lightColor * brdf * pdfWeight;
     }

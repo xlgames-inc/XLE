@@ -83,10 +83,14 @@ float2 GenerateSplitTerm(float NdotV, float roughness, uint sampleCount)
 
             // As per SampleSpecularIBL_Ref, we need to apply the inverse of the
             // propability density function to get a normalized result.
-            // This factors out the D term, and introduces some other terms.
-            //      pdf inverse = 4.f * VdotH / (D * NdotH)
-            //      specular eq = D*G*F / (4*NdotL*NdotV)
-            precise float normalizedSpecular = G * VdotH / (NdotH * NdotV);  // (excluding F term)
+            #if !defined(OLD_M_DISTRIBUTION_FN)
+                precise float normalizedSpecular = G / (4.f * NdotL * NdotV * NdotH);  // (excluding F term)
+            #else
+                // This factors out the D term, and introduces some other terms.
+                //      pdf inverse = 4.f * VdotH / (D * NdotH)
+                //      specular eq = D*G*F / (4*NdotL*NdotV)
+                precise float normalizedSpecular = G * VdotH / (NdotH * NdotV);  // (excluding F term)
+            #endif
 
             A += (1.f - F) * normalizedSpecular;
             B += F * normalizedSpecular;
@@ -140,7 +144,7 @@ float2 GenerateSplitTermTrans(float NdotV, float roughness, uint sampleCount)
             i, ot, -normal,
             transmitted);
 
-        float pdfWeight = SamplingPDFWeight(H, -normal, V, alphad);
+        float pdfWeight = InversePDFWeight(H, -normal, V, alphad);
 
         float VdotH = abs(dot(V, H));
         precise float F = 1.f - SchlickFresnelCore(VdotH);
@@ -192,37 +196,50 @@ float3 GenerateFilteredSpecular(float3 cubeMapDirection, float roughness, uint s
 
         float3 lightColor = IBLPrecalc_SampleInputTexture(L);
 
-            // Unreal course notes say the probability distribution function is
-            //      D * NdotH / (4 * VdotH)
-            // We need to apply the inverse of this to weight the sample correctly.
-            // For the most part, it just factors out of the equation...
-        float NdotH = saturate(dot(normal, H));
-        float VdotH = saturate(dot(viewDirection, H));
-
-        // precise float3 brdf = CalculateSpecular(normal, viewDirection, L, H, specParam); // (also contains NdotL term)
-        // precise float D = TrowReitzD(NdotH, specParam.roughness * specParam.roughness);
-        // float pdfWeight = (4.f * VdotH) / (D * NdotH);
-        // result += lightColor * brdf * pdfWeight;
-
-        float NdotV = 1.f; // saturate(dot(normal, viewDirection));
-        float NdotL = saturate(dot(normal, L));
-        precise float G = SmithG(NdotL, alphag); // * SmithG(NdotV, alphag);
-        float scale = G * VdotH / (NdotH * NdotV);
-
-            // We're getting nan values here sometimes...?
-            // This occurs in the high roughness values when we have a very large
-            // number of samples. This might be a result of the bit hacks we're
-            // doing in the hammersly calculation?
-
-            // note --  seems like the weighting here could be simplified down to just
-            //          NdotL?
-        #if 0
-            if (!isnan(scale))
-                result += lightColor * scale;
-        #endif
-
-        result += lightColor * NdotL;
-        totalWeight += NdotL;
+        const uint Method_Unreal = 0;
+        const uint Method_Flat = 1;
+        const uint Method_PDF = 2;
+        const uint Method_Constant = 3;
+        const uint Method_Balanced = 4;
+        const uint Method_NdotH = 5;
+        const uint method = Method_NdotH;
+        float weight;
+        if (method == Method_Unreal) {
+            // This is the method from the unreal course notes
+            // It seems to distort the shape of the GGX equation
+            // slightly.
+            weight = saturate(dot(normal, L));
+        } else if (method == Method_Flat) {
+            lightColor *= InversePDFWeight(H, normal, viewDirection, alphad);
+            weight = 1.f;
+        } else if (method == Method_PDF) {
+            // This method weights the each point by the GGX sampling pdf associated
+            // with this direction. This may be a little odd, because it's in effect
+            // just squaring the effect of "constant" weighting. However it does
+            // look like, and sort of highlights the GGX feel. It also de-emphasises
+            // the lower probability directions.
+            weight = 1.f/InversePDFWeight(H, normal, viewDirection, alphad);
+        } else if (method == Method_Balanced) {
+            // In this method, we want to de-emphasise the lowest probability samples.
+            // the "pdf" represents the probability of getting a certain direction
+            // in our sampling distribution.
+            // Any probabilities higher than 33%, we're going to leave constant
+            // -- because that should give us a shape that is most true to GGX
+            // For lower probability samples, we'll quiet them down a bit...
+            // Note "lower probability samples" really just means H directions
+            // that are far from "normal" (ie, "theta" in BuildSampleHalfVectorGGX is high)
+            float pdf = 1.f/InversePDFWeight(H, normal, viewDirection, alphad);
+            weight = saturate(pow(pdf * 3.f, 3.f));
+        } else if (method == Method_Constant) {
+            // Constant should just give us an even distribution, true to the
+            // probably distribution in BuildSampleHalfVectorGGX
+            weight = 1.f;
+        } else if (method == Method_NdotH) {
+            // seems simple and logical, and produces a good result
+            weight = abs(dot(normal, H));
+        }
+        result += lightColor * weight;
+        totalWeight += weight;
     }
 
     // Might be more accurate to divide by "PassSampleCount" here, and then later on divide

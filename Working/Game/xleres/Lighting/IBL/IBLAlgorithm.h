@@ -12,6 +12,8 @@
 static const float MinSamplingAlpha = 0.001f;
 static const float SpecularIBLMipMapCount = 9.f;
 
+// #define OLD_M_DISTRIBUTION_FN
+
 float VanderCorputRadicalInverse(uint bits)
 {
     // This is the "Van der Corput radical inverse" function
@@ -54,10 +56,28 @@ float3 BuildSampleHalfVectorGGX(uint i, uint sampleCount, float3 normal, float a
     //
     // Note that I've swapped xi.x & xi.y from the Unreal implementation. Maybe
     // not a massive change.
-    // float cosTheta = sqrt((1.f - xi.x) / (1.f + (alphad*alphad - 1.f) * xi.x));
+    alphad = max(MinSamplingAlpha, alphad);
 
-    float q = TrowReitzDInverse(lerp(.31f, 1.f, xi.x), max(MinSamplingAlpha, alphad));
-    float cosTheta = q;
+    #if !defined(OLD_M_DISTRIBUTION_FN)
+        // This is the distribution functions from Walter07 --
+        // It was intended for both reflection and transmision
+        //  theta = arctan(q)
+        //  phi = 2 * pi * xi.y
+        //  where q = alphad * sqrt(xi.x) / sqrt(1.f - xi.x)
+        // So, cos(theta) = cos(arctan(q))
+        //  = 1.f / sqrt(1.f + q*q) (from trig)
+        //
+        // These functions are designed to work with GGX specifically.
+        // The probability function is p(m) = D(M) * abs(dot(m, n))
+        float q = alphad * sqrt(xi.x) / sqrt(1.f - xi.x);
+        float cosTheta = 1.f / sqrt(1.f + q*q);
+    #else
+        // This is the distribution function from the unreal course notes
+        // They say the pdf is as below, but I haven't checked that.
+        //      pdf  = (D * NdotH) / 4.f * VdotH
+        float cosTheta = sqrt((1.f - xi.x) / (1.f + (alphad*alphad - 1.f) * xi.x));
+    #endif
+
     float sinTheta = sqrt(1.f - cosTheta * cosTheta);
     float phi = 2.f * pi * xi.y;
 
@@ -73,14 +93,20 @@ float3 BuildSampleHalfVectorGGX(uint i, uint sampleCount, float3 normal, float a
     return tangentX * H.x + tangentY * H.y + normal * H.z;
 }
 
-float SamplingPDFWeight(float3 H, float3 N, float3 V, float alphad)
+float InversePDFWeight(float3 H, float3 N, float3 V, float alphad)
 {
-    float NdotH = saturate(dot(H, N));
+    float NdotH = abs(dot(H, N));
     precise float D = TrowReitzD(NdotH, max(MinSamplingAlpha, alphad));
-    return (1.f - .31f) / D;
 
-    // float VdotH = abs(dot(V, H));
-    // return (4.f * VdotH) / (D * NdotH);
+    #if !defined(OLD_M_DISTRIBUTION_FN)
+        // note -- this will only work correctly for any implementation
+        // of TrowReitzD that exactly matches the Walter07 paper
+        // (because we're using his distribution function in BuildSampleHalfVectorGGX)
+        return 1.f / (D * NdotH);
+    #else
+        float VdotH = abs(dot(V, H));
+        return (4.f * VdotH) / (D * NdotH);
+    #endif
 }
 
 float MipmapToRoughness(uint mipIndex)
