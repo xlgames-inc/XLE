@@ -10,7 +10,6 @@
 #include "LightDesc.h"
 #include "MaterialQuery.h"
 #include "Constants.h"
-#include "ImageBased.h"
 #include "../TextureAlgorithm.h"
 #include "../Colour.h"	                 // for LightingScale
 
@@ -44,6 +43,8 @@
 #if !defined(SKY_PROJECTION)
     #define SKY_PROJECTION 3
 #endif
+
+#include "ImageBased.h"
 
 float3 ReadSkyReflectionTexture(float3 reflectionVector, float roughness, float blurriness)
 {
@@ -228,9 +229,9 @@ float3 LightResolve_Ambient(
         float3 skyReflections = SampleSpecularIBL(
             sample.worldSpaceNormal, directionToEye,
             SpecularParameters_RoughF0(sample.material.roughness, F0));
-        skyReflections += SampleSpecularIBLTrans(
-            sample.worldSpaceNormal, directionToEye,
-            SpecularParameters_RoughF0Transmission(sample.material.roughness, F0, 1.0.xxx));
+        //skyReflections += SampleSpecularIBLTrans(
+        //    sample.worldSpaceNormal, directionToEye,
+        //    SpecularParameters_RoughF0Transmission(sample.material.roughness, F0, 1.0.xxx));
     #elif 0 // SKY_PROJECTION==5
         float3 skyReflections = SampleSpecularIBL_Ref(
             sample.worldSpaceNormal, directionToEye,
