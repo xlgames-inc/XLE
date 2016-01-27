@@ -511,6 +511,16 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
+	static void OrderNodes(IteratorRange<uint32*> range)
+	{
+		// We need to sort the upstreams in some way that maintains a 
+		// consistant ordering. The simplied way is just to use node id.
+		// However we may sometimes want to set priorities for nodes.
+		// For example, nodes that can "discard" pixels should be priortized
+		// higher.
+		std::sort(range.begin(), range.end());
+	}
+
     static bool SortNodesFunction(  
         uint32                  node,
         std::vector<uint32>&    presorted, 
@@ -526,11 +536,16 @@ namespace ShaderPatcher
         }
 
         marks.push_back(node);
-        for (auto i=graph.GetNodeConnections().begin(); i!=graph.GetNodeConnections().end(); ++i) {
-            if (i->OutputNodeId() == node) {
-                SortNodesFunction(i->InputNodeId(), presorted, sorted, marks, graph);
-            }
-        }
+
+		std::vector<uint32> upstream;
+		upstream.reserve(graph.GetNodeConnections().size());
+        for (const auto& i:graph.GetNodeConnections())
+            if (i.OutputNodeId() == node)
+				upstream.push_back(i.InputNodeId());
+
+		OrderNodes(MakeIteratorRange(upstream));
+		for (const auto& i2:upstream)
+			SortNodesFunction(i2, presorted, sorted, marks, graph);
 
         sorted.push_back(node);
         presorted.erase(std::find(presorted.begin(), presorted.end(), node));
@@ -796,9 +811,10 @@ namespace ShaderPatcher
         std::vector<uint32> presortedNodes, sortedNodes;
         sortedNodes.reserve(graph.GetNodes().size());
 
-        for (auto i=graph.GetNodes().cbegin(); i!=graph.GetNodes().cend(); ++i) {
-            presortedNodes.push_back(i->NodeId());
-        }
+        for (const auto& i:graph.GetNodes())
+            presortedNodes.push_back(i.NodeId());
+
+		OrderNodes(MakeIteratorRange(presortedNodes));
 
         bool acyclic = true;
         while (!presortedNodes.empty()) {
