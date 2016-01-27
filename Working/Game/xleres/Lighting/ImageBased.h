@@ -64,6 +64,8 @@ float2 HammersleyPt(uint i, uint N)
     return float2(float(i)/float(N), VanderCorputRadicalInverse(i));
 }
 
+static const float MinSamplingAlpha = 0.001f;
+
 float3 BuildSampleHalfVectorGGX(uint i, uint sampleCount, float3 normal, float alphad)
 {
         // Very similar to the unreal course notes implementation here
@@ -86,7 +88,10 @@ float3 BuildSampleHalfVectorGGX(uint i, uint sampleCount, float3 normal, float a
     //
     // Note that I've swapped xi.x & xi.y from the Unreal implementation. Maybe
     // not a massive change.
-    float cosTheta = sqrt((1.f - xi.x) / (1.f + (alphad*alphad - 1.f) * xi.x));
+    // float cosTheta = sqrt((1.f - xi.x) / (1.f + (alphad*alphad - 1.f) * xi.x));
+
+    float q = TrowReitzDInverse(lerp(.31f, 1.f, xi.x), max(MinSamplingAlpha, alphad));
+    float cosTheta = q;
     float sinTheta = sqrt(1.f - cosTheta * cosTheta);
     float phi = 2.f * pi * xi.y;
 
@@ -100,6 +105,16 @@ float3 BuildSampleHalfVectorGGX(uint i, uint sampleCount, float3 normal, float a
     float3 tangentX = normalize(cross(up, normal));
     float3 tangentY = cross(normal, tangentX);
     return tangentX * H.x + tangentY * H.y + normal * H.z;
+}
+
+float SamplingPDFWeight(float3 H, float3 N, float3 V, float alphad)
+{
+    float NdotH = saturate(dot(H, N));
+    precise float D = TrowReitzD(NdotH, max(MinSamplingAlpha, alphad));
+    return (1.f - .31f) / D;
+
+    // float VdotH = abs(dot(V, H));
+    // return (4.f * VdotH) / (D * NdotH);
 }
 
 float3 SampleSpecularIBL_Ref(float3 normal, float3 viewDirection, SpecularParameters specParam, TextureCube tex)
@@ -172,7 +187,7 @@ float3 SplitSumIBL_PrefilterEnvMap(float roughness, float3 reflection)
         roughness*specularIBLMipMapCount).rgb;
 }
 
-float2 GenerateSplitTerm(float NdotV, float roughness)
+float2 GenerateSplitTerm(float NdotV, float roughness, uint sampleCount)
 {
     // This generates the lookup table used by the glossy specular reflections
     // split sum approximation.
@@ -189,8 +204,6 @@ float2 GenerateSplitTerm(float NdotV, float roughness)
 
     float3 normal = float3(0.0f, 0.0f, 1.0f);
     float3 V = float3(sqrt(1.0f - NdotV * NdotV), 0.0f, NdotV);
-
-    const uint sampleCount = 64 * 1024;
 
         // Karis suggests that using our typical Disney remapping
         // for the alpha value for the G term will make IBL much too dark.
@@ -269,7 +282,8 @@ float2 SplitSumIBL_IntegrateBRDF(float roughness, float NdotV)
     //          use a small texture and bilinear filtering, or a large texture
     //          and no filtering?
     return GlossLUT.SampleLevel(ClampingSampler, float2(NdotV, 1.f - roughness), 0).xy;
-    // return GenerateSplitTerm(saturate(NdotV), saturate(roughness));
+    // const uint sampleCount = 64;
+    // return GenerateSplitTerm(saturate(NdotV), saturate(roughness), sampleCount);
 }
 
 float3 SampleSpecularIBL_SplitSum(float3 normal, float3 viewDirection, SpecularParameters specParam)
@@ -349,10 +363,11 @@ float3 SampleTransmittedSpecularIBL_Ref(
         // We have to apply the distribution weight. Since our half vectors are distributed
         // in the same fashion as the reflection case, we should have the same weight.
         // (But we need to consider the flipping that occurs)
-        float NdotH = saturate(dot(normal, -H));
-        float VdotH = saturate(dot(viewDirection, -H));
-        precise float D = TrowReitzD(NdotH, alphad);
-        float pdfWeight = (4.f * VdotH) / (D * NdotH);
+        // float NdotH = saturate(dot(normal, -H));
+        // float VdotH = saturate(dot(viewDirection, -H));
+        // precise float D = TrowReitzD(NdotH, alphad);
+        // float pdfWeight = (4.f * VdotH) / (D * NdotH);
+        float pdfWeight = SamplingPDFWeight(H, -normal, viewDirection, alphad);
 
         result += lightColor * brdf * pdfWeight;
     }
@@ -398,23 +413,19 @@ float2 GenerateSplitTermTrans(float NdotV, float roughness, uint sampleCount)
         // So, we have to do the full calculation, and then apply the inverse of
         // the pdf afterwards.
 
-        float NdotH = saturate(dot(normal, -H));
-        float VdotH = saturate(dot(V, -H));
-
-        precise float D = TrowReitzD(NdotH, alphad);
-        float pdfWeight = (4.f * VdotH) / (D * NdotH);
-
         float transmitted;
         GGXTransmission(        // todo -- fresnel calculation is going to get in the way
-            roughness, 0.f, iorIncident, iorOutgoing,
+            roughness, iorIncident, iorOutgoing,
             i, ot, -normal,
             transmitted);
 
-        precise float F = pow(1.f - VdotH, 5.f);
+        float pdfWeight = SamplingPDFWeight(H, -normal, V, alphad);
 
-        float normalizedSpecular = transmitted / pdfWeight;
-        A += (1.f - F) * normalizedSpecular;
-        B += F * normalizedSpecular;
+        float VdotH = abs(dot(V, H));
+        precise float F = 1.f - SchlickFresnelCore(VdotH);
+
+        float normalizedSpecular = transmitted * pdfWeight;
+        A += F * normalizedSpecular;
     }
 
     return float2(A, B) / float(sampleCount).xx;
@@ -422,7 +433,7 @@ float2 GenerateSplitTermTrans(float NdotV, float roughness, uint sampleCount)
 
 float2 SplitSumIBLTrans_IntegrateBRDF(float roughness, float NdotV)
 {
-    const uint sampleCount = 32;
+    const uint sampleCount = 64;
     return GenerateSplitTermTrans(NdotV, roughness, sampleCount);
     // return GlossTransLUT.SampleLevel(ClampingSampler, float2(NdotV, 1.f - roughness), 0).xy;
 }
@@ -440,7 +451,7 @@ float3 SampleSpecularIBLTrans_SplitSum(float3 normal, float3 viewDirection, Spec
     float NdotV = saturate(dot(normal, viewDirection));
     float3 prefilteredColor = SplitSumIBLTrans_PrefilterEnvMap(specParam.roughness, viewDirection);
     float2 envBRDF = SplitSumIBLTrans_IntegrateBRDF(specParam.roughness, NdotV);
-    return specParam.transmission * prefilteredColor * (specParam.F0 * envBRDF.x + envBRDF.y);
+    return specParam.transmission * prefilteredColor * (1.f - specParam.F0) * envBRDF.x;
 }
 
 float3 SampleSpecularIBLTrans(float3 normal, float3 viewDirection, SpecularParameters specParam)

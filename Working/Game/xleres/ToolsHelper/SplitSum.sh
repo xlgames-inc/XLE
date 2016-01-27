@@ -9,11 +9,14 @@
 #include "../Lighting/SpecularMethods.h"
 #include "../Lighting/ImageBased.h"
 
+static const uint PassSampleCount = 4;      // 256
+
 float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
     float NdotV = texCoord.x;
     float roughness = 1.f-texCoord.y;
-    return float4(GenerateSplitTerm(NdotV, roughness), 0, 1);
+    const uint sampleCount = 64 * 1024;
+    return float4(GenerateSplitTerm(NdotV, roughness, sampleCount), 0, 1);
 }
 
 float4 main_trans(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
@@ -73,6 +76,20 @@ float3 CalculateCubeMapDirection(uint panelIndex, float2 texCoord)
 
 static const float SpecularIBLMipMapCount = 9.f;
 
+float MipmapToRoughness(uint mipIndex)
+{
+    // We can adjust the mapping between roughness and the mipmaps as needed...
+    // Each successive mipmap is smaller, so we loose resolution linearly against
+    // roughness (even though the blurring amount is not actually linear against roughness)
+    // We could use the inverse of the GGX function to calculate something that is
+    // more linear against the sample cone size, perhaps...?
+    // Does it make sense to offset by .5 to get a value in the middle of the range? We
+    // will be using trilinear filtering to get a value between 2 mipmaps.
+    // Arguably a roughness of "0.0" is not very interesting -- but we commit our
+    // highest resolution mipmap to that.
+    return 0.05f + saturate(MipIndex / float(SpecularIBLMipMapCount));
+}
+
 float4 EquiRectFilterGlossySpecular(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
     // This is the second term of the "split-term" solution for IBL glossy specular
@@ -109,16 +126,7 @@ float4 EquiRectFilterGlossySpecular(float4 position : SV_Position, float2 texCoo
     float3 normal = cubeMapDirection;
     float3 viewDirection = cubeMapDirection;
 
-    // We can adjust the mapping between roughness and the mipmaps as needed...
-    // Each successive mipmap is smaller, so we loose resolution linearly against
-    // roughness (even though the blurring amount is not actually linear against roughness)
-    // We could use the inverse of the GGX function to calculate something that is
-    // more linear against the sample cone size, perhaps...?
-    // Does it make sense to offset by .5 to get a value in the middle of the range? We
-    // will be using trilinear filtering to get a value between 2 mipmaps.
-    const float offset = 0.0f; // 0.5f
-    float roughness = saturate((MipIndex + offset) / SpecularIBLMipMapCount);
-    roughness = max(roughness, 0.025f);
+    float roughness = MipmapToRoughness(MipIndex);
     SpecularParameters specParam = SpecularParameters_RoughF0(roughness, 1.0.xxx);
 
     float alphag = RoughnessToGAlpha(specParam.roughness);
@@ -131,12 +139,11 @@ float4 EquiRectFilterGlossySpecular(float4 position : SV_Position, float2 texCoo
         // Perhaps we should use double precision math?
         // Anyway, we need to split it up into multiple passes, otherwise
         // the GPU gets locked up in the single draw call for too long.
-    const uint passSampleCount = 1024;
-    const uint totalSampleCount = passSampleCount * PassCount;
-    [loop] for (uint s=0; s<passSampleCount; ++s) {
+    const uint totalSampleCount = PassSampleCount * PassCount;
+    [loop] for (uint s=0; s<PassSampleCount; ++s) {
             // We could build a distribution of "H" vectors here,
             // or "L" vectors. It makes sense to use H vectors
-        precise float3 H = BuildSampleHalfVectorGGX(s+PassIndex*passSampleCount, totalSampleCount, normal, alphad);
+        precise float3 H = BuildSampleHalfVectorGGX(s+PassIndex*PassSampleCount, totalSampleCount, normal, alphad);
         precise float3 L = 2.f * dot(viewDirection, H) * H - viewDirection;
 
             // Now we can light as if the point on the reflection map
@@ -182,7 +189,7 @@ float4 EquiRectFilterGlossySpecular(float4 position : SV_Position, float2 texCoo
         totalWeight += NdotL;
     }
 
-    // Might be more accurate to divide by "passSampleCount" here, and then later on divide
+    // Might be more accurate to divide by "PassSampleCount" here, and then later on divide
     // by PassCount...?
     // return float4(result / float(totalSampleCount), 1.f);
     return float4(result / totalWeight / PassCount, 1.f);
@@ -204,11 +211,10 @@ float3 CalculateFilteredTextureTrans(float3 cubeMapDirection, float roughness)
 
     float totalWeight = 0.f;
     float3 result = 0.0.xxx;
-    const uint passSampleCount = 256;
-    const uint totalSampleCount = passSampleCount * PassCount;
-    [loop] for (uint s=0; s<passSampleCount; ++s) {
+    const uint totalSampleCount = PassSampleCount * PassCount;
+    [loop] for (uint s=0; s<PassSampleCount; ++s) {
         precise float3 H = BuildSampleHalfVectorGGX(
-            s+PassIndex*passSampleCount, totalSampleCount,
+            s+PassIndex*PassSampleCount, totalSampleCount,
             -normal, alphad);
 
         float3 i;
@@ -216,7 +222,7 @@ float3 CalculateFilteredTextureTrans(float3 cubeMapDirection, float roughness)
             continue;
 
         float3 lightColor = SampleInputTexture(i);
-        float weight = saturate(dot(-normal, i));
+        float weight = saturate(dot(-normal, i));  // best weighting here is not clear
         result += lightColor * weight;
         totalWeight += weight;
 #if 0
@@ -244,9 +250,9 @@ float3 CalculateFilteredTextureTrans(float3 cubeMapDirection, float roughness)
 #endif
     }
 
-    // Might be more accurate to divide by "passSampleCount" here, and then later on divide
+    // Might be more accurate to divide by "PassSampleCount" here, and then later on divide
     // by PassCount...?
-    return float4(result / totalWeight / PassCount, 1.f);
+    return result / totalWeight / PassCount;
 }
 
 float4 EquiRectFilterGlossySpecularTrans(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
@@ -259,9 +265,6 @@ float4 EquiRectFilterGlossySpecularTrans(float4 position : SV_Position, float2 t
     cubeMapDirection = float3(cubeMapDirection.x, -cubeMapDirection.z, cubeMapDirection.y);
     cubeMapDirection = float3(-cubeMapDirection.x, -cubeMapDirection.y, cubeMapDirection.z);
 
-    const float offset = 0.0f; // 0.5f
-    float roughness = saturate((MipIndex + offset) / SpecularIBLMipMapCount);
-    roughness = max(roughness, 0.025f);
-
+    float roughness = MipmapToRoughness(MipIndex);
     return float4(CalculateFilteredTextureTrans(cubeMapDirection, roughness), 1.f));
 }

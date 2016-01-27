@@ -90,6 +90,40 @@ float TrowReitzD(float NdotH, float alpha)
     return alphaSqr / (pi * denom * denom);
 }
 
+float TrowReitzDInverse(float D, float alpha)
+{
+    // This is the inverse of the GGX "D" normal distribution
+    // function. We only care about the [0,1] part -- so we can
+    // ignore some secondary solutions.
+    //
+    // float alphaSq = alpha * alpha;
+    // float denom = 1.f + (alphaSq - 1.f) * NdotH * NdotH;
+    // return alphaSq / (pi * denom * denom);
+    //
+    // For 0 <= alpha < 1, there is always a solution for D above around 0.3182
+    // For smaller D values, there sometimes is not a solution.
+
+    float alphaSq = alpha * alpha;
+    float A = sqrt(alphaSq / (pi*D)) - 1.f;
+    float B = A / (alphaSq - 1.f);
+    if (B < 0.f) return 0.f;    // these cases have no solution
+    return saturate(sqrt(B));
+}
+
+float TrowReitzDInverseApprox(float alpha)
+{
+    // This is an approximation of TrowReitzDInverseApprox(0.32f, alpha);
+    // It's based on a Taylor series.
+    // It's fairly accurate for alpha < 0.5... Above that it tends to fall
+    // off. The third order approximation is better above alpha .5. But really
+    // small alpha values are more important, so probably it's fine.
+    // third order: y=.913173-0.378603(a-.2)+0.239374(a-0.2)^2-0.162692(a-.2)^3
+    // For different "cut-off" values of D, we need to recalculate the Taylor series.
+
+    float b = alpha - .2f;
+    return .913173f - 0.378603f * b + .239374f * b * b;
+}
+
 float RoughnessToGAlpha(float roughness)
 {
     // This is the remapping to convert from a roughness
@@ -258,6 +292,14 @@ SpecularParameters SpecularParameters_RoughF0Transmission(float roughness, float
 
 #include "Diagrams/GGXTransmission.sh"
 
+float GGXTransmissionFresnel(float3 i, float3 ot, float F0, float iorIncident, float iorOutgoing)
+{
+    float HdotI = dot(CalculateHt(i, ot, iorIncident, iorOutgoing), i);
+    // return 1.f - lerp(F0, 1.f, SchlickFresnelCore(HdotI));
+    // return lerp(1.f - F0, 0.f, SchlickFresnelCore(HdotI));
+    return (1.f - F0) * (1.f - SchlickFresnelCore(HdotI));
+}
+
 float3 CalculateSpecular(
     float3 normal, float3 directionToEye,
     float3 negativeLightDirection, float3 halfVector,
@@ -296,15 +338,19 @@ float3 CalculateSpecular(
         // through metals?
         float transmitted = 0.f;
 
-        #if MAT_TRANSMITTED_SPECULAR==1
+        #if 1 // MAT_TRANSMITTED_SPECULAR==1
                 // note -- constant ior. Could be tied to "specular" parameter?
                 //  Anyway, 1.33 is ior for water -- which is fairly significant refraction.
             const float iorIncident = 1.f;
             const float iorOutgoing = SpecularTransmissionIndexOfRefraction; // 1.33f;
             GGXTransmission(
-                parameters.roughness, parameters.F0.g, iorIncident, iorOutgoing,
+                iorIncident, iorOutgoing, parameters.roughness,
                 negativeLightDirection, directionToEye, -normal,        // (note flipping normal)
                 transmitted);
+
+            transmitted *= GGXTransmissionFresnel(
+                negativeLightDirection, directionToEye, parameters.F0.g,
+                iorIncident, iorOutgoing);
         #endif
 
         reflected = clamp(reflected, 0.0.xxx, SpecularOutputClamp.xxx);

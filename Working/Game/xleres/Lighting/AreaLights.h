@@ -25,40 +25,6 @@ float RectRectIntersectionArea(
     return max(0, A.x) * max(0, A.y);
 }
 
-float TrowReitzDInverse(float D, float alpha)
-{
-    // This is the inverse of the GGX "D" normal distribution
-    // function. We only care about the [0,1] part -- so we can
-    // ignore some secondary solutions.
-    //
-    // float alphaSq = alpha * alpha;
-    // float denom = 1.f + (alphaSq - 1.f) * NdotH * NdotH;
-    // return alphaSq / (pi * denom * denom);
-    //
-    // For 0 <= alpha < 1, there is always a solution for D above around 0.3182
-    // For smaller D values, there sometimes is not a solution.
-
-    float alphaSq = alpha * alpha;
-    float A = sqrt(alphaSq / (pi*D)) - 1.f;
-    float B = A / (alphaSq - 1.f);
-    if (B < 0.f) return 0.f;    // these cases have no solution
-    return saturate(sqrt(B));
-}
-
-float TrowReitzDInverseApprox(float alpha)
-{
-    // This is an approximation of TrowReitzDInverseApprox(0.32f, alpha);
-    // It's based on a Taylor series.
-    // It's fairly accurate for alpha < 0.5... Above that it tends to fall
-    // off. The third order approximation is better above alpha .5. But really
-    // small alpha values are more important, so probably it's fine.
-    // third order: y=.913173-0.378603(a-.2)+0.239374(a-0.2)^2-0.162692(a-.2)^3
-    // For different "cut-off" values of D, we need to recalculate the Taylor series.
-
-    float b = alpha - .2f;
-    return .913173f - 0.378603f * b + .239374f * b * b;
-}
-
 float2 RectangleDiffuseRepPoint(float3 samplePt, float3 sampleNormal, float2 lightHalfSize)
 {
         // This method based on Drobot's research in GPU Gems 5. It should be
