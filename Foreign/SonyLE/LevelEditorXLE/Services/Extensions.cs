@@ -13,13 +13,21 @@ namespace LevelEditorXLE.Extensions
     {
         internal static GUILayer.EditorSceneManager GetSceneManager(this Sce.Atf.Dom.DomNodeAdapter adapter)
         {
+            // Prefer to return the SceneManager object associated
+            // with the root game document. If we can't find one, fall
+            // back to the GlobalSceneManager
             var root = adapter.DomNode.GetRoot();
-            System.Diagnostics.Debug.Assert(root != null);
-            if (root == null) return null;
-            var gameExt = root.As<Game.GameExtensions>();
-            System.Diagnostics.Debug.Assert(gameExt != null);
-            if (gameExt == null) return null;
-            return gameExt.SceneManager;
+            if (root != null)
+            {
+                var gameExt = root.As<Game.GameExtensions>();
+                if (gameExt != null)
+                {
+                    var man = gameExt.SceneManager;
+                    if (man != null)
+                        return man;
+                }
+            }
+            return XLEBridgeUtils.Utils.GlobalSceneManager;
         }
     }
 }
