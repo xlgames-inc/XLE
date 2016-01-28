@@ -303,7 +303,12 @@ float3 CalculateFilteredTextureTrans(
         // There seems to be a problem with this line...? This refraction step
         // is causing too much blurring, and "normal" doesn't seem to have much
         // effect
-        float3 ot = refract(-corei, normal, iorIncident/iorOutgoing);
+        float3 ot = refract(-corei, -normal, iorIncident/iorOutgoing);
+        if (dot(ot, ot) == 0.0f) continue;      // ("refract" didn't find a solution)
+
+        //float3 test = refract(-ot, normal, iorOutgoing/iorIncident);
+        //if (length(test - corei) > 0.001f)
+        //    return float3(1, 0, 0);
 
 #if 1
         precise float3 H = SampleMicrofacetNormalGGX(
@@ -354,12 +359,16 @@ float3 CalculateFilteredTextureTrans(
         float weight = abs(dot(i, H));// * InversePDFWeight(H, -normal, 0.0.xxx, alphad);
 #endif
 
-        weight = min(weight, 100.f);
+#if 0
+        float weight = 1.f;
+#endif
+
+        // weight = min(weight, 100.f);
         result += lightColor * weight;
         totalWeight += weight;
     }
 
-    return result / totalWeight;
+    return result / (totalWeight + 1e-6f);
 }
 
 

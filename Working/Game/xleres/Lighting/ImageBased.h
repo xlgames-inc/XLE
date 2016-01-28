@@ -182,7 +182,7 @@ float3 SampleSpecularIBLTrans(
     uint dither = DitherPatternInt(lsd.pixelCoords);
     #if defined(REF_IBL)
         const uint sampleCount = 64;
-        return SampleTransmittedSpecularIBL_Ref(normal, viewDirection, specParam, SkyReflectionTexture, sampleCount, dither&0xf, 16);
+        return specParam.transmission * SampleTransmittedSpecularIBL_Ref(normal, viewDirection, specParam, SkyReflectionTexture, sampleCount, dither&0xf, 16);
     #else
         return SampleSpecularIBLTrans_SplitSum(normal, viewDirection, specParam, dither);
     #endif

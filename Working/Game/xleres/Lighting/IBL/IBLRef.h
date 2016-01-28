@@ -90,7 +90,17 @@ float3 SampleTransmittedSpecularIBL_Ref(
         // Note that when we call "CalculateSpecular", it's going to recalculate
         // the transmission half vector and come out with the same result.
         float3 lightColor = tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(i), 0).rgb;
-        precise float3 brdf = CalculateSpecular(normal, viewDirection, i, H, specParam); // (also contains NdotL term)
+        // precise float3 brdf = CalculateSpecular(normal, viewDirection, i, H, specParam); // (also contains NdotL term)
+
+        float brdf;
+        GGXTransmission(
+            iorIncident, iorOutgoing, specParam.roughness,
+            i, viewDirection, -normal,        // (note flipping normal)
+            brdf);
+
+        brdf *= GGXTransmissionFresnel(
+            i, viewDirection, specParam.F0.g,
+            iorIncident, iorOutgoing);
 
         // We have to apply the distribution weight. Since our half vectors are distributed
         // in the same fashion as the reflection case, we should have the same weight.
