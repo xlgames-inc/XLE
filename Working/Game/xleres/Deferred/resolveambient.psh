@@ -29,15 +29,16 @@ float4 ResolveAmbient(
 	SystemInputs sys) : SV_Target0
 {
 	int2 pixelCoords = position.xy;
-	GBufferValues sample = LoadGBuffer(position, sys);
+	GBufferValues sample = LoadGBuffer(position.xy, sys);
 	float3 viewDirection = -normalize(viewFrustumVector);
 
 	AmbientResolveHelpers helpers = AmbientResolveHelpers_Default();
 	helpers.ReciprocalViewportDims = ReciprocalViewportDims;
 
+	LightScreenDest screenDest = LightScreenDest_Create(pixelCoords, GetSampleIndex(sys));
 	float3 result = LightResolve_Ambient(
 		sample, viewDirection, Ambient,
-		pixelCoords, GetSampleIndex(sys), helpers);
+		screenDest, helpers);
 
 	float outscatterScale = 1.f;
 	#if (RESOLVE_RANGE_FOG==1)

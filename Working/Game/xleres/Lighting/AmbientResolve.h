@@ -130,14 +130,14 @@ float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float
 
 /////////////////////////////////////////
 
-float3 CalcBasicAmbient(int2 pixelCoords, uint sampleIndex, GBufferValues sample,
+float3 CalcBasicAmbient(LightScreenDest lsd, GBufferValues sample,
                         float3 ambientColor, float iblScale)
 {
     #if CALCULATE_TILED_LIGHTS==1
         #if defined(TILED_LIGHTS_RESOLVE_MS)
-            float3 tiledLights	= LoadFloat4(TiledLightsResolve, pixelCoords, sampleIndex).xyz;
+            float3 tiledLights	= LoadFloat4(TiledLightsResolve, lsd.pixelCoords, lsd.sampleIndex).xyz;
         #else
-            float3 tiledLights	= TiledLightsResolve.Load(int3(pixelCoords, 0)).xyz;
+            float3 tiledLights	= TiledLightsResolve.Load(int3(lsd.pixelCoords, 0)).xyz;
         #endif
     #else
         float3 tiledLights = 0.0.xxx;
@@ -165,7 +165,7 @@ AmbientResolveHelpers AmbientResolveHelpers_Default()
 
 #if CALCULATE_SCREENSPACE_REFLECTIONS==1
     float4 CalculateScreenSpaceReflections(
-        int2 pixelCoords, AmbientResolveHelpers helpers,
+        LightScreenDest lsd, AmbientResolveHelpers helpers,
         float3 fresnel, float ambientColor, float iblScale)
     {
             //	the screen space refl sampler should contain a texture coordinate
@@ -173,7 +173,7 @@ AmbientResolveHelpers AmbientResolveHelpers_Default()
             //	render target for this step -- because we want to read from a texture
             //	that can the direct lighting already calculated.
         float4 reflectionValue = ScreenSpaceReflResult.SampleLevel(
-            ClampingSampler, float2(pixelCoords) * helpers.ReciprocalViewportDims, 0);
+            ClampingSampler, float2(lsd.pixelCoords) * helpers.ReciprocalViewportDims, 0);
 
         if (reflectionValue.a == 0.0f) return 0.0.xxxx;
 
@@ -200,14 +200,14 @@ AmbientResolveHelpers AmbientResolveHelpers_Default()
 
 float3 LightResolve_Ambient(
     GBufferValues sample, float3 directionToEye, AmbientDesc ambient,
-    int2 pixelCoords, uint sampleIndex,
+    LightScreenDest lsd,
     AmbientResolveHelpers helpers,
     bool mirrorReflection = false)
 {
-    float3 diffusePart = CalcBasicAmbient(pixelCoords, sampleIndex, sample, ambient.Colour, ambient.SkyReflectionScale);
+    float3 diffusePart = CalcBasicAmbient(lsd, sample, ambient.Colour, ambient.SkyReflectionScale);
 
     #if HAS_SCREENSPACE_AO==1
-        float occlusion = LoadFloat1(AmbientOcclusion, pixelCoords, sampleIndex);
+        float occlusion = LoadFloat1(AmbientOcclusion, lsd.pixelCoords, lsd.sampleIndex);
     #else
         float occlusion = 1.f;
     #endif
@@ -228,10 +228,10 @@ float3 LightResolve_Ambient(
     #if HAS_SPECULAR_IBL==1
         float3 skyReflections = SampleSpecularIBL(
             sample.worldSpaceNormal, directionToEye,
-            SpecularParameters_RoughF0(sample.material.roughness, F0));
-        //skyReflections += SampleSpecularIBLTrans(
-        //    sample.worldSpaceNormal, directionToEye,
-        //    SpecularParameters_RoughF0Transmission(sample.material.roughness, F0, 1.0.xxx));
+            SpecularParameters_RoughF0(sample.material.roughness, F0), lsd);
+        skyReflections += SampleSpecularIBLTrans(
+            sample.worldSpaceNormal, directionToEye,
+            SpecularParameters_RoughF0Transmission(sample.material.roughness, F0, 1.0.xxx), lsd);
     #elif 0 // SKY_PROJECTION==5
         float3 skyReflections = SampleSpecularIBL_Ref(
             sample.worldSpaceNormal, directionToEye,
@@ -254,7 +254,7 @@ float3 LightResolve_Ambient(
             // note... if we want fogging on the reflections, we need to perform the fog calculations here, on the
             // reflected pixel
         float4 dynamicReflections = CalculateScreenSpaceReflections(
-            pixelCoords, helpers, fresnel, ambient.Colour, ambient.SkyReflectionScale);
+            lsd, helpers, fresnel, ambient.Colour, ambient.SkyReflectionScale);
         skyReflections = lerp(skyReflections, dynamicReflections.rgb, dynamicReflections.a);
     #endif
 

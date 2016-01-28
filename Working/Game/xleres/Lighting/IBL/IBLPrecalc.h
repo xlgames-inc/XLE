@@ -14,7 +14,9 @@
     //  Split-term LUT
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-float2 GenerateSplitTerm(float NdotV, float roughness, uint sampleCount)
+float2 GenerateSplitTerm(
+    float NdotV, float roughness,
+    uint passSampleCount, uint passIndex, uint passCount)
 {
     // This generates the lookup table used by the glossy specular reflections
     // split sum approximation.
@@ -47,7 +49,7 @@ float2 GenerateSplitTerm(float NdotV, float roughness, uint sampleCount)
     float G2 = SmithG(NdotV, alphag);
 
     float A = 0.f, B = 0.f;
-    [loop] for (uint s=0; s<sampleCount; ++s) {
+    [loop] for (uint s=0; s<passSampleCount; ++s) {
         float3 H, L;
 
             // Our sampling variable is the microfacet normal (which is the halfVector)
@@ -60,10 +62,10 @@ float2 GenerateSplitTerm(float NdotV, float roughness, uint sampleCount)
             // across the output image.
         const bool clusterAroundHighlight = false;
         if (clusterAroundHighlight) {
-            L = BuildSampleHalfVectorGGX(s, sampleCount, reflect(-V, normal), alphad);
+            L = BuildSampleHalfVectorGGX(s*passCount+passIndex, passSampleCount*passCount, reflect(-V, normal), alphad);
             H = normalize(L + V);
         } else {
-            H = BuildSampleHalfVectorGGX(s, sampleCount, normal, alphad);
+            H = BuildSampleHalfVectorGGX(s*passCount+passIndex, passSampleCount*passCount, normal, alphad);
             L = 2.f * dot(V, H) * H - V;
         }
 
@@ -97,10 +99,12 @@ float2 GenerateSplitTerm(float NdotV, float roughness, uint sampleCount)
         }
     }
 
-    return float2(A, B) / float(sampleCount).xx;
+    return float2(A, B) / float(passSampleCount).xx;
 }
 
-float2 GenerateSplitTermTrans(float NdotV, float roughness, uint sampleCount)
+float GenerateSplitTermTrans(
+    float NdotV, float roughness,
+    uint passSampleCount, uint passIndex, uint passCount)
 {
     // This is for generating the split-term lookup for specular transmission
     // It uses the same approximations and simplifications as for reflected
@@ -122,11 +126,11 @@ float2 GenerateSplitTermTrans(float NdotV, float roughness, uint sampleCount)
     float alphad = RoughnessToDAlpha(roughness);
     float G2 = SmithG(NdotV, alphag);
 
-    float A = 0.f, B = 0.f;
-    [loop] for (uint s=0; s<sampleCount; ++s) {
+    float A = 0.f;
+    [loop] for (uint s=0; s<passSampleCount; ++s) {
 
         precise float3 H = BuildSampleHalfVectorGGX(
-            s, sampleCount, -normal, alphad);
+            s*passCount+passIndex, passSampleCount*passCount, -normal, alphad);
 
         float3 i;
         if (!CalculateTransmissionIncident(i, ot, H, iorIncident, iorOutgoing))
@@ -153,14 +157,16 @@ float2 GenerateSplitTermTrans(float NdotV, float roughness, uint sampleCount)
         A += F * normalizedSpecular;
     }
 
-    return float2(A, B) / float(sampleCount).xx;
+    return A / float(passSampleCount);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     //  Filtered textures
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-float3 GenerateFilteredSpecular(float3 cubeMapDirection, float roughness, uint sampleCount, uint sampleOffset, uint totalSampleCount)
+float3 GenerateFilteredSpecular(
+    float3 cubeMapDirection, float roughness,
+    uint passSampleCount, uint passIndex, uint passCount)
 {
     // Here is the key simplification -- we assume that the normal and view direction are
     // the same. This means that some distortion on extreme angles is lost. This might be
@@ -180,10 +186,10 @@ float3 GenerateFilteredSpecular(float3 cubeMapDirection, float roughness, uint s
         // Perhaps we should use double precision math?
         // Anyway, we need to split it up into multiple passes, otherwise
         // the GPU gets locked up in the single draw call for too long.
-    [loop] for (uint s=0; s<sampleCount; ++s) {
+    [loop] for (uint s=0; s<passSampleCount; ++s) {
             // We could build a distribution of "H" vectors here,
             // or "L" vectors. It makes sense to use H vectors
-        precise float3 H = BuildSampleHalfVectorGGX(s+sampleOffset, totalSampleCount, normal, alphad);
+        precise float3 H = BuildSampleHalfVectorGGX(s*passCount+passIndex, passSampleCount*passCount, normal, alphad);
         precise float3 L = 2.f * dot(viewDirection, H) * H - viewDirection;
 
             // Now we can light as if the point on the reflection map
@@ -247,7 +253,9 @@ float3 GenerateFilteredSpecular(float3 cubeMapDirection, float roughness, uint s
     return result / totalWeight;
 }
 
-float3 CalculateFilteredTextureTrans(float3 cubeMapDirection, float roughness, uint sampleCount, uint sampleOffset, uint totalSampleCount)
+float3 CalculateFilteredTextureTrans(
+    float3 cubeMapDirection, float roughness,
+    uint passSampleCount, uint passIndex, uint passCount)
 {
     float3 normal = cubeMapDirection;
     float3 viewDirection = cubeMapDirection;
@@ -261,9 +269,9 @@ float3 CalculateFilteredTextureTrans(float3 cubeMapDirection, float roughness, u
 
     float totalWeight = 0.f;
     float3 result = 0.0.xxx;
-    [loop] for (uint s=0; s<sampleCount; ++s) {
+    [loop] for (uint s=0; s<passSampleCount; ++s) {
         precise float3 H = BuildSampleHalfVectorGGX(
-            s+sampleOffset, totalSampleCount,
+            s*passCount+passIndex, passSampleCount*passCount,
             -normal, alphad);
 
         float3 i;
@@ -271,32 +279,13 @@ float3 CalculateFilteredTextureTrans(float3 cubeMapDirection, float roughness, u
             continue;
 
         float3 lightColor = IBLPrecalc_SampleInputTexture(i);
-        float weight = saturate(dot(-normal, i));  // best weighting here is not clear
+
+            // See GenerateFilteredSpecular for more options
+            // for filtering... This method just helps to take
+            // to take the edge off less accurate samples.
+        float weight = abs(dot(normal, H));
         result += lightColor * weight;
         totalWeight += weight;
-#if 0
-        // As per the reflection case, our probability distribution function is
-        //      D * NdotH / (4 * VdotH)
-        // However, it doesn't factor out like it does in the reflection case.
-        // So, we have to do the full calculation, and then apply the inverse of
-        // the pdf afterwards.
-
-        float NdotH = saturate(dot(normal, -H));
-        float VdotH = saturate(dot(viewDirection, -H));
-
-        precise float D = TrowReitzD(NdotH, alphad);
-        float pdfWeight = (4.f * VdotH) / (D * NdotH);
-
-        float transmitted;
-        GGXTransmission(        // todo -- fresnel calculation is going to get in the way
-            roughness, 0.f, iorIncident, iorOutgoing,
-            i, ot, -normal,
-            transmitted);
-
-        float scale = transmitted * pdfWeight;
-        if (!isnan(scale))
-            result += lightColor * scale;
-#endif
     }
 
     return result / totalWeight;

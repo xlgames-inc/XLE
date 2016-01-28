@@ -13,7 +13,10 @@
     //  Reference specular reflections
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-float3 SampleSpecularIBL_Ref(float3 normal, float3 viewDirection, SpecularParameters specParam, TextureCube tex)
+float3 SampleSpecularIBL_Ref(
+    float3 normal, float3 viewDirection,
+    SpecularParameters specParam, TextureCube tex,
+    uint passSampleCount, uint passIndex, uint passCount)
 {
     // This is a reference implementation of glossy specular reflections from a
     // cube map texture. It's too inefficient to run at real-time. But it provides
@@ -32,11 +35,10 @@ float3 SampleSpecularIBL_Ref(float3 normal, float3 viewDirection, SpecularParame
 
     float alphad = RoughnessToDAlpha(specParam.roughness);
     float3 result = 0.0.xxx;
-    const uint sampleCount = 512;
-    for (uint s=0; s<sampleCount; ++s) {
+    for (uint s=0; s<passSampleCount; ++s) {
             // We could build a distribution of "H" vectors here,
             // or "L" vectors. It makes sense to use H vectors
-        precise float3 H = BuildSampleHalfVectorGGX(s, sampleCount, normal, alphad);
+        precise float3 H = BuildSampleHalfVectorGGX(s*passCount+passIndex, passSampleCount*passCount, normal, alphad);
         float3 L = 2.f * dot(viewDirection, H) * H - viewDirection;
 
             // Now we can light as if the point on the reflection map
@@ -48,12 +50,13 @@ float3 SampleSpecularIBL_Ref(float3 normal, float3 viewDirection, SpecularParame
         result += lightColor * brdf * pdfWeight;
     }
 
-    return result / float(sampleCount);
+    return result / float(passSampleCount);
 }
 
 float3 SampleTransmittedSpecularIBL_Ref(
     float3 normal, float3 viewDirection,
-    SpecularParameters specParam, TextureCube tex)
+    SpecularParameters specParam, TextureCube tex,
+    uint passSampleCount, uint passIndex, uint passCount)
 {
     float iorIncident = 1.f;
     float iorOutgoing = SpecularTransmissionIndexOfRefraction;
@@ -64,11 +67,10 @@ float3 SampleTransmittedSpecularIBL_Ref(
         // SampleSpecularIBL_Ref
     float alphad = RoughnessToDAlpha(specParam.roughness);
     float3 result = 0.0.xxx;
-    const uint sampleCount = 128;
-    for (uint s=0; s<sampleCount; ++s) {
+    for (uint s=0; s<passSampleCount; ++s) {
         // using the same distribution of half-vectors that we use for reflection
         // (except we flip the normal because of the way the equation is built)
-        precise float3 H = BuildSampleHalfVectorGGX(s, sampleCount, -normal, alphad);
+        precise float3 H = BuildSampleHalfVectorGGX(s*passCount+passIndex, passSampleCount*passCount, -normal, alphad);
 
         // following Walter07 here, we need to build "i", the incoming direction.
         // Actually Walter builds the outgoing direction -- but we need to reverse the
@@ -98,7 +100,7 @@ float3 SampleTransmittedSpecularIBL_Ref(
         result += lightColor * brdf * pdfWeight;
     }
 
-    return result / float(sampleCount);
+    return result / float(passSampleCount);
 }
 
 #endif

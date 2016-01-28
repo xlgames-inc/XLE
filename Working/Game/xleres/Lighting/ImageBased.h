@@ -15,16 +15,18 @@
 #include "../CommonResources.h"
 #include "IBL/IBLAlgorithm.h"
 #include "IBL/IBLRef.h"
+#include "../Utility/Misc.h"        // for DitherPatternInt
 
 TextureCube DiffuseIBL  : register(t19);
 TextureCube SpecularIBL : register(t20);
 Texture2D<float2> GlossLUT : register(t21);        // this is the look up table used in the split-sum IBL glossy reflections
-Texture2D<float2> GlossTransLUT : register(t22);
+Texture2D<float> GlossTransLUT : register(t22);
 
 TextureCube SpecularTransIBL : register(t30);
 
 #define RECALC_SPLIT_TERM
 #define RECALC_FILTERED_TEXTURE
+#define REF_IBL
 
 float3 IBLPrecalc_SampleInputTexture(float3 direction)
 {
@@ -52,7 +54,7 @@ float3 SampleDiffuseIBL(float3 worldSpaceNormal)
     #endif
 }
 
-float3 SplitSumIBL_PrefilterEnvMap(float roughness, float3 reflection)
+float3 SplitSumIBL_PrefilterEnvMap(float roughness, float3 reflection, uint dither)
 {
         // Roughness is mapped on to a linear progression through
         // the mipmaps. Because of the way SampleLevel works, we
@@ -71,11 +73,11 @@ float3 SplitSumIBL_PrefilterEnvMap(float roughness, float3 reflection)
     #else
         const uint sampleCount = 64;
         return GenerateFilteredSpecular(
-            AdjSkyCubeMapCoords(reflection), roughness, sampleCount, 0, sampleCount);
+            AdjSkyCubeMapCoords(reflection), roughness, sampleCount, dither&0xf, 16);
     #endif
 }
 
-float2 SplitSumIBL_IntegrateBRDF(float roughness, float NdotV)
+float2 SplitSumIBL_IntegrateBRDF(float roughness, float NdotV, uint dither)
 {
     // Note that we can also use an analytical approximation for
     // this term. See:
@@ -91,11 +93,11 @@ float2 SplitSumIBL_IntegrateBRDF(float roughness, float NdotV)
         return GlossLUT.SampleLevel(ClampingSampler, float2(NdotV, 1.f - roughness), 0).xy;
     #else
         const uint sampleCount = 64;
-        return GenerateSplitTerm(saturate(NdotV), saturate(roughness), sampleCount);
+        return GenerateSplitTerm(saturate(NdotV), saturate(roughness), sampleCount, dither&0xf, 16);
     #endif
 }
 
-float3 SampleSpecularIBL_SplitSum(float3 normal, float3 viewDirection, SpecularParameters specParam)
+float3 SampleSpecularIBL_SplitSum(float3 normal, float3 viewDirection, SpecularParameters specParam, uint dither)
 {
     // This is the split-sum approximation for glossy specular reflections from
     // Brian Karis for Unreal.
@@ -115,30 +117,35 @@ float3 SampleSpecularIBL_SplitSum(float3 normal, float3 viewDirection, SpecularP
 
     float NdotV = saturate(dot(normal, viewDirection));
     float3 R = 2.f * dot(viewDirection, normal) * normal - viewDirection;   // reflection vector
-    float3 prefilteredColor = SplitSumIBL_PrefilterEnvMap(specParam.roughness, R);
-    float2 envBRDF = SplitSumIBL_IntegrateBRDF(specParam.roughness, NdotV);
+    float3 prefilteredColor = SplitSumIBL_PrefilterEnvMap(specParam.roughness, R, dither);
+    float2 envBRDF = SplitSumIBL_IntegrateBRDF(specParam.roughness, NdotV, dither);
     return prefilteredColor * (specParam.F0 * envBRDF.x + envBRDF.y);
 }
 
-float3 SampleSpecularIBL(float3 normal, float3 viewDirection, SpecularParameters specParam)
+float3 SampleSpecularIBL(float3 normal, float3 viewDirection, SpecularParameters specParam, LightScreenDest lsd)
 {
-    // return SampleSpecularIBL_Ref(normal, viewDirection, specParam, SkyReflectionTexture);
-    return SampleSpecularIBL_SplitSum(normal, viewDirection, specParam);
+    uint dither = DitherPatternInt(lsd.pixelCoords);
+    #if defined(REF_IBL)
+        const uint sampleCount = 64;
+        return SampleSpecularIBL_Ref(normal, viewDirection, specParam, SkyReflectionTexture, sampleCount, dither&0xf, 16);
+    #else
+        return SampleSpecularIBL_SplitSum(normal, viewDirection, specParam, dither);
+    #endif
 }
 
 /////////////////// T R A N S M I T T E D   S P E C U L A R ///////////////////
 
-float2 SplitSumIBLTrans_IntegrateBRDF(float roughness, float NdotV)
+float SplitSumIBLTrans_IntegrateBRDF(float roughness, float NdotV, uint dither)
 {
     #if !defined(RECALC_SPLIT_TERM)
         return GlossTransLUT.SampleLevel(ClampingSampler, float2(NdotV, 1.f - roughness), 0).xy;
     #else
         const uint sampleCount = 64;
-        return GenerateSplitTermTrans(NdotV, roughness, sampleCount);
+        return GenerateSplitTermTrans(NdotV, roughness, sampleCount, dither&0xf, 16);
     #endif
 }
 
-float3 SplitSumIBLTrans_PrefilterEnvMap(float roughness, float3 ot)
+float3 SplitSumIBLTrans_PrefilterEnvMap(float roughness, float3 ot, uint dither)
 {
     #if !defined(RECALC_FILTERED_TEXTURE)
         return SpecularTransIBL.SampleLevel(
@@ -147,21 +154,31 @@ float3 SplitSumIBLTrans_PrefilterEnvMap(float roughness, float3 ot)
     #else
         const uint sampleCount = 64;
         return CalculateFilteredTextureTrans(
-            AdjSkyCubeMapCoords(ot), roughness, sampleCount, 0, sampleCount);
+            AdjSkyCubeMapCoords(ot), roughness, sampleCount, dither&0xf, 16);
     #endif
 }
 
-float3 SampleSpecularIBLTrans_SplitSum(float3 normal, float3 viewDirection, SpecularParameters specParam)
+float3 SampleSpecularIBLTrans_SplitSum(
+    float3 normal, float3 viewDirection,
+    SpecularParameters specParam, uint dither)
 {
     float NdotV = saturate(dot(normal, viewDirection));
-    float3 prefilteredColor = SplitSumIBLTrans_PrefilterEnvMap(specParam.roughness, viewDirection);
-    float2 envBRDF = SplitSumIBLTrans_IntegrateBRDF(specParam.roughness, NdotV);
-    return specParam.transmission * prefilteredColor * (1.f - specParam.F0) * envBRDF.x;
+    float3 prefilteredColor = SplitSumIBLTrans_PrefilterEnvMap(specParam.roughness, viewDirection, dither);
+    float envBRDF = SplitSumIBLTrans_IntegrateBRDF(specParam.roughness, NdotV, dither);
+    return specParam.transmission * prefilteredColor * (1.f - specParam.F0) * envBRDF;
 }
 
-float3 SampleSpecularIBLTrans(float3 normal, float3 viewDirection, SpecularParameters specParam)
+float3 SampleSpecularIBLTrans(
+    float3 normal, float3 viewDirection,
+    SpecularParameters specParam, LightScreenDest lsd)
 {
-    return SampleSpecularIBLTrans_SplitSum(normal, viewDirection, specParam);
+    uint dither = DitherPatternInt(lsd.pixelCoords);
+    #if defined(REF_IBL)
+        const uint sampleCount = 64;
+        return SampleTransmittedSpecularIBL_Ref(normal, viewDirection, specParam, SkyReflectionTexture, sampleCount, dither&0xf, 16);
+    #else
+        return SampleSpecularIBLTrans_SplitSum(normal, viewDirection, specParam, dither);
+    #endif
 }
 
 #endif

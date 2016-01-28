@@ -7,9 +7,9 @@
 #if !defined(UTILITY_MISC_H)
 #define UTILITY_MISC_H
 
-float DitherPatternInt(uint2 pixelCoords)
+uint DitherPatternInt(uint2 pixelCoords)
 {
-	int ditherArray[16] =
+	uint ditherArray[16] =
 	{
 		4, 12,  0,  8,
 		10,  2, 14,  6,
