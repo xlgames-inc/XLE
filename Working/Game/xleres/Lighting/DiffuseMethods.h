@@ -8,8 +8,8 @@
 #define DIFFUSE_METHODS_H
 
 #include "../Utility/MathConstants.h"
+#include "../Utility/Misc.h"
 
-float Sq(float x) { return x*x; }
 float RaiseTo5(float x) { float x2 = x*x; return x2*x2*x; }
 
 float DiffuseMethod_Disney(

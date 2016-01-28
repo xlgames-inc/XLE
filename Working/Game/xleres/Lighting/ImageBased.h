@@ -26,7 +26,7 @@ TextureCube SpecularTransIBL : register(t30);
 
 #define RECALC_SPLIT_TERM
 #define RECALC_FILTERED_TEXTURE
-#define REF_IBL
+// #define REF_IBL
 
 float3 IBLPrecalc_SampleInputTexture(float3 direction)
 {
@@ -145,16 +145,16 @@ float SplitSumIBLTrans_IntegrateBRDF(float roughness, float NdotV, uint dither)
     #endif
 }
 
-float3 SplitSumIBLTrans_PrefilterEnvMap(float roughness, float3 ot, uint dither)
+float3 SplitSumIBLTrans_PrefilterEnvMap(float roughness, float3 dir, uint dither)
 {
     #if !defined(RECALC_FILTERED_TEXTURE)
         return SpecularTransIBL.SampleLevel(
-            DefaultSampler, AdjSkyCubeMapCoords(ot),
+            DefaultSampler, AdjSkyCubeMapCoords(dir),
             RoughnessToMipmap(roughness)).rgb;
     #else
         const uint sampleCount = 64;
         return CalculateFilteredTextureTrans(
-            AdjSkyCubeMapCoords(ot), roughness, sampleCount, dither&0xf, 16);
+            AdjSkyCubeMapCoords(dir), roughness, sampleCount, dither&0xf, 16);
     #endif
 }
 
@@ -163,9 +163,16 @@ float3 SampleSpecularIBLTrans_SplitSum(
     SpecularParameters specParam, uint dither)
 {
     float NdotV = saturate(dot(normal, viewDirection));
-    float3 prefilteredColor = SplitSumIBLTrans_PrefilterEnvMap(specParam.roughness, viewDirection, dither);
+
+    // calculate the refraction when m==n
+    const float iorIncident = 1.f;
+    const float iorOutgoing = SpecularTransmissionIndexOfRefraction;
+    float3 i = refract(-viewDirection, normal, iorOutgoing/iorIncident);
+    float3 envMapDir = i;
+
+    float3 prefilteredColor = SplitSumIBLTrans_PrefilterEnvMap(specParam.roughness, envMapDir, dither);
     float envBRDF = SplitSumIBLTrans_IntegrateBRDF(specParam.roughness, NdotV, dither);
-    return specParam.transmission * prefilteredColor * (1.f - specParam.F0) * envBRDF;
+    return specParam.transmission * prefilteredColor * (1.0.xxx - specParam.F0) * envBRDF;
 }
 
 float3 SampleSpecularIBLTrans(

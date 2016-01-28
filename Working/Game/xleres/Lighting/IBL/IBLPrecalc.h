@@ -62,10 +62,10 @@ float2 GenerateSplitTerm(
             // across the output image.
         const bool clusterAroundHighlight = false;
         if (clusterAroundHighlight) {
-            L = BuildSampleHalfVectorGGX(s*passCount+passIndex, passSampleCount*passCount, reflect(-V, normal), alphad);
+            L = SampleMicrofacetNormalGGX(s*passCount+passIndex, passSampleCount*passCount, reflect(-V, normal), alphad);
             H = normalize(L + V);
         } else {
-            H = BuildSampleHalfVectorGGX(s*passCount+passIndex, passSampleCount*passCount, normal, alphad);
+            H = SampleMicrofacetNormalGGX(s*passCount+passIndex, passSampleCount*passCount, normal, alphad);
             L = 2.f * dot(V, H) * H - V;
         }
 
@@ -129,7 +129,7 @@ float GenerateSplitTermTrans(
     float A = 0.f;
     [loop] for (uint s=0; s<passSampleCount; ++s) {
 
-        precise float3 H = BuildSampleHalfVectorGGX(
+        precise float3 H = SampleMicrofacetNormalGGX(
             s*passCount+passIndex, passSampleCount*passCount, -normal, alphad);
 
         float3 i;
@@ -147,6 +147,9 @@ float GenerateSplitTermTrans(
             roughness, iorIncident, iorOutgoing,
             i, ot, -normal,
             transmitted);
+        // float odoth = abs(dot(ot, H));
+        // float odotn = abs(dot(ot, normal));
+        // transmitted = odoth / odotn * SmithG(odotn, alphag);
 
         float pdfWeight = InversePDFWeight(H, -normal, V, alphad);
 
@@ -189,7 +192,7 @@ float3 GenerateFilteredSpecular(
     [loop] for (uint s=0; s<passSampleCount; ++s) {
             // We could build a distribution of "H" vectors here,
             // or "L" vectors. It makes sense to use H vectors
-        precise float3 H = BuildSampleHalfVectorGGX(s*passCount+passIndex, passSampleCount*passCount, normal, alphad);
+        precise float3 H = SampleMicrofacetNormalGGX(s*passCount+passIndex, passSampleCount*passCount, normal, alphad);
         precise float3 L = 2.f * dot(viewDirection, H) * H - viewDirection;
 
             // Now we can light as if the point on the reflection map
@@ -233,12 +236,12 @@ float3 GenerateFilteredSpecular(
             // -- because that should give us a shape that is most true to GGX
             // For lower probability samples, we'll quiet them down a bit...
             // Note "lower probability samples" really just means H directions
-            // that are far from "normal" (ie, "theta" in BuildSampleHalfVectorGGX is high)
+            // that are far from "normal" (ie, "theta" in SampleMicrofacetNormalGGX is high)
             float pdf = 1.f/InversePDFWeight(H, normal, viewDirection, alphad);
             weight = saturate(pow(pdf * 3.f, 3.f));
         } else if (method == Method_Constant) {
             // Constant should just give us an even distribution, true to the
-            // probably distribution in BuildSampleHalfVectorGGX
+            // probably distribution in SampleMicrofacetNormalGGX
             weight = 1.f;
         } else if (method == Method_NdotH) {
             // seems simple and logical, and produces a good result
@@ -253,37 +256,105 @@ float3 GenerateFilteredSpecular(
     return result / totalWeight;
 }
 
+float3 SampleNormal(float3 core, uint s, uint sampleCount)
+{
+    float theta = 2.f * pi * float(s)/float(sampleCount);
+    const float variation = 0.125f;
+    float3 H = float3(variation * cos(theta), variation * sin(theta), 0.f);
+    H.z = sqrt(1.f - H.x*H.x - H.y*H.y);
+    float3 up = abs(core.z) < 0.999f ? float3(0,0,1) : float3(1,0,0);
+    float3 tangentX = normalize(cross(up, core));
+    float3 tangentY = cross(core, tangentX);
+    return tangentX * H.x + tangentY * H.y + core * H.z;
+}
+
 float3 CalculateFilteredTextureTrans(
     float3 cubeMapDirection, float roughness,
     uint passSampleCount, uint passIndex, uint passCount)
 {
-    float3 normal = cubeMapDirection;
-    float3 viewDirection = cubeMapDirection;
+    float3 corei = cubeMapDirection;
 
-    const float3 ot = viewDirection;
     const float iorIncident = 1.f;
     const float iorOutgoing = SpecularTransmissionIndexOfRefraction;
 
-    float alphag = RoughnessToGAlpha(roughness);
     float alphad = RoughnessToDAlpha(roughness);
+    float alphag = RoughnessToGAlpha(roughness);
 
     float totalWeight = 0.f;
     float3 result = 0.0.xxx;
     [loop] for (uint s=0; s<passSampleCount; ++s) {
-        precise float3 H = BuildSampleHalfVectorGGX(
+
+        // Ok, here's where it gets complex. We have a "corei" direction,
+        //  -- "i" direction when H == normal. However, there are many
+        // different values for "normal" that we can use; each will give
+        // a different "ot" and a different sampling of H values.
+        //
+        // Let's take a sampling approach for "normal" as well as H. Each
+        // time through the loop we'll pick a random normal within a small
+        // cone around corei. This is similar to SampleMicrofacetNormalGGX
+        // an it will have an indirect effect on the distribution of
+        // microfacet normals.
+        //
+        // It will also effect the value for "ot" that we get... But we want
+        // the minimize the effect of "ot" in this calculation.
+
+        float3 normal = SampleNormal(-cubeMapDirection, s, passSampleCount);
+
+        // There seems to be a problem with this line...? This refraction step
+        // is causing too much blurring, and "normal" doesn't seem to have much
+        // effect
+        float3 ot = refract(-corei, normal, iorIncident/iorOutgoing);
+
+#if 1
+        precise float3 H = SampleMicrofacetNormalGGX(
             s*passCount+passIndex, passSampleCount*passCount,
             -normal, alphad);
 
+        // float3 ot = CalculateTransmissionOutgoing(i, H, iorIncident, iorOutgoing);
         float3 i;
-        if (!CalculateTransmissionIncident(i, ot, H, iorIncident, iorOutgoing))
+        [branch] if (!CalculateTransmissionIncident(i, ot, H, iorIncident, iorOutgoing))
             continue;
+#else
+        precise float3 i = SampleMicrofacetNormalGGX(
+            s*passCount+passIndex, passSampleCount*passCount,
+            corei, alphad);
+#endif
 
         float3 lightColor = IBLPrecalc_SampleInputTexture(i);
 
-            // See GenerateFilteredSpecular for more options
-            // for filtering... This method just helps to take
-            // to take the edge off less accurate samples.
-        float weight = abs(dot(normal, H));
+        // We want to adjust the filtering to achieve a blurring that is
+        // similar to the shape of the BTDF.
+
+#if 0
+        float idh = abs(dot(i, H));
+        float idn = abs(dot(i, normal));
+        float odh = abs(dot(ot, H));
+        float odn = abs(dot(ot, normal));
+        precise float G2 = SmithG(idh, alphag);
+        float demon = Sq(iorIncident * idh + iorOutgoing * -odh);
+        float weight = dot(H, -normal) * idh * odh / (idn*odn) * iorOutgoing*iorOutgoing * G2 / demon;
+#endif
+
+#if 0
+        float weight = dot(H, -normal);
+        float idh = abs(dot(i, H));
+        float odh = abs(dot(ot, H));
+        float demon = Sq(iorIncident * idh + iorOutgoing * -odh);
+        weight /= demon;
+#endif
+
+#if 0
+        float idh = abs(dot(i, H));
+        float idn = abs(dot(i, normal));
+        float ndh = abs(dot(H, normal));
+        float weight = idh * SmithG(idh, alphag) / (idn * ndh);
+#endif
+
+#if 1
+        float weight = abs(dot(i, H));// * InversePDFWeight(H, -normal, 0.0.xxx, alphad);
+#endif
+
+        weight = min(weight, 100.f);
         result += lightColor * weight;
         totalWeight += weight;
     }

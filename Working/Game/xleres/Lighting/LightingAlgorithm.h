@@ -316,4 +316,13 @@ bool CalculateTransmissionIncident(out float3 i, float3 ot, float3 m, float iorI
     return true;
 }
 
+float3 CalculateTransmissionOutgoing(float3 i, float3 m, float iorIncident, float iorOutgoing)
+{
+	float c = dot(i, m);
+	float eta = iorIncident / iorOutgoing;
+	float s = 1.f; // sign(dot(i, n))
+	return (eta * c - s * sqrt(1.f + eta * (c*c - 1.f))) * m - eta * i;
+}
+
+
 #endif

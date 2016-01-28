@@ -199,6 +199,13 @@ float3 ReferenceSpecularGGX(
     /////////// Shadowing factor ///////////
         // As per the Disney model, rescaling roughness to
         // values 0.5f -> 1.f for SmithG alpha, and squaring
+        //
+        // Note; there's an interesting question about whether
+        // we should use HdotL and HdotV here, instead of NdotL
+        // and NdotV. Walter07 mentions this -- I assume the N
+        // is standing in for the average of all microfacet normals.
+        // It seems to be fairly subtle difference, but might be interesting
+        // to investigate.
     float alphag = RoughnessToGAlpha(roughness);
     precise float G = SmithG(NdotL, alphag) * SmithG(NdotV, alphag);
 

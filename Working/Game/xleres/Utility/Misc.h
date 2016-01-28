@@ -7,6 +7,8 @@
 #if !defined(UTILITY_MISC_H)
 #define UTILITY_MISC_H
 
+float Sq(float x) { return x*x; }
+
 uint DitherPatternInt(uint2 pixelCoords)
 {
 	uint ditherArray[16] =

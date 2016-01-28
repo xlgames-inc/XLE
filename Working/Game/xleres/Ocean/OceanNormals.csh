@@ -6,6 +6,7 @@
 
 #include "Ocean.h"
 #include "../gbuffer.h"
+#include "../Utility/Misc.h"
 
 RWTexture2D<uint4>	OutputNormalsTexture;
 RWTexture2D<uint>	FoamQuantityTexture;
@@ -140,8 +141,6 @@ Texture2D<uint4>	SourceNormalsTexture;
 		// OutputNormalsTexture[destinationCoords] = SourceNormalsTexture[sourceCoords00];
 	}
 }
-
-float Sq(float x) { return x*x; }
 
 [numthreads(32, 32, 1)]
 	void BuildDerivatives(uint3 dispatchThreadId : SV_DispatchThreadID)

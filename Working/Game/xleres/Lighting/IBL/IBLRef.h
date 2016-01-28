@@ -38,7 +38,7 @@ float3 SampleSpecularIBL_Ref(
     for (uint s=0; s<passSampleCount; ++s) {
             // We could build a distribution of "H" vectors here,
             // or "L" vectors. It makes sense to use H vectors
-        precise float3 H = BuildSampleHalfVectorGGX(s*passCount+passIndex, passSampleCount*passCount, normal, alphad);
+        precise float3 H = SampleMicrofacetNormalGGX(s*passCount+passIndex, passSampleCount*passCount, normal, alphad);
         float3 L = 2.f * dot(viewDirection, H) * H - viewDirection;
 
             // Now we can light as if the point on the reflection map
@@ -70,7 +70,7 @@ float3 SampleTransmittedSpecularIBL_Ref(
     for (uint s=0; s<passSampleCount; ++s) {
         // using the same distribution of half-vectors that we use for reflection
         // (except we flip the normal because of the way the equation is built)
-        precise float3 H = BuildSampleHalfVectorGGX(s*passCount+passIndex, passSampleCount*passCount, -normal, alphad);
+        precise float3 H = SampleMicrofacetNormalGGX(s*passCount+passIndex, passSampleCount*passCount, -normal, alphad);
 
         // following Walter07 here, we need to build "i", the incoming direction.
         // Actually Walter builds the outgoing direction -- but we need to reverse the
