@@ -315,7 +315,13 @@ SpecularParameters SpecularParameters_RoughF0Transmission(float roughness, float
 
 float GGXTransmissionFresnel(float3 i, float3 ot, float F0, float iorIncident, float iorOutgoing)
 {
-    float HdotI = dot(CalculateHt(i, ot, iorIncident, iorOutgoing), i);
+    // When calculation the fresnel effect, should we consider the incident direction, or
+    // outgoing direction? Or both?
+    // Outgoing makes more sense, because this will more closely match the calculation we use
+    // for the reflection case. Actually; couldn't we just reuse the result we got with the
+    // reflection case?
+    // Walter07 paper uses i and Ht
+    float HdotI = abs(dot(CalculateHt(i, ot, iorIncident, iorOutgoing), i));
     // return 1.f - lerp(F0, 1.f, SchlickFresnelCore(HdotI));
     // return lerp(1.f - F0, 0.f, SchlickFresnelCore(HdotI));
     return (1.f - F0) * (1.f - SchlickFresnelCore(HdotI));
@@ -361,11 +367,10 @@ float3 CalculateSpecular(
 
         #if MAT_TRANSMITTED_SPECULAR==1
                 // note -- constant ior. Could be tied to "specular" parameter?
-                //  Anyway, 1.33 is ior for water -- which is fairly significant refraction.
             const float iorIncident = 1.f;
-            const float iorOutgoing = SpecularTransmissionIndexOfRefraction; // 1.33f;
+            const float iorOutgoing = SpecularTransmissionIndexOfRefraction;
             GGXTransmission(
-                iorIncident, iorOutgoing, parameters.roughness,
+                parameters.roughness, iorIncident, iorOutgoing,
                 negativeLightDirection, directionToEye, -normal,        // (note flipping normal)
                 transmitted);
 

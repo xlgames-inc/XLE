@@ -124,9 +124,7 @@ float GenerateSplitTermTrans(
     const float iorOutgoing = SpecularTransmissionIndexOfRefraction;
     float3 ot = V;
 
-    float alphag = RoughnessToGAlpha(roughness);
     float alphad = RoughnessToDAlpha(roughness);
-    float G2 = SmithG(NdotV, alphag);
 
     uint goodSampleCount = 0;
     float A = 0.f;
@@ -145,23 +143,32 @@ float GenerateSplitTermTrans(
         // So, we have to do the full calculation, and then apply the inverse of
         // the pdf afterwards.
 
-        float transmitted;
-        GGXTransmission(        // todo -- fresnel calculation is going to get in the way
-            iorIncident, iorOutgoing, roughness,
-            i, ot, -normal,
-            transmitted);
-        // float odoth = abs(dot(ot, H));
-        // float odotn = abs(dot(ot, normal));
-        // transmitted = odoth / odotn * SmithG(odotn, alphag);
+        float bsdf;
+        #if 1
+            GGXTransmission(        // todo -- fresnel calculation is going to get in the way
+                roughness, iorIncident, iorOutgoing,
+                i, ot, -normal,
+                bsdf);
+        #else
+            bsdf = 1.f;
+            bsdf *= SmithG(abs(dot( i,  normal)), RoughnessToGAlpha(roughness));
+            bsdf *= SmithG(abs(dot(ot,  normal)), RoughnessToGAlpha(roughness));
+            bsdf *= TrowReitzD(abs(dot( H, normal)), alphad);
 
-        transmitted *= dot(i, -normal);
+            bsdf *= Sq(iorOutgoing) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
+
+            bsdf *= abs(dot(i, H)) * abs(dot(ot, H));
+            bsdf /= abs(dot(i, normal)) * abs(dot(ot, normal));
+        #endif
+
+        bsdf *= -dot(i, normal);
 
         float pdfWeight = InversePDFWeight(H, -normal, V, alphad);
 
         float VdotH = abs(dot(V, H));
         precise float F = 1.f - SchlickFresnelCore(VdotH);
 
-        float normalizedSpecular = transmitted * pdfWeight;
+        float normalizedSpecular = bsdf * pdfWeight;
         A += F * normalizedSpecular;
 
         goodSampleCount++;
@@ -281,7 +288,7 @@ float3 GenerateFilteredSpecular(
 float3 SampleNormal(float3 core, uint s, uint sampleCount)
 {
     float theta = 2.f * pi * float(s)/float(sampleCount);
-    const float variation = 0.125f;
+    const float variation = 0.2f;
     float3 H = float3(variation * cos(theta), variation * sin(theta), 0.f);
     H.z = sqrt(1.f - H.x*H.x - H.y*H.y);
     float3 up = abs(core.z) < 0.999f ? float3(0,0,1) : float3(1,0,0);

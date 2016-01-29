@@ -80,37 +80,60 @@ float3 SampleTransmittedSpecularIBL_Ref(
         if (!CalculateTransmissionIncident(i, ot, H, iorIncident, iorOutgoing))
             continue;
 
-        #if 0
-            if (isinf(i.x) || isnan(i.x)) return float3(1,0,0);
-            if (abs(length(i) - 1.f) > 0.01f) return float3(1,0,0);
-            float3 H2 = CalculateHt(i, ot, iorIncident, iorOutgoing);
-            if (length(H2 - H) > 0.01f) return float3(1,0,0);
-        #endif
-
         // ok, we've got our incoming vector. We can do the cube map lookup
         // Note that when we call "CalculateSpecular", it's going to recalculate
         // the transmission half vector and come out with the same result.
         float3 lightColor = tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(i), 0).rgb;
         // precise float3 brdf = CalculateSpecular(normal, viewDirection, i, H, specParam); // (also contains NdotL term)
 
-        float brdf;
-        GGXTransmission(
-            iorIncident, iorOutgoing, specParam.roughness,
-            i, viewDirection, -normal,        // (note flipping normal)
-            brdf);
+        float bsdf;
+        //GGXTransmission(
+        //    iorIncident, iorOutgoing, specParam.roughness,
+        //    i, viewDirection, -normal,        // (note flipping normal)
+        //    bsdf);
 
-        brdf *= GGXTransmissionFresnel(
+        bsdf = 1.f;
+        bsdf *= SmithG(abs(dot( i,  normal)), RoughnessToGAlpha(specParam.roughness));
+        bsdf *= SmithG(abs(dot(ot,  normal)), RoughnessToGAlpha(specParam.roughness));
+        bsdf *= TrowReitzD(abs(dot( H, normal)), alphad);
+
+        // One term from the Walter07 paper is causing problems... This is the
+        // only brightness term that uses the index of refraction. So it may be intended
+        // to to take into account focusing of light. Sure enough, without this term the
+        // refraction tends to match the brightness of the incoming light closely.
+        //
+        // However, with it, it produces numbers that are quite high (> 100.f) and it's
+        // making our solution just too bright... For large iorOutgoing values, it seems fine
+        //  -- but it's just causing problems when iorOutgoing approaches 1.f)
+        // It's not clear at the moment what the best solution is for dealing with this term.
+        // I want to know what the derivation is, and why it gets so bright as iorOutgoing
+        // approaches zero.
+        //
+        // My feeling is that this term is intended to actually be the term below (with a sign
+        // reversed). This new equation equals "4" when iorIncident == iorOutgoing, and I think
+        // that 4 might have been factored out with the "4" in the denominator in the microfacet
+        // equation.
+        #if 0
+            bsdf *= Sq(iorOutgoing) / Sq(iorIncident * dot(i, H) + iorOutgoing * dot(ot, H));
+        #else
+            bsdf *= Sq(iorOutgoing) / Sq(iorIncident * dot(i, H) - iorOutgoing * dot(ot, H));
+        #endif
+
+        bsdf *= abs(dot(i, H)) * abs(dot(ot, H));
+        bsdf /= abs(dot(i, normal)) * abs(dot(ot, normal));
+
+        bsdf *= GGXTransmissionFresnel(
             i, viewDirection, specParam.F0.g,
             iorIncident, iorOutgoing);
 
-        brdf *= -dot(i, normal);
+        bsdf *= -dot(i, normal);
 
         // We have to apply the distribution weight. Since our half vectors are distributed
         // in the same fashion as the reflection case, we should have the same weight.
         // (But we need to consider the flipping that occurs)
         float pdfWeight = InversePDFWeight(H, -normal, viewDirection, alphad);
 
-        result += lightColor * brdf * pdfWeight;
+        result += lightColor * bsdf * pdfWeight;
     }
 
     return result / float(passSampleCount);

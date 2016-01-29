@@ -172,7 +172,7 @@ float3 SampleSpecularIBLTrans_SplitSum(
 
     float3 prefilteredColor = SplitSumIBLTrans_PrefilterEnvMap(specParam.roughness, envMapDir, dither);
     float envBRDF = SplitSumIBLTrans_IntegrateBRDF(specParam.roughness, NdotV, dither);
-    return specParam.transmission * prefilteredColor * (1.0.xxx - specParam.F0) * envBRDF;
+    return specParam.transmission * prefilteredColor * ((1.f - specParam.F0.g) * envBRDF);
 }
 
 float3 SampleSpecularIBLTrans(
