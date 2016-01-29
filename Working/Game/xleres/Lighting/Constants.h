@@ -53,16 +53,6 @@ static const float ReflectionBlurrinessFromRoughness = 5.f;
 //  it linear against F0.
 #define SPECULAR_LINEAR_AGAINST_F0 1
 
-// The GGX equation is producing very extreme values on certain angles.
-// When there is a lot of noise in the normals scene, we tend to get points
-// of sharp contrast... These tend to get picked up the bloom and become
-// artefacts.
-// We need to take the edge off this by clamping the specular output.
-// We want to use some very high value to avoid changing
-// the GGX curve in any significant way... Just enough to prevent extreme
-// peaks.
-static const float SpecularOutputClamp = 30.0f;
-
 static const float SpecularTransmissionIndexOfRefraction = 1.2f; // 1.33f;
 
 #endif

@@ -44,6 +44,7 @@ float3 SampleSpecularIBL_Ref(
             // Now we can light as if the point on the reflection map
             // is a directonal light
 
+            // note -- "CalculateSpecular" has NdotL term built-in
         float3 lightColor = tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(L), 0).rgb;
         precise float3 brdf = CalculateSpecular(normal, viewDirection, L, H, specParam); // (also contains NdotL term)
         float pdfWeight = InversePDFWeight(H, normal, viewDirection, alphad);

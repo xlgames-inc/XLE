@@ -216,7 +216,7 @@ float3 ReferenceSpecularGGX(
     } else {
         q = SchlickFresnelCore(sndl * dot(negativeLightDirection, normal));
     }
-    float3 F = F0 + (1.f - F0) * q;
+    float3 F = lerp(F0, 1.f, q);
 
     /////////// Microfacet ///////////
         // Mapping alpha to roughness squared (as per Disney
@@ -238,21 +238,20 @@ float3 CalculateSpecular_GGX(
     float3 halfVector,
     float roughness, float3 F0, bool mirrorSurface)
 {
-    float aveF0 = 0.3333f * (F0.r + F0.g + F0.b);
+    return ReferenceSpecularGGX(
+        normal, directionToEye, negativeLightDirection, halfVector,
+        roughness, F0, mirrorSurface);
 
-    #if 1 // (FORCE_GGX_REF == 1)
-        return ReferenceSpecularGGX(
-            normal, directionToEye, negativeLightDirection, halfVector,
-            roughness, F0, mirrorSurface);
-
+    #if 0
+        float aveF0 = 0.3333f * (F0.r + F0.g + F0.b);
         return LightingFuncGGX_REF(normal, directionToEye, negativeLightDirection, roughness, aveF0).xxx;
-    #endif
 
-    if (!mirrorSurface) {
-        return LightingFuncGGX_OPT5(normal, directionToEye, negativeLightDirection, roughness, aveF0).xxx;
-    } else {
-        return LightingFuncGGX_OPT5_Mirror(normal, directionToEye, negativeLightDirection, roughness, aveF0).xxx;
-    }
+        if (!mirrorSurface) {
+            return LightingFuncGGX_OPT5(normal, directionToEye, negativeLightDirection, roughness, aveF0).xxx;
+        } else {
+            return LightingFuncGGX_OPT5_Mirror(normal, directionToEye, negativeLightDirection, roughness, aveF0).xxx;
+        }
+    #endif
 }
 
     //////////////////////////////////////////////////////////////////////////
@@ -345,7 +344,7 @@ float3 CalculateSpecular(
         // through metals?
         float transmitted = 0.f;
 
-        #if 1 // MAT_TRANSMITTED_SPECULAR==1
+        #if MAT_TRANSMITTED_SPECULAR==1
                 // note -- constant ior. Could be tied to "specular" parameter?
                 //  Anyway, 1.33 is ior for water -- which is fairly significant refraction.
             const float iorIncident = 1.f;
@@ -359,9 +358,6 @@ float3 CalculateSpecular(
                 negativeLightDirection, directionToEye, parameters.F0.g,
                 iorIncident, iorOutgoing);
         #endif
-
-        reflected = clamp(reflected, 0.0.xxx, SpecularOutputClamp.xxx);
-        transmitted = clamp(transmitted, 0.f, SpecularOutputClamp);
 
         return reflected + parameters.transmission * transmitted;
 

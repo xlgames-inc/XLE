@@ -94,6 +94,8 @@ float2 GenerateSplitTerm(
                 precise float normalizedSpecular = G * VdotH / (NdotH * NdotV);  // (excluding F term)
             #endif
 
+            normalizedSpecular *= NdotL;
+
             A += (1.f - F) * normalizedSpecular;
             B += F * normalizedSpecular;
         }
@@ -185,6 +187,13 @@ float3 GenerateFilteredSpecular(
     float3 result = 0.0.xxx;
     float totalWeight = 0.f;
 
+    #if 0
+        precise float3 L0 = 2.f * dot(viewDirection, normal) * normal - viewDirection;
+        precise float3 brdf0 = CalculateSpecular(normal, viewDirection, L0, normal, specParam);
+    #else
+        float brdf0 = 1.f;  // gets factored out completely. So don't bother calculating.
+    #endif
+
         // We need a huge number of samples for a smooth result
         // Perhaps we should use double precision math?
         // Anyway, we need to split it up into multiple passes, otherwise
@@ -211,7 +220,8 @@ float3 GenerateFilteredSpecular(
         const uint Method_Constant = 3;
         const uint Method_Balanced = 4;
         const uint Method_NdotH = 5;
-        const uint method = Method_NdotH;
+        const uint Method_Complex = 6;
+        const uint method = Method_Complex;
         float weight;
         if (method == Method_Unreal) {
             // This is the method from the unreal course notes
@@ -246,6 +256,13 @@ float3 GenerateFilteredSpecular(
         } else if (method == Method_NdotH) {
             // seems simple and logical, and produces a good result
             weight = abs(dot(normal, H));
+        } else if (method == Method_Complex) {
+            // This method is more expensive... But it involves weighting each sample
+            // by the full specular equation. So we get the most accurate blurring.
+            // Note that "brdf1 * InversePDFWeight" factors out the D term.
+            // Also, brdf0 just gets factored out completely...
+            precise float3 brdf1 = CalculateSpecular(normal, viewDirection, L, H, specParam);
+            weight = brdf0 * brdf1 * InversePDFWeight(H, normal, viewDirection, alphad);
         }
         result += lightColor * weight;
         totalWeight += weight;
@@ -273,6 +290,7 @@ float3 CalculateFilteredTextureTrans(
     uint passSampleCount, uint passIndex, uint passCount)
 {
     float3 corei = cubeMapDirection;
+    // return IBLPrecalc_SampleInputTexture(corei);
 
     const float iorIncident = 1.f;
     const float iorOutgoing = SpecularTransmissionIndexOfRefraction;
@@ -317,7 +335,7 @@ float3 CalculateFilteredTextureTrans(
 
         // float3 ot = CalculateTransmissionOutgoing(i, H, iorIncident, iorOutgoing);
         float3 i;
-        [branch] if (!CalculateTransmissionIncident(i, ot, H, iorIncident, iorOutgoing))
+        if (!CalculateTransmissionIncident(i, ot, H, iorIncident, iorOutgoing))
             continue;
 #else
         precise float3 i = SampleMicrofacetNormalGGX(
