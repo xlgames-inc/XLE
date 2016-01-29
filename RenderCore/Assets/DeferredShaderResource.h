@@ -50,7 +50,7 @@ namespace RenderCore { namespace Assets
         static Metal::ShaderResourceView LoadImmediately(const char initializer[]);
         static Metal::NativeFormat::Enum LoadFormat(const char initializer[]);
 
-        ::Assets::AssetState GetState() const;
+        ::Assets::AssetState GetAssetState() const;
         ::Assets::AssetState TryResolve() const;
 
         explicit DeferredShaderResource(const ::Assets::ResChar resourceName[]);

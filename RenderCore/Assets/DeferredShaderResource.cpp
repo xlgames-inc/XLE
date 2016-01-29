@@ -210,7 +210,7 @@ namespace RenderCore { namespace Assets
         return _pimpl->_srv;
     }
 
-    ::Assets::AssetState DeferredShaderResource::GetState() const
+    ::Assets::AssetState DeferredShaderResource::GetAssetState() const
     {
         if (_pimpl->_srv.IsGood())
             return ::Assets::AssetState::Ready;
@@ -249,7 +249,7 @@ namespace RenderCore { namespace Assets
             if (_pimpl->_colSpaceDefault != SourceColorSpace::Unspecified) colSpace = _pimpl->_colSpaceDefault;
 
             if (_pimpl->_metadataMarker) {
-                auto state = _pimpl->_metadataMarker->GetState();
+                auto state = _pimpl->_metadataMarker->GetAssetState();
                 if (state == ::Assets::AssetState::Pending)
                     return ::Assets::AssetState::Pending;
 

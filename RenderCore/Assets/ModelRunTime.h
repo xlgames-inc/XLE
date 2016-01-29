@@ -195,7 +195,7 @@ namespace RenderCore { namespace Assets
         MaterialGuid    GetMaterialBindingForDrawCall(unsigned drawCallIndex) const;
         void            LogReport() const;
 
-        ::Assets::AssetState GetState() const;
+        ::Assets::AssetState GetAssetState() const;
         ::Assets::AssetState TryResolve() const;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const

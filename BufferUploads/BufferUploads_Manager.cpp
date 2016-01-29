@@ -678,7 +678,7 @@ namespace BufferUploads
             auto prepareStep = initialisationData->BeginBackgroundLoad();
             if (prepareStep) {
                 prepareStep->StallWhilePending();
-                if (prepareStep->GetState() != ::Assets::AssetState::Ready)
+                if (prepareStep->GetAssetState() != ::Assets::AssetState::Ready)
                     return nullptr;
 
                     // update the PartialResource and BufferDesc based on the data we've just loaded
@@ -1718,7 +1718,7 @@ namespace BufferUploads
                 return true;
             }
 
-            auto currentState = step._marker->GetState();
+            auto currentState = step._marker->GetAssetState();
             if (currentState == Assets::AssetState::Pending) {
                 return false; // still waiting
             } else {

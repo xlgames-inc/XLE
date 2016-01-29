@@ -457,9 +457,11 @@ namespace SceneEngine
             << ";HAS_SPECULAR_IBL=" << (desc._hasIBL?1:0)
             ;
 
-        if (desc._msaaSamplers) {
+        if (desc._msaaSamplers)
             definesTable << ";MSAA_SAMPLERS=1";
-        }
+
+        if (desc._referenceShaders)
+            definesTable << ";REF_IBL=1";
 
         const char* vertexShader_viewFrustumVector = 
             desc._flipDirection

@@ -72,7 +72,7 @@ namespace Assets
     class PendingOperationMarker : public std::enable_shared_from_this<PendingOperationMarker>
     {
     public:
-        AssetState		GetState() const { return _state; }
+        AssetState		GetAssetState() const { return _state; }
         void			SetState(AssetState newState);
         AssetState		StallWhilePending() const;
 

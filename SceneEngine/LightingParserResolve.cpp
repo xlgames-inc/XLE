@@ -391,7 +391,7 @@ namespace SceneEngine
                             lightingResolveContext._tiledLightingResult.IsGood(),
                             lightingResolveContext._screenSpaceReflectionsResult.IsGood(),
                             resourceBindRes._skyTextureProjection, resourceBindRes._hasDiffuseIBL && resourceBindRes._hasSpecularIBL,
-                            globalLightDesc._doRangeFog);
+                            globalLightDesc._doRangeFog, Tweakable("IBLRef", false));
 
                     Metal::ViewportDesc vdesc(context);
                     struct AmbientResolveCBuffer

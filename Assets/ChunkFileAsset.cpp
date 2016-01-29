@@ -174,11 +174,11 @@ namespace Assets
     void ChunkFileAsset::Resolve() const
     {
         if (_pendingCompile) {
-            if (_pendingCompile->GetState() == ::Assets::AssetState::Invalid) {
+            if (_pendingCompile->GetAssetState() == ::Assets::AssetState::Invalid) {
                 Throw(::Assets::Exceptions::InvalidAsset(
                     _pendingCompile->Initializer(), 
                     StringMeld<256>() << "Pending compile failed in ChunkFileAsset (type: " << _assetTypeName << ")"));
-            } else if (_pendingCompile->GetState() == ::Assets::AssetState::Pending) {
+            } else if (_pendingCompile->GetAssetState() == ::Assets::AssetState::Pending) {
                     // we need to throw immediately on pending resource
                     // this object is useless while it's pending.
                 Throw(::Assets::Exceptions::PendingAsset(
@@ -197,7 +197,7 @@ namespace Assets
     ::Assets::AssetState ChunkFileAsset::TryResolve() const
     {
         if (_pendingCompile) {
-            auto markerState = _pendingCompile->GetState();
+            auto markerState = _pendingCompile->GetAssetState();
             if (markerState != ::Assets::AssetState::Ready) return markerState;
             const_cast<ChunkFileAsset*>(this)->CompleteFromMarker(*_pendingCompile);
             _pendingCompile.reset();

@@ -174,6 +174,7 @@ namespace RenderCore
         std::pair<const void*, size_t>  GetByteCode() const;
         ::Assets::AssetState            TryGetByteCode(void const*& byteCode, size_t& size);
         ::Assets::AssetState            StallWhilePending() const;
+        ::Assets::AssetState            GetAssetState() const;
         
         ShaderStage::Enum   GetStage() const                { return _stage; }
         bool                DynamicLinkingEnabled() const;

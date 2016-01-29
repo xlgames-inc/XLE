@@ -334,7 +334,7 @@ namespace SceneEngine
                 //      We blur each one, and add it to the next higher resolution one
                 //
 
-            if (settings._flags & ToneMapSettings::Flags::EnableBloom) {
+            if (settings._flags & ToneMapSettings::Flags::EnableBloom && Tweakable("DoBloom", true)) {
                 float filteringWeights[12];
                 XlSetMemory(filteringWeights, 0, sizeof(filteringWeights));
                 BuildGaussianFilteringWeights(filteringWeights, settings._bloomBlurStdDev, 11);
@@ -587,8 +587,9 @@ namespace SceneEngine
                         bool doColorGrading = Tweakable("DoColorGrading", false);
                         auto colorGradingSettings = BuildColorGradingShaderConstants(ColorGradingSettings());
 
+                        bool enableBloom = !!(settings._flags & ToneMapSettings::Flags::EnableBloom) && Tweakable("DoBloom", true);
                         auto& box = Techniques::FindCachedBoxDep2<ToneMapShaderBox>(
-                            Tweakable("ToneMapOperator", 1), !!(settings._flags & ToneMapSettings::Flags::EnableBloom),
+                            Tweakable("ToneMapOperator", 1), enableBloom,
                             hardwareSRGBEnabled, doColorGrading, !!(colorGradingSettings._doLevelsAdustment), 
                             !!(colorGradingSettings._doSelectiveColor), !!(colorGradingSettings._doFilterColor));
 

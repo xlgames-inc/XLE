@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "AsyncLoadOperation.h"
 #include "AssetUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include <memory>

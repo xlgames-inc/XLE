@@ -240,12 +240,13 @@ namespace SceneEngine
             unsigned _skyProjectionType;
             bool _hasIBL;
             unsigned _gbufferType;
+            bool _referenceShaders;
 
             Desc(   unsigned gbufferType,
                     unsigned msaaSampleCount, bool msaaSamplers, bool flipDirection,
                     bool hasAO, bool hasTiledLighting, bool hasSSR, 
                     unsigned skyProjectionType, bool hasIBL,
-                    bool rangeFog)
+                    bool rangeFog, bool referenceShaders)
             {
                     //  we have to "memset" this -- because padding adds random values in 
                     //  profile mode
@@ -258,6 +259,7 @@ namespace SceneEngine
                 _skyProjectionType = skyProjectionType;
                 _hasIBL = hasIBL;
                 _rangeFog = rangeFog;
+                _referenceShaders = referenceShaders;
             }
         };
 

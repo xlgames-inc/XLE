@@ -207,7 +207,7 @@ namespace RenderCore { namespace Assets
         const char initializer[], 
         const std::shared_ptr<::Assets::DependencyValidation>& depVal) const -> const Payload&
     {
-        auto state = GetState();
+        auto state = GetAssetState();
         if (state == ::Assets::AssetState::Invalid)
             Throw(::Assets::Exceptions::InvalidAsset(initializer, "Invalid shader code while resolving"));
 
@@ -225,7 +225,7 @@ namespace RenderCore { namespace Assets
         Payload& result,
         const std::shared_ptr<::Assets::DependencyValidation>& depVal) const -> ::Assets::AssetState
     {
-        auto state = GetState();
+        auto state = GetAssetState();
         if (state != ::Assets::AssetState::Ready)
             return state;
 

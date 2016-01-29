@@ -171,7 +171,7 @@ namespace BufferUploads
     {
         auto* o = (SpecialOverlapped*)lpOverlapped;
         assert(o && o->_returnPointer && o->_returnPointer->_marker);
-        assert(o->_returnPointer->_marker->GetState() == Assets::AssetState::Pending);
+        assert(o->_returnPointer->_marker->GetAssetState() == Assets::AssetState::Pending);
 
             // We don't have to do any extra processing right now. Just mark the asset as ready
             // or invalid, based on the result...

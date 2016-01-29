@@ -57,7 +57,7 @@ namespace RenderCore
             if (!_shader) {
                 _validationCallback = std::make_shared<Assets::DependencyValidation>();
                 _marker = marker->InvokeCompile();
-                auto markerState = _marker->GetState();
+                auto markerState = _marker->GetAssetState();
                 if (markerState == ::Assets::AssetState::Invalid)
                     Throw(::Assets::Exceptions::InvalidAsset(Initializer(), "Compiled shader code is invalid"));
             }
@@ -122,7 +122,7 @@ namespace RenderCore
             _shader = _compileHelper->Resolve(Initializer(), _validationCallback);
             _compileHelper.reset();
         } else if (_marker) {
-            if (_marker->GetState() == ::Assets::AssetState::Pending)
+            if (_marker->GetAssetState() == ::Assets::AssetState::Pending)
                 Throw(Assets::Exceptions::PendingAsset(Initializer(), "Marker is still pending while resolving shader code"));
             
             ResolveFromCompileMarker();
@@ -136,7 +136,7 @@ namespace RenderCore
 
     void CompiledShaderByteCode::ResolveFromCompileMarker() const
     {
-        if (_marker->GetState() != ::Assets::AssetState::Invalid) {
+        if (_marker->GetAssetState() != ::Assets::AssetState::Invalid) {
             auto loc = _marker->GetLocator();
 
                 //  Our shader should be stored in a shader cache file
@@ -157,7 +157,7 @@ namespace RenderCore
         if (_marker->GetLocator()._dependencyValidation)
             Assets::RegisterAssetDependency(_validationCallback, _marker->GetLocator()._dependencyValidation);
 
-        if (_marker->GetState() == ::Assets::AssetState::Invalid)
+        if (_marker->GetAssetState() == ::Assets::AssetState::Invalid)
             Throw(Assets::Exceptions::InvalidAsset(Initializer(), "CompiledShaderByteCode invalid"));
 
         _marker.reset();
@@ -171,14 +171,10 @@ namespace RenderCore
             _shader->size() - sizeof(ShaderService::ShaderHeader));
     }
 
-    ::Assets::AssetState CompiledShaderByteCode::TryGetByteCode(
-        void const*& byteCode, size_t& size)
+    ::Assets::AssetState CompiledShaderByteCode::GetAssetState() const
     {
-        if (_shader) {
-            byteCode = PtrAdd(AsPointer(_shader->begin()), sizeof(ShaderService::ShaderHeader));
-            size = _shader->size() - sizeof(ShaderService::ShaderHeader);
+        if (_shader)
             return ::Assets::AssetState::Ready;
-        }
 
         if (_compileHelper) {
             auto resolveRes = _compileHelper->TryResolve(_shader, _validationCallback);
@@ -187,7 +183,7 @@ namespace RenderCore
 
             _compileHelper.reset();
         } else if (_marker) {
-            auto markerState = _marker->GetState();
+            auto markerState = _marker->GetAssetState();
             if (markerState != ::Assets::AssetState::Ready)
                 return markerState;
             
@@ -199,6 +195,16 @@ namespace RenderCore
             return ::Assets::AssetState::Invalid;
         }
 
+        return ::Assets::AssetState::Ready;
+    }
+
+    ::Assets::AssetState CompiledShaderByteCode::TryGetByteCode(
+        void const*& byteCode, size_t& size)
+    {
+        auto state = GetAssetState();
+        if (state != ::Assets::AssetState::Ready) return state;
+
+        assert(_shader && !_shader->empty());
         byteCode = PtrAdd(AsPointer(_shader->begin()), sizeof(ShaderService::ShaderHeader));
         size = _shader->size() - sizeof(ShaderService::ShaderHeader);
         return ::Assets::AssetState::Ready;

@@ -34,7 +34,7 @@ namespace Assets
     {
         auto* o = (SpecialOverlapped*)lpOverlapped;
         assert(o && o->_returnPointer);
-        assert(o->_returnPointer->GetState() == ::Assets::AssetState::Pending);
+        assert(o->_returnPointer->GetAssetState() == ::Assets::AssetState::Pending);
 
         if (o->_fileHandle != INVALID_HANDLE_VALUE)
             CloseHandle(o->_fileHandle);

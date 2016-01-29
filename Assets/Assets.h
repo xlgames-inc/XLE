@@ -52,9 +52,19 @@ namespace Assets
 		template <typename AssetType>
 			class AssetTraits
 		{
+        private:
+            template<typename T> struct HasGetAssetStateHelper
+            {
+                template<typename U, AssetState (U::*)() const> struct FunctionSignature {};
+                template<typename U> static std::true_type Test1(FunctionSignature<U, &U::GetAssetState>*);
+                template<typename U> static std::false_type Test1(...);
+                static const bool Result = decltype(Test1<T>(0))::value;
+            };
+
 		public:
 			using DivAsset = DivergentAsset<AssetType>;
             static const bool HasIntermediateConstructor = std::is_constructible<AssetType, const IntermediateAssetLocator&, const ResChar*>::value;
+            static const bool HasGetAssetState = HasGetAssetStateHelper<AssetType>::Result;
 		};
 
         class ActiveCompileOperation
@@ -68,9 +78,6 @@ namespace Assets
             class AssetSet : public IAssetSet
         {
         public:
-            AssetSet();
-            ~AssetSet();
-
             void            Clear();
             void            LogReport() const;
 
@@ -81,8 +88,29 @@ namespace Assets
             bool            DivergentHasChanges(unsigned index) const;
             std::string     GetAssetName(uint64 id) const;
 
-            std::vector<std::pair<uint64, std::unique_ptr<AssetType>>> _assets;
+            class AssetContainer
+            {
+            public:
+                std::unique_ptr<AssetType> _active;
+                std::unique_ptr<AssetType> _pendingReplacement;
+
+                AssetContainer() {}
+                AssetContainer(std::unique_ptr<AssetType>&& active, std::unique_ptr<AssetType>&& pendingReplacement) : _active(std::move(active)), _pendingReplacement(std::move(pendingReplacement)) {}
+                AssetContainer(AssetContainer&& moveFrom) never_throws : _active(std::move(moveFrom._active)), _pendingReplacement(std::move(moveFrom._pendingReplacement)) {}
+                AssetContainer& operator=(AssetContainer&& moveFrom) never_throws { _active = std::move(moveFrom._active); _pendingReplacement = std::move(moveFrom._pendingReplacement); return *this; }
+            };
+
+            std::vector<std::pair<uint64, AssetContainer>> _assets;
             std::vector<std::pair<uint64, ActiveCompileOperation>> _activeCompiles;
+
+            AssetType* Add(uint64 hash, std::unique_ptr<AssetType>&& asset)
+            {
+                AssetType* result = asset.get();
+                auto i = LowerBound(_assets, hash);
+                auto t = AssetSet<AssetType>::AssetContainer(std::move(asset), std::unique_ptr<AssetType>());
+                _assets.insert(i, std::make_pair(hash, std::move(t)));
+                return result;
+            }
 			
 			#if defined(ASSETS_STORE_DIVERGENT)
 				using DivAsset = typename AssetTraits<AssetType>::DivAsset;
@@ -94,10 +122,13 @@ namespace Assets
             #endif
 
             #if defined(ASSETS_MULTITHREADED)
-                AssetSet& operator=(const AssetSet& cloneFrom) = delete;
-                AssetSet(const AssetSet& cloneFrom) = delete;
                 std::unique_ptr<Utility::Threading::RecursiveMutex> _lock;
             #endif
+
+            AssetSet();
+            ~AssetSet();
+            AssetSet(const AssetSet&) = delete;
+            AssetSet& operator=(const AssetSet&) = delete;
         };
 
         #if defined(ASSETS_MULTITHREADED)
@@ -223,7 +254,7 @@ namespace Assets
 
                 auto i = LowerBound(set._activeCompiles, hash);
                 if (i != set._activeCompiles.end() && i->first == hash) {
-                    auto state = i->second._compileMarker->GetState();
+                    auto state = i->second._compileMarker->GetAssetState();
                     if (state == AssetState::Pending)
                         Throw(Exceptions::PendingAsset(i->second._initializer.c_str(), "Compile still pending"));
                     if (state == AssetState::Invalid)
@@ -287,6 +318,13 @@ namespace Assets
 		template <typename... Params> std::basic_string<ResChar> AsString(Params... initialisers);
         std::basic_string<ResChar> AsString();
 
+        #pragma managed(push, off)
+        //  Can work for the moment because upstream assets aren't handled.
+        // template<typename AssetType, typename std::enable_if<AssetTraits<AssetType>::HasGetAssetState>::type* = nullptr>
+        //     inline bool ReadyForReplacement(const AssetType& asset) { return asset.GetAssetState() != AssetState::Pending; }
+        inline bool ReadyForReplacement(...) { return true; /* can't query, must do immediate replacement */ }
+        #pragma managed(pop)
+
 		template<bool DoCheckDependancy, bool DoBackgroundCompile, typename AssetType, typename... Params>
 			const AssetType& GetAsset(AssetSetPtr<AssetType>& assetSet, Params... initialisers)
             {
@@ -313,7 +351,11 @@ namespace Assets
                 auto& assets = assetSet->_assets;
 				auto i = LowerBound(assets, hash);
 				if (i != assets.end() && i->first == hash) {
-                    if (CheckDependancy<DoCheckDependancy>::NeedsRefresh(i->second.get())) {
+                    auto& cnt = i->second;
+
+                    auto* checkForRefresh = cnt._active.get();
+                    if (cnt._pendingReplacement) checkForRefresh = cnt._pendingReplacement.get();
+                    if (CheckDependancy<DoCheckDependancy>::NeedsRefresh(checkForRefresh)) {
                             // note --  old resource will stay in memory until the new one has been constructed
                             //          If we get an exception during construct, we'll be left with a null ptr
                             //          in this asset set
@@ -322,10 +364,15 @@ namespace Assets
                             //  initializing this create/compile operation. If it expensive, we could keep it
                             //  locked for awhile. Or, even worse, we could try for a recursive lock on the same
                             //  asset set.
-                        auto oldResource = std::move(i->second);
-                        i->second = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(*assetSet.get(), hash, std::forward<Params>(initialisers)...);
+                        cnt._pendingReplacement.reset();
+                        cnt._pendingReplacement = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(*assetSet.get(), hash, std::forward<Params>(initialisers)...);
                     }
-                    return *i->second;
+
+                    // note that this will sometimes replace a "valid" asset with an "invalid" one
+                    if (!cnt._active || (cnt._pendingReplacement && ReadyForReplacement(*cnt._pendingReplacement)))
+                        cnt._active = std::move(cnt._pendingReplacement);
+
+                    return *cnt._active;
                 }
 
                 #if defined(ASSETS_STORE_NAMES)
@@ -340,7 +387,7 @@ namespace Assets
                         //  (only insert after we've completed creation; because creation can throw an exception)
 					InsertAssetName(assetSet->_assetNames, hash, name);
                 #endif
-
+                
                     // we have to search again for the insertion point
                     //  it's possible that while constructing the asset, we may have called GetAsset<>
                     //  to create another asset. This can invalidate our iterator "i". If we had some way
@@ -350,8 +397,7 @@ namespace Assets
                     //  For the future, we should consider threading problems, also. We will probably need
                     //  a lock on the assetset -- and it may be best to release this lock while we're calling
                     //  the constructor
-				i = LowerBound(assets, hash);
-				return *assets.insert(i, std::make_pair(hash, std::move(newAsset)))->second;
+                return *assetSet->Add(hash, std::move(newAsset));
             }
 
         template<bool DoCheckDependancy, bool DoBackgroundCompile, typename AssetType, typename... Params>
@@ -403,14 +449,12 @@ namespace Assets
                             //  and assign it in place.
                         auto newBlankAsset = AssetType::CreateNew(initialisers...);
 
-                        auto& assets = assetSet->_assets;
                         #if defined(ASSETS_STORE_NAMES)
 					        InsertAssetNameNoCollision(assetSet->_assetNames, hash, name);
                         #endif
 
-                        auto i = LowerBound(assets, hash);
                         newDivAsset = std::make_shared<typename AssetTraits<AssetType>::DivAsset>(
-                            *assets.insert(i, std::make_pair(hash, std::move(newBlankAsset)))->second, 
+                            *assetSet->Add(hash, std::move(newBlankAsset)),
                             hash, assetSet->GetTypeCode(), 
                             identifier, undoQueue);
                     }

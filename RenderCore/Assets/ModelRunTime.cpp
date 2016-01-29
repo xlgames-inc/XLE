@@ -1582,7 +1582,7 @@ namespace RenderCore { namespace Assets
         return ~0ull;
     }
 
-    ::Assets::AssetState ModelRenderer::GetState() const
+    ::Assets::AssetState ModelRenderer::GetAssetState() const
     {
             // If any of our dependencies is not ready, then we must return that state
             // Note that we can't check shaders because that depends on the global state
@@ -1592,7 +1592,7 @@ namespace RenderCore { namespace Assets
         bool gotPending = false;
         for (auto t=_pimpl->_boundTextures.cbegin(); t!=_pimpl->_boundTextures.cend(); ++t) {
             if (!*t) continue;
-            auto tState = (*t)->GetState();
+            auto tState = (*t)->GetAssetState();
             if (tState == ::Assets::AssetState::Invalid) return ::Assets::AssetState::Invalid;
             gotPending |= tState == ::Assets::AssetState::Pending;
         }
