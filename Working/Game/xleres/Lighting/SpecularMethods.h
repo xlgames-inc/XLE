@@ -10,6 +10,7 @@
 #include "optimized-ggx.h"
 #include "LightingAlgorithm.h"
 #include "Constants.h"
+#include "../Utility/Misc.h"
 
 #if !defined(SPECULAR_METHOD)
     #define SPECULAR_METHOD 1
@@ -85,9 +86,23 @@ float TrowReitzD(float NdotH, float alpha)
     // a little further by making the denomination power
     // variable.
     // They call it "GTR"
+
     float alphaSqr = alpha * alpha;
     float denom = 1.f + (alphaSqr - 1.f) * NdotH * NdotH;
     return alphaSqr / (pi * denom * denom);
+
+    #if 0
+        // This the version of D as it appears exactly in
+        // Walter07 paper (Only correct when NdotH > 0.f)
+        // It's just the same, but expressed differently
+        float cosTheta = NdotH;
+        // tan^2 + 1 = 1.f / (cos^2)
+        // tan = sqrt(1.f / cos^2 - 1);
+        float tanThetaSq = 1.f / Sq(NdotH) - 1.f;
+        float c4 = Sq(cosTheta); c4 *= c4;
+        float a2 = Sq(alpha);
+        return a2 / (pi * c4 * Sq(a2 + tanThetaSq));
+    #endif
 }
 
 float TrowReitzDInverse(float D, float alpha)
@@ -357,6 +372,8 @@ float3 CalculateSpecular(
             transmitted *= GGXTransmissionFresnel(
                 negativeLightDirection, directionToEye, parameters.F0.g,
                 iorIncident, iorOutgoing);
+
+            transmitted *= dot(negativeLightDirection, -normal);
         #endif
 
         return reflected + parameters.transmission * transmitted;

@@ -103,6 +103,8 @@ float3 SampleTransmittedSpecularIBL_Ref(
             i, viewDirection, specParam.F0.g,
             iorIncident, iorOutgoing);
 
+        brdf *= -dot(i, normal);
+
         // We have to apply the distribution weight. Since our half vectors are distributed
         // in the same fashion as the reflection case, we should have the same weight.
         // (But we need to consider the flipping that occurs)

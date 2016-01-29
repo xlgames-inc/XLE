@@ -128,6 +128,7 @@ float GenerateSplitTermTrans(
     float alphad = RoughnessToDAlpha(roughness);
     float G2 = SmithG(NdotV, alphag);
 
+    uint goodSampleCount = 0;
     float A = 0.f;
     [loop] for (uint s=0; s<passSampleCount; ++s) {
 
@@ -146,12 +147,14 @@ float GenerateSplitTermTrans(
 
         float transmitted;
         GGXTransmission(        // todo -- fresnel calculation is going to get in the way
-            roughness, iorIncident, iorOutgoing,
+            iorIncident, iorOutgoing, roughness,
             i, ot, -normal,
             transmitted);
         // float odoth = abs(dot(ot, H));
         // float odotn = abs(dot(ot, normal));
         // transmitted = odoth / odotn * SmithG(odotn, alphag);
+
+        transmitted *= dot(i, -normal);
 
         float pdfWeight = InversePDFWeight(H, -normal, V, alphad);
 
@@ -160,9 +163,11 @@ float GenerateSplitTermTrans(
 
         float normalizedSpecular = transmitted * pdfWeight;
         A += F * normalizedSpecular;
+
+        goodSampleCount++;
     }
 
-    return A / float(passSampleCount);
+    return A / (float(goodSampleCount) + 1e-6f);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

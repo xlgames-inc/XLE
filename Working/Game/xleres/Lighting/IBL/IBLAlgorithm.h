@@ -37,6 +37,8 @@ float2 HammersleyPt(uint i, uint N)
 float3 SampleMicrofacetNormalGGX(uint i, uint sampleCount, float3 normal, float alphad)
 {
         // Very similar to the unreal course notes implementation here
+        // Note that "HammersleyPt" always produces (0,0) as the first points
+        //      -- this will become a direction equal to "normal"
     float2 xi = HammersleyPt(i, sampleCount);
 
     // The following will attempt to select points that are

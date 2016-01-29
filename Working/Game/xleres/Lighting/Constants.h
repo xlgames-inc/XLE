@@ -53,6 +53,8 @@ static const float ReflectionBlurrinessFromRoughness = 5.f;
 //  it linear against F0.
 #define SPECULAR_LINEAR_AGAINST_F0 1
 
-static const float SpecularTransmissionIndexOfRefraction = 1.2f; // 1.33f;
+// Note -- maybe this should vary with the "specular" parameter. The point where there
+// is no refraction solution should match the point where the lighting becomes 100% reflection
+static const float SpecularTransmissionIndexOfRefraction = 1.05f; // 1.33f;
 
 #endif
