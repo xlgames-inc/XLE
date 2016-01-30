@@ -49,7 +49,7 @@ namespace TextureTransform
         #endif
     }
 
-    void Execute(StringSection<char> cmdLine)
+    int Execute(StringSection<char> cmdLine)
     {
         // We're going to run a simple process that loads a texture file, runs some shader
         // process, and then writes out an output file.
@@ -60,6 +60,9 @@ namespace TextureTransform
         // command lines if we wanted a unix style command line syntax (and, actually, some
         // syntax elements of this formatter [like ';'] might conflict on some OSs.
 
+        // Sometimes the system will add quotes around our cmdLine (happens when called from groovy)... We need to remove that here
+        if (cmdLine.Length() > 2 && *cmdLine.begin() == '"' && *(cmdLine.end()-1) == '"') { ++cmdLine._start; --cmdLine._end; }
+
         MemoryMappedInputStream stream(cmdLine.begin(), cmdLine.end());
         InputStreamFormatter<char> formatter(stream);
         Document<InputStreamFormatter<char>> doc(formatter);
@@ -68,14 +71,16 @@ namespace TextureTransform
         auto shader = doc.Attribute("s").Value();
 
         if (outputFile.Empty() || shader.Empty()) {
-            return;
+            LogAlwaysError << "Output file and shader required on the command line";
+            LogAlwaysError << "Cmdline: " << cmdLine.AsString().c_str();
+            return -1;
         }
 
         auto xleDir = GetEnv("XLE_DIR");
         if (xleDir.empty()) {
             LogAlwaysError << "XLE_DIR environment variable isn't set. Expecting this to be set to root XLE directory";
             LogAlwaysError << "This program loads shaders from the $(XLE_DIR)\\Working\\Game\\xleres folder";
-            return;
+            return -1;
         }
 
             // we can now construct basic services
@@ -95,13 +100,14 @@ namespace TextureTransform
             });
         if (!resultTexture._pkt) {
             LogAlwaysError << "Error while performing texture transform";
-            return;
+            return -1;
         }
         
             // save "readback" as an output texture.
             // We will write a uncompressed format; normally a second command line
             // tool will be used to compress the result.
         resultTexture.Save(outputFile.AsString().c_str());
+        return 0;
     }
 }
 
@@ -112,11 +118,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     ConsoleRig::GlobalServices services(cfg);
 
     TRY {
-        TextureTransform::Execute(lpCmdLine);
+        return TextureTransform::Execute(lpCmdLine);
     } CATCH (const std::exception& e) {
         LogAlwaysError << "Hit top level exception. Aborting program!";
         LogAlwaysError << e.what();
+        return -1;
     } CATCH_END
-
-    return 0;
 }

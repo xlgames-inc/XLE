@@ -15,7 +15,7 @@ class TextureProcessError extends java.lang.Exception
 
 class ProcessStep
 {
-	String getCommandLine(File input, File output)	{ return null; }
+	Iterable<?> getCommandLine(File input, File output)	{ return null; }
 	boolean doCheckErrorStream()					{ return true; }
 
 	boolean isIntermediate = false;
@@ -95,14 +95,14 @@ class TextureTask extends DefaultTask
 			else if (c!=0) { stepInput = getOutputFile(c-1) }
 
 			def stepOutput = getOutputFile(c)
-			def cmdLine = steps[c].getCommandLine(stepInput, stepOutput)
-			println cmdLine
+			def exe = steps[c].getCommandLine(stepInput, stepOutput)
 
-			def process = cmdLine.execute()
-			process.waitFor()
+			// def process = cmdLine.execute()
+			// process.waitFor()
+			// if (steps[c].doCheckErrorStream())
+			// 	checkProcessErrorStream(process, "while processing texture from ${stepInput ? stepInput.getAbsolutePath() : "<no-input>"} to output file ${stepOutput.getAbsolutePath()}");
 
-			if (steps[c].doCheckErrorStream())
-				checkProcessErrorStream(process, "while processing texture from ${stepInput ? stepInput.getAbsolutePath() : "<no-input>"} to output file ${stepOutput.getAbsolutePath()}");
+			project.exec( { commandLine = exe });
 		}
 	}
 
@@ -120,12 +120,13 @@ class TextureTask extends DefaultTask
 
             // println "out of date: ${input}"
             // println "writing to ${output}"
-            println exe
+            // println exe
 
-            def process = exe.execute()
-            process.waitFor()
+            // def process = exe.execute()
+            // process.waitFor()
+			// checkProcessErrorStream(process, "while processing texture from ${input} to output file ${output}");
 
-			checkProcessErrorStream(process, "while processing texture from ${input} to output file ${output}");
+			project.exec( { commandLine = exe });
         }
 
         inputs.removed { change ->
@@ -148,7 +149,7 @@ class TextureCompress extends ProcessStep
     String mipFilter = "kaiser"
 
     @Input
-    String wrapping = "wrap"
+    String wrapping = "repeat"
 
     @Input
     boolean mips = true
@@ -156,9 +157,14 @@ class TextureCompress extends ProcessStep
 	@Input
 	boolean isNormalMap = false
 
-	String getCommandLine(File input, File output)
+	Iterable<?> getCommandLine(File input, File output)
 	{
-		return "nvcompress -nocuda -silent -$compressionMode -$wrapping ${mips?"-mipfilter $mipFilter":"-nomips"} ${isNormalMap?"-normal":""} ${input.getAbsolutePath()} ${output.getAbsolutePath()}";
+		def res =
+			["nvcompress", "-nocuda", "-silent", "-$compressionMode", "-$wrapping",
+			mips?"-mipfilter":"-nomips", mips?"$mipFilter":"",
+			isNormalMap?"-normal":"",
+			input.getAbsolutePath(), output.getAbsolutePath()];
+		return res;
 	}
 }
 
@@ -166,9 +172,10 @@ class TextureCompress extends ProcessStep
 
 class TextureTransformStep extends ProcessStep
 {
-	String makeCommandLine(File output, String shader, String parameters)
+	Iterable<?> makeCommandLine(File output, String shader, String parameters)
 	{
-		return "TextureTransform o=${output.getAbsolutePath()}; s=${shader}; ~p; ${parameters}";
+		def res = ["TextureTransform", "o=${output.getAbsolutePath()}; s=${shader}; ~p; ${parameters}"];
+		return res;
 	}
 }
 
@@ -183,7 +190,7 @@ class EquirectToCube extends TextureTransformStep
     @Input
     String shader = "main"
 
-    String getCommandLine(File input, File output)
+    Iterable<?> getCommandLine(File input, File output)
 	{
 		return makeCommandLine(
 			output,
@@ -206,7 +213,7 @@ class GenericTextureGen extends TextureTransformStep
     int width = 256;
     int height = 256;
 
-	String getCommandLine(File input, File output)
+	Iterable<?> getCommandLine(File input, File output)
 	{
 		return makeCommandLine(
 			output, shader,
@@ -220,8 +227,8 @@ class CompressWithTextureTransform extends TextureTransformStep
 {
     @Input
     String format = "BC6H_UF16"
-	
-	String getCommandLine(File input, File output)
+
+	Iterable<?> getCommandLine(File input, File output)
 	{
 		return makeCommandLine(output, "Compress", "Format=${format}; Input=${input.getAbsolutePath()}");
 	}
@@ -231,9 +238,13 @@ class CompressWithTextureTransform extends TextureTransformStep
 
 class CubeMapGen extends ProcessStep
 {
-	String getCommandLine(File input, File output)
+	Iterable<?> getCommandLine(File input, File output)
 	{
-		return "CubeMapGen ${input.getAbsolutePath()} -exit -exportCubeDDS -exportMipChain -edgeFixupWidth:0 -exportPixelFormat:A16B16G16R16F -exportFilename:${output.getAbsolutePath()}";
+		def res = ["CubeMapGen",
+			input.getAbsolutePath(), "-exit", "-exportCubeDDS",
+			"-exportMipChain", "-edgeFixupWidth:0", "-exportPixelFormat:A16B16G16R16F",
+			"-exportFilename:${output.getAbsolutePath()}"];
+		return res;
 	}
 
 	boolean doCheckErrorStream() { return false; }
@@ -241,9 +252,14 @@ class CubeMapGen extends ProcessStep
 
 class DiffuseCubeMapGen extends ProcessStep
 {
-	String getCommandLine(File input, File output)
+	Iterable<?> getCommandLine(File input, File output)
 	{
-		return "ModifiedCubeMapGen ${input.getAbsolutePath()} -exit -IrradianceCubemap:180 -exportCubeDDS -exportMipChain -edgeFixupWidth:0 -exportPixelFormat:A16B16G16R16F -exportSize:32 -exportFilename:${output.getAbsolutePath()}";
+		def res = ["ModifiedCubeMapGen",
+			input.getAbsolutePath(), "-exit", "-IrradianceCubemap:180",
+			"-exportCubeDDS", "-exportMipChain", "-edgeFixupWidth:0",
+			"-exportPixelFormat:A16B16G16R16F", "-exportSize:32",
+			"-exportFilename:${output.getAbsolutePath()}"];
+		return res;
 	}
 
 	boolean doCheckErrorStream() { return false; }
@@ -255,13 +271,14 @@ class SpecularIBLFilter extends TextureTransformStep
 {
     @Input
     String format = "R32G32B32A32_FLOAT"
-	
+
 	@Input
     int faceSize = 512
-	
+
+	Iterable<?> getCommandLine(File input, File output)
 	{
-		return makeCommandLine(output, 
-			"ToolsHelper/SplitSum.sh:EquiRectFilterGlossySpecular", 
+		return makeCommandLine(output,
+			"ToolsHelper/SplitSum.sh:EquiRectFilterGlossySpecular",
 			"MipCount=${(int)(Math.log(faceSize)/Math.log(2.0f))}; ArrayCount=6; PassCount=128; Input=${input}; Dims={${faceSize}, ${faceSize}}; Format=${format}");
 	}
 }
@@ -296,23 +313,23 @@ class EquiRectEnv extends TextureTask
 {
 	EquiRectEnv()
 	{
-			// First, convert the input texture to a dds format 
+			// First, convert the input texture to a dds format
 			// (even though we're using nvcompress, the result will be in an uncompressed format)
 		steps.add(new TextureCompress(compressionMode:"rgb", mips:false, isIntermediate:true));
-	
+
 			// Build the basic cubemap background
 			// Use CubeMapGen to create mipmaps for the cubemap that are weighted for solid angle
 			// Then compress the result into BC6H_UF16 format
 		steps.add(new EquirectToCube(isIntermediate:true));
 		steps.add(new CubeMapGen(isIntermediate:true));
 		steps.add(new CompressWithTextureTransform(format: "BC6H_UF16"));
-		
+
 			// Use ModifiedCubeMapGen to create the diffuse IBL reflections
 			// We will compress the result into BC6H_UF16 format
 		steps.add(new DiffuseCubeMapGen(isIntermediate:true));
 		stepInputs[4] = 1;
 		steps.add(new CompressWithTextureTransform(format: "BC6H_UF16", outputNamePostfix:"_diffuse"));
-		
+
 			// Use TextureTransform to create the specular IBL reflections
 			// Then compress the result into BC6H_UF16 format
 		steps.add(new SpecularIBLFilter(isIntermediate:true));
