@@ -20,7 +20,7 @@ float3 IBLPrecalc_SampleInputTexture(float3 direction)
 
 #include "../Lighting/IBL/IBLPrecalc.h"
 
-static const uint PassSampleCount = 4;      // 256
+static const uint PassSampleCount = 256;
 
 float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
@@ -102,7 +102,7 @@ float4 EquiRectFilterGlossySpecular(float4 position : SV_Position, float2 texCoo
     cubeMapDirection = float3(-cubeMapDirection.x, -cubeMapDirection.y, cubeMapDirection.z);
 
     float roughness = MipmapToRoughness(MipIndex);
-    float3 r = GenerateFilteredSpecular(cubeMapDirection, roughness, PassSampleCount, PassIndex*PassSampleCount, PassSampleCount * PassCount);
+    float3 r = GenerateFilteredSpecular(cubeMapDirection, roughness, PassSampleCount, PassIndex, PassCount);
     return float4(r / float(PassCount), 1.f);
 }
 
@@ -119,6 +119,6 @@ float4 EquiRectFilterGlossySpecularTrans(float4 position : SV_Position, float2 t
     cubeMapDirection = float3(-cubeMapDirection.x, -cubeMapDirection.y, cubeMapDirection.z);
 
     float roughness = MipmapToRoughness(MipIndex);
-    float3 r = CalculateFilteredTextureTrans(cubeMapDirection, roughness, PassSampleCount, PassIndex*PassSampleCount, PassSampleCount);
+    float3 r = CalculateFilteredTextureTrans(cubeMapDirection, roughness, PassSampleCount, PassIndex, PassCount);
     return float4(r / float(PassCount), 1.f);
 }

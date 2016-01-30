@@ -209,13 +209,15 @@ float3 ReferenceSpecularGGX(
     #endif
 
     float NdotH = dot(normal, halfVector);
-    if (NdotV < 0.f) return 0.0.xxx;
+    if (NdotV <= 0.f) return 0.0.xxx;
 
     #if !MAT_DOUBLE_SIDED_LIGHTING
         // Getting some problems on grazing angles, possibly when
         // the signs of NdotV, NdotH & NdotL don't agree. Need to
         // check these cases with double sided lighting, as well.
-        if (NdotH < 0.f || NdotL < 0.f) return 0.0.xxx;
+        // Note that roughness is zero, and NdotH is zero -- we'll get a divide by zero
+        // in the D term
+        if (NdotH <= 0.f || NdotL <= 0.f) return 0.0.xxx;
     #endif
 
     /////////// Shadowing factor ///////////

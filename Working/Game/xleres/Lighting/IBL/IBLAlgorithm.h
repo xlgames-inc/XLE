@@ -10,6 +10,7 @@
 #include "../LightingAlgorithm.h"
 
 static const float MinSamplingAlpha = 0.001f;
+static const float MinSamplingRoughness = 0.03f;
 static const float SpecularIBLMipMapCount = 9.f;
 
 // #define OLD_M_DISTRIBUTION_FN
@@ -129,7 +130,7 @@ float MipmapToRoughness(uint mipIndex)
 
 float RoughnessToMipmap(float roughness)
 {
-    return saturate((roughness - 0.05f) * SpecularIBLMipMapCount);
+    return saturate(roughness - 0.05f) * SpecularIBLMipMapCount;
 }
 
 

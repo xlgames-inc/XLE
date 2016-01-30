@@ -191,6 +191,10 @@ float3 GenerateFilteredSpecular(
     float3 normal = cubeMapDirection;
     float3 viewDirection = cubeMapDirection;
 
+    // Very small roughness values break this equation, because D converges to infinity
+    // when NdotH is 1.f. We must clamp roughness, or this convergence produces bad
+    // floating point numbers.
+    roughness = max(roughness, MinSamplingRoughness);
     SpecularParameters specParam = SpecularParameters_RoughF0(roughness, 1.0.xxx);
 
     float alphag = RoughnessToGAlpha(specParam.roughness);
@@ -275,7 +279,7 @@ float3 GenerateFilteredSpecular(
             // Also, brdf0 just gets factored out completely (doing this in greyscale because
             // F0 should be 1.0.xxx here.
             precise float brdf1 = CalculateSpecular(normal, viewDirection, L, H, specParam).g;
-            weight = brdf0 * brdf1 * InversePDFWeight(H, normal, viewDirection, alphad);
+            weight = brdf1 / brdf0 * InversePDFWeight(H, normal, viewDirection, alphad);
         }
         result += lightColor * weight;
         totalWeight += weight;
@@ -283,7 +287,7 @@ float3 GenerateFilteredSpecular(
 
     // Might be more accurate to divide by "PassSampleCount" here, and then later on divide
     // by PassCount...?
-    return result / totalWeight;
+    return result / (totalWeight + 1e-6f);
 }
 
 float3 SampleNormal(float3 core, uint s, uint sampleCount)
@@ -308,6 +312,10 @@ float3 CalculateFilteredTextureTrans(
     const float iorIncident = 1.f;
     const float iorOutgoing = SpecularTransmissionIndexOfRefraction;
 
+    // Very small roughness values break this equation, because D converges to infinity
+    // when NdotH is 1.f. We must clamp roughness, or this convergence produces bad
+    // floating point numbers.
+    roughness = max(roughness, MinSamplingRoughness);
     float alphad = RoughnessToDAlpha(roughness);
     float alphag = RoughnessToGAlpha(roughness);
 
