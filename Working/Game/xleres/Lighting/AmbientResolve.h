@@ -180,7 +180,7 @@ AmbientResolveHelpers AmbientResolveHelpers_Default()
         uint2 dims; LightBufferCopy.GetDimensions(dims.x, dims.y);
         float4 samplePosition = float4(reflectionSourceCoords * float2(dims), 0.f, 1.f);
         GBufferValues sample = LoadGBuffer(samplePosition, SystemInputs_Default());
-        litSample = CalcBasicAmbient(int2(samplePosition.xy), 0, sample, ambientColor, iblScale);
+        litSample = CalcBasicAmbient(LightScreenDest_Create(int2(samplePosition.xy), 0), sample, ambientColor, iblScale);
 
             // blending with the sky reflections helps hide artefacts...
             //  -- and there are so many artefacts!

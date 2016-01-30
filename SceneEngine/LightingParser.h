@@ -111,7 +111,8 @@ namespace SceneEngine
     auto LightingParser_SetupScene(
         MetalContext& context,
         LightingParserContext& parserContext,
-        ISceneParser* sceneParser = nullptr)
+        ISceneParser* sceneParser = nullptr,
+        unsigned samplingPassIndex = 0, unsigned samplingPassCount = 1)
         -> AttachedSceneMarker;
 
     /// <summary>Set camera related states after camera changes</summary>

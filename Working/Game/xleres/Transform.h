@@ -27,6 +27,8 @@ cbuffer LocalTransform : register(b1)
 cbuffer GlobalState : register(b4)
 {
 	float Time;
+	uint GlobalSamplingPassIndex;
+	uint GlobalSamplingPassCount;
 }
 
 #endif

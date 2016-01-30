@@ -325,7 +325,7 @@ namespace SceneEngine
         context->Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
         context->BindCS(MakeResourceList(gbufferDiffuse, res._downsampledNormals.SRV(), res._downsampledDepth.SRV()));
         context->BindCS(MakeResourceList(res._mask.UAV()));
-        context->BindCS(MakeResourceList(parserContext.GetGlobalTransformCB(), Metal::ConstantBuffer(&viewProjParam, sizeof(viewProjParam)), res._samplingPatternConstants, parserContext.GetGlobalStateCB()));
+        context->BindCS(MakeResourceList(parserContext.GetGlobalTransformCB(), Metal::ConstantBuffer(&viewProjParam, sizeof(viewProjParam)), res._samplingPatternConstants, Metal::ConstantBuffer(), parserContext.GetGlobalStateCB()));
         context->BindCS(MakeResourceList(commonResources._linearWrapSampler, commonResources._linearClampSampler));
         context->Bind(*res._buildMask);
         context->Dispatch((cfg._width + (64-1))/64, (cfg._height + (64-1))/64);

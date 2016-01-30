@@ -104,8 +104,6 @@ namespace PlatformRig
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
 
-        auto sceneMarker = LightingParser_SetupScene(*metalContext, parserContext, &sceneParser);
-        
         const auto coordinateSpace = GeometricCoordinateSpace::RightHanded;
         const float aspectRatio = qualitySettings._dimensions[0] / float(qualitySettings._dimensions[1]);
         const float n = camera._nearClip;
@@ -136,6 +134,7 @@ namespace PlatformRig
             for (unsigned x=0; x<tilesX; ++x) {
                 auto& target = targets[y*tilesX+x];
 
+                unsigned samplingPassIndex = 0, samplingPassCount = 1;
                 unsigned viewWidth, viewHeight;
                 if (!interleavedTiles) {
                     viewWidth  = std::min((x+1)*activeDims[0], qualitySettings._dimensions[0] * sampleCount[0]) - (x*activeDims[0]);
@@ -143,10 +142,14 @@ namespace PlatformRig
                 } else {
                     viewWidth = activeDims[0];
                     viewHeight = activeDims[1];
+                    samplingPassIndex = x + y*tilesX;
+                    samplingPassCount = tilesX*tilesY;
                 }
                 tileQualSettings._dimensions = UInt2(viewWidth+2*skirt, viewHeight+2*skirt);
                 auto rtDesc = TextureDesc::Plain2D(viewWidth+2*skirt, viewHeight+2*skirt, format);
                 target = TargetType(rtDesc, "HighResScreenShot");
+
+                auto sceneMarker = LightingParser_SetupScene(*metalContext, parserContext, &sceneParser, samplingPassIndex, samplingPassCount);
 
                     // We build a custom projection matrix that limits
                     // the frustum to the particular tile we're rendering.

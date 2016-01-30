@@ -61,7 +61,7 @@ namespace SceneEngine
 
         friend class AttachedSceneMarker;
         AttachedSceneMarker SetSceneParser(ISceneParser* sceneParser);
-        friend AttachedSceneMarker LightingParser_SetupScene(RenderCore::Metal::DeviceContext&, LightingParserContext&, ISceneParser*);
+        friend AttachedSceneMarker LightingParser_SetupScene(RenderCore::Metal::DeviceContext&, LightingParserContext&, ISceneParser*, unsigned, unsigned);
     };
 
     class AttachedSceneMarker

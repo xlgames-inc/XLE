@@ -251,7 +251,11 @@ float GetRandomizerValue(uint2 dispatchThreadId)
 		1,  9,  5, 13
 	};
 	uint2 t = dispatchThreadId.xy & 0x3;
-	return float(ditherArray[t.x+t.y*4]) / 15.f;
+	float base = float(ditherArray[t.x+t.y*4]) / 15.f;
+	return lerp(
+		GlobalSamplingPassIndex/float(GlobalSamplingPassCount),
+		(GlobalSamplingPassIndex+1)/float(GlobalSamplingPassCount),
+		base);
 }
 
 #endif

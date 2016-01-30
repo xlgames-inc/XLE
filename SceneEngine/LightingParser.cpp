@@ -1009,11 +1009,14 @@ namespace SceneEngine
     AttachedSceneMarker LightingParser_SetupScene(
         DeviceContext& context, 
         LightingParserContext& parserContext,
-        ISceneParser* sceneParser)
+        ISceneParser* sceneParser,
+        unsigned samplingPassIndex, unsigned samplingPassCount)
     {
-        Float4 time(0.f, 0.f, 0.f, 0.f);
+        struct GlobalCBuffer 
+        { float _time; unsigned _samplingPassIndex; unsigned _samplingPassCount; unsigned _dummy; }
+        time { 0.f, samplingPassIndex, samplingPassCount, 0 };
         if (sceneParser)
-            time[0] = sceneParser->GetTimeValue();
+            time._time = sceneParser->GetTimeValue();
         parserContext.SetGlobalCB(
             context, Techniques::TechniqueContext::CB_GlobalState,
             &time, sizeof(time));
