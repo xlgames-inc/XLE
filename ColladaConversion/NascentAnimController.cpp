@@ -597,10 +597,10 @@ namespace RenderCore { namespace ColladaConversion
     std::ostream& StreamOperator(std::ostream& stream, const NascentBoundSkinnedGeometry& geo)
     {
         using namespace RenderCore::Assets::Operators;
-        stream << "   Unanimated VB bytes: " << ByteCount(geo._unanimatedVertexElements.size()) << " (" << geo._unanimatedVertexElements.size() / geo._mainDrawUnanimatedIA._vertexStride << "*" << geo._mainDrawUnanimatedIA._vertexStride << ")" << std::endl;
-        stream << "     Animated VB bytes: " << ByteCount(geo._animatedVertexElements.size()) << " (" << geo._animatedVertexElements.size() / geo._mainDrawAnimatedIA._vertexStride << "*" << geo._mainDrawAnimatedIA._vertexStride << ")" << std::endl;
-        stream << "Skele binding VB bytes: " << ByteCount(geo._skeletonBinding.size()) << " (" << geo._skeletonBinding.size() / geo._skeletonBindingVertexStride << "*" << geo._skeletonBindingVertexStride << ")" << std::endl;
-        stream << "     Animated VB bytes: " << ByteCount(geo._animatedVertexBufferSize) << " (" << geo._animatedVertexBufferSize / geo._mainDrawAnimatedIA._vertexStride << "*" << geo._mainDrawAnimatedIA._vertexStride << ")" << std::endl;
+        stream << "   Unanimated VB bytes: " << ByteCount(geo._unanimatedVertexElements.size()) << " (" << geo._unanimatedVertexElements.size() / std::max(1u, geo._mainDrawUnanimatedIA._vertexStride) << "*" << geo._mainDrawUnanimatedIA._vertexStride << ")" << std::endl;
+        stream << "     Animated VB bytes: " << ByteCount(geo._animatedVertexElements.size()) << " (" << geo._animatedVertexElements.size() / std::max(1u, geo._mainDrawAnimatedIA._vertexStride) << "*" << geo._mainDrawAnimatedIA._vertexStride << ")" << std::endl;
+        stream << "Skele binding VB bytes: " << ByteCount(geo._skeletonBinding.size()) << " (" << geo._skeletonBinding.size() / std::max(1u, geo._skeletonBindingVertexStride) << "*" << geo._skeletonBindingVertexStride << ")" << std::endl;
+        stream << "     Animated VB bytes: " << ByteCount(geo._animatedVertexBufferSize) << " (" << geo._animatedVertexBufferSize / std::max(1u, geo._mainDrawAnimatedIA._vertexStride) << "*" << geo._mainDrawAnimatedIA._vertexStride << ")" << std::endl;
         stream << "              IB bytes: " << ByteCount(geo._indices.size()) << " (" << (geo._indices.size()*8/Metal::BitsPerPixel((Metal::NativeFormat::Enum)geo._indexFormat)) << "*" << Metal::BitsPerPixel((Metal::NativeFormat::Enum)geo._indexFormat)/8 << ")" << std::endl;
         stream << " Unanimated IA: " << geo._mainDrawUnanimatedIA << std::endl;
         stream << "   Animated IA: " << geo._mainDrawAnimatedIA << std::endl;
