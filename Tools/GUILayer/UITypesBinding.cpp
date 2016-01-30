@@ -162,8 +162,10 @@ namespace GUILayer
         auto scaffolds = modelCache.GetScaffolds(modelSettings._modelName.c_str(), modelSettings._materialName.c_str());
         if (scaffolds._material) {
             TRY {
-                return clix::marshalString<clix::E_UTF8>(scaffolds._material->GetMaterialName(materialGuid));
-            } 
+                auto nativeName = scaffolds._material->GetMaterialName(materialGuid);
+                if (nativeName)
+                    return clix::marshalString<clix::E_UTF8>(nativeName);
+            }
             CATCH (const ::Assets::Exceptions::PendingAsset&) { return "<<pending>>"; }
             CATCH_END
         }

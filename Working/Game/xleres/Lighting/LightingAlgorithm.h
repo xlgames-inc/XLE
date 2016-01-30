@@ -251,6 +251,11 @@ float3 AdjSkyCubeMapCoords(float3 input)
 	return float3(input.x, input.z, -input.y);
 }
 
+float3 InvAdjSkyCubeMapCoords(float3 input)
+{
+	return float3(input.x, -input.z, input.y);
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 float PowerForHalfRadius(float halfRadius, float powerFraction)

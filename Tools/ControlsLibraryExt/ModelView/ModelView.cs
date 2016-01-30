@@ -91,15 +91,18 @@ namespace ControlsLibraryExt.ModelView
                 if (_visMouseOver.HasMouseOver && _activeMaterialContext != null)
                 {
                     ContextMenu cm = new ContextMenu();
-                    cm.MenuItems.Add(
-                        new MenuItem("Pick &Material (" + _visMouseOver.MaterialName + ")", new EventHandler(ContextMenu_EditMaterial))
-                        { Tag = _visMouseOver.FullMaterialName });
-
-                    foreach (var t in _activeMaterialContext.AssignableTechniqueConfigs)
+                    var matName = _visMouseOver.MaterialName;
+                    if (!string.IsNullOrEmpty(matName) && matName[0] != '<')
                     {
                         cm.MenuItems.Add(
-                            new MenuItem("Assign Technique (" + t + ")", 
-                            new EventHandler(ContextMenu_AssignTechnique)) { Tag = new Tuple<string, string>(_visMouseOver.FullMaterialName, t) });
+                            new MenuItem("Pick &Material (" + _visMouseOver.MaterialName + ")", new EventHandler(ContextMenu_EditMaterial)) { Tag = _visMouseOver.FullMaterialName });
+
+                        foreach (var t in _activeMaterialContext.AssignableTechniqueConfigs)
+                        {
+                            cm.MenuItems.Add(
+                                new MenuItem("Assign Technique (" + t + ")",
+                                new EventHandler(ContextMenu_AssignTechnique)) { Tag = new Tuple<string, string>(_visMouseOver.FullMaterialName, t) });
+                        }
                     }
 
                     cm.Show(this, e.Location);

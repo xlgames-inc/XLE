@@ -26,11 +26,10 @@ TextureCube SpecularTransIBL : register(t30);
 
 #define RECALC_SPLIT_TERM
 #define RECALC_FILTERED_TEXTURE
-// #define REF_IBL
 
 float3 IBLPrecalc_SampleInputTexture(float3 direction)
 {
-    return  SkyReflectionTexture.SampleLevel(DefaultSampler, direction, 0).rgb;
+    return ReadSkyReflectionTexture(InvAdjSkyCubeMapCoords(direction), 0.f);
 }
 
 #include "IBL/IBLPrecalc.h"

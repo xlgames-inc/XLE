@@ -44,20 +44,8 @@
     #define SKY_PROJECTION 3
 #endif
 
-#include "ImageBased.h"
-
-float3 ReadSkyReflectionTexture(float3 reflectionVector, float roughness, float blurriness)
+float3 ReadSkyReflectionTexture(float3 reflectionVector, float mipMap)
 {
-
-        // note --  Ideally we want to be using importance sampling (or similar Monte Carlo
-        //          method) to find the correct level of blurriness for the reflections.
-        //          But it's a little expensive.
-        //          We can get an efficient version by building the importance sampled
-        //          blurred textures into the mipmaps...
-        //          Until then, just adding a bias to the mipmap level gives us a
-        //          rough approximation.
-    float mipMap = blurriness + saturate(roughness) * ReflectionBlurrinessFromRoughness;
-
     #if SKY_PROJECTION == 1
 
         uint2 reflectionTextureDims;
@@ -104,6 +92,8 @@ float3 ReadSkyReflectionTexture(float3 reflectionVector, float roughness, float 
     #endif
 }
 
+#include "ImageBased.h"
+
 float3 CalculateSkyReflectionFresnel(float3 F0, GBufferValues sample, float3 viewDirection, bool mirrorReflection)
 {
         // Note that it might be worth considering a slight hack to
@@ -125,7 +115,10 @@ float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float
 {
     float3 worldSpaceReflection = reflect(-viewDirection, sample.worldSpaceNormal);
     float roughness = Material_GetRoughness(sample);
-    return fresnel * ReadSkyReflectionTexture(worldSpaceReflection, roughness, blurriness);
+
+    // note -- this is a primitive alternative to the importance sampling IBL (implemented elsewhere)
+    float mipMap = blurriness + saturate(roughness) * ReflectionBlurrinessFromRoughness;
+    return fresnel * ReadSkyReflectionTexture(worldSpaceReflection, mipMap);
 }
 
 /////////////////////////////////////////
