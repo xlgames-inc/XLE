@@ -104,6 +104,8 @@ float InversePDFWeight(float3 H, float3 N, float3 V, float alphad)
         // note -- this will only work correctly for any implementation
         // of TrowReitzD that exactly matches the Walter07 paper
         // (because we're using his distribution function in SampleMicrofacetNormalGGX)
+        // Note that this can return very large values for grazing angles. This
+        // might be over-exaggerating these samples?
         return 1.f / (D * NdotH);
     #else
         float VdotH = abs(dot(V, H));

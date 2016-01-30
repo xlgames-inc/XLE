@@ -211,6 +211,13 @@ float3 ReferenceSpecularGGX(
     float NdotH = dot(normal, halfVector);
     if (NdotV < 0.f) return 0.0.xxx;
 
+    #if !MAT_DOUBLE_SIDED_LIGHTING
+        // Getting some problems on grazing angles, possibly when
+        // the signs of NdotV, NdotH & NdotL don't agree. Need to
+        // check these cases with double sided lighting, as well.
+        if (NdotH < 0.f || NdotL < 0.f) return 0.0.xxx;
+    #endif
+
     /////////// Shadowing factor ///////////
         // As per the Disney model, rescaling roughness to
         // values 0.5f -> 1.f for SmithG alpha, and squaring

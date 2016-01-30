@@ -27,7 +27,7 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Tar
     float NdotV = texCoord.x;
     float roughness = 1.f-texCoord.y;
     const uint sampleCount = 64 * 1024;
-    return float4(GenerateSplitTerm(NdotV, roughness, sampleCount), 0, 1);
+    return float4(GenerateSplitTerm(NdotV, roughness, sampleCount, 0, 1), 0, 1);
 }
 
 float4 main_trans(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
@@ -35,7 +35,7 @@ float4 main_trans(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : 
     float NdotV = texCoord.x;
     float roughness = 1.f-texCoord.y;
     const uint sampleCount = 64 * 1024;
-    return float4(GenerateSplitTermTrans(NdotV, roughness, sampleCount), 0, 1);
+    return float4(GenerateSplitTermTrans(NdotV, roughness, sampleCount, 0, 1), 0, 0, 1);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

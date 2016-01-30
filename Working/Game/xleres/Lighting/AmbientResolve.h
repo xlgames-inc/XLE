@@ -222,9 +222,9 @@ float3 LightResolve_Ambient(
         float3 skyReflections = SampleSpecularIBL(
             sample.worldSpaceNormal, directionToEye,
             SpecularParameters_RoughF0(sample.material.roughness, F0), lsd);
-        skyReflections += SampleSpecularIBLTrans(
-            sample.worldSpaceNormal, directionToEye,
-            SpecularParameters_RoughF0Transmission(sample.material.roughness, F0, 1.0.xxx), lsd);
+        //skyReflections += SampleSpecularIBLTrans(
+        //    sample.worldSpaceNormal, directionToEye,
+        //    SpecularParameters_RoughF0Transmission(sample.material.roughness, F0, 1.0.xxx), lsd);
     #elif 0 // SKY_PROJECTION==5
         float3 skyReflections = SampleSpecularIBL_Ref(
             sample.worldSpaceNormal, directionToEye,

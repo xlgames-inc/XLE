@@ -201,7 +201,7 @@ float3 GenerateFilteredSpecular(
 
     #if 0
         precise float3 L0 = 2.f * dot(viewDirection, normal) * normal - viewDirection;
-        precise float3 brdf0 = CalculateSpecular(normal, viewDirection, L0, normal, specParam);
+        precise float brdf0 = CalculateSpecular(normal, viewDirection, L0, normal, specParam).g;
     #else
         float brdf0 = 1.f;  // gets factored out completely. So don't bother calculating.
     #endif
@@ -272,8 +272,9 @@ float3 GenerateFilteredSpecular(
             // This method is more expensive... But it involves weighting each sample
             // by the full specular equation. So we get the most accurate blurring.
             // Note that "brdf1 * InversePDFWeight" factors out the D term.
-            // Also, brdf0 just gets factored out completely...
-            precise float3 brdf1 = CalculateSpecular(normal, viewDirection, L, H, specParam);
+            // Also, brdf0 just gets factored out completely (doing this in greyscale because
+            // F0 should be 1.0.xxx here.
+            precise float brdf1 = CalculateSpecular(normal, viewDirection, L, H, specParam).g;
             weight = brdf0 * brdf1 * InversePDFWeight(H, normal, viewDirection, alphad);
         }
         result += lightColor * weight;

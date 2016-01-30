@@ -62,7 +62,7 @@ float3 ResolveLitColor(
 	#endif
 
 	result += LightResolve_Ambient(
-		sample, directionToEye, BasicAmbient, screenDest.pixelCoords, screenDest.sampleIndex,
+		sample, directionToEye, BasicAmbient, screenDest,
 		AmbientResolveHelpers_Default());
 
 	return result;

@@ -24,8 +24,8 @@ Texture2D<float> GlossTransLUT : register(t22);
 
 TextureCube SpecularTransIBL : register(t30);
 
-#define RECALC_SPLIT_TERM
-#define RECALC_FILTERED_TEXTURE
+// #define RECALC_SPLIT_TERM
+// #define RECALC_FILTERED_TEXTURE
 
 float3 IBLPrecalc_SampleInputTexture(float3 direction)
 {
@@ -137,7 +137,7 @@ float3 SampleSpecularIBL(float3 normal, float3 viewDirection, SpecularParameters
 float SplitSumIBLTrans_IntegrateBRDF(float roughness, float NdotV, uint dither)
 {
     #if !defined(RECALC_SPLIT_TERM)
-        return GlossTransLUT.SampleLevel(ClampingSampler, float2(NdotV, 1.f - roughness), 0).xy;
+        return GlossTransLUT.SampleLevel(ClampingSampler, float2(NdotV, 1.f - roughness), 0);
     #else
         const uint sampleCount = 64;
         return GenerateSplitTermTrans(NdotV, roughness, sampleCount, dither&0xf, 16);
