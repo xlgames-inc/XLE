@@ -11,11 +11,15 @@
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/StringUtils.h"
+#include "../../Utility/Threading/CompletionThreadPool.h"
+#include "../../Utility/Threading/ThreadingUtils.h"
 #include "../../Foreign/half-1.9.2/include/half.hpp"
-#include "../../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
+#include <thread>
 #include "../../Foreign/ISPCTex/ispc_texcomp.h"
 
+#include "../../Foreign/DirectXTex/DirectXTex/DirectXTex.h" // (includes windows.h indirectly)
 #undef max
+#undef min
 
 namespace TextureTransform
 {
@@ -169,52 +173,92 @@ namespace TextureTransform
         scratchMetadata.format = DXGI_FORMAT_BC6H_UF16;
         result.Initialize(scratchMetadata);
 
+        // We're going to split the texture up into many smaller tasks.
+        // We can't easily split the entire texture into a single task
+        // per hardware thread, because the mipmaps make things difficult
+        //  -- well, for a cubemap we could put one face on each processor,
+        // but that would probably waste some processors. Let's just divide
+        // each face into strips of some reasonable size (say, 16 blocks high).
+
+        auto concurrency = std::thread::hardware_concurrency();
+        CompletionThreadPool threadPool(concurrency);
+
+        unsigned rowsPerStrip = 64; // normally input textures will be large, so we should have wide strips
+        unsigned totalTaskCount = 0;
+        Interlocked::Value completedTaskCount = 0;
+        auto completedEvent = XlCreateEvent(true);
+
+        for (unsigned a=0; a<srcDesc._arrayCount; ++a)
+            for (unsigned m=0; m<srcDesc._mipCount; ++m) {
+                unsigned mipHeight = std::max(4u, srcDesc._height >> m);
+                totalTaskCount += std::max(1u, mipHeight/rowsPerStrip);
+            }
+
+        const auto srcFormat = srcDesc._nativePixelFormat;
+
         for (unsigned a=0; a<srcDesc._arrayCount; ++a)
             for (unsigned m=0; m<srcDesc._mipCount; ++m) {
                 auto subRes = BufferUploads::DataPacket::TexSubRes(m, a);
                 auto* srcData = pkt.GetData(subRes);
                 auto srcPitches = pkt.GetPitches(subRes);
+                auto* dstImage = result.GetImage(m, a, 0);
+                unsigned mipHeight = std::max(4u, srcDesc._height >> m);
 
-                rgba_surface src 
-                {
-                    (uint8_t*)srcData, 
-                    std::max(4u, srcDesc._width >> m),
-                    std::max(4u, srcDesc._height >> m),
-                    srcPitches._rowPitch
-                };
+                for (unsigned s=0; s<std::max(1u, mipHeight/rowsPerStrip); ++s) {
+                    rgba_surface src 
+                    {
+                        (uint8_t*)PtrAdd(srcData, s*rowsPerStrip*srcPitches._rowPitch), 
+                        std::max(4u, srcDesc._width >> m),
+                        std::min((s+1)*rowsPerStrip, mipHeight) - s*rowsPerStrip,
+                        srcPitches._rowPitch
+                    };
+                    assert((s*rowsPerStrip+src.height) <= mipHeight);
+                    assert(src.height%4==0);
+                    auto* dst = PtrAdd(dstImage->pixels, (s*rowsPerStrip/4)*dstImage->rowPitch);
 
-                // todo -- we may need to copy smaller mipmaps into an extra buffer
-                //      (to make sure there is always at least 1 full 4x4 block)
+                    threadPool.Enqueue(
+                        [totalTaskCount, &completedTaskCount, completedEvent, src, dst, &settings, srcFormat]()
+                        {
+                            // todo -- we may need to copy smaller mipmaps into an extra buffer
+                            //      (to make sure there is always at least 1 full 4x4 block)
+                            auto modSrc = src;
 
-                std::unique_ptr<uint8[]> midwayBuffer;
-                if (srcDesc._nativePixelFormat == RenderCore::Metal::NativeFormat::R32G32B32A32_FLOAT
-                    || srcDesc._nativePixelFormat == RenderCore::Metal::NativeFormat::R32G32B32_FLOAT) {
+                            std::unique_ptr<uint8[]> midwayBuffer;
+                            if (srcFormat == RenderCore::Metal::NativeFormat::R32G32B32A32_FLOAT
+                                || srcFormat == RenderCore::Metal::NativeFormat::R32G32B32_FLOAT) {
                     
-                    const unsigned srcPixelPitch = (srcDesc._nativePixelFormat == RenderCore::Metal::NativeFormat::R32G32B32A32_FLOAT?4:3)*4;
-                    const unsigned dstPixelPitch = 8;
+                                const unsigned midwayPixelPitch = 8;
+                                const unsigned srcPixelPitch = (srcFormat == RenderCore::Metal::NativeFormat::R32G32B32A32_FLOAT?4:3)*4;                    
+                                midwayBuffer = std::make_unique<uint8[]>(src.width*src.height*midwayPixelPitch);
                     
-                    midwayBuffer = std::make_unique<uint8[]>(src.width*src.height*dstPixelPitch);
-                    std::memset(midwayBuffer.get(), 0, src.width*src.height*dstPixelPitch);
-                    
-                    // convert 32 bit float -> unsigned 16 bit float
-                    // Note there is no sign bit. We want 5 exponent bits + 11 mantissa bits
-                    for (unsigned y=0; y<unsigned(src.height); ++y)
-                        for (unsigned x = 0; x<unsigned(src.width); ++x) {
-                            auto* s = (float*)PtrAdd(srcData, (y*srcPitches._rowPitch) + x*srcPixelPitch);
-                            auto* d = (uint16*)PtrAdd(midwayBuffer.get(), (y*unsigned(src.width)*dstPixelPitch) + x*dstPixelPitch);
-                            d[0] = AsSignedFloat16_Fast(s[0]);
-                            d[1] = AsSignedFloat16_Fast(s[1]);
-                            d[2] = AsSignedFloat16_Fast(s[2]);
-                            d[3] = 0;   // alpha not supported
-                        }
+                                // convert 32 bit float -> unsigned 16 bit float
+                                // Note there is no sign bit. We want 5 exponent bits + 11 mantissa bits
+                                for (unsigned y=0; y<unsigned(src.height); ++y)
+                                    for (unsigned x = 0; x<unsigned(src.width); ++x) {
+                                        auto* s = (float*)PtrAdd(src.ptr, (y*src.stride) + x*srcPixelPitch);
+                                        auto* d = (uint16*)PtrAdd(midwayBuffer.get(), (y*unsigned(src.width)*midwayPixelPitch) + x*midwayPixelPitch);
+                                        d[0] = AsSignedFloat16_Fast(s[0]);
+                                        d[1] = AsSignedFloat16_Fast(s[1]);
+                                        d[2] = AsSignedFloat16_Fast(s[2]);
+                                        d[3] = 0;   // alpha not supported
+                                    }
 
-                    src.ptr = midwayBuffer.get();
-                    src.stride = src.width*dstPixelPitch;
+                                modSrc.ptr = midwayBuffer.get();
+                                modSrc.stride = src.width*midwayPixelPitch;
+                            }
+                
+                            CompressBlocksBC6H(&modSrc, dst, &settings);
+
+                            auto newCompletedCount = 1+Interlocked::Increment(&completedTaskCount);
+                            if (unsigned(newCompletedCount) == totalTaskCount)
+                                XlSetEvent(completedEvent);
+                        });
                 }
-
-                auto* image = result.GetImage(m, a, 0);
-                CompressBlocksBC6H(&src, image->pixels, &settings);
             }
+
+        // wait for all tasks to complete (last one should trigger the event)
+        XlWaitForSyncObject(completedEvent, XL_INFINITE);
+        XlCloseSyncObject(completedEvent);
 
         return std::move(result);
     }
