@@ -139,4 +139,26 @@ float3 SampleTransmittedSpecularIBL_Ref(
     return result / float(passSampleCount);
 }
 
+float3 SampleDiffuseIBL_Ref(
+    float3 normal, TextureCube tex,
+    uint passSampleCount, uint passIndex, uint passCount)
+{
+    // As per the specular solutions, let's sample the environment randomly
+    // and build a reference brightness value for diffuse.
+    // We will sample incident directions according to a pdf similar
+    // to the diffuse equation (eg, just NdotL; even if we're using a more complex
+    // diffuse equation, this is a good approximation)
+
+    float3 result = 0.0.xxx;
+    for (uint s=0; s<passSampleCount; ++s) {
+        precise float3 i = CosWeightedDirection(s*passCount+passIndex, passSampleCount*passCount, normal);
+        float3 lightColor = tex.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(i), 0).rgb;
+        // here, our lighting equation (lambert diffuse) is just the same as the pdf -- so it's gets factored out
+        result += lightColor;
+    }
+
+    const float normalizationFactor = 1.f/pi;
+    return result / float(passSampleCount) * normalizationFactor;
+}
+
 #endif

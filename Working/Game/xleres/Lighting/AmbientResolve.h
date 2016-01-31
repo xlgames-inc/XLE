@@ -136,7 +136,7 @@ float3 CalcBasicAmbient(LightScreenDest lsd, GBufferValues sample,
         float3 tiledLights = 0.0.xxx;
     #endif
 
-    float3 diffuseIBL = iblScale * SampleDiffuseIBL(sample.worldSpaceNormal);
+    float3 diffuseIBL = iblScale * SampleDiffuseIBL(sample.worldSpaceNormal, lsd);
 
     float metal = Material_GetMetal(sample);
     return (1.0f - metal)*(ambientColor + tiledLights + diffuseIBL)*sample.diffuseAlbedo.rgb;

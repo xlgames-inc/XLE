@@ -16,6 +16,7 @@
 #include "IBL/IBLAlgorithm.h"
 #include "IBL/IBLRef.h"
 #include "../Utility/Misc.h"        // for DitherPatternInt
+#include "../Transform.h"           // for GlobalSamplingPassCount, GlobalSamplingPassIndex
 
 TextureCube DiffuseIBL  : register(t19);
 TextureCube SpecularIBL : register(t20);
@@ -34,19 +35,23 @@ float3 IBLPrecalc_SampleInputTexture(float3 direction)
 
 #include "IBL/IBLPrecalc.h"
 
-float3 SampleDiffuseIBL(float3 worldSpaceNormal)
+float3 SampleDiffuseIBL(float3 worldSpaceNormal, LightScreenDest lsd)
 {
         // note -- in the same way that we apply the specular BRDF when for
         //      the gloss reflections, we could also apply the diffuse BRDF
         //      to the diffuse reflections (including the view dependent part)
         //      Currently we'll just get lambert response...
-    #if HAS_DIFFUSE_IBL==1
+    #if defined(REF_IBL)
+        uint dither = DitherPatternInt(lsd.pixelCoords)&0xf;
+        dither = dither*GlobalSamplingPassCount+GlobalSamplingPassIndex;
+        const uint sampleCount = 64;
+        return SampleDiffuseIBL_Ref(worldSpaceNormal, SkyReflectionTexture, sampleCount, dither, 16*GlobalSamplingPassCount);
+    #elif HAS_DIFFUSE_IBL==1
         float3 result = DiffuseIBL.SampleLevel(DefaultSampler, AdjSkyCubeMapCoords(worldSpaceNormal), 0).rgb;
-            //  When using textures made with IBL Baker, we must multiply in the
-            //  normalization factor here... But with textures build from ModifiedCubeMapGen, it is
-            //  already incorporated
-            // const float normalizationFactor = 1.0f / pi;
-            // result *= normalizationFactor;
+        // note -- our pipeline doesn't currently factor the 1.0f / pi normalization factor into
+        // the texture. We could burn this, rather than having to multiply here
+        const float normalizationFactor = 1.0f / pi;
+        result *= normalizationFactor;
         return result;
     #else
         return 0.0.xxx;

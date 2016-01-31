@@ -114,6 +114,43 @@ float InversePDFWeight(float3 H, float3 N, float3 V, float alphad)
     #endif
 }
 
+float3 CosWeightedDirection(uint i, uint sampleCount, float3 normal)
+{
+    // Derived from:
+    //  https://pathtracing.wordpress.com/2011/03/03/cosine-weighted-hemisphere/
+    // (with some redundant calculations removed)
+    float2 xi = HammersleyPt(i, sampleCount);
+
+    float cosTheta = sqrt(1.0f-xi.x);
+    float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
+    float phi = 2.0f * pi * xi.y;
+
+    float3 H;
+    H.x = sinTheta * cos(phi);
+    H.y = sinTheta * sin(phi);
+    H.z = cosTheta;
+
+#if 1
+    float3 up = abs(normal.z) < 0.999f ? float3(0,0,1) : float3(1,0,0);
+    float3 tangentX = normalize(cross(up, normal));
+    float3 tangentY = cross(normal, tangentX);
+    return tangentX * H.x + tangentY * H.y + normal * H.z;
+#else
+    float3 z = normal;
+    float3 h = z;
+    if (abs(h.x)<=abs(h.y) && abs(h.x)<=abs(h.z))
+        h.x = 1.0f;
+    else if (abs(h.y)<=abs(h.x) && abs(h.y)<=abs(h.z))
+        h.y = 1.0f;
+    else
+        h.z = 1.0f;
+
+    float3 x = normalize(cross(h, z));
+    float3 y = cross(x, z);
+    return H.x * x + H.y * y + H.z * z;
+#endif
+}
+
 float MipmapToRoughness(uint mipIndex)
 {
     // We can adjust the mapping between roughness and the mipmaps as needed...
